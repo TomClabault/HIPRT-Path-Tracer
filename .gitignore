@@ -1,0 +1,17 @@
+CMakeLists.txt.user
+
+TP_RT*.png
+
+build*
+data/OBJs/*.blend
+data/OBJs/*.obj
+data/OBJs/*.mtl
+data/Skyspheres/*.hdr
+data/OBJs/Projects/
+data/Skyspheres/evening_road_01_puresky_8k.hdr
+data/Skyspheres/AllSkyFree_Sky_EpicGloriousPink_EquirectDebug.jpg
+data/Skyspheres/AllSkyFree_Sky_EpicGloriousPink_Equirect.jpg
+oidn/bin/
+oidn/doc/
+oidn/lib/
+
