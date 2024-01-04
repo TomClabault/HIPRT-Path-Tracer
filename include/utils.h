@@ -14,8 +14,6 @@ class Utils
 public:
 
     static ParsedScene parse_scene_file(const std::string& filepath);
-    static ParsedScene parse_obj_file(const std::string& filepath);
-    static ParsedScene parse_gltf_file(const std::string& filepath);
     static Image read_image_float(const std::string& filepath, int& image_width, int& image_height, bool flipY = true);
 
     static std::vector<float> compute_env_map_cdf(const Image& skysphere);

@@ -2,6 +2,9 @@
 //#define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
+#include "assimp/Importer.hpp"
+#include "assimp/scene.h"
+#include "assimp/postprocess.h"
 #include "color.h"
 #include "image.h"
 #include "image_io.h"
@@ -13,108 +16,147 @@
 
 #include <OpenImageDenoise/oidn.hpp>
 
-ParsedScene Utils::parse_obj_file(const std::string& filepath)
-{
-    ParsedScene parsed_obj;
-
-    rapidobj::Result rapidobj_result = rapidobj::ParseFile(filepath, rapidobj::MaterialLibrary::Default());
-    if (rapidobj_result.error)
-    {
-        std::cout << "There was an error loading the OBJ file: " << rapidobj_result.error.code.message() << std::endl;
-        std::cin.get();
-
-        std::exit(1);
-    }
-
-    rapidobj::Triangulate(rapidobj_result);
-
-    const rapidobj::Array<float>& positions = rapidobj_result.attributes.positions;
-    std::vector<Triangle>& triangle_buffer = parsed_obj.triangles;
-    std::vector<int>& emissive_triangle_indices_buffer = parsed_obj.emissive_triangle_indices;
-    std::vector<int>& materials_indices_buffer = parsed_obj.material_indices;
-    for (rapidobj::Shape& shape : rapidobj_result.shapes)
-    {
-        rapidobj::Mesh& mesh = shape.mesh;
-        for (int i = 0; i < mesh.indices.size(); i += 3)
-        {
-            int index_0 = mesh.indices[i + 0].position_index;
-            int index_1 = mesh.indices[i + 1].position_index;
-            int index_2 = mesh.indices[i + 2].position_index;
-
-            Point A = Point(positions[index_0 * 3 + 0], positions[index_0 * 3 + 1], positions[index_0 * 3 + 2]);
-            Point B = Point(positions[index_1 * 3 + 0], positions[index_1 * 3 + 1], positions[index_1 * 3 + 2]);
-            Point C = Point(positions[index_2 * 3 + 0], positions[index_2 * 3 + 1], positions[index_2 * 3 + 2]);
-
-            Triangle triangle(A, B, C);
-            triangle_buffer.push_back(triangle);
-
-            int mesh_triangle_index = i / 3;
-            int triangle_material_index = mesh.material_ids[mesh_triangle_index];
-            //Always go +1 because 0 is the default material. This also has for effect
-            //to transform the -1 material index (on material) to 0 which is the default
-            //material
-            materials_indices_buffer.push_back(triangle_material_index + 1);
-
-            rapidobj::Float3 emission;
-            if (triangle_material_index == -1)
-                emission = rapidobj::Float3{ 0, 0, 0 };
-            else
-                emission = rapidobj_result.materials[triangle_material_index].emission;
-            if (emission[0] > 0 || emission[1] > 0 || emission[2] > 0)
-            {
-                //This is an emissive triangle
-                //Using the buffer of all the triangles to get the global id of the emissive
-                //triangle
-                emissive_triangle_indices_buffer.push_back(triangle_buffer.size() - 1);
-            }
-        }
-    }
-
-    //Computing SimpleMaterials
-    std::vector<SimpleMaterial>& materials_buffer = parsed_obj.materials;
-    materials_buffer.push_back(SimpleMaterial{ Color(1.0f, 0.0f, 1.0f), Color(), 0.0f, 1.0f });
-    for (const rapidobj::Material& material : rapidobj_result.materials)
-    {
-        SimpleMaterial simple_material = SimpleMaterial{ Color(material.emission), Color(material.diffuse), material.metallic, material.roughness };
-
-        //A roughness = 0 will lead to a black image. To get a mirror material (as roughness 0 should be)
-        //we clamp it to 1.0e-5f instead of 0
-        simple_material.roughness = std::max(1.0e-2f, simple_material.roughness);
-
-        if (material.illum == 0)
-        {
-            //No OBJ PBR extension. This means that we will not have valid roughness and metalness
-            //so we're going to use the values of the default material
-
-            SimpleMaterial default_material;
-            simple_material.roughness = default_material.roughness;
-            simple_material.metalness = default_material.metalness;
-        }
-
-        materials_buffer.push_back(simple_material);
-    }
-
-    return parsed_obj;
-}
-
-ParsedScene Utils::parse_gltf_file(const std::string& filepath)
-{
-    ParsedScene parsed_gltf;
-
-    return parsed_gltf;
-}
-
 ParsedScene Utils::parse_scene_file(const std::string& filepath)
 {
-    if (filepath.ends_with(".obj"))
-        return Utils::parse_obj_file(filepath);
-    else if (filepath.ends_with(".gltf"))
-        return Utils::parse_gltf_file(filepath);
-    else
+    ParsedScene parsed_scene;
+
+    Assimp::Importer importer;
+
+    //TODO check perf of aiPostProcessSteps::aiProcess_ImproveCacheLocality
+    const aiScene* scene = importer.ReadFile(filepath, aiPostProcessSteps::aiProcess_GenSmoothNormals | aiPostProcessSteps::aiProcess_PreTransformVertices | aiPostProcessSteps::aiProcess_Triangulate);
+    if (scene == nullptr)
     {
-        std::cerr << "Invalid scene file format. Only OBJs and GLTF formats are supported" << std::endl;
+        std::cerr << importer.GetErrorString() << std::endl;
         std::exit(1);
     }
+
+    int total_face_count = 0;
+    for (int mesh_index = 0; scene->mNumMeshes; mesh_index++)
+    {
+        aiMesh* mesh = scene->mMeshes[mesh_index];
+        total_face_count += mesh->mNumFaces;
+    }
+
+    parsed_scene.triangles.reserve(total_face_count);
+    for (int mesh_index = 0; scene->mNumMeshes; mesh_index++)
+    {
+        aiMesh* mesh = scene->mMeshes[mesh_index];
+        aiMaterial* mesh_material = scene->mMaterials[mesh->mMaterialIndex];
+
+        //Getting the properties that are going to be used by the materials
+        //of the application
+        aiColor3D diffuse_color;
+        aiColor3D emissive_color;
+        float metalness, roughness;
+
+        mesh_material->Get(AI_MATKEY_COLOR_DIFFUSE, diffuse_color);
+        aiReturn error_code_emissive = mesh_material->Get(AI_MATKEY_COLOR_EMISSIVE, emissive_color);
+        mesh_material->Get(AI_MATKEY_METALLIC_FACTOR, metalness);
+        mesh_material->Get(AI_MATKEY_ROUGHNESS_FACTOR, roughness);
+
+        //Creating the material used by the application from the properties read
+        SimpleMaterial simple_material;
+        simple_material.diffuse = Color(diffuse_color.r, diffuse_color.g, diffuse_color.b, 1.0f);
+        simple_material.emission = Color(emissive_color.r, emissive_color.g, emissive_color.b, 1.0f);
+        simple_material.metalness = metalness;
+        //Clamping the roughness to avoid edge cases when roughness == 0.0f
+        simple_material.roughness = std::max(1.0e-2f, roughness);
+
+        //Adding the material to the parsed scene
+        parsed_scene.materials.push_back(simple_material);
+        int material_index = parsed_scene.materials.size() - 1;
+
+        //If the mesh is emissive
+        bool is_mesh_emissive = false;
+        if (error_code_emissive == AI_SUCCESS && (emissive_color.r != 0.0f || emissive_color.g != 0.0f || emissive_color.b != 0.0f))
+            is_mesh_emissive = true;
+
+        for (int face_index = 0; face_index < mesh->mNumFaces; face_index++)
+        {
+            aiFace face = mesh->mFaces[face_index];
+            
+            //All faces should be triangles so we're assuming exactly 3 vertices
+            Point vertex_a = *(Point*)(&mesh->mVertices[face.mIndices[0]]);
+            Point vertex_b = *(Point*)(&mesh->mVertices[face.mIndices[1]]);
+            Point vertex_c = *(Point*)(&mesh->mVertices[face.mIndices[2]]);
+            parsed_scene.triangles.push_back(Triangle(vertex_a, vertex_b, vertex_c));
+
+            //The face that we just pushed in the triangle buffer is emissive
+            //We're going to add its index to the emissive triangles buffer
+            if (is_mesh_emissive)
+                parsed_scene.emissive_triangle_indices.push_back(parsed_scene.triangles.size() - 1);
+
+            //We're pushing the same material index for all the faces of this mesh
+            //because all faces of a mesh have the same material (that's how ASSIMP importer's
+            //do things internally)
+            parsed_scene.material_indices.push_back(material_index);
+        }
+    }
+
+    //std::vector<int>& materials_indices_buffer = parsed_scene.material_indices;
+    //for (rapidobj::Shape& shape : rapidobj_result.shapes)
+    //{
+    //    rapidobj::Mesh& mesh = shape.mesh;
+    //    for (int i = 0; i < mesh.indices.size(); i += 3)
+    //    {
+    //        int index_0 = mesh.indices[i + 0].position_index;
+    //        int index_1 = mesh.indices[i + 1].position_index;
+    //        int index_2 = mesh.indices[i + 2].position_index;
+
+    //        Point A = Point(positions[index_0 * 3 + 0], positions[index_0 * 3 + 1], positions[index_0 * 3 + 2]);
+    //        Point B = Point(positions[index_1 * 3 + 0], positions[index_1 * 3 + 1], positions[index_1 * 3 + 2]);
+    //        Point C = Point(positions[index_2 * 3 + 0], positions[index_2 * 3 + 1], positions[index_2 * 3 + 2]);
+
+    //        Triangle triangle(A, B, C);
+    //        triangle_buffer.push_back(triangle);
+
+    //        int mesh_triangle_index = i / 3;
+    //        int triangle_material_index = mesh.material_ids[mesh_triangle_index];
+    //        //Always go +1 because 0 is the default material. This also has for effect
+    //        //to transform the -1 material index (on material) to 0 which is the default
+    //        //material
+    //        materials_indices_buffer.push_back(triangle_material_index + 1);
+
+    //        rapidobj::Float3 emission;
+    //        if (triangle_material_index == -1)
+    //            emission = rapidobj::Float3{ 0, 0, 0 };
+    //        else
+    //            emission = rapidobj_result.materials[triangle_material_index].emission;
+    //        if (emission[0] > 0 || emission[1] > 0 || emission[2] > 0)
+    //        {
+    //            //This is an emissive triangle
+    //            //Using the buffer of all the triangles to get the global id of the emissive
+    //            //triangle
+    //            emissive_triangle_indices_buffer.push_back(triangle_buffer.size() - 1);
+    //        }
+    //    }
+    //}
+
+    ////Computing SimpleMaterials
+    //std::vector<SimpleMaterial>& materials_buffer = parsed_scene.materials;
+    //materials_buffer.push_back(SimpleMaterial{ Color(1.0f, 0.0f, 1.0f), Color(), 0.0f, 1.0f });
+    //for (const rapidobj::Material& material : rapidobj_result.materials)
+    //{
+    //    SimpleMaterial simple_material = SimpleMaterial{ Color(material.emission), Color(material.diffuse), material.metallic, material.roughness };
+
+    //    //A roughness = 0 will lead to a black image. To get a mirror material (as roughness 0 should be)
+    //    //we clamp it to 1.0e-5f instead of 0
+    //    simple_material.roughness = std::max(1.0e-2f, simple_material.roughness);
+
+    //    if (material.illum == 0)
+    //    {
+    //        //No OBJ PBR extension. This means that we will not have valid roughness and metalness
+    //        //so we're going to use the values of the default material
+
+    //        SimpleMaterial default_material;
+    //        simple_material.roughness = default_material.roughness;
+    //        simple_material.metalness = default_material.metalness;
+    //    }
+
+    //    materials_buffer.push_back(simple_material);
+    //}
+
+    return parsed_scene;
 }
 
 Image Utils::read_image_float(const std::string& filepath, int& image_width, int& image_height, bool flipY)
@@ -164,8 +206,15 @@ std::vector<float> Utils::compute_env_map_cdf(const Image &skysphere)
 Image Utils::OIDN_denoise(const Image& image, float blend_factor)
 {
     // Create an Open Image Denoise device
-    static oidn::DeviceRef device = oidn::newDevice(); // CPU or GPU if available
-    device.commit();
+    static bool device_done = false;
+    static oidn::DeviceRef device;
+    if (!device_done)
+    {
+        device = oidn::newDevice(); // CPU or GPU if available
+        device.commit();
+
+        device_done = true;
+    }
 
     // Create buffers for input/output images accessible by both host (CPU) and device (CPU/GPU)
     int width = image.width();
