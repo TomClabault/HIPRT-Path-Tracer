@@ -30,7 +30,7 @@ Sphere add_sphere_to_scene(ParsedScene& parsed_scene, const Point& center, float
 
 struct CommandLineArguments
 {
-    std::string scene_file_path = "data/OBJs/cornell_pbr.obj";
+    std::string scene_file_path = "data/GLTFs/cornell_pbr.obj";
     std::string skysphere_file_path = "data/Skyspheres/evening_road_01_puresky_2k.hdr";
 
     int render_width = 512, render_height = 512;
@@ -103,10 +103,10 @@ int main(int argc, char* argv[])
         bvh,
         skysphere_data,
         env_map_cdf);
-    //render_kernel.set_camera(Camera::CORNELL_BOX_CAMERA);
+    render_kernel.set_camera(Camera::CORNELL_BOX_CAMERA);
     //render_kernel.set_camera(Camera::GANESHA_CAMERA);
     //render_kernel.set_camera(Camera::ITE_ORB_CAMERA);
-    render_kernel.set_camera(Camera::PBRT_DRAGON_CAMERA);
+    //render_kernel.set_camera(Camera::PBRT_DRAGON_CAMERA);
     //render_kernel.set_camera(Camera::MIS_CAMERA);
 
     render_kernel.render();
