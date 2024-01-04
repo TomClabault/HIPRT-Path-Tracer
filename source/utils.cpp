@@ -97,6 +97,13 @@ ParsedScene Utils::parse_obj_file(const std::string& filepath)
     return parsed_obj;
 }
 
+ParsedScene Utils::parse_gltf_file(const std::string& filepath)
+{
+    ParsedScene parsed_gltf;
+
+    return parsed_gltf;
+}
+
 ParsedScene Utils::parse_scene_file(const std::string& filepath)
 {
     if (filepath.ends_with(".obj"))

@@ -1,16 +1,6 @@
-if (CMAKE_HOST_WIN32)
-    # need at least CMake 3.23 for IntelLLVM support of IntelDPCPP package on Windows
-    cmake_minimum_required(VERSION 3.23)
-else()
-    # CMake 3.20.5 is the minimum recommended for IntelLLVM on Linux
-    cmake_minimum_required(VERSION 3.20.5)
-endif()
+cmake_minimum_required(VERSION 3.20.5)
 
-project(SYCL_RayTracing LANGUAGES CXX)
-
-#find_package(IntelDPCPP REQUIRED)
-
-file(GLOB SYCL_HEADERS "/opt/intel/oneapi/compiler/2023.2.1/linux/include/sycl/*.hpp" "/opt/intel/oneapi/compiler/2023.2.1/linux/include/sycl/CL/*.hpp")
+project(HIPRTPathTracer LANGUAGES CXX)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 
@@ -19,8 +9,7 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 
 link_directories(${CMAKE_SOURCE_DIR}/${OIDN_LIB_DIR})
 
-add_executable(SYCL_RayTracing
-    ${SYCL_HEADERS}
+add_executable(HIPRTPathTracer
 
     source/bvh.cpp
     source/camera.cpp
@@ -46,7 +35,7 @@ add_executable(SYCL_RayTracing
     include/image.h
     include/image_io.h
     include/mat.h
-    include/parsed_obj.h
+    include/parsed_scene.h
     include/ray.h
     include/render_kernel.h
     include/sphere.h
@@ -69,14 +58,14 @@ add_executable(SYCL_RayTracing
     oidn/include/OpenImageDenoise/oidn.h
     oidn/include/OpenImageDenoise/config.h)
 	
-set_property(TARGET SYCL_RayTracing PROPERTY CXX_STANDARD 20)
+set_property(TARGET HIPRTPathTracer PROPERTY CXX_STANDARD 20)
 
 find_package(OpenMP)
-target_link_libraries(SYCL_RayTracing PRIVATE OpenMP::OpenMP_CXX OpenImageDenoise)
+target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX OpenImageDenoise)
 
-target_include_directories(SYCL_RayTracing PRIVATE "/opt/intel/oneapi/compiler/2023.2.1/linux/include/")
-target_include_directories(SYCL_RayTracing PRIVATE "include/")
-target_include_directories(SYCL_RayTracing PRIVATE "stbi/")
-target_include_directories(SYCL_RayTracing PRIVATE "rapidobj/")
-target_include_directories(SYCL_RayTracing PRIVATE "oidn/include/")
-target_include_directories(SYCL_RayTracing PRIVATE ".")
+target_include_directories(HIPRTPathTracer PRIVATE "include/")
+target_include_directories(HIPRTPathTracer PRIVATE "stbi/")
+target_include_directories(HIPRTPathTracer PRIVATE "tinygltf/")
+target_include_directories(HIPRTPathTracer PRIVATE "rapidobj/")
+target_include_directories(HIPRTPathTracer PRIVATE "oidn/include/")
+target_include_directories(HIPRTPathTracer PRIVATE ".")

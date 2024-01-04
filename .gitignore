@@ -1,6 +1,6 @@
 CMakeLists.txt.user
 
-TP_RT*.png
+RT_output*.png
 
 build*
 data/OBJs/*.blend
