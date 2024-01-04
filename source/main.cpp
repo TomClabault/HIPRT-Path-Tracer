@@ -2,7 +2,6 @@
 #include <chrono>
 #include <cmath>
 
-#include <rapidobj.hpp>
 #include <stb_image_write.h>
 
 #include "bvh.h"

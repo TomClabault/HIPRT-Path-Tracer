@@ -1,11 +1,11 @@
-#include "rapidobj.hpp"
-
 #include "bvh.h"
 #include "bvh_tests.h"
 #include "flattened_bvh.h"
+#include "parsed_scene.h"
 #include "ray.h"
 #include "tests.h"
 #include "triangle.h"
+#include "utils.h"
 
 bool compare_points(const Point& a, const Point& b)
 {
@@ -153,37 +153,9 @@ void test_flattened_bvh(BVH& bvh)
 
 void regression_tests()
 {
-    rapidobj::Result parsed_obj = rapidobj::ParseFile("../SYCL-ray-tracing/data/OBJs/cornell_pbr.obj", rapidobj::MaterialLibrary::Default());
-    if (parsed_obj.error)
-    {
-        std::cout << "There was an error loading the OBJ file: " << parsed_obj.error.code.message() << std::endl;
-        std::cin.get();
+    ParsedScene scene = Utils::parse_scene_file("data/OBJs/cornell_pbr.obj");
 
-        std::exit(-1);
-    }
-    rapidobj::Triangulate(parsed_obj);
-
-    const rapidobj::Array<float>& positions = parsed_obj.attributes.positions;
-    std::vector<Triangle> triangle_host_buffer;
-    for (rapidobj::Shape& shape : parsed_obj.shapes)
-    {
-        rapidobj::Mesh& mesh = shape.mesh;
-        for (int i = 0; i < mesh.indices.size(); i += 3)
-        {
-            int index_0 = mesh.indices[i + 0].position_index;
-            int index_1 = mesh.indices[i + 1].position_index;
-            int index_2 = mesh.indices[i + 2].position_index;
-
-            Point A = Point(positions[index_0 * 3 + 0], positions[index_0 * 3 + 1], positions[index_0 * 3 + 2]);
-            Point B = Point(positions[index_1 * 3 + 0], positions[index_1 * 3 + 1], positions[index_1 * 3 + 2]);
-            Point C = Point(positions[index_2 * 3 + 0], positions[index_2 * 3 + 1], positions[index_2 * 3 + 2]);
-
-            Triangle triangle(A, B, C);
-            triangle_host_buffer.push_back(triangle);
-        }
-    }
-
-    BVH bvh(&triangle_host_buffer);
+    BVH bvh(&scene.triangles);
     test_bvh(bvh);
     test_flattened_bvh(bvh);
 }

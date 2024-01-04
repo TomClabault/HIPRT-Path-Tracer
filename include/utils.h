@@ -1,6 +1,7 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+#include "image.h"
 #include "parsed_scene.h"
 
 #include <string>

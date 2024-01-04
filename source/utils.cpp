@@ -8,7 +8,6 @@
 #include "color.h"
 #include "image.h"
 #include "image_io.h"
-#include "rapidobj.hpp"
 #include "utils.h"
 
 #include <iostream>

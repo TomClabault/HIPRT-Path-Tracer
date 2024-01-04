@@ -20,6 +20,8 @@ ExternalProject_Add(assimp
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 
 set(OIDN_LIB_DIR "oidn/lib/")
+set(OIDN_BIN_DIR "oidn/bin")
+
 link_directories(${CMAKE_SOURCE_DIR}/${OIDN_LIB_DIR})
 link_directories(${EXTERNAL_ASSIMP_INSTALL_LOCATION}/lib)
 
@@ -53,15 +55,13 @@ target_link_libraries(HIPRTPathTracer PRIVATE ${EXTERNAL_ASSIMP_INSTALL_LOCATION
 #TODO remove ?
 target_include_directories(HIPRTPathTracer PRIVATE "include/")
 target_include_directories(HIPRTPathTracer PRIVATE "stbi/")
-target_include_directories(HIPRTPathTracer PRIVATE "tinygltf/")
-target_include_directories(HIPRTPathTracer PRIVATE "rapidobj/")
 target_include_directories(HIPRTPathTracer PRIVATE "oidn/include/")
 target_include_directories(HIPRTPathTracer PRIVATE "${EXTERNAL_ASSIMP_INSTALL_LOCATION}/include/")
 target_include_directories(HIPRTPathTracer PRIVATE ".")
 
 if (CMAKE_GENERATOR MATCHES "Visual Studio")
 	set_target_properties(HIPRTPathTracer 
-        PROPERTIES VS_DEBUGGER_ENVIRONMENT "PATH=%PATH%;${EXTERNAL_ASSIMP_INSTALL_LOCATION}/bin"
+        PROPERTIES VS_DEBUGGER_ENVIRONMENT "PATH=%PATH%;${EXTERNAL_ASSIMP_INSTALL_LOCATION}/bin;${OIDN_BIN_DIR};"
     )
 endif()
 
