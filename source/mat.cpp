@@ -358,6 +358,7 @@ Transform Lookat( const Point& from, const Point& to, const Vector& up )
         right.z, newUp.z, -dir.z, from.z,
         0,       0,        0,     1);
 
+    return m;
     return m.inverse();
 }
 

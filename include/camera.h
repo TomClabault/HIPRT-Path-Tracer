@@ -31,6 +31,24 @@ struct Camera
         fov_dist = 1.0f / std::tan(full_fov_radians / 2.0f);
     }
 
+    Camera(Point position, Point look_at, Vector up_vector, float full_degrees_fov)
+    {
+        fov = full_degrees_fov;
+        full_fov_radians = fov / 180.0f * M_PI;
+        fov_dist = 1.0f / std::tan(full_fov_radians / 2.0f);
+
+        Vector x_axis, y_axis, z_axis;
+        z_axis = normalize(position - look_at); // Positive z-axis
+        x_axis = normalize(-cross(z_axis, normalize(up_vector)));
+        y_axis = normalize(cross(z_axis, x_axis));
+        view_matrix = Transform(
+            x_axis.x, y_axis.x, z_axis.x, position.x,
+            x_axis.y, y_axis.y, z_axis.y, position.y,
+            x_axis.z, y_axis.z, z_axis.z, position.z,
+            0, 0, 0, 1
+        );
+    }
+
     Transform view_matrix;
 
     //Full FOV, not half

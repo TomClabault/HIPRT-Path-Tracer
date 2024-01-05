@@ -63,7 +63,7 @@ Ray RenderKernel::get_camera_ray(float x, float y) const
     Point ray_origin_view_space(0.0f, 0.0f, 0.0f);
     Point ray_origin = m_camera.view_matrix(ray_origin_view_space);
 
-    Point ray_point_direction_ndc_space = Point(x_ndc_space, y_ndc_space, m_camera.fov_dist);
+    Point ray_point_direction_ndc_space = Point(x_ndc_space, y_ndc_space, -m_camera.fov_dist);
     Point ray_point_direction_world_space = m_camera.view_matrix(ray_point_direction_ndc_space);
 
     Vector ray_direction = normalize(ray_point_direction_world_space - ray_origin);

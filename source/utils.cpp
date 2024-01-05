@@ -29,6 +29,22 @@ ParsedScene Utils::parse_scene_file(const std::string& filepath)
         std::exit(1);
     }
 
+    // Taking the first camera as the camera of the scene
+    if (scene->mNumCameras > 0)
+    {
+        Point camera_position = Point(*((Vector*)&scene->mCameras[0]->mPosition));
+        Point camera_lookat = Point(*((Vector*)&scene->mCameras[0]->mLookAt));
+        Vector camera_up = *((Vector*)&scene->mCameras[0]->mUp);
+
+        // fov in radians
+        float fov = scene->mCameras[0]->mHorizontalFOV;
+        float degrees_fov = fov / M_PI * 180.0f;
+        float full_degrees_fov = degrees_fov / 2.0f;
+
+        parsed_scene.camera = Camera(camera_position, camera_lookat, camera_up, full_degrees_fov);
+        parsed_scene.has_camera = true;
+    }
+
     int total_face_count = 0;
     for (int mesh_index = 0; mesh_index < scene->mNumMeshes; mesh_index++)
     {

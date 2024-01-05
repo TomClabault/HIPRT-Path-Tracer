@@ -1,6 +1,7 @@
 #ifndef PARSED_SCENE
 #define PARSED_SCENE
 
+#include "camera.h"
 #include "simple_material.h"
 #include "triangle.h"
 
@@ -13,6 +14,9 @@ struct ParsedScene
 
     std::vector<int> emissive_triangle_indices;
     std::vector<int> material_indices;
+
+    bool has_camera = false;
+    Camera camera;
 };
 
 #endif

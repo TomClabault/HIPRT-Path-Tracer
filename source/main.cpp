@@ -103,7 +103,11 @@ int main(int argc, char* argv[])
         bvh,
         skysphere_data,
         env_map_cdf);
-    render_kernel.set_camera(Camera::CORNELL_BOX_CAMERA);
+
+    if (parsed_scene.has_camera)
+        render_kernel.set_camera(parsed_scene.camera);
+    else
+        render_kernel.set_camera(Camera::CORNELL_BOX_CAMERA);
     //render_kernel.set_camera(Camera::GANESHA_CAMERA);
     //render_kernel.set_camera(Camera::ITE_ORB_CAMERA);
     //render_kernel.set_camera(Camera::PBRT_DRAGON_CAMERA);
