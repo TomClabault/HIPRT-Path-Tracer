@@ -169,7 +169,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
     m_frame_buffer[y * m_width + x] += final_color;
 
     const float gamma = 2.2f;
-    const float exposure = 1.5f;
+    const float exposure = 2.0f;
     Color hdrColor = m_frame_buffer[y * m_width + x];
 
     //Exposure tone mapping
