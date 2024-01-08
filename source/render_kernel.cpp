@@ -105,7 +105,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                 if (intersection_found)
                 {
                     int material_index = m_materials_indices_buffer[closest_hit_info.primitive_index];
-                    SimpleMaterial material = m_materials_buffer_access[material_index];
+                    RendererMaterial material = m_materials_buffer[material_index];
 
                     // --------------------------------------------------- //
                     // ----------------- Direct lighting ----------------- //
@@ -119,8 +119,9 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                     // --------------------------------------- //
 
                     float brdf_pdf;
-                    Vector random_bounce_direction;// = cosine_weighted_direction_around_normal(closest_hit_info.normal_at_intersection, brdf_pdf, random_number_generator);
-                    Color brdf = cook_torrance_brdf_importance_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, random_bounce_direction, brdf_pdf, random_number_generator);
+                    Vector bounce_direction;// = cosine_weighted_direction_around_normal(closest_hit_info.normal_at_intersection, brdf_pdf, random_number_generator);
+                    //Color brdf = smooth_glass_bsdf(material, bounce_direction, -ray.direction, closest_hit_info.normal_at_intersection, brdf_pdf, random_number_generator);
+                    Color brdf = cook_torrance_brdf_importance_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, bounce_direction, brdf_pdf, random_number_generator);
                     //Color brdf = cook_torrance_brdf(material, random_bounce_direction, -ray.direction, closest_hit_info.normal_at_intersection);
                     
                     if (bounce == 0)
@@ -134,10 +135,10 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                         break;
                     }
 
-                    throughput *= brdf * std::max(0.0f, dot(random_bounce_direction, closest_hit_info.normal_at_intersection)) / brdf_pdf;
+                    throughput *= brdf * std::max(0.0f, dot(bounce_direction, closest_hit_info.normal_at_intersection)) / brdf_pdf;
 
                     Point new_ray_origin = closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-4f;
-                    ray = Ray(new_ray_origin, random_bounce_direction);
+                    ray = Ray(new_ray_origin, bounce_direction);
                     next_ray_state = RayState::BOUNCE;
                 }
                 else
@@ -184,8 +185,8 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
 #include <omp.h>
 
 #define DEBUG_PIXEL 0
-#define PIXEL_X 104
-#define PIXEL_Y 216
+#define PIXEL_X 847
+#define PIXEL_Y 469
 void RenderKernel::render()
 {
     std::atomic<int> lines_completed = 0;
@@ -210,7 +211,7 @@ void RenderKernel::render()
     }
 }
 
-Color RenderKernel::lambertian_brdf(const SimpleMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal) const
+Color RenderKernel::lambertian_brdf(const RendererMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal) const
 {
     return material.diffuse * M_1_PI;
 }
@@ -244,7 +245,7 @@ float GGX_smith_masking_shadowing(float roughness_squared, float NoV, float NoL)
     return G1_schlick_ggx(k, NoL) * G1_schlick_ggx(k, NoV);
 }
 
-float RenderKernel::cook_torrance_brdf_pdf(const SimpleMaterial& material, const Vector& view_direction, const Vector& to_light_direction, const Vector& surface_normal) const
+float RenderKernel::cook_torrance_brdf_pdf(const RendererMaterial& material, const Vector& view_direction, const Vector& to_light_direction, const Vector& surface_normal) const
 {
     Vector microfacet_normal = normalize(view_direction + to_light_direction);
 
@@ -257,7 +258,7 @@ float RenderKernel::cook_torrance_brdf_pdf(const SimpleMaterial& material, const
     return D * NoH / (4.0f * VoH);
 }
 
-inline Color RenderKernel::cook_torrance_brdf(const SimpleMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal) const
+inline Color RenderKernel::cook_torrance_brdf(const RendererMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal) const
 {
     Color brdf_color = Color(0.0f, 0.0f, 0.0f);
     Color base_color = material.diffuse;
@@ -300,96 +301,7 @@ inline Color RenderKernel::cook_torrance_brdf(const SimpleMaterial& material, co
     return brdf_color;
 }
 
-Vector SampleVndf_Hemisphere(xorshift32_generator& random_number_generator, Vector wi)
-{
-    float u1 = random_number_generator();
-    float u2 = random_number_generator();
-
-    // sample a spherical cap in (-wi.z, 1]
-    float phi = 2.0f * M_PI * u1;
-    //float z = fma((1.0f - u.y), (1.0f + wi.z), -wi.z);
-    float z = 1.0f - u2 - u2 * wi.z;
-    float sinTheta = std::sqrt(std::min(1.0f, std::max(0.0f, (1.0f - z * z))));
-    float x = sinTheta * std::cos(phi);
-    float y = sinTheta * std::sin(phi);
-    Vector c = Vector(x, y, z);
-    // compute halfway direction;
-    Vector h = c + wi;
-    // return without normalization as this is done later (see line 25)
-    return h;
-}
-
-//From https://schuttejoe.github.io/post/ggximportancesamplingpart2/
-Vector RenderKernel::cook_torrance_brdf_sample_visible_normal(const SimpleMaterial& material, const Vector& wo, const Vector& surface_normal, float& pdf, xorshift32_generator& random_number_generator) const
-{
-//    // -- Stretch the view vector so we are sampling as though
-//    // -- roughness==1
-//    float roughness = material.roughness;
-//    float alpha = roughness * roughness;
-
-//    Vector v = normalize(Vector(wo.x * roughness, wo.y, wo.z * roughness));
-
-//    // -- Build an orthonormal basis with v, t1, and t2
-//    Vector t1, t2;
-//    branchlessONB(wo, t1, t2);
-
-//    // -- Choose a point on a disk with each half of the disk weighted
-//    // -- proportionally to its projection onto direction v
-//    float u1 = random_number_generator();
-//    float u2 = random_number_generator();
-//    float a = 1.0f / (1.0f + v.y);
-//    float r = std::sqrt(u1);
-//    float phi = (u2 < a) ? (u2 / a) * M_PI : M_PI + (u2 - a) / (1.0f - a) * M_PI;
-//    float p1 = r * std::cos(phi);
-//    float p2 = r * std::sin(phi) * ((u2 < a) ? 1.0f : v.y);
-
-//    // -- Calculate the normal in this stretched tangent space
-//    Vector n = p1 * t1 + p2 * t2 + std::sqrt(std::max(0.0f, 1.0f - p1 * p1 - p2 * p2)) * v;
-
-//    // -- unstretch and normalize the normal
-//    Vector microfacet_normal = normalize(Vector(roughness * n.x, std::max(0.0f, n.y), roughness * n.z));
-//    //microfacet_normal = rotate_vector_around_normal(surface_normal, microfacet_normal);
-
-
-    float roughness = material.roughness;
-    float alpha = roughness * roughness;
-    // warp to the hemisphere configuration
-    Vector wiStd = normalize(Vector(wo.x * roughness, wo.y * roughness, wo.z));
-    // sample the hemisphere
-    Vector wmStd = SampleVndf_Hemisphere(random_number_generator, wiStd);
-    // warp back to the ellipsoid configuration
-    Vector microfacet_normal = normalize(Vector(wmStd.x * roughness, wmStd.y * roughness, wmStd.z));
-    microfacet_normal = rotate_vector_around_normal(surface_normal, microfacet_normal);
-
-    float VoH = std::max(dot(wo, microfacet_normal), 0.0f);
-    float NoH = std::max(dot(microfacet_normal, surface_normal), 0.0f);
-    float NoV = std::max(dot(wo, surface_normal), 0.0f);
-    pdf = G1_schlick_ggx(VoH, alpha * alpha) * VoH * GGX_normal_distribution(alpha * alpha, NoH) / (NoV * 4 * VoH);
-
-    return microfacet_normal;
-}
-
-float SmithGGXMasking(Vector normal, Vector wo, float a2)
-{
-    float dotNV = dot(normal, wo);
-    float denomC = std::sqrt(a2 + (1.0f - a2) * dotNV * dotNV) + dotNV;
-
-    return 2.0f * dotNV / denomC;
-}
-
-//====================================================================
-float SmithGGXMaskingShadowing(Vector normal, Vector wi, Vector wo, float a2)
-{
-    float dotNL = dot(normal, wi);
-    float dotNV = dot(normal, wo);
-
-    float denomA = dotNV * std::sqrt(a2 + (1.0f - a2) * dotNL * dotNL);
-    float denomB = dotNL * std::sqrt(a2 + (1.0f - a2) * dotNV * dotNV);
-
-    return 2.0f * dotNL * dotNV / (denomA + denomB);
-}
-
-Color RenderKernel::cook_torrance_brdf_importance_sample(const SimpleMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, float& pdf, xorshift32_generator& random_number_generator) const
+Color RenderKernel::cook_torrance_brdf_importance_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, float& pdf, xorshift32_generator& random_number_generator) const
 {
     pdf = 0.0f;
 
@@ -450,13 +362,23 @@ Color RenderKernel::cook_torrance_brdf_importance_sample(const SimpleMaterial& m
     return brdf_color;
 }
 
+Color RenderKernel::smooth_glass_bsdf(const RendererMaterial& material, Vector& out_bounce_direction, const Vector& ray_direction, const Vector& surface_normal, float& pdf, xorshift32_generator& random_generator)
+{
+    // Determining the ratio of reflected light using Fresnel's law
+
+    float fresnel_reflect;
+
+    Color color = Color(fresnel_reflect) + (1.0f - fresnel_reflect) * material.subsurface_color;
+    return color;
+}
+
 bool RenderKernel::intersect_scene(const Ray& ray, HitInfo& closest_hit_info) const
 {
     closest_hit_info.t = -1.0f;
 
-    for (int i = 0; i < m_triangle_buffer_access.size(); i++)
+    for (int i = 0; i < m_triangle_buffer.size(); i++)
     {
-        const Triangle& triangle = m_triangle_buffer_access[i];
+        const Triangle& triangle = m_triangle_buffer[i];
 
         HitInfo hit_info;
         if(triangle.intersect(ray, hit_info))
@@ -566,7 +488,7 @@ void RenderKernel::env_map_cdf_search(float value, int& x, int& y) const
     x = std::max(std::min(lower, m_environment_map.width()), 0);
 }
 
-Color RenderKernel::sample_environment_map(const Ray& ray, const HitInfo& closest_hit_info, const SimpleMaterial& material, xorshift32_generator& random_number_generator) const
+Color RenderKernel::sample_environment_map(const Ray& ray, const HitInfo& closest_hit_info, const RendererMaterial& material, xorshift32_generator& random_number_generator) const
 {
     float env_map_total_sum = m_env_map_cdf[m_env_map_cdf.size() - 1];
 
@@ -576,10 +498,14 @@ Color RenderKernel::sample_environment_map(const Ray& ray, const HitInfo& closes
     float u = (float)x / m_environment_map.width();
     float v = (float)y / m_environment_map.height();
     float phi = u * 2.0f * M_PI;
-    float theta = v * M_PI;
+    // Clamping to avoid theta = 0 which would imply a skysphere direction straight up
+    // which leads to a pdf of infinity since it is a singularity
+    float theta = std::max(1.0e-5f, v * (float)M_PI);
 
     Color env_sample;
     float sin_theta = std::sin(theta);
+
+
     float cos_theta = std::cos(theta);
 
     // Convert to cartesian coordinates
@@ -630,7 +556,7 @@ Color RenderKernel::sample_environment_map(const Ray& ray, const HitInfo& closes
     return brdf_sample + env_sample;
 }
 
-Color RenderKernel::sample_light_sources(const Ray& ray, const HitInfo& closest_hit_info, const SimpleMaterial& material, xorshift32_generator& random_number_generator) const
+Color RenderKernel::sample_light_sources(const Ray& ray, const HitInfo& closest_hit_info, const RendererMaterial& material, xorshift32_generator& random_number_generator) const
 {
     Color light_source_radiance_mis;
     if (m_emissive_triangle_indices_buffer.size() > 0)
@@ -653,7 +579,7 @@ Color RenderKernel::sample_light_sources(const Ray& ray, const HitInfo& closest_
 
             if (!in_shadow)
             {
-                const SimpleMaterial& emissive_triangle_material = m_materials_buffer_access[m_materials_indices_buffer[light_source_info.emissive_triangle_index]];
+                const RendererMaterial& emissive_triangle_material = m_materials_buffer[m_materials_indices_buffer[light_source_info.emissive_triangle_index]];
 
                 light_sample_pdf *= distance_to_light * distance_to_light;
                 light_sample_pdf /= dot_light_source;
@@ -691,13 +617,13 @@ Color RenderKernel::sample_light_sources(const Ray& ray, const HitInfo& closest_
             if (cos_angle > 0.0f)
             {
                 int material_index = m_materials_indices_buffer[new_ray_hit_info.primitive_index];
-                SimpleMaterial material = m_materials_buffer_access[material_index];
+                RendererMaterial material = m_materials_buffer[material_index];
 
                 Color emission = material.emission;
                 if (emission.r > 0 || emission.g > 0 || emission.b > 0)
                 {
                     float distance_squared = new_ray_hit_info.t * new_ray_hit_info.t;
-                    float light_area = m_triangle_buffer_access[new_ray_hit_info.primitive_index].area();
+                    float light_area = m_triangle_buffer[new_ray_hit_info.primitive_index].area();
 
                     float light_pdf = distance_squared / (light_area * cos_angle);
 
@@ -716,7 +642,7 @@ inline Point RenderKernel::sample_random_point_on_lights(xorshift32_generator& r
 {
     light_info.emissive_triangle_index = random_number_generator() * m_emissive_triangle_indices_buffer.size();
     light_info.emissive_triangle_index = m_emissive_triangle_indices_buffer[light_info.emissive_triangle_index];
-    Triangle random_emissive_triangle = m_triangle_buffer_access[light_info.emissive_triangle_index];
+    Triangle random_emissive_triangle = m_triangle_buffer[light_info.emissive_triangle_index];
 
     float rand_1 = random_number_generator();
     float rand_2 = random_number_generator();

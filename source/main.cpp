@@ -8,7 +8,7 @@
 #include "camera.h"
 #include "image_io.h"
 #include "render_kernel.h"
-#include "simple_material.h"
+#include "renderer_material.h"
 #include "sphere.h"
 #include "tests.h"
 #include "triangle.h"
@@ -16,7 +16,7 @@
 
 #include "xorshift.h"
 
-Sphere add_sphere_to_scene(ParsedScene& parsed_scene, const Point& center, float radius, const SimpleMaterial& material, int primitive_index)
+Sphere add_sphere_to_scene(ParsedScene& parsed_scene, const Point& center, float radius, const RendererMaterial& material, int primitive_index)
 {
     int material_index = parsed_scene.materials.size();
 
@@ -70,14 +70,24 @@ int main(int argc, char* argv[])
     std::cout << "Reading OBJ " << arguments.scene_file_path << " ..." << std::endl;
     ParsedScene parsed_scene = Utils::parse_scene_file(arguments.scene_file_path);
 
-    //Sphere sphere = add_sphere_to_scene(parsed_obj, Point(0.3275, 0.7, 0.3725), 0.2, SimpleMaterial {Color(0.0f), Color(1.0f, 0.71, 0.29), 1.0f, 0.4f}, parsed_obj.triangles.size());
-    //std::vector<Sphere> spheres = { sphere };
-    std::vector<Sphere> spheres;
+    RendererMaterial sphere_material;
+    sphere_material.emission = Color(0.0f);
+    sphere_material.diffuse = Color(1.0f, 0.71, 0.29);
+    sphere_material.subsurface_color = Color(1.0f, 0.0f, 0.0f);
+    sphere_material.metalness = 1.0f;
+    sphere_material.roughness = 1.0e-2f;
+    sphere_material.ior = 1.4f;
+
+    Sphere sphere = add_sphere_to_scene(parsed_scene, Point(0.0, 1, 0.3725), 0.75, sphere_material, parsed_scene.triangles.size());
+    std::vector<Sphere> spheres = { sphere };
+    //std::vector<Sphere> spheres;
+    parsed_scene.triangles.clear();
+    parsed_scene.emissive_triangle_indices.clear();
 
     BVH bvh(&parsed_scene.triangles);
 
     std::vector<Triangle> triangle_buffer = parsed_scene.triangles;
-    std::vector<SimpleMaterial> materials_buffer = parsed_scene.materials;
+    std::vector<RendererMaterial> materials_buffer = parsed_scene.materials;
     std::vector<int> emissive_triangle_indices_buffer = parsed_scene.emissive_triangle_indices;
     std::vector<int> materials_indices_buffer = parsed_scene.material_indices;
     std::vector<Sphere> sphere_buffer = spheres;
