@@ -130,7 +130,8 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
 
                     float brdf_pdf;
                     Vector bounce_direction;// = cosine_weighted_direction_around_normal(closest_hit_info.normal_at_intersection, brdf_pdf, random_number_generator);
-                    Color brdf = smooth_glass_bsdf(material, bounce_direction, ray.direction, closest_hit_info.normal_at_intersection, 1.0f, material.ior, is_inside_surface, brdf_pdf, random_number_generator);
+                    //TODO BRDF dispatcher based on a 'material_type' property in the RendererMaterial
+                    Color brdf = smooth_glass_bsdf(material, bounce_direction, ray.direction, closest_hit_info.normal_at_intersection, 1.0f, material.ior, is_inside_surface, brdf_pdf, random_number_generator); //TODO relative IOR in the RayData rather than two incident and output ior values
                     //Color brdf = cook_torrance_brdf_importance_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, bounce_direction, brdf_pdf, random_number_generator);
                     //Color brdf = cook_torrance_brdf(material, random_bounce_direction, -ray.direction, closest_hit_info.normal_at_intersection);
                     
@@ -151,6 +152,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                     else
                         throughput *= brdf * std::max(0.0f, dot(bounce_direction, -closest_hit_info.normal_at_intersection)) / brdf_pdf;
 
+                    //TODO RayData rather than having the normal, ray direction, is inside surface, ... as free variables in the code
                     Point new_ray_origin;
                     if (is_inside_surface)
                         new_ray_origin = closest_hit_info.inter_point - closest_hit_info.normal_at_intersection * 1.0e-4f;
