@@ -14,9 +14,14 @@ void branchlessONB(const Vector& n, Vector& b1, Vector& b2)
 /**
  * Reflects a ray about a normal. This function requires that dot(ray_direction, surface_normal) > 0
  */
-Vector reflect_ray_about_normal(const Vector& ray_direction, const Vector& surface_normal)
+Vector reflect_ray(const Vector& ray_direction, const Vector& surface_normal)
 {
     return -ray_direction + 2.0f * dot(ray_direction, surface_normal) * surface_normal;
+}
+
+bool refract_ray(const Vector& ray_direction, const Vector& surface_normal, Vector& refract_direction, float relative_eta)
+{
+
 }
 
 Vector RenderKernel::rotate_vector_around_normal(const Vector& normal, const Vector& random_dir_local_space) const
@@ -382,7 +387,7 @@ Color RenderKernel::cook_torrance_brdf_importance_sample(const RendererMaterial&
     return brdf_color;
 }
 
-Color RenderKernel::smooth_glass_bsdf(const RendererMaterial& material, Vector& out_bounce_direction, const Vector& ray_direction, Vector surface_normal, float eta_I, float eta_O, bool& is_inside_surface, float& pdf, xorshift32_generator& random_generator) const
+Color RenderKernel::smooth_glass_bsdf(const RendererMaterial& material, Vector& out_bounce_direction, const Vector& ray_direction, Vector& surface_normal, float eta_I, float eta_O, bool& is_inside_surface, float& pdf, xorshift32_generator& random_generator) const
 {
     // Determining the ratio of reflected light using Fresnel's law
     float NoI = dot(surface_normal, -ray_direction);
@@ -402,19 +407,30 @@ Color RenderKernel::smooth_glass_bsdf(const RendererMaterial& material, Vector& 
     float fresnel_reflect;
 
     float relative_eta = eta_O / eta_I;
-
-    // Computing cos theta t, the angle between the normal and the transmitted ray
+    bool ray_can_refract = refract(ray_direction, surface_normal, relative_eta);
     float sin_theta_i_2 = 1.0f - NoI * NoI;
     float root_term = 1.0f - sin_theta_i_2 / (relative_eta * relative_eta);
     if (root_term < 0.0f)
     {
         // Case of total internal reflection
-        fresnel_reflect = 1.0f;
-        pdf = fresnel_reflect;
-        out_bounce_direction = reflect_ray_about_normal(-ray_direction, surface_normal);
+        out_bounce_direction = reflect_ray(-ray_direction, surface_normal);
+        pdf = 1.0f;
 
         is_inside_surface = true;
+
+        fresnel_reflect = 1.0f;
     }
+    else
+    {
+
+    }
+
+    Vector refract_direction =
+            ray_direction / relative_eta + (NoI / relative_eta - cos_theta_t) * surface_normal;
+
+
+
+    // Computing cos theta t, the angle between the normal and the transmitted ray
     else
     {
         // Not a case of total internal reflection so we have a reflected and a transmitted ray
@@ -431,7 +447,7 @@ Color RenderKernel::smooth_glass_bsdf(const RendererMaterial& material, Vector& 
         {
             // Reflection of the ray
             pdf = fresnel_reflect;
-            out_bounce_direction = reflect_ray_about_normal(-ray_direction, surface_normal);
+            out_bounce_direction = reflect_ray(-ray_direction, surface_normal);
 
             if (was_inside)
                 is_inside_surface = true;
@@ -453,7 +469,7 @@ Color RenderKernel::smooth_glass_bsdf(const RendererMaterial& material, Vector& 
     }
 
     Color color = Color(fresnel_reflect) + (1.0f - fresnel_reflect) * material.subsurface_color;
-    return color;
+    return color / NoI;
 }
 
 bool RenderKernel::intersect_scene(const Ray& ray, HitInfo& closest_hit_info) const

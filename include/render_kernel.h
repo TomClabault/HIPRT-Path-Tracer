@@ -60,7 +60,7 @@ public:
     float cook_torrance_brdf_pdf(const RendererMaterial& material, const Vector& view_direction, const Vector& to_light_direction, const Vector& surface_normal) const;
     Color cook_torrance_brdf(const RendererMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal) const;
     Color cook_torrance_brdf_importance_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, float& pdf, xorshift32_generator& random_number_generator) const;
-    Color smooth_glass_bsdf(const RendererMaterial& material, Vector& out_bounce_direction, const Vector& ray_direction, Vector surface_normal, float eta_I, float eta_O, bool& is_inside_surface, float& pdf, xorshift32_generator& random_generator) const;
+    Color smooth_glass_bsdf(const RendererMaterial& material, Vector& out_bounce_direction, const Vector& ray_direction, Vector& surface_normal, float eta_I, float eta_O, bool& is_inside_surface, float& pdf, xorshift32_generator& random_generator) const;
 
     bool intersect_scene(const Ray& ray, HitInfo& closest_hit_info) const;
     bool intersect_scene_bvh(const Ray& ray, HitInfo& closest_hit_info) const;
