@@ -12,16 +12,47 @@ void branchlessONB(const Vector& n, Vector& b1, Vector& b2)
 }
 
 /**
- * Reflects a ray about a normal. This function requires that dot(ray_direction, surface_normal) > 0
+ * Reflects a ray about a normal. This function requires that dot(ray_direction, surface_normal) > 0 i.e.
+ * ray_direction and surface_normal are in the same hemisphere
  */
 Vector reflect_ray(const Vector& ray_direction, const Vector& surface_normal)
 {
     return -ray_direction + 2.0f * dot(ray_direction, surface_normal) * surface_normal;
 }
 
+float fresnel_dielectric(float cos_theta_i, float eta_i, float eta_t)
+{
+	// Computing cos_theta_t
+	float sinThetaI = std::sqrt(1 - cos_theta_i * cos_theta_i);
+	float sin_theta_t = eta_i / eta_t * sinThetaI;
+
+	if (sin_theta_t >= 1.0f) 
+	    // Total internal reflection, 0% refraction, all reflection
+	    return 1.0f;
+
+    float cos_theta_t = std::sqrt(1.0f - sin_theta_t * sin_theta_t);
+    float r_parallel = ((eta_t * cos_theta_i) - (eta_i * cos_theta_t)) / ((eta_t * cos_theta_i) + (eta_i * cos_theta_t));
+    float r_perpendicular = ((eta_i * cos_theta_i) - (eta_t * cos_theta_t)) / ((eta_i * cos_theta_i) + (eta_t * cos_theta_t));
+    return (r_parallel * r_parallel + r_perpendicular * r_perpendicular) / 2;
+}
+
+/**
+ * Reflects a ray about a normal. This function requires that dot(ray_direction, surface_normal) > 0 i.e.
+ * ray_direction and surface_normal are in the same hemisphere
+ */
 bool refract_ray(const Vector& ray_direction, const Vector& surface_normal, Vector& refract_direction, float relative_eta)
 {
+    float NoI = dot(ray_direction, surface_normal);
 
+    float sin_theta_i_2 = 1.0f - NoI * NoI;
+    float root_term = 1.0f - sin_theta_i_2 / (relative_eta * relative_eta);
+    if (root_term < 0.0f)
+        return false;
+     
+    float cos_theta_t = std::sqrt(root_term);
+    refract_direction = -ray_direction / relative_eta + (NoI / relative_eta - cos_theta_t) * surface_normal;
+
+    return true;
 }
 
 Vector RenderKernel::rotate_vector_around_normal(const Vector& normal, const Vector& random_dir_local_space) const
@@ -136,7 +167,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                     float brdf_pdf;
                     Vector bounce_direction;// = cosine_weighted_direction_around_normal(closest_hit_info.normal_at_intersection, brdf_pdf, random_number_generator);
                     //TODO BRDF dispatcher based on a 'material_type' property in the RendererMaterial
-                    Color brdf = smooth_glass_bsdf(material, bounce_direction, ray.direction, closest_hit_info.normal_at_intersection, 1.0f, material.ior, is_inside_surface, brdf_pdf, random_number_generator); //TODO relative IOR in the RayData rather than two incident and output ior values
+                    Color brdf = smooth_glass_bsdf(material, bounce_direction, ray.direction, closest_hit_info.normal_at_intersection, 1.0f, material.ior, brdf_pdf, random_number_generator); //TODO relative IOR in the RayData rather than two incident and output ior values
                     //Color brdf = cook_torrance_brdf_importance_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, bounce_direction, brdf_pdf, random_number_generator);
                     //Color brdf = cook_torrance_brdf(material, random_bounce_direction, -ray.direction, closest_hit_info.normal_at_intersection);
                     
@@ -151,18 +182,10 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                         break;
                     }
 
-                    //TODO apply cosine angle only for diffuse materials, not glass materials
-                    if (!is_inside_surface)
-                        throughput *= brdf * std::max(0.0f, dot(bounce_direction, closest_hit_info.normal_at_intersection)) / brdf_pdf;
-                    else
-                        throughput *= brdf * std::max(0.0f, dot(bounce_direction, -closest_hit_info.normal_at_intersection)) / brdf_pdf;
+                    throughput *= brdf * std::max(0.0f, dot(bounce_direction, closest_hit_info.normal_at_intersection)) / brdf_pdf;
 
                     //TODO RayData rather than having the normal, ray direction, is inside surface, ... as free variables in the code
-                    Point new_ray_origin;
-                    if (is_inside_surface)
-                        new_ray_origin = closest_hit_info.inter_point - closest_hit_info.normal_at_intersection * 1.0e-4f;
-                    else
-                        new_ray_origin = closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-4f;
+                    Point new_ray_origin = closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-4f;
                     ray = Ray(new_ray_origin, bounce_direction);
                     next_ray_state = RayState::BOUNCE;
                 }
@@ -176,7 +199,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                     //We're only getting the skysphere radiance for the first rays because the
                     //syksphere is importance sampled
 
-                    Color skysphere_color = sample_environment_map_from_direction(ray.direction) / 2.0f;
+                    Color skysphere_color = sample_environment_map_from_direction(ray.direction);
 
                     sample_color += skysphere_color * throughput;
                 }
@@ -210,16 +233,16 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
 #include <omp.h>
 
 #define DEBUG_PIXEL 0
-#define PIXEL_X 680
-#define PIXEL_Y 363
+#define DEBUG_PIXEL_X 916
+#define DEBUG_PIXEL_Y 357
 void RenderKernel::render()
 {
     std::atomic<int> lines_completed = 0;
 
 #if DEBUG_PIXEL
-    for (int y = m_frame_buffer.height() - PIXEL_Y - 1; y < m_frame_buffer.height(); y++)
+    for (int y = m_frame_buffer.height() - DEBUG_PIXEL_Y - 1; y < m_frame_buffer.height(); y++)
     {
-        for (int x = PIXEL_X; x < m_frame_buffer.width(); x++)
+        for (int x = DEBUG_PIXEL_X; x < m_frame_buffer.width(); x++)
 #else
 #pragma omp parallel for schedule(dynamic)
     for (int y = 0; y < m_frame_buffer.height(); y++)
@@ -387,89 +410,48 @@ Color RenderKernel::cook_torrance_brdf_importance_sample(const RendererMaterial&
     return brdf_color;
 }
 
-Color RenderKernel::smooth_glass_bsdf(const RendererMaterial& material, Vector& out_bounce_direction, const Vector& ray_direction, Vector& surface_normal, float eta_I, float eta_O, bool& is_inside_surface, float& pdf, xorshift32_generator& random_generator) const
+Color RenderKernel::smooth_glass_bsdf(const RendererMaterial& material, Vector& out_bounce_direction, const Vector& ray_direction, Vector& surface_normal, float eta_i, float eta_t, float& pdf, xorshift32_generator& random_generator) const
 {
-    // Determining the ratio of reflected light using Fresnel's law
-    float NoI = dot(surface_normal, -ray_direction);
+    float cos_theta_i = dot(surface_normal, -ray_direction);
 
-    bool was_inside = false;
-    if (NoI < 0.0f)
+    if (cos_theta_i < 0.0f)
     {
-        // We're inside the surface, we're going to flip the eta and the normal
-        NoI = -NoI;
+        // We're inside the surface, we're going to flip the eta and the normal for
+        // the calculations that follow
+        // Note that this also flips the normal for the caller of this function
+        // since the normal is passed by reference. This is useful since the normal
+        // will be used for offsetting the new ray origin for example
+        cos_theta_i = -cos_theta_i;
         surface_normal = -surface_normal;
-        std::swap(eta_I, eta_O);
-
-        was_inside = true;
+        std::swap(eta_i, eta_t);
     }
 
-    // We're going to compute the amount of reflected light
-    float fresnel_reflect;
-
-    float relative_eta = eta_O / eta_I;
-    bool ray_can_refract = refract(ray_direction, surface_normal, relative_eta);
-    float sin_theta_i_2 = 1.0f - NoI * NoI;
-    float root_term = 1.0f - sin_theta_i_2 / (relative_eta * relative_eta);
-    if (root_term < 0.0f)
+    // Computing the proportion of reflected light using fresnel equations
+    // We're going to use the result to decide whether to refract or reflect the
+    // ray
+    float fresnel_reflect = fresnel_dielectric(cos_theta_i, eta_i, eta_t);
+    if (random_generator() <= fresnel_reflect)
     {
-        // Case of total internal reflection
+        // Reflect the ray
+
         out_bounce_direction = reflect_ray(-ray_direction, surface_normal);
-        pdf = 1.0f;
+        pdf = fresnel_reflect;
 
-        is_inside_surface = true;
-
-        fresnel_reflect = 1.0f;
+        return Color(fresnel_reflect) / dot(surface_normal, out_bounce_direction);
     }
     else
     {
+        // Refract the ray
 
+        Vector refract_direction;
+        bool can_refract = refract_ray(-ray_direction, surface_normal, refract_direction, eta_t / eta_i);
+
+        out_bounce_direction = refract_direction;
+        surface_normal = -surface_normal;
+        pdf = 1.0f - fresnel_reflect;
+
+        return Color(1.0f - fresnel_reflect) * material.subsurface_color / dot(out_bounce_direction, surface_normal);
     }
-
-    Vector refract_direction =
-            ray_direction / relative_eta + (NoI / relative_eta - cos_theta_t) * surface_normal;
-
-
-
-    // Computing cos theta t, the angle between the normal and the transmitted ray
-    else
-    {
-        // Not a case of total internal reflection so we have a reflected and a transmitted ray
-        // To deicde whether to transmit or reflect, we're going to compute the ratio of reflected
-        // light using the fresnel equations
-
-        float cos_theta_t = std::sqrt(root_term);
-        float r_parallel = (relative_eta * NoI - cos_theta_t) / (relative_eta * NoI + cos_theta_t);
-        float r_perpendicular = (NoI - relative_eta * cos_theta_t) / (NoI + relative_eta * cos_theta_t);
-        fresnel_reflect = (r_parallel * r_parallel +r_perpendicular * r_perpendicular) / 2;
-
-        float r1 = random_generator();
-        if (r1 <= fresnel_reflect)
-        {
-            // Reflection of the ray
-            pdf = fresnel_reflect;
-            out_bounce_direction = reflect_ray(-ray_direction, surface_normal);
-
-            if (was_inside)
-                is_inside_surface = true;
-            else
-                is_inside_surface = false;
-        }
-        else
-        {
-            // Refraction of the ray
-            
-            pdf = 1.0f - fresnel_reflect;
-            out_bounce_direction = ray_direction / relative_eta + (NoI / relative_eta - cos_theta_t) * surface_normal;
-
-            if (was_inside)
-                is_inside_surface = false;
-            else
-                is_inside_surface = true;
-        }
-    }
-
-    Color color = Color(fresnel_reflect) + (1.0f - fresnel_reflect) * material.subsurface_color;
-    return color / NoI;
 }
 
 bool RenderKernel::intersect_scene(const Ray& ray, HitInfo& closest_hit_info) const
