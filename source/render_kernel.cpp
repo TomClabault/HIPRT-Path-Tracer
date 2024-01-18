@@ -138,7 +138,6 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
         Color throughput = Color(1.0f, 1.0f, 1.0f);
         Color sample_color = Color(0.0f, 0.0f, 0.0f);
         RayState next_ray_state = RayState::BOUNCE;
-        bool is_inside_surface = false;
 
         for (int bounce = 0; bounce < m_max_bounces; bounce++)
         {
@@ -163,6 +162,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                     // --------------------------------------- //
 
                     float brdf_pdf;
+
                     Vector bounce_direction;
                     Color brdf = brdf_dispatcher_sample(material, bounce_direction, ray.direction, closest_hit_info.normal_at_intersection, brdf_pdf, random_number_generator); //TODO relative IOR in the RayData rather than two incident and output ior values
                     
@@ -772,6 +772,7 @@ bool RenderKernel::evaluate_shadow_ray(const Ray& ray, float t_max) const
     HitInfo hit_info;
     bool inter_found = INTERSECT_SCENE(ray, hit_info);
 
+    //TODO handle intersection with transmissive material
     if (inter_found)
     {
         if (hit_info.t + 1.0e-4f < t_max)

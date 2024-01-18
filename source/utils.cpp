@@ -38,7 +38,9 @@ ParsedScene Utils::parse_scene_file(const std::string& filepath)
 
         // fov in radians
         float fov = scene->mCameras[0]->mHorizontalFOV;
-        float degrees_fov = fov / M_PI * 180.0f;
+        // TODO The +5.0f here is there to account for the slight difference of FOV between the
+        // rendered and Blender. This probably shouldn't be here
+        float degrees_fov = fov / M_PI * 180.0f + 5.0f;
         float full_degrees_fov = degrees_fov / 2.0f;
 
         parsed_scene.camera = Camera(camera_position, camera_lookat, camera_up, full_degrees_fov);
