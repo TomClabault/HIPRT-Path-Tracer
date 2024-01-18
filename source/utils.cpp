@@ -62,13 +62,17 @@ ParsedScene Utils::parse_scene_file(const std::string& filepath)
         //of the application
         aiColor3D diffuse_color;
         aiColor3D emissive_color;
-        float metalness, roughness, ior;
+        aiColor3D subsurface_color;
+        float metalness, roughness;
+        float ior, transmission_factor;
 
         mesh_material->Get(AI_MATKEY_COLOR_DIFFUSE, diffuse_color);
         aiReturn error_code_emissive = mesh_material->Get(AI_MATKEY_COLOR_EMISSIVE, emissive_color);
+        mesh_material->Get(AI_MATKEY_VOLUME_ATTENUATION_COLOR, subsurface_color);
         mesh_material->Get(AI_MATKEY_METALLIC_FACTOR, metalness);
         mesh_material->Get(AI_MATKEY_ROUGHNESS_FACTOR, roughness);
         mesh_material->Get(AI_MATKEY_REFRACTI, ior);
+        mesh_material->Get(AI_MATKEY_TRANSMISSION_FACTOR, transmission_factor);
 
         //Creating the material used by the application from the properties read
         RendererMaterial renderer_material;
@@ -78,6 +82,7 @@ ParsedScene Utils::parse_scene_file(const std::string& filepath)
         //Clamping the roughness to avoid edge cases when roughness == 0.0f
         renderer_material.roughness = std::max(1.0e-2f, roughness);
         renderer_material.ior = ior;
+        renderer_material.transmission_factor = transmission_factor;
 
         //Adding the material to the parsed scene
         parsed_scene.materials.push_back(renderer_material);
