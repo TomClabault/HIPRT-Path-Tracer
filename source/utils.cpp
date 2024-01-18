@@ -62,13 +62,11 @@ ParsedScene Utils::parse_scene_file(const std::string& filepath)
         //of the application
         aiColor3D diffuse_color;
         aiColor3D emissive_color;
-        aiColor3D subsurface_color;
         float metalness, roughness;
         float ior, transmission_factor;
 
         mesh_material->Get(AI_MATKEY_COLOR_DIFFUSE, diffuse_color);
         aiReturn error_code_emissive = mesh_material->Get(AI_MATKEY_COLOR_EMISSIVE, emissive_color);
-        mesh_material->Get(AI_MATKEY_VOLUME_ATTENUATION_COLOR, subsurface_color);
         mesh_material->Get(AI_MATKEY_METALLIC_FACTOR, metalness);
         mesh_material->Get(AI_MATKEY_ROUGHNESS_FACTOR, roughness);
         mesh_material->Get(AI_MATKEY_REFRACTI, ior);

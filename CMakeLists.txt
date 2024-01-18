@@ -42,15 +42,17 @@ add_executable(HIPRTPathTracer
 	${OIDN_HEADERS}
 )
 
-message(${CMAKE_BINARY_DIR} .)
-
 add_dependencies(HIPRTPathTracer assimp)
 	
 set_property(TARGET HIPRTPathTracer PROPERTY CXX_STANDARD 20)
 
 find_package(OpenMP)
 target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX OpenImageDenoise)
-target_link_libraries(HIPRTPathTracer PRIVATE ${EXTERNAL_ASSIMP_INSTALL_LOCATION}/lib/assimp-vc143-mt.lib)
+if (WIN32)
+    target_link_libraries(HIPRTPathTracer PRIVATE ${EXTERNAL_ASSIMP_INSTALL_LOCATION}/lib/assimp-vc143-mt.lib)
+elseif(LINUX)
+    target_link_libraries(HIPRTPathTracer PRIVATE ${EXTERNAL_ASSIMP_INSTALL_LOCATION}/lib/libassimp.so)
+endif()
 
 #TODO remove ?
 target_include_directories(HIPRTPathTracer PRIVATE "include/")

@@ -73,7 +73,6 @@ int main(int argc, char* argv[])
     RendererMaterial sphere_material;
     sphere_material.emission = Color(0.0f);
     sphere_material.diffuse = Color(1.0f, 0.71, 0.29);
-    sphere_material.subsurface_color = Color(1.0f, 1.0f, 1.0f);
     sphere_material.metalness = 1.0f;
     sphere_material.roughness = 1.0e-2f;
     sphere_material.ior = 1.4f;

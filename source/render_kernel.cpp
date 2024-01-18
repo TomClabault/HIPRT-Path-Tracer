@@ -442,12 +442,17 @@ Color RenderKernel::smooth_glass_bsdf(const RendererMaterial& material, Vector& 
 
         Vector refract_direction;
         bool can_refract = refract_ray(-ray_direction, surface_normal, refract_direction, eta_t / eta_i);
+        if (!can_refract)
+        {
+            std::cout << "cannot refract" << std::endl;
+            std::exit(1);
+        }
 
         out_bounce_direction = refract_direction;
         surface_normal = -surface_normal;
         pdf = 1.0f - fresnel_reflect;
 
-        return Color(1.0f - fresnel_reflect) * material.subsurface_color / dot(out_bounce_direction, surface_normal);
+        return Color(1.0f - fresnel_reflect) * material.diffuse / dot(out_bounce_direction, surface_normal);
     }
 }
 
