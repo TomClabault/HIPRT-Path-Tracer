@@ -163,10 +163,8 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                     // --------------------------------------- //
 
                     float brdf_pdf;
-                    Vector bounce_direction;// = cosine_weighted_direction_around_normal(closest_hit_info.normal_at_intersection, brdf_pdf, random_number_generator);
-                    Color brdf = smooth_glass_bsdf(material, bounce_direction, ray.direction, closest_hit_info.normal_at_intersection, 1.0f, material.ior, brdf_pdf, random_number_generator); //TODO relative IOR in the RayData rather than two incident and output ior values
-                    //Color brdf = cook_torrance_brdf_importance_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, bounce_direction, brdf_pdf, random_number_generator);
-                    //Color brdf = cook_torrance_brdf(material, random_bounce_direction, -ray.direction, closest_hit_info.normal_at_intersection);
+                    Vector bounce_direction;
+                    Color brdf = brdf_dispatcher_sample(material, bounce_direction, ray.direction, closest_hit_info.normal_at_intersection, brdf_pdf, random_number_generator); //TODO relative IOR in the RayData rather than two incident and output ior values
                     
                     if (bounce == 0)
                         sample_color += material.emission;
@@ -456,6 +454,16 @@ Color RenderKernel::smooth_glass_bsdf(const RendererMaterial& material, Vector& 
     }
 }
 
+Color RenderKernel::brdf_dispatcher_sample(const RendererMaterial& material, Vector& bounce_direction, const Vector& ray_direction, Vector& surface_normal, float& brdf_pdf, xorshift32_generator& random_number_generator) const
+{
+    if (material.brdf == BRDF::SpecularFresnel)
+        return smooth_glass_bsdf(material, bounce_direction, ray_direction, surface_normal, 1.0f, material.ior, brdf_pdf, random_number_generator); //TODO relative IOR in the RayData rather than two incident and output ior values
+    else if (material.brdf == BRDF::CookTorrance)
+        return cook_torrance_brdf_importance_sample(material, -ray_direction, surface_normal, bounce_direction, brdf_pdf, random_number_generator);
+
+    return Color(0.0f);
+}
+
 bool RenderKernel::intersect_scene(const Ray& ray, HitInfo& closest_hit_info) const
 {
     closest_hit_info.t = -1.0f;
@@ -574,6 +582,10 @@ void RenderKernel::env_map_cdf_search(float value, int& x, int& y) const
 
 Color RenderKernel::sample_environment_map(const Ray& ray, const HitInfo& closest_hit_info, const RendererMaterial& material, xorshift32_generator& random_number_generator) const
 {
+    if (material.brdf == BRDF::SpecularFresnel)
+        // No sampling for perfectly specular materials
+        return Color(0.0f);
+
     float env_map_total_sum = m_env_map_cdf[m_env_map_cdf.size() - 1];
 
     int x, y;
@@ -642,6 +654,10 @@ Color RenderKernel::sample_environment_map(const Ray& ray, const HitInfo& closes
 
 Color RenderKernel::sample_light_sources(const Ray& ray, const HitInfo& closest_hit_info, const RendererMaterial& material, xorshift32_generator& random_number_generator) const
 {
+    if (material.brdf == BRDF::SpecularFresnel)
+        // No sampling for perfectly specular materials
+        return Color(0.0f);
+
     Color light_source_radiance_mis;
     if (m_emissive_triangle_indices_buffer.size() > 0)
     {

@@ -81,6 +81,10 @@ ParsedScene Utils::parse_scene_file(const std::string& filepath)
         renderer_material.roughness = std::max(1.0e-2f, roughness);
         renderer_material.ior = ior;
         renderer_material.transmission_factor = transmission_factor;
+        if (renderer_material.transmission_factor > 0.0f)
+            renderer_material.brdf = BRDF::SpecularFresnel;
+        else
+            renderer_material.brdf = BRDF::CookTorrance;
 
         //Adding the material to the parsed scene
         parsed_scene.materials.push_back(renderer_material);

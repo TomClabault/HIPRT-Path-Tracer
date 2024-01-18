@@ -77,11 +77,11 @@ int main(int argc, char* argv[])
     sphere_material.roughness = 1.0e-2f;
     sphere_material.ior = 1.4f;
 
-    Sphere sphere = add_sphere_to_scene(parsed_scene, Point(0.0, 1, 0.3725), 0.75, sphere_material, parsed_scene.triangles.size());
-    std::vector<Sphere> spheres = { sphere };
-    //std::vector<Sphere> spheres;
-    parsed_scene.triangles.clear();
-    parsed_scene.emissive_triangle_indices.clear();
+    //Sphere sphere = add_sphere_to_scene(parsed_scene, Point(0.0, 1, 0.3725), 0.75, sphere_material, parsed_scene.triangles.size());
+    //std::vector<Sphere> spheres = { sphere };
+    std::vector<Sphere> spheres;
+//    parsed_scene.triangles.clear();
+//    parsed_scene.emissive_triangle_indices.clear();
 
     BVH bvh(&parsed_scene.triangles);
 

@@ -10,7 +10,7 @@
 #include "triangle.h"
 #include "xorshift.h"
 
-#define USE_BVH 0
+#define USE_BVH 1
 
 struct LightSourceInformation
 {
@@ -56,6 +56,7 @@ public:
     void ray_trace_pixel(int x, int y) const;
     void render();
 
+    Color brdf_dispatcher_sample(const RendererMaterial& material, Vector& bounce_direction, const Vector& ray_direction, Vector& surface_normal, float& brdf_pdf, xorshift32_generator& random_number_generator) const;
     Color lambertian_brdf(const RendererMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal) const;
     float cook_torrance_brdf_pdf(const RendererMaterial& material, const Vector& view_direction, const Vector& to_light_direction, const Vector& surface_normal) const;
     Color cook_torrance_brdf(const RendererMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal) const;

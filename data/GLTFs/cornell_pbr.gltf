@@ -4,7 +4,9 @@
 		"version":"2.0"
 	},
 	"extensionsUsed":[
-		"KHR_materials_emissive_strength"
+		"KHR_materials_emissive_strength",
+		"KHR_materials_transmission",
+		"KHR_materials_ior"
 	],
 	"scene":0,
 	"scenes":[
@@ -12,7 +14,8 @@
 			"name":"Scene",
 			"nodes":[
 				0,
-				1
+				1,
+				2
 			]
 		}
 	],
@@ -29,20 +32,34 @@
 		},
 		{
 			"camera":0,
-			"name":"Camera",
+			"name":"Camera.001",
 			"translation":[
 				-0.10000000149011612,
 				1,
 				6.499999523162842
 			]
+		},
+		{
+			"mesh":1,
+			"name":"Sphere",
+			"scale":[
+				0.20000000298023224,
+				0.20000000298023224,
+				0.20000000298023224
+			],
+			"translation":[
+				0.3562004268169403,
+				0.800000011920929,
+				0.47223222255706787
+			]
 		}
 	],
 	"cameras":[
 		{
-			"name":"Camera",
+			"name":"Camera.001",
 			"perspective":{
 				"aspectRatio":1.7777777777777777,
-				"yfov":0.4038851836174663,
+				"yfov":0.4038851857185364,
 				"zfar":100,
 				"znear":0.10000000149011612
 			},
@@ -68,7 +85,7 @@
 					1
 				],
 				"metallicFactor":0,
-				"roughnessFactor":0
+				"roughnessFactor":0.5
 			}
 		},
 		{
@@ -162,6 +179,28 @@
 					1
 				],
 				"metallicFactor":0,
+				"roughnessFactor":0.5
+			}
+		},
+		{
+			"doubleSided":true,
+			"extensions":{
+				"KHR_materials_transmission":{
+					"transmissionFactor":1
+				},
+				"KHR_materials_ior":{
+					"ior":1.4500000476837158
+				}
+			},
+			"name":"Material.001",
+			"pbrMetallicRoughness":{
+				"baseColorFactor":[
+					0.8000000715255737,
+					0,
+					0.004255097359418869,
+					1
+				],
+				"metallicFactor":0,
 				"roughnessFactor":0
 			}
 		}
@@ -233,6 +272,20 @@
 					},
 					"indices":5,
 					"material":7
+				}
+			]
+		},
+		{
+			"name":"Sphere",
+			"primitives":[
+				{
+					"attributes":{
+						"POSITION":18,
+						"NORMAL":19,
+						"TEXCOORD_0":20
+					},
+					"indices":21,
+					"material":8
 				}
 			]
 		}
@@ -425,6 +478,40 @@
 			"componentType":5126,
 			"count":4,
 			"type":"VEC3"
+		},
+		{
+			"bufferView":18,
+			"componentType":5126,
+			"count":4223,
+			"max":[
+				0.9999998807907104,
+				1,
+				0.9999997615814209
+			],
+			"min":[
+				-0.9999997019767761,
+				-1,
+				-1
+			],
+			"type":"VEC3"
+		},
+		{
+			"bufferView":19,
+			"componentType":5126,
+			"count":4223,
+			"type":"VEC3"
+		},
+		{
+			"bufferView":20,
+			"componentType":5126,
+			"count":4223,
+			"type":"VEC2"
+		},
+		{
+			"bufferView":21,
+			"componentType":5123,
+			"count":24192,
+			"type":"SCALAR"
 		}
 	],
 	"bufferViews":[
@@ -535,11 +622,35 @@
 			"byteLength":48,
 			"byteOffset":1560,
 			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":50676,
+			"byteOffset":1608,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":50676,
+			"byteOffset":52284,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":33784,
+			"byteOffset":102960,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":48384,
+			"byteOffset":136744,
+			"target":34963
 		}
 	],
 	"buffers":[
 		{
-			"byteLength":1608,
+			"byteLength":185128,
 			"uri":"cornell_pbr.bin"
 		}
 	]
