@@ -55,7 +55,7 @@ elseif(LINUX)
     target_link_libraries(HIPRTPathTracer PRIVATE ${EXTERNAL_ASSIMP_INSTALL_LOCATION}/lib/libassimp.so)
 endif()
 
-#target_include_directories(HIPRTPathTracer PRIVATE "source/")
+target_include_directories(HIPRTPathTracer PRIVATE "source/")
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/opengl/include")
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/stbi/")
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/oidn/include/")
