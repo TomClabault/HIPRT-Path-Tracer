@@ -4,6 +4,7 @@
 
 #include <stb_image_write.h>
 
+#include "UI/app_window.h"
 #include "bvh.h"
 #include "camera.h"
 #include "image_io.h"
@@ -61,6 +62,11 @@ void process_command_line(int argc, char** argv, CommandLineArguments& arguments
 
 int main(int argc, char* argv[])
 {
+    AppWindow app_window(1680, 1050);
+    app_window.run();
+
+    return 0;
+
     CommandLineArguments arguments;
     process_command_line(argc, argv, arguments);
 

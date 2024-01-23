@@ -10,15 +10,13 @@
 
 struct Color
 {
-    //! constructeur par defaut.
     Color( ) : r(0.f), g(0.f), b(0.f), a(1.f) {}
     explicit Color( const std::array<float, 3>& rgb) : r(rgb[0]), g(rgb[1]), b(rgb[2]), a(1.0f) {}
     explicit Color( const Vector& vec) : r(vec.x), g(vec.y), b(vec.z), a(1.0f) {}
     explicit Color( const float _r, const float _g, const float _y, const float _x= 1.f ) : r(_r), g(_g), b(_y), a(_x) {}
     explicit Color( const float _value ) : r(_value), g(_value), b(_value), a(1.f) {}
     
-    //! cree une couleur avec les memes composantes que color, mais remplace sa composante alpha (color.r, color.g, color.b, alpha).
-    Color( const Color& color, const float alpha ) : r(color.r), g(color.g), b(color.b), a(alpha) {}  // remplace alpha.
+    Color( const Color& color, const float alpha ) : r(color.r), g(color.g), b(color.b), a(alpha) {}
 
     inline bool operator==(const Color& other)
     {
@@ -182,5 +180,4 @@ inline Color pow(const Color &col, float k)
     return Color(std::pow(col.r, k), std::pow(col.g, k), std::pow(col.b, k), col.a);
 }
 
-///@}
 #endif
