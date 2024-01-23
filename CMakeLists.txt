@@ -10,8 +10,8 @@ set(EXTERNAL_ASSIMP_INSTALL_LOCATION ${CMAKE_BINARY_DIR}/external/assimp)
 
 # If the build type wasn't given on the commandline, we're defaulting to release
 if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE "Release")
-  message(STATUS "Build type not specified: Using Release by default")
+  set(CMAKE_BUILD_TYPE "Debug")
+  message(STATUS "Build type not specified: Using Debug by default")
 endif()
 
 ExternalProject_Add(assimp
