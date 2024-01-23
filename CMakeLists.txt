@@ -33,7 +33,7 @@ link_directories(${CMAKE_SOURCE_DIR}/${GLFW_LIB_DIR})
 link_directories(${CMAKE_SOURCE_DIR}/${GLEW_LIB_DIR})
 link_directories(${EXTERNAL_ASSIMP_INSTALL_LOCATION}/lib)
 
-file(GLOB_RECURSE SOURCE_FILES source/*.cpp source/*.h)
+file(GLOB_RECURSE SOURCE_FILES src/*.cpp src/*.h)
 file(GLOB_RECURSE OPENGL_HEADERS thirdparties/opengl/include/*.h)
 file(GLOB_RECURSE STBI_HEADERS thirdparties/stbi/*.h)
 file(GLOB_RECURSE OIDN_HEADERS thirdparties/oidn/include/OpenImageDenoise/*.hpp thirdparties/oidn/include/OpenImageDenoise/*.h)
@@ -79,7 +79,7 @@ elseif(LINUX)
     target_link_libraries(HIPRTPathTracer PRIVATE ${EXTERNAL_ASSIMP_INSTALL_LOCATION}/lib/libassimp.so)
 endif()
 
-target_include_directories(HIPRTPathTracer PRIVATE "source/")
+target_include_directories(HIPRTPathTracer PRIVATE "src/")
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/opengl/include")
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/stbi/")
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/oidn/include/")
@@ -92,10 +92,25 @@ add_custom_command(TARGET HIPRTPathTracer POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/${GLEW_BIN_DIR}/glew32.dll ${CMAKE_CURRENT_BINARY_DIR}
 )
 
-#if (CMAKE_GENERATOR MATCHES "Visual Studio")
-	#Adding the DLL folder of ASSIMP to visual studio so that the project can run from Visual Studio editor without screaming "Missing DLL...."
-	#set_target_properties(HIPRTPathTracer 
-        #PROPERTIES VS_DEBUGGER_ENVIRONMENT "PATH=%PATH%;${EXTERNAL_ASSIMP_INSTALL_LOCATION}/bin;${OIDN_BIN_DIR};${GLEW_BIN_DIR};"
-    #)
-#endif()
+if(MSVC_IDE)
+
+	message(${PROJECT_SOURCE_DIR})
+	# Macro to preserve source files hierarchy in the IDE
+	macro(GroupSources curdir)
+		file(GLOB children RELATIVE ${PROJECT_SOURCE_DIR}/${curdir} ${PROJECT_SOURCE_DIR}/${curdir}/*)
+
+		foreach(child ${children})
+			if(IS_DIRECTORY ${PROJECT_SOURCE_DIR}/${curdir}/${child})
+				GroupSources(${curdir}/${child})
+			else()
+				string(REPLACE "/" "\\" groupname ${curdir})
+				string(REPLACE "src" "Sources" groupname ${groupname})
+				source_group(${groupname} FILES ${PROJECT_SOURCE_DIR}/${curdir}/${child})
+			endif()
+		endforeach()
+	endmacro()
+
+	# Run macro
+	GroupSources(src)
+endif()
 

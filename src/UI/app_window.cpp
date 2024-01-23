@@ -11,7 +11,7 @@ void wait_and_exit(const char* message)
 	std::exit(1);
 }
 
-void window_resized_callback(GLFWwindow* window, int width, int height)
+void glfw_window_resized_callback(GLFWwindow* window, int width, int height)
 {
 	int new_width_pixels, new_height_pixels;
 	glfwGetFramebufferSize(window, &new_width_pixels, &new_height_pixels);
@@ -36,7 +36,7 @@ AppWindow::AppWindow(int width, int height) : m_width(width), m_height(height), 
 	// we can retrieve a pointer to this instance of AppWindow in the callback functions
 	// such as the window_resized_callback function for example
 	glfwSetWindowUserPointer(m_window, this);
-	glfwSetWindowSizeCallback(m_window, window_resized_callback);
+	glfwSetWindowSizeCallback(m_window, glfw_window_resized_callback);
 	glfwSwapInterval(1);
 
 	glewInit();
