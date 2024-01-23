@@ -61,9 +61,19 @@ if (WIN32)
 	if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
 		# Linking with the debug library of ASSIMP
 		target_link_libraries(HIPRTPathTracer PRIVATE ${EXTERNAL_ASSIMP_INSTALL_LOCATION}/lib/assimp-vc143-mtd.lib)
+		
+		# We're also adding the command to copy ASSIMP's DLL
+		add_custom_command(TARGET HIPRTPathTracer POST_BUILD
+			COMMAND ${CMAKE_COMMAND} -E copy ${EXTERNAL_ASSIMP_INSTALL_LOCATION}/bin/assimp-vc143-mtd.dll ${CMAKE_CURRENT_BINARY_DIR}
+		)
 	else()
 		# Linking with the release library of ASSIMP
 		target_link_libraries(HIPRTPathTracer PRIVATE ${EXTERNAL_ASSIMP_INSTALL_LOCATION}/lib/assimp-vc143-mt.lib)
+		
+		# We're also adding the command to copy ASSIMP's DLL
+		add_custom_command(TARGET HIPRTPathTracer POST_BUILD
+			COMMAND ${CMAKE_COMMAND} -E copy ${EXTERNAL_ASSIMP_INSTALL_LOCATION}/bin/assimp-vc143-mt.dll ${CMAKE_CURRENT_BINARY_DIR}
+		)
 	endif()
 elseif(LINUX)
     target_link_libraries(HIPRTPathTracer PRIVATE ${EXTERNAL_ASSIMP_INSTALL_LOCATION}/lib/libassimp.so)
@@ -75,6 +85,12 @@ target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/stbi/")
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/oidn/include/")
 target_include_directories(HIPRTPathTracer PRIVATE "${EXTERNAL_ASSIMP_INSTALL_LOCATION}/include/")
 target_include_directories(HIPRTPathTracer PRIVATE ".")
+
+add_custom_command(TARGET HIPRTPathTracer POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/${OIDN_BIN_DIR}/OpenImageDenoise.dll ${CMAKE_CURRENT_BINARY_DIR}
+	COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/${OIDN_BIN_DIR}/OpenImageDenoise_core.dll ${CMAKE_CURRENT_BINARY_DIR}
+	COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/${GLEW_BIN_DIR}/glew32.dll ${CMAKE_CURRENT_BINARY_DIR}
+)
 
 #if (CMAKE_GENERATOR MATCHES "Visual Studio")
 	#Adding the DLL folder of ASSIMP to visual studio so that the project can run from Visual Studio editor without screaming "Missing DLL...."
