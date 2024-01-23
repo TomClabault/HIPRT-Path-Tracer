@@ -8,6 +8,12 @@ include(ExternalProject)
 #Downloading ASSIMP library from Github for assets loading
 set(EXTERNAL_ASSIMP_INSTALL_LOCATION ${CMAKE_BINARY_DIR}/external/assimp)
 
+# If the build type wasn't given on the commandline, we're defaulting to release
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE "Release")
+  message(STATUS "Build type not specified: Using Release by default")
+endif()
+
 ExternalProject_Add(assimp
     GIT_REPOSITORY https://github.com/assimp/assimp
     CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${EXTERNAL_ASSIMP_INSTALL_LOCATION}
@@ -48,7 +54,9 @@ add_dependencies(HIPRTPathTracer assimp)
 
 find_package(OpenMP)
 find_package(OpenGL REQUIRED)
+
 target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX OpenImageDenoise ${OPENGL_LIBRARY} glfw3 glew32)
+
 if (WIN32)
 	if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
 		# Linking with the debug library of ASSIMP
