@@ -50,7 +50,13 @@ find_package(OpenMP)
 find_package(OpenGL REQUIRED)
 target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX OpenImageDenoise ${OPENGL_LIBRARY} glfw3 glew32)
 if (WIN32)
-    target_link_libraries(HIPRTPathTracer PRIVATE ${EXTERNAL_ASSIMP_INSTALL_LOCATION}/lib/assimp-vc143-mt.lib)
+	if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+		# Linking with the debug library of ASSIMP
+		target_link_libraries(HIPRTPathTracer PRIVATE ${EXTERNAL_ASSIMP_INSTALL_LOCATION}/lib/assimp-vc143-mtd.lib)
+	else()
+		# Linking with the release library of ASSIMP
+		target_link_libraries(HIPRTPathTracer PRIVATE ${EXTERNAL_ASSIMP_INSTALL_LOCATION}/lib/assimp-vc143-mt.lib)
+	endif()
 elseif(LINUX)
     target_link_libraries(HIPRTPathTracer PRIVATE ${EXTERNAL_ASSIMP_INSTALL_LOCATION}/lib/libassimp.so)
 endif()
@@ -62,10 +68,10 @@ target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/oidn/include/")
 target_include_directories(HIPRTPathTracer PRIVATE "${EXTERNAL_ASSIMP_INSTALL_LOCATION}/include/")
 target_include_directories(HIPRTPathTracer PRIVATE ".")
 
-if (CMAKE_GENERATOR MATCHES "Visual Studio")
+#if (CMAKE_GENERATOR MATCHES "Visual Studio")
 	#Adding the DLL folder of ASSIMP to visual studio so that the project can run from Visual Studio editor without screaming "Missing DLL...."
-	set_target_properties(HIPRTPathTracer 
-        PROPERTIES VS_DEBUGGER_ENVIRONMENT "PATH=%PATH%;${EXTERNAL_ASSIMP_INSTALL_LOCATION}/bin;${OIDN_BIN_DIR};${GLEW_BIN_DIR};"
-    )
-endif()
+	#set_target_properties(HIPRTPathTracer 
+        #PROPERTIES VS_DEBUGGER_ENVIRONMENT "PATH=%PATH%;${EXTERNAL_ASSIMP_INSTALL_LOCATION}/bin;${OIDN_BIN_DIR};${GLEW_BIN_DIR};"
+    #)
+#endif()
 
