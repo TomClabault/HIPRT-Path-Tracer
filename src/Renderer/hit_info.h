@@ -1,7 +1,7 @@
 #ifndef HIT_INFO_H
 #define HIT_INFO_H
 
-#include "vec.h"
+#include "Maths/vec.h"
 
 struct HitInfo
 {

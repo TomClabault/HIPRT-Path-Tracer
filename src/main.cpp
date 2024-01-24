@@ -4,77 +4,35 @@
 
 #include <stb_image_write.h>
 
+#include "Image/image_io.h"
+#include "Renderer/bvh.h"
+#include "Renderer/render_kernel.h"
+#include "Renderer/renderer_material.h"
+#include "Renderer/triangle.h"
+#include "Scene/camera.h"
+#include "Scene/scene_parser.h"
+#include "Tests/tests.h"
 #include "UI/app_window.h"
-#include "bvh.h"
-#include "camera.h"
-#include "image_io.h"
-#include "render_kernel.h"
-#include "renderer_material.h"
-#include "sphere.h"
-#include "tests.h"
-#include "triangle.h"
-#include "utils.h"
-
-#include "xorshift.h"
-
-Sphere add_sphere_to_scene(ParsedScene& parsed_scene, const Point& center, float radius, const RendererMaterial& material, int primitive_index)
-{
-    int material_index = parsed_scene.materials.size();
-
-    parsed_scene.materials.push_back(material);
-    parsed_scene.material_indices.push_back(material_index);
-
-    Sphere sphere(center, radius, primitive_index);
-
-    return sphere;
-}
-
-struct CommandLineArguments
-{
-    std::string scene_file_path = "data/GLTFs/cornell_pbr.obj";
-    std::string skysphere_file_path = "data/Skyspheres/evening_road_01_puresky_2k.hdr";
-
-    int render_width = 512, render_height = 512;
-    int render_samples = 64;
-    int bounces = 8;
-};
-
-void process_command_line(int argc, char** argv, CommandLineArguments& arguments)
-{
-    for (int i = 1; i < argc; i++)
-    {
-        std::string string_argv = std::string(argv[i]);
-        if (string_argv.starts_with("--sky="))
-            arguments.skysphere_file_path = string_argv.substr(6);
-        else if (string_argv.starts_with("--w="))
-            arguments.render_width = std::atoi(string_argv.substr(4).c_str());
-        else if (string_argv.starts_with("--h="))
-            arguments.render_height = std::atoi(string_argv.substr(4).c_str());
-        else if (string_argv.starts_with("--samples="))
-            arguments.render_samples = std::atoi(string_argv.substr(10).c_str());
-        else if (string_argv.starts_with("--bounces="))
-            arguments.bounces = std::atoi(string_argv.substr(10).c_str());
-        else
-            //Assuming scene file path
-            arguments.scene_file_path = string_argv;
-    }
-}
+#include "Utils/commandline_arguments.h"
+#include "Utils/utils.h"
+#include "Utils/xorshift.h"
 
 int main(int argc, char* argv[])
 {
-    AppWindow app_window(1680, 1050);
+    CommandLineArguments arguments = CommandLineArguments::process_command_line_args(argc, argv);
+
+    /*AppWindow app_window(1680, 1050);
+    app_window.setup_renderer(arguments);
     app_window.run();
 
-    return 0;
+    return 0;*/
 
-    CommandLineArguments arguments;
-    process_command_line(argc, argv, arguments);
 
     const int width = arguments.render_width;
     const int height = arguments.render_height;
 
     std::cout << "Reading OBJ " << arguments.scene_file_path << " ..." << std::endl;
-    ParsedScene parsed_scene = Utils::parse_scene_file(arguments.scene_file_path);
+    Scene parsed_scene = SceneParser::parse_scene_file(arguments.scene_file_path);
 
     RendererMaterial sphere_material;
     sphere_material.emission = Color(0.0f);

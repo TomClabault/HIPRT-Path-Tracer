@@ -2,7 +2,7 @@
 #include <algorithm>
 #include <cmath>
 
-#include "vec.h"
+#include "Maths/vec.h"
 
 
 Point Origin( )

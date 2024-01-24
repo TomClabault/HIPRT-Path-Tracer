@@ -2,7 +2,7 @@
 #ifndef CAMERA_H
 #define CAMERA_H
 
-#include "mat.h"
+#include "Maths/mat.h"
 
 #define _USE_MATH_DEFINES
 #include <math.h>

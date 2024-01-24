@@ -1,7 +1,7 @@
 #ifndef RENDERER_MATERIAL_H
 #define RENDERER_MATERIAL_H
 
-#include "color.h"
+#include "Image/color.h"
 
 enum BRDF
 {
