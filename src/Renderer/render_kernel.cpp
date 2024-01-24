@@ -138,6 +138,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
         Color throughput = Color(1.0f, 1.0f, 1.0f);
         Color sample_color = Color(0.0f, 0.0f, 0.0f);
         RayState next_ray_state = RayState::BOUNCE;
+        BRDF last_brdf_hit_type = BRDF::Uninitialized;
 
         for (int bounce = 0; bounce < m_max_bounces; bounce++)
         {
@@ -150,6 +151,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                 {
                     int material_index = m_materials_indices_buffer[closest_hit_info.primitive_index];
                     RendererMaterial material = m_materials_buffer[material_index];
+                    last_brdf_hit_type = material.brdf_type;
 
                     // --------------------------------------------------- //
                     // ----------------- Direct lighting ----------------- //
@@ -189,10 +191,12 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
             }
             else if (next_ray_state == MISSED)
             {
-                //if (bounce == 1)
+                if (bounce == 1 || last_brdf_hit_type == BRDF::SpecularFresnel)
                 {
                     //We're only getting the skysphere radiance for the first rays because the
                     //syksphere is importance sampled
+                    // We're also getting the skysphere radiance for perfectly specular BRDF since those
+                    // are not importance sampled
 
                     Color skysphere_color = sample_environment_map_from_direction(ray.direction);
 
@@ -228,8 +232,8 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
 #include <omp.h>
 
 #define DEBUG_PIXEL 0
-#define DEBUG_PIXEL_X 916
-#define DEBUG_PIXEL_Y 357
+#define DEBUG_PIXEL_X 401
+#define DEBUG_PIXEL_Y 582
 void RenderKernel::render()
 {
     std::atomic<int> lines_completed = 0;
@@ -442,6 +446,7 @@ Color RenderKernel::smooth_glass_bsdf(const RendererMaterial& material, Vector& 
         bool can_refract = refract_ray(-ray_direction, surface_normal, refract_direction, eta_t / eta_i);
         if (!can_refract)
         {
+            // Shouldn't happen (?)
             std::cout << "cannot refract" << std::endl;
             std::exit(1);
         }
@@ -456,9 +461,9 @@ Color RenderKernel::smooth_glass_bsdf(const RendererMaterial& material, Vector& 
 
 Color RenderKernel::brdf_dispatcher_sample(const RendererMaterial& material, Vector& bounce_direction, const Vector& ray_direction, Vector& surface_normal, float& brdf_pdf, xorshift32_generator& random_number_generator) const
 {
-    if (material.brdf == BRDF::SpecularFresnel)
+    if (material.brdf_type == BRDF::SpecularFresnel)
         return smooth_glass_bsdf(material, bounce_direction, ray_direction, surface_normal, 1.0f, material.ior, brdf_pdf, random_number_generator); //TODO relative IOR in the RayData rather than two incident and output ior values
-    else if (material.brdf == BRDF::CookTorrance)
+    else if (material.brdf_type == BRDF::CookTorrance)
         return cook_torrance_brdf_importance_sample(material, -ray_direction, surface_normal, bounce_direction, brdf_pdf, random_number_generator);
 
     return Color(0.0f);
@@ -582,13 +587,12 @@ void RenderKernel::env_map_cdf_search(float value, int& x, int& y) const
 
 Color RenderKernel::sample_environment_map(const Ray& ray, const HitInfo& closest_hit_info, const RendererMaterial& material, xorshift32_generator& random_number_generator) const
 {
-    if (material.brdf == BRDF::SpecularFresnel)
+    if (material.brdf_type == BRDF::SpecularFresnel)
         // No sampling for perfectly specular materials
         return Color(0.0f);
 
-    float env_map_total_sum = m_env_map_cdf[m_env_map_cdf.size() - 1];
-
     int x, y;
+    float env_map_total_sum = m_env_map_cdf[m_env_map_cdf.size() - 1];
     env_map_cdf_search(random_number_generator() * env_map_total_sum, x, y);
 
     float u = (float)x / m_environment_map.width();
@@ -654,7 +658,7 @@ Color RenderKernel::sample_environment_map(const Ray& ray, const HitInfo& closes
 
 Color RenderKernel::sample_light_sources(const Ray& ray, const HitInfo& closest_hit_info, const RendererMaterial& material, xorshift32_generator& random_number_generator) const
 {
-    if (material.brdf == BRDF::SpecularFresnel)
+    if (material.brdf_type == BRDF::SpecularFresnel)
         // No sampling for perfectly specular materials
         return Color(0.0f);
 

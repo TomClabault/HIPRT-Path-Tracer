@@ -31,7 +31,7 @@ int main(int argc, char* argv[])
     const int width = arguments.render_width;
     const int height = arguments.render_height;
 
-    std::cout << "Reading OBJ " << arguments.scene_file_path << " ..." << std::endl;
+    std::cout << "Reading scene file " << arguments.scene_file_path << " ..." << std::endl;
     Scene parsed_scene = SceneParser::parse_scene_file(arguments.scene_file_path);
 
     RendererMaterial sphere_material;

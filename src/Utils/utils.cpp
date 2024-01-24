@@ -65,7 +65,10 @@ Image Utils::OIDN_denoise(const Image& image, float blend_factor)
     {
         device = oidn::newDevice(); // CPU or GPU if available
         if (device == NULL)
+        {
+            std::cerr << "There was an error getting the device for denoising with OIDN. Perhaps some missing DLLs for your hardware?" << std::endl;
             return Image(1, 1);
+        }
         device.commit();
 
         device_done = true;

@@ -5,13 +5,14 @@
 
 enum BRDF
 {
+    Uninitialized,
     CookTorrance,
     SpecularFresnel
 };
 
 struct RendererMaterial
 {
-    BRDF brdf;
+    BRDF brdf_type;
 
     Color emission = Color(0.0f, 0.0f, 0.0f);
     Color diffuse = Color(1.0f, 0.2f, 0.7f);
