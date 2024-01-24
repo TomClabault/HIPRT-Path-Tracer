@@ -4,7 +4,8 @@
 #include "GL/glew.h"
 #include "GLFW/glfw3.h"
 
-#include "renderer.h"
+#include "Utils/commandline_arguments.h"
+#include "Renderer/renderer.h"
 
 class AppWindow
 {
@@ -18,6 +19,7 @@ public:
 	void resize(int pixels_width, int pixels_height);
 
 	void setup_display_program();
+	void setup_renderer(const CommandLineArguments& arguments);
 	void display_cpu_data(const std::vector<Color>& image_data);
 
 	void run();

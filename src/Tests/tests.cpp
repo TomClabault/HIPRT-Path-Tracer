@@ -1,11 +1,11 @@
-#include "bvh.h"
-#include "bvh_tests.h"
-#include "flattened_bvh.h"
-#include "parsed_scene.h"
-#include "ray.h"
-#include "tests.h"
-#include "triangle.h"
-#include "utils.h"
+#include "Renderer/bvh.h"
+#include "Renderer/flattened_bvh.h"
+#include "Renderer/ray.h"
+#include "Renderer/triangle.h"
+#include "Scene/scene_parser.h"
+#include "Tests/bvh_tests.h"
+#include "Tests/tests.h"
+#include "Utils/utils.h"
 
 bool compare_points(const Point& a, const Point& b)
 {
@@ -153,7 +153,7 @@ void test_flattened_bvh(BVH& bvh)
 
 void regression_tests()
 {
-    ParsedScene scene = Utils::parse_scene_file("data/OBJs/cornell_pbr.obj");
+    Scene scene = SceneParser::parse_scene_file("data/OBJs/cornell_pbr.obj");
 
     BVH bvh(&scene.triangles);
     test_bvh(bvh);

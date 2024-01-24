@@ -1,7 +1,7 @@
 #ifndef BVH_TESTS_H
 #define BVH_TESTS_H
 
-#include "ray.h"
+#include "Renderer/ray.h"
 
 #include <vector>
 

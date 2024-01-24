@@ -2,7 +2,7 @@
 #ifndef _COLOR_H
 #define _COLOR_H
 
-#include "vec.h"
+#include "Maths/vec.h"
 
 #include <array>
 #include <cmath>

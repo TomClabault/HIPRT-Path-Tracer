@@ -3,7 +3,7 @@
 
 #include "hit_info.h"
 #include "ray.h"
-#include "vec.h"
+#include "Maths/vec.h"
 
 struct Triangle
 {

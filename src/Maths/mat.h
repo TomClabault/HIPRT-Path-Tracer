@@ -2,7 +2,7 @@
 #ifndef _MAT_H
 #define _MAT_H
 
-#include "vec.h"
+#include "Maths/vec.h"
 
 //! conversion en radians.
 float radians(const float deg);

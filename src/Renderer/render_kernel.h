@@ -1,14 +1,14 @@
 #ifndef RENDER_KERNEL_H
 #define RENDER_KERNEL_H
 
-#include "bvh.h"
-#include "camera.h"
-#include "color.h"
-#include "image.h"
-#include "renderer_material.h"
-#include "sphere.h"
-#include "triangle.h"
-#include "xorshift.h"
+#include "Scene/camera.h"
+#include "Image/color.h"
+#include "Image/image.h"
+#include "Renderer/bvh.h"
+#include "Renderer/renderer_material.h"
+#include "Renderer/sphere.h"
+#include "Renderer/triangle.h"
+#include "Utils/xorshift.h"
 
 #define USE_BVH 1
 

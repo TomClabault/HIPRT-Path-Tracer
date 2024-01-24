@@ -19,7 +19,7 @@ void glfw_window_resized_callback(GLFWwindow* window, int width, int height)
 	static_cast<AppWindow*>(glfwGetWindowUserPointer(window))->resize(width, height);
 }
 
-AppWindow::AppWindow(int width, int height) : m_width(width), m_height(height), m_renderer(width, height)
+AppWindow::AppWindow(int width, int height) : m_width(width), m_height(height)
 {
 	if (!glfwInit())
 		wait_and_exit("Could not initialize GLFW...");
@@ -168,6 +168,13 @@ void AppWindow::setup_display_program()
 
 	glUseProgram(m_display_program);
 	glUniform1i(glGetUniformLocation(m_display_program, "u_texture"), AppWindow::DISPLAY_TEXTURE_UNIT);
+}
+
+void AppWindow::setup_renderer(const CommandLineArguments& arguments)
+{
+	m_renderer.resize(arguments.render_width, arguments.render_height);
+	m_renderer.samples_per_pixel = arguments.render_samples;
+	m_renderer.bounces = arguments.bounces;
 }
 
 void AppWindow::run()
