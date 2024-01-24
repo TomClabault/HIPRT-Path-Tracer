@@ -56,26 +56,26 @@ Scene SceneParser::parse_scene_file(const std::string& filepath)
         float metalness, roughness;
         float ior, transmission_factor;
 
+        aiReturn error_code_transmission_factor, error_code_emissive;
         mesh_material->Get(AI_MATKEY_COLOR_DIFFUSE, diffuse_color);
-        aiReturn error_code_emissive = mesh_material->Get(AI_MATKEY_COLOR_EMISSIVE, emissive_color);
+        error_code_emissive = mesh_material->Get(AI_MATKEY_COLOR_EMISSIVE, emissive_color);
         mesh_material->Get(AI_MATKEY_METALLIC_FACTOR, metalness);
         mesh_material->Get(AI_MATKEY_ROUGHNESS_FACTOR, roughness);
         mesh_material->Get(AI_MATKEY_REFRACTI, ior);
-        mesh_material->Get(AI_MATKEY_TRANSMISSION_FACTOR, transmission_factor);
+        error_code_transmission_factor = mesh_material->Get(AI_MATKEY_TRANSMISSION_FACTOR, transmission_factor);
 
         //Creating the material used by the application from the properties read
         RendererMaterial renderer_material;
         renderer_material.diffuse = Color(diffuse_color.r, diffuse_color.g, diffuse_color.b, 1.0f);
         renderer_material.emission = Color(emissive_color.r, emissive_color.g, emissive_color.b, 1.0f);
         renderer_material.metalness = metalness;
-        //Clamping the roughness to avoid edge cases when roughness == 0.0f
-        renderer_material.roughness = std::max(1.0e-2f, roughness);
+        renderer_material.roughness = std::max(1.0e-2f, roughness); // Clamping the roughness to avoid edge cases when roughness == 0.0f
         renderer_material.ior = ior;
-        renderer_material.transmission_factor = transmission_factor;
+        renderer_material.transmission_factor = error_code_transmission_factor == AI_SUCCESS ? transmission_factor : 0.0f;
         if (renderer_material.transmission_factor > 0.0f)
-            renderer_material.brdf = BRDF::SpecularFresnel;
+            renderer_material.brdf_type = BRDF::SpecularFresnel;
         else
-            renderer_material.brdf = BRDF::CookTorrance;
+            renderer_material.brdf_type = BRDF::CookTorrance;
 
         //Adding the material to the parsed scene
         parsed_scene.materials.push_back(renderer_material);
