@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <iostream>
+#include <Scene/scene_parser.h>
 
 void wait_and_exit(const char* message)
 {
@@ -17,51 +18,6 @@ void glfw_window_resized_callback(GLFWwindow* window, int width, int height)
 	glfwGetFramebufferSize(window, &new_width_pixels, &new_height_pixels);
 
 	static_cast<AppWindow*>(glfwGetWindowUserPointer(window))->resize(width, height);
-}
-
-AppWindow::AppWindow(int width, int height) : m_width(width), m_height(height)
-{
-	if (!glfwInit())
-		wait_and_exit("Could not initialize GLFW...");
-
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
-	m_window = glfwCreateWindow(width, height, "HIPRT Path Tracer", NULL, NULL);
-	if (!m_window)
-		wait_and_exit("Could not initialize the GLFW window...");
-
-	glfwMakeContextCurrent(m_window);
-	// Setting a pointer to this instance of AppWindow inside the m_window GLFWwindow so that
-	// we can retrieve a pointer to this instance of AppWindow in the callback functions
-	// such as the window_resized_callback function for example
-	glfwSetWindowUserPointer(m_window, this);
-	glfwSetWindowSizeCallback(m_window, glfw_window_resized_callback);
-	glfwSwapInterval(1);
-
-	glewInit();
-
-	glViewport(0, 0, width, height);
-
-	// Initializing the debug output of OpenGL to catch errors
-	// when calling OpenGL function with an incorrect OpenGL state
-	int flags;
-	glGetIntegerv(GL_CONTEXT_FLAGS, &flags);
-	if (flags & GL_CONTEXT_FLAG_DEBUG_BIT)
-	{
-		glEnable(GL_DEBUG_OUTPUT);
-		glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-		glDebugMessageCallback(AppWindow::gl_debug_output_callback, nullptr);
-		glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
-	}
-
-	setup_display_program();
-}
-
-AppWindow::~AppWindow()
-{
-	glfwDestroyWindow(m_window);
-	glfwTerminate();
 }
 
 // Implementation from https://learnopengl.com/In-Practice/Debugging
@@ -111,6 +67,55 @@ void APIENTRY AppWindow::gl_debug_output_callback(GLenum source,
 	} std::cout << std::endl;
 	std::cout << std::endl;
 }
+
+AppWindow::AppWindow(int width, int height) : m_width(width), m_height(height)
+{
+	if (!glfwInit())
+		wait_and_exit("Could not initialize GLFW...");
+
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
+	m_window = glfwCreateWindow(width, height, "HIPRT Path Tracer", NULL, NULL);
+	if (!m_window)
+		wait_and_exit("Could not initialize the GLFW window...");
+
+	glfwMakeContextCurrent(m_window);
+	// Setting a pointer to this instance of AppWindow inside the m_window GLFWwindow so that
+	// we can retrieve a pointer to this instance of AppWindow in the callback functions
+	// such as the window_resized_callback function for example
+	glfwSetWindowUserPointer(m_window, this);
+	glfwSetWindowSizeCallback(m_window, glfw_window_resized_callback);
+	glfwSwapInterval(1);
+
+	glewInit();
+
+	glViewport(0, 0, width, height);
+
+	// Initializing the debug output of OpenGL to catch errors
+	// when calling OpenGL function with an incorrect OpenGL state
+	int flags;
+	glGetIntegerv(GL_CONTEXT_FLAGS, &flags);
+	if (flags & GL_CONTEXT_FLAG_DEBUG_BIT)
+	{
+		glEnable(GL_DEBUG_OUTPUT);
+		glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+		glDebugMessageCallback(AppWindow::gl_debug_output_callback, nullptr);
+		glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
+	}
+
+	setup_display_program();
+	m_hiprt_orochi_ctx.init(0);
+
+	m_renderer.resize(width, height);
+}
+
+AppWindow::~AppWindow()
+{
+	glfwDestroyWindow(m_window);
+	glfwTerminate();
+}
+
 
 void AppWindow::resize(int pixels_width, int pixels_height)
 {
@@ -172,9 +177,13 @@ void AppWindow::setup_display_program()
 
 void AppWindow::setup_renderer(const CommandLineArguments& arguments)
 {
-	m_renderer.resize(arguments.render_width, arguments.render_height);
 	m_renderer.samples_per_pixel = arguments.render_samples;
 	m_renderer.bounces = arguments.bounces;
+}
+
+void AppWindow::set_renderer_scene(const Scene& scene)
+{
+	m_renderer.set_scene(scene);
 }
 
 void AppWindow::run()
@@ -182,7 +191,7 @@ void AppWindow::run()
 	while (!glfwWindowShouldClose(m_window))
 	{
 		m_renderer.render();
-		display_cpu_data(m_renderer.get_cpu_data());
+		display(m_renderer.get_orochi_framebuffer());
 
 		glfwPollEvents();
 		glfwSwapBuffers(m_window);
@@ -191,12 +200,24 @@ void AppWindow::run()
 	quit();
 }
 
-void AppWindow::display_cpu_data(const std::vector<Color>& image_data)
+void AppWindow::display(const std::vector<Color>& image_data)
 {
 	glUseProgram(m_display_program);
 
 	glBindTexture(GL_TEXTURE_2D, m_display_texture);
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_width, m_height, GL_RGBA, GL_FLOAT, image_data.data());
+
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+}
+
+void AppWindow::display(OrochiBuffer<float>& orochi_buffer)
+{
+	glUseProgram(m_display_program);
+
+	std::vector<float> pixels_data = orochi_buffer.download_pixels();
+
+	glBindTexture(GL_TEXTURE_2D, m_display_texture);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_width, m_height, GL_RGBA, GL_FLOAT, pixels_data.data());
 
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 }
