@@ -21,18 +21,20 @@ int main(int argc, char* argv[])
 {
     CommandLineArguments arguments = CommandLineArguments::process_command_line_args(argc, argv);
 
-    /*AppWindow app_window(1680, 1050);
-    app_window.setup_renderer(arguments);
-    app_window.run();
-
-    return 0;*/
-
-
-    const int width = arguments.render_width;
-    const int height = arguments.render_height;
-
     std::cout << "Reading scene file " << arguments.scene_file_path << " ..." << std::endl;
     Scene parsed_scene = SceneParser::parse_scene_file(arguments.scene_file_path);
+
+    AppWindow app_window(1680, 1050);
+    app_window.setup_renderer(arguments);
+    app_window.set_renderer_scene(parsed_scene);
+    app_window.run();
+
+    return 0;
+
+
+    const int width = 1280;
+    const int height = 720;
+
 
     RendererMaterial sphere_material;
     sphere_material.emission = Color(0.0f);
@@ -63,9 +65,9 @@ int main(int argc, char* argv[])
     std::cout << "[" << width << "x" << height << "]: " << arguments.render_samples << " samples" << std::endl << std::endl;
 
     auto start = std::chrono::high_resolution_clock::now();
-    Image image_buffer(arguments.render_width, arguments.render_height);
+    Image image_buffer(width, height);
     auto render_kernel = RenderKernel(
-        arguments.render_width, arguments.render_height,
+        width, height,
         arguments.render_samples, arguments.bounces,
         image_buffer,
         triangle_buffer,
