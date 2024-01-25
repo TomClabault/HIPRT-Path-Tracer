@@ -66,29 +66,25 @@ find_package(OpenGL REQUIRED)
 
 target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX OpenImageDenoise ${OPENGL_LIBRARY} glfw3 glew32 hiprt0200264)
 
-if (WIN32)
-	# "version" is a library from the Windows SDK
-	target_link_libraries(HIPRTPathTracer PRIVATE version)
+# "version" is a library from the Windows SDK
+target_link_libraries(HIPRTPathTracer PRIVATE version)
+
+if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+	# Linking with the debug library of ASSIMP
+	target_link_libraries(HIPRTPathTracer PRIVATE ${EXTERNAL_ASSIMP_INSTALL_LOCATION}/lib/assimp-vc143-mtd.lib)
 	
-	if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-		# Linking with the debug library of ASSIMP
-		target_link_libraries(HIPRTPathTracer PRIVATE ${EXTERNAL_ASSIMP_INSTALL_LOCATION}/lib/assimp-vc143-mtd.lib)
-		
-		# We're also adding the command to copy ASSIMP's DLL
-		add_custom_command(TARGET HIPRTPathTracer POST_BUILD
-			COMMAND ${CMAKE_COMMAND} -E copy ${EXTERNAL_ASSIMP_INSTALL_LOCATION}/bin/assimp-vc143-mtd.dll ${CMAKE_CURRENT_BINARY_DIR}
-		)
-	else()
-		# Linking with the release library of ASSIMP
-		target_link_libraries(HIPRTPathTracer PRIVATE ${EXTERNAL_ASSIMP_INSTALL_LOCATION}/lib/assimp-vc143-mt.lib)
-		
-		# We're also adding the command to copy ASSIMP's DLL
-		add_custom_command(TARGET HIPRTPathTracer POST_BUILD
-			COMMAND ${CMAKE_COMMAND} -E copy ${EXTERNAL_ASSIMP_INSTALL_LOCATION}/bin/assimp-vc143-mt.dll ${CMAKE_CURRENT_BINARY_DIR}
-		)
-	endif()
-elseif(LINUX)
-    target_link_libraries(HIPRTPathTracer PRIVATE ${EXTERNAL_ASSIMP_INSTALL_LOCATION}/lib/libassimp.so)
+	# We're also adding the command to copy ASSIMP's DLL
+	add_custom_command(TARGET HIPRTPathTracer POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E copy ${EXTERNAL_ASSIMP_INSTALL_LOCATION}/bin/assimp-vc143-mtd.dll ${CMAKE_CURRENT_BINARY_DIR}
+	)
+else()
+	# Linking with the release library of ASSIMP
+	target_link_libraries(HIPRTPathTracer PRIVATE ${EXTERNAL_ASSIMP_INSTALL_LOCATION}/lib/assimp-vc143-mt.lib)
+	
+	# We're also adding the command to copy ASSIMP's DLL
+	add_custom_command(TARGET HIPRTPathTracer POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E copy ${EXTERNAL_ASSIMP_INSTALL_LOCATION}/bin/assimp-vc143-mt.dll ${CMAKE_CURRENT_BINARY_DIR}
+	)
 endif()
 
 target_include_directories(HIPRTPathTracer PRIVATE "src/")
@@ -107,12 +103,11 @@ add_custom_command(TARGET HIPRTPathTracer POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/${OIDN_BIN_DIR}/OpenImageDenoise_device_cuda.dll ${CMAKE_CURRENT_BINARY_DIR}
 	COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/${OIDN_BIN_DIR}/OpenImageDenoise_device_hip.dll ${CMAKE_CURRENT_BINARY_DIR}
 	COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/${GLEW_BIN_DIR}/glew32.dll ${CMAKE_CURRENT_BINARY_DIR}
+	COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/${HIPRT_BIN_DIR}/hiprt0200264.dll ${CMAKE_CURRENT_BINARY_DIR}
 )
 
+# Macro to preserve source files hierarchy in Visual Studio
 if(MSVC_IDE)
-
-	message(${PROJECT_SOURCE_DIR})
-	# Macro to preserve source files hierarchy in the IDE
 	macro(GroupSources curdir)
 		file(GLOB children RELATIVE ${PROJECT_SOURCE_DIR}/${curdir} ${PROJECT_SOURCE_DIR}/${curdir}/*)
 
