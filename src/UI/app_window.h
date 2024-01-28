@@ -23,7 +23,6 @@ public:
 	void resize_frame(int pixels_width, int pixels_height);
 
 	void setup_display_program();
-	void setup_renderer(const CommandLineArguments& arguments);
 	void set_renderer_scene(Scene& scene);
 	void display(const std::vector<Color>& image_data);
 	void display(OrochiBuffer<float>& orochi_buffer);

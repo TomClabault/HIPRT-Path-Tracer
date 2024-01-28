@@ -25,7 +25,6 @@ int main(int argc, char* argv[])
     Scene parsed_scene = SceneParser::parse_scene_file(arguments.scene_file_path);
 
     AppWindow app_window(1680, 1050);
-    app_window.setup_renderer(arguments);
     app_window.set_renderer_scene(parsed_scene);
     app_window.run();
 
