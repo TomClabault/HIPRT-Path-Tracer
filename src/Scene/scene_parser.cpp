@@ -21,9 +21,9 @@ Scene SceneParser::parse_scene_file(const std::string& filepath)
     // Taking the first camera as the camera of the scene
     if (scene->mNumCameras > 0)
     {
-        Point camera_position = Point(*((Vector*)&scene->mCameras[0]->mPosition));
-        Point camera_lookat = Point(*((Vector*)&scene->mCameras[0]->mLookAt));
-        Vector camera_up = *((Vector*)&scene->mCameras[0]->mUp);
+        Point camera_position = *reinterpret_cast<Point*>(&scene->mCameras[0]->mPosition);
+        Point camera_lookat = *reinterpret_cast<Point*>(&scene->mCameras[0]->mLookAt);
+        Vector camera_up = *reinterpret_cast<Vector*>(&scene->mCameras[0]->mUp);
 
         // fov in radians
         float fov = scene->mCameras[0]->mHorizontalFOV;
@@ -36,14 +36,6 @@ Scene SceneParser::parse_scene_file(const std::string& filepath)
         parsed_scene.has_camera = true;
     }
 
-    int total_face_count = 0;
-    for (int mesh_index = 0; mesh_index < scene->mNumMeshes; mesh_index++)
-    {
-        aiMesh* mesh = scene->mMeshes[mesh_index];
-        total_face_count += mesh->mNumFaces;
-    }
-
-    parsed_scene.triangles.reserve(total_face_count);
     for (int mesh_index = 0; mesh_index < scene->mNumMeshes; mesh_index++)
     {
         aiMesh* mesh = scene->mMeshes[mesh_index];
@@ -86,20 +78,19 @@ Scene SceneParser::parse_scene_file(const std::string& filepath)
         if (error_code_emissive == AI_SUCCESS && (emissive_color.r != 0.0f || emissive_color.g != 0.0f || emissive_color.b != 0.0f))
             is_mesh_emissive = true;
 
+        parsed_scene.vertices_positions.insert(parsed_scene.vertices_positions.end(), reinterpret_cast<hiprtFloat3*>(&mesh->mVertices[0]), reinterpret_cast<hiprtFloat3*>(&mesh->mVertices[mesh->mNumVertices]));
+        parsed_scene.vertices_indices.reserve(mesh->mNumFaces * 3); // Assuming triangle faces only since the mesh has been triangulated
         for (int face_index = 0; face_index < mesh->mNumFaces; face_index++)
         {
             aiFace face = mesh->mFaces[face_index];
-
-            //All faces should be triangles so we're assuming exactly 3 vertices
-            Point vertex_a = *(Point*)(&mesh->mVertices[face.mIndices[0]]);
-            Point vertex_b = *(Point*)(&mesh->mVertices[face.mIndices[1]]);
-            Point vertex_c = *(Point*)(&mesh->mVertices[face.mIndices[2]]);
-            parsed_scene.triangles.push_back(Triangle(vertex_a, vertex_b, vertex_c));
+            parsed_scene.vertices_indices.push_back(face.mIndices[0]);
+            parsed_scene.vertices_indices.push_back(face.mIndices[1]);
+            parsed_scene.vertices_indices.push_back(face.mIndices[2]);
 
             //The face that we just pushed in the triangle buffer is emissive
             //We're going to add its index to the emissive triangles buffer
             if (is_mesh_emissive)
-                parsed_scene.emissive_triangle_indices.push_back(parsed_scene.triangles.size() - 1);
+                parsed_scene.emissive_triangle_indices.push_back(parsed_scene.material_indices.size() - 3); // TODO this may be incorrect
 
             //We're pushing the same material index for all the faces of this mesh
             //because all faces of a mesh have the same material (that's how ASSIMP importer's

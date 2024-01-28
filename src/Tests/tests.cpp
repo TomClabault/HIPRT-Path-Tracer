@@ -155,7 +155,8 @@ void regression_tests()
 {
     Scene scene = SceneParser::parse_scene_file("data/OBJs/cornell_pbr.obj");
 
-    BVH bvh(&scene.triangles);
+    std::vector<Triangle> triangles = scene.make_triangles();
+    BVH bvh(&triangles);
     test_bvh(bvh);
     test_flattened_bvh(bvh);
 }
