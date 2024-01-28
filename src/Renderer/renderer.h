@@ -58,7 +58,8 @@ public:
 
 	Renderer(int width, int height, HIPRTOrochiCtx* hiprt_orochi_ctx) : 
 		m_framebuffer_width(width), m_framebuffer_height(height),
-		m_framebuffer(width* height), m_hiprt_orochi_ctx(hiprt_orochi_ctx) {}
+		m_framebuffer(width* height), m_hiprt_orochi_ctx(hiprt_orochi_ctx),
+		m_trace_kernel(nullptr) {}
 	Renderer() {}
 
 	void render();
@@ -68,6 +69,7 @@ public:
 
 	void init_ctx(int device_index);
 	void compile_trace_kernel(const char* kernel_file_path, const char* kernel_function_name);
+	void launch_kernel(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args);
 
 	HIPRTScene create_hiprt_scene_from_scene(Scene& scene);
 	void set_hiprt_scene(const HIPRTScene& scene);
@@ -77,9 +79,6 @@ public:
 
 
 	int m_framebuffer_width, m_framebuffer_height;
-
-	int samples_per_pixel;
-	int bounces;
 
 private:
 	OrochiBuffer<float> m_framebuffer;

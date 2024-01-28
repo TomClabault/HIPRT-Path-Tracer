@@ -1,9 +1,10 @@
 #include "renderer.h"
 
+
 void Renderer::render()
 {
-	int tile_size_x = 32;
-	int tile_size_y = 32;
+	int tile_size_x = 8;
+	int tile_size_y = 8;
 
 	hiprtInt2 nb_groups;
 	nb_groups.x = std::ceil(m_framebuffer_width / (float)tile_size_x);
@@ -11,8 +12,8 @@ void Renderer::render()
 
 	hiprtInt2 resolution = make_hiprtInt2(m_framebuffer_width, m_framebuffer_height);
 
-	void* args[] = { &m_scene.geometry, m_framebuffer.get_pointer_address(), &resolution};
-	OROCHI_CHECK_ERROR(oroModuleLaunchKernel(m_trace_kernel, nb_groups.x, nb_groups.y, 1, tile_size_x, tile_size_y, 1, 0, 0, args, 0));
+	void* launch_args[] = { &m_scene.geometry, m_framebuffer.get_pointer_address(), &resolution};
+	launch_kernel(8, 8, resolution.x, resolution.y, launch_args);
 }
 
 void Renderer::resize_frame(int new_width, int new_height)
@@ -41,10 +42,29 @@ void Renderer::compile_trace_kernel(const char* kernel_file_path, const char* ke
 	buildTraceKernelFromBitcode(m_hiprt_orochi_ctx->hiprt_ctx, kernel_file_path, kernel_function_name, m_trace_kernel, include_paths);
 }
 
+void Renderer::launch_kernel(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args)
+{
+	hiprtInt2 nb_groups;
+	nb_groups.x = std::ceil(static_cast<float>(res_x) / tile_size_x);
+	nb_groups.y = std::ceil(static_cast<float>(res_y) / tile_size_y);
+
+	OROCHI_CHECK_ERROR(oroModuleLaunchKernel(m_trace_kernel, nb_groups.x, nb_groups.y, 1, tile_size_x, tile_size_y, 1, 0, 0, launch_args, 0));
+}
+
 Renderer::HIPRTScene Renderer::create_hiprt_scene_from_scene(Scene& scene)
 {
 	Renderer::HIPRTScene hiprt_scene;
 	hiprtTriangleMeshPrimitive& mesh = hiprt_scene.mesh;
+
+
+
+
+
+	scene.vertices_indices = std::vector<int>{ 0, 1, 2 };
+	scene.vertices_positions = std::vector<hiprtFloat3>{ {0, 0, 0} , {1.0, 0, 0}, {0.5, 0.5, 0} };
+
+
+
 
 	// Allocating and initializing the indices buffer
 	mesh.triangleCount = scene.vertices_indices.size() / 3;

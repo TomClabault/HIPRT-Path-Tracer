@@ -121,7 +121,15 @@ AppWindow::~AppWindow()
 void AppWindow::resize_frame(int pixels_width, int pixels_height)
 {
 	glViewport(0, 0, pixels_width, pixels_height);
+
+	m_width = pixels_width;
+	m_height = pixels_height;
 	m_renderer.resize_frame(pixels_width, pixels_height);
+
+	// Recreating the OpenGL display texture
+	glActiveTexture(GL_TEXTURE0 + AppWindow::DISPLAY_TEXTURE_UNIT);
+	glBindTexture(GL_TEXTURE_2D, m_display_texture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, m_width, m_height, 0, GL_RGBA, GL_FLOAT, nullptr);
 }
 
 void AppWindow::setup_display_program()
@@ -174,12 +182,6 @@ void AppWindow::setup_display_program()
 
 	glUseProgram(m_display_program);
 	glUniform1i(glGetUniformLocation(m_display_program, "u_texture"), AppWindow::DISPLAY_TEXTURE_UNIT);
-}
-
-void AppWindow::setup_renderer(const CommandLineArguments& arguments)
-{
-	m_renderer.samples_per_pixel = arguments.render_samples;
-	m_renderer.bounces = arguments.bounces;
 }
 
 void AppWindow::set_renderer_scene(Scene& scene)
