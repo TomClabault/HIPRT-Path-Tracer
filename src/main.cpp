@@ -26,6 +26,7 @@ int main(int argc, char* argv[])
 
     AppWindow app_window(1680, 1050);
     app_window.set_renderer_scene(parsed_scene);
+    app_window.get_renderer().set_camera(parsed_scene.camera);
     app_window.run();
 
     return 0;

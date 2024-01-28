@@ -12,7 +12,7 @@ void Renderer::render()
 
 	hiprtInt2 resolution = make_hiprtInt2(m_framebuffer_width, m_framebuffer_height);
 
-	void* launch_args[] = { &m_scene.geometry, m_framebuffer.get_pointer_address(), &resolution};
+	void* launch_args[] = { &m_scene.geometry, m_framebuffer.get_pointer_address(), &resolution, &m_camera};
 	launch_kernel(8, 8, resolution.x, resolution.y, launch_args);
 }
 
@@ -56,16 +56,6 @@ Renderer::HIPRTScene Renderer::create_hiprt_scene_from_scene(Scene& scene)
 	Renderer::HIPRTScene hiprt_scene;
 	hiprtTriangleMeshPrimitive& mesh = hiprt_scene.mesh;
 
-
-
-
-
-	scene.vertices_indices = std::vector<int>{ 0, 1, 2 };
-	scene.vertices_positions = std::vector<hiprtFloat3>{ {0, 0, 0} , {1.0, 0, 0}, {0.5, 0.5, 0} };
-
-
-
-
 	// Allocating and initializing the indices buffer
 	mesh.triangleCount = scene.vertices_indices.size() / 3;
 	mesh.triangleStride = sizeof(hiprtInt3);
@@ -104,4 +94,9 @@ Renderer::HIPRTScene Renderer::create_hiprt_scene_from_scene(Scene& scene)
 void Renderer::set_hiprt_scene(const Renderer::HIPRTScene& scene)
 {
 	m_scene = scene;
+}
+
+void Renderer::set_camera(const Camera& camera)
+{
+	m_camera = camera;
 }

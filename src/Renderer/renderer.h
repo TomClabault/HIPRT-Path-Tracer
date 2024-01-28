@@ -3,6 +3,7 @@
 
 #include "Image/color.h"
 #include "Renderer/orochi_buffer.h"
+#include "Scene/camera.h"
 #include "Scene/scene_parser.h"
 
 #include <vector>
@@ -74,11 +75,13 @@ public:
 	HIPRTScene create_hiprt_scene_from_scene(Scene& scene);
 	void set_hiprt_scene(const HIPRTScene& scene);
 
-
+	void set_camera(const Camera& camera);
 
 
 
 	int m_framebuffer_width, m_framebuffer_height;
+
+	Camera m_camera;
 
 private:
 	OrochiBuffer<float> m_framebuffer;

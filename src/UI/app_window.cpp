@@ -190,6 +190,11 @@ void AppWindow::set_renderer_scene(Scene& scene)
 	m_renderer.set_hiprt_scene(hiprt_scene);
 }
 
+Renderer& AppWindow::get_renderer()
+{
+	return m_renderer;
+}
+
 void AppWindow::run()
 {
 	while (!glfwWindowShouldClose(m_window))
