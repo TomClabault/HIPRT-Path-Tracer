@@ -36,8 +36,18 @@ Scene SceneParser::parse_scene_file(const std::string& filepath)
         parsed_scene.has_camera = true;
     }
 
+    // If the scene contains multiple meshes, each mesh will have
+    // its vertices indices starting at 0. We don't want that.
+    // We want indices to be continuously growing (because we don't want
+    // the second mesh (with indices starting at 0, i.e its own indices) to use
+    // the vertices of the first mesh that have been parsed (and that use indices 0!)
+    // The offset thus offsets the indices of the meshes that come after the first one
+    // to account for all the indices of the previously parsed meshes
+    int global_indices_offset = 0;
     for (int mesh_index = 0; mesh_index < scene->mNumMeshes; mesh_index++)
     {
+        int max_mesh_index_offset = 0;
+
         aiMesh* mesh = scene->mMeshes[mesh_index];
         aiMaterial* mesh_material = scene->mMaterials[mesh->mMaterialIndex];
 
@@ -79,13 +89,20 @@ Scene SceneParser::parse_scene_file(const std::string& filepath)
             is_mesh_emissive = true;
 
         parsed_scene.vertices_positions.insert(parsed_scene.vertices_positions.end(), reinterpret_cast<hiprtFloat3*>(&mesh->mVertices[0]), reinterpret_cast<hiprtFloat3*>(&mesh->mVertices[mesh->mNumVertices]));
-        parsed_scene.vertices_indices.reserve(mesh->mNumFaces * 3); // Assuming triangle faces only since the mesh has been triangulated
         for (int face_index = 0; face_index < mesh->mNumFaces; face_index++)
         {
             aiFace face = mesh->mFaces[face_index];
-            parsed_scene.vertices_indices.push_back(face.mIndices[0]);
-            parsed_scene.vertices_indices.push_back(face.mIndices[1]);
-            parsed_scene.vertices_indices.push_back(face.mIndices[2]);
+
+            int index_1 = face.mIndices[0];
+            int index_2 = face.mIndices[1];
+            int index_3 = face.mIndices[2];
+
+            // Accumulating the maximum index of this mesh
+            max_mesh_index_offset = std::max(max_mesh_index_offset, std::max(index_1, std::max(index_2, index_3)));
+
+            parsed_scene.vertices_indices.push_back(index_1 + global_indices_offset);
+            parsed_scene.vertices_indices.push_back(index_2 + global_indices_offset);
+            parsed_scene.vertices_indices.push_back(index_3 + global_indices_offset);
 
             //The face that we just pushed in the triangle buffer is emissive
             //We're going to add its index to the emissive triangles buffer
@@ -97,6 +114,12 @@ Scene SceneParser::parse_scene_file(const std::string& filepath)
             //do things internally)
             parsed_scene.material_indices.push_back(material_index);
         }
+
+        // If the max index of the mesh was 19, we want the next to start
+        // at 20, not 19, so we ++
+        max_mesh_index_offset++;
+        // Adding the maximum index of the mesh to our global indices offset 
+        global_indices_offset += max_mesh_index_offset;
     }
 
     return parsed_scene;
