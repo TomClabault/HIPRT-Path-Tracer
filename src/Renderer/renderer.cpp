@@ -2,22 +2,20 @@
 
 void Renderer::render()
 {
-	static int debug_counter = 0;
+	int tile_size_x = 32;
+	int tile_size_y = 32;
 
-	float counter_float = debug_counter / 59.0f;
+	hiprtInt2 nb_groups;
+	nb_groups.x = std::ceil(m_framebuffer_width / (float)tile_size_x);
+	nb_groups.y = std::ceil(m_framebuffer_height / (float)tile_size_y);
 
-	std::vector<float> framebuffer_float(m_framebuffer_height * m_framebuffer_width * 4);
-	for (int y = 0; y < m_framebuffer_height; y++)
-		for (int x = 0; x < m_framebuffer_width; x++)
-			*((Color*)&framebuffer_float[(y * m_framebuffer_width + x) * 4]) = Color(counter_float, 1.0f - counter_float, 0.0f);
+	hiprtInt2 resolution = make_hiprtInt2(m_framebuffer_width, m_framebuffer_height);
 
-	m_framebuffer.upload_pixels(framebuffer_float);
-
-	debug_counter++;
-	debug_counter %= 60;
+	void* args[] = { &m_scene.geometry, m_framebuffer.get_pointer_address(), &resolution};
+	OROCHI_CHECK_ERROR(oroModuleLaunchKernel(m_trace_kernel, nb_groups.x, nb_groups.y, 1, tile_size_x, tile_size_y, 1, 0, 0, args, 0));
 }
 
-void Renderer::resize(int new_width, int new_height)
+void Renderer::resize_frame(int new_width, int new_height)
 {
 	m_framebuffer_width = new_width;
 	m_framebuffer_height = new_height;
@@ -31,7 +29,59 @@ OrochiBuffer<float>& Renderer::get_orochi_framebuffer()
 	return m_framebuffer;
 }
 
-void Renderer::set_scene(const Scene& scene)
+void Renderer::init_ctx(int device_index)
 {
+	m_hiprt_orochi_ctx = std::make_shared<Renderer::HIPRTOrochiCtx>();
+	m_hiprt_orochi_ctx.get()->init(device_index);
+}
 
+void Renderer::compile_trace_kernel(const char* kernel_file_path, const char* kernel_function_name)
+{
+	std::vector<std::string> include_paths{"./", "../thirdparties/hiprt/include"};
+	buildTraceKernelFromBitcode(m_hiprt_orochi_ctx->hiprt_ctx, kernel_file_path, kernel_function_name, m_trace_kernel, include_paths);
+}
+
+Renderer::HIPRTScene Renderer::create_hiprt_scene_from_scene(Scene& scene)
+{
+	Renderer::HIPRTScene hiprt_scene;
+	hiprtTriangleMeshPrimitive& mesh = hiprt_scene.mesh;
+
+	// Allocating and initializing the indices buffer
+	mesh.triangleCount = scene.vertices_indices.size() / 3;
+	mesh.triangleStride = sizeof(hiprtInt3);
+	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&mesh.triangleIndices), mesh.triangleCount * sizeof(hiprtInt3)));
+	OROCHI_CHECK_ERROR(oroMemcpyHtoD(reinterpret_cast<oroDeviceptr>(mesh.triangleIndices), scene.vertices_indices.data(), mesh.triangleCount * sizeof(hiprtInt3)));
+
+	// Allocating and initializing the vertices positions buiffer
+	mesh.vertexCount = scene.vertices_positions.size();
+	mesh.vertexStride = sizeof(hiprtFloat3);
+	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&mesh.vertices), mesh.vertexCount * sizeof(hiprtFloat3)));
+	OROCHI_CHECK_ERROR(oroMemcpyHtoD(reinterpret_cast<oroDeviceptr>(mesh.vertices), scene.vertices_positions.data(), mesh.vertexCount * sizeof(hiprtFloat3)));
+
+	hiprtGeometryBuildInput geometry_build_input;
+	geometry_build_input.type = hiprtPrimitiveTypeTriangleMesh;
+	geometry_build_input.primitive.triangleMesh = hiprt_scene.mesh;
+
+	// Getting the buffer sizes for the construction of the BVH
+	size_t geometry_temp_size;
+	hiprtDevicePtr geometry_temp;
+	hiprtBuildOptions build_options;
+	build_options.buildFlags = hiprtBuildFlagBitPreferHighQualityBuild;// TODO ImGui to choose the flags at runtime and be able to compare the performance
+
+	HIPRT_CHECK_ERROR(hiprtGetGeometryBuildTemporaryBufferSize(m_hiprt_orochi_ctx->hiprt_ctx, geometry_build_input, build_options, geometry_temp_size));
+	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&geometry_temp), geometry_temp_size));
+
+	// Building the BVH
+	hiprtGeometry& scene_geometry = hiprt_scene.geometry;
+	HIPRT_CHECK_ERROR(hiprtCreateGeometry(m_hiprt_orochi_ctx->hiprt_ctx, geometry_build_input, build_options, scene_geometry));
+	HIPRT_CHECK_ERROR(hiprtBuildGeometry(m_hiprt_orochi_ctx->hiprt_ctx, hiprtBuildOperationBuild, geometry_build_input, build_options, geometry_temp, 0, scene_geometry));
+
+	OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(geometry_temp)));
+
+	return hiprt_scene;
+}
+
+void Renderer::set_hiprt_scene(const Renderer::HIPRTScene& scene)
+{
+	m_scene = scene;
 }

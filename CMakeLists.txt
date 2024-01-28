@@ -32,6 +32,8 @@ set(GLEW_BIN_DIR "thirdparties/opengl/bin/GLEW")
 set(HIPRT_LIB_DIR "thirdparties/hiprt/lib")
 set(HIPRT_BIN_DIR "thirdparties/hiprt/bin")
 
+set(KERNELS_DIR "src/Kernels")
+
 link_directories(${CMAKE_SOURCE_DIR}/${OIDN_LIB_DIR})
 link_directories(${CMAKE_SOURCE_DIR}/${GLFW_LIB_DIR})
 link_directories(${CMAKE_SOURCE_DIR}/${GLEW_LIB_DIR})
@@ -105,6 +107,8 @@ add_custom_command(TARGET HIPRTPathTracer POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/${GLEW_BIN_DIR}/glew32.dll ${CMAKE_CURRENT_BINARY_DIR}
 	COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/${HIPRT_BIN_DIR}/hiprt0200264.dll ${CMAKE_CURRENT_BINARY_DIR}
 	COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/${HIPRT_BIN_DIR}/hiprtc0507.dll ${CMAKE_CURRENT_BINARY_DIR}
+	COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_CURRENT_BINARY_DIR}/Kernels
+	COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/${KERNELS_DIR} ${CMAKE_CURRENT_BINARY_DIR}/Kernels
 )
 
 # Macro to preserve source files hierarchy in Visual Studio

@@ -14,11 +14,14 @@ public:
 
 	void resize(int new_element_count);
 
+	T* get_pointer();
+	T** get_pointer_address();
+
 	std::vector<T> download_pixels();
 	void upload_pixels(std::vector<T>& data);
 
 private:
-	hiprtDevicePtr* m_data_pointer;
+	T* m_data_pointer;
 
 	size_t m_element_count;
 };
@@ -38,6 +41,18 @@ void OrochiBuffer<T>::resize(int new_element_count)
 	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&m_data_pointer), sizeof(T) * new_element_count));
 
 	m_element_count = new_element_count;
+}
+
+template <typename T>
+T* OrochiBuffer<T>::get_pointer()
+{
+	return m_data_pointer;
+}
+
+template <typename T>
+T** OrochiBuffer<T>::get_pointer_address()
+{
+	return &m_data_pointer;
 }
 
 template <typename T>

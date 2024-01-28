@@ -17,7 +17,8 @@ void glfw_window_resized_callback(GLFWwindow* window, int width, int height)
 	int new_width_pixels, new_height_pixels;
 	glfwGetFramebufferSize(window, &new_width_pixels, &new_height_pixels);
 
-	static_cast<AppWindow*>(glfwGetWindowUserPointer(window))->resize(width, height);
+	// We've stored a pointer to the AppWindow in the "WindowUserPointer" of glfw
+	static_cast<AppWindow*>(glfwGetWindowUserPointer(window))->resize_frame(width, height);
 }
 
 // Implementation from https://learnopengl.com/In-Practice/Debugging
@@ -105,9 +106,9 @@ AppWindow::AppWindow(int width, int height) : m_width(width), m_height(height)
 	}
 
 	setup_display_program();
-	m_hiprt_orochi_ctx.init(0);
-
-	m_renderer.resize(width, height);
+	m_renderer.init_ctx(0);
+	m_renderer.compile_trace_kernel("Kernels/NormalsKernel.h", "NormalsKernel");
+	m_renderer.resize_frame(width, height);
 }
 
 AppWindow::~AppWindow()
@@ -117,10 +118,10 @@ AppWindow::~AppWindow()
 }
 
 
-void AppWindow::resize(int pixels_width, int pixels_height)
+void AppWindow::resize_frame(int pixels_width, int pixels_height)
 {
 	glViewport(0, 0, pixels_width, pixels_height);
-	m_renderer.resize(pixels_width, pixels_height);
+	m_renderer.resize_frame(pixels_width, pixels_height);
 }
 
 void AppWindow::setup_display_program()
@@ -181,9 +182,10 @@ void AppWindow::setup_renderer(const CommandLineArguments& arguments)
 	m_renderer.bounces = arguments.bounces;
 }
 
-void AppWindow::set_renderer_scene(const Scene& scene)
+void AppWindow::set_renderer_scene(Scene& scene)
 {
-	m_renderer.set_scene(scene);
+	Renderer::HIPRTScene hiprt_scene = m_renderer.create_hiprt_scene_from_scene(scene);
+	m_renderer.set_hiprt_scene(hiprt_scene);
 }
 
 void AppWindow::run()

@@ -3,22 +3,74 @@
 
 #include "Image/color.h"
 #include "Renderer/orochi_buffer.h"
+#include "Scene/scene_parser.h"
 
 #include <vector>
-#include <Scene/scene_parser.h>
 
 class Renderer
 {
 public:
-	Renderer(int width, int height) : m_framebuffer_width(width), m_framebuffer_height(height), m_framebuffer(width * height) {}
+	struct HIPRTOrochiCtx
+	{
+		void init(int device_index)
+		{
+			OROCHI_CHECK_ERROR(static_cast<oroError>(oroInitialize((oroApi)(ORO_API_HIP | ORO_API_CUDA), 0)));
+
+			OROCHI_CHECK_ERROR(oroInit(0));
+			OROCHI_CHECK_ERROR(oroDeviceGet(&orochi_device, device_index));
+			OROCHI_CHECK_ERROR(oroCtxCreate(&orochi_ctx, 0, orochi_device));
+
+			oroDeviceProp props;
+			OROCHI_CHECK_ERROR(oroGetDeviceProperties(&props, orochi_device));
+
+			std::cout << "hiprt ver." << HIPRT_VERSION_STR << std::endl;
+			std::cout << "Executing on '" << props.name << "'" << std::endl;
+			if (std::string(props.name).find("NVIDIA") != std::string::npos)
+				hiprt_ctx_input.deviceType = hiprtDeviceNVIDIA;
+			else
+				hiprt_ctx_input.deviceType = hiprtDeviceAMD;
+
+			hiprt_ctx_input.ctxt = oroGetRawCtx(orochi_ctx);
+			hiprt_ctx_input.device = oroGetRawDevice(orochi_device);
+			hiprtSetLogLevel(hiprtLogLevelError);
+
+			HIPRT_CHECK_ERROR(hiprtCreateContext(HIPRT_API_VERSION, hiprt_ctx_input, hiprt_ctx));
+		}
+
+		hiprtContextCreationInput hiprt_ctx_input;
+		oroCtx					  orochi_ctx;
+		oroDevice				  orochi_device;
+
+		hiprtContext hiprt_ctx;
+	};
+
+	struct HIPRTScene
+	{
+		~HIPRTScene()
+		{
+			oroFree(reinterpret_cast<oroDeviceptr>(mesh.triangleIndices));
+			oroFree(reinterpret_cast<oroDeviceptr>(mesh.vertices));
+		}
+
+		hiprtTriangleMeshPrimitive mesh;
+		hiprtGeometry geometry;
+	};
+
+	Renderer(int width, int height, HIPRTOrochiCtx* hiprt_orochi_ctx) : 
+		m_framebuffer_width(width), m_framebuffer_height(height),
+		m_framebuffer(width* height), m_hiprt_orochi_ctx(hiprt_orochi_ctx) {}
 	Renderer() {}
 
 	void render();
-	void resize(int new_width, int new_height);
+	void resize_frame(int new_width, int new_height);
 
 	OrochiBuffer<float>& get_orochi_framebuffer();
 
-	void set_scene(const Scene& scene);
+	void init_ctx(int device_index);
+	void compile_trace_kernel(const char* kernel_file_path, const char* kernel_function_name);
+
+	HIPRTScene create_hiprt_scene_from_scene(Scene& scene);
+	void set_hiprt_scene(const HIPRTScene& scene);
 
 
 
@@ -31,6 +83,10 @@ public:
 
 private:
 	OrochiBuffer<float> m_framebuffer;
+
+	std::shared_ptr<HIPRTOrochiCtx> m_hiprt_orochi_ctx;
+	oroFunction m_trace_kernel;
+	HIPRTScene m_scene;
 };
 
 #endif
