@@ -24,6 +24,7 @@ public:
 
 	void setup_display_program();
 	void set_renderer_scene(Scene& scene);
+	Renderer& get_renderer();
 	void display(const std::vector<Color>& image_data);
 	void display(OrochiBuffer<float>& orochi_buffer);
 

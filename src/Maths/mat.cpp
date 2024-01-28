@@ -10,13 +10,13 @@
 float radians( const float deg )
 {
     return ((float) M_PI  / 180.f) * deg;
-}
-
+} 
+ 
 float degrees( const float rad )
 {
     return (180.f / (float) M_PI) * rad;
 }
-
+ 
 Transform& Transform::column( const unsigned id, const float t0, const float t1, const float t2, const float t3 )
 {
     m[0][id]= t0;
@@ -121,7 +121,7 @@ Vector Transform::operator() ( const Vector& v ) const
     float yt= m[1][0] * x + m[1][1] * y + m[1][2] * z;                  // dot(vec4(m[1]), vec4(v, 0))
     float zt= m[2][0] * x + m[2][1] * y + m[2][2] * z;                  // dot(vec4(m[2]), vec4(v, 0))
     // dot(vec4(m[3]), vec4(v, 0)) == dot(vec4(0, 0, 0, 1), vec4(v, 0)) == 0 par definition
-
+       
     return Vector(xt, yt, zt);
 }
 
