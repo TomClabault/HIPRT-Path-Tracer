@@ -19,6 +19,7 @@ void buildTraceKernelFromBitcode(
 	const char* functionName,
 	oroFunction& functionOut,
 	std::vector<std::string> include_paths,
+	std::vector<std::pair<std::string, std::string>> precompiler_defines = {},
 	std::vector<const char*>* opts = nullptr,
 	std::vector<hiprtFuncNameSet>* funcNameSets = nullptr,
 	uint32_t					   numGeomTypes = 0,

@@ -38,7 +38,9 @@ void Renderer::init_ctx(int device_index)
 void Renderer::compile_trace_kernel(const char* kernel_file_path, const char* kernel_function_name)
 {
 	std::vector<std::string> include_paths{"./", "../thirdparties/hiprt/include"};
-	buildTraceKernelFromBitcode(m_hiprt_orochi_ctx->hiprt_ctx, kernel_file_path, kernel_function_name, m_trace_kernel, include_paths);
+	std::vector<std::pair<std::string, std::string>> precompiler_defines;
+	precompiler_defines.push_back(std::make_pair<std::string, std::string>(std::string("TEST_DEFINE_ER"), std::string("1")));
+	buildTraceKernelFromBitcode(m_hiprt_orochi_ctx->hiprt_ctx, kernel_file_path, kernel_function_name, m_trace_kernel, include_paths, precompiler_defines);
 }
 
 void Renderer::launch_kernel(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args)

@@ -87,6 +87,7 @@ void buildTraceKernelFromBitcode(
 	const char* functionName,
 	oroFunction& functionOut,
 	std::vector<std::string> include_paths,
+	std::vector<std::pair<std::string, std::string>> precompiler_defines,
 	std::vector<const char*>* opts,
 	std::vector<hiprtFuncNameSet>* funcNameSets,
 	uint32_t					   numGeomTypes,
@@ -128,6 +129,17 @@ void buildTraceKernelFromBitcode(
 	{
 		include_path = (std::string("-I") + include_path);
 		options.push_back(include_path.c_str());
+	}
+
+	for (std::pair<std::string, std::string>& precompiler_option : precompiler_defines)
+	{
+		std::string option_string = "-D " + precompiler_option.first + "=" + precompiler_option.second;
+		// Using the precompiler_option as the holder of the option string
+		// If instead we only push_back(option_string.c_str()) to the options
+		// this is going to a result into trash being added to the options after 
+		// 'option_string' is destroyed at the end of the iteration of this loop
+		precompiler_option.first = option_string;
+		options.push_back(precompiler_option.first.c_str());
 	}
 
 	orortcProgram prog;
