@@ -4,6 +4,8 @@ project(HIPRTPathTracer LANGUAGES CXX)
 
 #To be able to use the ExternalProject_Add() command
 include(ExternalProject)
+# FetchContent command for GLM
+#include(FetchContent) #TODO remove
 
 #Downloading ASSIMP library from Github for assets loading
 set(EXTERNAL_ASSIMP_INSTALL_LOCATION ${CMAKE_BINARY_DIR}/external/assimp)
@@ -44,6 +46,7 @@ file(GLOB_RECURSE SOURCE_FILES src/*.cpp src/*.h)
 file(GLOB_RECURSE OPENGL_HEADERS thirdparties/opengl/include/*.h)
 file(GLOB_RECURSE STBI_HEADERS thirdparties/stbi/*.h)
 file(GLOB_RECURSE IMGUI_FILES thirdparties/imgui/*.h thirdparties/imgui/*.cpp)
+file(GLOB_RECURSE GLM_FILES thirdparties/glm/*.h thirdparties/glm/*.cpp)
 file(GLOB_RECURSE OIDN_HEADERS thirdparties/oidn/include/OpenImageDenoise/*.hpp thirdparties/oidn/include/OpenImageDenoise/*.h)
 file(GLOB_RECURSE HIPRT_HEADERS thirdparties/hiprt/include/*.h)
 file(GLOB_RECURSE OROCHI_FILES thirdparties/Orochi/*.h thirdparties/Orochi/*.cpp)
@@ -69,7 +72,6 @@ find_package(OpenMP)
 find_package(OpenGL REQUIRED)
 
 target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX OpenImageDenoise ${OPENGL_LIBRARY} glfw3 glew32 hiprt0200264)
-
 # "version" is a library from the Windows SDK
 target_link_libraries(HIPRTPathTracer PRIVATE version)
 
@@ -94,6 +96,7 @@ endif()
 target_include_directories(HIPRTPathTracer PRIVATE "src/")
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/opengl/include")
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/stbi/")
+target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/glm/")
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/imgui/")
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/oidn/include/")
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/hiprt/include/")

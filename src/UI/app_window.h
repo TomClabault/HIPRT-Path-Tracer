@@ -1,6 +1,8 @@
 #ifndef APP_WINDOW_H
 #define APP_WINDOW_H
 
+#include "UI/application_settings.h"
+
 #include "GL/glew.h"
 #include "GLFW/glfw3.h"
 
@@ -26,9 +28,14 @@ public:
 	static void APIENTRY gl_debug_output_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam);
 	void resize_frame(int pixels_width, int pixels_height);
 
+	Renderer& get_renderer();
 	void setup_display_program();
 	void set_renderer_scene(Scene& scene);
-	Renderer& get_renderer();
+	void update_renderer_view_translation(double translation_x, double translation_y);
+
+	std::pair<double, double> get_cursor_position();
+	void set_cursor_position(std::pair<double, double> new_position);
+
 	void display(const std::vector<Color>& image_data);
 	void display(OrochiBuffer<float>& orochi_buffer);
 	void display_imgui();
@@ -38,6 +45,9 @@ public:
 
 private:
 	int m_width, m_height;
+	std::pair<double, double> m_cursor_position;
+
+	ApplicationSettings m_application_settings;
 
 	Renderer m_renderer;
 

@@ -18,7 +18,27 @@ void glfw_window_resized_callback(GLFWwindow* window, int width, int height)
 	glfwGetFramebufferSize(window, &new_width_pixels, &new_height_pixels);
 
 	// We've stored a pointer to the AppWindow in the "WindowUserPointer" of glfw
-	static_cast<AppWindow*>(glfwGetWindowUserPointer(window))->resize_frame(width, height);
+	reinterpret_cast<AppWindow*>(glfwGetWindowUserPointer(window))->resize_frame(width, height);
+}
+
+void glfw_mouse_cursor_callback(GLFWwindow* window, double xpos, double ypos)
+{
+	AppWindow* app_window = reinterpret_cast<AppWindow*>(glfwGetWindowUserPointer(window));
+
+	std::pair<double, double> old_position = app_window->get_cursor_position();
+	if (old_position.first == -1 && old_position.second == -1)
+		;
+		// If this is the first position of the cursor, nothing to do
+	else
+	{
+		// Computing the difference in movement
+		std::pair<double, double> difference = std::make_pair(xpos - old_position.first, ypos - old_position.second);
+		if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
+			app_window->update_renderer_view_translation(-difference.first, -difference.second);
+	}
+
+	// Updating the position
+	app_window->set_cursor_position(std::make_pair(xpos, ypos));
 }
 
 // Implementation from https://learnopengl.com/In-Practice/Debugging
@@ -87,6 +107,7 @@ AppWindow::AppWindow(int width, int height) : m_width(width), m_height(height)
 	// such as the window_resized_callback function for example
 	glfwSetWindowUserPointer(m_window, this);
 	glfwSetWindowSizeCallback(m_window, glfw_window_resized_callback);
+	glfwSetCursorPosCallback(m_window, glfw_mouse_cursor_callback);
 	glfwSwapInterval(1);
 
 	glewInit();
@@ -200,9 +221,24 @@ void AppWindow::set_renderer_scene(Scene& scene)
 	m_renderer.set_hiprt_scene(hiprt_scene);
 }
 
+void AppWindow::update_renderer_view_translation(std::pair<double, double> translation_xy)
+{
+	m_renderer.translate_camera_view(translation_xy);
+}
+
 Renderer& AppWindow::get_renderer()
 {
 	return m_renderer;
+}
+
+std::pair<double, double> AppWindow::get_cursor_position()
+{
+	return m_cursor_position;
+}
+
+void AppWindow::set_cursor_position(std::pair<double, double> new_position)
+{
+	m_cursor_position = new_position;
 }
 
 void AppWindow::run()

@@ -25,11 +25,10 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTSceneDat
 	hiprtFloat3 vertex_B = scene_geometry.triangles_vertices[index_B];
 	hiprtFloat3 vertex_C = scene_geometry.triangles_vertices[index_C];
 
-	normal = hiprtFloat3{ 0.5f, 0.5f, 0.5f } *normalize(cross(vertex_B - vertex_A, vertex_C - vertex_A)) + hiprtFloat3{ 0.5f, 0.5f, 0.5f };
+	normal = hiprtFloat3{ 0.5f, 0.5f, 0.5f } * normalize(cross(vertex_B - vertex_A, vertex_C - vertex_A)) + hiprtFloat3{ 0.5f, 0.5f, 0.5f };
 
 	pixels[index * 4 + 0] = hit.hasHit() ? normal.x : 0.0f;
 	pixels[index * 4 + 1] = hit.hasHit() ? normal.y : 0.0f;
 	pixels[index * 4 + 2] = hit.hasHit() ? normal.z : 0.0f;
 	pixels[index * 4 + 3] = 1.0f;
-#endif
 }
