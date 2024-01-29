@@ -1,7 +1,9 @@
 #ifndef HIPRTRT_COMMON
 #define HIPRTRT_COMMON
 
-#include "Kernels/HIPRTMaths.h"
+#include "Kernels/includes/HIPRT_maths.h"
+#include "Kernels/includes/HIPRT_scene_data.h"
+
 #include <hiprt/hiprt_device.h>
 #include <hiprt/hiprt_vec.h>
 

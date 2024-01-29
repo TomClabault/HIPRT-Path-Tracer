@@ -2,8 +2,8 @@
 #define OROCHI_BUFFER_H
 
 #include "hiprt/hiprt.h"
+#include "HIPRT-Orochi/orochi_utils.h"
 #include "Orochi/Orochi.h"
-#include "Utils/orochi_utils.h"
 
 template <typename T>
 class OrochiBuffer

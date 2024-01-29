@@ -1,8 +1,10 @@
 #ifndef RENDERER_H
 #define RENDERER_H
 
+
+#include "HIPRT-Orochi/orochi_buffer.h"
+#include "Kernels/includes/HIPRT_scene_data.h"
 #include "Image/color.h"
-#include "Renderer/orochi_buffer.h"
 #include "Scene/camera.h"
 #include "Scene/scene_parser.h"
 
@@ -89,6 +91,7 @@ private:
 	std::shared_ptr<HIPRTOrochiCtx> m_hiprt_orochi_ctx;
 	oroFunction m_trace_kernel;
 	HIPRTScene m_scene;
+	HIPRTSceneData m_scene_data;
 };
 
 #endif
