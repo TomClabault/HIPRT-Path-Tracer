@@ -103,3 +103,8 @@ void Renderer::set_camera(const Camera& camera)
 {
 	m_camera = camera;
 }
+
+void Renderer::translate_camera_view(double translation_x, double translation_y, double translation_slowdown_x, double translation_slowdown_y)
+{
+	m_camera.view_matrix = Translation(translation_x / translation_slowdown_x, translation_y / translation_slowdown_y, 0.0f)(m_camera.view_matrix);
+}

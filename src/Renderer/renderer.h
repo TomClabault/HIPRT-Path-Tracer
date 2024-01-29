@@ -78,7 +78,7 @@ public:
 	void set_hiprt_scene(const HIPRTScene& scene);
 
 	void set_camera(const Camera& camera);
-
+	void translate_camera_view(double translation_x, double translation_y, double translation_slowdown_x, double translation_slowdown_y);
 
 
 	int m_framebuffer_width, m_framebuffer_height;

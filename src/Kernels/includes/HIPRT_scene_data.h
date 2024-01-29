@@ -10,6 +10,8 @@
  */
 struct HIPRTSceneData
 {
+	HIPRTSceneData() : triangles_indices(nullptr), triangles_vertices(nullptr) {}
+
 	// A device pointer to the buffer of triangles indices
 	int* triangles_indices;
 	// A device pointer to the buffer of triangle vertices
