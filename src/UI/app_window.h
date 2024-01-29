@@ -4,6 +4,10 @@
 #include "GL/glew.h"
 #include "GLFW/glfw3.h"
 
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
+
 #include "Utils/commandline_arguments.h"
 #include "Renderer/renderer.h"
 
@@ -27,6 +31,7 @@ public:
 	Renderer& get_renderer();
 	void display(const std::vector<Color>& image_data);
 	void display(OrochiBuffer<float>& orochi_buffer);
+	void display_imgui();
 
 	void run();
 	void quit();

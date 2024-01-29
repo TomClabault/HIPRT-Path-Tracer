@@ -11,6 +11,7 @@ class OrochiBuffer
 public:
 	OrochiBuffer() : m_data_pointer(nullptr) {}
 	OrochiBuffer(int element_count);
+	~OrochiBuffer();
 
 	void resize(int new_element_count);
 
@@ -30,6 +31,13 @@ template <typename T>
 OrochiBuffer<T>::OrochiBuffer(int element_count) : m_element_count(element_count)
 {
 	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&m_data_pointer), sizeof(T) * element_count));
+}
+
+template <typename T>
+OrochiBuffer<T>::~OrochiBuffer()
+{
+	if (m_data_pointer)
+		OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(m_data_pointer)));
 }
 
 template <typename T>

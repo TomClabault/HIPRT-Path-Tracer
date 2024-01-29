@@ -12,6 +12,11 @@ enum BRDF
 
 struct RendererMaterial
 {
+    bool is_emissive()
+    {
+        return emission.r != 0.0f || emission.g != 0.0f || emission.b != 0.0f;
+    }
+
     BRDF brdf_type;
 
     Color emission = Color(0.0f, 0.0f, 0.0f);

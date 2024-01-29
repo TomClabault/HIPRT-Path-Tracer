@@ -1,6 +1,10 @@
 #ifndef SCENE_PARSER_H
 #define SCENE_PARSER_H
 
+#include "assimp/Importer.hpp"
+#include "assimp/scene.h"
+#include "assimp/postprocess.h"
+
 #include "hiprt/hiprt_vec.h"
 
 #include "Scene/camera.h"
@@ -52,6 +56,7 @@ struct Scene
 class SceneParser
 {
 public:
+    static RendererMaterial mesh_mat_to_renderer_mat(aiMaterial* mesh_material);
     static Scene parse_scene_file(const std::string& filepath);
 };
 

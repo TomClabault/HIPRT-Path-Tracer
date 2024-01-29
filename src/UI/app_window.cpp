@@ -105,6 +105,16 @@ AppWindow::AppWindow(int width, int height) : m_width(width), m_height(height)
 		glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
 	}
 
+	// Setting ImGui up
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO();
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+
+	ImGui_ImplGlfw_InitForOpenGL(m_window, true);
+	ImGui_ImplOpenGL3_Init();
+
 	setup_display_program();
 	m_renderer.init_ctx(0);
 	m_renderer.compile_trace_kernel("Kernels/normals_kernel.h", "NormalsKernel");
@@ -199,10 +209,17 @@ void AppWindow::run()
 {
 	while (!glfwWindowShouldClose(m_window))
 	{
-		m_renderer.render();
-		display(m_renderer.get_orochi_framebuffer());
-
 		glfwPollEvents();
+
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+
+		m_renderer.render();
+
+		display(m_renderer.get_orochi_framebuffer());
+		display_imgui();
+
 		glfwSwapBuffers(m_window);
 	}
 
@@ -231,8 +248,23 @@ void AppWindow::display(OrochiBuffer<float>& orochi_buffer)
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
+void AppWindow::display_imgui()
+{
+	ImGui::ShowDemoWindow(); // Show demo window! :)
+
+	ImGui::Render();
+	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+}
+
 void AppWindow::quit()
 {
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplGlfw_Shutdown();
+	ImGui::DestroyContext();
+
+	glDeleteTextures(1, &m_display_texture);
+	glDeleteProgram(m_display_program);
+
 	std::exit(0);
 }
 
