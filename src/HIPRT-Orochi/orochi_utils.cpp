@@ -1,4 +1,4 @@
-#include "Utils/orochi_utils.h"
+#include "HIPRT-Orochi/orochi_utils.h"
 
 void orochi_check_error(oroError res, const char* file, uint32_t line)
 {

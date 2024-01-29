@@ -107,7 +107,7 @@ AppWindow::AppWindow(int width, int height) : m_width(width), m_height(height)
 
 	setup_display_program();
 	m_renderer.init_ctx(0);
-	m_renderer.compile_trace_kernel("Kernels/NormalsKernel.h", "NormalsKernel");
+	m_renderer.compile_trace_kernel("Kernels/normals_kernel.h", "NormalsKernel");
 	m_renderer.resize_frame(width, height);
 }
 
@@ -235,3 +235,4 @@ void AppWindow::quit()
 {
 	std::exit(0);
 }
+

@@ -1,6 +1,5 @@
 #include "renderer.h"
 
-
 void Renderer::render()
 {
 	int tile_size_x = 8;
@@ -12,7 +11,7 @@ void Renderer::render()
 
 	hiprtInt2 resolution = make_hiprtInt2(m_framebuffer_width, m_framebuffer_height);
 
-	void* launch_args[] = { &m_scene.geometry, m_framebuffer.get_pointer_address(), &resolution, &m_camera};
+	void* launch_args[] = { &m_scene.geometry, &m_scene_data, m_framebuffer.get_pointer_address(), &resolution, &m_camera};
 	launch_kernel(8, 8, resolution.x, resolution.y, launch_args);
 }
 
@@ -94,6 +93,8 @@ Renderer::HIPRTScene Renderer::create_hiprt_scene_from_scene(Scene& scene)
 void Renderer::set_hiprt_scene(const Renderer::HIPRTScene& scene)
 {
 	m_scene = scene;
+	m_scene_data.triangles_indices = reinterpret_cast<int*>(scene.mesh.triangleIndices);
+	m_scene_data.triangles_vertices = reinterpret_cast<hiprtFloat3*>(scene.mesh.vertices);
 }
 
 void Renderer::set_camera(const Camera& camera)
