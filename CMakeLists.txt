@@ -43,6 +43,7 @@ link_directories(${EXTERNAL_ASSIMP_INSTALL_LOCATION}/lib)
 file(GLOB_RECURSE SOURCE_FILES src/*.cpp src/*.h)
 file(GLOB_RECURSE OPENGL_HEADERS thirdparties/opengl/include/*.h)
 file(GLOB_RECURSE STBI_HEADERS thirdparties/stbi/*.h)
+file(GLOB_RECURSE IMGUI_FILES thirdparties/imgui/*.h thirdparties/imgui/*.cpp)
 file(GLOB_RECURSE OIDN_HEADERS thirdparties/oidn/include/OpenImageDenoise/*.hpp thirdparties/oidn/include/OpenImageDenoise/*.h)
 file(GLOB_RECURSE HIPRT_HEADERS thirdparties/hiprt/include/*.h)
 file(GLOB_RECURSE OROCHI_FILES thirdparties/Orochi/*.h thirdparties/Orochi/*.cpp)
@@ -54,6 +55,7 @@ add_executable(HIPRTPathTracer
 
 	${OPENGL_HEADERS}
 	${STBI_HEADERS}
+	${IMGUI_FILES}
 	${ASSIMP_HEADERS}
 	${OIDN_HEADERS}
 	${HIPRT_HEADERS}
@@ -92,6 +94,7 @@ endif()
 target_include_directories(HIPRTPathTracer PRIVATE "src/")
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/opengl/include")
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/stbi/")
+target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/imgui/")
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/oidn/include/")
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/hiprt/include/")
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/Orochi/")
