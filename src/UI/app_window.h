@@ -36,6 +36,7 @@ public:
 	void set_renderer_scene(Scene& scene);
 	void update_renderer_view_translation(float translation_x, float translation_y);
 	void update_renderer_view_zoom(float offset);
+	void update_renderer_view_rotation(float offset_x, float offset_y);
 
 	std::pair<float, float> get_cursor_position();
 	void set_cursor_position(std::pair<float, float> new_position);

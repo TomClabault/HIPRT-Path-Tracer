@@ -1,6 +1,7 @@
 #ifndef HIPRTRT_COMMON
 #define HIPRTRT_COMMON
 
+#include "Kernels/includes/HIPRT_camera.h"
 #include "Kernels/includes/HIPRT_maths.h"
 #include "Kernels/includes/HIPRT_scene_data.h"
 
@@ -59,17 +60,7 @@ struct xorshift32_generator
     xorshift32_state m_state;
 };
 
-struct Camera
-{
-    float4x4 view_matrix;
-
-    //Full FOV, not half
-    float fov;
-    float full_fov_radians;
-    float focal_length;
-};
-
-DEVICE_KERNEL_SIGNATURE(hiprtRay) get_camera_ray(Camera camera, float x, float y, int res_x, int res_y)
+DEVICE_KERNEL_SIGNATURE(hiprtRay) get_camera_ray(HIPRTCamera camera, float x, float y, int res_x, int res_y)
 {
     float x_ndc_space = x / res_x * 2 - 1;
     x_ndc_space *= (float)res_x / res_y; //Aspect ratio
