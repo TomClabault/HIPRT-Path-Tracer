@@ -53,9 +53,9 @@ Scene SceneParser::parse_scene_file(const std::string& filepath)
     // Taking the first camera as the camera of the scene
     if (scene->mNumCameras > 0)
     {
-        Point camera_position = *reinterpret_cast<Point*>(&scene->mCameras[0]->mPosition);
-        Point camera_lookat = *reinterpret_cast<Point*>(&scene->mCameras[0]->mLookAt);
-        Vector camera_up = *reinterpret_cast<Vector*>(&scene->mCameras[0]->mUp);
+        glm::vec3 camera_position = *reinterpret_cast<glm::vec3*>(&scene->mCameras[0]->mPosition);
+        glm::vec3 camera_lookat = *reinterpret_cast<glm::vec3*>(&scene->mCameras[0]->mLookAt);
+        glm::vec3 camera_up = *reinterpret_cast<glm::vec3*>(&scene->mCameras[0]->mUp);
 
         // fov in radians
         float fov = scene->mCameras[0]->mHorizontalFOV;

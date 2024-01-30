@@ -9,7 +9,7 @@
 
 struct Camera
 {
-    static const glm::mat4x4 DEFAULT_COORDINATES_SYSTEM;
+    static const glm::mat4x4 DEFAULT_COORDINATES_SYSTEM = glm::mat4();
 
     Camera() : view_matrix(DEFAULT_COORDINATES_SYSTEM)
     {

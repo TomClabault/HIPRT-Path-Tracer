@@ -2,6 +2,18 @@
 
 #include "triangle.h"
 
+Point point_mat4x4(const glm::mat4x4& mat, const Point& p)
+{
+    glm::vec4 pt = mat * (glm::vec4(p.x, p.y, p.z, 1.0f));
+    return Point(pt.x / pt.w, pt.y / pt.w, pt.z / pt.w);
+}
+
+Vector vec4_mat4x4(const glm::mat4x4& mat, const Vector& v)
+{
+    glm::vec4 vt = mat * (glm::vec4(v.x, v.y, v.z, 0.0f));
+    return Vector(vt.x / vt.w, vt.y / vt.w, vt.z / vt.w);
+}
+
 void branchlessONB(const Vector& n, Vector& b1, Vector& b2)
 {
     float sign = std::copysign(1.0f, n.z);
@@ -105,10 +117,10 @@ Ray RenderKernel::get_camera_ray(float x, float y) const
 
 
     Point ray_origin_view_space(0.0f, 0.0f, 0.0f);
-    Point ray_origin = m_camera.view_matrix(ray_origin_view_space);
+    Point ray_origin = point_mat4x4(m_camera.view_matrix, ray_origin_view_space);
 
     Point ray_point_direction_ndc_space = Point(x_ndc_space, y_ndc_space, -m_camera.fov_dist);
-    Point ray_point_direction_world_space = m_camera.view_matrix(ray_point_direction_ndc_space);
+    Point ray_point_direction_world_space = point_mat4x4(m_camera.view_matrix, ray_point_direction_ndc_space);
 
     Vector ray_direction = normalize(ray_point_direction_world_space - ray_origin);
     Ray ray(ray_origin, ray_direction);
