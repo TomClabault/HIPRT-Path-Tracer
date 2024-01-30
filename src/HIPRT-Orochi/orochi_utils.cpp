@@ -125,6 +125,7 @@ void buildTraceKernelFromBitcode(
 		options.push_back("-arch=compute_60");
 	}
 	options.push_back("-std=c++17");
+
 	for (std::string& include_path : include_paths)
 	{
 		include_path = std::string("-I") + include_path;

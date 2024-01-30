@@ -28,13 +28,17 @@ public:
 	static void APIENTRY gl_debug_output_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam);
 	void resize_frame(int pixels_width, int pixels_height);
 
+	int get_width();
+	int get_height();
+
 	Renderer& get_renderer();
 	void setup_display_program();
 	void set_renderer_scene(Scene& scene);
-	void update_renderer_view_translation(double translation_x, double translation_y);
+	void update_renderer_view_translation(float translation_x, float translation_y);
+	void update_renderer_view_zoom(float offset);
 
-	std::pair<double, double> get_cursor_position();
-	void set_cursor_position(std::pair<double, double> new_position);
+	std::pair<float, float> get_cursor_position();
+	void set_cursor_position(std::pair<float, float> new_position);
 
 	void display(const std::vector<Color>& image_data);
 	void display(OrochiBuffer<float>& orochi_buffer);
@@ -45,7 +49,7 @@ public:
 
 private:
 	int m_width, m_height;
-	std::pair<double, double> m_cursor_position;
+	std::pair<float, float> m_cursor_position;
 
 	ApplicationSettings m_application_settings;
 

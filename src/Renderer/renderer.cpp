@@ -104,7 +104,12 @@ void Renderer::set_camera(const Camera& camera)
 	m_camera = camera;
 }
 
-void Renderer::translate_camera_view(double translation_x, double translation_y, double translation_slowdown_x, double translation_slowdown_y)
+void Renderer::translate_camera_view(float translation_x, float translation_y, float translation_slowdown_x, float translation_slowdown_y)
 {
 	m_camera.view_matrix = glm::translate(m_camera.view_matrix, glm::vec3(translation_x / translation_slowdown_x, translation_y / translation_slowdown_y, 0.0f));
+}
+
+void Renderer::zoom_camera_view(float offset, float slowdown)
+{
+	m_camera.view_matrix = glm::translate(m_camera.view_matrix, glm::vec3(0.0f, 0.0f, -1.0f) * offset / slowdown);
 }
