@@ -25,21 +25,32 @@ void glfw_mouse_cursor_callback(GLFWwindow* window, double xpos, double ypos)
 {
 	AppWindow* app_window = reinterpret_cast<AppWindow*>(glfwGetWindowUserPointer(window));
 
-	std::pair<double, double> old_position = app_window->get_cursor_position();
+	float xposf = static_cast<float>(xpos);
+	float yposf = static_cast<float>(ypos);
+
+	std::pair<float, float> old_position = app_window->get_cursor_position();
 	if (old_position.first == -1 && old_position.second == -1)
 		;
 		// If this is the first position of the cursor, nothing to do
 	else
 	{
 		// Computing the difference in movement
-		std::pair<double, double> difference = std::make_pair(xpos - old_position.first, ypos - old_position.second);
+		std::pair<float, float> difference = std::make_pair(xposf - old_position.first, yposf - old_position.second);
 		if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
-			app_window->update_renderer_view_translation(-difference.first, -difference.second);
+			app_window->update_renderer_view_translation(-difference.first, difference.second);
 	}
 
 	// Updating the position
-	app_window->set_cursor_position(std::make_pair(xpos, ypos));
+	app_window->set_cursor_position(std::make_pair(xposf, yposf));
 }
+
+void glfw_mouse_scroll_callback(GLFWwindow * window, double xoffset, double yoffset)
+{
+	AppWindow* app_window = reinterpret_cast<AppWindow*>(glfwGetWindowUserPointer(window));
+
+	app_window->update_renderer_view_zoom(static_cast<float>(yoffset));
+}
+
 
 // Implementation from https://learnopengl.com/In-Practice/Debugging
 void APIENTRY AppWindow::gl_debug_output_callback(GLenum source,
@@ -108,6 +119,7 @@ AppWindow::AppWindow(int width, int height) : m_width(width), m_height(height)
 	glfwSetWindowUserPointer(m_window, this);
 	glfwSetWindowSizeCallback(m_window, glfw_window_resized_callback);
 	glfwSetCursorPosCallback(m_window, glfw_mouse_cursor_callback);
+	glfwSetScrollCallback(m_window, glfw_mouse_scroll_callback);
 	glfwSwapInterval(1);
 
 	glewInit();
@@ -161,6 +173,16 @@ void AppWindow::resize_frame(int pixels_width, int pixels_height)
 	glActiveTexture(GL_TEXTURE0 + AppWindow::DISPLAY_TEXTURE_UNIT);
 	glBindTexture(GL_TEXTURE_2D, m_display_texture);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, m_width, m_height, 0, GL_RGBA, GL_FLOAT, nullptr);
+}
+
+int AppWindow::get_width()
+{
+	return m_width;
+}
+
+int AppWindow::get_height()
+{
+	return m_height;
 }
 
 void AppWindow::setup_display_program()
@@ -221,9 +243,14 @@ void AppWindow::set_renderer_scene(Scene& scene)
 	m_renderer.set_hiprt_scene(hiprt_scene);
 }
 
-void AppWindow::update_renderer_view_translation(double translation_x, double translation_y)
+void AppWindow::update_renderer_view_translation(float translation_x, float translation_y)
 {
 	m_renderer.translate_camera_view(translation_x, translation_y, m_application_settings.view_translation_sldwn_x, m_application_settings.view_translation_sldwn_y);
+}
+
+void AppWindow::update_renderer_view_zoom(float offset)
+{
+	m_renderer.zoom_camera_view(offset, m_application_settings.view_zoom_sldwn);
 }
 
 Renderer& AppWindow::get_renderer()
@@ -231,12 +258,12 @@ Renderer& AppWindow::get_renderer()
 	return m_renderer;
 }
 
-std::pair<double, double> AppWindow::get_cursor_position()
+std::pair<float, float> AppWindow::get_cursor_position()
 {
 	return m_cursor_position;
 }
 
-void AppWindow::set_cursor_position(std::pair<double, double> new_position)
+void AppWindow::set_cursor_position(std::pair<float, float> new_position)
 {
 	m_cursor_position = new_position;
 }

@@ -23,6 +23,7 @@ int main(int argc, char* argv[])
 
     std::cout << "Reading scene file " << arguments.scene_file_path << " ..." << std::endl;
     Scene parsed_scene = SceneParser::parse_scene_file(arguments.scene_file_path);
+    //parsed_scene.camera.view_matrix = Camera::DEFAULT_COORDINATES_SYSTEM;
 
     AppWindow app_window(1680, 1050);
     app_window.set_renderer_scene(parsed_scene);

@@ -941,10 +941,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 matrix_X_point(const float4x4& m, const fl
 	float z = p.z;
 
 	// Assuming w = 1.0f for the point p
-	float xt = m.e[0][0] * x + m.e[0][1] * y + m.e[0][2] * z + m.e[0][3];
-	float yt = m.e[1][0] * x + m.e[1][1] * y + m.e[1][2] * z + m.e[1][3];
-	float zt = m.e[2][0] * x + m.e[2][1] * y + m.e[2][2] * z + m.e[2][3];
-	float wt = m.e[3][0] * x + m.e[3][1] * y + m.e[3][2] * z + m.e[3][3];
+	float xt = m.e[0][0] * x + m.e[1][0] * y + m.e[2][0] * z + m.e[3][0];
+	float yt = m.e[0][1] * x + m.e[1][1] * y + m.e[2][1] * z + m.e[3][1];
+	float zt = m.e[0][2] * x + m.e[1][2] * y + m.e[2][2] * z + m.e[3][2];
+	float wt = m.e[0][3] * x + m.e[1][3] * y + m.e[2][3] * z + m.e[3][3];
 
 	float inv_w = 1.0f;
 	if (wt != 0.0f)
@@ -960,10 +960,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 matrix_X_vector(const float4x4& m, const f
 	float z = v.z;
 
 	// Assuming w = 0.0f for the vector v
-	float xt = m.e[0][0] * x + m.e[0][1] * y + m.e[0][2] * z;
-	float yt = m.e[1][0] * x + m.e[1][1] * y + m.e[1][2] * z;
-	float zt = m.e[2][0] * x + m.e[2][1] * y + m.e[2][2] * z;
-	float wt = m.e[3][0] * x + m.e[3][1] * y + m.e[3][2] * z;
+	float xt = m.e[0][0] * x + m.e[1][0] * y + m.e[2][0] * z;
+	float yt = m.e[0][1] * x + m.e[1][1] * y + m.e[2][1] * z;
+	float zt = m.e[0][2] * x + m.e[1][2] * y + m.e[2][2] * z;
+	float wt = m.e[0][3] * x + m.e[1][3] * y + m.e[2][3] * z;
 
 	float inv_w = 1.0f;
 	if (wt != 0.0f)
