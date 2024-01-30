@@ -221,9 +221,9 @@ void AppWindow::set_renderer_scene(Scene& scene)
 	m_renderer.set_hiprt_scene(hiprt_scene);
 }
 
-void AppWindow::update_renderer_view_translation(std::pair<double, double> translation_xy)
+void AppWindow::update_renderer_view_translation(double translation_x, double translation_y)
 {
-	m_renderer.translate_camera_view(translation_xy);
+	m_renderer.translate_camera_view(translation_x, translation_y, m_application_settings.view_translation_sldwn_x, m_application_settings.view_translation_sldwn_y);
 }
 
 Renderer& AppWindow::get_renderer()
