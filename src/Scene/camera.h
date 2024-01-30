@@ -1,8 +1,11 @@
 #ifndef CAMERA_H
 #define CAMERA_H
 
+#include "Kernels/includes/HIPRT_camera.h"
+
 #include "glm/mat4x4.hpp"
 #include "glm/vec3.hpp"
+#include "glm/gtc/quaternion.hpp"
 
 #define _USE_MATH_DEFINES
 #include <math.h>
@@ -12,17 +15,13 @@ struct Camera
     static const glm::mat4x4 DEFAULT_COORDINATES_SYSTEM;
 
     Camera();
+    //Camera(glm::vec3 position, glm::vec3 look_at, glm::vec3 up_vector, float full_degrees_fov); //TODO remove
 
-    /**
-     * @brief Camera
-     * @param full_fov In degrees
-     * @param transformation
-     */
-    Camera(float full_fov, glm::mat4x4 transformation = glm::mat4x4(1.0f));
+    HIPRTCamera to_hiprt();
+    glm::mat4x4 get_view_matrix() const;
 
-    Camera(glm::vec3 position, glm::vec3 look_at, glm::vec3 up_vector, float full_degrees_fov);
-
-    glm::mat4x4 view_matrix;
+    glm::vec3 translation;
+    glm::quat rotation;
 
     //Full FOV, not half
     float fov = 45;

@@ -11,7 +11,8 @@ void Renderer::render()
 
 	hiprtInt2 resolution = make_hiprtInt2(m_framebuffer_width, m_framebuffer_height);
 
-	void* launch_args[] = { &m_scene.geometry, &m_scene_data, m_framebuffer.get_pointer_address(), &resolution, &m_camera};
+	HIPRTCamera hiprt_cam = m_camera.to_hiprt();
+	void* launch_args[] = { &m_scene.geometry, &m_scene_data, m_framebuffer.get_pointer_address(), &resolution, &hiprt_cam};
 	launch_kernel(8, 8, resolution.x, resolution.y, launch_args);
 }
 
@@ -104,12 +105,41 @@ void Renderer::set_camera(const Camera& camera)
 	m_camera = camera;
 }
 
-void Renderer::translate_camera_view(float translation_x, float translation_y, float translation_slowdown_x, float translation_slowdown_y)
+void Renderer::translate_camera_view(glm::vec3 translation)
 {
-	m_camera.view_matrix = glm::translate(m_camera.view_matrix, glm::vec3(translation_x / translation_slowdown_x, translation_y / translation_slowdown_y, 0.0f));
+	m_camera.translation = m_camera.translation + translation;
 }
 
-void Renderer::zoom_camera_view(float offset, float slowdown)
+#include "glm/gtc/quaternion.hpp"
+void Renderer::rotate_camera_view(glm::vec3 rotation_angles)
 {
-	m_camera.view_matrix = glm::translate(m_camera.view_matrix, glm::vec3(0.0f, 0.0f, -1.0f) * offset / slowdown);
+	//glm::vec3 camera_x_axis = glm::vec3(m_camera.view_matrix[0][0], m_camera.view_matrix[0][1], m_camera.view_matrix[0][2]);
+	//glm::vec3 camera_y_axis = glm::vec3(m_camera.view_matrix[1][0], m_camera.view_matrix[1][1], m_camera.view_matrix[1][2]);
+
+	////FPS camera:  RotationX(pitch) * RotationY(yaw)
+	//glm::quat qPitch = glm::angleAxis(rotation_angles.y, camera_x_axis);//TODO remove
+	//glm::quat qYaw = glm::angleAxis(rotation_angles.x, glm::vec3(0.0f, 1.0f, 0.0f));
+
+	////For a FPS camera we can omit roll
+	//glm::quat orientation = qPitch * qYaw;
+	//orientation = glm::normalize(orientation);
+	//glm::mat4 rotate = glm::mat4_cast(orientation);
+
+	//m_camera.view_matrix = glm::rotate( m_camera.view_matrix * rotate;
+	glm::quat rotation_x = glm::angleAxis(rotation_angles.y, glm::vec3(1.0f, 0.0f, 0.0f));
+	m_camera.rotation = glm::normalize(rotation_x) * m_camera.rotation;
+	m_camera.rotation = glm::rotate(m_camera.rotation, rotation_angles.x, glm::vec3(0.0f, 1.0f, 0.0f));
+	//m_camera.rotation = glm::rotate(m_camera.rotation, rotation_angles.y, )
+	/*glm::vec3 camera_x_axis = glm::vec3(m_camera.view_matrix[0][0], m_camera.view_matrix[0][1], m_camera.view_matrix[0][2]);
+	glm::vec3 camera_y_axis = glm::vec3(m_camera.view_matrix[1][0], m_camera.view_matrix[1][1], m_camera.view_matrix[1][2]);
+
+	m_camera.view_matrix = glm::rotate(m_camera.view_matrix, rotation_angles.y, camera_x_axis);
+	m_camera.view_matrix = glm::rotate(m_camera.view_matrix, rotation_angles.x, glm::vec3(0.0f, 1.0f, 0.0f));*///TODO remove
+
+	// No rotation around z supported
+}
+
+void Renderer::zoom_camera_view(float offset)
+{
+	m_camera.translation = m_camera.translation + glm::vec3(0.0f, 0.0f, -1.0f) * offset;
 }

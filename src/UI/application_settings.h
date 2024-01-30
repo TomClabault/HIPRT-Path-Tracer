@@ -7,7 +7,8 @@ struct ApplicationSettings
 	// has been dragged over the window to move the camera
 	// This is necessary because if 1 pixel of movement equalled
 	// 1 world unit of translation, it would be way too fast!
-	double view_translation_sldwn_x = 200.0f, view_translation_sldwn_y = 200.0f;
+	double view_translation_sldwn_x = 300.0f, view_translation_sldwn_y = 300.0f;
+	double view_rotation_sldwn_x = 1.0f, view_rotation_sldwn_y = 1.0f;;
 
 	double view_zoom_sldwn = 6.0f;
 };

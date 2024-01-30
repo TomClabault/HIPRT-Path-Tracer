@@ -36,8 +36,11 @@ void glfw_mouse_cursor_callback(GLFWwindow* window, double xpos, double ypos)
 	{
 		// Computing the difference in movement
 		std::pair<float, float> difference = std::make_pair(xposf - old_position.first, yposf - old_position.second);
+
 		if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
 			app_window->update_renderer_view_translation(-difference.first, difference.second);
+		else if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+			app_window->update_renderer_view_rotation(difference.first, difference.second);
 	}
 
 	// Updating the position
@@ -245,13 +248,25 @@ void AppWindow::set_renderer_scene(Scene& scene)
 
 void AppWindow::update_renderer_view_translation(float translation_x, float translation_y)
 {
-	m_renderer.translate_camera_view(translation_x, translation_y, m_application_settings.view_translation_sldwn_x, m_application_settings.view_translation_sldwn_y);
+	glm::vec3 translation = glm::vec3(translation_x / m_application_settings.view_translation_sldwn_x, translation_y / m_application_settings.view_translation_sldwn_y, 0.0f);
+	m_renderer.translate_camera_view(translation);
+}
+
+void AppWindow::update_renderer_view_rotation(float offset_x, float offset_y)
+{
+	float rotation_x, rotation_y;
+
+	rotation_x = offset_x / m_width * 2.0f * M_PI;
+	rotation_y = offset_y / m_height * 2.0f * M_PI;
+
+	m_renderer.rotate_camera_view(glm::vec3(rotation_x, rotation_y, 0.0f));
 }
 
 void AppWindow::update_renderer_view_zoom(float offset)
 {
-	m_renderer.zoom_camera_view(offset, m_application_settings.view_zoom_sldwn);
+	m_renderer.zoom_camera_view(offset / m_application_settings.view_zoom_sldwn);
 }
+
 
 Renderer& AppWindow::get_renderer()
 {
@@ -303,6 +318,12 @@ void AppWindow::display(OrochiBuffer<float>& orochi_buffer)
 {
 	glUseProgram(m_display_program);
 
+	// TODO
+	// This is very sub optimal and should absolutely be replaced by a 
+	// buffer that is shared between hiprt and opengl
+	// Unfortunately, this is unavailable in Orochi so we would have
+	// to switch to HIP (or CUDA but it doesn't support AMD) to get access
+	// to the hipGraphicsMapResources() functions family
 	std::vector<float> pixels_data = orochi_buffer.download_pixels();
 
 	glBindTexture(GL_TEXTURE_2D, m_display_texture);
@@ -313,7 +334,7 @@ void AppWindow::display(OrochiBuffer<float>& orochi_buffer)
 
 void AppWindow::display_imgui()
 {
-	ImGui::ShowDemoWindow(); // Show demo window! :)
+	ImGui::ShowDemoWindow();
 
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

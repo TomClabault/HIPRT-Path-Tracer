@@ -78,8 +78,9 @@ public:
 	void set_hiprt_scene(const HIPRTScene& scene);
 
 	void set_camera(const Camera& camera);
-	void translate_camera_view(float translation_x, float translation_y, float translation_slowdown_x, float translation_slowdown_y);
-	void zoom_camera_view(float offset, float slowdown);
+	void translate_camera_view(glm::vec3 translation);
+	void rotate_camera_view(glm::vec3 rotation_angles);
+	void zoom_camera_view(float offset);
 
 
 	int m_framebuffer_width, m_framebuffer_height;
