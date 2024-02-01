@@ -49,21 +49,37 @@ public:
 
 	struct HIPRTScene
 	{
-		~HIPRTScene()
+		HIPRTScene(hiprtContext ctx) : hiprt_ctx(ctx)
 		{
-			oroFree(reinterpret_cast<oroDeviceptr>(mesh.triangleIndices));
-			oroFree(reinterpret_cast<oroDeviceptr>(mesh.vertices));
+			mesh.vertices = nullptr;
+			mesh.triangleIndices = nullptr;
+			geometry = nullptr;
 		}
 
+		~HIPRTScene()
+		{
+			if (mesh.triangleIndices)
+				OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(mesh.triangleIndices)));
+
+			if (mesh.vertices)
+				OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(mesh.vertices)));
+
+			if (geometry)
+				HIPRT_CHECK_ERROR(hiprtDestroyGeometry(hiprt_ctx, geometry));
+		}
+
+		hiprtContext hiprt_ctx = nullptr;
 		hiprtTriangleMeshPrimitive mesh;
-		hiprtGeometry geometry;
+		hiprtGeometry geometry = nullptr;
 	};
 
 	Renderer(int width, int height, HIPRTOrochiCtx* hiprt_orochi_ctx) : 
 		m_framebuffer_width(width), m_framebuffer_height(height),
 		m_framebuffer(width* height), m_hiprt_orochi_ctx(hiprt_orochi_ctx),
-		m_trace_kernel(nullptr) {}
-	Renderer() {}
+		m_trace_kernel(nullptr),
+		m_scene(hiprt_orochi_ctx->hiprt_ctx) {}
+
+	Renderer() : m_scene(nullptr) {}
 
 	void render();
 	void resize_frame(int new_width, int new_height);

@@ -63,16 +63,18 @@ struct xorshift32_generator
 DEVICE_KERNEL_SIGNATURE(hiprtRay) get_camera_ray(HIPRTCamera camera, float x, float y, int res_x, int res_y)
 {
     float x_ndc_space = x / res_x * 2 - 1;
-    x_ndc_space *= (float)res_x / res_y; //Aspect ratio
     float y_ndc_space = y / res_y * 2 - 1;
 
     hiprtFloat3 ray_origin_view_space = { 0.0f, 0.0f, 0.0f };
-    hiprtFloat3 ray_origin = matrix_X_point(camera.view_matrix, ray_origin_view_space);
+    hiprtFloat3 ray_origin = matrix_X_point(camera.inverse_view, ray_origin_view_space);
 
-    hiprtFloat3 ray_point_direction_ndc_space = { x_ndc_space, y_ndc_space, -camera.focal_length };
-    hiprtFloat3 ray_point_direction_world_space = matrix_X_point(camera.view_matrix, ray_point_direction_ndc_space);
+    // Point on the near plane
+    hiprtFloat4 ray_point_dir_ndc_homo = { x_ndc_space, y_ndc_space, -1.0f, 1.0f };
+    hiprtFloat4 ray_point_dir_vs_homo = camera.inverse_projection * ray_point_dir_ndc_homo;
+    hiprtFloat3 ray_point_dir_vs = div_w(ray_point_dir_vs_homo);
+    hiprtFloat3 ray_point_dir_ws = matrix_X_point(camera.inverse_view, ray_point_dir_vs);
 
-    hiprtFloat3 ray_direction = normalize(ray_point_direction_world_space - ray_origin);
+    hiprtFloat3 ray_direction = normalize(ray_point_dir_ws - ray_origin);
     
     hiprtRay ray;
     ray.origin = ray_origin;

@@ -56,27 +56,36 @@ Scene SceneParser::parse_scene_file(const std::string& filepath)
     // Taking the first camera as the camera of the scene
     if (scene->mNumCameras > 0)
     {
-        //aiMatrix4x4 camera_matrix;
-        //scene->mCameras[0]->GetCameraMatrix(camera_matrix);
+        aiCamera* camera = scene->mCameras[0];
 
-        //aiQuaternion ai_rotation;
-        //aiVector3f ai_translation;
-        //camera_matrix.DecomposeNoScaling(ai_rotation, ai_translation);
-        //std::cout << std::endl;
+        aiMatrix4x4 camera_matrix;
+        camera->GetCameraMatrix(camera_matrix);
+
+        aiQuaternion ai_rotation;
+        aiVector3f ai_translation;
+        camera_matrix.DecomposeNoScaling(ai_rotation, ai_translation);
+
+        parsed_scene.camera.rotation = glm::quat(glm::vec3(0, 0, 0));// *reinterpret_cast<glm::quat*>(&ai_rotation);
+        parsed_scene.camera.translation = glm::vec3(0, 0, 0);// *reinterpret_cast<glm::vec3*>(&ai_translation);
+
+        float vertical_fov = 2.0f * std::atan(std::tan(camera->mHorizontalFOV / 2.0f) * camera->mAspect);
 
 
-        //parsed_scene.camera.rotation = *reinterpret_cast<glm::quat*>(&ai_rotation);
-        ////parsed_scene.camera.rotation = parsed_scene.camera.rotation * Camera::DEFAULT_COORDINATES_SYSTEM;
-        //parsed_scene.camera.translation = *reinterpret_cast<glm::vec3*>(&ai_translation);
+
+
+        std::cout << "hori: " << camera->mHorizontalFOV * 180.0f / M_PI << std::endl;
+        std::cout << "verti: " << vertical_fov * 180.0f / M_PI << std::endl;
+
+        parsed_scene.camera.projection_matrix = glm::perspective(vertical_fov, camera->mAspect, camera->mClipPlaneNear, camera->mClipPlaneFar);
+
         //parsed_scene.camera.translation.z *= -1;
 
 
-        glm::vec3 camera_position = *reinterpret_cast<glm::vec3*>(&scene->mCameras[0]-> mPosition);
+        /*glm::vec3 camera_position = *reinterpret_cast<glm::vec3*>(&scene->mCameras[0]-> mPosition);
         glm::vec3 camera_lookat = *reinterpret_cast<glm::vec3*>(&scene->mCameras[0]->mLookAt);
         glm::vec3 camera_up = *reinterpret_cast<glm::vec3*>(&scene->mCameras[0]->mUp);
 
         glm::mat4x4 view_matrix = glm::lookAt(camera_position, camera_lookat, camera_up);
-        view_matrix = Camera::DEFAULT_COORDINATES_SYSTEM * view_matrix;
 
         glm::quat rotation;
         glm::vec3 translation, scale, skew;
@@ -84,7 +93,7 @@ Scene SceneParser::parse_scene_file(const std::string& filepath)
 
         glm::decompose(view_matrix, scale, rotation, translation, skew, perspective);
         parsed_scene.camera.rotation = rotation;
-        parsed_scene.camera.translation = translation;
+        parsed_scene.camera.translation = camera_position;*/
 
         //camera_matrix = camera_matrix * Camera::DEFAULT_COORDINATES_SYSTEM;
         //camera_matrix = glm::transpose(camera_matrix);

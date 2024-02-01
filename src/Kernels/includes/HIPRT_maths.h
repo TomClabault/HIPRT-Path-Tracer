@@ -972,6 +972,15 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 matrix_X_vector(const float4x4& m, const f
 	return make_float3(xt * inv_w, yt * inv_w, zt * inv_w);
 }
 
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 div_w(const float4& v)
+{
+	float inv_w = 1.0f;
+	if (v.w != 0.0f)
+		inv_w = 1.0f / v.w;
+
+	return make_float3(v.x * inv_w, v.y * inv_w, v.z * inv_w);
+}
+
 HIPRT_HOST_DEVICE HIPRT_INLINE float4x4 operator*(const float4x4& a, const float4x4& b)
 {
 	float4x4 m;

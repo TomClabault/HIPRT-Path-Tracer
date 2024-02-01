@@ -5,10 +5,8 @@
 
 struct HIPRTCamera
 {
-    float4x4 view_matrix;
-
-    // Distance to iamge plane
-    float focal_length;
+    float4x4 inverse_view;
+    float4x4 inverse_projection;
 };
 
 #endif

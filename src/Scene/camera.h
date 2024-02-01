@@ -15,18 +15,14 @@ struct Camera
     static const glm::mat4x4 DEFAULT_COORDINATES_SYSTEM;
 
     Camera();
-    //Camera(glm::vec3 position, glm::vec3 look_at, glm::vec3 up_vector, float full_degrees_fov); //TODO remove
 
     HIPRTCamera to_hiprt();
     glm::mat4x4 get_view_matrix() const;
+    glm::vec3 get_view_direction() const;
 
+    glm::mat4x4 projection_matrix;
     glm::vec3 translation;
     glm::quat rotation;
-
-    //Full FOV, not half
-    float fov = 45;
-    float full_fov_radians = fov / 180.0f * M_PI;
-    float fov_dist = 1.0f / std::tan(full_fov_radians / 2.0f);
 };
 
 #endif
