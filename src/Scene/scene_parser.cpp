@@ -58,67 +58,21 @@ Scene SceneParser::parse_scene_file(const std::string& filepath)
     {
         aiCamera* camera = scene->mCameras[0];
 
-        aiMatrix4x4 camera_matrix;
-        camera->GetCameraMatrix(camera_matrix);
+        glm::vec3 camera_position = *reinterpret_cast<glm::vec3*>(&camera->mPosition);
+        glm::vec3 camera_lookat = *reinterpret_cast<glm::vec3*>(&camera->mLookAt);
+        glm::vec3 camera_up = *reinterpret_cast<glm::vec3*>(&camera->mUp);
+        glm::mat4x4 lookat = glm::lookAt(camera_position, camera_lookat, camera_up);
 
-        aiQuaternion ai_rotation;
-        aiVector3f ai_translation;
-        camera_matrix.DecomposeNoScaling(ai_rotation, ai_translation);
+        glm::vec3 scale, skew, translation;
+        glm::vec4 perspective;
+        glm::quat orientation;
+        glm::decompose(lookat, scale, orientation, translation, skew, perspective);
 
-        parsed_scene.camera.rotation = glm::quat(glm::vec3(0, 0, 0));// *reinterpret_cast<glm::quat*>(&ai_rotation);
-        parsed_scene.camera.translation = glm::vec3(0, 0, 0);// *reinterpret_cast<glm::vec3*>(&ai_translation);
+        parsed_scene.camera.translation = translation;
+        parsed_scene.camera.rotation = orientation;
 
         float vertical_fov = 2.0f * std::atan(std::tan(camera->mHorizontalFOV / 2.0f) * camera->mAspect);
-
-
-
-
-        std::cout << "hori: " << camera->mHorizontalFOV * 180.0f / M_PI << std::endl;
-        std::cout << "verti: " << vertical_fov * 180.0f / M_PI << std::endl;
-
         parsed_scene.camera.projection_matrix = glm::perspective(vertical_fov, camera->mAspect, camera->mClipPlaneNear, camera->mClipPlaneFar);
-
-        //parsed_scene.camera.translation.z *= -1;
-
-
-        /*glm::vec3 camera_position = *reinterpret_cast<glm::vec3*>(&scene->mCameras[0]-> mPosition);
-        glm::vec3 camera_lookat = *reinterpret_cast<glm::vec3*>(&scene->mCameras[0]->mLookAt);
-        glm::vec3 camera_up = *reinterpret_cast<glm::vec3*>(&scene->mCameras[0]->mUp);
-
-        glm::mat4x4 view_matrix = glm::lookAt(camera_position, camera_lookat, camera_up);
-
-        glm::quat rotation;
-        glm::vec3 translation, scale, skew;
-        glm::vec4 perspective;
-
-        glm::decompose(view_matrix, scale, rotation, translation, skew, perspective);
-        parsed_scene.camera.rotation = rotation;
-        parsed_scene.camera.translation = camera_position;*/
-
-        //camera_matrix = camera_matrix * Camera::DEFAULT_COORDINATES_SYSTEM;
-        //camera_matrix = glm::transpose(camera_matrix);
-
-        /*glm::quat rotation;
-        glm::vec3 translation, scale, skew;
-        glm::vec4 perspective;
-
-        glm::decompose(camera_matrix, scale, rotation, translation, skew, perspective);
-        parsed_scene.camera.rotation = rotation;
-        parsed_scene.camera.translation = translation;*/
-        //glm::vec3 camera_position = *reinterpret_cast<glm::vec3*>(&scene->mCameras[0]-> mPosition);
-        //glm::vec3 camera_lookat = *reinterpret_cast<glm::vec3*>(&scene->mCameras[0]->mLookAt);
-        //glm::vec3 camera_up = *reinterpret_cast<glm::vec3*>(&scene->mCameras[0]->mUp);
-
-
-        //// fov in radians
-        //float fov = scene->mCameras[0]->mHorizontalFOV;
-        //// TODO The +5.0f here is there to account for the slight difference of FOV between the
-        //// rendered and Blender. This probably shouldn't be here
-        //float degrees_fov = fov / M_PI * 180.0f + 5.0f;
-        //float full_degrees_fov = degrees_fov / 2.0f;
-
-        //parsed_scene.camera = Camera(camera_position, camera_lookat, camera_up, full_degrees_fov);
-        //parsed_scene.has_camera = true;
     }
 
     // If the scene contains multiple meshes, each mesh will have
