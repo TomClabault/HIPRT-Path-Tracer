@@ -119,11 +119,12 @@ Ray RenderKernel::get_camera_ray(float x, float y) const
     Point ray_origin_view_space(0.0f, 0.0f, 0.0f);
     Point ray_origin = point_mat4x4(m_camera.get_view_matrix(), ray_origin_view_space);
 
-    Point ray_point_direction_ndc_space = Point(x_ndc_space, y_ndc_space, -m_camera.fov_dist);
-    Point ray_point_direction_world_space = point_mat4x4(m_camera.get_view_matrix(), ray_point_direction_ndc_space);
+    //Point ray_point_direction_ndc_space = Point(x_ndc_space, y_ndc_space, -m_camera.fov_dist); //TODO fix
+    //Point ray_point_direction_world_space = point_mat4x4(m_camera.get_view_matrix(), ray_point_direction_ndc_space);
 
-    Vector ray_direction = normalize(ray_point_direction_world_space - ray_origin);
-    Ray ray(ray_origin, ray_direction);
+    //Vector ray_direction = normalize(ray_point_direction_world_space - ray_origin);
+    //Ray ray(ray_origin, ray_direction);
+    Ray ray(ray_origin, Vector(0.0f, 0.0f, 1.0f));
 
     return ray;
 }
@@ -515,7 +516,7 @@ bool RenderKernel::intersect_scene(const Ray& ray, HitInfo& closest_hit_info) co
 
 inline bool RenderKernel::intersect_scene_bvh(const Ray& ray, HitInfo& closest_hit_info) const
 {
-    closest_hit_info.t == -1.0f;
+    closest_hit_info.t = -1.0f;
 
     m_bvh.intersect(ray, closest_hit_info);
 
