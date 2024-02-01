@@ -115,7 +115,9 @@ void Renderer::rotate_camera_view(glm::vec3 rotation_angles)
 {
 	glm::quat rotation_x = glm::angleAxis(rotation_angles.y, glm::vec3(1.0f, 0.0f, 0.0f));
 	m_camera.rotation = glm::normalize(rotation_x) * m_camera.rotation;
-	m_camera.rotation = glm::normalize(glm::rotate(m_camera.rotation, rotation_angles.x, glm::vec3(0.0f, 1.0f, 0.0f)));
+
+	glm::quat rotation_y = glm::angleAxis(rotation_angles.x, glm::vec3(0.0f, 1.0f, 0.0f));
+	m_camera.rotation = glm::normalize(rotation_y) * m_camera.rotation;
 }
 
 void Renderer::zoom_camera_view(float offset)
