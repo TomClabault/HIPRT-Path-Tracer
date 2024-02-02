@@ -1,6 +1,5 @@
 #include "renderer.h"
 
-
 void Renderer::render()
 {
 	int tile_size_x = 8;

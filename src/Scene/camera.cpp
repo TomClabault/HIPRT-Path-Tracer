@@ -37,5 +37,9 @@ glm::mat4x4 Camera::get_view_matrix() const
 #include "glm/gtx/string_cast.hpp"
 glm::vec3 Camera::get_view_direction() const
 {
-    return rotation * glm::vec3(0.0f, 0.0f, 1.0f);
+    glm::mat4x4 view_mat = get_view_matrix();
+
+    std::cout << glm::to_string(rotation * glm::vec3(0, 0, 1)) << std::endl;
+
+    return glm::vec3(view_mat[2][0], view_mat[2][1], view_mat[2][2]);
 }
