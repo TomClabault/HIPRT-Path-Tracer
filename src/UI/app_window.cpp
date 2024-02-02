@@ -163,7 +163,6 @@ AppWindow::~AppWindow()
 	glfwTerminate();
 }
 
-
 void AppWindow::resize_frame(int pixels_width, int pixels_height)
 {
 	glViewport(0, 0, pixels_width, pixels_height);

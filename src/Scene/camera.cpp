@@ -27,19 +27,18 @@ HIPRTCamera Camera::to_hiprt()
     return hiprt_cam;
 }
 
+#define GLM_ENABLE_EXPERIMENTAL
+#include "glm/gtx/string_cast.hpp" //TODO remove
 glm::mat4x4 Camera::get_view_matrix() const
 {
-    // Rotation * translation
-    return glm::mat4_cast(glm::normalize(rotation)) * glm::translate(glm::mat4(1.0f), translation);
+    glm::mat4x4 view_matrix = glm::mat4_cast(glm::normalize(rotation)) * glm::translate(glm::mat4(1.0f), translation);
+
+    return view_matrix;
 }
 
-#define GLM_ENABLE_EXPERIMENTAL
-#include "glm/gtx/string_cast.hpp"
 glm::vec3 Camera::get_view_direction() const
 {
     glm::mat4x4 view_mat = get_view_matrix();
 
-    std::cout << glm::to_string(rotation * glm::vec3(0, 0, 1)) << std::endl;
-
-    return glm::vec3(view_mat[2][0], view_mat[2][1], view_mat[2][2]);
+    return glm::vec3(view_mat[0][2], view_mat[1][2], view_mat[2][2]);
 }
