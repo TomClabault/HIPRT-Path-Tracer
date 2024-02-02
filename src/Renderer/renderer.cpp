@@ -106,17 +106,21 @@ void Renderer::set_camera(const Camera& camera)
 
 void Renderer::translate_camera_view(glm::vec3 translation)
 {
-	m_camera.translation = m_camera.translation + translation;
+	glm::mat4x4 view_mat = m_camera.get_view_matrix();
+
+	m_camera.translation = m_camera.translation + glm::vec3(view_mat[0][0], view_mat[1][0], view_mat[2][0]) * translation.x;
+	m_camera.translation = m_camera.translation + glm::vec3(view_mat[0][1], view_mat[1][1], view_mat[2][1]) * translation.y;
 }
 
-#include "glm/gtc/quaternion.hpp"
 void Renderer::rotate_camera_view(glm::vec3 rotation_angles)
 {
-	glm::quat rotation_x = glm::angleAxis(rotation_angles.y, glm::vec3(1.0f, 0.0f, 0.0f));
-	m_camera.rotation = glm::normalize(rotation_x) * m_camera.rotation;
+	glm::quat rotation_x = glm::quat(glm::vec3(rotation_angles.y, 0, 0));
+	glm::quat rotation_y = glm::quat(glm::vec3(0, -rotation_angles.x, 0));
 
-	glm::quat rotation_y = glm::angleAxis(rotation_angles.x, glm::vec3(0.0f, 1.0f, 0.0f));
-	m_camera.rotation = glm::normalize(rotation_y) * m_camera.rotation;
+	rotation_x = glm::normalize(rotation_x);
+	rotation_y = glm::normalize(rotation_y);
+
+	m_camera.rotation = rotation_x * m_camera.rotation * rotation_y;
 }
 
 void Renderer::zoom_camera_view(float offset)

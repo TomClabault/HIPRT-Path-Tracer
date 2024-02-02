@@ -21,8 +21,8 @@ struct Camera
     glm::vec3 get_view_direction() const;
 
     glm::mat4x4 projection_matrix;
-    glm::vec3 translation;
-    glm::quat rotation;
+    glm::vec3 translation = glm::vec3(0, 0, 0);
+    glm::quat rotation = glm::quat(glm::vec3(0, 0, 0));
 };
 
 #endif

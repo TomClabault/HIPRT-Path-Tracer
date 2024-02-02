@@ -69,9 +69,9 @@ DEVICE_KERNEL_SIGNATURE(hiprtRay) get_camera_ray(HIPRTCamera camera, float x, fl
     hiprtFloat3 ray_origin = matrix_X_point(camera.inverse_view, ray_origin_view_space);
 
     // Point on the near plane
-    hiprtFloat4 ray_point_dir_ndc_homo = { x_ndc_space, y_ndc_space, -1.0f, 1.0f };
-    hiprtFloat4 ray_point_dir_vs_homo = camera.inverse_projection * ray_point_dir_ndc_homo;
-    hiprtFloat3 ray_point_dir_vs = div_w(ray_point_dir_vs_homo);
+    hiprtFloat4 ray_point_dir_ndc_homog = { x_ndc_space, y_ndc_space, -1.0f, 1.0f };
+    hiprtFloat4 ray_point_dir_vs_homog = camera.inverse_projection * ray_point_dir_ndc_homog;
+    hiprtFloat3 ray_point_dir_vs = div_w(ray_point_dir_vs_homog);
     hiprtFloat3 ray_point_dir_ws = matrix_X_point(camera.inverse_view, ray_point_dir_vs);
 
     hiprtFloat3 ray_direction = normalize(ray_point_dir_ws - ray_origin);

@@ -7,8 +7,6 @@
 
 #include "mat.h"
 
-
-
 float radians( const float deg )
 {
     return ((float) M_PI  / 180.f) * deg;
