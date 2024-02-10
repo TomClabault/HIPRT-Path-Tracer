@@ -21,6 +21,9 @@ struct Camera
     glm::vec3 get_view_direction() const;
 
     glm::mat4x4 projection_matrix;
+    float vertical_fov;
+    float near_plane, far_plane;
+
     glm::vec3 translation = glm::vec3(0, 0, 0);
     glm::quat rotation = glm::quat(glm::vec3(0, 0, 0));
 };
