@@ -31,7 +31,7 @@ HIPRTCamera Camera::to_hiprt()
 #include "glm/gtx/string_cast.hpp" //TODO remove
 glm::mat4x4 Camera::get_view_matrix() const
 {
-    glm::mat4x4 view_matrix = glm::mat4_cast(glm::normalize(rotation)) * glm::translate(glm::mat4(1.0f), translation);
+    glm::mat4x4 view_matrix = glm::inverse(glm::translate(glm::mat4(1.0f), translation) * glm::mat4_cast(glm::normalize(rotation)));
 
     return view_matrix;
 }

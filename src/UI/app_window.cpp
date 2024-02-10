@@ -38,9 +38,9 @@ void glfw_mouse_cursor_callback(GLFWwindow* window, double xpos, double ypos)
 		std::pair<float, float> difference = std::make_pair(xposf - old_position.first, yposf - old_position.second);
 
 		if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
-			app_window->update_renderer_view_translation(difference.first, -difference.second);
+			app_window->update_renderer_view_translation(-difference.first, difference.second);
 		else if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
-			app_window->update_renderer_view_rotation(difference.first, difference.second);
+			app_window->update_renderer_view_rotation(-difference.first, -difference.second);
 	}
 
 	// Updating the position
@@ -51,7 +51,7 @@ void glfw_mouse_scroll_callback(GLFWwindow * window, double xoffset, double yoff
 {
 	AppWindow* app_window = reinterpret_cast<AppWindow*>(glfwGetWindowUserPointer(window));
 
-	app_window->update_renderer_view_zoom(static_cast<float>(yoffset));
+	app_window->update_renderer_view_zoom(static_cast<float>(-yoffset));
 }
 
 
