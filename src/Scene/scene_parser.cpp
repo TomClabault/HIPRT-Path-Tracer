@@ -73,9 +73,9 @@ Scene SceneParser::parse_scene_file(const std::string& filepath)
 
         float vertical_fov = 2.0f * std::atan(std::tan(camera->mHorizontalFOV / 2.0f) * camera->mAspect);
         parsed_scene.camera.projection_matrix = glm::perspective(vertical_fov, camera->mAspect, camera->mClipPlaneNear, camera->mClipPlaneFar);
-
-		/*parsed_scene.camera.translation = glm::vec3(0, 0, 0);
-		parsed_scene.camera.rotation = glm::quat(glm::vec3(0, 0, 0));*/
+        parsed_scene.camera.vertical_fov = vertical_fov;
+        parsed_scene.camera.near_plane = camera->mClipPlaneNear;
+        parsed_scene.camera.far_plane = camera->mClipPlaneFar;
     }
 
     // If the scene contains multiple meshes, each mesh will have
