@@ -61,7 +61,7 @@ Scene SceneParser::parse_scene_file(const std::string& filepath)
         glm::vec3 camera_position = *reinterpret_cast<glm::vec3*>(&camera->mPosition);
         glm::vec3 camera_lookat = *reinterpret_cast<glm::vec3*>(&camera->mLookAt);
         glm::vec3 camera_up = *reinterpret_cast<glm::vec3*>(&camera->mUp);
-        glm::mat4x4 lookat = glm::lookAt(camera_position, camera_lookat, camera_up);
+        glm::mat4x4 lookat = glm::inverse(glm::lookAt(camera_position, camera_lookat, camera_up));
 
         glm::vec3 scale, skew, translation;
         glm::vec4 perspective;
