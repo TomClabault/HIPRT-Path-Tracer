@@ -23,35 +23,43 @@ void glfw_window_resized_callback(GLFWwindow* window, int width, int height)
 
 void glfw_mouse_cursor_callback(GLFWwindow* window, double xpos, double ypos)
 {
-	AppWindow* app_window = reinterpret_cast<AppWindow*>(glfwGetWindowUserPointer(window));
-
-	float xposf = static_cast<float>(xpos);
-	float yposf = static_cast<float>(ypos);
-
-	std::pair<float, float> old_position = app_window->get_cursor_position();
-	if (old_position.first == -1 && old_position.second == -1)
-		;
-		// If this is the first position of the cursor, nothing to do
-	else
+	ImGuiIO& io = ImGui::GetIO();
+	if (!io.WantCaptureMouse)
 	{
-		// Computing the difference in movement
-		std::pair<float, float> difference = std::make_pair(xposf - old_position.first, yposf - old_position.second);
+		AppWindow* app_window = reinterpret_cast<AppWindow*>(glfwGetWindowUserPointer(window));
 
-		if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
-			app_window->update_renderer_view_translation(-difference.first, difference.second);
-		else if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
-			app_window->update_renderer_view_rotation(-difference.first, -difference.second);
+		float xposf = static_cast<float>(xpos);
+		float yposf = static_cast<float>(ypos);
+
+		std::pair<float, float> old_position = app_window->get_cursor_position();
+		if (old_position.first == -1 && old_position.second == -1)
+			;
+		// If this is the first position of the cursor, nothing to do
+		else
+		{
+			// Computing the difference in movement
+			std::pair<float, float> difference = std::make_pair(xposf - old_position.first, yposf - old_position.second);
+
+			if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
+				app_window->update_renderer_view_translation(-difference.first, difference.second);
+			else if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+				app_window->update_renderer_view_rotation(-difference.first, -difference.second);
+		}
+
+		// Updating the position
+		app_window->set_cursor_position(std::make_pair(xposf, yposf));
 	}
-
-	// Updating the position
-	app_window->set_cursor_position(std::make_pair(xposf, yposf));
 }
 
 void glfw_mouse_scroll_callback(GLFWwindow * window, double xoffset, double yoffset)
 {
-	AppWindow* app_window = reinterpret_cast<AppWindow*>(glfwGetWindowUserPointer(window));
+	ImGuiIO& io = ImGui::GetIO();
+	if (!io.WantCaptureMouse)
+	{
+		AppWindow* app_window = reinterpret_cast<AppWindow*>(glfwGetWindowUserPointer(window));
 
-	app_window->update_renderer_view_zoom(static_cast<float>(-yoffset));
+		app_window->update_renderer_view_zoom(static_cast<float>(-yoffset));
+	}
 }
 
 
