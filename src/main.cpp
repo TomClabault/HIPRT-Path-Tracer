@@ -21,13 +21,16 @@ int main(int argc, char* argv[])
 {
     CommandLineArguments arguments = CommandLineArguments::process_command_line_args(argc, argv);
 
-    std::cout << "Reading scene file " << arguments.scene_file_path << " ..." << std::endl;
-    Scene parsed_scene = SceneParser::parse_scene_file(arguments.scene_file_path);
-    std::cout << std::endl;
 
     AppWindow app_window(1680, 1050);
-    app_window.set_renderer_scene(parsed_scene);
-    app_window.get_renderer().set_camera(parsed_scene.camera);
+    {
+        std::cout << "Reading scene file " << arguments.scene_file_path << " ..." << std::endl;
+        Scene parsed_scene = SceneParser::parse_scene_file(arguments.scene_file_path);
+        std::cout << std::endl;
+
+        app_window.set_renderer_scene(parsed_scene);
+        app_window.get_renderer().set_camera(parsed_scene.camera);
+    }
     app_window.run();
 
     return 0;
