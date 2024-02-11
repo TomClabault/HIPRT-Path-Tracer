@@ -3,7 +3,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include "glm/gtx/matrix_decompose.hpp"
 
-RendererMaterial SceneParser::mesh_mat_to_renderer_mat(aiMaterial* mesh_material)
+RendererMaterial SceneParser::ai_mat_to_renderer_mat(aiMaterial* mesh_material)
 {
     //Getting the properties that are going to be used by the materials
     //of the application
@@ -61,6 +61,8 @@ Scene SceneParser::parse_scene_file(const std::string& filepath)
         glm::vec3 camera_position = *reinterpret_cast<glm::vec3*>(&camera->mPosition);
         glm::vec3 camera_lookat = *reinterpret_cast<glm::vec3*>(&camera->mLookAt);
         glm::vec3 camera_up = *reinterpret_cast<glm::vec3*>(&camera->mUp);
+
+        // We need to inverse to view matrix here, not sure why
         glm::mat4x4 lookat = glm::inverse(glm::lookAt(camera_position, camera_lookat, camera_up));
 
         glm::vec3 scale, skew, translation;
@@ -92,7 +94,7 @@ Scene SceneParser::parse_scene_file(const std::string& filepath)
 
         aiMesh* mesh = scene->mMeshes[mesh_index];
         aiMaterial* mesh_material = scene->mMaterials[mesh->mMaterialIndex];
-        RendererMaterial renderer_material = mesh_mat_to_renderer_mat(mesh_material);
+        RendererMaterial renderer_material = ai_mat_to_renderer_mat(mesh_material);
 
         //Adding the material to the parsed scene
         parsed_scene.materials.push_back(renderer_material);
@@ -133,6 +135,9 @@ Scene SceneParser::parse_scene_file(const std::string& filepath)
         // Adding the maximum index of the mesh to our global indices offset 
         global_indices_offset += max_mesh_index_offset;
     }
+
+    // TODO log number of vertices per mesh
+    std::cout << parsed_scene.vertices_positions.size() << " vertices ; " << parsed_scene.vertices_indices.size() / 3 << " triangles" << std::endl;
 
     return parsed_scene;
 }

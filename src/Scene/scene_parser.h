@@ -56,7 +56,7 @@ struct Scene
 class SceneParser
 {
 public:
-    static RendererMaterial mesh_mat_to_renderer_mat(aiMaterial* mesh_material);
+    static RendererMaterial ai_mat_to_renderer_mat(aiMaterial* mesh_material);
     static Scene parse_scene_file(const std::string& filepath);
 };
 

@@ -153,7 +153,7 @@ AppWindow::AppWindow(int width, int height) : m_width(width), m_height(height)
 
 	setup_display_program();
 	m_renderer.init_ctx(0);
-	m_renderer.compile_trace_kernel("Kernels/normals_kernel.h", "NormalsKernel");
+	m_renderer.compile_trace_kernel("Kernels/path_tracer_kernel.h", "PathTracerKernel");
 	m_renderer.resize_frame(width, height);
 }
 
@@ -241,7 +241,7 @@ void AppWindow::setup_display_program()
 
 void AppWindow::set_renderer_scene(Scene& scene)
 {
-	Renderer::HIPRTScene hiprt_scene = m_renderer.create_hiprt_scene_from_scene(scene);
+	std::shared_ptr<Renderer::HIPRTScene> hiprt_scene = m_renderer.create_hiprt_scene_from_scene(scene);
 	m_renderer.set_hiprt_scene(hiprt_scene);
 }
 

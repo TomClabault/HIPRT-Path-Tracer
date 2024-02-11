@@ -35,7 +35,7 @@ public:
 
 			hiprt_ctx_input.ctxt = oroGetRawCtx(orochi_ctx);
 			hiprt_ctx_input.device = oroGetRawDevice(orochi_device);
-			hiprtSetLogLevel(hiprtLogLevelError);
+			hiprtSetLogLevel(hiprtLogLevelInfo);
 
 			HIPRT_CHECK_ERROR(hiprtCreateContext(HIPRT_API_VERSION, hiprt_ctx_input, hiprt_ctx));
 		}
@@ -76,8 +76,10 @@ public:
 	Renderer(int width, int height, HIPRTOrochiCtx* hiprt_orochi_ctx) : 
 		m_framebuffer_width(width), m_framebuffer_height(height),
 		m_framebuffer(width* height), m_hiprt_orochi_ctx(hiprt_orochi_ctx),
-		m_trace_kernel(nullptr),
-		m_scene(hiprt_orochi_ctx->hiprt_ctx) {}
+		m_trace_kernel(nullptr)
+	{
+		m_scene.get()->hiprt_ctx = hiprt_orochi_ctx->hiprt_ctx;
+	}
 
 	Renderer() : m_scene(nullptr) {}
 
@@ -90,8 +92,8 @@ public:
 	void compile_trace_kernel(const char* kernel_file_path, const char* kernel_function_name);
 	void launch_kernel(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args);
 
-	HIPRTScene create_hiprt_scene_from_scene(Scene& scene);
-	void set_hiprt_scene(const HIPRTScene& scene);
+	std::shared_ptr<HIPRTScene> create_hiprt_scene_from_scene(Scene& scene);
+	void set_hiprt_scene(std::shared_ptr<HIPRTScene>);
 
 	void set_camera(const Camera& camera);
 	void translate_camera_view(glm::vec3 translation);
@@ -108,7 +110,7 @@ private:
 
 	std::shared_ptr<HIPRTOrochiCtx> m_hiprt_orochi_ctx;
 	oroFunction m_trace_kernel;
-	HIPRTScene m_scene;
+	std::shared_ptr<HIPRTScene> m_scene;
 	HIPRTSceneData m_scene_data;
 };
 
