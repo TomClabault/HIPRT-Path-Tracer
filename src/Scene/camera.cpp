@@ -23,12 +23,11 @@ HIPRTCamera Camera::to_hiprt()
 
     hiprt_cam.inverse_view = *reinterpret_cast<float4x4*>(&view_matrix_inv);
     hiprt_cam.inverse_projection = *reinterpret_cast<float4x4*>(&projection_matrix_inv);
+    hiprt_cam.position = matrix_X_point(hiprt_cam.inverse_view, make_hiprtFloat3(0, 0, 0));
 
     return hiprt_cam;
 }
 
-#define GLM_ENABLE_EXPERIMENTAL
-#include "glm/gtx/string_cast.hpp" //TODO remove
 glm::mat4x4 Camera::get_view_matrix() const
 {
     glm::mat4x4 view_matrix = glm::inverse(glm::translate(glm::mat4(1.0f), translation) * glm::mat4_cast(glm::normalize(rotation)));
