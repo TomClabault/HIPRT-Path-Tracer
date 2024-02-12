@@ -12,8 +12,6 @@
 
 struct Camera
 {
-    static const glm::mat4x4 DEFAULT_COORDINATES_SYSTEM;
-
     Camera();
 
     HIPRTCamera to_hiprt();

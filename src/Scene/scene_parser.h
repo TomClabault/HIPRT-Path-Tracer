@@ -38,7 +38,7 @@ struct Scene
         return sphere;
     }
 
-    std::vector<Triangle> make_triangles()
+    std::vector<Triangle> get_triangles()
     {
         std::vector<Triangle> triangles;
 

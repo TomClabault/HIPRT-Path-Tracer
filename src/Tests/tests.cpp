@@ -151,11 +151,12 @@ void test_flattened_bvh(BVH& bvh)
     std::cout << "OK" << std::endl;
 }
 
+// TODO delete tests, they are obsolete
 void regression_tests()
 {
     Scene scene = SceneParser::parse_scene_file("data/OBJs/cornell_pbr.obj");
 
-    std::vector<Triangle> triangles = scene.make_triangles();
+    std::vector<Triangle> triangles = scene.get_triangles();
     BVH bvh(&triangles);
     test_bvh(bvh);
     test_flattened_bvh(bvh);

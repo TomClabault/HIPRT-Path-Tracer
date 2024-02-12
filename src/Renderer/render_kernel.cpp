@@ -23,6 +23,8 @@ void branchlessONB(const Vector& n, Vector& b1, Vector& b2)
     b2 = Vector(b, sign + n.y * n.y * a, -n.y);
 }
 
+//TODO rename render_kernel to renderer_cpu
+
 /**
  * Reflects a ray about a normal. This function requires that dot(ray_direction, surface_normal) > 0 i.e.
  * ray_direction and surface_normal are in the same hemisphere
@@ -112,20 +114,18 @@ Vector RenderKernel::cosine_weighted_direction_around_normal(const Vector& norma
 Ray RenderKernel::get_camera_ray(float x, float y) const
 {
     float x_ndc_space = x / m_width * 2 - 1;
-    x_ndc_space *= (float)m_width / m_height; //Aspect ratio
     float y_ndc_space = y / m_height * 2 - 1;
 
-
     Point ray_origin_view_space(0.0f, 0.0f, 0.0f);
-    Point ray_origin = point_mat4x4(m_camera.get_view_matrix(), ray_origin_view_space);
+    Point ray_origin = point_mat4x4(glm::inverse(m_camera.get_view_matrix()), ray_origin_view_space);
 
-    //Point ray_point_direction_ndc_space = Point(x_ndc_space, y_ndc_space, -m_camera.fov_dist); //TODO fix
-    //Point ray_point_direction_world_space = point_mat4x4(m_camera.get_view_matrix(), ray_point_direction_ndc_space);
+    Point ray_point_direction_ndc_space = Point(x_ndc_space, y_ndc_space, 1.0f);
+    Point ray_point_direction_view_space = point_mat4x4(glm::inverse(m_camera.projection_matrix), ray_point_direction_ndc_space);
+    Point ray_point_direction_world_space = point_mat4x4(glm::inverse(m_camera.get_view_matrix()), ray_point_direction_view_space);
 
-    //Vector ray_direction = normalize(ray_point_direction_world_space - ray_origin);
-    //Ray ray(ray_origin, ray_direction);
-    Ray ray(ray_origin, Vector(0.0f, 0.0f, 1.0f));
+    Vector ray_direction = normalize(ray_point_direction_world_space - ray_origin);
 
+    Ray ray(ray_origin, ray_direction);
     return ray;
 }
 
