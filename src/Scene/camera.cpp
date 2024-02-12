@@ -1,12 +1,5 @@
 #include "camera.h"
 
-const glm::mat4x4 Camera::DEFAULT_COORDINATES_SYSTEM = glm::mat4x4(
-     1.0f, 0.0f, 0.0f, 0.0f,
-     0.0f, 1.0f, 0.0f, 0.0f,
-     0.0f, 0.0f, -1.0f, 0.0f,
-     0.0f, 0.0f, 0.0f, 1.0f
- );
-
 Camera::Camera()
 {
     translation = glm::vec3(0.0f, 2.0f, 0.0f);
