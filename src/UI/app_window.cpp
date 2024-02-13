@@ -315,6 +315,7 @@ void AppWindow::display(const std::vector<Color>& image_data)
 	glUseProgram(m_display_program);
 
 	glBindTexture(GL_TEXTURE_2D, m_display_texture);
+	//TODO we don't need the alpha, save VRAM!
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_width, m_height, GL_RGBA, GL_FLOAT, image_data.data());
 
 	glDrawArrays(GL_TRIANGLES, 0, 6);

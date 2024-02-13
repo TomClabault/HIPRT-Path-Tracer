@@ -1,11 +1,13 @@
-#include "Kernels/includes/HIPRT_maths.h"
+#include "Kernels/includes/HIPRT_camera.h"
 #include "Kernels/includes/HIPRT_common.h"
+#include "Kernels/includes/HIPRT_maths.h"
+#include "Kernels/includes/hiprt_render_data.h"
 
 #include <hiprt/hiprt_device.h>
 #include <hiprt/hiprt_vec.h>
 
 
-GLOBAL_KERNEL_SIGNATURE(void) NormalsKernel(hiprtGeometry geom, HIPRTSceneData scene_geometry, float* pixels, int2 res, HIPRTCamera camera)
+GLOBAL_KERNEL_SIGNATURE(void) NormalsKernel(hiprtGeometry geom, HIPRTRenderData scene_geometry, HIPRTColor* pixels, int2 res, HIPRTCamera camera)
 {
 	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
 	const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -14,7 +16,7 @@ GLOBAL_KERNEL_SIGNATURE(void) NormalsKernel(hiprtGeometry geom, HIPRTSceneData s
 	if (index >= res.x * res.y)
 		return;
 
-	hiprtRay ray = get_camera_ray(camera, x, y, res.x, res.y);
+	hiprtRay ray = camera.get_camera_ray(x, y, res);
 
 	hiprtGeomTraversalClosest tr(geom, ray);
 	hiprtHit				  hit = tr.getNextHit();
@@ -29,8 +31,11 @@ GLOBAL_KERNEL_SIGNATURE(void) NormalsKernel(hiprtGeometry geom, HIPRTSceneData s
 
 	hiprtFloat3 normal = hiprtFloat3{ 0.5f, 0.5f, 0.5f } * normalize(cross(vertex_B - vertex_A, vertex_C - vertex_A)) + hiprtFloat3{ 0.5f, 0.5f, 0.5f };
 
-	pixels[index * 4 + 0] = hit.hasHit() ? normal.x : 0.0f;
+	HIPRTColor color{ hit.hasHit() ? normal.x : 0.0f, hit.hasHit() ? normal.y : 0.0f, hit.hasHit() ? normal.z : 0.0f };
+	pixels[index + 0] = color;
+
+	/*pixels[index * 4 + 0] = hit.hasHit() ? normal.x : 0.0f;
 	pixels[index * 4 + 1] = hit.hasHit() ? normal.y : 0.0f;
 	pixels[index * 4 + 2] = hit.hasHit() ? normal.z : 0.0f;
-	pixels[index * 4 + 3] = 1.0f;
+	pixels[index * 4 + 3] = 1.0f;*/
 }

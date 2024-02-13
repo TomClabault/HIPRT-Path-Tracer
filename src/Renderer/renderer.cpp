@@ -95,6 +95,16 @@ std::shared_ptr<Renderer::HIPRTScene> Renderer::create_hiprt_scene_from_scene(Sc
 
 	OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(geometry_temp)));
 
+	hiprtDevicePtr material_indices_buffer;
+	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&material_indices_buffer), sizeof(int) * scene.material_indices.size()));
+	OROCHI_CHECK_ERROR(oroMemcpyHtoD(reinterpret_cast<oroDeviceptr>(material_indices_buffer), scene.material_indices.data(), sizeof(int) * scene.material_indices.size()));
+	hiprt_scene_ptr.get()->material_indices = material_indices_buffer;
+
+	hiprtDevicePtr materials_buffer;
+	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&materials_buffer), sizeof(RendererMaterial) * scene.materials.size()));
+	OROCHI_CHECK_ERROR(oroMemcpyHtoD(reinterpret_cast<oroDeviceptr>(materials_buffer), scene.materials.data(), sizeof(RendererMaterial) * scene.materials.size()));
+	hiprt_scene_ptr.get()->materials_buffer = materials_buffer;
+
 	return hiprt_scene_ptr;
 }
 
@@ -103,6 +113,8 @@ void Renderer::set_hiprt_scene(std::shared_ptr<Renderer::HIPRTScene> scene)
 	m_scene = scene;
 	m_scene_data.triangles_indices = reinterpret_cast<int*>(scene.get()->mesh.triangleIndices);
 	m_scene_data.triangles_vertices = reinterpret_cast<hiprtFloat3*>(scene.get()->mesh.vertices);
+	m_scene_data.material_indices = reinterpret_cast<int*>(scene.get()->material_indices);
+	m_scene_data.materials_buffer = reinterpret_cast<HIPRTRendererMaterial*>(scene.get()->materials_buffer);
 }
 
 void Renderer::set_camera(const Camera& camera)

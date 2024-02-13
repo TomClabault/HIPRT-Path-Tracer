@@ -3,8 +3,8 @@
 
 #include "glm/gtc/matrix_transform.hpp"
 #include "HIPRT-Orochi/orochi_buffer.h"
-#include "Kernels/includes/HIPRT_scene_data.h"
 #include "Image/color.h"
+#include "Kernels/includes/hiprt_render_data.h"
 #include "Scene/camera.h"
 #include "Scene/scene_parser.h"
 
@@ -66,11 +66,20 @@ public:
 
 			if (geometry)
 				HIPRT_CHECK_ERROR(hiprtDestroyGeometry(hiprt_ctx, geometry));
+
+			if (material_indices)
+				OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(material_indices)));
+
+			if (materials_buffer)
+				OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(materials_buffer)));
 		}
 
 		hiprtContext hiprt_ctx = nullptr;
 		hiprtTriangleMeshPrimitive mesh;
 		hiprtGeometry geometry = nullptr;
+
+		hiprtDevicePtr material_indices;
+		hiprtDevicePtr materials_buffer;
 	};
 
 	Renderer(int width, int height, HIPRTOrochiCtx* hiprt_orochi_ctx) : 
@@ -111,7 +120,7 @@ private:
 	std::shared_ptr<HIPRTOrochiCtx> m_hiprt_orochi_ctx;
 	oroFunction m_trace_kernel;
 	std::shared_ptr<HIPRTScene> m_scene;
-	HIPRTSceneData m_scene_data;
+	HIPRTRenderData m_scene_data;
 };
 
 #endif
