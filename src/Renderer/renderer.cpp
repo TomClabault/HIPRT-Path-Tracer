@@ -12,7 +12,8 @@ void Renderer::render()
 	hiprtInt2 resolution = make_hiprtInt2(m_framebuffer_width, m_framebuffer_height);
 
 	HIPRTCamera hiprt_cam = m_camera.to_hiprt();
-	void* launch_args[] = { &m_scene.get()->geometry, &m_scene_data, m_framebuffer.get_pointer_address(), &resolution, &hiprt_cam};
+	HIPRTRenderData render_data = get_render_data();
+	void* launch_args[] = { &m_scene.get()->geometry, &render_data, m_framebuffer.get_pointer_address(), &resolution, &hiprt_cam};
 	launch_kernel(8, 8, resolution.x, resolution.y, launch_args);
 }
 
@@ -32,6 +33,30 @@ void Renderer::resize_frame(int new_width, int new_height)
 OrochiBuffer<float>& Renderer::get_orochi_framebuffer()
 {
 	return m_framebuffer;
+}
+
+//void Renderer::clear_framebuffer()
+//{
+//	m_framebuffer.fill_with_value(0.0f);
+//}
+
+void Renderer::set_render_settings(const RenderSettings& render_settings)
+{
+	m_render_settings = render_settings;
+}
+
+HIPRTRenderData Renderer::get_render_data()
+{
+	HIPRTRenderData render_data;
+
+	render_data.frame_number = m_render_settings.frame_number;
+	render_data.nb_bounces = m_render_settings.nb_bounces;
+	render_data.triangles_indices = reinterpret_cast<int*>(m_scene.get()->mesh.triangleIndices);
+	render_data.triangles_vertices = reinterpret_cast<hiprtFloat3*>(m_scene.get()->mesh.vertices);
+	render_data.material_indices = reinterpret_cast<int*>(m_scene.get()->material_indices);
+	render_data.materials_buffer = reinterpret_cast<HIPRTRendererMaterial*>(m_scene.get()->materials_buffer);
+
+	return render_data;
 }
 
 void Renderer::init_ctx(int device_index)
@@ -111,10 +136,6 @@ std::shared_ptr<Renderer::HIPRTScene> Renderer::create_hiprt_scene_from_scene(Sc
 void Renderer::set_hiprt_scene(std::shared_ptr<Renderer::HIPRTScene> scene)
 {
 	m_scene = scene;
-	m_scene_data.triangles_indices = reinterpret_cast<int*>(scene.get()->mesh.triangleIndices);
-	m_scene_data.triangles_vertices = reinterpret_cast<hiprtFloat3*>(scene.get()->mesh.vertices);
-	m_scene_data.material_indices = reinterpret_cast<int*>(scene.get()->material_indices);
-	m_scene_data.materials_buffer = reinterpret_cast<HIPRTRendererMaterial*>(scene.get()->materials_buffer);
 }
 
 void Renderer::set_camera(const Camera& camera)

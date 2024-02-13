@@ -5,6 +5,7 @@
 #include "HIPRT-Orochi/orochi_buffer.h"
 #include "Image/color.h"
 #include "Kernels/includes/hiprt_render_data.h"
+#include "Renderer/render_settings.h"
 #include "Scene/camera.h"
 #include "Scene/scene_parser.h"
 
@@ -96,6 +97,9 @@ public:
 	void resize_frame(int new_width, int new_height);
 
 	OrochiBuffer<float>& get_orochi_framebuffer();
+	//void clear_framebuffer();
+	void set_render_settings(const RenderSettings& render_settings);
+	HIPRTRenderData get_render_data();
 
 	void init_ctx(int device_index);
 	void compile_trace_kernel(const char* kernel_file_path, const char* kernel_function_name);
@@ -120,6 +124,8 @@ private:
 	std::shared_ptr<HIPRTOrochiCtx> m_hiprt_orochi_ctx;
 	oroFunction m_trace_kernel;
 	std::shared_ptr<HIPRTScene> m_scene;
+
+	RenderSettings m_render_settings;
 	HIPRTRenderData m_scene_data;
 };
 

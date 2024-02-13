@@ -14,7 +14,7 @@ struct HIPRT_xorshift32_state {
 
 struct HIPRT_xorshift32_generator
 {
-    __device__ HIPRT_xorshift32_generator(unsigned int seed) : m_state({ seed }) {}
+    //__device__ HIPRT_xorshift32_generator(unsigned int seed) : m_state({ seed }) {}
 
     __device__ float operator()()
     {

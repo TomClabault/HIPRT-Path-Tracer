@@ -62,7 +62,6 @@ void glfw_mouse_scroll_callback(GLFWwindow * window, double xoffset, double yoff
 	}
 }
 
-
 // Implementation from https://learnopengl.com/In-Practice/Debugging
 void APIENTRY AppWindow::gl_debug_output_callback(GLenum source,
 	GLenum type,
@@ -117,7 +116,7 @@ AppWindow::AppWindow(int width, int height) : m_width(width), m_height(height)
 		wait_and_exit("Could not initialize GLFW...");
 
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
 	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
 	m_window = glfwCreateWindow(width, height, "HIPRT Path Tracer", NULL, NULL);
 	if (!m_window)
@@ -213,12 +212,18 @@ void AppWindow::setup_display_program()
 
 	const char* fragment_shader_text = "#version 330\n"
 		"uniform sampler2D u_texture;\n"
+		"uniform int u_frame_number;\n"
+		"uniform float u_gamma;\n"
+		"uniform float u_exposure;\n"
 
 		"in vec2 vs_tex_coords;\n"
 
 		"void main()\n"
 		"{\n"
-		"gl_FragColor = texture(u_texture, vs_tex_coords);\n"
+		"vec4 hdr_color = texture(u_texture, vs_tex_coords) / float(u_frame_number + 1);\n"// float(u_frame_number + 1); \n"
+		"vec4 tone_mapped = 1.0f - exp(-hdr_color * u_exposure);\n"
+		"vec4 gamma_corrected = pow(tone_mapped, vec4(1.0f / u_gamma));\n"
+		"gl_FragColor = gamma_corrected;\n"
 		"}\n";
 
 	GLuint m_vertex_shader = glCreateShader(GL_VERTEX_SHADER);
@@ -228,6 +233,25 @@ void AppWindow::setup_display_program()
 	GLuint m_fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
 	glShaderSource(m_fragment_shader, 1, &fragment_shader_text, NULL);
 	glCompileShader(m_fragment_shader);
+	GLint isCompiled = 0;
+	glGetShaderiv(m_fragment_shader, GL_COMPILE_STATUS, &isCompiled);
+	if (isCompiled == GL_FALSE)
+	{
+		GLint maxLength = 0;
+		glGetShaderiv(m_fragment_shader, GL_INFO_LOG_LENGTH, &maxLength);
+
+		// The maxLength includes the NULL character
+		std::vector<GLchar> errorLog(maxLength);
+		glGetShaderInfoLog(m_fragment_shader, maxLength, &maxLength, &errorLog[0]);
+
+		std::cout << errorLog.data() << std::endl;
+
+		// Provide the infolog in whatever manor you deem best.
+		// Exit with failure.
+		glDeleteShader(m_fragment_shader); // Don't leak the shader.
+		std::exit(-1);
+	}
+
 
 	m_display_program = glCreateProgram();
 	glAttachShader(m_display_program, m_vertex_shader);
@@ -245,6 +269,9 @@ void AppWindow::setup_display_program()
 
 	glUseProgram(m_display_program);
 	glUniform1i(glGetUniformLocation(m_display_program, "u_texture"), AppWindow::DISPLAY_TEXTURE_UNIT);
+	glUniform1i(glGetUniformLocation(m_display_program, "u_frame_number"), 0);
+	glUniform1f(glGetUniformLocation(m_display_program, "u_gamma"), 2.2f);
+	glUniform1f(glGetUniformLocation(m_display_program, "u_exposure"), 2.0f);
 }
 
 void AppWindow::set_renderer_scene(Scene& scene)
@@ -294,6 +321,7 @@ void AppWindow::run()
 	while (!glfwWindowShouldClose(m_window))
 	{
 		glfwPollEvents();
+		glClear(GL_COLOR_BUFFER_BIT);
 
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
@@ -304,6 +332,7 @@ void AppWindow::run()
 		display(m_renderer.get_orochi_framebuffer());
 		display_imgui();
 
+		//m_renderer.clear_framebuffer();
 		glfwSwapBuffers(m_window);
 	}
 
