@@ -36,6 +36,7 @@ struct float4x4
 	};
 };
 
+#define M_1_PI 0.318309886183790671538  // 1/pi
 #define M_PI 3.14159265358979323846
 #define UINT_MAX 4294967295
 
