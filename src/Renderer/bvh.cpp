@@ -5,7 +5,6 @@
 #include "bvh.h"
 #include "flattened_bvh.h"
 
-
 const Vector BoundingVolume::PLANE_NORMALS[BVHConstants::PLANES_COUNT] = {
 	Vector(1, 0, 0),
 	Vector(0, 1, 0),

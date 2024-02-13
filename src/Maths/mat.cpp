@@ -7,7 +7,6 @@
 
 #include "mat.h"
 
-
 float radians( const float deg )
 {
     return ((float) M_PI  / 180.f) * deg;
@@ -39,7 +38,6 @@ vec4 Transform::column( const unsigned id )
     return vec4(m[0][id], m[1][id], m[2][id], m[3][id]);
 }
 
-
 Transform& Transform::row( const unsigned id, const float t0, const float t1, const float t2, const float t3 )
 {
     m[id][0]= t0;
@@ -60,7 +58,6 @@ vec4 Transform::row( const unsigned id )
     assert(id < 4);
     return vec4(m[id][0], m[id][1], m[id][2], m[id][3]);
 }
-
 
 Transform& Transform::column_major( const float matrix[16] ) 
 {
@@ -89,7 +86,6 @@ Vector Transform::operator[] ( const unsigned c ) const
     assert(c < 4);
     return Vector(m[0][c], m[1][c], m[2][c]);
 }
-
 
 //! renvoie le point transforme.
 Point Transform::operator() ( const Point& p ) const
@@ -269,7 +265,6 @@ Transform Rotation( const Vector& axis, const float angle )
         0, 0, 0, 1);
 }
 
-
 Transform Rotation( const Vector& u, const Vector& v )
 {
     Vector a= normalize(u);
@@ -306,7 +301,6 @@ Transform Rotation( const Vector& u, const Vector& v )
         0, 0, 0, 1);
 }
 
-
 Transform Perspective( const float fov, const float aspect, const float znear, const float zfar )
 {
     // perspective, openGL version
@@ -320,7 +314,6 @@ Transform Perspective( const float fov, const float aspect, const float znear, c
                   0,    0,              -1,                 0);
 }
 
-
 Transform Ortho( const float left, const float right, const float bottom, const float top, const float znear, const float zfar )
 {
     float tx= - (right + left) / (right - left);
@@ -333,7 +326,6 @@ Transform Ortho( const float left, const float right, const float bottom, const 
         0,                                       0, -2.f / (zfar - znear), tz,
         0,                                       0,                     0, 1);
 }
-
 
 Transform Viewport( const float width, const float height )
 {
@@ -381,6 +373,7 @@ Transform operator* ( const Transform& a, const Transform& b )
 Transform Transform::inverse( ) const
 {
     Transform minv= *this;
+
 
     int indxc[4], indxr[4];
     int ipiv[4] = { 0, 0, 0, 0 };

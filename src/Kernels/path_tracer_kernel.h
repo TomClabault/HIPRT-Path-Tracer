@@ -27,7 +27,7 @@ __device__ hiprtFloat3 rotate_vector_around_normal(const hiprtFloat3& normal, co
     return random_dir_local_space.x * tangent + random_dir_local_space.y * bitangent + random_dir_local_space.z * normal;
 }
 
-inline __device__ hiprtFloat3 hiprt_cosine_weighted_direction_around_normal(const hiprtFloat3& normal, float& pdf, HIPRT_xorshift32_generator& random_number_generator)
+__device__ hiprtFloat3 hiprt_cosine_weighted_direction_around_normal(const hiprtFloat3& normal, float& pdf, HIPRT_xorshift32_generator& random_number_generator)
 {
     float rand_1 = random_number_generator();
     float rand_2 = random_number_generator();
@@ -44,13 +44,14 @@ inline __device__ hiprtFloat3 hiprt_cosine_weighted_direction_around_normal(cons
     return rotate_vector_around_normal(normal, random_dir_local_space);
 }
 
-inline __device__ HIPRTColor hiprt_lambertian_brdf(const HIPRTRendererMaterial& material, const hiprtFloat3& to_light_direction, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal)
+__device__ HIPRTColor hiprt_lambertian_brdf(const HIPRTRendererMaterial& material, const hiprtFloat3& to_light_direction, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal)
 {
     return material.diffuse * M_1_PI;
 }
 
 __device__ bool trace_ray(hiprtGeometry geom, hiprtRay ray, HIPRTRenderData& render_data, HIPRTHitInfo& hit_info)
 {
+    //TODO use global stack for good traversal performance
     hiprtGeomTraversalClosest tr(geom, ray);
     hiprtHit				  hit = tr.getNextHit();
 
@@ -60,7 +61,7 @@ __device__ bool trace_ray(hiprtGeometry geom, hiprtRay ray, HIPRTRenderData& ren
         // TODO hit.normal is in object space but we need world space normals. The line below assumes that all objects have
         // already been pretransformed in world space. This may not be true anymore with multiple level
         // acceleration structures
-        hit_info.normal_at_intersection = hit.normal;
+        hit_info.normal_at_intersection = normalize(hit.normal);
         hit_info.t = hit.t;
         hit_info.primitive_index = hit.primID;
 
@@ -80,7 +81,9 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
         return;
 
 
-    HIPRT_xorshift32_generator random_number_generator(31 + x * y * render_data.frame_number);// = HIPRT_xorshift32_generator{ HIPRT_xorshift32_state{31 + x * y * render_data.frame_number} };
+    // TODO try to use constructor
+    HIPRT_xorshift32_generator random_number_generator;
+    random_number_generator.m_state.a = (31 + x * y * (render_data.frame_number + 1));// = HIPRT_xorshift32_generator{ HIPRT_xorshift32_state{31 + x * y * render_data.frame_number} };
     //Generating some numbers to make sure the generators of each thread spread apart
     //If not doing this, the generator shows clear artifacts until it has generated
     //a few numbers
@@ -106,7 +109,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
     HIPRTRayState next_ray_state = HIPRTRayState::HIPRT_BOUNCE;
     HIPRTBRDF last_brdf_hit_type = HIPRTBRDF::HIPRT_Uninitialized;
 
-    for (int bounce = 0; bounce < render_data.nb_bounces; bounce++)
+    for (int bounce = 0; bounce < 20; bounce++)//render_data.nb_bounces; bounce++)
     {
         if (next_ray_state == HIPRTRayState::HIPRT_BOUNCE)
         {
@@ -117,6 +120,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
             {
                 int material_index = render_data.material_indices[closest_hit_info.primitive_index];
                 HIPRTRendererMaterial material = render_data.materials_buffer[material_index];
+
                 last_brdf_hit_type = material.brdf_type;
 
                 // --------------------------------------------------- //
@@ -125,6 +129,13 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                 //TODO area sampling triangles
                 /*Color light_sample_radiance = sample_light_sources(ray, closest_hit_info, material, random_number_generator);
                 Color env_map_radiance = sample_environment_map(ray, closest_hit_info, material, random_number_generator);*/
+
+                HIPRTColor light_sample_radiance;
+                /*if (bounce > 0)
+                    light_sample_radiance = HIPRTColor{ 1.0f, 1.0f, 1.0f, 1.0f };
+                else*/
+                    light_sample_radiance = HIPRTColor{ 0.0f, 0.0f, 0.0f, 0.0f };
+                HIPRTColor env_map_radiance = HIPRTColor{ 0.0f, 0.0f, 0.0f, 0.0f };
 
                 // --------------------------------------- //
                 // ---------- Indirect lighting ---------- //
@@ -139,7 +150,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
 
                 //if (bounce == 0)
                     sample_color = sample_color + material.emission * throughput;
-                //sample_color += (light_sample_radiance + env_map_radiance) * throughput;
+                sample_color = sample_color + (light_sample_radiance + env_map_radiance) * throughput;
 
                 if ((brdf.r == 0.0f && brdf.g == 0.0f && brdf.b == 0.0f) || brdf_pdf < 1.0e-8f || isinf(brdf_pdf))
                 {
@@ -149,8 +160,9 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                 }
 
                 throughput = throughput * brdf * RT_MAX(0.0f, dot(bounce_direction, closest_hit_info.normal_at_intersection)) / brdf_pdf;
+                //pixels[y * res.x + x] = throughput; // HIPRTColor { throughput.x, throughput.y, throughput.z, 1.0f };
+                //return;
 
-                //TODO RayData rather than having the normal, ray direction, is inside surface, ... as free variables in the code
                 hiprtFloat3 new_ray_origin = closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-4f;
                 ray.origin = new_ray_origin; // Updating the next ray origin
                 ray.direction = bounce_direction; // Updating the next ray direction
@@ -162,7 +174,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
         }
         else if (next_ray_state == HIPRTRayState::HIPRT_MISSED)
         {
-            if (bounce == 1 || last_brdf_hit_type == HIPRTBRDF::HIPRT_SpecularFresnel)
+            //if (bounce == 1 || last_brdf_hit_type == HIPRTBRDF::HIPRT_SpecularFresnel)
             {
                 //We're only getting the skysphere radiance for the first rays because the
                 //syksphere is importance sampled
@@ -185,22 +197,13 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
     final_color = final_color + sample_color;
 
 
-
-
     //}
 
     final_color = final_color / 1; //TODO this is 1 sample per frame
     final_color.a = 0.0f;
-    pixels[y * res.x + x] = pixels[y * res.x + x] + final_color;
 
-    const float gamma = 2.2f;
-    const float exposure = 2.0f;
-    HIPRTColor hdrColor = pixels[y * res.x + x];
-
-    //Exposure tone mapping
-    HIPRTColor tone_mapped = HIPRTColor{ 1.0f, 1.0f, 1.0f } - exp(-hdrColor * exposure);
-    // Gamma correction
-    HIPRTColor gamma_corrected = pow(tone_mapped, 1.0f / gamma);
-
-    pixels[y * res.x + x] = gamma_corrected;
+    if (render_data.frame_number == 0)
+        pixels[y * res.x + x] = final_color;
+    else
+        pixels[y * res.x + x] = pixels[y * res.x + x] + final_color;
 }

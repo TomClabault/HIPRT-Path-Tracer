@@ -25,7 +25,6 @@ void branchlessONB(const Vector& n, Vector& b1, Vector& b2)
 
 //TODO rename render_kernel to renderer_cpu
 
-
 /**
  * Reflects a ray about a normal. This function requires that dot(ray_direction, surface_normal) > 0 i.e.
  * ray_direction and surface_normal are in the same hemisphere

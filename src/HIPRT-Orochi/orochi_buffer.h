@@ -20,6 +20,7 @@ public:
 
 	std::vector<T> download_pixels();
 	void upload_pixels(std::vector<T>& data);
+	//void fill_with_value(const T& value);
 
 private:
 	T* m_data_pointer;
@@ -83,5 +84,13 @@ void OrochiBuffer<T>::upload_pixels(std::vector<T>& data)
 	if (m_data_pointer)
 		OROCHI_CHECK_ERROR(oroMemcpyHtoD(reinterpret_cast<oroDeviceptr>(m_data_pointer), data_pointer, sizeof(T) * m_element_count));
 }
+
+//template <typename T>
+//void OrochiBuffer<T>::fill_with_value(const T& value)
+//{
+//	void* data_pointer = data.data();
+//	if (m_data_pointer)
+//		OROCHI_CHECK_ERROR(oroMemcpyHtoD(reinterpret_cast<oroDeviceptr>(m_data_pointer), data_pointer, sizeof(T) * m_element_count));
+//}
 
 #endif
