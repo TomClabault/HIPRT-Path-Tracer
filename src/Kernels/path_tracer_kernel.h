@@ -109,7 +109,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
     HIPRTRayState next_ray_state = HIPRTRayState::HIPRT_BOUNCE;
     HIPRTBRDF last_brdf_hit_type = HIPRTBRDF::HIPRT_Uninitialized;
 
-    for (int bounce = 0; bounce < 20; bounce++)//render_data.nb_bounces; bounce++)
+    for (int bounce = 0; bounce < render_data.nb_bounces; bounce++)
     {
         if (next_ray_state == HIPRTRayState::HIPRT_BOUNCE)
         {
@@ -182,7 +182,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                 // are not importance sampled
 
                 //Color skysphere_color = sample_environment_map_from_direction(ray.direction);
-                HIPRTColor skysphere_color = HIPRTColor{ 2.0f, 2.0f, 2.0f };
+                HIPRTColor skysphere_color = HIPRTColor{ 1.0f, 1.0f, 1.0f };
 
                 // TODO try overload +=, *=, ... operators
                 sample_color = sample_color + skysphere_color * throughput;
