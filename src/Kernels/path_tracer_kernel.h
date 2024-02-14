@@ -50,6 +50,117 @@ __device__ HIPRTColor hiprt_lambertian_brdf(const HIPRTRendererMaterial& materia
     return material.diffuse * M_1_PI;
 }
 
+/**
+ * Reflects a ray about a normal. This function requires that dot(ray_direction, surface_normal) > 0 i.e.
+ * ray_direction and surface_normal are in the same hemisphere
+ */
+__device__ hiprtFloat3 reflect_ray(const hiprtFloat3& ray_direction, const hiprtFloat3& surface_normal)
+{
+    return -ray_direction + 2.0f * dot(ray_direction, surface_normal) * surface_normal;
+}
+
+__device__ float fresnel_dielectric(float cos_theta_i, float eta_i, float eta_t)
+{
+    // Computing cos_theta_t
+    float sinThetaI = sqrt(1.0f - cos_theta_i * cos_theta_i);
+    float sin_theta_t = eta_i / eta_t * sinThetaI;
+
+    if (sin_theta_t >= 1.0f)
+        // Total internal reflection, 0% refraction, all reflection
+        return 1.0f;
+
+    float cos_theta_t = sqrt(1.0f - sin_theta_t * sin_theta_t);
+    float r_parallel = ((eta_t * cos_theta_i) - (eta_i * cos_theta_t)) / ((eta_t * cos_theta_i) + (eta_i * cos_theta_t));
+    float r_perpendicular = ((eta_i * cos_theta_i) - (eta_t * cos_theta_t)) / ((eta_i * cos_theta_i) + (eta_t * cos_theta_t));
+    return (r_parallel * r_parallel + r_perpendicular * r_perpendicular) / 2;
+}
+
+/**
+ * Reflects a ray about a normal. This function requires that dot(ray_direction, surface_normal) > 0 i.e.
+ * ray_direction and surface_normal are in the same hemisphere
+ */
+__device__ bool refract_ray(const hiprtFloat3& ray_direction, const hiprtFloat3& surface_normal, hiprtFloat3& refract_direction, float relative_eta)
+{
+    float NoI = dot(ray_direction, surface_normal);
+
+    float sin_theta_i_2 = 1.0f - NoI * NoI;
+    float root_term = 1.0f - sin_theta_i_2 / (relative_eta * relative_eta);
+    if (root_term < 0.0f)
+        return false;
+
+    float cos_theta_t = sqrt(root_term);
+    refract_direction = -ray_direction / relative_eta + (NoI / relative_eta - cos_theta_t) * surface_normal;
+
+    return true;
+}
+
+__device__ HIPRTColor smooth_glass_bsdf(const HIPRTRendererMaterial& material, hiprtFloat3& out_bounce_direction, const hiprtFloat3& ray_direction, hiprtFloat3& surface_normal, float eta_i, float eta_t, float& pdf, HIPRT_xorshift32_generator& random_generator)
+{
+    float cos_theta_i = dot(surface_normal, -ray_direction);
+
+    if (cos_theta_i < 0.0f)
+    {
+        // We're inside the surface, we're going to flip the eta and the normal for
+        // the calculations that follow
+        // Note that this also flips the normal for the caller of this function
+        // since the normal is passed by reference. This is useful since the normal
+        // will be used for offsetting the new ray origin for example
+        cos_theta_i = -cos_theta_i;
+        surface_normal = -surface_normal;
+
+        float temp = eta_i;
+        eta_i = eta_t;
+        eta_t = temp;
+    }
+
+    // Computing the proportion of reflected light using fresnel equations
+    // We're going to use the result to decide whether to refract or reflect the
+    // ray
+    float fresnel_reflect = fresnel_dielectric(cos_theta_i, eta_i, eta_t);
+    if (random_generator() <= fresnel_reflect)
+    {
+        // Reflect the ray
+
+        out_bounce_direction = reflect_ray(-ray_direction, surface_normal);
+        pdf = fresnel_reflect;
+
+        return HIPRTColor(fresnel_reflect) / dot(surface_normal, out_bounce_direction);
+    }
+    else
+    {
+        // Refract the ray
+
+        hiprtFloat3 refract_direction;
+        bool can_refract = refract_ray(-ray_direction, surface_normal, refract_direction, eta_t / eta_i);
+        if (!can_refract)
+        {
+            // Shouldn't happen (?)
+            return HIPRTColor(1000000.0f, 0.0f, 1000000.0f); //Omega pink
+        }
+
+        out_bounce_direction = refract_direction;
+        surface_normal = -surface_normal;
+        pdf = 1.0f - fresnel_reflect;
+
+        // TODO use constructor
+        return HIPRTColor(1.0f - fresnel_reflect) * material.diffuse / dot(out_bounce_direction, surface_normal);
+    }
+}
+
+__device__ HIPRTColor brdf_dispatcher_sample(const HIPRTRendererMaterial& material, hiprtFloat3& bounce_direction, const hiprtFloat3& ray_direction, hiprtFloat3& surface_normal, float& brdf_pdf, HIPRT_xorshift32_generator& random_number_generator)
+{
+    if (material.brdf_type == HIPRTBRDF::HIPRT_SpecularFresnel)
+        return smooth_glass_bsdf(material, bounce_direction, ray_direction, surface_normal, 1.0f, material.ior, brdf_pdf, random_number_generator); //TODO relative IOR in the RayData rather than two incident and output ior values
+    else if (material.brdf_type == HIPRTBRDF::HIPRT_CookTorrance)
+    {
+        bounce_direction = hiprt_cosine_weighted_direction_around_normal(surface_normal, brdf_pdf, random_number_generator);
+        return hiprt_lambertian_brdf(material, bounce_direction, -ray_direction, surface_normal);
+    //return cook_torrance_brdf_importance_sample(material, -ray_direction, surface_normal, bounce_direction, brdf_pdf, random_number_generator);
+    }
+
+    return HIPRTColor(0.0f);
+}
+
 __device__ bool trace_ray(hiprtGeometry geom, hiprtRay ray, HIPRTRenderData& render_data, HIPRTHitInfo& hit_info)
 {
     //TODO use global stack for good traversal performance
@@ -72,6 +183,16 @@ __device__ bool trace_ray(hiprtGeometry geom, hiprtRay ray, HIPRTRenderData& ren
         return false;
 }
 
+__device__ unsigned int wang_hash(unsigned int seed)
+{
+    seed = (seed ^ 61) ^ (seed >> 16);
+    seed *= 9;
+    seed = seed ^ (seed >> 4);
+    seed *= 0x27d4eb2d;
+    seed = seed ^ (seed >> 15);
+    return seed;
+}
+
 GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderData render_data, HIPRTColor* pixels, int2 res, HIPRTCamera camera)
 {
     const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -84,12 +205,9 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
 
     // TODO try to use constructor
     HIPRT_xorshift32_generator random_number_generator;
-    random_number_generator.m_state.a = (31 + x * y * (render_data.render_settings.frame_number + 1));// = HIPRT_xorshift32_generator{ HIPRT_xorshift32_state{31 + x * y * render_data.frame_number} };
-    //Generating some numbers to make sure the generators of each thread spread apart
-    //If not doing this, the generator shows clear artifacts until it has generated
-    //a few numbers
-    for (int i = 0; i < 25; i++)
-        random_number_generator();
+    // Getting a random for the xorshift seed from the pixel index using wang_hash
+    // + 1 used to avoid zeros
+    random_number_generator.m_state.a = (wang_hash((index + 1) * (render_data.render_settings.frame_number + 1)));
 
     HIPRTColor final_color = HIPRTColor{ 0.0f, 0.0f, 0.0f };
     for (int sample = 0; sample < render_data.render_settings.samples_per_frame; sample++)
@@ -123,26 +241,26 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                     // ----------------- Direct lighting ----------------- //
                     // --------------------------------------------------- //
                     //TODO area sampling triangles
-                    /*Color light_sample_radiance = sample_light_sources(ray, closest_hit_info, material, random_number_generator);
-                    Color env_map_radiance = sample_environment_map(ray, closest_hit_info, material, random_number_generator);*/
+                    //HIPRTColor light_sample_radiance = sample_light_sources(ray, closest_hit_info, material, random_number_generator);
+                    //Color env_map_radiance = sample_environment_map(ray, closest_hit_info, material, random_number_generator);
 
-                    HIPRTColor light_sample_radiance;
-                    /*if (bounce > 0)
-                        light_sample_radiance = HIPRTColor{ 1.0f, 1.0f, 1.0f, 1.0f };
-                    else*/
-                        light_sample_radiance = HIPRTColor{ 0.0f, 0.0f, 0.0f, 0.0f };
-                    HIPRTColor env_map_radiance = HIPRTColor{ 0.0f, 0.0f, 0.0f, 0.0f };
+                    HIPRTColor light_sample_radiance = HIPRTColor(0.0f);
+                    HIPRTColor env_map_radiance = HIPRTColor(0.0f);
 
                     // --------------------------------------- //
                     // ---------- Indirect lighting ---------- //
                     // --------------------------------------- //
 
                     float brdf_pdf;
-
                     hiprtFloat3 bounce_direction;
-                    //Color brdf = brdf_dispatcher_sample(material, bounce_direction, ray.direction, closest_hit_info.normal_at_intersection, brdf_pdf, random_number_generator); //TODO relative IOR in the RayData rather than two incident and output ior values
-                    bounce_direction = hiprt_cosine_weighted_direction_around_normal(closest_hit_info.normal_at_intersection, brdf_pdf, random_number_generator);
-                    HIPRTColor brdf = hiprt_lambertian_brdf(material, bounce_direction, -ray.direction, closest_hit_info.normal_at_intersection);
+                    HIPRTColor brdf = brdf_dispatcher_sample(material, bounce_direction, ray.direction, closest_hit_info.normal_at_intersection, brdf_pdf, random_number_generator); //TODO relative IOR in the RayData rather than two incident and output ior values
+
+                    //float brdf_pdf;
+
+                    //hiprtFloat3 bounce_direction;
+                    ////Color brdf = brdf_dispatcher_sample(material, bounce_direction, ray.direction, closest_hit_info.normal_at_intersection, brdf_pdf, random_number_generator); //TODO relative IOR in the RayData rather than two incident and output ior values
+                    //bounce_direction = hiprt_cosine_weighted_direction_around_normal(closest_hit_info.normal_at_intersection, brdf_pdf, random_number_generator);
+                    //HIPRTColor brdf = hiprt_lambertian_brdf(material, bounce_direction, -ray.direction, closest_hit_info.normal_at_intersection);
 
                     //if (bounce == 0)
                         sample_color = sample_color + material.emission * throughput;
@@ -175,7 +293,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                         // are not importance sampled
 
                         //Color skysphere_color = sample_environment_map_from_direction(ray.direction);
-                        HIPRTColor skysphere_color = HIPRTColor{ 2.0f, 2.0f, 2.0f };
+                        HIPRTColor skysphere_color = HIPRTColor{ 1.0f, 1.0f, 1.0f };
 
                         // TODO try overload +=, *=, ... operators
                         sample_color = sample_color + skysphere_color * throughput;

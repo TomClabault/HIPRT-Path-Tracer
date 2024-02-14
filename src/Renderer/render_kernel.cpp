@@ -177,7 +177,6 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                     // --------------------------------------- //
 
                     float brdf_pdf;
-
                     Vector bounce_direction;
                     Color brdf = brdf_dispatcher_sample(material, bounce_direction, ray.direction, closest_hit_info.normal_at_intersection, brdf_pdf, random_number_generator); //TODO relative IOR in the RayData rather than two incident and output ior values
                     
