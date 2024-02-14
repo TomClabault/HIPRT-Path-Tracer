@@ -17,8 +17,12 @@ void glfw_window_resized_callback(GLFWwindow* window, int width, int height)
 	int new_width_pixels, new_height_pixels;
 	glfwGetFramebufferSize(window, &new_width_pixels, &new_height_pixels);
 
-	// We've stored a pointer to the AppWindow in the "WindowUserPointer" of glfw
-	reinterpret_cast<AppWindow*>(glfwGetWindowUserPointer(window))->resize_frame(width, height);
+	if (new_width_pixels == 0 || new_height_pixels == 0)
+		// This probably means that the application has been minimized, we're not doing anything then
+		return;
+	else
+		// We've stored a pointer to the AppWindow in the "WindowUserPointer" of glfw
+		reinterpret_cast<AppWindow*>(glfwGetWindowUserPointer(window))->resize_frame(width, height);
 }
 
 void glfw_mouse_cursor_callback(GLFWwindow* window, double xpos, double ypos)
@@ -172,6 +176,18 @@ AppWindow::~AppWindow()
 
 void AppWindow::resize_frame(int pixels_width, int pixels_height)
 {
+	if (pixels_width == m_width && pixels_height && m_height)
+	{
+		// Already the right size, nothing to do. This can happen
+		// when the window comes out of the minized state. Getting
+		// in the minimized state triggers a resize event with a new size
+		// of (0, 0) and getting out of the minimized state triggers a resize
+		// event with a size equal to the one before the minimization, which means
+		// that the window wasn't actually resized and there is nothing to do
+
+		return;
+	}
+
 	glViewport(0, 0, pixels_width, pixels_height);
 
 	m_width = pixels_width;
