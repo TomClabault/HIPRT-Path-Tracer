@@ -11,6 +11,7 @@
 // HostDeviceCommon containing the structures that are used both by the GPU and CPU renderer
 struct HIPRTColor
 {
+    __device__ HIPRTColor() : r(0.0f), g(0.0f), b(0.0f), a(1.0f) {}
     __device__ HIPRTColor(float value) : r(value), g(value), b(value), a(1.0f) {}
     __device__ HIPRTColor(float _r, float _g, float _b) : r(_r), g(_g), b(_b), a(1.0f) {}
     __device__ HIPRTColor(float _r, float _g, float _b, float _a) : r(_r), g(_g), b(_b), a(_a) {}

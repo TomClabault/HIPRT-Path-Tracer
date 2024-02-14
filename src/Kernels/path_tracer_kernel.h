@@ -94,6 +94,317 @@ __device__ bool refract_ray(const hiprtFloat3& ray_direction, const hiprtFloat3&
     return true;
 }
 
+__device__ HIPRTColor fresnel_schlick(HIPRTColor F0, float NoV)
+{
+    return F0 + (HIPRTColor(1.0f) - F0) * pow((1.0f - NoV), 5.0f);
+}
+
+__device__ float GGX_normal_distribution(float alpha, float NoH)
+{
+    //To avoid numerical instability when NoH basically == 1, i.e when the
+    //material is a perfect mirror and the normal distribution function is a Dirac
+
+    NoH = RT_MIN(NoH, 0.999999f);
+    float alpha2 = alpha * alpha;
+    float NoH2 = NoH * NoH;
+    float b = (NoH2 * (alpha2 - 1.0f) + 1.0f);
+    return alpha2 * M_1_PI / (b * b);
+}
+
+__device__ float G1_schlick_ggx(float k, float dot_prod)
+{
+    return dot_prod / (dot_prod * (1.0f - k) + k);
+}
+
+__device__ float GGX_smith_masking_shadowing(float roughness_squared, float NoV, float NoL)
+{
+    float k = roughness_squared / 2.0f;
+
+    return G1_schlick_ggx(k, NoL) * G1_schlick_ggx(k, NoV);
+}
+
+__device__ float cook_torrance_brdf_pdf(const HIPRTRendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& to_light_direction, const hiprtFloat3& surface_normal)
+{
+    hiprtFloat3 microfacet_normal = normalize(view_direction + to_light_direction);
+
+    float alpha = material.roughness * material.roughness;
+
+    float VoH = RT_MAX(0.0f, dot(view_direction, microfacet_normal));
+    float NoH = RT_MAX(0.0f, dot(surface_normal, microfacet_normal));
+    float D = GGX_normal_distribution(alpha, NoH);
+
+    return D * NoH / (4.0f * VoH);
+}
+
+__device__ HIPRTColor cook_torrance_brdf(const HIPRTRendererMaterial& material, const hiprtFloat3& to_light_direction, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal)
+{
+    HIPRTColor brdf_color = HIPRTColor(0.0f, 0.0f, 0.0f);
+    HIPRTColor base_color = material.diffuse;
+
+    hiprtFloat3 halfway_vector = normalize(view_direction + to_light_direction);
+
+    float NoV = RT_MAX(0.0f, dot(surface_normal, view_direction));
+    float NoL = RT_MAX(0.0f, dot(surface_normal, to_light_direction));
+    float NoH = RT_MAX(0.0f, dot(surface_normal, halfway_vector));
+    float VoH = RT_MAX(0.0f, dot(halfway_vector, view_direction));
+
+    if (NoV > 0.0f && NoL > 0.0f && NoH > 0.0f)
+    {
+        float metalness = material.metalness;
+        float roughness = material.roughness;
+
+        float alpha = roughness * roughness;
+
+        ////////// Cook Torrance BRDF //////////
+        HIPRTColor F;
+        float D, G;
+
+        //F0 = 0.04 for dielectrics, 1.0 for metals (approximation)
+        HIPRTColor F0 = HIPRTColor(0.04f * (1.0f - metalness)) + metalness * base_color;
+
+        //GGX Distribution function
+        F = fresnel_schlick(F0, VoH);
+        D = GGX_normal_distribution(alpha, NoH);
+        G = GGX_smith_masking_shadowing(alpha, NoV, NoL);
+
+        HIPRTColor kD = HIPRTColor(1.0f - metalness); //Metals do not have a diffuse part
+        kD = kD * HIPRTColor(1.0f) - F;//Only the transmitted light is diffused
+
+        HIPRTColor diffuse_part = kD * base_color / (float)M_PI;
+        HIPRTColor specular_part = (F * D * G) / (4.0f * NoV * NoL);
+
+        brdf_color = diffuse_part + specular_part;
+    }
+
+    return brdf_color;
+}
+
+//inline Color RenderKernel::cook_torrance_brdf(const RendererMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal) const
+//{
+//    Color brdf_color = Color(0.0f, 0.0f, 0.0f);
+//    Color base_color = material.diffuse;
+//
+//    Vector halfway_vector = normalize(view_direction + to_light_direction);
+//
+//    float NoV = std::max(0.0f, dot(surface_normal, view_direction));
+//    float NoL = std::max(0.0f, dot(surface_normal, to_light_direction));
+//    float NoH = std::max(0.0f, dot(surface_normal, halfway_vector));
+//    float VoH = std::max(0.0f, dot(halfway_vector, view_direction));
+//
+//    if (NoV > 0.0f && NoL > 0.0f && NoH > 0.0f)
+//    {
+//        float metalness = material.metalness;
+//        float roughness = material.roughness;
+//
+//        float alpha = roughness * roughness;
+//
+//        ////////// Cook Torrance BRDF //////////
+//        Color F;
+//        float D, G;
+//
+//        //F0 = 0.04 for dielectrics, 1.0 for metals (approximation)
+//        Color F0 = Color(0.04f * (1.0f - metalness)) + metalness * base_color;
+//
+//        //GGX Distribution function
+//        F = fresnel_schlick(F0, VoH);
+//        D = GGX_normal_distribution(alpha, NoH);
+//        G = GGX_smith_masking_shadowing(alpha, NoV, NoL);
+//
+//        Color kD = Color(1.0f - metalness); //Metals do not have a diffuse part
+//        kD *= Color(1.0f) - F;//Only the transmitted light is diffused
+//
+//        Color diffuse_part = kD * base_color / (float)M_PI;
+//        Color specular_part = (F * D * G) / (4.0f * NoV * NoL);
+//
+//        brdf_color = diffuse_part + specular_part;
+//    }
+//
+//    return brdf_color;
+//}
+//
+//Color RenderKernel::cook_torrance_brdf_importance_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, float& pdf, xorshift32_generator& random_number_generator) const
+//{
+//    pdf = 0.0f;
+//
+//    float metalness = material.metalness;
+//    float roughness = material.roughness;
+//    float alpha = roughness * roughness;
+//
+//    float rand1 = random_number_generator();
+//    float rand2 = random_number_generator();
+//
+//    float phi = 2.0f * (float)M_PI * rand1;
+//    float theta = std::acos((1.0f - rand2) / (rand2 * (alpha * alpha - 1.0f) + 1.0f));
+//    float sin_theta = std::sin(theta);
+//
+//    Vector microfacet_normal_local_space = Vector(std::cos(phi) * sin_theta, std::sin(phi) * sin_theta, std::cos(theta));
+//    Vector microfacet_normal = rotate_vector_around_normal(surface_normal, microfacet_normal_local_space);
+//    if (dot(microfacet_normal, surface_normal) < 0.0f)
+//        //The microfacet normal that we sampled was under the surface, this can happen
+//        return Color(0.0f);
+//    Vector to_light_direction = normalize(2.0f * dot(microfacet_normal, view_direction) * microfacet_normal - view_direction);
+//    Vector halfway_vector = microfacet_normal;
+//    output_direction = to_light_direction;
+//
+//    Color brdf_color = Color(0.0f, 0.0f, 0.0f);
+//    Color base_color = material.diffuse;
+//
+//    float NoV = std::max(0.0f, dot(surface_normal, view_direction));
+//    float NoL = std::max(0.0f, dot(surface_normal, to_light_direction));
+//    float NoH = std::max(0.0f, dot(surface_normal, halfway_vector));
+//    float VoH = std::max(0.0f, dot(halfway_vector, view_direction));
+//
+//    if (NoV > 0.0f && NoL > 0.0f && NoH > 0.0f)
+//    {
+//        /////////// Cook Torrance BRDF //////////
+//        Color F;
+//        float D, G;
+//
+//
+//        //GGX Distribution function
+//        D = GGX_normal_distribution(alpha, NoH);
+//
+//        //F0 = 0.04 for dielectrics, 1.0 for metals (approximation)
+//        Color F0 = Color(0.04f * (1.0f - metalness)) + metalness * base_color;
+//        F = fresnel_schlick(F0, VoH);
+//        G = GGX_smith_masking_shadowing(alpha, NoV, NoL);
+//
+//        Color kD = Color(1.0f - metalness); //Metals do not have a diffuse part
+//        kD *= Color(1.0f) - F;//Only the transmitted light is diffused
+//
+//        Color diffuse_part = kD * base_color / (float)M_PI;
+//        Color specular_part = (F * D * G) / (4.0f * NoV * NoL);
+//
+//        pdf = D * NoH / (4.0f * VoH);
+//
+//        brdf_color = diffuse_part + specular_part;
+//    }
+//
+//    return brdf_color;
+//}
+
+__device__ HIPRTColor cook_torrance_brdf_importance_sample(const HIPRTRendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal, hiprtFloat3& output_direction, float& pdf, HIPRT_xorshift32_generator& random_number_generator)
+{
+    pdf = 0.0f;
+
+    float metalness = material.metalness;
+    float roughness = material.roughness;
+    float alpha = roughness * roughness;
+
+    float rand1 = random_number_generator();
+    float rand2 = random_number_generator();
+
+    float phi = 2.0f * (float)M_PI * rand1;
+    float theta = acos((1.0f - rand2) / (rand2 * (alpha * alpha - 1.0f) + 1.0f));
+    float sin_theta = sin(theta);
+
+    hiprtFloat3 microfacet_normal_local_space = hiprtFloat3(cos(phi) * sin_theta, sin(phi) * sin_theta, cos(theta));
+    hiprtFloat3 microfacet_normal = rotate_vector_around_normal(surface_normal, microfacet_normal_local_space);
+    if (dot(microfacet_normal, surface_normal) < 0.0f)
+        //The microfacet normal that we sampled was under the surface, this can happen
+        return HIPRTColor(0.0f);
+    hiprtFloat3 to_light_direction = normalize(2.0f * dot(microfacet_normal, view_direction) * microfacet_normal - view_direction);
+    hiprtFloat3 halfway_vector = microfacet_normal;
+    output_direction = to_light_direction;
+
+    HIPRTColor brdf_color = HIPRTColor(0.0f, 0.0f, 0.0f);
+    HIPRTColor base_color = material.diffuse;
+
+    float NoV = RT_MAX(0.0f, dot(surface_normal, view_direction));
+    float NoL = RT_MAX(0.0f, dot(surface_normal, to_light_direction));
+    float NoH = RT_MAX(0.0f, dot(surface_normal, halfway_vector));
+    float VoH = RT_MAX(0.0f, dot(halfway_vector, view_direction));
+
+    if (NoV > 0.0f && NoL > 0.0f && NoH > 0.0f)
+    {
+        /////////// Cook Torrance BRDF //////////
+        HIPRTColor F;
+        float D, G;
+
+
+        //GGX Distribution function
+        D = GGX_normal_distribution(alpha, NoH);
+
+        //F0 = 0.04 for dielectrics, 1.0 for metals (approximation)
+        HIPRTColor F0 = HIPRTColor(0.04f * (1.0f - metalness)) + metalness * base_color;
+        F = fresnel_schlick(F0, VoH);
+        G = GGX_smith_masking_shadowing(alpha, NoV, NoL);
+
+        HIPRTColor kD = HIPRTColor(1.0f - metalness); //Metals do not have a diffuse part
+        kD = kD * (HIPRTColor(1.0f) - F);//Only the transmitted light is diffused
+
+        HIPRTColor diffuse_part = kD * base_color / (float)M_PI;
+        HIPRTColor specular_part = (F * D * G) / (4.0f * NoV * NoL);
+
+        pdf = D * NoH / (4.0f * VoH);
+
+        brdf_color = diffuse_part + specular_part;
+    }
+
+    return brdf_color;
+
+    //pdf = 0.0f;
+
+    //float metalness = material.metalness;
+    //float roughness = material.roughness;
+    //float alpha = roughness * roughness;
+
+    //float rand1 = random_number_generator();
+    //float rand2 = random_number_generator();
+
+    //float phi = 2.0f * (float)M_PI * rand1;
+    //float theta = acos((1.0f - rand2) / (rand2 * (alpha * alpha - 1.0f) + 1.0f));
+    //float sin_theta = sin(theta);
+
+    //hiprtFloat3 microfacet_normal_local_space = hiprtFloat3(cos(phi) * sin_theta, sin(phi) * sin_theta, cos(theta));
+    //hiprtFloat3 microfacet_normal = rotate_vector_around_normal(surface_normal, microfacet_normal_local_space);
+    //if (dot(microfacet_normal, surface_normal) < 0.0f)
+    //    //The microfacet normal that we sampled was under the surface, this can happen
+    //    return HIPRTColor(0.0f);
+    //hiprtFloat3 to_light_direction = normalize(2.0f * dot(microfacet_normal, view_direction) * microfacet_normal - view_direction);
+    //hiprtFloat3 halfway_vector = microfacet_normal;
+    //output_direction = to_light_direction;
+
+    //HIPRTColor brdf_color = HIPRTColor(0.0f, 0.0f, 0.0f);
+    //HIPRTColor base_color = material.diffuse;
+
+    //float NoV = RT_MAX(0.0f, dot(surface_normal, view_direction));
+    //float NoL = RT_MAX(0.0f, dot(surface_normal, to_light_direction));
+    //float NoH = RT_MAX(0.0f, dot(surface_normal, halfway_vector));
+    //float VoH = RT_MAX(0.0f, dot(halfway_vector, view_direction));
+
+    //if (NoV > 0.0f && NoL > 0.0f && NoH > 0.0f)
+    //{
+    //    /////////// Cook Torrance BRDF //////////
+    //    HIPRTColor F;
+    //    float D, G;
+
+    //    //GGX Distribution function
+    //    D = GGX_normal_distribution(alpha, NoH);
+
+    //    //F0 = 0.04 for dielectrics, 1.0 for metals (approximation)
+    //    HIPRTColor F0 = HIPRTColor(0.04f * (1.0f - metalness)) + metalness * base_color;
+    //    F = fresnel_schlick(F0, VoH);
+    //    G = GGX_smith_masking_shadowing(alpha, NoV, NoL);
+
+    //    HIPRTColor kD = HIPRTColor(1.0f - metalness); // Metals do not have a diffuse part
+    //    kD = kD * HIPRTColor(1.0f) - F;// Only the transmitted light is diffused
+
+    //    HIPRTColor diffuse_part = kD * base_color / (float)M_PI;
+    //    HIPRTColor specular_part = (F * D * G) / (4.0f * NoV * NoL);
+
+    //    pdf = D * NoH / (4.0f * VoH);
+
+    //    brdf_color = diffuse_part + specular_part;
+
+    //    return brdf_color;
+    //}
+    //else
+    //    return HIPRTColor(0.0f);
+
+    //return brdf_color;
+}
+
 __device__ HIPRTColor smooth_glass_bsdf(const HIPRTRendererMaterial& material, hiprtFloat3& out_bounce_direction, const hiprtFloat3& ray_direction, hiprtFloat3& surface_normal, float eta_i, float eta_t, float& pdf, HIPRT_xorshift32_generator& random_generator)
 {
     float cos_theta_i = dot(surface_normal, -ray_direction);
@@ -153,9 +464,9 @@ __device__ HIPRTColor brdf_dispatcher_sample(const HIPRTRendererMaterial& materi
         return smooth_glass_bsdf(material, bounce_direction, ray_direction, surface_normal, 1.0f, material.ior, brdf_pdf, random_number_generator); //TODO relative IOR in the RayData rather than two incident and output ior values
     else if (material.brdf_type == HIPRTBRDF::HIPRT_CookTorrance)
     {
+        return cook_torrance_brdf_importance_sample(material, -ray_direction, surface_normal, bounce_direction, brdf_pdf, random_number_generator);
         bounce_direction = hiprt_cosine_weighted_direction_around_normal(surface_normal, brdf_pdf, random_number_generator);
         return hiprt_lambertian_brdf(material, bounce_direction, -ray_direction, surface_normal);
-    //return cook_torrance_brdf_importance_sample(material, -ray_direction, surface_normal, bounce_direction, brdf_pdf, random_number_generator);
     }
 
     return HIPRTColor(0.0f);
@@ -242,7 +553,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                     // --------------------------------------------------- //
                     //TODO area sampling triangles
                     //HIPRTColor light_sample_radiance = sample_light_sources(ray, closest_hit_info, material, random_number_generator);
-                    //Color env_map_radiance = sample_environment_map(ray, closest_hit_info, material, random_number_generator);
+                    //HIPRTColor env_map_radiance = sample_environment_map(ray, closest_hit_info, material, random_number_generator);
 
                     HIPRTColor light_sample_radiance = HIPRTColor(0.0f);
                     HIPRTColor env_map_radiance = HIPRTColor(0.0f);
@@ -258,7 +569,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                     //float brdf_pdf;
 
                     //hiprtFloat3 bounce_direction;
-                    ////Color brdf = brdf_dispatcher_sample(material, bounce_direction, ray.direction, closest_hit_info.normal_at_intersection, brdf_pdf, random_number_generator); //TODO relative IOR in the RayData rather than two incident and output ior values
+                    ////HIPRTColor brdf = brdf_dispatcher_sample(material, bounce_direction, ray.direction, closest_hit_info.normal_at_intersection, brdf_pdf, random_number_generator); //TODO relative IOR in the RayData rather than two incident and output ior values
                     //bounce_direction = hiprt_cosine_weighted_direction_around_normal(closest_hit_info.normal_at_intersection, brdf_pdf, random_number_generator);
                     //HIPRTColor brdf = hiprt_lambertian_brdf(material, bounce_direction, -ray.direction, closest_hit_info.normal_at_intersection);
 
@@ -274,8 +585,6 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                     }
 
                     throughput = throughput * brdf * RT_MAX(0.0f, dot(bounce_direction, closest_hit_info.normal_at_intersection)) / brdf_pdf;
-                    //pixels[y * res.x + x] = throughput; // HIPRTColor { throughput.x, throughput.y, throughput.z, 1.0f };
-                    //return;
 
                     hiprtFloat3 new_ray_origin = closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-4f;
                     ray.origin = new_ray_origin; // Updating the next ray origin
@@ -292,8 +601,8 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                         // We're also getting the skysphere radiance for perfectly specular BRDF since those
                         // are not importance sampled
 
-                        //Color skysphere_color = sample_environment_map_from_direction(ray.direction);
-                        HIPRTColor skysphere_color = HIPRTColor{ 1.0f, 1.0f, 1.0f };
+                        //HIPRTColor skysphere_color = sample_environment_map_from_direction(ray.direction);
+                        HIPRTColor skysphere_color = HIPRTColor(1.0f);
 
                         // TODO try overload +=, *=, ... operators
                         sample_color = sample_color + skysphere_color * throughput;
