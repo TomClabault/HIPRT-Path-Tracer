@@ -21,10 +21,11 @@ int main(int argc, char* argv[])
 {
     CommandLineArguments arguments = CommandLineArguments::process_command_line_args(argc, argv);
 
-    AppWindow app_window(1680, 1050);
+    const int default_width = 1280, default_height = 720;
+    AppWindow app_window(default_width, default_height);
     {
         std::cout << "Reading scene file " << arguments.scene_file_path << " ..." << std::endl;
-        Scene parsed_scene = SceneParser::parse_scene_file(arguments.scene_file_path);
+        Scene parsed_scene = SceneParser::parse_scene_file(arguments.scene_file_path, (float)default_width / default_height);
         std::cout << std::endl;
 
         app_window.set_renderer_scene(parsed_scene);
