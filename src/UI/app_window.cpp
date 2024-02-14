@@ -370,8 +370,11 @@ void AppWindow::run()
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
-		m_renderer.render();
-		increment_frame_number();
+		if (!(m_application_settings.stop_render_at != 0 && m_frame_number > m_application_settings.stop_render_at - 1))
+		{
+			m_renderer.render();
+			increment_frame_number();
+		}
 
 		display(m_renderer.get_orochi_framebuffer());
 		display_imgui();
@@ -415,14 +418,16 @@ void AppWindow::display_imgui()
 {
 	ImGui::Begin("Settings");
 
-	ImGui::Text("Sample count: %d", m_frame_number + 1);
+	ImGuiIO& io = ImGui::GetIO();
+	ImGui::Text("%d samples | %.2f samples/s", m_frame_number + 1, 1.0f / io.DeltaTime * m_renderer.get_render_settings().samples_per_frame);
 	ImGui::Separator();
+	if (ImGui::InputInt("Stop render at sample count", &m_application_settings.stop_render_at))
+		m_application_settings.stop_render_at = std::max(m_application_settings.stop_render_at, 0);
 	ImGui::InputInt("Samples per frame", &m_renderer.get_render_settings().samples_per_frame);
 	if (ImGui::InputInt("Max bounces", &m_renderer.get_render_settings().nb_bounces))
 	{
 		// Clamping to 0 in case the user input a negative number of bounces	
-		int& nb_bounces = m_renderer.get_render_settings().nb_bounces;
-		nb_bounces = std::max(nb_bounces, 0);
+		m_renderer.get_render_settings().nb_bounces = std::max(m_renderer.get_render_settings().nb_bounces, 0);
 
 		reset_frame_number();
 	}

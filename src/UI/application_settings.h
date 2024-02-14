@@ -12,6 +12,8 @@ struct ApplicationSettings
 
 	double view_zoom_sldwn = 5.0f;
 
+	int stop_render_at = 0;
+
 	float tone_mapping_gamma = 2.2f;
 	float tone_mapping_exposure = 2.0f;
 };

@@ -88,7 +88,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
     //Generating some numbers to make sure the generators of each thread spread apart
     //If not doing this, the generator shows clear artifacts until it has generated
     //a few numbers
-    for (int i = 0; i < 50; i++)
+    for (int i = 0; i < 25; i++)
         random_number_generator();
 
     HIPRTColor final_color = HIPRTColor{ 0.0f, 0.0f, 0.0f };
@@ -166,26 +166,26 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                     next_ray_state = HIPRTRayState::HIPRT_BOUNCE;
                 }
                 else
+                {
+                    //if (bounce == 1 || last_brdf_hit_type == HIPRTBRDF::HIPRT_SpecularFresnel)
+                    {
+                        //We're only getting the skysphere radiance for the first rays because the
+                        //syksphere is importance sampled
+                        // We're also getting the skysphere radiance for perfectly specular BRDF since those
+                        // are not importance sampled
+
+                        //Color skysphere_color = sample_environment_map_from_direction(ray.direction);
+                        HIPRTColor skysphere_color = HIPRTColor{ 2.0f, 2.0f, 2.0f };
+
+                        // TODO try overload +=, *=, ... operators
+                        sample_color = sample_color + skysphere_color * throughput;
+                    }
+
                     next_ray_state = HIPRTRayState::HIPRT_MISSED;
+                }
             }
             else if (next_ray_state == HIPRTRayState::HIPRT_MISSED)
-            {
-                //if (bounce == 1 || last_brdf_hit_type == HIPRTBRDF::HIPRT_SpecularFresnel)
-                {
-                    //We're only getting the skysphere radiance for the first rays because the
-                    //syksphere is importance sampled
-                    // We're also getting the skysphere radiance for perfectly specular BRDF since those
-                    // are not importance sampled
-
-                    //Color skysphere_color = sample_environment_map_from_direction(ray.direction);
-                    HIPRTColor skysphere_color = HIPRTColor{ 2.0f, 2.0f, 2.0f };
-
-                    // TODO try overload +=, *=, ... operators
-                    sample_color = sample_color + skysphere_color * throughput;
-                }
-
                 break;
-            }
             else if (next_ray_state == HIPRTRayState::HIPRT_TERMINATED)
                 break;
         }
