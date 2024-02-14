@@ -39,7 +39,7 @@ RendererMaterial SceneParser::ai_mat_to_renderer_mat(aiMaterial* mesh_material)
     return renderer_material;
 }
 
-Scene SceneParser::parse_scene_file(const std::string& filepath)
+Scene SceneParser::parse_scene_file(const std::string& filepath, float frame_aspect_override)
 {
     Scene parsed_scene;
 
@@ -80,8 +80,9 @@ Scene SceneParser::parse_scene_file(const std::string& filepath)
         // TODO + 0.425f is here to correct the FOV from a GLTF Blender export. After the export, 
         // the scene in the renderer is view as if the FOV was smaller. We're correcting this by adding a fix
         // +0.425 to try and get to same view as in Blender. THIS PROBABLY SHOULDN'T BE HERE
-        float vertical_fov = 2.0f * std::atan(std::tan(camera->mHorizontalFOV / 2.0f) * camera->mAspect) + 0.425f;
-        parsed_scene.camera.projection_matrix = glm::transpose(glm::perspective(vertical_fov, camera->mAspect, camera->mClipPlaneNear, camera->mClipPlaneFar));
+        float aspect_ratio = frame_aspect_override == -1 ? camera->mAspect : frame_aspect_override;
+        float vertical_fov = 2.0f * std::atan(std::tan(camera->mHorizontalFOV / 2.0f) * aspect_ratio) + 0.425f;
+        parsed_scene.camera.projection_matrix = glm::transpose(glm::perspective(vertical_fov, aspect_ratio, camera->mClipPlaneNear, camera->mClipPlaneFar));
         parsed_scene.camera.vertical_fov = vertical_fov;
         parsed_scene.camera.near_plane = camera->mClipPlaneNear;
         parsed_scene.camera.far_plane = camera->mClipPlaneFar;

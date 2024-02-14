@@ -57,7 +57,18 @@ class SceneParser
 {
 public:
     static RendererMaterial ai_mat_to_renderer_mat(aiMaterial* mesh_material);
-    static Scene parse_scene_file(const std::string& filepath);
+
+    /**
+     * Parses the scene file at @filepath and returns a scene appropriate for the renderer.
+     * All formats supported by the ASSIMP library are supported by the renderer
+     * 
+     * If provided, the @frame_aspect_override parameter is meant to override the aspect ratio of the camera
+     * of the scene file (if any). This is useful because the renderer uses a default aspect ratio
+     * of 16:9 but the camera of the scene file ma not use the same aspect. Without this parameter,
+     * this would result in rendering the scene with an aspect different of 16:9 in the defualt 
+     * framebuffer of the renderer which is 16:9, resulting in deformations.
+     */
+    static Scene parse_scene_file(const std::string& filepath, float frame_aspect_override = -1.0f);
 };
 
 #endif
