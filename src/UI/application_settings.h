@@ -11,6 +11,9 @@ struct ApplicationSettings
 	double view_rotation_sldwn_x = 3.5f, view_rotation_sldwn_y = 3.5f;
 
 	double view_zoom_sldwn = 5.0f;
+
+	float tone_mapping_gamma = 2.2f;
+	float tone_mapping_exposure = 2.0f;
 };
 
 #endif

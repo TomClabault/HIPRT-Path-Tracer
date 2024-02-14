@@ -288,8 +288,8 @@ void AppWindow::setup_display_program()
 	glUseProgram(m_display_program);
 	glUniform1i(glGetUniformLocation(m_display_program, "u_texture"), AppWindow::DISPLAY_TEXTURE_UNIT);
 	glUniform1i(glGetUniformLocation(m_display_program, "u_frame_number"), 0);
-	glUniform1f(glGetUniformLocation(m_display_program, "u_gamma"), 2.2f);
-	glUniform1f(glGetUniformLocation(m_display_program, "u_exposure"), 2.0f);
+	glUniform1f(glGetUniformLocation(m_display_program, "u_gamma"), m_application_settings.tone_mapping_gamma);
+	glUniform1f(glGetUniformLocation(m_display_program, "u_exposure"), m_application_settings.tone_mapping_exposure);
 }
 
 void AppWindow::set_renderer_scene(Scene& scene)
@@ -414,10 +414,11 @@ void AppWindow::display(OrochiBuffer<float>& orochi_buffer)
 void AppWindow::display_imgui()
 {
 	ImGui::Begin("Settings");
+
 	ImGui::Text("Sample count: %d", m_frame_number + 1);
 	ImGui::Separator();
 	ImGui::InputInt("Samples per frame", &m_renderer.get_render_settings().samples_per_frame);
-	if (ImGui::InputInt("Max bounces", &m_renderer.get_render_settings().nb_bounces, 0, 64))
+	if (ImGui::InputInt("Max bounces", &m_renderer.get_render_settings().nb_bounces))
 	{
 		// Clamping to 0 in case the user input a negative number of bounces	
 		int& nb_bounces = m_renderer.get_render_settings().nb_bounces;
@@ -425,6 +426,13 @@ void AppWindow::display_imgui()
 
 		reset_frame_number();
 	}
+
+	ImGui::Separator();
+	if (ImGui::InputFloat("Gamma", &m_application_settings.tone_mapping_gamma))
+		glUniform1f(glGetUniformLocation(m_display_program, "u_gamma"), m_application_settings.tone_mapping_gamma);
+	if (ImGui::InputFloat("Exposure", &m_application_settings.tone_mapping_exposure))
+		glUniform1f(glGetUniformLocation(m_display_program, "u_exposure"), m_application_settings.tone_mapping_exposure);
+
 	ImGui::End();
 
 	ImGui::Render();

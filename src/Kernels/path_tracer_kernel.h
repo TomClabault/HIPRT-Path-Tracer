@@ -94,10 +94,6 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
     HIPRTColor final_color = HIPRTColor{ 0.0f, 0.0f, 0.0f };
     for (int sample = 0; sample < render_data.render_settings.samples_per_frame; sample++)
     {
-
-
-
-
         //Jittered around the center
         float x_jittered = (x + 0.5f) + random_number_generator() - 1.0f;
         float y_jittered = (y + 0.5f) + random_number_generator() - 1.0f;
@@ -182,7 +178,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                     // are not importance sampled
 
                     //Color skysphere_color = sample_environment_map_from_direction(ray.direction);
-                    HIPRTColor skysphere_color = HIPRTColor{ 1.0f, 1.0f, 1.0f };
+                    HIPRTColor skysphere_color = HIPRTColor{ 2.0f, 2.0f, 2.0f };
 
                     // TODO try overload +=, *=, ... operators
                     sample_color = sample_color + skysphere_color * throughput;
@@ -197,9 +193,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
         final_color = final_color + sample_color;
     }
 
-    final_color = final_color / (float)render_data.render_settings.samples_per_frame; //TODO this is 1 sample per frame
     final_color.a = 0.0f;
-
     if (render_data.render_settings.frame_number == 0)
         pixels[y * res.x + x] = final_color;
     else
