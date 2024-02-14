@@ -35,14 +35,14 @@ OrochiBuffer<float>& Renderer::get_orochi_framebuffer()
 	return m_framebuffer;
 }
 
-//void Renderer::clear_framebuffer()
-//{
-//	m_framebuffer.fill_with_value(0.0f);
-//}
-
 void Renderer::set_render_settings(const RenderSettings& render_settings)
 {
 	m_render_settings = render_settings;
+}
+
+void Renderer::set_frame_number(int frame_number)
+{
+	m_render_settings.frame_number = frame_number;
 }
 
 HIPRTRenderData Renderer::get_render_data()

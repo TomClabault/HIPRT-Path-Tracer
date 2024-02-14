@@ -113,6 +113,7 @@ public:
 	void rotate_camera_view(glm::vec3 rotation_angles);
 	void zoom_camera_view(float offset);
 
+	void set_frame_number(int frame_number);
 
 	int m_framebuffer_width, m_framebuffer_height;
 

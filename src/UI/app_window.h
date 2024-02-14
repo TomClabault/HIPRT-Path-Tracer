@@ -37,6 +37,8 @@ public:
 	void update_renderer_view_translation(float translation_x, float translation_y);
 	void update_renderer_view_zoom(float offset);
 	void update_renderer_view_rotation(float offset_x, float offset_y);
+	void increment_frame_number();
+	void reset_frame_number();
 
 	std::pair<float, float> get_cursor_position();
 	void set_cursor_position(std::pair<float, float> new_position);
@@ -50,6 +52,7 @@ public:
 
 private:
 	int m_width, m_height;
+	int m_frame_number = 0;
 	std::pair<float, float> m_cursor_position;
 
 	ApplicationSettings m_application_settings;
