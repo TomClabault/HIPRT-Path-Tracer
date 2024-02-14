@@ -182,6 +182,8 @@ void AppWindow::resize_frame(int pixels_width, int pixels_height)
 	glActiveTexture(GL_TEXTURE0 + AppWindow::DISPLAY_TEXTURE_UNIT);
 	glBindTexture(GL_TEXTURE_2D, m_display_texture);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, m_width, m_height, 0, GL_RGBA, GL_FLOAT, nullptr);
+
+	reset_frame_number();
 }
 
 int AppWindow::get_width()
@@ -282,12 +284,16 @@ void AppWindow::set_renderer_scene(Scene& scene)
 
 void AppWindow::update_renderer_view_translation(float translation_x, float translation_y)
 {
+	reset_frame_number();
+
 	glm::vec3 translation = glm::vec3(translation_x / m_application_settings.view_translation_sldwn_x, translation_y / m_application_settings.view_translation_sldwn_y, 0.0f);
 	m_renderer.translate_camera_view(translation);
 }
 
 void AppWindow::update_renderer_view_rotation(float offset_x, float offset_y)
 {
+	reset_frame_number();
+
 	float rotation_x, rotation_y;
 
 	rotation_x = offset_x / m_width * 2.0f * M_PI / m_application_settings.view_rotation_sldwn_x;
@@ -298,7 +304,28 @@ void AppWindow::update_renderer_view_rotation(float offset_x, float offset_y)
 
 void AppWindow::update_renderer_view_zoom(float offset)
 {
+	reset_frame_number();
+
 	m_renderer.zoom_camera_view(offset / m_application_settings.view_zoom_sldwn);
+}
+
+void AppWindow::increment_frame_number()
+{
+	m_frame_number++;
+
+	m_renderer.set_frame_number(m_frame_number);
+
+	glUseProgram(m_display_program);
+	glUniform1i(glGetUniformLocation(m_display_program, "u_frame_number"), m_frame_number);
+}
+
+void AppWindow::reset_frame_number()
+{
+	m_frame_number = 0;
+	m_renderer.set_frame_number(0);
+
+	glUseProgram(m_display_program);
+	glUniform1i(glGetUniformLocation(m_display_program, "u_frame_number"), 0);
 }
 
 Renderer& AppWindow::get_renderer()
@@ -332,7 +359,7 @@ void AppWindow::run()
 		display(m_renderer.get_orochi_framebuffer());
 		display_imgui();
 
-		//m_renderer.clear_framebuffer();
+		increment_frame_number();
 		glfwSwapBuffers(m_window);
 	}
 
