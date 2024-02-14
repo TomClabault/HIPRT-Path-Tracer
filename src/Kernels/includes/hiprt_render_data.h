@@ -3,6 +3,14 @@
 
 #include "Kernels/includes/HIPRT_common.h"
 
+struct HIPRTRenderSettings
+{
+	int frame_number = 0;
+
+	int samples_per_frame = 1;
+	int nb_bounces = 8;
+};
+
 /*
  * A structure containing all the information about the scene
  * that the kernel is going to need for the render (vertices of the triangles, 
@@ -10,7 +18,7 @@
  */
 struct HIPRTRenderData
 {
-	HIPRTRenderData() : triangles_indices(nullptr), triangles_vertices(nullptr), frame_number(0), nb_bounces(8) {}
+	HIPRTRenderData() : triangles_indices(nullptr), triangles_vertices(nullptr) {}
 
 	// A device pointer to the buffer of triangles indices
 	int* triangles_indices;
@@ -22,9 +30,7 @@ struct HIPRTRenderData
 	// material_indices array
 	HIPRTRendererMaterial* materials_buffer;
 
-	// Starts at 0
-	int frame_number;
-	int nb_bounces;
+	HIPRTRenderSettings render_settings;
 };
 
 #endif

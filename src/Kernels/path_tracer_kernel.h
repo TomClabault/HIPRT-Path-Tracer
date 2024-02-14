@@ -44,6 +44,7 @@ __device__ hiprtFloat3 hiprt_cosine_weighted_direction_around_normal(const hiprt
     return rotate_vector_around_normal(normal, random_dir_local_space);
 }
 
+// TODO include in lambertian.h instead of here
 __device__ HIPRTColor hiprt_lambertian_brdf(const HIPRTRendererMaterial& material, const hiprtFloat3& to_light_direction, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal)
 {
     return material.diffuse * M_1_PI;
@@ -83,126 +84,123 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
 
     // TODO try to use constructor
     HIPRT_xorshift32_generator random_number_generator;
-    random_number_generator.m_state.a = (31 + x * y * (render_data.frame_number + 1));// = HIPRT_xorshift32_generator{ HIPRT_xorshift32_state{31 + x * y * render_data.frame_number} };
+    random_number_generator.m_state.a = (31 + x * y * (render_data.render_settings.frame_number + 1));// = HIPRT_xorshift32_generator{ HIPRT_xorshift32_state{31 + x * y * render_data.frame_number} };
     //Generating some numbers to make sure the generators of each thread spread apart
     //If not doing this, the generator shows clear artifacts until it has generated
     //a few numbers
-    for (int i = 0; i < 25; i++)
+    for (int i = 0; i < 50; i++)
         random_number_generator();
 
     HIPRTColor final_color = HIPRTColor{ 0.0f, 0.0f, 0.0f };
-    //TODO variable samples count per frame instead of one ?
-    /*for (int sample = 0; sample < 1; sample++)
-    {*/
-
-
-
-
-    //Jittered around the center
-    float x_jittered = (x + 0.5f) + random_number_generator() - 1.0f;
-    float y_jittered = (y + 0.5f) + random_number_generator() - 1.0f;
-
-    hiprtRay ray = camera.get_camera_ray(x_jittered, y_jittered, res);
-
-    HIPRTColor throughput = HIPRTColor{ 1.0f, 1.0f, 1.0f };
-    HIPRTColor sample_color = HIPRTColor{ 0.0f, 0.0f, 0.0f };
-    HIPRTRayState next_ray_state = HIPRTRayState::HIPRT_BOUNCE;
-    HIPRTBRDF last_brdf_hit_type = HIPRTBRDF::HIPRT_Uninitialized;
-
-    for (int bounce = 0; bounce < render_data.nb_bounces; bounce++)
+    for (int sample = 0; sample < render_data.render_settings.samples_per_frame; sample++)
     {
-        if (next_ray_state == HIPRTRayState::HIPRT_BOUNCE)
+
+
+
+
+        //Jittered around the center
+        float x_jittered = (x + 0.5f) + random_number_generator() - 1.0f;
+        float y_jittered = (y + 0.5f) + random_number_generator() - 1.0f;
+
+        hiprtRay ray = camera.get_camera_ray(x_jittered, y_jittered, res);
+
+        HIPRTColor throughput = HIPRTColor{ 1.0f, 1.0f, 1.0f };
+        HIPRTColor sample_color = HIPRTColor{ 0.0f, 0.0f, 0.0f };
+        HIPRTRayState next_ray_state = HIPRTRayState::HIPRT_BOUNCE;
+        HIPRTBRDF last_brdf_hit_type = HIPRTBRDF::HIPRT_Uninitialized;
+
+        for (int bounce = 0; bounce < render_data.render_settings.nb_bounces; bounce++)
         {
-            HIPRTHitInfo closest_hit_info;
-            bool intersection_found = trace_ray(geom, ray, render_data, closest_hit_info);
-
-            if (intersection_found)
+            if (next_ray_state == HIPRTRayState::HIPRT_BOUNCE)
             {
-                int material_index = render_data.material_indices[closest_hit_info.primitive_index];
-                HIPRTRendererMaterial material = render_data.materials_buffer[material_index];
+                HIPRTHitInfo closest_hit_info;
+                bool intersection_found = trace_ray(geom, ray, render_data, closest_hit_info);
 
-                last_brdf_hit_type = material.brdf_type;
-
-                // --------------------------------------------------- //
-                // ----------------- Direct lighting ----------------- //
-                // --------------------------------------------------- //
-                //TODO area sampling triangles
-                /*Color light_sample_radiance = sample_light_sources(ray, closest_hit_info, material, random_number_generator);
-                Color env_map_radiance = sample_environment_map(ray, closest_hit_info, material, random_number_generator);*/
-
-                HIPRTColor light_sample_radiance;
-                /*if (bounce > 0)
-                    light_sample_radiance = HIPRTColor{ 1.0f, 1.0f, 1.0f, 1.0f };
-                else*/
-                    light_sample_radiance = HIPRTColor{ 0.0f, 0.0f, 0.0f, 0.0f };
-                HIPRTColor env_map_radiance = HIPRTColor{ 0.0f, 0.0f, 0.0f, 0.0f };
-
-                // --------------------------------------- //
-                // ---------- Indirect lighting ---------- //
-                // --------------------------------------- //
-
-                float brdf_pdf;
-
-                hiprtFloat3 bounce_direction;
-                //Color brdf = brdf_dispatcher_sample(material, bounce_direction, ray.direction, closest_hit_info.normal_at_intersection, brdf_pdf, random_number_generator); //TODO relative IOR in the RayData rather than two incident and output ior values
-                bounce_direction = hiprt_cosine_weighted_direction_around_normal(closest_hit_info.normal_at_intersection, brdf_pdf, random_number_generator);
-                HIPRTColor brdf = hiprt_lambertian_brdf(material, bounce_direction, -ray.direction, closest_hit_info.normal_at_intersection);
-
-                //if (bounce == 0)
-                    sample_color = sample_color + material.emission * throughput;
-                sample_color = sample_color + (light_sample_radiance + env_map_radiance) * throughput;
-
-                if ((brdf.r == 0.0f && brdf.g == 0.0f && brdf.b == 0.0f) || brdf_pdf < 1.0e-8f || isinf(brdf_pdf))
+                if (intersection_found)
                 {
-                    next_ray_state = HIPRTRayState::HIPRT_TERMINATED;
+                    int material_index = render_data.material_indices[closest_hit_info.primitive_index];
+                    HIPRTRendererMaterial material = render_data.materials_buffer[material_index];
 
-                    break;
+                    last_brdf_hit_type = material.brdf_type;
+
+                    // --------------------------------------------------- //
+                    // ----------------- Direct lighting ----------------- //
+                    // --------------------------------------------------- //
+                    //TODO area sampling triangles
+                    /*Color light_sample_radiance = sample_light_sources(ray, closest_hit_info, material, random_number_generator);
+                    Color env_map_radiance = sample_environment_map(ray, closest_hit_info, material, random_number_generator);*/
+
+                    HIPRTColor light_sample_radiance;
+                    /*if (bounce > 0)
+                        light_sample_radiance = HIPRTColor{ 1.0f, 1.0f, 1.0f, 1.0f };
+                    else*/
+                        light_sample_radiance = HIPRTColor{ 0.0f, 0.0f, 0.0f, 0.0f };
+                    HIPRTColor env_map_radiance = HIPRTColor{ 0.0f, 0.0f, 0.0f, 0.0f };
+
+                    // --------------------------------------- //
+                    // ---------- Indirect lighting ---------- //
+                    // --------------------------------------- //
+
+                    float brdf_pdf;
+
+                    hiprtFloat3 bounce_direction;
+                    //Color brdf = brdf_dispatcher_sample(material, bounce_direction, ray.direction, closest_hit_info.normal_at_intersection, brdf_pdf, random_number_generator); //TODO relative IOR in the RayData rather than two incident and output ior values
+                    bounce_direction = hiprt_cosine_weighted_direction_around_normal(closest_hit_info.normal_at_intersection, brdf_pdf, random_number_generator);
+                    HIPRTColor brdf = hiprt_lambertian_brdf(material, bounce_direction, -ray.direction, closest_hit_info.normal_at_intersection);
+
+                    //if (bounce == 0)
+                        sample_color = sample_color + material.emission * throughput;
+                    sample_color = sample_color + (light_sample_radiance + env_map_radiance) * throughput;
+
+                    if ((brdf.r == 0.0f && brdf.g == 0.0f && brdf.b == 0.0f) || brdf_pdf < 1.0e-8f || isinf(brdf_pdf))
+                    {
+                        next_ray_state = HIPRTRayState::HIPRT_TERMINATED;
+
+                        break;
+                    }
+
+                    throughput = throughput * brdf * RT_MAX(0.0f, dot(bounce_direction, closest_hit_info.normal_at_intersection)) / brdf_pdf;
+                    //pixels[y * res.x + x] = throughput; // HIPRTColor { throughput.x, throughput.y, throughput.z, 1.0f };
+                    //return;
+
+                    hiprtFloat3 new_ray_origin = closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-4f;
+                    ray.origin = new_ray_origin; // Updating the next ray origin
+                    ray.direction = bounce_direction; // Updating the next ray direction
+
+                    next_ray_state = HIPRTRayState::HIPRT_BOUNCE;
+                }
+                else
+                    next_ray_state = HIPRTRayState::HIPRT_MISSED;
+            }
+            else if (next_ray_state == HIPRTRayState::HIPRT_MISSED)
+            {
+                //if (bounce == 1 || last_brdf_hit_type == HIPRTBRDF::HIPRT_SpecularFresnel)
+                {
+                    //We're only getting the skysphere radiance for the first rays because the
+                    //syksphere is importance sampled
+                    // We're also getting the skysphere radiance for perfectly specular BRDF since those
+                    // are not importance sampled
+
+                    //Color skysphere_color = sample_environment_map_from_direction(ray.direction);
+                    HIPRTColor skysphere_color = HIPRTColor{ 1.0f, 1.0f, 1.0f };
+
+                    // TODO try overload +=, *=, ... operators
+                    sample_color = sample_color + skysphere_color * throughput;
                 }
 
-                throughput = throughput * brdf * RT_MAX(0.0f, dot(bounce_direction, closest_hit_info.normal_at_intersection)) / brdf_pdf;
-                //pixels[y * res.x + x] = throughput; // HIPRTColor { throughput.x, throughput.y, throughput.z, 1.0f };
-                //return;
-
-                hiprtFloat3 new_ray_origin = closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-4f;
-                ray.origin = new_ray_origin; // Updating the next ray origin
-                ray.direction = bounce_direction; // Updating the next ray direction
-
-                next_ray_state = HIPRTRayState::HIPRT_BOUNCE;
+                break;
             }
-            else
-                next_ray_state = HIPRTRayState::HIPRT_MISSED;
+            else if (next_ray_state == HIPRTRayState::HIPRT_TERMINATED)
+                break;
         }
-        else if (next_ray_state == HIPRTRayState::HIPRT_MISSED)
-        {
-            //if (bounce == 1 || last_brdf_hit_type == HIPRTBRDF::HIPRT_SpecularFresnel)
-            {
-                //We're only getting the skysphere radiance for the first rays because the
-                //syksphere is importance sampled
-                // We're also getting the skysphere radiance for perfectly specular BRDF since those
-                // are not importance sampled
 
-                //Color skysphere_color = sample_environment_map_from_direction(ray.direction);
-                HIPRTColor skysphere_color = HIPRTColor{ 1.0f, 1.0f, 1.0f };
-
-                // TODO try overload +=, *=, ... operators
-                sample_color = sample_color + skysphere_color * throughput;
-            }
-
-            break;
-        }
-        else if (next_ray_state == HIPRTRayState::HIPRT_TERMINATED)
-            break;
+        final_color = final_color + sample_color;
     }
 
-    final_color = final_color + sample_color;
-
-
-    //}
-
-    final_color = final_color / 1; //TODO this is 1 sample per frame
+    final_color = final_color / (float)render_data.render_settings.samples_per_frame; //TODO this is 1 sample per frame
     final_color.a = 0.0f;
 
-    if (render_data.frame_number == 0)
+    if (render_data.render_settings.frame_number == 0)
         pixels[y * res.x + x] = final_color;
     else
         pixels[y * res.x + x] = pixels[y * res.x + x] + final_color;

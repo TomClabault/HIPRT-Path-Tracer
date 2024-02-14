@@ -97,8 +97,7 @@ public:
 	void resize_frame(int new_width, int new_height);
 
 	OrochiBuffer<float>& get_orochi_framebuffer();
-	//void clear_framebuffer();
-	void set_render_settings(const RenderSettings& render_settings);
+	RenderSettings& get_render_settings();
 	HIPRTRenderData get_render_data();
 
 	void init_ctx(int device_index);

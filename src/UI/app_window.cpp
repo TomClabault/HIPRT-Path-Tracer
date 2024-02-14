@@ -327,7 +327,7 @@ void AppWindow::update_renderer_view_zoom(float offset)
 
 void AppWindow::increment_frame_number()
 {
-	m_frame_number++;
+	m_frame_number += m_renderer.get_render_settings().samples_per_frame;
 
 	m_renderer.set_frame_number(m_frame_number);
 
@@ -371,11 +371,11 @@ void AppWindow::run()
 		ImGui::NewFrame();
 
 		m_renderer.render();
+		increment_frame_number();
 
 		display(m_renderer.get_orochi_framebuffer());
 		display_imgui();
 
-		increment_frame_number();
 		glfwSwapBuffers(m_window);
 	}
 
@@ -413,7 +413,19 @@ void AppWindow::display(OrochiBuffer<float>& orochi_buffer)
 
 void AppWindow::display_imgui()
 {
-	ImGui::ShowDemoWindow();
+	ImGui::Begin("Settings");
+	ImGui::Text("Sample count: %d", m_frame_number + 1);
+	ImGui::Separator();
+	ImGui::InputInt("Samples per frame", &m_renderer.get_render_settings().samples_per_frame);
+	if (ImGui::InputInt("Max bounces", &m_renderer.get_render_settings().nb_bounces, 0, 64))
+	{
+		// Clamping to 0 in case the user input a negative number of bounces	
+		int& nb_bounces = m_renderer.get_render_settings().nb_bounces;
+		nb_bounces = std::max(nb_bounces, 0);
+
+		reset_frame_number();
+	}
+	ImGui::End();
 
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

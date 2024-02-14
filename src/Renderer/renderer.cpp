@@ -35,9 +35,9 @@ OrochiBuffer<float>& Renderer::get_orochi_framebuffer()
 	return m_framebuffer;
 }
 
-void Renderer::set_render_settings(const RenderSettings& render_settings)
+RenderSettings& Renderer::get_render_settings()
 {
-	m_render_settings = render_settings;
+	return m_render_settings;
 }
 
 void Renderer::set_frame_number(int frame_number)
@@ -49,12 +49,11 @@ HIPRTRenderData Renderer::get_render_data()
 {
 	HIPRTRenderData render_data;
 
-	render_data.frame_number = m_render_settings.frame_number;
-	render_data.nb_bounces = m_render_settings.nb_bounces;
 	render_data.triangles_indices = reinterpret_cast<int*>(m_scene.get()->mesh.triangleIndices);
 	render_data.triangles_vertices = reinterpret_cast<hiprtFloat3*>(m_scene.get()->mesh.vertices);
 	render_data.material_indices = reinterpret_cast<int*>(m_scene.get()->material_indices);
 	render_data.materials_buffer = reinterpret_cast<HIPRTRendererMaterial*>(m_scene.get()->materials_buffer);
+	render_data.render_settings = *reinterpret_cast<HIPRTRenderSettings*>(&m_render_settings);
 
 	return render_data;
 }
