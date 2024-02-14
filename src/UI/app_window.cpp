@@ -2,7 +2,11 @@
 
 #include <functional>
 #include <iostream>
-#include <Scene/scene_parser.h>
+#include "Scene/scene_parser.h"
+#include "Utils/utils.h"
+
+//#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
 
 void wait_and_exit(const char* message)
 {
@@ -420,6 +424,31 @@ void AppWindow::display_imgui()
 
 	ImGuiIO& io = ImGui::GetIO();
 	ImGui::Text("%d samples | %.2f samples/s", m_frame_number + 1, 1.0f / io.DeltaTime * m_renderer.get_render_settings().samples_per_frame);
+
+
+
+	ImGui::Separator();
+	if (ImGui::Button("Save render PNG (tonemapped)"))
+	{
+		std::vector<unsigned char> tonemaped_data = Utils::tonemap_hdr_image(m_renderer.get_orochi_framebuffer().download_pixels(), m_frame_number, m_application_settings.tone_mapping_gamma, m_application_settings.tone_mapping_exposure);
+
+		stbi_flip_vertically_on_write(true);
+		if (stbi_write_png("Render tonemapped.png", m_width, m_height, 4, tonemaped_data.data(), m_width * sizeof(unsigned char) * 4))
+			std::cout << "Render written to \"Render tonemapped.png\"" << std::endl;
+	}
+
+	if(ImGui::Button("Save render HDR (non-tonemapped)"))
+	{
+		std::vector<float> hdr_data = m_renderer.get_orochi_framebuffer().download_pixels();
+
+#pragma omp parallel for
+		for (int i = 0; i < m_width * m_height * 4; i++)
+			hdr_data[i] = hdr_data[i] / (float)m_frame_number;
+
+		stbi_flip_vertically_on_write(true);
+		if (stbi_write_hdr("Render tonemapped.hdr", m_width, m_height, 4, hdr_data.data()))
+			std::cout << "Render written to \"Render tonemapped.hdr\"" << std::endl;
+	}
 	ImGui::Separator();
 	if (ImGui::InputInt("Stop render at sample count", &m_application_settings.stop_render_at))
 		m_application_settings.stop_render_at = std::max(m_application_settings.stop_render_at, 0);
@@ -431,8 +460,10 @@ void AppWindow::display_imgui()
 
 		reset_frame_number();
 	}
-
 	ImGui::Separator();
+
+
+
 	if (ImGui::InputFloat("Gamma", &m_application_settings.tone_mapping_gamma))
 		glUniform1f(glGetUniformLocation(m_display_program, "u_gamma"), m_application_settings.tone_mapping_gamma);
 	if (ImGui::InputFloat("Exposure", &m_application_settings.tone_mapping_exposure))

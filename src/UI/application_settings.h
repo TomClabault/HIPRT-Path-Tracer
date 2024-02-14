@@ -15,7 +15,7 @@ struct ApplicationSettings
 	int stop_render_at = 0;
 
 	float tone_mapping_gamma = 2.2f;
-	float tone_mapping_exposure = 2.0f;
+	float tone_mapping_exposure = 1.0f;
 };
 
 #endif

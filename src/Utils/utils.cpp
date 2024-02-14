@@ -38,6 +38,29 @@ Image Utils::read_image_float(const std::string& filepath, int& image_width, int
     return output;
 }
 
+std::vector<unsigned char> Utils::tonemap_hdr_image(const std::vector<float>& hdr_image, int frame_number, float gamma, float exposure)
+{
+    std::vector<unsigned char> tonemapped_data(hdr_image.size());
+
+#pragma omp parallel for
+    for (int i = 0; i < hdr_image.size(); i++)
+    {
+        /*if()
+        tonemapped_data[i] = hdr_image[i] / (float)frame_number * 255.0f;
+        continue;*/
+        Color pixel = (Color)hdr_image[i] / (float)frame_number;
+        Color tone_mapped = Color(1.0f, 1.0f, 1.0f, 1.0f) - exp(-pixel * exposure);
+        Color gamma_corrected = pow(tone_mapped, 1.0f / gamma);
+
+        tonemapped_data[i + 0] = 1;// gamma_corrected.r * 255.0f;
+        tonemapped_data[i + 1] = 1;// gamma_corrected.g * 255.0f;
+        tonemapped_data[i + 2] = 0;// gamma_corrected.b * 255.0f;
+        tonemapped_data[i + 3] = 1;
+    }
+
+    return tonemapped_data;
+}
+
 std::vector<float> Utils::compute_env_map_cdf(const Image &skysphere)
 {
     std::vector<float> out(skysphere.height() * skysphere.width());
