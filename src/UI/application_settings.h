@@ -1,8 +1,15 @@
 #ifndef APPLICATION_SETTINGS_H
 #define APPLICATION_SETTINGS_H
 
+#include <string>
+#include <vector>
+
 struct ApplicationSettings
 {
+	int selected_kernel = 0;
+	std::vector<std::string> kernel_files = { "Kernels/path_tracer_kernel.h", "Kernels/normals_kernel.h" };
+	std::vector<std::string> kernel_functions = { "PathTracerKernel", "NormalsKernel"};
+
 	// How much to divide the translation distance by when the mouse
 	// has been dragged over the window to move the camera
 	// This is necessary because if 1 pixel of movement equalled

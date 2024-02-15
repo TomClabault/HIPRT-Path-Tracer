@@ -800,3 +800,4 @@ bool RenderKernel::evaluate_shadow_ray(const Ray& ray, float t_max) const
 
     return false;
 }
+

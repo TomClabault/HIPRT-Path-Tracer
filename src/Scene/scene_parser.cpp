@@ -24,7 +24,15 @@ RendererMaterial SceneParser::ai_mat_to_renderer_mat(aiMaterial* mesh_material)
     RendererMaterial renderer_material;
     renderer_material.diffuse = Color(diffuse_color.r, diffuse_color.g, diffuse_color.b, 1.0f);
     if (error_code_emissive == AI_SUCCESS)
-        renderer_material.emission = Color(emissive_color.r, emissive_color.g, emissive_color.b, 1.0f);
+    {
+        if (emissive_color.r > 0 || emissive_color.g > 0 || emissive_color.b > 0)
+        {
+            float emission_strength;
+            mesh_material->Get(AI_MATKEY_EMISSIVE_INTENSITY, emission_strength);
+
+            renderer_material.emission = Color(emissive_color.r * emission_strength, emissive_color.g * emission_strength, emissive_color.b * emission_strength, 1.0f);
+        }
+    }
     else
         renderer_material.emission = Color(0.0f, 0.0f, 0.0f, 1.0f);
     renderer_material.metalness = metalness;
@@ -129,7 +137,7 @@ Scene SceneParser::parse_scene_file(const std::string& filepath, float frame_asp
             // The face that we just pushed in the triangle buffer is emissive
             // We're going to add its index to the emissive triangles buffer
             if (is_mesh_emissive)
-                parsed_scene.emissive_triangle_indices.push_back(parsed_scene.material_indices.size() - 3); // TODO this may be incorrect
+                parsed_scene.emissive_triangle_indices.push_back(parsed_scene.vertices_indices.size() / 3 - 1);
 
             // We're pushing the same material index for all the faces of this mesh
             // because all faces of a mesh have the same material (that's how ASSIMP importer's

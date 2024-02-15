@@ -7,7 +7,6 @@
 
 #include "mat.h"
 
-
 float radians( const float deg )
 {
     return ((float) M_PI  / 180.f) * deg;
@@ -371,9 +370,9 @@ Transform operator* ( const Transform& a, const Transform& b )
     return compose_transform(a, b);
 }
 
-Transform Transform::inverse( ) const
+Transform Transform::inverse() const
 {
-    Transform minv= *this;
+    Transform minv = *this;
 
 
     int indxc[4], indxr[4];
@@ -431,7 +430,7 @@ Transform Transform::inverse( ) const
                 float save = minv.m[j][icol];
                 minv.m[j][icol] = 0;
                 for (int k = 0; k < 4; k++)
-                    minv.m[j][k] -= minv.m[icol][k]*save;
+                    minv.m[j][k] -= minv.m[icol][k] * save;
             }
         }
     }
@@ -446,3 +445,4 @@ Transform Transform::inverse( ) const
 
     return minv;
 }
+

@@ -928,7 +928,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float dot(const float4& a, const float4& b)
 	return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 normalize(const float3& a) { return a / sqrtf(dot(a, a)); }
+HIPRT_HOST_DEVICE HIPRT_INLINE float length(const float3& a) { return sqrtf(dot(a, a)); }
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 normalize(const float3& a) { return a / length(a); }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float4 operator*(const float4x4& m, const float4& v)
 {

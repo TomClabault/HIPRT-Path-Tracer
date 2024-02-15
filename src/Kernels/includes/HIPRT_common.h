@@ -35,6 +35,12 @@ struct HIPRT_xorshift32_generator
     HIPRT_xorshift32_state m_state;
 };
 
+struct HIPRTLightSourceInformation
+{
+    int emissive_triangle_index = -1;
+    hiprtFloat3 light_source_normal;
+};
+
 enum HIPRTRayState
 {
     HIPRT_BOUNCE,
