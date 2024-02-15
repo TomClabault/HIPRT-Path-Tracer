@@ -32,10 +32,5 @@ GLOBAL_KERNEL_SIGNATURE(void) NormalsKernel(hiprtGeometry geom, HIPRTRenderData 
 	hiprtFloat3 normal = hiprtFloat3{ 0.5f, 0.5f, 0.5f } * normalize(cross(vertex_B - vertex_A, vertex_C - vertex_A)) + hiprtFloat3{ 0.5f, 0.5f, 0.5f };
 
 	HIPRTColor color{ hit.hasHit() ? normal.x : 0.0f, hit.hasHit() ? normal.y : 0.0f, hit.hasHit() ? normal.z : 0.0f };
-	pixels[index + 0] = color;
-
-	/*pixels[index * 4 + 0] = hit.hasHit() ? normal.x : 0.0f;
-	pixels[index * 4 + 1] = hit.hasHit() ? normal.y : 0.0f;
-	pixels[index * 4 + 2] = hit.hasHit() ? normal.z : 0.0f;
-	pixels[index * 4 + 3] = 1.0f;*/
+	pixels[index] = color * (scene_geometry.render_settings.frame_number + 1);
 }

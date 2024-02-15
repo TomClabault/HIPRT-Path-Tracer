@@ -55,6 +55,11 @@ public:
 			mesh.vertices = nullptr;
 			mesh.triangleIndices = nullptr;
 			geometry = nullptr;
+
+			material_indices = nullptr;
+			materials_buffer = nullptr;
+
+			emissive_triangles_indices = nullptr;
 		}
 
 		~HIPRTScene()
@@ -73,6 +78,9 @@ public:
 
 			if (materials_buffer)
 				OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(materials_buffer)));
+
+			if (emissive_triangles_indices)
+				OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(emissive_triangles_indices)));
 		}
 
 		hiprtContext hiprt_ctx = nullptr;
@@ -81,6 +89,9 @@ public:
 
 		hiprtDevicePtr material_indices;
 		hiprtDevicePtr materials_buffer;
+
+		int emissive_triangles_count;
+		hiprtDevicePtr emissive_triangles_indices;
 	};
 
 	Renderer(int width, int height, HIPRTOrochiCtx* hiprt_orochi_ctx) : 

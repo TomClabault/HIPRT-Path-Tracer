@@ -18,7 +18,11 @@ struct HIPRTRenderSettings
  */
 struct HIPRTRenderData
 {
-	HIPRTRenderData() : triangles_indices(nullptr), triangles_vertices(nullptr) {}
+	HIPRTRenderData() : geom(nullptr), triangles_indices(nullptr), triangles_vertices(nullptr),
+	material_indices(nullptr), materials_buffer(nullptr), emissive_triangles_count(0),
+	emissive_triangles_indices(nullptr) {}
+
+	hiprtGeometry geom;
 
 	// A device pointer to the buffer of triangles indices
 	int* triangles_indices;
@@ -29,6 +33,8 @@ struct HIPRTRenderData
 	// Materials array to be indexed by an index retrieved from the 
 	// material_indices array
 	HIPRTRendererMaterial* materials_buffer;
+	int emissive_triangles_count;
+	int* emissive_triangles_indices;
 
 	HIPRTRenderSettings render_settings;
 };

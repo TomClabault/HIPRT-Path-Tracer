@@ -232,6 +232,7 @@ void AppWindow::setup_display_program()
 		"vs_tex_coords = triangle_tex_coords[gl_VertexID];\n"
 		"}";
 
+	// Tone mapping fragment shader
 	const char* fragment_shader_text = "#version 330\n"
 		"uniform sampler2D u_texture;\n"
 		"uniform int u_frame_number;\n"
@@ -242,7 +243,7 @@ void AppWindow::setup_display_program()
 
 		"void main()\n"
 		"{\n"
-		"vec4 hdr_color = texture(u_texture, vs_tex_coords) / float(u_frame_number + 1);\n"// float(u_frame_number + 1); \n"
+		"vec4 hdr_color = texture(u_texture, vs_tex_coords) / float(u_frame_number + 1);\n"
 		"vec4 tone_mapped = 1.0f - exp(-hdr_color * u_exposure);\n"
 		"vec4 gamma_corrected = pow(tone_mapped, vec4(1.0f / u_gamma));\n"
 		"gl_FragColor = gamma_corrected;\n"
@@ -374,7 +375,7 @@ void AppWindow::run()
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
-		if (!(m_application_settings.stop_render_at != 0 && m_frame_number > m_application_settings.stop_render_at - 1))
+		if (!(m_application_settings.stop_render_at != 0 && m_frame_number + 1 > m_application_settings.stop_render_at))
 		{
 			m_renderer.render();
 			increment_frame_number();
@@ -425,19 +426,27 @@ void AppWindow::display_imgui()
 	ImGuiIO& io = ImGui::GetIO();
 	ImGui::Text("%d samples | %.2f samples/s", m_frame_number + 1, 1.0f / io.DeltaTime * m_renderer.get_render_settings().samples_per_frame);
 
-
-
 	ImGui::Separator();
+
+	if (ImGui::Combo("Render Kernel", &m_application_settings.selected_kernel, "Full Path Tracer\0Normals Visualisation\0\0"))
+	{
+		m_renderer.compile_trace_kernel(m_application_settings.kernel_files[m_application_settings.selected_kernel].c_str(), m_application_settings.kernel_functions[m_application_settings.selected_kernel].c_str());
+
+		reset_frame_number();
+	}
+	
+	ImGui::Separator();
+	
 	if (ImGui::Button("Save render PNG (tonemapped)"))
 	{
+		//TODO fixme
 		std::vector<unsigned char> tonemaped_data = Utils::tonemap_hdr_image(m_renderer.get_orochi_framebuffer().download_pixels(), m_frame_number, m_application_settings.tone_mapping_gamma, m_application_settings.tone_mapping_exposure);
 
 		stbi_flip_vertically_on_write(true);
 		if (stbi_write_png("Render tonemapped.png", m_width, m_height, 4, tonemaped_data.data(), m_width * sizeof(unsigned char) * 4))
 			std::cout << "Render written to \"Render tonemapped.png\"" << std::endl;
 	}
-
-	if(ImGui::Button("Save render HDR (non-tonemapped)"))
+	if (ImGui::Button("Save render HDR (non-tonemapped)"))
 	{
 		std::vector<float> hdr_data = m_renderer.get_orochi_framebuffer().download_pixels();
 
@@ -486,4 +495,3 @@ void AppWindow::quit()
 
 	std::exit(0);
 }
-
