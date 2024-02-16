@@ -62,7 +62,7 @@ Scene SceneParser::parse_scene_file(const std::string& filepath, float frame_asp
     }
 
     // Taking the first camera as the camera of the scene
-    if (false)//scene->mNumCameras > 0)
+    if (scene->mNumCameras > 0)
     {
         aiCamera* camera = scene->mCameras[0];
 

@@ -50,13 +50,71 @@ void glfw_mouse_cursor_callback(GLFWwindow* window, double xpos, double ypos)
 
 			if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
 				app_window->update_renderer_view_translation(-difference.first, difference.second);
-			else if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+
+			if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
 				app_window->update_renderer_view_rotation(-difference.first, -difference.second);
 		}
 
 		// Updating the position
 		app_window->set_cursor_position(std::make_pair(xposf, yposf));
 	}
+}
+
+static bool z_pressed, q_pressed, s_pressed, d_pressed, space_pressed, lshift_pressed;
+void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+	switch (key)
+	{
+	case GLFW_KEY_W:
+	case GLFW_KEY_Z:
+		z_pressed = (action == GLFW_PRESS) || (action == GLFW_REPEAT);
+		break;
+
+	case GLFW_KEY_A:
+	case GLFW_KEY_Q:
+		q_pressed = (action == GLFW_PRESS) || (action == GLFW_REPEAT);
+		break;
+
+	case GLFW_KEY_S:
+		s_pressed = (action == GLFW_PRESS) || (action == GLFW_REPEAT);
+
+		break;
+
+	case GLFW_KEY_D:
+		d_pressed = (action == GLFW_PRESS) || (action == GLFW_REPEAT);
+		break;
+
+	case GLFW_KEY_SPACE:
+		space_pressed = (action == GLFW_PRESS) || (action == GLFW_REPEAT);
+		break;
+
+	case GLFW_KEY_LEFT_SHIFT:
+		lshift_pressed = (action == GLFW_PRESS) || (action == GLFW_REPEAT);
+		break;
+
+	default:
+		break;
+	}
+
+	float zoom = 0.0f;
+	std::pair<float, float> translation;
+	if (z_pressed)
+		zoom += 1.0f;
+	if (q_pressed)
+		translation.first += 36.0f;
+	if (s_pressed)
+		zoom -= 1.0f;
+	if (d_pressed)
+		translation.first += 36.0f;
+	if (space_pressed)
+		translation.second += 36.0f;
+	if (lshift_pressed)
+		translation.second -= 36.0f;
+
+	
+	AppWindow* app_window = reinterpret_cast<AppWindow*>(glfwGetWindowUserPointer(window));
+	app_window->update_renderer_view_translation(-translation.first, translation.second);
+	app_window->update_renderer_view_zoom(-zoom);
 }
 
 void glfw_mouse_scroll_callback(GLFWwindow * window, double xoffset, double yoffset)
@@ -137,6 +195,7 @@ AppWindow::AppWindow(int width, int height) : m_width(width), m_height(height)
 	glfwSetWindowUserPointer(m_window, this);
 	glfwSetWindowSizeCallback(m_window, glfw_window_resized_callback);
 	glfwSetCursorPosCallback(m_window, glfw_mouse_cursor_callback);
+	glfwSetKeyCallback(m_window, glfw_key_callback);
 	glfwSetScrollCallback(m_window, glfw_mouse_scroll_callback);
 	glfwSwapInterval(1);
 
@@ -305,6 +364,9 @@ void AppWindow::set_renderer_scene(Scene& scene)
 
 void AppWindow::update_renderer_view_translation(float translation_x, float translation_y)
 {
+	if (translation_x == 0.f && translation_y == 0.0f)
+		return;
+
 	reset_frame_number();
 
 	glm::vec3 translation = glm::vec3(translation_x / m_application_settings.view_translation_sldwn_x, translation_y / m_application_settings.view_translation_sldwn_y, 0.0f);
@@ -325,6 +387,9 @@ void AppWindow::update_renderer_view_rotation(float offset_x, float offset_y)
 
 void AppWindow::update_renderer_view_zoom(float offset)
 {
+	if (offset == 0.0f)
+		return;
+
 	reset_frame_number();
 
 	m_renderer.zoom_camera_view(offset / m_application_settings.view_zoom_sldwn);
