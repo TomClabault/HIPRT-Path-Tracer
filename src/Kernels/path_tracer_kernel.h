@@ -549,7 +549,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                     // ----------------- Direct lighting ----------------- //
                     // --------------------------------------------------- //
                     //TODO area sampling triangles
-                    HIPRTColor light_sample_radiance = sample_light_sources(render_data, ray, closest_hit_info, material, random_number_generator);
+                    HIPRTColor light_sample_radiance = HIPRTColor(0.0f);// sample_light_sources(render_data, ray, closest_hit_info, material, random_number_generator);
                     //HIPRTColor env_map_radiance = sample_environment_map(ray, closest_hit_info, material, random_number_generator);
 
                     HIPRTColor env_map_radiance = HIPRTColor(0.0f);
