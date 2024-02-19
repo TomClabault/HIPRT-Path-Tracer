@@ -18,8 +18,10 @@ struct Scene
 {
     std::vector<RendererMaterial> materials;
 
-    std::vector<int> vertices_indices;
+    std::vector<int> triangle_indices;
     std::vector<hiprtFloat3> vertices_positions;
+    std::vector<unsigned char> normals_present;
+    std::vector<hiprtFloat3> vertex_normals;
     std::vector<int> emissive_triangle_indices;
     std::vector<int> material_indices;
 
@@ -42,11 +44,11 @@ struct Scene
     {
         std::vector<Triangle> triangles;
 
-        for (int i = 0; i < vertices_indices.size(); i += 3)
+        for (int i = 0; i < triangle_indices.size(); i += 3)
         {
-            triangles.push_back(Triangle(*reinterpret_cast<Point*>(&vertices_positions[vertices_indices[i + 0]]),
-                                         *reinterpret_cast<Point*>(&vertices_positions[vertices_indices[i + 1]]),
-                                         *reinterpret_cast<Point*>(&vertices_positions[vertices_indices[i + 2]])));
+            triangles.push_back(Triangle(*reinterpret_cast<Point*>(&vertices_positions[triangle_indices[i + 0]]),
+                                         *reinterpret_cast<Point*>(&vertices_positions[triangle_indices[i + 1]]),
+                                         *reinterpret_cast<Point*>(&vertices_positions[triangle_indices[i + 2]])));
         }
 
         return triangles;

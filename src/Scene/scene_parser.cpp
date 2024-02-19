@@ -54,7 +54,7 @@ Scene SceneParser::parse_scene_file(const std::string& filepath, float frame_asp
     Assimp::Importer importer;
 
     //TODO check perf of aiPostProcessSteps::aiProcess_ImproveCacheLocality
-    const aiScene* scene = importer.ReadFile(filepath, aiPostProcessSteps::aiProcess_GenSmoothNormals | aiPostProcessSteps::aiProcess_PreTransformVertices | aiPostProcessSteps::aiProcess_Triangulate);
+    const aiScene* scene = importer.ReadFile(filepath, aiPostProcessSteps::aiProcess_PreTransformVertices | aiPostProcessSteps::aiProcess_Triangulate);
     if (scene == nullptr)
     {
         std::cerr << importer.GetErrorString() << std::endl;
@@ -140,8 +140,24 @@ Scene SceneParser::parse_scene_file(const std::string& filepath, float frame_asp
         int material_index = parsed_scene.materials.size() - 1;
         bool is_mesh_emissive = renderer_material.is_emissive();
 
+        // Inserting the normals if present
+        if (mesh->HasNormals())
+            parsed_scene.vertex_normals.insert(parsed_scene.vertex_normals.end(),
+                reinterpret_cast<hiprtFloat3*>(mesh->mNormals),
+                reinterpret_cast<hiprtFloat3*>(&mesh->mNormals[mesh->mNumVertices]));
+        else
+            parsed_scene.vertex_normals.insert(parsed_scene.vertex_normals.end(), mesh->mNumVertices, hiprtFloat3{0, 0, 0});
+
+        // Inserting 0 or 1 depending on whether the normals are present or not.
+        // These values will be used in the shader to determine whether we should do
+        // smooth shading or not
+        parsed_scene.normals_present.insert(parsed_scene.normals_present.end(), mesh->mNumVertices, mesh->HasNormals());
+
         // Inserting all the vertices of the mesh
-        parsed_scene.vertices_positions.insert(parsed_scene.vertices_positions.end(), reinterpret_cast<hiprtFloat3*>(&mesh->mVertices[0]), reinterpret_cast<hiprtFloat3*>(&mesh->mVertices[mesh->mNumVertices]));
+        parsed_scene.vertices_positions.insert(parsed_scene.vertices_positions.end(), 
+            reinterpret_cast<hiprtFloat3*>(&mesh->mVertices[0]), 
+            reinterpret_cast<hiprtFloat3*>(&mesh->mVertices[mesh->mNumVertices]));
+
         for (int face_index = 0; face_index < mesh->mNumFaces; face_index++)
         {
             aiFace face = mesh->mFaces[face_index];
@@ -153,14 +169,14 @@ Scene SceneParser::parse_scene_file(const std::string& filepath, float frame_asp
             // Accumulating the maximum index of this mesh
             max_mesh_index_offset = std::max(max_mesh_index_offset, std::max(index_1, std::max(index_2, index_3)));
 
-            parsed_scene.vertices_indices.push_back(index_1 + global_indices_offset);
-            parsed_scene.vertices_indices.push_back(index_2 + global_indices_offset);
-            parsed_scene.vertices_indices.push_back(index_3 + global_indices_offset);
+            parsed_scene.triangle_indices.push_back(index_1 + global_indices_offset);
+            parsed_scene.triangle_indices.push_back(index_2 + global_indices_offset);
+            parsed_scene.triangle_indices.push_back(index_3 + global_indices_offset);
 
             // The face that we just pushed in the triangle buffer is emissive
             // We're going to add its index to the emissive triangles buffer
             if (is_mesh_emissive)
-                parsed_scene.emissive_triangle_indices.push_back(parsed_scene.vertices_indices.size() / 3 - 1);
+                parsed_scene.emissive_triangle_indices.push_back(parsed_scene.triangle_indices.size() / 3 - 1);
 
             // We're pushing the same material index for all the faces of this mesh
             // because all faces of a mesh have the same material (that's how ASSIMP importer's
@@ -176,7 +192,7 @@ Scene SceneParser::parse_scene_file(const std::string& filepath, float frame_asp
     }
 
     // TODO log number of vertices per mesh
-    std::cout << parsed_scene.vertices_positions.size() << " vertices ; " << parsed_scene.vertices_indices.size() / 3 << " triangles" << std::endl;
+    std::cout << parsed_scene.vertices_positions.size() << " vertices ; " << parsed_scene.triangle_indices.size() / 3 << " triangles" << std::endl;
 
     return parsed_scene;
 }

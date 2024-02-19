@@ -19,6 +19,7 @@ struct HIPRTRenderSettings
 struct HIPRTRenderData
 {
 	HIPRTRenderData() : geom(nullptr), triangles_indices(nullptr), triangles_vertices(nullptr),
+	normals_present(nullptr), vertex_normals(nullptr),
 	material_indices(nullptr), materials_buffer(nullptr), emissive_triangles_count(0),
 	emissive_triangles_indices(nullptr) {}
 
@@ -28,6 +29,14 @@ struct HIPRTRenderData
 	int* triangles_indices;
 	// A device pointer to the buffer of triangle vertices
 	hiprtFloat3* triangles_vertices;
+	// A device pointer to a buffer filled with 0s and 1s that
+	// indicates whether or not a vertex normal is available for
+	// the given vertex index
+	unsigned char* normals_present;
+	// The smooth normal at each vertex of the scene
+	// Needs to be indexed by a vertex index
+	hiprtFloat3* vertex_normals;
+
 	// Index of the material used by each triangle of the scene
 	int* material_indices;
 	// Materials array to be indexed by an index retrieved from the 

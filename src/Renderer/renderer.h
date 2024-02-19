@@ -87,6 +87,9 @@ public:
 		hiprtTriangleMeshPrimitive mesh;
 		hiprtGeometry geometry = nullptr;
 
+		hiprtDevicePtr normals_present;
+		hiprtDevicePtr vertex_normals;
+
 		hiprtDevicePtr material_indices;
 		hiprtDevicePtr materials_buffer;
 

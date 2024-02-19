@@ -105,7 +105,7 @@ void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, in
 	if (s_pressed)
 		zoom -= 1.0f;
 	if (d_pressed)
-		translation.first += 36.0f;
+		translation.first -= 36.0f; // TODO fix should be opposite of Q
 	if (space_pressed)
 		translation.second += 36.0f;
 	if (lshift_pressed)
@@ -227,7 +227,8 @@ AppWindow::AppWindow(int width, int height) : m_width(width), m_height(height)
 
 	setup_display_program();
 	m_renderer.init_ctx(0);
-	m_renderer.compile_trace_kernel("Kernels/path_tracer_kernel.h", "PathTracerKernel");
+	m_renderer.compile_trace_kernel(m_application_settings.kernel_files[m_application_settings.selected_kernel].c_str(),
+		m_application_settings.kernel_functions[m_application_settings.selected_kernel].c_str());
 	m_renderer.resize_frame(width, height);
 }
 

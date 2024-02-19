@@ -327,11 +327,25 @@ __device__ bool trace_ray(const HIPRTRenderData& render_data, hiprtRay ray, HIPR
         hiprtFloat3 AC = vertex_C - vertex_A;
         hit_info.normal_at_intersection = normalize(cross(AB, AC));*/
 
-        hit_info.normal_at_intersection = normalize(hit.normal);
-        if (dot(ray.direction, hit.normal) > 0)
-            hit_info.normal_at_intersection = -hit_info.normal_at_intersection;
+        int vertex_A_index = render_data.triangles_indices[hit_info.primitive_index * 3 + 0];
+        if (render_data.normals_present[vertex_A_index])
+        {
+            // Smooth normal available for the triangle
+
+            int vertex_B_index = render_data.triangles_indices[hit_info.primitive_index * 3 + 1];
+            int vertex_C_index = render_data.triangles_indices[hit_info.primitive_index * 3 + 2];
+
+            hiprtFloat3 smooth_normal = render_data.vertex_normals[vertex_B_index] * hit.uv.x 
+                + render_data.vertex_normals[vertex_C_index] * hit.uv.y 
+                + render_data.vertex_normals[vertex_A_index] * (1.0f - hit.uv.x - hit.uv.y);
+
+            hit_info.normal_at_intersection = normalize(smooth_normal);
+        }
+        else
+            hit_info.normal_at_intersection = normalize(hit.normal);
 
         hit_info.t = hit.t;
+        hit_info.uv = hit.uv;
 
         return true;
     }
@@ -524,7 +538,6 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
     if (index >= res.x * res.y)
         return;
 
-
     // TODO try to use constructor
     HIPRT_xorshift32_generator random_number_generator;
     // Getting a random for the xorshift seed from the pixel index using wang_hash
@@ -554,6 +567,12 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
 
                 if (intersection_found)
                 {
+                    /*HIPRTColor debug_color(closest_hit_info.normal_at_intersection);
+                    debug_set_final_color(render_data, x, y, res.x, pixels, HIPRTColor(abs(closest_hit_info.normal_at_intersection)));
+                    return;*/
+
+
+
                     int material_index = render_data.material_indices[closest_hit_info.primitive_index];
                     HIPRTRendererMaterial material = render_data.materials_buffer[material_index];
 
@@ -606,7 +625,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                         // are not importance sampled
 
                         //HIPRTColor skysphere_color = sample_environment_map_from_direction(ray.direction);
-                        HIPRTColor skysphere_color = HIPRTColor(0.0f);
+                        HIPRTColor skysphere_color = HIPRTColor(1.0f);
 
                         // TODO try overload +=, *=, ... operators
                         sample_color = sample_color + skysphere_color * throughput;

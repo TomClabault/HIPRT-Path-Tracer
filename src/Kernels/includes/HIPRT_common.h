@@ -59,6 +59,7 @@ struct HIPRTHitInfo
 {
     hiprtFloat3 inter_point;
     hiprtFloat3 normal_at_intersection;
+    hiprtFloat2 uv;
 
     float t = -1.0f; //Distance along ray
 
