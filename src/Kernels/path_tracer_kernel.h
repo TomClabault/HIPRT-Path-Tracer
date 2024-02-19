@@ -281,14 +281,13 @@ __device__ HIPRTColor smooth_glass_bsdf(const HIPRTRendererMaterial& material, h
         if (!can_refract)
         {
             // Shouldn't happen (?)
-            return HIPRTColor(1000000.0f, 0.0f, 1000000.0f); //Omega pink
+            return HIPRTColor(1000000.0f, 0.0f, 1000000.0f); // Omega pink
         }
 
         out_bounce_direction = refract_direction;
         surface_normal = -surface_normal;
         pdf = 1.0f - fresnel_reflect;
 
-        // TODO use constructor
         return HIPRTColor(1.0f - fresnel_reflect) * material.diffuse / dot(out_bounce_direction, surface_normal);
     }
 }
@@ -316,12 +315,23 @@ __device__ bool trace_ray(const HIPRTRenderData& render_data, hiprtRay ray, HIPR
     if (hit.hasHit())
     {
         hit_info.inter_point = ray.origin + hit.t * ray.direction;
+        hit_info.primitive_index = hit.primID;
         // TODO hit.normal is in object space but we need world space normals. The line below assumes that all objects have
         // already been pretransformed in world space. This may not be true anymore with multiple level
         // acceleration structures
+        /*hiprtFloat3 vertex_A = render_data.triangles_vertices[render_data.triangles_indices[hit_info.primitive_index * 3 + 0]];
+        hiprtFloat3 vertex_B = render_data.triangles_vertices[render_data.triangles_indices[hit_info.primitive_index * 3 + 1]];
+        hiprtFloat3 vertex_C = render_data.triangles_vertices[render_data.triangles_indices[hit_info.primitive_index * 3 + 2]];
+
+        hiprtFloat3 AB = vertex_B - vertex_A;
+        hiprtFloat3 AC = vertex_C - vertex_A;
+        hit_info.normal_at_intersection = normalize(cross(AB, AC));*/
+
         hit_info.normal_at_intersection = normalize(hit.normal);
+        if (dot(ray.direction, hit.normal) > 0)
+            hit_info.normal_at_intersection = -hit_info.normal_at_intersection;
+
         hit_info.t = hit.t;
-        hit_info.primitive_index = hit.primID;
 
         return true;
     }
@@ -338,13 +348,13 @@ __device__ float power_heuristic(float pdf_a, float pdf_b)
 
 __device__ hiprtFloat3 sample_random_point_on_lights(const HIPRTRenderData& render_data, HIPRT_xorshift32_generator& random_number_generator, float& pdf, HIPRTLightSourceInformation& light_info)
 {
-    light_info.emissive_triangle_index = random_number_generator() * render_data.emissive_triangles_count;
-    int triangle_index = render_data.emissive_triangles_indices[light_info.emissive_triangle_index];
-    light_info.emissive_triangle_index = triangle_index;
+    int random_index = random_number_generator() * render_data.emissive_triangles_count;
+    int triangle_index = light_info.emissive_triangle_index = render_data.emissive_triangles_indices[random_index];
+    
 
-    hiprtFloat3 vertex_A = render_data.triangles_vertices[render_data.triangles_indices[triangle_index + 0]];
-    hiprtFloat3 vertex_B = render_data.triangles_vertices[render_data.triangles_indices[triangle_index + 1]];
-    hiprtFloat3 vertex_C = render_data.triangles_vertices[render_data.triangles_indices[triangle_index + 2]];
+    hiprtFloat3 vertex_A = render_data.triangles_vertices[render_data.triangles_indices[triangle_index * 3 + 0]];
+    hiprtFloat3 vertex_B = render_data.triangles_vertices[render_data.triangles_indices[triangle_index * 3 + 1]];
+    hiprtFloat3 vertex_C = render_data.triangles_vertices[render_data.triangles_indices[triangle_index * 3 + 2]];
 
     float rand_1 = random_number_generator();
     float rand_2 = random_number_generator();
@@ -371,9 +381,9 @@ __device__ hiprtFloat3 sample_random_point_on_lights(const HIPRTRenderData& rend
 
 __device__ float triangle_area(const HIPRTRenderData& render_data, int triangle_index)
 {
-    hiprtFloat3 vertex_A = render_data.triangles_vertices[render_data.triangles_indices[triangle_index + 0]];
-    hiprtFloat3 vertex_B = render_data.triangles_vertices[render_data.triangles_indices[triangle_index + 1]];
-    hiprtFloat3 vertex_C = render_data.triangles_vertices[render_data.triangles_indices[triangle_index + 2]];
+    hiprtFloat3 vertex_A = render_data.triangles_vertices[render_data.triangles_indices[triangle_index * 3 + 0]];
+    hiprtFloat3 vertex_B = render_data.triangles_vertices[render_data.triangles_indices[triangle_index * 3 + 1]];
+    hiprtFloat3 vertex_C = render_data.triangles_vertices[render_data.triangles_indices[triangle_index * 3 + 2]];
 
     hiprtFloat3 AB = vertex_B - vertex_A;
     hiprtFloat3 AC = vertex_C - vertex_A;
@@ -381,22 +391,21 @@ __device__ float triangle_area(const HIPRTRenderData& render_data, int triangle_
     return length(cross(AB, AC)) / 2.0f;
 }
 
+/**
+ * Returns true if in shadow, false otherwise
+ */
 __device__ bool evaluate_shadow_ray(const HIPRTRenderData& render_data, hiprtRay ray, float t_max)
 {
-    //TODO use global stack for good traversal performance
-    //ray.maxT = t_max - 1.0e-4f;
-    hiprtGeomTraversalClosest tr(render_data.geom, ray);
-    hiprtHit				  hit = tr.getNextHit();
+    ray.maxT = t_max - 1.0e-4f;
 
-    return false;
-    if (hit.hasHit() && hit.t + 1.0e-4f < t_max)
-        return true;
-    else
-        return false;
+    hiprtGeomTraversalAnyHit traversal(render_data.geom, ray);
+    hiprtHit aoHit = traversal.getNextHit();
+
+    return aoHit.hasHit();
 }
 
-// TODO rename xorshift32 generator without underscores for consistency
-__device__ HIPRTColor sample_light_sources(const HIPRTRenderData& render_data, const hiprtRay& ray, const HIPRTHitInfo& closest_hit_info, const HIPRTRendererMaterial& material, HIPRT_xorshift32_generator& random_number_generator)
+//// TODO rename xorshift32 generator without underscores for consistency
+__device__ HIPRTColor sample_light_sources(HIPRTRenderData& render_data, const hiprtRay& ray, const HIPRTHitInfo& closest_hit_info, const HIPRTRendererMaterial& material, HIPRT_xorshift32_generator& random_number_generator)
 {
     if (material.brdf_type == HIPRTBRDF::HIPRT_SpecularFresnel)
         // No sampling for perfectly specular materials
@@ -431,7 +440,6 @@ __device__ HIPRTColor sample_light_sources(const HIPRTRenderData& render_data, c
                 light_sample_pdf /= dot_light_source;
 
                 HIPRTColor brdf = cook_torrance_brdf(material, shadow_ray.direction, -ray.direction, closest_hit_info.normal_at_intersection);
-                brdf = material.diffuse / M_PI;
 
                 float cook_torrance_pdf = cook_torrance_brdf_pdf(material, -ray.direction, shadow_ray_direction_normalized, closest_hit_info.normal_at_intersection);
                 if (cook_torrance_pdf != 0.0f)
@@ -441,23 +449,20 @@ __device__ HIPRTColor sample_light_sources(const HIPRTRenderData& render_data, c
                     HIPRTColor Li = emissive_triangle_material.emission;
                     float cosine_term = dot(closest_hit_info.normal_at_intersection, shadow_ray_direction_normalized);
 
-                    mis_weight = 1.0f;
                     light_source_radiance_mis = Li * cosine_term * brdf * mis_weight / light_sample_pdf;
                 }
             }
         }
     }
 
-    return light_source_radiance_mis;
-
     HIPRTColor brdf_radiance_mis;
 
     hiprtFloat3 sampled_brdf_direction;
     float direction_pdf;
     HIPRTColor brdf = cook_torrance_brdf_importance_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, sampled_brdf_direction, direction_pdf, random_number_generator);
-    if (!(brdf.r == 0.0f && brdf.g == 0.0f && brdf.b == 0.0f))
+    if (brdf.r != 0.0f || brdf.g != 0.0f || brdf.b != 0.0f)
     {
-        hiprtRay new_ray;
+        hiprtRay new_ray; 
         new_ray.origin = closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-5f;
         new_ray.direction = sampled_brdf_direction;
 
@@ -501,6 +506,15 @@ __device__ unsigned int wang_hash(unsigned int seed)
     return seed;
 }
 
+__device__ void debug_set_final_color(const HIPRTRenderData& render_data, int x, int y, int res_x, HIPRTColor* pixels, HIPRTColor final_color)
+{
+    final_color.a = 0.0f;
+    if (render_data.render_settings.frame_number == 0)
+        pixels[y * res_x + x] = final_color;
+    else
+        pixels[y * res_x + x] = pixels[y * res_x + x] + final_color;
+}
+
 GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderData render_data, HIPRTColor* pixels, int2 res, HIPRTCamera camera)
 {
     const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -514,7 +528,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
     // TODO try to use constructor
     HIPRT_xorshift32_generator random_number_generator;
     // Getting a random for the xorshift seed from the pixel index using wang_hash
-    // + 1 used to avoid zeros
+    // THe + 1 are used to avoid zeros
     random_number_generator.m_state.a = (wang_hash((index + 1) * (render_data.render_settings.frame_number + 1)));
 
     HIPRTColor final_color = HIPRTColor{ 0.0f, 0.0f, 0.0f };
@@ -549,7 +563,8 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                     // ----------------- Direct lighting ----------------- //
                     // --------------------------------------------------- //
                     //TODO area sampling triangles
-                    HIPRTColor light_sample_radiance = HIPRTColor(0.0f);// sample_light_sources(render_data, ray, closest_hit_info, material, random_number_generator);
+                    HIPRTColor light_sample_radiance = sample_light_sources(render_data, ray, closest_hit_info, material, random_number_generator);
+
                     //HIPRTColor env_map_radiance = sample_environment_map(ray, closest_hit_info, material, random_number_generator);
 
                     HIPRTColor env_map_radiance = HIPRTColor(0.0f);
@@ -561,13 +576,6 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                     float brdf_pdf;
                     hiprtFloat3 bounce_direction;
                     HIPRTColor brdf = brdf_dispatcher_sample(material, bounce_direction, ray.direction, closest_hit_info.normal_at_intersection, brdf_pdf, random_number_generator); //TODO relative IOR in the RayData rather than two incident and output ior values
-
-                    //float brdf_pdf;
-
-                    //hiprtFloat3 bounce_direction;
-                    ////HIPRTColor brdf = brdf_dispatcher_sample(material, bounce_direction, ray.direction, closest_hit_info.normal_at_intersection, brdf_pdf, random_number_generator); //TODO relative IOR in the RayData rather than two incident and output ior values
-                    //bounce_direction = hiprt_cosine_weighted_direction_around_normal(closest_hit_info.normal_at_intersection, brdf_pdf, random_number_generator);
-                    //HIPRTColor brdf = hiprt_lambertian_brdf(material, bounce_direction, -ray.direction, closest_hit_info.normal_at_intersection);
 
                     if (bounce == 0)
                         sample_color = sample_color + material.emission * throughput;
@@ -598,7 +606,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                         // are not importance sampled
 
                         //HIPRTColor skysphere_color = sample_environment_map_from_direction(ray.direction);
-                        HIPRTColor skysphere_color = HIPRTColor(1.0f);
+                        HIPRTColor skysphere_color = HIPRTColor(0.0f);
 
                         // TODO try overload +=, *=, ... operators
                         sample_color = sample_color + skysphere_color * throughput;
