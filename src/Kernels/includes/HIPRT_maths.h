@@ -916,6 +916,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float4 operator/(const float c, const float4& a)
 	return make_float4(c / a.x, c / a.y, c / a.z, c / a.w);
 }
 
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 abs(const float3& a)
+{
+	return make_float3(abs(a.x), abs(a.y), abs(a.z));
+}
+
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 cross(const float3& a, const float3& b)
 {
 	return make_float3(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x);
