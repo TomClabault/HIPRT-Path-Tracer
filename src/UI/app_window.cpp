@@ -504,7 +504,6 @@ void AppWindow::display(OrochiBuffer<float>& orochi_buffer)
 }
 
 // TOOD black border at the top of the viewport when the viewport grows towards a portrait ?
-// TODO be able to decouple viewport size from render size (enlarge window without having to render full resolution)
 // TODO display feedback for 5 seconds after dumping a screenshot to disk
 void AppWindow::display_imgui()
 {
@@ -521,11 +520,10 @@ void AppWindow::display_imgui()
 
 	if (ImGui::Button("Save render PNG (tonemapped)"))
 	{
-		//TODO fixme
 		std::vector<unsigned char> tonemaped_data = Utils::tonemap_hdr_image(m_renderer.get_orochi_framebuffer().download_pixels(), m_frame_number, m_application_settings.tone_mapping_gamma, m_application_settings.tone_mapping_exposure);
 
 		stbi_flip_vertically_on_write(true);
-		if (stbi_write_png("Render tonemapped.png", m_viewport_width, m_viewport_height, 4, tonemaped_data.data(), m_viewport_width * sizeof(unsigned char) * 4))
+		if (stbi_write_png("Render tonemapped.png", m_renderer.m_render_width, m_renderer.m_render_height, 4, tonemaped_data.data(), m_renderer.m_render_width * sizeof(unsigned char) * 4))
 			std::cout << "Render written to \"Render tonemapped.png\"" << std::endl;
 	}
 	if (ImGui::Button("Save render HDR (non-tonemapped)"))
@@ -533,11 +531,11 @@ void AppWindow::display_imgui()
 		std::vector<float> hdr_data = m_renderer.get_orochi_framebuffer().download_pixels();
 
 #pragma omp parallel for
-		for (int i = 0; i < m_viewport_width * m_viewport_height * 4; i++)
+		for (int i = 0; i < m_renderer.m_render_width * m_renderer.m_render_height * 4; i++)
 			hdr_data[i] = hdr_data[i] / (float)m_frame_number;
 
 		stbi_flip_vertically_on_write(true);
-		if (stbi_write_hdr("Render tonemapped.hdr", m_viewport_width, m_viewport_height, 4, hdr_data.data()))
+		if (stbi_write_hdr("Render tonemapped.hdr", m_renderer.m_render_width, m_renderer.m_render_height, 4, hdr_data.data()))
 			std::cout << "Render written to \"Render tonemapped.hdr\"" << std::endl;
 	}
 	
