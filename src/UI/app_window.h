@@ -54,6 +54,7 @@ private:
 	int m_width, m_height;
 	int m_frame_number = 0;
 	std::pair<float, float> m_cursor_position;
+	std::chrono::high_resolution_clock::time_point m_startRenderTime;
 
 	ApplicationSettings m_application_settings;
 

@@ -31,6 +31,7 @@ int main(int argc, char* argv[])
         app_window.set_renderer_scene(parsed_scene);
         app_window.get_renderer().set_camera(parsed_scene.camera);
     }
+    app_window.reset_frame_number();
     app_window.run();
 
     return 0;

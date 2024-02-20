@@ -408,6 +408,7 @@ void AppWindow::increment_frame_number()
 
 void AppWindow::reset_frame_number()
 {
+	m_startRenderTime = std::chrono::high_resolution_clock::now();
 	m_frame_number = 0;
 	m_renderer.set_frame_number(0);
 
@@ -485,11 +486,18 @@ void AppWindow::display(OrochiBuffer<float>& orochi_buffer)
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
+// TOOD black border at the top of the viewport when the viewport grows towards a portrait ?
+// TODO be able to decouple viewport size from render size (enlarge window without having to render full resolution)
+// TODO display feedback for 5 seconds after dumping a screenshot to disk
 void AppWindow::display_imgui()
 {
+	ImGuiIO& io = ImGui::GetIO();
+
 	ImGui::Begin("Settings");
 
-	ImGuiIO& io = ImGui::GetIO();
+	auto now_time = std::chrono::high_resolution_clock::now();
+	float render_time = std::chrono::duration_cast<std::chrono::milliseconds>(now_time - m_startRenderTime).count();
+	ImGui::Text("Render time: %.3fs", render_time / 1000.0f);
 	ImGui::Text("%d samples | %.2f samples/s", m_frame_number + 1, 1.0f / io.DeltaTime * m_renderer.get_render_settings().samples_per_frame);
 
 	ImGui::Separator();
