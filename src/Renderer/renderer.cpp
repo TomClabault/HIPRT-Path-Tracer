@@ -6,10 +6,10 @@ void Renderer::render()
 	int tile_size_y = 8;
 
 	hiprtInt2 nb_groups;
-	nb_groups.x = std::ceil(m_framebuffer_width / (float)tile_size_x);
-	nb_groups.y = std::ceil(m_framebuffer_height / (float)tile_size_y);
+	nb_groups.x = std::ceil(m_render_width / (float)tile_size_x);
+	nb_groups.y = std::ceil(m_render_height / (float)tile_size_y);
 
-	hiprtInt2 resolution = make_hiprtInt2(m_framebuffer_width, m_framebuffer_height);
+	hiprtInt2 resolution = make_hiprtInt2(m_render_width, m_render_height);
 
 	HIPRTCamera hiprt_cam = m_camera.to_hiprt();
 	HIPRTRenderData render_data = get_render_data();
@@ -17,10 +17,10 @@ void Renderer::render()
 	launch_kernel(8, 8, resolution.x, resolution.y, launch_args);
 }
 
-void Renderer::resize_frame(int new_width, int new_height)
+void Renderer::change_render_resolution(int new_width, int new_height)
 {
-	m_framebuffer_width = new_width;
-	m_framebuffer_height = new_height;
+	m_render_width = new_width;
+	m_render_height = new_height;
 
 	// * 4 for RGBA
 	m_framebuffer.resize(new_width * new_height * 4);
@@ -58,7 +58,10 @@ HIPRTRenderData Renderer::get_render_data()
 	render_data.materials_buffer = reinterpret_cast<HIPRTRendererMaterial*>(m_scene.get()->materials_buffer);
 	render_data.emissive_triangles_count = m_scene.get()->emissive_triangles_count;
 	render_data.emissive_triangles_indices = reinterpret_cast<int*>(m_scene.get()->emissive_triangles_indices);
-	render_data.render_settings = *reinterpret_cast<HIPRTRenderSettings*>(&m_render_settings);
+
+	render_data.render_settings.frame_number = m_render_settings.frame_number;
+	render_data.render_settings.nb_bounces = m_render_settings.nb_bounces;
+	render_data.render_settings.samples_per_frame = m_render_settings.samples_per_frame;
 
 	return render_data;
 }

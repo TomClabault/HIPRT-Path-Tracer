@@ -98,7 +98,7 @@ public:
 	};
 
 	Renderer(int width, int height, HIPRTOrochiCtx* hiprt_orochi_ctx) : 
-		m_framebuffer_width(width), m_framebuffer_height(height),
+		m_render_width(width), m_render_height(height),
 		m_framebuffer(width* height), m_hiprt_orochi_ctx(hiprt_orochi_ctx),
 		m_trace_kernel(nullptr)
 	{
@@ -108,7 +108,7 @@ public:
 	Renderer() : m_scene(nullptr) {}
 
 	void render();
-	void resize_frame(int new_width, int new_height);
+	void change_render_resolution(int new_width, int new_height);
 
 	OrochiBuffer<float>& get_orochi_framebuffer();
 	RenderSettings& get_render_settings();
@@ -128,7 +128,7 @@ public:
 
 	void set_frame_number(int frame_number);
 
-	int m_framebuffer_width, m_framebuffer_height;
+	int m_render_width, m_render_height;
 
 	Camera m_camera;
 

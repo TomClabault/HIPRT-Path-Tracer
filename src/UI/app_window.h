@@ -27,6 +27,7 @@ public:
 
 	static void APIENTRY gl_debug_output_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam);
 	void resize_frame(int pixels_width, int pixels_height);
+	void change_resolution_scaling(float new_scaling);
 
 	int get_width();
 	int get_height();
@@ -51,7 +52,7 @@ public:
 	void quit();
 
 private:
-	int m_width, m_height;
+	int m_viewport_width, m_viewport_height;
 	int m_frame_number = 0;
 	std::pair<float, float> m_cursor_position;
 	std::chrono::high_resolution_clock::time_point m_startRenderTime;

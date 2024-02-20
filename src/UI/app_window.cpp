@@ -176,7 +176,7 @@ void APIENTRY AppWindow::gl_debug_output_callback(GLenum source,
 	std::cout << std::endl;
 }
 
-AppWindow::AppWindow(int width, int height) : m_width(width), m_height(height)
+AppWindow::AppWindow(int width, int height) : m_viewport_width(width), m_viewport_height(height)
 {
 	if (!glfwInit())
 		wait_and_exit("Could not initialize GLFW...");
@@ -229,7 +229,7 @@ AppWindow::AppWindow(int width, int height) : m_width(width), m_height(height)
 	m_renderer.init_ctx(0);
 	m_renderer.compile_trace_kernel(m_application_settings.kernel_files[m_application_settings.selected_kernel].c_str(),
 		m_application_settings.kernel_functions[m_application_settings.selected_kernel].c_str());
-	m_renderer.resize_frame(width, height);
+	m_renderer.change_render_resolution(width, height);
 }
 
 AppWindow::~AppWindow()
@@ -240,7 +240,7 @@ AppWindow::~AppWindow()
 
 void AppWindow::resize_frame(int pixels_width, int pixels_height)
 {
-	if (pixels_width == m_width && pixels_height && m_height)
+	if (pixels_width == m_viewport_width && pixels_height && m_viewport_height)
 	{
 		// Already the right size, nothing to do. This can happen
 		// when the window comes out of the minized state. Getting
@@ -254,26 +254,43 @@ void AppWindow::resize_frame(int pixels_width, int pixels_height)
 
 	glViewport(0, 0, pixels_width, pixels_height);
 
-	m_width = pixels_width;
-	m_height = pixels_height;
-	m_renderer.resize_frame(pixels_width, pixels_height);
+	m_viewport_width = pixels_width;
+	m_viewport_height = pixels_height;
+
+	// Taking resolution scaling into account
+	float resolution_scale = m_renderer.get_render_settings().render_resolution_scale;
+	int new_render_width = std::floor(pixels_width * resolution_scale);
+	int new_render_height = std::floor(pixels_height * resolution_scale);
+	m_renderer.change_render_resolution(new_render_width, new_render_height);
 
 	// Recreating the OpenGL display texture
 	glActiveTexture(GL_TEXTURE0 + AppWindow::DISPLAY_TEXTURE_UNIT);
 	glBindTexture(GL_TEXTURE_2D, m_display_texture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, m_width, m_height, 0, GL_RGBA, GL_FLOAT, nullptr);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, new_render_width, new_render_height, 0, GL_RGBA, GL_FLOAT, nullptr);
 
 	reset_frame_number();
 }
 
+void AppWindow::change_resolution_scaling(float new_scaling)
+{
+	float new_render_width = std::floor(m_viewport_width * new_scaling);
+	float new_render_height = std::floor(m_viewport_height * new_scaling);
+
+	m_renderer.change_render_resolution(new_render_width, new_render_height);
+
+	glActiveTexture(GL_TEXTURE0 + AppWindow::DISPLAY_TEXTURE_UNIT);
+	glBindTexture(GL_TEXTURE_2D, m_display_texture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, new_render_width, new_render_height, 0, GL_RGBA, GL_FLOAT, nullptr);
+}
+
 int AppWindow::get_width()
 {
-	return m_width;
+	return m_viewport_width;
 }
 
 int AppWindow::get_height()
 {
-	return m_height;
+	return m_viewport_height;
 }
 
 void AppWindow::setup_display_program()
@@ -346,7 +363,7 @@ void AppWindow::setup_display_program()
 	glGenTextures(1, &m_display_texture);
 	glActiveTexture(GL_TEXTURE0 + AppWindow::DISPLAY_TEXTURE_UNIT);
 	glBindTexture(GL_TEXTURE_2D, m_display_texture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, m_width, m_height, 0, GL_RGBA, GL_FLOAT, nullptr);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, m_viewport_width, m_viewport_height, 0, GL_RGBA, GL_FLOAT, nullptr);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
@@ -380,8 +397,8 @@ void AppWindow::update_renderer_view_rotation(float offset_x, float offset_y)
 
 	float rotation_x, rotation_y;
 
-	rotation_x = offset_x / m_width * 2.0f * M_PI / m_application_settings.view_rotation_sldwn_x;
-	rotation_y = offset_y / m_height * 2.0f * M_PI / m_application_settings.view_rotation_sldwn_y;
+	rotation_x = offset_x / m_viewport_width * 2.0f * M_PI / m_application_settings.view_rotation_sldwn_x;
+	rotation_y = offset_y / m_viewport_height * 2.0f * M_PI / m_application_settings.view_rotation_sldwn_y;
 
 	m_renderer.rotate_camera_view(glm::vec3(rotation_x, rotation_y, 0.0f));
 }
@@ -463,7 +480,7 @@ void AppWindow::display(const std::vector<Color>& image_data)
 
 	glBindTexture(GL_TEXTURE_2D, m_display_texture);
 	//TODO we don't need the alpha, save VRAM!
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_width, m_height, GL_RGBA, GL_FLOAT, image_data.data());
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_viewport_width, m_viewport_height, GL_RGBA, GL_FLOAT, image_data.data());
 
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 }
@@ -481,7 +498,7 @@ void AppWindow::display(OrochiBuffer<float>& orochi_buffer)
 	std::vector<float> pixels_data = orochi_buffer.download_pixels();
 
 	glBindTexture(GL_TEXTURE_2D, m_display_texture);
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_width, m_height, GL_RGBA, GL_FLOAT, pixels_data.data());
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_renderer.m_render_width, m_renderer.m_render_height, GL_RGBA, GL_FLOAT, pixels_data.data());
 
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 }
@@ -498,8 +515,32 @@ void AppWindow::display_imgui()
 	auto now_time = std::chrono::high_resolution_clock::now();
 	float render_time = std::chrono::duration_cast<std::chrono::milliseconds>(now_time - m_startRenderTime).count();
 	ImGui::Text("Render time: %.3fs", render_time / 1000.0f);
-	ImGui::Text("%d samples | %.2f samples/s", m_frame_number + 1, 1.0f / io.DeltaTime * m_renderer.get_render_settings().samples_per_frame);
+	ImGui::Text("%d samples | %.2f samples/s @ %dx%d", m_frame_number + 1, 1.0f / io.DeltaTime * m_renderer.get_render_settings().samples_per_frame, m_renderer.m_render_width, m_renderer.m_render_height);
 
+	ImGui::Separator();
+
+	if (ImGui::Button("Save render PNG (tonemapped)"))
+	{
+		//TODO fixme
+		std::vector<unsigned char> tonemaped_data = Utils::tonemap_hdr_image(m_renderer.get_orochi_framebuffer().download_pixels(), m_frame_number, m_application_settings.tone_mapping_gamma, m_application_settings.tone_mapping_exposure);
+
+		stbi_flip_vertically_on_write(true);
+		if (stbi_write_png("Render tonemapped.png", m_viewport_width, m_viewport_height, 4, tonemaped_data.data(), m_viewport_width * sizeof(unsigned char) * 4))
+			std::cout << "Render written to \"Render tonemapped.png\"" << std::endl;
+	}
+	if (ImGui::Button("Save render HDR (non-tonemapped)"))
+	{
+		std::vector<float> hdr_data = m_renderer.get_orochi_framebuffer().download_pixels();
+
+#pragma omp parallel for
+		for (int i = 0; i < m_viewport_width * m_viewport_height * 4; i++)
+			hdr_data[i] = hdr_data[i] / (float)m_frame_number;
+
+		stbi_flip_vertically_on_write(true);
+		if (stbi_write_hdr("Render tonemapped.hdr", m_viewport_width, m_viewport_height, 4, hdr_data.data()))
+			std::cout << "Render written to \"Render tonemapped.hdr\"" << std::endl;
+	}
+	
 	ImGui::Separator();
 
 	if (ImGui::Combo("Render Kernel", &m_application_settings.selected_kernel, "Full Path Tracer\0Normals Visualisation\0\0"))
@@ -508,31 +549,20 @@ void AppWindow::display_imgui()
 
 		reset_frame_number();
 	}
+
+	float resolution_scaling_backup = m_renderer.get_render_settings().render_resolution_scale;
+	if (ImGui::InputFloat("Render resolution scale", &m_renderer.get_render_settings().render_resolution_scale))
+	{
+		float& resolution_scale = m_renderer.get_render_settings().render_resolution_scale;
+		if (resolution_scale <= 0)
+			resolution_scale = resolution_scaling_backup;
+
+		change_resolution_scaling(resolution_scale);
+		reset_frame_number();
+	}
 	
 	ImGui::Separator();
-	
-	if (ImGui::Button("Save render PNG (tonemapped)"))
-	{
-		//TODO fixme
-		std::vector<unsigned char> tonemaped_data = Utils::tonemap_hdr_image(m_renderer.get_orochi_framebuffer().download_pixels(), m_frame_number, m_application_settings.tone_mapping_gamma, m_application_settings.tone_mapping_exposure);
 
-		stbi_flip_vertically_on_write(true);
-		if (stbi_write_png("Render tonemapped.png", m_width, m_height, 4, tonemaped_data.data(), m_width * sizeof(unsigned char) * 4))
-			std::cout << "Render written to \"Render tonemapped.png\"" << std::endl;
-	}
-	if (ImGui::Button("Save render HDR (non-tonemapped)"))
-	{
-		std::vector<float> hdr_data = m_renderer.get_orochi_framebuffer().download_pixels();
-
-#pragma omp parallel for
-		for (int i = 0; i < m_width * m_height * 4; i++)
-			hdr_data[i] = hdr_data[i] / (float)m_frame_number;
-
-		stbi_flip_vertically_on_write(true);
-		if (stbi_write_hdr("Render tonemapped.hdr", m_width, m_height, 4, hdr_data.data()))
-			std::cout << "Render written to \"Render tonemapped.hdr\"" << std::endl;
-	}
-	ImGui::Separator();
 	if (ImGui::InputInt("Stop render at sample count", &m_application_settings.stop_render_at))
 		m_application_settings.stop_render_at = std::max(m_application_settings.stop_render_at, 0);
 	ImGui::InputInt("Samples per frame", &m_renderer.get_render_settings().samples_per_frame);
@@ -543,6 +573,7 @@ void AppWindow::display_imgui()
 
 		reset_frame_number();
 	}
+
 	ImGui::Separator();
 
 
