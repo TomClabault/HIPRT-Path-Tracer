@@ -240,7 +240,7 @@ AppWindow::~AppWindow()
 
 void AppWindow::resize_frame(int pixels_width, int pixels_height)
 {
-	if (pixels_width == m_viewport_width && pixels_height && m_viewport_height)
+	if (pixels_width == m_viewport_width && pixels_height == m_viewport_height)
 	{
 		// Already the right size, nothing to do. This can happen
 		// when the window comes out of the minized state. Getting
@@ -503,7 +503,6 @@ void AppWindow::display(OrochiBuffer<float>& orochi_buffer)
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
-// TOOD black border at the top of the viewport when the viewport grows towards a portrait ?
 // TODO display feedback for 5 seconds after dumping a screenshot to disk
 void AppWindow::display_imgui()
 {
