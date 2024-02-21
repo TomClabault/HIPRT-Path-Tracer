@@ -242,7 +242,10 @@ __device__ HIPRTColor cook_torrance_brdf_importance_sample(const HIPRTRendererMa
 
 __device__ HIPRTColor smooth_glass_bsdf(const HIPRTRendererMaterial& material, hiprtFloat3& out_bounce_direction, const hiprtFloat3& ray_direction, hiprtFloat3& surface_normal, float eta_i, float eta_t, float& pdf, HIPRT_xorshift32_generator& random_generator)
 {
-    float cos_theta_i = dot(surface_normal, -ray_direction);
+    // Clamping here because the dot product can eventually returns values less
+    // than -1 or greater than 1 because of precision errors in the vectors
+    // (in previous calculations)
+    float cos_theta_i = RT_MIN(RT_MAX(-1.0f, dot(surface_normal, -ray_direction)), 1.0f);
 
     if (cos_theta_i < 0.0f)
     {
