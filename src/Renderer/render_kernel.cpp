@@ -23,7 +23,7 @@ void branchlessONB(const Vector& n, Vector& b1, Vector& b2)
     b2 = Vector(b, sign + n.y * n.y * a, -n.y);
 }
 
-//TODO rename render_kernel to renderer_cpu
+// TODO rename render_kernel to renderer_cpu
 
 /**
  * Reflects a ray about a normal. This function requires that dot(ray_direction, surface_normal) > 0 i.e.
@@ -244,8 +244,8 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
 #include <omp.h>
 
 #define DEBUG_PIXEL 0
-#define DEBUG_PIXEL_X 401
-#define DEBUG_PIXEL_Y 582
+#define DEBUG_PIXEL_X 51
+#define DEBUG_PIXEL_Y 36
 void RenderKernel::render()
 {
     std::atomic<int> lines_completed = 0;
@@ -423,7 +423,10 @@ Color RenderKernel::cook_torrance_brdf_importance_sample(const RendererMaterial&
 
 Color RenderKernel::smooth_glass_bsdf(const RendererMaterial& material, Vector& out_bounce_direction, const Vector& ray_direction, Vector& surface_normal, float eta_i, float eta_t, float& pdf, xorshift32_generator& random_generator) const
 {
-    float cos_theta_i = dot(surface_normal, -ray_direction);
+    // Clamping here because the dot product can eventually returns values less
+    // than -1 or greater than 1 because of precision errors in the vectors
+    // (in previous calculations)
+    float cos_theta_i = std::min(std::max(-1.0f, dot(surface_normal, -ray_direction)), 1.0f);
 
     if (cos_theta_i < 0.0f)
     {
