@@ -257,8 +257,12 @@ void AppWindow::resize_frame(int pixels_width, int pixels_height)
 	m_viewport_width = pixels_width;
 	m_viewport_height = pixels_height;
 
+	RenderSettings& render_settings = m_renderer.get_render_settings();
 	// Taking resolution scaling into account
-	float resolution_scale = m_renderer.get_render_settings().render_resolution_scale;
+	float& resolution_scale = render_settings.render_resolution_scale;
+	if (render_settings.keep_same_resolution)
+		resolution_scale = render_settings.target_width / (float)pixels_width; // TODO what about the height changing ?
+
 	int new_render_width = std::floor(pixels_width * resolution_scale);
 	int new_render_height = std::floor(pixels_height * resolution_scale);
 	m_renderer.change_render_resolution(new_render_width, new_render_height);
@@ -547,6 +551,8 @@ void AppWindow::display_imgui()
 		reset_frame_number();
 	}
 
+	if (m_renderer.get_render_settings().keep_same_resolution) // TODO Put this setting in application settings ?
+		ImGui::BeginDisabled();
 	float resolution_scaling_backup = m_renderer.get_render_settings().render_resolution_scale;
 	if (ImGui::InputFloat("Render resolution scale", &m_renderer.get_render_settings().render_resolution_scale))
 	{
@@ -556,6 +562,18 @@ void AppWindow::display_imgui()
 
 		change_resolution_scaling(resolution_scale);
 		reset_frame_number();
+	}
+	if (m_renderer.get_render_settings().keep_same_resolution) // TODO Put this setting in application settings ?
+		ImGui::EndDisabled();
+
+	if (ImGui::Checkbox("Keep same render resolution", &m_renderer.get_render_settings().keep_same_resolution))
+	{
+		if (m_renderer.get_render_settings().keep_same_resolution)
+		{
+			// Remembering the width and height we need to target
+			m_renderer.get_render_settings().target_width = m_renderer.m_render_width;
+			m_renderer.get_render_settings().target_height = m_renderer.m_render_height;
+		}
 	}
 	
 	ImGui::Separator();
