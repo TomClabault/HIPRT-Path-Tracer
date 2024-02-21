@@ -324,7 +324,7 @@ void AppWindow::setup_display_program()
 
 		"void main()\n"
 		"{\n"
-		"vec4 hdr_color = texture(u_texture, vs_tex_coords) / float(u_frame_number + 1);\n"
+		"vec4 hdr_color = texture(u_texture, vs_tex_coords);\n"
 		"vec4 tone_mapped = 1.0f - exp(-hdr_color * u_exposure);\n"
 		"vec4 gamma_corrected = pow(tone_mapped, vec4(1.0f / u_gamma));\n"
 		"gl_FragColor = gamma_corrected;\n"
@@ -469,6 +469,10 @@ void AppWindow::run()
 			increment_frame_number();
 		}
 
+		// TODO lock camera checkbox to avoid messing up when big render in progress
+		// TOOO choose render resolution in imgui
+		// TODO choose viewport resolution in imgui 
+
 		display(m_renderer.get_orochi_framebuffer());
 		display_imgui();
 
@@ -563,9 +567,12 @@ void AppWindow::display_imgui()
 		change_resolution_scaling(resolution_scale);
 		reset_frame_number();
 	}
-	if (m_renderer.get_render_settings().keep_same_resolution) // TODO Put this setting in application settings ?
+	if (m_renderer.get_render_settings().keep_same_resolution)
 		ImGui::EndDisabled();
 
+	// TODO imgui renderer class to put all of this away in its own class
+
+	// TODO don't reset frame number on resize when keep same render resolution is checked
 	if (ImGui::Checkbox("Keep same render resolution", &m_renderer.get_render_settings().keep_same_resolution))
 	{
 		if (m_renderer.get_render_settings().keep_same_resolution)
@@ -588,6 +595,10 @@ void AppWindow::display_imgui()
 
 		reset_frame_number();
 	}
+
+	ImGui::Checkbox("Enable denoiser", &m_renderer.get_render_settings().enable_denoising);
+	//ImGui::Checkbox("Denoise every frame", &m_renderer.get_render_settings().denoise_every_frame);
+	ImGui::DragFloat("Denoise strength", &m_renderer.get_render_settings().denoising_strength, 1.0f, 0.0f, 1.0f);
 
 	ImGui::Separator();
 
