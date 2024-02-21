@@ -18,6 +18,14 @@ struct CommandLineArguments
                 arguments.render_samples = std::atoi(string_argv.substr(10).c_str());
             else if (string_argv.starts_with("--bounces="))
                 arguments.bounces = std::atoi(string_argv.substr(10).c_str());
+            else if (string_argv.starts_with("--w="))
+                arguments.render_width = std::atoi(string_argv.substr(4).c_str());
+            else if (string_argv.starts_with("--width="))
+                arguments.render_width = std::atoi(string_argv.substr(8).c_str());
+            else if (string_argv.starts_with("--h="))
+                arguments.render_height = std::atoi(string_argv.substr(4).c_str());
+            else if (string_argv.starts_with("--height="))
+                arguments.render_height = std::atoi(string_argv.substr(9).c_str());
             else
                 //Assuming scene file path
                 arguments.scene_file_path = string_argv;
@@ -25,6 +33,8 @@ struct CommandLineArguments
 
         return arguments;
     }
+
+    int render_width = 1280, render_height = 720;
 
     // Default scene and skysphere paths as expected if running the application from a build
     // directory inside the repo root folder

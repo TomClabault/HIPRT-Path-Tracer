@@ -21,7 +21,7 @@ int main(int argc, char* argv[])
 {
     CommandLineArguments arguments = CommandLineArguments::process_command_line_args(argc, argv);
 
-    const int default_width = 1280, default_height = 720;
+    const int default_width = arguments.render_width, default_height = arguments.render_height;
     AppWindow app_window(default_width, default_height);
     {
         std::cout << "Reading scene file " << arguments.scene_file_path << " ..." << std::endl;
@@ -38,9 +38,8 @@ int main(int argc, char* argv[])
 
     //CommandLineArguments cmd_arguments = CommandLineArguments::process_command_line_args(argc, argv);
 
-    //const int width = 1280;
-    //const int height = 720;
-
+    //const int width = cmd_arguments.render_width;
+    //const int height = cmd_arguments.render_height;
 
     //RendererMaterial sphere_material;
     //sphere_material.emission = Color(0.0f);
@@ -101,5 +100,5 @@ int main(int argc, char* argv[])
     //write_image_png(image_denoised_075, "RT_output_denoised_0.75.png");
     //write_image_png(image_denoised_05, "RT_output_denoised_0.5.png");
 
-    return 0;
+    //return 0;
 }
