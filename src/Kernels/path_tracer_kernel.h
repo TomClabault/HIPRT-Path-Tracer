@@ -650,5 +650,5 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
     if (render_data.render_settings.frame_number == 0)
         pixels[y * res.x + x] = final_color;
     else
-        pixels[y * res.x + x] = pixels[y * res.x + x] + final_color;
+        pixels[y * res.x + x] = (pixels[y * res.x + x] * render_data.render_settings.frame_number + final_color) / (float)(render_data.render_settings.frame_number + 1);
 }

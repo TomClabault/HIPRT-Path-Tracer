@@ -246,6 +246,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
 #define DEBUG_PIXEL 0
 #define DEBUG_PIXEL_X 51
 #define DEBUG_PIXEL_Y 36
+
 void RenderKernel::render()
 {
     std::atomic<int> lines_completed = 0;

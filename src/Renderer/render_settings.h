@@ -20,6 +20,15 @@ struct RenderSettings
 
 	int samples_per_frame = 1;
 	int nb_bounces = 8;
+
+	bool enable_denoising = false;
+	bool denoise_every_frame = false;
+	// How many frames to wait for before denoising
+	// (this basically reduces the performance penalty
+	// of denoising each frame). Only taken into account
+	// if denoise_every_frame = false
+	int denoise_frame_count = 30;
+	float denoising_strength = 0.5f;
 };
 
 #endif
