@@ -111,13 +111,13 @@ void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, in
 	if (lshift_pressed)
 		translation.second -= 36.0f;
 
-	
+
 	AppWindow* app_window = reinterpret_cast<AppWindow*>(glfwGetWindowUserPointer(window));
 	app_window->update_renderer_view_translation(-translation.first, translation.second);
 	app_window->update_renderer_view_zoom(-zoom);
 }
 
-void glfw_mouse_scroll_callback(GLFWwindow * window, double xoffset, double yoffset)
+void glfw_mouse_scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
 	ImGuiIO& io = ImGui::GetIO();
 	if (!io.WantCaptureMouse)
@@ -230,6 +230,7 @@ AppWindow::AppWindow(int width, int height) : m_viewport_width(width), m_viewpor
 	m_renderer.compile_trace_kernel(m_application_settings.kernel_files[m_application_settings.selected_kernel].c_str(),
 		m_application_settings.kernel_functions[m_application_settings.selected_kernel].c_str());
 	m_renderer.change_render_resolution(width, height);
+	m_denoiser.resize_buffers(width, height);
 }
 
 AppWindow::~AppWindow()
@@ -266,6 +267,7 @@ void AppWindow::resize_frame(int pixels_width, int pixels_height)
 	int new_render_width = std::floor(pixels_width * resolution_scale);
 	int new_render_height = std::floor(pixels_height * resolution_scale);
 	m_renderer.change_render_resolution(new_render_width, new_render_height);
+	m_denoiser.resize_buffers(new_render_width, new_render_height);
 
 	// Recreating the OpenGL display texture
 	glActiveTexture(GL_TEXTURE0 + AppWindow::DISPLAY_TEXTURE_UNIT);
@@ -473,7 +475,10 @@ void AppWindow::run()
 		// TOOO choose render resolution in imgui
 		// TODO choose viewport resolution in imgui 
 
-		display(m_renderer.get_orochi_framebuffer());
+		if (m_renderer.get_render_settings().enable_denoising)
+			display(m_denoiser.denoise(m_renderer.m_render_width, m_renderer.m_render_height, m_renderer.get_orochi_framebuffer().download_pixels()));
+		else
+			display(m_renderer.get_orochi_framebuffer());
 		display_imgui();
 
 		glfwSwapBuffers(m_window);
@@ -489,6 +494,16 @@ void AppWindow::display(const std::vector<Color>& image_data)
 	glBindTexture(GL_TEXTURE_2D, m_display_texture);
 	//TODO we don't need the alpha, save VRAM!
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_viewport_width, m_viewport_height, GL_RGBA, GL_FLOAT, image_data.data());
+
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+}
+
+void AppWindow::display(const std::vector<float>& pixels_data)
+{
+	glUseProgram(m_display_program);
+
+	glBindTexture(GL_TEXTURE_2D, m_display_texture);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_renderer.m_render_width, m_renderer.m_render_height, GL_RGBA, GL_FLOAT, pixels_data.data());
 
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 }

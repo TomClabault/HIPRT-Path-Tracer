@@ -12,6 +12,7 @@
 
 #include "Utils/commandline_arguments.h"
 #include "Renderer/renderer.h"
+#include "Renderer/open_image_denoiser.h"
 
 class AppWindow
 {
@@ -45,6 +46,7 @@ public:
 	void set_cursor_position(std::pair<float, float> new_position);
 
 	void display(const std::vector<Color>& image_data);
+	void display(const std::vector<float>& pixels_data);
 	void display(OrochiBuffer<float>& orochi_buffer);
 	void display_imgui();
 
@@ -60,6 +62,7 @@ private:
 	ApplicationSettings m_application_settings;
 
 	Renderer m_renderer;
+	OpenImageDenoiser m_denoiser;
 
 	GLuint m_display_program;
 	GLuint m_display_texture;
