@@ -471,6 +471,7 @@ void AppWindow::run()
 			increment_frame_number();
 		}
 
+		// TODO more than 1 SPP blows up the brightness when resetting frame ?
 		// TODO lock camera checkbox to avoid messing up when big render in progress
 		// TOOO choose render resolution in imgui
 		// TODO choose viewport resolution in imgui 
