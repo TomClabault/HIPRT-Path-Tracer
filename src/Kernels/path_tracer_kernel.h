@@ -526,7 +526,7 @@ __device__ unsigned int wang_hash(unsigned int seed)
 __device__ void debug_set_final_color(const HIPRTRenderData& render_data, int x, int y, int res_x, HIPRTColor* pixels, HIPRTColor final_color)
 {
     final_color.a = 0.0f;
-    if (render_data.render_settings.frame_number == 0)
+    if (render_data.render_settings.sample_number == 0)
         pixels[y * res_x + x] = final_color;
     else
         pixels[y * res_x + x] = pixels[y * res_x + x] + final_color;
@@ -545,7 +545,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
     HIPRT_xorshift32_generator random_number_generator;
     // Getting a random for the xorshift seed from the pixel index using wang_hash
     // THe + 1 are used to avoid zeros
-    random_number_generator.m_state.a = (wang_hash((index + 1) * (render_data.render_settings.frame_number + 1)));
+    random_number_generator.m_state.a = (wang_hash((index + 1) * (render_data.render_settings.sample_number + 1)));
 
     HIPRTColor final_color = HIPRTColor{ 0.0f, 0.0f, 0.0f };
     for (int sample = 0; sample < render_data.render_settings.samples_per_frame; sample++)
@@ -646,10 +646,9 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
         final_color = final_color + sample_color;
     }
 
-    final_color = final_color / render_data.render_settings.samples_per_frame;
     final_color.a = 0.0f;
-    if (render_data.render_settings.frame_number == 0)
+    if (render_data.render_settings.sample_number == 0)
         pixels[y * res.x + x] = final_color;
     else
-        pixels[y * res.x + x] = (pixels[y * res.x + x] * render_data.render_settings.frame_number + final_color) / (float)(render_data.render_settings.frame_number + 1);
+        pixels[y * res.x + x] = pixels[y * res.x + x] + final_color;
 }

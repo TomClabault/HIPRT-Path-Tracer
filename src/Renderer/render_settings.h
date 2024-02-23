@@ -3,7 +3,8 @@
 
 struct RenderSettings
 {
-	int frame_number = 0;
+	// How many samples we've rendered so far
+	int sample_number = 0;
 
 	// Whether or not to keep the same resolution on
 	// viewport rescale. This means that the render resolution

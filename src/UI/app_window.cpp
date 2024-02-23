@@ -274,7 +274,7 @@ void AppWindow::resize_frame(int pixels_width, int pixels_height)
 	glBindTexture(GL_TEXTURE_2D, m_display_texture);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, new_render_width, new_render_height, 0, GL_RGBA, GL_FLOAT, nullptr);
 
-	reset_frame_number();
+	reset_sample_number();
 }
 
 void AppWindow::change_resolution_scaling(float new_scaling)
@@ -318,7 +318,7 @@ void AppWindow::setup_display_program()
 	// Tone mapping fragment shader
 	const char* fragment_shader_text = "#version 330\n"
 		"uniform sampler2D u_texture;\n"
-		"uniform int u_frame_number;\n"
+		"uniform int u_sample_number;\n"
 		"uniform float u_gamma;\n"
 		"uniform float u_exposure;\n"
 
@@ -326,7 +326,7 @@ void AppWindow::setup_display_program()
 
 		"void main()\n"
 		"{\n"
-		"vec4 hdr_color = texture(u_texture, vs_tex_coords);\n"
+		"vec4 hdr_color = texture(u_texture, vs_tex_coords) / float(u_sample_number + 1);\n"
 		"vec4 tone_mapped = 1.0f - exp(-hdr_color * u_exposure);\n"
 		"vec4 gamma_corrected = pow(tone_mapped, vec4(1.0f / u_gamma));\n"
 		"gl_FragColor = gamma_corrected;\n"
@@ -375,7 +375,7 @@ void AppWindow::setup_display_program()
 
 	glUseProgram(m_display_program);
 	glUniform1i(glGetUniformLocation(m_display_program, "u_texture"), AppWindow::DISPLAY_TEXTURE_UNIT);
-	glUniform1i(glGetUniformLocation(m_display_program, "u_frame_number"), 0);
+	glUniform1i(glGetUniformLocation(m_display_program, "u_sample_number"), 0);
 	glUniform1f(glGetUniformLocation(m_display_program, "u_gamma"), m_application_settings.tone_mapping_gamma);
 	glUniform1f(glGetUniformLocation(m_display_program, "u_exposure"), m_application_settings.tone_mapping_exposure);
 }
@@ -391,7 +391,7 @@ void AppWindow::update_renderer_view_translation(float translation_x, float tran
 	if (translation_x == 0.f && translation_y == 0.0f)
 		return;
 
-	reset_frame_number();
+	reset_sample_number();
 
 	glm::vec3 translation = glm::vec3(translation_x / m_application_settings.view_translation_sldwn_x, translation_y / m_application_settings.view_translation_sldwn_y, 0.0f);
 	m_renderer.translate_camera_view(translation);
@@ -399,7 +399,7 @@ void AppWindow::update_renderer_view_translation(float translation_x, float tran
 
 void AppWindow::update_renderer_view_rotation(float offset_x, float offset_y)
 {
-	reset_frame_number();
+	reset_sample_number();
 
 	float rotation_x, rotation_y;
 
@@ -414,29 +414,29 @@ void AppWindow::update_renderer_view_zoom(float offset)
 	if (offset == 0.0f)
 		return;
 
-	reset_frame_number();
+	reset_sample_number();
 
 	m_renderer.zoom_camera_view(offset / m_application_settings.view_zoom_sldwn);
 }
 
-void AppWindow::increment_frame_number()
+void AppWindow::increment_sample_number()
 {
-	m_frame_number += m_renderer.get_render_settings().samples_per_frame;
+	m_sample_number += m_renderer.get_render_settings().samples_per_frame;
 
-	m_renderer.set_frame_number(m_frame_number);
+	m_renderer.set_sample_number(m_sample_number);
 
 	glUseProgram(m_display_program);
-	glUniform1i(glGetUniformLocation(m_display_program, "u_frame_number"), m_frame_number);
+	glUniform1i(glGetUniformLocation(m_display_program, "u_sample_number"), m_sample_number);
 }
 
-void AppWindow::reset_frame_number()
+void AppWindow::reset_sample_number()
 {
 	m_startRenderTime = std::chrono::high_resolution_clock::now();
-	m_frame_number = 0;
-	m_renderer.set_frame_number(0);
+	m_sample_number = 0;
+	m_renderer.set_sample_number(0);
 
 	glUseProgram(m_display_program);
-	glUniform1i(glGetUniformLocation(m_display_program, "u_frame_number"), 0);
+	glUniform1i(glGetUniformLocation(m_display_program, "u_sample_number"), 0);
 }
 
 Renderer& AppWindow::get_renderer()
@@ -465,10 +465,10 @@ void AppWindow::run()
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
-		if (!(m_application_settings.stop_render_at != 0 && m_frame_number + 1 > m_application_settings.stop_render_at))
+		if (!(m_application_settings.stop_render_at != 0 && m_sample_number + 1 > m_application_settings.stop_render_at))
 		{
 			m_renderer.render();
-			increment_frame_number();
+			increment_sample_number();
 		}
 
 		// TODO albedo and normals denoising
@@ -538,13 +538,13 @@ void AppWindow::display_imgui()
 	auto now_time = std::chrono::high_resolution_clock::now();
 	float render_time = std::chrono::duration_cast<std::chrono::milliseconds>(now_time - m_startRenderTime).count();
 	ImGui::Text("Render time: %.3fs", render_time / 1000.0f);
-	ImGui::Text("%d samples | %.2f samples/s @ %dx%d", m_frame_number + 1, 1.0f / io.DeltaTime * m_renderer.get_render_settings().samples_per_frame, m_renderer.m_render_width, m_renderer.m_render_height);
+	ImGui::Text("%d samples | %.2f samples/s @ %dx%d", m_sample_number + 1, 1.0f / io.DeltaTime * m_renderer.get_render_settings().samples_per_frame, m_renderer.m_render_width, m_renderer.m_render_height);
 
 	ImGui::Separator();
 
 	if (ImGui::Button("Save render PNG (tonemapped)"))
 	{
-		std::vector<unsigned char> tonemaped_data = Utils::tonemap_hdr_image(m_renderer.get_orochi_framebuffer().download_pixels(), m_frame_number, m_application_settings.tone_mapping_gamma, m_application_settings.tone_mapping_exposure);
+		std::vector<unsigned char> tonemaped_data = Utils::tonemap_hdr_image(m_renderer.get_orochi_framebuffer().download_pixels(), m_sample_number, m_application_settings.tone_mapping_gamma, m_application_settings.tone_mapping_exposure);
 
 		stbi_flip_vertically_on_write(true);
 		if (stbi_write_png("Render tonemapped.png", m_renderer.m_render_width, m_renderer.m_render_height, 4, tonemaped_data.data(), m_renderer.m_render_width * sizeof(unsigned char) * 4))
@@ -556,7 +556,7 @@ void AppWindow::display_imgui()
 
 #pragma omp parallel for
 		for (int i = 0; i < m_renderer.m_render_width * m_renderer.m_render_height * 4; i++)
-			hdr_data[i] = hdr_data[i] / (float)m_frame_number;
+			hdr_data[i] = hdr_data[i] / (float)m_sample_number;
 
 		stbi_flip_vertically_on_write(true);
 		if (stbi_write_hdr("Render tonemapped.hdr", m_renderer.m_render_width, m_renderer.m_render_height, 4, hdr_data.data()))
@@ -569,7 +569,7 @@ void AppWindow::display_imgui()
 	{
 		m_renderer.compile_trace_kernel(m_application_settings.kernel_files[m_application_settings.selected_kernel].c_str(), m_application_settings.kernel_functions[m_application_settings.selected_kernel].c_str());
 
-		reset_frame_number();
+		reset_sample_number();
 	}
 
 	if (m_renderer.get_render_settings().keep_same_resolution) // TODO Put this setting in application settings ?
@@ -582,7 +582,7 @@ void AppWindow::display_imgui()
 			resolution_scale = resolution_scaling_backup;
 
 		change_resolution_scaling(resolution_scale);
-		reset_frame_number();
+		reset_sample_number();
 	}
 	if (m_renderer.get_render_settings().keep_same_resolution)
 		ImGui::EndDisabled();
@@ -610,7 +610,7 @@ void AppWindow::display_imgui()
 		// Clamping to 0 in case the user input a negative number of bounces	
 		m_renderer.get_render_settings().nb_bounces = std::max(m_renderer.get_render_settings().nb_bounces, 0);
 
-		reset_frame_number();
+		reset_sample_number();
 	}
 
 	ImGui::Checkbox("Enable denoiser", &m_renderer.get_render_settings().enable_denoising);
