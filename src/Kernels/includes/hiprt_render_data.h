@@ -18,12 +18,19 @@ struct HIPRTRenderSettings
  */
 struct HIPRTRenderData
 {
-	HIPRTRenderData() : geom(nullptr), triangles_indices(nullptr), triangles_vertices(nullptr),
-	normals_present(nullptr), vertex_normals(nullptr),
-	material_indices(nullptr), materials_buffer(nullptr), emissive_triangles_count(0),
-	emissive_triangles_indices(nullptr) {}
+	HIPRTRenderData() : geom(nullptr),
+		pixels(nullptr), ws_normals(nullptr), albedo(nullptr),
+		triangles_indices(nullptr), triangles_vertices(nullptr),
+		normals_present(nullptr), vertex_normals(nullptr),
+		material_indices(nullptr), materials_buffer(nullptr), emissive_triangles_count(0),
+		emissive_triangles_indices(nullptr) {}
 
 	hiprtGeometry geom;
+
+	HIPRTColor* pixels;
+	// World space normals and albedo for the denoiser
+	hiprtFloat3* ws_normals;
+	HIPRTColor* albedo;
 
 	// A device pointer to the buffer of triangles indices
 	int* triangles_indices;

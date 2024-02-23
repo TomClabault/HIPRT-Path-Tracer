@@ -18,7 +18,7 @@ public:
 	T* get_pointer();
 	T** get_pointer_address();
 
-	std::vector<T> download_pixels();
+	std::vector<T> download_pixels() const;
 	void upload_pixels(std::vector<T>& data);
 	//void fill_with_value(const T& value);
 
@@ -65,7 +65,7 @@ T** OrochiBuffer<T>::get_pointer_address()
 }
 
 template <typename T>
-std::vector<T> OrochiBuffer<T>::download_pixels()
+std::vector<T> OrochiBuffer<T>::download_pixels() const
 {
 	if (!m_data_pointer)
 		return std::vector<T>();

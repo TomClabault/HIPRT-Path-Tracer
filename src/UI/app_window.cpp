@@ -272,7 +272,7 @@ void AppWindow::resize_frame(int pixels_width, int pixels_height)
 	// Recreating the OpenGL display texture
 	glActiveTexture(GL_TEXTURE0 + AppWindow::DISPLAY_TEXTURE_UNIT);
 	glBindTexture(GL_TEXTURE_2D, m_display_texture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, new_render_width, new_render_height, 0, GL_RGBA, GL_FLOAT, nullptr);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, new_render_width, new_render_height, 0, GL_RGB, GL_FLOAT, nullptr);
 
 	reset_sample_number();
 }
@@ -287,7 +287,7 @@ void AppWindow::change_resolution_scaling(float new_scaling)
 
 	glActiveTexture(GL_TEXTURE0 + AppWindow::DISPLAY_TEXTURE_UNIT);
 	glBindTexture(GL_TEXTURE_2D, m_display_texture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, new_render_width, new_render_height, 0, GL_RGBA, GL_FLOAT, nullptr);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, new_render_width, new_render_height, 0, GL_RGB, GL_FLOAT, nullptr);
 }
 
 int AppWindow::get_width()
@@ -330,7 +330,7 @@ void AppWindow::setup_display_program()
 		"vec4 hdr_color = texture(u_texture, vs_tex_coords) / float(u_sample_number + 1);\n"
 		"vec4 tone_mapped = 1.0f - exp(-hdr_color * u_exposure);\n"
 		"vec4 gamma_corrected = pow(tone_mapped, vec4(1.0f / u_gamma));\n"
-		"gl_FragColor = gamma_corrected;\n"
+		"gl_FragColor = vec4(gamma_corrected.rgb, 1.0f);\n"
 		"}\n";
 
 	GLuint m_vertex_shader = glCreateShader(GL_VERTEX_SHADER);
@@ -370,7 +370,7 @@ void AppWindow::setup_display_program()
 	glGenTextures(1, &m_display_texture);
 	glActiveTexture(GL_TEXTURE0 + AppWindow::DISPLAY_TEXTURE_UNIT);
 	glBindTexture(GL_TEXTURE_2D, m_display_texture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, m_viewport_width, m_viewport_height, 0, GL_RGBA, GL_FLOAT, nullptr);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, m_viewport_width, m_viewport_height, 0, GL_RGB, GL_FLOAT, nullptr);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
@@ -490,45 +490,6 @@ void AppWindow::run()
 	quit();
 }
 
-void AppWindow::display(const std::vector<Color>& image_data)
-{
-	glUseProgram(m_display_program);
-
-	glBindTexture(GL_TEXTURE_2D, m_display_texture);
-	//TODO we don't need the alpha, save VRAM!
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_viewport_width, m_viewport_height, GL_RGBA, GL_FLOAT, image_data.data());
-
-	glDrawArrays(GL_TRIANGLES, 0, 6);
-}
-
-void AppWindow::display(const std::vector<float>& pixels_data)
-{
-	glUseProgram(m_display_program);
-
-	glBindTexture(GL_TEXTURE_2D, m_display_texture);
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_renderer.m_render_width, m_renderer.m_render_height, GL_RGBA, GL_FLOAT, pixels_data.data());
-
-	glDrawArrays(GL_TRIANGLES, 0, 6);
-}
-
-void AppWindow::display(OrochiBuffer<float>& orochi_buffer)
-{
-	glUseProgram(m_display_program);
-
-	// TODO
-	// This is very sub optimal and should absolutely be replaced by a 
-	// buffer that is shared between hiprt and opengl
-	// Unfortunately, this is unavailable in Orochi so we would have
-	// to switch to HIP (or CUDA but it doesn't support AMD) to get access
-	// to the hipGraphicsMapResources() functions family
-	std::vector<float> pixels_data = orochi_buffer.download_pixels();
-
-	glBindTexture(GL_TEXTURE_2D, m_display_texture);
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_renderer.m_render_width, m_renderer.m_render_height, GL_RGBA, GL_FLOAT, pixels_data.data());
-
-	glDrawArrays(GL_TRIANGLES, 0, 6);
-}
-
 // TODO display feedback for 5 seconds after dumping a screenshot to disk
 void AppWindow::display_imgui()
 {
@@ -548,19 +509,19 @@ void AppWindow::display_imgui()
 		std::vector<unsigned char> tonemaped_data = Utils::tonemap_hdr_image(m_renderer.get_orochi_framebuffer().download_pixels(), m_sample_number, m_application_settings.tone_mapping_gamma, m_application_settings.tone_mapping_exposure);
 
 		stbi_flip_vertically_on_write(true);
-		if (stbi_write_png("Render tonemapped.png", m_renderer.m_render_width, m_renderer.m_render_height, 4, tonemaped_data.data(), m_renderer.m_render_width * sizeof(unsigned char) * 4))
+		if (stbi_write_png("Render tonemapped.png", m_renderer.m_render_width, m_renderer.m_render_height, 3, tonemaped_data.data(), m_renderer.m_render_width * sizeof(unsigned char) * 3))
 			std::cout << "Render written to \"Render tonemapped.png\"" << std::endl;
 	}
 	if (ImGui::Button("Save render HDR (non-tonemapped)"))
 	{
-		std::vector<float> hdr_data = m_renderer.get_orochi_framebuffer().download_pixels();
+		std::vector<HIPRTColor> hdr_data = m_renderer.get_orochi_framebuffer().download_pixels();
 
 #pragma omp parallel for
-		for (int i = 0; i < m_renderer.m_render_width * m_renderer.m_render_height * 4; i++)
+		for (int i = 0; i < m_renderer.m_render_width * m_renderer.m_render_height; i++)
 			hdr_data[i] = hdr_data[i] / (float)m_sample_number;
 
 		stbi_flip_vertically_on_write(true);
-		if (stbi_write_hdr("Render tonemapped.hdr", m_renderer.m_render_width, m_renderer.m_render_height, 4, hdr_data.data()))
+		if (stbi_write_hdr("Render tonemapped.hdr", m_renderer.m_render_width, m_renderer.m_render_height, 3, reinterpret_cast<float*>(hdr_data.data())));
 			std::cout << "Render written to \"Render tonemapped.hdr\"" << std::endl;
 	}
 	

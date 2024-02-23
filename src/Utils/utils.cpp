@@ -38,22 +38,31 @@ Image Utils::read_image_float(const std::string& filepath, int& image_width, int
     return output;
 }
 
-// TODO compute shader for that
+std::vector<unsigned char> Utils::tonemap_hdr_image(const std::vector<HIPRTColor>& hdr_image, int sample_number, float gamma, float exposure)
+{
+    return tonemap_hdr_image(reinterpret_cast<const float*>(hdr_image.data()), hdr_image.size(), sample_number, gamma, exposure);
+}
+
 std::vector<unsigned char> Utils::tonemap_hdr_image(const std::vector<float>& hdr_image, int sample_number, float gamma, float exposure)
 {
-    std::vector<unsigned char> tonemapped_data(hdr_image.size());
+    return tonemap_hdr_image(hdr_image.data(), hdr_image.size(), sample_number, gamma, exposure);
+}
+
+// TODO compute shader for that
+std::vector<unsigned char> Utils::tonemap_hdr_image(const float* hdr_image, size_t size, int sample_number, float gamma, float exposure)
+{
+    std::vector<unsigned char> tonemapped_data(size);
 
 #pragma omp parallel for
-    for (int i = 0; i < hdr_image.size(); i += 4)
+    for (int i = 0; i < size; i += 3)
     {
-        Color pixel = Color(hdr_image[i + 0], hdr_image[i + 1], hdr_image[i + 2], hdr_image[i + 3]) / (float)sample_number;
+        Color pixel = Color(hdr_image[i + 0], hdr_image[i + 1], hdr_image[i + 2], 1.0f) / (float)sample_number;
         Color tone_mapped = Color(1.0f, 1.0f, 1.0f, 1.0f) - exp(-pixel * exposure);
         Color gamma_corrected = pow(tone_mapped, 1.0f / gamma);
 
         tonemapped_data[i + 0] = gamma_corrected.r * 255.0f;
         tonemapped_data[i + 1] = gamma_corrected.g * 255.0f;
         tonemapped_data[i + 2] = gamma_corrected.b * 255.0f;
-        tonemapped_data[i + 3] = 255;
     }
 
     return tonemapped_data;

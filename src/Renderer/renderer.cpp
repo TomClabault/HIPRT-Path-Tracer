@@ -13,7 +13,7 @@ void Renderer::render()
 
 	HIPRTCamera hiprt_cam = m_camera.to_hiprt();
 	HIPRTRenderData render_data = get_render_data();
-	void* launch_args[] = { &m_scene.get()->geometry, &render_data, m_framebuffer.get_pointer_address(), &resolution, &hiprt_cam};
+	void* launch_args[] = { &m_scene.get()->geometry, &render_data, &resolution, &hiprt_cam};
 	launch_kernel(8, 8, resolution.x, resolution.y, launch_args);
 }
 
@@ -22,17 +22,19 @@ void Renderer::change_render_resolution(int new_width, int new_height)
 	m_render_width = new_width;
 	m_render_height = new_height;
 
-	// * 4 for RGBA
-	m_framebuffer.resize(new_width * new_height * 4);
+	m_pixels_buffer.resize(new_width * new_height);
+	m_ws_normals_buffer.resize(new_width * new_height);
+	m_albedo_buffer.resize(new_width * new_height);
 
-	// Recomputing the perspective projection matrix since the aspect may have changed
+	// Recomputing the perspective projection matrix since the aspect ratio
+	// may have changed
 	float new_aspect = (float)new_width / new_height;
 	m_camera.projection_matrix = glm::transpose(glm::perspective(m_camera.vertical_fov, new_aspect, m_camera.near_plane, m_camera.far_plane));
 }
 
-OrochiBuffer<float>& Renderer::get_orochi_framebuffer()
+OrochiBuffer<HIPRTColor>& Renderer::get_orochi_framebuffer()
 {
-	return m_framebuffer;
+	return m_pixels_buffer;
 }
 
 RenderSettings& Renderer::get_render_settings()
@@ -50,6 +52,9 @@ HIPRTRenderData Renderer::get_render_data()
 	HIPRTRenderData render_data;
 
 	render_data.geom = m_scene.get()->geometry;
+	render_data.pixels = m_pixels_buffer.get_pointer();
+	render_data.ws_normals = m_ws_normals_buffer.get_pointer();
+	render_data.albedo = m_albedo_buffer.get_pointer();
 	render_data.triangles_indices = reinterpret_cast<int*>(m_scene.get()->mesh.triangleIndices);
 	render_data.triangles_vertices = reinterpret_cast<hiprtFloat3*>(m_scene.get()->mesh.vertices);
 	render_data.normals_present = reinterpret_cast<unsigned char*>(m_scene.get()->normals_present);

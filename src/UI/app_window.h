@@ -45,9 +45,11 @@ public:
 	std::pair<float, float> get_cursor_position();
 	void set_cursor_position(std::pair<float, float> new_position);
 
-	void display(const std::vector<Color>& image_data);
-	void display(const std::vector<float>& pixels_data);
-	void display(OrochiBuffer<float>& orochi_buffer);
+	template <typename T>
+	void display(const std::vector<T>& orochi_buffer);
+	template <typename T>
+	void display(const OrochiBuffer<T>& orochi_buffer);
+
 	void display_imgui();
 
 	void run();
@@ -68,5 +70,35 @@ private:
 	GLuint m_display_texture;
 	GLFWwindow* m_window;
 };
+
+template <typename T>
+void AppWindow::display(const std::vector<T>& pixels_data)
+{
+	glUseProgram(m_display_program);
+
+	glBindTexture(GL_TEXTURE_2D, m_display_texture);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_renderer.m_render_width, m_renderer.m_render_height, GL_RGB, GL_FLOAT, pixels_data.data());
+
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+}
+
+template <typename T>
+void AppWindow::display(const OrochiBuffer<T>& orochi_buffer)
+{	
+	glUseProgram(m_display_program);
+
+	// TODO
+	// This is very sub optimal and should absolutely be replaced by a 
+	// buffer that is shared between hiprt and opengl
+	// Unfortunately, this is unavailable in Orochi so we would have
+	// to switch to HIP (or CUDA but it doesn't support AMD) to get access
+	// to the hipGraphicsMapResources() functions family
+	std::vector<HIPRTColor> pixels_data = orochi_buffer.download_pixels();
+
+	glBindTexture(GL_TEXTURE_2D, m_display_texture);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_renderer.m_render_width, m_renderer.m_render_height, GL_RGB, GL_FLOAT, pixels_data.data());
+
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+}
 
 #endif
