@@ -7,7 +7,7 @@
 #include <hiprt/hiprt_vec.h>
 
 
-GLOBAL_KERNEL_SIGNATURE(void) NormalsKernel(hiprtGeometry geom, HIPRTRenderData render_data, HIPRTColor* pixels, int2 res, HIPRTCamera camera)
+GLOBAL_KERNEL_SIGNATURE(void) NormalsKernel(hiprtGeometry geom, HIPRTRenderData render_data, int2 res, HIPRTCamera camera)
 {
 	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
 	const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -43,5 +43,5 @@ GLOBAL_KERNEL_SIGNATURE(void) NormalsKernel(hiprtGeometry geom, HIPRTRenderData 
 		normal = abs(normalize(cross(vertex_B - vertex_A, vertex_C - vertex_A)));
 
 	HIPRTColor color{ hit.hasHit() ? normal.x : 0.0f, hit.hasHit() ? normal.y : 0.0f, hit.hasHit() ? normal.z : 0.0f };
-	pixels[index] = color * (render_data.render_settings.sample_number + 1);
+	render_data.pixels[index] = color * (render_data.render_settings.sample_number + 1);
 }

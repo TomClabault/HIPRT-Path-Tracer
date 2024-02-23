@@ -39,19 +39,21 @@ void OpenImageDenoiser::resize_buffers(int new_width, int new_height)
     }
 }
 
-std::vector<float> OpenImageDenoiser::denoise(int width, int height, const std::vector<float>& to_denoise)
+std::vector<float> OpenImageDenoiser::denoise(int width, int height, const std::vector<HIPRTColor>& to_denoise)
 {
     // Fill the input image buffers
     float* colorPtr = (float*)m_color_buffer.getData();
+
+    // TODO use memcpy here for efficiency
     //std::memcpy(colorPtr, to_denoise.data(), to_denoise.size() * sizeof(float));
 	for (int y = 0; y < height; y++)
 		for (int x = 0; x < width; x++)
 		{
 			int index = y * width + x;
 
-			colorPtr[index * 3 + 0] = to_denoise[index * 4 + 0];
-			colorPtr[index * 3 + 1] = to_denoise[index * 4 + 1];
-            colorPtr[index * 3 + 2] = to_denoise[index * 4 + 2];
+			colorPtr[index * 3 + 0] = to_denoise[index].r;
+			colorPtr[index * 3 + 1] = to_denoise[index].g;
+            colorPtr[index * 3 + 2] = to_denoise[index].b;
 		}
 
     // Filter the beauty image
@@ -68,10 +70,9 @@ std::vector<float> OpenImageDenoiser::denoise(int width, int height, const std::
                 + (1.0f - blend_factor) * image[index];
             color.a = 1.0f;*/
 
-            denoised_output[index * 4 + 0] = denoised_ptr[index * 3 + 0];
-            denoised_output[index * 4 + 1] = denoised_ptr[index * 3 + 1];
-            denoised_output[index * 4 + 2] = denoised_ptr[index * 3 + 2];
-            denoised_output[index * 4 + 3] = 1.0f;
+            denoised_output[index * 3 + 0] = denoised_ptr[index * 3 + 0];
+            denoised_output[index * 3 + 1] = denoised_ptr[index * 3 + 1];
+            denoised_output[index * 3 + 2] = denoised_ptr[index * 3 + 2];
         }
 
     const char* errorMessage;

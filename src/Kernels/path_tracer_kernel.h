@@ -525,14 +525,13 @@ __device__ unsigned int wang_hash(unsigned int seed)
 
 __device__ void debug_set_final_color(const HIPRTRenderData& render_data, int x, int y, int res_x, HIPRTColor* pixels, HIPRTColor final_color)
 {
-    final_color.a = 0.0f;
     if (render_data.render_settings.sample_number == 0)
         pixels[y * res_x + x] = final_color;
     else
         pixels[y * res_x + x] = pixels[y * res_x + x] + final_color;
 }
 
-GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderData render_data, HIPRTColor* pixels, int2 res, HIPRTCamera camera)
+GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderData render_data, int2 res, HIPRTCamera camera)
 {
     const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
     const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -646,9 +645,8 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
         final_color = final_color + sample_color;
     }
 
-    final_color.a = 0.0f;
     if (render_data.render_settings.sample_number == 0)
-        pixels[y * res.x + x] = final_color;
+        render_data.pixels[y * res.x + x] = final_color;
     else
-        pixels[y * res.x + x] = pixels[y * res.x + x] + final_color;
+        render_data.pixels[y * res.x + x] = render_data.pixels[y * res.x + x] + final_color;
 }

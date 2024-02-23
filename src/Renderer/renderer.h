@@ -99,7 +99,8 @@ public:
 
 	Renderer(int width, int height, HIPRTOrochiCtx* hiprt_orochi_ctx) : 
 		m_render_width(width), m_render_height(height),
-		m_framebuffer(width* height), m_hiprt_orochi_ctx(hiprt_orochi_ctx),
+		m_pixels_buffer(width * height), m_ws_normals_buffer(width * height), 
+		m_albedo_buffer(width * height), m_hiprt_orochi_ctx(hiprt_orochi_ctx),
 		m_trace_kernel(nullptr)
 	{
 		m_scene.get()->hiprt_ctx = hiprt_orochi_ctx->hiprt_ctx;
@@ -110,7 +111,7 @@ public:
 	void render();
 	void change_render_resolution(int new_width, int new_height);
 
-	OrochiBuffer<float>& get_orochi_framebuffer();
+	OrochiBuffer<HIPRTColor>& get_orochi_framebuffer();
 	RenderSettings& get_render_settings();
 	HIPRTRenderData get_render_data();
 
@@ -133,7 +134,9 @@ public:
 	Camera m_camera;
 
 private:
-	OrochiBuffer<float> m_framebuffer;
+	OrochiBuffer<HIPRTColor> m_pixels_buffer;
+	OrochiBuffer<hiprtFloat3> m_ws_normals_buffer;
+	OrochiBuffer<HIPRTColor> m_albedo_buffer;
 
 	std::shared_ptr<HIPRTOrochiCtx> m_hiprt_orochi_ctx;
 	oroFunction m_trace_kernel;

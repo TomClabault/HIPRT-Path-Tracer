@@ -11,16 +11,18 @@
 // HostDeviceCommon containing the structures that are used both by the GPU and CPU renderer
 struct HIPRTColor
 {
-    __device__ HIPRTColor() : r(0.0f), g(0.0f), b(0.0f), a(1.0f) {}
-    __device__ HIPRTColor(float value) : r(value), g(value), b(value), a(1.0f) {}
-    __device__ HIPRTColor(float _r, float _g, float _b) : r(_r), g(_g), b(_b), a(1.0f) {}
-    __device__ HIPRTColor(float _r, float _g, float _b, float _a) : r(_r), g(_g), b(_b), a(_a) {}
-    __device__ HIPRTColor(hiprtFloat3 vec) : r(vec.x), g(vec.y), b(vec.z), a(1.0f) {}
+    __device__ HIPRTColor() : r(0.0f), g(0.0f), b(0.0f) {}
+    __device__ HIPRTColor(float value) : r(value), g(value), b(value) {}
+    __device__ HIPRTColor(float _r, float _g, float _b) : r(_r), g(_g), b(_b) {}
+    __device__ HIPRTColor(float _r, float _g, float _b, float _a) : r(_r), g(_g), b(_b) {}
+    __device__ HIPRTColor(hiprtFloat3 vec) : r(vec.x), g(vec.y), b(vec.z) {}
 
-    float r, g, b, a;
+    float r, g, b;
 };
 
-#ifdef __KERNELCC__
+#ifndef __KERNELCC__
+#define __device__ inline
+#endif
 __device__ float luminance(const HIPRTColor& color)
 {
     return 0.3086f * color.r + 0.6094f * color.g + 0.0820f * color.b;
@@ -33,12 +35,12 @@ __device__ float max(const HIPRTColor& color)
 
 __device__ HIPRTColor operator+ (const HIPRTColor& a, const HIPRTColor& b)
 {
-    return HIPRTColor{ a.r + b.r, a.g + b.g, a.b + b.b, a.a + b.a };
+    return HIPRTColor{ a.r + b.r, a.g + b.g, a.b + b.b };
 }
 
 __device__ HIPRTColor operator- (const HIPRTColor& c)
 {
-    return HIPRTColor{ -c.r, -c.g, -c.b, -c.a };
+    return HIPRTColor{ -c.r, -c.g, -c.b };
 }
 
 __device__ HIPRTColor operator- (const HIPRTColor& a, const HIPRTColor& b)
@@ -48,12 +50,12 @@ __device__ HIPRTColor operator- (const HIPRTColor& a, const HIPRTColor& b)
 
 __device__ HIPRTColor operator* (const HIPRTColor& a, const HIPRTColor& b)
 {
-    return HIPRTColor{ a.r * b.r, a.g * b.g, a.b * b.b, a.a * b.a };
+    return HIPRTColor{ a.r * b.r, a.g * b.g, a.b * b.b};
 }
 
 __device__ HIPRTColor operator* (const float k, const HIPRTColor& c)
 {
-    return HIPRTColor{ c.r * k, c.g * k, c.b * k, c.a * k };
+    return HIPRTColor{ c.r * k, c.g * k, c.b * k };
 }
 
 __device__ HIPRTColor operator* (const HIPRTColor& c, const float k)
@@ -63,12 +65,12 @@ __device__ HIPRTColor operator* (const HIPRTColor& c, const float k)
 
 __device__ HIPRTColor operator/ (const HIPRTColor& a, const HIPRTColor& b)
 {
-    return HIPRTColor{ a.r / b.r, a.g / b.g, a.b / b.b, a.a / b.a };
+    return HIPRTColor{ a.r / b.r, a.g / b.g, a.b / b.b };
 }
 
 __device__ HIPRTColor operator/ (const float k, const HIPRTColor& c)
 {
-    return HIPRTColor{ k / c.r, k / c.g, k / c.b, k / c.a };
+    return HIPRTColor{ k / c.r, k / c.g, k / c.b };
 }
 
 __device__ HIPRTColor operator/ (const HIPRTColor& c, const float k)
@@ -79,13 +81,12 @@ __device__ HIPRTColor operator/ (const HIPRTColor& c, const float k)
 
 __device__ HIPRTColor exp(const HIPRTColor& col)
 {
-    return HIPRTColor{ expf(col.r), expf(col.g), expf(col.b), col.a };
+    return HIPRTColor{ expf(col.r), expf(col.g), expf(col.b) };
 }
 
 __device__ HIPRTColor pow(const HIPRTColor& col, float k)
 {
-    return HIPRTColor{ powf(col.r, k), powf(col.g, k), powf(col.b, k), col.a };
+    return HIPRTColor{ powf(col.r, k), powf(col.g, k), powf(col.b, k) };
 }
-#endif
 
 #endif

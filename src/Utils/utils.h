@@ -2,6 +2,7 @@
 #define UTILS_H
 
 #include "Image/image.h"
+#include "Kernels/includes/hiprt_color.h"
 
 #include <string>
 
@@ -14,7 +15,9 @@ class Utils
 public:
 
     static Image read_image_float(const std::string& filepath, int& image_width, int& image_height, bool flipY = true);
+    static std::vector<unsigned char> tonemap_hdr_image(const std::vector<HIPRTColor>& hdr_image, int sample_number, float gamma, float exposure);
     static std::vector<unsigned char> tonemap_hdr_image(const std::vector<float>& hdr_image, int sample_number, float gamma, float exposure);
+    static std::vector<unsigned char> tonemap_hdr_image(const float* hdr_image, size_t size, int sample_number, float gamma, float exposure);
 
     static std::vector<float> compute_env_map_cdf(const Image& skysphere);
     static std::vector<ImageBin> importance_split_skysphere(const Image& skysphere, int minimum_bin_area = 1024, float minimum_bin_radiance = 1000000);
