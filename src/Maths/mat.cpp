@@ -16,7 +16,7 @@ float degrees( const float rad )
 {
     return (180.f / (float) M_PI) * rad;
 }
- 
+
 Transform& Transform::column( const unsigned id, const float t0, const float t1, const float t2, const float t3 )
 {
     m[0][id]= t0;
