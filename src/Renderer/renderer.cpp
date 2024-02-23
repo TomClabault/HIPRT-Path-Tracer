@@ -40,9 +40,9 @@ RenderSettings& Renderer::get_render_settings()
 	return m_render_settings;
 }
 
-void Renderer::set_frame_number(int frame_number)
+void Renderer::set_sample_number(int sample_number)
 {
-	m_render_settings.frame_number = frame_number;
+	m_render_settings.sample_number = sample_number;
 }
 
 HIPRTRenderData Renderer::get_render_data()
@@ -59,7 +59,7 @@ HIPRTRenderData Renderer::get_render_data()
 	render_data.emissive_triangles_count = m_scene.get()->emissive_triangles_count;
 	render_data.emissive_triangles_indices = reinterpret_cast<int*>(m_scene.get()->emissive_triangles_indices);
 
-	render_data.render_settings.frame_number = m_render_settings.frame_number;
+	render_data.render_settings.sample_number = m_render_settings.sample_number;
 	render_data.render_settings.nb_bounces = m_render_settings.nb_bounces;
 	render_data.render_settings.samples_per_frame = m_render_settings.samples_per_frame;
 
