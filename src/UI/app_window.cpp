@@ -283,6 +283,7 @@ void AppWindow::change_resolution_scaling(float new_scaling)
 	float new_render_height = std::floor(m_viewport_height * new_scaling);
 
 	m_renderer.change_render_resolution(new_render_width, new_render_height);
+	m_denoiser.resize_buffers(new_render_width, new_render_height);
 
 	glActiveTexture(GL_TEXTURE0 + AppWindow::DISPLAY_TEXTURE_UNIT);
 	glBindTexture(GL_TEXTURE_2D, m_display_texture);
