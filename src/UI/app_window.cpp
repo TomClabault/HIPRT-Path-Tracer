@@ -8,6 +8,18 @@
 //#define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
+// TODO Features:
+// light sampling: go through transparent surfaces instead of considering them opaque
+// BVH compaction + imgui checkbox
+// indirect / direct lighting clamping
+// choose env map at runtime imgui
+// env map rotation imgui
+// albedo and normals denoising
+// choose scene file at runtime imgui
+// lock camera checkbox to avoid messing up when big render in progress
+// choose render resolution in imgui
+// choose viewport resolution in imgui 
+
 void wait_and_exit(const char* message)
 {
 	std::cerr << message << std::endl;
@@ -471,16 +483,6 @@ void AppWindow::run()
 			m_renderer.render();
 			increment_sample_number();
 		}
-
-		// TODO BVH compaction + imgui checkbox
-		// TODO indirect / direct lighting clamping
-		// TODO choose env map at runtime imgui
-		// TODO env map rotation imgui
-		// TODO albedo and normals denoising
-		// TODO choose scene file at runtime imgui
-		// TODO lock camera checkbox to avoid messing up when big render in progress
-		// TOOO choose render resolution in imgui
-		// TODO choose viewport resolution in imgui 
 
 		if (m_renderer.get_render_settings().enable_denoising)
 			display(m_denoiser.denoise(m_renderer.m_render_width, m_renderer.m_render_height, m_renderer.get_orochi_framebuffer().download_pixels()));
