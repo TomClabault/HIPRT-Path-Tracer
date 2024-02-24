@@ -472,6 +472,8 @@ void AppWindow::run()
 			increment_sample_number();
 		}
 
+		// TODO choose env map at runtime imgui
+		// TODO env map rotation imgui
 		// TODO albedo and normals denoising
 		// TODO choose scene file at runtime imgui
 		// TODO lock camera checkbox to avoid messing up when big render in progress

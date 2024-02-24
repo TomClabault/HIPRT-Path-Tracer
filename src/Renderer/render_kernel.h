@@ -31,9 +31,11 @@ public:
                     const std::vector<int>& materials_indices_buffer,
                     const std::vector<Sphere>& analytic_spheres_buffer,
                     BVH& bvh,
-                    const std::vector<HIPRTColor>& skysphere,
+                    const std::vector<HIPRTColor>& env_map,
+                    int env_map_width, int env_map_height,
                     const std::vector<float>& env_map_cdf) : 
         m_framebuffer_width(width), m_framebuffer_height(height),
+        m_env_map_width(env_map_width), m_env_map_height(env_map_height),
         m_render_samples(render_samples),
         m_max_bounces(max_bounces),
         m_frame_buffer(image_buffer),
@@ -43,7 +45,7 @@ public:
         m_materials_indices_buffer(materials_indices_buffer),
         m_sphere_buffer(analytic_spheres_buffer),
         m_bvh(bvh),
-        m_environment_map(skysphere),
+        m_environment_map(env_map),
         m_env_map_cdf(env_map_cdf) {}
 
     void set_camera(Camera camera) { m_camera = camera; }
