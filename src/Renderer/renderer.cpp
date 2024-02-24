@@ -120,7 +120,7 @@ std::shared_ptr<Renderer::HIPRTScene> Renderer::create_hiprt_scene_from_scene(Sc
 	size_t geometry_temp_size;
 	hiprtDevicePtr geometry_temp;
 	hiprtBuildOptions build_options;
-	build_options.buildFlags = hiprtBuildFlagBitPreferFastBuild;// TODO ImGui to choose the flags at runtime and be able to compare the performance
+	build_options.buildFlags = hiprtBuildFlagBitPreferFastBuild;
 
 	HIPRT_CHECK_ERROR(hiprtGetGeometryBuildTemporaryBufferSize(m_hiprt_orochi_ctx->hiprt_ctx, geometry_build_input, build_options, geometry_temp_size));
 	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&geometry_temp), geometry_temp_size));

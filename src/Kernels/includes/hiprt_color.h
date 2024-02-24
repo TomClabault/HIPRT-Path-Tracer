@@ -13,8 +13,6 @@
 #define __prefix__ __device__
 #endif
 
-// TODO instead of duplicating the structure, it would be better to create a folder
-// HostDeviceCommon containing the structures that are used both by the GPU and CPU renderer
 struct HIPRTColor
 {
     __prefix__ HIPRTColor() : r(0.0f), g(0.0f), b(0.0f) {}

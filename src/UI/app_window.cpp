@@ -8,17 +8,41 @@
 //#define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
+// TODO Code Organization:
+// 
+// - create image class instead of vector of HIPRTColor pretty much everywhere
+// - create env map class that encapsulates image + cdf + sampling functions
+// - delete tests, they are obsolete
+// - overload +=, *=, ... operators for HIPRTColor most notably on the GPU side
+// - use constructors instead of struct {} syntax in gpu code
+// - rename HIPRT_xorshift32 generator without underscores for consistency
+// - separate path tracer kernel functions in header files
+// - do not duplicate functions. Make a common h file that uses the float3 type (cosine_weighted_direction_around_normal, hiprt_lambertian.h:7)
+// - instead of duplicating structures (RendererMaterial + HIPRTRendererMaterial, HIPRTBRDF + BRDF, ...), it would be better to create a folder
+//		HostDeviceCommon containing the structures that are used both by the GPU and CPU renderer
+// - imgui controller to put all the imgui code in one class
+
 // TODO Features:
-// light sampling: go through transparent surfaces instead of considering them opaque
-// BVH compaction + imgui checkbox
-// indirect / direct lighting clamping
-// choose env map at runtime imgui
-// env map rotation imgui
-// albedo and normals denoising
-// choose scene file at runtime imgui
-// lock camera checkbox to avoid messing up when big render in progress
-// choose render resolution in imgui
-// choose viewport resolution in imgui 
+// 
+// - cutout filters
+// - write scene details to imgui (nb vertices, triangles, ...)
+// - check perf of aiPostProcessSteps::aiProcess_ImproveCacheLocality
+// - ImGui to choose the flags at runtime and be able to compare the performance
+// - try to use the denoising buffer directly in the GPU instead of having to copy from gpu to denoising buffer everytime
+// - use memcpy for efficiency in the denoiser to copy
+// - light sampling: go through transparent surfaces instead of considering them opaque
+// - BVH compaction + imgui checkbox
+// - shader cache
+// - indirect / direct lighting clamping
+// - env map support
+// - choose env map at runtime imgui
+// - env map rotation imgui
+// - albedo and normals denoising
+// - choose scene file at runtime imgui
+// - lock camera checkbox to avoid messing up when big render in progress
+// - choose render resolution in imgui
+// - choose viewport resolution in imgui
+// - compute shader for tone mapping images ? unless transfering memory to open gl is too expensive
 
 void wait_and_exit(const char* message)
 {

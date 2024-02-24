@@ -44,7 +44,7 @@ std::vector<float> OpenImageDenoiser::denoise(int width, int height, const std::
     // Fill the input image buffers
     float* colorPtr = (float*)m_color_buffer.getData();
 
-    // TODO use memcpy here for efficiency
+
     //std::memcpy(colorPtr, to_denoise.data(), to_denoise.size() * sizeof(float));
 	for (int y = 0; y < height; y++)
 		for (int x = 0; x < width; x++)
