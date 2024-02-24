@@ -48,7 +48,6 @@ std::vector<unsigned char> Utils::tonemap_hdr_image(const std::vector<float>& hd
     return tonemap_hdr_image(hdr_image.data(), hdr_image.size(), sample_number, gamma, exposure);
 }
 
-// TODO compute shader for that
 std::vector<unsigned char> Utils::tonemap_hdr_image(const float* hdr_image, size_t size, int sample_number, float gamma, float exposure)
 {
     std::vector<unsigned char> tonemapped_data(size);
@@ -191,7 +190,6 @@ std::vector<ImageBin> Utils::importance_split_skysphere(const std::vector<HIPRTC
     return all_bins;
 }
 
-// TODO create image class instead of vector of HIPRTColor
 float Utils::luminance_of_pixel(const std::vector<HIPRTColor>& skysphere, int width, int x, int y)
 {
     HIPRTColor pixel = skysphere[y * width + x];

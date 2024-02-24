@@ -792,7 +792,6 @@ bool RenderKernel::evaluate_shadow_ray(const Ray& ray, float t_max) const
     HitInfo hit_info;
     bool inter_found = INTERSECT_SCENE(ray, hit_info);
 
-    //TODO handle intersection with transmissive material
     if (inter_found)
     {
         if (hit_info.t + 1.0e-4f < t_max)

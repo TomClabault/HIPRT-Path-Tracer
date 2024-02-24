@@ -53,7 +53,6 @@ Scene SceneParser::parse_scene_file(const std::string& filepath, float frame_asp
 
     Assimp::Importer importer;
 
-    //TODO check perf of aiPostProcessSteps::aiProcess_ImproveCacheLocality
     const aiScene* scene = importer.ReadFile(filepath, aiPostProcessSteps::aiProcess_PreTransformVertices | aiPostProcessSteps::aiProcess_Triangulate);
     if (scene == nullptr)
     {
@@ -191,7 +190,6 @@ Scene SceneParser::parse_scene_file(const std::string& filepath, float frame_asp
         global_indices_offset += max_mesh_index_offset;
     }
 
-    // TODO log number of vertices per mesh
     std::cout << parsed_scene.vertices_positions.size() << " vertices ; " << parsed_scene.triangle_indices.size() / 3 << " triangles" << std::endl;
 
     return parsed_scene;

@@ -3,7 +3,6 @@
 #include "Kernels/includes/HIPRT_maths.h"
 #include "Kernels/includes/hiprt_onb.h"
 
-// TODO do not duplicate functions. Make a common h file that uses the float3 type
 inline __device__ hiprtFloat3 hiprt_cosine_weighted_direction_around_normal(const hiprtFloat3& normal, float& pdf, HIPRT_xorshift32_generator& random_number_generator)
 {
     float rand_1 = random_number_generator();
