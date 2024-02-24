@@ -27,7 +27,7 @@ struct HIPRTRenderData
 
 	hiprtGeometry geom;
 
-	HIPRTColor* pixels;
+	float* pixels;
 	// World space normals and albedo for the denoiser
 	hiprtFloat3* ws_normals;
 	HIPRTColor* albedo;

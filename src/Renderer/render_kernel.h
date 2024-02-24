@@ -9,6 +9,7 @@
 #include "Renderer/sphere.h"
 #include "Renderer/triangle.h"
 #include "Utils/xorshift.h"
+#include "Utils/utils.h"
 
 #define USE_BVH 1
 
@@ -23,16 +24,16 @@ class RenderKernel
 public:
     RenderKernel(int width, int height,
                     int render_samples, int max_bounces,
-                    Image& image_buffer,
+                    std::vector<HIPRTColor>& image_buffer,
                     const std::vector<Triangle>& triangle_buffer,
                     const std::vector<RendererMaterial>& materials_buffer,
                     const std::vector<int>& emissive_triangle_indices_buffer,
                     const std::vector<int>& materials_indices_buffer,
                     const std::vector<Sphere>& analytic_spheres_buffer,
                     BVH& bvh,
-                    const Image& skysphere,
+                    const std::vector<HIPRTColor>& skysphere,
                     const std::vector<float>& env_map_cdf) : 
-        m_width(width), m_height(height),
+        m_framebuffer_width(width), m_framebuffer_height(height),
         m_render_samples(render_samples),
         m_max_bounces(max_bounces),
         m_frame_buffer(image_buffer),
@@ -56,30 +57,32 @@ public:
     void ray_trace_pixel(int x, int y) const;
     void render();
 
-    Color brdf_dispatcher_sample(const RendererMaterial& material, Vector& bounce_direction, const Vector& ray_direction, Vector& surface_normal, float& brdf_pdf, xorshift32_generator& random_number_generator) const;
-    Color lambertian_brdf(const RendererMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal) const;
+    HIPRTColor brdf_dispatcher_sample(const RendererMaterial& material, Vector& bounce_direction, const Vector& ray_direction, Vector& surface_normal, float& brdf_pdf, xorshift32_generator& random_number_generator) const;
+    HIPRTColor lambertian_brdf(const RendererMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal) const;
     float cook_torrance_brdf_pdf(const RendererMaterial& material, const Vector& view_direction, const Vector& to_light_direction, const Vector& surface_normal) const;
-    Color cook_torrance_brdf(const RendererMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal) const;
-    Color cook_torrance_brdf_importance_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, float& pdf, xorshift32_generator& random_number_generator) const;
-    Color smooth_glass_bsdf(const RendererMaterial& material, Vector& out_bounce_direction, const Vector& ray_direction, Vector& surface_normal, float eta_I, float eta_O, float& pdf, xorshift32_generator& random_generator) const;
+    HIPRTColor cook_torrance_brdf(const RendererMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal) const;
+    HIPRTColor cook_torrance_brdf_importance_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, float& pdf, xorshift32_generator& random_number_generator) const;
+    HIPRTColor smooth_glass_bsdf(const RendererMaterial& material, Vector& out_bounce_direction, const Vector& ray_direction, Vector& surface_normal, float eta_I, float eta_O, float& pdf, xorshift32_generator& random_generator) const;
 
     bool intersect_scene(const Ray& ray, HitInfo& closest_hit_info) const;
     bool intersect_scene_bvh(const Ray& ray, HitInfo& closest_hit_info) const;
     bool INTERSECT_SCENE(const Ray& ray, HitInfo& hit_info)const ;
 
     void env_map_cdf_search(float value, int& x, int& y) const;
-    Color sample_environment_map_from_direction(const Vector& direction) const;
-    Color sample_environment_map(const Ray& ray, const HitInfo& closest_hit_info, const RendererMaterial& material, xorshift32_generator& random_number_generator) const;
-    Color sample_light_sources(const Ray& ray, const HitInfo& closest_hit_info, const RendererMaterial& material, xorshift32_generator& random_number_generator) const;
+    HIPRTColor sample_environment_map_from_direction(const Vector& direction) const;
+    HIPRTColor sample_environment_map(const Ray& ray, const HitInfo& closest_hit_info, const RendererMaterial& material, xorshift32_generator& random_number_generator) const;
+    HIPRTColor sample_light_sources(const Ray& ray, const HitInfo& closest_hit_info, const RendererMaterial& material, xorshift32_generator& random_number_generator) const;
     Point sample_random_point_on_lights(xorshift32_generator& random_number_generator, float& pdf, LightSourceInformation& light_info) const;
     bool evaluate_shadow_ray(const Ray& ray, float t_max) const;
 
 private:
-    int m_width, m_height;
+    int m_framebuffer_width, m_framebuffer_height;
+    int m_env_map_width, m_env_map_height;
+
     int m_render_samples; 
     int m_max_bounces;
 
-    Image& m_frame_buffer;
+    std::vector<HIPRTColor>& m_frame_buffer;
 
     const std::vector<Triangle>& m_triangle_buffer;
     const std::vector<RendererMaterial>& m_materials_buffer;
@@ -90,7 +93,7 @@ private:
 
     const BVH& m_bvh;
 
-    const Image& m_environment_map;
+    const std::vector<HIPRTColor>& m_environment_map;
     const std::vector<float>& m_env_map_cdf;
 
     Camera m_camera;

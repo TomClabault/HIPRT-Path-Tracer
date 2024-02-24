@@ -646,7 +646,15 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
     }
 
     if (render_data.render_settings.sample_number == 0)
-        render_data.pixels[y * res.x + x] = final_color;
+    {
+        render_data.pixels[index * 3 + 0] = final_color.r;
+        render_data.pixels[index * 3 + 1] = final_color.g;
+        render_data.pixels[index * 3 + 2] = final_color.b;
+    }
     else
-        render_data.pixels[y * res.x + x] = render_data.pixels[y * res.x + x] + final_color;
+    {
+        render_data.pixels[index * 3 + 0] += final_color.r;
+        render_data.pixels[index * 3 + 1] += final_color.g;
+        render_data.pixels[index * 3 + 2] += final_color.b;
+    }
 }

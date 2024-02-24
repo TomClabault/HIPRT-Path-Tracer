@@ -514,7 +514,7 @@ void AppWindow::display_imgui()
 	}
 	if (ImGui::Button("Save render HDR (non-tonemapped)"))
 	{
-		std::vector<HIPRTColor> hdr_data = m_renderer.get_orochi_framebuffer().download_pixels();
+		std::vector<float> hdr_data = m_renderer.get_orochi_framebuffer().download_pixels();
 
 #pragma omp parallel for
 		for (int i = 0; i < m_renderer.m_render_width * m_renderer.m_render_height; i++)
@@ -549,6 +549,8 @@ void AppWindow::display_imgui()
 	if (m_renderer.get_render_settings().keep_same_resolution)
 		ImGui::EndDisabled();
 
+	// TODO for the denoising with normals / albedo, add imgui buttons to display normals / albedo buffer
+	// TODO possibility to denoise normals and albedo AOV buffer
 	// TODO imgui renderer class to put all of this away in its own class
 
 	// TODO don't reset frame number on resize when keep same render resolution is checked

@@ -22,7 +22,7 @@ RendererMaterial SceneParser::ai_mat_to_renderer_mat(aiMaterial* mesh_material)
 
     //Creating the material used by the application from the properties read
     RendererMaterial renderer_material;
-    renderer_material.diffuse = Color(diffuse_color.r, diffuse_color.g, diffuse_color.b, 1.0f);
+    renderer_material.diffuse = HIPRTColor(diffuse_color.r, diffuse_color.g, diffuse_color.b);
     if (error_code_emissive == AI_SUCCESS)
     {
         if (emissive_color.r > 0 || emissive_color.g > 0 || emissive_color.b > 0)
@@ -30,11 +30,11 @@ RendererMaterial SceneParser::ai_mat_to_renderer_mat(aiMaterial* mesh_material)
             float emission_strength;
             mesh_material->Get(AI_MATKEY_EMISSIVE_INTENSITY, emission_strength);
 
-            renderer_material.emission = Color(emissive_color.r * emission_strength, emissive_color.g * emission_strength, emissive_color.b * emission_strength, 1.0f);
+            renderer_material.emission = HIPRTColor(emissive_color.r * emission_strength, emissive_color.g * emission_strength, emissive_color.b * emission_strength);
         }
     }
     else
-        renderer_material.emission = Color(0.0f, 0.0f, 0.0f, 1.0f);
+        renderer_material.emission = HIPRTColor(0.0f, 0.0f, 0.0f);
     renderer_material.metalness = metalness;
     renderer_material.roughness = std::max(1.0e-2f, roughness); // Clamping the roughness to avoid edge cases when roughness == 0.0f
     renderer_material.ior = ior;

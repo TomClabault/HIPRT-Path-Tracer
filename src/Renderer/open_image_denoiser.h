@@ -11,7 +11,7 @@ public:
 	OpenImageDenoiser();
 
 	void resize_buffers(int new_width, int new_height);
-	std::vector<float> denoise(int width, int height, const std::vector<HIPRTColor>& to_denoise);
+	std::vector<float> denoise(int width, int height, const std::vector<float>& to_denoise);
 
 private:
 	oidn::DeviceRef m_device;

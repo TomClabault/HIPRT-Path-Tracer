@@ -113,8 +113,8 @@ Vector RenderKernel::cosine_weighted_direction_around_normal(const Vector& norma
 
 Ray RenderKernel::get_camera_ray(float x, float y) const
 {
-    float x_ndc_space = x / m_width * 2 - 1;
-    float y_ndc_space = y / m_height * 2 - 1;
+    float x_ndc_space = x / m_framebuffer_width * 2 - 1;
+    float y_ndc_space = y / m_framebuffer_height * 2 - 1;
 
     Point ray_origin_view_space(0.0f, 0.0f, 0.0f);
     Point ray_origin = point_mat4x4(glm::inverse(m_camera.get_view_matrix()), ray_origin_view_space);
@@ -138,7 +138,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
     for (int i = 0; i < 10; i++)
         random_number_generator();
 
-    Color final_color = Color(0.0f, 0.0f, 0.0f);
+    HIPRTColor final_color = HIPRTColor(0.0f, 0.0f, 0.0f);
     for (int sample = 0; sample < m_render_samples; sample++)
     {
         //Jittered around the center
@@ -148,8 +148,8 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
         //TODO area sampling triangles
         Ray ray = get_camera_ray(x_jittered, y_jittered);
 
-        Color throughput = Color(1.0f, 1.0f, 1.0f);
-        Color sample_color = Color(0.0f, 0.0f, 0.0f);
+        HIPRTColor throughput = HIPRTColor(1.0f, 1.0f, 1.0f);
+        HIPRTColor sample_color = HIPRTColor(0.0f, 0.0f, 0.0f);
         RayState next_ray_state = RayState::BOUNCE;
         BRDF last_brdf_hit_type = BRDF::Uninitialized;
 
@@ -169,8 +169,8 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                     // --------------------------------------------------- //
                     // ----------------- Direct lighting ----------------- //
                     // --------------------------------------------------- //
-                    Color light_sample_radiance = sample_light_sources(ray, closest_hit_info, material, random_number_generator);
-                    Color env_map_radiance = sample_environment_map(ray, closest_hit_info, material, random_number_generator);
+                    HIPRTColor light_sample_radiance = sample_light_sources(ray, closest_hit_info, material, random_number_generator);
+                    HIPRTColor env_map_radiance = sample_environment_map(ray, closest_hit_info, material, random_number_generator);
 
                     // --------------------------------------- //
                     // ---------- Indirect lighting ---------- //
@@ -178,7 +178,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
 
                     float brdf_pdf;
                     Vector bounce_direction;
-                    Color brdf = brdf_dispatcher_sample(material, bounce_direction, ray.direction, closest_hit_info.normal_at_intersection, brdf_pdf, random_number_generator); //TODO relative IOR in the RayData rather than two incident and output ior values
+                    HIPRTColor brdf = brdf_dispatcher_sample(material, bounce_direction, ray.direction, closest_hit_info.normal_at_intersection, brdf_pdf, random_number_generator); //TODO relative IOR in the RayData rather than two incident and output ior values
                     
                     if (bounce == 0)
                         sample_color += material.emission;
@@ -210,7 +210,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                     // We're also getting the skysphere radiance for perfectly specular BRDF since those
                     // are not importance sampled
 
-                    Color skysphere_color = sample_environment_map_from_direction(ray.direction);
+                    HIPRTColor skysphere_color = sample_environment_map_from_direction(ray.direction);
 
                     sample_color += skysphere_color * throughput;
                 }
@@ -226,18 +226,18 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
 
     final_color /= m_render_samples;
     final_color.a = 0.0f;
-    m_frame_buffer[y * m_width + x] += final_color;
+    m_frame_buffer[y * m_framebuffer_width + x] += final_color;
 
     const float gamma = 2.2f;
     const float exposure = 2.0f;
-    Color hdrColor = m_frame_buffer[y * m_width + x];
+    HIPRTColor hdrColor = m_frame_buffer[y * m_framebuffer_width + x];
 
     //Exposure tone mapping
-    Color tone_mapped = Color(1.0f, 1.0f, 1.0f) - exp(-hdrColor * exposure);
+    HIPRTColor tone_mapped = HIPRTColor(1.0f, 1.0f, 1.0f) - exp(-hdrColor * exposure);
     // Gamma correction
-    Color gamma_corrected = pow(tone_mapped, 1.0f / gamma);
+    HIPRTColor gamma_corrected = pow(tone_mapped, 1.0f / gamma);
 
-    m_frame_buffer[y * m_width + x] = gamma_corrected;
+    m_frame_buffer[y * m_framebuffer_width + x] = gamma_corrected;
 }
 
 #include <atomic>
@@ -257,28 +257,28 @@ void RenderKernel::render()
         for (int x = DEBUG_PIXEL_X; x < m_frame_buffer.width(); x++)
 #else
 #pragma omp parallel for schedule(dynamic)
-    for (int y = 0; y < m_frame_buffer.height(); y++)
+    for (int y = 0; y < m_framebuffer_height; y++)
     {
-        for (int x = 0; x < m_frame_buffer.width(); x++)
+        for (int x = 0; x < m_framebuffer_width; x++)
 #endif
             ray_trace_pixel(x, y);
 
         lines_completed++;
 
         if (omp_get_thread_num() == 0)
-            if (lines_completed % (m_frame_buffer.height() / 25))
-                std::cout << lines_completed / (float)m_frame_buffer.height() * 100 << "%" << std::endl;
+            if (lines_completed % (m_framebuffer_height / 25))
+                std::cout << lines_completed / (float)m_framebuffer_height * 100 << "%" << std::endl;
     }
 }
 
-Color RenderKernel::lambertian_brdf(const RendererMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal) const
+HIPRTColor RenderKernel::lambertian_brdf(const RendererMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal) const
 {
     return material.diffuse * M_1_PI;
 }
 
-Color fresnel_schlick(Color F0, float NoV)
+HIPRTColor fresnel_schlick(HIPRTColor F0, float NoV)
 {
-    return F0 + (Color(1.0f) - F0) * std::pow((1.0f - NoV), 5.0f);
+    return F0 + (HIPRTColor(1.0f) - F0) * std::pow((1.0f - NoV), 5.0f);
 }
 
 float GGX_normal_distribution(float alpha, float NoH)
@@ -318,10 +318,10 @@ float RenderKernel::cook_torrance_brdf_pdf(const RendererMaterial& material, con
     return D * NoH / (4.0f * VoH);
 }
 
-inline Color RenderKernel::cook_torrance_brdf(const RendererMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal) const
+inline HIPRTColor RenderKernel::cook_torrance_brdf(const RendererMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal) const
 {
-    Color brdf_color = Color(0.0f, 0.0f, 0.0f);
-    Color base_color = material.diffuse;
+    HIPRTColor brdf_color = HIPRTColor(0.0f, 0.0f, 0.0f);
+    HIPRTColor base_color = material.diffuse;
 
     Vector halfway_vector = normalize(view_direction + to_light_direction);
 
@@ -338,22 +338,22 @@ inline Color RenderKernel::cook_torrance_brdf(const RendererMaterial& material, 
         float alpha = roughness * roughness;
 
         ////////// Cook Torrance BRDF //////////
-        Color F;
+        HIPRTColor F;
         float D, G;
 
         //F0 = 0.04 for dielectrics, 1.0 for metals (approximation)
-        Color F0 = Color(0.04f * (1.0f - metalness)) + metalness * base_color;
+        HIPRTColor F0 = HIPRTColor(0.04f * (1.0f - metalness)) + metalness * base_color;
 
         //GGX Distribution function
         F = fresnel_schlick(F0, VoH);
         D = GGX_normal_distribution(alpha, NoH);
         G = GGX_smith_masking_shadowing(alpha, NoV, NoL);
 
-        Color kD = Color(1.0f - metalness); //Metals do not have a diffuse part
-        kD *= Color(1.0f) - F;//Only the transmitted light is diffused
+        HIPRTColor kD = HIPRTColor(1.0f - metalness); //Metals do not have a diffuse part
+        kD *= HIPRTColor(1.0f) - F;//Only the transmitted light is diffused
 
-        Color diffuse_part = kD * base_color / (float)M_PI;
-        Color specular_part = (F * D * G) / (4.0f * NoV * NoL);
+        HIPRTColor diffuse_part = kD * base_color / (float)M_PI;
+        HIPRTColor specular_part = (F * D * G) / (4.0f * NoV * NoL);
 
         brdf_color = diffuse_part + specular_part;
     }
@@ -361,7 +361,7 @@ inline Color RenderKernel::cook_torrance_brdf(const RendererMaterial& material, 
     return brdf_color;
 }
 
-Color RenderKernel::cook_torrance_brdf_importance_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, float& pdf, xorshift32_generator& random_number_generator) const
+HIPRTColor RenderKernel::cook_torrance_brdf_importance_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, float& pdf, xorshift32_generator& random_number_generator) const
 {
     pdf = 0.0f;
 
@@ -380,13 +380,13 @@ Color RenderKernel::cook_torrance_brdf_importance_sample(const RendererMaterial&
     Vector microfacet_normal = rotate_vector_around_normal(surface_normal, microfacet_normal_local_space);
     if (dot(microfacet_normal, surface_normal) < 0.0f)
         //The microfacet normal that we sampled was under the surface, this can happen
-        return Color(0.0f);
+        return HIPRTColor(0.0f);
     Vector to_light_direction = normalize(2.0f * dot(microfacet_normal, view_direction) * microfacet_normal - view_direction);
     Vector halfway_vector = microfacet_normal;
     output_direction = to_light_direction;
 
-    Color brdf_color = Color(0.0f, 0.0f, 0.0f);
-    Color base_color = material.diffuse;
+    HIPRTColor brdf_color = HIPRTColor(0.0f, 0.0f, 0.0f);
+    HIPRTColor base_color = material.diffuse;
 
     float NoV = std::max(0.0f, dot(surface_normal, view_direction));
     float NoL = std::max(0.0f, dot(surface_normal, to_light_direction));
@@ -396,7 +396,7 @@ Color RenderKernel::cook_torrance_brdf_importance_sample(const RendererMaterial&
     if (NoV > 0.0f && NoL > 0.0f && NoH > 0.0f)
     {
         /////////// Cook Torrance BRDF //////////
-        Color F;
+        HIPRTColor F;
         float D, G;
 
 
@@ -404,15 +404,15 @@ Color RenderKernel::cook_torrance_brdf_importance_sample(const RendererMaterial&
         D = GGX_normal_distribution(alpha, NoH);
 
         //F0 = 0.04 for dielectrics, 1.0 for metals (approximation)
-        Color F0 = Color(0.04f * (1.0f - metalness)) + metalness * base_color;
+        HIPRTColor F0 = HIPRTColor(0.04f * (1.0f - metalness)) + metalness * base_color;
         F = fresnel_schlick(F0, VoH);
         G = GGX_smith_masking_shadowing(alpha, NoV, NoL);
 
-        Color kD = Color(1.0f - metalness); //Metals do not have a diffuse part
-        kD *= Color(1.0f) - F;//Only the transmitted light is diffused
+        HIPRTColor kD = HIPRTColor(1.0f - metalness); //Metals do not have a diffuse part
+        kD *= HIPRTColor(1.0f) - F;//Only the transmitted light is diffused
 
-        Color diffuse_part = kD * base_color / (float)M_PI;
-        Color specular_part = (F * D * G) / (4.0f * NoV * NoL);
+        HIPRTColor diffuse_part = kD * base_color / (float)M_PI;
+        HIPRTColor specular_part = (F * D * G) / (4.0f * NoV * NoL);
 
         pdf = D * NoH / (4.0f * VoH);
 
@@ -422,7 +422,7 @@ Color RenderKernel::cook_torrance_brdf_importance_sample(const RendererMaterial&
     return brdf_color;
 }
 
-Color RenderKernel::smooth_glass_bsdf(const RendererMaterial& material, Vector& out_bounce_direction, const Vector& ray_direction, Vector& surface_normal, float eta_i, float eta_t, float& pdf, xorshift32_generator& random_generator) const
+HIPRTColor RenderKernel::smooth_glass_bsdf(const RendererMaterial& material, Vector& out_bounce_direction, const Vector& ray_direction, Vector& surface_normal, float eta_i, float eta_t, float& pdf, xorshift32_generator& random_generator) const
 {
     // Clamping here because the dot product can eventually returns values less
     // than -1 or greater than 1 because of precision errors in the vectors
@@ -452,7 +452,7 @@ Color RenderKernel::smooth_glass_bsdf(const RendererMaterial& material, Vector& 
         out_bounce_direction = reflect_ray(-ray_direction, surface_normal);
         pdf = fresnel_reflect;
 
-        return Color(fresnel_reflect) / dot(surface_normal, out_bounce_direction);
+        return HIPRTColor(fresnel_reflect) / dot(surface_normal, out_bounce_direction);
     }
     else
     {
@@ -471,18 +471,18 @@ Color RenderKernel::smooth_glass_bsdf(const RendererMaterial& material, Vector& 
         surface_normal = -surface_normal;
         pdf = 1.0f - fresnel_reflect;
 
-        return Color(1.0f - fresnel_reflect) * material.diffuse / dot(out_bounce_direction, surface_normal);
+        return HIPRTColor(1.0f - fresnel_reflect) * material.diffuse / dot(out_bounce_direction, surface_normal);
     }
 }
 
-Color RenderKernel::brdf_dispatcher_sample(const RendererMaterial& material, Vector& bounce_direction, const Vector& ray_direction, Vector& surface_normal, float& brdf_pdf, xorshift32_generator& random_number_generator) const
+HIPRTColor RenderKernel::brdf_dispatcher_sample(const RendererMaterial& material, Vector& bounce_direction, const Vector& ray_direction, Vector& surface_normal, float& brdf_pdf, xorshift32_generator& random_number_generator) const
 {
     if (material.brdf_type == BRDF::SpecularFresnel)
         return smooth_glass_bsdf(material, bounce_direction, ray_direction, surface_normal, 1.0f, material.ior, brdf_pdf, random_number_generator); //TODO relative IOR in the RayData rather than two incident and output ior values
     else if (material.brdf_type == BRDF::CookTorrance)
         return cook_torrance_brdf_importance_sample(material, -ray_direction, surface_normal, bounce_direction, brdf_pdf, random_number_generator);
 
-    return Color(0.0f);
+    return HIPRTColor(0.0f);
 }
 
 bool RenderKernel::intersect_scene(const Ray& ray, HitInfo& closest_hit_info) const
@@ -552,73 +552,73 @@ float power_heuristic(float pdf_a, float pdf_b)
     return pdf_a_squared / (pdf_a_squared + pdf_b * pdf_b);
 }
 
-Color RenderKernel::sample_environment_map_from_direction(const Vector& direction) const
+HIPRTColor RenderKernel::sample_environment_map_from_direction(const Vector& direction) const
 {
     float u, v;
     u = 0.5f + std::atan2(direction.z, direction.x) / (2.0f * (float)M_PI);
     v = 0.5f + std::asin(direction.y) / (float)M_PI;
 
-    int x = std::max(std::min((int)(u * m_environment_map.width()), m_environment_map.width() - 1), 0);
-    int y = std::max(std::min((int)(v * m_environment_map.height()), m_environment_map.height() - 1), 0);
+    int x = std::max(std::min((int)(u * m_env_map_width), m_env_map_width - 1), 0);
+    int y = std::max(std::min((int)(v * m_env_map_height), m_env_map_height - 1), 0);
 
-    return m_environment_map[y * m_environment_map.width() + x];
+    return m_environment_map[y * m_env_map_width + x];
 }
 
 void RenderKernel::env_map_cdf_search(float value, int& x, int& y) const
 {
     //First searching a line to sample
     int lower = 0;
-    int upper = m_environment_map.height() - 1;
+    int upper = m_env_map_height - 1;
 
-    int x_index = m_environment_map.width() - 1;
+    int x_index = m_env_map_width - 1;
     while (lower < upper)
     {
         int y_index = (lower + upper) / 2;
-        int env_map_index = y_index * m_environment_map.width() + x_index;
+        int env_map_index = y_index * m_env_map_width + x_index;
 
         if (value < m_env_map_cdf[env_map_index])
             upper = y_index;
         else
             lower = y_index + 1;
     }
-    y = std::max(std::min(lower, m_environment_map.height()), 0);
+    y = std::max(std::min(lower, m_env_map_height), 0);
 
     //Then sampling the line itself
     lower = 0;
-    upper = m_environment_map.width() - 1;
+    upper = m_env_map_width - 1;
 
     int y_index = y;
     while (lower < upper)
     {
         int x_index = (lower + upper) / 2;
-        int env_map_index = y_index * m_environment_map.width() + x_index;
+        int env_map_index = y_index * m_env_map_width + x_index;
 
         if (value < m_env_map_cdf[env_map_index])
             upper = x_index;
         else
             lower = x_index + 1;
     }
-    x = std::max(std::min(lower, m_environment_map.width()), 0);
+    x = std::max(std::min(lower, m_env_map_width), 0);
 }
 
-Color RenderKernel::sample_environment_map(const Ray& ray, const HitInfo& closest_hit_info, const RendererMaterial& material, xorshift32_generator& random_number_generator) const
+HIPRTColor RenderKernel::sample_environment_map(const Ray& ray, const HitInfo& closest_hit_info, const RendererMaterial& material, xorshift32_generator& random_number_generator) const
 {
     if (material.brdf_type == BRDF::SpecularFresnel)
         // No sampling for perfectly specular materials
-        return Color(0.0f);
+        return HIPRTColor(0.0f);
 
     int x, y;
     float env_map_total_sum = m_env_map_cdf[m_env_map_cdf.size() - 1];
     env_map_cdf_search(random_number_generator() * env_map_total_sum, x, y);
 
-    float u = (float)x / m_environment_map.width();
-    float v = (float)y / m_environment_map.height();
+    float u = (float)x / m_env_map_width;
+    float v = (float)y / m_env_map_height;
     float phi = u * 2.0f * M_PI;
     // Clamping to avoid theta = 0 which would imply a skysphere direction straight up
     // which leads to a pdf of infinity since it is a singularity
     float theta = std::max(1.0e-5f, v * (float)M_PI);
 
-    Color env_sample;
+    HIPRTColor env_sample;
     float sin_theta = std::sin(theta);
 
 
@@ -633,11 +633,11 @@ Color RenderKernel::sample_environment_map(const Ray& ray, const HitInfo& closes
         HitInfo trash;
         if (!INTERSECT_SCENE(Ray(closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-4f, sampled_direction), trash))
         {
-            float env_map_pdf = m_environment_map.luminance_of_pixel(x, y) / env_map_total_sum;
-            env_map_pdf = (env_map_pdf * m_environment_map.width() * m_environment_map.height()) / (2.0f * M_PI * M_PI * sin_theta);
+            float env_map_pdf = Utils::luminance_of_pixel(m_environment_map, m_env_map_width, x, y) / env_map_total_sum;
+            env_map_pdf = (env_map_pdf * m_env_map_width * m_env_map_height) / (2.0f * M_PI * M_PI * sin_theta);
 
-            Color env_map_radiance = m_environment_map(x, y);
-            Color brdf = cook_torrance_brdf(material, sampled_direction, -ray.direction, closest_hit_info.normal_at_intersection);
+            HIPRTColor env_map_radiance = m_environment_map[y * m_env_map_width + x];
+            HIPRTColor brdf = cook_torrance_brdf(material, sampled_direction, -ray.direction, closest_hit_info.normal_at_intersection);
             float brdf_pdf = cook_torrance_brdf_pdf(material, -ray.direction, sampled_direction, closest_hit_info.normal_at_intersection);
 
             float mis_weight = power_heuristic(env_map_pdf, brdf_pdf);
@@ -647,21 +647,21 @@ Color RenderKernel::sample_environment_map(const Ray& ray, const HitInfo& closes
 
     float brdf_sample_pdf;
     Vector brdf_sampled_dir;
-    Color brdf_imp_sampling = cook_torrance_brdf_importance_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, brdf_sampled_dir, brdf_sample_pdf, random_number_generator);
+    HIPRTColor brdf_imp_sampling = cook_torrance_brdf_importance_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, brdf_sampled_dir, brdf_sample_pdf, random_number_generator);
 
     cosine_term = std::max(dot(closest_hit_info.normal_at_intersection, brdf_sampled_dir), 0.0f);
-    Color brdf_sample;
+    HIPRTColor brdf_sample;
     if (brdf_sample_pdf != 0.0f && cosine_term > 0.0f)
     {
         HitInfo trash;
         if (!INTERSECT_SCENE(Ray(closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-5f, brdf_sampled_dir), trash))
         {
-            Color skysphere_color = sample_environment_map_from_direction(brdf_sampled_dir);
+            HIPRTColor skysphere_color = sample_environment_map_from_direction(brdf_sampled_dir);
             float theta_brdf_dir = std::acos(brdf_sampled_dir.z);
             float sin_theta_bdrf_dir = std::sin(theta_brdf_dir);
             float env_map_pdf = skysphere_color.luminance() / m_env_map_cdf[m_env_map_cdf.size() - 1];
 
-            env_map_pdf *= m_environment_map.width() * m_environment_map.height();
+            env_map_pdf *= m_env_map_width * m_env_map_height;
             env_map_pdf /= (2.0f * M_PI * M_PI * sin_theta_bdrf_dir);
 
             float mis_weight = power_heuristic(brdf_sample_pdf, env_map_pdf);
@@ -672,13 +672,13 @@ Color RenderKernel::sample_environment_map(const Ray& ray, const HitInfo& closes
     return brdf_sample + env_sample;
 }
 
-Color RenderKernel::sample_light_sources(const Ray& ray, const HitInfo& closest_hit_info, const RendererMaterial& material, xorshift32_generator& random_number_generator) const
+HIPRTColor RenderKernel::sample_light_sources(const Ray& ray, const HitInfo& closest_hit_info, const RendererMaterial& material, xorshift32_generator& random_number_generator) const
 {
     if (material.brdf_type == BRDF::SpecularFresnel)
         // No sampling for perfectly specular materials
-        return Color(0.0f);
+        return HIPRTColor(0.0f);
 
-    Color light_source_radiance_mis;
+    HIPRTColor light_source_radiance_mis;
     if (m_emissive_triangle_indices_buffer.size() > 0)
     {
         float light_sample_pdf;
@@ -704,14 +704,14 @@ Color RenderKernel::sample_light_sources(const Ray& ray, const HitInfo& closest_
                 light_sample_pdf *= distance_to_light * distance_to_light;
                 light_sample_pdf /= dot_light_source;
 
-                Color brdf = cook_torrance_brdf(material, shadow_ray.direction, -ray.direction, closest_hit_info.normal_at_intersection);
+                HIPRTColor brdf = cook_torrance_brdf(material, shadow_ray.direction, -ray.direction, closest_hit_info.normal_at_intersection);
 
                 float cook_torrance_pdf = cook_torrance_brdf_pdf(material, -ray.direction, shadow_ray_direction_normalized, closest_hit_info.normal_at_intersection);
                 if (cook_torrance_pdf != 0.0f)
                 {
                     float mis_weight = power_heuristic(light_sample_pdf, cook_torrance_pdf);
 
-                    Color Li = emissive_triangle_material.emission;
+                    HIPRTColor Li = emissive_triangle_material.emission;
                     float cosine_term = dot(closest_hit_info.normal_at_intersection, shadow_ray_direction_normalized);
 
                     light_source_radiance_mis = Li * cosine_term * brdf * mis_weight / light_sample_pdf;
@@ -720,12 +720,12 @@ Color RenderKernel::sample_light_sources(const Ray& ray, const HitInfo& closest_
         }
     }
 
-    Color brdf_radiance_mis;
+    HIPRTColor brdf_radiance_mis;
 
     Vector sampled_brdf_direction;
     float direction_pdf;
-    Color brdf = cook_torrance_brdf_importance_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, sampled_brdf_direction, direction_pdf, random_number_generator);
-    if (brdf != Color::Black())
+    HIPRTColor brdf = cook_torrance_brdf_importance_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, sampled_brdf_direction, direction_pdf, random_number_generator);
+    if (brdf != HIPRTColor(0.0f, 0.0f, 0.0f))
     {
         Ray new_ray = Ray(closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-5f, sampled_brdf_direction);
         HitInfo new_ray_hit_info;
@@ -739,7 +739,7 @@ Color RenderKernel::sample_light_sources(const Ray& ray, const HitInfo& closest_
                 int material_index = m_materials_indices_buffer[new_ray_hit_info.primitive_index];
                 RendererMaterial material = m_materials_buffer[material_index];
 
-                Color emission = material.emission;
+                HIPRTColor emission = material.emission;
                 if (emission.r > 0 || emission.g > 0 || emission.b > 0)
                 {
                     float distance_squared = new_ray_hit_info.t * new_ray_hit_info.t;
