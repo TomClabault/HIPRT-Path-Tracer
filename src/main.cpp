@@ -17,7 +17,7 @@
 #include "Utils/utils.h"
 #include "Utils/xorshift.h"
 
-#define GPU_RENDER 1
+#define GPU_RENDER 0
 
 int main(int argc, char* argv[])
 {
@@ -70,7 +70,7 @@ int main(int argc, char* argv[])
     int skysphere_width, skysphere_height;
     std::cout << "Reading Environment Map " << cmd_arguments.skysphere_file_path << " ..." << std::endl;
     std::vector<HIPRTColor> skysphere_data = Utils::read_image_float(cmd_arguments.skysphere_file_path, skysphere_width, skysphere_height);
-    std::vector<float> env_map_cdf = Utils::compute_env_map_cdf(skysphere_data, width, height);
+    std::vector<float> env_map_cdf = Utils::compute_env_map_cdf(skysphere_data, skysphere_width, skysphere_height);
 
     std::cout << "[" << width << "x" << height << "]: " << cmd_arguments.render_samples << " samples" << std::endl << std::endl;
 
@@ -87,6 +87,7 @@ int main(int argc, char* argv[])
         sphere_buffer,
         bvh,
         skysphere_data,
+        skysphere_width, skysphere_height,
         env_map_cdf);
     render_kernel.set_camera(parsed_scene.camera);
     render_kernel.render();
