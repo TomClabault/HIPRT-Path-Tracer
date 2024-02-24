@@ -39,7 +39,7 @@ void OpenImageDenoiser::resize_buffers(int new_width, int new_height)
     }
 }
 
-std::vector<float> OpenImageDenoiser::denoise(int width, int height, const std::vector<HIPRTColor>& to_denoise)
+std::vector<float> OpenImageDenoiser::denoise(int width, int height, const std::vector<float>& to_denoise)
 {
     // Fill the input image buffers
     float* colorPtr = (float*)m_color_buffer.getData();
@@ -51,9 +51,9 @@ std::vector<float> OpenImageDenoiser::denoise(int width, int height, const std::
 		{
 			int index = y * width + x;
 
-			colorPtr[index * 3 + 0] = to_denoise[index].r;
-			colorPtr[index * 3 + 1] = to_denoise[index].g;
-            colorPtr[index * 3 + 2] = to_denoise[index].b;
+			colorPtr[index * 3 + 0] = to_denoise[index * 3 + 0];
+			colorPtr[index * 3 + 1] = to_denoise[index * 3 + 1];
+            colorPtr[index * 3 + 2] = to_denoise[index * 3 + 2];
 		}
 
     // Filter the beauty image

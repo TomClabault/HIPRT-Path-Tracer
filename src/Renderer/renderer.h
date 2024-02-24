@@ -99,7 +99,7 @@ public:
 
 	Renderer(int width, int height, HIPRTOrochiCtx* hiprt_orochi_ctx) : 
 		m_render_width(width), m_render_height(height),
-		m_pixels_buffer(width * height), m_ws_normals_buffer(width * height), 
+		m_pixels_buffer(width * height * 3), m_ws_normals_buffer(width * height),  // TODO buffer initialization necessary here ?
 		m_albedo_buffer(width * height), m_hiprt_orochi_ctx(hiprt_orochi_ctx),
 		m_trace_kernel(nullptr)
 	{
@@ -111,7 +111,7 @@ public:
 	void render();
 	void change_render_resolution(int new_width, int new_height);
 
-	OrochiBuffer<HIPRTColor>& get_orochi_framebuffer();
+	OrochiBuffer<float>& get_orochi_framebuffer();
 	RenderSettings& get_render_settings();
 	HIPRTRenderData get_render_data();
 
@@ -134,7 +134,7 @@ public:
 	Camera m_camera;
 
 private:
-	OrochiBuffer<HIPRTColor> m_pixels_buffer;
+	OrochiBuffer<float> m_pixels_buffer;
 	OrochiBuffer<hiprtFloat3> m_ws_normals_buffer;
 	OrochiBuffer<HIPRTColor> m_albedo_buffer;
 

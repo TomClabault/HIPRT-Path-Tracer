@@ -22,7 +22,7 @@ void Renderer::change_render_resolution(int new_width, int new_height)
 	m_render_width = new_width;
 	m_render_height = new_height;
 
-	m_pixels_buffer.resize(new_width * new_height);
+	m_pixels_buffer.resize(new_width * new_height * 3);
 	m_ws_normals_buffer.resize(new_width * new_height);
 	m_albedo_buffer.resize(new_width * new_height);
 
@@ -32,7 +32,7 @@ void Renderer::change_render_resolution(int new_width, int new_height)
 	m_camera.projection_matrix = glm::transpose(glm::perspective(m_camera.vertical_fov, new_aspect, m_camera.near_plane, m_camera.far_plane));
 }
 
-OrochiBuffer<HIPRTColor>& Renderer::get_orochi_framebuffer()
+OrochiBuffer<float>& Renderer::get_orochi_framebuffer()
 {
 	return m_pixels_buffer;
 }
@@ -148,8 +148,8 @@ std::shared_ptr<Renderer::HIPRTScene> Renderer::create_hiprt_scene_from_scene(Sc
 	hiprt_scene_ptr.get()->material_indices = material_indices_buffer;
 
 	hiprtDevicePtr materials_buffer;
-	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&materials_buffer), sizeof(RendererMaterial) * scene.materials.size()));
-	OROCHI_CHECK_ERROR(oroMemcpyHtoD(reinterpret_cast<oroDeviceptr>(materials_buffer), scene.materials.data(), sizeof(RendererMaterial) * scene.materials.size()));
+	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&materials_buffer), sizeof(HIPRTRendererMaterial) * scene.materials.size()));
+	OROCHI_CHECK_ERROR(oroMemcpyHtoD(reinterpret_cast<oroDeviceptr>(materials_buffer), scene.materials.data(), sizeof(HIPRTRendererMaterial) * scene.materials.size()));
 	hiprt_scene_ptr.get()->materials_buffer = materials_buffer;
 
 	hiprt_scene_ptr.get()->emissive_triangles_count = scene.emissive_triangle_indices.size();

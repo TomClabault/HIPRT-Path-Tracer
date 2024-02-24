@@ -12,7 +12,7 @@
 
 #include <OpenImageDenoise/oidn.hpp>
 
-Image Utils::read_image_float(const std::string& filepath, int& image_width, int& image_height, bool flipY)
+std::vector<HIPRTColor> Utils::read_image_float(const std::string& filepath, int& image_width, int& image_height, bool flipY)
 {
     stbi_set_flip_vertically_on_load(flipY);
 
@@ -25,13 +25,13 @@ Image Utils::read_image_float(const std::string& filepath, int& image_width, int
         std::exit(1);
     }
 
-    Image output(image_width, image_height);
+    std::vector<HIPRTColor> output(image_width * image_height);
     for (int y = 0; y < image_height; y++)
     {
         for (int x = 0; x < image_width; x++)
         {
             int index = y * image_width + x;
-            output[index] = Color(pixels[index * 3 + 0], pixels[index * 3 + 1], pixels[index * 3 + 2], 0.0f);
+            output[index] = HIPRTColor(pixels[index * 3 + 0], pixels[index * 3 + 1], pixels[index * 3 + 2]);
         }
     }
 
@@ -68,25 +68,25 @@ std::vector<unsigned char> Utils::tonemap_hdr_image(const float* hdr_image, size
     return tonemapped_data;
 }
 
-std::vector<float> Utils::compute_env_map_cdf(const Image &skysphere)
+std::vector<float> Utils::compute_env_map_cdf(const std::vector<HIPRTColor>& skysphere, int width, int height)
 {
-    std::vector<float> out(skysphere.height() * skysphere.width());
+    std::vector<float> out(height * width);
     out[0] = 0.0f;
 
-    for (int y = 0; y < skysphere.height(); y++)
+    for (int y = 0; y < height; y++)
     {
-        for (int x = 0; x < skysphere.width(); x++)
+        for (int x = 0; x < width; x++)
         {
-            int index = y * skysphere.width() + x;
+            int index = y * width + x;
 
-            out[index] = out[std::max(index - 1, 0)] + skysphere.luminance_of_pixel(x, y);
+            out[index] = out[std::max(index - 1, 0)] + Utils::luminance_of_pixel(skysphere, width, x, y);
         }
     }
 
     return out;
 }
 
-Image Utils::OIDN_denoise(const Image& image, float blend_factor)
+std::vector< HIPRTColor> Utils::OIDN_denoise(const std::vector<HIPRTColor>& image, int width, int height, float blend_factor)
 {
     // Create an Open Image Denoise device
     static bool device_done = false;
@@ -97,7 +97,7 @@ Image Utils::OIDN_denoise(const Image& image, float blend_factor)
         if (device == NULL)
         {
             std::cerr << "There was an error getting the device for denoising with OIDN. Perhaps some missing DLLs for your hardware?" << std::endl;
-            return Image(1, 1);
+            return std::vector<HIPRTColor>();
         }
         device.commit();
 
@@ -105,9 +105,6 @@ Image Utils::OIDN_denoise(const Image& image, float blend_factor)
     }
 
     // Create buffers for input/output images accessible by both host (CPU) and device (CPU/GPU)
-    int width = image.width();
-    int height = image.height();
-
     oidn::BufferRef colorBuf = device.newBuffer(width * height * 3 * sizeof(float));
     // Create a filter for denoising a beauty (color) image using optional auxiliary images too
     // This can be an expensive operation, so try no to create a new filter for every image!
@@ -132,13 +129,13 @@ Image Utils::OIDN_denoise(const Image& image, float blend_factor)
     filter.execute();
 
     float* denoised_ptr = (float*)colorBuf.getData();
-    Image output(image.width(), image.height());
+    std::vector<HIPRTColor> output(width * height);
     for (int y = 0; y < height; y++)
         for (int x = 0; x < width; x++)
         {
             int index = y * width + x;
 
-            Color color = blend_factor * Color(denoised_ptr[index * 3 + 0], denoised_ptr[index * 3 + 1], denoised_ptr[index * 3 + 2])
+            HIPRTColor color = blend_factor * HIPRTColor(denoised_ptr[index * 3 + 0], denoised_ptr[index * 3 + 1], denoised_ptr[index * 3 + 2])
                 + (1.0f - blend_factor) * image[index];
             color.a = 1.0f;
 
@@ -151,7 +148,7 @@ Image Utils::OIDN_denoise(const Image& image, float blend_factor)
 
     return output;
 }
-std::vector<ImageBin> Utils::importance_split_skysphere(const Image& skysphere, ImageBin current_region, float current_radiance, int minimum_bin_area, float minimum_bin_radiance)
+std::vector<ImageBin> Utils::importance_split_skysphere(const std::vector<HIPRTColor>& skysphere, int width, int height, ImageBin current_region, float current_radiance, int minimum_bin_area, float minimum_bin_radiance)
 {
     int horizontal_extent = current_region.x1 - current_region.x0;
     int vertical_extent = current_region.y1 - current_region.y0;
@@ -181,11 +178,11 @@ std::vector<ImageBin> Utils::importance_split_skysphere(const Image& skysphere, 
                                  current_region.y0, current_region.y1 };
     }
 
-    float region_1_radiance = skysphere.luminance_of_area(new_region_1);
-    float region_2_radiance = skysphere.luminance_of_area(new_region_2);
+    float region_1_radiance = Utils::luminance_of_area(skysphere, width, height, new_region_1);
+    float region_2_radiance = Utils::luminance_of_area(skysphere, width, height, new_region_2);
 
-    std::vector<ImageBin> region_1_bins = importance_split_skysphere(skysphere, new_region_1, region_1_radiance, minimum_bin_area, minimum_bin_radiance);
-    std::vector<ImageBin> region_2_bins = importance_split_skysphere(skysphere, new_region_2, region_2_radiance, minimum_bin_area, minimum_bin_radiance);
+    std::vector<ImageBin> region_1_bins = Utils::importance_split_skysphere(skysphere, width, height, new_region_1, region_1_radiance, minimum_bin_area, minimum_bin_radiance);
+    std::vector<ImageBin> region_2_bins = Utils::importance_split_skysphere(skysphere, width, height, new_region_2, region_2_radiance, minimum_bin_area, minimum_bin_radiance);
 
     std::vector<ImageBin> all_bins;
     all_bins.insert(all_bins.end(), region_1_bins.begin(), region_1_bins.end());
@@ -194,39 +191,63 @@ std::vector<ImageBin> Utils::importance_split_skysphere(const Image& skysphere, 
     return all_bins;
 }
 
-std::vector<ImageBin> Utils::importance_split_skysphere(const Image& skysphere, int minimum_bin_area, float minimum_bin_radiance)
+// TODO create image class instead of vector of HIPRTColor
+float Utils::luminance_of_pixel(const std::vector<HIPRTColor>& skysphere, int width, int x, int y)
 {
-    ImageBin whole_image_region = ImageBin{ 0, skysphere.width(), 0, skysphere.height() };
+    HIPRTColor pixel = skysphere[y * width + x];
 
-    float current_radiance = skysphere.luminance_of_area(whole_image_region);
-
-    return Utils::importance_split_skysphere(skysphere, whole_image_region, current_radiance, minimum_bin_area, minimum_bin_radiance);
+    return 0.3086 * pixel.r + 0.6094 * pixel.g + 0.0820 * pixel.b;
 }
 
-void Utils::write_env_map_bins_to_file(const std::string& filepath, Image skysphere_data, const std::vector<ImageBin>& skysphere_importance_bins)
+float Utils::luminance_of_area(const std::vector<HIPRTColor>& skysphere, int width, int start_x, int start_y, int stop_x, int stop_y)
 {
-    int max_index = skysphere_data.width() * skysphere_data.height() - 1;
+    float luminance = 0.0f;
+
+    for (int x = start_x; x < stop_x; x++)
+        for (int y = start_y; y < stop_y; y++)
+            luminance += Utils::luminance_of_pixel(skysphere, width, x, y);
+
+    return luminance;
+}
+
+float Utils::luminance_of_area(const std::vector<HIPRTColor>& skysphere, int width, int height, const ImageBin& area)
+{
+    return Utils::luminance_of_area(skysphere, width, area.x0, area.y0, area.x1, area.y1);
+}
+
+std::vector<ImageBin> Utils::importance_split_skysphere(const std::vector<HIPRTColor>& skysphere, int width, int height, int minimum_bin_area, float minimum_bin_radiance)
+{
+    ImageBin whole_image_region = ImageBin{ 0, width, 0, height };
+
+    float current_radiance = Utils::luminance_of_area(skysphere, width, height, whole_image_region);
+
+    return Utils::importance_split_skysphere(skysphere, width, height, whole_image_region, current_radiance, minimum_bin_area, minimum_bin_radiance);
+}
+
+void Utils::write_env_map_bins_to_file(const std::string& filepath, std::vector<HIPRTColor> skysphere_data, int width, int height, const std::vector<ImageBin>& skysphere_importance_bins)
+{
+    int max_index = width * height - 1;
 
     for (const ImageBin& bin : skysphere_importance_bins)
     {
         for (int y = bin.y0; y < bin.y1; y++)
         {
-            int index1 = std::min(y * skysphere_data.width() + bin.x0, max_index);
-            int index2 = std::min(y * skysphere_data.width() + bin.x1, max_index);
+            int index1 = std::min(y * width + bin.x0, max_index);
+            int index2 = std::min(y * width + bin.x1, max_index);
 
-            skysphere_data[index1] = Color(1.0f, 0.0f, 0.0f);
-            skysphere_data[index2] = Color(1.0f, 0.0f, 0.0f);
+            skysphere_data[index1] = HIPRTColor(1.0f, 0.0f, 0.0f);
+            skysphere_data[index2] = HIPRTColor(1.0f, 0.0f, 0.0f);
         }
 
         for (int x = bin.x0; x < bin.x1; x++)
         {
-            int index1 = std::min(bin.y0 * skysphere_data.width() + x, max_index);
-            int index2 = std::min(bin.y1 * skysphere_data.width() + x, max_index);
+            int index1 = std::min(bin.y0 * width + x, max_index);
+            int index2 = std::min(bin.y1 * width + x, max_index);
 
-            skysphere_data[index1] = Color(1.0f, 0.0f, 0.0f);
-            skysphere_data[index2] = Color(1.0f, 0.0f, 0.0f);
+            skysphere_data[index1] = HIPRTColor(1.0f, 0.0f, 0.0f);
+            skysphere_data[index2] = HIPRTColor(1.0f, 0.0f, 0.0f);
         }
     }
 
-    write_image_hdr(skysphere_data, filepath.c_str());
+    write_image_hdr(skysphere_data, width, height, filepath.c_str());
 }

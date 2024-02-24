@@ -93,7 +93,7 @@ void AppWindow::display(const OrochiBuffer<T>& orochi_buffer)
 	// Unfortunately, this is unavailable in Orochi so we would have
 	// to switch to HIP (or CUDA but it doesn't support AMD) to get access
 	// to the hipGraphicsMapResources() functions family
-	std::vector<HIPRTColor> pixels_data = orochi_buffer.download_pixels();
+	std::vector<T> pixels_data = orochi_buffer.download_pixels();
 
 	glBindTexture(GL_TEXTURE_2D, m_display_texture);
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_renderer.m_render_width, m_renderer.m_render_height, GL_RGB, GL_FLOAT, pixels_data.data());
