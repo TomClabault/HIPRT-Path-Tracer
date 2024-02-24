@@ -11,6 +11,7 @@
 // TODO Code Organization:
 // 
 // - create image class instead of vector of HIPRTColor pretty much everywhere
+// - rename HIPRTColor to Color
 // - create env map class that encapsulates image + cdf + sampling functions
 // - delete tests, they are obsolete
 // - overload +=, *=, ... operators for HIPRTColor most notably on the GPU side

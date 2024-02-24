@@ -4,20 +4,47 @@
 
 #include <stb_image_write.h>
 
-#include "Image/image_io.h"
+#include "Image/envmap.h"
+#include "Image/image.h"
 #include "Renderer/bvh.h"
 #include "Renderer/render_kernel.h"
 #include "Renderer/renderer_material.h"
 #include "Renderer/triangle.h"
 #include "Scene/camera.h"
 #include "Scene/scene_parser.h"
-#include "Tests/tests.h"
 #include "UI/app_window.h"
 #include "Utils/commandline_arguments.h"
 #include "Utils/utils.h"
 #include "Utils/xorshift.h"
 
 #define GPU_RENDER 0
+
+// TODO remove the two functions when Image class is done
+inline float clamp(const float x, const float min, const float max)
+{
+    if (x < min) return min;
+    else if (x > max) return max;
+    else return x;
+}
+
+bool write_image_png(const std::vector<HIPRTColor>& m_pixel_data, int m_width, int m_height, const char* filename)
+{
+    if (m_height * m_width == 0)
+        return false;
+
+    std::vector<unsigned char> tmp(m_height * m_width * 3);
+    for (unsigned i = 0; i < m_width * m_height; i++)
+    {
+        HIPRTColor pixel = m_pixel_data[i] * 255;
+
+        tmp[i * 3 + 0] = clamp(pixel.r, 0, 255);
+        tmp[i * 3 + 1] = clamp(pixel.g, 0, 255);
+        tmp[i * 3 + 2] = clamp(pixel.b, 0, 255);
+    }
+
+    stbi_flip_vertically_on_write(true);
+    return stbi_write_png(filename, m_width, m_height, 3, tmp.data(), m_width * 3) != 0;
+}
 
 int main(int argc, char* argv[])
 {
@@ -67,10 +94,8 @@ int main(int argc, char* argv[])
     std::vector<int> materials_indices_buffer = parsed_scene.material_indices;
     std::vector<Sphere> sphere_buffer = spheres;
 
-    int skysphere_width, skysphere_height;
     std::cout << "Reading Environment Map " << cmd_arguments.skysphere_file_path << " ..." << std::endl;
-    std::vector<HIPRTColor> skysphere_data = Utils::read_image_float(cmd_arguments.skysphere_file_path, skysphere_width, skysphere_height);
-    std::vector<float> env_map_cdf = Utils::compute_env_map_cdf(skysphere_data, skysphere_width, skysphere_height);
+    EnvironmentMap env_map = EnvironmentMap::read_from_file(cmd_arguments.skysphere_file_path);
 
     std::cout << "[" << width << "x" << height << "]: " << cmd_arguments.render_samples << " samples" << std::endl << std::endl;
 
@@ -86,9 +111,7 @@ int main(int argc, char* argv[])
         materials_indices_buffer,
         sphere_buffer,
         bvh,
-        skysphere_data,
-        skysphere_width, skysphere_height,
-        env_map_cdf);
+        env_map);
     render_kernel.set_camera(parsed_scene.camera);
     render_kernel.render();
 

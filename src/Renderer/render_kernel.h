@@ -3,6 +3,7 @@
 
 #include "Scene/camera.h"
 #include "Image/color.h"
+#include "Image/envmap.h"
 #include "Image/image.h"
 #include "Renderer/bvh.h"
 #include "Renderer/renderer_material.h"
@@ -31,11 +32,8 @@ public:
                     const std::vector<int>& materials_indices_buffer,
                     const std::vector<Sphere>& analytic_spheres_buffer,
                     BVH& bvh,
-                    const std::vector<HIPRTColor>& env_map,
-                    int env_map_width, int env_map_height,
-                    const std::vector<float>& env_map_cdf) : 
+                    const EnvironmentMap& env_map) : 
         m_framebuffer_width(width), m_framebuffer_height(height),
-        m_env_map_width(env_map_width), m_env_map_height(env_map_height),
         m_render_samples(render_samples),
         m_max_bounces(max_bounces),
         m_frame_buffer(image_buffer),
@@ -45,8 +43,7 @@ public:
         m_materials_indices_buffer(materials_indices_buffer),
         m_sphere_buffer(analytic_spheres_buffer),
         m_bvh(bvh),
-        m_environment_map(env_map),
-        m_env_map_cdf(env_map_cdf) {}
+        m_environment_map(env_map) {}
 
     void set_camera(Camera camera) { m_camera = camera; }
 
@@ -79,7 +76,6 @@ public:
 
 private:
     int m_framebuffer_width, m_framebuffer_height;
-    int m_env_map_width, m_env_map_height;
 
     int m_render_samples; 
     int m_max_bounces;
@@ -95,86 +91,9 @@ private:
 
     const BVH& m_bvh;
 
-    const std::vector<HIPRTColor>& m_environment_map;
-    const std::vector<float>& m_env_map_cdf;
+    const EnvironmentMap& m_environment_map;
 
     Camera m_camera;
 };
 
 #endif
-
-/*
-* Flat BVH intersection for the GPU
-*/
-//inline bool RenderKernel::intersect_scene_bvh(const Ray& ray, HitInfo& closest_hit_info) const
-//{
-//    closest_hit_info.t = -1.0f;
-//
-//    FlattenedBVH::Stack stack;
-//    stack.push(0);//Pushing the root of the BVH
-//
-//    std::array<float, BVHConstants::PLANES_COUNT> denoms;
-//    std::array<float, BVHConstants::PLANES_COUNT> numers;
-//
-//    for (int i = 0; i < BVHConstants::PLANES_COUNT; i++)
-//    {
-//        denoms[i] = dot(BoundingVolume::PLANE_NORMALS[i], ray.direction);
-//        numers[i] = dot(BoundingVolume::PLANE_NORMALS[i], Vector(ray.origin));
-//    }
-//
-//    float closest_intersection_distance = -1;
-//    while (!stack.empty())
-//    {
-//        int node_index = stack.pop();
-//        const FlattenedBVH::FlattenedNode& node = m_bvh_nodes[node_index];
-//
-//        if (node.intersect_volume(denoms, numers))
-//        {
-//            if (node.is_leaf)
-//            {
-//                for (int i = 0; i < node.nb_triangles; i++)
-//                {
-//                    int triangle_index = node.triangles_indices[i];
-//
-//                    HitInfo local_hit_info;
-//                    if (m_triangle_buffer[triangle_index].intersect(ray, local_hit_info))
-//                    {
-//                        if (closest_intersection_distance > local_hit_info.t || closest_intersection_distance == -1)
-//                        {
-//                            closest_intersection_distance = local_hit_info.t;
-//                            closest_hit_info = local_hit_info;
-//                            closest_hit_info.material_index = m_materials_indices_buffer[triangle_index];
-//                        }
-//                    }
-//                }
-//            }
-//            else
-//            {
-//                stack.push(node.children[0]);
-//                stack.push(node.children[1]);
-//                stack.push(node.children[2]);
-//                stack.push(node.children[3]);
-//                stack.push(node.children[4]);
-//                stack.push(node.children[5]);
-//                stack.push(node.children[6]);
-//                stack.push(node.children[7]);
-//            }
-//        }
-//    }
-//
-//    for (int i = 0; i < m_sphere_buffer.size(); i++)
-//    {
-//        const Sphere& sphere = m_sphere_buffer[i];
-//        HitInfo hit_info;
-//        if (sphere.intersect(ray, hit_info))
-//        {
-//            if (hit_info.t < closest_intersection_distance || closest_intersection_distance == -1.0f)
-//            {
-//                closest_intersection_distance = hit_info.t;
-//                closest_hit_info = hit_info;
-//            }
-//        }
-//    }
-//
-//    return closest_hit_info.t > -1.0f;
-//}
