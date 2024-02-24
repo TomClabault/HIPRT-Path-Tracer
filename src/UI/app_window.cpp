@@ -472,6 +472,8 @@ void AppWindow::run()
 			increment_sample_number();
 		}
 
+		// TODO BVH compaction + imgui checkbox
+		// TODO indirect / direct lighting clamping
 		// TODO choose env map at runtime imgui
 		// TODO env map rotation imgui
 		// TODO albedo and normals denoising
