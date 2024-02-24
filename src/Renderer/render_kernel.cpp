@@ -558,47 +558,47 @@ HIPRTColor RenderKernel::sample_environment_map_from_direction(const Vector& dir
     u = 0.5f + std::atan2(direction.z, direction.x) / (2.0f * (float)M_PI);
     v = 0.5f + std::asin(direction.y) / (float)M_PI;
 
-    int x = std::max(std::min((int)(u * m_env_map_width), m_env_map_width - 1), 0);
-    int y = std::max(std::min((int)(v * m_env_map_height), m_env_map_height - 1), 0);
+    int x = std::max(std::min((int)(u * m_environment_map.width), m_environment_map.width - 1), 0);
+    int y = std::max(std::min((int)(v * m_environment_map.height), m_environment_map.height - 1), 0);
 
-    return m_environment_map[y * m_env_map_width + x];
+    return m_environment_map[y * m_environment_map.width + x];
 }
 
 void RenderKernel::env_map_cdf_search(float value, int& x, int& y) const
 {
     //First searching a line to sample
     int lower = 0;
-    int upper = m_env_map_height - 1;
+    int upper = m_environment_map.height - 1;
 
-    int x_index = m_env_map_width - 1;
+    int x_index = m_environment_map.width - 1;
     while (lower < upper)
     {
         int y_index = (lower + upper) / 2;
-        int env_map_index = y_index * m_env_map_width + x_index;
+        int env_map_index = y_index * m_environment_map.width + x_index;
 
-        if (value < m_env_map_cdf[env_map_index])
+        if (value < m_environment_map.cdf()[env_map_index])
             upper = y_index;
         else
             lower = y_index + 1;
     }
-    y = std::max(std::min(lower, m_env_map_height), 0);
+    y = std::max(std::min(lower, m_environment_map.height), 0);
 
     //Then sampling the line itself
     lower = 0;
-    upper = m_env_map_width - 1;
+    upper = m_environment_map.width - 1;
 
     int y_index = y;
     while (lower < upper)
     {
         int x_index = (lower + upper) / 2;
-        int env_map_index = y_index * m_env_map_width + x_index;
+        int env_map_index = y_index * m_environment_map.width + x_index;
 
-        if (value < m_env_map_cdf[env_map_index])
+        if (value < m_environment_map.cdf()[env_map_index])
             upper = x_index;
         else
             lower = x_index + 1;
     }
-    x = std::max(std::min(lower, m_env_map_width), 0);
+    x = std::max(std::min(lower, m_environment_map.width), 0);
 }
 
 HIPRTColor RenderKernel::sample_environment_map(const Ray& ray, const HitInfo& closest_hit_info, const RendererMaterial& material, xorshift32_generator& random_number_generator) const
@@ -607,12 +607,14 @@ HIPRTColor RenderKernel::sample_environment_map(const Ray& ray, const HitInfo& c
         // No sampling for perfectly specular materials
         return HIPRTColor(0.0f);
 
+    const std::vector<float>& cdf = m_environment_map.cdf();
+
     int x, y;
-    float env_map_total_sum = m_env_map_cdf[m_env_map_cdf.size() - 1];
+    float env_map_total_sum = cdf[cdf.size() - 1];
     env_map_cdf_search(random_number_generator() * env_map_total_sum, x, y);
 
-    float u = (float)x / m_env_map_width;
-    float v = (float)y / m_env_map_height;
+    float u = (float)x / m_environment_map.width;
+    float v = (float)y / m_environment_map.height;
     float phi = u * 2.0f * M_PI;
     // Clamping to avoid theta = 0 which would imply a skysphere direction straight up
     // which leads to a pdf of infinity since it is a singularity
@@ -633,10 +635,10 @@ HIPRTColor RenderKernel::sample_environment_map(const Ray& ray, const HitInfo& c
         HitInfo trash;
         if (!INTERSECT_SCENE(Ray(closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-4f, sampled_direction), trash))
         {
-            float env_map_pdf = Utils::luminance_of_pixel(m_environment_map, m_env_map_width, x, y) / env_map_total_sum;
-            env_map_pdf = (env_map_pdf * m_env_map_width * m_env_map_height) / (2.0f * M_PI * M_PI * sin_theta);
+            float env_map_pdf = m_environment_map.luminance_of_pixel(x, y) / env_map_total_sum;
+            env_map_pdf = (env_map_pdf * m_environment_map.width * m_environment_map.height) / (2.0f * M_PI * M_PI * sin_theta);
 
-            HIPRTColor env_map_radiance = m_environment_map[y * m_env_map_width + x];
+            HIPRTColor env_map_radiance = m_environment_map[y * m_environment_map.width + x];
             HIPRTColor brdf = cook_torrance_brdf(material, sampled_direction, -ray.direction, closest_hit_info.normal_at_intersection);
             float brdf_pdf = cook_torrance_brdf_pdf(material, -ray.direction, sampled_direction, closest_hit_info.normal_at_intersection);
 
@@ -659,9 +661,9 @@ HIPRTColor RenderKernel::sample_environment_map(const Ray& ray, const HitInfo& c
             HIPRTColor skysphere_color = sample_environment_map_from_direction(brdf_sampled_dir);
             float theta_brdf_dir = std::acos(brdf_sampled_dir.z);
             float sin_theta_bdrf_dir = std::sin(theta_brdf_dir);
-            float env_map_pdf = skysphere_color.luminance() / m_env_map_cdf[m_env_map_cdf.size() - 1];
+            float env_map_pdf = skysphere_color.luminance() / env_map_total_sum;
 
-            env_map_pdf *= m_env_map_width * m_env_map_height;
+            env_map_pdf *= m_environment_map.width * m_environment_map.height;
             env_map_pdf /= (2.0f * M_PI * M_PI * sin_theta_bdrf_dir);
 
             float mis_weight = power_heuristic(brdf_sample_pdf, env_map_pdf);

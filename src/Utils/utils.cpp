@@ -4,7 +4,6 @@
 
 #include "Image/color.h"
 #include "Image/image.h"
-#include "Image/image_io.h"
 #include "Utils/utils.h"
 
 #include <iostream>
@@ -65,24 +64,6 @@ std::vector<unsigned char> Utils::tonemap_hdr_image(const float* hdr_image, size
     }
 
     return tonemapped_data;
-}
-
-std::vector<float> Utils::compute_env_map_cdf(const std::vector<HIPRTColor>& skysphere, int width, int height)
-{
-    std::vector<float> out(height * width);
-    out[0] = 0.0f;
-
-    for (int y = 0; y < height; y++)
-    {
-        for (int x = 0; x < width; x++)
-        {
-            int index = y * width + x;
-
-            out[index] = out[std::max(index - 1, 0)] + Utils::luminance_of_pixel(skysphere, width, x, y);
-        }
-    }
-
-    return out;
 }
 
 std::vector< HIPRTColor> Utils::OIDN_denoise(const std::vector<HIPRTColor>& image, int width, int height, float blend_factor)
@@ -147,105 +128,84 @@ std::vector< HIPRTColor> Utils::OIDN_denoise(const std::vector<HIPRTColor>& imag
 
     return output;
 }
-std::vector<ImageBin> Utils::importance_split_skysphere(const std::vector<HIPRTColor>& skysphere, int width, int height, ImageBin current_region, float current_radiance, int minimum_bin_area, float minimum_bin_radiance)
-{
-    int horizontal_extent = current_region.x1 - current_region.x0;
-    int vertical_extent = current_region.y1 - current_region.y0;
-    int current_region_area = vertical_extent * vertical_extent;
-    if (current_radiance <= minimum_bin_radiance || current_region_area <= minimum_bin_area)
-        return std::vector<ImageBin> { current_region };
 
-    //Determining the largest for the split
-    //A vertical split means that the "cut line" is horizontal, 
-    //we're dividing the height by 2
-    bool vertical_split = horizontal_extent < vertical_extent;
-
-    ImageBin new_region_1;
-    ImageBin new_region_2;
-    if (vertical_split)
-    {
-        new_region_1 = ImageBin { current_region.x0, current_region.x1, 
-                                  current_region.y0, vertical_extent / 2 + current_region.y0};
-        new_region_2 = ImageBin { current_region.x0, current_region.x1, 
-                                  vertical_extent / 2 + current_region.y0, current_region.y1 };
-    }
-    else
-    {
-        new_region_1 = ImageBin{ current_region.x0, horizontal_extent / 2 + current_region.x0,
-                                 current_region.y0, current_region.y1 };
-        new_region_2 = ImageBin{ horizontal_extent / 2 + current_region.x0, current_region.x1,
-                                 current_region.y0, current_region.y1 };
-    }
-
-    float region_1_radiance = Utils::luminance_of_area(skysphere, width, height, new_region_1);
-    float region_2_radiance = Utils::luminance_of_area(skysphere, width, height, new_region_2);
-
-    std::vector<ImageBin> region_1_bins = Utils::importance_split_skysphere(skysphere, width, height, new_region_1, region_1_radiance, minimum_bin_area, minimum_bin_radiance);
-    std::vector<ImageBin> region_2_bins = Utils::importance_split_skysphere(skysphere, width, height, new_region_2, region_2_radiance, minimum_bin_area, minimum_bin_radiance);
-
-    std::vector<ImageBin> all_bins;
-    all_bins.insert(all_bins.end(), region_1_bins.begin(), region_1_bins.end());
-    all_bins.insert(all_bins.end(), region_2_bins.begin(), region_2_bins.end());
-
-    return all_bins;
-}
-
-float Utils::luminance_of_pixel(const std::vector<HIPRTColor>& skysphere, int width, int x, int y)
-{
-    HIPRTColor pixel = skysphere[y * width + x];
-
-    return 0.3086 * pixel.r + 0.6094 * pixel.g + 0.0820 * pixel.b;
-}
-
-float Utils::luminance_of_area(const std::vector<HIPRTColor>& skysphere, int width, int start_x, int start_y, int stop_x, int stop_y)
-{
-    float luminance = 0.0f;
-
-    for (int x = start_x; x < stop_x; x++)
-        for (int y = start_y; y < stop_y; y++)
-            luminance += Utils::luminance_of_pixel(skysphere, width, x, y);
-
-    return luminance;
-}
-
-float Utils::luminance_of_area(const std::vector<HIPRTColor>& skysphere, int width, int height, const ImageBin& area)
-{
-    return Utils::luminance_of_area(skysphere, width, area.x0, area.y0, area.x1, area.y1);
-}
-
-std::vector<ImageBin> Utils::importance_split_skysphere(const std::vector<HIPRTColor>& skysphere, int width, int height, int minimum_bin_area, float minimum_bin_radiance)
-{
-    ImageBin whole_image_region = ImageBin{ 0, width, 0, height };
-
-    float current_radiance = Utils::luminance_of_area(skysphere, width, height, whole_image_region);
-
-    return Utils::importance_split_skysphere(skysphere, width, height, whole_image_region, current_radiance, minimum_bin_area, minimum_bin_radiance);
-}
-
-void Utils::write_env_map_bins_to_file(const std::string& filepath, std::vector<HIPRTColor> skysphere_data, int width, int height, const std::vector<ImageBin>& skysphere_importance_bins)
-{
-    int max_index = width * height - 1;
-
-    for (const ImageBin& bin : skysphere_importance_bins)
-    {
-        for (int y = bin.y0; y < bin.y1; y++)
-        {
-            int index1 = std::min(y * width + bin.x0, max_index);
-            int index2 = std::min(y * width + bin.x1, max_index);
-
-            skysphere_data[index1] = HIPRTColor(1.0f, 0.0f, 0.0f);
-            skysphere_data[index2] = HIPRTColor(1.0f, 0.0f, 0.0f);
-        }
-
-        for (int x = bin.x0; x < bin.x1; x++)
-        {
-            int index1 = std::min(bin.y0 * width + x, max_index);
-            int index2 = std::min(bin.y1 * width + x, max_index);
-
-            skysphere_data[index1] = HIPRTColor(1.0f, 0.0f, 0.0f);
-            skysphere_data[index2] = HIPRTColor(1.0f, 0.0f, 0.0f);
-        }
-    }
-
-    write_image_hdr(skysphere_data, width, height, filepath.c_str());
-}
+// TOOD remove, obsolete method
+//std::vector<ImageBin> Utils::importance_split_skysphere(const std::vector<HIPRTColor>& skysphere, int width, int height, ImageBin current_region, float current_radiance, int minimum_bin_area, float minimum_bin_radiance)
+//{
+//    int horizontal_extent = current_region.x1 - current_region.x0;
+//    int vertical_extent = current_region.y1 - current_region.y0;
+//    int current_region_area = vertical_extent * vertical_extent;
+//    if (current_radiance <= minimum_bin_radiance || current_region_area <= minimum_bin_area)
+//        return std::vector<ImageBin> { current_region };
+//
+//    //Determining the largest for the split
+//    //A vertical split means that the "cut line" is horizontal, 
+//    //we're dividing the height by 2
+//    bool vertical_split = horizontal_extent < vertical_extent;
+//
+//    ImageBin new_region_1;
+//    ImageBin new_region_2;
+//    if (vertical_split)
+//    {
+//        new_region_1 = ImageBin { current_region.x0, current_region.x1, 
+//                                  current_region.y0, vertical_extent / 2 + current_region.y0};
+//        new_region_2 = ImageBin { current_region.x0, current_region.x1, 
+//                                  vertical_extent / 2 + current_region.y0, current_region.y1 };
+//    }
+//    else
+//    {
+//        new_region_1 = ImageBin{ current_region.x0, horizontal_extent / 2 + current_region.x0,
+//                                 current_region.y0, current_region.y1 };
+//        new_region_2 = ImageBin{ horizontal_extent / 2 + current_region.x0, current_region.x1,
+//                                 current_region.y0, current_region.y1 };
+//    }
+//
+//    float region_1_radiance = Utils::luminance_of_area(skysphere, width, height, new_region_1);
+//    float region_2_radiance = Utils::luminance_of_area(skysphere, width, height, new_region_2);
+//
+//    std::vector<ImageBin> region_1_bins = Utils::importance_split_skysphere(skysphere, width, height, new_region_1, region_1_radiance, minimum_bin_area, minimum_bin_radiance);
+//    std::vector<ImageBin> region_2_bins = Utils::importance_split_skysphere(skysphere, width, height, new_region_2, region_2_radiance, minimum_bin_area, minimum_bin_radiance);
+//
+//    std::vector<ImageBin> all_bins;
+//    all_bins.insert(all_bins.end(), region_1_bins.begin(), region_1_bins.end());
+//    all_bins.insert(all_bins.end(), region_2_bins.begin(), region_2_bins.end());
+//
+//    return all_bins;
+//}
+//
+//std::vector<ImageBin> Utils::importance_split_skysphere(const std::vector<HIPRTColor>& skysphere, int width, int height, int minimum_bin_area, float minimum_bin_radiance)
+//{
+//    ImageBin whole_image_region = ImageBin{ 0, width, 0, height };
+//
+//    float current_radiance = Utils::luminance_of_area(skysphere, width, height, whole_image_region);
+//
+//    return Utils::importance_split_skysphere(skysphere, width, height, whole_image_region, current_radiance, minimum_bin_area, minimum_bin_radiance);
+//}
+//
+//void Utils::write_env_map_bins_to_file(const std::string& filepath, std::vector<HIPRTColor> skysphere_data, int width, int height, const std::vector<ImageBin>& skysphere_importance_bins)
+//{
+//    int max_index = width * height - 1;
+//
+//    for (const ImageBin& bin : skysphere_importance_bins)
+//    {
+//        for (int y = bin.y0; y < bin.y1; y++)
+//        {
+//            int index1 = std::min(y * width + bin.x0, max_index);
+//            int index2 = std::min(y * width + bin.x1, max_index);
+//
+//            skysphere_data[index1] = HIPRTColor(1.0f, 0.0f, 0.0f);
+//            skysphere_data[index2] = HIPRTColor(1.0f, 0.0f, 0.0f);
+//        }
+//
+//        for (int x = bin.x0; x < bin.x1; x++)
+//        {
+//            int index1 = std::min(bin.y0 * width + x, max_index);
+//            int index2 = std::min(bin.y1 * width + x, max_index);
+//
+//            skysphere_data[index1] = HIPRTColor(1.0f, 0.0f, 0.0f);
+//            skysphere_data[index2] = HIPRTColor(1.0f, 0.0f, 0.0f);
+//        }
+//    }
+//
+//    write_image_hdr(skysphere_data, width, height, filepath.c_str());
+//}
