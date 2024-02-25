@@ -2,7 +2,7 @@
 #define UTILS_H
 
 #include "Image/image.h"
-#include "Kernels/includes/hiprt_color.h"
+#include "HostDeviceCommon/color.h"
 
 #include <string>
 

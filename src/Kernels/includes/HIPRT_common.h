@@ -1,7 +1,7 @@
 #ifndef HIPRTRT_COMMON
 #define HIPRTRT_COMMON
 
-#include "Kernels/includes/hiprt_color.h"
+#include "HostDeviceCommon/color.h"
 #include "Kernels/includes/hiprt_fix_vs.h"
 #include "Kernels/includes/HIPRT_maths.h"
 
@@ -75,8 +75,8 @@ struct HIPRTRendererMaterial
 
     HIPRTBRDF brdf_type = HIPRTBRDF::HIPRT_Uninitialized;
 
-    HIPRTColor emission = HIPRTColor{ 0.0f, 0.0f, 0.0f };
-    HIPRTColor diffuse = HIPRTColor{ 1.0f, 0.2f, 0.7f };
+    Color emission = Color{ 0.0f, 0.0f, 0.0f };
+    Color diffuse = Color{ 1.0f, 0.2f, 0.7f };
 
     float metalness = 0.0f;
     float roughness = 1.0f;

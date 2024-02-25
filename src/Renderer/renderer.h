@@ -3,7 +3,6 @@
 
 #include "glm/gtc/matrix_transform.hpp"
 #include "HIPRT-Orochi/orochi_buffer.h"
-#include "Image/color.h"
 #include "Kernels/includes/hiprt_render_data.h"
 #include "Renderer/render_settings.h"
 #include "Scene/camera.h"
@@ -136,7 +135,7 @@ public:
 private:
 	OrochiBuffer<float> m_pixels_buffer;
 	OrochiBuffer<hiprtFloat3> m_ws_normals_buffer;
-	OrochiBuffer<HIPRTColor> m_albedo_buffer;
+	OrochiBuffer<Color> m_albedo_buffer;
 
 	std::shared_ptr<HIPRTOrochiCtx> m_hiprt_orochi_ctx;
 	oroFunction m_trace_kernel;

@@ -1,4 +1,4 @@
-#include "Kernels/includes/hiprt_color.h"
+#include "HostDeviceCommon/color.h"
 #include "image.h"
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -15,20 +15,20 @@ inline float clamp(const float x, const float min, const float max)
     else return x;
 }
 
-Image::Image(HIPRTColor* data, int width, int height) : width(width), height(height)
+Image::Image(Color* data, int width, int height) : width(width), height(height)
 {
-    m_pixel_data = std::vector<HIPRTColor>();
+    m_pixel_data = std::vector<Color>();
     m_pixel_data.insert(m_pixel_data.end(), &data[0], &data[width * height]);
 }
 
 size_t Image::byte_size() const
 {
-    return width * height * sizeof(HIPRTColor);
+    return width * height * sizeof(Color);
 }
 
 float Image::luminance_of_pixel(int x, int y) const
 {
-    HIPRTColor pixel = m_pixel_data[y * width + x];
+    Color pixel = m_pixel_data[y * width + x];
 
     return 0.3086 * pixel.r + 0.6094 * pixel.g + 0.0820 * pixel.b;
 }
@@ -57,7 +57,7 @@ bool Image::write_image_png(const char* filename, const bool flipY) const
     std::vector<unsigned char> tmp(byte_size());
     for (unsigned i = 0; i < width * height; i++)
     {
-        HIPRTColor pixel = m_pixel_data[i] * 255;
+        Color pixel = m_pixel_data[i] * 255;
 
         tmp[i * 3 + 0] = clamp(pixel.r, 0, 255);
         tmp[i * 3 + 1] = clamp(pixel.g, 0, 255);
@@ -77,27 +77,27 @@ bool Image::write_image_hdr(const char* filename, const bool flipY) const
     return stbi_write_hdr(filename, width, height, 3, reinterpret_cast<const float*>(m_pixel_data.data())) != 0;
 }
 
-void Image::set_data(const std::vector<HIPRTColor>& data)
+void Image::set_data(const std::vector<Color>& data)
 {
     m_pixel_data = data;
 }
 
-const std::vector<HIPRTColor>& Image::data() const
+const std::vector<Color>& Image::data() const
 {
     return m_pixel_data;
 }
 
-std::vector<HIPRTColor>& Image::data()
+std::vector<Color>& Image::data()
 {
     return m_pixel_data;
 }
 
-const HIPRTColor& Image::operator[](int index) const
+const Color& Image::operator[](int index) const
 {
     return m_pixel_data[index];
 }
 
-HIPRTColor& Image::operator[](int index)
+Color& Image::operator[](int index)
 {
     return m_pixel_data[index];
 }

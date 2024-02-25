@@ -9,14 +9,10 @@
 #include "stb_image_write.h"
 
 // test performance when reducing number of triangles of the P1
-// - create env map class that encapsulates image + cdf + SAMPLING FUNCTIONS
 
 // TODO Code Organization:
 // 
-// - create image class instead of vector of HIPRTColor pretty much everywhere
-// - rename HIPRTColor to Color
-// - delete tests, they are obsolete
-// - overload +=, *=, ... operators for HIPRTColor most notably on the GPU side
+// - overload +=, *=, ... operators for Color most notably on the GPU side
 // - use constructors instead of struct {} syntax in gpu code
 // - rename HIPRT_xorshift32 generator without underscores for consistency
 // - separate path tracer kernel functions in header files
@@ -27,6 +23,7 @@
 
 // TODO Features:
 // 
+// - add dropdowns to imgui instead of separators to group up settings
 // - cutout filters
 // - write scene details to imgui (nb vertices, triangles, ...)
 // - check perf of aiPostProcessSteps::aiProcess_ImproveCacheLocality
