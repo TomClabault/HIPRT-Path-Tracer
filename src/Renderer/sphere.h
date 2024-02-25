@@ -1,7 +1,7 @@
 #ifndef SPHERE_H
 #define SPHERE_H
 
-#include "hit_info.h"
+#include "HostDeviceCommon/hit_info.h"
 #include "ray.h"
 
 struct Sphere

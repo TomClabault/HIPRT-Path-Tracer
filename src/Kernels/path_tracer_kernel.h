@@ -1,7 +1,6 @@
 #include "Kernels/includes/HIPRT_camera.h"
 #include "Kernels/includes/HIPRT_common.h"
 #include "Kernels/includes/hiprt_fix_vs.h"
-//#include "Kernels/includes/hiprt_lambertian.h"
 #include "Kernels/includes/HIPRT_maths.h"
 #include "Kernels/includes/hiprt_render_data.h"
 
@@ -308,7 +307,7 @@ __device__ Color brdf_dispatcher_sample(const RendererMaterial& material, hiprtF
     return Color(0.0f);
 }
 
-__device__ bool trace_ray(const HIPRTRenderData& render_data, hiprtRay ray, HIPRTHitInfo& hit_info)
+__device__ bool trace_ray(const HIPRTRenderData& render_data, hiprtRay ray, HitInfo& hit_info)
 {
     hiprtGeomTraversalClosest tr(render_data.geom, ray);
     hiprtHit				  hit = tr.getNextHit();
@@ -362,7 +361,7 @@ __device__ float power_heuristic(float pdf_a, float pdf_b)
     return pdf_a_squared / (pdf_a_squared + pdf_b * pdf_b);
 }
 
-__device__ hiprtFloat3 sample_random_point_on_lights(const HIPRTRenderData& render_data, xorshift32_generator& random_number_generator, float& pdf, HIPRTLightSourceInformation& light_info)
+__device__ hiprtFloat3 sample_random_point_on_lights(const HIPRTRenderData& render_data, xorshift32_generator& random_number_generator, float& pdf, LightSourceInformation& light_info)
 {
     int random_index = random_number_generator() * render_data.emissive_triangles_count;
     int triangle_index = light_info.emissive_triangle_index = render_data.emissive_triangles_indices[random_index];
@@ -420,7 +419,7 @@ __device__ bool evaluate_shadow_ray(const HIPRTRenderData& render_data, hiprtRay
     return aoHit.hasHit();
 }
 
-__device__ Color sample_light_sources(HIPRTRenderData& render_data, const hiprtRay& ray, const HIPRTHitInfo& closest_hit_info, const RendererMaterial& material, xorshift32_generator& random_number_generator)
+__device__ Color sample_light_sources(HIPRTRenderData& render_data, const hiprtRay& ray, const HitInfo& closest_hit_info, const RendererMaterial& material, xorshift32_generator& random_number_generator)
 {
     if (material.brdf_type == BRDF::SpecularFresnel)
         // No sampling for perfectly specular materials
@@ -430,7 +429,7 @@ __device__ Color sample_light_sources(HIPRTRenderData& render_data, const hiprtR
     if (render_data.emissive_triangles_count > 0)
     {
         float light_sample_pdf;
-        HIPRTLightSourceInformation light_source_info;
+        LightSourceInformation light_source_info;
         hiprtFloat3 random_light_point = sample_random_point_on_lights(render_data, random_number_generator, light_sample_pdf, light_source_info);
 
         hiprtFloat3 shadow_ray_origin = closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-4f;
@@ -481,7 +480,7 @@ __device__ Color sample_light_sources(HIPRTRenderData& render_data, const hiprtR
         new_ray.origin = closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-5f;
         new_ray.direction = sampled_brdf_direction;
 
-        HIPRTHitInfo new_ray_hit_info;
+        HitInfo new_ray_hit_info;
         bool inter_found = trace_ray(render_data, new_ray, new_ray_hit_info);
 
         if (inter_found)
@@ -551,14 +550,14 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
 
         Color throughput = Color{ 1.0f, 1.0f, 1.0f };
         Color sample_color = Color{ 0.0f, 0.0f, 0.0f };
-        HIPRTRayState next_ray_state = HIPRTRayState::HIPRT_BOUNCE;
+        RayState next_ray_state = RayState::BOUNCE;
         BRDF last_brdf_hit_type = BRDF::Uninitialized;
 
         for (int bounce = 0; bounce < render_data.render_settings.nb_bounces; bounce++)
         {
-            if (next_ray_state == HIPRTRayState::HIPRT_BOUNCE)
+            if (next_ray_state == RayState::BOUNCE)
             {
-                HIPRTHitInfo closest_hit_info;
+                HitInfo closest_hit_info;
                 bool intersection_found = trace_ray(render_data, ray, closest_hit_info);
 
                 if (intersection_found)
@@ -596,7 +595,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
 
                     if ((brdf.r == 0.0f && brdf.g == 0.0f && brdf.b == 0.0f) || brdf_pdf < 1.0e-8f || isinf(brdf_pdf))
                     {
-                        next_ray_state = HIPRTRayState::HIPRT_TERMINATED;
+                        next_ray_state = RayState::TERMINATED;
 
                         break;
                     }
@@ -607,7 +606,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                     ray.origin = new_ray_origin; // Updating the next ray origin
                     ray.direction = bounce_direction; // Updating the next ray direction
 
-                    next_ray_state = HIPRTRayState::HIPRT_BOUNCE;
+                    next_ray_state = RayState::BOUNCE;
                 }
                 else
                 {
@@ -624,12 +623,12 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                         sample_color = sample_color + skysphere_color * throughput;
                     }
 
-                    next_ray_state = HIPRTRayState::HIPRT_MISSED;
+                    next_ray_state = RayState::MISSED;
                 }
             }
-            else if (next_ray_state == HIPRTRayState::HIPRT_MISSED)
+            else if (next_ray_state == RayState::MISSED)
                 break;
-            else if (next_ray_state == HIPRTRayState::HIPRT_TERMINATED)
+            else if (next_ray_state == RayState::TERMINATED)
                 break;
         }
 

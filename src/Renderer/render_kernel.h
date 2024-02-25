@@ -10,14 +10,6 @@
 #include "HostDeviceCommon/xorshift.h"
 #include "Utils/utils.h"
 
-#define USE_BVH 1
-
-struct LightSourceInformation
-{
-    int emissive_triangle_index = -1;
-    Vector light_source_normal;
-};
-
 class RenderKernel
 {
 public:
