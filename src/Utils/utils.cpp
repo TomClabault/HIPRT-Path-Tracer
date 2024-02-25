@@ -2,7 +2,6 @@
 //#define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-#include "Image/color.h"
 #include "Image/image.h"
 #include "Utils/utils.h"
 
@@ -24,7 +23,7 @@ Image Utils::read_image_float(const std::string& filepath, int& image_width, int
         std::exit(1);
     }
 
-    return Image(reinterpret_cast<HIPRTColor*>(pixels), image_width, image_height);
+    return Image(reinterpret_cast<Color*>(pixels), image_width, image_height);
 }
 
 std::vector<unsigned char> Utils::tonemap_hdr_image(const Image& hdr_image, int sample_number, float gamma, float exposure)
@@ -44,8 +43,8 @@ std::vector<unsigned char> Utils::tonemap_hdr_image(const float* hdr_image, size
 #pragma omp parallel for
     for (int i = 0; i < byte_size; i += 3)
     {
-        Color pixel = Color(hdr_image[i + 0], hdr_image[i + 1], hdr_image[i + 2], 1.0f) / (float)sample_number;
-        Color tone_mapped = Color(1.0f, 1.0f, 1.0f, 1.0f) - exp(-pixel * exposure);
+        Color pixel = Color(hdr_image[i + 0], hdr_image[i + 1], hdr_image[i + 2]) / (float)sample_number;
+        Color tone_mapped = Color(1.0f, 1.0f, 1.0f) - exp(-pixel * exposure);
         Color gamma_corrected = pow(tone_mapped, 1.0f / gamma);
 
         tonemapped_data[i + 0] = gamma_corrected.r * 255.0f;
@@ -100,13 +99,13 @@ Image Utils::OIDN_denoise(const Image& image, int width, int height, float blend
 
     float* denoised_ptr = (float*)colorBuf.getData();
     Image output_image(width, height);
-    std::vector<HIPRTColor>& output_pixels = output_image.data();
+    std::vector<Color>& output_pixels = output_image.data();
     for (int y = 0; y < height; y++)
         for (int x = 0; x < width; x++)
         {
             int index = y * width + x;
 
-            HIPRTColor color = blend_factor * HIPRTColor(denoised_ptr[index * 3 + 0], denoised_ptr[index * 3 + 1], denoised_ptr[index * 3 + 2])
+            Color color = blend_factor * Color(denoised_ptr[index * 3 + 0], denoised_ptr[index * 3 + 1], denoised_ptr[index * 3 + 2])
                 + (1.0f - blend_factor) * image[index];
 
             output_pixels[index] = color;

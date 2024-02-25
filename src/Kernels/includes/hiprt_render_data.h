@@ -30,7 +30,7 @@ struct HIPRTRenderData
 	float* pixels;
 	// World space normals and albedo for the denoiser
 	hiprtFloat3* ws_normals;
-	HIPRTColor* albedo;
+	Color* albedo;
 
 	// A device pointer to the buffer of triangles indices
 	int* triangles_indices;

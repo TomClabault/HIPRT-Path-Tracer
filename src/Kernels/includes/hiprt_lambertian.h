@@ -1,4 +1,4 @@
-#include "Kernels/includes/hiprt_color.h"
+#include "HostDeviceCommon/color.h"
 #include "Kernels/includes/HIPRT_common.h"
 #include "Kernels/includes/HIPRT_maths.h"
 #include "Kernels/includes/hiprt_onb.h"
@@ -20,7 +20,7 @@ inline __device__ hiprtFloat3 hiprt_cosine_weighted_direction_around_normal(cons
     return rotate_vector_around_normal(normal, random_dir_local_space);
 }
 
-inline __device__ HIPRTColor hiprt_lambertian_brdf(const HIPRTRendererMaterial& material, const hiprtFloat3& to_light_direction, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal)
+inline __device__ Color hiprt_lambertian_brdf(const HIPRTRendererMaterial& material, const hiprtFloat3& to_light_direction, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal)
 {
     return material.diffuse * M_1_PI;
 }

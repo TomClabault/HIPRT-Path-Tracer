@@ -45,8 +45,8 @@ int main(int argc, char* argv[])
     const int height = cmd_arguments.render_height;
 
     RendererMaterial sphere_material;
-    sphere_material.emission = HIPRTColor(0.0f);
-    sphere_material.diffuse = HIPRTColor(1.0f, 0.71, 0.29);
+    sphere_material.emission = Color(0.0f);
+    sphere_material.diffuse = Color(1.0f, 0.71, 0.29);
     sphere_material.metalness = 1.0f;
     sphere_material.roughness = 1.0e-2f;
     sphere_material.ior = 1.4f;

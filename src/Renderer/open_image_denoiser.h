@@ -1,7 +1,7 @@
 #ifndef OPEN_IMAGE_DENOISER
 #define OPEN_IMAGE_DENOISER
 
-#include "Kernels/includes/hiprt_color.h"
+#include "HostDeviceCommon/color.h"
 #include <OpenImageDenoise/oidn.hpp>
 #include <vector>
 
