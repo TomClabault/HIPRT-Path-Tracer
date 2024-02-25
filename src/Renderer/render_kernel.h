@@ -5,7 +5,6 @@
 #include "Image/envmap.h"
 #include "Image/image.h"
 #include "Renderer/bvh.h"
-#include "Renderer/renderer_material.h"
 #include "Renderer/sphere.h"
 #include "Renderer/triangle.h"
 #include "Utils/xorshift.h"

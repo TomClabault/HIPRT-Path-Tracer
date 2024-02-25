@@ -8,7 +8,6 @@
 #include "hiprt/hiprt_vec.h"
 
 #include "Scene/camera.h"
-#include "Renderer/renderer_material.h"
 #include "Renderer/sphere.h"
 #include "Renderer/triangle.h"
 

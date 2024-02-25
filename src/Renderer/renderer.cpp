@@ -60,7 +60,7 @@ HIPRTRenderData Renderer::get_render_data()
 	render_data.normals_present = reinterpret_cast<unsigned char*>(m_scene.get()->normals_present);
 	render_data.vertex_normals = reinterpret_cast<hiprtFloat3*>(m_scene.get()->vertex_normals);
 	render_data.material_indices = reinterpret_cast<int*>(m_scene.get()->material_indices);
-	render_data.materials_buffer = reinterpret_cast<HIPRTRendererMaterial*>(m_scene.get()->materials_buffer);
+	render_data.materials_buffer = reinterpret_cast<RendererMaterial*>(m_scene.get()->materials_buffer);
 	render_data.emissive_triangles_count = m_scene.get()->emissive_triangles_count;
 	render_data.emissive_triangles_indices = reinterpret_cast<int*>(m_scene.get()->emissive_triangles_indices);
 
@@ -148,8 +148,8 @@ std::shared_ptr<Renderer::HIPRTScene> Renderer::create_hiprt_scene_from_scene(Sc
 	hiprt_scene_ptr.get()->material_indices = material_indices_buffer;
 
 	hiprtDevicePtr materials_buffer;
-	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&materials_buffer), sizeof(HIPRTRendererMaterial) * scene.materials.size()));
-	OROCHI_CHECK_ERROR(oroMemcpyHtoD(reinterpret_cast<oroDeviceptr>(materials_buffer), scene.materials.data(), sizeof(HIPRTRendererMaterial) * scene.materials.size()));
+	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&materials_buffer), sizeof(RendererMaterial) * scene.materials.size()));
+	OROCHI_CHECK_ERROR(oroMemcpyHtoD(reinterpret_cast<oroDeviceptr>(materials_buffer), scene.materials.data(), sizeof(RendererMaterial) * scene.materials.size()));
 	hiprt_scene_ptr.get()->materials_buffer = materials_buffer;
 
 	hiprt_scene_ptr.get()->emissive_triangles_count = scene.emissive_triangle_indices.size();

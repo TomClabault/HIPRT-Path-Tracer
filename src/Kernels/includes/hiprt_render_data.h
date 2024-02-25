@@ -48,7 +48,7 @@ struct HIPRTRenderData
 	int* material_indices;
 	// Materials array to be indexed by an index retrieved from the 
 	// material_indices array
-	HIPRTRendererMaterial* materials_buffer;
+	RendererMaterial* materials_buffer;
 	int emissive_triangles_count;
 	int* emissive_triangles_indices;
 

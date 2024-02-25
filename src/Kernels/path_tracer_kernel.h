@@ -44,7 +44,7 @@ __device__ hiprtFloat3 hiprt_cosine_weighted_direction_around_normal(const hiprt
     return rotate_vector_around_normal(normal, random_dir_local_space);
 }
 
-__device__ Color hiprt_lambertian_brdf(const HIPRTRendererMaterial& material, const hiprtFloat3& to_light_direction, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal)
+__device__ Color hiprt_lambertian_brdf(const RendererMaterial& material, const hiprtFloat3& to_light_direction, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal)
 {
     return material.diffuse * M_1_PI;
 }
@@ -122,7 +122,7 @@ __device__ float GGX_smith_masking_shadowing(float roughness_squared, float NoV,
     return G1_schlick_ggx(k, NoL) * G1_schlick_ggx(k, NoV);
 }
 
-__device__ float cook_torrance_brdf_pdf(const HIPRTRendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& to_light_direction, const hiprtFloat3& surface_normal)
+__device__ float cook_torrance_brdf_pdf(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& to_light_direction, const hiprtFloat3& surface_normal)
 {
     hiprtFloat3 microfacet_normal = normalize(view_direction + to_light_direction);
 
@@ -135,7 +135,7 @@ __device__ float cook_torrance_brdf_pdf(const HIPRTRendererMaterial& material, c
     return D * NoH / (4.0f * VoH);
 }
 
-__device__ Color cook_torrance_brdf(const HIPRTRendererMaterial& material, const hiprtFloat3& to_light_direction, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal)
+__device__ Color cook_torrance_brdf(const RendererMaterial& material, const hiprtFloat3& to_light_direction, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal)
 {
     Color brdf_color = Color(0.0f, 0.0f, 0.0f);
     Color base_color = material.diffuse;
@@ -178,7 +178,7 @@ __device__ Color cook_torrance_brdf(const HIPRTRendererMaterial& material, const
     return brdf_color;
 }
 
-__device__ Color cook_torrance_brdf_importance_sample(const HIPRTRendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal, hiprtFloat3& output_direction, float& pdf, HIPRT_xorshift32_generator& random_number_generator)
+__device__ Color cook_torrance_brdf_importance_sample(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal, hiprtFloat3& output_direction, float& pdf, HIPRT_xorshift32_generator& random_number_generator)
 {
     pdf = 0.0f;
 
@@ -239,7 +239,7 @@ __device__ Color cook_torrance_brdf_importance_sample(const HIPRTRendererMateria
     return brdf_color;
 }
 
-__device__ Color smooth_glass_bsdf(const HIPRTRendererMaterial& material, hiprtFloat3& out_bounce_direction, const hiprtFloat3& ray_direction, hiprtFloat3& surface_normal, float eta_i, float eta_t, float& pdf, HIPRT_xorshift32_generator& random_generator)
+__device__ Color smooth_glass_bsdf(const RendererMaterial& material, hiprtFloat3& out_bounce_direction, const hiprtFloat3& ray_direction, hiprtFloat3& surface_normal, float eta_i, float eta_t, float& pdf, HIPRT_xorshift32_generator& random_generator)
 {
     // Clamping here because the dot product can eventually returns values less
     // than -1 or greater than 1 because of precision errors in the vectors
@@ -294,11 +294,11 @@ __device__ Color smooth_glass_bsdf(const HIPRTRendererMaterial& material, hiprtF
     }
 }
 
-__device__ Color brdf_dispatcher_sample(const HIPRTRendererMaterial& material, hiprtFloat3& bounce_direction, const hiprtFloat3& ray_direction, hiprtFloat3& surface_normal, float& brdf_pdf, HIPRT_xorshift32_generator& random_number_generator)
+__device__ Color brdf_dispatcher_sample(const RendererMaterial& material, hiprtFloat3& bounce_direction, const hiprtFloat3& ray_direction, hiprtFloat3& surface_normal, float& brdf_pdf, HIPRT_xorshift32_generator& random_number_generator)
 {
-    if (material.brdf_type == HIPRTBRDF::HIPRT_SpecularFresnel)
+    if (material.brdf_type == BRDF::SpecularFresnel)
         return smooth_glass_bsdf(material, bounce_direction, ray_direction, surface_normal, 1.0f, material.ior, brdf_pdf, random_number_generator);
-    else if (material.brdf_type == HIPRTBRDF::HIPRT_CookTorrance)
+    else if (material.brdf_type == BRDF::CookTorrance)
     {
         return cook_torrance_brdf_importance_sample(material, -ray_direction, surface_normal, bounce_direction, brdf_pdf, random_number_generator);
         bounce_direction = hiprt_cosine_weighted_direction_around_normal(surface_normal, brdf_pdf, random_number_generator);
@@ -420,9 +420,9 @@ __device__ bool evaluate_shadow_ray(const HIPRTRenderData& render_data, hiprtRay
     return aoHit.hasHit();
 }
 
-__device__ Color sample_light_sources(HIPRTRenderData& render_data, const hiprtRay& ray, const HIPRTHitInfo& closest_hit_info, const HIPRTRendererMaterial& material, HIPRT_xorshift32_generator& random_number_generator)
+__device__ Color sample_light_sources(HIPRTRenderData& render_data, const hiprtRay& ray, const HIPRTHitInfo& closest_hit_info, const RendererMaterial& material, HIPRT_xorshift32_generator& random_number_generator)
 {
-    if (material.brdf_type == HIPRTBRDF::HIPRT_SpecularFresnel)
+    if (material.brdf_type == BRDF::SpecularFresnel)
         // No sampling for perfectly specular materials
         return Color(0.0f);
 
@@ -449,7 +449,7 @@ __device__ Color sample_light_sources(HIPRTRenderData& render_data, const hiprtR
 
             if (!in_shadow)
             {
-                const HIPRTRendererMaterial& emissive_triangle_material = render_data.materials_buffer[render_data.material_indices[light_source_info.emissive_triangle_index]];
+                const RendererMaterial& emissive_triangle_material = render_data.materials_buffer[render_data.material_indices[light_source_info.emissive_triangle_index]];
 
                 light_sample_pdf *= distance_to_light * distance_to_light;
                 light_sample_pdf /= dot_light_source;
@@ -490,7 +490,7 @@ __device__ Color sample_light_sources(HIPRTRenderData& render_data, const hiprtR
             if (cos_angle > 0.0f)
             {
                 int material_index = render_data.material_indices[new_ray_hit_info.primitive_index];
-                HIPRTRendererMaterial material = render_data.materials_buffer[material_index];
+                RendererMaterial material = render_data.materials_buffer[material_index];
 
                 Color emission = material.emission;
                 if (emission.r > 0 || emission.g > 0 || emission.b > 0)
@@ -555,7 +555,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
         Color throughput = Color{ 1.0f, 1.0f, 1.0f };
         Color sample_color = Color{ 0.0f, 0.0f, 0.0f };
         HIPRTRayState next_ray_state = HIPRTRayState::HIPRT_BOUNCE;
-        HIPRTBRDF last_brdf_hit_type = HIPRTBRDF::HIPRT_Uninitialized;
+        BRDF last_brdf_hit_type = BRDF::Uninitialized;
 
         for (int bounce = 0; bounce < render_data.render_settings.nb_bounces; bounce++)
         {
@@ -573,7 +573,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
 
 
                     int material_index = render_data.material_indices[closest_hit_info.primitive_index];
-                    HIPRTRendererMaterial material = render_data.materials_buffer[material_index];
+                    RendererMaterial material = render_data.materials_buffer[material_index];
 
                     last_brdf_hit_type = material.brdf_type;
 
@@ -614,7 +614,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                 }
                 else
                 {
-                    //if (bounce == 1 || last_brdf_hit_type == HIPRTBRDF::HIPRT_SpecularFresnel)
+                    //if (bounce == 1 || last_brdf_hit_type == BRDF::SpecularFresnel)
                     {
                         //We're only getting the skysphere radiance for the first rays because the
                         //syksphere is importance sampled

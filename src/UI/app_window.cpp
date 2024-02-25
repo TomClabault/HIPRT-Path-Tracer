@@ -17,12 +17,13 @@
 // - rename HIPRT_xorshift32 generator without underscores for consistency
 // - separate path tracer kernel functions in header files
 // - do not duplicate functions. Make a common h file that uses the float3 type (cosine_weighted_direction_around_normal, hiprt_lambertian.h:7)
-// - instead of duplicating structures (RendererMaterial + HIPRTRendererMaterial, HIPRTBRDF + BRDF, ...), it would be better to create a folder
+// - instead of duplicating structures (RendererMaterial + RendererMaterial, BRDF + BRDF, ...), it would be better to create a folder
 //		HostDeviceCommon containing the structures that are used both by the GPU and CPU renderer
 // - imgui controller to put all the imgui code in one class
 
 // TODO Features:
 // 
+// - bug with fresnel being black on the pbrt dragon ?
 // - add dropdowns to imgui instead of separators to group up settings
 // - cutout filters
 // - write scene details to imgui (nb vertices, triangles, ...)

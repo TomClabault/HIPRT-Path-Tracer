@@ -8,7 +8,6 @@
 #include "Image/image.h"
 #include "Renderer/bvh.h"
 #include "Renderer/render_kernel.h"
-#include "Renderer/renderer_material.h"
 #include "Renderer/triangle.h"
 #include "Scene/camera.h"
 #include "Scene/scene_parser.h"
