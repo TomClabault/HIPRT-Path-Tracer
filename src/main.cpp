@@ -14,9 +14,8 @@
 #include "UI/app_window.h"
 #include "Utils/commandline_arguments.h"
 #include "Utils/utils.h"
-#include "Utils/xorshift.h"
 
-#define GPU_RENDER 0
+#define GPU_RENDER 1
 
 int main(int argc, char* argv[])
 {
