@@ -3,7 +3,6 @@
 #include <vector>
 
 #include "bvh.h"
-#include "flattened_bvh.h"
 
 const Vector BoundingVolume::PLANE_NORMALS[BVHConstants::PLANES_COUNT] = {
 	Vector(1, 0, 0),
@@ -62,14 +61,4 @@ void BVH::build_bvh(int max_depth, int leaf_max_obj_count, Point min, Point max,
 bool BVH::intersect(const Ray& ray, HitInfo& hit_info) const
 {
     return _root->intersect(*_triangles, ray, hit_info);
-}
-
-FlattenedBVH BVH::flatten() const
-{
-    FlattenedBVH flattened;
-
-    int current_node_index = 0;
-    flattened.get_nodes() =_root->flatten(&current_node_index);
-
-    return flattened;
 }

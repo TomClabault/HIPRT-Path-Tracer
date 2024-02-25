@@ -1,7 +1,7 @@
 #ifndef TRIANGLE_H
 #define TRIANGLE_H
 
-#include "hit_info.h"
+#include "HostDeviceCommon/hit_info.h"
 #include "ray.h"
 #include "Maths/vec.h"
 

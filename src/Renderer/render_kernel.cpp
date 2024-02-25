@@ -1,5 +1,5 @@
+#include "HostDeviceCommon/hit_info.h"
 #include "render_kernel.h"
-
 #include "triangle.h"
 
 Point point_mat4x4(const glm::mat4x4& mat, const Point& p)
@@ -155,7 +155,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
 
         for (int bounce = 0; bounce < m_max_bounces; bounce++)
         {
-            if (next_ray_state == BOUNCE)
+            if (next_ray_state == RayState::BOUNCE)
             {
                 HitInfo closest_hit_info;
                 bool intersection_found = INTERSECT_SCENE(ray, closest_hit_info);
@@ -201,7 +201,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                 else
                     next_ray_state = RayState::MISSED;
             }
-            else if (next_ray_state == MISSED)
+            else if (next_ray_state == RayState::MISSED)
             {
                 if (bounce == 1 || last_brdf_hit_type == BRDF::SpecularFresnel)
                 {
@@ -217,7 +217,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
 
                 break;
             }
-            else if (next_ray_state == TERMINATED)
+            else if (next_ray_state == RayState::TERMINATED)
                 break;
         }
 
@@ -537,11 +537,7 @@ inline bool RenderKernel::intersect_scene_bvh(const Ray& ray, HitInfo& closest_h
 
 inline bool RenderKernel::INTERSECT_SCENE(const Ray& ray, HitInfo& hit_info) const
 {
-#if USE_BVH
     return intersect_scene_bvh(ray, hit_info);
-#else
-    return intersect_scene(ray, hit_info);
-#endif
 }
 
 float power_heuristic(float pdf_a, float pdf_b)

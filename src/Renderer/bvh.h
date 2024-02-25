@@ -10,7 +10,6 @@
 
 #include "bounding_volume.h"
 #include "bvh_constants.h"
-#include "flattened_bvh.h"
 #include "triangle.h"
 #include "ray.h"
 
@@ -206,47 +205,6 @@ public:
 
                 return true;
             }
-        }
-
-        std::vector<FlattenedBVH::FlattenedNode> flatten(int* current_node_index)
-        {
-            std::deque<FlattenedBVH::FlattenedNode> nodes_deque;
-
-            FlattenedBVH::FlattenedNode current_node;
-            for (int i = 0; i < BVHConstants::PLANES_COUNT; i++)
-            {
-                current_node.d_far[i] = _bounding_volume._d_far[i];
-                current_node.d_near[i] = _bounding_volume._d_near[i];
-            }
-            current_node.is_leaf = _is_leaf;
-
-            if (_is_leaf)
-            {
-                current_node.nb_triangles = _triangles.size();
-                for (int i = 0; i < _triangles.size(); i++)
-                    current_node.triangles_indices[i] = _triangles[i];
-
-                for (int i = 0; i < 8; i++)
-                    current_node.children[i] = -1;
-            }
-            else
-            {
-                for (int i = 0; i < 8; i++)
-                {
-                    current_node.children[i] = ++(*current_node_index);
-
-                    std::vector<FlattenedBVH::FlattenedNode> children_nodes = _children[i]->flatten(current_node_index);
-                    nodes_deque.insert(nodes_deque.end(), children_nodes.begin(), children_nodes.end());
-                }
-            }
-
-            nodes_deque.push_front(current_node);
-
-            std::vector<FlattenedBVH::FlattenedNode> vector_nodes;
-            for (FlattenedBVH::FlattenedNode& node : nodes_deque)
-                vector_nodes.push_back(node);
-
-            return vector_nodes;
         }
 
         //If this node has been subdivided (and thus cannot accept any triangles),
