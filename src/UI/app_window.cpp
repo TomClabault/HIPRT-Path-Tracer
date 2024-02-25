@@ -8,11 +8,13 @@
 //#define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
+// test performance when reducing number of triangles of the P1
+// - create env map class that encapsulates image + cdf + SAMPLING FUNCTIONS
+
 // TODO Code Organization:
 // 
 // - create image class instead of vector of HIPRTColor pretty much everywhere
 // - rename HIPRTColor to Color
-// - create env map class that encapsulates image + cdf + sampling functions
 // - delete tests, they are obsolete
 // - overload +=, *=, ... operators for HIPRTColor most notably on the GPU side
 // - use constructors instead of struct {} syntax in gpu code

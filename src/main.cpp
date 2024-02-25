@@ -19,33 +19,6 @@
 
 #define GPU_RENDER 0
 
-// TODO remove the two functions when Image class is done
-inline float clamp(const float x, const float min, const float max)
-{
-    if (x < min) return min;
-    else if (x > max) return max;
-    else return x;
-}
-
-bool write_image_png(const std::vector<HIPRTColor>& m_pixel_data, int m_width, int m_height, const char* filename)
-{
-    if (m_height * m_width == 0)
-        return false;
-
-    std::vector<unsigned char> tmp(m_height * m_width * 3);
-    for (unsigned i = 0; i < m_width * m_height; i++)
-    {
-        HIPRTColor pixel = m_pixel_data[i] * 255;
-
-        tmp[i * 3 + 0] = clamp(pixel.r, 0, 255);
-        tmp[i * 3 + 1] = clamp(pixel.g, 0, 255);
-        tmp[i * 3 + 2] = clamp(pixel.b, 0, 255);
-    }
-
-    stbi_flip_vertically_on_write(true);
-    return stbi_write_png(filename, m_width, m_height, 3, tmp.data(), m_width * 3) != 0;
-}
-
 int main(int argc, char* argv[])
 {
 #if GPU_RENDER
@@ -100,7 +73,7 @@ int main(int argc, char* argv[])
     std::cout << "[" << width << "x" << height << "]: " << cmd_arguments.render_samples << " samples" << std::endl << std::endl;
 
     auto start = std::chrono::high_resolution_clock::now();
-    std::vector<HIPRTColor> image_buffer(width * height);
+    Image image_buffer(width, height);
     auto render_kernel = RenderKernel(
         width, height,
         cmd_arguments.render_samples, cmd_arguments.bounces,
@@ -118,14 +91,14 @@ int main(int argc, char* argv[])
     auto stop = std::chrono::high_resolution_clock::now();
     std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
 
-    std::vector<HIPRTColor> image_denoised_1 = Utils::OIDN_denoise(image_buffer, width, height, 1.0f);
-    std::vector<HIPRTColor> image_denoised_075 = Utils::OIDN_denoise(image_buffer, width, height, 0.75f);
-    std::vector<HIPRTColor> image_denoised_05 = Utils::OIDN_denoise(image_buffer, width, height, 0.5f);
+    Image image_denoised_1 = Utils::OIDN_denoise(image_buffer, width, height, 1.0f);
+    Image image_denoised_075 = Utils::OIDN_denoise(image_buffer, width, height, 0.75f);
+    Image image_denoised_05 = Utils::OIDN_denoise(image_buffer, width, height, 0.5f);
 
-    write_image_png(image_buffer, width, height, "RT_output.png");
-    write_image_png(image_denoised_1, width, height, "RT_output_denoised_1.png");
-    write_image_png(image_denoised_075, width, height, "RT_output_denoised_0.75.png");
-    write_image_png(image_denoised_05, width, height, "RT_output_denoised_0.5.png");
+    image_buffer.write_image_png("RT_output.png");
+    image_denoised_1.write_image_png("RT_output_denoised_1.png");
+    image_denoised_075.write_image_png("RT_output_denoised_0.png");
+    image_denoised_05.write_image_png("RT_output_denoised_0.png");
 
     return 0;
 #endif

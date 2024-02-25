@@ -66,7 +66,7 @@ struct HIPRTColor
         return 0.3086f * r + 0.6094f * g + 0.0820f * b;
     }
 
-    float r, g, b, a = 0.0f;
+    float r, g, b;
 };
 
 __prefix__ float max(const HIPRTColor& color)

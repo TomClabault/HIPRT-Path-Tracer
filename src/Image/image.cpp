@@ -15,6 +15,12 @@ inline float clamp(const float x, const float min, const float max)
     else return x;
 }
 
+Image::Image(HIPRTColor* data, int width, int height) : width(width), height(height)
+{
+    m_pixel_data = std::vector<HIPRTColor>();
+    m_pixel_data.insert(m_pixel_data.end(), &data[0], &data[width * height]);
+}
+
 size_t Image::byte_size() const
 {
     return width * height * sizeof(HIPRTColor);
@@ -71,7 +77,27 @@ bool Image::write_image_hdr(const char* filename, const bool flipY) const
     return stbi_write_hdr(filename, width, height, 3, reinterpret_cast<const float*>(m_pixel_data.data())) != 0;
 }
 
+void Image::set_data(const std::vector<HIPRTColor>& data)
+{
+    m_pixel_data = data;
+}
+
+const std::vector<HIPRTColor>& Image::data() const
+{
+    return m_pixel_data;
+}
+
+std::vector<HIPRTColor>& Image::data()
+{
+    return m_pixel_data;
+}
+
 const HIPRTColor& Image::operator[](int index) const
+{
+    return m_pixel_data[index];
+}
+
+HIPRTColor& Image::operator[](int index)
 {
     return m_pixel_data[index];
 }
