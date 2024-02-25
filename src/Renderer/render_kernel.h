@@ -25,7 +25,7 @@ class RenderKernel
 public:
     RenderKernel(int width, int height,
                     int render_samples, int max_bounces,
-                    std::vector<HIPRTColor>& image_buffer,
+                    Image& image_buffer,
                     const std::vector<Triangle>& triangle_buffer,
                     const std::vector<RendererMaterial>& materials_buffer,
                     const std::vector<int>& emissive_triangle_indices_buffer,
@@ -80,7 +80,7 @@ private:
     int m_render_samples; 
     int m_max_bounces;
 
-    std::vector<HIPRTColor>& m_frame_buffer;
+    Image& m_frame_buffer;
 
     const std::vector<Triangle>& m_triangle_buffer;
     const std::vector<RendererMaterial>& m_materials_buffer;

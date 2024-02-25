@@ -225,7 +225,6 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
     }
 
     final_color /= m_render_samples;
-    final_color.a = 0.0f;
     m_frame_buffer[y * m_framebuffer_width + x] += final_color;
 
     const float gamma = 2.2f;

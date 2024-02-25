@@ -7,7 +7,7 @@ EnvironmentMap::EnvironmentMap(int width, int height) : Image(width, height)
     compute_cdf();
 }
 
-EnvironmentMap::EnvironmentMap(const std::vector<HIPRTColor>& data, int width, int height) : Image(data, width, height)
+EnvironmentMap::EnvironmentMap(Image&& image, int width, int height) : Image(image)
 {
     compute_cdf();
 }
@@ -36,7 +36,7 @@ const std::vector<float>& EnvironmentMap::cdf() const
 EnvironmentMap EnvironmentMap::read_from_file(const std::string& filepath)
 {
     int width, height;
-    std::vector<HIPRTColor> data = Utils::read_image_float(filepath, width, height, true);
+    Image image = Utils::read_image_float(filepath, width, height, true);
 
-    return EnvironmentMap(std::move(data), width, height);
+    return EnvironmentMap(std::move(image), width, height);
 }

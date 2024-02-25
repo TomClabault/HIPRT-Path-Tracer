@@ -8,7 +8,7 @@ class EnvironmentMap : public Image
 public:
     EnvironmentMap() {}
     EnvironmentMap(int width, int height); 
-    EnvironmentMap(const std::vector<HIPRTColor>& data, int width, int height);
+    EnvironmentMap(Image&& data, int width, int height);
 
     void compute_cdf();
     const std::vector<float>& cdf() const;
