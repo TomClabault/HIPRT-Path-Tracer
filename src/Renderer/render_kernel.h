@@ -7,7 +7,7 @@
 #include "Renderer/bvh.h"
 #include "Renderer/sphere.h"
 #include "Renderer/triangle.h"
-#include "Utils/xorshift.h"
+#include "HostDeviceCommon/xorshift.h"
 #include "Utils/utils.h"
 
 #define USE_BVH 1
