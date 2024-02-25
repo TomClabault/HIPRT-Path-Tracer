@@ -1,11 +1,7 @@
-
-#ifndef HIPRT_COLOR_H
-#define HIPRT_COLOR_H
+#ifndef COLOR_H
+#define COLOR_H
 
 #include <hiprt/hiprt_device.h>
-
-#include "Kernels/includes/hiprt_fix_vs.h"
-#include "Kernels/includes/HIPRT_maths.h"
 
 #ifndef __KERNELCC__
 #define __prefix__ inline
@@ -69,9 +65,10 @@ struct Color
     float r, g, b;
 };
 
+#define _COLOR_MAX( a, b ) ( ( ( b ) > ( a ) ) ? ( b ) : ( a ) )
 __prefix__ float max(const Color& color)
 {
-    return RT_MAX(color.r, RT_MAX(color.g, RT_MAX(color.b, float(0))));
+    return _COLOR_MAX(color.r, _COLOR_MAX(color.g, _COLOR_MAX(color.b, float(0))));
 }
 
 __prefix__ Color operator+ (const Color& a, const Color& b)
