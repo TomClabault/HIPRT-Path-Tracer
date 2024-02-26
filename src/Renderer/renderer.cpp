@@ -23,7 +23,7 @@ void Renderer::change_render_resolution(int new_width, int new_height)
 	m_render_height = new_height;
 
 	m_pixels_buffer.resize(new_width * new_height * 3);
-	m_ws_normals_buffer.resize(new_width * new_height);
+	m_normals_buffer.resize(new_width * new_height);
 	m_albedo_buffer.resize(new_width * new_height);
 
 	// Recomputing the perspective projection matrix since the aspect ratio
@@ -35,6 +35,16 @@ void Renderer::change_render_resolution(int new_width, int new_height)
 OrochiBuffer<float>& Renderer::get_orochi_framebuffer()
 {
 	return m_pixels_buffer;
+}
+
+OrochiBuffer<Color>& Renderer::get_denoiser_albedo_buffer()
+{
+	return m_albedo_buffer;
+}
+
+OrochiBuffer<hiprtFloat3>& Renderer::get_denoiser_normals_buffer()
+{
+	return m_normals_buffer;
 }
 
 RenderSettings& Renderer::get_render_settings()
@@ -53,7 +63,7 @@ HIPRTRenderData Renderer::get_render_data()
 
 	render_data.geom = m_scene.get()->geometry;
 	render_data.pixels = m_pixels_buffer.get_pointer();
-	render_data.ws_normals = m_ws_normals_buffer.get_pointer();
+	render_data.normals = m_normals_buffer.get_pointer();
 	render_data.albedo = m_albedo_buffer.get_pointer();
 	render_data.triangles_indices = reinterpret_cast<int*>(m_scene.get()->mesh.triangleIndices);
 	render_data.triangles_vertices = reinterpret_cast<hiprtFloat3*>(m_scene.get()->mesh.vertices);
