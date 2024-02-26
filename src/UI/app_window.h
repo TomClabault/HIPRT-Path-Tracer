@@ -49,6 +49,7 @@ public:
 	void display(const std::vector<T>& orochi_buffer);
 	template <typename T>
 	void display(const OrochiBuffer<T>& orochi_buffer);
+	void display_normals(const OrochiBuffer<hiprtFloat3>& normals_buffer);
 
 	void display_imgui();
 
@@ -75,6 +76,7 @@ template <typename T>
 void AppWindow::display(const std::vector<T>& pixels_data)
 {
 	glUseProgram(m_display_program);
+	glUniform1i(glGetUniformLocation(m_display_program, "u_display_normals"), 0);
 
 	glBindTexture(GL_TEXTURE_2D, m_display_texture);
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_renderer.m_render_width, m_renderer.m_render_height, GL_RGB, GL_FLOAT, pixels_data.data());
@@ -86,6 +88,7 @@ template <typename T>
 void AppWindow::display(const OrochiBuffer<T>& orochi_buffer)
 {	
 	glUseProgram(m_display_program);
+	glUniform1i(glGetUniformLocation(m_display_program, "u_display_normals"), 0);
 
 	// TODO
 	// This is very sub optimal and should absolutely be replaced by a 

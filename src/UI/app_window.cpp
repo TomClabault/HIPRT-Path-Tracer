@@ -23,6 +23,9 @@
 
 // TODO Features:
 // 
+// - enable denoising with all combinations of beauty/normal/albedo via imgui
+// - uniform float3 type to use everywhere instead of Vector and hiprtFloat3
+// - checkbox to denoise only when sample target is reach
 // - bug with fresnel being black on the pbrt dragon ?
 // - add dropdowns to imgui instead of separators to group up settings
 // - cutout filters
@@ -359,12 +362,15 @@ void AppWindow::setup_display_program()
 		"uniform int u_sample_number;\n"
 		"uniform float u_gamma;\n"
 		"uniform float u_exposure;\n"
+		"uniform int u_display_normals;\n"
 
 		"in vec2 vs_tex_coords;\n"
 
 		"void main()\n"
 		"{\n"
 		"vec4 hdr_color = texture(u_texture, vs_tex_coords) / float(u_sample_number + 1);\n"
+		"if (u_display_normals == 1)\n"
+		"    hdr_color = (hdr_color + 1.0f) * 0.5f; // Remapping normals\n"
 		"vec4 tone_mapped = 1.0f - exp(-hdr_color * u_exposure);\n"
 		"vec4 gamma_corrected = pow(tone_mapped, vec4(1.0f / u_gamma));\n"
 		"gl_FragColor = vec4(gamma_corrected.rgb, 1.0f);\n"
@@ -510,15 +516,38 @@ void AppWindow::run()
 		}
 
 		if (m_renderer.get_render_settings().enable_denoising)
-			display(m_denoiser.denoise(m_renderer.m_render_width, m_renderer.m_render_height, m_renderer.get_orochi_framebuffer().download_pixels()));
+			display(m_denoiser.denoise(m_renderer.m_render_width, m_renderer.m_render_height, 
+				m_renderer.get_orochi_framebuffer().download_pixels(), 
+				m_renderer.get_denoiser_normals_buffer().download_pixels(), 
+				m_renderer.get_denoiser_albedo_buffer().download_pixels()));
 		else
-			display(m_renderer.get_orochi_framebuffer());
+		{
+			if (m_application_settings.display_denoiser_albedo)
+				display(m_renderer.get_denoiser_albedo_buffer());
+			else if (m_application_settings.display_denoiser_normals)
+				display_normals(m_renderer.get_denoiser_normals_buffer());
+			else
+				display(m_renderer.get_orochi_framebuffer());
+		}
 		display_imgui();
 
 		glfwSwapBuffers(m_window);
 	}
 
 	quit();
+}
+
+void AppWindow::display_normals(const OrochiBuffer<hiprtFloat3>& normals_buffer)
+{
+	glUseProgram(m_display_program);
+	glUniform1i(glGetUniformLocation(m_display_program, "u_display_normals"), 1);
+
+	std::vector<hiprtFloat3> pixels_data = normals_buffer.download_pixels();
+
+	glBindTexture(GL_TEXTURE_2D, m_display_texture);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_renderer.m_render_width, m_renderer.m_render_height, GL_RGB, GL_FLOAT, pixels_data.data());
+
+	glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
 // TODO display feedback for 5 seconds after dumping a screenshot to disk
@@ -607,6 +636,9 @@ void AppWindow::display_imgui()
 
 		reset_sample_number();
 	}
+
+	ImGui::Checkbox("Display Denoiser Albedo", &m_application_settings.display_denoiser_albedo);
+	ImGui::Checkbox("Display Denoiser Normals", &m_application_settings.display_denoiser_normals);
 
 	ImGui::Checkbox("Enable denoiser", &m_renderer.get_render_settings().enable_denoising);
 	//ImGui::Checkbox("Denoise every frame", &m_renderer.get_render_settings().denoise_every_frame);

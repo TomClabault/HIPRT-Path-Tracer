@@ -562,15 +562,25 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
 
                 if (intersection_found)
                 {
-                    /*Color debug_color(closest_hit_info.normal_at_intersection);
-                    debug_set_final_color(render_data, x, y, res.x, pixels, Color(abs(closest_hit_info.normal_at_intersection)));
-                    return;*/
-
-
 
                     int material_index = render_data.material_indices[closest_hit_info.primitive_index];
                     RendererMaterial material = render_data.materials_buffer[material_index];
-
+                    if (bounce == 0)
+                    {
+                        if (render_data.render_settings.sample_number == 0)
+                        {
+                            render_data.albedo[index] = material.diffuse;
+                            render_data.normals[index] = closest_hit_info.normal_at_intersection;
+                        }
+                        else
+                        {
+                            /*render_data.albedo[index] = (render_data.albedo[index] * render_data.render_settings.sample_number + material.diffuse) / (render_data.render_settings.sample_number + 1.0f);
+                            render_data.normals[index] = (render_data.normals[index] * render_data.render_settings.sample_number + material.diffuse) / (render_data.render_settings.sample_number + 1.0f);*/
+                            render_data.albedo[index] += material.diffuse;
+                            render_data.normals[index] += closest_hit_info.normal_at_intersection;
+                        }
+                    }
+                    
                     last_brdf_hit_type = material.brdf_type;
 
                     // --------------------------------------------------- //
