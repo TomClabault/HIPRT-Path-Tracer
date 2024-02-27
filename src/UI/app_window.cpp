@@ -598,11 +598,11 @@ void AppWindow::display_imgui()
 			hdr_data = m_renderer.get_orochi_framebuffer().download_pixels();
 
 #pragma omp parallel for
-		for (int i = 0; i < m_renderer.m_render_width * m_renderer.m_render_height; i++)
+		for (int i = 0; i < hdr_data.size(); i++)
 			hdr_data[i] = hdr_data[i] / (float)m_sample_number;
 
 		stbi_flip_vertically_on_write(true);
-		if (stbi_write_hdr("Render tonemapped.hdr", m_renderer.m_render_width, m_renderer.m_render_height, 3, reinterpret_cast<float*>(hdr_data.data())));
+		if (stbi_write_hdr("Render non-tonemapped.hdr", m_renderer.m_render_width, m_renderer.m_render_height, 3, reinterpret_cast<float*>(hdr_data.data())));
 			std::cout << "Render written to \"Render non-tonemapped.hdr\"" << std::endl;
 	}
 	
