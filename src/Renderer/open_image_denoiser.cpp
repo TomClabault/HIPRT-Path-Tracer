@@ -34,6 +34,7 @@ void OpenImageDenoiser::resize_buffers(int new_width, int new_height)
     m_filter.setImage("albedo", m_albedo_buffer, oidn::Format::Float3, new_width, new_height); // albedo aov
     m_filter.setImage("normal", m_normals_buffer, oidn::Format::Float3, new_width, new_height); // normals aov
     m_filter.setImage("output", m_color_buffer, oidn::Format::Float3, new_width, new_height); // denoised beauty
+    m_filter.set("cleanAux", true); // Normals and albedo are not noisy
     m_filter.set("hdr", true); // beauty image is HDR
     m_filter.commit();
 

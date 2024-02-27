@@ -23,6 +23,8 @@
 
 // TODO Features:
 // 
+// - choose denoiser quality in imgui
+// - try async buffer copy for the denoiser (maybe run a kernel to generate normals and another to generate albedo buffer before the path tracing kernel to be able to async copy while the path tracing kernel is running?)
 // - enable denoising with all combinations of beauty/normal/albedo via imgui
 // - uniform float3 type to use everywhere instead of Vector and hiprtFloat3
 // - checkbox to denoise only when sample target is reach
@@ -566,7 +568,17 @@ void AppWindow::display_imgui()
 
 	if (ImGui::Button("Save render PNG (tonemapped)"))
 	{
-		std::vector<unsigned char> tonemaped_data = Utils::tonemap_hdr_image(m_renderer.get_orochi_framebuffer().download_pixels(), m_sample_number, m_application_settings.tone_mapping_gamma, m_application_settings.tone_mapping_exposure);
+		std::vector<unsigned char> tonemaped_data;
+		
+		if (m_renderer.get_render_settings().enable_denoising)
+		{
+			std::vector<float> denoised = m_denoiser.denoise(m_renderer.m_render_width, m_renderer.m_render_height, m_renderer.get_orochi_framebuffer().download_pixels(),
+				m_renderer.get_denoiser_normals_buffer().download_pixels(),
+				m_renderer.get_denoiser_albedo_buffer().download_pixels());
+			tonemaped_data = Utils::tonemap_hdr_image(denoised, m_sample_number, m_application_settings.tone_mapping_gamma, m_application_settings.tone_mapping_exposure);
+		}
+		else
+			tonemaped_data = Utils::tonemap_hdr_image(m_renderer.get_orochi_framebuffer().download_pixels(), m_sample_number, m_application_settings.tone_mapping_gamma, m_application_settings.tone_mapping_exposure);
 
 		stbi_flip_vertically_on_write(true);
 		if (stbi_write_png("Render tonemapped.png", m_renderer.m_render_width, m_renderer.m_render_height, 3, tonemaped_data.data(), m_renderer.m_render_width * sizeof(unsigned char) * 3))
@@ -574,7 +586,16 @@ void AppWindow::display_imgui()
 	}
 	if (ImGui::Button("Save render HDR (non-tonemapped)"))
 	{
-		std::vector<float> hdr_data = m_renderer.get_orochi_framebuffer().download_pixels();
+		std::vector<float> hdr_data;
+
+		if (m_renderer.get_render_settings().enable_denoising)
+		{
+			hdr_data = m_denoiser.denoise(m_renderer.m_render_width, m_renderer.m_render_height, m_renderer.get_orochi_framebuffer().download_pixels(),
+				m_renderer.get_denoiser_normals_buffer().download_pixels(),
+				m_renderer.get_denoiser_albedo_buffer().download_pixels());
+		}
+		else
+			hdr_data = m_renderer.get_orochi_framebuffer().download_pixels();
 
 #pragma omp parallel for
 		for (int i = 0; i < m_renderer.m_render_width * m_renderer.m_render_height; i++)
@@ -582,7 +603,7 @@ void AppWindow::display_imgui()
 
 		stbi_flip_vertically_on_write(true);
 		if (stbi_write_hdr("Render tonemapped.hdr", m_renderer.m_render_width, m_renderer.m_render_height, 3, reinterpret_cast<float*>(hdr_data.data())));
-			std::cout << "Render written to \"Render tonemapped.hdr\"" << std::endl;
+			std::cout << "Render written to \"Render non-tonemapped.hdr\"" << std::endl;
 	}
 	
 	ImGui::Separator();

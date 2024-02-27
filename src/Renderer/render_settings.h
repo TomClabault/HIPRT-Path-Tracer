@@ -22,7 +22,7 @@ struct RenderSettings
 	int samples_per_frame = 1;
 	int nb_bounces = 8;
 
-	bool enable_denoising = false;
+	bool enable_denoising = false; // TOOD move to application_settings
 	bool denoise_every_frame = false;
 	// How many frames to wait for before denoising
 	// (this basically reduces the performance penalty
