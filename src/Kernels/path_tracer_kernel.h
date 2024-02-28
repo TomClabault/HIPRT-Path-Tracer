@@ -537,9 +537,21 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
     if (index >= res.x * res.y)
         return;
 
+    if (render_data.render_settings.sample_number == 0)
+    {
+        render_data.pixels[index * 3 + 0] = 0.0f;
+        render_data.pixels[index * 3 + 1] = 0.0f;
+        render_data.pixels[index * 3 + 2] = 0.0f;
+
+        render_data.denoiser_normals[index] = hiprtFloat3(1.0f, 1.0f, 1.0f);
+        render_data.denoiser_albedo[index] = Color(0.0f, 0.0f, 0.0f);
+    }
+
     xorshift32_generator random_number_generator(wang_hash((index + 1) * (render_data.render_settings.sample_number + 1)));
 
-    Color final_color = Color{ 0.0f, 0.0f, 0.0f };
+    Color final_color = Color(0.0f, 0.0f, 0.0f);
+    Color denoiser_albedo = Color(0.0f, 0.0f, 0.0f);
+    hiprtFloat3 denoiser_normal = hiprtFloat3{ 0.0f, 0.0f, 0.0f };
     for (int sample = 0; sample < render_data.render_settings.samples_per_frame; sample++)
     {
         //Jittered around the center
@@ -552,6 +564,9 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
         Color sample_color = Color{ 0.0f, 0.0f, 0.0f };
         RayState next_ray_state = RayState::BOUNCE;
         BRDF last_brdf_hit_type = BRDF::Uninitialized;
+        // Whether or not we've already written
+        bool normals_AOV_set = false;
+        bool albedo_AOV_set = false;
 
         for (int bounce = 0; bounce < render_data.render_settings.nb_bounces; bounce++)
         {
@@ -562,26 +577,21 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
 
                 if (intersection_found)
                 {
-
                     int material_index = render_data.material_indices[closest_hit_info.primitive_index];
                     RendererMaterial material = render_data.materials_buffer[material_index];
-                    if (bounce == 0)
-                    {
-                        if (render_data.render_settings.sample_number == 0)
-                        {
-                            render_data.albedo[index] = material.diffuse;
-                            render_data.normals[index] = closest_hit_info.normal_at_intersection;
-                        }
-                        else
-                        {
-                            /*render_data.albedo[index] = (render_data.albedo[index] * render_data.render_settings.sample_number + material.diffuse) / (render_data.render_settings.sample_number + 1.0f);
-                            render_data.normals[index] = (render_data.normals[index] * render_data.render_settings.sample_number + material.diffuse) / (render_data.render_settings.sample_number + 1.0f);*/
-                            render_data.albedo[index] += material.diffuse;
-                            render_data.normals[index] += closest_hit_info.normal_at_intersection;
-                        }
-                    }
-                    
                     last_brdf_hit_type = material.brdf_type;
+
+                    if (!albedo_AOV_set && last_brdf_hit_type != BRDF::SpecularFresnel)
+                    {
+                        albedo_AOV_set = true;
+                        denoiser_albedo += material.diffuse;
+                    }
+                    if (!normals_AOV_set && last_brdf_hit_type != BRDF::SpecularFresnel)
+                    {
+                        normals_AOV_set = true;
+                        denoiser_normal += closest_hit_info.normal_at_intersection;
+                    }
+                        
 
                     // --------------------------------------------------- //
                     // ----------------- Direct lighting ----------------- //
@@ -645,16 +655,16 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
         final_color = final_color + sample_color;
     }
 
-    if (render_data.render_settings.sample_number == 0)
-    {
-        render_data.pixels[index * 3 + 0] = final_color.r;
-        render_data.pixels[index * 3 + 1] = final_color.g;
-        render_data.pixels[index * 3 + 2] = final_color.b;
-    }
-    else
-    {
-        render_data.pixels[index * 3 + 0] += final_color.r;
-        render_data.pixels[index * 3 + 1] += final_color.g;
-        render_data.pixels[index * 3 + 2] += final_color.b;
-    }
+    render_data.pixels[index * 3 + 0] += final_color.r;
+    render_data.pixels[index * 3 + 1] += final_color.g;
+    render_data.pixels[index * 3 + 2] += final_color.b;
+
+    denoiser_albedo /= (float)render_data.render_settings.samples_per_frame;
+    denoiser_normal /= (float)render_data.render_settings.samples_per_frame;
+    render_data.denoiser_albedo[index] = (render_data.denoiser_albedo[index] * render_data.render_settings.frame_number + denoiser_albedo) / (render_data.render_settings.frame_number + 1.0f);
+
+    hiprtFloat3 accumulated_normal = (render_data.denoiser_normals[index] * render_data.render_settings.frame_number + denoiser_normal) / (render_data.render_settings.frame_number + 1.0f);
+    float normal_length = length(accumulated_normal);
+    if (normal_length != 0.0f)
+        render_data.denoiser_normals[index] = normalize(accumulated_normal);
 }

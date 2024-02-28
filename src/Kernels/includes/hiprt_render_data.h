@@ -5,6 +5,12 @@
 
 struct HIPRTRenderSettings
 {
+	// How many times the render kernel was called (updates after
+	// the call to the kernel so it start at 0)
+	int frame_number = 0;
+	// Number of samples rendered so far before the kernel call
+	// This is the sum of samples_per_frame for all frames
+	// that have been rendered
 	int sample_number = 0;
 
 	int samples_per_frame = 1;
@@ -19,7 +25,7 @@ struct HIPRTRenderSettings
 struct HIPRTRenderData
 {
 	HIPRTRenderData() : geom(nullptr),
-		pixels(nullptr), normals(nullptr), albedo(nullptr),
+		pixels(nullptr), denoiser_normals(nullptr), denoiser_albedo(nullptr),
 		triangles_indices(nullptr), triangles_vertices(nullptr),
 		normals_present(nullptr), vertex_normals(nullptr),
 		material_indices(nullptr), materials_buffer(nullptr), emissive_triangles_count(0),
@@ -29,8 +35,8 @@ struct HIPRTRenderData
 
 	float* pixels;
 	// World space normals and albedo for the denoiser
-	hiprtFloat3* normals;
-	Color* albedo;
+	hiprtFloat3* denoiser_normals;
+	Color* denoiser_albedo;
 
 	// A device pointer to the buffer of triangles indices
 	int* triangles_indices;
