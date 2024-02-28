@@ -667,4 +667,6 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
     float normal_length = length(accumulated_normal);
     if (normal_length != 0.0f)
         render_data.denoiser_normals[index] = normalize(accumulated_normal);
+    else
+        ; // denoiser_normals[index] stays at (0, 0, 0)
 }

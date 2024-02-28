@@ -26,8 +26,10 @@
 // TODO Features:
 // 
 // - choose denoiser quality in imgui
+// - fix 1 off sample count on Imgui interface. When stopping at 10 samples, ImGui displays 11
 // - try async buffer copy for the denoiser (maybe run a kernel to generate normals and another to generate albedo buffer before the path tracing kernel to be able to async copy while the path tracing kernel is running?)
 // - enable denoising with all combinations of beauty/normal/albedo via imgui
+// - show denoised normals / denoised albedo when ticking the Show Normals / Show albedo checkboxes in Imgui to visualize the albedo/normals used by the denoiser
 // - uniform float3 type to use everywhere instead of Vector and hiprtFloat3
 // - checkbox to denoise only when sample target is reach
 // - bug with fresnel being black on the pbrt dragon ?
@@ -45,7 +47,6 @@
 // - env map support
 // - choose env map at runtime imgui
 // - env map rotation imgui
-// - albedo and normals denoising
 // - choose scene file at runtime imgui
 // - lock camera checkbox to avoid messing up when big render in progress
 // - choose render resolution in imgui
@@ -543,10 +544,10 @@ void AppWindow::run()
 		}
 
 		if (m_renderer.get_render_settings().enable_denoising)
-			display(m_denoiser.denoise(m_renderer.m_render_width, m_renderer.m_render_height, 
-				m_renderer.get_orochi_framebuffer().download_pixels(), 
+			display(m_denoiser.denoise(m_renderer.m_render_width, m_renderer.m_render_height,
+				m_renderer.get_orochi_framebuffer().download_pixels()));/* ,
 				m_renderer.get_denoiser_normals_buffer().download_pixels(), 
-				m_renderer.get_denoiser_albedo_buffer().download_pixels()));
+				m_renderer.get_denoiser_albedo_buffer().download_pixels()));*/
 		else
 		{
 			if (m_application_settings.display_denoiser_albedo)
@@ -592,9 +593,9 @@ void AppWindow::display_imgui()
 		
 		if (m_renderer.get_render_settings().enable_denoising)
 		{
-			std::vector<float> denoised = m_denoiser.denoise(m_renderer.m_render_width, m_renderer.m_render_height, m_renderer.get_orochi_framebuffer().download_pixels(),
+			std::vector<float> denoised = m_denoiser.denoise(m_renderer.m_render_width, m_renderer.m_render_height, m_renderer.get_orochi_framebuffer().download_pixels());/* ,
 				m_renderer.get_denoiser_normals_buffer().download_pixels(),
-				m_renderer.get_denoiser_albedo_buffer().download_pixels());
+				m_renderer.get_denoiser_albedo_buffer().download_pixels());*/
 			tonemaped_data = Utils::tonemap_hdr_image(denoised, m_sample_number, m_application_settings.tone_mapping_gamma, m_application_settings.tone_mapping_exposure);
 		}
 		else

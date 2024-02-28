@@ -16,7 +16,7 @@ OpenImageDenoiser::OpenImageDenoiser()
     m_device.commit();
 }
 
-void OpenImageDenoiser::resize_buffers(int new_width, int new_height)
+void OpenImageDenoiser::resize_buffers(int new_width, int new_height, bool use_AOVs)
 {
     m_color_buffer = m_device.newBuffer(new_width * new_height * 3 * sizeof(float));
     m_albedo_buffer = m_device.newBuffer(new_width * new_height * 3 * sizeof(float));
@@ -29,14 +29,32 @@ void OpenImageDenoiser::resize_buffers(int new_width, int new_height)
         return;
     }
 
-    m_filter = m_device.newFilter("RT"); // generic ray tracing filter
-    m_filter.setImage("color", m_color_buffer, oidn::Format::Float3, new_width, new_height); // beauty
-    m_filter.setImage("albedo", m_albedo_buffer, oidn::Format::Float3, new_width, new_height); // albedo aov
-    m_filter.setImage("normal", m_normals_buffer, oidn::Format::Float3, new_width, new_height); // normals aov
-    m_filter.setImage("output", m_color_buffer, oidn::Format::Float3, new_width, new_height); // denoised beauty
-    m_filter.set("cleanAux", true); // Normals and albedo are not noisy
-    m_filter.set("hdr", true); // beauty image is HDR
-    m_filter.commit();
+    m_beauty_filter = m_device.newFilter("RT"); // generic ray tracing filter
+    m_beauty_filter.setImage("color", m_color_buffer, oidn::Format::Float3, new_width, new_height); // beauty
+    m_beauty_filter.setImage("albedo", m_albedo_buffer, oidn::Format::Float3, new_width, new_height); // albedo aov
+    m_beauty_filter.setImage("normal", m_normals_buffer, oidn::Format::Float3, new_width, new_height); // normals aov
+    m_beauty_filter.setImage("output", m_color_buffer, oidn::Format::Float3, new_width, new_height); // denoised beauty
+    m_beauty_filter.set("cleanAux", true); // Normals and albedo are not noisy
+    m_beauty_filter.set("hdr", true); // beauty image is HDR
+    m_beauty_filter.commit();
+
+    if (use_AOVs)
+    {
+        m_albedo_filter = m_device.newFilter("RT");
+        m_albedo_filter.setImage("albedo", m_albedo_buffer, oidn::Format::Float3, new_width, new_height);
+        m_albedo_filter.setImage("output", m_albedo_buffer, oidn::Format::Float3, new_width, new_height);
+        m_albedo_filter.commit();
+
+        m_normals_filter = m_device.newFilter("RT");
+        m_normals_filter.setImage("normal", m_normals_buffer, oidn::Format::Float3, new_width, new_height);
+        m_normals_filter.setImage("output", m_normals_buffer, oidn::Format::Float3, new_width, new_height);
+        m_normals_filter.commit();
+    }
+    else
+    {
+        m_albedo_filter.release();
+        m_normals_filter.release();
+    }
 
     if (m_device.getError(errorMessage) != oidn::Error::None)
     {
@@ -62,7 +80,7 @@ std::vector<float> OpenImageDenoiser::denoise(int width, int height, const std::
         }
 
     // Filter the beauty image
-    m_filter.execute();
+    m_beauty_filter.execute();
 
     float* denoised_ptr = (float*)m_color_buffer.getData();
     std::vector<float> denoised_output(to_denoise.size());
@@ -116,6 +134,7 @@ std::vector<float> OpenImageDenoiser::denoise(int width, int height, const std::
             albedoPtr[index * 3 + 2] = albedo_aov_buffer[index].b;
         }
     }
+    m_albedo_filter.execute();
 
     float* normalsPtr = (float*)m_normals_buffer.getData();
     for (int y = 0; y < height; y++)
@@ -129,9 +148,10 @@ std::vector<float> OpenImageDenoiser::denoise(int width, int height, const std::
             normalsPtr[index * 3 + 2] = world_space_normals_aov_buffer[index].z;
         }
     }
+    m_normals_filter.execute();
 
     // Filter the beauty image
-    m_filter.execute();
+    m_beauty_filter.execute();
 
     float* denoised_ptr = (float*)m_color_buffer.getData();
     std::vector<float> denoised_output(to_denoise.size());
