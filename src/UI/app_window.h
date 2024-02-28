@@ -19,7 +19,12 @@ class AppWindow
 public:
 	static constexpr int DISPLAY_TEXTURE_UNIT = 1;
 
-
+	struct DisplaySettings
+	{
+		bool display_normals;
+		bool scale_by_frame_number;
+		bool do_tonemapping;
+	};
 
 
 
@@ -41,15 +46,16 @@ public:
 	void update_renderer_view_rotation(float offset_x, float offset_y);
 	void increment_sample_number();
 	void reset_sample_number();
+	void reset_frame_number();
 
 	std::pair<float, float> get_cursor_position();
 	void set_cursor_position(std::pair<float, float> new_position);
 
+	void setup_display_program(GLuint program, const AppWindow::DisplaySettings& display_settings);
 	template <typename T>
-	void display(const std::vector<T>& orochi_buffer);
+	void display(const std::vector<T>& orochi_buffer, const AppWindow::DisplaySettings& display_settings = { false, true, true });
 	template <typename T>
-	void display(const OrochiBuffer<T>& orochi_buffer);
-	void display_normals(const OrochiBuffer<hiprtFloat3>& normals_buffer);
+	void display(const OrochiBuffer<T>& orochi_buffer, const AppWindow::DisplaySettings& display_settings = { false, true, true });
 
 	void display_imgui();
 
@@ -73,10 +79,9 @@ private:
 };
 
 template <typename T>
-void AppWindow::display(const std::vector<T>& pixels_data)
+void AppWindow::display(const std::vector<T>& pixels_data, const AppWindow::DisplaySettings& display_settings)
 {
-	glUseProgram(m_display_program);
-	glUniform1i(glGetUniformLocation(m_display_program, "u_display_normals"), 0);
+	setup_display_program(m_display_program, display_settings);
 
 	glBindTexture(GL_TEXTURE_2D, m_display_texture);
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_renderer.m_render_width, m_renderer.m_render_height, GL_RGB, GL_FLOAT, pixels_data.data());
@@ -85,10 +90,9 @@ void AppWindow::display(const std::vector<T>& pixels_data)
 }
 
 template <typename T>
-void AppWindow::display(const OrochiBuffer<T>& orochi_buffer)
+void AppWindow::display(const OrochiBuffer<T>& orochi_buffer, const AppWindow::DisplaySettings& display_settings)
 {	
-	glUseProgram(m_display_program);
-	glUniform1i(glGetUniformLocation(m_display_program, "u_display_normals"), 0);
+	setup_display_program(m_display_program, display_settings);
 
 	// TODO
 	// This is very sub optimal and should absolutely be replaced by a 

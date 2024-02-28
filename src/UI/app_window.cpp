@@ -21,6 +21,8 @@
 //		HostDeviceCommon containing the structures that are used both by the GPU and CPU renderer
 // - imgui controller to put all the imgui code in one class
 
+
+
 // TODO Features:
 // 
 // - choose denoiser quality in imgui
@@ -49,6 +51,8 @@
 // - choose render resolution in imgui
 // - choose viewport resolution in imgui
 // - compute shader for tone mapping images ? unless transfering memory to open gl is too expensive
+// - use defines insead of IFs in the kernel code and recompile kernel everytime (for some options at least)
+// - stuff to multithread when loading everything ? (scene, BVH, textures, ...)
 
 void wait_and_exit(const char* message)
 {
@@ -364,18 +368,31 @@ void AppWindow::setup_display_program()
 		"uniform int u_sample_number;\n"
 		"uniform float u_gamma;\n"
 		"uniform float u_exposure;\n"
+		"uniform int u_do_tonemapping;\n"
 		"uniform int u_display_normals;\n"
+		"uniform int u_scale_by_frame_number;\n"
 
 		"in vec2 vs_tex_coords;\n"
 
 		"void main()\n"
-		"{\n"
-		"vec4 hdr_color = texture(u_texture, vs_tex_coords) / float(u_sample_number + 1);\n"
-		"if (u_display_normals == 1)\n"
-		"    hdr_color = (hdr_color + 1.0f) * 0.5f; // Remapping normals\n"
-		"vec4 tone_mapped = 1.0f - exp(-hdr_color * u_exposure);\n"
-		"vec4 gamma_corrected = pow(tone_mapped, vec4(1.0f / u_gamma));\n"
-		"gl_FragColor = vec4(gamma_corrected.rgb, 1.0f);\n"
+		"{"
+		"	vec4 hdr_color = texture(u_texture, vs_tex_coords);\n"
+		"	if (u_scale_by_frame_number == 1)"
+		"		hdr_color = hdr_color / float(u_sample_number + 1);\n"
+		""
+		"	if (u_display_normals == 1)"
+		"		hdr_color = (hdr_color + 1.0f) * 0.5f; // Remapping normals\n"
+		""
+		"	if (u_do_tonemapping == 1)"
+		"	{"
+		"		vec4 tone_mapped = 1.0f - exp(-hdr_color * u_exposure);\n"
+		"		vec4 gamma_corrected = pow(tone_mapped, vec4(1.0f / u_gamma));\n"
+		"		gl_FragColor = vec4(gamma_corrected.rgb, 1.0f);\n"
+		"	}"
+		"	else"
+		"	{"
+		"		gl_FragColor = vec4(hdr_color.rgb, 1.0f);"
+		"	}"
 		"}\n";
 
 	GLuint m_vertex_shader = glCreateShader(GL_VERTEX_SHADER);
@@ -483,6 +500,13 @@ void AppWindow::reset_sample_number()
 
 	glUseProgram(m_display_program);
 	glUniform1i(glGetUniformLocation(m_display_program, "u_sample_number"), 0);
+
+	reset_frame_number();
+}
+
+void AppWindow::reset_frame_number()
+{
+	m_renderer.get_render_settings().frame_number = 0;
 }
 
 Renderer& AppWindow::get_renderer()
@@ -515,6 +539,7 @@ void AppWindow::run()
 		{
 			m_renderer.render();
 			increment_sample_number();
+			m_renderer.get_render_settings().frame_number++;
 		}
 
 		if (m_renderer.get_render_settings().enable_denoising)
@@ -525,9 +550,9 @@ void AppWindow::run()
 		else
 		{
 			if (m_application_settings.display_denoiser_albedo)
-				display(m_renderer.get_denoiser_albedo_buffer());
+				display(m_renderer.get_denoiser_albedo_buffer(), { true, false, false });
 			else if (m_application_settings.display_denoiser_normals)
-				display_normals(m_renderer.get_denoiser_normals_buffer());
+				display(m_renderer.get_denoiser_normals_buffer(), {true, false, false });
 			else
 				display(m_renderer.get_orochi_framebuffer());
 		}
@@ -539,17 +564,12 @@ void AppWindow::run()
 	quit();
 }
 
-void AppWindow::display_normals(const OrochiBuffer<hiprtFloat3>& normals_buffer)
+void AppWindow::setup_display_program(GLuint program, const AppWindow::DisplaySettings& display_settings)
 {
-	glUseProgram(m_display_program);
-	glUniform1i(glGetUniformLocation(m_display_program, "u_display_normals"), 1);
-
-	std::vector<hiprtFloat3> pixels_data = normals_buffer.download_pixels();
-
-	glBindTexture(GL_TEXTURE_2D, m_display_texture);
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_renderer.m_render_width, m_renderer.m_render_height, GL_RGB, GL_FLOAT, pixels_data.data());
-
-	glDrawArrays(GL_TRIANGLES, 0, 6);
+	glUseProgram(program);
+	glUniform1i(glGetUniformLocation(m_display_program, "u_display_normals"), display_settings.display_normals);
+	glUniform1i(glGetUniformLocation(m_display_program, "u_scale_by_frame_number"), display_settings.scale_by_frame_number);
+	glUniform1i(glGetUniformLocation(m_display_program, "u_do_tonemapping"), display_settings.do_tonemapping);
 }
 
 // TODO display feedback for 5 seconds after dumping a screenshot to disk
@@ -605,6 +625,7 @@ void AppWindow::display_imgui()
 		if (stbi_write_hdr("Render non-tonemapped.hdr", m_renderer.m_render_width, m_renderer.m_render_height, 3, reinterpret_cast<float*>(hdr_data.data())));
 			std::cout << "Render written to \"Render non-tonemapped.hdr\"" << std::endl;
 	}
+
 	
 	ImGui::Separator();
 

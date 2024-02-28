@@ -63,8 +63,8 @@ HIPRTRenderData Renderer::get_render_data()
 
 	render_data.geom = m_scene.get()->geometry;
 	render_data.pixels = m_pixels_buffer.get_pointer();
-	render_data.normals = m_normals_buffer.get_pointer();
-	render_data.albedo = m_albedo_buffer.get_pointer();
+	render_data.denoiser_normals = m_normals_buffer.get_pointer();
+	render_data.denoiser_albedo = m_albedo_buffer.get_pointer();
 	render_data.triangles_indices = reinterpret_cast<int*>(m_scene.get()->mesh.triangleIndices);
 	render_data.triangles_vertices = reinterpret_cast<hiprtFloat3*>(m_scene.get()->mesh.vertices);
 	render_data.normals_present = reinterpret_cast<unsigned char*>(m_scene.get()->normals_present);
@@ -74,9 +74,10 @@ HIPRTRenderData Renderer::get_render_data()
 	render_data.emissive_triangles_count = m_scene.get()->emissive_triangles_count;
 	render_data.emissive_triangles_indices = reinterpret_cast<int*>(m_scene.get()->emissive_triangles_indices);
 
+	render_data.render_settings.frame_number = m_render_settings.frame_number;
 	render_data.render_settings.sample_number = m_render_settings.sample_number;
-	render_data.render_settings.nb_bounces = m_render_settings.nb_bounces;
 	render_data.render_settings.samples_per_frame = m_render_settings.samples_per_frame;
+	render_data.render_settings.nb_bounces = m_render_settings.nb_bounces;
 
 	return render_data;
 }
