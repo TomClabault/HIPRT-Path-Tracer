@@ -34,7 +34,7 @@ void OpenImageDenoiser::resize_buffers(int new_width, int new_height, bool use_A
     m_beauty_filter.setImage("albedo", m_albedo_buffer, oidn::Format::Float3, new_width, new_height); // albedo aov
     m_beauty_filter.setImage("normal", m_normals_buffer, oidn::Format::Float3, new_width, new_height); // normals aov
     m_beauty_filter.setImage("output", m_color_buffer, oidn::Format::Float3, new_width, new_height); // denoised beauty
-    m_beauty_filter.set("cleanAux", true); // Normals and albedo are not noisy
+    m_beauty_filter.set("cleanAux", use_AOVs); // Normals and albedo are not noisy
     m_beauty_filter.set("hdr", true); // beauty image is HDR
     m_beauty_filter.commit();
 
@@ -67,36 +67,14 @@ std::vector<float> OpenImageDenoiser::denoise(int width, int height, const std::
 {
     // Fill the input image buffers
     float* colorPtr = (float*)m_color_buffer.getData();
-
-    //std::memcpy(colorPtr, to_denoise.data(), to_denoise.size() * sizeof(float));
-    for (int y = 0; y < height; y++)
-        for (int x = 0; x < width; x++)
-        {
-            int index = y * width + x;
-
-            colorPtr[index * 3 + 0] = to_denoise[index * 3 + 0];
-            colorPtr[index * 3 + 1] = to_denoise[index * 3 + 1];
-            colorPtr[index * 3 + 2] = to_denoise[index * 3 + 2];
-        }
+    std::memcpy(colorPtr, to_denoise.data(), to_denoise.size() * sizeof(float));
 
     // Filter the beauty image
     m_beauty_filter.execute();
 
     float* denoised_ptr = (float*)m_color_buffer.getData();
-    std::vector<float> denoised_output(to_denoise.size());
-    for (int y = 0; y < height; y++)
-        for (int x = 0; x < width; x++)
-        {
-            int index = y * width + x;
-
-            /*Color color = blend_factor * Color(denoised_ptr[index * 3 + 0], denoised_ptr[index * 3 + 1], denoised_ptr[index * 3 + 2])
-                + (1.0f - blend_factor) * image[index];
-            color.a = 1.0f;*/
-
-            denoised_output[index * 3 + 0] = denoised_ptr[index * 3 + 0];
-            denoised_output[index * 3 + 1] = denoised_ptr[index * 3 + 1];
-            denoised_output[index * 3 + 2] = denoised_ptr[index * 3 + 2];
-        }
+    std::vector<float> denoised_output;
+    denoised_output.insert(denoised_output.end(), &denoised_ptr[0], &denoised_ptr[to_denoise.size()]);
 
     const char* errorMessage;
     if (m_device.getError(errorMessage) != oidn::Error::None)
@@ -109,65 +87,20 @@ std::vector<float> OpenImageDenoiser::denoise(int width, int height, const std::
 {
     // Fill the input image buffers
     float* colorPtr = (float*)m_color_buffer.getData();
-    //std::memcpy(colorPtr, to_denoise.data(), to_denoise.size() * sizeof(float));
-    for (int y = 0; y < height; y++)
-    {
-        for (int x = 0; x < width; x++)
-        {
-            int index = y * width + x;
-
-            colorPtr[index * 3 + 0] = to_denoise[index * 3 + 0];
-            colorPtr[index * 3 + 1] = to_denoise[index * 3 + 1];
-            colorPtr[index * 3 + 2] = to_denoise[index * 3 + 2];
-        }
-    }
-
     float* albedoPtr = (float*)m_albedo_buffer.getData();
-    for (int y = 0; y < height; y++)
-    {
-        for (int x = 0; x < width; x++)
-        {
-            int index = y * width + x;
-
-            albedoPtr[index * 3 + 0] = albedo_aov_buffer[index].r;
-            albedoPtr[index * 3 + 1] = albedo_aov_buffer[index].g;
-            albedoPtr[index * 3 + 2] = albedo_aov_buffer[index].b;
-        }
-    }
-    m_albedo_filter.execute();
-
     float* normalsPtr = (float*)m_normals_buffer.getData();
-    for (int y = 0; y < height; y++)
-    {
-        for (int x = 0; x < width; x++)
-        {
-            int index = y * width + x;
 
-            normalsPtr[index * 3 + 0] = world_space_normals_aov_buffer[index].x;
-            normalsPtr[index * 3 + 1] = world_space_normals_aov_buffer[index].y;
-            normalsPtr[index * 3 + 2] = world_space_normals_aov_buffer[index].z;
-        }
-    }
+    std::memcpy(colorPtr, to_denoise.data(), to_denoise.size() * sizeof(float));
+    std::memcpy(albedoPtr, albedo_aov_buffer.data(), albedo_aov_buffer.size() * sizeof(float));
+    std::memcpy(normalsPtr, world_space_normals_aov_buffer.data(), world_space_normals_aov_buffer.size() * sizeof(float));
+
+    m_albedo_filter.execute();
     m_normals_filter.execute();
-
-    // Filter the beauty image
     m_beauty_filter.execute();
 
     float* denoised_ptr = (float*)m_color_buffer.getData();
-    std::vector<float> denoised_output(to_denoise.size());
-    for (int y = 0; y < height; y++)
-        for (int x = 0; x < width; x++)
-        {
-            int index = y * width + x;
-
-            /*Color color = blend_factor * Color(denoised_ptr[index * 3 + 0], denoised_ptr[index * 3 + 1], denoised_ptr[index * 3 + 2])
-                + (1.0f - blend_factor) * image[index];
-            color.a = 1.0f;*/
-
-            denoised_output[index * 3 + 0] = denoised_ptr[index * 3 + 0];
-            denoised_output[index * 3 + 1] = denoised_ptr[index * 3 + 1];
-            denoised_output[index * 3 + 2] = denoised_ptr[index * 3 + 2];
-        }
+    std::vector<float> denoised_output;
+    denoised_output.insert(denoised_output.end(), &denoised_ptr[0], &denoised_ptr[to_denoise.size()]);
 
     const char* errorMessage;
     if (m_device.getError(errorMessage) != oidn::Error::None)
