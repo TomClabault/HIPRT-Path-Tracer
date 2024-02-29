@@ -278,6 +278,8 @@ AppWindow::AppWindow(int width, int height) : m_viewport_width(width), m_viewpor
 	m_renderer.compile_trace_kernel(m_application_settings.kernel_files[m_application_settings.selected_kernel].c_str(),
 		m_application_settings.kernel_functions[m_application_settings.selected_kernel].c_str());
 	m_renderer.change_render_resolution(width, height);
+
+	m_denoiser = OpenImageDenoiser(m_renderer.get_denoiser_normals_buffer().get_pointer(), m_renderer.get_denoiser_albedo_buffer().get_pointer());
 	m_denoiser.resize_buffers(width, height);
 }
 
@@ -539,16 +541,16 @@ void AppWindow::run()
 
 		if (!(m_application_settings.stop_render_at != 0 && m_sample_number + 1 > m_application_settings.stop_render_at))
 		{
-			m_renderer.render();
+			m_renderer.render(m_denoiser);
 			increment_sample_number();
 			m_renderer.get_render_settings().frame_number++;
 		}
 
 		if (m_renderer.get_render_settings().enable_denoising)
+		{
 			display(m_denoiser.denoise(m_renderer.m_render_width, m_renderer.m_render_height,
-				m_renderer.get_orochi_framebuffer().download_pixels(),
-				m_renderer.get_denoiser_normals_buffer().download_pixels(), 
-				m_renderer.get_denoiser_albedo_buffer().download_pixels()));
+				m_renderer.get_orochi_framebuffer().download_pixels()));
+		}
 		else
 		{
 			if (m_application_settings.display_denoiser_albedo)
@@ -593,9 +595,7 @@ void AppWindow::display_imgui()
 		
 		if (m_renderer.get_render_settings().enable_denoising)
 		{
-			std::vector<float> denoised = m_denoiser.denoise(m_renderer.m_render_width, m_renderer.m_render_height, m_renderer.get_orochi_framebuffer().download_pixels(),
-				m_renderer.get_denoiser_normals_buffer().download_pixels(),
-				m_renderer.get_denoiser_albedo_buffer().download_pixels());
+			std::vector<float> denoised = m_denoiser.denoise(m_renderer.m_render_width, m_renderer.m_render_height, m_renderer.get_orochi_framebuffer().download_pixels());
 			tonemaped_data = Utils::tonemap_hdr_image(denoised, m_sample_number, m_application_settings.tone_mapping_gamma, m_application_settings.tone_mapping_exposure);
 		}
 		else
@@ -610,11 +610,7 @@ void AppWindow::display_imgui()
 		std::vector<float> hdr_data;
 
 		if (m_renderer.get_render_settings().enable_denoising)
-		{
-			hdr_data = m_denoiser.denoise(m_renderer.m_render_width, m_renderer.m_render_height, m_renderer.get_orochi_framebuffer().download_pixels(),
-				m_renderer.get_denoiser_normals_buffer().download_pixels(),
-				m_renderer.get_denoiser_albedo_buffer().download_pixels());
-		}
+			hdr_data = m_denoiser.denoise(m_renderer.m_render_width, m_renderer.m_render_height, m_renderer.get_orochi_framebuffer().download_pixels());
 		else
 			hdr_data = m_renderer.get_orochi_framebuffer().download_pixels();
 

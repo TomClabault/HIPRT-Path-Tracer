@@ -8,17 +8,23 @@
 class OpenImageDenoiser
 {
 public:
+	// No AOVs
 	OpenImageDenoiser();
+	OpenImageDenoiser(hiprtFloat3* world_space_normals_buffer);
+	OpenImageDenoiser(Color* albedo_buffer);
+	OpenImageDenoiser(hiprtFloat3* world_space_normals_buffer, Color* albedo_buffer);
 
-	void resize_buffers(int new_width, int new_height, bool use_AOVs = true);
+	void resize_buffers(int new_width, int new_height);
 	std::vector<float> denoise(int width, int height, const std::vector<float>& to_denoise);
-	std::vector<float> denoise(int width, int height, const std::vector<float>& to_denoise, const std::vector<hiprtFloat3>& world_space_normals_aov_buffer, const std::vector<Color>& albedo_aov_buffer);
 
 private:
+	bool m_use_normals = false;
+	bool m_use_albedo = false;
+
 	oidn::DeviceRef m_device;
-	oidn::BufferRef m_color_buffer;
-	oidn::BufferRef m_normals_buffer;
-	oidn::BufferRef m_albedo_buffer;
+	Color* m_color_buffer;
+	hiprtFloat3* m_normals_buffer = nullptr;
+	Color* m_albedo_buffer = nullptr;
 
 	oidn::FilterRef m_beauty_filter;
 	oidn::FilterRef m_albedo_filter;
