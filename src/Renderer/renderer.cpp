@@ -1,6 +1,6 @@
 #include "renderer.h"
 
-void Renderer::render()
+void Renderer::render(const OpenImageDenoiser& denoiser)
 {
 	int tile_size_x = 8;
 	int tile_size_y = 8;
@@ -12,7 +12,7 @@ void Renderer::render()
 	hiprtInt2 resolution = make_hiprtInt2(m_render_width, m_render_height);
 
 	HIPRTCamera hiprt_cam = m_camera.to_hiprt();
-	HIPRTRenderData render_data = get_render_data();
+	HIPRTRenderData render_data = get_render_data(denoiser);
 	void* launch_args[] = { &m_scene.get()->geometry, &render_data, &resolution, &hiprt_cam};
 	launch_kernel(8, 8, resolution.x, resolution.y, launch_args);
 }
@@ -57,7 +57,7 @@ void Renderer::set_sample_number(int sample_number)
 	m_render_settings.sample_number = sample_number;
 }
 
-HIPRTRenderData Renderer::get_render_data()
+HIPRTRenderData Renderer::get_render_data(const OpenImageDenoiser& denoiser)
 {
 	HIPRTRenderData render_data;
 

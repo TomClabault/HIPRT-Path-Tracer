@@ -8,6 +8,8 @@
 #include "Scene/camera.h"
 #include "Scene/scene_parser.h"
 
+#include "open_image_denoiser.h"
+
 #include <vector>
 
 class Renderer
@@ -107,14 +109,14 @@ public:
 
 	Renderer() : m_scene(nullptr) {}
 
-	void render();
+	void render(const OpenImageDenoiser& denoiser);
 	void change_render_resolution(int new_width, int new_height);
 
 	OrochiBuffer<float>& get_orochi_framebuffer();
 	OrochiBuffer<Color>& get_denoiser_albedo_buffer();
 	OrochiBuffer<hiprtFloat3>& get_denoiser_normals_buffer();
 	RenderSettings& get_render_settings();
-	HIPRTRenderData get_render_data();
+	HIPRTRenderData get_render_data(const OpenImageDenoiser& denoiser);
 
 	void init_ctx(int device_index);
 	void compile_trace_kernel(const char* kernel_file_path, const char* kernel_function_name);
