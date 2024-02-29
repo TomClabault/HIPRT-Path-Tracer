@@ -4,9 +4,11 @@
 struct RenderSettings
 {
 	int frame_number = 0;
-
 	// How many samples we've rendered so far
 	int sample_number = 0;
+
+	int samples_per_frame = 1;
+	int nb_bounces = 8;
 
 	// Whether or not to keep the same resolution on
 	// viewport rescale. This means that the render resolution
@@ -21,8 +23,6 @@ struct RenderSettings
 
 	float render_resolution_scale = 1.0f;
 
-	int samples_per_frame = 1;
-	int nb_bounces = 8;
 
 	bool enable_denoising = false; // TOOD move to application_settings
 	bool denoise_every_frame = false;

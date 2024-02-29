@@ -25,6 +25,7 @@
 
 // TODO Features:
 // 
+// - display feedback for 3 seconds after dumping a screenshot to disk
 // - choose denoiser quality in imgui
 // - fix 1 off sample count on Imgui interface. When stopping at 10 samples, ImGui displays 11
 // - try async buffer copy for the denoiser (maybe run a kernel to generate normals and another to generate albedo buffer before the path tracing kernel to be able to async copy while the path tracing kernel is running?)
@@ -545,9 +546,9 @@ void AppWindow::run()
 
 		if (m_renderer.get_render_settings().enable_denoising)
 			display(m_denoiser.denoise(m_renderer.m_render_width, m_renderer.m_render_height,
-				m_renderer.get_orochi_framebuffer().download_pixels()));/* ,
+				m_renderer.get_orochi_framebuffer().download_pixels(),
 				m_renderer.get_denoiser_normals_buffer().download_pixels(), 
-				m_renderer.get_denoiser_albedo_buffer().download_pixels()));*/
+				m_renderer.get_denoiser_albedo_buffer().download_pixels()));
 		else
 		{
 			if (m_application_settings.display_denoiser_albedo)
@@ -573,7 +574,6 @@ void AppWindow::setup_display_program(GLuint program, const AppWindow::DisplaySe
 	glUniform1i(glGetUniformLocation(m_display_program, "u_do_tonemapping"), display_settings.do_tonemapping);
 }
 
-// TODO display feedback for 5 seconds after dumping a screenshot to disk
 void AppWindow::display_imgui()
 {
 	ImGuiIO& io = ImGui::GetIO();
@@ -593,9 +593,9 @@ void AppWindow::display_imgui()
 		
 		if (m_renderer.get_render_settings().enable_denoising)
 		{
-			std::vector<float> denoised = m_denoiser.denoise(m_renderer.m_render_width, m_renderer.m_render_height, m_renderer.get_orochi_framebuffer().download_pixels());/* ,
+			std::vector<float> denoised = m_denoiser.denoise(m_renderer.m_render_width, m_renderer.m_render_height, m_renderer.get_orochi_framebuffer().download_pixels(),
 				m_renderer.get_denoiser_normals_buffer().download_pixels(),
-				m_renderer.get_denoiser_albedo_buffer().download_pixels());*/
+				m_renderer.get_denoiser_albedo_buffer().download_pixels());
 			tonemaped_data = Utils::tonemap_hdr_image(denoised, m_sample_number, m_application_settings.tone_mapping_gamma, m_application_settings.tone_mapping_exposure);
 		}
 		else
