@@ -28,25 +28,25 @@ Image Utils::read_image_float(const std::string& filepath, int& image_width, int
 
 std::vector<unsigned char> Utils::tonemap_hdr_image(const Image& hdr_image, int sample_number, float gamma, float exposure)
 {
-    return tonemap_hdr_image(reinterpret_cast<const float*>(hdr_image.data().data()), hdr_image.width * hdr_image.height, sample_number, gamma, exposure);
+    return tonemap_hdr_image(reinterpret_cast<const float*>(hdr_image.data().data()), hdr_image.width * hdr_image.height * 3, sample_number, gamma, exposure);
 }
 
 std::vector<unsigned char> Utils::tonemap_hdr_image(const std::vector<Color>& hdr_image, int sample_number, float gamma, float exposure)
 {
-    return tonemap_hdr_image(reinterpret_cast<const float*>(hdr_image.data()), hdr_image.size(), sample_number, gamma, exposure);
+    return tonemap_hdr_image(reinterpret_cast<const float*>(hdr_image.data()), hdr_image.size() * 3, sample_number, gamma, exposure);
 }
 
 std::vector<unsigned char> Utils::tonemap_hdr_image(const std::vector<float>& hdr_image, int sample_number, float gamma, float exposure)
 {
-    return tonemap_hdr_image(hdr_image.data(), hdr_image.size() / 3, sample_number, gamma, exposure);
+    return tonemap_hdr_image(hdr_image.data(), hdr_image.size(), sample_number, gamma, exposure);
 }
 
-std::vector<unsigned char> Utils::tonemap_hdr_image(const float* hdr_image, size_t pixel_count, int sample_number, float gamma, float exposure)
+std::vector<unsigned char> Utils::tonemap_hdr_image(const float* hdr_image, size_t float_count, int sample_number, float gamma, float exposure)
 {
-    std::vector<unsigned char> tonemapped_data(pixel_count * 3);
+    std::vector<unsigned char> tonemapped_data(float_count);
 
 #pragma omp parallel for
-    for (int i = 0; i < pixel_count; i += 3)
+    for (int i = 0; i < float_count; i += 3)
     {
         Color pixel = Color(hdr_image[i + 0], hdr_image[i + 1], hdr_image[i + 2]) / (float)sample_number;
         Color tone_mapped = Color(1.0f, 1.0f, 1.0f) - exp(-pixel * exposure);
