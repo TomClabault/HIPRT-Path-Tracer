@@ -112,7 +112,7 @@ public:
 	void render(const OpenImageDenoiser& denoiser);
 	void change_render_resolution(int new_width, int new_height);
 
-	OrochiBuffer<float>& get_orochi_framebuffer();
+	OrochiBuffer<Color>& get_color_framebuffer();
 	OrochiBuffer<Color>& get_denoiser_albedo_buffer();
 	OrochiBuffer<hiprtFloat3>& get_denoiser_normals_buffer();
 	RenderSettings& get_render_settings();
@@ -137,7 +137,7 @@ public:
 	Camera m_camera;
 
 private:
-	OrochiBuffer<float> m_pixels_buffer;
+	OrochiBuffer<Color> m_pixels_buffer;
 	OrochiBuffer<hiprtFloat3> m_normals_buffer;
 	OrochiBuffer<Color> m_albedo_buffer;
 

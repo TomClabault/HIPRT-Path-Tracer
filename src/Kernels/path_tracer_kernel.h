@@ -655,9 +655,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
         final_color = final_color + sample_color;
     }
 
-    render_data.pixels[index * 3 + 0] += final_color.r;
-    render_data.pixels[index * 3 + 1] += final_color.g;
-    render_data.pixels[index * 3 + 2] += final_color.b;
+    render_data.pixels[index] += final_color;
 
     denoiser_albedo /= (float)render_data.render_settings.samples_per_frame;
     denoiser_normal /= (float)render_data.render_settings.samples_per_frame;
