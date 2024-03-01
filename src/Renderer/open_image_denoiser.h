@@ -14,7 +14,7 @@ public:
 	OpenImageDenoiser(Color* color_buffer, Color* albedo_buffer);
 	OpenImageDenoiser(Color* color_buffer, hiprtFloat3* world_space_normals_buffer, Color* albedo_buffer);
 
-	void resize_buffers(int new_width, int new_height);
+	void resize(int new_width, int new_height, Color* color_buffer, hiprtFloat3* normals_buffer, Color* albedo_buffer);
 	void create_filters(int width, int height);
 	void denoise();
 	std::vector<Color> get_denoised_data();
