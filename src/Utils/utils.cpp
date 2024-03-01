@@ -28,7 +28,7 @@ Image Utils::read_image_float(const std::string& filepath, int& image_width, int
 
 std::vector<unsigned char> Utils::tonemap_hdr_image(const Image& hdr_image, int sample_number, float gamma, float exposure)
 {
-    return tonemap_hdr_image(reinterpret_cast<const float*>(hdr_image.data().data()), hdr_image.pixel_count(), sample_number, gamma, exposure);
+    return tonemap_hdr_image(reinterpret_cast<const float*>(hdr_image.data().data()), hdr_image.width * hdr_image.height, sample_number, gamma, exposure);
 }
 
 std::vector<unsigned char> Utils::tonemap_hdr_image(const std::vector<Color>& hdr_image, int sample_number, float gamma, float exposure)

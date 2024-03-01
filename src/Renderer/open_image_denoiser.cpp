@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-OpenImageDenoiser::OpenImageDenoiser(Color* color_buffer) : m_color_buffer(color_buffer)
+OpenImageDenoiser::OpenImageDenoiser() : m_width(0), m_height(0)
 {
     // Create an Open Image Denoise device
     m_device = oidn::newDevice(); // CPU or GPU if available
@@ -14,6 +14,11 @@ OpenImageDenoiser::OpenImageDenoiser(Color* color_buffer) : m_color_buffer(color
     }
 
     m_device.commit();
+}
+
+OpenImageDenoiser::OpenImageDenoiser(Color* color_buffer) : OpenImageDenoiser()
+{
+    m_color_buffer = color_buffer;
 }
 
 OpenImageDenoiser::OpenImageDenoiser(Color* color_buffer, hiprtFloat3* world_space_normals_buffer) : OpenImageDenoiser(color_buffer)

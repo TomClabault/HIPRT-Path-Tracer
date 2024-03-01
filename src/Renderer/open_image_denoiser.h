@@ -8,7 +8,7 @@
 class OpenImageDenoiser
 {
 public:
-	OpenImageDenoiser() : m_uninitialized(true) {}
+	OpenImageDenoiser();
 	OpenImageDenoiser(Color* color_buffer);
 	OpenImageDenoiser(Color* color_buffer, hiprtFloat3* world_space_normals_buffer);
 	OpenImageDenoiser(Color* color_buffer, Color* albedo_buffer);
@@ -21,7 +21,6 @@ public:
 	void* get_denoised_data_pointer();
 
 private:
-	bool m_uninitialized = false;
 	int m_width = 0, m_height = 0;
 
 	bool m_use_normals = false;
