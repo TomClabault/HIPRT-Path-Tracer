@@ -550,12 +550,17 @@ void AppWindow::run()
 
 		if (m_renderer.get_render_settings().enable_denoising)
 		{
-			/*std::vector<Color> colors = m_renderer.get_color_framebuffer().download_pixels();
+			std::vector<Color> colors = m_renderer.get_color_framebuffer().download_pixels();
 			for (Color& col : colors)
-				col /= m_sample_number;*/
+				col /= m_sample_number;
+			m_renderer.get_color_framebuffer().upload_pixels(colors);
 
 			m_denoiser.denoise();
-			display(m_denoiser.get_denoised_data_pointer());
+			display(m_denoiser.get_denoised_data_pointer(), {false, false, true});
+
+			for (Color& col : colors)
+				col *= m_sample_number;
+			m_renderer.get_color_framebuffer().upload_pixels(colors);
 		}
 		else
 		{
