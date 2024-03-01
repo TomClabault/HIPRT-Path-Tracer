@@ -279,7 +279,7 @@ AppWindow::AppWindow(int width, int height) : m_viewport_width(width), m_viewpor
 		m_application_settings.kernel_functions[m_application_settings.selected_kernel].c_str());
 	m_renderer.change_render_resolution(width, height);
 
-	m_denoiser = OpenImageDenoiser(m_renderer.get_denoiser_normals_buffer().get_pointer(), m_renderer.get_denoiser_albedo_buffer().get_pointer());
+	m_denoiser = OpenImageDenoiser(m_renderer.get_color_framebuffer().get_pointer(), m_renderer.get_denoiser_normals_buffer().get_pointer(), m_renderer.get_denoiser_albedo_buffer().get_pointer());
 	m_denoiser.resize_buffers(width, height);
 }
 
@@ -548,8 +548,8 @@ void AppWindow::run()
 
 		if (m_renderer.get_render_settings().enable_denoising)
 		{
-			display(m_denoiser.denoise(m_renderer.m_render_width, m_renderer.m_render_height,
-				m_renderer.get_orochi_framebuffer().download_pixels()));
+			m_denoiser.denoise();
+			display(m_denoiser.get_denoised_data_pointer());
 		}
 		else
 		{
@@ -558,7 +558,7 @@ void AppWindow::run()
 			else if (m_application_settings.display_denoiser_normals)
 				display(m_renderer.get_denoiser_normals_buffer(), {true, false, false });
 			else
-				display(m_renderer.get_orochi_framebuffer());
+				display(m_renderer.get_color_framebuffer());
 		}
 		display_imgui();
 
@@ -574,6 +574,16 @@ void AppWindow::setup_display_program(GLuint program, const AppWindow::DisplaySe
 	glUniform1i(glGetUniformLocation(m_display_program, "u_display_normals"), display_settings.display_normals);
 	glUniform1i(glGetUniformLocation(m_display_program, "u_scale_by_frame_number"), display_settings.scale_by_frame_number);
 	glUniform1i(glGetUniformLocation(m_display_program, "u_do_tonemapping"), display_settings.do_tonemapping);
+}
+
+void AppWindow::display(const void* data, const AppWindow::DisplaySettings& display_settings)
+{
+	setup_display_program(m_display_program, display_settings);
+
+	glBindTexture(GL_TEXTURE_2D, m_display_texture);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_renderer.m_render_width, m_renderer.m_render_height, GL_RGB, GL_FLOAT, data);
+
+	glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
 void AppWindow::display_imgui()
@@ -595,11 +605,12 @@ void AppWindow::display_imgui()
 		
 		if (m_renderer.get_render_settings().enable_denoising)
 		{
-			std::vector<float> denoised = m_denoiser.denoise(m_renderer.m_render_width, m_renderer.m_render_height, m_renderer.get_orochi_framebuffer().download_pixels());
+			m_denoiser.denoise();
+			std::vector<Color> denoised = m_denoiser.get_denoised_data();
 			tonemaped_data = Utils::tonemap_hdr_image(denoised, m_sample_number, m_application_settings.tone_mapping_gamma, m_application_settings.tone_mapping_exposure);
 		}
 		else
-			tonemaped_data = Utils::tonemap_hdr_image(m_renderer.get_orochi_framebuffer().download_pixels(), m_sample_number, m_application_settings.tone_mapping_gamma, m_application_settings.tone_mapping_exposure);
+			tonemaped_data = Utils::tonemap_hdr_image(m_renderer.get_color_framebuffer().download_pixels(), m_sample_number, m_application_settings.tone_mapping_gamma, m_application_settings.tone_mapping_exposure);
 
 		stbi_flip_vertically_on_write(true);
 		if (stbi_write_png("Render tonemapped.png", m_renderer.m_render_width, m_renderer.m_render_height, 3, tonemaped_data.data(), m_renderer.m_render_width * sizeof(unsigned char) * 3))
@@ -607,12 +618,15 @@ void AppWindow::display_imgui()
 	}
 	if (ImGui::Button("Save render HDR (non-tonemapped)"))
 	{
-		std::vector<float> hdr_data;
+		std::vector<Color> hdr_data;
 
 		if (m_renderer.get_render_settings().enable_denoising)
-			hdr_data = m_denoiser.denoise(m_renderer.m_render_width, m_renderer.m_render_height, m_renderer.get_orochi_framebuffer().download_pixels());
+		{
+			m_denoiser.denoise();
+			hdr_data = m_denoiser.get_denoised_data();
+		}
 		else
-			hdr_data = m_renderer.get_orochi_framebuffer().download_pixels();
+			hdr_data = m_renderer.get_color_framebuffer().download_pixels();
 
 #pragma omp parallel for
 		for (int i = 0; i < hdr_data.size(); i++)

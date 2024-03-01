@@ -52,6 +52,7 @@ public:
 	void set_cursor_position(std::pair<float, float> new_position);
 
 	void setup_display_program(GLuint program, const AppWindow::DisplaySettings& display_settings);
+	void display(const void* data, const AppWindow::DisplaySettings& display_settings = { false, true, true });
 	template <typename T>
 	void display(const std::vector<T>& orochi_buffer, const AppWindow::DisplaySettings& display_settings = { false, true, true });
 	template <typename T>
@@ -81,31 +82,27 @@ private:
 template <typename T>
 void AppWindow::display(const std::vector<T>& pixels_data, const AppWindow::DisplaySettings& display_settings)
 {
-	setup_display_program(m_display_program, display_settings);
-
-	glBindTexture(GL_TEXTURE_2D, m_display_texture);
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_renderer.m_render_width, m_renderer.m_render_height, GL_RGB, GL_FLOAT, pixels_data.data());
-
-	glDrawArrays(GL_TRIANGLES, 0, 6);
+	display(pixels_data.data(), display_settings);
 }
 
 template <typename T>
 void AppWindow::display(const OrochiBuffer<T>& orochi_buffer, const AppWindow::DisplaySettings& display_settings)
 {	
-	setup_display_program(m_display_program, display_settings);
+	display(orochi_buffer.download_pixels().data(), display_settings);
+	//setup_display_program(m_display_program, display_settings);
 
-	// TODO
-	// This is very sub optimal and should absolutely be replaced by a 
-	// buffer that is shared between hiprt and opengl
-	// Unfortunately, this is unavailable in Orochi so we would have
-	// to switch to HIP (or CUDA but it doesn't support AMD) to get access
-	// to the hipGraphicsMapResources() functions family
-	std::vector<T> pixels_data = orochi_buffer.download_pixels();
+	//// TODO
+	//// This is very sub optimal and should absolutely be replaced by a 
+	//// buffer that is shared between hiprt and opengl
+	//// Unfortunately, this is unavailable in Orochi so we would have
+	//// to switch to HIP (or CUDA but it doesn't support AMD) to get access
+	//// to the hipGraphicsMapResources() functions family
+	//std::vector<T> pixels_data = orochi_buffer.download_pixels();
 
-	glBindTexture(GL_TEXTURE_2D, m_display_texture);
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_renderer.m_render_width, m_renderer.m_render_height, GL_RGB, GL_FLOAT, pixels_data.data());
+	//glBindTexture(GL_TEXTURE_2D, m_display_texture);
+	//glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_renderer.m_render_width, m_renderer.m_render_height, GL_RGB, GL_FLOAT, pixels_data.data());
 
-	glDrawArrays(GL_TRIANGLES, 0, 6);
+	//glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
 #endif

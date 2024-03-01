@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-OpenImageDenoiser::OpenImageDenoiser()
+OpenImageDenoiser::OpenImageDenoiser(Color* color_buffer) : m_color_buffer(color_buffer)
 {
     // Create an Open Image Denoise device
     m_device = oidn::newDevice(); // CPU or GPU if available
@@ -16,19 +16,21 @@ OpenImageDenoiser::OpenImageDenoiser()
     m_device.commit();
 }
 
-OpenImageDenoiser::OpenImageDenoiser(hiprtFloat3* world_space_normals_buffer) : OpenImageDenoiser()
+OpenImageDenoiser::OpenImageDenoiser(Color* color_buffer, hiprtFloat3* world_space_normals_buffer) : OpenImageDenoiser(color_buffer)
 {
     m_use_normals = true;
+
     m_normals_buffer = world_space_normals_buffer;
 }
 
-OpenImageDenoiser::OpenImageDenoiser(Color* albedo_buffer) : OpenImageDenoiser()
+OpenImageDenoiser::OpenImageDenoiser(Color* color_buffer, Color* albedo_buffer) : OpenImageDenoiser(color_buffer)
 {
     m_use_albedo = true;
+
     m_albedo_buffer = albedo_buffer;
 }
 
-OpenImageDenoiser::OpenImageDenoiser(hiprtFloat3* world_space_normals_buffer, Color* albedo_buffer) : OpenImageDenoiser()
+OpenImageDenoiser::OpenImageDenoiser(Color* color_buffer, hiprtFloat3* world_space_normals_buffer, Color* albedo_buffer) : OpenImageDenoiser(color_buffer)
 {
     m_use_albedo = true;
     m_use_normals = true;
@@ -39,7 +41,9 @@ OpenImageDenoiser::OpenImageDenoiser(hiprtFloat3* world_space_normals_buffer, Co
 
 void OpenImageDenoiser::resize_buffers(int new_width, int new_height)
 {
-    //m_color_buffer = m_device.newBuffer(new_width * new_height * 3 * sizeof(float));
+    m_denoised_buffer = m_device.newBuffer(new_width * new_height * 3 * sizeof(float));
+    m_width = new_width;
+    m_height = new_height;
 
     const char* errorMessage;
     if (m_device.getError(errorMessage) != oidn::Error::None)
@@ -48,11 +52,16 @@ void OpenImageDenoiser::resize_buffers(int new_width, int new_height)
         return;
     }
 
+    create_filters(new_width, new_height);
+}
+
+void OpenImageDenoiser::create_filters(int width, int height)
+{
     m_beauty_filter = m_device.newFilter("RT"); // generic ray tracing filter
-    m_beauty_filter.setImage("color", m_color_buffer, oidn::Format::Float3, new_width, new_height); // beauty
-    m_beauty_filter.setImage("albedo", m_albedo_buffer, oidn::Format::Float3, new_width, new_height); // albedo aov
-    m_beauty_filter.setImage("normal", m_normals_buffer, oidn::Format::Float3, new_width, new_height); // normals aov
-    m_beauty_filter.setImage("output", m_color_buffer, oidn::Format::Float3, new_width, new_height); // denoised beauty
+    m_beauty_filter.setImage("color", m_color_buffer, oidn::Format::Float3, width, height); // beauty
+    m_beauty_filter.setImage("albedo", m_albedo_buffer, oidn::Format::Float3, width, height); // albedo aov
+    m_beauty_filter.setImage("normal", m_normals_buffer, oidn::Format::Float3, width, height); // normals aov
+    m_beauty_filter.setImage("output", m_denoised_buffer, oidn::Format::Float3, width, height); // denoised beauty
     m_beauty_filter.set("cleanAux", true); // Normals and albedo are not noisy
     m_beauty_filter.set("hdr", true); // beauty image is HDR
     m_beauty_filter.commit();
@@ -60,19 +69,20 @@ void OpenImageDenoiser::resize_buffers(int new_width, int new_height)
     if (m_use_albedo)
     {
         m_albedo_filter = m_device.newFilter("RT");
-        m_albedo_filter.setImage("albedo", m_albedo_buffer, oidn::Format::Float3, new_width, new_height);
-        m_albedo_filter.setImage("output", m_albedo_buffer, oidn::Format::Float3, new_width, new_height);
+        m_albedo_filter.setImage("albedo", m_albedo_buffer, oidn::Format::Float3, width, height);
+        m_albedo_filter.setImage("output", m_albedo_buffer, oidn::Format::Float3, width, height);
         m_albedo_filter.commit();
     }
 
     if (m_use_normals)
     {
         m_normals_filter = m_device.newFilter("RT");
-        m_normals_filter.setImage("normal", m_normals_buffer, oidn::Format::Float3, new_width, new_height);
-        m_normals_filter.setImage("output", m_normals_buffer, oidn::Format::Float3, new_width, new_height);
+        m_normals_filter.setImage("normal", m_normals_buffer, oidn::Format::Float3, width, height);
+        m_normals_filter.setImage("output", m_normals_buffer, oidn::Format::Float3, width, height);
         m_normals_filter.commit();
     }
 
+    const char* errorMessage;
     if (m_device.getError(errorMessage) != oidn::Error::None)
     {
         std::cout << "Filter configuration error: " << errorMessage << std::endl;
@@ -80,12 +90,9 @@ void OpenImageDenoiser::resize_buffers(int new_width, int new_height)
     }
 }
 
-std::vector<float> OpenImageDenoiser::denoise(int width, int height, const std::vector<float>& to_denoise)
+void OpenImageDenoiser::denoise()
 {
     // Fill the input image buffers
-    float* colorPtr = (float*)m_color_buffer.getData();
-    std::memcpy(colorPtr, to_denoise.data(), to_denoise.size() * sizeof(float));
-
     if (m_use_albedo)
         m_albedo_filter.execute();
     if (m_use_normals)
@@ -93,13 +100,22 @@ std::vector<float> OpenImageDenoiser::denoise(int width, int height, const std::
 
     m_beauty_filter.execute();
 
-    float* denoised_ptr = (float*)m_color_buffer.getData();
-    std::vector<float> denoised_output;
-    denoised_output.insert(denoised_output.end(), &denoised_ptr[0], &denoised_ptr[to_denoise.size()]);
-
     const char* errorMessage;
     if (m_device.getError(errorMessage) != oidn::Error::None)
         std::cout << "Error: " << errorMessage << std::endl;
+}
+
+std::vector<Color> OpenImageDenoiser::get_denoised_data()
+{
+    Color* denoised_ptr = (Color*)m_denoised_buffer.getData();
+
+    std::vector<Color> denoised_output;
+    denoised_output.insert(denoised_output.end(), &denoised_ptr[0], &denoised_ptr[m_width * m_height]);
 
     return denoised_output;
+}
+
+void* OpenImageDenoiser::get_denoised_data_pointer()
+{
+    return m_denoised_buffer.getData();
 }
