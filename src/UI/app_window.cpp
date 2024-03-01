@@ -279,7 +279,6 @@ AppWindow::AppWindow(int width, int height) : m_viewport_width(width), m_viewpor
 		m_application_settings.kernel_functions[m_application_settings.selected_kernel].c_str());
 	m_renderer.change_render_resolution(width, height);
 
-	m_denoiser = OpenImageDenoiser(m_renderer.get_color_framebuffer().get_pointer(), m_renderer.get_denoiser_normals_buffer().get_pointer(), m_renderer.get_denoiser_albedo_buffer().get_pointer());
 	m_denoiser.resize(width, height, m_renderer.get_color_framebuffer().get_pointer(),
 		m_renderer.get_denoiser_normals_buffer().get_pointer(), m_renderer.get_denoiser_albedo_buffer().get_pointer());
 }
