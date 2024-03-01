@@ -280,7 +280,8 @@ AppWindow::AppWindow(int width, int height) : m_viewport_width(width), m_viewpor
 	m_renderer.change_render_resolution(width, height);
 
 	m_denoiser = OpenImageDenoiser(m_renderer.get_color_framebuffer().get_pointer(), m_renderer.get_denoiser_normals_buffer().get_pointer(), m_renderer.get_denoiser_albedo_buffer().get_pointer());
-	m_denoiser.resize_buffers(width, height);
+	m_denoiser.resize(width, height, m_renderer.get_color_framebuffer().get_pointer(),
+		m_renderer.get_denoiser_normals_buffer().get_pointer(), m_renderer.get_denoiser_albedo_buffer().get_pointer());
 }
 
 AppWindow::~AppWindow()
@@ -317,7 +318,8 @@ void AppWindow::resize_frame(int pixels_width, int pixels_height)
 	int new_render_width = std::floor(pixels_width * resolution_scale);
 	int new_render_height = std::floor(pixels_height * resolution_scale);
 	m_renderer.change_render_resolution(new_render_width, new_render_height);
-	m_denoiser.resize_buffers(new_render_width, new_render_height);
+	m_denoiser.resize(new_render_width, new_render_height, m_renderer.get_color_framebuffer().get_pointer(),
+		m_renderer.get_denoiser_normals_buffer().get_pointer(), m_renderer.get_denoiser_albedo_buffer().get_pointer());
 
 	// Recreating the OpenGL display texture
 	glActiveTexture(GL_TEXTURE0 + AppWindow::DISPLAY_TEXTURE_UNIT);
@@ -333,7 +335,8 @@ void AppWindow::change_resolution_scaling(float new_scaling)
 	float new_render_height = std::floor(m_viewport_height * new_scaling);
 
 	m_renderer.change_render_resolution(new_render_width, new_render_height);
-	m_denoiser.resize_buffers(new_render_width, new_render_height);
+	m_denoiser.resize(new_render_width, new_render_height, m_renderer.get_color_framebuffer().get_pointer(),
+		m_renderer.get_denoiser_normals_buffer().get_pointer(), m_renderer.get_denoiser_albedo_buffer().get_pointer());
 
 	glActiveTexture(GL_TEXTURE0 + AppWindow::DISPLAY_TEXTURE_UNIT);
 	glBindTexture(GL_TEXTURE_2D, m_display_texture);

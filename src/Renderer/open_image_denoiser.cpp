@@ -39,9 +39,14 @@ OpenImageDenoiser::OpenImageDenoiser(Color* color_buffer, hiprtFloat3* world_spa
     m_normals_buffer = world_space_normals_buffer;
 }
 
-void OpenImageDenoiser::resize_buffers(int new_width, int new_height)
+void OpenImageDenoiser::resize(int new_width, int new_height, Color* color_buffer, hiprtFloat3* normals_buffer, Color* albedo_buffer)
 {
+    m_color_buffer = color_buffer;
+    m_normals_buffer = normals_buffer;
+    m_albedo_buffer = albedo_buffer;
+
     m_denoised_buffer = m_device.newBuffer(new_width * new_height * 3 * sizeof(float));
+
     m_width = new_width;
     m_height = new_height;
 
