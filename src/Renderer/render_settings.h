@@ -31,7 +31,6 @@ struct RenderSettings
 	// of denoising each frame). Only taken into account
 	// if denoise_every_frame = false
 	int denoise_frame_count = 30;
-	float denoising_strength = 0.5f;
 };
 
 #endif
