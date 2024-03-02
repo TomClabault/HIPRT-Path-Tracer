@@ -9,18 +9,23 @@ class OpenImageDenoiser
 {
 public:
 	OpenImageDenoiser();
-	OpenImageDenoiser(Color* color_buffer);
-	OpenImageDenoiser(Color* color_buffer, hiprtFloat3* world_space_normals_buffer);
-	OpenImageDenoiser(Color* color_buffer, Color* albedo_buffer);
-	OpenImageDenoiser(Color* color_buffer, hiprtFloat3* world_space_normals_buffer, Color* albedo_buffer);
 
-	void resize(int new_width, int new_height, Color* color_buffer, hiprtFloat3* normals_buffer, Color* albedo_buffer);
-	void create_filters(int width, int height);
-	void denoise();
+	void set_buffers(Color* color_buffer, int width, int height);
+	void set_buffers(Color* color_buffer, hiprtFloat3* normals_buffer, int width, int height);
+	void set_buffers(Color* color_buffer, Color* albedo_buffer, int width, int height);
+	void set_buffers(Color* color_buffer, hiprtFloat3* normals_buffer, Color* albedo_buffer, int width, int height);
+
 	std::vector<Color> get_denoised_data();
 	void* get_denoised_data_pointer();
 
+	void denoise();
+
 private:
+	void set_buffers(Color* color_buffer, int width, int height, bool override_use_normals, bool override_use_albedo);
+
+	void create_beauty_filter();
+	void create_AOV_filters();
+
 	int m_width = 0, m_height = 0;
 
 	bool m_use_normals = false;

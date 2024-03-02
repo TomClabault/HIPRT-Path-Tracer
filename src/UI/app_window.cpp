@@ -279,8 +279,9 @@ AppWindow::AppWindow(int width, int height) : m_viewport_width(width), m_viewpor
 		m_application_settings.kernel_functions[m_application_settings.selected_kernel].c_str());
 	m_renderer.change_render_resolution(width, height);
 
-	m_denoiser.resize(width, height, m_renderer.get_color_framebuffer().get_pointer(),
-		m_renderer.get_denoiser_normals_buffer().get_pointer(), m_renderer.get_denoiser_albedo_buffer().get_pointer());
+	m_denoiser.set_buffers(m_renderer.get_color_framebuffer().get_pointer(),
+		m_renderer.get_denoiser_normals_buffer().get_pointer(), m_renderer.get_denoiser_albedo_buffer().get_pointer(),
+		width, height);
 }
 
 AppWindow::~AppWindow()
@@ -317,8 +318,9 @@ void AppWindow::resize_frame(int pixels_width, int pixels_height)
 	int new_render_width = std::floor(pixels_width * resolution_scale);
 	int new_render_height = std::floor(pixels_height * resolution_scale);
 	m_renderer.change_render_resolution(new_render_width, new_render_height);
-	m_denoiser.resize(new_render_width, new_render_height, m_renderer.get_color_framebuffer().get_pointer(),
-		m_renderer.get_denoiser_normals_buffer().get_pointer(), m_renderer.get_denoiser_albedo_buffer().get_pointer());
+	m_denoiser.set_buffers(m_renderer.get_color_framebuffer().get_pointer(),
+		m_renderer.get_denoiser_normals_buffer().get_pointer(), m_renderer.get_denoiser_albedo_buffer().get_pointer(), 
+		new_render_width, new_render_height);
 
 	// Recreating the OpenGL display texture
 	glActiveTexture(GL_TEXTURE0 + AppWindow::DISPLAY_TEXTURE_UNIT);
@@ -334,8 +336,9 @@ void AppWindow::change_resolution_scaling(float new_scaling)
 	float new_render_height = std::floor(m_viewport_height * new_scaling);
 
 	m_renderer.change_render_resolution(new_render_width, new_render_height);
-	m_denoiser.resize(new_render_width, new_render_height, m_renderer.get_color_framebuffer().get_pointer(),
-		m_renderer.get_denoiser_normals_buffer().get_pointer(), m_renderer.get_denoiser_albedo_buffer().get_pointer());
+	m_denoiser.set_buffers(m_renderer.get_color_framebuffer().get_pointer(),
+		m_renderer.get_denoiser_normals_buffer().get_pointer(), m_renderer.get_denoiser_albedo_buffer().get_pointer(),
+		new_render_width, new_render_height);
 
 	glActiveTexture(GL_TEXTURE0 + AppWindow::DISPLAY_TEXTURE_UNIT);
 	glBindTexture(GL_TEXTURE_2D, m_display_texture);
@@ -550,17 +553,8 @@ void AppWindow::run()
 
 		if (m_renderer.get_render_settings().enable_denoising)
 		{
-			std::vector<Color> colors = m_renderer.get_color_framebuffer().download_pixels();
-			for (Color& col : colors)
-				col /= m_sample_number;
-			m_renderer.get_color_framebuffer().upload_pixels(colors);
-
 			m_denoiser.denoise();
-			display(m_denoiser.get_denoised_data_pointer(), {false, false, true});
-
-			for (Color& col : colors)
-				col *= m_sample_number;
-			m_renderer.get_color_framebuffer().upload_pixels(colors);
+			display(m_denoiser.get_denoised_data_pointer());
 		}
 		else
 		{
@@ -705,8 +699,7 @@ void AppWindow::display_imgui()
 	ImGui::Checkbox("Display Denoiser Normals", &m_application_settings.display_denoiser_normals);
 
 	ImGui::Checkbox("Enable denoiser", &m_renderer.get_render_settings().enable_denoising);
-	//ImGui::Checkbox("Denoise every frame", &m_renderer.get_render_settings().denoise_every_frame);
-	ImGui::DragFloat("Denoise strength", &m_renderer.get_render_settings().denoising_strength, 1.0f, 0.0f, 1.0f);
+	ImGui::Checkbox("Denoise every frame", &m_renderer.get_render_settings().denoise_every_frame);
 
 	ImGui::Separator();
 
