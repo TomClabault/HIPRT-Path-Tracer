@@ -25,7 +25,7 @@ struct RenderSettings
 
 
 	bool enable_denoising = false; // TOOD move to application_settings
-	bool denoise_every_frame = false;
+	int denoiser_sample_skip = 1;
 	// How many frames to wait for before denoising
 	// (this basically reduces the performance penalty
 	// of denoising each frame). Only taken into account

@@ -11,6 +11,8 @@ struct ApplicationSettings
 	std::vector<std::string> kernel_functions = { "PathTracerKernel", "NormalsKernel"};
 
 	bool display_denoiser_albedo = false, display_denoiser_normals = false;
+	// How many samples were denoised by the last denoiser call
+	int last_denoised_sample_count;
 
 	// How much to divide the translation distance by when the mouse
 	// has been dragged over the window to move the camera

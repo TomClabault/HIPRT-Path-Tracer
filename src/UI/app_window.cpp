@@ -25,6 +25,8 @@
 
 // TODO Features:
 // 
+// - lower resolution while moving camera for smooth movement + 1 spp
+// - aspect ratio issue on CPU or GPU ?
 // - display feedback for 3 seconds after dumping a screenshot to disk
 // - choose denoiser quality in imgui
 // - fix 1 off sample count on Imgui interface. When stopping at 10 samples, ImGui displays 11
@@ -55,6 +57,8 @@
 // - compute shader for tone mapping images ? unless transfering memory to open gl is too expensive
 // - use defines insead of IFs in the kernel code and recompile kernel everytime (for some options at least)
 // - stuff to multithread when loading everything ? (scene, BVH, textures, ...)
+// - don't reset frame number on resize when keep same render resolution is checked
+
 
 void wait_and_exit(const char* message)
 {
@@ -380,6 +384,7 @@ void AppWindow::setup_display_program()
 		"uniform int u_do_tonemapping;\n"
 		"uniform int u_display_normals;\n"
 		"uniform int u_scale_by_frame_number;\n"
+		"uniform int u_sample_count_override;\n"
 
 		"in vec2 vs_tex_coords;\n"
 
@@ -387,7 +392,16 @@ void AppWindow::setup_display_program()
 		"{"
 		"	vec4 hdr_color = texture(u_texture, vs_tex_coords);\n"
 		"	if (u_scale_by_frame_number == 1)"
-		"		hdr_color = hdr_color / float(u_sample_number + 1);\n"
+		"	{"
+		"		if (u_sample_count_override != -1)"
+		"		{"
+		"			hdr_color = hdr_color / float(u_sample_count_override + 1);\n" // TODO IMMEDIATE refactor one line + TODO IMMEDIATE: denoising taking a long time when doing it every so often ?
+		"		}"
+		"		else"
+		"		{"
+		"			hdr_color = hdr_color / float(u_sample_number + 1);\n"
+		"		}"
+		"	}"
 		""
 		"	if (u_display_normals == 1)"
 		"		hdr_color = (hdr_color + 1.0f) * 0.5f; // Remapping normals\n"
@@ -553,8 +567,18 @@ void AppWindow::run()
 
 		if (m_renderer.get_render_settings().enable_denoising)
 		{
-			m_denoiser.denoise();
-			display(m_denoiser.get_denoised_data_pointer());
+			if ((m_renderer.get_render_settings().sample_number % m_renderer.get_render_settings().denoiser_sample_skip) == 0)
+			{
+				m_denoiser.denoise();
+				m_application_settings.last_denoised_sample_count = m_renderer.get_render_settings().sample_number;
+			}
+			
+			DisplaySettings settings;
+			settings.display_normals = false;
+			settings.do_tonemapping = true;
+			settings.scale_by_frame_number = true;
+			settings.sample_count_override = m_application_settings.last_denoised_sample_count;
+			display(m_denoiser.get_denoised_data_pointer(), settings);
 		}
 		else
 		{
@@ -579,6 +603,7 @@ void AppWindow::setup_display_program(GLuint program, const AppWindow::DisplaySe
 	glUniform1i(glGetUniformLocation(m_display_program, "u_display_normals"), display_settings.display_normals);
 	glUniform1i(glGetUniformLocation(m_display_program, "u_scale_by_frame_number"), display_settings.scale_by_frame_number);
 	glUniform1i(glGetUniformLocation(m_display_program, "u_do_tonemapping"), display_settings.do_tonemapping);
+	glUniform1i(glGetUniformLocation(m_display_program, "u_sample_count_override"), display_settings.sample_count_override);
 }
 
 void AppWindow::display(const void* data, const AppWindow::DisplaySettings& display_settings)
@@ -668,10 +693,6 @@ void AppWindow::display_imgui()
 		ImGui::EndDisabled();
 
 	// TODO for the denoising with normals / albedo, add imgui buttons to display normals / albedo buffer
-	// TODO possibility to denoise normals and albedo AOV buffer
-	// TODO imgui renderer class to put all of this away in its own class
-
-	// TODO don't reset frame number on resize when keep same render resolution is checked
 	if (ImGui::Checkbox("Keep same render resolution", &m_renderer.get_render_settings().keep_same_resolution))
 	{
 		if (m_renderer.get_render_settings().keep_same_resolution)
@@ -699,7 +720,7 @@ void AppWindow::display_imgui()
 	ImGui::Checkbox("Display Denoiser Normals", &m_application_settings.display_denoiser_normals);
 
 	ImGui::Checkbox("Enable denoiser", &m_renderer.get_render_settings().enable_denoising);
-	ImGui::Checkbox("Denoise every frame", &m_renderer.get_render_settings().denoise_every_frame);
+	ImGui::SliderInt("Denoise Sample Skip", &m_renderer.get_render_settings().denoiser_sample_skip, 1, 128);
 
 	ImGui::Separator();
 
