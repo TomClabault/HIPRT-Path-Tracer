@@ -17,6 +17,9 @@ public:
                     int render_samples, int max_bounces,
                     Image& image_buffer,
                     const std::vector<Triangle>& triangle_buffer,
+                    const std::vector<int>& triangle_indices,
+                    const std::vector<unsigned char>& normals_present,
+                    const std::vector<Vector>& vertex_normals,
                     const std::vector<RendererMaterial>& materials_buffer,
                     const std::vector<int>& emissive_triangle_indices_buffer,
                     const std::vector<int>& materials_indices_buffer,
@@ -28,6 +31,9 @@ public:
         m_max_bounces(max_bounces),
         m_frame_buffer(image_buffer),
         m_triangle_buffer(triangle_buffer),
+        m_triangle_indices(triangle_indices),
+        m_normals_present(normals_present),
+        m_vertex_normals(vertex_normals),
         m_materials_buffer(materials_buffer),
         m_emissive_triangle_indices_buffer(emissive_triangle_indices_buffer),
         m_materials_indices_buffer(materials_indices_buffer),
@@ -73,6 +79,9 @@ private:
     Image& m_frame_buffer;
 
     const std::vector<Triangle>& m_triangle_buffer;
+    const std::vector<int>& m_triangle_indices;
+    const std::vector<unsigned char>& m_normals_present;
+    const std::vector<Vector>& m_vertex_normals;
     const std::vector<RendererMaterial>& m_materials_buffer;
     const std::vector<int>& m_emissive_triangle_indices_buffer;
     const std::vector<int>& m_materials_indices_buffer;

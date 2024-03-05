@@ -57,6 +57,10 @@ int main(int argc, char* argv[])
     Scene parsed_scene = SceneParser::parse_scene_file(cmd_arguments.scene_file_path);
     std::cout << std::endl;
 
+    const std::vector<int>& triangle_indices = parsed_scene.triangle_indices;
+    const std::vector<unsigned char>& normals_present = parsed_scene.normals_present;
+    std::vector<Vector> vertex_normals(parsed_scene.vertex_normals.size());
+    std::transform(parsed_scene.vertex_normals.begin(), parsed_scene.vertex_normals.end(), vertex_normals.begin(), [](hiprtFloat3 hiprt_vec) { return Vector(hiprt_vec.x, hiprt_vec.y, hiprt_vec.z); });
     std::vector<Triangle> triangle_buffer = parsed_scene.get_triangles();
     BVH bvh(&triangle_buffer);
 
@@ -77,6 +81,9 @@ int main(int argc, char* argv[])
         cmd_arguments.render_samples, cmd_arguments.bounces,
         image_buffer,
         triangle_buffer,
+        triangle_indices,
+        normals_present,
+        vertex_normals,
         materials_buffer,
         emissive_triangle_indices_buffer,
         materials_indices_buffer,
@@ -95,8 +102,8 @@ int main(int argc, char* argv[])
 
     image_buffer.write_image_png("RT_output.png");
     image_denoised_1.write_image_png("RT_output_denoised_1.png");
-    image_denoised_075.write_image_png("RT_output_denoised_0.png");
-    image_denoised_05.write_image_png("RT_output_denoised_0.png");
+    image_denoised_075.write_image_png("RT_output_denoised_075.png");
+    image_denoised_05.write_image_png("RT_output_denoised_05.png");
 
     return 0;
 #endif

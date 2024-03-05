@@ -21,9 +21,10 @@ public:
 
 	struct DisplaySettings
 	{
-		bool display_normals;
-		bool scale_by_frame_number;
-		bool do_tonemapping;
+		bool display_normals = false;
+		bool scale_by_frame_number = true;
+		bool do_tonemapping = true;
+		int sample_count_override = -1;
 	};
 
 
@@ -52,11 +53,11 @@ public:
 	void set_cursor_position(std::pair<float, float> new_position);
 
 	void setup_display_program(GLuint program, const AppWindow::DisplaySettings& display_settings);
-	void display(const void* data, const AppWindow::DisplaySettings& display_settings = { false, true, true });
+	void display(const void* data, const AppWindow::DisplaySettings& display_settings = { false, true, true, -1 });
 	template <typename T>
-	void display(const std::vector<T>& orochi_buffer, const AppWindow::DisplaySettings& display_settings = { false, true, true });
+	void display(const std::vector<T>& orochi_buffer, const AppWindow::DisplaySettings& display_settings = { false, true, true, -1 });
 	template <typename T>
-	void display(const OrochiBuffer<T>& orochi_buffer, const AppWindow::DisplaySettings& display_settings = { false, true, true });
+	void display(const OrochiBuffer<T>& orochi_buffer, const AppWindow::DisplaySettings& display_settings = { false, true, true, -1 });
 
 	void display_imgui();
 

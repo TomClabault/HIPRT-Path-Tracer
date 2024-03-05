@@ -243,17 +243,17 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
 #include <omp.h>
 
 #define DEBUG_PIXEL 0
-#define DEBUG_PIXEL_X 51
-#define DEBUG_PIXEL_Y 36
+#define DEBUG_PIXEL_X 450
+#define DEBUG_PIXEL_Y 399
 
 void RenderKernel::render()
 {
     std::atomic<int> lines_completed = 0;
 
 #if DEBUG_PIXEL
-    for (int y = m_frame_buffer.height() - DEBUG_PIXEL_Y - 1; y < m_frame_buffer.height(); y++)
+    for (int y = m_frame_buffer.height - DEBUG_PIXEL_Y - 1; y < m_frame_buffer.height; y++)
     {
-        for (int x = DEBUG_PIXEL_X; x < m_frame_buffer.width(); x++)
+        for (int x = DEBUG_PIXEL_X; x < m_frame_buffer.width; x++)
 #else
 #pragma omp parallel for schedule(dynamic)
     for (int y = 0; y < m_framebuffer_height; y++)
@@ -521,6 +521,24 @@ inline bool RenderKernel::intersect_scene_bvh(const Ray& ray, HitInfo& closest_h
     closest_hit_info.t = -1.0f;
 
     m_bvh.intersect(ray, closest_hit_info);
+    if (closest_hit_info.t > 0.0f)
+    {
+        // Computing smooth normal
+        int vertex_A_index = m_triangle_indices[closest_hit_info.primitive_index * 3 + 0];
+        if (m_normals_present[vertex_A_index])
+        {
+            // Smooth normal available for the triangle
+
+            int vertex_B_index = m_triangle_indices[closest_hit_info.primitive_index * 3 + 1];
+            int vertex_C_index = m_triangle_indices[closest_hit_info.primitive_index * 3 + 2];
+
+            Vector smooth_normal = m_vertex_normals[vertex_B_index] * closest_hit_info.u
+                + m_vertex_normals[vertex_C_index] * closest_hit_info.v
+                + m_vertex_normals[vertex_A_index] * (1.0f - closest_hit_info.u - closest_hit_info.v);
+
+            closest_hit_info.normal_at_intersection = normalize(smooth_normal);
+        }
+    }
 
     for (int i = 0; i < m_sphere_buffer.size(); i++)
     {
@@ -531,6 +549,7 @@ inline bool RenderKernel::intersect_scene_bvh(const Ray& ray, HitInfo& closest_h
             if (hit_info.t < closest_hit_info.t || closest_hit_info.t == -1.0f)
                 closest_hit_info = hit_info;
     }
+
 
     return closest_hit_info.t > 0.0f;
 }
