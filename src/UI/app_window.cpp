@@ -25,6 +25,7 @@
 
 // TODO Features:
 // 
+// TODO IMMEDIATE: denoising taking a long time when doing it every so often ?
 // - lower resolution while moving camera for smooth movement + 1 spp
 // - aspect ratio issue on CPU or GPU ?
 // - display feedback for 3 seconds after dumping a screenshot to disk
@@ -392,16 +393,7 @@ void AppWindow::setup_display_program()
 		"{"
 		"	vec4 hdr_color = texture(u_texture, vs_tex_coords);\n"
 		"	if (u_scale_by_frame_number == 1)"
-		"	{"
-		"		if (u_sample_count_override != -1)"
-		"		{"
-		"			hdr_color = hdr_color / float(u_sample_count_override + 1);\n" // TODO IMMEDIATE refactor one line + TODO IMMEDIATE: denoising taking a long time when doing it every so often ?
-		"		}"
-		"		else"
-		"		{"
-		"			hdr_color = hdr_color / float(u_sample_number + 1);\n"
-		"		}"
-		"	}"
+		"		hdr_color = hdr_color / float(u_sample_count_override != -1 ? (u_sample_count_override + 1) : (u_sample_number + 1));"
 		""
 		"	if (u_display_normals == 1)"
 		"		hdr_color = (hdr_color + 1.0f) * 0.5f; // Remapping normals\n"
