@@ -13,6 +13,7 @@ struct ApplicationSettings
 	bool display_denoiser_albedo = false, display_denoiser_normals = false;
 	// How many samples were denoised by the last denoiser call
 	int last_denoised_sample_count;
+	bool denoise_at_target_sample_count = false;
 
 	// How much to divide the translation distance by when the mouse
 	// has been dragged over the window to move the camera

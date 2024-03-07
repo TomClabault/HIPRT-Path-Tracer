@@ -12,6 +12,7 @@
 
 // TODO Code Organization:
 // 
+// - remove app_window.m_frame_number and only the one from m_renderer.render_settings
 // - overload +=, *=, ... operators for Color most notably on the GPU side
 // - use constructors instead of struct {} syntax in gpu code
 // - rename HIPRT_xorshift32 generator without underscores for consistency
@@ -24,8 +25,7 @@
 
 
 // TODO Features:
-// 
-// TODO IMMEDIATE: denoising taking a long time when doing it every so often ?
+// TODO IMMEDIATE: behavior of denoise only at target sample count
 // - lower resolution while moving camera for smooth movement + 1 spp
 // - aspect ratio issue on CPU or GPU ?
 // - display feedback for 3 seconds after dumping a screenshot to disk
@@ -559,18 +559,31 @@ void AppWindow::run()
 
 		if (m_renderer.get_render_settings().enable_denoising)
 		{
-			if ((m_renderer.get_render_settings().sample_number % m_renderer.get_render_settings().denoiser_sample_skip) == 0)
+			if (m_application_settings.denoise_at_target_sample_count)
 			{
-				m_denoiser.denoise();
-				m_application_settings.last_denoised_sample_count = m_renderer.get_render_settings().sample_number;
+				if (m_sample_number == m_application_settings.stop_render_at)
+				{
+					m_denoiser.denoise();
+					display(m_denoiser.get_denoised_data_pointer());
+				}
+				else
+					display(m_renderer.get_color_framebuffer());
 			}
+			else
+			{
+				if ((m_renderer.get_render_settings().sample_number % m_renderer.get_render_settings().denoiser_sample_skip) == 0)
+				{
+					m_denoiser.denoise();
+					m_application_settings.last_denoised_sample_count = m_renderer.get_render_settings().sample_number;
+				}
 			
-			DisplaySettings settings;
-			settings.display_normals = false;
-			settings.do_tonemapping = true;
-			settings.scale_by_frame_number = true;
-			settings.sample_count_override = m_application_settings.last_denoised_sample_count;
-			display(m_denoiser.get_denoised_data_pointer(), settings);
+				DisplaySettings settings;
+				settings.display_normals = false;
+				settings.do_tonemapping = true;
+				settings.scale_by_frame_number = true;
+				settings.sample_count_override = m_application_settings.last_denoised_sample_count;
+				display(m_denoiser.get_denoised_data_pointer(), settings);
+			}
 		}
 		else
 		{
@@ -712,7 +725,15 @@ void AppWindow::display_imgui()
 	ImGui::Checkbox("Display Denoiser Normals", &m_application_settings.display_denoiser_normals);
 
 	ImGui::Checkbox("Enable denoiser", &m_renderer.get_render_settings().enable_denoising);
-	ImGui::SliderInt("Denoise Sample Skip", &m_renderer.get_render_settings().denoiser_sample_skip, 1, 128);
+	ImGui::Checkbox("Only Denoise at Target Sample Count", &m_application_settings.denoise_at_target_sample_count);
+	if (m_application_settings.denoise_at_target_sample_count)
+	{
+		ImGui::BeginDisabled();
+		ImGui::SliderInt("Denoise Sample Skip", &m_renderer.get_render_settings().denoiser_sample_skip, 1, 128);
+		ImGui::EndDisabled();
+	}
+	else
+		ImGui::SliderInt("Denoise Sample Skip", &m_renderer.get_render_settings().denoiser_sample_skip, 1, 128);
 
 	ImGui::Separator();
 
