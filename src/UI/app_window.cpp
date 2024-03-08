@@ -21,11 +21,13 @@
 // - instead of duplicating structures (RendererMaterial + RendererMaterial, BRDF + BRDF, ...), it would be better to create a folder
 //		HostDeviceCommon containing the structures that are used both by the GPU and CPU renderer
 // - imgui controller to put all the imgui code in one class
+// - put mouse / keyboard code in an interactor
+// - when the mouse / keyvoard code will in an interactor, have the is_interacting boloean in this interactor class
+//		and poll it from the main loop to check whether we need to render the frame at a lower resolution or not
 
 
 
 // TODO Features:
-// TODO IMMEDIATE: behavior of denoise only at target sample count
 // - lower resolution while moving camera for smooth movement + 1 spp
 // - aspect ratio issue on CPU or GPU ?
 // - display feedback for 3 seconds after dumping a screenshot to disk
@@ -35,15 +37,11 @@
 // - enable denoising with all combinations of beauty/normal/albedo via imgui
 // - show denoised normals / denoised albedo when ticking the Show Normals / Show albedo checkboxes in Imgui to visualize the albedo/normals used by the denoiser
 // - uniform float3 type to use everywhere instead of Vector and hiprtFloat3
-// - checkbox to denoise only when sample target is reach
-// - bug with fresnel being black on the pbrt dragon ?
 // - add dropdowns to imgui instead of separators to group up settings
 // - cutout filters
 // - write scene details to imgui (nb vertices, triangles, ...)
 // - check perf of aiPostProcessSteps::aiProcess_ImproveCacheLocality
 // - ImGui to choose the flags at runtime and be able to compare the performance
-// - try to use the denoising buffer directly in the GPU instead of having to copy from gpu to denoising buffer everytime
-// - use memcpy for efficiency in the denoiser to copy
 // - light sampling: go through transparent surfaces instead of considering them opaque
 // - BVH compaction + imgui checkbox
 // - shader cache
@@ -80,6 +78,27 @@ void glfw_window_resized_callback(GLFWwindow* window, int width, int height)
 	else
 		// We've stored a pointer to the AppWindow in the "WindowUserPointer" of glfw
 		reinterpret_cast<AppWindow*>(glfwGetWindowUserPointer(window))->resize_frame(width, height);
+}
+
+static bool interacting_left_button = false, interacting_right_button = false;
+void glfw_mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+{
+	bool imgui_wants_mouse = ImGui::GetIO().WantCaptureMouse;
+
+	switch (button)
+	{
+	case GLFW_MOUSE_BUTTON_LEFT:
+		interacting_left_button = (action == GLFW_PRESS) && !imgui_wants_mouse;
+
+		break;
+
+	case GLFW_MOUSE_BUTTON_RIGHT:
+		interacting_right_button = (action == GLFW_PRESS) && !imgui_wants_mouse;
+
+		break;
+	}
+	
+	reinterpret_cast<AppWindow*>(glfwGetWindowUserPointer(window))->set_interacting(interacting_left_button || interacting_right_button);
 }
 
 void glfw_mouse_cursor_callback(GLFWwindow* window, double xpos, double ypos)
@@ -248,6 +267,7 @@ AppWindow::AppWindow(int width, int height) : m_viewport_width(width), m_viewpor
 	glfwSetWindowUserPointer(m_window, this);
 	glfwSetWindowSizeCallback(m_window, glfw_window_resized_callback);
 	glfwSetCursorPosCallback(m_window, glfw_mouse_cursor_callback);
+	glfwSetMouseButtonCallback(m_window, glfw_mouse_button_callback);
 	glfwSetKeyCallback(m_window, glfw_key_callback);
 	glfwSetScrollCallback(m_window, glfw_mouse_scroll_callback);
 	glfwSwapInterval(1);
@@ -360,6 +380,15 @@ int AppWindow::get_height()
 	return m_viewport_height;
 }
 
+void AppWindow::set_interacting(bool is_interacting)
+{
+	// The user just released the camera and we were rendering at low resolution
+	if (!is_interacting && m_renderer.get_render_settings().render_low_resolution)
+		reset_sample_number();
+
+	m_renderer.get_render_settings().render_low_resolution = is_interacting;
+}
+
 void AppWindow::setup_display_program()
 {
 	// Creating the shaders for displaying the path traced render
@@ -435,7 +464,6 @@ void AppWindow::setup_display_program()
 		glDeleteShader(m_fragment_shader); // Don't leak the shader.
 		std::exit(-1);
 	}
-
 
 	m_display_program = glCreateProgram();
 	glAttachShader(m_display_program, m_vertex_shader);

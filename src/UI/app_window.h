@@ -38,6 +38,7 @@ public:
 
 	int get_width();
 	int get_height();
+	void set_interacting(bool is_interacting);
 
 	Renderer& get_renderer();
 	void setup_display_program();
@@ -68,6 +69,8 @@ private:
 	int m_viewport_width, m_viewport_height;
 	int m_sample_number = 0;
 	std::pair<float, float> m_cursor_position;
+	bool m_interacting;
+
 	std::chrono::high_resolution_clock::time_point m_startRenderTime;
 
 	ApplicationSettings m_application_settings;
@@ -90,20 +93,6 @@ template <typename T>
 void AppWindow::display(const OrochiBuffer<T>& orochi_buffer, const AppWindow::DisplaySettings& display_settings)
 {	
 	display(orochi_buffer.download_pixels().data(), display_settings);
-	//setup_display_program(m_display_program, display_settings);
-
-	//// TODO
-	//// This is very sub optimal and should absolutely be replaced by a 
-	//// buffer that is shared between hiprt and opengl
-	//// Unfortunately, this is unavailable in Orochi so we would have
-	//// to switch to HIP (or CUDA but it doesn't support AMD) to get access
-	//// to the hipGraphicsMapResources() functions family
-	//std::vector<T> pixels_data = orochi_buffer.download_pixels();
-
-	//glBindTexture(GL_TEXTURE_2D, m_display_texture);
-	//glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_renderer.m_render_width, m_renderer.m_render_height, GL_RGB, GL_FLOAT, pixels_data.data());
-
-	//glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
 #endif

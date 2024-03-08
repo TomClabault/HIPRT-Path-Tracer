@@ -537,12 +537,19 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
     if (index >= res.x * res.y)
         return;
 
+    if (render_data.render_settings.render_low_resolution)
+    {
+        // Reducing the number of bounces to 5
+        render_data.render_settings.nb_bounces = 5;
+
+        // If rendering at low resolution, only one pixel out of 8x8 will be rendered
+        if (x & 0b111 || y & 0b111)
+            return;
+    }
+
     if (render_data.render_settings.sample_number == 0)
     {
-        render_data.pixels[index * 3 + 0] = 0.0f;
-        render_data.pixels[index * 3 + 1] = 0.0f;
-        render_data.pixels[index * 3 + 2] = 0.0f;
-
+        render_data.pixels[index] = Color(0.0f);
         render_data.denoiser_normals[index] = hiprtFloat3(1.0f, 1.0f, 1.0f);
         render_data.denoiser_albedo[index] = Color(0.0f, 0.0f, 0.0f);
     }
@@ -656,13 +663,38 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
     }
 
     render_data.pixels[index] += final_color;
+    if (render_data.render_settings.render_low_resolution)
+    {
+        // Copying the pixel we just rendered to the neighbors
+        for (int _y = 0; _y < 8; _y++)
+        {
+            for (int _x = 0; _x < 8; _x++)
+            {
+                int _index = _y * res.x + _x + index;
+                if (_y == 0 && _x == 0)
+                    // This is ourselves
+                    continue;
+                else if (_index >= res.x * res.y)
+                    // Outside of the buffer
+                    return;
+                else
+                    // Actually a valid pixel
+                    render_data.pixels[_index] = render_data.pixels[index];
+            }
+        }
+    }
+    else
+    {
+        // Handling denoiser's albedo and normals AOVs    
+        // We don't need those when rendering at low resolution
+        // hence why this is the else branch
+        denoiser_albedo /= (float)render_data.render_settings.samples_per_frame;
+        denoiser_normal /= (float)render_data.render_settings.samples_per_frame;
+        render_data.denoiser_albedo[index] = (render_data.denoiser_albedo[index] * render_data.render_settings.frame_number + denoiser_albedo) / (render_data.render_settings.frame_number + 1.0f);
 
-    denoiser_albedo /= (float)render_data.render_settings.samples_per_frame;
-    denoiser_normal /= (float)render_data.render_settings.samples_per_frame;
-    render_data.denoiser_albedo[index] = (render_data.denoiser_albedo[index] * render_data.render_settings.frame_number + denoiser_albedo) / (render_data.render_settings.frame_number + 1.0f);
-
-    hiprtFloat3 accumulated_normal = (render_data.denoiser_normals[index] * render_data.render_settings.frame_number + denoiser_normal) / (render_data.render_settings.frame_number + 1.0f);
-    float normal_length = length(accumulated_normal);
-    if (normal_length != 0.0f)
-        render_data.denoiser_normals[index] = normalize(accumulated_normal);
+        hiprtFloat3 accumulated_normal = (render_data.denoiser_normals[index] * render_data.render_settings.frame_number + denoiser_normal) / (render_data.render_settings.frame_number + 1.0f);
+        float normal_length = length(accumulated_normal);
+        if (normal_length != 0.0f)
+            render_data.denoiser_normals[index] = normalize(accumulated_normal);
+    }
 }

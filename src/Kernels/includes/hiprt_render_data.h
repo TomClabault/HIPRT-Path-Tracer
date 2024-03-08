@@ -15,6 +15,8 @@ struct HIPRTRenderSettings
 
 	int samples_per_frame = 1;
 	int nb_bounces = 8;
+
+	bool render_low_resolution = false;
 };
 
 /*
