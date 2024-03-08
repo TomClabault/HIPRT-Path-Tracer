@@ -78,6 +78,7 @@ HIPRTRenderData Renderer::get_render_data(const OpenImageDenoiser& denoiser)
 	render_data.render_settings.sample_number = m_render_settings.sample_number;
 	render_data.render_settings.samples_per_frame = m_render_settings.samples_per_frame;
 	render_data.render_settings.nb_bounces = m_render_settings.nb_bounces;
+	render_data.render_settings.render_low_resolution = m_render_settings.render_low_resolution;
 
 	return render_data;
 }

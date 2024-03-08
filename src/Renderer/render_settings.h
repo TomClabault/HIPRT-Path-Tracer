@@ -23,6 +23,10 @@ struct RenderSettings
 
 	float render_resolution_scale = 1.0f;
 
+	// Is true, this means that the user is moving the camera and we're going to
+	// render the image at a much lower resolution to allow for smooth camera
+	// movements
+	bool render_low_resolution = false;
 
 	bool enable_denoising = false; // TOOD move to application_settings
 	int denoiser_sample_skip = 1;
