@@ -581,7 +581,6 @@ void AppWindow::run()
 		if (!(m_application_settings.stop_render_at != 0 && m_sample_number + 1 > m_application_settings.stop_render_at))
 		{
 			m_renderer.render(m_denoiser);
-			increment_sample_number();
 			m_renderer.get_render_settings().frame_number++;
 		}
 
@@ -622,6 +621,9 @@ void AppWindow::run()
 			else
 				display(m_renderer.get_color_framebuffer());
 		}
+		
+		increment_sample_number();
+
 		display_imgui();
 
 		glfwSwapBuffers(m_window);
