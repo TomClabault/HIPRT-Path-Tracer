@@ -573,10 +573,13 @@ void AppWindow::run()
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
+		bool image_rendered = false;
 		if (!(m_application_settings.stop_render_at != 0 && m_render_settings.sample_number + 1 > m_application_settings.stop_render_at))
 		{
 			m_renderer.render(m_denoiser);
 			m_render_settings.frame_number++;
+
+			image_rendered = true;
 		}
 
 		if (m_render_settings.enable_denoising)
@@ -617,7 +620,12 @@ void AppWindow::run()
 				display(m_renderer.get_color_framebuffer());
 		}
 		
-		increment_sample_number();
+		if (image_rendered)
+			// Only incrementing if we actually rendered an image
+			// This is useful when we've reached the target sample count
+			// so we're not rendering anymore but without this if, we
+			// would still be incrementing the sample count
+			increment_sample_number();
 
 		display_imgui();
 
@@ -649,6 +657,8 @@ void AppWindow::display(const void* data, const AppWindow::DisplaySettings& disp
 void AppWindow::display_imgui()
 {
 	ImGuiIO& io = ImGui::GetIO();
+
+	ImGui::ShowDemoWindow();
 
 	ImGui::Begin("Settings");
 
@@ -746,10 +756,10 @@ void AppWindow::display_imgui()
 		reset_sample_number();
 	}
 
+	ImGui::Checkbox("Enable denoiser", &m_render_settings.enable_denoising);
 	ImGui::Checkbox("Display Denoiser Albedo", &m_application_settings.display_denoiser_albedo);
 	ImGui::Checkbox("Display Denoiser Normals", &m_application_settings.display_denoiser_normals);
 
-	ImGui::Checkbox("Enable denoiser", &m_render_settings.enable_denoising);
 	ImGui::Checkbox("Only Denoise at Target Sample Count", &m_application_settings.denoise_at_target_sample_count);
 	if (m_application_settings.denoise_at_target_sample_count)
 	{
