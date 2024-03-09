@@ -12,10 +12,7 @@
 
 // TODO bugs
 //
-// - until now we were denoising the normals and the albedo in place which means that the path tracer
-//		was then accumulating noisy normals / albedo on top of a denoised buffer. This is a bad mix
-//		and proper code should be written to have a denoised normals and denoised albedo buffer instead
-//		of denoising in place
+// - too bright when samples per pixel > 1
 // - aspect ratio issue on CPU or GPU ?
 // - fix 1 off sample count on Imgui interface. When stopping at 10 samples, ImGui displays 11
 
