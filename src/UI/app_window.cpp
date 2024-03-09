@@ -612,12 +612,21 @@ void AppWindow::run()
 		}
 		else
 		{
-			if (m_application_settings.display_denoiser_albedo)
-				display(m_renderer.get_denoiser_albedo_buffer(), { true, false, false });
-			else if (m_application_settings.display_denoiser_normals)
+			switch (m_application_settings.debug_display_denoiser)
+			{
+			case DenoiserDebugView::DISPLAY_NORMALS:
 				display(m_renderer.get_denoiser_normals_buffer(), {true, false, false });
-			else
+				break;
+
+			case DenoiserDebugView::DISPLAY_ALBEDO:
+				display(m_renderer.get_denoiser_albedo_buffer(), { true, false, false });
+				break;
+
+			case DenoiserDebugView::NONE:
+			default:
 				display(m_renderer.get_color_framebuffer());
+				break;
+			}
 		}
 		
 		if (image_rendered)
@@ -669,7 +678,7 @@ void AppWindow::show_render_settings_panel()
 	if (m_render_settings.keep_same_resolution) // TODO Put this setting in application settings ?
 		ImGui::BeginDisabled();
 	float resolution_scaling_backup = m_render_settings.render_resolution_scale;
-	if (ImGui::InputFloat("Render resolution scale", &m_render_settings.render_resolution_scale))
+	if (ImGui::InputFloat("Resolution scale", &m_render_settings.render_resolution_scale))
 	{
 		float& resolution_scale = m_render_settings.render_resolution_scale;
 		if (resolution_scale <= 0)
@@ -704,6 +713,8 @@ void AppWindow::show_render_settings_panel()
 
 		reset_sample_number();
 	}
+
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 }
 
 void AppWindow::show_denoiser_panel()
@@ -712,8 +723,6 @@ void AppWindow::show_denoiser_panel()
 		return;
 
 	ImGui::Checkbox("Enable denoiser", &m_render_settings.enable_denoising);
-	ImGui::Checkbox("Display Denoiser Albedo", &m_application_settings.display_denoiser_albedo);
-	ImGui::Checkbox("Display Denoiser Normals", &m_application_settings.display_denoiser_normals);
 
 	ImGui::Checkbox("Only Denoise at Target Sample Count", &m_application_settings.denoise_at_target_sample_count);
 	if (m_application_settings.denoise_at_target_sample_count)
@@ -724,6 +733,11 @@ void AppWindow::show_denoiser_panel()
 	}
 	else
 		ImGui::SliderInt("Denoise Sample Skip", &m_render_settings.denoiser_sample_skip, 1, 128);
+
+	const char* items[] = { "None", "Display normals", "Display denoised normals", "Display albedo", "Display denoised albedo" };
+	ImGui::Combo("Debug view", (int*)(&m_application_settings.debug_display_denoiser), items, IM_ARRAYSIZE(items));
+
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 }
 
 void AppWindow::show_post_process_panel()
@@ -735,6 +749,8 @@ void AppWindow::show_post_process_panel()
 		glUniform1f(glGetUniformLocation(m_display_program, "u_gamma"), m_application_settings.tone_mapping_gamma);
 	if (ImGui::InputFloat("Exposure", &m_application_settings.tone_mapping_exposure))
 		glUniform1f(glGetUniformLocation(m_display_program, "u_exposure"), m_application_settings.tone_mapping_exposure);
+
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 }
 
 void AppWindow::display_imgui()
@@ -792,6 +808,8 @@ void AppWindow::display_imgui()
 
 	
 	ImGui::Separator();
+
+	ImGui::PushItemWidth(233);
 
 	show_render_settings_panel();
 	show_denoiser_panel();

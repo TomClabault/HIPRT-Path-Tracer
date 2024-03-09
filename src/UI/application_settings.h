@@ -4,13 +4,15 @@
 #include <string>
 #include <vector>
 
+#include "Renderer/denoiser_debug_view.h"
+
 struct ApplicationSettings
 {
 	int selected_kernel = 0;
 	std::vector<std::string> kernel_files = { "Kernels/path_tracer_kernel.h", "Kernels/normals_kernel.h" };
 	std::vector<std::string> kernel_functions = { "PathTracerKernel", "NormalsKernel"};
 
-	bool display_denoiser_albedo = false, display_denoiser_normals = false;
+	DenoiserDebugView debug_display_denoiser = DenoiserDebugView::NONE;
 	// How many samples were denoised by the last denoiser call
 	int last_denoised_sample_count;
 	bool denoise_at_target_sample_count = false;
