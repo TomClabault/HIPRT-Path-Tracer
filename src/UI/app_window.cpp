@@ -12,7 +12,6 @@
 
 // TODO bugs
 //
-// - denoised buffer configuration errors
 // - until now we were denoising the normals and the albedo in place which means that the path tracer
 //		was then accumulating noisy normals / albedo on top of a denoised buffer. This is a bad mix
 //		and proper code should be written to have a denoised normals and denoised albedo buffer instead
