@@ -67,7 +67,6 @@ public:
 
 private:
 	int m_viewport_width, m_viewport_height;
-	int m_sample_number = 0;
 	std::pair<float, float> m_cursor_position;
 	bool m_interacting;
 
@@ -76,6 +75,7 @@ private:
 	ApplicationSettings m_application_settings;
 
 	Renderer m_renderer;
+	RenderSettings& m_render_settings;
 	OpenImageDenoiser m_denoiser;
 
 	GLuint m_display_program;
