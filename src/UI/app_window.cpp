@@ -654,6 +654,89 @@ void AppWindow::display(const void* data, const AppWindow::DisplaySettings& disp
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
+void AppWindow::show_render_settings_panel()
+{
+	if (!ImGui::CollapsingHeader("Render Settings"))
+		return;
+
+	if (ImGui::Combo("Render Kernel", &m_application_settings.selected_kernel, "Full Path Tracer\0Normals Visualisation\0\0"))
+	{
+		m_renderer.compile_trace_kernel(m_application_settings.kernel_files[m_application_settings.selected_kernel].c_str(), m_application_settings.kernel_functions[m_application_settings.selected_kernel].c_str());
+
+		reset_sample_number();
+	}
+
+	if (m_render_settings.keep_same_resolution) // TODO Put this setting in application settings ?
+		ImGui::BeginDisabled();
+	float resolution_scaling_backup = m_render_settings.render_resolution_scale;
+	if (ImGui::InputFloat("Render resolution scale", &m_render_settings.render_resolution_scale))
+	{
+		float& resolution_scale = m_render_settings.render_resolution_scale;
+		if (resolution_scale <= 0)
+			resolution_scale = resolution_scaling_backup;
+
+		change_resolution_scaling(resolution_scale);
+		reset_sample_number();
+	}
+	if (m_render_settings.keep_same_resolution)
+		ImGui::EndDisabled();
+
+	// TODO for the denoising with normals / albedo, add imgui buttons to display normals / albedo buffer
+	if (ImGui::Checkbox("Keep same render resolution", &m_render_settings.keep_same_resolution))
+	{
+		if (m_render_settings.keep_same_resolution)
+		{
+			// Remembering the width and height we need to target
+			m_render_settings.target_width = m_renderer.m_render_width;
+			m_render_settings.target_height = m_renderer.m_render_height;
+		}
+	}
+
+	ImGui::Separator();
+
+	if (ImGui::InputInt("Stop render at sample count", &m_application_settings.stop_render_at))
+		m_application_settings.stop_render_at = std::max(m_application_settings.stop_render_at, 0);
+	ImGui::InputInt("Samples per frame", &m_render_settings.samples_per_frame);
+	if (ImGui::InputInt("Max bounces", &m_render_settings.nb_bounces))
+	{
+		// Clamping to 0 in case the user input a negative number of bounces	
+		m_render_settings.nb_bounces = std::max(m_render_settings.nb_bounces, 0);
+
+		reset_sample_number();
+	}
+}
+
+void AppWindow::show_denoiser_panel()
+{
+	if (!ImGui::CollapsingHeader("Denoiser"))
+		return;
+
+	ImGui::Checkbox("Enable denoiser", &m_render_settings.enable_denoising);
+	ImGui::Checkbox("Display Denoiser Albedo", &m_application_settings.display_denoiser_albedo);
+	ImGui::Checkbox("Display Denoiser Normals", &m_application_settings.display_denoiser_normals);
+
+	ImGui::Checkbox("Only Denoise at Target Sample Count", &m_application_settings.denoise_at_target_sample_count);
+	if (m_application_settings.denoise_at_target_sample_count)
+	{
+		ImGui::BeginDisabled();
+		ImGui::SliderInt("Denoise Sample Skip", &m_render_settings.denoiser_sample_skip, 1, 128);
+		ImGui::EndDisabled();
+	}
+	else
+		ImGui::SliderInt("Denoise Sample Skip", &m_render_settings.denoiser_sample_skip, 1, 128);
+}
+
+void AppWindow::show_post_process_panel()
+{
+	if (!ImGui::CollapsingHeader("Post-processing"))
+		return;
+
+	if (ImGui::InputFloat("Gamma", &m_application_settings.tone_mapping_gamma))
+		glUniform1f(glGetUniformLocation(m_display_program, "u_gamma"), m_application_settings.tone_mapping_gamma);
+	if (ImGui::InputFloat("Exposure", &m_application_settings.tone_mapping_exposure))
+		glUniform1f(glGetUniformLocation(m_display_program, "u_exposure"), m_application_settings.tone_mapping_exposure);
+}
+
 void AppWindow::display_imgui()
 {
 	ImGuiIO& io = ImGui::GetIO();
@@ -710,74 +793,9 @@ void AppWindow::display_imgui()
 	
 	ImGui::Separator();
 
-	if (ImGui::Combo("Render Kernel", &m_application_settings.selected_kernel, "Full Path Tracer\0Normals Visualisation\0\0"))
-	{
-		m_renderer.compile_trace_kernel(m_application_settings.kernel_files[m_application_settings.selected_kernel].c_str(), m_application_settings.kernel_functions[m_application_settings.selected_kernel].c_str());
-
-		reset_sample_number();
-	}
-
-	if (m_render_settings.keep_same_resolution) // TODO Put this setting in application settings ?
-		ImGui::BeginDisabled();
-	float resolution_scaling_backup = m_render_settings.render_resolution_scale;
-	if (ImGui::InputFloat("Render resolution scale", &m_render_settings.render_resolution_scale))
-	{
-		float& resolution_scale = m_render_settings.render_resolution_scale;
-		if (resolution_scale <= 0)
-			resolution_scale = resolution_scaling_backup;
-
-		change_resolution_scaling(resolution_scale);
-		reset_sample_number();
-	}
-	if (m_render_settings.keep_same_resolution)
-		ImGui::EndDisabled();
-
-	// TODO for the denoising with normals / albedo, add imgui buttons to display normals / albedo buffer
-	if (ImGui::Checkbox("Keep same render resolution", &m_render_settings.keep_same_resolution))
-	{
-		if (m_render_settings.keep_same_resolution)
-		{
-			// Remembering the width and height we need to target
-			m_render_settings.target_width = m_renderer.m_render_width;
-			m_render_settings.target_height = m_renderer.m_render_height;
-		}
-	}
-	
-	ImGui::Separator();
-
-	if (ImGui::InputInt("Stop render at sample count", &m_application_settings.stop_render_at))
-		m_application_settings.stop_render_at = std::max(m_application_settings.stop_render_at, 0);
-	ImGui::InputInt("Samples per frame", &m_render_settings.samples_per_frame);
-	if (ImGui::InputInt("Max bounces", &m_render_settings.nb_bounces))
-	{
-		// Clamping to 0 in case the user input a negative number of bounces	
-		m_render_settings.nb_bounces = std::max(m_render_settings.nb_bounces, 0);
-
-		reset_sample_number();
-	}
-
-	ImGui::Checkbox("Enable denoiser", &m_render_settings.enable_denoising);
-	ImGui::Checkbox("Display Denoiser Albedo", &m_application_settings.display_denoiser_albedo);
-	ImGui::Checkbox("Display Denoiser Normals", &m_application_settings.display_denoiser_normals);
-
-	ImGui::Checkbox("Only Denoise at Target Sample Count", &m_application_settings.denoise_at_target_sample_count);
-	if (m_application_settings.denoise_at_target_sample_count)
-	{
-		ImGui::BeginDisabled();
-		ImGui::SliderInt("Denoise Sample Skip", &m_render_settings.denoiser_sample_skip, 1, 128);
-		ImGui::EndDisabled();
-	}
-	else
-		ImGui::SliderInt("Denoise Sample Skip", &m_render_settings.denoiser_sample_skip, 1, 128);
-
-	ImGui::Separator();
-
-
-
-	if (ImGui::InputFloat("Gamma", &m_application_settings.tone_mapping_gamma))
-		glUniform1f(glGetUniformLocation(m_display_program, "u_gamma"), m_application_settings.tone_mapping_gamma);
-	if (ImGui::InputFloat("Exposure", &m_application_settings.tone_mapping_exposure))
-		glUniform1f(glGetUniformLocation(m_display_program, "u_exposure"), m_application_settings.tone_mapping_exposure);
+	show_render_settings_panel();
+	show_denoiser_panel();
+	show_post_process_panel();
 
 	ImGui::End();
 
