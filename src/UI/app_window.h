@@ -60,6 +60,9 @@ public:
 	template <typename T>
 	void display(const OrochiBuffer<T>& orochi_buffer, const AppWindow::DisplaySettings& display_settings = { false, true, true, -1 });
 
+	void show_render_settings_panel();
+	void show_denoiser_panel();
+	void show_post_process_panel();
 	void display_imgui();
 
 	void run();
