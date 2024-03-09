@@ -45,6 +45,7 @@ void OpenImageDenoiser::set_buffers(Color* color_buffer, int width, int height, 
 void OpenImageDenoiser::set_buffers(Color* color_buffer, hiprtFloat3* normals_buffer, int width, int height)
 {
     m_normals_buffer = normals_buffer;
+    m_denoised_normals_buffer = m_device.newBuffer(width * height * sizeof(hiprtFloat3));
 
     set_buffers(color_buffer, width, height, true, false);
     create_AOV_filters();
@@ -53,6 +54,7 @@ void OpenImageDenoiser::set_buffers(Color* color_buffer, hiprtFloat3* normals_bu
 void OpenImageDenoiser::set_buffers(Color* color_buffer, Color* albedo_buffer, int width, int height)
 {
     m_albedo_buffer = albedo_buffer;
+    m_denoised_albedo_buffer = m_device.newBuffer(width * height * sizeof(Color));
 
     set_buffers(color_buffer, width, height, false, true);
     create_AOV_filters();
@@ -63,16 +65,19 @@ void OpenImageDenoiser::set_buffers(Color* color_buffer, hiprtFloat3* normals_bu
     m_albedo_buffer = albedo_buffer;
     m_normals_buffer = normals_buffer;
 
+    m_denoised_albedo_buffer = m_device.newBuffer(width * height * sizeof(Color));
+    m_denoised_normals_buffer = m_device.newBuffer(width * height * sizeof(hiprtFloat3));
+
     set_buffers(color_buffer, width, height, true, true);
     create_AOV_filters();
 }
 
-bool* OpenImageDenoiser::get_denoise_albedo_pointer()
+bool* OpenImageDenoiser::get_denoise_albedo_var()
 {
     return &m_denoise_albedo;
 }
 
-bool* OpenImageDenoiser::get_denoise_normals_pointer()
+bool* OpenImageDenoiser::get_denoise_normals_var()
 {
     return &m_denoise_normals;
 }
@@ -153,6 +158,16 @@ void* OpenImageDenoiser::get_denoised_data_pointer()
     return m_denoised_color_buffer.getData();
 }
 
+void* OpenImageDenoiser::get_denoised_albedo_pointer()
+{
+    return m_denoised_albedo_buffer.getData();
+}
+
+void* OpenImageDenoiser::get_denoised_normals_pointer()
+{
+    return m_denoised_normals_buffer.getData();
+}
+
 void OpenImageDenoiser::denoise()
 {
     // Fill the input image buffers
@@ -166,4 +181,18 @@ void OpenImageDenoiser::denoise()
     const char* errorMessage;
     if (m_device.getError(errorMessage) != oidn::Error::None)
         std::cout << "Error: " << errorMessage << std::endl;
+}
+
+void OpenImageDenoiser::denoise_normals()
+{
+    if (m_use_normals && m_denoise_normals)
+        // This means that everything is setup for denoising
+        m_normals_filter.execute();
+}
+
+void OpenImageDenoiser::denoise_albedo()
+{
+    if (m_use_albedo && m_denoise_albedo)
+        // This means that everything is setup for denoising
+        m_albedo_filter.execute();
 }

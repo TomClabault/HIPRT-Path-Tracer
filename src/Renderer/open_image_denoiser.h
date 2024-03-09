@@ -15,13 +15,17 @@ public:
 	void set_buffers(Color* color_buffer, Color* albedo_buffer, int width, int height);
 	void set_buffers(Color* color_buffer, hiprtFloat3* normals_buffer, Color* albedo_buffer, int width, int height);
 
-	bool* get_denoise_albedo_pointer();
-	bool* get_denoise_normals_pointer();
+	bool* get_denoise_albedo_var();
+	bool* get_denoise_normals_var();
 
 	std::vector<Color> get_denoised_data();
 	void* get_denoised_data_pointer();
+	void* get_denoised_normals_pointer();
+	void* get_denoised_albedo_pointer();
 
 	void denoise();
+	void denoise_albedo();
+	void denoise_normals();
 
 private:
 	void set_buffers(Color* color_buffer, int width, int height, bool override_use_normals, bool override_use_albedo);

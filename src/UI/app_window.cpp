@@ -10,6 +10,18 @@
 
 // test performance when reducing number of triangles of the P1
 
+// TODO bugs
+//
+// - denoised buffer configuration errors
+// - until now we were denoising the normals and the albedo in place which means that the path tracer
+//		was then accumulating noisy normals / albedo on top of a denoised buffer. This is a bad mix
+//		and proper code should be written to have a denoised normals and denoised albedo buffer instead
+//		of denoising in place
+// - aspect ratio issue on CPU or GPU ?
+// - fix 1 off sample count on Imgui interface. When stopping at 10 samples, ImGui displays 11
+
+
+
 // TODO Code Organization:
 // 
 // - overload +=, *=, ... operators for Color most notably on the GPU side
@@ -27,20 +39,16 @@
 
 
 // TODO Features:
-// - lower resolution while moving camera for smooth movement + 1 spp
-// - aspect ratio issue on CPU or GPU ?
 // - display feedback for 3 seconds after dumping a screenshot to disk
 // - choose denoiser quality in imgui
-// - fix 1 off sample count on Imgui interface. When stopping at 10 samples, ImGui displays 11
 // - try async buffer copy for the denoiser (maybe run a kernel to generate normals and another to generate albedo buffer before the path tracing kernel to be able to async copy while the path tracing kernel is running?)
 // - enable denoising with all combinations of beauty/normal/albedo via imgui
 // - show denoised normals / denoised albedo when ticking the Show Normals / Show albedo checkboxes in Imgui to visualize the albedo/normals used by the denoiser
 // - uniform float3 type to use everywhere instead of Vector and hiprtFloat3
-// - add dropdowns to imgui instead of separators to group up settings
 // - cutout filters
 // - write scene details to imgui (nb vertices, triangles, ...)
 // - check perf of aiPostProcessSteps::aiProcess_ImproveCacheLocality
-// - ImGui to choose the flags at runtime and be able to compare the performance
+// - ImGui to choose the BVH flags at runtime and be able to compare the performance
 // - light sampling: go through transparent surfaces instead of considering them opaque
 // - BVH compaction + imgui checkbox
 // - shader cache
@@ -55,7 +63,6 @@
 // - compute shader for tone mapping images ? unless transfering memory to open gl is too expensive
 // - use defines insead of IFs in the kernel code and recompile kernel everytime (for some options at least)
 // - stuff to multithread when loading everything ? (scene, BVH, textures, ...)
-// - don't reset frame number on resize when keep same render resolution is checked
 
 
 void wait_and_exit(const char* message)
@@ -618,8 +625,18 @@ void AppWindow::run()
 				display(m_renderer.get_denoiser_normals_buffer(), {true, false, false });
 				break;
 
+			case DenoiserDebugView::DISPLAY_DENOISED_NORMALS:
+				m_denoiser.denoise_normals();
+				display(m_denoiser.get_denoised_normals_pointer(), {true, false, false});
+				break;
+
 			case DenoiserDebugView::DISPLAY_ALBEDO:
-				display(m_renderer.get_denoiser_albedo_buffer(), { true, false, false });
+				display(m_renderer.get_denoiser_albedo_buffer(), {false, false, false});
+				break;
+
+			case DenoiserDebugView::DISPLAY_DENOISED_ALBEDO:
+				m_denoiser.denoise_albedo();
+				display(m_denoiser.get_denoised_albedo_pointer(), { false, false, false });
 				break;
 
 			case DenoiserDebugView::NONE:
