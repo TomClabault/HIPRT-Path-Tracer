@@ -74,11 +74,11 @@ HIPRTRenderData Renderer::get_render_data(const OpenImageDenoiser& denoiser)
 	render_data.emissive_triangles_count = m_scene.get()->emissive_triangles_count;
 	render_data.emissive_triangles_indices = reinterpret_cast<int*>(m_scene.get()->emissive_triangles_indices);
 
-	render_data.render_settings.frame_number = m_render_settings.frame_number;
-	render_data.render_settings.sample_number = m_render_settings.sample_number;
-	render_data.render_settings.samples_per_frame = m_render_settings.samples_per_frame;
-	render_data.render_settings.nb_bounces = m_render_settings.nb_bounces;
-	render_data.render_settings.render_low_resolution = m_render_settings.render_low_resolution;
+	render_data.m_render_settings.frame_number = m_render_settings.frame_number;
+	render_data.m_render_settings.sample_number = m_render_settings.sample_number;
+	render_data.m_render_settings.samples_per_frame = m_render_settings.samples_per_frame;
+	render_data.m_render_settings.nb_bounces = m_render_settings.nb_bounces;
+	render_data.m_render_settings.render_low_resolution = m_render_settings.render_low_resolution;
 
 	return render_data;
 }

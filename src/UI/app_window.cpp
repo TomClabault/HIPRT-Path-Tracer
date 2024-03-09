@@ -12,7 +12,6 @@
 
 // TODO Code Organization:
 // 
-// - remove app_window.m_frame_number and only the one from m_renderer.render_settings
 // - overload +=, *=, ... operators for Color most notably on the GPU side
 // - use constructors instead of struct {} syntax in gpu code
 // - rename HIPRT_xorshift32 generator without underscores for consistency
@@ -248,13 +247,13 @@ void APIENTRY AppWindow::gl_debug_output_callback(GLenum source,
 	std::cout << std::endl;
 }
 
-AppWindow::AppWindow(int width, int height) : m_viewport_width(width), m_viewport_height(height)
+AppWindow::AppWindow(int width, int height) : m_viewport_width(width), m_viewport_height(height), m_render_settings(m_renderer.get_render_settings())
 {
 	if (!glfwInit())
 		wait_and_exit("Could not initialize GLFW...");
 
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
 	m_window = glfwCreateWindow(width, height, "HIPRT Path Tracer", NULL, NULL);
 	if (!m_window)
@@ -334,11 +333,10 @@ void AppWindow::resize_frame(int pixels_width, int pixels_height)
 	m_viewport_width = pixels_width;
 	m_viewport_height = pixels_height;
 
-	RenderSettings& render_settings = m_renderer.get_render_settings();
 	// Taking resolution scaling into account
-	float& resolution_scale = render_settings.render_resolution_scale;
-	if (render_settings.keep_same_resolution)
-		resolution_scale = render_settings.target_width / (float)pixels_width; // TODO what about the height changing ?
+	float& resolution_scale = m_render_settings.render_resolution_scale;
+	if (m_render_settings.keep_same_resolution)
+		resolution_scale = m_render_settings.target_width / (float)pixels_width; // TODO what about the height changing ?
 
 	int new_render_width = std::floor(pixels_width * resolution_scale);
 	int new_render_height = std::floor(pixels_height * resolution_scale);
@@ -383,10 +381,10 @@ int AppWindow::get_height()
 void AppWindow::set_interacting(bool is_interacting)
 {
 	// The user just released the camera and we were rendering at low resolution
-	if (!is_interacting && m_renderer.get_render_settings().render_low_resolution)
+	if (!is_interacting && m_render_settings.render_low_resolution)
 		reset_sample_number();
 
-	m_renderer.get_render_settings().render_low_resolution = is_interacting;
+	m_render_settings.render_low_resolution = is_interacting;
 }
 
 void AppWindow::setup_display_program()
@@ -527,18 +525,15 @@ void AppWindow::update_renderer_view_zoom(float offset)
 
 void AppWindow::increment_sample_number()
 {
-	m_sample_number += m_renderer.get_render_settings().samples_per_frame;
-
-	m_renderer.set_sample_number(m_sample_number);
+	m_render_settings.sample_number += m_render_settings.samples_per_frame;
 
 	glUseProgram(m_display_program);
-	glUniform1i(glGetUniformLocation(m_display_program, "u_sample_number"), m_sample_number);
+	glUniform1i(glGetUniformLocation(m_display_program, "u_sample_number"), m_render_settings.sample_number);
 }
 
 void AppWindow::reset_sample_number()
 {
 	m_startRenderTime = std::chrono::high_resolution_clock::now();
-	m_sample_number = 0;
 	m_renderer.set_sample_number(0);
 
 	glUseProgram(m_display_program);
@@ -549,7 +544,7 @@ void AppWindow::reset_sample_number()
 
 void AppWindow::reset_frame_number()
 {
-	m_renderer.get_render_settings().frame_number = 0;
+	m_render_settings.frame_number = 0;
 }
 
 Renderer& AppWindow::get_renderer()
@@ -578,17 +573,17 @@ void AppWindow::run()
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
-		if (!(m_application_settings.stop_render_at != 0 && m_sample_number + 1 > m_application_settings.stop_render_at))
+		if (!(m_application_settings.stop_render_at != 0 && m_render_settings.sample_number + 1 > m_application_settings.stop_render_at))
 		{
 			m_renderer.render(m_denoiser);
-			m_renderer.get_render_settings().frame_number++;
+			m_render_settings.frame_number++;
 		}
 
-		if (m_renderer.get_render_settings().enable_denoising)
+		if (m_render_settings.enable_denoising)
 		{
 			if (m_application_settings.denoise_at_target_sample_count)
 			{
-				if (m_sample_number == m_application_settings.stop_render_at)
+				if (m_render_settings.sample_number == m_application_settings.stop_render_at)
 				{
 					m_denoiser.denoise();
 					display(m_denoiser.get_denoised_data_pointer());
@@ -598,10 +593,10 @@ void AppWindow::run()
 			}
 			else
 			{
-				if ((m_renderer.get_render_settings().sample_number % m_renderer.get_render_settings().denoiser_sample_skip) == 0)
+				if ((m_render_settings.sample_number % m_render_settings.denoiser_sample_skip) == 0)
 				{
 					m_denoiser.denoise();
-					m_application_settings.last_denoised_sample_count = m_renderer.get_render_settings().sample_number;
+					m_application_settings.last_denoised_sample_count = m_render_settings.sample_number;
 				}
 			
 				DisplaySettings settings;
@@ -660,7 +655,7 @@ void AppWindow::display_imgui()
 	auto now_time = std::chrono::high_resolution_clock::now();
 	float render_time = std::chrono::duration_cast<std::chrono::milliseconds>(now_time - m_startRenderTime).count();
 	ImGui::Text("Render time: %.3fs", render_time / 1000.0f);
-	ImGui::Text("%d samples | %.2f samples/s @ %dx%d", m_sample_number + 1, 1.0f / io.DeltaTime * m_renderer.get_render_settings().samples_per_frame, m_renderer.m_render_width, m_renderer.m_render_height);
+	ImGui::Text("%d samples | %.2f samples/s @ %dx%d", m_render_settings.sample_number + 1, 1.0f / io.DeltaTime * m_render_settings.samples_per_frame, m_renderer.m_render_width, m_renderer.m_render_height);
 
 	ImGui::Separator();
 
@@ -668,14 +663,14 @@ void AppWindow::display_imgui()
 	{
 		std::vector<unsigned char> tonemaped_data;
 		
-		if (m_renderer.get_render_settings().enable_denoising)
+		if (m_render_settings.enable_denoising)
 		{
 			m_denoiser.denoise();
 			std::vector<Color> denoised = m_denoiser.get_denoised_data();
-			tonemaped_data = Utils::tonemap_hdr_image(denoised, m_sample_number, m_application_settings.tone_mapping_gamma, m_application_settings.tone_mapping_exposure);
+			tonemaped_data = Utils::tonemap_hdr_image(denoised, m_render_settings.sample_number, m_application_settings.tone_mapping_gamma, m_application_settings.tone_mapping_exposure);
 		}
 		else
-			tonemaped_data = Utils::tonemap_hdr_image(m_renderer.get_color_framebuffer().download_pixels(), m_sample_number, m_application_settings.tone_mapping_gamma, m_application_settings.tone_mapping_exposure);
+			tonemaped_data = Utils::tonemap_hdr_image(m_renderer.get_color_framebuffer().download_pixels(), m_render_settings.sample_number, m_application_settings.tone_mapping_gamma, m_application_settings.tone_mapping_exposure);
 
 		stbi_flip_vertically_on_write(true);
 		if (stbi_write_png("Render tonemapped.png", m_renderer.m_render_width, m_renderer.m_render_height, 3, tonemaped_data.data(), m_renderer.m_render_width * sizeof(unsigned char) * 3))
@@ -685,7 +680,7 @@ void AppWindow::display_imgui()
 	{
 		std::vector<Color> hdr_data;
 
-		if (m_renderer.get_render_settings().enable_denoising)
+		if (m_render_settings.enable_denoising)
 		{
 			m_denoiser.denoise();
 			hdr_data = m_denoiser.get_denoised_data();
@@ -695,7 +690,7 @@ void AppWindow::display_imgui()
 
 #pragma omp parallel for
 		for (int i = 0; i < hdr_data.size(); i++)
-			hdr_data[i] = hdr_data[i] / (float)m_sample_number;
+			hdr_data[i] = hdr_data[i] / (float)m_render_settings.sample_number;
 
 		stbi_flip_vertically_on_write(true);
 		if (stbi_write_hdr("Render non-tonemapped.hdr", m_renderer.m_render_width, m_renderer.m_render_height, 3, reinterpret_cast<float*>(hdr_data.data())));
@@ -712,29 +707,29 @@ void AppWindow::display_imgui()
 		reset_sample_number();
 	}
 
-	if (m_renderer.get_render_settings().keep_same_resolution) // TODO Put this setting in application settings ?
+	if (m_render_settings.keep_same_resolution) // TODO Put this setting in application settings ?
 		ImGui::BeginDisabled();
-	float resolution_scaling_backup = m_renderer.get_render_settings().render_resolution_scale;
-	if (ImGui::InputFloat("Render resolution scale", &m_renderer.get_render_settings().render_resolution_scale))
+	float resolution_scaling_backup = m_render_settings.render_resolution_scale;
+	if (ImGui::InputFloat("Render resolution scale", &m_render_settings.render_resolution_scale))
 	{
-		float& resolution_scale = m_renderer.get_render_settings().render_resolution_scale;
+		float& resolution_scale = m_render_settings.render_resolution_scale;
 		if (resolution_scale <= 0)
 			resolution_scale = resolution_scaling_backup;
 
 		change_resolution_scaling(resolution_scale);
 		reset_sample_number();
 	}
-	if (m_renderer.get_render_settings().keep_same_resolution)
+	if (m_render_settings.keep_same_resolution)
 		ImGui::EndDisabled();
 
 	// TODO for the denoising with normals / albedo, add imgui buttons to display normals / albedo buffer
-	if (ImGui::Checkbox("Keep same render resolution", &m_renderer.get_render_settings().keep_same_resolution))
+	if (ImGui::Checkbox("Keep same render resolution", &m_render_settings.keep_same_resolution))
 	{
-		if (m_renderer.get_render_settings().keep_same_resolution)
+		if (m_render_settings.keep_same_resolution)
 		{
 			// Remembering the width and height we need to target
-			m_renderer.get_render_settings().target_width = m_renderer.m_render_width;
-			m_renderer.get_render_settings().target_height = m_renderer.m_render_height;
+			m_render_settings.target_width = m_renderer.m_render_width;
+			m_render_settings.target_height = m_renderer.m_render_height;
 		}
 	}
 	
@@ -742,11 +737,11 @@ void AppWindow::display_imgui()
 
 	if (ImGui::InputInt("Stop render at sample count", &m_application_settings.stop_render_at))
 		m_application_settings.stop_render_at = std::max(m_application_settings.stop_render_at, 0);
-	ImGui::InputInt("Samples per frame", &m_renderer.get_render_settings().samples_per_frame);
-	if (ImGui::InputInt("Max bounces", &m_renderer.get_render_settings().nb_bounces))
+	ImGui::InputInt("Samples per frame", &m_render_settings.samples_per_frame);
+	if (ImGui::InputInt("Max bounces", &m_render_settings.nb_bounces))
 	{
 		// Clamping to 0 in case the user input a negative number of bounces	
-		m_renderer.get_render_settings().nb_bounces = std::max(m_renderer.get_render_settings().nb_bounces, 0);
+		m_render_settings.nb_bounces = std::max(m_render_settings.nb_bounces, 0);
 
 		reset_sample_number();
 	}
@@ -754,16 +749,16 @@ void AppWindow::display_imgui()
 	ImGui::Checkbox("Display Denoiser Albedo", &m_application_settings.display_denoiser_albedo);
 	ImGui::Checkbox("Display Denoiser Normals", &m_application_settings.display_denoiser_normals);
 
-	ImGui::Checkbox("Enable denoiser", &m_renderer.get_render_settings().enable_denoising);
+	ImGui::Checkbox("Enable denoiser", &m_render_settings.enable_denoising);
 	ImGui::Checkbox("Only Denoise at Target Sample Count", &m_application_settings.denoise_at_target_sample_count);
 	if (m_application_settings.denoise_at_target_sample_count)
 	{
 		ImGui::BeginDisabled();
-		ImGui::SliderInt("Denoise Sample Skip", &m_renderer.get_render_settings().denoiser_sample_skip, 1, 128);
+		ImGui::SliderInt("Denoise Sample Skip", &m_render_settings.denoiser_sample_skip, 1, 128);
 		ImGui::EndDisabled();
 	}
 	else
-		ImGui::SliderInt("Denoise Sample Skip", &m_renderer.get_render_settings().denoiser_sample_skip, 1, 128);
+		ImGui::SliderInt("Denoise Sample Skip", &m_render_settings.denoiser_sample_skip, 1, 128);
 
 	ImGui::Separator();
 

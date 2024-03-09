@@ -60,7 +60,7 @@ struct HIPRTRenderData
 	int emissive_triangles_count;
 	int* emissive_triangles_indices;
 
-	HIPRTRenderSettings render_settings;
+	HIPRTRenderSettings m_render_settings;
 };
 
 #endif

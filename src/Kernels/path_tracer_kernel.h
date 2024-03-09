@@ -522,7 +522,7 @@ __device__ unsigned int wang_hash(unsigned int seed)
 
 __device__ void debug_set_final_color(const HIPRTRenderData& render_data, int x, int y, int res_x, Color* pixels, Color final_color)
 {
-    if (render_data.render_settings.sample_number == 0)
+    if (render_data.m_render_settings.sample_number == 0)
         pixels[y * res_x + x] = final_color;
     else
         pixels[y * res_x + x] = pixels[y * res_x + x] + final_color;
@@ -537,29 +537,29 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
     if (index >= res.x * res.y)
         return;
 
-    if (render_data.render_settings.render_low_resolution)
+    if (render_data.m_render_settings.render_low_resolution)
     {
         // Reducing the number of bounces to 5
-        render_data.render_settings.nb_bounces = 5;
+        render_data.m_render_settings.nb_bounces = 5;
 
         // If rendering at low resolution, only one pixel out of 8x8 will be rendered
         if (x & 0b111 || y & 0b111)
             return;
     }
 
-    if (render_data.render_settings.sample_number == 0)
+    if (render_data.m_render_settings.sample_number == 0)
     {
         render_data.pixels[index] = Color(0.0f);
         render_data.denoiser_normals[index] = hiprtFloat3(1.0f, 1.0f, 1.0f);
         render_data.denoiser_albedo[index] = Color(0.0f, 0.0f, 0.0f);
     }
 
-    xorshift32_generator random_number_generator(wang_hash((index + 1) * (render_data.render_settings.sample_number + 1)));
+    xorshift32_generator random_number_generator(wang_hash((index + 1) * (render_data.m_render_settings.sample_number + 1)));
 
     Color final_color = Color(0.0f, 0.0f, 0.0f);
     Color denoiser_albedo = Color(0.0f, 0.0f, 0.0f);
     hiprtFloat3 denoiser_normal = hiprtFloat3{ 0.0f, 0.0f, 0.0f };
-    for (int sample = 0; sample < render_data.render_settings.samples_per_frame; sample++)
+    for (int sample = 0; sample < render_data.m_render_settings.samples_per_frame; sample++)
     {
         //Jittered around the center
         float x_jittered = (x + 0.5f) + random_number_generator() - 1.0f;
@@ -575,7 +575,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
         bool normals_AOV_set = false;
         bool albedo_AOV_set = false;
 
-        for (int bounce = 0; bounce < render_data.render_settings.nb_bounces; bounce++)
+        for (int bounce = 0; bounce < render_data.m_render_settings.nb_bounces; bounce++)
         {
             if (next_ray_state == RayState::BOUNCE)
             {
@@ -663,7 +663,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
     }
 
     render_data.pixels[index] += final_color;
-    if (render_data.render_settings.render_low_resolution)
+    if (render_data.m_render_settings.render_low_resolution)
     {
         // Copying the pixel we just rendered to the neighbors
         for (int _y = 0; _y < 8; _y++)
@@ -688,11 +688,11 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
         // Handling denoiser's albedo and normals AOVs    
         // We don't need those when rendering at low resolution
         // hence why this is the else branch
-        denoiser_albedo /= (float)render_data.render_settings.samples_per_frame;
-        denoiser_normal /= (float)render_data.render_settings.samples_per_frame;
-        render_data.denoiser_albedo[index] = (render_data.denoiser_albedo[index] * render_data.render_settings.frame_number + denoiser_albedo) / (render_data.render_settings.frame_number + 1.0f);
+        denoiser_albedo /= (float)render_data.m_render_settings.samples_per_frame;
+        denoiser_normal /= (float)render_data.m_render_settings.samples_per_frame;
+        render_data.denoiser_albedo[index] = (render_data.denoiser_albedo[index] * render_data.m_render_settings.frame_number + denoiser_albedo) / (render_data.m_render_settings.frame_number + 1.0f);
 
-        hiprtFloat3 accumulated_normal = (render_data.denoiser_normals[index] * render_data.render_settings.frame_number + denoiser_normal) / (render_data.render_settings.frame_number + 1.0f);
+        hiprtFloat3 accumulated_normal = (render_data.denoiser_normals[index] * render_data.m_render_settings.frame_number + denoiser_normal) / (render_data.m_render_settings.frame_number + 1.0f);
         float normal_length = length(accumulated_normal);
         if (normal_length != 0.0f)
             render_data.denoiser_normals[index] = normalize(accumulated_normal);
