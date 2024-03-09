@@ -15,6 +15,9 @@ public:
 	void set_buffers(Color* color_buffer, Color* albedo_buffer, int width, int height);
 	void set_buffers(Color* color_buffer, hiprtFloat3* normals_buffer, Color* albedo_buffer, int width, int height);
 
+	bool* get_denoise_albedo_pointer();
+	bool* get_denoise_normals_pointer();
+
 	std::vector<Color> get_denoised_data();
 	void* get_denoised_data_pointer();
 
@@ -28,11 +31,15 @@ private:
 
 	int m_width = 0, m_height = 0;
 
-	bool m_use_normals = false;
 	bool m_use_albedo = false;
+	bool m_use_normals = false;
+	bool m_denoise_albedo = true;
+	bool m_denoise_normals = true;
 
 	oidn::DeviceRef m_device;
-	oidn::BufferRef m_denoised_buffer;
+	oidn::BufferRef m_denoised_color_buffer;
+	oidn::BufferRef m_denoised_albedo_buffer;
+	oidn::BufferRef m_denoised_normals_buffer;
 
 	Color* m_color_buffer = nullptr;
 	hiprtFloat3* m_normals_buffer = nullptr;
