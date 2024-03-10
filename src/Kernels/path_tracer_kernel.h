@@ -539,8 +539,9 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
 
     if (render_data.m_render_settings.render_low_resolution)
     {
-        // Reducing the number of bounces to 5
-        render_data.m_render_settings.nb_bounces = 5;
+        // Reducing the number of bounces to 3
+        render_data.m_render_settings.nb_bounces = 3;
+        render_data.m_render_settings.samples_per_frame = 1;
 
         // If rendering at low resolution, only one pixel out of 8x8 will be rendered
         if (x & 0b111 || y & 0b111)
