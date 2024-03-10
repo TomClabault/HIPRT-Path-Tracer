@@ -57,6 +57,8 @@ Scene SceneParser::parse_scene_file(const std::string& filepath, float frame_asp
     if (scene == nullptr)
     {
         std::cerr << importer.GetErrorString() << std::endl;
+
+        int charac = std::getchar();
         std::exit(1);
     }
 

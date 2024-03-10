@@ -10,10 +10,6 @@
 
 // test performance when reducing number of triangles of the P1
 
-// TODO immediate
-//
-// - Why is the display so slow compared to before
-
 // TODO bugs
 //
 // - too bright when samples per pixel > 1
@@ -427,7 +423,7 @@ void AppWindow::setup_display_program()
 		"{"
 		"	vec4 hdr_color = texture(u_texture, vs_tex_coords);\n"
 		"	if (u_scale_by_frame_number == 1)"
-		"		hdr_color = hdr_color / float(u_sample_count_override != -1 ? (u_sample_count_override + 1) : (u_sample_number + 1));"
+		"		hdr_color = hdr_color / float(u_sample_count_override != -1 ? (u_sample_count_override) : (u_sample_number));"
 		""
 		"	if (u_display_normals == 1)"
 		"		hdr_color = (hdr_color + 1.0f) * 0.5f; // Remapping normals\n"
@@ -584,6 +580,7 @@ void AppWindow::run()
 		if (!(m_application_settings.stop_render_at != 0 && m_render_settings.sample_number + 1 > m_application_settings.stop_render_at))
 		{
 			m_renderer.render(m_denoiser);
+			increment_sample_number();
 			m_render_settings.frame_number++;
 
 			image_rendered = true;
@@ -646,12 +643,11 @@ void AppWindow::run()
 			}
 		}
 		
-		if (image_rendered)
-			// Only incrementing if we actually rendered an image
-			// This is useful when we've reached the target sample count
-			// so we're not rendering anymore but without this if, we
-			// would still be incrementing the sample count
-			increment_sample_number();
+		//if (image_rendered)
+		//	// Only incrementing if we actually rendered an image
+		//	// This is useful when we've reached the target sample count
+		//	// so we're not rendering anymore but without this if, we
+		//	// would still be incrementing the sample count
 
 		display_imgui();
 
