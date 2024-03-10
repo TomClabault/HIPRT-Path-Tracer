@@ -12,7 +12,6 @@
 
 // TODO bugs
 //
-// - too bright when samples per pixel > 1
 // - aspect ratio issue on CPU or GPU ?
 // - fix 1 off sample count on Imgui interface. When stopping at 10 samples, ImGui displays 11
 
@@ -528,7 +527,10 @@ void AppWindow::update_renderer_view_zoom(float offset)
 
 void AppWindow::increment_sample_number()
 {
-	m_render_settings.sample_number += m_render_settings.samples_per_frame;
+	if (m_render_settings.render_low_resolution)
+		m_render_settings.sample_number++; // Only doing 1 SPP when moving the cameras
+	else
+		m_render_settings.sample_number += m_render_settings.samples_per_frame;
 
 	glUseProgram(m_display_program);
 	glUniform1i(glGetUniformLocation(m_display_program, "u_sample_number"), m_render_settings.sample_number);
@@ -777,7 +779,7 @@ void AppWindow::display_imgui()
 	auto now_time = std::chrono::high_resolution_clock::now();
 	float render_time = std::chrono::duration_cast<std::chrono::milliseconds>(now_time - m_startRenderTime).count();
 	ImGui::Text("Render time: %.3fs", render_time / 1000.0f);
-	ImGui::Text("%d samples | %.2f samples/s @ %dx%d", m_render_settings.sample_number + 1, 1.0f / io.DeltaTime * m_render_settings.samples_per_frame, m_renderer.m_render_width, m_renderer.m_render_height);
+	ImGui::Text("%d samples | %.2f samples/s @ %dx%d", m_render_settings.sample_number + 1, 1.0f / io.DeltaTime * (m_render_settings.render_low_resolution ? 1 : m_render_settings.samples_per_frame), m_renderer.m_render_width, m_renderer.m_render_height);
 
 	ImGui::Separator();
 
