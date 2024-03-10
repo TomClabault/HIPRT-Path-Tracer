@@ -10,6 +10,10 @@
 
 // test performance when reducing number of triangles of the P1
 
+// TODO immediate
+//
+// - Why is the display so slow compared to before
+
 // TODO bugs
 //
 // - too bright when samples per pixel > 1
