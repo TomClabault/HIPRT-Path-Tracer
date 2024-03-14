@@ -21,8 +21,6 @@ struct RenderSettings
 	// user ticks the 'keep same resolution' checkbox in ImGui
 	int target_width, target_height;
 
-	float render_resolution_scale = 1.0f;
-
 	// Is true, this means that the user is moving the camera and we're going to
 	// render the image at a much lower resolution to allow for smooth camera
 	// movements

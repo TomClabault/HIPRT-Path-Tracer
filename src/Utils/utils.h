@@ -20,6 +20,8 @@ public:
     static std::vector<unsigned char> tonemap_hdr_image(const std::vector<float>& hdr_image, int sample_number, float gamma, float exposure);
     static std::vector<unsigned char> tonemap_hdr_image(const float* hdr_image, size_t size, int sample_number, float gamma, float exposure);
 
+    static std::string file_to_string(const char* filepath);
+
     /*
      * A blend factor of 1 gives only the noisy image. 0 only the denoised image
      */
