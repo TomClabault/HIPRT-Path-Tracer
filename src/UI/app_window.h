@@ -10,9 +10,10 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 
-#include "Utils/commandline_arguments.h"
 #include "Renderer/renderer.h"
 #include "Renderer/open_image_denoiser.h"
+#include "Image/image_writer.h"
+#include "Utils/commandline_arguments.h"
 
 class AppWindow
 {
@@ -40,7 +41,10 @@ public:
 	int get_height();
 	void set_interacting(bool is_interacting);
 
+	ApplicationSettings& get_application_settings();
+	const ApplicationSettings& get_application_settings() const;
 	Renderer& get_renderer();
+
 	void setup_display_program();
 	void set_renderer_scene(Scene& scene);
 	void update_renderer_view_translation(float translation_x, float translation_y);
@@ -80,6 +84,8 @@ private:
 	Renderer m_renderer;
 	RenderSettings& m_render_settings;
 	OpenImageDenoiser m_denoiser;
+
+	ImageWriter m_image_writer;
 
 	GLuint m_display_program;
 	GLuint m_display_texture;

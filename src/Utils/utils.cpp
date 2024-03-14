@@ -7,6 +7,7 @@
 
 #include <iostream>
 #include <string>
+#include <sstream>
 
 #include <OpenImageDenoise/oidn.hpp>
 
@@ -58,6 +59,15 @@ std::vector<unsigned char> Utils::tonemap_hdr_image(const float* hdr_image, size
     }
 
     return tonemapped_data;
+}
+
+std::string Utils::file_to_string(const char* filepath)
+{
+    std::ifstream t(filepath);
+    std::stringstream buffer;
+    buffer << t.rdbuf();
+
+    return buffer.str();
 }
 
 Image Utils::OIDN_denoise(const Image& image, int width, int height, float blend_factor)

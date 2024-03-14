@@ -19,6 +19,7 @@
 
 // TODO Code Organization:
 // 
+// - rename AppWindow to RenderWindow
 // - overload +=, *=, ... operators for Color most notably on the GPU side
 // - use constructors instead of struct {} syntax in gpu code
 // - rename HIPRT_xorshift32 generator without underscores for consistency
@@ -308,6 +309,9 @@ AppWindow::AppWindow(int width, int height) : m_viewport_width(width), m_viewpor
 	m_denoiser.set_buffers(m_renderer.get_color_framebuffer().get_pointer(),
 		m_renderer.get_denoiser_normals_buffer().get_pointer(), m_renderer.get_denoiser_albedo_buffer().get_pointer(),
 		width, height);
+
+	m_image_writer.set_renderer(&m_renderer);
+	m_image_writer.set_render_window(this);
 }
 
 AppWindow::~AppWindow()
@@ -336,7 +340,7 @@ void AppWindow::resize_frame(int pixels_width, int pixels_height)
 	m_viewport_height = pixels_height;
 
 	// Taking resolution scaling into account
-	float& resolution_scale = m_render_settings.render_resolution_scale;
+	float& resolution_scale = m_application_settings.render_resolution_scale;
 	if (m_render_settings.keep_same_resolution)
 		resolution_scale = m_render_settings.target_width / (float)pixels_width; // TODO what about the height changing ?
 
@@ -389,55 +393,25 @@ void AppWindow::set_interacting(bool is_interacting)
 	m_render_settings.render_low_resolution = is_interacting;
 }
 
+ApplicationSettings& AppWindow::get_application_settings()
+{
+	return m_application_settings;
+}
+
+const ApplicationSettings& AppWindow::get_application_settings() const
+{
+	return m_application_settings;
+}
+
 void AppWindow::setup_display_program()
 {
 	// Creating the shaders for displaying the path traced render
-
-	const char* vertex_shader_text = "#version 330\n"
-		"out vec2 vs_tex_coords;\n"
-
-		"void main()\n"
-		"{\n"
-		"vec2 triangle_vertices[6] = vec2[6](vec2(-1, -1), vec2(1, -1), vec2(-1, 1), vec2(1, -1), vec2(1, 1), vec2(-1, 1));\n"
-		"vec2 triangle_tex_coords[6] = vec2[6](vec2(0, 0), vec2(1, 0), vec2(0, 1), vec2(1, 0), vec2(1, 1), vec2(0, 1));\n"
-
-		"gl_Position = vec4(triangle_vertices[gl_VertexID], 1, 1);\n"
-		"vs_tex_coords = triangle_tex_coords[gl_VertexID];\n"
-		"}";
+	std::string vertex_string = Utils::file_to_string("Shaders/fullscreen_quad.vert");
+	const char* vertex_shader_text = vertex_string.c_str();
 
 	// Tone mapping fragment shader
-	const char* fragment_shader_text = "#version 330\n"
-		"uniform sampler2D u_texture;\n"
-		"uniform int u_sample_number;\n"
-		"uniform float u_gamma;\n"
-		"uniform float u_exposure;\n"
-		"uniform int u_do_tonemapping;\n"
-		"uniform int u_display_normals;\n"
-		"uniform int u_scale_by_frame_number;\n"
-		"uniform int u_sample_count_override;\n"
-
-		"in vec2 vs_tex_coords;\n"
-
-		"void main()\n"
-		"{"
-		"	vec4 hdr_color = texture(u_texture, vs_tex_coords);\n"
-		"	if (u_scale_by_frame_number == 1)"
-		"		hdr_color = hdr_color / float(u_sample_count_override != -1 ? (u_sample_count_override) : (u_sample_number));"
-		""
-		"	if (u_display_normals == 1)"
-		"		hdr_color = (hdr_color + 1.0f) * 0.5f; // Remapping normals\n"
-		""
-		"	if (u_do_tonemapping == 1)"
-		"	{"
-		"		vec4 tone_mapped = 1.0f - exp(-hdr_color * u_exposure);\n"
-		"		vec4 gamma_corrected = pow(tone_mapped, vec4(1.0f / u_gamma));\n"
-		"		gl_FragColor = vec4(gamma_corrected.rgb, 1.0f);\n"
-		"	}"
-		"	else"
-		"	{"
-		"		gl_FragColor = vec4(hdr_color.rgb, 1.0f);"
-		"	}"
-		"}\n";
+	std::string frag_string = Utils::file_to_string("Shaders/display.frag");
+	const char* fragment_shader_text = frag_string.c_str();
 
 	GLuint m_vertex_shader = glCreateShader(GL_VERTEX_SHADER);
 	glShaderSource(m_vertex_shader, 1, &vertex_shader_text, NULL);
@@ -621,16 +595,16 @@ void AppWindow::run()
 			switch (m_application_settings.debug_display_denoiser)
 			{
 			case DenoiserDebugView::DISPLAY_NORMALS:
-				display(m_renderer.get_denoiser_normals_buffer(), {true, false, false });
+				display(m_renderer.get_denoiser_normals_buffer(), { true, false, false });
 				break;
 
 			case DenoiserDebugView::DISPLAY_DENOISED_NORMALS:
 				m_denoiser.denoise_normals();
-				display(m_denoiser.get_denoised_normals_pointer(), {true, false, false});
+				display(m_denoiser.get_denoised_normals_pointer(), { true, false, false });
 				break;
 
 			case DenoiserDebugView::DISPLAY_ALBEDO:
-				display(m_renderer.get_denoiser_albedo_buffer(), {false, false, false});
+				display(m_renderer.get_denoiser_albedo_buffer(), { false, false, false });
 				break;
 
 			case DenoiserDebugView::DISPLAY_DENOISED_ALBEDO:
@@ -692,10 +666,10 @@ void AppWindow::show_render_settings_panel()
 
 	if (m_render_settings.keep_same_resolution) // TODO Put this setting in application settings ?
 		ImGui::BeginDisabled();
-	float resolution_scaling_backup = m_render_settings.render_resolution_scale;
-	if (ImGui::InputFloat("Resolution scale", &m_render_settings.render_resolution_scale))
+	float resolution_scaling_backup = m_application_settings.render_resolution_scale;
+	if (ImGui::InputFloat("Resolution scale", &m_application_settings.render_resolution_scale))
 	{
-		float& resolution_scale = m_render_settings.render_resolution_scale;
+		float& resolution_scale = m_application_settings.render_resolution_scale;
 		if (resolution_scale <= 0)
 			resolution_scale = resolution_scaling_backup;
 
@@ -771,7 +745,6 @@ void AppWindow::show_post_process_panel()
 void AppWindow::display_imgui()
 {
 	ImGuiIO& io = ImGui::GetIO();
-
 	ImGui::ShowDemoWindow();
 
 	ImGui::Begin("Settings");
@@ -783,44 +756,8 @@ void AppWindow::display_imgui()
 
 	ImGui::Separator();
 
-	if (ImGui::Button("Save render PNG (tonemapped)"))
-	{
-		std::vector<unsigned char> tonemaped_data;
-		
-		if (m_render_settings.enable_denoising)
-		{
-			m_denoiser.denoise();
-			std::vector<Color> denoised = m_denoiser.get_denoised_data();
-			tonemaped_data = Utils::tonemap_hdr_image(denoised, m_render_settings.sample_number, m_application_settings.tone_mapping_gamma, m_application_settings.tone_mapping_exposure);
-		}
-		else
-			tonemaped_data = Utils::tonemap_hdr_image(m_renderer.get_color_framebuffer().download_pixels(), m_render_settings.sample_number, m_application_settings.tone_mapping_gamma, m_application_settings.tone_mapping_exposure);
-
-		stbi_flip_vertically_on_write(true);
-		if (stbi_write_png("Render tonemapped.png", m_renderer.m_render_width, m_renderer.m_render_height, 3, tonemaped_data.data(), m_renderer.m_render_width * sizeof(unsigned char) * 3))
-			std::cout << "Render written to \"Render tonemapped.png\"" << std::endl;
-	}
-	if (ImGui::Button("Save render HDR (non-tonemapped)"))
-	{
-		std::vector<Color> hdr_data;
-
-		if (m_render_settings.enable_denoising)
-		{
-			m_denoiser.denoise();
-			hdr_data = m_denoiser.get_denoised_data();
-		}
-		else
-			hdr_data = m_renderer.get_color_framebuffer().download_pixels();
-
-#pragma omp parallel for
-		for (int i = 0; i < hdr_data.size(); i++)
-			hdr_data[i] = hdr_data[i] / (float)m_render_settings.sample_number;
-
-		stbi_flip_vertically_on_write(true);
-		if (stbi_write_hdr("Render non-tonemapped.hdr", m_renderer.m_render_width, m_renderer.m_render_height, 3, reinterpret_cast<float*>(hdr_data.data())));
-			std::cout << "Render written to \"Render non-tonemapped.hdr\"" << std::endl;
-	}
-
+	if (ImGui::Button("Save viewport to PNG (tonemapped)"))
+		m_image_writer.write_to_png("Render tonemapped.png");
 	
 	ImGui::Separator();
 

@@ -35,6 +35,7 @@ set(HIPRT_LIB_DIR "thirdparties/hiprt/lib")
 set(HIPRT_BIN_DIR "thirdparties/hiprt/bin")
 
 set(KERNELS_DIR "src/Kernels")
+set(SHADERS_DIR "src/Shaders")
 set(HOST_DEVICE_COMMON_DIR "src/HostDeviceCommon")
 
 link_directories(${CMAKE_SOURCE_DIR}/${OIDN_LIB_DIR})
@@ -116,11 +117,13 @@ add_custom_command(TARGET HIPRTPathTracer POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/${HIPRT_BIN_DIR}/hiprtc0507.dll ${CMAKE_CURRENT_BINARY_DIR}
 	COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/${HIPRT_BIN_DIR}/hiprt02002_5.7_amd.hipfb ${CMAKE_CURRENT_BINARY_DIR}
 	COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/${HIPRT_BIN_DIR}/hiprt02002_5.7_amd_lib_win.bc ${CMAKE_CURRENT_BINARY_DIR}
-	COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_CURRENT_BINARY_DIR}/Kernels
-	COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_CURRENT_BINARY_DIR}/HostDeviceCommon
 	COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/${KERNELS_DIR} ${CMAKE_CURRENT_BINARY_DIR}/Kernels
+	COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/${SHADERS_DIR} ${CMAKE_CURRENT_BINARY_DIR}/Shaders
 	COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/${HOST_DEVICE_COMMON_DIR} ${CMAKE_CURRENT_BINARY_DIR}/HostDeviceCommon
 )
+
+#COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_CURRENT_BINARY_DIR}/Kernels
+#COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_CURRENT_BINARY_DIR}/HostDeviceCommon
 
 # Macro to preserve source files hierarchy in Visual Studio
 if(MSVC_IDE)
