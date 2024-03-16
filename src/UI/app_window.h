@@ -2,6 +2,7 @@
 #define APP_WINDOW_H
 
 #include "UI/application_settings.h"
+#include "UI/display_settings.h"
 
 #include "GL/glew.h"
 #include "GLFW/glfw3.h"
@@ -21,13 +22,7 @@ public:
 	static constexpr int DISPLAY_TEXTURE_UNIT = 1;
 	static constexpr int DISPLAY_COMPUTE_IMAGE_UNIT = 2;
 
-	struct DisplaySettings
-	{
-		bool display_normals = false;
-		bool scale_by_frame_number = true;
-		bool do_tonemapping = true;
-		int sample_count_override = -1;
-	};
+
 
 
 
@@ -55,16 +50,18 @@ public:
 	void reset_sample_number();
 	void reset_frame_number();
 
+	DisplaySettings get_display_settings();
+	void set_display_settings(DisplaySettings settings);
+
 	std::pair<float, float> get_cursor_position();
 	void set_cursor_position(std::pair<float, float> new_position);
 
-	DisplaySettings get_necessary_display_settings();
-	void setup_display_uniforms(GLuint program, const AppWindow::DisplaySettings& display_settings);
-	void display(const void* data, const AppWindow::DisplaySettings& display_settings = { false, true, true, -1 });
+	void setup_display_uniforms(GLuint program);
+	void display(const void* data);
 	template <typename T>
-	void display(const std::vector<T>& orochi_buffer, const AppWindow::DisplaySettings& display_settings = { false, true, true, -1 });
+	void display(const std::vector<T>& orochi_buffer);
 	template <typename T>
-	void display(const OrochiBuffer<T>& orochi_buffer, const AppWindow::DisplaySettings& display_settings = { false, true, true, -1 });
+	void display(const OrochiBuffer<T>& orochi_buffer);
 
 	void show_render_settings_panel();
 	void show_denoiser_panel();
@@ -82,6 +79,7 @@ private:
 	std::chrono::high_resolution_clock::time_point m_startRenderTime;
 
 	ApplicationSettings m_application_settings;
+	DisplaySettings m_display_settings;
 
 	Renderer m_renderer;
 	RenderSettings& m_render_settings;
@@ -95,15 +93,15 @@ private:
 };
 
 template <typename T>
-void AppWindow::display(const std::vector<T>& pixels_data, const AppWindow::DisplaySettings& display_settings)
+void AppWindow::display(const std::vector<T>& pixels_data)
 {
-	display(pixels_data.data(), display_settings);
+	display(pixels_data.data());
 }
 
 template <typename T>
-void AppWindow::display(const OrochiBuffer<T>& orochi_buffer, const AppWindow::DisplaySettings& display_settings)
+void AppWindow::display(const OrochiBuffer<T>& orochi_buffer)
 {	
-	display(orochi_buffer.download_pixels().data(), display_settings);
+	display(orochi_buffer.download_pixels().data());
 }
 
 #endif
