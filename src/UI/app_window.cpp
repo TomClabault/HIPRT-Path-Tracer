@@ -21,6 +21,8 @@
 
 // TODO Code Organization:
 // 
+// - rename debug_display_denoiser to display_view
+// - For the Enum DisplayView, rename NONE to default and move display view combo box to display settings of ImGui instead of it being in the denoiser
 // - rename AppWindow to RenderWindow
 // - overload +=, *=, ... operators for Color most notably on the GPU side
 // - use constructors instead of struct {} syntax in gpu code
@@ -562,7 +564,7 @@ void AppWindow::run()
 			switch (m_application_settings.debug_display_denoiser)
 			{
 			case DenoiserDebugView::DISPLAY_NORMALS:
-				display(m_renderer.get_denoiser_normals_buffer(), { true, false, false });
+				display(m_renderer.get_denoiser_normals_buffer().download_pixels().data(), {true, false, false});
 				break;
 
 			case DenoiserDebugView::DISPLAY_DENOISED_NORMALS:
@@ -571,7 +573,7 @@ void AppWindow::run()
 				break;
 
 			case DenoiserDebugView::DISPLAY_ALBEDO:
-				display(m_renderer.get_denoiser_albedo_buffer(), { false, false, false });
+				display(m_renderer.get_denoiser_albedo_buffer().download_pixels().data(), {false, false, false});
 				break;
 
 			case DenoiserDebugView::DISPLAY_DENOISED_ALBEDO:
@@ -586,12 +588,6 @@ void AppWindow::run()
 			}
 		}
 		
-		//if (image_rendered)
-		//	// Only incrementing if we actually rendered an image
-		//	// This is useful when we've reached the target sample count
-		//	// so we're not rendering anymore but without this if, we
-		//	// would still be incrementing the sample count
-
 		display_imgui();
 
 		glfwSwapBuffers(m_window);
@@ -600,13 +596,50 @@ void AppWindow::run()
 	quit();
 }
 
+AppWindow::DisplaySettings AppWindow::get_necessary_display_settings()
+{
+	DisplaySettings display_settings;
+
+	switch (m_application_settings.debug_display_denoiser)
+	{
+	case DenoiserDebugView::DISPLAY_NORMALS:
+	case DenoiserDebugView::DISPLAY_DENOISED_NORMALS:
+		display_settings.display_normals = true;
+		display_settings.do_tonemapping = false;
+		display_settings.scale_by_frame_number = false;
+		display_settings.sample_count_override = -1;
+
+		break;
+
+	case DenoiserDebugView::DISPLAY_ALBEDO:
+	case DenoiserDebugView::DISPLAY_DENOISED_ALBEDO:
+		display_settings.display_normals = false;
+		display_settings.do_tonemapping = false;
+		display_settings.scale_by_frame_number = false;
+		display_settings.sample_count_override = -1;
+
+		break;
+
+	case DenoiserDebugView::NONE:
+	default:
+		display_settings.display_normals = false;
+		display_settings.do_tonemapping = true;
+		display_settings.scale_by_frame_number = true;
+		display_settings.sample_count_override = -1;
+
+		break;
+	}
+
+	return display_settings;
+}
+
 void AppWindow::setup_display_uniforms(GLuint program, const AppWindow::DisplaySettings& display_settings)
 {
 	glUseProgram(program);
-	glUniform1i(glGetUniformLocation(m_display_program, "u_display_normals"), display_settings.display_normals);
-	glUniform1i(glGetUniformLocation(m_display_program, "u_scale_by_frame_number"), display_settings.scale_by_frame_number);
-	glUniform1i(glGetUniformLocation(m_display_program, "u_do_tonemapping"), display_settings.do_tonemapping);
-	glUniform1i(glGetUniformLocation(m_display_program, "u_sample_count_override"), display_settings.sample_count_override);
+	glUniform1i(glGetUniformLocation(program, "u_display_normals"), display_settings.display_normals);
+	glUniform1i(glGetUniformLocation(program, "u_scale_by_frame_number"), display_settings.scale_by_frame_number);
+	glUniform1i(glGetUniformLocation(program, "u_do_tonemapping"), display_settings.do_tonemapping);
+	glUniform1i(glGetUniformLocation(program, "u_sample_count_override"), display_settings.sample_count_override);
 }
 
 void AppWindow::display(const void* data, const AppWindow::DisplaySettings& display_settings)

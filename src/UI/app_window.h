@@ -58,6 +58,7 @@ public:
 	std::pair<float, float> get_cursor_position();
 	void set_cursor_position(std::pair<float, float> new_position);
 
+	DisplaySettings get_necessary_display_settings();
 	void setup_display_uniforms(GLuint program, const AppWindow::DisplaySettings& display_settings);
 	void display(const void* data, const AppWindow::DisplaySettings& display_settings = { false, true, true, -1 });
 	template <typename T>
