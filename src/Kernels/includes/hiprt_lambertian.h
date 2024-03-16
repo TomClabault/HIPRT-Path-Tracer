@@ -3,7 +3,7 @@
 #include "Kernels/includes/HIPRT_maths.h"
 #include "Kernels/includes/hiprt_onb.h"
 
-inline __device__ hiprtFloat3 hiprt_cosine_weighted_direction_around_normal(const hiprtFloat3& normal, float& pdf, xorshift32_generator& random_number_generator)
+inline __device__ hiprtFloat3 hiprt_cosine_weighted_direction_around_normal(const hiprtFloat3& normal, float& pdf, Xorshift32Generator& random_number_generator)
 {
     float rand_1 = random_number_generator();
     float rand_2 = random_number_generator();

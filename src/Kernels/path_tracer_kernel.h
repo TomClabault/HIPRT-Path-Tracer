@@ -26,7 +26,7 @@ __device__ hiprtFloat3 rotate_vector_around_normal(const hiprtFloat3& normal, co
     return random_dir_local_space.x * tangent + random_dir_local_space.y * bitangent + random_dir_local_space.z * normal;
 }
 
-__device__ hiprtFloat3 hiprt_cosine_weighted_direction_around_normal(const hiprtFloat3& normal, float& pdf, xorshift32_generator& random_number_generator)
+__device__ hiprtFloat3 hiprt_cosine_weighted_direction_around_normal(const hiprtFloat3& normal, float& pdf, Xorshift32Generator& random_number_generator)
 {
     float rand_1 = random_number_generator();
     float rand_2 = random_number_generator();
@@ -177,7 +177,7 @@ __device__ Color cook_torrance_brdf(const RendererMaterial& material, const hipr
     return brdf_color;
 }
 
-__device__ Color cook_torrance_brdf_importance_sample(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal, hiprtFloat3& output_direction, float& pdf, xorshift32_generator& random_number_generator)
+__device__ Color cook_torrance_brdf_importance_sample(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal, hiprtFloat3& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
 {
     pdf = 0.0f;
 
@@ -238,7 +238,7 @@ __device__ Color cook_torrance_brdf_importance_sample(const RendererMaterial& ma
     return brdf_color;
 }
 
-__device__ Color smooth_glass_bsdf(const RendererMaterial& material, hiprtFloat3& out_bounce_direction, const hiprtFloat3& ray_direction, hiprtFloat3& surface_normal, float eta_i, float eta_t, float& pdf, xorshift32_generator& random_generator)
+__device__ Color smooth_glass_bsdf(const RendererMaterial& material, hiprtFloat3& out_bounce_direction, const hiprtFloat3& ray_direction, hiprtFloat3& surface_normal, float eta_i, float eta_t, float& pdf, Xorshift32Generator& random_generator)
 {
     // Clamping here because the dot product can eventually returns values less
     // than -1 or greater than 1 because of precision errors in the vectors
@@ -293,7 +293,7 @@ __device__ Color smooth_glass_bsdf(const RendererMaterial& material, hiprtFloat3
     }
 }
 
-__device__ Color brdf_dispatcher_sample(const RendererMaterial& material, hiprtFloat3& bounce_direction, const hiprtFloat3& ray_direction, hiprtFloat3& surface_normal, float& brdf_pdf, xorshift32_generator& random_number_generator)
+__device__ Color brdf_dispatcher_sample(const RendererMaterial& material, hiprtFloat3& bounce_direction, const hiprtFloat3& ray_direction, hiprtFloat3& surface_normal, float& brdf_pdf, Xorshift32Generator& random_number_generator)
 {
     if (material.brdf_type == BRDF::SpecularFresnel)
         return smooth_glass_bsdf(material, bounce_direction, ray_direction, surface_normal, 1.0f, material.ior, brdf_pdf, random_number_generator);
@@ -361,7 +361,7 @@ __device__ float power_heuristic(float pdf_a, float pdf_b)
     return pdf_a_squared / (pdf_a_squared + pdf_b * pdf_b);
 }
 
-__device__ hiprtFloat3 sample_random_point_on_lights(const HIPRTRenderData& render_data, xorshift32_generator& random_number_generator, float& pdf, LightSourceInformation& light_info)
+__device__ hiprtFloat3 sample_random_point_on_lights(const HIPRTRenderData& render_data, Xorshift32Generator& random_number_generator, float& pdf, LightSourceInformation& light_info)
 {
     int random_index = random_number_generator() * render_data.emissive_triangles_count;
     int triangle_index = light_info.emissive_triangle_index = render_data.emissive_triangles_indices[random_index];
@@ -419,7 +419,7 @@ __device__ bool evaluate_shadow_ray(const HIPRTRenderData& render_data, hiprtRay
     return aoHit.hasHit();
 }
 
-__device__ Color sample_light_sources(HIPRTRenderData& render_data, const hiprtRay& ray, const HitInfo& closest_hit_info, const RendererMaterial& material, xorshift32_generator& random_number_generator)
+__device__ Color sample_light_sources(HIPRTRenderData& render_data, const hiprtRay& ray, const HitInfo& closest_hit_info, const RendererMaterial& material, Xorshift32Generator& random_number_generator)
 {
     if (material.brdf_type == BRDF::SpecularFresnel)
         // No sampling for perfectly specular materials
@@ -555,7 +555,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
         render_data.denoiser_albedo[index] = Color(0.0f, 0.0f, 0.0f);
     }
 
-    xorshift32_generator random_number_generator(wang_hash((index + 1) * (render_data.m_render_settings.sample_number + 1)));
+    Xorshift32Generator random_number_generator(wang_hash((index + 1) * (render_data.m_render_settings.sample_number + 1)));
 
     Color final_color = Color(0.0f, 0.0f, 0.0f);
     Color denoiser_albedo = Color(0.0f, 0.0f, 0.0f);

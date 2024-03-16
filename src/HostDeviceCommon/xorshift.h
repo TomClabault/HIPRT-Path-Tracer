@@ -4,13 +4,13 @@
 #include <hiprt/hiprt_device.h>
 #include "Kernels/includes/HIPRT_maths.h"
 
-struct xorshift32_state {
+struct Xorshift32State {
     unsigned int a = 42;
 };
 
-struct xorshift32_generator
+struct Xorshift32Generator
 {
-    __device__ xorshift32_generator(unsigned int seed)
+    __device__ Xorshift32Generator(unsigned int seed)
     {
         m_state.a = seed;
     }
@@ -31,7 +31,7 @@ struct xorshift32_generator
         return m_state.a = x;
     }
 
-    xorshift32_state m_state;
+    Xorshift32State m_state;
 };
 
 #endif
