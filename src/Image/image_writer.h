@@ -3,7 +3,6 @@
 
 #include "GL/glew.h"
 #include "Renderer/renderer.h"
-//#include "UI/app_window.h"
 
 class AppWindow;
 

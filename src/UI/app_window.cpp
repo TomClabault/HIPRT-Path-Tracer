@@ -21,6 +21,8 @@
 
 // TODO Code Organization:
 // 
+// - display settings in its own header file
+// - reorganize methods order in AppWindow
 // - rename debug_display_denoiser to display_view
 // - For the Enum DisplayView, rename NONE to default and move display view combo box to display settings of ImGui instead of it being in the denoiser
 // - rename AppWindow to RenderWindow
@@ -556,7 +558,10 @@ void AppWindow::run()
 				settings.do_tonemapping = true;
 				settings.scale_by_frame_number = true;
 				settings.sample_count_override = m_application_settings.last_denoised_sample_count;
-				display(m_denoiser.get_denoised_data_pointer(), settings);
+
+				set_display_settings(settings);
+
+				display(m_denoiser.get_denoised_data_pointer());
 			}
 		}
 		else
@@ -564,21 +569,21 @@ void AppWindow::run()
 			switch (m_application_settings.debug_display_denoiser)
 			{
 			case DenoiserDebugView::DISPLAY_NORMALS:
-				display(m_renderer.get_denoiser_normals_buffer().download_pixels().data(), {true, false, false});
+				display(m_renderer.get_denoiser_normals_buffer().download_pixels().data());
 				break;
 
 			case DenoiserDebugView::DISPLAY_DENOISED_NORMALS:
 				m_denoiser.denoise_normals();
-				display(m_denoiser.get_denoised_normals_pointer(), { true, false, false });
+				display(m_denoiser.get_denoised_normals_pointer());
 				break;
 
 			case DenoiserDebugView::DISPLAY_ALBEDO:
-				display(m_renderer.get_denoiser_albedo_buffer().download_pixels().data(), {false, false, false});
+				display(m_renderer.get_denoiser_albedo_buffer().download_pixels().data());
 				break;
 
 			case DenoiserDebugView::DISPLAY_DENOISED_ALBEDO:
 				m_denoiser.denoise_albedo();
-				display(m_denoiser.get_denoised_albedo_pointer(), { false, false, false });
+				display(m_denoiser.get_denoised_albedo_pointer());
 				break;
 
 			case DenoiserDebugView::NONE:
@@ -596,55 +601,28 @@ void AppWindow::run()
 	quit();
 }
 
-AppWindow::DisplaySettings AppWindow::get_necessary_display_settings()
+DisplaySettings AppWindow::get_display_settings()
 {
-	DisplaySettings display_settings;
-
-	switch (m_application_settings.debug_display_denoiser)
-	{
-	case DenoiserDebugView::DISPLAY_NORMALS:
-	case DenoiserDebugView::DISPLAY_DENOISED_NORMALS:
-		display_settings.display_normals = true;
-		display_settings.do_tonemapping = false;
-		display_settings.scale_by_frame_number = false;
-		display_settings.sample_count_override = -1;
-
-		break;
-
-	case DenoiserDebugView::DISPLAY_ALBEDO:
-	case DenoiserDebugView::DISPLAY_DENOISED_ALBEDO:
-		display_settings.display_normals = false;
-		display_settings.do_tonemapping = false;
-		display_settings.scale_by_frame_number = false;
-		display_settings.sample_count_override = -1;
-
-		break;
-
-	case DenoiserDebugView::NONE:
-	default:
-		display_settings.display_normals = false;
-		display_settings.do_tonemapping = true;
-		display_settings.scale_by_frame_number = true;
-		display_settings.sample_count_override = -1;
-
-		break;
-	}
-
-	return display_settings;
+	return m_display_settings;
 }
 
-void AppWindow::setup_display_uniforms(GLuint program, const AppWindow::DisplaySettings& display_settings)
+void AppWindow::set_display_settings(DisplaySettings settings)
+{
+	m_display_settings = settings;
+}
+
+void AppWindow::setup_display_uniforms(GLuint program)
 {
 	glUseProgram(program);
-	glUniform1i(glGetUniformLocation(program, "u_display_normals"), display_settings.display_normals);
-	glUniform1i(glGetUniformLocation(program, "u_scale_by_frame_number"), display_settings.scale_by_frame_number);
-	glUniform1i(glGetUniformLocation(program, "u_do_tonemapping"), display_settings.do_tonemapping);
-	glUniform1i(glGetUniformLocation(program, "u_sample_count_override"), display_settings.sample_count_override);
+	glUniform1i(glGetUniformLocation(program, "u_display_normals"), m_display_settings.display_normals);
+	glUniform1i(glGetUniformLocation(program, "u_scale_by_frame_number"), m_display_settings.scale_by_frame_number);
+	glUniform1i(glGetUniformLocation(program, "u_do_tonemapping"), m_display_settings.do_tonemapping);
+	glUniform1i(glGetUniformLocation(program, "u_sample_count_override"), m_display_settings.sample_count_override);
 }
 
-void AppWindow::display(const void* data, const AppWindow::DisplaySettings& display_settings)
+void AppWindow::display(const void* data)
 {
-	setup_display_uniforms(m_display_program, display_settings);
+	setup_display_uniforms(m_display_program);
 
 	glBindTexture(GL_TEXTURE_2D, m_display_texture);
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_renderer.m_render_width, m_renderer.m_render_height, GL_RGB, GL_FLOAT, data);
@@ -711,7 +689,11 @@ void AppWindow::show_denoiser_panel()
 	if (!ImGui::CollapsingHeader("Denoiser"))
 		return;
 
-	ImGui::Checkbox("Enable denoiser", &m_render_settings.enable_denoising);
+	if (ImGui::Checkbox("Enable denoiser", &m_render_settings.enable_denoising))
+		if (!m_render_settings.enable_denoising) // Denoising unchecked
+			// Making sure to reset the sample count override that may have been
+			// set when the denoising checkbox was checked
+			m_display_settings.sample_count_override = -1;
 
 	ImGui::Checkbox("Only Denoise at Target Sample Count", &m_application_settings.denoise_at_target_sample_count);
 	if (m_application_settings.denoise_at_target_sample_count)
@@ -724,7 +706,42 @@ void AppWindow::show_denoiser_panel()
 		ImGui::SliderInt("Denoise Sample Skip", &m_render_settings.denoiser_sample_skip, 1, 128);
 
 	const char* items[] = { "None", "Display normals", "Display denoised normals", "Display albedo", "Display denoised albedo" };
-	ImGui::Combo("Debug view", (int*)(&m_application_settings.debug_display_denoiser), items, IM_ARRAYSIZE(items));
+	if (ImGui::Combo("Debug view", (int*)(&m_application_settings.debug_display_denoiser), items, IM_ARRAYSIZE(items)))
+	{
+		DisplaySettings display_settings;
+
+		switch (m_application_settings.debug_display_denoiser)
+		{
+		case DenoiserDebugView::DISPLAY_NORMALS:
+		case DenoiserDebugView::DISPLAY_DENOISED_NORMALS:
+			display_settings.display_normals = true;
+			display_settings.do_tonemapping = false;
+			display_settings.scale_by_frame_number = false;
+			display_settings.sample_count_override = -1;
+
+			break;
+
+		case DenoiserDebugView::DISPLAY_ALBEDO:
+		case DenoiserDebugView::DISPLAY_DENOISED_ALBEDO:
+			display_settings.display_normals = false;
+			display_settings.do_tonemapping = false;
+			display_settings.scale_by_frame_number = false;
+			display_settings.sample_count_override = -1;
+
+			break;
+
+		case DenoiserDebugView::NONE:
+		default:
+			display_settings.display_normals = false;
+			display_settings.do_tonemapping = true;
+			display_settings.scale_by_frame_number = true;
+			display_settings.sample_count_override = -1;
+
+			break;
+		}
+
+		set_display_settings(display_settings);
+	}
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 }
