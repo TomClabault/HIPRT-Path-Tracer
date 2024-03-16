@@ -10,7 +10,9 @@ class AppWindow;
 class ImageWriter
 {
 public:
-	ImageWriter();
+	ImageWriter() : m_renderer(nullptr), m_render_window(nullptr) {};
+
+	void init_shader();
 
 	void set_renderer(Renderer* renderer);
 	void set_render_window(AppWindow* render_window);
@@ -21,7 +23,10 @@ private:
 	Renderer* m_renderer;
 	AppWindow* m_render_window;
 
-	GLuint compute_shader;
+	GLuint m_compute_shader;
+	GLuint m_compute_output_image;
+	int m_compute_output_image_width = -1;
+	int m_compute_output_image_height = -1;
 };
 
 #endif

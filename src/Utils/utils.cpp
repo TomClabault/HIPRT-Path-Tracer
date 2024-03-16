@@ -63,9 +63,9 @@ std::vector<unsigned char> Utils::tonemap_hdr_image(const float* hdr_image, size
 
 std::string Utils::file_to_string(const char* filepath)
 {
-    std::ifstream t(filepath);
+    std::ifstream file(filepath);
     std::stringstream buffer;
-    buffer << t.rdbuf();
+    buffer << file.rdbuf();
 
     return buffer.str();
 }

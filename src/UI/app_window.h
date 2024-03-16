@@ -19,6 +19,7 @@ class AppWindow
 {
 public:
 	static constexpr int DISPLAY_TEXTURE_UNIT = 1;
+	static constexpr int DISPLAY_COMPUTE_IMAGE_UNIT = 2;
 
 	struct DisplaySettings
 	{
@@ -57,7 +58,7 @@ public:
 	std::pair<float, float> get_cursor_position();
 	void set_cursor_position(std::pair<float, float> new_position);
 
-	void setup_display_program(GLuint program, const AppWindow::DisplaySettings& display_settings);
+	void setup_display_uniforms(GLuint program, const AppWindow::DisplaySettings& display_settings);
 	void display(const void* data, const AppWindow::DisplaySettings& display_settings = { false, true, true, -1 });
 	template <typename T>
 	void display(const std::vector<T>& orochi_buffer, const AppWindow::DisplaySettings& display_settings = { false, true, true, -1 });

@@ -4,6 +4,7 @@
 #include <iostream>
 #include "Scene/scene_parser.h"
 #include "Utils/utils.h"
+#include "Utils/opengl_utils.h"
 
 //#define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
@@ -12,6 +13,7 @@
 
 // TODO bugs
 //
+// - denoiser normals incorrect ?
 // - aspect ratio issue on CPU or GPU ?
 // - fix 1 off sample count on Imgui interface. When stopping at 10 samples, ImGui displays 11
 
@@ -255,7 +257,7 @@ AppWindow::AppWindow(int width, int height) : m_viewport_width(width), m_viewpor
 	if (!glfwInit())
 		wait_and_exit("Could not initialize GLFW...");
 
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
 	m_window = glfwCreateWindow(width, height, "HIPRT Path Tracer", NULL, NULL);
@@ -310,6 +312,7 @@ AppWindow::AppWindow(int width, int height) : m_viewport_width(width), m_viewpor
 		m_renderer.get_denoiser_normals_buffer().get_pointer(), m_renderer.get_denoiser_albedo_buffer().get_pointer(),
 		width, height);
 
+	m_image_writer.init_shader();
 	m_image_writer.set_renderer(&m_renderer);
 	m_image_writer.set_render_window(this);
 }
@@ -406,43 +409,7 @@ const ApplicationSettings& AppWindow::get_application_settings() const
 void AppWindow::setup_display_program()
 {
 	// Creating the shaders for displaying the path traced render
-	std::string vertex_string = Utils::file_to_string("Shaders/fullscreen_quad.vert");
-	const char* vertex_shader_text = vertex_string.c_str();
-
-	// Tone mapping fragment shader
-	std::string frag_string = Utils::file_to_string("Shaders/display.frag");
-	const char* fragment_shader_text = frag_string.c_str();
-
-	GLuint m_vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-	glShaderSource(m_vertex_shader, 1, &vertex_shader_text, NULL);
-	glCompileShader(m_vertex_shader);
-
-	GLuint m_fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(m_fragment_shader, 1, &fragment_shader_text, NULL);
-	glCompileShader(m_fragment_shader);
-	GLint isCompiled = 0;
-	glGetShaderiv(m_fragment_shader, GL_COMPILE_STATUS, &isCompiled);
-	if (isCompiled == GL_FALSE)
-	{
-		GLint maxLength = 0;
-		glGetShaderiv(m_fragment_shader, GL_INFO_LOG_LENGTH, &maxLength);
-
-		// The maxLength includes the NULL character
-		std::vector<GLchar> errorLog(maxLength);
-		glGetShaderInfoLog(m_fragment_shader, maxLength, &maxLength, &errorLog[0]);
-
-		std::cout << errorLog.data() << std::endl;
-
-		// Provide the infolog in whatever manor you deem best.
-		// Exit with failure.
-		glDeleteShader(m_fragment_shader); // Don't leak the shader.
-		std::exit(-1);
-	}
-
-	m_display_program = glCreateProgram();
-	glAttachShader(m_display_program, m_vertex_shader);
-	glAttachShader(m_display_program, m_fragment_shader);
-	glLinkProgram(m_display_program);
+	m_display_program = OpenGLUtils::compile_shader_program("Shaders/fullscreen_quad.vert", "Shaders/display.frag");
 
 	// Creating the texture that will contain the path traced data to be displayed
 	// by the shader.
@@ -633,7 +600,7 @@ void AppWindow::run()
 	quit();
 }
 
-void AppWindow::setup_display_program(GLuint program, const AppWindow::DisplaySettings& display_settings)
+void AppWindow::setup_display_uniforms(GLuint program, const AppWindow::DisplaySettings& display_settings)
 {
 	glUseProgram(program);
 	glUniform1i(glGetUniformLocation(m_display_program, "u_display_normals"), display_settings.display_normals);
@@ -644,7 +611,7 @@ void AppWindow::setup_display_program(GLuint program, const AppWindow::DisplaySe
 
 void AppWindow::display(const void* data, const AppWindow::DisplaySettings& display_settings)
 {
-	setup_display_program(m_display_program, display_settings);
+	setup_display_uniforms(m_display_program, display_settings);
 
 	glBindTexture(GL_TEXTURE_2D, m_display_texture);
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_renderer.m_render_width, m_renderer.m_render_height, GL_RGB, GL_FLOAT, data);

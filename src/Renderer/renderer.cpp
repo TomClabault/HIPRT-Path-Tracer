@@ -52,6 +52,11 @@ RenderSettings& Renderer::get_render_settings()
 	return m_render_settings;
 }
 
+int Renderer::get_sample_number()
+{
+	return m_render_settings.sample_number;
+}
+
 void Renderer::set_sample_number(int sample_number)
 {
 	m_render_settings.sample_number = sample_number;
