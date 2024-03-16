@@ -11,7 +11,7 @@
 #include "Renderer/triangle.h"
 #include "Scene/camera.h"
 #include "Scene/scene_parser.h"
-#include "UI/app_window.h"
+#include "UI/render_window.h"
 #include "Utils/commandline_arguments.h"
 #include "Utils/utils.h"
 
@@ -23,17 +23,17 @@ int main(int argc, char* argv[])
     CommandLineArguments arguments = CommandLineArguments::process_command_line_args(argc, argv);
 
     const int default_width = arguments.render_width, default_height = arguments.render_height;
-    AppWindow app_window(default_width, default_height);
+    RenderWindow render_window(default_width, default_height);
     {
         std::cout << "Reading scene file " << arguments.scene_file_path << " ..." << std::endl;
         Scene parsed_scene = SceneParser::parse_scene_file(arguments.scene_file_path, (float)default_width / default_height);
         std::cout << std::endl;
 
-        app_window.set_renderer_scene(parsed_scene);
-        app_window.get_renderer().set_camera(parsed_scene.camera);
+        render_window.set_renderer_scene(parsed_scene);
+        render_window.get_renderer().set_camera(parsed_scene.camera);
     }
-    app_window.reset_sample_number();
-    app_window.run();
+    render_window.reset_sample_number();
+    render_window.run();
 
     return 0;
 #else

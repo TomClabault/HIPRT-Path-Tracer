@@ -285,7 +285,7 @@ void ImGui::ShowDemoWindow(bool* p_open)
     static bool show_app_constrained_resize = false;
     static bool show_app_fullscreen = false;
     static bool show_app_long_text = false;
-    static bool show_app_window_titles = false;
+    static bool show_render_window_titles = false;
 
     if (show_app_main_menu_bar)       ShowExampleAppMainMenuBar();
     if (show_app_dockspace)           ShowExampleAppDockSpace(&show_app_dockspace);     // Process the Docking app first, as explicit DockSpace() nodes needs to be submitted early (read comments near the DockSpace function)
@@ -300,7 +300,7 @@ void ImGui::ShowDemoWindow(bool* p_open)
     if (show_app_constrained_resize)  ShowExampleAppConstrainedResize(&show_app_constrained_resize);
     if (show_app_fullscreen)          ShowExampleAppFullscreen(&show_app_fullscreen);
     if (show_app_long_text)           ShowExampleAppLongText(&show_app_long_text);
-    if (show_app_window_titles)       ShowExampleAppWindowTitles(&show_app_window_titles);
+    if (show_render_window_titles)       ShowExampleAppWindowTitles(&show_render_window_titles);
 
     // Dear ImGui Tools (accessible from the "Tools" menu)
     static bool show_tool_metrics = false;
@@ -401,7 +401,7 @@ void ImGui::ShowDemoWindow(bool* p_open)
             ImGui::MenuItem("Constrained-resizing window", NULL, &show_app_constrained_resize);
             ImGui::MenuItem("Fullscreen window", NULL, &show_app_fullscreen);
             ImGui::MenuItem("Long text display", NULL, &show_app_long_text);
-            ImGui::MenuItem("Manipulating window titles", NULL, &show_app_window_titles);
+            ImGui::MenuItem("Manipulating window titles", NULL, &show_render_window_titles);
 
             ImGui::EndMenu();
         }
