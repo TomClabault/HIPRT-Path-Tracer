@@ -79,7 +79,7 @@ Vector RenderKernel::rotate_vector_around_normal(const Vector& normal, const Vec
     return random_dir_local_space.x * tangent + random_dir_local_space.y * bitangent + random_dir_local_space.z * normal;
 }
 
-Vector RenderKernel::uniform_direction_around_normal(const Vector& normal, float& pdf, xorshift32_generator& random_number_generator) const
+Vector RenderKernel::uniform_direction_around_normal(const Vector& normal, float& pdf, Xorshift32Generator& random_number_generator) const
 {
     float rand_1 = random_number_generator();
     float rand_2 = random_number_generator();
@@ -94,7 +94,7 @@ Vector RenderKernel::uniform_direction_around_normal(const Vector& normal, float
     return rotate_vector_around_normal(normal, random_dir_local_space);
 }
 
-Vector RenderKernel::cosine_weighted_direction_around_normal(const Vector& normal, float& pdf, xorshift32_generator& random_number_generator) const
+Vector RenderKernel::cosine_weighted_direction_around_normal(const Vector& normal, float& pdf, Xorshift32Generator& random_number_generator) const
 {
     float rand_1 = random_number_generator();
     float rand_2 = random_number_generator();
@@ -131,7 +131,7 @@ Ray RenderKernel::get_camera_ray(float x, float y) const
 
 void RenderKernel::ray_trace_pixel(int x, int y) const
 {
-    xorshift32_generator random_number_generator(31 + x * y * m_render_samples);
+    Xorshift32Generator random_number_generator(31 + x * y * m_render_samples);
     //Generating some numbers to make sure the generators of each thread spread apart
     //If not doing this, the generator shows clear artifacts until it has generated
     //a few numbers
@@ -360,7 +360,7 @@ inline Color RenderKernel::cook_torrance_brdf(const RendererMaterial& material, 
     return brdf_color;
 }
 
-Color RenderKernel::cook_torrance_brdf_importance_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, float& pdf, xorshift32_generator& random_number_generator) const
+Color RenderKernel::cook_torrance_brdf_importance_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, float& pdf, Xorshift32Generator& random_number_generator) const
 {
     pdf = 0.0f;
 
@@ -421,7 +421,7 @@ Color RenderKernel::cook_torrance_brdf_importance_sample(const RendererMaterial&
     return brdf_color;
 }
 
-Color RenderKernel::smooth_glass_bsdf(const RendererMaterial& material, Vector& out_bounce_direction, const Vector& ray_direction, Vector& surface_normal, float eta_i, float eta_t, float& pdf, xorshift32_generator& random_generator) const
+Color RenderKernel::smooth_glass_bsdf(const RendererMaterial& material, Vector& out_bounce_direction, const Vector& ray_direction, Vector& surface_normal, float eta_i, float eta_t, float& pdf, Xorshift32Generator& random_generator) const
 {
     // Clamping here because the dot product can eventually returns values less
     // than -1 or greater than 1 because of precision errors in the vectors
@@ -474,7 +474,7 @@ Color RenderKernel::smooth_glass_bsdf(const RendererMaterial& material, Vector& 
     }
 }
 
-Color RenderKernel::brdf_dispatcher_sample(const RendererMaterial& material, Vector& bounce_direction, const Vector& ray_direction, Vector& surface_normal, float& brdf_pdf, xorshift32_generator& random_number_generator) const
+Color RenderKernel::brdf_dispatcher_sample(const RendererMaterial& material, Vector& bounce_direction, const Vector& ray_direction, Vector& surface_normal, float& brdf_pdf, Xorshift32Generator& random_number_generator) const
 {
     if (material.brdf_type == BRDF::SpecularFresnel)
         return smooth_glass_bsdf(material, bounce_direction, ray_direction, surface_normal, 1.0f, material.ior, brdf_pdf, random_number_generator); //TODO relative IOR in the RayData rather than two incident and output ior values
@@ -615,7 +615,7 @@ void RenderKernel::env_map_cdf_search(float value, int& x, int& y) const
     x = std::max(std::min(lower, m_environment_map.width), 0);
 }
 
-Color RenderKernel::sample_environment_map(const Ray& ray, const HitInfo& closest_hit_info, const RendererMaterial& material, xorshift32_generator& random_number_generator) const
+Color RenderKernel::sample_environment_map(const Ray& ray, const HitInfo& closest_hit_info, const RendererMaterial& material, Xorshift32Generator& random_number_generator) const
 {
     if (material.brdf_type == BRDF::SpecularFresnel)
         // No sampling for perfectly specular materials
@@ -688,7 +688,7 @@ Color RenderKernel::sample_environment_map(const Ray& ray, const HitInfo& closes
     return brdf_sample + env_sample;
 }
 
-Color RenderKernel::sample_light_sources(const Ray& ray, const HitInfo& closest_hit_info, const RendererMaterial& material, xorshift32_generator& random_number_generator) const
+Color RenderKernel::sample_light_sources(const Ray& ray, const HitInfo& closest_hit_info, const RendererMaterial& material, Xorshift32Generator& random_number_generator) const
 {
     if (material.brdf_type == BRDF::SpecularFresnel)
         // No sampling for perfectly specular materials
@@ -774,7 +774,7 @@ Color RenderKernel::sample_light_sources(const Ray& ray, const HitInfo& closest_
     return light_source_radiance_mis + brdf_radiance_mis;
 }
 
-inline Point RenderKernel::sample_random_point_on_lights(xorshift32_generator& random_number_generator, float& pdf, LightSourceInformation& light_info) const
+inline Point RenderKernel::sample_random_point_on_lights(Xorshift32Generator& random_number_generator, float& pdf, LightSourceInformation& light_info) const
 {
     light_info.emissive_triangle_index = random_number_generator() * m_emissive_triangle_indices_buffer.size();
     light_info.emissive_triangle_index = m_emissive_triangle_indices_buffer[light_info.emissive_triangle_index];

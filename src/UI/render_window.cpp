@@ -22,7 +22,6 @@
 // TODO Code Organization:
 // 
 // - reorganize methods order in RenderWindow
-// - For the Enum DisplayView, rename NONE to default and move display view combo box to display settings of ImGui instead of it being in the denoiser
 // - overload +=, *=, ... operators for Color most notably on the GPU side
 // - use constructors instead of struct {} syntax in gpu code
 // - rename HIPRT_xorshift32 generator without underscores for consistency
