@@ -4,7 +4,7 @@
 #include "GL/glew.h"
 #include "Renderer/renderer.h"
 
-class AppWindow;
+class RenderWindow;
 
 class ImageWriter
 {
@@ -14,13 +14,13 @@ public:
 	void init_shader();
 
 	void set_renderer(Renderer* renderer);
-	void set_render_window(AppWindow* render_window);
+	void set_render_window(RenderWindow* render_window);
 
 	void write_to_png(const char* filepath);
 
 private:
 	Renderer* m_renderer;
-	AppWindow* m_render_window;
+	RenderWindow* m_render_window;
 
 	GLuint m_compute_shader;
 	GLuint m_compute_output_image;

@@ -1,5 +1,5 @@
-#ifndef APP_WINDOW_H
-#define APP_WINDOW_H
+#ifndef RENDER_WINDOW_H
+#define RENDER_WINDOW_H
 
 #include "UI/application_settings.h"
 #include "UI/display_settings.h"
@@ -16,7 +16,7 @@
 #include "Image/image_writer.h"
 #include "Utils/commandline_arguments.h"
 
-class AppWindow
+class RenderWindow
 {
 public:
 	static constexpr int DISPLAY_TEXTURE_UNIT = 1;
@@ -26,8 +26,8 @@ public:
 
 
 
-	AppWindow(int width, int height);
-	~AppWindow();
+	RenderWindow(int width, int height);
+	~RenderWindow();
 
 	static void APIENTRY gl_debug_output_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam);
 	void resize_frame(int pixels_width, int pixels_height);
@@ -93,13 +93,13 @@ private:
 };
 
 template <typename T>
-void AppWindow::display(const std::vector<T>& pixels_data)
+void RenderWindow::display(const std::vector<T>& pixels_data)
 {
 	display(pixels_data.data());
 }
 
 template <typename T>
-void AppWindow::display(const OrochiBuffer<T>& orochi_buffer)
+void RenderWindow::display(const OrochiBuffer<T>& orochi_buffer)
 {	
 	display(orochi_buffer.download_pixels().data());
 }

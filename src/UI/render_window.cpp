@@ -1,4 +1,4 @@
-#include "UI/app_window.h"
+#include "UI/render_window.h"
 
 #include <functional>
 #include <iostream>
@@ -21,11 +21,9 @@
 
 // TODO Code Organization:
 // 
-// - display settings in its own header file
-// - reorganize methods order in AppWindow
+// - reorganize methods order in RenderWindow
 // - rename debug_display_denoiser to display_view
 // - For the Enum DisplayView, rename NONE to default and move display view combo box to display settings of ImGui instead of it being in the denoiser
-// - rename AppWindow to RenderWindow
 // - overload +=, *=, ... operators for Color most notably on the GPU side
 // - use constructors instead of struct {} syntax in gpu code
 // - rename HIPRT_xorshift32 generator without underscores for consistency
@@ -84,8 +82,8 @@ void glfw_window_resized_callback(GLFWwindow* window, int width, int height)
 		// This probably means that the application has been minimized, we're not doing anything then
 		return;
 	else
-		// We've stored a pointer to the AppWindow in the "WindowUserPointer" of glfw
-		reinterpret_cast<AppWindow*>(glfwGetWindowUserPointer(window))->resize_frame(width, height);
+		// We've stored a pointer to the RenderWindow in the "WindowUserPointer" of glfw
+		reinterpret_cast<RenderWindow*>(glfwGetWindowUserPointer(window))->resize_frame(width, height);
 }
 
 static bool interacting_left_button = false, interacting_right_button = false;
@@ -106,7 +104,7 @@ void glfw_mouse_button_callback(GLFWwindow* window, int button, int action, int 
 		break;
 	}
 	
-	reinterpret_cast<AppWindow*>(glfwGetWindowUserPointer(window))->set_interacting(interacting_left_button || interacting_right_button);
+	reinterpret_cast<RenderWindow*>(glfwGetWindowUserPointer(window))->set_interacting(interacting_left_button || interacting_right_button);
 }
 
 void glfw_mouse_cursor_callback(GLFWwindow* window, double xpos, double ypos)
@@ -114,12 +112,12 @@ void glfw_mouse_cursor_callback(GLFWwindow* window, double xpos, double ypos)
 	ImGuiIO& io = ImGui::GetIO();
 	if (!io.WantCaptureMouse)
 	{
-		AppWindow* app_window = reinterpret_cast<AppWindow*>(glfwGetWindowUserPointer(window));
+		RenderWindow* render_window = reinterpret_cast<RenderWindow*>(glfwGetWindowUserPointer(window));
 
 		float xposf = static_cast<float>(xpos);
 		float yposf = static_cast<float>(ypos);
 
-		std::pair<float, float> old_position = app_window->get_cursor_position();
+		std::pair<float, float> old_position = render_window->get_cursor_position();
 		if (old_position.first == -1 && old_position.second == -1)
 			;
 		// If this is the first position of the cursor, nothing to do
@@ -129,14 +127,14 @@ void glfw_mouse_cursor_callback(GLFWwindow* window, double xpos, double ypos)
 			std::pair<float, float> difference = std::make_pair(xposf - old_position.first, yposf - old_position.second);
 
 			if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
-				app_window->update_renderer_view_translation(-difference.first, difference.second);
+				render_window->update_renderer_view_translation(-difference.first, difference.second);
 
 			if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
-				app_window->update_renderer_view_rotation(-difference.first, -difference.second);
+				render_window->update_renderer_view_rotation(-difference.first, -difference.second);
 		}
 
 		// Updating the position
-		app_window->set_cursor_position(std::make_pair(xposf, yposf));
+		render_window->set_cursor_position(std::make_pair(xposf, yposf));
 	}
 }
 
@@ -192,9 +190,9 @@ void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, in
 		translation.second -= 36.0f;
 
 
-	AppWindow* app_window = reinterpret_cast<AppWindow*>(glfwGetWindowUserPointer(window));
-	app_window->update_renderer_view_translation(-translation.first, translation.second);
-	app_window->update_renderer_view_zoom(-zoom);
+	RenderWindow* render_window = reinterpret_cast<RenderWindow*>(glfwGetWindowUserPointer(window));
+	render_window->update_renderer_view_translation(-translation.first, translation.second);
+	render_window->update_renderer_view_zoom(-zoom);
 }
 
 void glfw_mouse_scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
@@ -202,14 +200,14 @@ void glfw_mouse_scroll_callback(GLFWwindow* window, double xoffset, double yoffs
 	ImGuiIO& io = ImGui::GetIO();
 	if (!io.WantCaptureMouse)
 	{
-		AppWindow* app_window = reinterpret_cast<AppWindow*>(glfwGetWindowUserPointer(window));
+		RenderWindow* render_window = reinterpret_cast<RenderWindow*>(glfwGetWindowUserPointer(window));
 
-		app_window->update_renderer_view_zoom(static_cast<float>(-yoffset));
+		render_window->update_renderer_view_zoom(static_cast<float>(-yoffset));
 	}
 }
 
 // Implementation from https://learnopengl.com/In-Practice/Debugging
-void APIENTRY AppWindow::gl_debug_output_callback(GLenum source,
+void APIENTRY RenderWindow::gl_debug_output_callback(GLenum source,
 	GLenum type,
 	GLuint id,
 	GLenum severity,
@@ -256,7 +254,7 @@ void APIENTRY AppWindow::gl_debug_output_callback(GLenum source,
 	std::cout << std::endl;
 }
 
-AppWindow::AppWindow(int width, int height) : m_viewport_width(width), m_viewport_height(height), m_render_settings(m_renderer.get_render_settings())
+RenderWindow::RenderWindow(int width, int height) : m_viewport_width(width), m_viewport_height(height), m_render_settings(m_renderer.get_render_settings())
 {
 	if (!glfwInit())
 		wait_and_exit("Could not initialize GLFW...");
@@ -269,8 +267,8 @@ AppWindow::AppWindow(int width, int height) : m_viewport_width(width), m_viewpor
 		wait_and_exit("Could not initialize the GLFW window...");
 
 	glfwMakeContextCurrent(m_window);
-	// Setting a pointer to this instance of AppWindow inside the m_window GLFWwindow so that
-	// we can retrieve a pointer to this instance of AppWindow in the callback functions
+	// Setting a pointer to this instance of RenderWindow inside the m_window GLFWwindow so that
+	// we can retrieve a pointer to this instance of RenderWindow in the callback functions
 	// such as the window_resized_callback function for example
 	glfwSetWindowUserPointer(m_window, this);
 	glfwSetWindowSizeCallback(m_window, glfw_window_resized_callback);
@@ -292,7 +290,7 @@ AppWindow::AppWindow(int width, int height) : m_viewport_width(width), m_viewpor
 	{
 		glEnable(GL_DEBUG_OUTPUT);
 		glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-		glDebugMessageCallback(AppWindow::gl_debug_output_callback, nullptr);
+		glDebugMessageCallback(RenderWindow::gl_debug_output_callback, nullptr);
 		glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
 	}
 
@@ -321,13 +319,13 @@ AppWindow::AppWindow(int width, int height) : m_viewport_width(width), m_viewpor
 	m_image_writer.set_render_window(this);
 }
 
-AppWindow::~AppWindow()
+RenderWindow::~RenderWindow()
 {
 	glfwDestroyWindow(m_window);
 	glfwTerminate();
 }
 
-void AppWindow::resize_frame(int pixels_width, int pixels_height)
+void RenderWindow::resize_frame(int pixels_width, int pixels_height)
 {
 	if (pixels_width == m_viewport_width && pixels_height == m_viewport_height)
 	{
@@ -359,14 +357,14 @@ void AppWindow::resize_frame(int pixels_width, int pixels_height)
 		new_render_width, new_render_height);
 
 	// Recreating the OpenGL display texture
-	glActiveTexture(GL_TEXTURE0 + AppWindow::DISPLAY_TEXTURE_UNIT);
+	glActiveTexture(GL_TEXTURE0 + RenderWindow::DISPLAY_TEXTURE_UNIT);
 	glBindTexture(GL_TEXTURE_2D, m_display_texture);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, new_render_width, new_render_height, 0, GL_RGB, GL_FLOAT, nullptr);
 
 	reset_sample_number();
 }
 
-void AppWindow::change_resolution_scaling(float new_scaling)
+void RenderWindow::change_resolution_scaling(float new_scaling)
 {
 	float new_render_width = std::floor(m_viewport_width * new_scaling);
 	float new_render_height = std::floor(m_viewport_height * new_scaling);
@@ -376,22 +374,22 @@ void AppWindow::change_resolution_scaling(float new_scaling)
 		m_renderer.get_denoiser_normals_buffer().get_pointer(), m_renderer.get_denoiser_albedo_buffer().get_pointer(),
 		new_render_width, new_render_height);
 
-	glActiveTexture(GL_TEXTURE0 + AppWindow::DISPLAY_TEXTURE_UNIT);
+	glActiveTexture(GL_TEXTURE0 + RenderWindow::DISPLAY_TEXTURE_UNIT);
 	glBindTexture(GL_TEXTURE_2D, m_display_texture);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, new_render_width, new_render_height, 0, GL_RGB, GL_FLOAT, nullptr);
 }
 
-int AppWindow::get_width()
+int RenderWindow::get_width()
 {
 	return m_viewport_width;
 }
 
-int AppWindow::get_height()
+int RenderWindow::get_height()
 {
 	return m_viewport_height;
 }
 
-void AppWindow::set_interacting(bool is_interacting)
+void RenderWindow::set_interacting(bool is_interacting)
 {
 	// The user just released the camera and we were rendering at low resolution
 	if (!is_interacting && m_render_settings.render_low_resolution)
@@ -400,17 +398,17 @@ void AppWindow::set_interacting(bool is_interacting)
 	m_render_settings.render_low_resolution = is_interacting;
 }
 
-ApplicationSettings& AppWindow::get_application_settings()
+ApplicationSettings& RenderWindow::get_application_settings()
 {
 	return m_application_settings;
 }
 
-const ApplicationSettings& AppWindow::get_application_settings() const
+const ApplicationSettings& RenderWindow::get_application_settings() const
 {
 	return m_application_settings;
 }
 
-void AppWindow::setup_display_program()
+void RenderWindow::setup_display_program()
 {
 	// Creating the shaders for displaying the path traced render
 	m_display_program = OpenGLUtils::compile_shader_program("Shaders/fullscreen_quad.vert", "Shaders/display.frag");
@@ -418,26 +416,26 @@ void AppWindow::setup_display_program()
 	// Creating the texture that will contain the path traced data to be displayed
 	// by the shader.
 	glGenTextures(1, &m_display_texture);
-	glActiveTexture(GL_TEXTURE0 + AppWindow::DISPLAY_TEXTURE_UNIT);
+	glActiveTexture(GL_TEXTURE0 + RenderWindow::DISPLAY_TEXTURE_UNIT);
 	glBindTexture(GL_TEXTURE_2D, m_display_texture);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, m_viewport_width, m_viewport_height, 0, GL_RGB, GL_FLOAT, nullptr);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
 	glUseProgram(m_display_program);
-	glUniform1i(glGetUniformLocation(m_display_program, "u_texture"), AppWindow::DISPLAY_TEXTURE_UNIT);
+	glUniform1i(glGetUniformLocation(m_display_program, "u_texture"), RenderWindow::DISPLAY_TEXTURE_UNIT);
 	glUniform1i(glGetUniformLocation(m_display_program, "u_sample_number"), 0);
 	glUniform1f(glGetUniformLocation(m_display_program, "u_gamma"), m_application_settings.tone_mapping_gamma);
 	glUniform1f(glGetUniformLocation(m_display_program, "u_exposure"), m_application_settings.tone_mapping_exposure);
 }
 
-void AppWindow::set_renderer_scene(Scene& scene)
+void RenderWindow::set_renderer_scene(Scene& scene)
 {
 	std::shared_ptr<Renderer::HIPRTScene> hiprt_scene = m_renderer.create_hiprt_scene_from_scene(scene);
 	m_renderer.set_hiprt_scene(hiprt_scene);
 }
 
-void AppWindow::update_renderer_view_translation(float translation_x, float translation_y)
+void RenderWindow::update_renderer_view_translation(float translation_x, float translation_y)
 {
 	if (translation_x == 0.f && translation_y == 0.0f)
 		return;
@@ -448,7 +446,7 @@ void AppWindow::update_renderer_view_translation(float translation_x, float tran
 	m_renderer.translate_camera_view(translation);
 }
 
-void AppWindow::update_renderer_view_rotation(float offset_x, float offset_y)
+void RenderWindow::update_renderer_view_rotation(float offset_x, float offset_y)
 {
 	reset_sample_number();
 
@@ -460,7 +458,7 @@ void AppWindow::update_renderer_view_rotation(float offset_x, float offset_y)
 	m_renderer.rotate_camera_view(glm::vec3(rotation_x, rotation_y, 0.0f));
 }
 
-void AppWindow::update_renderer_view_zoom(float offset)
+void RenderWindow::update_renderer_view_zoom(float offset)
 {
 	if (offset == 0.0f)
 		return;
@@ -470,7 +468,7 @@ void AppWindow::update_renderer_view_zoom(float offset)
 	m_renderer.zoom_camera_view(offset / m_application_settings.view_zoom_sldwn);
 }
 
-void AppWindow::increment_sample_number()
+void RenderWindow::increment_sample_number()
 {
 	if (m_render_settings.render_low_resolution)
 		m_render_settings.sample_number++; // Only doing 1 SPP when moving the cameras
@@ -481,7 +479,7 @@ void AppWindow::increment_sample_number()
 	glUniform1i(glGetUniformLocation(m_display_program, "u_sample_number"), m_render_settings.sample_number);
 }
 
-void AppWindow::reset_sample_number()
+void RenderWindow::reset_sample_number()
 {
 	m_startRenderTime = std::chrono::high_resolution_clock::now();
 	m_renderer.set_sample_number(0);
@@ -492,27 +490,27 @@ void AppWindow::reset_sample_number()
 	reset_frame_number();
 }
 
-void AppWindow::reset_frame_number()
+void RenderWindow::reset_frame_number()
 {
 	m_render_settings.frame_number = 0;
 }
 
-Renderer& AppWindow::get_renderer()
+Renderer& RenderWindow::get_renderer()
 {
 	return m_renderer;
 }
 
-std::pair<float, float> AppWindow::get_cursor_position()
+std::pair<float, float> RenderWindow::get_cursor_position()
 {
 	return m_cursor_position;
 }
 
-void AppWindow::set_cursor_position(std::pair<float, float> new_position)
+void RenderWindow::set_cursor_position(std::pair<float, float> new_position)
 {
 	m_cursor_position = new_position;
 }
 
-void AppWindow::run()
+void RenderWindow::run()
 {
 	while (!glfwWindowShouldClose(m_window))
 	{
@@ -601,17 +599,17 @@ void AppWindow::run()
 	quit();
 }
 
-DisplaySettings AppWindow::get_display_settings()
+DisplaySettings RenderWindow::get_display_settings()
 {
 	return m_display_settings;
 }
 
-void AppWindow::set_display_settings(DisplaySettings settings)
+void RenderWindow::set_display_settings(DisplaySettings settings)
 {
 	m_display_settings = settings;
 }
 
-void AppWindow::setup_display_uniforms(GLuint program)
+void RenderWindow::setup_display_uniforms(GLuint program)
 {
 	glUseProgram(program);
 	glUniform1i(glGetUniformLocation(program, "u_display_normals"), m_display_settings.display_normals);
@@ -620,7 +618,7 @@ void AppWindow::setup_display_uniforms(GLuint program)
 	glUniform1i(glGetUniformLocation(program, "u_sample_count_override"), m_display_settings.sample_count_override);
 }
 
-void AppWindow::display(const void* data)
+void RenderWindow::display(const void* data)
 {
 	setup_display_uniforms(m_display_program);
 
@@ -630,7 +628,7 @@ void AppWindow::display(const void* data)
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
-void AppWindow::show_render_settings_panel()
+void RenderWindow::show_render_settings_panel()
 {
 	if (!ImGui::CollapsingHeader("Render Settings"))
 		return;
@@ -684,7 +682,7 @@ void AppWindow::show_render_settings_panel()
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 }
 
-void AppWindow::show_denoiser_panel()
+void RenderWindow::show_denoiser_panel()
 {
 	if (!ImGui::CollapsingHeader("Denoiser"))
 		return;
@@ -746,7 +744,7 @@ void AppWindow::show_denoiser_panel()
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 }
 
-void AppWindow::show_post_process_panel()
+void RenderWindow::show_post_process_panel()
 {
 	if (!ImGui::CollapsingHeader("Post-processing"))
 		return;
@@ -759,7 +757,7 @@ void AppWindow::show_post_process_panel()
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 }
 
-void AppWindow::display_imgui()
+void RenderWindow::display_imgui()
 {
 	ImGuiIO& io = ImGui::GetIO();
 	ImGui::ShowDemoWindow();
@@ -790,7 +788,7 @@ void AppWindow::display_imgui()
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
-void AppWindow::quit()
+void RenderWindow::quit()
 {
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui_ImplGlfw_Shutdown();

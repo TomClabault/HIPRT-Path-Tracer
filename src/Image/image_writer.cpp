@@ -2,7 +2,7 @@
 
 #include "GL/glew.h"
 #include "stb_image_write.h"
-#include "UI/app_window.h"
+#include "UI/render_window.h"
 #include "Utils/utils.h"
 #include "Utils/opengl_utils.h"
 
@@ -16,7 +16,7 @@ void ImageWriter::set_renderer(Renderer* renderer)
 	m_renderer = renderer;
 }
 
-void ImageWriter::set_render_window(AppWindow* render_window)
+void ImageWriter::set_render_window(RenderWindow* render_window)
 {
 	m_render_window = render_window;
 }
@@ -59,7 +59,7 @@ void ImageWriter::write_to_png(const char* filepath)
 			m_compute_output_image_height = height;
 
 			glGenTextures(1, &m_compute_output_image);
-			glActiveTexture(GL_TEXTURE0 + AppWindow::DISPLAY_COMPUTE_IMAGE_UNIT);
+			glActiveTexture(GL_TEXTURE0 + RenderWindow::DISPLAY_COMPUTE_IMAGE_UNIT);
 			glBindTexture(GL_TEXTURE_2D, m_compute_output_image);
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
@@ -75,11 +75,11 @@ void ImageWriter::write_to_png(const char* filepath)
 		int nb_groups_y = std::ceil(height / (float)threads[1]);
 		glUseProgram(m_compute_shader);
 
-		glUniform1i(glGetUniformLocation(m_compute_shader, "u_texture"), AppWindow::DISPLAY_TEXTURE_UNIT);
+		glUniform1i(glGetUniformLocation(m_compute_shader, "u_texture"), RenderWindow::DISPLAY_TEXTURE_UNIT);
 		glUniform1i(glGetUniformLocation(m_compute_shader, "u_sample_number"), m_renderer->get_sample_number());
 		glUniform1f(glGetUniformLocation(m_compute_shader, "u_exposure"), m_render_window->get_application_settings().tone_mapping_exposure);
 		glUniform1f(glGetUniformLocation(m_compute_shader, "u_gamma"), m_render_window->get_application_settings().tone_mapping_gamma);
-		glUniform1i(glGetUniformLocation(m_compute_shader, "u_output_image"), AppWindow::DISPLAY_COMPUTE_IMAGE_UNIT);
+		glUniform1i(glGetUniformLocation(m_compute_shader, "u_output_image"), RenderWindow::DISPLAY_COMPUTE_IMAGE_UNIT);
 		m_render_window->setup_display_uniforms(m_compute_shader);
 
 		glDispatchCompute(nb_groups_x, nb_groups_y, 1);
