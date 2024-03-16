@@ -130,6 +130,7 @@ public:
 	void rotate_camera_view(glm::vec3 rotation_angles);
 	void zoom_camera_view(float offset);
 
+	int get_sample_number();
 	void set_sample_number(int sample_numner);
 
 	int m_render_width, m_render_height;
