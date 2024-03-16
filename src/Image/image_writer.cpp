@@ -80,10 +80,7 @@ void ImageWriter::write_to_png(const char* filepath)
 		glUniform1f(glGetUniformLocation(m_compute_shader, "u_exposure"), m_render_window->get_application_settings().tone_mapping_exposure);
 		glUniform1f(glGetUniformLocation(m_compute_shader, "u_gamma"), m_render_window->get_application_settings().tone_mapping_gamma);
 		glUniform1i(glGetUniformLocation(m_compute_shader, "u_output_image"), AppWindow::DISPLAY_COMPUTE_IMAGE_UNIT);
-		glUniform1i(glGetUniformLocation(m_compute_shader, "u_display_normals"), false);
-		glUniform1i(glGetUniformLocation(m_compute_shader, "u_scale_by_frame_number"), true);
-		glUniform1i(glGetUniformLocation(m_compute_shader, "u_do_tonemapping"), true);
-		glUniform1i(glGetUniformLocation(m_compute_shader, "u_sample_count_override"), -1);
+		m_render_window->setup_display_uniforms(m_compute_shader, m_render_window->get_necessary_display_settings());
 
 		glDispatchCompute(nb_groups_x, nb_groups_y, 1);
 		glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
