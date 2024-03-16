@@ -22,7 +22,6 @@
 // TODO Code Organization:
 // 
 // - reorganize methods order in RenderWindow
-// - rename debug_display_denoiser to display_view
 // - For the Enum DisplayView, rename NONE to default and move display view combo box to display settings of ImGui instead of it being in the denoiser
 // - overload +=, *=, ... operators for Color most notably on the GPU side
 // - use constructors instead of struct {} syntax in gpu code
@@ -183,7 +182,7 @@ void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, in
 	if (s_pressed)
 		zoom -= 1.0f;
 	if (d_pressed)
-		translation.first -= 36.0f; // TODO fix should be opposite of Q
+		translation.first -= 36.0f;
 	if (space_pressed)
 		translation.second += 36.0f;
 	if (lshift_pressed)
@@ -566,25 +565,25 @@ void RenderWindow::run()
 		{
 			switch (m_application_settings.debug_display_denoiser)
 			{
-			case DenoiserDebugView::DISPLAY_NORMALS:
+			case DisplayView::DISPLAY_NORMALS:
 				display(m_renderer.get_denoiser_normals_buffer().download_pixels().data());
 				break;
 
-			case DenoiserDebugView::DISPLAY_DENOISED_NORMALS:
+			case DisplayView::DISPLAY_DENOISED_NORMALS:
 				m_denoiser.denoise_normals();
 				display(m_denoiser.get_denoised_normals_pointer());
 				break;
 
-			case DenoiserDebugView::DISPLAY_ALBEDO:
+			case DisplayView::DISPLAY_ALBEDO:
 				display(m_renderer.get_denoiser_albedo_buffer().download_pixels().data());
 				break;
 
-			case DenoiserDebugView::DISPLAY_DENOISED_ALBEDO:
+			case DisplayView::DISPLAY_DENOISED_ALBEDO:
 				m_denoiser.denoise_albedo();
 				display(m_denoiser.get_denoised_albedo_pointer());
 				break;
 
-			case DenoiserDebugView::NONE:
+			case DisplayView::NONE:
 			default:
 				display(m_renderer.get_color_framebuffer());
 				break;
@@ -638,6 +637,44 @@ void RenderWindow::show_render_settings_panel()
 		m_renderer.compile_trace_kernel(m_application_settings.kernel_files[m_application_settings.selected_kernel].c_str(), m_application_settings.kernel_functions[m_application_settings.selected_kernel].c_str());
 
 		reset_sample_number();
+	}
+
+	const char* items[] = { "Default", "Denoiser - Normals", "Denoiser - Denoised normals", "Denoiser - Albedo", "Denoiser - Denoised albedo" };
+	if (ImGui::Combo("Display View", (int*)(&m_application_settings.debug_display_denoiser), items, IM_ARRAYSIZE(items)))
+	{
+		DisplaySettings display_settings;
+
+		switch (m_application_settings.debug_display_denoiser)
+		{
+		case DisplayView::DISPLAY_NORMALS:
+		case DisplayView::DISPLAY_DENOISED_NORMALS:
+			display_settings.display_normals = true;
+			display_settings.do_tonemapping = false;
+			display_settings.scale_by_frame_number = false;
+			display_settings.sample_count_override = -1;
+
+			break;
+
+		case DisplayView::DISPLAY_ALBEDO:
+		case DisplayView::DISPLAY_DENOISED_ALBEDO:
+			display_settings.display_normals = false;
+			display_settings.do_tonemapping = false;
+			display_settings.scale_by_frame_number = false;
+			display_settings.sample_count_override = -1;
+
+			break;
+
+		case DisplayView::NONE:
+		default:
+			display_settings.display_normals = false;
+			display_settings.do_tonemapping = true;
+			display_settings.scale_by_frame_number = true;
+			display_settings.sample_count_override = -1;
+
+			break;
+		}
+
+		set_display_settings(display_settings);
 	}
 
 	if (m_render_settings.keep_same_resolution) // TODO Put this setting in application settings ?
@@ -702,44 +739,6 @@ void RenderWindow::show_denoiser_panel()
 	}
 	else
 		ImGui::SliderInt("Denoise Sample Skip", &m_render_settings.denoiser_sample_skip, 1, 128);
-
-	const char* items[] = { "None", "Display normals", "Display denoised normals", "Display albedo", "Display denoised albedo" };
-	if (ImGui::Combo("Debug view", (int*)(&m_application_settings.debug_display_denoiser), items, IM_ARRAYSIZE(items)))
-	{
-		DisplaySettings display_settings;
-
-		switch (m_application_settings.debug_display_denoiser)
-		{
-		case DenoiserDebugView::DISPLAY_NORMALS:
-		case DenoiserDebugView::DISPLAY_DENOISED_NORMALS:
-			display_settings.display_normals = true;
-			display_settings.do_tonemapping = false;
-			display_settings.scale_by_frame_number = false;
-			display_settings.sample_count_override = -1;
-
-			break;
-
-		case DenoiserDebugView::DISPLAY_ALBEDO:
-		case DenoiserDebugView::DISPLAY_DENOISED_ALBEDO:
-			display_settings.display_normals = false;
-			display_settings.do_tonemapping = false;
-			display_settings.scale_by_frame_number = false;
-			display_settings.sample_count_override = -1;
-
-			break;
-
-		case DenoiserDebugView::NONE:
-		default:
-			display_settings.display_normals = false;
-			display_settings.do_tonemapping = true;
-			display_settings.scale_by_frame_number = true;
-			display_settings.sample_count_override = -1;
-
-			break;
-		}
-
-		set_display_settings(display_settings);
-	}
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 }
