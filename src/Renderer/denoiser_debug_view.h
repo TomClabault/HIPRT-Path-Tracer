@@ -1,7 +1,7 @@
 #ifndef DENOISER_DEBUG_VIEW_H
 #define DENOISER_DEBUG_VIEW_H
 
-enum DenoiserDebugView
+enum DisplayView
 {
 	NONE,
 	DISPLAY_NORMALS,
