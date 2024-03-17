@@ -16,6 +16,17 @@ void ImageWriter::set_render_window(RenderWindow* render_window)
 	m_render_window = render_window;
 }
 
+void ImageWriter::write_to_png()
+{
+	std::stringstream filename;
+	std::time_t t = std::time(0);
+	std::tm* now = std::localtime(&t);
+
+	filename << std::put_time(now, "%m.%d.%Y.%H.%M.%S - ") << m_renderer->get_render_settings().sample_number << "sp @ " << m_renderer->m_render_width << "x" << m_renderer->m_render_height << ".png";
+
+	write_to_png(filename.str().c_str());
+}
+
 void ImageWriter::write_to_png(const char* filepath)
 {
 	int width = m_renderer->m_render_width;
