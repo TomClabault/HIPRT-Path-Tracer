@@ -24,14 +24,13 @@
 // - reorganize methods order in RenderWindow
 // - overload +=, *=, ... operators for Color most notably on the GPU side
 // - use constructors instead of struct {} syntax in gpu code
-// - rename HIPRT_xorshift32 generator without underscores for consistency
 // - separate path tracer kernel functions in header files
-// - do not duplicate functions. Make a common h file that uses the float3 type (cosine_weighted_direction_around_normal, hiprt_lambertian.h:7)
+// - do not duplicate render functions. Make a common h file that uses the float3 type (cosine_weighted_direction_around_normal, hiprt_lambertian.h:7)
 // - instead of duplicating structures (RendererMaterial + RendererMaterial, BRDF + BRDF, ...), it would be better to create a folder
 //		HostDeviceCommon containing the structures that are used both by the GPU and CPU renderer
 // - imgui controller to put all the imgui code in one class
 // - put mouse / keyboard code in an interactor
-// - when the mouse / keyvoard code will in an interactor, have the is_interacting boloean in this interactor class
+// - when the mouse / keyvoard code will be in an interactor class, have the is_interacting boloean in this interactor class
 //		and poll it from the main loop to check whether we need to render the frame at a lower resolution or not
 
 
@@ -312,7 +311,6 @@ RenderWindow::RenderWindow(int width, int height) : m_viewport_width(width), m_v
 		m_renderer.get_denoiser_normals_buffer().get_pointer(), m_renderer.get_denoiser_albedo_buffer().get_pointer(),
 		width, height);
 
-	m_image_writer.init_shader();
 	m_image_writer.set_renderer(&m_renderer);
 	m_image_writer.set_render_window(this);
 }

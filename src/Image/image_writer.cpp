@@ -6,11 +6,6 @@
 #include "Utils/utils.h"
 #include "Utils/opengl_utils.h"
 
-void ImageWriter::init_shader()
-{
-	m_compute_shader = OpenGLUtils::compile_computer_program("Shaders/display.frag");
-}
-
 void ImageWriter::set_renderer(Renderer* renderer)
 {
 	m_renderer = renderer;
@@ -41,6 +36,10 @@ void ImageWriter::write_to_png(const char* filepath)
 		// We're going to have to go through a compute shader for a resolution scaling
 		// different than 1.0f because OpenGL's viewport doesn't match the render size
 		// (so we can't just dump the viewport's pixels to a file as in the 1.0f case)
+
+		if ((GLuint)-1 == m_compute_shader)
+			// Shader uninitialized
+			m_compute_shader = OpenGLUtils::compile_computer_program("Shaders/display.frag");
 
 		bool texture_needs_creation = false;
 		if (m_compute_output_image_width == -1)
