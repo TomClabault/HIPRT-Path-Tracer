@@ -92,3 +92,4 @@ void ImageWriter::write_to_png(const char* filepath)
 			std::cout << "Render written to \"" << filepath << "\"" << std::endl;
 	}
 }
+

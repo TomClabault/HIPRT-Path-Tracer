@@ -6,14 +6,13 @@
 #include "Utils/utils.h"
 #include "Utils/opengl_utils.h"
 
-//#define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
 // test performance when reducing number of triangles of the P1
 
 // TODO bugs
 //
-// - denoiser normals incorrect ?
+// - normals AOV not converging correctly ?
 // - aspect ratio issue on CPU or GPU ?
 // - fix 1 off sample count on Imgui interface. When stopping at 10 samples, ImGui displays 11
 
@@ -36,6 +35,7 @@
 
 
 // TODO Features:
+// - enable lower resolution on mouse scroll for like ~10 frames
 // - display feedback for 3 seconds after dumping a screenshot to disk
 // - choose denoiser quality in imgui
 // - try async buffer copy for the denoiser (maybe run a kernel to generate normals and another to generate albedo buffer before the path tracing kernel to be able to async copy while the path tracing kernel is running?)
@@ -763,7 +763,7 @@ void RenderWindow::display_imgui()
 	auto now_time = std::chrono::high_resolution_clock::now();
 	float render_time = std::chrono::duration_cast<std::chrono::milliseconds>(now_time - m_startRenderTime).count();
 	ImGui::Text("Render time: %.3fs", render_time / 1000.0f);
-	ImGui::Text("%d samples | %.2f samples/s @ %dx%d", m_render_settings.sample_number + 1, 1.0f / io.DeltaTime * (m_render_settings.render_low_resolution ? 1 : m_render_settings.samples_per_frame), m_renderer.m_render_width, m_renderer.m_render_height);
+	ImGui::Text("%d samples | %.2f samples/s @ %dx%d", m_render_settings.sample_number, 1.0f / io.DeltaTime * (m_render_settings.render_low_resolution ? 1 : m_render_settings.samples_per_frame), m_renderer.m_render_width, m_renderer.m_render_height);
 
 	ImGui::Separator();
 
