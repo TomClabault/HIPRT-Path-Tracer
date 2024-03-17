@@ -11,8 +11,6 @@ class ImageWriter
 public:
 	ImageWriter() : m_renderer(nullptr), m_render_window(nullptr) {};
 
-	void init_shader();
-
 	void set_renderer(Renderer* renderer);
 	void set_render_window(RenderWindow* render_window);
 
@@ -22,7 +20,7 @@ private:
 	Renderer* m_renderer;
 	RenderWindow* m_render_window;
 
-	GLuint m_compute_shader;
+	GLuint m_compute_shader = -1;
 	GLuint m_compute_output_image;
 	int m_compute_output_image_width = -1;
 	int m_compute_output_image_height = -1;
