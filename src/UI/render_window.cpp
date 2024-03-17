@@ -14,7 +14,6 @@
 //
 // - normals AOV not converging correctly ?
 // - aspect ratio issue on CPU or GPU ?
-// - fix 1 off sample count on Imgui interface. When stopping at 10 samples, ImGui displays 11
 
 
 
@@ -768,7 +767,7 @@ void RenderWindow::display_imgui()
 	ImGui::Separator();
 
 	if (ImGui::Button("Save viewport to PNG (tonemapped)"))
-		m_image_writer.write_to_png("Render tonemapped.png");
+		m_image_writer.write_to_png();
 	
 	ImGui::Separator();
 
