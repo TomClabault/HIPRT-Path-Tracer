@@ -509,14 +509,15 @@ __device__ unsigned int wang_hash(unsigned int seed)
     return seed;
 }
 
-__device__ void debug_set_final_color(const HIPRTRenderData& render_data, int x, int y, int res_x, Color* pixels, Color final_color)
+__device__ void debug_set_final_color(const HIPRTRenderData& render_data, int x, int y, int res_x, Color final_color)
 {
     if (render_data.m_render_settings.sample_number == 0)
-        pixels[y * res_x + x] = final_color;
+        render_data.pixels[y * res_x + x] = final_color;
     else
-        pixels[y * res_x + x] = pixels[y * res_x + x] + final_color;
+        render_data.pixels[y * res_x + x] = render_data.pixels[y * res_x + x] + final_color;
 }
 
+#define LOW_RESOLUTION_RENDER_DOWNSCALE 8
 GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderData render_data, int2 res, HIPRTCamera camera)
 {
     const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -532,8 +533,9 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
         render_data.m_render_settings.nb_bounces = 3;
         render_data.m_render_settings.samples_per_frame = 1;
 
-        // If rendering at low resolution, only one pixel out of 8x8 will be rendered
-        if (x & 0b111 || y & 0b111)
+        // If rendering at low resolution, only one pixel out of 
+        // LOW_RESOLUTION_RENDER_DOWNSCALE x LOW_RESOLUTION_RENDER_DOWNSCALE will be rendered
+        if (x & (LOW_RESOLUTION_RENDER_DOWNSCALE - 1) || y & (LOW_RESOLUTION_RENDER_DOWNSCALE - 1))
             return;
     }
 
@@ -553,7 +555,6 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
     // the Fresnel blend of the reflected and transmitted albedo/normal
     // so we're going to have to keep track of the blend coefficient across
     // the bounces
-    float denoiser_blend = 1.0f;
     Color denoiser_albedo = Color(0.0f, 0.0f, 0.0f);
     hiprtFloat3 denoiser_normal = hiprtFloat3{ 0.0f, 0.0f, 0.0f };
     for (int sample = 0; sample < render_data.m_render_settings.samples_per_frame; sample++)
@@ -570,6 +571,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
         BRDF last_brdf_hit_type = BRDF::Uninitialized;
         // Whether or not we've already written
         bool denoiser_AOVs_set = false;
+        float denoiser_blend = 1.0f;
 
         for (int bounce = 0; bounce < render_data.m_render_settings.nb_bounces; bounce++)
         {
@@ -609,7 +611,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                         denoiser_AOVs_set = true;
 
                         denoiser_albedo += material.diffuse * denoiser_blend;
-                        denoiser_normal += normalize(closest_hit_info.normal_at_intersection * denoiser_blend);
+                        denoiser_normal += closest_hit_info.normal_at_intersection * denoiser_blend;
                     }
 
                     if (bounce == 0)
@@ -675,9 +677,9 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
     if (render_data.m_render_settings.render_low_resolution)
     {
         // Copying the pixel we just rendered to the neighbors
-        for (int _y = 0; _y < 8; _y++)
+        for (int _y = 0; _y < LOW_RESOLUTION_RENDER_DOWNSCALE; _y++)
         {
-            for (int _x = 0; _x < 8; _x++)
+            for (int _x = 0; _x < LOW_RESOLUTION_RENDER_DOWNSCALE; _x++)
             {
                 int _index = _y * res.x + _x + index;
                 if (_y == 0 && _x == 0)
