@@ -317,17 +317,6 @@ __device__ bool trace_ray(const HIPRTRenderData& render_data, hiprtRay ray, HitI
         hit_info.inter_point = ray.origin + hit.t * ray.direction;
         hit_info.primitive_index = hit.primID;
         
-        // TODO hit.normal is in object space but we need world space normals. The line below assumes that all objects have
-        // already been pretransformed in world space. This may not be true anymore with multiple level
-        // acceleration structures
-        /*hiprtFloat3 vertex_A = render_data.triangles_vertices[render_data.triangles_indices[hit_info.primitive_index * 3 + 0]];
-        hiprtFloat3 vertex_B = render_data.triangles_vertices[render_data.triangles_indices[hit_info.primitive_index * 3 + 1]];
-        hiprtFloat3 vertex_C = render_data.triangles_vertices[render_data.triangles_indices[hit_info.primitive_index * 3 + 2]];
-
-        hiprtFloat3 AB = vertex_B - vertex_A;
-        hiprtFloat3 AC = vertex_C - vertex_A;
-        hit_info.normal_at_intersection = normalize(cross(AB, AC));*/
-
         int vertex_A_index = render_data.triangles_indices[hit_info.primitive_index * 3 + 0];
         if (render_data.normals_present[vertex_A_index])
         {
@@ -558,6 +547,13 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
     Xorshift32Generator random_number_generator(wang_hash((index + 1) * (render_data.m_render_settings.sample_number + 1)));
 
     Color final_color = Color(0.0f, 0.0f, 0.0f);
+
+    // This denoiser_blend variable is used when the rays hit delta function
+    // BRDFs. In those cases, the denoiser albedo/normal is going to be
+    // the Fresnel blend of the reflected and transmitted albedo/normal
+    // so we're going to have to keep track of the blend coefficient across
+    // the bounces
+    float denoiser_blend = 1.0f;
     Color denoiser_albedo = Color(0.0f, 0.0f, 0.0f);
     hiprtFloat3 denoiser_normal = hiprtFloat3{ 0.0f, 0.0f, 0.0f };
     for (int sample = 0; sample < render_data.m_render_settings.samples_per_frame; sample++)
@@ -573,8 +569,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
         RayState next_ray_state = RayState::BOUNCE;
         BRDF last_brdf_hit_type = BRDF::Uninitialized;
         // Whether or not we've already written
-        bool normals_AOV_set = false;
-        bool albedo_AOV_set = false;
+        bool denoiser_AOVs_set = false;
 
         for (int bounce = 0; bounce < render_data.m_render_settings.nb_bounces; bounce++)
         {
@@ -588,18 +583,6 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                     int material_index = render_data.material_indices[closest_hit_info.primitive_index];
                     RendererMaterial material = render_data.materials_buffer[material_index];
                     last_brdf_hit_type = material.brdf_type;
-
-                    if (!albedo_AOV_set && last_brdf_hit_type != BRDF::SpecularFresnel)
-                    {
-                        albedo_AOV_set = true;
-                        denoiser_albedo += material.diffuse;
-                    }
-                    if (!normals_AOV_set && last_brdf_hit_type != BRDF::SpecularFresnel)
-                    {
-                        normals_AOV_set = true;
-                        denoiser_normal += closest_hit_info.normal_at_intersection;
-                    }
-                        
 
                     // --------------------------------------------------- //
                     // ----------------- Direct lighting ----------------- //
@@ -616,6 +599,18 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                     float brdf_pdf;
                     hiprtFloat3 bounce_direction;
                     Color brdf = brdf_dispatcher_sample(material, bounce_direction, ray.direction, closest_hit_info.normal_at_intersection, brdf_pdf, random_number_generator);
+
+                    if (last_brdf_hit_type == BRDF::SpecularFresnel)
+                        // The fresnel blend coefficient is in the PDF
+                        denoiser_blend *= brdf_pdf;
+
+                    if (!denoiser_AOVs_set && last_brdf_hit_type != BRDF::SpecularFresnel)
+                    {
+                        denoiser_AOVs_set = true;
+
+                        denoiser_albedo += material.diffuse * denoiser_blend;
+                        denoiser_normal += normalize(closest_hit_info.normal_at_intersection * denoiser_blend);
+                    }
 
                     if (bounce == 0)
                         sample_color = sample_color + material.emission * throughput;

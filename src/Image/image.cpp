@@ -101,3 +101,4 @@ Color& Image::operator[](int index)
 {
     return m_pixel_data[index];
 }
+
