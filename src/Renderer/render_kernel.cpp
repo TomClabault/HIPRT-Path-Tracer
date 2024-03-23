@@ -69,7 +69,7 @@ bool refract_ray(const Vector& ray_direction, const Vector& surface_normal, Vect
     return true;
 }
 
-Vector RenderKernel::rotate_vector_around_normal(const Vector& normal, const Vector& random_dir_local_space) const
+Vector RenderKernel::rotate_vector_around_normal(const Vector& normal, const Vector& random_dir_local_space)
 {
     Vector tangent, bitangent;
     branchlessONB(normal, tangent, bitangent);
@@ -79,7 +79,7 @@ Vector RenderKernel::rotate_vector_around_normal(const Vector& normal, const Vec
     return random_dir_local_space.x * tangent + random_dir_local_space.y * bitangent + random_dir_local_space.z * normal;
 }
 
-Vector RenderKernel::uniform_direction_around_normal(const Vector& normal, float& pdf, Xorshift32Generator& random_number_generator) const
+Vector RenderKernel::uniform_direction_around_normal(const Vector& normal, float& pdf, Xorshift32Generator& random_number_generator)
 {
     float rand_1 = random_number_generator();
     float rand_2 = random_number_generator();
@@ -94,7 +94,7 @@ Vector RenderKernel::uniform_direction_around_normal(const Vector& normal, float
     return rotate_vector_around_normal(normal, random_dir_local_space);
 }
 
-Vector RenderKernel::cosine_weighted_direction_around_normal(const Vector& normal, float& pdf, Xorshift32Generator& random_number_generator) const
+Vector RenderKernel::cosine_weighted_sample(const Vector& normal, float& pdf, Xorshift32Generator& random_number_generator)
 {
     float rand_1 = random_number_generator();
     float rand_2 = random_number_generator();
@@ -111,7 +111,12 @@ Vector RenderKernel::cosine_weighted_direction_around_normal(const Vector& norma
     return rotate_vector_around_normal(normal, random_dir_local_space);
 }
 
-Ray RenderKernel::get_camera_ray(float x, float y) const
+void RenderKernel::cosine_weighted_eval(const Vector& normal, const Vector& direction, float& pdf)
+{
+    pdf = dot(normal, direction) / M_PI;
+}
+
+Ray RenderKernel::get_camera_ray(float x, float y)
 {
     float x_ndc_space = x / m_framebuffer_width * 2 - 1;
     float y_ndc_space = y / m_framebuffer_height * 2 - 1;
@@ -129,7 +134,7 @@ Ray RenderKernel::get_camera_ray(float x, float y) const
     return ray;
 }
 
-void RenderKernel::ray_trace_pixel(int x, int y) const
+void RenderKernel::ray_trace_pixel(int x, int y)
 {
     Xorshift32Generator random_number_generator(31 + x * y * m_render_samples);
     //Generating some numbers to make sure the generators of each thread spread apart
@@ -170,7 +175,7 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
                     // ----------------- Direct lighting ----------------- //
                     // --------------------------------------------------- //
                     Color light_sample_radiance = sample_light_sources(ray, closest_hit_info, material, random_number_generator);
-                    Color env_map_radiance = sample_environment_map(ray, closest_hit_info, material, random_number_generator);
+                    Color env_map_radiance = Color(0.0f);// sample_environment_map(ray, closest_hit_info, material, random_number_generator);
 
                     // --------------------------------------- //
                     // ---------- Indirect lighting ---------- //
@@ -178,7 +183,9 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
 
                     float brdf_pdf;
                     Vector bounce_direction;
-                    Color brdf = brdf_dispatcher_sample(material, bounce_direction, ray.direction, closest_hit_info.normal_at_intersection, brdf_pdf, random_number_generator); //TODO relative IOR in the RayData rather than two incident and output ior values
+
+                    Color brdf = brdf_dispatcher_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, bounce_direction, brdf_pdf, random_number_generator);
+                    //Color brdf = brdf_dispatcher_sample(material, bounce_direction, ray.direction, closest_hit_info.normal_at_intersection, brdf_pdf, random_number_generator); //TODO relative IOR in the RayData rather than two incident and output ior values
                     
                     if (bounce == 0)
                         sample_color += material.emission;
@@ -203,14 +210,14 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
             }
             else if (next_ray_state == RayState::MISSED)
             {
-                if (bounce == 1 || last_brdf_hit_type == BRDF::SpecularFresnel)
+                //if (bounce == 1 || last_brdf_hit_type == BRDF::SpecularFresnel)
                 {
                     //We're only getting the skysphere radiance for the first rays because the
                     //syksphere is importance sampled
                     // We're also getting the skysphere radiance for perfectly specular BRDF since those
                     // are not importance sampled
 
-                    Color skysphere_color = sample_environment_map_from_direction(ray.direction);
+                    Color skysphere_color = Color(0.45f);// sample_environment_map_from_direction(ray.direction);
 
                     sample_color += skysphere_color * throughput;
                 }
@@ -243,8 +250,8 @@ void RenderKernel::ray_trace_pixel(int x, int y) const
 #include <omp.h>
 
 #define DEBUG_PIXEL 0
-#define DEBUG_PIXEL_X 450
-#define DEBUG_PIXEL_Y 399
+#define DEBUG_PIXEL_X 0
+#define DEBUG_PIXEL_Y 12
 
 void RenderKernel::render()
 {
@@ -270,7 +277,7 @@ void RenderKernel::render()
     }
 }
 
-Color RenderKernel::lambertian_brdf(const RendererMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal) const
+Color RenderKernel::lambertian_brdf(const RendererMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal)
 {
     return material.diffuse * M_1_PI;
 }
@@ -304,20 +311,7 @@ float GGX_smith_masking_shadowing(float roughness_squared, float NoV, float NoL)
     return G1_schlick_ggx(k, NoL) * G1_schlick_ggx(k, NoV);
 }
 
-float RenderKernel::cook_torrance_brdf_pdf(const RendererMaterial& material, const Vector& view_direction, const Vector& to_light_direction, const Vector& surface_normal) const
-{
-    Vector microfacet_normal = normalize(view_direction + to_light_direction);
-
-    float alpha = material.roughness * material.roughness;
-
-    float VoH = std::max(0.0f, dot(view_direction, microfacet_normal));
-    float NoH = std::max(0.0f, dot(surface_normal, microfacet_normal));
-    float D = GGX_normal_distribution(alpha, NoH);
-
-    return D * NoH / (4.0f * VoH);
-}
-
-inline Color RenderKernel::cook_torrance_brdf(const RendererMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal) const
+inline Color RenderKernel::cook_torrance_brdf_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, const Vector& to_light_direction, float& pdf)
 {
     Color brdf_color = Color(0.0f, 0.0f, 0.0f);
     Color base_color = material.diffuse;
@@ -355,12 +349,13 @@ inline Color RenderKernel::cook_torrance_brdf(const RendererMaterial& material, 
         Color specular_part = (F * D * G) / (4.0f * NoV * NoL);
 
         brdf_color = diffuse_part + specular_part;
+        pdf = D * NoH / (4.0f * VoH);
     }
 
     return brdf_color;
 }
 
-Color RenderKernel::cook_torrance_brdf_importance_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, float& pdf, Xorshift32Generator& random_number_generator) const
+Color RenderKernel::cook_torrance_brdf_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
 {
     pdf = 0.0f;
 
@@ -421,7 +416,7 @@ Color RenderKernel::cook_torrance_brdf_importance_sample(const RendererMaterial&
     return brdf_color;
 }
 
-Color RenderKernel::smooth_glass_bsdf(const RendererMaterial& material, Vector& out_bounce_direction, const Vector& ray_direction, Vector& surface_normal, float eta_i, float eta_t, float& pdf, Xorshift32Generator& random_generator) const
+Color RenderKernel::smooth_glass_bsdf(const RendererMaterial& material, Vector& out_bounce_direction, const Vector& ray_direction, Vector& surface_normal, float eta_i, float eta_t, float& pdf, Xorshift32Generator& random_generator)
 {
     // Clamping here because the dot product can eventually returns values less
     // than -1 or greater than 1 because of precision errors in the vectors
@@ -474,17 +469,64 @@ Color RenderKernel::smooth_glass_bsdf(const RendererMaterial& material, Vector& 
     }
 }
 
-Color RenderKernel::brdf_dispatcher_sample(const RendererMaterial& material, Vector& bounce_direction, const Vector& ray_direction, Vector& surface_normal, float& brdf_pdf, Xorshift32Generator& random_number_generator) const
+Color RenderKernel::disney_schlick_weight(float f0, float abs_cos_angle)
 {
-    if (material.brdf_type == BRDF::SpecularFresnel)
-        return smooth_glass_bsdf(material, bounce_direction, ray_direction, surface_normal, 1.0f, material.ior, brdf_pdf, random_number_generator); //TODO relative IOR in the RayData rather than two incident and output ior values
-    else if (material.brdf_type == BRDF::CookTorrance)
-        return cook_torrance_brdf_importance_sample(material, -ray_direction, surface_normal, bounce_direction, brdf_pdf, random_number_generator);
+    return 1.0f + (f0 - 1.0f) * std::pow(1.0f - abs_cos_angle, 5.0f);
+}
+
+Color RenderKernel::disney_diffuse_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, const Vector& to_light_direction, float& pdf)
+{
+
+    Vector half_vector = normalize(to_light_direction + view_direction);
+
+    float LoH = std::abs(dot(to_light_direction, half_vector));
+    float NoL = std::abs(dot(surface_normal, to_light_direction));
+    float NoV = std::abs(dot(surface_normal, view_direction));
+
+    pdf = NoL / M_PI;
+
+    Color diffuse_part;
+    float diffuse_90 = 0.5f + 2.0f * material.roughness * LoH * LoH;
+    diffuse_part = material.diffuse / M_PI * disney_schlick_weight(diffuse_90, NoL) * disney_schlick_weight(diffuse_90, NoV) * NoL;
+
+    Color fake_subsurface_part;
+    float subsurface_90 = material.roughness * LoH * LoH;
+    fake_subsurface_part = 1.25f * material.diffuse / M_PI * 
+        (disney_schlick_weight(subsurface_90, NoL) * disney_schlick_weight(subsurface_90, NoV) * (1.0f / (NoL + NoV) - 0.5f) + 0.5f) * NoL;
+
+    return (1.0f - material.subsurface) * diffuse_part + material.subsurface * fake_subsurface_part;
+}
+
+Color RenderKernel::disney_diffuse_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
+{
+    output_direction = cosine_weighted_sample(surface_normal, pdf, random_number_generator);
+
+    return disney_diffuse_eval(material, view_direction, surface_normal, output_direction, pdf);
+}
+
+Color RenderKernel::brdf_dispatcher_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, const Vector& to_light_direction, float& pdf)
+{
+    pdf = 0.0f;
+    if (material.brdf_type == BRDF::CookTorrance)
+        return disney_diffuse_eval(material, view_direction, surface_normal, to_light_direction, pdf);
+        //return cook_torrance_brdf_eval(material, view_direction, surface_normal, to_light_direction, pdf);
 
     return Color(0.0f);
 }
 
-bool RenderKernel::intersect_scene(const Ray& ray, HitInfo& closest_hit_info) const
+//Color RenderKernel::cook_torrance_brdf_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
+Color RenderKernel::brdf_dispatcher_sample(const RendererMaterial& material, const Vector& view_direction, Vector& surface_normal, Vector& bounce_direction, float& brdf_pdf, Xorshift32Generator& random_number_generator)
+{
+    if (material.brdf_type == BRDF::SpecularFresnel)
+        return smooth_glass_bsdf(material, bounce_direction, -view_direction, surface_normal, 1.0f, material.ior, brdf_pdf, random_number_generator); //TODO relative IOR in the RayData rather than two incident and output ior values
+    else if (material.brdf_type == BRDF::CookTorrance)
+        return disney_diffuse_sample(material, view_direction, surface_normal, bounce_direction, brdf_pdf, random_number_generator);
+        //return cook_torrance_brdf_sample(material, -ray_direction, surface_normal, bounce_direction, brdf_pdf, random_number_generator);
+
+    return Color(0.0f);
+}
+
+bool RenderKernel::intersect_scene(const Ray& ray, HitInfo& closest_hit_info)
 {
     closest_hit_info.t = -1.0f;
 
@@ -516,7 +558,7 @@ bool RenderKernel::intersect_scene(const Ray& ray, HitInfo& closest_hit_info) co
     return closest_hit_info.t > 0.0f;
 }
 
-inline bool RenderKernel::intersect_scene_bvh(const Ray& ray, HitInfo& closest_hit_info) const
+inline bool RenderKernel::intersect_scene_bvh(const Ray& ray, HitInfo& closest_hit_info)
 {
     closest_hit_info.t = -1.0f;
 
@@ -554,7 +596,7 @@ inline bool RenderKernel::intersect_scene_bvh(const Ray& ray, HitInfo& closest_h
     return closest_hit_info.t > 0.0f;
 }
 
-inline bool RenderKernel::INTERSECT_SCENE(const Ray& ray, HitInfo& hit_info) const
+inline bool RenderKernel::INTERSECT_SCENE(const Ray& ray, HitInfo& hit_info)
 {
     return intersect_scene_bvh(ray, hit_info);
 }
@@ -566,7 +608,7 @@ float power_heuristic(float pdf_a, float pdf_b)
     return pdf_a_squared / (pdf_a_squared + pdf_b * pdf_b);
 }
 
-Color RenderKernel::sample_environment_map_from_direction(const Vector& direction) const
+Color RenderKernel::sample_environment_map_from_direction(const Vector& direction)
 {
     float u, v;
     u = 0.5f + std::atan2(direction.z, direction.x) / (2.0f * (float)M_PI);
@@ -578,7 +620,7 @@ Color RenderKernel::sample_environment_map_from_direction(const Vector& directio
     return m_environment_map[y * m_environment_map.width + x];
 }
 
-void RenderKernel::env_map_cdf_search(float value, int& x, int& y) const
+void RenderKernel::env_map_cdf_search(float value, int& x, int& y)
 {
     //First searching a line to sample
     int lower = 0;
@@ -615,7 +657,7 @@ void RenderKernel::env_map_cdf_search(float value, int& x, int& y) const
     x = std::max(std::min(lower, m_environment_map.width), 0);
 }
 
-Color RenderKernel::sample_environment_map(const Ray& ray, const HitInfo& closest_hit_info, const RendererMaterial& material, Xorshift32Generator& random_number_generator) const
+Color RenderKernel::sample_environment_map(const Ray& ray, HitInfo& closest_hit_info, const RendererMaterial& material, Xorshift32Generator& random_number_generator)
 {
     if (material.brdf_type == BRDF::SpecularFresnel)
         // No sampling for perfectly specular materials
@@ -625,7 +667,7 @@ Color RenderKernel::sample_environment_map(const Ray& ray, const HitInfo& closes
 
     int x, y;
     float env_map_total_sum = cdf[cdf.size() - 1];
-    env_map_cdf_search(random_number_generator() * env_map_total_sum, x, y);
+    env_map_cdf_search(random_number_generator.random_index(env_map_total_sum), x, y);
 
     float u = (float)x / m_environment_map.width;
     float v = (float)y / m_environment_map.height;
@@ -653,17 +695,19 @@ Color RenderKernel::sample_environment_map(const Ray& ray, const HitInfo& closes
             env_map_pdf = (env_map_pdf * m_environment_map.width * m_environment_map.height) / (2.0f * M_PI * M_PI * sin_theta);
 
             Color env_map_radiance = m_environment_map[y * m_environment_map.width + x];
-            Color brdf = cook_torrance_brdf(material, sampled_direction, -ray.direction, closest_hit_info.normal_at_intersection);
-            float brdf_pdf = cook_torrance_brdf_pdf(material, -ray.direction, sampled_direction, closest_hit_info.normal_at_intersection);
+            float pdf;
+            //Color brdf = cook_torrance_brdf_eval(material, -ray.direction, closest_hit_info.normal_at_intersection, sampled_direction, pdf);
+            Color brdf = brdf_dispatcher_eval(material, -ray.direction, closest_hit_info.normal_at_intersection, sampled_direction, pdf);
 
-            float mis_weight = power_heuristic(env_map_pdf, brdf_pdf);
+            float mis_weight = power_heuristic(env_map_pdf, pdf);
             env_sample = brdf * cosine_term * mis_weight * env_map_radiance / env_map_pdf;
         }
     }
 
     float brdf_sample_pdf;
     Vector brdf_sampled_dir;
-    Color brdf_imp_sampling = cook_torrance_brdf_importance_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, brdf_sampled_dir, brdf_sample_pdf, random_number_generator);
+    //Color brdf_imp_sampling = cook_torrance_brdf_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, brdf_sampled_dir, brdf_sample_pdf, random_number_generator);
+    Color brdf_imp_sampling = brdf_dispatcher_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, brdf_sampled_dir, brdf_sample_pdf, random_number_generator);
 
     cosine_term = std::max(dot(closest_hit_info.normal_at_intersection, brdf_sampled_dir), 0.0f);
     Color brdf_sample;
@@ -688,7 +732,7 @@ Color RenderKernel::sample_environment_map(const Ray& ray, const HitInfo& closes
     return brdf_sample + env_sample;
 }
 
-Color RenderKernel::sample_light_sources(const Ray& ray, const HitInfo& closest_hit_info, const RendererMaterial& material, Xorshift32Generator& random_number_generator) const
+Color RenderKernel::sample_light_sources(const Ray& ray, HitInfo& closest_hit_info, const RendererMaterial& material, Xorshift32Generator& random_number_generator)
 {
     if (material.brdf_type == BRDF::SpecularFresnel)
         // No sampling for perfectly specular materials
@@ -720,12 +764,12 @@ Color RenderKernel::sample_light_sources(const Ray& ray, const HitInfo& closest_
                 light_sample_pdf *= distance_to_light * distance_to_light;
                 light_sample_pdf /= dot_light_source;
 
-                Color brdf = cook_torrance_brdf(material, shadow_ray.direction, -ray.direction, closest_hit_info.normal_at_intersection);
-
-                float cook_torrance_pdf = cook_torrance_brdf_pdf(material, -ray.direction, shadow_ray_direction_normalized, closest_hit_info.normal_at_intersection);
-                if (cook_torrance_pdf != 0.0f)
+                float pdf;
+                //Color brdf = cook_torrance_brdf_eval(material, -ray.direction, closest_hit_info.normal_at_intersection, shadow_ray.direction, pdf);
+                Color brdf = brdf_dispatcher_eval(material, -ray.direction, closest_hit_info.normal_at_intersection, shadow_ray.direction, pdf);
+                if (pdf != 0.0f)
                 {
-                    float mis_weight = power_heuristic(light_sample_pdf, cook_torrance_pdf);
+                    float mis_weight = power_heuristic(light_sample_pdf, pdf);
 
                     Color Li = emissive_triangle_material.emission;
                     float cosine_term = dot(closest_hit_info.normal_at_intersection, shadow_ray_direction_normalized);
@@ -740,7 +784,8 @@ Color RenderKernel::sample_light_sources(const Ray& ray, const HitInfo& closest_
 
     Vector sampled_brdf_direction;
     float direction_pdf;
-    Color brdf = cook_torrance_brdf_importance_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, sampled_brdf_direction, direction_pdf, random_number_generator);
+    //Color brdf = cook_torrance_brdf_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, sampled_brdf_direction, direction_pdf, random_number_generator);
+    Color brdf = brdf_dispatcher_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, sampled_brdf_direction, direction_pdf, random_number_generator);
     if (brdf != Color(0.0f, 0.0f, 0.0f))
     {
         Ray new_ray = Ray(closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-5f, sampled_brdf_direction);
@@ -774,9 +819,9 @@ Color RenderKernel::sample_light_sources(const Ray& ray, const HitInfo& closest_
     return light_source_radiance_mis + brdf_radiance_mis;
 }
 
-inline Point RenderKernel::sample_random_point_on_lights(Xorshift32Generator& random_number_generator, float& pdf, LightSourceInformation& light_info) const
+inline Point RenderKernel::sample_random_point_on_lights(Xorshift32Generator& random_number_generator, float& pdf, LightSourceInformation& light_info)
 {
-    light_info.emissive_triangle_index = random_number_generator() * m_emissive_triangle_indices_buffer.size();
+    light_info.emissive_triangle_index = random_number_generator.random_index(m_emissive_triangle_indices_buffer.size());
     light_info.emissive_triangle_index = m_emissive_triangle_indices_buffer[light_info.emissive_triangle_index];
     Triangle random_emissive_triangle = m_triangle_buffer[light_info.emissive_triangle_index];
 
@@ -803,7 +848,7 @@ inline Point RenderKernel::sample_random_point_on_lights(Xorshift32Generator& ra
     return random_point_on_triangle;
 }
 
-bool RenderKernel::evaluate_shadow_ray(const Ray& ray, float t_max) const
+bool RenderKernel::evaluate_shadow_ray(const Ray& ray, float t_max)
 {
     HitInfo hit_info;
     bool inter_found = INTERSECT_SCENE(ray, hit_info);

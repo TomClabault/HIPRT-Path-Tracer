@@ -43,32 +43,37 @@ public:
 
     void set_camera(Camera camera) { m_camera = camera; }
 
-    Ray get_camera_ray(float x, float y) const;
+    Ray get_camera_ray(float x, float y);
 
-    Vector rotate_vector_around_normal(const Vector& normal, const Vector& random_dir_local_space) const;
-    Vector uniform_direction_around_normal(const Vector& normal, float& pdf, Xorshift32Generator& random_number_generator) const;
-    Vector cosine_weighted_direction_around_normal(const Vector& normal, float& pdf, Xorshift32Generator& random_number_generator) const;
+    Vector rotate_vector_around_normal(const Vector& normal, const Vector& random_dir_local_space);
+    Vector uniform_direction_around_normal(const Vector& normal, float& pdf, Xorshift32Generator& random_number_generator);
+    Vector cosine_weighted_sample(const Vector& normal, float& pdf, Xorshift32Generator& random_number_generator);
+    void cosine_weighted_eval(const Vector& normal, const Vector& direction, float& pdf);
 
-    void ray_trace_pixel(int x, int y) const;
+    void ray_trace_pixel(int x, int y);
     void render();
 
-    Color brdf_dispatcher_sample(const RendererMaterial& material, Vector& bounce_direction, const Vector& ray_direction, Vector& surface_normal, float& brdf_pdf, Xorshift32Generator& random_number_generator) const;
-    Color lambertian_brdf(const RendererMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal) const;
-    float cook_torrance_brdf_pdf(const RendererMaterial& material, const Vector& view_direction, const Vector& to_light_direction, const Vector& surface_normal) const;
-    Color cook_torrance_brdf(const RendererMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal) const;
-    Color cook_torrance_brdf_importance_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, float& pdf, Xorshift32Generator& random_number_generator) const;
-    Color smooth_glass_bsdf(const RendererMaterial& material, Vector& out_bounce_direction, const Vector& ray_direction, Vector& surface_normal, float eta_I, float eta_O, float& pdf, Xorshift32Generator& random_generator) const;
+    Color brdf_dispatcher_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, const Vector& to_light_direction, float& pdf);
+    Color brdf_dispatcher_sample(const RendererMaterial& material, const Vector& view_direction, Vector& surface_normal, Vector& bounce_direction, float& brdf_pdf, Xorshift32Generator& random_number_generator);
+    Color lambertian_brdf(const RendererMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& surface_normal);
+    Color cook_torrance_brdf_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, const Vector& to_light_direction, float& pdf);
+    Color cook_torrance_brdf_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, float& pdf, Xorshift32Generator& random_number_generator);
+    Color smooth_glass_bsdf(const RendererMaterial& material, Vector& out_bounce_direction, const Vector& ray_direction, Vector& surface_normal, float eta_I, float eta_O, float& pdf, Xorshift32Generator& random_generator);
 
-    bool intersect_scene(const Ray& ray, HitInfo& closest_hit_info) const;
-    bool intersect_scene_bvh(const Ray& ray, HitInfo& closest_hit_info) const;
-    bool INTERSECT_SCENE(const Ray& ray, HitInfo& hit_info)const ;
+    Color disney_schlick_weight(float f0, float abs_cos_angle);
+    Color disney_diffuse_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, const Vector& to_light_direction, float& pdf);
+    Color disney_diffuse_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, float& pdf, Xorshift32Generator& random_number_generator);
 
-    void env_map_cdf_search(float value, int& x, int& y) const;
-    Color sample_environment_map_from_direction(const Vector& direction) const;
-    Color sample_environment_map(const Ray& ray, const HitInfo& closest_hit_info, const RendererMaterial& material, Xorshift32Generator& random_number_generator) const;
-    Color sample_light_sources(const Ray& ray, const HitInfo& closest_hit_info, const RendererMaterial& material, Xorshift32Generator& random_number_generator) const;
-    Point sample_random_point_on_lights(Xorshift32Generator& random_number_generator, float& pdf, LightSourceInformation& light_info) const;
-    bool evaluate_shadow_ray(const Ray& ray, float t_max) const;
+    bool intersect_scene(const Ray& ray, HitInfo& closest_hit_info);
+    bool intersect_scene_bvh(const Ray& ray, HitInfo& closest_hit_info);
+    bool INTERSECT_SCENE(const Ray& ray, HitInfo& hit_info);
+
+    void env_map_cdf_search(float value, int& x, int& y);
+    Color sample_environment_map_from_direction(const Vector& direction);
+    Color sample_environment_map(const Ray& ray, HitInfo& closest_hit_info, const RendererMaterial& material, Xorshift32Generator& random_number_generator);
+    Color sample_light_sources(const Ray& ray, HitInfo& closest_hit_info, const RendererMaterial& material, Xorshift32Generator& random_number_generator);
+    Point sample_random_point_on_lights(Xorshift32Generator& random_number_generator, float& pdf, LightSourceInformation& light_info);
+    bool evaluate_shadow_ray(const Ray& ray, float t_max);
 
 private:
     int m_framebuffer_width, m_framebuffer_height;

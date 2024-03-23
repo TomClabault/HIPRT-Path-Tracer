@@ -643,7 +643,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                         // are not importance sampled
 
                         //Color skysphere_color = sample_environment_map_from_direction(ray.direction);
-                        Color skysphere_color = Color(1.0f);
+                        Color skysphere_color = Color(0.0f);
 
                         sample_color = sample_color + skysphere_color * throughput;
                     }
