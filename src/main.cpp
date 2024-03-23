@@ -15,7 +15,7 @@
 #include "Utils/commandline_arguments.h"
 #include "Utils/utils.h"
 
-#define GPU_RENDER 1
+#define GPU_RENDER 0
 
 int main(int argc, char* argv[])
 {
@@ -49,8 +49,8 @@ int main(int argc, char* argv[])
     sphere_material.roughness = 1.0e-2f;
     sphere_material.ior = 1.4f;
 
-    //Sphere sphere = add_sphere_to_scene(parsed_scene, Point(0.0, 1, 0.3725), 0.75, sphere_material, parsed_scene.triangles.size());
-    //std::vector<Sphere> spheres = { sphere };
+    /*Sphere sphere = add_sphere_to_scene(parsed_scene, Point(0.0, 1, 0.3725), 0.75, sphere_material, parsed_scene.triangles.size());
+    std::vector<Sphere> spheres = { sphere };*/
     std::vector<Sphere> spheres;
 
     std::cout << "Reading scene file " << cmd_arguments.scene_file_path << " ..." << std::endl;
@@ -69,10 +69,13 @@ int main(int argc, char* argv[])
     std::vector<int> materials_indices_buffer = parsed_scene.material_indices;
     std::vector<Sphere> sphere_buffer = spheres;
 
+    materials_buffer[2].roughness = 1.0f;
+    materials_buffer[2].subsurface = 1.0f;
+
     std::cout << "Reading Environment Map " << cmd_arguments.skysphere_file_path << " ..." << std::endl;
     EnvironmentMap env_map = EnvironmentMap::read_from_file(cmd_arguments.skysphere_file_path);
 
-    std::cout << "[" << width << "x" << height << "]: " << cmd_arguments.render_samples << " samples" << std::endl << std::endl;
+    std::cout << "[" << width << "x" << height << "]: " << cmd_arguments.render_samples << " samples ; " << cmd_arguments.bounces << " bounces" << std::endl << std::endl;
 
     auto start = std::chrono::high_resolution_clock::now();
     Image image_buffer(width, height);

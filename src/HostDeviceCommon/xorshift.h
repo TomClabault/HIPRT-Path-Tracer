@@ -15,6 +15,18 @@ struct Xorshift32Generator
         m_state.a = seed;
     }
 
+    /*
+     * Returns a uniform random number between 0 and
+     * array_size - 1 (included)
+     */
+    __device__ int random_index(int array_size)
+    {
+        return RT_MIN((int)(xorshift32() / (float)UINT_MAX * array_size), array_size - 1);
+    }
+
+    /*
+     * Returns a float int [0, 1.0 - 1.0e-6f]
+     */
     __device__ float operator()()
     {
         //Float in [0, 1[
