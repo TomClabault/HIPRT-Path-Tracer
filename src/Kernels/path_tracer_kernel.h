@@ -9,34 +9,6 @@
 #include <hiprt/hiprt_device.h>
 #include <hiprt/hiprt_vec.h>
 
-/**
- * Reflects a ray about a normal. This function requires that dot(ray_direction, surface_normal) > 0 i.e.
- * ray_direction and surface_normal are in the same hemisphere
- */
-__device__ hiprtFloat3 reflect_ray(const hiprtFloat3& ray_direction, const hiprtFloat3& surface_normal)
-{
-    return -ray_direction + 2.0f * dot(ray_direction, surface_normal) * surface_normal;
-}
-
-/**
- * Reflects a ray about a normal. This function requires that dot(ray_direction, surface_normal) > 0 i.e.
- * ray_direction and surface_normal are in the same hemisphere
- */
-__device__ bool refract_ray(const hiprtFloat3& ray_direction, const hiprtFloat3& surface_normal, hiprtFloat3& refract_direction, float relative_eta)
-{
-    float NoI = dot(ray_direction, surface_normal);
-
-    float sin_theta_i_2 = 1.0f - NoI * NoI;
-    float root_term = 1.0f - sin_theta_i_2 / (relative_eta * relative_eta);
-    if (root_term < 0.0f)
-        return false;
-
-    float cos_theta_t = sqrt(root_term);
-    refract_direction = -ray_direction / relative_eta + (NoI / relative_eta - cos_theta_t) * surface_normal;
-
-    return true;
-}
-
 __device__ float cook_torrance_brdf_pdf(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& to_light_direction, const hiprtFloat3& surface_normal)
 {
     hiprtFloat3 microfacet_normal = normalize(view_direction + to_light_direction);
