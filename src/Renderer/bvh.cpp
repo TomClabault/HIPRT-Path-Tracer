@@ -62,3 +62,4 @@ bool BVH::intersect(const Ray& ray, HitInfo& hit_info) const
 {
     return _root->intersect(*_triangles, ray, hit_info);
 }
+

@@ -30,7 +30,7 @@ private:
 	RenderWindow* m_render_window;
 
 	GLuint m_compute_shader = -1;
-	GLuint m_compute_output_image;
+	GLuint m_compute_output_image = -1;
 	int m_compute_output_image_width = -1;
 	int m_compute_output_image_height = -1;
 };

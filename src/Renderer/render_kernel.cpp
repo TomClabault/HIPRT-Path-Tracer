@@ -69,14 +69,19 @@ bool refract_ray(const Vector& ray_direction, const Vector& surface_normal, Vect
     return true;
 }
 
-Vector RenderKernel::rotate_vector_around_normal(const Vector& normal, const Vector& random_dir_local_space)
+Vector RenderKernel::local_to_world_frame(const Vector& normal, const Vector& tangent, const Vector& bitangent, const Vector& vector_to_rotate)
+{
+    return vector_to_rotate.x * tangent + vector_to_rotate.y * bitangent + vector_to_rotate.z * normal;
+}
+
+Vector RenderKernel::local_to_world_frame(const Vector& normal, const Vector& vector_to_rotate)
 {
     Vector tangent, bitangent;
     branchlessONB(normal, tangent, bitangent);
 
     //Transforming from the random_direction in its local space to the space around the normal
     //given in parameter (the space with the given normal as the Z up vector)
-    return random_dir_local_space.x * tangent + random_dir_local_space.y * bitangent + random_dir_local_space.z * normal;
+    return vector_to_rotate.x * tangent + vector_to_rotate.y * bitangent + vector_to_rotate.z * normal;
 }
 
 Vector RenderKernel::uniform_direction_around_normal(const Vector& normal, float& pdf, Xorshift32Generator& random_number_generator)
@@ -91,7 +96,7 @@ Vector RenderKernel::uniform_direction_around_normal(const Vector& normal, float
 
     //Generating a random direction in a local space with Z as the Up vector
     Vector random_dir_local_space(std::cos(phi) * root, std::sin(phi) * root, rand_2);
-    return rotate_vector_around_normal(normal, random_dir_local_space);
+    return local_to_world_frame(normal, random_dir_local_space);
 }
 
 Vector RenderKernel::cosine_weighted_sample(const Vector& normal, float& pdf, Xorshift32Generator& random_number_generator)
@@ -108,7 +113,7 @@ Vector RenderKernel::cosine_weighted_sample(const Vector& normal, float& pdf, Xo
 
     //Generating a random direction in a local space with Z as the Up vector
     Vector random_dir_local_space = Vector(std::cos(phi) * sin_theta, std::sin(phi) * sin_theta, sqrt_rand_2);
-    return rotate_vector_around_normal(normal, random_dir_local_space);
+    return local_to_world_frame(normal, random_dir_local_space);
 }
 
 void RenderKernel::cosine_weighted_eval(const Vector& normal, const Vector& direction, float& pdf)
@@ -287,6 +292,19 @@ Color fresnel_schlick(Color F0, float NoV)
     return F0 + (Color(1.0f) - F0) * std::pow((1.0f - NoV), 5.0f);
 }
 
+float GGX_normal_distribution_anisotropic(const RendererMaterial& material, const Vector& local_half_vector)
+{
+    float aspect = std::sqrt(1.0f - 0.9f * material.anisotropy);
+    float alpha_x = std::max(1.0e-4f, material.roughness * material.roughness / aspect);
+    float alpha_y = std::max(1.0e-4f, material.roughness * material.roughness * aspect);
+
+    float denom = (local_half_vector.x * local_half_vector.x) / (alpha_x * alpha_x) + 
+                  (local_half_vector.y * local_half_vector.y) / (alpha_y * alpha_y) + 
+                  (local_half_vector.z * local_half_vector.z);
+
+    return 1.0f / (M_PI * alpha_x * alpha_y * denom * denom);
+}
+
 float GGX_normal_distribution(float alpha, float NoH)
 {
     //To avoid numerical instability when NoH basically == 1, i.e when the
@@ -297,6 +315,25 @@ float GGX_normal_distribution(float alpha, float NoH)
     float NoH2 = NoH * NoH;
     float b = (NoH2 * (alpha2 - 1.0f) + 1.0f);
     return alpha2 * M_1_PI / (b * b);// std::max(b * b, 1.0e-18f);
+}
+
+float GGX_masking_shadowing_anisotropic_aux(const RendererMaterial& material, const Vector& local_direction)
+{
+    float aspect = std::sqrt(1.0f - 0.9f * material.anisotropy);
+    float alpha_x = std::max(1.0e-4f, material.roughness * material.roughness / aspect);
+    float alpha_y = std::max(1.0e-4f, material.roughness * material.roughness * aspect);
+
+    float ax = local_direction.x * alpha_x; 
+    float ay = local_direction.y * alpha_y;
+
+    float denom = (std::sqrt(1.0f + (ax * ax + ay * ay) / (local_direction.z * local_direction.z)) - 1.0f) * 0.5f;
+
+    return 1.0f / (1.0f + denom);
+}
+
+float GGX_masking_shadowing_anisotropic(const RendererMaterial& material, const Vector& local_view_direction, const Vector& local_to_light_direction)
+{
+    return GGX_masking_shadowing_anisotropic_aux(material, local_view_direction) * GGX_masking_shadowing_anisotropic_aux(material, local_to_light_direction);
 }
 
 float G1_schlick_ggx(float k, float dot_prod)
@@ -371,7 +408,7 @@ Color RenderKernel::cook_torrance_brdf_sample(const RendererMaterial& material, 
     float sin_theta = std::sin(theta);
 
     Vector microfacet_normal_local_space = Vector(std::cos(phi) * sin_theta, std::sin(phi) * sin_theta, std::cos(theta));
-    Vector microfacet_normal = rotate_vector_around_normal(surface_normal, microfacet_normal_local_space);
+    Vector microfacet_normal = local_to_world_frame(surface_normal, microfacet_normal_local_space);
     if (dot(microfacet_normal, surface_normal) < 0.0f)
         //The microfacet normal that we sampled was under the surface, this can happen
         return Color(0.0f);
@@ -469,14 +506,14 @@ Color RenderKernel::smooth_glass_bsdf(const RendererMaterial& material, Vector& 
     }
 }
 
+// TODO return float
 Color RenderKernel::disney_schlick_weight(float f0, float abs_cos_angle)
 {
-    return 1.0f + (f0 - 1.0f) * std::pow(1.0f - abs_cos_angle, 5.0f);
+    return Color(1.0f + (f0 - 1.0f) * std::pow(1.0f - abs_cos_angle, 5.0f));
 }
 
 Color RenderKernel::disney_diffuse_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, const Vector& to_light_direction, float& pdf)
 {
-
     Vector half_vector = normalize(to_light_direction + view_direction);
 
     float LoH = std::abs(dot(to_light_direction, half_vector));
@@ -491,8 +528,8 @@ Color RenderKernel::disney_diffuse_eval(const RendererMaterial& material, const 
 
     Color fake_subsurface_part;
     float subsurface_90 = material.roughness * LoH * LoH;
-    fake_subsurface_part = 1.25f * material.diffuse / M_PI * 
-        (disney_schlick_weight(subsurface_90, NoL) * disney_schlick_weight(subsurface_90, NoV) * (1.0f / (NoL + NoV) - 0.5f) + 0.5f) * NoL;
+    fake_subsurface_part = 1.25f * material.diffuse / M_PI *
+        (disney_schlick_weight(subsurface_90, NoL) * disney_schlick_weight(subsurface_90, NoV) * (1.0f / (NoL + NoV) - 0.5f) + Color(0.5f)) * NoL;
 
     return (1.0f - material.subsurface) * diffuse_part + material.subsurface * fake_subsurface_part;
 }
@@ -504,23 +541,73 @@ Color RenderKernel::disney_diffuse_sample(const RendererMaterial& material, cons
     return disney_diffuse_eval(material, view_direction, surface_normal, output_direction, pdf);
 }
 
+Vector ToLocal(Vector X, Vector Y, Vector Z, Vector V)
+{
+    return Vector(dot(V, X), dot(V, Y), dot(V, Z));
+}
+
+Color RenderKernel::disney_metallic_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, const Vector& to_light_direction, float& pdf)
+{
+    Vector half_vector = normalize(to_light_direction + view_direction);
+
+
+
+    float NoV = std::abs(dot(surface_normal, view_direction));
+    float HoL = std::abs(dot(half_vector, to_light_direction));
+
+    // Building the local shading frame
+    Vector T, B;
+    /*branchlessONB(surface_normal, T, B);
+    Vector local_half_vector = ToLocal(T, B, surface_normal, half_vector);
+    Vector local_view_direction = ToLocal(T, B, surface_normal, view_direction);
+    Vector local_to_light_direction = ToLocal(T, B, surface_normal, to_light_direction);*/
+
+    // TODO investigate why my ONB sucks ballz
+    Vector up = abs(surface_normal.z) < 0.9999999 ? Vector(0, 0, 1) : Vector(1, 0, 0);
+    T = normalize(cross(up, surface_normal));
+    B = cross(surface_normal, T);
+
+    Vector local_half_vector = ToLocal(T, B, surface_normal, half_vector);
+    Vector local_view_direction = ToLocal(T, B, surface_normal, view_direction);
+    Vector local_to_light_direction = ToLocal(T, B, surface_normal, to_light_direction);
+    /*Vector local_half_vector = local_to_world_frame(surface_normal, T, B, half_vector);
+    Vector local_view_direction = local_to_world_frame(surface_normal, T, B, view_direction);
+    Vector local_to_light_direction = local_to_world_frame(surface_normal, T, B, to_light_direction);*/
+
+    Color F = fresnel_schlick(material.diffuse, HoL);
+    float D = GGX_normal_distribution_anisotropic(material, local_half_vector);
+    float G = GGX_masking_shadowing_anisotropic(material, local_view_direction, local_to_light_direction);
+
+    return F * D * G / (4.0f * NoV);
+}
+
+Color RenderKernel::disney_metallic_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
+{
+    output_direction = cosine_weighted_sample(surface_normal, pdf, random_number_generator);
+
+    return disney_metallic_eval(material, view_direction, surface_normal, output_direction, pdf);
+}
+
 Color RenderKernel::brdf_dispatcher_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, const Vector& to_light_direction, float& pdf)
 {
     pdf = 0.0f;
-    if (material.brdf_type == BRDF::CookTorrance)
+    if (material.brdf_type == BRDF::CookTorrance && material.metalness == 0.0f)
         return disney_diffuse_eval(material, view_direction, surface_normal, to_light_direction, pdf);
+    else if (material.brdf_type == BRDF::CookTorrance)
+        return disney_metallic_eval(material, view_direction, surface_normal, to_light_direction, pdf);
         //return cook_torrance_brdf_eval(material, view_direction, surface_normal, to_light_direction, pdf);
 
     return Color(0.0f);
 }
 
-//Color RenderKernel::cook_torrance_brdf_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
 Color RenderKernel::brdf_dispatcher_sample(const RendererMaterial& material, const Vector& view_direction, Vector& surface_normal, Vector& bounce_direction, float& brdf_pdf, Xorshift32Generator& random_number_generator)
 {
     if (material.brdf_type == BRDF::SpecularFresnel)
         return smooth_glass_bsdf(material, bounce_direction, -view_direction, surface_normal, 1.0f, material.ior, brdf_pdf, random_number_generator); //TODO relative IOR in the RayData rather than two incident and output ior values
-    else if (material.brdf_type == BRDF::CookTorrance)
+    else if (material.brdf_type == BRDF::CookTorrance && material.metalness == 0.0f)
         return disney_diffuse_sample(material, view_direction, surface_normal, bounce_direction, brdf_pdf, random_number_generator);
+    else if (material.brdf_type == BRDF::CookTorrance)
+        return disney_metallic_sample(material, view_direction, surface_normal, bounce_direction, brdf_pdf, random_number_generator);
         //return cook_torrance_brdf_sample(material, -ray_direction, surface_normal, bounce_direction, brdf_pdf, random_number_generator);
 
     return Color(0.0f);
@@ -667,7 +754,7 @@ Color RenderKernel::sample_environment_map(const Ray& ray, HitInfo& closest_hit_
 
     int x, y;
     float env_map_total_sum = cdf[cdf.size() - 1];
-    env_map_cdf_search(random_number_generator.random_index(env_map_total_sum), x, y);
+    env_map_cdf_search(random_number_generator() * env_map_total_sum, x, y);
 
     float u = (float)x / m_environment_map.width;
     float v = (float)y / m_environment_map.height;
@@ -864,4 +951,3 @@ bool RenderKernel::evaluate_shadow_ray(const Ray& ray, float t_max)
 
     return false;
 }
-
