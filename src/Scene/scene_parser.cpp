@@ -36,17 +36,25 @@ RendererMaterial SceneParser::ai_mat_to_renderer_mat(aiMaterial* mesh_material)
     else
         renderer_material.emission = Color(0.0f, 0.0f, 0.0f);
     renderer_material.metalness = metalness;
-    renderer_material.roughness = std::max(1.0e-2f, roughness); // Clamping the roughness to avoid edge cases when roughness == 0.0f
-    renderer_material.anisotropy = 1.0f;
-    float aspect = sqrt(1.0f - 0.9f * renderer_material.anisotropy);
-    renderer_material.alpha_x = std::max(1.0e-4f, renderer_material.roughness * renderer_material.roughness / aspect);
-    renderer_material.alpha_y = std::max(1.0e-4f, renderer_material.roughness * renderer_material.roughness * aspect);
+    renderer_material.roughness = roughness;
+    renderer_material.anisotropic = 1.0f;
     renderer_material.ior = ior;
     renderer_material.transmission_factor = error_code_transmission_factor == AI_SUCCESS ? transmission_factor : 0.0f;
     if (renderer_material.transmission_factor > 0.0f)
         renderer_material.brdf_type = BRDF::SpecularFresnel;
     else
         renderer_material.brdf_type = BRDF::CookTorrance;
+
+    renderer_material.roughness = 0.3f;
+
+    // Clamping material parameters to avoid NaN during rendering
+    renderer_material.roughness = std::max(1.0e-2f, renderer_material.roughness);
+    renderer_material.anisotropic = std::min(0.99f, renderer_material.anisotropic);
+
+    // Precomputing alpha_x and alpha_y related to anisotropy
+    float aspect = sqrt(1.0f - 0.9f * renderer_material.anisotropic);
+    renderer_material.alpha_x = std::max(1.0e-4f, renderer_material.roughness * renderer_material.roughness / aspect);
+    renderer_material.alpha_y = std::max(1.0e-4f, renderer_material.roughness * renderer_material.roughness * aspect);
 
     return renderer_material;
 }

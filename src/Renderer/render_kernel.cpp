@@ -270,17 +270,15 @@ void RenderKernel::ray_trace_pixel(int x, int y)
 #include <atomic>
 #include <omp.h>
 
-#define DEBUG_PIXEL 0
-#define DEBUG_PIXEL_X 171
-#define DEBUG_PIXEL_Y 27
-//#define DEBUG_PIXEL_X 169
-//#define DEBUG_PIXEL_Y 27
+#define DEBUG_PIXEL 1
+#define DEBUG_PIXEL_X 288
+#define DEBUG_PIXEL_Y 116
 
 void RenderKernel::render()
 {
     std::atomic<int> lines_completed = 0;
 
-#if DEBUG_PIXEL
+#if DEBUG_PIXEL && _DEBUG
     for (int y = m_frame_buffer.height - DEBUG_PIXEL_Y - 1; y < m_frame_buffer.height; y++)
     {
         for (int x = DEBUG_PIXEL_X; x < m_frame_buffer.width; x++)
@@ -310,7 +308,7 @@ Color fresnel_schlick(Color F0, float NoV)
     return F0 + (Color(1.0f) - F0) * std::pow((1.0f - NoV), 5.0f);
 }
 
-Vector GGXVNDF_sample(Vector local_view_direction, float alpha_x, float alpha_y, float& pdf, Xorshift32Generator& random_number_generator)
+Vector GGXVNDF_sample(Vector local_view_direction, float alpha_x, float alpha_y, Xorshift32Generator& random_number_generator)
 {
     float r1 = random_number_generator();
     float r2 = random_number_generator();
@@ -335,15 +333,11 @@ Vector GGXVNDF_sample(Vector local_view_direction, float alpha_x, float alpha_y,
 
 float GGX_normal_distribution_anisotropic(const RendererMaterial& material, const Vector& local_half_vector)
 {
-    float aspect = std::sqrt(1.0f - 0.9f * material.anisotropy);
-    float alpha_x = std::max(1.0e-4f, material.roughness * material.roughness / aspect);
-    float alpha_y = std::max(1.0e-4f, material.roughness * material.roughness * aspect);
-
-    float denom = (local_half_vector.x * local_half_vector.x) / (alpha_x * alpha_x);
-    denom += (local_half_vector.y * local_half_vector.y) / (alpha_y * alpha_y);
+    float denom = (local_half_vector.x * local_half_vector.x) / (material.alpha_x * material.alpha_x);
+    denom += (local_half_vector.y * local_half_vector.y) / (material.alpha_y * material.alpha_y);
     denom += (local_half_vector.z * local_half_vector.z);
 
-    return 1.0f / (M_PI * alpha_x * alpha_y * denom * denom);
+    return 1.0f / (M_PI * material.alpha_x * material.alpha_y * denom * denom);
 }
 
 float GGX_normal_distribution(float alpha, float NoH)
@@ -360,12 +354,8 @@ float GGX_normal_distribution(float alpha, float NoH)
 
 float GGX_masking_shadowing_anisotropic_aux(const RendererMaterial& material, const Vector& local_direction)
 {
-    float aspect = std::sqrt(1.0f - 0.9f * material.anisotropy);
-    float alpha_x = std::max(1.0e-4f, material.roughness * material.roughness / aspect);
-    float alpha_y = std::max(1.0e-4f, material.roughness * material.roughness * aspect);
-
-    float ax = local_direction.x * alpha_x; 
-    float ay = local_direction.y * alpha_y;
+    float ax = local_direction.x * material.alpha_x;
+    float ay = local_direction.y * material.alpha_y;
 
     float denom = (std::sqrt(1.0f + (ax * ax + ay * ay) / (local_direction.z * local_direction.z)) - 1.0f) * 0.5f;
 
@@ -584,7 +574,12 @@ Color RenderKernel::disney_diffuse_sample(const RendererMaterial& material, cons
 
 Color RenderKernel::disney_metallic_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, const Vector& to_light_direction, float& pdf)
 {
-    Vector half_vector = normalize(to_light_direction + view_direction);
+    Vector half_vector = to_light_direction + view_direction;
+    float length_half_vector = length(half_vector);
+    if (length_half_vector == 0.0f)
+        half_vector = view_direction;
+    else
+        half_vector = half_vector / length_half_vector;
 
     // Building the local shading frame
     Vector T, B;
@@ -598,10 +593,6 @@ Color RenderKernel::disney_metallic_eval(const RendererMaterial& material, const
     float NoL = std::abs(local_to_light_direction.z);
     float HoL = std::abs(dot(half_vector, to_light_direction));
 
-    float aspect = std::sqrt(1.0f - 0.9f * material.anisotropy);
-    float alpha_x = std::max(1.0e-4f, material.roughness * material.roughness / aspect);
-    float alpha_y = std::max(1.0e-4f, material.roughness * material.roughness * aspect);
-
     Color F = fresnel_schlick(material.diffuse, HoL);
     float D = GGX_normal_distribution_anisotropic(material, local_half_vector);
     float G = GGX_masking_shadowing_anisotropic(material, local_view_direction, local_to_light_direction);
@@ -612,9 +603,21 @@ Color RenderKernel::disney_metallic_eval(const RendererMaterial& material, const
 
 Color RenderKernel::disney_metallic_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
 {
-    output_direction = cosine_weighted_sample(surface_normal, pdf, random_number_generator);// GGXVNDF_sample(local_view_direction, alpha_x, alpha_y, pdf, random_number_generator);
+    Vector local_view_direction = world_to_local_frame(surface_normal, view_direction);
+    Vector microfacet_normal = GGXVNDF_sample(local_view_direction, material.alpha_x, material.alpha_y, random_number_generator);
+    output_direction = reflect_ray(view_direction, local_to_world_frame(surface_normal, microfacet_normal));
 
     return disney_metallic_eval(material, view_direction, surface_normal, output_direction, pdf);
+}
+
+Color RenderKernel::disney_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, const Vector& to_light_direction, float& pdf)
+{
+    return disney_metallic_eval(material, view_direction, surface_normal, to_light_direction, pdf);
+}
+
+Color RenderKernel::disney_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
+{
+    return disney_metallic_sample(material, view_direction, surface_normal, output_direction, pdf, random_number_generator);
 }
 
 Color RenderKernel::brdf_dispatcher_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, const Vector& to_light_direction, float& pdf)
@@ -623,7 +626,7 @@ Color RenderKernel::brdf_dispatcher_eval(const RendererMaterial& material, const
     if (material.brdf_type == BRDF::CookTorrance && material.metalness == 0.0f)
         return disney_diffuse_eval(material, view_direction, surface_normal, to_light_direction, pdf);
     else if (material.brdf_type == BRDF::CookTorrance)
-        return disney_metallic_eval(material, view_direction, surface_normal, to_light_direction, pdf);
+        return disney_eval(material, view_direction, surface_normal, to_light_direction, pdf);
         //return cook_torrance_brdf_eval(material, view_direction, surface_normal, to_light_direction, pdf);
 
     return Color(0.0f);
@@ -636,7 +639,7 @@ Color RenderKernel::brdf_dispatcher_sample(const RendererMaterial& material, con
     else if (material.brdf_type == BRDF::CookTorrance && material.metalness == 0.0f)
         return disney_diffuse_sample(material, view_direction, surface_normal, bounce_direction, brdf_pdf, random_number_generator);
     else if (material.brdf_type == BRDF::CookTorrance)
-        return disney_metallic_sample(material, view_direction, surface_normal, bounce_direction, brdf_pdf, random_number_generator);
+        return disney_sample(material, view_direction, surface_normal, bounce_direction, brdf_pdf, random_number_generator);
         //return cook_torrance_brdf_sample(material, -ray_direction, surface_normal, bounce_direction, brdf_pdf, random_number_generator);
 
     return Color(0.0f);
