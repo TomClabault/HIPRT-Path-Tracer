@@ -4,10 +4,23 @@
 #include "Kernels/includes/HIPRT_common.h"
 #include "Kernels/includes/HIPRT_maths.h"
 
-__device__ void buildONB(const hiprtFloat3& N, hiprtFloat3& T, hiprtFloat3& B)
+__device__ void build_ONB(const hiprtFloat3& N, hiprtFloat3& T, hiprtFloat3& B)
 {
     hiprtFloat3 up = abs(N.z) < 0.9999999 ? hiprtFloat3(0, 0, 1) : hiprtFloat3(1, 0, 0);
     T = normalize(cross(up, N));
+    B = cross(N, T);
+}
+
+/*
+ * Rotation of the basis around the normal by 'basis_rotation' radians
+ */
+__device__ void build_rotated_ONB(const hiprtFloat3& N, hiprtFloat3& T, hiprtFloat3& B, float basis_rotation)
+{
+    hiprtFloat3 up = abs(N.z) < 0.9999999 ? hiprtFloat3(0, 0, 1) : hiprtFloat3(1, 0, 0);
+    T = normalize(cross(up, N));
+
+    // Rodrigues' rotation
+    T = T * cos(basis_rotation) + cross(N, T) * sin(basis_rotation) + N * dot(N, T) * (1.0f - cos(basis_rotation));
     B = cross(N, T);
 }
 
@@ -17,7 +30,7 @@ __device__ void buildONB(const hiprtFloat3& N, hiprtFloat3& T, hiprtFloat3& B)
 __device__ hiprtFloat3 local_to_world_frame(const hiprtFloat3& N, const hiprtFloat3& V)
 {
     hiprtFloat3 T, B;
-    buildONB(N, T, B);
+    build_ONB(N, T, B);
 
     return V.x * T + V.y * B + V.z * N;
 }
@@ -34,7 +47,7 @@ __device__ hiprtFloat3 local_to_world_frame(const hiprtFloat3& T, const hiprtFlo
 __device__ hiprtFloat3 world_to_local_frame(const hiprtFloat3& N, const hiprtFloat3& V)
 {
     hiprtFloat3 T, B;
-    buildONB(N, T, B);
+    build_ONB(N, T, B);
 
     return hiprtFloat3(dot(V, T), dot(V, B), dot(V, N));
 }

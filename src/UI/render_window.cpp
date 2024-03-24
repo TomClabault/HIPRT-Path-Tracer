@@ -62,7 +62,6 @@
 // - use defines insead of IFs in the kernel code and recompile kernel everytime (for some options at least)
 // - stuff to multithread when loading everything ? (scene, BVH, textures, ...)
 
-
 void wait_and_exit(const char* message)
 {
 	std::cerr << message << std::endl;

@@ -27,6 +27,7 @@ struct RendererMaterial
     float subsurface = 0.0f;
     
     float anisotropic = 0.0f;
+    float anisotropic_rotation = 0.0f;
     float alpha_x, alpha_y;
 
     float ior = 1.40f;
