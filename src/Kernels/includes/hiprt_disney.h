@@ -40,24 +40,10 @@ __device__ Color disney_diffuse_sample(const RendererMaterial& material, const h
     return disney_diffuse_eval(material, view_direction, surface_normal, output_direction, pdf);
 }
 
-__device__ hiprtFloat3 ToLocal(hiprtFloat3 X, hiprtFloat3 Y, hiprtFloat3 Z, hiprtFloat3 V)
-{
-    return hiprtFloat3(dot(V, X), dot(V, Y), dot(V, Z));
-}
-
-__device__ hiprtFloat3 SampleGTR2(float rgh, float r1, float r2)
-{
-    float a = RT_MAX(0.001, rgh);
-
-    float phi = r1 * 2.0f * M_PI;
-
-    float cosTheta = sqrt((1.0 - r2) / (1.0 + (a * a - 1.0) * r2));
-    float sinTheta = RT_MAX(0.0f, RT_MIN(1.0f, sqrt(1.0 - (cosTheta * cosTheta))));
-    float sinPhi = sin(phi);
-    float cosPhi = cos(phi);
-
-    return hiprtFloat3(sinTheta * cosPhi, sinTheta * sinPhi, cosTheta);
-}
+//__device__ hiprtFloat3 ToLocal(hiprtFloat3 X, hiprtFloat3 Y, hiprtFloat3 Z, hiprtFloat3 V)
+//{
+//    return hiprtFloat3(dot(V, X), dot(V, Y), dot(V, Z));
+//}
 
 __device__ float GTR2Aniso(float NDotH, float HDotX, float HDotY, float ax, float ay)
 {
@@ -99,14 +85,11 @@ __device__ Color disney_metallic_eval(const RendererMaterial& material, const hi
 
     // Building the local shading frame
     hiprtFloat3 T, B;
+    buildONB(surface_normal, T, B);
     
-    hiprtFloat3 up = abs(surface_normal.z) < 0.9999999 ? hiprtFloat3(0, 0, 1) : hiprtFloat3(1, 0, 0);
-    T = normalize(cross(up, surface_normal));
-    B = cross(surface_normal, T);
-
-    hiprtFloat3 local_half_vector = ToLocal(T, B, surface_normal, half_vector);
-    hiprtFloat3 local_view_direction = ToLocal(T, B, surface_normal, view_direction);
-    hiprtFloat3 local_to_light_direction = ToLocal(T, B, surface_normal, to_light_direction);
+    hiprtFloat3 local_half_vector = world_to_local_frame(T, B, surface_normal, half_vector);
+    hiprtFloat3 local_view_direction = world_to_local_frame(T, B, surface_normal, view_direction);
+    hiprtFloat3 local_to_light_direction = world_to_local_frame(T, B, surface_normal, to_light_direction);
 
     float NoV = abs(local_view_direction.z);
     float NoL = abs(local_to_light_direction.z);

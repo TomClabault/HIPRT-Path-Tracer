@@ -127,4 +127,3 @@ struct BoundingVolume
 };
 
 #endif
-

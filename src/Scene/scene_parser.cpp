@@ -37,6 +37,10 @@ RendererMaterial SceneParser::ai_mat_to_renderer_mat(aiMaterial* mesh_material)
         renderer_material.emission = Color(0.0f, 0.0f, 0.0f);
     renderer_material.metalness = metalness;
     renderer_material.roughness = std::max(1.0e-2f, roughness); // Clamping the roughness to avoid edge cases when roughness == 0.0f
+    renderer_material.anisotropy = 1.0f;
+    float aspect = sqrt(1.0f - 0.9f * renderer_material.anisotropy);
+    renderer_material.alpha_x = std::max(1.0e-4f, renderer_material.roughness * renderer_material.roughness / aspect);
+    renderer_material.alpha_y = std::max(1.0e-4f, renderer_material.roughness * renderer_material.roughness * aspect);
     renderer_material.ior = ior;
     renderer_material.transmission_factor = error_code_transmission_factor == AI_SUCCESS ? transmission_factor : 0.0f;
     if (renderer_material.transmission_factor > 0.0f)
