@@ -15,12 +15,14 @@
 #include "Utils/commandline_arguments.h"
 #include "Utils/utils.h"
 
-#define GPU_RENDER 0
+#define GPU_RENDER 1
 
 int main(int argc, char* argv[])
 {
 #if GPU_RENDER
     CommandLineArguments arguments = CommandLineArguments::process_command_line_args(argc, argv);
+    arguments.render_width = 1280;
+    arguments.render_height = 720;
 
     const int default_width = arguments.render_width, default_height = arguments.render_height;
     RenderWindow render_window(default_width, default_height);
@@ -28,6 +30,10 @@ int main(int argc, char* argv[])
         std::cout << "Reading scene file " << arguments.scene_file_path << " ..." << std::endl;
         Scene parsed_scene = SceneParser::parse_scene_file(arguments.scene_file_path, (float)default_width / default_height);
         std::cout << std::endl;
+
+        parsed_scene.materials[2].roughness = 0.5f;
+        parsed_scene.materials[2].metalness = 1.0f;
+        parsed_scene.materials[2].anisotropy = 1.0f;
 
         render_window.set_renderer_scene(parsed_scene);
         render_window.get_renderer().set_camera(parsed_scene.camera);
@@ -69,8 +75,9 @@ int main(int argc, char* argv[])
     std::vector<int> materials_indices_buffer = parsed_scene.material_indices;
     std::vector<Sphere> sphere_buffer = spheres;
 
-    materials_buffer[2].roughness = 1.0f;
-    materials_buffer[2].subsurface = 1.0f;
+    materials_buffer[2].roughness = 0.5f;
+    materials_buffer[2].metalness = 1.0f;
+    materials_buffer[2].anisotropy = 1.0f;
 
     std::cout << "Reading Environment Map " << cmd_arguments.skysphere_file_path << " ..." << std::endl;
     EnvironmentMap env_map = EnvironmentMap::read_from_file(cmd_arguments.skysphere_file_path);

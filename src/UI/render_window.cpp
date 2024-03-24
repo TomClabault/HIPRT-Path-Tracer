@@ -17,8 +17,10 @@
 
 
 
+
 // TODO Code Organization:
 // 
+// - put all sampling functions (ggx, schlick, masking, ...) in a sampling.h file
 // - reorganize methods order in RenderWindow
 // - overload +=, *=, ... operators for Color most notably on the GPU side
 // - use constructors instead of struct {} syntax in gpu code

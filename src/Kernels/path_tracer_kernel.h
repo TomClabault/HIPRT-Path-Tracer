@@ -1,52 +1,13 @@
 #include "Kernels/includes/HIPRT_camera.h"
 #include "Kernels/includes/HIPRT_common.h"
+#include "Kernels/includes/hiprt_disney.h"
 #include "Kernels/includes/hiprt_fix_vs.h"
 #include "Kernels/includes/HIPRT_maths.h"
 #include "Kernels/includes/hiprt_render_data.h"
+#include "Kernels/includes/hiprt_sampling.h"
 
 #include <hiprt/hiprt_device.h>
 #include <hiprt/hiprt_vec.h>
-
-__device__ void branchlessONB(const hiprtFloat3& n, hiprtFloat3& b1, hiprtFloat3& b2)
-{
-    float sign = n.z < 0 ? -1.0f : 1.0f;
-    const float a = -1.0f / (sign + n.z);
-    const float b = n.x * n.y * a;
-    b1 = hiprtFloat3{ 1.0f + sign * n.x * n.x * a, sign * b, -sign * n.x };
-    b2 = hiprtFloat3{ b, sign + n.y * n.y * a, -n.y };
-}
-
-__device__ hiprtFloat3 rotate_vector_around_normal(const hiprtFloat3& normal, const hiprtFloat3& random_dir_local_space)
-{
-    hiprtFloat3 tangent, bitangent;
-    branchlessONB(normal, tangent, bitangent);
-
-    //Transforming from the random_direction in its local space to the space around the normal
-    //given in parameter (the space with the given normal as the Z up vector)
-    return random_dir_local_space.x * tangent + random_dir_local_space.y * bitangent + random_dir_local_space.z * normal;
-}
-
-__device__ hiprtFloat3 hiprt_cosine_weighted_direction_around_normal(const hiprtFloat3& normal, float& pdf, Xorshift32Generator& random_number_generator)
-{
-    float rand_1 = random_number_generator();
-    float rand_2 = random_number_generator();
-
-    float sqrt_rand_2 = sqrt(rand_2);
-    float phi = 2.0f * (float)M_PI * rand_1;
-    float cos_theta = sqrt_rand_2;
-    float sin_theta = sqrt(RT_MAX(0.0f, 1.0f - cos_theta * cos_theta));
-
-    pdf = sqrt_rand_2 / (float)M_PI;
-
-    //Generating a random direction in a local space with Z as the Up vector
-    hiprtFloat3 random_dir_local_space = hiprtFloat3{ cos(phi) * sin_theta, sin(phi) * sin_theta, sqrt_rand_2 };
-    return rotate_vector_around_normal(normal, random_dir_local_space);
-}
-
-__device__ Color hiprt_lambertian_brdf(const RendererMaterial& material, const hiprtFloat3& to_light_direction, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal)
-{
-    return material.diffuse * M_1_PI;
-}
 
 /**
  * Reflects a ray about a normal. This function requires that dot(ray_direction, surface_normal) > 0 i.e.
@@ -55,22 +16,6 @@ __device__ Color hiprt_lambertian_brdf(const RendererMaterial& material, const h
 __device__ hiprtFloat3 reflect_ray(const hiprtFloat3& ray_direction, const hiprtFloat3& surface_normal)
 {
     return -ray_direction + 2.0f * dot(ray_direction, surface_normal) * surface_normal;
-}
-
-__device__ float fresnel_dielectric(float cos_theta_i, float eta_i, float eta_t)
-{
-    // Computing cos_theta_t
-    float sinThetaI = sqrt(1.0f - cos_theta_i * cos_theta_i);
-    float sin_theta_t = eta_i / eta_t * sinThetaI;
-
-    if (sin_theta_t >= 1.0f)
-        // Total internal reflection, 0% refraction, all reflection
-        return 1.0f;
-
-    float cos_theta_t = sqrt(1.0f - sin_theta_t * sin_theta_t);
-    float r_parallel = ((eta_t * cos_theta_i) - (eta_i * cos_theta_t)) / ((eta_t * cos_theta_i) + (eta_i * cos_theta_t));
-    float r_perpendicular = ((eta_i * cos_theta_i) - (eta_t * cos_theta_t)) / ((eta_i * cos_theta_i) + (eta_t * cos_theta_t));
-    return (r_parallel * r_parallel + r_perpendicular * r_perpendicular) / 2;
 }
 
 /**
@@ -90,35 +35,6 @@ __device__ bool refract_ray(const hiprtFloat3& ray_direction, const hiprtFloat3&
     refract_direction = -ray_direction / relative_eta + (NoI / relative_eta - cos_theta_t) * surface_normal;
 
     return true;
-}
-
-__device__ Color fresnel_schlick(Color F0, float NoV)
-{
-    return F0 + (Color(1.0f) - F0) * pow((1.0f - NoV), 5.0f);
-}
-
-__device__ float GGX_normal_distribution(float alpha, float NoH)
-{
-    //To avoid numerical instability when NoH basically == 1, i.e when the
-    //material is a perfect mirror and the normal distribution function is a Dirac
-
-    NoH = RT_MIN(NoH, 0.999999f);
-    float alpha2 = alpha * alpha;
-    float NoH2 = NoH * NoH;
-    float b = (NoH2 * (alpha2 - 1.0f) + 1.0f);
-    return alpha2 * M_1_PI / (b * b);
-}
-
-__device__ float G1_schlick_ggx(float k, float dot_prod)
-{
-    return dot_prod / (dot_prod * (1.0f - k) + k);
-}
-
-__device__ float GGX_smith_masking_shadowing(float roughness_squared, float NoV, float NoL)
-{
-    float k = roughness_squared / 2.0f;
-
-    return G1_schlick_ggx(k, NoL) * G1_schlick_ggx(k, NoV);
 }
 
 __device__ float cook_torrance_brdf_pdf(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& to_light_direction, const hiprtFloat3& surface_normal)
@@ -193,7 +109,7 @@ __device__ Color cook_torrance_brdf_importance_sample(const RendererMaterial& ma
     float sin_theta = sin(theta);
 
     hiprtFloat3 microfacet_normal_local_space = hiprtFloat3(cos(phi) * sin_theta, sin(phi) * sin_theta, cos(theta));
-    hiprtFloat3 microfacet_normal = rotate_vector_around_normal(surface_normal, microfacet_normal_local_space);
+    hiprtFloat3 microfacet_normal = local_to_world_frame(surface_normal, microfacet_normal_local_space);
     if (dot(microfacet_normal, surface_normal) < 0.0f)
         //The microfacet normal that we sampled was under the surface, this can happen
         return Color(0.0f);
@@ -293,16 +209,25 @@ __device__ Color smooth_glass_bsdf(const RendererMaterial& material, hiprtFloat3
     }
 }
 
-__device__ Color brdf_dispatcher_sample(const RendererMaterial& material, hiprtFloat3& bounce_direction, const hiprtFloat3& ray_direction, hiprtFloat3& surface_normal, float& brdf_pdf, Xorshift32Generator& random_number_generator)
+__device__ Color brdf_dispatcher_eval(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal, const hiprtFloat3& to_light_direction, float& pdf)
+{
+    pdf = 0.0f;
+    if (material.brdf_type == BRDF::CookTorrance && material.metalness == 0.0f)
+        return disney_diffuse_eval(material, view_direction, surface_normal, to_light_direction, pdf);
+    else if (material.brdf_type == BRDF::CookTorrance)
+        return disney_metallic_eval(material, view_direction, surface_normal, to_light_direction, pdf);
+
+    return Color(0.0f);
+}
+
+__device__ Color brdf_dispatcher_sample(const RendererMaterial& material, const hiprtFloat3& view_direction, hiprtFloat3& surface_normal, hiprtFloat3& bounce_direction, float& brdf_pdf, Xorshift32Generator& random_number_generator)
 {
     if (material.brdf_type == BRDF::SpecularFresnel)
-        return smooth_glass_bsdf(material, bounce_direction, ray_direction, surface_normal, 1.0f, material.ior, brdf_pdf, random_number_generator);
+        return smooth_glass_bsdf(material, bounce_direction, -view_direction, surface_normal, 1.0f, material.ior, brdf_pdf, random_number_generator);
+    else if (material.brdf_type == BRDF::CookTorrance && material.metalness == 0.0f)
+        return disney_diffuse_sample(material, view_direction, surface_normal, bounce_direction, brdf_pdf, random_number_generator);
     else if (material.brdf_type == BRDF::CookTorrance)
-    {
-        return cook_torrance_brdf_importance_sample(material, -ray_direction, surface_normal, bounce_direction, brdf_pdf, random_number_generator);
-        bounce_direction = hiprt_cosine_weighted_direction_around_normal(surface_normal, brdf_pdf, random_number_generator);
-        return hiprt_lambertian_brdf(material, bounce_direction, -ray_direction, surface_normal);
-    }
+        return disney_metallic_sample(material, view_direction, surface_normal, bounce_direction, brdf_pdf, random_number_generator);
 
     return Color(0.0f);
 }
@@ -352,7 +277,7 @@ __device__ float power_heuristic(float pdf_a, float pdf_b)
 
 __device__ hiprtFloat3 sample_random_point_on_lights(const HIPRTRenderData& render_data, Xorshift32Generator& random_number_generator, float& pdf, LightSourceInformation& light_info)
 {
-    int random_index = random_number_generator() * render_data.emissive_triangles_count;
+    int random_index = random_number_generator.random_index(render_data.emissive_triangles_count);
     int triangle_index = light_info.emissive_triangle_index = render_data.emissive_triangles_indices[random_index];
     
 
@@ -408,7 +333,7 @@ __device__ bool evaluate_shadow_ray(const HIPRTRenderData& render_data, hiprtRay
     return aoHit.hasHit();
 }
 
-__device__ Color sample_light_sources(HIPRTRenderData& render_data, const hiprtRay& ray, const HitInfo& closest_hit_info, const RendererMaterial& material, Xorshift32Generator& random_number_generator)
+__device__ Color sample_light_sources(HIPRTRenderData& render_data, const hiprtRay& ray, HitInfo& closest_hit_info, const RendererMaterial& material, Xorshift32Generator& random_number_generator)
 {
     if (material.brdf_type == BRDF::SpecularFresnel)
         // No sampling for perfectly specular materials
@@ -442,12 +367,14 @@ __device__ Color sample_light_sources(HIPRTRenderData& render_data, const hiprtR
                 light_sample_pdf *= distance_to_light * distance_to_light;
                 light_sample_pdf /= dot_light_source;
 
-                Color brdf = cook_torrance_brdf(material, shadow_ray.direction, -ray.direction, closest_hit_info.normal_at_intersection);
-
-                float cook_torrance_pdf = cook_torrance_brdf_pdf(material, -ray.direction, shadow_ray_direction_normalized, closest_hit_info.normal_at_intersection);
-                if (cook_torrance_pdf != 0.0f)
+                float pdf;
+                Color brdf = brdf_dispatcher_eval(material, -ray.direction, closest_hit_info.normal_at_intersection, shadow_ray.direction, pdf);
+                // TODO remove commented
+                /*Color brdf = cook_torrance_brdf(material, shadow_ray.direction, -ray.direction, closest_hit_info.normal_at_intersection);
+                float cook_torrance_pdf = cook_torrance_brdf_pdf(material, -ray.direction, shadow_ray_direction_normalized, closest_hit_info.normal_at_intersection);*/
+                if (pdf != 0.0f)
                 {
-                    float mis_weight = power_heuristic(light_sample_pdf, cook_torrance_pdf);
+                    float mis_weight = power_heuristic(light_sample_pdf, pdf);
 
                     Color Li = emissive_triangle_material.emission;
                     float cosine_term = dot(closest_hit_info.normal_at_intersection, shadow_ray_direction_normalized);
@@ -462,7 +389,8 @@ __device__ Color sample_light_sources(HIPRTRenderData& render_data, const hiprtR
 
     hiprtFloat3 sampled_brdf_direction;
     float direction_pdf;
-    Color brdf = cook_torrance_brdf_importance_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, sampled_brdf_direction, direction_pdf, random_number_generator);
+    //Color brdf = cook_torrance_brdf_importance_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, sampled_brdf_direction, direction_pdf, random_number_generator);
+    Color brdf = brdf_dispatcher_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, sampled_brdf_direction, direction_pdf, random_number_generator);
     if (brdf.r != 0.0f || brdf.g != 0.0f || brdf.b != 0.0f)
     {
         hiprtRay new_ray; 
@@ -517,7 +445,7 @@ __device__ void debug_set_final_color(const HIPRTRenderData& render_data, int x,
         render_data.pixels[y * res_x + x] = render_data.pixels[y * res_x + x] + final_color;
 }
 
-#define LOW_RESOLUTION_RENDER_DOWNSCALE 8
+#define LOW_RESOLUTION_RENDER_DOWNSCALE 1
 GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderData render_data, int2 res, HIPRTCamera camera)
 {
     const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -600,7 +528,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
 
                     float brdf_pdf;
                     hiprtFloat3 bounce_direction;
-                    Color brdf = brdf_dispatcher_sample(material, bounce_direction, ray.direction, closest_hit_info.normal_at_intersection, brdf_pdf, random_number_generator);
+                    Color brdf = brdf_dispatcher_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, bounce_direction, brdf_pdf, random_number_generator);
 
                     if (last_brdf_hit_type == BRDF::SpecularFresnel)
                         // The fresnel blend coefficient is in the PDF
@@ -643,7 +571,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                         // are not importance sampled
 
                         //Color skysphere_color = sample_environment_map_from_direction(ray.direction);
-                        Color skysphere_color = Color(0.0f);
+                        Color skysphere_color = Color(0.45f);
 
                         sample_color = sample_color + skysphere_color * throughput;
                     }

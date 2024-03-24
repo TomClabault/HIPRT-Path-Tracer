@@ -45,7 +45,13 @@ public:
 
     Ray get_camera_ray(float x, float y);
 
-    Vector rotate_vector_around_normal(const Vector& normal, const Vector& random_dir_local_space);
+    /*
+     * Projects the given vector in the frame oriented around the given normal.
+     * The given normal represents the forward z axis of the frame the vector
+     * is going to be projected in
+     */
+    Vector local_to_world_frame(const Vector& normal, const Vector& vector_to_project);
+    Vector local_to_world_frame(const Vector& normal, const Vector& tangent, const Vector& bitangent, const Vector& vector_to_rotate);
     Vector uniform_direction_around_normal(const Vector& normal, float& pdf, Xorshift32Generator& random_number_generator);
     Vector cosine_weighted_sample(const Vector& normal, float& pdf, Xorshift32Generator& random_number_generator);
     void cosine_weighted_eval(const Vector& normal, const Vector& direction, float& pdf);
@@ -63,6 +69,8 @@ public:
     Color disney_schlick_weight(float f0, float abs_cos_angle);
     Color disney_diffuse_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, const Vector& to_light_direction, float& pdf);
     Color disney_diffuse_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, float& pdf, Xorshift32Generator& random_number_generator);
+    Color disney_metallic_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, const Vector& to_light_direction, float& pdf);
+    Color disney_metallic_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, float& pdf, Xorshift32Generator& random_number_generator);
 
     bool intersect_scene(const Ray& ray, HitInfo& closest_hit_info);
     bool intersect_scene_bvh(const Ray& ray, HitInfo& closest_hit_info);

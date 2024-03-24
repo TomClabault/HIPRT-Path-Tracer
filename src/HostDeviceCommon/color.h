@@ -12,7 +12,7 @@
 struct Color
 {
     __prefix__ Color() : r(0.0f), g(0.0f), b(0.0f) {}
-    __prefix__ Color(float value) : r(value), g(value), b(value) {}
+    __prefix__ explicit Color(float value) : r(value), g(value), b(value) {}
     __prefix__ Color(float _r, float _g, float _b) : r(_r), g(_g), b(_b) {}
     __prefix__ Color(hiprtFloat3 vec) : r(vec.x), g(vec.y), b(vec.z) {}
 
@@ -48,6 +48,15 @@ struct Color
         r /= other.r;
         g /= other.g;
         b /= other.b;
+
+        return *this;
+    }
+
+    __prefix__ Color& operator/=(float k)
+    {
+        r /= k;
+        g /= k;
+        b /= k;
 
         return *this;
     }

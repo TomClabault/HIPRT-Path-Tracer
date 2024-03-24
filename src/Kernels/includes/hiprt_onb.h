@@ -13,7 +13,7 @@ __device__ void branchlessONB(const hiprtFloat3& n, hiprtFloat3& b1, hiprtFloat3
     b2 = hiprtFloat3{ b, sign + n.y * n.y * a, -n.y };
 }
 
-__device__ hiprtFloat3 rotate_vector_around_normal(const hiprtFloat3& normal, const hiprtFloat3& random_dir_local_space)
+__device__ hiprtFloat3 local_to_world_frame(const hiprtFloat3& normal, const hiprtFloat3& random_dir_local_space)
 {
     hiprtFloat3 tangent, bitangent;
     branchlessONB(normal, tangent, bitangent);
