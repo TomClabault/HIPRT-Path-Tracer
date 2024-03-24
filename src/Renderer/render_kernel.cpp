@@ -14,13 +14,44 @@ Vector vec4_mat4x4(const glm::mat4x4& mat, const Vector& v)
     return Vector(vt.x / vt.w, vt.y / vt.w, vt.z / vt.w);
 }
 
-void branchlessONB(const Vector& n, Vector& b1, Vector& b2)
+__device__ void buildONB(const Vector& N, Vector& T, Vector& B)
 {
-    float sign = std::copysign(1.0f, n.z);
-    const float a = -1.0f / (sign + n.z);
-    const float b = n.x * n.y * a;
-    b1 = Vector(1.0f + sign * n.x * n.x * a, sign * b, -sign * n.x);
-    b2 = Vector(b, sign + n.y * n.y * a, -n.y);
+    Vector up = abs(N.z) < 0.9999999 ? Vector(0, 0, 1) : Vector(1, 0, 0);
+    T = normalize(cross(up, N));
+    B = cross(N, T);
+}
+
+/*
+ * Transforms V from its local space to the space around the normal
+ */
+__device__ Vector local_to_world_frame(const Vector& N, const Vector& V)
+{
+    Vector T, B;
+    buildONB(N, T, B);
+
+    return V.x * T + V.y * B + V.z * N;
+}
+
+__device__ Vector local_to_world_frame(const Vector& T, const Vector& B, const Vector& N, const Vector& V)
+{
+    return V.x * T + V.y * B + V.z * N;
+}
+
+/*
+ * Transforms V from its space to the local space around the normal
+ * The given normal is the Z axis of the local frame around the normal
+ */
+__device__ Vector world_to_local_frame(const Vector& N, const Vector& V)
+{
+    Vector T, B;
+    buildONB(N, T, B);
+
+    return Vector(dot(V, T), dot(V, B), dot(V, N));
+}
+
+__device__ Vector world_to_local_frame(const Vector& T, const Vector& B, const Vector& N, const Vector& V)
+{
+    return Vector(dot(V, T), dot(V, B), dot(V, N));
 }
 
 // TODO rename render_kernel to renderer_cpu
@@ -67,21 +98,6 @@ bool refract_ray(const Vector& ray_direction, const Vector& surface_normal, Vect
     refract_direction = -ray_direction / relative_eta + (NoI / relative_eta - cos_theta_t) * surface_normal;
 
     return true;
-}
-
-Vector RenderKernel::local_to_world_frame(const Vector& normal, const Vector& tangent, const Vector& bitangent, const Vector& vector_to_rotate)
-{
-    return vector_to_rotate.x * tangent + vector_to_rotate.y * bitangent + vector_to_rotate.z * normal;
-}
-
-Vector RenderKernel::local_to_world_frame(const Vector& normal, const Vector& vector_to_rotate)
-{
-    Vector tangent, bitangent;
-    branchlessONB(normal, tangent, bitangent);
-
-    //Transforming from the random_direction in its local space to the space around the normal
-    //given in parameter (the space with the given normal as the Z up vector)
-    return vector_to_rotate.x * tangent + vector_to_rotate.y * bitangent + vector_to_rotate.z * normal;
 }
 
 Vector RenderKernel::uniform_direction_around_normal(const Vector& normal, float& pdf, Xorshift32Generator& random_number_generator)
@@ -255,8 +271,10 @@ void RenderKernel::ray_trace_pixel(int x, int y)
 #include <omp.h>
 
 #define DEBUG_PIXEL 0
-#define DEBUG_PIXEL_X 0
-#define DEBUG_PIXEL_Y 12
+#define DEBUG_PIXEL_X 171
+#define DEBUG_PIXEL_Y 27
+//#define DEBUG_PIXEL_X 169
+//#define DEBUG_PIXEL_Y 27
 
 void RenderKernel::render()
 {
@@ -292,15 +310,38 @@ Color fresnel_schlick(Color F0, float NoV)
     return F0 + (Color(1.0f) - F0) * std::pow((1.0f - NoV), 5.0f);
 }
 
+Vector GGXVNDF_sample(Vector local_view_direction, float alpha_x, float alpha_y, float& pdf, Xorshift32Generator& random_number_generator)
+{
+    float r1 = random_number_generator();
+    float r2 = random_number_generator();
+
+    Vector Vh = normalize(Vector(alpha_x * local_view_direction.x, alpha_y * local_view_direction.y, local_view_direction.z));
+
+    float lensq = Vh.x * Vh.x + Vh.y * Vh.y;
+    Vector T1 = lensq > 0.0f ? Vector(-Vh.y, Vh.x, 0) * 1.0f / std::sqrt(lensq) : Vector(1.0f, 0.0f, 0.0f);
+    Vector T2 = cross(Vh, T1);
+
+    float r = sqrt(r1);
+    float phi = 2.0f * M_PI * r2;
+    float t1 = r * cos(phi);
+    float t2 = r * sin(phi);
+    float s = 0.5f * (1.0f + Vh.z);
+    t2 = (1.0f - s) * sqrt(1.0f - t1 * t1) + s * t2;
+
+    Vector Nh = t1 * T1 + t2 * T2 + std::sqrt(std::max(0.0f, 1.0f - t1 * t1 - t2 * t2)) * Vh;
+
+    return normalize(Vector(alpha_x * Nh.x, alpha_y * Nh.y, std::max(0.0f, Nh.z)));
+}
+
 float GGX_normal_distribution_anisotropic(const RendererMaterial& material, const Vector& local_half_vector)
 {
     float aspect = std::sqrt(1.0f - 0.9f * material.anisotropy);
     float alpha_x = std::max(1.0e-4f, material.roughness * material.roughness / aspect);
     float alpha_y = std::max(1.0e-4f, material.roughness * material.roughness * aspect);
 
-    float denom = (local_half_vector.x * local_half_vector.x) / (alpha_x * alpha_x) + 
-                  (local_half_vector.y * local_half_vector.y) / (alpha_y * alpha_y) + 
-                  (local_half_vector.z * local_half_vector.z);
+    float denom = (local_half_vector.x * local_half_vector.x) / (alpha_x * alpha_x);
+    denom += (local_half_vector.y * local_half_vector.y) / (alpha_y * alpha_y);
+    denom += (local_half_vector.z * local_half_vector.z);
 
     return 1.0f / (M_PI * alpha_x * alpha_y * denom * denom);
 }
@@ -541,49 +582,37 @@ Color RenderKernel::disney_diffuse_sample(const RendererMaterial& material, cons
     return disney_diffuse_eval(material, view_direction, surface_normal, output_direction, pdf);
 }
 
-Vector ToLocal(Vector X, Vector Y, Vector Z, Vector V)
-{
-    return Vector(dot(V, X), dot(V, Y), dot(V, Z));
-}
-
 Color RenderKernel::disney_metallic_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, const Vector& to_light_direction, float& pdf)
 {
     Vector half_vector = normalize(to_light_direction + view_direction);
 
-
-
-    float NoV = std::abs(dot(surface_normal, view_direction));
-    float HoL = std::abs(dot(half_vector, to_light_direction));
-
     // Building the local shading frame
     Vector T, B;
-    /*branchlessONB(surface_normal, T, B);
-    Vector local_half_vector = ToLocal(T, B, surface_normal, half_vector);
-    Vector local_view_direction = ToLocal(T, B, surface_normal, view_direction);
-    Vector local_to_light_direction = ToLocal(T, B, surface_normal, to_light_direction);*/
+    buildONB(surface_normal, T, B);
 
-    // TODO investigate why my ONB sucks ballz
-    Vector up = abs(surface_normal.z) < 0.9999999 ? Vector(0, 0, 1) : Vector(1, 0, 0);
-    T = normalize(cross(up, surface_normal));
-    B = cross(surface_normal, T);
+    Vector local_half_vector = world_to_local_frame(T, B, surface_normal, half_vector);
+    Vector local_view_direction = world_to_local_frame(T, B, surface_normal, view_direction);
+    Vector local_to_light_direction = world_to_local_frame(T, B, surface_normal, to_light_direction);
 
-    Vector local_half_vector = ToLocal(T, B, surface_normal, half_vector);
-    Vector local_view_direction = ToLocal(T, B, surface_normal, view_direction);
-    Vector local_to_light_direction = ToLocal(T, B, surface_normal, to_light_direction);
-    /*Vector local_half_vector = local_to_world_frame(surface_normal, T, B, half_vector);
-    Vector local_view_direction = local_to_world_frame(surface_normal, T, B, view_direction);
-    Vector local_to_light_direction = local_to_world_frame(surface_normal, T, B, to_light_direction);*/
+    float NoV = std::abs(local_view_direction.z);
+    float NoL = std::abs(local_to_light_direction.z);
+    float HoL = std::abs(dot(half_vector, to_light_direction));
+
+    float aspect = std::sqrt(1.0f - 0.9f * material.anisotropy);
+    float alpha_x = std::max(1.0e-4f, material.roughness * material.roughness / aspect);
+    float alpha_y = std::max(1.0e-4f, material.roughness * material.roughness * aspect);
 
     Color F = fresnel_schlick(material.diffuse, HoL);
     float D = GGX_normal_distribution_anisotropic(material, local_half_vector);
     float G = GGX_masking_shadowing_anisotropic(material, local_view_direction, local_to_light_direction);
 
-    return F * D * G / (4.0f * NoV);
+    pdf = G * D / (4.0 * NoV);
+    return F * D * G / (4.0 * NoL * NoV);
 }
 
 Color RenderKernel::disney_metallic_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
 {
-    output_direction = cosine_weighted_sample(surface_normal, pdf, random_number_generator);
+    output_direction = cosine_weighted_sample(surface_normal, pdf, random_number_generator);// GGXVNDF_sample(local_view_direction, alpha_x, alpha_y, pdf, random_number_generator);
 
     return disney_metallic_eval(material, view_direction, surface_normal, output_direction, pdf);
 }

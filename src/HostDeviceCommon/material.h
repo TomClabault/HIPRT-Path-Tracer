@@ -25,7 +25,10 @@ struct RendererMaterial
     float metalness = 0.0f;
     float roughness = 1.0f;
     float subsurface = 0.0f;
+    
     float anisotropy = 0.0f;
+    float alpha_x, alpha_y;
+
     float ior = 1.40f;
     float transmission_factor = 0.0f;
 };

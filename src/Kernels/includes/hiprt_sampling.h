@@ -55,15 +55,11 @@ __device__ float GGX_normal_distribution(float alpha, float NoH)
 
 __device__ float GGX_normal_distribution_anisotropic(const RendererMaterial& material, const hiprtFloat3& local_half_vector)
 {
-    float aspect = sqrt(1.0f - 0.9f * material.anisotropy);
-    float alpha_x = RT_MAX(1.0e-4f, material.roughness * material.roughness / aspect);
-    float alpha_y = RT_MAX(1.0e-4f, material.roughness * material.roughness * aspect);
-
-    float denom = (local_half_vector.x * local_half_vector.x) / (alpha_x * alpha_x) +
-        (local_half_vector.y * local_half_vector.y) / (alpha_y * alpha_y) +
+    float denom = (local_half_vector.x * local_half_vector.x) / (material.alpha_x * material.alpha_x) +
+        (local_half_vector.y * local_half_vector.y) / (material.alpha_y * material.alpha_y) +
         (local_half_vector.z * local_half_vector.z);
 
-    return 1.0f / (M_PI * alpha_x * alpha_y * denom * denom);
+    return 1.0f / (M_PI * material.alpha_x * material.alpha_y * denom * denom);
 }
 
 __device__ float G1_schlick_ggx(float k, float dot_prod)
@@ -80,12 +76,8 @@ __device__ float GGX_smith_masking_shadowing(float roughness_squared, float NoV,
 
 __device__ float GGX_masking_shadowing_anisotropic_aux(const RendererMaterial& material, const hiprtFloat3& local_direction)
 {
-    float aspect = sqrt(1.0f - 0.9f * material.anisotropy);
-    float alpha_x = RT_MAX(1.0e-4f, material.roughness * material.roughness / aspect);
-    float alpha_y = RT_MAX(1.0e-4f, material.roughness * material.roughness * aspect);
-
-    float ax = local_direction.x * alpha_x;
-    float ay = local_direction.y * alpha_y;
+    float ax = local_direction.x * material.alpha_x;
+    float ay = local_direction.y * material.alpha_y;
 
     float denom = (sqrt(1.0f + (ax * ax + ay * ay) / (local_direction.z * local_direction.z)) - 1.0f) * 0.5f;
 

@@ -4,23 +4,44 @@
 #include "Kernels/includes/HIPRT_common.h"
 #include "Kernels/includes/HIPRT_maths.h"
 
-__device__ void branchlessONB(const hiprtFloat3& n, hiprtFloat3& b1, hiprtFloat3& b2)
+__device__ void buildONB(const hiprtFloat3& N, hiprtFloat3& T, hiprtFloat3& B)
 {
-    float sign = n.z < 0 ? -1.0f : 1.0f;
-    const float a = -1.0f / (sign + n.z);
-    const float b = n.x * n.y * a;
-    b1 = hiprtFloat3{ 1.0f + sign * n.x * n.x * a, sign * b, -sign * n.x };
-    b2 = hiprtFloat3{ b, sign + n.y * n.y * a, -n.y };
+    hiprtFloat3 up = abs(N.z) < 0.9999999 ? hiprtFloat3(0, 0, 1) : hiprtFloat3(1, 0, 0);
+    T = normalize(cross(up, N));
+    B = cross(N, T);
 }
 
-__device__ hiprtFloat3 local_to_world_frame(const hiprtFloat3& normal, const hiprtFloat3& random_dir_local_space)
+/*
+ * Transforms V from its local space to the space around the normal
+ */
+__device__ hiprtFloat3 local_to_world_frame(const hiprtFloat3& N, const hiprtFloat3& V)
 {
-    hiprtFloat3 tangent, bitangent;
-    branchlessONB(normal, tangent, bitangent);
+    hiprtFloat3 T, B;
+    buildONB(N, T, B);
 
-    //Transforming from the random_direction in its local space to the space around the normal
-    //given in parameter (the space with the given normal as the Z up vector)
-    return random_dir_local_space.x * tangent + random_dir_local_space.y * bitangent + random_dir_local_space.z * normal;
+    return V.x * T + V.y * B + V.z * N;
+}
+
+__device__ hiprtFloat3 local_to_world_frame(const hiprtFloat3& T, const hiprtFloat3& B, const hiprtFloat3& N, const hiprtFloat3& V)
+{
+    return V.x * T + V.y * B + V.z * N;
+}
+
+/*
+ * Transforms V from its space to the local space around the normal
+ * The given normal is the Z axis of the local frame around the normal
+ */
+__device__ hiprtFloat3 world_to_local_frame(const hiprtFloat3& N, const hiprtFloat3& V)
+{
+    hiprtFloat3 T, B;
+    buildONB(N, T, B);
+
+    return hiprtFloat3(dot(V, T), dot(V, B), dot(V, N));
+}
+
+__device__ hiprtFloat3 world_to_local_frame(const hiprtFloat3& T, const hiprtFloat3& B, const hiprtFloat3& N, const hiprtFloat3& V)
+{
+    return hiprtFloat3(dot(V, T), dot(V, B), dot(V, N));
 }
 
 #endif

@@ -108,6 +108,8 @@ __device__ Color cook_torrance_brdf_importance_sample(const RendererMaterial& ma
     float theta = acos((1.0f - rand2) / (rand2 * (alpha * alpha - 1.0f) + 1.0f));
     float sin_theta = sin(theta);
 
+    // The microfacet normal is sampled in its local space, we'll have to bring it to the space
+    // around the surface normal
     hiprtFloat3 microfacet_normal_local_space = hiprtFloat3(cos(phi) * sin_theta, sin(phi) * sin_theta, cos(theta));
     hiprtFloat3 microfacet_normal = local_to_world_frame(surface_normal, microfacet_normal_local_space);
     if (dot(microfacet_normal, surface_normal) < 0.0f)
@@ -214,7 +216,7 @@ __device__ Color brdf_dispatcher_eval(const RendererMaterial& material, const hi
     pdf = 0.0f;
     if (material.brdf_type == BRDF::CookTorrance && material.metalness == 0.0f)
         return disney_diffuse_eval(material, view_direction, surface_normal, to_light_direction, pdf);
-    else if (material.brdf_type == BRDF::CookTorrance)
+     if (material.brdf_type == BRDF::CookTorrance)
         return disney_metallic_eval(material, view_direction, surface_normal, to_light_direction, pdf);
 
     return Color(0.0f);
@@ -529,6 +531,8 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                     float brdf_pdf;
                     hiprtFloat3 bounce_direction;
                     Color brdf = brdf_dispatcher_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, bounce_direction, brdf_pdf, random_number_generator);
+                    /*debug_set_final_color(render_data, x, y, res.x, brdf);
+                    return;*/
 
                     if (last_brdf_hit_type == BRDF::SpecularFresnel)
                         // The fresnel blend coefficient is in the PDF
