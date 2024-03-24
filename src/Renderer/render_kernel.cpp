@@ -14,7 +14,7 @@ Vector vec4_mat4x4(const glm::mat4x4& mat, const Vector& v)
     return Vector(vt.x / vt.w, vt.y / vt.w, vt.z / vt.w);
 }
 
-__device__ void buildONB(const Vector& N, Vector& T, Vector& B)
+__device__ void build_ONB(const Vector& N, Vector& T, Vector& B)
 {
     Vector up = abs(N.z) < 0.9999999 ? Vector(0, 0, 1) : Vector(1, 0, 0);
     T = normalize(cross(up, N));
@@ -27,7 +27,7 @@ __device__ void buildONB(const Vector& N, Vector& T, Vector& B)
 __device__ Vector local_to_world_frame(const Vector& N, const Vector& V)
 {
     Vector T, B;
-    buildONB(N, T, B);
+    build_ONB(N, T, B);
 
     return V.x * T + V.y * B + V.z * N;
 }
@@ -44,7 +44,7 @@ __device__ Vector local_to_world_frame(const Vector& T, const Vector& B, const V
 __device__ Vector world_to_local_frame(const Vector& N, const Vector& V)
 {
     Vector T, B;
-    buildONB(N, T, B);
+    build_ONB(N, T, B);
 
     return Vector(dot(V, T), dot(V, B), dot(V, N));
 }
@@ -206,7 +206,6 @@ void RenderKernel::ray_trace_pixel(int x, int y)
                     Vector bounce_direction;
 
                     Color brdf = brdf_dispatcher_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, bounce_direction, brdf_pdf, random_number_generator);
-                    //Color brdf = brdf_dispatcher_sample(material, bounce_direction, ray.direction, closest_hit_info.normal_at_intersection, brdf_pdf, random_number_generator); //TODO relative IOR in the RayData rather than two incident and output ior values
                     
                     if (bounce == 0)
                         sample_color += material.emission;
@@ -221,7 +220,6 @@ void RenderKernel::ray_trace_pixel(int x, int y)
 
                     throughput *= brdf * std::max(0.0f, dot(bounce_direction, closest_hit_info.normal_at_intersection)) / brdf_pdf;
 
-                    //TODO RayData rather than having the normal, ray direction, is inside surface, ... as free variables in the code
                     Point new_ray_origin = closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-4f;
                     ray = Ray(new_ray_origin, bounce_direction);
                     next_ray_state = RayState::BOUNCE;
@@ -583,7 +581,7 @@ Color RenderKernel::disney_metallic_eval(const RendererMaterial& material, const
 
     // Building the local shading frame
     Vector T, B;
-    buildONB(surface_normal, T, B);
+    build_ONB(surface_normal, T, B);
 
     Vector local_half_vector = world_to_local_frame(T, B, surface_normal, half_vector);
     Vector local_view_direction = world_to_local_frame(T, B, surface_normal, view_direction);
@@ -635,12 +633,11 @@ Color RenderKernel::brdf_dispatcher_eval(const RendererMaterial& material, const
 Color RenderKernel::brdf_dispatcher_sample(const RendererMaterial& material, const Vector& view_direction, Vector& surface_normal, Vector& bounce_direction, float& brdf_pdf, Xorshift32Generator& random_number_generator)
 {
     if (material.brdf_type == BRDF::SpecularFresnel)
-        return smooth_glass_bsdf(material, bounce_direction, -view_direction, surface_normal, 1.0f, material.ior, brdf_pdf, random_number_generator); //TODO relative IOR in the RayData rather than two incident and output ior values
+        return smooth_glass_bsdf(material, bounce_direction, -view_direction, surface_normal, 1.0f, material.ior, brdf_pdf, random_number_generator);
     else if (material.brdf_type == BRDF::CookTorrance && material.metalness == 0.0f)
         return disney_diffuse_sample(material, view_direction, surface_normal, bounce_direction, brdf_pdf, random_number_generator);
     else if (material.brdf_type == BRDF::CookTorrance)
         return disney_sample(material, view_direction, surface_normal, bounce_direction, brdf_pdf, random_number_generator);
-        //return cook_torrance_brdf_sample(material, -ray_direction, surface_normal, bounce_direction, brdf_pdf, random_number_generator);
 
     return Color(0.0f);
 }

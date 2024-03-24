@@ -74,37 +74,6 @@ __device__ float SmithGAniso(float NDotV, float VDotX, float VDotY, float ax, fl
     return (2.0 * NDotV) / (NDotV + sqrt(a * a + b * b + c * c));
 }
 
-//__device__ Color disney_metallic_eval(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal, const hiprtFloat3& to_light_direction, float& pdf)
-//{
-//    hiprtFloat3 half_vector = normalize(to_light_direction + view_direction);
-//
-//    // Building the local shading frame
-//    hiprtFloat3 T, B;
-//    buildONB(surface_normal, T, B);
-//    
-//    hiprtFloat3 local_half_vector = world_to_local_frame(T, B, surface_normal, half_vector);
-//    hiprtFloat3 local_view_direction = world_to_local_frame(T, B, surface_normal, view_direction);
-//    hiprtFloat3 local_to_light_direction = world_to_local_frame(T, B, surface_normal, to_light_direction);
-//
-//    float NoV = abs(local_view_direction.z);
-//    float NoL = abs(local_to_light_direction.z);
-//    float HoL = abs(dot(half_vector, to_light_direction));
-//
-//    Color F = fresnel_schlick(material.diffuse, HoL);
-//    float D = GGX_normal_distribution_anisotropic(material, local_half_vector);
-//    float G = GGX_masking_shadowing_anisotropic(material, local_view_direction, local_to_light_direction);
-//
-//    pdf = G * D / (4.0 * NoV);
-//    return F * D * G / (4.0 * NoL * NoV);
-//}
-//
-//__device__ Color disney_metallic_sample(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal, hiprtFloat3& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
-//{
-//    output_direction = cosine_weighted_sample(surface_normal, pdf, random_number_generator);
-//
-//    return disney_metallic_eval(material, view_direction, surface_normal, output_direction, pdf);
-//}
-
 __device__ Color disney_metallic_eval(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal, const hiprtFloat3& to_light_direction, float& pdf)
 {
     hiprtFloat3 half_vector = to_light_direction + view_direction;
@@ -116,7 +85,7 @@ __device__ Color disney_metallic_eval(const RendererMaterial& material, const hi
 
     // Building the local shading frame
     hiprtFloat3 T, B;
-    buildONB(surface_normal, T, B);
+    build_rotated_ONB(surface_normal, T, B, material.anisotropic_rotation);
 
     hiprtFloat3 local_half_vector = world_to_local_frame(T, B, surface_normal, half_vector);
     hiprtFloat3 local_view_direction = world_to_local_frame(T, B, surface_normal, view_direction);
