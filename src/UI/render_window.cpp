@@ -12,15 +12,21 @@
 
 // TODO bugs
 //
+// - oren nayar NaNs
+// - diffuse BRDFs not taking direct lighting into account? MIS problem? PDF problem?
+// - disney diffuse correct fresnel ? pretty dark diffuse
 // - normals AOV not converging correctly ?
 // - aspect ratio issue on CPU or GPU ?
+// - flip normal to avoid black fringes (microfacet based normal mapping)
+// - black fireflies with disney diffuse pbrt dragon 100000
+// - black fireflies anisotropic sphere 4k
 
 
 
 
 // TODO Code Organization:
 // 
-// - put all sampling functions (ggx, schlick, masking, ...) in a sampling.h file
+// - add references for disney, oren nayar
 // - reorganize methods order in RenderWindow
 // - overload +=, *=, ... operators for Color most notably on the GPU side
 // - use constructors instead of struct {} syntax in gpu code
@@ -36,6 +42,9 @@
 
 
 // TODO Features:
+// - Efficiency Aware Russian roulette and splitting
+// - choose diffuse model (disney, lambertian, oren nayar)
+// - support roughness x and roughness y?
 // - enable lower resolution on mouse scroll for like ~10 frames
 // - display feedback for 3 seconds after dumping a screenshot to disk
 // - choose denoiser quality in imgui

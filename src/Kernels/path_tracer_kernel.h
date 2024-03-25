@@ -105,7 +105,6 @@ __device__ Color cook_torrance_brdf_importance_sample(const RendererMaterial& ma
         Color F;
         float D, G;
 
-
         //GGX Distribution function
         D = GGX_normal_distribution(alpha, NoH);
 
@@ -186,10 +185,9 @@ __device__ Color smooth_glass_bsdf(const RendererMaterial& material, hiprtFloat3
 __device__ Color brdf_dispatcher_eval(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal, const hiprtFloat3& to_light_direction, float& pdf)
 {
     pdf = 0.0f;
-    if (material.brdf_type == BRDF::CookTorrance && material.metalness == 0.0f)
-        return disney_diffuse_eval(material, view_direction, surface_normal, to_light_direction, pdf);
-     if (material.brdf_type == BRDF::CookTorrance)
-        return disney_metallic_eval(material, view_direction, surface_normal, to_light_direction, pdf);
+    if (material.brdf_type == BRDF::CookTorrance)
+        return disney_eval(material, view_direction, surface_normal, to_light_direction, pdf);
+        //return disney_metallic_eval(material, view_direction, surface_normal, to_light_direction, pdf);
 
     return Color(0.0f);
 }
@@ -198,10 +196,11 @@ __device__ Color brdf_dispatcher_sample(const RendererMaterial& material, const 
 {
     if (material.brdf_type == BRDF::SpecularFresnel)
         return smooth_glass_bsdf(material, bounce_direction, -view_direction, surface_normal, 1.0f, material.ior, brdf_pdf, random_number_generator);
-    else if (material.brdf_type == BRDF::CookTorrance && material.metalness == 0.0f)
-        return disney_diffuse_sample(material, view_direction, surface_normal, bounce_direction, brdf_pdf, random_number_generator);
+    /*else if (material.brdf_type == BRDF::CookTorrance && material.metalness == 0.0f)
+        return disney_diffuse_sample(material, view_direction, surface_normal, bounce_direction, brdf_pdf, random_number_generator);*/
     else if (material.brdf_type == BRDF::CookTorrance)
-        return disney_metallic_sample(material, view_direction, surface_normal, bounce_direction, brdf_pdf, random_number_generator);
+        return disney_sample(material, view_direction, surface_normal, bounce_direction, brdf_pdf, random_number_generator);
+        //return disney_metallic_sample(material, view_direction, surface_normal, bounce_direction, brdf_pdf, random_number_generator);
 
     return Color(0.0f);
 }
@@ -419,7 +418,7 @@ __device__ void debug_set_final_color(const HIPRTRenderData& render_data, int x,
         render_data.pixels[y * res_x + x] = render_data.pixels[y * res_x + x] + final_color;
 }
 
-#define LOW_RESOLUTION_RENDER_DOWNSCALE 1
+#define LOW_RESOLUTION_RENDER_DOWNSCALE 8
 GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderData render_data, int2 res, HIPRTCamera camera)
 {
     const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;

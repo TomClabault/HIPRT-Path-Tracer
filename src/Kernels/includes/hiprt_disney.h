@@ -3,12 +3,19 @@
 
 #include "Kernels/includes/HIPRT_common.h"
 #include "Kernels/includes/hiprt_onb.h"
+#include "Kernels/includes/hiprt_oren_nayar.h"
 #include "Kernels/includes/hiprt_sampling.h"
 
-// TODO return float
-__device__ Color disney_schlick_weight(float f0, float abs_cos_angle)
+/* References:
+ * [1] [CSE 272 University of California San Diego - Disney BSDF Homework] https://cseweb.ucsd.edu/~tzli/cse272/wi2024/homework1.pdf
+ * [2] [GLSL Path Tracer implementation by knightcrawler25] https://github.com/knightcrawler25/GLSL-PathTracer
+ * [3] [SIGGRAPH 2012 Course] https://blog.selfshadow.com/publications/s2012-shading-course/#course_content
+ * [4] [SIGGRAPH 2015 Course] https://blog.selfshadow.com/publications/s2015-shading-course/#course_content
+ */
+
+__device__ float disney_schlick_weight(float f0, float abs_cos_angle)
 {
-    return Color(1.0f + (f0 - 1.0f) * pow(1.0f - abs_cos_angle, 5.0f));
+    return 1.0f + (f0 - 1.0f) * pow(1.0f - abs_cos_angle, 5.0f);
 }
 
 __device__ Color disney_diffuse_eval(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal, const hiprtFloat3& to_light_direction, float& pdf)
@@ -23,12 +30,17 @@ __device__ Color disney_diffuse_eval(const RendererMaterial& material, const hip
 
     Color diffuse_part;
     float diffuse_90 = 0.5f + 2.0f * material.roughness * LoH * LoH;
-    diffuse_part = material.diffuse / M_PI * disney_schlick_weight(diffuse_90, NoL) * disney_schlick_weight(diffuse_90, NoV) * NoL;
+    // Lambertian diffuse
+    diffuse_part = material.diffuse / M_PI;
+    // Disney diffuse
+    //diffuse_part = material.diffuse / M_PI * disney_schlick_weight(diffuse_90, NoL) * disney_schlick_weight(diffuse_90, NoV) * NoL;
+    // Oren nayar diffuse
+    //diffuse_part = oren_nayar_eval(material, view_direction, surface_normal, to_light_direction);
 
     Color fake_subsurface_part;
     float subsurface_90 = material.roughness * LoH * LoH;
     fake_subsurface_part = 1.25f * material.diffuse / M_PI *
-        (disney_schlick_weight(subsurface_90, NoL) * disney_schlick_weight(subsurface_90, NoV) * (1.0f / (NoL + NoV) - 0.5f) + Color(0.5f)) * NoL;
+        (disney_schlick_weight(subsurface_90, NoL) * disney_schlick_weight(subsurface_90, NoV) * (1.0f / (NoL + NoV) - 0.5f) + 0.5f) * NoL;
 
     return (1.0f - material.subsurface) * diffuse_part + material.subsurface * fake_subsurface_part;
 }
@@ -114,12 +126,14 @@ __device__ Color disney_metallic_sample(const RendererMaterial& material, const 
 
 __device__ Color disney_eval(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal, const hiprtFloat3& to_light_direction, float& pdf)
 {
-    return disney_metallic_eval(material, view_direction, surface_normal, to_light_direction, pdf);
+    return disney_diffuse_eval(material, view_direction, surface_normal, to_light_direction, pdf);
+    //return disney_metallic_eval(material, view_direction, surface_normal, to_light_direction, pdf);
 }
 
 __device__ Color disney_sample(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal, hiprtFloat3& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
 {
-    return disney_metallic_sample(material, view_direction, surface_normal, output_direction, pdf, random_number_generator);
+    return disney_diffuse_sample(material, view_direction, surface_normal, output_direction, pdf, random_number_generator);
+    //return disney_metallic_sample(material, view_direction, surface_normal, output_direction, pdf, random_number_generator);
 }
 
 #endif
