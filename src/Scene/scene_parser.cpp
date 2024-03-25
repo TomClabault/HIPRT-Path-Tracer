@@ -29,8 +29,9 @@ RendererMaterial SceneParser::ai_mat_to_renderer_mat(aiMaterial* mesh_material)
         {
             float emission_strength;
             mesh_material->Get(AI_MATKEY_EMISSIVE_INTENSITY, emission_strength);
+            emission_strength = 15.0f;
 
-            renderer_material.emission = Color(emissive_color.r * emission_strength, emissive_color.g * emission_strength, emissive_color.b * emission_strength);
+            renderer_material.emission = Color(emissive_color.r, emissive_color.g, emissive_color.b) * emission_strength;
         }
     }
     else
@@ -56,6 +57,11 @@ RendererMaterial SceneParser::ai_mat_to_renderer_mat(aiMaterial* mesh_material)
     float aspect = sqrt(1.0f - 0.9f * renderer_material.anisotropic);
     renderer_material.alpha_x = std::max(1.0e-4f, renderer_material.roughness * renderer_material.roughness / aspect);
     renderer_material.alpha_y = std::max(1.0e-4f, renderer_material.roughness * renderer_material.roughness * aspect);
+
+    float sigma = renderer_material.oren_nayar_sigma;
+    float sigma2 = sigma * sigma;
+    renderer_material.oren_nayar_A = 1.0f - sigma2 / (2.0f * (sigma2 + 0.33f));
+    renderer_material.oren_nayar_B = 0.45f * sigma2 / (sigma2 + 0.09f);
 
     return renderer_material;
 }
