@@ -22,20 +22,20 @@ __device__ Color disney_diffuse_eval(const RendererMaterial& material, const hip
 {
     hiprtFloat3 half_vector = normalize(to_light_direction + view_direction);
 
-    float LoH = abs(dot(to_light_direction, half_vector));
-    float NoL = abs(dot(surface_normal, to_light_direction));
-    float NoV = abs(dot(surface_normal, view_direction));
+    float LoH = clamp(0.0f, 1.0f, abs(dot(to_light_direction, half_vector)));
+    float NoL = clamp(0.0f, 1.0f, abs(dot(surface_normal, to_light_direction)));
+    float NoV = clamp(0.0f, 1.0f, abs(dot(surface_normal, view_direction)));
 
     pdf = NoL / M_PI;
 
     Color diffuse_part;
     float diffuse_90 = 0.5f + 2.0f * material.roughness * LoH * LoH;
     // Lambertian diffuse
-    diffuse_part = material.diffuse / M_PI;
+    //diffuse_part = material.diffuse / M_PI;
     // Disney diffuse
-    //diffuse_part = material.diffuse / M_PI * disney_schlick_weight(diffuse_90, NoL) * disney_schlick_weight(diffuse_90, NoV) * NoL;
+    diffuse_part = material.diffuse / M_PI * disney_schlick_weight(diffuse_90, NoL) * disney_schlick_weight(diffuse_90, NoV) * NoL;
     // Oren nayar diffuse
-    //diffuse_part = oren_nayar_eval(material, view_direction, surface_normal, to_light_direction);
+    diffuse_part = oren_nayar_eval(material, view_direction, surface_normal, to_light_direction);
 
     Color fake_subsurface_part;
     float subsurface_90 = material.roughness * LoH * LoH;

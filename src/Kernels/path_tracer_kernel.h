@@ -328,7 +328,7 @@ __device__ Color sample_light_sources(HIPRTRenderData& render_data, const hiprtR
         shadow_ray.origin = shadow_ray_origin;
         shadow_ray.direction = shadow_ray_direction_normalized;
 
-        float dot_light_source = RT_MAX(dot(light_source_info.light_source_normal, -shadow_ray_direction_normalized), 0.0f);
+        float dot_light_source = abs(dot(light_source_info.light_source_normal, -shadow_ray_direction_normalized));
         if (dot_light_source > 0.0f)
         {
             bool in_shadow = evaluate_shadow_ray(render_data, shadow_ray, distance_to_light);
@@ -342,15 +342,12 @@ __device__ Color sample_light_sources(HIPRTRenderData& render_data, const hiprtR
 
                 float pdf;
                 Color brdf = brdf_dispatcher_eval(material, -ray.direction, closest_hit_info.normal_at_intersection, shadow_ray.direction, pdf);
-                // TODO remove commented
-                /*Color brdf = cook_torrance_brdf(material, shadow_ray.direction, -ray.direction, closest_hit_info.normal_at_intersection);
-                float cook_torrance_pdf = cook_torrance_brdf_pdf(material, -ray.direction, shadow_ray_direction_normalized, closest_hit_info.normal_at_intersection);*/
                 if (pdf != 0.0f)
                 {
                     float mis_weight = power_heuristic(light_sample_pdf, pdf);
 
                     Color Li = emissive_triangle_material.emission;
-                    float cosine_term = dot(closest_hit_info.normal_at_intersection, shadow_ray_direction_normalized);
+                    float cosine_term = RT_MAX(dot(closest_hit_info.normal_at_intersection, shadow_ray_direction_normalized), 0.0f);
 
                     light_source_radiance_mis = Li * cosine_term * brdf * mis_weight / light_sample_pdf;
                 }

@@ -14,7 +14,7 @@ Vector vec4_mat4x4(const glm::mat4x4& mat, const Vector& v)
     return Vector(vt.x / vt.w, vt.y / vt.w, vt.z / vt.w);
 }
 
-__device__ void build_ONB(const Vector& N, Vector& T, Vector& B)
+void build_ONB(const Vector& N, Vector& T, Vector& B)
 {
     Vector up = abs(N.z) < 0.9999999 ? Vector(0, 0, 1) : Vector(1, 0, 0);
     T = normalize(cross(up, N));
@@ -24,34 +24,34 @@ __device__ void build_ONB(const Vector& N, Vector& T, Vector& B)
 /*
  * Transforms V from its local space to the space around the normal
  */
-__device__ Vector local_to_world_frame(const Vector& N, const Vector& V)
+Vector local_to_world_frame(const Vector& N, const Vector& V)
 {
     Vector T, B;
     build_ONB(N, T, B);
 
-    return V.x * T + V.y * B + V.z * N;
+    return normalize(V.x * T + V.y * B + V.z * N);
 }
 
-__device__ Vector local_to_world_frame(const Vector& T, const Vector& B, const Vector& N, const Vector& V)
+Vector local_to_world_frame(const Vector& T, const Vector& B, const Vector& N, const Vector& V)
 {
-    return V.x * T + V.y * B + V.z * N;
+    return normalize(V.x * T + V.y * B + V.z * N);
 }
 
 /*
  * Transforms V from its space to the local space around the normal
  * The given normal is the Z axis of the local frame around the normal
  */
-__device__ Vector world_to_local_frame(const Vector& N, const Vector& V)
+Vector world_to_local_frame(const Vector& N, const Vector& V)
 {
     Vector T, B;
     build_ONB(N, T, B);
 
-    return Vector(dot(V, T), dot(V, B), dot(V, N));
+    return normalize(Vector(dot(V, T), dot(V, B), dot(V, N)));
 }
 
-__device__ Vector world_to_local_frame(const Vector& T, const Vector& B, const Vector& N, const Vector& V)
+Vector world_to_local_frame(const Vector& T, const Vector& B, const Vector& N, const Vector& V)
 {
-    return Vector(dot(V, T), dot(V, B), dot(V, N));
+    return normalize(Vector(dot(V, T), dot(V, B), dot(V, N)));
 }
 
 // TODO rename render_kernel to renderer_cpu
@@ -263,20 +263,23 @@ void RenderKernel::ray_trace_pixel(int x, int y)
     Color gamma_corrected = pow(tone_mapped, 1.0f / gamma);
 
     m_frame_buffer[y * m_framebuffer_width + x] = gamma_corrected;
+
+    if (m_frame_buffer.height - 59 - 1 == y && x == 94)
+        std::cout << gamma_corrected.r << " ; " << gamma_corrected.g << " ; " << gamma_corrected.b << std::endl;
 }
 
 #include <atomic>
 #include <omp.h>
 
 #define DEBUG_PIXEL 1
-#define DEBUG_PIXEL_X 288
-#define DEBUG_PIXEL_Y 116
+#define DEBUG_PIXEL_X 94
+#define DEBUG_PIXEL_Y 59
 
 void RenderKernel::render()
 {
     std::atomic<int> lines_completed = 0;
 
-#if DEBUG_PIXEL && _DEBUG
+#if DEBUG_PIXEL
     for (int y = m_frame_buffer.height - DEBUG_PIXEL_Y - 1; y < m_frame_buffer.height; y++)
     {
         for (int x = DEBUG_PIXEL_X; x < m_frame_buffer.width; x++)
@@ -535,30 +538,79 @@ Color RenderKernel::smooth_glass_bsdf(const RendererMaterial& material, Vector& 
     }
 }
 
-// TODO return float
-Color RenderKernel::disney_schlick_weight(float f0, float abs_cos_angle)
+Color RenderKernel::oren_nayar_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, const Vector& to_light_direction)
 {
-    return Color(1.0f + (f0 - 1.0f) * std::pow(1.0f - abs_cos_angle, 5.0f));
+    Vector T, B;
+    build_ONB(surface_normal, T, B);
+
+    // Using local view and light directions to simply following computations
+    Vector local_view_direction = world_to_local_frame(T, B, surface_normal, view_direction);
+    Vector local_to_light_direction = world_to_local_frame(T, B, surface_normal, to_light_direction);
+
+    // sin(theta) = 1.0 - cos(theta)^2
+    float sin_theta_i = sqrt(1.0f - local_to_light_direction.z * local_to_light_direction.z);
+    float sin_theta_o = sqrt(1.0f - local_view_direction.z * local_view_direction.z);
+
+    // max_cos here is going to be cos(phi_to_light - phi_view_direction)
+    // but computed as cos(phi_light) * cos(phi_view) + sin(phi_light) * sin(phi_view)
+    // according to cos(a - b) = cos(a) * cos(b) + sin(a) * sin(b)
+    float max_cos = 0;
+    if (sin_theta_i > 1.0e-4f && sin_theta_o > 1.0e-4f)
+    {
+        float sin_phi_i = local_to_light_direction.y / sin_theta_i;
+        float cos_phi_i = local_to_light_direction.x / sin_theta_i;
+
+        float sin_phi_o = local_view_direction.y / sin_theta_o;
+        float cos_phi_o = local_view_direction.x / sin_theta_o;
+
+        float d_cos = cos_phi_i * cos_phi_o + sin_phi_i * sin_phi_o;
+
+        max_cos = RT_MAX(0.0f, d_cos);
+    }
+
+    float sin_alpha, tan_beta;
+    if (abs(local_to_light_direction.z) > abs(local_view_direction.z))
+    {
+        sin_alpha = sin_theta_o;
+        tan_beta = sin_theta_i / abs(local_to_light_direction.z);
+    }
+    else
+    {
+        sin_alpha = sin_theta_i;
+        tan_beta = sin_theta_o / abs(local_view_direction.z);
+    }
+
+    return material.diffuse / M_PI * (material.oren_nayar_A + material.oren_nayar_B * max_cos * sin_alpha * tan_beta);
+}
+
+float RenderKernel::disney_schlick_weight(float f0, float abs_cos_angle)
+{
+    return 1.0f + (f0 - 1.0f) * std::pow(1.0f - abs_cos_angle, 5.0f);
 }
 
 Color RenderKernel::disney_diffuse_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, const Vector& to_light_direction, float& pdf)
 {
     Vector half_vector = normalize(to_light_direction + view_direction);
 
-    float LoH = std::abs(dot(to_light_direction, half_vector));
-    float NoL = std::abs(dot(surface_normal, to_light_direction));
-    float NoV = std::abs(dot(surface_normal, view_direction));
+    float LoH = clamp(0.0f, 1.0f, std::abs(dot(to_light_direction, half_vector)));
+    float NoL = clamp(0.0f, 1.0f, std::abs(dot(surface_normal, to_light_direction)));
+    float NoV = clamp(0.0f, 1.0f, std::abs(dot(surface_normal, view_direction)));
 
     pdf = NoL / M_PI;
 
     Color diffuse_part;
     float diffuse_90 = 0.5f + 2.0f * material.roughness * LoH * LoH;
-    diffuse_part = material.diffuse / M_PI * disney_schlick_weight(diffuse_90, NoL) * disney_schlick_weight(diffuse_90, NoV) * NoL;
+    // Lambertian diffuse
+    //diffuse_part = material.diffuse / M_PI;
+    // Disney diffuse
+    //diffuse_part = material.diffuse / M_PI * disney_schlick_weight(diffuse_90, NoL) * disney_schlick_weight(diffuse_90, NoV) * NoL;
+    // Oren nayar diffuse
+    diffuse_part = oren_nayar_eval(material, view_direction, surface_normal, to_light_direction);
 
     Color fake_subsurface_part;
     float subsurface_90 = material.roughness * LoH * LoH;
     fake_subsurface_part = 1.25f * material.diffuse / M_PI *
-        (disney_schlick_weight(subsurface_90, NoL) * disney_schlick_weight(subsurface_90, NoV) * (1.0f / (NoL + NoV) - 0.5f) + Color(0.5f)) * NoL;
+        (disney_schlick_weight(subsurface_90, NoL) * disney_schlick_weight(subsurface_90, NoV) * (1.0f / (NoL + NoV) - 0.5f) + 0.5f) * NoL;
 
     return (1.0f - material.subsurface) * diffuse_part + material.subsurface * fake_subsurface_part;
 }
@@ -610,22 +662,21 @@ Color RenderKernel::disney_metallic_sample(const RendererMaterial& material, con
 
 Color RenderKernel::disney_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, const Vector& to_light_direction, float& pdf)
 {
+    return disney_diffuse_eval(material, view_direction, surface_normal, to_light_direction, pdf);
     return disney_metallic_eval(material, view_direction, surface_normal, to_light_direction, pdf);
 }
 
 Color RenderKernel::disney_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
 {
+    return disney_diffuse_sample(material, view_direction, surface_normal, output_direction, pdf, random_number_generator);
     return disney_metallic_sample(material, view_direction, surface_normal, output_direction, pdf, random_number_generator);
 }
 
 Color RenderKernel::brdf_dispatcher_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, const Vector& to_light_direction, float& pdf)
 {
     pdf = 0.0f;
-    if (material.brdf_type == BRDF::CookTorrance && material.metalness == 0.0f)
-        return disney_diffuse_eval(material, view_direction, surface_normal, to_light_direction, pdf);
-    else if (material.brdf_type == BRDF::CookTorrance)
+    if (material.brdf_type == BRDF::CookTorrance)
         return disney_eval(material, view_direction, surface_normal, to_light_direction, pdf);
-        //return cook_torrance_brdf_eval(material, view_direction, surface_normal, to_light_direction, pdf);
 
     return Color(0.0f);
 }
@@ -634,8 +685,6 @@ Color RenderKernel::brdf_dispatcher_sample(const RendererMaterial& material, con
 {
     if (material.brdf_type == BRDF::SpecularFresnel)
         return smooth_glass_bsdf(material, bounce_direction, -view_direction, surface_normal, 1.0f, material.ior, brdf_pdf, random_number_generator);
-    else if (material.brdf_type == BRDF::CookTorrance && material.metalness == 0.0f)
-        return disney_diffuse_sample(material, view_direction, surface_normal, bounce_direction, brdf_pdf, random_number_generator);
     else if (material.brdf_type == BRDF::CookTorrance)
         return disney_sample(material, view_direction, surface_normal, bounce_direction, brdf_pdf, random_number_generator);
 
@@ -868,7 +917,7 @@ Color RenderKernel::sample_light_sources(const Ray& ray, HitInfo& closest_hit_in
 
         Ray shadow_ray(shadow_ray_origin, shadow_ray_direction_normalized);
 
-        float dot_light_source = std::max(dot(light_source_info.light_source_normal, -shadow_ray_direction_normalized), 0.0f);
+        float dot_light_source = std::abs(dot(light_source_info.light_source_normal, -shadow_ray_direction_normalized));
         if (dot_light_source > 0.0f)
         {
             bool in_shadow = evaluate_shadow_ray(shadow_ray, distance_to_light);
@@ -881,14 +930,14 @@ Color RenderKernel::sample_light_sources(const Ray& ray, HitInfo& closest_hit_in
                 light_sample_pdf /= dot_light_source;
 
                 float pdf;
-                //Color brdf = cook_torrance_brdf_eval(material, -ray.direction, closest_hit_info.normal_at_intersection, shadow_ray.direction, pdf);
                 Color brdf = brdf_dispatcher_eval(material, -ray.direction, closest_hit_info.normal_at_intersection, shadow_ray.direction, pdf);
                 if (pdf != 0.0f)
                 {
                     float mis_weight = power_heuristic(light_sample_pdf, pdf);
 
                     Color Li = emissive_triangle_material.emission;
-                    float cosine_term = dot(closest_hit_info.normal_at_intersection, shadow_ray_direction_normalized);
+                    float cosine_term_not_clamped = dot(closest_hit_info.normal_at_intersection, shadow_ray_direction_normalized);
+                    float cosine_term = std::max(dot(closest_hit_info.normal_at_intersection, shadow_ray_direction_normalized), 0.0f);
 
                     light_source_radiance_mis = Li * cosine_term * brdf * mis_weight / light_sample_pdf;
                 }
@@ -896,11 +945,11 @@ Color RenderKernel::sample_light_sources(const Ray& ray, HitInfo& closest_hit_in
         }
     }
 
+
     Color brdf_radiance_mis;
 
     Vector sampled_brdf_direction;
     float direction_pdf;
-    //Color brdf = cook_torrance_brdf_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, sampled_brdf_direction, direction_pdf, random_number_generator);
     Color brdf = brdf_dispatcher_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, sampled_brdf_direction, direction_pdf, random_number_generator);
     if (brdf != Color(0.0f, 0.0f, 0.0f))
     {
@@ -955,7 +1004,7 @@ inline Point RenderKernel::sample_random_point_on_lights(Xorshift32Generator& ra
 
     Vector normal = cross(AB, AC);
     float length_normal = length(normal);
-    light_info.light_source_normal = normal / length_normal; //Normalized
+    light_info.light_source_normal = normal / length_normal; // Normalized
     float triangle_area = length_normal * 0.5f;
     float nb_emissive_triangles = m_emissive_triangle_indices_buffer.size();
 
@@ -972,7 +1021,7 @@ bool RenderKernel::evaluate_shadow_ray(const Ray& ray, float t_max)
     if (inter_found)
     {
         if (hit_info.t + 1.0e-4f < t_max)
-            //There is something in between the light and the origin of the ray
+            // There is something in between the light and the origin of the ray
             return true;
         else
             return false;

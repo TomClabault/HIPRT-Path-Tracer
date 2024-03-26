@@ -12,21 +12,17 @@
 
 // TODO bugs
 //
-// - oren nayar NaNs
-// - diffuse BRDFs not taking direct lighting into account? MIS problem? PDF problem?
+// - flip normal to avoid black fringes (microfacet based normal mapping)
+// - black fireflies anisotropic sphere 4k
 // - disney diffuse correct fresnel ? pretty dark diffuse
 // - normals AOV not converging correctly ?
 // - aspect ratio issue on CPU or GPU ?
-// - flip normal to avoid black fringes (microfacet based normal mapping)
-// - black fireflies with disney diffuse pbrt dragon 100000
-// - black fireflies anisotropic sphere 4k
 
 
 
 
 // TODO Code Organization:
 // 
-// - add references for disney, oren nayar
 // - reorganize methods order in RenderWindow
 // - overload +=, *=, ... operators for Color most notably on the GPU side
 // - use constructors instead of struct {} syntax in gpu code
@@ -38,6 +34,7 @@
 // - put mouse / keyboard code in an interactor
 // - when the mouse / keyvoard code will be in an interactor class, have the is_interacting boloean in this interactor class
 //		and poll it from the main loop to check whether we need to render the frame at a lower resolution or not
+// - check for level of abstractions in functions
 
 
 

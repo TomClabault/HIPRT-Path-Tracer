@@ -43,6 +43,8 @@ struct float4x4
 #define RT_MIN( a, b ) ( ( ( b ) < ( a ) ) ? ( b ) : ( a ) )
 #define RT_MAX( a, b ) ( ( ( b ) > ( a ) ) ? ( b ) : ( a ) )
 
+HIPRT_HOST_DEVICE HIPRT_INLINE float clamp(float min, float max, float val) { return RT_MAX(min, RT_MIN(max, val)); }
+
 HIPRT_HOST_DEVICE HIPRT_INLINE int2 make_int2(const float2 a) { return make_int2((int)a.x, (int)a.y); }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE int2 make_int2(const int3& a) { return make_int2(a.x, a.y); }
