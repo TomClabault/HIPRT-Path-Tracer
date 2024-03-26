@@ -136,4 +136,13 @@ __prefix__ Color pow(const Color& col, float k)
     return Color{ powf(col.r, k), powf(col.g, k), powf(col.b, k) };
 }
 
+#ifndef __KERNELCC__ // Only defining this on the CPU side
+inline std::ostream& operator<<(std::ostream& os, const Color& color)
+{
+    os << "[" << color.r << ", " << color.g << ", " << color.b << "]";
+
+    return os;
+}
+#endif
+
 #endif

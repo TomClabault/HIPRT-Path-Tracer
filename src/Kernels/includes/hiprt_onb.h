@@ -32,12 +32,12 @@ __device__ hiprtFloat3 local_to_world_frame(const hiprtFloat3& N, const hiprtFlo
     hiprtFloat3 T, B;
     build_ONB(N, T, B);
 
-    return V.x * T + V.y * B + V.z * N;
+    return normalize(V.x * T + V.y * B + V.z * N);
 }
 
 __device__ hiprtFloat3 local_to_world_frame(const hiprtFloat3& T, const hiprtFloat3& B, const hiprtFloat3& N, const hiprtFloat3& V)
 {
-    return V.x * T + V.y * B + V.z * N;
+    return normalize(V.x * T + V.y * B + V.z * N);
 }
 
 /*
@@ -49,12 +49,12 @@ __device__ hiprtFloat3 world_to_local_frame(const hiprtFloat3& N, const hiprtFlo
     hiprtFloat3 T, B;
     build_ONB(N, T, B);
 
-    return hiprtFloat3(dot(V, T), dot(V, B), dot(V, N));
+    return normalize(hiprtFloat3(dot(V, T), dot(V, B), dot(V, N)));
 }
 
 __device__ hiprtFloat3 world_to_local_frame(const hiprtFloat3& T, const hiprtFloat3& B, const hiprtFloat3& N, const hiprtFloat3& V)
 {
-    return hiprtFloat3(dot(V, T), dot(V, B), dot(V, N));
+    return normalize(hiprtFloat3(dot(V, T), dot(V, B), dot(V, N)));
 }
 
 #endif
