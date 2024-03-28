@@ -46,15 +46,14 @@ RendererMaterial SceneParser::ai_mat_to_renderer_mat(aiMaterial* mesh_material)
     else
         renderer_material.brdf_type = BRDF::CookTorrance;
 
-    renderer_material.roughness = 0.3f;
+    renderer_material.roughness = 0.0f;
 
     // Clamping material parameters to avoid NaN during rendering
-    renderer_material.roughness = std::max(1.0e-2f, renderer_material.roughness);
-    renderer_material.anisotropic = std::min(0.99f, renderer_material.anisotropic);
+    renderer_material.roughness = std::max(1.0e-4f, renderer_material.roughness);
     renderer_material.anisotropic_rotation = M_PI / 4.0f * 2.0f;
 
     // Precomputing alpha_x and alpha_y related to anisotropy
-    float aspect = sqrt(1.0f - 0.9f * renderer_material.anisotropic);
+    float aspect = std::sqrt(1.0f - 0.9f * renderer_material.anisotropic);
     renderer_material.alpha_x = std::max(1.0e-4f, renderer_material.roughness * renderer_material.roughness / aspect);
     renderer_material.alpha_y = std::max(1.0e-4f, renderer_material.roughness * renderer_material.roughness * aspect);
 

@@ -35,7 +35,7 @@ __device__ Color disney_diffuse_eval(const RendererMaterial& material, const hip
     // Disney diffuse
     diffuse_part = material.diffuse / M_PI * disney_schlick_weight(diffuse_90, NoL) * disney_schlick_weight(diffuse_90, NoV) * NoL;
     // Oren nayar diffuse
-    diffuse_part = oren_nayar_eval(material, view_direction, surface_normal, to_light_direction);
+    //diffuse_part = oren_nayar_eval(material, view_direction, surface_normal, to_light_direction);
 
     Color fake_subsurface_part;
     float subsurface_90 = material.roughness * LoH * LoH;
@@ -88,24 +88,17 @@ __device__ float SmithGAniso(float NDotV, float VDotX, float VDotY, float ax, fl
 
 __device__ Color disney_metallic_eval(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal, const hiprtFloat3& to_light_direction, float& pdf)
 {
-    hiprtFloat3 half_vector = to_light_direction + view_direction;
-    float length_half_vector = length(half_vector);
-    if (length_half_vector == 0.0f)
-        half_vector = view_direction;
-    else
-        half_vector = half_vector / length_half_vector;
-
     // Building the local shading frame
     hiprtFloat3 T, B;
     build_rotated_ONB(surface_normal, T, B, material.anisotropic_rotation);
 
-    hiprtFloat3 local_half_vector = world_to_local_frame(T, B, surface_normal, half_vector);
     hiprtFloat3 local_view_direction = world_to_local_frame(T, B, surface_normal, view_direction);
     hiprtFloat3 local_to_light_direction = world_to_local_frame(T, B, surface_normal, to_light_direction);
+    hiprtFloat3 local_half_vector = normalize(local_to_light_direction + local_view_direction);
 
     float NoV = abs(local_view_direction.z);
     float NoL = abs(local_to_light_direction.z);
-    float HoL = abs(dot(half_vector, to_light_direction));
+    float HoL = abs(dot(local_half_vector, local_to_light_direction));
 
     Color F = fresnel_schlick(material.diffuse, HoL);
     float D = GGX_normal_distribution_anisotropic(material, local_half_vector);
@@ -121,19 +114,24 @@ __device__ Color disney_metallic_sample(const RendererMaterial& material, const 
     hiprtFloat3 microfacet_normal = GGXVNDF_sample(local_view_direction, material.alpha_x, material.alpha_y, random_number_generator);
     output_direction = reflect_ray(view_direction, local_to_world_frame(surface_normal, microfacet_normal));
 
+    if (dot(output_direction, surface_normal) < 0)
+        // It can happen that the light direction sampled is below the surface. 
+        // We return 0.0 in this case
+        return Color(0.0f);
+
     return disney_metallic_eval(material, view_direction, surface_normal, output_direction, pdf);
 }
 
 __device__ Color disney_eval(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal, const hiprtFloat3& to_light_direction, float& pdf)
 {
-    return disney_diffuse_eval(material, view_direction, surface_normal, to_light_direction, pdf);
-    //return disney_metallic_eval(material, view_direction, surface_normal, to_light_direction, pdf);
+    //return disney_diffuse_eval(material, view_direction, surface_normal, to_light_direction, pdf);
+    return disney_metallic_eval(material, view_direction, surface_normal, to_light_direction, pdf);
 }
 
 __device__ Color disney_sample(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal, hiprtFloat3& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
 {
-    return disney_diffuse_sample(material, view_direction, surface_normal, output_direction, pdf, random_number_generator);
-    //return disney_metallic_sample(material, view_direction, surface_normal, output_direction, pdf, random_number_generator);
+    //return disney_diffuse_sample(material, view_direction, surface_normal, output_direction, pdf, random_number_generator);
+    return disney_metallic_sample(material, view_direction, surface_normal, output_direction, pdf, random_number_generator);
 }
 
 #endif

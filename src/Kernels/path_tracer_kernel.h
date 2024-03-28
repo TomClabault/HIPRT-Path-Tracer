@@ -499,8 +499,6 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                     float brdf_pdf;
                     hiprtFloat3 bounce_direction;
                     Color brdf = brdf_dispatcher_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, bounce_direction, brdf_pdf, random_number_generator);
-                    /*debug_set_final_color(render_data, x, y, res.x, brdf);
-                    return;*/
 
                     if (last_brdf_hit_type == BRDF::SpecularFresnel)
                         // The fresnel blend coefficient is in the PDF
@@ -557,6 +555,11 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                 break;
         }
 
+        if (sample_color.r < 0 || sample_color.g < 0 || sample_color.b < 0)
+        {
+            debug_set_final_color(render_data, x, y, res.x, Color(1000000.0f, 0.0f, 1000000.0f));
+            return;
+        }
         final_color = final_color + sample_color;
     }
 

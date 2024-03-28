@@ -13,7 +13,6 @@
 // TODO bugs
 //
 // - flip normal to avoid black fringes (microfacet based normal mapping)
-// - black fireflies anisotropic sphere 4k
 // - disney diffuse correct fresnel ? pretty dark diffuse
 // - normals AOV not converging correctly ?
 // - aspect ratio issue on CPU or GPU ?
