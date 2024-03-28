@@ -21,6 +21,16 @@ void build_ONB(const Vector& N, Vector& T, Vector& B)
     B = cross(N, T);
 }
 
+void build_rotated_ONB(const Vector& N, Vector& T, Vector& B, float basis_rotation)
+{
+    Vector up = abs(N.z) < 0.9999999 ? Vector(0, 0, 1) : Vector(1, 0, 0);
+    T = normalize(cross(up, N));
+
+    // Rodrigues' rotation
+    T = T * cos(basis_rotation) + cross(N, T) * sin(basis_rotation) + N * dot(N, T) * (1.0f - cos(basis_rotation));
+    B = cross(N, T);
+}
+
 /*
  * Transforms V from its local space to the space around the normal
  */
@@ -247,6 +257,11 @@ void RenderKernel::ray_trace_pixel(int x, int y)
                 break;
         }
 
+        if (sample_color.r < 0 || sample_color.g < 0 || sample_color.b < 0)
+        {
+            std::cout << "Sample color < 0" << std::endl;
+            std::cout << "X, Y, sample: " << x << ", " << y << ", " << sample << std::endl;
+        }
         final_color += sample_color;
     }
 
@@ -263,17 +278,14 @@ void RenderKernel::ray_trace_pixel(int x, int y)
     Color gamma_corrected = pow(tone_mapped, 1.0f / gamma);
 
     m_frame_buffer[y * m_framebuffer_width + x] = gamma_corrected;
-
-    if (m_frame_buffer.height - 59 - 1 == y && x == 94)
-        std::cout << gamma_corrected.r << " ; " << gamma_corrected.g << " ; " << gamma_corrected.b << std::endl;
 }
 
 #include <atomic>
 #include <omp.h>
 
-#define DEBUG_PIXEL 1
-#define DEBUG_PIXEL_X 94
-#define DEBUG_PIXEL_Y 59
+#define DEBUG_PIXEL 0
+#define DEBUG_PIXEL_X 151
+#define DEBUG_PIXEL_Y 86
 
 void RenderKernel::render()
 {
@@ -624,24 +636,17 @@ Color RenderKernel::disney_diffuse_sample(const RendererMaterial& material, cons
 
 Color RenderKernel::disney_metallic_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, const Vector& to_light_direction, float& pdf)
 {
-    Vector half_vector = to_light_direction + view_direction;
-    float length_half_vector = length(half_vector);
-    if (length_half_vector == 0.0f)
-        half_vector = view_direction;
-    else
-        half_vector = half_vector / length_half_vector;
-
     // Building the local shading frame
     Vector T, B;
-    build_ONB(surface_normal, T, B);
+    build_rotated_ONB(surface_normal, T, B, material.anisotropic_rotation);
 
-    Vector local_half_vector = world_to_local_frame(T, B, surface_normal, half_vector);
     Vector local_view_direction = world_to_local_frame(T, B, surface_normal, view_direction);
     Vector local_to_light_direction = world_to_local_frame(T, B, surface_normal, to_light_direction);
+    Vector local_half_vector = normalize(local_to_light_direction + local_view_direction);
 
     float NoV = std::abs(local_view_direction.z);
     float NoL = std::abs(local_to_light_direction.z);
-    float HoL = std::abs(dot(half_vector, to_light_direction));
+    float HoL = std::abs(dot(local_half_vector, local_to_light_direction));
 
     Color F = fresnel_schlick(material.diffuse, HoL);
     float D = GGX_normal_distribution_anisotropic(material, local_half_vector);
@@ -657,18 +662,23 @@ Color RenderKernel::disney_metallic_sample(const RendererMaterial& material, con
     Vector microfacet_normal = GGXVNDF_sample(local_view_direction, material.alpha_x, material.alpha_y, random_number_generator);
     output_direction = reflect_ray(view_direction, local_to_world_frame(surface_normal, microfacet_normal));
 
+    if (dot(output_direction, surface_normal) < 0)
+        // It can happen that the light direction sampled is below the surface. 
+        // We return 0.0 in this case
+        return Color(0.0f);
+
     return disney_metallic_eval(material, view_direction, surface_normal, output_direction, pdf);
 }
 
 Color RenderKernel::disney_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, const Vector& to_light_direction, float& pdf)
 {
-    return disney_diffuse_eval(material, view_direction, surface_normal, to_light_direction, pdf);
+    //return disney_diffuse_eval(material, view_direction, surface_normal, to_light_direction, pdf);
     return disney_metallic_eval(material, view_direction, surface_normal, to_light_direction, pdf);
 }
 
 Color RenderKernel::disney_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
 {
-    return disney_diffuse_sample(material, view_direction, surface_normal, output_direction, pdf, random_number_generator);
+    //return disney_diffuse_sample(material, view_direction, surface_normal, output_direction, pdf, random_number_generator);
     return disney_metallic_sample(material, view_direction, surface_normal, output_direction, pdf, random_number_generator);
 }
 
@@ -936,7 +946,6 @@ Color RenderKernel::sample_light_sources(const Ray& ray, HitInfo& closest_hit_in
                     float mis_weight = power_heuristic(light_sample_pdf, pdf);
 
                     Color Li = emissive_triangle_material.emission;
-                    float cosine_term_not_clamped = dot(closest_hit_info.normal_at_intersection, shadow_ray_direction_normalized);
                     float cosine_term = std::max(dot(closest_hit_info.normal_at_intersection, shadow_ray_direction_normalized), 0.0f);
 
                     light_source_radiance_mis = Li * cosine_term * brdf * mis_weight / light_sample_pdf;
@@ -975,6 +984,7 @@ Color RenderKernel::sample_light_sources(const Ray& ray, HitInfo& closest_hit_in
 
                     float mis_weight = power_heuristic(direction_pdf, light_pdf);
                     float cosine_term = dot(closest_hit_info.normal_at_intersection, sampled_brdf_direction);
+
                     brdf_radiance_mis = brdf * cosine_term * emission * mis_weight / direction_pdf;
                 }
             }
