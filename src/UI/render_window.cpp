@@ -10,6 +10,8 @@
 
 // test performance when reducing number of triangles of the P1
 
+// TODO immediate, test replacing my whole metallic implementation by the GLSL Path Tracer's and see If I still get the darkening because of normal mapping
+
 // TODO bugs
 // - black fringes clearcoat lobe disney (normal mapping stuff again)
 // - black "squares" on the disney metallic with normal mapping. 

@@ -84,7 +84,6 @@ __device__ hiprtFloat3 disney_metallic_sample(const RendererMaterial& material, 
     return sampled_direction;
 }
 
-// TODO pass in local view and local light instead of having to rebuild the ONB everytime
 __device__ Color disney_clearcoat_eval(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal, const hiprtFloat3& to_light_direction, float& pdf)
 {
     hiprtFloat3 T, B;
@@ -135,36 +134,34 @@ __device__ hiprtFloat3 disney_clearcoat_sample(const RendererMaterial& material,
     return sampled_direction;
 }
 
-__device__ hiprtFloat3 flip_normal(const hiprtFloat3& shading_normal, const hiprtFloat3& geometric_normal)
+__device__ Color disney_eval(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& shading_normal, const hiprtFloat3& to_light_direction, float& pdf)
 {
-    // Normal mapping or smooth normals (vertex normals) can cause the light direction
-    // to be in the lower hemisphere
-    // 
-    // A good solution to this problem is presented in 
-    // [Microfacet-based normal mapping for robust Monte Carlo path tracing], Eric Heitz, 2017
-    //
-    // We're implementing a lazy solution here which consists of flipping the shading normal
-    // so that the light direction is now in the upper hemisphere
-    // 
-    // Diagrams in the paper cited above depict the process if you
-    // want a visual understanding of what's happening with the normal here
-}
+    pdf = 0.0f;
 
-__device__ Color disney_eval(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& shading_normal, const hiprtFloat3& geometric_normal, const hiprtFloat3& to_light_direction, float& pdf)
-{
-    hiprtFloat3 normal;
-    if (dot(shading_normal, view_direction) * dot(shading_normal, to_light_direction) < 0)
-        normal = flip_normal(shading_normal, geometric_normal);
-    else
-        normal = shading_normal;
+    if (dot(shading_normal, view_direction) < 0)
+        return Color(0.0f, 0.0f, 0.0f);
+    else if (dot(shading_normal, to_light_direction) < 0)
+        return Color(10000.0f, 0.0f, 10000.0f);
+    //if (dot(shading_normal, view_direction) * dot(shading_normal, to_light_direction) < 0)
+    //{
+    //    // Mainly caused by normal mapping / smooth vertex normals because
+    //    // this can cause light direction to be below the surface. See 
+    //    // Microfacet-based Normal Mapping for Robust Monte Carlo Path Tracing, Eric Heitz, 2017
+    //    // for some illustrations of the problem and a solution (not implemented because
+    //    // it requires quite a bit of code and overhead)
+
+    //    return Color(0.0f);
+    //}
 
     //return disney_diffuse_eval(material, view_direction, normal, to_light_direction, pdf);
-    return disney_metallic_eval(material, view_direction, normal, to_light_direction, pdf);
+    return disney_metallic_eval(material, view_direction, shading_normal, to_light_direction, pdf);
     //return disney_clearcoat_eval(material, view_direction, normal, to_light_direction, pdf);
 }
 
-__device__ Color disney_sample(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& shading_normal, const hiprtFloat3& geometric_normal, hiprtFloat3& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
+__device__ Color disney_sample(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& shading_normal, hiprtFloat3& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
 {
+    pdf = 0.0f;
+
     //output_direction = disney_diffuse_sample(material, view_direction, shading_normal, random_number_generator);
     output_direction = disney_metallic_sample(material, view_direction, shading_normal, random_number_generator);
     //output_direction = disney_clearcoat_sample(material, view_direction, shading_normal, random_number_generator);
@@ -173,15 +170,9 @@ __device__ Color disney_sample(const RendererMaterial& material, const hiprtFloa
         // It can happen that the light direction sampled is below the surface. 
         // We return 0.0 in this case
         return Color(0.0f);
-
-    hiprtFloat3 normal;
-    if (dot(shading_normal, view_direction) * dot(shading_normal, output_direction) < 0)
-        normal = flip_normal(shading_normal, geometric_normal);
-    else
-        normal = shading_normal;
     
     //return disney_diffuse_eval(material, view_direction, normal, output_direction, pdf);
-    return disney_metallic_eval(material, view_direction, normal, output_direction, pdf);
+    return disney_metallic_eval(material, view_direction, shading_normal, output_direction, pdf);
     //return disney_clearcoat_eval(material, view_direction, normal, output_direction, pdf);
 }
 

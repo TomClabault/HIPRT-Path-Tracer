@@ -656,11 +656,12 @@ Color RenderKernel::disney_diffuse_eval(const RendererMaterial& material, const 
     return (1.0f - material.subsurface) * diffuse_part + material.subsurface * fake_subsurface_part;
 }
 
-Color RenderKernel::disney_diffuse_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
+Vector RenderKernel::disney_diffuse_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, Xorshift32Generator& random_number_generator)
 {
-    output_direction = cosine_weighted_sample(surface_normal, pdf, random_number_generator);
+    float trash_pdf;
+    Vector sampled_direction = cosine_weighted_sample(surface_normal, trash_pdf, random_number_generator);
 
-    return disney_diffuse_eval(material, view_direction, surface_normal, output_direction, pdf);
+    return sampled_direction;
 }
 
 Color RenderKernel::disney_metallic_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, const Vector& to_light_direction, float& pdf)
@@ -688,21 +689,16 @@ Color RenderKernel::disney_metallic_eval(const RendererMaterial& material, const
     return F * D * G / (4.0 * NoL * NoV);
 }
 
-Color RenderKernel::disney_metallic_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
+Vector RenderKernel::disney_metallic_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, Xorshift32Generator& random_number_generator)
 {
     Vector local_view_direction = world_to_local_frame(surface_normal, view_direction);
     Vector microfacet_normal = GGXVNDF_sample(local_view_direction, material.alpha_x, material.alpha_y, random_number_generator);
-    output_direction = reflect_ray(view_direction, local_to_world_frame(surface_normal, microfacet_normal));
+    Vector sampled_direction = reflect_ray(view_direction, local_to_world_frame(surface_normal, microfacet_normal));
 
-    if (dot(output_direction, surface_normal) < 0)
-        // It can happen that the light direction sampled is below the surface. 
-        // We return 0.0 in this case
-        return Color(0.0f);
-
-    return disney_metallic_eval(material, view_direction, surface_normal, output_direction, pdf);
+    return sampled_direction;
 }
 
-Color disney_clearcoat_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, const Vector& to_light_direction, float& pdf)
+Color RenderKernel::disney_clearcoat_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, const Vector& to_light_direction, float& pdf)
 {
     Vector T, B;
     build_ONB(surface_normal, T, B);
@@ -730,7 +726,7 @@ Color disney_clearcoat_eval(const RendererMaterial& material, const Vector& view
     return F_clearcoat * D_clearcoat * G_clearcoat / (4.0f * local_view_direction.z);
 }
 
-Color disney_clearcoat_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
+Vector RenderKernel::disney_clearcoat_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, Xorshift32Generator& random_number_generator)
 {
     float clearcoat_gloss = 1.0f - material.clearcoat_roughness;
     float alpha_g = (1.0f - clearcoat_gloss) * 0.1f + clearcoat_gloss * 0.001f;
@@ -747,29 +743,60 @@ Color disney_clearcoat_sample(const RendererMaterial& material, const Vector& vi
     float sin_phi = sqrt(1.0f - cos_phi * cos_phi);
 
     Vector microfacet_normal = normalize(Vector{ sin_theta * cos_phi, sin_theta * sin_phi, cos_theta });
-    microfacet_normal = local_to_world_frame(surface_normal, microfacet_normal);
-    output_direction = reflect_ray(view_direction, microfacet_normal);
+    Vector sampled_direction = reflect_ray(view_direction, local_to_world_frame(surface_normal, microfacet_normal));
 
-    if (dot(output_direction, surface_normal) < 0)
+    return sampled_direction;
+}
+
+Color RenderKernel::disney_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& to_light_direction, float& pdf)
+{
+    pdf = 0.0f;
+
+    // Checking whether the light direction and view direction are in the same hemisphere
+    // This may be the case mainly due to normal mapping / smooth vertex normals because
+    // this can cause light direction to be below the surface. See 
+    // Microfacet-based Normal Mapping for Robust Monte Carlo Path Tracing, Eric Heitz, 2017
+    // for some illustrations of the problem and a solution (not implemented because
+    // it requires quite a bit of code and overhead)
+    if (dot(shading_normal, view_direction) * dot(shading_normal, to_light_direction) < 0)
+    {
+        pdf = 1.0f;
+        return Color(1000000.0f, 0.0f, 1000000.0f);
+    }
+
+    //return disney_diffuse_eval(material, view_direction, normal, to_light_direction, pdf);
+    return disney_metallic_eval(material, view_direction, shading_normal, to_light_direction, pdf);
+    //return disney_clearcoat_eval(material, view_direction, normal, to_light_direction, pdf);
+}
+
+Color RenderKernel::disney_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, Vector& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
+{
+    pdf = 0.0f;
+
+    //output_direction = disney_diffuse_sample(material, view_direction, shading_normal, random_number_generator);
+    output_direction = disney_metallic_sample(material, view_direction, shading_normal, random_number_generator);
+    //output_direction = disney_clearcoat_sample(material, view_direction, shading_normal, random_number_generator);
+
+    if (dot(output_direction, shading_normal) < 0)
         // It can happen that the light direction sampled is below the surface. 
         // We return 0.0 in this case
         return Color(0.0f);
 
-    return disney_clearcoat_eval(material, view_direction, surface_normal, output_direction, pdf);
-}
+    // Checking whether the light direction and view direction are in the same hemisphere
+    // This may be the case mainly due to normal mapping / smooth vertex normals because
+    // this can cause light direction to be below the surface. See 
+    // Microfacet-based Normal Mapping for Robust Monte Carlo Path Tracing, Eric Heitz, 2017
+    // for some illustrations of the problem and a solution (not implemented because
+    // it requires quite a bit of code and overhead)
+    if (dot(shading_normal, view_direction) * dot(shading_normal, output_direction) < 0)
+    {
+        pdf = 1.0f;
+        return Color(1000000.0f, 0.0f, 1000000.0f);
+    }
 
-Color RenderKernel::disney_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, const Vector& to_light_direction, float& pdf)
-{
-    //return disney_diffuse_eval(material, view_direction, surface_normal, to_light_direction, pdf);
-    return disney_metallic_eval(material, view_direction, surface_normal, to_light_direction, pdf);
-    //return disney_clearcoat_eval(material, view_direction, surface_normal, to_light_direction, pdf);
-}
-
-Color RenderKernel::disney_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
-{
-    //return disney_diffuse_sample(material, view_direction, surface_normal, output_direction, pdf, random_number_generator);
-    return disney_metallic_sample(material, view_direction, surface_normal, output_direction, pdf, random_number_generator);
-    //return disney_clearcoat_sample(material, view_direction, surface_normal, output_direction, pdf, random_number_generator);
+    //return disney_diffuse_eval(material, view_direction, normal, output_direction, pdf);
+    return disney_metallic_eval(material, view_direction, shading_normal, output_direction, pdf);
+    //return disney_clearcoat_eval(material, view_direction, normal, output_direction, pdf);
 }
 
 Color RenderKernel::brdf_dispatcher_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, const Vector& to_light_direction, float& pdf)
@@ -783,15 +810,7 @@ Color RenderKernel::brdf_dispatcher_eval(const RendererMaterial& material, const
 
 Color RenderKernel::brdf_dispatcher_sample(const RendererMaterial& material, const Vector& view_direction, Vector& surface_normal, Vector& bounce_direction, float& brdf_pdf, Xorshift32Generator& random_number_generator)
 {
-    // TODO remove, this has been replaced by the disney BSDF
-    /*if (material.brdf_type == BRDF::SpecularFresnel)
-        return smooth_glass_bsdf(material, bounce_direction, -view_direction, surface_normal, 1.0f, material.ior, brdf_pdf, random_number_generator);
-    else if (material.brdf_type == BRDF::Disney)
-        return disney_sample(material, view_direction, surface_normal, bounce_direction, brdf_pdf, random_number_generator);*/
-
     return disney_sample(material, view_direction, surface_normal, bounce_direction, brdf_pdf, random_number_generator);
-
-    return Color(0.0f);
 }
 
 bool RenderKernel::intersect_scene(const Ray& ray, HitInfo& closest_hit_info)
