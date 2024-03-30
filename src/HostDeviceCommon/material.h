@@ -6,7 +6,7 @@
 enum BRDF
 {
     Uninitialized,
-    CookTorrance,
+    Disney,
     SpecularFresnel
 };
 

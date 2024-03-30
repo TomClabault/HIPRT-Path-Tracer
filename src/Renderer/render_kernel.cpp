@@ -291,8 +291,8 @@ void RenderKernel::ray_trace_pixel(int x, int y)
 
 #define DEBUG_PIXEL 0
 #define DEBUG_EXACT_COORDINATE 1
-#define DEBUG_PIXEL_X 79
-#define DEBUG_PIXEL_Y 413
+#define DEBUG_PIXEL_X 1073
+#define DEBUG_PIXEL_Y 292
 
 void RenderKernel::render()
 {
@@ -673,6 +673,9 @@ Color RenderKernel::disney_metallic_eval(const RendererMaterial& material, const
     Vector local_to_light_direction = world_to_local_frame(T, B, surface_normal, to_light_direction);
     Vector local_half_vector = normalize(local_to_light_direction + local_view_direction);
 
+    if (local_view_direction.z * local_to_light_direction.z < 0)
+        return Color(0.0f);
+
     float NoV = std::abs(local_view_direction.z);
     float NoL = std::abs(local_to_light_direction.z);
     float HoL = std::abs(dot(local_half_vector, local_to_light_direction));
@@ -758,21 +761,21 @@ Color disney_clearcoat_sample(const RendererMaterial& material, const Vector& vi
 Color RenderKernel::disney_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, const Vector& to_light_direction, float& pdf)
 {
     //return disney_diffuse_eval(material, view_direction, surface_normal, to_light_direction, pdf);
-    //return disney_metallic_eval(material, view_direction, surface_normal, to_light_direction, pdf);
-    return disney_clearcoat_eval(material, view_direction, surface_normal, to_light_direction, pdf);
+    return disney_metallic_eval(material, view_direction, surface_normal, to_light_direction, pdf);
+    //return disney_clearcoat_eval(material, view_direction, surface_normal, to_light_direction, pdf);
 }
 
 Color RenderKernel::disney_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
 {
     //return disney_diffuse_sample(material, view_direction, surface_normal, output_direction, pdf, random_number_generator);
-    //return disney_metallic_sample(material, view_direction, surface_normal, output_direction, pdf, random_number_generator);
-    return disney_clearcoat_sample(material, view_direction, surface_normal, output_direction, pdf, random_number_generator);
+    return disney_metallic_sample(material, view_direction, surface_normal, output_direction, pdf, random_number_generator);
+    //return disney_clearcoat_sample(material, view_direction, surface_normal, output_direction, pdf, random_number_generator);
 }
 
 Color RenderKernel::brdf_dispatcher_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, const Vector& to_light_direction, float& pdf)
 {
     pdf = 0.0f;
-    if (material.brdf_type == BRDF::CookTorrance)
+    if (material.brdf_type == BRDF::Disney)
         return disney_eval(material, view_direction, surface_normal, to_light_direction, pdf);
 
     return Color(0.0f);
@@ -780,10 +783,13 @@ Color RenderKernel::brdf_dispatcher_eval(const RendererMaterial& material, const
 
 Color RenderKernel::brdf_dispatcher_sample(const RendererMaterial& material, const Vector& view_direction, Vector& surface_normal, Vector& bounce_direction, float& brdf_pdf, Xorshift32Generator& random_number_generator)
 {
-    if (material.brdf_type == BRDF::SpecularFresnel)
+    // TODO remove, this has been replaced by the disney BSDF
+    /*if (material.brdf_type == BRDF::SpecularFresnel)
         return smooth_glass_bsdf(material, bounce_direction, -view_direction, surface_normal, 1.0f, material.ior, brdf_pdf, random_number_generator);
-    else if (material.brdf_type == BRDF::CookTorrance)
-        return disney_sample(material, view_direction, surface_normal, bounce_direction, brdf_pdf, random_number_generator);
+    else if (material.brdf_type == BRDF::Disney)
+        return disney_sample(material, view_direction, surface_normal, bounce_direction, brdf_pdf, random_number_generator);*/
+
+    return disney_sample(material, view_direction, surface_normal, bounce_direction, brdf_pdf, random_number_generator);
 
     return Color(0.0f);
 }

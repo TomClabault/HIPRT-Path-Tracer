@@ -62,6 +62,9 @@ __device__ Color disney_metallic_eval(const RendererMaterial& material, const hi
     hiprtFloat3 local_to_light_direction = world_to_local_frame(T, B, surface_normal, to_light_direction);
     hiprtFloat3 local_half_vector = normalize(local_to_light_direction + local_view_direction);
 
+    if (local_view_direction.z * local_to_light_direction.z < 0)
+        return Color(0.0f);
+
     float NoV = abs(local_view_direction.z);
     float NoL = abs(local_to_light_direction.z);
     float HoL = abs(dot(local_half_vector, local_to_light_direction));

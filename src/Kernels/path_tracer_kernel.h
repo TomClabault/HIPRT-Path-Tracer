@@ -184,25 +184,21 @@ __device__ Color smooth_glass_bsdf(const RendererMaterial& material, hiprtFloat3
 
 __device__ Color brdf_dispatcher_eval(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal, const hiprtFloat3& to_light_direction, float& pdf)
 {
-    pdf = 0.0f;
-    if (material.brdf_type == BRDF::CookTorrance)
-        return disney_eval(material, view_direction, surface_normal, to_light_direction, pdf);
-        //return disney_metallic_eval(material, view_direction, surface_normal, to_light_direction, pdf);
-
-    return Color(0.0f);
+    return disney_eval(material, view_direction, surface_normal, to_light_direction, pdf);
 }
 
 __device__ Color brdf_dispatcher_sample(const RendererMaterial& material, const hiprtFloat3& view_direction, hiprtFloat3& surface_normal, hiprtFloat3& bounce_direction, float& brdf_pdf, Xorshift32Generator& random_number_generator)
 {
-    if (material.brdf_type == BRDF::SpecularFresnel)
-        return smooth_glass_bsdf(material, bounce_direction, -view_direction, surface_normal, 1.0f, material.ior, brdf_pdf, random_number_generator);
-    /*else if (material.brdf_type == BRDF::CookTorrance && material.metalness == 0.0f)
-        return disney_diffuse_sample(material, view_direction, surface_normal, bounce_direction, brdf_pdf, random_number_generator);*/
-    else if (material.brdf_type == BRDF::CookTorrance)
-        return disney_sample(material, view_direction, surface_normal, bounce_direction, brdf_pdf, random_number_generator);
-        //return disney_metallic_sample(material, view_direction, surface_normal, bounce_direction, brdf_pdf, random_number_generator);
+    // TODO remove all of this, fresnel has been replaced by disney
+    //if (material.brdf_type == BRDF::SpecularFresnel)
+    //    return smooth_glass_bsdf(material, bounce_direction, -view_direction, surface_normal, 1.0f, material.ior, brdf_pdf, random_number_generator);
+    ///*else if (material.brdf_type == BRDF::Disney && material.metalness == 0.0f)
+    //    return disney_diffuse_sample(material, view_direction, surface_normal, bounce_direction, brdf_pdf, random_number_generator);*/
+    //else if (material.brdf_type == BRDF::Disney)
+    //    return disney_sample(material, view_direction, surface_normal, bounce_direction, brdf_pdf, random_number_generator);
+    //    //return disney_metallic_sample(material, view_direction, surface_normal, bounce_direction, brdf_pdf, random_number_generator);
 
-    return Color(0.0f);
+    return disney_sample(material, view_direction, surface_normal, bounce_direction, brdf_pdf, random_number_generator);
 }
 
 __device__ bool trace_ray(const HIPRTRenderData& render_data, hiprtRay ray, HitInfo& hit_info)

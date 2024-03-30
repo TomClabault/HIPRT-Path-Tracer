@@ -41,10 +41,10 @@ RendererMaterial SceneParser::ai_mat_to_renderer_mat(aiMaterial* mesh_material)
     renderer_material.anisotropic = 1.0f;
     renderer_material.ior = ior;
     renderer_material.transmission_factor = error_code_transmission_factor == AI_SUCCESS ? transmission_factor : 0.0f;
-    if (renderer_material.transmission_factor > 0.0f)
-        renderer_material.brdf_type = BRDF::SpecularFresnel;
-    else
-        renderer_material.brdf_type = BRDF::CookTorrance;
+    /*if (renderer_material.transmission_factor > 0.0f)
+        renderer_material.brdf_type = BRDF::SpecularFresnel; // TODO remove, fresnel has been replaced by the disney BSDF
+    else*/
+        renderer_material.brdf_type = BRDF::Disney;
 
     // Clamping material parameters to avoid NaN during rendering
     renderer_material.roughness = std::max(1.0e-4f, renderer_material.roughness);

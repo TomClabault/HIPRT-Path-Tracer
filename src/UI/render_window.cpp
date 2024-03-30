@@ -11,8 +11,11 @@
 // test performance when reducing number of triangles of the P1
 
 // TODO bugs
-//
-// - flip normal to avoid black fringes (microfacet based normal mapping)
+// - rare NaN disney metallic 720p, sphere close.gltf, sample number ~700 on the GPU
+// - black fringes clearcoat lobe disney (normal mapping stuff again)
+// - black "squares" on the disney metallic with normal mapping. 
+//		Is this the famous darkening mentioned in the microfacet based normal mapping paper because 
+//		of some directions going under the surface and the BRDF functions returning 0 in those cases ?
 // - disney diffuse correct fresnel ? pretty dark diffuse
 // - normals AOV not converging correctly ?
 // - aspect ratio issue on CPU or GPU ?
