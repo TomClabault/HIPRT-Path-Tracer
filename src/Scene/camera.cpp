@@ -34,3 +34,4 @@ glm::vec3 Camera::get_view_direction() const
 
     return glm::vec3(view_mat[0][2], view_mat[1][2], view_mat[2][2]);
 }
+

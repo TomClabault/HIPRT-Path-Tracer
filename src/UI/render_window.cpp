@@ -11,7 +11,6 @@
 // test performance when reducing number of triangles of the P1
 
 // TODO bugs
-// - rare NaN disney metallic 720p, sphere close.gltf, sample number ~700 on the GPU
 // - black fringes clearcoat lobe disney (normal mapping stuff again)
 // - black "squares" on the disney metallic with normal mapping. 
 //		Is this the famous darkening mentioned in the microfacet based normal mapping paper because 
