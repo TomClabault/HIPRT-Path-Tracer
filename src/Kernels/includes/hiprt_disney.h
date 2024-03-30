@@ -52,40 +52,6 @@ __device__ Color disney_diffuse_sample(const RendererMaterial& material, const h
     return disney_diffuse_eval(material, view_direction, surface_normal, output_direction, pdf);
 }
 
-__device__ float GTR2Aniso(float NDotH, float HDotX, float HDotY, float ax, float ay)
-{
-    float a = HDotX / ax;
-    float b = HDotY / ay;
-    float c = a * a + b * b + NDotH * NDotH;
-    return 1.0 / (M_PI * ax * ay * c * c);
-}
-
-__device__ hiprtFloat3 SampleGTR2Aniso(float ax, float ay, float r1, float r2)
-{
-    float phi = r1 * 2.0f * M_PI;
-
-    float sinPhi = ay * sin(phi);
-    float cosPhi = ax * cos(phi);
-    float tanTheta = sqrt(r2 / (1 - r2));
-
-    return hiprtFloat3(tanTheta * cosPhi, tanTheta * sinPhi, 1.0);
-}
-
-__device__ float SmithG(float NDotV, float alphaG)
-{
-    float a = alphaG * alphaG;
-    float b = NDotV * NDotV;
-    return (2.0 * NDotV) / (NDotV + sqrt(a + b - a * b));
-}
-
-__device__ float SmithGAniso(float NDotV, float VDotX, float VDotY, float ax, float ay)
-{
-    float a = VDotX * ax;
-    float b = VDotY * ay;
-    float c = NDotV;
-    return (2.0 * NDotV) / (NDotV + sqrt(a * a + b * b + c * c));
-}
-
 __device__ Color disney_metallic_eval(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal, const hiprtFloat3& to_light_direction, float& pdf)
 {
     // Building the local shading frame
@@ -122,16 +88,74 @@ __device__ Color disney_metallic_sample(const RendererMaterial& material, const 
     return disney_metallic_eval(material, view_direction, surface_normal, output_direction, pdf);
 }
 
+// TODO pass in local view and local light instead of having to rebuild the ONB everytime
+__device__ Color disney_clearcoat_eval(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal, const hiprtFloat3& to_light_direction, float& pdf)
+{
+    hiprtFloat3 T, B;
+    build_ONB(surface_normal, T, B);
+
+    hiprtFloat3 local_view_direction = world_to_local_frame(T, B, surface_normal, view_direction);
+    hiprtFloat3 local_to_light_direction = world_to_local_frame(T, B, surface_normal, to_light_direction);
+    hiprtFloat3 local_halfway_vector = normalize(local_view_direction + local_to_light_direction);
+
+    if (local_view_direction.z * local_to_light_direction.z < 0)
+        return Color(0.0f);
+
+    float num = material.clearcoatIOR - 1.0f;
+    float denom = material.clearcoatIOR + 1.0f;
+    Color R0 = Color((num * num) / (denom * denom));
+
+    float HoV = dot(local_halfway_vector, local_to_light_direction);
+    float clearcoat_gloss = 1.0f - material.clearcoat_roughness;
+    float alpha_g = (1.0f - clearcoat_gloss) * 0.1f + clearcoat_gloss * 0.001f;
+
+    Color F_clearcoat = fresnel_schlick(R0, HoV);
+    float D_clearcoat = disney_clearcoat_NDF(alpha_g, local_halfway_vector.z);
+    float G_clearcoat = disney_clearcoat_masking_shadowing(local_view_direction) * disney_clearcoat_masking_shadowing(local_to_light_direction);
+
+    pdf = D_clearcoat * abs(local_halfway_vector.z) / (4.0f * dot(local_halfway_vector, to_light_direction));
+    return F_clearcoat * D_clearcoat * G_clearcoat / (4.0f * local_view_direction.z);
+}
+
+__device__ Color disney_clearcoat_sample(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal, hiprtFloat3& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
+{
+    float clearcoat_gloss = 1.0f - material.clearcoat_roughness;
+    float alpha_g = (1.0f - clearcoat_gloss) * 0.1f + clearcoat_gloss * 0.001f;
+    float alpha_g_2 = alpha_g * alpha_g;
+
+    float rand_1 = random_number_generator();
+    float rand_2 = random_number_generator();
+
+    float cos_theta = sqrt((1.0f - pow(alpha_g_2, 1.0f - rand_1)) / (1.0f - alpha_g_2));
+    float sin_theta = sqrt(1.0f - cos_theta * cos_theta);
+
+    float phi = 2.0f * M_PI * rand_2;
+    float cos_phi = cos(phi);
+    float sin_phi = sqrt(1.0f - cos_phi * cos_phi);
+
+    hiprtFloat3 microfacet_normal = normalize(hiprtFloat3{sin_theta * cos_phi, sin_theta * sin_phi, cos_theta});
+    output_direction = reflect_ray(view_direction, local_to_world_frame(surface_normal, microfacet_normal));
+
+    if (dot(output_direction, surface_normal) < 0)
+        // It can happen that the light direction sampled is below the surface. 
+        // We return 0.0 in this case
+        return Color(0.0f);
+
+    return disney_clearcoat_eval(material, view_direction, surface_normal, output_direction, pdf);
+}
+
 __device__ Color disney_eval(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal, const hiprtFloat3& to_light_direction, float& pdf)
 {
     //return disney_diffuse_eval(material, view_direction, surface_normal, to_light_direction, pdf);
     return disney_metallic_eval(material, view_direction, surface_normal, to_light_direction, pdf);
+    //return disney_clearcoat_eval(material, view_direction, surface_normal, to_light_direction, pdf);
 }
 
 __device__ Color disney_sample(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal, hiprtFloat3& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
 {
     //return disney_diffuse_sample(material, view_direction, surface_normal, output_direction, pdf, random_number_generator);
     return disney_metallic_sample(material, view_direction, surface_normal, output_direction, pdf, random_number_generator);
+    //return disney_clearcoat_sample(material, view_direction, surface_normal, output_direction, pdf, random_number_generator);
 }
 
 #endif

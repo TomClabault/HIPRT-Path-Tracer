@@ -102,10 +102,10 @@ __device__ float GGX_smith_masking_shadowing(float roughness_squared, float NoV,
     return G1_schlick_ggx(k, NoL) * G1_schlick_ggx(k, NoV);
 }
 
-__device__ float GGX_masking_shadowing_anisotropic_aux(const RendererMaterial& material, const hiprtFloat3& local_direction)
+__device__ float GGX_masking_shadowing_anisotropic_aux(float alpha_x, float alpha_y, const hiprtFloat3& local_direction)
 {
-    float ax = local_direction.x * material.alpha_x;
-    float ay = local_direction.y * material.alpha_y;
+    float ax = local_direction.x * alpha_x;
+    float ay = local_direction.y * alpha_y;
 
     float denom = (sqrt(1.0f + (ax * ax + ay * ay) / (local_direction.z * local_direction.z)) - 1.0f) * 0.5f;
 
@@ -114,7 +114,8 @@ __device__ float GGX_masking_shadowing_anisotropic_aux(const RendererMaterial& m
 
 __device__ float GGX_masking_shadowing_anisotropic(const RendererMaterial& material, const hiprtFloat3& local_view_direction, const hiprtFloat3& local_to_light_direction)
 {
-    return GGX_masking_shadowing_anisotropic_aux(material, local_view_direction) * GGX_masking_shadowing_anisotropic_aux(material, local_to_light_direction);
+    return GGX_masking_shadowing_anisotropic_aux(material.alpha_x, material.alpha_y, local_view_direction) 
+        * GGX_masking_shadowing_anisotropic_aux(material.alpha_x, material.alpha_y, local_to_light_direction);
 }
 
 __device__ hiprtFloat3 GGXVNDF_sample(hiprtFloat3 local_view_direction, float alpha_x, float alpha_y, Xorshift32Generator& random_number_generator)
@@ -138,6 +139,21 @@ __device__ hiprtFloat3 GGXVNDF_sample(hiprtFloat3 local_view_direction, float al
     hiprtFloat3 Nh = t1 * T1 + t2 * T2 + sqrt(RT_MAX(0.0f, 1.0f - t1 * t1 - t2 * t2)) * Vh;
 
     return normalize(hiprtFloat3(alpha_x * Nh.x, alpha_y * Nh.y, RT_MAX(0.0f, Nh.z)));
+}
+
+__device__ float disney_clearcoat_NDF(float alpha_g, float local_halfway_z)
+{
+    float alpha_g_2 = alpha_g * alpha_g;
+
+    float num = alpha_g_2 - 1.0f;
+    float denom = M_PI * log(alpha_g_2) * (1.0f + (alpha_g_2 - 1.0f) * local_halfway_z * local_halfway_z);
+
+    return num / denom;
+}
+
+__device__ float disney_clearcoat_masking_shadowing(const hiprtFloat3& direction)
+{
+    return GGX_masking_shadowing_anisotropic_aux(0.25f, 0.25f, direction);
 }
 
 #endif

@@ -22,6 +22,9 @@
 
 // TODO Code Organization:
 // 
+// - DO THE DISNEY SHADING IN SHADING SPACE. WHAT THE H IS THIS CODE BUILDING ONB IN EVERY FUNCTION HUH?
+// - Check for light and view direction in the same hemisphere in the disney eval function, not just in the clearcoat eval
+// - Check for sampled light direction not under the surface in disney sample, before eval, not just in the metallic/clearcoat sample
 // - reorganize methods order in RenderWindow
 // - overload +=, *=, ... operators for Color most notably on the GPU side
 // - use constructors instead of struct {} syntax in gpu code
@@ -39,7 +42,7 @@
 
 // TODO Features:
 // - Efficiency Aware Russian roulette and splitting
-// - choose diffuse model (disney, lambertian, oren nayar)
+// - choose disney diffuse model (disney, lambertian, oren nayar)
 // - support roughness x and roughness y?
 // - enable lower resolution on mouse scroll for like ~10 frames
 // - display feedback for 3 seconds after dumping a screenshot to disk

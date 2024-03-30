@@ -259,9 +259,15 @@ void RenderKernel::ray_trace_pixel(int x, int y)
 
         if (sample_color.r < 0 || sample_color.g < 0 || sample_color.b < 0)
         {
-            std::cout << "Sample color < 0" << std::endl;
-            std::cout << "X, Y, sample: " << x << ", " << y << ", " << sample << std::endl;
+            std::cerr << "Sample color < 0" << std::endl;
+            std::cerr << "Exact_X, Exact_Y: " << x << ", " << y << std::endl;
         }
+        else if (std::isnan(sample_color.r) || std::isnan(sample_color.g) || std::isnan(sample_color.b))
+        {
+            std::cerr << "Sample color NaN" << std::endl;
+            std::cerr << "Exact_X, Exact_Y: " << x << ", " << y << std::endl;
+        }
+
         final_color += sample_color;
     }
 
@@ -284,17 +290,23 @@ void RenderKernel::ray_trace_pixel(int x, int y)
 #include <omp.h>
 
 #define DEBUG_PIXEL 0
-#define DEBUG_PIXEL_X 151
-#define DEBUG_PIXEL_Y 86
+#define DEBUG_EXACT_COORDINATE 1
+#define DEBUG_PIXEL_X 79
+#define DEBUG_PIXEL_Y 413
 
 void RenderKernel::render()
 {
     std::atomic<int> lines_completed = 0;
-
 #if DEBUG_PIXEL
+#if DEBUG_EXACT_COORDINATE
+    for (int y = DEBUG_PIXEL_Y; y < m_frame_buffer.height; y++)
+    {
+        for (int x = DEBUG_PIXEL_X; x < m_frame_buffer.width; x++)
+#else
     for (int y = m_frame_buffer.height - DEBUG_PIXEL_Y - 1; y < m_frame_buffer.height; y++)
     {
         for (int x = DEBUG_PIXEL_X; x < m_frame_buffer.width; x++)
+#endif
 #else
 #pragma omp parallel for schedule(dynamic)
     for (int y = 0; y < m_framebuffer_height; y++)
@@ -365,19 +377,36 @@ float GGX_normal_distribution(float alpha, float NoH)
     return alpha2 * M_1_PI / (b * b);// std::max(b * b, 1.0e-18f);
 }
 
-float GGX_masking_shadowing_anisotropic_aux(const RendererMaterial& material, const Vector& local_direction)
+float disney_clearcoat_NDF(float alpha_g, float local_halfway_z)
 {
-    float ax = local_direction.x * material.alpha_x;
-    float ay = local_direction.y * material.alpha_y;
+    float alpha_g_2 = alpha_g * alpha_g;
+
+    float num = alpha_g_2 - 1.0f;
+    float denom = M_PI * log(alpha_g_2) * (1.0f + (alpha_g_2 - 1.0f) * local_halfway_z * local_halfway_z);
+
+    return num / denom;
+}
+
+float GGX_masking_shadowing_anisotropic_aux(float alpha_x, float alpha_y, const Vector& local_direction)
+{
+    float ax = local_direction.x * alpha_x;
+    float ay = local_direction.y * alpha_y;
 
     float denom = (std::sqrt(1.0f + (ax * ax + ay * ay) / (local_direction.z * local_direction.z)) - 1.0f) * 0.5f;
 
     return 1.0f / (1.0f + denom);
 }
 
+float disney_clearcoat_masking_shadowing(const Vector& direction)
+{
+    return GGX_masking_shadowing_anisotropic_aux(0.25f, 0.25f, direction);
+}
+
+
 float GGX_masking_shadowing_anisotropic(const RendererMaterial& material, const Vector& local_view_direction, const Vector& local_to_light_direction)
 {
-    return GGX_masking_shadowing_anisotropic_aux(material, local_view_direction) * GGX_masking_shadowing_anisotropic_aux(material, local_to_light_direction);
+    return GGX_masking_shadowing_anisotropic_aux(material.alpha_x, material.alpha_y, local_view_direction) 
+        * GGX_masking_shadowing_anisotropic_aux(material.alpha_x, material.alpha_y, local_to_light_direction);
 }
 
 float G1_schlick_ggx(float k, float dot_prod)
@@ -670,16 +699,74 @@ Color RenderKernel::disney_metallic_sample(const RendererMaterial& material, con
     return disney_metallic_eval(material, view_direction, surface_normal, output_direction, pdf);
 }
 
+Color disney_clearcoat_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, const Vector& to_light_direction, float& pdf)
+{
+    Vector T, B;
+    build_ONB(surface_normal, T, B);
+
+    Vector local_view_direction = world_to_local_frame(T, B, surface_normal, view_direction);
+    Vector local_to_light_direction = world_to_local_frame(T, B, surface_normal, to_light_direction);
+    Vector local_halfway_vector = normalize(local_view_direction + local_to_light_direction);
+         
+    if (local_view_direction.z * local_to_light_direction.z < 0)
+        return Color(0.0f);
+
+    float num = material.clearcoatIOR - 1.0f;
+    float denom = material.clearcoatIOR + 1.0f;
+    Color R0 = Color((num * num) / (denom * denom));
+
+    float HoV = dot(local_halfway_vector, local_to_light_direction);
+    float clearcoat_gloss = 1.0f - material.clearcoat_roughness;
+    float alpha_g = (1.0f - clearcoat_gloss) * 0.1f + clearcoat_gloss * 0.001f;
+
+    Color F_clearcoat = fresnel_schlick(R0, HoV);
+    float D_clearcoat = disney_clearcoat_NDF(alpha_g, local_halfway_vector.z);
+    float G_clearcoat = disney_clearcoat_masking_shadowing(local_view_direction) * disney_clearcoat_masking_shadowing(local_to_light_direction);
+
+    pdf = D_clearcoat * abs(local_halfway_vector.z) / (4.0f * dot(local_halfway_vector, to_light_direction));
+    return F_clearcoat * D_clearcoat * G_clearcoat / (4.0f * local_view_direction.z);
+}
+
+Color disney_clearcoat_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
+{
+    float clearcoat_gloss = 1.0f - material.clearcoat_roughness;
+    float alpha_g = (1.0f - clearcoat_gloss) * 0.1f + clearcoat_gloss * 0.001f;
+    float alpha_g_2 = alpha_g * alpha_g;
+
+    float rand_1 = random_number_generator();
+    float rand_2 = random_number_generator();
+
+    float cos_theta = sqrt((1.0f - pow(alpha_g_2, 1.0f - rand_1)) / (1.0f - alpha_g_2));
+    float sin_theta = sqrt(1.0f - cos_theta * cos_theta);
+
+    float phi = 2.0f * M_PI * rand_2;
+    float cos_phi = cos(phi);
+    float sin_phi = sqrt(1.0f - cos_phi * cos_phi);
+
+    Vector microfacet_normal = normalize(Vector{ sin_theta * cos_phi, sin_theta * sin_phi, cos_theta });
+    microfacet_normal = local_to_world_frame(surface_normal, microfacet_normal);
+    output_direction = reflect_ray(view_direction, microfacet_normal);
+
+    if (dot(output_direction, surface_normal) < 0)
+        // It can happen that the light direction sampled is below the surface. 
+        // We return 0.0 in this case
+        return Color(0.0f);
+
+    return disney_clearcoat_eval(material, view_direction, surface_normal, output_direction, pdf);
+}
+
 Color RenderKernel::disney_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, const Vector& to_light_direction, float& pdf)
 {
     //return disney_diffuse_eval(material, view_direction, surface_normal, to_light_direction, pdf);
-    return disney_metallic_eval(material, view_direction, surface_normal, to_light_direction, pdf);
+    //return disney_metallic_eval(material, view_direction, surface_normal, to_light_direction, pdf);
+    return disney_clearcoat_eval(material, view_direction, surface_normal, to_light_direction, pdf);
 }
 
 Color RenderKernel::disney_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, Vector& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
 {
     //return disney_diffuse_sample(material, view_direction, surface_normal, output_direction, pdf, random_number_generator);
-    return disney_metallic_sample(material, view_direction, surface_normal, output_direction, pdf, random_number_generator);
+    //return disney_metallic_sample(material, view_direction, surface_normal, output_direction, pdf, random_number_generator);
+    return disney_clearcoat_sample(material, view_direction, surface_normal, output_direction, pdf, random_number_generator);
 }
 
 Color RenderKernel::brdf_dispatcher_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, const Vector& to_light_direction, float& pdf)
@@ -927,7 +1014,7 @@ Color RenderKernel::sample_light_sources(const Ray& ray, HitInfo& closest_hit_in
 
         Ray shadow_ray(shadow_ray_origin, shadow_ray_direction_normalized);
 
-        float dot_light_source = std::abs(dot(light_source_info.light_source_normal, -shadow_ray_direction_normalized));
+        float dot_light_source = std::abs(dot(light_source_info.light_source_normal, -shadow_ray.direction));
         if (dot_light_source > 0.0f)
         {
             bool in_shadow = evaluate_shadow_ray(shadow_ray, distance_to_light);
@@ -946,7 +1033,7 @@ Color RenderKernel::sample_light_sources(const Ray& ray, HitInfo& closest_hit_in
                     float mis_weight = power_heuristic(light_sample_pdf, pdf);
 
                     Color Li = emissive_triangle_material.emission;
-                    float cosine_term = std::max(dot(closest_hit_info.normal_at_intersection, shadow_ray_direction_normalized), 0.0f);
+                    float cosine_term = std::max(dot(closest_hit_info.normal_at_intersection, shadow_ray.direction), 0.0f);
 
                     light_source_radiance_mis = Li * cosine_term * brdf * mis_weight / light_sample_pdf;
                 }

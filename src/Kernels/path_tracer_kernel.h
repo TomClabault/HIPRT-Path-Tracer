@@ -560,6 +560,11 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
             debug_set_final_color(render_data, x, y, res.x, Color(1000000.0f, 0.0f, 1000000.0f));
             return;
         }
+        else if (IS_NAN(sample_color.r) || IS_NAN(sample_color.g) || IS_NAN(sample_color.b))
+        {
+            debug_set_final_color(render_data, x, y, res.x, Color(1000000.0f, 1000000.0f, 0.0f));
+            return;
+        }
         final_color = final_color + sample_color;
     }
 
