@@ -29,7 +29,6 @@ RendererMaterial SceneParser::ai_mat_to_renderer_mat(aiMaterial* mesh_material)
         {
             float emission_strength;
             mesh_material->Get(AI_MATKEY_EMISSIVE_INTENSITY, emission_strength);
-            emission_strength = 15.0f;
 
             renderer_material.emission = Color(emissive_color.r, emissive_color.g, emissive_color.b) * emission_strength;
         }
@@ -38,21 +37,33 @@ RendererMaterial SceneParser::ai_mat_to_renderer_mat(aiMaterial* mesh_material)
         renderer_material.emission = Color(0.0f, 0.0f, 0.0f);
     renderer_material.metalness = metalness;
     renderer_material.roughness = roughness;
-    renderer_material.anisotropic = 1.0f;
+    renderer_material.anisotropic = 1.0f; // TODO read from the file instead of hardcoded
     renderer_material.ior = ior;
     renderer_material.transmission_factor = error_code_transmission_factor == AI_SUCCESS ? transmission_factor : 0.0f;
     renderer_material.brdf_type = BRDF::Disney;
 
-    // Clamping material parameters to avoid NaN during rendering
+
+
+
+    renderer_material.metalness = 1.0f;// TODO remove
+    renderer_material.roughness = 1.0f;
+
+
+
+
+
+
+    // Clamping material parameters to avoid instabilities during rendering
     renderer_material.roughness = std::max(1.0e-4f, renderer_material.roughness);
     renderer_material.anisotropic_rotation = 0.0f;
     renderer_material.clearcoat_roughness = std::max(1.0e-4f, renderer_material.clearcoat_roughness);
 
-    // Precomputing alpha_x and alpha_y related to anisotropy
+    // Precomputing alpha_x and alpha_y related to Disney's anisotropic metallic lobe
     float aspect = std::sqrt(1.0f - 0.9f * renderer_material.anisotropic);
     renderer_material.alpha_x = std::max(1.0e-4f, renderer_material.roughness * renderer_material.roughness / aspect);
     renderer_material.alpha_y = std::max(1.0e-4f, renderer_material.roughness * renderer_material.roughness * aspect);
 
+    // Oren Nayar diffuse BRDF parameters
     float sigma = renderer_material.oren_nayar_sigma;
     float sigma2 = sigma * sigma;
     renderer_material.oren_nayar_A = 1.0f - sigma2 / (2.0f * (sigma2 + 0.33f));
@@ -102,7 +113,8 @@ Scene SceneParser::parse_scene_file(const std::string& filepath, float frame_asp
 
         // TODO + 0.425f is here to correct the FOV from a GLTF Blender export. After the export, 
         // the scene in the renderer is view as if the FOV was smaller. We're correcting this by adding a fix
-        // +0.425 to try and get to same view as in Blender. THIS PROBABLY SHOULDN'T BE HERE
+        // +0.425 to try and get to same view as in Blender. THIS PROBABLY SHOULDN'T BE HERE AS THIS IS
+        // VERY SUS
         float aspect_ratio = frame_aspect_override == -1 ? camera->mAspect : frame_aspect_override;
         float vertical_fov = 2.0f * std::atan(std::tan(camera->mHorizontalFOV / 2.0f) * aspect_ratio) + 0.425f;
         parsed_scene.camera.projection_matrix = glm::transpose(glm::perspective(vertical_fov, aspect_ratio, camera->mClipPlaneNear, camera->mClipPlaneFar));
@@ -124,7 +136,8 @@ Scene SceneParser::parse_scene_file(const std::string& filepath, float frame_asp
 
         // TODO + 0.425f is here to correct the FOV from a GLTF Blender export. After the export, 
         // the scene in the renderer is view as if the FOV was smaller. We're correcting this by adding a fix
-        // +0.425 to try and get to same view as in Blender. THIS PROBABLY SHOULDN'T BE HERE
+        // +0.425 to try and get to same view as in Blender. THIS PROBABLY SHOULDN'T BE HERE AS THIS IS
+        // VERY SUS
         float aspect_ratio = 1280.0f / 720.0f;
         float horizontal_fov = 40.0f / 180 * M_PI;
         float vertical_fov = 2.0f * std::atan(std::tan(horizontal_fov / 2.0f) * aspect_ratio) + 0.425f;

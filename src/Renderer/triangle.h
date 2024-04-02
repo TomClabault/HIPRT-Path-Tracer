@@ -46,7 +46,7 @@ struct Triangle
 		if (t > EPSILON) // ray intersection
 		{
 			hit_info.inter_point = ray.origin + ray.direction * t;
-			hit_info.normal_at_intersection = normalize(cross(edge1, edge2));
+			hit_info.geometric_normal = normalize(cross(edge1, edge2));
 
 			hit_info.t = t;
 

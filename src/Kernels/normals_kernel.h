@@ -2,6 +2,7 @@
 #include "Kernels/includes/HIPRT_common.h"
 #include "Kernels/includes/HIPRT_maths.h"
 #include "Kernels/includes/hiprt_render_data.h"
+#include "Kernels/includes/hiprt_sampling.h"
 
 #include <hiprt/hiprt_device.h>
 #include <hiprt/hiprt_vec.h>
@@ -37,11 +38,11 @@ GLOBAL_KERNEL_SIGNATURE(void) NormalsKernel(hiprtGeometry geom, HIPRTRenderData 
 			+ render_data.vertex_normals[index_C] * hit.uv.y
 			+ render_data.vertex_normals[index_A] * (1.0f - hit.uv.x - hit.uv.y);
 
-		normal = abs(normalize(smooth_normal));
+		normal = normalize(smooth_normal);
 	}
 	else
-		normal = abs(normalize(cross(vertex_B - vertex_A, vertex_C - vertex_A)));
+		normal = normalize(cross(vertex_B - vertex_A, vertex_C - vertex_A));
 
-	Color color{ hit.hasHit() ? normal.x : 0.0f, hit.hasHit() ? normal.y : 0.0f, hit.hasHit() ? normal.z : 0.0f };
-	render_data.pixels[index] = color * (render_data.m_render_settings.sample_number + 1);
+	Color final_color(hit.hasHit() ? abs(normal) : hiprtFloat3{ 0.0f, 0.0f, 0.0f });
+	render_data.pixels[index] = final_color * (render_data.m_render_settings.sample_number + 1);
 }

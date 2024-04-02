@@ -11,6 +11,8 @@
  * [2] [GLSL Path Tracer implementation by knightcrawler25] https://github.com/knightcrawler25/GLSL-PathTracer
  * [3] [SIGGRAPH 2012 Course] https://blog.selfshadow.com/publications/s2012-shading-course/#course_content
  * [4] [SIGGRAPH 2015 Course] https://blog.selfshadow.com/publications/s2015-shading-course/#course_content
+ * [5] [PBRT v3 Source Code] https://github.com/mmp/pbrt-v3/tree/master
+ * [6] [Blender's Cycles Source Code] https://github.com/blender/cycles
  */
 
 __device__ float disney_schlick_weight(float f0, float abs_cos_angle)
@@ -67,19 +69,26 @@ __device__ Color disney_metallic_eval(const RendererMaterial& material, const hi
     float NoL = abs(local_to_light_direction.z);
     float HoL = abs(dot(local_half_vector, local_to_light_direction));
 
-    Color F = fresnel_schlick(material.diffuse, HoL);
+    Color F = fresnel_schlick(material.diffuse, NoL);
+    
     float D = GGX_normal_distribution_anisotropic(material, local_half_vector);
-    float G = GGX_masking_shadowing_anisotropic(material, local_view_direction, local_to_light_direction);
+    float G1 = GGX_masking_shadowing_anisotropic_aux(material.alpha_x, material.alpha_y, local_view_direction);
+    float G = G1 * GGX_masking_shadowing_anisotropic_aux(material.alpha_x, material.alpha_y, local_to_light_direction);
 
-    pdf = G * D / (4.0 * NoV);
+    // TODO PDF incorrect!
+    pdf = D / (4.0f * abs(dot(local_view_direction, local_half_vector)));
     return F * D * G / (4.0 * NoL * NoV);
 }
 
 __device__ hiprtFloat3 disney_metallic_sample(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal, Xorshift32Generator& random_number_generator)
 {
-    hiprtFloat3 local_view_direction = world_to_local_frame(surface_normal, view_direction);
-    hiprtFloat3 microfacet_normal = GGXVNDF_sample(local_view_direction, material.alpha_x, material.alpha_y, random_number_generator);
-    hiprtFloat3 sampled_direction = reflect_ray(view_direction, local_to_world_frame(surface_normal, microfacet_normal));
+	hiprtFloat3 local_view_direction = world_to_local_frame(surface_normal, view_direction);
+
+	// The view direction can sometimes be below the shading normal hemisphere
+	// because of normal mapping
+    int below_normal = (local_view_direction.z < 0) ? -1 : 1;
+	hiprtFloat3 microfacet_normal = GGXVNDF_sample(local_view_direction * below_normal, material.alpha_x, material.alpha_y, random_number_generator);
+	hiprtFloat3 sampled_direction = reflect_ray(view_direction, local_to_world_frame(surface_normal, microfacet_normal * below_normal));
 
     return sampled_direction;
 }
@@ -138,24 +147,9 @@ __device__ Color disney_eval(const RendererMaterial& material, const hiprtFloat3
 {
     pdf = 0.0f;
 
-    if (dot(shading_normal, view_direction) < 0)
-        return Color(0.0f, 0.0f, 0.0f);
-    else if (dot(shading_normal, to_light_direction) < 0)
-        return Color(10000.0f, 0.0f, 10000.0f);
-    //if (dot(shading_normal, view_direction) * dot(shading_normal, to_light_direction) < 0)
-    //{
-    //    // Mainly caused by normal mapping / smooth vertex normals because
-    //    // this can cause light direction to be below the surface. See 
-    //    // Microfacet-based Normal Mapping for Robust Monte Carlo Path Tracing, Eric Heitz, 2017
-    //    // for some illustrations of the problem and a solution (not implemented because
-    //    // it requires quite a bit of code and overhead)
-
-    //    return Color(0.0f);
-    //}
-
-    //return disney_diffuse_eval(material, view_direction, normal, to_light_direction, pdf);
+    //return disney_diffuse_eval(material, view_direction, shading_normal, to_light_direction, pdf);
     return disney_metallic_eval(material, view_direction, shading_normal, to_light_direction, pdf);
-    //return disney_clearcoat_eval(material, view_direction, normal, to_light_direction, pdf);
+    //return disney_clearcoat_eval(material, view_direction, shading_normal, to_light_direction, pdf);
 }
 
 __device__ Color disney_sample(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& shading_normal, hiprtFloat3& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
@@ -171,9 +165,9 @@ __device__ Color disney_sample(const RendererMaterial& material, const hiprtFloa
         // We return 0.0 in this case
         return Color(0.0f);
     
-    //return disney_diffuse_eval(material, view_direction, normal, output_direction, pdf);
+    //return disney_diffuse_eval(material, view_direction, shading_normal, output_direction, pdf);
     return disney_metallic_eval(material, view_direction, shading_normal, output_direction, pdf);
-    //return disney_clearcoat_eval(material, view_direction, normal, output_direction, pdf);
+    //return disney_clearcoat_eval(material, view_direction, shading_normal, output_direction, pdf);
 }
 
 #endif

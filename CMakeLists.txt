@@ -106,7 +106,7 @@ target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/Orochi/")
 target_include_directories(HIPRTPathTracer PRIVATE "${EXTERNAL_ASSIMP_INSTALL_LOCATION}/include/")
 target_include_directories(HIPRTPathTracer PRIVATE ".")
 
-add_custom_command(TARGET HIPRTPathTracer POST_BUILD
+add_custom_command(TARGET HIPRTPathTracer PRE_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/${OIDN_BIN_DIR}/OpenImageDenoise.dll ${CMAKE_CURRENT_BINARY_DIR}
 	COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/${OIDN_BIN_DIR}/OpenImageDenoise_core.dll ${CMAKE_CURRENT_BINARY_DIR}
 	COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/${OIDN_BIN_DIR}/OpenImageDenoise_device_cpu.dll ${CMAKE_CURRENT_BINARY_DIR}
@@ -117,15 +117,29 @@ add_custom_command(TARGET HIPRTPathTracer POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/${HIPRT_BIN_DIR}/hiprtc0507.dll ${CMAKE_CURRENT_BINARY_DIR}
 	COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/${HIPRT_BIN_DIR}/hiprt02002_5.7_amd.hipfb ${CMAKE_CURRENT_BINARY_DIR}
 	COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/${HIPRT_BIN_DIR}/hiprt02002_5.7_amd_lib_win.bc ${CMAKE_CURRENT_BINARY_DIR}
-	COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/${KERNELS_DIR} ${CMAKE_CURRENT_BINARY_DIR}/Kernels
-	COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/${SHADERS_DIR} ${CMAKE_CURRENT_BINARY_DIR}/Shaders
-	COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/${HOST_DEVICE_COMMON_DIR} ${CMAKE_CURRENT_BINARY_DIR}/HostDeviceCommon
 )
 
-#COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_CURRENT_BINARY_DIR}/Kernels
-#COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_CURRENT_BINARY_DIR}/HostDeviceCommon
+# The function below is using configure_file just to make sure that the file is copied to the binary dir everytime it has changed. 
+# This is important for shaders as they are not part of the CPP compilation process. Thus, if we were only using an
+# approach such as add_custom_command to copy the shader files, the shaders would not be copied to the binary directory when they
+# modified since the project wouldn't be rebuilt (because no file that require re-compilation (i.e. cpp files) were modified).
+# configure_file ensures the input it is given is copied (or configured but we're only using this command for its
+# copy capability here) to the output everytime it is modified, independant of whether a compilation was triggered or not.
+function (copy_folder input_folder output_folder)
+	file(GLOB input_files_to_copy ${input_folder}/*.*)
+	
+	foreach(file_to_copy ${input_files_to_copy})
+		cmake_path(GET file_to_copy FILENAME filename_to_copy)
+		configure_file(${file_to_copy} ${output_folder}/${filename_to_copy} COPYONLY)
+	endforeach()
+endfunction()
 
-# Macro to preserve source files hierarchy in Visual Studio
+copy_folder("${CMAKE_SOURCE_DIR}/${KERNELS_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/Kernels")
+copy_folder("${CMAKE_SOURCE_DIR}/${KERNELS_DIR}/includes" "${CMAKE_CURRENT_BINARY_DIR}/Kernels/includes")
+copy_folder("${CMAKE_SOURCE_DIR}/${SHADERS_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/Shaders")
+copy_folder("${CMAKE_SOURCE_DIR}/${HOST_DEVICE_COMMON_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/HostDeviceCommon")
+
+# Macro to preserve nice beautiful source files hierarchy in Visual Studio
 if(MSVC_IDE)
 	macro(GroupSources curdir)
 		file(GLOB children RELATIVE ${PROJECT_SOURCE_DIR}/${curdir} ${PROJECT_SOURCE_DIR}/${curdir}/*)

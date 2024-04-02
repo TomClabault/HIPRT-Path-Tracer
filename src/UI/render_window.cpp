@@ -10,7 +10,8 @@
 
 // test performance when reducing number of triangles of the P1
 
-// TODO immediate, test replacing my whole metallic implementation by the GLSL Path Tracer's and see If I still get the darkening because of normal mapping
+// TODO immediate. With light sampling disabled, we still have the issue so the problem is in the BRDF somewhere
+// TODO immediate, try visualizing every part of the BRDF to see which one is the checkered one
 
 // TODO bugs
 // - black fringes clearcoat lobe disney (normal mapping stuff again)
@@ -23,9 +24,8 @@
 
 
 
-
 // TODO Code Organization:
-// 
+// - Clean the Git of all the HIP/Orochi binary files. Try to download them automatically in the CMake or write installation instructions
 // - DO THE DISNEY SHADING IN SHADING SPACE. WHAT THE H IS THIS CODE BUILDING ONB IN EVERY FUNCTION HUH?
 // - Check for light and view direction in the same hemisphere in the disney eval function, not just in the clearcoat eval
 // - Check for sampled light direction not under the surface in disney sample, before eval, not just in the metallic/clearcoat sample
@@ -45,7 +45,10 @@
 
 
 // TODO Features:
-// - Efficiency Aware Russian roulette and splitting
+// - ImGuizmo
+// - Orochi 2.0 --> Textures and OpenGL Interop 
+// - Paths roughness regularization
+// - Focus blur
 // - choose disney diffuse model (disney, lambertian, oren nayar)
 // - support roughness x and roughness y?
 // - enable lower resolution on mouse scroll for like ~10 frames
@@ -59,6 +62,7 @@
 // - write scene details to imgui (nb vertices, triangles, ...)
 // - check perf of aiPostProcessSteps::aiProcess_ImproveCacheLocality
 // - ImGui to choose the BVH flags at runtime and be able to compare the performance
+// - ImGui widgets for SBVH / LBVH
 // - light sampling: go through transparent surfaces instead of considering them opaque
 // - BVH compaction + imgui checkbox
 // - shader cache
@@ -73,6 +77,9 @@
 // - compute shader for tone mapping images ? unless transfering memory to open gl is too expensive
 // - use defines insead of IFs in the kernel code and recompile kernel everytime (for some options at least)
 // - stuff to multithread when loading everything ? (scene, BVH, textures, ...)
+// - Efficiency Aware Russian roulette and splitting
+// - ReSTIR PT
+// - OMNEE?
 
 void wait_and_exit(const char* message)
 {

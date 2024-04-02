@@ -42,7 +42,6 @@ struct float4x4
 
 #define RT_MIN( a, b ) ( ( ( b ) < ( a ) ) ? ( b ) : ( a ) )
 #define RT_MAX( a, b ) ( ( ( b ) > ( a ) ) ? ( b ) : ( a ) )
-#define IS_NAN(a) ((((unsigned int)0b01111111100000000000000000000000 & (*(unsigned int*)&(a))) == (unsigned int)0b01111111100000000000000000000000) && ((unsigned int)0b00000000011111111111111111111111 & (*(unsigned int*)&(a))))
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float clamp(float min, float max, float val) { return RT_MAX(min, RT_MIN(max, val)); }
 

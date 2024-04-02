@@ -17,7 +17,6 @@
 
 #define GPU_RENDER 1
 
-
 int main(int argc, char* argv[])
 {
 #if GPU_RENDER
@@ -31,8 +30,6 @@ int main(int argc, char* argv[])
         std::cout << "Reading scene file " << arguments.scene_file_path << " ..." << std::endl;
         Scene parsed_scene = SceneParser::parse_scene_file(arguments.scene_file_path, (float)default_width / default_height);
         std::cout << std::endl;
-
-        parsed_scene.materials[2].metalness = 1.0f;
 
         render_window.set_renderer_scene(parsed_scene);
         render_window.get_renderer().set_camera(parsed_scene.camera);

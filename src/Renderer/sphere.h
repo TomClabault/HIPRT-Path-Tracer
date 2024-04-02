@@ -45,7 +45,7 @@ struct Sphere
                 return false;
 
             hit_info.inter_point = ray.origin + ray.direction * hit_info.t;
-            hit_info.normal_at_intersection = normalize(hit_info.inter_point - center);
+            hit_info.shading_normal = normalize(hit_info.inter_point - center);
             hit_info.primitive_index = primitive_index;
 
             return true;

@@ -201,6 +201,10 @@ __device__ bool trace_ray(const HIPRTRenderData& render_data, hiprtRay ray, HitI
     {
         hit_info.inter_point = ray.origin + hit.t * ray.direction;
         hit_info.primitive_index = hit.primID;
+
+        // hit.normal is in object space, this simple approach will not work if using
+        // multiple-levels BVH (TLAS/BLAS)
+        hiprtFloat3 geometric_normal = normalize(hit.normal);
         
         int vertex_A_index = render_data.triangles_indices[hit_info.primitive_index * 3 + 0];
         if (render_data.normals_present[vertex_A_index])
@@ -210,14 +214,15 @@ __device__ bool trace_ray(const HIPRTRenderData& render_data, hiprtRay ray, HitI
             int vertex_B_index = render_data.triangles_indices[hit_info.primitive_index * 3 + 1];
             int vertex_C_index = render_data.triangles_indices[hit_info.primitive_index * 3 + 2];
 
-            hiprtFloat3 smooth_normal = render_data.vertex_normals[vertex_B_index] * hit.uv.x 
-                + render_data.vertex_normals[vertex_C_index] * hit.uv.y 
+            hiprtFloat3 smooth_normal = render_data.vertex_normals[vertex_B_index] * hit.uv.x
+                + render_data.vertex_normals[vertex_C_index] * hit.uv.y
                 + render_data.vertex_normals[vertex_A_index] * (1.0f - hit.uv.x - hit.uv.y);
 
-            hit_info.normal_at_intersection = normalize(smooth_normal);
+            hit_info.shading_normal = normalize(smooth_normal);
         }
         else
-            hit_info.normal_at_intersection = normalize(hit.normal);
+            hit_info.shading_normal = geometric_normal;
+        hit_info.geometric_normal = geometric_normal;
 
         hit_info.t = hit.t;
         hit_info.uv = hit.uv;
@@ -293,51 +298,55 @@ __device__ bool evaluate_shadow_ray(const HIPRTRenderData& render_data, hiprtRay
     return aoHit.hasHit();
 }
 
-__device__ Color sample_light_sources(HIPRTRenderData& render_data, const hiprtRay& ray, HitInfo& closest_hit_info, const RendererMaterial& material, Xorshift32Generator& random_number_generator)
+__device__ Color sample_light_sources(HIPRTRenderData& render_data, const hiprtFloat3& view_direction, HitInfo& closest_hit_info, const RendererMaterial& material, Xorshift32Generator& random_number_generator)
 {
     if (material.brdf_type == BRDF::SpecularFresnel)
         // No sampling for perfectly specular materials
         return Color(0.0f);
 
+    if (render_data.emissive_triangles_count == 0)
+        // No emmisive geometry in the scene to sample
+        return Color(0.0f);
+
     Color light_source_radiance_mis;
-    if (render_data.emissive_triangles_count > 0)
+    float light_sample_pdf;
+    LightSourceInformation light_source_info;
+    hiprtFloat3 random_light_point = sample_random_point_on_lights(render_data, random_number_generator, light_sample_pdf, light_source_info);
+
+    // Actually pushing the point towards the light here to avoid the shadow terminator problem
+    hiprtFloat3 shadow_ray_origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f;
+    hiprtFloat3 shadow_ray_direction = random_light_point - shadow_ray_origin;
+    float distance_to_light = length(shadow_ray_direction);
+    hiprtFloat3 shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
+
+
+    hiprtRay shadow_ray;
+    shadow_ray.origin = shadow_ray_origin;
+    shadow_ray.direction = shadow_ray_direction_normalized;
+
+    // abs() here to allow backfacing light sources
+    float dot_light_source = abs(dot(light_source_info.light_source_normal, -shadow_ray.direction));
+    if (dot_light_source > 0.0f)
     {
-        float light_sample_pdf;
-        LightSourceInformation light_source_info;
-        hiprtFloat3 random_light_point = sample_random_point_on_lights(render_data, random_number_generator, light_sample_pdf, light_source_info);
+        bool in_shadow = evaluate_shadow_ray(render_data, shadow_ray, distance_to_light);
 
-        hiprtFloat3 shadow_ray_origin = closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-4f;
-        hiprtFloat3 shadow_ray_direction = random_light_point - shadow_ray_origin;
-        float distance_to_light = length(shadow_ray_direction);
-        hiprtFloat3 shadow_ray_direction_normalized = normalize(shadow_ray_direction);
-
-        hiprtRay shadow_ray;
-        shadow_ray.origin = shadow_ray_origin;
-        shadow_ray.direction = shadow_ray_direction_normalized;
-
-        float dot_light_source = abs(dot(light_source_info.light_source_normal, -shadow_ray_direction_normalized));
-        if (dot_light_source > 0.0f)
+        if (!in_shadow)
         {
-            bool in_shadow = evaluate_shadow_ray(render_data, shadow_ray, distance_to_light);
+            const RendererMaterial& emissive_triangle_material = render_data.materials_buffer[render_data.material_indices[light_source_info.emissive_triangle_index]];
 
-            if (!in_shadow)
+            light_sample_pdf *= distance_to_light * distance_to_light;
+            light_sample_pdf /= dot_light_source;
+
+            float pdf;
+            Color brdf = brdf_dispatcher_eval(material, view_direction, closest_hit_info.shading_normal, shadow_ray.direction, pdf);
+            if (pdf != 0.0f)
             {
-                const RendererMaterial& emissive_triangle_material = render_data.materials_buffer[render_data.material_indices[light_source_info.emissive_triangle_index]];
+                float mis_weight = power_heuristic(light_sample_pdf, pdf);
 
-                light_sample_pdf *= distance_to_light * distance_to_light;
-                light_sample_pdf /= dot_light_source;
+                Color Li = emissive_triangle_material.emission;
+                float cosine_term = RT_MAX(dot(closest_hit_info.shading_normal, shadow_ray.direction), 0.0f);
 
-                float pdf;
-                Color brdf = brdf_dispatcher_eval(material, -ray.direction, closest_hit_info.normal_at_intersection, shadow_ray.direction, pdf);
-                if (pdf != 0.0f)
-                {
-                    float mis_weight = power_heuristic(light_sample_pdf, pdf);
-
-                    Color Li = emissive_triangle_material.emission;
-                    float cosine_term = RT_MAX(dot(closest_hit_info.normal_at_intersection, shadow_ray_direction_normalized), 0.0f);
-
-                    light_source_radiance_mis = Li * cosine_term * brdf * mis_weight / light_sample_pdf;
-                }
+                light_source_radiance_mis = Li * cosine_term * brdf * mis_weight / light_sample_pdf;
             }
         }
     }
@@ -346,12 +355,11 @@ __device__ Color sample_light_sources(HIPRTRenderData& render_data, const hiprtR
 
     hiprtFloat3 sampled_brdf_direction;
     float direction_pdf;
-    //Color brdf = cook_torrance_brdf_importance_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, sampled_brdf_direction, direction_pdf, random_number_generator);
-    Color brdf = brdf_dispatcher_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, sampled_brdf_direction, direction_pdf, random_number_generator);
+    Color brdf = brdf_dispatcher_sample(material, view_direction, closest_hit_info.shading_normal, sampled_brdf_direction, direction_pdf, random_number_generator);
     if (brdf.r != 0.0f || brdf.g != 0.0f || brdf.b != 0.0f)
     {
         hiprtRay new_ray; 
-        new_ray.origin = closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-5f;
+        new_ray.origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-5f;
         new_ray.direction = sampled_brdf_direction;
 
         HitInfo new_ray_hit_info;
@@ -359,7 +367,7 @@ __device__ Color sample_light_sources(HIPRTRenderData& render_data, const hiprtR
 
         if (inter_found)
         {
-            float cos_angle = RT_MAX(dot(new_ray_hit_info.normal_at_intersection, -sampled_brdf_direction), 0.0f);
+            float cos_angle = RT_MAX(dot(new_ray_hit_info.shading_normal, -sampled_brdf_direction), 0.0f);
             if (cos_angle > 0.0f)
             {
                 int material_index = render_data.material_indices[new_ray_hit_info.primitive_index];
@@ -374,7 +382,7 @@ __device__ Color sample_light_sources(HIPRTRenderData& render_data, const hiprtR
                     float light_pdf = distance_squared / (light_area * cos_angle);
 
                     float mis_weight = power_heuristic(direction_pdf, light_pdf);
-                    float cosine_term = dot(closest_hit_info.normal_at_intersection, sampled_brdf_direction);
+                    float cosine_term = dot(closest_hit_info.shading_normal, sampled_brdf_direction);
                     brdf_radiance_mis = brdf * cosine_term * emission * mis_weight / direction_pdf;
                 }
             }
@@ -402,7 +410,7 @@ __device__ void debug_set_final_color(const HIPRTRenderData& render_data, int x,
         render_data.pixels[y * res_x + x] = render_data.pixels[y * res_x + x] + final_color;
 }
 
-#define LOW_RESOLUTION_RENDER_DOWNSCALE 8
+#define LOW_RESOLUTION_RENDER_DOWNSCALE 1
 GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderData render_data, int2 res, HIPRTCamera camera)
 {
     const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -412,6 +420,9 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
     if (index >= res.x * res.y)
         return;
 
+    // 'Render low resolution' means that the user is moving the camera for example
+    // so we're going to reduce the quality of the render for increased framerates
+    // while moving
     if (render_data.m_render_settings.render_low_resolution)
     {
         // Reducing the number of bounces to 3
@@ -454,7 +465,8 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
         Color sample_color = Color{ 0.0f, 0.0f, 0.0f };
         RayState next_ray_state = RayState::BOUNCE;
         BRDF last_brdf_hit_type = BRDF::Uninitialized;
-        // Whether or not we've already written
+
+        // Whether or not we've already written to the denoiser's buffers
         bool denoiser_AOVs_set = false;
         float denoiser_blend = 1.0f;
 
@@ -465,6 +477,15 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                 HitInfo closest_hit_info;
                 bool intersection_found = trace_ray(render_data, ray, closest_hit_info);
 
+                // Because I've had self-intersection issues in the past (offsetting the ray origin
+                // from the surface along the normal by 1.0e-4f wasn't enough), I'm adding this "fail-safe" 
+                // to make this kind of errors more visible and easily catchable in the future
+                if (closest_hit_info.t < 0.01f && intersection_found)
+                {
+                    debug_set_final_color(render_data, x, y, res.x, Color(0.0f, 10000.0f, 0.0f));
+                    return;
+                }
+
                 if (intersection_found)
                 {
                     int material_index = render_data.material_indices[closest_hit_info.primitive_index];
@@ -474,9 +495,8 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                     // --------------------------------------------------- //
                     // ----------------- Direct lighting ----------------- //
                     // --------------------------------------------------- //
-                    Color light_sample_radiance = sample_light_sources(render_data, ray, closest_hit_info, material, random_number_generator);
+                    Color light_sample_radiance = sample_light_sources(render_data, -ray.direction, closest_hit_info, material, random_number_generator);
                     //Color env_map_radiance = sample_environment_map(ray, closest_hit_info, material, random_number_generator);
-
                     Color env_map_radiance = Color(0.0f);
 
                     // --------------------------------------- //
@@ -485,7 +505,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
 
                     float brdf_pdf;
                     hiprtFloat3 bounce_direction;
-                    Color brdf = brdf_dispatcher_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, bounce_direction, brdf_pdf, random_number_generator);
+                    Color brdf = brdf_dispatcher_sample(material, -ray.direction, closest_hit_info.shading_normal, bounce_direction, brdf_pdf, random_number_generator);
 
                     if (last_brdf_hit_type == BRDF::SpecularFresnel)
                         // The fresnel blend coefficient is in the PDF
@@ -496,23 +516,21 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                         denoiser_AOVs_set = true;
 
                         denoiser_albedo += material.diffuse * denoiser_blend;
-                        denoiser_normal += closest_hit_info.normal_at_intersection * denoiser_blend;
+                        denoiser_normal += closest_hit_info.shading_normal * denoiser_blend;
                     }
+
+                    // Terminate ray if something went wrong according to the unforgivable laws of physic
+                    // (sampling a direction below the surface for example)
+                    if ((brdf.r == 0.0f && brdf.g == 0.0f && brdf.b == 0.0f) || brdf_pdf <= 0.0f)
+                        break;
 
                     if (bounce == 0)
                         sample_color = sample_color + material.emission * throughput;
                     sample_color = sample_color + (light_sample_radiance + env_map_radiance) * throughput;
 
-                    if ((brdf.r == 0.0f && brdf.g == 0.0f && brdf.b == 0.0f) || brdf_pdf < 1.0e-8f || isinf(brdf_pdf))
-                    {
-                        next_ray_state = RayState::TERMINATED;
+                    throughput *= brdf * abs(dot(bounce_direction, closest_hit_info.shading_normal)) / brdf_pdf;
 
-                        break;
-                    }
-
-                    throughput = throughput * brdf * RT_MAX(0.0f, dot(bounce_direction, closest_hit_info.normal_at_intersection)) / brdf_pdf;
-
-                    hiprtFloat3 new_ray_origin = closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-4f;
+                    hiprtFloat3 new_ray_origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 3.0e-3f;
                     ray.origin = new_ray_origin; // Updating the next ray origin
                     ray.direction = bounce_direction; // Updating the next ray direction
 
@@ -530,7 +548,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                         //Color skysphere_color = sample_environment_map_from_direction(ray.direction);
                         Color skysphere_color = Color(0.45f);
 
-                        sample_color = sample_color + skysphere_color * throughput;
+                        sample_color += skysphere_color * throughput;
                     }
 
                     next_ray_state = RayState::MISSED;
@@ -538,21 +556,27 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
             }
             else if (next_ray_state == RayState::MISSED)
                 break;
-            else if (next_ray_state == RayState::TERMINATED)
-                break;
         }
 
+        // These 2 if() are basically anomally detectors
+        // They will set pixels to very bright colors if somehow
+        // weird samples are produced
+        // This helps spot unrobustness in the renderer 
+        //
+        // - Pink : sample with negative color
+        // - Yellow : NaN sample
         if (sample_color.r < 0 || sample_color.g < 0 || sample_color.b < 0)
         {
             debug_set_final_color(render_data, x, y, res.x, Color(1000000.0f, 0.0f, 1000000.0f));
             return;
         }
-        else if (IS_NAN(sample_color.r) || IS_NAN(sample_color.g) || IS_NAN(sample_color.b))
+        else if (isnan(sample_color.r) || isnan(sample_color.g) || isnan(sample_color.b))
         {
             debug_set_final_color(render_data, x, y, res.x, Color(1000000.0f, 1000000.0f, 0.0f));
             return;
         }
-        final_color = final_color + sample_color;
+
+        final_color += sample_color;
     }
 
     render_data.pixels[index] += final_color;
@@ -569,6 +593,12 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
     if (normal_length != 0.0f)
         render_data.denoiser_normals[index] = normalize(accumulated_normal);
 
+    // Handling low resolution render
+    // The framebuffer actually still is at full resolution, it's just that we cast
+    // 1 ray every 4, 8 or 16 pixels (depending on the low resolution factor)
+    // This means that we have "holes" in the rendered where rays will never be cast
+    // this loop fills the wholes by copying the pixel that we rendered to its unrendered
+    // neighbors
     if (render_data.m_render_settings.render_low_resolution)
     {
         // Copying the pixel we just rendered to the neighbors
@@ -581,12 +611,16 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                     // This is ourselves
                     continue;
                 else if (_index >= res.x * res.y)
-                    // Outside of the buffer
+                    // Outside of the framebuffer
                     return;
                 else
                 {
                     // Actually a valid pixel
                     render_data.pixels[_index] = render_data.pixels[index];
+
+                    // Also handling the denoiser AOVs. Useful only when the user is moving the camera
+                    // (and thus rendering at low resolution) while the denoiser's normals / albedo has
+                    // been selected as the active viewport view
                     render_data.denoiser_albedo[_index] = render_data.denoiser_albedo[index];
                     render_data.denoiser_normals[_index] = render_data.denoiser_normals[index];
                 }

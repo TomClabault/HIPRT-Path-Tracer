@@ -54,6 +54,7 @@ public:
     Vector cosine_weighted_sample(const Vector& normal, float& pdf, Xorshift32Generator& random_number_generator);
     void cosine_weighted_eval(const Vector& normal, const Vector& direction, float& pdf);
 
+    void debug_set_final_color(int x, int y, Color final_color);
     void ray_trace_pixel(int x, int y);
     void render();
 

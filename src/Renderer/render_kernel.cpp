@@ -165,6 +165,11 @@ Ray RenderKernel::get_camera_ray(float x, float y)
     return ray;
 }
 
+void RenderKernel::debug_set_final_color(int x, int y, Color final_color)
+{
+    m_frame_buffer[x + y * m_framebuffer_width] = final_color;
+}
+
 void RenderKernel::ray_trace_pixel(int x, int y)
 {
     Xorshift32Generator random_number_generator(31 + x * y * m_render_samples);
@@ -206,6 +211,9 @@ void RenderKernel::ray_trace_pixel(int x, int y)
                     // ----------------- Direct lighting ----------------- //
                     // --------------------------------------------------- //
                     Color light_sample_radiance = sample_light_sources(ray, closest_hit_info, material, random_number_generator);
+                    //sample_color += light_sample_radiance;
+                    //break;
+
                     Color env_map_radiance = Color(0.0f);// sample_environment_map(ray, closest_hit_info, material, random_number_generator);
 
                     // --------------------------------------- //
@@ -215,22 +223,18 @@ void RenderKernel::ray_trace_pixel(int x, int y)
                     float brdf_pdf;
                     Vector bounce_direction;
 
-                    Color brdf = brdf_dispatcher_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, bounce_direction, brdf_pdf, random_number_generator);
+                    Color brdf = brdf_dispatcher_sample(material, -ray.direction, closest_hit_info.shading_normal, bounce_direction, brdf_pdf, random_number_generator);
                     
                     if (bounce == 0)
                         sample_color += material.emission;
                     sample_color += (light_sample_radiance + env_map_radiance) * throughput;
 
                     if ((brdf.r == 0.0f && brdf.g == 0.0f && brdf.b == 0.0f) || brdf_pdf < 1.0e-8f || std::isinf(brdf_pdf))
-                    {
-                        next_ray_state = RayState::TERMINATED;
-
                         break;
-                    }
 
-                    throughput *= brdf * std::max(0.0f, dot(bounce_direction, closest_hit_info.normal_at_intersection)) / brdf_pdf;
+                    throughput *= brdf * std::max(0.0f, dot(bounce_direction, closest_hit_info.shading_normal)) / brdf_pdf;
 
-                    Point new_ray_origin = closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-4f;
+                    Point new_ray_origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f;
                     ray = Ray(new_ray_origin, bounce_direction);
                     next_ray_state = RayState::BOUNCE;
                 }
@@ -253,8 +257,6 @@ void RenderKernel::ray_trace_pixel(int x, int y)
 
                 break;
             }
-            else if (next_ray_state == RayState::TERMINATED)
-                break;
         }
 
         if (sample_color.r < 0 || sample_color.g < 0 || sample_color.b < 0)
@@ -291,8 +293,8 @@ void RenderKernel::ray_trace_pixel(int x, int y)
 
 #define DEBUG_PIXEL 0
 #define DEBUG_EXACT_COORDINATE 1
-#define DEBUG_PIXEL_X 1073
-#define DEBUG_PIXEL_Y 292
+#define DEBUG_PIXEL_X 847
+#define DEBUG_PIXEL_Y 107
 
 void RenderKernel::render()
 {
@@ -401,7 +403,6 @@ float disney_clearcoat_masking_shadowing(const Vector& direction)
 {
     return GGX_masking_shadowing_anisotropic_aux(0.25f, 0.25f, direction);
 }
-
 
 float GGX_masking_shadowing_anisotropic(const RendererMaterial& material, const Vector& local_view_direction, const Vector& local_to_light_direction)
 {
@@ -759,10 +760,7 @@ Color RenderKernel::disney_eval(const RendererMaterial& material, const Vector& 
     // for some illustrations of the problem and a solution (not implemented because
     // it requires quite a bit of code and overhead)
     if (dot(shading_normal, view_direction) * dot(shading_normal, to_light_direction) < 0)
-    {
-        pdf = 1.0f;
-        return Color(1000000.0f, 0.0f, 1000000.0f);
-    }
+        return Color(0.0f);
 
     //return disney_diffuse_eval(material, view_direction, normal, to_light_direction, pdf);
     return disney_metallic_eval(material, view_direction, shading_normal, to_light_direction, pdf);
@@ -789,10 +787,7 @@ Color RenderKernel::disney_sample(const RendererMaterial& material, const Vector
     // for some illustrations of the problem and a solution (not implemented because
     // it requires quite a bit of code and overhead)
     if (dot(shading_normal, view_direction) * dot(shading_normal, output_direction) < 0)
-    {
-        pdf = 1.0f;
-        return Color(1000000.0f, 0.0f, 1000000.0f);
-    }
+        return Color(0.0f);
 
     //return disney_diffuse_eval(material, view_direction, normal, output_direction, pdf);
     return disney_metallic_eval(material, view_direction, shading_normal, output_direction, pdf);
@@ -865,7 +860,7 @@ inline bool RenderKernel::intersect_scene_bvh(const Ray& ray, HitInfo& closest_h
                 + m_vertex_normals[vertex_C_index] * closest_hit_info.v
                 + m_vertex_normals[vertex_A_index] * (1.0f - closest_hit_info.u - closest_hit_info.v);
 
-            closest_hit_info.normal_at_intersection = normalize(smooth_normal);
+            closest_hit_info.shading_normal = normalize(smooth_normal);
         }
     }
 
@@ -972,19 +967,19 @@ Color RenderKernel::sample_environment_map(const Ray& ray, HitInfo& closest_hit_
     // Convert to cartesian coordinates
     Vector sampled_direction = Vector(-sin_theta * cos(phi), -cos_theta, -sin_theta * sin(phi));
 
-    float cosine_term = dot(closest_hit_info.normal_at_intersection, sampled_direction);
+    float cosine_term = dot(closest_hit_info.shading_normal, sampled_direction);
     if  (cosine_term > 0.0f)
     {
         HitInfo trash;
-        if (!INTERSECT_SCENE(Ray(closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-4f, sampled_direction), trash))
+        if (!INTERSECT_SCENE(Ray(closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f, sampled_direction), trash))
         {
             float env_map_pdf = m_environment_map.luminance_of_pixel(x, y) / env_map_total_sum;
             env_map_pdf = (env_map_pdf * m_environment_map.width * m_environment_map.height) / (2.0f * M_PI * M_PI * sin_theta);
 
             Color env_map_radiance = m_environment_map[y * m_environment_map.width + x];
             float pdf;
-            //Color brdf = cook_torrance_brdf_eval(material, -ray.direction, closest_hit_info.normal_at_intersection, sampled_direction, pdf);
-            Color brdf = brdf_dispatcher_eval(material, -ray.direction, closest_hit_info.normal_at_intersection, sampled_direction, pdf);
+            //Color brdf = cook_torrance_brdf_eval(material, -ray.direction, closest_hit_info.shading_normal, sampled_direction, pdf);
+            Color brdf = brdf_dispatcher_eval(material, -ray.direction, closest_hit_info.shading_normal, sampled_direction, pdf);
 
             float mis_weight = power_heuristic(env_map_pdf, pdf);
             env_sample = brdf * cosine_term * mis_weight * env_map_radiance / env_map_pdf;
@@ -993,15 +988,15 @@ Color RenderKernel::sample_environment_map(const Ray& ray, HitInfo& closest_hit_
 
     float brdf_sample_pdf;
     Vector brdf_sampled_dir;
-    //Color brdf_imp_sampling = cook_torrance_brdf_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, brdf_sampled_dir, brdf_sample_pdf, random_number_generator);
-    Color brdf_imp_sampling = brdf_dispatcher_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, brdf_sampled_dir, brdf_sample_pdf, random_number_generator);
+    //Color brdf_imp_sampling = cook_torrance_brdf_sample(material, -ray.direction, closest_hit_info.shading_normal, brdf_sampled_dir, brdf_sample_pdf, random_number_generator);
+    Color brdf_imp_sampling = brdf_dispatcher_sample(material, -ray.direction, closest_hit_info.shading_normal, brdf_sampled_dir, brdf_sample_pdf, random_number_generator);
 
-    cosine_term = std::max(dot(closest_hit_info.normal_at_intersection, brdf_sampled_dir), 0.0f);
+    cosine_term = std::max(dot(closest_hit_info.shading_normal, brdf_sampled_dir), 0.0f);
     Color brdf_sample;
     if (brdf_sample_pdf != 0.0f && cosine_term > 0.0f)
     {
         HitInfo trash;
-        if (!INTERSECT_SCENE(Ray(closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-5f, brdf_sampled_dir), trash))
+        if (!INTERSECT_SCENE(Ray(closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-5f, brdf_sampled_dir), trash))
         {
             Color skysphere_color = sample_environment_map_from_direction(brdf_sampled_dir);
             float theta_brdf_dir = std::acos(brdf_sampled_dir.z);
@@ -1025,43 +1020,44 @@ Color RenderKernel::sample_light_sources(const Ray& ray, HitInfo& closest_hit_in
         // No sampling for perfectly specular materials
         return Color(0.0f);
 
+    if (m_emissive_triangle_indices_buffer.size() == 0)
+        // No emmisive geometry in the scene to sample
+        return Color(0.0f);
+
     Color light_source_radiance_mis;
-    if (m_emissive_triangle_indices_buffer.size() > 0)
+    float light_sample_pdf;
+    LightSourceInformation light_source_info;
+    Point random_light_point = sample_random_point_on_lights(random_number_generator, light_sample_pdf, light_source_info);
+
+    Point shadow_ray_origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f;
+    Vector shadow_ray_direction = random_light_point - shadow_ray_origin;
+    float distance_to_light = length(shadow_ray_direction);
+    Vector shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
+
+    Ray shadow_ray(shadow_ray_origin, shadow_ray_direction_normalized);
+
+    float dot_light_source = std::abs(dot(light_source_info.light_source_normal, -shadow_ray.direction));
+    if (dot_light_source > 0.0f)
     {
-        float light_sample_pdf;
-        LightSourceInformation light_source_info;
-        Point random_light_point = sample_random_point_on_lights(random_number_generator, light_sample_pdf, light_source_info);
+        bool in_shadow = evaluate_shadow_ray(shadow_ray, distance_to_light);
 
-        Point shadow_ray_origin = closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-4f;
-        Vector shadow_ray_direction = random_light_point - shadow_ray_origin;
-        float distance_to_light = length(shadow_ray_direction);
-        Vector shadow_ray_direction_normalized = normalize(shadow_ray_direction);
-
-        Ray shadow_ray(shadow_ray_origin, shadow_ray_direction_normalized);
-
-        float dot_light_source = std::abs(dot(light_source_info.light_source_normal, -shadow_ray.direction));
-        if (dot_light_source > 0.0f)
+        if (!in_shadow && dot(closest_hit_info.shading_normal, shadow_ray_direction_normalized) > 0)
         {
-            bool in_shadow = evaluate_shadow_ray(shadow_ray, distance_to_light);
+            const RendererMaterial& emissive_triangle_material = m_materials_buffer[m_materials_indices_buffer[light_source_info.emissive_triangle_index]];
 
-            if (!in_shadow)
+            light_sample_pdf *= distance_to_light * distance_to_light;
+            light_sample_pdf /= dot_light_source;
+
+            float pdf;
+            Color brdf = brdf_dispatcher_eval(material, -ray.direction, closest_hit_info.shading_normal, shadow_ray.direction, pdf);
+            if (pdf != 0.0f)
             {
-                const RendererMaterial& emissive_triangle_material = m_materials_buffer[m_materials_indices_buffer[light_source_info.emissive_triangle_index]];
+                float mis_weight = power_heuristic(light_sample_pdf, pdf);
 
-                light_sample_pdf *= distance_to_light * distance_to_light;
-                light_sample_pdf /= dot_light_source;
+                Color Li = emissive_triangle_material.emission;
+                float cosine_term = std::max(dot(closest_hit_info.shading_normal, shadow_ray.direction), 0.0f);
 
-                float pdf;
-                Color brdf = brdf_dispatcher_eval(material, -ray.direction, closest_hit_info.normal_at_intersection, shadow_ray.direction, pdf);
-                if (pdf != 0.0f)
-                {
-                    float mis_weight = power_heuristic(light_sample_pdf, pdf);
-
-                    Color Li = emissive_triangle_material.emission;
-                    float cosine_term = std::max(dot(closest_hit_info.normal_at_intersection, shadow_ray.direction), 0.0f);
-
-                    light_source_radiance_mis = Li * cosine_term * brdf * mis_weight / light_sample_pdf;
-                }
+                light_source_radiance_mis = Li * cosine_term * brdf * mis_weight / light_sample_pdf;
             }
         }
     }
@@ -1071,16 +1067,16 @@ Color RenderKernel::sample_light_sources(const Ray& ray, HitInfo& closest_hit_in
 
     Vector sampled_brdf_direction;
     float direction_pdf;
-    Color brdf = brdf_dispatcher_sample(material, -ray.direction, closest_hit_info.normal_at_intersection, sampled_brdf_direction, direction_pdf, random_number_generator);
+    Color brdf = brdf_dispatcher_sample(material, -ray.direction, closest_hit_info.shading_normal, sampled_brdf_direction, direction_pdf, random_number_generator);
     if (brdf != Color(0.0f, 0.0f, 0.0f))
     {
-        Ray new_ray = Ray(closest_hit_info.inter_point + closest_hit_info.normal_at_intersection * 1.0e-5f, sampled_brdf_direction);
+        Ray new_ray = Ray(closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-5f, sampled_brdf_direction);
         HitInfo new_ray_hit_info;
         bool inter_found = INTERSECT_SCENE(new_ray, new_ray_hit_info);
 
         if (inter_found)
         {
-            float cos_angle = std::max(dot(new_ray_hit_info.normal_at_intersection, -sampled_brdf_direction), 0.0f);
+            float cos_angle = std::max(dot(new_ray_hit_info.shading_normal, -sampled_brdf_direction), 0.0f);
             if (cos_angle > 0.0f)
             {
                 int material_index = m_materials_indices_buffer[new_ray_hit_info.primitive_index];
@@ -1095,7 +1091,7 @@ Color RenderKernel::sample_light_sources(const Ray& ray, HitInfo& closest_hit_in
                     float light_pdf = distance_squared / (light_area * cos_angle);
 
                     float mis_weight = power_heuristic(direction_pdf, light_pdf);
-                    float cosine_term = dot(closest_hit_info.normal_at_intersection, sampled_brdf_direction);
+                    float cosine_term = dot(closest_hit_info.shading_normal, sampled_brdf_direction);
 
                     brdf_radiance_mis = brdf * cosine_term * emission * mis_weight / direction_pdf;
                 }

@@ -4,8 +4,7 @@
 enum RayState
 {
     BOUNCE,
-    MISSED,
-    TERMINATED
+    MISSED
 };
 
 #ifdef __KERNELCC__
@@ -29,7 +28,8 @@ struct LightSourceInformation
 struct HitInfo
 {
     PointType inter_point;
-    VectorType normal_at_intersection;
+    VectorType shading_normal;
+    VectorType geometric_normal;
     UV_DECLARATION;
 
     float t = -1.0f; // Distance along ray
