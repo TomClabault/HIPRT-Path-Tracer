@@ -187,9 +187,9 @@ __device__ Color brdf_dispatcher_eval(const RendererMaterial& material, const hi
     return disney_eval(material, view_direction, surface_normal, to_light_direction, pdf);
 }
 
-__device__ Color brdf_dispatcher_sample(const RendererMaterial& material, const hiprtFloat3& view_direction, hiprtFloat3& surface_normal, hiprtFloat3& bounce_direction, float& brdf_pdf, Xorshift32Generator& random_number_generator)
+__device__ Color brdf_dispatcher_sample(const RendererMaterial& material, const hiprtFloat3& view_direction, hiprtFloat3& surface_normal, const hiprtFloat3& geometric_normal, hiprtFloat3& bounce_direction, float& brdf_pdf, Xorshift32Generator& random_number_generator)
 {
-    return disney_sample(material, view_direction, surface_normal, bounce_direction, brdf_pdf, random_number_generator);
+    return disney_sample(material, view_direction, surface_normal, geometric_normal, bounce_direction, brdf_pdf, random_number_generator);
 }
 
 __device__ bool trace_ray(const HIPRTRenderData& render_data, hiprtRay ray, HitInfo& hit_info)
@@ -355,7 +355,7 @@ __device__ Color sample_light_sources(HIPRTRenderData& render_data, const hiprtF
 
     hiprtFloat3 sampled_brdf_direction;
     float direction_pdf;
-    Color brdf = brdf_dispatcher_sample(material, view_direction, closest_hit_info.shading_normal, sampled_brdf_direction, direction_pdf, random_number_generator);
+    Color brdf = brdf_dispatcher_sample(material, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_brdf_direction, direction_pdf, random_number_generator);
     if (brdf.r != 0.0f || brdf.g != 0.0f || brdf.b != 0.0f)
     {
         hiprtRay new_ray; 
@@ -482,8 +482,8 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                 // to make this kind of errors more visible and easily catchable in the future
                 if (closest_hit_info.t < 0.01f && intersection_found)
                 {
-                    debug_set_final_color(render_data, x, y, res.x, Color(0.0f, 10000.0f, 0.0f));
-                    return;
+                    /*debug_set_final_color(render_data, x, y, res.x, Color(0.0f, 10000.0f, 0.0f));
+                    return;*/
                 }
 
                 if (intersection_found)
@@ -505,7 +505,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
 
                     float brdf_pdf;
                     hiprtFloat3 bounce_direction;
-                    Color brdf = brdf_dispatcher_sample(material, -ray.direction, closest_hit_info.shading_normal, bounce_direction, brdf_pdf, random_number_generator);
+                    Color brdf = brdf_dispatcher_sample(material, -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bounce_direction, brdf_pdf, random_number_generator);
 
                     if (last_brdf_hit_type == BRDF::SpecularFresnel)
                         // The fresnel blend coefficient is in the PDF

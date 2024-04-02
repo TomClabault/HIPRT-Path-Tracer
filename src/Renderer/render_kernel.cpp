@@ -211,9 +211,6 @@ void RenderKernel::ray_trace_pixel(int x, int y)
                     // ----------------- Direct lighting ----------------- //
                     // --------------------------------------------------- //
                     Color light_sample_radiance = sample_light_sources(ray, closest_hit_info, material, random_number_generator);
-                    //sample_color += light_sample_radiance;
-                    //break;
-
                     Color env_map_radiance = Color(0.0f);// sample_environment_map(ray, closest_hit_info, material, random_number_generator);
 
                     // --------------------------------------- //
@@ -234,7 +231,7 @@ void RenderKernel::ray_trace_pixel(int x, int y)
 
                     throughput *= brdf * std::max(0.0f, dot(bounce_direction, closest_hit_info.shading_normal)) / brdf_pdf;
 
-                    Point new_ray_origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f;
+                    Point new_ray_origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 3.0e-3f;
                     ray = Ray(new_ray_origin, bounce_direction);
                     next_ray_state = RayState::BOUNCE;
                 }
@@ -978,7 +975,6 @@ Color RenderKernel::sample_environment_map(const Ray& ray, HitInfo& closest_hit_
 
             Color env_map_radiance = m_environment_map[y * m_environment_map.width + x];
             float pdf;
-            //Color brdf = cook_torrance_brdf_eval(material, -ray.direction, closest_hit_info.shading_normal, sampled_direction, pdf);
             Color brdf = brdf_dispatcher_eval(material, -ray.direction, closest_hit_info.shading_normal, sampled_direction, pdf);
 
             float mis_weight = power_heuristic(env_map_pdf, pdf);
@@ -988,7 +984,6 @@ Color RenderKernel::sample_environment_map(const Ray& ray, HitInfo& closest_hit_
 
     float brdf_sample_pdf;
     Vector brdf_sampled_dir;
-    //Color brdf_imp_sampling = cook_torrance_brdf_sample(material, -ray.direction, closest_hit_info.shading_normal, brdf_sampled_dir, brdf_sample_pdf, random_number_generator);
     Color brdf_imp_sampling = brdf_dispatcher_sample(material, -ray.direction, closest_hit_info.shading_normal, brdf_sampled_dir, brdf_sample_pdf, random_number_generator);
 
     cosine_term = std::max(dot(closest_hit_info.shading_normal, brdf_sampled_dir), 0.0f);
