@@ -14,10 +14,6 @@
 // TODO immediate, try visualizing every part of the BRDF to see which one is the checkered one
 
 // TODO bugs
-// - black fringes clearcoat lobe disney (normal mapping stuff again)
-// - black "squares" on the disney metallic with normal mapping. 
-//		Is this the famous darkening mentioned in the microfacet based normal mapping paper because 
-//		of some directions going under the surface and the BRDF functions returning 0 in those cases ?
 // - disney diffuse correct fresnel ? pretty dark diffuse
 // - normals AOV not converging correctly ?
 // - aspect ratio issue on CPU or GPU ?
@@ -45,12 +41,12 @@
 
 
 // TODO Features:
+// - Better ray origin offset to avoid self intersections
 // - ImGuizmo
 // - Orochi 2.0 --> Textures and OpenGL Interop 
 // - Paths roughness regularization
 // - Focus blur
 // - choose disney diffuse model (disney, lambertian, oren nayar)
-// - support roughness x and roughness y?
 // - enable lower resolution on mouse scroll for like ~10 frames
 // - display feedback for 3 seconds after dumping a screenshot to disk
 // - choose denoiser quality in imgui

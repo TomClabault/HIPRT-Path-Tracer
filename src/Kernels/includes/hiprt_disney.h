@@ -35,9 +35,9 @@ __device__ Color disney_diffuse_eval(const RendererMaterial& material, const hip
     // Lambertian diffuse
     //diffuse_part = material.diffuse / M_PI;
     // Disney diffuse
-    diffuse_part = material.diffuse / M_PI * disney_schlick_weight(diffuse_90, NoL) * disney_schlick_weight(diffuse_90, NoV) * NoL;
+    //diffuse_part = material.diffuse / M_PI * disney_schlick_weight(diffuse_90, NoL) * disney_schlick_weight(diffuse_90, NoV) * NoL;
     // Oren nayar diffuse
-    //diffuse_part = oren_nayar_eval(material, view_direction, surface_normal, to_light_direction);
+    diffuse_part = oren_nayar_eval(material, view_direction, surface_normal, to_light_direction);
 
     Color fake_subsurface_part;
     float subsurface_90 = material.roughness * LoH * LoH;
@@ -71,12 +71,12 @@ __device__ Color disney_metallic_eval(const RendererMaterial& material, const hi
 
     Color F = fresnel_schlick(material.diffuse, NoL);
     
-    float D = GGX_normal_distribution_anisotropic(material, local_half_vector);
-    float G1 = GGX_masking_shadowing_anisotropic_aux(material.alpha_x, material.alpha_y, local_view_direction);
-    float G = G1 * GGX_masking_shadowing_anisotropic_aux(material.alpha_x, material.alpha_y, local_to_light_direction);
+    float D = GTR2_anisotropic(material, local_half_vector);
+    float G1_V = G1(material.alpha_x, material.alpha_y, local_view_direction);
+    float G1_L = G1(material.alpha_x, material.alpha_y, local_to_light_direction);
+    float G = G1_V * G1_L;
 
-    // TODO PDF incorrect!
-    pdf = D / (4.0f * abs(dot(local_view_direction, local_half_vector)));
+    pdf = D * G1_V / (4.0f * NoV);
     return F * D * G / (4.0 * NoL * NoV);
 }
 
@@ -114,10 +114,10 @@ __device__ Color disney_clearcoat_eval(const RendererMaterial& material, const h
     float alpha_g = (1.0f - clearcoat_gloss) * 0.1f + clearcoat_gloss * 0.001f;
 
     Color F_clearcoat = fresnel_schlick(R0, HoV);
-    float D_clearcoat = disney_clearcoat_NDF(alpha_g, local_halfway_vector.z);
+    float D_clearcoat = GTR1(alpha_g, abs(local_halfway_vector.z));
     float G_clearcoat = disney_clearcoat_masking_shadowing(local_view_direction) * disney_clearcoat_masking_shadowing(local_to_light_direction);
 
-    pdf = D_clearcoat * abs(local_halfway_vector.z) / (4.0f * dot(local_halfway_vector, to_light_direction));
+    pdf = D_clearcoat * abs(local_halfway_vector.z) / (4.0f * dot(local_halfway_vector, local_to_light_direction));
     return F_clearcoat * D_clearcoat * G_clearcoat / (4.0f * local_view_direction.z);
 }
 
@@ -148,8 +148,8 @@ __device__ Color disney_eval(const RendererMaterial& material, const hiprtFloat3
     pdf = 0.0f;
 
     //return disney_diffuse_eval(material, view_direction, shading_normal, to_light_direction, pdf);
-    return disney_metallic_eval(material, view_direction, shading_normal, to_light_direction, pdf);
-    //return disney_clearcoat_eval(material, view_direction, shading_normal, to_light_direction, pdf);
+    //return disney_metallic_eval(material, view_direction, shading_normal, to_light_direction, pdf);
+    return disney_clearcoat_eval(material, view_direction, shading_normal, to_light_direction, pdf);
 }
 
 __device__ Color disney_sample(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& shading_normal, const hiprtFloat3& geometric_normal, hiprtFloat3& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
@@ -162,15 +162,29 @@ __device__ Color disney_sample(const RendererMaterial& material, const hiprtFloa
     // normal or not. This may be the case mainly due to normal mapping / smooth vertex normals. 
     // See Microfacet-based Normal Mapping for Robust Monte Carlo Path Tracing, Eric Heitz, 2017
     // for some illustrations of the problem and a solution (not implemented here because
-    // it requires quite a bit of code and overhead)
+    // it requires quite a bit of code and overhead). 
+    // 
     // We're flipping the normal instead which is a quick dirty fix solution mentioned
     // in the above mentioned paper.
+    // 
+    // The Position-free Multiple-bounce Computations for Smith Microfacet BSDFs by 
+    // Wang et al. 2022 proposes an alternative position-free solution that even solves
+    // the multi-scattering issue of microfacet BRDFs on top of the dark fringes issue we're
+    // having here
     if (dot(view_direction, shading_normal) < 0)
+    {
         normal = reflect_ray(shading_normal, geometric_normal);
 
+        // In some cases, flipping the normal isn't enough to bring
+        // the view direction in the upper hemisphere around the shading normal
+        // Giving up and returning 0.0f in this case
+        if (dot(view_direction, normal) < 0)
+            return Color(0.0f);
+    }
+
     //output_direction = disney_diffuse_sample(material, view_direction, normal, random_number_generator);
-    output_direction = disney_metallic_sample(material, view_direction, normal, random_number_generator);
-    //output_direction = disney_clearcoat_sample(material, view_direction, normal, random_number_generator);
+    //output_direction = disney_metallic_sample(material, view_direction, normal, random_number_generator);
+    output_direction = disney_clearcoat_sample(material, view_direction, normal, random_number_generator);
 
     if (dot(output_direction, shading_normal) < 0)
     {
@@ -180,8 +194,8 @@ __device__ Color disney_sample(const RendererMaterial& material, const hiprtFloa
     }
     
     //return disney_diffuse_eval(material, view_direction, normal, output_direction, pdf);
-    return disney_metallic_eval(material, view_direction, normal, output_direction, pdf);
-    //return disney_clearcoat_eval(material, view_direction, normal, output_direction, pdf);
+    //return disney_metallic_eval(material, view_direction, normal, output_direction, pdf);
+    return disney_clearcoat_eval(material, view_direction, normal, output_direction, pdf);
 }
 
 #endif
