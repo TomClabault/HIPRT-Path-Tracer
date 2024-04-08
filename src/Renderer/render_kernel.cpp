@@ -2,10 +2,10 @@
 #include "render_kernel.h"
 #include "triangle.h"
 
-#define DEBUG_PIXEL 1
+#define DEBUG_PIXEL 0
 #define DEBUG_EXACT_COORDINATE 0
-#define DEBUG_PIXEL_X (m_frame_buffer.width / 2)
-#define DEBUG_PIXEL_Y (m_frame_buffer.height / 2)
+#define DEBUG_PIXEL_X 555
+#define DEBUG_PIXEL_Y 158
 
 Point point_mat4x4(const glm::mat4x4& mat, const Point& p)
 {
@@ -220,7 +220,7 @@ void RenderKernel::ray_trace_pixel(int x, int y)
                     // --------------------------------------------------- //
                     // ----------------- Direct lighting ----------------- //
                     // --------------------------------------------------- //
-                    Color light_sample_radiance = Color(0.0f);// sample_light_sources(ray, closest_hit_info, material, random_number_generator);
+                    Color light_sample_radiance = sample_light_sources(ray, closest_hit_info, material, random_number_generator);
                     Color env_map_radiance = Color(0.0f);// sample_environment_map(ray, closest_hit_info, material, random_number_generator);
 
                     // --------------------------------------- //
@@ -257,8 +257,8 @@ void RenderKernel::ray_trace_pixel(int x, int y)
                     // We're also getting the skysphere radiance for perfectly specular BRDF since those
                     // are not importance sampled
 
-                    //Color skysphere_color = Color(1.0f);// sample_environment_map_from_direction(ray.direction);
-                    Color skysphere_color = sample_environment_map_from_direction(ray.direction);
+                    Color skysphere_color = Color(1.0f);
+                    //Color skysphere_color = sample_environment_map_from_direction(ray.direction);
 
                     sample_color += skysphere_color * throughput;
                 }
@@ -271,11 +271,13 @@ void RenderKernel::ray_trace_pixel(int x, int y)
         {
             std::cerr << "Sample color < 0" << std::endl;
             std::cerr << "Exact_X, Exact_Y, Sample: " << x << ", " << y << ", " << sample << std::endl;
+            sample_color = Color(1000000.0f, 0.0f, 1000000.0f);
         }
         else if (std::isnan(sample_color.r) || std::isnan(sample_color.g) || std::isnan(sample_color.b))
         {
             std::cerr << "Sample color NaN" << std::endl;
             std::cerr << "Exact_X, Exact_Y, Sample: " << x << ", " << y << ", " << sample << std::endl;
+            sample_color = Color(1000000.0f, 1000000.0f, 0.0f);
         }
 
         final_color += sample_color;
@@ -1200,6 +1202,11 @@ Color RenderKernel::sample_light_sources(const Ray& ray, HitInfo& closest_hit_in
 
     if (m_emissive_triangle_indices_buffer.size() == 0)
         // No emmisive geometry in the scene to sample
+        return Color(0.0f);
+
+    if (material.emission.r != 0.0f || material.emission.g != 0.0f || material.emission.b != 0.0f)
+        // We're not sampling direct lighting if we're already on an
+        // emissive surface
         return Color(0.0f);
 
     Color light_source_radiance_mis;

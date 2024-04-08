@@ -308,6 +308,11 @@ __device__ Color sample_light_sources(HIPRTRenderData& render_data, const hiprtF
         // No emmisive geometry in the scene to sample
         return Color(0.0f);
 
+    if (material.emission.r != 0.0f || material.emission.g != 0.0f || material.emission.b != 0.0f)
+        // We're not sampling direct lighting if we're already on an
+        // emissive surface
+        return Color(0.0f);
+
     Color light_source_radiance_mis;
     float light_sample_pdf;
     LightSourceInformation light_source_info;
