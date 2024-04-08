@@ -11,8 +11,9 @@
  * [2] [GLSL Path Tracer implementation by knightcrawler25] https://github.com/knightcrawler25/GLSL-PathTracer
  * [3] [SIGGRAPH 2012 Course] https://blog.selfshadow.com/publications/s2012-shading-course/#course_content
  * [4] [SIGGRAPH 2015 Course] https://blog.selfshadow.com/publications/s2015-shading-course/#course_content
- * [5] [PBRT v3 Source Code] https://github.com/mmp/pbrt-v3/tree/master
- * [6] [Blender's Cycles Source Code] https://github.com/blender/cycles
+ * [5] [PBRT v3 Source Code] https://github.com/mmp/pbrt-v3
+ * [6] [PBRT v4 Source Code] https://github.com/mmp/pbrt-v4
+ * [7] [Blender's Cycles Source Code] https://github.com/blender/cycles
  */
 
 __device__ float disney_schlick_weight(float f0, float abs_cos_angle)
@@ -35,14 +36,17 @@ __device__ Color disney_diffuse_eval(const RendererMaterial& material, const hip
     // Lambertian diffuse
     //diffuse_part = material.diffuse / M_PI;
     // Disney diffuse
-    //diffuse_part = material.diffuse / M_PI * disney_schlick_weight(diffuse_90, NoL) * disney_schlick_weight(diffuse_90, NoV) * NoL;
+    diffuse_part = material.diffuse / M_PI * disney_schlick_weight(diffuse_90, NoL) * disney_schlick_weight(diffuse_90, NoV) * NoL;
     // Oren nayar diffuse
-    diffuse_part = oren_nayar_eval(material, view_direction, surface_normal, to_light_direction);
+    //diffuse_part = oren_nayar_eval(material, view_direction, surface_normal, to_light_direction);
 
-    Color fake_subsurface_part;
-    float subsurface_90 = material.roughness * LoH * LoH;
-    fake_subsurface_part = 1.25f * material.diffuse / M_PI *
-        (disney_schlick_weight(subsurface_90, NoL) * disney_schlick_weight(subsurface_90, NoV) * (1.0f / (NoL + NoV) - 0.5f) + 0.5f) * NoL;
+    Color fake_subsurface_part = Color(0.0f);
+    if (material.subsurface > 0)
+    {
+        float subsurface_90 = material.roughness * LoH * LoH;
+        fake_subsurface_part = 1.25f * material.diffuse / M_PI *
+            (disney_schlick_weight(subsurface_90, NoL) * disney_schlick_weight(subsurface_90, NoV) * (1.0f / (NoL + NoV) - 0.5f) + 0.5f) * NoL;
+    }
 
     return (1.0f - material.subsurface) * diffuse_part + material.subsurface * fake_subsurface_part;
 }
@@ -55,7 +59,7 @@ __device__ hiprtFloat3 disney_diffuse_sample(const RendererMaterial& material, c
     return sampled_direction;
 }
 
-__device__ Color disney_metallic_eval(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal, const hiprtFloat3& to_light_direction, float& pdf)
+__device__ Color disney_metallic_eval(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal, const hiprtFloat3& to_light_direction, Color F, float& pdf)
 {
     // Building the local shading frame
     hiprtFloat3 T, B;
@@ -69,7 +73,11 @@ __device__ Color disney_metallic_eval(const RendererMaterial& material, const hi
     float NoL = abs(local_to_light_direction.z);
     float HoL = abs(dot(local_half_vector, local_to_light_direction));
 
-    Color F = fresnel_schlick(material.diffuse, NoL);
+    // F = (-2.0f, -2.0f, -2.0f) is the default argument when the overload without the 'Color F' argument
+    // of disney_metallic_eval() was called. Thus, if no F was passed, we're computing it here.
+    // Otherwise, we're going to use the given one
+    if (F.r == -2.0f)
+        F = fresnel_schlick(material.diffuse, NoL);
     
     float D = GTR2_anisotropic(material, local_half_vector);
     float G1_V = G1(material.alpha_x, material.alpha_y, local_view_direction);
@@ -78,6 +86,11 @@ __device__ Color disney_metallic_eval(const RendererMaterial& material, const hi
 
     pdf = D * G1_V / (4.0f * NoV);
     return F * D * G / (4.0 * NoL * NoV);
+}
+
+__device__ Color disney_metallic_eval(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal, const hiprtFloat3& to_light_direction, float& pdf)
+{
+    return disney_metallic_eval(material, view_direction, surface_normal, to_light_direction, Color(-2.0f, -2.0f, -2.0f), pdf);
 }
 
 __device__ hiprtFloat3 disney_metallic_sample(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal, Xorshift32Generator& random_number_generator)
@@ -143,13 +156,147 @@ __device__ hiprtFloat3 disney_clearcoat_sample(const RendererMaterial& material,
     return sampled_direction;
 }
 
+// TOOD can use local_view dir and light_dir here
+__device__ Color disney_glass_eval(const RendererMaterial& material, const hiprtFloat3& view_direction, hiprtFloat3 surface_normal, const hiprtFloat3& to_light_direction, float& pdf)
+{
+    float start_NoV = dot(surface_normal, view_direction);
+    if (start_NoV < 0.0f)
+        surface_normal = -surface_normal;
+
+    hiprtFloat3 T, B;
+    build_rotated_ONB(surface_normal, T, B, material.anisotropic_rotation);
+
+    hiprtFloat3 local_to_light_direction = world_to_local_frame(T, B, surface_normal, to_light_direction);
+    hiprtFloat3 local_view_direction = world_to_local_frame(T, B, surface_normal, view_direction);
+
+    float NoV = local_view_direction.z;
+    float NoL = local_to_light_direction.z;
+
+    // We're in the case of reflection if the view direction and the bounced ray (light direction) are in the same hemisphere
+    bool reflecting = NoL * NoV > 0;
+
+    // Relative eta = eta_t / eta_i and we're assuming here that the eta of the incident light is air, 1.0f
+    float relative_eta = material.ior;
+
+    // Computing the generalized (that takes refraction into account) half vector
+    hiprtFloat3 local_half_vector;
+    if (reflecting)
+        local_half_vector = local_to_light_direction + local_view_direction;
+    else
+    {
+        // We want relative eta to always be eta_transmitted / eta_incident
+        // so if we're refracting OUT of the surface, we're transmitting into
+        // the air which has an eta of 1.0f so transmitted / incident
+        // = 1.0f / material.ior (which relative_eta is equal to here)
+        relative_eta = start_NoV > 0 ? material.ior : (1.0f / relative_eta);
+
+        // We need to take the relative_eta into account when refracting to compute
+        // the half vector (this is the "generalized" part of the half vector computation)
+        local_half_vector = local_to_light_direction * relative_eta + local_view_direction;
+    }
+
+    local_half_vector = normalize(local_half_vector);
+    if (local_half_vector.z < 0.0f)
+        // Because the rest of the function we're going to compute here assume
+        // that the microfacet normal is in the same hemisphere as the surface
+        // normal, we're going to flip it if needed
+        local_half_vector = -local_half_vector;
+
+    float HoL = dot(local_to_light_direction, local_half_vector);
+    float HoV = dot(local_view_direction, local_half_vector);
+
+    // TODO to test removing that
+    if (HoL * NoL < 0.0f || HoV * NoV < 0.0f)
+        // Backfacing microfacets
+        return Color(0.0f);
+
+    Color color;
+    float F = fresnel_dielectric(dot(local_view_direction, local_half_vector), relative_eta);
+    if (reflecting)
+    {
+        color = disney_metallic_eval(material, view_direction, surface_normal, to_light_direction, Color(F), pdf);
+
+        // Scaling the PDF by the probability of being here (reflection of the ray and not transmission)
+        pdf *= F;
+    }
+    else
+    {
+        float dot_prod = HoL + HoV / relative_eta;
+        float dot_prod2 = dot_prod * dot_prod;
+        float denom = dot_prod2 * NoL * NoV;
+        float D = GTR2_anisotropic(material, local_half_vector);
+        float G1_V = G1(material.alpha_x, material.alpha_y, local_view_direction);
+        float G = G1_V * G1(material.alpha_x, material.alpha_y, local_to_light_direction);
+
+        float dwm_dwi = abs(HoL) / dot_prod2;
+        float D_pdf = G1_V / abs(NoV) * D * abs(HoV);
+        pdf = dwm_dwi * D_pdf * (1.0f - F);
+
+        color = sqrt(material.diffuse) * D * (1 - F) * G * abs(HoL * HoV / denom);
+    }
+
+    return color;
+}
+
+__device__ hiprtFloat3 disney_glass_sample(const RendererMaterial& material, const hiprtFloat3& view_direction, hiprtFloat3 surface_normal, Xorshift32Generator& random_number_generator)
+{
+    hiprtFloat3 T, B;
+    build_rotated_ONB(surface_normal, T, B, material.anisotropic_rotation);
+
+    float relative_eta = material.ior;
+    if (dot(surface_normal, view_direction) < 0)
+    {
+        // We want the surface normal in the same hemisphere as 
+        // the view direction for the rest of the calculations
+        surface_normal = -surface_normal;
+        relative_eta = 1.0f / relative_eta;
+    }
+
+    hiprtFloat3 local_view_direction = world_to_local_frame(T, B, surface_normal, view_direction);
+    hiprtFloat3 microfacet_normal = GGXVNDF_sample(local_view_direction, material.alpha_x, material.alpha_y, random_number_generator);
+    if (microfacet_normal.z < 0)
+        microfacet_normal = -microfacet_normal;
+
+    float F = fresnel_dielectric(dot(local_view_direction, microfacet_normal), relative_eta);
+    float rand_1 = random_number_generator();
+
+    hiprtFloat3 sampled_direction;
+    if (rand_1 < F)
+    {
+        // Reflection
+
+        sampled_direction = reflect_ray(local_view_direction, microfacet_normal);
+    }
+    else
+    {
+        // Refraction
+
+        if (dot(microfacet_normal, local_view_direction) < 0.0f)
+            // For the refraction operation that follows, we want the direction to refract (the view
+            // direction here) to be in the same hemisphere as the normal (the microfacet normal here)
+            // so we're flipping the microfacet normal in case it wasn't in the same hemisphere as
+            // the view direction
+            // Relative_eta as already been flipped above in the code
+            microfacet_normal = -microfacet_normal;
+
+        if (!refract_ray(local_view_direction, microfacet_normal, sampled_direction, relative_eta))
+            return hiprtFloat3(-2.0f, -2.0f, -2.0f);
+    }
+
+    return local_to_world_frame(T, B, surface_normal, sampled_direction);
+}
+
 __device__ Color disney_eval(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& shading_normal, const hiprtFloat3& to_light_direction, float& pdf)
 {
     pdf = 0.0f;
 
     //return disney_diffuse_eval(material, view_direction, shading_normal, to_light_direction, pdf);
     //return disney_metallic_eval(material, view_direction, shading_normal, to_light_direction, pdf);
-    return disney_clearcoat_eval(material, view_direction, shading_normal, to_light_direction, pdf);
+    //return disney_clearcoat_eval(material, view_direction, shading_normal, to_light_direction, pdf);
+    if (material.roughness == 1.0f)
+        return disney_diffuse_eval(material, view_direction, shading_normal, to_light_direction, pdf);
+    else
+        return disney_glass_eval(material, view_direction, shading_normal, to_light_direction, pdf);
 }
 
 __device__ Color disney_sample(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& shading_normal, const hiprtFloat3& geometric_normal, hiprtFloat3& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
@@ -158,44 +305,64 @@ __device__ Color disney_sample(const RendererMaterial& material, const hiprtFloa
 
     hiprtFloat3 normal = shading_normal;
 
-    // Checking whether the view direction is below the upprt hemisphere around the shading
-    // normal or not. This may be the case mainly due to normal mapping / smooth vertex normals. 
-    // See Microfacet-based Normal Mapping for Robust Monte Carlo Path Tracing, Eric Heitz, 2017
-    // for some illustrations of the problem and a solution (not implemented here because
-    // it requires quite a bit of code and overhead). 
-    // 
-    // We're flipping the normal instead which is a quick dirty fix solution mentioned
-    // in the above mentioned paper.
-    // 
-    // The Position-free Multiple-bounce Computations for Smith Microfacet BSDFs by 
-    // Wang et al. 2022 proposes an alternative position-free solution that even solves
-    // the multi-scattering issue of microfacet BRDFs on top of the dark fringes issue we're
-    // having here
-    if (dot(view_direction, shading_normal) < 0)
-    {
-        normal = reflect_ray(shading_normal, geometric_normal);
 
-        // In some cases, flipping the normal isn't enough to bring
-        // the view direction in the upper hemisphere around the shading normal
-        // Giving up and returning 0.0f in this case
-        if (dot(view_direction, normal) < 0)
+    ////output_direction = disney_diffuse_sample(material, view_direction, normal, random_number_generator);
+    ////output_direction = disney_metallic_sample(material, view_direction, normal, random_number_generator);
+    ////output_direction = disney_clearcoat_sample(material, view_direction, normal, random_number_generator);
+    if (material.roughness == 1.0f)
+    {
+        // Checking whether the view direction is below the upprt hemisphere around the shading
+        // normal or not. This may be the case mainly due to normal mapping / smooth vertex normals. 
+        // See Microfacet-based Normal Mapping for Robust Monte Carlo Path Tracing, Eric Heitz, 2017
+        // for some illustrations of the problem and a solution (not implemented here because
+        // it requires quite a bit of code and overhead). 
+        // 
+        // We're flipping the normal instead which is a quick dirty fix solution mentioned
+        // in the above mentioned paper.
+        // 
+        // The Position-free Multiple-bounce Computations for Smith Microfacet BSDFs by 
+        // Wang et al. 2022 proposes an alternative position-free solution that even solves
+        // the multi-scattering issue of microfacet BRDFs on top of the dark fringes issue we're
+        // having here
+        if (dot(view_direction, shading_normal) < 0)
+        {
+            normal = reflect_ray(shading_normal, geometric_normal);
+
+            // In some cases, flipping the normal isn't enough to bring
+            // the view direction in the upper hemisphere around the shading normal
+            // Giving up and returning 0.0f in this case
+            if (dot(view_direction, normal) < 0)
+                return Color(0.0f);
+        }
+
+        output_direction = disney_diffuse_sample(material, view_direction, normal, random_number_generator);
+
+        if (dot(output_direction, shading_normal) < 0)
+        {
+            // It can happen that the light direction sampled is below the surface. 
+            // We return 0.0 in this case
             return Color(0.0f);
+        }
     }
+    else
+        output_direction = disney_glass_sample(material, view_direction, normal, random_number_generator);
 
-    //output_direction = disney_diffuse_sample(material, view_direction, normal, random_number_generator);
-    //output_direction = disney_metallic_sample(material, view_direction, normal, random_number_generator);
-    output_direction = disney_clearcoat_sample(material, view_direction, normal, random_number_generator);
-
-    if (dot(output_direction, shading_normal) < 0)
+    // TODO remove DEBUG
     {
-        // It can happen that the light direction sampled is below the surface. 
-        // We return 0.0 in this case
-        return Color(0.0f);
+        if (output_direction.x == -2.0f)
+        {
+            pdf = 1.0f;
+            return Color(1000.0f, 0.0f, 1000.0f);
+        }
     }
     
     //return disney_diffuse_eval(material, view_direction, normal, output_direction, pdf);
     //return disney_metallic_eval(material, view_direction, normal, output_direction, pdf);
-    return disney_clearcoat_eval(material, view_direction, normal, output_direction, pdf);
+    //return disney_clearcoat_eval(material, view_direction, normal, output_direction, pdf);
+    if (material.roughness == 1.0f)
+        return disney_diffuse_eval(material, view_direction, normal, output_direction, pdf);
+    else
+        return disney_glass_eval(material, view_direction, normal, output_direction, pdf);
 }
 
 #endif

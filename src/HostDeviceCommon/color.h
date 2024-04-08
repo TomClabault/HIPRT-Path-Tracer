@@ -126,6 +126,11 @@ __prefix__ Color operator/ (const Color& c, const float k)
     return kk * c;
 }
 
+__prefix__ Color sqrt(const Color& col)
+{
+    return Color{ sqrt(col.r), sqrt(col.g), sqrt(col.b) };
+}
+
 __prefix__ Color exp(const Color& col)
 {
     return Color{ expf(col.r), expf(col.g), expf(col.b) };

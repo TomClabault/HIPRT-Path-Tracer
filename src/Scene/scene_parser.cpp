@@ -5,6 +5,9 @@
 
 RendererMaterial SceneParser::ai_mat_to_renderer_mat(aiMaterial* mesh_material)
 {
+    // Only for debug purposes to know what material index we're at globally in the scene
+    static int debug_counter = 0;
+
     //Getting the properties that are going to be used by the materials
     //of the application
     aiColor3D diffuse_color;
@@ -12,13 +15,13 @@ RendererMaterial SceneParser::ai_mat_to_renderer_mat(aiMaterial* mesh_material)
     float metalness, roughness;
     float ior, transmission_factor;
 
-    aiReturn error_code_transmission_factor, error_code_emissive;
+    aiReturn error_code_transmission, error_code_emissive, error_code_ior;
     mesh_material->Get(AI_MATKEY_COLOR_DIFFUSE, diffuse_color);
     error_code_emissive = mesh_material->Get(AI_MATKEY_COLOR_EMISSIVE, emissive_color);
     mesh_material->Get(AI_MATKEY_METALLIC_FACTOR, metalness);
     mesh_material->Get(AI_MATKEY_ROUGHNESS_FACTOR, roughness);
-    mesh_material->Get(AI_MATKEY_REFRACTI, ior);
-    error_code_transmission_factor = mesh_material->Get(AI_MATKEY_TRANSMISSION_FACTOR, transmission_factor);
+    error_code_ior = mesh_material->Get(AI_MATKEY_REFRACTI, ior);
+    error_code_transmission = mesh_material->Get(AI_MATKEY_TRANSMISSION_FACTOR, transmission_factor);
 
     //Creating the material used by the application from the properties read
     RendererMaterial renderer_material;
@@ -38,15 +41,21 @@ RendererMaterial SceneParser::ai_mat_to_renderer_mat(aiMaterial* mesh_material)
     renderer_material.metalness = metalness;
     renderer_material.roughness = roughness;
     renderer_material.anisotropic = 1.0f; // TODO read from the file instead of hardcoded
-    renderer_material.ior = ior;
-    renderer_material.transmission_factor = error_code_transmission_factor == AI_SUCCESS ? transmission_factor : 0.0f;
+    renderer_material.ior = error_code_transmission == AI_SUCCESS ? ior : 1.45f;;
+    renderer_material.transmission_factor = error_code_transmission == AI_SUCCESS ? transmission_factor : 0.0f;
     renderer_material.brdf_type = BRDF::Disney;
 
 
 
 
-    renderer_material.metalness = 1.0f;// TODO remove
-    renderer_material.roughness = 0.1f;
+    if (debug_counter == 2)
+    {
+        renderer_material.diffuse = Color(1.0f, 0.0f, 0.0f);
+        renderer_material.roughness = 0.0f;
+        renderer_material.anisotropic = 0.0f;
+    }
+    //renderer_material.metalness = 1.0f;// TODO remove
+    //renderer_material.roughness = 0.1f;
 
 
 
@@ -69,6 +78,7 @@ RendererMaterial SceneParser::ai_mat_to_renderer_mat(aiMaterial* mesh_material)
     renderer_material.oren_nayar_A = 1.0f - sigma2 / (2.0f * (sigma2 + 0.33f));
     renderer_material.oren_nayar_B = 0.45f * sigma2 / (sigma2 + 0.09f);
 
+    debug_counter++;
     return renderer_material;
 }
 

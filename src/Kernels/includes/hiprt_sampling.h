@@ -14,7 +14,7 @@ __device__ hiprtFloat3 reflect_ray(const hiprtFloat3& ray_direction, const hiprt
 }
 
 /**
- * Reflects a ray about a normal. This function requires that dot(ray_direction, surface_normal) > 0 i.e.
+ * Refracts a ray about a normal. This function requires that dot(ray_direction, surface_normal) > 0 i.e.
  * ray_direction and surface_normal are in the same hemisphere
  */
 __device__ bool refract_ray(const hiprtFloat3& ray_direction, const hiprtFloat3& surface_normal, hiprtFloat3& refract_direction, float relative_eta)
@@ -54,20 +54,25 @@ __device__ Color fresnel_schlick(Color F0, float angle)
     return F0 + (Color(1.0f) - F0) * pow((1.0f - angle), 5.0f);
 }
 
-__device__ float fresnel_dielectric(float cos_theta_i, float eta_i, float eta_t)
+__device__ float fresnel_dielectric(float cos_theta_i, float relative_eta)
 {
     // Computing cos_theta_t
-    float sinThetaI = sqrt(1.0f - cos_theta_i * cos_theta_i);
-    float sin_theta_t = eta_i / eta_t * sinThetaI;
+    float sin_theta_i2 = 1.0f - cos_theta_i * cos_theta_i;
+    float sin_theta_t2 = sin_theta_i2 / (relative_eta * relative_eta);
 
-    if (sin_theta_t >= 1.0f)
+    if (sin_theta_t2 >= 1.0f)
         // Total internal reflection, 0% refraction, all reflection
         return 1.0f;
 
-    float cos_theta_t = sqrt(1.0f - sin_theta_t * sin_theta_t);
-    float r_parallel = ((eta_t * cos_theta_i) - (eta_i * cos_theta_t)) / ((eta_t * cos_theta_i) + (eta_i * cos_theta_t));
-    float r_perpendicular = ((eta_i * cos_theta_i) - (eta_t * cos_theta_t)) / ((eta_i * cos_theta_i) + (eta_t * cos_theta_t));
+    float cos_theta_t = sqrt(1.0f - sin_theta_t2);
+    float r_parallel = (relative_eta * cos_theta_i - cos_theta_t) / (relative_eta * cos_theta_i + cos_theta_t);
+    float r_perpendicular = (cos_theta_i - relative_eta * cos_theta_t) / (cos_theta_i + relative_eta * cos_theta_t);
     return (r_parallel * r_parallel + r_perpendicular * r_perpendicular) / 2;
+}
+
+__device__ float fresnel_dielectric(float cos_theta_i, float eta_i, float eta_t)
+{
+    return fresnel_dielectric(cos_theta_i, eta_t / eta_i);
 }
 
 __device__ float GGX_normal_distribution(float alpha, float NoH)

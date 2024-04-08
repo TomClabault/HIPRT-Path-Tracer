@@ -410,7 +410,7 @@ __device__ void debug_set_final_color(const HIPRTRenderData& render_data, int x,
         render_data.pixels[y * res_x + x] = render_data.pixels[y * res_x + x] + final_color;
 }
 
-#define LOW_RESOLUTION_RENDER_DOWNSCALE 1
+#define LOW_RESOLUTION_RENDER_DOWNSCALE 8
 GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderData render_data, int2 res, HIPRTCamera camera)
 {
     const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -482,6 +482,8 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                 // to make this kind of errors more visible and easily catchable in the future
                 if (closest_hit_info.t < 0.01f && intersection_found)
                 {
+                    // TODO Commented out for now as the current solution isn't robust enough and
+                    // we're getting self-intersections in pretty much every scene
                     /*debug_set_final_color(render_data, x, y, res.x, Color(0.0f, 10000.0f, 0.0f));
                     return;*/
                 }
@@ -496,8 +498,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                     // ----------------- Direct lighting ----------------- //
                     // --------------------------------------------------- //
                     Color light_sample_radiance = sample_light_sources(render_data, -ray.direction, closest_hit_info, material, random_number_generator);
-                    //Color env_map_radiance = sample_environment_map(ray, closest_hit_info, material, random_number_generator);
-                    Color env_map_radiance = Color(0.0f);
+                    Color env_map_radiance = Color(0.0f);// sample_environment_map(ray, closest_hit_info, material, random_number_generator);
 
                     // --------------------------------------- //
                     // ---------- Indirect lighting ---------- //
@@ -530,7 +531,8 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
 
                     throughput *= brdf * abs(dot(bounce_direction, closest_hit_info.shading_normal)) / brdf_pdf;
 
-                    hiprtFloat3 new_ray_origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 3.0e-3f;
+                    int going_inside_surface = dot(bounce_direction, closest_hit_info.shading_normal) < 0 ? -1.0f : 1.0;
+                    hiprtFloat3 new_ray_origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 3.0e-3f * going_inside_surface;
                     ray.origin = new_ray_origin; // Updating the next ray origin
                     ray.direction = bounce_direction; // Updating the next ray direction
 
@@ -546,7 +548,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                         // are not importance sampled
 
                         //Color skysphere_color = sample_environment_map_from_direction(ray.direction);
-                        Color skysphere_color = Color(0.45f);
+                        Color skysphere_color = Color(1.0f);
 
                         sample_color += skysphere_color * throughput;
                     }

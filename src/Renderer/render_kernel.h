@@ -72,9 +72,12 @@ public:
     Color disney_diffuse_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& to_light_direction, float& pdf);
     Vector disney_diffuse_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, Xorshift32Generator& random_number_generator);
     Color disney_metallic_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& to_light_direction, float& pdf);
+    Color disney_metallic_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, const Vector& to_light_direction, Color F, float& pdf);
     Vector disney_metallic_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, Xorshift32Generator& random_number_generator);
     Color disney_clearcoat_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& to_light_direction, float& pdf);
     Vector disney_clearcoat_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, Xorshift32Generator& random_number_generator);
+    Color disney_glass_eval(const RendererMaterial& material, const Vector& view_direction, Vector shading_normal, const Vector& to_light_direction, float& pdf);
+    Vector disney_glass_sample(const RendererMaterial& material, const Vector& view_direction, Vector shading_normal, Xorshift32Generator& random_number_generator);
 
     bool intersect_scene(const Ray& ray, HitInfo& closest_hit_info);
     bool intersect_scene_bvh(const Ray& ray, HitInfo& closest_hit_info);

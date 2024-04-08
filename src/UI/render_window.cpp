@@ -8,13 +8,13 @@
 
 #include "stb_image_write.h"
 
-// test performance when reducing number of triangles of the P1
+// test performance when reducing number of triangles of the pbrt dragon
 
-// TODO immediate. With light sampling disabled, we still have the issue so the problem is in the BRDF somewhere
-// TODO immediate, try visualizing every part of the BRDF to see which one is the checkered one
+// TODO IMMEDIATE: debug visual of glass by following the refracted ray and see if all goes right while inside the surface
+// the reference implementation is currently in the CPU renderer and will need to be copied to the GPU
 
 // TODO bugs
-// - disney diffuse correct fresnel ? pretty dark diffuse
+// - why is the view direction below the geometric normal sometimes with clearcoat ?
 // - normals AOV not converging correctly ?
 // - aspect ratio issue on CPU or GPU ?
 
@@ -42,6 +42,11 @@
 
 // TODO Features:
 // - Better ray origin offset to avoid self intersections
+// - Realistic Camera Model
+// - Textures for each parameter of the Disney BSDF
+// - Bump mapping
+// - Checkerboard for better visualization performance
+// - Flakes BRDF
 // - ImGuizmo
 // - Orochi 2.0 --> Textures and OpenGL Interop 
 // - Paths roughness regularization

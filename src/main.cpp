@@ -44,12 +44,12 @@ int main(int argc, char* argv[])
     const int width = cmd_arguments.render_width;
     const int height = cmd_arguments.render_height;
 
-    RendererMaterial sphere_material;
+    /*RendererMaterial sphere_material;
     sphere_material.emission = Color(0.0f);
     sphere_material.diffuse = Color(1.0f, 0.71, 0.29);
     sphere_material.metalness = 1.0f;
     sphere_material.roughness = 1.0e-2f;
-    sphere_material.ior = 1.4f;
+    sphere_material.ior = 1.4f;*/
 
     /*Sphere sphere = add_sphere_to_scene(parsed_scene, Point(0.0, 1, 0.3725), 0.75, sphere_material, parsed_scene.triangles.size());
     std::vector<Sphere> spheres = { sphere };*/
