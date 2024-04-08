@@ -15,7 +15,7 @@
 #include "Utils/commandline_arguments.h"
 #include "Utils/utils.h"
 
-#define GPU_RENDER 1
+#define GPU_RENDER 0
 
 int main(int argc, char* argv[])
 {

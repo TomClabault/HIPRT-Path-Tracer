@@ -10,9 +10,6 @@
 
 // test performance when reducing number of triangles of the pbrt dragon
 
-// TODO IMMEDIATE: debug visual of glass by following the refracted ray and see if all goes right while inside the surface
-// the reference implementation is currently in the CPU renderer and will need to be copied to the GPU
-
 // TODO bugs
 // - why is the view direction below the geometric normal sometimes with clearcoat ?
 // - normals AOV not converging correctly ?
@@ -41,12 +38,13 @@
 
 
 // TODO Features:
+// - Visualizing ray depth / other information
 // - Better ray origin offset to avoid self intersections
 // - Realistic Camera Model
 // - Textures for each parameter of the Disney BSDF
 // - Bump mapping
 // - Checkerboard for better visualization performance
-// - Flakes BRDF
+// - Flakes BRDF (maybe look at OSPRay implementation ?)
 // - ImGuizmo
 // - Orochi 2.0 --> Textures and OpenGL Interop 
 // - Paths roughness regularization

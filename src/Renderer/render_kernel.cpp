@@ -4,8 +4,8 @@
 
 #define DEBUG_PIXEL 0
 #define DEBUG_EXACT_COORDINATE 0
-#define DEBUG_PIXEL_X 555
-#define DEBUG_PIXEL_Y 158
+#define DEBUG_PIXEL_X 103
+#define DEBUG_PIXEL_Y 504
 
 Point point_mat4x4(const glm::mat4x4& mat, const Point& p)
 {
@@ -956,15 +956,27 @@ Color RenderKernel::disney_sample(const RendererMaterial& material, const Vector
         }
     }
     else
-        output_direction = disney_glass_sample(material, view_direction, normal, random_number_generator);
-
-    // TODO remove DEBUG
     {
-        if (output_direction.x == -2.0f)
+        float dot_shading = dot(view_direction, shading_normal);
+        float dot_geometric = dot(view_direction, geometric_normal);
+        if (dot_shading * dot_geometric < 0)
         {
-            pdf = 1.0f;
-            return Color(1000.0f, 0.0f, 1000.0f);
+            // The view direction is below the surface normal because of normal mapping / smooth normals.
+            // We're going to flip the normal for the same reason as explained above to avoid black fringes
+            // the reason we're also checking for the dot product with the geometric normal here
+            // is because in the case of the glass lobe of the BRDF, we could be legitimately having
+            // the dot product between the shading normal and the view direction be negative when we're
+            // currently travelling inside the surface. To make sure that we're in the case of the black fringes
+            // caused by normal mapping and microfacet BRDFs, we're also checking with the geometric normal.
+            // If the view direction isn't below the geometric normal but is below the shading normal, this
+            // indicates that we're in the case of the black fringes and we can flip the normal
+            // If both dot products are negative, this means that we're travelling inside the surface
+            // and we shouldn't flip the normal
+
+            normal = reflect_ray(shading_normal, geometric_normal);
         }
+
+        output_direction = disney_glass_sample(material, view_direction, normal, random_number_generator);
     }
 
     //return disney_diffuse_eval(material, view_direction, normal, output_direction, pdf);
