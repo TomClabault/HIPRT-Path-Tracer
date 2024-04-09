@@ -47,15 +47,16 @@ RendererMaterial SceneParser::ai_mat_to_renderer_mat(aiMaterial* mesh_material)
 
 
 
-
-    if (debug_counter == 2)
     {
-        renderer_material.diffuse = Color(1.0f, 0.0f, 0.0f);
-        renderer_material.roughness = 0.0f;
-        renderer_material.anisotropic = 0.0f;
+        if (debug_counter == 1)
+        {
+            renderer_material.diffuse = Color(1.0f, 0.0f, 0.0f);
+            renderer_material.roughness = 0.0f;
+            renderer_material.anisotropic = 0.0f;
+        }
+        //renderer_material.metalness = 1.0f;// TODO remove
+        //renderer_material.roughness = 0.1f;
     }
-    //renderer_material.metalness = 1.0f;// TODO remove
-    //renderer_material.roughness = 0.1f;
 
 
 

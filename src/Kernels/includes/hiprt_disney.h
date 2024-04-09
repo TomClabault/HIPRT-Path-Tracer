@@ -299,7 +299,7 @@ __device__ Color disney_eval(const RendererMaterial& material, const hiprtFloat3
         return disney_glass_eval(material, view_direction, shading_normal, to_light_direction, pdf);
 }
 
-Color disney_sample(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& shading_normal, const hiprtFloat3& geometric_normal, hiprtFloat3& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
+__device__ Color disney_sample(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& shading_normal, const hiprtFloat3& geometric_normal, hiprtFloat3& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
 {
     pdf = 0.0f;
 
@@ -330,6 +330,7 @@ Color disney_sample(const RendererMaterial& material, const hiprtFloat3& view_di
             // In some cases, flipping the normal isn't enough to bring
             // the view direction in the upper hemisphere around the shading normal
             // Giving up and returning 0.0f in this case
+            // TODO INVESTIGATE, this seems to be happening when the view dir is below the GEOMETRIC normal in the first place
             if (dot(view_direction, normal) < 0)
                 return Color(0.0f);
         }
@@ -360,7 +361,6 @@ Color disney_sample(const RendererMaterial& material, const hiprtFloat3& view_di
             // indicates that we're in the case of the black fringes and we can flip the normal
             // If both dot products are negative, this means that we're travelling inside the surface
             // and we shouldn't flip the normal
-
             normal = reflect_ray(shading_normal, geometric_normal);
         }
 

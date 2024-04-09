@@ -187,7 +187,7 @@ __device__ Color brdf_dispatcher_eval(const RendererMaterial& material, const hi
     return disney_eval(material, view_direction, surface_normal, to_light_direction, pdf);
 }
 
-__device__ Color brdf_dispatcher_sample(const RendererMaterial& material, const hiprtFloat3& view_direction, hiprtFloat3& surface_normal, const hiprtFloat3& geometric_normal, hiprtFloat3& bounce_direction, float& brdf_pdf, Xorshift32Generator& random_number_generator)
+__device__ Color brdf_dispatcher_sample(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal, const hiprtFloat3& geometric_normal, hiprtFloat3& bounce_direction, float& brdf_pdf, Xorshift32Generator& random_number_generator)
 {
     return disney_sample(material, view_direction, surface_normal, geometric_normal, bounce_direction, brdf_pdf, random_number_generator);
 }
@@ -298,12 +298,8 @@ __device__ bool evaluate_shadow_ray(const HIPRTRenderData& render_data, hiprtRay
     return aoHit.hasHit();
 }
 
-__device__ Color sample_light_sources(HIPRTRenderData& render_data, const hiprtFloat3& view_direction, HitInfo& closest_hit_info, const RendererMaterial& material, Xorshift32Generator& random_number_generator)
+__device__ Color sample_light_sources(HIPRTRenderData& render_data, const hiprtFloat3& view_direction, const HitInfo& closest_hit_info, const RendererMaterial& material, Xorshift32Generator& random_number_generator)
 {
-    if (material.brdf_type == BRDF::SpecularFresnel)
-        // No sampling for perfectly specular materials
-        return Color(0.0f);
-
     if (render_data.emissive_triangles_count == 0)
         // No emmisive geometry in the scene to sample
         return Color(0.0f);
@@ -313,12 +309,23 @@ __device__ Color sample_light_sources(HIPRTRenderData& render_data, const hiprtF
         // emissive surface
         return Color(0.0f);
 
+    if (dot(view_direction, closest_hit_info.geometric_normal) < 0.0f)
+        // We're not direct sampling if we're inside a surface
+        // 
+        // We're using the geometric normal here because using the shading normal could lead
+        // to false positive because of the black fringes when using smooth normals / normal mapping
+        // + microfacet BRDFs
+        return Color(0.0f);
+
+    hiprtFloat3 normal;
+    if (dot(view_direction, closest_hit_info.shading_normal) < 0)
+        normal = reflect_ray(closest_hit_info.shading_normal, closest_hit_info.geometric_normal);
+
     Color light_source_radiance_mis;
     float light_sample_pdf;
     LightSourceInformation light_source_info;
     hiprtFloat3 random_light_point = sample_random_point_on_lights(render_data, random_number_generator, light_sample_pdf, light_source_info);
 
-    // Actually pushing the point towards the light here to avoid the shadow terminator problem
     hiprtFloat3 shadow_ray_origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f;
     hiprtFloat3 shadow_ray_direction = random_light_point - shadow_ray_origin;
     float distance_to_light = length(shadow_ray_direction);
@@ -361,10 +368,10 @@ __device__ Color sample_light_sources(HIPRTRenderData& render_data, const hiprtF
     hiprtFloat3 sampled_brdf_direction;
     float direction_pdf;
     Color brdf = brdf_dispatcher_sample(material, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_brdf_direction, direction_pdf, random_number_generator);
-    if (brdf.r != 0.0f || brdf.g != 0.0f || brdf.b != 0.0f)
+    if (direction_pdf > 0)
     {
-        hiprtRay new_ray; 
-        new_ray.origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-5f;
+        hiprtRay new_ray;
+        new_ray.origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f;
         new_ray.direction = sampled_brdf_direction;
 
         HitInfo new_ray_hit_info;
@@ -387,7 +394,7 @@ __device__ Color sample_light_sources(HIPRTRenderData& render_data, const hiprtF
                     float light_pdf = distance_squared / (light_area * cos_angle);
 
                     float mis_weight = power_heuristic(direction_pdf, light_pdf);
-                    float cosine_term = dot(closest_hit_info.shading_normal, sampled_brdf_direction);
+                    float cosine_term = RT_MAX(0.0f, dot(closest_hit_info.shading_normal, sampled_brdf_direction));
                     brdf_radiance_mis = brdf * cosine_term * emission * mis_weight / direction_pdf;
                 }
             }
@@ -536,8 +543,8 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
 
                     throughput *= brdf * abs(dot(bounce_direction, closest_hit_info.shading_normal)) / brdf_pdf;
 
-                    int going_inside_surface = dot(bounce_direction, closest_hit_info.shading_normal) < 0 ? -1.0f : 1.0;
-                    hiprtFloat3 new_ray_origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 3.0e-3f * going_inside_surface;
+                    int outside_surface = dot(bounce_direction, closest_hit_info.shading_normal) < 0 ? -1.0f : 1.0;
+                    hiprtFloat3 new_ray_origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 3.0e-3f * outside_surface;
                     ray.origin = new_ray_origin; // Updating the next ray origin
                     ray.direction = bounce_direction; // Updating the next ray direction
 

@@ -10,6 +10,8 @@
 
 // test performance when reducing number of triangles of the pbrt dragon
 
+// TODO immediate: fix NaNs glass BSDF
+
 // TODO bugs
 // - why is the view direction below the geometric normal sometimes with clearcoat ?
 // - normals AOV not converging correctly ?

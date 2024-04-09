@@ -59,7 +59,7 @@ public:
     void render();
 
     Color brdf_dispatcher_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& to_light_direction, float& pdf);
-    Color brdf_dispatcher_sample(const RendererMaterial& material, const Vector& view_direction, Vector& shading_normal, const Vector& geometric_normal, Vector& bounce_direction, float& brdf_pdf, Xorshift32Generator& random_number_generator);
+    Color brdf_dispatcher_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& geometric_normal, Vector& bounce_direction, float& brdf_pdf, Xorshift32Generator& random_number_generator);
     Color lambertian_brdf(const RendererMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& shading_normal);
     Color cook_torrance_brdf_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& to_light_direction, float& pdf);
     Color cook_torrance_brdf_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, Vector& output_direction, float& pdf, Xorshift32Generator& random_number_generator);
@@ -86,7 +86,7 @@ public:
     void env_map_cdf_search(float value, int& x, int& y);
     Color sample_environment_map_from_direction(const Vector& direction);
     Color sample_environment_map(const Ray& ray, HitInfo& closest_hit_info, const RendererMaterial& material, Xorshift32Generator& random_number_generator);
-    Color sample_light_sources(const Ray& ray, HitInfo& closest_hit_info, const RendererMaterial& material, Xorshift32Generator& random_number_generator);
+    Color sample_light_sources(const Vector& view_direction, const HitInfo& closest_hit_info, const RendererMaterial& material, Xorshift32Generator& random_number_generator);
     Point sample_random_point_on_lights(Xorshift32Generator& random_number_generator, float& pdf, LightSourceInformation& light_info);
     bool evaluate_shadow_ray(const Ray& ray, float t_max);
 

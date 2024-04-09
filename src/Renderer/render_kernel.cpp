@@ -2,10 +2,10 @@
 #include "render_kernel.h"
 #include "triangle.h"
 
-#define DEBUG_PIXEL 0
-#define DEBUG_EXACT_COORDINATE 0
-#define DEBUG_PIXEL_X 103
-#define DEBUG_PIXEL_Y 504
+#define DEBUG_PIXEL 1
+#define DEBUG_EXACT_COORDINATE 1
+#define DEBUG_PIXEL_X 165
+#define DEBUG_PIXEL_Y 101
 
 Point point_mat4x4(const glm::mat4x4& mat, const Point& p)
 {
@@ -180,14 +180,19 @@ void RenderKernel::debug_set_final_color(int x, int y, Color final_color)
     m_frame_buffer[x + y * m_framebuffer_width] = final_color;
 }
 
+unsigned int wang_hash(unsigned int seed)
+{
+    seed = (seed ^ 61) ^ (seed >> 16);
+    seed *= 9;
+    seed = seed ^ (seed >> 4);
+    seed *= 0x27d4eb2d;
+    seed = seed ^ (seed >> 15);
+    return seed;
+}
+
 void RenderKernel::ray_trace_pixel(int x, int y)
 {
-    Xorshift32Generator random_number_generator(31 + x * y * m_render_samples);
-    //Generating some numbers to make sure the generators of each thread spread apart
-    //If not doing this, the generator shows clear artifacts until it has generated
-    //a few numbers
-    for (int i = 0; i < 10; i++)
-        random_number_generator();
+    Xorshift32Generator random_number_generator(wang_hash(((x + y * m_framebuffer_width) + 1) * (m_render_samples + 1)));
 
     Color final_color = Color(0.0f, 0.0f, 0.0f);
     for (int sample = 0; sample < m_render_samples; sample++)
@@ -220,7 +225,7 @@ void RenderKernel::ray_trace_pixel(int x, int y)
                     // --------------------------------------------------- //
                     // ----------------- Direct lighting ----------------- //
                     // --------------------------------------------------- //
-                    Color light_sample_radiance = sample_light_sources(ray, closest_hit_info, material, random_number_generator);
+                    Color light_sample_radiance = sample_light_sources(-ray.direction, closest_hit_info, material, random_number_generator);
                     Color env_map_radiance = Color(0.0f);// sample_environment_map(ray, closest_hit_info, material, random_number_generator);
 
                     // --------------------------------------- //
@@ -240,8 +245,8 @@ void RenderKernel::ray_trace_pixel(int x, int y)
 
                     throughput *= brdf * std::abs(dot(bounce_direction, closest_hit_info.shading_normal)) / brdf_pdf;
 
-                    int going_inside_surface = dot(bounce_direction, closest_hit_info.shading_normal) < 0 ? -1.0f : 1.0;
-                    Point new_ray_origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 3.0e-3f * going_inside_surface;
+                    int outside_surface = dot(bounce_direction, closest_hit_info.shading_normal) < 0 ? -1.0f : 1.0;
+                    Point new_ray_origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 3.0e-3f * outside_surface;
                     ray = Ray(new_ray_origin, bounce_direction);
                     next_ray_state = RayState::BOUNCE;
                 }
@@ -972,7 +977,6 @@ Color RenderKernel::disney_sample(const RendererMaterial& material, const Vector
             // indicates that we're in the case of the black fringes and we can flip the normal
             // If both dot products are negative, this means that we're travelling inside the surface
             // and we shouldn't flip the normal
-
             normal = reflect_ray(shading_normal, geometric_normal);
         }
 
@@ -997,7 +1001,7 @@ Color RenderKernel::brdf_dispatcher_eval(const RendererMaterial& material, const
     return Color(0.0f);
 }
 
-Color RenderKernel::brdf_dispatcher_sample(const RendererMaterial& material, const Vector& view_direction, Vector& shading_normal, const Vector& geometric_normal, Vector& bounce_direction, float& brdf_pdf, Xorshift32Generator& random_number_generator)
+Color RenderKernel::brdf_dispatcher_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& geometric_normal, Vector& bounce_direction, float& brdf_pdf, Xorshift32Generator& random_number_generator)
 {
     return disney_sample(material, view_direction, shading_normal, geometric_normal, bounce_direction, brdf_pdf, random_number_generator);
 }
@@ -1154,8 +1158,6 @@ Color RenderKernel::sample_environment_map(const Ray& ray, HitInfo& closest_hit_
 
     Color env_sample;
     float sin_theta = std::sin(theta);
-
-
     float cos_theta = std::cos(theta);
 
     // Convert to cartesian coordinates
@@ -1206,12 +1208,8 @@ Color RenderKernel::sample_environment_map(const Ray& ray, HitInfo& closest_hit_
     return brdf_sample + env_sample;
 }
 
-Color RenderKernel::sample_light_sources(const Ray& ray, HitInfo& closest_hit_info, const RendererMaterial& material, Xorshift32Generator& random_number_generator)
+Color RenderKernel::sample_light_sources(const Vector& view_direction, const HitInfo& closest_hit_info, const RendererMaterial& material, Xorshift32Generator& random_number_generator)
 {
-    if (material.brdf_type == BRDF::SpecularFresnel)
-        // No sampling for perfectly specular materials
-        return Color(0.0f);
-
     if (m_emissive_triangle_indices_buffer.size() == 0)
         // No emmisive geometry in the scene to sample
         return Color(0.0f);
@@ -1219,6 +1217,16 @@ Color RenderKernel::sample_light_sources(const Ray& ray, HitInfo& closest_hit_in
     if (material.emission.r != 0.0f || material.emission.g != 0.0f || material.emission.b != 0.0f)
         // We're not sampling direct lighting if we're already on an
         // emissive surface
+        return Color(0.0f);
+
+    if (dot(view_direction, closest_hit_info.geometric_normal) < 0.0f)
+        // We're not direct sampling if we're inside a surface
+        // 
+        // Note that we're also taking the geometric normal into account here and not only the 
+        // shading normal because we want to make sure we're actually inside a surface and not just
+        // inside a black fringe cause by smooth normals with microfacet BRDFs
+        // There's a slightly more thorough explanation of what we're doing with the dot products here
+        // in the disney brdf sampling method, in the glass lobe part
         return Color(0.0f);
 
     Color light_source_radiance_mis;
@@ -1246,7 +1254,7 @@ Color RenderKernel::sample_light_sources(const Ray& ray, HitInfo& closest_hit_in
             light_sample_pdf /= dot_light_source;
 
             float pdf;
-            Color brdf = brdf_dispatcher_eval(material, -ray.direction, closest_hit_info.shading_normal, shadow_ray.direction, pdf);
+            Color brdf = brdf_dispatcher_eval(material, view_direction, closest_hit_info.shading_normal, shadow_ray.direction, pdf);
             if (pdf != 0.0f)
             {
                 float mis_weight = power_heuristic(light_sample_pdf, pdf);
@@ -1264,10 +1272,10 @@ Color RenderKernel::sample_light_sources(const Ray& ray, HitInfo& closest_hit_in
 
     Vector sampled_brdf_direction;
     float direction_pdf;
-    Color brdf = brdf_dispatcher_sample(material, -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_brdf_direction, direction_pdf, random_number_generator);
-    if (brdf != Color(0.0f, 0.0f, 0.0f))
+    Color brdf = brdf_dispatcher_sample(material, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_brdf_direction, direction_pdf, random_number_generator);
+    if (direction_pdf > 0)
     {
-        Ray new_ray = Ray(closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-5f, sampled_brdf_direction);
+        Ray new_ray = Ray(closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f, sampled_brdf_direction);
         HitInfo new_ray_hit_info;
         bool inter_found = INTERSECT_SCENE(new_ray, new_ray_hit_info);
 
@@ -1288,7 +1296,7 @@ Color RenderKernel::sample_light_sources(const Ray& ray, HitInfo& closest_hit_in
                     float light_pdf = distance_squared / (light_area * cos_angle);
 
                     float mis_weight = power_heuristic(direction_pdf, light_pdf);
-                    float cosine_term = dot(closest_hit_info.shading_normal, sampled_brdf_direction);
+                    float cosine_term = std::max(0.0f, dot(closest_hit_info.shading_normal, sampled_brdf_direction));
 
                     brdf_radiance_mis = brdf * cosine_term * emission * mis_weight / direction_pdf;
                 }
