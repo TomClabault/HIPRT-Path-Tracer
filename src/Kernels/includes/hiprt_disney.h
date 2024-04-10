@@ -298,7 +298,10 @@ __device__ Color disney_sheen_eval(const RendererMaterial& material, const hiprt
     float NoL = dot(surface_normal, to_light_direction);
     pdf = NoL / M_PI;
 
-    return sheen_color * pow(1.0f - dot(half_vector, to_light_direction), 5.0f) * NoL;
+    // clamping operation here on the dot product because it has happened in the past
+    // that the dot product was 1.000012f due to floating point precision errors, leading
+    // to 1.0f - dot being negative and boom, the BRDF returns a negative color
+    return sheen_color * pow(clamp(0.0f, 1.0f, 1.0f - dot(half_vector, to_light_direction)), 5.0f) * NoL;
 }
 
 __device__ hiprtFloat3 disney_sheen_sample(const RendererMaterial& material, const hiprtFloat3& view_direction, hiprtFloat3 surface_normal, Xorshift32Generator& random_number_generator)

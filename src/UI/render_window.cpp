@@ -11,6 +11,7 @@
 // test performance when reducing number of triangles of the pbrt dragon
 
 // TODO bugs
+// TODO IMMEDIATE: debug sheen lobe NaN. Just run on the CPU and should be screaming in the console
 // - Why is the rough dragon having black fringes even with normal flipping ?
 // - why is the view direction below the geometric normal sometimes with clearcoat ?
 // - normals AOV not converging correctly ?

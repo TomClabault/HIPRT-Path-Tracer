@@ -4,8 +4,8 @@
 
 #define DEBUG_PIXEL 0
 #define DEBUG_EXACT_COORDINATE 1
-#define DEBUG_PIXEL_X 165
-#define DEBUG_PIXEL_Y 101
+#define DEBUG_PIXEL_X 526
+#define DEBUG_PIXEL_Y 37
 
 Point point_mat4x4(const glm::mat4x4& mat, const Point& p)
 {
@@ -914,7 +914,10 @@ Color RenderKernel::disney_sheen_eval(const RendererMaterial& material, const Ve
     float NoL = dot(surface_normal, to_light_direction);
     pdf = NoL / M_PI;
 
-    return sheen_color * pow(1.0f - dot(half_vector, to_light_direction), 5.0f) * NoL;
+    // clamping operation here on the dot product because it has happened in the past
+    // that the dot product was 1.000012f due to floating point precision errors, leading
+    // to 1.0f - dot being negative and boom, the BRDF returns a negative color
+    return sheen_color * pow(clamp(0.0f, 1.0f, 1.0f - dot(half_vector, to_light_direction)), 5.0f) * NoL;
 }
 
 Vector RenderKernel::disney_sheen_sample(const RendererMaterial& material, const Vector& view_direction, Vector surface_normal, Xorshift32Generator& random_number_generator)
