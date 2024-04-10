@@ -33,18 +33,18 @@ __device__ Color disney_diffuse_eval(const RendererMaterial& material, const hip
 
     Color diffuse_part;
     float diffuse_90 = 0.5f + 2.0f * material.roughness * LoH * LoH;
-    // Lambertian diffuse
-    //diffuse_part = material.diffuse / M_PI;
-    // Disney diffuse
-    diffuse_part = material.diffuse / M_PI * disney_schlick_weight(diffuse_90, NoL) * disney_schlick_weight(diffuse_90, NoV) * NoL;
-    // Oren nayar diffuse
+    // Lambertian base_color
+    //diffuse_part = material.base_color / M_PI;
+    // Disney base_color
+    diffuse_part = material.base_color / M_PI * disney_schlick_weight(diffuse_90, NoL) * disney_schlick_weight(diffuse_90, NoV) * NoL;
+    // Oren nayar base_color
     //diffuse_part = oren_nayar_eval(material, view_direction, surface_normal, to_light_direction);
 
     Color fake_subsurface_part = Color(0.0f);
     if (material.subsurface > 0)
     {
         float subsurface_90 = material.roughness * LoH * LoH;
-        fake_subsurface_part = 1.25f * material.diffuse / M_PI *
+        fake_subsurface_part = 1.25f * material.base_color / M_PI *
             (disney_schlick_weight(subsurface_90, NoL) * disney_schlick_weight(subsurface_90, NoV) * (1.0f / (NoL + NoV) - 0.5f) + 0.5f) * NoL;
     }
 
@@ -77,7 +77,7 @@ __device__ Color disney_metallic_eval(const RendererMaterial& material, const hi
     // of disney_metallic_eval() was called. Thus, if no F was passed, we're computing it here.
     // Otherwise, we're going to use the given one
     if (F.r == -2.0f)
-        F = fresnel_schlick(material.diffuse, NoL);
+        F = fresnel_schlick(material.base_color, NoL);
     
     float D = GTR2_anisotropic(material, local_half_vector);
     float G1_V = G1(material.alpha_x, material.alpha_y, local_view_direction);
@@ -232,7 +232,7 @@ __device__ Color disney_glass_eval(const RendererMaterial& material, const hiprt
         float D_pdf = G1_V / abs(NoV) * D * abs(HoV);
         pdf = dwm_dwi * D_pdf * (1.0f - F);
 
-        color = sqrt(material.diffuse) * D * (1 - F) * G * abs(HoL * HoV / denom);
+        color = sqrt(material.base_color) * D * (1 - F) * G * abs(HoL * HoV / denom);
     }
 
     return color;
@@ -286,6 +286,27 @@ __device__ hiprtFloat3 disney_glass_sample(const RendererMaterial& material, con
     return local_to_world_frame(T, B, surface_normal, sampled_direction);
 }
 
+__device__ Color disney_sheen_eval(const RendererMaterial& material, const hiprtFloat3& view_direction, hiprtFloat3 surface_normal, const hiprtFloat3& to_light_direction, float& pdf)
+{
+    Color sheen_color = Color(1.0f - material.sheen_tint) + material.sheen_color * material.sheen_tint;
+
+    float base_color_luminance = material.base_color.luminance();
+    Color tint_color = base_color_luminance > 0 ? material.base_color / base_color_luminance : Color(1.0f);
+
+    hiprtFloat3 half_vector = normalize(view_direction + to_light_direction);
+
+    float NoL = dot(surface_normal, to_light_direction);
+    pdf = NoL / M_PI;
+
+    return sheen_color * pow(1.0f - dot(half_vector, to_light_direction), 5.0f) * NoL;
+}
+
+__device__ hiprtFloat3 disney_sheen_sample(const RendererMaterial& material, const hiprtFloat3& view_direction, hiprtFloat3 surface_normal, Xorshift32Generator& random_number_generator)
+{
+    float trash_pdf;
+    return cosine_weighted_sample(surface_normal, trash_pdf, random_number_generator);
+}
+
 __device__ Color disney_eval(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& shading_normal, const hiprtFloat3& to_light_direction, float& pdf)
 {
     pdf = 0.0f;
@@ -293,10 +314,8 @@ __device__ Color disney_eval(const RendererMaterial& material, const hiprtFloat3
     //return disney_diffuse_eval(material, view_direction, shading_normal, to_light_direction, pdf);
     //return disney_metallic_eval(material, view_direction, shading_normal, to_light_direction, pdf);
     //return disney_clearcoat_eval(material, view_direction, shading_normal, to_light_direction, pdf);
-    if (material.roughness == 1.0f)
-        return disney_diffuse_eval(material, view_direction, shading_normal, to_light_direction, pdf);
-    else
-        return disney_glass_eval(material, view_direction, shading_normal, to_light_direction, pdf);
+    //return disney_glass_eval(material, view_direction, shading_normal, to_light_direction, pdf);
+    return disney_sheen_eval(material, view_direction, shading_normal, to_light_direction, pdf);
 }
 
 __device__ Color disney_sample(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& shading_normal, const hiprtFloat3& geometric_normal, hiprtFloat3& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
@@ -308,7 +327,30 @@ __device__ Color disney_sample(const RendererMaterial& material, const hiprtFloa
     ////output_direction = disney_diffuse_sample(material, view_direction, normal, random_number_generator);
     ////output_direction = disney_metallic_sample(material, view_direction, normal, random_number_generator);
     ////output_direction = disney_clearcoat_sample(material, view_direction, normal, random_number_generator);
-    if (material.roughness == 1.0f)
+    bool glass = false;
+    if (glass)
+    {
+        float dot_shading = dot(view_direction, shading_normal);
+        float dot_geometric = dot(view_direction, geometric_normal);
+        if (dot_shading * dot_geometric < 0)
+        {
+            // The view direction is below the surface normal because of normal mapping / smooth normals.
+            // We're going to flip the normal for the same reason as explained above to avoid black fringes
+            // the reason we're also checking for the dot product with the geometric normal here
+            // is because in the case of the glass lobe of the BRDF, we could be legitimately having
+            // the dot product between the shading normal and the view direction be negative when we're
+            // currently travelling inside the surface. To make sure that we're in the case of the black fringes
+            // caused by normal mapping and microfacet BRDFs, we're also checking with the geometric normal.
+            // If the view direction isn't below the geometric normal but is below the shading normal, this
+            // indicates that we're in the case of the black fringes and we can flip the normal
+            // If both dot products are negative, this means that we're travelling inside the surface
+            // and we shouldn't flip the normal
+            normal = reflect_ray(shading_normal, geometric_normal);
+        }
+
+        output_direction = disney_glass_sample(material, view_direction, normal, random_number_generator);
+    }
+    else
     {
         // Checking whether the view direction is below the upprt hemisphere around the shading
         // normal or not. This may be the case mainly due to normal mapping / smooth vertex normals. 
@@ -335,7 +377,7 @@ __device__ Color disney_sample(const RendererMaterial& material, const hiprtFloa
                 return Color(0.0f);
         }
 
-        output_direction = disney_diffuse_sample(material, view_direction, normal, random_number_generator);
+        output_direction = disney_sheen_sample(material, view_direction, normal, random_number_generator);
 
         if (dot(output_direction, shading_normal) < 0)
         {
@@ -344,36 +386,12 @@ __device__ Color disney_sample(const RendererMaterial& material, const hiprtFloa
             return Color(0.0f);
         }
     }
-    else
-    {
-        float dot_shading = dot(view_direction, shading_normal);
-        float dot_geometric = dot(view_direction, geometric_normal);
-        if (dot_shading * dot_geometric < 0)
-        {
-            // The view direction is below the surface normal because of normal mapping / smooth normals.
-            // We're going to flip the normal for the same reason as explained above to avoid black fringes
-            // the reason we're also checking for the dot product with the geometric normal here
-            // is because in the case of the glass lobe of the BRDF, we could be legitimately having
-            // the dot product between the shading normal and the view direction be negative when we're
-            // currently travelling inside the surface. To make sure that we're in the case of the black fringes
-            // caused by normal mapping and microfacet BRDFs, we're also checking with the geometric normal.
-            // If the view direction isn't below the geometric normal but is below the shading normal, this
-            // indicates that we're in the case of the black fringes and we can flip the normal
-            // If both dot products are negative, this means that we're travelling inside the surface
-            // and we shouldn't flip the normal
-            normal = reflect_ray(shading_normal, geometric_normal);
-        }
-
-        output_direction = disney_glass_sample(material, view_direction, normal, random_number_generator);
-    }
 
     //return disney_diffuse_eval(material, view_direction, normal, output_direction, pdf);
     //return disney_metallic_eval(material, view_direction, normal, output_direction, pdf);
     //return disney_clearcoat_eval(material, view_direction, normal, output_direction, pdf);
-    if (material.roughness == 1.0f)
-        return disney_diffuse_eval(material, view_direction, normal, output_direction, pdf);
-    else
-        return disney_glass_eval(material, view_direction, normal, output_direction, pdf);
+    //return disney_glass_eval(material, view_direction, normal, output_direction, pdf);
+    return disney_sheen_eval(material, view_direction, normal, output_direction, pdf);
 }
 
 #endif

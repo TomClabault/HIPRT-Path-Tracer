@@ -10,9 +10,8 @@
 
 // test performance when reducing number of triangles of the pbrt dragon
 
-// TODO immediate: fix NaNs glass BSDF
-
 // TODO bugs
+// - Why is the rough dragon having black fringes even with normal flipping ?
 // - why is the view direction below the geometric normal sometimes with clearcoat ?
 // - normals AOV not converging correctly ?
 // - aspect ratio issue on CPU or GPU ?
@@ -20,6 +19,7 @@
 
 
 // TODO Code Organization:
+// - rename HIPRT kernel files without the hiprt prefix
 // - Clean the Git of all the HIP/Orochi binary files. Try to download them automatically in the CMake or write installation instructions
 // - DO THE DISNEY SHADING IN SHADING SPACE. WHAT THE H IS THIS CODE BUILDING ONB IN EVERY FUNCTION HUH?
 // - Check for light and view direction in the same hemisphere in the disney eval function, not just in the clearcoat eval
@@ -40,6 +40,10 @@
 
 
 // TODO Features:
+// - Color fallof (change of material base base_color based on the angle with the view direction and the normal
+// - Transmission color
+// - Ray binning for performance
+// - Starting rays further away from the camera for performance
 // - Visualizing ray depth / other information
 // - Better ray origin offset to avoid self intersections
 // - Realistic Camera Model
@@ -51,7 +55,7 @@
 // - Orochi 2.0 --> Textures and OpenGL Interop 
 // - Paths roughness regularization
 // - Focus blur
-// - choose disney diffuse model (disney, lambertian, oren nayar)
+// - choose disney base_color model (disney, lambertian, oren nayar)
 // - enable lower resolution on mouse scroll for like ~10 frames
 // - display feedback for 3 seconds after dumping a screenshot to disk
 // - choose denoiser quality in imgui

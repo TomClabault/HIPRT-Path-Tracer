@@ -25,7 +25,7 @@ RendererMaterial SceneParser::ai_mat_to_renderer_mat(aiMaterial* mesh_material)
 
     //Creating the material used by the application from the properties read
     RendererMaterial renderer_material;
-    renderer_material.diffuse = Color(diffuse_color.r, diffuse_color.g, diffuse_color.b);
+    renderer_material.base_color = Color(diffuse_color.r, diffuse_color.g, diffuse_color.b);
     if (error_code_emissive == AI_SUCCESS)
     {
         if (emissive_color.r > 0 || emissive_color.g > 0 || emissive_color.b > 0)
@@ -41,6 +41,8 @@ RendererMaterial SceneParser::ai_mat_to_renderer_mat(aiMaterial* mesh_material)
     renderer_material.metalness = metalness;
     renderer_material.roughness = roughness;
     renderer_material.anisotropic = 1.0f; // TODO read from the file instead of hardcoded
+    renderer_material.sheen_tint = 1.0f; // TODO read from the file instead of hardcoded
+    renderer_material.sheen_color = Color(1.0f, 0.0f, 0.0f); // TODO read from the file instead of hardcoded
     renderer_material.ior = error_code_transmission == AI_SUCCESS ? ior : 1.45f;;
     renderer_material.transmission_factor = error_code_transmission == AI_SUCCESS ? transmission_factor : 0.0f;
     renderer_material.brdf_type = BRDF::Disney;
@@ -50,8 +52,8 @@ RendererMaterial SceneParser::ai_mat_to_renderer_mat(aiMaterial* mesh_material)
     {
         if (debug_counter == 1)
         {
-            renderer_material.diffuse = Color(1.0f, 0.0f, 0.0f);
-            renderer_material.roughness = 0.0f;
+            renderer_material.base_color = Color(1.0f, 0.0f, 0.0f);
+            renderer_material.roughness = 0.5f;
             renderer_material.anisotropic = 0.0f;
         }
         //renderer_material.metalness = 1.0f;// TODO remove
@@ -73,7 +75,7 @@ RendererMaterial SceneParser::ai_mat_to_renderer_mat(aiMaterial* mesh_material)
     renderer_material.alpha_x = std::max(1.0e-4f, renderer_material.roughness * renderer_material.roughness / aspect);
     renderer_material.alpha_y = std::max(1.0e-4f, renderer_material.roughness * renderer_material.roughness * aspect);
 
-    // Oren Nayar diffuse BRDF parameters
+    // Oren Nayar base_color BRDF parameters
     float sigma = renderer_material.oren_nayar_sigma;
     float sigma2 = sigma * sigma;
     renderer_material.oren_nayar_A = 1.0f - sigma2 / (2.0f * (sigma2 + 0.33f));

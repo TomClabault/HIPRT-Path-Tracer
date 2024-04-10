@@ -6,7 +6,7 @@
 
 __device__ Color hiprt_lambertian_brdf(const RendererMaterial& material, const hiprtFloat3& to_light_direction, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal)
 {
-    return material.diffuse * M_1_PI;
+    return material.base_color * M_1_PI;
 }
 
 #endif

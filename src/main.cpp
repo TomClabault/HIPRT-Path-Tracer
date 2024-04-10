@@ -15,7 +15,7 @@
 #include "Utils/commandline_arguments.h"
 #include "Utils/utils.h"
 
-#define GPU_RENDER 1
+#define GPU_RENDER 0
 
 int main(int argc, char* argv[])
 {
@@ -46,7 +46,7 @@ int main(int argc, char* argv[])
 
     /*RendererMaterial sphere_material;
     sphere_material.emission = Color(0.0f);
-    sphere_material.diffuse = Color(1.0f, 0.71, 0.29);
+    sphere_material.base_color = Color(1.0f, 0.71, 0.29);
     sphere_material.metalness = 1.0f;
     sphere_material.roughness = 1.0e-2f;
     sphere_material.ior = 1.4f;*/

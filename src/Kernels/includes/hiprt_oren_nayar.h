@@ -48,7 +48,7 @@ __device__ Color oren_nayar_eval(const RendererMaterial& material, const hiprtFl
         tan_beta = sin_theta_o / abs(local_view_direction.z);
     }
 
-    return material.diffuse / M_PI * (material.oren_nayar_A + material.oren_nayar_B * max_cos * sin_alpha * tan_beta);
+    return material.base_color / M_PI * (material.oren_nayar_A + material.oren_nayar_B * max_cos * sin_alpha * tan_beta);
 }
 
 #endif

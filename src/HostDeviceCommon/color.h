@@ -66,7 +66,7 @@ struct Color
         return r != other.r || g != other.g || b != other.b;
     }
 
-    __prefix__ float luminance()
+    __prefix__ float luminance() const
     {
         return 0.3086f * r + 0.6094f * g + 0.0820f * b;
     }

@@ -20,7 +20,7 @@ struct RendererMaterial
     BRDF brdf_type = BRDF::Uninitialized;
 
     Color emission = Color{ 0.0f, 0.0f, 0.0f };
-    Color diffuse = Color{ 1.0f, 0.2f, 0.7f };
+    Color base_color = Color{ 1.0f, 0.2f, 0.7f };
 
     float roughness = 1.0f;
     float oren_nayar_sigma = 0.34906585039886591538f; // 20 degrees standard deviation in radian
@@ -36,6 +36,9 @@ struct RendererMaterial
 
     float clearcoat_roughness = 0.0f;
     float clearcoatIOR = 1.5f;
+
+    float sheen_tint;
+    Color sheen_color;
 
     float ior = 1.40f;
     float transmission_factor = 0.0f;

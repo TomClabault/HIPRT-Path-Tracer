@@ -25,7 +25,7 @@ __device__ float cook_torrance_brdf_pdf(const RendererMaterial& material, const 
 __device__ Color cook_torrance_brdf(const RendererMaterial& material, const hiprtFloat3& to_light_direction, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal)
 {
     Color brdf_color = Color(0.0f, 0.0f, 0.0f);
-    Color base_color = material.diffuse;
+    Color base_color = material.base_color;
 
     hiprtFloat3 halfway_vector = normalize(view_direction + to_light_direction);
 
@@ -53,7 +53,7 @@ __device__ Color cook_torrance_brdf(const RendererMaterial& material, const hipr
         D = GGX_normal_distribution(alpha, NoH);
         G = GGX_smith_masking_shadowing(alpha, NoV, NoL);
 
-        Color kD = Color(1.0f - metalness); //Metals do not have a diffuse part
+        Color kD = Color(1.0f - metalness); //Metals do not have a base_color part
         kD = kD * (Color(1.0f) - F);//Only the transmitted light is diffused
 
         Color diffuse_part = kD * base_color / (float)M_PI;
@@ -92,7 +92,7 @@ __device__ Color cook_torrance_brdf_importance_sample(const RendererMaterial& ma
     output_direction = to_light_direction;
 
     Color brdf_color = Color(0.0f, 0.0f, 0.0f);
-    Color base_color = material.diffuse;
+    Color base_color = material.base_color;
 
     float NoV = RT_MAX(0.0f, dot(surface_normal, view_direction));
     float NoL = RT_MAX(0.0f, dot(surface_normal, to_light_direction));
@@ -113,7 +113,7 @@ __device__ Color cook_torrance_brdf_importance_sample(const RendererMaterial& ma
         F = fresnel_schlick(F0, VoH);
         G = GGX_smith_masking_shadowing(alpha, NoV, NoL);
 
-        Color kD = Color(1.0f - metalness); //Metals do not have a diffuse part
+        Color kD = Color(1.0f - metalness); //Metals do not have a base_color part
         kD = kD * (Color(1.0f) - F);//Only the transmitted light is diffused
 
         Color diffuse_part = kD * base_color / (float)M_PI;
@@ -178,7 +178,7 @@ __device__ Color smooth_glass_bsdf(const RendererMaterial& material, hiprtFloat3
         surface_normal = -surface_normal;
         pdf = 1.0f - fresnel_reflect;
 
-        return Color(1.0f - fresnel_reflect) * material.diffuse / dot(out_bounce_direction, surface_normal);
+        return Color(1.0f - fresnel_reflect) * material.base_color / dot(out_bounce_direction, surface_normal);
     }
 }
 
@@ -528,7 +528,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                     {
                         denoiser_AOVs_set = true;
 
-                        denoiser_albedo += material.diffuse * denoiser_blend;
+                        denoiser_albedo += material.base_color * denoiser_blend;
                         denoiser_normal += closest_hit_info.shading_normal * denoiser_blend;
                     }
 
