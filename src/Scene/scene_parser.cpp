@@ -57,30 +57,13 @@ RendererMaterial SceneParser::ai_mat_to_renderer_mat(aiMaterial* mesh_material)
             renderer_material.roughness = 0.0f;
             renderer_material.metallic = 1.0f;
             renderer_material.anisotropic = 0.0f;
+            renderer_material.anisotropic_rotation = 0.0f;
         }
         //renderer_material.roughness = 0.1f;
     }
 
-
-
-
-
-
-    // Clamping material parameters to avoid instabilities during rendering
-    renderer_material.roughness = std::max(1.0e-4f, renderer_material.roughness);
-    renderer_material.anisotropic_rotation = 0.0f;
-    renderer_material.clearcoat_roughness = std::max(1.0e-4f, renderer_material.clearcoat_roughness);
-
-    // Precomputing alpha_x and alpha_y related to Disney's anisotropic metallic lobe
-    float aspect = std::sqrt(1.0f - 0.9f * renderer_material.anisotropic);
-    renderer_material.alpha_x = std::max(1.0e-4f, renderer_material.roughness * renderer_material.roughness / aspect);
-    renderer_material.alpha_y = std::max(1.0e-4f, renderer_material.roughness * renderer_material.roughness * aspect);
-
-    // Oren Nayar base_color BRDF parameters
-    float sigma = renderer_material.oren_nayar_sigma;
-    float sigma2 = sigma * sigma;
-    renderer_material.oren_nayar_A = 1.0f - sigma2 / (2.0f * (sigma2 + 0.33f));
-    renderer_material.oren_nayar_B = 0.45f * sigma2 / (sigma2 + 0.09f);
+    renderer_material.make_safe();
+    renderer_material.precompute_properties();
 
     debug_counter++;
     return renderer_material;

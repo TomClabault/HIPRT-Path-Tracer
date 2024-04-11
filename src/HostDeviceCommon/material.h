@@ -3,6 +3,8 @@
 
 #include "HostDeviceCommon/color.h"
 
+#include "Kernels/includes/HIPRT_maths.h"
+
 enum BRDF
 {
     Uninitialized,
@@ -12,9 +14,37 @@ enum BRDF
 
 struct RendererMaterial
 {
-    bool is_emissive()
+    HIPRT_HOST_DEVICE bool is_emissive()
     {
         return emission.r != 0.0f || emission.g != 0.0f || emission.b != 0.0f;
+    }
+
+    /*
+     * Clamps some of the parameters of the material to avoid edge cases like NaNs
+     * during rendering (i.e. numerical instabilities)
+     */
+    HIPRT_HOST_DEVICE void make_safe()
+    {
+        roughness = RT_MAX(1.0e-4f, roughness);
+        clearcoat_roughness = RT_MAX(1.0e-4f, clearcoat_roughness);
+    }
+
+    /*
+     * Some properties of the material can be precomputed
+     * This function does it
+     */
+    HIPRT_HOST_DEVICE void precompute_properties()
+    {
+        // Precomputing alpha_x and alpha_y related to Disney's anisotropic metallic lobe
+        float aspect = sqrt(1.0f - 0.9f * anisotropic);
+        alpha_x = RT_MAX(1.0e-4f, roughness * roughness / aspect);
+        alpha_y = RT_MAX(1.0e-4f, roughness * roughness * aspect);
+
+        // Oren Nayar base_color BRDF parameters
+        float sigma = oren_nayar_sigma;
+        float sigma2 = sigma * sigma;
+        oren_nayar_A = 1.0f - sigma2 / (2.0f * (sigma2 + 0.33f));
+        oren_nayar_B = 0.45f * sigma2 / (sigma2 + 0.09f);
     }
 
     BRDF brdf_type = BRDF::Uninitialized;

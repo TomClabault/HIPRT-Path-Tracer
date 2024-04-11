@@ -93,11 +93,11 @@ __device__ Color disney_metallic_eval(const RendererMaterial& material, const hi
 
     // TODO remove
     {
-        //// F = (-2.0f, -2.0f, -2.0f) is the default argument when the overload without the 'Color F' argument
-        //// of disney_metallic_eval() was called. Thus, if no F was passed, we're computing it here.
-        //// Otherwise, we're going to use the given one
-        //if (F.r == -2.0f)
-        //    F = fresnel_schlick(material.base_color, NoL);
+        // F = (-2.0f, -2.0f, -2.0f) is the default argument when the overload without the 'Color F' argument
+        // of disney_metallic_eval() was called. Thus, if no F was passed, we're computing it here.
+        // Otherwise, we're going to use the given one
+        if (F.r == -2.0f)
+            F = fresnel_schlick(material.base_color, NoL);
     }
     
     float D = GTR2_anisotropic(material, local_half_vector);
@@ -359,7 +359,7 @@ __device__ Color disney_eval(const RendererMaterial& material, const hiprtFloat3
     // Computing a custom fresnel term based on the material specular, specular tint, ... coefficients
     Color metallic_fresnel = disney_metallic_fresnel(material, local_half_vector, local_to_light_direction);
     const float metallic_weight = (1.0f - material.specular_transmission * (1.0f - material.metallic));
-    final_color += metallic_weight > 0 && outside_object ? disney_metallic_eval(material, view_direction, shading_normal, to_light_direction, metallic_fresnel, metallic_pdf) : Color(0.0f);
+    final_color += metallic_weight > 0 && outside_object ? disney_metallic_eval(material, view_direction, shading_normal, to_light_direction, Color(-2.0f, -2.0f, 0.0f), metallic_pdf) : Color(0.0f);
     pdf += metallic_pdf * metallic_weight;
 
     // Clearcoat
@@ -442,14 +442,14 @@ __device__ Color disney_sample(const RendererMaterial& material, const hiprtFloa
         {
             output_direction = disney_diffuse_sample(material, view_direction, normal, random_number_generator);
         }
-        else if (rand_1 < cdf[1])
+        else //if (rand_1 < cdf[1])
         {
             output_direction = disney_metallic_sample(material, view_direction, normal, random_number_generator);
         }
-        else if (rand_1 < cdf[2])
+        /*else if (rand_1 < cdf[2])
         {
             output_direction = disney_clearcoat_sample(material, view_direction, normal, random_number_generator);
-        }
+        }*/
 
         if (dot(output_direction, shading_normal) < 0)
         {

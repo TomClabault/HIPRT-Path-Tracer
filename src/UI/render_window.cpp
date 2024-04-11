@@ -745,7 +745,8 @@ void RenderWindow::show_objects_panel()
 {
 	std::vector<RendererMaterial> materials = m_renderer.get_materials();
 
-	int counter = 0;
+	int material_modfied_id = -1;
+	int material_counter = 0;
 	bool some_material_changed = false;
 	for (RendererMaterial& material : materials)
 	{
@@ -757,34 +758,41 @@ void RenderWindow::show_objects_panel()
 		// by naming them "material 1 Base color", "material 2 Base color" for example
 		// This is however not very practical so ImGui provides us with the PushID function which
 		// essentially differentiate the widgets without having to change the labels 
-		ImGui::PushID(counter);
+		ImGui::PushID(material_counter);
 
 		some_material_changed |= ImGui::ColorEdit3("Base color", (float*)&material.base_color);
-		some_material_changed |= ImGui::DragFloat("Subsurface", &material.subsurface, 0.01f, 0.0f, 1.0f);
-		some_material_changed |= ImGui::DragFloat("Metallic", &material.metallic, 0.01f, 0.0f, 1.0f);
-		some_material_changed |= ImGui::DragFloat("Specular", &material.specular, 0.01f, 0.0f, 1.0f);
+		some_material_changed |= ImGui::DragFloat("Subsurface", &material.subsurface, 0.001f, 0.0f, 1.0f);
+		some_material_changed |= ImGui::DragFloat("Metallic", &material.metallic, 0.001f, 0.0f, 1.0f);
+		some_material_changed |= ImGui::DragFloat("Specular", &material.specular, 0.001f, 0.0f, 1.0f);
 		some_material_changed |= ImGui::ColorEdit3("Specular tint", (float*)&material.specular_tint);
-		some_material_changed |= ImGui::DragFloat("Roughness", &material.roughness, 0.01f, 0.0f, 1.0f);
-		some_material_changed |= ImGui::DragFloat("Anisotropic", &material.anisotropic, 0.01f, 0.0f, 1.0f);
-		some_material_changed |= ImGui::DragFloat("Anisotropic rotation", &material.anisotropic_rotation, 0.01f, 0.0f, 1.0f);
-		some_material_changed |= ImGui::DragFloat("Sheen", &material.sheen, 0.01f, 0.0f, 1.0f);
-		some_material_changed |= ImGui::DragFloat("Sheen tint strength", &material.sheen_tint, 0.01f, 0.0f, 1.0f);
+		some_material_changed |= ImGui::DragFloat("Roughness", &material.roughness, 0.001f, 0.0f, 1.0f);
+		some_material_changed |= ImGui::DragFloat("Anisotropic", &material.anisotropic, 0.001f, 0.0f, 1.0f);
+		some_material_changed |= ImGui::DragFloat("Anisotropic rotation", &material.anisotropic_rotation, 0.001f, 0.0f, 1.0f);
+		some_material_changed |= ImGui::DragFloat("Sheen", &material.sheen, 0.001f, 0.0f, 1.0f);
+		some_material_changed |= ImGui::DragFloat("Sheen tint strength", &material.sheen_tint, 0.001f, 0.0f, 1.0f);
 		some_material_changed |= ImGui::ColorEdit3("Sheen color", (float*)&material.sheen_color);
-		some_material_changed |= ImGui::DragFloat("Clearcoat", &material.clearcoat, 0.01f, 0.0f, 1.0f);
-		some_material_changed |= ImGui::DragFloat("Clearcoat roughness", &material.clearcoat_roughness, 0.01f, 0.0f, 1.0f);
-		some_material_changed |= ImGui::DragFloat("Clearcoat IOR", &material.clearcoat_ior, 0.01f, 0.0f, 10.0f);
+		some_material_changed |= ImGui::DragFloat("Clearcoat", &material.clearcoat, 0.001f, 0.0f, 1.0f);
+		some_material_changed |= ImGui::DragFloat("Clearcoat roughness", &material.clearcoat_roughness, 0.001f, 0.0f, 1.0f);
+		some_material_changed |= ImGui::DragFloat("Clearcoat IOR", &material.clearcoat_ior, 0.001f, 0.0f, 10.0f);
 		some_material_changed |= ImGui::DragFloat("IOR", &material.ior, 0.01f, 0.0f, 10.0f);
-		some_material_changed |= ImGui::DragFloat("Transmission", &material.specular_transmission, 0.01f, 0.0f, 1.0f);
+		some_material_changed |= ImGui::DragFloat("Transmission", &material.specular_transmission, 0.001f, 0.0f, 1.0f);
 		some_material_changed |= ImGui::ColorEdit3("Emission", (float*)&material.emission, ImGuiColorEditFlags_HDR);
 
 		ImGui::PopID();
 
 		ImGui::Separator();
-		counter++;
+
+		if (some_material_changed && material_modfied_id == -1)
+			material_modfied_id = material_counter;
+		material_counter++;
 	}
 
 	if (some_material_changed)
 	{
+		RendererMaterial& material = materials[material_modfied_id];
+		material.make_safe();
+		material.precompute_properties();
+
 		m_renderer.update_materials(materials);
 		reset_sample_number();
 	}
