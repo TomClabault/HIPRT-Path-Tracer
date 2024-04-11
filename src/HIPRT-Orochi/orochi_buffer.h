@@ -18,9 +18,8 @@ public:
 	T* get_pointer();
 	T** get_pointer_address();
 
-	std::vector<T> download_pixels() const;
-	void upload_pixels(std::vector<T>& data);
-	//void fill_with_value(const T& value);
+	std::vector<T> download_data() const;
+	void upload_data(std::vector<T>& data);
 
 private:
 	T* m_data_pointer;
@@ -65,7 +64,7 @@ T** OrochiBuffer<T>::get_pointer_address()
 }
 
 template <typename T>
-std::vector<T> OrochiBuffer<T>::download_pixels() const
+std::vector<T> OrochiBuffer<T>::download_data() const
 {
 	if (!m_data_pointer)
 		return std::vector<T>();
@@ -78,19 +77,11 @@ std::vector<T> OrochiBuffer<T>::download_pixels() const
 }
 
 template <typename T>
-void OrochiBuffer<T>::upload_pixels(std::vector<T>& data)
+void OrochiBuffer<T>::upload_data(std::vector<T>& data)
 {
 	void* data_pointer = data.data();
 	if (m_data_pointer)
 		OROCHI_CHECK_ERROR(oroMemcpyHtoD(reinterpret_cast<oroDeviceptr>(m_data_pointer), data_pointer, sizeof(T) * m_element_count));
 }
-
-//template <typename T>
-//void OrochiBuffer<T>::fill_with_value(const T& value)
-//{
-//	void* data_pointer = data.data();
-//	if (m_data_pointer)
-//		OROCHI_CHECK_ERROR(oroMemcpyHtoD(reinterpret_cast<oroDeviceptr>(m_data_pointer), data_pointer, sizeof(T) * m_element_count));
-//}
 
 #endif

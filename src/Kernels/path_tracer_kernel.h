@@ -36,7 +36,7 @@ __device__ Color cook_torrance_brdf(const RendererMaterial& material, const hipr
 
     if (NoV > 0.0f && NoL > 0.0f && NoH > 0.0f)
     {
-        float metalness = material.metalness;
+        float metallic = material.metallic;
         float roughness = material.roughness;
 
         float alpha = roughness * roughness;
@@ -46,14 +46,14 @@ __device__ Color cook_torrance_brdf(const RendererMaterial& material, const hipr
         float D, G;
 
         //F0 = 0.04 for dielectrics, 1.0 for metals (approximation)
-        Color F0 = Color(0.04f * (1.0f - metalness)) + metalness * base_color;
+        Color F0 = Color(0.04f * (1.0f - metallic)) + metallic * base_color;
 
         //GGX Distribution function
         F = fresnel_schlick(F0, VoH);
         D = GGX_normal_distribution(alpha, NoH);
         G = GGX_smith_masking_shadowing(alpha, NoV, NoL);
 
-        Color kD = Color(1.0f - metalness); //Metals do not have a base_color part
+        Color kD = Color(1.0f - metallic); //Metals do not have a base_color part
         kD = kD * (Color(1.0f) - F);//Only the transmitted light is diffused
 
         Color diffuse_part = kD * base_color / (float)M_PI;
@@ -69,7 +69,7 @@ __device__ Color cook_torrance_brdf_importance_sample(const RendererMaterial& ma
 {
     pdf = 0.0f;
 
-    float metalness = material.metalness;
+    float metallic = material.metallic;
     float roughness = material.roughness;
     float alpha = roughness * roughness;
 
@@ -109,11 +109,11 @@ __device__ Color cook_torrance_brdf_importance_sample(const RendererMaterial& ma
         D = GGX_normal_distribution(alpha, NoH);
 
         //F0 = 0.04 for dielectrics, 1.0 for metals (approximation)
-        Color F0 = Color(0.04f * (1.0f - metalness)) + metalness * base_color;
+        Color F0 = Color(0.04f * (1.0f - metallic)) + metallic * base_color;
         F = fresnel_schlick(F0, VoH);
         G = GGX_smith_masking_shadowing(alpha, NoV, NoL);
 
-        Color kD = Color(1.0f - metalness); //Metals do not have a base_color part
+        Color kD = Color(1.0f - metallic); //Metals do not have a base_color part
         kD = kD * (Color(1.0f) - F);//Only the transmitted light is diffused
 
         Color diffuse_part = kD * base_color / (float)M_PI;

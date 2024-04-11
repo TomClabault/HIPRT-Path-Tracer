@@ -446,7 +446,7 @@ inline Color RenderKernel::cook_torrance_brdf_eval(const RendererMaterial& mater
 
     if (NoV > 0.0f && NoL > 0.0f && NoH > 0.0f)
     {
-        float metalness = material.metalness;
+        float metallic = material.metallic;
         float roughness = material.roughness;
 
         float alpha = roughness * roughness;
@@ -456,14 +456,14 @@ inline Color RenderKernel::cook_torrance_brdf_eval(const RendererMaterial& mater
         float D, G;
 
         //F0 = 0.04 for dielectrics, 1.0 for metals (approximation)
-        Color F0 = Color(0.04f * (1.0f - metalness)) + metalness * base_color;
+        Color F0 = Color(0.04f * (1.0f - metallic)) + metallic * base_color;
 
         //GGX Distribution function
         F = fresnel_schlick(F0, VoH);
         D = GGX_normal_distribution(alpha, NoH);
         G = GGX_smith_masking_shadowing(alpha, NoV, NoL);
 
-        Color kD = Color(1.0f - metalness); //Metals do not have a base_color part
+        Color kD = Color(1.0f - metallic); //Metals do not have a base_color part
         kD *= Color(1.0f) - F;//Only the transmitted light is diffused
 
         Color diffuse_part = kD * base_color / (float)M_PI;
@@ -480,7 +480,7 @@ Color RenderKernel::cook_torrance_brdf_sample(const RendererMaterial& material, 
 {
     pdf = 0.0f;
 
-    float metalness = material.metalness;
+    float metallic = material.metallic;
     float roughness = material.roughness;
     float alpha = roughness * roughness;
 
@@ -519,11 +519,11 @@ Color RenderKernel::cook_torrance_brdf_sample(const RendererMaterial& material, 
         D = GGX_normal_distribution(alpha, NoH);
 
         //F0 = 0.04 for dielectrics, 1.0 for metals (approximation)
-        Color F0 = Color(0.04f * (1.0f - metalness)) + metalness * base_color;
+        Color F0 = Color(0.04f * (1.0f - metallic)) + metallic * base_color;
         F = fresnel_schlick(F0, VoH);
         G = GGX_smith_masking_shadowing(alpha, NoV, NoL);
 
-        Color kD = Color(1.0f - metalness); //Metals do not have a base_color part
+        Color kD = Color(1.0f - metallic); //Metals do not have a base_color part
         kD *= Color(1.0f) - F;//Only the transmitted light is diffused
 
         Color diffuse_part = kD * base_color / (float)M_PI;
@@ -679,7 +679,7 @@ Color RenderKernel::disney_metallic_eval(const RendererMaterial& material, const
 {
     // Building the local shading frame
     Vector T, B;
-    build_rotated_ONB(surface_normal, T, B, material.anisotropic_rotation);
+    build_rotated_ONB(surface_normal, T, B, material.anisotropic_rotation * 2.0f * M_PI);
 
     Vector local_view_direction = world_to_local_frame(T, B, surface_normal, view_direction);
     Vector local_to_light_direction = world_to_local_frame(T, B, surface_normal, to_light_direction);
@@ -734,8 +734,8 @@ Color RenderKernel::disney_clearcoat_eval(const RendererMaterial& material, cons
     if (local_view_direction.z * local_to_light_direction.z < 0)
         return Color(0.0f);
 
-    float num = material.clearcoatIOR - 1.0f;
-    float denom = material.clearcoatIOR + 1.0f;
+    float num = material.clearcoat_ior - 1.0f;
+    float denom = material.clearcoat_ior + 1.0f;
     Color R0 = Color((num * num) / (denom * denom));
 
     float HoV = dot(local_halfway_vector, local_to_light_direction);
@@ -780,7 +780,7 @@ Color RenderKernel::disney_glass_eval(const RendererMaterial& material, const Ve
         surface_normal = -surface_normal;
 
     Vector T, B;
-    build_rotated_ONB(surface_normal, T, B, material.anisotropic_rotation);
+    build_rotated_ONB(surface_normal, T, B, material.anisotropic_rotation * 2.0f * M_PI);
 
     Vector local_to_light_direction = world_to_local_frame(T, B, surface_normal, to_light_direction);
     Vector local_view_direction = world_to_local_frame(T, B, surface_normal, view_direction);
@@ -857,7 +857,7 @@ Color RenderKernel::disney_glass_eval(const RendererMaterial& material, const Ve
 Vector RenderKernel::disney_glass_sample(const RendererMaterial& material, const Vector& view_direction, Vector surface_normal, Xorshift32Generator& random_number_generator)
 {
     Vector T, B;
-    build_rotated_ONB(surface_normal, T, B, material.anisotropic_rotation);
+    build_rotated_ONB(surface_normal, T, B, material.anisotropic_rotation * 2.0f * M_PI);
 
     float relative_eta = material.ior;
     if (dot(surface_normal, view_direction) < 0)

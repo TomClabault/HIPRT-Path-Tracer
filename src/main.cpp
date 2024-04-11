@@ -31,8 +31,9 @@ int main(int argc, char* argv[])
         Scene parsed_scene = SceneParser::parse_scene_file(arguments.scene_file_path, (float)default_width / default_height);
         std::cout << std::endl;
 
-        render_window.set_renderer_scene(parsed_scene);
-        render_window.get_renderer().set_camera(parsed_scene.camera);
+        Renderer& renderer = render_window.get_renderer();
+        renderer.set_scene(parsed_scene);
+        renderer.set_camera(parsed_scene.camera);
     }
     render_window.reset_sample_number();
     render_window.run();
@@ -47,7 +48,7 @@ int main(int argc, char* argv[])
     /*RendererMaterial sphere_material;
     sphere_material.emission = Color(0.0f);
     sphere_material.base_color = Color(1.0f, 0.71, 0.29);
-    sphere_material.metalness = 1.0f;
+    sphere_material.metallic = 1.0f;
     sphere_material.roughness = 1.0e-2f;
     sphere_material.ior = 1.4f;*/
 
@@ -71,7 +72,7 @@ int main(int argc, char* argv[])
     std::vector<int> materials_indices_buffer = parsed_scene.material_indices;
     std::vector<Sphere> sphere_buffer = spheres;
 
-    materials_buffer[2].metalness = 1.0f;
+    materials_buffer[2].metallic = 1.0f;
 
     std::cout << "Reading Environment Map " << cmd_arguments.skysphere_file_path << " ..." << std::endl;
     EnvironmentMap env_map = EnvironmentMap::read_from_file(cmd_arguments.skysphere_file_path);

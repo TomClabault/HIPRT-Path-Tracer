@@ -28,20 +28,25 @@ struct RendererMaterial
     float oren_nayar_B = 0.74147689828041305929f; // Precomputed B for sigma = 20 degrees
     float subsurface = 0.0f;
 
-    float metalness = 0.0f;
+    float metallic = 0.0f;
+    float specular = 1.0f; // Specular intensity
+    float specular_tint = 1.0f; // Specular fresnel strength for the metallic
+    Color tint_color = Color(1.0f);
     
     float anisotropic = 0.0f;
     float anisotropic_rotation = 0.0f;
     float alpha_x, alpha_y;
 
+    float clearcoat = 1.0f;
     float clearcoat_roughness = 0.0f;
-    float clearcoatIOR = 1.5f;
+    float clearcoat_ior = 1.5f;
 
-    float sheen_tint;
-    Color sheen_color;
+    float sheen = 0.0f; // Sheen strength
+    float sheen_tint = 0.0f; // Sheen tint strength
+    Color sheen_color = Color(1.0f);
 
     float ior = 1.40f;
-    float transmission_factor = 0.0f;
+    float specular_transmission = 0.0f;
 };
 
 #endif

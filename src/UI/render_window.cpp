@@ -11,7 +11,7 @@
 // test performance when reducing number of triangles of the pbrt dragon
 
 // TODO bugs
-// TODO IMMEDIATE: debug sheen lobe NaN. Just run on the CPU and should be screaming in the console
+// TODO IMMEDIATE: total sampling disney BRDF
 // - Why is the rough dragon having black fringes even with normal flipping ?
 // - why is the view direction below the geometric normal sometimes with clearcoat ?
 // - normals AOV not converging correctly ?
@@ -20,13 +20,15 @@
 
 
 // TODO Code Organization:
+// reset_sample_number() is a bad name, I couldn't remember the name when looking for it and was expecting soemthing like 'dirty render' or something
+// - add license to repo
+// - Can we have access to HoL when calling disey_metallic_fresnel to avoid passing the two vectors and recomputing the dot product in the return statement ?
 // - rename HIPRT kernel files without the hiprt prefix
 // - Clean the Git of all the HIP/Orochi binary files. Try to download them automatically in the CMake or write installation instructions
 // - DO THE DISNEY SHADING IN SHADING SPACE. WHAT THE H IS THIS CODE BUILDING ONB IN EVERY FUNCTION HUH?
 // - Check for light and view direction in the same hemisphere in the disney eval function, not just in the clearcoat eval
 // - Check for sampled light direction not under the surface in disney sample, before eval, not just in the metallic/clearcoat sample
 // - reorganize methods order in RenderWindow
-// - overload +=, *=, ... operators for Color most notably on the GPU side
 // - use constructors instead of struct {} syntax in gpu code
 // - separate path tracer kernel functions in header files
 // - do not duplicate render functions. Make a common h file that uses the float3 type (cosine_weighted_direction_around_normal, hiprt_lambertian.h:7)
@@ -45,7 +47,11 @@
 // - Transmission color
 // - Ray binning for performance
 // - Starting rays further away from the camera for performance
-// - Visualizing ray depth / other information
+// - Visualizing ray depth (only 1 frame otherwise it would flicker a lot [or choose the option to have it flicker] )
+// - Visualizing pixel time with the clock() instruction. Pixel heatmap:
+//		- https://developer.nvidia.com/blog/profiling-dxr-shaders-with-timer-instrumentation/
+//		- https://github.com/libigl/libigl/issues/1388
+//		- https://github.com/libigl/libigl/issues/1534
 // - Better ray origin offset to avoid self intersections
 // - Realistic Camera Model
 // - Textures for each parameter of the Disney BSDF
@@ -450,12 +456,6 @@ void RenderWindow::setup_display_program()
 	glUniform1f(glGetUniformLocation(m_display_program, "u_exposure"), m_application_settings.tone_mapping_exposure);
 }
 
-void RenderWindow::set_renderer_scene(Scene& scene)
-{
-	std::shared_ptr<Renderer::HIPRTScene> hiprt_scene = m_renderer.create_hiprt_scene_from_scene(scene);
-	m_renderer.set_hiprt_scene(hiprt_scene);
-}
-
 void RenderWindow::update_renderer_view_translation(float translation_x, float translation_y)
 {
 	if (translation_x == 0.f && translation_y == 0.0f)
@@ -588,7 +588,7 @@ void RenderWindow::run()
 			switch (m_application_settings.debug_display_denoiser)
 			{
 			case DisplayView::DISPLAY_NORMALS:
-				display(m_renderer.get_denoiser_normals_buffer().download_pixels().data());
+				display(m_renderer.get_denoiser_normals_buffer().download_data().data());
 				break;
 
 			case DisplayView::DISPLAY_DENOISED_NORMALS:
@@ -597,7 +597,7 @@ void RenderWindow::run()
 				break;
 
 			case DisplayView::DISPLAY_ALBEDO:
-				display(m_renderer.get_denoiser_albedo_buffer().download_pixels().data());
+				display(m_renderer.get_denoiser_albedo_buffer().download_data().data());
 				break;
 
 			case DisplayView::DISPLAY_DENOISED_ALBEDO:
@@ -741,6 +741,55 @@ void RenderWindow::show_render_settings_panel()
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 }
 
+void RenderWindow::show_objects_panel()
+{
+	std::vector<RendererMaterial> materials = m_renderer.get_materials();
+
+	int counter = 0;
+	bool some_material_changed = false;
+	for (RendererMaterial& material : materials)
+	{
+		// Multiple ImGui widgets cannot have the same label
+		// If all our materials use the same "Base color", "Subsurface", ... labels for
+		// the slider, there is a chance that the slider will be linked together
+		// and that multiple materials will be modified when only touching one slider
+		// One solution to that is to avoid using the same label for multiple sliders
+		// by naming them "material 1 Base color", "material 2 Base color" for example
+		// This is however not very practical so ImGui provides us with the PushID function which
+		// essentially differentiate the widgets without having to change the labels 
+		ImGui::PushID(counter);
+
+		some_material_changed |= ImGui::ColorEdit3("Base color", (float*)&material.base_color);
+		some_material_changed |= ImGui::DragFloat("Subsurface", &material.subsurface, 0.01f, 0.0f, 1.0f);
+		some_material_changed |= ImGui::DragFloat("Metallic", &material.metallic, 0.01f, 0.0f, 1.0f);
+		some_material_changed |= ImGui::DragFloat("Specular", &material.specular, 0.01f, 0.0f, 1.0f);
+		some_material_changed |= ImGui::ColorEdit3("Specular tint", (float*)&material.specular_tint);
+		some_material_changed |= ImGui::DragFloat("Roughness", &material.roughness, 0.01f, 0.0f, 1.0f);
+		some_material_changed |= ImGui::DragFloat("Anisotropic", &material.anisotropic, 0.01f, 0.0f, 1.0f);
+		some_material_changed |= ImGui::DragFloat("Anisotropic rotation", &material.anisotropic_rotation, 0.01f, 0.0f, 1.0f);
+		some_material_changed |= ImGui::DragFloat("Sheen", &material.sheen, 0.01f, 0.0f, 1.0f);
+		some_material_changed |= ImGui::DragFloat("Sheen tint strength", &material.sheen_tint, 0.01f, 0.0f, 1.0f);
+		some_material_changed |= ImGui::ColorEdit3("Sheen color", (float*)&material.sheen_color);
+		some_material_changed |= ImGui::DragFloat("Clearcoat", &material.clearcoat, 0.01f, 0.0f, 1.0f);
+		some_material_changed |= ImGui::DragFloat("Clearcoat roughness", &material.clearcoat_roughness, 0.01f, 0.0f, 1.0f);
+		some_material_changed |= ImGui::DragFloat("Clearcoat IOR", &material.clearcoat_ior, 0.01f, 0.0f, 10.0f);
+		some_material_changed |= ImGui::DragFloat("IOR", &material.ior, 0.01f, 0.0f, 10.0f);
+		some_material_changed |= ImGui::DragFloat("Transmission", &material.specular_transmission, 0.01f, 0.0f, 1.0f);
+		some_material_changed |= ImGui::ColorEdit3("Emission", (float*)&material.emission, ImGuiColorEditFlags_HDR);
+
+		ImGui::PopID();
+
+		ImGui::Separator();
+		counter++;
+	}
+
+	if (some_material_changed)
+	{
+		m_renderer.update_materials(materials);
+		reset_sample_number();
+	}
+}
+
 void RenderWindow::show_denoiser_panel()
 {
 	if (!ImGui::CollapsingHeader("Denoiser"))
@@ -800,6 +849,7 @@ void RenderWindow::display_imgui()
 	ImGui::PushItemWidth(233);
 
 	show_render_settings_panel();
+	show_objects_panel();
 	show_denoiser_panel();
 	show_post_process_panel();
 

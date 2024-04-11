@@ -12,16 +12,16 @@ RendererMaterial SceneParser::ai_mat_to_renderer_mat(aiMaterial* mesh_material)
     //of the application
     aiColor3D diffuse_color;
     aiColor3D emissive_color;
-    float metalness, roughness;
-    float ior, transmission_factor;
+    float metallic, roughness;
+    float ior, specular_transmission;
 
     aiReturn error_code_transmission, error_code_emissive, error_code_ior;
     mesh_material->Get(AI_MATKEY_COLOR_DIFFUSE, diffuse_color);
     error_code_emissive = mesh_material->Get(AI_MATKEY_COLOR_EMISSIVE, emissive_color);
-    mesh_material->Get(AI_MATKEY_METALLIC_FACTOR, metalness);
+    mesh_material->Get(AI_MATKEY_METALLIC_FACTOR, metallic);
     mesh_material->Get(AI_MATKEY_ROUGHNESS_FACTOR, roughness);
     error_code_ior = mesh_material->Get(AI_MATKEY_REFRACTI, ior);
-    error_code_transmission = mesh_material->Get(AI_MATKEY_TRANSMISSION_FACTOR, transmission_factor);
+    error_code_transmission = mesh_material->Get(AI_MATKEY_TRANSMISSION_FACTOR, specular_transmission);
 
     //Creating the material used by the application from the properties read
     RendererMaterial renderer_material;
@@ -38,25 +38,26 @@ RendererMaterial SceneParser::ai_mat_to_renderer_mat(aiMaterial* mesh_material)
     }
     else
         renderer_material.emission = Color(0.0f, 0.0f, 0.0f);
-    renderer_material.metalness = metalness;
+    renderer_material.metallic = metallic;
     renderer_material.roughness = roughness;
     renderer_material.anisotropic = 1.0f; // TODO read from the file instead of hardcoded
     renderer_material.sheen_tint = 1.0f; // TODO read from the file instead of hardcoded
     renderer_material.sheen_color = Color(1.0f, 0.0f, 0.0f); // TODO read from the file instead of hardcoded
     renderer_material.ior = error_code_transmission == AI_SUCCESS ? ior : 1.45f;;
-    renderer_material.transmission_factor = error_code_transmission == AI_SUCCESS ? transmission_factor : 0.0f;
+    renderer_material.specular_transmission = error_code_transmission == AI_SUCCESS ? specular_transmission : 0.0f;
     renderer_material.brdf_type = BRDF::Disney;
 
 
 
+    // TODO remove
     {
         if (debug_counter == 1)
         {
             renderer_material.base_color = Color(1.0f, 0.0f, 0.0f);
-            renderer_material.roughness = 0.5f;
+            renderer_material.roughness = 0.0f;
+            renderer_material.metallic = 1.0f;
             renderer_material.anisotropic = 0.0f;
         }
-        //renderer_material.metalness = 1.0f;// TODO remove
         //renderer_material.roughness = 0.1f;
     }
 

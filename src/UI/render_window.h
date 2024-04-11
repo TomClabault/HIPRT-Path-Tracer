@@ -42,7 +42,6 @@ public:
 	Renderer& get_renderer();
 
 	void setup_display_program();
-	void set_renderer_scene(Scene& scene);
 	void update_renderer_view_translation(float translation_x, float translation_y);
 	void update_renderer_view_zoom(float offset);
 	void update_renderer_view_rotation(float offset_x, float offset_y);
@@ -64,6 +63,7 @@ public:
 	void display(const OrochiBuffer<T>& orochi_buffer);
 
 	void show_render_settings_panel();
+	void show_objects_panel();
 	void show_denoiser_panel();
 	void show_post_process_panel();
 	void display_imgui();
@@ -101,7 +101,7 @@ void RenderWindow::display(const std::vector<T>& pixels_data)
 template <typename T>
 void RenderWindow::display(const OrochiBuffer<T>& orochi_buffer)
 {	
-	display(orochi_buffer.download_pixels().data());
+	display(orochi_buffer.download_data().data());
 }
 
 #endif
