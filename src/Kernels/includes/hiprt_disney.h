@@ -294,8 +294,7 @@ __device__ hiprtFloat3 disney_glass_sample(const RendererMaterial& material, con
             // Relative_eta as already been flipped above in the code
             microfacet_normal = -microfacet_normal;
 
-        if (!refract_ray(local_view_direction, microfacet_normal, sampled_direction, relative_eta))
-            return hiprtFloat3(-2.0f, -2.0f, -2.0f);
+        refract_ray(local_view_direction, microfacet_normal, sampled_direction, relative_eta);
     }
 
     return local_to_world_frame(T, B, surface_normal, sampled_direction);
@@ -341,34 +340,34 @@ __device__ Color disney_eval(const RendererMaterial& material, const hiprtFloat3
     // outside of the object. Said otherwise, only the glass lobe is considered while traveling 
     // inside the object
     bool outside_object = dot(view_direction, shading_normal) > 0;
-    float tmp_pdf = 0.0f, tmp_weight;
+    float tmp_pdf = 0.0f, tmp_weight = 0.0f;
 
-    //// Diffuse
-    //tmp_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission);
-    //final_color += tmp_weight > 0 && outside_object ? disney_diffuse_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : Color(0.0f);
-    //pdf += tmp_pdf * tmp_weight;
+    // Diffuse
+    tmp_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission);
+    final_color += tmp_weight > 0 && outside_object ? disney_diffuse_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : Color(0.0f);
+    pdf += tmp_pdf * tmp_weight;
 
-    //// Metallic
-    //// Computing a custom fresnel term based on the material specular, specular tint, ... coefficients
-    //Color metallic_fresnel = disney_metallic_fresnel(material, local_half_vector, local_to_light_direction);
-    //tmp_weight = (1.0f - material.specular_transmission * (1.0f - material.metallic));
-    //final_color += tmp_weight > 0 && outside_object ? disney_metallic_eval(material, view_direction, shading_normal, to_light_direction, metallic_fresnel, tmp_pdf) : Color(0.0f);
-    //pdf += tmp_pdf * tmp_weight;
+    // Metallic
+    // Computing a custom fresnel term based on the material specular, specular tint, ... coefficients
+    Color metallic_fresnel = disney_metallic_fresnel(material, local_half_vector, local_to_light_direction);
+    tmp_weight = (1.0f - material.specular_transmission * (1.0f - material.metallic));
+    final_color += tmp_weight > 0 && outside_object ? disney_metallic_eval(material, view_direction, shading_normal, to_light_direction, metallic_fresnel, tmp_pdf) : Color(0.0f);
+    pdf += tmp_pdf * tmp_weight;
 
-    //// Clearcoat
-    //tmp_weight = 0.25f * material.clearcoat;
-    //final_color += tmp_weight > 0 && outside_object ? disney_clearcoat_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : Color(0.0f);
-    //pdf += tmp_pdf * tmp_weight;
+    // Clearcoat
+    tmp_weight = 0.25f * material.clearcoat;
+    final_color += tmp_weight > 0 && outside_object ? disney_clearcoat_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : Color(0.0f);
+    pdf += tmp_pdf * tmp_weight;
 
     // Glass
     tmp_weight = (1.0f - material.metallic);
     final_color += tmp_weight > 0 ? disney_glass_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : Color(0.0f);
     pdf += tmp_pdf * tmp_weight;
 
-    //// Sheen
-    //tmp_weight = (1.0f - material.metallic) * material.sheen;
-    //final_color += tmp_weight > 0 && outside_object ? disney_sheen_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : Color(0.0f);
-    //pdf += tmp_pdf * tmp_weight;
+    // Sheen
+    tmp_weight = (1.0f - material.metallic) * material.sheen;
+    final_color += tmp_weight > 0 && outside_object ? disney_sheen_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : Color(0.0f);
+    pdf += tmp_pdf * tmp_weight;
 
     return final_color;
 }
@@ -379,10 +378,10 @@ __device__ Color disney_sample(const RendererMaterial& material, const hiprtFloa
 
     hiprtFloat3 normal = shading_normal;
 
-    float diffuse_weight = 0.0f;//(1.0f - material.metallic) * (1.0f - material.specular_transmission);
-    float metal_weight = 0.0f;//(1.0f - material.specular_transmission * (1.0f - material.metallic));
-    float clearcoat_weight = 0.0f;// 0.25f * material.clearcoat;
-    float glass_weight = (1.0f - material.metallic)* material.specular_transmission;
+    float diffuse_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission);
+    float metal_weight = (1.0f - material.specular_transmission * (1.0f - material.metallic));
+    float clearcoat_weight = 0.25f * material.clearcoat;
+    float glass_weight = (1.0f - material.metallic) * material.specular_transmission;
 
     float normalize_factor = 1.0f / (diffuse_weight + metal_weight + clearcoat_weight + glass_weight);
     diffuse_weight *= normalize_factor;
@@ -401,8 +400,8 @@ __device__ Color disney_sample(const RendererMaterial& material, const hiprtFloa
     {
         // This means that we're going to importance sample a lobe that is not glass
         // so we're going to "pre process" the normal to avoid black fringes
-        
-        
+
+
         // Checking whether the view direction is below the upprt hemisphere around the shading
         // normal or not. This may be the case mainly due to normal mapping / smooth vertex normals. 
         // See Microfacet-based Normal Mapping for Robust Monte Carlo Path Tracing, Eric Heitz, 2017
@@ -418,31 +417,9 @@ __device__ Color disney_sample(const RendererMaterial& material, const hiprtFloa
         // having here
         if (dot(view_direction, shading_normal) < 0)
             normal = reflect_ray(shading_normal, geometric_normal);
-
-        if (rand_1 < cdf[0])
-        {
-            output_direction = disney_diffuse_sample(material, view_direction, normal, random_number_generator);
-        }
-        else if (rand_1 < cdf[1])
-        {
-            output_direction = disney_metallic_sample(material, view_direction, normal, random_number_generator);
-        }
-        else if (rand_1 < cdf[2])
-        {
-            output_direction = disney_clearcoat_sample(material, view_direction, normal, random_number_generator);
-        }
-
-        if (dot(output_direction, shading_normal) < 0)
-        {
-            // It can happen that the light direction sampled is below the surface. 
-            // We return 0.0 in this case
-            return Color(0.0f);
-        }
     }
     else
     {
-        // The last lobe is glass
-
         float dot_shading = dot(view_direction, shading_normal);
         float dot_geometric = dot(view_direction, geometric_normal);
         if (dot_shading * dot_geometric < 0)
@@ -460,10 +437,33 @@ __device__ Color disney_sample(const RendererMaterial& material, const hiprtFloa
             // and we shouldn't flip the normal
             normal = reflect_ray(shading_normal, geometric_normal);
         }
-
-        output_direction = disney_glass_sample(material, view_direction, normal, random_number_generator);
     }
 
+    if (rand_1 < cdf[0])
+    {
+        output_direction = disney_diffuse_sample(material, view_direction, normal, random_number_generator);
+    }
+    else if (rand_1 < cdf[1])
+    {
+        output_direction = disney_metallic_sample(material, view_direction, normal, random_number_generator);
+    }
+    else if (rand_1 < cdf[2])
+    {
+        output_direction = disney_clearcoat_sample(material, view_direction, normal, random_number_generator);
+    }
+    else
+    {
+        output_direction = disney_glass_sample(material, view_direction, normal, random_number_generator);
+
+        return disney_eval(material, view_direction, normal, output_direction, pdf);
+    }
+
+    if (dot(output_direction, shading_normal) < 0)
+        // It can happen that the light direction sampled is below the surface. 
+        // We return 0.0 in this case because the glass lobe wasn't sampled
+        // so we can't have a bounce direction below the surface
+        return Color(0.0f);
+        
     return disney_eval(material, view_direction, normal, output_direction, pdf);
 }
 

@@ -21,8 +21,6 @@ int main(int argc, char* argv[])
 {
 #if GPU_RENDER
     CommandLineArguments arguments = CommandLineArguments::process_command_line_args(argc, argv);
-    arguments.render_width = 1280;
-    arguments.render_height = 720;
 
     const int default_width = arguments.render_width, default_height = arguments.render_height;
     RenderWindow render_window(default_width, default_height);
