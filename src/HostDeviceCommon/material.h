@@ -61,7 +61,7 @@ struct RendererMaterial
     float metallic = 0.0f;
     float specular = 1.0f; // Specular intensity
     float specular_tint = 1.0f; // Specular fresnel strength for the metallic
-    Color tint_color = Color(1.0f);
+    Color specular_color = Color(1.0f);
     
     float anisotropic = 0.0f;
     float anisotropic_rotation = 0.0f;

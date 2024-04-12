@@ -12,6 +12,12 @@
 
 // TODO bugs
 // TODO IMMEDIATE: total sampling disney BRDF
+// - Double sided emissive quad emitting correctly on the two sides but the camera only sees it emiting on one side
+// - Test scene with full red sphere metallic & full green emission plane (white diffuse color of the material) 
+//		+ white ambient light should probably show the reflection of the emission quad 
+//		in the sphere as red even if the quad is only emitting pure green (and the sphere is pure red) 
+//		because the white ambient light reflected off the white diffuse emissive quad and that's what we 
+//		should see in the reflection of the sphere
 // - Why is the rough dragon having black fringes even with normal flipping ?
 // - why is the view direction below the geometric normal sometimes with clearcoat ?
 // - normals AOV not converging correctly ?
@@ -761,22 +767,23 @@ void RenderWindow::show_objects_panel()
 		ImGui::PushID(material_counter);
 
 		some_material_changed |= ImGui::ColorEdit3("Base color", (float*)&material.base_color);
-		some_material_changed |= ImGui::DragFloat("Subsurface", &material.subsurface, 0.001f, 0.0f, 1.0f);
-		some_material_changed |= ImGui::DragFloat("Metallic", &material.metallic, 0.001f, 0.0f, 1.0f);
-		some_material_changed |= ImGui::DragFloat("Specular", &material.specular, 0.001f, 0.0f, 1.0f);
-		some_material_changed |= ImGui::ColorEdit3("Specular tint", (float*)&material.specular_tint);
-		some_material_changed |= ImGui::DragFloat("Roughness", &material.roughness, 0.001f, 0.0f, 1.0f);
-		some_material_changed |= ImGui::DragFloat("Anisotropic", &material.anisotropic, 0.001f, 0.0f, 1.0f);
-		some_material_changed |= ImGui::DragFloat("Anisotropic rotation", &material.anisotropic_rotation, 0.001f, 0.0f, 1.0f);
-		some_material_changed |= ImGui::DragFloat("Sheen", &material.sheen, 0.001f, 0.0f, 1.0f);
-		some_material_changed |= ImGui::DragFloat("Sheen tint strength", &material.sheen_tint, 0.001f, 0.0f, 1.0f);
+		some_material_changed |= ImGui::DragFloat("Subsurface", &material.subsurface, 0.002f, 0.0f, 1.0f);
+		some_material_changed |= ImGui::DragFloat("Metallic", &material.metallic, 0.002f, 0.0f, 1.0f);
+		some_material_changed |= ImGui::DragFloat("Specular", &material.specular, 0.002f, 0.0f, 1.0f);
+		some_material_changed |= ImGui::DragFloat("Specular tint", &material.specular_tint, 0.002f, 0.0f, 1.0f);
+		some_material_changed |= ImGui::ColorEdit3("Specular color", (float*)&material.specular_color);
+		some_material_changed |= ImGui::DragFloat("Roughness", &material.roughness, 0.002f, 0.0f, 1.0f);
+		some_material_changed |= ImGui::DragFloat("Anisotropic", &material.anisotropic, 0.002f, 0.0f, 1.0f);
+		some_material_changed |= ImGui::DragFloat("Anisotropic rotation", &material.anisotropic_rotation, 0.002f, 0.0f, 1.0f);
+		some_material_changed |= ImGui::DragFloat("Sheen", &material.sheen, 0.002f, 0.0f, 1.0f);
+		some_material_changed |= ImGui::DragFloat("Sheen tint strength", &material.sheen_tint, 0.002f, 0.0f, 1.0f);
 		some_material_changed |= ImGui::ColorEdit3("Sheen color", (float*)&material.sheen_color);
-		some_material_changed |= ImGui::DragFloat("Clearcoat", &material.clearcoat, 0.001f, 0.0f, 1.0f);
-		some_material_changed |= ImGui::DragFloat("Clearcoat roughness", &material.clearcoat_roughness, 0.001f, 0.0f, 1.0f);
-		some_material_changed |= ImGui::DragFloat("Clearcoat IOR", &material.clearcoat_ior, 0.001f, 0.0f, 10.0f);
+		some_material_changed |= ImGui::DragFloat("Clearcoat", &material.clearcoat, 0.002f, 0.0f, 1.0f);
+		some_material_changed |= ImGui::DragFloat("Clearcoat roughness", &material.clearcoat_roughness, 0.002f, 0.0f, 1.0f);
+		some_material_changed |= ImGui::DragFloat("Clearcoat IOR", &material.clearcoat_ior, 0.002f, 0.0f, 10.0f);
 		some_material_changed |= ImGui::DragFloat("IOR", &material.ior, 0.01f, 0.0f, 10.0f);
-		some_material_changed |= ImGui::DragFloat("Transmission", &material.specular_transmission, 0.001f, 0.0f, 1.0f);
-		some_material_changed |= ImGui::ColorEdit3("Emission", (float*)&material.emission, ImGuiColorEditFlags_HDR);
+		some_material_changed |= ImGui::DragFloat("Transmission", &material.specular_transmission, 0.002f, 0.0f, 1.0f);
+		some_material_changed |= ImGui::ColorEdit3("Emission", (float*)&material.emission, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
 
 		ImGui::PopID();
 

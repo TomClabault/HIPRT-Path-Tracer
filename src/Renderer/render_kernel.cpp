@@ -679,7 +679,7 @@ Color RenderKernel::disney_metallic_eval(const RendererMaterial& material, const
 {
     // Building the local shading frame
     Vector T, B;
-    build_rotated_ONB(surface_normal, T, B, material.anisotropic_rotation * 2.0f * M_PI);
+    build_rotated_ONB(surface_normal, T, B, material.anisotropic_rotation * M_PI);
 
     Vector local_view_direction = world_to_local_frame(T, B, surface_normal, view_direction);
     Vector local_to_light_direction = world_to_local_frame(T, B, surface_normal, to_light_direction);
@@ -780,7 +780,7 @@ Color RenderKernel::disney_glass_eval(const RendererMaterial& material, const Ve
         surface_normal = -surface_normal;
 
     Vector T, B;
-    build_rotated_ONB(surface_normal, T, B, material.anisotropic_rotation * 2.0f * M_PI);
+    build_rotated_ONB(surface_normal, T, B, material.anisotropic_rotation * M_PI);
 
     Vector local_to_light_direction = world_to_local_frame(T, B, surface_normal, to_light_direction);
     Vector local_view_direction = world_to_local_frame(T, B, surface_normal, view_direction);
@@ -857,7 +857,7 @@ Color RenderKernel::disney_glass_eval(const RendererMaterial& material, const Ve
 Vector RenderKernel::disney_glass_sample(const RendererMaterial& material, const Vector& view_direction, Vector surface_normal, Xorshift32Generator& random_number_generator)
 {
     Vector T, B;
-    build_rotated_ONB(surface_normal, T, B, material.anisotropic_rotation * 2.0f * M_PI);
+    build_rotated_ONB(surface_normal, T, B, material.anisotropic_rotation * M_PI);
 
     float relative_eta = material.ior;
     if (dot(surface_normal, view_direction) < 0)
@@ -907,7 +907,7 @@ Color RenderKernel::disney_sheen_eval(const RendererMaterial& material, const Ve
     Color sheen_color = Color(1.0f - material.sheen_tint) + material.sheen_color * material.sheen_tint;
 
     float base_color_luminance = material.base_color.luminance();
-    Color tint_color = base_color_luminance > 0 ? material.base_color / base_color_luminance : Color(1.0f);
+    Color specular_color = base_color_luminance > 0 ? material.base_color / base_color_luminance : Color(1.0f);
 
     Vector half_vector = normalize(view_direction + to_light_direction);
 

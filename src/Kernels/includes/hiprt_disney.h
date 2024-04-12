@@ -67,21 +67,21 @@ __device__ Color disney_metallic_fresnel(const RendererMaterial& material, const
     // the base_color of the material i.e. typical conductor response.
     // 
     // If the material is 0% metallic, then the fresnel term color is going to be
-    // material.tint_color modulated by the material.specular_tint coefficient (which blends 
-    // between white and material.tint_color) and the material.specular coefficient which
+    // material.specular_color modulated by the material.specular_tint coefficient (which blends 
+    // between white and material.specular_color) and the material.specular coefficient which
     // dictates whether we have a specular at all
-    Color Ks = Color(1.0f - material.specular_tint) + material.specular_tint * material.tint_color;
+    Color Ks = Color(1.0f - material.specular_tint) + material.specular_tint * material.specular_color;
     float R0 = ((material.ior - 1.0f) * (material.ior - 1.0f)) / ((material.ior + 1.0f) * (material.ior + 1.0f));
     Color C0 = material.specular * R0 * (1.0f - material.metallic) * Ks + material.metallic * material.base_color;
 
-    return C0 + (Color(1.0f) - C0) * pow(dot(local_half_vector, local_to_light_direction), 5.0f);
+    return C0 + (Color(1.0f) - C0) * pow(1.0f - dot(local_half_vector, local_to_light_direction), 5.0f);
 }
 
 __device__ Color disney_metallic_eval(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal, const hiprtFloat3& to_light_direction, Color F, float& pdf)
 {
     // Building the local shading frame
     hiprtFloat3 T, B;
-    build_rotated_ONB(surface_normal, T, B, material.anisotropic_rotation * 2.0f * M_PI);
+    build_rotated_ONB(surface_normal, T, B, material.anisotropic_rotation * M_PI);
 
     hiprtFloat3 local_view_direction = world_to_local_frame(T, B, surface_normal, view_direction);
     hiprtFloat3 local_to_light_direction = world_to_local_frame(T, B, surface_normal, to_light_direction);
@@ -92,13 +92,13 @@ __device__ Color disney_metallic_eval(const RendererMaterial& material, const hi
     float HoL = abs(dot(local_half_vector, local_to_light_direction));
 
     // TODO remove
-    {
-        // F = (-2.0f, -2.0f, -2.0f) is the default argument when the overload without the 'Color F' argument
-        // of disney_metallic_eval() was called. Thus, if no F was passed, we're computing it here.
-        // Otherwise, we're going to use the given one
-        if (F.r == -2.0f)
-            F = fresnel_schlick(material.base_color, NoL);
-    }
+    //{
+    //    // F = (-2.0f, -2.0f, -2.0f) is the default argument when the overload without the 'Color F' argument
+    //    // of disney_metallic_eval() was called. Thus, if no F was passed, we're computing it here.
+    //    // Otherwise, we're going to use the given one
+    //    if (F.r == -2.0f)
+    //        F = fresnel_schlick(material.base_color, NoL);
+    //}
     
     float D = GTR2_anisotropic(material, local_half_vector);
     float G1_V = G1(material.alpha_x, material.alpha_y, local_view_direction);
@@ -108,12 +108,6 @@ __device__ Color disney_metallic_eval(const RendererMaterial& material, const hi
     pdf = D * G1_V / (4.0f * NoV);
     return F * D * G / (4.0 * NoL * NoV);
 }
-
-// TODO remove
-//__device__ Color disney_metallic_eval(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal, const hiprtFloat3& to_light_direction, float& pdf)
-//{
-//    return disney_metallic_eval(material, view_direction, surface_normal, to_light_direction, Color(-2.0f, -2.0f, -2.0f), pdf);
-//}
 
 __device__ hiprtFloat3 disney_metallic_sample(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal, Xorshift32Generator& random_number_generator)
 {
@@ -186,7 +180,7 @@ __device__ Color disney_glass_eval(const RendererMaterial& material, const hiprt
         surface_normal = -surface_normal;
 
     hiprtFloat3 T, B;
-    build_rotated_ONB(surface_normal, T, B, material.anisotropic_rotation * 2.0f * M_PI);
+    build_rotated_ONB(surface_normal, T, B, material.anisotropic_rotation * M_PI);
 
     hiprtFloat3 local_to_light_direction = world_to_local_frame(T, B, surface_normal, to_light_direction);
     hiprtFloat3 local_view_direction = world_to_local_frame(T, B, surface_normal, view_direction);
@@ -263,7 +257,7 @@ __device__ Color disney_glass_eval(const RendererMaterial& material, const hiprt
 __device__ hiprtFloat3 disney_glass_sample(const RendererMaterial& material, const hiprtFloat3& view_direction, hiprtFloat3 surface_normal, Xorshift32Generator& random_number_generator)
 {
     hiprtFloat3 T, B;
-    build_rotated_ONB(surface_normal, T, B, material.anisotropic_rotation * 2.0f * M_PI);
+    build_rotated_ONB(surface_normal, T, B, material.anisotropic_rotation * M_PI);
 
     float relative_eta = material.ior;
     if (dot(surface_normal, view_direction) < 0)
@@ -312,7 +306,7 @@ __device__ Color disney_sheen_eval(const RendererMaterial& material, const hiprt
     Color sheen_color = Color(1.0f - material.sheen_tint) + material.sheen_color * material.sheen_tint;
 
     float base_color_luminance = material.base_color.luminance();
-    Color tint_color = base_color_luminance > 0 ? material.base_color / base_color_luminance : Color(1.0f);
+    Color specular_color = base_color_luminance > 0 ? material.base_color / base_color_luminance : Color(1.0f);
 
     hiprtFloat3 half_vector = normalize(view_direction + to_light_direction);
 
@@ -347,38 +341,34 @@ __device__ Color disney_eval(const RendererMaterial& material, const hiprtFloat3
     // outside of the object. Said otherwise, only the glass lobe is considered while traveling 
     // inside the object
     bool outside_object = dot(view_direction, shading_normal) > 0;
+    float tmp_pdf = 0.0f, tmp_weight;
 
-    // Diffuse
-    float diffuse_pdf = 0.0f;
-    const float diffuse_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission);
-    final_color += diffuse_weight > 0 && outside_object ? disney_diffuse_eval(material, view_direction, shading_normal, to_light_direction, diffuse_pdf) : Color(0.0f);
-    pdf += diffuse_pdf * diffuse_weight;
+    //// Diffuse
+    //tmp_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission);
+    //final_color += tmp_weight > 0 && outside_object ? disney_diffuse_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : Color(0.0f);
+    //pdf += tmp_pdf * tmp_weight;
 
-    // Metallic
-    float metallic_pdf = 0.0f;
-    // Computing a custom fresnel term based on the material specular, specular tint, ... coefficients
-    Color metallic_fresnel = disney_metallic_fresnel(material, local_half_vector, local_to_light_direction);
-    const float metallic_weight = (1.0f - material.specular_transmission * (1.0f - material.metallic));
-    final_color += metallic_weight > 0 && outside_object ? disney_metallic_eval(material, view_direction, shading_normal, to_light_direction, Color(-2.0f, -2.0f, 0.0f), metallic_pdf) : Color(0.0f);
-    pdf += metallic_pdf * metallic_weight;
+    //// Metallic
+    //// Computing a custom fresnel term based on the material specular, specular tint, ... coefficients
+    //Color metallic_fresnel = disney_metallic_fresnel(material, local_half_vector, local_to_light_direction);
+    //tmp_weight = (1.0f - material.specular_transmission * (1.0f - material.metallic));
+    //final_color += tmp_weight > 0 && outside_object ? disney_metallic_eval(material, view_direction, shading_normal, to_light_direction, metallic_fresnel, tmp_pdf) : Color(0.0f);
+    //pdf += tmp_pdf * tmp_weight;
 
-    // Clearcoat
-    /*float clearcoat_pdf = 0.0f;
-    const float clearcoat_weight = 0.25f * material.clearcoat;
-    final_color += clearcoat_weight > 0 && outside_object ? disney_clearcoat_eval(material, view_direction, shading_normal, to_light_direction, clearcoat_pdf) : Color(0.0f);
-    pdf += clearcoat_pdf * clearcoat_weight;
+    //// Clearcoat
+    //tmp_weight = 0.25f * material.clearcoat;
+    //final_color += tmp_weight > 0 && outside_object ? disney_clearcoat_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : Color(0.0f);
+    //pdf += tmp_pdf * tmp_weight;
 
     // Glass
-    float glass_pdf = 0.0f;
-    const float glass_weight = (1.0f - material.metallic);
-    final_color += glass_weight > 0 && outside_object ? disney_glass_eval(material, view_direction, shading_normal, to_light_direction, glass_pdf) : Color(0.0f);
-    pdf += glass_pdf * glass_weight;
+    tmp_weight = (1.0f - material.metallic);
+    final_color += tmp_weight > 0 ? disney_glass_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : Color(0.0f);
+    pdf += tmp_pdf * tmp_weight;
 
-    // Sheen
-    float sheen_pdf = 0.0f;
-    const float sheen_weight = (1.0f - material.metallic) * material.sheen;
-    final_color += sheen_weight > 0 && outside_object ? disney_sheen_eval(material, view_direction, shading_normal, to_light_direction, sheen_pdf) : Color(0.0f);
-    pdf += sheen_pdf * sheen_weight;*/
+    //// Sheen
+    //tmp_weight = (1.0f - material.metallic) * material.sheen;
+    //final_color += tmp_weight > 0 && outside_object ? disney_sheen_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : Color(0.0f);
+    //pdf += tmp_pdf * tmp_weight;
 
     return final_color;
 }
@@ -389,10 +379,10 @@ __device__ Color disney_sample(const RendererMaterial& material, const hiprtFloa
 
     hiprtFloat3 normal = shading_normal;
 
-    float diffuse_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission);
-    float metal_weight = (1.0f - material.specular_transmission * (1.0f - material.metallic));
-    float clearcoat_weight = 0;// 0.25f * material.clearcoat;
-    float glass_weight = 0;// (1.0f - material.metallic)* material.specular_transmission;
+    float diffuse_weight = 0.0f;//(1.0f - material.metallic) * (1.0f - material.specular_transmission);
+    float metal_weight = 0.0f;//(1.0f - material.specular_transmission * (1.0f - material.metallic));
+    float clearcoat_weight = 0.0f;// 0.25f * material.clearcoat;
+    float glass_weight = (1.0f - material.metallic)* material.specular_transmission;
 
     float normalize_factor = 1.0f / (diffuse_weight + metal_weight + clearcoat_weight + glass_weight);
     diffuse_weight *= normalize_factor;
@@ -427,29 +417,20 @@ __device__ Color disney_sample(const RendererMaterial& material, const hiprtFloa
         // the multi-scattering issue of microfacet BRDFs on top of the dark fringes issue we're
         // having here
         if (dot(view_direction, shading_normal) < 0)
-        {
             normal = reflect_ray(shading_normal, geometric_normal);
-
-            // In some cases, flipping the normal isn't enough to bring
-            // the view direction in the upper hemisphere around the shading normal
-            // Giving up and returning 0.0f in this case
-            // TODO INVESTIGATE, this seems to be happening when the view dir is below the GEOMETRIC normal in the first place
-            if (dot(view_direction, normal) < 0)
-                return Color(0.0f);
-        }
 
         if (rand_1 < cdf[0])
         {
             output_direction = disney_diffuse_sample(material, view_direction, normal, random_number_generator);
         }
-        else //if (rand_1 < cdf[1])
+        else if (rand_1 < cdf[1])
         {
             output_direction = disney_metallic_sample(material, view_direction, normal, random_number_generator);
         }
-        /*else if (rand_1 < cdf[2])
+        else if (rand_1 < cdf[2])
         {
             output_direction = disney_clearcoat_sample(material, view_direction, normal, random_number_generator);
-        }*/
+        }
 
         if (dot(output_direction, shading_normal) < 0)
         {
@@ -484,15 +465,6 @@ __device__ Color disney_sample(const RendererMaterial& material, const hiprtFloa
     }
 
     return disney_eval(material, view_direction, normal, output_direction, pdf);
-
-    // TODO remove
-    {
-        ////return disney_diffuse_eval(material, view_direction, normal, output_direction, pdf);
-        ////return disney_metallic_eval(material, view_direction, normal, output_direction, pdf);
-        ////return disney_clearcoat_eval(material, view_direction, normal, output_direction, pdf);
-        ////return disney_glass_eval(material, view_direction, normal, output_direction, pdf);
-        //return disney_sheen_eval(material, view_direction, normal, output_direction, pdf);
-    }
 }
 
 #endif
