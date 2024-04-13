@@ -1001,9 +1001,10 @@ Color RenderKernel::disney_sample(const RendererMaterial& material, const Vector
 
     Vector normal = shading_normal;
 
-    float diffuse_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission);
-    float metal_weight = (1.0f - material.specular_transmission * (1.0f - material.metallic));
-    float clearcoat_weight = 0.25f * material.clearcoat;
+    bool outside_object = dot(view_direction, shading_normal) > 0;
+    float diffuse_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission) * outside_object;
+    float metal_weight = (1.0f - material.specular_transmission * (1.0f - material.metallic)) * outside_object;
+    float clearcoat_weight = 0.25f * material.clearcoat * outside_object;
     float glass_weight = (1.0f - material.metallic) * material.specular_transmission;
 
     float normalize_factor = 1.0f / (diffuse_weight + metal_weight + clearcoat_weight + glass_weight);

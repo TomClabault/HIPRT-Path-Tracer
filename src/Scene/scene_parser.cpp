@@ -50,21 +50,21 @@ RendererMaterial SceneParser::ai_mat_to_renderer_mat(aiMaterial* mesh_material)
 
 
     // TODO remove
-    {
-        if (debug_counter == 2)
-        {
-            //renderer_material.base_color = Color(1.0f, 0.0f, 0.0f);
-            renderer_material.roughness = 0.0f;
-            renderer_material.metallic = 0.0f;
-            renderer_material.specular = 0.0f;
-            renderer_material.anisotropic = 0.0f;
-            renderer_material.sheen = 0.0f;
-            renderer_material.clearcoat = 0.0f;
-            renderer_material.specular_transmission = 1.0f;
-            renderer_material.anisotropic_rotation = 0.0f;
-        }
-        //renderer_material.roughness = 0.1f;
-    }
+    //{
+    //    if (debug_counter == 2)
+    //    {
+    //        //renderer_material.base_color = Color(1.0f, 0.0f, 0.0f);
+    //        renderer_material.roughness = 0.0f;
+    //        renderer_material.metallic = 0.0f;
+    //        renderer_material.specular = 0.0f;
+    //        renderer_material.anisotropic = 0.0f;
+    //        renderer_material.sheen = 0.0f;
+    //        renderer_material.clearcoat = 0.0f;
+    //        renderer_material.specular_transmission = 1.0f;
+    //        renderer_material.anisotropic_rotation = 0.0f;
+    //    }
+    //    //renderer_material.roughness = 0.1f;
+    //}
 
     renderer_material.make_safe();
     renderer_material.precompute_properties();

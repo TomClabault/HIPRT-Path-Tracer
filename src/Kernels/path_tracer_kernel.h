@@ -496,8 +496,8 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                 {
                     // TODO Commented out for now as the current solution isn't robust enough and
                     // we're getting self-intersections in pretty much every scene
-                    /*debug_set_final_color(render_data, x, y, res.x, Color(0.0f, 10000.0f, 0.0f));
-                    return;*/
+                    debug_set_final_color(render_data, x, y, res.x, Color(0.0f, 10000.0f, 0.0f));
+                    return;
                 }
 
                 if (intersection_found)
