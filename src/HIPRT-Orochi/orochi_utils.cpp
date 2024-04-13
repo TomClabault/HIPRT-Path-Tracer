@@ -1,3 +1,8 @@
+/*
+ * Copyright 2024 Tom Clabault. GNU GPL3 license.
+ * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
+ */
+
 #include "HIPRT-Orochi/orochi_utils.h"
 
 void orochi_check_error(oroError res, const char* file, uint32_t line)

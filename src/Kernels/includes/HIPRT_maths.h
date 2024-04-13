@@ -1,4 +1,10 @@
-#pragma once
+/*
+ * Copyright 2024 Tom Clabault. GNU GPL3 license.
+ * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
+ */
+
+#ifndef HIPRT_MATHS_H
+#define HIPRT_MATHS_H
 
 #if ( defined( __CUDACC__ ) || defined( __HIPCC__ ) )
 #define __KERNELCC__
@@ -1033,3 +1039,5 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float4x4 LookAt(const float3& eye, const float3& 
 
 	return m;
 }
+
+#endif
