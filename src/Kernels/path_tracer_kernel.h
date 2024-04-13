@@ -169,10 +169,8 @@ __device__ Color smooth_glass_bsdf(const RendererMaterial& material, hiprtFloat3
         hiprtFloat3 refract_direction;
         bool can_refract = refract_ray(-ray_direction, surface_normal, refract_direction, eta_t / eta_i);
         if (!can_refract)
-        {
-            // Shouldn't happen (?)
-            return Color(1000000.0f, 0.0f, 1000000.0f); // Omega pink
-        }
+            // Shouldn't happen but can because of floating point imprecisions
+            return Color(0.0f);
 
         out_bounce_direction = refract_direction;
         surface_normal = -surface_normal;
@@ -201,11 +199,10 @@ __device__ bool trace_ray(const HIPRTRenderData& render_data, hiprtRay ray, HitI
     {
         hit_info.inter_point = ray.origin + hit.t * ray.direction;
         hit_info.primitive_index = hit.primID;
-
         // hit.normal is in object space, this simple approach will not work if using
         // multiple-levels BVH (TLAS/BLAS)
-        hiprtFloat3 geometric_normal = normalize(hit.normal);
-        
+        hit_info.geometric_normal = normalize(hit.normal);
+
         int vertex_A_index = render_data.triangles_indices[hit_info.primitive_index * 3 + 0];
         if (render_data.normals_present[vertex_A_index])
         {
@@ -221,8 +218,7 @@ __device__ bool trace_ray(const HIPRTRenderData& render_data, hiprtRay ray, HitI
             hit_info.shading_normal = normalize(smooth_normal);
         }
         else
-            hit_info.shading_normal = geometric_normal;
-        hit_info.geometric_normal = geometric_normal;
+            hit_info.shading_normal = hit_info.geometric_normal;
 
         hit_info.t = hit.t;
         hit_info.uv = hit.uv;
@@ -379,7 +375,8 @@ __device__ Color sample_light_sources(HIPRTRenderData& render_data, const hiprtF
 
         if (inter_found)
         {
-            float cos_angle = RT_MAX(dot(new_ray_hit_info.shading_normal, -sampled_brdf_direction), 0.0f);
+            // abs() here to allow double sided emissive geometry
+            float cos_angle = abs(dot(new_ray_hit_info.shading_normal, -sampled_brdf_direction));
             if (cos_angle > 0.0f)
             {
                 int material_index = render_data.material_indices[new_ray_hit_info.primitive_index];
@@ -496,15 +493,29 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                 {
                     // TODO Commented out for now as the current solution isn't robust enough and
                     // we're getting self-intersections in pretty much every scene
-                    debug_set_final_color(render_data, x, y, res.x, Color(0.0f, 10000.0f, 0.0f));
-                    return;
+                    /*debug_set_final_color(render_data, x, y, res.x, Color(0.0f, 10000.0f, 0.0f));
+                    return;*/
                 }
+
 
                 if (intersection_found)
                 {
                     int material_index = render_data.material_indices[closest_hit_info.primitive_index];
                     RendererMaterial material = render_data.materials_buffer[material_index];
                     last_brdf_hit_type = material.brdf_type;
+
+                    // For the BRDF calculations, bounces, ... to be correct, we need the normal to be in the same hemisphere as
+                    // the view direction. One thing that can go wrong is when we have an emissive quad (typical area light)
+                    // and a ray hits the back of the quad. The normal will not be facing the view direction in this
+                    // case and this will cause issues later in the BRDF.
+                    // Because we want to allow backfacing emissive geometry (making the emissive geometry double sided
+                    // and emitting light in both directions of the surface), we're negating the normal to make
+                    // it face the view direction (but only for emissive geometry)
+                    if (material.is_emissive() && dot(-ray.direction, closest_hit_info.geometric_normal) < 0)
+                    {
+                        closest_hit_info.geometric_normal = -closest_hit_info.geometric_normal;
+                        closest_hit_info.shading_normal = -closest_hit_info.shading_normal;
+                    }
 
                     // --------------------------------------------------- //
                     // ----------------- Direct lighting ----------------- //
@@ -545,8 +556,8 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
 
                     int outside_surface = dot(bounce_direction, closest_hit_info.shading_normal) < 0 ? -1.0f : 1.0;
                     hiprtFloat3 new_ray_origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 3.0e-3f * outside_surface;
-                    ray.origin = new_ray_origin; // Updating the next ray origin
-                    ray.direction = bounce_direction; // Updating the next ray direction
+                    ray.origin = new_ray_origin;
+                    ray.direction = bounce_direction;
 
                     next_ray_state = RayState::BOUNCE;
                 }

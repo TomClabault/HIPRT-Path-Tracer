@@ -382,11 +382,17 @@ __device__ Color disney_sample(const RendererMaterial& material, const hiprtFloa
 
     hiprtFloat3 normal = shading_normal;
 
-    bool outside_object = dot(view_direction, shading_normal) > 0;
+    float glass_weight = (1.0f - material.metallic) * material.specular_transmission;
+    bool outside_object = dot(view_direction, normal) > 0;
+    if (glass_weight == 0.0f && !outside_object)
+    {
+        normal = reflect_ray(shading_normal, geometric_normal);
+        outside_object = dot(view_direction, normal) > 0;
+    }
+
     float diffuse_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission) * outside_object;
     float metal_weight = (1.0f - material.specular_transmission * (1.0f - material.metallic)) * outside_object;
     float clearcoat_weight = 0.25f * material.clearcoat * outside_object;
-    float glass_weight = (1.0f - material.metallic) * material.specular_transmission;
 
     float normalize_factor = 1.0f / (diffuse_weight + metal_weight + clearcoat_weight + glass_weight);
     diffuse_weight *= normalize_factor;
@@ -463,7 +469,7 @@ __device__ Color disney_sample(const RendererMaterial& material, const hiprtFloa
         return disney_eval(material, view_direction, normal, output_direction, pdf);
     }
 
-    if (dot(output_direction, shading_normal) < 0)
+    if (dot(output_direction, geometric_normal) < 0)
         // It can happen that the light direction sampled is below the surface. 
         // We return 0.0 in this case because the glass lobe wasn't sampled
         // so we can't have a bounce direction below the surface

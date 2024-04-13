@@ -4,8 +4,8 @@
 
 #define DEBUG_PIXEL 0
 #define DEBUG_EXACT_COORDINATE 0
-#define DEBUG_PIXEL_X 622
-#define DEBUG_PIXEL_Y 376
+#define DEBUG_PIXEL_X 105
+#define DEBUG_PIXEL_Y 508
 
 Point point_mat4x4(const glm::mat4x4& mat, const Point& p)
 {
@@ -221,6 +221,19 @@ void RenderKernel::ray_trace_pixel(int x, int y)
                     int material_index = m_materials_indices_buffer[closest_hit_info.primitive_index];
                     RendererMaterial material = m_materials_buffer[material_index];
                     last_brdf_hit_type = material.brdf_type;
+
+                    // For the BRDF calculations, bounces, ... to be correct, we need the normal to be in the same hemisphere as
+                    // the view direction. One thing that can go wrong is when we have an emissive quad (typical area light)
+                    // and a ray hits the back of the quad. The normal will not be facing the view direction in this
+                    // case and this will cause issues later in the BRDF.
+                    // Because we want to allow backfacing emissive geometry (making the emissive geometry double sided
+                    // and emitting light in both directions of the surface), we're negating the normal to make
+                    // it face the view direction (but only for emissive geometry)
+                    if (material.is_emissive() && dot(-ray.direction, closest_hit_info.geometric_normal) < 0)
+                    {
+                        closest_hit_info.geometric_normal = -closest_hit_info.geometric_normal;
+                        closest_hit_info.shading_normal = -closest_hit_info.shading_normal;
+                    }
 
                     // --------------------------------------------------- //
                     // ----------------- Direct lighting ----------------- //
@@ -576,11 +589,8 @@ Color RenderKernel::smooth_glass_bsdf(const RendererMaterial& material, Vector& 
         Vector refract_direction;
         bool can_refract = refract_ray(-ray_direction, shading_normal, refract_direction, eta_t / eta_i);
         if (!can_refract)
-        {
-            // Shouldn't happen (?)
-            std::cout << "cannot refract" << std::endl;
-            std::exit(1);
-        }
+            // Shouldn't happen but can because of floating point imprecisions
+            return Color(0.0f);
 
         out_bounce_direction = refract_direction;
         shading_normal = -shading_normal;
@@ -987,8 +997,6 @@ Color RenderKernel::disney_eval(const RendererMaterial& material, const Vector& 
     // Sheen
     tmp_weight = (1.0f - material.metallic) * material.sheen;
     Color sheen_color = tmp_weight > 0 && outside_object ? tmp_weight * disney_sheen_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : Color(0.0f);
-    if (sheen_color.r < 0 || sheen_color.g < 0 || sheen_color.b < 0)
-        std::cout << "sheen: " << sheen_color << std::endl;
     final_color += sheen_color;
     pdf += tmp_pdf * tmp_weight;
 
@@ -1001,11 +1009,17 @@ Color RenderKernel::disney_sample(const RendererMaterial& material, const Vector
 
     Vector normal = shading_normal;
 
-    bool outside_object = dot(view_direction, shading_normal) > 0;
+    float glass_weight = (1.0f - material.metallic) * material.specular_transmission;
+    bool outside_object = dot(view_direction, normal) > 0;
+    if (glass_weight == 0.0f && !outside_object)
+    {
+        normal = reflect_ray(shading_normal, geometric_normal);
+        outside_object = dot(view_direction, normal) > 0;
+    }
+
     float diffuse_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission) * outside_object;
     float metal_weight = (1.0f - material.specular_transmission * (1.0f - material.metallic)) * outside_object;
     float clearcoat_weight = 0.25f * material.clearcoat * outside_object;
-    float glass_weight = (1.0f - material.metallic) * material.specular_transmission;
 
     float normalize_factor = 1.0f / (diffuse_weight + metal_weight + clearcoat_weight + glass_weight);
     diffuse_weight *= normalize_factor;
