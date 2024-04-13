@@ -454,14 +454,8 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
     Xorshift32Generator random_number_generator(wang_hash((index + 1) * (render_data.m_render_settings.sample_number + 1)));
 
     Color final_color = Color(0.0f, 0.0f, 0.0f);
-
-    // This denoiser_blend variable is used when the rays hit delta function
-    // BRDFs. In those cases, the denoiser albedo/normal is going to be
-    // the Fresnel blend of the reflected and transmitted albedo/normal
-    // so we're going to have to keep track of the blend coefficient across
-    // the bounces
     Color denoiser_albedo = Color(0.0f, 0.0f, 0.0f);
-    hiprtFloat3 denoiser_normal = hiprtFloat3{ 0.0f, 0.0f, 0.0f };
+    hiprtFloat3 denoiser_normal = hiprtFloat3(0.0f, 0.0f, 0.0f);
     for (int sample = 0; sample < render_data.m_render_settings.samples_per_frame; sample++)
     {
         //Jittered around the center
@@ -470,8 +464,8 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
 
         hiprtRay ray = camera.get_camera_ray(x_jittered, y_jittered, res);
 
-        Color throughput = Color{ 1.0f, 1.0f, 1.0f };
-        Color sample_color = Color{ 0.0f, 0.0f, 0.0f };
+        Color throughput = Color(1.0f);
+        Color sample_color = Color(0.0f);
         RayState next_ray_state = RayState::BOUNCE;
         BRDF last_brdf_hit_type = BRDF::Uninitialized;
 
@@ -496,7 +490,6 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                     /*debug_set_final_color(render_data, x, y, res.x, Color(0.0f, 10000.0f, 0.0f));
                     return;*/
                 }
-
 
                 if (intersection_found)
                 {

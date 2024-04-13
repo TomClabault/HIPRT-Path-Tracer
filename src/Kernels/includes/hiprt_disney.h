@@ -469,7 +469,7 @@ __device__ Color disney_sample(const RendererMaterial& material, const hiprtFloa
         return disney_eval(material, view_direction, normal, output_direction, pdf);
     }
 
-    if (dot(output_direction, geometric_normal) < 0)
+    if (dot(output_direction, shading_normal) < 0)
         // It can happen that the light direction sampled is below the surface. 
         // We return 0.0 in this case because the glass lobe wasn't sampled
         // so we can't have a bounce direction below the surface
