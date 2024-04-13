@@ -1,2 +1,0 @@
-hiprt02002_5.7_amd.hipfb filter=lfs diff=lfs merge=lfs -text
-hiprt02002_5.7_amd_lib_win.bc filter=lfs diff=lfs merge=lfs -text
