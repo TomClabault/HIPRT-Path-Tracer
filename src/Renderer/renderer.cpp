@@ -52,6 +52,11 @@ RenderSettings& Renderer::get_render_settings()
 	return m_render_settings;
 }
 
+WorldSettings& Renderer::get_world_settings()
+{
+	return m_world_settings;
+}
+
 int Renderer::get_sample_number()
 {
 	return m_render_settings.sample_number;
@@ -67,23 +72,27 @@ HIPRTRenderData Renderer::get_render_data(const OpenImageDenoiser& denoiser)
 	HIPRTRenderData render_data;
 
 	render_data.geom = m_hiprt_scene.geometry;
-	render_data.pixels = m_pixels_buffer.get_pointer();
-	render_data.denoiser_normals = m_normals_buffer.get_pointer();
-	render_data.denoiser_albedo = m_albedo_buffer.get_pointer();
-	render_data.triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.mesh.triangleIndices);
-	render_data.triangles_vertices = reinterpret_cast<hiprtFloat3*>(m_hiprt_scene.mesh.vertices);
-	render_data.normals_present = reinterpret_cast<unsigned char*>(m_hiprt_scene.normals_present);
-	render_data.vertex_normals = reinterpret_cast<hiprtFloat3*>(m_hiprt_scene.vertex_normals);
-	render_data.material_indices = reinterpret_cast<int*>(m_hiprt_scene.material_indices);
-	render_data.materials_buffer = reinterpret_cast<RendererMaterial*>(m_hiprt_scene.materials_buffer);
-	render_data.emissive_triangles_count = m_hiprt_scene.emissive_triangles_count;
-	render_data.emissive_triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.emissive_triangles_indices);
 
-	render_data.m_render_settings.frame_number = m_render_settings.frame_number;
-	render_data.m_render_settings.sample_number = m_render_settings.sample_number;
-	render_data.m_render_settings.samples_per_frame = m_render_settings.samples_per_frame;
-	render_data.m_render_settings.nb_bounces = m_render_settings.nb_bounces;
-	render_data.m_render_settings.render_low_resolution = m_render_settings.render_low_resolution;
+	render_data.buffers.pixels = m_pixels_buffer.get_pointer();
+	render_data.buffers.denoiser_normals = m_normals_buffer.get_pointer();
+	render_data.buffers.denoiser_albedo = m_albedo_buffer.get_pointer();
+	render_data.buffers.triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.mesh.triangleIndices);
+	render_data.buffers.triangles_vertices = reinterpret_cast<hiprtFloat3*>(m_hiprt_scene.mesh.vertices);
+	render_data.buffers.normals_present = reinterpret_cast<unsigned char*>(m_hiprt_scene.normals_present);
+	render_data.buffers.vertex_normals = reinterpret_cast<hiprtFloat3*>(m_hiprt_scene.vertex_normals);
+	render_data.buffers.material_indices = reinterpret_cast<int*>(m_hiprt_scene.material_indices);
+	render_data.buffers.materials_buffer = reinterpret_cast<RendererMaterial*>(m_hiprt_scene.materials_buffer);
+	render_data.buffers.emissive_triangles_count = m_hiprt_scene.emissive_triangles_count;
+	render_data.buffers.emissive_triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.emissive_triangles_indices);
+
+	render_data.world_settings = m_world_settings;
+	//render_data.render_settings = m_render_settings;
+
+	render_data.render_settings.frame_number = m_render_settings.frame_number;
+	render_data.render_settings.sample_number = m_render_settings.sample_number;
+	render_data.render_settings.samples_per_frame = m_render_settings.samples_per_frame;
+	render_data.render_settings.nb_bounces = m_render_settings.nb_bounces;
+	render_data.render_settings.render_low_resolution = m_render_settings.render_low_resolution;
 
 	return render_data;
 }

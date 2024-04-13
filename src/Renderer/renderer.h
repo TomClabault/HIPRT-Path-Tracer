@@ -35,6 +35,7 @@ public:
 	OrochiBuffer<Color>& get_denoiser_albedo_buffer();
 	OrochiBuffer<hiprtFloat3>& get_denoiser_normals_buffer();
 	RenderSettings& get_render_settings();
+	WorldSettings& get_world_settings();
 	HIPRTRenderData get_render_data(const OpenImageDenoiser& denoiser);
 
 	void init_ctx(int device_index);
@@ -72,8 +73,8 @@ private:
 	// to modify them interactively with ImGui
 	std::vector<RendererMaterial> m_materials;
 
+	WorldSettings m_world_settings;
 	RenderSettings m_render_settings;
-	HIPRTRenderData m_scene_data;
 };
 
 #endif

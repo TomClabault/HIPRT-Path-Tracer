@@ -63,6 +63,8 @@
 //		- https://github.com/libigl/libigl/issues/1388
 //		- https://github.com/libigl/libigl/issues/1534
 // - Visualizing russian roulette depth termination
+// - Being able to enable / disable env map importance sampling
+// - Being able to enable / disable MIS
 // - Better ray origin offset to avoid self intersections
 // - Realistic Camera Model
 // - Textures for each parameter of the Disney BSDF
@@ -665,11 +667,12 @@ void RenderWindow::show_render_settings_panel()
 	if (!ImGui::CollapsingHeader("Render Settings"))
 		return;
 
+	bool render_dirty = false;
+
 	if (ImGui::Combo("Render Kernel", &m_application_settings.selected_kernel, "Full Path Tracer\0Normals Visualisation\0\0"))
 	{
 		m_renderer.compile_trace_kernel(m_application_settings.kernel_files[m_application_settings.selected_kernel].c_str(), m_application_settings.kernel_functions[m_application_settings.selected_kernel].c_str());
-
-		reset_sample_number();
+		render_dirty = true;
 	}
 
 	const char* items[] = { "Default", "Denoiser - Normals", "Denoiser - Denoised normals", "Denoiser - Albedo", "Denoiser - Denoised albedo" };
@@ -710,7 +713,7 @@ void RenderWindow::show_render_settings_panel()
 		set_display_settings(display_settings);
 	}
 
-	if (m_render_settings.keep_same_resolution) // TODO Put this setting in application settings ?
+	if (m_render_settings.keep_same_resolution)
 		ImGui::BeginDisabled();
 	float resolution_scaling_backup = m_application_settings.render_resolution_scale;
 	if (ImGui::InputFloat("Resolution scale", &m_application_settings.render_resolution_scale))
@@ -720,7 +723,7 @@ void RenderWindow::show_render_settings_panel()
 			resolution_scale = resolution_scaling_backup;
 
 		change_resolution_scaling(resolution_scale);
-		reset_sample_number();
+		render_dirty = true;
 	}
 	if (m_render_settings.keep_same_resolution)
 		ImGui::EndDisabled();
@@ -744,16 +747,24 @@ void RenderWindow::show_render_settings_panel()
 	if (ImGui::InputInt("Max bounces", &m_render_settings.nb_bounces))
 	{
 		// Clamping to 0 in case the user input a negative number of bounces	
-		m_render_settings.nb_bounces = std::max(m_render_settings.nb_bounces, 0);
-
-		reset_sample_number();
+		m_render_settings.nb_bounces = std::max(m_render_settings.nb_bounces, 0); 
+		render_dirty = true;
 	}
 
+	render_dirty |= ImGui::Checkbox("Use ambient light", &m_renderer.get_world_settings().use_ambient_light);
+	render_dirty |= ImGui::ColorEdit3("Ambient light color", (float*)&m_renderer.get_world_settings().ambient_light_color, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
+
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+	if (render_dirty)
+		reset_sample_number();
 }
 
 void RenderWindow::show_objects_panel()
 {
+	if (!ImGui::CollapsingHeader("Objects"))
+		return;
+
 	std::vector<RendererMaterial> materials = m_renderer.get_materials();
 
 	int material_modfied_id = -1;
@@ -811,6 +822,8 @@ void RenderWindow::show_objects_panel()
 		m_renderer.update_materials(materials);
 		reset_sample_number();
 	}
+
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 }
 
 void RenderWindow::show_denoiser_panel()

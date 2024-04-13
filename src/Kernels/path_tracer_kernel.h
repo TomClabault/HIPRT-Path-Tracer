@@ -203,17 +203,17 @@ __device__ bool trace_ray(const HIPRTRenderData& render_data, hiprtRay ray, HitI
         // multiple-levels BVH (TLAS/BLAS)
         hit_info.geometric_normal = normalize(hit.normal);
 
-        int vertex_A_index = render_data.triangles_indices[hit_info.primitive_index * 3 + 0];
-        if (render_data.normals_present[vertex_A_index])
+        int vertex_A_index = render_data.buffers.triangles_indices[hit_info.primitive_index * 3 + 0];
+        if (render_data.buffers.normals_present[vertex_A_index])
         {
             // Smooth normal available for the triangle
 
-            int vertex_B_index = render_data.triangles_indices[hit_info.primitive_index * 3 + 1];
-            int vertex_C_index = render_data.triangles_indices[hit_info.primitive_index * 3 + 2];
+            int vertex_B_index = render_data.buffers.triangles_indices[hit_info.primitive_index * 3 + 1];
+            int vertex_C_index = render_data.buffers.triangles_indices[hit_info.primitive_index * 3 + 2];
 
-            hiprtFloat3 smooth_normal = render_data.vertex_normals[vertex_B_index] * hit.uv.x
-                + render_data.vertex_normals[vertex_C_index] * hit.uv.y
-                + render_data.vertex_normals[vertex_A_index] * (1.0f - hit.uv.x - hit.uv.y);
+            hiprtFloat3 smooth_normal = render_data.buffers.vertex_normals[vertex_B_index] * hit.uv.x
+                + render_data.buffers.vertex_normals[vertex_C_index] * hit.uv.y
+                + render_data.buffers.vertex_normals[vertex_A_index] * (1.0f - hit.uv.x - hit.uv.y);
 
             hit_info.shading_normal = normalize(smooth_normal);
         }
@@ -238,13 +238,13 @@ __device__ float power_heuristic(float pdf_a, float pdf_b)
 
 __device__ hiprtFloat3 sample_random_point_on_lights(const HIPRTRenderData& render_data, Xorshift32Generator& random_number_generator, float& pdf, LightSourceInformation& light_info)
 {
-    int random_index = random_number_generator.random_index(render_data.emissive_triangles_count);
-    int triangle_index = light_info.emissive_triangle_index = render_data.emissive_triangles_indices[random_index];
+    int random_index = random_number_generator.random_index(render_data.buffers.emissive_triangles_count);
+    int triangle_index = light_info.emissive_triangle_index = render_data.buffers.emissive_triangles_indices[random_index];
     
 
-    hiprtFloat3 vertex_A = render_data.triangles_vertices[render_data.triangles_indices[triangle_index * 3 + 0]];
-    hiprtFloat3 vertex_B = render_data.triangles_vertices[render_data.triangles_indices[triangle_index * 3 + 1]];
-    hiprtFloat3 vertex_C = render_data.triangles_vertices[render_data.triangles_indices[triangle_index * 3 + 2]];
+    hiprtFloat3 vertex_A = render_data.buffers.triangles_vertices[render_data.buffers.triangles_indices[triangle_index * 3 + 0]];
+    hiprtFloat3 vertex_B = render_data.buffers.triangles_vertices[render_data.buffers.triangles_indices[triangle_index * 3 + 1]];
+    hiprtFloat3 vertex_C = render_data.buffers.triangles_vertices[render_data.buffers.triangles_indices[triangle_index * 3 + 2]];
 
     float rand_1 = random_number_generator();
     float rand_2 = random_number_generator();
@@ -262,7 +262,7 @@ __device__ hiprtFloat3 sample_random_point_on_lights(const HIPRTRenderData& rend
     float length_normal = length(normal);
     light_info.light_source_normal = normal / length_normal; // Normalization
     float triangle_area = length_normal * 0.5f;
-    float nb_emissive_triangles = render_data.emissive_triangles_count;
+    float nb_emissive_triangles = render_data.buffers.emissive_triangles_count;
 
     pdf = 1.0f / (nb_emissive_triangles * triangle_area);
 
@@ -271,9 +271,9 @@ __device__ hiprtFloat3 sample_random_point_on_lights(const HIPRTRenderData& rend
 
 __device__ float triangle_area(const HIPRTRenderData& render_data, int triangle_index)
 {
-    hiprtFloat3 vertex_A = render_data.triangles_vertices[render_data.triangles_indices[triangle_index * 3 + 0]];
-    hiprtFloat3 vertex_B = render_data.triangles_vertices[render_data.triangles_indices[triangle_index * 3 + 1]];
-    hiprtFloat3 vertex_C = render_data.triangles_vertices[render_data.triangles_indices[triangle_index * 3 + 2]];
+    hiprtFloat3 vertex_A = render_data.buffers.triangles_vertices[render_data.buffers.triangles_indices[triangle_index * 3 + 0]];
+    hiprtFloat3 vertex_B = render_data.buffers.triangles_vertices[render_data.buffers.triangles_indices[triangle_index * 3 + 1]];
+    hiprtFloat3 vertex_C = render_data.buffers.triangles_vertices[render_data.buffers.triangles_indices[triangle_index * 3 + 2]];
 
     hiprtFloat3 AB = vertex_B - vertex_A;
     hiprtFloat3 AC = vertex_C - vertex_A;
@@ -296,7 +296,7 @@ __device__ bool evaluate_shadow_ray(const HIPRTRenderData& render_data, hiprtRay
 
 __device__ Color sample_light_sources(HIPRTRenderData& render_data, const hiprtFloat3& view_direction, const HitInfo& closest_hit_info, const RendererMaterial& material, Xorshift32Generator& random_number_generator)
 {
-    if (render_data.emissive_triangles_count == 0)
+    if (render_data.buffers.emissive_triangles_count == 0)
         // No emmisive geometry in the scene to sample
         return Color(0.0f);
 
@@ -340,7 +340,7 @@ __device__ Color sample_light_sources(HIPRTRenderData& render_data, const hiprtF
 
         if (!in_shadow)
         {
-            const RendererMaterial& emissive_triangle_material = render_data.materials_buffer[render_data.material_indices[light_source_info.emissive_triangle_index]];
+            const RendererMaterial& emissive_triangle_material = render_data.buffers.materials_buffer[render_data.buffers.material_indices[light_source_info.emissive_triangle_index]];
 
             light_sample_pdf *= distance_to_light * distance_to_light;
             light_sample_pdf /= dot_light_source;
@@ -379,8 +379,8 @@ __device__ Color sample_light_sources(HIPRTRenderData& render_data, const hiprtF
             float cos_angle = abs(dot(new_ray_hit_info.shading_normal, -sampled_brdf_direction));
             if (cos_angle > 0.0f)
             {
-                int material_index = render_data.material_indices[new_ray_hit_info.primitive_index];
-                RendererMaterial material = render_data.materials_buffer[material_index];
+                int material_index = render_data.buffers.material_indices[new_ray_hit_info.primitive_index];
+                RendererMaterial material = render_data.buffers.materials_buffer[material_index];
 
                 Color emission = material.emission;
                 if (emission.r > 0 || emission.g > 0 || emission.b > 0)
@@ -413,10 +413,10 @@ __device__ unsigned int wang_hash(unsigned int seed)
 
 __device__ void debug_set_final_color(const HIPRTRenderData& render_data, int x, int y, int res_x, Color final_color)
 {
-    if (render_data.m_render_settings.sample_number == 0)
-        render_data.pixels[y * res_x + x] = final_color;
+    if (render_data.render_settings.sample_number == 0)
+        render_data.buffers.pixels[y * res_x + x] = final_color;
     else
-        render_data.pixels[y * res_x + x] = render_data.pixels[y * res_x + x] + final_color;
+        render_data.buffers.pixels[y * res_x + x] = render_data.buffers.pixels[y * res_x + x] + final_color;
 }
 
 #define LOW_RESOLUTION_RENDER_DOWNSCALE 8
@@ -432,11 +432,11 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
     // 'Render low resolution' means that the user is moving the camera for example
     // so we're going to reduce the quality of the render for increased framerates
     // while moving
-    if (render_data.m_render_settings.render_low_resolution)
+    if (render_data.render_settings.render_low_resolution)
     {
         // Reducing the number of bounces to 3
-        render_data.m_render_settings.nb_bounces = 3;
-        render_data.m_render_settings.samples_per_frame = 1;
+        render_data.render_settings.nb_bounces = 3;
+        render_data.render_settings.samples_per_frame = 1;
 
         // If rendering at low resolution, only one pixel out of 
         // LOW_RESOLUTION_RENDER_DOWNSCALE x LOW_RESOLUTION_RENDER_DOWNSCALE will be rendered
@@ -444,19 +444,19 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
             return;
     }
 
-    if (render_data.m_render_settings.sample_number == 0)
+    if (render_data.render_settings.sample_number == 0)
     {
-        render_data.pixels[index] = Color(0.0f);
-        render_data.denoiser_normals[index] = hiprtFloat3(1.0f, 1.0f, 1.0f);
-        render_data.denoiser_albedo[index] = Color(0.0f, 0.0f, 0.0f);
+        render_data.buffers.pixels[index] = Color(0.0f);
+        render_data.buffers.denoiser_normals[index] = hiprtFloat3(1.0f, 1.0f, 1.0f);
+        render_data.buffers.denoiser_albedo[index] = Color(0.0f, 0.0f, 0.0f);
     }
 
-    Xorshift32Generator random_number_generator(wang_hash((index + 1) * (render_data.m_render_settings.sample_number + 1)));
+    Xorshift32Generator random_number_generator(wang_hash((index + 1) * (render_data.render_settings.sample_number + 1)));
 
     Color final_color = Color(0.0f, 0.0f, 0.0f);
     Color denoiser_albedo = Color(0.0f, 0.0f, 0.0f);
     hiprtFloat3 denoiser_normal = hiprtFloat3(0.0f, 0.0f, 0.0f);
-    for (int sample = 0; sample < render_data.m_render_settings.samples_per_frame; sample++)
+    for (int sample = 0; sample < render_data.render_settings.samples_per_frame; sample++)
     {
         //Jittered around the center
         float x_jittered = (x + 0.5f) + random_number_generator() - 1.0f;
@@ -473,7 +473,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
         bool denoiser_AOVs_set = false;
         float denoiser_blend = 1.0f;
 
-        for (int bounce = 0; bounce < render_data.m_render_settings.nb_bounces; bounce++)
+        for (int bounce = 0; bounce < render_data.render_settings.nb_bounces; bounce++)
         {
             if (next_ray_state == RayState::BOUNCE)
             {
@@ -493,8 +493,8 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
 
                 if (intersection_found)
                 {
-                    int material_index = render_data.material_indices[closest_hit_info.primitive_index];
-                    RendererMaterial material = render_data.materials_buffer[material_index];
+                    int material_index = render_data.buffers.material_indices[closest_hit_info.primitive_index];
+                    RendererMaterial material = render_data.buffers.materials_buffer[material_index];
                     last_brdf_hit_type = material.brdf_type;
 
                     // For the BRDF calculations, bounces, ... to be correct, we need the normal to be in the same hemisphere as
@@ -563,8 +563,12 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                         // We're also getting the skysphere radiance for perfectly specular BRDF since those
                         // are not importance sampled
 
-                        //Color skysphere_color = sample_environment_map_from_direction(ray.direction);
-                        Color skysphere_color = Color(1.0f);
+                        Color skysphere_color;
+                        if (render_data.world_settings.use_ambient_light)
+                            skysphere_color = render_data.world_settings.ambient_light_color;
+                        else
+                            ; // TODO NOT IMPELMETED : USE SKYSPHERE COLOR
+                            //Color skysphere_color = sample_environment_map_from_direction(ray.direction);
 
                         sample_color += skysphere_color * throughput;
                     }
@@ -597,19 +601,19 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
         final_color += sample_color;
     }
 
-    render_data.pixels[index] += final_color;
+    render_data.buffers.pixels[index] += final_color;
     
     // Handling denoiser's albedo and normals AOVs    
     // We don't need those when rendering at low resolution
     // hence why this is the else branch
-    denoiser_albedo /= (float)render_data.m_render_settings.samples_per_frame;
-    denoiser_normal /= (float)render_data.m_render_settings.samples_per_frame;
-    render_data.denoiser_albedo[index] = (render_data.denoiser_albedo[index] * render_data.m_render_settings.frame_number + denoiser_albedo) / (render_data.m_render_settings.frame_number + 1.0f);
+    denoiser_albedo /= (float)render_data.render_settings.samples_per_frame;
+    denoiser_normal /= (float)render_data.render_settings.samples_per_frame;
+    render_data.buffers.denoiser_albedo[index] = (render_data.buffers.denoiser_albedo[index] * render_data.render_settings.frame_number + denoiser_albedo) / (render_data.render_settings.frame_number + 1.0f);
 
-    hiprtFloat3 accumulated_normal = (render_data.denoiser_normals[index] * render_data.m_render_settings.frame_number + denoiser_normal) / (render_data.m_render_settings.frame_number + 1.0f);
+    hiprtFloat3 accumulated_normal = (render_data.buffers.denoiser_normals[index] * render_data.render_settings.frame_number + denoiser_normal) / (render_data.render_settings.frame_number + 1.0f);
     float normal_length = length(accumulated_normal);
     if (normal_length != 0.0f)
-        render_data.denoiser_normals[index] = normalize(accumulated_normal);
+        render_data.buffers.denoiser_normals[index] = normalize(accumulated_normal);
 
     // Handling low resolution render
     // The framebuffer actually still is at full resolution, it's just that we cast
@@ -617,7 +621,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
     // This means that we have "holes" in the rendered where rays will never be cast
     // this loop fills the wholes by copying the pixel that we rendered to its unrendered
     // neighbors
-    if (render_data.m_render_settings.render_low_resolution)
+    if (render_data.render_settings.render_low_resolution)
     {
         // Copying the pixel we just rendered to the neighbors
         for (int _y = 0; _y < LOW_RESOLUTION_RENDER_DOWNSCALE; _y++)
@@ -634,13 +638,13 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                 else
                 {
                     // Actually a valid pixel
-                    render_data.pixels[_index] = render_data.pixels[index];
+                    render_data.buffers.pixels[_index] = render_data.buffers.pixels[index];
 
                     // Also handling the denoiser AOVs. Useful only when the user is moving the camera
                     // (and thus rendering at low resolution) while the denoiser's normals / albedo has
                     // been selected as the active viewport view
-                    render_data.denoiser_albedo[_index] = render_data.denoiser_albedo[index];
-                    render_data.denoiser_normals[_index] = render_data.denoiser_normals[index];
+                    render_data.buffers.denoiser_albedo[_index] = render_data.buffers.denoiser_albedo[index];
+                    render_data.buffers.denoiser_normals[_index] = render_data.buffers.denoiser_normals[index];
                 }
             }
         }
