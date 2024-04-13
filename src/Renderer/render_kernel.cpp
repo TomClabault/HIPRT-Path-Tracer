@@ -1013,8 +1013,23 @@ Color RenderKernel::disney_sample(const RendererMaterial& material, const Vector
     bool outside_object = dot(view_direction, normal) > 0;
     if (glass_weight == 0.0f && !outside_object)
     {
+        // If we're not sampling the glass lobe so we're checking
+        // whether the view direction is below the upper hemisphere around the shading
+        // normal or not. This may be the case mainly due to normal mapping / smooth vertex normals. 
+        // See Microfacet-based Normal Mapping for Robust Monte Carlo Path Tracing, Eric Heitz, 2017
+        // for some illustrations of the problem and a solution (not implemented here because
+        // it requires quite a bit of code and overhead). 
+        // 
+        // We're flipping the normal instead which is a quick dirty fix solution mentioned
+        // in the above mentioned paper.
+        // 
+        // The Position-free Multiple-bounce Computations for Smith Microfacet BSDFs by 
+        // Wang et al. 2022 proposes an alternative position-free solution that even solves
+        // the multi-scattering issue of microfacet BRDFs on top of the dark fringes issue we're
+        // having here
+
         normal = reflect_ray(shading_normal, geometric_normal);
-        outside_object = dot(view_direction, normal) > 0;
+        outside_object = true;
     }
 
     float diffuse_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission) * outside_object;
@@ -1034,30 +1049,10 @@ Color RenderKernel::disney_sample(const RendererMaterial& material, const Vector
     cdf[3] = cdf[2] + glass_weight;
 
     float rand_1 = random_number_generator();
-    if (rand_1 <= cdf[2])
+    if (rand_1 > cdf[2])
     {
-        // This means that we're going to importance sample a lobe that is not glass
-        // so we're going to "pre process" the normal to avoid black fringes
+        // We're going to sample the glass lobe
 
-
-        // Checking whether the view direction is below the upprt hemisphere around the shading
-        // normal or not. This may be the case mainly due to normal mapping / smooth vertex normals. 
-        // See Microfacet-based Normal Mapping for Robust Monte Carlo Path Tracing, Eric Heitz, 2017
-        // for some illustrations of the problem and a solution (not implemented here because
-        // it requires quite a bit of code and overhead). 
-        // 
-        // We're flipping the normal instead which is a quick dirty fix solution mentioned
-        // in the above mentioned paper.
-        // 
-        // The Position-free Multiple-bounce Computations for Smith Microfacet BSDFs by 
-        // Wang et al. 2022 proposes an alternative position-free solution that even solves
-        // the multi-scattering issue of microfacet BRDFs on top of the dark fringes issue we're
-        // having here
-        if (dot(view_direction, shading_normal) < 0)
-            normal = reflect_ray(shading_normal, geometric_normal);
-    }
-    else
-    {
         float dot_shading = dot(view_direction, shading_normal);
         float dot_geometric = dot(view_direction, geometric_normal);
         if (dot_shading * dot_geometric < 0)
@@ -1078,28 +1073,21 @@ Color RenderKernel::disney_sample(const RendererMaterial& material, const Vector
     }
 
     if (rand_1 < cdf[0])
-    {
         output_direction = disney_diffuse_sample(material, view_direction, normal, random_number_generator);
-    }
     else if (rand_1 < cdf[1])
-    {
         output_direction = disney_metallic_sample(material, view_direction, normal, random_number_generator);
-    }
     else if (rand_1 < cdf[2])
-    {
         output_direction = disney_clearcoat_sample(material, view_direction, normal, random_number_generator);
-    }
     else
-    {
         output_direction = disney_glass_sample(material, view_direction, normal, random_number_generator);
 
-        return disney_eval(material, view_direction, normal, output_direction, pdf);
-    }
-
-    if (dot(output_direction, shading_normal) < 0)
+    if (dot(output_direction, shading_normal) < 0 && !rand_1 > cdf[2])
         // It can happen that the light direction sampled is below the surface. 
         // We return 0.0 in this case because the glass lobe wasn't sampled
         // so we can't have a bounce direction below the surface
+        // 
+        // We're also checking that we're not sampling the glass lobe because this
+        // is a valid configuration for the glass lobe
         return Color(0.0f);
 
     return disney_eval(material, view_direction, normal, output_direction, pdf);
