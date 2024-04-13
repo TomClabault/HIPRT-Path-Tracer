@@ -2,10 +2,10 @@
 #include "render_kernel.h"
 #include "triangle.h"
 
-#define DEBUG_PIXEL 1
-#define DEBUG_EXACT_COORDINATE 1
-#define DEBUG_PIXEL_X 1192
-#define DEBUG_PIXEL_Y 2
+#define DEBUG_PIXEL 0
+#define DEBUG_EXACT_COORDINATE 0
+#define DEBUG_PIXEL_X 622
+#define DEBUG_PIXEL_Y 376
 
 Point point_mat4x4(const glm::mat4x4& mat, const Point& p)
 {
@@ -928,9 +928,8 @@ Color RenderKernel::disney_sheen_eval(const RendererMaterial& material, const Ve
     float NoL = abs(dot(surface_normal, to_light_direction));
     pdf = NoL / M_PI;
 
-    // clamping operation here on the dot product because it has happened in the past
-    // that the dot product was 1.000012f due to floating point precision errors, leading
-    // to 1.0f - dot being negative and boom, the BRDF returns a negative color
+    // Clamping here because floating point errors can give us a dot > 1 sometimes
+    // leading to 1.0f - dot being negative and the BRDF returns a negative color
     float HoL = clamp(0.0f, 1.0f, dot(half_vector, to_light_direction));
     return sheen_color * pow(1.0f - HoL, 5.0f) * NoL;
 }
@@ -1020,7 +1019,7 @@ Color RenderKernel::disney_sample(const RendererMaterial& material, const Vector
     cdf[3] = cdf[2] + glass_weight;
 
     float rand_1 = random_number_generator();
-    if (rand_1 < cdf[3])
+    if (rand_1 <= cdf[2])
     {
         // This means that we're going to importance sample a lobe that is not glass
         // so we're going to "pre process" the normal to avoid black fringes
