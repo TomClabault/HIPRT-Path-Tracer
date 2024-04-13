@@ -43,15 +43,6 @@ int main(int argc, char* argv[])
     const int width = cmd_arguments.render_width;
     const int height = cmd_arguments.render_height;
 
-    /*RendererMaterial sphere_material;
-    sphere_material.emission = Color(0.0f);
-    sphere_material.base_color = Color(1.0f, 0.71, 0.29);
-    sphere_material.metallic = 1.0f;
-    sphere_material.roughness = 1.0e-2f;
-    sphere_material.ior = 1.4f;*/
-
-    /*Sphere sphere = add_sphere_to_scene(parsed_scene, Point(0.0, 1, 0.3725), 0.75, sphere_material, parsed_scene.triangles.size());
-    std::vector<Sphere> spheres = { sphere };*/
     std::vector<Sphere> spheres;
 
     std::cout << "Reading scene file " << cmd_arguments.scene_file_path << " ..." << std::endl;
@@ -69,8 +60,6 @@ int main(int argc, char* argv[])
     std::vector<int> emissive_triangle_indices_buffer = parsed_scene.emissive_triangle_indices;
     std::vector<int> materials_indices_buffer = parsed_scene.material_indices;
     std::vector<Sphere> sphere_buffer = spheres;
-
-    materials_buffer[2].metallic = 1.0f;
 
     std::cout << "Reading Environment Map " << cmd_arguments.skysphere_file_path << " ..." << std::endl;
     EnvironmentMap env_map = EnvironmentMap::read_from_file(cmd_arguments.skysphere_file_path);

@@ -2,10 +2,10 @@
 #include "render_kernel.h"
 #include "triangle.h"
 
-#define DEBUG_PIXEL 0
+#define DEBUG_PIXEL 1
 #define DEBUG_EXACT_COORDINATE 1
-#define DEBUG_PIXEL_X 526
-#define DEBUG_PIXEL_Y 37
+#define DEBUG_PIXEL_X 1192
+#define DEBUG_PIXEL_Y 2
 
 Point point_mat4x4(const glm::mat4x4& mat, const Point& p)
 {
@@ -925,13 +925,14 @@ Color RenderKernel::disney_sheen_eval(const RendererMaterial& material, const Ve
 
     Vector half_vector = normalize(view_direction + to_light_direction);
 
-    float NoL = dot(surface_normal, to_light_direction);
+    float NoL = abs(dot(surface_normal, to_light_direction));
     pdf = NoL / M_PI;
 
     // clamping operation here on the dot product because it has happened in the past
     // that the dot product was 1.000012f due to floating point precision errors, leading
     // to 1.0f - dot being negative and boom, the BRDF returns a negative color
-    return sheen_color * pow(clamp(0.0f, 1.0f, 1.0f - dot(half_vector, to_light_direction)), 5.0f) * NoL;
+    float HoL = clamp(0.0f, 1.0f, dot(half_vector, to_light_direction));
+    return sheen_color * pow(1.0f - HoL, 5.0f) * NoL;
 }
 
 Vector RenderKernel::disney_sheen_sample(const RendererMaterial& material, const Vector& view_direction, Vector surface_normal, Xorshift32Generator& random_number_generator)
@@ -986,7 +987,10 @@ Color RenderKernel::disney_eval(const RendererMaterial& material, const Vector& 
 
     // Sheen
     tmp_weight = (1.0f - material.metallic) * material.sheen;
-    final_color += tmp_weight > 0 && outside_object ? tmp_weight * disney_sheen_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : Color(0.0f);
+    Color sheen_color = tmp_weight > 0 && outside_object ? tmp_weight * disney_sheen_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : Color(0.0f);
+    if (sheen_color.r < 0 || sheen_color.g < 0 || sheen_color.b < 0)
+        std::cout << "sheen: " << sheen_color << std::endl;
+    final_color += sheen_color;
     pdf += tmp_pdf * tmp_weight;
 
     return final_color;

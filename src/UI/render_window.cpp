@@ -759,6 +759,8 @@ void RenderWindow::show_objects_panel()
 	int material_modfied_id = -1;
 	int material_counter = 0;
 	bool some_material_changed = false;
+
+	ImGui::PushItemWidth(384);
 	for (RendererMaterial& material : materials)
 	{
 		// Multiple ImGui widgets cannot have the same label
@@ -775,7 +777,7 @@ void RenderWindow::show_objects_panel()
 		some_material_changed |= ImGui::SliderFloat("Subsurface", &material.subsurface, 0.0f, 1.0f);
 		some_material_changed |= ImGui::SliderFloat("Metallic", &material.metallic, 0.0f, 1.0f);
 		some_material_changed |= ImGui::SliderFloat("Specular", &material.specular, 0.0f, 1.0f);
-		some_material_changed |= ImGui::SliderFloat("Specular tint", &material.specular_tint, 0.0f, 1.0f);
+		some_material_changed |= ImGui::SliderFloat("Specular tint strength", &material.specular_tint, 0.0f, 1.0f);
 		some_material_changed |= ImGui::ColorEdit3("Specular color", (float*)&material.specular_color);
 		some_material_changed |= ImGui::SliderFloat("Roughness", &material.roughness, 0.0f, 1.0f);
 		some_material_changed |= ImGui::SliderFloat("Anisotropic", &material.anisotropic, 0.0f, 1.0f);
@@ -798,6 +800,7 @@ void RenderWindow::show_objects_panel()
 			material_modfied_id = material_counter;
 		material_counter++;
 	}
+	ImGui::PopItemWidth();
 
 	if (some_material_changed)
 	{
