@@ -675,6 +675,24 @@ Vector RenderKernel::disney_diffuse_sample(const RendererMaterial& material, con
     return sampled_direction;
 }
 
+Color RenderKernel::disney_metallic_fresnel(const RendererMaterial& material, const Vector& local_half_vector, const Vector& local_to_light_direction)
+{
+    // The summary of what is below is the following:
+    //
+    // If the material is 100% metallic, then the fresnel term color is going to be 
+    // the base_color of the material i.e. typical conductor response.
+    // 
+    // If the material is 0% metallic, then the fresnel term color is going to be
+    // material.specular_color modulated by the material.specular_tint coefficient (which blends 
+    // between white and material.specular_color) and the material.specular coefficient which
+    // dictates whether we have a specular at all
+    Color Ks = Color(1.0f - material.specular_tint) + material.specular_tint * material.specular_color;
+    float R0 = ((material.ior - 1.0f) * (material.ior - 1.0f)) / ((material.ior + 1.0f) * (material.ior + 1.0f));
+    Color C0 = material.specular * R0 * (1.0f - material.metallic) * Ks + material.metallic * material.base_color;
+
+    return C0 + (Color(1.0f) - C0) * pow(1.0f - dot(local_half_vector, local_to_light_direction), 5.0f);
+}
+
 Color RenderKernel::disney_metallic_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, const Vector& to_light_direction, Color F, float& pdf)
 {
     // Building the local shading frame
@@ -689,11 +707,14 @@ Color RenderKernel::disney_metallic_eval(const RendererMaterial& material, const
     float NoL = abs(local_to_light_direction.z);
     float HoL = abs(dot(local_half_vector, local_to_light_direction));
 
-    // F = (-2.0f, -2.0f, -2.0f) is the default argument when the overload without the 'Color F' argument
-    // of disney_metallic_eval() was called. Thus, if no F was passed, we're computing it here.
-    // Otherwise, we're going to use the given one
-    if (F.r == -2.0f)
-        F = fresnel_schlick(material.base_color, NoL);
+    // TODO remove
+    //{
+    //    // F = (-2.0f, -2.0f, -2.0f) is the default argument when the overload without the 'Color F' argument
+    //    // of disney_metallic_eval() was called. Thus, if no F was passed, we're computing it here.
+    //    // Otherwise, we're going to use the given one
+    //    if (F.r == -2.0f)
+    //        F = fresnel_schlick(material.base_color, NoL);
+    //}
 
     float D = GTR2_anisotropic(material, local_half_vector);
     float G1_V = G1(material.alpha_x, material.alpha_y, local_view_direction);
@@ -704,31 +725,26 @@ Color RenderKernel::disney_metallic_eval(const RendererMaterial& material, const
     return F * D * G / (4.0 * NoL * NoV);
 }
 
-Color RenderKernel::disney_metallic_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, const Vector& to_light_direction, float& pdf)
+Vector RenderKernel::disney_metallic_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, Xorshift32Generator& random_number_generator)
 {
-    return disney_metallic_eval(material, view_direction, surface_normal, to_light_direction, Color(-2.0f, -2.0f, -2.0f), pdf);
-}
-
-Vector RenderKernel::disney_metallic_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, Xorshift32Generator& random_number_generator)
-{
-    Vector local_view_direction = world_to_local_frame(shading_normal, view_direction);
+    Vector local_view_direction = world_to_local_frame(surface_normal, view_direction);
 
     // The view direction can sometimes be below the shading normal hemisphere
     // because of normal mapping
     int below_normal = (local_view_direction.z < 0) ? -1 : 1;
     Vector microfacet_normal = GGXVNDF_sample(local_view_direction * below_normal, material.alpha_x, material.alpha_y, random_number_generator);
-    Vector sampled_direction = reflect_ray(view_direction, local_to_world_frame(shading_normal, microfacet_normal * below_normal));
+    Vector sampled_direction = reflect_ray(view_direction, local_to_world_frame(surface_normal, microfacet_normal * below_normal));
 
     return sampled_direction;
 }
 
-Color RenderKernel::disney_clearcoat_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& to_light_direction, float& pdf)
+Color RenderKernel::disney_clearcoat_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, const Vector& to_light_direction, float& pdf)
 {
     Vector T, B;
-    build_ONB(shading_normal, T, B);
+    build_ONB(surface_normal, T, B);
 
-    Vector local_view_direction = world_to_local_frame(T, B, shading_normal, view_direction);
-    Vector local_to_light_direction = world_to_local_frame(T, B, shading_normal, to_light_direction);
+    Vector local_view_direction = world_to_local_frame(T, B, surface_normal, view_direction);
+    Vector local_to_light_direction = world_to_local_frame(T, B, surface_normal, to_light_direction);
     Vector local_halfway_vector = normalize(local_view_direction + local_to_light_direction);
 
     if (local_view_direction.z * local_to_light_direction.z < 0)
@@ -743,14 +759,14 @@ Color RenderKernel::disney_clearcoat_eval(const RendererMaterial& material, cons
     float alpha_g = (1.0f - clearcoat_gloss) * 0.1f + clearcoat_gloss * 0.001f;
 
     Color F_clearcoat = fresnel_schlick(R0, HoV);
-    float D_clearcoat = GTR1(alpha_g, local_halfway_vector.z);
+    float D_clearcoat = GTR1(alpha_g, abs(local_halfway_vector.z));
     float G_clearcoat = disney_clearcoat_masking_shadowing(local_view_direction) * disney_clearcoat_masking_shadowing(local_to_light_direction);
 
     pdf = D_clearcoat * abs(local_halfway_vector.z) / (4.0f * dot(local_halfway_vector, local_to_light_direction));
     return F_clearcoat * D_clearcoat * G_clearcoat / (4.0f * local_view_direction.z);
 }
 
-Vector RenderKernel::disney_clearcoat_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, Xorshift32Generator& random_number_generator)
+Vector RenderKernel::disney_clearcoat_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, Xorshift32Generator& random_number_generator)
 {
     float clearcoat_gloss = 1.0f - material.clearcoat_roughness;
     float alpha_g = (1.0f - clearcoat_gloss) * 0.1f + clearcoat_gloss * 0.001f;
@@ -767,7 +783,7 @@ Vector RenderKernel::disney_clearcoat_sample(const RendererMaterial& material, c
     float sin_phi = sqrt(1.0f - cos_phi * cos_phi);
 
     Vector microfacet_normal = normalize(Vector{ sin_theta * cos_phi, sin_theta * sin_phi, cos_theta });
-    Vector sampled_direction = reflect_ray(view_direction, local_to_world_frame(shading_normal, microfacet_normal));
+    Vector sampled_direction = reflect_ray(view_direction, local_to_world_frame(surface_normal, microfacet_normal));
 
     return sampled_direction;
 }
@@ -848,7 +864,7 @@ Color RenderKernel::disney_glass_eval(const RendererMaterial& material, const Ve
         float D_pdf = G1_V / abs(NoV) * D * abs(HoV);
         pdf = dwm_dwi * D_pdf * (1.0f - F);
 
-        color = material.base_color * D * (1 - F) * G * std::abs(HoL * HoV / denom);
+        color = sqrt(material.base_color) * D * (1 - F) * G * abs(HoL * HoV / denom);
     }
 
     return color;
@@ -880,7 +896,6 @@ Vector RenderKernel::disney_glass_sample(const RendererMaterial& material, const
     if (rand_1 < F)
     {
         // Reflection
-
         sampled_direction = reflect_ray(local_view_direction, microfacet_normal);
     }
     else
@@ -895,8 +910,7 @@ Vector RenderKernel::disney_glass_sample(const RendererMaterial& material, const
             // Relative_eta as already been flipped above in the code
             microfacet_normal = -microfacet_normal;
 
-        if (!refract_ray(local_view_direction, microfacet_normal, sampled_direction, relative_eta))
-            return Vector(-2.0f, -2.0f, -2.0f);
+        refract_ray(local_view_direction, microfacet_normal, sampled_direction, relative_eta);
     }
 
     return local_to_world_frame(T, B, surface_normal, sampled_direction);
@@ -930,11 +944,52 @@ Color RenderKernel::disney_eval(const RendererMaterial& material, const Vector& 
 {
     pdf = 0.0f;
 
-    //return disney_diffuse_eval(material, view_direction, shading_normal, to_light_direction, pdf);
-    //return disney_metallic_eval(material, view_direction, shading_normal, to_light_direction, pdf);
-    //return disney_clearcoat_eval(material, view_direction, shading_normal, to_light_direction, pdf);
-    //return disney_glass_eval(material, view_direction, shading_normal, to_light_direction, pdf);
-    return disney_sheen_eval(material, view_direction, shading_normal, to_light_direction, pdf);
+    Vector T, B;
+    build_ONB(shading_normal, T, B);
+
+    Vector local_view_direction = world_to_local_frame(T, B, shading_normal, view_direction);
+    Vector local_to_light_direction = world_to_local_frame(T, B, shading_normal, to_light_direction);
+    Vector local_half_vector = normalize(local_view_direction + local_to_light_direction);
+
+    Color final_color = Color(0.0f);
+    // We're only going to compute the diffuse, metallic, clearcoat and sheen lobes if we're 
+    // outside of the object. Said otherwise, only the glass lobe is considered while traveling 
+    // inside the object
+    bool outside_object = dot(view_direction, shading_normal) > 0;
+    float tmp_pdf = 0.0f, tmp_weight = 0.0f;
+
+    // Diffuse
+    tmp_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission);
+    final_color += tmp_weight > 0 && outside_object ? tmp_weight * disney_diffuse_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : Color(0.0f);
+    pdf += tmp_pdf * tmp_weight;
+    tmp_pdf = 0.0f;
+
+    // Metallic
+    // Computing a custom fresnel term based on the material specular, specular tint, ... coefficients
+    Color metallic_fresnel = disney_metallic_fresnel(material, local_half_vector, local_to_light_direction);
+    tmp_weight = (1.0f - material.specular_transmission * (1.0f - material.metallic));
+    final_color += tmp_weight > 0 && outside_object ? tmp_weight * disney_metallic_eval(material, view_direction, shading_normal, to_light_direction, metallic_fresnel, tmp_pdf) : Color(0.0f);
+    pdf += tmp_pdf * tmp_weight;
+    tmp_pdf = 0.0f;
+
+    // Clearcoat
+    tmp_weight = 0.25f * material.clearcoat;
+    final_color += tmp_weight > 0 && outside_object ? tmp_weight * disney_clearcoat_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : Color(0.0f);
+    pdf += tmp_pdf * tmp_weight;
+    tmp_pdf = 0.0f;
+
+    // Glass
+    tmp_weight = (1.0f - material.metallic) * material.specular_transmission;
+    final_color += tmp_weight > 0 ? tmp_weight * disney_glass_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : Color(0.0f);
+    pdf += tmp_pdf * tmp_weight;
+    tmp_pdf = 0.0f;
+
+    // Sheen
+    tmp_weight = (1.0f - material.metallic) * material.sheen;
+    final_color += tmp_weight > 0 && outside_object ? tmp_weight * disney_sheen_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : Color(0.0f);
+    pdf += tmp_pdf * tmp_weight;
+
+    return final_color;
 }
 
 Color RenderKernel::disney_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& geometric_normal, Vector& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
@@ -943,11 +998,47 @@ Color RenderKernel::disney_sample(const RendererMaterial& material, const Vector
 
     Vector normal = shading_normal;
 
-    ////output_direction = disney_diffuse_sample(material, view_direction, normal, random_number_generator);
-    ////output_direction = disney_metallic_sample(material, view_direction, normal, random_number_generator);
-    ////output_direction = disney_clearcoat_sample(material, view_direction, normal, random_number_generator);
-    bool glass = false;
-    if (glass)
+    float diffuse_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission);
+    float metal_weight = (1.0f - material.specular_transmission * (1.0f - material.metallic));
+    float clearcoat_weight = 0.25f * material.clearcoat;
+    float glass_weight = (1.0f - material.metallic) * material.specular_transmission;
+
+    float normalize_factor = 1.0f / (diffuse_weight + metal_weight + clearcoat_weight + glass_weight);
+    diffuse_weight *= normalize_factor;
+    metal_weight *= normalize_factor;
+    clearcoat_weight *= normalize_factor;
+    glass_weight *= normalize_factor;
+
+    float cdf[4];
+    cdf[0] = diffuse_weight;
+    cdf[1] = cdf[0] + metal_weight;
+    cdf[2] = cdf[1] + clearcoat_weight;
+    cdf[3] = cdf[2] + glass_weight;
+
+    float rand_1 = random_number_generator();
+    if (rand_1 < cdf[3])
+    {
+        // This means that we're going to importance sample a lobe that is not glass
+        // so we're going to "pre process" the normal to avoid black fringes
+
+
+        // Checking whether the view direction is below the upprt hemisphere around the shading
+        // normal or not. This may be the case mainly due to normal mapping / smooth vertex normals. 
+        // See Microfacet-based Normal Mapping for Robust Monte Carlo Path Tracing, Eric Heitz, 2017
+        // for some illustrations of the problem and a solution (not implemented here because
+        // it requires quite a bit of code and overhead). 
+        // 
+        // We're flipping the normal instead which is a quick dirty fix solution mentioned
+        // in the above mentioned paper.
+        // 
+        // The Position-free Multiple-bounce Computations for Smith Microfacet BSDFs by 
+        // Wang et al. 2022 proposes an alternative position-free solution that even solves
+        // the multi-scattering issue of microfacet BRDFs on top of the dark fringes issue we're
+        // having here
+        if (dot(view_direction, shading_normal) < 0)
+            normal = reflect_ray(shading_normal, geometric_normal);
+    }
+    else
     {
         float dot_shading = dot(view_direction, shading_normal);
         float dot_geometric = dot(view_direction, geometric_normal);
@@ -966,51 +1057,34 @@ Color RenderKernel::disney_sample(const RendererMaterial& material, const Vector
             // and we shouldn't flip the normal
             normal = reflect_ray(shading_normal, geometric_normal);
         }
+    }
 
-        output_direction = disney_glass_sample(material, view_direction, normal, random_number_generator);
+    if (rand_1 < cdf[0])
+    {
+        output_direction = disney_diffuse_sample(material, view_direction, normal, random_number_generator);
+    }
+    else if (rand_1 < cdf[1])
+    {
+        output_direction = disney_metallic_sample(material, view_direction, normal, random_number_generator);
+    }
+    else if (rand_1 < cdf[2])
+    {
+        output_direction = disney_clearcoat_sample(material, view_direction, normal, random_number_generator);
     }
     else
     {
-        // Checking whether the view direction is below the upprt hemisphere around the shading
-        // normal or not. This may be the case mainly due to normal mapping / smooth vertex normals. 
-        // See Microfacet-based Normal Mapping for Robust Monte Carlo Path Tracing, Eric Heitz, 2017
-        // for some illustrations of the problem and a solution (not implemented here because
-        // it requires quite a bit of code and overhead). 
-        // 
-        // We're flipping the normal instead which is a quick dirty fix solution mentioned
-        // in the above mentioned paper.
-        // 
-        // The Position-free Multiple-bounce Computations for Smith Microfacet BSDFs by 
-        // Wang et al. 2022 proposes an alternative position-free solution that even solves
-        // the multi-scattering issue of microfacet BRDFs on top of the dark fringes issue we're
-        // having here
-        if (dot(view_direction, shading_normal) < 0)
-        {
-            normal = reflect_ray(shading_normal, geometric_normal);
+        output_direction = disney_glass_sample(material, view_direction, normal, random_number_generator);
 
-            // In some cases, flipping the normal isn't enough to bring
-            // the view direction in the upper hemisphere around the shading normal
-            // Giving up and returning 0.0f in this case
-            // TODO INVESTIGATE, this seems to be happening when the view dir is below the GEOMETRIC normal in the first place
-            if (dot(view_direction, normal) < 0)
-                return Color(0.0f);
-        }
-
-        output_direction = disney_sheen_sample(material, view_direction, normal, random_number_generator);
-
-        if (dot(output_direction, shading_normal) < 0)
-        {
-            // It can happen that the light direction sampled is below the surface. 
-            // We return 0.0 in this case
-            return Color(0.0f);
-        }
+        return disney_eval(material, view_direction, normal, output_direction, pdf);
     }
 
-    //return disney_diffuse_eval(material, view_direction, normal, output_direction, pdf);
-    //return disney_metallic_eval(material, view_direction, normal, output_direction, pdf);
-    //return disney_clearcoat_eval(material, view_direction, normal, output_direction, pdf);
-    //return disney_glass_eval(material, view_direction, normal, output_direction, pdf);
-    return disney_sheen_eval(material, view_direction, normal, output_direction, pdf);
+    if (dot(output_direction, shading_normal) < 0)
+        // It can happen that the light direction sampled is below the surface. 
+        // We return 0.0 in this case because the glass lobe wasn't sampled
+        // so we can't have a bounce direction below the surface
+        return Color(0.0f);
+
+    return disney_eval(material, view_direction, normal, output_direction, pdf);
 }
 
 Color RenderKernel::brdf_dispatcher_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& to_light_direction, float& pdf)

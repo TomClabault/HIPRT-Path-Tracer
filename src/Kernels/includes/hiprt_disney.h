@@ -344,29 +344,33 @@ __device__ Color disney_eval(const RendererMaterial& material, const hiprtFloat3
 
     // Diffuse
     tmp_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission);
-    final_color += tmp_weight > 0 && outside_object ? disney_diffuse_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : Color(0.0f);
+    final_color += tmp_weight > 0 && outside_object ? tmp_weight * disney_diffuse_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : Color(0.0f);
     pdf += tmp_pdf * tmp_weight;
+    tmp_pdf = 0.0f;
 
     // Metallic
     // Computing a custom fresnel term based on the material specular, specular tint, ... coefficients
     Color metallic_fresnel = disney_metallic_fresnel(material, local_half_vector, local_to_light_direction);
     tmp_weight = (1.0f - material.specular_transmission * (1.0f - material.metallic));
-    final_color += tmp_weight > 0 && outside_object ? disney_metallic_eval(material, view_direction, shading_normal, to_light_direction, metallic_fresnel, tmp_pdf) : Color(0.0f);
+    final_color += tmp_weight > 0 && outside_object ? tmp_weight * disney_metallic_eval(material, view_direction, shading_normal, to_light_direction, metallic_fresnel, tmp_pdf) : Color(0.0f);
     pdf += tmp_pdf * tmp_weight;
+    tmp_pdf = 0.0f;
 
     // Clearcoat
     tmp_weight = 0.25f * material.clearcoat;
-    final_color += tmp_weight > 0 && outside_object ? disney_clearcoat_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : Color(0.0f);
+    final_color += tmp_weight > 0 && outside_object ? tmp_weight * disney_clearcoat_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : Color(0.0f);
     pdf += tmp_pdf * tmp_weight;
+    tmp_pdf = 0.0f;
 
     // Glass
-    tmp_weight = (1.0f - material.metallic);
-    final_color += tmp_weight > 0 ? disney_glass_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : Color(0.0f);
+    tmp_weight = (1.0f - material.metallic) * material.specular_transmission;
+    final_color += tmp_weight > 0 ? tmp_weight * disney_glass_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : Color(0.0f);
     pdf += tmp_pdf * tmp_weight;
+    tmp_pdf = 0.0f;
 
     // Sheen
     tmp_weight = (1.0f - material.metallic) * material.sheen;
-    final_color += tmp_weight > 0 && outside_object ? disney_sheen_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : Color(0.0f);
+    final_color += tmp_weight > 0 && outside_object ? tmp_weight * disney_sheen_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : Color(0.0f);
     pdf += tmp_pdf * tmp_weight;
 
     return final_color;

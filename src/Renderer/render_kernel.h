@@ -72,6 +72,7 @@ public:
     Color disney_diffuse_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& to_light_direction, float& pdf);
     Vector disney_diffuse_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, Xorshift32Generator& random_number_generator);
     Color disney_metallic_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& to_light_direction, float& pdf);
+    Color disney_metallic_fresnel(const RendererMaterial& material, const Vector& local_half_vector, const Vector& local_to_light_direction);
     Color disney_metallic_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, const Vector& to_light_direction, Color F, float& pdf);
     Vector disney_metallic_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, Xorshift32Generator& random_number_generator);
     Color disney_clearcoat_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& to_light_direction, float& pdf);

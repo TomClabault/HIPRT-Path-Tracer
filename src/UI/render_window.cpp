@@ -21,6 +21,7 @@
 // - Why is the rough dragon having black fringes even with normal flipping ?
 // - why is the view direction below the geometric normal sometimes with clearcoat ?
 // - normals AOV not converging correctly ?
+// - denoiser not accounting for tranmission correctly since Disney 
 // - aspect ratio issue on CPU or GPU ?
 
 
@@ -49,6 +50,9 @@
 
 
 // TODO Features:
+// Have the UI run at its own framerate to avoid having the UI come to a crawl when the path tracing is expensive
+// - Denoiser blend to allow blending the original noisy image and the perfect denoised result by a given factor
+// - When modifying the emission of a material with the material editor, it should be reflected in the scene and allow the direct sampling of the geometry
 // - Color fallof (change of material base base_color based on the angle with the view direction and the normal
 // - Transmission color
 // - Ray binning for performance
@@ -58,6 +62,7 @@
 //		- https://developer.nvidia.com/blog/profiling-dxr-shaders-with-timer-instrumentation/
 //		- https://github.com/libigl/libigl/issues/1388
 //		- https://github.com/libigl/libigl/issues/1534
+// - Visualizing russian roulette depth termination
 // - Better ray origin offset to avoid self intersections
 // - Realistic Camera Model
 // - Textures for each parameter of the Disney BSDF
@@ -767,22 +772,22 @@ void RenderWindow::show_objects_panel()
 		ImGui::PushID(material_counter);
 
 		some_material_changed |= ImGui::ColorEdit3("Base color", (float*)&material.base_color);
-		some_material_changed |= ImGui::DragFloat("Subsurface", &material.subsurface, 0.002f, 0.0f, 1.0f);
-		some_material_changed |= ImGui::DragFloat("Metallic", &material.metallic, 0.002f, 0.0f, 1.0f);
-		some_material_changed |= ImGui::DragFloat("Specular", &material.specular, 0.002f, 0.0f, 1.0f);
-		some_material_changed |= ImGui::DragFloat("Specular tint", &material.specular_tint, 0.002f, 0.0f, 1.0f);
+		some_material_changed |= ImGui::SliderFloat("Subsurface", &material.subsurface, 0.0f, 1.0f);
+		some_material_changed |= ImGui::SliderFloat("Metallic", &material.metallic, 0.0f, 1.0f);
+		some_material_changed |= ImGui::SliderFloat("Specular", &material.specular, 0.0f, 1.0f);
+		some_material_changed |= ImGui::SliderFloat("Specular tint", &material.specular_tint, 0.0f, 1.0f);
 		some_material_changed |= ImGui::ColorEdit3("Specular color", (float*)&material.specular_color);
-		some_material_changed |= ImGui::DragFloat("Roughness", &material.roughness, 0.002f, 0.0f, 1.0f);
-		some_material_changed |= ImGui::DragFloat("Anisotropic", &material.anisotropic, 0.002f, 0.0f, 1.0f);
-		some_material_changed |= ImGui::DragFloat("Anisotropic rotation", &material.anisotropic_rotation, 0.002f, 0.0f, 1.0f);
-		some_material_changed |= ImGui::DragFloat("Sheen", &material.sheen, 0.002f, 0.0f, 1.0f);
-		some_material_changed |= ImGui::DragFloat("Sheen tint strength", &material.sheen_tint, 0.002f, 0.0f, 1.0f);
+		some_material_changed |= ImGui::SliderFloat("Roughness", &material.roughness, 0.0f, 1.0f);
+		some_material_changed |= ImGui::SliderFloat("Anisotropic", &material.anisotropic, 0.0f, 1.0f);
+		some_material_changed |= ImGui::SliderFloat("Anisotropic rotation", &material.anisotropic_rotation, 0.0f, 1.0f);
+		some_material_changed |= ImGui::SliderFloat("Sheen", &material.sheen, 0.0f, 1.0f);
+		some_material_changed |= ImGui::SliderFloat("Sheen tint strength", &material.sheen_tint, 0.0f, 1.0f);
 		some_material_changed |= ImGui::ColorEdit3("Sheen color", (float*)&material.sheen_color);
-		some_material_changed |= ImGui::DragFloat("Clearcoat", &material.clearcoat, 0.002f, 0.0f, 1.0f);
-		some_material_changed |= ImGui::DragFloat("Clearcoat roughness", &material.clearcoat_roughness, 0.002f, 0.0f, 1.0f);
-		some_material_changed |= ImGui::DragFloat("Clearcoat IOR", &material.clearcoat_ior, 0.002f, 0.0f, 10.0f);
-		some_material_changed |= ImGui::DragFloat("IOR", &material.ior, 0.01f, 0.0f, 10.0f);
-		some_material_changed |= ImGui::DragFloat("Transmission", &material.specular_transmission, 0.002f, 0.0f, 1.0f);
+		some_material_changed |= ImGui::SliderFloat("Clearcoat", &material.clearcoat, 0.0f, 1.0f);
+		some_material_changed |= ImGui::SliderFloat("Clearcoat roughness", &material.clearcoat_roughness, 0.0f, 1.0f);
+		some_material_changed |= ImGui::SliderFloat("Clearcoat IOR", &material.clearcoat_ior, 0.0f, 10.0f);
+		some_material_changed |= ImGui::SliderFloat("IOR", &material.ior, 0.0f, 10.0f);
+		some_material_changed |= ImGui::SliderFloat("Transmission", &material.specular_transmission, 0.0f, 1.0f);
 		some_material_changed |= ImGui::ColorEdit3("Emission", (float*)&material.emission, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
 
 		ImGui::PopID();
