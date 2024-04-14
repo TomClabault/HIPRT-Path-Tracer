@@ -47,6 +47,6 @@ GLOBAL_KERNEL_SIGNATURE(void) NormalsKernel(hiprtGeometry geom, HIPRTRenderData 
 	else
 		normal = normalize(cross(vertex_B - vertex_A, vertex_C - vertex_A));
 
-	Color final_color(hit.hasHit() ? float3(abs(normal.x), abs(normal.y), abs(normal.z)) : float3(0.0f, 0.0f, 0.0f));
+	Color final_color(hit.hasHit() ? make_float3(abs(normal.x), abs(normal.y), abs(normal.z)) : make_float3(0.0f, 0.0f, 0.0f));
 	render_data.buffers.pixels[index] = final_color * (render_data.render_settings.sample_number + 1);
 }

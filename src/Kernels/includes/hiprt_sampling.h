@@ -50,7 +50,7 @@ __device__ float3 cosine_weighted_sample(const float3& normal, float& pdf, Xorsh
     pdf = sqrt_rand_2 / (float)M_PI;
 
     //Generating a random direction in a local space with Z as the Up float3
-    float3 random_dir_local_space = float3(cos(phi) * sin_theta, sin(phi) * sin_theta, sqrt_rand_2);
+    float3 random_dir_local_space = make_float3(cos(phi) * sin_theta, sin(phi) * sin_theta, sqrt_rand_2);
     return local_to_world_frame(normal, random_dir_local_space);
 }
 

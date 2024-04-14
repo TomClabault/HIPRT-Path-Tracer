@@ -20,6 +20,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 # TODO always build ASSIMP in release to avoid the issue of the debug vs release .lib file with Visual Studio on Windows? : use -DCMAKE_BUILD_TYPE=Release
+# TODO only build at configure time to avoid building / checking ASSIMP everytime...
 ExternalProject_Add(
 	assimp
     GIT_REPOSITORY https://github.com/assimp/assimp
@@ -39,38 +40,6 @@ FetchContent_MakeAvailable(
 
 # ---------------------------------------------------------------
 
-# ----------------- Requiring the HIPRT Binaries ----------------
-#[===[
-if (NOT DEFINED HIPRT_BINARIES_DIR)
-	set(HIPRT_BINARIES_DIR "NOT FOUND" CACHE PATH "Path to the HIPRT binaries directory. Your should provide the path such that HIPRT_BINARIES_DIR/hiprt/win/hiprt0200264.lib is a valid path.")
-	message(FATAL_ERROR "The path to the binaries folder of HIPRT is needed. Provide it with the HIPRT_BINARIES_DIR variable using 'cmake -DHIPRT_BINARIES_DIR=<path>'. HIPRT binaries can be downloaded at https://gpuopen.com/hiprt/")
-elseif (DEFINED HIPRT_BINARIES_DIR AND NOT EXISTS ${HIPRT_BINARIES_DIR}/hiprt/win/hiprt0200364D.lib)
-	message(FATAL_ERROR "The HIPRT binaries directory you provided does not contain hiprt0200264.lib under hiprt/win. Your should provide HIPRT_BINARIES_DIR such that HIPRT_BINARIES_DIR/hiprt/win/hiprt0200264.lib is a valid path.")
-else ()
-	set(HIPRT_BIN_DIR ${HIPRT_BINARIES_DIR}/hiprt/win)
-	set(HIPRT_HEADERS_DIR ${HIPRT_BINARIES_DIR}/hiprt)
-
-	set(OROCHI_BIN_DIR ${HIPRT_BINARIES_DIR}/contrib/Orochi/)
-	set(OROCHI_SOURCES_DIR ${HIPRT_BINARIES_DIR}/contrib/Orochi/Orochi)
-
-	set(CUEW_SOURCES_DIR ${HIPRT_BINARIES_DIR}/contrib/Orochi/contrib/cuew)
-	set(HIPEW_SOURCES_DIR ${HIPRT_BINARIES_DIR}/contrib/Orochi/contrib/hipew)
-
-	# Replacing backslashes in the Windows paths that lead to wrong escape character
-	# note that the four backslashes \\\\ are required because we need a regular expression that
-	# compiles to '\'.
-	# \\ is converted by CMake to a single '\'
-	# so \\\\ is converted by CMake to '\\' which is the regular expression for the single '\' character
-	STRING(REGEX REPLACE "\\\\" "/" HIPRT_HEADERS_DIR ${HIPRT_HEADERS_DIR})
-	STRING(REGEX REPLACE "\\\\" "/" OROCHI_SOURCES_DIR ${OROCHI_SOURCES_DIR})
-	STRING(REGEX REPLACE "\\\\" "/" CUEW_SOURCES_DIR ${CUEW_SOURCES_DIR})
-	STRING(REGEX REPLACE "\\\\" "/" HIPEW_SOURCES_DIR ${HIPEW_SOURCES_DIR})
-	
-	link_directories(${HIPRT_BINARIES_DIR}/hiprt/win)
-endif()
-#]===]
-# ---------------------------------------------------------------
-
 # ----------------- Downloading and building HIPRT ----------------
 FetchContent_Declare(
   hiprtrelease
@@ -88,9 +57,8 @@ execute_process(COMMAND ./tools/premake5/win/premake5.exe vs2022 WORKING_DIRECTO
 
 # We're now going to build the HIPRT project through MSBuild since Premake generated a Visual Studio Solution
 # First, trying to find MSBuild on the PATH 
-set(MSBUILD_EXECUTABLE "")
 find_program(MSBUILD_EXECUTABLE "MSBuild")
-if(NOT ${MSBUILD_EXECUTABLE} STREQUAL MSBUILD_EXECUTABLE-NOTFOUND)
+if(NOT ${MSBUILD_EXECUTABLE} STREQUAL MSBUILD_EXECUTABLE-NOTFOUND AND MSBUILD_EXECUTABLE MATCHES "MSBuild.exe$")
 	message("MSBuild found at: " ${MSBUILD_EXECUTABLE})
 else()
 	# Trying to automatically find MSBuild in the regular Visual Studio installation
@@ -129,6 +97,16 @@ STRING(REGEX REPLACE "\\\\" "/" HIPEW_SOURCES_DIR ${HIPEW_SOURCES_DIR})
 link_directories(${HIPRT_BINARIES_DIR}/hiprt/win)
 # -------------------------------------------------
 
+# ------------- Handling NVIDIA compilation details -------------
+
+# TODO Orochi ENABLE_CUEW is only for Orochi 2.0.0
+# If CUDA is installed, meaning NVIDIA
+#if(DEFINED ENV{CUDA_PATH})
+	#add_compile_definitions(OROCHI_ENABLE_CUEW)
+#endif()
+
+# ---------------------------------------------------------------
+
 set(GLFW_LIB_DIR "thirdparties/opengl/lib/GLFW")
 set(GLFW_BIN_DIR "thirdparties/opengl/bin/GLFW")
 
@@ -142,7 +120,7 @@ set(HOST_DEVICE_COMMON_DIR "src/HostDeviceCommon")
 link_directories(${CMAKE_SOURCE_DIR}/${GLFW_LIB_DIR})
 link_directories(${CMAKE_SOURCE_DIR}/${GLEW_LIB_DIR})
 link_directories(${EXTERNAL_ASSIMP_INSTALL_LOCATION}/lib)
-link_directories(CMAKE_CURRENT_BINARY_DIR)
+link_directories(${HIPRT_BIN_DIR})
 
 file(GLOB_RECURSE SOURCE_FILES src/*.cpp src/*.h)
 file(GLOB_RECURSE OPENGL_HEADERS thirdparties/opengl/include/*.h)

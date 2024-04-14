@@ -238,7 +238,8 @@ void Renderer::compile_trace_kernel(const char* kernel_file_path, const char* ke
 	std::vector<std::string> include_paths = { "./", "../thirdparties/hiprt/include" };
 	std::vector<std::pair<std::string, std::string>> precompiler_defines;
 	std::vector<const char*> options;
-	options.push_back("-IF:/Repos/HIPRT");
+	// TODO not hardcoded here
+	options.push_back("-IC:/Users/Enermax/Desktop/HIPRT-Path-Tracer/build/_deps/hiprtrelease-src");
 	options.push_back("-I./");
 
 	/*OrochiUtils utils;

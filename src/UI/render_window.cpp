@@ -66,6 +66,7 @@
 //		- https://github.com/libigl/libigl/issues/1388
 //		- https://github.com/libigl/libigl/issues/1534
 // - Visualizing russian roulette depth termination
+// - Statistics on russian roulette efficiency
 // - Being able to enable / disable env map importance sampling
 // - Being able to enable / disable MIS
 // - Better ray origin offset to avoid self intersections

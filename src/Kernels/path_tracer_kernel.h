@@ -86,7 +86,7 @@ __device__ Color cook_torrance_brdf_importance_sample(const RendererMaterial& ma
 
     // The microfacet normal is sampled in its local space, we'll have to bring it to the space
     // around the surface normal
-    float3 microfacet_normal_local_space = float3(cos(phi) * sin_theta, sin(phi) * sin_theta, cos(theta));
+    float3 microfacet_normal_local_space = make_float3(cos(phi) * sin_theta, sin(phi) * sin_theta, cos(theta));
     float3 microfacet_normal = local_to_world_frame(surface_normal, microfacet_normal_local_space);
     if (dot(microfacet_normal, surface_normal) < 0.0f)
         //The microfacet normal that we sampled was under the surface, this can happen
@@ -452,7 +452,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
     if (render_data.render_settings.sample_number == 0)
     {
         render_data.buffers.pixels[index] = Color(0.0f);
-        render_data.buffers.denoiser_normals[index] = float3(1.0f, 1.0f, 1.0f);
+        render_data.buffers.denoiser_normals[index] = make_float3(1.0f, 1.0f, 1.0f);
         render_data.buffers.denoiser_albedo[index] = Color(0.0f, 0.0f, 0.0f);
     }
 
@@ -460,7 +460,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
 
     Color final_color = Color(0.0f, 0.0f, 0.0f);
     Color denoiser_albedo = Color(0.0f, 0.0f, 0.0f);
-    float3 denoiser_normal = float3(0.0f, 0.0f, 0.0f);
+    float3 denoiser_normal = make_float3(0.0f, 0.0f, 0.0f);
     for (int sample = 0; sample < render_data.render_settings.samples_per_frame; sample++)
     {
         //Jittered around the center

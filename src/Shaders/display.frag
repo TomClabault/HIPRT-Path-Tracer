@@ -13,6 +13,7 @@ uniform int u_sample_count_override;
 layout(binding = 2, rgba8) writeonly uniform image2D u_output_image;
 #else
 in vec2 vs_tex_coords;
+out vec4 out_color;
 #endif // COMPUTE_SHADER
 
 #ifdef COMPUTE_SHADER
@@ -49,6 +50,6 @@ void main()
 #ifdef COMPUTE_SHADER
 	imageStore(u_output_image, thread_id, final_color);
 #else
-	gl_FragColor = final_color;
+	out_color = final_color;
 #endif // COMPUTE_SHADER
 };
