@@ -47,7 +47,7 @@ OrochiBuffer<Color>& Renderer::get_denoiser_albedo_buffer()
 	return m_albedo_buffer;
 }
 
-OrochiBuffer<hiprtFloat3>& Renderer::get_denoiser_normals_buffer()
+OrochiBuffer<float3>& Renderer::get_denoiser_normals_buffer()
 {
 	return m_normals_buffer;
 }
@@ -82,9 +82,9 @@ HIPRTRenderData Renderer::get_render_data(const OpenImageDenoiser& denoiser)
 	render_data.buffers.denoiser_normals = m_normals_buffer.get_pointer();
 	render_data.buffers.denoiser_albedo = m_albedo_buffer.get_pointer();
 	render_data.buffers.triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.mesh.triangleIndices);
-	render_data.buffers.triangles_vertices = reinterpret_cast<hiprtFloat3*>(m_hiprt_scene.mesh.vertices);
+	render_data.buffers.triangles_vertices = reinterpret_cast<float3*>(m_hiprt_scene.mesh.vertices);
 	render_data.buffers.normals_present = reinterpret_cast<unsigned char*>(m_hiprt_scene.normals_present);
-	render_data.buffers.vertex_normals = reinterpret_cast<hiprtFloat3*>(m_hiprt_scene.vertex_normals);
+	render_data.buffers.vertex_normals = reinterpret_cast<float3*>(m_hiprt_scene.vertex_normals);
 	render_data.buffers.material_indices = reinterpret_cast<int*>(m_hiprt_scene.material_indices);
 	render_data.buffers.materials_buffer = reinterpret_cast<RendererMaterial*>(m_hiprt_scene.materials_buffer);
 	render_data.buffers.emissive_triangles_count = m_hiprt_scene.emissive_triangles_count;
@@ -324,15 +324,15 @@ void Renderer::set_hiprt_scene_from_scene(Scene& scene)
 
 	// Allocating and initializing the indices buffer
 	mesh.triangleCount = scene.triangle_indices.size() / 3;
-	mesh.triangleStride = sizeof(hiprtInt3);
-	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&mesh.triangleIndices), mesh.triangleCount * sizeof(hiprtInt3)));
-	OROCHI_CHECK_ERROR(oroMemcpyHtoD(reinterpret_cast<oroDeviceptr>(mesh.triangleIndices), scene.triangle_indices.data(), mesh.triangleCount * sizeof(hiprtInt3)));
+	mesh.triangleStride = sizeof(int3);
+	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&mesh.triangleIndices), mesh.triangleCount * sizeof(int3)));
+	OROCHI_CHECK_ERROR(oroMemcpyHtoD(reinterpret_cast<oroDeviceptr>(mesh.triangleIndices), scene.triangle_indices.data(), mesh.triangleCount * sizeof(int3)));
 
 	// Allocating and initializing the vertices positions buiffer
 	mesh.vertexCount = scene.vertices_positions.size();
-	mesh.vertexStride = sizeof(hiprtFloat3);
-	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&mesh.vertices), mesh.vertexCount * sizeof(hiprtFloat3)));
-	OROCHI_CHECK_ERROR(oroMemcpyHtoD(reinterpret_cast<oroDeviceptr>(mesh.vertices), scene.vertices_positions.data(), mesh.vertexCount * sizeof(hiprtFloat3)));
+	mesh.vertexStride = sizeof(float3);
+	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&mesh.vertices), mesh.vertexCount * sizeof(float3)));
+	OROCHI_CHECK_ERROR(oroMemcpyHtoD(reinterpret_cast<oroDeviceptr>(mesh.vertices), scene.vertices_positions.data(), mesh.vertexCount * sizeof(float3)));
 
 	hiprtGeometryBuildInput geometry_build_input;
 	geometry_build_input.type = hiprtPrimitiveTypeTriangleMesh;
@@ -361,8 +361,8 @@ void Renderer::set_hiprt_scene_from_scene(Scene& scene)
 	hiprt_scene.normals_present = normals_present_buffer;
 
 	hiprtDevicePtr vertex_normals_buffer;
-	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&vertex_normals_buffer), sizeof(hiprtFloat3) * scene.vertex_normals.size()));
-	OROCHI_CHECK_ERROR(oroMemcpyHtoD(reinterpret_cast<oroDeviceptr>(vertex_normals_buffer), scene.vertex_normals.data(), sizeof(hiprtFloat3) * scene.vertex_normals.size()));
+	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&vertex_normals_buffer), sizeof(float3) * scene.vertex_normals.size()));
+	OROCHI_CHECK_ERROR(oroMemcpyHtoD(reinterpret_cast<oroDeviceptr>(vertex_normals_buffer), scene.vertex_normals.data(), sizeof(float3) * scene.vertex_normals.size()));
 	hiprt_scene.vertex_normals = vertex_normals_buffer;
 
 	hiprtDevicePtr material_indices_buffer;

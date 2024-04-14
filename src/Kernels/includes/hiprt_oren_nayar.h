@@ -11,14 +11,14 @@
 /* References:
  * [1] [Physically Based Rendering 3rd Edition] https://www.pbr-book.org/3ed-2018/Reflection_Models/Microfacet_Models
  */
-__device__ Color oren_nayar_eval(const RendererMaterial& material, const hiprtFloat3& view_direction, const hiprtFloat3& surface_normal, const hiprtFloat3& to_light_direction)
+__device__ Color oren_nayar_eval(const RendererMaterial& material, const float3& view_direction, const float3& surface_normal, const float3& to_light_direction)
 {
-    hiprtFloat3 T, B;
+    float3 T, B;
     build_ONB(surface_normal, T, B);
 
     // Using local view and light directions to simply following computations
-    hiprtFloat3 local_view_direction = world_to_local_frame(T, B, surface_normal, view_direction);
-    hiprtFloat3 local_to_light_direction = world_to_local_frame(T, B, surface_normal, to_light_direction);
+    float3 local_view_direction = world_to_local_frame(T, B, surface_normal, view_direction);
+    float3 local_to_light_direction = world_to_local_frame(T, B, surface_normal, to_light_direction);
 
     // sin(theta) = 1.0 - cos(theta)^2
 	float sin_theta_i = sqrt(1.0f - local_to_light_direction.z * local_to_light_direction.z);

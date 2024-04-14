@@ -19,6 +19,8 @@ struct Xorshift32State {
 
 struct Xorshift32Generator
 {
+    static const int XORSHIFT_MAX = 0xffffffff;
+
     __device__ Xorshift32Generator(unsigned int seed)
     {
         m_state.a = seed;
@@ -30,7 +32,7 @@ struct Xorshift32Generator
      */
     __device__ int random_index(int array_size)
     {
-        int random_num = xorshift32() / (float)UINT_MAX * array_size;
+        int random_num = xorshift32() / (float)XORSHIFT_MAX * array_size;
         return RT_MIN(random_num, array_size - 1);
     }
 
@@ -40,7 +42,7 @@ struct Xorshift32Generator
     __device__ float operator()()
     {
         //Float in [0, 1[
-        return RT_MIN(xorshift32() / (float)UINT_MAX, 1.0f - 1.0e-9f);
+        return RT_MIN(xorshift32() / (float)XORSHIFT_MAX, 1.0f - 1.0e-9f);
     }
 
     __device__ unsigned int xorshift32()

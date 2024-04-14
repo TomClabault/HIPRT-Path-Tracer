@@ -32,7 +32,7 @@ struct HIPRTOrochiCtx
 
 		hiprt_ctx_input.ctxt = oroGetRawCtx(orochi_ctx);
 		hiprt_ctx_input.device = oroGetRawDevice(orochi_device);
-		hiprtSetLogLevel(hiprtLogLevelInfo);
+		hiprtSetLogLevel(hiprtLogLevelError);
 
 		HIPRT_CHECK_ERROR(hiprtCreateContext(HIPRT_API_VERSION, hiprt_ctx_input, hiprt_ctx));
 	}

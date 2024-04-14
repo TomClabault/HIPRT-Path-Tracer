@@ -30,15 +30,15 @@ GLOBAL_KERNEL_SIGNATURE(void) NormalsKernel(hiprtGeometry geom, HIPRTRenderData 
 	int index_B = render_data.buffers.triangles_indices[hit.primID * 3 + 1];
 	int index_C = render_data.buffers.triangles_indices[hit.primID * 3 + 2];
 
-	hiprtFloat3 vertex_A = render_data.buffers.triangles_vertices[index_A];
-	hiprtFloat3 vertex_B = render_data.buffers.triangles_vertices[index_B];
-	hiprtFloat3 vertex_C = render_data.buffers.triangles_vertices[index_C];
+	float3 vertex_A = render_data.buffers.triangles_vertices[index_A];
+	float3 vertex_B = render_data.buffers.triangles_vertices[index_B];
+	float3 vertex_C = render_data.buffers.triangles_vertices[index_C];
 
-	hiprtFloat3 normal;
+	float3 normal;
 	if (render_data.buffers.normals_present[index_A])
 	{
 		// Smooth normal
-		hiprtFloat3 smooth_normal = render_data.buffers.vertex_normals[index_B] * hit.uv.x
+		float3 smooth_normal = render_data.buffers.vertex_normals[index_B] * hit.uv.x
 			+ render_data.buffers.vertex_normals[index_C] * hit.uv.y
 			+ render_data.buffers.vertex_normals[index_A] * (1.0f - hit.uv.x - hit.uv.y);
 
@@ -47,6 +47,6 @@ GLOBAL_KERNEL_SIGNATURE(void) NormalsKernel(hiprtGeometry geom, HIPRTRenderData 
 	else
 		normal = normalize(cross(vertex_B - vertex_A, vertex_C - vertex_A));
 
-	Color final_color(hit.hasHit() ? abs(normal) : hiprtFloat3{ 0.0f, 0.0f, 0.0f });
+	Color final_color(hit.hasHit() ? float3(abs(normal.x), abs(normal.y), abs(normal.z)) : float3(0.0f, 0.0f, 0.0f));
 	render_data.buffers.pixels[index] = final_color * (render_data.render_settings.sample_number + 1);
 }

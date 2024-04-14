@@ -28,20 +28,20 @@ struct WorldBuffers
 {
 	Color* pixels = nullptr;
 	// World space normals and albedo for the denoiser
-	hiprtFloat3* denoiser_normals = nullptr;
+	float3* denoiser_normals = nullptr;
 	Color* denoiser_albedo = nullptr;
 
 	// A device pointer to the buffer of triangles indices
 	int* triangles_indices = nullptr;
 	// A device pointer to the buffer of triangle vertices
-	hiprtFloat3* triangles_vertices = nullptr;
+	float3* triangles_vertices = nullptr;
 	// A device pointer to a buffer filled with 0s and 1s that
 	// indicates whether or not a vertex normal is available for
 	// the given vertex index
 	unsigned char* normals_present = nullptr;
 	// The smooth normal at each vertex of the scene
 	// Needs to be indexed by a vertex index
-	hiprtFloat3* vertex_normals = nullptr;
+	float3* vertex_normals = nullptr;
 
 	// Index of the material used by each triangle of the scene
 	int* material_indices = nullptr;

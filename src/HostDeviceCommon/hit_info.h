@@ -13,14 +13,14 @@ enum RayState
 };
 
 #ifdef __KERNELCC__
-typedef hiprtFloat3 VectorType;
-typedef hiprtFloat3 PointType;
-#define UV_DECLARATION hiprtFloat2 uv;
+#define VectorType float3
+#define PointType float3
+#define UV_DECLARATION float2 uv;
 #else
 #include "Maths/vec.h"
 
-typedef Vector VectorType;
-typedef Point PointType;
+#define VectorType Vector
+#define PointType Point
 #define UV_DECLARATION float u, v;
 #endif
 

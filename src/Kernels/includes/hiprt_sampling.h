@@ -13,7 +13,7 @@
  * Reflects a ray about a normal. This function requires that dot(ray_direction, surface_normal) > 0 i.e.
  * ray_direction and surface_normal are in the same hemisphere
  */
-__device__ hiprtFloat3 reflect_ray(const hiprtFloat3& ray_direction, const hiprtFloat3& surface_normal)
+__device__ float3 reflect_ray(const float3& ray_direction, const float3& surface_normal)
 {
     return -ray_direction + 2.0f * dot(ray_direction, surface_normal) * surface_normal;
 }
@@ -22,7 +22,7 @@ __device__ hiprtFloat3 reflect_ray(const hiprtFloat3& ray_direction, const hiprt
  * Refracts a ray about a normal. This function requires that dot(ray_direction, surface_normal) > 0 i.e.
  * ray_direction and surface_normal are in the same hemisphere
  */
-__device__ bool refract_ray(const hiprtFloat3& ray_direction, const hiprtFloat3& surface_normal, hiprtFloat3& refract_direction, float relative_eta)
+__device__ bool refract_ray(const float3& ray_direction, const float3& surface_normal, float3& refract_direction, float relative_eta)
 {
     float NoI = dot(ray_direction, surface_normal);
 
@@ -37,7 +37,7 @@ __device__ bool refract_ray(const hiprtFloat3& ray_direction, const hiprtFloat3&
     return true;
 }
 
-__device__ hiprtFloat3 cosine_weighted_sample(const hiprtFloat3& normal, float& pdf, Xorshift32Generator& random_number_generator)
+__device__ float3 cosine_weighted_sample(const float3& normal, float& pdf, Xorshift32Generator& random_number_generator)
 {
     float rand_1 = random_number_generator();
     float rand_2 = random_number_generator();
@@ -49,8 +49,8 @@ __device__ hiprtFloat3 cosine_weighted_sample(const hiprtFloat3& normal, float& 
 
     pdf = sqrt_rand_2 / (float)M_PI;
 
-    //Generating a random direction in a local space with Z as the Up hiprtFloat3
-    hiprtFloat3 random_dir_local_space = hiprtFloat3(cos(phi) * sin_theta, sin(phi) * sin_theta, sqrt_rand_2);
+    //Generating a random direction in a local space with Z as the Up float3
+    float3 random_dir_local_space = float3(cos(phi) * sin_theta, sin(phi) * sin_theta, sqrt_rand_2);
     return local_to_world_frame(normal, random_dir_local_space);
 }
 
@@ -89,10 +89,10 @@ __device__ float GGX_normal_distribution(float alpha, float NoH)
     float alpha2 = alpha * alpha;
     float NoH2 = NoH * NoH;
     float b = (NoH2 * (alpha2 - 1.0f) + 1.0f);
-    return alpha2 * M_1_PI / (b * b);
+    return alpha2 / M_PI / (b * b);
 }
 
-__device__ float GTR2_anisotropic(const RendererMaterial& material, const hiprtFloat3& local_half_vector)
+__device__ float GTR2_anisotropic(const RendererMaterial& material, const float3& local_half_vector)
 {
     float denom = (local_half_vector.x * local_half_vector.x) / (material.alpha_x * material.alpha_x) +
         (local_half_vector.y * local_half_vector.y) / (material.alpha_y * material.alpha_y) +
@@ -113,7 +113,7 @@ __device__ float GGX_smith_masking_shadowing(float roughness_squared, float NoV,
     return G1_schlick_ggx(k, NoL) * G1_schlick_ggx(k, NoV);
 }
 
-__device__ float G1(float alpha_x, float alpha_y, const hiprtFloat3& local_direction)
+__device__ float G1(float alpha_x, float alpha_y, const float3& local_direction)
 {
     float ax = local_direction.x * alpha_x;
     float ay = local_direction.y * alpha_y;
@@ -123,16 +123,16 @@ __device__ float G1(float alpha_x, float alpha_y, const hiprtFloat3& local_direc
     return 1.0f / (1.0f + lambda);
 }
 
-__device__ hiprtFloat3 GGXVNDF_sample(const hiprtFloat3& local_view_direction, float alpha_x, float alpha_y, Xorshift32Generator& random_number_generator)
+__device__ float3 GGXVNDF_sample(const float3& local_view_direction, float alpha_x, float alpha_y, Xorshift32Generator& random_number_generator)
 {
     float r1 = random_number_generator();
     float r2 = random_number_generator();
 
-    hiprtFloat3 Vh = normalize(hiprtFloat3{ alpha_x * local_view_direction.x, alpha_y * local_view_direction.y, local_view_direction.z });
+    float3 Vh = normalize(float3{ alpha_x * local_view_direction.x, alpha_y * local_view_direction.y, local_view_direction.z });
 
     float lensq = Vh.x * Vh.x + Vh.y * Vh.y;
-    hiprtFloat3 T1 = lensq > 0.0f ? hiprtFloat3{-Vh.y, Vh.x, 0} / sqrt(lensq) : hiprtFloat3{ 1.0f, 0.0f, 0.0f };
-    hiprtFloat3 T2 = cross(Vh, T1);
+    float3 T1 = lensq > 0.0f ? float3{-Vh.y, Vh.x, 0} / sqrt(lensq) : float3{ 1.0f, 0.0f, 0.0f };
+    float3 T2 = cross(Vh, T1);
 
     float r = sqrt(r1);
     float phi = 2.0f * M_PI * r2;
@@ -141,9 +141,9 @@ __device__ hiprtFloat3 GGXVNDF_sample(const hiprtFloat3& local_view_direction, f
     float s = 0.5f * (1.0f + Vh.z);
     t2 = (1.0f - s) * sqrt(1.0f - t1 * t1) + s * t2;
 
-    hiprtFloat3 Nh = t1 * T1 + t2 * T2 + sqrt(RT_MAX(0.0f, 1.0f - t1 * t1 - t2 * t2)) * Vh;
+    float3 Nh = t1 * T1 + t2 * T2 + sqrt(RT_MAX(0.0f, 1.0f - t1 * t1 - t2 * t2)) * Vh;
 
-    return normalize(hiprtFloat3{alpha_x * Nh.x, alpha_y * Nh.y, RT_MAX(0.0f, Nh.z)});
+    return normalize(float3{alpha_x * Nh.x, alpha_y * Nh.y, RT_MAX(0.0f, Nh.z)});
 }
 
 __device__ float GTR1(float alpha_g, float local_halfway_z)
@@ -156,7 +156,7 @@ __device__ float GTR1(float alpha_g, float local_halfway_z)
     return num / denom;
 }
 
-__device__ float disney_clearcoat_masking_shadowing(const hiprtFloat3& direction)
+__device__ float disney_clearcoat_masking_shadowing(const float3& direction)
 {
     return G1(0.25f, 0.25f, direction);
 }
