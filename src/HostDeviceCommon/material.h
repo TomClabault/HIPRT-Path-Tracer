@@ -7,8 +7,7 @@
 #define MATERIAL_H
 
 #include "HostDeviceCommon/color.h"
-
-#include "Kernels/includes/HIPRT_maths.h"
+#include "HostDeviceCommon/math.h"
 
 enum BRDF
 {

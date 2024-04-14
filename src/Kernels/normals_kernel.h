@@ -5,7 +5,6 @@
 
 #include "Kernels/includes/HIPRT_camera.h"
 #include "Kernels/includes/HIPRT_common.h"
-#include "Kernels/includes/HIPRT_maths.h"
 #include "Kernels/includes/hiprt_render_data.h"
 #include "Kernels/includes/hiprt_sampling.h"
 
@@ -27,21 +26,21 @@ GLOBAL_KERNEL_SIGNATURE(void) NormalsKernel(hiprtGeometry geom, HIPRTRenderData 
 	hiprtGeomTraversalClosest tr(geom, ray);
 	hiprtHit				  hit = tr.getNextHit();
 
-	int index_A = render_data.triangles_indices[hit.primID * 3 + 0];
-	int index_B = render_data.triangles_indices[hit.primID * 3 + 1];
-	int index_C = render_data.triangles_indices[hit.primID * 3 + 2];
+	int index_A = render_data.buffers.triangles_indices[hit.primID * 3 + 0];
+	int index_B = render_data.buffers.triangles_indices[hit.primID * 3 + 1];
+	int index_C = render_data.buffers.triangles_indices[hit.primID * 3 + 2];
 
-	hiprtFloat3 vertex_A = render_data.triangles_vertices[index_A];
-	hiprtFloat3 vertex_B = render_data.triangles_vertices[index_B];
-	hiprtFloat3 vertex_C = render_data.triangles_vertices[index_C];
+	hiprtFloat3 vertex_A = render_data.buffers.triangles_vertices[index_A];
+	hiprtFloat3 vertex_B = render_data.buffers.triangles_vertices[index_B];
+	hiprtFloat3 vertex_C = render_data.buffers.triangles_vertices[index_C];
 
 	hiprtFloat3 normal;
-	if (render_data.normals_present[index_A])
+	if (render_data.buffers.normals_present[index_A])
 	{
 		// Smooth normal
-		hiprtFloat3 smooth_normal = render_data.vertex_normals[index_B] * hit.uv.x
-			+ render_data.vertex_normals[index_C] * hit.uv.y
-			+ render_data.vertex_normals[index_A] * (1.0f - hit.uv.x - hit.uv.y);
+		hiprtFloat3 smooth_normal = render_data.buffers.vertex_normals[index_B] * hit.uv.x
+			+ render_data.buffers.vertex_normals[index_C] * hit.uv.y
+			+ render_data.buffers.vertex_normals[index_A] * (1.0f - hit.uv.x - hit.uv.y);
 
 		normal = normalize(smooth_normal);
 	}
@@ -49,5 +48,5 @@ GLOBAL_KERNEL_SIGNATURE(void) NormalsKernel(hiprtGeometry geom, HIPRTRenderData 
 		normal = normalize(cross(vertex_B - vertex_A, vertex_C - vertex_A));
 
 	Color final_color(hit.hasHit() ? abs(normal) : hiprtFloat3{ 0.0f, 0.0f, 0.0f });
-	render_data.pixels[index] = final_color * (render_data.render_settings.sample_number + 1);
+	render_data.buffers.pixels[index] = final_color * (render_data.render_settings.sample_number + 1);
 }

@@ -13,7 +13,7 @@
 
 struct ApplicationSettings
 {
-	int selected_kernel = 0;
+	int selected_kernel = 1;
 	std::vector<std::string> kernel_files = { "Kernels/path_tracer_kernel.h", "Kernels/normals_kernel.h" };
 	std::vector<std::string> kernel_functions = { "PathTracerKernel", "NormalsKernel"};
 

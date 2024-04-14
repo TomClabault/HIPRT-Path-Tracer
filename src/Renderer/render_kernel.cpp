@@ -655,6 +655,12 @@ float RenderKernel::disney_schlick_weight(float f0, float abs_cos_angle)
     return 1.0f + (f0 - 1.0f) * pow(1.0f - abs_cos_angle, 5.0f);
 }
 
+// TODO remove, this should not be necessary as already defined in hiprt/Math.h
+inline float clamp(float min_val, float max_val, float val)
+{
+    return std::max(min_val, std::min(max_val, val));
+}
+
 Color RenderKernel::disney_diffuse_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& to_light_direction, float& pdf)
 {
     Vector half_vector = normalize(to_light_direction + view_direction);

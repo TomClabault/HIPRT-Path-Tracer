@@ -10,8 +10,7 @@
 #include "assimp/scene.h"
 #include "assimp/postprocess.h"
 
-#include "hiprt/hiprt_vec.h"
-
+#include "HostDeviceCommon/material.h"
 #include "Scene/camera.h"
 #include "Renderer/sphere.h"
 #include "Renderer/triangle.h"

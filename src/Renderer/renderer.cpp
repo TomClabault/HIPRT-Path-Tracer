@@ -108,12 +108,203 @@ void Renderer::init_ctx(int device_index)
 	m_hiprt_orochi_ctx.get()->init(device_index);
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+bool customReadSourceCode(const std::filesystem::path& srcPath, std::string& sourceCode, std::optional<std::vector<std::filesystem::path>> includes = std::nullopt);
+
+bool customReadSourceCode(
+	const std::filesystem::path& srcPath, std::string& sourceCode, std::optional<std::vector<std::filesystem::path>> includes)
+{
+	std::fstream f(srcPath);
+	if (f.is_open())
+	{
+		size_t sizeFile;
+		f.seekg(0, std::fstream::end);
+		size_t size = sizeFile = static_cast<size_t>(f.tellg());
+		f.seekg(0, std::fstream::beg);
+		if (includes)
+		{
+			sourceCode.clear();
+			std::string line;
+			while (std::getline(f, line))
+			{
+				if (line.find("#include") != std::string::npos)
+				{
+					size_t		pa = line.find("<");
+					size_t		pb = line.find(">");
+					std::string buf = line.substr(pa + 1, pb - pa - 1);
+					includes.value().push_back(buf);
+					sourceCode += line + '\n';
+				}
+				sourceCode += line + '\n';
+			}
+		}
+		else
+		{
+			sourceCode.resize(size, ' ');
+			f.read(&sourceCode[0], size);
+		}
+		f.close();
+	}
+	else
+		return false;
+	return true;
+}
+
+hiprtError customBuildTraceKernels(
+	hiprtContext								 ctxt,
+	const std::filesystem::path& srcPath,
+	std::vector<const char*>					 functionNames,
+	std::vector<hiprtApiFunction>& functionsOut,
+	std::optional<std::vector<const char*>>		 opts,
+	std::optional<std::vector<hiprtFuncNameSet>> funcNameSets,
+	uint32_t									 numGeomTypes,
+	uint32_t									 numRayTypes)
+{
+	std::vector<std::filesystem::path> includeNamesData;
+	std::string						   sourceCode;
+	customReadSourceCode(srcPath, sourceCode, includeNamesData);
+
+	std::vector<std::string> headersData(includeNamesData.size());
+	std::vector<const char*> headers;
+	std::vector<const char*> includeNames;
+	for (size_t i = 0; i < includeNamesData.size(); i++)
+	{
+		customReadSourceCode(std::filesystem::path("../") / includeNamesData[i], headersData[i]);
+		includeNames.push_back(includeNamesData[i].string().c_str());
+		headers.push_back(headersData[i].c_str());
+	}
+
+	functionsOut.resize(functionNames.size());
+	return hiprtBuildTraceKernels(
+		ctxt,
+		static_cast<uint32_t>(functionNames.size()),
+		functionNames.data(),
+		sourceCode.c_str(),
+		srcPath.string().c_str(),
+		static_cast<uint32_t>(headers.size()),
+		headers.data(),
+		includeNames.data(),
+		opts ? static_cast<uint32_t>(opts.value().size()) : 0,
+		opts ? opts.value().data() : nullptr,
+		numGeomTypes,
+		numRayTypes,
+		funcNameSets ? funcNameSets.value().data() : nullptr,
+		functionsOut.data(),
+		nullptr,
+		true);
+}
+
 void Renderer::compile_trace_kernel(const char* kernel_file_path, const char* kernel_function_name)
 {
-	std::vector<std::string> include_paths{"./", "../thirdparties/hiprt/include"};
+	std::vector<std::string> include_paths = { "./", "../thirdparties/hiprt/include" };
 	std::vector<std::pair<std::string, std::string>> precompiler_defines;
-	buildTraceKernelFromBitcode(m_hiprt_orochi_ctx->hiprt_ctx, kernel_file_path, kernel_function_name, m_trace_kernel, include_paths);
+	std::vector<const char*> options;
+	options.push_back("-IF:/Repos/HIPRT");
+	options.push_back("-I./");
+
+	/*OrochiUtils utils;
+	m_trace_kernel = utils.getFunctionFromFile(m_hiprt_orochi_ctx->orochi_device, kernel_file_path, kernel_function_name, &options);*/
+	// buildTraceKernelFromBitcode(m_hiprt_orochi_ctx->hiprt_ctx, kernel_file_path, kernel_function_name, m_trace_kernel, include_paths);
+	std::vector<hiprtApiFunction> functionsOut(1);
+	customBuildTraceKernels(m_hiprt_orochi_ctx->hiprt_ctx, kernel_file_path, { kernel_function_name }, functionsOut, options, std::nullopt, 0, 1);
+	m_trace_kernel = *reinterpret_cast<oroFunction*>(&functionsOut.back());
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 void Renderer::launch_kernel(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args)
 {

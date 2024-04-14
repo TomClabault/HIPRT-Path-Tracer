@@ -12,6 +12,7 @@
 #include "Renderer/bvh.h"
 #include "Renderer/sphere.h"
 #include "Renderer/triangle.h"
+#include "HostDeviceCommon/material.h"
 #include "HostDeviceCommon/xorshift.h"
 #include "Utils/utils.h"
 

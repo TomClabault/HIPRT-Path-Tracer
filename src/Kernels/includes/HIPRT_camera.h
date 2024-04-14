@@ -6,8 +6,7 @@
 #ifndef HIPRT_CAMERA_H
 #define HIPRT_CAMERA_H
 
-#include "Kernels/includes/HIPRT_common.h"
-#include "Kernels/includes/HIPRT_maths.h"
+#include "HostDeviceCommon/math.h"
 
 struct HIPRTCamera
 {
@@ -15,7 +14,16 @@ struct HIPRTCamera
     float4x4 inverse_projection;
     hiprtFloat3 position;
 
-    __device__ __host__ hiprtRay get_camera_ray(float x, float y, int2 res)
+#ifdef __KERNELCC__
+    // TODO remove, should not be needed, this is a quick fix for function names collision
+    // with gkit
+    hiprtFloat3 normalize_hiprt(hiprtFloat3 vec)
+    {
+        float length = sqrt(vec.x * vec.x + vec.y * vec.y + vec.z * vec.z);
+        return vec / length;
+    }
+
+    __device__ hiprtRay get_camera_ray(float x, float y, int2 res)
     {
         float x_ndc_space = x / res.x * 2 - 1;
         float y_ndc_space = y / res.y * 2 - 1;
@@ -29,7 +37,7 @@ struct HIPRTCamera
         hiprtFloat3 ray_point_dir_vs = ray_point_dir_vs_homog;
         hiprtFloat3 ray_point_dir_ws = matrix_X_point(inverse_view, ray_point_dir_vs);
 
-        hiprtFloat3 ray_direction = normalize(ray_point_dir_ws - ray_origin);
+        hiprtFloat3 ray_direction = normalize_hiprt(ray_point_dir_ws - ray_origin);
 
         hiprtRay ray;
         ray.origin = ray_origin;
@@ -37,6 +45,7 @@ struct HIPRTCamera
 
         return ray;
     }
+#endif
 };
 
 #endif

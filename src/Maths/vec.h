@@ -52,7 +52,6 @@ Point min( const Point& a, const Point& b );
 //! renvoie la plus grande composante de chaque point. x, y, z= max(a.x, b.x), max(a.y, b.y), max(a.z, b.z).
 Point max( const Point& a, const Point& b );
 
-
 //! representation d'un vecteur 3d.
 struct Vector
 {

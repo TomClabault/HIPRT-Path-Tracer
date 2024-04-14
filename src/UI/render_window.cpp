@@ -16,8 +16,6 @@
 // test performance when reducing number of triangles of the pbrt dragon
 
 // TODO bugs
-// TODO IMMEDIATE: total sampling disney BRDF
-// - Double sided emissive quad emitting correctly on the two sides but the camera only sees it emiting on one side
 // - Test scene with full red sphere metallic & full green emission plane (white diffuse color of the material) 
 //		+ white ambient light should probably show the reflection of the emission quad 
 //		in the sphere as red even if the quad is only emitting pure green (and the sphere is pure red) 
@@ -32,8 +30,7 @@
 
 
 // TODO Code Organization:
-// reset_sample_number() is a bad name, I couldn't remember the name when looking for it and was expecting soemthing like 'dirty render' or something
-// - add license to repo
+// - reset_sample_number() is a bad name, I couldn't remember the name when looking for it and was expecting soemthing like 'dirty render' or something
 // - Can we have access to HoL when calling disey_metallic_fresnel to avoid passing the two vectors and recomputing the dot product in the return statement ?
 // - rename HIPRT kernel files without the hiprt prefix
 // - Clean the Git of all the HIP/Orochi binary files. Try to download them automatically in the CMake or write installation instructions
@@ -55,7 +52,8 @@
 
 
 // TODO Features:
-// Have the UI run at its own framerate to avoid having the UI come to a crawl when the path tracing is expensive
+// - Look at what Orochi & HIPCC can do in terms of displaying registers used / options to specify shared stack size / block size (-DBLOCK_SIZE, -DSHARED_STACK_SIZE)
+// - Have the UI run at its own framerate to avoid having the UI come to a crawl when the path tracing is expensive
 // - Denoiser blend to allow blending the original noisy image and the perfect denoised result by a given factor
 // - When modifying the emission of a material with the material editor, it should be reflected in the scene and allow the direct sampling of the geometry
 // - Color fallof (change of material base base_color based on the angle with the view direction and the normal
@@ -72,14 +70,13 @@
 // - Being able to enable / disable MIS
 // - Better ray origin offset to avoid self intersections
 // - Realistic Camera Model
+// - Focus blur
 // - Textures for each parameter of the Disney BSDF
 // - Bump mapping
-// - Checkerboard for better visualization performance
 // - Flakes BRDF (maybe look at OSPRay implementation ?)
 // - ImGuizmo
 // - Orochi 2.0 --> Textures and OpenGL Interop 
 // - Paths roughness regularization
-// - Focus blur
 // - choose disney base_color model (disney, lambertian, oren nayar)
 // - enable lower resolution on mouse scroll for like ~10 frames
 // - display feedback for 3 seconds after dumping a screenshot to disk
@@ -93,7 +90,7 @@
 // - check perf of aiPostProcessSteps::aiProcess_ImproveCacheLocality
 // - ImGui to choose the BVH flags at runtime and be able to compare the performance
 // - ImGui widgets for SBVH / LBVH
-// - light sampling: go through transparent surfaces instead of considering them opaque
+// - light sampling: go through transparent surfaces instead of considering them opaque (?)
 // - BVH compaction + imgui checkbox
 // - shader cache
 // - indirect / direct lighting clamping
@@ -109,7 +106,6 @@
 // - stuff to multithread when loading everything ? (scene, BVH, textures, ...)
 // - Efficiency Aware Russian roulette and splitting
 // - ReSTIR PT
-// - OMNEE?
 
 void wait_and_exit(const char* message)
 {

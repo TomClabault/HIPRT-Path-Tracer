@@ -7,7 +7,11 @@
 #define XORSHIFT_H
 
 #include <hiprt/hiprt_device.h>
-#include "Kernels/includes/HIPRT_maths.h"
+
+#include "HostDeviceCommon/math.h"
+
+// TODO remove
+//#include "Kernels/includes/HIPRT_maths.h"
 
 struct Xorshift32State {
     unsigned int a = 42;

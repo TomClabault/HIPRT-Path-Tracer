@@ -7,7 +7,6 @@
 #include "Kernels/includes/HIPRT_common.h"
 #include "Kernels/includes/hiprt_disney.h"
 #include "Kernels/includes/hiprt_fix_vs.h"
-#include "Kernels/includes/HIPRT_maths.h"
 #include "Kernels/includes/hiprt_render_data.h"
 #include "Kernels/includes/hiprt_sampling.h"
 
@@ -434,6 +433,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
     if (index >= res.x * res.y)
         return;
 
+
     // 'Render low resolution' means that the user is moving the camera for example
     // so we're going to reduce the quality of the render for increased framerates
     // while moving
@@ -484,6 +484,11 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
             {
                 HitInfo closest_hit_info;
                 bool intersection_found = trace_ray(render_data, ray, closest_hit_info);
+                if (intersection_found)
+                    debug_set_final_color(render_data, x, y, res.x, Color(1.0f, 0.0f, 0.0f));
+                else
+                    debug_set_final_color(render_data, x, y, res.x, Color(1.0f, 1.0f, 0.0f));
+                return;
 
                 // Because I've had self-intersection issues in the past (offsetting the ray origin
                 // from the surface along the normal by 1.0e-4f wasn't enough), I'm adding this "fail-safe" 

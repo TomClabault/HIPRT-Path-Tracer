@@ -6,8 +6,8 @@
 #ifndef OROCHI_UTILS_H
 #define OROCHI_UTILS_H
 
-#include "hiprt/hiprt.h"
-#include "Orochi/Orochi.h"
+#include <hiprt/hiprt.h>
+#include <Orochi/Orochi.h>
 
 #include <filesystem>
 #include <optional>
