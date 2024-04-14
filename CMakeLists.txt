@@ -5,6 +5,10 @@ project(HIPRTPathTracer LANGUAGES CXX)
 # To be able to use the ExternalProject_Add() command
 include(ExternalProject)
 include(FetchContent)
+Set(FETCHCONTENT_QUIET FALSE) # To see the progress of FetchContent
+# Policy for what timestamp to use when downloading stuff with FetchContent / ExternelProject / ...
+# NEW sets the timestamps to the extraction time
+cmake_policy(SET CMP0135 NEW)
 
 # Downloading ASSIMP library from Github for assets loading
 set(EXTERNAL_ASSIMP_INSTALL_LOCATION ${CMAKE_BINARY_DIR}/external/assimp)
@@ -23,18 +27,20 @@ ExternalProject_Add(
 )
 
 # ----------- Downloading Open Image Denoise binaries -----------
+
 FetchContent_Declare(
 	oidnbinaries
 	URL      https://github.com/OpenImageDenoise/oidn/releases/download/v2.2.2/oidn-2.2.2.x64.windows.zip
-	FIND_PACKAGE_ARGS NAMES OpenImageDenoise
 )
 
 FetchContent_MakeAvailable(
 	oidnbinaries
 )
+
 # ---------------------------------------------------------------
 
 # ----------------- Requiring the HIPRT Binaries ----------------
+#[===[
 if (NOT DEFINED HIPRT_BINARIES_DIR)
 	set(HIPRT_BINARIES_DIR "NOT FOUND" CACHE PATH "Path to the HIPRT binaries directory. Your should provide the path such that HIPRT_BINARIES_DIR/hiprt/win/hiprt0200264.lib is a valid path.")
 	message(FATAL_ERROR "The path to the binaries folder of HIPRT is needed. Provide it with the HIPRT_BINARIES_DIR variable using 'cmake -DHIPRT_BINARIES_DIR=<path>'. HIPRT binaries can be downloaded at https://gpuopen.com/hiprt/")
@@ -59,10 +65,69 @@ else ()
 	STRING(REGEX REPLACE "\\\\" "/" OROCHI_SOURCES_DIR ${OROCHI_SOURCES_DIR})
 	STRING(REGEX REPLACE "\\\\" "/" CUEW_SOURCES_DIR ${CUEW_SOURCES_DIR})
 	STRING(REGEX REPLACE "\\\\" "/" HIPEW_SOURCES_DIR ${HIPEW_SOURCES_DIR})
-
+	
 	link_directories(${HIPRT_BINARIES_DIR}/hiprt/win)
 endif()
+#]===]
 # ---------------------------------------------------------------
+
+# ----------------- Downloading and building HIPRT ----------------
+FetchContent_Declare(
+  hiprtrelease
+  GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/HIPRT.git
+  GIT_TAG        9aae35514303b6e3e99a4bf632e9be0fbfd208ad # release v2.3.7df94af + 2 commits that fix some stuff
+  GIT_PROGRESS TRUE
+)
+
+FetchContent_MakeAvailable(
+	hiprtrelease
+)
+
+# Executing HIPRT's premake
+execute_process(COMMAND ./tools/premake5/win/premake5.exe vs2022 WORKING_DIRECTORY ${hiprtrelease_SOURCE_DIR})
+
+# We're now going to build the HIPRT project through MSBuild since Premake generated a Visual Studio Solution
+# First, trying to find MSBuild on the PATH 
+set(MSBUILD_EXECUTABLE "")
+find_program(MSBUILD_EXECUTABLE "MSBuild")
+if(NOT ${MSBUILD_EXECUTABLE} STREQUAL MSBUILD_EXECUTABLE-NOTFOUND)
+	message("MSBuild found at: " ${MSBUILD_EXECUTABLE})
+else()
+	# Trying to automatically find MSBuild in the regular Visual Studio installation
+	# given by the VS2022INSTALLDIR environment variable
+	if (EXISTS $ENV{VS2022INSTALLDIR}/MSBuild/Current/Bin/MSBuild.exe)
+		set(MSBUILD_EXECUTABLE $ENV{VS2022INSTALLDIR}/MSBuild/Current/Bin/MSBuild.exe)
+	else()
+		set(MSBUILD_EXECUTABLE "NOT FOUND" CACHE PATH "Path to MSBuild.exe. MSBuild is shipped with Visual Studio and can be find under <Visual Studio Installation>/MSBuild/Current/Bin")
+		message(FATAL_ERROR "Could not find MSBuild.exe on your system. You can add it to your PATH or provide through the MSBUILD_EXECUTABLE CMake variable.")
+	endif()
+endif()
+
+# Building HIPRT through MSBuild since Premake generated a Visual Studio Solution
+execute_process(COMMAND ${MSBUILD_EXECUTABLE} hiprt02003.vcxproj /property:Configuration=Debug /property:Platform=x64 WORKING_DIRECTORY ${hiprtrelease_SOURCE_DIR}/build)
+
+# Now that we built HIPRT, we can set the variables that will be used in the rest of the CMake 
+# to find the headers, the libraries, ...
+set(HIPRT_BIN_DIR ${hiprtrelease_SOURCE_DIR}/dist/bin/Debug)
+set(HIPRT_HEADERS_DIR ${hiprtrelease_SOURCE_DIR}/hiprt)
+
+set(OROCHI_BIN_DIR ${hiprtrelease_SOURCE_DIR}/contrib/Orochi/)
+set(OROCHI_SOURCES_DIR ${hiprtrelease_SOURCE_DIR}/contrib/Orochi/Orochi)
+
+set(CUEW_SOURCES_DIR ${hiprtrelease_SOURCE_DIR}/contrib/Orochi/contrib/cuew)
+set(HIPEW_SOURCES_DIR ${hiprtrelease_SOURCE_DIR}/contrib/Orochi/contrib/hipew)
+# Replacing backslashes in the Windows paths that lead to wrong escape character
+# note that the four backslashes \\\\ are required because we need a regular expression that
+# compiles to '\'.
+# \\ is converted by CMake to a single '\'
+# so \\\\ is converted by CMake to '\\' which is the regular expression for the single '\' character
+STRING(REGEX REPLACE "\\\\" "/" HIPRT_HEADERS_DIR ${HIPRT_HEADERS_DIR})
+STRING(REGEX REPLACE "\\\\" "/" OROCHI_SOURCES_DIR ${OROCHI_SOURCES_DIR})
+STRING(REGEX REPLACE "\\\\" "/" CUEW_SOURCES_DIR ${CUEW_SOURCES_DIR})
+STRING(REGEX REPLACE "\\\\" "/" HIPEW_SOURCES_DIR ${HIPEW_SOURCES_DIR})
+	
+link_directories(${HIPRT_BINARIES_DIR}/hiprt/win)
+# -------------------------------------------------
 
 set(GLFW_LIB_DIR "thirdparties/opengl/lib/GLFW")
 set(GLFW_BIN_DIR "thirdparties/opengl/bin/GLFW")
@@ -108,7 +173,7 @@ add_dependencies(HIPRTPathTracer assimp)
 
 find_package(OpenMP)
 find_package(OpenGL REQUIRED)
-find_package(OpenImageDenoise REQUIRED HINTS ${oidnbinaries_SOURCE_DIR})
+find_package(OpenImageDenoise REQUIRED HINTS ${oidnbinaries_SOURCE_DIR}) # HINTS to indicate a folder to search for the library in
 
 # "version" is a library from the Windows SDK
 target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX OpenImageDenoise ${OPENGL_LIBRARY} glfw3 glew32 hiprt0200364D version)
@@ -136,7 +201,6 @@ target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/opengl/include"
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/stbi/")
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/glm/")
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/imgui/")
-
 # TODO using /.. here isn't super cool because it gives access to folders in the HIPRT SDK such as tutorials, tools, ...
 # However, because we want to include the HIPRT and Orochi headers as <hiprt/*.h> and <Orochi/*.h>, we need to give
 # the include directory as being one folder above the actual hiprt/ and Orochi/ folders that contain the includes
@@ -148,8 +212,6 @@ target_include_directories(HIPRTPathTracer PRIVATE ${OROCHI_SOURCES_DIR}/..)
 target_include_directories(HIPRTPathTracer PRIVATE "${EXTERNAL_ASSIMP_INSTALL_LOCATION}/include/")
 target_include_directories(HIPRTPathTracer PRIVATE ".")
 
-
-# TODO instead of copying, try to have the app use these as env variable ? Basically have the DLL on the path ?
 message(STATUS "Copying OpenImageDenoise binaries...")
 configure_file(${oidnbinaries_SOURCE_DIR}/bin/OpenImageDenoise.dll ${CMAKE_CURRENT_BINARY_DIR}/OpenImageDenoise.dll COPYONLY)
 configure_file(${oidnbinaries_SOURCE_DIR}/bin/OpenImageDenoise_core.dll ${CMAKE_CURRENT_BINARY_DIR}/OpenImageDenoise_core.dll COPYONLY)
@@ -167,8 +229,8 @@ add_custom_command(TARGET HIPRTPathTracer PRE_BUILD
 # modified since the project wouldn't be rebuilt (because no file that require re-compilation (i.e. cpp files) were modified).
 # configure_file ensures the input it is given is copied (or configured but we're only using this command for its
 # copy capability here) to the output everytime it is modified, independant of whether a compilation was triggered or not.
-function (copy_folder input_folder output_folder extensions)
-	file(GLOB input_files_to_copy ${input_folder}/${extensions})
+function (copy_folder input_folder output_folder file_regex)
+	file(GLOB input_files_to_copy ${input_folder}/${file_regex})
 	
 	foreach(file_to_copy ${input_files_to_copy})
 		cmake_path(GET file_to_copy FILENAME filename_to_copy)
@@ -184,13 +246,8 @@ copy_folder("${CMAKE_SOURCE_DIR}/${HOST_DEVICE_COMMON_DIR}" "${CMAKE_CURRENT_BIN
 
 # Copying hiprt binaries
 message(STATUS "Copying HIPRT binaries...")
-copy_folder("${HIPRT_BIN_DIR}" "${CMAKE_CURRENT_BINARY_DIR}" "*.dll")
-#copy_folder("${HIPRT_BIN_DIR}" "${CMAKE_CURRENT_BINARY_DIR}" "*.hipfb")
-copy_folder("${HIPRT_BIN_DIR}" "${CMAKE_CURRENT_BINARY_DIR}" "*.bc")
-
-# Copying Orochi kernels bitcodes
-#copy_folder("${OROCHI_BIN_DIR}/bitcodes" "${CMAKE_CURRENT_BINARY_DIR}" "*.*")
-#copy_folder("${OROCHI_BIN_DIR}/contrib/bin/win64" "${CMAKE_CURRENT_BINARY_DIR}" "*.dll")
+copy_folder("${HIPRT_BIN_DIR}" "${CMAKE_CURRENT_BINARY_DIR}" "amd*.dll")
+copy_folder("${HIPRT_BIN_DIR}" "${CMAKE_CURRENT_BINARY_DIR}" "hip*.dll")
 
 # Macro to preserve nice beautiful source files hierarchy in Visual Studio
 if(MSVC_IDE)
