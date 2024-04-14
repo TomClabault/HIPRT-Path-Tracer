@@ -78,6 +78,7 @@ execute_process(COMMAND ${MSBUILD_EXECUTABLE} hiprt02003.vcxproj /property:Confi
 # to find the headers, the libraries, ...
 set(HIPRT_BIN_DIR ${hiprtrelease_SOURCE_DIR}/dist/bin/Debug)
 set(HIPRT_HEADERS_DIR ${hiprtrelease_SOURCE_DIR}/hiprt)
+add_compile_definitions(KERNEL_COMPILER_ADDITIONAL_INCLUDE="${hiprtrelease_SOURCE_DIR}")
 
 set(OROCHI_BIN_DIR ${hiprtrelease_SOURCE_DIR}/contrib/Orochi/)
 set(OROCHI_SOURCES_DIR ${hiprtrelease_SOURCE_DIR}/contrib/Orochi/Orochi)

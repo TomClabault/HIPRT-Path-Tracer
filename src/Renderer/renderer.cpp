@@ -238,13 +238,11 @@ void Renderer::compile_trace_kernel(const char* kernel_file_path, const char* ke
 	std::vector<std::string> include_paths = { "./", "../thirdparties/hiprt/include" };
 	std::vector<std::pair<std::string, std::string>> precompiler_defines;
 	std::vector<const char*> options;
-	// TODO not hardcoded here
-	options.push_back("-IC:/Users/Enermax/Desktop/HIPRT-Path-Tracer/build/_deps/hiprtrelease-src");
+
+	std::string additional_include = std::string("-I") + std::string(KERNEL_COMPILER_ADDITIONAL_INCLUDE);
+	options.push_back(additional_include.c_str());
 	options.push_back("-I./");
 
-	/*OrochiUtils utils;
-	m_trace_kernel = utils.getFunctionFromFile(m_hiprt_orochi_ctx->orochi_device, kernel_file_path, kernel_function_name, &options);*/
-	// buildTraceKernelFromBitcode(m_hiprt_orochi_ctx->hiprt_ctx, kernel_file_path, kernel_function_name, m_trace_kernel, include_paths);
 	std::vector<hiprtApiFunction> functionsOut(1);
 	customBuildTraceKernels(m_hiprt_orochi_ctx->hiprt_ctx, kernel_file_path, { kernel_function_name }, functionsOut, options, std::nullopt, 0, 1);
 	m_trace_kernel = *reinterpret_cast<oroFunction*>(&functionsOut.back());
