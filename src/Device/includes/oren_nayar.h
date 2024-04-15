@@ -6,8 +6,6 @@
 #ifndef OREN_NAYAR_H
 #define OREN_NAYAR_H
 
-#include "Kernels/includes/HIPRT_common.h"
-
 /* References:
  * [1] [Physically Based Rendering 3rd Edition] https://www.pbr-book.org/3ed-2018/Reflection_Models/Microfacet_Models
  */
@@ -38,7 +36,7 @@ __device__ Color oren_nayar_eval(const RendererMaterial& material, const float3&
 
         float d_cos = cos_phi_i * cos_phi_o + sin_phi_i * sin_phi_o;
 
-        max_cos = RT_MAX(0.0f, d_cos);
+        max_cos = max(0.0f, d_cos);
     }
 
     float sin_alpha, tan_beta;

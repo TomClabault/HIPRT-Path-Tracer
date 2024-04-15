@@ -9,12 +9,12 @@
 #include <string>
 #include <vector>
 
-#include "Renderer/denoiser_debug_view.h"
+#include "Renderer/display_view_enum.h"
 
 struct ApplicationSettings
 {
 	int selected_kernel = 1;
-	std::vector<std::string> kernel_files = { "Kernels/path_tracer_kernel.h", "Kernels/normals_kernel.h" };
+	std::vector<std::string> kernel_files = { DEVICE_KERNELS_DIRECTORY "/path_tracer_kernel.h", DEVICE_KERNELS_DIRECTORY "/normals_kernel.h" };
 	std::vector<std::string> kernel_functions = { "PathTracerKernel", "NormalsKernel"};
 
 	DisplayView debug_display_denoiser = DisplayView::NONE;

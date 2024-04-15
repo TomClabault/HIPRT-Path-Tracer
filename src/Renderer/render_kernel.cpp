@@ -632,7 +632,7 @@ Color RenderKernel::oren_nayar_eval(const RendererMaterial& material, const Vect
 
         float d_cos = cos_phi_i * cos_phi_o + sin_phi_i * sin_phi_o;
 
-        max_cos = RT_MAX(0.0f, d_cos);
+        max_cos = std::max(0.0f, d_cos);
     }
 
     float sin_alpha, tan_beta;

@@ -19,6 +19,7 @@ enum RayState
 #else
 #include "Maths/vec.h"
 
+// TODO we should use float3 and float2 here, not some kind of #define VectorType stuff
 #define VectorType Vector
 #define PointType Point
 #define UV_DECLARATION float u, v;

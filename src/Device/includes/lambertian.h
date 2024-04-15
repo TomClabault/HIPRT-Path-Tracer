@@ -6,8 +6,7 @@
 #ifndef HIPRT_LAMBERTIAN_H
 #define HIPRT_LAMBERTIAN_H
 
-#include "Kernels/includes/HIPRT_common.h"
-#include "Kernels/includes/hiprt_onb.h"
+#include "Device/includes/onb.h"
 
 __device__ Color hiprt_lambertian_brdf(const RendererMaterial& material, const float3& to_light_direction, const float3& view_direction, const float3& surface_normal)
 {

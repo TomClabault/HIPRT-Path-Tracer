@@ -43,19 +43,82 @@ struct float4x4
 	};
 };
 
-#define RT_MIN( a, b ) ( ( ( b ) < ( a ) ) ? ( b ) : ( a ) )
-#define RT_MAX( a, b ) ( ( ( b ) > ( a ) ) ? ( b ) : ( a ) )
-
+// Here we're defining aliases for common functions used in shader code.
+// 
+// Because the same shader code can be used both on the CPU and the GPU,
+// both code have to compile either through the classical C++ compiler or
+// through the GPU shader compiler. This means that we have to use functions
+// that were meant to be used on the CPU or on the GPU (depending on the case).
+// 
+// For example, we're using glm as the math library on the CPU, so 'normalize'
+// will actually be aliased to glm::normalize for the CPU
+// but 'normalize' will be aliased to hiprt::normalize on the GPU because
+// glm isn't meant to be used on the GPU
 #ifdef __KERNELCC__
-#define normalize hiprt::normalize
-#define cross hiprt::cross
-#define dot hiprt::dot
+namespace hiprtpt
+{
+	template <typename T>
+	__device__ T abs(T val) { return abs(val); }
+
+	template <typename T>
+	__device__ T clamp(T min_val, T max_val, T val) { return hiprt::clamp(min_val, max_val, val); }
+
+	template <typename T>
+	__device__ T cross(T u, T v) { return hiprt::cross(u, v); }
+
+	template <typename T>
+	__device__ float dot(T u, T v) { return hiprt::dot(u, v); }
+
+	template <typename T>
+	__device__ float length(T u) { return hiprt::dot(u, u); }
+
+	template <typename T>
+	__device__ T max(T a, T b) { return max(a, b); }
+
+	template <typename T>
+	__device__ T min(T a, T b) { return min(a, b); }
+
+	template <typename T>
+	__device__ T normalize(T u) { return hiprt::normalize(u); }
+}
 
 #define M_PI hiprt::Pi
 #else
-#define normalize normalize
-#define cross cross
-#define dot dot
+namespace hiprtpt
+{
+	// TODO use glm instead of gkit
+	/*template <typename T>
+	T cross(T u, T v) { return glm::cross(u, v); }*/
+	template <typename T>
+	T cross(T u, T v) { return cross(u, v); }
+
+	// TODO use glm instead of gkit
+	/*template <typename T>
+	float dot(T u, T v) { return glm::dot(u, v); }*/
+	template <typename T>
+	float dot(T u, T v) { return dot(u, v); }
+
+	// TODO use glm instead of gkit
+	/*template <typename T>
+	float length(T u) { return glm::length(u, u); }*/
+	template <typename T>
+	float length(T u) { return length(u, u); }
+
+	template <typename T>
+	T max(T a, T b) { return std::max(a, b); }
+
+	template <typename T>
+	T min(T a, T b) { return std::min(a, b); }
+
+	template <typename T>
+	T clamp(T min_val, T max_val, T val) { return min(max_val, max(min_val, val)); }
+
+	// TODO use glm instead of gkit
+	/*template <typename T>
+	T normalize(T u) { return glm::normalize(u); }*/
+	template <typename T>
+	T normalize(T u) { return normalize(u); }
+}
 #endif
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 matrix_X_point(const float4x4& m, const float3& p)

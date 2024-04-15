@@ -15,14 +15,6 @@ struct HIPRTCamera
     float3 position;
 
 #ifdef __KERNELCC__
-    // TODO remove, should not be needed, this is a quick fix for function names collision
-    // with gkit
-    __device__ float3 normalize_hiprt(float3 vec)
-    {
-        float length = sqrt(vec.x * vec.x + vec.y * vec.y + vec.z * vec.z);
-        return vec / length;
-    }
-
     __device__ hiprtRay get_camera_ray(float x, float y, int2 res)
     {
         float x_ndc_space = x / res.x * 2 - 1;
@@ -37,7 +29,7 @@ struct HIPRTCamera
         float3 ray_point_dir_vs = ray_point_dir_vs_homog;
         float3 ray_point_dir_ws = matrix_X_point(inverse_view, ray_point_dir_vs);
 
-        float3 ray_direction = normalize_hiprt(ray_point_dir_ws - ray_origin);
+        float3 ray_direction = hiprtpt::normalize(ray_point_dir_ws - ray_origin);
 
         hiprtRay ray;
         ray.origin = ray_origin;

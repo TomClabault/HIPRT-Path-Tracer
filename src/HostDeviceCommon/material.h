@@ -29,8 +29,8 @@ struct RendererMaterial
      */
     HIPRT_HOST_DEVICE void make_safe()
     {
-        roughness = RT_MAX(1.0e-4f, roughness);
-        clearcoat_roughness = RT_MAX(1.0e-4f, clearcoat_roughness);
+        roughness = hiprtpt::max(1.0e-4f, roughness);
+        clearcoat_roughness = hiprtpt::max(1.0e-4f, clearcoat_roughness);
     }
 
     /*
@@ -41,8 +41,8 @@ struct RendererMaterial
     {
         // Precomputing alpha_x and alpha_y related to Disney's anisotropic metallic lobe
         float aspect = sqrt(1.0f - 0.9f * anisotropic);
-        alpha_x = RT_MAX(1.0e-4f, roughness * roughness / aspect);
-        alpha_y = RT_MAX(1.0e-4f, roughness * roughness * aspect);
+        alpha_x = hiprtpt::max(1.0e-4f, roughness * roughness / aspect);
+        alpha_y = hiprtpt::max(1.0e-4f, roughness * roughness * aspect);
 
         // Oren Nayar base_color BRDF parameters
         float sigma = oren_nayar_sigma;

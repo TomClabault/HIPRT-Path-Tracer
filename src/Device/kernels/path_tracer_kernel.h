@@ -3,24 +3,26 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#include "Kernels/includes/HIPRT_camera.h"
-#include "Kernels/includes/HIPRT_common.h"
-#include "Kernels/includes/hiprt_disney.h"
-#include "Kernels/includes/hiprt_fix_vs.h"
-#include "Kernels/includes/hiprt_render_data.h"
-#include "Kernels/includes/hiprt_sampling.h"
+#include "HostDeviceCommon/camera.h"
+#include "HostDeviceCommon/hit_info.h"
+#include "HostDeviceCommon/math.h"
+#include "HostDeviceCommon/render_data.h"
+#include "HostDeviceCommon/xorshift.h"
+#include "Device/includes/disney.h"
+#include "Device/includes/fix_intellisense.h"
+#include "Device/includes/sampling.h"
 
 #include <hiprt/hiprt_device.h>
 #include <hiprt/hiprt_vec.h>
 
 __device__ float cook_torrance_brdf_pdf(const RendererMaterial& material, const float3& view_direction, const float3& to_light_direction, const float3& surface_normal)
 {
-    float3 microfacet_normal = normalize(view_direction + to_light_direction);
+    float3 microfacet_normal = hiprtpt::normalize(view_direction + to_light_direction);
 
     float alpha = material.roughness * material.roughness;
 
-    float VoH = RT_MAX(0.0f, dot(view_direction, microfacet_normal));
-    float NoH = RT_MAX(0.0f, dot(surface_normal, microfacet_normal));
+    float VoH = hiprtpt::max(0.0f, hiprtpt::dot(view_direction, microfacet_normal));
+    float NoH = hiprtpt::max(0.0f, hiprtpt::dot(surface_normal, microfacet_normal));
     float D = GGX_normal_distribution(alpha, NoH);
 
     return D * NoH / (4.0f * VoH);
@@ -31,12 +33,12 @@ __device__ Color cook_torrance_brdf(const RendererMaterial& material, const floa
     Color brdf_color = Color(0.0f, 0.0f, 0.0f);
     Color base_color = material.base_color;
 
-    float3 halfway_vector = normalize(view_direction + to_light_direction);
+    float3 halfway_vector = hiprtpt::normalize(view_direction + to_light_direction);
 
-    float NoV = RT_MAX(0.0f, dot(surface_normal, view_direction));
-    float NoL = RT_MAX(0.0f, dot(surface_normal, to_light_direction));
-    float NoH = RT_MAX(0.0f, dot(surface_normal, halfway_vector));
-    float VoH = RT_MAX(0.0f, dot(halfway_vector, view_direction));
+    float NoV = hiprtpt::max(0.0f, hiprtpt::dot(surface_normal, view_direction));
+    float NoL = hiprtpt::max(0.0f, hiprtpt::dot(surface_normal, to_light_direction));
+    float NoH = hiprtpt::max(0.0f, hiprtpt::dot(surface_normal, halfway_vector));
+    float VoH = hiprtpt::max(0.0f, hiprtpt::dot(halfway_vector, view_direction));
 
     if (NoV > 0.0f && NoL > 0.0f && NoH > 0.0f)
     {
@@ -88,20 +90,20 @@ __device__ Color cook_torrance_brdf_importance_sample(const RendererMaterial& ma
     // around the surface normal
     float3 microfacet_normal_local_space = make_float3(cos(phi) * sin_theta, sin(phi) * sin_theta, cos(theta));
     float3 microfacet_normal = local_to_world_frame(surface_normal, microfacet_normal_local_space);
-    if (dot(microfacet_normal, surface_normal) < 0.0f)
+    if (hiprtpt::dot(microfacet_normal, surface_normal) < 0.0f)
         //The microfacet normal that we sampled was under the surface, this can happen
         return Color(0.0f);
-    float3 to_light_direction = normalize(2.0f * dot(microfacet_normal, view_direction) * microfacet_normal - view_direction);
+    float3 to_light_direction = hiprtpt::normalize(2.0f * hiprtpt::dot(microfacet_normal, view_direction) * microfacet_normal - view_direction);
     float3 halfway_vector = microfacet_normal;
     output_direction = to_light_direction;
 
     Color brdf_color = Color(0.0f, 0.0f, 0.0f);
     Color base_color = material.base_color;
 
-    float NoV = RT_MAX(0.0f, dot(surface_normal, view_direction));
-    float NoL = RT_MAX(0.0f, dot(surface_normal, to_light_direction));
-    float NoH = RT_MAX(0.0f, dot(surface_normal, halfway_vector));
-    float VoH = RT_MAX(0.0f, dot(halfway_vector, view_direction));
+    float NoV = hiprtpt::max(0.0f, hiprtpt::dot(surface_normal, view_direction));
+    float NoL = hiprtpt::max(0.0f, hiprtpt::dot(surface_normal, to_light_direction));
+    float NoH = hiprtpt::max(0.0f, hiprtpt::dot(surface_normal, halfway_vector));
+    float VoH = hiprtpt::max(0.0f, hiprtpt::dot(halfway_vector, view_direction));
 
     if (NoV > 0.0f && NoL > 0.0f && NoH > 0.0f)
     {
@@ -136,7 +138,7 @@ __device__ Color smooth_glass_bsdf(const RendererMaterial& material, float3& out
     // Clamping here because the dot product can eventually returns values less
     // than -1 or greater than 1 because of precision errors in the vectors
     // (in previous calculations)
-    float cos_theta_i = RT_MIN(RT_MAX(-1.0f, dot(surface_normal, -ray_direction)), 1.0f);
+    float cos_theta_i = hiprtpt::clamp(-1.0f, 1.0f, hiprtpt::dot(surface_normal, -ray_direction));
 
     if (cos_theta_i < 0.0f)
     {
@@ -164,7 +166,7 @@ __device__ Color smooth_glass_bsdf(const RendererMaterial& material, float3& out
         out_bounce_direction = reflect_ray(-ray_direction, surface_normal);
         pdf = fresnel_reflect;
 
-        return Color(fresnel_reflect) / dot(surface_normal, out_bounce_direction);
+        return Color(fresnel_reflect) / hiprtpt::dot(surface_normal, out_bounce_direction);
     }
     else
     {
@@ -180,7 +182,7 @@ __device__ Color smooth_glass_bsdf(const RendererMaterial& material, float3& out
         surface_normal = -surface_normal;
         pdf = 1.0f - fresnel_reflect;
 
-        return Color(1.0f - fresnel_reflect) * material.base_color / dot(out_bounce_direction, surface_normal);
+        return Color(1.0f - fresnel_reflect) * material.base_color / hiprtpt::dot(out_bounce_direction, surface_normal);
     }
 }
 
@@ -205,7 +207,7 @@ __device__ bool trace_ray(const HIPRTRenderData& render_data, hiprtRay ray, HitI
         hit_info.primitive_index = hit.primID;
         // hit.normal is in object space, this simple approach will not work if using
         // multiple-levels BVH (TLAS/BLAS)
-        hit_info.geometric_normal = normalize(hit.normal);
+        hit_info.geometric_normal = hiprtpt::normalize(hit.normal);
 
         int vertex_A_index = render_data.buffers.triangles_indices[hit_info.primitive_index * 3 + 0];
         if (render_data.buffers.normals_present[vertex_A_index])
@@ -219,7 +221,7 @@ __device__ bool trace_ray(const HIPRTRenderData& render_data, hiprtRay ray, HitI
                 + render_data.buffers.vertex_normals[vertex_C_index] * hit.uv.y
                 + render_data.buffers.vertex_normals[vertex_A_index] * (1.0f - hit.uv.x - hit.uv.y);
 
-            hit_info.shading_normal = normalize(smooth_normal);
+            hit_info.shading_normal = hiprtpt::normalize(smooth_normal);
         }
         else
             hit_info.shading_normal = hit_info.geometric_normal;
@@ -244,7 +246,7 @@ __device__ float3 sample_random_point_on_lights(const HIPRTRenderData& render_da
 {
     int random_index = random_number_generator.random_index(render_data.buffers.emissive_triangles_count);
     int triangle_index = light_info.emissive_triangle_index = render_data.buffers.emissive_triangles_indices[random_index];
-    
+
 
     float3 vertex_A = render_data.buffers.triangles_vertices[render_data.buffers.triangles_indices[triangle_index * 3 + 0]];
     float3 vertex_B = render_data.buffers.triangles_vertices[render_data.buffers.triangles_indices[triangle_index * 3 + 1]];
@@ -262,8 +264,8 @@ __device__ float3 sample_random_point_on_lights(const HIPRTRenderData& render_da
 
     float3 random_point_on_triangle = vertex_A + AB * u + AC * v;
 
-    float3 normal = cross(AB, AC);
-    float length_normal = length(normal);
+    float3 normal = hiprtpt::cross(AB, AC);
+    float length_normal = hiprtpt::length(normal);
     light_info.light_source_normal = normal / length_normal; // Normalization
     float triangle_area = length_normal * 0.5f;
     float nb_emissive_triangles = render_data.buffers.emissive_triangles_count;
@@ -282,7 +284,7 @@ __device__ float triangle_area(const HIPRTRenderData& render_data, int triangle_
     float3 AB = vertex_B - vertex_A;
     float3 AC = vertex_C - vertex_A;
 
-    return length(cross(AB, AC)) / 2.0f;
+    return hiprtpt::length(hiprtpt::cross(AB, AC)) / 2.0f;
 }
 
 /**
@@ -309,7 +311,7 @@ __device__ Color sample_light_sources(HIPRTRenderData& render_data, const float3
         // emissive surface
         return Color(0.0f);
 
-    if (dot(view_direction, closest_hit_info.geometric_normal) < 0.0f)
+    if (hiprtpt::dot(view_direction, closest_hit_info.geometric_normal) < 0.0f)
         // We're not direct sampling if we're inside a surface
         // 
         // We're using the geometric normal here because using the shading normal could lead
@@ -318,7 +320,7 @@ __device__ Color sample_light_sources(HIPRTRenderData& render_data, const float3
         return Color(0.0f);
 
     float3 normal;
-    if (dot(view_direction, closest_hit_info.shading_normal) < 0)
+    if (hiprtpt::dot(view_direction, closest_hit_info.shading_normal) < 0)
         normal = reflect_ray(closest_hit_info.shading_normal, closest_hit_info.geometric_normal);
 
     Color light_source_radiance_mis;
@@ -328,7 +330,7 @@ __device__ Color sample_light_sources(HIPRTRenderData& render_data, const float3
 
     float3 shadow_ray_origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f;
     float3 shadow_ray_direction = random_light_point - shadow_ray_origin;
-    float distance_to_light = length(shadow_ray_direction);
+    float distance_to_light = hiprtpt::length(shadow_ray_direction);
     float3 shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
 
 
@@ -337,7 +339,7 @@ __device__ Color sample_light_sources(HIPRTRenderData& render_data, const float3
     shadow_ray.direction = shadow_ray_direction_normalized;
 
     // abs() here to allow backfacing light sources
-    float dot_light_source = abs(dot(light_source_info.light_source_normal, -shadow_ray.direction));
+    float dot_light_source = abs(hiprtpt::dot(light_source_info.light_source_normal, -shadow_ray.direction));
     if (dot_light_source > 0.0f)
     {
         bool in_shadow = evaluate_shadow_ray(render_data, shadow_ray, distance_to_light);
@@ -356,7 +358,7 @@ __device__ Color sample_light_sources(HIPRTRenderData& render_data, const float3
                 float mis_weight = power_heuristic(light_sample_pdf, pdf);
 
                 Color Li = emissive_triangle_material.emission;
-                float cosine_term = RT_MAX(dot(closest_hit_info.shading_normal, shadow_ray.direction), 0.0f);
+                float cosine_term = hiprtpt::max(hiprtpt::dot(closest_hit_info.shading_normal, shadow_ray.direction), 0.0f);
 
                 light_source_radiance_mis = Li * cosine_term * brdf * mis_weight / light_sample_pdf;
             }
@@ -380,7 +382,7 @@ __device__ Color sample_light_sources(HIPRTRenderData& render_data, const float3
         if (inter_found)
         {
             // abs() here to allow double sided emissive geometry
-            float cos_angle = abs(dot(new_ray_hit_info.shading_normal, -sampled_brdf_direction));
+            float cos_angle = abs(hiprtpt::dot(new_ray_hit_info.shading_normal, -sampled_brdf_direction));
             if (cos_angle > 0.0f)
             {
                 int material_index = render_data.buffers.material_indices[new_ray_hit_info.primitive_index];
@@ -395,7 +397,7 @@ __device__ Color sample_light_sources(HIPRTRenderData& render_data, const float3
                     float light_pdf = distance_squared / (light_area * cos_angle);
 
                     float mis_weight = power_heuristic(direction_pdf, light_pdf);
-                    float cosine_term = RT_MAX(0.0f, dot(closest_hit_info.shading_normal, sampled_brdf_direction));
+                    float cosine_term = hiprtpt::max(0.0f, hiprtpt::dot(closest_hit_info.shading_normal, sampled_brdf_direction));
                     brdf_radiance_mis = brdf * cosine_term * emission * mis_weight / direction_pdf;
                 }
             }
@@ -514,7 +516,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                     // Because we want to allow backfacing emissive geometry (making the emissive geometry double sided
                     // and emitting light in both directions of the surface), we're negating the normal to make
                     // it face the view direction (but only for emissive geometry)
-                    if (material.is_emissive() && dot(-ray.direction, closest_hit_info.geometric_normal) < 0)
+                    if (material.is_emissive() && hiprtpt::dot(-ray.direction, closest_hit_info.geometric_normal) < 0)
                     {
                         closest_hit_info.geometric_normal = -closest_hit_info.geometric_normal;
                         closest_hit_info.shading_normal = -closest_hit_info.shading_normal;
@@ -555,9 +557,9 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                         sample_color = sample_color + material.emission * throughput;
                     sample_color = sample_color + (light_sample_radiance + env_map_radiance) * throughput;
 
-                    throughput *= brdf * abs(dot(bounce_direction, closest_hit_info.shading_normal)) / brdf_pdf;
+                    throughput *= brdf * abs(hiprtpt::dot(bounce_direction, closest_hit_info.shading_normal)) / brdf_pdf;
 
-                    int outside_surface = dot(bounce_direction, closest_hit_info.shading_normal) < 0 ? -1.0f : 1.0;
+                    int outside_surface = hiprtpt::dot(bounce_direction, closest_hit_info.shading_normal) < 0 ? -1.0f : 1.0;
                     float3 new_ray_origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 3.0e-3f * outside_surface;
                     ray.origin = new_ray_origin;
                     ray.direction = bounce_direction;
@@ -612,7 +614,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
     }
 
     render_data.buffers.pixels[index] += final_color;
-    
+
     // Handling denoiser's albedo and normals AOVs    
     // We don't need those when rendering at low resolution
     // hence why this is the else branch
@@ -621,9 +623,9 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
     render_data.buffers.denoiser_albedo[index] = (render_data.buffers.denoiser_albedo[index] * render_data.render_settings.frame_number + denoiser_albedo) / (render_data.render_settings.frame_number + 1.0f);
 
     float3 accumulated_normal = (render_data.buffers.denoiser_normals[index] * render_data.render_settings.frame_number + denoiser_normal) / (render_data.render_settings.frame_number + 1.0f);
-    float normal_length = length(accumulated_normal);
+    float normal_length = hiprtpt::length(accumulated_normal);
     if (normal_length != 0.0f)
-        render_data.buffers.denoiser_normals[index] = normalize(accumulated_normal);
+        render_data.buffers.denoiser_normals[index] = hiprtpt::normalize(accumulated_normal);
 
     // Handling low resolution render
     // The framebuffer actually still is at full resolution, it's just that we cast

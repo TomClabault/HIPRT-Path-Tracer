@@ -66,6 +66,7 @@
 //		- https://github.com/libigl/libigl/issues/1388
 //		- https://github.com/libigl/libigl/issues/1534
 // - Visualizing russian roulette depth termination
+// - Add tooltips when hovering over a parameter in the UI
 // - Statistics on russian roulette efficiency
 // - Being able to enable / disable env map importance sampling
 // - Being able to enable / disable MIS
@@ -105,6 +106,9 @@
 // - compute shader for tone mapping images ? unless transfering memory to open gl is too expensive
 // - use defines insead of IFs in the kernel code and recompile kernel everytime (for some options at least)
 // - stuff to multithread when loading everything ? (scene, BVH, textures, ...)
+// - PBRT v3 scene parser
+// - Wavefront path tracing
+// - Manifold Next Event Estimation (for refractive caustics) https://jo.dreggn.org/home/2015_mnee.pdf
 // - Efficiency Aware Russian roulette and splitting
 // - ReSTIR PT
 

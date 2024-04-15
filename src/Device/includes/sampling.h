@@ -6,8 +6,10 @@
 #ifndef HIPRT_SAMPLING_H
 #define HIPRT_SAMPLING_H
 
-#include "Kernels/includes/HIPRT_common.h"
-#include "Kernels/includes/hiprt_onb.h"
+#include "Device/includes/onb.h"
+#include "HostDeviceCommon/color.h"
+#include "HostDeviceCommon/material.h"
+#include "HostDeviceCommon/xorshift.h"
 
 /**
  * Reflects a ray about a normal. This function requires that dot(ray_direction, surface_normal) > 0 i.e.
@@ -15,7 +17,7 @@
  */
 __device__ float3 reflect_ray(const float3& ray_direction, const float3& surface_normal)
 {
-    return -ray_direction + 2.0f * dot(ray_direction, surface_normal) * surface_normal;
+    return -ray_direction + 2.0f * hiprtpt::dot(ray_direction, surface_normal) * surface_normal;
 }
 
 /**
@@ -24,7 +26,7 @@ __device__ float3 reflect_ray(const float3& ray_direction, const float3& surface
  */
 __device__ bool refract_ray(const float3& ray_direction, const float3& surface_normal, float3& refract_direction, float relative_eta)
 {
-    float NoI = dot(ray_direction, surface_normal);
+    float NoI = hiprtpt::dot(ray_direction, surface_normal);
 
     float sin_theta_i_2 = 1.0f - NoI * NoI;
     float root_term = 1.0f - sin_theta_i_2 / (relative_eta * relative_eta);
@@ -45,7 +47,7 @@ __device__ float3 cosine_weighted_sample(const float3& normal, float& pdf, Xorsh
     float sqrt_rand_2 = sqrt(rand_2);
     float phi = 2.0f * (float)M_PI * rand_1;
     float cos_theta = sqrt_rand_2;
-    float sin_theta = sqrt(RT_MAX(0.0f, 1.0f - cos_theta * cos_theta));
+    float sin_theta = sqrt(hiprtpt::max(0.0f, 1.0f - cos_theta * cos_theta));
 
     pdf = sqrt_rand_2 / (float)M_PI;
 
@@ -85,7 +87,7 @@ __device__ float GGX_normal_distribution(float alpha, float NoH)
     //To avoid numerical instability when NoH basically == 1, i.e when the
     //material is a perfect mirror and the normal distribution function is a Dirac
 
-    NoH = RT_MIN(NoH, 0.999999f);
+    NoH = hiprtpt::min(NoH, 0.999999f);
     float alpha2 = alpha * alpha;
     float NoH2 = NoH * NoH;
     float b = (NoH2 * (alpha2 - 1.0f) + 1.0f);
@@ -128,11 +130,11 @@ __device__ float3 GGXVNDF_sample(const float3& local_view_direction, float alpha
     float r1 = random_number_generator();
     float r2 = random_number_generator();
 
-    float3 Vh = normalize(float3{ alpha_x * local_view_direction.x, alpha_y * local_view_direction.y, local_view_direction.z });
+    float3 Vh = hiprtpt::normalize(float3{ alpha_x * local_view_direction.x, alpha_y * local_view_direction.y, local_view_direction.z });
 
     float lensq = Vh.x * Vh.x + Vh.y * Vh.y;
     float3 T1 = lensq > 0.0f ? float3{-Vh.y, Vh.x, 0} / sqrt(lensq) : float3{ 1.0f, 0.0f, 0.0f };
-    float3 T2 = cross(Vh, T1);
+    float3 T2 = hiprtpt::cross(Vh, T1);
 
     float r = sqrt(r1);
     float phi = 2.0f * M_PI * r2;
@@ -141,9 +143,9 @@ __device__ float3 GGXVNDF_sample(const float3& local_view_direction, float alpha
     float s = 0.5f * (1.0f + Vh.z);
     t2 = (1.0f - s) * sqrt(1.0f - t1 * t1) + s * t2;
 
-    float3 Nh = t1 * T1 + t2 * T2 + sqrt(RT_MAX(0.0f, 1.0f - t1 * t1 - t2 * t2)) * Vh;
+    float3 Nh = t1 * T1 + t2 * T2 + sqrt(hiprtpt::max(0.0f, 1.0f - t1 * t1 - t2 * t2)) * Vh;
 
-    return normalize(float3{alpha_x * Nh.x, alpha_y * Nh.y, RT_MAX(0.0f, Nh.z)});
+    return hiprtpt::normalize(float3{alpha_x * Nh.x, alpha_y * Nh.y, hiprtpt::max(0.0f, Nh.z)});
 }
 
 __device__ float GTR1(float alpha_g, float local_halfway_z)

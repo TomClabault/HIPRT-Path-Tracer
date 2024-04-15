@@ -78,6 +78,7 @@ execute_process(COMMAND ${MSBUILD_EXECUTABLE} hiprt02003.vcxproj /property:Confi
 # to find the headers, the libraries, ...
 set(HIPRT_BIN_DIR ${hiprtrelease_SOURCE_DIR}/dist/bin/Debug)
 set(HIPRT_HEADERS_DIR ${hiprtrelease_SOURCE_DIR}/hiprt)
+# The GPU compiler will need this additional include folder to properly compile some kernels
 add_compile_definitions(KERNEL_COMPILER_ADDITIONAL_INCLUDE="${hiprtrelease_SOURCE_DIR}")
 
 set(OROCHI_BIN_DIR ${hiprtrelease_SOURCE_DIR}/contrib/Orochi/)
@@ -114,9 +115,15 @@ set(GLFW_BIN_DIR "thirdparties/opengl/bin/GLFW")
 set(GLEW_LIB_DIR "thirdparties/opengl/lib/GLEW")
 set(GLEW_BIN_DIR "thirdparties/opengl/bin/GLEW")
 
-set(KERNELS_DIR "src/Kernels")
+set(DEVICE_KERNELS_DIRECTORY "Device/kernels")
+set(DEVICE_INCLUDES_DIRECTORY "Device/includes")
 set(SHADERS_DIR "src/Shaders")
 set(HOST_DEVICE_COMMON_DIR "src/HostDeviceCommon")
+
+# Using CMake here to define a C++ macro that will be used to find the directory of the kernels
+# in the CPP code. This basically avoids hardcoding the path to the kernels in C++ and instead
+# use the more flexible approach of defining it in the CMake
+add_compile_definitions(DEVICE_KERNELS_DIRECTORY="${DEVICE_KERNELS_DIRECTORY}")
 
 link_directories(${CMAKE_SOURCE_DIR}/${GLFW_LIB_DIR})
 link_directories(${CMAKE_SOURCE_DIR}/${GLEW_LIB_DIR})
@@ -218,8 +225,8 @@ function (copy_folder input_folder output_folder file_regex)
 endfunction()
 
 # Copying the kernel files to runtime directory so that they are available for runtime compilation (by Orochi)
-copy_folder("${CMAKE_SOURCE_DIR}/${KERNELS_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/Kernels" "*.*")
-copy_folder("${CMAKE_SOURCE_DIR}/${KERNELS_DIR}/includes" "${CMAKE_CURRENT_BINARY_DIR}/Kernels/includes" "*.*")
+copy_folder("${CMAKE_SOURCE_DIR}/src/${DEVICE_KERNELS_DIRECTORY}" "${CMAKE_CURRENT_BINARY_DIR}/${DEVICE_KERNELS_DIRECTORY}" "*.*")
+copy_folder("${CMAKE_SOURCE_DIR}/src/${DEVICE_INCLUDES_DIRECTORY}" "${CMAKE_CURRENT_BINARY_DIR}/${DEVICE_INCLUDES_DIRECTORY}" "*.*")
 copy_folder("${CMAKE_SOURCE_DIR}/${SHADERS_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/Shaders" "*.*")
 copy_folder("${CMAKE_SOURCE_DIR}/${HOST_DEVICE_COMMON_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/HostDeviceCommon" "*.*")
 

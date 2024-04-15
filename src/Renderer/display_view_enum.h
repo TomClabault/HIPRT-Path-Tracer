@@ -3,9 +3,12 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DENOISER_DEBUG_VIEW_H
-#define DENOISER_DEBUG_VIEW_H
+#ifndef DISPLAY_VIEW_ENUM_H
+#define DISPLAY_VIEW_ENUM_H
 
+/*
+ * Enum used to 'switch' between what to display in the viewport
+ */
 enum DisplayView
 {
 	NONE,

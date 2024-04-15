@@ -11,7 +11,7 @@
 #include "HostDeviceCommon/math.h"
 
 // TODO remove
-//#include "Kernels/includes/HIPRT_maths.h"
+//#include "Device/includes/maths.h"
 
 struct Xorshift32State {
     unsigned int a = 42;
@@ -33,7 +33,7 @@ struct Xorshift32Generator
     __device__ int random_index(int array_size)
     {
         int random_num = xorshift32() / (float)XORSHIFT_MAX * array_size;
-        return RT_MIN(random_num, array_size - 1);
+        return hiprtpt::min(random_num, array_size - 1);
     }
 
     /*
@@ -42,7 +42,7 @@ struct Xorshift32Generator
     __device__ float operator()()
     {
         //Float in [0, 1[
-        return RT_MIN(xorshift32() / (float)XORSHIFT_MAX, 1.0f - 1.0e-9f);
+        return hiprtpt::min(xorshift32() / (float)XORSHIFT_MAX, 1.0f - 1.0e-9f);
     }
 
     __device__ unsigned int xorshift32()

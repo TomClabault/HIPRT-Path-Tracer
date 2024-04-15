@@ -10,7 +10,7 @@
 #include "HIPRT-Orochi/orochi_buffer.h"
 #include "HIPRT-Orochi/hiprt_orochi_ctx.h"
 #include "HIPRT-Orochi/hiprt_scene.h"
-#include "Kernels/includes/hiprt_render_data.h"
+#include "HostDeviceCommon/render_data.h"
 #include "Renderer/render_settings.h"
 #include "Scene/camera.h"
 #include "Scene/scene_parser.h"

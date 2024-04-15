@@ -3,14 +3,11 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#include "Kernels/includes/HIPRT_camera.h"
-#include "Kernels/includes/HIPRT_common.h"
-#include "Kernels/includes/hiprt_render_data.h"
-#include "Kernels/includes/hiprt_sampling.h"
-
-#include <hiprt/hiprt_device.h>
-#include <hiprt/hiprt_vec.h>
-
+#include "Device/includes/fix_intellisense.h"
+#include "Device/includes/sampling.h"
+#include "HostDeviceCommon/camera.h"
+#include "HostDeviceCommon/math.h"
+#include "HostDeviceCommon/render_data.h"
 
 GLOBAL_KERNEL_SIGNATURE(void) NormalsKernel(hiprtGeometry geom, HIPRTRenderData render_data, int2 res, HIPRTCamera camera)
 {
@@ -42,11 +39,11 @@ GLOBAL_KERNEL_SIGNATURE(void) NormalsKernel(hiprtGeometry geom, HIPRTRenderData 
 			+ render_data.buffers.vertex_normals[index_C] * hit.uv.y
 			+ render_data.buffers.vertex_normals[index_A] * (1.0f - hit.uv.x - hit.uv.y);
 
-		normal = normalize(smooth_normal);
+		normal = hiprtpt::normalize(smooth_normal);
 	}
 	else
-		normal = normalize(cross(vertex_B - vertex_A, vertex_C - vertex_A));
+		normal = hiprtpt::normalize(hiprtpt::cross(vertex_B - vertex_A, vertex_C - vertex_A));
 
-	Color final_color(hit.hasHit() ? make_float3(abs(normal.x), abs(normal.y), abs(normal.z)) : make_float3(0.0f, 0.0f, 0.0f));
+	Color final_color(hit.hasHit() ? hiprtpt::abs(normal) : Color(0.0f, 0.0f, 0.0f));
 	render_data.buffers.pixels[index] = final_color * (render_data.render_settings.sample_number + 1);
 }
