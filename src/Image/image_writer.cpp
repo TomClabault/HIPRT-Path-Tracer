@@ -50,7 +50,7 @@ void ImageWriter::write_to_png(const char* filepath)
 
 		if ((GLuint)-1 == m_compute_shader)
 			// Shader uninitialized
-			m_compute_shader = OpenGLUtils::compile_computer_program("Shaders/display.frag");
+			m_compute_shader = OpenGLUtils::compile_computer_program(GLSL_SHADERS_DIRECTORY "/display.frag");
 
 		bool texture_needs_creation = false;
 		if (m_compute_output_image_width == -1)

@@ -5,19 +5,21 @@ project(HIPRTPathTracer LANGUAGES CXX)
 # To be able to use the ExternalProject_Add() command
 include(ExternalProject)
 include(FetchContent)
-Set(FETCHCONTENT_QUIET FALSE) # To see the progress of FetchContent
+# To see the progress of FetchContent
+Set(FETCHCONTENT_QUIET FALSE)
 # Policy for what timestamp to use when downloading stuff with FetchContent / ExternelProject / ...
 # NEW sets the timestamps to the extraction time
 cmake_policy(SET CMP0135 NEW)
-
-# Downloading ASSIMP library from Github for assets loading
-set(EXTERNAL_ASSIMP_INSTALL_LOCATION ${CMAKE_BINARY_DIR}/external/assimp)
 
 # If the build type wasn't given on the commandline, we're defaulting to release
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Debug")
   message(STATUS "Build type not specified: Using Debug by default")
 endif()
+
+
+# ----------- Downloading ASSIMP library for assets loading -----------
+set(EXTERNAL_ASSIMP_INSTALL_LOCATION ${CMAKE_BINARY_DIR}/external/assimp)
 
 # TODO always build ASSIMP in release to avoid the issue of the debug vs release .lib file with Visual Studio on Windows? : use -DCMAKE_BUILD_TYPE=Release
 # TODO only build at configure time to avoid building / checking ASSIMP everytime...
@@ -26,9 +28,12 @@ ExternalProject_Add(
     GIT_REPOSITORY https://github.com/assimp/assimp
     CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${EXTERNAL_ASSIMP_INSTALL_LOCATION}
 )
+# ---------------------------------------------------------------------
+
+
+
 
 # ----------- Downloading Open Image Denoise binaries -----------
-
 FetchContent_Declare(
 	oidnbinaries
 	URL      https://github.com/OpenImageDenoise/oidn/releases/download/v2.2.2/oidn-2.2.2.x64.windows.zip
@@ -37,8 +42,10 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(
 	oidnbinaries
 )
-
 # ---------------------------------------------------------------
+
+
+
 
 # ----------------- Downloading and building HIPRT ----------------
 FetchContent_Declare(
@@ -78,6 +85,7 @@ execute_process(COMMAND ${MSBUILD_EXECUTABLE} hiprt02003.vcxproj /property:Confi
 # to find the headers, the libraries, ...
 set(HIPRT_BIN_DIR ${hiprtrelease_SOURCE_DIR}/dist/bin/Debug)
 set(HIPRT_HEADERS_DIR ${hiprtrelease_SOURCE_DIR}/hiprt)
+
 # The GPU compiler will need this additional include folder to properly compile some kernels
 add_compile_definitions(KERNEL_COMPILER_ADDITIONAL_INCLUDE="${hiprtrelease_SOURCE_DIR}")
 
@@ -86,6 +94,7 @@ set(OROCHI_SOURCES_DIR ${hiprtrelease_SOURCE_DIR}/contrib/Orochi/Orochi)
 
 set(CUEW_SOURCES_DIR ${hiprtrelease_SOURCE_DIR}/contrib/Orochi/contrib/cuew)
 set(HIPEW_SOURCES_DIR ${hiprtrelease_SOURCE_DIR}/contrib/Orochi/contrib/hipew)
+
 # Replacing backslashes in the Windows paths that lead to wrong escape character
 # note that the four backslashes \\\\ are required because we need a regular expression that
 # compiles to '\'.
@@ -99,15 +108,19 @@ STRING(REGEX REPLACE "\\\\" "/" HIPEW_SOURCES_DIR ${HIPEW_SOURCES_DIR})
 link_directories(${HIPRT_BINARIES_DIR}/hiprt/win)
 # -------------------------------------------------
 
-# ------------- Handling NVIDIA compilation details -------------
 
+
+
+# ------------- Handling NVIDIA compilation details -------------
 # TODO Orochi ENABLE_CUEW is only for Orochi 2.0.0
 # If CUDA is installed, meaning NVIDIA
 #if(DEFINED ENV{CUDA_PATH})
 	#add_compile_definitions(OROCHI_ENABLE_CUEW)
 #endif()
-
 # ---------------------------------------------------------------
+
+
+
 
 set(GLFW_LIB_DIR "thirdparties/opengl/lib/GLFW")
 set(GLFW_BIN_DIR "thirdparties/opengl/bin/GLFW")
@@ -115,15 +128,13 @@ set(GLFW_BIN_DIR "thirdparties/opengl/bin/GLFW")
 set(GLEW_LIB_DIR "thirdparties/opengl/lib/GLEW")
 set(GLEW_BIN_DIR "thirdparties/opengl/bin/GLEW")
 
-set(DEVICE_KERNELS_DIRECTORY "Device/kernels")
-set(DEVICE_INCLUDES_DIRECTORY "Device/includes")
-set(SHADERS_DIR "src/Shaders")
-set(HOST_DEVICE_COMMON_DIR "src/HostDeviceCommon")
-
-# Using CMake here to define a C++ macro that will be used to find the directory of the kernels
-# in the CPP code. This basically avoids hardcoding the path to the kernels in C++ and instead
+# Using CMake here to define C++ macros that will be used to find the directory of the kernels, etc...
+# in the C++ code. This basically avoids hardcoding the path to the kernels in C++ and instead
 # use the more flexible approach of defining it in the CMake
-add_compile_definitions(DEVICE_KERNELS_DIRECTORY="${DEVICE_KERNELS_DIRECTORY}")
+# TODO open an issue because Orochi compiler doesn't seem to like full kernel path like: ${CMAKE_SOURCE_DIR}/src/Device/kernels/normals_kernel.h
+add_compile_definitions(DEVICE_KERNELS_DIRECTORY="../src/Device/kernels")
+add_compile_definitions(DEVICE_INCLUDES_DIRECTORY="../src/") # This gives access to Device/ and HostDeviceCommon/
+add_compile_definitions(GLSL_SHADERS_DIRECTORY="../src/Shaders")
 
 link_directories(${CMAKE_SOURCE_DIR}/${GLFW_LIB_DIR})
 link_directories(${CMAKE_SOURCE_DIR}/${GLEW_LIB_DIR})
@@ -224,16 +235,12 @@ function (copy_folder input_folder output_folder file_regex)
 	endforeach()
 endfunction()
 
-# Copying the kernel files to runtime directory so that they are available for runtime compilation (by Orochi)
-copy_folder("${CMAKE_SOURCE_DIR}/src/${DEVICE_KERNELS_DIRECTORY}" "${CMAKE_CURRENT_BINARY_DIR}/${DEVICE_KERNELS_DIRECTORY}" "*.*")
-copy_folder("${CMAKE_SOURCE_DIR}/src/${DEVICE_INCLUDES_DIRECTORY}" "${CMAKE_CURRENT_BINARY_DIR}/${DEVICE_INCLUDES_DIRECTORY}" "*.*")
-copy_folder("${CMAKE_SOURCE_DIR}/${SHADERS_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/Shaders" "*.*")
-copy_folder("${CMAKE_SOURCE_DIR}/${HOST_DEVICE_COMMON_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/HostDeviceCommon" "*.*")
 
 # Copying hiprt binaries
 message(STATUS "Copying HIPRT binaries...")
 copy_folder("${HIPRT_BIN_DIR}" "${CMAKE_CURRENT_BINARY_DIR}" "amd*.dll")
 copy_folder("${HIPRT_BIN_DIR}" "${CMAKE_CURRENT_BINARY_DIR}" "hip*.dll")
+
 
 # Macro to preserve nice beautiful source files hierarchy in Visual Studio
 if(MSVC_IDE)

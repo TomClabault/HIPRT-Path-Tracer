@@ -18,6 +18,9 @@ GLOBAL_KERNEL_SIGNATURE(void) NormalsKernel(hiprtGeometry geom, HIPRTRenderData 
 	if (index >= res.x * res.y)
 		return;
 
+	render_data.buffers.pixels[index] = Color(1.0f, 0.0f, 0.0f);
+	return;
+
 	hiprtRay ray = camera.get_camera_ray(x, y, res);
 
 	hiprtGeomTraversalClosest tr(geom, ray);

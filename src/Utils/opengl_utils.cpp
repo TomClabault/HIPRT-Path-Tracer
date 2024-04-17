@@ -33,7 +33,7 @@ GLuint OpenGLUtils::compile_shader_program(const std::string& vertex_shader_file
 	const char* vertex_shader_text = vertex_string.c_str();
 
 	// Tone mapping fragment shader
-	std::string frag_string = Utils::file_to_string("Shaders/display.frag");
+	std::string frag_string = Utils::file_to_string(GLSL_SHADERS_DIRECTORY "/display.frag");
 	const char* fragment_shader_text = frag_string.c_str();
 
 	GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);

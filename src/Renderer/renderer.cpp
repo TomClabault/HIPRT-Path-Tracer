@@ -235,17 +235,19 @@ hiprtError customBuildTraceKernels(
 
 void Renderer::compile_trace_kernel(const char* kernel_file_path, const char* kernel_function_name)
 {
-	std::vector<std::string> include_paths = { "./", "../thirdparties/hiprt/include" };
+	std::cout << "Compiling tracer kernel \"" << kernel_function_name << "\"..." << std::endl;
 	std::vector<std::pair<std::string, std::string>> precompiler_defines;
 	std::vector<const char*> options;
 
 	std::string additional_include = std::string("-I") + std::string(KERNEL_COMPILER_ADDITIONAL_INCLUDE);
+	std::string additional_include2 = std::string("-I") + std::string(DEVICE_INCLUDES_DIRECTORY);
 	options.push_back(additional_include.c_str());
+	options.push_back(additional_include2.c_str());
 	options.push_back("-I./");
 
-	std::vector<hiprtApiFunction> functionsOut(1);
-	customBuildTraceKernels(m_hiprt_orochi_ctx->hiprt_ctx, kernel_file_path, { kernel_function_name }, functionsOut, options, std::nullopt, 0, 1);
-	m_trace_kernel = *reinterpret_cast<oroFunction*>(&functionsOut.back());
+	std::vector<hiprtApiFunction> trace_function_out(1);
+	customBuildTraceKernels(m_hiprt_orochi_ctx->hiprt_ctx, kernel_file_path, { kernel_function_name }, trace_function_out, options, std::nullopt, 0, 1);
+	m_trace_kernel = *reinterpret_cast<oroFunction*>(&trace_function_out.back());
 }
 
 

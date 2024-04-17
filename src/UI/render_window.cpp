@@ -457,7 +457,7 @@ const ApplicationSettings& RenderWindow::get_application_settings() const
 void RenderWindow::setup_display_program()
 {
 	// Creating the shaders for displaying the path traced render
-	m_display_program = OpenGLUtils::compile_shader_program("Shaders/fullscreen_quad.vert", "Shaders/display.frag");
+	m_display_program = OpenGLUtils::compile_shader_program(GLSL_SHADERS_DIRECTORY "/fullscreen_quad.vert", GLSL_SHADERS_DIRECTORY "/display.frag");
 
 	// Creating the texture that will contain the path traced data to be displayed
 	// by the shader.
