@@ -29,16 +29,19 @@ FetchContent_Declare(
 # the current value of BUILD_SHARED_LIBS before overriding it with
 # OFF (for assimp only)
 set(BUILD_SHARED_LIBS_BACKUP ${BUILD_SHARED_LIBS})
+set(CMAKE_BUILD_TYPE_BACKUP ${CMAKE_BUILD_TYPE})
 set(BUILD_SHARED_LIBS OFF)
 set(ASSIMP_NO_EXPORT ON)
 set(ASSIMP_BUILD_TESTS OFF)
 set(ASSIMP_INSTALL_PDB OFF)
 set(ASSIMP_BUILD_ASSIMP_VIEW OFF)
+set(CMAKE_BUILD_TYPE "Release") # Building ASSIMP in Release
 FetchContent_MakeAvailable(
 	assimplib
 )
-# Restoring BUILD_SHARED_LIBS
+# Restoring varaibles
 set(BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS_BACKUP})
+set(CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE_BACKUP})
 # ---------------------------------------------------------------------
 
 
@@ -90,7 +93,7 @@ else()
 endif()
 
 # Building HIPRT through MSBuild since Premake generated a Visual Studio Solution
-execute_process(COMMAND ${MSBUILD_EXECUTABLE} hiprt02003.vcxproj /property:Configuration=Debug /property:Platform=x64 WORKING_DIRECTORY ${hiprtrelease_SOURCE_DIR}/build)
+execute_process(COMMAND ${MSBUILD_EXECUTABLE} hiprt02003.vcxproj /property:Configuration=Debug /property:Platform=x64 /verbosity:minimal WORKING_DIRECTORY ${hiprtrelease_SOURCE_DIR}/build)
 
 # Now that we built HIPRT, we can set the variables that will be used in the rest of the CMake 
 # to find the headers, the libraries, ...
