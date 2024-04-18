@@ -19,15 +19,26 @@ endif()
 
 
 # ----------- Downloading ASSIMP library for assets loading -----------
-set(EXTERNAL_ASSIMP_INSTALL_LOCATION ${CMAKE_BINARY_DIR}/external/assimp)
-
-# TODO always build ASSIMP in release to avoid the issue of the debug vs release .lib file with Visual Studio on Windows? : use -DCMAKE_BUILD_TYPE=Release
-# TODO only build at configure time to avoid building / checking ASSIMP everytime...
-ExternalProject_Add(
-	assimp
-    GIT_REPOSITORY https://github.com/assimp/assimp
-    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${EXTERNAL_ASSIMP_INSTALL_LOCATION}
+FetchContent_Declare(
+	assimplib
+	GIT_REPOSITORY https://github.com/assimp/assimp
+	GIT_TAG        8b9ed34eaa3e6ad24254cb7e058fb9150f66b865 # Release 5.4.0
 )
+
+# We're going to disable shared libs for assimp but we need to save
+# the current value of BUILD_SHARED_LIBS before overriding it with
+# OFF (for assimp only)
+set(BUILD_SHARED_LIBS_BACKUP ${BUILD_SHARED_LIBS})
+set(BUILD_SHARED_LIBS OFF)
+set(ASSIMP_NO_EXPORT ON)
+set(ASSIMP_BUILD_TESTS OFF)
+set(ASSIMP_INSTALL_PDB OFF)
+set(ASSIMP_BUILD_ASSIMP_VIEW OFF)
+FetchContent_MakeAvailable(
+	assimplib
+)
+# Restoring BUILD_SHARED_LIBS
+set(BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS_BACKUP})
 # ---------------------------------------------------------------------
 
 
@@ -131,7 +142,6 @@ set(GLEW_BIN_DIR "thirdparties/opengl/bin/GLEW")
 # Using CMake here to define C++ macros that will be used to find the directory of the kernels, etc...
 # in the C++ code. This basically avoids hardcoding the path to the kernels in C++ and instead
 # use the more flexible approach of defining it in the CMake
-# TODO open an issue because Orochi compiler doesn't seem to like full kernel path like: ${CMAKE_SOURCE_DIR}/src/Device/kernels/normals_kernel.h
 add_compile_definitions(DEVICE_KERNELS_DIRECTORY="../src/Device/kernels")
 add_compile_definitions(DEVICE_INCLUDES_DIRECTORY="../src/") # This gives access to Device/ and HostDeviceCommon/
 add_compile_definitions(GLSL_SHADERS_DIRECTORY="../src/Shaders")
@@ -166,32 +176,13 @@ add_executable(HIPRTPathTracer
 )
 
 set_property(TARGET HIPRTPathTracer PROPERTY CXX_STANDARD 20)
-add_dependencies(HIPRTPathTracer assimp)
 
 find_package(OpenMP)
 find_package(OpenGL REQUIRED)
 find_package(OpenImageDenoise REQUIRED HINTS ${oidnbinaries_SOURCE_DIR}) # HINTS to indicate a folder to search for the library in
 
 # "version" is a library from the Windows SDK
-target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX OpenImageDenoise ${OPENGL_LIBRARY} glfw3 glew32 hiprt0200364D version)
-
-if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-	# Linking with the debug library of ASSIMP
-	target_link_libraries(HIPRTPathTracer PRIVATE ${EXTERNAL_ASSIMP_INSTALL_LOCATION}/lib/assimp-vc143-mtd.lib)
-	
-	# We're also adding the command to copy ASSIMP's DLL
-	add_custom_command(TARGET HIPRTPathTracer POST_BUILD
-		COMMAND ${CMAKE_COMMAND} -E copy ${EXTERNAL_ASSIMP_INSTALL_LOCATION}/bin/assimp-vc143-mtd.dll ${CMAKE_CURRENT_BINARY_DIR}
-	)
-else()
-	# Linking with the release library of ASSIMP
-	target_link_libraries(HIPRTPathTracer PRIVATE ${EXTERNAL_ASSIMP_INSTALL_LOCATION}/lib/assimp-vc143-mt.lib)
-	
-	# We're also adding the command to copy ASSIMP's DLL
-	add_custom_command(TARGET HIPRTPathTracer POST_BUILD
-		COMMAND ${CMAKE_COMMAND} -E copy ${EXTERNAL_ASSIMP_INSTALL_LOCATION}/bin/assimp-vc143-mt.dll ${CMAKE_CURRENT_BINARY_DIR}
-	)
-endif()
+target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX assimp OpenImageDenoise ${OPENGL_LIBRARY} glfw3 glew32 hiprt0200364D version)
 
 target_include_directories(HIPRTPathTracer PRIVATE "src/")
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/opengl/include")
