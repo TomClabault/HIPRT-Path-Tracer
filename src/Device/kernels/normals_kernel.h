@@ -3,11 +3,11 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#include "Device/includes/fix_intellisense.h"
-#include "Device/includes/sampling.h"
-#include "HostDeviceCommon/camera.h"
-#include "HostDeviceCommon/math.h"
-#include "HostDeviceCommon/render_data.h"
+#include <Device/includes/fix_intellisense.h>
+#include <Device/includes/sampling.h>
+#include <HostDeviceCommon/camera.h>
+#include <HostDeviceCommon/math.h>
+#include <HostDeviceCommon/render_data.h>
 
 GLOBAL_KERNEL_SIGNATURE(void) NormalsKernel(hiprtGeometry geom, HIPRTRenderData render_data, int2 res, HIPRTCamera camera)
 {
@@ -17,9 +17,6 @@ GLOBAL_KERNEL_SIGNATURE(void) NormalsKernel(hiprtGeometry geom, HIPRTRenderData 
 
 	if (index >= res.x * res.y)
 		return;
-
-	render_data.buffers.pixels[index] = Color(1.0f, 0.0f, 0.0f);
-	return;
 
 	hiprtRay ray = camera.get_camera_ray(x, y, res);
 

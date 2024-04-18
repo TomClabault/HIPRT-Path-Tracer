@@ -6,10 +6,10 @@
 #ifndef HIPRT_SAMPLING_H
 #define HIPRT_SAMPLING_H
 
-#include "Device/includes/onb.h"
-#include "HostDeviceCommon/color.h"
-#include "HostDeviceCommon/material.h"
-#include "HostDeviceCommon/xorshift.h"
+#include <Device/includes/onb.h>
+#include <HostDeviceCommon/color.h>
+#include <HostDeviceCommon/material.h>
+#include <HostDeviceCommon/xorshift.h>
 
 /**
  * Reflects a ray about a normal. This function requires that dot(ray_direction, surface_normal) > 0 i.e.

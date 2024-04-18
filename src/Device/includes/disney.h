@@ -6,12 +6,12 @@
 #ifndef HIPRT_DISNEY_H
 #define HIPRT_DISNEY_H
 
-#include "Device/includes/fix_intellisense.h"
-#include "Device/includes/onb.h"
-#include "Device/includes/oren_nayar.h"
-#include "Device/includes/sampling.h"
-#include "HostDeviceCommon/material.h"
-#include "HostDeviceCommon/xorshift.h"
+#include <Device/includes/fix_intellisense.h>
+#include <Device/includes/onb.h>
+#include <Device/includes/oren_nayar.h>
+#include <Device/includes/sampling.h>
+#include <HostDeviceCommon/material.h>
+#include <HostDeviceCommon/xorshift.h>
 
 /* References:
  * [1] [CSE 272 University of California San Diego - Disney BSDF Homework] https://cseweb.ucsd.edu/~tzli/cse272/wi2024/homework1.pdf

@@ -57,7 +57,7 @@ struct float4x4
 #ifdef __KERNELCC__
 namespace hiprtpt
 {
-	//__device__ float3 abs(float3 u) { return make_float3(fabsf(u.x), fabsf(u.y), fabsf(u.z)); }
+	__device__ float3 abs(float3 u) { return make_float3(fabsf(u.x), fabsf(u.y), fabsf(u.z)); }
 
 	template <typename T>
 	__device__ T abs(T val) { return abs(val); }

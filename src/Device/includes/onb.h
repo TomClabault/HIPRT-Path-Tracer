@@ -6,7 +6,7 @@
 #ifndef HIPRT_ONB_H
 #define HIPRT_ONB_H
 
-#include "HostDeviceCommon/math.h"
+#include <HostDeviceCommon/math.h>
 
 __device__ void build_ONB(const float3& N, float3& T, float3& B)
 {

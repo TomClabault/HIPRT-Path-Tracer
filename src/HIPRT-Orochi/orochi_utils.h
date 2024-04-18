@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef OROCHI_UTILS_H
-#define OROCHI_UTILS_H
+#ifndef HIPRTPT_OROCHI_UTILS_H
+#define HIPRTPT_OROCHI_UTILS_H
 
 #include <hiprt/hiprt.h>
 #include <Orochi/Orochi.h>
@@ -16,19 +16,37 @@
 #define OROCHI_RTC_CHECK_ERROR( error ) ( orochi_rtc_check_error( error, __FILE__, __LINE__ ) )
 #define HIPRT_CHECK_ERROR( error ) ( hiprt_check_error( error, __FILE__, __LINE__ ) )
 
-bool readSourceCode(const std::filesystem::path& path, std::string& sourceCode, std::vector<std::filesystem::path>* includes = nullptr);
+namespace HIPRTPTOrochiUtils
+{
+	/*
+	 * This function looks for a file that has the name 'header_name'
+	 * in the list of directories given by 'include_directories'
+	 * 
+	 * If the file is found, the path to the file is returned by concatenating
+	 * the include directory in which it was found with the file name
+	 * 
+	 * The empty string is returned if the file is found in none of the include
+	 * directories given
+	 */
+	std::string locate_header_in_include_dirs(const std::string& header_name, const std::vector<std::string> include_directories);
 
-void buildTraceKernelFromBitcode(
-	hiprtContext				   ctxt,
-	const char* path,
-	const char* functionName,
-	oroFunction& functionOut,
-	std::vector<std::string> include_paths,
-	std::vector<std::pair<std::string, std::string>> precompiler_defines = {},
-	std::vector<const char*>* opts = nullptr,
-	std::vector<hiprtFuncNameSet>* funcNameSets = nullptr,
-	uint32_t					   numGeomTypes = 0,
-	uint32_t					   numRayTypes = 1);
+	/*
+	 * Reads a given file, outputs its code in 'sourceCode' and a list of the names
+	 * of the files included in the source file by #include directives in 'includes'
+	 * 
+	 * If 'includes' is nullptr, then no include names will be returned
+	 */
+	bool read_source_code(const std::string& path, std::string& sourceCode, std::vector<std::string>* includes);
+
+	hiprtError build_trace_kernel(hiprtContext ctxt,
+		const std::string& kernel_file_path,
+		const char* function_name,
+		hiprtApiFunction& kernel_function_out,
+		const std::vector<std::string>& additional_include_directories,
+		const std::optional<std::vector<const char*>>& compiler_options,
+		unsigned int num_geom_types, unsigned int num_ray_types,
+		bool use_compiler_cache);
+}
 
 void orochi_check_error(oroError res, const char* file, uint32_t line);
 void orochi_rtc_check_error(orortcResult res, const char* file, uint32_t line);
