@@ -235,7 +235,6 @@ message(STATUS "Copying HIPRT binaries...")
 copy_folder("${HIPRT_BIN_DIR}" "${CMAKE_CURRENT_BINARY_DIR}" "amd*.dll")
 copy_folder("${HIPRT_BIN_DIR}" "${CMAKE_CURRENT_BINARY_DIR}" "hip*.dll")
 
-
 # Macro to preserve nice beautiful source files hierarchy in Visual Studio
 if(MSVC_IDE)
 	macro(GroupSources curdir)
@@ -254,5 +253,9 @@ if(MSVC_IDE)
 
 	# Run macro
 	GroupSources(src)
+	
+	# Creating a Visual Studio folder for the targets we don't care about so we have
+	# a way to have our IDE look clean
+	set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+	set_target_properties(assimp uninstall zlibstatic UpdateAssimpLibsDebugSymbolsAndDLLs PROPERTIES FOLDER ExternalTargets)
 endif()
-
