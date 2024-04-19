@@ -428,6 +428,47 @@ __device__ void debug_set_final_color(const HIPRTRenderData& render_data, int x,
 #define LOW_RESOLUTION_RENDER_DOWNSCALE 8
 GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderData render_data, int2 res, HIPRTCamera camera)
 {
+    //const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
+    //const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
+    //const uint32_t index = (x + y * res.x);
+
+    //if (index >= res.x * res.y)
+    //    return;
+
+    //Xorshift32Generator random_number_generator(wang_hash((index + 1) * (render_data.render_settings.sample_number + 1)));
+    ////Jittered around the center
+    //float x_jittered = (x + 0.5f) + random_number_generator() - 1.0f;
+    //float y_jittered = (y + 0.5f) + random_number_generator() - 1.0f;
+
+    //hiprtRay ray = camera.get_camera_ray(x_jittered, y_jittered, res);
+
+    //HitInfo closest_hit_info;
+    //bool intersection_found = trace_ray(render_data, ray, closest_hit_info);
+
+    //int index_A = render_data.buffers.triangles_indices[closest_hit_info.primitive_index * 3 + 0];
+    //int index_B = render_data.buffers.triangles_indices[closest_hit_info.primitive_index * 3 + 1];
+    //int index_C = render_data.buffers.triangles_indices[closest_hit_info.primitive_index * 3 + 2];
+
+    //float3 vertex_A = render_data.buffers.triangles_vertices[index_A];
+    //float3 vertex_B = render_data.buffers.triangles_vertices[index_B];
+    //float3 vertex_C = render_data.buffers.triangles_vertices[index_C];
+
+    //float3 normal;
+    //if (render_data.buffers.normals_present[index_A])
+    //{
+    //    // Smooth normal
+    //    float3 smooth_normal = render_data.buffers.vertex_normals[index_B] * closest_hit_info.uv.x
+    //        + render_data.buffers.vertex_normals[index_C] * closest_hit_info.uv.y
+    //        + render_data.buffers.vertex_normals[index_A] * (1.0f - closest_hit_info.uv.x - closest_hit_info.uv.y);
+
+    //    normal = hiprtpt::normalize(smooth_normal);
+    //}
+    //else
+    //    normal = hiprtpt::normalize(hiprtpt::cross(vertex_B - vertex_A, vertex_C - vertex_A));
+
+    //Color final_color(intersection_found ? hiprtpt::abs(normal) : Color(0.0f, 0.0f, 0.0f));
+    //render_data.buffers.pixels[index] = final_color* (render_data.render_settings.sample_number + 1);
+
     const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
     const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
     const uint32_t index = (x + y * res.x);
@@ -485,11 +526,6 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
             {
                 HitInfo closest_hit_info;
                 bool intersection_found = trace_ray(render_data, ray, closest_hit_info);
-                if (intersection_found)
-                    debug_set_final_color(render_data, x, y, res.x, Color(1.0f, 0.0f, 0.0f));
-                else
-                    debug_set_final_color(render_data, x, y, res.x, Color(1.0f, 1.0f, 0.0f));
-                return;
 
                 // Because I've had self-intersection issues in the past (offsetting the ray origin
                 // from the surface along the normal by 1.0e-4f wasn't enough), I'm adding this "fail-safe" 
@@ -525,6 +561,8 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                     // ----------------- Direct lighting ----------------- //
                     // --------------------------------------------------- //
                     Color light_sample_radiance = sample_light_sources(render_data, -ray.direction, closest_hit_info, material, random_number_generator);
+                    /*debug_set_final_color(render_data, x, y, res.x, light_sample_radiance);
+                    return;*/
                     Color env_map_radiance = Color(0.0f);// sample_environment_map(ray, closest_hit_info, material, random_number_generator);
 
                     // --------------------------------------- //

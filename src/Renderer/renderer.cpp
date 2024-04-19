@@ -112,89 +112,6 @@ void Renderer::init_ctx(int device_index)
 	m_hiprt_orochi_ctx.get()->init(device_index);
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//hiprtError build_trace_kernel(
-//	hiprtContext								 ctxt,
-//	const std::filesystem::path& srcPath,
-//	std::vector<const char*>					 functionNames,
-//	std::vector<hiprtApiFunction>& functionsOut,
-//	std::optional<std::vector<const char*>>		 opts,
-//	std::optional<std::vector<hiprtFuncNameSet>> funcNameSets,
-//	uint32_t									 numGeomTypes,
-//	uint32_t									 numRayTypes)
-//{
-//	std::vector<std::string> includeNamesData;
-//	std::string						   sourceCode;
-//	OrochiUtils::readSourceCode(srcPath.string(), sourceCode, &includeNamesData);
-//
-//	std::vector<std::string> headersData(includeNamesData.size());
-//	std::vector<const char*> headers;
-//	std::vector<const char*> includeNames;
-//	for (size_t i = 0; i < includeNamesData.size(); i++)
-//	{
-//		OrochiUtils::readSourceCode("../" + includeNamesData[i], headersData[i]);
-//		includeNames.push_back(includeNamesData[i].c_str());
-//		headers.push_back(headersData[i].c_str());
-//	}
-//
-//	functionsOut.resize(functionNames.size());
-//	return hiprtBuildTraceKernels(
-//		ctxt,
-//		static_cast<uint32_t>(functionNames.size()),
-//		functionNames.data(),
-//		sourceCode.c_str(),
-//		srcPath.string().c_str(),
-//		static_cast<uint32_t>(headers.size()),
-//		headers.data(),
-//		includeNames.data(),
-//		opts ? static_cast<uint32_t>(opts.value().size()) : 0,
-//		opts ? opts.value().data() : nullptr,
-//		numGeomTypes,
-//		numRayTypes,
-//		funcNameSets ? funcNameSets.value().data() : nullptr,
-//		functionsOut.data(),
-//		nullptr,
-//		true);
-//}
-
 void Renderer::compile_trace_kernel(const char* kernel_file_path, const char* kernel_function_name)
 {
 	std::cout << "Compiling tracer kernel \"" << kernel_function_name << "\"..." << std::endl;
@@ -207,7 +124,13 @@ void Renderer::compile_trace_kernel(const char* kernel_file_path, const char* ke
 	std::vector<std::string> additional_includes = { KERNEL_COMPILER_ADDITIONAL_INCLUDE, DEVICE_INCLUDES_DIRECTORY, "-I./" };
 
 	hiprtApiFunction trace_function_out;
-	HIPRTPTOrochiUtils::build_trace_kernel(m_hiprt_orochi_ctx->hiprt_ctx, kernel_file_path, kernel_function_name, trace_function_out, additional_includes, options, 0, 1, false);
+	if (HIPRTPTOrochiUtils::build_trace_kernel(m_hiprt_orochi_ctx->hiprt_ctx, kernel_file_path, kernel_function_name, trace_function_out, additional_includes, options, 0, 1, false) != hiprtError::hiprtSuccess)
+	{
+		std::cerr << "Unable to compile kernel \"" << kernel_function_name << "\". Cannot continue." << std::endl;
+		std::getchar();
+		std::exit(1);
+	}
+
 	m_trace_kernel = *reinterpret_cast<oroFunction*>(&trace_function_out);
 	
 	auto stop = std::chrono::high_resolution_clock::now();

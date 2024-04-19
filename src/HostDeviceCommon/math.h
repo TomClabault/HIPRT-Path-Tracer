@@ -57,31 +57,17 @@ struct float4x4
 #ifdef __KERNELCC__
 namespace hiprtpt
 {
+	__device__ float3 cross(float3 u, float3 v) { return hiprt::cross(u, v); }
+	__device__ float dot(float3 u, float3 v) { return hiprt::dot(u, v); }
+
+	__device__ float length(float3 u) { return sqrt(hiprt::dot(u, u)); }
+
 	__device__ float3 abs(float3 u) { return make_float3(fabsf(u.x), fabsf(u.y), fabsf(u.z)); }
+	__device__ float max(float a, float b) { return a > b ? a : b; }
+	__device__ float min(float a, float b) { return a < b ? a : b; }
+	__device__ float clamp(float min_val, float max_val, float val) { return hiprt::clamp(min_val, max_val, val); }
 
-	template <typename T>
-	__device__ T abs(T val) { return abs(val); }
-
-	template <typename T>
-	__device__ T clamp(T min_val, T max_val, T val) { return hiprt::clamp(min_val, max_val, val); }
-
-	template <typename T>
-	__device__ T cross(T u, T v) { return hiprt::cross(u, v); }
-
-	template <typename T>
-	__device__ float dot(T u, T v) { return hiprt::dot(u, v); }
-
-	template <typename T>
-	__device__ float length(T u) { return hiprt::dot(u, u); }
-
-	template <typename T>
-	__device__ T max(T a, T b) { return max(a, b); }
-
-	template <typename T>
-	__device__ T min(T a, T b) { return min(a, b); }
-
-	template <typename T>
-	__device__ T normalize(T u) { return hiprt::normalize(u); }
+	__device__ float3 normalize(float3 u) { return hiprt::normalize(u); }
 }
 
 #define M_PI hiprt::Pi

@@ -10,16 +10,13 @@
 
 #include "HostDeviceCommon/math.h"
 
-// TODO remove
-//#include "Device/includes/maths.h"
-
 struct Xorshift32State {
     unsigned int a = 42;
 };
 
 struct Xorshift32Generator
 {
-    static const int XORSHIFT_MAX = 0xffffffff;
+    static const unsigned int XORSHIFT_MAX = 0xffffffff;
 
     __device__ Xorshift32Generator(unsigned int seed)
     {
