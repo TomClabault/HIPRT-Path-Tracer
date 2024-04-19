@@ -23,6 +23,7 @@ FetchContent_Declare(
 	assimplib
 	GIT_REPOSITORY https://github.com/assimp/assimp
 	GIT_TAG        8b9ed34eaa3e6ad24254cb7e058fb9150f66b865 # Release 5.4.0
+	GIT_PROGRESS TRUE
 )
 
 # We're going to disable shared libs for assimp but we need to save
@@ -103,25 +104,52 @@ set(HIPRT_HEADERS_DIR ${hiprtrelease_SOURCE_DIR}/hiprt)
 # The GPU compiler will need this additional include folder to properly compile some kernels
 add_compile_definitions(KERNEL_COMPILER_ADDITIONAL_INCLUDE="${hiprtrelease_SOURCE_DIR}")
 
-set(OROCHI_BIN_DIR ${hiprtrelease_SOURCE_DIR}/contrib/Orochi/)
-set(OROCHI_SOURCES_DIR ${hiprtrelease_SOURCE_DIR}/contrib/Orochi/Orochi)
-
-set(CUEW_SOURCES_DIR ${hiprtrelease_SOURCE_DIR}/contrib/Orochi/contrib/cuew)
-set(HIPEW_SOURCES_DIR ${hiprtrelease_SOURCE_DIR}/contrib/Orochi/contrib/hipew)
-
 # Replacing backslashes in the Windows paths that lead to wrong escape character
 # note that the four backslashes \\\\ are required because we need a regular expression that
 # compiles to '\'.
 # \\ is converted by CMake to a single '\'
 # so \\\\ is converted by CMake to '\\' which is the regular expression for the single '\' character
 STRING(REGEX REPLACE "\\\\" "/" HIPRT_HEADERS_DIR ${HIPRT_HEADERS_DIR})
-STRING(REGEX REPLACE "\\\\" "/" OROCHI_SOURCES_DIR ${OROCHI_SOURCES_DIR})
-STRING(REGEX REPLACE "\\\\" "/" CUEW_SOURCES_DIR ${CUEW_SOURCES_DIR})
-STRING(REGEX REPLACE "\\\\" "/" HIPEW_SOURCES_DIR ${HIPEW_SOURCES_DIR})
 	
 link_directories(${HIPRT_BINARIES_DIR}/hiprt/win)
 # -------------------------------------------------
 
+
+
+
+# ----------------- Downloading Orochi (no need to build) ----------------
+
+FetchContent_Declare(
+	orochilib
+	GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/Orochi.git
+	GIT_TAG        17c5b9885549c1266f34af702f52ce9bdfdeae21 # Release 2.0.0
+	GIT_PROGRESS TRUE
+)
+
+FetchContent_MakeAvailable(
+	orochilib
+)
+
+set(OROCHI_BIN_DIR ${orochilib_SOURCE_DIR})
+set(OROCHI_SOURCES_DIR ${orochilib_SOURCE_DIR}/Orochi)
+
+set(CUEW_SOURCES_DIR ${orochilib_SOURCE_DIR}/contrib/cuew)
+set(HIPEW_SOURCES_DIR ${orochilib_SOURCE_DIR}/contrib/hipew)
+
+STRING(REGEX REPLACE "\\\\" "/" OROCHI_SOURCES_DIR ${OROCHI_SOURCES_DIR})
+STRING(REGEX REPLACE "\\\\" "/" CUEW_SOURCES_DIR ${CUEW_SOURCES_DIR})
+STRING(REGEX REPLACE "\\\\" "/" HIPEW_SOURCES_DIR ${HIPEW_SOURCES_DIR})
+
+# TODO remove when issue #7 (https://github.com/GPUOpen-LibrariesAndSDKs/HIPRT/issues/7) is fixed
+if (true)
+	file(COPY ${orochilib_SOURCE_DIR}/ParallelPrimitives DESTINATION ${CMAKE_SOURCE_DIR}/contrib/Orochi)
+	file(COPY ${hiprtrelease_SOURCE_DIR}/hiprt/impl DESTINATION ${CMAKE_SOURCE_DIR}/hiprt)
+
+	file(GLOB HIPRT_FILES_TO_COPY ${hiprtrelease_SOURCE_DIR}/hiprt/*.h ${hiprtrelease_SOURCE_DIR}/hiprt/*.in)
+	file(COPY ${HIPRT_FILES_TO_COPY} DESTINATION ${CMAKE_SOURCE_DIR}/hiprt/)
+endif()
+
+# ------------------------------------------------------------------------
 
 
 
@@ -204,36 +232,15 @@ target_include_directories(HIPRTPathTracer PRIVATE "${EXTERNAL_ASSIMP_INSTALL_LO
 target_include_directories(HIPRTPathTracer PRIVATE ".")
 
 message(STATUS "Copying OpenImageDenoise binaries...")
-configure_file(${oidnbinaries_SOURCE_DIR}/bin/OpenImageDenoise.dll ${CMAKE_CURRENT_BINARY_DIR}/OpenImageDenoise.dll COPYONLY)
-configure_file(${oidnbinaries_SOURCE_DIR}/bin/OpenImageDenoise_core.dll ${CMAKE_CURRENT_BINARY_DIR}/OpenImageDenoise_core.dll COPYONLY)
-configure_file(${oidnbinaries_SOURCE_DIR}/bin/OpenImageDenoise_device_cpu.dll ${CMAKE_CURRENT_BINARY_DIR}/OpenImageDenoise_device_cpu.dll COPYONLY)
-configure_file(${oidnbinaries_SOURCE_DIR}/bin/OpenImageDenoise_device_cuda.dll ${CMAKE_CURRENT_BINARY_DIR}/OpenImageDenoise_device_cuda.dll COPYONLY)
-configure_file(${oidnbinaries_SOURCE_DIR}/bin/OpenImageDenoise_device_hip.dll ${CMAKE_CURRENT_BINARY_DIR}/OpenImageDenoise_device_hip.dll COPYONLY)
+file(GLOB OIDN_DLLs ${oidnbinaries_SOURCE_DIR}/bin/OpenImageDenoise*.dll)
+file(COPY ${OIDN_DLLs} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
 
-add_custom_command(TARGET HIPRTPathTracer PRE_BUILD
-	COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/${GLEW_BIN_DIR}/glew32.dll ${CMAKE_CURRENT_BINARY_DIR}
-)
+message(STATUS "Copying Glew binaries...")
+file(COPY ${CMAKE_SOURCE_DIR}/${GLEW_BIN_DIR}/glew32.dll DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
-# The function below is using configure_file just to make sure that the file is copied to the binary dir everytime it has changed. 
-# This is important for shaders as they are not part of the CPP compilation process. Thus, if we were only using an
-# approach such as add_custom_command to copy the shader files, the shaders would not be copied to the binary directory when they
-# modified since the project wouldn't be rebuilt (because no file that require re-compilation (i.e. cpp files) were modified).
-# configure_file ensures the input it is given is copied (or configured but we're only using this command for its
-# copy capability here) to the output everytime it is modified, independant of whether a compilation was triggered or not.
-function (copy_folder input_folder output_folder file_regex)
-	file(GLOB input_files_to_copy ${input_folder}/${file_regex})
-	
-	foreach(file_to_copy ${input_files_to_copy})
-		cmake_path(GET file_to_copy FILENAME filename_to_copy)
-		configure_file(${file_to_copy} ${output_folder}/${filename_to_copy} COPYONLY)
-	endforeach()
-endfunction()
-
-
-# Copying hiprt binaries
 message(STATUS "Copying HIPRT binaries...")
-copy_folder("${HIPRT_BIN_DIR}" "${CMAKE_CURRENT_BINARY_DIR}" "amd*.dll")
-copy_folder("${HIPRT_BIN_DIR}" "${CMAKE_CURRENT_BINARY_DIR}" "hip*.dll")
+file(GLOB HIPRT_DLLs ${HIPRT_BIN_DIR}/amd*.dll ${HIPRT_BIN_DIR}/hip*.dll)
+file(COPY ${HIPRT_DLLs} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
 # Macro to preserve nice beautiful source files hierarchy in Visual Studio
 if(MSVC_IDE)

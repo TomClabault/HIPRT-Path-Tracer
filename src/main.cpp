@@ -22,7 +22,6 @@
 
 #define GPU_RENDER 1
 
-
 int main(int argc, char* argv[])
 {
 #if GPU_RENDER

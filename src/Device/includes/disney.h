@@ -32,9 +32,9 @@ __device__ Color disney_diffuse_eval(const RendererMaterial& material, const flo
 {
     float3 half_vector = hiprtpt::normalize(to_light_direction + view_direction);
 
-    float LoH = hiprtpt::clamp(0.0f, 1.0f, abs(hiprtpt::dot(to_light_direction, half_vector)));
-    float NoL = hiprtpt::clamp(0.0f, 1.0f, abs(hiprtpt::dot(surface_normal, to_light_direction)));
-    float NoV = hiprtpt::clamp(0.0f, 1.0f, abs(hiprtpt::dot(surface_normal, view_direction)));
+    float LoH = hiprtpt::clamp(0.0f, 1.0f, hiprtpt::abs(hiprtpt::dot(to_light_direction, half_vector)));
+    float NoL = hiprtpt::clamp(0.0f, 1.0f, hiprtpt::abs(hiprtpt::dot(surface_normal, to_light_direction)));
+    float NoV = hiprtpt::clamp(0.0f, 1.0f, hiprtpt::abs(hiprtpt::dot(surface_normal, view_direction)));
 
     pdf = NoL / M_PI;
 
@@ -94,19 +94,10 @@ __device__ Color disney_metallic_eval(const RendererMaterial& material, const fl
     float3 local_to_light_direction = world_to_local_frame(T, B, surface_normal, to_light_direction);
     float3 local_half_vector = hiprtpt::normalize(local_to_light_direction + local_view_direction);
 
-    float NoV = abs(local_view_direction.z);
-    float NoL = abs(local_to_light_direction.z);
-    float HoL = abs(hiprtpt::dot(local_half_vector, local_to_light_direction));
+    float NoV = hiprtpt::abs(local_view_direction.z);
+    float NoL = hiprtpt::abs(local_to_light_direction.z);
+    float HoL = hiprtpt::abs(hiprtpt::dot(local_half_vector, local_to_light_direction));
 
-    // TODO remove
-    //{
-    //    // F = (-2.0f, -2.0f, -2.0f) is the default argument when the overload without the 'Color F' argument
-    //    // of disney_metallic_eval() was called. Thus, if no F was passed, we're computing it here.
-    //    // Otherwise, we're going to use the given one
-    //    if (F.r == -2.0f)
-    //        F = fresnel_schlick(material.base_color, NoL);
-    //}
-    
     float D = GTR2_anisotropic(material, local_half_vector);
     float G1_V = G1(material.alpha_x, material.alpha_y, local_view_direction);
     float G1_L = G1(material.alpha_x, material.alpha_y, local_to_light_direction);
@@ -150,10 +141,10 @@ __device__ Color disney_clearcoat_eval(const RendererMaterial& material, const f
     float alpha_g = (1.0f - clearcoat_gloss) * 0.1f + clearcoat_gloss * 0.001f;
 
     Color F_clearcoat = fresnel_schlick(R0, HoV);
-    float D_clearcoat = GTR1(alpha_g, abs(local_halfway_vector.z));
+    float D_clearcoat = GTR1(alpha_g, hiprtpt::abs(local_halfway_vector.z));
     float G_clearcoat = disney_clearcoat_masking_shadowing(local_view_direction) * disney_clearcoat_masking_shadowing(local_to_light_direction);
 
-    pdf = D_clearcoat * abs(local_halfway_vector.z) / (4.0f * hiprtpt::dot(local_halfway_vector, local_to_light_direction));
+    pdf = D_clearcoat * hiprtpt::abs(local_halfway_vector.z) / (4.0f * hiprtpt::dot(local_halfway_vector, local_to_light_direction));
     return F_clearcoat * D_clearcoat * G_clearcoat / (4.0f * local_view_direction.z);
 }
 
@@ -251,11 +242,11 @@ __device__ Color disney_glass_eval(const RendererMaterial& material, const float
         float G1_V = G1(material.alpha_x, material.alpha_y, local_view_direction);
         float G = G1_V * G1(material.alpha_x, material.alpha_y, local_to_light_direction);
 
-        float dwm_dwi = abs(HoL) / dot_prod2;
-        float D_pdf = G1_V / abs(NoV) * D * abs(HoV);
+        float dwm_dwi = hiprtpt::abs(HoL) / dot_prod2;
+        float D_pdf = G1_V / hiprtpt::abs(NoV) * D * hiprtpt::abs(HoV);
         pdf = dwm_dwi * D_pdf * (1.0f - F);
 
-        color = sqrt(material.base_color) * D * (1 - F) * G * abs(HoL * HoV / denom);
+        color = sqrt(material.base_color) * D * (1 - F) * G * hiprtpt::abs(HoL * HoV / denom);
     }
 
     return color;
@@ -316,7 +307,7 @@ __device__ Color disney_sheen_eval(const RendererMaterial& material, const float
 
     float3 half_vector = hiprtpt::normalize(view_direction + to_light_direction);
 
-    float NoL = abs(hiprtpt::dot(surface_normal, to_light_direction));
+    float NoL = hiprtpt::abs(hiprtpt::dot(surface_normal, to_light_direction));
     pdf = NoL / M_PI;
 
     // Clamping here because floating point errors can give us a dot > 1 sometimes

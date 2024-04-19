@@ -63,6 +63,7 @@ namespace hiprtpt
 	__device__ float length(float3 u) { return sqrt(hiprt::dot(u, u)); }
 
 	__device__ float3 abs(float3 u) { return make_float3(fabsf(u.x), fabsf(u.y), fabsf(u.z)); }
+	__device__ float abs(float a) { return fabsf(a); }
 	__device__ float max(float a, float b) { return a > b ? a : b; }
 	__device__ float min(float a, float b) { return a < b ? a : b; }
 	__device__ float clamp(float min_val, float max_val, float val) { return hiprt::clamp(min_val, max_val, val); }
@@ -101,6 +102,8 @@ namespace hiprtpt
 	template <typename T>
 	T clamp(T min_val, T max_val, T val) { return min(max_val, max(min_val, val)); }
 
+	template <typename T>
+	T abs(T a) { return abs(a); }
 	// TODO use glm instead of gkit
 	/*template <typename T>
 	T normalize(T u) { return glm::normalize(u); }*/

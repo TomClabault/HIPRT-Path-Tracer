@@ -27,18 +27,18 @@ Vector vec4_mat4x4(const glm::mat4x4& mat, const Vector& v)
 void build_ONB(const Vector& N, Vector& T, Vector& B)
 {
     Vector up = abs(N.z) < 0.9999999 ? Vector(0, 0, 1) : Vector(1, 0, 0);
-    T = normalize(cross(up, N));
-    B = cross(N, T);
+    T = normalize(hiprtpt::cross(up, N));
+    B = hiprtpt::cross(N, T);
 }
 
 void build_rotated_ONB(const Vector& N, Vector& T, Vector& B, float basis_rotation)
 {
     Vector up = abs(N.z) < 0.9999999 ? Vector(0, 0, 1) : Vector(1, 0, 0);
-    T = normalize(cross(up, N));
+    T = normalize(hiprtpt::cross(up, N));
 
     // Rodrigues' rotation
-    T = T * cos(basis_rotation) + cross(N, T) * sin(basis_rotation) + N * dot(N, T) * (1.0f - cos(basis_rotation));
-    B = cross(N, T);
+    T = T * cos(basis_rotation) + hiprtpt::cross(N, T) * sin(basis_rotation) + N * dot(N, T) * (1.0f - cos(basis_rotation));
+    B = hiprtpt::cross(N, T);
 }
 
 /*
@@ -372,7 +372,7 @@ Vector GGXVNDF_sample(Vector local_view_direction, float alpha_x, float alpha_y,
 
     float lensq = Vh.x * Vh.x + Vh.y * Vh.y;
     Vector T1 = lensq > 0.0f ? Vector(-Vh.y, Vh.x, 0) * 1.0f / std::sqrt(lensq) : Vector(1.0f, 0.0f, 0.0f);
-    Vector T2 = cross(Vh, T1);
+    Vector T2 = hiprtpt::cross(Vh, T1);
 
     float r = sqrt(r1);
     float phi = 2.0f * M_PI * r2;
@@ -655,19 +655,19 @@ float RenderKernel::disney_schlick_weight(float f0, float abs_cos_angle)
     return 1.0f + (f0 - 1.0f) * pow(1.0f - abs_cos_angle, 5.0f);
 }
 
-// TODO remove, this should not be necessary as already defined in hiprt/Math.h
-inline float clamp(float min_val, float max_val, float val)
-{
-    return std::max(min_val, std::min(max_val, val));
-}
+//// TODO remove, this should not be necessary as already defined in hiprt/Math.h
+//inline float clamp(float min_val, float max_val, float val)
+//{
+//    return std::max(min_val, std::min(max_val, val));
+//}
 
 Color RenderKernel::disney_diffuse_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& to_light_direction, float& pdf)
 {
     Vector half_vector = normalize(to_light_direction + view_direction);
 
-    float LoH = clamp(0.0f, 1.0f, abs(dot(to_light_direction, half_vector)));
-    float NoL = clamp(0.0f, 1.0f, abs(dot(shading_normal, to_light_direction)));
-    float NoV = clamp(0.0f, 1.0f, abs(dot(shading_normal, view_direction)));
+    float LoH = hiprtpt::clamp(0.0f, 1.0f, abs(dot(to_light_direction, half_vector)));
+    float NoL = hiprtpt::clamp(0.0f, 1.0f, abs(dot(shading_normal, to_light_direction)));
+    float NoV = hiprtpt::clamp(0.0f, 1.0f, abs(dot(shading_normal, view_direction)));
 
     pdf = NoL / M_PI;
 
@@ -951,7 +951,7 @@ Color RenderKernel::disney_sheen_eval(const RendererMaterial& material, const Ve
 
     // Clamping here because floating point errors can give us a dot > 1 sometimes
     // leading to 1.0f - dot being negative and the BRDF returns a negative color
-    float HoL = clamp(0.0f, 1.0f, dot(half_vector, to_light_direction));
+    float HoL = hiprtpt::clamp(0.0f, 1.0f, dot(half_vector, to_light_direction));
     return sheen_color * pow(1.0f - HoL, 5.0f) * NoL;
 }
 
@@ -1437,7 +1437,7 @@ inline Point RenderKernel::sample_random_point_on_lights(Xorshift32Generator& ra
 
     Point random_point_on_triangle = random_emissive_triangle.m_a + AB * u + AC * v;
 
-    Vector normal = cross(AB, AC);
+    Vector normal = hiprtpt::cross(AB, AC);
     float length_normal = length(normal);
     light_info.light_source_normal = normal / length_normal; // Normalized
     float triangle_area = length_normal * 0.5f;

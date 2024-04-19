@@ -52,6 +52,7 @@
 
 
 // TODO Features:
+// - thin materials
 // - Look at what Orochi & HIPCC can do in terms of displaying registers used / options to specify shared stack size / block size (-DBLOCK_SIZE, -DSHARED_STACK_SIZE)
 // - Have the UI run at its own framerate to avoid having the UI come to a crawl when the path tracing is expensive
 // - Denoiser blend to allow blending the original noisy image and the perfect denoised result by a given factor
