@@ -9,7 +9,7 @@
 #include <Orochi/OrochiUtils.h>
 #include "renderer.h"
 
-void Renderer::render(const OpenImageDenoiser& denoiser)
+void Renderer::render()
 {
 	int tile_size_x = 8;
 	int tile_size_y = 8;
@@ -21,7 +21,7 @@ void Renderer::render(const OpenImageDenoiser& denoiser)
 	hiprtInt2 resolution = make_hiprtInt2(m_render_width, m_render_height);
 
 	HIPRTCamera hiprt_cam = m_camera.to_hiprt();
-	HIPRTRenderData render_data = get_render_data(denoiser);
+	HIPRTRenderData render_data = get_render_data();
 	void* launch_args[] = { &m_hiprt_scene.geometry, &render_data, &resolution, &hiprt_cam};
 	launch_kernel(8, 8, resolution.x, resolution.y, launch_args);
 }
@@ -76,7 +76,7 @@ void Renderer::set_sample_number(int sample_number)
 	m_render_settings.sample_number = sample_number;
 }
 
-HIPRTRenderData Renderer::get_render_data(const OpenImageDenoiser& denoiser)
+HIPRTRenderData Renderer::get_render_data()
 {
 	HIPRTRenderData render_data;
 

@@ -33,7 +33,7 @@ public:
 
 	Renderer() : m_hiprt_scene(nullptr) {}
 
-	void render(const OpenImageDenoiser& denoiser);
+	void render();
 	void change_render_resolution(int new_width, int new_height);
 
 	OrochiBuffer<Color>& get_color_framebuffer();
@@ -41,7 +41,7 @@ public:
 	OrochiBuffer<hiprtFloat3>& get_denoiser_normals_buffer();
 	RenderSettings& get_render_settings();
 	WorldSettings& get_world_settings();
-	HIPRTRenderData get_render_data(const OpenImageDenoiser& denoiser);
+	HIPRTRenderData get_render_data();
 
 	void init_ctx(int device_index);
 	void compile_trace_kernel(const char* kernel_file_path, const char* kernel_function_name);

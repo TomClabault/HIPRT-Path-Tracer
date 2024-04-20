@@ -565,7 +565,7 @@ void RenderWindow::run()
 		bool image_rendered = false;
 		if (!(m_application_settings.stop_render_at != 0 && m_render_settings.sample_number + 1 > m_application_settings.stop_render_at))
 		{
-			m_renderer.render(m_denoiser);
+			m_renderer.render();
 			increment_sample_number();
 			m_render_settings.frame_number++;
 
