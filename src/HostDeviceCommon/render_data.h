@@ -14,14 +14,21 @@ struct HIPRTRenderSettings
 	// How many times the render kernel was called (updates after
 	// the call to the kernel so it start at 0)
 	int frame_number = 0;
+
 	// Number of samples rendered so far before the kernel call
 	// This is the sum of samples_per_frame for all frames
 	// that have been rendered
+	//
+	// TODO still relevant with new per-pixel sample count buffer used
+	// with adaptive sampling ?
 	int sample_number = 0;
 
 	int samples_per_frame = 1;
 	int nb_bounces = 8;
 
+	// If true, this means that the user is moving the camera and we're going to
+	// render the image at a much lower resolution to allow for smooth camera
+	// movements
 	bool render_low_resolution = false;
 };
 

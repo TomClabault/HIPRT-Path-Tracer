@@ -87,7 +87,7 @@ private:
 	DisplaySettings m_display_settings;
 
 	Renderer m_renderer;
-	RenderSettings& m_render_settings;
+	HIPRTRenderSettings& m_render_settings;
 	OpenImageDenoiser m_denoiser;
 
 	ImageWriter m_image_writer;

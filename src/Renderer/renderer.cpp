@@ -56,7 +56,7 @@ OrochiBuffer<float3>& Renderer::get_denoiser_normals_buffer()
 	return m_normals_buffer;
 }
 
-RenderSettings& Renderer::get_render_settings()
+HIPRTRenderSettings& Renderer::get_render_settings()
 {
 	return m_render_settings;
 }
@@ -120,7 +120,6 @@ void Renderer::compile_trace_kernel(const char* kernel_file_path, const char* ke
 	std::vector<std::pair<std::string, std::string>> precompiler_defines;
 	std::vector<const char*> options;
 
-	// TODO still needed after recursive parsing of headers ? Maybe 
 	std::vector<std::string> additional_includes = { KERNEL_COMPILER_ADDITIONAL_INCLUDE, DEVICE_INCLUDES_DIRECTORY, "-I./" };
 
 	hiprtApiFunction trace_function_out;
@@ -146,11 +145,12 @@ void Renderer::launch_kernel(int tile_size_x, int tile_size_y, int res_x, int re
 	OROCHI_CHECK_ERROR(oroModuleLaunchKernel(m_trace_kernel, nb_groups.x, nb_groups.y, 1, tile_size_x, tile_size_y, 1, 0, 0, launch_args, 0));
 }
 
+// TODO write a logger
 void log_bvh_building(hiprtBuildFlags build_flags)
 {
 	std::cout << "Compiling BVH building kernels & building scene ";
 	if (build_flags  == 0)
-		// hiprtBuildFlagBitPreferFastBuild
+		// This is hiprtBuildFlagBitPreferFastBuild
 		std::cout << "LBVH";
 	else if (build_flags & hiprtBuildFlagBitPreferBalancedBuild)
 		std::cout << "PLOC BVH";

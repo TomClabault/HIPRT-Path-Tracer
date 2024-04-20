@@ -12,7 +12,6 @@
 #include "HIPRT-Orochi/hiprt_scene.h"
 #include "HostDeviceCommon/render_data.h"
 #include "OpenGLInterop/OpenGLInteropBuffer.h"
-#include "Renderer/render_settings.h"
 #include "Scene/camera.h"
 #include "Scene/scene_parser.h"
 
@@ -39,7 +38,7 @@ public:
 	OrochiBuffer<Color>& get_denoiser_albedo_buffer();
 	OrochiBuffer<hiprtFloat3>& get_denoiser_normals_buffer();
 
-	RenderSettings& get_render_settings();
+	HIPRTRenderSettings& get_render_settings();
 	WorldSettings& get_world_settings();
 	HIPRTRenderData get_render_data();
 
@@ -90,7 +89,7 @@ private:
 	std::vector<RendererMaterial> m_materials;
 
 	WorldSettings m_world_settings;
-	RenderSettings m_render_settings;
+	HIPRTRenderSettings m_render_settings;
 };
 
 #endif
