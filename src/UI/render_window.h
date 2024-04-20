@@ -93,6 +93,8 @@ private:
 	ImageWriter m_image_writer;
 
 	GLuint m_display_program;
+	// Fake VAO necessary for NVIDIA drivers
+	GLuint m_vao;
 	GLuint m_display_texture;
 	GLFWwindow* m_window;
 };

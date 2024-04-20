@@ -89,7 +89,7 @@ else()
 		set(MSBUILD_EXECUTABLE $ENV{VS2022INSTALLDIR}/MSBuild/Current/Bin/MSBuild.exe)
 	else()
 		set(MSBUILD_EXECUTABLE "NOT FOUND" CACHE PATH "Path to MSBuild.exe. MSBuild is shipped with Visual Studio and can be find under <Visual Studio Installation>/MSBuild/Current/Bin")
-		message(FATAL_ERROR "Could not find MSBuild.exe on your system. You can add it to your PATH or provide through the MSBUILD_EXECUTABLE CMake variable.")
+		message(FATAL_ERROR "Could not find MSBuild.exe on your system. It is shipped with Visual Studio so you should have it somewhere on your system in Visual Studio installation directory. It is usually found under <Visual Studio Installation>/MSBuild/Current/Bin. You can add it to your PATH or provide it through the MSBUILD_EXECUTABLE CMake variable.")
 	endif()
 endif()
 
@@ -151,15 +151,6 @@ endif()
 
 # ------------------------------------------------------------------------
 
-
-
-# ------------- Handling NVIDIA compilation details -------------
-# TODO Orochi ENABLE_CUEW is only for Orochi 2.0.0
-# If CUDA is installed, meaning NVIDIA
-#if(DEFINED ENV{CUDA_PATH})
-	#add_compile_definitions(OROCHI_ENABLE_CUEW)
-#endif()
-# ---------------------------------------------------------------
 
 
 
@@ -230,6 +221,16 @@ target_include_directories(HIPRTPathTracer PRIVATE ${HIPRT_HEADERS_DIR}/..)
 target_include_directories(HIPRTPathTracer PRIVATE ${OROCHI_SOURCES_DIR}/..)
 target_include_directories(HIPRTPathTracer PRIVATE "${EXTERNAL_ASSIMP_INSTALL_LOCATION}/include/")
 target_include_directories(HIPRTPathTracer PRIVATE ".")
+
+# ------------- Handling NVIDIA compilation details -------------
+# If CUDA is installed, meaning NVIDIA
+if(DEFINED ENV{CUDA_PATH})
+	# Adding the required macro for Orochi
+	add_compile_definitions(OROCHI_ENABLE_CUEW)
+	target_include_directories(HIPRTPathTracer PRIVATE $ENV{CUDA_PATH}/include)
+endif()
+# ---------------------------------------------------------------
+
 
 message(STATUS "Copying OpenImageDenoise binaries...")
 file(GLOB OIDN_DLLs ${oidnbinaries_SOURCE_DIR}/bin/OpenImageDenoise*.dll)

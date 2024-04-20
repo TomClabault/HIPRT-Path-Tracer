@@ -146,6 +146,20 @@ void Renderer::launch_kernel(int tile_size_x, int tile_size_y, int res_x, int re
 	OROCHI_CHECK_ERROR(oroModuleLaunchKernel(m_trace_kernel, nb_groups.x, nb_groups.y, 1, tile_size_x, tile_size_y, 1, 0, 0, launch_args, 0));
 }
 
+void log_bvh_building(hiprtBuildFlags build_flags)
+{
+	std::cout << "Compiling BVH building kernels & building scene ";
+	if (build_flags  == 0)
+		// hiprtBuildFlagBitPreferFastBuild
+		std::cout << "LBVH";
+	else if (build_flags & hiprtBuildFlagBitPreferBalancedBuild)
+		std::cout << "PLOC BVH";
+	else if (build_flags & hiprtBuildFlagBitPreferHighQualityBuild)
+		std::cout << "SBVH";
+
+	std::cout << "... (This can take ~1min on NVIDIA hardware)" << std::endl;;
+}
+
 void Renderer::set_hiprt_scene_from_scene(Scene& scene)
 {
 	m_hiprt_scene = HIPRTScene(m_hiprt_orochi_ctx->hiprt_ctx);
@@ -179,6 +193,7 @@ void Renderer::set_hiprt_scene_from_scene(Scene& scene)
 	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&geometry_temp), geometry_temp_size));
 
 	// Building the BVH
+	log_bvh_building(build_options.buildFlags);
 	hiprtGeometry& scene_geometry = hiprt_scene.geometry;
 	HIPRT_CHECK_ERROR(hiprtCreateGeometry(m_hiprt_orochi_ctx->hiprt_ctx, geometry_build_input, build_options, scene_geometry));
 	HIPRT_CHECK_ERROR(hiprtBuildGeometry(m_hiprt_orochi_ctx->hiprt_ctx, hiprtBuildOperationBuild, geometry_build_input, build_options, geometry_temp, 0, scene_geometry));

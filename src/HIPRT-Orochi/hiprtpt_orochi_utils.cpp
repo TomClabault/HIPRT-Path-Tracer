@@ -134,55 +134,58 @@ namespace HIPRTPTOrochiUtils
 		std::string kernel_source_code;
 		read_source_code(kernel_file_path, kernel_source_code, &include_names);
 
+		// Header parsing was causing issues with NVRTC and isn't even used anyway so disabling it for now...
+		// 
+		// 
+		// 
+		//// hiprtBuildTraceKernels() below needs a std::vector of const char*
+		//// but OrochiUtils takes a vector of std::string as argument so we need both
+		//// One could say that we could only store the std::string.c_str() into the vector
+		//// of const char* but this is not valid since to string returned by std::string::c_str()
+		//// is destroyed when the std::string is destroyed i.e. we need to keep the std::string
+		//// alive to be able to use its c_str() const char* version so we do actually need
+		//// both vectors (the std::string vectors being mainly used to keep the std::string alive)
+		//std::vector<std::string> parsed_header_sources_str;
+		//std::vector<std::string> parsed_header_names_str;
+		//std::unordered_set<std::string> already_parsed_header_names;
 
-		// hiprtBuildTraceKernels() below needs a std::vector of const char*
-		// but OrochiUtils takes a vector of std::string as argument so we need both
-		// One could say that we could only store the std::string.c_str() into the vector
-		// of const char* but this is not valid since to string returned by std::string::c_str()
-		// is destroyed when the std::string is destroyed i.e. we need to keep the std::string
-		// alive to be able to use its c_str() const char* version so we do actually need
-		// both vectors (the std::string vectors being mainly used to keep the std::string alive)
-		std::vector<std::string> parsed_header_sources_str;
-		std::vector<std::string> parsed_header_names_str;
-		std::unordered_set<std::string> already_parsed_header_names;
+		//std::deque<std::string> include_names_yet_to_parse(include_names.size());
+		//std::copy(include_names.begin(), include_names.end(), include_names_yet_to_parse.begin());
+		//while (!include_names_yet_to_parse.empty())
+		//{
+		//	std::string header_name = include_names_yet_to_parse.front();
+		//	std::string header_path = locate_header_in_include_dirs(header_name, additional_include_directories);
+		//	already_parsed_header_names.insert(header_name);
 
-		std::deque<std::string> include_names_yet_to_parse(include_names.size());
-		std::copy(include_names.begin(), include_names.end(), include_names_yet_to_parse.begin());
-		while (!include_names_yet_to_parse.empty())
-		{
-			std::string header_name = include_names_yet_to_parse.front();
-			std::string header_path = locate_header_in_include_dirs(header_name, additional_include_directories);
-			already_parsed_header_names.insert(header_name);
+		//	// Allocating space for the incoming header
+		//	std::vector<std::string> new_header_names;
+		//	std::string header_source_code;
+		//	read_source_code(header_path, header_source_code, &new_header_names);
+		//	if (header_source_code.length() > 0)
+		//	{
+		//		parsed_header_names_str.push_back(header_name);
+		//		parsed_header_sources_str.push_back(header_source_code);
+		//	}
 
-			// Allocating space for the incoming header
-			std::vector<std::string> new_header_names;
-			std::string header_source_code;
-			read_source_code(header_path, header_source_code, &new_header_names);
-			if (header_source_code.length() > 0)
-			{
-				parsed_header_names_str.push_back(header_name);
-				parsed_header_sources_str.push_back(header_source_code);
-			}
+		//	// Adding the headers we just read to the queue of header files to read
+		//	for (const std::string& new_header_name : new_header_names)
+		//	{
+		//		if (already_parsed_header_names.find(new_header_name) == already_parsed_header_names.end())
+		//		{
+		//			// Only pushing a new header to parse to the queue if it's not already 
+		//			// in the queue (or has been parsed already)
+		//			include_names_yet_to_parse.push_back(new_header_name);
+		//			already_parsed_header_names.insert(new_header_name);
+		//		}
+		//	}
 
-			// Adding the headers we just read to the queue of header files to read
-			for (const std::string& new_header_name : new_header_names)
-			{
-				if (already_parsed_header_names.find(new_header_name) == already_parsed_header_names.end())
-				{
-					// Only pushing a new header to parse to the queue if it's not already 
-					// in the queue (or has been parsed already)
-					include_names_yet_to_parse.push_back(new_header_name);
-					already_parsed_header_names.insert(new_header_name);
-				}
-			}
+		//	include_names_yet_to_parse.pop_front();
+		//}
 
-			include_names_yet_to_parse.pop_front();
-		}
-
-		std::vector<const char*> parsed_header_sources(parsed_header_sources_str.size());
-		std::vector<const char*> parsed_header_names(parsed_header_names_str.size());
-		std::transform(parsed_header_sources_str.begin(), parsed_header_sources_str.end(), parsed_header_sources.begin(), [](const std::string& s) {return s.c_str(); });
-		std::transform(parsed_header_names_str.begin(), parsed_header_names_str.end(), parsed_header_names.begin(), [](const std::string& s) {return s.c_str(); });
+		//std::vector<const char*> parsed_header_sources(parsed_header_sources_str.size());
+		//std::vector<const char*> parsed_header_names(parsed_header_names_str.size());
+		//std::transform(parsed_header_sources_str.begin(), parsed_header_sources_str.end(), parsed_header_sources.begin(), [](const std::string& s) {return s.c_str(); });
+		//std::transform(parsed_header_names_str.begin(), parsed_header_names_str.end(), parsed_header_names.begin(), [](const std::string& s) {return s.c_str(); });
 
 		// We recreating a vector of options here because we want to the additional_include_directories
 		// as options. For that, we need an existing vector but we're not using the compiler_options options vector
@@ -208,9 +211,9 @@ namespace HIPRTPTOrochiUtils
 			&function_name,
 			kernel_source_code.c_str(),
 			kernel_file_path.c_str(),
-			parsed_header_names.size(),
-			parsed_header_sources.data(),
-			parsed_header_names.data(),
+			0, // parsed_header_names.size(),
+			nullptr, // parsed_header_sources.data(),
+			nullptr, // parsed_header_names.data(),
 			compiler_options_cstr.size(),
 			compiler_options_cstr.size() > 0 ? compiler_options_cstr.data() : nullptr,
 			num_geom_types,

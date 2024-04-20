@@ -300,6 +300,16 @@ void APIENTRY RenderWindow::gl_debug_output_callback(GLenum source,
 	case GL_DEBUG_SEVERITY_NOTIFICATION: std::cout << "Severity: notification"; break;
 	} std::cout << std::endl;
 	std::cout << std::endl;
+
+	// The following breaks into the debugger to help pinpoint what OpenGL
+	// call errored
+#if defined( _WIN32 )
+	__debugbreak();
+#elif defined( GNUC )
+	raise(SIGTRAP);
+#else
+	;
+#endif
 }
 
 RenderWindow::RenderWindow(int width, int height) : m_viewport_width(width), m_viewport_height(height), m_render_settings(m_renderer.get_render_settings())
@@ -468,6 +478,10 @@ void RenderWindow::setup_display_program()
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, m_viewport_width, m_viewport_height, 0, GL_RGB, GL_FLOAT, nullptr);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	// This empty VAO is necessary on NVIDIA drivers even though
+	// we're hardcoding our full screen quad in the vertex shader
+	glCreateVertexArrays(1, &m_vao);
 
 	glUseProgram(m_display_program);
 	glUniform1i(glGetUniformLocation(m_display_program, "u_texture"), RenderWindow::DISPLAY_TEXTURE_UNIT);
@@ -666,6 +680,7 @@ void RenderWindow::display(const void* data)
 	glBindTexture(GL_TEXTURE_2D, m_display_texture);
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_renderer.m_render_width, m_renderer.m_render_height, GL_RGB, GL_FLOAT, data);
 
+	glBindVertexArray(m_vao);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
@@ -908,6 +923,7 @@ void RenderWindow::quit()
 	ImGui_ImplGlfw_Shutdown();
 	ImGui::DestroyContext();
 
+	glDeleteVertexArrays(1, &m_vao);
 	glDeleteTextures(1, &m_display_texture);
 	glDeleteProgram(m_display_program);
 
