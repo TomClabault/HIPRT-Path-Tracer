@@ -36,10 +36,10 @@ set(ASSIMP_NO_EXPORT ON)
 set(ASSIMP_BUILD_TESTS OFF)
 set(ASSIMP_INSTALL_PDB OFF)
 set(ASSIMP_BUILD_ASSIMP_VIEW OFF)
-set(CMAKE_BUILD_TYPE "Release") # Building ASSIMP in Release
 FetchContent_MakeAvailable(
 	assimplib
 )
+
 # Restoring varaibles
 set(BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS_BACKUP})
 set(CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE_BACKUP})
