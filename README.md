@@ -16,7 +16,7 @@ The Orochi library allows device kernels to be compiled at run time and the appl
 # Building
 ## Windows
 ### - AMD GPUs
-Building should be stragihtforward:
+Building should be straightforward:
 ``` sh
 git clone https://github.com/TomClabault/HIPRT-Path-Tracer.git
 cd HIPRT-Path-Tracer
