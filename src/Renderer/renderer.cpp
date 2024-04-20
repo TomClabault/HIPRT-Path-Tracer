@@ -31,7 +31,7 @@ void Renderer::change_render_resolution(int new_width, int new_height)
 	m_render_width = new_width;
 	m_render_height = new_height;
 
-	m_pixels_buffer.resize(new_width * new_height * 3);
+	m_pixels_buffer.resize(new_width * new_height);
 	m_normals_buffer.resize(new_width * new_height);
 	m_albedo_buffer.resize(new_width * new_height);
 

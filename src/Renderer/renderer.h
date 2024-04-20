@@ -11,6 +11,7 @@
 #include "HIPRT-Orochi/hiprt_orochi_ctx.h"
 #include "HIPRT-Orochi/hiprt_scene.h"
 #include "HostDeviceCommon/render_data.h"
+#include "OpenGLInterop/OpenGLInteropBuffer.h"
 #include "Renderer/render_settings.h"
 #include "Scene/camera.h"
 #include "Scene/scene_parser.h"
@@ -24,7 +25,7 @@ class Renderer
 public:
 	Renderer(int width, int height, HIPRTOrochiCtx* hiprt_orochi_ctx) : 
 		m_render_width(width), m_render_height(height),
-		m_pixels_buffer(width * height * 3), m_normals_buffer(width * height),  // TODO buffer initialization necessary here ?
+		m_pixels_buffer(width * height), m_normals_buffer(width * height),  // TODO buffer initialization necessary here ?
 		m_albedo_buffer(width * height), m_hiprt_orochi_ctx(hiprt_orochi_ctx),
 		m_trace_kernel(nullptr)
 	{
@@ -39,6 +40,7 @@ public:
 	OrochiBuffer<Color>& get_color_framebuffer();
 	OrochiBuffer<Color>& get_denoiser_albedo_buffer();
 	OrochiBuffer<hiprtFloat3>& get_denoiser_normals_buffer();
+
 	RenderSettings& get_render_settings();
 	WorldSettings& get_world_settings();
 	HIPRTRenderData get_render_data();

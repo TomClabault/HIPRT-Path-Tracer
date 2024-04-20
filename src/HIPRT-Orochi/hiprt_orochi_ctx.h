@@ -38,8 +38,8 @@ struct HIPRTOrochiCtx
 	}
 
 	hiprtContextCreationInput hiprt_ctx_input;
-	oroCtx					  orochi_ctx;
-	oroDevice				  orochi_device;
+	oroCtx orochi_ctx;
+	oroDevice orochi_device;
 
 	hiprtContext hiprt_ctx;
 };
