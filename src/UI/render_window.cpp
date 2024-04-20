@@ -16,13 +16,7 @@
 // test performance when reducing number of triangles of the pbrt dragon
 
 // TODO bugs
-// - Test scene with full red sphere metallic & full green emission plane (white diffuse color of the material) 
-//		+ white ambient light should probably show the reflection of the emission quad 
-//		in the sphere as red even if the quad is only emitting pure green (and the sphere is pure red) 
-//		because the white ambient light reflected off the white diffuse emissive quad and that's what we 
-//		should see in the reflection of the sphere
 // - Why is the rough dragon having black fringes even with normal flipping ?
-// - why is the view direction below the geometric normal sometimes with clearcoat ?
 // - normals AOV not converging correctly ?
 // - denoiser not accounting for tranmission correctly since Disney 
 // - aspect ratio issue on CPU or GPU ?
