@@ -157,7 +157,7 @@ void log_bvh_building(hiprtBuildFlags build_flags)
 	else if (build_flags & hiprtBuildFlagBitPreferHighQualityBuild)
 		std::cout << "SBVH";
 
-	std::cout << "... (This can take ~1min on NVIDIA hardware)" << std::endl;;
+	std::cout << "... (This can take 30s+ on NVIDIA hardware)" << std::endl;
 }
 
 void Renderer::set_hiprt_scene_from_scene(Scene& scene)

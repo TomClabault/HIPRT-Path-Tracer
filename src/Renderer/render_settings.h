@@ -27,43 +27,6 @@ struct RenderSettings
 	// render the image at a much lower resolution to allow for smooth camera
 	// movements
 	bool render_low_resolution = false;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	// Whether or not to keep the same resolution on
-	// viewport rescale. This means that the render resolution
-	// scale will be automatically adjusted
-	bool keep_same_resolution = false; // TOOD move to application_settings
-
-	// When keep_same_resolution = true, we're going to automatically 
-	// adjust the resolution scaling so that the viewport_width * resolution_scaling
-	// and viewport_height * resolution_scaling = target_width and target_height
-	// respectively. The values of target_width and target_height are set when the
-	// user ticks the 'keep same resolution' checkbox in ImGui
-	int target_width, target_height; // TOOD move to application_settings
-
-
-	bool enable_denoising = false; // TOOD move to application_settings
-
-	// How many frames to wait for before denoising (this basically reduces 
-	// the performance penalty of denoising each frame).
-	int denoiser_sample_skip = 1; // TOOD move to application_settings
-	int denoise_frame_count = 30; // TOOD move to application_settings
 };
 
 #endif

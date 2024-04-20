@@ -24,9 +24,7 @@ class Renderer
 {
 public:
 	Renderer(int width, int height, HIPRTOrochiCtx* hiprt_orochi_ctx) : 
-		m_render_width(width), m_render_height(height),
-		m_pixels_buffer(width * height), m_normals_buffer(width * height),  // TODO buffer initialization necessary here ?
-		m_albedo_buffer(width * height), m_hiprt_orochi_ctx(hiprt_orochi_ctx),
+		m_render_width(width), m_render_height(height), m_hiprt_orochi_ctx(hiprt_orochi_ctx),
 		m_trace_kernel(nullptr)
 	{
 		m_hiprt_scene.hiprt_ctx = hiprt_orochi_ctx->hiprt_ctx;
@@ -68,9 +66,20 @@ public:
 private:
 	void set_hiprt_scene_from_scene(Scene& scene);
 
+	// This buffer holds the * sum * of the samples computed
+	// This is an accumulation buffer. This needs to be divided by the
+	// number of samples for displaying
 	OrochiBuffer<Color> m_pixels_buffer;
+	// Normals G-buffer
 	OrochiBuffer<hiprtFloat3> m_normals_buffer;
+	// Albedo G-buffer
 	OrochiBuffer<Color> m_albedo_buffer;
+
+	// Used to calculate the variance of each pixel for adaptative sampling
+	OrochiBuffer<float> m_pixels_squared_luminance;
+	// This buffer is necessary because with adaptative sampling, each pixel
+	// can have accumulated a different number of sample
+	OrochiBuffer<int> m_pixels_sample_count;
 
 	std::shared_ptr<HIPRTOrochiCtx> m_hiprt_orochi_ctx;
 	oroFunction m_trace_kernel;

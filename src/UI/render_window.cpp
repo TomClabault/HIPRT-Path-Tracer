@@ -52,7 +52,6 @@
 // - Denoiser blend to allow blending the original noisy image and the perfect denoised result by a given factor
 // - When modifying the emission of a material with the material editor, it should be reflected in the scene and allow the direct sampling of the geometry
 // - Color fallof (change of material base base_color based on the angle with the view direction and the normal
-// - Transmission color
 // - Ray binning for performance
 // - Starting rays further away from the camera for performance
 // - Visualizing ray depth (only 1 frame otherwise it would flicker a lot [or choose the option to have it flicker] )
@@ -397,8 +396,8 @@ void RenderWindow::resize_frame(int pixels_width, int pixels_height)
 
 	// Taking resolution scaling into account
 	float& resolution_scale = m_application_settings.render_resolution_scale;
-	if (m_render_settings.keep_same_resolution)
-		resolution_scale = m_render_settings.target_width / (float)pixels_width; // TODO what about the height changing ?
+	if (m_application_settings.keep_same_resolution)
+		resolution_scale = m_application_settings.target_width / (float)pixels_width; // TODO what about the height changing ?
 
 	int new_render_width = std::floor(pixels_width * resolution_scale);
 	int new_render_height = std::floor(pixels_height * resolution_scale);
@@ -571,7 +570,7 @@ void RenderWindow::run()
 		ImGui::NewFrame();
 
 		bool image_rendered = false;
-		if (!(m_application_settings.stop_render_at != 0 && m_render_settings.sample_number + 1 > m_application_settings.stop_render_at))
+		if (!(m_application_settings.max_sample_count != 0 && m_render_settings.sample_number + 1 > m_application_settings.max_sample_count))
 		{
 			m_renderer.render();
 			increment_sample_number();
@@ -580,11 +579,11 @@ void RenderWindow::run()
 			image_rendered = true;
 		}
 
-		if (m_render_settings.enable_denoising)
+		if (m_application_settings.enable_denoising)
 		{
 			if (m_application_settings.denoise_at_target_sample_count)
 			{
-				if (m_render_settings.sample_number == m_application_settings.stop_render_at)
+				if (m_render_settings.sample_number == m_application_settings.max_sample_count)
 				{
 					m_denoiser.denoise();
 					display(m_denoiser.get_denoised_data_pointer());
@@ -594,7 +593,7 @@ void RenderWindow::run()
 			}
 			else
 			{
-				if ((m_render_settings.sample_number % m_render_settings.denoiser_sample_skip) == 0)
+				if ((m_render_settings.sample_number % m_application_settings.denoiser_sample_skip) == 0)
 				{
 					m_denoiser.denoise();
 					m_application_settings.last_denoised_sample_count = m_render_settings.sample_number;
@@ -729,7 +728,7 @@ void RenderWindow::show_render_settings_panel()
 		set_display_settings(display_settings);
 	}
 
-	if (m_render_settings.keep_same_resolution)
+	if (m_application_settings.keep_same_resolution)
 		ImGui::BeginDisabled();
 	float resolution_scaling_backup = m_application_settings.render_resolution_scale;
 	if (ImGui::InputFloat("Resolution scale", &m_application_settings.render_resolution_scale))
@@ -741,24 +740,24 @@ void RenderWindow::show_render_settings_panel()
 		change_resolution_scaling(resolution_scale);
 		render_dirty = true;
 	}
-	if (m_render_settings.keep_same_resolution)
+	if (m_application_settings.keep_same_resolution)
 		ImGui::EndDisabled();
 
 	// TODO for the denoising with normals / albedo, add imgui buttons to display normals / albedo buffer
-	if (ImGui::Checkbox("Keep same render resolution", &m_render_settings.keep_same_resolution))
+	if (ImGui::Checkbox("Keep same render resolution", &m_application_settings.keep_same_resolution))
 	{
-		if (m_render_settings.keep_same_resolution)
+		if (m_application_settings.keep_same_resolution)
 		{
 			// Remembering the width and height we need to target
-			m_render_settings.target_width = m_renderer.m_render_width;
-			m_render_settings.target_height = m_renderer.m_render_height;
+			m_application_settings.target_width = m_renderer.m_render_width;
+			m_application_settings.target_height = m_renderer.m_render_height;
 		}
 	}
 
 	ImGui::Separator();
 
-	if (ImGui::InputInt("Stop render at sample count", &m_application_settings.stop_render_at))
-		m_application_settings.stop_render_at = std::max(m_application_settings.stop_render_at, 0);
+	if (ImGui::InputInt("Stop render at sample count", &m_application_settings.max_sample_count))
+		m_application_settings.max_sample_count = std::max(m_application_settings.max_sample_count, 0);
 	ImGui::InputInt("Samples per frame", &m_render_settings.samples_per_frame);
 	if (ImGui::InputInt("Max bounces", &m_render_settings.nb_bounces))
 	{
@@ -847,8 +846,8 @@ void RenderWindow::show_denoiser_panel()
 	if (!ImGui::CollapsingHeader("Denoiser"))
 		return;
 
-	if (ImGui::Checkbox("Enable denoiser", &m_render_settings.enable_denoising))
-		if (!m_render_settings.enable_denoising) // Denoising unchecked
+	if (ImGui::Checkbox("Enable denoiser", &m_application_settings.enable_denoising))
+		if (!m_application_settings.enable_denoising) // Denoising unchecked
 			// Making sure to reset the sample count override that may have been
 			// set when the denoising checkbox was checked
 			m_display_settings.sample_count_override = -1;
@@ -857,11 +856,11 @@ void RenderWindow::show_denoiser_panel()
 	if (m_application_settings.denoise_at_target_sample_count)
 	{
 		ImGui::BeginDisabled();
-		ImGui::SliderInt("Denoise Sample Skip", &m_render_settings.denoiser_sample_skip, 1, 128);
+		ImGui::SliderInt("Denoise Sample Skip", &m_application_settings.denoiser_sample_skip, 1, 128);
 		ImGui::EndDisabled();
 	}
 	else
-		ImGui::SliderInt("Denoise Sample Skip", &m_render_settings.denoiser_sample_skip, 1, 128);
+		ImGui::SliderInt("Denoise Sample Skip", &m_application_settings.denoiser_sample_skip, 1, 128);
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 }
