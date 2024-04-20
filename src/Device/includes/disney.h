@@ -81,7 +81,7 @@ __device__ Color disney_metallic_fresnel(const RendererMaterial& material, const
     float R0 = ((material.ior - 1.0f) * (material.ior - 1.0f)) / ((material.ior + 1.0f) * (material.ior + 1.0f));
     Color C0 = material.specular * R0 * (1.0f - material.metallic) * Ks + material.metallic * material.base_color;
 
-    return C0 + (Color(1.0f) - C0) * pow(1.0f - hiprtpt::dot(local_half_vector, local_to_light_direction), 5.0f);
+    return C0 + (Color(1.0f) - C0) * pow(hiprtpt::clamp(0.0f, 1.0f, 1.0f - hiprtpt::dot(local_half_vector, local_to_light_direction)), 5.0f);
 }
 
 __device__ Color disney_metallic_eval(const RendererMaterial& material, const float3& view_direction, const float3& surface_normal, const float3& to_light_direction, Color F, float& pdf)
@@ -136,15 +136,15 @@ __device__ Color disney_clearcoat_eval(const RendererMaterial& material, const f
     float denom = material.clearcoat_ior + 1.0f;
     Color R0 = Color((num * num) / (denom * denom));
 
-    float HoV = hiprtpt::dot(local_halfway_vector, local_to_light_direction);
+    float HoL = hiprtpt::clamp(0.0f, 1.0f, hiprtpt::dot(local_halfway_vector, local_to_light_direction));
     float clearcoat_gloss = 1.0f - material.clearcoat_roughness;
     float alpha_g = (1.0f - clearcoat_gloss) * 0.1f + clearcoat_gloss * 0.001f;
 
-    Color F_clearcoat = fresnel_schlick(R0, HoV);
+    Color F_clearcoat = fresnel_schlick(R0, HoL);
     float D_clearcoat = GTR1(alpha_g, hiprtpt::abs(local_halfway_vector.z));
     float G_clearcoat = disney_clearcoat_masking_shadowing(local_view_direction) * disney_clearcoat_masking_shadowing(local_to_light_direction);
 
-    pdf = D_clearcoat * hiprtpt::abs(local_halfway_vector.z) / (4.0f * hiprtpt::dot(local_halfway_vector, local_to_light_direction));
+    pdf = D_clearcoat * hiprtpt::abs(local_halfway_vector.z) / (4.0f * HoL);
     return F_clearcoat * D_clearcoat * G_clearcoat / (4.0f * local_view_direction.z);
 }
 
@@ -387,6 +387,7 @@ __device__ Color disney_sample(const RendererMaterial& material, const float3& v
         // If we're not sampling the glass lobe so we're checking
         // whether the view direction is below the upper hemisphere around the shading
         // normal or not. This may be the case mainly due to normal mapping / smooth vertex normals. 
+        // 
         // See Microfacet-based Normal Mapping for Robust Monte Carlo Path Tracing, Eric Heitz, 2017
         // for some illustrations of the problem and a solution (not implemented here because
         // it requires quite a bit of code and overhead). 
@@ -429,14 +430,17 @@ __device__ Color disney_sample(const RendererMaterial& material, const float3& v
         if (dot_shading * dot_geometric < 0)
         {
             // The view direction is below the surface normal because of normal mapping / smooth normals.
+            // 
             // We're going to flip the normal for the same reason as explained above to avoid black fringes
             // the reason we're also checking for the dot product with the geometric normal here
             // is because in the case of the glass lobe of the BRDF, we could be legitimately having
             // the dot product between the shading normal and the view direction be negative when we're
             // currently travelling inside the surface. To make sure that we're in the case of the black fringes
             // caused by normal mapping and microfacet BRDFs, we're also checking with the geometric normal.
+            // 
             // If the view direction isn't below the geometric normal but is below the shading normal, this
             // indicates that we're in the case of the black fringes and we can flip the normal
+            // 
             // If both dot products are negative, this means that we're travelling inside the surface
             // and we shouldn't flip the normal
             normal = reflect_ray(shading_normal, geometric_normal);

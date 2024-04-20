@@ -66,7 +66,7 @@ namespace hiprtpt
 	__device__ float abs(float a) { return fabsf(a); }
 	__device__ float max(float a, float b) { return a > b ? a : b; }
 	__device__ float min(float a, float b) { return a < b ? a : b; }
-	__device__ float clamp(float min_val, float max_val, float val) { return hiprt::clamp(min_val, max_val, val); }
+	__device__ float clamp(float min_val, float max_val, float val) { return hiprt::clamp(val, min_val, max_val); }
 
 	__device__ float3 normalize(float3 u) { return hiprt::normalize(u); }
 }
