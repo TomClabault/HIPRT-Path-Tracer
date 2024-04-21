@@ -16,6 +16,7 @@
 // test performance when reducing number of triangles of the pbrt dragon
 
 // TODO bugs
+// - anisotropic rotation brightness bugged ?
 // - Why is the rough dragon having black fringes even with normal flipping ?
 // - normals AOV not converging correctly ?
 // - denoiser not accounting for tranmission correctly since Disney 
@@ -573,15 +574,7 @@ void RenderWindow::run()
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
-		bool image_rendered = false;
-		if (!(m_application_settings.max_sample_count != 0 && m_render_settings.sample_number + 1 > m_application_settings.max_sample_count))
-		{
-			m_renderer.render();
-			increment_sample_number();
-			m_render_settings.frame_number++;
-
-			image_rendered = true;
-		}
+		bool image_rendered = render();
 
 		if (m_application_settings.enable_denoising)
 		{
@@ -643,12 +636,26 @@ void RenderWindow::run()
 			}
 		}
 		
-		display_imgui();
+		draw_imgui();
 
 		glfwSwapBuffers(m_window);
 	}
 
 	quit();
+}
+
+bool RenderWindow::render()
+{
+	if (!(m_application_settings.max_sample_count != 0 && m_render_settings.sample_number + 1 > m_application_settings.max_sample_count))
+	{
+		m_renderer.render();
+		increment_sample_number();
+		m_render_settings.frame_number++;
+
+		return true;
+	}
+
+	return false;
 }
 
 DisplaySettings RenderWindow::get_display_settings()
@@ -884,7 +891,7 @@ void RenderWindow::show_post_process_panel()
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 }
 
-void RenderWindow::display_imgui()
+void RenderWindow::draw_imgui()
 {
 	ImGuiIO& io = ImGui::GetIO();
 	ImGui::ShowDemoWindow();

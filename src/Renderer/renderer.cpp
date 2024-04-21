@@ -44,7 +44,7 @@ void Renderer::change_render_resolution(int new_width, int new_height)
 	m_camera.projection_matrix = glm::transpose(glm::perspective(m_camera.vertical_fov, new_aspect, m_camera.near_plane, m_camera.far_plane));
 }
 
-OpenGLInteropBuffer<ColorRGB>& Renderer::get_color_framebuffer()
+OrochiBuffer<ColorRGB>& Renderer::get_color_framebuffer()
 {
 	return m_pixels_buffer;
 }
@@ -85,7 +85,7 @@ HIPRTRenderData Renderer::get_render_data()
 
 	render_data.geom = m_hiprt_scene.geometry;
 
-	render_data.buffers.pixels = m_pixels_buffer.map();
+	render_data.buffers.pixels = m_pixels_buffer.get_pointer();
 	render_data.buffers.denoiser_normals = m_normals_buffer.get_pointer();
 	render_data.buffers.denoiser_albedo = m_albedo_buffer.get_pointer();
 	render_data.buffers.triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.mesh.triangleIndices);

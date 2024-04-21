@@ -73,9 +73,10 @@ public:
 	void show_objects_panel();
 	void show_denoiser_panel();
 	void show_post_process_panel();
-	void display_imgui();
+	void draw_imgui();
 
 	void run();
+	bool render();
 	void quit();
 
 private:
