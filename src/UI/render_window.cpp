@@ -365,8 +365,8 @@ RenderWindow::RenderWindow(int width, int height) : m_viewport_width(width), m_v
 	m_renderer.change_render_resolution(width, height);
 
 	// TODO fix denoiser buffer since openGL interop
-	/*m_denoiser.set_buffers(m_renderer.get_color_framebuffer().get_pointer(),
-		m_renderer.get_denoiser_normals_buffer().get_pointer(), m_renderer.get_denoiser_albedo_buffer().get_pointer(),
+	/*m_denoiser.set_buffers(m_renderer.get_color_framebuffer().get_device_pointer(),
+		m_renderer.get_denoiser_normals_buffer().get_device_pointer(), m_renderer.get_denoiser_albedo_buffer().get_device_pointer(),
 		width, height);*/
 
 	m_image_writer.set_renderer(&m_renderer);
@@ -408,8 +408,8 @@ void RenderWindow::resize_frame(int pixels_width, int pixels_height)
 	m_renderer.change_render_resolution(new_render_width, new_render_height);
 
 	// TODO fix denoiser buffer since openGL interop
-	/*m_denoiser.set_buffers(m_renderer.get_color_framebuffer().get_pointer(),
-		m_renderer.get_denoiser_normals_buffer().get_pointer(), m_renderer.get_denoiser_albedo_buffer().get_pointer(), 
+	/*m_denoiser.set_buffers(m_renderer.get_color_framebuffer().get_device_pointer(),
+		m_renderer.get_denoiser_normals_buffer().get_device_pointer(), m_renderer.get_denoiser_albedo_buffer().get_device_pointer(), 
 		new_render_width, new_render_height);*/
 
 	// Recreating the OpenGL display texture
@@ -427,8 +427,8 @@ void RenderWindow::change_resolution_scaling(float new_scaling)
 
 	m_renderer.change_render_resolution(new_render_width, new_render_height);
 	// TODO fix denoiser buffer since openGL interop
-	/*m_denoiser.set_buffers(m_renderer.get_color_framebuffer().get_pointer(),
-		m_renderer.get_denoiser_normals_buffer().get_pointer(), m_renderer.get_denoiser_albedo_buffer().get_pointer(),
+	/*m_denoiser.set_buffers(m_renderer.get_color_framebuffer().get_device_pointer(),
+		m_renderer.get_denoiser_normals_buffer().get_device_pointer(), m_renderer.get_denoiser_albedo_buffer().get_device_pointer(),
 		new_render_width, new_render_height);*/
 
 	glActiveTexture(GL_TEXTURE0 + RenderWindow::DISPLAY_TEXTURE_UNIT);

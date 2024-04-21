@@ -19,9 +19,23 @@
 
 #include <vector>
 
+/*
+ * Temporary workaround to disable not-yet-supported OpenGL interoperability
+ * on NVIDIA hardware. Falling back to the classic OrochiBuffer that goes
+ * through the CPU before OpenGL
+ */
+#ifdef OROCHI_ENABLE_CUEW
+template <typename T>
+using InteropBufferType = OrochiBuffer<T>;
+#else
+template <typename T>
+using InteropBufferType = OpenGLInteropBuffer<T>;
+#endif
+
 class Renderer
 {
 public:
+
 	Renderer(int width, int height, HIPRTOrochiCtx* hiprt_orochi_ctx) : 
 		m_render_width(width), m_render_height(height), m_hiprt_orochi_ctx(hiprt_orochi_ctx),
 		m_trace_kernel(nullptr)
@@ -34,11 +48,7 @@ public:
 	void render();
 	void change_render_resolution(int new_width, int new_height);
 
-#ifdef OROCHI_ENABLE_CUEW
-	OrochiBuffer<ColorRGB>& get_color_framebuffer();
-#else
-	OpenGLInteropBuffer<ColorRGB>& get_color_framebuffer();
-#endif
+	InteropBufferType<ColorRGB>& get_color_framebuffer();
 	OrochiBuffer<ColorRGB>& get_denoiser_albedo_buffer();
 	OrochiBuffer<hiprtFloat3>& get_denoiser_normals_buffer();
 
@@ -72,11 +82,7 @@ private:
 	// This buffer holds the * sum * of the samples computed
 	// This is an accumulation buffer. This needs to be divided by the
 	// number of samples for displaying
-#ifdef OROCHI_ENABLE_CUEW
-	OrochiBuffer<ColorRGB> m_pixels_buffer;
-#else
-	OpenGLInteropBuffer<ColorRGB> m_pixels_buffer;
-#endif
+	InteropBufferType<ColorRGB> m_pixels_buffer;
 	// Normals G-buffer
 	OrochiBuffer<hiprtFloat3> m_normals_buffer;
 	// Albedo G-buffer

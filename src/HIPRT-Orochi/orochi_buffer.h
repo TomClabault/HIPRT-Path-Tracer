@@ -20,7 +20,7 @@ public:
 
 	void resize(int new_element_count);
 
-	T* get_pointer();
+	T* get_device_pointer();
 	T** get_pointer_address();
 
 	std::vector<T> download_data() const;
@@ -57,7 +57,7 @@ void OrochiBuffer<T>::resize(int new_element_count)
 }
 
 template <typename T>
-T* OrochiBuffer<T>::get_pointer()
+T* OrochiBuffer<T>::get_device_pointer()
 {
 	return m_data_pointer;
 }
