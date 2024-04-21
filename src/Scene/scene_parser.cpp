@@ -30,7 +30,7 @@ RendererMaterial SceneParser::ai_mat_to_renderer_mat(aiMaterial* mesh_material)
 
     //Creating the material used by the application from the properties read
     RendererMaterial renderer_material;
-    renderer_material.base_color = Color(diffuse_color.r, diffuse_color.g, diffuse_color.b);
+    renderer_material.base_color = ColorRGB(diffuse_color.r, diffuse_color.g, diffuse_color.b);
     if (error_code_emissive == AI_SUCCESS)
     {
         if (emissive_color.r > 0 || emissive_color.g > 0 || emissive_color.b > 0)
@@ -38,16 +38,16 @@ RendererMaterial SceneParser::ai_mat_to_renderer_mat(aiMaterial* mesh_material)
             float emission_strength;
             mesh_material->Get(AI_MATKEY_EMISSIVE_INTENSITY, emission_strength);
 
-            renderer_material.emission = Color(emissive_color.r, emissive_color.g, emissive_color.b) * emission_strength;
+            renderer_material.emission = ColorRGB(emissive_color.r, emissive_color.g, emissive_color.b) * emission_strength;
         }
     }
     else
-        renderer_material.emission = Color(0.0f, 0.0f, 0.0f);
+        renderer_material.emission = ColorRGB(0.0f, 0.0f, 0.0f);
     renderer_material.metallic = metallic;
     renderer_material.roughness = roughness;
     renderer_material.anisotropic = 0.0f; // TODO read from the file instead of hardcoded
     renderer_material.sheen_tint = 1.0f; // TODO read from the file instead of hardcoded
-    renderer_material.sheen_color = Color(1.0f, 1.0f, 1.0f); // TODO read from the file instead of hardcoded
+    renderer_material.sheen_color = ColorRGB(1.0f, 1.0f, 1.0f); // TODO read from the file instead of hardcoded
     renderer_material.ior = error_code_transmission == AI_SUCCESS ? ior : 1.45f;;
     renderer_material.specular_transmission = error_code_transmission == AI_SUCCESS ? specular_transmission : 0.0f;
     renderer_material.brdf_type = BRDF::Disney;

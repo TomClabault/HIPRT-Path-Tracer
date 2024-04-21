@@ -29,7 +29,7 @@ Image Utils::read_image_float(const std::string& filepath, int& image_width, int
         std::exit(1);
     }
 
-    return Image(reinterpret_cast<Color*>(pixels), image_width, image_height);
+    return Image(reinterpret_cast<ColorRGB*>(pixels), image_width, image_height);
 }
 
 std::vector<unsigned char> Utils::tonemap_hdr_image(const Image& hdr_image, int sample_number, float gamma, float exposure)
@@ -37,7 +37,7 @@ std::vector<unsigned char> Utils::tonemap_hdr_image(const Image& hdr_image, int 
     return tonemap_hdr_image(reinterpret_cast<const float*>(hdr_image.data().data()), hdr_image.width * hdr_image.height * 3, sample_number, gamma, exposure);
 }
 
-std::vector<unsigned char> Utils::tonemap_hdr_image(const std::vector<Color>& hdr_image, int sample_number, float gamma, float exposure)
+std::vector<unsigned char> Utils::tonemap_hdr_image(const std::vector<ColorRGB>& hdr_image, int sample_number, float gamma, float exposure)
 {
     return tonemap_hdr_image(reinterpret_cast<const float*>(hdr_image.data()), hdr_image.size() * 3, sample_number, gamma, exposure);
 }
@@ -54,9 +54,9 @@ std::vector<unsigned char> Utils::tonemap_hdr_image(const float* hdr_image, size
 #pragma omp parallel for
     for (int i = 0; i < float_count; i += 3)
     {
-        Color pixel = Color(hdr_image[i + 0], hdr_image[i + 1], hdr_image[i + 2]) / (float)sample_number;
-        Color tone_mapped = Color(1.0f, 1.0f, 1.0f) - exp(-pixel * exposure);
-        Color gamma_corrected = pow(tone_mapped, 1.0f / gamma);
+        ColorRGB pixel = ColorRGB(hdr_image[i + 0], hdr_image[i + 1], hdr_image[i + 2]) / (float)sample_number;
+        ColorRGB tone_mapped = ColorRGB(1.0f, 1.0f, 1.0f) - exp(-pixel * exposure);
+        ColorRGB gamma_corrected = pow(tone_mapped, 1.0f / gamma);
 
         tonemapped_data[i + 0] = gamma_corrected.r * 255.0f;
         tonemapped_data[i + 1] = gamma_corrected.g * 255.0f;
@@ -126,13 +126,13 @@ Image Utils::OIDN_denoise(const Image& image, int width, int height, float blend
 
     float* denoised_ptr = (float*)colorBuf.getData();
     Image output_image(width, height);
-    std::vector<Color>& output_pixels = output_image.data();
+    std::vector<ColorRGB>& output_pixels = output_image.data();
     for (int y = 0; y < height; y++)
         for (int x = 0; x < width; x++)
         {
             int index = y * width + x;
 
-            Color color = blend_factor * Color(denoised_ptr[index * 3 + 0], denoised_ptr[index * 3 + 1], denoised_ptr[index * 3 + 2])
+            ColorRGB color = blend_factor * ColorRGB(denoised_ptr[index * 3 + 0], denoised_ptr[index * 3 + 1], denoised_ptr[index * 3 + 2])
                 + (1.0f - blend_factor) * image[index];
 
             output_pixels[index] = color;

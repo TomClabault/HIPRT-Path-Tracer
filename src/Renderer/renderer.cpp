@@ -35,18 +35,21 @@ void Renderer::change_render_resolution(int new_width, int new_height)
 	m_normals_buffer.resize(new_width * new_height);
 	m_albedo_buffer.resize(new_width * new_height);
 
+	m_pixels_sample_count.resize(new_width * new_height);
+	m_pixels_squared_luminance.resize(new_width * new_height);
+
 	// Recomputing the perspective projection matrix since the aspect ratio
 	// may have changed
 	float new_aspect = (float)new_width / new_height;
 	m_camera.projection_matrix = glm::transpose(glm::perspective(m_camera.vertical_fov, new_aspect, m_camera.near_plane, m_camera.far_plane));
 }
 
-OrochiBuffer<Color>& Renderer::get_color_framebuffer()
+OpenGLInteropBuffer<ColorRGB>& Renderer::get_color_framebuffer()
 {
 	return m_pixels_buffer;
 }
 
-OrochiBuffer<Color>& Renderer::get_denoiser_albedo_buffer()
+OrochiBuffer<ColorRGB>& Renderer::get_denoiser_albedo_buffer()
 {
 	return m_albedo_buffer;
 }
@@ -82,7 +85,7 @@ HIPRTRenderData Renderer::get_render_data()
 
 	render_data.geom = m_hiprt_scene.geometry;
 
-	render_data.buffers.pixels = m_pixels_buffer.get_pointer();
+	render_data.buffers.pixels = m_pixels_buffer.map();
 	render_data.buffers.denoiser_normals = m_normals_buffer.get_pointer();
 	render_data.buffers.denoiser_albedo = m_albedo_buffer.get_pointer();
 	render_data.buffers.triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.mesh.triangleIndices);
@@ -95,13 +98,7 @@ HIPRTRenderData Renderer::get_render_data()
 	render_data.buffers.emissive_triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.emissive_triangles_indices);
 
 	render_data.world_settings = m_world_settings;
-	//render_data.render_settings = m_render_settings;
-
-	render_data.render_settings.frame_number = m_render_settings.frame_number;
-	render_data.render_settings.sample_number = m_render_settings.sample_number;
-	render_data.render_settings.samples_per_frame = m_render_settings.samples_per_frame;
-	render_data.render_settings.nb_bounces = m_render_settings.nb_bounces;
-	render_data.render_settings.render_low_resolution = m_render_settings.render_low_resolution;
+	render_data.render_settings = m_render_settings;
 
 	return render_data;
 }

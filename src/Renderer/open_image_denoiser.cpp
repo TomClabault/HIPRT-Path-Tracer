@@ -21,7 +21,7 @@ OpenImageDenoiser::OpenImageDenoiser() : m_width(0), m_height(0)
     m_device.commit();
 }
 
-void OpenImageDenoiser::set_buffers(Color* color_buffer, int width, int height)
+void OpenImageDenoiser::set_buffers(ColorRGB* color_buffer, int width, int height)
 {
     m_color_buffer = color_buffer;
     m_denoised_color_buffer = m_device.newBuffer(width * height * 3 * sizeof(float));
@@ -34,7 +34,7 @@ void OpenImageDenoiser::set_buffers(Color* color_buffer, int width, int height)
     create_beauty_filter();
 }
 
-void OpenImageDenoiser::set_buffers(Color* color_buffer, int width, int height, bool override_use_normals, bool override_use_albedo)
+void OpenImageDenoiser::set_buffers(ColorRGB* color_buffer, int width, int height, bool override_use_normals, bool override_use_albedo)
 {
     m_color_buffer = color_buffer;
     m_denoised_color_buffer = m_device.newBuffer(width * height * 3 * sizeof(float));
@@ -47,7 +47,7 @@ void OpenImageDenoiser::set_buffers(Color* color_buffer, int width, int height, 
     create_beauty_filter();
 }
 
-void OpenImageDenoiser::set_buffers(Color* color_buffer, hiprtFloat3* normals_buffer, int width, int height)
+void OpenImageDenoiser::set_buffers(ColorRGB* color_buffer, hiprtFloat3* normals_buffer, int width, int height)
 {
     m_normals_buffer = normals_buffer;
     m_denoised_normals_buffer = m_device.newBuffer(width * height * sizeof(hiprtFloat3));
@@ -56,21 +56,21 @@ void OpenImageDenoiser::set_buffers(Color* color_buffer, hiprtFloat3* normals_bu
     create_AOV_filters();
 }
 
-void OpenImageDenoiser::set_buffers(Color* color_buffer, Color* albedo_buffer, int width, int height)
+void OpenImageDenoiser::set_buffers(ColorRGB* color_buffer, ColorRGB* albedo_buffer, int width, int height)
 {
     m_albedo_buffer = albedo_buffer;
-    m_denoised_albedo_buffer = m_device.newBuffer(width * height * sizeof(Color));
+    m_denoised_albedo_buffer = m_device.newBuffer(width * height * sizeof(ColorRGB));
 
     set_buffers(color_buffer, width, height, false, true);
     create_AOV_filters();
 }
 
-void OpenImageDenoiser::set_buffers(Color* color_buffer, hiprtFloat3* normals_buffer, Color* albedo_buffer, int width, int height)
+void OpenImageDenoiser::set_buffers(ColorRGB* color_buffer, hiprtFloat3* normals_buffer, ColorRGB* albedo_buffer, int width, int height)
 {
     m_albedo_buffer = albedo_buffer;
     m_normals_buffer = normals_buffer;
 
-    m_denoised_albedo_buffer = m_device.newBuffer(width * height * sizeof(Color));
+    m_denoised_albedo_buffer = m_device.newBuffer(width * height * sizeof(ColorRGB));
     m_denoised_normals_buffer = m_device.newBuffer(width * height * sizeof(hiprtFloat3));
 
     set_buffers(color_buffer, width, height, true, true);
@@ -148,11 +148,11 @@ void OpenImageDenoiser::create_AOV_filters()
     }
 }
 
-std::vector<Color> OpenImageDenoiser::get_denoised_data()
+std::vector<ColorRGB> OpenImageDenoiser::get_denoised_data()
 {
-    Color* denoised_ptr = (Color*)m_denoised_color_buffer.getData();
+    ColorRGB* denoised_ptr = (ColorRGB*)m_denoised_color_buffer.getData();
 
-    std::vector<Color> denoised_output;
+    std::vector<ColorRGB> denoised_output;
     denoised_output.insert(denoised_output.end(), &denoised_ptr[0], &denoised_ptr[m_width * m_height]);
 
     return denoised_output;

@@ -6,7 +6,7 @@
 #ifndef OPEN_IMAGE_DENOISER
 #define OPEN_IMAGE_DENOISER
 
-#include "HostDeviceCommon/color.h"
+#include "HostDeviceCommon/color_rgb.h"
 #include <OpenImageDenoise/oidn.hpp>
 #include <vector>
 
@@ -15,15 +15,15 @@ class OpenImageDenoiser
 public:
 	OpenImageDenoiser();
 
-	void set_buffers(Color* color_buffer, int width, int height);
-	void set_buffers(Color* color_buffer, hiprtFloat3* normals_buffer, int width, int height);
-	void set_buffers(Color* color_buffer, Color* albedo_buffer, int width, int height);
-	void set_buffers(Color* color_buffer, hiprtFloat3* normals_buffer, Color* albedo_buffer, int width, int height);
+	void set_buffers(ColorRGB* color_buffer, int width, int height);
+	void set_buffers(ColorRGB* color_buffer, hiprtFloat3* normals_buffer, int width, int height);
+	void set_buffers(ColorRGB* color_buffer, ColorRGB* albedo_buffer, int width, int height);
+	void set_buffers(ColorRGB* color_buffer, hiprtFloat3* normals_buffer, ColorRGB* albedo_buffer, int width, int height);
 
 	bool* get_denoise_albedo_var();
 	bool* get_denoise_normals_var();
 
-	std::vector<Color> get_denoised_data();
+	std::vector<ColorRGB> get_denoised_data();
 	void* get_denoised_data_pointer();
 	void* get_denoised_normals_pointer();
 	void* get_denoised_albedo_pointer();
@@ -33,7 +33,7 @@ public:
 	void denoise_normals();
 
 private:
-	void set_buffers(Color* color_buffer, int width, int height, bool override_use_normals, bool override_use_albedo);
+	void set_buffers(ColorRGB* color_buffer, int width, int height, bool override_use_normals, bool override_use_albedo);
 
 	void create_beauty_filter();
 	void create_AOV_filters();
@@ -50,9 +50,9 @@ private:
 	oidn::BufferRef m_denoised_albedo_buffer;
 	oidn::BufferRef m_denoised_normals_buffer;
 
-	Color* m_color_buffer = nullptr;
+	ColorRGB* m_color_buffer = nullptr;
 	hiprtFloat3* m_normals_buffer = nullptr;
-	Color* m_albedo_buffer = nullptr;
+	ColorRGB* m_albedo_buffer = nullptr;
 
 	oidn::FilterRef m_beauty_filter;
 	oidn::FilterRef m_albedo_filter;

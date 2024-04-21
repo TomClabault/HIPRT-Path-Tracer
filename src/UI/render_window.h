@@ -66,6 +66,8 @@ public:
 	void display(const std::vector<T>& orochi_buffer);
 	template <typename T>
 	void display(const OrochiBuffer<T>& orochi_buffer);
+	template <typename T>
+	void display(OpenGLInteropBuffer<T>& buffer);
 
 	void show_render_settings_panel();
 	void show_objects_panel();
@@ -107,8 +109,27 @@ void RenderWindow::display(const std::vector<T>& pixels_data)
 
 template <typename T>
 void RenderWindow::display(const OrochiBuffer<T>& orochi_buffer)
-{	
+{
 	display(orochi_buffer.download_data().data());
+}
+
+template <typename T>
+void RenderWindow::display(OpenGLInteropBuffer<T>& buffer)
+{
+	buffer.unmap();
+
+	setup_display_uniforms(m_display_program);
+
+	glBindTexture(GL_TEXTURE_2D, m_display_texture);
+	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, buffer.get_opengl_buffer());
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_renderer.m_render_width, m_renderer.m_render_height, GL_RGB, GL_FLOAT, 0);
+	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+
+	// Binding an empty VAO here (empty because we're hardcoding our full-screen quad vertices
+	// in our vertex shader) because this is required on NVIDIA drivers
+	glBindVertexArray(m_vao);
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+
 }
 
 #endif

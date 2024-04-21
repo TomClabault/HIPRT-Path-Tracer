@@ -6,7 +6,7 @@
 #ifndef MATERIAL_H
 #define MATERIAL_H
 
-#include "HostDeviceCommon/color.h"
+#include "HostDeviceCommon/color_rgb.h"
 #include "HostDeviceCommon/math.h"
 
 enum BRDF
@@ -53,8 +53,8 @@ struct RendererMaterial
 
     BRDF brdf_type = BRDF::Uninitialized;
 
-    Color emission = Color{ 0.0f, 0.0f, 0.0f };
-    Color base_color = Color{ 1.0f, 0.2f, 0.7f };
+    ColorRGB emission = ColorRGB{ 0.0f, 0.0f, 0.0f };
+    ColorRGB base_color = ColorRGB{ 1.0f, 0.2f, 0.7f };
 
     float roughness = 1.0f;
     float oren_nayar_sigma = 0.34906585039886591538f; // 20 degrees standard deviation in radian
@@ -65,7 +65,7 @@ struct RendererMaterial
     float metallic = 0.0f;
     float specular = 1.0f; // Specular intensity
     float specular_tint = 1.0f; // Specular fresnel strength for the metallic
-    Color specular_color = Color(1.0f);
+    ColorRGB specular_color = ColorRGB(1.0f);
     
     float anisotropic = 0.0f;
     float anisotropic_rotation = 0.0f;
@@ -77,7 +77,7 @@ struct RendererMaterial
 
     float sheen = 0.0f; // Sheen strength
     float sheen_tint = 0.0f; // Sheen tint strength
-    Color sheen_color = Color(1.0f);
+    ColorRGB sheen_color = ColorRGB(1.0f);
 
     float ior = 1.40f;
     float specular_transmission = 0.0f;

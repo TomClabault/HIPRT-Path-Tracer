@@ -7,7 +7,7 @@
 #define UTILS_H
 
 #include "Image/image.h"
-#include "HostDeviceCommon/color.h"
+#include "HostDeviceCommon/color_rgb.h"
 
 #include <string>
 
@@ -21,7 +21,7 @@ public:
 
     static Image read_image_float(const std::string& filepath, int& image_width, int& image_height, bool flipY = true);
     static std::vector<unsigned char> tonemap_hdr_image(const Image& hdr_image, int sample_number, float gamma, float exposure);
-    static std::vector<unsigned char> tonemap_hdr_image(const std::vector<Color>& hdr_image, int sample_number, float gamma, float exposure);
+    static std::vector<unsigned char> tonemap_hdr_image(const std::vector<ColorRGB>& hdr_image, int sample_number, float gamma, float exposure);
     static std::vector<unsigned char> tonemap_hdr_image(const std::vector<float>& hdr_image, int sample_number, float gamma, float exposure);
     static std::vector<unsigned char> tonemap_hdr_image(const float* hdr_image, size_t size, int sample_number, float gamma, float exposure);
 

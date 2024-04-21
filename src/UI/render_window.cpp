@@ -361,9 +361,10 @@ RenderWindow::RenderWindow(int width, int height) : m_viewport_width(width), m_v
 		m_application_settings.kernel_functions[m_application_settings.selected_kernel].c_str());
 	m_renderer.change_render_resolution(width, height);
 
-	m_denoiser.set_buffers(m_renderer.get_color_framebuffer().get_pointer(),
+	// TODO fix denoiser buffer since openGL interop
+	/*m_denoiser.set_buffers(m_renderer.get_color_framebuffer().get_pointer(),
 		m_renderer.get_denoiser_normals_buffer().get_pointer(), m_renderer.get_denoiser_albedo_buffer().get_pointer(),
-		width, height);
+		width, height);*/
 
 	m_image_writer.set_renderer(&m_renderer);
 	m_image_writer.set_render_window(this);
@@ -402,9 +403,11 @@ void RenderWindow::resize_frame(int pixels_width, int pixels_height)
 	int new_render_width = std::floor(pixels_width * resolution_scale);
 	int new_render_height = std::floor(pixels_height * resolution_scale);
 	m_renderer.change_render_resolution(new_render_width, new_render_height);
-	m_denoiser.set_buffers(m_renderer.get_color_framebuffer().get_pointer(),
+
+	// TODO fix denoiser buffer since openGL interop
+	/*m_denoiser.set_buffers(m_renderer.get_color_framebuffer().get_pointer(),
 		m_renderer.get_denoiser_normals_buffer().get_pointer(), m_renderer.get_denoiser_albedo_buffer().get_pointer(), 
-		new_render_width, new_render_height);
+		new_render_width, new_render_height);*/
 
 	// Recreating the OpenGL display texture
 	glActiveTexture(GL_TEXTURE0 + RenderWindow::DISPLAY_TEXTURE_UNIT);
@@ -420,9 +423,10 @@ void RenderWindow::change_resolution_scaling(float new_scaling)
 	float new_render_height = std::floor(m_viewport_height * new_scaling);
 
 	m_renderer.change_render_resolution(new_render_width, new_render_height);
-	m_denoiser.set_buffers(m_renderer.get_color_framebuffer().get_pointer(),
+	// TODO fix denoiser buffer since openGL interop
+	/*m_denoiser.set_buffers(m_renderer.get_color_framebuffer().get_pointer(),
 		m_renderer.get_denoiser_normals_buffer().get_pointer(), m_renderer.get_denoiser_albedo_buffer().get_pointer(),
-		new_render_width, new_render_height);
+		new_render_width, new_render_height);*/
 
 	glActiveTexture(GL_TEXTURE0 + RenderWindow::DISPLAY_TEXTURE_UNIT);
 	glBindTexture(GL_TEXTURE_2D, m_display_texture);
@@ -673,6 +677,8 @@ void RenderWindow::display(const void* data)
 	glBindTexture(GL_TEXTURE_2D, m_display_texture);
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_renderer.m_render_width, m_renderer.m_render_height, GL_RGB, GL_FLOAT, data);
 
+	// Binding an empty VAO here (empty because we're hardcoding our full-screen quad vertices
+	// in our vertex shader) because this is required on NVIDIA drivers
 	glBindVertexArray(m_vao);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 }

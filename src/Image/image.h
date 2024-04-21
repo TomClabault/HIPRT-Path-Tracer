@@ -1,7 +1,7 @@
 #ifndef IMAGE_H
 #define IMAGE_H
 
-#include "HostDeviceCommon/color.h"
+#include "HostDeviceCommon/color_rgb.h"
 
 struct ImageBin
 {
@@ -14,8 +14,8 @@ class Image
 public:
     Image() {}
     Image(int width, int height) : width(width), height(height), m_pixel_data(width* height) {}
-    Image(Color* data, int width, int height);
-    Image(const std::vector<Color>& data, int width, int height) : width(width), height(height), m_pixel_data(data) {}
+    Image(ColorRGB* data, int width, int height);
+    Image(const std::vector<ColorRGB>& data, int width, int height) : width(width), height(height), m_pixel_data(data) {}
 
     size_t byte_size() const;
 
@@ -26,17 +26,17 @@ public:
     bool write_image_png(const char* filename, const bool flipY = true) const;
     bool write_image_hdr(const char* filename, const bool flipY = true) const;
 
-    void set_data(const std::vector<Color>& data);
-    const std::vector<Color>& data() const;
-    std::vector<Color>& data();
+    void set_data(const std::vector<ColorRGB>& data);
+    const std::vector<ColorRGB>& data() const;
+    std::vector<ColorRGB>& data();
 
-    const Color& operator[](int index) const;
-    Color& operator[](int index);
+    const ColorRGB& operator[](int index) const;
+    ColorRGB& operator[](int index);
 
     int width, height;
 protected:
 
-    std::vector<Color> m_pixel_data;
+    std::vector<ColorRGB> m_pixel_data;
 };
 
 #endif

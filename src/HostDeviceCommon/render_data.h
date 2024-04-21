@@ -34,10 +34,10 @@ struct HIPRTRenderSettings
 
 struct WorldBuffers
 {
-	Color* pixels = nullptr;
+	ColorRGB* pixels = nullptr;
 	// World space normals and albedo for the denoiser
 	float3* denoiser_normals = nullptr;
-	Color* denoiser_albedo = nullptr;
+	ColorRGB* denoiser_albedo = nullptr;
 
 	// A device pointer to the buffer of triangles indices
 	int* triangles_indices = nullptr;
@@ -63,7 +63,7 @@ struct WorldBuffers
 struct WorldSettings
 {
 	bool use_ambient_light = true;
-	Color ambient_light_color = Color(0.5f);
+	ColorRGB ambient_light_color = ColorRGB(0.5f);
 };
 
 /*

@@ -28,7 +28,7 @@ __device__ float disney_schlick_weight(float f0, float abs_cos_angle)
     return 1.0f + (f0 - 1.0f) * pow(1.0f - abs_cos_angle, 5.0f);
 }
 
-__device__ Color disney_diffuse_eval(const RendererMaterial& material, const float3& view_direction, const float3& surface_normal, const float3& to_light_direction, float& pdf)
+__device__ ColorRGB disney_diffuse_eval(const RendererMaterial& material, const float3& view_direction, const float3& surface_normal, const float3& to_light_direction, float& pdf)
 {
     float3 half_vector = hiprtpt::normalize(to_light_direction + view_direction);
 
@@ -38,7 +38,7 @@ __device__ Color disney_diffuse_eval(const RendererMaterial& material, const flo
 
     pdf = NoL / M_PI;
 
-    Color diffuse_part;
+    ColorRGB diffuse_part;
     float diffuse_90 = 0.5f + 2.0f * material.roughness * LoH * LoH;
     // Lambertian base_color
     //diffuse_part = material.base_color / M_PI;
@@ -47,7 +47,7 @@ __device__ Color disney_diffuse_eval(const RendererMaterial& material, const flo
     // Oren nayar base_color
     //diffuse_part = oren_nayar_eval(material, view_direction, surface_normal, to_light_direction);
 
-    Color fake_subsurface_part = Color(0.0f);
+    ColorRGB fake_subsurface_part = ColorRGB(0.0f);
     if (material.subsurface > 0)
     {
         float subsurface_90 = material.roughness * LoH * LoH;
@@ -66,7 +66,7 @@ __device__ float3 disney_diffuse_sample(const RendererMaterial& material, const 
     return sampled_direction;
 }
 
-__device__ Color disney_metallic_fresnel(const RendererMaterial& material, const float3& local_half_vector, const float3& local_to_light_direction)
+__device__ ColorRGB disney_metallic_fresnel(const RendererMaterial& material, const float3& local_half_vector, const float3& local_to_light_direction)
 {
     // The summary of what is below is the following:
     //
@@ -77,14 +77,14 @@ __device__ Color disney_metallic_fresnel(const RendererMaterial& material, const
     // material.specular_color modulated by the material.specular_tint coefficient (which blends 
     // between white and material.specular_color) and the material.specular coefficient which
     // dictates whether we have a specular at all
-    Color Ks = Color(1.0f - material.specular_tint) + material.specular_tint * material.specular_color;
+    ColorRGB Ks = ColorRGB(1.0f - material.specular_tint) + material.specular_tint * material.specular_color;
     float R0 = ((material.ior - 1.0f) * (material.ior - 1.0f)) / ((material.ior + 1.0f) * (material.ior + 1.0f));
-    Color C0 = material.specular * R0 * (1.0f - material.metallic) * Ks + material.metallic * material.base_color;
+    ColorRGB C0 = material.specular * R0 * (1.0f - material.metallic) * Ks + material.metallic * material.base_color;
 
-    return C0 + (Color(1.0f) - C0) * pow(hiprtpt::clamp(0.0f, 1.0f, 1.0f - hiprtpt::dot(local_half_vector, local_to_light_direction)), 5.0f);
+    return C0 + (ColorRGB(1.0f) - C0) * pow(hiprtpt::clamp(0.0f, 1.0f, 1.0f - hiprtpt::dot(local_half_vector, local_to_light_direction)), 5.0f);
 }
 
-__device__ Color disney_metallic_eval(const RendererMaterial& material, const float3& view_direction, const float3& surface_normal, const float3& to_light_direction, Color F, float& pdf)
+__device__ ColorRGB disney_metallic_eval(const RendererMaterial& material, const float3& view_direction, const float3& surface_normal, const float3& to_light_direction, ColorRGB F, float& pdf)
 {
     // Building the local shading frame
     float3 T, B;
@@ -120,7 +120,7 @@ __device__ float3 disney_metallic_sample(const RendererMaterial& material, const
     return sampled_direction;
 }
 
-__device__ Color disney_clearcoat_eval(const RendererMaterial& material, const float3& view_direction, const float3& surface_normal, const float3& to_light_direction, float& pdf)
+__device__ ColorRGB disney_clearcoat_eval(const RendererMaterial& material, const float3& view_direction, const float3& surface_normal, const float3& to_light_direction, float& pdf)
 {
     float3 T, B;
     build_ONB(surface_normal, T, B);
@@ -130,17 +130,17 @@ __device__ Color disney_clearcoat_eval(const RendererMaterial& material, const f
     float3 local_halfway_vector = hiprtpt::normalize(local_view_direction + local_to_light_direction);
 
     if (local_view_direction.z * local_to_light_direction.z < 0)
-        return Color(0.0f);
+        return ColorRGB(0.0f);
 
     float num = material.clearcoat_ior - 1.0f;
     float denom = material.clearcoat_ior + 1.0f;
-    Color R0 = Color((num * num) / (denom * denom));
+    ColorRGB R0 = ColorRGB((num * num) / (denom * denom));
 
     float HoL = hiprtpt::clamp(0.0f, 1.0f, hiprtpt::dot(local_halfway_vector, local_to_light_direction));
     float clearcoat_gloss = 1.0f - material.clearcoat_roughness;
     float alpha_g = (1.0f - clearcoat_gloss) * 0.1f + clearcoat_gloss * 0.001f;
 
-    Color F_clearcoat = fresnel_schlick(R0, HoL);
+    ColorRGB F_clearcoat = fresnel_schlick(R0, HoL);
     float D_clearcoat = GTR1(alpha_g, hiprtpt::abs(local_halfway_vector.z));
     float G_clearcoat = disney_clearcoat_masking_shadowing(local_view_direction) * disney_clearcoat_masking_shadowing(local_to_light_direction);
 
@@ -171,7 +171,7 @@ __device__ float3 disney_clearcoat_sample(const RendererMaterial& material, cons
 }
 
 // TOOD can use local_view dir and light_dir here
-__device__ Color disney_glass_eval(const RendererMaterial& material, const float3& view_direction, float3 surface_normal, const float3& to_light_direction, float& pdf)
+__device__ ColorRGB disney_glass_eval(const RendererMaterial& material, const float3& view_direction, float3 surface_normal, const float3& to_light_direction, float& pdf)
 {
     float start_NoV = hiprtpt::dot(surface_normal, view_direction);
     if (start_NoV < 0.0f)
@@ -222,13 +222,13 @@ __device__ Color disney_glass_eval(const RendererMaterial& material, const float
     // TODO to test removing that
     if (HoL * NoL < 0.0f || HoV * NoV < 0.0f)
         // Backfacing microfacets
-        return Color(0.0f);
+        return ColorRGB(0.0f);
 
-    Color color;
+    ColorRGB color;
     float F = fresnel_dielectric(hiprtpt::dot(local_view_direction, local_half_vector), relative_eta);
     if (reflecting)
     {
-        color = disney_metallic_eval(material, view_direction, surface_normal, to_light_direction, Color(F), pdf);
+        color = disney_metallic_eval(material, view_direction, surface_normal, to_light_direction, ColorRGB(F), pdf);
 
         // Scaling the PDF by the probability of being here (reflection of the ray and not transmission)
         pdf *= F;
@@ -298,12 +298,12 @@ __device__ float3 disney_glass_sample(const RendererMaterial& material, const fl
     return local_to_world_frame(T, B, surface_normal, sampled_direction);
 }
 
-__device__ Color disney_sheen_eval(const RendererMaterial& material, const float3& view_direction, float3 surface_normal, const float3& to_light_direction, float& pdf)
+__device__ ColorRGB disney_sheen_eval(const RendererMaterial& material, const float3& view_direction, float3 surface_normal, const float3& to_light_direction, float& pdf)
 {
-    Color sheen_color = Color(1.0f - material.sheen_tint) + material.sheen_color * material.sheen_tint;
+    ColorRGB sheen_color = ColorRGB(1.0f - material.sheen_tint) + material.sheen_color * material.sheen_tint;
 
     float base_color_luminance = material.base_color.luminance();
-    Color specular_color = base_color_luminance > 0 ? material.base_color / base_color_luminance : Color(1.0f);
+    ColorRGB specular_color = base_color_luminance > 0 ? material.base_color / base_color_luminance : ColorRGB(1.0f);
 
     float3 half_vector = hiprtpt::normalize(view_direction + to_light_direction);
 
@@ -322,7 +322,7 @@ __device__ float3 disney_sheen_sample(const RendererMaterial& material, const fl
     return cosine_weighted_sample(surface_normal, trash_pdf, random_number_generator);
 }
 
-__device__ Color disney_eval(const RendererMaterial& material, const float3& view_direction, const float3& shading_normal, const float3& to_light_direction, float& pdf)
+__device__ ColorRGB disney_eval(const RendererMaterial& material, const float3& view_direction, const float3& shading_normal, const float3& to_light_direction, float& pdf)
 {
     pdf = 0.0f;
 
@@ -333,7 +333,7 @@ __device__ Color disney_eval(const RendererMaterial& material, const float3& vie
     float3 local_to_light_direction = world_to_local_frame(T, B, shading_normal, to_light_direction);
     float3 local_half_vector = hiprtpt::normalize(local_view_direction + local_to_light_direction);
 
-    Color final_color = Color(0.0f);
+    ColorRGB final_color = ColorRGB(0.0f);
     // We're only going to compute the diffuse, metallic, clearcoat and sheen lobes if we're 
     // outside of the object. Said otherwise, only the glass lobe is considered while traveling 
     // inside the object
@@ -342,39 +342,39 @@ __device__ Color disney_eval(const RendererMaterial& material, const float3& vie
 
     // Diffuse
     tmp_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission);
-    final_color += tmp_weight > 0 && outside_object ? tmp_weight * disney_diffuse_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : Color(0.0f);
+    final_color += tmp_weight > 0 && outside_object ? tmp_weight * disney_diffuse_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : ColorRGB(0.0f);
     pdf += tmp_pdf * tmp_weight;
     tmp_pdf = 0.0f;
 
     // Metallic
     // Computing a custom fresnel term based on the material specular, specular tint, ... coefficients
-    Color metallic_fresnel = disney_metallic_fresnel(material, local_half_vector, local_to_light_direction);
+    ColorRGB metallic_fresnel = disney_metallic_fresnel(material, local_half_vector, local_to_light_direction);
     tmp_weight = (1.0f - material.specular_transmission * (1.0f - material.metallic));
-    final_color += tmp_weight > 0 && outside_object ? tmp_weight * disney_metallic_eval(material, view_direction, shading_normal, to_light_direction, metallic_fresnel, tmp_pdf) : Color(0.0f);
+    final_color += tmp_weight > 0 && outside_object ? tmp_weight * disney_metallic_eval(material, view_direction, shading_normal, to_light_direction, metallic_fresnel, tmp_pdf) : ColorRGB(0.0f);
     pdf += tmp_pdf * tmp_weight;
     tmp_pdf = 0.0f;
 
     // Clearcoat
     tmp_weight = 0.25f * material.clearcoat;
-    final_color += tmp_weight > 0 && outside_object ? tmp_weight * disney_clearcoat_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : Color(0.0f);
+    final_color += tmp_weight > 0 && outside_object ? tmp_weight * disney_clearcoat_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : ColorRGB(0.0f);
     pdf += tmp_pdf * tmp_weight;
     tmp_pdf = 0.0f;
 
     // Glass
     tmp_weight = (1.0f - material.metallic) * material.specular_transmission;
-    final_color += tmp_weight > 0 ? tmp_weight * disney_glass_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : Color(0.0f);
+    final_color += tmp_weight > 0 ? tmp_weight * disney_glass_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : ColorRGB(0.0f);
     pdf += tmp_pdf * tmp_weight;
     tmp_pdf = 0.0f;
 
     // Sheen
     tmp_weight = (1.0f - material.metallic) * material.sheen;
-    final_color += tmp_weight > 0 && outside_object ? tmp_weight * disney_sheen_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : Color(0.0f);
+    final_color += tmp_weight > 0 && outside_object ? tmp_weight * disney_sheen_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : ColorRGB(0.0f);
     pdf += tmp_pdf * tmp_weight;
 
     return final_color;
 }
 
-__device__ Color disney_sample(const RendererMaterial& material, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal, float3& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
+__device__ ColorRGB disney_sample(const RendererMaterial& material, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal, float3& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
 {
     pdf = 0.0f;
 
@@ -463,7 +463,7 @@ __device__ Color disney_sample(const RendererMaterial& material, const float3& v
         // 
         // We're also checking that we're not sampling the glass lobe because this
         // is a valid configuration for the glass lobe
-        return Color(0.0f);
+        return ColorRGB(0.0f);
 
     return disney_eval(material, view_direction, normal, output_direction, pdf);
 }

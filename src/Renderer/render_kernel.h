@@ -60,32 +60,32 @@ public:
     Vector cosine_weighted_sample(const Vector& normal, float& pdf, Xorshift32Generator& random_number_generator);
     void cosine_weighted_eval(const Vector& normal, const Vector& direction, float& pdf);
 
-    void debug_set_final_color(int x, int y, Color final_color);
+    void debug_set_final_color(int x, int y, ColorRGB final_color);
     void ray_trace_pixel(int x, int y);
     void render();
 
-    Color brdf_dispatcher_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& to_light_direction, float& pdf);
-    Color brdf_dispatcher_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& geometric_normal, Vector& bounce_direction, float& brdf_pdf, Xorshift32Generator& random_number_generator);
-    Color lambertian_brdf(const RendererMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& shading_normal);
-    Color cook_torrance_brdf_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& to_light_direction, float& pdf);
-    Color cook_torrance_brdf_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, Vector& output_direction, float& pdf, Xorshift32Generator& random_number_generator);
-    Color smooth_glass_bsdf(const RendererMaterial& material, Vector& out_bounce_direction, const Vector& ray_direction, Vector& shading_normal, float eta_I, float eta_O, float& pdf, Xorshift32Generator& random_generator);
-    Color oren_nayar_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& to_light_direction);
+    ColorRGB brdf_dispatcher_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& to_light_direction, float& pdf);
+    ColorRGB brdf_dispatcher_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& geometric_normal, Vector& bounce_direction, float& brdf_pdf, Xorshift32Generator& random_number_generator);
+    ColorRGB lambertian_brdf(const RendererMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& shading_normal);
+    ColorRGB cook_torrance_brdf_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& to_light_direction, float& pdf);
+    ColorRGB cook_torrance_brdf_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, Vector& output_direction, float& pdf, Xorshift32Generator& random_number_generator);
+    ColorRGB smooth_glass_bsdf(const RendererMaterial& material, Vector& out_bounce_direction, const Vector& ray_direction, Vector& shading_normal, float eta_I, float eta_O, float& pdf, Xorshift32Generator& random_generator);
+    ColorRGB oren_nayar_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& to_light_direction);
 
     float disney_schlick_weight(float f0, float abs_cos_angle);
-    Color disney_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& to_light_direction, float& pdf);
-    Color disney_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& geometric_normal, Vector& output_direction, float& pdf, Xorshift32Generator& random_number_generator);
-    Color disney_diffuse_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& to_light_direction, float& pdf);
+    ColorRGB disney_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& to_light_direction, float& pdf);
+    ColorRGB disney_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& geometric_normal, Vector& output_direction, float& pdf, Xorshift32Generator& random_number_generator);
+    ColorRGB disney_diffuse_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& to_light_direction, float& pdf);
     Vector disney_diffuse_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, Xorshift32Generator& random_number_generator);
-    Color disney_metallic_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& to_light_direction, float& pdf);
-    Color disney_metallic_fresnel(const RendererMaterial& material, const Vector& local_half_vector, const Vector& local_to_light_direction);
-    Color disney_metallic_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, const Vector& to_light_direction, Color F, float& pdf);
+    ColorRGB disney_metallic_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& to_light_direction, float& pdf);
+    ColorRGB disney_metallic_fresnel(const RendererMaterial& material, const Vector& local_half_vector, const Vector& local_to_light_direction);
+    ColorRGB disney_metallic_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, const Vector& to_light_direction, ColorRGB F, float& pdf);
     Vector disney_metallic_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, Xorshift32Generator& random_number_generator);
-    Color disney_clearcoat_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& to_light_direction, float& pdf);
+    ColorRGB disney_clearcoat_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& to_light_direction, float& pdf);
     Vector disney_clearcoat_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, Xorshift32Generator& random_number_generator);
-    Color disney_glass_eval(const RendererMaterial& material, const Vector& view_direction, Vector shading_normal, const Vector& to_light_direction, float& pdf);
+    ColorRGB disney_glass_eval(const RendererMaterial& material, const Vector& view_direction, Vector shading_normal, const Vector& to_light_direction, float& pdf);
     Vector disney_glass_sample(const RendererMaterial& material, const Vector& view_direction, Vector shading_normal, Xorshift32Generator& random_number_generator);
-    Color disney_sheen_eval(const RendererMaterial& material, const Vector& view_direction, Vector shading_normal, const Vector& to_light_direction, float& pdf);
+    ColorRGB disney_sheen_eval(const RendererMaterial& material, const Vector& view_direction, Vector shading_normal, const Vector& to_light_direction, float& pdf);
     Vector disney_sheen_sample(const RendererMaterial& material, const Vector& view_direction, Vector shading_normal, Xorshift32Generator& random_number_generator);
 
     bool intersect_scene(const Ray& ray, HitInfo& closest_hit_info);
@@ -93,9 +93,9 @@ public:
     bool INTERSECT_SCENE(const Ray& ray, HitInfo& hit_info);
 
     void env_map_cdf_search(float value, int& x, int& y);
-    Color sample_environment_map_from_direction(const Vector& direction);
-    Color sample_environment_map(const Ray& ray, HitInfo& closest_hit_info, const RendererMaterial& material, Xorshift32Generator& random_number_generator);
-    Color sample_light_sources(const Vector& view_direction, const HitInfo& closest_hit_info, const RendererMaterial& material, Xorshift32Generator& random_number_generator);
+    ColorRGB sample_environment_map_from_direction(const Vector& direction);
+    ColorRGB sample_environment_map(const Ray& ray, HitInfo& closest_hit_info, const RendererMaterial& material, Xorshift32Generator& random_number_generator);
+    ColorRGB sample_light_sources(const Vector& view_direction, const HitInfo& closest_hit_info, const RendererMaterial& material, Xorshift32Generator& random_number_generator);
     Point sample_random_point_on_lights(Xorshift32Generator& random_number_generator, float& pdf, LightSourceInformation& light_info);
     bool evaluate_shadow_ray(const Ray& ray, float t_max);
 

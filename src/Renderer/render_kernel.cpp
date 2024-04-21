@@ -180,7 +180,7 @@ Ray RenderKernel::get_camera_ray(float x, float y)
     return ray;
 }
 
-void RenderKernel::debug_set_final_color(int x, int y, Color final_color)
+void RenderKernel::debug_set_final_color(int x, int y, ColorRGB final_color)
 {
     m_frame_buffer[x + y * m_framebuffer_width] = final_color;
 }
@@ -199,7 +199,7 @@ void RenderKernel::ray_trace_pixel(int x, int y)
 {
     Xorshift32Generator random_number_generator(wang_hash(((x + y * m_framebuffer_width) + 1) * (m_render_samples + 1)));
 
-    Color final_color = Color(0.0f, 0.0f, 0.0f);
+    ColorRGB final_color = ColorRGB(0.0f, 0.0f, 0.0f);
     for (int sample = 0; sample < m_render_samples; sample++)
     {
         //Jittered around the center
@@ -209,8 +209,8 @@ void RenderKernel::ray_trace_pixel(int x, int y)
         //TODO area sampling triangles
         Ray ray = get_camera_ray(x_jittered, y_jittered);
 
-        Color throughput = Color(1.0f, 1.0f, 1.0f);
-        Color sample_color = Color(0.0f, 0.0f, 0.0f);
+        ColorRGB throughput = ColorRGB(1.0f, 1.0f, 1.0f);
+        ColorRGB sample_color = ColorRGB(0.0f, 0.0f, 0.0f);
         RayState next_ray_state = RayState::BOUNCE;
         BRDF last_brdf_hit_type = BRDF::Uninitialized;
 
@@ -243,8 +243,8 @@ void RenderKernel::ray_trace_pixel(int x, int y)
                     // --------------------------------------------------- //
                     // ----------------- Direct lighting ----------------- //
                     // --------------------------------------------------- //
-                    Color light_sample_radiance = sample_light_sources(-ray.direction, closest_hit_info, material, random_number_generator);
-                    Color env_map_radiance = Color(0.0f);// sample_environment_map(ray, closest_hit_info, material, random_number_generator);
+                    ColorRGB light_sample_radiance = sample_light_sources(-ray.direction, closest_hit_info, material, random_number_generator);
+                    ColorRGB env_map_radiance = ColorRGB(0.0f);// sample_environment_map(ray, closest_hit_info, material, random_number_generator);
 
                     // --------------------------------------- //
                     // ---------- Indirect lighting ---------- //
@@ -252,7 +252,7 @@ void RenderKernel::ray_trace_pixel(int x, int y)
 
                     float brdf_pdf;
                     Vector bounce_direction;
-                    Color brdf = brdf_dispatcher_sample(material, -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bounce_direction, brdf_pdf, random_number_generator);
+                    ColorRGB brdf = brdf_dispatcher_sample(material, -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bounce_direction, brdf_pdf, random_number_generator);
                     
                     if (bounce == 0)
                         sample_color += material.emission;
@@ -280,8 +280,8 @@ void RenderKernel::ray_trace_pixel(int x, int y)
                     // We're also getting the skysphere radiance for perfectly specular BRDF since those
                     // are not importance sampled
 
-                    Color skysphere_color = Color(1.0f);
-                    //Color skysphere_color = sample_environment_map_from_direction(ray.direction);
+                    ColorRGB skysphere_color = ColorRGB(1.0f);
+                    //ColorRGB skysphere_color = sample_environment_map_from_direction(ray.direction);
 
                     sample_color += skysphere_color * throughput;
                 }
@@ -294,13 +294,13 @@ void RenderKernel::ray_trace_pixel(int x, int y)
         {
             std::cerr << "Sample color < 0" << std::endl;
             std::cerr << "Exact_X, Exact_Y, Sample: " << x << ", " << y << ", " << sample << std::endl;
-            sample_color = Color(1000000.0f, 0.0f, 1000000.0f);
+            sample_color = ColorRGB(1000000.0f, 0.0f, 1000000.0f);
         }
         else if (std::isnan(sample_color.r) || std::isnan(sample_color.g) || std::isnan(sample_color.b))
         {
             std::cerr << "Sample color NaN" << std::endl;
             std::cerr << "Exact_X, Exact_Y, Sample: " << x << ", " << y << ", " << sample << std::endl;
-            sample_color = Color(1000000.0f, 1000000.0f, 0.0f);
+            sample_color = ColorRGB(1000000.0f, 1000000.0f, 0.0f);
         }
 
         final_color += sample_color;
@@ -311,12 +311,12 @@ void RenderKernel::ray_trace_pixel(int x, int y)
 
     const float gamma = 2.2f;
     const float exposure = 1.0f;
-    Color hdrColor = m_frame_buffer[y * m_framebuffer_width + x];
+    ColorRGB hdrColor = m_frame_buffer[y * m_framebuffer_width + x];
 
     //Exposure tone mapping
-    Color tone_mapped = Color(1.0f, 1.0f, 1.0f) - exp(-hdrColor * exposure);
+    ColorRGB tone_mapped = ColorRGB(1.0f, 1.0f, 1.0f) - exp(-hdrColor * exposure);
     // Gamma correction
-    Color gamma_corrected = pow(tone_mapped, 1.0f / gamma);
+    ColorRGB gamma_corrected = pow(tone_mapped, 1.0f / gamma);
 
     m_frame_buffer[y * m_framebuffer_width + x] = gamma_corrected;
 }
@@ -353,14 +353,14 @@ void RenderKernel::render()
     }
 }
 
-Color RenderKernel::lambertian_brdf(const RendererMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& shading_normal)
+ColorRGB RenderKernel::lambertian_brdf(const RendererMaterial& material, const Vector& to_light_direction, const Vector& view_direction, const Vector& shading_normal)
 {
     return material.base_color * M_1_PI;
 }
 
-Color fresnel_schlick(Color F0, float NoV)
+ColorRGB fresnel_schlick(ColorRGB F0, float NoV)
 {
-    return F0 + (Color(1.0f) - F0) * std::pow((1.0f - NoV), 5.0f);
+    return F0 + (ColorRGB(1.0f) - F0) * std::pow((1.0f - NoV), 5.0f);
 }
 
 Vector GGXVNDF_sample(Vector local_view_direction, float alpha_x, float alpha_y, Xorshift32Generator& random_number_generator)
@@ -450,10 +450,10 @@ float GGX_smith_masking_shadowing(float roughness_squared, float NoV, float NoL)
     return G1_schlick_ggx(k, NoL) * G1_schlick_ggx(k, NoV);
 }
 
-inline Color RenderKernel::cook_torrance_brdf_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& to_light_direction, float& pdf)
+inline ColorRGB RenderKernel::cook_torrance_brdf_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& to_light_direction, float& pdf)
 {
-    Color brdf_color = Color(0.0f, 0.0f, 0.0f);
-    Color base_color = material.base_color;
+    ColorRGB brdf_color = ColorRGB(0.0f, 0.0f, 0.0f);
+    ColorRGB base_color = material.base_color;
 
     Vector halfway_vector = normalize(view_direction + to_light_direction);
 
@@ -470,22 +470,22 @@ inline Color RenderKernel::cook_torrance_brdf_eval(const RendererMaterial& mater
         float alpha = roughness * roughness;
 
         ////////// Cook Torrance BRDF //////////
-        Color F;
+        ColorRGB F;
         float D, G;
 
         //F0 = 0.04 for dielectrics, 1.0 for metals (approximation)
-        Color F0 = Color(0.04f * (1.0f - metallic)) + metallic * base_color;
+        ColorRGB F0 = ColorRGB(0.04f * (1.0f - metallic)) + metallic * base_color;
 
         //GGX Distribution function
         F = fresnel_schlick(F0, VoH);
         D = GGX_normal_distribution(alpha, NoH);
         G = GGX_smith_masking_shadowing(alpha, NoV, NoL);
 
-        Color kD = Color(1.0f - metallic); //Metals do not have a base_color part
-        kD *= Color(1.0f) - F;//Only the transmitted light is diffused
+        ColorRGB kD = ColorRGB(1.0f - metallic); //Metals do not have a base_color part
+        kD *= ColorRGB(1.0f) - F;//Only the transmitted light is diffused
 
-        Color diffuse_part = kD * base_color / (float)M_PI;
-        Color specular_part = (F * D * G) / (4.0f * NoV * NoL);
+        ColorRGB diffuse_part = kD * base_color / (float)M_PI;
+        ColorRGB specular_part = (F * D * G) / (4.0f * NoV * NoL);
 
         brdf_color = diffuse_part + specular_part;
         pdf = D * NoH / (4.0f * VoH);
@@ -494,7 +494,7 @@ inline Color RenderKernel::cook_torrance_brdf_eval(const RendererMaterial& mater
     return brdf_color;
 }
 
-Color RenderKernel::cook_torrance_brdf_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, Vector& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
+ColorRGB RenderKernel::cook_torrance_brdf_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, Vector& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
 {
     pdf = 0.0f;
 
@@ -513,13 +513,13 @@ Color RenderKernel::cook_torrance_brdf_sample(const RendererMaterial& material, 
     Vector microfacet_normal = local_to_world_frame(shading_normal, microfacet_normal_local_space);
     if (dot(microfacet_normal, shading_normal) < 0.0f)
         //The microfacet normal that we sampled was under the surface, this can happen
-        return Color(0.0f);
+        return ColorRGB(0.0f);
     Vector to_light_direction = normalize(2.0f * dot(microfacet_normal, view_direction) * microfacet_normal - view_direction);
     Vector halfway_vector = microfacet_normal;
     output_direction = to_light_direction;
 
-    Color brdf_color = Color(0.0f, 0.0f, 0.0f);
-    Color base_color = material.base_color;
+    ColorRGB brdf_color = ColorRGB(0.0f, 0.0f, 0.0f);
+    ColorRGB base_color = material.base_color;
 
     float NoV = std::max(0.0f, dot(shading_normal, view_direction));
     float NoL = std::max(0.0f, dot(shading_normal, to_light_direction));
@@ -529,7 +529,7 @@ Color RenderKernel::cook_torrance_brdf_sample(const RendererMaterial& material, 
     if (NoV > 0.0f && NoL > 0.0f && NoH > 0.0f)
     {
         /////////// Cook Torrance BRDF //////////
-        Color F;
+        ColorRGB F;
         float D, G;
 
 
@@ -537,15 +537,15 @@ Color RenderKernel::cook_torrance_brdf_sample(const RendererMaterial& material, 
         D = GGX_normal_distribution(alpha, NoH);
 
         //F0 = 0.04 for dielectrics, 1.0 for metals (approximation)
-        Color F0 = Color(0.04f * (1.0f - metallic)) + metallic * base_color;
+        ColorRGB F0 = ColorRGB(0.04f * (1.0f - metallic)) + metallic * base_color;
         F = fresnel_schlick(F0, VoH);
         G = GGX_smith_masking_shadowing(alpha, NoV, NoL);
 
-        Color kD = Color(1.0f - metallic); //Metals do not have a base_color part
-        kD *= Color(1.0f) - F;//Only the transmitted light is diffused
+        ColorRGB kD = ColorRGB(1.0f - metallic); //Metals do not have a base_color part
+        kD *= ColorRGB(1.0f) - F;//Only the transmitted light is diffused
 
-        Color diffuse_part = kD * base_color / (float)M_PI;
-        Color specular_part = (F * D * G) / (4.0f * NoV * NoL);
+        ColorRGB diffuse_part = kD * base_color / (float)M_PI;
+        ColorRGB specular_part = (F * D * G) / (4.0f * NoV * NoL);
 
         pdf = D * NoH / (4.0f * VoH);
 
@@ -555,7 +555,7 @@ Color RenderKernel::cook_torrance_brdf_sample(const RendererMaterial& material, 
     return brdf_color;
 }
 
-Color RenderKernel::smooth_glass_bsdf(const RendererMaterial& material, Vector& out_bounce_direction, const Vector& ray_direction, Vector& shading_normal, float eta_i, float eta_t, float& pdf, Xorshift32Generator& random_generator)
+ColorRGB RenderKernel::smooth_glass_bsdf(const RendererMaterial& material, Vector& out_bounce_direction, const Vector& ray_direction, Vector& shading_normal, float eta_i, float eta_t, float& pdf, Xorshift32Generator& random_generator)
 {
     // Clamping here because the dot product can eventually returns values less
     // than -1 or greater than 1 because of precision errors in the vectors
@@ -585,7 +585,7 @@ Color RenderKernel::smooth_glass_bsdf(const RendererMaterial& material, Vector& 
         out_bounce_direction = reflect_ray(-ray_direction, shading_normal);
         pdf = fresnel_reflect;
 
-        return Color(fresnel_reflect) / dot(shading_normal, out_bounce_direction);
+        return ColorRGB(fresnel_reflect) / dot(shading_normal, out_bounce_direction);
     }
     else
     {
@@ -595,17 +595,17 @@ Color RenderKernel::smooth_glass_bsdf(const RendererMaterial& material, Vector& 
         bool can_refract = refract_ray(-ray_direction, shading_normal, refract_direction, eta_t / eta_i);
         if (!can_refract)
             // Shouldn't happen but can because of floating point imprecisions
-            return Color(0.0f);
+            return ColorRGB(0.0f);
 
         out_bounce_direction = refract_direction;
         shading_normal = -shading_normal;
         pdf = 1.0f - fresnel_reflect;
 
-        return Color(1.0f - fresnel_reflect) * material.base_color / dot(out_bounce_direction, shading_normal);
+        return ColorRGB(1.0f - fresnel_reflect) * material.base_color / dot(out_bounce_direction, shading_normal);
     }
 }
 
-Color RenderKernel::oren_nayar_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& to_light_direction)
+ColorRGB RenderKernel::oren_nayar_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& to_light_direction)
 {
     Vector T, B;
     build_ONB(shading_normal, T, B);
@@ -661,7 +661,7 @@ float RenderKernel::disney_schlick_weight(float f0, float abs_cos_angle)
 //    return std::max(min_val, std::min(max_val, val));
 //}
 
-Color RenderKernel::disney_diffuse_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& to_light_direction, float& pdf)
+ColorRGB RenderKernel::disney_diffuse_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& to_light_direction, float& pdf)
 {
     Vector half_vector = normalize(to_light_direction + view_direction);
 
@@ -671,7 +671,7 @@ Color RenderKernel::disney_diffuse_eval(const RendererMaterial& material, const 
 
     pdf = NoL / M_PI;
 
-    Color diffuse_part;
+    ColorRGB diffuse_part;
     float diffuse_90 = 0.5f + 2.0f * material.roughness * LoH * LoH;
     // Lambertian base_color
     //diffuse_part = material.base_color / M_PI;
@@ -680,7 +680,7 @@ Color RenderKernel::disney_diffuse_eval(const RendererMaterial& material, const 
     // Oren nayar base_color
     //diffuse_part = oren_nayar_eval(material, view_direction, shading_normal, to_light_direction);
 
-    Color fake_subsurface_part;
+    ColorRGB fake_subsurface_part;
     float subsurface_90 = material.roughness * LoH * LoH;
     fake_subsurface_part = 1.25f * material.base_color / M_PI *
         (disney_schlick_weight(subsurface_90, NoL) * disney_schlick_weight(subsurface_90, NoV) * (1.0f / (NoL + NoV) - 0.5f) + 0.5f) * NoL;
@@ -696,7 +696,7 @@ Vector RenderKernel::disney_diffuse_sample(const RendererMaterial& material, con
     return sampled_direction;
 }
 
-Color RenderKernel::disney_metallic_fresnel(const RendererMaterial& material, const Vector& local_half_vector, const Vector& local_to_light_direction)
+ColorRGB RenderKernel::disney_metallic_fresnel(const RendererMaterial& material, const Vector& local_half_vector, const Vector& local_to_light_direction)
 {
     // The summary of what is below is the following:
     //
@@ -707,14 +707,14 @@ Color RenderKernel::disney_metallic_fresnel(const RendererMaterial& material, co
     // material.specular_color modulated by the material.specular_tint coefficient (which blends 
     // between white and material.specular_color) and the material.specular coefficient which
     // dictates whether we have a specular at all
-    Color Ks = Color(1.0f - material.specular_tint) + material.specular_tint * material.specular_color;
+    ColorRGB Ks = ColorRGB(1.0f - material.specular_tint) + material.specular_tint * material.specular_color;
     float R0 = ((material.ior - 1.0f) * (material.ior - 1.0f)) / ((material.ior + 1.0f) * (material.ior + 1.0f));
-    Color C0 = material.specular * R0 * (1.0f - material.metallic) * Ks + material.metallic * material.base_color;
+    ColorRGB C0 = material.specular * R0 * (1.0f - material.metallic) * Ks + material.metallic * material.base_color;
 
-    return C0 + (Color(1.0f) - C0) * pow(1.0f - dot(local_half_vector, local_to_light_direction), 5.0f);
+    return C0 + (ColorRGB(1.0f) - C0) * pow(1.0f - dot(local_half_vector, local_to_light_direction), 5.0f);
 }
 
-Color RenderKernel::disney_metallic_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, const Vector& to_light_direction, Color F, float& pdf)
+ColorRGB RenderKernel::disney_metallic_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, const Vector& to_light_direction, ColorRGB F, float& pdf)
 {
     // Building the local shading frame
     Vector T, B;
@@ -730,7 +730,7 @@ Color RenderKernel::disney_metallic_eval(const RendererMaterial& material, const
 
     // TODO remove
     //{
-    //    // F = (-2.0f, -2.0f, -2.0f) is the default argument when the overload without the 'Color F' argument
+    //    // F = (-2.0f, -2.0f, -2.0f) is the default argument when the overload without the 'ColorRGB F' argument
     //    // of disney_metallic_eval() was called. Thus, if no F was passed, we're computing it here.
     //    // Otherwise, we're going to use the given one
     //    if (F.r == -2.0f)
@@ -759,7 +759,7 @@ Vector RenderKernel::disney_metallic_sample(const RendererMaterial& material, co
     return sampled_direction;
 }
 
-Color RenderKernel::disney_clearcoat_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, const Vector& to_light_direction, float& pdf)
+ColorRGB RenderKernel::disney_clearcoat_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& surface_normal, const Vector& to_light_direction, float& pdf)
 {
     Vector T, B;
     build_ONB(surface_normal, T, B);
@@ -769,17 +769,17 @@ Color RenderKernel::disney_clearcoat_eval(const RendererMaterial& material, cons
     Vector local_halfway_vector = normalize(local_view_direction + local_to_light_direction);
 
     if (local_view_direction.z * local_to_light_direction.z < 0)
-        return Color(0.0f);
+        return ColorRGB(0.0f);
 
     float num = material.clearcoat_ior - 1.0f;
     float denom = material.clearcoat_ior + 1.0f;
-    Color R0 = Color((num * num) / (denom * denom));
+    ColorRGB R0 = ColorRGB((num * num) / (denom * denom));
 
     float HoV = dot(local_halfway_vector, local_to_light_direction);
     float clearcoat_gloss = 1.0f - material.clearcoat_roughness;
     float alpha_g = (1.0f - clearcoat_gloss) * 0.1f + clearcoat_gloss * 0.001f;
 
-    Color F_clearcoat = fresnel_schlick(R0, HoV);
+    ColorRGB F_clearcoat = fresnel_schlick(R0, HoV);
     float D_clearcoat = GTR1(alpha_g, abs(local_halfway_vector.z));
     float G_clearcoat = disney_clearcoat_masking_shadowing(local_view_direction) * disney_clearcoat_masking_shadowing(local_to_light_direction);
 
@@ -810,7 +810,7 @@ Vector RenderKernel::disney_clearcoat_sample(const RendererMaterial& material, c
 }
 
 // TOOD can use local_view dir and light_dir here
-Color RenderKernel::disney_glass_eval(const RendererMaterial& material, const Vector& view_direction, Vector surface_normal, const Vector& to_light_direction, float& pdf)
+ColorRGB RenderKernel::disney_glass_eval(const RendererMaterial& material, const Vector& view_direction, Vector surface_normal, const Vector& to_light_direction, float& pdf)
 {
     float start_NoV = dot(surface_normal, view_direction);
     if (start_NoV < 0.0f)
@@ -861,13 +861,13 @@ Color RenderKernel::disney_glass_eval(const RendererMaterial& material, const Ve
     // TODO to test removing that
     if (HoL * NoL < 0.0f || HoV * NoV < 0.0f)
         // Backfacing microfacets
-        return Color(0.0f);
+        return ColorRGB(0.0f);
 
-    Color color;
+    ColorRGB color;
     float F = fresnel_dielectric(dot(local_view_direction, local_half_vector), relative_eta);
     if (reflecting)
     {
-        color = disney_metallic_eval(material, view_direction, surface_normal, to_light_direction, Color(F), pdf);
+        color = disney_metallic_eval(material, view_direction, surface_normal, to_light_direction, ColorRGB(F), pdf);
 
         // Scaling the PDF by the probability of being here (reflection of the ray and not transmission)
         pdf *= F;
@@ -937,12 +937,12 @@ Vector RenderKernel::disney_glass_sample(const RendererMaterial& material, const
     return local_to_world_frame(T, B, surface_normal, sampled_direction);
 }
 
-Color RenderKernel::disney_sheen_eval(const RendererMaterial& material, const Vector& view_direction, Vector surface_normal, const Vector& to_light_direction, float& pdf)
+ColorRGB RenderKernel::disney_sheen_eval(const RendererMaterial& material, const Vector& view_direction, Vector surface_normal, const Vector& to_light_direction, float& pdf)
 {
-    Color sheen_color = Color(1.0f - material.sheen_tint) + material.sheen_color * material.sheen_tint;
+    ColorRGB sheen_color = ColorRGB(1.0f - material.sheen_tint) + material.sheen_color * material.sheen_tint;
 
     float base_color_luminance = material.base_color.luminance();
-    Color specular_color = base_color_luminance > 0 ? material.base_color / base_color_luminance : Color(1.0f);
+    ColorRGB specular_color = base_color_luminance > 0 ? material.base_color / base_color_luminance : ColorRGB(1.0f);
 
     Vector half_vector = normalize(view_direction + to_light_direction);
 
@@ -961,7 +961,7 @@ Vector RenderKernel::disney_sheen_sample(const RendererMaterial& material, const
     return cosine_weighted_sample(surface_normal, trash_pdf, random_number_generator);
 }
 
-Color RenderKernel::disney_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& to_light_direction, float& pdf)
+ColorRGB RenderKernel::disney_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& to_light_direction, float& pdf)
 {
     pdf = 0.0f;
 
@@ -972,7 +972,7 @@ Color RenderKernel::disney_eval(const RendererMaterial& material, const Vector& 
     Vector local_to_light_direction = world_to_local_frame(T, B, shading_normal, to_light_direction);
     Vector local_half_vector = normalize(local_view_direction + local_to_light_direction);
 
-    Color final_color = Color(0.0f);
+    ColorRGB final_color = ColorRGB(0.0f);
     // We're only going to compute the diffuse, metallic, clearcoat and sheen lobes if we're 
     // outside of the object. Said otherwise, only the glass lobe is considered while traveling 
     // inside the object
@@ -981,40 +981,40 @@ Color RenderKernel::disney_eval(const RendererMaterial& material, const Vector& 
 
     // Diffuse
     tmp_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission);
-    final_color += tmp_weight > 0 && outside_object ? tmp_weight * disney_diffuse_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : Color(0.0f);
+    final_color += tmp_weight > 0 && outside_object ? tmp_weight * disney_diffuse_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : ColorRGB(0.0f);
     pdf += tmp_pdf * tmp_weight;
     tmp_pdf = 0.0f;
 
     // Metallic
     // Computing a custom fresnel term based on the material specular, specular tint, ... coefficients
-    Color metallic_fresnel = disney_metallic_fresnel(material, local_half_vector, local_to_light_direction);
+    ColorRGB metallic_fresnel = disney_metallic_fresnel(material, local_half_vector, local_to_light_direction);
     tmp_weight = (1.0f - material.specular_transmission * (1.0f - material.metallic));
-    final_color += tmp_weight > 0 && outside_object ? tmp_weight * disney_metallic_eval(material, view_direction, shading_normal, to_light_direction, metallic_fresnel, tmp_pdf) : Color(0.0f);
+    final_color += tmp_weight > 0 && outside_object ? tmp_weight * disney_metallic_eval(material, view_direction, shading_normal, to_light_direction, metallic_fresnel, tmp_pdf) : ColorRGB(0.0f);
     pdf += tmp_pdf * tmp_weight;
     tmp_pdf = 0.0f;
 
     // Clearcoat
     tmp_weight = 0.25f * material.clearcoat;
-    final_color += tmp_weight > 0 && outside_object ? tmp_weight * disney_clearcoat_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : Color(0.0f);
+    final_color += tmp_weight > 0 && outside_object ? tmp_weight * disney_clearcoat_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : ColorRGB(0.0f);
     pdf += tmp_pdf * tmp_weight;
     tmp_pdf = 0.0f;
 
     // Glass
     tmp_weight = (1.0f - material.metallic) * material.specular_transmission;
-    final_color += tmp_weight > 0 ? tmp_weight * disney_glass_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : Color(0.0f);
+    final_color += tmp_weight > 0 ? tmp_weight * disney_glass_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : ColorRGB(0.0f);
     pdf += tmp_pdf * tmp_weight;
     tmp_pdf = 0.0f;
 
     // Sheen
     tmp_weight = (1.0f - material.metallic) * material.sheen;
-    Color sheen_color = tmp_weight > 0 && outside_object ? tmp_weight * disney_sheen_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : Color(0.0f);
+    ColorRGB sheen_color = tmp_weight > 0 && outside_object ? tmp_weight * disney_sheen_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : ColorRGB(0.0f);
     final_color += sheen_color;
     pdf += tmp_pdf * tmp_weight;
 
     return final_color;
 }
 
-Color RenderKernel::disney_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& geometric_normal, Vector& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
+ColorRGB RenderKernel::disney_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& geometric_normal, Vector& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
 {
     pdf = 0.0f;
 
@@ -1099,21 +1099,21 @@ Color RenderKernel::disney_sample(const RendererMaterial& material, const Vector
         // 
         // We're also checking that we're not sampling the glass lobe because this
         // is a valid configuration for the glass lobe
-        return Color(0.0f);
+        return ColorRGB(0.0f);
 
     return disney_eval(material, view_direction, normal, output_direction, pdf);
 }
 
-Color RenderKernel::brdf_dispatcher_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& to_light_direction, float& pdf)
+ColorRGB RenderKernel::brdf_dispatcher_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& to_light_direction, float& pdf)
 {
     pdf = 0.0f;
     if (material.brdf_type == BRDF::Disney)
         return disney_eval(material, view_direction, shading_normal, to_light_direction, pdf);
 
-    return Color(0.0f);
+    return ColorRGB(0.0f);
 }
 
-Color RenderKernel::brdf_dispatcher_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& geometric_normal, Vector& bounce_direction, float& brdf_pdf, Xorshift32Generator& random_number_generator)
+ColorRGB RenderKernel::brdf_dispatcher_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& geometric_normal, Vector& bounce_direction, float& brdf_pdf, Xorshift32Generator& random_number_generator)
 {
     return disney_sample(material, view_direction, shading_normal, geometric_normal, bounce_direction, brdf_pdf, random_number_generator);
 }
@@ -1200,7 +1200,7 @@ float power_heuristic(float pdf_a, float pdf_b)
     return pdf_a_squared / (pdf_a_squared + pdf_b * pdf_b);
 }
 
-Color RenderKernel::sample_environment_map_from_direction(const Vector& direction)
+ColorRGB RenderKernel::sample_environment_map_from_direction(const Vector& direction)
 {
     float u, v;
     u = 0.5f + std::atan2(direction.z, direction.x) / (2.0f * (float)M_PI);
@@ -1249,11 +1249,11 @@ void RenderKernel::env_map_cdf_search(float value, int& x, int& y)
     x = std::max(std::min(lower, m_environment_map.width), 0);
 }
 
-Color RenderKernel::sample_environment_map(const Ray& ray, HitInfo& closest_hit_info, const RendererMaterial& material, Xorshift32Generator& random_number_generator)
+ColorRGB RenderKernel::sample_environment_map(const Ray& ray, HitInfo& closest_hit_info, const RendererMaterial& material, Xorshift32Generator& random_number_generator)
 {
     if (material.brdf_type == BRDF::SpecularFresnel)
         // No sampling for perfectly specular materials
-        return Color(0.0f);
+        return ColorRGB(0.0f);
 
     const std::vector<float>& cdf = m_environment_map.cdf();
 
@@ -1268,7 +1268,7 @@ Color RenderKernel::sample_environment_map(const Ray& ray, HitInfo& closest_hit_
     // which leads to a pdf of infinity since it is a singularity
     float theta = std::max(1.0e-5f, v * (float)M_PI);
 
-    Color env_sample;
+    ColorRGB env_sample;
     float sin_theta = std::sin(theta);
     float cos_theta = std::cos(theta);
 
@@ -1284,9 +1284,9 @@ Color RenderKernel::sample_environment_map(const Ray& ray, HitInfo& closest_hit_
             float env_map_pdf = m_environment_map.luminance_of_pixel(x, y) / env_map_total_sum;
             env_map_pdf = (env_map_pdf * m_environment_map.width * m_environment_map.height) / (2.0f * M_PI * M_PI * sin_theta);
 
-            Color env_map_radiance = m_environment_map[y * m_environment_map.width + x];
+            ColorRGB env_map_radiance = m_environment_map[y * m_environment_map.width + x];
             float pdf;
-            Color brdf = brdf_dispatcher_eval(material, -ray.direction, closest_hit_info.shading_normal, sampled_direction, pdf);
+            ColorRGB brdf = brdf_dispatcher_eval(material, -ray.direction, closest_hit_info.shading_normal, sampled_direction, pdf);
 
             float mis_weight = power_heuristic(env_map_pdf, pdf);
             env_sample = brdf * cosine_term * mis_weight * env_map_radiance / env_map_pdf;
@@ -1295,16 +1295,16 @@ Color RenderKernel::sample_environment_map(const Ray& ray, HitInfo& closest_hit_
 
     float brdf_sample_pdf;
     Vector brdf_sampled_dir;
-    Color brdf_imp_sampling = brdf_dispatcher_sample(material, -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, brdf_sampled_dir, brdf_sample_pdf, random_number_generator);
+    ColorRGB brdf_imp_sampling = brdf_dispatcher_sample(material, -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, brdf_sampled_dir, brdf_sample_pdf, random_number_generator);
 
     cosine_term = std::max(dot(closest_hit_info.shading_normal, brdf_sampled_dir), 0.0f);
-    Color brdf_sample;
+    ColorRGB brdf_sample;
     if (brdf_sample_pdf != 0.0f && cosine_term > 0.0f)
     {
         HitInfo trash;
         if (!INTERSECT_SCENE(Ray(closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-5f, brdf_sampled_dir), trash))
         {
-            Color skysphere_color = sample_environment_map_from_direction(brdf_sampled_dir);
+            ColorRGB skysphere_color = sample_environment_map_from_direction(brdf_sampled_dir);
             float theta_brdf_dir = std::acos(brdf_sampled_dir.z);
             float sin_theta_bdrf_dir = std::sin(theta_brdf_dir);
             float env_map_pdf = skysphere_color.luminance() / env_map_total_sum;
@@ -1320,16 +1320,16 @@ Color RenderKernel::sample_environment_map(const Ray& ray, HitInfo& closest_hit_
     return brdf_sample + env_sample;
 }
 
-Color RenderKernel::sample_light_sources(const Vector& view_direction, const HitInfo& closest_hit_info, const RendererMaterial& material, Xorshift32Generator& random_number_generator)
+ColorRGB RenderKernel::sample_light_sources(const Vector& view_direction, const HitInfo& closest_hit_info, const RendererMaterial& material, Xorshift32Generator& random_number_generator)
 {
     if (m_emissive_triangle_indices_buffer.size() == 0)
         // No emmisive geometry in the scene to sample
-        return Color(0.0f);
+        return ColorRGB(0.0f);
 
     if (material.emission.r != 0.0f || material.emission.g != 0.0f || material.emission.b != 0.0f)
         // We're not sampling direct lighting if we're already on an
         // emissive surface
-        return Color(0.0f);
+        return ColorRGB(0.0f);
 
     if (dot(view_direction, closest_hit_info.geometric_normal) < 0.0f)
         // We're not direct sampling if we're inside a surface
@@ -1339,9 +1339,9 @@ Color RenderKernel::sample_light_sources(const Vector& view_direction, const Hit
         // inside a black fringe cause by smooth normals with microfacet BRDFs
         // There's a slightly more thorough explanation of what we're doing with the dot products here
         // in the disney brdf sampling method, in the glass lobe part
-        return Color(0.0f);
+        return ColorRGB(0.0f);
 
-    Color light_source_radiance_mis;
+    ColorRGB light_source_radiance_mis;
     float light_sample_pdf;
     LightSourceInformation light_source_info;
     Point random_light_point = sample_random_point_on_lights(random_number_generator, light_sample_pdf, light_source_info);
@@ -1366,12 +1366,12 @@ Color RenderKernel::sample_light_sources(const Vector& view_direction, const Hit
             light_sample_pdf /= dot_light_source;
 
             float pdf;
-            Color brdf = brdf_dispatcher_eval(material, view_direction, closest_hit_info.shading_normal, shadow_ray.direction, pdf);
+            ColorRGB brdf = brdf_dispatcher_eval(material, view_direction, closest_hit_info.shading_normal, shadow_ray.direction, pdf);
             if (pdf != 0.0f)
             {
                 float mis_weight = power_heuristic(light_sample_pdf, pdf);
 
-                Color Li = emissive_triangle_material.emission;
+                ColorRGB Li = emissive_triangle_material.emission;
                 float cosine_term = std::max(dot(closest_hit_info.shading_normal, shadow_ray.direction), 0.0f);
 
                 light_source_radiance_mis = Li * cosine_term * brdf * mis_weight / light_sample_pdf;
@@ -1380,11 +1380,11 @@ Color RenderKernel::sample_light_sources(const Vector& view_direction, const Hit
     }
 
 
-    Color brdf_radiance_mis;
+    ColorRGB brdf_radiance_mis;
 
     Vector sampled_brdf_direction;
     float direction_pdf;
-    Color brdf = brdf_dispatcher_sample(material, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_brdf_direction, direction_pdf, random_number_generator);
+    ColorRGB brdf = brdf_dispatcher_sample(material, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_brdf_direction, direction_pdf, random_number_generator);
     if (direction_pdf > 0)
     {
         Ray new_ray = Ray(closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f, sampled_brdf_direction);
@@ -1399,7 +1399,7 @@ Color RenderKernel::sample_light_sources(const Vector& view_direction, const Hit
                 int material_index = m_materials_indices_buffer[new_ray_hit_info.primitive_index];
                 RendererMaterial material = m_materials_buffer[material_index];
 
-                Color emission = material.emission;
+                ColorRGB emission = material.emission;
                 if (emission.r > 0 || emission.g > 0 || emission.b > 0)
                 {
                     float distance_squared = new_ray_hit_info.t * new_ray_hit_info.t;

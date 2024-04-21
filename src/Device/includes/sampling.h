@@ -56,9 +56,9 @@ __device__ float3 cosine_weighted_sample(const float3& normal, float& pdf, Xorsh
     return local_to_world_frame(normal, random_dir_local_space);
 }
 
-__device__ Color fresnel_schlick(Color F0, float angle)
+__device__ ColorRGB fresnel_schlick(ColorRGB F0, float angle)
 {
-    return F0 + (Color(1.0f) - F0) * pow((1.0f - angle), 5.0f);
+    return F0 + (ColorRGB(1.0f) - F0) * pow((1.0f - angle), 5.0f);
 }
 
 __device__ float fresnel_dielectric(float cos_theta_i, float relative_eta)
