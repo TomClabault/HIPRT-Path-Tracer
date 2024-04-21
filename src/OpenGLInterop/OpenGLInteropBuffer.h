@@ -32,7 +32,7 @@ private:
 	size_t m_byte_size = 0;
 
 	GLuint m_buffer_name = -1;
-	hipGraphicsResource_t m_buffer_resource;
+	oroGraphicsResource_t m_buffer_resource;
 };
 
 template <typename T>
@@ -41,7 +41,7 @@ OpenGLInteropBuffer<T>::OpenGLInteropBuffer(int element_count)
 	glCreateBuffers(1, &m_buffer_name);
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, m_buffer_name);
 	glBufferData(GL_PIXEL_UNPACK_BUFFER, element_count * sizeof(T), nullptr, GL_DYNAMIC_DRAW);
-	hipGraphicsGLRegisterBuffer(&m_buffer_resource, m_buffer_name, hipGraphicsRegisterFlagsNone);
+	hipGraphicsGLRegisterBuffer((hipGraphicsResource_t*)&m_buffer_resource, m_buffer_name, hipGraphicsRegisterFlagsNone);
 
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 
@@ -73,11 +73,11 @@ void OpenGLInteropBuffer<T>::resize(int new_element_count)
 		glBufferData(GL_PIXEL_UNPACK_BUFFER, new_element_count * sizeof(T), nullptr, GL_DYNAMIC_DRAW);
 	}
 
-	m_buffer_resource = 0;
+	// TODO hipGLGetDevices here is required for hipGraphicsGLRegisterBuffer to work. This is very scuffed.
 	unsigned int count = 0;
-	std::vector<int> devices(16, 1);
+	std::vector<int> devices(16);
 	hipGLGetDevices(&count, devices.data(), 16, hipGLDeviceListAll);
-	OROCHI_CHECK_ERROR(hipGraphicsGLRegisterBuffer(&m_buffer_resource, m_buffer_name, hipGraphicsRegisterFlagsNone));
+	OROCHI_CHECK_ERROR(hipGraphicsGLRegisterBuffer((hipGraphicsResource_t*)&m_buffer_resource, m_buffer_name, hipGraphicsRegisterFlagsNone));
 
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 
@@ -95,8 +95,8 @@ T* OpenGLInteropBuffer<T>::map()
 		// Already mapped
 		return m_mapped_pointer;
 
-	OROCHI_CHECK_ERROR(hipGraphicsMapResources(1, &m_buffer_resource, 0));
-	OROCHI_CHECK_ERROR(hipGraphicsResourceGetMappedPointer((void**)&m_mapped_pointer, &m_byte_size, m_buffer_resource));
+	OROCHI_CHECK_ERROR(oroGraphicsMapResources(1, &m_buffer_resource, 0));
+	OROCHI_CHECK_ERROR(oroGraphicsResourceGetMappedPointer((void**)&m_mapped_pointer, &m_byte_size, m_buffer_resource));
 
 	m_mapped = true;
 	return m_mapped_pointer;
@@ -105,7 +105,11 @@ T* OpenGLInteropBuffer<T>::map()
 template <typename T>
 void OpenGLInteropBuffer<T>::unmap()
 {
-	OROCHI_CHECK_ERROR(hipGraphicsUnmapResources(1, &m_buffer_resource, 0));
+	if (!m_mapped)
+		// Already unmapped
+		return;
+
+	OROCHI_CHECK_ERROR(oroGraphicsUnmapResources(1, &m_buffer_resource, 0));
 
 	m_mapped = false;
 	m_mapped_pointer = nullptr;
@@ -121,6 +125,6 @@ OpenGLInteropBuffer<T>::~OpenGLInteropBuffer()
 		if (m_mapped)
 			unmap();
 
-		OROCHI_CHECK_ERROR(hipGraphicsUnregisterResource(m_buffer_resource));
+		OROCHI_CHECK_ERROR(oroGraphicsUnregisterResource(m_buffer_resource));
 	}
 }
