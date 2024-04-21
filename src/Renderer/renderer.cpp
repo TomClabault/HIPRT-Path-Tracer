@@ -44,7 +44,11 @@ void Renderer::change_render_resolution(int new_width, int new_height)
 	m_camera.projection_matrix = glm::transpose(glm::perspective(m_camera.vertical_fov, new_aspect, m_camera.near_plane, m_camera.far_plane));
 }
 
+#ifdef OROCHI_ENABLE_CUEW
+OrochiBuffer<ColorRGB>& Renderer::get_color_framebuffer()
+#else
 OpenGLInteropBuffer<ColorRGB>& Renderer::get_color_framebuffer()
+#endif
 {
 	return m_pixels_buffer;
 }
@@ -85,7 +89,11 @@ HIPRTRenderData Renderer::get_render_data()
 
 	render_data.geom = m_hiprt_scene.geometry;
 
+#ifdef OROCHI_ENABLE_CUEW
+	render_data.buffers.pixels = m_pixels_buffer.get_pointer();
+#else
 	render_data.buffers.pixels = m_pixels_buffer.map();
+#endif
 	render_data.buffers.denoiser_normals = m_normals_buffer.get_pointer();
 	render_data.buffers.denoiser_albedo = m_albedo_buffer.get_pointer();
 	render_data.buffers.triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.mesh.triangleIndices);

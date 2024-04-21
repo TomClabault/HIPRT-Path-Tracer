@@ -34,7 +34,11 @@ public:
 	void render();
 	void change_render_resolution(int new_width, int new_height);
 
+#ifdef OROCHI_ENABLE_CUEW
+	OrochiBuffer<ColorRGB>& get_color_framebuffer();
+#else
 	OpenGLInteropBuffer<ColorRGB>& get_color_framebuffer();
+#endif
 	OrochiBuffer<ColorRGB>& get_denoiser_albedo_buffer();
 	OrochiBuffer<hiprtFloat3>& get_denoiser_normals_buffer();
 
@@ -68,7 +72,11 @@ private:
 	// This buffer holds the * sum * of the samples computed
 	// This is an accumulation buffer. This needs to be divided by the
 	// number of samples for displaying
+#ifdef OROCHI_ENABLE_CUEW
+	OrochiBuffer<ColorRGB> m_pixels_buffer;
+#else
 	OpenGLInteropBuffer<ColorRGB> m_pixels_buffer;
+#endif
 	// Normals G-buffer
 	OrochiBuffer<hiprtFloat3> m_normals_buffer;
 	// Albedo G-buffer
