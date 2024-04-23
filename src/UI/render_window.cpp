@@ -463,6 +463,8 @@ void RenderWindow::create_display_programs()
 	glGenTextures(1, &m_display_texture);
 	glActiveTexture(GL_TEXTURE0 + RenderWindow::DISPLAY_TEXTURE_UNIT);
 	glBindTexture(GL_TEXTURE_2D, m_display_texture);
+	// The texture is initially of the size of the viewport because there is no resolution scaling involved
+	// at startup
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, m_viewport_width, m_viewport_height, 0, GL_RGB, GL_FLOAT, nullptr);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -491,6 +493,7 @@ void RenderWindow::create_display_programs()
 	m_active_display_program = m_normal_display_program;
 	m_active_display_program.use();
 	m_active_display_program.set_uniform("u_texture", RenderWindow::DISPLAY_TEXTURE_UNIT);
+	m_active_display_program.set_uniform("u_do_tonemapping", 1);
 	m_active_display_program.set_uniform("u_sample_number", 0);
 	m_active_display_program.set_uniform("u_gamma", m_application_settings.tone_mapping_gamma);
 	m_active_display_program.set_uniform("u_exposure", m_application_settings.tone_mapping_exposure);
@@ -562,7 +565,7 @@ void RenderWindow::recreate_display_texture(DisplayTextureType texture_type, int
 
 	glActiveTexture(GL_TEXTURE0 + RenderWindow::DISPLAY_TEXTURE_UNIT);
 	glBindTexture(GL_TEXTURE_2D, m_display_texture);
-	glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, m_viewport_width, m_viewport_height, 0, format, type, nullptr);
+	glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, m_renderer.m_render_width, m_renderer.m_render_height, 0, format, type, nullptr);
 	
 	m_display_texture_type = texture_type;
 }
@@ -889,6 +892,8 @@ void RenderWindow::show_post_process_panel()
 	if (!ImGui::CollapsingHeader("Post-processing"))
 		return;
 
+	if (ImGui::Checkbox("Do tonemapping", &m_application_settings.do_tonemapping))
+		m_active_display_program.set_uniform("ud_o_tonemapping", m_application_settings.do_tonemapping);
 	if (ImGui::InputFloat("Gamma", &m_application_settings.tone_mapping_gamma))
 		m_active_display_program.set_uniform("u_gamma", m_application_settings.tone_mapping_gamma);
 	if (ImGui::InputFloat("Exposure", &m_application_settings.tone_mapping_exposure))

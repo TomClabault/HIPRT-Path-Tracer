@@ -56,6 +56,7 @@ struct ApplicationSettings
 	// We stop rendering when this number of sample is reached
 	int max_sample_count = 0;
 
+	bool do_tonemapping = 1;
 	float tone_mapping_gamma = 2.2f;
 	float tone_mapping_exposure = 1.0f;
 };

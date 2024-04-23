@@ -27,7 +27,7 @@ OpenGLProgram::~OpenGLProgram()
 
 void OpenGLProgram::attach(const OpenGLShader& compiled_shader)
 {
-	if (m_program = (unsigned int)(-1))
+	if (m_program == (unsigned int)(-1))
 		m_program = glCreateProgram();
 
 	glAttachShader(m_program, compiled_shader.get_shader());
@@ -64,25 +64,25 @@ void OpenGLProgram::get_compute_threads(GLint threads[3])
 
 void OpenGLProgram::set_uniform(const char* name, int value)
 {
-	glUniform1i(glGetUniformLocation(m_program, "name"), value);
+	glUniform1i(glGetUniformLocation(m_program, name), value);
 }
 
 void OpenGLProgram::set_uniform(const char* name, float value)
 {
-	glUniform1f(glGetUniformLocation(m_program, "name"), value);
+	glUniform1f(glGetUniformLocation(m_program, name), value);
 }
 
 void OpenGLProgram::set_uniform(const char* name, const float2& value)
 {
-	glUniform2f(glGetUniformLocation(m_program, "name"), value.x, value.y);
+	glUniform2f(glGetUniformLocation(m_program, name), value.x, value.y);
 }
 
 void OpenGLProgram::set_uniform(const char* name, const float3& value)
 {
-	glUniform3f(glGetUniformLocation(m_program, "name"), value.x, value.y, value.z);
+	glUniform3f(glGetUniformLocation(m_program, name), value.x, value.y, value.z);
 }
 
 void OpenGLProgram::set_uniform(const char* name, const float4& value)
 {
-	glUniform4f(glGetUniformLocation(m_program, "name"), value.x, value.y, value.z, value.w);
+	glUniform4f(glGetUniformLocation(m_program, name), value.x, value.y, value.z, value.w);
 }

@@ -145,10 +145,17 @@ void RenderWindow::display(OpenGLInteropBuffer<T>& buffer)
 {
 	buffer.unmap();
 
+	glActiveTexture(GL_TEXTURE0 + RenderWindow::DISPLAY_TEXTURE_UNIT);
 	glBindTexture(GL_TEXTURE_2D, m_display_texture);
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, buffer.get_opengl_buffer());
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_renderer.m_render_width, m_renderer.m_render_height, GL_RGB, GL_FLOAT, 0);
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+
+	m_active_display_program.use();
+	m_active_display_program.set_uniform("u_texture", RenderWindow::DISPLAY_TEXTURE_UNIT);
+	m_active_display_program.set_uniform("u_do_tonemapping", 1);
+	m_active_display_program.set_uniform("u_gamma", m_application_settings.tone_mapping_gamma);
+	m_active_display_program.set_uniform("u_exposure", m_application_settings.tone_mapping_exposure);
 
 	// Binding an empty VAO here (empty because we're hardcoding our full-screen quad vertices
 	// in our vertex shader) because this is required on NVIDIA drivers
