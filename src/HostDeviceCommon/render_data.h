@@ -35,9 +35,6 @@ struct HIPRTRenderSettings
 struct WorldBuffers
 {
 	ColorRGB* pixels = nullptr;
-	// World space normals and albedo for the denoiser
-	float3* denoiser_normals = nullptr;
-	ColorRGB* denoiser_albedo = nullptr;
 
 	// A device pointer to the buffer of triangles indices
 	int* triangles_indices = nullptr;
@@ -60,6 +57,20 @@ struct WorldBuffers
 	int* emissive_triangles_indices = nullptr;
 };
 
+struct AuxiliaryBuffers
+{
+	// World space normals and albedo for the denoiser
+	float3* denoiser_normals = nullptr;
+	ColorRGB* denoiser_albedo = nullptr;
+
+	// Per pixel sample count. Useful when doing adaptative sampling
+	// where each pixel can have a different number of sample
+	int* pixel_sample_count;
+
+	// Per pixel luminance variance used for adaptative sampling
+	float* pixel_squared_luminance;
+};
+
 struct WorldSettings
 {
 	bool use_ambient_light = true;
@@ -76,6 +87,7 @@ struct HIPRTRenderData
 	hiprtGeometry geom = nullptr;
 
 	WorldBuffers buffers;
+	AuxiliaryBuffers aux_buffers;
 	WorldSettings world_settings;
 
 	HIPRTRenderSettings render_settings;

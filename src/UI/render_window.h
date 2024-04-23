@@ -6,8 +6,12 @@
 #ifndef RENDER_WINDOW_H
 #define RENDER_WINDOW_H
 
+#include "OpenGL/OpenGLProgram.h"
+#include "Renderer/open_image_denoiser.h"
+#include "Renderer/renderer.h"
 #include "UI/application_settings.h"
-#include "UI/display_settings.h"
+#include "UI/DisplayTextureType.h"
+#include "UI/DisplayView.h"
 
 #include "GL/glew.h"
 #include "GLFW/glfw3.h"
@@ -16,8 +20,6 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 
-#include "Renderer/renderer.h"
-#include "Renderer/open_image_denoiser.h"
 #include "Image/image_writer.h"
 #include "Utils/commandline_arguments.h"
 
@@ -46,21 +48,35 @@ public:
 	const ApplicationSettings& get_application_settings() const;
 	Renderer& get_renderer();
 
-	void setup_display_program();
+	void create_display_programs();
+	void select_display_program(DisplayView display_view);
+	void set_display_program(DisplayView display_view);
+	/*
+	 * This function ensures that the display texture is of the proper format
+	 * for the display view selected.
+	 * 
+	 * For example, if the user decided to display normals in the viewport, we'll need
+	 * the display texture to be a float3 (RGB32F) texture. If the user is displaying
+	 * the adaptative sampling heatmap, we'll only need an integer texture.
+	 * 
+	 * This function deletes/recreates the texture everytime its required format changes
+	 * (i.e. when the current texture was a float3 and we asked for an integer texture) 
+	 because we don't want to keep every single possible texture in VRAM. This may cause
+	 * a (very) small stutter but that's probably expected since we're asking for a different view
+	 * to show up in the viewport
+	 */
+	void recreate_display_texture(DisplayView display_view);
+	void recreate_display_texture(DisplayTextureType texture_type, int width, int height);
 	void update_renderer_view_translation(float translation_x, float translation_y);
 	void update_renderer_view_zoom(float offset);
 	void update_renderer_view_rotation(float offset_x, float offset_y);
 	void increment_sample_number();
-	void reset_sample_number();
-	void reset_frame_number();
+	void reset_render();
 
-	DisplaySettings get_display_settings();
-	void set_display_settings(DisplaySettings settings);
 
 	std::pair<float, float> get_cursor_position();
 	void set_cursor_position(std::pair<float, float> new_position);
 
-	void setup_display_uniforms(GLuint program);
 	void display(const void* data);
 	template <typename T>
 	void display(const std::vector<T>& orochi_buffer);
@@ -87,7 +103,6 @@ private:
 	std::chrono::high_resolution_clock::time_point m_startRenderTime;
 
 	ApplicationSettings m_application_settings;
-	DisplaySettings m_display_settings;
 
 	Renderer m_renderer;
 	HIPRTRenderSettings& m_render_settings;
@@ -95,10 +110,21 @@ private:
 
 	ImageWriter m_image_writer;
 
-	GLuint m_display_program;
-	// Fake VAO necessary for NVIDIA drivers
+	OpenGLProgram m_active_display_program;
+	OpenGLProgram m_normal_display_program;
+	OpenGLProgram m_albedo_display_program;
+	OpenGLProgram m_adaptative_sampling_display_program;
+	// We don't need a VAO because we're hardcoding our fullscreen
+	// quad vertices in our vertex shader but we still need an empty/fake
+	// VAO for NVIDIA drivers to avoid errors
 	GLuint m_vao;
+	// Texture used by the display program to draw on the fullscreen quad
 	GLuint m_display_texture;
+	// Format of the texel of the texture used by the display program
+	// This is useful because we have several types of programs using several
+	// types of textures. For example, displaying normals on the screen requires float3 textures
+	// whereas displaying a heatmap requires only a texture whose texels are scalar (floats or ints)
+	DisplayTextureType m_display_texture_type;
 	GLFWwindow* m_window;
 };
 
@@ -118,8 +144,6 @@ template <typename T>
 void RenderWindow::display(OpenGLInteropBuffer<T>& buffer)
 {
 	buffer.unmap();
-
-	setup_display_uniforms(m_display_program);
 
 	glBindTexture(GL_TEXTURE_2D, m_display_texture);
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, buffer.get_opengl_buffer());

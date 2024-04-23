@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-#include "Renderer/display_view_enum.h"
+#include "UI/DisplayView.h"
 
 struct ApplicationSettings
 {
@@ -17,7 +17,7 @@ struct ApplicationSettings
 	std::vector<std::string> kernel_files = { DEVICE_KERNELS_DIRECTORY "/path_tracer_kernel.h", DEVICE_KERNELS_DIRECTORY "/normals_kernel.h" };
 	std::vector<std::string> kernel_functions = { "PathTracerKernel", "NormalsKernel"};
 
-	DisplayView debug_display_denoiser = DisplayView::NONE;
+	DisplayView display_view = DisplayView::DEFAULT;
 
 	bool enable_denoising = false;
 	// How many samples were denoised by the last denoiser call

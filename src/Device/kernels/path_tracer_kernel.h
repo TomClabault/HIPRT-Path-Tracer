@@ -453,12 +453,34 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
     if (render_data.render_settings.sample_number == 0)
     {
         render_data.buffers.pixels[index] = ColorRGB(0.0f);
-        render_data.buffers.denoiser_normals[index] = make_float3(1.0f, 1.0f, 1.0f);
-        render_data.buffers.denoiser_albedo[index] = ColorRGB(0.0f, 0.0f, 0.0f);
+        render_data.aux_buffers.denoiser_normals[index] = make_float3(1.0f, 1.0f, 1.0f);
+        render_data.aux_buffers.denoiser_albedo[index] = ColorRGB(0.0f, 0.0f, 0.0f);
+        render_data.aux_buffers.pixel_sample_count[index] = 0;
+        render_data.aux_buffers.pixel_squared_luminance[index] = 0;
+    }
+
+    if (render_data.render_settings.sample_number > 15)
+    {
+        // Waiting for at least 16 samples to enable adaptative sampling
+        float luminance = render_data.buffers.pixels[index].luminance();
+        float average_luminance = luminance / render_data.render_settings.sample_number;
+        float squared_luminance = render_data.aux_buffers.pixel_squared_luminance[index];
+
+        // Note that we have squared_luminance and luminance * luminance (luminance * average_luminance 
+        // basically hides a luminance * luminance). Those are different
+        // because squared_luminance is the sum of the squares of all the samples seen so far
+        // whereas luminance * luminance is the (luminance of all samples seen so far)^2
+        // Said otherwise, this is sum of squares (squared_luminance) vs. square of sums (luminance * luminance)
+        float pixel_variance = 1.0f / (render_data.render_settings.sample_number - 1) * (squared_luminance - (luminance * average_luminance));
+
+        bool pixel_needs_sampling = 1.96f * sqrt(pixel_variance) / sqrt(render_data.render_settings.sample_number) < 0.02f * average_luminance;
+        if (!pixel_needs_sampling)
+            return;
     }
 
     Xorshift32Generator random_number_generator(wang_hash((index + 1) * (render_data.render_settings.sample_number + 1)));
 
+    float squared_luminance_of_samples = 0.0f;
     ColorRGB final_color = ColorRGB(0.0f, 0.0f, 0.0f);
     ColorRGB denoiser_albedo = ColorRGB(0.0f, 0.0f, 0.0f);
     float3 denoiser_normal = make_float3(0.0f, 0.0f, 0.0f);
@@ -586,7 +608,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                 break;
         }
 
-        // These 2 if() are basically anomally detectors
+        // These 2 if() are basically anomally detectors.
         // They will set pixels to very bright colors if somehow
         // weird samples are produced
         // This helps spot unrobustness in the renderer 
@@ -604,22 +626,25 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
             return;
         }
 
+        squared_luminance_of_samples += sample_color.luminance();
         final_color += sample_color;
     }
 
     render_data.buffers.pixels[index] += final_color;
+    render_data.aux_buffers.pixel_squared_luminance[index] += squared_luminance_of_samples;
+    render_data.aux_buffers.pixel_sample_count[index] += render_data.render_settings.sample_number;
 
     // Handling denoiser's albedo and normals AOVs    
     // We don't need those when rendering at low resolution
     // hence why this is the else branch
     denoiser_albedo /= (float)render_data.render_settings.samples_per_frame;
     denoiser_normal /= (float)render_data.render_settings.samples_per_frame;
-    render_data.buffers.denoiser_albedo[index] = (render_data.buffers.denoiser_albedo[index] * render_data.render_settings.frame_number + denoiser_albedo) / (render_data.render_settings.frame_number + 1.0f);
+    render_data.aux_buffers.denoiser_albedo[index] = (render_data.aux_buffers.denoiser_albedo[index] * render_data.render_settings.frame_number + denoiser_albedo) / (render_data.render_settings.frame_number + 1.0f);
 
-    float3 accumulated_normal = (render_data.buffers.denoiser_normals[index] * render_data.render_settings.frame_number + denoiser_normal) / (render_data.render_settings.frame_number + 1.0f);
+    float3 accumulated_normal = (render_data.aux_buffers.denoiser_normals[index] * render_data.render_settings.frame_number + denoiser_normal) / (render_data.render_settings.frame_number + 1.0f);
     float normal_length = hiprtpt::length(accumulated_normal);
     if (normal_length != 0.0f)
-        render_data.buffers.denoiser_normals[index] = hiprtpt::normalize(accumulated_normal);
+        render_data.aux_buffers.denoiser_normals[index] = hiprtpt::normalize(accumulated_normal);
 
     // Handling low resolution render
     // The framebuffer actually still is at full resolution, it's just that we cast
@@ -649,8 +674,8 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                     // Also handling the denoiser AOVs. Useful only when the user is moving the camera
                     // (and thus rendering at low resolution) while the denoiser's normals / albedo has
                     // been selected as the active viewport view
-                    render_data.buffers.denoiser_albedo[_index] = render_data.buffers.denoiser_albedo[index];
-                    render_data.buffers.denoiser_normals[_index] = render_data.buffers.denoiser_normals[index];
+                    render_data.aux_buffers.denoiser_albedo[_index] = render_data.aux_buffers.denoiser_albedo[index];
+                    render_data.aux_buffers.denoiser_normals[_index] = render_data.aux_buffers.denoiser_normals[index];
                 }
             }
         }

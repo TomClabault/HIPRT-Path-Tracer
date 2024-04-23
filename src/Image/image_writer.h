@@ -2,6 +2,7 @@
 #define IMAGE_WRITER_H
 
 #include "GL/glew.h"
+#include "OpenGL/OpenGLProgram.h"
 #include "Renderer/renderer.h"
 
 class RenderWindow;
@@ -29,8 +30,10 @@ private:
 	Renderer* m_renderer;
 	RenderWindow* m_render_window;
 
-	GLuint m_compute_shader = -1;
-	GLuint m_compute_output_image = -1;
+	bool m_compute_shader_initialized = false;
+	OpenGLProgram m_compute_shader;
+
+	GLuint m_output_image;
 	int m_compute_output_image_width = -1;
 	int m_compute_output_image_height = -1;
 };

@@ -178,6 +178,7 @@ file(GLOB_RECURSE OPENGL_HEADERS thirdparties/opengl/include/*.h)
 file(GLOB_RECURSE STBI_HEADERS thirdparties/stbi/*.h)
 file(GLOB_RECURSE IMGUI_FILES thirdparties/imgui/*.h thirdparties/imgui/*.cpp)
 file(GLOB_RECURSE GLM_FILES thirdparties/glm/*.h thirdparties/glm/*.cpp)
+file(GLOB_RECURSE GLSL_SHADERS src/Shaders/*.frag src/Shaders/*.vert)
 file(GLOB_RECURSE HIPRT_HEADERS ${HIPRT_HEADERS_DIR}/*.h)
 file(GLOB_RECURSE OROCHI_SOURCES_AND_HEADERS ${OROCHI_SOURCES_DIR}/*.h ${OROCHI_SOURCES_DIR}/*.cpp)
 file(GLOB_RECURSE CUEW_SOURCES_AND_HEADERS ${CUEW_SOURCES_DIR}/*.h ${CUEW_SOURCES_DIR}/*.cpp)
@@ -191,6 +192,7 @@ add_executable(HIPRTPathTracer
 	${IMGUI_FILES}
 	${ASSIMP_HEADERS}
 
+	${GLSL_SHADERS}
 	${HIPRT_HEADERS}
 	${OROCHI_SOURCES_AND_HEADERS}
 	${CUEW_SOURCES_AND_HEADERS}

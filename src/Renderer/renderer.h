@@ -11,7 +11,7 @@
 #include "HIPRT-Orochi/hiprt_orochi_ctx.h"
 #include "HIPRT-Orochi/hiprt_scene.h"
 #include "HostDeviceCommon/render_data.h"
-#include "OpenGLInterop/OpenGLInteropBuffer.h"
+#include "OpenGL/OpenGLInteropBuffer.h"
 #include "Scene/camera.h"
 #include "Scene/scene_parser.h"
 

@@ -29,6 +29,8 @@ void ImageWriter::write_to_png()
 
 void ImageWriter::write_to_png(const char* filepath)
 {
+	return;
+
 	int width = m_renderer->m_render_width;
 	int height = m_renderer->m_render_height;
 
@@ -48,9 +50,12 @@ void ImageWriter::write_to_png(const char* filepath)
 		// different than 1.0f because OpenGL's viewport doesn't match the render size
 		// (so we can't just dump the viewport's pixels to a file as in the 1.0f case)
 
-		if ((GLuint)-1 == m_compute_shader)
-			// Shader uninitialized
-			m_compute_shader = OpenGLUtils::compile_computer_program(GLSL_SHADERS_DIRECTORY "/display.frag");
+		if (!m_compute_shader_initialized)
+		{
+			OpenGLShader compute_shader(GLSL_SHADERS_DIRECTORY "/display.frag", OpenGLShader::COMPUTE_SHADER);
+			m_compute_shader.attach(compute_shader);
+			m_compute_shader.link();
+		}
 
 		bool texture_needs_creation = false;
 		if (m_compute_output_image_width == -1)
@@ -59,7 +64,7 @@ void ImageWriter::write_to_png(const char* filepath)
 		}
 		else if (m_compute_output_image_width != width || m_compute_output_image_height != height)
 		{
-			glDeleteTextures(1, &m_compute_output_image);
+			glDeleteTextures(1, &m_output_image);
 			texture_needs_creation = true;
 		}
 
@@ -68,29 +73,29 @@ void ImageWriter::write_to_png(const char* filepath)
 			m_compute_output_image_width = width;
 			m_compute_output_image_height = height;
 
-			glGenTextures(1, &m_compute_output_image);
+			glGenTextures(1, &m_output_image);
 			glActiveTexture(GL_TEXTURE0 + RenderWindow::DISPLAY_COMPUTE_IMAGE_UNIT);
-			glBindTexture(GL_TEXTURE_2D, m_compute_output_image);
+			glBindTexture(GL_TEXTURE_2D, m_output_image);
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-			glBindImageTexture(2, m_compute_output_image, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA8);
+			glBindImageTexture(2, m_output_image, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA8);
 		}
 		else
-			glBindTexture(GL_TEXTURE_2D, m_compute_output_image);
+			glBindTexture(GL_TEXTURE_2D, m_output_image);
 
 		GLint threads[3];
-		glGetProgramiv(m_compute_shader, GL_COMPUTE_WORK_GROUP_SIZE, threads);
+		m_compute_shader.get_compute_threads(threads);
 
 		int nb_groups_x = std::ceil(width / (float)threads[0]);
 		int nb_groups_y = std::ceil(height / (float)threads[1]);
-		glUseProgram(m_compute_shader);
 
-		glUniform1i(glGetUniformLocation(m_compute_shader, "u_texture"), RenderWindow::DISPLAY_TEXTURE_UNIT);
-		glUniform1i(glGetUniformLocation(m_compute_shader, "u_sample_number"), m_renderer->get_sample_number());
-		glUniform1f(glGetUniformLocation(m_compute_shader, "u_exposure"), m_render_window->get_application_settings().tone_mapping_exposure);
-		glUniform1f(glGetUniformLocation(m_compute_shader, "u_gamma"), m_render_window->get_application_settings().tone_mapping_gamma);
-		glUniform1i(glGetUniformLocation(m_compute_shader, "u_output_image"), RenderWindow::DISPLAY_COMPUTE_IMAGE_UNIT);
-		m_render_window->setup_display_uniforms(m_compute_shader);
+		m_compute_shader.use();
+		m_compute_shader.set_uniform("u_texture", RenderWindow::DISPLAY_TEXTURE_UNIT);
+		m_compute_shader.set_uniform("u_sample_number", m_renderer->get_sample_number());
+		m_compute_shader.set_uniform("u_exposure", m_render_window->get_application_settings().tone_mapping_exposure);
+		m_compute_shader.set_uniform("u_gamma", m_render_window->get_application_settings().tone_mapping_gamma);
+		m_compute_shader.set_uniform("u_output_image", RenderWindow::DISPLAY_COMPUTE_IMAGE_UNIT);
+		//m_render_window->setup_display_uniforms(m_compute_shader);
 
 		glDispatchCompute(nb_groups_x, nb_groups_y, 1);
 		glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);

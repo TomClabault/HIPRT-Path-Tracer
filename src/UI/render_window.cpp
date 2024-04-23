@@ -16,6 +16,7 @@
 // test performance when reducing number of triangles of the pbrt dragon
 
 // TODO bugs
+// - fix screenshot writer compute shader since OpenGL refactor
 // - anisotropic rotation brightness bugged ?
 // - Why is the rough dragon having black fringes even with normal flipping ?
 // - normals AOV not converging correctly ?
@@ -25,28 +26,23 @@
 
 
 // TODO Code Organization:
-// - reset_sample_number() is a bad name, I couldn't remember the name when looking for it and was expecting soemthing like 'dirty render' or something
-// - Can we have access to HoL when calling disey_metallic_fresnel to avoid passing the two vectors and recomputing the dot product in the return statement ?
+// - Rename class files in camel case
+// - Destroy buffers when disabling adaptative sampling to save VRAM
+// - Can we have access to HoL when calling disney_metallic_fresnel to avoid passing the two vectors and recomputing the dot product in the return statement ?
 // - rename HIPRT kernel files without the hiprt prefix
-// - Clean the Git of all the HIP/Orochi binary files. Try to download them automatically in the CMake or write installation instructions
 // - DO THE DISNEY SHADING IN SHADING SPACE. WHAT THE H IS THIS CODE BUILDING ONB IN EVERY FUNCTION HUH?
-// - Check for light and view direction in the same hemisphere in the disney eval function, not just in the clearcoat eval
-// - Check for sampled light direction not under the surface in disney sample, before eval, not just in the metallic/clearcoat sample
 // - reorganize methods order in RenderWindow
-// - use constructors instead of struct {} syntax in gpu code
-// - separate path tracer kernel functions in header files
-// - do not duplicate render functions. Make a common h file that uses the float3 type (cosine_weighted_direction_around_normal, hiprt_lambertian.h:7)
-// - instead of duplicating structures (RendererMaterial + RendererMaterial, BRDF + BRDF, ...), it would be better to create a folder
-//		HostDeviceCommon containing the structures that are used both by the GPU and CPU renderer
+// - separate (still work to do) path tracer kernel functions in header files
+// - do not duplicate render functions. Make a common h file that uses the float3 type (cosine_weighted_direction_around_normal, hiprt_lambertian.h:7 for example)
 // - imgui controller to put all the imgui code in one class
 // - put mouse / keyboard code in an interactor
-// - when the mouse / keyvoard code will be in an interactor class, have the is_interacting boloean in this interactor class
-//		and poll it from the main loop to check whether we need to render the frame at a lower resolution or not
+//		- Have the is_interacting boolean in this interactor class and poll it from the main loop to check whether we need to render the frame at a lower resolution or not
 // - check for level of abstractions in functions
 
 
 
 // TODO Features:
+// - auto adaptative sample per frame with adaptative sampling to keep GPU busy
 // - Maybe look at better Disney sampling (luminance?)
 // - Imgui panel with a lot of performance metrics
 // - thin materials
@@ -72,11 +68,10 @@
 // - Focus blur
 // - Textures for each parameter of the Disney BSDF
 // - Bump mapping
-// - Flakes BRDF (maybe look at OSPRay implementation ?)
+// - Flakes BRDF (maybe look at OSPRay implementation for a reference ?)
 // - ImGuizmo
-// - Orochi 2.0 --> Textures and OpenGL Interop 
 // - Paths roughness regularization
-// - choose disney base_color model (disney, lambertian, oren nayar)
+// - choose disney diffuse model (disney, lambertian, oren nayar)
 // - enable lower resolution on mouse scroll for like ~10 frames
 // - display feedback for 3 seconds after dumping a screenshot to disk
 // - choose denoiser quality in imgui
@@ -91,7 +86,7 @@
 // - ImGui widgets for SBVH / LBVH
 // - light sampling: go through transparent surfaces instead of considering them opaque (?)
 // - BVH compaction + imgui checkbox
-// - shader cache
+// - shader cache (write our own or wait for HIPRT to fix it?)
 // - indirect / direct lighting clamping
 // - env map support
 // - choose env map at runtime imgui
@@ -358,7 +353,7 @@ RenderWindow::RenderWindow(int width, int height) : m_viewport_width(width), m_v
 	ImGui_ImplGlfw_InitForOpenGL(m_window, true);
 	ImGui_ImplOpenGL3_Init();
 
-	setup_display_program();
+	create_display_programs();
 	m_renderer.init_ctx(0);
 	m_renderer.compile_trace_kernel(m_application_settings.kernel_files[m_application_settings.selected_kernel].c_str(),
 		m_application_settings.kernel_functions[m_application_settings.selected_kernel].c_str());
@@ -412,12 +407,8 @@ void RenderWindow::resize_frame(int pixels_width, int pixels_height)
 		m_renderer.get_denoiser_normals_buffer().get_device_pointer(), m_renderer.get_denoiser_albedo_buffer().get_device_pointer(), 
 		new_render_width, new_render_height);*/
 
-	// Recreating the OpenGL display texture
-	glActiveTexture(GL_TEXTURE0 + RenderWindow::DISPLAY_TEXTURE_UNIT);
-	glBindTexture(GL_TEXTURE_2D, m_display_texture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, new_render_width, new_render_height, 0, GL_RGB, GL_FLOAT, nullptr);
-
-	reset_sample_number();
+	recreate_display_texture(m_display_texture_type, new_render_width, new_render_height);
+	reset_render();
 }
 
 void RenderWindow::change_resolution_scaling(float new_scaling)
@@ -450,7 +441,7 @@ void RenderWindow::set_interacting(bool is_interacting)
 {
 	// The user just released the camera and we were rendering at low resolution
 	if (!is_interacting && m_render_settings.render_low_resolution)
-		reset_sample_number();
+		reset_render();
 
 	m_render_settings.render_low_resolution = is_interacting;
 }
@@ -465,11 +456,8 @@ const ApplicationSettings& RenderWindow::get_application_settings() const
 	return m_application_settings;
 }
 
-void RenderWindow::setup_display_program()
+void RenderWindow::create_display_programs()
 {
-	// Creating the shaders for displaying the path traced render
-	m_display_program = OpenGLUtils::compile_shader_program(GLSL_SHADERS_DIRECTORY "/fullscreen_quad.vert", GLSL_SHADERS_DIRECTORY "/display.frag");
-
 	// Creating the texture that will contain the path traced data to be displayed
 	// by the shader.
 	glGenTextures(1, &m_display_texture);
@@ -483,11 +471,100 @@ void RenderWindow::setup_display_program()
 	// we're hardcoding our full screen quad in the vertex shader
 	glCreateVertexArrays(1, &m_vao);
 
-	glUseProgram(m_display_program);
-	glUniform1i(glGetUniformLocation(m_display_program, "u_texture"), RenderWindow::DISPLAY_TEXTURE_UNIT);
-	glUniform1i(glGetUniformLocation(m_display_program, "u_sample_number"), 0);
-	glUniform1f(glGetUniformLocation(m_display_program, "u_gamma"), m_application_settings.tone_mapping_gamma);
-	glUniform1f(glGetUniformLocation(m_display_program, "u_exposure"), m_application_settings.tone_mapping_exposure);
+	OpenGLShader fullscreen_quad_vertex_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/fullscreen_quad.vert", OpenGLShader::VERTEX_SHADER);
+	OpenGLShader normal_display_fragment_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/normal_display.frag", OpenGLShader::FRAGMENT_SHADER);
+	OpenGLShader albedo_display_fragment_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/albedo_display.frag", OpenGLShader::FRAGMENT_SHADER);
+	OpenGLShader adaptative_display_fragment_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/adaptative_sampling_heatmap.frag", OpenGLShader::FRAGMENT_SHADER);
+
+	m_normal_display_program.attach(fullscreen_quad_vertex_shader);
+	m_normal_display_program.attach(normal_display_fragment_shader);
+	m_normal_display_program.link();
+
+	m_albedo_display_program.attach(fullscreen_quad_vertex_shader);
+	m_albedo_display_program.attach(albedo_display_fragment_shader);
+	m_albedo_display_program.link();
+
+	m_adaptative_sampling_display_program.attach(fullscreen_quad_vertex_shader);
+	m_adaptative_sampling_display_program.attach(adaptative_display_fragment_shader);
+	m_adaptative_sampling_display_program.link();
+
+	m_active_display_program = m_normal_display_program;
+	m_active_display_program.use();
+	m_active_display_program.set_uniform("u_texture", RenderWindow::DISPLAY_TEXTURE_UNIT);
+	m_active_display_program.set_uniform("u_sample_number", 0);
+	m_active_display_program.set_uniform("u_gamma", m_application_settings.tone_mapping_gamma);
+	m_active_display_program.set_uniform("u_exposure", m_application_settings.tone_mapping_exposure);
+}
+
+void RenderWindow::select_display_program(DisplayView display_view)
+{
+	set_display_program(display_view);
+	recreate_display_texture(display_view);
+}
+
+void RenderWindow::set_display_program(DisplayView display_view)
+{
+	switch (display_view)
+	{
+	case DisplayView::DISPLAY_NORMALS:
+	case DisplayView::DISPLAY_DENOISED_NORMALS:
+		m_active_display_program = m_normal_display_program;
+		break;
+
+	case DisplayView::DISPLAY_ALBEDO:
+	case DisplayView::DISPLAY_DENOISED_ALBEDO:
+		m_active_display_program = m_albedo_display_program;
+		break;
+
+	case DisplayView::ADAPTATIVE_SAMPLING_MAP:
+		m_active_display_program = m_adaptative_sampling_display_program;
+		break;
+
+	case DisplayView::DEFAULT:
+	default:
+
+		break;
+	}
+}
+
+void RenderWindow::recreate_display_texture(DisplayView display_view)
+{
+	DisplayTextureType texture_type_needed;
+
+	switch (display_view)
+	{
+	case DisplayView::DISPLAY_NORMALS:
+	case DisplayView::DISPLAY_DENOISED_NORMALS:
+	case DisplayView::DISPLAY_ALBEDO:
+	case DisplayView::DISPLAY_DENOISED_ALBEDO:
+		texture_type_needed = DisplayTextureType::FLOAT3;
+		break;
+
+	case DisplayView::ADAPTATIVE_SAMPLING_MAP:
+		texture_type_needed = DisplayTextureType::INT;
+		break;
+
+	case DisplayView::DEFAULT:
+	default:
+		texture_type_needed = DisplayTextureType::FLOAT3;
+		break;
+	}
+
+	if (m_display_texture_type != texture_type_needed)
+		recreate_display_texture(texture_type_needed, m_viewport_width, m_viewport_height);
+}
+
+void RenderWindow::recreate_display_texture(DisplayTextureType texture_type, int width, int height)
+{
+	GLint internalFormat = texture_type.get_gl_internal_format();
+	GLenum format = texture_type.get_gl_format();
+	GLenum type = texture_type.get_gl_type();
+
+	glActiveTexture(GL_TEXTURE0 + RenderWindow::DISPLAY_TEXTURE_UNIT);
+	glBindTexture(GL_TEXTURE_2D, m_display_texture);
+	glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, m_viewport_width, m_viewport_height, 0, format, type, nullptr);
+	
+	m_display_texture_type = texture_type;
 }
 
 void RenderWindow::update_renderer_view_translation(float translation_x, float translation_y)
@@ -495,7 +572,7 @@ void RenderWindow::update_renderer_view_translation(float translation_x, float t
 	if (translation_x == 0.f && translation_y == 0.0f)
 		return;
 
-	reset_sample_number();
+	reset_render();
 
 	glm::vec3 translation = glm::vec3(translation_x / m_application_settings.view_translation_sldwn_x, translation_y / m_application_settings.view_translation_sldwn_y, 0.0f);
 	m_renderer.translate_camera_view(translation);
@@ -503,7 +580,7 @@ void RenderWindow::update_renderer_view_translation(float translation_x, float t
 
 void RenderWindow::update_renderer_view_rotation(float offset_x, float offset_y)
 {
-	reset_sample_number();
+	reset_render();
 
 	float rotation_x, rotation_y;
 
@@ -518,7 +595,7 @@ void RenderWindow::update_renderer_view_zoom(float offset)
 	if (offset == 0.0f)
 		return;
 
-	reset_sample_number();
+	reset_render();
 
 	m_renderer.zoom_camera_view(offset / m_application_settings.view_zoom_sldwn);
 }
@@ -530,24 +607,18 @@ void RenderWindow::increment_sample_number()
 	else
 		m_render_settings.sample_number += m_render_settings.samples_per_frame;
 
-	glUseProgram(m_display_program);
-	glUniform1i(glGetUniformLocation(m_display_program, "u_sample_number"), m_render_settings.sample_number);
+	m_active_display_program.use();
+	m_active_display_program.set_uniform("u_sample_number", m_render_settings.sample_number);
 }
 
-void RenderWindow::reset_sample_number()
+void RenderWindow::reset_render()
 {
 	m_startRenderTime = std::chrono::high_resolution_clock::now();
 	m_renderer.set_sample_number(0);
-
-	glUseProgram(m_display_program);
-	glUniform1i(glGetUniformLocation(m_display_program, "u_sample_number"), 0);
-
-	reset_frame_number();
-}
-
-void RenderWindow::reset_frame_number()
-{
 	m_render_settings.frame_number = 0;
+
+	m_active_display_program.use();
+	m_active_display_program.set_uniform("u_sample_number", 0);
 }
 
 Renderer& RenderWindow::get_renderer()
@@ -598,20 +669,12 @@ void RenderWindow::run()
 					m_application_settings.last_denoised_sample_count = m_render_settings.sample_number;
 				}
 			
-				DisplaySettings settings;
-				settings.display_normals = false;
-				settings.do_tonemapping = true;
-				settings.scale_by_frame_number = true;
-				settings.sample_count_override = m_application_settings.last_denoised_sample_count;
-
-				set_display_settings(settings);
-
 				display(m_denoiser.get_denoised_data_pointer());
 			}
 		}
 		else
 		{
-			switch (m_application_settings.debug_display_denoiser)
+			switch (m_application_settings.display_view)
 			{
 			case DisplayView::DISPLAY_NORMALS:
 				display(m_renderer.get_denoiser_normals_buffer().download_data().data());
@@ -631,7 +694,7 @@ void RenderWindow::run()
 				display(m_denoiser.get_denoised_albedo_pointer());
 				break;
 
-			case DisplayView::NONE:
+			case DisplayView::DEFAULT:
 			default:
 				display(m_renderer.get_color_framebuffer());
 				break;
@@ -660,29 +723,10 @@ bool RenderWindow::render()
 	return false;
 }
 
-DisplaySettings RenderWindow::get_display_settings()
-{
-	return m_display_settings;
-}
-
-void RenderWindow::set_display_settings(DisplaySettings settings)
-{
-	m_display_settings = settings;
-}
-
-void RenderWindow::setup_display_uniforms(GLuint program)
-{
-	glUseProgram(program);
-	glUniform1i(glGetUniformLocation(program, "u_display_normals"), m_display_settings.display_normals);
-	glUniform1i(glGetUniformLocation(program, "u_scale_by_frame_number"), m_display_settings.scale_by_frame_number);
-	glUniform1i(glGetUniformLocation(program, "u_do_tonemapping"), m_display_settings.do_tonemapping);
-	glUniform1i(glGetUniformLocation(program, "u_sample_count_override"), m_display_settings.sample_count_override);
-}
-
 void RenderWindow::display(const void* data)
 {
-	setup_display_uniforms(m_display_program);
-
+	m_active_display_program.use();
+	glActiveTexture(GL_TEXTURE0 + RenderWindow::DISPLAY_TEXTURE_UNIT);
 	glBindTexture(GL_TEXTURE_2D, m_display_texture);
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_renderer.m_render_width, m_renderer.m_render_height, GL_RGB, GL_FLOAT, data);
 
@@ -705,43 +749,9 @@ void RenderWindow::show_render_settings_panel()
 		render_dirty = true;
 	}
 
-	const char* items[] = { "Default", "Denoiser - Normals", "Denoiser - Denoised normals", "Denoiser - Albedo", "Denoiser - Denoised albedo" };
-	if (ImGui::Combo("Display View", (int*)(&m_application_settings.debug_display_denoiser), items, IM_ARRAYSIZE(items)))
-	{
-		DisplaySettings display_settings;
-
-		switch (m_application_settings.debug_display_denoiser)
-		{
-		case DisplayView::DISPLAY_NORMALS:
-		case DisplayView::DISPLAY_DENOISED_NORMALS:
-			display_settings.display_normals = true;
-			display_settings.do_tonemapping = false;
-			display_settings.scale_by_frame_number = false;
-			display_settings.sample_count_override = -1;
-
-			break;
-
-		case DisplayView::DISPLAY_ALBEDO:
-		case DisplayView::DISPLAY_DENOISED_ALBEDO:
-			display_settings.display_normals = false;
-			display_settings.do_tonemapping = false;
-			display_settings.scale_by_frame_number = false;
-			display_settings.sample_count_override = -1;
-
-			break;
-
-		case DisplayView::NONE:
-		default:
-			display_settings.display_normals = false;
-			display_settings.do_tonemapping = true;
-			display_settings.scale_by_frame_number = true;
-			display_settings.sample_count_override = -1;
-
-			break;
-		}
-
-		set_display_settings(display_settings);
-	}
+	const char* items[] = { "Default", "Denoiser - Normals", "Denoiser - Denoised normals", "Denoiser - Albedo", "Denoiser - Denoised albedo", "Adaptative sampling map"};
+	if (ImGui::Combo("Display View", (int*)(&m_application_settings.display_view), items, IM_ARRAYSIZE(items)))
+		select_display_program(m_application_settings.display_view);
 
 	if (m_application_settings.keep_same_resolution)
 		ImGui::BeginDisabled();
@@ -758,7 +768,6 @@ void RenderWindow::show_render_settings_panel()
 	if (m_application_settings.keep_same_resolution)
 		ImGui::EndDisabled();
 
-	// TODO for the denoising with normals / albedo, add imgui buttons to display normals / albedo buffer
 	if (ImGui::Checkbox("Keep same render resolution", &m_application_settings.keep_same_resolution))
 	{
 		if (m_application_settings.keep_same_resolution)
@@ -787,7 +796,7 @@ void RenderWindow::show_render_settings_panel()
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 	if (render_dirty)
-		reset_sample_number();
+		reset_render();
 }
 
 void RenderWindow::show_objects_panel()
@@ -850,7 +859,7 @@ void RenderWindow::show_objects_panel()
 		material.precompute_properties();
 
 		m_renderer.update_materials(materials);
-		reset_sample_number();
+		reset_render();
 	}
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -861,12 +870,7 @@ void RenderWindow::show_denoiser_panel()
 	if (!ImGui::CollapsingHeader("Denoiser"))
 		return;
 
-	if (ImGui::Checkbox("Enable denoiser", &m_application_settings.enable_denoising))
-		if (!m_application_settings.enable_denoising) // Denoising unchecked
-			// Making sure to reset the sample count override that may have been
-			// set when the denoising checkbox was checked
-			m_display_settings.sample_count_override = -1;
-
+	ImGui::Checkbox("Enable denoiser", &m_application_settings.enable_denoising);
 	ImGui::Checkbox("Only Denoise at Target Sample Count", &m_application_settings.denoise_at_target_sample_count);
 	if (m_application_settings.denoise_at_target_sample_count)
 	{
@@ -886,9 +890,9 @@ void RenderWindow::show_post_process_panel()
 		return;
 
 	if (ImGui::InputFloat("Gamma", &m_application_settings.tone_mapping_gamma))
-		glUniform1f(glGetUniformLocation(m_display_program, "u_gamma"), m_application_settings.tone_mapping_gamma);
+		m_active_display_program.set_uniform("u_gamma", m_application_settings.tone_mapping_gamma);
 	if (ImGui::InputFloat("Exposure", &m_application_settings.tone_mapping_exposure))
-		glUniform1f(glGetUniformLocation(m_display_program, "u_exposure"), m_application_settings.tone_mapping_exposure);
+		m_active_display_program.set_uniform("u_exposure", m_application_settings.tone_mapping_exposure);
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 }
@@ -933,7 +937,6 @@ void RenderWindow::quit()
 
 	glDeleteVertexArrays(1, &m_vao);
 	glDeleteTextures(1, &m_display_texture);
-	glDeleteProgram(m_display_program);
 
 	std::exit(0);
 }

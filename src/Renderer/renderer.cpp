@@ -86,8 +86,6 @@ HIPRTRenderData Renderer::get_render_data()
 	render_data.geom = m_hiprt_scene.geometry;
 
 	render_data.buffers.pixels = m_pixels_buffer.get_device_pointer();
-	render_data.buffers.denoiser_normals = m_normals_buffer.get_device_pointer();
-	render_data.buffers.denoiser_albedo = m_albedo_buffer.get_device_pointer();
 	render_data.buffers.triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.mesh.triangleIndices);
 	render_data.buffers.triangles_vertices = reinterpret_cast<float3*>(m_hiprt_scene.mesh.vertices);
 	render_data.buffers.normals_present = reinterpret_cast<unsigned char*>(m_hiprt_scene.normals_present);
@@ -96,6 +94,11 @@ HIPRTRenderData Renderer::get_render_data()
 	render_data.buffers.materials_buffer = reinterpret_cast<RendererMaterial*>(m_hiprt_scene.materials_buffer);
 	render_data.buffers.emissive_triangles_count = m_hiprt_scene.emissive_triangles_count;
 	render_data.buffers.emissive_triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.emissive_triangles_indices);
+
+	render_data.aux_buffers.denoiser_normals = m_normals_buffer.get_device_pointer();
+	render_data.aux_buffers.denoiser_albedo = m_albedo_buffer.get_device_pointer();
+	render_data.aux_buffers.pixel_sample_count = m_pixels_sample_count.get_device_pointer();
+	render_data.aux_buffers.pixel_squared_luminance = m_pixels_squared_luminance.get_device_pointer();
 
 	render_data.world_settings = m_world_settings;
 	render_data.render_settings = m_render_settings;
