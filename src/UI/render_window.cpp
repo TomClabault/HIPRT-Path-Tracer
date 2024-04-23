@@ -474,7 +474,7 @@ void RenderWindow::create_display_programs()
 	OpenGLShader fullscreen_quad_vertex_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/fullscreen_quad.vert", OpenGLShader::VERTEX_SHADER);
 	OpenGLShader normal_display_fragment_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/normal_display.frag", OpenGLShader::FRAGMENT_SHADER);
 	OpenGLShader albedo_display_fragment_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/albedo_display.frag", OpenGLShader::FRAGMENT_SHADER);
-	OpenGLShader adaptative_display_fragment_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/adaptative_sampling_heatmap.frag", OpenGLShader::FRAGMENT_SHADER);
+	OpenGLShader adaptative_display_fragment_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/heatmap_int.frag", OpenGLShader::FRAGMENT_SHADER);
 
 	m_normal_display_program.attach(fullscreen_quad_vertex_shader);
 	m_normal_display_program.attach(normal_display_fragment_shader);
