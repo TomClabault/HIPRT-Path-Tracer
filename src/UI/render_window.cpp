@@ -16,7 +16,6 @@
 // test performance when reducing number of triangles of the pbrt dragon
 
 // TODO bugs
-// - do tonemapping not working
 // - fix screenshot writer compute shader since OpenGL refactor
 // - anisotropic rotation brightness bugged ?
 // - Why is the rough dragon having black fringes even with normal flipping ?
@@ -594,7 +593,7 @@ void RenderWindow::update_active_program_uniforms()
 	case DisplayView::DEFAULT:
 		m_active_display_program.set_uniform("u_texture", RenderWindow::DISPLAY_TEXTURE_UNIT);
 		m_active_display_program.set_uniform("u_sample_number", m_render_settings.sample_number);
-		m_active_display_program.set_uniform("u_do_tonemapping", 1);
+		m_active_display_program.set_uniform("u_do_tonemapping", m_application_settings.do_tonemapping);
 		m_active_display_program.set_uniform("u_gamma", m_application_settings.tone_mapping_gamma);
 		m_active_display_program.set_uniform("u_exposure", m_application_settings.tone_mapping_exposure);
 
@@ -611,7 +610,7 @@ void RenderWindow::update_active_program_uniforms()
 	case DisplayView::DISPLAY_DENOISED_NORMALS:
 		m_active_display_program.set_uniform("u_texture", RenderWindow::DISPLAY_TEXTURE_UNIT);
 		m_active_display_program.set_uniform("u_sample_number", m_render_settings.sample_number);
-		m_active_display_program.set_uniform("u_do_tonemapping", 1);
+		m_active_display_program.set_uniform("u_do_tonemapping", m_application_settings.do_tonemapping);
 		m_active_display_program.set_uniform("u_gamma", m_application_settings.tone_mapping_gamma);
 		m_active_display_program.set_uniform("u_exposure", m_application_settings.tone_mapping_exposure);
 
