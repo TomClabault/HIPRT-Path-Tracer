@@ -99,13 +99,19 @@ public:
 
 private:
 	int m_viewport_width, m_viewport_height;
+	// Current mouse cursor position within the window. Used to compute mouse
+	// mouse delta movement by comparing the new mouse position with this variable
 	std::pair<float, float> m_cursor_position;
+	// Is the user interacting with the camera (rotating, zooming, ...)? 
 	bool m_interacting;
 
 	std::chrono::high_resolution_clock::time_point m_startRenderTime;
 
 	ApplicationSettings m_application_settings;
 
+	// Set to true if some settings of the render changed and we need
+	// to restart rendering from sample 0
+	bool m_render_dirty = false;
 	Renderer m_renderer;
 	HIPRTRenderSettings& m_render_settings;
 	OpenImageDenoiser m_denoiser;

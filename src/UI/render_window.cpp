@@ -16,6 +16,7 @@
 // test performance when reducing number of triangles of the pbrt dragon
 
 // TODO bugs
+// - do tonemapping not working
 // - fix screenshot writer compute shader since OpenGL refactor
 // - anisotropic rotation brightness bugged ?
 // - Why is the rough dragon having black fringes even with normal flipping ?
@@ -47,6 +48,7 @@
 
 
 // TODO Features:
+// - image comparator slider
 // - auto adaptative sample per frame with adaptative sampling to keep GPU busy
 // - Maybe look at better Disney sampling (luminance?)
 // - Imgui panel with a lot of performance metrics
@@ -413,7 +415,8 @@ void RenderWindow::resize_frame(int pixels_width, int pixels_height)
 		new_render_width, new_render_height);*/
 
 	recreate_display_texture(m_display_texture_type, new_render_width, new_render_height);
-	reset_render();
+
+	m_render_dirty = true;
 }
 
 void RenderWindow::change_resolution_scaling(float new_scaling)
@@ -446,7 +449,7 @@ void RenderWindow::set_interacting(bool is_interacting)
 {
 	// The user just released the camera and we were rendering at low resolution
 	if (!is_interacting && m_render_settings.render_low_resolution)
-		reset_render();
+		m_render_dirty = true;
 
 	m_render_settings.render_low_resolution = is_interacting;
 }
@@ -632,7 +635,7 @@ void RenderWindow::update_renderer_view_translation(float translation_x, float t
 	if (translation_x == 0.f && translation_y == 0.0f)
 		return;
 
-	reset_render();
+	m_render_dirty = true;
 
 	glm::vec3 translation = glm::vec3(translation_x / m_application_settings.view_translation_sldwn_x, translation_y / m_application_settings.view_translation_sldwn_y, 0.0f);
 	m_renderer.translate_camera_view(translation);
@@ -640,7 +643,7 @@ void RenderWindow::update_renderer_view_translation(float translation_x, float t
 
 void RenderWindow::update_renderer_view_rotation(float offset_x, float offset_y)
 {
-	reset_render();
+	m_render_dirty = true;
 
 	float rotation_x, rotation_y;
 
@@ -655,7 +658,7 @@ void RenderWindow::update_renderer_view_zoom(float offset)
 	if (offset == 0.0f)
 		return;
 
-	reset_render();
+	m_render_dirty = true;
 
 	m_renderer.zoom_camera_view(offset / m_application_settings.view_zoom_sldwn);
 }
@@ -679,6 +682,8 @@ void RenderWindow::reset_render()
 
 	m_active_display_program.use();
 	m_active_display_program.set_uniform("u_sample_number", 0);
+
+	m_render_dirty = false;
 }
 
 Renderer& RenderWindow::get_renderer()
@@ -700,6 +705,9 @@ void RenderWindow::run()
 {
 	while (!glfwWindowShouldClose(m_window))
 	{
+		if (m_render_dirty)
+			reset_render();
+
 		glfwPollEvents();
 		glClear(GL_COLOR_BUFFER_BIT);
 
@@ -811,13 +819,12 @@ void RenderWindow::show_render_settings_panel()
 {
 	if (!ImGui::CollapsingHeader("Render Settings"))
 		return;
-
-	bool render_dirty = false;
+	ImGui::TreePush("Render settings tree");
 
 	if (ImGui::Combo("Render Kernel", &m_application_settings.selected_kernel, "Full Path Tracer\0Normals Visualisation\0\0"))
 	{
 		m_renderer.compile_trace_kernel(m_application_settings.kernel_files[m_application_settings.selected_kernel].c_str(), m_application_settings.kernel_functions[m_application_settings.selected_kernel].c_str());
-		render_dirty = true;
+		m_render_dirty = true;
 	}
 
 	const char* items[] = { "Default", "Denoiser - Normals", "Denoiser - Denoised normals", "Denoiser - Albedo", "Denoiser - Denoised albedo", "Adaptative sampling map"};
@@ -834,7 +841,7 @@ void RenderWindow::show_render_settings_panel()
 			resolution_scale = resolution_scaling_backup;
 
 		change_resolution_scaling(resolution_scale);
-		render_dirty = true;
+		m_render_dirty = true;
 	}
 	if (m_application_settings.keep_same_resolution)
 		ImGui::EndDisabled();
@@ -858,30 +865,43 @@ void RenderWindow::show_render_settings_panel()
 	{
 		// Clamping to 0 in case the user input a negative number of bounces	
 		m_render_settings.nb_bounces = std::max(m_render_settings.nb_bounces, 0); 
-		render_dirty = true;
+		m_render_dirty = true;
 	}
 
 	if (ImGui::CollapsingHeader("Adaptive sampling"))
 	{
+		ImGui::TreePush("Adaptive sampling tree");
+
 		ImGui::Checkbox("Enable adaptive sampling", &m_render_settings.enable_adaptive_sampling);
-		if (ImGui::InputInt("Adaptive sampling min samples", &m_render_settings.adaptive_sampling_min_samples))
+		m_render_dirty |= ImGui::InputInt("Adaptive sampling minimum samples", &m_render_settings.adaptive_sampling_min_samples);
 		if (ImGui::InputFloat("Adaptive sampling noise threshold", &m_render_settings.adaptive_sampling_noise_threshold))
+		{
 			m_render_settings.adaptive_sampling_noise_threshold = std::max(0.0f, m_render_settings.adaptive_sampling_noise_threshold);
+			m_render_dirty = true;
+		}
+
+		ImGui::TreePop();
 	}
 
-	render_dirty |= ImGui::Checkbox("Use ambient light", &m_renderer.get_world_settings().use_ambient_light);
-	render_dirty |= ImGui::ColorEdit3("Ambient light color", (float*)&m_renderer.get_world_settings().ambient_light_color, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
+	if (ImGui::CollapsingHeader("Lighting"))
+	{
+		ImGui::TreePush("Lighting tree");
 
+		m_render_dirty |= ImGui::Checkbox("Use ambient light", &m_renderer.get_world_settings().use_ambient_light);
+		m_render_dirty |= ImGui::ColorEdit3("Ambient light color", (float*)&m_renderer.get_world_settings().ambient_light_color, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
+
+		ImGui::TreePop();
+	}
+
+	ImGui::TreePop();
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
-	if (render_dirty)
-		reset_render();
 }
 
 void RenderWindow::show_objects_panel()
 {
 	if (!ImGui::CollapsingHeader("Objects"))
 		return;
+	ImGui::TreePush("Objects tree");
 
 	std::vector<RendererMaterial> materials = m_renderer.get_materials();
 
@@ -938,9 +958,10 @@ void RenderWindow::show_objects_panel()
 		material.precompute_properties();
 
 		m_renderer.update_materials(materials);
-		reset_render();
+		m_render_dirty = true;
 	}
 
+	ImGui::TreePop();
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 }
 
@@ -948,6 +969,7 @@ void RenderWindow::show_denoiser_panel()
 {
 	if (!ImGui::CollapsingHeader("Denoiser"))
 		return;
+	ImGui::TreePush("Denoiser tree");
 
 	ImGui::Checkbox("Enable denoiser", &m_application_settings.enable_denoising);
 	ImGui::Checkbox("Only Denoise at Target Sample Count", &m_application_settings.denoise_at_target_sample_count);
@@ -960,6 +982,7 @@ void RenderWindow::show_denoiser_panel()
 	else
 		ImGui::SliderInt("Denoise Sample Skip", &m_application_settings.denoiser_sample_skip, 1, 128);
 
+	ImGui::TreePop();
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 }
 
@@ -967,6 +990,7 @@ void RenderWindow::show_post_process_panel()
 {
 	if (!ImGui::CollapsingHeader("Post-processing"))
 		return;
+	ImGui::TreePush("Post-processing tree");
 
 	if (ImGui::Checkbox("Do tonemapping", &m_application_settings.do_tonemapping))
 		m_active_display_program.set_uniform("ud_o_tonemapping", m_application_settings.do_tonemapping);
@@ -975,6 +999,7 @@ void RenderWindow::show_post_process_panel()
 	if (ImGui::InputFloat("Exposure", &m_application_settings.tone_mapping_exposure))
 		m_active_display_program.set_uniform("u_exposure", m_application_settings.tone_mapping_exposure);
 
+	ImGui::TreePop();
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 }
 
