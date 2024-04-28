@@ -82,7 +82,13 @@ void OpenGLProgram::set_uniform(const char* name, const float3& value)
 	glUniform3f(glGetUniformLocation(m_program, name), value.x, value.y, value.z);
 }
 
+void OpenGLProgram::set_uniform(const char* name, int count, const float* values)
+{
+	glUniform3fv(glGetUniformLocation(m_program, name), count, values);
+}
+
 void OpenGLProgram::set_uniform(const char* name, const float4& value)
 {
 	glUniform4f(glGetUniformLocation(m_program, name), value.x, value.y, value.z, value.w);
 }
+

@@ -12,7 +12,7 @@ struct ImageBin
 class Image
 {
 public:
-    Image() {}
+    Image() : width(0), height(0) {}
     Image(int width, int height) : width(width), height(height), m_pixel_data(width* height) {}
     Image(ColorRGB* data, int width, int height);
     Image(const std::vector<ColorRGB>& data, int width, int height) : width(width), height(height), m_pixel_data(data) {}

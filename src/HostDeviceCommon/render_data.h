@@ -30,10 +30,21 @@ struct HIPRTRenderSettings
 	// render the image at a much lower resolution to allow for smooth camera
 	// movements
 	bool render_low_resolution = false;
+
+	bool enable_adaptive_sampling = true;
+	// How many samples before the adaptive sampling actually kicks in.
+	// This is useful mainly for the per-pixel adaptive sampling method
+	// where you want to be sure that each pixel in the image has had enough
+	// chance find a path to a potentially 
+	int adaptive_sampling_min_samples = 64;
+	// Adaptive sampling noise threshold
+	float adaptive_sampling_noise_threshold = 0.1f;
 };
 
 struct WorldBuffers
 {
+	// Sum of samples color per pixel. Should not be
+	// pre-divided by the number of samples
 	ColorRGB* pixels = nullptr;
 
 	// A device pointer to the buffer of triangles indices
@@ -59,15 +70,22 @@ struct WorldBuffers
 
 struct AuxiliaryBuffers
 {
-	// World space normals and albedo for the denoiser
+	int* debug_pixel_active = nullptr;
+
+	// World space normals for the denoiser
+	// These normals should already be divided by the number of samples
 	float3* denoiser_normals = nullptr;
+
+	// Albedo for the denoiser
+	// The albedo should already be divided by the number of samples
 	ColorRGB* denoiser_albedo = nullptr;
 
 	// Per pixel sample count. Useful when doing adaptative sampling
 	// where each pixel can have a different number of sample
 	int* pixel_sample_count;
 
-	// Per pixel luminance variance used for adaptative sampling
+	// Per pixel sum of squared luminance of samples. Used for adaptative sampling
+	// This buffer should not be pre-divided by the number of samples
 	float* pixel_squared_luminance;
 };
 

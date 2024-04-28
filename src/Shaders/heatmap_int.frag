@@ -1,12 +1,12 @@
 #version 430
 
 // This is a 'scalar' texture, containing data only in the red channel
-uniform sampler2D u_texture;
+uniform isampler2D u_texture;
 
 // This shader supports up to 16 color stops. This doesn't mean that
 // the user has to provide 16 stops. The user only provides X stops as
 // indicated by u_nb_stops
-uniform vec4 u_color_stops[16];
+uniform vec3 u_color_stops[16];
 uniform int u_nb_stops;
 
 uniform float u_min_val;
@@ -41,5 +41,5 @@ void main()
 	// out_color = stop2 * (1.0f - 0.37) + stop3 * 0.37 
 	//
 	// which is more of stop2 than stop3
-	out_color = u_color_stops[low_stop] * (1.0f - fraction) + u_color_stops[high_stop] * fraction;
+	out_color = vec4(u_color_stops[low_stop] * (1.0f - fraction) + u_color_stops[high_stop] * fraction, 1.0f);
 };

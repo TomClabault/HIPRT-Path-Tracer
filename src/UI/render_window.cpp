@@ -20,6 +20,11 @@
 // - anisotropic rotation brightness bugged ?
 // - Why is the rough dragon having black fringes even with normal flipping ?
 // - normals AOV not converging correctly ?
+//		- for the denoiser normals convergence issue, is it an error at the end of the Path Tracer kernel where we're accumulating ? Should we have
+//		render_data.aux_buffers.denoiser_albedo[index] * render_data.render_settings.sample_number 
+//		instead of 
+//		render_data.aux_buffers.denoiser_albedo[index] * render_data.render_settings.frame_number
+//		?
 // - denoiser not accounting for tranmission correctly since Disney 
 // - aspect ratio issue on CPU or GPU ?
 
@@ -474,9 +479,14 @@ void RenderWindow::create_display_programs()
 	glCreateVertexArrays(1, &m_vao);
 
 	OpenGLShader fullscreen_quad_vertex_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/fullscreen_quad.vert", OpenGLShader::VERTEX_SHADER);
+	OpenGLShader default_display_fragment_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/default_display.frag", OpenGLShader::FRAGMENT_SHADER);
 	OpenGLShader normal_display_fragment_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/normal_display.frag", OpenGLShader::FRAGMENT_SHADER);
 	OpenGLShader albedo_display_fragment_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/albedo_display.frag", OpenGLShader::FRAGMENT_SHADER);
 	OpenGLShader adaptative_display_fragment_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/heatmap_int.frag", OpenGLShader::FRAGMENT_SHADER);
+
+	m_default_display_program.attach(fullscreen_quad_vertex_shader);
+	m_default_display_program.attach(default_display_fragment_shader);
+	m_default_display_program.link();
 
 	m_normal_display_program.attach(fullscreen_quad_vertex_shader);
 	m_normal_display_program.attach(normal_display_fragment_shader);
@@ -490,25 +500,17 @@ void RenderWindow::create_display_programs()
 	m_adaptative_sampling_display_program.attach(adaptative_display_fragment_shader);
 	m_adaptative_sampling_display_program.link();
 
-	m_active_display_program = m_normal_display_program;
-	m_active_display_program.use();
-	m_active_display_program.set_uniform("u_texture", RenderWindow::DISPLAY_TEXTURE_UNIT);
-	m_active_display_program.set_uniform("u_do_tonemapping", 1);
-	m_active_display_program.set_uniform("u_sample_number", 0);
-	m_active_display_program.set_uniform("u_gamma", m_application_settings.tone_mapping_gamma);
-	m_active_display_program.set_uniform("u_exposure", m_application_settings.tone_mapping_exposure);
+	select_display_program(m_application_settings.display_view);
 }
 
 void RenderWindow::select_display_program(DisplayView display_view)
 {
-	set_display_program(display_view);
-	recreate_display_texture(display_view);
-}
-
-void RenderWindow::set_display_program(DisplayView display_view)
-{
 	switch (display_view)
 	{
+	case DisplayView::DEFAULT:
+		m_active_display_program = m_default_display_program;
+		break;
+
 	case DisplayView::DISPLAY_NORMALS:
 	case DisplayView::DISPLAY_DENOISED_NORMALS:
 		m_active_display_program = m_normal_display_program;
@@ -523,11 +525,13 @@ void RenderWindow::set_display_program(DisplayView display_view)
 		m_active_display_program = m_adaptative_sampling_display_program;
 		break;
 
-	case DisplayView::DEFAULT:
+
 	default:
 
 		break;
 	}
+
+	recreate_display_texture(display_view);
 }
 
 void RenderWindow::recreate_display_texture(DisplayView display_view)
@@ -559,15 +563,68 @@ void RenderWindow::recreate_display_texture(DisplayView display_view)
 
 void RenderWindow::recreate_display_texture(DisplayTextureType texture_type, int width, int height)
 {
-	GLint internalFormat = texture_type.get_gl_internal_format();
+	GLint internal_format = texture_type.get_gl_internal_format();
 	GLenum format = texture_type.get_gl_format();
 	GLenum type = texture_type.get_gl_type();
 
 	glActiveTexture(GL_TEXTURE0 + RenderWindow::DISPLAY_TEXTURE_UNIT);
 	glBindTexture(GL_TEXTURE_2D, m_display_texture);
-	glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, m_renderer.m_render_width, m_renderer.m_render_height, 0, format, type, nullptr);
+	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+	glTexImage2D(GL_TEXTURE_2D, 0, internal_format, m_renderer.m_render_width, m_renderer.m_render_height, 0, format, type, nullptr);
 	
 	m_display_texture_type = texture_type;
+}
+
+void RenderWindow::upload_data_to_display_texture(const void* data, GLenum format, GLenum type)
+{
+	glActiveTexture(GL_TEXTURE0 + RenderWindow::DISPLAY_TEXTURE_UNIT);
+	glBindTexture(GL_TEXTURE_2D, m_display_texture);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_renderer.m_render_width, m_renderer.m_render_height, format, type, data);
+}
+
+void RenderWindow::update_active_program_uniforms()
+{
+	m_active_display_program.use();
+
+	switch (m_application_settings.display_view)
+	{
+	case DisplayView::DEFAULT:
+		m_active_display_program.set_uniform("u_texture", RenderWindow::DISPLAY_TEXTURE_UNIT);
+		m_active_display_program.set_uniform("u_sample_number", m_render_settings.sample_number);
+		m_active_display_program.set_uniform("u_do_tonemapping", 1);
+		m_active_display_program.set_uniform("u_gamma", m_application_settings.tone_mapping_gamma);
+		m_active_display_program.set_uniform("u_exposure", m_application_settings.tone_mapping_exposure);
+
+		break;
+
+	case DisplayView::DISPLAY_ALBEDO:
+	case DisplayView::DISPLAY_DENOISED_ALBEDO:
+		m_active_display_program.set_uniform("u_texture", RenderWindow::DISPLAY_TEXTURE_UNIT);
+		m_active_display_program.set_uniform("u_sample_number", m_render_settings.sample_number);
+
+		break;
+
+	case DisplayView::DISPLAY_NORMALS:
+	case DisplayView::DISPLAY_DENOISED_NORMALS:
+		m_active_display_program.set_uniform("u_texture", RenderWindow::DISPLAY_TEXTURE_UNIT);
+		m_active_display_program.set_uniform("u_sample_number", m_render_settings.sample_number);
+		m_active_display_program.set_uniform("u_do_tonemapping", 1);
+		m_active_display_program.set_uniform("u_gamma", m_application_settings.tone_mapping_gamma);
+		m_active_display_program.set_uniform("u_exposure", m_application_settings.tone_mapping_exposure);
+
+		break;
+
+	case DisplayView::ADAPTATIVE_SAMPLING_MAP:
+		std::vector<ColorRGB> color_stops = { ColorRGB(0.0f, 0.0f, 1.0f), ColorRGB(0.0f, 1.0f, 0.0f), ColorRGB(1.0f, 0.0f, 0.0f) };
+
+		m_active_display_program.set_uniform("u_texture", RenderWindow::DISPLAY_TEXTURE_UNIT);
+		m_active_display_program.set_uniform("u_color_stops", 3, (float*)color_stops.data());
+		m_active_display_program.set_uniform("u_nb_stops", 2);
+		m_active_display_program.set_uniform("u_min_val", 1.0f);
+		m_active_display_program.set_uniform("u_max_val", (float)m_render_settings.sample_number);
+
+		break;
+	}
 }
 
 void RenderWindow::update_renderer_view_translation(float translation_x, float translation_y)
@@ -677,6 +734,11 @@ void RenderWindow::run()
 		}
 		else
 		{
+			// TODO
+			// NOTE that we're not using any OpenGL interop here yet and we're going through the
+			// CPU to display the various buffers because Orochi doesn't support OpenGL Interop for
+			// NVIDIA yet and we don't want to have a lot of dirty expection cases. We'll just wait
+			// for OpenGL interop to be supported on NVIDIA
 			switch (m_application_settings.display_view)
 			{
 			case DisplayView::DISPLAY_NORMALS:
@@ -695,6 +757,11 @@ void RenderWindow::run()
 			case DisplayView::DISPLAY_DENOISED_ALBEDO:
 				m_denoiser.denoise_albedo();
 				display(m_denoiser.get_denoised_albedo_pointer());
+				break;
+
+			case DisplayView::ADAPTATIVE_SAMPLING_MAP:
+				//display(m_renderer.get_pixels_sample_count_buffer().download_data().data());
+				display(m_renderer.get_debug_pixel_active_buffer().download_data().data());
 				break;
 
 			case DisplayView::DEFAULT:
@@ -728,10 +795,11 @@ bool RenderWindow::render()
 
 void RenderWindow::display(const void* data)
 {
-	m_active_display_program.use();
-	glActiveTexture(GL_TEXTURE0 + RenderWindow::DISPLAY_TEXTURE_UNIT);
-	glBindTexture(GL_TEXTURE_2D, m_display_texture);
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_renderer.m_render_width, m_renderer.m_render_height, GL_RGB, GL_FLOAT, data);
+	GLenum format = m_display_texture_type.get_gl_format();
+	GLenum type = m_display_texture_type.get_gl_type();
+	upload_data_to_display_texture(data, format, type);
+
+	update_active_program_uniforms();
 
 	// Binding an empty VAO here (empty because we're hardcoding our full-screen quad vertices
 	// in our vertex shader) because this is required on NVIDIA drivers
@@ -791,6 +859,14 @@ void RenderWindow::show_render_settings_panel()
 		// Clamping to 0 in case the user input a negative number of bounces	
 		m_render_settings.nb_bounces = std::max(m_render_settings.nb_bounces, 0); 
 		render_dirty = true;
+	}
+
+	if (ImGui::CollapsingHeader("Adaptive sampling"))
+	{
+		ImGui::Checkbox("Enable adaptive sampling", &m_render_settings.enable_adaptive_sampling);
+		if (ImGui::InputInt("Adaptive sampling min samples", &m_render_settings.adaptive_sampling_min_samples))
+		if (ImGui::InputFloat("Adaptive sampling noise threshold", &m_render_settings.adaptive_sampling_noise_threshold))
+			m_render_settings.adaptive_sampling_noise_threshold = std::max(0.0f, m_render_settings.adaptive_sampling_noise_threshold);
 	}
 
 	render_dirty |= ImGui::Checkbox("Use ambient light", &m_renderer.get_world_settings().use_ambient_light);

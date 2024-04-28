@@ -3,12 +3,17 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
+#ifndef OPENGL_INTEROP_BUFFER_H
+#define OPENGL_INTEROP_BUFFER_H
+
 #include "GL/glew.h"
 #include "GLFW/glfw3.h"
 #include "Orochi/Orochi.h"
+#include "UI/DisplayTextureType.h"
 
 // TODO this class uses HIP for the registering / mapping because Orochi doesn't have opengl interop yet ?
-// we should be using Orochi here instead of HIP
+// we should be using Orochi here instead of HIP because this is not NVIDIA friendly since we would have to
+// link with HIP during the compilation. That's why NVIDIA OpenGL interop is disabled for now
 template <typename T>
 class OpenGLInteropBuffer
 {
@@ -27,6 +32,8 @@ public:
 	T* get_device_pointer();
 	T* map();
 	void unmap();
+
+	void unpack_to_texture(GLuint texture, GLint texture_unit, int width, int height, DisplayTextureType texture_type);
 
 private:
 	bool m_initialized = false;
@@ -125,6 +132,19 @@ void OpenGLInteropBuffer<T>::unmap()
 	m_mapped_pointer = nullptr;
 }
 
+template<typename T>
+void OpenGLInteropBuffer<T>::unpack_to_texture(GLuint texture, GLint texture_unit, int width, int height, DisplayTextureType texture_type)
+{
+	GLenum format = texture_type.get_gl_format();
+	GLenum type = texture_type.get_gl_type();
+
+	glActiveTexture(texture_unit);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, get_opengl_buffer());
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, format, type, 0);
+	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+}
+
 template <typename T>
 OpenGLInteropBuffer<T>::~OpenGLInteropBuffer()
 {
@@ -138,3 +158,5 @@ OpenGLInteropBuffer<T>::~OpenGLInteropBuffer()
 		OROCHI_CHECK_ERROR(oroGraphicsUnregisterResource(m_buffer_resource));
 	}
 }
+
+#endif

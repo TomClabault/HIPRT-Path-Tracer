@@ -197,6 +197,23 @@ unsigned int wang_hash(unsigned int seed)
 
 void RenderKernel::ray_trace_pixel(int x, int y)
 {
+    int index = x + y * m_framebuffer_width;
+
+    int pixel_sample_count = m_pixels_sample_count[index];
+    if (pixel_sample_count > 128)
+    {
+        // Waiting for at least 16 samples to enable adaptative sampling
+        float luminance = m_frame_buffer[index].luminance();
+        float average_luminance = luminance / (pixel_sample_count + 1);
+        float squared_luminance = m_pixels_squared_luminance[index];
+
+        float pixel_variance = (squared_luminance - luminance * average_luminance) / (pixel_sample_count);
+
+        bool pixel_needs_sampling = 1.96f * sqrt(pixel_variance) / sqrt(pixel_sample_count + 1) > 0.02f * average_luminance;
+        if (!pixel_needs_sampling)
+            return;
+    }
+
     Xorshift32Generator random_number_generator(wang_hash(((x + y * m_framebuffer_width) + 1) * (m_render_samples + 1)));
 
     ColorRGB final_color = ColorRGB(0.0f, 0.0f, 0.0f);
@@ -228,8 +245,8 @@ void RenderKernel::ray_trace_pixel(int x, int y)
                     last_brdf_hit_type = material.brdf_type;
 
                     // For the BRDF calculations, bounces, ... to be correct, we need the normal to be in the same hemisphere as
-                    // the view direction. One thing that can go wrong is when we have an emissive quad (typical area light)
-                    // and a ray hits the back of the quad. The normal will not be facing the view direction in this
+                    // the view direction. One thing that can go wrong is when we have an emissive triangle (typical area light)
+                    // and a ray hits the back of the triangle. The normal will not be facing the view direction in this
                     // case and this will cause issues later in the BRDF.
                     // Because we want to allow backfacing emissive geometry (making the emissive geometry double sided
                     // and emitting light in both directions of the surface), we're negating the normal to make
@@ -307,18 +324,18 @@ void RenderKernel::ray_trace_pixel(int x, int y)
     }
 
     final_color /= m_render_samples;
-    m_frame_buffer[y * m_framebuffer_width + x] += final_color;
+    m_frame_buffer[index] += final_color;
 
     const float gamma = 2.2f;
     const float exposure = 1.0f;
-    ColorRGB hdrColor = m_frame_buffer[y * m_framebuffer_width + x];
+    ColorRGB hdrColor = m_frame_buffer[index];
 
     //Exposure tone mapping
     ColorRGB tone_mapped = ColorRGB(1.0f, 1.0f, 1.0f) - exp(-hdrColor * exposure);
     // Gamma correction
     ColorRGB gamma_corrected = pow(tone_mapped, 1.0f / gamma);
 
-    m_frame_buffer[y * m_framebuffer_width + x] = gamma_corrected;
+    m_frame_buffer[index] = gamma_corrected;
 }
 
 #include <atomic>

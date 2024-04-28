@@ -44,7 +44,7 @@ public:
 			return GL_RGB;
 
 		case DisplayTextureType::INT:
-			return GL_RED;
+			return GL_RED_INTEGER;
 
 		default:
 			throw std::runtime_error("Invalid value of DisplayTextureType");

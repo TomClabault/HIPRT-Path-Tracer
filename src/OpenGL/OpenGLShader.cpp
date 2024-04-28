@@ -67,7 +67,7 @@ OpenGLShader::ShaderType OpenGLShader::get_shader_type() const
 	return m_shader_type;
 }
 
-bool OpenGLShader::compile()
+void OpenGLShader::compile()
 {
 	const char* vertex_shader_text = m_source_code.c_str();
 

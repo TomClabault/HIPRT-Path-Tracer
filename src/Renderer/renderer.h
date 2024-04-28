@@ -51,6 +51,9 @@ public:
 	InteropBufferType<ColorRGB>& get_color_framebuffer();
 	OrochiBuffer<ColorRGB>& get_denoiser_albedo_buffer();
 	OrochiBuffer<hiprtFloat3>& get_denoiser_normals_buffer();
+	OrochiBuffer<int>& get_pixels_sample_count_buffer();
+
+	OrochiBuffer<int>& get_debug_pixel_active_buffer();
 
 	HIPRTRenderSettings& get_render_settings();
 	WorldSettings& get_world_settings();
@@ -78,6 +81,8 @@ public:
 
 private:
 	void set_hiprt_scene_from_scene(Scene& scene);
+
+	OrochiBuffer<int> m_debug_pixel_active;
 
 	// This buffer holds the * sum * of the samples computed
 	// This is an accumulation buffer. This needs to be divided by the

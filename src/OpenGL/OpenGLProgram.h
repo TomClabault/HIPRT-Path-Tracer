@@ -28,6 +28,7 @@ public:
 	void set_uniform(const char* name, float value);
 	void set_uniform(const char* name, const float2& value);
 	void set_uniform(const char* name, const float3& value);
+	void set_uniform(const char* name, int count, const float* values);
 	void set_uniform(const char* name, const float4& value);
 
 private:

@@ -37,6 +37,7 @@ void Renderer::change_render_resolution(int new_width, int new_height)
 
 	m_pixels_sample_count.resize(new_width * new_height);
 	m_pixels_squared_luminance.resize(new_width * new_height);
+	m_debug_pixel_active.resize(new_width * new_height);
 
 	// Recomputing the perspective projection matrix since the aspect ratio
 	// may have changed
@@ -57,6 +58,16 @@ OrochiBuffer<ColorRGB>& Renderer::get_denoiser_albedo_buffer()
 OrochiBuffer<float3>& Renderer::get_denoiser_normals_buffer()
 {
 	return m_normals_buffer;
+}
+
+OrochiBuffer<int>& Renderer::get_debug_pixel_active_buffer()
+{
+	return m_debug_pixel_active;
+}
+
+OrochiBuffer<int>& Renderer::get_pixels_sample_count_buffer()
+{
+	return m_pixels_sample_count;
 }
 
 HIPRTRenderSettings& Renderer::get_render_settings()
@@ -95,6 +106,7 @@ HIPRTRenderData Renderer::get_render_data()
 	render_data.buffers.emissive_triangles_count = m_hiprt_scene.emissive_triangles_count;
 	render_data.buffers.emissive_triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.emissive_triangles_indices);
 
+	render_data.aux_buffers.debug_pixel_active = m_debug_pixel_active.get_device_pointer();
 	render_data.aux_buffers.denoiser_normals = m_normals_buffer.get_device_pointer();
 	render_data.aux_buffers.denoiser_albedo = m_albedo_buffer.get_device_pointer();
 	render_data.aux_buffers.pixel_sample_count = m_pixels_sample_count.get_device_pointer();

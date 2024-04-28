@@ -425,6 +425,35 @@ __device__ void debug_set_final_color(const HIPRTRenderData& render_data, int x,
         render_data.buffers.pixels[y * res_x + x] = render_data.buffers.pixels[y * res_x + x] + final_color;
 }
 
+__device__ bool adaptive_sampling(const HIPRTRenderData& render_data, int pixel_index)
+{
+    int& pixel_sample_count = render_data.aux_buffers.pixel_sample_count[pixel_index];
+    if (pixel_sample_count == -1)
+        // Pixel is deactivated
+        return false;
+
+    if (pixel_sample_count > render_data.render_settings.adaptive_sampling_min_samples)
+    {
+        // Waiting for at least 16 samples to enable adaptative sampling
+        float luminance = render_data.buffers.pixels[pixel_index].luminance();
+        float average_luminance = luminance / (pixel_sample_count + 1);
+        float squared_luminance = render_data.aux_buffers.pixel_squared_luminance[pixel_index];
+
+        float pixel_variance = (squared_luminance - luminance * average_luminance) / (pixel_sample_count);
+
+        bool pixel_needs_sampling = 1.96f * sqrt(pixel_variance) / sqrt(pixel_sample_count + 1) > render_data.render_settings.adaptive_sampling_noise_threshold * average_luminance;
+        if (!pixel_needs_sampling)
+        {
+            // Indicates no need to sample anymore
+            pixel_sample_count = -1;
+
+            return false;
+        }
+    }
+
+    return true;
+}
+
 #define LOW_RESOLUTION_RENDER_DOWNSCALE 8
 GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderData render_data, int2 res, HIPRTCamera camera)
 {
@@ -452,6 +481,7 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
 
     if (render_data.render_settings.sample_number == 0)
     {
+        // Resetting all buffers on the first frame
         render_data.buffers.pixels[index] = ColorRGB(0.0f);
         render_data.aux_buffers.denoiser_normals[index] = make_float3(1.0f, 1.0f, 1.0f);
         render_data.aux_buffers.denoiser_albedo[index] = ColorRGB(0.0f, 0.0f, 0.0f);
@@ -459,24 +489,24 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
         render_data.aux_buffers.pixel_squared_luminance[index] = 0;
     }
 
-    if (render_data.render_settings.sample_number > 15)
+    bool sampling_needed = true;
+    if (render_data.render_settings.enable_adaptive_sampling)
+        sampling_needed = adaptive_sampling(render_data, index);
+
+    if (!sampling_needed)
     {
-        // Waiting for at least 16 samples to enable adaptative sampling
-        float luminance = render_data.buffers.pixels[index].luminance();
-        float average_luminance = luminance / render_data.render_settings.sample_number;
-        float squared_luminance = render_data.aux_buffers.pixel_squared_luminance[index];
-
-        // Note that we have squared_luminance and luminance * luminance (luminance * average_luminance 
-        // basically hides a luminance * luminance). Those are different
-        // because squared_luminance is the sum of the squares of all the samples seen so far
-        // whereas luminance * luminance is the (luminance of all samples seen so far)^2
-        // Said otherwise, this is sum of squares (squared_luminance) vs. square of sums (luminance * luminance)
-        float pixel_variance = 1.0f / (render_data.render_settings.sample_number - 1) * (squared_luminance - (luminance * average_luminance));
-
-        bool pixel_needs_sampling = 1.96f * sqrt(pixel_variance) / sqrt(render_data.render_settings.sample_number) < 0.02f * average_luminance;
-        if (!pixel_needs_sampling)
-            return;
+        // Because when displaying the framebuffer, we're dividing by the number of samples to 
+        // rescale the color of a pixel, we're going to have a problem if some pixels stopped samping
+        // at 10 samples while the other pixels are still being sampled and have 100 samples for example. 
+        // The pixels that only received 10 samples are going to be divided by 100 at display time, making them
+        // appear too dark.
+        // We're rescaling the color of the pixels that stopped sampling here for correct display
+        render_data.buffers.pixels[index] = render_data.buffers.pixels[index] / render_data.render_settings.sample_number * (render_data.render_settings.sample_number + render_data.render_settings.samples_per_frame);
+        render_data.aux_buffers.debug_pixel_active[index] = 0;
+        return;
     }
+    else
+        render_data.aux_buffers.debug_pixel_active[index] = render_data.render_settings.sample_number;
 
     Xorshift32Generator random_number_generator(wang_hash((index + 1) * (render_data.render_settings.sample_number + 1)));
 
@@ -526,8 +556,8 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
                     last_brdf_hit_type = material.brdf_type;
 
                     // For the BRDF calculations, bounces, ... to be correct, we need the normal to be in the same hemisphere as
-                    // the view direction. One thing that can go wrong is when we have an emissive quad (typical area light)
-                    // and a ray hits the back of the quad. The normal will not be facing the view direction in this
+                    // the view direction. One thing that can go wrong is when we have an emissive triangle (typical area light)
+                    // and a ray hits the back of the triangle. The normal will not be facing the view direction in this
                     // case and this will cause issues later in the BRDF.
                     // Because we want to allow backfacing emissive geometry (making the emissive geometry double sided
                     // and emitting light in both directions of the surface), we're negating the normal to make
@@ -626,26 +656,27 @@ GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(hiprtGeometry geom, HIPRTRenderDa
             return;
         }
 
-        squared_luminance_of_samples += sample_color.luminance();
+        squared_luminance_of_samples += sample_color.luminance() * sample_color.luminance();
         final_color += sample_color;
     }
 
     render_data.buffers.pixels[index] += final_color;
     render_data.aux_buffers.pixel_squared_luminance[index] += squared_luminance_of_samples;
-    render_data.aux_buffers.pixel_sample_count[index] += render_data.render_settings.sample_number;
+    render_data.aux_buffers.pixel_sample_count[index] += render_data.render_settings.samples_per_frame;
 
     // Handling denoiser's albedo and normals AOVs    
-    // We don't need those when rendering at low resolution
-    // hence why this is the else branch
     denoiser_albedo /= (float)render_data.render_settings.samples_per_frame;
     denoiser_normal /= (float)render_data.render_settings.samples_per_frame;
+
     render_data.aux_buffers.denoiser_albedo[index] = (render_data.aux_buffers.denoiser_albedo[index] * render_data.render_settings.frame_number + denoiser_albedo) / (render_data.render_settings.frame_number + 1.0f);
 
     float3 accumulated_normal = (render_data.aux_buffers.denoiser_normals[index] * render_data.render_settings.frame_number + denoiser_normal) / (render_data.render_settings.frame_number + 1.0f);
     float normal_length = hiprtpt::length(accumulated_normal);
     if (normal_length != 0.0f)
-        render_data.aux_buffers.denoiser_normals[index] = hiprtpt::normalize(accumulated_normal);
+        // Checking that it is non-zero otherwise we would accumulate a persistent NaN in the buffer when normalizing by the 0-length
+        render_data.aux_buffers.denoiser_normals[index] = accumulated_normal / normal_length;
 
+    // TODO have that in the display shader
     // Handling low resolution render
     // The framebuffer actually still is at full resolution, it's just that we cast
     // 1 ray every 4, 8 or 16 pixels (depending on the low resolution factor)

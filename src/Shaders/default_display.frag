@@ -15,8 +15,8 @@ void main()
 	vec4 hdr_color = texture(u_texture, vs_tex_coords);
 
 	vec4 final_color = hdr_color;
-	// Remapping normals for displaying
-	final_color = (final_color + 1.0f) * 0.5f;
+	// Scaling by sample count
+	final_color = final_color / float(u_sample_number);
 		
 	if (u_do_tonemapping == 1)
 	{
@@ -25,5 +25,6 @@ void main()
 	}
 
 	final_color = vec4(final_color.rgb, 1.0f);
+
 	out_color = final_color;
 };

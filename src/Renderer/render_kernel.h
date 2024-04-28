@@ -33,6 +33,8 @@ public:
                     BVH& bvh,
                     const EnvironmentMap& env_map) : 
         m_framebuffer_width(width), m_framebuffer_height(height),
+        m_pixels_sample_count(width * height, 0),
+        m_pixels_squared_luminance(width * height, 0.0f),
         m_render_samples(render_samples),
         m_max_bounces(max_bounces),
         m_frame_buffer(image_buffer),
@@ -106,6 +108,8 @@ private:
     int m_max_bounces;
 
     Image& m_frame_buffer;
+    const std::vector<int> m_pixels_sample_count;
+    const std::vector<float> m_pixels_squared_luminance;
 
     const std::vector<Triangle>& m_triangle_buffer;
     const std::vector<int>& m_triangle_indices;

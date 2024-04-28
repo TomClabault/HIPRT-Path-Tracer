@@ -6,12 +6,14 @@
 #ifndef RENDER_WINDOW_H
 #define RENDER_WINDOW_H
 
+#include "Image/image_writer.h"
 #include "OpenGL/OpenGLProgram.h"
 #include "Renderer/open_image_denoiser.h"
 #include "Renderer/renderer.h"
 #include "UI/application_settings.h"
 #include "UI/DisplayTextureType.h"
 #include "UI/DisplayView.h"
+#include "Utils/commandline_arguments.h"
 
 #include "GL/glew.h"
 #include "GLFW/glfw3.h"
@@ -20,8 +22,6 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 
-#include "Image/image_writer.h"
-#include "Utils/commandline_arguments.h"
 
 class RenderWindow
 {
@@ -50,7 +50,7 @@ public:
 
 	void create_display_programs();
 	void select_display_program(DisplayView display_view);
-	void set_display_program(DisplayView display_view);
+
 	/*
 	 * This function ensures that the display texture is of the proper format
 	 * for the display view selected.
@@ -67,6 +67,8 @@ public:
 	 */
 	void recreate_display_texture(DisplayView display_view);
 	void recreate_display_texture(DisplayTextureType texture_type, int width, int height);
+	void upload_data_to_display_texture(const void* data, GLenum format, GLenum type);
+	void update_active_program_uniforms();
 	void update_renderer_view_translation(float translation_x, float translation_y);
 	void update_renderer_view_zoom(float offset);
 	void update_renderer_view_rotation(float offset_x, float offset_y);
@@ -111,6 +113,7 @@ private:
 	ImageWriter m_image_writer;
 
 	OpenGLProgram m_active_display_program;
+	OpenGLProgram m_default_display_program;
 	OpenGLProgram m_normal_display_program;
 	OpenGLProgram m_albedo_display_program;
 	OpenGLProgram m_adaptative_sampling_display_program;
@@ -144,18 +147,9 @@ template <typename T>
 void RenderWindow::display(OpenGLInteropBuffer<T>& buffer)
 {
 	buffer.unmap();
+	buffer.unpack_to_texture(m_display_texture, GL_TEXTURE0 + RenderWindow::DISPLAY_TEXTURE_UNIT, m_renderer.m_render_width, m_renderer.m_render_height, m_display_texture_type);
 
-	glActiveTexture(GL_TEXTURE0 + RenderWindow::DISPLAY_TEXTURE_UNIT);
-	glBindTexture(GL_TEXTURE_2D, m_display_texture);
-	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, buffer.get_opengl_buffer());
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_renderer.m_render_width, m_renderer.m_render_height, GL_RGB, GL_FLOAT, 0);
-	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-
-	m_active_display_program.use();
-	m_active_display_program.set_uniform("u_texture", RenderWindow::DISPLAY_TEXTURE_UNIT);
-	m_active_display_program.set_uniform("u_do_tonemapping", 1);
-	m_active_display_program.set_uniform("u_gamma", m_application_settings.tone_mapping_gamma);
-	m_active_display_program.set_uniform("u_exposure", m_application_settings.tone_mapping_exposure);
+	update_active_program_uniforms();
 
 	// Binding an empty VAO here (empty because we're hardcoding our full-screen quad vertices
 	// in our vertex shader) because this is required on NVIDIA drivers

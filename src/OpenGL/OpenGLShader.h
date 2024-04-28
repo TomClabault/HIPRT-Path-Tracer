@@ -38,7 +38,7 @@ public:
 	GLuint get_shader() const;
 	ShaderType get_shader_type() const;
 
-	bool compile();
+	void compile();
 
 	static bool print_shader_compile_error(GLuint shader);
 
