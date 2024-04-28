@@ -872,7 +872,7 @@ void RenderWindow::show_render_settings_panel()
 	{
 		ImGui::TreePush("Adaptive sampling tree");
 
-		ImGui::Checkbox("Enable adaptive sampling", &m_render_settings.enable_adaptive_sampling);
+		m_render_dirty |= ImGui::Checkbox("Enable adaptive sampling", &m_render_settings.enable_adaptive_sampling);
 		m_render_dirty |= ImGui::InputInt("Adaptive sampling minimum samples", &m_render_settings.adaptive_sampling_min_samples);
 		if (ImGui::InputFloat("Adaptive sampling noise threshold", &m_render_settings.adaptive_sampling_noise_threshold))
 		{
