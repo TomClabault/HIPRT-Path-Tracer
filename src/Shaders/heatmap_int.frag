@@ -1,6 +1,7 @@
 #version 430
 
 // This is a 'scalar' texture, containing data only in the red channel
+// In this shader, it represents the sample count per pixel
 uniform isampler2D u_texture;
 
 // This shader supports up to 16 color stops. This doesn't mean that
@@ -18,7 +19,10 @@ out vec4 out_color;
 
 void main()
 {
-	float scalar = texture(u_texture, vs_tex_coords).r;
+	// We're using asb() here because the sampling count can be negative if 
+	// the pixel isn't being sampled anymore (it has converged and has been 
+	// excluded by the adaptive sampling)
+	float scalar = abs(texture(u_texture, vs_tex_coords).r);
 
 	// Brings scalar between 0 and 1 relative to u_min_val and u_max_val
 	float normalized = (scalar - u_min_val) / (u_max_val - u_min_val);

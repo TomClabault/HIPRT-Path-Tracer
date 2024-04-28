@@ -17,7 +17,7 @@
 
 // TODO bugs
 // - fix screenshot writer compute shader since OpenGL refactor
-// - anisotropic rotation brightness bugged ?
+// - anisotropic rotation brightness buggued ?
 // - Why is the rough dragon having black fringes even with normal flipping ?
 // - normals AOV not converging correctly ?
 //		- for the denoiser normals convergence issue, is it an error at the end of the Path Tracer kernel where we're accumulating ? Should we have
@@ -26,7 +26,6 @@
 //		render_data.aux_buffers.denoiser_albedo[index] * render_data.render_settings.frame_number
 //		?
 // - denoiser not accounting for tranmission correctly since Disney 
-// - aspect ratio issue on CPU or GPU ?
 
 
 
@@ -523,7 +522,7 @@ void RenderWindow::select_display_program(DisplayView display_view)
 		m_active_display_program = m_albedo_display_program;
 		break;
 
-	case DisplayView::ADAPTATIVE_SAMPLING_MAP:
+	case DisplayView::ADAPTIVE_SAMPLING_MAP:
 		m_active_display_program = m_adaptative_sampling_display_program;
 		break;
 
@@ -549,7 +548,7 @@ void RenderWindow::recreate_display_texture(DisplayView display_view)
 		texture_type_needed = DisplayTextureType::FLOAT3;
 		break;
 
-	case DisplayView::ADAPTATIVE_SAMPLING_MAP:
+	case DisplayView::ADAPTIVE_SAMPLING_MAP:
 		texture_type_needed = DisplayTextureType::INT;
 		break;
 
@@ -616,13 +615,13 @@ void RenderWindow::update_active_program_uniforms()
 
 		break;
 
-	case DisplayView::ADAPTATIVE_SAMPLING_MAP:
+	case DisplayView::ADAPTIVE_SAMPLING_MAP:
 		std::vector<ColorRGB> color_stops = { ColorRGB(0.0f, 0.0f, 1.0f), ColorRGB(0.0f, 1.0f, 0.0f), ColorRGB(1.0f, 0.0f, 0.0f) };
 
 		m_active_display_program.set_uniform("u_texture", RenderWindow::DISPLAY_TEXTURE_UNIT);
 		m_active_display_program.set_uniform("u_color_stops", 3, (float*)color_stops.data());
 		m_active_display_program.set_uniform("u_nb_stops", 2);
-		m_active_display_program.set_uniform("u_min_val", 1.0f);
+		m_active_display_program.set_uniform("u_min_val", (float)m_render_settings.adaptive_sampling_min_samples);
 		m_active_display_program.set_uniform("u_max_val", (float)m_render_settings.sample_number);
 
 		break;
@@ -766,10 +765,12 @@ void RenderWindow::run()
 				display(m_denoiser.get_denoised_albedo_pointer());
 				break;
 
-			case DisplayView::ADAPTATIVE_SAMPLING_MAP:
-				//display(m_renderer.get_pixels_sample_count_buffer().download_data().data());
-				display(m_renderer.get_debug_pixel_active_buffer().download_data().data());
+			case DisplayView::ADAPTIVE_SAMPLING_MAP:
+				display(m_renderer.get_pixels_sample_count_buffer().download_data().data());
 				break;
+
+			case DisplayView::ADAPTIVE_SAMPLING_ACTIVE_PIXELS:
+				display(m_renderer.get_debug_pixel_active_buffer().download_data().data());
 
 			case DisplayView::DEFAULT:
 			default:
