@@ -1,4 +1,3 @@
-
 #include "GL/glew.h"
 #include "stb_image_write.h"
 #include "UI/render_window.h"

@@ -30,7 +30,7 @@ int main(int argc, char* argv[])
     const int default_width = arguments.render_width, default_height = arguments.render_height;
     RenderWindow render_window(default_width, default_height);
     {
-        std::cout << "Reading scene file " << arguments.scene_file_path << " ..." << std::endl;
+        std::cout << std::endl << "Reading scene file " << arguments.scene_file_path << " ..." << std::endl;
         Scene parsed_scene = SceneParser::parse_scene_file(arguments.scene_file_path, (float)default_width / default_height);
         std::cout << std::endl;
 

@@ -44,7 +44,7 @@ void main()
 		// If the bounds are the same, arbitrarily choosing
 		// to color with the last color stop
 #ifdef COMPUTE_SCREENSHOTER
-	imageStore(u_output_image, thread_id, vec4(1.0f, 1.0f, 0.0f, 1.0f));//vec4(u_color_stops[u_nb_stops - 1], 1.0f));
+	imageStore(u_output_image, thread_id, vec4(u_color_stops[u_nb_stops - 1], 1.0f));
 #else
 	out_color = vec4(u_color_stops[u_nb_stops - 1], 1.0f);
 #endif
