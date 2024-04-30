@@ -87,7 +87,7 @@ private:
 	// This buffer holds the * sum * of the samples computed
 	// This is an accumulation buffer. This needs to be divided by the
 	// number of samples for displaying
-	InteropBufferType<ColorRGB> m_pixels_buffer;
+	InteropBufferType<ColorRGB> m_pixels_interop_buffer;
 	// Normals G-buffer
 	OrochiBuffer<hiprtFloat3> m_normals_buffer;
 	// Albedo G-buffer

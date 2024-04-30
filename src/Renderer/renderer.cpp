@@ -24,6 +24,8 @@ void Renderer::render()
 	HIPRTRenderData render_data = get_render_data();
 	void* launch_args[] = { &m_hiprt_scene.geometry, &render_data, &resolution, &hiprt_cam};
 	launch_kernel(8, 8, resolution.x, resolution.y, launch_args);
+
+	m_pixels_interop_buffer.unmap();
 }
 
 void Renderer::change_render_resolution(int new_width, int new_height)
@@ -31,7 +33,7 @@ void Renderer::change_render_resolution(int new_width, int new_height)
 	m_render_width = new_width;
 	m_render_height = new_height;
 
-	m_pixels_buffer.resize(new_width * new_height);
+	m_pixels_interop_buffer.resize(new_width * new_height);
 	m_normals_buffer.resize(new_width * new_height);
 	m_albedo_buffer.resize(new_width * new_height);
 
@@ -47,7 +49,7 @@ void Renderer::change_render_resolution(int new_width, int new_height)
 
 InteropBufferType<ColorRGB>& Renderer::get_color_framebuffer()
 {
-	return m_pixels_buffer;
+	return m_pixels_interop_buffer;
 }
 
 OrochiBuffer<ColorRGB>& Renderer::get_denoiser_albedo_buffer()
@@ -96,7 +98,7 @@ HIPRTRenderData Renderer::get_render_data()
 
 	render_data.geom = m_hiprt_scene.geometry;
 
-	render_data.buffers.pixels = m_pixels_buffer.get_device_pointer();
+	render_data.buffers.pixels = m_pixels_interop_buffer.map();
 	render_data.buffers.triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.mesh.triangleIndices);
 	render_data.buffers.triangles_vertices = reinterpret_cast<float3*>(m_hiprt_scene.mesh.vertices);
 	render_data.buffers.normals_present = reinterpret_cast<unsigned char*>(m_hiprt_scene.normals_present);

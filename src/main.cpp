@@ -38,7 +38,6 @@ int main(int argc, char* argv[])
         renderer.set_scene(parsed_scene);
         renderer.set_camera(parsed_scene.camera);
     }
-    render_window.reset_render();
     render_window.run();
 
     return 0;

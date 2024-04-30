@@ -13,19 +13,36 @@ uniform int u_nb_stops;
 uniform float u_min_val;
 uniform float u_max_val;
 
+#ifdef COMPUTE_SCREENSHOTER
+layout(binding = 2, rgba8) writeonly uniform image2D u_output_image;
+#else
 in vec2 vs_tex_coords;
-
 out vec4 out_color;
+#endif // COMPUTE_SCREENSHOTER
 
+#ifdef COMPUTE_SCREENSHOTER
+layout(local_size_x = 8, local_size_y = 8) in;
+#endif // COMPUTE_SCREENSHOTER
 void main()
 {
-	// We're using asb() here because the sampling count can be negative if 
+#ifdef COMPUTE_SCREENSHOTER																		
+	ivec2 dims = textureSize(u_texture, 0);													
+	ivec2 thread_id = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);				
+	if (thread_id.x >= dims.x || thread_id.y >= dims.y)							
+		return;
+
+	// We're using abs() here because the sampling count can be negative if 
 	// the pixel isn't being sampled anymore (it has converged and has been 
 	// excluded by the adaptive sampling)
+	float scalar = abs(texelFetch(u_texture, thread_id, 0).r);
+#else
 	float scalar = abs(texture(u_texture, vs_tex_coords).r);
+#endif
 
+	// Making sure we use a max_val that is >= min_val
+	float max_val = max(u_min_val, u_max_val);
 	// Brings scalar between 0 and 1 relative to u_min_val and u_max_val
-	float normalized = (scalar - u_min_val) / (u_max_val - u_min_val);
+	float normalized = (scalar - u_min_val) / (max_val - u_min_val);
 
 	// This indicates the stop to use but this is a float so it could be 1.5 for example
 	// which would mean that we would have to pick 50% of u_color_stops[1] + 50% of u_color_stops[2]
@@ -45,5 +62,9 @@ void main()
 	// out_color = stop2 * (1.0f - 0.37) + stop3 * 0.37 
 	//
 	// which is more of stop2 than stop3
+#ifdef COMPUTE_SCREENSHOTER
+	imageStore(u_output_image, thread_id, vec4(u_color_stops[low_stop] * (1.0f - fraction) + u_color_stops[high_stop] * fraction, 1.0f));
+#else
 	out_color = vec4(u_color_stops[low_stop] * (1.0f - fraction) + u_color_stops[high_stop] * fraction, 1.0f);
+#endif // COMPUTE_SCREENSHOTER
 };
