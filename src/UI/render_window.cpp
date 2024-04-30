@@ -15,8 +15,6 @@
 // test performance when reducing number of triangles of the pbrt dragon
 
 // TODO bugs
-// - slight transition when viewing adaptive sampling: start getting red/black at 68 samples? why?
-// - fix screenshot writer compute shader since OpenGL refactor
 // - anisotropic rotation brightness buggued ?
 // - Why is the rough dragon having black fringes even with normal flipping ?
 // - normals AOV not converging correctly ?
@@ -616,11 +614,13 @@ void RenderWindow::update_program_uniforms(OpenGLProgram& program)
 	case DisplayView::ADAPTIVE_SAMPLING_MAP:
 		std::vector<ColorRGB> color_stops = { ColorRGB(0.0f, 0.0f, 1.0f), ColorRGB(0.0f, 1.0f, 0.0f), ColorRGB(1.0f, 0.0f, 0.0f) };
 
+		float min_val = (float)m_render_settings.adaptive_sampling_min_samples;
+		float max_val = std::max((float)m_render_settings.sample_number, min_val);
 		program.set_uniform("u_texture", RenderWindow::DISPLAY_TEXTURE_UNIT);
 		program.set_uniform("u_color_stops", 3, (float*)color_stops.data());
-		program.set_uniform("u_nb_stops", 2);
-		program.set_uniform("u_min_val", (float)m_render_settings.adaptive_sampling_min_samples);
-		program.set_uniform("u_max_val", (float)m_render_settings.sample_number - 1);
+		program.set_uniform("u_nb_stops", 3);
+		program.set_uniform("u_min_val", min_val);
+		program.set_uniform("u_max_val", max_val);
 
 		break;
 	}
