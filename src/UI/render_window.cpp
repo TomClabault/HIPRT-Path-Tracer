@@ -15,6 +15,7 @@
 // test performance when reducing number of triangles of the pbrt dragon
 
 // TODO bugs
+// - slight transition when viewing adaptive sampling: start getting red/black at 68 samples? why?
 // - fix screenshot writer compute shader since OpenGL refactor
 // - anisotropic rotation brightness buggued ?
 // - Why is the rough dragon having black fringes even with normal flipping ?

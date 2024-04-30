@@ -57,19 +57,19 @@ void Screenshoter::write_to_png()
 void Screenshoter::initialize_programs()
 {
 	std::vector<std::string> macro = { "#define COMPUTE_SCREENSHOTER" };
-	//OpenGLShader default_display_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/default_display.frag", OpenGLShader::COMPUTE_SHADER, macro);
-	//OpenGLShader normal_display_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/normal_display.frag", OpenGLShader::COMPUTE_SHADER, macro);
-	//OpenGLShader albedo_display_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/albedo_display.frag", OpenGLShader::COMPUTE_SHADER, macro);
+	OpenGLShader default_display_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/default_display.frag", OpenGLShader::COMPUTE_SHADER, macro);
+	OpenGLShader normal_display_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/normal_display.frag", OpenGLShader::COMPUTE_SHADER, macro);
+	OpenGLShader albedo_display_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/albedo_display.frag", OpenGLShader::COMPUTE_SHADER, macro);
 	OpenGLShader adaptative_display_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/heatmap_int.frag", OpenGLShader::COMPUTE_SHADER, macro);
 
-	/*m_default_compute_program.attach(default_display_shader);
+	m_default_compute_program.attach(default_display_shader);
 	m_default_compute_program.link();
 
 	m_normal_compute_program.attach(normal_display_shader);
 	m_normal_compute_program.link();
 
 	m_albedo_compute_program.attach(albedo_display_shader);
-	m_albedo_compute_program.link();*/
+	m_albedo_compute_program.link();
 
 	m_adaptative_sampling_compute_program.attach(adaptative_display_shader);
 	m_adaptative_sampling_compute_program.link();

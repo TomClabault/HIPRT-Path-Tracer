@@ -26,7 +26,7 @@ layout(local_size_x = 8, local_size_y = 8) in;
 void main()
 {
 #ifdef COMPUTE_SCREENSHOTER																		
-	ivec2 dims = textureSize(u_texture, 0);													
+	ivec2 dims = textureSize(u_texture, 0);
 	ivec2 thread_id = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);				
 	if (thread_id.x >= dims.x || thread_id.y >= dims.y)							
 		return;
