@@ -1,14 +1,3 @@
-# Additional Linux steps:
-# sudo apt-get install freeglut3-dev for OpenGL
-# sudo apt install libglfw3-dev
-# sudo apt install libglew-dev
-
-# Download amdgpu-install: https://www.amd.com/en/support/linux-drivers
-# Install the package: sudo apt install ./amdgpu-install_xxxx.deb
-# Install HIP: sudo amdgpu-install --usecase=hip
-
-# Add the user to the 'render' group: sudo usermod -a -G render $LOGNAME. Reboot
-
 cmake_minimum_required(VERSION 3.24)
 
 project(HIPRTPathTracer LANGUAGES CXX)
