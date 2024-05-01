@@ -12,7 +12,7 @@
 #include "Image/envmap.h"
 #include "Image/image.h"
 #include "Renderer/bvh.h"
-#include "Renderer/render_kernel.h"
+#include "Renderer/RenderKernel.h"
 #include "Renderer/triangle.h"
 #include "Scene/camera.h"
 #include "Scene/scene_parser.h"
@@ -30,7 +30,7 @@ int main(int argc, char* argv[])
     const int default_width = arguments.render_width, default_height = arguments.render_height;
     RenderWindow render_window(default_width, default_height);
     {
-        std::cout << "Reading scene file " << arguments.scene_file_path << " ..." << std::endl;
+        std::cout << std::endl << "Reading scene file " << arguments.scene_file_path << " ..." << std::endl;
         Scene parsed_scene = SceneParser::parse_scene_file(arguments.scene_file_path, (float)default_width / default_height);
         std::cout << std::endl;
 
@@ -38,7 +38,6 @@ int main(int argc, char* argv[])
         renderer.set_scene(parsed_scene);
         renderer.set_camera(parsed_scene.camera);
     }
-    render_window.reset_render();
     render_window.run();
 
     return 0;

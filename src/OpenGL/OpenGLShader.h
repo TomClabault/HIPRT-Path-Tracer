@@ -9,6 +9,7 @@
 #include "GL/glew.h"
 
 #include <string>
+#include <vector>
 
 class OpenGLShader
 {
@@ -22,8 +23,11 @@ public:
 	};
 
 	OpenGLShader() : m_compiled_shader(-1), m_shader_type(ShaderType::UNDEFINED) {}
-	OpenGLShader(const std::string& source_code, ShaderType type);
-	OpenGLShader(const char* filepath, ShaderType type);
+	/**
+	 * If given, macros should be entire strings (with the '#') like "#define MY_MACRO", #if X, #endif, ... 
+	 */
+	OpenGLShader(const std::string& source_code, ShaderType type, const std::vector<std::string>& macros = std::vector<std::string>());
+	OpenGLShader(const char* filepath, ShaderType type, const std::vector<std::string>& macros = std::vector<std::string>());
 
 	std::string& get_source();
 	const std::string& get_source() const;
@@ -38,7 +42,8 @@ public:
 	GLuint get_shader() const;
 	ShaderType get_shader_type() const;
 
-	void compile();
+	void compile(const std::vector<std::string>& macros);
+	std::string add_macros_to_source(const std::vector<std::string>& macros);
 
 	static bool print_shader_compile_error(GLuint shader);
 

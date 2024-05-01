@@ -9,15 +9,13 @@
 #include <iostream>
 #include "Scene/scene_parser.h"
 #include "Utils/utils.h"
-#include "Utils/opengl_utils.h"
 
 #include "stb_image_write.h"
 
 // test performance when reducing number of triangles of the pbrt dragon
 
 // TODO bugs
-// - fix screenshot writer compute shader since OpenGL refactor
-// - anisotropic rotation brightness buggued ?
+// - anisotropic rotation brightness buggued ? Sphere 0.3 rough, 1.0 metallic, 1.0 aniso, 0.5 aniso rotation, 1.0 clearcoat
 // - Why is the rough dragon having black fringes even with normal flipping ?
 // - normals AOV not converging correctly ?
 //		- for the denoiser normals convergence issue, is it an error at the end of the Path Tracer kernel where we're accumulating ? Should we have
@@ -25,11 +23,13 @@
 //		instead of 
 //		render_data.aux_buffers.denoiser_albedo[index] * render_data.render_settings.frame_number
 //		?
-// - denoiser not accounting for tranmission correctly since Disney 
+// - denoiser AOVs not accounting for tranmission correctly since Disney 
 
 
 
 // TODO Code Organization:
+// - Orochi library intro "allows device kernels to be compiled at run time" kind of misleading. Orochi allows run time loading of CUDA/HIP libraries. Kernels can always be compiled at run time with HIPRTC/NVRTC
+// - rewrite build instructions to include CMake commands in the Windows NVIDIA section too
 // - Rename class files in camel case
 // - Destroy buffers when disabling adaptative sampling to save VRAM
 // - Can we have access to HoL when calling disney_metallic_fresnel to avoid passing the two vectors and recomputing the dot product in the return statement ?
@@ -233,7 +233,6 @@ void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, in
 	if (lshift_pressed)
 		translation.second -= 36.0f;
 
-
 	RenderWindow* render_window = reinterpret_cast<RenderWindow*>(glfwGetWindowUserPointer(window));
 	render_window->update_renderer_view_translation(-translation.first, translation.second);
 	render_window->update_renderer_view_zoom(-zoom);
@@ -358,19 +357,22 @@ RenderWindow::RenderWindow(int width, int height) : m_viewport_width(width), m_v
 	ImGui_ImplGlfw_InitForOpenGL(m_window, true);
 	ImGui_ImplOpenGL3_Init();
 
-	create_display_programs();
 	m_renderer.init_ctx(0);
 	m_renderer.compile_trace_kernel(m_application_settings.kernel_files[m_application_settings.selected_kernel].c_str(),
 		m_application_settings.kernel_functions[m_application_settings.selected_kernel].c_str());
 	m_renderer.change_render_resolution(width, height);
+	create_display_programs();
 
 	// TODO fix denoiser buffer since openGL interop
 	/*m_denoiser.set_buffers(m_renderer.get_color_framebuffer().get_device_pointer(),
 		m_renderer.get_denoiser_normals_buffer().get_device_pointer(), m_renderer.get_denoiser_albedo_buffer().get_device_pointer(),
 		width, height);*/
 
-	m_image_writer.set_renderer(&m_renderer);
-	m_image_writer.set_render_window(this);
+	m_screenshoter.set_renderer(&m_renderer);
+	m_screenshoter.set_render_window(this);
+
+	// Making the render dirty to force a cleanup at startup
+	m_render_dirty = true;
 }
 
 RenderWindow::~RenderWindow()
@@ -428,9 +430,7 @@ void RenderWindow::change_resolution_scaling(float new_scaling)
 		m_renderer.get_denoiser_normals_buffer().get_device_pointer(), m_renderer.get_denoiser_albedo_buffer().get_device_pointer(),
 		new_render_width, new_render_height);*/
 
-	glActiveTexture(GL_TEXTURE0 + RenderWindow::DISPLAY_TEXTURE_UNIT);
-	glBindTexture(GL_TEXTURE_2D, m_display_texture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, new_render_width, new_render_height, 0, GL_RGB, GL_FLOAT, nullptr);
+	recreate_display_texture(m_display_texture_type, new_render_width, new_render_height);
 }
 
 int RenderWindow::get_width()
@@ -466,12 +466,9 @@ void RenderWindow::create_display_programs()
 {
 	// Creating the texture that will contain the path traced data to be displayed
 	// by the shader.
+	// 
 	glGenTextures(1, &m_display_texture);
-	glActiveTexture(GL_TEXTURE0 + RenderWindow::DISPLAY_TEXTURE_UNIT);
-	glBindTexture(GL_TEXTURE_2D, m_display_texture);
-	// The texture is initially of the size of the viewport because there is no resolution scaling involved
-	// at startup
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, m_viewport_width, m_viewport_height, 0, GL_RGB, GL_FLOAT, nullptr);
+	recreate_display_texture_from_display_view(m_application_settings.display_view);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
@@ -526,16 +523,14 @@ void RenderWindow::select_display_program(DisplayView display_view)
 		m_active_display_program = m_adaptative_sampling_display_program;
 		break;
 
-
 	default:
-
 		break;
 	}
 
-	recreate_display_texture(display_view);
+	recreate_display_texture_from_display_view(display_view);
 }
 
-void RenderWindow::recreate_display_texture(DisplayView display_view)
+void RenderWindow::recreate_display_texture_from_display_view(DisplayView display_view)
 {
 	DisplayTextureType texture_type_needed;
 
@@ -559,7 +554,7 @@ void RenderWindow::recreate_display_texture(DisplayView display_view)
 	}
 
 	if (m_display_texture_type != texture_type_needed)
-		recreate_display_texture(texture_type_needed, m_viewport_width, m_viewport_height);
+		recreate_display_texture(texture_type_needed, m_renderer.m_render_width, m_renderer.m_render_height);
 }
 
 void RenderWindow::recreate_display_texture(DisplayTextureType texture_type, int width, int height)
@@ -568,11 +563,12 @@ void RenderWindow::recreate_display_texture(DisplayTextureType texture_type, int
 	GLenum format = texture_type.get_gl_format();
 	GLenum type = texture_type.get_gl_type();
 
+	// Making sure the buffer isn't bound
+	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 	glActiveTexture(GL_TEXTURE0 + RenderWindow::DISPLAY_TEXTURE_UNIT);
 	glBindTexture(GL_TEXTURE_2D, m_display_texture);
-	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-	glTexImage2D(GL_TEXTURE_2D, 0, internal_format, m_renderer.m_render_width, m_renderer.m_render_height, 0, format, type, nullptr);
-	
+	glTexImage2D(GL_TEXTURE_2D, 0, internal_format, width, height, 0, format, type, nullptr);
+
 	m_display_texture_type = texture_type;
 }
 
@@ -583,46 +579,48 @@ void RenderWindow::upload_data_to_display_texture(const void* data, GLenum forma
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_renderer.m_render_width, m_renderer.m_render_height, format, type, data);
 }
 
-void RenderWindow::update_active_program_uniforms()
+void RenderWindow::update_program_uniforms(OpenGLProgram& program)
 {
-	m_active_display_program.use();
+	program.use();
 
 	switch (m_application_settings.display_view)
 	{
 	case DisplayView::DEFAULT:
-		m_active_display_program.set_uniform("u_texture", RenderWindow::DISPLAY_TEXTURE_UNIT);
-		m_active_display_program.set_uniform("u_sample_number", m_render_settings.sample_number);
-		m_active_display_program.set_uniform("u_do_tonemapping", m_application_settings.do_tonemapping);
-		m_active_display_program.set_uniform("u_gamma", m_application_settings.tone_mapping_gamma);
-		m_active_display_program.set_uniform("u_exposure", m_application_settings.tone_mapping_exposure);
+		program.set_uniform("u_texture", RenderWindow::DISPLAY_TEXTURE_UNIT);
+		program.set_uniform("u_sample_number", m_render_settings.sample_number);
+		program.set_uniform("u_do_tonemapping", m_application_settings.do_tonemapping);
+		program.set_uniform("u_gamma", m_application_settings.tone_mapping_gamma);
+		program.set_uniform("u_exposure", m_application_settings.tone_mapping_exposure);
 
 		break;
 
 	case DisplayView::DISPLAY_ALBEDO:
 	case DisplayView::DISPLAY_DENOISED_ALBEDO:
-		m_active_display_program.set_uniform("u_texture", RenderWindow::DISPLAY_TEXTURE_UNIT);
-		m_active_display_program.set_uniform("u_sample_number", m_render_settings.sample_number);
+		program.set_uniform("u_texture", RenderWindow::DISPLAY_TEXTURE_UNIT);
+		program.set_uniform("u_sample_number", m_render_settings.sample_number);
 
 		break;
 
 	case DisplayView::DISPLAY_NORMALS:
 	case DisplayView::DISPLAY_DENOISED_NORMALS:
-		m_active_display_program.set_uniform("u_texture", RenderWindow::DISPLAY_TEXTURE_UNIT);
-		m_active_display_program.set_uniform("u_sample_number", m_render_settings.sample_number);
-		m_active_display_program.set_uniform("u_do_tonemapping", m_application_settings.do_tonemapping);
-		m_active_display_program.set_uniform("u_gamma", m_application_settings.tone_mapping_gamma);
-		m_active_display_program.set_uniform("u_exposure", m_application_settings.tone_mapping_exposure);
+		program.set_uniform("u_texture", RenderWindow::DISPLAY_TEXTURE_UNIT);
+		program.set_uniform("u_sample_number", m_render_settings.sample_number);
+		program.set_uniform("u_do_tonemapping", m_application_settings.do_tonemapping);
+		program.set_uniform("u_gamma", m_application_settings.tone_mapping_gamma);
+		program.set_uniform("u_exposure", m_application_settings.tone_mapping_exposure);
 
 		break;
 
 	case DisplayView::ADAPTIVE_SAMPLING_MAP:
 		std::vector<ColorRGB> color_stops = { ColorRGB(0.0f, 0.0f, 1.0f), ColorRGB(0.0f, 1.0f, 0.0f), ColorRGB(1.0f, 0.0f, 0.0f) };
 
-		m_active_display_program.set_uniform("u_texture", RenderWindow::DISPLAY_TEXTURE_UNIT);
-		m_active_display_program.set_uniform("u_color_stops", 3, (float*)color_stops.data());
-		m_active_display_program.set_uniform("u_nb_stops", 2);
-		m_active_display_program.set_uniform("u_min_val", (float)m_render_settings.adaptive_sampling_min_samples);
-		m_active_display_program.set_uniform("u_max_val", (float)m_render_settings.sample_number);
+		float min_val = (float)m_render_settings.adaptive_sampling_min_samples;
+		float max_val = std::max((float)m_render_settings.sample_number, min_val);
+		program.set_uniform("u_texture", RenderWindow::DISPLAY_TEXTURE_UNIT);
+		program.set_uniform("u_color_stops", 3, (float*)color_stops.data());
+		program.set_uniform("u_nb_stops", 3);
+		program.set_uniform("u_min_val", min_val);
+		program.set_uniform("u_max_val", max_val);
 
 		break;
 	}
@@ -664,22 +662,16 @@ void RenderWindow::update_renderer_view_zoom(float offset)
 void RenderWindow::increment_sample_number()
 {
 	if (m_render_settings.render_low_resolution)
-		m_render_settings.sample_number++; // Only doing 1 SPP when moving the cameras
+		m_render_settings.sample_number++; // Only doing 1 SPP when moving the camera
 	else
 		m_render_settings.sample_number += m_render_settings.samples_per_frame;
-
-	m_active_display_program.use();
-	m_active_display_program.set_uniform("u_sample_number", m_render_settings.sample_number);
 }
 
 void RenderWindow::reset_render()
 {
-	m_startRenderTime = std::chrono::high_resolution_clock::now();
+	m_start_render_time = std::chrono::high_resolution_clock::now();
 	m_renderer.set_sample_number(0);
 	m_render_settings.frame_number = 0;
-
-	m_active_display_program.use();
-	m_active_display_program.set_uniform("u_sample_number", 0);
 
 	m_render_dirty = false;
 }
@@ -744,7 +736,7 @@ void RenderWindow::run()
 			// NOTE that we're not using any OpenGL interop here yet and we're going through the
 			// CPU to display the various buffers because Orochi doesn't support OpenGL Interop for
 			// NVIDIA yet and we don't want to have a lot of dirty expection cases. We'll just wait
-			// for OpenGL interop to be supported on NVIDIA
+			// for OpenGL interop to be supported on NVIDIA by Orochi
 			switch (m_application_settings.display_view)
 			{
 			case DisplayView::DISPLAY_NORMALS:
@@ -771,6 +763,7 @@ void RenderWindow::run()
 
 			case DisplayView::ADAPTIVE_SAMPLING_ACTIVE_PIXELS:
 				display(m_renderer.get_debug_pixel_active_buffer().download_data().data());
+				break;
 
 			case DisplayView::DEFAULT:
 			default:
@@ -807,7 +800,7 @@ void RenderWindow::display(const void* data)
 	GLenum type = m_display_texture_type.get_gl_type();
 	upload_data_to_display_texture(data, format, type);
 
-	update_active_program_uniforms();
+	update_program_uniforms(m_active_display_program);
 
 	// Binding an empty VAO here (empty because we're hardcoding our full-screen quad vertices
 	// in our vertex shader) because this is required on NVIDIA drivers
@@ -992,12 +985,9 @@ void RenderWindow::show_post_process_panel()
 		return;
 	ImGui::TreePush("Post-processing tree");
 
-	if (ImGui::Checkbox("Do tonemapping", &m_application_settings.do_tonemapping))
-		m_active_display_program.set_uniform("ud_o_tonemapping", m_application_settings.do_tonemapping);
-	if (ImGui::InputFloat("Gamma", &m_application_settings.tone_mapping_gamma))
-		m_active_display_program.set_uniform("u_gamma", m_application_settings.tone_mapping_gamma);
-	if (ImGui::InputFloat("Exposure", &m_application_settings.tone_mapping_exposure))
-		m_active_display_program.set_uniform("u_exposure", m_application_settings.tone_mapping_exposure);
+	ImGui::Checkbox("Do tonemapping", &m_application_settings.do_tonemapping);
+	ImGui::InputFloat("Gamma", &m_application_settings.tone_mapping_gamma);
+	ImGui::InputFloat("Exposure", &m_application_settings.tone_mapping_exposure);
 
 	ImGui::TreePop();
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -1011,14 +1001,14 @@ void RenderWindow::draw_imgui()
 	ImGui::Begin("Settings");
 
 	auto now_time = std::chrono::high_resolution_clock::now();
-	float render_time = std::chrono::duration_cast<std::chrono::milliseconds>(now_time - m_startRenderTime).count();
+	float render_time = std::chrono::duration_cast<std::chrono::milliseconds>(now_time - m_start_render_time).count();
 	ImGui::Text("Render time: %.3fs", render_time / 1000.0f);
 	ImGui::Text("%d samples | %.2f samples/s @ %dx%d", m_render_settings.sample_number, 1.0f / io.DeltaTime * (m_render_settings.render_low_resolution ? 1 : m_render_settings.samples_per_frame), m_renderer.m_render_width, m_renderer.m_render_height);
 
 	ImGui::Separator();
 
 	if (ImGui::Button("Save viewport to PNG (tonemapped)"))
-		m_image_writer.write_to_png();
+		m_screenshoter.write_to_png();
 	
 	ImGui::Separator();
 

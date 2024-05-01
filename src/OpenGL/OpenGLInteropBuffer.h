@@ -26,10 +26,6 @@ public:
 
 	void resize(int new_element_count);
 
-	/*
-	 * This function is stricly an alias for map()
-	 */
-	T* get_device_pointer();
 	T* map();
 	void unmap();
 
@@ -70,6 +66,13 @@ GLuint OpenGLInteropBuffer<T>::get_opengl_buffer()
 template <typename T>
 void OpenGLInteropBuffer<T>::resize(int new_element_count)
 {
+	if (m_mapped)
+	{
+		std::cerr << "Trying to resize interop buffer while it is mapped! This is undefined behavior" << std::endl;
+
+		return;
+	}
+
 	if (m_initialized)
 	{
 		hipGraphicsUnregisterResource(m_buffer_resource);
@@ -111,12 +114,6 @@ T* OpenGLInteropBuffer<T>::map()
 
 	m_mapped = true;
 	return m_mapped_pointer;
-}
-
-template <typename T>
-T* OpenGLInteropBuffer<T>::get_device_pointer()
-{
-	return map();
 }
 
 template <typename T>

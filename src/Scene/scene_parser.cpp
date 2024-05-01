@@ -206,7 +206,10 @@ Scene SceneParser::parse_scene_file(const std::string& filepath, float frame_asp
         global_indices_offset += max_mesh_index_offset;
     }
 
-    std::cout << parsed_scene.vertices_positions.size() << " vertices ; " << parsed_scene.triangle_indices.size() / 3 << " triangles" << std::endl;
+    std::cout << "\t" << parsed_scene.vertices_positions.size() << " vertices" << std::endl;
+    std::cout << "\t" << parsed_scene.triangle_indices.size() / 3 << " triangles" << std::endl;
+    std::cout << "\t" << parsed_scene.emissive_triangle_indices.size() << " emissive triangles" << std::endl;
+    std::cout << "\t" << parsed_scene.materials.size() << " materials" << std::endl;
 
     return parsed_scene;
 }

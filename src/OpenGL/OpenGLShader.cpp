@@ -6,20 +6,20 @@
 #include "OpenGL/OpenGLShader.h"
 #include "Utils/utils.h"
 
-OpenGLShader::OpenGLShader(const std::string& source_code, ShaderType type)
+OpenGLShader::OpenGLShader(const std::string& source_code, ShaderType type, const std::vector<std::string>& macros)
 {
 	m_shader_type = type;
 
 	set_source(source_code);
-	compile();
+	compile(macros);
 }
 
-OpenGLShader::OpenGLShader(const char* filepath, ShaderType type)
+OpenGLShader::OpenGLShader(const char* filepath, ShaderType type, const std::vector<std::string>& macros)
 {
 	m_shader_type = type;
 
 	set_source_from_file(filepath);
-	compile();
+	compile(macros);
 }
 
 std::string& OpenGLShader::get_source()
@@ -67,19 +67,21 @@ OpenGLShader::ShaderType OpenGLShader::get_shader_type() const
 	return m_shader_type;
 }
 
-void OpenGLShader::compile()
+void OpenGLShader::compile(const std::vector<std::string>& macros /* = std::vector() */)
 {
-	const char* vertex_shader_text = m_source_code.c_str();
+	std::string source_code = add_macros_to_source(macros);
+
+	const char* shader_text = source_code.c_str();
 
 	m_compiled_shader = glCreateShader(m_shader_type);
-	glShaderSource(m_compiled_shader, 1, &vertex_shader_text, NULL);
+	glShaderSource(m_compiled_shader, 1, &shader_text, NULL);
 	glCompileShader(m_compiled_shader);
 	if (!print_shader_compile_error(m_compiled_shader))
 	{
 		if (has_filepath())
-			throw new std::runtime_error("Unable to compile vertex shader given at this path: " + get_path());
+			throw new std::runtime_error("Unable to compile shader given at this path: " + get_path());
 		else
-			throw new std::runtime_error("Unable to compile vertex shader");
+			throw new std::runtime_error("Unable to compile shader");
 	}
 }
 
@@ -106,4 +108,22 @@ bool OpenGLShader::print_shader_compile_error(GLuint shader)
 	}
 
 	return true;
+}
+
+std::string OpenGLShader::add_macros_to_source(const std::vector<std::string>& macros)
+{
+	size_t version_pos = m_source_code.find("#version");
+	if (version_pos != std::string::npos)
+	{
+		size_t line_return_pos = m_source_code.find('\n', version_pos);
+		size_t after_return = line_return_pos + 1;
+
+		std::string modified_source = m_source_code;
+		for (const std::string& macro : macros)
+			modified_source = modified_source.insert(after_return, macro + "\n");
+
+		return modified_source;
+	}
+	else
+		throw new std::runtime_error("No #version directive found in shader...");
 }

@@ -6,13 +6,13 @@
 #ifndef RENDER_WINDOW_H
 #define RENDER_WINDOW_H
 
-#include "Image/image_writer.h"
 #include "OpenGL/OpenGLProgram.h"
 #include "Renderer/open_image_denoiser.h"
 #include "Renderer/renderer.h"
 #include "UI/application_settings.h"
 #include "UI/DisplayTextureType.h"
 #include "UI/DisplayView.h"
+#include "UI/Screenshoter.h"
 #include "Utils/commandline_arguments.h"
 
 #include "GL/glew.h"
@@ -65,13 +65,14 @@ public:
 	 * a (very) small stutter but that's probably expected since we're asking for a different view
 	 * to show up in the viewport
 	 */
-	void recreate_display_texture(DisplayView display_view);
+	void recreate_display_texture_from_display_view(DisplayView display_view);
 	void recreate_display_texture(DisplayTextureType texture_type, int width, int height);
 	void upload_data_to_display_texture(const void* data, GLenum format, GLenum type);
-	void update_active_program_uniforms();
+	void update_program_uniforms(OpenGLProgram& program);
 	void update_renderer_view_translation(float translation_x, float translation_y);
 	void update_renderer_view_zoom(float offset);
 	void update_renderer_view_rotation(float offset_x, float offset_y);
+
 	void increment_sample_number();
 	void reset_render();
 
@@ -105,7 +106,9 @@ private:
 	// Is the user interacting with the camera (rotating, zooming, ...)? 
 	bool m_interacting;
 
-	std::chrono::high_resolution_clock::time_point m_startRenderTime;
+	// Timer started at the first sample. Used to time how long the render has been running
+	// for so far
+	std::chrono::high_resolution_clock::time_point m_start_render_time;
 
 	ApplicationSettings m_application_settings;
 
@@ -116,7 +119,7 @@ private:
 	HIPRTRenderSettings& m_render_settings;
 	OpenImageDenoiser m_denoiser;
 
-	ImageWriter m_image_writer;
+	Screenshoter m_screenshoter;
 
 	OpenGLProgram m_active_display_program;
 	OpenGLProgram m_default_display_program;
@@ -127,13 +130,15 @@ private:
 	// quad vertices in our vertex shader but we still need an empty/fake
 	// VAO for NVIDIA drivers to avoid errors
 	GLuint m_vao;
-	// Texture used by the display program to draw on the fullscreen quad
-	GLuint m_display_texture;
+	// Texture used by the display program to draw on the fullscreen quad.
+	// This texture should be the same resolution as the render resolution, 
+	// it has nothing to do with the resolution of the viewport
+	GLuint m_display_texture = -1;
 	// Format of the texel of the texture used by the display program
 	// This is useful because we have several types of programs using several
 	// types of textures. For example, displaying normals on the screen requires float3 textures
 	// whereas displaying a heatmap requires only a texture whose texels are scalar (floats or ints)
-	DisplayTextureType m_display_texture_type;
+	DisplayTextureType m_display_texture_type = DisplayTextureType::UNINITIALIZED;
 	GLFWwindow* m_window;
 };
 
@@ -155,13 +160,12 @@ void RenderWindow::display(OpenGLInteropBuffer<T>& buffer)
 	buffer.unmap();
 	buffer.unpack_to_texture(m_display_texture, GL_TEXTURE0 + RenderWindow::DISPLAY_TEXTURE_UNIT, m_renderer.m_render_width, m_renderer.m_render_height, m_display_texture_type);
 
-	update_active_program_uniforms();
+	update_program_uniforms(m_active_display_program);
 
 	// Binding an empty VAO here (empty because we're hardcoding our full-screen quad vertices
 	// in our vertex shader) because this is required on NVIDIA drivers
 	glBindVertexArray(m_vao);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
-
 }
 
 #endif

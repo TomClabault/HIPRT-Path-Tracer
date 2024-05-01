@@ -14,6 +14,7 @@ class OpenGLProgram
 {
 public:
 	OpenGLProgram() : m_program(-1) { }
+	OpenGLProgram(OpenGLProgram& other) = delete;
 	OpenGLProgram(const OpenGLShader& vertex);
 	OpenGLProgram(const OpenGLShader& compiled_vertex, const OpenGLShader& compiled_fragment);
 	~OpenGLProgram();
