@@ -28,12 +28,9 @@
 
 
 // TODO Code Organization:
-// - Orochi library intro "allows device kernels to be compiled at run time" kind of misleading. Orochi allows run time loading of CUDA/HIP libraries. Kernels can always be compiled at run time with HIPRTC/NVRTC
-// - rewrite build instructions to include CMake commands in the Windows NVIDIA section too
 // - Rename class files in camel case
 // - Destroy buffers when disabling adaptative sampling to save VRAM
 // - Can we have access to HoL when calling disney_metallic_fresnel to avoid passing the two vectors and recomputing the dot product in the return statement ?
-// - rename HIPRT kernel files without the hiprt prefix
 // - DO THE DISNEY SHADING IN SHADING SPACE. WHAT THE H IS THIS CODE BUILDING ONB IN EVERY FUNCTION HUH?
 // - reorganize methods order in RenderWindow
 // - separate (still work to do) path tracer kernel functions in header files

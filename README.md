@@ -6,7 +6,7 @@ Physically based Monte Carlo path tracer written with the [HIP RT](https://gpuop
 
 HIPRT is AMD's equivalent to [OptiX](https://developer.nvidia.com/rtx/ray-tracing/optix). It allows the use of the ray tracing accelerators of RDNA2+ AMD GPUs and can run on NVIDIA devices as well (although it wouldn't take advatange of RT cores) as it is not AMD specific. 
 
-The Orochi library allows device kernels to be compiled at run time and the application doesn't have to be recompiled to be used on a different device (unlike HIP which would require a recompilation).
+The Orochi library allows the loading of HIP and CUDA libraries at runtime meaning that the application doesn't have to be recompiled to be used on a different device (unlike HIP which would require a recompilation + linking).
 
 # System requirements
 

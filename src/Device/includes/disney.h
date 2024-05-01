@@ -13,7 +13,9 @@
 #include <HostDeviceCommon/material.h>
 #include <HostDeviceCommon/xorshift.h>
 
-/* References:
+/* 
+ * References:
+ * 
  * [1] [CSE 272 University of California San Diego - Disney BSDF Homework] https://cseweb.ucsd.edu/~tzli/cse272/wi2024/homework1.pdf
  * [2] [GLSL Path Tracer implementation by knightcrawler25] https://github.com/knightcrawler25/GLSL-PathTracer
  * [3] [SIGGRAPH 2012 Course] https://blog.selfshadow.com/publications/s2012-shading-course/#course_content
@@ -21,6 +23,7 @@
  * [5] [PBRT v3 Source Code] https://github.com/mmp/pbrt-v3
  * [6] [PBRT v4 Source Code] https://github.com/mmp/pbrt-v4
  * [7] [Blender's Cycles Source Code] https://github.com/blender/cycles
+ * [8] [CS184 Adaptive sampling] https://cs184.eecs.berkeley.edu/sp24/docs/hw3-1-part-5
  */
 
 __device__ float disney_schlick_weight(float f0, float abs_cos_angle)

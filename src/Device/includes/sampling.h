@@ -39,8 +39,9 @@ __device__ bool refract_ray(const float3& ray_direction, const float3& surface_n
     return true;
 }
 
-/**
- * Reference
+/** 
+ * Reference:
+ * 
  * [1] [Lambertian Reflection Without Tangents], Edd Biddulph https://fizzer.neocities.org/lambertnotangent
  */
 __device__ float3 cosine_weighted_sample(const float3& normal, Xorshift32Generator& random_number_generator)
