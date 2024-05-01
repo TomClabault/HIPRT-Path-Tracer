@@ -4,7 +4,7 @@
  */
 
 #include "HostDeviceCommon/hit_info.h"
-#include "render_kernel.h"
+#include "Renderer/RenderKernel.h"
 #include "triangle.h"
 
 #define DEBUG_PIXEL 0

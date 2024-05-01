@@ -15,7 +15,7 @@
 // test performance when reducing number of triangles of the pbrt dragon
 
 // TODO bugs
-// - anisotropic rotation brightness buggued ?
+// - anisotropic rotation brightness buggued ? Sphere 0.3 rough, 1.0 metallic, 1.0 aniso, 0.5 aniso rotation, 1.0 clearcoat
 // - Why is the rough dragon having black fringes even with normal flipping ?
 // - normals AOV not converging correctly ?
 //		- for the denoiser normals convergence issue, is it an error at the end of the Path Tracer kernel where we're accumulating ? Should we have
