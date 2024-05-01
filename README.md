@@ -27,7 +27,7 @@ The CMake build then expects the CUDA_PATH environment variable to be defined. T
 All that follows has only been tested on Ubuntu 22.04.
 #### - AMD GPUs
 
-- Install OpenGL, GLFW and glew dependencies:
+1) Install OpenGL, GLFW and glew dependencies:
 
 ```sh
 sudo apt install freeglut3-dev
@@ -35,7 +35,7 @@ sudo apt install libglfw3-dev
 sudo apt install libglew-dev
 ```
 
-- Install AMD HIP (if you already have ROCm installed, you should have a `/opt/rocm` folder on your system and you can skip this step):
+2) Install AMD HIP (if you already have ROCm installed, you should have a `/opt/rocm` folder on your system and you can skip this step):
 
 Download `amdgpu-install` package: https://www.amd.com/en/support/linux-drivers
 Install the package: 
@@ -50,7 +50,7 @@ Install HIP:
 sudo amdgpu-install --usecase=hip
 ```
 
-To access GPU hardware without having to run your app as sudo everytime, add the user to the `render` group and **reboot** :
+3) To access GPU hardware without having to run your app as sudo everytime, add the user to the `render` group and **reboot** :
 
 ```sh
 sudo usermod -a -G render $LOGNAME
