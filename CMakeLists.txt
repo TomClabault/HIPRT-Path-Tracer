@@ -219,7 +219,7 @@ find_package(OpenImageDenoise REQUIRED HINTS ${oidnbinaries_SOURCE_DIR}) # HINTS
 
 # "version" is a library from the Windows SDK
 if (WIN32)
-target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX assimp OpenImageDenoise ${OPENGL_LIBRARY} glfw3 glew32 hiprt0200364D version)
+	target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX assimp OpenImageDenoise ${OPENGL_LIBRARY} glfw3 glew32 hiprt0200364D version)
 elseif(UNIX)
 	find_package(GLEW REQUIRED)
 	target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX assimp OpenImageDenoise ${OPENGL_LIBRARY} glfw GLEW::GLEW hiprt0200364D)
@@ -253,16 +253,15 @@ endif()
 
 if (WIN32)
 	message(STATUS "Copying OpenImageDenoise binaries...")
-	file(GLOB OIDN_BINARIES ${oidnbinaries_SOURCE_DIR}/bin/OpenImageDenoise*.so)
+	file(GLOB OIDN_BINARIES ${oidnbinaries_SOURCE_DIR}/bin/OpenImageDenoise*.dll)
 	file(COPY ${OIDN_BINARIES} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
 
 	message(STATUS "Copying HIPRT binaries...")
 	file(GLOB HIPRT_BINARIES ${HIPRT_BIN_DIR}/amd*.dll ${HIPRT_BIN_DIR}/hip*.dll)
-	file(COPY ${HIPRT_DLLs} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+	file(COPY ${HIPRT_BINARIES} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
 	message(STATUS "Copying Glew binaries...")
 	file(COPY ${CMAKE_SOURCE_DIR}/${GLEW_BIN_DIR}/glew32.dll DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-elseif(UINX)
 endif()
 
 
