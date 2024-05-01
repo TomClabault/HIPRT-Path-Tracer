@@ -1,4 +1,15 @@
-cmake_minimum_required(VERSION 3.20.5)
+# Additional Linux steps:
+# sudo apt-get install freeglut3-dev for OpenGL
+# sudo apt install libglfw3-dev
+# sudo apt install libglew-dev
+
+# Download amdgpu-install: https://www.amd.com/en/support/linux-drivers
+# Install the package: sudo apt install ./amdgpu-install_xxxx.deb
+# Install HIP: sudo amdgpu-install --usecase=hip
+
+# Add the user to the 'render' group: sudo usermod -a -G render $LOGNAME. Reboot
+
+cmake_minimum_required(VERSION 3.24)
 
 project(HIPRTPathTracer LANGUAGES CXX)
 
@@ -35,6 +46,7 @@ set(BUILD_SHARED_LIBS OFF)
 set(ASSIMP_NO_EXPORT ON)
 set(ASSIMP_BUILD_TESTS OFF)
 set(ASSIMP_INSTALL_PDB OFF)
+set(ASSIMP_BUILD_ZLIB ON)
 set(ASSIMP_BUILD_ASSIMP_VIEW OFF)
 FetchContent_MakeAvailable(
 	assimplib
@@ -49,9 +61,15 @@ set(CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE_BACKUP})
 
 
 # ----------- Downloading Open Image Denoise binaries -----------
+if (WIN32)
+	set(OIDN_URL https://github.com/OpenImageDenoise/oidn/releases/download/v2.2.2/oidn-2.2.2.x64.windows.zip)
+elseif(UNIX)
+	set(OIDN_URL https://github.com/OpenImageDenoise/oidn/releases/download/v2.2.2/oidn-2.2.2.x86_64.linux.tar.gz)
+endif()
+
 FetchContent_Declare(
 	oidnbinaries
-	URL      https://github.com/OpenImageDenoise/oidn/releases/download/v2.2.2/oidn-2.2.2.x64.windows.zip
+	URL      ${OIDN_URL}
 )
 
 FetchContent_MakeAvailable(
@@ -75,26 +93,31 @@ FetchContent_MakeAvailable(
 )
 
 # Executing HIPRT's premake
-execute_process(COMMAND ./tools/premake5/win/premake5.exe vs2022 WORKING_DIRECTORY ${hiprtrelease_SOURCE_DIR})
+if (WIN32)
+	execute_process(COMMAND ./tools/premake5/win/premake5.exe vs2022 WORKING_DIRECTORY ${hiprtrelease_SOURCE_DIR})
 
-# We're now going to build the HIPRT project through MSBuild since Premake generated a Visual Studio Solution
-# First, trying to find MSBuild on the PATH 
-find_program(MSBUILD_EXECUTABLE "MSBuild")
-if(NOT ${MSBUILD_EXECUTABLE} STREQUAL MSBUILD_EXECUTABLE-NOTFOUND AND MSBUILD_EXECUTABLE MATCHES "MSBuild.exe$")
-	message("MSBuild found at: " ${MSBUILD_EXECUTABLE})
-else()
-	# Trying to automatically find MSBuild in the regular Visual Studio installation
-	# given by the VS2022INSTALLDIR environment variable
-	if (EXISTS $ENV{VS2022INSTALLDIR}/MSBuild/Current/Bin/MSBuild.exe)
-		set(MSBUILD_EXECUTABLE $ENV{VS2022INSTALLDIR}/MSBuild/Current/Bin/MSBuild.exe)
+	# We're now going to build the HIPRT project through MSBuild since Premake generated a Visual Studio Solution
+	# First, trying to find MSBuild on the PATH 
+	find_program(MSBUILD_EXECUTABLE "MSBuild")
+	if(NOT ${MSBUILD_EXECUTABLE} STREQUAL MSBUILD_EXECUTABLE-NOTFOUND AND MSBUILD_EXECUTABLE MATCHES "MSBuild.exe$")
+		message("MSBuild found at: " ${MSBUILD_EXECUTABLE})
 	else()
-		set(MSBUILD_EXECUTABLE "NOT FOUND" CACHE PATH "Path to MSBuild.exe. MSBuild is shipped with Visual Studio and can be find under <Visual Studio Installation>/MSBuild/Current/Bin")
-		message(FATAL_ERROR "Could not find MSBuild.exe on your system. It is shipped with Visual Studio so you should have it somewhere on your system in Visual Studio installation directory. It is usually found under <Visual Studio Installation>/MSBuild/Current/Bin. You can add it to your PATH or provide it through the MSBUILD_EXECUTABLE CMake variable.")
+		# Trying to automatically find MSBuild in the regular Visual Studio installation
+		# given by the VS2022INSTALLDIR environment variable
+		if (EXISTS $ENV{VS2022INSTALLDIR}/MSBuild/Current/Bin/MSBuild.exe)
+			set(MSBUILD_EXECUTABLE $ENV{VS2022INSTALLDIR}/MSBuild/Current/Bin/MSBuild.exe)
+		else()
+			set(MSBUILD_EXECUTABLE "NOT FOUND" CACHE PATH "Path to MSBuild.exe. MSBuild is shipped with Visual Studio and can be find under <Visual Studio Installation>/MSBuild/Current/Bin")
+			message(FATAL_ERROR "Could not find MSBuild.exe on your system. It is shipped with Visual Studio so you should have it somewhere on your system in Visual Studio installation directory. It is usually found under <Visual Studio Installation>/MSBuild/Current/Bin. You can add it to your PATH or provide it through the MSBUILD_EXECUTABLE CMake variable.")
+		endif()
 	endif()
-endif()
 
-# Building HIPRT through MSBuild since Premake generated a Visual Studio Solution
-execute_process(COMMAND ${MSBUILD_EXECUTABLE} hiprt02003.vcxproj /property:Configuration=Debug /property:Platform=x64 /verbosity:minimal WORKING_DIRECTORY ${hiprtrelease_SOURCE_DIR}/build)
+	# Building HIPRT through MSBuild since Premake generated a Visual Studio Solution
+	execute_process(COMMAND ${MSBUILD_EXECUTABLE} hiprt02003.vcxproj /property:Configuration=Debug /property:Platform=x64 /verbosity:minimal WORKING_DIRECTORY ${hiprtrelease_SOURCE_DIR}/build)
+elseif(UNIX)
+	execute_process(COMMAND ./tools/premake5/linux64/premake5 gmake WORKING_DIRECTORY ${hiprtrelease_SOURCE_DIR})
+	execute_process(COMMAND make -C build -j config=debug_x64 WORKING_DIRECTORY ${hiprtrelease_SOURCE_DIR})
+endif()
 
 # Now that we built HIPRT, we can set the variables that will be used in the rest of the CMake 
 # to find the headers, the libraries, ...
@@ -206,7 +229,12 @@ find_package(OpenGL REQUIRED)
 find_package(OpenImageDenoise REQUIRED HINTS ${oidnbinaries_SOURCE_DIR}) # HINTS to indicate a folder to search for the library in
 
 # "version" is a library from the Windows SDK
+if (WIN32)
 target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX assimp OpenImageDenoise ${OPENGL_LIBRARY} glfw3 glew32 hiprt0200364D version)
+elseif(UNIX)
+	find_package(GLEW REQUIRED)
+	target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX assimp OpenImageDenoise ${OPENGL_LIBRARY} glfw GLEW::GLEW hiprt0200364D)
+endif()
 
 target_include_directories(HIPRTPathTracer PRIVATE "src/")
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/opengl/include")
@@ -234,16 +262,21 @@ endif()
 # ---------------------------------------------------------------
 
 
-message(STATUS "Copying OpenImageDenoise binaries...")
-file(GLOB OIDN_DLLs ${oidnbinaries_SOURCE_DIR}/bin/OpenImageDenoise*.dll)
-file(COPY ${OIDN_DLLs} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
+if (WIN32)
+	message(STATUS "Copying OpenImageDenoise binaries...")
+	file(GLOB OIDN_BINARIES ${oidnbinaries_SOURCE_DIR}/bin/OpenImageDenoise*.so)
+	file(COPY ${OIDN_BINARIES} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
 
-message(STATUS "Copying Glew binaries...")
-file(COPY ${CMAKE_SOURCE_DIR}/${GLEW_BIN_DIR}/glew32.dll DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+	message(STATUS "Copying HIPRT binaries...")
+	file(GLOB HIPRT_BINARIES ${HIPRT_BIN_DIR}/amd*.dll ${HIPRT_BIN_DIR}/hip*.dll)
+	file(COPY ${HIPRT_DLLs} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
-message(STATUS "Copying HIPRT binaries...")
-file(GLOB HIPRT_DLLs ${HIPRT_BIN_DIR}/amd*.dll ${HIPRT_BIN_DIR}/hip*.dll)
-file(COPY ${HIPRT_DLLs} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+	message(STATUS "Copying Glew binaries...")
+	file(COPY ${CMAKE_SOURCE_DIR}/${GLEW_BIN_DIR}/glew32.dll DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+elseif(UINX)
+endif()
+
+
 
 # Macro to preserve nice beautiful source files hierarchy in Visual Studio
 if(MSVC_IDE)

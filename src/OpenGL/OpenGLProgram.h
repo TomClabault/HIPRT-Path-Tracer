@@ -6,7 +6,7 @@
 #ifndef OPENGL_PROGRAM_H
 #define OPENGL_PROGRAM_H
 
-#include "gl/glew.h"
+#include "GL/glew.h"
 #include "HostDeviceCommon/math.h"
 #include "OpenGL/OpenGLShader.h"
 

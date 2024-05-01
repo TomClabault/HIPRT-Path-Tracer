@@ -6,7 +6,7 @@
 #ifndef DISPLAY_TEXTURE_TYPE_H
 #define DISPLAY_TEXTURE_TYPE_H
 
-#include "gl/glew.h"
+#include "GL/glew.h"
 
 class DisplayTextureType
 {
