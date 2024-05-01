@@ -60,8 +60,7 @@ __device__ ColorRGB disney_diffuse_eval(const RendererMaterial& material, const 
 
 __device__ float3 disney_diffuse_sample(const RendererMaterial& material, const float3& view_direction, const float3& surface_normal, Xorshift32Generator& random_number_generator)
 {
-    float trash_pdf;
-    float3 sampled_direction = cosine_weighted_sample(surface_normal, trash_pdf, random_number_generator);
+    float3 sampled_direction = cosine_weighted_sample(surface_normal, random_number_generator);
 
     return sampled_direction;
 }
@@ -318,8 +317,7 @@ __device__ ColorRGB disney_sheen_eval(const RendererMaterial& material, const fl
 
 __device__ float3 disney_sheen_sample(const RendererMaterial& material, const float3& view_direction, float3 surface_normal, Xorshift32Generator& random_number_generator)
 {
-    float trash_pdf;
-    return cosine_weighted_sample(surface_normal, trash_pdf, random_number_generator);
+    return cosine_weighted_sample(surface_normal, random_number_generator);
 }
 
 __device__ ColorRGB disney_eval(const RendererMaterial& material, const float3& view_direction, const float3& shading_normal, const float3& to_light_direction, float& pdf)

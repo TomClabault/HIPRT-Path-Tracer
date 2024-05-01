@@ -59,7 +59,7 @@ public:
      * is going to be projected in
      */
     Vector uniform_direction_around_normal(const Vector& normal, float& pdf, Xorshift32Generator& random_number_generator);
-    Vector cosine_weighted_sample(const Vector& normal, float& pdf, Xorshift32Generator& random_number_generator);
+    Vector cosine_weighted_sample(const Vector& normal, Xorshift32Generator& random_number_generator);
     void cosine_weighted_eval(const Vector& normal, const Vector& direction, float& pdf);
 
     void debug_set_final_color(int x, int y, ColorRGB final_color);

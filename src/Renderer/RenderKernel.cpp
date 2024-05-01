@@ -140,7 +140,7 @@ Vector RenderKernel::uniform_direction_around_normal(const Vector& normal, float
     return local_to_world_frame(normal, random_dir_local_space);
 }
 
-Vector RenderKernel::cosine_weighted_sample(const Vector& normal, float& pdf, Xorshift32Generator& random_number_generator)
+Vector RenderKernel::cosine_weighted_sample(const Vector& normal, Xorshift32Generator& random_number_generator)
 {
     float rand_1 = random_number_generator();
     float rand_2 = random_number_generator();
@@ -149,8 +149,6 @@ Vector RenderKernel::cosine_weighted_sample(const Vector& normal, float& pdf, Xo
     float phi = 2.0f * (float)M_PI * rand_1;
     float cos_theta = sqrt_rand_2;
     float sin_theta = std::sqrt(std::max(0.0f, 1.0f - cos_theta * cos_theta));
-
-    pdf = sqrt_rand_2 / (float)M_PI;
 
     //Generating a random direction in a local space with Z as the Up vector
     Vector random_dir_local_space = Vector(std::cos(phi) * sin_theta, std::sin(phi) * sin_theta, sqrt_rand_2);
@@ -707,8 +705,7 @@ ColorRGB RenderKernel::disney_diffuse_eval(const RendererMaterial& material, con
 
 Vector RenderKernel::disney_diffuse_sample(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, Xorshift32Generator& random_number_generator)
 {
-    float trash_pdf;
-    Vector sampled_direction = cosine_weighted_sample(shading_normal, trash_pdf, random_number_generator);
+    Vector sampled_direction = cosine_weighted_sample(shading_normal, random_number_generator);
 
     return sampled_direction;
 }
@@ -974,8 +971,7 @@ ColorRGB RenderKernel::disney_sheen_eval(const RendererMaterial& material, const
 
 Vector RenderKernel::disney_sheen_sample(const RendererMaterial& material, const Vector& view_direction, Vector surface_normal, Xorshift32Generator& random_number_generator)
 {
-    float trash_pdf;
-    return cosine_weighted_sample(surface_normal, trash_pdf, random_number_generator);
+    return cosine_weighted_sample(surface_normal, random_number_generator);
 }
 
 ColorRGB RenderKernel::disney_eval(const RendererMaterial& material, const Vector& view_direction, const Vector& shading_normal, const Vector& to_light_direction, float& pdf)

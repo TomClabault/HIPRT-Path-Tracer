@@ -39,21 +39,20 @@ __device__ bool refract_ray(const float3& ray_direction, const float3& surface_n
     return true;
 }
 
-__device__ float3 cosine_weighted_sample(const float3& normal, float& pdf, Xorshift32Generator& random_number_generator)
+/**
+ * Reference
+ * [1] [Lambertian Reflection Without Tangents], Edd Biddulph https://fizzer.neocities.org/lambertnotangent
+ */
+__device__ float3 cosine_weighted_sample(const float3& normal, Xorshift32Generator& random_number_generator)
 {
     float rand_1 = random_number_generator();
-    float rand_2 = random_number_generator();
+    float rand_2 = 2.0f * random_number_generator() - 1.0f;
+    float theta = 2.0f * M_PI * rand_1;
 
-    float sqrt_rand_2 = sqrt(rand_2);
-    float phi = 2.0f * (float)M_PI * rand_1;
-    float cos_theta = sqrt_rand_2;
-    float sin_theta = sqrt(hiprtpt::max(0.0f, 1.0f - cos_theta * cos_theta));
+    float2 xy = sqrt(1.0f - rand_2 * rand_2) * make_float2(cos(theta), sin(theta));
+    float3 spherePoint = float3(xy.x, xy.y, rand_2);
 
-    pdf = sqrt_rand_2 / (float)M_PI;
-
-    //Generating a random direction in a local space with Z as the Up float3
-    float3 random_dir_local_space = make_float3(cos(phi) * sin_theta, sin(phi) * sin_theta, sqrt_rand_2);
-    return local_to_world_frame(normal, random_dir_local_space);
+    return hiprtpt::normalize(normal + spherePoint);
 }
 
 __device__ ColorRGB fresnel_schlick(ColorRGB F0, float angle)
