@@ -3,11 +3,11 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#include <Device/includes/fix_intellisense.h>
-#include <Device/includes/sampling.h>
-#include <HostDeviceCommon/camera.h>
-#include <HostDeviceCommon/math.h>
-#include <HostDeviceCommon/render_data.h>
+#include "Device/includes/FixIntellisense.h"
+#include "Device/includes/Sampling.h"
+#include "HostDeviceCommon/Camera.h"
+#include "HostDeviceCommon/Math.h"
+#include "HostDeviceCommon/RenderData.h"
 
 GLOBAL_KERNEL_SIGNATURE(void) NormalsKernel(hiprtGeometry geom, HIPRTRenderData render_data, int2 res, HIPRTCamera camera)
 {

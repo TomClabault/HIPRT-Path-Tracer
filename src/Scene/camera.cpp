@@ -3,7 +3,7 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#include "camera.h"
+#include "Scene/Camera.h"
 
 Camera::Camera()
 {

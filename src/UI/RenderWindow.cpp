@@ -3,12 +3,12 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#include "UI/render_window.h"
+#include "UI/RenderWindow.h"
 
 #include <functional>
 #include <iostream>
-#include "Scene/scene_parser.h"
-#include "Utils/utils.h"
+#include "Scene/SceneParser.h"
+#include "Utils/Utils.h"
 
 #include "stb_image_write.h"
 
@@ -28,7 +28,6 @@
 
 
 // TODO Code Organization:
-// - Rename class files in camel case
 // - Destroy buffers when disabling adaptative sampling to save VRAM
 // - Can we have access to HoL when calling disney_metallic_fresnel to avoid passing the two vectors and recomputing the dot product in the return statement ?
 // - DO THE DISNEY SHADING IN SHADING SPACE. WHAT THE H IS THIS CODE BUILDING ONB IN EVERY FUNCTION HUH?
@@ -43,6 +42,7 @@
 
 
 // TODO Features:
+// - alias method for sampling env map instead of log(n) dichotomy
 // - image comparator slider
 // - auto adaptative sample per frame with adaptative sampling to keep GPU busy
 // - Maybe look at better Disney sampling (luminance?)

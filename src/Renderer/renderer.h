@@ -7,15 +7,15 @@
 #define RENDERER_H
 
 #include "glm/gtc/matrix_transform.hpp"
-#include "HIPRT-Orochi/orochi_buffer.h"
-#include "HIPRT-Orochi/hiprt_orochi_ctx.h"
-#include "HIPRT-Orochi/hiprt_scene.h"
-#include "HostDeviceCommon/render_data.h"
+#include "HIPRT-Orochi/OrochiBuffer.h"
+#include "HIPRT-Orochi/HIPRTOrochiCtx.h"
+#include "HIPRT-Orochi/HIPRTScene.h"
+#include "HostDeviceCommon/RenderData.h"
 #include "OpenGL/OpenGLInteropBuffer.h"
-#include "Scene/camera.h"
-#include "Scene/scene_parser.h"
+#include "Scene/Camera.h"
+#include "Scene/SceneParser.h"
 
-#include "open_image_denoiser.h"
+#include "Renderer/OpenImageDenoiser.h"
 
 #include <vector>
 

@@ -6,15 +6,15 @@
 #ifndef RENDER_KERNEL_H
 #define RENDER_KERNEL_H
 
-#include "Scene/camera.h"
-#include "Image/envmap.h"
-#include "Image/image.h"
-#include "Renderer/bvh.h"
-#include "Renderer/sphere.h"
-#include "Renderer/triangle.h"
-#include "HostDeviceCommon/material.h"
-#include "HostDeviceCommon/xorshift.h"
-#include "Utils/utils.h"
+#include "Scene/Camera.h"
+#include "Image/Envmap.h"
+#include "Image/Image.h"
+#include "Renderer/BVH.h"
+#include "Renderer/Sphere.h"
+#include "Renderer/Triangle.h"
+#include "HostDeviceCommon/Material.h"
+#include "HostDeviceCommon/Xorshift.h"
+#include "Utils/Utils.h"
 
 class RenderKernel
 {

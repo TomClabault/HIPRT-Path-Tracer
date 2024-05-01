@@ -10,10 +10,10 @@
 #include "assimp/scene.h"
 #include "assimp/postprocess.h"
 
-#include "HostDeviceCommon/material.h"
-#include "Scene/camera.h"
-#include "Renderer/sphere.h"
-#include "Renderer/triangle.h"
+#include "HostDeviceCommon/Material.h"
+#include "Scene/Camera.h"
+#include "Renderer/Sphere.h"
+#include "Renderer/Triangle.h"
 
 #include <vector>
 

@@ -9,16 +9,16 @@
 
 #include <stb_image_write.h>
 
-#include "Image/envmap.h"
-#include "Image/image.h"
-#include "Renderer/bvh.h"
+#include "Image/Envmap.h"
+#include "Image/Image.h"
+#include "Renderer/BVH.h"
 #include "Renderer/RenderKernel.h"
-#include "Renderer/triangle.h"
-#include "Scene/camera.h"
-#include "Scene/scene_parser.h"
-#include "UI/render_window.h"
-#include "Utils/commandline_arguments.h"
-#include "Utils/utils.h"
+#include "Renderer/Triangle.h"
+#include "Scene/Camera.h"
+#include "Scene/SceneParser.h"
+#include "UI/RenderWindow.h"
+#include "Utils/CommandlineArguments.h"
+#include "Utils/Utils.h"
 
 #define GPU_RENDER 1
 

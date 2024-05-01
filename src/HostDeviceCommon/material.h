@@ -6,8 +6,8 @@
 #ifndef MATERIAL_H
 #define MATERIAL_H
 
-#include "HostDeviceCommon/color_rgb.h"
-#include "HostDeviceCommon/math.h"
+#include "HostDeviceCommon/ColorRGB.h"
+#include "HostDeviceCommon/Math.h"
 
 enum BRDF
 {

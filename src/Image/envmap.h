@@ -1,7 +1,7 @@
 #ifndef ENVMAP_H
 #define ENVMAP_H
 
-#include "Image/image.h"
+#include "Image/Image.h"
 
 class EnvironmentMap : public Image
 {

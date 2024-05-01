@@ -6,8 +6,8 @@
 #ifndef HIPRT_SCENE_DATA_H
 #define HIPRT_SCENE_DATA_H
 
-#include "HostDeviceCommon/material.h"
-#include "HostDeviceCommon/math.h"
+#include "HostDeviceCommon/Material.h"
+#include "HostDeviceCommon/Math.h"
 
 struct HIPRTRenderSettings
 {

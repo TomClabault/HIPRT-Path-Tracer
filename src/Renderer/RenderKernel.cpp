@@ -3,9 +3,9 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#include "HostDeviceCommon/hit_info.h"
+#include "HostDeviceCommon/HitInfo.h"
 #include "Renderer/RenderKernel.h"
-#include "triangle.h"
+#include "Renderer/Triangle.h"
 
 #define DEBUG_PIXEL 0
 #define DEBUG_EXACT_COORDINATE 0

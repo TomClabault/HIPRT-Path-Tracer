@@ -6,7 +6,7 @@
 #ifndef HIPRT_CAMERA_H
 #define HIPRT_CAMERA_H
 
-#include "HostDeviceCommon/math.h"
+#include "HostDeviceCommon/Math.h"
 
 struct HIPRTCamera
 {

@@ -1,7 +1,7 @@
 #ifndef IMAGE_H
 #define IMAGE_H
 
-#include "HostDeviceCommon/color_rgb.h"
+#include "HostDeviceCommon/ColorRGB.h"
 
 struct ImageBin
 {

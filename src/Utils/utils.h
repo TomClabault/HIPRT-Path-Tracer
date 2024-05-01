@@ -6,8 +6,8 @@
 #ifndef UTILS_H
 #define UTILS_H
 
-#include "Image/image.h"
-#include "HostDeviceCommon/color_rgb.h"
+#include "Image/Image.h"
+#include "HostDeviceCommon/ColorRGB.h"
 
 #include <string>
 

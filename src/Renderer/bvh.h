@@ -13,10 +13,10 @@
 #include <limits>
 #include <queue>
 
-#include "bounding_volume.h"
-#include "bvh_constants.h"
-#include "triangle.h"
-#include "ray.h"
+#include "Renderer/BoundingVolume.h"
+#include "Renderer/BVHConstants.h"
+#include "Renderer/Triangle.h"
+#include "Renderer/Ray.h"
 
 class FlattenedBVH;
 

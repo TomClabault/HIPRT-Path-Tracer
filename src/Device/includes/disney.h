@@ -6,12 +6,12 @@
 #ifndef HIPRT_DISNEY_H
 #define HIPRT_DISNEY_H
 
-#include <Device/includes/fix_intellisense.h>
-#include <Device/includes/onb.h>
-#include <Device/includes/oren_nayar.h>
-#include <Device/includes/sampling.h>
-#include <HostDeviceCommon/material.h>
-#include <HostDeviceCommon/xorshift.h>
+#include "Device/includes/FixIntellisense.h"
+#include "Device/includes/ONB.h"
+#include "Device/includes/OrenNayar.h"
+#include "Device/includes/Sampling.h"
+#include "HostDeviceCommon/Material.h"
+#include "HostDeviceCommon/Xorshift.h"
 
 /* 
  * References:

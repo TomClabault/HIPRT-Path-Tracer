@@ -6,7 +6,7 @@
 #ifndef COLOR_H
 #define COLOR_H
 
-#include "HostDeviceCommon/math.h"
+#include "HostDeviceCommon/Math.h"
 
 #ifndef __KERNELCC__
 #define __prefix__ inline

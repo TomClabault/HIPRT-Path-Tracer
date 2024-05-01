@@ -6,8 +6,8 @@
 #ifndef BOUNDING_VOLUME_H
 #define BOUNDING_VOLUME_H
 
-#include "bvh_constants.h"
-#include "triangle.h"
+#include "BVHConstants.h"
+#include "Renderer/Triangle.h"
 
 #include <array>
 

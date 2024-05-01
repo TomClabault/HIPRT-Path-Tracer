@@ -1,8 +1,8 @@
 #include "GL/glew.h"
 #include "stb_image_write.h"
-#include "UI/render_window.h"
+#include "UI/RenderWindow.h"
 #include "UI/Screenshoter.h"
-#include "Utils/utils.h"
+#include "Utils/Utils.h"
 
 void Screenshoter::set_renderer(Renderer* renderer)
 {

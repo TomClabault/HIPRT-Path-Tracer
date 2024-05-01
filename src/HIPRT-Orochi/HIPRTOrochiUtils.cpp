@@ -3,7 +3,7 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#include "HIPRT-Orochi/hiprtpt_orochi_utils.h"
+#include "HIPRT-Orochi/HIPRTOrochiUtils.h"
 
 #include <deque>
 #include <unordered_set>

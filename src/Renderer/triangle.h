@@ -6,8 +6,8 @@
 #ifndef TRIANGLE_H
 #define TRIANGLE_H
 
-#include "HostDeviceCommon/hit_info.h"
-#include "ray.h"
+#include "HostDeviceCommon/HitInfo.h"
+#include "Ray.h"
 #include "Maths/vec.h"
 
 struct Triangle

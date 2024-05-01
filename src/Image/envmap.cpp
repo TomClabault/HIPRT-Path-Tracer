@@ -1,5 +1,5 @@
-#include "envmap.h"
-#include "Utils/utils.h"
+#include "Image/Envmap.h"
+#include "Utils/Utils.h"
 
 EnvironmentMap::EnvironmentMap(int width, int height) : Image(width, height)
 {

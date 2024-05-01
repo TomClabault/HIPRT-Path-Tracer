@@ -7,8 +7,8 @@
 //#define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-#include "Image/image.h"
-#include "Utils/utils.h"
+#include "Image/Image.h"
+#include "Utils/Utils.h"
 
 #include <iostream>
 #include <string>

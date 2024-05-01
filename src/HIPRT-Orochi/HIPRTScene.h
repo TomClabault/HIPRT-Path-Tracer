@@ -8,7 +8,7 @@
 
 #include "hiprt/hiprt.h"
 #include "Orochi/Orochi.h"
-#include "HIPRT-Orochi/hiprtpt_orochi_utils.h"
+#include "HIPRT-Orochi/HIPRTOrochiUtils.h"
 
 struct HIPRTScene
 {

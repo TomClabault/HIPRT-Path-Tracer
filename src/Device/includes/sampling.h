@@ -7,9 +7,9 @@
 #define HIPRT_SAMPLING_H
 
 #include "Device/includes/onb.h"
-#include "HostDeviceCommon/color_rgb.h"
-#include "HostDeviceCommon/material.h"
-#include "HostDeviceCommon/xorshift.h"
+#include "HostDeviceCommon/ColorRGB.h"
+#include "HostDeviceCommon/Material.h"
+#include "HostDeviceCommon/Xorshift.h"
 
 /**
  * Reflects a ray about a normal. This function requires that dot(ray_direction, surface_normal) > 0 i.e.

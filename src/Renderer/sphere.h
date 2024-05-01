@@ -6,8 +6,8 @@
 #ifndef SPHERE_H
 #define SPHERE_H
 
-#include "HostDeviceCommon/hit_info.h"
-#include "ray.h"
+#include "HostDeviceCommon/HitInfo.h"
+#include "Renderer/Ray.h"
 
 struct Sphere
 {

@@ -4,7 +4,7 @@
  */
 
 #include "OpenGL/OpenGLShader.h"
-#include "Utils/utils.h"
+#include "Utils/Utils.h"
 
 OpenGLShader::OpenGLShader(const std::string& source_code, ShaderType type, const std::vector<std::string>& macros)
 {

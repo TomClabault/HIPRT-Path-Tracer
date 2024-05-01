@@ -7,13 +7,13 @@
 #define RENDER_WINDOW_H
 
 #include "OpenGL/OpenGLProgram.h"
-#include "Renderer/open_image_denoiser.h"
+#include "Renderer/OpenImageDenoiser.h"
 #include "Renderer/renderer.h"
-#include "UI/application_settings.h"
+#include "UI/ApplicationSettings.h"
 #include "UI/DisplayTextureType.h"
 #include "UI/DisplayView.h"
 #include "UI/Screenshoter.h"
-#include "Utils/commandline_arguments.h"
+#include "Utils/CommandlineArguments.h"
 
 #include "GL/glew.h"
 #include "GLFW/glfw3.h"
