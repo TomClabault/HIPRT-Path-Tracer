@@ -13,8 +13,9 @@ The Orochi library allows device kernels to be compiled at run time and the appl
 - AMD RDNA1 GPU or newer (RX 5000 or newer) **or** NVIDIA Maxwell GPU or newer (GTX 700 & GTX 900 Series or newer)
 - Visual Studio 2022 (only version tested but older versions might work as well)
 
-# Preliminary setup
-## Windows
+# Building
+## Preliminary setup
+### Windows
 #### - AMD GPUs
 Nothing to do, go to the building step.
 #### - NVIDIA GPUs
@@ -22,7 +23,7 @@ To build the project on NVIDIA hardware, you will need to install the NVIDIA CUD
 
 The CMake build then expects the CUDA_PATH environment variable to be defined. This should automatically be the case after installing the CUDA Toolkit but just in case, you can define it yourself such that CUDA_PATH/include/cuda.h is a valid file path.
 
-## Linux
+### Linux
 
 All that follows has only been tested on Ubuntu 22.04.
 #### - AMD GPUs
@@ -58,7 +59,7 @@ sudo usermod -a -G render $LOGNAME
 #### - NVIDIA GPUs
 
 Not yet tested. If you have an NVIDIA GPU and want to try and compile the project on your Linux installation, please feel free to do so. You could then open a merge request to add installation instructions to the README, that would be greatly appreciated!
-# Building
+## Compiling
 
 With the preliminary setup done, you now just have to run the CMake:
 
