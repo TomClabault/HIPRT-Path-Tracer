@@ -7,6 +7,7 @@
 #define HIPRT_CAMERA_H
 
 #include "HostDeviceCommon/Math.h"
+#include <hiprt/hiprt_types.h> // for hiprtRay
 
 struct HIPRTCamera
 {
@@ -14,8 +15,7 @@ struct HIPRTCamera
     float4x4 inverse_projection;
     float3 position;
 
-#ifdef __KERNELCC__
-    __device__ hiprtRay get_camera_ray(float x, float y, int2 res)
+    HIPRT_HOST_DEVICE hiprtRay get_camera_ray(float x, float y, int2 res)
     {
         float x_ndc_space = x / res.x * 2 - 1;
         float y_ndc_space = y / res.y * 2 - 1;
@@ -29,7 +29,7 @@ struct HIPRTCamera
         float3 ray_point_dir_vs = ray_point_dir_vs_homog;
         float3 ray_point_dir_ws = matrix_X_point(inverse_view, ray_point_dir_vs);
 
-        float3 ray_direction = hiprtpt::normalize(ray_point_dir_ws - ray_origin);
+        float3 ray_direction = hippt::normalize(ray_point_dir_ws - ray_origin);
 
         hiprtRay ray;
         ray.origin = ray_origin;
@@ -37,7 +37,6 @@ struct HIPRTCamera
 
         return ray;
     }
-#endif
 };
 
 #endif

@@ -30,7 +30,7 @@ struct Xorshift32Generator
     __device__ int random_index(int array_size)
     {
         int random_num = xorshift32() / (float)XORSHIFT_MAX * array_size;
-        return hiprtpt::min(random_num, array_size - 1);
+        return hippt::min(random_num, array_size - 1);
     }
 
     /*
@@ -39,7 +39,7 @@ struct Xorshift32Generator
     __device__ float operator()()
     {
         //Float in [0, 1[
-        return hiprtpt::min(xorshift32() / (float)XORSHIFT_MAX, 1.0f - 1.0e-9f);
+        return hippt::min(xorshift32() / (float)XORSHIFT_MAX, 1.0f - 1.0e-9f);
     }
 
     __device__ unsigned int xorshift32()

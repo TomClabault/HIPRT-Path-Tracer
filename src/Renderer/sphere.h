@@ -7,20 +7,20 @@
 #define SPHERE_H
 
 #include "HostDeviceCommon/HitInfo.h"
-#include "Renderer/Ray.h"
+#include <hiprt/hiprt_types.h> // for hiprtRay
 
 struct Sphere
 {
-    Sphere(Point center, float radius, int primitive_index) : center(center), radius(radius), primitive_index(primitive_index) { };
+    Sphere(float3 center, float radius, int primitive_index) : center(center), radius(radius), primitive_index(primitive_index) { };
 
-    inline bool intersect(const Ray &ray, HitInfo& hit_info) const
+    inline bool intersect(const hiprtRay &ray, HitInfo& hit_info) const
     {
-        Vector L = ray.origin - center;
+        float3 L = ray.origin - center;
 
         //dot(ray._direction, ray._direction) = 1 because direction is normalized
         constexpr float a = 1.0f;
-        float b = 2.0f * dot(ray.direction, L);
-        float c = dot(L, L) - radius * radius;
+        float b = 2.0f * hippt::dot(ray.direction, L);
+        float c = hippt::dot(L, L) - radius * radius;
 
         float delta = b * b - 4.0f * a * c;
         if (delta < 0.0f)
@@ -50,14 +50,14 @@ struct Sphere
                 return false;
 
             hit_info.inter_point = ray.origin + ray.direction * hit_info.t;
-            hit_info.shading_normal = normalize(hit_info.inter_point - center);
+            hit_info.shading_normal = hippt::normalize(hit_info.inter_point - center);
             hit_info.primitive_index = primitive_index;
 
             return true;
         }
     }
 
-    Point center;
+    float3 center;
     float radius;
 
     int primitive_index;

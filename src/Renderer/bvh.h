@@ -16,7 +16,7 @@
 #include "Renderer/BoundingVolume.h"
 #include "Renderer/BVHConstants.h"
 #include "Renderer/Triangle.h"
-#include "Renderer/Ray.h"
+#include <hiprt/hiprt_types.h> // for hiprtRay
 
 class FlattenedBVH;
 
@@ -40,7 +40,7 @@ public:
             //by the OctreeNode to compute the intersection with a ray
         };
 
-        OctreeNode(Point min, Point max) : _min(min), _max(max) {}
+        OctreeNode(float3 min, float3 max) : _min(min), _max(max) {}
         ~OctreeNode()
         {
             if (_is_leaf)
@@ -74,14 +74,14 @@ public:
             float middle_y = (_min.y + _max.y) / 2;
             float middle_z = (_min.z + _max.z) / 2;
 
-            _children[0] = new OctreeNode(_min, Point(middle_x, middle_y, middle_z));
-            _children[1] = new OctreeNode(Point(middle_x, _min.y, _min.z), Point(_max.x, middle_y, middle_z));
-            _children[2] = new OctreeNode(_min + Point(0, middle_y, 0), Point(middle_x, _max.y, middle_z));
-            _children[3] = new OctreeNode(Point(middle_x, middle_y, _min.z), Point(_max.x, _max.y, middle_z));
-            _children[4] = new OctreeNode(_min + Point(0, 0, middle_z), Point(middle_x, middle_y, _max.z));
-            _children[5] = new OctreeNode(Point(middle_x, _min.y, middle_z), Point(_max.x, middle_y, _max.z));
-            _children[6] = new OctreeNode(_min + Point(0, middle_y, middle_z), Point(middle_x, _max.y, _max.z));
-            _children[7] = new OctreeNode(Point(middle_x, middle_y, middle_z), Point(_max.x, _max.y, _max.z));
+            _children[0] = new OctreeNode(_min, float3(middle_x, middle_y, middle_z));
+            _children[1] = new OctreeNode(float3(middle_x, _min.y, _min.z), float3(_max.x, middle_y, middle_z));
+            _children[2] = new OctreeNode(_min + float3(0, middle_y, 0), float3(middle_x, _max.y, middle_z));
+            _children[3] = new OctreeNode(float3(middle_x, middle_y, _min.z), float3(_max.x, _max.y, middle_z));
+            _children[4] = new OctreeNode(_min + float3(0, 0, middle_z), float3(middle_x, middle_y, _max.z));
+            _children[5] = new OctreeNode(float3(middle_x, _min.y, middle_z), float3(_max.x, middle_y, _max.z));
+            _children[6] = new OctreeNode(_min + float3(0, middle_y, middle_z), float3(middle_x, _max.y, _max.z));
+            _children[7] = new OctreeNode(float3(middle_x, middle_y, middle_z), float3(_max.x, _max.y, _max.z));
         }
 
         void insert(const std::vector<Triangle>& triangles_geometry, int triangle_id_to_insert, int current_depth, int max_depth, int leaf_max_obj_count)
@@ -113,7 +113,7 @@ public:
         void insert_to_children(const std::vector<Triangle>& triangles_geometry, int triangle_id_to_insert, int current_depth, int max_depth, int leaf_max_obj_count)
         {
             const Triangle& triangle = triangles_geometry[triangle_id_to_insert];
-            Point bbox_centroid = triangle.bbox_centroid();
+            float3 bbox_centroid = triangle.bbox_centroid();
 
             float middle_x = (_min.x + _max.x) / 2;
             float middle_y = (_min.y + _max.y) / 2;
@@ -128,7 +128,7 @@ public:
             _children[octant_index]->insert(triangles_geometry, triangle_id_to_insert, current_depth + 1, max_depth, leaf_max_obj_count);
         }
 
-        bool intersect(const std::vector<Triangle>& triangles_geometry, const Ray& ray, HitInfo& hit_info) const
+        bool intersect(const std::vector<Triangle>& triangles_geometry, const hiprtRay& ray, HitInfo& hit_info) const
         {
             float trash;
 
@@ -137,14 +137,14 @@ public:
 
             for (int i = 0; i < BVHConstants::PLANES_COUNT; i++)
             {
-                denoms[i] = dot(BoundingVolume::PLANE_NORMALS[i], ray.direction);
-                numers[i] = dot(BoundingVolume::PLANE_NORMALS[i], Vector(ray.origin));
+                denoms[i] = hippt::dot(BoundingVolume::PLANE_NORMALS[i], ray.direction);
+                numers[i] = hippt::dot(BoundingVolume::PLANE_NORMALS[i], float3(ray.origin));
             }
 
             return intersect(triangles_geometry, ray, hit_info, trash, denoms, numers);
         }
 
-        bool intersect(const std::vector<Triangle>& triangles_geometry, const Ray& ray, HitInfo& hit_info, float& t_near, float* denoms, float* numers) const
+        bool intersect(const std::vector<Triangle>& triangles_geometry, const hiprtRay& ray, HitInfo& hit_info, float& t_near, float* denoms, float* numers) const
         {
             float t_far, trash;
 
@@ -219,7 +219,7 @@ public:
         std::vector<int> _triangles;
         std::array<BVH::OctreeNode*, 8> _children;
 
-        Point _min, _max;
+        float3 _min, _max;
         BoundingVolume _bounding_volume;
     };
 
@@ -230,11 +230,11 @@ public:
 
     void operator=(BVH&& bvh);
      
-    bool intersect(const Ray& ray, HitInfo& hit_info) const;
+    bool intersect(const hiprtRay& ray, HitInfo& hit_info) const;
     FlattenedBVH flatten() const;
 
 private:
-    void build_bvh(int max_depth, int leaf_max_obj_count, Point min, Point max, const BoundingVolume& volume);
+    void build_bvh(int max_depth, int leaf_max_obj_count, float3 min, float3 max, const BoundingVolume& volume);
 
 public:
     OctreeNode* _root;

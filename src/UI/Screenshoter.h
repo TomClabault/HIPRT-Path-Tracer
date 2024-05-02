@@ -1,5 +1,10 @@
-#ifndef IMAGE_WRITER_H
-#define IMAGE_WRITER_H
+/*
+ * Copyright 2024 Tom Clabault. GNU GPL3 license.
+ * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
+ */
+
+#ifndef SCREENSHOTER_H
+#define SCREENSHOTER_H
 
 #include "GL/glew.h"
 #include "OpenGL/OpenGLProgram.h"

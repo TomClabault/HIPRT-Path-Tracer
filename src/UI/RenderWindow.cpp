@@ -26,6 +26,7 @@
 
 
 // TODO Code Organization:
+// - remove ray << ostream
 // - Destroy buffers when disabling adaptative sampling to save VRAM
 // - Can we have access to HoL when calling disney_metallic_fresnel to avoid passing the two vectors and recomputing the dot product in the return statement ?
 // - DO THE DISNEY SHADING IN SHADING SPACE. WHAT THE H IS THIS CODE BUILDING ONB IN EVERY FUNCTION HUH?

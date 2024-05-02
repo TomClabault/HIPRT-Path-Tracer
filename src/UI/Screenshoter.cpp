@@ -1,3 +1,8 @@
+/*
+ * Copyright 2024 Tom Clabault. GNU GPL3 license.
+ * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
+ */
+
 #include "GL/glew.h"
 #include "stb_image_write.h"
 #include "UI/RenderWindow.h"

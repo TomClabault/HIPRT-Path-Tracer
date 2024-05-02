@@ -36,7 +36,7 @@ __device__ ColorRGB oren_nayar_eval(const RendererMaterial& material, const floa
 
         float d_cos = cos_phi_i * cos_phi_o + sin_phi_i * sin_phi_o;
 
-        max_cos = max(0.0f, d_cos);
+        max_cos = hippt::max(0.0f, d_cos);
     }
 
     float sin_alpha, tan_beta;

@@ -9,21 +9,21 @@
 
 #include "bvh.h"
 
-const Vector BoundingVolume::PLANE_NORMALS[BVHConstants::PLANES_COUNT] = {
-	Vector(1, 0, 0),
-	Vector(0, 1, 0),
-    Vector(0, 0, 1),
-    Vector(std::sqrt(3.0f) / 3, std::sqrt(3.0f) / 3, std::sqrt(3.0f) / 3),
-    Vector(-std::sqrt(3.0f) / 3, std::sqrt(3.0f) / 3, std::sqrt(3.0f) / 3),
-    Vector(-std::sqrt(3.0f) / 3, -std::sqrt(3.0f) / 3, std::sqrt(3.0f) / 3),
-    Vector(std::sqrt(3.0f) / 3, -std::sqrt(3.0f) / 3, std::sqrt(3.0f) / 3),
+const float3 BoundingVolume::PLANE_NORMALS[BVHConstants::PLANES_COUNT] = {
+	float3(1, 0, 0),
+	float3(0, 1, 0),
+    float3(0, 0, 1),
+    float3(std::sqrt(3.0f) / 3, std::sqrt(3.0f) / 3, std::sqrt(3.0f) / 3),
+    float3(-std::sqrt(3.0f) / 3, std::sqrt(3.0f) / 3, std::sqrt(3.0f) / 3),
+    float3(-std::sqrt(3.0f) / 3, -std::sqrt(3.0f) / 3, std::sqrt(3.0f) / 3),
+    float3(std::sqrt(3.0f) / 3, -std::sqrt(3.0f) / 3, std::sqrt(3.0f) / 3),
 };
 
 BVH::BVH() : _root(nullptr), _triangles(nullptr) {}
 BVH::BVH(std::vector<Triangle>* triangles, int max_depth, int leaf_max_obj_count) : _triangles(triangles)
 {
 	BoundingVolume volume;
-	Point minimum(INFINITY, INFINITY, INFINITY), maximum(-INFINITY, -INFINITY, -INFINITY);
+	float3 minimum(INFINITY, INFINITY, INFINITY), maximum(-INFINITY, -INFINITY, -INFINITY);
 
 	for (const Triangle& triangle : *triangles)
 	{
@@ -31,8 +31,8 @@ BVH::BVH(std::vector<Triangle>* triangles, int max_depth, int leaf_max_obj_count
 
 		for (int i = 0; i < 3; i++)
 		{
-			minimum = min(minimum, triangle[i]);
-			maximum = max(maximum, triangle[i]);
+			minimum = hippt::min(minimum, triangle[i]);
+			maximum = hippt::max(maximum, triangle[i]);
 		}
 	}
 
@@ -53,7 +53,7 @@ void BVH::operator=(BVH&& bvh)
 	bvh._root = nullptr;
 }
 
-void BVH::build_bvh(int max_depth, int leaf_max_obj_count, Point min, Point max, const BoundingVolume& volume)
+void BVH::build_bvh(int max_depth, int leaf_max_obj_count, float3 min, float3 max, const BoundingVolume& volume)
 {
 	_root = new OctreeNode(min, max);
 
@@ -63,7 +63,7 @@ void BVH::build_bvh(int max_depth, int leaf_max_obj_count, Point min, Point max,
     _root->compute_volume(*_triangles);
 }
 
-bool BVH::intersect(const Ray& ray, HitInfo& hit_info) const
+bool BVH::intersect(const hiprtRay& ray, HitInfo& hit_info) const
 {
     return _root->intersect(*_triangles, ray, hit_info);
 }

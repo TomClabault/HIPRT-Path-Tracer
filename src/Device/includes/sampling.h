@@ -17,7 +17,7 @@
  */
 __device__ float3 reflect_ray(const float3& ray_direction, const float3& surface_normal)
 {
-    return -ray_direction + 2.0f * hiprtpt::dot(ray_direction, surface_normal) * surface_normal;
+    return -ray_direction + 2.0f * hippt::dot(ray_direction, surface_normal) * surface_normal;
 }
 
 /**
@@ -26,7 +26,7 @@ __device__ float3 reflect_ray(const float3& ray_direction, const float3& surface
  */
 __device__ bool refract_ray(const float3& ray_direction, const float3& surface_normal, float3& refract_direction, float relative_eta)
 {
-    float NoI = hiprtpt::dot(ray_direction, surface_normal);
+    float NoI = hippt::dot(ray_direction, surface_normal);
 
     float sin_theta_i_2 = 1.0f - NoI * NoI;
     float root_term = 1.0f - sin_theta_i_2 / (relative_eta * relative_eta);
@@ -53,7 +53,7 @@ __device__ float3 cosine_weighted_sample(const float3& normal, Xorshift32Generat
     float2 xy = sqrt(1.0f - rand_2 * rand_2) * make_float2(cos(theta), sin(theta));
     float3 spherePoint = float3(xy.x, xy.y, rand_2);
 
-    return hiprtpt::normalize(normal + spherePoint);
+    return hippt::normalize(normal + spherePoint);
 }
 
 __device__ ColorRGB fresnel_schlick(ColorRGB F0, float angle)
@@ -87,7 +87,7 @@ __device__ float GGX_normal_distribution(float alpha, float NoH)
     //To avoid numerical instability when NoH basically == 1, i.e when the
     //material is a perfect mirror and the normal distribution function is a Dirac
 
-    NoH = hiprtpt::min(NoH, 0.999999f);
+    NoH = hippt::min(NoH, 0.999999f);
     float alpha2 = alpha * alpha;
     float NoH2 = NoH * NoH;
     float b = (NoH2 * (alpha2 - 1.0f) + 1.0f);
@@ -130,11 +130,11 @@ __device__ float3 GGXVNDF_sample(const float3& local_view_direction, float alpha
     float r1 = random_number_generator();
     float r2 = random_number_generator();
 
-    float3 Vh = hiprtpt::normalize(float3{ alpha_x * local_view_direction.x, alpha_y * local_view_direction.y, local_view_direction.z });
+    float3 Vh = hippt::normalize(float3{ alpha_x * local_view_direction.x, alpha_y * local_view_direction.y, local_view_direction.z });
 
     float lensq = Vh.x * Vh.x + Vh.y * Vh.y;
     float3 T1 = lensq > 0.0f ? float3{-Vh.y, Vh.x, 0} / sqrt(lensq) : float3{ 1.0f, 0.0f, 0.0f };
-    float3 T2 = hiprtpt::cross(Vh, T1);
+    float3 T2 = hippt::cross(Vh, T1);
 
     float r = sqrt(r1);
     float phi = 2.0f * M_PI * r2;
@@ -143,9 +143,9 @@ __device__ float3 GGXVNDF_sample(const float3& local_view_direction, float alpha
     float s = 0.5f * (1.0f + Vh.z);
     t2 = (1.0f - s) * sqrt(1.0f - t1 * t1) + s * t2;
 
-    float3 Nh = t1 * T1 + t2 * T2 + sqrt(hiprtpt::max(0.0f, 1.0f - t1 * t1 - t2 * t2)) * Vh;
+    float3 Nh = t1 * T1 + t2 * T2 + sqrt(hippt::max(0.0f, 1.0f - t1 * t1 - t2 * t2)) * Vh;
 
-    return hiprtpt::normalize(float3{alpha_x * Nh.x, alpha_y * Nh.y, hiprtpt::max(0.0f, Nh.z)});
+    return hippt::normalize(float3{alpha_x * Nh.x, alpha_y * Nh.y, hippt::max(0.0f, Nh.z)});
 }
 
 __device__ float GTR1(float alpha_g, float local_halfway_z)

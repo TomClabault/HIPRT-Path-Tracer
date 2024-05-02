@@ -1,4 +1,9 @@
-#version 430
+/*
+ * Copyright 2024 Tom Clabault. GNU GPL3 license.
+ * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
+ */
+ 
+ #version 430
 
 // This is a 'scalar' texture, containing data only in the red channel
 // In this shader, it represents the sample count per pixel

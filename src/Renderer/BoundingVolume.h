@@ -13,7 +13,7 @@
 
 struct BoundingVolume
 {
-    static const Vector PLANE_NORMALS[BVHConstants::PLANES_COUNT];
+    static const float3 PLANE_NORMALS[BVHConstants::PLANES_COUNT];
 
     std::array<float, BVHConstants::PLANES_COUNT> _d_near;
     std::array<float, BVHConstants::PLANES_COUNT> _d_far;
@@ -33,10 +33,10 @@ struct BoundingVolume
         {
             for (int j = 0; j < 3; j++)
             {
-                float dist = dot(BoundingVolume::PLANE_NORMALS[i], Vector(triangle[j]));
+                float dist = hippt::dot(BoundingVolume::PLANE_NORMALS[i], float3(triangle[j]));
 
-                d_near[i] = std::min(d_near[i], dist);
-                d_far[i] = std::max(d_far[i], dist);
+                d_near[i] = hippt::min(d_near[i], dist);
+                d_far[i] = hippt::max(d_far[i], dist);
             }
         }
     }
@@ -45,8 +45,8 @@ struct BoundingVolume
     {
         for (int i = 0; i < BVHConstants::PLANES_COUNT; i++)
         {
-            _d_near[i] = std::min(_d_near[i], d_near[i]);
-            _d_far[i] = std::max(_d_far[i], d_far[i]);
+            _d_near[i] = hippt::min(_d_near[i], d_near[i]);
+            _d_far[i] = hippt::max(_d_far[i], d_far[i]);
         }
     }
 
@@ -90,8 +90,8 @@ struct BoundingVolume
             if (denom < 0)
                 std::swap(d_near_i, d_far_i);
 
-            t_near = std::max(t_near, d_near_i);
-            t_far = std::min(t_far, d_far_i);
+            t_near = hippt::max(t_near, d_near_i);
+            t_far = hippt::min(t_far, d_far_i);
 
             if (t_far < t_near)
                 return false;
@@ -120,8 +120,8 @@ struct BoundingVolume
             if (denom < 0.0f)
                 std::swap(d_near_i, d_far_i);
 
-            t_near = std::max(t_near, d_near_i);
-            t_far = std::min(t_far, d_far_i);
+            t_near = hippt::max(t_near, d_near_i);
+            t_far = hippt::min(t_far, d_far_i);
 
             if (t_far < t_near)
                 return false;

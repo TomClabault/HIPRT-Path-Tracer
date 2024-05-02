@@ -28,17 +28,6 @@
 #define DEVICE_KERNEL_SIGNATURE(returnType) extern "C" returnType __device__
 #else
 
-// This error will only be thrown if this file is compiled by the CPU compiler
-// i.e. if this file was included on the CPU side.
-// This file should not be included on the CPU because it defines some arbitrary things
-// such as M_PI value below
-#error "You shall not include hiprt_fix_vs.h on the CPU side you monster! This file should only be included in GPU kernels to fix Visual Studio's intellisense screaming."
-
-// We don't care about the actual value, we just want intellisense to be happy.
-// This 3.14f value will never be used because the GPU compiler will not get here
-// (we're in the #else of #ifdef __KERNELCC__) and the CPU cannot include this file
-#define M_PI 3.14f
-
 struct dummyVec3
 {
     int x, y, z;
@@ -50,4 +39,4 @@ static dummyVec3 blockDim, blockIdx, threadIdx;
 #define DEVICE_KERNEL_SIGNATURE(returnType) returnType
 #endif
 
-#endif
+#endif // FIX_INTELISSENSE_H

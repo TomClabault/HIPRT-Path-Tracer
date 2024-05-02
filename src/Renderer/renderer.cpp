@@ -22,7 +22,7 @@ void Renderer::render()
 
 	HIPRTCamera hiprt_cam = m_camera.to_hiprt();
 	HIPRTRenderData render_data = get_render_data();
-	void* launch_args[] = { &m_hiprt_scene.geometry, &render_data, &resolution, &hiprt_cam};
+	void* launch_args[] = { &render_data, &resolution, &hiprt_cam};
 	launch_kernel(8, 8, resolution.x, resolution.y, launch_args);
 
 	m_pixels_interop_buffer.unmap();

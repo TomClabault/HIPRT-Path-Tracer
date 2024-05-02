@@ -8,6 +8,7 @@
 
 #include "HostDeviceCommon/Material.h"
 #include "HostDeviceCommon/Math.h"
+#include "Renderer/BVH.h"
 
 struct HIPRTRenderSettings
 {
@@ -49,7 +50,7 @@ struct WorldBuffers
 
 	// A device pointer to the buffer of triangles indices
 	int* triangles_indices = nullptr;
-	// A device pointer to the buffer of triangle vertices
+	// A device pointer to the buffer of triangle vertices positions
 	float3* triangles_vertices = nullptr;
 	// A device pointer to a buffer filled with 0s and 1s that
 	// indicates whether or not a vertex normal is available for
@@ -95,6 +96,15 @@ struct WorldSettings
 	ColorRGB ambient_light_color = ColorRGB(0.5f);
 };
 
+/**
+ * The CPU and GPU use the same kernel code but the CPU still need some specific data
+ * (the CPU BVH for example) which is stored in this structure
+ */
+struct CPUData
+{
+	BVH* bvh;
+};
+
 /*
  * A structure containing all the information about the scene
  * that the kernel is going to need for the render (vertices of the triangles, 
@@ -109,6 +119,8 @@ struct HIPRTRenderData
 	WorldSettings world_settings;
 
 	HIPRTRenderSettings render_settings;
+
+	CPUData cpu_only;
 };
 
 #endif

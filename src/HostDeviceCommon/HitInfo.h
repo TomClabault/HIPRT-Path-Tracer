@@ -6,37 +6,26 @@
 #ifndef RAY_STATE_H
 #define RAY_STATE_H
 
+#include "HostDeviceCommon/Math.h"
+
 enum RayState
 {
     BOUNCE,
     MISSED
 };
 
-#ifdef __KERNELCC__
-#define VectorType float3
-#define PointType float3
-#define UV_DECLARATION float2 uv;
-#else
-#include "Maths/vec.h"
-
-// TODO we should use float3 and float2 here, not some kind of #define VectorType stuff
-#define VectorType Vector
-#define PointType Point
-#define UV_DECLARATION float u, v;
-#endif
-
 struct LightSourceInformation
 {
     int emissive_triangle_index = -1;
-    VectorType light_source_normal;
+    float3 light_source_normal;
 };
 
 struct HitInfo
 {
-    PointType inter_point;
-    VectorType shading_normal;
-    VectorType geometric_normal;
-    UV_DECLARATION;
+    float3 inter_point;
+    float3 shading_normal;
+    float3 geometric_normal;
+    float2 uv;
 
     float t = -1.0f; // Distance along ray
 

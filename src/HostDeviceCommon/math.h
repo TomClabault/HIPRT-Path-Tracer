@@ -54,9 +54,11 @@ struct float4x4
 // will actually be aliased to glm::normalize for the CPU
 // but 'normalize' will be aliased to hiprt::normalize on the GPU because
 // glm isn't meant to be used on the GPU
-#ifdef __KERNELCC__
-namespace hiprtpt
+namespace hippt
 {
+#ifdef __KERNELCC__
+#define M_PI hiprt::Pi
+
 	__device__ float3 cross(float3 u, float3 v) { return hiprt::cross(u, v); }
 	__device__ float dot(float3 u, float3 v) { return hiprt::dot(u, v); }
 
@@ -69,48 +71,31 @@ namespace hiprtpt
 	__device__ float clamp(float min_val, float max_val, float val) { return hiprt::clamp(val, min_val, max_val); }
 
 	__device__ float3 normalize(float3 u) { return hiprt::normalize(u); }
-}
 
-#define M_PI hiprt::Pi
+
 #else
-namespace hiprtpt
-{
-	// TODO use glm instead of gkit
-	/*template <typename T>
-	T cross(T u, T v) { return glm::cross(u, v); }*/
-	template <typename T>
-	T cross(T u, T v) { return cross(u, v); }
 
-	// TODO use glm instead of gkit
-	/*template <typename T>
-	float dot(T u, T v) { return glm::dot(u, v); }*/
-	template <typename T>
-	float dot(T u, T v) { return dot(u, v); }
 
-	// TODO use glm instead of gkit
-	/*template <typename T>
-	float length(T u) { return glm::length(u, u); }*/
-	template <typename T>
-	float length(T u) { return length(u, u); }
+	inline float3 cross(float3 u, float3 v) { return hiprt::cross(u, v); }
+	inline float dot(float3 u, float3 v) { return hiprt::dot(u, v); }
+
+	inline float length(float3 u) { return sqrtf(dot(u, u)); }
 
 	template <typename T>
-	T max(T a, T b) { return std::max(a, b); }
+	inline T max(T a, T b) { return hiprt::max(a, b); }
 
 	template <typename T>
-	T min(T a, T b) { return std::min(a, b); }
+	inline T min(T a, T b) { return hiprt::min(a, b); }
 
 	template <typename T>
-	T clamp(T min_val, T max_val, T val) { return min(max_val, max(min_val, val)); }
+	inline T clamp(T min_val, T max_val, T val) { return min(max_val, max(min_val, val)); }
 
-	template <typename T>
-	T abs(T a) { return abs(a); }
-	// TODO use glm instead of gkit
-	/*template <typename T>
-	T normalize(T u) { return glm::normalize(u); }*/
-	template <typename T>
-	T normalize(T u) { return normalize(u); }
-}
+	inline float3 abs(float3 u) { return make_float3(fabsf(u.x), fabsf(u.y), fabsf(u.z)); }
+	inline float abs(float a) { return fabsf(a); }
+
+	inline float3 normalize(float3 u) { return hiprt::normalize(u); }
 #endif
+}
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 matrix_X_point(const float4x4& m, const float3& p)
 {

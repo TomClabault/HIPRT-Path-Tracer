@@ -1,4 +1,9 @@
-#version 330
+/*
+ * Copyright 2024 Tom Clabault. GNU GPL3 license.
+ * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
+ */
+ 
+ #version 330
 
 out vec2 vs_tex_coords;
 

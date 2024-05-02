@@ -39,11 +39,11 @@ GLOBAL_KERNEL_SIGNATURE(void) NormalsKernel(hiprtGeometry geom, HIPRTRenderData 
 			+ render_data.buffers.vertex_normals[index_C] * hit.uv.y
 			+ render_data.buffers.vertex_normals[index_A] * (1.0f - hit.uv.x - hit.uv.y);
 
-		normal = hiprtpt::normalize(smooth_normal);
+		normal = hippt::normalize(smooth_normal);
 	}
 	else
-		normal = hiprtpt::normalize(hiprtpt::cross(vertex_B - vertex_A, vertex_C - vertex_A));
+		normal = hippt::normalize(hippt::cross(vertex_B - vertex_A, vertex_C - vertex_A));
 
-	ColorRGB final_color(hit.hasHit() ? hiprtpt::abs(normal) : ColorRGB(0.0f, 0.0f, 0.0f));
+	ColorRGB final_color(hit.hasHit() ? hippt::abs(normal) : ColorRGB(0.0f, 0.0f, 0.0f));
 	render_data.buffers.pixels[index] = final_color * (render_data.render_settings.sample_number + 1);
 }

@@ -31,7 +31,7 @@ struct Scene
     bool has_camera = false;
     Camera camera;
 
-    Sphere add_sphere(const Point& center, float radius, const RendererMaterial& material, int primitive_index)
+    Sphere add_sphere(const float3& center, float radius, const RendererMaterial& material, int primitive_index)
     {
         int material_index = materials.size();
 
@@ -49,9 +49,9 @@ struct Scene
 
         for (int i = 0; i < triangle_indices.size(); i += 3)
         {
-            triangles.push_back(Triangle(*reinterpret_cast<Point*>(&vertices_positions[triangle_indices[i + 0]]),
-                                         *reinterpret_cast<Point*>(&vertices_positions[triangle_indices[i + 1]]),
-                                         *reinterpret_cast<Point*>(&vertices_positions[triangle_indices[i + 2]])));
+            triangles.push_back(Triangle(*reinterpret_cast<float3*>(&vertices_positions[triangle_indices[i + 0]]),
+                                         *reinterpret_cast<float3*>(&vertices_positions[triangle_indices[i + 1]]),
+                                         *reinterpret_cast<float3*>(&vertices_positions[triangle_indices[i + 2]])));
         }
 
         return triangles;
