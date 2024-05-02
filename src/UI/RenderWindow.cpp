@@ -12,8 +12,6 @@
 
 #include "stb_image_write.h"
 
-// test performance when reducing number of triangles of the pbrt dragon
-
 // TODO bugs
 // - anisotropic rotation brightness buggued ? Sphere 0.3 rough, 1.0 metallic, 1.0 aniso, 0.5 aniso rotation, 1.0 clearcoat
 // - Why is the rough dragon having black fringes even with normal flipping ?
