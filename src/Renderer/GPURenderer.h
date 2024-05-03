@@ -41,7 +41,7 @@ public:
 		m_hiprt_scene.hiprt_ctx = hiprt_orochi_ctx->hiprt_ctx;
 	}
 
-	GPURenderer() : m_hiprt_scene(nullptr) {}
+	GPURenderer() {}
 
 	void render();
 	void change_render_resolution(int new_width, int new_height);
@@ -73,7 +73,7 @@ public:
 	int get_sample_number();
 	void set_sample_number(int sample_numner);
 
-	int m_render_width, m_render_height;
+	int m_render_width = 0, m_render_height = 0;
 
 	Camera m_camera;
 
@@ -98,9 +98,9 @@ private:
 	OrochiBuffer<int> m_pixels_sample_count;
 
 	std::shared_ptr<HIPRTOrochiCtx> m_hiprt_orochi_ctx;
-	oroFunction m_trace_kernel;
+	oroFunction m_trace_kernel = nullptr;
 
-	HIPRTScene m_hiprt_scene;
+	HIPRTScene m_hiprt_scene = nullptr;
 	// The materials are also kept on the CPU side because we want to be able
 	// to modify them interactively with ImGui
 	std::vector<RendererMaterial> m_materials;

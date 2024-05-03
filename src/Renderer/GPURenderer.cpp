@@ -98,7 +98,7 @@ HIPRTRenderData GPURenderer::get_render_data()
 
 	render_data.geom = m_hiprt_scene.geometry;
 
-	render_data.buffers.pixels = m_pixels_interop_buffer.map();
+	render_data.buffers.pixels = m_pixels_interop_buffer.get_device_pointer();
 	render_data.buffers.triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.mesh.triangleIndices);
 	render_data.buffers.triangles_vertices = reinterpret_cast<float3*>(m_hiprt_scene.mesh.vertices);
 	render_data.buffers.normals_present = reinterpret_cast<unsigned char*>(m_hiprt_scene.normals_present);

@@ -26,6 +26,11 @@ public:
 
 	void resize(int new_element_count);
 
+	/**
+	 * get_device_pointer strictly is an alias for map()
+	 * TODO: Should not be necessary anymore once we have Orochi NVIDIA OpenGL interop
+	 */
+	T* get_device_pointer();
 	T* map();
 	void unmap();
 
@@ -97,6 +102,12 @@ void OpenGLInteropBuffer<T>::resize(int new_element_count)
 
 	m_initialized = true;
 	m_byte_size = new_element_count * sizeof(T);
+}
+
+template <typename T>
+T* OpenGLInteropBuffer<T>::get_device_pointer()
+{
+	return map();
 }
 
 template <typename T>
