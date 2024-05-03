@@ -3,7 +3,7 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
  
- #version 430
+#version 430
 
 uniform sampler2D u_texture;
 uniform int u_sample_number;
