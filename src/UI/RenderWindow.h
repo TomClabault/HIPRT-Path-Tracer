@@ -8,7 +8,7 @@
 
 #include "OpenGL/OpenGLProgram.h"
 #include "Renderer/OpenImageDenoiser.h"
-#include "Renderer/renderer.h"
+#include "Renderer/GPURenderer.h"
 #include "UI/ApplicationSettings.h"
 #include "UI/DisplayTextureType.h"
 #include "UI/DisplayView.h"
@@ -46,7 +46,7 @@ public:
 
 	ApplicationSettings& get_application_settings();
 	const ApplicationSettings& get_application_settings() const;
-	Renderer& get_renderer();
+	GPURenderer& get_renderer();
 
 	void create_display_programs();
 	void select_display_program(DisplayView display_view);
@@ -115,7 +115,7 @@ private:
 	// Set to true if some settings of the render changed and we need
 	// to restart rendering from sample 0
 	bool m_render_dirty = false;
-	Renderer m_renderer;
+	GPURenderer m_renderer;
 	HIPRTRenderSettings& m_render_settings;
 	OpenImageDenoiser m_denoiser;
 

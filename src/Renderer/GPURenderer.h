@@ -3,19 +3,17 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef RENDERER_H
-#define RENDERER_H
+#ifndef GPU_RENDERER_H
+#define GPU_RENDERER_H
 
-#include "glm/gtc/matrix_transform.hpp"
 #include "HIPRT-Orochi/OrochiBuffer.h"
 #include "HIPRT-Orochi/HIPRTOrochiCtx.h"
 #include "HIPRT-Orochi/HIPRTScene.h"
 #include "HostDeviceCommon/RenderData.h"
 #include "OpenGL/OpenGLInteropBuffer.h"
+#include "Renderer/OpenImageDenoiser.h"
 #include "Scene/Camera.h"
 #include "Scene/SceneParser.h"
-
-#include "Renderer/OpenImageDenoiser.h"
 
 #include <vector>
 
@@ -32,18 +30,18 @@ template <typename T>
 using InteropBufferType = OpenGLInteropBuffer<T>;
 #endif
 
-class Renderer
+class GPURenderer
 {
 public:
 
-	Renderer(int width, int height, HIPRTOrochiCtx* hiprt_orochi_ctx) : 
+	GPURenderer(int width, int height, HIPRTOrochiCtx* hiprt_orochi_ctx) : 
 		m_render_width(width), m_render_height(height), m_hiprt_orochi_ctx(hiprt_orochi_ctx),
 		m_trace_kernel(nullptr)
 	{
 		m_hiprt_scene.hiprt_ctx = hiprt_orochi_ctx->hiprt_ctx;
 	}
 
-	Renderer() : m_hiprt_scene(nullptr) {}
+	GPURenderer() : m_hiprt_scene(nullptr) {}
 
 	void render();
 	void change_render_resolution(int new_width, int new_height);

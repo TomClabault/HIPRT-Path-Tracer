@@ -8,14 +8,14 @@
 
 #include "GL/glew.h"
 #include "OpenGL/OpenGLProgram.h"
-#include "Renderer/renderer.h"
+#include "Renderer/GPURenderer.h"
 
 class RenderWindow;
 
 class Screenshoter
 {
 public:
-	void set_renderer(Renderer* renderer);
+	void set_renderer(GPURenderer* renderer);
 	void set_render_window(RenderWindow* render_window);
 
 	void select_compute_program(DisplayView display_view);
@@ -34,7 +34,7 @@ public:
 	void write_to_png(const char* filepath);
 
 private:
-	Renderer* m_renderer;
+	GPURenderer* m_renderer;
 	RenderWindow* m_render_window;
 
 	bool m_compute_shader_initialized = false;

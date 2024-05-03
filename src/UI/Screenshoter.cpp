@@ -9,7 +9,7 @@
 #include "UI/Screenshoter.h"
 #include "Utils/Utils.h"
 
-void Screenshoter::set_renderer(Renderer* renderer)
+void Screenshoter::set_renderer(GPURenderer* renderer)
 {
 	m_renderer = renderer;
 }

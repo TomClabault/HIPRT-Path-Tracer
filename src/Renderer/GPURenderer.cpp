@@ -7,9 +7,9 @@
 #include <deque>
 
 #include <Orochi/OrochiUtils.h>
-#include "renderer.h"
+#include "Renderer/GPURenderer.h"
 
-void Renderer::render()
+void GPURenderer::render()
 {
 	int tile_size_x = 8;
 	int tile_size_y = 8;
@@ -28,7 +28,7 @@ void Renderer::render()
 	m_pixels_interop_buffer.unmap();
 }
 
-void Renderer::change_render_resolution(int new_width, int new_height)
+void GPURenderer::change_render_resolution(int new_width, int new_height)
 {
 	m_render_width = new_width;
 	m_render_height = new_height;
@@ -47,52 +47,52 @@ void Renderer::change_render_resolution(int new_width, int new_height)
 	m_camera.projection_matrix = glm::transpose(glm::perspective(m_camera.vertical_fov, new_aspect, m_camera.near_plane, m_camera.far_plane));
 }
 
-InteropBufferType<ColorRGB>& Renderer::get_color_framebuffer()
+InteropBufferType<ColorRGB>& GPURenderer::get_color_framebuffer()
 {
 	return m_pixels_interop_buffer;
 }
 
-OrochiBuffer<ColorRGB>& Renderer::get_denoiser_albedo_buffer()
+OrochiBuffer<ColorRGB>& GPURenderer::get_denoiser_albedo_buffer()
 {
 	return m_albedo_buffer;
 }
 
-OrochiBuffer<float3>& Renderer::get_denoiser_normals_buffer()
+OrochiBuffer<float3>& GPURenderer::get_denoiser_normals_buffer()
 {
 	return m_normals_buffer;
 }
 
-OrochiBuffer<int>& Renderer::get_debug_pixel_active_buffer()
+OrochiBuffer<int>& GPURenderer::get_debug_pixel_active_buffer()
 {
 	return m_debug_pixel_active;
 }
 
-OrochiBuffer<int>& Renderer::get_pixels_sample_count_buffer()
+OrochiBuffer<int>& GPURenderer::get_pixels_sample_count_buffer()
 {
 	return m_pixels_sample_count;
 }
 
-HIPRTRenderSettings& Renderer::get_render_settings()
+HIPRTRenderSettings& GPURenderer::get_render_settings()
 {
 	return m_render_settings;
 }
 
-WorldSettings& Renderer::get_world_settings()
+WorldSettings& GPURenderer::get_world_settings()
 {
 	return m_world_settings;
 }
 
-int Renderer::get_sample_number()
+int GPURenderer::get_sample_number()
 {
 	return m_render_settings.sample_number;
 }
 
-void Renderer::set_sample_number(int sample_number)
+void GPURenderer::set_sample_number(int sample_number)
 {
 	m_render_settings.sample_number = sample_number;
 }
 
-HIPRTRenderData Renderer::get_render_data()
+HIPRTRenderData GPURenderer::get_render_data()
 {
 	HIPRTRenderData render_data;
 
@@ -120,13 +120,13 @@ HIPRTRenderData Renderer::get_render_data()
 	return render_data;
 }
 
-void Renderer::init_ctx(int device_index)
+void GPURenderer::init_ctx(int device_index)
 {
 	m_hiprt_orochi_ctx = std::make_shared<HIPRTOrochiCtx>();
 	m_hiprt_orochi_ctx.get()->init(device_index);
 }
 
-void Renderer::compile_trace_kernel(const char* kernel_file_path, const char* kernel_function_name)
+void GPURenderer::compile_trace_kernel(const char* kernel_file_path, const char* kernel_function_name)
 {
 	std::cout << "Compiling tracer kernel \"" << kernel_function_name << "\"..." << std::endl;
 	auto start = std::chrono::high_resolution_clock::now();
@@ -150,7 +150,7 @@ void Renderer::compile_trace_kernel(const char* kernel_file_path, const char* ke
 	std::cout << "Kernel \"" << kernel_function_name << "\" compiled in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
 }
 
-void Renderer::launch_kernel(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args)
+void GPURenderer::launch_kernel(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args)
 {
 	hiprtInt2 nb_groups;
 	nb_groups.x = std::ceil(static_cast<float>(res_x) / tile_size_x);
@@ -174,7 +174,7 @@ void log_bvh_building(hiprtBuildFlags build_flags)
 	std::cout << "... (This can take 30s+ on NVIDIA hardware)" << std::endl;
 }
 
-void Renderer::set_hiprt_scene_from_scene(Scene& scene)
+void GPURenderer::set_hiprt_scene_from_scene(Scene& scene)
 {
 	m_hiprt_scene = HIPRTScene(m_hiprt_orochi_ctx->hiprt_ctx);
 	HIPRTScene& hiprt_scene = m_hiprt_scene;
@@ -243,18 +243,18 @@ void Renderer::set_hiprt_scene_from_scene(Scene& scene)
 	hiprt_scene.emissive_triangles_indices = emissive_triangle_indices;
 }
 
-void Renderer::set_scene(Scene& scene)
+void GPURenderer::set_scene(Scene& scene)
 {
 	set_hiprt_scene_from_scene(scene);
 	m_materials = scene.materials;
 }
 
-const std::vector<RendererMaterial>& Renderer::get_materials()
+const std::vector<RendererMaterial>& GPURenderer::get_materials()
 {
 	return m_materials;
 }
 
-void Renderer::update_materials(std::vector<RendererMaterial>& materials)
+void GPURenderer::update_materials(std::vector<RendererMaterial>& materials)
 {
 	m_materials = materials;
 
@@ -267,17 +267,17 @@ void Renderer::update_materials(std::vector<RendererMaterial>& materials)
 	m_hiprt_scene.materials_buffer = materials_buffer;
 }
 
-void Renderer::set_camera(const Camera& camera)
+void GPURenderer::set_camera(const Camera& camera)
 {
 	m_camera = camera;
 }
 
-void Renderer::translate_camera_view(glm::vec3 translation)
+void GPURenderer::translate_camera_view(glm::vec3 translation)
 {
 	m_camera.translation = m_camera.translation + translation * glm::conjugate(m_camera.rotation);
 }
 
-void Renderer::rotate_camera_view(glm::vec3 rotation_angles)
+void GPURenderer::rotate_camera_view(glm::vec3 rotation_angles)
 {
 	glm::quat qx = glm::angleAxis(rotation_angles.y, glm::vec3(1.0f, 0.0f, 0.0f));
 	glm::quat qy = glm::angleAxis(rotation_angles.x, glm::vec3(0.0f, 1.0f, 0.0f));
@@ -286,7 +286,7 @@ void Renderer::rotate_camera_view(glm::vec3 rotation_angles)
 	m_camera.rotation = orientation;
 }
 
-void Renderer::zoom_camera_view(float offset)
+void GPURenderer::zoom_camera_view(float offset)
 {
 	glm::vec3 translation(0, 0, offset);
 	m_camera.translation = m_camera.translation + translation * glm::conjugate(m_camera.rotation);

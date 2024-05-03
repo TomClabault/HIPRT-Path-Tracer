@@ -26,12 +26,12 @@
  * [8] [CS184 Adaptive sampling] https://cs184.eecs.berkeley.edu/sp24/docs/hw3-1-part-5
  */
 
-__device__ float disney_schlick_weight(float f0, float abs_cos_angle)
+HIPRT_HOST_DEVICE HIPRT_INLINE float disney_schlick_weight(float f0, float abs_cos_angle)
 {
     return 1.0f + (f0 - 1.0f) * pow(1.0f - abs_cos_angle, 5.0f);
 }
 
-__device__ ColorRGB disney_diffuse_eval(const RendererMaterial& material, const float3& view_direction, const float3& surface_normal, const float3& to_light_direction, float& pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_diffuse_eval(const RendererMaterial& material, const float3& view_direction, const float3& surface_normal, const float3& to_light_direction, float& pdf)
 {
     float3 half_vector = hippt::normalize(to_light_direction + view_direction);
 
@@ -61,14 +61,14 @@ __device__ ColorRGB disney_diffuse_eval(const RendererMaterial& material, const 
     return (1.0f - material.subsurface) * diffuse_part + material.subsurface * fake_subsurface_part;
 }
 
-__device__ float3 disney_diffuse_sample(const RendererMaterial& material, const float3& view_direction, const float3& surface_normal, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_diffuse_sample(const RendererMaterial& material, const float3& view_direction, const float3& surface_normal, Xorshift32Generator& random_number_generator)
 {
     float3 sampled_direction = cosine_weighted_sample(surface_normal, random_number_generator);
 
     return sampled_direction;
 }
 
-__device__ ColorRGB disney_metallic_fresnel(const RendererMaterial& material, const float3& local_half_vector, const float3& local_to_light_direction)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_metallic_fresnel(const RendererMaterial& material, const float3& local_half_vector, const float3& local_to_light_direction)
 {
     // The summary of what is below is the following:
     //
@@ -86,7 +86,7 @@ __device__ ColorRGB disney_metallic_fresnel(const RendererMaterial& material, co
     return C0 + (ColorRGB(1.0f) - C0) * pow(hippt::clamp(0.0f, 1.0f, 1.0f - hippt::dot(local_half_vector, local_to_light_direction)), 5.0f);
 }
 
-__device__ ColorRGB disney_metallic_eval(const RendererMaterial& material, const float3& view_direction, const float3& surface_normal, const float3& to_light_direction, ColorRGB F, float& pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_metallic_eval(const RendererMaterial& material, const float3& view_direction, const float3& surface_normal, const float3& to_light_direction, ColorRGB F, float& pdf)
 {
     // Building the local shading frame
     float3 T, B;
@@ -109,7 +109,7 @@ __device__ ColorRGB disney_metallic_eval(const RendererMaterial& material, const
     return F * D * G / (4.0 * NoL * NoV);
 }
 
-__device__ float3 disney_metallic_sample(const RendererMaterial& material, const float3& view_direction, const float3& surface_normal, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_metallic_sample(const RendererMaterial& material, const float3& view_direction, const float3& surface_normal, Xorshift32Generator& random_number_generator)
 {
 	float3 local_view_direction = world_to_local_frame(surface_normal, view_direction);
 
@@ -122,7 +122,7 @@ __device__ float3 disney_metallic_sample(const RendererMaterial& material, const
     return sampled_direction;
 }
 
-__device__ ColorRGB disney_clearcoat_eval(const RendererMaterial& material, const float3& view_direction, const float3& surface_normal, const float3& to_light_direction, float& pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_clearcoat_eval(const RendererMaterial& material, const float3& view_direction, const float3& surface_normal, const float3& to_light_direction, float& pdf)
 {
     float3 T, B;
     build_ONB(surface_normal, T, B);
@@ -150,7 +150,7 @@ __device__ ColorRGB disney_clearcoat_eval(const RendererMaterial& material, cons
     return F_clearcoat * D_clearcoat * G_clearcoat / (4.0f * local_view_direction.z);
 }
 
-__device__ float3 disney_clearcoat_sample(const RendererMaterial& material, const float3& view_direction, const float3& surface_normal, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_clearcoat_sample(const RendererMaterial& material, const float3& view_direction, const float3& surface_normal, Xorshift32Generator& random_number_generator)
 {
     float clearcoat_gloss = 1.0f - material.clearcoat_roughness;
     float alpha_g = (1.0f - clearcoat_gloss) * 0.1f + clearcoat_gloss * 0.001f;
@@ -173,7 +173,7 @@ __device__ float3 disney_clearcoat_sample(const RendererMaterial& material, cons
 }
 
 // TOOD can use local_view dir and light_dir here
-__device__ ColorRGB disney_glass_eval(const RendererMaterial& material, const float3& view_direction, float3 surface_normal, const float3& to_light_direction, float& pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_glass_eval(const RendererMaterial& material, const float3& view_direction, float3 surface_normal, const float3& to_light_direction, float& pdf)
 {
     float start_NoV = hippt::dot(surface_normal, view_direction);
     if (start_NoV < 0.0f)
@@ -254,7 +254,7 @@ __device__ ColorRGB disney_glass_eval(const RendererMaterial& material, const fl
     return color;
 }
 
-__device__ float3 disney_glass_sample(const RendererMaterial& material, const float3& view_direction, float3 surface_normal, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_glass_sample(const RendererMaterial& material, const float3& view_direction, float3 surface_normal, Xorshift32Generator& random_number_generator)
 {
     float3 T, B;
     build_rotated_ONB(surface_normal, T, B, material.anisotropic_rotation * M_PI);
@@ -300,7 +300,7 @@ __device__ float3 disney_glass_sample(const RendererMaterial& material, const fl
     return local_to_world_frame(T, B, surface_normal, sampled_direction);
 }
 
-__device__ ColorRGB disney_sheen_eval(const RendererMaterial& material, const float3& view_direction, float3 surface_normal, const float3& to_light_direction, float& pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_sheen_eval(const RendererMaterial& material, const float3& view_direction, float3 surface_normal, const float3& to_light_direction, float& pdf)
 {
     ColorRGB sheen_color = ColorRGB(1.0f - material.sheen_tint) + material.sheen_color * material.sheen_tint;
 
@@ -318,12 +318,12 @@ __device__ ColorRGB disney_sheen_eval(const RendererMaterial& material, const fl
     return sheen_color * pow(1.0f - HoL, 5.0f) * NoL;
 }
 
-__device__ float3 disney_sheen_sample(const RendererMaterial& material, const float3& view_direction, float3 surface_normal, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_sheen_sample(const RendererMaterial& material, const float3& view_direction, float3 surface_normal, Xorshift32Generator& random_number_generator)
 {
     return cosine_weighted_sample(surface_normal, random_number_generator);
 }
 
-__device__ ColorRGB disney_eval(const RendererMaterial& material, const float3& view_direction, const float3& shading_normal, const float3& to_light_direction, float& pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_eval(const RendererMaterial& material, const float3& view_direction, const float3& shading_normal, const float3& to_light_direction, float& pdf)
 {
     pdf = 0.0f;
 
@@ -375,7 +375,7 @@ __device__ ColorRGB disney_eval(const RendererMaterial& material, const float3& 
     return final_color;
 }
 
-__device__ ColorRGB disney_sample(const RendererMaterial& material, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal, float3& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_sample(const RendererMaterial& material, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal, float3& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
 {
     pdf = 0.0f;
 

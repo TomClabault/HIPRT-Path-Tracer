@@ -74,7 +74,8 @@ namespace hippt
 
 
 #else
-
+#undef M_PI
+#define M_PI 3.14159265358979323846f
 
 	inline float3 cross(float3 u, float3 v) { return hiprt::cross(u, v); }
 	inline float dot(float3 u, float3 v) { return hiprt::dot(u, v); }

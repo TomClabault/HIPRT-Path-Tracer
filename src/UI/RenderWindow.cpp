@@ -676,7 +676,7 @@ void RenderWindow::reset_render()
 	m_render_dirty = false;
 }
 
-Renderer& RenderWindow::get_renderer()
+GPURenderer& RenderWindow::get_renderer()
 {
 	return m_renderer;
 }

@@ -8,7 +8,7 @@
 
 #include "Device/includes/ONB.h"
 
-__device__ ColorRGB hiprt_lambertian_brdf(const RendererMaterial& material, const float3& to_light_direction, const float3& view_direction, const float3& surface_normal)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB hiprt_lambertian_brdf(const RendererMaterial& material, const float3& to_light_direction, const float3& view_direction, const float3& surface_normal)
 {
     return material.base_color * M_1_PI;
 }

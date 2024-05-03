@@ -8,7 +8,7 @@
 
 #include "HostDeviceCommon/Math.h"
 
-__device__ void build_ONB(const float3& N, float3& T, float3& B)
+HIPRT_HOST_DEVICE HIPRT_INLINE void build_ONB(const float3& N, float3& T, float3& B)
 {
     float3 up = abs(N.z) < 0.9999999f ? make_float3(0.0f, 0.0f, 1.0f) : make_float3(1.0f, 0.0f, 0.0f);
     T = hippt::normalize(hippt::cross(up, N));
@@ -18,7 +18,7 @@ __device__ void build_ONB(const float3& N, float3& T, float3& B)
 /*
  * Rotation of the basis around the normal by 'basis_rotation' radians
  */
-__device__ void build_rotated_ONB(const float3& N, float3& T, float3& B, float basis_rotation)
+HIPRT_HOST_DEVICE HIPRT_INLINE void build_rotated_ONB(const float3& N, float3& T, float3& B, float basis_rotation)
 {
     float3 up = abs(N.z) < 0.9999999f ? make_float3(0.0f, 0.0f, 1.0f) : make_float3(1.0f, 0.0f, 0.0f);
     T = hippt::normalize(hippt::cross(up, N));
@@ -31,7 +31,7 @@ __device__ void build_rotated_ONB(const float3& N, float3& T, float3& B, float b
 /*
  * Transforms V from its local space to the space around the normal
  */
-__device__ float3 local_to_world_frame(const float3& N, const float3& V)
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 local_to_world_frame(const float3& N, const float3& V)
 {
     float3 T, B;
     build_ONB(N, T, B);
@@ -39,7 +39,7 @@ __device__ float3 local_to_world_frame(const float3& N, const float3& V)
     return hippt::normalize(V.x * T + V.y * B + V.z * N);
 }
 
-__device__ float3 local_to_world_frame(const float3& T, const float3& B, const float3& N, const float3& V)
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 local_to_world_frame(const float3& T, const float3& B, const float3& N, const float3& V)
 {
     return hippt::normalize(V.x * T + V.y * B + V.z * N);
 }
@@ -48,7 +48,7 @@ __device__ float3 local_to_world_frame(const float3& T, const float3& B, const f
  * Transforms V from its space to the local space around the normal
  * The given normal is the Z axis of the local frame around the normal
  */
-__device__ float3 world_to_local_frame(const float3& N, const float3& V)
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 world_to_local_frame(const float3& N, const float3& V)
 {
     float3 T, B;
     build_ONB(N, T, B);
@@ -56,7 +56,7 @@ __device__ float3 world_to_local_frame(const float3& N, const float3& V)
     return hippt::normalize(make_float3(hippt::dot(V, T), hippt::dot(V, B), hippt::dot(V, N)));
 }
 
-__device__ float3 world_to_local_frame(const float3& T, const float3& B, const float3& N, const float3& V)
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 world_to_local_frame(const float3& T, const float3& B, const float3& N, const float3& V)
 {
     return hippt::normalize(make_float3(hippt::dot(V, T), hippt::dot(V, B), hippt::dot(V, N)));
 }

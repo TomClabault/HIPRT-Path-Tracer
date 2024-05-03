@@ -15,7 +15,7 @@
  * Reflects a ray about a normal. This function requires that dot(ray_direction, surface_normal) > 0 i.e.
  * ray_direction and surface_normal are in the same hemisphere
  */
-__device__ float3 reflect_ray(const float3& ray_direction, const float3& surface_normal)
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 reflect_ray(const float3& ray_direction, const float3& surface_normal)
 {
     return -ray_direction + 2.0f * hippt::dot(ray_direction, surface_normal) * surface_normal;
 }
@@ -24,7 +24,7 @@ __device__ float3 reflect_ray(const float3& ray_direction, const float3& surface
  * Refracts a ray about a normal. This function requires that dot(ray_direction, surface_normal) > 0 i.e.
  * ray_direction and surface_normal are in the same hemisphere
  */
-__device__ bool refract_ray(const float3& ray_direction, const float3& surface_normal, float3& refract_direction, float relative_eta)
+HIPRT_HOST_DEVICE HIPRT_INLINE bool refract_ray(const float3& ray_direction, const float3& surface_normal, float3& refract_direction, float relative_eta)
 {
     float NoI = hippt::dot(ray_direction, surface_normal);
 
@@ -44,7 +44,7 @@ __device__ bool refract_ray(const float3& ray_direction, const float3& surface_n
  * 
  * [1] [Lambertian Reflection Without Tangents], Edd Biddulph https://fizzer.neocities.org/lambertnotangent
  */
-__device__ float3 cosine_weighted_sample(const float3& normal, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 cosine_weighted_sample(const float3& normal, Xorshift32Generator& random_number_generator)
 {
     float rand_1 = random_number_generator();
     float rand_2 = 2.0f * random_number_generator() - 1.0f;
@@ -56,12 +56,12 @@ __device__ float3 cosine_weighted_sample(const float3& normal, Xorshift32Generat
     return hippt::normalize(normal + spherePoint);
 }
 
-__device__ ColorRGB fresnel_schlick(ColorRGB F0, float angle)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB fresnel_schlick(ColorRGB F0, float angle)
 {
     return F0 + (ColorRGB(1.0f) - F0) * pow((1.0f - angle), 5.0f);
 }
 
-__device__ float fresnel_dielectric(float cos_theta_i, float relative_eta)
+HIPRT_HOST_DEVICE HIPRT_INLINE float fresnel_dielectric(float cos_theta_i, float relative_eta)
 {
     // Computing cos_theta_t
     float sin_theta_i2 = 1.0f - cos_theta_i * cos_theta_i;
@@ -77,12 +77,12 @@ __device__ float fresnel_dielectric(float cos_theta_i, float relative_eta)
     return (r_parallel * r_parallel + r_perpendicular * r_perpendicular) / 2;
 }
 
-__device__ float fresnel_dielectric(float cos_theta_i, float eta_i, float eta_t)
+HIPRT_HOST_DEVICE HIPRT_INLINE float fresnel_dielectric(float cos_theta_i, float eta_i, float eta_t)
 {
     return fresnel_dielectric(cos_theta_i, eta_t / eta_i);
 }
 
-__device__ float GGX_normal_distribution(float alpha, float NoH)
+HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_normal_distribution(float alpha, float NoH)
 {
     //To avoid numerical instability when NoH basically == 1, i.e when the
     //material is a perfect mirror and the normal distribution function is a Dirac
@@ -94,7 +94,7 @@ __device__ float GGX_normal_distribution(float alpha, float NoH)
     return alpha2 / M_PI / (b * b);
 }
 
-__device__ float GTR2_anisotropic(const RendererMaterial& material, const float3& local_half_vector)
+HIPRT_HOST_DEVICE HIPRT_INLINE float GTR2_anisotropic(const RendererMaterial& material, const float3& local_half_vector)
 {
     float denom = (local_half_vector.x * local_half_vector.x) / (material.alpha_x * material.alpha_x) +
         (local_half_vector.y * local_half_vector.y) / (material.alpha_y * material.alpha_y) +
@@ -103,19 +103,19 @@ __device__ float GTR2_anisotropic(const RendererMaterial& material, const float3
     return 1.0f / (M_PI * material.alpha_x * material.alpha_y * denom * denom);
 }
 
-__device__ float G1_schlick_ggx(float k, float dot_prod)
+HIPRT_HOST_DEVICE HIPRT_INLINE float G1_schlick_ggx(float k, float dot_prod)
 {
     return dot_prod / (dot_prod * (1.0f - k) + k);
 }
 
-__device__ float GGX_smith_masking_shadowing(float roughness_squared, float NoV, float NoL)
+HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_smith_masking_shadowing(float roughness_squared, float NoV, float NoL)
 {
     float k = roughness_squared / 2.0f;
 
     return G1_schlick_ggx(k, NoL) * G1_schlick_ggx(k, NoV);
 }
 
-__device__ float G1(float alpha_x, float alpha_y, const float3& local_direction)
+HIPRT_HOST_DEVICE HIPRT_INLINE float G1(float alpha_x, float alpha_y, const float3& local_direction)
 {
     float ax = local_direction.x * alpha_x;
     float ay = local_direction.y * alpha_y;
@@ -125,7 +125,7 @@ __device__ float G1(float alpha_x, float alpha_y, const float3& local_direction)
     return 1.0f / (1.0f + lambda);
 }
 
-__device__ float3 GGXVNDF_sample(const float3& local_view_direction, float alpha_x, float alpha_y, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGXVNDF_sample(const float3& local_view_direction, float alpha_x, float alpha_y, Xorshift32Generator& random_number_generator)
 {
     float r1 = random_number_generator();
     float r2 = random_number_generator();
@@ -148,7 +148,7 @@ __device__ float3 GGXVNDF_sample(const float3& local_view_direction, float alpha
     return hippt::normalize(float3{alpha_x * Nh.x, alpha_y * Nh.y, hippt::max(0.0f, Nh.z)});
 }
 
-__device__ float GTR1(float alpha_g, float local_halfway_z)
+HIPRT_HOST_DEVICE HIPRT_INLINE float GTR1(float alpha_g, float local_halfway_z)
 {
     float alpha_g_2 = alpha_g * alpha_g;
 
@@ -158,7 +158,7 @@ __device__ float GTR1(float alpha_g, float local_halfway_z)
     return num / denom;
 }
 
-__device__ float disney_clearcoat_masking_shadowing(const float3& direction)
+HIPRT_HOST_DEVICE HIPRT_INLINE float disney_clearcoat_masking_shadowing(const float3& direction)
 {
     return G1(0.25f, 0.25f, direction);
 }

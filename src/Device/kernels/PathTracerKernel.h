@@ -15,18 +15,19 @@
 #include <hiprt/hiprt_device.h>
 #include <hiprt/hiprt_vec.h>
 
-__device__ ColorRGB brdf_dispatcher_eval(const RendererMaterial& material, const float3& view_direction, const float3& surface_normal, const float3& to_light_direction, float& pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB brdf_dispatcher_eval(const RendererMaterial& material, const float3& view_direction, const float3& surface_normal, const float3& to_light_direction, float& pdf)
 {
     return disney_eval(material, view_direction, surface_normal, to_light_direction, pdf);
 }
 
-__device__ ColorRGB brdf_dispatcher_sample(const RendererMaterial& material, const float3& view_direction, const float3& surface_normal, const float3& geometric_normal, float3& bounce_direction, float& brdf_pdf, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB brdf_dispatcher_sample(const RendererMaterial& material, const float3& view_direction, const float3& surface_normal, const float3& geometric_normal, float3& bounce_direction, float& brdf_pdf, Xorshift32Generator& random_number_generator)
 {
     return disney_sample(material, view_direction, surface_normal, geometric_normal, bounce_direction, brdf_pdf, random_number_generator);
 }
 
 #ifndef __KERNELCC__
-HIPRT_HOST_DEVICE hiprtHit intersect_scene_cpu(const HIPRTRenderData& render_data, const hiprtRay & ray)
+#include "Renderer/BVH.h"
+HIPRT_HOST_DEVICE HIPRT_INLINE hiprtHit intersect_scene_cpu(const HIPRTRenderData& render_data, const hiprtRay & ray)
 {
     hiprtHit hiprtHit;
     HitInfo closest_hit_info;
@@ -44,7 +45,7 @@ HIPRT_HOST_DEVICE hiprtHit intersect_scene_cpu(const HIPRTRenderData& render_dat
 }
 #endif
 
-__device__ bool trace_ray(const HIPRTRenderData& render_data, hiprtRay ray, HitInfo& hit_info)
+HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data, hiprtRay ray, HitInfo& hit_info)
 {
     bool hit_found = false;
 #ifdef __KERNELCC__
@@ -88,14 +89,14 @@ __device__ bool trace_ray(const HIPRTRenderData& render_data, hiprtRay ray, HitI
         return false;
 }
 
-__device__ float power_heuristic(float pdf_a, float pdf_b)
+HIPRT_HOST_DEVICE HIPRT_INLINE float power_heuristic(float pdf_a, float pdf_b)
 {
     float pdf_a_squared = pdf_a * pdf_a;
 
     return pdf_a_squared / (pdf_a_squared + pdf_b * pdf_b);
 }
 
-__device__ float3 sample_random_point_on_lights(const HIPRTRenderData& render_data, Xorshift32Generator& random_number_generator, float& pdf, LightSourceInformation& light_info)
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 sample_random_point_on_lights(const HIPRTRenderData& render_data, Xorshift32Generator& random_number_generator, float& pdf, LightSourceInformation& light_info)
 {
     int random_index = random_number_generator.random_index(render_data.buffers.emissive_triangles_count);
     int triangle_index = light_info.emissive_triangle_index = render_data.buffers.emissive_triangles_indices[random_index];
@@ -128,7 +129,7 @@ __device__ float3 sample_random_point_on_lights(const HIPRTRenderData& render_da
     return random_point_on_triangle;
 }
 
-__device__ float triangle_area(const HIPRTRenderData& render_data, int triangle_index)
+HIPRT_HOST_DEVICE HIPRT_INLINE float triangle_area(const HIPRTRenderData& render_data, int triangle_index)
 {
     float3 vertex_A = render_data.buffers.triangles_vertices[render_data.buffers.triangles_indices[triangle_index * 3 + 0]];
     float3 vertex_B = render_data.buffers.triangles_vertices[render_data.buffers.triangles_indices[triangle_index * 3 + 1]];
@@ -143,7 +144,7 @@ __device__ float triangle_area(const HIPRTRenderData& render_data, int triangle_
 /**
  * Returns true if in shadow, false otherwise
  */
-__device__ bool evaluate_shadow_ray(const HIPRTRenderData& render_data, hiprtRay ray, float t_max)
+HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& render_data, hiprtRay ray, float t_max)
 {
 #ifdef __KERNELCC__
     ray.maxT = t_max - 1.0e-4f;
@@ -159,7 +160,7 @@ __device__ bool evaluate_shadow_ray(const HIPRTRenderData& render_data, hiprtRay
 
 }
 
-__device__ ColorRGB sample_light_sources(HIPRTRenderData& render_data, const float3& view_direction, const HitInfo& closest_hit_info, const RendererMaterial& material, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_light_sources(HIPRTRenderData& render_data, const float3& view_direction, const HitInfo& closest_hit_info, const RendererMaterial& material, Xorshift32Generator& random_number_generator)
 {
     if (render_data.buffers.emissive_triangles_count == 0)
         // No emmisive geometry in the scene to sample
@@ -266,7 +267,7 @@ __device__ ColorRGB sample_light_sources(HIPRTRenderData& render_data, const flo
     return light_source_radiance_mis + brdf_radiance_mis;
 }
 
-__device__ unsigned int wang_hash(unsigned int seed)
+HIPRT_HOST_DEVICE HIPRT_INLINE unsigned int wang_hash(unsigned int seed)
 {
     seed = (seed ^ 61) ^ (seed >> 16);
     seed *= 9;
@@ -276,7 +277,7 @@ __device__ unsigned int wang_hash(unsigned int seed)
     return seed;
 }
 
-__device__ void debug_set_final_color(const HIPRTRenderData& render_data, int x, int y, int res_x, ColorRGB final_color)
+HIPRT_HOST_DEVICE HIPRT_INLINE void debug_set_final_color(const HIPRTRenderData& render_data, int x, int y, int res_x, ColorRGB final_color)
 {
     if (render_data.render_settings.sample_number == 0)
         render_data.buffers.pixels[y * res_x + x] = final_color;
@@ -284,7 +285,7 @@ __device__ void debug_set_final_color(const HIPRTRenderData& render_data, int x,
         render_data.buffers.pixels[y * res_x + x] = render_data.buffers.pixels[y * res_x + x] + final_color;
 }
 
-__device__ bool adaptive_sampling(const HIPRTRenderData& render_data, int pixel_index)
+HIPRT_HOST_DEVICE HIPRT_INLINE bool adaptive_sampling(const HIPRTRenderData& render_data, int pixel_index)
 {
     int pixel_sample_count = render_data.aux_buffers.pixel_sample_count[pixel_index];
     if (pixel_sample_count < 0)
@@ -319,8 +320,7 @@ __device__ bool adaptive_sampling(const HIPRTRenderData& render_data, int pixel_
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(HIPRTRenderData render_data, int2 res, HIPRTCamera camera)
 #else
-#include "Renderer/BVH.h"
-GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(HIPRTRenderData render_data, int2 res, HIPRTCamera camera, int x, int y)
+GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_data, int2 res, HIPRTCamera camera, int x, int y)
 #endif
 {
 #ifdef __KERNELCC__
