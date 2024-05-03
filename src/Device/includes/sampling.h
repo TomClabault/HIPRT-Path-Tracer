@@ -6,7 +6,7 @@
 #ifndef HIPRT_SAMPLING_H
 #define HIPRT_SAMPLING_H
 
-#include "Device/includes/onb.h"
+#include "Device/includes/ONB.h"
 #include "HostDeviceCommon/ColorRGB.h"
 #include "HostDeviceCommon/Material.h"
 #include "HostDeviceCommon/Xorshift.h"

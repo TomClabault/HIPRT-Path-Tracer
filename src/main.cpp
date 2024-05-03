@@ -14,7 +14,6 @@
 #include "Image/Envmap.h"
 #include "Image/Image.h"
 #include "Renderer/BVH.h"
-#include "Renderer/RenderKernel.h"
 #include "Renderer/Triangle.h"
 #include "Scene/Camera.h"
 #include "Scene/SceneParser.h"
@@ -24,18 +23,22 @@
 
 #include "Device/kernels/PathTracerKernel.h"
 
-#define GPU_RENDER 0
+#define GPU_RENDER 1
 
 int main(int argc, char* argv[])
 {
-#if GPU_RENDER
-    CommandLineArguments arguments = CommandLineArguments::process_command_line_args(argc, argv);
+    CommandLineArguments cmd_arguments = CommandLineArguments::process_command_line_args(argc, argv);
 
-    const int default_width = arguments.render_width, default_height = arguments.render_height;
-    RenderWindow render_window(default_width, default_height);
+    const int width = cmd_arguments.render_width;
+    const int height = cmd_arguments.render_height;
+#if GPU_RENDER
+
+    RenderWindow render_window(width, height);
+
+    // Block here to destroy the scene after we're done with it to free CPU RAM
     {
-        std::cout << std::endl << "Reading scene file " << arguments.scene_file_path << " ..." << std::endl;
-        Scene parsed_scene = SceneParser::parse_scene_file(arguments.scene_file_path, (float)default_width / default_height);
+        std::cout << std::endl << "Reading scene file " << cmd_arguments.scene_file_path << " ..." << std::endl;
+        Scene parsed_scene = SceneParser::parse_scene_file(cmd_arguments.scene_file_path, (float)width / height);
         std::cout << std::endl;
 
         Renderer& renderer = render_window.get_renderer();
@@ -46,10 +49,6 @@ int main(int argc, char* argv[])
 
     return 0;
 #else
-    CommandLineArguments cmd_arguments = CommandLineArguments::process_command_line_args(argc, argv);
-
-    const int width = cmd_arguments.render_width;
-    const int height = cmd_arguments.render_height;
 
     std::cout << "Reading scene file " << cmd_arguments.scene_file_path << " ..." << std::endl;
     Scene parsed_scene = SceneParser::parse_scene_file(cmd_arguments.scene_file_path);

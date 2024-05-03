@@ -25,6 +25,7 @@ __device__ ColorRGB brdf_dispatcher_sample(const RendererMaterial& material, con
     return disney_sample(material, view_direction, surface_normal, geometric_normal, bounce_direction, brdf_pdf, random_number_generator);
 }
 
+#ifndef __KERNELCC__
 HIPRT_HOST_DEVICE hiprtHit intersect_scene_cpu(const HIPRTRenderData& render_data, const hiprtRay & ray)
 {
     hiprtHit hiprtHit;
@@ -37,25 +38,11 @@ HIPRT_HOST_DEVICE hiprtHit intersect_scene_cpu(const HIPRTRenderData& render_dat
         hiprtHit.normal = closest_hit_info.geometric_normal;
         hiprtHit.t = closest_hit_info.t;
         hiprtHit.uv = closest_hit_info.uv;
-		//// Computing smooth normal
-		//int vertex_A_index = render_data.buffers.triangles_indices[closest_hit_info.primitive_index * 3 + 0];
-		//if (render_data.buffers.normals_present[vertex_A_index])
-		//{
-		//	// Smooth normal available for the triangle
-
-		//	int vertex_B_index = render_data.buffers.triangles_indices[closest_hit_info.primitive_index * 3 + 1];
-		//	int vertex_C_index = render_data.buffers.triangles_indices[closest_hit_info.primitive_index * 3 + 2];
-
-		//	float3 smooth_normal = m_vertex_normals[vertex_B_index] * closest_hit_info.u
-		//		+ m_vertex_normals[vertex_C_index] * closest_hit_info.v
-		//		+ m_vertex_normals[vertex_A_index] * (1.0f - closest_hit_info.u - closest_hit_info.v);
-
-		//	closest_hit_info.shading_normal = hippt::normalize(smooth_normal);
-		//}
 	}
 
     return hiprtHit;
 }
+#endif
 
 __device__ bool trace_ray(const HIPRTRenderData& render_data, hiprtRay ray, HitInfo& hit_info)
 {
@@ -328,13 +315,15 @@ __device__ bool adaptive_sampling(const HIPRTRenderData& render_data, int pixel_
 }
 
 #define LOW_RESOLUTION_RENDER_DOWNSCALE 8
-#ifdef __KERNELLCC__
+
+#ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(HIPRTRenderData render_data, int2 res, HIPRTCamera camera)
 #else
+#include "Renderer/BVH.h"
 GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(HIPRTRenderData render_data, int2 res, HIPRTCamera camera, int x, int y)
 #endif
 {
-#ifdef __KERNELLCC__
+#ifdef __KERNELCC__
     const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
     const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
 #endif

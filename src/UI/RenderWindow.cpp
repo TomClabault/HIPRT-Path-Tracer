@@ -26,7 +26,6 @@
 
 
 // TODO Code Organization:
-// - remove ray << ostream
 // - Destroy buffers when disabling adaptative sampling to save VRAM
 // - Can we have access to HoL when calling disney_metallic_fresnel to avoid passing the two vectors and recomputing the dot product in the return statement ?
 // - DO THE DISNEY SHADING IN SHADING SPACE. WHAT THE H IS THIS CODE BUILDING ONB IN EVERY FUNCTION HUH?
@@ -41,6 +40,11 @@
 
 
 // TODO Features:
+// - stream compaction / active thread compaction (ingo wald 2011)
+// - sample regeneration
+// - pack active pixel in same buffer as pixel sample count
+// - hint shadow rays for better traversal perf
+// - benchmarker to measure frame times precisely (avg, std dev, ...) + fixed random seed for reproducible results
 // - alias method for sampling env map instead of log(n) dichotomy
 // - image comparator slider
 // - auto adaptative sample per frame with adaptative sampling to keep GPU busy
@@ -52,7 +56,7 @@
 // - Denoiser blend to allow blending the original noisy image and the perfect denoised result by a given factor
 // - When modifying the emission of a material with the material editor, it should be reflected in the scene and allow the direct sampling of the geometry
 // - Color fallof (change of material base base_color based on the angle with the view direction and the normal
-// - Ray binning for performance
+// - Ray reordering for performance
 // - Starting rays further away from the camera for performance
 // - Visualizing ray depth (only 1 frame otherwise it would flicker a lot [or choose the option to have it flicker] )
 // - Visualizing pixel time with the clock() instruction. Pixel heatmap:
@@ -325,7 +329,7 @@ RenderWindow::RenderWindow(int width, int height) : m_viewport_width(width), m_v
 	glfwSetMouseButtonCallback(m_window, glfw_mouse_button_callback);
 	glfwSetKeyCallback(m_window, glfw_key_callback);
 	glfwSetScrollCallback(m_window, glfw_mouse_scroll_callback);
-	glfwSwapInterval(1);
+	glfwSwapInterval(0);
 
 	glewInit();
 

@@ -8,7 +8,6 @@
 
 #include "HostDeviceCommon/Material.h"
 #include "HostDeviceCommon/Math.h"
-#include "Renderer/BVH.h"
 
 struct HIPRTRenderSettings
 {
@@ -100,6 +99,8 @@ struct WorldSettings
  * The CPU and GPU use the same kernel code but the CPU still need some specific data
  * (the CPU BVH for example) which is stored in this structure
  */
+
+class BVH;
 struct CPUData
 {
 	BVH* bvh;
