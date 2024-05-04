@@ -63,8 +63,9 @@ Image& CPURenderer::get_framebuffer()
 }
 
 #define DEBUG_PIXEL 0
-#define DEBUG_PIXEL_X 1280/2
-#define DEBUG_PIXEL_Y 720/2
+#define DEBUG_EXACT_COORDINATE 1
+#define DEBUG_PIXEL_X 202
+#define DEBUG_PIXEL_Y 231
 
 void CPURenderer::render()
 {
