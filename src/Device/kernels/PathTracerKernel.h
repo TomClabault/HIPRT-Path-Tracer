@@ -199,7 +199,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_light_sources(HIPRTRenderData& re
     shadow_ray.direction = shadow_ray_direction_normalized;
 
     // abs() here to allow backfacing light sources
-    float dot_light_source = abs(hippt::dot(light_source_info.light_source_normal, -shadow_ray.direction));
+    float dot_light_source = hippt::abs(hippt::dot(light_source_info.light_source_normal, -shadow_ray.direction));
     if (dot_light_source > 0.0f)
     {
         bool in_shadow = evaluate_shadow_ray(render_data, shadow_ray, distance_to_light);
@@ -242,7 +242,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_light_sources(HIPRTRenderData& re
         if (inter_found)
         {
             // abs() here to allow double sided emissive geometry
-            float cos_angle = abs(hippt::dot(new_ray_hit_info.shading_normal, -sampled_brdf_direction));
+            float cos_angle = hippt::abs(hippt::dot(new_ray_hit_info.shading_normal, -sampled_brdf_direction));
             if (cos_angle > 0.0f)
             {
                 int material_index = render_data.buffers.material_indices[new_ray_hit_info.primitive_index];
@@ -471,7 +471,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                         sample_color = sample_color + material.emission * throughput;
                     sample_color = sample_color + (light_sample_radiance + env_map_radiance) * throughput;
 
-                    throughput *= brdf * abs(hippt::dot(bounce_direction, closest_hit_info.shading_normal)) / brdf_pdf;
+                    float dot_prod = hippt::dot(bounce_direction, closest_hit_info.shading_normal);
+                    float abs_calc = hippt::abs(dot_prod);
+                    throughput *= brdf * abs_calc / brdf_pdf;
 
                     int outside_surface = hippt::dot(bounce_direction, closest_hit_info.shading_normal) < 0 ? -1.0f : 1.0;
                     float3 new_ray_origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 3.0e-3f * outside_surface;
@@ -518,7 +520,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
             debug_set_final_color(render_data, x, y, res.x, ColorRGB(1000000.0f, 0.0f, 1000000.0f));
             return;
         }
-        else if (isnan(sample_color.r) || isnan(sample_color.g) || isnan(sample_color.b))
+        else if (hippt::isNaN(sample_color.r) || hippt::isNaN(sample_color.g) || hippt::isNaN(sample_color.b))
         {
             debug_set_final_color(render_data, x, y, res.x, ColorRGB(1000000.0f, 1000000.0f, 0.0f));
             return;

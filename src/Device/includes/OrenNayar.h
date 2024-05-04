@@ -42,15 +42,15 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB oren_nayar_eval(const RendererMaterial& 
     }
 
     float sin_alpha, tan_beta;
-    if (abs(local_to_light_direction.z) > abs(local_view_direction.z)) 
+    if (hippt::abs(local_to_light_direction.z) > hippt::abs(local_view_direction.z)) 
     {
         sin_alpha = sin_theta_o;
-        tan_beta = sin_theta_i / abs(local_to_light_direction.z);
+        tan_beta = sin_theta_i / hippt::abs(local_to_light_direction.z);
     }
     else 
     {
         sin_alpha = sin_theta_i;
-        tan_beta = sin_theta_o / abs(local_view_direction.z);
+        tan_beta = sin_theta_o / hippt::abs(local_view_direction.z);
     }
 
     return material.base_color / M_PI * (material.oren_nayar_A + material.oren_nayar_B * max_cos * sin_alpha * tan_beta);

@@ -89,16 +89,28 @@ Image Utils::OIDN_denoise(const Image& image, int width, int height, float blend
     static oidn::DeviceRef device;
     if (!device_done)
     {
-        device = oidn::newDevice(); // CPU or GPU if available
-        if (device == NULL)
+        // We're going to create a CPU device as there seems to be some issues with the GPU (HIP at least)
+        // device on Linux
+        int num_devices = oidnGetNumPhysicalDevices();
+        for (int i = 0; i < num_devices; i++)
         {
-            std::cerr << "There was an error getting the device for denoising with OIDN. Perhaps some missing DLLs for your hardware?" << std::endl;
-            return Image();
-        }
-        device.commit();
+            if (static_cast<oidn::DeviceType>(oidnGetPhysicalDeviceInt(i, "type")) == oidn::DeviceType::CPU)
+            {
+                device = oidn::newDevice(i);
+                if (device.getHandle() == nullptr)
+                {
+                    std::cerr << "There was an error getting the device for denoising with OIDN. Perhaps some missing libraries for your hardware?" << std::endl;
+                    return Image();
+                }
+                device.commit();
 
-        device_done = true;
+                device_done = true;
+            }
+        }
     }
+
+    assert(device_done);
+
 
     // Create buffers for input/output images accessible by both host (CPU) and device (CPU/GPU)
     oidn::BufferRef colorBuf = device.newBuffer(width * height * 3 * sizeof(float));

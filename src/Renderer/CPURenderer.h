@@ -7,6 +7,7 @@
 #include "Scene/SceneParser.h"
 #include "Utils/CommandlineArguments.h"
 
+#include <memory>
 #include <vector>
 
 class CPURenderer

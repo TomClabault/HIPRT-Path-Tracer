@@ -6,7 +6,7 @@
 #ifndef CAMERA_H
 #define CAMERA_H
 
-#include "HostDeviceCommon/camera.h"
+#include "HostDeviceCommon/Camera.h"
 
 #include "glm/mat4x4.hpp"
 #include "glm/vec3.hpp"

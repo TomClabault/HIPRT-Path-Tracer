@@ -7,7 +7,7 @@
 #include <cmath>
 #include <vector>
 
-#include "bvh.h"
+#include "Renderer/BVH.h"
 
 const float3 BoundingVolume::PLANE_NORMALS[BVHConstants::PLANES_COUNT] = {
 	float3(1, 0, 0),

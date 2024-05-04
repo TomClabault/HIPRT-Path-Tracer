@@ -133,7 +133,7 @@ __prefix__ ColorRGB operator/ (const ColorRGB& c, const float k)
 
 __prefix__ ColorRGB sqrt(const ColorRGB& col)
 {
-    return ColorRGB{ sqrt(col.r), sqrt(col.g), sqrt(col.b) };
+    return ColorRGB{ sqrtf(col.r), sqrtf(col.g), sqrtf(col.b) };
 }
 
 __prefix__ ColorRGB exp(const ColorRGB& col)

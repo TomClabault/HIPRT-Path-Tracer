@@ -62,6 +62,10 @@ Image& CPURenderer::get_framebuffer()
     return m_framebuffer;
 }
 
+#define DEBUG_PIXEL 0
+#define DEBUG_PIXEL_X 1280/2
+#define DEBUG_PIXEL_Y 720/2
+
 void CPURenderer::render()
 {
     auto start = std::chrono::high_resolution_clock::now();

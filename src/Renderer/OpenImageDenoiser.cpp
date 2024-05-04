@@ -11,7 +11,7 @@ OpenImageDenoiser::OpenImageDenoiser() : m_width(0), m_height(0)
 {
     // Create an Open Image Denoise device
     m_device = oidn::newDevice(); // CPU or GPU if available
-    if (m_device == NULL)
+    if (m_device.getHandle() == nullptr)
     {
         std::cerr << "There was an error getting the device for denoising with OIDN. Perhaps some missing DLLs for your hardware?" << std::endl;
 
