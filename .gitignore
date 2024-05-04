@@ -2,6 +2,8 @@ CMakeLists.txt.user
 
 RT_output*.png
 
+.vscode
+
 build*
 data/OBJs/*.blend
 data/OBJs/*.obj
