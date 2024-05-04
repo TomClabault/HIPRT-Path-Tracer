@@ -47,7 +47,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE hiprtHit intersect_scene_cpu(const HIPRTRenderDat
 
 HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data, hiprtRay ray, HitInfo& hit_info)
 {
-    bool hit_found = false;
 #ifdef __KERNELCC__
     hiprtGeomTraversalClosest tr(render_data.geom, ray);
     hiprtHit				  hit = tr.getNextHit();
@@ -179,10 +178,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_light_sources(HIPRTRenderData& re
         // + microfacet BRDFs
         return ColorRGB(0.0f);
 
-    float3 normal;
-    if (hippt::dot(view_direction, closest_hit_info.shading_normal) < 0)
-        normal = reflect_ray(closest_hit_info.shading_normal, closest_hit_info.geometric_normal);
-
     ColorRGB light_source_radiance_mis;
     float light_sample_pdf;
     LightSourceInformation light_source_info;
@@ -192,7 +187,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_light_sources(HIPRTRenderData& re
     float3 shadow_ray_direction = random_light_point - shadow_ray_origin;
     float distance_to_light = hippt::length(shadow_ray_direction);
     float3 shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
-
 
     hiprtRay shadow_ray;
     shadow_ray.origin = shadow_ray_origin;
@@ -302,7 +296,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool adaptive_sampling(const HIPRTRenderData& ren
 
         float pixel_variance = (squared_luminance - luminance * average_luminance) / (pixel_sample_count);
 
-        bool pixel_needs_sampling = 1.96f * sqrt(pixel_variance) / sqrt(pixel_sample_count + 1) > render_data.render_settings.adaptive_sampling_noise_threshold * average_luminance;
+        bool pixel_needs_sampling = 1.96f * sqrtf(pixel_variance) / sqrtf(pixel_sample_count + 1) > render_data.render_settings.adaptive_sampling_noise_threshold * average_luminance;
         if (!pixel_needs_sampling)
         {
             // Indicates no need to sample anymore by setting the sample count to negative

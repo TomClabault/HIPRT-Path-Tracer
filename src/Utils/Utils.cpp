@@ -109,7 +109,25 @@ Image Utils::OIDN_denoise(const Image& image, int width, int height, float blend
         }
     }
 
-    assert(device_done);
+    if (!device_done)
+    {
+        // If we couldn't make a CPU device, trying GPU
+        device = oidn::newDevice();
+        if (device.getHandle() == nullptr)
+        {
+            std::cerr << "There was an error getting the device for denoising with OIDN. Perhaps some missing libraries for your hardware?" << std::endl;
+            return Image();
+        }
+        device.commit();
+
+        device_done = true;
+    }
+
+    if (!device_done)
+    {
+        std::cerr << "Cannot create any OIDN device, aborting denoising..." << std::endl;
+        return Image(1, 1);
+    }
 
 
     // Create buffers for input/output images accessible by both host (CPU) and device (CPU/GPU)

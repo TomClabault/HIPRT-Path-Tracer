@@ -20,7 +20,7 @@
 #include "Utils/CommandlineArguments.h"
 #include "Utils/Utils.h"
 
-#define GPU_RENDER 0
+#define GPU_RENDER 1
 
 int main(int argc, char* argv[])
 {

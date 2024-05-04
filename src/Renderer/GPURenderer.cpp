@@ -25,7 +25,11 @@ void GPURenderer::render()
 	void* launch_args[] = { &render_data, &resolution, &hiprt_cam};
 	launch_kernel(8, 8, resolution.x, resolution.y, launch_args);
 
+#ifndef OROCHI_ENABLE_CUEW
+	// We only want to unmap for OpenGL interop buffers that are only available
+	// on AMD (for now)
 	m_pixels_interop_buffer.unmap();
+#endif
 }
 
 void GPURenderer::change_render_resolution(int new_width, int new_height)

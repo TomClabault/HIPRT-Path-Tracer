@@ -51,9 +51,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 cosine_weighted_sample(const float3& norma
     float theta = 2.0f * M_PI * rand_1;
 
     float2 xy = sqrt(1.0f - rand_2 * rand_2) * make_float2(cos(theta), sin(theta));
-    float3 spherePoint = float3(xy.x, xy.y, rand_2);
+    float3 sphere_point = make_float3(xy.x, xy.y, rand_2);
 
-    return hippt::normalize(normal + spherePoint);
+    return hippt::normalize(normal + sphere_point);
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB fresnel_schlick(ColorRGB F0, float angle)
