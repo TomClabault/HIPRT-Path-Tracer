@@ -113,7 +113,7 @@ struct WorldSettings
 class BVH;
 struct CPUData
 {
-	BVH* bvh;
+	BVH* bvh = nullptr;
 };
 
 /*

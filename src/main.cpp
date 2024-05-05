@@ -21,7 +21,7 @@
 #include "Utils/CommandlineArguments.h"
 #include "Utils/Utils.h"
 
-#define GPU_RENDER 1
+#define GPU_RENDER 0
 
 int main(int argc, char* argv[])
 {
@@ -63,14 +63,14 @@ int main(int argc, char* argv[])
     cpu_renderer.render();
     cpu_renderer.tonemap(2.2f, 1.0f);
 
-    //Image image_denoised_1 = Utils::OIDN_denoise(cpu_renderer.get_framebuffer(), width, height, 1.0f);
-    //Image image_denoised_075 = Utils::OIDN_denoise(cpu_renderer.get_framebuffer(), width, height, 0.75f);
-    //Image image_denoised_05 = Utils::OIDN_denoise(cpu_renderer.get_framebuffer(), width, height, 0.5f);
+    Image image_denoised_1 = Utils::OIDN_denoise(cpu_renderer.get_framebuffer(), width, height, 1.0f);
+    Image image_denoised_075 = Utils::OIDN_denoise(cpu_renderer.get_framebuffer(), width, height, 0.75f);
+    Image image_denoised_05 = Utils::OIDN_denoise(cpu_renderer.get_framebuffer(), width, height, 0.5f);
 
     cpu_renderer.get_framebuffer().write_image_png("RT_output.png");
-    //image_denoised_1.write_image_png("RT_output_denoised_1.png");
-    //image_denoised_075.write_image_png("RT_output_denoised_075.png");
-    //image_denoised_05.write_image_png("RT_output_denoised_05.png");
+    image_denoised_1.write_image_png("RT_output_denoised_1.png");
+    image_denoised_075.write_image_png("RT_output_denoised_075.png");
+    image_denoised_05.write_image_png("RT_output_denoised_05.png");
 
     return 0;
 #endif
