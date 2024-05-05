@@ -7,7 +7,7 @@
 #define UTILS_H
 
 #include "Image/Image.h"
-#include "HostDeviceCommon/ColorRGB.h"
+#include "HostDeviceCommon/Color.h"
 
 #include <string>
 

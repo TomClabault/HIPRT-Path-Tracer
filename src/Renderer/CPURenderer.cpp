@@ -16,7 +16,6 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
     m_denoiser_normals.resize(width * height, float3{ 0.0f, 0.0f, 0.0f });
     m_pixel_sample_count.resize(width * height, 0);
     m_pixel_squared_luminance.resize(width * height, 0.0f);
-    
 }
 
 void CPURenderer::set_scene(Scene& parsed_scene)
@@ -42,9 +41,18 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.world_settings.ambient_light_color = ColorRGB(0.5f);
     m_render_data.world_settings.use_ambient_light = true;
 
+    std::cout << "Building scene BVH..." << std::endl;
     m_triangle_buffer = parsed_scene.get_triangles();
     m_bvh = std::make_shared<BVH>(&m_triangle_buffer);
     m_render_data.cpu_only.bvh = m_bvh.get();
+}
+
+void CPURenderer::set_envmap(ImageRGBA& envmap_image)
+{
+    m_render_data.world_settings.envmap = envmap_image.data().data();
+    m_render_data.world_settings.envmap_width = envmap_image.width;
+    m_render_data.world_settings.envmap_height = envmap_image.height;
+    m_render_data.world_settings.envmap_cdf = envmap_image.get_cdf().data();
 }
 
 void CPURenderer::set_camera(Camera& camera)
@@ -62,10 +70,10 @@ Image& CPURenderer::get_framebuffer()
     return m_framebuffer;
 }
 
-#define DEBUG_PIXEL 0
+#define DEBUG_PIXEL 1
 #define DEBUG_EXACT_COORDINATE 1
-#define DEBUG_PIXEL_X 202
-#define DEBUG_PIXEL_Y 231
+#define DEBUG_PIXEL_X 0
+#define DEBUG_PIXEL_Y 0
 
 void CPURenderer::render()
 {
@@ -92,7 +100,7 @@ void CPURenderer::render()
         lines_completed++;
 
         if (omp_get_thread_num() == 0)
-            if (lines_completed % (m_resolution.y / 25))
+            if (m_resolution.y > 25 && lines_completed % (m_resolution.y / 25))
                 std::cout << lines_completed / (float)m_resolution.y * 100 << "%" << std::endl;
     }
     auto stop = std::chrono::high_resolution_clock::now();
@@ -101,7 +109,7 @@ void CPURenderer::render()
 
 void CPURenderer::tonemap(float gamma, float exposure)
 {
-#pragma omp parallel for schedule(dynamic)
+//#pragma omp parallel for schedule(dynamic)
     for (int y = 0; y < m_resolution.y; y++)
     {
         for (int x = 0; x < m_resolution.x; x++)

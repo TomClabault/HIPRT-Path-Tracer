@@ -8,6 +8,7 @@
 #include <stb_image_write.h>
 
 #include "Device/kernels/PathTracerKernel.h"
+#include "HIPRT-Orochi/OrochiTexture.h"
 #include "Image/Envmap.h"
 #include "Image/Image.h"
 #include "Renderer/BVH.h"
@@ -33,12 +34,17 @@ int main(int argc, char* argv[])
     Scene parsed_scene = SceneParser::parse_scene_file(cmd_arguments.scene_file_path, (float)width / height);
     std::cout << std::endl;
 
+    ImageRGBA envmap_image = ImageRGBA::read_image(cmd_arguments.skysphere_file_path, /* flip Y */ true);
+
 #if GPU_RENDER
 
     RenderWindow render_window(width, height);
 
+    OrochiEnvmap envmap(envmap_image);
+
     GPURenderer& renderer = render_window.get_renderer();
     renderer.set_scene(parsed_scene);
+    renderer.set_envmap(envmap);
     renderer.set_camera(parsed_scene.camera);
     render_window.run();
 
@@ -50,20 +56,21 @@ int main(int argc, char* argv[])
 
     CPURenderer cpu_renderer(width, height);
     cpu_renderer.set_scene(parsed_scene);
+    cpu_renderer.set_envmap(envmap_image);
     cpu_renderer.set_camera(parsed_scene.camera);
     cpu_renderer.get_render_settings().nb_bounces = cmd_arguments.bounces;
     cpu_renderer.get_render_settings().samples_per_frame = cmd_arguments.render_samples;
     cpu_renderer.render();
     cpu_renderer.tonemap(2.2f, 1.0f);
 
-    Image image_denoised_1 = Utils::OIDN_denoise(cpu_renderer.get_framebuffer(), width, height, 1.0f);
-    Image image_denoised_075 = Utils::OIDN_denoise(cpu_renderer.get_framebuffer(), width, height, 0.75f);
-    Image image_denoised_05 = Utils::OIDN_denoise(cpu_renderer.get_framebuffer(), width, height, 0.5f);
+    //Image image_denoised_1 = Utils::OIDN_denoise(cpu_renderer.get_framebuffer(), width, height, 1.0f);
+    //Image image_denoised_075 = Utils::OIDN_denoise(cpu_renderer.get_framebuffer(), width, height, 0.75f);
+    //Image image_denoised_05 = Utils::OIDN_denoise(cpu_renderer.get_framebuffer(), width, height, 0.5f);
 
     cpu_renderer.get_framebuffer().write_image_png("RT_output.png");
-    image_denoised_1.write_image_png("RT_output_denoised_1.png");
-    image_denoised_075.write_image_png("RT_output_denoised_075.png");
-    image_denoised_05.write_image_png("RT_output_denoised_05.png");
+    //image_denoised_1.write_image_png("RT_output_denoised_1.png");
+    //image_denoised_075.write_image_png("RT_output_denoised_075.png");
+    //image_denoised_05.write_image_png("RT_output_denoised_05.png");
 
     return 0;
 #endif

@@ -13,12 +13,10 @@ class EnvironmentMap : public Image
 public:
     EnvironmentMap() {}
     EnvironmentMap(int width, int height); 
-    EnvironmentMap(Image&& data, int width, int height);
+    EnvironmentMap(Image&& data);
 
     void compute_cdf();
     const std::vector<float>& cdf() const;
-
-    static EnvironmentMap read_from_file(const std::string& filepath);
 
 private:
     std::vector<float> m_cdf;

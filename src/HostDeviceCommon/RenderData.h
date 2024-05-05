@@ -8,6 +8,7 @@
 
 #include "HostDeviceCommon/Material.h"
 #include "HostDeviceCommon/Math.h"
+#include <Orochi/Orochi.h>
 
 struct HIPRTRenderSettings
 {
@@ -82,17 +83,26 @@ struct AuxiliaryBuffers
 
 	// Per pixel sample count. Useful when doing adaptative sampling
 	// where each pixel can have a different number of sample
-	int* pixel_sample_count;
+	int* pixel_sample_count = nullptr;
 
 	// Per pixel sum of squared luminance of samples. Used for adaptative sampling
 	// This buffer should not be pre-divided by the number of samples
-	float* pixel_squared_luminance;
+	float* pixel_squared_luminance = nullptr;
 };
 
 struct WorldSettings
 {
-	bool use_ambient_light = true;
+	bool use_ambient_light = false;
 	ColorRGB ambient_light_color = ColorRGB(0.5f);
+
+	unsigned int envmap_width = 0, envmap_height = 0;
+	// This void pointer is a either a pointer to float* for the CPU
+	// or a pointer to oroTextureObject_t for the GPU.
+	// Proper reinterpreting of the pointer is done in the kernel
+	void* envmap = nullptr;
+	// Cumulative distribution function. 1D float array of length width * height for
+	// importance sampling the envmap
+	float* envmap_cdf;
 };
 
 /**

@@ -6,7 +6,7 @@
 #ifndef OPEN_IMAGE_DENOISER
 #define OPEN_IMAGE_DENOISER
 
-#include "HostDeviceCommon/ColorRGB.h"
+#include "HostDeviceCommon/Color.h"
 #include <OpenImageDenoise/oidn.hpp>
 #include <vector>
 

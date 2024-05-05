@@ -8,12 +8,14 @@
 #include "HostDeviceCommon/Math.h"
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/Xorshift.h"
-#include "Device/includes/Disney.h"
 #include "Device/includes/FixIntellisense.h"
+#include "Device/includes/Disney.h"
 #include "Device/includes/Sampling.h"
 
 #include <hiprt/hiprt_device.h>
 #include <hiprt/hiprt_vec.h>
+
+#include <Orochi/Orochi.h>
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB brdf_dispatcher_eval(const RendererMaterial& material, const float3& view_direction, const float3& surface_normal, const float3& to_light_direction, float& pdf)
 {
@@ -261,6 +263,23 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_light_sources(HIPRTRenderData& re
     return light_source_radiance_mis + brdf_radiance_mis;
 }
 
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_environment_map_from_direction(const WorldSettings& world_settings, const float3& direction)
+{
+    float u, v;
+    u = 0.5f + atan2(direction.z, direction.x) / (2.0f * (float)M_PI);
+    v = 0.5f + asin(direction.y) / (float)M_PI;
+
+    int x = hippt::max(hippt::min((unsigned int)(u * world_settings.envmap_width), world_settings.envmap_width - 1), 0u);
+    int y = hippt::max(hippt::min((unsigned int)(v * world_settings.envmap_height), world_settings.envmap_height - 1), 0u);
+
+#ifdef __KERNELCC__
+    float4 color = tex2D<float4>(reinterpret_cast<oroTextureObject_t>(world_settings.envmap), x, y);
+    return ColorRGB(color.x, color.y, color.z);
+#else
+    return reinterpret_cast<ColorRGB*>(world_settings.envmap)[y * world_settings.envmap_width + x];
+#endif
+}
+
 HIPRT_HOST_DEVICE HIPRT_INLINE unsigned int wang_hash(unsigned int seed)
 {
     seed = (seed ^ 61) ^ (seed >> 16);
@@ -465,9 +484,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                         sample_color = sample_color + material.emission * throughput;
                     sample_color = sample_color + (light_sample_radiance + env_map_radiance) * throughput;
 
-                    float dot_prod = hippt::dot(bounce_direction, closest_hit_info.shading_normal);
-                    float abs_calc = hippt::abs(dot_prod);
-                    throughput *= brdf * abs_calc / brdf_pdf;
+                    throughput *= brdf * hippt::abs(hippt::dot(bounce_direction, closest_hit_info.shading_normal)) / brdf_pdf;
 
                     int outside_surface = hippt::dot(bounce_direction, closest_hit_info.shading_normal) < 0 ? -1.0f : 1.0;
                     float3 new_ray_origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 3.0e-3f * outside_surface;
@@ -489,8 +506,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                         if (render_data.world_settings.use_ambient_light)
                             skysphere_color = render_data.world_settings.ambient_light_color;
                         else
-                            ; // TODO NOT IMPLEMENTED : USE SKYSPHERE COLOR
-                            //ColorRGB skysphere_color = sample_environment_map_from_direction(ray.direction);
+                            skysphere_color = sample_environment_map_from_direction(render_data.world_settings, ray.direction);
 
                         sample_color += skysphere_color * throughput;
                     }

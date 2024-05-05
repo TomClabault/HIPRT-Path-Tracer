@@ -11,46 +11,32 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
+#include "Utils/Utils.h"
 
-inline float clamp(const float x, const float min, const float max)
+Image::Image(const std::string& filepath) : Image(filepath.c_str()) {}
+
+Image::Image(const char* filepath)
 {
-    if (x < min) return min;
-    else if (x > max) return max;
-    else return x;
+    *this = Image::read_image(filepath, false);
 }
 
-Image::Image(ColorRGB* data, int width, int height) : width(width), height(height)
+Image Image::read_image(const std::string& filepath, bool flipY)
 {
-    m_pixel_data = std::vector<ColorRGB>();
-    m_pixel_data.insert(m_pixel_data.end(), &data[0], &data[width * height]);
-}
+    stbi_set_flip_vertically_on_load(flipY);
 
-size_t Image::byte_size() const
-{
-    return width * height * sizeof(ColorRGB);
-}
+    int width, height, channels;
+    float* pixels = stbi_loadf(filepath.c_str(), &width, &height, &channels, 3);
 
-float Image::luminance_of_pixel(int x, int y) const
-{
-    ColorRGB pixel = m_pixel_data[y * width + x];
+    if (!pixels)
+    {
+        std::cout << "Error reading image " << filepath << std::endl;
+        std::exit(1);
+    }
 
-    return 0.3086 * pixel.r + 0.6094 * pixel.g + 0.0820 * pixel.b;
-}
+    Image image(reinterpret_cast<ColorRGB*>(pixels), width, height);
+    image.channels = 3;
 
-float Image::luminance_of_area(int start_x, int start_y, int stop_x, int stop_y) const
-{
-    float luminance = 0.0f;
-
-    for (int x = start_x; x < stop_x; x++)
-        for (int y = start_y; y < stop_y; y++)
-            luminance += luminance_of_pixel(x, y);
-
-    return luminance;
-}
-
-float Image::luminance_of_area(const ImageBin& area) const
-{
-    return luminance_of_area(area.x0, area.y0, area.x1, area.y1);
+    return image;
 }
 
 bool Image::write_image_png(const char* filename, const bool flipY) const
@@ -58,14 +44,14 @@ bool Image::write_image_png(const char* filename, const bool flipY) const
     if (byte_size() == 0)
         return false;
 
-    std::vector<unsigned char> tmp(byte_size());
+    std::vector<unsigned char> tmp(width * height * channels);
     for (unsigned i = 0; i < width * height; i++)
     {
         ColorRGB pixel = m_pixel_data[i] * 255;
 
-        tmp[i * 3 + 0] = clamp(pixel.r, 0, 255);
-        tmp[i * 3 + 1] = clamp(pixel.g, 0, 255);
-        tmp[i * 3 + 2] = clamp(pixel.b, 0, 255);
+        tmp[i * 3 + 0] = hippt::clamp(0.0f, 255.0f, pixel.r);
+        tmp[i * 3 + 1] = hippt::clamp(0.0f, 255.0f, pixel.g);
+        tmp[i * 3 + 2] = hippt::clamp(0.0f, 255.0f, pixel.b);
     }
 
     stbi_flip_vertically_on_write(flipY);
@@ -81,28 +67,61 @@ bool Image::write_image_hdr(const char* filename, const bool flipY) const
     return stbi_write_hdr(filename, width, height, 3, reinterpret_cast<const float*>(m_pixel_data.data())) != 0;
 }
 
-void Image::set_data(const std::vector<ColorRGB>& data)
+
+
+
+
+ImageRGBA::ImageRGBA(const std::string& filepath) : ImageRGBA(filepath.c_str()) {}
+
+ImageRGBA::ImageRGBA(const char* filepath)
 {
-    m_pixel_data = data;
+    *this = ImageRGBA::read_image(filepath, false);
 }
 
-const std::vector<ColorRGB>& Image::data() const
+ImageRGBA ImageRGBA::read_image(const std::string& filepath, bool flipY)
 {
-    return m_pixel_data;
+    stbi_set_flip_vertically_on_load(flipY);
+
+    int width, height, channels;
+    float* pixels = stbi_loadf(filepath.c_str(), &width, &height, &channels, 4);
+
+    if (!pixels)
+    {
+        std::cout << "Error reading image " << filepath << std::endl;
+        std::exit(1);
+    }
+
+    ImageRGBA image(reinterpret_cast<ColorRGBA*>(pixels), width, height);
+    image.channels = 4;
+
+    return image;
 }
 
-std::vector<ColorRGB>& Image::data()
+bool ImageRGBA::write_image_png(const char* filename, const bool flipY) const
 {
-    return m_pixel_data;
+    if (byte_size() == 0)
+        return false;
+
+    std::vector<unsigned char> tmp(byte_size());
+    for (unsigned i = 0; i < width * height; i++)
+    {
+        ColorRGBA pixel = m_pixel_data[i] * 255;
+
+        tmp[i * 4 + 0] = hippt::clamp(0.0f, 255.0f, pixel.r);
+        tmp[i * 4 + 1] = hippt::clamp(0.0f, 255.0f, pixel.g);
+        tmp[i * 4 + 2] = hippt::clamp(0.0f, 255.0f, pixel.b);
+        tmp[i * 4 + 3] = hippt::clamp(0.0f, 255.0f, pixel.a);
+    }
+
+    stbi_flip_vertically_on_write(flipY);
+    return stbi_write_png(filename, width, height, 4, tmp.data(), width * 4) != 0;
 }
 
-const ColorRGB& Image::operator[](int index) const
+bool ImageRGBA::write_image_hdr(const char* filename, const bool flipY) const
 {
-    return m_pixel_data[index];
-}
+    if (byte_size() == 0)
+        return false;
 
-ColorRGB& Image::operator[](int index)
-{
-    return m_pixel_data[index];
+    stbi_flip_vertically_on_write(flipY);
+    return stbi_write_hdr(filename, width, height, 4, reinterpret_cast<const float*>(m_pixel_data.data())) != 0;
 }
-

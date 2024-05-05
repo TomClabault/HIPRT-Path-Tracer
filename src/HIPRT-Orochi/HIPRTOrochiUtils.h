@@ -16,7 +16,7 @@
 #define OROCHI_RTC_CHECK_ERROR( error ) ( orochi_rtc_check_error( error, __FILE__, __LINE__ ) )
 #define HIPRT_CHECK_ERROR( error ) ( hiprt_check_error( error, __FILE__, __LINE__ ) )
 
-namespace HIPRTPTOrochiUtils
+namespace HIPPTOrochiUtils
 {
 	/*
 	 * This function looks for a file that has the name 'header_name'

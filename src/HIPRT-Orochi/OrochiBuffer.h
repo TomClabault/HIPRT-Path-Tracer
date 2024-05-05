@@ -24,12 +24,15 @@ public:
 	T** get_pointer_address();
 
 	std::vector<T> download_data() const;
-	void upload_data(std::vector<T>& data);
+	void upload_data(const std::vector<T>& data);
+	void upload_data(void* data);
+
+	void destroy();
 
 private:
 	T* m_data_pointer;
 
-	size_t m_element_count;
+	size_t m_element_count = 0;
 };
 
 template <typename T>
@@ -41,8 +44,7 @@ OrochiBuffer<T>::OrochiBuffer(int element_count) : m_element_count(element_count
 template <typename T>
 OrochiBuffer<T>::~OrochiBuffer()
 {
-	if (m_data_pointer)
-		OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(m_data_pointer)));
+	destroy();
 }
 
 template <typename T>
@@ -82,11 +84,25 @@ std::vector<T> OrochiBuffer<T>::download_data() const
 }
 
 template <typename T>
-void OrochiBuffer<T>::upload_data(std::vector<T>& data)
+void OrochiBuffer<T>::upload_data(const std::vector<T>& data)
 {
-	void* data_pointer = data.data();
+	void* data_pointer = const_cast<void*>(data.data());
 	if (m_data_pointer)
 		OROCHI_CHECK_ERROR(oroMemcpyHtoD(reinterpret_cast<oroDeviceptr>(m_data_pointer), data_pointer, sizeof(T) * m_element_count));
+}
+
+template <typename T>
+void OrochiBuffer<T>::upload_data(void* data)
+{
+	if (m_data_pointer)
+		OROCHI_CHECK_ERROR(oroMemcpyHtoD(reinterpret_cast<oroDeviceptr>(m_data_pointer), data, sizeof(T) * m_element_count));
+}
+
+template <typename T>
+void OrochiBuffer<T>::destroy()
+{
+	if (m_data_pointer)
+		OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(m_data_pointer)));
 }
 
 #endif

@@ -11,7 +11,7 @@ EnvironmentMap::EnvironmentMap(int width, int height) : Image(width, height)
     compute_cdf();
 }
 
-EnvironmentMap::EnvironmentMap(Image&& image, int width, int height) : Image(image)
+EnvironmentMap::EnvironmentMap(Image&& image) : Image(image)
 {
     compute_cdf();
 }
@@ -35,12 +35,4 @@ void EnvironmentMap::compute_cdf()
 const std::vector<float>& EnvironmentMap::cdf() const
 {
     return m_cdf;
-}
-
-EnvironmentMap EnvironmentMap::read_from_file(const std::string& filepath)
-{
-    int width, height;
-    Image image = Utils::read_image_float(filepath, width, height, true);
-
-    return EnvironmentMap(std::move(image), width, height);
 }

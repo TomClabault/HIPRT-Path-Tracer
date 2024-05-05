@@ -40,7 +40,7 @@ void hiprt_check_error(hiprtError res, const char* file, uint32_t line)
 	}
 }
 
-namespace HIPRTPTOrochiUtils
+namespace HIPPTOrochiUtils
 {
 	std::string locate_header_in_include_dirs(const std::string& header_name, const std::vector<std::string> include_directories)
 	{

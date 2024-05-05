@@ -138,10 +138,10 @@ void GPURenderer::compile_trace_kernel(const char* kernel_file_path, const char*
 	std::vector<std::pair<std::string, std::string>> precompiler_defines;
 	std::vector<const char*> options;
 
-	std::vector<std::string> additional_includes = { KERNEL_COMPILER_ADDITIONAL_INCLUDE, DEVICE_INCLUDES_DIRECTORY, "-I./" };
+	std::vector<std::string> additional_includes = { KERNEL_COMPILER_ADDITIONAL_INCLUDE, DEVICE_INCLUDES_DIRECTORY, OROCHI_INCLUDES_DIRECTORY, "-I./" };
 
 	hiprtApiFunction trace_function_out;
-	if (HIPRTPTOrochiUtils::build_trace_kernel(m_hiprt_orochi_ctx->hiprt_ctx, kernel_file_path, kernel_function_name, trace_function_out, additional_includes, options, 0, 1, false) != hiprtError::hiprtSuccess)
+	if (HIPPTOrochiUtils::build_trace_kernel(m_hiprt_orochi_ctx->hiprt_ctx, kernel_file_path, kernel_function_name, trace_function_out, additional_includes, options, 0, 1, false) != hiprtError::hiprtSuccess)
 	{
 		std::cerr << "Unable to compile kernel \"" << kernel_function_name << "\". Cannot continue." << std::endl;
 		std::getchar();
@@ -251,6 +251,16 @@ void GPURenderer::set_scene(Scene& scene)
 {
 	set_hiprt_scene_from_scene(scene);
 	m_materials = scene.materials;
+}
+
+void GPURenderer::set_envmap(OrochiEnvmap& envmap)
+{
+	m_envmap = envmap;
+
+	m_world_settings.envmap = envmap.get_device_texture();
+	m_world_settings.envmap_width = envmap.width;
+	m_world_settings.envmap_height = envmap.height;
+	m_world_settings.envmap_cdf = envmap.get_cdf_device_pointer();
 }
 
 const std::vector<RendererMaterial>& GPURenderer::get_materials()

@@ -7,6 +7,7 @@
 #define GPU_RENDERER_H
 
 #include "HIPRT-Orochi/OrochiBuffer.h"
+#include "HIPRT-Orochi/OrochiEnvmap.h"
 #include "HIPRT-Orochi/HIPRTOrochiCtx.h"
 #include "HIPRT-Orochi/HIPRTScene.h"
 #include "HostDeviceCommon/RenderData.h"
@@ -62,10 +63,12 @@ public:
 	void launch_kernel(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args);
 
 	void set_scene(Scene& scene);
+	void set_envmap(OrochiEnvmap& envmap);
+	void set_camera(const Camera& camera);
+
 	const std::vector<RendererMaterial>& get_materials();
 	void update_materials(std::vector<RendererMaterial>& materials);
 
-	void set_camera(const Camera& camera);
 	void translate_camera_view(glm::vec3 translation);
 	void rotate_camera_view(glm::vec3 rotation_angles);
 	void zoom_camera_view(float offset);
@@ -96,6 +99,8 @@ private:
 	// This buffer is necessary because with adaptative sampling, each pixel
 	// can have accumulated a different number of sample
 	OrochiBuffer<int> m_pixels_sample_count;
+
+	OrochiEnvmap m_envmap;
 
 	std::shared_ptr<HIPRTOrochiCtx> m_hiprt_orochi_ctx;
 	oroFunction m_trace_kernel = nullptr;

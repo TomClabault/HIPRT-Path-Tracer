@@ -65,7 +65,7 @@ Scene SceneParser::parse_scene_file(const std::string& filepath, float frame_asp
 
     Assimp::Importer importer;
 
-    const aiScene* scene = importer.ReadFile(filepath, aiPostProcessSteps::aiProcess_PreTransformVertices | aiPostProcessSteps::aiProcess_Triangulate);
+    const aiScene* scene = importer.ReadFile(filepath, aiPostProcessSteps::aiProcess_PreTransformVertices | aiPostProcessSteps::aiProcess_Triangulate | aiPostProcessSteps::aiProcess_FixInfacingNormals);
     if (scene == nullptr)
     {
         std::cerr << importer.GetErrorString() << std::endl;

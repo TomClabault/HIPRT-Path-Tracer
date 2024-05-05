@@ -75,7 +75,6 @@ namespace hippt
 	template <typename T>
 	__device__ bool isNaN(const T& v) { return isnan(v); }
 
-
 #else
 #undef M_PI
 #define M_PI 3.14159265358979323846f
@@ -92,7 +91,7 @@ namespace hippt
 	inline T min(T a, T b) { return hiprt::min(a, b); }
 
 	template <typename T>
-	inline T clamp(T min_val, T max_val, T val) { return min(max_val, max(min_val, val)); }
+	inline T clamp(T min_val, T max_val, T val) { return hiprt::min(max_val, hiprt::max(min_val, val)); }
 
 	inline float3 abs(float3 u) { return make_float3(std::abs(u.x), std::abs(u.y), std::abs(u.z)); }
 	inline float abs(float a) { return std::abs(a); }

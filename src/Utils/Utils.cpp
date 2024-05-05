@@ -3,34 +3,15 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
- //Already defined in image_io.cpp from gkit
-//#define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
 #include "Image/Image.h"
 #include "Utils/Utils.h"
 
 #include <iostream>
+#include <OpenImageDenoise/oidn.hpp>
 #include <string>
 #include <sstream>
-
-#include <OpenImageDenoise/oidn.hpp>
-
-Image Utils::read_image_float(const std::string& filepath, int& image_width, int& image_height, bool flipY)
-{
-    stbi_set_flip_vertically_on_load(flipY);
-
-    int channels;
-    float* pixels = stbi_loadf(filepath.c_str(), &image_width, &image_height, &channels, 0);
-
-    if(!pixels)
-    {
-        std::cout << "Error reading image " << filepath << std::endl;
-        std::exit(1);
-    }
-
-    return Image(reinterpret_cast<ColorRGB*>(pixels), image_width, image_height);
-}
 
 std::vector<unsigned char> Utils::tonemap_hdr_image(const Image& hdr_image, int sample_number, float gamma, float exposure)
 {

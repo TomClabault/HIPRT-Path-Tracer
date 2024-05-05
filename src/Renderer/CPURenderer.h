@@ -16,6 +16,7 @@ public:
     CPURenderer(int width, int height);
 
     void set_scene(Scene& parsed_scene);
+    void set_envmap(ImageRGBA& envmap_image);
     void set_camera(Camera& camera);
 
     HIPRTRenderSettings& get_render_settings();
