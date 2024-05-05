@@ -38,9 +38,6 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.aux_buffers.pixel_sample_count = m_pixel_sample_count.data();
     m_render_data.aux_buffers.pixel_squared_luminance = m_pixel_squared_luminance.data();
 
-    m_render_data.world_settings.ambient_light_color = ColorRGB(0.5f);
-    m_render_data.world_settings.use_ambient_light = true;
-
     std::cout << "Building scene BVH..." << std::endl;
     m_triangle_buffer = parsed_scene.get_triangles();
     m_bvh = std::make_shared<BVH>(&m_triangle_buffer);

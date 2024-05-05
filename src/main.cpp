@@ -5,7 +5,6 @@
 
 #include "Device/kernels/PathTracerKernel.h"
 #include "HIPRT-Orochi/OrochiTexture.h"
-#include "Image/Envmap.h"
 #include "Image/Image.h"
 #include "Renderer/BVH.h"
 #include "Renderer/CPURenderer.h"
@@ -35,6 +34,7 @@ int main(int argc, char* argv[])
     Scene parsed_scene = SceneParser::parse_scene_file(cmd_arguments.scene_file_path, (float)width / height);
     std::cout << std::endl;
 
+    std::cout << "Reading \"" << cmd_arguments.skysphere_file_path << "\" envmap..." << std::endl;
     ImageRGBA envmap_image = ImageRGBA::read_image(cmd_arguments.skysphere_file_path, /* flip Y */ true);
 
 #if GPU_RENDER
