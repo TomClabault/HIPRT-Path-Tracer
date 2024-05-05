@@ -617,22 +617,21 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                 }
                 else
                 {
-                    if (bounce == 0 || last_brdf_hit_type == BRDF::SpecularFresnel)
+                    ColorRGB skysphere_color;
+                    if (render_data.world_settings.use_ambient_light)
+                        skysphere_color = render_data.world_settings.ambient_light_color;
+                    else if (bounce == 0 || last_brdf_hit_type == BRDF::SpecularFresnel)
                     {
                         // We're only getting the skysphere radiance for the first rays because the
-                        // syksphere is importance sampled
+                        // syksphere is importance sampled.
+                        // 
                         // We're also getting the skysphere radiance for perfectly specular BRDF since those
-                        // are not importance sampled
+                        // are not importance sampled.
 
-                        ColorRGB skysphere_color;
-                        if (render_data.world_settings.use_ambient_light)
-                            skysphere_color = render_data.world_settings.ambient_light_color;
-                        else
-                            skysphere_color = sample_environment_map_from_direction(render_data.world_settings, ray.direction);
-
-                        sample_color += skysphere_color * throughput;
+                        skysphere_color = sample_environment_map_from_direction(render_data.world_settings, ray.direction);
                     }
 
+                    sample_color += skysphere_color * throughput;
                     next_ray_state = RayState::MISSED;
                 }
             }
