@@ -11,6 +11,13 @@
 #include "HostDeviceCommon/Material.h"
 #include "HostDeviceCommon/Xorshift.h"
 
+HIPRT_HOST_DEVICE HIPRT_INLINE float power_heuristic(float pdf_a, float pdf_b)
+{
+    float pdf_a_squared = pdf_a * pdf_a;
+
+    return pdf_a_squared / (pdf_a_squared + pdf_b * pdf_b);
+}
+
 /**
  * Reflects a ray about a normal. This function requires that dot(ray_direction, surface_normal) > 0 i.e.
  * ray_direction and surface_normal are in the same hemisphere

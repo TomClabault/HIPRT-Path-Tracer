@@ -8,6 +8,8 @@
 
 #include "HostDeviceCommon/Material.h"
 #include "HostDeviceCommon/Math.h"
+
+#include <hiprt/hiprt_device.h>
 #include <Orochi/Orochi.h>
 
 struct HIPRTRenderSettings

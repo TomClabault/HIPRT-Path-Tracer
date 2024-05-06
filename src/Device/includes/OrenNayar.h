@@ -6,7 +6,9 @@
 #ifndef OREN_NAYAR_H
 #define OREN_NAYAR_H
 
+#include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/Math.h"
+#include "HostDeviceCommon/Material.h"
 
 /* References:
  * [1] [Physically Based Rendering 3rd Edition] https://www.pbr-book.org/3ed-2018/Reflection_Models/Microfacet_Models
@@ -20,7 +22,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB oren_nayar_eval(const RendererMaterial& 
     float3 local_view_direction = world_to_local_frame(T, B, surface_normal, view_direction);
     float3 local_to_light_direction = world_to_local_frame(T, B, surface_normal, to_light_direction);
 
-    // sin(theta) = 1.0 - cos(theta)^2
+    // sin(theta)^2 = 1.0 - cos(theta)^2
 	float sin_theta_i = sqrt(1.0f - local_to_light_direction.z * local_to_light_direction.z);
 	float sin_theta_o = sqrt(1.0f - local_view_direction.z * local_view_direction.z);
 

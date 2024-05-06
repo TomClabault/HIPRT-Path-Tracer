@@ -3,415 +3,15 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#include "HostDeviceCommon/Camera.h"
-#include "HostDeviceCommon/HitInfo.h"
-#include "HostDeviceCommon/Math.h"
-#include "HostDeviceCommon/RenderData.h"
-#include "HostDeviceCommon/Xorshift.h"
+#include "Device/includes/AdaptiveSampling.h"
 #include "Device/includes/FixIntellisense.h"
-#include "Device/includes/Disney.h"
+#include "Device/includes/Lights.h"
+#include "Device/includes/Envmap.h"
 #include "Device/includes/Sampling.h"
+#include "HostDeviceCommon/Camera.h"
+#include "HostDeviceCommon/Xorshift.h"
 
-#include <hiprt/hiprt_device.h>
-#include <hiprt/hiprt_vec.h>
-
-#include <Orochi/Orochi.h>
-
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB brdf_dispatcher_eval(const RendererMaterial& material, const float3& view_direction, const float3& surface_normal, const float3& to_light_direction, float& pdf)
-{
-    return disney_eval(material, view_direction, surface_normal, to_light_direction, pdf);
-}
-
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB brdf_dispatcher_sample(const RendererMaterial& material, const float3& view_direction, const float3& surface_normal, const float3& geometric_normal, float3& bounce_direction, float& brdf_pdf, Xorshift32Generator& random_number_generator)
-{
-    return disney_sample(material, view_direction, surface_normal, geometric_normal, bounce_direction, brdf_pdf, random_number_generator);
-}
-
-#ifndef __KERNELCC__
-#include "Renderer/BVH.h"
-HIPRT_HOST_DEVICE HIPRT_INLINE hiprtHit intersect_scene_cpu(const HIPRTRenderData& render_data, const hiprtRay & ray)
-{
-    hiprtHit hiprtHit;
-    HitInfo closest_hit_info;
-    closest_hit_info.t = -1.0f;
-
-	if(render_data.cpu_only.bvh->intersect(ray, closest_hit_info))
-	{
-        hiprtHit.primID = closest_hit_info.primitive_index;
-        hiprtHit.normal = closest_hit_info.geometric_normal;
-        hiprtHit.t = closest_hit_info.t;
-        hiprtHit.uv = closest_hit_info.uv;
-	}
-
-    return hiprtHit;
-}
-#endif
-
-HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data, hiprtRay ray, HitInfo& hit_info)
-{
-#ifdef __KERNELCC__
-    hiprtGeomTraversalClosest tr(render_data.geom, ray);
-    hiprtHit				  hit = tr.getNextHit();
-#else
-    hiprtHit hit = intersect_scene_cpu(render_data, ray);
-#endif
-
-    if (hit.hasHit())
-    {
-        hit_info.inter_point = ray.origin + hit.t * ray.direction;
-        hit_info.primitive_index = hit.primID;
-        // hit.normal is in object space, this simple approach will not work if using
-        // multiple-levels BVH (TLAS/BLAS)
-        hit_info.geometric_normal = hippt::normalize(hit.normal);
-
-        int vertex_A_index = render_data.buffers.triangles_indices[hit_info.primitive_index * 3 + 0];
-        if (render_data.buffers.normals_present[vertex_A_index])
-        {
-            // Smooth normal available for the triangle
-
-            int vertex_B_index = render_data.buffers.triangles_indices[hit_info.primitive_index * 3 + 1];
-            int vertex_C_index = render_data.buffers.triangles_indices[hit_info.primitive_index * 3 + 2];
-
-            float3 smooth_normal = render_data.buffers.vertex_normals[vertex_B_index] * hit.uv.x
-                + render_data.buffers.vertex_normals[vertex_C_index] * hit.uv.y
-                + render_data.buffers.vertex_normals[vertex_A_index] * (1.0f - hit.uv.x - hit.uv.y);
-
-            hit_info.shading_normal = hippt::normalize(smooth_normal);
-        }
-        else
-            hit_info.shading_normal = hit_info.geometric_normal;
-
-        hit_info.t = hit.t;
-        hit_info.uv = hit.uv;
-
-        return true;
-    }
-    else
-        return false;
-}
-
-HIPRT_HOST_DEVICE HIPRT_INLINE float power_heuristic(float pdf_a, float pdf_b)
-{
-    float pdf_a_squared = pdf_a * pdf_a;
-
-    return pdf_a_squared / (pdf_a_squared + pdf_b * pdf_b);
-}
-
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 sample_random_point_on_lights(const HIPRTRenderData& render_data, Xorshift32Generator& random_number_generator, float& pdf, LightSourceInformation& light_info)
-{
-    int random_index = random_number_generator.random_index(render_data.buffers.emissive_triangles_count);
-    int triangle_index = light_info.emissive_triangle_index = render_data.buffers.emissive_triangles_indices[random_index];
-
-
-    float3 vertex_A = render_data.buffers.triangles_vertices[render_data.buffers.triangles_indices[triangle_index * 3 + 0]];
-    float3 vertex_B = render_data.buffers.triangles_vertices[render_data.buffers.triangles_indices[triangle_index * 3 + 1]];
-    float3 vertex_C = render_data.buffers.triangles_vertices[render_data.buffers.triangles_indices[triangle_index * 3 + 2]];
-
-    float rand_1 = random_number_generator();
-    float rand_2 = random_number_generator();
-
-    float sqrt_r1 = sqrt(rand_1);
-    float u = 1.0f - sqrt_r1;
-    float v = (1.0f - rand_2) * sqrt_r1;
-
-    float3 AB = vertex_B - vertex_A;
-    float3 AC = vertex_C - vertex_A;
-
-    float3 random_point_on_triangle = vertex_A + AB * u + AC * v;
-
-    float3 normal = hippt::cross(AB, AC);
-    float length_normal = hippt::length(normal);
-    light_info.light_source_normal = normal / length_normal; // Normalization
-    float triangle_area = length_normal * 0.5f;
-    float nb_emissive_triangles = render_data.buffers.emissive_triangles_count;
-
-    pdf = 1.0f / (nb_emissive_triangles * triangle_area);
-
-    return random_point_on_triangle;
-}
-
-HIPRT_HOST_DEVICE HIPRT_INLINE float triangle_area(const HIPRTRenderData& render_data, int triangle_index)
-{
-    float3 vertex_A = render_data.buffers.triangles_vertices[render_data.buffers.triangles_indices[triangle_index * 3 + 0]];
-    float3 vertex_B = render_data.buffers.triangles_vertices[render_data.buffers.triangles_indices[triangle_index * 3 + 1]];
-    float3 vertex_C = render_data.buffers.triangles_vertices[render_data.buffers.triangles_indices[triangle_index * 3 + 2]];
-
-    float3 AB = vertex_B - vertex_A;
-    float3 AC = vertex_C - vertex_A;
-
-    return hippt::length(hippt::cross(AB, AC)) / 2.0f;
-}
-
-/**
- * Returns true if in shadow, false otherwise
- */
-HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& render_data, hiprtRay ray, float t_max)
-{
-#ifdef __KERNELCC__
-    ray.maxT = t_max - 1.0e-4f;
-
-    hiprtGeomTraversalAnyHit traversal(render_data.geom, ray);
-    hiprtHit aoHit = traversal.getNextHit();
-
-    return aoHit.hasHit();
-#else
-    hiprtHit hit = intersect_scene_cpu(render_data, ray);
-    return hit.hasHit() && hit.t < t_max - 1.0e-4f;
-#endif // __KERNELCC__
-}
-
-HIPRT_HOST_DEVICE HIPRT_INLINE float luminance(ColorRGB pixel)
-{
-    return 0.3086f * pixel.r + 0.6094f * pixel.g + 0.0820f * pixel.b;
-}
-
-HIPRT_HOST_DEVICE HIPRT_INLINE float luminance(ColorRGBA pixel)
-{
-    return 0.3086f * pixel.r + 0.6094f * pixel.g + 0.0820f * pixel.b;
-}
-
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_texture_pixel(void* texture_pointer, int width, int x, int y)
-{
-#ifdef __KERNELCC__
-    float4 color = tex2D<float4>(reinterpret_cast<oroTextureObject_t>(texture_pointer), x, y);
-    return ColorRGB(color.x, color.y, color.z);
-#else
-    ColorRGBA pixel = reinterpret_cast<ColorRGBA*>(texture_pointer)[y * width + x];
-    return ColorRGB(pixel.r, pixel.g, pixel.b);
-#endif
-}
-
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_environment_map_from_direction(const WorldSettings& world_settings, const float3& direction)
-{
-    float u, v;
-    u = 0.5f + atan2(direction.z, direction.x) / (2.0f * (float)M_PI);
-    v = 0.5f + asin(direction.y) / (float)M_PI;
-
-    int x = hippt::max(hippt::min((unsigned int)(u * world_settings.envmap_width), world_settings.envmap_width - 1), 0u);
-    int y = hippt::max(hippt::min((unsigned int)(v * world_settings.envmap_height), world_settings.envmap_height - 1), 0u);
-
-    return sample_texture_pixel(world_settings.envmap, world_settings.envmap_width, x, y);
-}
-
-HIPRT_HOST_DEVICE HIPRT_INLINE void env_map_cdf_search(const WorldSettings& world_settings, float value, int& x, int& y)
-{
-    //First searching a line to sample
-    unsigned int lower = 0;
-    int upper = world_settings.envmap_height - 1;
-
-    int x_index = world_settings.envmap_width - 1;
-    while (lower < upper)
-    {
-        int y_index = (lower + upper) / 2;
-        int env_map_index = y_index * world_settings.envmap_width + x_index;
-
-        if (value < world_settings.envmap_cdf[env_map_index])
-            upper = y_index;
-        else
-            lower = y_index + 1;
-    }
-    y = hippt::max(hippt::min(lower, world_settings.envmap_height), 0u);
-
-    //Then sampling the line itself
-    lower = 0;
-    upper = world_settings.envmap_width - 1;
-
-    int y_index = y;
-    while (lower < upper)
-    {
-        int x_index = (lower + upper) / 2;
-        int env_map_index = y_index * world_settings.envmap_width + x_index;
-
-        if (value < world_settings.envmap_cdf[env_map_index])
-            upper = x_index;
-        else
-            lower = x_index + 1;
-    }
-    x = hippt::max(hippt::min(lower, world_settings.envmap_width), 0u);
-}
-
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_environment_map(const HIPRTRenderData& render_data, const float3& view_direction, HitInfo& closest_hit_info, const RendererMaterial& material, Xorshift32Generator& random_number_generator)
-{
-    if (material.brdf_type == BRDF::SpecularFresnel)
-        // No sampling for perfectly specular materials
-        return ColorRGB(0.0f);
-
-    const WorldSettings& world_settings = render_data.world_settings;
-
-    int x, y;
-    unsigned int cdf_size = world_settings.envmap_width * world_settings.envmap_height;
-    float env_map_total_sum = world_settings.envmap_cdf[cdf_size - 1];
-    env_map_cdf_search(world_settings, random_number_generator() * env_map_total_sum, x, y);
-
-    float u = (float)x / world_settings.envmap_width;
-    float v = (float)y / world_settings.envmap_height;
-    float phi = u * 2.0f * M_PI;
-    // Clamping to avoid theta = 0 which would imply a skysphere direction straight up
-    // which leads to a pdf of infinity since it is a singularity
-    float theta = hippt::max(1.0e-5f, v * (float)M_PI);
-
-    ColorRGB env_sample;
-    float sin_theta = sin(theta);
-    float cos_theta = cos(theta);
-
-    // Convert to cartesian coordinates
-    float3 sampled_direction = float3(-sin_theta * cos(phi), -cos_theta, -sin_theta * sin(phi));
-
-    float cosine_term = hippt::dot(closest_hit_info.shading_normal, sampled_direction);
-    if (cosine_term > 0.0f)
-    {
-        hiprtRay shadow_ray;
-        shadow_ray.origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f;
-        shadow_ray.direction = sampled_direction;
-
-        bool in_shadow = evaluate_shadow_ray(render_data, shadow_ray, 1.0e38f);
-        if (!in_shadow)
-        {
-            ColorRGB pixel = sample_texture_pixel(world_settings.envmap, world_settings.envmap_width, x, y);
-            float env_map_pdf = luminance(pixel) / env_map_total_sum;
-            env_map_pdf = (env_map_pdf * world_settings.envmap_width * world_settings.envmap_height) / (2.0f * M_PI * M_PI * sin_theta);
-
-            ColorRGB env_map_radiance = sample_texture_pixel(world_settings.envmap, world_settings.envmap_width, x, y);
-            float pdf;
-            ColorRGB brdf = brdf_dispatcher_eval(material, view_direction, closest_hit_info.shading_normal, sampled_direction, pdf);
-
-            float mis_weight = power_heuristic(env_map_pdf, pdf);
-            env_sample = brdf * cosine_term * mis_weight * env_map_radiance / env_map_pdf;
-        }
-    }
-
-    float brdf_sample_pdf;
-    float3 brdf_sampled_dir;
-    ColorRGB brdf_imp_sampling = brdf_dispatcher_sample(material, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, brdf_sampled_dir, brdf_sample_pdf, random_number_generator);
-
-    cosine_term = hippt::max(hippt::dot(closest_hit_info.shading_normal, brdf_sampled_dir), 0.0f);
-    ColorRGB brdf_sample;
-    if (brdf_sample_pdf != 0.0f && cosine_term > 0.0f)
-    {
-        hiprtRay shadow_ray;
-        shadow_ray.origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-5f;
-        shadow_ray.direction = brdf_sampled_dir;
-
-        bool in_shadow = evaluate_shadow_ray(render_data, shadow_ray, 1.0e38f);
-        if (!in_shadow)
-        {
-            ColorRGB skysphere_color = sample_environment_map_from_direction(world_settings, brdf_sampled_dir);
-            float theta_brdf_dir = acos(brdf_sampled_dir.z);
-            float sin_theta_bdrf_dir = sin(theta_brdf_dir);
-            float env_map_pdf = skysphere_color.luminance() / env_map_total_sum;
-
-            env_map_pdf *= world_settings.envmap_width * world_settings.envmap_height;
-            env_map_pdf /= (2.0f * M_PI * M_PI * sin_theta_bdrf_dir);
-
-            float mis_weight = power_heuristic(brdf_sample_pdf, env_map_pdf);
-            brdf_sample = skysphere_color * mis_weight * cosine_term * brdf_imp_sampling / brdf_sample_pdf;
-        }
-    }
-
-    return brdf_sample + env_sample;
-}
-
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_light_sources(HIPRTRenderData& render_data, const float3& view_direction, const HitInfo& closest_hit_info, const RendererMaterial& material, Xorshift32Generator& random_number_generator)
-{
-    if (render_data.buffers.emissive_triangles_count == 0)
-        // No emmisive geometry in the scene to sample
-        return ColorRGB(0.0f);
-
-    if (material.emission.r != 0.0f || material.emission.g != 0.0f || material.emission.b != 0.0f)
-        // We're not sampling direct lighting if we're already on an
-        // emissive surface
-        return ColorRGB(0.0f);
-
-    if (hippt::dot(view_direction, closest_hit_info.geometric_normal) < 0.0f)
-        // We're not direct sampling if we're inside a surface
-        // 
-        // We're using the geometric normal here because using the shading normal could lead
-        // to false positive because of the black fringes when using smooth normals / normal mapping
-        // + microfacet BRDFs
-        return ColorRGB(0.0f);
-
-    ColorRGB light_source_radiance_mis;
-    float light_sample_pdf;
-    LightSourceInformation light_source_info;
-    float3 random_light_point = sample_random_point_on_lights(render_data, random_number_generator, light_sample_pdf, light_source_info);
-
-    float3 shadow_ray_origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f;
-    float3 shadow_ray_direction = random_light_point - shadow_ray_origin;
-    float distance_to_light = hippt::length(shadow_ray_direction);
-    float3 shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
-
-    hiprtRay shadow_ray;
-    shadow_ray.origin = shadow_ray_origin;
-    shadow_ray.direction = shadow_ray_direction_normalized;
-
-    // abs() here to allow backfacing light sources
-    float dot_light_source = hippt::abs(hippt::dot(light_source_info.light_source_normal, -shadow_ray.direction));
-    if (dot_light_source > 0.0f)
-    {
-        bool in_shadow = evaluate_shadow_ray(render_data, shadow_ray, distance_to_light);
-
-        if (!in_shadow)
-        {
-            const RendererMaterial& emissive_triangle_material = render_data.buffers.materials_buffer[render_data.buffers.material_indices[light_source_info.emissive_triangle_index]];
-
-            light_sample_pdf *= distance_to_light * distance_to_light;
-            light_sample_pdf /= dot_light_source;
-
-            float pdf;
-            ColorRGB brdf = brdf_dispatcher_eval(material, view_direction, closest_hit_info.shading_normal, shadow_ray.direction, pdf);
-            if (pdf != 0.0f)
-            {
-                float mis_weight = power_heuristic(light_sample_pdf, pdf);
-
-                ColorRGB Li = emissive_triangle_material.emission;
-                float cosine_term = hippt::max(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction), 0.0f);
-
-                light_source_radiance_mis = Li * cosine_term * brdf * mis_weight / light_sample_pdf;
-            }
-        }
-    }
-
-    ColorRGB brdf_radiance_mis;
-
-    float3 sampled_brdf_direction;
-    float direction_pdf;
-    ColorRGB brdf = brdf_dispatcher_sample(material, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_brdf_direction, direction_pdf, random_number_generator);
-    if (direction_pdf > 0)
-    {
-        hiprtRay new_ray;
-        new_ray.origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f;
-        new_ray.direction = sampled_brdf_direction;
-
-        HitInfo new_ray_hit_info;
-        bool inter_found = trace_ray(render_data, new_ray, new_ray_hit_info);
-
-        if (inter_found)
-        {
-            // abs() here to allow double sided emissive geometry
-            float cos_angle = hippt::abs(hippt::dot(new_ray_hit_info.shading_normal, -sampled_brdf_direction));
-            if (cos_angle > 0.0f)
-            {
-                int material_index = render_data.buffers.material_indices[new_ray_hit_info.primitive_index];
-                RendererMaterial material = render_data.buffers.materials_buffer[material_index];
-
-                ColorRGB emission = material.emission;
-                if (emission.r > 0 || emission.g > 0 || emission.b > 0)
-                {
-                    float distance_squared = new_ray_hit_info.t * new_ray_hit_info.t;
-                    float light_area = triangle_area(render_data, new_ray_hit_info.primitive_index);
-
-                    float light_pdf = distance_squared / (light_area * cos_angle);
-
-                    float mis_weight = power_heuristic(direction_pdf, light_pdf);
-                    float cosine_term = hippt::max(0.0f, hippt::dot(closest_hit_info.shading_normal, sampled_brdf_direction));
-                    brdf_radiance_mis = brdf * cosine_term * emission * mis_weight / direction_pdf;
-                }
-            }
-        }
-    }
-
-    return light_source_radiance_mis + brdf_radiance_mis;
-}
+#define LOW_RESOLUTION_RENDER_DOWNSCALE 8
 
 HIPRT_HOST_DEVICE HIPRT_INLINE unsigned int wang_hash(unsigned int seed)
 {
@@ -431,37 +31,32 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void debug_set_final_color(const HIPRTRenderData&
         render_data.buffers.pixels[y * res_x + x] = render_data.buffers.pixels[y * res_x + x] + final_color;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE bool adaptive_sampling(const HIPRTRenderData& render_data, int pixel_index)
+HIPRT_HOST_DEVICE HIPRT_INLINE bool check_for_negative_color(ColorRGB sample_color, int x, int y, int sample)
 {
-    int pixel_sample_count = render_data.aux_buffers.pixel_sample_count[pixel_index];
-    if (pixel_sample_count < 0)
-        // Pixel is deactivated
-        return false;
-
-    if (pixel_sample_count > render_data.render_settings.adaptive_sampling_min_samples)
+    if (sample_color.r < 0 || sample_color.g < 0 || sample_color.b < 0)
     {
-        // Waiting for at least 16 samples to enable adaptative sampling
-        float luminance = render_data.buffers.pixels[pixel_index].luminance();
+#ifndef __KERNELCC__
+        std::cout << "NaN at [" << x << ", " << y << "], sample " << sample << std::endl;
+#endif
 
-        float average_luminance = luminance / (pixel_sample_count + 1);
-        float squared_luminance = render_data.aux_buffers.pixel_squared_luminance[pixel_index];
-
-        float pixel_variance = (squared_luminance - luminance * average_luminance) / (pixel_sample_count);
-
-        bool pixel_needs_sampling = 1.96f * sqrtf(pixel_variance) / sqrtf(pixel_sample_count + 1) > render_data.render_settings.adaptive_sampling_noise_threshold * average_luminance;
-        if (!pixel_needs_sampling)
-        {
-            // Indicates no need to sample anymore by setting the sample count to negative
-            render_data.aux_buffers.pixel_sample_count[pixel_index] = -pixel_sample_count;
-
-            return false;
-        }
+        return true;
     }
 
-    return true;
+    return false;
 }
 
-#define LOW_RESOLUTION_RENDER_DOWNSCALE 8
+HIPRT_HOST_DEVICE HIPRT_INLINE bool check_for_nan(ColorRGB sample_color, int x, int y, int sample)
+{
+    if (hippt::isNaN(sample_color.r) || hippt::isNaN(sample_color.g) || hippt::isNaN(sample_color.b))
+    {
+#ifndef __KERNELCC__
+        std::cout << "NaN at [" << x << ", " << y << "], sample" << sample << std::endl;
+#endif
+        return true;
+    }
+
+    return false;
+}
 
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(HIPRTRenderData render_data, int2 res, HIPRTCamera camera)
@@ -646,14 +241,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
         //
         // - Pink : sample with negative color
         // - Yellow : NaN sample
-        if (sample_color.r < 0 || sample_color.g < 0 || sample_color.b < 0)
+        bool invalid = false;
+        invalid |= check_for_negative_color(sample_color, x, y, sample);
+        invalid |= check_for_nan(sample_color, x, y, sample);
+
+        if (invalid)
         {
-            debug_set_final_color(render_data, x, y, res.x, ColorRGB(1000000.0f, 0.0f, 1000000.0f));
-            return;
-        }
-        else if (hippt::isNaN(sample_color.r) || hippt::isNaN(sample_color.g) || hippt::isNaN(sample_color.b))
-        {
-            debug_set_final_color(render_data, x, y, res.x, ColorRGB(1000000.0f, 1000000.0f, 0.0f));
+            debug_set_final_color(render_data, x, y, res.x, ColorRGB(10000.0f, 0.0f, 10000.0f));
+
             return;
         }
 

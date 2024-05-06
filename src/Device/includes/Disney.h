@@ -96,9 +96,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_metallic_eval(const RendererMater
     float3 local_to_light_direction = world_to_local_frame(T, B, surface_normal, to_light_direction);
     float3 local_half_vector = hippt::normalize(local_to_light_direction + local_view_direction);
 
-    float NoV = hippt::abs(local_view_direction.z);
-    float NoL = hippt::abs(local_to_light_direction.z);
-    float HoL = hippt::abs(hippt::dot(local_half_vector, local_to_light_direction));
+    // Maxing 1.0e-8f here to avoid zeros
+    float NoV = hippt::max(1.0e-8f, hippt::abs(local_view_direction.z));
+    float NoL = hippt::max(1.0e-8f, hippt::abs(local_to_light_direction.z));
 
     float D = GTR2_anisotropic(material, local_half_vector);
     float G1_V = G1(material.alpha_x, material.alpha_y, local_view_direction);
@@ -119,7 +119,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_metallic_sample(const RendererMater
 	float3 microfacet_normal = GGXVNDF_sample(local_view_direction * below_normal, material.alpha_x, material.alpha_y, random_number_generator);
 	float3 sampled_direction = reflect_ray(view_direction, local_to_world_frame(surface_normal, microfacet_normal * below_normal));
 
-    return sampled_direction;
+    // Should already be normalized but float imprecisions...
+    return hippt::normalize(sampled_direction);
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_clearcoat_eval(const RendererMaterial& material, const float3& view_direction, const float3& surface_normal, const float3& to_light_direction, float& pdf)
@@ -138,7 +139,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_clearcoat_eval(const RendererMate
     float denom = material.clearcoat_ior + 1.0f;
     ColorRGB R0 = ColorRGB((num * num) / (denom * denom));
 
-    float HoL = hippt::clamp(0.0f, 1.0f, hippt::dot(local_halfway_vector, local_to_light_direction));
+    float HoL = hippt::clamp(1.0e-8f, 1.0f, hippt::dot(local_halfway_vector, local_to_light_direction));
     float clearcoat_gloss = 1.0f - material.clearcoat_roughness;
     float alpha_g = (1.0f - clearcoat_gloss) * 0.1f + clearcoat_gloss * 0.001f;
 
@@ -169,7 +170,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_clearcoat_sample(const RendererMate
     float3 microfacet_normal = hippt::normalize(float3{sin_theta * cos_phi, sin_theta * sin_phi, cos_theta});
     float3 sampled_direction = reflect_ray(view_direction, local_to_world_frame(surface_normal, microfacet_normal));
 
-    return sampled_direction;
+    return hippt::normalize(sampled_direction);
 }
 
 // TOOD can use local_view dir and light_dir here
@@ -248,7 +249,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_glass_eval(const RendererMaterial
         float D_pdf = G1_V / hippt::abs(NoV) * D * hippt::abs(HoV);
         pdf = dwm_dwi * D_pdf * (1.0f - F);
 
-        color = sqrt(material.base_color) * D * (1 - F) * G * hippt::abs(HoL * HoV / denom);
+        // max(1.0e-8f, denom) to avoid division by 0
+        color = sqrt(material.base_color) * D * (1 - F) * G * hippt::abs(HoL * HoV / hippt::max(1.0e-8f, denom));
     }
 
     return color;
