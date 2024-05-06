@@ -31,8 +31,6 @@
 // - Can we have access to HoL when calling disney_metallic_fresnel to avoid passing the two vectors and recomputing the dot product in the return statement ?
 // - DO THE DISNEY SHADING IN SHADING SPACE. WHAT THE H IS THIS CODE BUILDING ONB IN EVERY FUNCTION HUH?
 // - reorganize methods order in RenderWindow
-// - separate (still work to do) path tracer kernel functions in header files
-// - do not duplicate render functions. Make a common h file that uses the float3 type (cosine_weighted_direction_around_normal, hiprt_lambertian.h:7 for example)
 // - imgui controller to put all the imgui code in one class
 // - put mouse / keyboard code in an interactor
 //		- Have the is_interacting boolean in this interactor class and poll it from the main loop to check whether we need to render the frame at a lower resolution or not

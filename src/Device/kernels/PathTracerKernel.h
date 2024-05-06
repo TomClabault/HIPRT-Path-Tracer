@@ -36,7 +36,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool check_for_negative_color(ColorRGB sample_col
     if (sample_color.r < 0 || sample_color.g < 0 || sample_color.b < 0)
     {
 #ifndef __KERNELCC__
-        std::cout << "NaN at [" << x << ", " << y << "], sample " << sample << std::endl;
+        std::cout << "Negative color at [" << x << ", " << y << "], sample " << sample << std::endl;
 #endif
 
         return true;

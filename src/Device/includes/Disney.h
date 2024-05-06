@@ -189,6 +189,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_glass_eval(const RendererMaterial
     float NoV = local_view_direction.z;
     float NoL = local_to_light_direction.z;
 
+    if (hippt::abs(NoL) < 1.0e-8f)
+        // Check to avoid dividing by 0 later on
+        return ColorRGB(0.0f);
+
     // We're in the case of reflection if the view direction and the bounced ray (light direction) are in the same hemisphere
     bool reflecting = NoL * NoV > 0;
 
@@ -241,6 +245,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_glass_eval(const RendererMaterial
         float dot_prod = HoL + HoV / relative_eta;
         float dot_prod2 = dot_prod * dot_prod;
         float denom = dot_prod2 * NoL * NoV;
+
         float D = GTR2_anisotropic(material, local_half_vector);
         float G1_V = G1(material.alpha_x, material.alpha_y, local_view_direction);
         float G = G1_V * G1(material.alpha_x, material.alpha_y, local_to_light_direction);
@@ -249,8 +254,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_glass_eval(const RendererMaterial
         float D_pdf = G1_V / hippt::abs(NoV) * D * hippt::abs(HoV);
         pdf = dwm_dwi * D_pdf * (1.0f - F);
 
-        // max(1.0e-8f, denom) to avoid division by 0
-        color = sqrt(material.base_color) * D * (1 - F) * G * hippt::abs(HoL * HoV / hippt::max(1.0e-8f, denom));
+        // We added a check a few lines above to "avoid dividing by 0 later on". This is where.
+        // When NoL is 0, denom is 0 too and we're dividing by 0. 
+        // The PDF of this case is as low as 1.0e-9 (light direction sampled perpendicularly to the normal)
+        // so this is an extremely rare case.
+        // The PDF being non-zero, we could actualy compute it, it's valid but absolutely not with floats :D
+        color = sqrt(material.base_color) * D * (1 - F) * G * hippt::abs(HoL * HoV / denom);
     }
 
     return color;
