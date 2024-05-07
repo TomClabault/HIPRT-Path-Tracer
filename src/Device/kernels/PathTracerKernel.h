@@ -170,7 +170,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                     // ----------------- Direct lighting ----------------- //
                     // --------------------------------------------------- //
                     ColorRGB light_sample_radiance = sample_light_sources(render_data, -ray.direction, closest_hit_info, material, random_number_generator);
-                    ColorRGB env_map_radiance = render_data.world_settings.use_ambient_light ? ColorRGB(0.0f) : sample_environment_map(render_data, -ray.direction, closest_hit_info, material, random_number_generator);
+                    ColorRGB env_map_radiance = !render_data.world_settings.use_envmap ? ColorRGB(0.0f) : sample_environment_map(render_data, -ray.direction, closest_hit_info, material, random_number_generator);
 
                     // --------------------------------------- //
                     // ---------- Indirect lighting ---------- //
@@ -214,7 +214,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                 else
                 {
                     ColorRGB skysphere_color;
-                    if (render_data.world_settings.use_ambient_light)
+                    if (!render_data.world_settings.use_envmap)
                         skysphere_color = render_data.world_settings.ambient_light_color;
                     else if (bounce == 0 || last_brdf_hit_type == BRDF::SpecularFresnel)
                     {

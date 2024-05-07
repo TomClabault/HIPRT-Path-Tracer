@@ -823,8 +823,7 @@ void RenderWindow::show_render_settings_panel()
 	if (ImGui::Combo("Display View", (int*)(&m_application_settings.display_view), items, IM_ARRAYSIZE(items)))
 		select_display_program(m_application_settings.display_view);
 
-	if (m_application_settings.keep_same_resolution)
-		ImGui::BeginDisabled();
+	ImGui::BeginDisabled(m_application_settings.keep_same_resolution);
 	float resolution_scaling_backup = m_application_settings.render_resolution_scale;
 	if (ImGui::InputFloat("Resolution scale", &m_application_settings.render_resolution_scale))
 	{
@@ -835,8 +834,7 @@ void RenderWindow::show_render_settings_panel()
 		change_resolution_scaling(resolution_scale);
 		m_render_dirty = true;
 	}
-	if (m_application_settings.keep_same_resolution)
-		ImGui::EndDisabled();
+	ImGui::EndDisabled();
 
 	if (ImGui::Checkbox("Keep same render resolution", &m_application_settings.keep_same_resolution))
 	{
@@ -879,8 +877,15 @@ void RenderWindow::show_render_settings_panel()
 	{
 		ImGui::TreePush("Lighting tree");
 
-		m_render_dirty |= ImGui::Checkbox("Use ambient light", &m_renderer.get_world_settings().use_ambient_light);
+		m_render_dirty |= ImGui::RadioButton("Use uniform lighting", &m_renderer.get_world_settings().use_envmap, 0); ImGui::SameLine();
+		m_render_dirty |= ImGui::RadioButton("Use envmap lighting", &m_renderer.get_world_settings().use_envmap, 1);
+
+		ImGui::BeginDisabled(m_renderer.get_world_settings().use_envmap);
 		m_render_dirty |= ImGui::ColorEdit3("Ambient light color", (float*)&m_renderer.get_world_settings().ambient_light_color, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
+		ImGui::EndDisabled();
+
+		// Ensuring no negative light color
+		m_renderer.get_world_settings().ambient_light_color.clamp(0.0f, 1.0e38f);
 
 		ImGui::TreePop();
 	}
@@ -965,14 +970,9 @@ void RenderWindow::show_denoiser_panel()
 
 	ImGui::Checkbox("Enable denoiser", &m_application_settings.enable_denoising);
 	ImGui::Checkbox("Only Denoise at Target Sample Count", &m_application_settings.denoise_at_target_sample_count);
-	if (m_application_settings.denoise_at_target_sample_count)
-	{
-		ImGui::BeginDisabled();
-		ImGui::SliderInt("Denoise Sample Skip", &m_application_settings.denoiser_sample_skip, 1, 128);
-		ImGui::EndDisabled();
-	}
-	else
-		ImGui::SliderInt("Denoise Sample Skip", &m_application_settings.denoiser_sample_skip, 1, 128);
+	ImGui::BeginDisabled(m_application_settings.denoise_at_target_sample_count);
+	ImGui::SliderInt("Denoise Sample Skip", &m_application_settings.denoiser_sample_skip, 1, 128);
+	ImGui::EndDisabled();
 
 	ImGui::TreePop();
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));

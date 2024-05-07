@@ -94,7 +94,7 @@ struct AuxiliaryBuffers
 
 struct WorldSettings
 {
-	bool use_ambient_light = false;
+	int use_envmap = 0;
 	ColorRGB ambient_light_color = ColorRGB(0.5f);
 
 	unsigned int envmap_width = 0, envmap_height = 0;
