@@ -111,13 +111,16 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_metallic_eval(const RendererMater
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_metallic_sample(const RendererMaterial& material, const float3& view_direction, const float3& surface_normal, Xorshift32Generator& random_number_generator)
 {
-	float3 local_view_direction = world_to_local_frame(surface_normal, view_direction);
+    float3 T, B;
+    build_rotated_ONB(surface_normal, T, B, material.anisotropic_rotation * M_PI);
+
+	float3 local_view_direction = world_to_local_frame(T, B, surface_normal, view_direction);
 
 	// The view direction can sometimes be below the shading normal hemisphere
 	// because of normal mapping
     int below_normal = (local_view_direction.z < 0) ? -1 : 1;
 	float3 microfacet_normal = GGXVNDF_sample(local_view_direction * below_normal, material.alpha_x, material.alpha_y, random_number_generator);
-	float3 sampled_direction = reflect_ray(view_direction, local_to_world_frame(surface_normal, microfacet_normal * below_normal));
+	float3 sampled_direction = reflect_ray(view_direction, local_to_world_frame(T, B, surface_normal, microfacet_normal * below_normal));
 
     // Should already be normalized but float imprecisions...
     return hippt::normalize(sampled_direction);

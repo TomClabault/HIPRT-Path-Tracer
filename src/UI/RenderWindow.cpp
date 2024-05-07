@@ -14,7 +14,7 @@
 
 // TODO bugs
 // - when adaptive sampling is on and holding click (render low resolution), some grid artifacts show up
-// - anisotropic rotation brightness buggued ? Sphere 0.3 rough, 1.0 metallic, 1.0 aniso, 0.5 aniso rotation, 1.0 clearcoat
+// - anisotropic rotation brightness buggued ? Sphere 0.3 rough, 1.0 metallic, 1.0 aniso, 0.5 aniso rotation, 1.0 clearcoat (seems to be because of clearcoat but clearcoat doesn't come in metallic weight for disney eval so... why is it darkening the overall appearance?)
 // - Why is the rough dragon having black fringes even with normal flipping ?
 // - normals AOV not converging correctly ?
 //		- for the denoiser normals convergence issue, is it an error at the end of the Path Tracer kernel where we're accumulating ? Should we have
