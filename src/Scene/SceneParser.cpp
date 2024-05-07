@@ -10,52 +10,39 @@
 
 RendererMaterial SceneParser::ai_mat_to_renderer_mat(aiMaterial* mesh_material)
 {
-    // Only for debug purposes to know what material index we're at globally in the scene
-    static int debug_counter = 0;
-
     //Getting the properties that are going to be used by the materials
     //of the application
-    aiColor3D diffuse_color;
-    aiColor3D emissive_color;
-    float metallic, roughness;
-    float ior, specular_transmission;
-
-    aiReturn error_code_transmission, error_code_emissive, error_code_ior;
-    mesh_material->Get(AI_MATKEY_COLOR_DIFFUSE, diffuse_color);
-    error_code_emissive = mesh_material->Get(AI_MATKEY_COLOR_EMISSIVE, emissive_color);
-    mesh_material->Get(AI_MATKEY_METALLIC_FACTOR, metallic);
-    mesh_material->Get(AI_MATKEY_ROUGHNESS_FACTOR, roughness);
-    error_code_ior = mesh_material->Get(AI_MATKEY_REFRACTI, ior);
-    error_code_transmission = mesh_material->Get(AI_MATKEY_TRANSMISSION_FACTOR, specular_transmission);
-
-    //Creating the material used by the application from the properties read
     RendererMaterial renderer_material;
-    renderer_material.base_color = ColorRGB(diffuse_color.r, diffuse_color.g, diffuse_color.b);
-    if (error_code_emissive == AI_SUCCESS)
-    {
-        if (emissive_color.r > 0 || emissive_color.g > 0 || emissive_color.b > 0)
-        {
-            float emission_strength;
-            mesh_material->Get(AI_MATKEY_EMISSIVE_INTENSITY, emission_strength);
-
-            renderer_material.emission = ColorRGB(emissive_color.r, emissive_color.g, emissive_color.b) * emission_strength;
-        }
-    }
-    else
-        renderer_material.emission = ColorRGB(0.0f, 0.0f, 0.0f);
-    renderer_material.metallic = metallic;
-    renderer_material.roughness = roughness;
-    renderer_material.anisotropic = 0.0f; // TODO read from the file instead of hardcoded
-    renderer_material.sheen_tint = 1.0f; // TODO read from the file instead of hardcoded
-    renderer_material.sheen_color = ColorRGB(1.0f, 1.0f, 1.0f); // TODO read from the file instead of hardcoded
-    renderer_material.ior = error_code_transmission == AI_SUCCESS ? ior : 1.45f;;
-    renderer_material.specular_transmission = error_code_transmission == AI_SUCCESS ? specular_transmission : 0.0f;
     renderer_material.brdf_type = BRDF::Disney;
+
+    aiReturn error_code_emissive;
+    mesh_material->Get(AI_MATKEY_COLOR_DIFFUSE, *((aiColor3D*)&renderer_material.base_color));
+    mesh_material->Get(AI_MATKEY_COLOR_EMISSIVE, *((aiColor3D*)&renderer_material.emission));
+    mesh_material->Get(AI_MATKEY_METALLIC_FACTOR, renderer_material.metallic);
+    mesh_material->Get(AI_MATKEY_ROUGHNESS_FACTOR, renderer_material.roughness);
+    mesh_material->Get(AI_MATKEY_ANISOTROPY_FACTOR, renderer_material.anisotropic);
+    if (!mesh_material->Get(AI_MATKEY_SHEEN_COLOR_FACTOR, *((aiColor3D*)&renderer_material.sheen_color)))
+        // We did get sheen color from the parsed scene, assuming sheen is on 100%, can't do better
+        renderer_material.sheen = renderer_material.sheen_tint = 1.0f;
+    if (!mesh_material->Get(AI_MATKEY_SPECULAR_FACTOR, *((aiColor3D*)&renderer_material.specular_color)))
+        // We sucessfully got the specular color so we're going to assume that we the specular and tin are 100%
+        renderer_material.specular = renderer_material.specular_tint = 1.0f;
+    mesh_material->Get(AI_MATKEY_CLEARCOAT_FACTOR, renderer_material.clearcoat);
+    mesh_material->Get(AI_MATKEY_CLEARCOAT_ROUGHNESS_FACTOR, renderer_material.clearcoat_roughness);
+    mesh_material->Get(AI_MATKEY_REFRACTI, renderer_material.ior);
+    mesh_material->Get(AI_MATKEY_TRANSMISSION_FACTOR, renderer_material.specular_transmission);
+
+    if (renderer_material.is_emissive())
+    {
+        float emission_strength = 1.0f;
+        mesh_material->Get(AI_MATKEY_EMISSIVE_INTENSITY, emission_strength);
+
+        renderer_material.emission *= emission_strength;
+    }
 
     renderer_material.make_safe();
     renderer_material.precompute_properties();
 
-    debug_counter++;
     return renderer_material;
 }
 

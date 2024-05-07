@@ -18,6 +18,7 @@ struct ColorRGB
     HIPRT_HOST_DEVICE void operator+=(const ColorRGB& other) { r += other.r; g += other.g; b += other.b; }
     HIPRT_HOST_DEVICE void operator-=(const ColorRGB& other) { r -= other.r; g -= other.g; b -= other.b; }
     HIPRT_HOST_DEVICE void operator*=(const ColorRGB& other) { r *= other.r; g *= other.g; b *= other.b; }
+    HIPRT_HOST_DEVICE void operator*=(float k) { r *= k; g *= k; b *= k; }
     HIPRT_HOST_DEVICE void operator/=(const ColorRGB& other) { r /= other.r; g /= other.g; b /= other.b; }
     HIPRT_HOST_DEVICE void operator/=(float k) { r /= k; g /= k; b /= k; }
     HIPRT_HOST_DEVICE bool operator!=(const ColorRGB& other) { return r != other.r || g != other.g || b != other.g; }
@@ -51,6 +52,7 @@ struct ColorRGBA
     HIPRT_HOST_DEVICE void operator+=(const ColorRGBA& other) { r += other.r; g += other.g; b += other.b; a += other.a; }
     HIPRT_HOST_DEVICE void operator-=(const ColorRGBA& other) { r -= other.r; g -= other.g; b -= other.b; a -= other.a; }
     HIPRT_HOST_DEVICE void operator*=(const ColorRGBA& other) { r *= other.r; g *= other.g; b *= other.b; a *= other.a; }
+    HIPRT_HOST_DEVICE void operator*=(float k) { r *= k; g *= k; b *= k; a *= k; }
     HIPRT_HOST_DEVICE void operator/=(const ColorRGBA& other) { r /= other.r; g /= other.g; b /= other.b; a /= other.a; }
     HIPRT_HOST_DEVICE void operator/=(float k) { r /= k; g /= k; b /= k; a /= k; }
     HIPRT_HOST_DEVICE bool operator!=(const ColorRGBA& other) { return r != other.r || g != other.g || b != other.g || a != other.a; }
