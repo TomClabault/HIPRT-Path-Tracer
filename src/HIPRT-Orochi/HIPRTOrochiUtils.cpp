@@ -16,6 +16,13 @@ void orochi_check_error(oroError res, const char* file, uint32_t line)
 		oroGetErrorString(res, &msg);
 		std::cerr << "Orochi error: '" << msg << "' on line " << line << " " << " in '" << file << "'." << std::endl;
 
+#if defined( _WIN32 )
+		__debugbreak();
+#elif defined( GNUC )
+		raise(SIGTRAP);
+#else
+		;
+#endif
 		exit(EXIT_FAILURE);
 	}
 }
@@ -26,6 +33,14 @@ void orochi_rtc_check_error(orortcResult res, const char* file, uint32_t line)
 	{
 		std::cerr << "ORORTC error: '" << orortcGetErrorString(res) << "' [ " << res << " ] on line " << line << " "
 			<< " in '" << file << "'." << std::endl;
+
+#if defined( _WIN32 )
+		__debugbreak();
+#elif defined( GNUC )
+		raise(SIGTRAP);
+#else
+		;
+#endif
 		exit(EXIT_FAILURE);
 	}
 }
@@ -36,6 +51,13 @@ void hiprt_check_error(hiprtError res, const char* file, uint32_t line)
 	{
 		std::cerr << "HIPRT error: '" << res << "' on line " << line << " " << " in '" << file << "'." << std::endl;
 
+#if defined( _WIN32 )
+		__debugbreak();
+#elif defined( GNUC )
+		raise(SIGTRAP);
+#else
+		;
+#endif
 		exit(EXIT_FAILURE);
 	}
 }

@@ -25,7 +25,8 @@ struct HitInfo
     float3 inter_point;
     float3 shading_normal;
     float3 geometric_normal;
-    float2 uv;
+    float2 texcoords;
+    float2 uv; // TODO only used on the CPU ?
 
     float t = -1.0f; // Distance along ray
 

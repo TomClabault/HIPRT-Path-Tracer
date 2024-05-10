@@ -41,11 +41,9 @@ int main(int argc, char* argv[])
 
     RenderWindow render_window(width, height);
 
-    OrochiEnvmap envmap(envmap_image);
-
     GPURenderer& renderer = render_window.get_renderer();
     renderer.set_scene(parsed_scene);
-    renderer.set_envmap(envmap);
+    renderer.set_envmap(envmap_image);
     renderer.set_camera(parsed_scene.camera);
     render_window.run();
 

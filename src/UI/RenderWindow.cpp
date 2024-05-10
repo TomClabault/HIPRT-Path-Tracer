@@ -27,7 +27,10 @@
 
 
 // TODO Code Organization:
+// - Remove GPURenderer.hiprt_scene, useless. Only contains HIPRT Ctxt (which can be made a member variable of the GPU Renderer) and the various buffers which can be kept in a RenderData member variable
+// - Use orochiBuffers when initializing the GPURenderer.RenderData instead of manual oroMalloc as currently done in set_hiprt_scene_from_scene
 // - Destroy buffers when disabling adaptative sampling to save VRAM
+// - Device/ or HostDeviceCommon. Not both
 // - Can we have access to HoL when calling disney_metallic_fresnel to avoid passing the two vectors and recomputing the dot product in the return statement ?
 // - DO THE DISNEY SHADING IN SHADING SPACE. WHAT THE H IS THIS CODE BUILDING ONB IN EVERY FUNCTION HUH?
 // - reorganize methods order in RenderWindow
@@ -35,10 +38,13 @@
 // - put mouse / keyboard code in an interactor
 //		- Have the is_interacting boolean in this interactor class and poll it from the main loop to check whether we need to render the frame at a lower resolution or not
 // - check for level of abstractions in functions
+// - Cool color thread-safe logger singleton class
 
 
 
 // TODO Features:
+// - Upload grayscale as one channel to the GPU instead of memory costly RGBA
+// - Emissive textures sampling: how to sample an object that has an emissive texture? How to know which triangles of the mesh are covered by the emissive parts of the texture?
 // - stream compaction / active thread compaction (ingo wald 2011)
 // - sample regeneration
 // - pack active pixel in same buffer as pixel sample count
@@ -877,15 +883,16 @@ void RenderWindow::show_render_settings_panel()
 	{
 		ImGui::TreePush("Lighting tree");
 
-		m_render_dirty |= ImGui::RadioButton("Use uniform lighting", &m_renderer.get_world_settings().use_envmap, 0); ImGui::SameLine();
-		m_render_dirty |= ImGui::RadioButton("Use envmap lighting", &m_renderer.get_world_settings().use_envmap, 1);
+		m_render_dirty |= ImGui::RadioButton("None", ((int*)&m_renderer.get_world_settings().ambient_light_type), 0); ImGui::SameLine();
+		m_render_dirty |= ImGui::RadioButton("Use uniform lighting", ((int*)&m_renderer.get_world_settings().ambient_light_type), 1); ImGui::SameLine();
+		m_render_dirty |= ImGui::RadioButton("Use envmap lighting", ((int*)&m_renderer.get_world_settings().ambient_light_type), 2);
 
-		ImGui::BeginDisabled(m_renderer.get_world_settings().use_envmap);
-		m_render_dirty |= ImGui::ColorEdit3("Ambient light color", (float*)&m_renderer.get_world_settings().ambient_light_color, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
+		ImGui::BeginDisabled(m_renderer.get_world_settings().ambient_light_type != AmbientLightType::UNIFORM);
+		m_render_dirty |= ImGui::ColorEdit3("Uniform light color", (float*)&m_renderer.get_world_settings().uniform_light_color, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
 		ImGui::EndDisabled();
 
 		// Ensuring no negative light color
-		m_renderer.get_world_settings().ambient_light_color.clamp(0.0f, 1.0e38f);
+		m_renderer.get_world_settings().uniform_light_color.clamp(0.0f, 1.0e38f);
 
 		ImGui::TreePop();
 	}

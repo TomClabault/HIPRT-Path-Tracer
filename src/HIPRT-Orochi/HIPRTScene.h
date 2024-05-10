@@ -12,21 +12,7 @@
 
 struct HIPRTScene
 {
-	HIPRTScene() : hiprt_ctx(nullptr) 
-	{
-		mesh.vertices = nullptr;
-		mesh.triangleIndices = nullptr;
-		geometry = nullptr;
-
-		normals_present = nullptr;
-		vertex_normals = nullptr;
-
-		material_indices = nullptr;
-		materials_buffer = nullptr;
-
-		emissive_triangles_count = 0;
-		emissive_triangles_indices = nullptr;
-	}
+	HIPRTScene() : mesh({ nullptr }) {}
 
 	HIPRTScene(hiprtContext ctx) : HIPRTScene()
 	{
@@ -52,20 +38,38 @@ struct HIPRTScene
 
 		if (emissive_triangles_indices)
 			OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(emissive_triangles_indices)));
+
+		if (material_textures)
+			OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(material_textures)));
+
+		if (material_texture_widths)
+			OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(material_texture_widths)));
+
+		if (material_texture_heights)
+			OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(material_texture_heights)));
+
+		if (texcoords_buffer)
+			OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(texcoords_buffer)));
 	}
 
 	hiprtContext hiprt_ctx = nullptr;
 	hiprtTriangleMeshPrimitive mesh;
 	hiprtGeometry geometry = nullptr;
 
-	hiprtDevicePtr normals_present;
-	hiprtDevicePtr vertex_normals;
+	hiprtDevicePtr has_vertex_normals = nullptr;
+	hiprtDevicePtr vertex_normals = nullptr;
 
-	hiprtDevicePtr material_indices;
-	hiprtDevicePtr materials_buffer;
+	hiprtDevicePtr material_indices = nullptr;
+	hiprtDevicePtr materials_buffer = nullptr;
 
-	int emissive_triangles_count;
-	hiprtDevicePtr emissive_triangles_indices;
+	int emissive_triangles_count = 0;
+	hiprtDevicePtr emissive_triangles_indices = nullptr;
+
+	hiprtDevicePtr material_textures = nullptr;
+	hiprtDevicePtr material_texture_widths = nullptr;
+	hiprtDevicePtr material_texture_heights = nullptr;
+
+	hiprtDevicePtr texcoords_buffer = nullptr;
 };
 
 #endif

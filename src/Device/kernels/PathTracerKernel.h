@@ -7,6 +7,7 @@
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Lights.h"
 #include "Device/includes/Envmap.h"
+#include "Device/includes/Material.h"
 #include "Device/includes/Sampling.h"
 #include "HostDeviceCommon/Camera.h"
 #include "HostDeviceCommon/Xorshift.h"
@@ -149,8 +150,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
 
                 if (intersection_found)
                 {
-                    int material_index = render_data.buffers.material_indices[closest_hit_info.primitive_index];
-                    RendererMaterial material = render_data.buffers.materials_buffer[material_index];
+                    RendererMaterial material = get_intersection_material(render_data, closest_hit_info);
                     last_brdf_hit_type = material.brdf_type;
 
                     // For the BRDF calculations, bounces, ... to be correct, we need the normal to be in the same hemisphere as
@@ -170,13 +170,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                     // ----------------- Direct lighting ----------------- //
                     // --------------------------------------------------- //
                     ColorRGB light_sample_radiance = sample_light_sources(render_data, -ray.direction, closest_hit_info, material, random_number_generator);
-                    ColorRGB env_map_radiance = !render_data.world_settings.use_envmap ? ColorRGB(0.0f) : sample_environment_map(render_data, -ray.direction, closest_hit_info, material, random_number_generator);
+                    ColorRGB envmap_radiance;
+                    if (render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP)
+                    envmap_radiance = sample_environment_map(render_data, -ray.direction, closest_hit_info, material, random_number_generator);
 
                     // --------------------------------------- //
                     // ---------- Indirect lighting ---------- //
                     // --------------------------------------- //
 
-                    // 0.003
                     float brdf_pdf;
                     float3 bounce_direction;
                     ColorRGB brdf = brdf_dispatcher_sample(material, -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bounce_direction, brdf_pdf, random_number_generator);
@@ -200,7 +201,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
 
                     if (bounce == 0)
                         sample_color = sample_color + material.emission * throughput;
-                    sample_color = sample_color + (light_sample_radiance + env_map_radiance) * throughput;
+                    sample_color = sample_color + (light_sample_radiance + envmap_radiance) * throughput;
 
                     throughput *= brdf * hippt::abs(hippt::dot(bounce_direction, closest_hit_info.shading_normal)) / brdf_pdf;
 
@@ -214,9 +215,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                 else
                 {
                     ColorRGB skysphere_color;
-                    if (!render_data.world_settings.use_envmap)
-                        skysphere_color = render_data.world_settings.ambient_light_color;
-                    else if (bounce == 0 || last_brdf_hit_type == BRDF::SpecularFresnel)
+                    if (render_data.world_settings.ambient_light_type == AmbientLightType::UNIFORM)
+                        skysphere_color = render_data.world_settings.uniform_light_color;
+                    else if (render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP && (bounce == 0 || last_brdf_hit_type == BRDF::SpecularFresnel))
                     {
                         // We're only getting the skysphere radiance for the first rays because the
                         // syksphere is importance sampled.

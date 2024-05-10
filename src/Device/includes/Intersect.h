@@ -8,6 +8,7 @@
 
 #include "Device/includes/FixIntellisense.h"
 #include "HostDeviceCommon/HitInfo.h"
+#include "Device/includes/Texture.h"
 #include "HostDeviceCommon/RenderData.h"
 
 #ifndef __KERNELCC__
@@ -48,24 +49,16 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
         hit_info.geometric_normal = hippt::normalize(hit.normal);
 
         int vertex_A_index = render_data.buffers.triangles_indices[hit_info.primitive_index * 3 + 0];
-        if (render_data.buffers.normals_present[vertex_A_index])
-        {
+        if (render_data.buffers.has_vertex_normals[vertex_A_index])
             // Smooth normal available for the triangle
-
-            int vertex_B_index = render_data.buffers.triangles_indices[hit_info.primitive_index * 3 + 1];
-            int vertex_C_index = render_data.buffers.triangles_indices[hit_info.primitive_index * 3 + 2];
-
-            float3 smooth_normal = render_data.buffers.vertex_normals[vertex_B_index] * hit.uv.x
-                + render_data.buffers.vertex_normals[vertex_C_index] * hit.uv.y
-                + render_data.buffers.vertex_normals[vertex_A_index] * (1.0f - hit.uv.x - hit.uv.y);
-
-            hit_info.shading_normal = hippt::normalize(smooth_normal);
-        }
+            hit_info.shading_normal = hippt::normalize(uv_interpolate(render_data.buffers.triangles_indices, hit_info.primitive_index, render_data.buffers.vertex_normals, hit.uv));
         else
             hit_info.shading_normal = hit_info.geometric_normal;
 
+        hit_info.texcoords = uv_interpolate(render_data.buffers.triangles_indices, hit_info.primitive_index, render_data.buffers.texcoords, hit.uv);
+
         hit_info.t = hit.t;
-        hit_info.uv = hit.uv;
+        hit_info.uv = hit.uv; // TODO remove ?
 
         return true;
     }

@@ -9,7 +9,10 @@ class OrochiTexture
 public:
 	OrochiTexture() {}
 	OrochiTexture(const ImageRGBA& image);
+	OrochiTexture(OrochiTexture&& other);
 	~OrochiTexture();
+
+	void operator=(OrochiTexture&& other);
 
 	oroTextureObject_t get_device_texture();
 

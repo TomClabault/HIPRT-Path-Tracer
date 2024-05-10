@@ -16,7 +16,10 @@ class OrochiBuffer
 public:
 	OrochiBuffer() : m_data_pointer(nullptr) {}
 	OrochiBuffer(int element_count);
+	OrochiBuffer(OrochiBuffer<T>&& other);
 	~OrochiBuffer();
+
+	void operator=(OrochiBuffer<T>&& other);
 
 	void resize(int new_element_count);
 
@@ -42,9 +45,29 @@ OrochiBuffer<T>::OrochiBuffer(int element_count) : m_element_count(element_count
 }
 
 template <typename T>
+OrochiBuffer<T>::OrochiBuffer(OrochiBuffer<T>&& other)
+{
+	m_data_pointer = other.m_data_pointer;
+	m_element_count = other.m_element_count;
+
+	other.m_data_pointer = nullptr;
+	other.m_element_count = 0;
+}
+
+template <typename T>
 OrochiBuffer<T>::~OrochiBuffer()
 {
 	destroy();
+}
+
+template <typename T>
+void OrochiBuffer<T>::operator=(OrochiBuffer&& other)
+{
+	m_data_pointer = other.m_data_pointer;
+	m_element_count = other.m_element_count;
+
+	other.m_data_pointer = nullptr;
+	other.m_element_count = 0;
 }
 
 template <typename T>

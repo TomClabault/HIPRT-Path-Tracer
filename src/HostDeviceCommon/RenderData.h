@@ -44,7 +44,7 @@ struct HIPRTRenderSettings
 	float adaptive_sampling_noise_threshold = 0.1f;
 };
 
-struct WorldBuffers
+struct RenderBuffers
 {
 	// Sum of samples color per pixel. Should not be
 	// pre-divided by the number of samples
@@ -57,10 +57,12 @@ struct WorldBuffers
 	// A device pointer to a buffer filled with 0s and 1s that
 	// indicates whether or not a vertex normal is available for
 	// the given vertex index
-	unsigned char* normals_present = nullptr;
+	unsigned char* has_vertex_normals = nullptr;
 	// The smooth normal at each vertex of the scene
 	// Needs to be indexed by a vertex index
 	float3* vertex_normals = nullptr;
+	// Texture coordinates at each vertices
+	float2* texcoords = nullptr;
 
 	// Index of the material used by each triangle of the scene
 	int* material_indices = nullptr;
@@ -69,6 +71,17 @@ struct WorldBuffers
 	RendererMaterial* materials_buffer = nullptr;
 	int emissive_triangles_count = 0;
 	int* emissive_triangles_indices = nullptr;
+
+	// A pointer either to a list of ImageRGBA or to a list of
+	// oroTextureObject_t whether if CPU or GPU renderer respectively
+	// This pointer can be cast for the textures to be be retrieved.
+	void* material_textures = nullptr;
+	// Widths and heights of the textures, to be able to convert UV coordinates
+	// in integer pixel coordinates. These two buffers stay nullptr on the CPU because
+	// the width and heights are already available thanks to the ImageRGBA class of
+	// the 'material_textures' buffer
+	int* material_textures_widths = nullptr;
+	int* material_textures_heights = nullptr;
 };
 
 struct AuxiliaryBuffers
@@ -92,10 +105,17 @@ struct AuxiliaryBuffers
 	float* pixel_squared_luminance = nullptr;
 };
 
+enum AmbientLightType
+{
+	NONE,
+	UNIFORM,
+	ENVMAP
+};
+
 struct WorldSettings
 {
-	int use_envmap = 0;
-	ColorRGB ambient_light_color = ColorRGB(0.5f);
+	AmbientLightType ambient_light_type = AmbientLightType::NONE;
+	ColorRGB uniform_light_color = ColorRGB(0.5f);
 
 	unsigned int envmap_width = 0, envmap_height = 0;
 	// This void pointer is a either a pointer to float* for the CPU
@@ -127,7 +147,7 @@ struct HIPRTRenderData
 {
 	hiprtGeometry geom = nullptr;
 
-	WorldBuffers buffers;
+	RenderBuffers buffers;
 	AuxiliaryBuffers aux_buffers;
 	WorldSettings world_settings;
 

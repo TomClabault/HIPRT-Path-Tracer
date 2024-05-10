@@ -32,7 +32,7 @@ GLOBAL_KERNEL_SIGNATURE(void) NormalsKernel(hiprtGeometry geom, HIPRTRenderData 
 	float3 vertex_C = render_data.buffers.triangles_vertices[index_C];
 
 	float3 normal;
-	if (render_data.buffers.normals_present[index_A])
+	if (render_data.buffers.has_vertex_normals[index_A])
 	{
 		// Smooth normal
 		float3 smooth_normal = render_data.buffers.vertex_normals[index_B] * hit.uv.x

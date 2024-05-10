@@ -26,15 +26,31 @@ OrochiTexture::OrochiTexture(const ImageRGBA& image)
 	texDesc.addressMode[0] = ORO_TR_ADDRESS_MODE_WRAP;
 	texDesc.addressMode[1] = ORO_TR_ADDRESS_MODE_WRAP;
 	texDesc.filterMode = ORO_TR_FILTER_MODE_POINT;
-	texDesc.flags = ORO_TRSF_READ_AS_INTEGER;
+	//texDesc.flags = ORO_TRSF_READ_AS_INTEGER;
 
 	OROCHI_CHECK_ERROR(oroTexObjectCreate(&m_texture, &resDesc, &texDesc, nullptr));
+}
+
+OrochiTexture::OrochiTexture(OrochiTexture&& other)
+{
+	m_image_buffer = std::move(other.m_image_buffer);
+	m_texture = std::move(other.m_texture);
+
+	other.m_texture = nullptr;
 }
 
 OrochiTexture::~OrochiTexture()
 {
 	if (m_texture)
 		oroDestroyTextureObject(m_texture);
+}
+
+void OrochiTexture::operator=(OrochiTexture&& other)
+{
+	m_image_buffer = std::move(other.m_image_buffer);
+	m_texture = std::move(other.m_texture);
+
+	other.m_texture = nullptr;
 }
 
 oroTextureObject_t OrochiTexture::get_device_texture()

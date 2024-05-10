@@ -26,11 +26,14 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.buffers.emissive_triangles_indices = parsed_scene.emissive_triangle_indices.data();
     m_render_data.buffers.materials_buffer = parsed_scene.materials.data();
     m_render_data.buffers.material_indices = parsed_scene.material_indices.data();
-    m_render_data.buffers.normals_present = parsed_scene.normals_present.data();
+    m_render_data.buffers.has_vertex_normals = parsed_scene.has_vertex_normals.data();
     m_render_data.buffers.pixels = m_framebuffer.data().data();
     m_render_data.buffers.triangles_indices = parsed_scene.triangle_indices.data();
     m_render_data.buffers.triangles_vertices = parsed_scene.vertices_positions.data();
     m_render_data.buffers.vertex_normals = parsed_scene.vertex_normals.data();
+    m_render_data.buffers.texcoords = parsed_scene.texcoords.data();
+
+    m_render_data.buffers.material_textures = parsed_scene.textures.data();
 
     m_render_data.aux_buffers.debug_pixel_active = m_debug_pixel_active_buffer.data();
     m_render_data.aux_buffers.denoiser_albedo = m_denoiser_albedo.data();
@@ -67,14 +70,16 @@ Image& CPURenderer::get_framebuffer()
     return m_framebuffer;
 }
 
-#define DEBUG_PIXEL 1
+#define DEBUG_PIXEL 0
 #define DEBUG_EXACT_COORDINATE 0
-#define DEBUG_PIXEL_X 700
-#define DEBUG_PIXEL_Y 279
+#define DEBUG_PIXEL_X 431
+#define DEBUG_PIXEL_Y 208
 
 
 void CPURenderer::render()
 {
+    std::cout << "CPU rendering..." << std::endl;
+
     auto start = std::chrono::high_resolution_clock::now();
     std::atomic<int> lines_completed = 0;
 #if DEBUG_PIXEL

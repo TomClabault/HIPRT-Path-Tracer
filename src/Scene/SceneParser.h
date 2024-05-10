@@ -20,11 +20,13 @@
 struct Scene
 {
     std::vector<RendererMaterial> materials;
+    std::vector<ImageRGBA> textures;
 
     std::vector<int> triangle_indices;
-    std::vector<hiprtFloat3> vertices_positions;
-    std::vector<unsigned char> normals_present;
-    std::vector<hiprtFloat3> vertex_normals;
+    std::vector<float3> vertices_positions;
+    std::vector<unsigned char> has_vertex_normals;
+    std::vector<float3> vertex_normals;
+    std::vector<float2> texcoords;
     std::vector<int> emissive_triangle_indices;
     std::vector<int> material_indices;
 
@@ -61,8 +63,6 @@ struct Scene
 class SceneParser
 {
 public:
-    static RendererMaterial ai_mat_to_renderer_mat(aiMaterial* mesh_material);
-
     /**
      * Parses the scene file at @filepath and returns a scene appropriate for the renderer.
      * All formats supported by the ASSIMP library are supported by the renderer
@@ -74,6 +74,19 @@ public:
      * framebuffer of the renderer which is 16:9, resulting in deformations.
      */
     static Scene parse_scene_file(const std::string& filepath, float frame_aspect_override = -1.0f);
+
+private:
+    static RendererMaterial read_material_properties(aiMaterial* mesh_material);
+
+    /**
+     * Check if the mesh material has a texture of the given type. If so, returns the index of the
+     * texture within texturePathList and appends the path of the texture to the list. If the material
+     * doesn't have the required texture, returns -1
+     */
+    static int get_first_texture_of_type(aiMaterial* mesh_material, aiTextureType type, std::vector<std::string>& texturePathList);
+    static std::vector<std::string> get_textures_paths(aiMaterial* mesh_material, RendererMaterial& renderer_material);
+    static std::vector<ImageRGBA> read_textures(const std::string& filepath, const std::vector<std::string>& texture_paths);
+    static void offset_textures_indices(RendererMaterial& renderer_material, int offset);
 };
 
 #endif

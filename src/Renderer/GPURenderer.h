@@ -63,7 +63,7 @@ public:
 	void launch_kernel(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args);
 
 	void set_scene(Scene& scene);
-	void set_envmap(OrochiEnvmap& envmap);
+	void set_envmap(ImageRGBA& envmap);
 	void set_camera(const Camera& camera);
 
 	const std::vector<RendererMaterial>& get_materials();
@@ -100,6 +100,7 @@ private:
 	// can have accumulated a different number of sample
 	OrochiBuffer<int> m_pixels_sample_count;
 
+	std::vector<OrochiTexture> m_materials_textures;
 	OrochiEnvmap m_envmap;
 
 	std::shared_ptr<HIPRTOrochiCtx> m_hiprt_orochi_ctx;

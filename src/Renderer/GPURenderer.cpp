@@ -105,12 +105,16 @@ HIPRTRenderData GPURenderer::get_render_data()
 	render_data.buffers.pixels = m_pixels_interop_buffer.get_device_pointer();
 	render_data.buffers.triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.mesh.triangleIndices);
 	render_data.buffers.triangles_vertices = reinterpret_cast<float3*>(m_hiprt_scene.mesh.vertices);
-	render_data.buffers.normals_present = reinterpret_cast<unsigned char*>(m_hiprt_scene.normals_present);
+	render_data.buffers.has_vertex_normals = reinterpret_cast<unsigned char*>(m_hiprt_scene.has_vertex_normals);
 	render_data.buffers.vertex_normals = reinterpret_cast<float3*>(m_hiprt_scene.vertex_normals);
 	render_data.buffers.material_indices = reinterpret_cast<int*>(m_hiprt_scene.material_indices);
 	render_data.buffers.materials_buffer = reinterpret_cast<RendererMaterial*>(m_hiprt_scene.materials_buffer);
 	render_data.buffers.emissive_triangles_count = m_hiprt_scene.emissive_triangles_count;
 	render_data.buffers.emissive_triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.emissive_triangles_indices);
+	render_data.buffers.material_textures = reinterpret_cast<oroTextureObject_t*>(m_hiprt_scene.material_textures);
+	render_data.buffers.material_textures_widths = reinterpret_cast<int*>(m_hiprt_scene.material_texture_widths);
+	render_data.buffers.material_textures_heights = reinterpret_cast<int*>(m_hiprt_scene.material_texture_heights);
+	render_data.buffers.texcoords = reinterpret_cast<float2*>(m_hiprt_scene.texcoords_buffer);
 
 	render_data.aux_buffers.debug_pixel_active = m_debug_pixel_active.get_device_pointer();
 	render_data.aux_buffers.denoiser_normals = m_normals_buffer.get_device_pointer();
@@ -149,6 +153,14 @@ void GPURenderer::compile_trace_kernel(const char* kernel_file_path, const char*
 	}
 
 	m_trace_kernel = *reinterpret_cast<oroFunction*>(&trace_function_out);
+
+	int numRegs;
+	OROCHI_CHECK_ERROR(oroFuncGetAttribute(&numRegs, ORO_FUNC_ATTRIBUTE_NUM_REGS, m_trace_kernel));
+
+	int numSmem;
+	OROCHI_CHECK_ERROR(oroFuncGetAttribute(&numSmem, ORO_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES, m_trace_kernel));
+
+	std::cout << "Trace kernel: registers " << numRegs << ", shared memory " << numSmem << std::endl;
 	
 	auto stop = std::chrono::high_resolution_clock::now();
 	std::cout << "Kernel \"" << kernel_function_name << "\" compiled in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
@@ -218,11 +230,10 @@ void GPURenderer::set_hiprt_scene_from_scene(Scene& scene)
 
 	OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(geometry_temp)));
 
-	// TODO, use orochiBuffers here
 	hiprtDevicePtr normals_present_buffer;
-	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&normals_present_buffer), sizeof(unsigned char) * scene.normals_present.size()));
-	OROCHI_CHECK_ERROR(oroMemcpyHtoD(reinterpret_cast<oroDeviceptr>(normals_present_buffer), scene.normals_present.data(), sizeof(unsigned char) * scene.normals_present.size()));
-	hiprt_scene.normals_present = normals_present_buffer;
+	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&normals_present_buffer), sizeof(unsigned char) * scene.has_vertex_normals.size()));
+	OROCHI_CHECK_ERROR(oroMemcpyHtoD(reinterpret_cast<oroDeviceptr>(normals_present_buffer), scene.has_vertex_normals.data(), sizeof(unsigned char) * scene.has_vertex_normals.size()));
+	hiprt_scene.has_vertex_normals = normals_present_buffer;
 
 	hiprtDevicePtr vertex_normals_buffer;
 	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&vertex_normals_buffer), sizeof(float3) * scene.vertex_normals.size()));
@@ -245,22 +256,60 @@ void GPURenderer::set_hiprt_scene_from_scene(Scene& scene)
 	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&emissive_triangle_indices), sizeof(int) * scene.emissive_triangle_indices.size()));
 	OROCHI_CHECK_ERROR(oroMemcpyHtoD(reinterpret_cast<oroDeviceptr>(emissive_triangle_indices), scene.emissive_triangle_indices.data(), sizeof(int) * scene.emissive_triangle_indices.size()));
 	hiprt_scene.emissive_triangles_indices = emissive_triangle_indices;
+
+	std::vector<oroTextureObject_t> oro_textures;
+	std::vector<int> texture_widths;
+	std::vector<int> texture_heights;
+	oro_textures.reserve(scene.textures.size());
+	m_materials_textures.reserve(scene.textures.size());
+	texture_widths.reserve(scene.textures.size());
+	texture_heights.reserve(scene.textures.size());
+	for (const ImageRGBA& texture : scene.textures)
+	{
+		// We need to keep the texture alive so they are not destroyed when returning from 
+		// this function so we're adding them to a member buffer
+		m_materials_textures.push_back(OrochiTexture(texture));
+		oro_textures.push_back(m_materials_textures.back().get_device_texture());
+		texture_widths.push_back(texture.width); 
+		texture_heights.push_back(texture.height);
+	}
+
+	hiprtDevicePtr material_textures;
+	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&material_textures), sizeof(oroTextureObject_t) * scene.textures.size()));
+	OROCHI_CHECK_ERROR(oroMemcpyHtoD(reinterpret_cast<oroDeviceptr>(material_textures), oro_textures.data(), sizeof(oroTextureObject_t) * oro_textures.size()));
+	hiprt_scene.material_textures = material_textures;
+
+	hiprtDevicePtr material_texture_widths;
+	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&material_texture_widths), sizeof(int) * texture_widths.size()));
+	OROCHI_CHECK_ERROR(oroMemcpyHtoD(reinterpret_cast<oroDeviceptr>(material_texture_widths), texture_widths.data(), sizeof(int) * texture_widths.size()));
+	hiprt_scene.material_texture_widths = material_texture_widths;
+
+	hiprtDevicePtr material_texture_heights;
+	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&material_texture_heights), sizeof(int) * texture_heights.size()));
+	OROCHI_CHECK_ERROR(oroMemcpyHtoD(reinterpret_cast<oroDeviceptr>(material_texture_heights), texture_heights.data(), sizeof(int) * texture_heights.size()));
+	hiprt_scene.material_texture_heights = material_texture_heights;
+
+	hiprtDevicePtr texcoords_buffer;
+	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&texcoords_buffer), sizeof(float2) * scene.texcoords.size()));
+	OROCHI_CHECK_ERROR(oroMemcpyHtoD(reinterpret_cast<oroDeviceptr>(texcoords_buffer), scene.texcoords.data(), sizeof(float2) * scene.texcoords.size()));
+	hiprt_scene.texcoords_buffer = texcoords_buffer;
 }
 
 void GPURenderer::set_scene(Scene& scene)
 {
 	set_hiprt_scene_from_scene(scene);
+
 	m_materials = scene.materials;
 }
 
-void GPURenderer::set_envmap(OrochiEnvmap& envmap)
+void GPURenderer::set_envmap(ImageRGBA& envmap_image)
 {
-	m_envmap = envmap;
+	m_envmap = OrochiEnvmap(envmap_image);
 
-	m_world_settings.envmap = envmap.get_device_texture();
-	m_world_settings.envmap_width = envmap.width;
-	m_world_settings.envmap_height = envmap.height;
-	m_world_settings.envmap_cdf = envmap.get_cdf_device_pointer();
+	m_world_settings.envmap = m_envmap.get_device_texture();
+	m_world_settings.envmap_width = m_envmap.width;
+	m_world_settings.envmap_height = m_envmap.height;
+	m_world_settings.envmap_cdf = m_envmap.get_cdf_device_pointer();
 }
 
 const std::vector<RendererMaterial>& GPURenderer::get_materials()
