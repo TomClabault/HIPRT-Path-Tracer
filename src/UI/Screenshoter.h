@@ -42,7 +42,7 @@ private:
 	OpenGLProgram m_default_compute_program;
 	OpenGLProgram m_normal_compute_program;
 	OpenGLProgram m_albedo_compute_program;
-	OpenGLProgram m_adaptative_sampling_compute_program;
+	OpenGLProgram m_adaptive_sampling_compute_program;
 
 	GLuint m_output_image;
 	int m_compute_output_image_width = -1;

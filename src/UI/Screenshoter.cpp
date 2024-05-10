@@ -38,7 +38,7 @@ void Screenshoter::select_compute_program(DisplayView display_view)
 		break;
 
 	case DisplayView::ADAPTIVE_SAMPLING_MAP:
-		m_active_compute_program = m_adaptative_sampling_compute_program;
+		m_active_compute_program = m_adaptive_sampling_compute_program;
 		break;
 
 
@@ -64,7 +64,7 @@ void Screenshoter::initialize_programs()
 	OpenGLShader default_display_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/default_display.frag", OpenGLShader::COMPUTE_SHADER, macro);
 	OpenGLShader normal_display_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/normal_display.frag", OpenGLShader::COMPUTE_SHADER, macro);
 	OpenGLShader albedo_display_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/albedo_display.frag", OpenGLShader::COMPUTE_SHADER, macro);
-	OpenGLShader adaptative_display_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/heatmap_int.frag", OpenGLShader::COMPUTE_SHADER, macro);
+	OpenGLShader adaptive_display_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/heatmap_int.frag", OpenGLShader::COMPUTE_SHADER, macro);
 
 	m_default_compute_program.attach(default_display_shader);
 	m_default_compute_program.link();
@@ -75,8 +75,8 @@ void Screenshoter::initialize_programs()
 	m_albedo_compute_program.attach(albedo_display_shader);
 	m_albedo_compute_program.link();
 
-	m_adaptative_sampling_compute_program.attach(adaptative_display_shader);
-	m_adaptative_sampling_compute_program.link();
+	m_adaptive_sampling_compute_program.attach(adaptive_display_shader);
+	m_adaptive_sampling_compute_program.link();
 
 	select_compute_program(m_render_window->get_application_settings().display_view);
 }

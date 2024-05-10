@@ -28,7 +28,7 @@
 // TODO Code Organization:
 // - Remove GPURenderer.hiprt_scene, useless. Only contains HIPRT Ctxt (which can be made a member variable of the GPU Renderer) and the various buffers which can be kept in a RenderData member variable
 // - Use orochiBuffers when initializing the GPURenderer.RenderData instead of manual oroMalloc as currently done in set_hiprt_scene_from_scene
-// - Destroy buffers when disabling adaptative sampling to save VRAM
+// - Destroy buffers when disabling adaptive sampling to save VRAM
 // - Device/ or HostDeviceCommon. Not both
 // - Can we have access to HoL when calling disney_metallic_fresnel to avoid passing the two vectors and recomputing the dot product in the return statement ?
 // - DO THE DISNEY SHADING IN SHADING SPACE. WHAT THE H IS THIS CODE BUILDING ONB IN EVERY FUNCTION HUH?
@@ -57,7 +57,7 @@
 // - benchmarker to measure frame times precisely (avg, std dev, ...) + fixed random seed for reproducible results
 // - alias method for sampling env map instead of log(n) dichotomy
 // - image comparator slider (to have adaptive sampling view + default view on the same viewport for example)
-// - auto adaptative sample per frame with adaptative sampling to keep GPU busy
+// - auto adaptive sample per frame with adaptive sampling to keep GPU busy
 // - Maybe look at better Disney sampling (luminance?)
 // - Imgui panel with a lot of performance metrics
 // - thin materials
@@ -484,7 +484,7 @@ void RenderWindow::create_display_programs()
 	OpenGLShader default_display_fragment_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/default_display.frag", OpenGLShader::FRAGMENT_SHADER);
 	OpenGLShader normal_display_fragment_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/normal_display.frag", OpenGLShader::FRAGMENT_SHADER);
 	OpenGLShader albedo_display_fragment_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/albedo_display.frag", OpenGLShader::FRAGMENT_SHADER);
-	OpenGLShader adaptative_display_fragment_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/heatmap_int.frag", OpenGLShader::FRAGMENT_SHADER);
+	OpenGLShader adaptive_display_fragment_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/heatmap_int.frag", OpenGLShader::FRAGMENT_SHADER);
 
 	m_default_display_program.attach(fullscreen_quad_vertex_shader);
 	m_default_display_program.attach(default_display_fragment_shader);
@@ -498,9 +498,9 @@ void RenderWindow::create_display_programs()
 	m_albedo_display_program.attach(albedo_display_fragment_shader);
 	m_albedo_display_program.link();
 
-	m_adaptative_sampling_display_program.attach(fullscreen_quad_vertex_shader);
-	m_adaptative_sampling_display_program.attach(adaptative_display_fragment_shader);
-	m_adaptative_sampling_display_program.link();
+	m_adaptive_sampling_display_program.attach(fullscreen_quad_vertex_shader);
+	m_adaptive_sampling_display_program.attach(adaptive_display_fragment_shader);
+	m_adaptive_sampling_display_program.link();
 
 	select_display_program(m_application_settings.display_view);
 }
@@ -524,7 +524,7 @@ void RenderWindow::select_display_program(DisplayView display_view)
 		break;
 
 	case DisplayView::ADAPTIVE_SAMPLING_MAP:
-		m_active_display_program = m_adaptative_sampling_display_program;
+		m_active_display_program = m_adaptive_sampling_display_program;
 		break;
 
 	default:
@@ -824,7 +824,7 @@ void RenderWindow::show_render_settings_panel()
 		m_render_dirty = true;
 	}
 
-	const char* items[] = { "Default", "Denoiser - Normals", "Denoiser - Denoised normals", "Denoiser - Albedo", "Denoiser - Denoised albedo", "Adaptative sampling map"};
+	const char* items[] = { "Default", "Denoiser - Normals", "Denoiser - Denoised normals", "Denoiser - Albedo", "Denoiser - Denoised albedo", "Adaptive sampling map"};
 	if (ImGui::Combo("Display View", (int*)(&m_application_settings.display_view), items, IM_ARRAYSIZE(items)))
 		select_display_program(m_application_settings.display_view);
 

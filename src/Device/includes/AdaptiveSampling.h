@@ -12,7 +12,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool adaptive_sampling(const HIPRTRenderData& ren
 
     if (pixel_sample_count > render_data.render_settings.adaptive_sampling_min_samples)
     {
-        // Waiting for at least 16 samples to enable adaptative sampling
+        // Waiting for at least 16 samples to enable adaptive sampling
         float luminance = render_data.buffers.pixels[pixel_index].luminance();
 
         float average_luminance = luminance / (pixel_sample_count + 1);

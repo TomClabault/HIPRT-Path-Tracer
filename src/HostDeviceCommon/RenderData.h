@@ -90,11 +90,11 @@ struct AuxiliaryBuffers
 	// The albedo should already be divided by the number of samples
 	ColorRGB* denoiser_albedo = nullptr;
 
-	// Per pixel sample count. Useful when doing adaptative sampling
+	// Per pixel sample count. Useful when doing adaptive sampling
 	// where each pixel can have a different number of sample
 	int* pixel_sample_count = nullptr;
 
-	// Per pixel sum of squared luminance of samples. Used for adaptative sampling
+	// Per pixel sum of squared luminance of samples. Used for adaptive sampling
 	// This buffer should not be pre-divided by the number of samples
 	float* pixel_squared_luminance = nullptr;
 };

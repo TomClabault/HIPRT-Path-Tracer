@@ -94,9 +94,9 @@ private:
 	// Albedo G-buffer
 	OrochiBuffer<ColorRGB> m_albedo_buffer;
 
-	// Used to calculate the variance of each pixel for adaptative sampling
+	// Used to calculate the variance of each pixel for adaptive sampling
 	OrochiBuffer<float> m_pixels_squared_luminance;
-	// This buffer is necessary because with adaptative sampling, each pixel
+	// This buffer is necessary because with adaptive sampling, each pixel
 	// can have accumulated a different number of sample
 	OrochiBuffer<int> m_pixels_sample_count;
 

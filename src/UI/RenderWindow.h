@@ -57,7 +57,7 @@ public:
 	 * 
 	 * For example, if the user decided to display normals in the viewport, we'll need
 	 * the display texture to be a float3 (RGB32F) texture. If the user is displaying
-	 * the adaptative sampling heatmap, we'll only need an integer texture.
+	 * the adaptive sampling heatmap, we'll only need an integer texture.
 	 * 
 	 * This function deletes/recreates the texture everytime its required format changes
 	 * (i.e. when the current texture was a float3 and we asked for an integer texture) 
@@ -125,7 +125,7 @@ private:
 	OpenGLProgram m_default_display_program;
 	OpenGLProgram m_normal_display_program;
 	OpenGLProgram m_albedo_display_program;
-	OpenGLProgram m_adaptative_sampling_display_program;
+	OpenGLProgram m_adaptive_sampling_display_program;
 	// We don't need a VAO because we're hardcoding our fullscreen
 	// quad vertices in our vertex shader but we still need an empty/fake
 	// VAO for NVIDIA drivers to avoid errors
