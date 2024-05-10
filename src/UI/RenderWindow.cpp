@@ -43,6 +43,8 @@
 
 
 // TODO Features:
+// - Allow material parameters textures manipulation with ImGui
+// - Disable material parameters in ImGui that have a texture associated (since the ImGui slider in this case has no effect)
 // - Upload grayscale as one channel to the GPU instead of memory costly RGBA
 // - Emissive textures sampling: how to sample an object that has an emissive texture? How to know which triangles of the mesh are covered by the emissive parts of the texture?
 // - stream compaction / active thread compaction (ingo wald 2011)

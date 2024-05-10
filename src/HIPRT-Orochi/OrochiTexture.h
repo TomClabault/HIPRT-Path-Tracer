@@ -20,6 +20,7 @@ public:
 
 private:
 	OrochiBuffer<float> m_image_buffer;
+	oroArray_t m_texture_array;
 
 	oroTextureObject_t m_texture = nullptr;
 };
