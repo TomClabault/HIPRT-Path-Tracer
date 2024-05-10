@@ -25,6 +25,7 @@ struct ColorRGB
 
     HIPRT_HOST_DEVICE float luminance() const { return 0.3086f * r + 0.6094f * g + 0.0820f * b; }
     HIPRT_HOST_DEVICE void clamp(float min, float max) { r = hippt::clamp(min, max, r); g = hippt::clamp(min, max, g); b = hippt::clamp(min, max, b); }
+    HIPRT_HOST_DEVICE bool has_NaN() { return hippt::isNaN(r) || hippt::isNaN(g) || hippt::isNaN(b); }
 
     float r, g, b;
 };
@@ -60,6 +61,7 @@ struct ColorRGBA
 
     HIPRT_HOST_DEVICE float luminance() const { return 0.3086f * r + 0.6094f * g + 0.0820f * b; }
     HIPRT_HOST_DEVICE void clamp(float min, float max) { r = hippt::clamp(min, max, r); g = hippt::clamp(min, max, g); b = hippt::clamp(min, max, b); a = hippt::clamp(min, max, a); }
+    HIPRT_HOST_DEVICE bool has_NaN() { return hippt::isNaN(r) || hippt::isNaN(g) || hippt::isNaN(b) || hippt::isNaN(a); }
 
     float r, g, b, a;
 };

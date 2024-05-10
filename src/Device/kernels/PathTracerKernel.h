@@ -172,7 +172,17 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                     ColorRGB light_sample_radiance = sample_light_sources(render_data, -ray.direction, closest_hit_info, material, random_number_generator);
                     ColorRGB envmap_radiance;
                     if (render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP)
-                    envmap_radiance = sample_environment_map(render_data, -ray.direction, closest_hit_info, material, random_number_generator);
+                        envmap_radiance = sample_environment_map(render_data, -ray.direction, closest_hit_info, material, random_number_generator);
+                    if (envmap_radiance.r == -2.0e35f && envmap_radiance.g == -2.0e35f && envmap_radiance.b == -2.0e35f)
+                    {
+                        debug_set_final_color(render_data, x, y, res.x, ColorRGB(100000.0f, 0.0f, 0.0f));
+                        return;
+                    }
+                    else if (check_for_negative_color(envmap_radiance, x, y, sample))
+                    {
+                        debug_set_final_color(render_data, x, y, res.x, ColorRGB(100000.0f, 10000.0f, 0.0f));
+                        return;
+                    }
 
                     // --------------------------------------- //
                     // ---------- Indirect lighting ---------- //
@@ -229,6 +239,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                     }
 
                     sample_color += skysphere_color * throughput;
+
                     next_ray_state = RayState::MISSED;
                 }
             }

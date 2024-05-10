@@ -286,7 +286,8 @@ void GPURenderer::set_scene(Scene& scene)
 
 void GPURenderer::set_envmap(ImageRGBA& envmap_image)
 {
-	m_envmap = OrochiEnvmap(envmap_image);
+	m_envmap.init_from_image(envmap_image);
+	m_envmap.compute_cdf(envmap_image);
 
 	m_world_settings.envmap = m_envmap.get_device_texture();
 	m_world_settings.envmap_width = m_envmap.width;

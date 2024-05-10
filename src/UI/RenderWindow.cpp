@@ -14,7 +14,6 @@
 
 // TODO bugs
 // - when adaptive sampling is on and holding click (render low resolution), some grid artifacts show up
-// - anisotropic rotation brightness buggued ? Sphere 0.3 rough, 1.0 metallic, 1.0 aniso, 0.5 aniso rotation, 1.0 clearcoat (seems to be because of clearcoat but clearcoat doesn't come in metallic weight for disney eval so... why is it darkening the overall appearance?)
 // - Why is the rough dragon having black fringes even with normal flipping ?
 // - normals AOV not converging correctly ?
 //		- for the denoiser normals convergence issue, is it an error at the end of the Path Tracer kernel where we're accumulating ? Should we have
@@ -38,11 +37,13 @@
 // - put mouse / keyboard code in an interactor
 //		- Have the is_interacting boolean in this interactor class and poll it from the main loop to check whether we need to render the frame at a lower resolution or not
 // - check for level of abstractions in functions
-// - Cool color thread-safe logger singleton class
+// - Cool colored thread-safe logger singleton class
 
 
 
 // TODO Features:
+// - texture compression
+// - float compression for render buffers?
 // - Exporter (just serialize the scene to binary file I guess)
 // - Allow material parameters textures manipulation with ImGui
 // - Disable material parameters in ImGui that have a texture associated (since the ImGui slider in this case has no effect)
@@ -50,11 +51,12 @@
 // - Emissive textures sampling: how to sample an object that has an emissive texture? How to know which triangles of the mesh are covered by the emissive parts of the texture?
 // - stream compaction / active thread compaction (ingo wald 2011)
 // - sample regeneration
-// - pack active pixel in same buffer as pixel sample count
+// - data packing in buffer --> use one 32 bit buffer to store multiple information if not using all 32 bits
+//		- pack active pixel in same buffer as pixel sample count
 // - hint shadow rays for better traversal perf
 // - benchmarker to measure frame times precisely (avg, std dev, ...) + fixed random seed for reproducible results
 // - alias method for sampling env map instead of log(n) dichotomy
-// - image comparator slider
+// - image comparator slider (to have adaptive sampling view + default view on the same viewport for example)
 // - auto adaptative sample per frame with adaptative sampling to keep GPU busy
 // - Maybe look at better Disney sampling (luminance?)
 // - Imgui panel with a lot of performance metrics
@@ -62,8 +64,7 @@
 // - Look at what Orochi & HIPCC can do in terms of displaying registers used / options to specify shared stack size / block size (-DBLOCK_SIZE, -DSHARED_STACK_SIZE)
 // - Have the UI run at its own framerate to avoid having the UI come to a crawl when the path tracing is expensive
 // - Denoiser blend to allow blending the original noisy image and the perfect denoised result by a given factor
-// - When modifying the emission of a material with the material editor, it should be reflected in the scene and allow the direct sampling of the geometry
-// - Color fallof (change of material base base_color based on the angle with the view direction and the normal
+// - When modifying the emission of a material with the material editor, it should be reflected in the scene and allow the direct sampling of the geometry so the emissive triangles buffer should be updated
 // - Ray reordering for performance
 // - Starting rays further away from the camera for performance
 // - Visualizing ray depth (only 1 frame otherwise it would flicker a lot [or choose the option to have it flicker] )
@@ -79,10 +80,9 @@
 // - Better ray origin offset to avoid self intersections
 // - Realistic Camera Model
 // - Focus blur
-// - Textures for each parameter of the Disney BSDF
 // - Bump mapping
 // - Flakes BRDF (maybe look at OSPRay implementation for a reference ?)
-// - ImGuizmo
+// - ImGuizmo for moving objects in the scene
 // - Paths roughness regularization
 // - choose disney diffuse model (disney, lambertian, oren nayar)
 // - enable lower resolution on mouse scroll for like ~10 frames
@@ -91,25 +91,21 @@
 // - try async buffer copy for the denoiser (maybe run a kernel to generate normals and another to generate albedo buffer before the path tracing kernel to be able to async copy while the path tracing kernel is running?)
 // - enable denoising with all combinations of beauty/normal/albedo via imgui
 // - show denoised normals / denoised albedo when ticking the Show Normals / Show albedo checkboxes in Imgui to visualize the albedo/normals used by the denoiser
-// - uniform float3 type to use everywhere instead of Vector and hiprtFloat3
 // - cutout filters
 // - write scene details to imgui (nb vertices, triangles, ...)
 // - check perf of aiPostProcessSteps::aiProcess_ImproveCacheLocality
 // - ImGui to choose the BVH flags at runtime and be able to compare the performance
 // - ImGui widgets for SBVH / LBVH
-// - light sampling: go through transparent surfaces instead of considering them opaque (?)
 // - BVH compaction + imgui checkbox
 // - shader cache (write our own or wait for HIPRT to fix it?)
 // - indirect / direct lighting clamping
-// - env map support
 // - choose env map at runtime imgui
 // - env map rotation imgui
 // - choose scene file at runtime imgui
 // - lock camera checkbox to avoid messing up when big render in progress
-// - choose render resolution in imgui
-// - choose viewport resolution in imgui
+// - choose render resolution directly in imgui
 // - compute shader for tone mapping images ? unless transfering memory to open gl is too expensive
-// - use defines insead of IFs in the kernel code and recompile kernel everytime (for some options at least)
+// - use defines insead of IFs in the kernel code and recompile kernel everytime (for some options at least to reduce register pressure)
 // - stuff to multithread when loading everything ? (scene, BVH, textures, ...)
 // - PBRT v3 scene parser
 // - Wavefront path tracing

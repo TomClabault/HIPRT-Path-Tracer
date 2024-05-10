@@ -74,6 +74,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_environment_map(const HIPRTRender
     float env_map_total_sum = world_settings.envmap_cdf[cdf_size - 1];
     env_map_cdf_search(world_settings, random_number_generator() * env_map_total_sum, x, y);
 
+    if (x >= world_settings.envmap_width || y >= world_settings.envmap_height)
+    {
+        return ColorRGB(-2.0e35f);
+    }
+
     float u = (float)x / world_settings.envmap_width;
     float v = (float)y / world_settings.envmap_height;
     float phi = u * 2.0f * M_PI;

@@ -278,14 +278,12 @@ std::vector<ImageRGBA> SceneParser::read_textures(const std::string& filepath, c
 
     std::vector<ImageRGBA> images(texture_paths.size());
 
-    auto start = std::chrono::high_resolution_clock::now();
 #pragma omp parallel for schedule(dynamic)
     for (int i = 0; i < texture_paths.size(); i++)
     {
         std::string texture_path = corrected_filepath + texture_paths[i];
         images[i] = ImageRGBA::read_image(texture_path, false);
     }
-    std::cout << "All textures read in " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start).count() << "ms" << std::endl;
 
     return images;
 }

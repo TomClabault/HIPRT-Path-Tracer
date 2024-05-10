@@ -30,7 +30,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_texture_pixel(void* texture_point
     return ColorRGB(color.x, color.y, color.z);
 #else
     ImageRGBA& envmap = *reinterpret_cast<ImageRGBA*>(texture_pointer);
-    ColorRGBA rgba = envmap[uv.y * envmap.height * envmap.width + uv.x * envmap.width];
+    ColorRGBA rgba = envmap[static_cast<int>(uv.y * envmap.height) * envmap.width + uv.x * envmap.width];
     return ColorRGB(rgba.r, rgba.g, rgba.b);
 #endif
 }

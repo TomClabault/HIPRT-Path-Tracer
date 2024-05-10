@@ -7,8 +7,16 @@ class OrochiEnvmap : public OrochiTexture
 {
 public:
 	OrochiEnvmap () : OrochiTexture() {}
-	OrochiEnvmap (const ImageRGBA& image);
+	OrochiEnvmap(const ImageRGBA& image);
+	OrochiEnvmap(const OrochiEnvmap& other) = delete;
+	OrochiEnvmap(OrochiEnvmap&& other);
 
+	void operator=(const OrochiEnvmap other) = delete;
+	void operator=(const OrochiEnvmap& other) = delete;
+	void operator=(OrochiEnvmap&& other);
+
+	void init_from_image(const ImageRGBA& image);
+	void compute_cdf(const ImageRGBA& image);
 	OrochiBuffer<float>& get_cdf_buffer();
 	float* get_cdf_device_pointer();
 
