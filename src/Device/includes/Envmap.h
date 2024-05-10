@@ -86,7 +86,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_environment_map(const HIPRTRender
     float cos_theta = cos(theta);
 
     // Convert to cartesian coordinates
-    float3 sampled_direction = float3(-sin_theta * cos(phi), -cos_theta, -sin_theta * sin(phi));
+    float3 sampled_direction = make_float3(-sin_theta * cos(phi), -cos_theta, -sin_theta * sin(phi));
 
     float cosine_term = hippt::dot(closest_hit_info.shading_normal, sampled_direction);
     if (cosine_term > 0.0f)
