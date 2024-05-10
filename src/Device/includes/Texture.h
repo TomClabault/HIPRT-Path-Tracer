@@ -35,16 +35,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_texture_pixel(void* texture_point
 #endif
 }
 
-// TODO try templating
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 uv_interpolate(int* vertex_indices, int primitive_index, float3* data, float2 uv)
-{
-    int vertex_A_index = vertex_indices[primitive_index * 3 + 0];
-    int vertex_B_index = vertex_indices[primitive_index * 3 + 1];
-    int vertex_C_index = vertex_indices[primitive_index * 3 + 2];
-    return data[vertex_B_index] * uv.x + data[vertex_C_index] * uv.y + data[vertex_A_index] * (1.0f - uv.x - uv.y);
-}
-
-HIPRT_HOST_DEVICE HIPRT_INLINE float2 uv_interpolate(int* vertex_indices, int primitive_index, float2* data, float2 uv)
+template <typename T>
+HIPRT_HOST_DEVICE HIPRT_INLINE T uv_interpolate(int* vertex_indices, int primitive_index, T* data, float2 uv)
 {
     int vertex_A_index = vertex_indices[primitive_index * 3 + 0];
     int vertex_B_index = vertex_indices[primitive_index * 3 + 1];
