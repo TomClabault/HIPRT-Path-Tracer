@@ -21,6 +21,9 @@ struct Scene
 {
     std::vector<RendererMaterial> materials;
     std::vector<ImageRGBA> textures;
+    // This vector of is sRGB indicates whether the texture is sRGB 
+    // (and will need to be converted to linear in the shader or not)
+    std::vector<unsigned char> textures_is_srgb;
 
     std::vector<int> triangle_indices;
     std::vector<float3> vertices_positions;
@@ -83,9 +86,10 @@ private:
      * texture within texturePathList and appends the path of the texture to the list. If the material
      * doesn't have the required texture, returns -1
      */
-    static int get_first_texture_of_type(aiMaterial* mesh_material, aiTextureType type, std::vector<std::string>& texturePathList);
-    static std::vector<std::string> get_textures_paths(aiMaterial* mesh_material, RendererMaterial& renderer_material);
-    static std::vector<ImageRGBA> read_textures(const std::string& filepath, const std::vector<std::string>& texture_paths);
+    static int get_first_texture_of_type(aiMaterial* mesh_material, aiTextureType type, std::vector<std::pair<aiTextureType, std::string>>& texture_path_list);
+    static std::vector<std::pair<aiTextureType, std::string>> get_textures_paths(aiMaterial* mesh_material, RendererMaterial& renderer_material);
+    static void normalize_texture_paths(std::vector<std::pair<aiTextureType, std::string>>& paths);
+    static std::vector<ImageRGBA> read_textures(const std::string& filepath, const std::vector<std::pair<aiTextureType, std::string>>& texture_paths);
     static void offset_textures_indices(RendererMaterial& renderer_material, int offset);
 };
 

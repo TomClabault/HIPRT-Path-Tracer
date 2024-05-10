@@ -104,9 +104,12 @@ Scene SceneParser::parse_scene_file(const std::string& filepath, float frame_asp
         aiMaterial* mesh_material = scene->mMaterials[mesh->mMaterialIndex];
 
         RendererMaterial renderer_material = read_material_properties(mesh_material);
-        std::vector<std::string> texture_paths = get_textures_paths(mesh_material, renderer_material);
+        std::vector<std::pair<aiTextureType, std::string>> texture_paths = get_textures_paths(mesh_material, renderer_material);
+        normalize_texture_paths(texture_paths);
         std::vector<ImageRGBA> textures = read_textures(filepath, texture_paths);
         parsed_scene.textures.insert(parsed_scene.textures.end(), textures.begin(), textures.end());
+        std::transform(texture_paths.begin(), texture_paths.end(), std::back_inserter(parsed_scene.textures_is_srgb), 
+            [](const std::pair<aiTextureType, std::string>& pair) {return pair.first == aiTextureType_BASE_COLOR || pair.first == aiTextureType_NORMALS; });
         offset_textures_indices(renderer_material, global_texture_indices_offset);
         global_texture_indices_offset += textures.size();
 
@@ -228,15 +231,15 @@ RendererMaterial SceneParser::read_material_properties(aiMaterial* mesh_material
     return renderer_material;
 }
 
-std::vector<std::string> SceneParser::get_textures_paths(aiMaterial* mesh_material, RendererMaterial& renderer_material)
+std::vector<std::pair<aiTextureType, std::string>> SceneParser::get_textures_paths(aiMaterial* mesh_material, RendererMaterial& renderer_material)
 {
-    std::vector<std::string> texture_paths;
+    std::vector<std::pair<aiTextureType, std::string>> texture_paths;
 
     renderer_material.base_color_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_BASE_COLOR, texture_paths);
     renderer_material.emission_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_EMISSION_COLOR, texture_paths);
     int roughness_index = get_first_texture_of_type(mesh_material, aiTextureType_DIFFUSE_ROUGHNESS, texture_paths);
     int metallic_index = get_first_texture_of_type(mesh_material, aiTextureType_METALNESS, texture_paths);
-    if (roughness_index != -1 && metallic_index != -1 && texture_paths[roughness_index] == texture_paths[metallic_index])
+    if (roughness_index != -1 && metallic_index != -1 && texture_paths[roughness_index].second == texture_paths[metallic_index].second)
     {
         // The roughness and metallic textures are the same
 
@@ -251,11 +254,12 @@ std::vector<std::string> SceneParser::get_textures_paths(aiMaterial* mesh_materi
     renderer_material.sheen_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_SHEEN, texture_paths);
     renderer_material.specular_transmission_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_TRANSMISSION, texture_paths);
 
+    renderer_material.normal_map_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_NORMALS, texture_paths);
 
     return texture_paths;
 }
 
-int SceneParser::get_first_texture_of_type(aiMaterial* mesh_material, aiTextureType type, std::vector<std::string>& texture_path_list)
+int SceneParser::get_first_texture_of_type(aiMaterial* mesh_material, aiTextureType type, std::vector<std::pair<aiTextureType, std::string>>& texture_path_list)
 {
     int tex_count = mesh_material->GetTextureCount(type);
     if (tex_count == 0)
@@ -264,13 +268,26 @@ int SceneParser::get_first_texture_of_type(aiMaterial* mesh_material, aiTextureT
     {
         aiString aiPath;
         mesh_material->GetTexture(type, 0, &aiPath);
-        texture_path_list.push_back(std::string(aiPath.data));
+        texture_path_list.push_back(std::make_pair(type, std::string(aiPath.data)));
 
         return texture_path_list.size() - 1;
     }
 }
 
-std::vector<ImageRGBA> SceneParser::read_textures(const std::string& filepath, const std::vector<std::string>& texture_paths)
+void SceneParser::normalize_texture_paths(std::vector<std::pair<aiTextureType, std::string>>& paths)
+{
+    for (auto& pair : paths)
+    {
+        size_t find_index = pair.second.find("%20");
+        while (find_index != (size_t)-1)
+        {
+            pair.second = pair.second.replace(find_index, 3, " ");
+            find_index = pair.second.find("%20");
+        }
+    }
+}
+
+std::vector<ImageRGBA> SceneParser::read_textures(const std::string& filepath, const std::vector<std::pair<aiTextureType, std::string>>& texture_paths)
 {
     // Preparing the filepath so that it's ready to be appended with the texture name
     std::string corrected_filepath = filepath;
@@ -278,10 +295,10 @@ std::vector<ImageRGBA> SceneParser::read_textures(const std::string& filepath, c
 
     std::vector<ImageRGBA> images(texture_paths.size());
 
-#pragma omp parallel for schedule(dynamic)
+//#pragma omp parallel for schedule(dynamic)
     for (int i = 0; i < texture_paths.size(); i++)
     {
-        std::string texture_path = corrected_filepath + texture_paths[i];
+        std::string texture_path = corrected_filepath + texture_paths[i].second;
         images[i] = ImageRGBA::read_image(texture_path, false);
     }
 

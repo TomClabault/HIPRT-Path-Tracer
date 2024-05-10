@@ -23,16 +23,22 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float luminance(ColorRGBA pixel)
     return 0.3086f * pixel.r + 0.6094f * pixel.g + 0.0820f * pixel.b;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_texture_pixel(void* texture_pointer, float2 uv)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_texture_pixel(void* texture_pointer, bool is_srgb, float2 uv)
 {
+    ColorRGBA rgba;
+
 #ifdef __KERNELCC__
-    float4 color = tex2D<float4>(reinterpret_cast<oroTextureObject_t>(texture_pointer), uv.x, uv.y);
-    return ColorRGB(color.x, color.y, color.z);
+    rgba = ColorRGBA(tex2D<float4>(reinterpret_cast<oroTextureObject_t>(texture_pointer), uv.x, uv.y));
 #else
     ImageRGBA& envmap = *reinterpret_cast<ImageRGBA*>(texture_pointer);
-    ColorRGBA rgba = envmap[static_cast<int>(uv.y * envmap.height) * envmap.width + uv.x * envmap.width];
-    return ColorRGB(rgba.r, rgba.g, rgba.b);
+    rgba = envmap[static_cast<int>(uv.y * envmap.height) * envmap.width + uv.x * envmap.width];
 #endif
+
+    // sRGB to linear conversion
+    if (is_srgb)
+        return pow(ColorRGB(rgba.r, rgba.g, rgba.b), 2.2f);
+    else
+        return ColorRGB(rgba.r, rgba.g, rgba.b);
 }
 
 template <typename T>

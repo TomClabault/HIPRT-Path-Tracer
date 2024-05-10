@@ -112,6 +112,7 @@ HIPRTRenderData GPURenderer::get_render_data()
 	render_data.buffers.emissive_triangles_count = m_hiprt_scene.emissive_triangles_count;
 	render_data.buffers.emissive_triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.emissive_triangles_indices);
 	render_data.buffers.material_textures = reinterpret_cast<oroTextureObject_t*>(m_hiprt_scene.material_textures);
+	render_data.buffers.texture_is_srgb = reinterpret_cast<unsigned char*>(m_hiprt_scene.texture_is_srgb);
 	render_data.buffers.texcoords = reinterpret_cast<float2*>(m_hiprt_scene.texcoords_buffer);
 
 	render_data.aux_buffers.debug_pixel_active = m_debug_pixel_active.get_device_pointer();
@@ -267,9 +268,14 @@ void GPURenderer::set_hiprt_scene_from_scene(Scene& scene)
 	}
 
 	hiprtDevicePtr material_textures;
-	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&material_textures), sizeof(oroTextureObject_t) * scene.textures.size()));
+	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&material_textures), sizeof(oroTextureObject_t) * oro_textures.size()));
 	OROCHI_CHECK_ERROR(oroMemcpyHtoD(reinterpret_cast<oroDeviceptr>(material_textures), oro_textures.data(), sizeof(oroTextureObject_t) * oro_textures.size()));
 	hiprt_scene.material_textures = material_textures;
+
+	hiprtDevicePtr texture_is_srgb;
+	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&texture_is_srgb), sizeof(bool) * scene.textures_is_srgb.size()));
+	OROCHI_CHECK_ERROR(oroMemcpyHtoD(reinterpret_cast<oroDeviceptr>(texture_is_srgb), scene.textures_is_srgb.data(), sizeof(bool) * scene.textures_is_srgb.size()));
+	hiprt_scene.texture_is_srgb = texture_is_srgb;
 
 	hiprtDevicePtr texcoords_buffer;
 	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&texcoords_buffer), sizeof(float2) * scene.texcoords.size()));

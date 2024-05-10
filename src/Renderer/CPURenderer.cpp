@@ -34,6 +34,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.buffers.texcoords = parsed_scene.texcoords.data();
 
     m_render_data.buffers.material_textures = parsed_scene.textures.data();
+    m_render_data.buffers.texture_is_srgb = parsed_scene.textures_is_srgb.data();
 
     m_render_data.aux_buffers.debug_pixel_active = m_debug_pixel_active_buffer.data();
     m_render_data.aux_buffers.denoiser_albedo = m_denoiser_albedo.data();
@@ -70,10 +71,10 @@ Image& CPURenderer::get_framebuffer()
     return m_framebuffer;
 }
 
-#define DEBUG_PIXEL 0
+#define DEBUG_PIXEL 1
 #define DEBUG_EXACT_COORDINATE 0
-#define DEBUG_PIXEL_X 431
-#define DEBUG_PIXEL_Y 208
+#define DEBUG_PIXEL_X 419
+#define DEBUG_PIXEL_Y 210
 
 
 void CPURenderer::render()

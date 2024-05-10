@@ -64,6 +64,8 @@ struct RendererMaterial
 
     BRDF brdf_type = BRDF::Uninitialized;
 
+    int normal_map_texture_index = -1;
+
     int emission_texture_index = -1;
     int base_color_texture_index = -1;
     ColorRGB emission = ColorRGB{ 0.0f, 0.0f, 0.0f };

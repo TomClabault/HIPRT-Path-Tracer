@@ -76,6 +76,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void get_metallic_roughness(HIPRTRenderData& rend
         rgba = texture[x * texture.width + y];
 #endif
 
+        // Not converting to linear here because material properties (roughness and metallic) here are assumed to be linear already
         roughness = rgba.g;
         metallic = rgba.b;
     }
@@ -87,20 +88,28 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void get_metallic_roughness(HIPRTRenderData& rend
 }
 
 template <typename T>
-HIPRT_HOST_DEVICE HIPRT_INLINE void read_data(const ColorRGBA& rgba, T& data) {}
+HIPRT_HOST_DEVICE HIPRT_INLINE void read_data(const ColorRGBA& rgba, bool is_srgb, T& data) {}
 
 template<>
-HIPRT_HOST_DEVICE HIPRT_INLINE void read_data(const ColorRGBA& rgba, ColorRGB& data)
+HIPRT_HOST_DEVICE HIPRT_INLINE void read_data(const ColorRGBA& rgba, bool is_srgb, ColorRGB& data)
 {
     data.r = rgba.r;
     data.g = rgba.g;
     data.b = rgba.b;
+
+    // sRGB to linear conversion
+    if (is_srgb)
+        data = pow(data, 2.2f);
 }
 
 template<>
-HIPRT_HOST_DEVICE HIPRT_INLINE void read_data(const ColorRGBA& rgba, float& data)
+HIPRT_HOST_DEVICE HIPRT_INLINE void read_data(const ColorRGBA& rgba, bool is_srgb, float& data)
 {
     data = rgba.r;
+
+    // sRGB to linear conversion
+    if (is_srgb)
+        data = pow(data, 2.2f);
 }
 
 template <typename T>
@@ -127,7 +136,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void get_material_property(HIPRTRenderData& rende
     rgba = texture[x * texture.width + y];
 #endif
 
-    read_data(rgba, output_data);
+    read_data(rgba, render_data.buffers.texture_is_srgb[texture_index] == 1, output_data);
 }
 
 #endif
