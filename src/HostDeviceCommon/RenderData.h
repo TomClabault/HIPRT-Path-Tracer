@@ -76,12 +76,6 @@ struct RenderBuffers
 	// oroTextureObject_t whether if CPU or GPU renderer respectively
 	// This pointer can be cast for the textures to be be retrieved.
 	void* material_textures = nullptr;
-	// Widths and heights of the textures, to be able to convert UV coordinates
-	// in integer pixel coordinates. These two buffers stay nullptr on the CPU because
-	// the width and heights are already available thanks to the ImageRGBA class of
-	// the 'material_textures' buffer
-	int* material_textures_widths = nullptr;
-	int* material_textures_heights = nullptr;
 };
 
 struct AuxiliaryBuffers

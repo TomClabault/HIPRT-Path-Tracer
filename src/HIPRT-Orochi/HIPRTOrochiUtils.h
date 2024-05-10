@@ -16,6 +16,11 @@
 #define OROCHI_RTC_CHECK_ERROR( error ) ( orochi_rtc_check_error( error, __FILE__, __LINE__ ) )
 #define HIPRT_CHECK_ERROR( error ) ( hiprt_check_error( error, __FILE__, __LINE__ ) )
 
+// This flag isn't defined in Orochi for some reasons ?
+// It allows sampling textures with normalized coordinates in [0, 1[ instead of 
+// [0, width[
+#define ORO_TRSF_NORMALIZED_COORDINATES 0x02
+
 namespace HIPPTOrochiUtils
 {
 	/*

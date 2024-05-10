@@ -43,6 +43,7 @@
 
 
 // TODO Features:
+// - Exporter (just serialize the scene to binary file I guess)
 // - Allow material parameters textures manipulation with ImGui
 // - Disable material parameters in ImGui that have a texture associated (since the ImGui slider in this case has no effect)
 // - Upload grayscale as one channel to the GPU instead of memory costly RGBA

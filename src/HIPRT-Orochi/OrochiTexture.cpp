@@ -31,7 +31,7 @@ OrochiTexture::OrochiTexture(const ImageRGBA& image)
 	texDesc.addressMode[0] = ORO_TR_ADDRESS_MODE_WRAP;
 	texDesc.addressMode[1] = ORO_TR_ADDRESS_MODE_WRAP;
 	texDesc.filterMode = ORO_TR_FILTER_MODE_POINT;
-	//texDesc.flags = ORO_TRSF_READ_AS_INTEGER;
+	texDesc.flags = ORO_TRSF_NORMALIZED_COORDINATES;
 
 	OROCHI_CHECK_ERROR(oroTexObjectCreate(&m_texture, &resDesc, &texDesc, nullptr));
 }

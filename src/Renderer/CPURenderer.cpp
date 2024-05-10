@@ -49,7 +49,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 
 void CPURenderer::set_envmap(ImageRGBA& envmap_image)
 {
-    m_render_data.world_settings.envmap = envmap_image.data().data();
+    m_render_data.world_settings.envmap = &envmap_image;
     m_render_data.world_settings.envmap_width = envmap_image.width;
     m_render_data.world_settings.envmap_height = envmap_image.height;
     m_render_data.world_settings.envmap_cdf = envmap_image.get_cdf().data();
