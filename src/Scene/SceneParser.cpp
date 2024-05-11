@@ -17,7 +17,7 @@ Scene SceneParser::parse_scene_file(const std::string& filepath, float frame_asp
 
     Assimp::Importer importer;
 
-    const aiScene* scene = importer.ReadFile(filepath, aiPostProcessSteps::aiProcess_PreTransformVertices | aiPostProcessSteps::aiProcess_Triangulate | aiPostProcessSteps::aiProcess_FixInfacingNormals);
+    const aiScene* scene = importer.ReadFile(filepath, aiPostProcessSteps::aiProcess_PreTransformVertices | aiPostProcessSteps::aiProcess_Triangulate);
     if (scene == nullptr)
     {
         std::cerr << importer.GetErrorString() << std::endl;
@@ -98,8 +98,6 @@ Scene SceneParser::parse_scene_file(const std::string& filepath, float frame_asp
     int global_texture_indices_offset = 0;
     for (int mesh_index = 0; mesh_index < scene->mNumMeshes; mesh_index++)
     {
-        int max_mesh_index_offset = 0;
-
         aiMesh* mesh = scene->mMeshes[mesh_index];
         aiMaterial* mesh_material = scene->mMaterials[mesh->mMaterialIndex];
 
@@ -109,7 +107,7 @@ Scene SceneParser::parse_scene_file(const std::string& filepath, float frame_asp
         std::vector<ImageRGBA> textures = read_textures(filepath, texture_paths);
         parsed_scene.textures.insert(parsed_scene.textures.end(), textures.begin(), textures.end());
         std::transform(texture_paths.begin(), texture_paths.end(), std::back_inserter(parsed_scene.textures_is_srgb), 
-            [](const std::pair<aiTextureType, std::string>& pair) {return pair.first == aiTextureType_BASE_COLOR || pair.first == aiTextureType_NORMALS; });
+            [](const std::pair<aiTextureType, std::string>& pair) { return pair.first == aiTextureType_BASE_COLOR; });
         offset_textures_indices(renderer_material, global_texture_indices_offset);
         global_texture_indices_offset += textures.size();
 
@@ -126,15 +124,14 @@ Scene SceneParser::parse_scene_file(const std::string& filepath, float frame_asp
         else
             parsed_scene.vertex_normals.insert(parsed_scene.vertex_normals.end(), mesh->mNumVertices, hiprtFloat3{0, 0, 0});
 
-        // Inserting texcoords if present
-        if (mesh->HasTextureCoords(0))
+        // Inserting texcoords if present, looking at set 0 because that's where "classical" texcoords are
+        if (mesh->HasTextureCoords(0) && !textures.empty())
         {
-            for (int i = 0; i < mesh->mNumVertices; i++)
-            {
-                aiVector3D texcoord_3D = mesh->mTextureCoords[0][i];
-                parsed_scene.texcoords.push_back(make_float2(texcoord_3D.x, texcoord_3D.y));
-            }
+            std::transform(&mesh->mTextureCoords[0][0], &mesh->mTextureCoords[0][mesh->mNumVertices], std::back_inserter(parsed_scene.texcoords),
+                [](aiVector3D texcoord_3D) {return make_float2(texcoord_3D.x, texcoord_3D.y); });
         }
+        else
+            parsed_scene.texcoords.insert(parsed_scene.texcoords.end(), mesh->mNumVertices, float2{0.0f, 0.0f});
 
         // Inserting 0 or 1 depending on whether the normals are present or not.
         // These values will be used in the shader to determine whether we should do
@@ -145,7 +142,8 @@ Scene SceneParser::parse_scene_file(const std::string& filepath, float frame_asp
         parsed_scene.vertices_positions.insert(parsed_scene.vertices_positions.end(), 
             reinterpret_cast<hiprtFloat3*>(&mesh->mVertices[0]), 
             reinterpret_cast<hiprtFloat3*>(&mesh->mVertices[mesh->mNumVertices]));
-
+        
+        int max_mesh_index_offset = 0;
         for (int face_index = 0; face_index < mesh->mNumFaces; face_index++)
         {
             aiFace face = mesh->mFaces[face_index];
@@ -154,7 +152,7 @@ Scene SceneParser::parse_scene_file(const std::string& filepath, float frame_asp
             int index_2 = face.mIndices[1];
             int index_3 = face.mIndices[2];
 
-            // Accumulating the maximum index of this mesh
+            // Accumulating the maximum index of this mesh, this is to know
             max_mesh_index_offset = std::max(max_mesh_index_offset, std::max(index_1, std::max(index_2, index_3)));
 
             parsed_scene.triangle_indices.push_back(index_1 + global_indices_offset);
@@ -268,7 +266,12 @@ int SceneParser::get_first_texture_of_type(aiMaterial* mesh_material, aiTextureT
     {
         aiString aiPath;
         mesh_material->GetTexture(type, 0, &aiPath);
-        texture_path_list.push_back(std::make_pair(type, std::string(aiPath.data)));
+
+        std::string string_path = std::string(aiPath.data);
+        if (string_path.empty())
+            return -1;
+
+        texture_path_list.push_back(std::make_pair(type, string_path));
 
         return texture_path_list.size() - 1;
     }
@@ -298,7 +301,9 @@ std::vector<ImageRGBA> SceneParser::read_textures(const std::string& filepath, c
 //#pragma omp parallel for schedule(dynamic)
     for (int i = 0; i < texture_paths.size(); i++)
     {
-        std::string texture_path = corrected_filepath + texture_paths[i].second;
+        std::string path = texture_paths[i].second;
+        std::string texture_path = corrected_filepath + path;
+
         images[i] = ImageRGBA::read_image(texture_path, false);
     }
 

@@ -31,6 +31,12 @@ public:
      * A blend factor of 1 gives only the noisy image. 0 only the denoised image
      */
     static Image OIDN_denoise(const Image& image, int width, int height, float blend_factor);
+
+    /**
+     * Breaks the debugger when calling this function as if a breakpoint was hit. 
+     * Useful to be able to inspect the callstack at a given point in the program
+     */
+    static void debugbreak();
 };
 
 #endif

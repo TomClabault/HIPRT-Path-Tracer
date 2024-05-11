@@ -13,8 +13,7 @@
 #include "HostDeviceCommon/Material.h"
 #include "HostDeviceCommon/Xorshift.h"
 
-/* 
- * References:
+/* References:
  * 
  * [1] [CSE 272 University of California San Diego - Disney BSDF Homework] https://cseweb.ucsd.edu/~tzli/cse272/wi2024/homework1.pdf
  * [2] [GLSL Path Tracer implementation by knightcrawler25] https://github.com/knightcrawler25/GLSL-PathTracer

@@ -43,7 +43,6 @@ void GPURenderer::change_render_resolution(int new_width, int new_height)
 
 	m_pixels_sample_count.resize(new_width * new_height);
 	m_pixels_squared_luminance.resize(new_width * new_height);
-	m_debug_pixel_active.resize(new_width * new_height);
 
 	// Recomputing the perspective projection matrix since the aspect ratio
 	// may have changed
@@ -64,11 +63,6 @@ OrochiBuffer<ColorRGB>& GPURenderer::get_denoiser_albedo_buffer()
 OrochiBuffer<float3>& GPURenderer::get_denoiser_normals_buffer()
 {
 	return m_normals_buffer;
-}
-
-OrochiBuffer<int>& GPURenderer::get_debug_pixel_active_buffer()
-{
-	return m_debug_pixel_active;
 }
 
 OrochiBuffer<int>& GPURenderer::get_pixels_sample_count_buffer()
@@ -104,18 +98,18 @@ HIPRTRenderData GPURenderer::get_render_data()
 
 	render_data.buffers.pixels = m_pixels_interop_buffer.get_device_pointer();
 	render_data.buffers.triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.mesh.triangleIndices);
-	render_data.buffers.triangles_vertices = reinterpret_cast<float3*>(m_hiprt_scene.mesh.vertices);
+	render_data.buffers.vertices_positions = reinterpret_cast<float3*>(m_hiprt_scene.mesh.vertices);
 	render_data.buffers.has_vertex_normals = reinterpret_cast<unsigned char*>(m_hiprt_scene.has_vertex_normals);
 	render_data.buffers.vertex_normals = reinterpret_cast<float3*>(m_hiprt_scene.vertex_normals);
 	render_data.buffers.material_indices = reinterpret_cast<int*>(m_hiprt_scene.material_indices);
 	render_data.buffers.materials_buffer = reinterpret_cast<RendererMaterial*>(m_hiprt_scene.materials_buffer);
 	render_data.buffers.emissive_triangles_count = m_hiprt_scene.emissive_triangles_count;
 	render_data.buffers.emissive_triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.emissive_triangles_indices);
-	render_data.buffers.material_textures = reinterpret_cast<oroTextureObject_t*>(m_hiprt_scene.material_textures);
-	render_data.buffers.texture_is_srgb = reinterpret_cast<unsigned char*>(m_hiprt_scene.texture_is_srgb);
-	render_data.buffers.texcoords = reinterpret_cast<float2*>(m_hiprt_scene.texcoords_buffer);
 
-	render_data.aux_buffers.debug_pixel_active = m_debug_pixel_active.get_device_pointer();
+	render_data.buffers.material_textures = reinterpret_cast<oroTextureObject_t*>(m_hiprt_scene.material_textures);
+	render_data.buffers.texcoords = reinterpret_cast<float2*>(m_hiprt_scene.texcoords_buffer);
+	render_data.buffers.texture_is_srgb = reinterpret_cast<unsigned char*>(m_hiprt_scene.texture_is_srgb);
+
 	render_data.aux_buffers.denoiser_normals = m_normals_buffer.get_device_pointer();
 	render_data.aux_buffers.denoiser_albedo = m_albedo_buffer.get_device_pointer();
 	render_data.aux_buffers.pixel_sample_count = m_pixels_sample_count.get_device_pointer();

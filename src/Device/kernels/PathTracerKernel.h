@@ -112,11 +112,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
         // appear too dark.
         // We're rescaling the color of the pixels that stopped sampling here for correct display
         render_data.buffers.pixels[index] = render_data.buffers.pixels[index] / render_data.render_settings.sample_number * (render_data.render_settings.sample_number + render_data.render_settings.samples_per_frame);
-        render_data.aux_buffers.debug_pixel_active[index] = 0;
         return;
     }
-    else
-        render_data.aux_buffers.debug_pixel_active[index] = render_data.render_settings.sample_number;
 
     Xorshift32Generator random_number_generator(wang_hash((index + 1) * (render_data.render_settings.sample_number + 1)));
 

@@ -26,6 +26,7 @@
 
 
 // TODO Code Organization:
+// - don't need the issRGB array since only base color is, we can sample this one only in sRGB
 // - Remove GPURenderer.hiprt_scene, useless. Only contains HIPRT Ctxt (which can be made a member variable of the GPU Renderer) and the various buffers which can be kept in a RenderData member variable
 // - Use orochiBuffers when initializing the GPURenderer.RenderData instead of manual oroMalloc as currently done in set_hiprt_scene_from_scene
 // - Destroy buffers when disabling adaptive sampling to save VRAM
@@ -42,6 +43,15 @@
 
 
 // TODO Features:
+// - find a way to not fill the texcoords buffer for meshes that don't have textures
+// - pack RendererMaterial informations such as texture indices (we can probably use 16 bit for a texture index --> 2 texture indices in one 32 bit register)
+// - use 8 bit textures for material properties instead of float
+// - log size of buffers used: vertices, indices, normals, ...
+// - display active pixels adaptive sampling
+// - able / disable normal mapping
+// - use only one channel for material property texture to save VRAM
+// - Scene parsing is pretty slow and seems to be CPU bound in our code, not ASSIMP so have a look at that
+// - Remove vertex normals for meshes that have normal maps and save VRAM
 // - texture compression
 // - float compression for render buffers?
 // - Exporter (just serialize the scene to binary file I guess)
@@ -302,13 +312,7 @@ void APIENTRY RenderWindow::gl_debug_output_callback(GLenum source,
 
 	// The following breaks into the debugger to help pinpoint what OpenGL
 	// call errored
-#if defined( _WIN32 )
-	__debugbreak();
-#elif defined( GNUC )
-	raise(SIGTRAP);
-#else
-	;
-#endif
+	Utils::debugbreak();
 }
 
 RenderWindow::RenderWindow(int width, int height) : m_viewport_width(width), m_viewport_height(height), m_render_settings(m_renderer.get_render_settings())
@@ -709,7 +713,7 @@ void RenderWindow::run()
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
-		bool image_rendered = render();
+		render();
 
 		if (m_application_settings.enable_denoising)
 		{
@@ -765,9 +769,9 @@ void RenderWindow::run()
 				display(m_renderer.get_pixels_sample_count_buffer().download_data().data());
 				break;
 
-			case DisplayView::ADAPTIVE_SAMPLING_ACTIVE_PIXELS:
+			/*case DisplayView::ADAPTIVE_SAMPLING_ACTIVE_PIXELS:
 				display(m_renderer.get_debug_pixel_active_buffer().download_data().data());
-				break;
+				break;*/
 
 			case DisplayView::DEFAULT:
 			default:

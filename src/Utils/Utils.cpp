@@ -155,3 +155,14 @@ Image Utils::OIDN_denoise(const Image& image, int width, int height, float blend
 
     return output_image;
 }
+
+void Utils::debugbreak()
+{
+#if defined( _WIN32 )
+    __debugbreak();
+#elif defined( GNUC )
+    raise(SIGTRAP);
+#else
+    ;
+#endif
+}

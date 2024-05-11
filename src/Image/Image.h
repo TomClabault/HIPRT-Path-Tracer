@@ -190,6 +190,7 @@ public:
     Image(const char* filepath);
 
     static Image read_image(const std::string& filepath, bool flipY);
+    static Image read_image_hdr(const std::string& filepath, bool flipY);
     bool write_image_png(const char* filename, const bool flipY = true) const;
     bool write_image_hdr(const char* filename, const bool flipY = true) const;
 };
@@ -205,6 +206,7 @@ public:
     ImageRGBA(const char* filepath);
 
     static ImageRGBA read_image(const std::string& filepath, bool flipY);
+    static ImageRGBA read_image_hdr(const std::string& filepath, bool flipY);
     bool write_image_png(const char* filename, const bool flipY = true) const;
     bool write_image_hdr(const char* filename, const bool flipY = true) const;
 };

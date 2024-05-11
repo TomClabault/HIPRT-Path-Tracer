@@ -25,11 +25,48 @@ Image Image::read_image(const std::string& filepath, bool flipY)
     stbi_set_flip_vertically_on_load(flipY);
 
     int width, height, channels;
+    unsigned char* pixels = stbi_load(filepath.c_str(), &width, &height, &channels, 3);
+
+    if (!pixels)
+    {
+        std::cout << "Error reading image " << filepath << std::endl;
+        Utils::debugbreak();
+
+        std::exit(1);
+    }
+
+    Image output_image(width, height);
+#pragma omp parallel for
+    for (int y = 0; y < height; y++)
+    {
+        for (int x = 0; x < width; x++)
+        {
+            int index = x + y * width;
+            ColorRGB float_pixel_color;
+            float_pixel_color.r = pixels[index * 3 + 0] / 255.0f;
+            float_pixel_color.g = pixels[index * 3 + 1] / 255.0f;
+            float_pixel_color.b = pixels[index * 3 + 2] / 255.0f;
+
+            output_image[index] = float_pixel_color;
+        }
+    }
+
+    output_image.channels = 3;
+    return output_image;
+}
+
+Image Image::read_image_hdr(const std::string& filepath, bool flipY)
+{
+    stbi_set_flip_vertically_on_load(flipY);
+
+    int width, height, channels;
     float* pixels = stbi_loadf(filepath.c_str(), &width, &height, &channels, 3);
 
     if (!pixels)
     {
         std::cout << "Error reading image " << filepath << std::endl;
+        Utils::debugbreak();
+
         std::exit(1);
     }
 
@@ -83,11 +120,49 @@ ImageRGBA ImageRGBA::read_image(const std::string& filepath, bool flipY)
     stbi_set_flip_vertically_on_load(flipY);
 
     int width, height, channels;
+    unsigned char* pixels = stbi_load(filepath.c_str(), &width, &height, &channels, 4);
+
+    if (!pixels)
+    {
+        std::cout << "Error reading image " << filepath << std::endl;
+        Utils::debugbreak();
+
+        std::exit(1);
+    }
+
+    ImageRGBA output_image(width, height);
+#pragma omp parallel for
+    for (int y = 0; y < height; y++)
+    {
+        for (int x = 0; x < width; x++)
+        {
+            int index = x + y * width;
+            ColorRGBA float_pixel_color;
+            float_pixel_color.r = pixels[index * 4 + 0] / 255.0f;
+            float_pixel_color.g = pixels[index * 4 + 1] / 255.0f;
+            float_pixel_color.b = pixels[index * 4 + 2] / 255.0f;
+            float_pixel_color.a = pixels[index * 4 + 3] / 255.0f;
+
+            output_image[index] = float_pixel_color;
+        }
+    }
+
+    output_image.channels = 4;
+    return output_image;
+}
+
+ImageRGBA ImageRGBA::read_image_hdr(const std::string& filepath, bool flipY)
+{
+    stbi_set_flip_vertically_on_load(flipY);
+
+    int width, height, channels;
     float* pixels = stbi_loadf(filepath.c_str(), &width, &height, &channels, 4);
 
     if (!pixels)
     {
         std::cout << "Error reading image " << filepath << std::endl;
+        Utils::debugbreak();
+
         std::exit(1);
     }
 

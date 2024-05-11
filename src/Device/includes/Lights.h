@@ -20,9 +20,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 sample_random_point_on_lights(const HIPRTR
     int triangle_index = light_info.emissive_triangle_index = render_data.buffers.emissive_triangles_indices[random_index];
 
 
-    float3 vertex_A = render_data.buffers.triangles_vertices[render_data.buffers.triangles_indices[triangle_index * 3 + 0]];
-    float3 vertex_B = render_data.buffers.triangles_vertices[render_data.buffers.triangles_indices[triangle_index * 3 + 1]];
-    float3 vertex_C = render_data.buffers.triangles_vertices[render_data.buffers.triangles_indices[triangle_index * 3 + 2]];
+    float3 vertex_A = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[triangle_index * 3 + 0]];
+    float3 vertex_B = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[triangle_index * 3 + 1]];
+    float3 vertex_C = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[triangle_index * 3 + 2]];
 
     float rand_1 = random_number_generator();
     float rand_2 = random_number_generator();
@@ -49,9 +49,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 sample_random_point_on_lights(const HIPRTR
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float triangle_area(const HIPRTRenderData& render_data, int triangle_index)
 {
-    float3 vertex_A = render_data.buffers.triangles_vertices[render_data.buffers.triangles_indices[triangle_index * 3 + 0]];
-    float3 vertex_B = render_data.buffers.triangles_vertices[render_data.buffers.triangles_indices[triangle_index * 3 + 1]];
-    float3 vertex_C = render_data.buffers.triangles_vertices[render_data.buffers.triangles_indices[triangle_index * 3 + 2]];
+    float3 vertex_A = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[triangle_index * 3 + 0]];
+    float3 vertex_B = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[triangle_index * 3 + 1]];
+    float3 vertex_C = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[triangle_index * 3 + 2]];
 
     float3 AB = vertex_B - vertex_A;
     float3 AC = vertex_C - vertex_A;

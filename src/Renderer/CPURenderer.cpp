@@ -29,14 +29,13 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.buffers.has_vertex_normals = parsed_scene.has_vertex_normals.data();
     m_render_data.buffers.pixels = m_framebuffer.data().data();
     m_render_data.buffers.triangles_indices = parsed_scene.triangle_indices.data();
-    m_render_data.buffers.triangles_vertices = parsed_scene.vertices_positions.data();
+    m_render_data.buffers.vertices_positions = parsed_scene.vertices_positions.data();
     m_render_data.buffers.vertex_normals = parsed_scene.vertex_normals.data();
     m_render_data.buffers.texcoords = parsed_scene.texcoords.data();
 
     m_render_data.buffers.material_textures = parsed_scene.textures.data();
     m_render_data.buffers.texture_is_srgb = parsed_scene.textures_is_srgb.data();
 
-    m_render_data.aux_buffers.debug_pixel_active = m_debug_pixel_active_buffer.data();
     m_render_data.aux_buffers.denoiser_albedo = m_denoiser_albedo.data();
     m_render_data.aux_buffers.denoiser_normals = m_denoiser_normals.data();
     m_render_data.aux_buffers.pixel_sample_count = m_pixel_sample_count.data();
@@ -70,11 +69,10 @@ Image& CPURenderer::get_framebuffer()
 {
     return m_framebuffer;
 }
-
-#define DEBUG_PIXEL 1
+#define DEBUG_PIXEL 0
 #define DEBUG_EXACT_COORDINATE 0
-#define DEBUG_PIXEL_X 419
-#define DEBUG_PIXEL_Y 210
+#define DEBUG_PIXEL_X 476
+#define DEBUG_PIXEL_Y 515
 
 
 void CPURenderer::render()

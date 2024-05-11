@@ -27,9 +27,9 @@ GLOBAL_KERNEL_SIGNATURE(void) NormalsKernel(hiprtGeometry geom, HIPRTRenderData 
 	int index_B = render_data.buffers.triangles_indices[hit.primID * 3 + 1];
 	int index_C = render_data.buffers.triangles_indices[hit.primID * 3 + 2];
 
-	float3 vertex_A = render_data.buffers.triangles_vertices[index_A];
-	float3 vertex_B = render_data.buffers.triangles_vertices[index_B];
-	float3 vertex_C = render_data.buffers.triangles_vertices[index_C];
+	float3 vertex_A = render_data.buffers.vertices_positions[index_A];
+	float3 vertex_B = render_data.buffers.vertices_positions[index_B];
+	float3 vertex_C = render_data.buffers.vertices_positions[index_C];
 
 	float3 normal;
 	if (render_data.buffers.has_vertex_normals[index_A])

@@ -50,10 +50,12 @@ struct RenderBuffers
 	// pre-divided by the number of samples
 	ColorRGB* pixels = nullptr;
 
-	// A device pointer to the buffer of triangles indices
+	// A device pointer to the buffer of triangles vertex indices
+	// triangles_indices[0], triangles_indices[1] and triangles_indices[2]
+	// represent the indices of the vertices of the first triangle for example
 	int* triangles_indices = nullptr;
 	// A device pointer to the buffer of triangle vertices positions
-	float3* triangles_vertices = nullptr;
+	float3* vertices_positions = nullptr;
 	// A device pointer to a buffer filled with 0s and 1s that
 	// indicates whether or not a vertex normal is available for
 	// the given vertex index
@@ -87,8 +89,6 @@ struct RenderBuffers
 
 struct AuxiliaryBuffers
 {
-	int* debug_pixel_active = nullptr;
-
 	// World space normals for the denoiser
 	// These normals should already be divided by the number of samples
 	float3* denoiser_normals = nullptr;
@@ -115,7 +115,7 @@ enum AmbientLightType
 
 struct WorldSettings
 {
-	AmbientLightType ambient_light_type = AmbientLightType::ENVMAP;
+	AmbientLightType ambient_light_type = AmbientLightType::UNIFORM;
 	ColorRGB uniform_light_color = ColorRGB(0.5f);
 
 	unsigned int envmap_width = 0, envmap_height = 0;
