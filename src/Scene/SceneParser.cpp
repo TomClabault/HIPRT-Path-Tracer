@@ -214,6 +214,8 @@ RendererMaterial SceneParser::read_material_properties(aiMaterial* mesh_material
     mesh_material->Get(AI_MATKEY_CLEARCOAT_ROUGHNESS_FACTOR, renderer_material.clearcoat_roughness);
     mesh_material->Get(AI_MATKEY_REFRACTI, renderer_material.ior);
     mesh_material->Get(AI_MATKEY_TRANSMISSION_FACTOR, renderer_material.specular_transmission);
+    mesh_material->Get(AI_MATKEY_VOLUME_ATTENUATION_COLOR, renderer_material.absorption_color);
+    mesh_material->Get(AI_MATKEY_VOLUME_ATTENUATION_DISTANCE, renderer_material.absorption_at_distance);
 
     if (renderer_material.is_emissive())
     {

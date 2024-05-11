@@ -946,7 +946,7 @@ void RenderWindow::show_objects_panel()
 		some_material_changed |= ImGui::SliderFloat("Clearcoat IOR", &material.clearcoat_ior, 0.0f, 10.0f);
 		some_material_changed |= ImGui::SliderFloat("IOR", &material.ior, 0.0f, 10.0f);
 		some_material_changed |= ImGui::SliderFloat("Transmission", &material.specular_transmission, 0.0f, 1.0f);
-		some_material_changed |= ImGui::SliderFloat("Absorption", &material.absorption, 0.0f, 50.0f);
+		some_material_changed |= ImGui::SliderFloat("Absorption distance", &material.absorption_at_distance, 0.0f, 20.0f);
 		some_material_changed |= ImGui::ColorEdit3("Absbsorption color", (float*)&material.absorption_color);
 		some_material_changed |= ImGui::ColorEdit3("Emission", (float*)&material.emission, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
 

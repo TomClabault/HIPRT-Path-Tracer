@@ -20,10 +20,11 @@
  * [2] [GLSL Path Tracer implementation by knightcrawler25] https://github.com/knightcrawler25/GLSL-PathTracer
  * [3] [SIGGRAPH 2012 Course] https://blog.selfshadow.com/publications/s2012-shading-course/#course_content
  * [4] [SIGGRAPH 2015 Course] https://blog.selfshadow.com/publications/s2015-shading-course/#course_content
- * [5] [PBRT v3 Source Code] https://github.com/mmp/pbrt-v3
- * [6] [PBRT v4 Source Code] https://github.com/mmp/pbrt-v4
- * [7] [Blender's Cycles Source Code] https://github.com/blender/cycles
- * [8] [CS184 Adaptive sampling] https://cs184.eecs.berkeley.edu/sp24/docs/hw3-1-part-5
+ * [5] [Burley 2015 Course Notes - Extending the Disney BRDF to a BSDF with Integrated Subsurface Scattering] https://blog.selfshadow.com/publications/s2015-shading-course/burley/s2015_pbs_disney_bsdf_notes.pdf
+ * [6] [PBRT v3 Source Code] https://github.com/mmp/pbrt-v3
+ * [7] [PBRT v4 Source Code] https://github.com/mmp/pbrt-v4
+ * [8] [Blender's Cycles Source Code] https://github.com/blender/cycles
+ * [9] [CS184 Adaptive sampling] https://cs184.eecs.berkeley.edu/sp24/docs/hw3-1-part-5
  */
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float disney_schlick_weight(float f0, float abs_cos_angle)
@@ -265,9 +266,15 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_glass_eval(const RendererMaterial
         color = sqrt(material.base_color) * D * (1 - F) * G * hippt::abs(HoL * HoV / denom);
         if (ray_payload.inside_volume)
         {
-            // We're refracting but we're inside the volume. That means we're exiting the volume.
-            // This is where we take absorption into account using Beer-Lambert law
-            color = color * exp((ColorRGB(1.0f) - material.absorption_color) * -material.absorption * ray_payload.distance_in_volume);
+            // We are currently inside the volume and we are refracting. That means we're exiting the volume.
+            // This is where we take absorption into account using Beer-Lambert's law.
+
+            // Remapping the absorption coefficient so that it is more intuitive to manipulate
+            // according to Burley, 2015 [5].
+            // This effectively gives us a "at distance" absorption coefficient.
+            ColorRGB absorption_coefficient = log(material.absorption_color) / material.absorption_at_distance;
+            //color = color * exp((ColorRGB(1.0f) - material.absorption_color) * -material.absorption_at_distance * ray_payload.distance_in_volume);
+            color = color * exp(absorption_coefficient * ray_payload.distance_in_volume);
         }
 
         ray_payload.inside_volume = !ray_payload.inside_volume;

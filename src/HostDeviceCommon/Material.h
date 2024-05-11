@@ -36,6 +36,10 @@ struct RendererMaterial
 
         // Clamping to avoid negative emission
         emission = max(ColorRGB(0.0f), emission);
+
+        // Avoiding zero
+        absorption_at_distance = hippt::max(absorption_at_distance, 1.0e-4f);
+        absorption_color = max(absorption_color, ColorRGB(1.0f / 255.0f));
     }
 
     /*
@@ -121,7 +125,7 @@ struct RendererMaterial
     float ior = 1.40f;
     float specular_transmission = 0.0f;
     // Volume absorption density
-    float absorption = 1.0f;
+    float absorption_at_distance = 1.0f;
     ColorRGB absorption_color = ColorRGB(1.0f);
 };
 

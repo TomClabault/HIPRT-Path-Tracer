@@ -43,6 +43,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB operator/ (const float k, const ColorRGB
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB operator/ (const ColorRGB& c, const float k) { return ColorRGB(c.r / k, c.g / k, c.b / k); }
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sqrt(const ColorRGB& col) { return ColorRGB(sqrtf(col.r), sqrtf(col.g), sqrtf(col.b)); }
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB exp(const ColorRGB& col) { return ColorRGB(expf(col.r), expf(col.g), expf(col.b)); }
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB log(const ColorRGB& col) { return ColorRGB(logf(col.r), logf(col.g), logf(col.b)); }
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB pow(const ColorRGB& col, float k) { return ColorRGB(powf(col.r, k), powf(col.g, k), powf(col.b, k)); }
 
 struct ColorRGBA
@@ -80,6 +81,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA operator/ (const float k, const ColorRG
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA operator/ (const ColorRGBA& c, const float k) { return ColorRGBA(c.r / k, c.g / k, c.b / k, c.a / k); }
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA sqrt(const ColorRGBA& col) { return ColorRGBA(sqrtf(col.r), sqrtf(col.g), sqrtf(col.b), sqrtf(col.a)); }
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA exp(const ColorRGBA& col) { return ColorRGBA(expf(col.r), expf(col.g), expf(col.b), expf(col.a)); }
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA log(const ColorRGBA& col) { return ColorRGBA(logf(col.r), logf(col.g), logf(col.b), logf(col.a)); }
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA pow(const ColorRGBA& col, float k) { return ColorRGBA(powf(col.r, k), powf(col.g, k), powf(col.b, k), powf(col.a, k)); }
 
 #endif
