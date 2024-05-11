@@ -8,12 +8,6 @@
 
 #include "HostDeviceCommon/Math.h"
 
-enum RayState
-{
-    BOUNCE,
-    MISSED
-};
-
 struct LightSourceInformation
 {
     int emissive_triangle_index = -1;

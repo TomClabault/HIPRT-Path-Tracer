@@ -33,6 +33,9 @@ struct RendererMaterial
         clearcoat_roughness = hippt::max(1.0e-4f, clearcoat_roughness);
         if (abs(ior - 1.0f) < 0.01f)
             ior = 1.01f;
+
+        // Clamping to avoid negative emission
+        emission = max(ColorRGB(0.0f), emission);
     }
 
     /*
@@ -117,6 +120,9 @@ struct RendererMaterial
     int specular_transmission_texture_index = -1;
     float ior = 1.40f;
     float specular_transmission = 0.0f;
+    // Volume absorption density
+    float absorption = 1.0f;
+    ColorRGB absorption_color = ColorRGB(1.0f);
 };
 
 #endif

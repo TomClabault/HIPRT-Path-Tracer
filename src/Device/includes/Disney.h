@@ -9,6 +9,7 @@
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/ONB.h"
 #include "Device/includes/OrenNayar.h"
+#include "Device/includes/RayPayload.h"
 #include "Device/includes/Sampling.h"
 #include "HostDeviceCommon/Material.h"
 #include "HostDeviceCommon/Xorshift.h"
@@ -176,7 +177,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_clearcoat_sample(const RendererMate
 }
 
 // TOOD can use local_view dir and light_dir here
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_glass_eval(const RendererMaterial& material, const float3& view_direction, float3 surface_normal, const float3& to_light_direction, float& pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_glass_eval(const RendererMaterial& material, RayPayload& ray_payload, const float3& view_direction, float3 surface_normal, const float3& to_light_direction, float& pdf)
 {
     float start_NoV = hippt::dot(surface_normal, view_direction);
     if (start_NoV < 0.0f)
@@ -262,12 +263,20 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_glass_eval(const RendererMaterial
         // so this is an extremely rare case.
         // The PDF being non-zero, we could actualy compute it, it's valid but absolutely not with floats :D
         color = sqrt(material.base_color) * D * (1 - F) * G * hippt::abs(HoL * HoV / denom);
+        if (ray_payload.inside_volume)
+        {
+            // We're refracting but we're inside the volume. That means we're exiting the volume.
+            // This is where we take absorption into account using Beer-Lambert law
+            color = color * exp((ColorRGB(1.0f) - material.absorption_color) * -material.absorption * ray_payload.distance_in_volume);
+        }
+
+        ray_payload.inside_volume = !ray_payload.inside_volume;
     }
 
     return color;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_glass_sample(const RendererMaterial& material, const float3& view_direction, float3 surface_normal, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_glass_sample(const RendererMaterial& material, RayPayload& ray_payload, const float3& view_direction, float3 surface_normal, Xorshift32Generator& random_number_generator)
 {
     float3 T, B;
     build_rotated_ONB(surface_normal, T, B, material.anisotropic_rotation * M_PI);
@@ -336,7 +345,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_sheen_sample(const RendererMaterial
     return cosine_weighted_sample(surface_normal, random_number_generator);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_eval(const RendererMaterial& material, const float3& view_direction, const float3& shading_normal, const float3& to_light_direction, float& pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_eval(const RendererMaterial& material, RayPayload& ray_payload, const float3& view_direction, const float3& shading_normal, const float3& to_light_direction, float& pdf)
 {
     pdf = 0.0f;
 
@@ -376,7 +385,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_eval(const RendererMaterial& mate
 
     // Glass
     tmp_weight = (1.0f - material.metallic) * material.specular_transmission;
-    final_color += tmp_weight > 0 ? tmp_weight * disney_glass_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : ColorRGB(0.0f);
+    final_color += tmp_weight > 0 ? tmp_weight * disney_glass_eval(material, ray_payload, view_direction, shading_normal, to_light_direction, tmp_pdf) : ColorRGB(0.0f);
     pdf += tmp_pdf * tmp_weight;
     tmp_pdf = 0.0f;
 
@@ -388,7 +397,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_eval(const RendererMaterial& mate
     return final_color;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_sample(const RendererMaterial& material, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal, float3& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_sample(const RendererMaterial& material, RayPayload& ray_payload, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal, float3& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
 {
     pdf = 0.0f;
 
@@ -468,7 +477,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_sample(const RendererMaterial& ma
     else if (rand_1 < cdf[2])
         output_direction = disney_clearcoat_sample(material, view_direction, normal, random_number_generator);
     else
-        output_direction = disney_glass_sample(material, view_direction, normal, random_number_generator);
+        output_direction = disney_glass_sample(material, ray_payload, view_direction, normal, random_number_generator);
 
     if (hippt::dot(output_direction, shading_normal) < 0 && !(rand_1 > cdf[2]))
         // It can happen that the light direction sampled is below the surface. 
@@ -479,7 +488,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_sample(const RendererMaterial& ma
         // is a valid configuration for the glass lobe
         return ColorRGB(0.0f);
 
-    return disney_eval(material, view_direction, normal, output_direction, pdf);
+    return disney_eval(material, ray_payload, view_direction, normal, output_direction, pdf);
 }
 
 #endif

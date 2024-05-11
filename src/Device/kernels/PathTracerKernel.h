@@ -8,6 +8,7 @@
 #include "Device/includes/Lights.h"
 #include "Device/includes/Envmap.h"
 #include "Device/includes/Material.h"
+#include "Device/includes/RayPayload.h"
 #include "Device/includes/Sampling.h"
 #include "HostDeviceCommon/Camera.h"
 #include "HostDeviceCommon/Xorshift.h"
@@ -32,9 +33,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void debug_set_final_color(const HIPRTRenderData&
         render_data.buffers.pixels[y * res_x + x] = render_data.buffers.pixels[y * res_x + x] + final_color;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE bool check_for_negative_color(ColorRGB sample_color, int x, int y, int sample)
+HIPRT_HOST_DEVICE HIPRT_INLINE bool check_for_negative_color(ColorRGB ray_color, int x, int y, int sample)
 {
-    if (sample_color.r < 0 || sample_color.g < 0 || sample_color.b < 0)
+    if (ray_color.r < 0 || ray_color.g < 0 || ray_color.b < 0)
     {
 #ifndef __KERNELCC__
         std::cout << "Negative color at [" << x << ", " << y << "], sample " << sample << std::endl;
@@ -46,9 +47,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool check_for_negative_color(ColorRGB sample_col
     return false;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE bool check_for_nan(ColorRGB sample_color, int x, int y, int sample)
+HIPRT_HOST_DEVICE HIPRT_INLINE bool check_for_nan(ColorRGB ray_color, int x, int y, int sample)
 {
-    if (hippt::isNaN(sample_color.r) || hippt::isNaN(sample_color.g) || hippt::isNaN(sample_color.b))
+    if (hippt::isNaN(ray_color.r) || hippt::isNaN(ray_color.g) || hippt::isNaN(ray_color.b))
     {
 #ifndef __KERNELCC__
         std::cout << "NaN at [" << x << ", " << y << "], sample" << sample << std::endl;
@@ -128,11 +129,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
         float y_jittered = (y + 0.5f) + random_number_generator() - 1.0f;
 
         hiprtRay ray = camera.get_camera_ray(x_jittered, y_jittered, res);
-
-        ColorRGB throughput = ColorRGB(1.0f);
-        ColorRGB sample_color = ColorRGB(0.0f);
-        RayState next_ray_state = RayState::BOUNCE;
-        BRDF last_brdf_hit_type = BRDF::Uninitialized;
+        RayPayload ray_payload;
 
         // Whether or not we've already written to the denoiser's buffers
         bool denoiser_AOVs_set = false;
@@ -140,7 +137,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
 
         for (int bounce = 0; bounce < render_data.render_settings.nb_bounces; bounce++)
         {
-            if (next_ray_state == RayState::BOUNCE)
+            if (ray_payload.next_ray_state == RayState::BOUNCE)
             {
                 HitInfo closest_hit_info;
                 bool intersection_found = trace_ray(render_data, ray, closest_hit_info);
@@ -148,7 +145,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                 if (intersection_found)
                 {
                     RendererMaterial material = get_intersection_material(render_data, closest_hit_info);
-                    last_brdf_hit_type = material.brdf_type;
+                    ray_payload.last_brdf_hit_type = material.brdf_type;
+
+                    if (ray_payload.inside_volume)
+                        ray_payload.distance_in_volume += closest_hit_info.t;
+                    else
+                        ray_payload.distance_in_volume = 0.0f;
 
                     // For the BRDF calculations, bounces, ... to be correct, we need the normal to be in the same hemisphere as
                     // the view direction. One thing that can go wrong is when we have an emissive triangle (typical area light)
@@ -166,10 +168,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                     // --------------------------------------------------- //
                     // ----------------- Direct lighting ----------------- //
                     // --------------------------------------------------- //
-                    ColorRGB light_sample_radiance = sample_light_sources(render_data, -ray.direction, closest_hit_info, material, random_number_generator);
-                    ColorRGB envmap_radiance;
-                    if (render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP)
-                        envmap_radiance = sample_environment_map(render_data, -ray.direction, closest_hit_info, material, random_number_generator);
+                    ColorRGB light_sample_radiance = sample_light_sources(render_data, material, closest_hit_info, -ray.direction, random_number_generator);
+                    ColorRGB envmap_radiance = sample_environment_map(render_data, material, closest_hit_info, -ray.direction, random_number_generator);
 
                     // --------------------------------------- //
                     // ---------- Indirect lighting ---------- //
@@ -177,13 +177,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
 
                     float brdf_pdf;
                     float3 bounce_direction;
-                    ColorRGB brdf = brdf_dispatcher_sample(material, -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bounce_direction, brdf_pdf, random_number_generator);
+                    ColorRGB brdf = brdf_dispatcher_sample(material, ray_payload, -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bounce_direction, brdf_pdf, random_number_generator);
 
-                    if (last_brdf_hit_type == BRDF::SpecularFresnel)
+                    if (ray_payload.last_brdf_hit_type == BRDF::SpecularFresnel)
                         // The fresnel blend coefficient is in the PDF
                         denoiser_blend *= brdf_pdf;
 
-                    if (!denoiser_AOVs_set && last_brdf_hit_type != BRDF::SpecularFresnel)
+                    if (!denoiser_AOVs_set && ray_payload.last_brdf_hit_type != BRDF::SpecularFresnel)
                     {
                         denoiser_AOVs_set = true;
 
@@ -197,24 +197,24 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                         break;
 
                     if (bounce == 0)
-                        sample_color = sample_color + material.emission * throughput;
-                    sample_color = sample_color + (light_sample_radiance + envmap_radiance) * throughput;
+                        ray_payload.ray_color = ray_payload.ray_color + material.emission * ray_payload.throughput;
+                    ray_payload.ray_color = ray_payload.ray_color + (light_sample_radiance + envmap_radiance) * ray_payload.throughput;
 
-                    throughput *= brdf * hippt::abs(hippt::dot(bounce_direction, closest_hit_info.shading_normal)) / brdf_pdf;
+                    ray_payload.throughput *= brdf * hippt::abs(hippt::dot(bounce_direction, closest_hit_info.shading_normal)) / brdf_pdf;
 
                     int outside_surface = hippt::dot(bounce_direction, closest_hit_info.shading_normal) < 0 ? -1.0f : 1.0;
                     float3 new_ray_origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 3.0e-3f * outside_surface;
                     ray.origin = new_ray_origin;
                     ray.direction = bounce_direction;
 
-                    next_ray_state = RayState::BOUNCE;
+                    ray_payload.next_ray_state = RayState::BOUNCE;
                 }
                 else
                 {
                     ColorRGB skysphere_color;
                     if (render_data.world_settings.ambient_light_type == AmbientLightType::UNIFORM)
                         skysphere_color = render_data.world_settings.uniform_light_color;
-                    else if (render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP && (bounce == 0 || last_brdf_hit_type == BRDF::SpecularFresnel))
+                    else if (render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP && (bounce == 0 || ray_payload.last_brdf_hit_type == BRDF::SpecularFresnel))
                     {
                         // We're only getting the skysphere radiance for the first rays because the
                         // syksphere is importance sampled.
@@ -225,12 +225,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                         skysphere_color = sample_environment_map_from_direction(render_data.world_settings, ray.direction);
                     }
 
-                    sample_color += skysphere_color * throughput;
+                    ray_payload.ray_color += skysphere_color * ray_payload.throughput;
 
-                    next_ray_state = RayState::MISSED;
+                    ray_payload.next_ray_state = RayState::MISSED;
                 }
             }
-            else if (next_ray_state == RayState::MISSED)
+            else if (ray_payload.next_ray_state == RayState::MISSED)
                 break;
         }
 
@@ -242,8 +242,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
         // - Pink : sample with negative color
         // - Yellow : NaN sample
         bool invalid = false;
-        invalid |= check_for_negative_color(sample_color, x, y, sample);
-        invalid |= check_for_nan(sample_color, x, y, sample);
+        invalid |= check_for_negative_color(ray_payload.ray_color, x, y, sample);
+        invalid |= check_for_nan(ray_payload.ray_color, x, y, sample);
 
         if (invalid)
         {
@@ -252,8 +252,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
             return;
         }
 
-        squared_luminance_of_samples += sample_color.luminance() * sample_color.luminance();
-        final_color += sample_color;
+        squared_luminance_of_samples += ray_payload.ray_color.luminance() * ray_payload.ray_color.luminance();
+        final_color += ray_payload.ray_color;
     }
 
     render_data.buffers.pixels[index] += final_color;

@@ -59,7 +59,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float triangle_area(const HIPRTRenderData& render
     return hippt::length(hippt::cross(AB, AC)) / 2.0f;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_light_sources(HIPRTRenderData& render_data, const float3& view_direction, const HitInfo& closest_hit_info, const RendererMaterial& material, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_light_sources(HIPRTRenderData& render_data, const RendererMaterial& material, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
 {
     if (render_data.buffers.emissive_triangles_count == 0)
         // No emmisive geometry in the scene to sample
@@ -106,7 +106,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_light_sources(HIPRTRenderData& re
             light_sample_pdf /= dot_light_source;
 
             float pdf;
-            ColorRGB brdf = brdf_dispatcher_eval(material, view_direction, closest_hit_info.shading_normal, shadow_ray.direction, pdf);
+            RayPayload trash_payload;
+            ColorRGB brdf = brdf_dispatcher_eval(material, trash_payload, view_direction, closest_hit_info.shading_normal, shadow_ray.direction, pdf);
             if (pdf != 0.0f)
             {
                 float mis_weight = power_heuristic(light_sample_pdf, pdf);
@@ -123,7 +124,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_light_sources(HIPRTRenderData& re
 
     float3 sampled_brdf_direction;
     float direction_pdf;
-    ColorRGB brdf = brdf_dispatcher_sample(material, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_brdf_direction, direction_pdf, random_number_generator);
+    RayPayload trash_payload;
+    ColorRGB brdf = brdf_dispatcher_sample(material, trash_payload, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_brdf_direction, direction_pdf, random_number_generator);
     if (direction_pdf > 0)
     {
         hiprtRay new_ray;

@@ -30,7 +30,8 @@ struct ColorRGB
     float r, g, b;
 };
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float max(const ColorRGB& color) { return hippt::max(color.r, hippt::max(color.g, color.b)); }
+//HIPRT_HOST_DEVICE HIPRT_INLINE float max(const ColorRGB& color) { return hippt::max(color.r, hippt::max(color.g, color.b)); }
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB max(const ColorRGB& a, const ColorRGB& b) { return ColorRGB(hippt::max(a.r, b.r), hippt::max(a.g, b.g), hippt::max(a.b, b.b)); }
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB operator+ (const ColorRGB& a, const ColorRGB& b) { return ColorRGB(a.r + b.r, a.g + b.g, a.b + b.b); }
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB operator- (const ColorRGB& c) { return ColorRGB(-c.r, -c.g, -c.b); }
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB operator- (const ColorRGB& a, const ColorRGB& b) { return ColorRGB(a.r - b.r, a.g - b.g, a.b - b.b); }
@@ -66,7 +67,8 @@ struct ColorRGBA
     float r, g, b, a;
 };
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float max(const ColorRGBA& color) { return hippt::max(color.r, hippt::max(color.g, hippt::max(color.b, color.a))); }
+//HIPRT_HOST_DEVICE HIPRT_INLINE float max(const ColorRGBA& color) { return hippt::max(color.r, hippt::max(color.g, hippt::max(color.b, color.a))); }
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA max(const ColorRGBA& a, const ColorRGBA& b) { return ColorRGBA(hippt::max(a.r, b.r), hippt::max(a.g, b.g), hippt::max(a.b, b.b), hippt::max(a.a, b.a)); }
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA operator+ (const ColorRGBA& a, const ColorRGBA& b) { return ColorRGBA(a.r + b.r, a.g + b.g, a.b + b.b, a.a + b.a); }
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA operator- (const ColorRGBA& c) { return ColorRGBA(-c.r, -c.g, -c.b, c.a); }
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA operator- (const ColorRGBA& a, const ColorRGBA& b) { return ColorRGBA(a.r - b.r, a.g - b.g, a.b - b.b, a.a - b.a); }
