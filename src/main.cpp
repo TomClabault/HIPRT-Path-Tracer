@@ -21,7 +21,7 @@
 #include <iostream>
 #include <cmath>
 
-#define GPU_RENDER 0
+#define GPU_RENDER 1
 
 int main(int argc, char* argv[])
 {
@@ -35,7 +35,7 @@ int main(int argc, char* argv[])
     std::cout << std::endl;
 
     std::cout << "Reading \"" << cmd_arguments.skysphere_file_path << "\" envmap..." << std::endl;
-    ImageRGBA envmap_image = ImageRGBA::read_image(cmd_arguments.skysphere_file_path, /* flip Y */ true);
+    ImageRGBA envmap_image = ImageRGBA::read_image_hdr(cmd_arguments.skysphere_file_path, /* flip Y */ true);
 
 #if GPU_RENDER
 
