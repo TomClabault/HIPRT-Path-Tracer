@@ -165,11 +165,10 @@ void GPURenderer::launch_kernel(int tile_size_x, int tile_size_y, int res_x, int
 	OROCHI_CHECK_ERROR(oroModuleLaunchKernel(m_trace_kernel, nb_groups.x, nb_groups.y, 1, tile_size_x, tile_size_y, 1, 0, 0, launch_args, 0));
 }
 
-// TODO write a logger
 void log_bvh_building(hiprtBuildFlags build_flags)
 {
 	std::cout << "Compiling BVH building kernels & building scene ";
-	if (build_flags  == 0)
+	if (build_flags == 0)
 		// This is hiprtBuildFlagBitPreferFastBuild
 		std::cout << "LBVH";
 	else if (build_flags & hiprtBuildFlagBitPreferBalancedBuild)

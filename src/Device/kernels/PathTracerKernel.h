@@ -174,7 +174,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                         // ----------------- Direct lighting ----------------- //
                         // --------------------------------------------------- //
                         ColorRGB light_sample_radiance = sample_light_sources(render_data, material, closest_hit_info, -ray.direction, random_number_generator);
-                        ColorRGB envmap_radiance = sample_environment_map(render_data, material, closest_hit_info, -ray.direction, random_number_generator);
+                        ColorRGB envmap_radiance = sample_environment_map(render_data, material, ray_payload, closest_hit_info, -ray.direction, random_number_generator);
 
                         // --------------------------------------- //
                         // ---------- Indirect lighting ---------- //

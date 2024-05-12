@@ -79,10 +79,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE hiprtHit intersect_scene_cpu(const HIPRTRenderDat
     HitInfo closest_hit_info;
     closest_hit_info.t = -1.0f;
 
-    // TODO remove
-    //NestedDielectricsPayload payload;
-    //payload.render_data = &render_data;
-    //payload.ray_payload = ray_payload;
     if (render_data.cpu_only.bvh->intersect(ray, closest_hit_info))
     {
         hiprtHit.primID = closest_hit_info.primitive_index;
@@ -119,7 +115,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
         hit_info.shading_normal = get_shading_normal(render_data, hit_info.geometric_normal, hit_info.primitive_index, hit.uv, hit_info.texcoords);
 
         hit_info.t = hit.t;
-        hit_info.uv = hit.uv; // TODO remove ?
+        hit_info.uv = hit.uv;
 
         return true;
     }

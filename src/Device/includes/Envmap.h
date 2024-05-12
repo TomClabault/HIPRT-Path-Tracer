@@ -61,7 +61,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void env_map_cdf_search(const WorldSettings& worl
     x = hippt::max(hippt::min(lower, world_settings.envmap_width), 0u);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_environment_map(const HIPRTRenderData& render_data, const RendererMaterial& material, HitInfo& closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_environment_map(const HIPRTRenderData& render_data, const RendererMaterial& material, const RayPayload& ray_payload, HitInfo& closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
 {
     if (render_data.world_settings.ambient_light_type != AmbientLightType::ENVMAP)
         // Not using the envmap

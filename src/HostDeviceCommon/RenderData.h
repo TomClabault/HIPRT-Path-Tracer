@@ -20,10 +20,7 @@ struct HIPRTRenderSettings
 
 	// Number of samples rendered so far before the kernel call
 	// This is the sum of samples_per_frame for all frames
-	// that have been rendered
-	//
-	// TODO still relevant with new per-pixel sample count buffer used
-	// with adaptive sampling ?
+	// that have been rendered.
 	int sample_number = 0;
 
 	int samples_per_frame = 1;

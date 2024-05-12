@@ -35,11 +35,6 @@ Scene SceneParser::parse_scene_file(const std::string& filepath, float frame_asp
         glm::vec3 camera_lookat = *reinterpret_cast<glm::vec3*>(&camera->mLookAt);
         glm::vec3 camera_up = *reinterpret_cast<glm::vec3*>(&camera->mUp);
 
-        // We need to inverse to view matrix here, not sure why
-        // TODO investigate why the perspective matrix multiplied by a point using matrix_X_point
-        // gives a different result than the point multiplied by the matrix using the glm * operator
-        // This may be why we need to transpose the perspective matrix below and this may also explain
-        // why we need to inverse the view matrix below
         glm::mat4x4 lookat = glm::inverse(glm::lookAt(camera_position, camera_lookat, camera_up));
 
         glm::vec3 scale, skew, translation;
@@ -50,10 +45,6 @@ Scene SceneParser::parse_scene_file(const std::string& filepath, float frame_asp
         parsed_scene.camera.translation = translation;
         parsed_scene.camera.rotation = orientation;
 
-        // TODO + 0.425f is here to correct the FOV from a GLTF Blender export. After the export, 
-        // the scene in the renderer is view as if the FOV was smaller. We're correcting this by adding a fix
-        // +0.425 to try and get to same view as in Blender. THIS PROBABLY SHOULDN'T BE HERE AS THIS IS
-        // VERY SUS
         float aspect_ratio = frame_aspect_override == -1 ? camera->mAspect : frame_aspect_override;
         float vertical_fov = 2.0f * std::atan(std::tan(camera->mHorizontalFOV / 2.0f) * aspect_ratio) + 0.425f;
         parsed_scene.camera.projection_matrix = glm::transpose(glm::perspective(vertical_fov, aspect_ratio, camera->mClipPlaneNear, camera->mClipPlaneFar));
@@ -73,10 +64,6 @@ Scene SceneParser::parse_scene_file(const std::string& filepath, float frame_asp
         parsed_scene.camera.translation = translation;
         parsed_scene.camera.rotation = orientation;
 
-        // TODO + 0.425f is here to correct the FOV from a GLTF Blender export. After the export, 
-        // the scene in the renderer is view as if the FOV was smaller. We're correcting this by adding a fix
-        // +0.425 to try and get to same view as in Blender. THIS PROBABLY SHOULDN'T BE HERE AS THIS IS
-        // VERY SUS
         float aspect_ratio = 1280.0f / 720.0f;
         float horizontal_fov = 40.0f / 180 * M_PI;
         float vertical_fov = 2.0f * std::atan(std::tan(horizontal_fov / 2.0f) * aspect_ratio) + 0.425f;

@@ -139,12 +139,12 @@ struct RayPayload
 	// Whether or not we're exiting a material
 	bool leaving_mat = false;
 
-	HIPRT_HOST_DEVICE bool is_inside_volume()
+	HIPRT_HOST_DEVICE bool is_inside_volume() const
 	{
 		return interior_stack.stack_position > 0;
 	}
 	
-	HIPRT_HOST_DEVICE bool is_leaving_volume()
+	HIPRT_HOST_DEVICE bool is_leaving_volume() const
 	{
 		return leaving_mat;
 	}
