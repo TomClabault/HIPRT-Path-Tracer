@@ -6,9 +6,10 @@
 #ifndef DEVICE_INTERSECT_H
 #define DEVICE_INTERSECT_H
 
+#include "Device/includes/NestedDielectrics.h"
 #include "Device/includes/FixIntellisense.h"
-#include "HostDeviceCommon/HitInfo.h"
 #include "Device/includes/Texture.h"
+#include "HostDeviceCommon/HitInfo.h"
 #include "HostDeviceCommon/RenderData.h"
 
 /* References:
@@ -73,13 +74,17 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 get_shading_normal(const HIPRTRenderData& 
 
 #ifndef __KERNELCC__
 #include "Renderer/BVH.h"
-HIPRT_HOST_DEVICE HIPRT_INLINE hiprtHit intersect_scene_cpu(const HIPRTRenderData& render_data, const hiprtRay& ray)
+HIPRT_HOST_DEVICE HIPRT_INLINE hiprtHit intersect_scene_cpu(const HIPRTRenderData& render_data, const hiprtRay& ray, RayPayload* ray_payload, FilterFunction cutout_function)
 {
     hiprtHit hiprtHit;
     HitInfo closest_hit_info;
     closest_hit_info.t = -1.0f;
 
-    if (render_data.cpu_only.bvh->intersect(ray, closest_hit_info))
+    // TODO remove
+    //NestedDielectricsPayload payload;
+    //payload.render_data = &render_data;
+    //payload.ray_payload = ray_payload;
+    if (render_data.cpu_only.bvh->intersect(ray, closest_hit_info, cutout_function, nullptr))
     {
         hiprtHit.primID = closest_hit_info.primitive_index;
         hiprtHit.normal = closest_hit_info.geometric_normal;
@@ -91,13 +96,17 @@ HIPRT_HOST_DEVICE HIPRT_INLINE hiprtHit intersect_scene_cpu(const HIPRTRenderDat
 }
 #endif
 
-HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data, hiprtRay ray, HitInfo& hit_info)
+#ifdef __KERNELCC__
+HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data, RayPayload& ray_payload, hiprtRay ray, hiprtFuncTable func_table, HitInfo& hit_info)
+#else
+HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data, RayPayload& ray_payload, hiprtRay ray, FilterFunction func_table, HitInfo& hit_info)
+#endif
 {
 #ifdef __KERNELCC__
     hiprtGeomTraversalClosest tr(render_data.geom, ray);
-    hiprtHit				  hit = tr.getNextHit();
+    hiprtHit hit = tr.getNextHit();
 #else
-    hiprtHit hit = intersect_scene_cpu(render_data, ray);
+    hiprtHit hit = intersect_scene_cpu(render_data, ray, &ray_payload, func_table);
 #endif
 
     if (hit.hasHit())
@@ -132,7 +141,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& r
 
     return aoHit.hasHit();
 #else
-    hiprtHit hit = intersect_scene_cpu(render_data, ray);
+    hiprtHit hit = intersect_scene_cpu(render_data, ray, nullptr, nullptr);
     return hit.hasHit() && hit.t < t_max - 1.0e-4f;
 #endif // __KERNELCC__
 }

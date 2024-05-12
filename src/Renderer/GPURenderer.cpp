@@ -3,9 +3,7 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#include <algorithm>
-#include <deque>
-
+#include "UI/ApplicationSettings.h"
 #include <Orochi/OrochiUtils.h>
 #include "Renderer/GPURenderer.h"
 
@@ -22,7 +20,7 @@ void GPURenderer::render()
 
 	HIPRTCamera hiprt_cam = m_camera.to_hiprt();
 	HIPRTRenderData render_data = get_render_data();
-	void* launch_args[] = { &render_data, &resolution, &hiprt_cam};
+	void* launch_args[] = { &render_data, &m_func_table, &resolution, &hiprt_cam};
 	launch_kernel(8, 8, resolution.x, resolution.y, launch_args);
 
 #ifndef OROCHI_ENABLE_CUEW
@@ -137,25 +135,41 @@ void GPURenderer::compile_trace_kernel(const char* kernel_file_path, const char*
 
 	std::vector<std::string> additional_includes = { KERNEL_COMPILER_ADDITIONAL_INCLUDE, DEVICE_INCLUDES_DIRECTORY, OROCHI_INCLUDES_DIRECTORY, "-I./" };
 
+	hiprtFuncNameSet func_name_set;
+	if (!strcmp(kernel_function_name, ApplicationSettings::PATH_TRACING_KERNEL.c_str()))
+	{
+		// If we're compiling the path tracing kernel, we're going to add the func table
+		// for handling nested dielectrics priorities
+
+		hiprtFuncDataSet func_data_set;
+
+		oroFunction dielectric_priorities_cutout;
+		func_name_set.filterFuncName = "dielectric_priorities_cutout_filter";
+
+		HIPRT_CHECK_ERROR(hiprtCreateFuncTable(m_hiprt_orochi_ctx->hiprt_ctx, 1, 1, m_func_table));
+		HIPRT_CHECK_ERROR(hiprtSetFuncTable(m_hiprt_orochi_ctx->hiprt_ctx, m_func_table, 0, 0, func_data_set));
+		
+		func_name_set.filterFuncName = "dielectric_priorities_cutout_filter";
+	}
+
 	hiprtApiFunction trace_function_out;
-	if (HIPPTOrochiUtils::build_trace_kernel(m_hiprt_orochi_ctx->hiprt_ctx, kernel_file_path, kernel_function_name, trace_function_out, additional_includes, options, 0, 1, false) != hiprtError::hiprtSuccess)
+	if (HIPPTOrochiUtils::build_trace_kernel(m_hiprt_orochi_ctx->hiprt_ctx, kernel_file_path, kernel_function_name, trace_function_out, additional_includes, options, 1, 1, false, &func_name_set) != hiprtError::hiprtSuccess)
 	{
 		std::cerr << "Unable to compile kernel \"" << kernel_function_name << "\". Cannot continue." << std::endl;
-		std::getchar();
+		int ignored = std::getchar();
 		std::exit(1);
 	}
 
 	m_trace_kernel = *reinterpret_cast<oroFunction*>(&trace_function_out);
 
 	int numRegs;
-	OROCHI_CHECK_ERROR(oroFuncGetAttribute(&numRegs, ORO_FUNC_ATTRIBUTE_NUM_REGS, m_trace_kernel));
-
 	int numSmem;
+	OROCHI_CHECK_ERROR(oroFuncGetAttribute(&numRegs, ORO_FUNC_ATTRIBUTE_NUM_REGS, m_trace_kernel));
 	OROCHI_CHECK_ERROR(oroFuncGetAttribute(&numSmem, ORO_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES, m_trace_kernel));
 
-	std::cout << "Trace kernel: registers " << numRegs << ", shared memory " << numSmem << std::endl;
 	
 	auto stop = std::chrono::high_resolution_clock::now();
+	std::cout << "Trace kernel: " << numRegs << " registers, shared memory " << numSmem << std::endl;
 	std::cout << "Kernel \"" << kernel_function_name << "\" compiled in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
 }
 
@@ -205,6 +219,8 @@ void GPURenderer::set_hiprt_scene_from_scene(Scene& scene)
 	hiprtGeometryBuildInput geometry_build_input;
 	geometry_build_input.type = hiprtPrimitiveTypeTriangleMesh;
 	geometry_build_input.primitive.triangleMesh = hiprt_scene.mesh;
+	// 0 is the geom type used for custom functions used (dielectrics priorites for example)
+	geometry_build_input.geomType = 0;
 
 	// Getting the buffer sizes for the construction of the BVH
 	size_t geometry_temp_size;
@@ -219,7 +235,7 @@ void GPURenderer::set_hiprt_scene_from_scene(Scene& scene)
 	log_bvh_building(build_options.buildFlags);
 	hiprtGeometry& scene_geometry = hiprt_scene.geometry;
 	HIPRT_CHECK_ERROR(hiprtCreateGeometry(m_hiprt_orochi_ctx->hiprt_ctx, geometry_build_input, build_options, scene_geometry));
-	HIPRT_CHECK_ERROR(hiprtBuildGeometry(m_hiprt_orochi_ctx->hiprt_ctx, hiprtBuildOperationBuild, geometry_build_input, build_options, geometry_temp, 0, scene_geometry));
+	HIPRT_CHECK_ERROR(hiprtBuildGeometry(m_hiprt_orochi_ctx->hiprt_ctx, hiprtBuildOperationBuild, geometry_build_input, build_options, geometry_temp, /* stream */ 0, scene_geometry));
 
 	OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(geometry_temp)));
 

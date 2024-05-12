@@ -14,7 +14,7 @@
 #include "HostDeviceCommon/Material.h"
 #include "HostDeviceCommon/Xorshift.h"
 
-/* References:
+/** References:
  * 
  * [1] [CSE 272 University of California San Diego - Disney BSDF Homework] https://cseweb.ucsd.edu/~tzli/cse272/wi2024/homework1.pdf
  * [2] [GLSL Path Tracer implementation by knightcrawler25] https://github.com/knightcrawler25/GLSL-PathTracer
@@ -178,7 +178,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_clearcoat_sample(const RendererMate
 }
 
 // TOOD can use local_view dir and light_dir here
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_glass_eval(const RendererMaterial& material, RayPayload& ray_payload, const float3& view_direction, float3 surface_normal, const float3& to_light_direction, float& pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_glass_eval(const RendererMaterial* materials_buffer, const RendererMaterial& material, RayPayload& ray_payload, const float3& view_direction, float3 surface_normal, const float3& to_light_direction, float& pdf)
 {
     float start_NoV = hippt::dot(surface_normal, view_direction);
     if (start_NoV < 0.0f)
@@ -243,6 +243,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_glass_eval(const RendererMaterial
 
         // Scaling the PDF by the probability of being here (reflection of the ray and not transmission)
         pdf *= F;
+
+        ray_payload.interior_stack.pop(ray_payload.leaving_mat);
     }
     else
     {
@@ -264,20 +266,31 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_glass_eval(const RendererMaterial
         // so this is an extremely rare case.
         // The PDF being non-zero, we could actualy compute it, it's valid but absolutely not with floats :D
         color = sqrt(material.base_color) * D * (1 - F) * G * hippt::abs(HoL * HoV / denom);
-        if (ray_payload.inside_volume)
-        {
-            // We are currently inside the volume and we are refracting. That means we're exiting the volume.
-            // This is where we take absorption into account using Beer-Lambert's law.
 
+        if (ray_payload.incident_mat_index != -1)
+        {
+            // If we're not coming from the air, this means that we were in a volume and we're currently
+            // refracting out of the volume or into another volume.
+            // This is where we take the absorption of our travel into account using Beer-Lambert's law.
+            // Note that we want to use the absorption of the material we finished traveling in.
+            // The BSDF we're evaluating right now is using the new material we're refracting in, this is not
+            // by this material that the ray has been absorbed. The ray has been absorded by the volume
+            // it was in before refracting here, so it's the incident mat index
+
+            const RendererMaterial& incident_material = materials_buffer[ray_payload.incident_mat_index];
             // Remapping the absorption coefficient so that it is more intuitive to manipulate
             // according to Burley, 2015 [5].
             // This effectively gives us a "at distance" absorption coefficient.
-            ColorRGB absorption_coefficient = log(material.absorption_color) / material.absorption_at_distance;
+            ColorRGB absorption_coefficient = log(incident_material.absorption_color) / incident_material.absorption_at_distance;
             //color = color * exp((ColorRGB(1.0f) - material.absorption_color) * -material.absorption_at_distance * ray_payload.distance_in_volume);
             color = color * exp(absorption_coefficient * ray_payload.distance_in_volume);
-        }
 
-        ray_payload.inside_volume = !ray_payload.inside_volume;
+            // We changed volume so we're resetting the distance
+            ray_payload.distance_in_volume = 0.0f;
+            if (ray_payload.is_leaving_volume())
+                // We refracting out of a volume so we're poping the stack
+                ray_payload.interior_stack.pop(ray_payload.leaving_mat);
+        }
     }
 
     return color;
@@ -352,7 +365,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_sheen_sample(const RendererMaterial
     return cosine_weighted_sample(surface_normal, random_number_generator);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_eval(const RendererMaterial& material, RayPayload& ray_payload, const float3& view_direction, const float3& shading_normal, const float3& to_light_direction, float& pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_eval(const RendererMaterial* materials_buffer, const RendererMaterial& material, RayPayload& ray_payload, const float3& view_direction, const float3& shading_normal, const float3& to_light_direction, float& pdf)
 {
     pdf = 0.0f;
 
@@ -392,7 +405,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_eval(const RendererMaterial& mate
 
     // Glass
     tmp_weight = (1.0f - material.metallic) * material.specular_transmission;
-    final_color += tmp_weight > 0 ? tmp_weight * disney_glass_eval(material, ray_payload, view_direction, shading_normal, to_light_direction, tmp_pdf) : ColorRGB(0.0f);
+    final_color += tmp_weight > 0 ? tmp_weight * disney_glass_eval(materials_buffer, material, ray_payload, view_direction, shading_normal, to_light_direction, tmp_pdf) : ColorRGB(0.0f);
     pdf += tmp_pdf * tmp_weight;
     tmp_pdf = 0.0f;
 
@@ -404,7 +417,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_eval(const RendererMaterial& mate
     return final_color;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_sample(const RendererMaterial& material, RayPayload& ray_payload, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal, float3& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_sample(const RendererMaterial* materials_buffer, const RendererMaterial& material, RayPayload& ray_payload, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal, float3& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
 {
     pdf = 0.0f;
 
@@ -495,7 +508,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_sample(const RendererMaterial& ma
         // is a valid configuration for the glass lobe
         return ColorRGB(0.0f);
 
-    return disney_eval(material, ray_payload, view_direction, normal, output_direction, pdf);
+    return disney_eval(materials_buffer, material, ray_payload, view_direction, normal, output_direction, pdf);
 }
 
 #endif

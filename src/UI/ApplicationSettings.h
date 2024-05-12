@@ -13,9 +13,12 @@
 
 struct ApplicationSettings
 {
+	static const std::string PATH_TRACING_KERNEL;
+	static const std::string NORMALS_KERNEL;
+
 	int selected_kernel = 0;
 	std::vector<std::string> kernel_files = { DEVICE_KERNELS_DIRECTORY "/PathTracerKernel.h", DEVICE_KERNELS_DIRECTORY "/NormalsKernel.h" };
-	std::vector<std::string> kernel_functions = { "PathTracerKernel", "NormalsKernel"};
+	std::vector<std::string> kernel_functions = { PATH_TRACING_KERNEL, NORMALS_KERNEL };
 
 	DisplayView display_view = DisplayView::DEFAULT;
 

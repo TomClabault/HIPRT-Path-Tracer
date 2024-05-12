@@ -1,3 +1,8 @@
+/*
+ * Copyright 2024 Tom Clabault. GNU GPL3 license.
+ * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
+ */
+
 #ifndef DEVICE_MATERIAL_H
 #define DEVICE_MATERIAL_H
 
@@ -12,36 +17,33 @@ template <typename T>
 HIPRT_HOST_DEVICE HIPRT_INLINE void get_material_property(HIPRTRenderData& render_data, T& output_data, const float2& texcoords, int texture_index);
 HIPRT_HOST_DEVICE HIPRT_INLINE void get_metallic_roughness(HIPRTRenderData& render_data, float& metallic, float& roughness, const float2& texcoords, int metallic_texture_index, int roughness_texture_index, int metallic_roughness_texture_index);
 
-HIPRT_HOST_DEVICE HIPRT_INLINE RendererMaterial get_intersection_material(HIPRTRenderData& render_data, HitInfo& closest_hit_info)
+HIPRT_HOST_DEVICE HIPRT_INLINE RendererMaterial get_intersection_material(HIPRTRenderData& render_data, int material_index, float2 texcoords)
 {
-	int material_index = render_data.buffers.material_indices[closest_hit_info.primitive_index];
-
 	RendererMaterial material = render_data.buffers.materials_buffer[material_index];
 
-    get_material_property(render_data, material.emission, closest_hit_info.texcoords, material.emission_texture_index);
-    get_material_property(render_data, material.base_color, closest_hit_info.texcoords, material.base_color_texture_index);
+    get_material_property(render_data, material.emission, texcoords, material.emission_texture_index);
+    get_material_property(render_data, material.base_color, texcoords, material.base_color_texture_index);
 
-    get_metallic_roughness(render_data, material.metallic, material.roughness, closest_hit_info.texcoords, material.metallic_texture_index, material.roughness_texture_index, material.roughnes_metallic_texture_index);
-    get_material_property(render_data, material.oren_nayar_sigma, closest_hit_info.texcoords, material.oren_sigma_texture_index);
-    get_material_property(render_data, material.subsurface, closest_hit_info.texcoords, material.subsurface_texture_index);
+    get_metallic_roughness(render_data, material.metallic, material.roughness, texcoords, material.metallic_texture_index, material.roughness_texture_index, material.roughnes_metallic_texture_index);
+    get_material_property(render_data, material.oren_nayar_sigma, texcoords, material.oren_sigma_texture_index);
+    get_material_property(render_data, material.subsurface, texcoords, material.subsurface_texture_index);
     
-    get_material_property(render_data, material.specular, closest_hit_info.texcoords, material.specular_texture_index);
-    get_material_property(render_data, material.specular_tint, closest_hit_info.texcoords, material.specular_tint_texture_index);
-    get_material_property(render_data, material.specular_color, closest_hit_info.texcoords, material.specular_color_texture_index);
+    get_material_property(render_data, material.specular, texcoords, material.specular_texture_index);
+    get_material_property(render_data, material.specular_tint, texcoords, material.specular_tint_texture_index);
+    get_material_property(render_data, material.specular_color, texcoords, material.specular_color_texture_index);
     
-    get_material_property(render_data, material.anisotropic, closest_hit_info.texcoords, material.anisotropic_texture_index);
-    get_material_property(render_data, material.anisotropic_rotation, closest_hit_info.texcoords, material.anisotropic_rotation_texture_index);
+    get_material_property(render_data, material.anisotropic, texcoords, material.anisotropic_texture_index);
+    get_material_property(render_data, material.anisotropic_rotation, texcoords, material.anisotropic_rotation_texture_index);
     
-    get_material_property(render_data, material.clearcoat, closest_hit_info.texcoords, material.clearcoat_texture_index);
-    get_material_property(render_data, material.clearcoat_roughness, closest_hit_info.texcoords, material.clearcoat_roughness_texture_index);
-    get_material_property(render_data, material.clearcoat_ior, closest_hit_info.texcoords, material.clearcoat_ior_texture_index);
+    get_material_property(render_data, material.clearcoat, texcoords, material.clearcoat_texture_index);
+    get_material_property(render_data, material.clearcoat_roughness, texcoords, material.clearcoat_roughness_texture_index);
+    get_material_property(render_data, material.clearcoat_ior, texcoords, material.clearcoat_ior_texture_index);
     
-    get_material_property(render_data, material.sheen, closest_hit_info.texcoords, material.sheen_texture_index);
-    get_material_property(render_data, material.sheen_tint, closest_hit_info.texcoords, material.sheen_tint_color_texture_index);
-    get_material_property(render_data, material.sheen_color, closest_hit_info.texcoords, material.sheen_color_texture_index);
+    get_material_property(render_data, material.sheen, texcoords, material.sheen_texture_index);
+    get_material_property(render_data, material.sheen_tint, texcoords, material.sheen_tint_color_texture_index);
+    get_material_property(render_data, material.sheen_color, texcoords, material.sheen_color_texture_index);
     
-    get_material_property(render_data, material.ior, closest_hit_info.texcoords, material.ior_texture_index);
-    get_material_property(render_data, material.specular_transmission, closest_hit_info.texcoords, material.specular_transmission_texture_index);
+    get_material_property(render_data, material.specular_transmission, texcoords, material.specular_transmission_texture_index);
 
     // If the oren nayar microfacet normal standard deviation is spatially varying on the
     // surface, we'll need to make sure that the A and B precomputed coefficient are actually

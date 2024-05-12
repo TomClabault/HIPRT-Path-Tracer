@@ -61,9 +61,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool check_for_nan(ColorRGB ray_color, int x, int
 }
 
 #ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(HIPRTRenderData render_data, int2 res, HIPRTCamera camera)
+GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(HIPRTRenderData render_data, hiprtFuncTable filter_function, int2 res, HIPRTCamera camera)
 #else
-GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_data, int2 res, HIPRTCamera camera, int x, int y)
+GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_data, FilterFunction filter_function, int2 res, HIPRTCamera camera, int x, int y)
 #endif
 {
 #ifdef __KERNELCC__
@@ -140,74 +140,79 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
             if (ray_payload.next_ray_state == RayState::BOUNCE)
             {
                 HitInfo closest_hit_info;
-                bool intersection_found = trace_ray(render_data, ray, closest_hit_info);
+                bool intersection_found = trace_ray(render_data, ray_payload, ray, filter_function, closest_hit_info);
 
                 if (intersection_found)
                 {
-                    RendererMaterial material = get_intersection_material(render_data, closest_hit_info);
-                    ray_payload.last_brdf_hit_type = material.brdf_type;
-
-                    if (ray_payload.inside_volume)
+                    if (ray_payload.is_inside_volume())
                         ray_payload.distance_in_volume += closest_hit_info.t;
-                    else
-                        ray_payload.distance_in_volume = 0.0f;
 
-                    // For the BRDF calculations, bounces, ... to be correct, we need the normal to be in the same hemisphere as
-                    // the view direction. One thing that can go wrong is when we have an emissive triangle (typical area light)
-                    // and a ray hits the back of the triangle. The normal will not be facing the view direction in this
-                    // case and this will cause issues later in the BRDF.
-                    // Because we want to allow backfacing emissive geometry (making the emissive geometry double sided
-                    // and emitting light in both directions of the surface), we're negating the normal to make
-                    // it face the view direction (but only for emissive geometry)
-                    if (material.is_emissive() && hippt::dot(-ray.direction, closest_hit_info.geometric_normal) < 0)
+                    int material_index = render_data.buffers.material_indices[closest_hit_info.primitive_index];
+                    ray_payload.interior_stack.push(ray_payload.incident_mat_index, ray_payload.outgoing_mat_index, ray_payload.leaving_mat, material_index);
+
+                    // This indicates that the boundary should not be skipped.
+                    // The boundary should be skipped if incident == outgoing mat index
+                    if (ray_payload.incident_mat_index != ray_payload.outgoing_mat_index)
                     {
-                        closest_hit_info.geometric_normal = -closest_hit_info.geometric_normal;
-                        closest_hit_info.shading_normal = -closest_hit_info.shading_normal;
+                        RendererMaterial material = get_intersection_material(render_data, material_index, closest_hit_info.texcoords);
+                        ray_payload.last_brdf_hit_type = material.brdf_type;
+
+                        // For the BRDF calculations, bounces, ... to be correct, we need the normal to be in the same hemisphere as
+                        // the view direction. One thing that can go wrong is when we have an emissive triangle (typical area light)
+                        // and a ray hits the back of the triangle. The normal will not be facing the view direction in this
+                        // case and this will cause issues later in the BRDF.
+                        // Because we want to allow backfacing emissive geometry (making the emissive geometry double sided
+                        // and emitting light in both directions of the surface), we're negating the normal to make
+                        // it face the view direction (but only for emissive geometry)
+                        if (material.is_emissive() && hippt::dot(-ray.direction, closest_hit_info.geometric_normal) < 0)
+                        {
+                            closest_hit_info.geometric_normal = -closest_hit_info.geometric_normal;
+                            closest_hit_info.shading_normal = -closest_hit_info.shading_normal;
+                        }
+
+                        // --------------------------------------------------- //
+                        // ----------------- Direct lighting ----------------- //
+                        // --------------------------------------------------- //
+                        ColorRGB light_sample_radiance = sample_light_sources(render_data, material, closest_hit_info, -ray.direction, random_number_generator);
+                        ColorRGB envmap_radiance = sample_environment_map(render_data, material, closest_hit_info, -ray.direction, random_number_generator);
+
+                        // --------------------------------------- //
+                        // ---------- Indirect lighting ---------- //
+                        // --------------------------------------- //
+
+                        float brdf_pdf;
+                        float3 bounce_direction;
+                        ColorRGB brdf = brdf_dispatcher_sample(render_data.buffers.materials_buffer, material, ray_payload, -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bounce_direction, brdf_pdf, random_number_generator);
+
+                        if (ray_payload.last_brdf_hit_type == BRDF::SpecularFresnel)
+                            // The fresnel blend coefficient is in the PDF
+                            denoiser_blend *= brdf_pdf;
+
+                        if (!denoiser_AOVs_set && ray_payload.last_brdf_hit_type != BRDF::SpecularFresnel)
+                        {
+                            denoiser_AOVs_set = true;
+
+                            denoiser_albedo += material.base_color * denoiser_blend;
+                            denoiser_normal += closest_hit_info.shading_normal * denoiser_blend;
+                        }
+
+                        // Terminate ray if something went wrong (sampling a direction below the surface for example)
+                        if ((brdf.r == 0.0f && brdf.g == 0.0f && brdf.b == 0.0f) || brdf_pdf <= 0.0f)
+                            break;
+
+                        if (bounce == 0)
+                            ray_payload.ray_color = ray_payload.ray_color + material.emission * ray_payload.throughput;
+                        ray_payload.ray_color = ray_payload.ray_color + (light_sample_radiance + envmap_radiance) * ray_payload.throughput;
+
+                        ray_payload.throughput *= brdf * hippt::abs(hippt::dot(bounce_direction, closest_hit_info.shading_normal)) / brdf_pdf;
+
+                        int outside_surface = hippt::dot(bounce_direction, closest_hit_info.shading_normal) < 0 ? -1.0f : 1.0;
+                        float3 new_ray_origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 3.0e-3f * outside_surface;
+                        ray.origin = new_ray_origin;
+                        ray.direction = bounce_direction;
+
+                        ray_payload.next_ray_state = RayState::BOUNCE;
                     }
-
-                    // --------------------------------------------------- //
-                    // ----------------- Direct lighting ----------------- //
-                    // --------------------------------------------------- //
-                    ColorRGB light_sample_radiance = sample_light_sources(render_data, material, closest_hit_info, -ray.direction, random_number_generator);
-                    ColorRGB envmap_radiance = sample_environment_map(render_data, material, closest_hit_info, -ray.direction, random_number_generator);
-
-                    // --------------------------------------- //
-                    // ---------- Indirect lighting ---------- //
-                    // --------------------------------------- //
-
-                    float brdf_pdf;
-                    float3 bounce_direction;
-                    ColorRGB brdf = brdf_dispatcher_sample(material, ray_payload, -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bounce_direction, brdf_pdf, random_number_generator);
-
-                    if (ray_payload.last_brdf_hit_type == BRDF::SpecularFresnel)
-                        // The fresnel blend coefficient is in the PDF
-                        denoiser_blend *= brdf_pdf;
-
-                    if (!denoiser_AOVs_set && ray_payload.last_brdf_hit_type != BRDF::SpecularFresnel)
-                    {
-                        denoiser_AOVs_set = true;
-
-                        denoiser_albedo += material.base_color * denoiser_blend;
-                        denoiser_normal += closest_hit_info.shading_normal * denoiser_blend;
-                    }
-
-                    // Terminate ray if something went wrong according to the unforgivable laws of physic
-                    // (sampling a direction below the surface for example)
-                    if ((brdf.r == 0.0f && brdf.g == 0.0f && brdf.b == 0.0f) || brdf_pdf <= 0.0f)
-                        break;
-
-                    if (bounce == 0)
-                        ray_payload.ray_color = ray_payload.ray_color + material.emission * ray_payload.throughput;
-                    ray_payload.ray_color = ray_payload.ray_color + (light_sample_radiance + envmap_radiance) * ray_payload.throughput;
-
-                    ray_payload.throughput *= brdf * hippt::abs(hippt::dot(bounce_direction, closest_hit_info.shading_normal)) / brdf_pdf;
-
-                    int outside_surface = hippt::dot(bounce_direction, closest_hit_info.shading_normal) < 0 ? -1.0f : 1.0;
-                    float3 new_ray_origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 3.0e-3f * outside_surface;
-                    ray.origin = new_ray_origin;
-                    ray.direction = bounce_direction;
-
-                    ray_payload.next_ray_state = RayState::BOUNCE;
                 }
                 else
                 {

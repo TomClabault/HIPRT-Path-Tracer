@@ -84,7 +84,7 @@ struct RenderBuffers
 	// shader.
 	// Also, we're using unsigned char instead of bool here because std::vector<bool> doesn't
 	// have a .data() member function which is annoying to manipulate
-	unsigned char* texture_is_srgb;
+	unsigned char* texture_is_srgb = nullptr;
 };
 
 struct AuxiliaryBuffers
@@ -125,7 +125,7 @@ struct WorldSettings
 	void* envmap = nullptr;
 	// Cumulative distribution function. 1D float array of length width * height for
 	// importance sampling the envmap
-	float* envmap_cdf;
+	float* envmap_cdf = nullptr;
 };
 
 /**

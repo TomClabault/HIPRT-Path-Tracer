@@ -120,12 +120,14 @@ struct RendererMaterial
     float sheen_tint = 0.0f; // Sheen tint strength
     ColorRGB sheen_color = ColorRGB(1.0f);
 
-    int ior_texture_index = -1;
+    // IOR texture index not supported because of the cost it would incur to
+    // support it with the nested dielectrics algorithm
     int specular_transmission_texture_index = -1;
     float ior = 1.40f;
     float specular_transmission = 0.0f;
-    // Volume absorption density
+    // At what distance is the light absorbed to the given absorption_color
     float absorption_at_distance = 1.0f;
+    // Color of the light absorption when traveling through the medium
     ColorRGB absorption_color = ColorRGB(1.0f);
 };
 

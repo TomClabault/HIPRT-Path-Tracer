@@ -133,7 +133,8 @@ namespace HIPPTOrochiUtils
 		const std::vector<std::string>& additional_include_directories,
 		const std::optional<std::vector<const char*>>& compiler_options,
 		unsigned int num_geom_types, unsigned int num_ray_types, 
-		bool use_compiler_cache)
+		bool use_compiler_cache,
+		hiprtFuncNameSet* func_name_set)
 	{
 		std::vector<std::string> include_names;
 		std::string kernel_source_code;
@@ -223,7 +224,7 @@ namespace HIPPTOrochiUtils
 			compiler_options_cstr.size() > 0 ? compiler_options_cstr.data() : nullptr,
 			num_geom_types,
 			num_ray_types,
-			nullptr,
+			func_name_set,
 			&kernel_function_out,
 			nullptr,
 			use_compiler_cache);

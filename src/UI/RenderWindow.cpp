@@ -13,8 +13,8 @@
 #include "stb_image_write.h"
 
 // TODO bugs
+// - bistro textures are buggued so there must still be something wrong with the parsing
 // - when adaptive sampling is on and holding click (render low resolution), some grid artifacts show up
-// - Why is the rough dragon having black fringes even with normal flipping ?
 // - normals AOV not converging correctly ?
 //		- for the denoiser normals convergence issue, is it an error at the end of the Path Tracer kernel where we're accumulating ? Should we have
 //		render_data.aux_buffers.denoiser_albedo[index] * render_data.render_settings.sample_number 
@@ -30,6 +30,7 @@
 // - Remove GPURenderer.hiprt_scene, useless. Only contains HIPRT Ctxt (which can be made a member variable of the GPU Renderer) and the various buffers which can be kept in a RenderData member variable
 // - Use orochiBuffers when initializing the GPURenderer.RenderData instead of manual oroMalloc as currently done in set_hiprt_scene_from_scene
 // - Destroy buffers when disabling adaptive sampling to save VRAM
+// - uniform #ifndef in Device headers
 // - Device/ or HostDeviceCommon. Not both
 // - Can we have access to HoL when calling disney_metallic_fresnel to avoid passing the two vectors and recomputing the dot product in the return statement ?
 // - DO THE DISNEY SHADING IN SHADING SPACE. WHAT THE H IS THIS CODE BUILDING ONB IN EVERY FUNCTION HUH?
@@ -945,9 +946,10 @@ void RenderWindow::show_objects_panel()
 		some_material_changed |= ImGui::SliderFloat("Clearcoat roughness", &material.clearcoat_roughness, 0.0f, 1.0f);
 		some_material_changed |= ImGui::SliderFloat("Clearcoat IOR", &material.clearcoat_ior, 0.0f, 10.0f);
 		some_material_changed |= ImGui::SliderFloat("IOR", &material.ior, 0.0f, 10.0f);
+		ImGui::Separator();
 		some_material_changed |= ImGui::SliderFloat("Transmission", &material.specular_transmission, 0.0f, 1.0f);
 		some_material_changed |= ImGui::SliderFloat("Absorption distance", &material.absorption_at_distance, 0.0f, 20.0f);
-		some_material_changed |= ImGui::ColorEdit3("Absbsorption color", (float*)&material.absorption_color);
+		some_material_changed |= ImGui::ColorEdit3("Absorption color", (float*)&material.absorption_color);
 		some_material_changed |= ImGui::ColorEdit3("Emission", (float*)&material.emission, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
 
 		ImGui::PopID();

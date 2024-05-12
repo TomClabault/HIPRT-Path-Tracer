@@ -50,7 +50,8 @@ namespace HIPPTOrochiUtils
 		const std::vector<std::string>& additional_include_directories,
 		const std::optional<std::vector<const char*>>& compiler_options,
 		unsigned int num_geom_types, unsigned int num_ray_types,
-		bool use_compiler_cache);
+		bool use_compiler_cache,
+		hiprtFuncNameSet* func_name_set = nullptr);
 }
 
 void orochi_check_error(oroError res, const char* file, uint32_t line);
