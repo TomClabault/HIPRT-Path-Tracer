@@ -133,9 +133,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_light_sources(const HIPRTRenderDa
         new_ray.direction = sampled_brdf_direction;
 
         HitInfo new_ray_hit_info;
-        // TODO we should properly check for nested dielectrics here instead of passing a trash payload
-        RayPayload trash_payload;
-        bool inter_found = trace_ray(render_data, trash_payload, new_ray, nullptr, new_ray_hit_info);
+        bool inter_found = trace_ray(render_data, new_ray, new_ray_hit_info);
 
         if (inter_found)
         {

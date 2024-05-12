@@ -97,7 +97,6 @@
 // - Paths roughness regularization
 // - choose disney diffuse model (disney, lambertian, oren nayar)
 // - enable lower resolution on mouse scroll for like ~10 frames
-// - display feedback for 3 seconds after dumping a screenshot to disk
 // - choose denoiser quality in imgui
 // - try async buffer copy for the denoiser (maybe run a kernel to generate normals and another to generate albedo buffer before the path tracing kernel to be able to async copy while the path tracing kernel is running?)
 // - enable denoising with all combinations of beauty/normal/albedo via imgui

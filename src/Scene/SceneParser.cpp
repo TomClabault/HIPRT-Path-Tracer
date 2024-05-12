@@ -217,8 +217,6 @@ RendererMaterial SceneParser::read_material_properties(aiMaterial* mesh_material
     mesh_material->Get(AI_MATKEY_VOLUME_ATTENUATION_COLOR, renderer_material.absorption_color);
     mesh_material->Get(AI_MATKEY_VOLUME_ATTENUATION_DISTANCE, renderer_material.absorption_at_distance);
 
-    renderer_material.absorption_color = ColorRGB(0.9f, 1.0f, 1.0f);
-
     if (renderer_material.is_emissive())
     {
         float emission_strength = 1.0f;

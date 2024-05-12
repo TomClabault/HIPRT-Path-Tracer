@@ -6,7 +6,6 @@
 #ifndef RAY_PAYLOAD_H
 #define RAY_PAYLOAD_H
 
-#include "Device/includes/NestedDielectrics.h"
 #include "HostDeviceCommon/Color.h"
 
 enum RayState

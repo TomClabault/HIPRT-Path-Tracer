@@ -244,7 +244,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_glass_eval(const RendererMaterial
         // Scaling the PDF by the probability of being here (reflection of the ray and not transmission)
         pdf *= F;
 
-        ray_payload.interior_stack.pop(ray_payload.leaving_mat);
+        ray_payload.interior_stack.pop(false);
     }
     else
     {

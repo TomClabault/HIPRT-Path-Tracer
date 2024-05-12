@@ -76,8 +76,8 @@ Image& CPURenderer::get_framebuffer()
 }
 #define DEBUG_PIXEL 1
 #define DEBUG_EXACT_COORDINATE 0
-#define DEBUG_PIXEL_X (1280/2)
-#define DEBUG_PIXEL_Y (720/2)
+#define DEBUG_PIXEL_X 702
+#define DEBUG_PIXEL_Y 484
 
 
 void CPURenderer::render()
@@ -102,7 +102,7 @@ void CPURenderer::render()
     {
         for (int x = 0; x < m_resolution.x; x++)
 #endif
-            PathTracerKernel(m_render_data, nullptr, m_resolution, m_hiprt_camera, x, y);
+            PathTracerKernel(m_render_data, m_resolution, m_hiprt_camera, x, y);
 
         lines_completed++;
 

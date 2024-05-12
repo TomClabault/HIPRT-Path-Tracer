@@ -102,11 +102,6 @@ private:
 	std::shared_ptr<HIPRTOrochiCtx> m_hiprt_orochi_ctx;
 	// Path tracing kernel called at each frame
 	oroFunction m_trace_kernel = nullptr;
-	// Function table that contains some utilitary functions
-	// that can be used during BVH traversal.
-	// The function that ignores/accepts overlapping dielectric intersections
-	// for nested dielectrics handling is registered in there for example
-	hiprtFuncTable m_func_table = nullptr;
 
 	HIPRTScene m_hiprt_scene = nullptr;
 	// The materials are also kept on the CPU side because we want to be able

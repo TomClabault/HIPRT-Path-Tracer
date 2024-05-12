@@ -61,9 +61,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool check_for_nan(ColorRGB ray_color, int x, int
 }
 
 #ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(HIPRTRenderData render_data, hiprtFuncTable filter_function, int2 res, HIPRTCamera camera)
+GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(HIPRTRenderData render_data, int2 res, HIPRTCamera camera)
 #else
-GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_data, FilterFunction filter_function, int2 res, HIPRTCamera camera, int x, int y)
+GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_data, int2 res, HIPRTCamera camera, int x, int y)
 #endif
 {
 #ifdef __KERNELCC__
@@ -140,7 +140,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
             if (ray_payload.next_ray_state == RayState::BOUNCE)
             {
                 HitInfo closest_hit_info;
-                bool intersection_found = trace_ray(render_data, ray_payload, ray, filter_function, closest_hit_info);
+                bool intersection_found = trace_ray(render_data, ray, closest_hit_info);
 
                 if (intersection_found)
                 {

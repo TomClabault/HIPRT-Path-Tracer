@@ -20,7 +20,7 @@ void GPURenderer::render()
 
 	HIPRTCamera hiprt_cam = m_camera.to_hiprt();
 	HIPRTRenderData render_data = get_render_data();
-	void* launch_args[] = { &render_data, &m_func_table, &resolution, &hiprt_cam};
+	void* launch_args[] = { &render_data, &resolution, &hiprt_cam};
 	launch_kernel(8, 8, resolution.x, resolution.y, launch_args);
 
 #ifndef OROCHI_ENABLE_CUEW
@@ -135,25 +135,8 @@ void GPURenderer::compile_trace_kernel(const char* kernel_file_path, const char*
 
 	std::vector<std::string> additional_includes = { KERNEL_COMPILER_ADDITIONAL_INCLUDE, DEVICE_INCLUDES_DIRECTORY, OROCHI_INCLUDES_DIRECTORY, "-I./" };
 
-	hiprtFuncNameSet func_name_set;
-	if (!strcmp(kernel_function_name, ApplicationSettings::PATH_TRACING_KERNEL.c_str()))
-	{
-		// If we're compiling the path tracing kernel, we're going to add the func table
-		// for handling nested dielectrics priorities
-
-		hiprtFuncDataSet func_data_set;
-
-		oroFunction dielectric_priorities_cutout;
-		func_name_set.filterFuncName = "dielectric_priorities_cutout_filter";
-
-		HIPRT_CHECK_ERROR(hiprtCreateFuncTable(m_hiprt_orochi_ctx->hiprt_ctx, 1, 1, m_func_table));
-		HIPRT_CHECK_ERROR(hiprtSetFuncTable(m_hiprt_orochi_ctx->hiprt_ctx, m_func_table, 0, 0, func_data_set));
-		
-		func_name_set.filterFuncName = "dielectric_priorities_cutout_filter";
-	}
-
 	hiprtApiFunction trace_function_out;
-	if (HIPPTOrochiUtils::build_trace_kernel(m_hiprt_orochi_ctx->hiprt_ctx, kernel_file_path, kernel_function_name, trace_function_out, additional_includes, options, 1, 1, false, &func_name_set) != hiprtError::hiprtSuccess)
+	if (HIPPTOrochiUtils::build_trace_kernel(m_hiprt_orochi_ctx->hiprt_ctx, kernel_file_path, kernel_function_name, trace_function_out, additional_includes, options, 0, 1, false) != hiprtError::hiprtSuccess)
 	{
 		std::cerr << "Unable to compile kernel \"" << kernel_function_name << "\". Cannot continue." << std::endl;
 		int ignored = std::getchar();
@@ -219,8 +202,6 @@ void GPURenderer::set_hiprt_scene_from_scene(Scene& scene)
 	hiprtGeometryBuildInput geometry_build_input;
 	geometry_build_input.type = hiprtPrimitiveTypeTriangleMesh;
 	geometry_build_input.primitive.triangleMesh = hiprt_scene.mesh;
-	// 0 is the geom type used for custom functions used (dielectrics priorites for example)
-	geometry_build_input.geomType = 0;
 
 	// Getting the buffer sizes for the construction of the BVH
 	size_t geometry_temp_size;

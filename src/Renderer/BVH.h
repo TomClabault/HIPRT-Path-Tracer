@@ -131,7 +131,7 @@ public:
             _children[octant_index]->insert(triangles_geometry, triangle_id_to_insert, current_depth + 1, max_depth, leaf_max_obj_count);
         }
 
-        bool intersect(const std::vector<Triangle>& triangles_geometry, const hiprtRay& ray, HitInfo& hit_info, FilterFunction filter_function, void* payload) const
+        bool intersect(const std::vector<Triangle>& triangles_geometry, const hiprtRay& ray, HitInfo& hit_info) const
         {
             float trash;
 
@@ -144,10 +144,10 @@ public:
                 numers[i] = hippt::dot(BoundingVolume::PLANE_NORMALS[i], float3(ray.origin));
             }
 
-            return intersect(triangles_geometry, ray, hit_info, filter_function, payload, trash, denoms, numers);
+            return intersect(triangles_geometry, ray, hit_info, trash, denoms, numers);
         }
 
-        bool intersect(const std::vector<Triangle>& triangles_geometry, const hiprtRay& ray, HitInfo& hit_info, FilterFunction filter_function, void* payload, float& t_near, float* denoms, float* numers) const
+        bool intersect(const std::vector<Triangle>& triangles_geometry, const hiprtRay& ray, HitInfo& hit_info, float& t_near, float* denoms, float* numers) const
         {
             float t_far, trash;
 
@@ -168,10 +168,6 @@ public:
                         hit.primID = triangle_id;
                         hit.t = local_hit_info.t;
                         hit.uv = local_hit_info.uv;
-
-                        if (filter_function != nullptr && filter_function(ray, nullptr, payload, hit))
-                            // The filter function filtered this intersection, ignoring it
-                            continue;
 
                         if (local_hit_info.t < hit_info.t || hit_info.t == -1)
                         {
@@ -201,7 +197,7 @@ public:
                 QueueElement top_element = intersection_queue.top();
                 intersection_queue.pop();
 
-                if (top_element._node->intersect(triangles_geometry, ray, hit_info, filter_function, payload, inter_distance, denoms, numers))
+                if (top_element._node->intersect(triangles_geometry, ray, hit_info, inter_distance, denoms, numers))
                 {
                     closest_inter = std::min(closest_inter, inter_distance);
                     intersection_found = true;
@@ -245,7 +241,7 @@ public:
 
     void operator=(BVH&& bvh);
      
-    bool intersect(const hiprtRay& ray, HitInfo& hit_info, FilterFunction filter_function, void* payload) const;
+    bool intersect(const hiprtRay& ray, HitInfo& hit_info) const;
     FlattenedBVH flatten() const;
 
 private:
