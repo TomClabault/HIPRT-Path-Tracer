@@ -102,7 +102,7 @@ if (WIN32)
 	endif()
 
 	# Building HIPRT through MSBuild since Premake generated a Visual Studio Solution
-	execute_process(COMMAND ${MSBUILD_EXECUTABLE} hiprt02003.vcxproj /property:Configuration=Debug /property:Platform=x64 /verbosity:minimal WORKING_DIRECTORY ${hiprtrelease_SOURCE_DIR}/build)
+	execute_process(COMMAND ${MSBUILD_EXECUTABLE} hiprt02003.vcxproj /property:Configuration=Debug /property:Platform=x64 /property:MultiProcessorCompilation=true /verbosity:minimal WORKING_DIRECTORY ${hiprtrelease_SOURCE_DIR}/build)
 elseif(UNIX)
 	execute_process(COMMAND ./tools/premake5/linux64/premake5 gmake WORKING_DIRECTORY ${hiprtrelease_SOURCE_DIR})
 	execute_process(COMMAND make -C build -j config=debug_x64 WORKING_DIRECTORY ${hiprtrelease_SOURCE_DIR})
