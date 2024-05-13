@@ -60,6 +60,26 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool check_for_nan(ColorRGB ray_color, int x, int
     return false;
 }
 
+#ifndef __KERNELCC__
+#include "Utils/Utils.h" // For debugbreak in sanity_check()
+#endif
+HIPRT_HOST_DEVICE HIPRT_INLINE bool sanity_check(const HIPRTRenderData& render_data, RayPayload& ray_payload, int x, int y, int2& res, int sample)
+{
+    bool invalid = false;
+    invalid |= check_for_negative_color(ray_payload.ray_color, x, y, sample);
+    invalid |= check_for_nan(ray_payload.ray_color, x, y, sample);
+
+    if (invalid)
+    {
+        debug_set_final_color(render_data, x, y, res.x, ColorRGB(10000.0f, 0.0f, 10000.0f));
+#ifndef __KERNELCC__
+        Utils::debugbreak();
+#endif
+    }
+
+    return !invalid;
+}
+
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(HIPRTRenderData render_data, int2 res, HIPRTCamera camera)
 #else
@@ -173,8 +193,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                         // --------------------------------------------------- //
                         // ----------------- Direct lighting ----------------- //
                         // --------------------------------------------------- //
-                        ColorRGB light_sample_radiance = sample_light_sources(render_data, material, closest_hit_info, -ray.direction, random_number_generator);
-                        ColorRGB envmap_radiance = sample_environment_map(render_data, material, ray_payload, closest_hit_info, -ray.direction, random_number_generator);
+                        ColorRGB light_sample_radiance = sample_light_sources(render_data, material, material_index, closest_hit_info, -ray.direction, random_number_generator);
+                        ColorRGB envmap_radiance = sample_environment_map(render_data, material, material_index, ray_payload, closest_hit_info, -ray.direction, random_number_generator);
 
                         // --------------------------------------- //
                         // ---------- Indirect lighting ---------- //
@@ -182,7 +202,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
 
                         float brdf_pdf;
                         float3 bounce_direction;
-                        ColorRGB brdf = brdf_dispatcher_sample(render_data.buffers.materials_buffer, material, ray_payload, -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bounce_direction, brdf_pdf, random_number_generator);
+                        ColorRGB brdf = brdf_dispatcher_sample(render_data.buffers.materials_buffer, material, material_index, ray_payload, -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bounce_direction, brdf_pdf, random_number_generator);
 
                         if (ray_payload.last_brdf_hit_type == BRDF::SpecularFresnel)
                             // The fresnel blend coefficient is in the PDF
@@ -200,7 +220,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                         if ((brdf.r == 0.0f && brdf.g == 0.0f && brdf.b == 0.0f) || brdf_pdf <= 0.0f)
                             break;
 
-                        if (bounce == 0)
+                        //if (bounce == 0)
                             ray_payload.ray_color = ray_payload.ray_color + material.emission * ray_payload.throughput;
                         ray_payload.ray_color = ray_payload.ray_color + (light_sample_radiance + envmap_radiance) * ray_payload.throughput;
 
@@ -246,16 +266,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
         //
         // - Pink : sample with negative color
         // - Yellow : NaN sample
-        bool invalid = false;
-        invalid |= check_for_negative_color(ray_payload.ray_color, x, y, sample);
-        invalid |= check_for_nan(ray_payload.ray_color, x, y, sample);
-
-        if (invalid)
-        {
-            debug_set_final_color(render_data, x, y, res.x, ColorRGB(10000.0f, 0.0f, 10000.0f));
-
+        if (!sanity_check(render_data, ray_payload, x, y, res, sample))
             return;
-        }
 
         squared_luminance_of_samples += ray_payload.ray_color.luminance() * ray_payload.ray_color.luminance();
         final_color += ray_payload.ray_color;

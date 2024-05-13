@@ -55,7 +55,7 @@ struct InteriorStack
 
 		// Index of the material we last entered before intersecting the
 		// material we're currently inserting in the stack
-		int last_entered_mat_index;
+		int last_entered_mat_index = 0;
 		for (last_entered_mat_index = stack_position; last_entered_mat_index >= 0; last_entered_mat_index--)
 			if (stack[last_entered_mat_index].material_index != material_index && stack[last_entered_mat_index].topmost && stack[last_entered_mat_index].odd_parity)
 				break;
@@ -135,6 +135,7 @@ struct RayPayload
 	float distance_in_volume = 0.0f;
 	// The stack of materials being traversed. Used for nested dielectrics handling
 	InteriorStack interior_stack;
+	// Indices of the material we were in before hitting the current dielectric surface
 	int incident_mat_index = -1, outgoing_mat_index = -1;
 	// Whether or not we're exiting a material
 	bool leaving_mat = false;

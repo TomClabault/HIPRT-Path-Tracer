@@ -44,6 +44,8 @@
 
 
 // TODO Features:
+// - portal envmap sampling --> choose portals with ImGui
+// - we have way better caustics when disabling direct lighting sampling but enabling += emission on hitting an emissive geometry. How to have the benefits of the two?
 // - find a way to not fill the texcoords buffer for meshes that don't have textures
 // - pack RendererMaterial informations such as texture indices (we can probably use 16 bit for a texture index --> 2 texture indices in one 32 bit register)
 // - use 8 bit textures for material properties instead of float
@@ -64,6 +66,7 @@
 // - sample regeneration
 // - data packing in buffer --> use one 32 bit buffer to store multiple information if not using all 32 bits
 //		- pack active pixel in same buffer as pixel sample count
+// - pack two texture indices in one int for register saving, 65536 (16 bit per index when packed) textures is enough
 // - hint shadow rays for better traversal perf
 // - benchmarker to measure frame times precisely (avg, std dev, ...) + fixed random seed for reproducible results
 // - alias method for sampling env map instead of log(n) dichotomy
@@ -943,8 +946,8 @@ void RenderWindow::show_objects_panel()
 		some_material_changed |= ImGui::ColorEdit3("Sheen color", (float*)&material.sheen_color);
 		some_material_changed |= ImGui::SliderFloat("Clearcoat", &material.clearcoat, 0.0f, 1.0f);
 		some_material_changed |= ImGui::SliderFloat("Clearcoat roughness", &material.clearcoat_roughness, 0.0f, 1.0f);
-		some_material_changed |= ImGui::SliderFloat("Clearcoat IOR", &material.clearcoat_ior, 0.0f, 10.0f);
-		some_material_changed |= ImGui::SliderFloat("IOR", &material.ior, 0.0f, 10.0f);
+		some_material_changed |= ImGui::SliderFloat("Clearcoat IOR", &material.clearcoat_ior, 0.0f, 5.0f);
+		some_material_changed |= ImGui::SliderFloat("IOR", &material.ior, 0.0f, 5.0f);
 		ImGui::Separator();
 		some_material_changed |= ImGui::SliderFloat("Transmission", &material.specular_transmission, 0.0f, 1.0f);
 		some_material_changed |= ImGui::SliderFloat("Absorption distance", &material.absorption_at_distance, 0.0f, 20.0f);

@@ -9,14 +9,14 @@
 #include "Device/includes/Disney.h"
 #include "Device/includes/RayPayload.h"
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB brdf_dispatcher_eval(const RendererMaterial* materials_buffer, const RendererMaterial& material, RayPayload& ray_payload, const float3& view_direction, const float3& surface_normal, const float3& to_light_direction, float& pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB brdf_dispatcher_eval(const RendererMaterial* materials_buffer, const RendererMaterial& material, int material_index, RayPayload& ray_payload, const float3& view_direction, const float3& surface_normal, const float3& to_light_direction, float& pdf)
 {
-    return disney_eval(materials_buffer, material, ray_payload, view_direction, surface_normal, to_light_direction, pdf);
+    return disney_eval(materials_buffer, material, material_index, ray_payload, view_direction, surface_normal, to_light_direction, pdf);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB brdf_dispatcher_sample(const RendererMaterial* materials_buffer, const RendererMaterial& material, RayPayload& ray_payload, const float3& view_direction, const float3& surface_normal, const float3& geometric_normal, float3& bounce_direction, float& brdf_pdf, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB brdf_dispatcher_sample(const RendererMaterial* materials_buffer, const RendererMaterial& material, int material_index, RayPayload& ray_payload, const float3& view_direction, const float3& surface_normal, const float3& geometric_normal, float3& bounce_direction, float& brdf_pdf, Xorshift32Generator& random_number_generator)
 {
-    return disney_sample(materials_buffer, material, ray_payload, view_direction, surface_normal, geometric_normal, bounce_direction, brdf_pdf, random_number_generator);
+    return disney_sample(materials_buffer, material, material_index, ray_payload, view_direction, surface_normal, geometric_normal, bounce_direction, brdf_pdf, random_number_generator);
 }
 
 #endif

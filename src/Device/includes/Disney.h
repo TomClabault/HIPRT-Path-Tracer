@@ -177,8 +177,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_clearcoat_sample(const RendererMate
     return hippt::normalize(sampled_direction);
 }
 
-// TOOD can use local_view dir and light_dir here
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_glass_eval(const RendererMaterial* materials_buffer, const RendererMaterial& material, RayPayload& ray_payload, const float3& view_direction, float3 surface_normal, const float3& to_light_direction, float& pdf)
+// TODO have materials_buffer as a global variable to avoid having to pass it around like that?
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_glass_eval(const RendererMaterial* materials_buffer, const RendererMaterial& material, int material_index, RayPayload& ray_payload, const float3& view_direction, float3 surface_normal, const float3& to_light_direction, float& pdf)
 {
     float start_NoV = hippt::dot(surface_normal, view_direction);
     if (start_NoV < 0.0f)
@@ -200,8 +200,31 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_glass_eval(const RendererMaterial
     // We're in the case of reflection if the view direction and the bounced ray (light direction) are in the same hemisphere
     bool reflecting = NoL * NoV > 0;
 
-    // Relative eta = eta_t / eta_i and we're assuming here that the eta of the incident light is air, 1.0f
-    float relative_eta = material.ior;
+    // Relative eta = eta_t / eta_i
+    float eta_t = ray_payload.outgoing_mat_index == -1 ? 1.0 : materials_buffer[ray_payload.outgoing_mat_index].ior;
+    float eta_i = ray_payload.incident_mat_index == -1 ? 1.0 : materials_buffer[ray_payload.incident_mat_index].ior;
+    float relative_eta = eta_t / eta_i;
+
+    // relative_eta can be 1 when refracting from a volume into another volume of the same IOR.
+    // This in conjunction with the view direction and the light direction being the negative of
+    // one another will lead the microfacet normal to be the null vector which then causes
+    // NaNs.
+    // 
+    // Example:
+    // The view and light direction can be the negative of one another when looking straight at a
+    // flat window for example. The view direction is aligned with the normal of the window
+    // in this configuration whereas the refracting light direction (and it is very likely to refract
+    // in this configuration) is going to point exactly away from the view direction and the normal.
+    // 
+    // We then have
+    // 
+    // half_vector  = light_dir + relative_eta * view_dir
+    //              = light_dir + 1.0f * view_dir
+    //              = light_dir + view_dir = (0, 0, 0)
+    //
+    // Normalizing this null vector then leads to a NaNs because of the zero-length.
+    if (hippt::abs(relative_eta - 1.0f) < 1.0e-5f)
+        relative_eta = 1.0f + 1.0e-5f;
 
     // Computing the generalized (that takes refraction into account) half vector
     float3 local_half_vector;
@@ -209,11 +232,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_glass_eval(const RendererMaterial
         local_half_vector = local_to_light_direction + local_view_direction;
     else
     {
+        // TODO remove
         // We want relative eta to always be eta_transmitted / eta_incident
         // so if we're refracting OUT of the surface, we're transmitting into
         // the air which has an eta of 1.0f so transmitted / incident
-        // = 1.0f / material.ior (which relative_eta is equal to here)
-        relative_eta = start_NoV > 0 ? material.ior : (1.0f / relative_eta);
+        // = 1.0f / material.ior
+        //relative_eta = start_NoV > 0 ? material.ior : (1.0f / relative_eta);
 
         // We need to take the relative_eta into account when refracting to compute
         // the half vector (this is the "generalized" part of the half vector computation)
@@ -296,18 +320,22 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_glass_eval(const RendererMaterial
     return color;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_glass_sample(const RendererMaterial& material, RayPayload& ray_payload, const float3& view_direction, float3 surface_normal, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_glass_sample(const RendererMaterial* materials_buffer, const RendererMaterial& material, RayPayload& ray_payload, const float3& view_direction, float3 surface_normal, Xorshift32Generator& random_number_generator)
 {
     float3 T, B;
     build_rotated_ONB(surface_normal, T, B, material.anisotropic_rotation * M_PI);
 
-    float relative_eta = material.ior;
+    // Relative eta = eta_t / eta_i
+    float eta_t = ray_payload.outgoing_mat_index == -1 ? 1.0 : materials_buffer[ray_payload.outgoing_mat_index].ior;
+    float eta_i = ray_payload.incident_mat_index == -1 ? 1.0 : materials_buffer[ray_payload.incident_mat_index].ior;
+    float relative_eta = eta_t / eta_i;
     if (hippt::dot(surface_normal, view_direction) < 0)
     {
         // We want the surface normal in the same hemisphere as 
         // the view direction for the rest of the calculations
         surface_normal = -surface_normal;
-        relative_eta = 1.0f / relative_eta;
+        // TODO remove
+        //relative_eta = 1.0f / relative_eta;
     }
 
     float3 local_view_direction = world_to_local_frame(T, B, surface_normal, view_direction);
@@ -365,7 +393,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_sheen_sample(const RendererMaterial
     return cosine_weighted_sample(surface_normal, random_number_generator);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_eval(const RendererMaterial* materials_buffer, const RendererMaterial& material, RayPayload& ray_payload, const float3& view_direction, const float3& shading_normal, const float3& to_light_direction, float& pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_eval(const RendererMaterial* materials_buffer, const RendererMaterial& material, int material_index, RayPayload& ray_payload, const float3& view_direction, const float3& shading_normal, const float3& to_light_direction, float& pdf)
 {
     pdf = 0.0f;
 
@@ -405,7 +433,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_eval(const RendererMaterial* mate
 
     // Glass
     tmp_weight = (1.0f - material.metallic) * material.specular_transmission;
-    final_color += tmp_weight > 0 ? tmp_weight * disney_glass_eval(materials_buffer, material, ray_payload, view_direction, shading_normal, to_light_direction, tmp_pdf) : ColorRGB(0.0f);
+    final_color += tmp_weight > 0 ? tmp_weight * disney_glass_eval(materials_buffer, material, material_index, ray_payload, view_direction, shading_normal, to_light_direction, tmp_pdf) : ColorRGB(0.0f);
     pdf += tmp_pdf * tmp_weight;
     tmp_pdf = 0.0f;
 
@@ -417,7 +445,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_eval(const RendererMaterial* mate
     return final_color;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_sample(const RendererMaterial* materials_buffer, const RendererMaterial& material, RayPayload& ray_payload, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal, float3& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_sample(const RendererMaterial* materials_buffer, const RendererMaterial& material, int material_index, RayPayload& ray_payload, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal, float3& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
 {
     pdf = 0.0f;
 
@@ -489,6 +517,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_sample(const RendererMaterial* ma
             normal = reflect_ray(shading_normal, geometric_normal);
         }
     }
+    else
+        // We're not sampling the glass lobe so we're reflecting so we're poping the stack
+        ray_payload.interior_stack.pop(false);
 
     if (rand_1 < cdf[0])
         output_direction = disney_diffuse_sample(material, view_direction, normal, random_number_generator);
@@ -497,7 +528,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_sample(const RendererMaterial* ma
     else if (rand_1 < cdf[2])
         output_direction = disney_clearcoat_sample(material, view_direction, normal, random_number_generator);
     else
-        output_direction = disney_glass_sample(material, ray_payload, view_direction, normal, random_number_generator);
+        output_direction = disney_glass_sample(materials_buffer, material, ray_payload, view_direction, normal, random_number_generator);
 
     if (hippt::dot(output_direction, shading_normal) < 0 && !(rand_1 > cdf[2]))
         // It can happen that the light direction sampled is below the surface. 
@@ -508,7 +539,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_sample(const RendererMaterial* ma
         // is a valid configuration for the glass lobe
         return ColorRGB(0.0f);
 
-    return disney_eval(materials_buffer, material, ray_payload, view_direction, normal, output_direction, pdf);
+    return disney_eval(materials_buffer, material, material_index, ray_payload, view_direction, normal, output_direction, pdf);
 }
 
 #endif
