@@ -193,7 +193,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                         // --------------------------------------------------- //
                         // ----------------- Direct lighting ----------------- //
                         // --------------------------------------------------- //
-                        ColorRGB light_sample_radiance = sample_light_sources(render_data, material, material_index, closest_hit_info, -ray.direction, random_number_generator);
+                        ColorRGB light_sample_radiance;// = sample_light_sources(render_data, material, material_index, closest_hit_info, -ray.direction, random_number_generator);
                         ColorRGB envmap_radiance = sample_environment_map(render_data, material, material_index, ray_payload, closest_hit_info, -ray.direction, random_number_generator);
 
                         // --------------------------------------- //
@@ -220,7 +220,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                         if ((brdf.r == 0.0f && brdf.g == 0.0f && brdf.b == 0.0f) || brdf_pdf <= 0.0f)
                             break;
 
-                        if (bounce == 0)
+                        //if (bounce == 0)
                             ray_payload.ray_color = ray_payload.ray_color + material.emission * ray_payload.throughput;
                         ray_payload.ray_color = ray_payload.ray_color + (light_sample_radiance + envmap_radiance) * ray_payload.throughput;
 
