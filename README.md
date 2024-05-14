@@ -13,8 +13,8 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 - AMD RDNA1 GPU or newer (RX 5000 or newer) **or** NVIDIA Maxwell GPU or newer (GTX 700 & GTX 900 Series or newer)
 - Visual Studio 2022 (only version tested but older versions might work as well)
 
-# Building
-## Preliminary setup
+# Compiling
+## Prerequisites
 ### Windows
 #### - AMD GPUs
 Nothing to do, go to the building step.
@@ -25,7 +25,6 @@ The CMake build then expects the CUDA_PATH environment variable to be defined. T
 
 ### Linux
 
-All that follows has only been tested on Ubuntu 22.04.
 #### - AMD GPUs
 
 1) Install OpenGL, GLFW and glew dependencies:
@@ -58,10 +57,18 @@ sudo usermod -a -G render $LOGNAME
 ```
 #### - NVIDIA GPUs
 
-Not yet tested. If you have an NVIDIA GPU and want to try and compile the project on your Linux installation, please feel free to do so. You could then open a merge request to add installation instructions to the README, that would be greatly appreciated!
+1) Install OpenGL, GLFW and glew dependencies:
+
+```sh
+sudo apt install freeglut3-dev
+sudo apt install libglfw3-dev
+sudo apt install libglew-dev
+```
+
+2) Install the NVIDIA CUDA SDK (called "CUDA Toolkit"). It can be downloaded and installed from [here](https://developer.nvidia.com/cuda-downloads).
 ## Compiling
 
-With the preliminary setup done, you now just have to run the CMake:
+With the pre-requisites fulfilled, you now just have to run the CMake:
 
 ``` sh
 git clone https://github.com/TomClabault/HIPRT-Path-Tracer.git

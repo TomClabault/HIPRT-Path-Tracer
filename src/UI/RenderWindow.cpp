@@ -13,8 +13,9 @@
 #include "stb_image_write.h"
 
 // TODO bugs
+// - something is unsafe on NVIDIA + Windows + nested dielectrics complex + 48 bounces minimum. We get a CPU-side orochi error when downloading the framebuffer for displaying indicating that some illegal memory was accessed (huh?)
 // - bistro textures are buggued so there must still be something wrong with the parsing
-// - when adaptive sampling is on and holding click (render low resolution), some grid artifacts show up
+// - when adaptive sampling is on and holding click (render low resolution), some grid artifacts show up (doesn't even need adaptive sampling enabled to do that actually)
 // - normals AOV not converging correctly ?
 //		- for the denoiser normals convergence issue, is it an error at the end of the Path Tracer kernel where we're accumulating ? Should we have
 //		render_data.aux_buffers.denoiser_albedo[index] * render_data.render_settings.sample_number 
