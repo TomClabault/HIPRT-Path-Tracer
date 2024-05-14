@@ -10,7 +10,6 @@
 #include "Renderer/BoundingVolume.h"
 #include "Renderer/BVHConstants.h"
 #include "Renderer/Triangle.h"
-#include "Renderer/FilterFunction.h"
 
 #include <array>
 #include <atomic>
