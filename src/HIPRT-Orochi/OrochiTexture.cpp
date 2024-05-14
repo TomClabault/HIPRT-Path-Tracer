@@ -49,19 +49,20 @@ void OrochiTexture::init_from_image(const ImageRGBA& image)
 	OROCHI_CHECK_ERROR(oroMemcpy2DToArray(m_texture_array, 0, 0, image.data().data(), image.width * image.channels * sizeof(float), image.width * sizeof(float) * image.channels, image.height, oroMemcpyHostToDevice));
 
 	// Resource descriptor
-	oroResourceDesc resource_descriptor;
+	ORO_RESOURCE_DESC resource_descriptor;
 	std::memset(&resource_descriptor, 0, sizeof(resource_descriptor));
-	resource_descriptor.resType = hipResourceTypeArray;
-	resource_descriptor.res.array.array = m_texture_array;
+	resource_descriptor.resType = ORO_RESOURCE_TYPE_ARRAY;
+	resource_descriptor.res.array.hArray = m_texture_array;
 
-	oroTextureDesc texture_descriptor;
+	ORO_TEXTURE_DESC texture_descriptor;
 	std::memset(&texture_descriptor, 0, sizeof(texture_descriptor));
-	texture_descriptor.addressMode[0] = hipAddressModeWrap;
-	texture_descriptor.addressMode[1] = hipAddressModeWrap;
-	texture_descriptor.filterMode = hipFilterModePoint;
-	texture_descriptor.normalizedCoords = 1;
+	texture_descriptor.addressMode[0] = ORO_TR_ADDRESS_MODE_WRAP;
+	texture_descriptor.addressMode[1] = ORO_TR_ADDRESS_MODE_WRAP;
+	texture_descriptor.filterMode = ORO_TR_FILTER_MODE_POINT;
+	//texture_descriptor.normalizedCoords = 1;
 
-	OROCHI_CHECK_ERROR(oroCreateTextureObject(&m_texture, &resource_descriptor, &texture_descriptor, nullptr));
+	OROCHI_CHECK_ERROR(oroTexObjectCreate(&m_texture, &resource_descriptor, &texture_descriptor, nullptr));
+	//OROCHI_CHECK_ERROR(oroCreateTextureObject(&m_texture, &resource_descriptor, &texture_descriptor, nullptr));
 }
 
 oroTextureObject_t OrochiTexture::get_device_texture()

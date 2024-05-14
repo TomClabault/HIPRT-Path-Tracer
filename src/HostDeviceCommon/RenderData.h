@@ -24,7 +24,7 @@ struct HIPRTRenderSettings
 	int sample_number = 0;
 
 	int samples_per_frame = 1;
-	int nb_bounces = 2000;
+	int nb_bounces = 48;
 
 	// If true, this means that the user is moving the camera and we're going to
 	// render the image at a much lower resolution to allow for smooth camera

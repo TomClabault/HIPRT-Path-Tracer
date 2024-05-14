@@ -14,7 +14,7 @@ enum RayState
 	MISSED
 };
 
-#define INTERIOR_STACK_SIZE 8
+#define INTERIOR_STACK_SIZE 16
 
 /**
  * References:
