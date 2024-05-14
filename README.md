@@ -50,7 +50,7 @@ Install HIP:
 sudo amdgpu-install --usecase=hip
 ```
 
-3) To access GPU hardware without having to run your app as sudo everytime, add the user to the `render` group and **reboot** :
+3) Normally, you would have to run the path tracer as `sudo` to be able to acces GPGPU compute capabilities. However, you can save yourself the trouble by adding the user to the `render` group and **rebooting your system** :
 
 ```sh
 sudo usermod -a -G render $LOGNAME
