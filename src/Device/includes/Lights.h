@@ -107,7 +107,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_light_sources(const HIPRTRenderDa
 
             float pdf;
             RayPayload trash_payload;
-            ColorRGB brdf = brdf_dispatcher_eval(render_data.buffers.materials_buffer, material, material_index, trash_payload, view_direction, closest_hit_info.shading_normal, shadow_ray.direction, pdf);
+            ColorRGB brdf = brdf_dispatcher_eval(render_data.buffers.materials_buffer, material, trash_payload, view_direction, closest_hit_info.shading_normal, shadow_ray.direction, pdf);
             if (pdf != 0.0f)
             {
                 float mis_weight = power_heuristic(light_sample_pdf, pdf);
@@ -125,7 +125,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_light_sources(const HIPRTRenderDa
     float3 sampled_brdf_direction;
     float direction_pdf;
     RayPayload trash_payload;
-    ColorRGB brdf = brdf_dispatcher_sample(render_data.buffers.materials_buffer, material, material_index, trash_payload, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_brdf_direction, direction_pdf, random_number_generator);
+    ColorRGB brdf = brdf_dispatcher_sample(render_data.buffers.materials_buffer, material, trash_payload, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_brdf_direction, direction_pdf, random_number_generator);
     if (direction_pdf > 0)
     {
         hiprtRay new_ray;

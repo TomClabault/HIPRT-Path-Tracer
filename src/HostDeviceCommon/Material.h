@@ -31,8 +31,8 @@ struct RendererMaterial
     {
         roughness = hippt::max(1.0e-4f, roughness);
         clearcoat_roughness = hippt::max(1.0e-4f, clearcoat_roughness);
-        if (abs(ior - 1.0f) < 0.01f)
-            ior = 1.01f;
+        /*if (abs(ior - 1.0f) < 0.01f)
+            ior = 1.01f;*/
 
         // Clamping to avoid negative emission
         emission = max(ColorRGB(0.0f), emission);

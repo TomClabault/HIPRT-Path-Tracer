@@ -119,7 +119,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_environment_map(const HIPRTRender
             ColorRGB env_map_radiance = sample_texture_pixel(world_settings.envmap, /* is_srgb */ false, make_float2(u, v));
             float pdf;
             RayPayload trash_payload;
-            ColorRGB brdf = brdf_dispatcher_eval(render_data.buffers.materials_buffer, material, material_index, trash_payload, view_direction, closest_hit_info.shading_normal, sampled_direction, pdf);
+            ColorRGB brdf = brdf_dispatcher_eval(render_data.buffers.materials_buffer, material, trash_payload, view_direction, closest_hit_info.shading_normal, sampled_direction, pdf);
 
             float mis_weight = power_heuristic(env_map_pdf, pdf);
             env_sample = brdf * cosine_term * mis_weight * env_map_radiance / env_map_pdf;
@@ -129,7 +129,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_environment_map(const HIPRTRender
     float brdf_sample_pdf;
     float3 brdf_sampled_dir;
     RayPayload trash_payload;
-    ColorRGB brdf_imp_sampling = brdf_dispatcher_sample(render_data.buffers.materials_buffer, material, material_index, trash_payload, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, brdf_sampled_dir, brdf_sample_pdf, random_number_generator);
+    ColorRGB brdf_imp_sampling = brdf_dispatcher_sample(render_data.buffers.materials_buffer, material, trash_payload, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, brdf_sampled_dir, brdf_sample_pdf, random_number_generator);
 
     cosine_term = hippt::clamp(0.0f, 1.0f, hippt::dot(closest_hit_info.shading_normal, brdf_sampled_dir));
     ColorRGB brdf_sample;

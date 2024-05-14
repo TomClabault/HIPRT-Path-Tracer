@@ -202,7 +202,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
 
                         float brdf_pdf;
                         float3 bounce_direction;
-                        ColorRGB brdf = brdf_dispatcher_sample(render_data.buffers.materials_buffer, material, material_index, ray_payload, -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bounce_direction, brdf_pdf, random_number_generator);
+                        ColorRGB brdf = brdf_dispatcher_sample(render_data.buffers.materials_buffer, material, ray_payload, -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bounce_direction, brdf_pdf, random_number_generator);
 
                         if (ray_payload.last_brdf_hit_type == BRDF::SpecularFresnel)
                             // The fresnel blend coefficient is in the PDF
@@ -227,9 +227,16 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                         ray_payload.throughput *= brdf * hippt::abs(hippt::dot(bounce_direction, closest_hit_info.shading_normal)) / brdf_pdf;
 
                         int outside_surface = hippt::dot(bounce_direction, closest_hit_info.shading_normal) < 0 ? -1.0f : 1.0;
-                        float3 new_ray_origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 3.0e-3f * outside_surface;
-                        ray.origin = new_ray_origin;
+                        ray.origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 3.0e-3f * outside_surface;
                         ray.direction = bounce_direction;
+
+                        ray_payload.next_ray_state = RayState::BOUNCE;
+                    }
+                    else
+                    {
+                        // We need to skip this boundary so we're basically completely ignoring it and the next
+                        // ray continues on its way
+                        ray.origin = closest_hit_info.inter_point + ray.direction * 3.0e-3f;
 
                         ray_payload.next_ray_state = RayState::BOUNCE;
                     }
