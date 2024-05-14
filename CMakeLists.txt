@@ -246,10 +246,29 @@ target_include_directories(HIPRTPathTracer PRIVATE ".")
 
 # ------------- Handling NVIDIA compilation details -------------
 # If CUDA is installed, meaning NVIDIA
-if(DEFINED ENV{CUDA_PATH})
+set(USING_NVIDIA False)
+
+if (WIN32)
+	if (DEFINED ENV{CUDA_PATH})
+		set(USING_NVIDIA True)
+	endif()
+elseif (UNIX)
+	find_package(CUDA)
+	if (CUDA_FOUND)
+		set (USING_NVIDIA True)
+	endif()
+endif()
+
+if (USING_NVIDIA)
 	# Adding the required macro for Orochi
 	add_compile_definitions(OROCHI_ENABLE_CUEW)
-	target_include_directories(HIPRTPathTracer PRIVATE $ENV{CUDA_PATH}/include)
+
+	# Adding the include directory for CUDA headers (needed for Orochi compilation)
+	if (WIN32)
+		target_include_directories(HIPRTPathTracer PRIVATE $ENV{CUDA_PATH}/include)
+	elseif(UNIX)
+		target_include_directories(HIPRTPathTracer PRIVATE ${CUDA_INCLUDE_DIRS})
+	endif()
 endif()
 # ---------------------------------------------------------------
 
