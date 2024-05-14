@@ -13,6 +13,22 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 - AMD RDNA1 GPU or newer (RX 5000 or newer) **or** NVIDIA Maxwell GPU or newer (GTX 700 & GTX 900 Series or newer)
 - Visual Studio 2022 (only version tested but older versions might work as well)
 
+# Features:
+
+- Disney BSDF (Diffuse, fake subsurface, metallic, roughness, anisotropy + anisotropy rotation, clearcoat, sheen, glass, volumetric Beer-Lambert absorption, ...) \[Burley, 2015\]
+- For experimentation purposes, the Disney diffuse lobe can use either the "Disney Diffuse" presented in the original \[Burley, 2012\] paper, a lambertian distribution or the Oren Nayar microfacet diffuse model.
+- BSDF Multiple Importance Sampling
+- HDR Environment map
+- Envmap importance sampling based on CDF binary search
+- Emissive geometry
+- Automatic nested dielectrics support \[Ray Tracing Gems, 2019\]
+- Per-pixel adaptive sampling with variance threshold
+- Texture support for all the parameters of the BSDF
+- Normal mapping
+- Interactive ImGui interface + interactive FPScamera
+- Different frame-buffer visualisation (visualize the adaptive sampling map, the denoiser normals / albedo, ...)
+- Use of the ASSIMP library to support [many](https://github.com/assimp/assimp/blob/master/doc/Fileformats.md) scene file formats.
+- Intel Open Image Denoise
 # Compiling
 ## Prerequisites
 ### Windows
