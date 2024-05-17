@@ -61,13 +61,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void env_map_cdf_search(const WorldSettings& worl
     x = hippt::max(hippt::min(lower, world_settings.envmap_width), 0u);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_environment_map(const HIPRTRenderData& render_data, const RendererMaterial& material, int material_index, const RayPayload& ray_payload, HitInfo& closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_environment_map(const HIPRTRenderData& render_data, const RendererMaterial& material, HitInfo& closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
 {
     if (render_data.world_settings.ambient_light_type != AmbientLightType::ENVMAP)
         // Not using the envmap
         return ColorRGB(0.0f);
 
-    if (material.emission.r != 0.0f || material.emission.g != 0.0f || material.emission.b != 0.0f)
+    if (material.is_emissive())
         // We're not sampling direct lighting if we're already on an
         // emissive surface
         return ColorRGB(0.0f);
@@ -118,8 +118,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_environment_map(const HIPRTRender
 
             ColorRGB env_map_radiance = sample_texture_pixel(world_settings.envmap, /* is_srgb */ false, make_float2(u, v));
             float pdf;
-            RayPayload trash_payload;
-            ColorRGB brdf = brdf_dispatcher_eval(render_data.buffers.materials_buffer, material, trash_payload, view_direction, closest_hit_info.shading_normal, sampled_direction, pdf);
+            RayVolumeState trash_state;
+            ColorRGB brdf = brdf_dispatcher_eval(render_data.buffers.materials_buffer, material, trash_state, view_direction, closest_hit_info.shading_normal, sampled_direction, pdf);
 
             float mis_weight = power_heuristic(env_map_pdf, pdf);
             env_sample = brdf * cosine_term * mis_weight * env_map_radiance / env_map_pdf;
@@ -128,8 +128,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_environment_map(const HIPRTRender
 
     float brdf_sample_pdf;
     float3 brdf_sampled_dir;
-    RayPayload trash_payload;
-    ColorRGB brdf_imp_sampling = brdf_dispatcher_sample(render_data.buffers.materials_buffer, material, trash_payload, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, brdf_sampled_dir, brdf_sample_pdf, random_number_generator);
+    RayVolumeState trash_state;
+    ColorRGB brdf_imp_sampling = brdf_dispatcher_sample(render_data.buffers.materials_buffer, material, trash_state, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, brdf_sampled_dir, brdf_sample_pdf, random_number_generator);
 
     cosine_term = hippt::clamp(0.0f, 1.0f, hippt::dot(closest_hit_info.shading_normal, brdf_sampled_dir));
     ColorRGB brdf_sample;

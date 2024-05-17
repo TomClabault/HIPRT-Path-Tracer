@@ -17,6 +17,7 @@ struct InteriorStackImpl {};
  * Reference:
  *
  * [1] [Ray Tracing Gems 1 - Automatic Handling of Materials in Nested Volumes] https://www.realtimerendering.com/raytracinggems/rtg/index.html
+ * [2] [Simple Nested Dielectrics in Ray Traced Images, Schmidt, 2002]
  */
 struct StackEntry
 {
@@ -128,11 +129,6 @@ struct InteriorStackImpl<0>
 	int stack_position = 0;
 };
 
-/**
- * Reference:
- * 
- * [1] [Simple Nested Dielectrics in Ray Traced Images, Schmidt, 2002]
- */
 struct StackPriorityEntry
 {
 	// TODO do packing in here, can all fit in 1 int and test num registers with the playground
@@ -209,26 +205,6 @@ struct InteriorStackImpl<1>
 		}
 	}
 
-	//HIPRT_HOST_DEVICE bool push(int& incident_material_index, int& outgoing_material_index, bool& leaving_material, int material_index, int material_priority)
-	//{
-	//	stack[stack_position].material_index = material_index;
-	//	stack[stack_position].priority = material_priority;
-	//	incident_material_index = stack_position > 0 ? stack[stack_position - 1].material_index : -1;
-	//	outgoing_material_index = material_index;
-
-	//	if (material_priority < max_priority)
-	//		// Skipping the boundary if we're entering a material with a lower priority
-	//		return true;
-
-	//	if (stack_position < INTERIOR_STACK_SIZE)
-	//		stack_position++;
-
-	//	max_priority = hippt::max(max_priority, material_priority);
-
-	//	// Not skipping the boundary
-	//	return false;
-	//}
-
 	HIPRT_HOST_DEVICE void pop(bool leaving_material)
 	{
 		int stack_top_mat_index = stack[stack_position].material_index;
@@ -257,26 +233,6 @@ struct InteriorStackImpl<1>
 			}
 		}
 	}
-
-	/*HIPRT_HOST_DEVICE void pop(bool leaving_material)
-	{
-		int stack_top_mat_index = stack[stack_position].material_index;
-		stack_position--;
-
-		if (leaving_material)
-		{
-			int previous_same_mat_index;
-			for (previous_same_mat_index = stack_position; previous_same_mat_index >= 0; previous_same_mat_index--)
-				if (stack[previous_same_mat_index].material_index == stack_top_mat_index)
-					break;
-
-			if (previous_same_mat_index >= 0)
-				for (int i = previous_same_mat_index + 1; i <= stack_position; i++)
-					stack[i - 1] = stack[i];
-
-			stack_position--;
-		}
-	}*/
 
 	StackPriorityEntry stack[INTERIOR_STACK_SIZE];
 

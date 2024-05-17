@@ -19,7 +19,7 @@ enum BRDF
 
 struct RendererMaterial
 {
-    HIPRT_HOST_DEVICE bool is_emissive()
+    HIPRT_HOST_DEVICE bool is_emissive() const
     {
         return emission.r != 0.0f || emission.g != 0.0f || emission.b != 0.0f;
     }

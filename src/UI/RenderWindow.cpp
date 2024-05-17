@@ -13,6 +13,7 @@
 #include "stb_image_write.h"
 
 // TODO bugs
+// - are we pushing the shadow rays in the right direction when sampling env map while inside surface? It's weird that disabling the env map surface while in a surface darkens the render
 // - something is unsafe on NVIDIA + Windows + nested-dielectrics-complex.gltf + 48 bounces minimum + nested dielectric strategy RT Gems. We get a CPU-side orochi error when downloading the framebuffer for displaying indicating that some illegal memory was accessed. Is the buffer corrupted by something?
 // - textures broken since no more normalized coordinates
 // - bistro textures are buggued so there must still be something wrong with the parsing

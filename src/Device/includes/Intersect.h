@@ -92,20 +92,21 @@ HIPRT_HOST_DEVICE HIPRT_INLINE hiprtHit intersect_scene_cpu(const HIPRTRenderDat
 #endif
 
 #ifdef __KERNELCC__
-HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data, hiprtRay ray, HitInfo& hit_info)
+HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data, hiprtRay ray, RayPayload& ray_payload, bool& skipping_boundary, HitInfo& hit_info)
 #else
-HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data, hiprtRay ray, HitInfo& hit_info)
+HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data, hiprtRay ray, RayPayload& ray_payload, bool& skipping_boundary, HitInfo& hit_info)
 #endif
 {
-#ifdef __KERNELCC__
-    hiprtGeomTraversalClosest tr(render_data.geom, ray);
-    hiprtHit hit = tr.getNextHit();
-#else
-    hiprtHit hit = intersect_scene_cpu(render_data, ray);
-#endif
-
-    if (hit.hasHit())
+    hiprtHit hit;
+    do
     {
+    #ifdef __KERNELCC__
+        hiprtGeomTraversalClosest tr(render_data.geom, ray);
+        hit = tr.getNextHit();
+    #else
+        hit = intersect_scene_cpu(render_data, ray);
+    #endif
+
         hit_info.inter_point = ray.origin + hit.t * ray.direction;
         hit_info.primitive_index = hit.primID;
         hit_info.texcoords = uv_interpolate(render_data.buffers.triangles_indices, hit_info.primitive_index, render_data.buffers.texcoords, hit.uv);
@@ -117,10 +118,25 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
         hit_info.t = hit.t;
         hit_info.uv = hit.uv;
 
-        return true;
-    }
-    else
-        return false;
+        if (ray_payload.is_inside_volume())
+            ray_payload.volume_state.distance_in_volume += hit.t;
+
+        int material_index = render_data.buffers.material_indices[hit.primID];
+        ray_payload.material = render_data.buffers.materials_buffer[material_index];
+        skipping_boundary = ray_payload.volume_state.interior_stack.push(ray_payload.volume_state.incident_mat_index, ray_payload.volume_state.outgoing_mat_index, ray_payload.volume_state.leaving_mat, material_index, ray_payload.material.dielectric_priority);
+
+        if (skipping_boundary)
+        {
+            // If we're skipping, the boundary, the ray just keeps going on its way
+            ray.origin = hit_info.inter_point + ray.direction * 3.0e-3f;
+
+            // Don't forget to increment the distance traveled
+            ray_payload.volume_state.distance_in_volume += hit.t;
+        }
+
+    } while (skipping_boundary);
+
+    return hit.hasHit();
 }
 
 /**

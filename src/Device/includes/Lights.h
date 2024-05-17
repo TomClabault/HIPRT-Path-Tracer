@@ -106,8 +106,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_light_sources(const HIPRTRenderDa
             light_sample_pdf /= dot_light_source;
 
             float pdf;
-            RayPayload trash_payload;
-            ColorRGB brdf = brdf_dispatcher_eval(render_data.buffers.materials_buffer, material, trash_payload, view_direction, closest_hit_info.shading_normal, shadow_ray.direction, pdf);
+            RayVolumeState trash_volume_state;
+            ColorRGB brdf = brdf_dispatcher_eval(render_data.buffers.materials_buffer, material, trash_volume_state, view_direction, closest_hit_info.shading_normal, shadow_ray.direction, pdf);
             if (pdf != 0.0f)
             {
                 float mis_weight = power_heuristic(light_sample_pdf, pdf);
@@ -124,8 +124,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_light_sources(const HIPRTRenderDa
 
     float3 sampled_brdf_direction;
     float direction_pdf;
-    RayPayload trash_payload;
-    ColorRGB brdf = brdf_dispatcher_sample(render_data.buffers.materials_buffer, material, trash_payload, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_brdf_direction, direction_pdf, random_number_generator);
+    RayVolumeState trash_volume_state;
+    ColorRGB brdf = brdf_dispatcher_sample(render_data.buffers.materials_buffer, material, trash_volume_state, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_brdf_direction, direction_pdf, random_number_generator);
     if (direction_pdf > 0)
     {
         hiprtRay new_ray;
@@ -133,29 +133,31 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_light_sources(const HIPRTRenderDa
         new_ray.direction = sampled_brdf_direction;
 
         HitInfo new_ray_hit_info;
-        bool inter_found = trace_ray(render_data, new_ray, new_ray_hit_info);
+        RayPayload trash_payload;
+        bool trash;
+        bool inter_found = trace_ray(render_data, new_ray, trash_payload, trash, new_ray_hit_info);
 
         if (inter_found)
         {
-            // abs() here to allow double sided emissive geometry
+            // abs() here to allow double sided emissive geometry.
+            // Without abs() here:
+            //  - We could be hitting the back of an emissive triangle 
+            //  --> triangle normal not facing the same way 
+            //  --> cos_angle negative
             float cos_angle = hippt::abs(hippt::dot(new_ray_hit_info.shading_normal, -sampled_brdf_direction));
-            if (cos_angle > 0.0f)
+            int material_index = render_data.buffers.material_indices[new_ray_hit_info.primitive_index];
+            RendererMaterial material = render_data.buffers.materials_buffer[material_index];
+
+            if (material.is_emissive())
             {
-                int material_index = render_data.buffers.material_indices[new_ray_hit_info.primitive_index];
-                RendererMaterial material = render_data.buffers.materials_buffer[material_index];
+                float distance_squared = new_ray_hit_info.t * new_ray_hit_info.t;
+                float light_area = triangle_area(render_data, new_ray_hit_info.primitive_index);
 
-                ColorRGB emission = material.emission;
-                if (emission.r > 0 || emission.g > 0 || emission.b > 0)
-                {
-                    float distance_squared = new_ray_hit_info.t * new_ray_hit_info.t;
-                    float light_area = triangle_area(render_data, new_ray_hit_info.primitive_index);
+                float light_pdf = distance_squared / (light_area * cos_angle);
 
-                    float light_pdf = distance_squared / (light_area * cos_angle);
-
-                    float mis_weight = power_heuristic(direction_pdf, light_pdf);
-                    float cosine_term = hippt::max(0.0f, hippt::dot(closest_hit_info.shading_normal, sampled_brdf_direction));
-                    brdf_radiance_mis = brdf * cosine_term * emission * mis_weight / direction_pdf;
-                }
+                float mis_weight = power_heuristic(direction_pdf, light_pdf);
+                float cosine_term = hippt::max(0.0f, hippt::dot(closest_hit_info.shading_normal, sampled_brdf_direction));
+                brdf_radiance_mis = brdf * cosine_term * material.emission * mis_weight / direction_pdf;
             }
         }
     }
