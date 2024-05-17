@@ -303,12 +303,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_glass_eval(const RendererMaterial
             if (ray_volume_state.leaving_mat)
                 // We refracting out of a volume so we're poping the stack
                 ray_volume_state.interior_stack.pop(ray_volume_state.leaving_mat);
-            else
-            {
-#ifndef __KERNELCC__
-                std::cout << "Not leaving volume!!!" << std::endl;
-#endif
-            }
         }
     }
 

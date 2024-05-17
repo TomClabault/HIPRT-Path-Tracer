@@ -107,6 +107,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
         hit = intersect_scene_cpu(render_data, ray);
     #endif
 
+        if (!hit.hasHit())
+            return false;
+
         hit_info.inter_point = ray.origin + hit.t * ray.direction;
         hit_info.primitive_index = hit.primID;
         hit_info.texcoords = uv_interpolate(render_data.buffers.triangles_indices, hit_info.primitive_index, render_data.buffers.texcoords, hit.uv);
