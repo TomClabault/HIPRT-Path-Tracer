@@ -6,6 +6,7 @@
 #ifndef MATERIAL_H
 #define MATERIAL_H
 
+#include "Device/includes/CompilerOptions.h"
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/Math.h"
 
@@ -48,6 +49,10 @@ struct RendererMaterial
     {
         precompute_anisotropic();
         precompute_oren_nayar();
+
+        if (specular_transmission == 0.0f)
+            // No transmission means that we should never skip this boundary --> max priority
+            dielectric_priority = 65535;
     }
 
     HIPRT_HOST_DEVICE void precompute_anisotropic()
@@ -127,6 +132,9 @@ struct RendererMaterial
     float absorption_at_distance = 1.0f;
     // Color of the light absorption when traveling through the medium
     ColorRGB absorption_color = ColorRGB(1.0f);
+
+    // Nested dielectric parameter
+    unsigned short int dielectric_priority = 0;
 };
 
 #endif

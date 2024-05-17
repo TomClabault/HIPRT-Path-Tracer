@@ -168,15 +168,57 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                         ray_payload.distance_in_volume += closest_hit_info.t;
 
                     int material_index = render_data.buffers.material_indices[closest_hit_info.primitive_index];
-                    ray_payload.interior_stack.push(ray_payload.incident_mat_index, ray_payload.outgoing_mat_index, ray_payload.leaving_mat, material_index);
+                    RendererMaterial material = get_intersection_material(render_data, material_index, closest_hit_info.texcoords);
+                    bool skipping_boundary = ray_payload.interior_stack.push(ray_payload.incident_mat_index, ray_payload.outgoing_mat_index, ray_payload.leaving_mat, material_index, material.dielectric_priority);
 
-                    // This indicates that the boundary should not be skipped.
-                    // The boundary should be skipped if incident == outgoing mat index
-                    if (ray_payload.incident_mat_index != ray_payload.outgoing_mat_index)
+                    while (skipping_boundary)
                     {
-                        RendererMaterial material = get_intersection_material(render_data, material_index, closest_hit_info.texcoords);
-                        ray_payload.last_brdf_hit_type = material.brdf_type;
+                        // We need to skip this boundary so we're basically completely ignoring it and the next
+                        // ray continues on its way
+                        ray.origin = closest_hit_info.inter_point + ray.direction * 3.0e-3f;
 
+                        ray_payload.next_ray_state = RayState::BOUNCE;
+
+                        intersection_found = trace_ray(render_data, ray, closest_hit_info);
+
+                        if (intersection_found)
+                        {
+                            if (ray_payload.is_inside_volume())
+                                ray_payload.distance_in_volume += closest_hit_info.t;
+
+                            material_index = render_data.buffers.material_indices[closest_hit_info.primitive_index];
+                            material = get_intersection_material(render_data, material_index, closest_hit_info.texcoords);
+                            skipping_boundary = ray_payload.interior_stack.push(ray_payload.incident_mat_index, ray_payload.outgoing_mat_index, ray_payload.leaving_mat, material_index, material.dielectric_priority);
+                        }
+                        else
+                        {
+                            ColorRGB skysphere_color;
+                            if (render_data.world_settings.ambient_light_type == AmbientLightType::UNIFORM)
+                                skysphere_color = render_data.world_settings.uniform_light_color;
+                            else if (render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP && bounce == 0)
+                            {
+                                // We're only getting the skysphere radiance for the first rays because the
+                                // syksphere is importance sampled.
+                                // 
+                                // We're also getting the skysphere radiance for perfectly specular BRDF since those
+                                // are not importance sampled.
+
+                                skysphere_color = sample_environment_map_from_direction(render_data.world_settings, ray.direction);
+                            }
+
+                            ray_payload.ray_color += skysphere_color * ray_payload.throughput;
+
+                            ray_payload.next_ray_state = RayState::MISSED;
+
+                            skipping_boundary = false;
+                        }
+                    }
+
+                    if (ray_payload.next_ray_state == RayState::MISSED)
+                        break;
+
+                    if (!skipping_boundary)
+                    {
                         // For the BRDF calculations, bounces, ... to be correct, we need the normal to be in the same hemisphere as
                         // the view direction. One thing that can go wrong is when we have an emissive triangle (typical area light)
                         // and a ray hits the back of the triangle. The normal will not be facing the view direction in this
@@ -203,18 +245,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                         float brdf_pdf;
                         float3 bounce_direction;
                         ColorRGB brdf = brdf_dispatcher_sample(render_data.buffers.materials_buffer, material, ray_payload, -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bounce_direction, brdf_pdf, random_number_generator);
-
-                        if (ray_payload.last_brdf_hit_type == BRDF::SpecularFresnel)
-                            // The fresnel blend coefficient is in the PDF
-                            denoiser_blend *= brdf_pdf;
-
-                        if (!denoiser_AOVs_set && ray_payload.last_brdf_hit_type != BRDF::SpecularFresnel)
-                        {
-                            denoiser_AOVs_set = true;
-
-                            denoiser_albedo += material.base_color * denoiser_blend;
-                            denoiser_normal += closest_hit_info.shading_normal * denoiser_blend;
-                        }
 
                         // Terminate ray if something went wrong (sampling a direction below the surface for example)
                         if ((brdf.r == 0.0f && brdf.g == 0.0f && brdf.b == 0.0f) || brdf_pdf <= 0.0f)
@@ -246,7 +276,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                     ColorRGB skysphere_color;
                     if (render_data.world_settings.ambient_light_type == AmbientLightType::UNIFORM)
                         skysphere_color = render_data.world_settings.uniform_light_color;
-                    else if (render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP && (bounce == 0 || ray_payload.last_brdf_hit_type == BRDF::SpecularFresnel))
+                    else if (render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP && bounce == 0)
                     {
                         // We're only getting the skysphere radiance for the first rays because the
                         // syksphere is importance sampled.

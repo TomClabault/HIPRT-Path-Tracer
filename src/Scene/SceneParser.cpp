@@ -88,6 +88,7 @@ Scene SceneParser::parse_scene_file(const std::string& filepath, float frame_asp
         aiMesh* mesh = scene->mMeshes[mesh_index];
         aiMaterial* mesh_material = scene->mMaterials[mesh->mMaterialIndex];
 
+        // TODO clean this visually ugly code block
         RendererMaterial renderer_material = read_material_properties(mesh_material);
         std::vector<std::pair<aiTextureType, std::string>> texture_paths = get_textures_paths(mesh_material, renderer_material);
         normalize_texture_paths(texture_paths);

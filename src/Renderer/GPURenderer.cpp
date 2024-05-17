@@ -131,7 +131,17 @@ void GPURenderer::compile_trace_kernel(const char* kernel_file_path, const char*
 	auto start = std::chrono::high_resolution_clock::now();
 
 	std::vector<std::pair<std::string, std::string>> precompiler_defines;
+	precompiler_defines.push_back(std::make_pair("InteriorStackStrategy", "1"));
+	// Vector below needed to keep the options alive when getting their c_str()
+	std::vector<std::string> defines_macro_options;
 	std::vector<const char*> options;
+
+	// TODO clean this function, it's kind of ugly to have the precompiler defines in there, level of abstraction is bad
+	for (auto macro_key_value : precompiler_defines)
+	{
+		defines_macro_options.push_back("-D " + macro_key_value.first + "=" + macro_key_value.second);
+		options.push_back(defines_macro_options.back().c_str());
+	}
 
 	std::vector<std::string> additional_includes = { KERNEL_COMPILER_ADDITIONAL_INCLUDE, DEVICE_INCLUDES_DIRECTORY, OROCHI_INCLUDES_DIRECTORY, "-I./" };
 

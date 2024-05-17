@@ -131,7 +131,7 @@ namespace HIPPTOrochiUtils
 		const char* function_name,
 		hiprtApiFunction& kernel_function_out,
 		const std::vector<std::string>& additional_include_directories,
-		const std::optional<std::vector<const char*>>& compiler_options,
+		const std::vector<const char*>& compiler_options,
 		unsigned int num_geom_types, unsigned int num_ray_types, 
 		bool use_compiler_cache,
 		hiprtFuncNameSet* func_name_set)
@@ -140,70 +140,17 @@ namespace HIPPTOrochiUtils
 		std::string kernel_source_code;
 		read_source_code(kernel_file_path, kernel_source_code, &include_names);
 
-		// Header parsing was causing issues with NVRTC and isn't even used anyway so disabling it for now...
-		// 
-		// 
-		// 
-		//// hiprtBuildTraceKernels() below needs a std::vector of const char*
-		//// but OrochiUtils takes a vector of std::string as argument so we need both
-		//// One could say that we could only store the std::string.c_str() into the vector
-		//// of const char* but this is not valid since to string returned by std::string::c_str()
-		//// is destroyed when the std::string is destroyed i.e. we need to keep the std::string
-		//// alive to be able to use its c_str() const char* version so we do actually need
-		//// both vectors (the std::string vectors being mainly used to keep the std::string alive)
-		//std::vector<std::string> parsed_header_sources_str;
-		//std::vector<std::string> parsed_header_names_str;
-		//std::unordered_set<std::string> already_parsed_header_names;
-
-		//std::deque<std::string> include_names_yet_to_parse(include_names.size());
-		//std::copy(include_names.begin(), include_names.end(), include_names_yet_to_parse.begin());
-		//while (!include_names_yet_to_parse.empty())
-		//{
-		//	std::string header_name = include_names_yet_to_parse.front();
-		//	std::string header_path = locate_header_in_include_dirs(header_name, additional_include_directories);
-		//	already_parsed_header_names.insert(header_name);
-
-		//	// Allocating space for the incoming header
-		//	std::vector<std::string> new_header_names;
-		//	std::string header_source_code;
-		//	read_source_code(header_path, header_source_code, &new_header_names);
-		//	if (header_source_code.length() > 0)
-		//	{
-		//		parsed_header_names_str.push_back(header_name);
-		//		parsed_header_sources_str.push_back(header_source_code);
-		//	}
-
-		//	// Adding the headers we just read to the queue of header files to read
-		//	for (const std::string& new_header_name : new_header_names)
-		//	{
-		//		if (already_parsed_header_names.find(new_header_name) == already_parsed_header_names.end())
-		//		{
-		//			// Only pushing a new header to parse to the queue if it's not already 
-		//			// in the queue (or has been parsed already)
-		//			include_names_yet_to_parse.push_back(new_header_name);
-		//			already_parsed_header_names.insert(new_header_name);
-		//		}
-		//	}
-
-		//	include_names_yet_to_parse.pop_front();
-		//}
-
-		//std::vector<const char*> parsed_header_sources(parsed_header_sources_str.size());
-		//std::vector<const char*> parsed_header_names(parsed_header_names_str.size());
-		//std::transform(parsed_header_sources_str.begin(), parsed_header_sources_str.end(), parsed_header_sources.begin(), [](const std::string& s) {return s.c_str(); });
-		//std::transform(parsed_header_names_str.begin(), parsed_header_names_str.end(), parsed_header_names.begin(), [](const std::string& s) {return s.c_str(); });
-
 		// We recreating a vector of options here because we want to the additional_include_directories
 		// as options. For that, we need an existing vector but we're not using the compiler_options options vector
 		// passed in as a parameter because we don't want to modify the input and we're not sure it's
 		// even a valid std::vector (it's an optional)
-		int compiler_options_count = additional_include_directories.size() + (compiler_options ? compiler_options.value().size() : 0);
+		int compiler_options_count = additional_include_directories.size() + compiler_options.size();
 		std::vector<std::string> compiler_options_str;
 		std::vector<const char*> compiler_options_cstr;
 		compiler_options_str.reserve(compiler_options_count);
 		compiler_options_cstr.reserve(compiler_options_count);
-		if (compiler_options)
-			std::copy(compiler_options.value().begin(), compiler_options.value().end(), compiler_options_str.begin());
+		if (compiler_options.size() > 0)
+			compiler_options_cstr.insert(compiler_options_cstr.end(), compiler_options.begin(), compiler_options.end());
 		// Adding the additional include directories as options for the GPU compiler (-I flag before the include directory path)
 		for (const std::string& additional_include_dir : additional_include_directories)
 		{

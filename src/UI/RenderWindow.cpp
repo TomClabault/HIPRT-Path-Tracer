@@ -13,7 +13,8 @@
 #include "stb_image_write.h"
 
 // TODO bugs
-// - something is unsafe on NVIDIA + Windows + nested dielectrics complex + 48 bounces minimum. We get a CPU-side orochi error when downloading the framebuffer for displaying indicating that some illegal memory was accessed (huh?)
+// - something is unsafe on NVIDIA + Windows + nested-dielectrics-complex.gltf + 48 bounces minimum + nested dielectric strategy RT Gems. We get a CPU-side orochi error when downloading the framebuffer for displaying indicating that some illegal memory was accessed. Is the buffer corrupted by something?
+// - textures broken since no more normalized coordinates
 // - bistro textures are buggued so there must still be something wrong with the parsing
 // - when adaptive sampling is on and holding click (render low resolution), some grid artifacts show up (doesn't even need adaptive sampling enabled to do that actually)
 // - normals AOV not converging correctly ?
@@ -32,6 +33,7 @@
 // - Use orochiBuffers when initializing the GPURenderer.RenderData instead of manual oroMalloc as currently done in set_hiprt_scene_from_scene
 // - Destroy buffers when disabling adaptive sampling to save VRAM
 // - uniform #ifndef in Device headers
+// - Refactor material editor
 // - Device/ or HostDeviceCommon. Not both
 // - Can we have access to HoL when calling disney_metallic_fresnel to avoid passing the two vectors and recomputing the dot product in the return statement ?
 // - DO THE DISNEY SHADING IN SHADING SPACE. WHAT THE H IS THIS CODE BUILDING ONB IN EVERY FUNCTION HUH?
@@ -40,11 +42,11 @@
 // - put mouse / keyboard code in an interactor
 //		- Have the is_interacting boolean in this interactor class and poll it from the main loop to check whether we need to render the frame at a lower resolution or not
 // - check for level of abstractions in functions
-// - Cool colored thread-safe logger singleton class
 
 
 
 // TODO Features:
+// - Cool colored thread-safe logger singleton class --> loguru lib
 // - portal envmap sampling --> choose portals with ImGui
 // - we have way better caustics when disabling direct lighting sampling but enabling += emission on hitting an emissive geometry. How to have the benefits of the two?
 // - find a way to not fill the texcoords buffer for meshes that don't have textures
@@ -370,8 +372,9 @@ RenderWindow::RenderWindow(int width, int height) : m_viewport_width(width), m_v
 	ImGui_ImplOpenGL3_Init();
 
 	m_renderer.init_ctx(0);
-	m_renderer.compile_trace_kernel(m_application_settings.kernel_files[m_application_settings.selected_kernel].c_str(),
-		m_application_settings.kernel_functions[m_application_settings.selected_kernel].c_str());
+	//m_renderer.compile_trace_kernel(DEVICE_KERNELS_DIRECTORY "/RegisterTestKernel.h", "TestFunction");
+	m_renderer.compile_trace_kernel(m_application_settings.kernel_files[m_application_settings.selected_kernel].c_str(), 
+									m_application_settings.kernel_functions[m_application_settings.selected_kernel].c_str());
 	m_renderer.change_render_resolution(width, height);
 	create_display_programs();
 
@@ -953,6 +956,10 @@ void RenderWindow::show_objects_panel()
 		some_material_changed |= ImGui::SliderFloat("Transmission", &material.specular_transmission, 0.0f, 1.0f);
 		some_material_changed |= ImGui::SliderFloat("Absorption distance", &material.absorption_at_distance, 0.0f, 20.0f);
 		some_material_changed |= ImGui::ColorEdit3("Absorption color", (float*)&material.absorption_color);
+		unsigned short int zero = 0, eight = 8;
+		ImGui::BeginDisabled(material.specular_transmission == 0.0f);
+		some_material_changed |= ImGui::SliderScalar("Dielectric priority", ImGuiDataType_U16, &material.dielectric_priority, &zero, &eight);
+		ImGui::EndDisabled();
 		some_material_changed |= ImGui::ColorEdit3("Emission", (float*)&material.emission, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
 
 		ImGui::PopID();

@@ -48,7 +48,7 @@ namespace HIPPTOrochiUtils
 		const char* function_name,
 		hiprtApiFunction& kernel_function_out,
 		const std::vector<std::string>& additional_include_directories,
-		const std::optional<std::vector<const char*>>& compiler_options,
+		const std::vector<const char*>& compiler_options,
 		unsigned int num_geom_types, unsigned int num_ray_types,
 		bool use_compiler_cache,
 		hiprtFuncNameSet* func_name_set = nullptr);
