@@ -208,7 +208,13 @@ struct InteriorStackImpl<1>
 	HIPRT_HOST_DEVICE void pop(bool leaving_material)
 	{
 		int stack_top_mat_index = stack[stack_position].material_index;
-		stack_position--;
+		if (stack_position > 0)
+			// Checking that we have room to pop.
+			// For a very small stack (size of 2) that overflown 
+			// (we couldn't push all the material we needed to because of 
+			// stack size constraint), it can happen that the stack position
+			// at this point is already 0 and we cannot pop.
+			stack_position--;
 
 		if (leaving_material)
 		{
@@ -221,7 +227,9 @@ struct InteriorStackImpl<1>
 				for (int i = previous_same_mat_index + 1; i <= stack_position; i++)
 					stack[i - 1] = stack[i];
 
-			stack_position--;
+			if (stack_position > 0)
+				// For very small stacks (2 for example), we may not be able to pop twice at all
+				stack_position--;
 		}
 
 		for (int i = stack_position; i >= 0; i--)

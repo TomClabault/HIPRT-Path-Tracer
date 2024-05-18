@@ -75,12 +75,12 @@ Image& CPURenderer::get_framebuffer()
     return m_framebuffer;
 }
 #define DEBUG_PIXEL 1
-#define DEBUG_EXACT_COORDINATE 0
-#define DEBUG_PIXEL_X 782
-#define DEBUG_PIXEL_Y 215
+#define DEBUG_EXACT_COORDINATE 1
+#define DEBUG_PIXEL_X 0
+#define DEBUG_PIXEL_Y 0
 
 
-void CPURenderer::render()
+void CPURenderer::render()  
 {
     std::cout << "CPU rendering..." << std::endl;
 

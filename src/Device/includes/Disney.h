@@ -326,6 +326,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_glass_sample(const RendererMaterial
     float3 local_view_direction = world_to_local_frame(T, B, surface_normal, view_direction);
     float3 microfacet_normal = GGXVNDF_sample(local_view_direction, material.alpha_x, material.alpha_y, random_number_generator);
     if (microfacet_normal.z < 0)
+        // We want the microfacet normal in the same hemisphere as the normal for the rest of the calculations
         microfacet_normal = -microfacet_normal;
 
     float F = fresnel_dielectric(hippt::dot(local_view_direction, microfacet_normal), relative_eta);
@@ -336,6 +337,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_glass_sample(const RendererMaterial
     {
         // Reflection
         sampled_direction = reflect_ray(local_view_direction, microfacet_normal);
+        float3 sampled_direction_norm = hippt::normalize(reflect_ray(local_view_direction, microfacet_normal));
+        float3 sampled_direction_norm_2 = reflect_ray(hippt::normalize(local_view_direction), hippt::normalize(microfacet_normal));
 
         // This is a reflection, we're poping the stack
         ray_volume_state.interior_stack.pop(false);

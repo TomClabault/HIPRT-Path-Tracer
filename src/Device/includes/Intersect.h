@@ -137,7 +137,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
             ray_payload.volume_state.distance_in_volume += hit.t;
         }
 
-    } while (skipping_boundary);
+    } while (skipping_boundary && hit.hasHit());
 
     return hit.hasHit();
 }
