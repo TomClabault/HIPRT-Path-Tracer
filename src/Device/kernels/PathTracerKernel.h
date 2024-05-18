@@ -160,8 +160,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
             if (ray_payload.next_ray_state == RayState::BOUNCE)
             {
                 HitInfo closest_hit_info;
-                bool skipping_boundary;
-                bool intersection_found = trace_ray(render_data, ray, ray_payload, skipping_boundary, closest_hit_info);
+                bool intersection_found = trace_ray(render_data, ray, ray_payload, closest_hit_info);
 
                 if (intersection_found)
                 {

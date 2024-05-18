@@ -92,12 +92,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE hiprtHit intersect_scene_cpu(const HIPRTRenderDat
 #endif
 
 #ifdef __KERNELCC__
-HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data, hiprtRay ray, RayPayload& ray_payload, bool& skipping_boundary, HitInfo& hit_info)
+HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data, hiprtRay ray, RayPayload& ray_payload, HitInfo& hit_info)
 #else
-HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data, hiprtRay ray, RayPayload& ray_payload, bool& skipping_boundary, HitInfo& hit_info)
+HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data, hiprtRay ray, RayPayload& ray_payload, HitInfo& hit_info)
 #endif
 {
     hiprtHit hit;
+    bool skipping_boundary;
     do
     {
     #ifdef __KERNELCC__

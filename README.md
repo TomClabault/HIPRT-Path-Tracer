@@ -11,7 +11,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 # System requirements
 
 - AMD RDNA1 GPU or newer (RX 5000 or newer) **or** NVIDIA Maxwell GPU or newer (GTX 700 & GTX 900 Series or newer)
-- Visual Studio 2022 (only version tested but older versions might work as well)
+- Visual Studio 2022 (only version tested but older versions might work as well) on Windows
 
 # Features:
 

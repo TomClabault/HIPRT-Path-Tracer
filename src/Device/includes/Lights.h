@@ -134,8 +134,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_light_sources(const HIPRTRenderDa
 
         HitInfo new_ray_hit_info;
         RayPayload trash_payload;
-        bool trash;
-        bool inter_found = trace_ray(render_data, new_ray, trash_payload, trash, new_ray_hit_info);
+        bool inter_found = trace_ray(render_data, new_ray, trash_payload, new_ray_hit_info);
 
         if (inter_found)
         {
