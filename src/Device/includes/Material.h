@@ -65,22 +65,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void get_metallic_roughness(const HIPRTRenderData
     {
         ColorRGB rgb = sample_texture_rgb(render_data.buffers.material_textures, metallic_roughness_texture_index, render_data.buffers.textures_dims[metallic_roughness_texture_index], false, texcoords);
 
-        // TODO remove
-//#ifdef __KERNELCC__
-//        rgb = sample_texture_rgb(render_data.buffers.material_textures, metallic_roughness_texture_index, false, make_float2(texcoords.x, 1.0f - texcoords.y));
-//#else
-//        rgb = sample_texture_rgb();
-//        const ImageRGBA& texture = ((ImageRGBA*)render_data.buffers.material_textures)[metallic_roughness_texture_index];
-//
-//        int y = texcoords.x * texture.width;
-//        int x = (1.0f - texcoords.y) * texture.height;
-//
-//        x = hippt::clamp(0, texture.width - 1, x);
-//        y = hippt::clamp(0, texture.height - 1, y);
-//
-//        rgb = texture[x * texture.width + y];
-//#endif
-
         // Not converting to linear here because material properties (roughness and metallic) here are assumed to be linear already
         roughness = rgb.g;
         metallic = rgb.b;
@@ -123,36 +107,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void get_material_property(const HIPRTRenderData&
     if (texture_index == -1)
         return;
 
-    ColorRGBA rgba;
-    rgba = sample_texture_rgba(render_data.buffers.material_textures, texture_index, render_data.buffers.textures_dims[texture_index], false, texcoords);
-//#ifdef __KERNELCC__
-//    rgba = sample_texture_rgba(render_data.buffers.material_textures, texture_index, render_data.buffers.textures_dims[texture_index], false, texcoords);
-//#else
-//    rgba = sample_texture_rgba(render_data.buffers.material_textures, texture_index, render_data.buffers.textures_dims[texture_index], false, make_float2(texcoords.y, texcoords.x));
-//#endif
+    ColorRGBA rgba sample_texture_rgba(render_data.buffers.material_textures, texture_index, render_data.buffers.textures_dims[texture_index], false, texcoords);
     read_data(rgba, render_data.buffers.texture_is_srgb[texture_index] == 1, output_data);
-
-    // TODO remove
-//#ifdef __KERNELCC__
-//    oroTextureObject_t texture = ((oroTextureObject_t*)render_data.buffers.material_textures)[texture_index];
-//    int2 texture_dims = render_data.buffers.textures_dims[texture_index];
-//
-//    // Reversing y here for consistency with Blender
-//    rgba = ColorRGBA(tex2D<float4>(reinterpret_cast<oroTextureObject_t>(texture), texcoords.x, 1.0f - texcoords.y));
-//#else
-//    const ImageRGBA& texture = ((ImageRGBA*)render_data.buffers.material_textures)[texture_index];
-//
-//    // TODO we're inverting y and x here because UVs are kind of wrong of the CPU. Need to check triangle.intersect()
-//    int y = texcoords.x * texture.width;
-//    int x = (1.0f - texcoords.y) * texture.height;
-//
-//    x = hippt::clamp(0, texture.width - 1, x);
-//    y = hippt::clamp(0, texture.height - 1, y);
-//
-//    rgba = texture[x * texture.width + y];
-//#endif
-//
-//    read_data(rgba, render_data.buffers.texture_is_srgb[texture_index] == 1, output_data);
 }
 
 #endif
