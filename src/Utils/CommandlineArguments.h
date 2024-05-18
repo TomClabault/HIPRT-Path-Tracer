@@ -43,7 +43,7 @@ struct CommandLineArguments
 
     // Default scene and skysphere paths as expected if running the application from a build
     // directory inside the repo root folder
-    std::string scene_file_path = "../data/GLTFs/cornell_pbr.gltf";
+    std::string scene_file_path = "../data/GLTFs/nested-dielectrics-complex.gltf";
     std::string skysphere_file_path = "../data/Skyspheres/evening_road_01_puresky_2k.hdr";
     //std::string skysphere_file_path = "../data/Skyspheres/satara_night_8k.hdr";
 

@@ -253,7 +253,10 @@ if (WIN32)
 		set(USING_NVIDIA True)
 	endif()
 elseif (UNIX)
-	find_package(CUDA)
+	# TODO find_package(CUDA) is deprecated and we may want to use enable_language(CUDA) + ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES} if this becomes an issue
+	# 	--> Setting the policy to OLD in the meantime
+	cmake_policy(SET CMP0146 OLD)
+	find_package(CUDA QUIET)
 	if (CUDA_FOUND)
 		set (USING_NVIDIA True)
 	endif()
