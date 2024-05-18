@@ -107,7 +107,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void get_material_property(const HIPRTRenderData&
     if (texture_index == -1)
         return;
 
-    ColorRGBA rgba sample_texture_rgba(render_data.buffers.material_textures, texture_index, render_data.buffers.textures_dims[texture_index], false, texcoords);
+    ColorRGBA rgba = sample_texture_rgba(render_data.buffers.material_textures, texture_index, render_data.buffers.textures_dims[texture_index], false, texcoords);
     read_data(rgba, render_data.buffers.texture_is_srgb[texture_index] == 1, output_data);
 }
 

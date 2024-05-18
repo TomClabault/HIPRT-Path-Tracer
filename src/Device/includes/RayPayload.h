@@ -39,7 +39,6 @@ struct RayPayload
 	BRDF last_brdf_hit_type = BRDF::Uninitialized;
 
 	// Material of the last hit
-	int material_index; // TODO remove?
 	RendererMaterial material;
 
 	RayVolumeState volume_state;
