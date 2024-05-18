@@ -120,6 +120,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
         hit_info.geometric_normal = hippt::normalize(hit.normal);
         hit_info.shading_normal = get_shading_normal(render_data, hit_info.geometric_normal, hit_info.primitive_index, hit.uv, hit_info.texcoords);
 
+        if (!ray_payload.is_inside_volume())
+        {
+            // If we're not in a volume, there's no reason for the normals not to be facing us so we're flipping
+            // if they were wrongly oriented
+            hit_info.geometric_normal *= hippt::dot(hit_info.geometric_normal, -ray.direction) < 0 ? -1 : 1;
+            hit_info.shading_normal *= hippt::dot(hit_info.shading_normal, -ray.direction) < 0 ? -1 : 1;
+        }
+
         hit_info.t = hit.t;
         hit_info.uv = hit.uv;
 

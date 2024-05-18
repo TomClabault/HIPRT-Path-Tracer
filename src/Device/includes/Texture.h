@@ -29,7 +29,24 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA sample_texture_rgba(const void* texture
     ColorRGBA rgba;
 
 #ifdef __KERNELCC__
-    rgba = ColorRGBA(tex2D<float4>(reinterpret_cast<const oroTextureObject_t*>(texture_buffer)[texture_index], uv.x * (texture_dims.x - 1), (1.0f - uv.y) * (texture_dims.y - 1)));
+    // We're doing the UV addressing oursevles since it seems to be broken in Orochi...
+    // 
+    // Sampling in repeat mode so we're just keeping the fractional part
+    float u = uv.x - (int)uv.x;
+    float v = uv.y - (int)uv.y;
+
+    // For negative UVs, we also want to repeat and we want, for example, 
+    // -0.1f to behave as 0.9f
+    u = u < 0 ? 1.0f + u : u;
+    v = v < 0 ? 1.0f + v : v;
+
+    // Sampling with [0, 0] bottom-left convention
+    v = 1.0f - v;
+
+    u = uv.x;
+    v = 1.0f - uv.y;
+
+    rgba = ColorRGBA(tex2D<float4>(reinterpret_cast<const oroTextureObject_t*>(texture_buffer)[texture_index], u * (texture_dims.x - 1), v * (texture_dims.y - 1)));
 #else
     const ImageRGBA& texture = reinterpret_cast<const ImageRGBA*>(texture_buffer)[texture_index];
 
