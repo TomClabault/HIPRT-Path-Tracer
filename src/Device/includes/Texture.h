@@ -29,7 +29,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA sample_texture_rgba(const void* texture
     ColorRGBA rgba;
 
 #ifdef __KERNELCC__
-    rgba = ColorRGBA(tex2D<float4>(reinterpret_cast<const oroTextureObject_t*>(texture_buffer)[texture_index], uv.x * (texture_dims.x - 1), uv.y * (texture_dims.y - 1)));
+    rgba = ColorRGBA(tex2D<float4>(reinterpret_cast<const oroTextureObject_t*>(texture_buffer)[texture_index], uv.x * (texture_dims.x - 1), (1.0f - uv.y) * (texture_dims.y - 1)));
 #else
     const ImageRGBA& texture = reinterpret_cast<const ImageRGBA*>(texture_buffer)[texture_index];
 

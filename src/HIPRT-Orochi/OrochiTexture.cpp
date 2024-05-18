@@ -58,6 +58,7 @@ void OrochiTexture::init_from_image(const ImageRGBA& image)
 	std::memset(&texture_descriptor, 0, sizeof(texture_descriptor));
 	texture_descriptor.addressMode[0] = ORO_TR_ADDRESS_MODE_WRAP;
 	texture_descriptor.addressMode[1] = ORO_TR_ADDRESS_MODE_WRAP;
+	texture_descriptor.addressMode[2] = ORO_TR_ADDRESS_MODE_WRAP;
 	texture_descriptor.filterMode = ORO_TR_FILTER_MODE_POINT;
 	//texture_descriptor.normalizedCoords = 1;
 
