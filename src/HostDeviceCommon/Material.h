@@ -83,7 +83,7 @@ struct RendererMaterial
 
     // If not -1, there is only one texture for the metallic and the roughness parameters in which.
     // case the green channel is the roughness and the blue channel is the metalness
-    int roughnes_metallic_texture_index = -1;
+    int roughness_metallic_texture_index = -1;
 
     int roughness_texture_index = -1;
     int oren_sigma_texture_index = -1;

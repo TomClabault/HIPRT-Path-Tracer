@@ -43,9 +43,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA sample_texture_rgba(const void* texture
     // Sampling with [0, 0] bottom-left convention
     v = 1.0f - v;
 
-    u = uv.x;
-    v = 1.0f - uv.y;
-
     rgba = ColorRGBA(tex2D<float4>(reinterpret_cast<const oroTextureObject_t*>(texture_buffer)[texture_index], u * (texture_dims.x - 1), v * (texture_dims.y - 1)));
 #else
     const ImageRGBA& texture = reinterpret_cast<const ImageRGBA*>(texture_buffer)[texture_index];

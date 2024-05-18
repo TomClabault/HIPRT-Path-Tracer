@@ -13,9 +13,9 @@
 #include "stb_image_write.h"
 
 // TODO bugs
+// - missing else branch when parsing texture IDs for material that don't have a packed roughness and metalness texture
 // - are we pushing the shadow rays in the right direction when sampling env map while inside surface? It's weird that disabling the env map surface while in a surface darkens the render
 // - something is unsafe on NVIDIA + Windows + nested-dielectrics-complex.gltf + 48 bounces minimum + nested dielectric strategy RT Gems. We get a CPU-side orochi error when downloading the framebuffer for displaying indicating that some illegal memory was accessed. Is the buffer corrupted by something?
-// - textures broken since no more normalized coordinates
 // - bistro textures are buggued so there must still be something wrong with the parsing
 // - when adaptive sampling is on and holding click (render low resolution), some grid artifacts show up (doesn't even need adaptive sampling enabled to do that actually)
 // - normals AOV not converging correctly ?
@@ -30,6 +30,7 @@
 
 // TODO Code Organization:
 // - don't need the issRGB array since only base color is, we can sample this one only in sRGB
+//		- we don't the std::pair<textureType, std::string> in the scene parser because all texture are linear except base color
 // - Remove GPURenderer.hiprt_scene, useless. Only contains HIPRT Ctxt (which can be made a member variable of the GPU Renderer) and the various buffers which can be kept in a RenderData member variable
 // - Use orochiBuffers when initializing the GPURenderer.RenderData instead of manual oroMalloc as currently done in set_hiprt_scene_from_scene
 // - Destroy buffers when disabling adaptive sampling to save VRAM
@@ -47,6 +48,8 @@
 
 
 // TODO Features:
+// - BRDF swapper ImGui : Disney, Lambertian, Oren Nayar, Cook Torrance, Perfect fresnel dielectric reflect/transmit
+// - choose disney diffuse model (disney, lambertian, oren nayar)
 // - Cool colored thread-safe logger singleton class --> loguru lib
 // - portal envmap sampling --> choose portals with ImGui
 // - we have way better caustics when disabling direct lighting sampling but enabling += emission on hitting an emissive geometry. How to have the benefits of the two?
@@ -73,7 +76,7 @@
 // - pack two texture indices in one int for register saving, 65536 (16 bit per index when packed) textures is enough
 // - hint shadow rays for better traversal perf
 // - benchmarker to measure frame times precisely (avg, std dev, ...) + fixed random seed for reproducible results
-// - alias method for sampling env map instead of log(n) dichotomy
+// - alias table for sampling env map instead of log(n) binary search
 // - image comparator slider (to have adaptive sampling view + default view on the same viewport for example)
 // - auto adaptive sample per frame with adaptive sampling to keep GPU busy
 // - Maybe look at better Disney sampling (luminance?)
@@ -98,19 +101,14 @@
 // - Better ray origin offset to avoid self intersections
 // - Realistic Camera Model
 // - Focus blur
-// - Bump mapping
 // - Flakes BRDF (maybe look at OSPRay implementation for a reference ?)
 // - ImGuizmo for moving objects in the scene
 // - Paths roughness regularization
-// - choose disney diffuse model (disney, lambertian, oren nayar)
-// - enable lower resolution on mouse scroll for like ~10 frames
 // - choose denoiser quality in imgui
 // - try async buffer copy for the denoiser (maybe run a kernel to generate normals and another to generate albedo buffer before the path tracing kernel to be able to async copy while the path tracing kernel is running?)
 // - enable denoising with all combinations of beauty/normal/albedo via imgui
-// - show denoised normals / denoised albedo when ticking the Show Normals / Show albedo checkboxes in Imgui to visualize the albedo/normals used by the denoiser
 // - cutout filters
 // - write scene details to imgui (nb vertices, triangles, ...)
-// - check perf of aiPostProcessSteps::aiProcess_ImproveCacheLocality
 // - ImGui to choose the BVH flags at runtime and be able to compare the performance
 // - ImGui widgets for SBVH / LBVH
 // - BVH compaction + imgui checkbox
@@ -120,8 +118,6 @@
 // - env map rotation imgui
 // - choose scene file at runtime imgui
 // - lock camera checkbox to avoid messing up when big render in progress
-// - choose render resolution directly in imgui
-// - compute shader for tone mapping images ? unless transfering memory to open gl is too expensive
 // - use defines insead of IFs in the kernel code and recompile kernel everytime (for some options at least to reduce register pressure)
 // - stuff to multithread when loading everything ? (scene, BVH, textures, ...)
 // - PBRT v3 scene parser

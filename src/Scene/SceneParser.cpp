@@ -14,10 +14,10 @@
 Scene SceneParser::parse_scene_file(const std::string& filepath, float frame_aspect_override)
 {
     Scene parsed_scene;
-
     Assimp::Importer importer;
+    const aiScene* scene;
 
-    const aiScene* scene = importer.ReadFile(filepath, aiPostProcessSteps::aiProcess_PreTransformVertices | aiPostProcessSteps::aiProcess_Triangulate);
+    scene = importer.ReadFile(filepath, aiPostProcessSteps::aiProcess_PreTransformVertices | aiPostProcessSteps::aiProcess_Triangulate);
     if (scene == nullptr)
     {
         std::cerr << importer.GetErrorString() << std::endl;
@@ -26,52 +26,37 @@ Scene SceneParser::parse_scene_file(const std::string& filepath, float frame_asp
         std::exit(1);
     }
 
-    // Taking the first camera as the camera of the scene
-    if (scene->mNumCameras > 0)
-    {
-        aiCamera* camera = scene->mCameras[0];
+    // Texture loading is going to be multithreaded and we're going to have 
+    // one thread per texture running asynchronously.
+    // The threads are going to be stored in this vector so that we can .join() on
+    // them at the end
+    std::vector<std::thread> texture_threads;
+    std::vector<std::pair<aiTextureType, std::string>> texture_paths;
+    std::vector<ParsedMaterialTextureIndices> texture_indices;
+    int texture_count;
 
-        glm::vec3 camera_position = *reinterpret_cast<glm::vec3*>(&camera->mPosition);
-        glm::vec3 camera_lookat = *reinterpret_cast<glm::vec3*>(&camera->mLookAt);
-        glm::vec3 camera_up = *reinterpret_cast<glm::vec3*>(&camera->mUp);
+    prepare_textures(scene, texture_paths, texture_indices, texture_count);
+    texture_threads.resize(texture_count);
+    dispatch_texture_loading(texture_threads);
+    parse_camera(scene, parsed_scene, frame_aspect_override);
 
-        glm::mat4x4 lookat = glm::inverse(glm::lookAt(camera_position, camera_lookat, camera_up));
 
-        glm::vec3 scale, skew, translation;
-        glm::vec4 perspective;
-        glm::quat orientation;
-        glm::decompose(lookat, scale, orientation, translation, skew, perspective);
 
-        parsed_scene.camera.translation = translation;
-        parsed_scene.camera.rotation = orientation;
 
-        float aspect_ratio = frame_aspect_override == -1 ? camera->mAspect : frame_aspect_override;
-        float vertical_fov = 2.0f * std::atan(std::tan(camera->mHorizontalFOV / 2.0f) * aspect_ratio) + 0.425f;
-        parsed_scene.camera.projection_matrix = glm::transpose(glm::perspective(vertical_fov, aspect_ratio, camera->mClipPlaneNear, camera->mClipPlaneFar));
-        parsed_scene.camera.vertical_fov = vertical_fov;
-        parsed_scene.camera.near_plane = camera->mClipPlaneNear;
-        parsed_scene.camera.far_plane = camera->mClipPlaneFar;
-    }
-    else
-    {
-        glm::mat4x4 lookat = glm::inverse(glm::lookAt(glm::vec3(0, 0, 0), glm::vec3(0, 0, -1), glm::vec3(0, 1, 0)));
 
-        glm::vec3 scale, skew, translation;
-        glm::vec4 perspective;
-        glm::quat orientation;
-        glm::decompose(lookat, scale, orientation, translation, skew, perspective);
 
-        parsed_scene.camera.translation = translation;
-        parsed_scene.camera.rotation = orientation;
 
-        float aspect_ratio = 1280.0f / 720.0f;
-        float horizontal_fov = 40.0f / 180 * M_PI;
-        float vertical_fov = 2.0f * std::atan(std::tan(horizontal_fov / 2.0f) * aspect_ratio) + 0.425f;
-        parsed_scene.camera.projection_matrix = glm::transpose(glm::perspective(vertical_fov, aspect_ratio, 0.1f, 100.0f));
-        parsed_scene.camera.vertical_fov = vertical_fov;
-        parsed_scene.camera.near_plane = 0.1f;
-        parsed_scene.camera.far_plane = 100.0f;
-    }
+
+    std::vector<ImageRGBA> textures;
+    textures = read_textures(filepath, texture_paths);
+    for (auto pair : texture_paths)
+        parsed_scene.textures_is_srgb.push_back(pair.first == aiTextureType::aiTextureType_BASE_COLOR);
+    for (const ImageRGBA& image : textures)
+        parsed_scene.textures_dims.push_back(make_int2(image.width, image.height));
+
+
+
+
 
     // If the scene contains multiple meshes, each mesh will have
     // its vertices indices starting at 0. We don't want that.
@@ -89,20 +74,11 @@ Scene SceneParser::parse_scene_file(const std::string& filepath, float frame_asp
         aiMaterial* mesh_material = scene->mMaterials[mesh->mMaterialIndex];
 
         RendererMaterial renderer_material;
-        std::vector<std::pair<aiTextureType, std::string>> texture_paths;
-        std::vector<ImageRGBA> textures;
         
         renderer_material = read_material_properties(mesh_material);
-        texture_paths = get_textures_paths(mesh_material, renderer_material);
-        texture_paths = normalize_texture_paths(texture_paths);
-        textures = read_textures(filepath, texture_paths);
         parsed_scene.textures.insert(parsed_scene.textures.end(), textures.begin(), textures.end());
         renderer_material = offset_textures_indices(renderer_material, global_texture_indices_offset);
         global_texture_indices_offset += textures.size();
-        for (const ImageRGBA& image : textures)
-            parsed_scene.textures_dims.push_back(make_int2(image.width, image.height));
-        for (auto pair : texture_paths)
-            parsed_scene.textures_is_srgb.push_back(pair.first == aiTextureType::aiTextureType_BASE_COLOR);
 
         //Adding the material to the parsed scene
         parsed_scene.materials.push_back(renderer_material);
@@ -177,7 +153,95 @@ Scene SceneParser::parse_scene_file(const std::string& filepath, float frame_asp
     std::cout << "\t" << parsed_scene.materials.size() << " materials" << std::endl;
     std::cout << "\t" << parsed_scene.textures.size() << " textures" << std::endl;
 
+    // Waiting for the texture threads
+    for (std::thread& thread : texture_threads)
+        thread.join();
+
     return parsed_scene;
+}
+
+void SceneParser::parse_camera(const aiScene* scene, Scene& parsed_scene, float frame_aspect_override)
+{
+    // Taking the first camera as the camera of the scene
+    if (scene->mNumCameras > 0)
+    {
+        aiCamera* camera = scene->mCameras[0];
+
+        glm::vec3 camera_position = *reinterpret_cast<glm::vec3*>(&camera->mPosition);
+        glm::vec3 camera_lookat = *reinterpret_cast<glm::vec3*>(&camera->mLookAt);
+        glm::vec3 camera_up = *reinterpret_cast<glm::vec3*>(&camera->mUp);
+
+        glm::mat4x4 lookat = glm::inverse(glm::lookAt(camera_position, camera_lookat, camera_up));
+
+        glm::vec3 scale, skew, translation;
+        glm::vec4 perspective;
+        glm::quat orientation;
+        glm::decompose(lookat, scale, orientation, translation, skew, perspective);
+
+        parsed_scene.camera.translation = translation;
+        parsed_scene.camera.rotation = orientation;
+
+        float aspect_ratio = frame_aspect_override == -1 ? camera->mAspect : frame_aspect_override;
+        float vertical_fov = 2.0f * std::atan(std::tan(camera->mHorizontalFOV / 2.0f) * aspect_ratio) + 0.425f;
+        parsed_scene.camera.projection_matrix = glm::transpose(glm::perspective(vertical_fov, aspect_ratio, camera->mClipPlaneNear, camera->mClipPlaneFar));
+        parsed_scene.camera.vertical_fov = vertical_fov;
+        parsed_scene.camera.near_plane = camera->mClipPlaneNear;
+        parsed_scene.camera.far_plane = camera->mClipPlaneFar;
+    }
+    else
+    {
+        glm::mat4x4 lookat = glm::inverse(glm::lookAt(glm::vec3(0, 0, 0), glm::vec3(0, 0, -1), glm::vec3(0, 1, 0)));
+
+        glm::vec3 scale, skew, translation;
+        glm::vec4 perspective;
+        glm::quat orientation;
+        glm::decompose(lookat, scale, orientation, translation, skew, perspective);
+
+        parsed_scene.camera.translation = translation;
+        parsed_scene.camera.rotation = orientation;
+
+        float aspect_ratio = 1280.0f / 720.0f;
+        float horizontal_fov = 40.0f / 180 * M_PI;
+        float vertical_fov = 2.0f * std::atan(std::tan(horizontal_fov / 2.0f) * aspect_ratio) + 0.425f;
+        parsed_scene.camera.projection_matrix = glm::transpose(glm::perspective(vertical_fov, aspect_ratio, 0.1f, 100.0f));
+        parsed_scene.camera.vertical_fov = vertical_fov;
+        parsed_scene.camera.near_plane = 0.1f;
+        parsed_scene.camera.far_plane = 100.0f;
+    }
+}
+
+void SceneParser::prepare_textures(const aiScene* scene, std::vector<std::pair<aiTextureType, std::string>>& texture_paths, std::vector<ParsedMaterialTextureIndices>& texture_indices, int& texture_count)
+{
+    std::vector<std::pair<aiTextureType, std::string>> mesh_texture_paths;
+
+    for (int mesh_index = 0; mesh_index < scene->mNumMeshes; mesh_index++)
+    {
+        aiMesh* mesh = scene->mMeshes[mesh_index];
+        aiMaterial* mesh_material = scene->mMaterials[mesh->mMaterialIndex];
+        ParsedMaterialTextureIndices tex_indices;
+
+        // Reading the textures of the mesh
+        mesh_texture_paths = get_textures_paths_and_indices(mesh_material, tex_indices);
+        mesh_texture_paths = normalize_texture_paths(mesh_texture_paths);
+
+        texture_paths.insert(texture_paths.begin(), mesh_texture_paths.begin(), mesh_texture_paths.end());
+        texture_indices.push_back(tex_indices);
+    }
+
+    texture_count = texture_paths.size();
+}
+
+void SceneParser::dispatch_texture_loading(std::vector<std::thread>& threads, const std::vector<std::pair<aiTextureType, std::string>>& texture_paths, const std::vector<ParsedMaterialTextureIndices>& texture_indices)
+{
+    for (int i = 0; i < threads.size(); i++)
+    {
+        threads[i] = std::thread(SceneParser::thread_load_texture, texture_paths[i], texture_indices[i]);
+    }
+}
+
+void SceneParser::thread_load_texture(const std::pair<aiTextureType, std::string>& tex_path, ParsedMaterialTextureIndices& tex_indices)
+{
+
 }
 
 RendererMaterial SceneParser::read_material_properties(aiMaterial* mesh_material)
@@ -223,12 +287,12 @@ RendererMaterial SceneParser::read_material_properties(aiMaterial* mesh_material
     return renderer_material;
 }
 
-std::vector<std::pair<aiTextureType, std::string>> SceneParser::get_textures_paths(aiMaterial* mesh_material, RendererMaterial& renderer_material)
+std::vector<std::pair<aiTextureType, std::string>> SceneParser::get_textures_paths_and_indices(aiMaterial* mesh_material, ParsedMaterialTextureIndices& texture_indices)
 {
     std::vector<std::pair<aiTextureType, std::string>> texture_paths;
 
-    renderer_material.base_color_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_BASE_COLOR, texture_paths);
-    renderer_material.emission_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_EMISSION_COLOR, texture_paths);
+    texture_indices.base_color_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_BASE_COLOR, texture_paths);
+    texture_indices.emission_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_EMISSION_COLOR, texture_paths);
     int roughness_index = get_first_texture_of_type(mesh_material, aiTextureType_DIFFUSE_ROUGHNESS, texture_paths);
     int metallic_index = get_first_texture_of_type(mesh_material, aiTextureType_METALNESS, texture_paths);
     if (roughness_index != -1 && metallic_index != -1 && texture_paths[roughness_index].second == texture_paths[metallic_index].second)
@@ -239,14 +303,14 @@ std::vector<std::pair<aiTextureType, std::string>> SceneParser::get_textures_pat
         // otherwise the texture reader is going to read the same path (and the same texture) twice from disk
         texture_paths.pop_back();
         // Using the roughness index for the roughness + metallic texture
-        renderer_material.roughnes_metallic_texture_index = roughness_index;
+        texture_indices.roughness_metallic_texture_index = roughness_index;
     }
-    renderer_material.specular_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_SPECULAR, texture_paths);
-    renderer_material.clearcoat_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_CLEARCOAT, texture_paths);
-    renderer_material.sheen_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_SHEEN, texture_paths);
-    renderer_material.specular_transmission_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_TRANSMISSION, texture_paths);
+    texture_indices.specular_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_SPECULAR, texture_paths);
+    texture_indices.clearcoat_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_CLEARCOAT, texture_paths);
+    texture_indices.sheen_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_SHEEN, texture_paths);
+    texture_indices.specular_transmission_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_TRANSMISSION, texture_paths);
 
-    renderer_material.normal_map_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_NORMALS, texture_paths);
+    texture_indices.normal_map_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_NORMALS, texture_paths);
 
     return texture_paths;
 }

@@ -15,7 +15,28 @@
 #include "Renderer/Sphere.h"
 #include "Renderer/Triangle.h"
 
+#include <thread>
 #include <vector>
+
+/**
+ * Structure that holds the indices of the textures of a material during scene parsing
+ */
+struct ParsedMaterialTextureIndices
+{
+    int base_color_texture_index = -1;
+    int emission_texture_index = -1;
+
+    int roughness_texture_index = -1;
+    int metallic_texture_index = -1;
+    int roughness_metallic_texture_index = -1;
+
+    int specular_texture_index = -1;
+    int clearcoat_texture_index = -1;
+    int sheen_texture_index = -1;
+    int specular_transmission_texture_index = -1;
+
+    int normal_map_texture_index = -1;
+};
 
 struct Scene
 {
@@ -86,15 +107,23 @@ public:
     static Scene parse_scene_file(const std::string& filepath, float frame_aspect_override = -1.0f);
 
 private:
-    static RendererMaterial read_material_properties(aiMaterial* mesh_material);
 
+    static void parse_camera(const aiScene* scene, Scene& parsed_scene, float frame_aspect_override);
+    /** 
+     * Prepares all the necessary data for multithreaded texture-loading
+     */
+    static void prepare_textures(const aiScene* scene, std::vector<std::pair<aiTextureType, std::string>>& texture_paths, std::vector<ParsedMaterialTextureIndices>& texture_indices, int& texture_count);
+    static void dispatch_texture_loading(std::vector<std::thread>& threads);
+    static void thread_load_texture();
+
+    static RendererMaterial read_material_properties(aiMaterial* mesh_material);
     /**
      * Check if the mesh material has a texture of the given type. If so, returns the index of the
      * texture within texturePathList and appends the path of the texture to the list. If the material
      * doesn't have the required texture, returns -1
      */
     static int get_first_texture_of_type(aiMaterial* mesh_material, aiTextureType type, std::vector<std::pair<aiTextureType, std::string>>& texture_path_list);
-    static std::vector<std::pair<aiTextureType, std::string>> get_textures_paths(aiMaterial* mesh_material, RendererMaterial& renderer_material);
+    static std::vector<std::pair<aiTextureType, std::string>> get_textures_paths_and_indices(aiMaterial* mesh_material, ParsedMaterialTextureIndices& texture_indices);
     static std::vector<std::pair<aiTextureType, std::string>> normalize_texture_paths(std::vector<std::pair<aiTextureType, std::string>>& paths);
     static std::vector<ImageRGBA> read_textures(const std::string& filepath, const std::vector<std::pair<aiTextureType, std::string>>& texture_paths);
     static RendererMaterial offset_textures_indices(const RendererMaterial& renderer_material, int offset);

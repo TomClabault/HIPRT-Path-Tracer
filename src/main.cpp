@@ -18,8 +18,9 @@
 
 #include "stb_image_write.h"
 
-#include <iostream>
+#include <chrono>
 #include <cmath>
+#include <iostream>
 
 #define GPU_RENDER 1
 
@@ -31,8 +32,13 @@ int main(int argc, char* argv[])
     const int height = cmd_arguments.render_height;
 
     std::cout << std::endl << "Reading scene file " << cmd_arguments.scene_file_path << " ..." << std::endl;
-    Scene parsed_scene = SceneParser::parse_scene_file(cmd_arguments.scene_file_path, (float)width / height);
-    std::cout << std::endl;
+    auto start = std::chrono::high_resolution_clock::now();
+    Scene parsed_scene;
+    for (int i = 0; i < 10; i++) 
+        parsed_scene = SceneParser::parse_scene_file(cmd_arguments.scene_file_path, (float)width / height);
+    auto stop = std::chrono::high_resolution_clock::now();
+    std::cout << "Scene parsed in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
+    return 0;
 
     std::cout << "Reading \"" << cmd_arguments.skysphere_file_path << "\" envmap..." << std::endl;
     ImageRGBA envmap_image = ImageRGBA::read_image_hdr(cmd_arguments.skysphere_file_path, /* flip Y */ true);

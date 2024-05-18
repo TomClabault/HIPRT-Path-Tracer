@@ -25,7 +25,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RendererMaterial get_intersection_material(const 
     get_material_property(render_data, material.emission, texcoords, material.emission_texture_index);
     get_material_property(render_data, material.base_color, texcoords, material.base_color_texture_index);
 
-    get_metallic_roughness(render_data, material.metallic, material.roughness, texcoords, material.metallic_texture_index, material.roughness_texture_index, material.roughnes_metallic_texture_index);
+    get_metallic_roughness(render_data, material.metallic, material.roughness, texcoords, material.metallic_texture_index, material.roughness_texture_index, material.roughness_metallic_texture_index);
     get_material_property(render_data, material.oren_nayar_sigma, texcoords, material.oren_sigma_texture_index);
     get_material_property(render_data, material.subsurface, texcoords, material.subsurface_texture_index);
     
@@ -53,7 +53,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RendererMaterial get_intersection_material(const 
         material.precompute_oren_nayar();
 
     // Same for the anisotropic, recomputing the precomputed alpha_x and alpha_y if necessary
-    if (material.roughness_texture_index != -1 || material.roughnes_metallic_texture_index || material.anisotropic_texture_index != -1 && material.anisotropic > 0.0f)
+    if (material.roughness_texture_index != -1 || material.roughness_metallic_texture_index || material.anisotropic_texture_index != -1 && material.anisotropic > 0.0f)
         material.precompute_anisotropic();
 
 	return material;
