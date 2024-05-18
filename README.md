@@ -16,13 +16,17 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 # Features:
 
 - Disney BSDF (Diffuse, fake subsurface, metallic, roughness, anisotropy + anisotropy rotation, clearcoat, sheen, glass, volumetric Beer-Lambert absorption, ...) \[Burley, 2015\]
-	- For experimentation purposes, the Disney diffuse lobe can be either the "Disney diffuse" presented in the original \[Burley, 2012\] paper, a Lambertian distribution or the Oren Nayar microfacet diffuse model.
-- BSDF Multiple Importance Sampling
-- HDR Environment map + importance sampling using CDF-inversion + binary search
+	- For experimentation purposes, the BRDF diffuse lobe can be switched for either:
+		- The original "Disney diffuse" presented in [\[Burley, 2012\]](https://disneyanimation.com/publications/physically-based-shading-at-disney/)
+		- A lambertian distribution
+		- The Oren Nayar microfacet diffuse model.
+- BSDF Direct lighting multiple importance sampling
+- HDR Environment map + importance sampling using
+	- CDF-inversion binary search
 - Emissive geometry light sampling
 - Automatic nested dielectrics support \[Ray Tracing Gems, 2019\]
 	- Algorithm adapted to also support priorities as proposed in \[Simple Nested Dielectrics in Ray Traced Images, Schmidt, 2002\]
-- Per-pixel adaptive sampling with variance threshold
+- Per-pixel adaptive sampling
 - Texture support for all the parameters of the BSDF
 - Normal mapping
 - Interactive ImGui interface + interactive first-person camera

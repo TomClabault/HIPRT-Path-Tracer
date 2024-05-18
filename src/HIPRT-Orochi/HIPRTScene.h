@@ -42,6 +42,9 @@ struct HIPRTScene
 		if (material_textures)
 			OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(material_textures)));
 
+		if (textures_dims)
+			OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(textures_dims)));
+
 		if (texture_is_srgb)
 			OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(texture_is_srgb)));
 
@@ -64,6 +67,7 @@ struct HIPRTScene
 
 	hiprtDevicePtr material_textures = nullptr;
 	hiprtDevicePtr texture_is_srgb = nullptr;
+	hiprtDevicePtr textures_dims = nullptr;
 	hiprtDevicePtr texcoords_buffer = nullptr;
 };
 

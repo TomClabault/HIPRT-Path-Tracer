@@ -7,6 +7,7 @@
 #define DEVICE_INTERSECT_H
 
 #include "Device/includes/FixIntellisense.h"
+#include "Device/includes/Material.h"
 #include "Device/includes/Texture.h"
 #include "HostDeviceCommon/HitInfo.h"
 #include "HostDeviceCommon/RenderData.h"
@@ -41,7 +42,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 normal_mapping(const HIPRTRenderData& rend
     float3 T = (edge_P0P1 * delta_P2P0_texcoords.y - edge_P0P2 * delta_P1P0_texcoords.y) * det_inverse;
     float3 B = (edge_P0P2 * delta_P1P0_texcoords.x - edge_P0P1 * delta_P2P0_texcoords.x) * det_inverse;
 
-    ColorRGB normal = sample_texture_pixel(render_data.buffers.material_textures, normal_map_texture_index, /* is_srgb */ false, make_float2(interpolated_texcoords.x, 1.0f - interpolated_texcoords.y));
+    ColorRGB normal = sample_texture_rgb(render_data.buffers.material_textures, normal_map_texture_index, render_data.buffers.textures_dims[normal_map_texture_index], /* is_srgb */ false, interpolated_texcoords);
     // Bringing the normal in [-x, x]. x doesn't really matter since we normalize the result anyway
     normal -= ColorRGB(0.5f);
 
@@ -126,7 +127,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
             ray_payload.volume_state.distance_in_volume += hit.t;
 
         int material_index = render_data.buffers.material_indices[hit.primID];
-        ray_payload.material = render_data.buffers.materials_buffer[material_index];
+        ray_payload.material = get_intersection_material(render_data, material_index, hit_info.texcoords);
         skipping_boundary = ray_payload.volume_state.interior_stack.push(ray_payload.volume_state.incident_mat_index, ray_payload.volume_state.outgoing_mat_index, ray_payload.volume_state.leaving_mat, material_index, ray_payload.material.dielectric_priority);
 
         if (skipping_boundary)

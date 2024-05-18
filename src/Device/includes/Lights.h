@@ -59,7 +59,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float triangle_area(const HIPRTRenderData& render
     return hippt::length(hippt::cross(AB, AC)) / 2.0f;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_light_sources(const HIPRTRenderData& render_data, const RendererMaterial& material, int material_index, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_light_sources(const HIPRTRenderData& render_data, const RendererMaterial& material, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
 {
     if (render_data.buffers.emissive_triangles_count == 0)
         // No emmisive geometry in the scene to sample

@@ -106,6 +106,7 @@ HIPRTRenderData GPURenderer::get_render_data()
 
 	render_data.buffers.material_textures = reinterpret_cast<oroTextureObject_t*>(m_hiprt_scene.material_textures);
 	render_data.buffers.texcoords = reinterpret_cast<float2*>(m_hiprt_scene.texcoords_buffer);
+	render_data.buffers.textures_dims = reinterpret_cast<int2*>(m_hiprt_scene.textures_dims);
 	render_data.buffers.texture_is_srgb = reinterpret_cast<unsigned char*>(m_hiprt_scene.texture_is_srgb);
 
 	render_data.aux_buffers.denoiser_normals = m_normals_buffer.get_device_pointer();
@@ -271,6 +272,11 @@ void GPURenderer::set_hiprt_scene_from_scene(Scene& scene)
 	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&material_textures), sizeof(oroTextureObject_t) * oro_textures.size()));
 	OROCHI_CHECK_ERROR(oroMemcpyHtoD(reinterpret_cast<oroDeviceptr>(material_textures), oro_textures.data(), sizeof(oroTextureObject_t) * oro_textures.size()));
 	hiprt_scene.material_textures = material_textures;
+
+	hiprtDevicePtr textures_dims;
+	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&textures_dims), sizeof(int2) * scene.textures_dims.size()));
+	OROCHI_CHECK_ERROR(oroMemcpyHtoD(reinterpret_cast<oroDeviceptr>(textures_dims), scene.textures_dims.data(), sizeof(int2) * scene.textures_dims.size()));
+	hiprt_scene.textures_dims = textures_dims;
 
 	hiprtDevicePtr texture_is_srgb;
 	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&texture_is_srgb), sizeof(bool) * scene.textures_is_srgb.size()));

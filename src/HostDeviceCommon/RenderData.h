@@ -75,6 +75,9 @@ struct RenderBuffers
 	// oroTextureObject_t whether if CPU or GPU renderer respectively
 	// This pointer can be cast for the textures to be be retrieved.
 	void* material_textures = nullptr;
+	// Widths of the textures. Necessary for using texel coordinates in [0, width - 1]
+	// in the shader (required because Orochi doesn't support normalized texture coordinates).
+	int2* textures_dims = nullptr;
 	// Whether the texture at the given index in this buffer is sRGB.
 	// Note that we could be using hardware sRGB to linear conversion in the sampler
 	// but it seems to be broken (?) with Orochi so we're doing it in software in the
@@ -112,7 +115,7 @@ enum AmbientLightType
 
 struct WorldSettings
 {
-	AmbientLightType ambient_light_type = AmbientLightType::UNIFORM;
+	AmbientLightType ambient_light_type = AmbientLightType::NONE;
 	ColorRGB uniform_light_color = ColorRGB(0.5f);
 
 	unsigned int envmap_width = 0, envmap_height = 0;

@@ -25,10 +25,11 @@ public:
     ImageBase(PixelType* data, int width, int height);
     ImageBase(const std::vector<PixelType>& data, int width, int height) : width(width), height(height), m_pixel_data(data) {}
     
-
     float luminance_of_pixel(int x, int y) const;
     float luminance_of_area(int start_x, int start_y, int stop_x, int stop_y) const;
     float luminance_of_area(const ImageBin& area) const;
+
+    PixelType sample(float2 uv) const;
 
     void compute_cdf();
     std::vector<float> compute_get_cdf() const;
@@ -85,6 +86,27 @@ template <typename PixelType>
 float ImageBase<PixelType>::luminance_of_area(const ImageBin& area) const
 {
     return luminance_of_area(area.x0, area.y0, area.x1, area.y1);
+}
+
+template <typename PixelType>
+PixelType ImageBase<PixelType>::sample(float2 uv) const
+{
+    // Sampling in repeat mode so we're just keeping the fractional part
+    float u = uv.x - (int)uv.x;
+    float v = uv.y - (int)uv.y;
+
+    // For negative UVs, we also want to repeat and we want, for example, 
+    // -0.1f to behave as 0.9f
+    u = u < 0 ? 1.0f + u : u;
+    v = v < 0 ? 1.0f + v : v;
+
+    // Sampling with [0, 0] bottom-left convention
+    v = 1.0f - v;
+
+    int x = (u * (width - 1));
+    int y = (v * (height - 1));
+
+    return m_pixel_data[x + y * width];
 }
 
 template <typename PixelType>

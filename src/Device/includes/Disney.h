@@ -318,6 +318,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_glass_sample(const RendererMaterial
     float eta_t = ray_volume_state.outgoing_mat_index == -1 ? 1.0 : materials_buffer[ray_volume_state.outgoing_mat_index].ior;
     float eta_i = ray_volume_state.incident_mat_index == -1 ? 1.0 : materials_buffer[ray_volume_state.incident_mat_index].ior;
     float relative_eta = eta_t / eta_i;
+    // To avoid sampling directions that would lead to a null half_vector. 
+    // Explained in more details in glass_eval.
+    if (hippt::abs(relative_eta - 1.0f) < 1.0e-5f)
+        relative_eta = 1.0f + 1.0e-5f;
+
     if (hippt::dot(surface_normal, view_direction) < 0)
         // We want the surface normal in the same hemisphere as 
         // the view direction for the rest of the calculations

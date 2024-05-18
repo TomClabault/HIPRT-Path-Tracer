@@ -23,46 +23,53 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float luminance(ColorRGBA pixel)
     return 0.3086f * pixel.r + 0.6094f * pixel.g + 0.0820f * pixel.b;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_texture_pixel(void* texture_pointer, bool is_srgb, float2 uv)
+// TODO remove
+//HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_texture_rgb(void* texture_pointer, bool is_srgb, float2 uv)
+//{
+//    ColorRGBA rgba;
+//
+//#ifdef __KERNELCC__
+//    rgba = ColorRGBA(tex2D<float4>(reinterpret_cast<oroTextureObject_t>(texture_pointer), uv.x, uv.y));
+//#else
+//    const ImageRGBA& envmap = *reinterpret_cast<ImageRGBA*>(texture_pointer);
+//
+//    int width = envmap.width - 1;
+//    int height = envmap.height - 1;
+//    rgba = envmap[static_cast<int>(uv.y * (height - 1.0f)) * envmap.width + uv.x * width];
+//#endif
+//
+//    // sRGB to linear conversion
+//    if (is_srgb)
+//        return pow(ColorRGB(rgba.r, rgba.g, rgba.b), 2.2f);
+//    else
+//        return ColorRGB(rgba.r, rgba.g, rgba.b);
+//}
+
+
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA sample_texture_rgba(const void* texture_buffer, int texture_index, int2 texture_dims, bool is_srgb, float2 uv)
 {
     ColorRGBA rgba;
 
 #ifdef __KERNELCC__
-    rgba = ColorRGBA(tex2D<float4>(reinterpret_cast<oroTextureObject_t>(texture_pointer), uv.x, uv.y));
+    rgba = ColorRGBA(tex2D<float4>(reinterpret_cast<const oroTextureObject_t*>(texture_buffer)[texture_index], uv.x * (texture_dims.x - 1), uv.y * (texture_dims.y - 1)));
 #else
-    const ImageRGBA& envmap = *reinterpret_cast<ImageRGBA*>(texture_pointer);
+    const ImageRGBA& texture = reinterpret_cast<const ImageRGBA*>(texture_buffer)[texture_index];
 
-    int width = envmap.width - 1;
-    int height = envmap.height - 1;
-    rgba = envmap[static_cast<int>(uv.y * (height - 1.0f)) * envmap.width + uv.x * width];
+    rgba = texture.sample(uv);
 #endif
 
     // sRGB to linear conversion
     if (is_srgb)
-        return pow(ColorRGB(rgba.r, rgba.g, rgba.b), 2.2f);
+        return pow(rgba, 2.2f);
     else
-        return ColorRGB(rgba.r, rgba.g, rgba.b);
+        return rgba;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_texture_pixel(void* texture_buffer, int texture_index, bool is_srgb, float2 uv)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_texture_rgb(const void* texture_buffer, int texture_index, int2 texture_dims, bool is_srgb, float2 uv)
 {
-    ColorRGBA rgba;
+    ColorRGBA rgba = sample_texture_rgba(texture_buffer, texture_index, texture_dims, is_srgb, uv);
 
-#ifdef __KERNELCC__
-    rgba = ColorRGBA(tex2D<float4>(reinterpret_cast<oroTextureObject_t*>(texture_buffer)[texture_index], uv.x, uv.y));
-#else
-    const ImageRGBA& envmap = reinterpret_cast<ImageRGBA*>(texture_buffer)[texture_index];
-
-    int width = envmap.width - 1;
-    int height = envmap.height - 1;
-    rgba = envmap[static_cast<int>(uv.y * (height - 1.0f)) * envmap.width + uv.x * width];
-#endif
-
-    // sRGB to linear conversion
-    if (is_srgb)
-        return pow(ColorRGB(rgba.r, rgba.g, rgba.b), 2.2f);
-    else
-        return ColorRGB(rgba.r, rgba.g, rgba.b);
+    return ColorRGB(rgba.r, rgba.g, rgba.b);
 }
 
 template <typename T>

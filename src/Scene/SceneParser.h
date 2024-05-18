@@ -20,7 +20,14 @@
 struct Scene
 {
     std::vector<RendererMaterial> materials;
+    // Material textures. Needs to be index by a material index. 
     std::vector<ImageRGBA> textures;
+    // The widths and heights of the material textures
+    // Necessary since Orochi doesn't support normalized texture coordinates
+    // for texture object creation yet. This mean that we have to use texel coordinates
+    // in [0, width - 1] and [0, height - 1] in the shader which means that we need the widths
+    // and heights to convert UV coordinates [0, 1] to the right range
+    std::vector<int2> textures_dims;
     // This vector of is sRGB indicates whether the texture is sRGB 
     // (and will need to be converted to linear in the shader or not)
     std::vector<unsigned char> textures_is_srgb;
@@ -88,9 +95,9 @@ private:
      */
     static int get_first_texture_of_type(aiMaterial* mesh_material, aiTextureType type, std::vector<std::pair<aiTextureType, std::string>>& texture_path_list);
     static std::vector<std::pair<aiTextureType, std::string>> get_textures_paths(aiMaterial* mesh_material, RendererMaterial& renderer_material);
-    static void normalize_texture_paths(std::vector<std::pair<aiTextureType, std::string>>& paths);
+    static std::vector<std::pair<aiTextureType, std::string>> normalize_texture_paths(std::vector<std::pair<aiTextureType, std::string>>& paths);
     static std::vector<ImageRGBA> read_textures(const std::string& filepath, const std::vector<std::pair<aiTextureType, std::string>>& texture_paths);
-    static void offset_textures_indices(RendererMaterial& renderer_material, int offset);
+    static RendererMaterial offset_textures_indices(const RendererMaterial& renderer_material, int offset);
 };
 
 #endif
