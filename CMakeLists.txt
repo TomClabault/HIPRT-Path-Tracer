@@ -69,17 +69,8 @@ FetchContent_MakeAvailable(
 
 
 
-# ----------------- Downloading and building HIPRT ----------------
-#FetchContent_Declare(
-  #hiprtrelease
-  #GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/HIPRT.git
-  #GIT_TAG        9aae35514303b6e3e99a4bf632e9be0fbfd208ad # release v2.3.7df94af + 2 commits that fix some stuff
-  #GIT_PROGRESS TRUE
-#)
 
-#FetchContent_MakeAvailable(
-	#hiprtrelease
-#)
+# ------------------------------- Downloading HIPRT -------------------------------
 
 if(NOT EXISTS ${CMAKE_SOURCE_DIR}/HIPRT-Submodule)
 	# Making sure that the HIPRT submodule was cloned
@@ -131,25 +122,12 @@ add_compile_definitions(KERNEL_COMPILER_ADDITIONAL_INCLUDE="${HIPRT_SUBMODULE_DI
 STRING(REGEX REPLACE "\\\\" "/" HIPRT_HEADERS_DIR ${HIPRT_HEADERS_DIR})
 	
 link_directories(${HIPRT_BINARIES_DIR}/hiprt/win)
-# -------------------------------------------------
+# ---------------------------------------------------------------
 
 
 
 
 # ----------------- Downloading Orochi (no need to build) ----------------
-
-# TODO remove
-#FetchContent_Declare(
-	#orochilib
-	#GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/Orochi.git
-	#GIT_TAG        17c5b9885549c1266f34af702f52ce9bdfdeae21 # Release 2.0.0
-	#GIT_PROGRESS TRUE
-#)
-
-#FetchContent_MakeAvailable(
-	#orochilib
-#)
-
 
 if(NOT EXISTS ${CMAKE_SOURCE_DIR}/Orochi-Submodule)
 	# Making sure that the Orochi submodule was cloned
