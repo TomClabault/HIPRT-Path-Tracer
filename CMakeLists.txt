@@ -70,20 +70,27 @@ FetchContent_MakeAvailable(
 
 
 # ----------------- Downloading and building HIPRT ----------------
-FetchContent_Declare(
-  hiprtrelease
-  GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/HIPRT.git
-  GIT_TAG        9aae35514303b6e3e99a4bf632e9be0fbfd208ad # release v2.3.7df94af + 2 commits that fix some stuff
-  GIT_PROGRESS TRUE
-)
+#FetchContent_Declare(
+  #hiprtrelease
+  #GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/HIPRT.git
+  #GIT_TAG        9aae35514303b6e3e99a4bf632e9be0fbfd208ad # release v2.3.7df94af + 2 commits that fix some stuff
+  #GIT_PROGRESS TRUE
+#)
 
-FetchContent_MakeAvailable(
-	hiprtrelease
-)
+#FetchContent_MakeAvailable(
+	#hiprtrelease
+#)
+
+if(NOT EXISTS ${CMAKE_SOURCE_DIR}/HIPRT-Submodule)
+	# Making sure that the HIPRT submodule was cloned
+	message(FATAL_ERROR "The HIPRT submodule couldn't be found. Did you forget to clone the submodules? Run 'git submodule update --init --recursive --jobs 10'.")
+else()
+	set(HIPRT_SUBMODULE_DIR ${CMAKE_SOURCE_DIR}/HIPRT-Submodule)
+endif()
 
 # Executing HIPRT's premake
 if (WIN32)
-	execute_process(COMMAND ./tools/premake5/win/premake5.exe vs2022 WORKING_DIRECTORY ${hiprtrelease_SOURCE_DIR})
+	execute_process(COMMAND ./tools/premake5/win/premake5.exe vs2022 WORKING_DIRECTORY ${HIPRT_SUBMODULE_DIR})
 
 	# We're now going to build the HIPRT project through MSBuild since Premake generated a Visual Studio Solution
 	# First, trying to find MSBuild on the PATH 
@@ -102,19 +109,19 @@ if (WIN32)
 	endif()
 
 	# Building HIPRT through MSBuild since Premake generated a Visual Studio Solution
-	execute_process(COMMAND ${MSBUILD_EXECUTABLE} hiprt02003.vcxproj /property:Configuration=Debug /property:Platform=x64 /property:MultiProcessorCompilation=true /verbosity:minimal WORKING_DIRECTORY ${hiprtrelease_SOURCE_DIR}/build)
+	execute_process(COMMAND ${MSBUILD_EXECUTABLE} hiprt02003.vcxproj /property:Configuration=Debug /property:Platform=x64 /property:MultiProcessorCompilation=true /verbosity:minimal WORKING_DIRECTORY ${HIPRT_SUBMODULE_DIR}/build)
 elseif(UNIX)
-	execute_process(COMMAND ./tools/premake5/linux64/premake5 gmake WORKING_DIRECTORY ${hiprtrelease_SOURCE_DIR})
-	execute_process(COMMAND make -C build -j config=debug_x64 WORKING_DIRECTORY ${hiprtrelease_SOURCE_DIR})
+	execute_process(COMMAND ./tools/premake5/linux64/premake5 gmake WORKING_DIRECTORY ${HIPRT_SUBMODULE_DIR})
+	execute_process(COMMAND make -C build -j config=debug_x64 WORKING_DIRECTORY ${HIPRT_SUBMODULE_DIR})
 endif()
 
 # Now that we built HIPRT, we can set the variables that will be used in the rest of the CMake 
 # to find the headers, the libraries, ...
-set(HIPRT_BIN_DIR ${hiprtrelease_SOURCE_DIR}/dist/bin/Debug)
-set(HIPRT_HEADERS_DIR ${hiprtrelease_SOURCE_DIR}/hiprt)
+set(HIPRT_BIN_DIR ${HIPRT_SUBMODULE_DIR}/dist/bin/Debug)
+set(HIPRT_HEADERS_DIR ${HIPRT_SUBMODULE_DIR}/hiprt)
 
 # The GPU compiler will need this additional include folder to properly compile some kernels
-add_compile_definitions(KERNEL_COMPILER_ADDITIONAL_INCLUDE="${hiprtrelease_SOURCE_DIR}")
+add_compile_definitions(KERNEL_COMPILER_ADDITIONAL_INCLUDE="${HIPRT_SUBMODULE_DIR}")
 
 # Replacing backslashes in the Windows paths that lead to wrong escape character
 # note that the four backslashes \\\\ are required because we need a regular expression that
@@ -131,22 +138,31 @@ link_directories(${HIPRT_BINARIES_DIR}/hiprt/win)
 
 # ----------------- Downloading Orochi (no need to build) ----------------
 
-FetchContent_Declare(
-	orochilib
-	GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/Orochi.git
-	GIT_TAG        17c5b9885549c1266f34af702f52ce9bdfdeae21 # Release 2.0.0
-	GIT_PROGRESS TRUE
-)
+# TODO remove
+#FetchContent_Declare(
+	#orochilib
+	#GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/Orochi.git
+	#GIT_TAG        17c5b9885549c1266f34af702f52ce9bdfdeae21 # Release 2.0.0
+	#GIT_PROGRESS TRUE
+#)
 
-FetchContent_MakeAvailable(
-	orochilib
-)
+#FetchContent_MakeAvailable(
+	#orochilib
+#)
 
-set(OROCHI_BIN_DIR ${orochilib_SOURCE_DIR})
-set(OROCHI_SOURCES_DIR ${orochilib_SOURCE_DIR}/Orochi)
 
-set(CUEW_SOURCES_DIR ${orochilib_SOURCE_DIR}/contrib/cuew)
-set(HIPEW_SOURCES_DIR ${orochilib_SOURCE_DIR}/contrib/hipew)
+if(NOT EXISTS ${CMAKE_SOURCE_DIR}/Orochi-Submodule)
+	# Making sure that the Orochi submodule was cloned
+	message(FATAL_ERROR "The Orochi submodule couldn't be found. Did you forget to clone the submodules? Run 'git submodule update --init --recursive --jobs 10'.")
+else()
+	set(OROCHI_SUBMODULE_DIR ${CMAKE_SOURCE_DIR}/Orochi-Submodule)
+endif()
+
+set(OROCHI_BIN_DIR ${OROCHI_SUBMODULE_DIR})
+set(OROCHI_SOURCES_DIR ${OROCHI_SUBMODULE_DIR}/Orochi)
+
+set(CUEW_SOURCES_DIR ${OROCHI_SUBMODULE_DIR}/contrib/cuew)
+set(HIPEW_SOURCES_DIR ${OROCHI_SUBMODULE_DIR}/contrib/hipew)
 
 STRING(REGEX REPLACE "\\\\" "/" OROCHI_SOURCES_DIR ${OROCHI_SOURCES_DIR})
 STRING(REGEX REPLACE "\\\\" "/" CUEW_SOURCES_DIR ${CUEW_SOURCES_DIR})
@@ -154,10 +170,10 @@ STRING(REGEX REPLACE "\\\\" "/" HIPEW_SOURCES_DIR ${HIPEW_SOURCES_DIR})
 
 # TODO remove when issue #7 (https://github.com/GPUOpen-LibrariesAndSDKs/HIPRT/issues/7) is fixed
 if (true)
-	file(COPY ${orochilib_SOURCE_DIR}/ParallelPrimitives DESTINATION ${CMAKE_SOURCE_DIR}/contrib/Orochi)
-	file(COPY ${hiprtrelease_SOURCE_DIR}/hiprt/impl DESTINATION ${CMAKE_SOURCE_DIR}/hiprt)
+	file(COPY ${OROCHI_SUBMODULE_DIR}/ParallelPrimitives DESTINATION ${CMAKE_SOURCE_DIR}/contrib/Orochi)
+	file(COPY ${HIPRT_SUBMODULE_DIR}/hiprt/impl DESTINATION ${CMAKE_SOURCE_DIR}/hiprt)
 
-	file(GLOB HIPRT_FILES_TO_COPY ${hiprtrelease_SOURCE_DIR}/hiprt/*.h ${hiprtrelease_SOURCE_DIR}/hiprt/*.in)
+	file(GLOB HIPRT_FILES_TO_COPY ${HIPRT_SUBMODULE_DIR}/hiprt/*.h ${HIPRT_SUBMODULE_DIR}/hiprt/*.in)
 	file(COPY ${HIPRT_FILES_TO_COPY} DESTINATION ${CMAKE_SOURCE_DIR}/hiprt/)
 endif()
 

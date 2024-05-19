@@ -1,0 +1,6 @@
+[submodule "Orochi-Submodule"]
+	path = Orochi-Submodule
+	url = https://github.com/GPUOpen-LibrariesAndSDKs/Orochi.git
+[submodule "HIPRT-Submodule"]
+	path = HIPRT-Submodule
+	url = https://github.com/GPUOpen-LibrariesAndSDKs/HIPRT.git
