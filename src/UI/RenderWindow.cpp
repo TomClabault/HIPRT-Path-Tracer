@@ -85,7 +85,6 @@
 // - image comparator slider (to have adaptive sampling view + default view on the same viewport for example)
 // - auto adaptive sample per frame with adaptive sampling to keep GPU busy
 // - Maybe look at better Disney sampling (luminance?)
-// - Imgui panel with a lot of performance metrics
 // - thin materials
 // - Look at what Orochi & HIPCC can do in terms of displaying registers used / options to specify shared stack size / block size (-DBLOCK_SIZE, -DSHARED_STACK_SIZE)
 // - Have the UI run at its own framerate to avoid having the UI come to a crawl when the path tracing is expensive
@@ -1013,6 +1012,14 @@ void RenderWindow::show_post_process_panel()
 	ImGui::InputFloat("Exposure", &m_application_settings.tone_mapping_exposure);
 
 	ImGui::TreePop();
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+}
+
+void RenderWindow::show_performance_panel()
+{
+	if (!ImGui::CollapsingHeader("Performance"))
+		return;
+
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 }
 

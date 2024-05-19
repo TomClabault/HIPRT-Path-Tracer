@@ -93,7 +93,7 @@ With the pre-requisites fulfilled, you now just have to run the CMake:
 ``` sh
 git clone https://github.com/TomClabault/HIPRT-Path-Tracer.git
 cd HIPRT-Path-Tracer
-git submodule update --init --jobs 10
+git submodule update --init --recursive --jobs 10
 mkdir build
 cd build
 cmake ..

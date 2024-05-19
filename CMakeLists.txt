@@ -100,15 +100,21 @@ if (WIN32)
 	endif()
 
 	# Building HIPRT through MSBuild since Premake generated a Visual Studio Solution
-	execute_process(COMMAND ${MSBUILD_EXECUTABLE} hiprt02003.vcxproj /property:Configuration=Debug /property:Platform=x64 /property:MultiProcessorCompilation=true /verbosity:minimal WORKING_DIRECTORY ${HIPRT_SUBMODULE_DIR}/build)
+	execute_process(COMMAND ${MSBUILD_EXECUTABLE} hiprt02003.vcxproj /property:Configuration=${CMAKE_BUILD_TYPE} /property:Platform=x64 /property:MultiProcessorCompilation=true /verbosity:minimal WORKING_DIRECTORY ${HIPRT_SUBMODULE_DIR}/build)
 elseif(UNIX)
 	execute_process(COMMAND ./tools/premake5/linux64/premake5 gmake WORKING_DIRECTORY ${HIPRT_SUBMODULE_DIR})
 	execute_process(COMMAND make -C build -j config=debug_x64 WORKING_DIRECTORY ${HIPRT_SUBMODULE_DIR})
 endif()
 
+if (${CMAKE_BUILD_TYPE} STREQUAL "Debug" OR ${CMAKE_BUILD_TYPE} STREQUAL "RelWithDebInfo")
+	set(hiprt_link_lib "hiprt0200364D")
+elseif(${CMAKE_BUILD_TYPE} STREQUAL "Release")
+	set(hiprt_link_lib "hiprt0200364")
+endif()
+
 # Now that we built HIPRT, we can set the variables that will be used in the rest of the CMake 
 # to find the headers, the libraries, ...
-set(HIPRT_BIN_DIR ${HIPRT_SUBMODULE_DIR}/dist/bin/Debug)
+set(HIPRT_BIN_DIR ${HIPRT_SUBMODULE_DIR}/dist/bin/${CMAKE_BUILD_TYPE})
 set(HIPRT_HEADERS_DIR ${HIPRT_SUBMODULE_DIR}/hiprt)
 
 # The GPU compiler will need this additional include folder to properly compile some kernels
@@ -216,10 +222,10 @@ find_package(OpenImageDenoise REQUIRED HINTS ${oidnbinaries_SOURCE_DIR}) # HINTS
 
 # "version" is a library from the Windows SDK
 if (WIN32)
-	target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX assimp OpenImageDenoise ${OPENGL_LIBRARY} glfw3 glew32 hiprt0200364D version)
+	target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX assimp OpenImageDenoise ${OPENGL_LIBRARY} glfw3 glew32 ${hiprt_link_lib} version)
 elseif(UNIX)
 	find_package(GLEW REQUIRED)
-	target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX assimp OpenImageDenoise ${OPENGL_LIBRARY} glfw GLEW::GLEW hiprt0200364D)
+	target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX assimp OpenImageDenoise ${OPENGL_LIBRARY} glfw GLEW::GLEW ${hiprt_link_lib})
 endif()
 
 target_include_directories(HIPRTPathTracer PRIVATE "src/")

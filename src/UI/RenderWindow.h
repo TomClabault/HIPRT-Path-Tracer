@@ -92,6 +92,7 @@ public:
 	void show_objects_panel();
 	void show_denoiser_panel();
 	void show_post_process_panel();
+	void show_performance_panel();
 	void draw_imgui();
 
 	void run();
