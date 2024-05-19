@@ -38,6 +38,38 @@ struct ParsedMaterialTextureIndices
     int normal_map_texture_index = -1;
 };
 
+struct SceneParserOptions
+{
+    float override_aspect_ratio;
+
+    // How many CPU threads to use when loading the textures of the scene.
+    // 
+    // Note that blindly defaulting to 1 thread per texture may not be the
+    // best idea, especially on HDDs. This is because with one thread per texture,
+    // all textures will be loading at the same time. Although this may utilize the
+    // CPU very well, this will cause A LOT of random read accesses on the drive
+    // can SIGNIFICANTLY degrade performance. This is mostly applicable to HDDs but
+    // to SSDs too to some extent. You may want to use a higher thread count for SSDs
+    // though to be sure to feed enough work to the CPU to keep up with the fast SSD.
+    // 
+    // -1 to use one thread per texture.
+    //
+    // 16 seemed to be a good arbitrary number to avoid trashing the disks on my setup 
+    // (tested on the Amazon Lumberyard Bistro on both HDD and SSD)
+    int nb_texture_threads = 16;
+};
+
+struct SceneParserMultithreadState
+{
+    // Texture loading is going to be multithreaded and we're going to have 
+    // one thread per texture running asynchronously.
+    // The threads are going to be stored in this vector so that we can .join() on
+    // them at the end
+    std::vector<std::thread> texture_threads;
+    std::vector<std::pair<aiTextureType, std::string>> texture_paths;
+    std::string scene_filepath;
+};
+
 struct Scene
 {
     std::vector<RendererMaterial> materials;
@@ -95,16 +127,16 @@ class SceneParser
 {
 public:
     /**
-     * Parses the scene file at @filepath and returns a scene appropriate for the renderer.
-     * All formats supported by the ASSIMP library are supported by the renderer
+     * Parses the scene file at @filepath and stores the parsed data in the parsed_scene parameter.
+     * All formats supported by the ASSIMP library are supported by the renderer.
      * 
-     * If provided, the @frame_aspect_override parameter is meant to override the aspect ratio of the camera
-     * of the scene file (if any). This is useful because the renderer uses a default aspect ratio
-     * of 16:9 but the camera of the scene file ma not use the same aspect. Without this parameter,
-     * this would result in rendering the scene with an aspect different of 16:9 in the defualt 
+     * If provided, the @frame_aspect_override parameter in the options structure is meant to override 
+     * the aspect ratio of the camera of the scene file (if any). This is useful because the renderer
+     * uses a default aspect ratio of 16:9 but the camera of the scene file may not use the same aspect. 
+     * Without this parameter, this would result in rendering the scene with an aspect different of 16:9 in the default 
      * framebuffer of the renderer which is 16:9, resulting in deformations.
      */
-    static Scene parse_scene_file(const std::string& filepath, float frame_aspect_override = -1.0f);
+    static void parse_scene_file(const std::string& filepath, Scene& parsed_scene, SceneParserOptions& options, SceneParserMultithreadState& mt_state);
 
 private:
 
@@ -115,7 +147,7 @@ private:
     static void prepare_textures(const aiScene* scene, std::vector<std::pair<aiTextureType, std::string>>& texture_paths, std::vector<ParsedMaterialTextureIndices>& material_texture_indices, std::vector<int>& material_indices, std::vector<int>& texture_per_mesh, std::vector<int>& texture_indices_offsets, int& texture_count);
     static void assign_material_texture_indices(std::vector<RendererMaterial>& materials, const std::vector<ParsedMaterialTextureIndices>& material_tex_indices, const std::vector<int>& material_textures_offsets);
     static void dispatch_texture_loading(std::vector<std::thread>& threads, Scene& parsed_scene, const std::string& scene_path, const std::vector<std::pair<aiTextureType, std::string>>& texture_paths);
-    static void thread_load_texture(Scene& parsed_scene, const std::string& scene_path, const std::vector<std::pair<aiTextureType, std::string>>& tex_paths, int thread_index, int nb_threads);
+    static void thread_load_texture(Scene& parsed_scene, std::string scene_path, const std::vector<std::pair<aiTextureType, std::string>>& tex_paths, int thread_index, int nb_threads);
 
     static void read_material_properties(aiMaterial* mesh_material, RendererMaterial& renderer_material);
     /**

@@ -190,7 +190,7 @@ void log_bvh_building(hiprtBuildFlags build_flags)
 	std::cout << "... (This can take 30s+ on NVIDIA hardware)" << std::endl;
 }
 
-void GPURenderer::set_hiprt_scene_from_scene(Scene& scene)
+void GPURenderer::set_hiprt_scene_from_scene(Scene& scene, SceneParserMultithreadState& mt_state)
 {
 	m_hiprt_scene = HIPRTScene(m_hiprt_orochi_ctx->hiprt_ctx);
 	HIPRTScene& hiprt_scene = m_hiprt_scene;
@@ -257,6 +257,27 @@ void GPURenderer::set_hiprt_scene_from_scene(Scene& scene)
 	OROCHI_CHECK_ERROR(oroMemcpyHtoD(reinterpret_cast<oroDeviceptr>(emissive_triangle_indices), scene.emissive_triangle_indices.data(), sizeof(int) * scene.emissive_triangle_indices.size()));
 	hiprt_scene.emissive_triangles_indices = emissive_triangle_indices;
 
+	hiprtDevicePtr textures_dims;
+	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&textures_dims), sizeof(int2) * scene.textures_dims.size()));
+	OROCHI_CHECK_ERROR(oroMemcpyHtoD(reinterpret_cast<oroDeviceptr>(textures_dims), scene.textures_dims.data(), sizeof(int2) * scene.textures_dims.size()));
+	hiprt_scene.textures_dims = textures_dims;
+
+	hiprtDevicePtr texture_is_srgb;
+	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&texture_is_srgb), sizeof(bool) * scene.textures_is_srgb.size()));
+	OROCHI_CHECK_ERROR(oroMemcpyHtoD(reinterpret_cast<oroDeviceptr>(texture_is_srgb), scene.textures_is_srgb.data(), sizeof(bool) * scene.textures_is_srgb.size()));
+	hiprt_scene.texture_is_srgb = texture_is_srgb;
+
+	hiprtDevicePtr texcoords_buffer;
+	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&texcoords_buffer), sizeof(float2) * scene.texcoords.size()));
+	OROCHI_CHECK_ERROR(oroMemcpyHtoD(reinterpret_cast<oroDeviceptr>(texcoords_buffer), scene.texcoords.data(), sizeof(float2) * scene.texcoords.size()));
+	hiprt_scene.texcoords_buffer = texcoords_buffer;
+
+	// We're joining the threads that were loading the scene textures in the background
+	// at the last moment so that they had the maximum amount of time to load the textures
+	// while the main thread was doing something else
+	for (std::thread& thread : mt_state.texture_threads)
+		thread.join();
+
 	std::vector<oroTextureObject_t> oro_textures;
 	oro_textures.reserve(scene.textures.size());
 	m_materials_textures.reserve(scene.textures.size());
@@ -272,26 +293,11 @@ void GPURenderer::set_hiprt_scene_from_scene(Scene& scene)
 	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&material_textures), sizeof(oroTextureObject_t) * oro_textures.size()));
 	OROCHI_CHECK_ERROR(oroMemcpyHtoD(reinterpret_cast<oroDeviceptr>(material_textures), oro_textures.data(), sizeof(oroTextureObject_t) * oro_textures.size()));
 	hiprt_scene.material_textures = material_textures;
-
-	hiprtDevicePtr textures_dims;
-	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&textures_dims), sizeof(int2) * scene.textures_dims.size()));
-	OROCHI_CHECK_ERROR(oroMemcpyHtoD(reinterpret_cast<oroDeviceptr>(textures_dims), scene.textures_dims.data(), sizeof(int2) * scene.textures_dims.size()));
-	hiprt_scene.textures_dims = textures_dims;
-
-	hiprtDevicePtr texture_is_srgb;
-	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&texture_is_srgb), sizeof(bool) * scene.textures_is_srgb.size()));
-	OROCHI_CHECK_ERROR(oroMemcpyHtoD(reinterpret_cast<oroDeviceptr>(texture_is_srgb), scene.textures_is_srgb.data(), sizeof(bool) * scene.textures_is_srgb.size()));
-	hiprt_scene.texture_is_srgb = texture_is_srgb;
-
-	hiprtDevicePtr texcoords_buffer;
-	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&texcoords_buffer), sizeof(float2) * scene.texcoords.size()));
-	OROCHI_CHECK_ERROR(oroMemcpyHtoD(reinterpret_cast<oroDeviceptr>(texcoords_buffer), scene.texcoords.data(), sizeof(float2) * scene.texcoords.size()));
-	hiprt_scene.texcoords_buffer = texcoords_buffer;
 }
 
-void GPURenderer::set_scene(Scene& scene)
+void GPURenderer::set_scene(Scene& scene, SceneParserMultithreadState& mt_state)
 {
-	set_hiprt_scene_from_scene(scene);
+	set_hiprt_scene_from_scene(scene, mt_state);
 
 	m_materials = scene.materials;
 }

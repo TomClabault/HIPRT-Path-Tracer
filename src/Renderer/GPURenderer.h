@@ -60,7 +60,7 @@ public:
 	void compile_trace_kernel(const char* kernel_file_path, const char* kernel_function_name);
 	void launch_kernel(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args);
 
-	void set_scene(Scene& scene);
+	void set_scene(Scene& scene, SceneParserMultithreadState& mt_state);
 	void set_envmap(ImageRGBA& envmap);
 	void set_camera(const Camera& camera);
 
@@ -79,7 +79,7 @@ public:
 	Camera m_camera;
 
 private:
-	void set_hiprt_scene_from_scene(Scene& scene);
+	void set_hiprt_scene_from_scene(Scene& scene, SceneParserMultithreadState& mt_state);
 
 	// This buffer holds the * sum * of the samples computed
 	// This is an accumulation buffer. This needs to be divided by the

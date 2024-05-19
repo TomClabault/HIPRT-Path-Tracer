@@ -11,9 +11,8 @@
 
 #include <chrono>
 
-Scene SceneParser::parse_scene_file(const std::string& scene_filepath, float frame_aspect_override)
+void SceneParser::parse_scene_file(const std::string& scene_filepath, Scene& parsed_scene, SceneParserOptions& options, SceneParserMultithreadState& mt_state)
 {
-    Scene parsed_scene;
     Assimp::Importer importer;
     const aiScene* scene;
 
@@ -26,12 +25,6 @@ Scene SceneParser::parse_scene_file(const std::string& scene_filepath, float fra
         std::exit(1);
     }
 
-    // Texture loading is going to be multithreaded and we're going to have 
-    // one thread per texture running asynchronously.
-    // The threads are going to be stored in this vector so that we can .join() on
-    // them at the end
-    std::vector<std::thread> texture_threads;
-    std::vector<std::pair<aiTextureType, std::string>> texture_paths;
     // Indices of the texture used by a material
     std::vector<ParsedMaterialTextureIndices> material_texture_indices;
     // Index of the material associated with the texutre
@@ -47,17 +40,16 @@ Scene SceneParser::parse_scene_file(const std::string& scene_filepath, float fra
     std::vector<int> texture_indices_offsets;
     int texture_count;
 
-    prepare_textures(scene, texture_paths, material_texture_indices, material_indices, texture_per_mesh, texture_indices_offsets, texture_count);
-    const int NB_THREADS = 10;
-    texture_threads.resize(NB_THREADS);
+    prepare_textures(scene, mt_state.texture_paths, material_texture_indices, material_indices, texture_per_mesh, texture_indices_offsets, texture_count);
+    mt_state.texture_threads.resize(options.nb_texture_threads == -1 ? texture_count : options.nb_texture_threads);
     parsed_scene.materials.resize(texture_per_mesh.size());
     parsed_scene.textures.resize(texture_count);
     parsed_scene.textures_is_srgb.resize(texture_count);
     parsed_scene.textures_dims.resize(texture_count);
-    assign_material_texture_indices(parsed_scene.materials, material_texture_indices, texture_indices_offsets);
-    dispatch_texture_loading(texture_threads, parsed_scene, scene_filepath, texture_paths);
+    assign_material_texture_indices(parsed_scene.materials, material_texture_indices, texture_indices_offsets); // TODO move after dispatch threads
+    dispatch_texture_loading(mt_state.texture_threads, parsed_scene, scene_filepath, mt_state.texture_paths);
 
-    parse_camera(scene, parsed_scene, frame_aspect_override);
+    parse_camera(scene, parsed_scene, options.override_aspect_ratio);
 
     // If the scene contains multiple meshes, each mesh will have
     // its vertices indices starting at 0. We don't want that.
@@ -148,12 +140,6 @@ Scene SceneParser::parse_scene_file(const std::string& scene_filepath, float fra
     std::cout << "\t" << parsed_scene.emissive_triangle_indices.size() << " emissive triangles" << std::endl;
     std::cout << "\t" << parsed_scene.materials.size() << " materials" << std::endl;
     std::cout << "\t" << parsed_scene.textures.size() << " textures" << std::endl;
-
-    // Waiting for the texture threads to finish loading
-    for (std::thread& thread : texture_threads)
-        thread.join();
-
-    return parsed_scene;
 }
 
 void SceneParser::parse_camera(const aiScene* scene, Scene& parsed_scene, float frame_aspect_override)
@@ -276,7 +262,7 @@ void SceneParser::dispatch_texture_loading(std::vector<std::thread>& threads, Sc
         threads[i] = std::thread(SceneParser::thread_load_texture, std::ref(parsed_scene), scene_path, std::ref(texture_paths), i, nb_threads);
 }
 
-void SceneParser::thread_load_texture(Scene& parsed_scene, const std::string& scene_path, const std::vector<std::pair<aiTextureType, std::string>>& tex_paths, int thread_index, int nb_threads)
+void SceneParser::thread_load_texture(Scene& parsed_scene, std::string scene_path, const std::vector<std::pair<aiTextureType, std::string>>& tex_paths, int thread_index, int nb_threads)
 {
     // Preparing the scene_filepath so that it's ready to be appended with the texture name
     std::string corrected_filepath;
