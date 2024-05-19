@@ -4,3 +4,6 @@
 [submodule "HIPRT-Submodule"]
 	path = HIPRT-Submodule
 	url = https://github.com/GPUOpen-LibrariesAndSDKs/HIPRT.git
+[submodule "ASSIMP-Submodule"]
+	path = ASSIMP-Submodule
+	url = https://github.com/assimp/assimp
