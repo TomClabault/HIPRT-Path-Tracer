@@ -48,7 +48,7 @@ Scene SceneParser::parse_scene_file(const std::string& scene_filepath, float fra
     int texture_count;
 
     prepare_textures(scene, texture_paths, material_texture_indices, material_indices, texture_per_mesh, texture_indices_offsets, texture_count);
-    const int NB_THREADS = texture_count;
+    const int NB_THREADS = 10;
     texture_threads.resize(NB_THREADS);
     parsed_scene.materials.resize(texture_per_mesh.size());
     parsed_scene.textures.resize(texture_count);

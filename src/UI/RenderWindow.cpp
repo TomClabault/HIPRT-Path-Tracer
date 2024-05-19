@@ -49,6 +49,8 @@
 
 
 // TODO Features:
+// - hold shift for faster camera
+// - hold CTRL for slower camera
 // - BRDF swapper ImGui : Disney, Lambertian, Oren Nayar, Cook Torrance, Perfect fresnel dielectric reflect/transmit
 // - choose disney diffuse model (disney, lambertian, oren nayar)
 // - Cool colored thread-safe logger singleton class --> loguru lib

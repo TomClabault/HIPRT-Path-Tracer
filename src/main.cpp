@@ -34,11 +34,10 @@ int main(int argc, char* argv[])
     std::cout << std::endl << "Reading scene file " << cmd_arguments.scene_file_path << " ..." << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
     Scene parsed_scene;
-    for (int i = 0; i < 10; i++) 
+    for (int i = 0; i < 1; i++) 
         parsed_scene = SceneParser::parse_scene_file(cmd_arguments.scene_file_path, (float)width / height);
     auto stop = std::chrono::high_resolution_clock::now();
     std::cout << "Scene parsed in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
-    //return 0;
         
     std::cout << "Reading \"" << cmd_arguments.skysphere_file_path << "\" envmap..." << std::endl;
     ImageRGBA envmap_image = ImageRGBA::read_image_hdr(cmd_arguments.skysphere_file_path, /* flip Y */ true);
