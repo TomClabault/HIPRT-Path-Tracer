@@ -76,10 +76,10 @@ Image& CPURenderer::get_framebuffer()
     return m_framebuffer;
 }
 
-#define DEBUG_PIXEL 1
+#define DEBUG_PIXEL 0
 #define DEBUG_EXACT_COORDINATE 0
-#define DEBUG_PIXEL_X 108
-#define DEBUG_PIXEL_Y 120
+#define DEBUG_PIXEL_X 214
+#define DEBUG_PIXEL_Y 375
 
 void CPURenderer::render()  
 {
@@ -117,7 +117,7 @@ void CPURenderer::render()
 
 void CPURenderer::tonemap(float gamma, float exposure)
 {
-//#pragma omp parallel for schedule(dynamic)
+#pragma omp parallel for schedule(dynamic)
     for (int y = 0; y < m_resolution.y; y++)
     {
         for (int x = 0; x < m_resolution.x; x++)

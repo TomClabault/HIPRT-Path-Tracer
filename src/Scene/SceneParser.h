@@ -59,17 +59,6 @@ struct SceneParserOptions
     int nb_texture_threads = 16;
 };
 
-struct SceneParserMultithreadState
-{
-    // Texture loading is going to be multithreaded and we're going to have 
-    // one thread per texture running asynchronously.
-    // The threads are going to be stored in this vector so that we can .join() on
-    // them at the end
-    std::vector<std::thread> texture_threads;
-    std::vector<std::pair<aiTextureType, std::string>> texture_paths;
-    std::string scene_filepath;
-};
-
 struct Scene
 {
     std::vector<RendererMaterial> materials;
@@ -136,7 +125,7 @@ public:
      * Without this parameter, this would result in rendering the scene with an aspect different of 16:9 in the default 
      * framebuffer of the renderer which is 16:9, resulting in deformations.
      */
-    static void parse_scene_file(const std::string& filepath, Scene& parsed_scene, SceneParserOptions& options, SceneParserMultithreadState& mt_state);
+    static void parse_scene_file(const std::string& filepath, Scene& parsed_scene, SceneParserOptions& options);
 
 private:
 
@@ -146,8 +135,7 @@ private:
      */
     static void prepare_textures(const aiScene* scene, std::vector<std::pair<aiTextureType, std::string>>& texture_paths, std::vector<ParsedMaterialTextureIndices>& material_texture_indices, std::vector<int>& material_indices, std::vector<int>& texture_per_mesh, std::vector<int>& texture_indices_offsets, int& texture_count);
     static void assign_material_texture_indices(std::vector<RendererMaterial>& materials, const std::vector<ParsedMaterialTextureIndices>& material_tex_indices, const std::vector<int>& material_textures_offsets);
-    static void dispatch_texture_loading(std::vector<std::thread>& threads, Scene& parsed_scene, const std::string& scene_path, const std::vector<std::pair<aiTextureType, std::string>>& texture_paths);
-    static void thread_load_texture(Scene& parsed_scene, std::string scene_path, const std::vector<std::pair<aiTextureType, std::string>>& tex_paths, int thread_index, int nb_threads);
+    static void dispatch_texture_loading(Scene& parsed_scene, const std::string& scene_path, int nb_threads, const std::vector<std::pair<aiTextureType, std::string>>& texture_paths);
 
     static void read_material_properties(aiMaterial* mesh_material, RendererMaterial& renderer_material);
     /**

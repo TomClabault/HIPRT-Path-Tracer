@@ -5,13 +5,17 @@
 
 #include "Image/Image.h"
 #include "Scene/SceneParser.h"
+#include "Threads/ThreadFunctions.h"
+#include "Threads/ThreadManager.h"
+#include "Threads/ThreadState.h"
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include "glm/gtx/matrix_decompose.hpp"
 
 #include <chrono>
+#include <memory>
 
-void SceneParser::parse_scene_file(const std::string& scene_filepath, Scene& parsed_scene, SceneParserOptions& options, SceneParserMultithreadState& mt_state)
+void SceneParser::parse_scene_file(const std::string& scene_filepath, Scene& parsed_scene, SceneParserOptions& options)
 {
     Assimp::Importer importer;
     const aiScene* scene;
@@ -25,6 +29,7 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Scene& par
         std::exit(1);
     }
 
+    std::vector<std::pair<aiTextureType, std::string>> texture_paths;
     // Indices of the texture used by a material
     std::vector<ParsedMaterialTextureIndices> material_texture_indices;
     // Index of the material associated with the texutre
@@ -40,14 +45,13 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Scene& par
     std::vector<int> texture_indices_offsets;
     int texture_count;
 
-    prepare_textures(scene, mt_state.texture_paths, material_texture_indices, material_indices, texture_per_mesh, texture_indices_offsets, texture_count);
-    mt_state.texture_threads.resize(options.nb_texture_threads == -1 ? texture_count : options.nb_texture_threads);
+    prepare_textures(scene, texture_paths, material_texture_indices, material_indices, texture_per_mesh, texture_indices_offsets, texture_count);
     parsed_scene.materials.resize(texture_per_mesh.size());
     parsed_scene.textures.resize(texture_count);
     parsed_scene.textures_is_srgb.resize(texture_count);
     parsed_scene.textures_dims.resize(texture_count);
     assign_material_texture_indices(parsed_scene.materials, material_texture_indices, texture_indices_offsets); // TODO move after dispatch threads
-    dispatch_texture_loading(mt_state.texture_threads, parsed_scene, scene_filepath, mt_state.texture_paths);
+    dispatch_texture_loading(parsed_scene, scene_filepath, options.nb_texture_threads, texture_paths);
 
     parse_camera(scene, parsed_scene, options.override_aspect_ratio);
 
@@ -59,8 +63,6 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Scene& par
     // The offset thus offsets the indices of the meshes that come after the first one
     // to account for all the indices of the previously parsed meshes
     int global_indices_offset = 0;
-    // Same thing for the textures
-    int global_texture_indices_offset = 0;
     for (int mesh_index = 0; mesh_index < scene->mNumMeshes; mesh_index++)
     {
         aiMesh* mesh = scene->mMeshes[mesh_index];
@@ -255,32 +257,21 @@ void SceneParser::assign_material_texture_indices(std::vector<RendererMaterial>&
     }
 }
 
-void SceneParser::dispatch_texture_loading(std::vector<std::thread>& threads, Scene& parsed_scene, const std::string& scene_path, const std::vector<std::pair<aiTextureType, std::string>>& texture_paths)
+void SceneParser::dispatch_texture_loading(Scene& parsed_scene, const std::string& scene_path, int nb_threads, const std::vector<std::pair<aiTextureType, std::string>>& texture_paths)
 {
-    int nb_threads = threads.size();
+    if (nb_threads == -1)
+        // As many threads as there are textures if -1 was given
+        nb_threads = texture_paths.size();
+
+    // Creating a state to keep the data that the threads need alive
+    std::shared_ptr<TextureLoadingThreadState> texture_threads_state = std::make_shared<TextureLoadingThreadState>();
+    texture_threads_state->scene_filepath = scene_path;
+    texture_threads_state->texture_paths = texture_paths;
+
+    ThreadManager::add_state(ThreadManager::TEXTURE_THREADS_KEY, texture_threads_state);
+
     for (int i = 0; i < nb_threads; i++)
-        threads[i] = std::thread(SceneParser::thread_load_texture, std::ref(parsed_scene), scene_path, std::ref(texture_paths), i, nb_threads);
-}
-
-void SceneParser::thread_load_texture(Scene& parsed_scene, std::string scene_path, const std::vector<std::pair<aiTextureType, std::string>>& tex_paths, int thread_index, int nb_threads)
-{
-    // Preparing the scene_filepath so that it's ready to be appended with the texture name
-    std::string corrected_filepath;
-    corrected_filepath = scene_path;
-    corrected_filepath = corrected_filepath.substr(0, corrected_filepath.rfind('/') + 1);
-
-    while (thread_index < parsed_scene.textures.size())
-    {
-        std::string full_path;
-        full_path = corrected_filepath + tex_paths[thread_index].second;
-
-        ImageRGBA texture = ImageRGBA::read_image(full_path, false);
-        parsed_scene.textures_dims[thread_index] = make_int2(texture.width, texture.height);
-        parsed_scene.textures_is_srgb[thread_index] = tex_paths[thread_index].first == aiTextureType::aiTextureType_BASE_COLOR;
-        parsed_scene.textures[thread_index] = texture;
-
-        thread_index += nb_threads;
-    }
+        ThreadManager::start_thread(ThreadManager::TEXTURE_THREADS_KEY, ThreadFunctions::load_texture, std::ref(parsed_scene), texture_threads_state->scene_filepath, std::ref(texture_threads_state->texture_paths), i, nb_threads);
 }
 
 void SceneParser::read_material_properties(aiMaterial* mesh_material, RendererMaterial& renderer_material)

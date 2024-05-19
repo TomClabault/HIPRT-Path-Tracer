@@ -12,6 +12,7 @@
 #include "Renderer/Triangle.h"
 #include "Scene/Camera.h"
 #include "Scene/SceneParser.h"
+#include "Threads/ThreadManager.h"
 #include "UI/RenderWindow.h"
 #include "Utils/CommandlineArguments.h"
 #include "Utils/Utils.h"
@@ -32,25 +33,22 @@ int main(int argc, char* argv[])
     const int height = cmd_arguments.render_height;
 
     std::chrono::high_resolution_clock::time_point start, stop;
-    SceneParserMultithreadState mt_state;
     Scene parsed_scene;
     SceneParserOptions options;
     options.nb_texture_threads = 16;
     options.override_aspect_ratio = (float)width / height;
 
-
-    std::cout << std::endl << "Reading scene file " << cmd_arguments.scene_file_path << " ..." << std::endl;
+    std::cout << std::endl;
+    std::cout << "Reading scene file " << cmd_arguments.scene_file_path << " ..." << std::endl;
 
     start = std::chrono::high_resolution_clock::now();
-    SceneParser::parse_scene_file(cmd_arguments.scene_file_path, parsed_scene, options, mt_state);
+    SceneParser::parse_scene_file(cmd_arguments.scene_file_path, parsed_scene, options);
     stop = std::chrono::high_resolution_clock::now();
 
     std::cout << "Scene parsed in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
 
-        
     std::cout << "Reading \"" << cmd_arguments.skysphere_file_path << "\" envmap..." << std::endl;
     ImageRGBA envmap_image = ImageRGBA::read_image_hdr(cmd_arguments.skysphere_file_path, /* flip Y */ true);
-
 
 #if GPU_RENDER
 
@@ -59,7 +57,8 @@ int main(int argc, char* argv[])
     GPURenderer& renderer = render_window.get_renderer();
     renderer.set_envmap(envmap_image);
     renderer.set_camera(parsed_scene.camera);
-    renderer.set_scene(parsed_scene, mt_state);
+    renderer.set_scene(parsed_scene);
+    ThreadManager::join_threads(ThreadManager::COMPILE_KERNEL_THREAD_KEY);
     render_window.run();
 
     return 0;
@@ -74,9 +73,7 @@ int main(int argc, char* argv[])
     cpu_renderer.set_camera(parsed_scene.camera);
     cpu_renderer.get_render_settings().nb_bounces = cmd_arguments.bounces;
     cpu_renderer.get_render_settings().samples_per_frame = cmd_arguments.render_samples;
-
-    for (std::thread& thread : mt_state.texture_threads)
-        thread.join();
+    ThreadManager::join_threads(ThreadManager::TEXTURE_THREADS_KEY);
     cpu_renderer.render();
     cpu_renderer.tonemap(2.2f, 1.0f);
 

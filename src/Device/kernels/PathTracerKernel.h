@@ -136,6 +136,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
         return;
     }
 
+
     Xorshift32Generator random_number_generator(wang_hash((index + 1) * (render_data.render_settings.sample_number + 1)));
 
     float squared_luminance_of_samples = 0.0f;
@@ -180,6 +181,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                     // --------------------------------------------------- //
                     // ----------------- Direct lighting ----------------- //
                     // --------------------------------------------------- //
+
                     ColorRGB light_sample_radiance = sample_light_sources(render_data, ray_payload.material, closest_hit_info, -ray.direction, random_number_generator);
                     ColorRGB envmap_radiance = sample_environment_map(render_data, ray_payload.material, closest_hit_info, -ray.direction, random_number_generator);
 

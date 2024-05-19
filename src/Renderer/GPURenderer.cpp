@@ -3,9 +3,11 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#include "UI/ApplicationSettings.h"
-#include <Orochi/OrochiUtils.h>
 #include "Renderer/GPURenderer.h"
+#include "Threads/ThreadManager.h"
+#include "UI/ApplicationSettings.h"
+
+#include <Orochi/OrochiUtils.h>
 
 void GPURenderer::render()
 {
@@ -190,7 +192,7 @@ void log_bvh_building(hiprtBuildFlags build_flags)
 	std::cout << "... (This can take 30s+ on NVIDIA hardware)" << std::endl;
 }
 
-void GPURenderer::set_hiprt_scene_from_scene(Scene& scene, SceneParserMultithreadState& mt_state)
+void GPURenderer::set_hiprt_scene_from_scene(Scene& scene)
 {
 	m_hiprt_scene = HIPRTScene(m_hiprt_orochi_ctx->hiprt_ctx);
 	HIPRTScene& hiprt_scene = m_hiprt_scene;
@@ -275,8 +277,7 @@ void GPURenderer::set_hiprt_scene_from_scene(Scene& scene, SceneParserMultithrea
 	// We're joining the threads that were loading the scene textures in the background
 	// at the last moment so that they had the maximum amount of time to load the textures
 	// while the main thread was doing something else
-	for (std::thread& thread : mt_state.texture_threads)
-		thread.join();
+	ThreadManager::join_threads(ThreadManager::TEXTURE_THREADS_KEY);
 
 	std::vector<oroTextureObject_t> oro_textures;
 	oro_textures.reserve(scene.textures.size());
@@ -295,9 +296,9 @@ void GPURenderer::set_hiprt_scene_from_scene(Scene& scene, SceneParserMultithrea
 	hiprt_scene.material_textures = material_textures;
 }
 
-void GPURenderer::set_scene(Scene& scene, SceneParserMultithreadState& mt_state)
+void GPURenderer::set_scene(Scene& scene)
 {
-	set_hiprt_scene_from_scene(scene, mt_state);
+	set_hiprt_scene_from_scene(scene);
 
 	m_materials = scene.materials;
 }

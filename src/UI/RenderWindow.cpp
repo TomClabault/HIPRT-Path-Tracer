@@ -8,6 +8,8 @@
 #include <functional>
 #include <iostream>
 #include "Scene/SceneParser.h"
+#include "Threads/ThreadFunctions.h"
+#include "Threads/ThreadManager.h"
 #include "Utils/Utils.h"
 
 #include "stb_image_write.h"
@@ -372,9 +374,7 @@ RenderWindow::RenderWindow(int width, int height) : m_viewport_width(width), m_v
 	ImGui_ImplOpenGL3_Init();
 
 	m_renderer.init_ctx(0);
-	//m_renderer.compile_trace_kernel(DEVICE_KERNELS_DIRECTORY "/RegisterTestKernel.h", "TestFunction");
-	m_renderer.compile_trace_kernel(m_application_settings.kernel_files[m_application_settings.selected_kernel].c_str(), 
-									m_application_settings.kernel_functions[m_application_settings.selected_kernel].c_str());
+	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_renderer), m_application_settings.kernel_files[m_application_settings.selected_kernel].c_str(), m_application_settings.kernel_functions[m_application_settings.selected_kernel].c_str());
 	m_renderer.change_render_resolution(width, height);
 	create_display_programs();
 

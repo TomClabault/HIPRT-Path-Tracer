@@ -19,7 +19,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 sample_random_point_on_lights(const HIPRTR
     int random_index = random_number_generator.random_index(render_data.buffers.emissive_triangles_count);
     int triangle_index = light_info.emissive_triangle_index = render_data.buffers.emissive_triangles_indices[random_index];
 
-
     float3 vertex_A = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[triangle_index * 3 + 0]];
     float3 vertex_B = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[triangle_index * 3 + 1]];
     float3 vertex_C = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[triangle_index * 3 + 2]];
