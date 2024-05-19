@@ -6,8 +6,10 @@
 #ifndef THREAD_MANAGER_H
 #define THREAD_MANAGER_H
 
+#include <memory>
 #include <thread>
 #include <unordered_map>
+#include <vector>
 
 /**
  * Singleton class so that threads are accessible everywhere to be .join()

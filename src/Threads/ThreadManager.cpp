@@ -5,6 +5,11 @@
 
 #include "Threads/ThreadManager.h"
 
+#include <memory>
+#include <thread>
+#include <unordered_map>
+#include <vector>
+
 std::string ThreadManager::COMPILE_KERNEL_THREAD_KEY = "CompileKernelKey";
 std::string ThreadManager::TEXTURE_THREADS_KEY = "TextureThreadsKey";
 
