@@ -19,12 +19,6 @@ endif()
 
 
 # ----------- Downloading ASSIMP library for assets loading -----------
-#FetchContent_Declare(
-	#assimplib
-	#GIT_REPOSITORY https://github.com/assimp/assimp
-	#GIT_TAG        8b9ed34eaa3e6ad24254cb7e058fb9150f66b865 # Release 5.4.0
-	#GIT_PROGRESS TRUE
-#)
 
 # We're going to disable shared libs for assimp but we need to save
 # the current value of BUILD_SHARED_LIBS before overriding it with
@@ -37,9 +31,6 @@ set(ASSIMP_BUILD_TESTS OFF)
 set(ASSIMP_INSTALL_PDB OFF)
 set(ASSIMP_BUILD_ZLIB ON)
 set(ASSIMP_BUILD_ASSIMP_VIEW OFF)
-#FetchContent_MakeAvailable(
-	#assimplib
-#)
 
 if(NOT EXISTS ${CMAKE_SOURCE_DIR}/ASSIMP-Submodule)
 	# Making sure that the HIPRT submodule was cloned
