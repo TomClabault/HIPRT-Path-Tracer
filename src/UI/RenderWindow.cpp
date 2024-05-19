@@ -30,7 +30,8 @@
 
 // TODO Code Organization:
 // - don't need the issRGB array since only base color is, we can sample this one only in sRGB
-//		- we don't the std::pair<textureType, std::string> in the scene parser because all texture are linear except base color
+//		- we don't the std::pair<textureType, std::string> in the scene parser because all texture are linear except base color (or do we?)
+//  - maybe do texture flipping at loading time?
 // - Remove GPURenderer.hiprt_scene, useless. Only contains HIPRT Ctxt (which can be made a member variable of the GPU Renderer) and the various buffers which can be kept in a RenderData member variable
 // - Use orochiBuffers when initializing the GPURenderer.RenderData instead of manual oroMalloc as currently done in set_hiprt_scene_from_scene
 // - Destroy buffers when disabling adaptive sampling to save VRAM

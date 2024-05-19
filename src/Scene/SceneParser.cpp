@@ -11,13 +11,13 @@
 
 #include <chrono>
 
-Scene SceneParser::parse_scene_file(const std::string& filepath, float frame_aspect_override)
+Scene SceneParser::parse_scene_file(const std::string& scene_filepath, float frame_aspect_override)
 {
     Scene parsed_scene;
     Assimp::Importer importer;
     const aiScene* scene;
 
-    scene = importer.ReadFile(filepath, aiPostProcessSteps::aiProcess_PreTransformVertices | aiPostProcessSteps::aiProcess_Triangulate);
+    scene = importer.ReadFile(scene_filepath, aiPostProcessSteps::aiProcess_PreTransformVertices | aiPostProcessSteps::aiProcess_Triangulate);
     if (scene == nullptr)
     {
         std::cerr << importer.GetErrorString() << std::endl;
@@ -32,31 +32,32 @@ Scene SceneParser::parse_scene_file(const std::string& filepath, float frame_asp
     // them at the end
     std::vector<std::thread> texture_threads;
     std::vector<std::pair<aiTextureType, std::string>> texture_paths;
-    std::vector<ParsedMaterialTextureIndices> texture_indices;
+    // Indices of the texture used by a material
+    std::vector<ParsedMaterialTextureIndices> material_texture_indices;
+    // Index of the material associated with the texutre
+    std::vector<int> material_indices;
+    // How many textures are used per mesh. This is used later when parsing the geometry
+    std::vector<int> texture_per_mesh;
+    // By how much to offset the indices of the textures used by a material.
+    // For example, if there are 5 materials in the scene that all use a different base color
+    // texture, after the callm to prepare_textures(), they will all have 0 as the index of their
+    // base color texture. This is obviously wrong and it should be 0, 1, 2, 3, 4 for
+    // each material since they use their own texture. This is what this vector is for, it contains
+    // the offsets that are going to be used so that each material has proper texture indices
+    std::vector<int> texture_indices_offsets;
     int texture_count;
 
-    prepare_textures(scene, texture_paths, texture_indices, texture_count);
-    texture_threads.resize(texture_count);
-    dispatch_texture_loading(texture_threads);
+    prepare_textures(scene, texture_paths, material_texture_indices, material_indices, texture_per_mesh, texture_indices_offsets, texture_count);
+    const int NB_THREADS = texture_count;
+    texture_threads.resize(NB_THREADS);
+    parsed_scene.materials.resize(texture_per_mesh.size());
+    parsed_scene.textures.resize(texture_count);
+    parsed_scene.textures_is_srgb.resize(texture_count);
+    parsed_scene.textures_dims.resize(texture_count);
+    assign_material_texture_indices(parsed_scene.materials, material_texture_indices, texture_indices_offsets);
+    dispatch_texture_loading(texture_threads, parsed_scene, scene_filepath, texture_paths);
+
     parse_camera(scene, parsed_scene, frame_aspect_override);
-
-
-
-
-
-
-
-
-    std::vector<ImageRGBA> textures;
-    textures = read_textures(filepath, texture_paths);
-    for (auto pair : texture_paths)
-        parsed_scene.textures_is_srgb.push_back(pair.first == aiTextureType::aiTextureType_BASE_COLOR);
-    for (const ImageRGBA& image : textures)
-        parsed_scene.textures_dims.push_back(make_int2(image.width, image.height));
-
-
-
-
 
     // If the scene contains multiple meshes, each mesh will have
     // its vertices indices starting at 0. We don't want that.
@@ -73,16 +74,10 @@ Scene SceneParser::parse_scene_file(const std::string& filepath, float frame_asp
         aiMesh* mesh = scene->mMeshes[mesh_index];
         aiMaterial* mesh_material = scene->mMaterials[mesh->mMaterialIndex];
 
-        RendererMaterial renderer_material;
-        
-        renderer_material = read_material_properties(mesh_material);
-        parsed_scene.textures.insert(parsed_scene.textures.end(), textures.begin(), textures.end());
-        renderer_material = offset_textures_indices(renderer_material, global_texture_indices_offset);
-        global_texture_indices_offset += textures.size();
+        RendererMaterial& renderer_material = parsed_scene.materials[mesh_index];
+        read_material_properties(mesh_material, renderer_material);
 
         //Adding the material to the parsed scene
-        parsed_scene.materials.push_back(renderer_material);
-        int material_index = parsed_scene.materials.size() - 1;
         bool is_mesh_emissive = renderer_material.is_emissive();
 
         // Inserting the normals if present
@@ -93,8 +88,9 @@ Scene SceneParser::parse_scene_file(const std::string& filepath, float frame_asp
         else
             parsed_scene.vertex_normals.insert(parsed_scene.vertex_normals.end(), mesh->mNumVertices, hiprtFloat3{0, 0, 0});
 
-        // Inserting texcoords if present, looking at set 0 because that's where "classical" texcoords are
-        if (mesh->HasTextureCoords(0) && !textures.empty())
+        // Inserting texcoords if present, looking at set 0 because that's where "classical" texcoords are.
+        // Other sets are assumed not interesting here.
+        if (mesh->HasTextureCoords(0) && texture_per_mesh[mesh_index] > 0)
             for (int i = 0; i < mesh->mNumVertices; i++)
                 parsed_scene.texcoords.push_back(make_float2(mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y));
         else
@@ -130,15 +126,15 @@ Scene SceneParser::parse_scene_file(const std::string& filepath, float frame_asp
             // we're going to add its index to the emissive triangles buffer
             if (is_mesh_emissive)
                 parsed_scene.emissive_triangle_indices.push_back(parsed_scene.triangle_indices.size() / 3 - 1);
-
-            // We're pushing the same material index for all the faces of this mesh
-            // because all faces of a mesh have the same material (that's how ASSIMP importer's
-            // do things internally). An ASSIMP mesh is basically a set of faces that all have the
-            // same material.
-            // If you're importing the 3D model of a car, even though you probably think of it as only one "3D mesh",
-            // ASSIMP sees it as composed of as many meshes as there are different materials
-            parsed_scene.material_indices.push_back(material_index);
         }
+
+        // We're pushing the same material index for all the faces of this mesh
+        // because all faces of a mesh have the same material (that's how ASSIMP importer's
+        // do things internally). An ASSIMP mesh is basically a set of faces that all have the
+        // same material.
+        // If you're importing the 3D model of a car, even though you probably think of it as only one "3D mesh",
+        // ASSIMP sees it as composed of as many meshes as there are different materials
+        parsed_scene.material_indices.insert(parsed_scene.material_indices.end(), mesh->mNumFaces, mesh_index);
 
         // If the max index of the mesh was 19, we want the next to start
         // at 20, not 19, so we ++
@@ -153,7 +149,7 @@ Scene SceneParser::parse_scene_file(const std::string& filepath, float frame_asp
     std::cout << "\t" << parsed_scene.materials.size() << " materials" << std::endl;
     std::cout << "\t" << parsed_scene.textures.size() << " textures" << std::endl;
 
-    // Waiting for the texture threads
+    // Waiting for the texture threads to finish loading
     for (std::thread& thread : texture_threads)
         thread.join();
 
@@ -210,9 +206,10 @@ void SceneParser::parse_camera(const aiScene* scene, Scene& parsed_scene, float 
     }
 }
 
-void SceneParser::prepare_textures(const aiScene* scene, std::vector<std::pair<aiTextureType, std::string>>& texture_paths, std::vector<ParsedMaterialTextureIndices>& texture_indices, int& texture_count)
+void SceneParser::prepare_textures(const aiScene* scene, std::vector<std::pair<aiTextureType, std::string>>& texture_paths, std::vector<ParsedMaterialTextureIndices>& material_texture_indices, std::vector<int>& material_indices, std::vector<int>& texture_per_mesh, std::vector<int>& texture_indices_offsets, int& texture_count)
 {
     std::vector<std::pair<aiTextureType, std::string>> mesh_texture_paths;
+    int global_texture_index_offset = 0;
 
     for (int mesh_index = 0; mesh_index < scene->mNumMeshes; mesh_index++)
     {
@@ -220,35 +217,91 @@ void SceneParser::prepare_textures(const aiScene* scene, std::vector<std::pair<a
         aiMaterial* mesh_material = scene->mMaterials[mesh->mMaterialIndex];
         ParsedMaterialTextureIndices tex_indices;
 
-        // Reading the textures of the mesh
+        // Reading the paths of the textures of the mesh
         mesh_texture_paths = get_textures_paths_and_indices(mesh_material, tex_indices);
         mesh_texture_paths = normalize_texture_paths(mesh_texture_paths);
 
-        texture_paths.insert(texture_paths.begin(), mesh_texture_paths.begin(), mesh_texture_paths.end());
-        texture_indices.push_back(tex_indices);
+        int mesh_texture_count = mesh_texture_paths.size();
+
+        material_indices.insert(material_indices.end(), mesh_texture_count, mesh_index);
+        material_texture_indices.push_back(tex_indices);
+        texture_paths.insert(texture_paths.end(), mesh_texture_paths.begin(), mesh_texture_paths.end());
+        texture_per_mesh.push_back(mesh_texture_count);
+        texture_indices_offsets.push_back(global_texture_index_offset);
+
+        global_texture_index_offset += mesh_texture_count;
     }
 
     texture_count = texture_paths.size();
 }
 
-void SceneParser::dispatch_texture_loading(std::vector<std::thread>& threads, const std::vector<std::pair<aiTextureType, std::string>>& texture_paths, const std::vector<ParsedMaterialTextureIndices>& texture_indices)
+void SceneParser::assign_material_texture_indices(std::vector<RendererMaterial>& materials, const std::vector<ParsedMaterialTextureIndices>& material_tex_indices, const std::vector<int>& material_textures_offsets)
 {
-    for (int i = 0; i < threads.size(); i++)
+    for (int material_index = 0; material_index < material_tex_indices.size(); material_index++)
     {
-        threads[i] = std::thread(SceneParser::thread_load_texture, texture_paths[i], texture_indices[i]);
+        ParsedMaterialTextureIndices mat_tex_indices = material_tex_indices[material_index];
+        RendererMaterial& renderer_material = materials[material_index];
+        int tex_index_offset = material_textures_offsets[material_index];
+
+        // Assigning
+        renderer_material.base_color_texture_index = mat_tex_indices.base_color_texture_index;
+        renderer_material.emission_texture_index = mat_tex_indices.emission_texture_index;
+        renderer_material.roughness_texture_index = mat_tex_indices.roughness_texture_index;
+        renderer_material.metallic_texture_index = mat_tex_indices.metallic_texture_index;
+        renderer_material.roughness_metallic_texture_index = mat_tex_indices.roughness_metallic_texture_index;
+        renderer_material.specular_texture_index = mat_tex_indices.specular_texture_index;
+        renderer_material.clearcoat_texture_index = mat_tex_indices.clearcoat_texture_index;
+        renderer_material.sheen_texture_index = mat_tex_indices.sheen_texture_index;
+        renderer_material.specular_transmission_texture_index = mat_tex_indices.specular_transmission_texture_index;
+        renderer_material.normal_map_texture_index = mat_tex_indices.normal_map_texture_index;
+
+        // Offsetting
+        renderer_material.base_color_texture_index += renderer_material.base_color_texture_index == -1 ? 0 : tex_index_offset;
+        renderer_material.emission_texture_index += renderer_material.emission_texture_index == -1 ? 0 : tex_index_offset;
+        renderer_material.roughness_texture_index += renderer_material.roughness_texture_index == -1 ? 0 : tex_index_offset;
+        renderer_material.metallic_texture_index += renderer_material.metallic_texture_index == -1 ? 0 : tex_index_offset;
+        renderer_material.roughness_metallic_texture_index += renderer_material.roughness_metallic_texture_index == -1 ? 0 : tex_index_offset;
+        renderer_material.specular_texture_index += renderer_material.specular_texture_index == -1 ? 0 : tex_index_offset;
+        renderer_material.clearcoat_texture_index += renderer_material.clearcoat_texture_index == -1 ? 0 : tex_index_offset;
+        renderer_material.sheen_texture_index += renderer_material.sheen_texture_index == -1 ? 0 : tex_index_offset;
+        renderer_material.specular_transmission_texture_index += renderer_material.specular_transmission_texture_index == -1 ? 0 : tex_index_offset;
+        renderer_material.normal_map_texture_index += renderer_material.normal_map_texture_index == -1 ? 0 : tex_index_offset;
     }
 }
 
-void SceneParser::thread_load_texture(const std::pair<aiTextureType, std::string>& tex_path, ParsedMaterialTextureIndices& tex_indices)
+void SceneParser::dispatch_texture_loading(std::vector<std::thread>& threads, Scene& parsed_scene, const std::string& scene_path, const std::vector<std::pair<aiTextureType, std::string>>& texture_paths)
 {
-
+    int nb_threads = threads.size();
+    for (int i = 0; i < nb_threads; i++)
+        threads[i] = std::thread(SceneParser::thread_load_texture, std::ref(parsed_scene), scene_path, std::ref(texture_paths), i, nb_threads);
 }
 
-RendererMaterial SceneParser::read_material_properties(aiMaterial* mesh_material)
+void SceneParser::thread_load_texture(Scene& parsed_scene, const std::string& scene_path, const std::vector<std::pair<aiTextureType, std::string>>& tex_paths, int thread_index, int nb_threads)
+{
+    // Preparing the scene_filepath so that it's ready to be appended with the texture name
+    std::string corrected_filepath;
+    corrected_filepath = scene_path;
+    corrected_filepath = corrected_filepath.substr(0, corrected_filepath.rfind('/') + 1);
+
+    while (thread_index < parsed_scene.textures.size())
+    {
+        std::string full_path;
+        full_path = corrected_filepath + tex_paths[thread_index].second;
+
+        ImageRGBA texture = ImageRGBA::read_image(full_path, false);
+        parsed_scene.textures_dims[thread_index] = make_int2(texture.width, texture.height);
+        parsed_scene.textures_is_srgb[thread_index] = tex_paths[thread_index].first == aiTextureType::aiTextureType_BASE_COLOR;
+        parsed_scene.textures[thread_index] = texture;
+
+        thread_index += nb_threads;
+    }
+}
+
+void SceneParser::read_material_properties(aiMaterial* mesh_material, RendererMaterial& renderer_material)
 {
     //Getting the properties that are going to be used by the materials
     //of the application
-    RendererMaterial renderer_material;
+
     renderer_material.brdf_type = BRDF::Disney;
 
     aiReturn error_code_emissive;
@@ -283,8 +336,6 @@ RendererMaterial SceneParser::read_material_properties(aiMaterial* mesh_material
 
     renderer_material.make_safe();
     renderer_material.precompute_properties();
-
-    return renderer_material;
 }
 
 std::vector<std::pair<aiTextureType, std::string>> SceneParser::get_textures_paths_and_indices(aiMaterial* mesh_material, ParsedMaterialTextureIndices& texture_indices)
@@ -353,26 +404,6 @@ std::vector<std::pair<aiTextureType, std::string>> SceneParser::normalize_textur
     }
 
     return normalized_paths;
-}
-
-std::vector<ImageRGBA> SceneParser::read_textures(const std::string& filepath, const std::vector<std::pair<aiTextureType, std::string>>& texture_paths)
-{
-    // Preparing the filepath so that it's ready to be appended with the texture name
-    std::string corrected_filepath = filepath;
-    corrected_filepath = corrected_filepath.substr(0, corrected_filepath.rfind('/') + 1);
-
-    std::vector<ImageRGBA> images(texture_paths.size());
-
-//#pragma omp parallel for schedule(dynamic)
-    for (int i = 0; i < texture_paths.size(); i++)
-    {
-        std::string path = texture_paths[i].second;
-        std::string texture_path = corrected_filepath + path;
-
-        images[i] = ImageRGBA::read_image(texture_path, false);
-    }
-
-    return images;
 }
 
 RendererMaterial SceneParser::offset_textures_indices(const RendererMaterial& renderer_material, int offset)
