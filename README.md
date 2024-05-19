@@ -98,7 +98,7 @@ cd build
 cmake ..
 ```
 
-On Windows, a Visual Studio solution will be generated in the `build` folder that you can open and compile the project with.
+On Windows, a Visual Studio solution will be generated in the `build` folder that you can open and compile the project with (select `HIPRTPathTracer` as startup project).
 
 On Linux, the executable will be generated in the `build` folder.
 # License

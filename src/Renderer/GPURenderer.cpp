@@ -211,24 +211,29 @@ void GPURenderer::set_hiprt_scene_from_scene(Scene& scene)
 	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&mesh.vertices), mesh.vertexCount * sizeof(float3)));
 	OROCHI_CHECK_ERROR(oroMemcpyHtoD(reinterpret_cast<oroDeviceptr>(mesh.vertices), scene.vertices_positions.data(), mesh.vertexCount * sizeof(float3)));
 
+	// Building the BVH
+	auto start = std::chrono::high_resolution_clock::now();
+
+	hiprtBuildOptions build_options;
 	hiprtGeometryBuildInput geometry_build_input;
+	size_t geometry_temp_size;
+	hiprtDevicePtr geometry_temp;
+
+	build_options.buildFlags = hiprtBuildFlagBitPreferFastBuild;
+	log_bvh_building(build_options.buildFlags);
 	geometry_build_input.type = hiprtPrimitiveTypeTriangleMesh;
 	geometry_build_input.primitive.triangleMesh = hiprt_scene.mesh;
 
 	// Getting the buffer sizes for the construction of the BVH
-	size_t geometry_temp_size;
-	hiprtDevicePtr geometry_temp;
-	hiprtBuildOptions build_options;
-	build_options.buildFlags = hiprtBuildFlagBitPreferFastBuild;
-
 	HIPRT_CHECK_ERROR(hiprtGetGeometryBuildTemporaryBufferSize(m_hiprt_orochi_ctx->hiprt_ctx, geometry_build_input, build_options, geometry_temp_size));
 	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&geometry_temp), geometry_temp_size));
 
-	// Building the BVH
-	log_bvh_building(build_options.buildFlags);
 	hiprtGeometry& scene_geometry = hiprt_scene.geometry;
 	HIPRT_CHECK_ERROR(hiprtCreateGeometry(m_hiprt_orochi_ctx->hiprt_ctx, geometry_build_input, build_options, scene_geometry));
 	HIPRT_CHECK_ERROR(hiprtBuildGeometry(m_hiprt_orochi_ctx->hiprt_ctx, hiprtBuildOperationBuild, geometry_build_input, build_options, geometry_temp, /* stream */ 0, scene_geometry));
+	auto stop = std::chrono::high_resolution_clock::now();
+
+	std::cout << "BVH built in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
 
 	OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(geometry_temp)));
 

@@ -32,20 +32,20 @@ int main(int argc, char* argv[])
     const int width = cmd_arguments.render_width;
     const int height = cmd_arguments.render_height;
 
-    std::chrono::high_resolution_clock::time_point start, stop;
-    Scene parsed_scene;
-    SceneParserOptions options;
-    options.nb_texture_threads = 16;
-    options.override_aspect_ratio = (float)width / height;
-
-    std::cout << std::endl;
     std::cout << "Reading scene file " << cmd_arguments.scene_file_path << " ..." << std::endl;
 
+    std::chrono::high_resolution_clock::time_point start, start_full, stop, stop_full;
+    Scene parsed_scene;
+    SceneParserOptions options;
+
+    options.nb_texture_threads = 16;
+    options.override_aspect_ratio = (float)width / height;
     start = std::chrono::high_resolution_clock::now();
+    start_full = std::chrono::high_resolution_clock::now();
     SceneParser::parse_scene_file(cmd_arguments.scene_file_path, parsed_scene, options);
     stop = std::chrono::high_resolution_clock::now();
 
-    std::cout << "Scene parsed in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
+    std::cout << "Scene geometry parsed in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
 
     std::cout << "Reading \"" << cmd_arguments.skysphere_file_path << "\" envmap..." << std::endl;
     ImageRGBA envmap_image = ImageRGBA::read_image_hdr(cmd_arguments.skysphere_file_path, /* flip Y */ true);
@@ -58,6 +58,8 @@ int main(int argc, char* argv[])
     renderer.set_envmap(envmap_image);
     renderer.set_camera(parsed_scene.camera);
     renderer.set_scene(parsed_scene);
+    stop_full = std::chrono::high_resolution_clock::now();
+    std::cout << "Full scene & textures parsed in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop_full - start_full).count() << "ms" << std::endl;
     ThreadManager::join_threads(ThreadManager::COMPILE_KERNEL_THREAD_KEY);
     render_window.run();
 
@@ -74,6 +76,7 @@ int main(int argc, char* argv[])
     cpu_renderer.get_render_settings().nb_bounces = cmd_arguments.bounces;
     cpu_renderer.get_render_settings().samples_per_frame = cmd_arguments.render_samples;
     ThreadManager::join_threads(ThreadManager::TEXTURE_THREADS_KEY);
+    std::cout << "Full scene & textures parsed in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop_full - start_full).count() << "ms" << std::endl;
     cpu_renderer.render();
     cpu_renderer.tonemap(2.2f, 1.0f);
 
