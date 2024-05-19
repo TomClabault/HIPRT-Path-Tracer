@@ -33,11 +33,11 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 - Different frame-buffer visualisation (visualize the adaptive sampling map, the denoiser normals / albedo, ...)
 - Use of the ASSIMP library to support [many](https://github.com/assimp/assimp/blob/master/doc/Fileformats.md) scene file formats.
 - Intel Open Image Denoise + Normals & Albedo AOV support
-# Compiling
+# Building
 ## Prerequisites
 ### Windows
 #### - AMD GPUs
-Nothing to do, go to the building step.
+Nothing to do, go to the "**Compiling**" step.
 #### - NVIDIA GPUs
 To build the project on NVIDIA hardware, you will need to install the NVIDIA CUDA SDK v12.2. It can be downloaded and installed from [here](https://developer.nvidia.com/cuda-12-2-0-download-archive).
 
@@ -93,6 +93,7 @@ With the pre-requisites fulfilled, you now just have to run the CMake:
 ``` sh
 git clone https://github.com/TomClabault/HIPRT-Path-Tracer.git
 cd HIPRT-Path-Tracer
+git submodule update --init --jobs 10
 mkdir build
 cd build
 cmake ..
