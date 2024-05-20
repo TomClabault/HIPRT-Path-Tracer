@@ -15,8 +15,7 @@
 #include "stb_image_write.h"
 
 // TODO bugs
-// - something is wrong with the texture parsing and the metallic is off on the textured sphere sometimes (GPU)
-// - missing else branch when parsing texture IDs for material that don't have a packed roughness and metalness texture
+// - something is wrong with the texture parsing and the metallic texture is wrong (happens to the normal map too sometimes) is on the textured sphere sometimes (GPU)
 // - are we pushing the shadow rays in the right direction when sampling env map while inside surface? It's weird that disabling the env map surface while in a surface darkens the render
 // - something is unsafe on NVIDIA + Windows + nested-dielectrics-complex.gltf + 48 bounces minimum + nested dielectric strategy RT Gems. We get a CPU-side orochi error when downloading the framebuffer for displaying indicating that some illegal memory was accessed. Is the buffer corrupted by something?
 // - when adaptive sampling is on and holding click (render low resolution), some grid artifacts show up (doesn't even need adaptive sampling enabled to do that actually)

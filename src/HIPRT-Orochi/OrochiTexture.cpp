@@ -59,11 +59,9 @@ void OrochiTexture::init_from_image(const ImageRGBA& image)
 	texture_descriptor.addressMode[0] = ORO_TR_ADDRESS_MODE_WRAP;
 	texture_descriptor.addressMode[1] = ORO_TR_ADDRESS_MODE_WRAP;
 	texture_descriptor.addressMode[2] = ORO_TR_ADDRESS_MODE_WRAP;
-	texture_descriptor.filterMode = ORO_TR_FILTER_MODE_POINT;
-	//texture_descriptor.normalizedCoords = 1;
+	texture_descriptor.filterMode = ORO_TR_FILTER_MODE_LINEAR;
 
 	OROCHI_CHECK_ERROR(oroTexObjectCreate(&m_texture, &resource_descriptor, &texture_descriptor, nullptr));
-	//OROCHI_CHECK_ERROR(oroCreateTextureObject(&m_texture, &resource_descriptor, &texture_descriptor, nullptr));
 }
 
 oroTextureObject_t OrochiTexture::get_device_texture()

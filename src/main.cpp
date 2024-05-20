@@ -34,7 +34,8 @@ int main(int argc, char* argv[])
 
     std::cout << "Reading scene file " << cmd_arguments.scene_file_path << " ..." << std::endl;
 
-    std::chrono::high_resolution_clock::time_point start, start_full, stop, stop_full;
+    std::chrono::high_resolution_clock::time_point start, start_full;
+    std::chrono::high_resolution_clock::time_point stop, stop_full;
     Scene parsed_scene;
     SceneParserOptions options;
 

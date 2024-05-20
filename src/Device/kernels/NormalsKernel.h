@@ -9,7 +9,7 @@
 #include "HostDeviceCommon/Math.h"
 #include "HostDeviceCommon/RenderData.h"
 
-GLOBAL_KERNEL_SIGNATURE(void) NormalsKernel(hiprtGeometry geom, HIPRTRenderData render_data, int2 res, HIPRTCamera camera)
+GLOBAL_KERNEL_SIGNATURE(void) NormalsKernel(HIPRTRenderData render_data, int2 res, HIPRTCamera camera)
 {
 	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
 	const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -20,8 +20,8 @@ GLOBAL_KERNEL_SIGNATURE(void) NormalsKernel(hiprtGeometry geom, HIPRTRenderData 
 
 	hiprtRay ray = camera.get_camera_ray(x, y, res);
 
-	hiprtGeomTraversalClosest tr(geom, ray);
-	hiprtHit				  hit = tr.getNextHit();
+	hiprtGeomTraversalClosest tr(render_data.geom, ray);
+	hiprtHit hit = tr.getNextHit();
 
 	int index_A = render_data.buffers.triangles_indices[hit.primID * 3 + 0];
 	int index_B = render_data.buffers.triangles_indices[hit.primID * 3 + 1];
