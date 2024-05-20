@@ -878,6 +878,7 @@ void RenderWindow::draw_render_settings_panel()
 		m_render_dirty = true;
 	}
 
+	ImGui::Separator();
 	if (ImGui::CollapsingHeader("Adaptive sampling"))
 	{
 		ImGui::TreePush("Adaptive sampling tree");
@@ -1029,6 +1030,13 @@ void RenderWindow::draw_performance_panel()
 
 	ImGui::Text("Device: %s", m_renderer.get_device_properties().name);
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+	if (ImGui::Button("Apply benchmark settings"))
+	{
+		m_render_settings.freeze_random = true;
+		m_render_settings.enable_adaptive_sampling = false;
+
+		reset_render();
+	}
 	if (ImGui::Checkbox("Freeze random", &m_render_settings.freeze_random))
 		reset_render();
 
@@ -1041,9 +1049,28 @@ void RenderWindow::draw_performance_panel()
 	if (rolling_window_size_changed)
 		m_perf_metrics.resize_window(rolling_window_size);
 
+	float variance, min, max;
+	variance = m_perf_metrics.get_variance(PerformanceMetricsComputer::SAMPLE_TIME_KEY);
+	min = m_perf_metrics.get_min(PerformanceMetricsComputer::SAMPLE_TIME_KEY);
+	max = m_perf_metrics.get_max(PerformanceMetricsComputer::SAMPLE_TIME_KEY);
+
+	static float scale_min = min, scale_max = max;
+	scale_min = m_perf_metrics.get_data_index(PerformanceMetricsComputer::SAMPLE_TIME_KEY) == 0 ? min : scale_min;
+	scale_max = m_perf_metrics.get_data_index(PerformanceMetricsComputer::SAMPLE_TIME_KEY) == 0 ? max : scale_max;
+
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+	ImGui::PlotHistogram("", 
+						PerformanceMetricsComputer::data_getter, 
+						m_perf_metrics.get_data(PerformanceMetricsComputer::SAMPLE_TIME_KEY).data(), 
+						m_perf_metrics.get_value_count(PerformanceMetricsComputer::SAMPLE_TIME_KEY), 
+						/* value offset */0, 
+						"Sample time", 
+						scale_min, scale_max, 
+						/* size */ ImVec2(0, 80));
 	ImGui::Text("Sample time (avg)      : %.3fms", m_perf_metrics.get_average(PerformanceMetricsComputer::SAMPLE_TIME_KEY));
-	ImGui::Text("Sample time (var)      : %.3fms", m_perf_metrics.get_variance(PerformanceMetricsComputer::SAMPLE_TIME_KEY));
-	ImGui::Text("Sample time (min / max): %.3fms / %.3fms", m_perf_metrics.get_min(PerformanceMetricsComputer::SAMPLE_TIME_KEY), m_perf_metrics.get_max(PerformanceMetricsComputer::SAMPLE_TIME_KEY));
+	ImGui::Text("Sample time (var)      : %.3fms", variance);
+	ImGui::Text("Sample time (std dev)  : %.3fms", std::sqrt(variance));
+	ImGui::Text("Sample time (min / max): %.3fms / %.3fms", min, max);
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 

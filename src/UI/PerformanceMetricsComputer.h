@@ -16,15 +16,20 @@ class PerformanceMetricsComputer
 public:
 	static std::string SAMPLE_TIME_KEY;
 
-	void init_key(std::string key);
-	std::vector<double>& get_data(std::string key);
+	static float data_getter(void* data, int index);
 
-	void add_value(std::string key, double value);
+	void init_key(const std::string& key);
+	std::vector<double>& get_data(const std::string& key);
+	int get_value_count(const std::string& key);
+	int get_data_index(const std::string& key);
 
-	double get_average(std::string key);
-	double get_variance(std::string key);
-	double get_min(std::string key);
-	double get_max(std::string key);
+	void add_value(const std::string& key, double value);
+
+	double get_average(const std::string& key);
+	double get_variance(const std::string& key);
+	double get_standard_deviation(const std::string& key);
+	double get_min(const std::string& key);
+	double get_max(const std::string& key);
 
 	int get_window_size() const;
 	int& get_window_size();

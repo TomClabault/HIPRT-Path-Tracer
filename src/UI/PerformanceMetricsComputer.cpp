@@ -7,7 +7,12 @@
 
 std::string PerformanceMetricsComputer::SAMPLE_TIME_KEY = "SampleTimeKey";
 
-void PerformanceMetricsComputer::init_key(std::string key)
+float PerformanceMetricsComputer::data_getter(void* data, int index)
+{
+	return static_cast<double*>(data)[index];
+}
+
+void PerformanceMetricsComputer::init_key(const std::string& key)
 {
 	if (m_key_init.find(key) == m_key_init.end())
 	{
@@ -23,14 +28,24 @@ void PerformanceMetricsComputer::init_key(std::string key)
 	}
 }
 
-std::vector<double>& PerformanceMetricsComputer::get_data(std::string key)
+std::vector<double>& PerformanceMetricsComputer::get_data(const std::string& key)
 {
 	init_key(key);
 
 	return m_values.find(key)->second;
 }
 
-void PerformanceMetricsComputer::add_value(std::string key, double new_value)
+int PerformanceMetricsComputer::get_value_count(const std::string& key)
+{
+	return m_values_count[key];
+}
+
+int PerformanceMetricsComputer::get_data_index(const std::string& key)
+{
+	return m_data_indices[key];
+}
+
+void PerformanceMetricsComputer::add_value(const std::string& key, double new_value)
 {
 	init_key(key);
 
@@ -62,23 +77,28 @@ void PerformanceMetricsComputer::add_value(std::string key, double new_value)
 	multiset.insert(new_value);
 }
 
-double PerformanceMetricsComputer::get_average(std::string key)
+double PerformanceMetricsComputer::get_average(const std::string& key)
 {
 	return m_values_sum[key] / m_values_count[key];
 }
 
-double PerformanceMetricsComputer::get_variance(std::string key)
+double PerformanceMetricsComputer::get_variance(const std::string& key)
 {
 	double average = get_average(key);
 	return m_values_sum_of_squares[key] / m_values_count[key] - average * average;
 }
 
-double PerformanceMetricsComputer::get_min(std::string key)
+double PerformanceMetricsComputer::get_standard_deviation(const std::string& key)
+{
+	return std::sqrt(get_variance(key));
+}
+
+double PerformanceMetricsComputer::get_min(const std::string& key)
 {
 	return *m_min_max_data[key].begin();
 }
 
-double PerformanceMetricsComputer::get_max(std::string key)
+double PerformanceMetricsComputer::get_max(const std::string& key)
 {
 	// rbegin() is the last element
 	// end() would be past the last element so we're not using end() here
