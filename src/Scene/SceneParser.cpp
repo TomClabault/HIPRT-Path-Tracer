@@ -319,6 +319,11 @@ std::vector<std::pair<aiTextureType, std::string>> SceneParser::get_textures_pat
     std::vector<std::pair<aiTextureType, std::string>> texture_paths;
 
     texture_indices.base_color_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_BASE_COLOR, texture_paths);
+    if (texture_indices.base_color_texture_index == -1)
+        // Trying diffuse for some file formats
+        // The OBJ format uses DIFFUSE instead of BASE_COLOR
+        texture_indices.base_color_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_DIFFUSE, texture_paths);
+
     texture_indices.emission_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_EMISSION_COLOR, texture_paths);
     int roughness_index = get_first_texture_of_type(mesh_material, aiTextureType_DIFFUSE_ROUGHNESS, texture_paths);
     int metallic_index = get_first_texture_of_type(mesh_material, aiTextureType_METALNESS, texture_paths);
@@ -332,12 +337,21 @@ std::vector<std::pair<aiTextureType, std::string>> SceneParser::get_textures_pat
         // Using the roughness index for the roughness + metallic texture
         texture_indices.roughness_metallic_texture_index = roughness_index;
     }
+    else
+    {
+        texture_indices.roughness_texture_index = roughness_index;
+        texture_indices.metallic_texture_index = metallic_index;
+    }
+
     texture_indices.specular_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_SPECULAR, texture_paths);
     texture_indices.clearcoat_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_CLEARCOAT, texture_paths);
     texture_indices.sheen_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_SHEEN, texture_paths);
     texture_indices.specular_transmission_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_TRANSMISSION, texture_paths);
 
     texture_indices.normal_map_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_NORMALS, texture_paths);
+    if (texture_indices.normal_map_texture_index == -1)
+        // Trying HEIGHT for some file formats
+        texture_indices.normal_map_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_HEIGHT, texture_paths);
 
     return texture_paths;
 }

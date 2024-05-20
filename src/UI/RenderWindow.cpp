@@ -31,15 +31,12 @@
 
 
 // TODO Code Organization:
-// - maybe do texture flipping at loading time?
 // - Remove GPURenderer.hiprt_scene, useless. Only contains HIPRT Ctxt (which can be made a member variable of the GPU Renderer) and the various buffers which can be kept in a RenderData member variable
 // - Use orochiBuffers when initializing the GPURenderer.RenderData instead of manual oroMalloc as currently done in set_hiprt_scene_from_scene
 // - Destroy buffers when disabling adaptive sampling to save VRAM
 // - uniform #ifndef in Device headers
 // - Refactor material editor
 // - Device/ or HostDeviceCommon. Not both
-// - Can we have access to HoL when calling disney_metallic_fresnel to avoid passing the two vectors and recomputing the dot product in the return statement ?
-// - DO THE DISNEY SHADING IN SHADING SPACE. WHAT THE H IS THIS CODE BUILDING ONB IN EVERY FUNCTION HUH?
 // - reorganize methods order in RenderWindow
 // - imgui controller to put all the imgui code in one class
 // - put mouse / keyboard code in an interactor
@@ -49,6 +46,7 @@
 
 
 // TODO Features:
+// - normal mapping strength
 // - blackbody light emitters
 // - ACES mapping
 // - better post processing: contrast, low, medium, high exposure curve
