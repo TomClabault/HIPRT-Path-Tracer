@@ -29,7 +29,7 @@ public:
 
 	std::vector<T> download_data() const;
 	void upload_data(const std::vector<T>& data);
-	void upload_data(void* data);
+	void upload_data(const void* data);
 
 	void destroy();
 
@@ -116,16 +116,15 @@ std::vector<T> OrochiBuffer<T>::download_data() const
 template <typename T>
 void OrochiBuffer<T>::upload_data(const std::vector<T>& data)
 {
-	void* data_pointer = const_cast<void*>(data.data());
 	if (m_data_pointer)
-		OROCHI_CHECK_ERROR(oroMemcpyHtoD(reinterpret_cast<oroDeviceptr>(m_data_pointer), data_pointer, sizeof(T) * m_element_count));
+		OROCHI_CHECK_ERROR(oroMemcpy(reinterpret_cast<oroDeviceptr>(m_data_pointer), data.data(), sizeof(T) * m_element_count, oroMemcpyHostToDevice));
 }
 
 template <typename T>
-void OrochiBuffer<T>::upload_data(void* data)
+void OrochiBuffer<T>::upload_data(const void* data)
 {
 	if (m_data_pointer)
-		OROCHI_CHECK_ERROR(oroMemcpyHtoD(reinterpret_cast<oroDeviceptr>(m_data_pointer), data, sizeof(T) * m_element_count));
+		OROCHI_CHECK_ERROR(oroMemcpy(reinterpret_cast<oroDeviceptr>(m_data_pointer), data, sizeof(T) * m_element_count, oroMemcpyHostToDevice));
 }
 
 template <typename T>

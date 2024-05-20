@@ -6,65 +6,109 @@
 #ifndef HIPRT_SCENE_H
 #define HIPRT_SCENE_H
 
+#include "HIPRT-Orochi/HIPRTOrochiUtils.h"
+#include "HostDeviceCommon/Material.h"
+
 #include "hiprt/hiprt.h"
 #include "Orochi/Orochi.h"
-#include "HIPRT-Orochi/HIPRTOrochiUtils.h"
+
+struct HIPRTGeometry
+{
+	HIPRTGeometry() : m_hiprt_ctx(nullptr) {}
+	HIPRTGeometry(hiprtContext ctx) : m_hiprt_ctx(ctx) {}
+
+	~HIPRTGeometry()
+	{
+		if (m_mesh.triangleIndices)
+			OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(m_mesh.triangleIndices)));
+
+		if (m_mesh.vertices)
+			OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(m_mesh.vertices)));
+
+		if (m_geometry)
+			HIPRT_CHECK_ERROR(hiprtDestroyGeometry(m_hiprt_ctx, m_geometry));
+	}
+
+	void upload_indices(const std::vector<int>& triangles_indices)
+	{
+		int triangle_count = triangles_indices.size() / 3;
+		// Allocating and initializing the indices buffer
+		m_mesh.triangleCount = triangle_count;
+		m_mesh.triangleStride = sizeof(int3);
+		OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&m_mesh.triangleIndices), triangle_count * sizeof(int3)));
+		OROCHI_CHECK_ERROR(oroMemcpy(reinterpret_cast<oroDeviceptr>(m_mesh.triangleIndices), triangles_indices.data(), triangle_count * sizeof(int3), oroMemcpyHostToDevice));
+	}
+
+	void upload_vertices(const std::vector<float3>& vertices_positions)
+	{
+		// Allocating and initializing the vertices positions buiffer
+		m_mesh.vertexCount = vertices_positions.size();
+		m_mesh.vertexStride = sizeof(float3);
+		OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&m_mesh.vertices), m_mesh.vertexCount * sizeof(float3)));
+		OROCHI_CHECK_ERROR(oroMemcpy(reinterpret_cast<oroDeviceptr>(m_mesh.vertices), vertices_positions.data(), m_mesh.vertexCount * sizeof(float3), oroMemcpyHostToDevice));
+	}
+
+	void log_bvh_building(hiprtBuildFlags build_flags)
+	{
+		std::cout << "Compiling BVH building kernels & building scene ";
+		if (build_flags == 0)
+			// This is hiprtBuildFlagBitPreferFastBuild
+			std::cout << "LBVH";
+		else if (build_flags & hiprtBuildFlagBitPreferBalancedBuild)
+			std::cout << "PLOC BVH";
+		else if (build_flags & hiprtBuildFlagBitPreferHighQualityBuild)
+			std::cout << "SBVH";
+
+		std::cout << "... (This can take 30s+ on NVIDIA hardware)" << std::endl;
+	}
+
+	void build_bvh()
+	{
+		auto start = std::chrono::high_resolution_clock::now();
+
+		hiprtBuildOptions build_options;
+		hiprtGeometryBuildInput geometry_build_input;
+		size_t geometry_temp_size;
+		hiprtDevicePtr geometry_temp;
+
+		build_options.buildFlags = hiprtBuildFlagBitPreferFastBuild;
+		geometry_build_input.type = hiprtPrimitiveTypeTriangleMesh;
+		geometry_build_input.primitive.triangleMesh = m_mesh;
+
+		log_bvh_building(build_options.buildFlags);
+		// Getting the buffer sizes for the construction of the BVH
+		HIPRT_CHECK_ERROR(hiprtGetGeometryBuildTemporaryBufferSize(m_hiprt_ctx, geometry_build_input, build_options, geometry_temp_size));
+		OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&geometry_temp), geometry_temp_size));
+
+		HIPRT_CHECK_ERROR(hiprtCreateGeometry(m_hiprt_ctx, geometry_build_input, build_options, m_geometry));
+		HIPRT_CHECK_ERROR(hiprtBuildGeometry(m_hiprt_ctx, hiprtBuildOperationBuild, geometry_build_input, build_options, geometry_temp, /* stream */ 0, m_geometry));
+
+		OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(geometry_temp)));
+
+		auto stop = std::chrono::high_resolution_clock::now();
+		std::cout << "BVH built in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
+	}
+
+	hiprtContext m_hiprt_ctx = nullptr;
+	hiprtTriangleMeshPrimitive m_mesh = { nullptr };
+	hiprtGeometry m_geometry = nullptr;
+};
 
 struct HIPRTScene
 {
-	HIPRTScene() : mesh({ nullptr }) {}
+	HIPRTGeometry geometry;
 
-	HIPRTScene(hiprtContext ctx) : HIPRTScene()
-	{
-		hiprt_ctx = ctx;
-	}
-
-	~HIPRTScene()
-	{
-		if (mesh.triangleIndices)
-			OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(mesh.triangleIndices)));
-
-		if (mesh.vertices)
-			OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(mesh.vertices)));
-
-		if (geometry)
-			HIPRT_CHECK_ERROR(hiprtDestroyGeometry(hiprt_ctx, geometry));
-
-		if (material_indices)
-			OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(material_indices)));
-
-		if (materials_buffer)
-			OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(materials_buffer)));
-
-		if (emissive_triangles_indices)
-			OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(emissive_triangles_indices)));
-
-		if (material_textures)
-			OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(material_textures)));
-
-		if (textures_dims)
-			OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(textures_dims)));
-
-		if (texcoords_buffer)
-			OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(texcoords_buffer)));
-	}
-
-	hiprtContext hiprt_ctx = nullptr;
-	hiprtTriangleMeshPrimitive mesh;
-	hiprtGeometry geometry = nullptr;
-
-	hiprtDevicePtr has_vertex_normals = nullptr;
-	hiprtDevicePtr vertex_normals = nullptr;
-
-	hiprtDevicePtr material_indices = nullptr;
-	hiprtDevicePtr materials_buffer = nullptr;
+	OrochiBuffer<bool> has_vertex_normals;
+	OrochiBuffer<float3> vertex_normals;
+	OrochiBuffer<int> material_indices;
+	OrochiBuffer<RendererMaterial> materials_buffer;
 
 	int emissive_triangles_count = 0;
-	hiprtDevicePtr emissive_triangles_indices = nullptr;
+	OrochiBuffer<int> emissive_triangles_indices;
 
-	hiprtDevicePtr material_textures = nullptr;
-	hiprtDevicePtr textures_dims = nullptr;
-	hiprtDevicePtr texcoords_buffer = nullptr;
+	OrochiBuffer<oroTextureObject_t> materials_textures;
+	OrochiBuffer<int2> textures_dims;
+	OrochiBuffer<float2> texcoords_buffer;
 };
 
 #endif

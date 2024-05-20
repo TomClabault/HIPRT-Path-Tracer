@@ -35,12 +35,9 @@ class GPURenderer
 {
 public:
 
-	GPURenderer(int width, int height, HIPRTOrochiCtx* hiprt_orochi_ctx) : 
+	GPURenderer(int width, int height, HIPRTOrochiCtx* hiprt_orochi_ctx) :
 		m_render_width(width), m_render_height(height), m_hiprt_orochi_ctx(hiprt_orochi_ctx),
-		m_trace_kernel(nullptr)
-	{
-		m_hiprt_scene.hiprt_ctx = hiprt_orochi_ctx->hiprt_ctx;
-	}
+		m_trace_kernel(nullptr) {}
 
 	GPURenderer() {}
 
@@ -60,7 +57,7 @@ public:
 	void compile_trace_kernel(const char* kernel_file_path, const char* kernel_function_name);
 	void launch_kernel(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args);
 
-	void set_scene(Scene& scene);
+	void set_scene(const Scene& scene);
 	void set_envmap(ImageRGBA& envmap);
 	void set_camera(const Camera& camera);
 
@@ -81,9 +78,11 @@ public:
 	Camera m_camera;
 
 private:
-	void set_hiprt_scene_from_scene(Scene& scene);
+	void set_hiprt_scene_from_scene(const Scene& scene);
 
+	// Properties of the device
 	oroDeviceProp m_device_properties;
+	// Time taken to render the last frame
 	float m_frame_time;
 
 	// This buffer holds the * sum * of the samples computed
@@ -101,6 +100,11 @@ private:
 	// can have accumulated a different number of sample
 	OrochiBuffer<int> m_pixels_sample_count;
 
+	// The materials are also kept on the CPU side because we want to be able
+	// to modify them interactively with ImGui
+	std::vector<RendererMaterial> m_materials;
+	// Vector to keep the textures data alive otherwise the OrochiTexture objects would
+	// be destroyed which means that the underlying textures would be destroyed
 	std::vector<OrochiTexture> m_materials_textures;
 	OrochiEnvmap m_envmap;
 
@@ -108,10 +112,15 @@ private:
 	// Path tracing kernel called at each frame
 	oroFunction m_trace_kernel = nullptr;
 
-	HIPRTScene m_hiprt_scene = nullptr;
-	// The materials are also kept on the CPU side because we want to be able
-	// to modify them interactively with ImGui
-	std::vector<RendererMaterial> m_materials;
+	// Structure containing the data specific to a scene:
+	//	- hiprtGeom
+	//	- hiprtMesh
+	//	- materials buffer
+	//	- materials indices
+	// ...
+	//
+	// Destroying this structure frees the resources
+	HIPRTScene m_hiprt_scene;
 
 	WorldSettings m_world_settings;
 	HIPRTRenderSettings m_render_settings;

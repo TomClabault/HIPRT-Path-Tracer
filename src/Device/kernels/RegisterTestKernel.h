@@ -270,62 +270,14 @@
 
 
 
-struct DataStruct
-{
-    int a;
-    int b;
-};
-
-HIPRT_HOST_DEVICE HIPRT_INLINE unsigned int wang_hash(unsigned int seed)
-{
-    seed = (seed ^ 61) ^ (seed >> 16);
-    seed *= 9;
-    seed = seed ^ (seed >> 4);
-    seed *= 0x27d4eb2d;
-    seed = seed ^ (seed >> 15);
-    return seed;
-}
-
-HIPRT_HOST_DEVICE HIPRT_INLINE int sumFunction(DataStruct& data)
-{
-    return data.a % data.b;
-}
-
-#ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void) TestFunction(HIPRTRenderData render_data, int2 res, HIPRTCamera camera)
-#else
-GLOBAL_KERNEL_SIGNATURE(void) inline TestFunction(HIPRTRenderData render_data, int2 res, HIPRTCamera camera, int x, int y)
-#endif
-{
-#ifdef __KERNELCC__
-    const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
-    const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
-#endif
-    const uint32_t threadId = (x + y * res.x);
-
-    if (threadId >= res.x * res.y)
-        return;
-
-    Xorshift32Generator randomGenerator(wang_hash(threadId + 1));
-
-    DataStruct data;
-    data.a = randomGenerator.xorshift32();
-    data.b = randomGenerator.xorshift32();
-    int result = sumFunction(data);
-
-    render_data.buffers.pixels[threadId] = ColorRGB(result);
-}
-// 6 registers
-
-
-
-
-
-
-
 //struct DataStruct
 //{
-//    int packed;
+//    int a;
+//    int b;
+//    int c;
+//    int d;
+//    int e;
+//    int f;
 //};
 //
 //HIPRT_HOST_DEVICE HIPRT_INLINE unsigned int wang_hash(unsigned int seed)
@@ -340,7 +292,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline TestFunction(HIPRTRenderData render_data, i
 //
 //HIPRT_HOST_DEVICE HIPRT_INLINE int sumFunction(DataStruct& data)
 //{
-//    return ((data.packed >> 0) | 0xFFFF) % ((data.packed >> 16) | 0xFFFF);
+//    return data.a % data.b + data.c + data.d + data.e + data.f;
 //}
 //
 //#ifdef __KERNELCC__
@@ -361,9 +313,74 @@ GLOBAL_KERNEL_SIGNATURE(void) inline TestFunction(HIPRTRenderData render_data, i
 //    Xorshift32Generator randomGenerator(wang_hash(threadId + 1));
 //
 //    DataStruct data;
-//    data.packed = randomGenerator.xorshift32();
+//    data.a = randomGenerator.xorshift32();
+//    data.b = randomGenerator.xorshift32();
+//    data.c = randomGenerator.xorshift32();
+//    data.d = randomGenerator.xorshift32();
+//    data.e = randomGenerator.xorshift32();
+//    data.f = randomGenerator.xorshift32();
 //    int result = sumFunction(data);
 //
 //    render_data.buffers.pixels[threadId] = ColorRGB(result);
 //}
-// 6 register
+// 10 registers
+
+
+
+
+
+
+
+struct DataStruct
+{
+    int ab;
+    int cd;
+    int ef;
+};
+
+HIPRT_HOST_DEVICE HIPRT_INLINE unsigned int wang_hash(unsigned int seed)
+{
+    seed = (seed ^ 61) ^ (seed >> 16);
+    seed *= 9;
+    seed = seed ^ (seed >> 4);
+    seed *= 0x27d4eb2d;
+    seed = seed ^ (seed >> 15);
+    return seed;
+}
+
+HIPRT_HOST_DEVICE HIPRT_INLINE int sumFunction(DataStruct& data)
+{
+    int a = data.ab & (0xFFFF << 0);
+    int b = data.ab & (0xFFFF << 16);
+    int c = data.cd & (0xFFFF << 0);
+    int d = data.cd & (0xFFFF << 16);
+    int e = data.ef & (0xFFFF << 0);
+    int f = data.ef & (0xFFFF << 16);
+    return a % b + c + d + e + f;
+}
+
+#ifdef __KERNELCC__
+GLOBAL_KERNEL_SIGNATURE(void) TestFunction(HIPRTRenderData render_data, int2 res, HIPRTCamera camera)
+#else
+GLOBAL_KERNEL_SIGNATURE(void) inline TestFunction(HIPRTRenderData render_data, int2 res, HIPRTCamera camera, int x, int y)
+#endif
+{
+#ifdef __KERNELCC__
+    const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
+    const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
+#endif
+    const uint32_t threadId = (x + y * res.x);
+
+    if (threadId >= res.x * res.y)
+        return;
+
+    Xorshift32Generator randomGenerator(wang_hash(threadId + 1));
+
+    DataStruct data;
+    data.ab = randomGenerator.xorshift32();
+    data.cd = randomGenerator.xorshift32();
+    data.ef = randomGenerator.xorshift32();
+    int result = sumFunction(data);
+
+    render_data.buffers.pixels[threadId] = ColorRGB(result);
+}
