@@ -49,8 +49,8 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Scene& par
     parsed_scene.materials.resize(texture_per_mesh.size());
     parsed_scene.textures.resize(texture_count);
     parsed_scene.textures_dims.resize(texture_count);
-    assign_material_texture_indices(parsed_scene.materials, material_texture_indices, texture_indices_offsets); // TODO move after dispatch threads
     dispatch_texture_loading(parsed_scene, scene_filepath, options.nb_texture_threads, texture_paths);
+    assign_material_texture_indices(parsed_scene.materials, material_texture_indices, texture_indices_offsets);
 
     parse_camera(scene, parsed_scene, options.override_aspect_ratio);
 

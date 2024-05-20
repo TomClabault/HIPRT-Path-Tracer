@@ -51,6 +51,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool refract_ray(const float3& ray_direction, con
  * 
  * [1] [Lambertian Reflection Without Tangents], Edd Biddulph https://fizzer.neocities.org/lambertnotangent
  */
+
+/**
+* The sampled direction is returned in world space
+*/
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 cosine_weighted_sample(const float3& normal, Xorshift32Generator& random_number_generator)
 {
     float rand_1 = random_number_generator();

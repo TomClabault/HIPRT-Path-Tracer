@@ -19,7 +19,6 @@
 // - missing else branch when parsing texture IDs for material that don't have a packed roughness and metalness texture
 // - are we pushing the shadow rays in the right direction when sampling env map while inside surface? It's weird that disabling the env map surface while in a surface darkens the render
 // - something is unsafe on NVIDIA + Windows + nested-dielectrics-complex.gltf + 48 bounces minimum + nested dielectric strategy RT Gems. We get a CPU-side orochi error when downloading the framebuffer for displaying indicating that some illegal memory was accessed. Is the buffer corrupted by something?
-// - bistro textures are buggued so there must still be something wrong with the parsing
 // - when adaptive sampling is on and holding click (render low resolution), some grid artifacts show up (doesn't even need adaptive sampling enabled to do that actually)
 // - normals AOV not converging correctly ?
 //		- for the denoiser normals convergence issue, is it an error at the end of the Path Tracer kernel where we're accumulating ? Should we have
@@ -32,9 +31,7 @@
 
 
 // TODO Code Organization:
-// - don't need the issRGB array since only base color is, we can sample this one only in sRGB
-//		- we don't the std::pair<textureType, std::string> in the scene parser because all texture are linear except base color (or do we?)
-//  - maybe do texture flipping at loading time?
+// - maybe do texture flipping at loading time?
 // - Remove GPURenderer.hiprt_scene, useless. Only contains HIPRT Ctxt (which can be made a member variable of the GPU Renderer) and the various buffers which can be kept in a RenderData member variable
 // - Use orochiBuffers when initializing the GPURenderer.RenderData instead of manual oroMalloc as currently done in set_hiprt_scene_from_scene
 // - Destroy buffers when disabling adaptive sampling to save VRAM
