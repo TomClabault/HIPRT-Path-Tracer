@@ -498,14 +498,19 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_sample(const RendererMaterial* ma
         // reflective so we're poping the stack
         ray_volume_state.interior_stack.pop(false);
 
+    if (hippt::dot(view_direction, normal) < 0)
+        // We want the normal in the same hemisphere as the view direction
+        // for the rest of the calculations
+        normal = -normal;
+
     float3 T, B;
-    build_ONB(shading_normal, T, B);
-    float3 local_view_direction = world_to_local_frame(T, B, shading_normal, view_direction);
+    build_ONB(normal, T, B);
+    float3 local_view_direction = world_to_local_frame(T, B, normal, view_direction);
 
     // Rotated ONB for the anisotropic GTR2 evaluation (metallic and glass only)
     float3 TR, BR;
-    build_rotated_ONB(shading_normal, TR, BR, material.anisotropic_rotation * M_PI);
-    float3 local_view_direction_rotated = world_to_local_frame(TR, BR, shading_normal, view_direction);
+    build_rotated_ONB(normal, TR, BR, material.anisotropic_rotation * M_PI);
+    float3 local_view_direction_rotated = world_to_local_frame(TR, BR, normal, view_direction);
 
     if (rand_1 < cdf[0])
         output_direction = disney_diffuse_sample(material, normal, random_number_generator);
