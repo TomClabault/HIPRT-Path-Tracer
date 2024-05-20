@@ -70,9 +70,6 @@ struct Scene
     // in [0, width - 1] and [0, height - 1] in the shader which means that we need the widths
     // and heights to convert UV coordinates [0, 1] to the right range
     std::vector<int2> textures_dims;
-    // This vector of is sRGB indicates whether the texture is sRGB 
-    // (and will need to be converted to linear in the shader or not)
-    std::vector<unsigned char> textures_is_srgb;
 
     std::vector<int> triangle_indices;
     std::vector<float3> vertices_positions;

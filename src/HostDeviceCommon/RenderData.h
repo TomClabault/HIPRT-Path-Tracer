@@ -83,13 +83,6 @@ struct RenderBuffers
 	// Widths of the textures. Necessary for using texel coordinates in [0, width - 1]
 	// in the shader (required because Orochi doesn't support normalized texture coordinates).
 	int2* textures_dims = nullptr;
-	// Whether the texture at the given index in this buffer is sRGB.
-	// Note that we could be using hardware sRGB to linear conversion in the sampler
-	// but it seems to be broken (?) with Orochi so we're doing it in software in the
-	// shader.
-	// Also, we're using unsigned char instead of bool here because std::vector<bool> doesn't
-	// have a .data() member function which is annoying to manipulate
-	unsigned char* texture_is_srgb = nullptr;
 };
 
 struct AuxiliaryBuffers

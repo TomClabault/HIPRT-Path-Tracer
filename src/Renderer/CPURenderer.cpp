@@ -40,7 +40,6 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 
     m_render_data.buffers.material_textures = parsed_scene.textures.data();
     m_render_data.buffers.textures_dims = parsed_scene.textures_dims.data();
-    m_render_data.buffers.texture_is_srgb = parsed_scene.textures_is_srgb.data();
 
     m_render_data.aux_buffers.denoiser_albedo = m_denoiser_albedo.data();
     m_render_data.aux_buffers.denoiser_normals = m_denoiser_normals.data();

@@ -77,10 +77,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void get_metallic_roughness(const HIPRTRenderData
 }
 
 template <typename T>
-HIPRT_HOST_DEVICE HIPRT_INLINE void read_data(const ColorRGBA& rgba, bool is_srgb, T& data) {}
+HIPRT_HOST_DEVICE HIPRT_INLINE void read_data(const ColorRGBA& rgba, T& data) {}
 
 template<>
-HIPRT_HOST_DEVICE HIPRT_INLINE void read_data(const ColorRGBA& rgba, bool is_srgb, ColorRGB& data)
+HIPRT_HOST_DEVICE HIPRT_INLINE void read_data(const ColorRGBA& rgba, ColorRGB& data)
 {
     data.r = rgba.r;
     data.g = rgba.g;
@@ -88,7 +88,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void read_data(const ColorRGBA& rgba, bool is_srg
 }
 
 template<>
-HIPRT_HOST_DEVICE HIPRT_INLINE void read_data(const ColorRGBA& rgba, bool is_srgb, float& data)
+HIPRT_HOST_DEVICE HIPRT_INLINE void read_data(const ColorRGBA& rgba, float& data)
 {
     data = rgba.r;
 }
@@ -100,7 +100,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void get_material_property(const HIPRTRenderData&
         return;
 
     ColorRGBA rgba = sample_texture_rgba(render_data.buffers.material_textures, texture_index, render_data.buffers.textures_dims[texture_index], is_srgb, texcoords);
-    read_data(rgba, render_data.buffers.texture_is_srgb[texture_index] == 1, output_data);
+    read_data(rgba, output_data);
 }
 
 #endif

@@ -24,7 +24,6 @@ void ThreadFunctions::load_texture(Scene& parsed_scene, std::string scene_path, 
 
         ImageRGBA texture = ImageRGBA::read_image(full_path, false);
         parsed_scene.textures_dims[thread_index] = make_int2(texture.width, texture.height);
-        parsed_scene.textures_is_srgb[thread_index] = tex_paths[thread_index].first == aiTextureType::aiTextureType_BASE_COLOR;
         parsed_scene.textures[thread_index] = texture;
 
         thread_index += nb_threads;
