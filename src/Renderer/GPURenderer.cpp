@@ -23,7 +23,18 @@ void GPURenderer::render()
 	HIPRTCamera hiprt_cam = m_camera.to_hiprt();
 	HIPRTRenderData render_data = get_render_data();
 	void* launch_args[] = { &render_data, &resolution, &hiprt_cam};
+
+	oroEvent_t start, stop;
+
+	OROCHI_CHECK_ERROR(oroEventCreate(&start));
+	OROCHI_CHECK_ERROR(oroEventCreate(&stop));
+	OROCHI_CHECK_ERROR(oroEventRecord(start, 0));
+
 	launch_kernel(8, 8, resolution.x, resolution.y, launch_args);
+
+	OROCHI_CHECK_ERROR(oroEventRecord(stop, 0));
+	OROCHI_CHECK_ERROR(oroEventSynchronize(stop));
+	OROCHI_CHECK_ERROR(oroEventElapsedTime(&m_frame_time, start, stop));
 
 #ifndef OROCHI_ENABLE_CUEW
 	// We only want to unmap for OpenGL interop buffers that are only available
@@ -80,6 +91,16 @@ WorldSettings& GPURenderer::get_world_settings()
 	return m_world_settings;
 }
 
+oroDeviceProp GPURenderer::get_device_properties()
+{
+	return m_device_properties;
+}
+
+float GPURenderer::get_frame_time()
+{
+	return m_frame_time;
+}
+
 int GPURenderer::get_sample_number()
 {
 	return m_render_settings.sample_number;
@@ -126,6 +147,7 @@ void GPURenderer::init_ctx(int device_index)
 {
 	m_hiprt_orochi_ctx = std::make_shared<HIPRTOrochiCtx>();
 	m_hiprt_orochi_ctx.get()->init(device_index);
+	oroGetDeviceProperties(&m_device_properties, m_hiprt_orochi_ctx->orochi_device);
 }
 
 void GPURenderer::compile_trace_kernel(const char* kernel_file_path, const char* kernel_function_name)

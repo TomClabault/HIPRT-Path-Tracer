@@ -15,6 +15,7 @@
 #include "stb_image_write.h"
 
 // TODO bugs
+// - something is wrong with the texture parsing and the metallic is off on the textured sphere sometimes (GPU)
 // - missing else branch when parsing texture IDs for material that don't have a packed roughness and metalness texture
 // - are we pushing the shadow rays in the right direction when sampling env map while inside surface? It's weird that disabling the env map surface while in a surface darkens the render
 // - something is unsafe on NVIDIA + Windows + nested-dielectrics-complex.gltf + 48 bounces minimum + nested dielectric strategy RT Gems. We get a CPU-side orochi error when downloading the framebuffer for displaying indicating that some illegal memory was accessed. Is the buffer corrupted by something?
@@ -51,6 +52,10 @@
 
 
 // TODO Features:
+// - blackbody light emitters
+// - ACES mapping
+// - better post processing: contrast, low, medium, high exposure curve
+// - bloom post processing
 // - hold shift for faster camera
 // - hold CTRL for slower camera
 // - BRDF swapper ImGui : Disney, Lambertian, Oren Nayar, Cook Torrance, Perfect fresnel dielectric reflect/transmit
@@ -822,7 +827,7 @@ void RenderWindow::display(const void* data)
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
-void RenderWindow::show_render_settings_panel()
+void RenderWindow::draw_render_settings_panel()
 {
 	if (!ImGui::CollapsingHeader("Render Settings"))
 		return;
@@ -910,7 +915,7 @@ void RenderWindow::show_render_settings_panel()
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 }
 
-void RenderWindow::show_objects_panel()
+void RenderWindow::draw_objects_panel()
 {
 	if (!ImGui::CollapsingHeader("Objects"))
 		return;
@@ -1001,7 +1006,7 @@ void RenderWindow::show_denoiser_panel()
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 }
 
-void RenderWindow::show_post_process_panel()
+void RenderWindow::draw_post_process_panel()
 {
 	if (!ImGui::CollapsingHeader("Post-processing"))
 		return;
@@ -1015,12 +1020,34 @@ void RenderWindow::show_post_process_panel()
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 }
 
-void RenderWindow::show_performance_panel()
+void RenderWindow::draw_performance_panel()
 {
 	if (!ImGui::CollapsingHeader("Performance"))
 		return;
 
+	ImGui::TreePush("Performance tree");
+
+	ImGui::Text("Device: %s", m_renderer.get_device_properties().name);
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+	if (ImGui::Checkbox("Freeze random", &m_render_settings.freeze_random))
+		reset_render();
+
+	bool rolling_window_size_changed = false;
+	int rolling_window_size = m_perf_metrics.get_window_size();
+	rolling_window_size_changed |= ImGui::RadioButton("25", &rolling_window_size, 25); ImGui::SameLine();
+	rolling_window_size_changed |= ImGui::RadioButton("100", &rolling_window_size, 100); ImGui::SameLine();
+	rolling_window_size_changed |= ImGui::RadioButton("1000", &rolling_window_size, 1000);
+
+	if (rolling_window_size_changed)
+		m_perf_metrics.resize_window(rolling_window_size);
+
+	ImGui::Text("Sample time (avg)      : %.3fms", m_perf_metrics.get_average(PerformanceMetricsComputer::SAMPLE_TIME_KEY));
+	ImGui::Text("Sample time (var)      : %.3fms", m_perf_metrics.get_variance(PerformanceMetricsComputer::SAMPLE_TIME_KEY));
+	ImGui::Text("Sample time (min / max): %.3fms / %.3fms", m_perf_metrics.get_min(PerformanceMetricsComputer::SAMPLE_TIME_KEY), m_perf_metrics.get_max(PerformanceMetricsComputer::SAMPLE_TIME_KEY));
+
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+	ImGui::TreePop();
 }
 
 void RenderWindow::draw_imgui()
@@ -1032,8 +1059,12 @@ void RenderWindow::draw_imgui()
 
 	auto now_time = std::chrono::high_resolution_clock::now();
 	float render_time = std::chrono::duration_cast<std::chrono::milliseconds>(now_time - m_start_render_time).count();
+	float sample_time = m_renderer.get_frame_time() / ((m_render_settings.render_low_resolution ? 1 : m_render_settings.samples_per_frame));
+	if (!m_render_settings.render_low_resolution)
+		// Not adding the frame time if we're rendering low resolution, not relevant
+		m_perf_metrics.add_value(PerformanceMetricsComputer::SAMPLE_TIME_KEY, sample_time);
 	ImGui::Text("Render time: %.3fs", render_time / 1000.0f);
-	ImGui::Text("%d samples | %.2f samples/s @ %dx%d", m_render_settings.sample_number, 1.0f / io.DeltaTime * (m_render_settings.render_low_resolution ? 1 : m_render_settings.samples_per_frame), m_renderer.m_render_width, m_renderer.m_render_height);
+	ImGui::Text("%d samples | %.2f samples/s @ %dx%d", m_render_settings.sample_number, 1000.0f / sample_time, m_renderer.m_render_width, m_renderer.m_render_height);
 
 	ImGui::Separator();
 
@@ -1044,10 +1075,11 @@ void RenderWindow::draw_imgui()
 
 	ImGui::PushItemWidth(233);
 
-	show_render_settings_panel();
-	show_objects_panel();
-	show_denoiser_panel();
-	show_post_process_panel();
+	draw_render_settings_panel();
+	draw_objects_panel();
+	//show_denoiser_panel();
+	draw_post_process_panel();
+	draw_performance_panel();
 
 	ImGui::End();
 

@@ -71,6 +71,8 @@ public:
 	void rotate_camera_view(glm::vec3 rotation_angles);
 	void zoom_camera_view(float offset);
 
+	oroDeviceProp get_device_properties();
+	float get_frame_time();
 	int get_sample_number();
 	void set_sample_number(int sample_numner);
 
@@ -80,6 +82,9 @@ public:
 
 private:
 	void set_hiprt_scene_from_scene(Scene& scene);
+
+	oroDeviceProp m_device_properties;
+	float m_frame_time;
 
 	// This buffer holds the * sum * of the samples computed
 	// This is an accumulation buffer. This needs to be divided by the

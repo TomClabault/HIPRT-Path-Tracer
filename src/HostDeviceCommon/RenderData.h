@@ -26,6 +26,11 @@ struct HIPRTRenderSettings
 	int samples_per_frame = 1;
 	int nb_bounces = 8;
 
+	// Whether or not to "freeze" random number generation so that each frame uses
+	// exactly the same random number. This allows every ray to follow the exact
+	// same path every frame, allowing for stable benchmarking.
+	bool freeze_random = false;
+
 	// If true, this means that the user is moving the camera and we're going to
 	// render the image at a much lower resolution to allow for smooth camera
 	// movements

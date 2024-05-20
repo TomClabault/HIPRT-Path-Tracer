@@ -137,7 +137,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
     }
 
 
-    Xorshift32Generator random_number_generator(wang_hash((index + 1) * (render_data.render_settings.sample_number + 1)));
+    unsigned int seed;
+    if (render_data.render_settings.freeze_random)
+        seed = wang_hash(index + 1);
+    else
+        seed = wang_hash((index + 1) * (render_data.render_settings.sample_number + 1));
+    Xorshift32Generator random_number_generator(seed);
 
     float squared_luminance_of_samples = 0.0f;
     ColorRGB final_color = ColorRGB(0.0f, 0.0f, 0.0f);

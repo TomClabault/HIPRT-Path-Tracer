@@ -12,6 +12,7 @@
 #include "UI/ApplicationSettings.h"
 #include "UI/DisplayTextureType.h"
 #include "UI/DisplayView.h"
+#include "UI/PerformanceMetricsComputer.h"
 #include "UI/Screenshoter.h"
 #include "Utils/CommandlineArguments.h"
 
@@ -88,11 +89,11 @@ public:
 	template <typename T>
 	void display(OpenGLInteropBuffer<T>& buffer);
 
-	void show_render_settings_panel();
-	void show_objects_panel();
+	void draw_render_settings_panel();
+	void draw_objects_panel();
 	void show_denoiser_panel();
-	void show_post_process_panel();
-	void show_performance_panel();
+	void draw_post_process_panel();
+	void draw_performance_panel();
 	void draw_imgui();
 
 	void run();
@@ -104,8 +105,6 @@ private:
 	// Current mouse cursor position within the window. Used to compute mouse
 	// mouse delta movement by comparing the new mouse position with this variable
 	std::pair<float, float> m_cursor_position;
-	// Is the user interacting with the camera (rotating, zooming, ...)? 
-	bool m_interacting;
 
 	// Timer started at the first sample. Used to time how long the render has been running
 	// for so far
@@ -120,6 +119,7 @@ private:
 	HIPRTRenderSettings& m_render_settings;
 	OpenImageDenoiser m_denoiser;
 
+	PerformanceMetricsComputer m_perf_metrics;
 	Screenshoter m_screenshoter;
 
 	OpenGLProgram m_active_display_program;
