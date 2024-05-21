@@ -73,7 +73,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_environment_map(const HIPRTRender
         return ColorRGB(0.0f);
 
     // TODO This shortcut yields black tranmissive surfaces when sampling the env map. 
-    // This will be fixed when caustics will be implemented
+    // This will be fixed when caustics will be implemented.
     if (hippt::dot(view_direction, closest_hit_info.geometric_normal) < 0.0f)
         // We're not direct sampling if we're inside a surface
         // 
