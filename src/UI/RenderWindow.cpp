@@ -15,6 +15,7 @@
 #include "stb_image_write.h"
 
 // TODO bugs
+// - fresnel still visible at high roughness?
 // - are we pushing the shadow rays in the right direction when sampling env map while inside surface? It's weird that disabling the env map surface while in a surface darkens the render
 // - something is unsafe on NVIDIA + Windows + nested-dielectrics-complex.gltf + 48 bounces minimum + nested dielectric strategy RT Gems. We get a CPU-side orochi error when downloading the framebuffer for displaying indicating that some illegal memory was accessed. Is the buffer corrupted by something?
 // - when adaptive sampling is on and holding click (render low resolution), some grid artifacts show up (doesn't even need adaptive sampling enabled to do that actually)
@@ -29,6 +30,7 @@
 
 
 // TODO Code Organization:
+// - refactor compiler options
 // - Destroy buffers when disabling adaptive sampling to save VRAM
 // - uniform #ifndef in Device headers
 // - Refactor material editor

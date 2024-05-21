@@ -66,6 +66,18 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_texture_rgb(const void* texture_b
     return ColorRGB(rgba.r, rgba.g, rgba.b);
 }
 
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_environment_map_texture(const WorldSettings& world_settings, float2 uv)
+{
+    const void* envmap_pointer;
+#ifdef __KERNELCC__
+    envmap_pointer = &world_settings.envmap;
+#else
+    envmap_pointer = world_settings.envmap;
+#endif
+
+    return sample_texture_rgb(envmap_pointer, 0, make_int2(world_settings.envmap_width, world_settings.envmap_height), /* is_srgb */ false, uv);
+}
+
 template <typename T>
 HIPRT_HOST_DEVICE HIPRT_INLINE T uv_interpolate(int vertex_A_index, int vertex_B_index, int vertex_C_index, T* data, float2 uv)
 {

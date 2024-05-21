@@ -68,3 +68,8 @@ oroTextureObject_t OrochiTexture::get_device_texture()
 {
 	return m_texture;
 }
+
+oroTextureObject_t* OrochiTexture::get_device_texture_pointer()
+{
+	return &m_texture;
+}

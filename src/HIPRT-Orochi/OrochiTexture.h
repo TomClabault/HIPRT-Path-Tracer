@@ -23,6 +23,7 @@ public:
 
 	void init_from_image(const ImageRGBA& image);
 	oroTextureObject_t get_device_texture();
+	oroTextureObject_t* get_device_texture_pointer();
 
 	unsigned int width = 0, height = 0;
 
