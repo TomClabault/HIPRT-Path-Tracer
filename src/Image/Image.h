@@ -32,7 +32,7 @@ public:
     PixelType sample(float2 uv) const;
 
     void compute_cdf();
-    std::vector<float> compute_get_cdf() const;
+    std::vector<float> compute_get_cdf();
     const std::vector<float>& get_cdf() const;
     std::vector<float>& get_cdf();
 
@@ -129,22 +129,10 @@ void ImageBase<PixelType>::compute_cdf()
 }
 
 template <typename PixelType>
-std::vector<float> ImageBase<PixelType>::compute_get_cdf() const
+std::vector<float> ImageBase<PixelType>::compute_get_cdf()
 {
-    std::vector<float> cdf(height * width);
-    cdf[0] = 0.0f;
-
-    for (int y = 0; y < height; y++)
-    {
-        for (int x = 0; x < width; x++)
-        {
-            int index = y * width + x;
-
-            cdf[index] = cdf[std::max(index - 1, 0)] + luminance_of_pixel(x, y);
-        }
-    }
-
-    return cdf;
+    compute_cdf();
+    return m_cdf;
 }
 
 template <typename PixelType>

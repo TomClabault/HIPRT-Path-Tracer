@@ -29,7 +29,6 @@
 
 
 // TODO Code Organization:
-// - Use orochiBuffers when initializing the GPURenderer.RenderData instead of manual oroMalloc as currently done in set_hiprt_scene_from_scene
 // - Destroy buffers when disabling adaptive sampling to save VRAM
 // - uniform #ifndef in Device headers
 // - Refactor material editor

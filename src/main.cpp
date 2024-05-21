@@ -77,6 +77,7 @@ int main(int argc, char* argv[])
     cpu_renderer.get_render_settings().nb_bounces = cmd_arguments.bounces;
     cpu_renderer.get_render_settings().samples_per_frame = cmd_arguments.render_samples;
     ThreadManager::join_threads(ThreadManager::TEXTURE_THREADS_KEY);
+    stop_full = std::chrono::high_resolution_clock::now();
     std::cout << "Full scene & textures parsed in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop_full - start_full).count() << "ms" << std::endl;
     cpu_renderer.render();
     cpu_renderer.tonemap(2.2f, 1.0f);

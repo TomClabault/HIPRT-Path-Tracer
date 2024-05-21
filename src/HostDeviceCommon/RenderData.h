@@ -113,13 +113,13 @@ enum AmbientLightType
 
 struct WorldSettings
 {
-	AmbientLightType ambient_light_type = AmbientLightType::UNIFORM;
+	AmbientLightType ambient_light_type = AmbientLightType::ENVMAP;
 	ColorRGB uniform_light_color = ColorRGB(0.5f);
 
 	unsigned int envmap_width = 0, envmap_height = 0;
-	// This void pointer is a either a pointer to float* for the CPU
-	// or a pointer to oroTextureObject_t for the GPU.
-	// Proper reinterpreting of the pointer is done in the kernel
+	// This void pointer is a either a float* for the CPU
+	// or a oroTextureObject_t for the GPU.
+	// Proper reinterpreting of the pointer is done in the kernel.
 	void* envmap = nullptr;
 	// Cumulative distribution function. 1D float array of length width * height for
 	// importance sampling the envmap
