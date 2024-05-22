@@ -15,7 +15,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 
 # Features:
 
-- Disney BSDF (Diffuse, fake subsurface, metallic, roughness, anisotropy + anisotropy rotation, clearcoat, sheen, glass, volumetric Beer-Lambert absorption, ...) \[Burley, 2015\]
+- [\[Pres\]]() Disney BSDF (Diffuse, fake subsurface, metallic, roughness, anisotropy + anisotropy rotation, clearcoat, sheen, glass, volumetric Beer-Lambert absorption, ...) \[Burley, 2015\]
 	- For experimentation purposes, the BRDF diffuse lobe can be switched for either:
 		- The original "Disney diffuse" presented in [\[Burley, 2012\]](https://disneyanimation.com/publications/physically-based-shading-at-disney/)
 		- A lambertian distribution
@@ -24,8 +24,9 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 - HDR Environment map + importance sampling using
 	- CDF-inversion binary search
 - Emissive geometry light sampling
-- Automatic nested dielectrics support \[Ray Tracing Gems, 2019\]
-	- Algorithm adapted to also support priorities as proposed in \[Simple Nested Dielectrics in Ray Traced Images, Schmidt, 2002\]
+- Nested dielectrics support 
+	- Automatic handling as presented in \[Ray Tracing Gems, 2019\]
+	- Handling with priorities as proposed in \[Simple Nested Dielectrics in Ray Traced Images, Schmidt, 2002\]
 - Per-pixel adaptive sampling
 - Texture support for all the parameters of the BSDF
 - Normal mapping
@@ -33,6 +34,10 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 - Different frame-buffer visualisation (visualize the adaptive sampling map, the denoiser normals / albedo, ...)
 - Use of the ASSIMP library to support [many](https://github.com/assimp/assimp/blob/master/doc/Fileformats.md) scene file formats.
 - Intel Open Image Denoise + Normals & Albedo AOV support
+
+##### A detailed explanation of the features can be found [here](README_data/Features/features.md).
+
+
 # Building
 ## Prerequisites
 ### Windows
