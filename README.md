@@ -35,7 +35,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 - Use of the ASSIMP library to support [many](https://github.com/assimp/assimp/blob/master/doc/Fileformats.md) scene file formats.
 - Intel Open Image Denoise + Normals & Albedo AOV support
 
-##### A detailed explanation of the features can be found [here](README_data/Features/features.md).
+### A detailed explanation of the features can be found [here](README_data/Features/features.md).
 
 
 # Building
