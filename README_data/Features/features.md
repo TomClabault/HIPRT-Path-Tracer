@@ -70,10 +70,12 @@ Knowing that we can interpret $I$ as a measure of the convergence of our pixel, 
 We use that user-given threshold $T$ we talked about earlier! Specifically, we can assume that if:
 #### $$I \leq T\mu$$
 Then that pixel as is converged enough for that threshold $T$. As a practical example, consider $T=0$. We then have:
-```math
-I \leq T\mu \Leftrightarrow I \leq 0
-```
+#### $$I \leq T\mu \ \ \Leftrightarrow \ \ I \leq 0$$
+If $I =0$, then the interval completely collapses on $\mu$ (as visualized in the above graphs). Said otherwise, $\mu$ **is** the true mean and our pixel has completely converged. Thus, for $T=0$, we will only stop sampling the pixel when it has fully converged.
 
+In practice, having $I=0$ is infeasible. After some experimentations a $T$ threshold of $0.1$ seem to target a very reasonable amount of noise. Any $T$ lower than that represents a significant overhead in terms of rendering time for a visually incremental improvement on the perceived level of noise:
+
+TODO T threshold comparison
 
 ### TODO
 - Normal mapping
