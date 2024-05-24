@@ -75,7 +75,8 @@ If $I =0$, then the interval completely collapses on $\mu$ (as visualized in the
 
 In practice, having $I=0$ is infeasible. After some experimentations a $T$ threshold of $0.1$ seem to target a very reasonable amount of noise. Any $T$ lower than that represents a significant overhead in terms of rendering time for a visually incremental improvement on the perceived level of noise:
 
-TODO T threshold comparison
+![cornellThreshold](./img/cornellThreshold.jpg)
+**
 
 ### TODO
 - Normal mapping
