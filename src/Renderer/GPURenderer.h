@@ -18,19 +18,6 @@
 
 #include <vector>
 
-/*
- * Temporary workaround to disable not-yet-supported OpenGL interoperability
- * on NVIDIA hardware. Falling back to the classic OrochiBuffer that goes
- * through the CPU before OpenGL
- */
-//#ifdef OROCHI_ENABLE_CUEW
-//template <typename T>
-//using InteropBufferType = OrochiBuffer<T>;
-//#else
-template <typename T>
-using InteropBufferType = OpenGLInteropBuffer<T>;
-//#endif
-
 class GPURenderer
 {
 public:
@@ -44,7 +31,7 @@ public:
 	void render();
 	void change_render_resolution(int new_width, int new_height);
 
-	InteropBufferType<ColorRGB>& get_color_framebuffer();
+	OpenGLInteropBuffer<ColorRGB>& get_color_framebuffer();
 	OrochiBuffer<ColorRGB>& get_denoiser_albedo_buffer();
 	OrochiBuffer<hiprtFloat3>& get_denoiser_normals_buffer();
 	OrochiBuffer<int>& get_pixels_sample_count_buffer();
@@ -88,7 +75,7 @@ private:
 	// This buffer holds the * sum * of the samples computed
 	// This is an accumulation buffer. This needs to be divided by the
 	// number of samples for displaying
-	InteropBufferType<ColorRGB> m_pixels_interop_buffer;
+	OpenGLInteropBuffer<ColorRGB> m_pixels_interop_buffer;
 	// Normals G-buffer
 	OrochiBuffer<hiprtFloat3> m_normals_buffer;
 	// Albedo G-buffer
