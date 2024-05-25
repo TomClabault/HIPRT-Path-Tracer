@@ -40,7 +40,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool adaptive_sampling(const HIPRTRenderData& ren
             pixel_sample_count = aux_buffers.pixel_sample_count[pixel_index];
             confidence_interval  = get_pixel_confidence_interval(render_data, pixel_index, pixel_sample_count, average_luminance);
 
-            stop_noise_threshold_converged = (confidence_interval > render_settings.stop_noise_threshold * average_luminance) && (render_settings.stop_noise_threshold > 0.0f);
+            stop_noise_threshold_converged = 
+                // Converged enough
+                (confidence_interval < render_settings.stop_noise_threshold * average_luminance) 
+                // Stop noise threshold enabled
+                && (render_settings.stop_noise_threshold > 0.0f) 
+                // At least 2 samples because the maths break down at 1 sample
+                && (render_settings.sample_number > 1);
         }
          
         // No stop noise threshold (and no adaptive sampling)
@@ -72,6 +78,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool adaptive_sampling(const HIPRTRenderData& ren
 
         return true;
     }
+
+    return true;
 }
 
 #endif

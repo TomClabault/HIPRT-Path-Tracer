@@ -685,9 +685,7 @@ bool RenderWindow::is_rendering_done()
 	bool rendering_done = false;
 
 	rendering_done |= m_renderer.get_ray_active_buffer().download_data()[0] == 0;
-	unsigned int count = m_renderer.get_stop_noise_threshold_buffer().download_data()[0];
-	rendering_done |= count == m_renderer.m_render_width * m_renderer.m_render_height;
-	std::cout << count << std::endl;
+	rendering_done |= m_renderer.get_stop_noise_threshold_buffer().download_data()[0] == m_renderer.m_render_width * m_renderer.m_render_height;
 	rendering_done |= (m_application_settings.max_sample_count != 0 && m_render_settings.sample_number + 1 > m_application_settings.max_sample_count);
 
 	return rendering_done;
@@ -696,10 +694,12 @@ bool RenderWindow::is_rendering_done()
 void RenderWindow::reset_render()
 {
 	unsigned char true_data = 1;
+	unsigned int zero_data = 0;
 
 	m_renderer.set_sample_number(0);
 	m_render_settings.frame_number = 0;
 	m_renderer.get_ray_active_buffer().upload_data(&true_data);
+	m_renderer.get_stop_noise_threshold_buffer().upload_data(&zero_data);
 	m_current_render_time = 0.0f;
 
 	m_render_dirty = false;
@@ -880,10 +880,26 @@ void RenderWindow::draw_render_settings_panel()
 
 	if (ImGui::InputInt("Stop render at sample count", &m_application_settings.max_sample_count))
 		m_application_settings.max_sample_count = std::max(m_application_settings.max_sample_count, 0);
+
+	unsigned int converged_count;
+	unsigned int total_pixel_count;
 	ImGui::BeginDisabled(m_render_settings.enable_adaptive_sampling);
-	if (ImGui::InputFloat("Stop render at noise threshold (no adaptive sampling)", &m_render_settings.stop_noise_threshold))
+	if (ImGui::InputFloat("Stop render at noise threshold", &m_render_settings.stop_noise_threshold))
+	{
+		unsigned int zero_data = 0;
 		m_render_settings.stop_noise_threshold = std::max(0.0f, m_render_settings.stop_noise_threshold);
+		m_renderer.get_stop_noise_threshold_buffer().upload_data(&zero_data);
+	}
+
+	ImGui::TreePush("Tree stop noise threshold");
+	{
+		converged_count = m_renderer.get_stop_noise_threshold_buffer().download_data()[0] * (!m_render_settings.enable_adaptive_sampling);
+		total_pixel_count = m_renderer.m_render_width * m_renderer.m_render_height;
+		ImGui::Text("Pixels converged: %d / %d - %.1f%%", converged_count, total_pixel_count, (float)converged_count / total_pixel_count);
+	}
+	ImGui::TreePop();
 	ImGui::EndDisabled();
+
 	ImGui::InputInt("Samples per frame", &m_render_settings.samples_per_frame);
 	if (ImGui::InputInt("Max bounces", &m_render_settings.nb_bounces))
 	{
