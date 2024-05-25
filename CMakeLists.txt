@@ -135,11 +135,11 @@ link_directories(${HIPRT_BINARIES_DIR}/hiprt/win)
 
 # ----------------- Downloading Orochi (no need to build) ----------------
 
-if(NOT EXISTS ${CMAKE_SOURCE_DIR}/Orochi-Submodule)
+if(NOT EXISTS ${CMAKE_SOURCE_DIR}/Orochi-Fork)
 	# Making sure that the Orochi submodule was cloned
 	message(FATAL_ERROR "The Orochi submodule couldn't be found. Did you forget to clone the submodules? Run 'git submodule update --init --recursive --jobs 10'.")
 else()
-	set(OROCHI_SUBMODULE_DIR ${CMAKE_SOURCE_DIR}/Orochi-Submodule)
+	set(OROCHI_SUBMODULE_DIR ${CMAKE_SOURCE_DIR}/Orochi-Fork)
 endif()
 
 set(OROCHI_BIN_DIR ${OROCHI_SUBMODULE_DIR})
