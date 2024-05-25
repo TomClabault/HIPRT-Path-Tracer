@@ -71,7 +71,7 @@ struct HIPRTGeometry
 		size_t geometry_temp_size;
 		hiprtDevicePtr geometry_temp;
 
-		build_options.buildFlags = hiprtBuildFlagBitPreferFastBuild;
+		build_options.buildFlags = hiprtBuildFlagBitPreferHighQualityBuild;
 		geometry_build_input.type = hiprtPrimitiveTypeTriangleMesh;
 		geometry_build_input.primitive.triangleMesh = m_mesh;
 

@@ -61,7 +61,7 @@ void GPURenderer::change_render_resolution(int new_width, int new_height)
 	m_camera.projection_matrix = glm::transpose(glm::perspective(m_camera.vertical_fov, new_aspect, m_camera.near_plane, m_camera.far_plane));
 }
 
-InteropBufferType<ColorRGB>& GPURenderer::get_color_framebuffer()
+OpenGLInteropBuffer<ColorRGB>& GPURenderer::get_color_framebuffer()
 {
 	return m_pixels_interop_buffer;
 }
