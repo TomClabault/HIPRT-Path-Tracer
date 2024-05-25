@@ -370,7 +370,7 @@ RenderWindow::RenderWindow(int width, int height) : m_viewport_width(width), m_v
 	ImGui_ImplGlfw_InitForOpenGL(m_window, true);
 	ImGui_ImplOpenGL3_Init();
 
-	m_renderer.init_ctx(0);
+	m_renderer.initialize(0);
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_renderer), m_application_settings.kernel_files[m_application_settings.selected_kernel].c_str(), m_application_settings.kernel_functions[m_application_settings.selected_kernel].c_str());
 	//m_renderer.compile_trace_kernel(DEVICE_KERNELS_DIRECTORY "/RegisterTestKernel.h", "TestFunction");
 	m_renderer.change_render_resolution(width, height);
@@ -680,11 +680,27 @@ void RenderWindow::increment_sample_number()
 		m_render_settings.sample_number += m_render_settings.samples_per_frame;
 }
 
+bool RenderWindow::is_rendering_done()
+{
+	bool rendering_done = false;
+
+	rendering_done |= m_renderer.get_ray_active_buffer().download_data()[0] == 0;
+	unsigned int count = m_renderer.get_stop_noise_threshold_buffer().download_data()[0];
+	rendering_done |= count == m_renderer.m_render_width * m_renderer.m_render_height;
+	std::cout << count << std::endl;
+	rendering_done |= (m_application_settings.max_sample_count != 0 && m_render_settings.sample_number + 1 > m_application_settings.max_sample_count);
+
+	return rendering_done;
+}
+
 void RenderWindow::reset_render()
 {
-	m_start_render_time = std::chrono::high_resolution_clock::now();
+	unsigned char true_data = 1;
+
 	m_renderer.set_sample_number(0);
 	m_render_settings.frame_number = 0;
+	m_renderer.get_ray_active_buffer().upload_data(&true_data);
+	m_current_render_time = 0.0f;
 
 	m_render_dirty = false;
 }
@@ -708,6 +724,8 @@ void RenderWindow::run()
 {
 	while (!glfwWindowShouldClose(m_window))
 	{
+		m_start_cpu_frame_time = std::chrono::high_resolution_clock::now();
+
 		if (m_render_dirty)
 			reset_render();
 
@@ -785,6 +803,8 @@ void RenderWindow::run()
 			}
 		}
 		
+		m_stop_cpu_frame_time = std::chrono::high_resolution_clock::now();
+
 		draw_imgui();
 
 		glfwSwapBuffers(m_window);
@@ -793,18 +813,14 @@ void RenderWindow::run()
 	quit();
 }
 
-bool RenderWindow::render()
+void RenderWindow::render()
 {
-	if (!(m_application_settings.max_sample_count != 0 && m_render_settings.sample_number + 1 > m_application_settings.max_sample_count))
+	if (!is_rendering_done())
 	{
 		m_renderer.render();
 		increment_sample_number();
 		m_render_settings.frame_number++;
-
-		return true;
 	}
-
-	return false;
 }
 
 void RenderWindow::display(const void* data)
@@ -864,6 +880,10 @@ void RenderWindow::draw_render_settings_panel()
 
 	if (ImGui::InputInt("Stop render at sample count", &m_application_settings.max_sample_count))
 		m_application_settings.max_sample_count = std::max(m_application_settings.max_sample_count, 0);
+	ImGui::BeginDisabled(m_render_settings.enable_adaptive_sampling);
+	if (ImGui::InputFloat("Stop render at noise threshold (no adaptive sampling)", &m_render_settings.stop_noise_threshold))
+		m_render_settings.stop_noise_threshold = std::max(0.0f, m_render_settings.stop_noise_threshold);
+	ImGui::EndDisabled();
 	ImGui::InputInt("Samples per frame", &m_render_settings.samples_per_frame);
 	if (ImGui::InputInt("Max bounces", &m_render_settings.nb_bounces))
 	{
@@ -1079,13 +1099,20 @@ void RenderWindow::draw_imgui()
 	ImGui::Begin("Settings");
 
 	auto now_time = std::chrono::high_resolution_clock::now();
-	float render_time = std::chrono::duration_cast<std::chrono::milliseconds>(now_time - m_start_render_time).count();
-	float sample_time = m_renderer.get_frame_time() / ((m_render_settings.render_low_resolution ? 1 : m_render_settings.samples_per_frame));
-	if (!m_render_settings.render_low_resolution)
-		// Not adding the frame time if we're rendering low resolution, not relevant
-		m_perf_metrics.add_value(PerformanceMetricsComputer::SAMPLE_TIME_KEY, sample_time);
-	ImGui::Text("Render time: %.3fs", render_time / 1000.0f);
-	ImGui::Text("%d samples | %.2f samples/s @ %dx%d", m_render_settings.sample_number, 1000.0f / sample_time, m_renderer.m_render_width, m_renderer.m_render_height);
+	if (!is_rendering_done())
+	{
+		float sample_time = m_renderer.get_frame_time() / ((m_render_settings.render_low_resolution ? 1 : m_render_settings.samples_per_frame));
+
+		m_current_render_time += std::chrono::duration_cast<std::chrono::milliseconds>(m_stop_cpu_frame_time - m_start_cpu_frame_time).count();
+		m_samples_per_second = 1000.0f / sample_time;
+
+		if (!m_render_settings.render_low_resolution)
+			// Not adding the frame time if we're rendering low resolution, not relevant
+			m_perf_metrics.add_value(PerformanceMetricsComputer::SAMPLE_TIME_KEY, sample_time);
+	}
+
+	ImGui::Text("Render time: %.3fs", m_current_render_time/ 1000.0f);
+	ImGui::Text("%d samples | %.2f samples/s @ %dx%d", m_render_settings.sample_number, m_samples_per_second, m_renderer.m_render_width, m_renderer.m_render_height);
 
 	ImGui::Separator();
 

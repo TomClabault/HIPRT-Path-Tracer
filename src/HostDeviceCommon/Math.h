@@ -75,6 +75,9 @@ namespace hippt
 	template <typename T>
 	__device__ bool isNaN(const T& v) { return isnan(v); }
 
+	template <typename T>
+	__device__ T atomic_add(T* address, T increment) { return atomicAdd(address, increment); }
+
 #else
 #undef M_PI
 #define M_PI 3.14159265358979323846f
@@ -100,6 +103,9 @@ namespace hippt
 
 	template <typename T>
 	inline bool isNaN (const T& v) { return std::isnan(v); }
+
+	template <typename T>
+	T atomic_add(std::atomic<T>* atomic_address, T increment) { return atomic_address->fetch_add(increment); }
 #endif
 }
 

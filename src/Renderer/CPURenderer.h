@@ -38,6 +38,7 @@ private:
     std::vector<float3> m_denoiser_normals;
     std::vector<int> m_pixel_sample_count;
     std::vector<float> m_pixel_squared_luminance;
+    unsigned char m_still_one_ray_active = true;
 
     std::vector<Triangle> m_triangle_buffer;
     std::shared_ptr<BVH> m_bvh;

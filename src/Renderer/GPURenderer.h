@@ -34,13 +34,6 @@ using InteropBufferType = OpenGLInteropBuffer<T>;
 class GPURenderer
 {
 public:
-
-	GPURenderer(int width, int height, HIPRTOrochiCtx* hiprt_orochi_ctx) :
-		m_render_width(width), m_render_height(height), m_hiprt_orochi_ctx(hiprt_orochi_ctx),
-		m_trace_kernel(nullptr) {}
-
-	GPURenderer() {}
-
 	void render();
 	void change_render_resolution(int new_width, int new_height);
 
@@ -48,12 +41,14 @@ public:
 	OrochiBuffer<ColorRGB>& get_denoiser_albedo_buffer();
 	OrochiBuffer<hiprtFloat3>& get_denoiser_normals_buffer();
 	OrochiBuffer<int>& get_pixels_sample_count_buffer();
+	OrochiBuffer<unsigned char>& get_ray_active_buffer();
+	OrochiBuffer<unsigned int>& get_stop_noise_threshold_buffer();
 
 	HIPRTRenderSettings& get_render_settings();
 	WorldSettings& get_world_settings();
 	HIPRTRenderData get_render_data();
 
-	void init_ctx(int device_index);
+	void initialize(int device_index);
 	void compile_trace_kernel(const char* kernel_file_path, const char* kernel_function_name);
 	void launch_kernel(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args);
 
@@ -81,9 +76,9 @@ private:
 	void set_hiprt_scene_from_scene(const Scene& scene);
 
 	// Properties of the device
-	oroDeviceProp m_device_properties;
+	oroDeviceProp m_device_properties = {};
 	// Time taken to render the last frame
-	float m_frame_time;
+	float m_frame_time = 0;
 
 	// This buffer holds the * sum * of the samples computed
 	// This is an accumulation buffer. This needs to be divided by the
@@ -99,6 +94,12 @@ private:
 	// This buffer is necessary because with adaptive sampling, each pixel
 	// can have accumulated a different number of sample
 	OrochiBuffer<int> m_pixels_sample_count;
+	// A single boolean to indicate whether there is still a ray active in
+	// the kernel or not. Mostly useful when adaptive sampling is on and we
+	// want to know if all pixels have converged or not yet
+	OrochiBuffer<unsigned char> m_still_one_ray_active_buffer;
+	// How many pixels have reached the render_settings.stop_noise_threshold
+	OrochiBuffer<unsigned int> m_stop_noise_threshold_count_buffer;
 
 	// The materials are also kept on the CPU side because we want to be able
 	// to modify them interactively with ImGui
@@ -122,7 +123,12 @@ private:
 	// Destroying this structure frees the resources
 	HIPRTScene m_hiprt_scene;
 
+	// Settings relative to the scene such as the intensity of the uniform light, the
+	// environment map used, the rotation of the envmap, ...
 	WorldSettings m_world_settings;
+	// Settings that alter the way the path tracing kernel behaves such as the number
+	// of bounces, the number of samples per kernel invocation (samples per frame),
+	// whether or not the adaptive sampling is enabled, ...
 	HIPRTRenderSettings m_render_settings;
 };
 

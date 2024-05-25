@@ -81,6 +81,16 @@ OrochiBuffer<int>& GPURenderer::get_pixels_sample_count_buffer()
 	return m_pixels_sample_count;
 }
 
+OrochiBuffer<unsigned char>& GPURenderer::get_ray_active_buffer()
+{
+	return m_still_one_ray_active_buffer;
+}
+
+OrochiBuffer<unsigned int>& GPURenderer::get_stop_noise_threshold_buffer()
+{
+	return m_stop_noise_threshold_count_buffer;
+}
+
 HIPRTRenderSettings& GPURenderer::get_render_settings()
 {
 	return m_render_settings;
@@ -131,10 +141,19 @@ HIPRTRenderData GPURenderer::get_render_data()
 	render_data.buffers.texcoords = reinterpret_cast<float2*>(m_hiprt_scene.texcoords_buffer.get_device_pointer());
 	render_data.buffers.textures_dims = reinterpret_cast<int2*>(m_hiprt_scene.textures_dims.get_device_pointer());
 
+	// Uploading false to basically reset the flag
+	unsigned char false_data = false;
+	unsigned int zero_data = 0;
+	m_still_one_ray_active_buffer.upload_data(&false_data);
+	if (m_render_settings.stop_noise_threshold > 0.0f)
+		m_stop_noise_threshold_count_buffer.upload_data(&zero_data);
+
 	render_data.aux_buffers.denoiser_normals = m_normals_buffer.get_device_pointer();
 	render_data.aux_buffers.denoiser_albedo = m_albedo_buffer.get_device_pointer();
 	render_data.aux_buffers.pixel_sample_count = m_pixels_sample_count.get_device_pointer();
 	render_data.aux_buffers.pixel_squared_luminance = m_pixels_squared_luminance.get_device_pointer();
+	render_data.aux_buffers.still_one_ray_active = m_still_one_ray_active_buffer.get_device_pointer();
+	render_data.aux_buffers.stop_noise_threshold_count = reinterpret_cast<AtomicType<unsigned int>*>(m_stop_noise_threshold_count_buffer.get_device_pointer());
 
 	render_data.world_settings = m_world_settings;
 	render_data.render_settings = m_render_settings;
@@ -142,11 +161,17 @@ HIPRTRenderData GPURenderer::get_render_data()
 	return render_data;
 }
 
-void GPURenderer::init_ctx(int device_index)
+void GPURenderer::initialize(int device_index)
 {
 	m_hiprt_orochi_ctx = std::make_shared<HIPRTOrochiCtx>();
 	m_hiprt_orochi_ctx.get()->init(device_index);
 	oroGetDeviceProperties(&m_device_properties, m_hiprt_orochi_ctx->orochi_device);
+
+	unsigned char true_data = 1;
+	m_still_one_ray_active_buffer.resize(1);
+	m_still_one_ray_active_buffer.upload_data(&true_data);
+
+	m_stop_noise_threshold_count_buffer.resize(1);
 }
 
 void GPURenderer::compile_trace_kernel(const char* kernel_file_path, const char* kernel_function_name)
@@ -234,22 +259,25 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 	// while the main thread was doing something else
 	ThreadManager::join_threads(ThreadManager::TEXTURE_THREADS_KEY);
 
-	std::vector<oroTextureObject_t> oro_textures(scene.textures.size());
-	m_materials_textures.reserve(scene.textures.size());
-	for (int i = 0; i < scene.textures.size(); i++)
+	if (scene.textures.size() > 0)
 	{
-		// We need to keep the texture alive so they are not destroyed when returning from 
-		// this function so we're adding them to a member buffer
-		m_materials_textures.push_back(OrochiTexture(scene.textures[i]));
+		std::vector<oroTextureObject_t> oro_textures(scene.textures.size());
+		m_materials_textures.reserve(scene.textures.size());
+		for (int i = 0; i < scene.textures.size(); i++)
+		{
+			// We need to keep the texture alive so they are not destroyed when returning from 
+			// this function so we're adding them to a member buffer
+			m_materials_textures.push_back(OrochiTexture(scene.textures[i]));
 
-		oro_textures[i] = m_materials_textures.back().get_device_texture();
+			oro_textures[i] = m_materials_textures.back().get_device_texture();
+		}
+
+		hiprt_scene.materials_textures.resize(oro_textures.size());
+		hiprt_scene.materials_textures.upload_data(oro_textures.data());
+
+		hiprt_scene.textures_dims.resize(scene.textures_dims.size());
+		hiprt_scene.textures_dims.upload_data(scene.textures_dims.data());
 	}
-
-	hiprt_scene.materials_textures.resize(oro_textures.size());
-	hiprt_scene.materials_textures.upload_data(oro_textures.data());
-
-	hiprt_scene.textures_dims.resize(scene.textures_dims.size());
-	hiprt_scene.textures_dims.upload_data(scene.textures_dims.data());
 }
 
 void GPURenderer::set_scene(const Scene& scene)

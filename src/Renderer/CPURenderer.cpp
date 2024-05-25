@@ -45,6 +45,8 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.aux_buffers.denoiser_normals = m_denoiser_normals.data();
     m_render_data.aux_buffers.pixel_sample_count = m_pixel_sample_count.data();
     m_render_data.aux_buffers.pixel_squared_luminance = m_pixel_squared_luminance.data();
+    m_render_data.aux_buffers.still_one_ray_active = &m_still_one_ray_active;
+    //m_render_data.aux_buffers.stop_noise_threshold_count = &m_still_one_ray_active;
 
     std::cout << "Building scene BVH..." << std::endl;
     m_triangle_buffer = parsed_scene.get_triangles();

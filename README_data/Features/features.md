@@ -71,12 +71,34 @@ We use that user-given threshold $T$ we talked about earlier! Specifically, we c
 #### $$I \leq T\mu$$
 Then that pixel as is converged enough for that threshold $T$. As a practical example, consider $T=0$. We then have:
 #### $$I \leq T\mu \ \ \Leftrightarrow \ \ I \leq 0$$
-If $I =0$, then the interval completely collapses on $\mu$ (as visualized in the above graphs). Said otherwise, $\mu$ **is** the true mean and our pixel has completely converged. Thus, for $T=0$, we will only stop sampling the pixel when it has fully converged.
+If $I =0$, then the interval completely collapses on $\mu$. Said otherwise, $\mu$ **is** the true mean and our pixel has completely converged. Thus, for $T=0$, we will only stop sampling the pixel when it has fully converged.
 
 In practice, having $I=0$ is infeasible. After some experimentations a $T$ threshold of $0.1$ seem to target a very reasonable amount of noise. Any $T$ lower than that represents a significant overhead in terms of rendering time for a visually incremental improvement on the perceived level of noise:
 
 ![cornellThreshold](./img/cornellThreshold.jpg)
-**
+*Comparison of the noise level obtained after all pixels have converged and stopped sampling with a varying **T** threshold*
+
+Now if you look at the render with $T=0.1$, you'll notice that the caustic on the ceiling is awkwardly noisier than the rest of the image. There are some "holes" in the caustic (easy to see when you compare it to the $T=0.05$ render).
+
+This is an issue of the per-pixel approach used here: because that caustic has so much variance, it is actually possible that we sample a pixel on the ceiling 50 times (arbitrary number) without ever finding a path to the light. The sampled pixel will then remain gray-ish (diffuse color of the ceiling) instead of being bright because of the caustic. Our evaluation of the error of this pixel will then assume that it has converged since it has gone through 50 samples without that much of a change in radiance, meaning that it has a low variance, meaning that we can stop sampling it. 
+
+But we shouldn't! If we had sampled it maybe 50 more times, we would have probably found a path that leads to the light, spiking the variance of the pixel which in turn would be sampled until the variance has attenuated enough so that our confidence interval $I$ is small again and gets below our threshold.
+
+One solution is simply to increase the minimum number of samples that must be traced through a pixel before evaluating its error. This way, the pixels of the image all get a chance to show their true variance and can't escape the adaptive sampling strategy! 
+
+![minimumSampleNumber](./img/minimumSampleNumber.jpg)
+*Impact of the minimum amount of samples to trace before starting evaluating adaptive sampling for the same **T** threshold*
+
+This is however a poor solution since this forces all pixels of the image to be sampled at least 100 times, even the ones that would only need 50 samples. This is a waste of computational resources.
+
+A better way of estimating the error of the scene is presented in the "Hierarchical Adaptive Sampling" section.
+
+Nonetheless, this naive way of estimating the error of a pixel can provide very appreciable speedups in rendering time:
+
+![adaptiveSamplingSpeedup](./img/adaptiveSamplingSpeedup.jpg)
+
+### TODO
+- Hierarchical adaptive sampling
 
 ### TODO
 - Normal mapping
