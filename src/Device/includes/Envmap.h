@@ -21,7 +21,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_environment_map_from_direction(co
     u = 0.5f + atan2(direction.z, direction.x) / (2.0f * (float)M_PI);
     v = 0.5f + asin(direction.y) / (float)M_PI;
 
-    return sample_environment_map_texture(world_settings, make_float2(u, v));
+    return sample_environment_map_texture(world_settings, make_float2(u, 1.0f - v));
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE void env_map_cdf_search(const WorldSettings& world_settings, float value, int& x, int& y)
@@ -113,11 +113,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_environment_map(const HIPRTRender
         bool in_shadow = evaluate_shadow_ray(render_data, shadow_ray, 1.0e38f);
         if (!in_shadow)
         {
-            ColorRGB pixel = sample_environment_map_texture(world_settings, make_float2(u, v));
+            ColorRGB pixel = sample_environment_map_texture(world_settings, make_float2(u, 1.0f - v));
             float env_map_pdf = luminance(pixel) / env_map_total_sum;
             env_map_pdf = (env_map_pdf * world_settings.envmap_width * world_settings.envmap_height) / (2.0f * M_PI * M_PI * sin_theta);
 
-            ColorRGB env_map_radiance = sample_environment_map_texture(world_settings, make_float2(u, v));
+            ColorRGB env_map_radiance = sample_environment_map_texture(world_settings, make_float2(u, 1.0f - v));
             float pdf;
             RayVolumeState trash_state;
             ColorRGB brdf = brdf_dispatcher_eval(render_data.buffers.materials_buffer, material, trash_state, view_direction, closest_hit_info.shading_normal, sampled_direction, pdf);

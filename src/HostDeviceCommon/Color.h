@@ -84,4 +84,20 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA exp(const ColorRGBA& col) { return Colo
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA log(const ColorRGBA& col) { return ColorRGBA(logf(col.r), logf(col.g), logf(col.b), logf(col.a)); }
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA pow(const ColorRGBA& col, float k) { return ColorRGBA(powf(col.r, k), powf(col.g, k), powf(col.b, k), powf(col.a, k)); }
 
+#ifndef __KERNELCC__
+inline std::ostream& operator <<(std::ostream& os, const ColorRGB& color)
+{
+    os << color.r << ", " << color.g << ", " << color.b << std::endl;
+
+    return os;
+}
+
+inline std::ostream& operator <<(std::ostream& os, const ColorRGBA& color)
+{
+    os << color.r << ", " << color.g << ", " << color.b << ", " << color.a << std::endl;
+
+    return os;
+}
+#endif
+
 #endif

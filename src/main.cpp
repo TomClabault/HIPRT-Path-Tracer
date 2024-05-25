@@ -50,8 +50,8 @@ int main(int argc, char* argv[])
 
     std::cout << "Reading \"" << cmd_arguments.skysphere_file_path << "\" envmap..." << std::endl;
     // Not flipping Y here since the Y-flipping is done in the shader
-    ImageRGBA envmap_image = ImageRGBA::read_image_hdr(cmd_arguments.skysphere_file_path, /* flip Y */ false);
-
+    ImageRGBA envmap_image = ImageRGBA::read_image_hdr(cmd_arguments.skysphere_file_path, /* flip Y */ true);
+    
 #if GPU_RENDER
 
     RenderWindow render_window(width, height);
