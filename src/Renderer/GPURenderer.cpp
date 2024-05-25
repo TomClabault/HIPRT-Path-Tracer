@@ -179,10 +179,10 @@ void GPURenderer::compile_trace_kernel(const char* kernel_file_path, const char*
 
 	m_trace_kernel = *reinterpret_cast<oroFunction*>(&trace_function_out);
 
-	int numRegs;
-	int numSmem;
-	OROCHI_CHECK_ERROR(oroFuncGetAttribute(&numRegs, ORO_FUNC_ATTRIBUTE_NUM_REGS, m_trace_kernel));
-	OROCHI_CHECK_ERROR(oroFuncGetAttribute(&numSmem, ORO_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES, m_trace_kernel));
+	int numRegs = 0;
+	int numSmem = 0;
+	//OROCHI_CHECK_ERROR(oroFuncGetAttribute(&numRegs, ORO_FUNC_ATTRIBUTE_NUM_REGS, m_trace_kernel));
+	//OROCHI_CHECK_ERROR(oroFuncGetAttribute(&numSmem, ORO_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES, m_trace_kernel));
 
 	
 	auto stop = std::chrono::high_resolution_clock::now();

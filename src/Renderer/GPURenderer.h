@@ -23,13 +23,13 @@
  * on NVIDIA hardware. Falling back to the classic OrochiBuffer that goes
  * through the CPU before OpenGL
  */
-#ifdef OROCHI_ENABLE_CUEW
-template <typename T>
-using InteropBufferType = OrochiBuffer<T>;
-#else
+//#ifdef OROCHI_ENABLE_CUEW
+//template <typename T>
+//using InteropBufferType = OrochiBuffer<T>;
+//#else
 template <typename T>
 using InteropBufferType = OpenGLInteropBuffer<T>;
-#endif
+//#endif
 
 class GPURenderer
 {

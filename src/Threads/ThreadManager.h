@@ -7,6 +7,7 @@
 #define THREAD_MANAGER_H
 
 #include <memory>
+#include <string>
 #include <thread>
 #include <unordered_map>
 #include <vector>
