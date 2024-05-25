@@ -125,6 +125,8 @@ void OrochiBuffer<T>::upload_data(const void* data)
 {
 	if (m_data_pointer)
 		OROCHI_CHECK_ERROR(oroMemcpy(reinterpret_cast<oroDeviceptr>(m_data_pointer), data, sizeof(T) * m_element_count, oroMemcpyHostToDevice));
+	else
+		std::cerr << "Trying to upload data to an OrochiBuffer that hasn't been allocated yet!" << std::endl;
 }
 
 template <typename T>

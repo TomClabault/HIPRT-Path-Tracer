@@ -121,8 +121,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
     }
 
     bool sampling_needed = true;
-    if (render_data.render_settings.enable_adaptive_sampling)
-        sampling_needed = adaptive_sampling(render_data, index);
+    bool stop_noise_threshold_converged = false;
+    sampling_needed = adaptive_sampling(render_data, index, stop_noise_threshold_converged);
+
+    if (stop_noise_threshold_converged)
+        // Indicating that this pixel has reached the threshold in render_settings.stop_noise_threshold
+        hippt::atomic_add(render_data.aux_buffers.stop_noise_threshold_count, 1u);
 
     if (!sampling_needed)
     {
@@ -133,6 +137,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
         // appear too dark.
         // We're rescaling the color of the pixels that stopped sampling here for correct display
         render_data.buffers.pixels[index] = render_data.buffers.pixels[index] / render_data.render_settings.sample_number * (render_data.render_settings.sample_number + render_data.render_settings.samples_per_frame);
+
         return;
     }
 
@@ -252,6 +257,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
         squared_luminance_of_samples += ray_payload.ray_color.luminance() * ray_payload.ray_color.luminance();
         final_color += ray_payload.ray_color;
     }
+
+    // If we got here, this means that we still have at least one ray active
+    render_data.aux_buffers.still_one_ray_active[0] = 1;
 
     render_data.buffers.pixels[index] += final_color;
     render_data.aux_buffers.pixel_squared_luminance[index] += squared_luminance_of_samples;

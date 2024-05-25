@@ -75,6 +75,13 @@ public:
 	void update_renderer_view_rotation(float offset_x, float offset_y);
 
 	void increment_sample_number();
+	/**
+	 * Returns true if the renderer is not sampling the image anymore. 
+	 * This can be the case if all pixels have converged according to
+	 * adaptive sampling or if the maximum number of samples specified by
+	 * the user has been reached, etc...
+	 */
+	bool is_rendering_done();
 	void reset_render();
 
 
@@ -97,7 +104,7 @@ public:
 	void draw_imgui();
 
 	void run();
-	bool render();
+	void render();
 	void quit();
 
 private:
@@ -108,7 +115,9 @@ private:
 
 	// Timer started at the first sample. Used to time how long the render has been running
 	// for so far
-	std::chrono::high_resolution_clock::time_point m_start_render_time;
+	std::chrono::high_resolution_clock::time_point m_start_cpu_frame_time, m_stop_cpu_frame_time;
+	float m_current_render_time = 0.0f;
+	float m_samples_per_second = 0.0f;
 
 	ApplicationSettings m_application_settings;
 

@@ -9,8 +9,19 @@
 #include "HostDeviceCommon/Material.h"
 #include "HostDeviceCommon/Math.h"
 
+
 #include <hiprt/hiprt_device.h>
 #include <Orochi/Orochi.h>
+
+#ifdef __KERNELCC__
+template <typename T>
+using AtomicType = T;
+#else
+#include <atomic>
+
+template <typename T>
+using AtomicType = std::atomic<T>;
+#endif
 
 struct HIPRTRenderSettings
 {
@@ -44,6 +55,12 @@ struct HIPRTRenderSettings
 	int adaptive_sampling_min_samples = 64;
 	// Adaptive sampling noise threshold
 	float adaptive_sampling_noise_threshold = 0.1f;
+
+	// If != 0.0f, the render will stop after all pixels have reached the given
+	// noise threshold. This is different from adaptive sampling as this does not
+	// stop sampling pixels that have reached the threshold if there are still
+	// some other pixels that haven't. Either everyone stops or noone stops.
+	float stop_noise_threshold = 0.0f;
 };
 
 struct RenderBuffers
@@ -102,6 +119,18 @@ struct AuxiliaryBuffers
 	// Per pixel sum of squared luminance of samples. Used for adaptive sampling
 	// This buffer should not be pre-divided by the number of samples
 	float* pixel_squared_luminance = nullptr;
+
+	// A single boolean (contained in a buffer, hence the pointer) 
+	// to indicate whether at least one single ray is still active in the kernel.
+	// This is an unsigned char instead of a boolean because std::vector<bool>.data()
+	// isn't standard
+	unsigned char* still_one_ray_active = nullptr;
+
+	// If render_settings.stop_noise_threshold > 0, this buffer
+	// (consisting of a single unsigned int) counts how many pixels have reached the
+	// noise threshold. If this value is equal to the number of pixels of the
+	// framebuffer, then all pixels have converged.
+	AtomicType<unsigned int>* stop_noise_threshold_count = nullptr;
 };
 
 enum AmbientLightType
