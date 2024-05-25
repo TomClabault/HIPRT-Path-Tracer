@@ -16,10 +16,13 @@ struct ApplicationSettings
 	static const std::string PATH_TRACING_KERNEL;
 	static const std::string NORMALS_KERNEL;
 
+	// Index of the selected kernel. This corresponds to a pair [kernel file, kernel function] as 
+	// defined in the two vectors below
 	int selected_kernel = 0;
 	std::vector<std::string> kernel_files = { DEVICE_KERNELS_DIRECTORY "/PathTracerKernel.h", DEVICE_KERNELS_DIRECTORY "/NormalsKernel.h" };
 	std::vector<std::string> kernel_functions = { PATH_TRACING_KERNEL, NORMALS_KERNEL };
 
+	// What view is currently displayed in the viewport
 	DisplayView display_view = DisplayView::DEFAULT;
 
 	bool enable_denoising = false;
@@ -59,8 +62,18 @@ struct ApplicationSettings
 	// We stop rendering when this number of sample is reached
 	int max_sample_count = 0;
 
+	// if true, the number of samples per frame will be adjusted automatically to target 20 FPS. 
+	// This is meant to keep the GPU busy mostly when adaptive sampling is on.
+	// This is because with adaptive sampling on, FPS will keep increasing as the number of
+	// pixels that yet have to converge decreases. And with high FPS count, we get the risk
+	// of being CPU bound since we'll have to display many frames per second.
+	bool auto_sample_per_frame = true;
+
+	// Whether or not to do tonemapping for display fragment shader that support it
 	bool do_tonemapping = 1;
+	// Tone mapping gamma
 	float tone_mapping_gamma = 2.2f;
+	// Tone mapping exposure
 	float tone_mapping_exposure = 1.0f;
 };
 

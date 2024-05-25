@@ -696,11 +696,22 @@ void RenderWindow::reset_render()
 	unsigned char true_data = 1;
 	unsigned int zero_data = 0;
 
-	m_renderer.set_sample_number(0);
 	m_render_settings.frame_number = 0;
+	if (m_application_settings.auto_sample_per_frame)
+	{
+		// Resetting the number of samples per frame to be sure we're not
+		// going to timeout the GPU driver
+		m_render_settings.samples_per_frame = 1;
+		// Samples per second manually reset to 0.0f so that samples_per_frame
+		// isn't automatically recalculated from the samples per second of last
+		// frame (before the render reset) which would basically fail the whole
+		// point of resetting the number of samples per frame.
+		m_samples_per_second = 0.0f;
+	}
+	m_current_render_time = 0.0f;
+	m_renderer.set_sample_number(0);
 	m_renderer.get_ray_active_buffer().upload_data(&true_data);
 	m_renderer.get_stop_noise_threshold_buffer().upload_data(&zero_data);
-	m_current_render_time = 0.0f;
 
 	m_render_dirty = false;
 }
@@ -728,6 +739,9 @@ void RenderWindow::run()
 
 		if (m_render_dirty)
 			reset_render();
+
+		if (m_application_settings.auto_sample_per_frame && m_samples_per_second > 0)
+			m_render_settings.samples_per_frame = std::max(1, static_cast<int>(m_samples_per_second / 20.0f));
 
 		glfwPollEvents();
 		glClear(GL_COLOR_BUFFER_BIT);
@@ -821,6 +835,9 @@ void RenderWindow::render()
 		increment_sample_number();
 		m_render_settings.frame_number++;
 	}
+	else
+		// Sleeping so that we don't burn the CPU (and GPU because it'll have to do the display)
+		std::this_thread::sleep_for(std::chrono::milliseconds(5));
 }
 
 void RenderWindow::display(const void* data)
@@ -895,12 +912,16 @@ void RenderWindow::draw_render_settings_panel()
 	{
 		converged_count = m_renderer.get_stop_noise_threshold_buffer().download_data()[0] * (!m_render_settings.enable_adaptive_sampling);
 		total_pixel_count = m_renderer.m_render_width * m_renderer.m_render_height;
-		ImGui::Text("Pixels converged: %d / %d - %.1f%%", converged_count, total_pixel_count, (float)converged_count / total_pixel_count);
+		ImGui::Text("Pixels converged: %d / %d - %.2f%%", converged_count, total_pixel_count, static_cast<float>(converged_count) / total_pixel_count * 100.0f);
 	}
 	ImGui::TreePop();
 	ImGui::EndDisabled();
 
-	ImGui::InputInt("Samples per frame", &m_render_settings.samples_per_frame);
+	ImGui::BeginDisabled(m_application_settings.auto_sample_per_frame);
+	ImGui::InputInt("Samples per frame", &m_render_settings.samples_per_frame); 
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	ImGui::Checkbox("Auto", &m_application_settings.auto_sample_per_frame);
 	if (ImGui::InputInt("Max bounces", &m_render_settings.nb_bounces))
 	{
 		// Clamping to 0 in case the user input a negative number of bounces	
@@ -1097,7 +1118,7 @@ void RenderWindow::draw_performance_panel()
 						"Sample time", 
 						scale_min, scale_max, 
 						/* size */ ImVec2(0, 80));
-	ImGui::Text("Sample time (avg)      : %.3fms", m_perf_metrics.get_average(PerformanceMetricsComputer::SAMPLE_TIME_KEY));
+	ImGui::Text("Sample time (avg)      : %.3fms (%.1f FPS)", m_perf_metrics.get_average(PerformanceMetricsComputer::SAMPLE_TIME_KEY), 1000.0f / m_perf_metrics.get_average(PerformanceMetricsComputer::SAMPLE_TIME_KEY));
 	ImGui::Text("Sample time (var)      : %.3fms", variance);
 	ImGui::Text("Sample time (std dev)  : %.3fms", std::sqrt(variance));
 	ImGui::Text("Sample time (min / max): %.3fms / %.3fms", min, max);

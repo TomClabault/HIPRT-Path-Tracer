@@ -95,7 +95,7 @@ A better way of estimating the error of the scene is presented in the "Hierarchi
 
 Nonetheless, this naive way of estimating the error of a pixel can provide very appreciable speedups in rendering time:
 
-![adaptiveSamplingSpeedup](./img/adaptiveSamplingSpeedup.jpg)
+![adaptiveSamplingSpeedup](./img/adaptiveSamplingSpeedup.jpg) 
 
 ### TODO
 - Hierarchical adaptive sampling
