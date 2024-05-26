@@ -66,7 +66,10 @@ Knowing that we can interpret $I$ as a measure of the convergence of our pixel, 
 
 **When do we assume that our pixel has sufficiently converged and stop sampling?**
 
-We use that user-given threshold $T$ we talked about earlier! Specifically, we can assume that if:  $$I \leq T\mu$$Then that pixel has converged enough for that threshold $T$. As a practical example, consider $T=0$. We then have:
+We use that user-given threshold $T$ we talked about earlier! Specifically, we can assume that if:
+
+$$I \leq T\mu$$
+Then that pixel has converged enough for that threshold $T$. As a practical example, consider $T=0$. We then have:
 
 ``` math
 \displaylines{I \leq T\mu \\ I \leq 0}
@@ -87,7 +90,7 @@ But we shouldn't! If we had sampled it maybe 50 more times, we would have probab
 One solution is simply to increase the minimum number of samples that must be traced through a pixel before evaluating its error. This way, the pixels of the image all get a chance to show their true variance and can't escape the adaptive sampling strategy! 
 
 ![minimumSampleNumber](./img/minimumSampleNumber.jpg)
-*Impact of the minimum amount of samples to trace before starting evaluating adaptive sampling for the same **T** threshold*
+*Impact of the minimum amount of samples to trace before starting evaluating adaptive sampling for the same **T** threshold.*
 
 This is however a poor solution since this forces all pixels of the image to be sampled at least 100 times, even the ones that would only need 50 samples. This is a waste of computational resources.
 
@@ -106,36 +109,132 @@ The application also offers the possibility to visualize where the rays are bein
 ### Normal mapping
 Normal mapping (or bump mapping) is a technique that aims at visually improving perceived geometric details without actually having the geometry for it. This is done through the use of normal maps which are textures that look like this:
 
-![Normal map](./img/normalMap.jpg)
-*An example normal map*
+<p align="center">
+  <img src="./img/normalMap.jpg" />
+</p>
+
+*An example normal map.*
 
 Each pixel of this texture represents a perturbation of the geometric normal of the surface. Because the lighting of a surface strongly depends on its orientation (its normal), if the normal of the surface is altered, then the lighting will be too.
 
 The three channels RGB of a pixel of the texture respectively represent the X, Y and Z coordinates of the perturbed normal. However, you cannot just read from the texture using texture coordinates and assume that the RGB values of the pixel you get is going to be 1:1 the new normal of your surface:
 	- The pixel are in $[0, 1]$ (or $[0, 255]$ if your prefer) but a normal is in $[-1, 1]$
-	- The normals of the texture are in their own coordinate space called tangent space. They are not in the same space as your mesh. They will have to be transformed.
+	- The normals of the texture are in their own coordinate space called tangent space. They are not in the same space as your model. They will have to be transformed.
 
-Bringing the pixel from $[0, 1]$ to the tangent space normal in $[-1, 1]$ is fairly straightforward: $$Pixel * 2 - 1 = Normal_{TS}$$The more interesting question is how to bring the normal from tangent space to the coordinate space of our mesh (and then the world) so that we can actually use our normal for the lighting calculations. To do that, we're going to need a transformation matrix, also called an ONB (Orthonormal Basis) in this case. This matrix will let us bring the tangent space normal to mesh space (a change of basis).
+Bringing the pixel from $[0, 1]$ to the tangent space normal in $[-1, 1]$ is fairly straightforward:
+
+$$N_{TS} = Pixel * 2 - 1$$
+The more interesting question is how to bring the normal from tangent space to the coordinate space of our model (and then the world) so that we can actually use our normal for the lighting calculations. To do that, we're going to need a transformation matrix, also called an ONB (Orthonormal Basis) in this case. This matrix will let us bring the tangent space normal to model space (a change of basis).
 
 <p align="center">
   <img src="./img/normalMappingTBN.jpg" />
 </p>
-*TBN vectors used for the ONB matrix calculation. Illustration from [LearnOpenGL](https://learnopengl.com/Advanced-Lighting/Normal-Mapping)*
+
+*TBN vectors used for the ONB matrix calculation. Illustration from* [LearnOpenGL](https://learnopengl.com/Advanced-Lighting/Normal-Mapping).
 
 But how do we find that matrix?
 
-The matrix is going to be built from three vectors: $T$, $B$ and $N$. $T$ and $B$ are called the tangent and bitangent vectors (depicted in the figure above). They represent the $X$ and $Y$ coordinates of our tangent space. $N$ is the geometric normal of our surface (or smooth normal if you're using vertex normals), it is the $Z$ coordinate of our tangent space.
+The matrix is going to be built from three vectors: $T$, $B$ and $N$. $T$ and $B$ are called the tangent and bitangent vectors (depicted in the figure above). They represent the $X$ and $Y$ coordinates of our tangent space. $N$ is the geometric normal of our surface (or smooth normal if you're using interpolated vertex normals), it is the $Z$ coordinate of our tangent space.
 
-*Sidenote: you may have noticed that normal maps are blue-ish in general. This is due to the normals being mostly oriented towards the $Z$ axis (which is the blue channel of the pixel) of the tangent space which is the normal of our surface.*
+*Sidenote: you may have noticed that normal maps are blue-ish in general. This is due to the normals being mostly oriented towards the **Z** axis (which is the blue channel of the pixel) of the tangent space which is the normal of our surface. Since a normal map represents perturbations of the surface normal, it is expected that the normal map is going to be mostly the normal of our surface itself.*
 
-The goal is then to find these $T$ and $B$ vectors. We know that these two vectors are aligned with the $U$ and $V$ directions of the texture respectively. If $p_0$, $p_1$ and $p_2$ are the three vertices in counter-clockwise order of the triangle that we intersected and that they have $UV_1=(u_1, v_1)$, $UV_2=(u_2, v_2)$ and $UV_3=(u_3, v_3)$ for texture coordinates respectively, we can define:
+The goal is then to find these $T$ and $B$ vectors. We know that these two vectors are aligned with the $U$ and $V$ directions of the texture respectively. If $p_0$, $p_1$ and $p_2$ are the three vertices in counter-clockwise order of the triangle that we intersected and that they have $UV_1=(u_1, v_1)$, $UV_2=(u_2, v_2)$ and $UV_3=(u_3, v_3)$ for texture coordinates respectively, we can define two of the edges $e_1$ and $e_2$ of our triangle simply as:
 
 ```math
-\displaylines{e_1 = UV_2-UV_1=(u_2-u_1, v_2-v_1) \\ e_2 = UV_3-UV_2=(u_3-u_2, v_3-v_2)}
+\displaylines{e_1 = p_2-p_1 \\ e_2 = p_3-p_2}
 ```
 
-Note that $T$ and $B$ need to be aligned with the $U$ and $V$ directions of the texture. A generic algorithm ([Duff, 2017](https://graphics.pixar.com/library/OrthonormalB/paper.pdf) for example) for finding arbitrary tangent and a bitangent vectors to a normal cannot be used here.
+*Sidenote again: Note that the **T** and **B** we're computing **need** to be aligned with the **U** and **V** directions of the texture. A generic algorithm ([Duff, 2017](https://graphics.pixar.com/library/OrthonormalB/paper.pdf) for example) for finding arbitrary tangent and bitangent vectors to a normal cannot be used here. The process of building the ONB for normal mapping here isn't the same as when building an ONB of the "shading space" for BSDF evaluation.*
 
+Similarly, we can define the differences $\Delta UV_1$ and $\Delta UV_2$ in textures coordinates of these vertices:
+
+```math
+\displaylines{\Delta UV_1 = (\Delta U_1, \Delta V_1)=UV_2-UV_1 \\ \Delta UV_2 = (\Delta U_2, \Delta V_2) = UV_3-UV_2}
+```
+
+<p align="center">
+  <img src="./img/normalMappingE1E2.jpg" />
+</p>
+
+***e1** and **e2** can be expressed in terms of **ΔU\*T** and **ΔV\*B**. Illustration from* [LearnOpenGL](https://learnopengl.com/Advanced-Lighting/Normal-Mapping).
+
+These $\Delta UV_1$ and $\Delta UV_2$ can be understood as the edges $e_1$ and $e_2$ but expressed in the coordinate space of the texture, the $UV$ coordinate space. Because we know that $UV$ coordinates are aligned with the $T$ and $B$ vectors that we're looking for (remember the "TBN vectors used for the ONB matrix calculation" illustration), we can therefore express $e_1$ and $e_2$ in terms of $\Delta UV_1$, $\Delta UV_2$, $T$ and $B$:
+
+```math
+\displaylines{e_1 = T*\Delta U_1 + B*\Delta V_1 \\ e_2 = T*\Delta U_2 + B*\Delta V_2}
+```
+
+In matrix form, this can be written as:
+```math  
+\begin{bmatrix}
+\uparrow & \uparrow \\
+e_1 & e_2 \\
+\downarrow & \downarrow
+\end{bmatrix}
+=
+\begin{bmatrix}
+\uparrow & \uparrow \\
+T & B \\
+\downarrow & \downarrow
+\end{bmatrix}
+\begin{bmatrix}
+\Delta U_1 & \Delta U_2 \\
+\Delta V_1 & \Delta V_2
+\end{bmatrix}
+```
+
+We can then solve for $T$ and $B$ by multiplying by the inverse of the $\left[ \Delta U_1 \Delta U_2, \Delta V_1 \Delta V_2 \right]$ matrix:
+
+```math  
+\begin{bmatrix}
+\uparrow & \uparrow \\
+T & B \\
+\downarrow & \downarrow
+\end{bmatrix}
+=
+\begin{bmatrix}
+\uparrow & \uparrow \\
+e_1 & e_2 \\
+\downarrow & \downarrow
+\end{bmatrix}
+\frac{1}{\Delta U_1\Delta V_2 -\Delta V_1\Delta U_2}
+\begin{bmatrix}
+\Delta V_2 & -\Delta U_2 \\
+-\Delta V_1 & \Delta U_1
+\end{bmatrix}
+```
+
+This stems from the fact that the inverse of a 2x2 matrix is given by:
+
+```math  
+\begin{bmatrix}
+a & b \\
+c & d
+\end{bmatrix}^{-1}
+=
+\frac{1}{ad-bc}
+\begin{bmatrix}
+d & -b \\
+-c & a
+\end{bmatrix}
+```
+
+Our $T$ and $B$ vectors now computed, the TBN matrix that will allow us to pass from the normal of our normal map (tangent space) to the model-space is given by:
+
+```math
+Mat_{TBN} = 
+\begin{bmatrix}
+\uparrow & \uparrow & \uparrow \\
+T & B & N \\
+\downarrow & \downarrow & \downarrow
+\end{bmatrix}
+```
+
+The final normal that we can use for our shading is thus:
+
+$$N_{shading}=Mat_{TBN}*N_{TS}$$
+
+TODO visual impact
 ### Interactive ImGui Interface & FPS Camera
 
 When rendering on the GPU, an ImGui interface is available to help playing with the parameters of the path tracer.

@@ -247,9 +247,11 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 	hiprt_scene.materials_buffer.upload_data(scene.materials.data());
 
 	hiprt_scene.emissive_triangles_count = scene.emissive_triangle_indices.size();
-
-	hiprt_scene.emissive_triangles_indices.resize(scene.emissive_triangle_indices.size());
-	hiprt_scene.emissive_triangles_indices.upload_data(scene.emissive_triangle_indices.data());
+	if (hiprt_scene.emissive_triangles_count > 0)
+	{
+		hiprt_scene.emissive_triangles_indices.resize(scene.emissive_triangle_indices.size());
+		hiprt_scene.emissive_triangles_indices.upload_data(scene.emissive_triangle_indices.data());
+	}
 
 	hiprt_scene.texcoords_buffer.resize(scene.texcoords.size());
 	hiprt_scene.texcoords_buffer.upload_data(scene.texcoords.data());

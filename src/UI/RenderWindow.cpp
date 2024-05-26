@@ -15,7 +15,8 @@
 #include "stb_image_write.h"
 
 // TODO bugs
-// - something is unsafe on NVIDIA + Windows + nested-dielectrics-complex.gltf + 48 bounces minimum + nested dielectric strategy RT Gems. We get a CPU-side orochi error when downloading the framebuffer for displaying indicating that some illegal memory was accessed. Is the buffer corrupted by something?
+// - memory leak somewhere with long running renders
+// - TO TEST AGAIN: something is unsafe on NVIDIA + Windows + nested-dielectrics-complex.gltf + 48 bounces minimum + nested dielectric strategy RT Gems. We get a CPU-side orochi error when downloading the framebuffer for displaying indicating that some illegal memory was accessed. Is the buffer corrupted by something?
 // - when adaptive sampling is on and holding click (render low resolution), some grid artifacts show up (doesn't even need adaptive sampling enabled to do that actually)
 // - normals AOV not converging correctly ?
 //		- for the denoiser normals convergence issue, is it an error at the end of the Path Tracer kernel where we're accumulating ? Should we have
@@ -28,8 +29,9 @@
 
 
 // TODO Code Organization:
+// - do we need OpenGL Lib/bin in thirdparties?
 // - fork HIPRT and remove the encryption thingy that slows down kernel compilation on NVIDIA
-// - A good way to automatically find MSBuild with CMake? Build HIPRT with make instead of VS?
+// - A good way to automatically find MSBuild with CMake? Build HIPRT with make instead of VS maybe?
 // - refactor HIPCC compiler options
 // - Destroy buffers when disabling adaptive sampling to save VRAM
 // - uniform #ifndef in Device headers
