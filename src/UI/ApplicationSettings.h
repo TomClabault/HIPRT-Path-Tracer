@@ -74,7 +74,7 @@ struct ApplicationSettings
 	// Tone mapping gamma
 	float tone_mapping_gamma = 2.2f;
 	// Tone mapping exposure
-	float tone_mapping_exposure = 1.0f;
+	float tone_mapping_exposure = 1.8f;
 };
 
 #endif

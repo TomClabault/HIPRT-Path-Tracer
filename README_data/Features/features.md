@@ -59,7 +59,7 @@ That should make sense since as we increase the number of samples, our mean $\mu
 
 If $I$ gets smaller, this means for our $\mu$ that it also gets closer to the "true" mean and that is the sign that our pixel has converged a little more.
 
-![Confidence interval visualization](./img/confidenceInterval2.png)
+![Confidence interval smaller visualization](./img/confidenceInterval2.png)
 
 *As the number of samples increases (or as the computed variance decreases), **I** gets smaller, meaning that the true mean is closer to our current mean which in turn means that our pixel has converged a little more.*
 
@@ -67,9 +67,9 @@ Knowing that we can interpret $I$ as a measure of the convergence of our pixel, 
 
 **When do we assume that our pixel has sufficiently converged and stop sampling?**
 
-We use that user-given threshold $T$ we talked about earlier! Specifically, we can assume that if:
+We use that user-given threshold $T$ we talked about earlier! Specifically, we can assume that if: 
 #### $$I \leq T\mu$$
-Then that pixel as is converged enough for that threshold $T$. As a practical example, consider $T=0$. We then have:
+Then that pixel has converged enough for that threshold $T$. As a practical example, consider $T=0$. We then have:
 #### $$I \leq T\mu \ \ \Leftrightarrow \ \ I \leq 0$$
 If $I =0$, then the interval completely collapses on $\mu$. Said otherwise, $\mu$ **is** the true mean and our pixel has completely converged. Thus, for $T=0$, we will only stop sampling the pixel when it has fully converged.
 
@@ -95,22 +95,71 @@ A better way of estimating the error of the scene is presented in the "Hierarchi
 
 Nonetheless, this naive way of estimating the error of a pixel can provide very appreciable speedups in rendering time:
 
-![adaptiveSamplingSpeedup](./img/adaptiveSamplingSpeedup.jpg) 
+![Adaptive Sampling Speedup](./img/testedScenes.jpg) 
 
+The application also offers the possibility to visualize where the rays are being concentrated on the image thanks to a heatmap (based on the number of rays per pixel):
+
+![Adaptive sampling heatmap](./img/heatmap.jpg)
 ### TODO
 - Hierarchical adaptive sampling
 
-### TODO
-- Normal mapping
+### Normal mapping
+Normal mapping (or bump mapping) is a technique that aims at visually improving perceived geometric details without actually having the geometry for it. This is done through the use of normal maps which are textures that look like this:
 
-### TODO
-- Interactive ImGui interface + interactive first-person camera
+![Normal map](./img/normalMap.jpg)
+*An example normal map*
 
-### TODO
-- Different frame-buffer visualisation (visualize the adaptive sampling map, the denoiser normals / albedo, ...)
+Each pixel of this texture represents a perturbation of the geometric normal of the surface. Because the lighting of a surface strongly depends on its orientation (its normal), if the normal of the surface is altered, then the lighting will be too.
 
-### TODO
-- Use of the ASSIMP library to support [many](https://github.com/assimp/assimp/blob/master/doc/Fileformats.md) scene file formats.
+The three channels RGB of a pixel of the texture respectively represent the X, Y and Z coordinates of the perturbed normal. However, you cannot just read from the texture using texture coordinates and assume that the RGB values of the pixel you get is going to be 1:1 the new normal of your surface:
+	- The pixel are in $[0, 1]$ (or $[0, 255]$ if your prefer) but a normal is in $[-1, 1]$
+	- The normals of the texture are in their own coordinate space called tangent space. They are not in the same space as your mesh. They will have to be transformed.
+
+Bringing the pixel from $[0, 1]$ to the tangent space normal in $[-1, 1]$ is fairly straightforward: $$Pixel * 2 - 1 = Normal_{TS}$$The more interesting question is how to bring the normal from tangent space to the coordinate space of our mesh (and then the world) so that we can actually use our normal for the lighting calculations. To do that, we're going to need a transformation matrix, also called an ONB (Orthonormal Basis) in this case. This matrix will let us bring the tangent space normal to mesh space (a change of basis).
+
+![tangentSpace](./img/normalMappingTBN.jpg)
+*TBN vectors used for the ONB matrix calculation. Illustration from [LearnOpenGL](https://learnopengl.com/Advanced-Lighting/Normal-Mapping)*
+
+But how do we find that matrix?
+
+The matrix is going to be built from three vectors: $T$, $B$ and $N$. $T$ and $B$ are called the tangent and bitangent vectors (depicted in the figure above). They represent the $X$ and $Y$ coordinates of our tangent space. $N$ is the geometric normal of our surface (or smooth normal if you're using vertex normals), it is the $Z$ coordinate of our tangent space.
+
+*Sidenote: you may have noticed that normal maps are blue-ish in general. This is due to the normals being mostly oriented towards the $Z$ axis (which is the blue channel of the pixel) of the tangent space which is the normal of our surface.*
+
+The goal is then to find these $T$ and $B$ vectors. We know that these two vectors are aligned with the $U$ and $V$ directions of the texture respectively. If $p_0$, $p_1$ and $p_2$ are the three vertices in counter-clockwise order of the triangle that we intersected and that they have $UV_1=(u_1, v_1)$, $UV_2=(u_2, v_2)$ and $UV_3=(u_3, v_3)$ for texture coordinates respectively, we can define:
+
+``` math
+\displaylines{e_1 = UV_2-UV_1=(u_2-u_1, v_2-v_1) \\ e_2 = UV_3-UV_2=(u_3-u_2, v_3-v_2)}
+```
+
+
+$$$$
+
+Note that T and B need to be aligned with the $U$ and $V$ directions of the texture. A generic algorithm ([Duff, 2017](https://graphics.pixar.com/library/OrthonormalB/paper.pdf) for example) for finding arbitrary tangent and a bitangent vectors to a normal cannot be used here.
+
+### Interactive ImGui Interface & FPS Camera
+
+When rendering on the GPU, an ImGui interface is available to help playing with the parameters of the path tracer.
+
+The goal of the interface really is to allow experimentations in terms of performance and visual impact.
+
+![ImGui interface](./img/imguiInterface.jpg)
+
+The GUI also offers a first-person camera to move around the scene:
+	- Right click to pan
+	- Left click for rotating the view
+	- Mouse wheel for zooming in/out
+### Visualization
+
+Again with the goal of experimenting and better understand what is happening under the hood, the "Display view" option in the ImGui interface under "Render settings" allows to change what the viewport is displaying. For example, The AOVs (Arbitrary Output Values, which are additional data fed to the denoiser to help it denoiser better) of the denoiser such as the normals and albedo color of the scene can be visualized (this can also serve for debugging and making sure everything is in order)
+
+![Denoiser normal visualization](./img/denoiserAlbedoNormal.jpg)
+
+More visualization options are available (adaptive sampling heatmap as used in the [adaptive sampling section](per-pixel-adaptive-sampling) is one of them), have a look at them in the app!
+
+### ASSIMP
+
+[ASSIMP](https://github.com/assimp/assimp) is a library that provides a uniform interface for parsing [many](https://github.com/assimp/assimp/blob/master/doc/Fileformats.md) different file formats. Although not all extensions of some important file formats are not supported (ASSIMP doesn't seem to be recognizing the PBR extension of OBJ ("aniso" keyword issue) files and doesn't support all GLTF 2.0 extensions for example), ASSIMP vastly improves the range of scene files supported by the application.
 
 ### TODO
  - Optimized application startup time with:
@@ -118,5 +167,3 @@ Nonetheless, this naive way of estimating the error of a pixel can provide very 
 	- Asynchronous path tracing kernel compilation
 ### TODO
 - Intel Open Image Denoise + Normals & Albedo AOV support
-
-### TODO

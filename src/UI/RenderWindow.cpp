@@ -30,7 +30,8 @@
 
 
 // TODO Code Organization:
-// - refactor compiler options
+// - A godd way to automatically find MSBuild with CMake? Build HIPRT with make instead of VS?
+// - refactor HIPCC compiler options
 // - Destroy buffers when disabling adaptive sampling to save VRAM
 // - uniform #ifndef in Device headers
 // - Refactor material editor

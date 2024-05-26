@@ -22,6 +22,12 @@ out vec4 out_color;
 #ifdef COMPUTE_SCREENSHOTER
 layout(local_size_x = 8, local_size_y = 8) in;
 #endif // COMPUTE_SCREENSHOTER
+
+float Luminance(vec4 color)
+{
+	return 0.212671f * color.r + 0.715160f * color.g + 0.072169f * color.b;
+}
+
 void main()
 {
 #ifdef COMPUTE_SCREENSHOTER																		
