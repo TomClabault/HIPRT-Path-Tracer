@@ -37,8 +37,7 @@ Adaptive sampling allows us to do just that. The idea is to estimate the error o
 A very simple error metric is that of the variance of the luminance $\sigma^2$ of the pixel. In practice, we want to estimate the variance of a pixel across the $N$ samples $x_k$ it has received so far. 
 
 The variance of $N$ samples is usually computed as:
-#### $$\sigma^2 = \frac{1}{N}\sum_{k=1}^N (x_k - \mu) ^2$$
-
+$$\sigma^2 = \frac{1}{N}\sum_{k=1}^N (x_k - \mu) ^2$$
 However, this approach would imply keeping the average of each pixel's samples (which is the framebuffer itself so that's fine) as well as the values of all samples (that's not fine). Every time we want to estimate the error of a single pixel, we would then have to loop over all the previous samples to compute their difference with the average and get our variance $\sigma^2$. Keeping track of all the samples is infeasible in terms of memory consumption (that would be 2GB of RAM/VRAM for a mere 256 samples' floating-point luminance at 1080p) and looping over all the samples seen so far is computationally way too demanding.
 
 The practical solution is to evaluate the running-variance of the $N$ pixel samples $x_k$:
@@ -46,8 +45,8 @@ $$\sigma^2 = \frac{1}{N - 1} \left(\sum_{k=1}^N x_k^2 - \left( \sum_{k=1}^N x_k 
   *Note that due to the nature of floating point numbers, this formula can have some precision issues. [This](https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Online_algorithm) Wikipedia article presents good alternatives.*
 
 With the variance, we can compute a 95% confidence interval $I$:
-#### $$I = 1.96 \frac{\sigma}{\sqrt{N}}$$
-This 95% confidence interval gives us a range around our samples mean $\mu$ and we can be 95% sure that, for the current number of samples $N$ and and their variance $\sigma$ that we used to compute this interval, the converged mean (true mean) of an infinite amount of samples is in that interval.
+$$I = 1.96 \frac{\sigma}{\sqrt{N}}$$
+ This 95% confidence interval gives us a range around our samples mean $\mu$ and we can be 95% sure that, for the current number of samples $N$ and and their variance $\sigma$ that we used to compute this interval, the converged mean (true mean) of an infinite amount of samples is in that interval.
 
 ![Confidence interval visualization](./img/confidenceInterval.png)
 
@@ -67,16 +66,14 @@ Knowing that we can interpret $I$ as a measure of the convergence of our pixel, 
 
 **When do we assume that our pixel has sufficiently converged and stop sampling?**
 
-We use that user-given threshold $T$ we talked about earlier! Specifically, we can assume that if: 
-#### $$I \leq T\mu$$
-Then that pixel has converged enough for that threshold $T$. As a practical example, consider $T=0$. We then have:
+We use that user-given threshold $T$ we talked about earlier! Specifically, we can assume that if:  $$I \leq T\mu$$Then that pixel has converged enough for that threshold $T$. As a practical example, consider $T=0$. We then have:
 
 ``` math
 \displaylines{I \leq T\mu \\ I \leq 0}
 ```
 If $I =0$, then the interval completely collapses on $\mu$. Said otherwise, $\mu$ **is** the true mean and our pixel has completely converged. Thus, for $T=0$, we will only stop sampling the pixel when it has fully converged.
 
-In practice, having $I=0$ is infeasible. After some experimentations a $T$ threshold of $0.1$ seem to target a very reasonable amount of noise. Any $T$ lower than that represents a significant overhead in terms of rendering time for a visually incremental improvement on the perceived level of noise:
+In practice, having $I=0$ is infeasible. After some experimentations a $T$ threshold of $0.1$ seems to target a visually very reasonable amount of noise. Any $T$ lower than that represents quite the overhead in terms of rendering times but can still provide some improvements on the perceived level of noise:
 
 ![cornellThreshold](./img/cornellThreshold.jpg)
 *Comparison of the noise level obtained after all pixels have converged and stopped sampling with a varying **T** threshold*
@@ -120,7 +117,9 @@ The three channels RGB of a pixel of the texture respectively represent the X, Y
 
 Bringing the pixel from $[0, 1]$ to the tangent space normal in $[-1, 1]$ is fairly straightforward: $$Pixel * 2 - 1 = Normal_{TS}$$The more interesting question is how to bring the normal from tangent space to the coordinate space of our mesh (and then the world) so that we can actually use our normal for the lighting calculations. To do that, we're going to need a transformation matrix, also called an ONB (Orthonormal Basis) in this case. This matrix will let us bring the tangent space normal to mesh space (a change of basis).
 
-![tangentSpace](./img/normalMappingTBN.jpg)
+<p align="center">
+  <img src="./img/normalMappingTBN.jpg" />
+</p>
 *TBN vectors used for the ONB matrix calculation. Illustration from [LearnOpenGL](https://learnopengl.com/Advanced-Lighting/Normal-Mapping)*
 
 But how do we find that matrix?
@@ -131,11 +130,11 @@ The matrix is going to be built from three vectors: $T$, $B$ and $N$. $T$ and $B
 
 The goal is then to find these $T$ and $B$ vectors. We know that these two vectors are aligned with the $U$ and $V$ directions of the texture respectively. If $p_0$, $p_1$ and $p_2$ are the three vertices in counter-clockwise order of the triangle that we intersected and that they have $UV_1=(u_1, v_1)$, $UV_2=(u_2, v_2)$ and $UV_3=(u_3, v_3)$ for texture coordinates respectively, we can define:
 
-``` math
+```math
 \displaylines{e_1 = UV_2-UV_1=(u_2-u_1, v_2-v_1) \\ e_2 = UV_3-UV_2=(u_3-u_2, v_3-v_2)}
 ```
 
-Note that T and B need to be aligned with the $U$ and $V$ directions of the texture. A generic algorithm ([Duff, 2017](https://graphics.pixar.com/library/OrthonormalB/paper.pdf) for example) for finding arbitrary tangent and a bitangent vectors to a normal cannot be used here.
+Note that $T$ and $B$ need to be aligned with the $U$ and $V$ directions of the texture. A generic algorithm ([Duff, 2017](https://graphics.pixar.com/library/OrthonormalB/paper.pdf) for example) for finding arbitrary tangent and a bitangent vectors to a normal cannot be used here.
 
 ### Interactive ImGui Interface & FPS Camera
 
