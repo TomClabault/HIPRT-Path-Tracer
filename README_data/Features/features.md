@@ -42,7 +42,7 @@ The variance of $N$ samples is usually computed as:
 However, this approach would imply keeping the average of each pixel's samples (which is the framebuffer itself so that's fine) as well as the values of all samples (that's not fine). Every time we want to estimate the error of a single pixel, we would then have to loop over all the previous samples to compute their difference with the average and get our variance $\sigma^2$. Keeping track of all the samples is infeasible in terms of memory consumption (that would be 2GB of RAM/VRAM for a mere 256 samples' floating-point luminance at 1080p) and looping over all the samples seen so far is computationally way too demanding.
 
 The practical solution is to evaluate the running-variance of the $N$ pixel samples $x_k$:
-#### $$\sigma^2 = \frac{1}{N - 1} \left(\sum_{k=1}^N x_k^2 - \left( \sum_{k=1}^N x_k \right)^2\right)$$
+$$\sigma^2 = \frac{1}{N - 1} \left(\sum_{k=1}^N x_k^2 - \left( \sum_{k=1}^N x_k \right)^2\right)$$
   *Note that due to the nature of floating point numbers, this formula can have some precision issues. [This](https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Online_algorithm) Wikipedia article presents good alternatives.*
 
 With the variance, we can compute a 95% confidence interval $I$:
@@ -70,7 +70,10 @@ Knowing that we can interpret $I$ as a measure of the convergence of our pixel, 
 We use that user-given threshold $T$ we talked about earlier! Specifically, we can assume that if: 
 #### $$I \leq T\mu$$
 Then that pixel has converged enough for that threshold $T$. As a practical example, consider $T=0$. We then have:
-#### $$I \leq T\mu \ \ \Leftrightarrow \ \ I \leq 0$$
+
+``` math
+\displaylines{I \leq T\mu \\ I \leq 0}
+```
 If $I =0$, then the interval completely collapses on $\mu$. Said otherwise, $\mu$ **is** the true mean and our pixel has completely converged. Thus, for $T=0$, we will only stop sampling the pixel when it has fully converged.
 
 In practice, having $I=0$ is infeasible. After some experimentations a $T$ threshold of $0.1$ seem to target a very reasonable amount of noise. Any $T$ lower than that represents a significant overhead in terms of rendering time for a visually incremental improvement on the perceived level of noise:
@@ -132,9 +135,6 @@ The goal is then to find these $T$ and $B$ vectors. We know that these two vecto
 \displaylines{e_1 = UV_2-UV_1=(u_2-u_1, v_2-v_1) \\ e_2 = UV_3-UV_2=(u_3-u_2, v_3-v_2)}
 ```
 
-
-$$$$
-
 Note that T and B need to be aligned with the $U$ and $V$ directions of the texture. A generic algorithm ([Duff, 2017](https://graphics.pixar.com/library/OrthonormalB/paper.pdf) for example) for finding arbitrary tangent and a bitangent vectors to a normal cannot be used here.
 
 ### Interactive ImGui Interface & FPS Camera
@@ -146,16 +146,16 @@ The goal of the interface really is to allow experimentations in terms of perfor
 ![ImGui interface](./img/imguiInterface.jpg)
 
 The GUI also offers a first-person camera to move around the scene:
-	- Right click to pan
-	- Left click for rotating the view
-	- Mouse wheel for zooming in/out
+- Right click to pan
+- Left click for rotating the view
+- Mouse wheel for zooming in/out
 ### Visualization
 
 Again with the goal of experimenting and better understand what is happening under the hood, the "Display view" option in the ImGui interface under "Render settings" allows to change what the viewport is displaying. For example, The AOVs (Arbitrary Output Values, which are additional data fed to the denoiser to help it denoiser better) of the denoiser such as the normals and albedo color of the scene can be visualized (this can also serve for debugging and making sure everything is in order)
 
 ![Denoiser normal visualization](./img/denoiserAlbedoNormal.jpg)
 
-More visualization options are available (adaptive sampling heatmap as used in the [adaptive sampling section](per-pixel-adaptive-sampling) is one of them), have a look at them in the app!
+More visualization options are available (adaptive sampling heatmap as used in the [adaptive sampling section](#per-pixel-adaptive-sampling) is one of them), have a look at them in the app!
 
 ### ASSIMP
 

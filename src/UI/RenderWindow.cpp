@@ -15,8 +15,6 @@
 #include "stb_image_write.h"
 
 // TODO bugs
-// - fresnel still visible at high roughness?
-// - are we pushing the shadow rays in the right direction when sampling env map while inside surface? It's weird that disabling the env map surface while in a surface darkens the render
 // - something is unsafe on NVIDIA + Windows + nested-dielectrics-complex.gltf + 48 bounces minimum + nested dielectric strategy RT Gems. We get a CPU-side orochi error when downloading the framebuffer for displaying indicating that some illegal memory was accessed. Is the buffer corrupted by something?
 // - when adaptive sampling is on and holding click (render low resolution), some grid artifacts show up (doesn't even need adaptive sampling enabled to do that actually)
 // - normals AOV not converging correctly ?
@@ -30,7 +28,8 @@
 
 
 // TODO Code Organization:
-// - A godd way to automatically find MSBuild with CMake? Build HIPRT with make instead of VS?
+// - fork HIPRT and remove the encryption thingy that slows down kernel compilation on NVIDIA
+// - A good way to automatically find MSBuild with CMake? Build HIPRT with make instead of VS?
 // - refactor HIPCC compiler options
 // - Destroy buffers when disabling adaptive sampling to save VRAM
 // - uniform #ifndef in Device headers
@@ -913,7 +912,7 @@ void RenderWindow::draw_render_settings_panel()
 	{
 		converged_count = m_renderer.get_stop_noise_threshold_buffer().download_data()[0] * (!m_render_settings.enable_adaptive_sampling);
 		total_pixel_count = m_renderer.m_render_width * m_renderer.m_render_height;
-		ImGui::Text("Pixels converged: %d / %d - %.2f%%", converged_count, total_pixel_count, static_cast<float>(converged_count) / total_pixel_count * 100.0f);
+		ImGui::Text("Pixels converged: %d / %d - %.4f%%", converged_count, total_pixel_count, static_cast<float>(converged_count) / total_pixel_count * 100.0f);
 	}
 	ImGui::TreePop();
 	ImGui::EndDisabled();
