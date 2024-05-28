@@ -7,7 +7,7 @@
 
 Camera::Camera()
 {
-    translation = glm::vec3(0.0f, 2.0f, 0.0f);
+    translation = glm::vec3(0.0f, 0.0f, 0.0f);
     rotation = glm::quat(glm::vec3(0.0f, 0.0f, 0.0f));
 }
 

@@ -45,8 +45,10 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 ## Prerequisites
 ### Windows
 #### - AMD GPUs
-Nothing to do, go to the "**Compiling**" step.
+
+Nothing to do, go to the "[**Compiling**](#compiling)" step.
 #### - NVIDIA GPUs
+
 To build the project on NVIDIA hardware, you will need to install the NVIDIA CUDA SDK v12.2. It can be downloaded and installed from [here](https://developer.nvidia.com/cuda-12-2-0-download-archive).
 
 The CMake build then expects the CUDA_PATH environment variable to be defined. This should automatically be the case after installing the CUDA Toolkit but just in case, you can define it yourself such that CUDA_PATH/include/cuda.h is a valid file path.
@@ -110,6 +112,19 @@ cmake ..
 On Windows, a Visual Studio solution will be generated in the `build` folder that you can open and compile the project with (select `HIPRTPathTracer` as startup project).
 
 On Linux, the executable will be generated in the `build` folder.
+
+## Usage
+
+`./HIPRT-Path-Tracer`
+
+The following arguments are available:
+- `<scene file path>` an argument of the commandline without prefix will be considered as the scene file. File formats [supported](https://github.com/assimp/assimp/blob/master/doc/Fileformats.md).
+- `--sky=<path>` for the equirectangular skysphere used during rendering (HDR or not)
+- `--samples=N` for the number of samples to trace (this argument is CPU-rendering only)
+- `--bounces=N` for the maximum number of bounces in the scene (this argument is CPU-rendering only)
+- `--w=N` / `--width=N` for the width of the rendering (this argument is CPU-rendering only)
+- `--h=N` / `--height=N` for the height of the rendering (this argument is CPU-rendering only)
+
 # License
 
 GNU General Public License v3.0 or later

@@ -97,6 +97,7 @@ public:
 	void display(OpenGLInteropBuffer<T>& buffer);
 
 	void draw_render_settings_panel();
+	void draw_lighting_panel();
 	void draw_objects_panel();
 	void show_denoiser_panel();
 	void draw_post_process_panel();

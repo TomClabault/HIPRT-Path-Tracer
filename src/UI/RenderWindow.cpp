@@ -14,7 +14,12 @@
 
 #include "stb_image_write.h"
 
+#define GLM_ENABLE_EXPERIMENTAL
+#include "glm/gtx/euler_angles.hpp"
+
 // TODO bugs
+// - kernel register count not working on AMD anymore since NVIDIA CC 7.5 fix
+// - anisotropy rotation broken?
 // - memory leak somewhere with long running renders
 // - TO TEST AGAIN: something is unsafe on NVIDIA + Windows + nested-dielectrics-complex.gltf + 48 bounces minimum + nested dielectric strategy RT Gems. We get a CPU-side orochi error when downloading the framebuffer for displaying indicating that some illegal memory was accessed. Is the buffer corrupted by something?
 // - when adaptive sampling is on and holding click (render low resolution), some grid artifacts show up (doesn't even need adaptive sampling enabled to do that actually)
@@ -46,11 +51,14 @@
 
 
 // TODO Features:
+// - look at blender cycles "medium contrast", "medium low constract", "medium high", ...
+// - why the 0.25f clearcoat weight? look in blender cycles
 // - normal mapping strength
 // - blackbody light emitters
 // - ACES mapping
 // - better post processing: contrast, low, medium, high exposure curve
 // - bloom post processing
+// - lock cursor in the window when moving camera
 // - hold shift for faster camera
 // - hold CTRL for slower camera
 // - BRDF swapper ImGui : Disney, Lambertian, Oren Nayar, Cook Torrance, Perfect fresnel dielectric reflect/transmit
@@ -937,16 +945,25 @@ void RenderWindow::draw_render_settings_panel()
 		ImGui::TreePush("Adaptive sampling tree");
 
 		m_render_dirty |= ImGui::Checkbox("Enable adaptive sampling", &m_render_settings.enable_adaptive_sampling);
+
+		ImGui::BeginDisabled(!m_render_settings.enable_adaptive_sampling);
 		m_render_dirty |= ImGui::InputInt("Adaptive sampling minimum samples", &m_render_settings.adaptive_sampling_min_samples);
 		if (ImGui::InputFloat("Adaptive sampling noise threshold", &m_render_settings.adaptive_sampling_noise_threshold))
 		{
 			m_render_settings.adaptive_sampling_noise_threshold = std::max(0.0f, m_render_settings.adaptive_sampling_noise_threshold);
 			m_render_dirty = true;
 		}
+		ImGui::EndDisabled();
 
 		ImGui::TreePop();
 	}
 
+	ImGui::TreePop();
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+}
+
+void RenderWindow::draw_lighting_panel()
+{
 	if (ImGui::CollapsingHeader("Lighting"))
 	{
 		ImGui::TreePush("Lighting tree");
@@ -955,18 +972,56 @@ void RenderWindow::draw_render_settings_panel()
 		m_render_dirty |= ImGui::RadioButton("Use uniform lighting", ((int*)&m_renderer.get_world_settings().ambient_light_type), 1); ImGui::SameLine();
 		m_render_dirty |= ImGui::RadioButton("Use envmap lighting", ((int*)&m_renderer.get_world_settings().ambient_light_type), 2);
 
-		ImGui::BeginDisabled(m_renderer.get_world_settings().ambient_light_type != AmbientLightType::UNIFORM);
-		m_render_dirty |= ImGui::ColorEdit3("Uniform light color", (float*)&m_renderer.get_world_settings().uniform_light_color, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
-		ImGui::EndDisabled();
+		if (m_renderer.get_world_settings().ambient_light_type == AmbientLightType::UNIFORM)
+		{
+			m_render_dirty |= ImGui::ColorEdit3("Uniform light color", (float*)&m_renderer.get_world_settings().uniform_light_color, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
+		}
+		else if (m_renderer.get_world_settings().ambient_light_type == AmbientLightType::ENVMAP)
+		{
+			static float rota_X = 0.0f, rota_Y = 0.0f, rota_Z = 0.0f;
+			bool rotation_changed;
+
+			rotation_changed = false;
+			rotation_changed |= ImGui::SliderFloat("Envmap rotation X", &rota_X, 0.0f, 1.0f);
+			rotation_changed |= ImGui::SliderFloat("Envmap rotation Y", &rota_Y, 0.0f, 1.0f);
+			rotation_changed |= ImGui::SliderFloat("Envmap rotation Z", &rota_Z, 0.0f, 1.0f);
+
+			if (rotation_changed)
+			{
+				glm::mat4x4 rotation_matrix;
+				
+				// glm::orientate3 interprets the X, Y and Z angles we give it as a yaw/pitch/roll semantic.
+				// 
+				// The standard yaw/pitch/roll interpretation is:
+				//	- Yaw for rotation around Z
+				//	- Pitch for rotation around Y
+				//	- Roll for rotation around X
+				// 
+				// but with a Z-up coordinate system. We want a Y-up coordinate system so
+				// we want our Yaw to rotate around Y instead of Z (and our Pitch to rotate around Z).
+				// 
+				// This means that we need to reverse Y and Z.
+				// 
+				// See this picture for a visual aid on what we **don't** want (the z-up):
+				// https://www.researchgate.net/figure/xyz-and-pitch-roll-and-yaw-systems_fig4_253569466
+				rotation_matrix = glm::orientate3(glm::vec3(rota_X * 2.0f * M_PI, rota_Z * 2.0f * M_PI, rota_Y * 2.0f * M_PI));
+				m_renderer.get_world_settings().envmap_rotation_matrix = *reinterpret_cast<float4x4*>(&rotation_matrix);
+			}
+
+			m_render_dirty |= rotation_changed;
+			m_render_dirty |= ImGui::SliderFloat("Envmap intensity", (float*)&m_renderer.get_world_settings().envmap_intensity, 0.0f, 10.0f);
+			ImGui::TreePush("Envmap intensity tree");
+			m_render_dirty |= ImGui::Checkbox("Scale background intensity", &m_renderer.get_world_settings().envmap_scale_background_intensity);
+			ImGui::TreePop();
+		}
 
 		// Ensuring no negative light color
 		m_renderer.get_world_settings().uniform_light_color.clamp(0.0f, 1.0e38f);
 
 		ImGui::TreePop();
-	}
 
-	ImGui::TreePop();
-	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+	}
 }
 
 void RenderWindow::draw_objects_panel()
@@ -1163,6 +1218,7 @@ void RenderWindow::draw_imgui()
 	ImGui::PushItemWidth(233);
 
 	draw_render_settings_panel();
+	draw_lighting_panel();
 	draw_objects_panel();
 	//show_denoiser_panel();
 	draw_post_process_panel();

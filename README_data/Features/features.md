@@ -219,6 +219,8 @@ d & -b \\
 \end{bmatrix}
 ```
 
+*Sidenote yet again: when the determinant $ad-bc$ of the matrix is equal to 0, we're getting a division by 0 in the fraction and we cannot compute the inverse of the matrix. This is why matrices that have a determinant equal to 0 cannot be inversed. Such a matrix is said to be singular.*
+
 Our $T$ and $B$ vectors now computed, the TBN matrix that will allow us to pass from the normal of our normal map (tangent space) to the model-space is given by:
 
 ```math

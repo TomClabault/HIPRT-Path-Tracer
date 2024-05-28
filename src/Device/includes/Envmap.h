@@ -17,9 +17,12 @@
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_environment_map_from_direction(const WorldSettings& world_settings, const float3& direction)
 {
+    // Taking envmap rotation into account
+    float3 rotated_direction = matrix_X_vec(world_settings.envmap_rotation_matrix, direction);;
     float u, v;
-    u = 0.5f + atan2(direction.z, direction.x) / (2.0f * (float)M_PI);
-    v = 0.5f + asin(direction.y) / (float)M_PI;
+
+    u = 0.5f + atan2(rotated_direction.z, rotated_direction.x) / (2.0f * M_PI);
+    v = 0.5f + asin(rotated_direction.y) / M_PI;
 
     return sample_environment_map_texture(world_settings, make_float2(u, 1.0f - v));
 }
@@ -84,6 +87,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_environment_map(const HIPRTRender
 
     const WorldSettings& world_settings = render_data.world_settings;
 
+    if (world_settings.envmap_intensity <= 0.0f)
+        // No need to sample the envmap if the user has set the intensity to 0
+        return ColorRGB(0.0f);
+
     int x, y;
     unsigned int cdf_size = world_settings.envmap_width * world_settings.envmap_height;
     float env_map_total_sum = world_settings.envmap_cdf[cdf_size - 1];
@@ -92,9 +99,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_environment_map(const HIPRTRender
     float u = (float)x / world_settings.envmap_width;
     float v = (float)y / world_settings.envmap_height;
     float phi = u * 2.0f * M_PI;
-    // Clamping to avoid theta = 0 which would imply a skysphere direction straight up
-    // which leads to a pdf of infinity since it is a singularity
-    float theta = hippt::max(1.0e-5f, v * (float)M_PI);
+    // Clamping because a theta of 0.0f would mean straight up which means singularity
+    // which means not good for numerical stability
+    float theta = hippt::max(1.0e-5f, v * M_PI);
 
     ColorRGB env_sample;
     float sin_theta = sin(theta);
@@ -102,6 +109,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_environment_map(const HIPRTRender
 
     // Convert to cartesian coordinates
     float3 sampled_direction = make_float3(-sin_theta * cos(phi), -cos_theta, -sin_theta * sin(phi));
+    // Taking envmap rotation into account
+    sampled_direction = matrix_X_vec(world_settings.envmap_rotation_matrix, sampled_direction);
 
     float cosine_term = hippt::dot(closest_hit_info.shading_normal, sampled_direction);
     if (cosine_term > 0.0f)
@@ -113,17 +122,27 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_environment_map(const HIPRTRender
         bool in_shadow = evaluate_shadow_ray(render_data, shadow_ray, 1.0e38f);
         if (!in_shadow)
         {
-            ColorRGB pixel = sample_environment_map_texture(world_settings, make_float2(u, 1.0f - v));
-            float env_map_pdf = luminance(pixel) / env_map_total_sum;
+            ColorRGB pixel;
+            float env_map_pdf;
+
+            pixel = sample_environment_map_texture(world_settings, make_float2(u, 1.0f - v));
+            env_map_pdf = luminance(pixel) / env_map_total_sum;
             env_map_pdf = (env_map_pdf * world_settings.envmap_width * world_settings.envmap_height) / (2.0f * M_PI * M_PI * sin_theta);
 
-            ColorRGB env_map_radiance = sample_environment_map_texture(world_settings, make_float2(u, 1.0f - v));
-            float pdf;
-            RayVolumeState trash_state;
-            ColorRGB brdf = brdf_dispatcher_eval(render_data.buffers.materials_buffer, material, trash_state, view_direction, closest_hit_info.shading_normal, sampled_direction, pdf);
+            if (env_map_pdf > 0.0f)
+            {
+                float pdf;
+                float mis_weight;
+                RayVolumeState trash_state;
+                ColorRGB env_map_radiance;
+                ColorRGB brdf;
 
-            float mis_weight = power_heuristic(env_map_pdf, pdf);
-            env_sample = brdf * cosine_term * mis_weight * env_map_radiance / env_map_pdf;
+                env_map_radiance = sample_environment_map_texture(world_settings, make_float2(u, 1.0f - v));
+                brdf = brdf_dispatcher_eval(render_data.buffers.materials_buffer, material, trash_state, view_direction, closest_hit_info.shading_normal, sampled_direction, pdf);
+
+                mis_weight = power_heuristic(env_map_pdf, pdf);
+                env_sample = brdf * cosine_term * mis_weight * env_map_radiance / env_map_pdf;
+            }
         }
     }
 
@@ -147,12 +166,16 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_environment_map(const HIPRTRender
             float theta_brdf_dir = acos(brdf_sampled_dir.z);
             float sin_theta_bdrf_dir = sin(theta_brdf_dir);
             float env_map_pdf = skysphere_color.luminance() / env_map_total_sum;
+            if (env_map_pdf > 0.0f)
+            {
+                float mis_weight;
 
-            env_map_pdf *= world_settings.envmap_width * world_settings.envmap_height;
-            env_map_pdf /= (2.0f * M_PI * M_PI * sin_theta_bdrf_dir);
+                env_map_pdf *= world_settings.envmap_width * world_settings.envmap_height;
+                env_map_pdf /= (2.0f * M_PI * M_PI * sin_theta_bdrf_dir);
 
-            float mis_weight = power_heuristic(brdf_sample_pdf, env_map_pdf);
-            brdf_sample = skysphere_color * mis_weight * cosine_term * brdf_imp_sampling / brdf_sample_pdf;
+                mis_weight = power_heuristic(brdf_sample_pdf, env_map_pdf);
+                brdf_sample = skysphere_color * mis_weight * cosine_term * brdf_imp_sampling / brdf_sample_pdf;
+            }
         }
     }
 

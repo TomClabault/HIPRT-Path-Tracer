@@ -57,7 +57,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB cook_torrance_brdf(const RendererMateria
         ColorRGB kD = ColorRGB(1.0f - metallic); //Metals do not have a base_color part
         kD = kD * (ColorRGB(1.0f) - F);//Only the transmitted light is diffused
 
-        ColorRGB diffuse_part = kD * base_color / (float)M_PI;
+        ColorRGB diffuse_part = kD * base_color / M_PI;
         ColorRGB specular_part = (F * D * G) / (4.0f * NoV * NoL);
 
         brdf_color = diffuse_part + specular_part;
@@ -77,7 +77,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB cook_torrance_brdf_importance_sample(con
     float rand1 = random_number_generator();
     float rand2 = random_number_generator();
 
-    float phi = 2.0f * (float)M_PI * rand1;
+    float phi = 2.0f * M_PI * rand1;
     float theta = acos((1.0f - rand2) / (rand2 * (alpha * alpha - 1.0f) + 1.0f));
     float sin_theta = sin(theta);
 
@@ -117,7 +117,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB cook_torrance_brdf_importance_sample(con
         ColorRGB kD = ColorRGB(1.0f - metallic); //Metals do not have a base_color part
         kD = kD * (ColorRGB(1.0f) - F);//Only the transmitted light is diffused
 
-        ColorRGB diffuse_part = kD * base_color / (float)M_PI;
+        ColorRGB diffuse_part = kD * base_color / M_PI;
         ColorRGB specular_part = (F * D * G) / (4.0f * NoV * NoL);
 
         pdf = D * NoH / (4.0f * VoH);

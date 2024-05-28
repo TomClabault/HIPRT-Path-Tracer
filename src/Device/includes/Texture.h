@@ -8,6 +8,7 @@
 
 #include "Device/includes/FixIntellisense.h"
 #include "HostDeviceCommon/Color.h"
+#include "HostDeviceCommon/RenderData.h"
 
 #ifndef __KERNELCC__
 #include "Image/Image.h"
@@ -75,7 +76,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_environment_map_texture(const Wor
     envmap_pointer = world_settings.envmap;
 #endif
 
-    return sample_texture_rgb(envmap_pointer, 0, make_int2(world_settings.envmap_width, world_settings.envmap_height), /* is_srgb */ false, uv);
+    return sample_texture_rgb(envmap_pointer, 0, make_int2(world_settings.envmap_width, world_settings.envmap_height), /* is_srgb */ false, uv) * world_settings.envmap_intensity;
 }
 
 template <typename T>

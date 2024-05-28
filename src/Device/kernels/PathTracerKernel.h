@@ -13,7 +13,7 @@
 #include "HostDeviceCommon/Camera.h"
 #include "HostDeviceCommon/Xorshift.h"
 
-#define LOW_RESOLUTION_RENDER_DOWNSCALE 8
+#define LOW_RESOLUTION_RENDER_DOWNSCALE 1
 
 HIPRT_HOST_DEVICE HIPRT_INLINE unsigned int wang_hash(unsigned int seed)
 {
@@ -233,6 +233,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                         // are not importance sampled.
 
                         skysphere_color = sample_environment_map_from_direction(render_data.world_settings, ray.direction);
+                        if (!render_data.world_settings.envmap_scale_background_intensity)
+                            skysphere_color /= render_data.world_settings.envmap_intensity;
                     }
 
                     ray_payload.ray_color += skysphere_color * ray_payload.throughput;
