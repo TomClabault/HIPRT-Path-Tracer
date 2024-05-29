@@ -99,7 +99,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
 #endif
 {
     hiprtHit hit;
-    bool skipping_boundary;
+    bool skipping_volume_boundary = false;
+    bool skipping_intersection = false;
     do
     {
     #ifdef __KERNELCC__
@@ -134,11 +135,23 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
         if (ray_payload.is_inside_volume())
             ray_payload.volume_state.distance_in_volume += hit.t;
 
-        int material_index = render_data.buffers.material_indices[hit.primID];
-        ray_payload.material = get_intersection_material(render_data, material_index, hit_info.texcoords);
-        skipping_boundary = ray_payload.volume_state.interior_stack.push(ray_payload.volume_state.incident_mat_index, ray_payload.volume_state.outgoing_mat_index, ray_payload.volume_state.leaving_mat, material_index, ray_payload.material.dielectric_priority);
+        float base_color_alpha;
+        int material_index;
+        
+        material_index = render_data.buffers.material_indices[hit.primID];
+        ray_payload.material = get_intersection_material(render_data, material_index, hit_info.texcoords, base_color_alpha);
+        skipping_intersection = base_color_alpha < 1.0f;
+        if (skipping_intersection)
+        {
+            // Skipping the intersection now and not doing the volume stack handling
+            ray.origin = hit_info.inter_point + ray.direction * 3.0e-3f;
 
-        if (skipping_boundary)
+            continue;
+        }
+
+        skipping_volume_boundary = ray_payload.volume_state.interior_stack.push(ray_payload.volume_state.incident_mat_index, ray_payload.volume_state.outgoing_mat_index, ray_payload.volume_state.leaving_mat, material_index, ray_payload.material.dielectric_priority);
+
+        if (skipping_volume_boundary)
         {
             // If we're skipping, the boundary, the ray just keeps going on its way
             ray.origin = hit_info.inter_point + ray.direction * 3.0e-3f;
@@ -147,7 +160,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
             ray_payload.volume_state.distance_in_volume += hit.t;
         }
 
-    } while (skipping_boundary && hit.hasHit());
+    } while ((skipping_volume_boundary && hit.hasHit()) || skipping_intersection);
 
     return hit.hasHit();
 }

@@ -18,12 +18,15 @@ template <typename T>
 HIPRT_HOST_DEVICE HIPRT_INLINE void get_material_property(const HIPRTRenderData& render_data, T& output_data, bool is_srgb, const float2& texcoords, int texture_index);
 HIPRT_HOST_DEVICE HIPRT_INLINE void get_metallic_roughness(const HIPRTRenderData& render_data, float& metallic, float& roughness, const float2& texcoords, int metallic_texture_index, int roughness_texture_index, int metallic_roughness_texture_index);
 
-HIPRT_HOST_DEVICE HIPRT_INLINE RendererMaterial get_intersection_material(const HIPRTRenderData& render_data, int material_index, float2 texcoords)
+HIPRT_HOST_DEVICE HIPRT_INLINE RendererMaterial get_intersection_material(const HIPRTRenderData& render_data, int material_index, float2 texcoords, float& out_base_color_alpha)
 {
 	RendererMaterial material = render_data.buffers.materials_buffer[material_index];
+    ColorRGBA base_color_rgba;
 
     get_material_property(render_data, material.emission, false, texcoords, material.emission_texture_index);
-    get_material_property(render_data, material.base_color, true, texcoords, material.base_color_texture_index);
+    get_material_property(render_data, base_color_rgba, true, texcoords, material.base_color_texture_index);
+    material.base_color = ColorRGB(base_color_rgba.r, base_color_rgba.g, base_color_rgba.b);
+    out_base_color_alpha = base_color_rgba.a;
 
     get_metallic_roughness(render_data, material.metallic, material.roughness, texcoords, material.metallic_texture_index, material.roughness_texture_index, material.roughness_metallic_texture_index);
     get_material_property(render_data, material.oren_nayar_sigma, false, texcoords, material.oren_sigma_texture_index);
@@ -78,6 +81,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void get_metallic_roughness(const HIPRTRenderData
 
 template <typename T>
 HIPRT_HOST_DEVICE HIPRT_INLINE void read_data(const ColorRGBA& rgba, T& data) {}
+
+template<>
+HIPRT_HOST_DEVICE HIPRT_INLINE void read_data(const ColorRGBA& rgba, ColorRGBA& data)
+{
+    data = rgba;
+}
 
 template<>
 HIPRT_HOST_DEVICE HIPRT_INLINE void read_data(const ColorRGBA& rgba, ColorRGB& data)
