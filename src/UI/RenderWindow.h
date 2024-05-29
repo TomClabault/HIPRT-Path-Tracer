@@ -106,6 +106,7 @@ public:
 	void draw_imgui();
 
 	void run();
+	void update_keyboard_inputs();
 	void render();
 	void quit();
 

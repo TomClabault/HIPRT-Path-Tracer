@@ -275,25 +275,6 @@ void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, in
 	default:
 		break;
 	}
-
-	float zoom = 0.0f;
-	std::pair<float, float> translation;
-	if (z_pressed)
-		zoom += 1.0f;
-	if (q_pressed)
-		translation.first += 36.0f;
-	if (s_pressed)
-		zoom -= 1.0f;
-	if (d_pressed)
-		translation.first -= 36.0f;
-	if (space_pressed)
-		translation.second += 36.0f;
-	if (lshift_pressed)
-		translation.second -= 36.0f;
-
-	RenderWindow* render_window = reinterpret_cast<RenderWindow*>(glfwGetWindowUserPointer(window));
-	render_window->update_renderer_view_translation(-translation.first, translation.second);
-	render_window->update_renderer_view_zoom(-zoom);
 }
 
 void glfw_mouse_scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
@@ -781,6 +762,8 @@ void RenderWindow::run()
 	{
 		m_start_cpu_frame_time = std::chrono::high_resolution_clock::now();
 
+		update_keyboard_inputs();
+
 		if (m_render_dirty)
 			reset_render();
 
@@ -869,6 +852,27 @@ void RenderWindow::run()
 	}
 
 	quit();
+}
+
+void RenderWindow::update_keyboard_inputs()
+{
+	float zoom = 0.0f;
+	std::pair<float, float> translation;
+	if (z_pressed)
+		zoom += 1.0f;
+	if (q_pressed)
+		translation.first += 36.0f;
+	if (s_pressed)
+		zoom -= 1.0f;
+	if (d_pressed)
+		translation.first -= 36.0f;
+	if (space_pressed)
+		translation.second += 36.0f;
+	if (lshift_pressed)
+		translation.second -= 36.0f;
+
+	update_renderer_view_translation(-translation.first, translation.second);
+	update_renderer_view_zoom(-zoom);
 }
 
 void RenderWindow::render()
