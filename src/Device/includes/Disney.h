@@ -158,6 +158,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_clearcoat_sample(const RendererMate
     float3 microfacet_normal = hippt::normalize(make_float3(sin_theta * cos_phi, sin_theta * sin_phi, cos_theta));
     float3 sampled_direction = reflect_ray(local_view_direction, microfacet_normal);
 
+    // Should already be normalized but float precision issues...
     return hippt::normalize(sampled_direction);
 }
 
@@ -381,7 +382,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_eval(const RendererMaterial* mate
     build_rotated_ONB(shading_normal, TR, BR, material.anisotropic_rotation * M_PI);
     float3 local_view_direction_rotated = world_to_local_frame(TR, BR, shading_normal, view_direction);
     float3 local_to_light_direction_rotated = world_to_local_frame(TR, BR, shading_normal, to_light_direction);
-    float3 local_half_vector_rotated = hippt::normalize(local_view_direction + local_to_light_direction);
+    float3 local_half_vector_rotated = hippt::normalize(local_view_direction_rotated + local_to_light_direction_rotated);
 
     ColorRGB final_color = ColorRGB(0.0f);
     float tmp_pdf = 0.0f, tmp_weight = 0.0f;
@@ -402,7 +403,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_eval(const RendererMaterial* mate
 
     // Clearcoat
     tmp_weight = 0.25f * material.clearcoat;
-    final_color += tmp_weight > 0 && outside_object ? tmp_weight * disney_clearcoat_eval(material, local_view_direction, local_to_light_direction, local_half_vector, tmp_pdf) : ColorRGB(0.0f);
+    final_color += tmp_weight > 0 && outside_object ? tmp_weight * disney_clearcoat_eval(material, local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated, tmp_pdf) : ColorRGB(0.0f);
     pdf += tmp_pdf * tmp_weight;
     tmp_pdf = 0.0f;
 
@@ -508,20 +509,21 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_sample(const RendererMaterial* ma
     float3 local_view_direction = world_to_local_frame(T, B, normal, view_direction);
 
     // Rotated ONB for the anisotropic GTR2 evaluation (metallic and glass only)
+    float3 local_view_direction_rotated;
     float3 TR, BR;
     build_rotated_ONB(normal, TR, BR, material.anisotropic_rotation * M_PI);
-    float3 local_view_direction_rotated = world_to_local_frame(TR, BR, normal, view_direction);
+    local_view_direction_rotated = world_to_local_frame(TR, BR, normal, view_direction);
 
     if (rand_1 < cdf[0])
         output_direction = disney_diffuse_sample(material, normal, random_number_generator);
     else if (rand_1 < cdf[1])
         output_direction = local_to_world_frame(TR, BR, normal, disney_metallic_sample(material, local_view_direction_rotated, random_number_generator));
     else if (rand_1 < cdf[2])
-        output_direction = local_to_world_frame(T, B, normal, disney_clearcoat_sample(material, local_view_direction, random_number_generator));
+        output_direction = local_to_world_frame(TR, BR, normal, disney_clearcoat_sample(material, local_view_direction_rotated, random_number_generator));
     else
         // When sampling the glass lobe, if we're reflecting off the glass, we're going to have to pop the stack.
         // This is handled inside glass_sample because we cannot know from here if we refracted or reflected
-        output_direction = local_to_world_frame(TR, BR, normal, disney_glass_sample(materials_buffer, material, ray_volume_state, local_view_direction, random_number_generator));
+        output_direction = local_to_world_frame(TR, BR, normal, disney_glass_sample(materials_buffer, material, ray_volume_state, local_view_direction_rotated, random_number_generator));
 
     if (hippt::dot(output_direction, shading_normal) < 0 && !(rand_1 > cdf[2]))
         // It can happen that the light direction sampled is below the surface. 
