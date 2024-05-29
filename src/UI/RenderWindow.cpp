@@ -19,8 +19,6 @@
 
 // TODO bugs
 // - kernel register count not working on AMD anymore since NVIDIA CC 7.5 fix
-// - anisotropy rotation broken?
-// - memory leak somewhere with long running renders
 // - TO TEST AGAIN: something is unsafe on NVIDIA + Windows + nested-dielectrics-complex.gltf + 48 bounces minimum + nested dielectric strategy RT Gems. We get a CPU-side orochi error when downloading the framebuffer for displaying indicating that some illegal memory was accessed. Is the buffer corrupted by something?
 // - when adaptive sampling is on and holding click (render low resolution), some grid artifacts show up (doesn't even need adaptive sampling enabled to do that actually)
 // - normals AOV not converging correctly ?

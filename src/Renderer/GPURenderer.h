@@ -64,8 +64,11 @@ private:
 
 	// Properties of the device
 	oroDeviceProp m_device_properties = {};
+	// GPU events to time the frame
+	oroEvent_t m_frame_start_event, m_frame_stop_event;
 	// Time taken to render the last frame
 	float m_frame_time = 0;
+
 
 	// This buffer holds the * sum * of the samples computed
 	// This is an accumulation buffer. This needs to be divided by the

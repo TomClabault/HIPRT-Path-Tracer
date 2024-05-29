@@ -24,17 +24,13 @@ void GPURenderer::render()
 	HIPRTRenderData render_data = get_render_data();
 	void* launch_args[] = { &render_data, &resolution, &hiprt_cam};
 
-	oroEvent_t start, stop;
-
-	OROCHI_CHECK_ERROR(oroEventCreate(&start));
-	OROCHI_CHECK_ERROR(oroEventCreate(&stop));
-	OROCHI_CHECK_ERROR(oroEventRecord(start, 0));
+	OROCHI_CHECK_ERROR(oroEventRecord(m_frame_start_event, 0));
 
 	launch_kernel(8, 8, resolution.x, resolution.y, launch_args);
 
-	OROCHI_CHECK_ERROR(oroEventRecord(stop, 0));
-	OROCHI_CHECK_ERROR(oroEventSynchronize(stop));
-	OROCHI_CHECK_ERROR(oroEventElapsedTime(&m_frame_time, start, stop));
+	OROCHI_CHECK_ERROR(oroEventRecord(m_frame_stop_event, 0));
+	OROCHI_CHECK_ERROR(oroEventSynchronize(m_frame_stop_event));
+	OROCHI_CHECK_ERROR(oroEventElapsedTime(&m_frame_time, m_frame_start_event, m_frame_stop_event));
 
 #ifndef OROCHI_ENABLE_CUEW
 	// We only want to unmap for OpenGL interop buffers that are only available
@@ -172,6 +168,9 @@ void GPURenderer::initialize(int device_index)
 	m_still_one_ray_active_buffer.upload_data(&true_data);
 
 	m_stop_noise_threshold_count_buffer.resize(1);
+
+	OROCHI_CHECK_ERROR(oroEventCreate(&m_frame_start_event));
+	OROCHI_CHECK_ERROR(oroEventCreate(&m_frame_stop_event));
 }
 
 void GPURenderer::compile_trace_kernel(const char* kernel_file_path, const char* kernel_function_name)

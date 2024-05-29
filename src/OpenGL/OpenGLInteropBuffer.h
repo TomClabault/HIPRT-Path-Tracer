@@ -147,6 +147,8 @@ T* OpenGLInteropBuffer<T>::map()
 	CudaGLInterop::CUresult res = CudaGLInterop::cuGraphicsMapResources_oro(1, &m_buffer_resource, 0);
 	res = CudaGLInterop::cuGraphicsResourceGetMappedPointer_v2_oro(reinterpret_cast<CudaGLInterop::CUdeviceptr*>(&m_mapped_pointer), &m_byte_size, m_buffer_resource);
 #else
+	// This call to MapResources seems to be the source of a very slow memory leak but it's hard to say why.
+	// https://forums.developer.nvidia.com/t/cudagraphicsmapresources-cause-memoryleak/269349
 	OROCHI_CHECK_ERROR(oroGraphicsMapResources(1, &m_buffer_resource, 0));
 	OROCHI_CHECK_ERROR(oroGraphicsResourceGetMappedPointer((void**)&m_mapped_pointer, &m_byte_size, m_buffer_resource));
 #endif
