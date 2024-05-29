@@ -44,6 +44,7 @@ public:
 	int get_width();
 	int get_height();
 	void set_interacting(bool is_interacting);
+	bool is_interacting();
 
 	ApplicationSettings& get_application_settings();
 	const ApplicationSettings& get_application_settings() const;
@@ -85,8 +86,8 @@ public:
 	void reset_render();
 
 
-	std::pair<float, float> get_cursor_position();
-	void set_cursor_position(std::pair<float, float> new_position);
+	std::pair<float, float> get_grab_cursor_position();
+	void set_grab_cursor_position(std::pair<float, float> new_position);
 
 	void display(const void* data);
 	template <typename T>
@@ -112,7 +113,7 @@ private:
 	int m_viewport_width, m_viewport_height;
 	// Current mouse cursor position within the window. Used to compute mouse
 	// mouse delta movement by comparing the new mouse position with this variable
-	std::pair<float, float> m_cursor_position;
+	std::pair<float, float> m_grab_cursor_position;
 
 	// Timer started at the first sample. Used to time how long the render has been running
 	// for so far

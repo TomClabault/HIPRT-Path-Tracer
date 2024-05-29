@@ -160,6 +160,7 @@ void glfw_window_resized_callback(GLFWwindow* window, int width, int height)
 }
 
 static bool interacting_left_button = false, interacting_right_button = false;
+static bool just_pressed = false;
 void glfw_mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 {
 	bool imgui_wants_mouse = ImGui::GetIO().WantCaptureMouse;
@@ -167,17 +168,31 @@ void glfw_mouse_button_callback(GLFWwindow* window, int button, int action, int 
 	switch (button)
 	{
 	case GLFW_MOUSE_BUTTON_LEFT:
-		interacting_left_button = (action == GLFW_PRESS) && !imgui_wants_mouse;
+		interacting_left_button = (action == GLFW_PRESS && !imgui_wants_mouse);
 
 		break;
 
 	case GLFW_MOUSE_BUTTON_RIGHT:
-		interacting_right_button = (action == GLFW_PRESS) && !imgui_wants_mouse;
+		interacting_right_button = (action == GLFW_PRESS && !imgui_wants_mouse);
 
 		break;
 	}
-	
-	reinterpret_cast<RenderWindow*>(glfwGetWindowUserPointer(window))->set_interacting(interacting_left_button || interacting_right_button);
+
+	RenderWindow* render_window = reinterpret_cast<RenderWindow*>(glfwGetWindowUserPointer(window));
+
+	bool is_mouse_pressed = interacting_left_button || interacting_right_button;
+	if (is_mouse_pressed)
+	{
+		double current_x, current_y;
+		glfwGetCursorPos(window, &current_x, &current_y);
+		render_window->set_grab_cursor_position(std::make_pair(current_x, current_y));
+
+		just_pressed = true;
+	}
+	else
+		just_pressed = false;
+
+	render_window->set_interacting(is_mouse_pressed);
 }
 
 void glfw_mouse_cursor_callback(GLFWwindow* window, double xpos, double ypos)
@@ -185,12 +200,24 @@ void glfw_mouse_cursor_callback(GLFWwindow* window, double xpos, double ypos)
 	ImGuiIO& io = ImGui::GetIO();
 	if (!io.WantCaptureMouse)
 	{
+		if (just_pressed)
+		{
+			// We want to skip the frame where the mouse is being repositioned to
+			// the center of the screen because if the cursor wasn't at the center,
+			// we're going to consider to delta from the old position to the center as
+			// the moving having moved but it's not the case. The user didn't move the
+			// mouse, it's us forcing it in the center of the viewport
+			just_pressed = false;
+
+			return;
+		}
+
 		RenderWindow* render_window = reinterpret_cast<RenderWindow*>(glfwGetWindowUserPointer(window));
 
 		float xposf = static_cast<float>(xpos);
 		float yposf = static_cast<float>(ypos);
 
-		std::pair<float, float> old_position = render_window->get_cursor_position();
+		std::pair<float, float> old_position = render_window->get_grab_cursor_position();
 		if (old_position.first == -1 && old_position.second == -1)
 			;
 		// If this is the first position of the cursor, nothing to do
@@ -207,7 +234,9 @@ void glfw_mouse_cursor_callback(GLFWwindow* window, double xpos, double ypos)
 		}
 
 		// Updating the position
-		render_window->set_cursor_position(std::make_pair(xposf, yposf));
+		if (render_window->is_interacting())
+			// Locking the cursor in place as long as we're moving the camera
+			glfwSetCursorPos(window, old_position.first, old_position.second);
 	}
 }
 
@@ -475,6 +504,11 @@ void RenderWindow::set_interacting(bool is_interacting)
 	m_render_settings.render_low_resolution = is_interacting;
 }
 
+bool RenderWindow::is_interacting()
+{
+	return m_render_settings.render_low_resolution;
+}
+
 ApplicationSettings& RenderWindow::get_application_settings()
 {
 	return m_application_settings;
@@ -731,14 +765,14 @@ GPURenderer& RenderWindow::get_renderer()
 	return m_renderer;
 }
 
-std::pair<float, float> RenderWindow::get_cursor_position()
+std::pair<float, float> RenderWindow::get_grab_cursor_position()
 {
-	return m_cursor_position;
+	return m_grab_cursor_position;
 }
 
-void RenderWindow::set_cursor_position(std::pair<float, float> new_position)
+void RenderWindow::set_grab_cursor_position(std::pair<float, float> new_position)
 {
-	m_cursor_position = new_position;
+	m_grab_cursor_position = new_position;
 }
 
 void RenderWindow::run()
