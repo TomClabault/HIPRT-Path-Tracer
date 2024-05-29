@@ -44,16 +44,16 @@ public:
 private:
 	bool m_initialized = false;
 	bool m_mapped = false;
-	T* m_mapped_pointer;
+	T* m_mapped_pointer = nullptr;
 
 	size_t m_byte_size = 0;
 
 	GLuint m_buffer_name = -1;
 
 #ifdef OROCHI_ENABLE_CUEW
-	CudaGLInterop::CUgraphicsResource m_buffer_resource;
+	CudaGLInterop::CUgraphicsResource m_buffer_resource = nullptr;
 #else
-	oroGraphicsResource_t m_buffer_resource;
+	oroGraphicsResource_t m_buffer_resource = nullptr;
 #endif
 };
 

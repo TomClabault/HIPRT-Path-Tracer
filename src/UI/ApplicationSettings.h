@@ -27,7 +27,7 @@ struct ApplicationSettings
 
 	bool enable_denoising = false;
 	// How many samples were denoised by the last denoiser call
-	int last_denoised_sample_count;
+	int last_denoised_sample_count = -1;
 	// Denoise only when that maximum sample count is reached
 	bool denoise_at_target_sample_count = false;
 
@@ -57,7 +57,7 @@ struct ApplicationSettings
 	// and viewport_height * resolution_scaling = target_width and target_height
 	// respectively. The values of target_width and target_height are set when the
 	// user ticks the 'keep same resolution' checkbox in ImGui
-	int target_width, target_height;
+	int target_width = 0, target_height = 0;
 
 	// We stop rendering when this number of sample is reached
 	int max_sample_count = 0;

@@ -67,7 +67,7 @@ struct Triangle
 	float3& operator[] (int index);
 	const float3& operator[] (int index) const;
 
-	float3 m_a, m_b, m_c;
+	float3 m_a = {0, 0, 0}, m_b = { 0, 0, 0 }, m_c = { 0, 0, 0 };
 };
 
 #endif

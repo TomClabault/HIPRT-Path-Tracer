@@ -36,7 +36,7 @@ private:
 
 	bool m_is_compute = false;
 	GLuint m_program = -1;
-	GLint m_compute_threads[3];
+	GLint m_compute_threads[3] = { 0, 0, 0 };
 };
 
 #endif

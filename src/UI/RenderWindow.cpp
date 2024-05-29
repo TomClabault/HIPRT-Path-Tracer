@@ -34,6 +34,7 @@
 
 
 // TODO Code Organization:
+// - cleanup orochi gl interop buffer #ifdef everywhere
 // - do we need OpenGL Lib/bin in thirdparties?
 // - fork HIPRT and remove the encryption thingy that slows down kernel compilation on NVIDIA
 // - A good way to automatically find MSBuild with CMake? Build HIPRT with make instead of VS maybe?
@@ -52,20 +53,18 @@
 
 // TODO Features:
 // - look at blender cycles "medium contrast", "medium low constract", "medium high", ...
-// - why the 0.25f clearcoat weight? look in blender cycles
 // - normal mapping strength
 // - blackbody light emitters
 // - ACES mapping
 // - better post processing: contrast, low, medium, high exposure curve
 // - bloom post processing
-// - lock cursor in the window when moving camera
 // - hold shift for faster camera
 // - hold CTRL for slower camera
 // - BRDF swapper ImGui : Disney, Lambertian, Oren Nayar, Cook Torrance, Perfect fresnel dielectric reflect/transmit
 // - choose disney diffuse model (disney, lambertian, oren nayar)
 // - Cool colored thread-safe logger singleton class --> loguru lib
 // - portal envmap sampling --> choose portals with ImGui
-// - we have way better caustics when disabling direct lighting sampling but enabling += emission on hitting an emissive geometry. How to have the benefits of the two?
+// - recursive trace through transmissive / reflective materials for caustics
 // - find a way to not fill the texcoords buffer for meshes that don't have textures
 // - pack RendererMaterial informations such as texture indices (we can probably use 16 bit for a texture index --> 2 texture indices in one 32 bit register)
 // - use 8 bit textures for material properties instead of float
@@ -127,11 +126,9 @@
 // - shader cache (write our own or wait for HIPRT to fix it?)
 // - indirect / direct lighting clamping
 // - choose env map at runtime imgui
-// - env map rotation imgui
 // - choose scene file at runtime imgui
 // - lock camera checkbox to avoid messing up when big render in progress
 // - use defines insead of IFs in the kernel code and recompile kernel everytime (for some options at least to reduce register pressure)
-// - stuff to multithread when loading everything ? (scene, BVH, textures, ...)
 // - PBRT v3 scene parser
 // - Wavefront path tracing
 // - Manifold Next Event Estimation (for refractive caustics) https://jo.dreggn.org/home/2015_mnee.pdf
@@ -185,7 +182,7 @@ void glfw_mouse_button_callback(GLFWwindow* window, int button, int action, int 
 	{
 		double current_x, current_y;
 		glfwGetCursorPos(window, &current_x, &current_y);
-		render_window->set_grab_cursor_position(std::make_pair(current_x, current_y));
+		render_window->set_grab_cursor_position(std::make_pair(static_cast<float>(current_x), static_cast<float>(current_y)));
 
 		just_pressed = true;
 	}

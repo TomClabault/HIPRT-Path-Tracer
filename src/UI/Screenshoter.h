@@ -34,8 +34,8 @@ public:
 	void write_to_png(const char* filepath);
 
 private:
-	GPURenderer* m_renderer;
-	RenderWindow* m_render_window;
+	GPURenderer* m_renderer = nullptr;
+	RenderWindow* m_render_window = nullptr;
 
 	bool m_compute_shader_initialized = false;
 	OpenGLProgram m_active_compute_program;
@@ -44,7 +44,7 @@ private:
 	OpenGLProgram m_albedo_compute_program;
 	OpenGLProgram m_adaptive_sampling_compute_program;
 
-	GLuint m_output_image;
+	GLuint m_output_image = 0;
 	int m_compute_output_image_width = -1;
 	int m_compute_output_image_height = -1;
 };
