@@ -7,6 +7,7 @@
 
 uniform sampler2D u_texture;
 uniform int u_sample_number;
+uniform int u_resolution_scaling;
 
 #ifdef COMPUTE_SCREENSHOTER
 layout(binding = 2, rgba8) writeonly uniform image2D u_output_image;
@@ -27,8 +28,8 @@ void main()
 	if (thread_id.x >= dims.x || thread_id.y >= dims.y)							
 		return;
 
-	imageStore(u_output_image, thread_id, texelFetch(u_texture, thread_id, 0));
+	imageStore(u_output_image, thread_id, texelFetch(u_texture, thread_id / u_resolution_scaling, 0));
 #else
-	out_color = texture(u_texture, vs_tex_coords);
+	out_color = texture(u_texture, vs_tex_coords / u_resolution_scaling);
 #endif
 };

@@ -267,3 +267,7 @@ More visualization options are available (adaptive sampling heatmap as used in t
 	- Asynchronous path tracing kernel compilation
 ### TODO
 - Intel Open Image Denoise + Normals & Albedo AOV support
+
+## TODO
+
+Filter functions

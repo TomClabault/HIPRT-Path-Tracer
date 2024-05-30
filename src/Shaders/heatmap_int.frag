@@ -8,6 +8,7 @@
 // This is a 'scalar' texture, containing data only in the red channel
 // In this shader, it represents the sample count per pixel
 uniform isampler2D u_texture;
+uniform int u_resolution_scaling;
 
 // This shader supports up to 16 color stops. This doesn't mean that
 // the user has to provide 16 stops. The user only provides X stops as
@@ -39,9 +40,9 @@ void main()
 	// We're using abs() here because the sampling count can be negative if 
 	// the pixel isn't being sampled anymore (it has converged and has been 
 	// excluded by the adaptive sampling)
-	float scalar = abs(texelFetch(u_texture, thread_id, 0).r);
+	float scalar = abs(texelFetch(u_texture, thread_id / u_resolution_scaling, 0).r);
 #else
-	float scalar = abs(texture(u_texture, vs_tex_coords).r);
+	float scalar = abs(texture(u_texture, vs_tex_coords / u_resolution_scaling).r);
 #endif
 	
 	if (u_min_val == u_max_val)

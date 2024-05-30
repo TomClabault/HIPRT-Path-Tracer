@@ -13,8 +13,6 @@
 #include "HostDeviceCommon/Camera.h"
 #include "HostDeviceCommon/Xorshift.h"
 
-#define LOW_RESOLUTION_RENDER_DOWNSCALE 1
-
 HIPRT_HOST_DEVICE HIPRT_INLINE unsigned int wang_hash(unsigned int seed)
 {
     seed = (seed ^ 61) ^ (seed >> 16);
@@ -90,11 +88,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
     const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
     const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
 #endif
-    const uint32_t index = (x + y * res.x);
+    uint32_t pixel_index = (x + y * res.x);
 
-    if (index >= res.x * res.y)
+    if (pixel_index >= res.x * res.y)
         return;
 
+    int res_scaling = 1;
     // 'Render low resolution' means that the user is moving the camera for example
     // so we're going to reduce the quality of the render for increased framerates
     // while moving
@@ -103,26 +102,28 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
         // Reducing the number of bounces to 3
         render_data.render_settings.nb_bounces = 3;
         render_data.render_settings.samples_per_frame = 1;
+        res_scaling = render_data.render_settings.render_low_resolution_scaling;
+        pixel_index /= res_scaling;
 
         // If rendering at low resolution, only one pixel out of 
         // LOW_RESOLUTION_RENDER_DOWNSCALE x LOW_RESOLUTION_RENDER_DOWNSCALE will be rendered
-        if (x & (LOW_RESOLUTION_RENDER_DOWNSCALE - 1) || y & (LOW_RESOLUTION_RENDER_DOWNSCALE - 1))
+        if (x % res_scaling != 0 || y % res_scaling != 0)
             return;
     }
 
     if (render_data.render_settings.sample_number == 0)
     {
         // Resetting all buffers on the first frame
-        render_data.buffers.pixels[index] = ColorRGB(0.0f);
-        render_data.aux_buffers.denoiser_normals[index] = make_float3(1.0f, 1.0f, 1.0f);
-        render_data.aux_buffers.denoiser_albedo[index] = ColorRGB(0.0f, 0.0f, 0.0f);
-        render_data.aux_buffers.pixel_sample_count[index] = 0;
-        render_data.aux_buffers.pixel_squared_luminance[index] = 0;
+        render_data.buffers.pixels[pixel_index] = ColorRGB(0.0f);
+        render_data.aux_buffers.denoiser_normals[pixel_index] = make_float3(1.0f, 1.0f, 1.0f);
+        render_data.aux_buffers.denoiser_albedo[pixel_index] = ColorRGB(0.0f, 0.0f, 0.0f);
+        render_data.aux_buffers.pixel_sample_count[pixel_index] = 0;
+        render_data.aux_buffers.pixel_squared_luminance[pixel_index] = 0;
     }
 
     bool sampling_needed = true;
     bool stop_noise_threshold_converged = false;
-    sampling_needed = adaptive_sampling(render_data, index, stop_noise_threshold_converged);
+    sampling_needed = adaptive_sampling(render_data, pixel_index, stop_noise_threshold_converged);
 
     if (stop_noise_threshold_converged)
         // Indicating that this pixel has reached the threshold in render_settings.stop_noise_threshold
@@ -136,7 +137,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
         // The pixels that only received 10 samples are going to be divided by 100 at display time, making them
         // appear too dark.
         // We're rescaling the color of the pixels that stopped sampling here for correct display
-        render_data.buffers.pixels[index] = render_data.buffers.pixels[index] / render_data.render_settings.sample_number * (render_data.render_settings.sample_number + render_data.render_settings.samples_per_frame);
+        render_data.buffers.pixels[pixel_index] = render_data.buffers.pixels[pixel_index] / render_data.render_settings.sample_number * (render_data.render_settings.sample_number + render_data.render_settings.samples_per_frame);
 
         return;
     }
@@ -144,9 +145,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
 
     unsigned int seed;
     if (render_data.render_settings.freeze_random)
-        seed = wang_hash(index + 1);
+        seed = wang_hash(pixel_index + 1);
     else
-        seed = wang_hash((index + 1) * (render_data.render_settings.sample_number + 1));
+        seed = wang_hash((pixel_index + 1) * (render_data.render_settings.sample_number + 1));
     Xorshift32Generator random_number_generator(seed);
 
     float squared_luminance_of_samples = 0.0f;
@@ -263,55 +264,19 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
     // If we got here, this means that we still have at least one ray active
     render_data.aux_buffers.still_one_ray_active[0] = 1;
 
-    render_data.buffers.pixels[index] += final_color;
-    render_data.aux_buffers.pixel_squared_luminance[index] += squared_luminance_of_samples;
-    render_data.aux_buffers.pixel_sample_count[index] += render_data.render_settings.samples_per_frame;
+    render_data.buffers.pixels[pixel_index] += final_color;
+    render_data.aux_buffers.pixel_squared_luminance[pixel_index] += squared_luminance_of_samples;
+    render_data.aux_buffers.pixel_sample_count[pixel_index] += render_data.render_settings.samples_per_frame;
 
     // Handling denoiser's albedo and normals AOVs    
     denoiser_albedo /= (float)render_data.render_settings.samples_per_frame;
     denoiser_normal /= (float)render_data.render_settings.samples_per_frame;
 
-    render_data.aux_buffers.denoiser_albedo[index] = (render_data.aux_buffers.denoiser_albedo[index] * render_data.render_settings.frame_number + denoiser_albedo) / (render_data.render_settings.frame_number + 1.0f);
+    render_data.aux_buffers.denoiser_albedo[pixel_index] = (render_data.aux_buffers.denoiser_albedo[pixel_index] * render_data.render_settings.frame_number + denoiser_albedo) / (render_data.render_settings.frame_number + 1.0f);
 
-    float3 accumulated_normal = (render_data.aux_buffers.denoiser_normals[index] * render_data.render_settings.frame_number + denoiser_normal) / (render_data.render_settings.frame_number + 1.0f);
+    float3 accumulated_normal = (render_data.aux_buffers.denoiser_normals[pixel_index] * render_data.render_settings.frame_number + denoiser_normal) / (render_data.render_settings.frame_number + 1.0f);
     float normal_length = hippt::length(accumulated_normal);
     if (normal_length != 0.0f)
         // Checking that it is non-zero otherwise we would accumulate a persistent NaN in the buffer when normalizing by the 0-length
-        render_data.aux_buffers.denoiser_normals[index] = accumulated_normal / normal_length;
-
-    // TODO have that in the display shader
-    // Handling low resolution render
-    // The framebuffer actually still is at full resolution, it's just that we cast
-    // 1 ray every 4, 8 or 16 pixels (depending on the low resolution factor)
-    // This means that we have "holes" in the rendered where rays will never be cast
-    // this loop fills the wholes by copying the pixel that we rendered to its unrendered
-    // neighbors
-    if (render_data.render_settings.render_low_resolution)
-    {
-        // Copying the pixel we just rendered to the neighbors
-        for (int _y = 0; _y < LOW_RESOLUTION_RENDER_DOWNSCALE; _y++)
-        {
-            for (int _x = 0; _x < LOW_RESOLUTION_RENDER_DOWNSCALE; _x++)
-            {
-                int _index = _y * res.x + _x + index;
-                if (_y == 0 && _x == 0)
-                    // This is ourselves
-                    continue;
-                else if (_index >= res.x * res.y)
-                    // Outside of the framebuffer
-                    return;
-                else
-                {
-                    // Actually a valid pixel
-                    render_data.buffers.pixels[_index] = render_data.buffers.pixels[index];
-
-                    // Also handling the denoiser AOVs. Useful only when the user is moving the camera
-                    // (and thus rendering at low resolution) while the denoiser's normals / albedo has
-                    // been selected as the active viewport view
-                    render_data.aux_buffers.denoiser_albedo[_index] = render_data.aux_buffers.denoiser_albedo[index];
-                    render_data.aux_buffers.denoiser_normals[_index] = render_data.aux_buffers.denoiser_normals[index];
-                }
-            }
-        }
-    }
+        render_data.aux_buffers.denoiser_normals[pixel_index] = accumulated_normal / normal_length;
 }

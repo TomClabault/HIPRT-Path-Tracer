@@ -20,7 +20,6 @@
 // TODO bugs
 // - kernel register count not working on AMD anymore since NVIDIA CC 7.5 fix
 // - TO TEST AGAIN: something is unsafe on NVIDIA + Windows + nested-dielectrics-complex.gltf + 48 bounces minimum + nested dielectric strategy RT Gems. We get a CPU-side orochi error when downloading the framebuffer for displaying indicating that some illegal memory was accessed. Is the buffer corrupted by something?
-// - when adaptive sampling is on and holding click (render low resolution), some grid artifacts show up (doesn't even need adaptive sampling enabled to do that actually)
 // - normals AOV not converging correctly ?
 //		- for the denoiser normals convergence issue, is it an error at the end of the Path Tracer kernel where we're accumulating ? Should we have
 //		render_data.aux_buffers.denoiser_albedo[index] * render_data.render_settings.sample_number 
@@ -32,6 +31,7 @@
 
 
 // TODO Code Organization:
+// - multiple GLTF, one GLB for different point of views per model
 // - cleanup orochi gl interop buffer #ifdef everywhere
 // - do we need OpenGL Lib/bin in thirdparties?
 // - fork HIPRT and remove the encryption thingy that slows down kernel compilation on NVIDIA
@@ -50,6 +50,9 @@
 
 
 // TODO Features:
+// - ray statistics with filter functions
+// - filter function for base color alpha / alpha transparency + better performabce ?
+// - alpha transparency
 // - look at blender cycles "medium contrast", "medium low constract", "medium high", ...
 // - normal mapping strength
 // - blackbody light emitters
@@ -622,6 +625,7 @@ void RenderWindow::update_program_uniforms(OpenGLProgram& program)
 		program.set_uniform("u_texture", RenderWindow::DISPLAY_TEXTURE_UNIT);
 		program.set_uniform("u_sample_number", m_render_settings.sample_number);
 		program.set_uniform("u_do_tonemapping", m_application_settings.do_tonemapping);
+		program.set_uniform("u_resolution_scaling", m_render_settings.render_low_resolution ? m_render_settings.render_low_resolution_scaling : 1);
 		program.set_uniform("u_gamma", m_application_settings.tone_mapping_gamma);
 		program.set_uniform("u_exposure", m_application_settings.tone_mapping_exposure);
 
@@ -631,6 +635,7 @@ void RenderWindow::update_program_uniforms(OpenGLProgram& program)
 	case DisplayView::DISPLAY_DENOISED_ALBEDO:
 		program.set_uniform("u_texture", RenderWindow::DISPLAY_TEXTURE_UNIT);
 		program.set_uniform("u_sample_number", m_render_settings.sample_number);
+		program.set_uniform("u_resolution_scaling", m_render_settings.render_low_resolution ? m_render_settings.render_low_resolution_scaling : 1);
 
 		break;
 
@@ -638,6 +643,7 @@ void RenderWindow::update_program_uniforms(OpenGLProgram& program)
 	case DisplayView::DISPLAY_DENOISED_NORMALS:
 		program.set_uniform("u_texture", RenderWindow::DISPLAY_TEXTURE_UNIT);
 		program.set_uniform("u_sample_number", m_render_settings.sample_number);
+		program.set_uniform("u_resolution_scaling", m_render_settings.render_low_resolution ? m_render_settings.render_low_resolution_scaling : 1);
 		program.set_uniform("u_do_tonemapping", m_application_settings.do_tonemapping);
 		program.set_uniform("u_gamma", m_application_settings.tone_mapping_gamma);
 		program.set_uniform("u_exposure", m_application_settings.tone_mapping_exposure);
@@ -649,7 +655,9 @@ void RenderWindow::update_program_uniforms(OpenGLProgram& program)
 
 		float min_val = (float)m_render_settings.adaptive_sampling_min_samples;
 		float max_val = std::max((float)m_render_settings.sample_number, min_val);
+
 		program.set_uniform("u_texture", RenderWindow::DISPLAY_TEXTURE_UNIT);
+		program.set_uniform("u_resolution_scaling", m_render_settings.render_low_resolution ? m_render_settings.render_low_resolution_scaling : 1);
 		program.set_uniform("u_color_stops", 3, (float*)color_stops.data());
 		program.set_uniform("u_nb_stops", 3);
 		program.set_uniform("u_min_val", min_val);
@@ -757,16 +765,18 @@ void RenderWindow::run()
 	{
 		m_start_cpu_frame_time = std::chrono::high_resolution_clock::now();
 
+		glfwPollEvents();
+		glClear(GL_COLOR_BUFFER_BIT);
+
 		update_keyboard_inputs();
 
+		// We're resetting the render each frame if rendering at low resolution
+		m_render_dirty |= m_render_settings.render_low_resolution;
 		if (m_render_dirty)
 			reset_render();
 
 		if (m_application_settings.auto_sample_per_frame && m_samples_per_second > 0)
 			m_render_settings.samples_per_frame = std::max(1, static_cast<int>(m_samples_per_second / 20.0f));
-
-		glfwPollEvents();
-		glClear(GL_COLOR_BUFFER_BIT);
 
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();

@@ -45,6 +45,9 @@ struct HIPRTRenderSettings
 	// render the image at a much lower resolution to allow for smooth camera
 	// movements
 	bool render_low_resolution = false;
+	// How to divide the render resolution by when rendering at low resolution
+	// (when interacting with the camera)
+	int render_low_resolution_scaling = 4;
 
 	bool enable_adaptive_sampling = true;
 	// How many samples before the adaptive sampling actually kicks in.

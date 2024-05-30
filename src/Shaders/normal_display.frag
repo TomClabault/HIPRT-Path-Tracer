@@ -7,6 +7,7 @@
 
 uniform sampler2D u_texture;
 uniform int u_sample_number;
+uniform int u_resolution_scaling;
 
 uniform float u_gamma;
 uniform float u_exposure;
@@ -31,9 +32,9 @@ void main()
 	if (thread_id.x >= dims.x || thread_id.y >= dims.y)							
 		return;
 
-	vec4 hdr_color = texelFetch(u_texture, thread_id, 0);
+	vec4 hdr_color = texelFetch(u_texture, thread_id / u_resolution_scaling, 0);
 #else
-	vec4 hdr_color = texture(u_texture, vs_tex_coords);
+	vec4 hdr_color = texture(u_texture, vs_tex_coords / u_resolution_scaling);
 #endif
 
 	vec4 final_color = hdr_color;
