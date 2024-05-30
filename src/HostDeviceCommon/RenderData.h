@@ -38,13 +38,18 @@ struct HIPRTRenderSettings
 
 	// Whether or not to "freeze" random number generation so that each frame uses
 	// exactly the same random number. This allows every ray to follow the exact
-	// same path every frame, allowing for stable benchmarking.
+	// same path every frame, allowing for more stable benchmarking.
 	bool freeze_random = false;
 
 	// If true, this means that the user is moving the camera and we're going to
 	// render the image at a much lower resolution to allow for smooth camera
 	// movements
 	bool render_low_resolution = false;
+	// This override boolean is the one used by ImGui. It should take precedance over
+	// the simple 'render_low_resolution' but only if true. Basically, if the override is
+	// true, then we are rendering at low resolution no matter what. If the override is false,
+	// we're rendering at low resolution or not based on the non-override 'render_low_resolution'
+	bool render_low_resolution_override = false;
 	// How to divide the render resolution by when rendering at low resolution
 	// (when interacting with the camera)
 	int render_low_resolution_scaling = 4;

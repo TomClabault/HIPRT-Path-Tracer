@@ -97,7 +97,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
     // 'Render low resolution' means that the user is moving the camera for example
     // so we're going to reduce the quality of the render for increased framerates
     // while moving
-    if (render_data.render_settings.render_low_resolution)
+    if (render_data.render_settings.render_low_resolution || render_data.render_settings.render_low_resolution_override)
     {
         // Reducing the number of bounces to 3
         render_data.render_settings.nb_bounces = 3;
