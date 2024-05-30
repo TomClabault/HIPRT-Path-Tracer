@@ -99,6 +99,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
     // while moving
     if (render_data.render_settings.render_low_resolution || render_data.render_settings.render_low_resolution_override)
     {
+
         // Reducing the number of bounces to 3
         render_data.render_settings.nb_bounces = 3;
         render_data.render_settings.samples_per_frame = 1;

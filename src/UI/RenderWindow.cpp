@@ -27,6 +27,7 @@
 //		render_data.aux_buffers.denoiser_albedo[index] * render_data.render_settings.frame_number
 //		?
 // - denoiser AOVs not accounting for tranmission correctly since Disney 
+// - check compilation on GCC
 
 
 
