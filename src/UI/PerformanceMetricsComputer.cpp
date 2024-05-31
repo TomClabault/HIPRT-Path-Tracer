@@ -5,6 +5,8 @@
 
 #include "PerformanceMetricsComputer.h"
 
+#include <cmath>
+
 std::string PerformanceMetricsComputer::SAMPLE_TIME_KEY = "SampleTimeKey";
 
 float PerformanceMetricsComputer::data_getter(void* data, int index)

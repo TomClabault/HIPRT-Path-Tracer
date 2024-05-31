@@ -32,6 +32,9 @@
 
 #if !defined(__KERNELCC__) || defined(HIPRT_BITCODE_LINKING)
 #include <hiprt/impl/Math.h>
+
+// For std::atomic in hippt::
+#include <atomic>
 #endif
 
 struct float4x4
