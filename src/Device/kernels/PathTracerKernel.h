@@ -89,25 +89,21 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
     const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
 #endif
     uint32_t pixel_index = (x + y * res.x);
-
     if (pixel_index >= res.x * res.y)
         return;
 
-    int res_scaling = 1;
     // 'Render low resolution' means that the user is moving the camera for example
     // so we're going to reduce the quality of the render for increased framerates
     // while moving
     if (render_data.render_settings.render_low_resolution || render_data.render_settings.render_low_resolution_override)
     {
-
         // Reducing the number of bounces to 3
         render_data.render_settings.nb_bounces = 3;
         render_data.render_settings.samples_per_frame = 1;
-        res_scaling = render_data.render_settings.render_low_resolution_scaling;
+        int res_scaling = render_data.render_settings.render_low_resolution_scaling;
         pixel_index /= res_scaling;
 
-        // If rendering at low resolution, only one pixel out of 
-        // LOW_RESOLUTION_RENDER_DOWNSCALE x LOW_RESOLUTION_RENDER_DOWNSCALE will be rendered
+        // If rendering at low resolution, only one pixel out of res_scaling^2 will be rendered
         if (x % res_scaling != 0 || y % res_scaling != 0)
             return;
     }

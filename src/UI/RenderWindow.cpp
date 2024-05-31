@@ -32,6 +32,7 @@
 
 
 // TODO Code Organization:
+// - fork all submodules in case they "disappear"
 // - multiple GLTF, one GLB for different point of views per model
 // - cleanup orochi gl interop buffer #ifdef everywhere
 // - do we need OpenGL Lib/bin in thirdparties?
@@ -51,6 +52,7 @@
 
 
 // TODO Features:
+// - build BVHs one by one to avoid big memory spike? but what about BLAS performance cost?
 // - ray statistics with filter functions
 // - filter function for base color alpha / alpha transparency + better performabce ?
 // - alpha transparency
@@ -85,6 +87,7 @@
 // - Emissive textures sampling: how to sample an object that has an emissive texture? How to know which triangles of the mesh are covered by the emissive parts of the texture?
 // - stream compaction / active thread compaction (ingo wald 2011)
 // - sample regeneration
+// - structure of arrays instead of arrays of struct relevant for global buffers in terms of performance?
 // - data packing in buffer --> use one 32 bit buffer to store multiple information if not using all 32 bits
 //		- pack active pixel in same buffer as pixel sample count
 // - pack two texture indices in one int for register saving, 65536 (16 bit per index when packed) textures is enough
@@ -99,6 +102,7 @@
 // - Have the UI run at its own framerate to avoid having the UI come to a crawl when the path tracing is expensive
 // - Denoiser blend to allow blending the original noisy image and the perfect denoised result by a given factor
 // - When modifying the emission of a material with the material editor, it should be reflected in the scene and allow the direct sampling of the geometry so the emissive triangles buffer should be updated
+// - Ray differentials for texture mipampping (better bandwidth utilization since sampling potentially smaller texture --> fit better in cache)
 // - Ray reordering for performance
 // - Starting rays further away from the camera for performance
 // - Visualizing ray depth (only 1 frame otherwise it would flicker a lot [or choose the option to have it flicker] )
@@ -774,7 +778,7 @@ void RenderWindow::run()
 		update_keyboard_inputs();
 
 		// We're resetting the render each frame if rendering at low resolution
-		m_render_dirty |= m_render_settings.render_low_resolution;
+		m_render_dirty |= m_render_settings.render_low_resolution == 1;
 		if (m_render_dirty)
 			reset_render();
 
@@ -949,7 +953,7 @@ void RenderWindow::draw_render_settings_panel()
 		}
 	}
 
-	m_render_dirty |= ImGui::Checkbox("Render low resolution", &m_render_settings.render_low_resolution_override);
+	m_render_dirty |= ImGui::Checkbox("Render low resolution", (bool*)&m_render_settings.render_low_resolution_override);
 
 	ImGui::Separator();
 
@@ -992,7 +996,7 @@ void RenderWindow::draw_render_settings_panel()
 	{
 		ImGui::TreePush("Adaptive sampling tree");
 
-		m_render_dirty |= ImGui::Checkbox("Enable adaptive sampling", &m_render_settings.enable_adaptive_sampling);
+		m_render_dirty |= ImGui::Checkbox("Enable adaptive sampling", (bool*)&m_render_settings.enable_adaptive_sampling);
 
 		ImGui::BeginDisabled(!m_render_settings.enable_adaptive_sampling);
 		m_render_dirty |= ImGui::InputInt("Adaptive sampling minimum samples", &m_render_settings.adaptive_sampling_min_samples);
@@ -1059,7 +1063,7 @@ void RenderWindow::draw_lighting_panel()
 			m_render_dirty |= rotation_changed;
 			m_render_dirty |= ImGui::SliderFloat("Envmap intensity", (float*)&m_renderer.get_world_settings().envmap_intensity, 0.0f, 10.0f);
 			ImGui::TreePush("Envmap intensity tree");
-			m_render_dirty |= ImGui::Checkbox("Scale background intensity", &m_renderer.get_world_settings().envmap_scale_background_intensity);
+			m_render_dirty |= ImGui::Checkbox("Scale background intensity", (bool*)&m_renderer.get_world_settings().envmap_scale_background_intensity);
 			ImGui::TreePop();
 		}
 
@@ -1193,7 +1197,7 @@ void RenderWindow::draw_performance_panel()
 
 		reset_render();
 	}
-	if (ImGui::Checkbox("Freeze random", &m_render_settings.freeze_random))
+	if (ImGui::Checkbox("Freeze random", (bool*)&m_render_settings.freeze_random))
 		reset_render();
 
 	bool rolling_window_size_changed = false;

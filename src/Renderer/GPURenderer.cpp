@@ -153,7 +153,6 @@ HIPRTRenderData GPURenderer::get_render_data()
 
 	render_data.world_settings = m_world_settings;
 	render_data.render_settings = m_render_settings;
-	render_data.render_settings.render_low_resolution_override = false;
 
 	return render_data;
 }

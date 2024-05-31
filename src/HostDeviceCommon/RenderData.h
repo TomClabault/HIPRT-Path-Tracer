@@ -6,6 +6,7 @@
 #ifndef HIPRT_SCENE_DATA_H
 #define HIPRT_SCENE_DATA_H
 
+#include "HostDeviceCommon/AlignMacro.h"
 #include "HostDeviceCommon/Material.h"
 #include "HostDeviceCommon/Math.h"
 
@@ -22,7 +23,7 @@ template <typename T>
 using AtomicType = std::atomic<T>;
 #endif
 
-struct HIPRTRenderSettings
+struct ALIGN(8) HIPRTRenderSettings
 {
 	// How many times the render kernel was called (updates after
 	// the call to the kernel so it start at 0)
@@ -39,22 +40,22 @@ struct HIPRTRenderSettings
 	// Whether or not to "freeze" random number generation so that each frame uses
 	// exactly the same random number. This allows every ray to follow the exact
 	// same path every frame, allowing for more stable benchmarking.
-	bool freeze_random = false;
+	int freeze_random = false;
 
 	// If true, this means that the user is moving the camera and we're going to
 	// render the image at a much lower resolution to allow for smooth camera
 	// movements
-	bool render_low_resolution = false;
+	int render_low_resolution = false;
 	// This override boolean is the one used by ImGui. It should take precedance over
 	// the simple 'render_low_resolution' but only if true. Basically, if the override is
 	// true, then we are rendering at low resolution no matter what. If the override is false,
 	// we're rendering at low resolution or not based on the non-override 'render_low_resolution'
-	bool render_low_resolution_override = false;
+	int render_low_resolution_override = false;
 	// How to divide the render resolution by when rendering at low resolution
 	// (when interacting with the camera)
 	int render_low_resolution_scaling = 4;
 
-	bool enable_adaptive_sampling = true;
+	int enable_adaptive_sampling = true;
 	// How many samples before the adaptive sampling actually kicks in.
 	// This is useful mainly for the per-pixel adaptive sampling method
 	// where you want to be sure that each pixel in the image has had enough
@@ -161,7 +162,7 @@ struct WorldSettings
 	// and we directly see the skysphere) will scale with the envmap_intensity coefficient.
 	// This can be visually unpleasing because the background will most likely
 	// become completely white and blown out.
-	bool envmap_scale_background_intensity = false;
+	int envmap_scale_background_intensity = false;
 	// This void pointer is a either a float* for the CPU
 	// or a oroTextureObject_t for the GPU.
 	// Proper reinterpreting of the pointer is done in the kernel.
