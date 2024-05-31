@@ -72,7 +72,7 @@ FetchContent_MakeAvailable(
 
 # ------------------------------- Downloading HIPRT -------------------------------
 
-if(NOT EXISTS ${CMAKE_SOURCE_DIR}/HIPRT-Submodule)
+if(NOT EXISTS ${CMAKE_SOURCE_DIR}/HIPRT-Submodule/hiprt)
 	# Making sure that the HIPRT submodule was cloned
 	message(FATAL_ERROR "The HIPRT submodule couldn't be found. Did you forget to clone the submodules? Run 'git submodule update --init --recursive --jobs 10'.")
 else()
@@ -135,7 +135,7 @@ link_directories(${HIPRT_BINARIES_DIR}/hiprt/win)
 
 # ----------------- Downloading Orochi (no need to build) ----------------
 
-if(NOT EXISTS ${CMAKE_SOURCE_DIR}/Orochi-Fork)
+if(NOT EXISTS ${CMAKE_SOURCE_DIR}/Orochi-Fork/ParallelPrimitives)
 	# Making sure that the Orochi submodule was cloned
 	message(FATAL_ERROR "The Orochi submodule couldn't be found. Did you forget to clone the submodules? Run 'git submodule update --init --recursive --jobs 10'.")
 else()
