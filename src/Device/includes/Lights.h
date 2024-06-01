@@ -77,6 +77,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_light_sources(const HIPRTRenderDa
         // + microfacet BRDFs
         return ColorRGB(0.0f);
 
+
     ColorRGB light_source_radiance_mis;
     float light_sample_pdf;
     LightSourceInformation light_source_info;

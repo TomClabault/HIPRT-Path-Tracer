@@ -32,11 +32,7 @@ void GPURenderer::render()
 	OROCHI_CHECK_ERROR(oroEventSynchronize(m_frame_stop_event));
 	OROCHI_CHECK_ERROR(oroEventElapsedTime(&m_frame_time, m_frame_start_event, m_frame_stop_event));
 
-#ifndef OROCHI_ENABLE_CUEW
-	// We only want to unmap for OpenGL interop buffers that are only available
-	// on AMD (for now)
 	m_pixels_interop_buffer.unmap();
-#endif
 }
 
 void GPURenderer::change_render_resolution(int new_width, int new_height)
@@ -191,6 +187,11 @@ void GPURenderer::compile_trace_kernel(const char* kernel_file_path, const char*
 		options.push_back(defines_macro_options.back().c_str());
 	}
 
+	std::string debug = "-g";
+	std::string nopopti = "-O0";
+	options.push_back(debug.c_str());
+	options.push_back(nopopti.c_str());
+
 	std::vector<std::string> additional_includes = { KERNEL_COMPILER_ADDITIONAL_INCLUDE, DEVICE_INCLUDES_DIRECTORY, OROCHI_INCLUDES_DIRECTORY, "-I./" };
 
 	hiprtApiFunction trace_function_out;
@@ -200,6 +201,8 @@ void GPURenderer::compile_trace_kernel(const char* kernel_file_path, const char*
 		int ignored = std::getchar();
 		std::exit(1);
 	}
+
+	std::cout << std::endl;
 
 	m_trace_kernel = *reinterpret_cast<oroFunction*>(&trace_function_out);
 

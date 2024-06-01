@@ -118,6 +118,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
         render_data.aux_buffers.pixel_squared_luminance[pixel_index] = 0;
     }
 
+
     bool sampling_needed = true;
     bool stop_noise_threshold_converged = false;
     sampling_needed = adaptive_sampling(render_data, pixel_index, stop_noise_threshold_converged);
@@ -180,6 +181,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                     // Because we want to allow backfacing emissive geometry (making the emissive geometry double sided
                     // and emitting light in both directions of the surface), we're negating the normal to make
                     // it face the view direction (but only for emissive geometry)
+                    
                     if (ray_payload.material.is_emissive() && hippt::dot(-ray.direction, closest_hit_info.geometric_normal) < 0)
                     {
                         closest_hit_info.geometric_normal = -closest_hit_info.geometric_normal;
@@ -191,6 +193,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                     // --------------------------------------------------- //
 
                     ColorRGB light_sample_radiance = sample_light_sources(render_data, ray_payload.material, closest_hit_info, -ray.direction, random_number_generator);
+                    // If we got here, this means that we still have at least one ray active
+                    //render_data.aux_buffers.still_one_ray_active[0] = 1;
+                    //return ;
                     ColorRGB envmap_radiance = sample_environment_map(render_data, ray_payload.material, closest_hit_info, -ray.direction, random_number_generator);
 
                     // --------------------------------------- //

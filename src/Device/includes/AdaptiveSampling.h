@@ -38,7 +38,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool adaptive_sampling(const HIPRTRenderData& ren
             float average_luminance;
             float confidence_interval;
             pixel_sample_count = aux_buffers.pixel_sample_count[pixel_index];
-            confidence_interval  = get_pixel_confidence_interval(render_data, pixel_index, pixel_sample_count, average_luminance);
+            confidence_interval = get_pixel_confidence_interval(render_data, pixel_index, pixel_sample_count, average_luminance);
 
             stop_noise_threshold_converged = 
                 // Converged enough

@@ -783,7 +783,7 @@ void RenderWindow::run()
 			reset_render();
 
 		if (m_application_settings.auto_sample_per_frame && m_samples_per_second > 0)
-			m_render_settings.samples_per_frame = std::max(1, static_cast<int>(m_samples_per_second / 20.0f));
+			m_render_settings.samples_per_frame = std::min(std::max(1, static_cast<int>(m_samples_per_second / 20.0f)), 10000);
 
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
