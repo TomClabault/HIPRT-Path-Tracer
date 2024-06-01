@@ -63,6 +63,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool check_for_nan(ColorRGB ray_color, int x, int
 #endif
 HIPRT_HOST_DEVICE HIPRT_INLINE bool sanity_check(const HIPRTRenderData& render_data, RayPayload& ray_payload, int x, int y, int2& res, int sample)
 {
+    return true;
     bool invalid = false;
     invalid |= check_for_negative_color(ray_payload.ray_color, x, y, sample);
     invalid |= check_for_nan(ray_payload.ray_color, x, y, sample);
@@ -121,11 +122,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
 
     bool sampling_needed = true;
     bool stop_noise_threshold_converged = false;
-    sampling_needed = adaptive_sampling(render_data, pixel_index, stop_noise_threshold_converged);
+    sampling_needed = true;//adaptive_sampling(render_data, pixel_index, stop_noise_threshold_converged);
 
-    if (stop_noise_threshold_converged)
+    //if (stop_noise_threshold_converged)
         // Indicating that this pixel has reached the threshold in render_settings.stop_noise_threshold
-        hippt::atomic_add(render_data.aux_buffers.stop_noise_threshold_count, 1u);
+        //hippt::atomic_add(render_data.aux_buffers.stop_noise_threshold_count, 1u);
+    //return;
 
     if (!sampling_needed)
     {

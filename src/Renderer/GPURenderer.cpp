@@ -145,7 +145,7 @@ HIPRTRenderData GPURenderer::get_render_data()
 	render_data.aux_buffers.pixel_sample_count = m_pixels_sample_count.get_device_pointer();
 	render_data.aux_buffers.pixel_squared_luminance = m_pixels_squared_luminance.get_device_pointer();
 	render_data.aux_buffers.still_one_ray_active = m_still_one_ray_active_buffer.get_device_pointer();
-	render_data.aux_buffers.stop_noise_threshold_count = reinterpret_cast<AtomicType<unsigned int>*>(m_stop_noise_threshold_count_buffer.get_device_pointer());
+	//render_data.aux_buffers.stop_noise_threshold_count = reinterpret_cast<AtomicType<unsigned int>*>(m_stop_noise_threshold_count_buffer.get_device_pointer());
 
 	render_data.world_settings = m_world_settings;
 	render_data.render_settings = m_render_settings;
@@ -187,10 +187,12 @@ void GPURenderer::compile_trace_kernel(const char* kernel_file_path, const char*
 		options.push_back(defines_macro_options.back().c_str());
 	}
 
-	std::string debug = "-g";
+	std::string debug = "-ggdb";
 	std::string nopopti = "-O0";
+	std::string dwarf = "-gdwarf-5";
 	options.push_back(debug.c_str());
 	options.push_back(nopopti.c_str());
+	options.push_back(dwarf.c_str());
 
 	std::vector<std::string> additional_includes = { KERNEL_COMPILER_ADDITIONAL_INCLUDE, DEVICE_INCLUDES_DIRECTORY, OROCHI_INCLUDES_DIRECTORY, "-I./" };
 
