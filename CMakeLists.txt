@@ -103,12 +103,16 @@ if (WIN32)
 	execute_process(COMMAND ${MSBUILD_EXECUTABLE} hiprt02003.vcxproj /property:Configuration=${CMAKE_BUILD_TYPE} /property:Platform=x64 /property:MultiProcessorCompilation=true /verbosity:minimal WORKING_DIRECTORY ${HIPRT_SUBMODULE_DIR}/build)
 elseif(UNIX)
 	execute_process(COMMAND ./tools/premake5/linux64/premake5 gmake WORKING_DIRECTORY ${HIPRT_SUBMODULE_DIR})
-	execute_process(COMMAND make -C build -j config=debug_x64 WORKING_DIRECTORY ${HIPRT_SUBMODULE_DIR})
+
+	set(HIPRT_MAKE_CONFIG_TYPE ${CMAKE_BUILD_TYPE})
+	string(TOLOWER ${HIPRT_MAKE_CONFIG_TYPE} HIPRT_MAKE_CONFIG_TYPE)
+	# config must take the value debug_x64, release_x64 or relwithdebinfo_x64. That's why we lower cased CMAKE_BUILD_TYPE just above
+	execute_process(COMMAND make -C build -j config=${HIPRT_MAKE_CONFIG_TYPE}_x64 WORKING_DIRECTORY ${HIPRT_SUBMODULE_DIR})
 endif()
 
-if (${CMAKE_BUILD_TYPE} STREQUAL "Debug" OR ${CMAKE_BUILD_TYPE} STREQUAL "RelWithDebInfo")
+if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
 	set(hiprt_link_lib "hiprt0200364D")
-elseif(${CMAKE_BUILD_TYPE} STREQUAL "Release")
+elseif(${CMAKE_BUILD_TYPE} STREQUAL "Release" OR ${CMAKE_BUILD_TYPE} STREQUAL "RelWithDebInfo")
 	set(hiprt_link_lib "hiprt0200364")
 endif()
 
