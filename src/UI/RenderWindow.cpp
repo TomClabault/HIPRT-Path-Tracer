@@ -27,11 +27,12 @@
 //		render_data.aux_buffers.denoiser_albedo[index] * render_data.render_settings.frame_number
 //		?
 // - denoiser AOVs not accounting for tranmission correctly since Disney 
-// - check compilation on GCC
 
 
 
 // TODO Code Organization:
+// - investigate why kernel compiling was so much faster in the past (commit db34b23 seems to be a good candidate)
+// - refactor the usage of strings in the compile kernel functions
 // - fork all submodules in case they "disappear"
 // - multiple GLTF, one GLB for different point of views per model
 // - cleanup orochi gl interop buffer #ifdef everywhere
