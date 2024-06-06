@@ -51,6 +51,7 @@
 
 
 // TODO Features:
+// - hardware triangle intersection can be disabled in HIPRT Compiler.cpp so that's good for testing performance (__USE_HWI__ define)
 // - build BVHs one by one to avoid big memory spike? but what about BLAS performance cost?
 // - ray statistics with filter functions
 // - filter function for base color alpha / alpha transparency + better performabce ?
