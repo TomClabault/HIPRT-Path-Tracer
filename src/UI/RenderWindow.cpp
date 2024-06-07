@@ -87,6 +87,7 @@
 // - Emissive textures sampling: how to sample an object that has an emissive texture? How to know which triangles of the mesh are covered by the emissive parts of the texture?
 // - stream compaction / active thread compaction (ingo wald 2011)
 // - sample regeneration
+// - Spectral rendering / look at gemstone rendering because they quite a lot of interesting lighting effect to take into account (pleochroism, birefringent, dispersion, ...)
 // - structure of arrays instead of arrays of struct relevant for global buffers in terms of performance?
 // - data packing in buffer --> use one 32 bit buffer to store multiple information if not using all 32 bits
 //		- pack active pixel in same buffer as pixel sample count
