@@ -625,7 +625,7 @@ void RenderWindow::update_program_uniforms(OpenGLProgram& program)
 {
 	program.use();
 
-	int resolution_scaling = (m_render_settings.render_low_resolution || m_render_settings.render_low_resolution_override) ? m_render_settings.render_low_resolution_scaling : 1;
+	int resolution_scaling = (m_render_settings.render_low_resolution) ? m_render_settings.render_low_resolution_scaling : 1;
 
 	switch (m_application_settings.display_view)
 	{
@@ -953,8 +953,6 @@ void RenderWindow::draw_render_settings_panel()
 			m_application_settings.target_height = m_renderer.m_render_height;
 		}
 	}
-
-	m_render_dirty |= ImGui::Checkbox("Render low resolution", (bool*)&m_render_settings.render_low_resolution_override);
 
 	ImGui::Separator();
 

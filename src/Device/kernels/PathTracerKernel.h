@@ -96,7 +96,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
     // 'Render low resolution' means that the user is moving the camera for example
     // so we're going to reduce the quality of the render for increased framerates
     // while moving
-    if (render_data.render_settings.render_low_resolution || render_data.render_settings.render_low_resolution_override)
+    if (render_data.render_settings.render_low_resolution)
     {
         // Reducing the number of bounces to 3
         render_data.render_settings.nb_bounces = 3;
@@ -195,9 +195,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                     // --------------------------------------------------- //
 
                     ColorRGB light_sample_radiance = sample_light_sources(render_data, ray_payload.material, closest_hit_info, -ray.direction, random_number_generator);
-                    // If we got here, this means that we still have at least one ray active
-                    //render_data.aux_buffers.still_one_ray_active[0] = 1;
-                    //return ;
                     ColorRGB envmap_radiance = sample_environment_map(render_data, ray_payload.material, closest_hit_info, -ray.direction, random_number_generator);
 
                     // --------------------------------------- //

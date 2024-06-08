@@ -46,11 +46,6 @@ struct ALIGN(8) HIPRTRenderSettings
 	// render the image at a much lower resolution to allow for smooth camera
 	// movements
 	int render_low_resolution = false;
-	// This override boolean is the one used by ImGui. It should take precedance over
-	// the simple 'render_low_resolution' but only if true. Basically, if the override is
-	// true, then we are rendering at low resolution no matter what. If the override is false,
-	// we're rendering at low resolution or not based on the non-override 'render_low_resolution'
-	int render_low_resolution_override = false;
 	// How to divide the render resolution by when rendering at low resolution
 	// (when interacting with the camera)
 	int render_low_resolution_scaling = 4;

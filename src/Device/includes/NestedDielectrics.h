@@ -55,7 +55,9 @@ struct InteriorStackImpl<0>
 		}
 
 		// Index of the material we last entered before intersecting the
-		// material we're currently inserting in the stack
+		// material we're currently inserting in the stack. This for loop cannot
+		// give us last_entered_mat_index = -1 because we will on the air in the
+		// worst case scenario (the air is the stack[0] entry)
 		int last_entered_mat_index = 0;
 		for (last_entered_mat_index = stack_position; last_entered_mat_index >= 0; last_entered_mat_index--)
 			if (stack[last_entered_mat_index].material_index != material_index && stack[last_entered_mat_index].topmost && stack[last_entered_mat_index].odd_parity)

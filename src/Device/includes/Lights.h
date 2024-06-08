@@ -39,9 +39,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 sample_random_point_on_lights(const HIPRTR
     float length_normal = hippt::length(normal);
     light_info.light_source_normal = normal / length_normal; // Normalization
     float triangle_area = length_normal * 0.5f;
-    float nb_emissive_triangles = render_data.buffers.emissive_triangles_count;
 
-    pdf = 1.0f / (nb_emissive_triangles * triangle_area);
+    pdf = 1.0f / triangle_area;
 
     return random_point_on_triangle;
 }
@@ -102,15 +101,16 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_light_sources(const HIPRTRenderDa
         {
             const RendererMaterial& emissive_triangle_material = render_data.buffers.materials_buffer[render_data.buffers.material_indices[light_source_info.emissive_triangle_index]];
 
+            // Conversion to solid angle from surface area measure
             light_sample_pdf *= distance_to_light * distance_to_light;
             light_sample_pdf /= dot_light_source;
 
-            float pdf;
+            float brdf_pdf;
             RayVolumeState trash_volume_state;
-            ColorRGB brdf = brdf_dispatcher_eval(render_data.buffers.materials_buffer, material, trash_volume_state, view_direction, closest_hit_info.shading_normal, shadow_ray.direction, pdf);
-            if (pdf != 0.0f)
+            ColorRGB brdf = brdf_dispatcher_eval(render_data.buffers.materials_buffer, material, trash_volume_state, view_direction, closest_hit_info.shading_normal, shadow_ray.direction, brdf_pdf);
+            if (brdf_pdf != 0.0f)
             {
-                float mis_weight = power_heuristic(light_sample_pdf, pdf);
+                float mis_weight = power_heuristic(light_sample_pdf, brdf_pdf);
 
                 ColorRGB Li = emissive_triangle_material.emission;
                 float cosine_term = hippt::max(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction), 0.0f);
@@ -136,7 +136,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_light_sources(const HIPRTRenderDa
         RayPayload trash_payload;
         bool inter_found = trace_ray(render_data, new_ray, trash_payload, new_ray_hit_info);
 
-        if (inter_found)
+        // Checking that we did hit something and if we hit something,
+        // it needs to be the light that we're currently sampling
+        if (inter_found && new_ray_hit_info.primitive_index == light_source_info.emissive_triangle_index)
         {
             // abs() here to allow double sided emissive geometry.
             // Without abs() here:
@@ -161,7 +163,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_light_sources(const HIPRTRenderDa
         }
     }
 
-    return light_source_radiance_mis + brdf_radiance_mis;
+    // Because we're sampling only 1 light out of all the lights of the
+    // scene, the probability of having chosen that light is: 1 / numberOfLights
+    // This must be factored in the PDF of sampling that light which means that we must
+    // divide by 1 / numberOfLights => multiply by numberOfLights
+    return (light_source_radiance_mis + brdf_radiance_mis) * render_data.buffers.emissive_triangles_count;
 }
 
 #endif
