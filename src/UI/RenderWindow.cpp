@@ -18,7 +18,6 @@
 #include "glm/gtx/euler_angles.hpp"
 
 // TODO bugs
-// - kernel register count not working on AMD anymore since NVIDIA CC 7.5 fix
 // - TO TEST AGAIN: something is unsafe on NVIDIA + Windows + nested-dielectrics-complex.gltf + 48 bounces minimum + nested dielectric strategy RT Gems. We get a CPU-side orochi error when downloading the framebuffer for displaying indicating that some illegal memory was accessed. Is the buffer corrupted by something?
 // - normals AOV not converging correctly ?
 //		- for the denoiser normals convergence issue, is it an error at the end of the Path Tracer kernel where we're accumulating ? Should we have
@@ -33,7 +32,6 @@
 // TODO Code Organization:
 // - investigate why kernel compiling was so much faster in the past (commit db34b23 seems to be a good candidate)
 // - refactor the usage of strings in the compile kernel functions
-// - fork all submodules in case they "disappear"
 // - multiple GLTF, one GLB for different point of views per model
 // - cleanup orochi gl interop buffer #ifdef everywhere
 // - do we need OpenGL Lib/bin in thirdparties?

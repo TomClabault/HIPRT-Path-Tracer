@@ -1,9 +1,9 @@
-[submodule "HIPRT-Submodule"]
-	path = HIPRT-Submodule
-	url = https://github.com/GPUOpen-LibrariesAndSDKs/HIPRT.git
-[submodule "ASSIMP-Submodule"]
-	path = ASSIMP-Submodule
-	url = https://github.com/assimp/assimp
 [submodule "Orochi-Fork"]
 	path = Orochi-Fork
 	url = https://github.com/TomClabault/Orochi.git
+[submodule "HIPRT-Fork"]
+	path = HIPRT-Fork
+	url = https://github.com/TomClabault/HIPRT.git
+[submodule "ASSIMP-Fork"]
+	path = ASSIMP-Fork
+	url = https://github.com/TomClabault/assimp.git

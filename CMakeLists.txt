@@ -32,11 +32,11 @@ set(ASSIMP_INSTALL_PDB OFF)
 set(ASSIMP_BUILD_ZLIB ON)
 set(ASSIMP_BUILD_ASSIMP_VIEW OFF)
 
-if(NOT EXISTS ${CMAKE_SOURCE_DIR}/ASSIMP-Submodule)
+set(ASSIMP_SUBMODULE_DIR ${CMAKE_SOURCE_DIR}/ASSIMP-Fork)
+
+if(NOT EXISTS ${ASSIMP_SUBMODULE_DIR}/code)
 	# Making sure that the HIPRT submodule was cloned
 	message(FATAL_ERROR "The ASSIMP submodule couldn't be found. Did you forget to clone the submodules? Run 'git submodule update --init --recursive --jobs 10'.")
-else()
-	set(ASSIMP_SUBMODULE_DIR ${CMAKE_SOURCE_DIR}/ASSIMP-Submodule)
 endif()
 
 add_subdirectory(${ASSIMP_SUBMODULE_DIR})
@@ -72,11 +72,11 @@ FetchContent_MakeAvailable(
 
 # ------------------------------- Downloading HIPRT -------------------------------
 
-if(NOT EXISTS ${CMAKE_SOURCE_DIR}/HIPRT-Submodule/hiprt)
+set(HIPRT_SUBMODULE_DIR ${CMAKE_SOURCE_DIR}/HIPRT-Fork)
+
+if(NOT EXISTS ${HIPRT_SUBMODULE_DIR}/hiprt)
 	# Making sure that the HIPRT submodule was cloned
 	message(FATAL_ERROR "The HIPRT submodule couldn't be found. Did you forget to clone the submodules? Run 'git submodule update --init --recursive --jobs 10'.")
-else()
-	set(HIPRT_SUBMODULE_DIR ${CMAKE_SOURCE_DIR}/HIPRT-Submodule)
 endif()
 
 # Executing HIPRT's premake
@@ -139,11 +139,11 @@ link_directories(${HIPRT_BINARIES_DIR}/hiprt/win)
 
 # ----------------- Downloading Orochi (no need to build) ----------------
 
-if(NOT EXISTS ${CMAKE_SOURCE_DIR}/Orochi-Fork/ParallelPrimitives)
+set(OROCHI_SUBMODULE_DIR ${CMAKE_SOURCE_DIR}/Orochi-Fork)
+
+if(NOT EXISTS ${OROCHI_SUBMODULE_DIR}/ParallelPrimitives)
 	# Making sure that the Orochi submodule was cloned
 	message(FATAL_ERROR "The Orochi submodule couldn't be found. Did you forget to clone the submodules? Run 'git submodule update --init --recursive --jobs 10'.")
-else()
-	set(OROCHI_SUBMODULE_DIR ${CMAKE_SOURCE_DIR}/Orochi-Fork)
 endif()
 
 set(OROCHI_BIN_DIR ${OROCHI_SUBMODULE_DIR})
