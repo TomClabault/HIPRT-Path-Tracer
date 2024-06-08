@@ -9,6 +9,11 @@
 
 #include <Orochi/OrochiUtils.h>
 
+GPURenderer::GPURenderer()
+{
+	m_framebuffer = std::make_shared<OpenGLInteropBuffer<ColorRGB>>();
+}
+
 void GPURenderer::render()
 {
 	int tile_size_x = 8;
@@ -32,7 +37,7 @@ void GPURenderer::render()
 	OROCHI_CHECK_ERROR(oroEventSynchronize(m_frame_stop_event));
 	OROCHI_CHECK_ERROR(oroEventElapsedTime(&m_frame_time, m_frame_start_event, m_frame_stop_event));
 
-	m_pixels_interop_buffer.unmap();
+	m_framebuffer->unmap();
 }
 
 void GPURenderer::change_render_resolution(int new_width, int new_height)
@@ -40,7 +45,7 @@ void GPURenderer::change_render_resolution(int new_width, int new_height)
 	m_render_width = new_width;
 	m_render_height = new_height;
 
-	m_pixels_interop_buffer.resize(new_width * new_height);
+	m_framebuffer->resize(new_width * new_height);
 	m_normals_buffer.resize(new_width * new_height);
 	m_albedo_buffer.resize(new_width * new_height);
 
@@ -53,9 +58,9 @@ void GPURenderer::change_render_resolution(int new_width, int new_height)
 	m_camera.projection_matrix = glm::transpose(glm::perspective(m_camera.vertical_fov, new_aspect, m_camera.near_plane, m_camera.far_plane));
 }
 
-OpenGLInteropBuffer<ColorRGB>& GPURenderer::get_color_framebuffer()
+std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> GPURenderer::get_color_framebuffer()
 {
-	return m_pixels_interop_buffer;
+	return m_framebuffer;
 }
 
 OrochiBuffer<ColorRGB>& GPURenderer::get_denoiser_albedo_buffer()
@@ -119,7 +124,7 @@ HIPRTRenderData GPURenderer::get_render_data()
 
 	render_data.geom = m_hiprt_scene.geometry.m_geometry;
 
-	render_data.buffers.pixels = m_pixels_interop_buffer.get_device_pointer();
+	render_data.buffers.pixels = m_framebuffer->map();
 	render_data.buffers.triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.geometry.m_mesh.triangleIndices);
 	render_data.buffers.vertices_positions = reinterpret_cast<float3*>(m_hiprt_scene.geometry.m_mesh.vertices);
 	render_data.buffers.has_vertex_normals = reinterpret_cast<unsigned char*>(m_hiprt_scene.has_vertex_normals.get_device_pointer());

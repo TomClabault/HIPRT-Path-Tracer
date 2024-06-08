@@ -7,6 +7,8 @@
 #define OPEN_IMAGE_DENOISER
 
 #include "HostDeviceCommon/Color.h"
+#include "OpenGL/OpenGLInteropBuffer.h"
+
 #include <OpenImageDenoise/oidn.hpp>
 #include <vector>
 
@@ -14,49 +16,44 @@ class OpenImageDenoiser
 {
 public:
 	OpenImageDenoiser();
+	OpenImageDenoiser(int width, int height);
 
-	void set_buffers(ColorRGB* color_buffer, int width, int height);
-	void set_buffers(ColorRGB* color_buffer, hiprtFloat3* normals_buffer, int width, int height);
-	void set_buffers(ColorRGB* color_buffer, ColorRGB* albedo_buffer, int width, int height);
-	void set_buffers(ColorRGB* color_buffer, hiprtFloat3* normals_buffer, ColorRGB* albedo_buffer, int width, int height);
+	void set_use_albedo(bool use_albedo);
+	void set_use_normals(bool use_normal);
+	void set_color_buffer(std::shared_ptr<OpenGLInteropBuffer<ColorRGB>>color_buffer);
 
-	bool* get_denoise_albedo_var();
-	bool* get_denoise_normals_var();
+	void resize(int new_width, int new_height);
 
-	std::vector<ColorRGB> get_denoised_data();
-	void* get_denoised_data_pointer();
-	void* get_denoised_normals_pointer();
-	void* get_denoised_albedo_pointer();
+	/**
+	 * Function that finalizes the creation of the internal denoising
+	 * filters etc... once everything is setup (set_use_albedo / set_use_normals
+	 * have been called if necessary, subsequent buffers have been provided, ...)
+	*/
+	void finalize();
 
 	void denoise();
-	void denoise_albedo();
-	void denoise_normals();
+
+	std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> get_denoised_buffer();
+
 
 private:
-	void set_buffers(ColorRGB* color_buffer, int width, int height, bool override_use_normals, bool override_use_albedo);
+	void create_device();
+	bool check_denoiser_validity();
+	std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> acquire_input_color_buffer();
 
-	void create_beauty_filter();
-	void create_AOV_filters();
+	bool m_use_albedo;
+	bool m_use_normals;
 
-	int m_width = 0, m_height = 0;
-
-	bool m_use_albedo = false;
-	bool m_use_normals = false;
-	bool m_denoise_albedo = true;
-	bool m_denoise_normals = true;
+	int m_width, m_height;
 
 	oidn::DeviceRef m_device;
-	oidn::BufferRef m_denoised_color_buffer;
-	oidn::BufferRef m_denoised_albedo_buffer;
-	oidn::BufferRef m_denoised_normals_buffer;
-
-	ColorRGB* m_color_buffer = nullptr;
-	hiprtFloat3* m_normals_buffer = nullptr;
-	ColorRGB* m_albedo_buffer = nullptr;
 
 	oidn::FilterRef m_beauty_filter;
 	oidn::FilterRef m_albedo_filter;
 	oidn::FilterRef m_normals_filter;
+
+	std::weak_ptr<OpenGLInteropBuffer<ColorRGB>> m_input_color_buffer;
+	std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> m_denoiser_buffer;
 };
 
 #endif

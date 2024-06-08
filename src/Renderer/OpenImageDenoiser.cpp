@@ -7,13 +7,82 @@
 
 #include <iostream>
 
-OpenImageDenoiser::OpenImageDenoiser() : m_width(0), m_height(0)
+OpenImageDenoiser::OpenImageDenoiser()
 {
-    // Create an Open Image Denoise device
-    m_device = oidn::newDevice(); // CPU or GPU if available
+    m_device = nullptr;
+    m_denoiser_buffer = nullptr;
+}
+
+OpenImageDenoiser::OpenImageDenoiser(int width, int height) : m_width(width), m_height(height), m_denoiser_buffer(std::make_shared<OpenGLInteropBuffer<ColorRGB>>())
+{
+    create_device();
+    m_denoiser_buffer = std::make_shared<OpenGLInteropBuffer<ColorRGB>>();
+    m_denoiser_buffer->resize(width * height);
+}
+
+void OpenImageDenoiser::set_use_albedo(bool use_albedo)
+{
+    m_use_albedo = use_albedo;
+}
+
+void OpenImageDenoiser::set_use_normals(bool use_normals)
+{
+    m_use_normals = use_normals;
+}
+
+void OpenImageDenoiser::set_color_buffer(std::shared_ptr<OpenGLInteropBuffer<ColorRGB>>color_buffer)
+{
+    m_input_color_buffer = std::weak_ptr<OpenGLInteropBuffer<ColorRGB>>(color_buffer);
+}
+
+void OpenImageDenoiser::resize(int new_width, int new_height)
+{
+    m_width = new_width;
+    m_height = new_height;
+
+    if (m_denoiser_buffer == nullptr)
+        m_denoiser_buffer = std::make_shared<OpenGLInteropBuffer<ColorRGB>>();
+    m_denoiser_buffer->resize(m_width * m_height);
+}
+
+void OpenImageDenoiser::finalize()
+{
+    if (m_device.getHandle() == nullptr)
+        create_device();
+
+    if (!check_denoiser_validity())
+        return;
+
+    std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> color_buffer_device = acquire_input_color_buffer();
+    if (color_buffer_device == nullptr)
+        return;
+
+    m_beauty_filter = m_device.newFilter("RT");
+    m_beauty_filter.setImage("color", reinterpret_cast<void*>(color_buffer_device->map()), oidn::Format::Float3, m_width, m_height);
+    m_beauty_filter.setImage("output", m_denoiser_buffer->map(), oidn::Format::Float3, m_width, m_height);
+    m_beauty_filter.set("hdr", true);
+    m_beauty_filter.commit();
+
+    color_buffer_device->unmap();
+    m_denoiser_buffer->unmap();
+}
+
+void OpenImageDenoiser::create_device()
+{
+    // Create an Open Image Denoise device on the GPU depending
+    // on whether we're running on an NVIDIA or AMD GPU
+    //
+    // -1 and nullptr correspond respectively to the default CUDA/HIP device
+    // and the default stream
+#ifdef OROCHI_ENABLE_CUEW
+    m_device = oidn::newCUDADevice(-1, nullptr);
+#else
+    m_device = oidn::newHIPDevice(-1, nullptr);
+#endif
+
     if (m_device.getHandle() == nullptr)
     {
-        std::cerr << "There was an error getting the device for denoising with OIDN. Perhaps some missing DLLs for your hardware?" << std::endl;
+        std::cerr << "There was an error getting the device for denoising with OIDN. Perhaps some missing librariries for your hardware?" << std::endl;
 
         return;
     }
@@ -21,183 +90,45 @@ OpenImageDenoiser::OpenImageDenoiser() : m_width(0), m_height(0)
     m_device.commit();
 }
 
-void OpenImageDenoiser::set_buffers(ColorRGB* color_buffer, int width, int height)
+bool OpenImageDenoiser::check_denoiser_validity()
 {
-    m_color_buffer = color_buffer;
-    m_denoised_color_buffer = m_device.newBuffer(width * height * 3 * sizeof(float));
-    m_width = width;
-    m_height = height;
+    std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> color_buffer_device = acquire_input_color_buffer();
+    if (color_buffer_device == nullptr)
+        return false;
 
-    m_use_albedo = false;
-    m_use_normals = false;
-
-    create_beauty_filter();
-}
-
-void OpenImageDenoiser::set_buffers(ColorRGB* color_buffer, int width, int height, bool override_use_normals, bool override_use_albedo)
-{
-    m_color_buffer = color_buffer;
-    m_denoised_color_buffer = m_device.newBuffer(width * height * 3 * sizeof(float));
-    m_width = width;
-    m_height = height;
-
-    m_use_normals = override_use_normals;
-    m_use_albedo = override_use_albedo;
-
-    create_beauty_filter();
-}
-
-void OpenImageDenoiser::set_buffers(ColorRGB* color_buffer, hiprtFloat3* normals_buffer, int width, int height)
-{
-    m_normals_buffer = normals_buffer;
-    m_denoised_normals_buffer = m_device.newBuffer(width * height * sizeof(hiprtFloat3));
-
-    set_buffers(color_buffer, width, height, true, false);
-    create_AOV_filters();
-}
-
-void OpenImageDenoiser::set_buffers(ColorRGB* color_buffer, ColorRGB* albedo_buffer, int width, int height)
-{
-    m_albedo_buffer = albedo_buffer;
-    m_denoised_albedo_buffer = m_device.newBuffer(width * height * sizeof(ColorRGB));
-
-    set_buffers(color_buffer, width, height, false, true);
-    create_AOV_filters();
-}
-
-void OpenImageDenoiser::set_buffers(ColorRGB* color_buffer, hiprtFloat3* normals_buffer, ColorRGB* albedo_buffer, int width, int height)
-{
-    m_albedo_buffer = albedo_buffer;
-    m_normals_buffer = normals_buffer;
-
-    m_denoised_albedo_buffer = m_device.newBuffer(width * height * sizeof(ColorRGB));
-    m_denoised_normals_buffer = m_device.newBuffer(width * height * sizeof(hiprtFloat3));
-
-    set_buffers(color_buffer, width, height, true, true);
-    create_AOV_filters();
-}
-
-bool* OpenImageDenoiser::get_denoise_albedo_var()
-{
-    return &m_denoise_albedo;
-}
-
-bool* OpenImageDenoiser::get_denoise_normals_var()
-{
-    return &m_denoise_normals;
-}
-
-void OpenImageDenoiser::create_beauty_filter()
-{
-    m_beauty_filter = m_device.newFilter("RT"); // generic ray tracing filter
-    m_beauty_filter.setImage("color", m_color_buffer, oidn::Format::Float3, m_width, m_height); // beauty
-
-    if (m_use_albedo)
+    // Checking that the input color buffer and the denoised buffer are the same size
+    size_t input_color_buffer_element_count = color_buffer_device->get_element_count();
+    size_t denoiser_buffer_element_count = m_denoiser_buffer->get_element_count();
+    if (denoiser_buffer_element_count != input_color_buffer_element_count)
     {
-        if (m_denoise_albedo)
-            m_beauty_filter.setImage("albedo", m_denoised_albedo_buffer, oidn::Format::Float3, m_width, m_height);
-        else
-            m_beauty_filter.setImage("albedo", m_albedo_buffer, oidn::Format::Float3, m_width, m_height);
+        std::cerr << "The buffer for the denoiser image and the input device color buffer are not the same size, respectively: " 
+            << denoiser_buffer_element_count << " and " << input_color_buffer_element_count << " elements large." << std::endl;
     }
 
-    if (m_use_normals)
-    {
-        if (m_denoise_normals)
-            m_beauty_filter.setImage("normal", m_denoised_normals_buffer, oidn::Format::Float3, m_width, m_height);
-        else
-            m_beauty_filter.setImage("normal", m_normals_buffer, oidn::Format::Float3, m_width, m_height);
-
-    }
-
-    m_beauty_filter.setImage("output", m_denoised_color_buffer, oidn::Format::Float3, m_width, m_height); // denoised beauty
-    m_beauty_filter.set("cleanAux", true); // Normals and albedo are not noisy
-    m_beauty_filter.set("hdr", true); // beauty image is HDR
-    m_beauty_filter.commit();
-
-    const char* errorMessage;
-    if (m_device.getError(errorMessage) != oidn::Error::None)
-    {
-        std::cout << "Filter configuration error: " << errorMessage << std::endl;
-        return;
-    }
+        return true;
 }
 
-void OpenImageDenoiser::create_AOV_filters()
+std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> OpenImageDenoiser::acquire_input_color_buffer()
 {
-    if (m_use_albedo)
+    std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> color_buffer_device = m_input_color_buffer.lock();
+
+    if (!color_buffer_device)
     {
-        m_albedo_filter = m_device.newFilter("RT");
-        m_albedo_filter.setImage("albedo", m_albedo_buffer, oidn::Format::Float3, m_width, m_height);
-        m_albedo_filter.setImage("output", m_denoised_albedo_buffer, oidn::Format::Float3, m_width, m_height);
-        m_albedo_filter.commit();
+        std::cerr << "The input color buffer of the denoiser is NULL. Cannot finalize()." << std::endl;
+
+        return nullptr;
     }
 
-    if (m_use_normals)
-    {
-        m_normals_filter = m_device.newFilter("RT");
-        m_normals_filter.setImage("normal", m_normals_buffer, oidn::Format::Float3, m_width, m_height);
-        m_normals_filter.setImage("output", m_denoised_normals_buffer, oidn::Format::Float3, m_width, m_height);
-        m_normals_filter.commit();
-    }
-
-    const char* errorMessage;
-    if (m_device.getError(errorMessage) != oidn::Error::None)
-    {
-        std::cout << "Filter configuration error: " << errorMessage << std::endl;
-        return;
-    }
-}
-
-std::vector<ColorRGB> OpenImageDenoiser::get_denoised_data()
-{
-    ColorRGB* denoised_ptr = (ColorRGB*)m_denoised_color_buffer.getData();
-
-    std::vector<ColorRGB> denoised_output;
-    denoised_output.insert(denoised_output.end(), &denoised_ptr[0], &denoised_ptr[m_width * m_height]);
-
-    return denoised_output;
-}
-
-void* OpenImageDenoiser::get_denoised_data_pointer()
-{
-    return m_denoised_color_buffer.getData();
-}
-
-void* OpenImageDenoiser::get_denoised_albedo_pointer()
-{
-    return m_denoised_albedo_buffer.getData();
-}
-
-void* OpenImageDenoiser::get_denoised_normals_pointer()
-{
-    return m_denoised_normals_buffer.getData();
+    return color_buffer_device;
 }
 
 void OpenImageDenoiser::denoise()
 {
-    // Fill the input image buffers
-    if (m_use_albedo && m_denoise_albedo)
-        m_albedo_filter.execute();
-    if (m_use_normals && m_denoise_normals)
-        m_normals_filter.execute();
-
     m_beauty_filter.execute();
-
-    const char* errorMessage;
-    if (m_device.getError(errorMessage) != oidn::Error::None)
-        std::cout << "Error: " << errorMessage << std::endl;
 }
 
-void OpenImageDenoiser::denoise_normals()
+std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> OpenImageDenoiser::get_denoised_buffer()
 {
-    if (m_use_normals && m_denoise_normals)
-        // This means that everything is setup for denoising
-        m_normals_filter.execute();
+    return m_denoiser_buffer;
 }
 
-void OpenImageDenoiser::denoise_albedo()
-{
-    if (m_use_albedo && m_denoise_albedo)
-        // This means that everything is setup for denoising
-        m_albedo_filter.execute();
-}

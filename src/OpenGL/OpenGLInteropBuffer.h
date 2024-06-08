@@ -6,10 +6,12 @@
 #ifndef OPENGL_INTEROP_BUFFER_H
 #define OPENGL_INTEROP_BUFFER_H
 
+#include "HIPRT-Orochi/HIPRTOrochiUtils.h"
+#include "UI/DisplayTextureType.h"
+
 #include "GL/glew.h"
 #include "GLFW/glfw3.h"
 #include "Orochi/Orochi.h"
-#include "UI/DisplayTextureType.h"
 
 namespace CudaGLInterop
 {
@@ -30,13 +32,16 @@ public:
 	GLuint get_opengl_buffer();
 
 	void resize(int new_element_count);
+	size_t get_element_count();
 
 	/**
-	 * get_device_pointer strictly is an alias for map()
-	 * TODO: Should not be necessary anymore once we have Orochi NVIDIA OpenGL interop
+	 * Makes the buffer accessible to HIP/CUDA
 	 */
-	T* get_device_pointer();
 	T* map();
+
+	/**
+	 * Makes the buffer accessible by OpenGL
+	 */
 	void unmap();
 
 	void unpack_to_texture(GLuint texture, GLint texture_unit, int width, int height, DisplayTextureType texture_type);
@@ -128,9 +133,9 @@ void OpenGLInteropBuffer<T>::resize(int new_element_count)
 }
 
 template <typename T>
-T* OpenGLInteropBuffer<T>::get_device_pointer()
+size_t OpenGLInteropBuffer<T>::get_element_count()
 {
-	return map();
+	return m_byte_size / sizeof(T);
 }
 
 template <typename T>

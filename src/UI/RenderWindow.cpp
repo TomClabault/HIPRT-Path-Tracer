@@ -400,10 +400,11 @@ RenderWindow::RenderWindow(int width, int height) : m_viewport_width(width), m_v
 	m_renderer.change_render_resolution(width, height);
 	create_display_programs();
 
-	// TODO fix denoiser buffer since openGL interop
-	/*m_denoiser.set_buffers(m_renderer.get_color_framebuffer().get_device_pointer(),
-		m_renderer.get_denoiser_normals_buffer().get_device_pointer(), m_renderer.get_denoiser_albedo_buffer().get_device_pointer(),
-		width, height);*/
+	m_denoiser.resize(width, height);
+	m_denoiser.set_use_albedo(false);
+	m_denoiser.set_use_normals(false);
+	m_denoiser.set_color_buffer(m_renderer.get_color_framebuffer());
+	m_denoiser.finalize();
 
 	m_screenshoter.set_renderer(&m_renderer);
 	m_screenshoter.set_render_window(this);
@@ -446,10 +447,8 @@ void RenderWindow::resize_frame(int pixels_width, int pixels_height)
 	int new_render_height = std::floor(pixels_height * resolution_scale);
 	m_renderer.change_render_resolution(new_render_width, new_render_height);
 
-	// TODO fix denoiser buffer since openGL interop
-	/*m_denoiser.set_buffers(m_renderer.get_color_framebuffer().get_device_pointer(),
-		m_renderer.get_denoiser_normals_buffer().get_device_pointer(), m_renderer.get_denoiser_albedo_buffer().get_device_pointer(), 
-		new_render_width, new_render_height);*/
+	m_denoiser.resize(new_render_width, new_render_height);
+	m_denoiser.finalize();
 
 	recreate_display_texture(m_display_texture_type, new_render_width, new_render_height);
 
@@ -462,10 +461,8 @@ void RenderWindow::change_resolution_scaling(float new_scaling)
 	float new_render_height = std::floor(m_viewport_height * new_scaling);
 
 	m_renderer.change_render_resolution(new_render_width, new_render_height);
-	// TODO fix denoiser buffer since openGL interop
-	/*m_denoiser.set_buffers(m_renderer.get_color_framebuffer().get_device_pointer(),
-		m_renderer.get_denoiser_normals_buffer().get_device_pointer(), m_renderer.get_denoiser_albedo_buffer().get_device_pointer(),
-		new_render_width, new_render_height);*/
+	m_denoiser.resize(new_render_width, new_render_height);
+	m_denoiser.finalize();
 
 	recreate_display_texture(m_display_texture_type, new_render_width, new_render_height);
 }
@@ -799,7 +796,7 @@ void RenderWindow::run()
 				if (m_render_settings.sample_number == m_application_settings.max_sample_count)
 				{
 					m_denoiser.denoise();
-					display(m_denoiser.get_denoised_data_pointer());
+					display(m_denoiser.get_denoised_buffer());
 				}
 				else
 					display(m_renderer.get_color_framebuffer());
@@ -812,7 +809,7 @@ void RenderWindow::run()
 					m_application_settings.last_denoised_sample_count = m_render_settings.sample_number;
 				}
 			
-				display(m_denoiser.get_denoised_data_pointer());
+				display(m_denoiser.get_denoised_buffer());
 			}
 		}
 		else
@@ -828,19 +825,19 @@ void RenderWindow::run()
 				display(m_renderer.get_denoiser_normals_buffer().download_data().data());
 				break;
 
-			case DisplayView::DISPLAY_DENOISED_NORMALS:
+			/*case DisplayView::DISPLAY_DENOISED_NORMALS:
 				m_denoiser.denoise_normals();
 				display(m_denoiser.get_denoised_normals_pointer());
-				break;
+				break;*/
 
 			case DisplayView::DISPLAY_ALBEDO:
 				display(m_renderer.get_denoiser_albedo_buffer().download_data().data());
 				break;
 
-			case DisplayView::DISPLAY_DENOISED_ALBEDO:
+			/*case DisplayView::DISPLAY_DENOISED_ALBEDO:
 				m_denoiser.denoise_albedo();
 				display(m_denoiser.get_denoised_albedo_pointer());
-				break;
+				break;*/
 
 			case DisplayView::ADAPTIVE_SAMPLING_MAP:
 				display(m_renderer.get_pixels_sample_count_buffer().download_data().data());
@@ -1150,7 +1147,7 @@ void RenderWindow::draw_objects_panel()
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 }
 
-void RenderWindow::show_denoiser_panel()
+void RenderWindow::draw_denoiser_panel()
 {
 	if (!ImGui::CollapsingHeader("Denoiser"))
 		return;
@@ -1278,7 +1275,7 @@ void RenderWindow::draw_imgui()
 	draw_render_settings_panel();
 	draw_lighting_panel();
 	draw_objects_panel();
-	//show_denoiser_panel();
+	draw_denoiser_panel();
 	draw_post_process_panel();
 	draw_performance_panel();
 

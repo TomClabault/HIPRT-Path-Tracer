@@ -95,12 +95,12 @@ public:
 	template <typename T>
 	void display(const OrochiBuffer<T>& orochi_buffer);
 	template <typename T>
-	void display(OpenGLInteropBuffer<T>& buffer);
+	void display(std::shared_ptr<OpenGLInteropBuffer<T>> buffer);
 
 	void draw_render_settings_panel();
 	void draw_lighting_panel();
 	void draw_objects_panel();
-	void show_denoiser_panel();
+	void draw_denoiser_panel();
 	void draw_post_process_panel();
 	void draw_performance_panel();
 	void draw_imgui();
@@ -168,10 +168,10 @@ void RenderWindow::display(const OrochiBuffer<T>& orochi_buffer)
 }
 
 template <typename T>
-void RenderWindow::display(OpenGLInteropBuffer<T>& buffer)
+void RenderWindow::display(std::shared_ptr<OpenGLInteropBuffer<T>> buffer)
 {
-	buffer.unmap();
-	buffer.unpack_to_texture(m_display_texture, GL_TEXTURE0 + RenderWindow::DISPLAY_TEXTURE_UNIT, m_renderer.m_render_width, m_renderer.m_render_height, m_display_texture_type);
+	buffer->unmap();
+	buffer->unpack_to_texture(m_display_texture, GL_TEXTURE0 + RenderWindow::DISPLAY_TEXTURE_UNIT, m_renderer.m_render_width, m_renderer.m_render_height, m_display_texture_type);
 
 	update_program_uniforms(m_active_display_program);
 
