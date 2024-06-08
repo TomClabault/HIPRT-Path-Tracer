@@ -1193,6 +1193,7 @@ void RenderWindow::draw_performance_panel()
 	{
 		m_render_settings.freeze_random = true;
 		m_render_settings.enable_adaptive_sampling = false;
+		m_application_settings.auto_sample_per_frame = false;
 
 		reset_render();
 	}
@@ -1226,6 +1227,12 @@ void RenderWindow::draw_performance_panel()
 						"Sample time", 
 						scale_min, scale_max, 
 						/* size */ ImVec2(0, 80));
+	ImGui::SameLine();
+	if (ImGui::Button("Rescale"))
+	{
+		scale_min = min;
+		scale_max = max;
+	}
 	ImGui::Text("Sample time (avg)      : %.3fms (%.1f FPS)", m_perf_metrics.get_average(PerformanceMetricsComputer::SAMPLE_TIME_KEY), 1000.0f / m_perf_metrics.get_average(PerformanceMetricsComputer::SAMPLE_TIME_KEY));
 	ImGui::Text("Sample time (var)      : %.3fms", variance);
 	ImGui::Text("Sample time (std dev)  : %.3fms", std::sqrt(variance));

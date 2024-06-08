@@ -6,12 +6,15 @@
 #ifndef RAY_STATE_H
 #define RAY_STATE_H
 
+#include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/Math.h"
 
 struct LightSourceInformation
 {
     int emissive_triangle_index = -1;
-    float3 light_source_normal;
+    float3 light_source_normal = { 0.0f, 1.0f, 0.0f };
+    float light_area = 1.0f;
+    ColorRGB emission;
 };
 
 struct HitInfo
@@ -20,7 +23,7 @@ struct HitInfo
     float3 shading_normal;
     float3 geometric_normal;
     float2 texcoords;
-    float2 uv; // TODO only used on the CPU ?
+    float2 uv;
 
     float t = -1.0f; // Distance along ray
 
