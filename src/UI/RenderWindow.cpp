@@ -751,6 +751,7 @@ void RenderWindow::reset_render()
 	m_renderer.set_sample_number(0);
 	m_renderer.get_ray_active_buffer().upload_data(&true_data);
 	m_renderer.get_stop_noise_threshold_buffer().upload_data(&zero_data);
+	m_application_settings.last_denoised_sample_count = -1;
 
 	m_render_dirty = false;
 }
@@ -810,7 +811,22 @@ void RenderWindow::run()
 			}
 			else
 			{
-				if (m_render_settings.sample_number % m_application_settings.denoiser_sample_skip == 0)
+				// Note on the condition below.
+				// 
+				// We could have intuitively used something like:
+				// m_render_settings.sample_number % m_application_settings.denoiser_sample_skip == 0
+				// meaning that we denoise everytime we reach a multiple of the denoiser_sample_skip. This works
+				// fine but only for 1SPP per frame. What if denoiser_sample_skip == 10 and samples_per_frame is 3 ?
+				// 
+				// 0 --> 3 --> 6 --> 9 --> 12 --> ... --> 30
+				//
+				// We skipped 10 (and even 20) which means that we're only going to denoise at sample 30
+				// even though we asked for denoising every 10 samples
+				//
+				// A better condition is by checking how many samples have passed since the last time we denoised. 
+				// If more than the threshold given by denoiser_sample_skip, we need denoising.
+				bool need_to_denoise = m_render_settings.sample_number - std::max(0, m_application_settings.last_denoised_sample_count) >= m_application_settings.denoiser_sample_skip;
+				if (need_to_denoise)
 				{
 					m_application_settings.last_denoised_sample_count = m_render_settings.sample_number;
 
