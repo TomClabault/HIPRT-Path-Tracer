@@ -26,7 +26,7 @@ void OpenImageDenoiser::set_use_normals(bool use_normals)
 
 void OpenImageDenoiser::resize(int new_width, int new_height)
 {
-    if (!check_device())
+    if (!check_valid_state())
         return;
 
     m_width = new_width;
@@ -43,7 +43,7 @@ void OpenImageDenoiser::initialize()
 
 void OpenImageDenoiser::finalize()
 {
-    if (!check_device())
+    if (!check_valid_state())
         return;
 
     m_beauty_filter = m_device.newFilter("RT");
@@ -66,16 +66,38 @@ void OpenImageDenoiser::create_device()
     m_device = oidn::newDevice(oidn::DeviceType::HIP);
 #endif
 
-    const char* errorMessage;
-    if (m_device.getError(errorMessage) != oidn::Error::None)
+    if (m_device.getError() == oidn::Error::UnsupportedHardware)
     {
+        std::cerr << "Could not create an OIDN GPU device. Falling back to CPU..." << std::endl;
+        m_device = oidn::newDevice(oidn::DeviceType::CPU);
 
-        std::cerr << "There was an error getting the device for denoising with OIDN: " << errorMessage << std::endl;
+        const char* errorMessage;
+        if (m_device.getError(errorMessage) != oidn::Error::None)
+        {
+            std::cerr << "There was an error getting a CPU device for denoising with OIDN. Denoiser will be unavailable. " << errorMessage << std::endl;
 
-        return;
+            m_denoiser_invalid = true;
+            return;
+        }
+        else
+            // Valid creation of a CPU device
+            m_cpu_device = true;
     }
 
+
     m_device.commit();
+}
+
+bool OpenImageDenoiser::check_valid_state()
+{
+    if (m_denoiser_invalid)
+        // Returning false without error message, the error was already printed when we failed at creating the device
+        return false;
+    else if (!check_device())
+        // check_device prints the error
+        return false;
+
+    return true;
 }
 
 bool OpenImageDenoiser::check_device()
@@ -92,20 +114,26 @@ bool OpenImageDenoiser::check_device()
 
 void OpenImageDenoiser::denoise(std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> data_to_denoise)
 {
-    if (!check_device())
+    if (!check_valid_state())
         return;
 
-    ColorRGB* to_denoise_pointer = data_to_denoise->map();
-    OROCHI_CHECK_ERROR(oroMemcpyDtoD(m_input_color_buffer_oidn.getData(), to_denoise_pointer, sizeof(ColorRGB) * m_width * m_height));
+    oroMemcpyKind memcpyKind;
+    ColorRGB* to_denoise_pointer;
+    
+    memcpyKind = m_cpu_device ? oroMemcpyDeviceToHost : oroMemcpyDeviceToDevice;
+    to_denoise_pointer = data_to_denoise->map();
+    OROCHI_CHECK_ERROR(oroMemcpy(m_input_color_buffer_oidn.getData(), to_denoise_pointer, sizeof(ColorRGB) * m_width * m_height, memcpyKind));
     m_beauty_filter.execute();
     data_to_denoise->unmap();
 }
 
 void OpenImageDenoiser::copy_denoised_data_to_buffer(std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> buffer)
 {
+    oroMemcpyKind memcpyKind;
     ColorRGB* buffer_pointer;
     
+    memcpyKind = m_cpu_device ? oroMemcpyHostToDevice : oroMemcpyDeviceToDevice;
     buffer_pointer= buffer->map();
-    OROCHI_CHECK_ERROR(oroMemcpyDtoD(buffer_pointer, m_denoised_buffer.getData(), sizeof(ColorRGB) * m_width * m_height));
+    OROCHI_CHECK_ERROR(oroMemcpy(buffer_pointer, m_denoised_buffer.getData(), sizeof(ColorRGB) * m_width * m_height, memcpyKind));
     buffer->unmap();
 }

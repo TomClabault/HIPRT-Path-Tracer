@@ -37,6 +37,7 @@ public:
 
 private:
 	void create_device();
+	bool check_valid_state();
 	bool check_device();
 
 	bool m_use_albedo;
@@ -44,6 +45,12 @@ private:
 
 	int m_width, m_height;
 
+	// If true, this means that we couldn't get a device to denoise with
+	bool m_denoiser_invalid = false;
+	// If true, we're using a CPU device and we're going to have to adapt
+	// the way we copy the GPU framebuffer to the OIDN buffers i.e. we're
+	// going to have to use memcpyDeviceToHost instead of memcpyDeviceToDevice
+	bool m_cpu_device = false;
 	oidn::DeviceRef m_device;
 
 	oidn::FilterRef m_beauty_filter;
