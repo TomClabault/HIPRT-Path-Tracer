@@ -627,8 +627,14 @@ void RenderWindow::update_program_uniforms(OpenGLProgram& program)
 	switch (m_application_settings.display_view)
 	{
 	case DisplayView::DEFAULT:
+		int sample_number;
+		if (m_application_settings.enable_denoising && m_application_settings.last_denoised_sample_count != -1)
+			sample_number = m_application_settings.last_denoised_sample_count;
+		else
+			sample_number = m_render_settings.sample_number;
+
 		program.set_uniform("u_texture", RenderWindow::DISPLAY_TEXTURE_UNIT);
-		program.set_uniform("u_sample_number", m_render_settings.sample_number);
+		program.set_uniform("u_sample_number", sample_number);
 		program.set_uniform("u_do_tonemapping", m_application_settings.do_tonemapping);
 		program.set_uniform("u_resolution_scaling", resolution_scaling);
 		program.set_uniform("u_gamma", m_application_settings.tone_mapping_gamma);
@@ -804,23 +810,32 @@ void RenderWindow::run()
 			}
 			else
 			{
-				if ((m_render_settings.sample_number % m_application_settings.denoiser_sample_skip) == 0)
+				if (m_render_settings.sample_number % m_application_settings.denoiser_sample_skip == 0)
 				{
+					m_application_settings.last_denoised_sample_count = m_render_settings.sample_number;
+
 					m_denoiser.denoise(m_renderer.get_color_framebuffer());
 					m_denoiser.copy_denoised_data_to_buffer(m_renderer.get_denoised_framebuffer());
-					m_application_settings.last_denoised_sample_count = m_render_settings.sample_number;
+
+					display(m_renderer.get_denoised_framebuffer());
 				}
+				else if (m_application_settings.last_denoised_sample_count == -1)
+				{
+					// The user asked for denoising every N frames but we never denoised anything yet
+					// (and if we're here, we didn't pass the first if() which means that we have no
+					// denoised frame to show --> only black is going to be displayed.
+					// Instead, show noisy render while we reach the denoise step (at a multiple of 
+					// m_application_settings.denoiser_sample_skip)
+					display(m_renderer.get_color_framebuffer());
+				}
+				else
+					// We have some denoised framebuffer to display
+					display(m_renderer.get_denoised_framebuffer());
 			
-				display(m_renderer.get_denoised_framebuffer());
 			}
 		}
 		else
 		{
-			// TODO
-			// NOTE that we're not using any OpenGL interop here yet and we're going through the
-			// CPU to display the various buffers because Orochi doesn't support OpenGL Interop for
-			// NVIDIA yet and we don't want to have a lot of dirty expection cases. We'll just wait
-			// for OpenGL interop to be supported on NVIDIA by Orochi
 			switch (m_application_settings.display_view)
 			{
 			case DisplayView::DISPLAY_NORMALS:
