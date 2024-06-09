@@ -37,8 +37,7 @@
 // - do we need OpenGL Lib/bin in thirdparties?
 // - fork HIPRT and remove the encryption thingy that slows down kernel compilation on NVIDIA
 // - A good way to automatically find MSBuild with CMake? Build HIPRT with make instead of VS maybe?
-// - refactor HIPCC compiler options
-// - Destroy buffers when disabling adaptive sampling to save VRAM
+// - refactor HIPCC compiler options instead of hardcoded in GPURenderer.cpp
 // - uniform #ifndef in Device headers
 // - Refactor material editor
 // - Device/ or HostDeviceCommon. Not both
@@ -994,9 +993,14 @@ void RenderWindow::draw_render_settings_panel()
 	ImGui::BeginDisabled(m_render_settings.enable_adaptive_sampling);
 	if (ImGui::InputFloat("Stop render at noise threshold", &m_render_settings.stop_noise_threshold))
 	{
+		bool need_buffers = false;
+		need_buffers |= m_render_settings.enable_adaptive_sampling == 1;
+		need_buffers |= m_render_settings.stop_noise_threshold > 0.0f;
+
 		unsigned int zero_data = 0;
 		m_render_settings.stop_noise_threshold = std::max(0.0f, m_render_settings.stop_noise_threshold);
 		m_renderer.get_stop_noise_threshold_buffer().upload_data(&zero_data);
+		m_renderer.toggle_adaptive_sampling_buffers(need_buffers);
 	}
 
 	ImGui::TreePush("Tree stop noise threshold");
@@ -1025,7 +1029,15 @@ void RenderWindow::draw_render_settings_panel()
 	{
 		ImGui::TreePush("Adaptive sampling tree");
 
-		m_render_dirty |= ImGui::Checkbox("Enable adaptive sampling", (bool*)&m_render_settings.enable_adaptive_sampling);
+		if (ImGui::Checkbox("Enable adaptive sampling", (bool*)&m_render_settings.enable_adaptive_sampling))
+		{
+			bool need_buffers = false;
+			need_buffers |= m_render_settings.enable_adaptive_sampling == 1;
+			need_buffers |= m_render_settings.stop_noise_threshold > 0.0f;
+
+			m_renderer.toggle_adaptive_sampling_buffers(need_buffers);
+			m_render_dirty = true;
+		}
 
 		ImGui::BeginDisabled(!m_render_settings.enable_adaptive_sampling);
 		m_render_dirty |= ImGui::InputInt("Adaptive sampling minimum samples", &m_render_settings.adaptive_sampling_min_samples);

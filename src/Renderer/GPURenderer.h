@@ -49,6 +49,13 @@ public:
 	const std::vector<RendererMaterial>& get_materials();
 	void update_materials(std::vector<RendererMaterial>& materials);
 
+	/**
+	 * If the boolean parameter is true, buffers will be created for the adaptive
+	 * sampling. 
+	 * If false, buffers will be freed to save VRAM (since adaptive sampling is not used)
+	 */
+	void toggle_adaptive_sampling_buffers(bool adaptive_sampling_enabled);
+
 	void translate_camera_view(glm::vec3 translation);
 	void rotate_camera_view(glm::vec3 rotation_angles);
 	void zoom_camera_view(float offset);

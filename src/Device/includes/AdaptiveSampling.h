@@ -31,7 +31,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool adaptive_sampling(const HIPRTRenderData& ren
 
     if (!render_settings.enable_adaptive_sampling)
     {
-        // If there is no adaptive sampling, we're still going to want to compute the pixel's error for the stop_noise_threshold
+        // If there is no adaptive sampling, we're still going to want
+        // to compute the pixel's error for the stop_noise_threshold
+        // if that stop_noise_threshold is > 0.0f (meaning that the feature
+        // is enabled)
         if (render_settings.stop_noise_threshold > 0.0f)
         {
             int pixel_sample_count;

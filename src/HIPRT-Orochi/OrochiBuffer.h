@@ -28,10 +28,21 @@ public:
 	T** get_pointer_address();
 
 	std::vector<T> download_data() const;
+	/**
+	 * Uploads as many elements as returned by get_element_count from the data std::vector into the buffer.
+	 * The given std::vector must therefore contain at least get_element_count() elements.
+	 * 
+	 * The overload using a void pointer reads sizeof(T) * get_element_count() bytes starting at
+	 * the given pointer address. The given pointer must therefore provide a contiguous access
+	 * to sizeof(T) * get_element_count() bytes of data
+	 */
 	void upload_data(const std::vector<T>& data);
 	void upload_data(const void* data);
 
-	void destroy();
+	/**
+	 * Frees the buffer. No effect if already freed / not allocated yet
+	 */
+	void free();
 
 private:
 	T* m_data_pointer = nullptr;
@@ -58,7 +69,7 @@ OrochiBuffer<T>::OrochiBuffer(OrochiBuffer<T>&& other)
 template <typename T>
 OrochiBuffer<T>::~OrochiBuffer()
 {
-	destroy();
+	free();
 }
 
 template <typename T>
@@ -130,10 +141,12 @@ void OrochiBuffer<T>::upload_data(const void* data)
 }
 
 template <typename T>
-void OrochiBuffer<T>::destroy()
+void OrochiBuffer<T>::free()
 {
 	if (m_data_pointer)
 		OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(m_data_pointer)));
+
+	m_data_pointer = nullptr;
 }
 
 #endif

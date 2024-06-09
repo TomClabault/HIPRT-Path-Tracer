@@ -325,6 +325,20 @@ void GPURenderer::set_camera(const Camera& camera)
 	m_camera = camera;
 }
 
+void GPURenderer::toggle_adaptive_sampling_buffers(bool adaptive_sampling_enabled)
+{
+	if (adaptive_sampling_enabled)
+	{
+		m_pixels_squared_luminance.resize(m_render_width * m_render_height);
+		m_pixels_sample_count.resize(m_render_width * m_render_height);
+	}
+	else
+	{
+		m_pixels_squared_luminance.free();
+		m_pixels_sample_count.free();
+	}
+}
+
 void GPURenderer::translate_camera_view(glm::vec3 translation)
 {
 	m_camera.translation = m_camera.translation + translation * glm::conjugate(m_camera.rotation);

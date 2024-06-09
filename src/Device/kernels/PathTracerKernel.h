@@ -115,8 +115,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
         render_data.buffers.pixels[pixel_index] = ColorRGB(0.0f);
         render_data.aux_buffers.denoiser_normals[pixel_index] = make_float3(1.0f, 1.0f, 1.0f);
         render_data.aux_buffers.denoiser_albedo[pixel_index] = ColorRGB(0.0f, 0.0f, 0.0f);
-        render_data.aux_buffers.pixel_sample_count[pixel_index] = 0;
-        render_data.aux_buffers.pixel_squared_luminance[pixel_index] = 0;
+
+        if (render_data.render_settings.stop_noise_threshold > 0.0f || render_data.render_settings.enable_adaptive_sampling)
+        {
+            // These buffers are only available when either the adaptive sampling or the stop noise threshold is enabled
+            render_data.aux_buffers.pixel_sample_count[pixel_index] = 0;
+            render_data.aux_buffers.pixel_squared_luminance[pixel_index] = 0;
+        }
     }
 
 
@@ -264,9 +269,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
     // If we got here, this means that we still have at least one ray active
     render_data.aux_buffers.still_one_ray_active[0] = 1;
 
+    if (render_data.render_settings.stop_noise_threshold > 0.0f || render_data.render_settings.enable_adaptive_sampling)
+    {
+        // We can only use these buffers is the adaptive sampling or the stop noise threshold is enabled
+        render_data.aux_buffers.pixel_squared_luminance[pixel_index] += squared_luminance_of_samples;
+        render_data.aux_buffers.pixel_sample_count[pixel_index] += render_data.render_settings.samples_per_frame;
+    }
     render_data.buffers.pixels[pixel_index] += final_color;
-    render_data.aux_buffers.pixel_squared_luminance[pixel_index] += squared_luminance_of_samples;
-    render_data.aux_buffers.pixel_sample_count[pixel_index] += render_data.render_settings.samples_per_frame;
 
     // Handling denoiser's albedo and normals AOVs    
     denoiser_albedo /= (float)render_data.render_settings.samples_per_frame;
