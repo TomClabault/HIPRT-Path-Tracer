@@ -14,13 +14,6 @@ OpenImageDenoiser::OpenImageDenoiser()
     m_denoised_buffer = nullptr;
 }
 
-OpenImageDenoiser::OpenImageDenoiser(int width, int height) : m_width(width), m_height(height)
-{
-    create_device();
-    m_denoised_buffer = m_device.newBuffer(sizeof(ColorRGB) * width * height, oidn::Storage::Managed);
-    m_input_color_buffer_oidn = m_device.newBuffer(sizeof(ColorRGB) * width * height, oidn::Storage::Managed);
-}
-
 void OpenImageDenoiser::set_use_albedo(bool use_albedo)
 {
     m_use_albedo = use_albedo;

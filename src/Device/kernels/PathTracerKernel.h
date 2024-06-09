@@ -122,12 +122,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
 
     bool sampling_needed = true;
     bool stop_noise_threshold_converged = false;
-    sampling_needed = true;//adaptive_sampling(render_data, pixel_index, stop_noise_threshold_converged);
+    sampling_needed = adaptive_sampling(render_data, pixel_index, stop_noise_threshold_converged);
 
-    //if (stop_noise_threshold_converged)
+    if (stop_noise_threshold_converged)
         // Indicating that this pixel has reached the threshold in render_settings.stop_noise_threshold
-        //hippt::atomic_add(render_data.aux_buffers.stop_noise_threshold_count, 1u);
-    //return;
+        hippt::atomic_add(render_data.aux_buffers.stop_noise_threshold_count, 1u);
 
     if (!sampling_needed)
     {

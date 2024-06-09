@@ -133,7 +133,7 @@ struct AuxiliaryBuffers
 	// (consisting of a single unsigned int) counts how many pixels have reached the
 	// noise threshold. If this value is equal to the number of pixels of the
 	// framebuffer, then all pixels have converged.
-	//AtomicType<unsigned int>* stop_noise_threshold_count = nullptr;
+	AtomicType<unsigned int>* stop_noise_threshold_count = nullptr;
 };
 
 enum AmbientLightType
