@@ -32,8 +32,6 @@ public:
 
 
 
-
-
 	RenderWindow(int width, int height);
 	~RenderWindow();
 
@@ -128,7 +126,6 @@ private:
 	// to restart rendering from sample 0
 	bool m_render_dirty = false;
 	GPURenderer m_renderer;
-	HIPRTRenderSettings& m_render_settings;
 	OpenImageDenoiser m_denoiser;
 
 	PerformanceMetricsComputer m_perf_metrics;

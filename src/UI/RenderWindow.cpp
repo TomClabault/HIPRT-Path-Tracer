@@ -343,7 +343,7 @@ void APIENTRY RenderWindow::gl_debug_output_callback(GLenum source,
 	Utils::debugbreak();
 }
 
-RenderWindow::RenderWindow(int width, int height) : m_viewport_width(width), m_viewport_height(height), m_render_settings(m_renderer.get_render_settings())
+RenderWindow::RenderWindow(int width, int height) : m_viewport_width(width), m_viewport_height(height)
 {
 	if (!glfwInit())
 		wait_and_exit("Could not initialize GLFW...");
@@ -478,16 +478,18 @@ int RenderWindow::get_height()
 
 void RenderWindow::set_interacting(bool is_interacting)
 {
+	HIPRTRenderSettings& render_settings = m_renderer.get_render_settings();
+
 	// The user just released the camera and we were rendering at low resolution
-	if (!is_interacting && m_render_settings.render_low_resolution)
+	if (!is_interacting && render_settings.render_low_resolution)
 		m_render_dirty = true;
 
-	m_render_settings.render_low_resolution = is_interacting;
+	render_settings.render_low_resolution = is_interacting;
 }
 
 bool RenderWindow::is_interacting()
 {
-	return m_render_settings.render_low_resolution;
+	return m_renderer.get_render_settings().render_low_resolution;
 }
 
 ApplicationSettings& RenderWindow::get_application_settings()
@@ -619,9 +621,10 @@ void RenderWindow::upload_data_to_display_texture(const void* data, GLenum forma
 
 void RenderWindow::update_program_uniforms(OpenGLProgram& program)
 {
-	program.use();
+	HIPRTRenderSettings& render_settings = m_renderer.get_render_settings();
+	int resolution_scaling = (render_settings.render_low_resolution) ? render_settings.render_low_resolution_scaling : 1;
 
-	int resolution_scaling = (m_render_settings.render_low_resolution) ? m_render_settings.render_low_resolution_scaling : 1;
+	program.use();
 
 	switch (m_application_settings.display_view)
 	{
@@ -630,7 +633,7 @@ void RenderWindow::update_program_uniforms(OpenGLProgram& program)
 		if (m_application_settings.enable_denoising && m_application_settings.last_denoised_sample_count != -1)
 			sample_number = m_application_settings.last_denoised_sample_count;
 		else
-			sample_number = m_render_settings.sample_number;
+			sample_number = render_settings.sample_number;
 
 		program.set_uniform("u_texture", RenderWindow::DISPLAY_TEXTURE_UNIT);
 		program.set_uniform("u_sample_number", sample_number);
@@ -644,7 +647,7 @@ void RenderWindow::update_program_uniforms(OpenGLProgram& program)
 	case DisplayView::DISPLAY_ALBEDO:
 	case DisplayView::DISPLAY_DENOISED_ALBEDO:
 		program.set_uniform("u_texture", RenderWindow::DISPLAY_TEXTURE_UNIT);
-		program.set_uniform("u_sample_number", m_render_settings.sample_number);
+		program.set_uniform("u_sample_number", render_settings.sample_number);
 		program.set_uniform("u_resolution_scaling", resolution_scaling);
 
 		break;
@@ -652,7 +655,7 @@ void RenderWindow::update_program_uniforms(OpenGLProgram& program)
 	case DisplayView::DISPLAY_NORMALS:
 	case DisplayView::DISPLAY_DENOISED_NORMALS:
 		program.set_uniform("u_texture", RenderWindow::DISPLAY_TEXTURE_UNIT);
-		program.set_uniform("u_sample_number", m_render_settings.sample_number);
+		program.set_uniform("u_sample_number", render_settings.sample_number);
 		program.set_uniform("u_resolution_scaling", resolution_scaling);
 		program.set_uniform("u_do_tonemapping", m_application_settings.do_tonemapping);
 		program.set_uniform("u_gamma", m_application_settings.tone_mapping_gamma);
@@ -663,8 +666,8 @@ void RenderWindow::update_program_uniforms(OpenGLProgram& program)
 	case DisplayView::ADAPTIVE_SAMPLING_MAP:
 		std::vector<ColorRGB> color_stops = { ColorRGB(0.0f, 0.0f, 1.0f), ColorRGB(0.0f, 1.0f, 0.0f), ColorRGB(1.0f, 0.0f, 0.0f) };
 
-		float min_val = (float)m_render_settings.adaptive_sampling_min_samples;
-		float max_val = std::max((float)m_render_settings.sample_number, min_val);
+		float min_val = (float)render_settings.adaptive_sampling_min_samples;
+		float max_val = std::max((float)render_settings.sample_number, min_val);
 
 		program.set_uniform("u_texture", RenderWindow::DISPLAY_TEXTURE_UNIT);
 		program.set_uniform("u_resolution_scaling", resolution_scaling);
@@ -712,34 +715,40 @@ void RenderWindow::update_renderer_view_zoom(float offset)
 
 void RenderWindow::increment_sample_number()
 {
-	if (m_render_settings.render_low_resolution)
-		m_render_settings.sample_number++; // Only doing 1 SPP when moving the camera
+	HIPRTRenderSettings& render_settings = m_renderer.get_render_settings();
+
+	if (render_settings.render_low_resolution)
+		render_settings.sample_number++; // Only doing 1 SPP when moving the camera
 	else
-		m_render_settings.sample_number += m_render_settings.samples_per_frame;
+		render_settings.sample_number += render_settings.samples_per_frame;
 }
 
 bool RenderWindow::is_rendering_done()
 {
+	HIPRTRenderSettings& render_settings = m_renderer.get_render_settings();
+
 	bool rendering_done = false;
 
 	rendering_done |= m_renderer.get_ray_active_buffer().download_data()[0] == 0;
 	rendering_done |= m_renderer.get_stop_noise_threshold_buffer().download_data()[0] == m_renderer.m_render_width * m_renderer.m_render_height;
-	rendering_done |= (m_application_settings.max_sample_count != 0 && m_render_settings.sample_number + 1 > m_application_settings.max_sample_count);
+	rendering_done |= (m_application_settings.max_sample_count != 0 && render_settings.sample_number + 1 > m_application_settings.max_sample_count);
 
 	return rendering_done;
 }
 
 void RenderWindow::reset_render()
 {
+	HIPRTRenderSettings& render_settings = m_renderer.get_render_settings();
+
 	unsigned char true_data = 1;
 	unsigned int zero_data = 0;
 
-	m_render_settings.frame_number = 0;
+	render_settings.frame_number = 0;
 	if (m_application_settings.auto_sample_per_frame)
 	{
 		// Resetting the number of samples per frame to be sure we're not
 		// going to timeout the GPU driver
-		m_render_settings.samples_per_frame = 1;
+		render_settings.samples_per_frame = 1;
 		// Samples per second manually reset to 0.0f so that samples_per_frame
 		// isn't automatically recalculated from the samples per second of last
 		// frame (before the render reset) which would basically fail the whole
@@ -772,6 +781,8 @@ void RenderWindow::set_grab_cursor_position(std::pair<float, float> new_position
 
 void RenderWindow::run()
 {
+	HIPRTRenderSettings& render_settings = m_renderer.get_render_settings();
+
 	while (!glfwWindowShouldClose(m_window))
 	{
 		m_start_cpu_frame_time = std::chrono::high_resolution_clock::now();
@@ -782,12 +793,12 @@ void RenderWindow::run()
 		update_keyboard_inputs();
 
 		// We're resetting the render each frame if rendering at low resolution
-		m_render_dirty |= m_render_settings.render_low_resolution == 1;
+		m_render_dirty |= render_settings.render_low_resolution == 1;
 		if (m_render_dirty)
 			reset_render();
 
 		if (m_application_settings.auto_sample_per_frame && m_samples_per_second > 0)
-			m_render_settings.samples_per_frame = std::min(std::max(1, static_cast<int>(m_samples_per_second / 20.0f)), 10000);
+			render_settings.samples_per_frame = std::min(std::max(1, static_cast<int>(m_samples_per_second / 20.0f)), 10000);
 
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
@@ -799,7 +810,7 @@ void RenderWindow::run()
 		{
 			if (m_application_settings.denoise_at_target_sample_count)
 			{
-				if (m_render_settings.sample_number == m_application_settings.max_sample_count)
+				if (render_settings.sample_number == m_application_settings.max_sample_count)
 				{
 					m_denoiser.denoise(m_renderer.get_color_framebuffer());
 					m_denoiser.copy_denoised_data_to_buffer(m_renderer.get_denoised_framebuffer());
@@ -813,7 +824,7 @@ void RenderWindow::run()
 				// Note on the condition below.
 				// 
 				// We could have intuitively used something like:
-				// m_render_settings.sample_number % m_application_settings.denoiser_sample_skip == 0
+				// render_settings.sample_number % m_application_settings.denoiser_sample_skip == 0
 				// meaning that we denoise everytime we reach a multiple of the denoiser_sample_skip. This works
 				// fine but only for 1SPP per frame. What if denoiser_sample_skip == 10 and samples_per_frame is 3 ?
 				// 
@@ -824,10 +835,10 @@ void RenderWindow::run()
 				//
 				// A better condition is by checking how many samples have passed since the last time we denoised. 
 				// If more than the threshold given by denoiser_sample_skip, we need denoising.
-				bool need_to_denoise = m_render_settings.sample_number - std::max(0, m_application_settings.last_denoised_sample_count) >= m_application_settings.denoiser_sample_skip;
+				bool need_to_denoise = render_settings.sample_number - std::max(0, m_application_settings.last_denoised_sample_count) >= m_application_settings.denoiser_sample_skip;
 				if (need_to_denoise)
 				{
-					m_application_settings.last_denoised_sample_count = m_render_settings.sample_number;
+					m_application_settings.last_denoised_sample_count = render_settings.sample_number;
 
 					m_denoiser.denoise(m_renderer.get_color_framebuffer());
 					m_denoiser.copy_denoised_data_to_buffer(m_renderer.get_denoised_framebuffer());
@@ -923,7 +934,7 @@ void RenderWindow::render()
 	{
 		m_renderer.render();
 		increment_sample_number();
-		m_render_settings.frame_number++;
+		m_renderer.get_render_settings().frame_number++;
 	}
 	else
 		// Sleeping so that we don't burn the CPU (and GPU because it'll have to do the display)
@@ -946,6 +957,8 @@ void RenderWindow::display(const void* data)
 
 void RenderWindow::draw_render_settings_panel()
 {
+	HIPRTRenderSettings& render_settings = m_renderer.get_render_settings();
+
 	if (!ImGui::CollapsingHeader("Render Settings"))
 		return;
 	ImGui::TreePush("Render settings tree");
@@ -990,22 +1003,22 @@ void RenderWindow::draw_render_settings_panel()
 
 	unsigned int converged_count;
 	unsigned int total_pixel_count;
-	ImGui::BeginDisabled(m_render_settings.enable_adaptive_sampling);
-	if (ImGui::InputFloat("Stop render at noise threshold", &m_render_settings.stop_noise_threshold))
+	ImGui::BeginDisabled(render_settings.enable_adaptive_sampling);
+	if (ImGui::InputFloat("Stop render at noise threshold", &render_settings.stop_noise_threshold))
 	{
 		bool need_buffers = false;
-		need_buffers |= m_render_settings.enable_adaptive_sampling == 1;
-		need_buffers |= m_render_settings.stop_noise_threshold > 0.0f;
+		need_buffers |= render_settings.enable_adaptive_sampling == 1;
+		need_buffers |= render_settings.stop_noise_threshold > 0.0f;
 
 		unsigned int zero_data = 0;
-		m_render_settings.stop_noise_threshold = std::max(0.0f, m_render_settings.stop_noise_threshold);
+		render_settings.stop_noise_threshold = std::max(0.0f, render_settings.stop_noise_threshold);
 		m_renderer.get_stop_noise_threshold_buffer().upload_data(&zero_data);
 		m_renderer.toggle_adaptive_sampling_buffers(need_buffers);
 	}
 
 	ImGui::TreePush("Tree stop noise threshold");
 	{
-		converged_count = m_renderer.get_stop_noise_threshold_buffer().download_data()[0] * (!m_render_settings.enable_adaptive_sampling);
+		converged_count = m_renderer.get_stop_noise_threshold_buffer().download_data()[0] * (!render_settings.enable_adaptive_sampling);
 		total_pixel_count = m_renderer.m_render_width * m_renderer.m_render_height;
 		ImGui::Text("Pixels converged: %d / %d - %.4f%%", converged_count, total_pixel_count, static_cast<float>(converged_count) / total_pixel_count * 100.0f);
 	}
@@ -1013,14 +1026,14 @@ void RenderWindow::draw_render_settings_panel()
 	ImGui::EndDisabled();
 
 	ImGui::BeginDisabled(m_application_settings.auto_sample_per_frame);
-	ImGui::InputInt("Samples per frame", &m_render_settings.samples_per_frame); 
+	ImGui::InputInt("Samples per frame", &render_settings.samples_per_frame); 
 	ImGui::EndDisabled();
 	ImGui::SameLine();
 	ImGui::Checkbox("Auto", &m_application_settings.auto_sample_per_frame);
-	if (ImGui::InputInt("Max bounces", &m_render_settings.nb_bounces))
+	if (ImGui::InputInt("Max bounces", &render_settings.nb_bounces))
 	{
 		// Clamping to 0 in case the user input a negative number of bounces	
-		m_render_settings.nb_bounces = std::max(m_render_settings.nb_bounces, 0); 
+		render_settings.nb_bounces = std::max(render_settings.nb_bounces, 0); 
 		m_render_dirty = true;
 	}
 
@@ -1029,21 +1042,21 @@ void RenderWindow::draw_render_settings_panel()
 	{
 		ImGui::TreePush("Adaptive sampling tree");
 
-		if (ImGui::Checkbox("Enable adaptive sampling", (bool*)&m_render_settings.enable_adaptive_sampling))
+		if (ImGui::Checkbox("Enable adaptive sampling", (bool*)&render_settings.enable_adaptive_sampling))
 		{
 			bool need_buffers = false;
-			need_buffers |= m_render_settings.enable_adaptive_sampling == 1;
-			need_buffers |= m_render_settings.stop_noise_threshold > 0.0f;
+			need_buffers |= render_settings.enable_adaptive_sampling == 1;
+			need_buffers |= render_settings.stop_noise_threshold > 0.0f;
 
 			m_renderer.toggle_adaptive_sampling_buffers(need_buffers);
 			m_render_dirty = true;
 		}
 
-		ImGui::BeginDisabled(!m_render_settings.enable_adaptive_sampling);
-		m_render_dirty |= ImGui::InputInt("Adaptive sampling minimum samples", &m_render_settings.adaptive_sampling_min_samples);
-		if (ImGui::InputFloat("Adaptive sampling noise threshold", &m_render_settings.adaptive_sampling_noise_threshold))
+		ImGui::BeginDisabled(!render_settings.enable_adaptive_sampling);
+		m_render_dirty |= ImGui::InputInt("Adaptive sampling minimum samples", &render_settings.adaptive_sampling_min_samples);
+		if (ImGui::InputFloat("Adaptive sampling noise threshold", &render_settings.adaptive_sampling_noise_threshold))
 		{
-			m_render_settings.adaptive_sampling_noise_threshold = std::max(0.0f, m_render_settings.adaptive_sampling_noise_threshold);
+			render_settings.adaptive_sampling_noise_threshold = std::max(0.0f, render_settings.adaptive_sampling_noise_threshold);
 			m_render_dirty = true;
 		}
 		ImGui::EndDisabled();
@@ -1224,6 +1237,8 @@ void RenderWindow::draw_post_process_panel()
 
 void RenderWindow::draw_performance_panel()
 {
+	HIPRTRenderSettings& render_settings = m_renderer.get_render_settings();
+
 	if (!ImGui::CollapsingHeader("Performance"))
 		return;
 
@@ -1233,13 +1248,13 @@ void RenderWindow::draw_performance_panel()
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	if (ImGui::Button("Apply benchmark settings"))
 	{
-		m_render_settings.freeze_random = true;
-		m_render_settings.enable_adaptive_sampling = false;
+		render_settings.freeze_random = true;
+		render_settings.enable_adaptive_sampling = false;
 		m_application_settings.auto_sample_per_frame = false;
 
 		reset_render();
 	}
-	if (ImGui::Checkbox("Freeze random", (bool*)&m_render_settings.freeze_random))
+	if (ImGui::Checkbox("Freeze random", (bool*)&render_settings.freeze_random))
 		reset_render();
 
 	bool rolling_window_size_changed = false;
@@ -1287,6 +1302,8 @@ void RenderWindow::draw_performance_panel()
 
 void RenderWindow::draw_imgui()
 {
+	HIPRTRenderSettings& render_settings = m_renderer.get_render_settings();
+
 	ImGuiIO& io = ImGui::GetIO();
 	ImGui::ShowDemoWindow();
 
@@ -1295,18 +1312,18 @@ void RenderWindow::draw_imgui()
 	auto now_time = std::chrono::high_resolution_clock::now();
 	if (!is_rendering_done())
 	{
-		float sample_time = m_renderer.get_frame_time() / ((m_render_settings.render_low_resolution ? 1 : m_render_settings.samples_per_frame));
+		float sample_time = m_renderer.get_frame_time() / ((render_settings.render_low_resolution ? 1 : render_settings.samples_per_frame));
 
 		m_current_render_time += std::chrono::duration_cast<std::chrono::milliseconds>(m_stop_cpu_frame_time - m_start_cpu_frame_time).count();
 		m_samples_per_second = 1000.0f / sample_time;
 
-		if (!m_render_settings.render_low_resolution)
+		if (!render_settings.render_low_resolution)
 			// Not adding the frame time if we're rendering low resolution, not relevant
 			m_perf_metrics.add_value(PerformanceMetricsComputer::SAMPLE_TIME_KEY, sample_time);
 	}
 
 	ImGui::Text("Render time: %.3fs", m_current_render_time/ 1000.0f);
-	ImGui::Text("%d samples | %.2f samples/s (GPU) @ %dx%d", m_render_settings.sample_number, m_samples_per_second, m_renderer.m_render_width, m_renderer.m_render_height);
+	ImGui::Text("%d samples | %.2f samples/s (GPU) @ %dx%d", render_settings.sample_number, m_samples_per_second, m_renderer.m_render_width, m_renderer.m_render_height);
 
 	ImGui::Separator();
 
