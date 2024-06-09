@@ -31,11 +31,7 @@ include(cmake/SetupHIPRT.cmake)
 include(cmake/SetupOrochi.cmake)
 
 
-
-
 set(GLFW_LIB_DIR "thirdparties/opengl/lib/GLFW")
-set(GLFW_BIN_DIR "thirdparties/opengl/bin/GLFW")
-
 set(GLEW_LIB_DIR "thirdparties/opengl/lib/GLEW")
 set(GLEW_BIN_DIR "thirdparties/opengl/bin/GLEW")
 
@@ -49,8 +45,6 @@ add_compile_definitions(GLSL_SHADERS_DIRECTORY="../src/Shaders")
 
 link_directories(${CMAKE_SOURCE_DIR}/${GLFW_LIB_DIR})
 link_directories(${CMAKE_SOURCE_DIR}/${GLEW_LIB_DIR})
-link_directories(${EXTERNAL_ASSIMP_INSTALL_LOCATION}/lib)
-link_directories(${HIPRT_BIN_DIR})
 
 file(GLOB_RECURSE SOURCE_FILES src/*.cpp src/*.h)
 file(GLOB_RECURSE OPENGL_HEADERS thirdparties/opengl/include/*.h)
@@ -82,12 +76,12 @@ add_executable(HIPRTPathTracer
 
 set_property(TARGET HIPRTPathTracer PROPERTY CXX_STANDARD 20)
 
-find_package(OpenMP)
+find_package(OpenMP REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(OpenImageDenoise REQUIRED HINTS ${oidnbinaries_SOURCE_DIR}) # HINTS to indicate a folder to search for the library in
 
-# "version" is a library from the Windows SDK
 if (WIN32)
+	# "version" is a library from the Windows SDK
 	target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX assimp OpenImageDenoise ${OPENGL_LIBRARY} glfw3 glew32 ${hiprt_link_lib} version)
 elseif(UNIX)
 	find_package(GLEW REQUIRED)
@@ -99,12 +93,6 @@ target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/opengl/include"
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/stbi/")
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/glm/")
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/imgui/")
-# TODO using /.. here isn't super cool because it gives access to folders in the HIPRT SDK such as tutorials, tools, ...
-# However, because we want to include the HIPRT and Orochi headers as <hiprt/*.h> and <Orochi/*.h>, we need to give
-# the include directory as being one folder above the actual hiprt/ and Orochi/ folders that contain the includes
-# Without the .., we would have to include the headers as <hiprt.h> in our source files instead of <hiprt/hiprt.h>
-# which is less explicit and not wanted
-# This is however the simplest approach to allow prefixing the headers with the folder name
 target_include_directories(HIPRTPathTracer PRIVATE ${HIPRT_HEADERS_DIR}/..)
 target_include_directories(HIPRTPathTracer PRIVATE ${OROCHI_SOURCES_DIR}/..)
 target_include_directories(HIPRTPathTracer PRIVATE "${EXTERNAL_ASSIMP_INSTALL_LOCATION}/include/")

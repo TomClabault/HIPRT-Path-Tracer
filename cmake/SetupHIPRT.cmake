@@ -57,4 +57,4 @@ add_compile_definitions(KERNEL_COMPILER_ADDITIONAL_INCLUDE="${HIPRT_SUBMODULE_DI
 # so \\\\ is converted by CMake to '\\' which is the regular expression for the single '\' character
 STRING(REGEX REPLACE "\\\\" "/" HIPRT_HEADERS_DIR ${HIPRT_HEADERS_DIR})
 	
-link_directories(${HIPRT_BINARIES_DIR}/hiprt/win)
+link_directories(${HIPRT_BIN_DIR})
