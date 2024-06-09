@@ -157,7 +157,7 @@ HIPRTRenderData GPURenderer::get_render_data()
 	render_data.aux_buffers.pixel_sample_count = m_pixels_sample_count.get_device_pointer();
 	render_data.aux_buffers.pixel_squared_luminance = m_pixels_squared_luminance.get_device_pointer();
 	render_data.aux_buffers.still_one_ray_active = m_still_one_ray_active_buffer.get_device_pointer();
-	//render_data.aux_buffers.stop_noise_threshold_count = reinterpret_cast<AtomicType<unsigned int>*>(m_stop_noise_threshold_count_buffer.get_device_pointer());
+	render_data.aux_buffers.stop_noise_threshold_count = reinterpret_cast<AtomicType<unsigned int>*>(m_stop_noise_threshold_count_buffer.get_device_pointer());
 
 	render_data.world_settings = m_world_settings;
 	render_data.render_settings = m_render_settings;
