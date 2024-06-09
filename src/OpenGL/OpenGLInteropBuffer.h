@@ -32,7 +32,8 @@ public:
 	GLuint get_opengl_buffer();
 
 	void resize(int new_element_count);
-	size_t get_element_count();
+	size_t get_element_count() const;
+	size_t get_byte_size() const;
 
 	/**
 	 * Makes the buffer accessible to HIP/CUDA
@@ -133,20 +134,34 @@ void OpenGLInteropBuffer<T>::resize(int new_element_count)
 }
 
 template <typename T>
-size_t OpenGLInteropBuffer<T>::get_element_count()
+size_t OpenGLInteropBuffer<T>::get_element_count() const
 {
 	return m_byte_size / sizeof(T);
+}
+
+template <typename T>
+size_t OpenGLInteropBuffer<T>::get_byte_size() const
+{
+	return m_byte_size;
 }
 
 template <typename T>
 T* OpenGLInteropBuffer<T>::map()
 {
 	if (!m_initialized)
+	{
+		std::cerr << "Mapping a buffer that hasn't been initialized!" << std::endl;
+
 		return nullptr;
+	}
 
 	if (m_mapped)
+	{
+		std::cerr << "Mapping a buffer that is already mapped. Did you forget to call unmap()?" << std::endl;
+
 		// Already mapped
 		return m_mapped_pointer;
+	}
 
 #ifdef OROCHI_ENABLE_CUEW
 	CudaGLInterop::CUresult res = CudaGLInterop::cuGraphicsMapResources_oro(1, &m_buffer_resource, 0);

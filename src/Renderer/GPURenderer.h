@@ -27,6 +27,7 @@ public:
 	void change_render_resolution(int new_width, int new_height);
 
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> get_color_framebuffer();
+	std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> get_denoised_framebuffer();
 	OrochiBuffer<ColorRGB>& get_denoiser_albedo_buffer();
 	OrochiBuffer<hiprtFloat3>& get_denoiser_normals_buffer();
 	OrochiBuffer<int>& get_pixels_sample_count_buffer();
@@ -76,6 +77,9 @@ private:
 	// This is an accumulation buffer. This needs to be divided by the
 	// number of samples for displaying
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> m_framebuffer;
+	// Buffer for holding the denoised frame (the denoiser data will be copied
+	// to this buffer and then displayed to the viewport)
+	std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> m_denoised_framebuffer;
 	// Normals G-buffer
 	OrochiBuffer<hiprtFloat3> m_normals_buffer;
 	// Albedo G-buffer

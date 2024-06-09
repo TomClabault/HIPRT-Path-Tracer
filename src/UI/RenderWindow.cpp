@@ -400,10 +400,10 @@ RenderWindow::RenderWindow(int width, int height) : m_viewport_width(width), m_v
 	m_renderer.change_render_resolution(width, height);
 	create_display_programs();
 
+	m_denoiser.initialize();
 	m_denoiser.resize(width, height);
 	m_denoiser.set_use_albedo(false);
 	m_denoiser.set_use_normals(false);
-	m_denoiser.set_color_buffer(m_renderer.get_color_framebuffer());
 	m_denoiser.finalize();
 
 	m_screenshoter.set_renderer(&m_renderer);
@@ -795,8 +795,9 @@ void RenderWindow::run()
 			{
 				if (m_render_settings.sample_number == m_application_settings.max_sample_count)
 				{
-					m_denoiser.denoise();
-					display(m_denoiser.get_denoised_buffer());
+					m_denoiser.denoise(m_renderer.get_color_framebuffer());
+					m_denoiser.copy_denoised_data_to_buffer(m_renderer.get_denoised_framebuffer());
+					display(m_renderer.get_denoised_framebuffer());
 				}
 				else
 					display(m_renderer.get_color_framebuffer());
@@ -805,11 +806,12 @@ void RenderWindow::run()
 			{
 				if ((m_render_settings.sample_number % m_application_settings.denoiser_sample_skip) == 0)
 				{
-					m_denoiser.denoise();
+					m_denoiser.denoise(m_renderer.get_color_framebuffer());
+					m_denoiser.copy_denoised_data_to_buffer(m_renderer.get_denoised_framebuffer());
 					m_application_settings.last_denoised_sample_count = m_render_settings.sample_number;
 				}
 			
-				display(m_denoiser.get_denoised_buffer());
+				display(m_renderer.get_denoised_framebuffer());
 			}
 		}
 		else
@@ -1261,7 +1263,7 @@ void RenderWindow::draw_imgui()
 	}
 
 	ImGui::Text("Render time: %.3fs", m_current_render_time/ 1000.0f);
-	ImGui::Text("%d samples | %.2f samples/s @ %dx%d", m_render_settings.sample_number, m_samples_per_second, m_renderer.m_render_width, m_renderer.m_render_height);
+	ImGui::Text("%d samples | %.2f samples/s (GPU) @ %dx%d", m_render_settings.sample_number, m_samples_per_second, m_renderer.m_render_width, m_renderer.m_render_height);
 
 	ImGui::Separator();
 

@@ -51,7 +51,7 @@ set(CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE_BACKUP})
 
 # ----------- Downloading Open Image Denoise binaries -----------
 if (WIN32)
-	set(OIDN_URL https://github.com/OpenImageDenoise/oidn/releases/download/v2.2.2/oidn-2.2.2.x64.windows.zip)
+	set(OIDN_URL https://github.com/RenderKit/oidn/releases/download/v2.0.0/oidn-2.0.0.x64.windows.zip)
 elseif(UNIX)
 	set(OIDN_URL https://github.com/OpenImageDenoise/oidn/releases/download/v2.2.2/oidn-2.2.2.x86_64.linux.tar.gz)
 endif()
@@ -282,7 +282,7 @@ endif()
 
 if (WIN32)
 	message(STATUS "Copying OpenImageDenoise binaries...")
-	file(GLOB OIDN_BINARIES ${oidnbinaries_SOURCE_DIR}/bin/OpenImageDenoise*.dll)
+	file(GLOB OIDN_BINARIES ${oidnbinaries_SOURCE_DIR}/bin/*.dll)
 	file(COPY ${OIDN_BINARIES} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
 
 	message(STATUS "Copying HIPRT binaries...")

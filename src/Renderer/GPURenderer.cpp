@@ -12,6 +12,7 @@
 GPURenderer::GPURenderer()
 {
 	m_framebuffer = std::make_shared<OpenGLInteropBuffer<ColorRGB>>();
+	m_denoised_framebuffer = std::make_shared<OpenGLInteropBuffer<ColorRGB>>();
 }
 
 void GPURenderer::render()
@@ -46,6 +47,7 @@ void GPURenderer::change_render_resolution(int new_width, int new_height)
 	m_render_height = new_height;
 
 	m_framebuffer->resize(new_width * new_height);
+	m_denoised_framebuffer->resize(new_width * new_height);
 	m_normals_buffer.resize(new_width * new_height);
 	m_albedo_buffer.resize(new_width * new_height);
 
@@ -61,6 +63,11 @@ void GPURenderer::change_render_resolution(int new_width, int new_height)
 std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> GPURenderer::get_color_framebuffer()
 {
 	return m_framebuffer;
+}
+
+std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> GPURenderer::get_denoised_framebuffer()
+{
+	return m_denoised_framebuffer;
 }
 
 OrochiBuffer<ColorRGB>& GPURenderer::get_denoiser_albedo_buffer()
