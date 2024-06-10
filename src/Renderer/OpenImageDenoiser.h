@@ -31,8 +31,10 @@ public:
 	void finalize();
 
 	void denoise(std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> data_to_denoise);
-
-	void copy_denoised_data_to_buffer(std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> buffer);
+	/**
+	 * Function used to copy the denoiser result after a call to denoise() to a given buffer
+	 */
+	void copy_denoised_data_to_buffer(std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> out_buffer);
 
 
 private:

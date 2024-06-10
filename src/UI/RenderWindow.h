@@ -27,8 +27,9 @@
 class RenderWindow
 {
 public:
-	static constexpr int DISPLAY_TEXTURE_UNIT = 1;
-	static constexpr int DISPLAY_COMPUTE_IMAGE_UNIT = 2;
+	static constexpr int DISPLAY_TEXTURE_UNIT_1 = 1;
+	static constexpr int DISPLAY_TEXTURE_UNIT_2 = 2;
+	static constexpr int DISPLAY_COMPUTE_IMAGE_UNIT = 3;
 
 
 
@@ -49,25 +50,9 @@ public:
 	GPURenderer& get_renderer();
 
 	void create_display_programs();
-	void select_display_program(DisplayView display_view);
+	void change_display_view(DisplayView display_view);
 
-	/*
-	 * This function ensures that the display texture is of the proper format
-	 * for the display view selected.
-	 * 
-	 * For example, if the user decided to display normals in the viewport, we'll need
-	 * the display texture to be a float3 (RGB32F) texture. If the user is displaying
-	 * the adaptive sampling heatmap, we'll only need an integer texture.
-	 * 
-	 * This function deletes/recreates the texture everytime its required format changes
-	 * (i.e. when the current texture was a float3 and we asked for an integer texture) 
-	 because we don't want to keep every single possible texture in VRAM. This may cause
-	 * a (very) small stutter but that's probably expected since we're asking for a different view
-	 * to show up in the viewport
-	 */
-	void recreate_display_texture_from_display_view(DisplayView display_view);
-	void recreate_display_texture(DisplayTextureType texture_type, int width, int height);
-	void upload_data_to_display_texture(const void* data, GLenum format, GLenum type);
+	void upload_data_to_display_texture(GLuint display_texture, const void* data, GLenum format, GLenum type);
 	void update_program_uniforms(OpenGLProgram& program);
 	void update_renderer_view_translation(float translation_x, float translation_y);
 	void update_renderer_view_zoom(float offset);
@@ -83,10 +68,13 @@ public:
 	bool is_rendering_done();
 	void reset_render();
 
-
 	std::pair<float, float> get_grab_cursor_position();
 	void set_grab_cursor_position(std::pair<float, float> new_position);
 
+	/**
+	 * Uploads raw data or a buffer to display_texture_1 and draws on
+	 * the fullscreen quad with the active shader program
+	 */
 	void display(const void* data);
 	template <typename T>
 	void display(const std::vector<T>& orochi_buffer);
@@ -94,6 +82,19 @@ public:
 	void display(const OrochiBuffer<T>& orochi_buffer);
 	template <typename T>
 	void display(std::shared_ptr<OpenGLInteropBuffer<T>> buffer);
+
+	/**
+	 * Uploads data from buffer_1 and buffer_2 to display_texture_1 and
+	 * display_texture_2 respectively and draws on the fullscreen quad with
+	 * the active shader program.
+	 * 
+	 * Blend override allows the overriding of the blend factor of the two images. 
+	 *	* -1.0f is no override. 
+	 *	* 0.0f forces the display of only the data of buffer_1. 
+	 *	* 1.0f forces the display of only the data of buffer_2.
+	 */
+	template <typename T>
+	void display_blend(std::shared_ptr<OpenGLInteropBuffer<T>> buffer_1, std::shared_ptr<OpenGLInteropBuffer<T>> buffer_2, float blend_override = -1.0f);
 
 	void draw_render_settings_panel();
 	void draw_lighting_panel();
@@ -109,6 +110,23 @@ public:
 	void quit();
 
 private:
+	/*
+	 * This function ensures that the display texture is of the proper format
+	 * for the display view selected.
+	 *
+	 * For example, if the user decided to display normals in the viewport, we'll need
+	 * the display texture to be a float3 (RGB32F) texture. If the user is displaying
+	 * the adaptive sampling heatmap, we'll only need an integer texture.
+	 *
+	 * This function deletes/recreates the texture everytime its required format changes
+	 * (i.e. when the current texture was a float3 and we asked for an integer texture)
+	 because we don't want to keep every single possible texture in VRAM. This may cause
+	 * a (very) small stutter but that's probably expected since we're asking for a different view
+	 * to show up in the viewport
+	 */
+	void internal_recreate_display_textures_from_display_view(DisplayView display_view);
+	void internal_recreate_display_texture(std::pair<GLuint, DisplayTextureType>& display_texture, GLenum display_texture_unit, DisplayTextureType new_texture_type, int width, int height);
+
 	int m_viewport_width, m_viewport_height;
 	// Current mouse cursor position within the window. Used to compute mouse
 	// mouse delta movement by comparing the new mouse position with this variable
@@ -131,24 +149,39 @@ private:
 	PerformanceMetricsComputer m_perf_metrics;
 	Screenshoter m_screenshoter;
 
-	OpenGLProgram m_active_display_program;
-	OpenGLProgram m_default_display_program;
-	OpenGLProgram m_normal_display_program;
-	OpenGLProgram m_albedo_display_program;
-	OpenGLProgram m_adaptive_sampling_display_program;
 	// We don't need a VAO because we're hardcoding our fullscreen
 	// quad vertices in our vertex shader but we still need an empty/fake
 	// VAO for NVIDIA drivers to avoid errors
 	GLuint m_vao;
-	// Texture used by the display program to draw on the fullscreen quad.
-	// This texture should be the same resolution as the render resolution, 
-	// it has nothing to do with the resolution of the viewport
-	GLuint m_display_texture = -1;
-	// Format of the texel of the texture used by the display program
+
+	OpenGLProgram m_active_display_program;
+	OpenGLProgram m_default_display_program;
+	OpenGLProgram m_blend_2_display_program;
+	OpenGLProgram m_normal_display_program;
+	OpenGLProgram m_albedo_display_program;
+	OpenGLProgram m_adaptive_sampling_display_program;
+
+
+	// Display textures & their display type
+	// 
+	// The display type is the format of the texel of the texture used by the display program.
 	// This is useful because we have several types of programs using several
 	// types of textures. For example, displaying normals on the screen requires float3 textures
-	// whereas displaying a heatmap requires only a texture whose texels are scalar (floats or ints)
-	DisplayTextureType m_display_texture_type = DisplayTextureType::UNINITIALIZED;
+	// whereas displaying a heatmap requires only a texture whose texels are scalar (floats or ints).
+	// This means that, depending on the display view selected, we're going to have to use the proper
+	// OpenGL texture format type and that's what the DisplayTextureType is for
+	// 
+	// The textures should be the same resolution as the render resolution.
+	// They have nothing to do with the resolution of the viewport.
+	// 
+	// The first texture is used by the display program to draw on the fullscreen quad.
+	// Also used as the first blending texture when a blending display view is selected
+	std::pair<GLuint, DisplayTextureType> m_display_texture_1 = { -1, DisplayTextureType::UNINITIALIZED };
+	// Second display texture.
+	// Used as the second texture for blending when a blending display view is selected
+	// (used by the denoiser blending for example)
+	std::pair<GLuint, DisplayTextureType> m_display_texture_2 = { -1, DisplayTextureType::UNINITIALIZED };
+
 	GLFWwindow* m_window;
 };
 
@@ -161,16 +194,35 @@ void RenderWindow::display(const std::vector<T>& pixels_data)
 template <typename T>
 void RenderWindow::display(const OrochiBuffer<T>& orochi_buffer)
 {
-	display(orochi_buffer.download_data().data());
+	display(orochi_buffer.download_data());
 }
 
 template <typename T>
 void RenderWindow::display(std::shared_ptr<OpenGLInteropBuffer<T>> buffer)
 {
 	buffer->unmap();
-	buffer->unpack_to_texture(m_display_texture, GL_TEXTURE0 + RenderWindow::DISPLAY_TEXTURE_UNIT, m_renderer.m_render_width, m_renderer.m_render_height, m_display_texture_type);
+	buffer->unpack_to_texture(m_display_texture_1.first, GL_TEXTURE0 + RenderWindow::DISPLAY_TEXTURE_UNIT_1, m_renderer.m_render_width, m_renderer.m_render_height, m_display_texture_1.second);
 
 	update_program_uniforms(m_active_display_program);
+
+	// Binding an empty VAO here (empty because we're hardcoding our full-screen quad vertices
+	// in our vertex shader) because this is required on NVIDIA drivers
+	glBindVertexArray(m_vao);
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+}
+
+template <typename T>
+void RenderWindow::display_blend(std::shared_ptr<OpenGLInteropBuffer<T>> buffer_1, std::shared_ptr<OpenGLInteropBuffer<T>> buffer_2, float blend_override /* = -1.0f */)
+{
+	buffer_1->unmap();
+	buffer_1->unpack_to_texture(m_display_texture_1.first, GL_TEXTURE0 + RenderWindow::DISPLAY_TEXTURE_UNIT_1, m_renderer.m_render_width, m_renderer.m_render_height, m_display_texture_1.second);
+
+	buffer_2->unmap();
+	buffer_2->unpack_to_texture(m_display_texture_2.first, GL_TEXTURE0 + RenderWindow::DISPLAY_TEXTURE_UNIT_2, m_renderer.m_render_width, m_renderer.m_render_height, m_display_texture_2.second);
+
+	update_program_uniforms(m_active_display_program);
+	if (blend_override != -1.0f)
+		m_active_display_program.set_uniform("u_blend_factor", blend_override);
 
 	// Binding an empty VAO here (empty because we're hardcoding our full-screen quad vertices
 	// in our vertex shader) because this is required on NVIDIA drivers

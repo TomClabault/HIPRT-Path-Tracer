@@ -30,10 +30,13 @@ struct ApplicationSettings
 	int last_denoised_sample_count = -1;
 	// Denoise only when that maximum sample count is reached
 	bool denoise_at_target_sample_count = false;
-
 	// How many frames to wait for before denoising (this basically reduces 
 	// the performance penalty of denoising each frame).
 	int denoiser_sample_skip = 1;
+	// If 1.0f, 100% of the denoised result is displayed in the viewport.
+	// If 0.0f, 100% of the noisy framebuffer is displayed in the viewport
+	// Linearly interpoalted between the two for intermediate values
+	float denoiser_blend = 1.0f;
 
 	// How much to divide the translation distance by when the mouse
 	// has been dragged over the window to move the camera

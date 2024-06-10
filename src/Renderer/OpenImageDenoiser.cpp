@@ -127,13 +127,13 @@ void OpenImageDenoiser::denoise(std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> d
     data_to_denoise->unmap();
 }
 
-void OpenImageDenoiser::copy_denoised_data_to_buffer(std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> buffer)
+void OpenImageDenoiser::copy_denoised_data_to_buffer(std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> out_buffer)
 {
     oroMemcpyKind memcpyKind;
     ColorRGB* buffer_pointer;
     
     memcpyKind = m_cpu_device ? oroMemcpyHostToDevice : oroMemcpyDeviceToDevice;
-    buffer_pointer= buffer->map();
+    buffer_pointer= out_buffer->map();
     OROCHI_CHECK_ERROR(oroMemcpy(buffer_pointer, m_denoised_buffer.getData(), sizeof(ColorRGB) * m_width * m_height, memcpyKind));
-    buffer->unmap();
+    out_buffer->unmap();
 }

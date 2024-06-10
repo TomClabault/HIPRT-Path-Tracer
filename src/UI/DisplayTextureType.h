@@ -18,12 +18,12 @@ public:
 		INT
 	};
 
-	constexpr DisplayTextureType() : value(Value::FLOAT3) { }
-	constexpr DisplayTextureType(Value val) : value(val) { }
+	constexpr DisplayTextureType() : m_value(Value::FLOAT3) { }
+	constexpr DisplayTextureType(Value val) : m_value(val) { }
 
 	GLint get_gl_internal_format()
 	{
-		switch (value)
+		switch (m_value)
 		{
 		case DisplayTextureType::FLOAT3:
 			return GL_RGB32F;
@@ -38,7 +38,7 @@ public:
 
 	GLenum get_gl_format()
 	{
-		switch (value)
+		switch (m_value)
 		{
 		case DisplayTextureType::FLOAT3:
 			return GL_RGB;
@@ -53,7 +53,7 @@ public:
 
 	GLenum get_gl_type()
 	{
-		switch (value)
+		switch (m_value)
 		{
 		case DisplayTextureType::FLOAT3:
 			return GL_FLOAT;
@@ -66,10 +66,11 @@ public:
 		}
 	}
 
-	bool operator !=(const DisplayTextureType& other) { return value != other.value; }
+	bool operator ==(const DisplayTextureType& other) { return m_value == other.m_value; }
+	bool operator !=(const DisplayTextureType& other) { return m_value != other.m_value; }
 
 private:
-	Value value;
+	Value m_value;
 };
 
 #endif
