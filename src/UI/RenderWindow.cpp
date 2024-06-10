@@ -4,6 +4,8 @@
  */
 
 #include "UI/RenderWindow.h"
+#include "UI/LinuxRenderWindowMouseInteractor.h"
+#include "UI/WindowsRenderWindowMouseInteractor.h"
 
 #include <functional>
 #include <iostream>
@@ -100,7 +102,6 @@
 // - thin materials
 // - Look at what Orochi & HIPCC can do in terms of displaying registers used / options to specify shared stack size / block size (-DBLOCK_SIZE, -DSHARED_STACK_SIZE)
 // - Have the UI run at its own framerate to avoid having the UI come to a crawl when the path tracing is expensive
-// - Denoiser blend to allow blending the original noisy image and the perfect denoised result by a given factor
 // - When modifying the emission of a material with the material editor, it should be reflected in the scene and allow the direct sampling of the geometry so the emissive triangles buffer should be updated
 // - Ray differentials for texture mipampping (better bandwidth utilization since sampling potentially smaller texture --> fit better in cache)
 // - Ray reordering for performance
@@ -113,6 +114,7 @@
 // - Visualizing russian roulette depth termination
 // - Add tooltips when hovering over a parameter in the UI
 // - Statistics on russian roulette efficiency
+// - Minimum contribution to speed things up as in OSPRay ?
 // - Being able to enable / disable env map importance sampling
 // - Being able to enable / disable MIS
 // - Better ray origin offset to avoid self intersections
@@ -162,87 +164,6 @@ void glfw_window_resized_callback(GLFWwindow* window, int width, int height)
 		reinterpret_cast<RenderWindow*>(glfwGetWindowUserPointer(window))->resize_frame(width, height);
 }
 
-static bool interacting_left_button = false, interacting_right_button = false;
-static bool just_pressed = false;
-void glfw_mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
-{
-	bool imgui_wants_mouse = ImGui::GetIO().WantCaptureMouse;
-
-	switch (button)
-	{
-	case GLFW_MOUSE_BUTTON_LEFT:
-		interacting_left_button = (action == GLFW_PRESS && !imgui_wants_mouse);
-
-		break;
-
-	case GLFW_MOUSE_BUTTON_RIGHT:
-		interacting_right_button = (action == GLFW_PRESS && !imgui_wants_mouse);
-
-		break;
-	}
-
-	RenderWindow* render_window = reinterpret_cast<RenderWindow*>(glfwGetWindowUserPointer(window));
-
-	bool is_mouse_pressed = interacting_left_button || interacting_right_button;
-	if (is_mouse_pressed)
-	{
-		double current_x, current_y;
-		glfwGetCursorPos(window, &current_x, &current_y);
-		render_window->set_grab_cursor_position(std::make_pair(static_cast<float>(current_x), static_cast<float>(current_y)));
-
-		just_pressed = true;
-	}
-	else
-		just_pressed = false;
-
-	render_window->set_interacting(is_mouse_pressed);
-}
-
-void glfw_mouse_cursor_callback(GLFWwindow* window, double xpos, double ypos)
-{
-	ImGuiIO& io = ImGui::GetIO();
-	if (!io.WantCaptureMouse)
-	{
-		if (just_pressed)
-		{
-			// We want to skip the frame where the mouse is being repositioned to
-			// the center of the screen because if the cursor wasn't at the center,
-			// we're going to consider to delta from the old position to the center as
-			// the moving having moved but it's not the case. The user didn't move the
-			// mouse, it's us forcing it in the center of the viewport
-			just_pressed = false;
-
-			return;
-		}
-
-		RenderWindow* render_window = reinterpret_cast<RenderWindow*>(glfwGetWindowUserPointer(window));
-
-		float xposf = static_cast<float>(xpos);
-		float yposf = static_cast<float>(ypos);
-
-		std::pair<float, float> old_position = render_window->get_grab_cursor_position();
-		if (old_position.first == -1 && old_position.second == -1)
-			;
-		// If this is the first position of the cursor, nothing to do
-		else
-		{
-			// Computing the difference in movement
-			std::pair<float, float> difference = std::make_pair(xposf - old_position.first, yposf - old_position.second);
-
-			if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
-				render_window->update_renderer_view_translation(-difference.first, difference.second);
-
-			if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
-				render_window->update_renderer_view_rotation(-difference.first, -difference.second);
-		}
-
-		// Updating the position
-		if (render_window->is_interacting())
-			// Locking the cursor in place as long as we're moving the camera
-			glfwSetCursorPos(window, old_position.first, old_position.second);
-	}
-}
-
 static bool z_pressed, q_pressed, s_pressed, d_pressed, space_pressed, lshift_pressed;
 void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
@@ -277,17 +198,6 @@ void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, in
 
 	default:
 		break;
-	}
-}
-
-void glfw_mouse_scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
-{
-	ImGuiIO& io = ImGui::GetIO();
-	if (!io.WantCaptureMouse)
-	{
-		RenderWindow* render_window = reinterpret_cast<RenderWindow*>(glfwGetWindowUserPointer(window));
-
-		render_window->update_renderer_view_zoom(static_cast<float>(-yoffset));
 	}
 }
 
@@ -351,6 +261,13 @@ RenderWindow::RenderWindow(int width, int height) : m_viewport_width(width), m_v
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
+
+#ifdef __unix__         
+	m_mouse_interactor = std::make_unique<LinuxRenderWindowMouseInteractor>();
+#elif defined(_WIN32) || defined(WIN32) 
+	m_mouse_interactor = std::make_unique<WindowsRenderWindowMouseInteractor>();
+#endif
+
 	m_window = glfwCreateWindow(width, height, "HIPRT Path Tracer", NULL, NULL);
 	if (!m_window)
 		wait_and_exit("Could not initialize the GLFW window...");
@@ -360,12 +277,10 @@ RenderWindow::RenderWindow(int width, int height) : m_viewport_width(width), m_v
 	// we can retrieve a pointer to this instance of RenderWindow in the callback functions
 	// such as the window_resized_callback function for example
 	glfwSetWindowUserPointer(m_window, this);
-	glfwSetWindowSizeCallback(m_window, glfw_window_resized_callback);
-	glfwSetCursorPosCallback(m_window, glfw_mouse_cursor_callback);
-	glfwSetMouseButtonCallback(m_window, glfw_mouse_button_callback);
-	glfwSetKeyCallback(m_window, glfw_key_callback);
-	glfwSetScrollCallback(m_window, glfw_mouse_scroll_callback);
 	glfwSwapInterval(0);
+	glfwSetWindowSizeCallback(m_window, glfw_window_resized_callback);
+	m_mouse_interactor->set_callbacks(m_window);
+	glfwSetKeyCallback(m_window, glfw_key_callback);
 
 	glewInit();
 
@@ -875,7 +790,7 @@ void RenderWindow::run()
 		render();
 
 		float blend_override = -1.0f;
-		if (m_application_settings.enable_denoising && !is_interacting())
+		if (m_application_settings.enable_denoising)
 		{
 			// Evaluating all the conditions for whether or not we want to denoise
 			// the current color framebuffer and whether or not we want to display
@@ -900,15 +815,19 @@ void RenderWindow::run()
 			// Denoise if:
 			//	- We have reached the target sample count
 			//	- We have rendered enough samples since the last denoise step that we need to denoise again
+			//	- We're not denoising if we're interacting (moving the camera)
 			need_denoising |= target_sample_reached;
 			need_denoising |= sample_skip_threshold_reached;
+			need_denoising &= !is_interacting();
 
 			// Display the noisy framebuffer if: 
 			//	- We want to denoise only at target sample count but haven't reached it yet
 			//	- We want to denoise every m_application_settings.denoiser_sample_skip samples
 			//		but we haven't even reached that number yet. We're displaying the noisy framebuffer in the meantime
+			//	- We're moving the camera
 			display_noisy |= target_sample_not_reached;
 			display_noisy |= !sample_skip_threshold_reached && m_application_settings.last_denoised_sample_count == -1;
+			display_noisy |= is_interacting();
 
 			if (need_denoising)
 			{

@@ -13,6 +13,7 @@
 #include "UI/DisplayTextureType.h"
 #include "UI/DisplayView.h"
 #include "UI/PerformanceMetricsComputer.h"
+#include "UI/RenderWindowMouseInteractor.h"
 #include "UI/Screenshoter.h"
 #include "Utils/CommandlineArguments.h"
 
@@ -109,6 +110,16 @@ public:
 	void render();
 	void quit();
 
+	std::pair<float, float> get_cursor_position()
+	{
+		return m_cursor_position;
+	}
+
+void set_cursor_position(std::pair<float, float> new_cursor_position)
+{
+	m_cursor_position = new_cursor_position;
+}
+
 private:
 	/*
 	 * This function ensures that the display texture is of the proper format
@@ -183,6 +194,9 @@ private:
 	std::pair<GLuint, DisplayTextureType> m_display_texture_2 = { -1, DisplayTextureType::UNINITIALIZED };
 
 	GLFWwindow* m_window;
+	std::unique_ptr<RenderWindowMouseInteractor> m_mouse_interactor;
+
+	std::pair<float, float> m_cursor_position;
 };
 
 template <typename T>
