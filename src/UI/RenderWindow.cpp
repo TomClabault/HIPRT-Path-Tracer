@@ -1156,21 +1156,21 @@ void RenderWindow::draw_denoiser_panel()
 
 	if (ImGui::Checkbox("Enable denoiser", &m_application_settings.enable_denoising))
 		change_display_view(m_application_settings.enable_denoising ? DisplayView::DENOISED_BLEND : DisplayView::DEFAULT);
+	ImGui::BeginDisabled(m_application_settings.denoise_at_target_sample_count);
 	if (ImGui::Checkbox("Use albedo AOV", &m_application_settings.denoise_use_albedo))
 	{
-		m_denoiser.set_use_albedo(true);
+		m_denoiser.set_use_albedo(m_application_settings.denoise_use_albedo);
 		m_denoiser.finalize();
 	}
 	if (ImGui::Checkbox("Use normals AOV", &m_application_settings.denoise_use_normals))
 	{
-		m_denoiser.set_use_normals(true);
+		m_denoiser.set_use_normals(m_application_settings.denoise_use_normals);
 		m_denoiser.finalize();
 	}
 	ImGui::Checkbox("Only Denoise at \"Target Sample Count\"", &m_application_settings.denoise_at_target_sample_count);
-	ImGui::BeginDisabled(m_application_settings.denoise_at_target_sample_count);
 	ImGui::SliderInt("Denoise Sample Skip", &m_application_settings.denoiser_sample_skip, 1, 128);
-	ImGui::EndDisabled();
 	ImGui::SliderFloat("Denoiser blend", &m_application_settings.denoiser_blend, 0.0f, 1.0f);
+	ImGui::EndDisabled();
 
 	ImGui::TreePop();
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));

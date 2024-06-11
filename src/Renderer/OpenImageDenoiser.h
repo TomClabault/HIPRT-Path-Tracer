@@ -57,13 +57,13 @@ private:
 	bool m_cpu_device = false;
 	oidn::DeviceRef m_device;
 
-	oidn::FilterRef m_beauty_filter;
-	oidn::FilterRef m_albedo_filter;
-	oidn::FilterRef m_normals_filter;
+	oidn::FilterRef m_beauty_filter = nullptr;
+	oidn::FilterRef m_albedo_filter = nullptr;
+	oidn::FilterRef m_normals_filter = nullptr;
 
 	oidn::BufferRef m_input_color_buffer_oidn;
-	oidn::BufferRef m_normals_buffer_denoised_oidn;
-	oidn::BufferRef m_albedo_buffer_denoised_oidn;
+	oidn::BufferRef m_normals_buffer_denoised_oidn = nullptr;
+	oidn::BufferRef m_albedo_buffer_denoised_oidn = nullptr;
 	oidn::BufferRef m_denoised_buffer;
 };
 
