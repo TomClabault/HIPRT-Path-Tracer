@@ -1257,7 +1257,7 @@ void RenderWindow::draw_imgui()
 
 	ImGui::Separator();
 
-	if (ImGui::Button("Save viewport to PNG (tonemapped)"))
+	if (ImGui::Button("Save viewport to PNG"))
 		m_screenshoter.write_to_png();
 	
 	ImGui::Separator();
