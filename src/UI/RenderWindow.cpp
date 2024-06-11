@@ -323,6 +323,12 @@ void RenderWindow::resize_frame(int pixels_width, int pixels_height)
 
 	int new_render_width = std::floor(pixels_width * resolution_scale);
 	int new_render_height = std::floor(pixels_height * resolution_scale);
+
+	if (new_render_height == 0 || new_render_width == 0)
+		// Can happen if resizing the window to a 1 pixel width/height while having a resolution scaling < 1. 
+		// Integer maths will round it down to 0
+		return;
+	
 	m_renderer.change_render_resolution(new_render_width, new_render_height);
 
 	m_denoiser.resize(new_render_width, new_render_height);
