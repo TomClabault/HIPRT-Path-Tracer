@@ -13,6 +13,7 @@
 #include "UI/DisplayTextureType.h"
 #include "UI/DisplayView.h"
 #include "UI/PerformanceMetricsComputer.h"
+#include "UI/RenderWindowKeyboardInteractor.h"
 #include "UI/RenderWindowMouseInteractor.h"
 #include "UI/Screenshoter.h"
 #include "Utils/CommandlineArguments.h"
@@ -193,8 +194,9 @@ private:
 	// (used by the denoiser blending for example)
 	std::pair<GLuint, DisplayTextureType> m_display_texture_2 = { -1, DisplayTextureType::UNINITIALIZED };
 
-	GLFWwindow* m_window;
+	GLFWwindow* m_glfw_window;
 	std::unique_ptr<RenderWindowMouseInteractor> m_mouse_interactor;
+	RenderWindowKeyboardInteractor m_keyboard_interactor;
 
 	std::pair<float, float> m_cursor_position;
 };

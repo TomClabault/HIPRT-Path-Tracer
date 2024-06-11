@@ -164,43 +164,6 @@ void glfw_window_resized_callback(GLFWwindow* window, int width, int height)
 		reinterpret_cast<RenderWindow*>(glfwGetWindowUserPointer(window))->resize_frame(width, height);
 }
 
-static bool z_pressed, q_pressed, s_pressed, d_pressed, space_pressed, lshift_pressed;
-void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
-{
-	switch (key)
-	{
-	case GLFW_KEY_W:
-	case GLFW_KEY_Z:
-		z_pressed = (action == GLFW_PRESS) || (action == GLFW_REPEAT);
-		break;
-
-	case GLFW_KEY_A:
-	case GLFW_KEY_Q:
-		q_pressed = (action == GLFW_PRESS) || (action == GLFW_REPEAT);
-		break;
-
-	case GLFW_KEY_S:
-		s_pressed = (action == GLFW_PRESS) || (action == GLFW_REPEAT);
-
-		break;
-
-	case GLFW_KEY_D:
-		d_pressed = (action == GLFW_PRESS) || (action == GLFW_REPEAT);
-		break;
-
-	case GLFW_KEY_SPACE:
-		space_pressed = (action == GLFW_PRESS) || (action == GLFW_REPEAT);
-		break;
-
-	case GLFW_KEY_LEFT_SHIFT:
-		lshift_pressed = (action == GLFW_PRESS) || (action == GLFW_REPEAT);
-		break;
-
-	default:
-		break;
-	}
-}
-
 // Implementation from https://learnopengl.com/In-Practice/Debugging
 void APIENTRY RenderWindow::gl_debug_output_callback(GLenum source,
 	GLenum type,
@@ -267,20 +230,21 @@ RenderWindow::RenderWindow(int width, int height) : m_viewport_width(width), m_v
 #elif defined(_WIN32) || defined(WIN32) 
 	m_mouse_interactor = std::make_unique<WindowsRenderWindowMouseInteractor>();
 #endif
+	m_keyboard_interactor.set_render_window(this);
 
-	m_window = glfwCreateWindow(width, height, "HIPRT Path Tracer", NULL, NULL);
-	if (!m_window)
+	m_glfw_window = glfwCreateWindow(width, height, "HIPRT Path Tracer", NULL, NULL);
+	if (!m_glfw_window)
 		wait_and_exit("Could not initialize the GLFW window...");
 
-	glfwMakeContextCurrent(m_window);
+	glfwMakeContextCurrent(m_glfw_window);
 	// Setting a pointer to this instance of RenderWindow inside the m_window GLFWwindow so that
 	// we can retrieve a pointer to this instance of RenderWindow in the callback functions
 	// such as the window_resized_callback function for example
-	glfwSetWindowUserPointer(m_window, this);
+	glfwSetWindowUserPointer(m_glfw_window, this);
 	glfwSwapInterval(0);
-	glfwSetWindowSizeCallback(m_window, glfw_window_resized_callback);
-	m_mouse_interactor->set_callbacks(m_window);
-	glfwSetKeyCallback(m_window, glfw_key_callback);
+	glfwSetWindowSizeCallback(m_glfw_window, glfw_window_resized_callback);
+	m_mouse_interactor->set_callbacks(m_glfw_window);
+	m_keyboard_interactor.set_callbacks(m_glfw_window);
 
 	glewInit();
 
@@ -305,7 +269,7 @@ RenderWindow::RenderWindow(int width, int height) : m_viewport_width(width), m_v
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
 	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
-	ImGui_ImplGlfw_InitForOpenGL(m_window, true);
+	ImGui_ImplGlfw_InitForOpenGL(m_glfw_window, true);
 	ImGui_ImplOpenGL3_Init();
 
 	m_renderer.initialize(0);
@@ -329,7 +293,7 @@ RenderWindow::RenderWindow(int width, int height) : m_viewport_width(width), m_v
 
 RenderWindow::~RenderWindow()
 {
-	glfwDestroyWindow(m_window);
+	glfwDestroyWindow(m_glfw_window);
 	glfwTerminate();
 }
 
@@ -766,14 +730,14 @@ void RenderWindow::run()
 {
 	HIPRTRenderSettings& render_settings = m_renderer.get_render_settings();
 
-	while (!glfwWindowShouldClose(m_window))
+	while (!glfwWindowShouldClose(m_glfw_window))
 	{
 		m_start_cpu_frame_time = std::chrono::high_resolution_clock::now();
 
 		glfwPollEvents();
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		update_keyboard_inputs();
+		m_keyboard_interactor.poll_keyboard_inputs();
 
 		// We're resetting the render each frame if rendering at low resolution
 		m_render_dirty |= render_settings.render_low_resolution == 1;
@@ -885,31 +849,10 @@ void RenderWindow::run()
 
 		draw_imgui();
 
-		glfwSwapBuffers(m_window);
+		glfwSwapBuffers(m_glfw_window);
 	}
 
 	quit();
-}
-
-void RenderWindow::update_keyboard_inputs()
-{
-	float zoom = 0.0f;
-	std::pair<float, float> translation;
-	if (z_pressed)
-		zoom += 1.0f;
-	if (q_pressed)
-		translation.first += 36.0f;
-	if (s_pressed)
-		zoom -= 1.0f;
-	if (d_pressed)
-		translation.first -= 36.0f;
-	if (space_pressed)
-		translation.second += 36.0f;
-	if (lshift_pressed)
-		translation.second -= 36.0f;
-
-	update_renderer_view_translation(-translation.first, translation.second);
-	update_renderer_view_zoom(-zoom);
 }
 
 void RenderWindow::render()
