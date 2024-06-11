@@ -13,6 +13,8 @@ GPURenderer::GPURenderer()
 {
 	m_framebuffer = std::make_shared<OpenGLInteropBuffer<ColorRGB>>();
 	m_denoised_framebuffer = std::make_shared<OpenGLInteropBuffer<ColorRGB>>();
+	m_normals_AOV_buffer = std::make_shared<OpenGLInteropBuffer<float3>>();
+	m_albedo_AOV_buffer = std::make_shared<OpenGLInteropBuffer<ColorRGB>>();
 }
 
 void GPURenderer::render()
@@ -39,6 +41,8 @@ void GPURenderer::render()
 	OROCHI_CHECK_ERROR(oroEventElapsedTime(&m_frame_time, m_frame_start_event, m_frame_stop_event));
 
 	m_framebuffer->unmap();
+	m_normals_AOV_buffer->unmap();
+	m_albedo_AOV_buffer->unmap();
 }
 
 void GPURenderer::change_render_resolution(int new_width, int new_height)
@@ -48,8 +52,8 @@ void GPURenderer::change_render_resolution(int new_width, int new_height)
 
 	m_framebuffer->resize(new_width * new_height);
 	m_denoised_framebuffer->resize(new_width * new_height);
-	m_normals_buffer.resize(new_width * new_height);
-	m_albedo_buffer.resize(new_width * new_height);
+	m_normals_AOV_buffer->resize(new_width * new_height);
+	m_albedo_AOV_buffer->resize(new_width * new_height);
 
 	m_pixels_sample_count.resize(new_width * new_height);
 	m_pixels_squared_luminance.resize(new_width * new_height);
@@ -70,14 +74,14 @@ std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> GPURenderer::get_denoised_framebu
 	return m_denoised_framebuffer;
 }
 
-OrochiBuffer<ColorRGB>& GPURenderer::get_denoiser_albedo_buffer()
+std::shared_ptr<OpenGLInteropBuffer<float3>> GPURenderer::get_denoiser_normals_AOV_buffer()
 {
-	return m_albedo_buffer;
+	return m_normals_AOV_buffer;
 }
 
-OrochiBuffer<float3>& GPURenderer::get_denoiser_normals_buffer()
+std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> GPURenderer::get_denoiser_albedo_AOV_buffer()
 {
-	return m_normals_buffer;
+	return m_albedo_AOV_buffer;
 }
 
 OrochiBuffer<int>& GPURenderer::get_pixels_sample_count_buffer()
@@ -152,8 +156,8 @@ HIPRTRenderData GPURenderer::get_render_data()
 	if (m_render_settings.stop_noise_threshold > 0.0f)
 		m_stop_noise_threshold_count_buffer.upload_data(&zero_data);
 
-	render_data.aux_buffers.denoiser_normals = m_normals_buffer.get_device_pointer();
-	render_data.aux_buffers.denoiser_albedo = m_albedo_buffer.get_device_pointer();
+	render_data.aux_buffers.denoiser_normals = m_normals_AOV_buffer->map();
+	render_data.aux_buffers.denoiser_albedo = m_albedo_AOV_buffer->map();
 	render_data.aux_buffers.pixel_sample_count = m_pixels_sample_count.get_device_pointer();
 	render_data.aux_buffers.pixel_squared_luminance = m_pixels_squared_luminance.get_device_pointer();
 	render_data.aux_buffers.still_one_ray_active = m_still_one_ray_active_buffer.get_device_pointer();

@@ -280,8 +280,8 @@ RenderWindow::RenderWindow(int width, int height) : m_viewport_width(width), m_v
 
 	m_denoiser.initialize();
 	m_denoiser.resize(width, height);
-	m_denoiser.set_use_albedo(false);
-	m_denoiser.set_use_normals(false);
+	m_denoiser.set_use_albedo(m_application_settings.denoise_use_albedo);
+	m_denoiser.set_use_normals(m_application_settings.denoise_use_normals);
 	m_denoiser.finalize();
 
 	m_screenshoter.set_renderer(&m_renderer);
@@ -801,7 +801,16 @@ void RenderWindow::run()
 
 			if (need_denoising)
 			{
-				m_denoiser.denoise(m_renderer.get_color_framebuffer());
+				std::shared_ptr<OpenGLInteropBuffer<float3>> normals_buffer = nullptr;
+				std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> albedo_buffer = nullptr;
+
+				if (m_application_settings.denoise_use_normals)
+					normals_buffer = m_renderer.get_denoiser_normals_AOV_buffer();
+
+				if (m_application_settings.denoise_use_albedo)
+					albedo_buffer = m_renderer.get_denoiser_albedo_AOV_buffer();
+
+				m_denoiser.denoise(m_renderer.get_color_framebuffer(), normals_buffer, albedo_buffer);
 				m_denoiser.copy_denoised_data_to_buffer(m_renderer.get_denoised_framebuffer());
 
 				m_application_settings.last_denoised_sample_count = render_settings.sample_number;
@@ -820,7 +829,7 @@ void RenderWindow::run()
 			break;
 
 		case DisplayView::DISPLAY_NORMALS:
-			display(m_renderer.get_denoiser_normals_buffer());
+			display(m_renderer.get_denoiser_normals_AOV_buffer());
 			break;
 
 			/*case DisplayView::DISPLAY_DENOISED_NORMALS:
@@ -829,7 +838,7 @@ void RenderWindow::run()
 				break;*/
 
 		case DisplayView::DISPLAY_ALBEDO:
-			display(m_renderer.get_denoiser_albedo_buffer());
+			display(m_renderer.get_denoiser_albedo_AOV_buffer());
 			break;
 
 			/*case DisplayView::DISPLAY_DENOISED_ALBEDO:
@@ -1147,6 +1156,16 @@ void RenderWindow::draw_denoiser_panel()
 
 	if (ImGui::Checkbox("Enable denoiser", &m_application_settings.enable_denoising))
 		change_display_view(m_application_settings.enable_denoising ? DisplayView::DENOISED_BLEND : DisplayView::DEFAULT);
+	if (ImGui::Checkbox("Use albedo AOV", &m_application_settings.denoise_use_albedo))
+	{
+		m_denoiser.set_use_albedo(true);
+		m_denoiser.finalize();
+	}
+	if (ImGui::Checkbox("Use normals AOV", &m_application_settings.denoise_use_normals))
+	{
+		m_denoiser.set_use_normals(true);
+		m_denoiser.finalize();
+	}
 	ImGui::Checkbox("Only Denoise at \"Target Sample Count\"", &m_application_settings.denoise_at_target_sample_count);
 	ImGui::BeginDisabled(m_application_settings.denoise_at_target_sample_count);
 	ImGui::SliderInt("Denoise Sample Skip", &m_application_settings.denoiser_sample_skip, 1, 128);

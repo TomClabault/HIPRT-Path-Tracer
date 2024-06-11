@@ -27,6 +27,8 @@ struct ApplicationSettings
 
 	bool enable_denoising = false;
 	// How many samples were denoised by the last denoiser call
+	bool denoise_use_albedo = false;
+	bool denoise_use_normals = false;
 	int last_denoised_sample_count = -1;
 	// Denoise only when that maximum sample count is reached
 	bool denoise_at_target_sample_count = false;

@@ -34,6 +34,8 @@ void OpenImageDenoiser::resize(int new_width, int new_height)
 
     m_denoised_buffer = m_device.newBuffer(sizeof(ColorRGB) * new_width * new_height, oidn::Storage::Managed);
     m_input_color_buffer_oidn = m_device.newBuffer(sizeof(ColorRGB) * new_width * new_height, oidn::Storage::Managed);
+    m_normals_buffer_denoised_oidn = m_device.newBuffer(sizeof(ColorRGB) * new_width * new_height, oidn::Storage::Managed);
+    m_albedo_buffer_denoised_oidn = m_device.newBuffer(sizeof(ColorRGB) * new_width * new_height, oidn::Storage::Managed);
 }
 
 void OpenImageDenoiser::initialize()
@@ -49,7 +51,29 @@ void OpenImageDenoiser::finalize()
     m_beauty_filter = m_device.newFilter("RT");
     m_beauty_filter.setImage("color", m_input_color_buffer_oidn, oidn::Format::Float3, m_width, m_height);
     m_beauty_filter.setImage("output", m_denoised_buffer, oidn::Format::Float3, m_width, m_height);
+    m_beauty_filter.set("cleanAux", false);
     m_beauty_filter.set("hdr", true);
+
+    if (m_use_normals)
+    {
+        m_normals_filter = m_device.newFilter("RT");
+        m_normals_filter.setImage("normal", m_normals_buffer_denoised_oidn, oidn::Format::Float3, m_width, m_height);
+        m_normals_filter.setImage("output", m_normals_buffer_denoised_oidn, oidn::Format::Float3, m_width, m_height);
+        m_normals_filter.commit();
+
+        m_beauty_filter.setImage("normal", m_normals_buffer_denoised_oidn, oidn::Format::Float3, m_width, m_height);
+    }
+
+    if (m_use_albedo)
+    {
+        m_albedo_filter = m_device.newFilter("RT");
+        m_albedo_filter.setImage("albedo", m_albedo_buffer_denoised_oidn, oidn::Format::Float3, m_width, m_height);
+        m_albedo_filter.setImage("output", m_albedo_buffer_denoised_oidn, oidn::Format::Float3, m_width, m_height);
+        m_albedo_filter.commit();
+
+        m_beauty_filter.setImage("albedo", m_albedo_buffer_denoised_oidn, oidn::Format::Float3, m_width, m_height);
+    }
+
     m_beauty_filter.commit();
 }
 
@@ -84,6 +108,7 @@ void OpenImageDenoiser::create_device()
             m_cpu_device = true;
     }
 
+    bool managedMemory = m_device.get<bool>("managedMemorySupported");
 
     m_device.commit();
 }
@@ -112,18 +137,33 @@ bool OpenImageDenoiser::check_device()
     return true;
 }
 
-void OpenImageDenoiser::denoise(std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> data_to_denoise)
+void OpenImageDenoiser::denoise(std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> data_to_denoise, std::shared_ptr<OpenGLInteropBuffer<float3>> normals_aov, std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> albedo_aov)
 {
     if (!check_valid_state())
         return;
 
-    oroMemcpyKind memcpyKind;
-    ColorRGB* to_denoise_pointer;
+    oroMemcpyKind memcpyKind = m_cpu_device ? oroMemcpyDeviceToHost : oroMemcpyDeviceToDevice;
+
+    if (normals_aov != nullptr)
+    {
+        float3* normals_pointer = normals_aov->map();
+        OROCHI_CHECK_ERROR(oroMemcpy(m_normals_buffer_denoised_oidn.getData(), normals_pointer, sizeof(ColorRGB) * m_width * m_height, memcpyKind));
+        m_normals_filter.execute();
+    }
+
+    if (albedo_aov != nullptr)
+    {
+        ColorRGB* albedo_pointer = albedo_aov->map();
+        OROCHI_CHECK_ERROR(oroMemcpy(m_albedo_buffer_denoised_oidn.getData(), albedo_pointer, sizeof(ColorRGB) * m_width * m_height, memcpyKind));
+        m_albedo_filter.execute();
+    }
     
-    memcpyKind = m_cpu_device ? oroMemcpyDeviceToHost : oroMemcpyDeviceToDevice;
-    to_denoise_pointer = data_to_denoise->map();
-    OROCHI_CHECK_ERROR(oroMemcpy(m_input_color_buffer_oidn.getData(), to_denoise_pointer, sizeof(ColorRGB) * m_width * m_height, memcpyKind));
+    ColorRGB* data_to_denoise_pointer = data_to_denoise->map();
+    OROCHI_CHECK_ERROR(oroMemcpy(m_input_color_buffer_oidn.getData(), data_to_denoise_pointer, sizeof(ColorRGB) * m_width * m_height, memcpyKind));
     m_beauty_filter.execute();
+
+    albedo_aov->unmap();
+    normals_aov->unmap();
     data_to_denoise->unmap();
 }
 

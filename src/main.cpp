@@ -56,6 +56,21 @@ int main(int argc, char* argv[])
 
     RenderWindow render_window(width, height);
 
+    /*oidn::DeviceRef device = oidn::newDevice(oidn::DeviceType::HIP);
+    device.commit();
+
+    hipDeviceptr_t hipMallocedInput;
+    hipDeviceptr_t hipMallocedOutput;
+    hipMallocManaged(&hipMallocedInput, sizeof(ColorRGB) * 1280 * 720, oroManagedMemoryAttachFlags::oroMemAttachGlobal);
+    hipMallocManaged(&hipMallocedOutput, sizeof(ColorRGB) * 1280 * 720, oroManagedMemoryAttachFlags::oroMemAttachGlobal);
+
+    oidn::FilterRef m_beauty_filter = device.newFilter("RT");
+    m_beauty_filter.setImage("color", hipMallocedInput, oidn::Format::Float3, 1280, 720);
+    m_beauty_filter.setImage("output", hipMallocedOutput, oidn::Format::Float3, 1280, 720);
+    m_beauty_filter.commit();
+
+    return 0;*/
+
     GPURenderer& renderer = render_window.get_renderer();
     renderer.set_envmap(envmap_image);
     renderer.set_camera(parsed_scene.camera);
@@ -63,6 +78,8 @@ int main(int argc, char* argv[])
     stop_full = std::chrono::high_resolution_clock::now();
     std::cout << "Full scene & textures parsed in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop_full - start_full).count() << "ms" << std::endl;
     ThreadManager::join_threads(ThreadManager::COMPILE_KERNEL_THREAD_KEY);
+
+
     render_window.run();
 
     return 0;

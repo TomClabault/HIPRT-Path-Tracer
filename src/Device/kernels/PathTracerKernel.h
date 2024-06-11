@@ -180,6 +180,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
 
                 if (intersection_found)
                 {
+                    if (bounce == 0)
+                    {
+                        denoiser_normal = closest_hit_info.shading_normal;
+                        denoiser_albedo = ray_payload.material.base_color;
+                    }
+
                     // For the BRDF calculations, bounces, ... to be correct, we need the normal to be in the same hemisphere as
                     // the view direction. One thing that can go wrong is when we have an emissive triangle (typical area light)
                     // and a ray hits the back of the triangle. The normal will not be facing the view direction in this

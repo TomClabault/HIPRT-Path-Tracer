@@ -28,8 +28,8 @@ public:
 
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> get_color_framebuffer();
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> get_denoised_framebuffer();
-	OrochiBuffer<ColorRGB>& get_denoiser_albedo_buffer();
-	OrochiBuffer<hiprtFloat3>& get_denoiser_normals_buffer();
+	std::shared_ptr<OpenGLInteropBuffer<float3>> get_denoiser_normals_AOV_buffer();
+	std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> get_denoiser_albedo_AOV_buffer();
 	OrochiBuffer<int>& get_pixels_sample_count_buffer();
 	OrochiBuffer<unsigned char>& get_ray_active_buffer();
 	OrochiBuffer<unsigned int>& get_stop_noise_threshold_buffer();
@@ -88,9 +88,9 @@ private:
 	// to this buffer and then displayed to the viewport)
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> m_denoised_framebuffer;
 	// Normals G-buffer
-	OrochiBuffer<hiprtFloat3> m_normals_buffer;
+	std::shared_ptr<OpenGLInteropBuffer<float3>> m_normals_AOV_buffer;
 	// Albedo G-buffer
-	OrochiBuffer<ColorRGB> m_albedo_buffer;
+	std::shared_ptr<OpenGLInteropBuffer<ColorRGB>>m_albedo_AOV_buffer;
 
 	// Used to calculate the variance of each pixel for adaptive sampling
 	OrochiBuffer<float> m_pixels_squared_luminance;
