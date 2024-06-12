@@ -18,7 +18,9 @@ public:
 	OpenImageDenoiser();
 
 	void set_use_albedo(bool use_albedo);
+	void set_denoise_albedo(bool denoise_normals_or_not);
 	void set_use_normals(bool use_normal);
+	void set_denoise_normals(bool denoise_normals_or_not);
 
 	void resize(int new_width, int new_height);
 
@@ -44,8 +46,10 @@ private:
 	bool check_valid_state();
 	bool check_device();
 
-	bool m_use_albedo;
-	bool m_use_normals;
+	bool m_use_albedo = false;
+	bool m_denoise_albedo = true;
+	bool m_use_normals = false;
+	bool m_denoise_normals = true;
 
 	int m_width, m_height;
 

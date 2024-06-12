@@ -274,14 +274,13 @@ RenderWindow::RenderWindow(int width, int height) : m_viewport_width(width), m_v
 
 	m_renderer.initialize(0);
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_renderer), m_application_settings.kernel_files[m_application_settings.selected_kernel].c_str(), m_application_settings.kernel_functions[m_application_settings.selected_kernel].c_str());
-	//m_renderer.compile_trace_kernel(DEVICE_KERNELS_DIRECTORY "/RegisterTestKernel.h", "TestFunction");
 	m_renderer.change_render_resolution(width, height);
 	create_display_programs();
 
 	m_denoiser.initialize();
 	m_denoiser.resize(width, height);
-	m_denoiser.set_use_albedo(m_application_settings.denoise_use_albedo);
-	m_denoiser.set_use_normals(m_application_settings.denoise_use_normals);
+	m_denoiser.set_use_albedo(m_application_settings.denoiser_use_albedo);
+	m_denoiser.set_use_normals(m_application_settings.denoiser_use_normals);
 	m_denoiser.finalize();
 
 	m_screenshoter.set_renderer(&m_renderer);
@@ -804,10 +803,10 @@ void RenderWindow::run()
 				std::shared_ptr<OpenGLInteropBuffer<float3>> normals_buffer = nullptr;
 				std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> albedo_buffer = nullptr;
 
-				if (m_application_settings.denoise_use_normals)
+				if (m_application_settings.denoiser_use_normals)
 					normals_buffer = m_renderer.get_denoiser_normals_AOV_buffer();
 
-				if (m_application_settings.denoise_use_albedo)
+				if (m_application_settings.denoiser_use_albedo)
 					albedo_buffer = m_renderer.get_denoiser_albedo_AOV_buffer();
 
 				m_denoiser.denoise(m_renderer.get_color_framebuffer(), normals_buffer, albedo_buffer);
@@ -1156,16 +1155,44 @@ void RenderWindow::draw_denoiser_panel()
 
 	if (ImGui::Checkbox("Enable denoiser", &m_application_settings.enable_denoising))
 		change_display_view(m_application_settings.enable_denoising ? DisplayView::DENOISED_BLEND : DisplayView::DEFAULT);
-	ImGui::BeginDisabled(m_application_settings.denoise_at_target_sample_count);
-	if (ImGui::Checkbox("Use albedo AOV", &m_application_settings.denoise_use_albedo))
+	ImGui::BeginDisabled(!m_application_settings.enable_denoising);
+	if (ImGui::CollapsingHeader("AOVs"))
 	{
-		m_denoiser.set_use_albedo(m_application_settings.denoise_use_albedo);
-		m_denoiser.finalize();
-	}
-	if (ImGui::Checkbox("Use normals AOV", &m_application_settings.denoise_use_normals))
-	{
-		m_denoiser.set_use_normals(m_application_settings.denoise_use_normals);
-		m_denoiser.finalize();
+		ImGui::TreePush("Denoiser AOVs Tree");
+		if (ImGui::Checkbox("Use albedo AOV", &m_application_settings.denoiser_use_albedo))
+		{
+			m_denoiser.set_use_albedo(m_application_settings.denoiser_use_albedo);
+			if (!m_application_settings.denoiser_use_albedo)
+			{
+				// We're forcing the use of normals AOV off here because it seems like OIDN doesn't support normal
+				// AOV without also using albedo AOV (at least I got some oidn::Exception when I tried
+				// using the normals without the albedo).
+				m_application_settings.denoiser_use_normals = false;
+				m_denoiser.set_use_normals(false);
+			}
+
+			m_denoiser.finalize();
+		}
+		ImGui::SameLine();
+		if (ImGui::Checkbox("Denoise albedo", &m_application_settings.denoiser_denoise_albedo))
+		{
+			m_denoiser.set_denoise_albedo(m_application_settings.denoiser_denoise_albedo);
+			m_denoiser.finalize();
+		}
+		ImGui::BeginDisabled(!m_application_settings.denoiser_use_albedo);
+		if (ImGui::Checkbox("Use normals AOV", &m_application_settings.denoiser_use_normals))
+		{
+			m_denoiser.set_use_normals(m_application_settings.denoiser_use_normals);
+			m_denoiser.finalize();
+		}
+		ImGui::SameLine();
+		if (ImGui::Checkbox("Denoise normals", &m_application_settings.denoiser_denoise_normals))
+		{
+			m_denoiser.set_denoise_normals(m_application_settings.denoiser_denoise_normals);
+			m_denoiser.finalize();
+		}
+		ImGui::EndDisabled();
+		ImGui::TreePop();
 	}
 	ImGui::Checkbox("Only Denoise at \"Target Sample Count\"", &m_application_settings.denoise_at_target_sample_count);
 	ImGui::SliderInt("Denoise Sample Skip", &m_application_settings.denoiser_sample_skip, 1, 128);

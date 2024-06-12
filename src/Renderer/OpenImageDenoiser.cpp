@@ -14,14 +14,24 @@ OpenImageDenoiser::OpenImageDenoiser()
     m_denoised_buffer = nullptr;
 }
 
+void OpenImageDenoiser::set_use_normals(bool use_normals)
+{
+    m_use_normals = use_normals;
+}
+
+void OpenImageDenoiser::set_denoise_normals(bool denoise_normals_or_not)
+{
+    m_denoise_normals  = denoise_normals_or_not;
+}
+
 void OpenImageDenoiser::set_use_albedo(bool use_albedo)
 {
     m_use_albedo = use_albedo;
 }
 
-void OpenImageDenoiser::set_use_normals(bool use_normals)
+void OpenImageDenoiser::set_denoise_albedo(bool denoise_albedo_or_not)
 {
-    m_use_normals = use_normals;
+    m_denoise_albedo = denoise_albedo_or_not;
 }
 
 void OpenImageDenoiser::resize(int new_width, int new_height)
@@ -49,7 +59,7 @@ void OpenImageDenoiser::finalize()
     m_beauty_filter = m_device.newFilter("RT");
     m_beauty_filter.setImage("color", m_input_color_buffer_oidn, oidn::Format::Float3, m_width, m_height);
     m_beauty_filter.setImage("output", m_denoised_buffer, oidn::Format::Float3, m_width, m_height);
-    m_beauty_filter.set("cleanAux", true);
+    m_beauty_filter.set("cleanAux", m_denoise_albedo && m_denoise_normals);
     m_beauty_filter.set("hdr", true);
 
     if (m_use_normals)
@@ -57,21 +67,23 @@ void OpenImageDenoiser::finalize()
         // Creating the buffers here instead of in resize() because we want the creation/destruction 
         // to be dynamic in response to ImGui input so we cannot just wait for a window resize event
         // that would trigger OpenImageDenoiser::resize()
-        m_normals_buffer_denoised_oidn = m_device.newBuffer(sizeof(float3) * m_width * m_height, oidn::Storage::Managed);
-
-        m_normals_filter = m_device.newFilter("RT");
-        m_normals_filter.setImage("normal", m_normals_buffer_denoised_oidn, oidn::Format::Float3, m_width, m_height);
-        m_normals_filter.setImage("output", m_normals_buffer_denoised_oidn, oidn::Format::Float3, m_width, m_height);
-        m_normals_filter.commit();
+        m_normals_buffer_denoised_oidn = m_device.newBuffer(sizeof(float3) * m_width * m_height);
 
         m_beauty_filter.setImage("normal", m_normals_buffer_denoised_oidn, oidn::Format::Float3, m_width, m_height);
     }
     else
-    {
         // Destroying the filter & buffer to free memory
-        m_normals_filter = nullptr;
         m_normals_buffer_denoised_oidn = nullptr;
+
+    if (m_denoise_normals && m_use_normals)
+    {
+        m_normals_filter = m_device.newFilter("RT");
+        m_normals_filter.setImage("normal", m_normals_buffer_denoised_oidn, oidn::Format::Float3, m_width, m_height);
+        m_normals_filter.setImage("output", m_normals_buffer_denoised_oidn, oidn::Format::Float3, m_width, m_height);
+        m_normals_filter.commit();
     }
+    else
+        m_normals_filter = nullptr;
 
     if (m_use_albedo)
     {
@@ -80,19 +92,21 @@ void OpenImageDenoiser::finalize()
         // that would trigger OpenImageDenoiser::resize()
         m_albedo_buffer_denoised_oidn = m_device.newBuffer(sizeof(ColorRGB) * m_width * m_height, oidn::Storage::Managed);
 
+        m_beauty_filter.setImage("albedo", m_albedo_buffer_denoised_oidn, oidn::Format::Float3, m_width, m_height);
+    }
+    else
+        // Destroying the filter & buffer to free memory
+        m_albedo_buffer_denoised_oidn = nullptr;
+
+    if (m_denoise_albedo && m_use_albedo)
+    {
         m_albedo_filter = m_device.newFilter("RT");
         m_albedo_filter.setImage("albedo", m_albedo_buffer_denoised_oidn, oidn::Format::Float3, m_width, m_height);
         m_albedo_filter.setImage("output", m_albedo_buffer_denoised_oidn, oidn::Format::Float3, m_width, m_height);
         m_albedo_filter.commit();
-
-        m_beauty_filter.setImage("albedo", m_albedo_buffer_denoised_oidn, oidn::Format::Float3, m_width, m_height);
     }
     else
-    {
-        // Destroying the filter & buffer to free memory
         m_albedo_filter = nullptr;
-        m_albedo_buffer_denoised_oidn = nullptr;
-    }
 
     m_beauty_filter.commit();
 }
@@ -168,16 +182,20 @@ void OpenImageDenoiser::denoise(std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> d
     {
         float3* normals_pointer = normals_aov->map();
         OROCHI_CHECK_ERROR(oroMemcpy(m_normals_buffer_denoised_oidn.getData(), normals_pointer, sizeof(float3) * m_width * m_height, memcpyKind));
-        m_normals_filter.execute();
         normals_aov->unmap();
+
+        if (m_denoise_normals)
+            m_normals_filter.execute();
     }
 
     if (albedo_aov != nullptr)
     {
         ColorRGB* albedo_pointer = albedo_aov->map();
         OROCHI_CHECK_ERROR(oroMemcpy(m_albedo_buffer_denoised_oidn.getData(), albedo_pointer, sizeof(ColorRGB) * m_width * m_height, memcpyKind));
-        m_albedo_filter.execute();
         albedo_aov->unmap();
+
+        if (m_denoise_albedo)
+            m_albedo_filter.execute();
     }
     
     ColorRGB* data_to_denoise_pointer = data_to_denoise->map();
