@@ -67,6 +67,11 @@ void CPURenderer::set_camera(Camera& camera)
     m_hiprt_camera = camera.to_hiprt();
 }
 
+HIPRTRenderData& CPURenderer::get_render_data()
+{
+    return m_render_data;
+}
+
 HIPRTRenderSettings& CPURenderer::get_render_settings()
 {
     return m_render_data.render_settings;
@@ -78,9 +83,9 @@ Image& CPURenderer::get_framebuffer()
 }
 
 #define DEBUG_PIXEL 1
-#define DEBUG_EXACT_COORDINATE 0
-#define DEBUG_PIXEL_X 223
-#define DEBUG_PIXEL_Y 693
+#define DEBUG_EXACT_COORDINATE 1
+#define DEBUG_PIXEL_X 60
+#define DEBUG_PIXEL_Y 0
 
 void CPURenderer::render()  
 {

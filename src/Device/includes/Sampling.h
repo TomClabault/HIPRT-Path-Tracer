@@ -59,6 +59,17 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 cosine_weighted_sample(const float3& norma
 {
     float rand_1 = random_number_generator();
     float rand_2 = 2.0f * random_number_generator() - 1.0f;
+    if (rand_1 < 1.0e-8f && rand_2 < -0.999999f && normal.z > 0.999999f)
+    {
+        // Slight perturbation when this would result in a singularity:
+        // When rand_1 is 0.0f and rand_2 is -1.0f, this results in a theta
+        // of 0.0f which then gives sphere_point = {0.0f, 0.0f, -1.0f}. In
+        // conjunction with a normal of {0.0f, 0.0f, 1.0f}, we get a null vector
+        // at the return statement that is then normalized --> NaN
+        rand_1 += 1.0e-7f;
+        rand_2 += 1.0e-7f;
+    }
+
     float theta = 2.0f * M_PI * rand_1;
 
     float2 xy = sqrt(1.0f - rand_2 * rand_2) * make_float2(cos(theta), sin(theta));

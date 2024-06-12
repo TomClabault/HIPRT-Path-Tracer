@@ -24,6 +24,7 @@ public:
     void set_envmap(ImageRGBA& envmap_image);
     void set_camera(Camera& camera);
 
+    HIPRTRenderData& get_render_data();
     HIPRTRenderSettings& get_render_settings();
     Image& get_framebuffer();
 

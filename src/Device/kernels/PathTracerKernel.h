@@ -63,7 +63,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool check_for_nan(ColorRGB ray_color, int x, int
 #endif
 HIPRT_HOST_DEVICE HIPRT_INLINE bool sanity_check(const HIPRTRenderData& render_data, RayPayload& ray_payload, int x, int y, int2& res, int sample)
 {
-    return true;
     bool invalid = false;
     invalid |= check_for_negative_color(ray_payload.ray_color, x, y, sample);
     invalid |= check_for_nan(ray_payload.ray_color, x, y, sample);
@@ -258,13 +257,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                 break;
         }
 
-        // These 2 if() are basically anomally detectors.
-        // They will set pixels to very bright colors if somehow
-        // weird samples are produced
-        // This helps spot unrobustness in the renderer 
-        //
-        // - Pink : sample with negative color
-        // - Yellow : NaN sample
+        // Checking for NaNs / negative value samples. Output 
         if (!sanity_check(render_data, ray_payload, x, y, res, sample))
             return;
 
