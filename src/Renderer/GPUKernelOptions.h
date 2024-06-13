@@ -1,0 +1,37 @@
+/*
+ * Copyright 2024 Tom Clabault. GNU GPL3 license.
+ * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
+ */
+
+#ifndef GPU_KERNEL_OPTIONS_H
+#define GPU_KERNEL_OPTIONS_H
+
+#include <string>
+#include <unordered_map>
+#include <vector>
+
+class GPUKernelOptions
+{
+public:
+	static const std::string INTERIOR_STACK_STRATEGY;
+	static const std::string DIRECT_LIGHT_SAMPLING_STRATEGY;
+
+	GPUKernelOptions();
+
+	/**
+	 * Gets a list of compiler options of the form { "-D InteriorStackStrategy=1", ... }
+	 * that can directly be passed to the kernel compiler
+	 */
+	std::vector<std::string> get_compiler_options();
+
+	/**
+	 * Replace the value of the macro if it has already been added previous to this call
+	 */
+	void set_option(const std::string& name, int value);
+
+private:
+	std::unordered_map<std::string, int> m_macros;
+};
+
+
+#endif

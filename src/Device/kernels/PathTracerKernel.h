@@ -218,8 +218,15 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                     if ((brdf.r == 0.0f && brdf.g == 0.0f && brdf.b == 0.0f) || brdf_pdf <= 0.0f)
                         break;
 
+#if DirectLightSamplingStrategy != LSS_NO_DIRECT_LIGHT_SAMPLING // No direct light sampling
                     if (bounce == 0)
+                    // If we do have emissive geometry sampling, we only want to take
+                    // it into account on the first bounce, otherwise we would be
+                    // accounting for direct light sampling twice (bounce on emissive
+                    // geometry + direct light sampling). Otherwise, we don't check for bounce == 0
+#endif
                         ray_payload.ray_color = ray_payload.ray_color + ray_payload.material.emission * ray_payload.throughput;
+
                     ray_payload.ray_color = ray_payload.ray_color + (light_sample_radiance + envmap_radiance) * ray_payload.throughput;
 
                     ray_payload.throughput *= brdf * hippt::abs(hippt::dot(bounce_direction, closest_hit_info.shading_normal)) / brdf_pdf;

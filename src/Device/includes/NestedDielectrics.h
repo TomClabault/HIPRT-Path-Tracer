@@ -6,7 +6,7 @@
 #ifndef DEVICE_NESTED_DIELECTRICS_H
 #define DEVICE_NESTED_DIELECTRICS_H
 
-#include "Device/includes/CompilerOptions.h"
+#include "HostDeviceCommon/KernelOptions.h"
 
 #define INTERIOR_STACK_SIZE 8
 

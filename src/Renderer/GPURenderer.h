@@ -13,6 +13,7 @@
 #include "HostDeviceCommon/RenderData.h"
 #include "OpenGL/OpenGLInteropBuffer.h"
 #include "Renderer/OpenImageDenoiser.h"
+#include "Renderer/GPUKernelOptions.h"
 #include "Scene/Camera.h"
 #include "Scene/SceneParser.h"
 
@@ -40,6 +41,7 @@ public:
 
 	void initialize(int device_index);
 	void compile_trace_kernel(const char* kernel_file_path, const char* kernel_function_name);
+	void add_kernel_option(const std::string& name, int value);
 	void launch_kernel(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args);
 
 	void set_scene(const Scene& scene);
@@ -65,6 +67,7 @@ public:
 	int get_sample_number();
 	void set_sample_number(int sample_numner);
 
+
 	int m_render_width = 0, m_render_height = 0;
 
 	Camera m_camera;
@@ -75,7 +78,8 @@ private:
 	// Properties of the device
 	oroDeviceProp m_device_properties = {};
 	// GPU events to time the frame
-	oroEvent_t m_frame_start_event, m_frame_stop_event;
+	oroEvent_t m_frame_start_event = nullptr;
+	oroEvent_t m_frame_stop_event = nullptr;
 	// Time taken to render the last frame
 	float m_frame_time = 0;
 
@@ -111,6 +115,8 @@ private:
 	// be destroyed which means that the underlying textures would be destroyed
 	std::vector<OrochiTexture> m_materials_textures;
 	OrochiEnvmap m_envmap;
+
+	GPUKernelOptions m_kernel_options;
 
 	std::shared_ptr<HIPRTOrochiCtx> m_hiprt_orochi_ctx;
 	// Path tracing kernel called at each frame

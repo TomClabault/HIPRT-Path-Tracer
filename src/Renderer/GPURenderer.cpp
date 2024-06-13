@@ -190,20 +190,12 @@ void GPURenderer::compile_trace_kernel(const char* kernel_file_path, const char*
 	std::cout << "Compiling tracer kernel \"" << kernel_function_name << "\"..." << std::endl;
 	auto start = std::chrono::high_resolution_clock::now();
 
-	std::vector<std::pair<std::string, std::string>> precompiler_defines;
-	precompiler_defines.push_back(std::make_pair("InteriorStackStrategy", "1"));
-	// Vector below needed to keep the options alive when getting their c_str()
-	std::vector<std::string> defines_macro_options;
 	std::vector<const char*> options;
 
-	// TODO clean this function, it's kind of ugly to have the precompiler defines in there, level of abstraction is bad
-	for (auto macro_key_value : precompiler_defines)
-	{
-		defines_macro_options.push_back("-D " + macro_key_value.first + "=" + macro_key_value.second);
-		options.push_back(defines_macro_options.back().c_str());
-	}
-
 	std::vector<std::string> additional_includes = { KERNEL_COMPILER_ADDITIONAL_INCLUDE, DEVICE_INCLUDES_DIRECTORY, OROCHI_INCLUDES_DIRECTORY, "-I./" };
+	std::vector<std::string> macros = m_kernel_options.get_compiler_options();
+	for (const std::string& macro : macros)
+		options.push_back(macro.c_str());
 
 	hiprtApiFunction trace_function_out;
 	if (HIPPTOrochiUtils::build_trace_kernel(m_hiprt_orochi_ctx->hiprt_ctx, kernel_file_path, kernel_function_name, trace_function_out, additional_includes, options, 0, 1, false) != hiprtError::hiprtSuccess)
@@ -222,10 +214,14 @@ void GPURenderer::compile_trace_kernel(const char* kernel_file_path, const char*
 	//OROCHI_CHECK_ERROR(oroFuncGetAttribute(&numRegs, ORO_FUNC_ATTRIBUTE_NUM_REGS, m_trace_kernel));
 	//OROCHI_CHECK_ERROR(oroFuncGetAttribute(&numSmem, ORO_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES, m_trace_kernel));
 
-	
 	auto stop = std::chrono::high_resolution_clock::now();
 	std::cout << "Trace kernel: " << numRegs << " registers, shared memory " << numSmem << std::endl;
 	std::cout << "Kernel \"" << kernel_function_name << "\" compiled in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
+}
+
+void GPURenderer::add_kernel_option(const std::string& name, int value)
+{
+	m_kernel_options.set_option(name, value);
 }
 
 void GPURenderer::launch_kernel(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args)

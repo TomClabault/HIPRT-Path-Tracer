@@ -6,7 +6,7 @@
 #ifndef MATERIAL_H
 #define MATERIAL_H
 
-#include "Device/includes/CompilerOptions.h"
+#include "HostDeviceCommon/KernelOptions.h"
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/Math.h"
 

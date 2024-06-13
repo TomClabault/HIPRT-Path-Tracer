@@ -99,7 +99,8 @@ public:
 	void display_blend(std::shared_ptr<OpenGLInteropBuffer<T>> buffer_1, std::shared_ptr<OpenGLInteropBuffer<T>> buffer_2, float blend_override = -1.0f);
 
 	void draw_render_settings_panel();
-	void draw_lighting_panel();
+	void draw_environment_panel();
+	void draw_sampling_panel();
 	void draw_objects_panel();
 	void draw_denoiser_panel();
 	void draw_post_process_panel();
@@ -107,7 +108,6 @@ public:
 	void draw_imgui();
 
 	void run();
-	void update_keyboard_inputs();
 	void render();
 	void quit();
 

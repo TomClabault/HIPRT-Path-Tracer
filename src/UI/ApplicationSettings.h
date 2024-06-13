@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "UI/DisplayView.h"
+#include "UI/KernelOptionsEnums.h"
 
 struct ApplicationSettings
 {
@@ -50,6 +51,10 @@ struct ApplicationSettings
 	double view_rotation_sldwn_x = 3.5f, view_rotation_sldwn_y = 3.5f;
 	double view_zoom_sldwn = 5.0f;
 
+	// How much to scale the render resolution by. 
+	// For example, if == 2, and the viewport currently is 1280*720, 
+	// the path tracer will compute a 2560*1440 image and display it
+	// in the 1280*720 viewport
 	float render_resolution_scale = 1.0f;
 
 	// Whether or not to keep the same resolution on
@@ -82,6 +87,11 @@ struct ApplicationSettings
 	float tone_mapping_gamma = 2.2f;
 	// Tone mapping exposure
 	float tone_mapping_exposure = 1.8f;
+
+	// How to handle nested dielectrics in the scene
+	InteriorStackStrategyEnum interior_stack_strategy = static_cast<InteriorStackStrategyEnum>(InteriorStackStrategy);
+	// How to sample direct lighting in the scene
+	DirectLightSamplingStrategyEnum direct_light_sampling_strategy = static_cast<DirectLightSamplingStrategyEnum>(DirectLightSamplingStrategy);
 };
 
 #endif

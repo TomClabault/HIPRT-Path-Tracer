@@ -21,12 +21,6 @@
 
 // TODO bugs
 // - TO TEST AGAIN: something is unsafe on NVIDIA + Windows + nested-dielectrics-complex.gltf + 48 bounces minimum + nested dielectric strategy RT Gems. We get a CPU-side orochi error when downloading the framebuffer for displaying indicating that some illegal memory was accessed. Is the buffer corrupted by something?
-// - normals AOV not converging correctly ?
-//		- for the denoiser normals convergence issue, is it an error at the end of the Path Tracer kernel where we're accumulating ? Should we have
-//		render_data.aux_buffers.denoiser_albedo[index] * render_data.render_settings.sample_number 
-//		instead of 
-//		render_data.aux_buffers.denoiser_albedo[index] * render_data.render_settings.frame_number
-//		?
 // - denoiser AOVs not accounting for tranmission correctly since Disney 
 
 
@@ -39,20 +33,17 @@
 // - do we need OpenGL Lib/bin in thirdparties?
 // - fork HIPRT and remove the encryption thingy that slows down kernel compilation on NVIDIA
 // - A good way to automatically find MSBuild with CMake? Build HIPRT with make instead of VS maybe?
-// - refactor HIPCC compiler options instead of hardcoded in GPURenderer.cpp
 // - uniform #ifndef in Device headers
 // - Refactor material editor
 // - Device/ or HostDeviceCommon. Not both
 // - reorganize methods order in RenderWindow
 // - imgui controller to put all the imgui code in one class
-// - put mouse / keyboard code in an interactor
-//		- Have the is_interacting boolean in this interactor class and poll it from the main loop to check whether we need to render the frame at a lower resolution or not
 // - check for level of abstractions in functions
 
 
 
 // TODO Features:
-// - hardware triangle intersection can be disabled in HIPRT Compiler.cpp so that's good for testing performance (__USE_HWI__ define)
+// - hardware triangle intersection can be disabled in HIPRT Compiler.cpp so that's good for comparing performance (__USE_HWI__ define)
 // - build BVHs one by one to avoid big memory spike? but what about BLAS performance cost?
 // - ray statistics with filter functions
 // - filter function for base color alpha / alpha transparency + better performabce ?
@@ -1010,11 +1001,11 @@ void RenderWindow::draw_render_settings_panel()
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 }
 
-void RenderWindow::draw_lighting_panel()
+void RenderWindow::draw_environment_panel()
 {
-	if (ImGui::CollapsingHeader("Lighting"))
+	if (ImGui::CollapsingHeader("Environment"))
 	{
-		ImGui::TreePush("Lighting tree");
+		ImGui::TreePush("Environment tree");
 
 		m_render_dirty |= ImGui::RadioButton("None", ((int*)&m_renderer.get_world_settings().ambient_light_type), 0); ImGui::SameLine();
 		m_render_dirty |= ImGui::RadioButton("Use uniform lighting", ((int*)&m_renderer.get_world_settings().ambient_light_type), 1); ImGui::SameLine();
@@ -1037,7 +1028,7 @@ void RenderWindow::draw_lighting_panel()
 			if (rotation_changed)
 			{
 				glm::mat4x4 rotation_matrix;
-				
+
 				// glm::orientate3 interprets the X, Y and Z angles we give it as a yaw/pitch/roll semantic.
 				// 
 				// The standard yaw/pitch/roll interpretation is:
@@ -1069,6 +1060,34 @@ void RenderWindow::draw_lighting_panel()
 		ImGui::TreePop();
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+	}
+}
+
+void RenderWindow::draw_sampling_panel()
+{
+	if (ImGui::CollapsingHeader("Sampling"))
+	{
+		ImGui::TreePush("Sampling tree");
+
+		ImGui::Text("Direct light sampling strategy");
+
+		ImGui::TreePush("Direct light sampling strategy tree");
+		bool direct_lighting_strategy_changed = false;
+		direct_lighting_strategy_changed |= ImGui::RadioButton("No direct light sampling", (int*)&m_application_settings.direct_light_sampling_strategy, LSS_NO_DIRECT_LIGHT_SAMPLING);
+		direct_lighting_strategy_changed |= ImGui::RadioButton("One random light", (int*)&m_application_settings.direct_light_sampling_strategy, LSS_ONE_RANDOM_LIGHT);
+		direct_lighting_strategy_changed |= ImGui::RadioButton("One random light + MIS", (int*)&m_application_settings.direct_light_sampling_strategy, LSS_ONE_RANDOM_LIGHT_MIS);
+		direct_lighting_strategy_changed |= ImGui::RadioButton("One random light + RIS", (int*)&m_application_settings.direct_light_sampling_strategy, LSS_ONE_RANDOM_LIGHT_RIS);
+		ImGui::TreePop();
+
+		if (direct_lighting_strategy_changed)
+		{
+			m_renderer.add_kernel_option(GPUKernelOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, (int)m_application_settings.direct_light_sampling_strategy);
+			m_renderer.compile_trace_kernel(m_application_settings.kernel_files[m_application_settings.selected_kernel].c_str(), m_application_settings.kernel_functions[m_application_settings.selected_kernel].c_str());
+
+			reset_render();
+		}
+
+		ImGui::TreePop();
 	}
 }
 
@@ -1317,7 +1336,8 @@ void RenderWindow::draw_imgui()
 	ImGui::PushItemWidth(233);
 
 	draw_render_settings_panel();
-	draw_lighting_panel();
+	draw_environment_panel();
+	draw_sampling_panel();
 	draw_objects_panel();
 	draw_denoiser_panel();
 	draw_post_process_panel();

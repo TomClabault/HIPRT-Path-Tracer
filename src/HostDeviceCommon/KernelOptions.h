@@ -29,22 +29,60 @@
  */
 
 /**
+ * Those are simple defines to give names to the option values.
+ * This allows the use of LSS_ONE_RANDOM_LIGHT_MIS (for example) instead of a hardcoded '2'
+ */
+#define ISS_AUTOMATIC 0
+#define ISS_WITH_PRIORITES 1
+
+#define LSS_NO_DIRECT_LIGHT_SAMPLING 0
+#define LSS_ONE_RANDOM_LIGHT 1
+#define LSS_ONE_RANDOM_LIGHT_MIS 2
+#define LSS_ONE_RANDOM_LIGHT_RIS 3
+
+/**
  * Options are defined in a #ifndef __KERNELCC__ block because:
- *	- If they were not, the would be defined on the GPU side. However, the -D <macro>=<value> compiler option 
+ *	- If they were not, the would be defined on the GPU side. However, the -D <macro>=<value> compiler option
  *		cannot override a #define statement. This means that if the #define statement are encountered by the compiler,
  *		we cannot modify the value of the macros anymore with the -D option which means no run-time switching / experimenting :(
  * - The CPU still needs the options to be able to compile the code so here they are, in a CPU-only block
  */
-
 #ifndef __KERNELCC__
 /**
  * InteriorStackStrategy
  * 
- * What nested dielectrics strategy to use:
- *	- "automatic" as presented in* Ray Tracing Gems 1, 2019 or 
- *	- "with priorities" as presented in Simple Nested Dielectrics in Ray Traced Images, Schmidt, 2002
+ * What nested dielectrics strategy to use.
+ * 
+ * Possible values (the prefix ISS stands for "Interior Stack Strategy"):
+ * 
+ *	- ISS_AUTOMATIC
+ *		"automatic" strategy as presented in* Ray Tracing Gems 1, 2019
+ * 
+ *	- ISS_WITH_PRIORITES
+ *		"with priorities" as presented in Simple Nested Dielectrics in Ray Traced Images, Schmidt, 2002
  */
-#define InteriorStackStrategy 1
+#define InteriorStackStrategy ISS_WITH_PRIORITES
+
+/**
+ * DirectLightSamplingStrategy
+ * 
+ * What direct lighting sampling strategy to use.
+ * 
+ * Possible values (the prefix LSS stands for "Light Sampling strategy"):
+ * 
+ *	- LSS_NO_DIRECT_LIGHT_SAMPLING
+ *		No direct light sampling
+ * 
+ *	- LSS_ONE_RANDOM_LIGHT
+ *		Sample one random light in the scene without MIS
+ * 
+ *	- LSS_ONE_RANDOM_LIGHT_MIS
+ *		Sample one random light in the scene with MIS (Multiple Importance Sampling): light sample + BRDF sample
+ * 
+ *	- LSS_ONE_RANDOM_LIGHT_RIS
+ *		Sample render_settings.RIS_number_candidates lights in the scene with RIS
+ */
+#define DirectLightSamplingStrategy LSS_ONE_RANDOM_LIGHT_MIS
 
 #endif
 

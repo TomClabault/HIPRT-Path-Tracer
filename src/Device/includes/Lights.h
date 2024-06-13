@@ -6,6 +6,7 @@
 #ifndef DEVICE_LIGHTS_H
 #define DEVICE_LIGHTS_H
 
+#include "HostDeviceCommon/KernelOptions.h"
 #include "Device/includes/Dispatcher.h"
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Intersect.h"
@@ -48,26 +49,51 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 sample_one_emissive_triangle(const HIPRTRe
     return random_point_on_triangle;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_one_light(const HIPRTRenderData& render_data, const RendererMaterial& material, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_one_light_no_MIS(const HIPRTRenderData& render_data, const RendererMaterial& material, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
 {
-    if (render_data.buffers.emissive_triangles_count == 0)
-        // No emmisive geometry in the scene to sample
-        return ColorRGB(0.0f);
+    float light_sample_pdf;
+    LightSourceInformation light_source_info;
+    ColorRGB light_source_radiance_mis;
+    float3 random_light_point = sample_one_emissive_triangle(render_data, random_number_generator, light_sample_pdf, light_source_info);
 
-    if (material.emission.r != 0.0f || material.emission.g != 0.0f || material.emission.b != 0.0f)
-        // We're not sampling direct lighting if we're already on an
-        // emissive surface
-        return ColorRGB(0.0f);
+    float3 shadow_ray_origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f;
+    float3 shadow_ray_direction = random_light_point - shadow_ray_origin;
+    float distance_to_light = hippt::length(shadow_ray_direction);
+    float3 shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
 
-    if (hippt::dot(view_direction, closest_hit_info.geometric_normal) < 0.0f)
-        // We're not direct sampling if we're inside a surface
-        // 
-        // We're using the geometric normal here because using the shading normal could lead
-        // to false positive because of the black fringes when using smooth normals / normal mapping
-        // + microfacet BRDFs
-        return ColorRGB(0.0f);
+    hiprtRay shadow_ray;
+    shadow_ray.origin = shadow_ray_origin;
+    shadow_ray.direction = shadow_ray_direction_normalized;
 
+    // abs() here to allow backfacing light sources
+    float dot_light_source = hippt::abs(hippt::dot(light_source_info.light_source_normal, -shadow_ray.direction));
+    if (dot_light_source > 0.0f)
+    {
+        bool in_shadow = evaluate_shadow_ray(render_data, shadow_ray, distance_to_light);
 
+        if (!in_shadow)
+        {
+            // Conversion to solid angle from surface area measure
+            light_sample_pdf *= distance_to_light * distance_to_light;
+            light_sample_pdf /= dot_light_source;
+            light_sample_pdf /= render_data.buffers.emissive_triangles_count;
+
+            float brdf_pdf;
+            RayVolumeState trash_volume_state;
+            ColorRGB brdf = brdf_dispatcher_eval(render_data.buffers.materials_buffer, material, trash_volume_state, view_direction, closest_hit_info.shading_normal, shadow_ray.direction, brdf_pdf);
+            if (brdf_pdf != 0.0f)
+            {
+                float cosine_term = hippt::max(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction), 0.0f);
+                light_source_radiance_mis = light_source_info.emission * cosine_term * brdf / light_sample_pdf;
+            }
+        }
+    }
+
+    return light_source_radiance_mis;
+}
+
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_one_light_MIS(const HIPRTRenderData& render_data, const RendererMaterial& material, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
+{
     float light_sample_pdf;
     ColorRGB light_source_radiance_mis;
     LightSourceInformation light_source_info;
@@ -148,6 +174,36 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_one_light(const HIPRTRenderData& 
     // This must be factored in the PDF of sampling that light which means that we must
     // divide by 1 / numberOfLights => multiply by numberOfLights
     return (light_source_radiance_mis + brdf_radiance_mis) * render_data.buffers.emissive_triangles_count;
+}
+
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_one_light(const HIPRTRenderData& render_data, const RendererMaterial& material, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
+{
+    if (render_data.buffers.emissive_triangles_count == 0)
+        // No emmisive geometry in the scene to sample
+        return ColorRGB(0.0f);
+
+    if (material.emission.r != 0.0f || material.emission.g != 0.0f || material.emission.b != 0.0f)
+        // We're not sampling direct lighting if we're already on an
+        // emissive surface
+        return ColorRGB(0.0f);
+
+    if (hippt::dot(view_direction, closest_hit_info.geometric_normal) < 0.0f)
+        // We're not direct sampling if we're inside a surface
+        // 
+        // We're using the geometric normal here because using the shading normal could lead
+        // to false positive because of the black fringes when using smooth normals / normal mapping
+        // + microfacet BRDFs
+        return ColorRGB(0.0f);
+
+#if DirectLightSamplingStrategy == LSS_NO_DIRECT_LIGHT_SAMPLING // No direct light sampling
+    return ColorRGB(0.0f);
+#elif DirectLightSamplingStrategy == LSS_ONE_RANDOM_LIGHT // No MIS
+    return sample_one_light_no_MIS(render_data, material, closest_hit_info, view_direction, random_number_generator);
+#elif DirectLightSamplingStrategy == LSS_ONE_RANDOM_LIGHT_MIS // MIS
+    return sample_one_light_MIS(render_data, material, closest_hit_info, view_direction, random_number_generator);
+#elif DirectLightSamplingStrategy == LSS_ONE_RANDOM_LIGHT_RIS // RIS
+    return ColorRGB(0.0f); // Not implemented yet
+#endif
 }
 
 #endif
