@@ -19,9 +19,12 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include "glm/gtx/euler_angles.hpp"
 
+// interior stack strategy in ImGui
+
 // TODO bugs
 // - TO TEST AGAIN: something is unsafe on NVIDIA + Windows + nested-dielectrics-complex.gltf + 48 bounces minimum + nested dielectric strategy RT Gems. We get a CPU-side orochi error when downloading the framebuffer for displaying indicating that some illegal memory was accessed. Is the buffer corrupted by something?
 // - denoiser AOVs not accounting for tranmission correctly since Disney 
+// - cosine term already included in the disney BSDF and thus not needed in PathTracerKernel.h? Same with light sampling
 
 
 
@@ -43,6 +46,9 @@
 
 
 // TODO Features:
+// - If could not load given scene file, fallback to cornell box instead of not continuing
+// - CTRL + mouse wheel for zoom in viewport, CTRL click reset zoom
+// - Kahan summation for weighted reservoir sampling?
 // - hardware triangle intersection can be disabled in HIPRT Compiler.cpp so that's good for comparing performance (__USE_HWI__ define)
 // - build BVHs one by one to avoid big memory spike? but what about BLAS performance cost?
 // - ray statistics with filter functions
@@ -902,7 +908,7 @@ void RenderWindow::draw_render_settings_panel()
 		m_render_dirty = true;
 	}
 
-	const char* items[] = { "Default", "Denoiser blend", "Denoiser - Normals", "Denoiser - Denoised normals", "Denoiser - Albedo", "Denoiser - Denoised albedo", "Adaptive sampling map"};
+	const char* items[] = { "- Default", "- Denoiser blend", "- Denoiser - Normals", "- Denoiser - Denoised normals", "- Denoiser - Albedo", "- Denoiser - Denoised albedo", "- Adaptive sampling heatmap"};
 	if (ImGui::Combo("Display View", (int*)(&m_application_settings.display_view), items, IM_ARRAYSIZE(items)))
 		change_display_view(m_application_settings.display_view);
 
@@ -1065,21 +1071,14 @@ void RenderWindow::draw_environment_panel()
 
 void RenderWindow::draw_sampling_panel()
 {
+	HIPRTRenderSettings& render_settings = m_renderer.get_render_settings();
+
 	if (ImGui::CollapsingHeader("Sampling"))
 	{
 		ImGui::TreePush("Sampling tree");
 
-		ImGui::Text("Direct light sampling strategy");
-
-		ImGui::TreePush("Direct light sampling strategy tree");
-		bool direct_lighting_strategy_changed = false;
-		direct_lighting_strategy_changed |= ImGui::RadioButton("No direct light sampling", (int*)&m_application_settings.direct_light_sampling_strategy, LSS_NO_DIRECT_LIGHT_SAMPLING);
-		direct_lighting_strategy_changed |= ImGui::RadioButton("One random light", (int*)&m_application_settings.direct_light_sampling_strategy, LSS_ONE_RANDOM_LIGHT);
-		direct_lighting_strategy_changed |= ImGui::RadioButton("One random light + MIS", (int*)&m_application_settings.direct_light_sampling_strategy, LSS_ONE_RANDOM_LIGHT_MIS);
-		direct_lighting_strategy_changed |= ImGui::RadioButton("One random light + RIS", (int*)&m_application_settings.direct_light_sampling_strategy, LSS_ONE_RANDOM_LIGHT_RIS);
-		ImGui::TreePop();
-
-		if (direct_lighting_strategy_changed)
+		const char* items[] = { "- No direct light sampling", "- Uniform one light", "- MIS (1 Light + 1 BSDF)", "- RIS Only light candidates" };
+		if (ImGui::Combo("Direct light sampling strategy", (int*)(&m_application_settings.direct_light_sampling_strategy), items, IM_ARRAYSIZE(items)))
 		{
 			m_renderer.add_kernel_option(GPUKernelOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, (int)m_application_settings.direct_light_sampling_strategy);
 			m_renderer.compile_trace_kernel(m_application_settings.kernel_files[m_application_settings.selected_kernel].c_str(), m_application_settings.kernel_functions[m_application_settings.selected_kernel].c_str());
@@ -1087,7 +1086,36 @@ void RenderWindow::draw_sampling_panel()
 			reset_render();
 		}
 
+		// Display additional widgets to control the parameters of the direct light
+		// sampling strategy chosen (the number of candidates for RIS for example)
+		switch (m_application_settings.direct_light_sampling_strategy)
+		{
+		case DirectLightSamplingStrategyEnum::NO_DIRECT_LIGHT_SAMPLING:
+			break;
+
+		case DirectLightSamplingStrategyEnum::ONE_RANDOM_LIGHT:
+			break;
+
+		case DirectLightSamplingStrategyEnum::ONE_RANDOM_LIGHT_MIS:
+			break;
+
+		case DirectLightSamplingStrategyEnum::ONE_RANDOM_LIGHT_RIS:
+			if (ImGui::SliderInt("RIS # of candidates", &render_settings.ris_number_of_candidates, 1, 128))
+			{
+				// Clamping to 1
+				render_settings.ris_number_of_candidates = std::max(1, render_settings.ris_number_of_candidates);
+
+				reset_render();
+			}
+
+			break;
+
+		default:
+			break;
+		}
+
 		ImGui::TreePop();
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	}
 }
 

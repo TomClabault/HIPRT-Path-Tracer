@@ -64,6 +64,9 @@ struct ALIGN(8) HIPRTRenderSettings
 	// stop sampling pixels that have reached the threshold if there are still
 	// some other pixels that haven't. Either everyone stops or noone stops.
 	float stop_noise_threshold = 0.0f;
+
+	// How many candidates to sample for RIS (Resampled Importance Sampling)
+	int ris_number_of_candidates = 32;
 };
 
 struct RenderBuffers

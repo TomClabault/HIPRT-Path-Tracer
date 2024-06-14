@@ -36,9 +36,9 @@
 #define ISS_WITH_PRIORITES 1
 
 #define LSS_NO_DIRECT_LIGHT_SAMPLING 0
-#define LSS_ONE_RANDOM_LIGHT 1
-#define LSS_ONE_RANDOM_LIGHT_MIS 2
-#define LSS_ONE_RANDOM_LIGHT_RIS 3
+#define LSS_UNIFORM_ONE_LIGHT 1
+#define LSS_MIS_LIGHT_BSDF 2
+#define LSS_RIS_ONLY_LIGHT_CANDIDATES 3
 
 /**
  * Options are defined in a #ifndef __KERNELCC__ block because:
@@ -73,16 +73,16 @@
  *	- LSS_NO_DIRECT_LIGHT_SAMPLING
  *		No direct light sampling
  * 
- *	- LSS_ONE_RANDOM_LIGHT
+ *	- LSS_UNIFORM_ONE_LIGHT
  *		Sample one random light in the scene without MIS
  * 
- *	- LSS_ONE_RANDOM_LIGHT_MIS
+ *	- LSS_MIS_LIGHT_BSDF
  *		Sample one random light in the scene with MIS (Multiple Importance Sampling): light sample + BRDF sample
  * 
- *	- LSS_ONE_RANDOM_LIGHT_RIS
+ *	- LSS_RIS_ONLY_LIGHT_CANDIDATES
  *		Sample render_settings.RIS_number_candidates lights in the scene with RIS
  */
-#define DirectLightSamplingStrategy LSS_ONE_RANDOM_LIGHT_MIS
+#define DirectLightSamplingStrategy LSS_RIS_ONLY_LIGHT_CANDIDATES
 
 #endif
 

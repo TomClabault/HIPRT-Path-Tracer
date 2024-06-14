@@ -3,6 +3,7 @@ CMakeLists.txt.user
 RT_output*.png
 
 .vscode
+.vs
 
 build*
 data/OBJs/*.blend
