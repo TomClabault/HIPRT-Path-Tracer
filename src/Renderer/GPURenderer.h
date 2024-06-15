@@ -41,7 +41,9 @@ public:
 
 	void initialize(int device_index);
 	void compile_trace_kernel(const char* kernel_file_path, const char* kernel_function_name);
-	void add_kernel_option(const std::string& name, int value);
+	void set_kernel_option(const std::string& name, int value);
+	int get_kernel_option_value(const std::string& name);
+	int* get_kernel_option_pointer(const std::string& name);
 	void launch_kernel(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args);
 
 	void set_scene(const Scene& scene);
@@ -116,6 +118,8 @@ private:
 	std::vector<OrochiTexture> m_materials_textures;
 	OrochiEnvmap m_envmap;
 
+	// Class that contains the #define macros used by the compiler
+	// to enable / disable certain path tracing features
 	GPUKernelOptions m_kernel_options;
 
 	std::shared_ptr<HIPRTOrochiCtx> m_hiprt_orochi_ctx;

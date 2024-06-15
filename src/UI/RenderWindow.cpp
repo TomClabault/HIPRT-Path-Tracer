@@ -1078,9 +1078,8 @@ void RenderWindow::draw_sampling_panel()
 		ImGui::TreePush("Sampling tree");
 
 		const char* items[] = { "- No direct light sampling", "- Uniform one light", "- MIS (1 Light + 1 BSDF)", "- RIS Only light candidates" };
-		if (ImGui::Combo("Direct light sampling strategy", (int*)(&m_application_settings.direct_light_sampling_strategy), items, IM_ARRAYSIZE(items)))
+		if (ImGui::Combo("Direct light sampling strategy", m_renderer.get_kernel_option_pointer(GPUKernelOptions::DIRECT_LIGHT_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
 		{
-			m_renderer.add_kernel_option(GPUKernelOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, (int)m_application_settings.direct_light_sampling_strategy);
 			m_renderer.compile_trace_kernel(m_application_settings.kernel_files[m_application_settings.selected_kernel].c_str(), m_application_settings.kernel_functions[m_application_settings.selected_kernel].c_str());
 
 			reset_render();
@@ -1088,18 +1087,27 @@ void RenderWindow::draw_sampling_panel()
 
 		// Display additional widgets to control the parameters of the direct light
 		// sampling strategy chosen (the number of candidates for RIS for example)
-		switch (m_application_settings.direct_light_sampling_strategy)
+		switch (m_renderer.get_kernel_option_value(GPUKernelOptions::DIRECT_LIGHT_SAMPLING_STRATEGY))
 		{
-		case DirectLightSamplingStrategyEnum::NO_DIRECT_LIGHT_SAMPLING:
+		case LSS_NO_DIRECT_LIGHT_SAMPLING:
 			break;
 
-		case DirectLightSamplingStrategyEnum::ONE_RANDOM_LIGHT:
+		case LSS_UNIFORM_ONE_LIGHT:
 			break;
 
-		case DirectLightSamplingStrategyEnum::ONE_RANDOM_LIGHT_MIS:
+		case LSS_MIS_LIGHT_BSDF:
 			break;
 
-		case DirectLightSamplingStrategyEnum::ONE_RANDOM_LIGHT_RIS:
+		case LSS_RIS_ONLY_LIGHT_CANDIDATES:
+			static bool use_visiblity_checked = m_renderer.get_kernel_option_value(GPUKernelOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION) == 1;
+			if (ImGui::Checkbox("Use visibility in target function", &use_visiblity_checked))
+			{
+				m_renderer.set_kernel_option(GPUKernelOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, use_visiblity_checked ? 1 : 0);
+				m_renderer.compile_trace_kernel(m_application_settings.kernel_files[m_application_settings.selected_kernel].c_str(), m_application_settings.kernel_functions[m_application_settings.selected_kernel].c_str());
+
+				reset_render();
+			}
+
 			if (ImGui::SliderInt("RIS # of candidates", &render_settings.ris_number_of_candidates, 1, 128))
 			{
 				// Clamping to 1

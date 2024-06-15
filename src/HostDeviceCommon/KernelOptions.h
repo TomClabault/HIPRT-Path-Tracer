@@ -40,6 +40,9 @@
 #define LSS_MIS_LIGHT_BSDF 2
 #define LSS_RIS_ONLY_LIGHT_CANDIDATES 3
 
+#define RIS_VIS_USE_FALSE 0
+#define RIS_VIS_USE_TRUE 1
+
 /**
  * Options are defined in a #ifndef __KERNELCC__ block because:
  *	- If they were not, the would be defined on the GPU side. However, the -D <macro>=<value> compiler option
@@ -49,8 +52,6 @@
  */
 #ifndef __KERNELCC__
 /**
- * InteriorStackStrategy
- * 
  * What nested dielectrics strategy to use.
  * 
  * Possible values (the prefix ISS stands for "Interior Stack Strategy"):
@@ -64,8 +65,6 @@
 #define InteriorStackStrategy ISS_WITH_PRIORITES
 
 /**
- * DirectLightSamplingStrategy
- * 
  * What direct lighting sampling strategy to use.
  * 
  * Possible values (the prefix LSS stands for "Light Sampling strategy"):
@@ -83,6 +82,17 @@
  *		Sample render_settings.RIS_number_candidates lights in the scene with RIS
  */
 #define DirectLightSamplingStrategy LSS_RIS_ONLY_LIGHT_CANDIDATES
+
+/**
+ * Whether or not to use a visiblity term in the target function whose PDF we're approximating with RIS.
+ * 
+ *	- RIS_VIS_USE_TRUE 
+ *		Do use a visibility term
+ *
+ *	- RIS_VIS_USE_FALSE
+ *		Don't use a visibility term
+ */
+#define RISUseVisiblityTargetFunction RIS_VIS_USE_FALSE
 
 #endif
 

@@ -264,7 +264,18 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_one_light_RIS(const HIPRTRenderDa
 
             float geometry_term = 1.0f / (distance_to_light * distance_to_light) * cosine_at_light_source * cosine_at_evaluated_point;
             float candidate_sampling_function_weight = (light_sample_pdf / render_data.buffers.emissive_triangles_count) * distance_to_light * distance_to_light / cosine_at_light_source;
+
+#if RISUseVisiblityTargetFunction == RIS_VIS_USE_TRUE
+            bool visibility;
+            hiprtRay shadow_ray;
+            shadow_ray.origin = evaluated_point;
+            shadow_ray.direction = to_light_direction;
+            visibility = !evaluate_shadow_ray(render_data, shadow_ray, distance_to_light);
+
+            target_function_weight = visibility * bsdf_color.length() * light_source_info.emission.length() * geometry_term;
+#else
             target_function_weight = bsdf_color.length() * light_source_info.emission.length() * geometry_term;
+#endif
             candidate_weight = target_function_weight / candidate_sampling_function_weight;
         }
 

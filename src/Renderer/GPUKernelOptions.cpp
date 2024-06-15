@@ -8,19 +8,21 @@
 
 const std::string GPUKernelOptions::INTERIOR_STACK_STRATEGY = "InteriorStackStrategy";
 const std::string GPUKernelOptions::DIRECT_LIGHT_SAMPLING_STRATEGY = "DirectLightSamplingStrategy";
+const std::string GPUKernelOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION = "RISUseVisiblityTargetFunction";
 
 GPUKernelOptions::GPUKernelOptions()
 {
 	// Adding options with their default values
 	set_option(GPUKernelOptions::INTERIOR_STACK_STRATEGY, InteriorStackStrategy);
 	set_option(GPUKernelOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, DirectLightSamplingStrategy);
+	set_option(GPUKernelOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, RISUseVisiblityTargetFunction);
 }
 
 std::vector<std::string> GPUKernelOptions::get_compiler_options()
 {
 	std::vector<std::string> macros;
 
-	for (auto macro_key_value : m_macros)
+	for (auto macro_key_value : m_options_map)
 		macros.push_back("-D " + macro_key_value.first + "=" + std::to_string(macro_key_value.second));
 
 	return macros;
@@ -28,5 +30,25 @@ std::vector<std::string> GPUKernelOptions::get_compiler_options()
 
 void GPUKernelOptions::set_option(const std::string& name, int value)
 {
-	m_macros[name] = value;
+	m_options_map[name] = value;
+}
+
+int GPUKernelOptions::get_option_value(const std::string& name)
+{
+	auto find = m_options_map.find(name);
+
+	if (find == m_options_map.end())
+		return -1;
+	else
+		return find->second;
+}
+
+int* GPUKernelOptions::get_pointer_to_option_value(const std::string& name)
+{
+	auto find = m_options_map.find(name);
+
+	if (find == m_options_map.end())
+		return nullptr;
+	else
+		return &find->second;
 }

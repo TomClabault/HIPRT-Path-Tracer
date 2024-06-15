@@ -87,11 +87,6 @@ struct ApplicationSettings
 	float tone_mapping_gamma = 2.2f;
 	// Tone mapping exposure
 	float tone_mapping_exposure = 1.8f;
-
-	// How to handle nested dielectrics in the scene
-	InteriorStackStrategyEnum interior_stack_strategy = static_cast<InteriorStackStrategyEnum>(InteriorStackStrategy);
-	// How to sample direct lighting in the scene
-	DirectLightSamplingStrategyEnum direct_light_sampling_strategy = static_cast<DirectLightSamplingStrategyEnum>(DirectLightSamplingStrategy);
 };
 
 #endif

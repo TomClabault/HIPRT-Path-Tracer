@@ -219,9 +219,19 @@ void GPURenderer::compile_trace_kernel(const char* kernel_file_path, const char*
 	std::cout << "Kernel \"" << kernel_function_name << "\" compiled in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
 }
 
-void GPURenderer::add_kernel_option(const std::string& name, int value)
+void GPURenderer::set_kernel_option(const std::string& name, int value)
 {
 	m_kernel_options.set_option(name, value);
+}
+
+int GPURenderer::get_kernel_option_value(const std::string& name)
+{
+	return m_kernel_options.get_option_value(name);
+}
+
+int* GPURenderer::get_kernel_option_pointer(const std::string& name)
+{
+	return m_kernel_options.get_pointer_to_option_value(name);
 }
 
 void GPURenderer::launch_kernel(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args)
