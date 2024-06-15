@@ -232,10 +232,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
 #endif
                         ray_payload.ray_color += ray_payload.material.emission * ray_payload.throughput;
 
-                    ColorRGB indirect_clamp(render_data.render_settings.indirect_contribution_clamp > 0.0f ? render_data.render_settings.indirect_contribution_clamp : 1.0e35f);
-                    ray_payload.ray_color += ColorRGB::min(indirect_clamp, (light_sample_radiance + envmap_radiance) * ray_payload.throughput);
+                    ray_payload.ray_color += (light_sample_radiance + envmap_radiance) * ray_payload.throughput;
 
+                    ColorRGB indirect_clamp(render_data.render_settings.indirect_contribution_clamp > 0.0f ? render_data.render_settings.indirect_contribution_clamp : 1.0e35f);
                     ray_payload.throughput *= brdf * hippt::abs(hippt::dot(bounce_direction, closest_hit_info.shading_normal)) / brdf_pdf;
+                    ray_payload.throughput = ColorRGB::min(indirect_clamp, ray_payload.throughput);
 
                     int outside_surface = hippt::dot(bounce_direction, closest_hit_info.shading_normal) < 0 ? -1.0f : 1.0;
                     ray.origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 3.0e-3f * outside_surface;
