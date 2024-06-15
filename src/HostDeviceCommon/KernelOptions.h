@@ -40,8 +40,8 @@
 #define LSS_MIS_LIGHT_BSDF 2
 #define LSS_RIS_ONLY_LIGHT_CANDIDATES 3
 
-#define RIS_VIS_USE_FALSE 0
-#define RIS_VIS_USE_TRUE 1
+#define RIS_USE_VISIBILITY_FALSE 0
+#define RIS_USE_VISIBILITY_TRUE 1
 
 /**
  * Options are defined in a #ifndef __KERNELCC__ block because:
@@ -86,13 +86,13 @@
 /**
  * Whether or not to use a visiblity term in the target function whose PDF we're approximating with RIS.
  * 
- *	- RIS_VIS_USE_TRUE 
+ *	- RIS_USE_VISIBILITY_TRUE 
  *		Do use a visibility term
  *
- *	- RIS_VIS_USE_FALSE
+ *	- RIS_USE_VISIBILITY_FALSE
  *		Don't use a visibility term
  */
-#define RISUseVisiblityTargetFunction RIS_VIS_USE_FALSE
+#define RISUseVisiblityTargetFunction RIS_USE_VISIBILITY_FALSE
 
 #endif
 

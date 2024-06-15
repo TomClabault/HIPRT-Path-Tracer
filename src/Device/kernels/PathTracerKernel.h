@@ -208,8 +208,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
 
                     ColorRGB direct_lighting_clamp(render_data.render_settings.direct_contribution_clamp > 0.0f ? render_data.render_settings.direct_contribution_clamp : 1.0e35f);
                     ColorRGB envmap_lighting_clamp(render_data.render_settings.envmap_contribution_clamp > 0.0f ? render_data.render_settings.envmap_contribution_clamp : 1.0e35f);
-                    light_sample_radiance = ColorRGB::min(direct_lighting_clamp, light_sample_radiance);
-                    envmap_radiance = ColorRGB::min (envmap_lighting_clamp, envmap_radiance);
+
+                    if (bounce == 0)
+                    {
+                        light_sample_radiance = ColorRGB::min(direct_lighting_clamp, light_sample_radiance);
+                        envmap_radiance = ColorRGB::min(envmap_lighting_clamp, envmap_radiance);
+                    }
 
                     // --------------------------------------- //
                     // ---------- Indirect lighting ---------- //
@@ -258,9 +262,15 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                         // are not importance sampled.
 
                         skysphere_color = sample_environment_map_from_direction(render_data.world_settings, ray.direction);
+
+                        // Un-scaling the envmap if the user doesn't want to scale the background
                         if (!render_data.world_settings.envmap_scale_background_intensity)
                             skysphere_color /= render_data.world_settings.envmap_intensity;
+
                     }
+
+                    ColorRGB skysphere_clamp(render_data.render_settings.envmap_contribution_clamp > 0.0f ? render_data.render_settings.envmap_contribution_clamp : 1.0e35f);
+                    skysphere_color = ColorRGB::min(skysphere_clamp, skysphere_color);
 
                     ray_payload.ray_color += skysphere_color * ray_payload.throughput;
 

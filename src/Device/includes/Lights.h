@@ -231,7 +231,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_one_light_RIS(const HIPRTRenderDa
 {
     float3 evaluated_point = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f;
 
-    // Sampling candidates
+    // Sampling candidates with weighted reservoir sampling
     Reservoir r;
     for (int i = 0; i < render_data.render_settings.ris_number_of_candidates; i++)
     { 
@@ -243,7 +243,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_one_light_RIS(const HIPRTRenderDa
         LightSourceInformation light_source_info;
 
         ColorRGB bsdf_color;
-        float target_function_weight;
+        float target_function_weight = 0.0f;
         float candidate_weight = 0.0f;
         float3 random_light_point = sample_one_emissive_triangle(render_data, random_number_generator, light_sample_pdf, light_source_info);
         if (light_sample_pdf > 0.0f)
@@ -265,7 +265,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_one_light_RIS(const HIPRTRenderDa
             float geometry_term = 1.0f / (distance_to_light * distance_to_light) * cosine_at_light_source * cosine_at_evaluated_point;
             float candidate_sampling_function_weight = (light_sample_pdf / render_data.buffers.emissive_triangles_count) * distance_to_light * distance_to_light / cosine_at_light_source;
 
-#if RISUseVisiblityTargetFunction == RIS_VIS_USE_TRUE
+#if RISUseVisiblityTargetFunction == RIS_USE_VISIBILITY_TRUE
             bool visibility;
             hiprtRay shadow_ray;
             shadow_ray.origin = evaluated_point;

@@ -1375,7 +1375,7 @@ void RenderWindow::draw_imgui()
 	}
 
 	ImGui::Text("Render time: %.3fs", m_current_render_time/ 1000.0f);
-	ImGui::Text("%d samples | %.2f samples/s (GPU) @ %dx%d", render_settings.sample_number, m_samples_per_second, m_renderer.m_render_width, m_renderer.m_render_height);
+	ImGui::Text("%d samples | %.2f samples/s @ %dx%d", render_settings.sample_number, m_samples_per_second, m_renderer.m_render_width, m_renderer.m_render_height);
 
 	ImGui::Separator();
 
