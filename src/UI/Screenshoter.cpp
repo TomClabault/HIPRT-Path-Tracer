@@ -27,6 +27,10 @@ void Screenshoter::select_compute_program(DisplayView display_view)
 		m_active_compute_program = m_default_compute_program;
 		break;
 
+	case DisplayView::DENOISED_BLEND:
+		m_active_compute_program = m_blend_2_compute_program;
+		break;
+
 	case DisplayView::DISPLAY_NORMALS:
 	case DisplayView::DISPLAY_DENOISED_NORMALS:
 		m_active_compute_program = m_normal_compute_program;
@@ -41,8 +45,8 @@ void Screenshoter::select_compute_program(DisplayView display_view)
 		m_active_compute_program = m_adaptive_sampling_compute_program;
 		break;
 
-
 	default:
+		std::cerr << "Unable to select a compute shader program based on the given display view" << std::endl;
 		break;
 	}
 }
@@ -62,12 +66,16 @@ void Screenshoter::initialize_programs()
 {
 	std::vector<std::string> macro = { "#define COMPUTE_SCREENSHOTER" };
 	OpenGLShader default_display_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/default_display.frag", OpenGLShader::COMPUTE_SHADER, macro);
+	OpenGLShader blend_2_display_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/blend_2_display.frag", OpenGLShader::COMPUTE_SHADER, macro);
 	OpenGLShader normal_display_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/normal_display.frag", OpenGLShader::COMPUTE_SHADER, macro);
 	OpenGLShader albedo_display_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/albedo_display.frag", OpenGLShader::COMPUTE_SHADER, macro);
 	OpenGLShader adaptive_display_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/heatmap_int.frag", OpenGLShader::COMPUTE_SHADER, macro);
 
 	m_default_compute_program.attach(default_display_shader);
 	m_default_compute_program.link();
+
+	m_blend_2_compute_program.attach(blend_2_display_shader);
+	m_blend_2_compute_program.link();
 
 	m_normal_compute_program.attach(normal_display_shader);
 	m_normal_compute_program.link();
@@ -81,13 +89,11 @@ void Screenshoter::initialize_programs()
 	select_compute_program(m_render_window->get_application_settings().display_view);
 }
 
-void Screenshoter::prepare_output_image(int width, int height)
+void Screenshoter::resize_output_image(int width, int height)
 {
 	bool texture_needs_creation = false;
 	if (m_compute_output_image_width == -1)
-	{
 		texture_needs_creation = true;
-	}
 	else if (m_compute_output_image_width != width || m_compute_output_image_height != height)
 	{
 		glDeleteTextures(1, &m_output_image);
@@ -151,7 +157,7 @@ void Screenshoter::write_to_png(const char* filepath)
 			m_compute_shader_initialized = true;
 		}
 
-		prepare_output_image(width, height);
+		resize_output_image(width, height);
 
 		GLint threads[3];
 		m_active_compute_program.get_compute_threads(threads);

@@ -228,7 +228,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                         break;
 
 #if DirectLightSamplingStrategy != LSS_NO_DIRECT_LIGHT_SAMPLING // No direct light sampling
-                    if (bounce == 0)
+                    if (bounce == 0 || render_data.render_settings.direct_contribution_clamp == 0.0f)
                     // If we do have emissive geometry sampling, we only want to take
                     // it into account on the first bounce, otherwise we would be
                     // accounting for direct light sampling twice (bounce on emissive

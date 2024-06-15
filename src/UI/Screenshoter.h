@@ -20,7 +20,7 @@ public:
 
 	void select_compute_program(DisplayView display_view);
 	void initialize_programs();
-	void prepare_output_image(int width, int height);
+	void resize_output_image(int width, int height);
 
 	/**
 	 * A filename with a time stamp, the render resolution and the
@@ -40,6 +40,7 @@ private:
 	bool m_compute_shader_initialized = false;
 	OpenGLProgram m_active_compute_program;
 	OpenGLProgram m_default_compute_program;
+	OpenGLProgram m_blend_2_compute_program;
 	OpenGLProgram m_normal_compute_program;
 	OpenGLProgram m_albedo_compute_program;
 	OpenGLProgram m_adaptive_sampling_compute_program;

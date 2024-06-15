@@ -19,12 +19,15 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include "glm/gtx/euler_angles.hpp"
 
+// TODO
 // interior stack strategy in ImGui
 
 // TODO bugs
 // - TO TEST AGAIN: something is unsafe on NVIDIA + Windows + nested-dielectrics-complex.gltf + 48 bounces minimum + nested dielectric strategy RT Gems. We get a CPU-side orochi error when downloading the framebuffer for displaying indicating that some illegal memory was accessed. Is the buffer corrupted by something?
-// - denoiser AOVs not accounting for tranmission correctly since Disney 
+// - denoiser AOVs not accounting for transmission correctly since Disney 
+//	  - same with perfect reflection
 // - cosine term already included in the disney BSDF and thus not needed in PathTracerKernel.h? Same with light sampling
+// - Issue with screenshoter + denoiser, PNG output is way darker than viewport
 
 
 
@@ -129,7 +132,6 @@
 // - ImGui widgets for SBVH / LBVH
 // - BVH compaction + imgui checkbox
 // - shader cache (write our own or wait for HIPRT to fix it?)
-// - indirect / direct lighting clamping
 // - choose env map at runtime imgui
 // - choose scene file at runtime imgui
 // - lock camera checkbox to avoid messing up when big render in progress
@@ -937,6 +939,12 @@ void RenderWindow::draw_render_settings_panel()
 
 	ImGui::Separator();
 
+	ImGui::BeginDisabled(m_application_settings.auto_sample_per_frame);
+	ImGui::InputInt("Samples per frame", &render_settings.samples_per_frame);
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	ImGui::Checkbox("Auto", &m_application_settings.auto_sample_per_frame);
+
 	if (ImGui::InputInt("Target Sample Count", &m_application_settings.max_sample_count))
 		m_application_settings.max_sample_count = std::max(m_application_settings.max_sample_count, 0);
 
@@ -964,17 +972,13 @@ void RenderWindow::draw_render_settings_panel()
 	ImGui::TreePop();
 	ImGui::EndDisabled();
 
-	ImGui::BeginDisabled(m_application_settings.auto_sample_per_frame);
-	ImGui::InputInt("Samples per frame", &render_settings.samples_per_frame);
-	ImGui::EndDisabled();
-	ImGui::SameLine();
-	ImGui::Checkbox("Auto", &m_application_settings.auto_sample_per_frame);
 	if (ImGui::InputInt("Max bounces", &render_settings.nb_bounces))
 	{
 		// Clamping to 0 in case the user input a negative number of bounces	
 		render_settings.nb_bounces = std::max(render_settings.nb_bounces, 0);
 		m_render_dirty = true;
 	}
+	ImGui::Separator();
 	if (ImGui::SliderFloat("Direct ligthing contribution clamp", &render_settings.direct_contribution_clamp, 0.0f, 10.0f))
 	{
 		render_settings.direct_contribution_clamp = std::max(0.0f, render_settings.direct_contribution_clamp);
