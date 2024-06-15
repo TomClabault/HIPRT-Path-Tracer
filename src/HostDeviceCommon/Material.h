@@ -34,11 +34,11 @@ struct RendererMaterial
         clearcoat_roughness = hippt::max(1.0e-4f, clearcoat_roughness);
 
         // Clamping to avoid negative emission
-        emission = max(ColorRGB(0.0f), emission);
+        emission = ColorRGB::max(ColorRGB(0.0f), emission);
 
         // Avoiding zero
         absorption_at_distance = hippt::max(absorption_at_distance, 1.0e-4f);
-        absorption_color = max(absorption_color, ColorRGB(1.0f / 255.0f));
+        absorption_color = ColorRGB::max(absorption_color, ColorRGB(1.0f / 255.0f));
     }
 
     /*
@@ -112,7 +112,7 @@ struct RendererMaterial
     int clearcoat_texture_index = -1;
     int clearcoat_roughness_texture_index = -1;
     int clearcoat_ior_texture_index = -1;
-    float clearcoat = 1.0f;
+    float clearcoat = 0.0f;
     float clearcoat_roughness = 0.0f;
     float clearcoat_ior = 1.5f;
 

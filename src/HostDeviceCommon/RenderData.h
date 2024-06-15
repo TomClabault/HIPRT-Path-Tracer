@@ -35,7 +35,7 @@ struct ALIGN(8) HIPRTRenderSettings
 	int sample_number = 0;
 
 	int samples_per_frame = 1;
-	int nb_bounces = 8;
+	int nb_bounces = 4;
 
 	// Whether or not to "freeze" random number generation so that each frame uses
 	// exactly the same random number. This allows every ray to follow the exact
@@ -64,6 +64,13 @@ struct ALIGN(8) HIPRTRenderSettings
 	// stop sampling pixels that have reached the threshold if there are still
 	// some other pixels that haven't. Either everyone stops or noone stops.
 	float stop_noise_threshold = 0.0f;
+
+	// Clamp direct lighting contribution to reduce fireflies
+	float direct_contribution_clamp = 20.0f;
+	// Clamp envmap contribution to reduce fireflies
+	float envmap_contribution_clamp = 0.0f;
+	// Clamp indirect lighting contribution to reduce fireflies
+	float indirect_contribution_clamp = 20.0f;
 
 	// How many candidates to sample for RIS (Resampled Importance Sampling)
 	int ris_number_of_candidates = 32;

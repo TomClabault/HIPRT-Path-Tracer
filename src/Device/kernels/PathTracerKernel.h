@@ -206,6 +206,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                     ColorRGB light_sample_radiance = sample_one_light(render_data, ray_payload.material, closest_hit_info, -ray.direction, random_number_generator);
                     ColorRGB envmap_radiance = sample_environment_map(render_data, ray_payload.material, closest_hit_info, -ray.direction, random_number_generator);
 
+                    ColorRGB direct_lighting_clamp(render_data.render_settings.direct_contribution_clamp > 0.0f ? render_data.render_settings.direct_contribution_clamp : 1.0e35f);
+                    ColorRGB envmap_lighting_clamp(render_data.render_settings.envmap_contribution_clamp > 0.0f ? render_data.render_settings.envmap_contribution_clamp : 1.0e35f);
+                    light_sample_radiance = ColorRGB::min(direct_lighting_clamp, light_sample_radiance);
+                    envmap_radiance = ColorRGB::min (envmap_lighting_clamp, envmap_radiance);
+
                     // --------------------------------------- //
                     // ---------- Indirect lighting ---------- //
                     // --------------------------------------- //
@@ -225,9 +230,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                     // accounting for direct light sampling twice (bounce on emissive
                     // geometry + direct light sampling). Otherwise, we don't check for bounce == 0
 #endif
-                        ray_payload.ray_color = ray_payload.ray_color + ray_payload.material.emission * ray_payload.throughput;
+                        ray_payload.ray_color += ray_payload.material.emission * ray_payload.throughput;
 
-                    ray_payload.ray_color = ray_payload.ray_color + (light_sample_radiance + envmap_radiance) * ray_payload.throughput;
+                    ColorRGB indirect_clamp(render_data.render_settings.indirect_contribution_clamp > 0.0f ? render_data.render_settings.indirect_contribution_clamp : 1.0e35f);
+                    ray_payload.ray_color += ColorRGB::min(indirect_clamp, (light_sample_radiance + envmap_radiance) * ray_payload.throughput);
 
                     ray_payload.throughput *= brdf * hippt::abs(hippt::dot(bounce_direction, closest_hit_info.shading_normal)) / brdf_pdf;
 

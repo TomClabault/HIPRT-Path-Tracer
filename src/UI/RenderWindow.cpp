@@ -908,7 +908,7 @@ void RenderWindow::draw_render_settings_panel()
 		m_render_dirty = true;
 	}
 
-	const char* items[] = { "- Default", "- Denoiser blend", "- Denoiser - Normals", "- Denoiser - Denoised normals", "- Denoiser - Albedo", "- Denoiser - Denoised albedo", "- Adaptive sampling heatmap"};
+	const char* items[] = { "- Default", "- Denoiser blend", "- Denoiser - Normals", "- Denoiser - Denoised normals", "- Denoiser - Albedo", "- Denoiser - Denoised albedo", "- Adaptive sampling heatmap" };
 	if (ImGui::Combo("Display View", (int*)(&m_application_settings.display_view), items, IM_ARRAYSIZE(items)))
 		change_display_view(m_application_settings.display_view);
 
@@ -965,14 +965,29 @@ void RenderWindow::draw_render_settings_panel()
 	ImGui::EndDisabled();
 
 	ImGui::BeginDisabled(m_application_settings.auto_sample_per_frame);
-	ImGui::InputInt("Samples per frame", &render_settings.samples_per_frame); 
+	ImGui::InputInt("Samples per frame", &render_settings.samples_per_frame);
 	ImGui::EndDisabled();
 	ImGui::SameLine();
 	ImGui::Checkbox("Auto", &m_application_settings.auto_sample_per_frame);
 	if (ImGui::InputInt("Max bounces", &render_settings.nb_bounces))
 	{
 		// Clamping to 0 in case the user input a negative number of bounces	
-		render_settings.nb_bounces = std::max(render_settings.nb_bounces, 0); 
+		render_settings.nb_bounces = std::max(render_settings.nb_bounces, 0);
+		m_render_dirty = true;
+	}
+	if (ImGui::SliderFloat("Direct ligthing contribution clamp", &render_settings.direct_contribution_clamp, 0.0f, 10.0f))
+	{
+		render_settings.direct_contribution_clamp = std::max(0.0f, render_settings.direct_contribution_clamp);
+		m_render_dirty = true;
+	}
+	if (ImGui::SliderFloat("Envmap ligthing contribution clamp", &render_settings.envmap_contribution_clamp, 0.0f, 10.0f))
+	{
+		render_settings.envmap_contribution_clamp = std::max(0.0f, render_settings.envmap_contribution_clamp);
+		m_render_dirty = true;
+	}
+	if (ImGui::SliderFloat("Indirect ligthing contribution clamp", &render_settings.indirect_contribution_clamp, 0.0f, 10.0f))
+	{
+		render_settings.indirect_contribution_clamp = std::max(0.0f, render_settings.indirect_contribution_clamp);
 		m_render_dirty = true;
 	}
 
