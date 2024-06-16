@@ -907,8 +907,12 @@ void RenderWindow::run()
 		m_imgui_renderer.draw_imgui_interface();
 
 		m_stop_cpu_frame_time = std::chrono::high_resolution_clock::now();
-		m_current_render_time += std::chrono::duration_cast<std::chrono::milliseconds>(m_stop_cpu_frame_time - m_start_cpu_frame_time).count();
-		m_samples_per_second = 1000.0f / m_renderer->get_sample_time();
+
+		if (!is_rendering_done())
+		{
+			m_current_render_time += std::chrono::duration_cast<std::chrono::milliseconds>(m_stop_cpu_frame_time - m_start_cpu_frame_time).count();
+			m_samples_per_second = 1000.0f / m_renderer->get_sample_time();
+		}
 
 		glfwSwapBuffers(m_glfw_window);
 	}
