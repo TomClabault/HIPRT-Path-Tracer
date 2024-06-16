@@ -530,12 +530,16 @@ void ImGuiRenderer::draw_performance_panel()
 		"Sample time",
 		scale_min, scale_max,
 		/* size */ ImVec2(0, 80));
+	static bool auto_rescale = false;
 	ImGui::SameLine();
-	if (ImGui::Button("Rescale"))
+	if (ImGui::Button("Rescale") || auto_rescale)
 	{
 		scale_min = min;
 		scale_max = max;
 	}
+	ImGui::SameLine();
+	ImGui::Checkbox("Auto-rescale", & auto_rescale);
+
 	ImGui::Text("Sample time (avg)      : %.3fms (%.1f FPS)", m_perf_metrics->get_average(PerformanceMetricsComputer::SAMPLE_TIME_KEY), 1000.0f / m_perf_metrics->get_average(PerformanceMetricsComputer::SAMPLE_TIME_KEY));
 	ImGui::Text("Sample time (var)      : %.3fms", variance);
 	ImGui::Text("Sample time (std dev)  : %.3fms", std::sqrt(variance));
