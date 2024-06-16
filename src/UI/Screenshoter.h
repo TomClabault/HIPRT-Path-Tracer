@@ -15,7 +15,7 @@ class RenderWindow;
 class Screenshoter
 {
 public:
-	void set_renderer(GPURenderer* renderer);
+	void set_renderer(std::shared_ptr<GPURenderer> renderer);
 	void set_render_window(RenderWindow* render_window);
 
 	void select_compute_program(DisplayView display_view);
@@ -34,7 +34,7 @@ public:
 	void write_to_png(const char* filepath);
 
 private:
-	GPURenderer* m_renderer = nullptr;
+	std::shared_ptr<GPURenderer> m_renderer = nullptr;
 	RenderWindow* m_render_window = nullptr;
 
 	bool m_compute_shader_initialized = false;

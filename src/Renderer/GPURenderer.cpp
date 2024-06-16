@@ -114,19 +114,14 @@ oroDeviceProp GPURenderer::get_device_properties()
 	return m_device_properties;
 }
 
-float GPURenderer::get_frame_time()
+float GPURenderer::get_gpu_frame_time()
 {
 	return m_frame_time;
 }
 
-int GPURenderer::get_sample_number()
+float GPURenderer::get_sample_time()
 {
-	return m_render_settings.sample_number;
-}
-
-void GPURenderer::set_sample_number(int sample_number)
-{
-	m_render_settings.sample_number = sample_number;
+	return get_gpu_frame_time() / ((m_render_settings.render_low_resolution ? 1 : m_render_settings.samples_per_frame));
 }
 
 HIPRTRenderData GPURenderer::get_render_data()

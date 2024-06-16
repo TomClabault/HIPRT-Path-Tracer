@@ -3,21 +3,18 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#include "UI/RenderWindow.h"
-#include "UI/LinuxRenderWindowMouseInteractor.h"
-#include "UI/WindowsRenderWindowMouseInteractor.h"
-
-#include <functional>
-#include <iostream>
 #include "Scene/SceneParser.h"
 #include "Threads/ThreadFunctions.h"
 #include "Threads/ThreadManager.h"
+#include "UI/RenderWindow.h"
+#include "UI/LinuxRenderWindowMouseInteractor.h"
+#include "UI/WindowsRenderWindowMouseInteractor.h"
 #include "Utils/Utils.h"
 
-#include "stb_image_write.h"
+#include <functional>
+#include <iostream>
 
-#define GLM_ENABLE_EXPERIMENTAL
-#include "glm/gtx/euler_angles.hpp"
+#include "stb_image_write.h"
 
 // TODO
 // interior stack strategy in ImGui
@@ -32,6 +29,7 @@
 
 
 // TODO Code Organization:
+// - gest grab / set grab cursor position needs to be in windows interactor, not render window, get_cursor_position? set_interacting?
 // - investigate why kernel compiling was so much faster in the past (commit db34b23 seems to be a good candidate)
 // - refactor the usage of strings in the compile kernel functions
 // - multiple GLTF, one GLB for different point of views per model
@@ -217,6 +215,46 @@ void APIENTRY RenderWindow::gl_debug_output_callback(GLenum source,
 
 RenderWindow::RenderWindow(int width, int height) : m_viewport_width(width), m_viewport_height(height)
 {
+	init_glfw(width, height);
+	init_gl(width, height);
+	init_imgui();
+
+	m_application_settings = std::make_shared<ApplicationSettings>();
+
+	m_renderer = std::make_shared<GPURenderer>();
+	m_renderer->initialize(0);
+	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_renderer), m_application_settings->kernel_files[m_application_settings->selected_kernel].c_str(), m_application_settings->kernel_functions[m_application_settings->selected_kernel].c_str());
+	m_renderer->change_render_resolution(width, height);
+
+	m_denoiser = std::make_shared<OpenImageDenoiser>();
+	m_denoiser->initialize();
+	m_denoiser->resize(width, height);
+	m_denoiser->set_use_albedo(m_application_settings->denoiser_use_albedo);
+	m_denoiser->set_use_normals(m_application_settings->denoiser_use_normals);
+	m_denoiser->finalize();
+
+	m_screenshoter = std::make_shared<Screenshoter>();
+	m_screenshoter->set_renderer(m_renderer);
+	m_screenshoter->set_render_window(this);
+
+	m_perf_metrics = std::make_shared<PerformanceMetricsComputer>();
+
+	m_imgui_renderer.set_render_window(this);
+
+	create_display_programs();
+
+	// Making the render dirty to force a cleanup at startup
+	m_render_dirty = true;
+}
+
+RenderWindow::~RenderWindow()
+{
+	glfwDestroyWindow(m_glfw_window);
+	glfwTerminate();
+}
+
+void RenderWindow::init_glfw(int width, int height)
+{
 	if (!glfwInit())
 		wait_and_exit("Could not initialize GLFW...");
 
@@ -246,7 +284,10 @@ RenderWindow::RenderWindow(int width, int height) : m_viewport_width(width), m_v
 	m_keyboard_interactor.set_callbacks(m_glfw_window);
 
 	glewInit();
+}
 
+void RenderWindow::init_gl(int width, int height)
+{
 	glViewport(0, 0, width, height);
 
 	// Initializing the debug output of OpenGL to catch errors
@@ -260,7 +301,10 @@ RenderWindow::RenderWindow(int width, int height) : m_viewport_width(width), m_v
 		glDebugMessageCallback(RenderWindow::gl_debug_output_callback, nullptr);
 		glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
 	}
+}
 
+void RenderWindow::init_imgui()
+{
 	// Setting ImGui up
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -270,29 +314,6 @@ RenderWindow::RenderWindow(int width, int height) : m_viewport_width(width), m_v
 
 	ImGui_ImplGlfw_InitForOpenGL(m_glfw_window, true);
 	ImGui_ImplOpenGL3_Init();
-
-	m_renderer.initialize(0);
-	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_renderer), m_application_settings.kernel_files[m_application_settings.selected_kernel].c_str(), m_application_settings.kernel_functions[m_application_settings.selected_kernel].c_str());
-	m_renderer.change_render_resolution(width, height);
-	create_display_programs();
-
-	m_denoiser.initialize();
-	m_denoiser.resize(width, height);
-	m_denoiser.set_use_albedo(m_application_settings.denoiser_use_albedo);
-	m_denoiser.set_use_normals(m_application_settings.denoiser_use_normals);
-	m_denoiser.finalize();
-
-	m_screenshoter.set_renderer(&m_renderer);
-	m_screenshoter.set_render_window(this);
-
-	// Making the render dirty to force a cleanup at startup
-	m_render_dirty = true;
-}
-
-RenderWindow::~RenderWindow()
-{
-	glfwDestroyWindow(m_glfw_window);
-	glfwTerminate();
 }
 
 void RenderWindow::resize_frame(int pixels_width, int pixels_height)
@@ -315,9 +336,9 @@ void RenderWindow::resize_frame(int pixels_width, int pixels_height)
 	m_viewport_height = pixels_height;
 
 	// Taking resolution scaling into account
-	float& resolution_scale = m_application_settings.render_resolution_scale;
-	if (m_application_settings.keep_same_resolution)
-		resolution_scale = m_application_settings.target_width / (float)pixels_width; // TODO what about the height changing ?
+	float& resolution_scale = m_application_settings->render_resolution_scale;
+	if (m_application_settings->keep_same_resolution)
+		resolution_scale = m_application_settings->target_width / (float)pixels_width; // TODO what about the height changing ?
 
 	int new_render_width = std::floor(pixels_width * resolution_scale);
 	int new_render_height = std::floor(pixels_height * resolution_scale);
@@ -327,10 +348,10 @@ void RenderWindow::resize_frame(int pixels_width, int pixels_height)
 		// Integer maths will round it down to 0
 		return;
 	
-	m_renderer.change_render_resolution(new_render_width, new_render_height);
+	m_renderer->change_render_resolution(new_render_width, new_render_height);
 
-	m_denoiser.resize(new_render_width, new_render_height);
-	m_denoiser.finalize();
+	m_denoiser->resize(new_render_width, new_render_height);
+	m_denoiser->finalize();
 
 	internal_recreate_display_texture(m_display_texture_1, RenderWindow::DISPLAY_TEXTURE_UNIT_1, m_display_texture_1.second, new_render_width, new_render_height);
 	internal_recreate_display_texture(m_display_texture_2, RenderWindow::DISPLAY_TEXTURE_UNIT_2, m_display_texture_2.second, new_render_width, new_render_height);
@@ -343,9 +364,9 @@ void RenderWindow::change_resolution_scaling(float new_scaling)
 	float new_render_width = std::floor(m_viewport_width * new_scaling);
 	float new_render_height = std::floor(m_viewport_height * new_scaling);
 
-	m_renderer.change_render_resolution(new_render_width, new_render_height);
-	m_denoiser.resize(new_render_width, new_render_height);
-	m_denoiser.finalize();
+	m_renderer->change_render_resolution(new_render_width, new_render_height);
+	m_denoiser->resize(new_render_width, new_render_height);
+	m_denoiser->finalize();
 
 	internal_recreate_display_texture(m_display_texture_1, RenderWindow::DISPLAY_TEXTURE_UNIT_1, m_display_texture_1.second, new_render_width, new_render_height);
 	internal_recreate_display_texture(m_display_texture_2, RenderWindow::DISPLAY_TEXTURE_UNIT_2, m_display_texture_2.second, new_render_width, new_render_height);
@@ -363,7 +384,7 @@ int RenderWindow::get_height()
 
 void RenderWindow::set_interacting(bool is_interacting)
 {
-	HIPRTRenderSettings& render_settings = m_renderer.get_render_settings();
+	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 
 	// The user just released the camera and we were rendering at low resolution
 	if (!is_interacting && render_settings.render_low_resolution)
@@ -374,15 +395,10 @@ void RenderWindow::set_interacting(bool is_interacting)
 
 bool RenderWindow::is_interacting()
 {
-	return m_renderer.get_render_settings().render_low_resolution;
+	return m_renderer->get_render_settings().render_low_resolution;
 }
 
-ApplicationSettings& RenderWindow::get_application_settings()
-{
-	return m_application_settings;
-}
-
-const ApplicationSettings& RenderWindow::get_application_settings() const
+std::shared_ptr<ApplicationSettings> RenderWindow::get_application_settings()
 {
 	return m_application_settings;
 }
@@ -425,15 +441,15 @@ void RenderWindow::create_display_programs()
 	m_adaptive_sampling_display_program.attach(adaptive_display_fragment_shader);
 	m_adaptive_sampling_display_program.link();
 
-	change_display_view(m_application_settings.display_view);
+	change_display_view(m_application_settings->display_view);
 }
 
 void RenderWindow::change_display_view(DisplayView display_view)
 {
-	m_application_settings.display_view = display_view;
+	m_application_settings->display_view = display_view;
 
 	// Adjusting the denoiser setting according to the selected view
-	m_application_settings.enable_denoising = display_view == DisplayView::DENOISED_BLEND;
+	m_application_settings->enable_denoising = display_view == DisplayView::DENOISED_BLEND;
 
 	switch (display_view)
 	{
@@ -496,10 +512,10 @@ void RenderWindow::internal_recreate_display_textures_from_display_view(DisplayV
 	}
 
 	if (m_display_texture_1.second != texture_1_type_needed)
-		internal_recreate_display_texture(m_display_texture_1, RenderWindow::DISPLAY_TEXTURE_UNIT_1, texture_1_type_needed, m_renderer.m_render_width, m_renderer.m_render_height);
+		internal_recreate_display_texture(m_display_texture_1, RenderWindow::DISPLAY_TEXTURE_UNIT_1, texture_1_type_needed, m_renderer->m_render_width, m_renderer->m_render_height);
 
 	if (m_display_texture_2.second != texture_2_type_needed)
-		internal_recreate_display_texture(m_display_texture_2, RenderWindow::DISPLAY_TEXTURE_UNIT_2, texture_2_type_needed, m_renderer.m_render_width, m_renderer.m_render_height);
+		internal_recreate_display_texture(m_display_texture_2, RenderWindow::DISPLAY_TEXTURE_UNIT_2, texture_2_type_needed, m_renderer->m_render_width, m_renderer->m_render_height);
 }
 
 void RenderWindow::internal_recreate_display_texture(std::pair<GLuint, DisplayTextureType>& display_texture, GLenum display_texture_unit, DisplayTextureType new_texture_type, int width, int height)
@@ -548,31 +564,31 @@ void RenderWindow::upload_data_to_display_texture(GLuint display_texture, const 
 {
 	glActiveTexture(GL_TEXTURE0 + RenderWindow::DISPLAY_TEXTURE_UNIT_1);
 	glBindTexture(GL_TEXTURE_2D, display_texture);
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_renderer.m_render_width, m_renderer.m_render_height, format, type, data);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_renderer->m_render_width, m_renderer->m_render_height, format, type, data);
 }
 
 void RenderWindow::update_program_uniforms(OpenGLProgram& program)
 {
-	HIPRTRenderSettings& render_settings = m_renderer.get_render_settings();
+	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 	int resolution_scaling = (render_settings.render_low_resolution) ? render_settings.render_low_resolution_scaling : 1;
 
 	program.use();
 
-	switch (m_application_settings.display_view)
+	switch (m_application_settings->display_view)
 	{
 	case DisplayView::DEFAULT:
 		int sample_number;
-		if (m_application_settings.enable_denoising && m_application_settings.last_denoised_sample_count != -1)
-			sample_number = m_application_settings.last_denoised_sample_count;
+		if (m_application_settings->enable_denoising && m_application_settings->last_denoised_sample_count != -1)
+			sample_number = m_application_settings->last_denoised_sample_count;
 		else
 			sample_number = render_settings.sample_number;
 
 		program.set_uniform("u_texture", RenderWindow::DISPLAY_TEXTURE_UNIT_1);
 		program.set_uniform("u_sample_number", sample_number);
-		program.set_uniform("u_do_tonemapping", m_application_settings.do_tonemapping);
+		program.set_uniform("u_do_tonemapping", m_application_settings->do_tonemapping);
 		program.set_uniform("u_resolution_scaling", resolution_scaling);
-		program.set_uniform("u_gamma", m_application_settings.tone_mapping_gamma);
-		program.set_uniform("u_exposure", m_application_settings.tone_mapping_exposure);
+		program.set_uniform("u_gamma", m_application_settings->tone_mapping_gamma);
+		program.set_uniform("u_exposure", m_application_settings->tone_mapping_exposure);
 
 		break;
 
@@ -581,17 +597,17 @@ void RenderWindow::update_program_uniforms(OpenGLProgram& program)
 		int denoised_sample_number;
 
 		noisy_sample_number = render_settings.sample_number;
-		denoised_sample_number = m_application_settings.last_denoised_sample_count;
+		denoised_sample_number = m_application_settings->last_denoised_sample_count;
 
-		program.set_uniform("u_blend_factor", m_application_settings.denoiser_blend);
+		program.set_uniform("u_blend_factor", m_application_settings->denoiser_blend);
 		program.set_uniform("u_texture_1", RenderWindow::DISPLAY_TEXTURE_UNIT_1);
 		program.set_uniform("u_texture_2", RenderWindow::DISPLAY_TEXTURE_UNIT_2);
 		program.set_uniform("u_sample_number_1", noisy_sample_number);
 		program.set_uniform("u_sample_number_2", denoised_sample_number);
-		program.set_uniform("u_do_tonemapping", m_application_settings.do_tonemapping);
+		program.set_uniform("u_do_tonemapping", m_application_settings->do_tonemapping);
 		program.set_uniform("u_resolution_scaling", resolution_scaling);
-		program.set_uniform("u_gamma", m_application_settings.tone_mapping_gamma);
-		program.set_uniform("u_exposure", m_application_settings.tone_mapping_exposure);
+		program.set_uniform("u_gamma", m_application_settings->tone_mapping_gamma);
+		program.set_uniform("u_exposure", m_application_settings->tone_mapping_exposure);
 
 		break;
 
@@ -608,9 +624,9 @@ void RenderWindow::update_program_uniforms(OpenGLProgram& program)
 		program.set_uniform("u_texture", RenderWindow::DISPLAY_TEXTURE_UNIT_1);
 		program.set_uniform("u_sample_number", render_settings.sample_number);
 		program.set_uniform("u_resolution_scaling", resolution_scaling);
-		program.set_uniform("u_do_tonemapping", m_application_settings.do_tonemapping);
-		program.set_uniform("u_gamma", m_application_settings.tone_mapping_gamma);
-		program.set_uniform("u_exposure", m_application_settings.tone_mapping_exposure);
+		program.set_uniform("u_do_tonemapping", m_application_settings->do_tonemapping);
+		program.set_uniform("u_gamma", m_application_settings->tone_mapping_gamma);
+		program.set_uniform("u_exposure", m_application_settings->tone_mapping_exposure);
 
 		break;
 
@@ -638,8 +654,8 @@ void RenderWindow::update_renderer_view_translation(float translation_x, float t
 
 	m_render_dirty = true;
 
-	glm::vec3 translation = glm::vec3(translation_x / m_application_settings.view_translation_sldwn_x, translation_y / m_application_settings.view_translation_sldwn_y, 0.0f);
-	m_renderer.translate_camera_view(translation);
+	glm::vec3 translation = glm::vec3(translation_x / m_application_settings->view_translation_sldwn_x, translation_y / m_application_settings->view_translation_sldwn_y, 0.0f);
+	m_renderer->translate_camera_view(translation);
 }
 
 void RenderWindow::update_renderer_view_rotation(float offset_x, float offset_y)
@@ -648,10 +664,10 @@ void RenderWindow::update_renderer_view_rotation(float offset_x, float offset_y)
 
 	float rotation_x, rotation_y;
 
-	rotation_x = offset_x / m_viewport_width * 2.0f * M_PI / m_application_settings.view_rotation_sldwn_x;
-	rotation_y = offset_y / m_viewport_height * 2.0f * M_PI / m_application_settings.view_rotation_sldwn_y;
+	rotation_x = offset_x / m_viewport_width * 2.0f * M_PI / m_application_settings->view_rotation_sldwn_x;
+	rotation_y = offset_y / m_viewport_height * 2.0f * M_PI / m_application_settings->view_rotation_sldwn_y;
 
-	m_renderer.rotate_camera_view(glm::vec3(rotation_x, rotation_y, 0.0f));
+	m_renderer->rotate_camera_view(glm::vec3(rotation_x, rotation_y, 0.0f));
 }
 
 void RenderWindow::update_renderer_view_zoom(float offset)
@@ -661,12 +677,12 @@ void RenderWindow::update_renderer_view_zoom(float offset)
 
 	m_render_dirty = true;
 
-	m_renderer.zoom_camera_view(offset / m_application_settings.view_zoom_sldwn);
+	m_renderer->zoom_camera_view(offset / m_application_settings->view_zoom_sldwn);
 }
 
 void RenderWindow::increment_sample_number()
 {
-	HIPRTRenderSettings& render_settings = m_renderer.get_render_settings();
+	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 
 	if (render_settings.render_low_resolution)
 		render_settings.sample_number++; // Only doing 1 SPP when moving the camera
@@ -676,26 +692,26 @@ void RenderWindow::increment_sample_number()
 
 bool RenderWindow::is_rendering_done()
 {
-	HIPRTRenderSettings& render_settings = m_renderer.get_render_settings();
+	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 
 	bool rendering_done = false;
 
-	rendering_done |= m_renderer.get_ray_active_buffer().download_data()[0] == 0;
-	rendering_done |= m_renderer.get_stop_noise_threshold_buffer().download_data()[0] == m_renderer.m_render_width * m_renderer.m_render_height;
-	rendering_done |= (m_application_settings.max_sample_count != 0 && render_settings.sample_number + 1 > m_application_settings.max_sample_count);
+	rendering_done |= m_renderer->get_ray_active_buffer().download_data()[0] == 0;
+	rendering_done |= m_renderer->get_stop_noise_threshold_buffer().download_data()[0] == m_renderer->m_render_width * m_renderer->m_render_height;
+	rendering_done |= (m_application_settings->max_sample_count != 0 && render_settings.sample_number + 1 > m_application_settings->max_sample_count);
 
 	return rendering_done;
 }
 
 void RenderWindow::reset_render()
 {
-	HIPRTRenderSettings& render_settings = m_renderer.get_render_settings();
+	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 
 	unsigned char true_data = 1;
 	unsigned int zero_data = 0;
 
 	render_settings.frame_number = 0;
-	if (m_application_settings.auto_sample_per_frame)
+	if (m_application_settings->auto_sample_per_frame)
 	{
 		// Resetting the number of samples per frame to be sure we're not
 		// going to timeout the GPU driver
@@ -707,17 +723,47 @@ void RenderWindow::reset_render()
 		m_samples_per_second = 0.0f;
 	}
 	m_current_render_time = 0.0f;
-	m_renderer.set_sample_number(0);
-	m_renderer.get_ray_active_buffer().upload_data(&true_data);
-	m_renderer.get_stop_noise_threshold_buffer().upload_data(&zero_data);
-	m_application_settings.last_denoised_sample_count = -1;
+	render_settings.sample_number = 0;
+	m_renderer->get_ray_active_buffer().upload_data(&true_data);
+	m_renderer->get_stop_noise_threshold_buffer().upload_data(&zero_data);
+	m_application_settings->last_denoised_sample_count = -1;
 
 	m_render_dirty = false;
 }
 
-GPURenderer& RenderWindow::get_renderer()
+void RenderWindow::set_render_dirty(bool render_dirty)
+{
+	m_render_dirty = render_dirty;
+}
+
+float RenderWindow::get_current_render_time()
+{
+	return m_current_render_time;
+}
+
+float RenderWindow::get_samples_per_second()
+{
+	return m_samples_per_second;
+}
+
+std::shared_ptr<OpenImageDenoiser> RenderWindow::get_denoiser()
+{
+	return m_denoiser;
+}
+
+std::shared_ptr<GPURenderer> RenderWindow::get_renderer()
 {
 	return m_renderer;
+}
+
+std::shared_ptr<PerformanceMetricsComputer> RenderWindow::get_performance_metrics()
+{
+	return m_perf_metrics;
+}
+
+std::shared_ptr<Screenshoter> RenderWindow::get_screenshoter()
+{
+	return m_screenshoter;
 }
 
 std::pair<float, float> RenderWindow::get_grab_cursor_position()
@@ -732,7 +778,7 @@ void RenderWindow::set_grab_cursor_position(std::pair<float, float> new_position
 
 void RenderWindow::run()
 {
-	HIPRTRenderSettings& render_settings = m_renderer.get_render_settings();
+	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 
 	while (!glfwWindowShouldClose(m_glfw_window))
 	{
@@ -748,7 +794,7 @@ void RenderWindow::run()
 		if (m_render_dirty)
 			reset_render();
 
-		if (m_application_settings.auto_sample_per_frame && m_samples_per_second > 0)
+		if (m_application_settings->auto_sample_per_frame && m_samples_per_second > 0)
 			render_settings.samples_per_frame = std::min(std::max(1, static_cast<int>(m_samples_per_second / 20.0f)), 10000);
 
 		ImGui_ImplOpenGL3_NewFrame();
@@ -758,7 +804,7 @@ void RenderWindow::run()
 		render();
 
 		float blend_override = -1.0f;
-		if (m_application_settings.enable_denoising)
+		if (m_application_settings->enable_denoising)
 		{
 			// Evaluating all the conditions for whether or not we want to denoise
 			// the current color framebuffer and whether or not we want to display
@@ -768,14 +814,14 @@ void RenderWindow::run()
 			// just one example)
 
 			// Do we want to denoise only when reaching the target sample count?
-			bool denoise_at_target = m_application_settings.denoise_at_target_sample_count;
+			bool denoise_at_target = m_application_settings->denoise_at_target_sample_count;
 			// Have we reached the target sample count? This is going to evaluate to true
 			// if the sample target 'max_sample_count' is 0 but that's fine I guess
-			bool target_sample_reached = denoise_at_target && render_settings.sample_number >= m_application_settings.max_sample_count;
+			bool target_sample_reached = denoise_at_target && render_settings.sample_number >= m_application_settings->max_sample_count;
 			// Have we not reached the target sample count while only wanting denoising at target sample count?
-			bool target_sample_not_reached = denoise_at_target && render_settings.sample_number < m_application_settings.max_sample_count;
+			bool target_sample_not_reached = denoise_at_target && render_settings.sample_number < m_application_settings->max_sample_count;
 			// Have we rendered enough samples since last time we denoised that we need to denoise?
-			bool sample_skip_threshold_reached = !denoise_at_target && (render_settings.sample_number - std::max(0, m_application_settings.last_denoised_sample_count) >= m_application_settings.denoiser_sample_skip);
+			bool sample_skip_threshold_reached = !denoise_at_target && (render_settings.sample_number - std::max(0, m_application_settings->last_denoised_sample_count) >= m_application_settings->denoiser_sample_skip);
 
 			bool need_denoising = false;
 			bool display_noisy = false;
@@ -790,11 +836,11 @@ void RenderWindow::run()
 
 			// Display the noisy framebuffer if: 
 			//	- We want to denoise only at target sample count but haven't reached it yet
-			//	- We want to denoise every m_application_settings.denoiser_sample_skip samples
+			//	- We want to denoise every m_application_settings->denoiser_sample_skip samples
 			//		but we haven't even reached that number yet. We're displaying the noisy framebuffer in the meantime
 			//	- We're moving the camera
 			display_noisy |= target_sample_not_reached;
-			display_noisy |= !sample_skip_threshold_reached && m_application_settings.last_denoised_sample_count == -1;
+			display_noisy |= !sample_skip_threshold_reached && m_application_settings->last_denoised_sample_count == -1;
 			display_noisy |= is_interacting();
 
 			if (need_denoising)
@@ -802,16 +848,16 @@ void RenderWindow::run()
 				std::shared_ptr<OpenGLInteropBuffer<float3>> normals_buffer = nullptr;
 				std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> albedo_buffer = nullptr;
 
-				if (m_application_settings.denoiser_use_normals)
-					normals_buffer = m_renderer.get_denoiser_normals_AOV_buffer();
+				if (m_application_settings->denoiser_use_normals)
+					normals_buffer = m_renderer->get_denoiser_normals_AOV_buffer();
 
-				if (m_application_settings.denoiser_use_albedo)
-					albedo_buffer = m_renderer.get_denoiser_albedo_AOV_buffer();
+				if (m_application_settings->denoiser_use_albedo)
+					albedo_buffer = m_renderer->get_denoiser_albedo_AOV_buffer();
 
-				m_denoiser.denoise(m_renderer.get_color_framebuffer(), normals_buffer, albedo_buffer);
-				m_denoiser.copy_denoised_data_to_buffer(m_renderer.get_denoised_framebuffer());
+				m_denoiser->denoise(m_renderer->get_color_framebuffer(), normals_buffer, albedo_buffer);
+				m_denoiser->copy_denoised_data_to_buffer(m_renderer->get_denoised_framebuffer());
 
-				m_application_settings.last_denoised_sample_count = render_settings.sample_number;
+				m_application_settings->last_denoised_sample_count = render_settings.sample_number;
 			}
 
 			if (display_noisy)
@@ -820,47 +866,49 @@ void RenderWindow::run()
 				blend_override = 0.0f;
 		}
 		
-		switch (m_application_settings.display_view)
+		switch (m_application_settings->display_view)
 		{
 		case DisplayView::DENOISED_BLEND:
-			display_blend(m_renderer.get_color_framebuffer(), m_renderer.get_denoised_framebuffer(), blend_override);
+			display_blend(m_renderer->get_color_framebuffer(), m_renderer->get_denoised_framebuffer(), blend_override);
 			break;
 
 		case DisplayView::DISPLAY_NORMALS:
-			display(m_renderer.get_denoiser_normals_AOV_buffer());
+			display(m_renderer->get_denoiser_normals_AOV_buffer());
 			break;
 
 			/*case DisplayView::DISPLAY_DENOISED_NORMALS:
-				m_denoiser.denoise_normals();
-				display(m_denoiser.get_denoised_normals_pointer());
+				m_denoiser->denoise_normals();
+				display(m_denoiser->get_denoised_normals_pointer());
 				break;*/
 
 		case DisplayView::DISPLAY_ALBEDO:
-			display(m_renderer.get_denoiser_albedo_AOV_buffer());
+			display(m_renderer->get_denoiser_albedo_AOV_buffer());
 			break;
 
 			/*case DisplayView::DISPLAY_DENOISED_ALBEDO:
-				m_denoiser.denoise_albedo();
-				display(m_denoiser.get_denoised_albedo_pointer());
+				m_denoiser->denoise_albedo();
+				display(m_denoiser->get_denoised_albedo_pointer());
 				break;*/
 
 		case DisplayView::ADAPTIVE_SAMPLING_MAP:
-			display(m_renderer.get_pixels_sample_count_buffer());
+			display(m_renderer->get_pixels_sample_count_buffer());
 			break;
 
 			/*case DisplayView::ADAPTIVE_SAMPLING_ACTIVE_PIXELS:
-				display(m_renderer.get_debug_pixel_active_buffer().download_data().data());
+				display(m_renderer->get_debug_pixel_active_buffer().download_data().data());
 				break;*/
 
 		case DisplayView::DEFAULT:
 		default:
-			display(m_renderer.get_color_framebuffer());
+			display(m_renderer->get_color_framebuffer());
 			break;
 		}
 		
-		m_stop_cpu_frame_time = std::chrono::high_resolution_clock::now();
+		m_imgui_renderer.draw_imgui_interface();
 
-		draw_imgui();
+		m_stop_cpu_frame_time = std::chrono::high_resolution_clock::now();
+		m_current_render_time += std::chrono::duration_cast<std::chrono::milliseconds>(m_stop_cpu_frame_time - m_start_cpu_frame_time).count();
+		m_samples_per_second = 1000.0f / m_renderer->get_sample_time();
 
 		glfwSwapBuffers(m_glfw_window);
 	}
@@ -872,9 +920,9 @@ void RenderWindow::render()
 {
 	if (!is_rendering_done())
 	{
-		m_renderer.render();
+		m_renderer->render();
 		increment_sample_number();
-		m_renderer.get_render_settings().frame_number++;
+		m_renderer->get_render_settings().frame_number++;
 	}
 	else
 		// Sleeping so that we don't burn the CPU (and GPU because it'll have to do the display)
@@ -894,529 +942,6 @@ void RenderWindow::display(const void* data)
 	// in our vertex shader) because this is required on NVIDIA drivers
 	glBindVertexArray(m_vao);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
-}
-
-void RenderWindow::draw_render_settings_panel()
-{
-	HIPRTRenderSettings& render_settings = m_renderer.get_render_settings();
-
-	if (!ImGui::CollapsingHeader("Render Settings"))
-		return;
-	ImGui::TreePush("Render settings tree");
-
-	if (ImGui::Combo("Render Kernel", &m_application_settings.selected_kernel, "Full Path Tracer\0Normals Visualisation\0\0"))
-	{
-		m_renderer.compile_trace_kernel(m_application_settings.kernel_files[m_application_settings.selected_kernel].c_str(), m_application_settings.kernel_functions[m_application_settings.selected_kernel].c_str());
-		m_render_dirty = true;
-	}
-
-	const char* items[] = { "- Default", "- Denoiser blend", "- Denoiser - Normals", "- Denoiser - Denoised normals", "- Denoiser - Albedo", "- Denoiser - Denoised albedo", "- Adaptive sampling heatmap" };
-	if (ImGui::Combo("Display View", (int*)(&m_application_settings.display_view), items, IM_ARRAYSIZE(items)))
-		change_display_view(m_application_settings.display_view);
-
-	ImGui::BeginDisabled(m_application_settings.keep_same_resolution);
-	float resolution_scaling_backup = m_application_settings.render_resolution_scale;
-	if (ImGui::InputFloat("Resolution scale", &m_application_settings.render_resolution_scale))
-	{
-		float& resolution_scale = m_application_settings.render_resolution_scale;
-		if (resolution_scale <= 0)
-			resolution_scale = resolution_scaling_backup;
-
-		change_resolution_scaling(resolution_scale);
-		m_render_dirty = true;
-	}
-	ImGui::EndDisabled();
-
-	if (ImGui::Checkbox("Keep same render resolution", &m_application_settings.keep_same_resolution))
-	{
-		if (m_application_settings.keep_same_resolution)
-		{
-			// Remembering the width and height we need to target
-			m_application_settings.target_width = m_renderer.m_render_width;
-			m_application_settings.target_height = m_renderer.m_render_height;
-		}
-	}
-
-	ImGui::Separator();
-
-	ImGui::BeginDisabled(m_application_settings.auto_sample_per_frame);
-	ImGui::InputInt("Samples per frame", &render_settings.samples_per_frame);
-	ImGui::EndDisabled();
-	ImGui::SameLine();
-	ImGui::Checkbox("Auto", &m_application_settings.auto_sample_per_frame);
-
-	if (ImGui::InputInt("Target Sample Count", &m_application_settings.max_sample_count))
-		m_application_settings.max_sample_count = std::max(m_application_settings.max_sample_count, 0);
-
-	unsigned int converged_count;
-	unsigned int total_pixel_count;
-	ImGui::BeginDisabled(render_settings.enable_adaptive_sampling);
-	if (ImGui::InputFloat("Stop render at noise threshold", &render_settings.stop_noise_threshold))
-	{
-		bool need_buffers = false;
-		need_buffers |= render_settings.enable_adaptive_sampling == 1;
-		need_buffers |= render_settings.stop_noise_threshold > 0.0f;
-
-		unsigned int zero_data = 0;
-		render_settings.stop_noise_threshold = std::max(0.0f, render_settings.stop_noise_threshold);
-		m_renderer.get_stop_noise_threshold_buffer().upload_data(&zero_data);
-		m_renderer.toggle_adaptive_sampling_buffers(need_buffers);
-	}
-
-	ImGui::TreePush("Tree stop noise threshold");
-	{
-		converged_count = m_renderer.get_stop_noise_threshold_buffer().download_data()[0] * (!render_settings.enable_adaptive_sampling);
-		total_pixel_count = m_renderer.m_render_width * m_renderer.m_render_height;
-		ImGui::Text("Pixels converged: %d / %d - %.4f%%", converged_count, total_pixel_count, static_cast<float>(converged_count) / total_pixel_count * 100.0f);
-	}
-	ImGui::TreePop();
-	ImGui::EndDisabled();
-
-	if (ImGui::InputInt("Max bounces", &render_settings.nb_bounces))
-	{
-		// Clamping to 0 in case the user input a negative number of bounces	
-		render_settings.nb_bounces = std::max(render_settings.nb_bounces, 0);
-		m_render_dirty = true;
-	}
-	ImGui::Separator();
-	if (ImGui::SliderFloat("Direct ligthing contribution clamp", &render_settings.direct_contribution_clamp, 0.0f, 10.0f))
-	{
-		render_settings.direct_contribution_clamp = std::max(0.0f, render_settings.direct_contribution_clamp);
-		m_render_dirty = true;
-	}
-	if (ImGui::SliderFloat("Envmap ligthing contribution clamp", &render_settings.envmap_contribution_clamp, 0.0f, 10.0f))
-	{
-		render_settings.envmap_contribution_clamp = std::max(0.0f, render_settings.envmap_contribution_clamp);
-		m_render_dirty = true;
-	}
-	if (ImGui::SliderFloat("Indirect ligthing contribution clamp", &render_settings.indirect_contribution_clamp, 0.0f, 10.0f))
-	{
-		render_settings.indirect_contribution_clamp = std::max(0.0f, render_settings.indirect_contribution_clamp);
-		m_render_dirty = true;
-	}
-
-	ImGui::Separator();
-	if (ImGui::CollapsingHeader("Adaptive sampling"))
-	{
-		ImGui::TreePush("Adaptive sampling tree");
-
-		if (ImGui::Checkbox("Enable adaptive sampling", (bool*)&render_settings.enable_adaptive_sampling))
-		{
-			bool need_buffers = false;
-			need_buffers |= render_settings.enable_adaptive_sampling == 1;
-			need_buffers |= render_settings.stop_noise_threshold > 0.0f;
-
-			m_renderer.toggle_adaptive_sampling_buffers(need_buffers);
-			m_render_dirty = true;
-		}
-
-		ImGui::BeginDisabled(!render_settings.enable_adaptive_sampling);
-		m_render_dirty |= ImGui::InputInt("Adaptive sampling minimum samples", &render_settings.adaptive_sampling_min_samples);
-		if (ImGui::InputFloat("Adaptive sampling noise threshold", &render_settings.adaptive_sampling_noise_threshold))
-		{
-			render_settings.adaptive_sampling_noise_threshold = std::max(0.0f, render_settings.adaptive_sampling_noise_threshold);
-			m_render_dirty = true;
-		}
-		ImGui::EndDisabled();
-
-		ImGui::TreePop();
-	}
-
-	if (ImGui::CollapsingHeader("Nested dielectrics"))
-	{
-		ImGui::TreePush("Nested dielectrics tree");
-
-		const char* items[] = { "- Automatic", "- With priorities" };
-		if (ImGui::Combo("Nested dielectrics strategy", m_renderer.get_kernel_option_pointer(GPUKernelOptions::INTERIOR_STACK_STRATEGY), items, IM_ARRAYSIZE(items)))
-		{
-			m_renderer.compile_trace_kernel(m_application_settings.kernel_files[m_application_settings.selected_kernel].c_str(), m_application_settings.kernel_functions[m_application_settings.selected_kernel].c_str());
-
-			m_render_dirty = true;
-		}
-
-		ImGui::TreePop();
-	}
-
-	ImGui::TreePop();
-	ImGui::Dummy(ImVec2(0.0f, 20.0f));
-}
-
-void RenderWindow::draw_environment_panel()
-{
-	if (ImGui::CollapsingHeader("Environment"))
-	{
-		ImGui::TreePush("Environment tree");
-
-		m_render_dirty |= ImGui::RadioButton("None", ((int*)&m_renderer.get_world_settings().ambient_light_type), 0); ImGui::SameLine();
-		m_render_dirty |= ImGui::RadioButton("Use uniform lighting", ((int*)&m_renderer.get_world_settings().ambient_light_type), 1); ImGui::SameLine();
-		m_render_dirty |= ImGui::RadioButton("Use envmap lighting", ((int*)&m_renderer.get_world_settings().ambient_light_type), 2);
-
-		if (m_renderer.get_world_settings().ambient_light_type == AmbientLightType::UNIFORM)
-		{
-			m_render_dirty |= ImGui::ColorEdit3("Uniform light color", (float*)&m_renderer.get_world_settings().uniform_light_color, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
-		}
-		else if (m_renderer.get_world_settings().ambient_light_type == AmbientLightType::ENVMAP)
-		{
-			static float rota_X = 0.0f, rota_Y = 0.0f, rota_Z = 0.0f;
-			bool rotation_changed;
-
-			rotation_changed = false;
-			rotation_changed |= ImGui::SliderFloat("Envmap rotation X", &rota_X, 0.0f, 1.0f);
-			rotation_changed |= ImGui::SliderFloat("Envmap rotation Y", &rota_Y, 0.0f, 1.0f);
-			rotation_changed |= ImGui::SliderFloat("Envmap rotation Z", &rota_Z, 0.0f, 1.0f);
-
-			if (rotation_changed)
-			{
-				glm::mat4x4 rotation_matrix;
-
-				// glm::orientate3 interprets the X, Y and Z angles we give it as a yaw/pitch/roll semantic.
-				// 
-				// The standard yaw/pitch/roll interpretation is:
-				//	- Yaw for rotation around Z
-				//	- Pitch for rotation around Y
-				//	- Roll for rotation around X
-				// 
-				// but with a Z-up coordinate system. We want a Y-up coordinate system so
-				// we want our Yaw to rotate around Y instead of Z (and our Pitch to rotate around Z).
-				// 
-				// This means that we need to reverse Y and Z.
-				// 
-				// See this picture for a visual aid on what we **don't** want (the z-up):
-				// https://www.researchgate.net/figure/xyz-and-pitch-roll-and-yaw-systems_fig4_253569466
-				rotation_matrix = glm::orientate3(glm::vec3(rota_X * 2.0f * M_PI, rota_Z * 2.0f * M_PI, rota_Y * 2.0f * M_PI));
-				m_renderer.get_world_settings().envmap_rotation_matrix = *reinterpret_cast<float4x4*>(&rotation_matrix);
-			}
-
-			m_render_dirty |= rotation_changed;
-			m_render_dirty |= ImGui::SliderFloat("Envmap intensity", (float*)&m_renderer.get_world_settings().envmap_intensity, 0.0f, 10.0f);
-			ImGui::TreePush("Envmap intensity tree");
-			m_render_dirty |= ImGui::Checkbox("Scale background intensity", (bool*)&m_renderer.get_world_settings().envmap_scale_background_intensity);
-			ImGui::TreePop();
-		}
-
-		// Ensuring no negative light color
-		m_renderer.get_world_settings().uniform_light_color.clamp(0.0f, 1.0e38f);
-
-		ImGui::TreePop();
-
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-	}
-}
-
-void RenderWindow::draw_sampling_panel()
-{
-	HIPRTRenderSettings& render_settings = m_renderer.get_render_settings();
-
-	if (ImGui::CollapsingHeader("Sampling"))
-	{
-		ImGui::TreePush("Sampling tree");
-
-		const char* items[] = { "- No direct light sampling", "- Uniform one light", "- MIS (1 Light + 1 BSDF)", "- RIS Only light candidates" };
-		if (ImGui::Combo("Direct light sampling strategy", m_renderer.get_kernel_option_pointer(GPUKernelOptions::DIRECT_LIGHT_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
-		{
-			m_renderer.compile_trace_kernel(m_application_settings.kernel_files[m_application_settings.selected_kernel].c_str(), m_application_settings.kernel_functions[m_application_settings.selected_kernel].c_str());
-
-			m_render_dirty = true;
-		}
-
-		// Display additional widgets to control the parameters of the direct light
-		// sampling strategy chosen (the number of candidates for RIS for example)
-		switch (m_renderer.get_kernel_option_value(GPUKernelOptions::DIRECT_LIGHT_SAMPLING_STRATEGY))
-		{
-		case LSS_NO_DIRECT_LIGHT_SAMPLING:
-			break;
-
-		case LSS_UNIFORM_ONE_LIGHT:
-			break;
-
-		case LSS_MIS_LIGHT_BSDF:
-			break;
-
-		case LSS_RIS_ONLY_LIGHT_CANDIDATES:
-			static bool use_visiblity_checked = m_renderer.get_kernel_option_value(GPUKernelOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION) == 1;
-			if (ImGui::Checkbox("Use visibility in target function", &use_visiblity_checked))
-			{
-				m_renderer.set_kernel_option(GPUKernelOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, use_visiblity_checked ? 1 : 0);
-				m_renderer.compile_trace_kernel(m_application_settings.kernel_files[m_application_settings.selected_kernel].c_str(), m_application_settings.kernel_functions[m_application_settings.selected_kernel].c_str());
-
-				m_render_dirty = true;
-			}
-
-			if (ImGui::SliderInt("RIS # of candidates", &render_settings.ris_number_of_candidates, 1, 128))
-			{
-				// Clamping to 1
-				render_settings.ris_number_of_candidates = std::max(1, render_settings.ris_number_of_candidates);
-
-				m_render_dirty = true;
-			}
-
-			break;
-
-		default:
-			break;
-		}
-
-		ImGui::TreePop();
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-	}
-}
-
-void RenderWindow::draw_objects_panel()
-{
-	if (!ImGui::CollapsingHeader("Objects"))
-		return;
-	ImGui::TreePush("Objects tree");
-
-	std::vector<RendererMaterial> materials = m_renderer.get_materials();
-
-	int material_modfied_id = -1;
-	int material_counter = 0;
-	bool some_material_changed = false;
-
-	ImGui::PushItemWidth(384);
-	for (RendererMaterial& material : materials)
-	{
-		// Multiple ImGui widgets cannot have the same label
-		// If all our materials use the same "Base color", "Subsurface", ... labels for
-		// the slider, there is a chance that the slider will be linked together
-		// and that multiple materials will be modified when only touching one slider
-		// One solution to that is to avoid using the same label for multiple sliders
-		// by naming them "material 1 Base color", "material 2 Base color" for example
-		// This is however not very practical so ImGui provides us with the PushID function which
-		// essentially differentiate the widgets without having to change the labels 
-		ImGui::PushID(material_counter);
-
-		some_material_changed |= ImGui::ColorEdit3("Base color", (float*)&material.base_color);
-		some_material_changed |= ImGui::SliderFloat("Subsurface", &material.subsurface, 0.0f, 1.0f);
-		some_material_changed |= ImGui::SliderFloat("Metallic", &material.metallic, 0.0f, 1.0f);
-		some_material_changed |= ImGui::SliderFloat("Specular", &material.specular, 0.0f, 1.0f);
-		some_material_changed |= ImGui::SliderFloat("Specular tint strength", &material.specular_tint, 0.0f, 1.0f);
-		some_material_changed |= ImGui::ColorEdit3("Specular color", (float*)&material.specular_color);
-		some_material_changed |= ImGui::SliderFloat("Roughness", &material.roughness, 0.0f, 1.0f);
-		some_material_changed |= ImGui::SliderFloat("Anisotropic", &material.anisotropic, 0.0f, 1.0f);
-		some_material_changed |= ImGui::SliderFloat("Anisotropic rotation", &material.anisotropic_rotation, 0.0f, 1.0f);
-		some_material_changed |= ImGui::SliderFloat("Sheen", &material.sheen, 0.0f, 1.0f);
-		some_material_changed |= ImGui::SliderFloat("Sheen tint strength", &material.sheen_tint, 0.0f, 1.0f);
-		some_material_changed |= ImGui::ColorEdit3("Sheen color", (float*)&material.sheen_color);
-		some_material_changed |= ImGui::SliderFloat("Clearcoat", &material.clearcoat, 0.0f, 1.0f);
-		some_material_changed |= ImGui::SliderFloat("Clearcoat roughness", &material.clearcoat_roughness, 0.0f, 1.0f);
-		some_material_changed |= ImGui::SliderFloat("Clearcoat IOR", &material.clearcoat_ior, 0.0f, 5.0f);
-		some_material_changed |= ImGui::SliderFloat("IOR", &material.ior, 0.0f, 5.0f);
-		ImGui::Separator();
-		some_material_changed |= ImGui::SliderFloat("Transmission", &material.specular_transmission, 0.0f, 1.0f);
-		some_material_changed |= ImGui::SliderFloat("Absorption distance", &material.absorption_at_distance, 0.0f, 20.0f);
-		some_material_changed |= ImGui::ColorEdit3("Absorption color", (float*)&material.absorption_color);
-		unsigned short int zero = 0, eight = 8;
-		ImGui::BeginDisabled(material.specular_transmission == 0.0f || m_renderer.get_kernel_option_value(GPUKernelOptions::INTERIOR_STACK_STRATEGY) != ISS_WITH_PRIORITES);
-		some_material_changed |= ImGui::SliderScalar("Dielectric priority", ImGuiDataType_U16, &material.dielectric_priority, &zero, &eight);
-		ImGui::EndDisabled();
-		some_material_changed |= ImGui::ColorEdit3("Emission", (float*)&material.emission, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
-
-		ImGui::PopID();
-
-		ImGui::Separator();
-
-		if (some_material_changed && material_modfied_id == -1)
-			material_modfied_id = material_counter;
-		material_counter++;
-	}
-	ImGui::PopItemWidth();
-
-	if (some_material_changed)
-	{
-		RendererMaterial& material = materials[material_modfied_id];
-		material.make_safe();
-		material.precompute_properties();
-
-		m_renderer.update_materials(materials);
-		m_render_dirty = true;
-	}
-
-	ImGui::TreePop();
-	ImGui::Dummy(ImVec2(0.0f, 20.0f));
-}
-
-void RenderWindow::draw_denoiser_panel()
-{
-	if (!ImGui::CollapsingHeader("Denoiser"))
-		return;
-	ImGui::TreePush("Denoiser tree");
-
-	if (ImGui::Checkbox("Enable denoiser", &m_application_settings.enable_denoising))
-		change_display_view(m_application_settings.enable_denoising ? DisplayView::DENOISED_BLEND : DisplayView::DEFAULT);
-	ImGui::BeginDisabled(!m_application_settings.enable_denoising);
-	if (ImGui::CollapsingHeader("AOVs"))
-	{
-		ImGui::TreePush("Denoiser AOVs Tree");
-		if (ImGui::Checkbox("Use albedo AOV", &m_application_settings.denoiser_use_albedo))
-		{
-			m_denoiser.set_use_albedo(m_application_settings.denoiser_use_albedo);
-			if (!m_application_settings.denoiser_use_albedo)
-			{
-				// We're forcing the use of normals AOV off here because it seems like OIDN doesn't support normal
-				// AOV without also using albedo AOV (at least I got some oidn::Exception when I tried
-				// using the normals without the albedo).
-				m_application_settings.denoiser_use_normals = false;
-				m_denoiser.set_use_normals(false);
-			}
-
-			m_denoiser.finalize();
-		}
-		ImGui::SameLine();
-		if (ImGui::Checkbox("Denoise albedo", &m_application_settings.denoiser_denoise_albedo))
-		{
-			m_denoiser.set_denoise_albedo(m_application_settings.denoiser_denoise_albedo);
-			m_denoiser.finalize();
-		}
-		ImGui::BeginDisabled(!m_application_settings.denoiser_use_albedo);
-		if (ImGui::Checkbox("Use normals AOV", &m_application_settings.denoiser_use_normals))
-		{
-			m_denoiser.set_use_normals(m_application_settings.denoiser_use_normals);
-			m_denoiser.finalize();
-		}
-		ImGui::SameLine();
-		if (ImGui::Checkbox("Denoise normals", &m_application_settings.denoiser_denoise_normals))
-		{
-			m_denoiser.set_denoise_normals(m_application_settings.denoiser_denoise_normals);
-			m_denoiser.finalize();
-		}
-		ImGui::EndDisabled();
-		ImGui::TreePop();
-	}
-	ImGui::Checkbox("Only Denoise at \"Target Sample Count\"", &m_application_settings.denoise_at_target_sample_count);
-	ImGui::SliderInt("Denoise Sample Skip", &m_application_settings.denoiser_sample_skip, 1, 128);
-	ImGui::SliderFloat("Denoiser blend", &m_application_settings.denoiser_blend, 0.0f, 1.0f);
-	ImGui::EndDisabled();
-
-	ImGui::TreePop();
-	ImGui::Dummy(ImVec2(0.0f, 20.0f));
-}
-
-void RenderWindow::draw_post_process_panel()
-{
-	if (!ImGui::CollapsingHeader("Post-processing"))
-		return;
-	ImGui::TreePush("Post-processing tree");
-
-	ImGui::Checkbox("Do tonemapping", &m_application_settings.do_tonemapping);
-	ImGui::InputFloat("Gamma", &m_application_settings.tone_mapping_gamma);
-	ImGui::InputFloat("Exposure", &m_application_settings.tone_mapping_exposure);
-
-	ImGui::TreePop();
-	ImGui::Dummy(ImVec2(0.0f, 20.0f));
-}
-
-void RenderWindow::draw_performance_panel()
-{
-	HIPRTRenderSettings& render_settings = m_renderer.get_render_settings();
-
-	if (!ImGui::CollapsingHeader("Performance"))
-		return;
-
-	ImGui::TreePush("Performance tree");
-
-	ImGui::Text("Device: %s", m_renderer.get_device_properties().name);
-	ImGui::Dummy(ImVec2(0.0f, 20.0f));
-	if (ImGui::Button("Apply benchmark settings"))
-	{
-		render_settings.freeze_random = true;
-		render_settings.enable_adaptive_sampling = false;
-		m_application_settings.auto_sample_per_frame = false;
-
-		m_render_dirty = true;
-	}
-	if (ImGui::Checkbox("Freeze random", (bool*)&render_settings.freeze_random))
-		m_render_dirty = true;
-
-	bool rolling_window_size_changed = false;
-	int rolling_window_size = m_perf_metrics.get_window_size();
-	rolling_window_size_changed |= ImGui::RadioButton("25", &rolling_window_size, 25); ImGui::SameLine();
-	rolling_window_size_changed |= ImGui::RadioButton("100", &rolling_window_size, 100); ImGui::SameLine();
-	rolling_window_size_changed |= ImGui::RadioButton("1000", &rolling_window_size, 1000);
-
-	if (rolling_window_size_changed)
-		m_perf_metrics.resize_window(rolling_window_size);
-
-	float variance, min, max;
-	variance = m_perf_metrics.get_variance(PerformanceMetricsComputer::SAMPLE_TIME_KEY);
-	min = m_perf_metrics.get_min(PerformanceMetricsComputer::SAMPLE_TIME_KEY);
-	max = m_perf_metrics.get_max(PerformanceMetricsComputer::SAMPLE_TIME_KEY);
-
-	static float scale_min = min, scale_max = max;
-	scale_min = m_perf_metrics.get_data_index(PerformanceMetricsComputer::SAMPLE_TIME_KEY) == 0 ? min : scale_min;
-	scale_max = m_perf_metrics.get_data_index(PerformanceMetricsComputer::SAMPLE_TIME_KEY) == 0 ? max : scale_max;
-
-	ImGui::Dummy(ImVec2(0.0f, 20.0f));
-	ImGui::PlotHistogram("", 
-						PerformanceMetricsComputer::data_getter, 
-						m_perf_metrics.get_data(PerformanceMetricsComputer::SAMPLE_TIME_KEY).data(), 
-						m_perf_metrics.get_value_count(PerformanceMetricsComputer::SAMPLE_TIME_KEY), 
-						/* value offset */0, 
-						"Sample time", 
-						scale_min, scale_max, 
-						/* size */ ImVec2(0, 80));
-	ImGui::SameLine();
-	if (ImGui::Button("Rescale"))
-	{
-		scale_min = min;
-		scale_max = max;
-	}
-	ImGui::Text("Sample time (avg)      : %.3fms (%.1f FPS)", m_perf_metrics.get_average(PerformanceMetricsComputer::SAMPLE_TIME_KEY), 1000.0f / m_perf_metrics.get_average(PerformanceMetricsComputer::SAMPLE_TIME_KEY));
-	ImGui::Text("Sample time (var)      : %.3fms", variance);
-	ImGui::Text("Sample time (std dev)  : %.3fms", std::sqrt(variance));
-	ImGui::Text("Sample time (min / max): %.3fms / %.3fms", min, max);
-
-	ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
-	ImGui::TreePop();
-}
-
-void RenderWindow::draw_imgui()
-{
-	HIPRTRenderSettings& render_settings = m_renderer.get_render_settings();
-
-	ImGuiIO& io = ImGui::GetIO();
-	ImGui::ShowDemoWindow();
-
-	ImGui::Begin("Settings");
-
-	auto now_time = std::chrono::high_resolution_clock::now();
-	if (!is_rendering_done())
-	{
-		float sample_time = m_renderer.get_frame_time() / ((render_settings.render_low_resolution ? 1 : render_settings.samples_per_frame));
-
-		m_current_render_time += std::chrono::duration_cast<std::chrono::milliseconds>(m_stop_cpu_frame_time - m_start_cpu_frame_time).count();
-		m_samples_per_second = 1000.0f / sample_time;
-
-		if (!render_settings.render_low_resolution)
-			// Not adding the frame time if we're rendering low resolution, not relevant
-			m_perf_metrics.add_value(PerformanceMetricsComputer::SAMPLE_TIME_KEY, sample_time);
-	}
-
-	ImGui::Text("Render time: %.3fs", m_current_render_time/ 1000.0f);
-	ImGui::Text("%d samples | %.2f samples/s @ %dx%d", render_settings.sample_number, m_samples_per_second, m_renderer.m_render_width, m_renderer.m_render_height);
-
-	ImGui::Separator();
-
-	if (ImGui::Button("Save viewport to PNG"))
-		m_screenshoter.write_to_png();
-	
-	ImGui::Separator();
-
-	ImGui::PushItemWidth(233);
-
-	draw_render_settings_panel();
-	draw_environment_panel();
-	draw_sampling_panel();
-	draw_objects_panel();
-	draw_denoiser_panel();
-	draw_post_process_panel();
-	draw_performance_panel();
-
-	ImGui::End();
-
-	ImGui::Render();
-	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
 void RenderWindow::quit()

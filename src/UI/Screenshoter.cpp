@@ -9,7 +9,7 @@
 #include "UI/Screenshoter.h"
 #include "Utils/Utils.h"
 
-void Screenshoter::set_renderer(GPURenderer* renderer)
+void Screenshoter::set_renderer(std::shared_ptr<GPURenderer> renderer)
 {
 	m_renderer = renderer;
 }
@@ -86,7 +86,7 @@ void Screenshoter::initialize_programs()
 	m_adaptive_sampling_compute_program.attach(adaptive_display_shader);
 	m_adaptive_sampling_compute_program.link();
 
-	select_compute_program(m_render_window->get_application_settings().display_view);
+	select_compute_program(m_render_window->get_application_settings()->display_view);
 }
 
 void Screenshoter::resize_output_image(int width, int height)
@@ -121,7 +121,7 @@ void Screenshoter::write_to_png(const char* filepath)
 	int width = m_renderer->m_render_width;
 	int height = m_renderer->m_render_height;
 
-	if (m_render_window->get_application_settings().render_resolution_scale == 1.0f)
+	if (m_render_window->get_application_settings()->render_resolution_scale == 1.0f)
 	{
 		// Fast path when no resolution scaling, we can just dump the viewport to a file
 		// because the viewport is the same resolution as the render resolution so the viewport

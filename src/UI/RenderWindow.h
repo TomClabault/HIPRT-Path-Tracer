@@ -12,6 +12,7 @@
 #include "UI/ApplicationSettings.h"
 #include "UI/DisplayTextureType.h"
 #include "UI/DisplayView.h"
+#include "UI/ImGuiRenderer.h"
 #include "UI/PerformanceMetricsComputer.h"
 #include "UI/RenderWindowKeyboardInteractor.h"
 #include "UI/RenderWindowMouseInteractor.h"
@@ -20,11 +21,6 @@
 
 #include "GL/glew.h"
 #include "GLFW/glfw3.h"
-
-#include "imgui.h"
-#include "imgui_impl_glfw.h"
-#include "imgui_impl_opengl3.h"
-
 
 class RenderWindow
 {
@@ -38,6 +34,10 @@ public:
 	RenderWindow(int width, int height);
 	~RenderWindow();
 
+	void init_glfw(int width, int height);
+	void init_gl(int width, int height);
+	void init_imgui();
+
 	static void APIENTRY gl_debug_output_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam);
 	void resize_frame(int pixels_width, int pixels_height);
 	void change_resolution_scaling(float new_scaling);
@@ -47,9 +47,11 @@ public:
 	void set_interacting(bool is_interacting);
 	bool is_interacting();
 
-	ApplicationSettings& get_application_settings();
-	const ApplicationSettings& get_application_settings() const;
-	GPURenderer& get_renderer();
+	std::shared_ptr<ApplicationSettings> get_application_settings();
+	std::shared_ptr<GPURenderer> get_renderer();
+	std::shared_ptr<OpenImageDenoiser> get_denoiser();
+	std::shared_ptr<PerformanceMetricsComputer> get_performance_metrics();
+	std::shared_ptr<Screenshoter> get_screenshoter();
 
 	void create_display_programs();
 	void change_display_view(DisplayView display_view);
@@ -69,6 +71,10 @@ public:
 	 */
 	bool is_rendering_done();
 	void reset_render();
+	void set_render_dirty(bool render_dirty);
+
+	float get_current_render_time();
+	float get_samples_per_second();
 
 	std::pair<float, float> get_grab_cursor_position();
 	void set_grab_cursor_position(std::pair<float, float> new_position);
@@ -97,15 +103,6 @@ public:
 	 */
 	template <typename T>
 	void display_blend(std::shared_ptr<OpenGLInteropBuffer<T>> buffer_1, std::shared_ptr<OpenGLInteropBuffer<T>> buffer_2, float blend_override = -1.0f);
-
-	void draw_render_settings_panel();
-	void draw_environment_panel();
-	void draw_sampling_panel();
-	void draw_objects_panel();
-	void draw_denoiser_panel();
-	void draw_post_process_panel();
-	void draw_performance_panel();
-	void draw_imgui();
 
 	void run();
 	void render();
@@ -150,16 +147,15 @@ private:
 	float m_current_render_time = 0.0f;
 	float m_samples_per_second = 0.0f;
 
-	ApplicationSettings m_application_settings;
+	std::shared_ptr<ApplicationSettings> m_application_settings;
 
 	// Set to true if some settings of the render changed and we need
 	// to restart rendering from sample 0
 	bool m_render_dirty = false;
-	GPURenderer m_renderer;
-	OpenImageDenoiser m_denoiser;
-
-	PerformanceMetricsComputer m_perf_metrics;
-	Screenshoter m_screenshoter;
+	std::shared_ptr<GPURenderer> m_renderer;
+	std::shared_ptr<OpenImageDenoiser> m_denoiser;
+	std::shared_ptr<PerformanceMetricsComputer> m_perf_metrics;
+	std::shared_ptr<Screenshoter> m_screenshoter;
 
 	// We don't need a VAO because we're hardcoding our fullscreen
 	// quad vertices in our vertex shader but we still need an empty/fake
@@ -195,8 +191,10 @@ private:
 	std::pair<GLuint, DisplayTextureType> m_display_texture_2 = { -1, DisplayTextureType::UNINITIALIZED };
 
 	GLFWwindow* m_glfw_window;
+	// Needs to be a unique_ptr because we're using polymorphism for the Linux/Windows implementation here
 	std::unique_ptr<RenderWindowMouseInteractor> m_mouse_interactor;
 	RenderWindowKeyboardInteractor m_keyboard_interactor;
+	ImGuiRenderer m_imgui_renderer;
 
 	std::pair<float, float> m_cursor_position;
 };
@@ -217,7 +215,7 @@ template <typename T>
 void RenderWindow::display(std::shared_ptr<OpenGLInteropBuffer<T>> buffer)
 {
 	buffer->unmap();
-	buffer->unpack_to_texture(m_display_texture_1.first, GL_TEXTURE0 + RenderWindow::DISPLAY_TEXTURE_UNIT_1, m_renderer.m_render_width, m_renderer.m_render_height, m_display_texture_1.second);
+	buffer->unpack_to_texture(m_display_texture_1.first, GL_TEXTURE0 + RenderWindow::DISPLAY_TEXTURE_UNIT_1, m_renderer->m_render_width, m_renderer->m_render_height, m_display_texture_1.second);
 
 	update_program_uniforms(m_active_display_program);
 
@@ -231,10 +229,10 @@ template <typename T>
 void RenderWindow::display_blend(std::shared_ptr<OpenGLInteropBuffer<T>> buffer_1, std::shared_ptr<OpenGLInteropBuffer<T>> buffer_2, float blend_override /* = -1.0f */)
 {
 	buffer_1->unmap();
-	buffer_1->unpack_to_texture(m_display_texture_1.first, GL_TEXTURE0 + RenderWindow::DISPLAY_TEXTURE_UNIT_1, m_renderer.m_render_width, m_renderer.m_render_height, m_display_texture_1.second);
+	buffer_1->unpack_to_texture(m_display_texture_1.first, GL_TEXTURE0 + RenderWindow::DISPLAY_TEXTURE_UNIT_1, m_renderer->m_render_width, m_renderer->m_render_height, m_display_texture_1.second);
 
 	buffer_2->unmap();
-	buffer_2->unpack_to_texture(m_display_texture_2.first, GL_TEXTURE0 + RenderWindow::DISPLAY_TEXTURE_UNIT_2, m_renderer.m_render_width, m_renderer.m_render_height, m_display_texture_2.second);
+	buffer_2->unpack_to_texture(m_display_texture_2.first, GL_TEXTURE0 + RenderWindow::DISPLAY_TEXTURE_UNIT_2, m_renderer->m_render_width, m_renderer->m_render_height, m_display_texture_2.second);
 
 	update_program_uniforms(m_active_display_program);
 	if (blend_override != -1.0f)

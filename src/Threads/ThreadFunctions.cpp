@@ -5,9 +5,9 @@
 
 #include "Threads/ThreadFunctions.h"
 
-void ThreadFunctions::compile_kernel(GPURenderer& renderer, std::string kernel_file, std::string kernel_function)
+void ThreadFunctions::compile_kernel(std::shared_ptr<GPURenderer> renderer, std::string kernel_file, std::string kernel_function)
 {
-	renderer.compile_trace_kernel(kernel_file.c_str(), kernel_function.c_str());
+	renderer->compile_trace_kernel(kernel_file.c_str(), kernel_function.c_str());
 }
 
 void ThreadFunctions::load_texture(Scene& parsed_scene, std::string scene_path, const std::vector<std::pair<aiTextureType, std::string>>& tex_paths, int thread_index, int nb_threads)

@@ -11,6 +11,7 @@
 #include "assimp/postprocess.h"
 
 #include "HostDeviceCommon/Material.h"
+#include "Image/Image.h"
 #include "Scene/Camera.h"
 #include "Renderer/Sphere.h"
 #include "Renderer/Triangle.h"

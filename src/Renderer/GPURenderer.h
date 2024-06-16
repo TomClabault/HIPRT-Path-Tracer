@@ -65,9 +65,8 @@ public:
 	void zoom_camera_view(float offset);
 
 	oroDeviceProp get_device_properties();
-	float get_frame_time();
-	int get_sample_number();
-	void set_sample_number(int sample_numner);
+	float get_gpu_frame_time();
+	float get_sample_time();
 
 
 	int m_render_width = 0, m_render_height = 0;

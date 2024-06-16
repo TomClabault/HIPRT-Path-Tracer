@@ -56,10 +56,10 @@ int main(int argc, char* argv[])
 
     RenderWindow render_window(width, height);
 
-    GPURenderer& renderer = render_window.get_renderer();
-    renderer.set_envmap(envmap_image);
-    renderer.set_camera(parsed_scene.camera);
-    renderer.set_scene(parsed_scene);
+    std::shared_ptr<GPURenderer> renderer = render_window.get_renderer();
+    renderer->set_envmap(envmap_image);
+    renderer->set_camera(parsed_scene.camera);
+    renderer->set_scene(parsed_scene);
     stop_full = std::chrono::high_resolution_clock::now();
     std::cout << "Full scene & textures parsed in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop_full - start_full).count() << "ms" << std::endl;
     ThreadManager::join_threads(ThreadManager::COMPILE_KERNEL_THREAD_KEY);
