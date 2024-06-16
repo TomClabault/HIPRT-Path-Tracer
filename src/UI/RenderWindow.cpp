@@ -1022,6 +1022,21 @@ void RenderWindow::draw_render_settings_panel()
 		ImGui::TreePop();
 	}
 
+	if (ImGui::CollapsingHeader("Nested dielectrics"))
+	{
+		ImGui::TreePush("Nested dielectrics tree");
+
+		const char* items[] = { "- Automatic", "- With priorities" };
+		if (ImGui::Combo("Nested dielectrics strategy", m_renderer.get_kernel_option_pointer(GPUKernelOptions::INTERIOR_STACK_STRATEGY), items, IM_ARRAYSIZE(items)))
+		{
+			m_renderer.compile_trace_kernel(m_application_settings.kernel_files[m_application_settings.selected_kernel].c_str(), m_application_settings.kernel_functions[m_application_settings.selected_kernel].c_str());
+
+			m_render_dirty = true;
+		}
+
+		ImGui::TreePop();
+	}
+
 	ImGui::TreePop();
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 }
@@ -1101,7 +1116,7 @@ void RenderWindow::draw_sampling_panel()
 		{
 			m_renderer.compile_trace_kernel(m_application_settings.kernel_files[m_application_settings.selected_kernel].c_str(), m_application_settings.kernel_functions[m_application_settings.selected_kernel].c_str());
 
-			reset_render();
+			m_render_dirty = true;
 		}
 
 		// Display additional widgets to control the parameters of the direct light
@@ -1124,7 +1139,7 @@ void RenderWindow::draw_sampling_panel()
 				m_renderer.set_kernel_option(GPUKernelOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, use_visiblity_checked ? 1 : 0);
 				m_renderer.compile_trace_kernel(m_application_settings.kernel_files[m_application_settings.selected_kernel].c_str(), m_application_settings.kernel_functions[m_application_settings.selected_kernel].c_str());
 
-				reset_render();
+				m_render_dirty = true;
 			}
 
 			if (ImGui::SliderInt("RIS # of candidates", &render_settings.ris_number_of_candidates, 1, 128))
@@ -1132,7 +1147,7 @@ void RenderWindow::draw_sampling_panel()
 				// Clamping to 1
 				render_settings.ris_number_of_candidates = std::max(1, render_settings.ris_number_of_candidates);
 
-				reset_render();
+				m_render_dirty = true;
 			}
 
 			break;
@@ -1192,7 +1207,7 @@ void RenderWindow::draw_objects_panel()
 		some_material_changed |= ImGui::SliderFloat("Absorption distance", &material.absorption_at_distance, 0.0f, 20.0f);
 		some_material_changed |= ImGui::ColorEdit3("Absorption color", (float*)&material.absorption_color);
 		unsigned short int zero = 0, eight = 8;
-		ImGui::BeginDisabled(material.specular_transmission == 0.0f);
+		ImGui::BeginDisabled(material.specular_transmission == 0.0f || m_renderer.get_kernel_option_value(GPUKernelOptions::INTERIOR_STACK_STRATEGY) != ISS_WITH_PRIORITES);
 		some_material_changed |= ImGui::SliderScalar("Dielectric priority", ImGuiDataType_U16, &material.dielectric_priority, &zero, &eight);
 		ImGui::EndDisabled();
 		some_material_changed |= ImGui::ColorEdit3("Emission", (float*)&material.emission, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
@@ -1308,10 +1323,10 @@ void RenderWindow::draw_performance_panel()
 		render_settings.enable_adaptive_sampling = false;
 		m_application_settings.auto_sample_per_frame = false;
 
-		reset_render();
+		m_render_dirty = true;
 	}
 	if (ImGui::Checkbox("Freeze random", (bool*)&render_settings.freeze_random))
-		reset_render();
+		m_render_dirty = true;
 
 	bool rolling_window_size_changed = false;
 	int rolling_window_size = m_perf_metrics.get_window_size();

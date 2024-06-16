@@ -188,16 +188,16 @@ void GPURenderer::initialize(int device_index)
 void GPURenderer::compile_trace_kernel(const char* kernel_file_path, const char* kernel_function_name)
 {
 	std::cout << "Compiling tracer kernel \"" << kernel_function_name << "\"..." << std::endl;
+
 	auto start = std::chrono::high_resolution_clock::now();
 
+	hiprtApiFunction trace_function_out;
 	std::vector<const char*> options;
-
 	std::vector<std::string> additional_includes = { KERNEL_COMPILER_ADDITIONAL_INCLUDE, DEVICE_INCLUDES_DIRECTORY, OROCHI_INCLUDES_DIRECTORY, "-I./" };
 	std::vector<std::string> macros = m_kernel_options.get_compiler_options();
 	for (const std::string& macro : macros)
 		options.push_back(macro.c_str());
 
-	hiprtApiFunction trace_function_out;
 	if (HIPPTOrochiUtils::build_trace_kernel(m_hiprt_orochi_ctx->hiprt_ctx, kernel_file_path, kernel_function_name, trace_function_out, additional_includes, options, 0, 1, false) != hiprtError::hiprtSuccess)
 	{
 		std::cerr << "Unable to compile kernel \"" << kernel_function_name << "\". Cannot continue." << std::endl;
