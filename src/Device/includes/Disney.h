@@ -25,6 +25,9 @@
  * [7] [PBRT v4 Source Code] https://github.com/mmp/pbrt-v4
  * [8] [Blender's Cycles Source Code] https://github.com/blender/cycles
  * [9] [CS184 Adaptive sampling] https://cs184.eecs.berkeley.edu/sp24/docs/hw3-1-part-5
+ * 
+ * Important note: none of the lobes of this implementation includes the cosine term.
+ * The cosine term NoL needs to be taken into account outside of the BSDF
  */
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float disney_schlick_weight(float f0, float abs_cos_angle)
@@ -47,16 +50,16 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_diffuse_eval(const RendererMateri
     // Lambertian base_color
     //diffuse_part = material.base_color / M_PI;
     // Disney base_color
-    diffuse_part = material.base_color / M_PI * disney_schlick_weight(diffuse_90, NoL) * disney_schlick_weight(diffuse_90, NoV) * NoL;
+    diffuse_part = material.base_color / M_PI * disney_schlick_weight(diffuse_90, NoL) * disney_schlick_weight(diffuse_90, NoV);
     // Oren nayar base_color
     //diffuse_part = oren_nayar_eval(material, view_direction, surface_normal, to_light_direction);
 
     ColorRGB fake_subsurface_part = ColorRGB(0.0f);
-    if (material.subsurface > 0)
+    if (material.subsurface > 0.0f)
     {
         float subsurface_90 = material.roughness * LoH * LoH;
         fake_subsurface_part = 1.25f * material.base_color / M_PI *
-            (disney_schlick_weight(subsurface_90, NoL) * disney_schlick_weight(subsurface_90, NoV) * (1.0f / (NoL + NoV) - 0.5f) + 0.5f) * NoL;
+            (disney_schlick_weight(subsurface_90, NoL) * disney_schlick_weight(subsurface_90, NoV) * (1.0f / (NoL + NoV) - 0.5f) + 0.5f);
     }
 
     return (1.0f - material.subsurface) * diffuse_part + material.subsurface * fake_subsurface_part;
@@ -349,7 +352,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_sheen_eval(const RendererMaterial
 
     pdf = NoL / M_PI;
 
-    return sheen_color * pow(1.0f - HoL, 5.0f) * NoL;
+    return sheen_color * pow(1.0f - HoL, 5.0f);
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_sheen_sample(const RendererMaterial& material, const float3& view_direction, float3 surface_normal, Xorshift32Generator& random_number_generator)

@@ -50,11 +50,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool refract_ray(const float3& ray_direction, con
  * Reference:
  * 
  * [1] [Lambertian Reflection Without Tangents], Edd Biddulph https://fizzer.neocities.org/lambertnotangent
+ * 
+ * The sampled direction is returned in world space
  */
-
-/**
-* The sampled direction is returned in world space
-*/
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 cosine_weighted_sample(const float3& normal, Xorshift32Generator& random_number_generator)
 {
     float rand_1 = random_number_generator();
@@ -182,6 +180,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float GTR1(float alpha_g, float local_halfway_z)
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float disney_clearcoat_masking_shadowing(const float3& direction)
 {
+    // The clearcoat geometry term always uses 0.25f roughness
     return G1(0.25f, 0.25f, direction);
 }
 
