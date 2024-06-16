@@ -181,7 +181,8 @@ void ImGuiRenderer::draw_render_settings_panel()
 		}
 
 		ImGui::BeginDisabled(!render_settings.enable_adaptive_sampling);
-		m_render_window->set_render_dirty(ImGui::InputInt("Adaptive sampling minimum samples", &render_settings.adaptive_sampling_min_samples));
+		if (ImGui::InputInt("Adaptive sampling minimum samples", &render_settings.adaptive_sampling_min_samples))
+			m_render_window->set_render_dirty(true);
 		if (ImGui::InputFloat("Adaptive sampling noise threshold", &render_settings.adaptive_sampling_noise_threshold))
 		{
 			render_settings.adaptive_sampling_noise_threshold = std::max(0.0f, render_settings.adaptive_sampling_noise_threshold);

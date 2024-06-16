@@ -20,11 +20,11 @@
 // interior stack strategy in ImGui
 
 // TODO bugs
+// - denoiser albedo display not properly scaled
 // - TO TEST AGAIN: something is unsafe on NVIDIA + Windows + nested-dielectrics-complex.gltf + 48 bounces minimum + nested dielectric strategy RT Gems. We get a CPU-side orochi error when downloading the framebuffer for displaying indicating that some illegal memory was accessed. Is the buffer corrupted by something?
 // - denoiser AOVs not accounting for transmission correctly since Disney 
 //	  - same with perfect reflection
-// - cosine term already included in the disney BSDF and thus not needed in PathTracerKernel.h? Same with light sampling
-// - Issue with screenshoter + denoiser, PNG output is way darker than viewport
+// - Issue with screenshoter + denoiser, PNG output is way darker than viewport (sometimes?)
 
 
 
@@ -614,7 +614,6 @@ void RenderWindow::update_program_uniforms(OpenGLProgram& program)
 	case DisplayView::DISPLAY_ALBEDO:
 	case DisplayView::DISPLAY_DENOISED_ALBEDO:
 		program.set_uniform("u_texture", RenderWindow::DISPLAY_TEXTURE_UNIT_1);
-		program.set_uniform("u_sample_number", render_settings.sample_number);
 		program.set_uniform("u_resolution_scaling", resolution_scaling);
 
 		break;
@@ -622,7 +621,6 @@ void RenderWindow::update_program_uniforms(OpenGLProgram& program)
 	case DisplayView::DISPLAY_NORMALS:
 	case DisplayView::DISPLAY_DENOISED_NORMALS:
 		program.set_uniform("u_texture", RenderWindow::DISPLAY_TEXTURE_UNIT_1);
-		program.set_uniform("u_sample_number", render_settings.sample_number);
 		program.set_uniform("u_resolution_scaling", resolution_scaling);
 		program.set_uniform("u_do_tonemapping", m_application_settings->do_tonemapping);
 		program.set_uniform("u_gamma", m_application_settings->tone_mapping_gamma);

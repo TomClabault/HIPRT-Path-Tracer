@@ -6,7 +6,6 @@
  #version 430
 
 uniform sampler2D u_texture;
-uniform int u_sample_number;
 uniform int u_resolution_scaling;
 
 #ifdef COMPUTE_SCREENSHOTER
