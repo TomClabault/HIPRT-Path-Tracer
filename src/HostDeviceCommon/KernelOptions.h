@@ -37,8 +37,9 @@
 
 #define LSS_NO_DIRECT_LIGHT_SAMPLING 0
 #define LSS_UNIFORM_ONE_LIGHT 1
-#define LSS_MIS_LIGHT_BSDF 2
-#define LSS_RIS_ONLY_LIGHT_CANDIDATES 3
+#define LSS_BSDF 2
+#define LSS_MIS_LIGHT_BSDF 3
+#define LSS_RIS_BSDF_AND_LIGHT 4
 
 #define RIS_USE_VISIBILITY_FALSE 0
 #define RIS_USE_VISIBILITY_TRUE 1
@@ -81,7 +82,7 @@
  *	- LSS_RIS_ONLY_LIGHT_CANDIDATES
  *		Sample render_settings.RIS_number_candidates lights in the scene with RIS
  */
-#define DirectLightSamplingStrategy LSS_RIS_ONLY_LIGHT_CANDIDATES
+#define DirectLightSamplingStrategy LSS_RIS_BSDF_AND_LIGHT
 
 /**
  * Whether or not to use a visiblity term in the target function whose PDF we're approximating with RIS.

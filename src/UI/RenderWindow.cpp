@@ -47,6 +47,7 @@
 
 
 // TODO Features:
+// - improve performance by only intersecting the selected emissive triangle with the BSDF ray when multiple importance sampling, we don't need a full BVH traversal at all
 // - If could not load given scene file, fallback to cornell box instead of not continuing
 // - CTRL + mouse wheel for zoom in viewport, CTRL click reset zoom
 // - Kahan summation for weighted reservoir sampling?

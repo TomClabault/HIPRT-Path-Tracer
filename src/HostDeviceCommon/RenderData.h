@@ -66,14 +66,17 @@ struct ALIGN(8) HIPRTRenderSettings
 	float stop_noise_threshold = 0.0f;
 
 	// Clamp direct lighting contribution to reduce fireflies
-	float direct_contribution_clamp = 20.0f;
+	float direct_contribution_clamp = 0.0f;
 	// Clamp envmap contribution to reduce fireflies
 	float envmap_contribution_clamp = 0.0f;
 	// Clamp indirect lighting contribution to reduce fireflies
-	float indirect_contribution_clamp = 20.0f;
+	float indirect_contribution_clamp = 0.0f;
 
-	// How many candidates to sample for RIS (Resampled Importance Sampling)
-	int ris_number_of_candidates = 32;
+	// How many candidate lights to sample for RIS (Resampled Importance Sampling)
+	int ris_number_of_light_candidates = 32;
+	// How many candidates samples from the BSDF to use in combination
+	// with the light candidates for RIS
+	int ris_number_of_bsdf_candidates = 1;
 };
 
 struct RenderBuffers

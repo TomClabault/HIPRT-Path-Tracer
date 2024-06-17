@@ -287,7 +287,7 @@ void ImGuiRenderer::draw_sampling_panel()
 	{
 		ImGui::TreePush("Sampling tree");
 
-		const char* items[] = { "- No direct light sampling", "- Uniform one light", "- MIS (1 Light + 1 BSDF)", "- RIS Only light candidates" };
+		const char* items[] = { "- No direct light sampling", "- Uniform one light", "- BSDF Sampling", "- MIS (1 Light + 1 BSDF)", "- RIS BDSF + Light candidates" };
 		if (ImGui::Combo("Direct light sampling strategy", m_renderer->get_kernel_option_pointer(GPUKernelOptions::DIRECT_LIGHT_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
 		{
 			m_renderer->compile_trace_kernel(m_application_settings->kernel_files[m_application_settings->selected_kernel].c_str(), m_application_settings->kernel_functions[m_application_settings->selected_kernel].c_str());
@@ -308,7 +308,7 @@ void ImGuiRenderer::draw_sampling_panel()
 		case LSS_MIS_LIGHT_BSDF:
 			break;
 
-		case LSS_RIS_ONLY_LIGHT_CANDIDATES:
+		case LSS_RIS_BSDF_AND_LIGHT:
 			static bool use_visiblity_checked = m_renderer->get_kernel_option_value(GPUKernelOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION) == 1;
 			if (ImGui::Checkbox("Use visibility in target function", &use_visiblity_checked))
 			{
@@ -318,10 +318,18 @@ void ImGuiRenderer::draw_sampling_panel()
 				m_render_window->set_render_dirty(true);
 			}
 
-			if (ImGui::SliderInt("RIS # of candidates", &render_settings.ris_number_of_candidates, 1, 128))
+			if (ImGui::SliderInt("RIS # of BSDF candidates", &render_settings.ris_number_of_bsdf_candidates, 0, 32))
 			{
-				// Clamping to 1
-				render_settings.ris_number_of_candidates = std::max(1, render_settings.ris_number_of_candidates);
+				// Clamping to 0
+				render_settings.ris_number_of_bsdf_candidates = std::max(0, render_settings.ris_number_of_bsdf_candidates);
+
+				m_render_window->set_render_dirty(true);
+			}
+
+			if (ImGui::SliderInt("RIS # of light candidates", &render_settings.ris_number_of_light_candidates, 0, 128))
+			{
+				// Clamping to 0
+				render_settings.ris_number_of_light_candidates = std::max(0, render_settings.ris_number_of_light_candidates);
 
 				m_render_window->set_render_dirty(true);
 			}

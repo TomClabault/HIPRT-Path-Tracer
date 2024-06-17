@@ -28,7 +28,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void debug_set_final_color(const HIPRTRenderData&
     if (render_data.render_settings.sample_number == 0)
         render_data.buffers.pixels[y * res_x + x] = final_color;
     else
-        render_data.buffers.pixels[y * res_x + x] = render_data.buffers.pixels[y * res_x + x] + final_color;
+        render_data.buffers.pixels[y * res_x + x] = final_color * render_data.render_settings.sample_number;
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE bool check_for_negative_color(ColorRGB ray_color, int x, int y, int sample)
@@ -69,7 +69,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool sanity_check(const HIPRTRenderData& render_d
 
     if (invalid)
     {
-        debug_set_final_color(render_data, x, y, res.x, ColorRGB(10000.0f, 0.0f, 10000.0f));
+        debug_set_final_color(render_data, x, y, res.x, ColorRGB(1.0e15f, 0.0f, 1.0e15f));
 #ifndef __KERNELCC__
         Utils::debugbreak();
 #endif

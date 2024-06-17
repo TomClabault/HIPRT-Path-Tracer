@@ -76,7 +76,6 @@ int main(int argc, char* argv[])
     cpu_renderer.set_camera(parsed_scene.camera);
     cpu_renderer.get_render_settings().nb_bounces = cmd_arguments.bounces;
     cpu_renderer.get_render_settings().samples_per_frame = cmd_arguments.render_samples;
-    cpu_renderer.get_render_data().world_settings.ambient_light_type = AmbientLightType::UNIFORM;
 
     ThreadManager::join_threads(ThreadManager::TEXTURE_THREADS_KEY);
     stop_full = std::chrono::high_resolution_clock::now();

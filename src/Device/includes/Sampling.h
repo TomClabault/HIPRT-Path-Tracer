@@ -11,11 +11,23 @@
 #include "HostDeviceCommon/Material.h"
 #include "HostDeviceCommon/Xorshift.h"
 
+/**
+ * Power heuristic with a hardcoded Beta exponent of 2 and two sampling strategies only
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE float power_heuristic(float pdf_a, int nb_pdf_a, float pdf_b, int nb_pdf_b)
+{
+    float p_a = nb_pdf_a * pdf_a;
+    float p_b = nb_pdf_b * pdf_b;
+
+    p_a *= p_a;
+    p_b *= p_b;
+
+    return p_a / (p_a + p_b);
+}
+
 HIPRT_HOST_DEVICE HIPRT_INLINE float power_heuristic(float pdf_a, float pdf_b)
 {
-    float pdf_a_squared = pdf_a * pdf_a;
-
-    return pdf_a_squared / (pdf_a_squared + pdf_b * pdf_b);
+    return power_heuristic(pdf_a, 1, pdf_b, 1);
 }
 
 /**

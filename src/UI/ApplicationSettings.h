@@ -10,7 +10,6 @@
 #include <vector>
 
 #include "UI/DisplayView.h"
-#include "UI/KernelOptionsEnums.h"
 
 struct ApplicationSettings
 {
