@@ -47,7 +47,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_diffuse_eval(const RendererMateri
     // Lambertian base_color
     //diffuse_part = material.base_color / M_PI;
     // Disney base_color
-    diffuse_part = material.base_color / M_PI * disney_schlick_weight(diffuse_90, NoL) * disney_schlick_weight(diffuse_90, NoV) * NoL;
+    diffuse_part = material.base_color / M_PI * disney_schlick_weight(diffuse_90, NoL) * disney_schlick_weight(diffuse_90, NoV);
     // Oren nayar base_color
     //diffuse_part = oren_nayar_eval(material, view_direction, surface_normal, to_light_direction);
 
@@ -56,7 +56,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_diffuse_eval(const RendererMateri
     {
         float subsurface_90 = material.roughness * LoH * LoH;
         fake_subsurface_part = 1.25f * material.base_color / M_PI *
-            (disney_schlick_weight(subsurface_90, NoL) * disney_schlick_weight(subsurface_90, NoV) * (1.0f / (NoL + NoV) - 0.5f) + 0.5f) * NoL;
+            (disney_schlick_weight(subsurface_90, NoL) * disney_schlick_weight(subsurface_90, NoV) * (1.0f / (NoL + NoV) - 0.5f) + 0.5f);
     }
 
     return (1.0f - material.subsurface) * diffuse_part + material.subsurface * fake_subsurface_part;

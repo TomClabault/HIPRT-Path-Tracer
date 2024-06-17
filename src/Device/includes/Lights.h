@@ -17,7 +17,8 @@
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 sample_random_point_on_lights(const HIPRTRenderData& render_data, Xorshift32Generator& random_number_generator, float& pdf, LightSourceInformation& light_info)
 {
     int random_index = random_number_generator.random_index(render_data.buffers.emissive_triangles_count);
-    int triangle_index = light_info.emissive_triangle_index = render_data.buffers.emissive_triangles_indices[random_index];
+    int triangle_index = render_data.buffers.emissive_triangles_indices[random_index]; 
+    light_info.emissive_triangle_index = triangle_index;
 
     float3 vertex_A = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[triangle_index * 3 + 0]];
     float3 vertex_B = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[triangle_index * 3 + 1]];
@@ -39,9 +40,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 sample_random_point_on_lights(const HIPRTR
     float length_normal = hippt::length(normal);
     light_info.light_source_normal = normal / length_normal; // Normalization
     float triangle_area = length_normal * 0.5f;
-    float nb_emissive_triangles = render_data.buffers.emissive_triangles_count;
 
-    pdf = 1.0f / (nb_emissive_triangles * triangle_area);
+    pdf = 1.0f / triangle_area;
 
     return random_point_on_triangle;
 }
@@ -104,6 +104,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_light_sources(const HIPRTRenderDa
 
             light_sample_pdf *= distance_to_light * distance_to_light;
             light_sample_pdf /= dot_light_source;
+            light_sample_pdf /= render_data.buffers.emissive_triangles_count;
 
             float pdf;
             RayVolumeState trash_volume_state;
@@ -136,7 +137,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_light_sources(const HIPRTRenderDa
         RayPayload trash_payload;
         bool inter_found = trace_ray(render_data, new_ray, trash_payload, new_ray_hit_info);
 
-        if (inter_found)
+        if (inter_found && new_ray_hit_info.primitive_index == light_source_info.emissive_triangle_index)
         {
             // abs() here to allow double sided emissive geometry.
             // Without abs() here:
@@ -147,17 +148,16 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_light_sources(const HIPRTRenderDa
             int material_index = render_data.buffers.material_indices[new_ray_hit_info.primitive_index];
             RendererMaterial material = render_data.buffers.materials_buffer[material_index];
 
-            if (material.is_emissive())
-            {
-                float distance_squared = new_ray_hit_info.t * new_ray_hit_info.t;
-                float light_area = triangle_area(render_data, new_ray_hit_info.primitive_index);
+            float distance_squared = new_ray_hit_info.t * new_ray_hit_info.t;
+            float light_area = triangle_area(render_data, new_ray_hit_info.primitive_index);
 
-                float light_pdf = distance_squared / (light_area * cos_angle);
+            float light_pdf = distance_squared / cos_angle;
+            light_pdf /= render_data.buffers.emissive_triangles_count;
+            light_pdf /= light_area;
 
-                float mis_weight = power_heuristic(direction_pdf, light_pdf);
-                float cosine_term = hippt::max(0.0f, hippt::dot(closest_hit_info.shading_normal, sampled_brdf_direction));
-                brdf_radiance_mis = brdf * cosine_term * material.emission * mis_weight / direction_pdf;
-            }
+            float mis_weight = power_heuristic(direction_pdf, light_pdf);
+            float cosine_term = hippt::max(0.0f, hippt::dot(closest_hit_info.shading_normal, sampled_brdf_direction));
+            brdf_radiance_mis = brdf * cosine_term * material.emission * mis_weight / direction_pdf;
         }
     }
 

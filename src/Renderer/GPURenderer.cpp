@@ -187,13 +187,6 @@ void GPURenderer::compile_trace_kernel(const char* kernel_file_path, const char*
 		options.push_back(defines_macro_options.back().c_str());
 	}
 
-	std::string debug = "-ggdb";
-	std::string nopopti = "-O0";
-	std::string dwarf = "-gdwarf-5";
-	options.push_back(debug.c_str());
-	options.push_back(nopopti.c_str());
-	options.push_back(dwarf.c_str());
-
 	std::vector<std::string> additional_includes = { KERNEL_COMPILER_ADDITIONAL_INCLUDE, DEVICE_INCLUDES_DIRECTORY, OROCHI_INCLUDES_DIRECTORY, "-I./" };
 
 	hiprtApiFunction trace_function_out;
