@@ -21,6 +21,7 @@
 // - TO TEST AGAIN: something is unsafe on NVIDIA + Windows + nested-dielectrics-complex.gltf + 48 bounces minimum + nested dielectric strategy RT Gems. We get a CPU-side orochi error when downloading the framebuffer for displaying indicating that some illegal memory was accessed. Is the buffer corrupted by something?
 // - denoiser AOVs not accounting for transmission correctly since Disney 
 //	  - same with perfect reflection
+// - Issue with screenshoter + resolution scaling, eventually gets darker and darker that it outputs a black image
 // - Issue with screenshoter + denoiser, PNG output is way darker than viewport (sometimes?)
 
 

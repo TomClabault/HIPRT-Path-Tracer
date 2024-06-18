@@ -17,7 +17,6 @@ if(NOT CMAKE_BUILD_TYPE)
   message(STATUS "Build type not specified: Using Debug by default")
 endif()
 
-
 # Sets up ASSIMP library CMake variable to prepare the building step
 include (cmake/SetupASSIMP.cmake)
 
