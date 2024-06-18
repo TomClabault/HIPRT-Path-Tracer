@@ -75,16 +75,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_environment_map(const HIPRTRender
         // emissive surface
         return ColorRGB(0.0f);
 
-    // TODO This shortcut yields black tranmissive surfaces when sampling the env map. 
-    // This will be fixed when caustics will be implemented.
-    if (hippt::dot(view_direction, closest_hit_info.geometric_normal) < 0.0f)
-        // We're not direct sampling if we're inside a surface
-        // 
-        // We're using the geometric normal here because using the shading normal could lead
-        // to false positive because of the black fringes when using smooth normals / normal mapping
-        // + microfacet BRDFs
-        return ColorRGB(0.0f);
-
     const WorldSettings& world_settings = render_data.world_settings;
 
     if (world_settings.envmap_intensity <= 0.0f)
