@@ -367,11 +367,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_bsdf_and_lights_RIS(const HIPRTRe
                 // Otherwise, the weight is 0 because of the emision being 0 so we just don't compute it
                 target_function_weight = bsdf_color.length() * ray_payload.material.emission.length() * cosine_at_evaluated_point;
 
-            float light_area;
-            float light_pdf;
-
-            light_area = triangle_area(render_data, bsdf_ray_hit_info.primitive_index);
-            light_pdf = bsdf_ray_hit_info.t * bsdf_ray_hit_info.t / hippt::abs(hippt::dot(bsdf_ray_hit_info.shading_normal, -sampled_direction));
+            float light_area = triangle_area(render_data, bsdf_ray_hit_info.primitive_index);
+            float light_pdf = bsdf_ray_hit_info.t * bsdf_ray_hit_info.t / hippt::abs(hippt::dot(bsdf_ray_hit_info.shading_normal, -sampled_direction));
             light_pdf /= light_area;
             light_pdf /= render_data.buffers.emissive_triangles_count;
 

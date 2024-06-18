@@ -28,7 +28,7 @@
 
 // TODO Code Organization:
 // - rename target sample count to max sample count
-// - update OIDN to 2.3.0 non beta
+// - add maximum render time
 // - get grab / set grab cursor position needs to be in windows interactor, not render window, get_cursor_position? set_interacting?
 // - investigate why kernel compiling was so much faster in the past (commit db34b23 seems to be a good candidate)
 // - refactor the usage of strings in the compile kernel functions

@@ -230,7 +230,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
 #if DirectLightSamplingStrategy == LSS_NO_DIRECT_LIGHT_SAMPLING // No direct light sampling
                     ray_payload.ray_color += ray_payload.material.emission * ray_payload.throughput;
 #else
-                    if (bounce == 0 || render_data.render_settings.direct_contribution_clamp == 0.0f)
+                    if (bounce == 0)
                     // If we do have emissive geometry sampling, we only want to take
                     // it into account on the first bounce, otherwise we would be
                     // accounting for direct light sampling twice (bounce on emissive
@@ -268,7 +268,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                         // Un-scaling the envmap if the user doesn't want to scale the background
                         if (!render_data.world_settings.envmap_scale_background_intensity)
                             skysphere_color /= render_data.world_settings.envmap_intensity;
-
                     }
 
                     ColorRGB skysphere_clamp(render_data.render_settings.envmap_contribution_clamp > 0.0f ? render_data.render_settings.envmap_contribution_clamp : 1.0e35f);

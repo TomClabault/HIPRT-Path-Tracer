@@ -13,19 +13,50 @@
 
 /**
  * Power heuristic with a hardcoded Beta exponent of 2 and two sampling strategies only
+ *
+ * This implementation already contains the 1/nb_pdf_a fraction of the MIS estimator. This means
+ * that you should not divide by 1/nb_pdf_a in the evaluation of your function where you use
+ * the MIS weight
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE float power_heuristic(float pdf_a, int nb_pdf_a, float pdf_b, int nb_pdf_b)
 {
-    float p_a = nb_pdf_a * pdf_a;
-    float p_b = nb_pdf_b * pdf_b;
+    float p_a_sqr = (nb_pdf_a * pdf_a) * (nb_pdf_a * pdf_a);
+    float p_b_sqr = (nb_pdf_b * pdf_b) * (nb_pdf_b * pdf_b);
 
-    //p_a *= p_a;
-    //p_b *= p_b;
-
-    return pdf_a / (p_a + p_b);
+    // Note that we should have a multiplication by nb_pdf_a^2 in the
+    // numerator but because we're going to divide by nb_pdf_a in the
+    // function evaluation that use this MIS weight according to the
+    // MIS estimator, we're only multiplying by nb_pdf_a (not squared)
+    // since the squared nb_pdf_a would be cancelled by the division by
+    // nb_pdf_a
+    return nb_pdf_a * pdf_a * pdf_a / (p_a_sqr + p_b_sqr);
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float power_heuristic(float pdf_a, float pdf_b)
+{
+    return power_heuristic(pdf_a, 1, pdf_b, 1);
+}
+
+/**
+ * Balance heuristic for MIS weights computation
+ *
+ * This implementation already contains the 1/nb_pdf_a fraction of the MIS estimator. This means
+ * that you should not divide by 1/nb_pdf_a in the evaluation of your function where you use
+ * the MIS weight
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE float balance_heuristic(float pdf_a, int nb_pdf_a, float pdf_b, int nb_pdf_b)
+{
+    // Note that we should have a multiplication by nb_pdf_a in the
+    // numerator but because we're going to divide by nb_pdf_a in the
+    // function evaluation that use this MIS weight according to the
+    // MIS estimator, this multiplication in the numerator that we
+    // would have here would be canceled at that would be basically
+    // wasted maths so we're not doing it and we should not do it
+    // in the function evaluation either.
+    return pdf_a / (nb_pdf_a * pdf_a + nb_pdf_b * pdf_b);
+}
+
+HIPRT_HOST_DEVICE HIPRT_INLINE float balance_heuristic(float pdf_a, float pdf_b)
 {
     return power_heuristic(pdf_a, 1, pdf_b, 1);
 }
