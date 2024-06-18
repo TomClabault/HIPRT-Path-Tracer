@@ -273,12 +273,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_bsdf_and_lights_RIS(const HIPRTRe
 {
     float3 evaluated_point = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f;
 
-    int nb_light_candidates = render_data.render_settings.ris_number_of_light_candidates;
-    int nb_bsdf_candidates = render_data.render_settings.ris_number_of_bsdf_candidates;
-
     // Sampling candidates with weighted reservoir sampling
     Reservoir reservoir;
-    for (int i = 0; i < nb_light_candidates; i++)
+    for (int i = 0; i < render_data.render_settings.ris_number_of_light_candidates; i++)
     { 
         float light_sample_pdf;
         float distance_to_light;
@@ -297,7 +294,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_bsdf_and_lights_RIS(const HIPRTRe
             // sampling function is 0 because of emissive triangles that are so
             // small that we cannot compute their normal and their area (the cross
             // product of their edges gives a quasi-null vector --> length of 0.0f --> area of 0)
-
             float bsdf_pdf;
             float3 to_light_direction;
                 
@@ -312,7 +308,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_bsdf_and_lights_RIS(const HIPRTRe
                 // Converting the PDF from area measure to solid angle measure requires dividing by
                 // cos(theta) / dist^2. Dividing by that factor is equal to multiplying by the inverse
                 // which is what we're doing here
-                light_sample_pdf *= distance_to_light * distance_to_light / cosine_at_light_source;
+                light_sample_pdf *= distance_to_light * distance_to_light;
+                light_sample_pdf /= cosine_at_light_source;
                 light_sample_pdf /= render_data.buffers.emissive_triangles_count;
 
                 float geometry_term = 1.0f / (distance_to_light * distance_to_light) * cosine_at_light_source * cosine_at_evaluated_point;
@@ -327,8 +324,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_bsdf_and_lights_RIS(const HIPRTRe
 
                 target_function_weight *= visibility;
 #endif
-                float mis_weight = power_heuristic(light_sample_pdf, nb_light_candidates, bsdf_pdf, nb_bsdf_candidates);
-                mis_weight = 1.0f / (nb_bsdf_candidates + nb_light_candidates);
+                float mis_weight = power_heuristic(light_sample_pdf, render_data.render_settings.ris_number_of_light_candidates, bsdf_pdf, render_data.render_settings.ris_number_of_bsdf_candidates);
 
                 candidate_weight = mis_weight * target_function_weight / light_sample_pdf;
             }
@@ -343,7 +339,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_bsdf_and_lights_RIS(const HIPRTRe
         reservoir.update(sample, candidate_weight, random_number_generator);
     }
 
-    for (int i = 0; i < nb_bsdf_candidates; i++)
+    for (int i = 0; i < render_data.render_settings.ris_number_of_bsdf_candidates; i++)
     {
         float target_function_weight = 0.0f;
         float candidate_sampling_function_weight = 0.0f;
@@ -373,12 +369,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_bsdf_and_lights_RIS(const HIPRTRe
 
             float light_area;
             float light_pdf;
+
             light_area = triangle_area(render_data, bsdf_ray_hit_info.primitive_index);
             light_pdf = bsdf_ray_hit_info.t * bsdf_ray_hit_info.t / hippt::abs(hippt::dot(bsdf_ray_hit_info.shading_normal, -sampled_direction));
             light_pdf /= light_area;
+            light_pdf /= render_data.buffers.emissive_triangles_count;
 
-            float mis_weight = power_heuristic(candidate_sampling_function_weight, nb_bsdf_candidates, light_pdf, nb_light_candidates);
-            mis_weight = 1.0f / (nb_bsdf_candidates + nb_light_candidates);
+            float mis_weight = power_heuristic(candidate_sampling_function_weight, render_data.render_settings.ris_number_of_bsdf_candidates, light_pdf, render_data.render_settings.ris_number_of_light_candidates);
             candidate_sample_weight = mis_weight * target_function_weight / candidate_sampling_function_weight;
 
             new_sample.emission = ray_payload.material.emission;

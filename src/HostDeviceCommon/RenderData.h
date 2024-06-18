@@ -158,7 +158,7 @@ enum AmbientLightType
 
 struct WorldSettings
 {
-	AmbientLightType ambient_light_type = AmbientLightType::ENVMAP;
+	AmbientLightType ambient_light_type = AmbientLightType::NONE;
 	ColorRGB uniform_light_color = ColorRGB(0.5f);
 
 	// Width and height in pixels. Both in the range [1, XXX]

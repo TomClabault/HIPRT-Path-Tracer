@@ -19,10 +19,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float power_heuristic(float pdf_a, int nb_pdf_a, 
     float p_a = nb_pdf_a * pdf_a;
     float p_b = nb_pdf_b * pdf_b;
 
-    p_a *= p_a;
-    p_b *= p_b;
+    //p_a *= p_a;
+    //p_b *= p_b;
 
-    return p_a / (p_a + p_b);
+    return pdf_a / (p_a + p_b);
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float power_heuristic(float pdf_a, float pdf_b)

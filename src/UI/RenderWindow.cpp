@@ -16,9 +16,6 @@
 
 #include "stb_image_write.h"
 
-// TODO
-// interior stack strategy in ImGui
-
 // TODO bugs
 // - denoiser albedo display not properly scaled
 // - TO TEST AGAIN: something is unsafe on NVIDIA + Windows + nested-dielectrics-complex.gltf + 48 bounces minimum + nested dielectric strategy RT Gems. We get a CPU-side orochi error when downloading the framebuffer for displaying indicating that some illegal memory was accessed. Is the buffer corrupted by something?
@@ -29,7 +26,9 @@
 
 
 // TODO Code Organization:
-// - gest grab / set grab cursor position needs to be in windows interactor, not render window, get_cursor_position? set_interacting?
+// - rename target sample count to max sample count
+// - update OIDN to 2.3.0 non beta
+// - get grab / set grab cursor position needs to be in windows interactor, not render window, get_cursor_position? set_interacting?
 // - investigate why kernel compiling was so much faster in the past (commit db34b23 seems to be a good candidate)
 // - refactor the usage of strings in the compile kernel functions
 // - multiple GLTF, one GLB for different point of views per model
@@ -47,6 +46,7 @@
 
 
 // TODO Features:
+// - can we do direct lighting + take emissive at all bounces but divide by 2 to avoid double taking into account emissive lights? this would solve missing caustics
 // - improve performance by only intersecting the selected emissive triangle with the BSDF ray when multiple importance sampling, we don't need a full BVH traversal at all
 // - If could not load given scene file, fallback to cornell box instead of not continuing
 // - CTRL + mouse wheel for zoom in viewport, CTRL click reset zoom

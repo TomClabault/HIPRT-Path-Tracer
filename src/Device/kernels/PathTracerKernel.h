@@ -227,14 +227,16 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                     if ((brdf.r == 0.0f && brdf.g == 0.0f && brdf.b == 0.0f) || brdf_pdf <= 0.0f)
                         break;
 
-#if DirectLightSamplingStrategy != LSS_NO_DIRECT_LIGHT_SAMPLING // No direct light sampling
+#if DirectLightSamplingStrategy == LSS_NO_DIRECT_LIGHT_SAMPLING // No direct light sampling
+                    ray_payload.ray_color += ray_payload.material.emission * ray_payload.throughput;
+#else
                     if (bounce == 0 || render_data.render_settings.direct_contribution_clamp == 0.0f)
                     // If we do have emissive geometry sampling, we only want to take
                     // it into account on the first bounce, otherwise we would be
                     // accounting for direct light sampling twice (bounce on emissive
                     // geometry + direct light sampling). Otherwise, we don't check for bounce == 0
-#endif
                         ray_payload.ray_color += ray_payload.material.emission * ray_payload.throughput;
+#endif
 
                     ray_payload.ray_color += (light_sample_radiance + envmap_radiance) * ray_payload.throughput;
 
@@ -273,7 +275,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                     skysphere_color = ColorRGB::min(skysphere_clamp, skysphere_color);
 
                     ray_payload.ray_color += skysphere_color * ray_payload.throughput;
-
                     ray_payload.next_ray_state = RayState::MISSED;
                 }
             }
@@ -282,8 +283,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
         }
 
         // Checking for NaNs / negative value samples. Output 
-        if (!sanity_check(render_data, ray_payload, x, y, res, sample))
-            return;
+        /*if (!sanity_check(render_data, ray_payload, x, y, res, sample))
+            return;*/
 
         squared_luminance_of_samples += ray_payload.ray_color.luminance() * ray_payload.ray_color.luminance();
         final_color += ray_payload.ray_color;
