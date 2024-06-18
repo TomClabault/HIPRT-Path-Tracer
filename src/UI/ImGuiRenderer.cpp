@@ -115,7 +115,7 @@ void ImGuiRenderer::draw_render_settings_panel()
 	ImGui::SameLine();
 	ImGui::Checkbox("Auto", &m_application_settings->auto_sample_per_frame);
 
-	if (ImGui::InputInt("Target Sample Count", &m_application_settings->max_sample_count))
+	if (ImGui::InputInt("Max Sample Count", &m_application_settings->max_sample_count))
 		m_application_settings->max_sample_count = std::max(m_application_settings->max_sample_count, 0);
 
 	unsigned int converged_count;
@@ -467,7 +467,7 @@ void ImGuiRenderer::draw_denoiser_panel()
 		ImGui::EndDisabled();
 		ImGui::TreePop();
 	}
-	ImGui::Checkbox("Only Denoise at \"Target Sample Count\"", &m_application_settings->denoise_at_target_sample_count);
+	ImGui::Checkbox("Only Denoise at \"Max Sample Count\"", &m_application_settings->denoise_at_max_samples);
 	ImGui::SliderInt("Denoise Sample Skip", &m_application_settings->denoiser_sample_skip, 1, 128);
 	ImGui::SliderFloat("Denoiser blend", &m_application_settings->denoiser_blend, 0.0f, 1.0f);
 	ImGui::EndDisabled();

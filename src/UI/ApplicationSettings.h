@@ -33,7 +33,7 @@ struct ApplicationSettings
 	bool denoiser_denoise_normals = true;
 	int last_denoised_sample_count = -1;
 	// Denoise only when that maximum sample count is reached
-	bool denoise_at_target_sample_count = false;
+	bool denoise_at_max_samples = false;
 	// How many frames to wait for before denoising (this basically reduces 
 	// the performance penalty of denoising each frame).
 	int denoiser_sample_skip = 1;

@@ -27,7 +27,6 @@
 
 
 // TODO Code Organization:
-// - rename target sample count to max sample count
 // - add maximum render time
 // - get grab / set grab cursor position needs to be in windows interactor, not render window, get_cursor_position? set_interacting?
 // - investigate why kernel compiling was so much faster in the past (commit db34b23 seems to be a good candidate)
@@ -810,16 +809,16 @@ void RenderWindow::run()
 			// the current color framebuffer and whether or not we want to display
 			// the denoised framebuffer to the viewport (we may want NOT to display
 			// the denoised framebuffer if we're only denoising at the target
-			// sample count and we haven't reached the target sample count yet. That's
+			// sample count and we haven't reached the max sample count yet. That's
 			// just one example)
 
-			// Do we want to denoise only when reaching the target sample count?
-			bool denoise_at_target = m_application_settings->denoise_at_target_sample_count;
-			// Have we reached the target sample count? This is going to evaluate to true
+			// Do we want to denoise only when reaching the max sample count?
+			bool denoise_at_target = m_application_settings->denoise_at_max_samples;
+			// Have we reached the max sample count? This is going to evaluate to true
 			// if the sample target 'max_sample_count' is 0 but that's fine I guess
-			bool target_sample_reached = denoise_at_target && render_settings.sample_number >= m_application_settings->max_sample_count;
-			// Have we not reached the target sample count while only wanting denoising at target sample count?
-			bool target_sample_not_reached = denoise_at_target && render_settings.sample_number < m_application_settings->max_sample_count;
+			bool max_samples_reached = denoise_at_target && render_settings.sample_number >= m_application_settings->max_sample_count;
+			// Have we not reached the max sample count while only wanting denoising at max sample count?
+			bool max_samples_not_reached = denoise_at_target && render_settings.sample_number < m_application_settings->max_sample_count;
 			// Have we rendered enough samples since last time we denoised that we need to denoise?
 			bool sample_skip_threshold_reached = !denoise_at_target && (render_settings.sample_number - std::max(0, m_application_settings->last_denoised_sample_count) >= m_application_settings->denoiser_sample_skip);
 
@@ -827,19 +826,19 @@ void RenderWindow::run()
 			bool display_noisy = false;
 
 			// Denoise if:
-			//	- We have reached the target sample count
+			//	- We have reached the max sample count
 			//	- We have rendered enough samples since the last denoise step that we need to denoise again
 			//	- We're not denoising if we're interacting (moving the camera)
-			need_denoising |= target_sample_reached;
+			need_denoising |= max_samples_reached;
 			need_denoising |= sample_skip_threshold_reached;
 			need_denoising &= !is_interacting();
 
 			// Display the noisy framebuffer if: 
-			//	- We want to denoise only at target sample count but haven't reached it yet
+			//	- We want to denoise only at max sample count but haven't reached it yet
 			//	- We want to denoise every m_application_settings->denoiser_sample_skip samples
 			//		but we haven't even reached that number yet. We're displaying the noisy framebuffer in the meantime
 			//	- We're moving the camera
-			display_noisy |= target_sample_not_reached;
+			display_noisy |= max_samples_not_reached;
 			display_noisy |= !sample_skip_threshold_reached && m_application_settings->last_denoised_sample_count == -1;
 			display_noisy |= is_interacting();
 
