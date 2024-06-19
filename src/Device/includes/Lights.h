@@ -219,6 +219,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_one_light_MIS(const HIPRTRenderDa
 
             float distance_squared = new_ray_hit_info.t * new_ray_hit_info.t;
             float light_pdf = distance_squared / (light_source_info.light_area * cos_angle_light);
+            //light_pdf /= render_data.buffers.emissive_triangles_count;
             float mis_weight = power_heuristic(direction_pdf, light_pdf);
 
             float cosine_term = hippt::max(0.0f, hippt::dot(closest_hit_info.shading_normal, sampled_brdf_direction));

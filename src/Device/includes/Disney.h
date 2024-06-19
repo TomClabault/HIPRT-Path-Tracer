@@ -403,6 +403,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_eval(const RendererMaterial* mate
     ColorRGB final_color = ColorRGB(0.0f);
     float tmp_pdf = 0.0f;
 
+    // TODO macro for clean code
+
     // Diffuse
     final_color += diffuse_weight > 0 && outside_object ? diffuse_weight * disney_diffuse_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : ColorRGB(0.0f);
     pdf += tmp_pdf * diffuse_proba;
