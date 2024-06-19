@@ -210,10 +210,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                     ColorRGB envmap_lighting_clamp(render_data.render_settings.envmap_contribution_clamp > 0.0f ? render_data.render_settings.envmap_contribution_clamp : 1.0e35f);
 
                     if (bounce == 0)
-                    {
+                        // Clamping only on the primary rays
                         light_sample_radiance = ColorRGB::min(direct_lighting_clamp, light_sample_radiance);
-                        envmap_radiance = ColorRGB::min(envmap_lighting_clamp, envmap_radiance);
-                    }
+                    envmap_radiance = ColorRGB::min(envmap_lighting_clamp, envmap_radiance);
 
                     // --------------------------------------- //
                     // ---------- Indirect lighting ---------- //
@@ -221,10 +220,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
 
                     float brdf_pdf;
                     float3 bounce_direction;
-                    ColorRGB brdf = bsdf_dispatcher_sample(render_data.buffers.materials_buffer, ray_payload.material, ray_payload.volume_state, -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bounce_direction, brdf_pdf, random_number_generator);
+                    ColorRGB bsdf_color = bsdf_dispatcher_sample(render_data.buffers.materials_buffer, ray_payload.material, ray_payload.volume_state, -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bounce_direction, brdf_pdf, random_number_generator);
 
-                    // Terminate ray if something went wrong (sampling a direction below the surface for example)
-                    if ((brdf.r == 0.0f && brdf.g == 0.0f && brdf.b == 0.0f) || brdf_pdf <= 0.0f)
+                    // Terminate ray if bad sampling
+                    if (brdf_pdf <= 0.0f)
                         break;
 
 #if DirectLightSamplingStrategy == LSS_NO_DIRECT_LIGHT_SAMPLING // No direct light sampling
@@ -241,7 +240,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                     ray_payload.ray_color += (light_sample_radiance + envmap_radiance) * ray_payload.throughput;
 
                     ColorRGB indirect_clamp(render_data.render_settings.indirect_contribution_clamp > 0.0f ? render_data.render_settings.indirect_contribution_clamp : 1.0e35f);
-                    ray_payload.throughput *= brdf * hippt::abs(hippt::dot(bounce_direction, closest_hit_info.shading_normal)) / brdf_pdf;
+                    ray_payload.throughput *= bsdf_color * hippt::abs(hippt::dot(bounce_direction, closest_hit_info.shading_normal)) / brdf_pdf;
                     ray_payload.throughput = ColorRGB::min(indirect_clamp, ray_payload.throughput);
 
                     int outside_surface = hippt::dot(bounce_direction, closest_hit_info.shading_normal) < 0 ? -1.0f : 1.0;
@@ -282,8 +281,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
         }
 
         // Checking for NaNs / negative value samples. Output 
-        /*if (!sanity_check(render_data, ray_payload, x, y, res, sample))
-            return;*/
+        if (!sanity_check(render_data, ray_payload, x, y, res, sample))
+            return;
 
         squared_luminance_of_samples += ray_payload.ray_color.luminance() * ray_payload.ray_color.luminance();
         final_color += ray_payload.ray_color;

@@ -387,39 +387,48 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_eval(const RendererMaterial* mate
     float3 local_to_light_direction_rotated = world_to_local_frame(TR, BR, shading_normal, to_light_direction);
     float3 local_half_vector_rotated = hippt::normalize(local_view_direction_rotated + local_to_light_direction_rotated);
 
+    float glass_weight = (1.0f - material.metallic) * material.specular_transmission;
+    float diffuse_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission) * outside_object;
+    float metal_weight = (1.0f - material.specular_transmission * (1.0f - material.metallic)) * outside_object;
+    float clearcoat_weight = 0.25f * material.clearcoat * outside_object;
+    float sheen_weight = (1.0f - material.metallic) * material.sheen * outside_object;
+
+    float normalize_factor = 1.0f / (diffuse_weight + metal_weight + clearcoat_weight + glass_weight + sheen_weight);
+    float diffuse_proba = diffuse_weight * normalize_factor;
+    float metal_proba = metal_weight * normalize_factor;
+    float clearcoat_proba = clearcoat_weight * normalize_factor;
+    float glass_proba = glass_weight * normalize_factor;
+    float sheen_proba = sheen_weight * normalize_factor;
+
     ColorRGB final_color = ColorRGB(0.0f);
-    float tmp_pdf = 0.0f, tmp_weight = 0.0f;
+    float tmp_pdf = 0.0f;
 
     // Diffuse
-    tmp_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission);
-    final_color += tmp_weight > 0 && outside_object ? tmp_weight * disney_diffuse_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : ColorRGB(0.0f);
-    pdf += tmp_pdf * tmp_weight;
+    final_color += diffuse_weight > 0 && outside_object ? diffuse_weight * disney_diffuse_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : ColorRGB(0.0f);
+    pdf += tmp_pdf * diffuse_proba;
     tmp_pdf = 0.0f;
 
     // Metallic
     // Computing a custom fresnel term based on the material specular, specular tint, ... coefficients
     ColorRGB metallic_fresnel = disney_metallic_fresnel(material, local_half_vector, local_to_light_direction);
-    tmp_weight = (1.0f - material.specular_transmission * (1.0f - material.metallic));
-    final_color += tmp_weight > 0 && outside_object ? tmp_weight * disney_metallic_eval(material, local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated, metallic_fresnel, tmp_pdf) : ColorRGB(0.0f);
-    pdf += tmp_pdf * tmp_weight;
+    metal_weight = (1.0f - material.specular_transmission * (1.0f - material.metallic));
+    final_color += metal_weight > 0 && outside_object ? metal_weight * disney_metallic_eval(material, local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated, metallic_fresnel, tmp_pdf) : ColorRGB(0.0f);
+    pdf += tmp_pdf * metal_proba;
     tmp_pdf = 0.0f;
 
     // Clearcoat
-    tmp_weight = 0.25f * material.clearcoat;
-    final_color += tmp_weight > 0 && outside_object ? tmp_weight * disney_clearcoat_eval(material, local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated, tmp_pdf) : ColorRGB(0.0f);
-    pdf += tmp_pdf * tmp_weight;
+    final_color += clearcoat_weight > 0 && outside_object ? clearcoat_weight * disney_clearcoat_eval(material, local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated, tmp_pdf) : ColorRGB(0.0f);
+    pdf += tmp_pdf * clearcoat_proba;
     tmp_pdf = 0.0f;
 
     // Glass
-    tmp_weight = (1.0f - material.metallic) * material.specular_transmission;
-    final_color += tmp_weight > 0 ? tmp_weight * disney_glass_eval(materials_buffer, material, ray_volume_state, local_view_direction_rotated, local_to_light_direction_rotated, tmp_pdf) : ColorRGB(0.0f);
-    pdf += tmp_pdf * tmp_weight;
+    final_color += glass_weight > 0 ? glass_weight * disney_glass_eval(materials_buffer, material, ray_volume_state, local_view_direction_rotated, local_to_light_direction_rotated, tmp_pdf) : ColorRGB(0.0f);
+    pdf += tmp_pdf * glass_proba;
     tmp_pdf = 0.0f;
 
     // Sheen
-    tmp_weight = (1.0f - material.metallic) * material.sheen;
-    final_color += tmp_weight > 0 && outside_object ? tmp_weight * disney_sheen_eval(material, local_view_direction, local_to_light_direction, local_half_vector, tmp_pdf) : ColorRGB(0.0f);
-    pdf += tmp_pdf * tmp_weight;
+    final_color += sheen_weight > 0 && outside_object ? sheen_weight * disney_sheen_eval(material, local_view_direction, local_to_light_direction, local_half_vector, tmp_pdf) : ColorRGB(0.0f);
+    pdf += tmp_pdf * sheen_proba;
 
     return final_color;
 }
