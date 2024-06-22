@@ -8,6 +8,8 @@
 
 #include "HostDeviceCommon/KernelOptions.h"
 
+#include <hiprt/hiprt_common.h>
+
 #define INTERIOR_STACK_SIZE 8
 
 template <int Strategy>

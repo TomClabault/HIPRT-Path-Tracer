@@ -20,6 +20,7 @@ class ThreadManager
 {
 public:
 	static std::string COMPILE_KERNEL_THREAD_KEY;
+	static std::string COMPILE_KERNEL_PASSES_THREAD_KEY;
 	static std::string TEXTURE_THREADS_KEY;
 
 	static ThreadManager& instance()
@@ -29,7 +30,7 @@ public:
 	}
 
 	template <typename T>
-	static void add_state(const std::string& key, std::shared_ptr<T> state)
+	static void set_thread_data(const std::string& key, std::shared_ptr<T> state)
 	{
 		threads_states[key] = std::static_pointer_cast<void>(state);
 	}

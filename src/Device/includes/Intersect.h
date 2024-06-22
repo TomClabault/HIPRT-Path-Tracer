@@ -8,9 +8,12 @@
 
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Material.h"
+#include "Device/includes/ONB.h"
+#include "Device/includes/RayPayload.h"
 #include "Device/includes/Texture.h"
-#include "HostDeviceCommon/HitInfo.h"
+
 #include "HostDeviceCommon/RenderData.h"
+#include "HostDeviceCommon/Math.h"
 
 /* References:
  * 
@@ -92,11 +95,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE hiprtHit intersect_scene_cpu(const HIPRTRenderDat
 }
 #endif
 
-#ifdef __KERNELCC__
 HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data, hiprtRay ray, RayPayload& ray_payload, HitInfo& hit_info)
-#else
-HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data, hiprtRay ray, RayPayload& ray_payload, HitInfo& hit_info)
-#endif
 {
     hiprtHit hit;
     bool skipping_volume_boundary = false;

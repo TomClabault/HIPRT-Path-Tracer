@@ -21,12 +21,16 @@
 // - TO TEST AGAIN: something is unsafe on NVIDIA + Windows + nested-dielectrics-complex.gltf + 48 bounces minimum + nested dielectric strategy RT Gems. We get a CPU-side orochi error when downloading the framebuffer for displaying indicating that some illegal memory was accessed. Is the buffer corrupted by something?
 // - denoiser AOVs not accounting for transmission correctly since Disney 
 //	  - same with perfect reflection
-// - Issue with screenshoter + resolution scaling, eventually gets darker and darker that it outputs a black image
+// - Issue with screenshoter + resolution scaling, eventually gets darker and darker and eventually outputs a black image
 // - Issue with screenshoter + denoiser, PNG output is way darker than viewport (sometimes?)
+// - Recheck envmap MIS pdfs
+// - envmap sometimes upside down
 
 
 
 // TODO Code Organization:
+// - update README.md
+// - 16 threads seems to be too many for texture loading on the contemporary bedroom + HDD, what count could be better?
 // - add maximum render time
 // - get grab / set grab cursor position needs to be in windows interactor, not render window, get_cursor_position? set_interacting?
 // - investigate why kernel compiling was so much faster in the past (commit db34b23 seems to be a good candidate)
@@ -42,10 +46,23 @@
 // - reorganize methods order in RenderWindow
 // - imgui controller to put all the imgui code in one class
 // - check for level of abstractions in functions
+// - denoiser albedo and normals still useful now that we have the GBuffer?
+// - make a function get_camera_ray that handles pixel jittering
+// - use simplified material everywhere in the BSDF etc... because we don't need the texture indices of the full material at this point
+// - we don't need the full HitInfo 'closest_hit_info' structure everywhere, only the inter point and the two normals for the most part so maybe have a simplified structure 
+// - have an abstraction for kernel functions (that would contain the path to the file, a compile function, the KernelOptions, ...)
+// - refactor application_settings.selected kernel & kernel_files / kernel_functions: With the NormalsKernel gone
+//		(because obsolete), we're not really offering hot swappable kernels at runtime anymore so it would
+//		probably be better to store the kernel file / function name strings as static members of a
+//		GPUKernel class (probably from the "abstraction for kernel functions" refactor task) and remove the
+//		selected index entirely because it is not used anymore
+// - only the material index can be stored in the pixel states ofthe wavefront path tracer, don't need to store the whole material
 
 
 
 // TODO Features:
+// - have pixel jittering disablable
+// - have accumulation disablable
 // - can we do direct lighting + take emissive at all bounces but divide by 2 to avoid double taking into account emissive lights? this would solve missing caustics
 // - improve performance by only intersecting the selected emissive triangle with the BSDF ray when multiple importance sampling, we don't need a full BVH traversal at all
 // - If could not load given scene file, fallback to cornell box instead of not continuing
@@ -72,6 +89,7 @@
 // - find a way to not fill the texcoords buffer for meshes that don't have textures
 // - pack RendererMaterial informations such as texture indices (we can probably use 16 bit for a texture index --> 2 texture indices in one 32 bit register)
 // - use 8 bit textures for material properties instead of float
+// - use fixed point 8 bit for materials parameters in [0, 1], should be good enough
 // - log size of buffers used: vertices, indices, normals, ...
 // - display active pixels adaptive sampling
 // - able / disable normal mapping
@@ -224,7 +242,7 @@ RenderWindow::RenderWindow(int width, int height) : m_viewport_width(width), m_v
 
 	m_renderer = std::make_shared<GPURenderer>();
 	m_renderer->initialize(0);
-	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_renderer), m_application_settings->kernel_files[m_application_settings->selected_kernel].c_str(), m_application_settings->kernel_functions[m_application_settings->selected_kernel].c_str());
+	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_renderer), m_application_settings->KERNEL_FILES[m_application_settings->selected_kernel].c_str(), m_application_settings->KERNEL_FUNCTIONS[m_application_settings->selected_kernel].c_str());
 	m_renderer->change_render_resolution(width, height);
 
 	m_denoiser = std::make_shared<OpenImageDenoiser>();
@@ -686,7 +704,8 @@ void RenderWindow::increment_sample_number()
 	if (render_settings.render_low_resolution)
 		render_settings.sample_number++; // Only doing 1 SPP when moving the camera
 	else
-		render_settings.sample_number += render_settings.samples_per_frame;
+		// TODO fix when we'll be able to do more than 1 sample per frame with the pass refactor
+		render_settings.sample_number++;// += render_settings.samples_per_frame;
 }
 
 bool RenderWindow::is_rendering_done()

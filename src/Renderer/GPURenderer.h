@@ -6,6 +6,7 @@
 #ifndef GPU_RENDERER_H
 #define GPU_RENDERER_H
 
+#include "Device/includes/RayPayload.h"
 #include "HIPRT-Orochi/OrochiBuffer.h"
 #include "HIPRT-Orochi/OrochiEnvmap.h"
 #include "HIPRT-Orochi/HIPRTOrochiCtx.h"
@@ -44,7 +45,7 @@ public:
 	void set_kernel_option(const std::string& name, int value);
 	int get_kernel_option_value(const std::string& name);
 	int* get_kernel_option_pointer(const std::string& name);
-	void launch_kernel(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args);
+	void launch_kernel(oroFunction kernel_function, int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args);
 
 	void set_scene(const Scene& scene);
 	void set_envmap(ImageRGBA& envmap);
@@ -97,6 +98,23 @@ private:
 	// Albedo G-buffer
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB>>m_albedo_AOV_buffer;
 
+	// GBuffer that stores information about the current frame first hit data
+	struct GBuffer
+	{
+		OrochiBuffer<SimplifiedRendererMaterial> materials;
+
+		OrochiBuffer<float3> shading_normals;
+		OrochiBuffer<float3> geometric_normals;
+		OrochiBuffer<float3> view_directions;
+		OrochiBuffer<float3> first_hits;
+
+		OrochiBuffer<unsigned char> cameray_ray_hit;
+
+		OrochiBuffer<RayVolumeState> ray_volume_states;
+	};
+
+	GBuffer m_g_buffer;
+
 	// Used to calculate the variance of each pixel for adaptive sampling
 	OrochiBuffer<float> m_pixels_squared_luminance;
 	// This buffer is necessary because with adaptive sampling, each pixel
@@ -108,6 +126,13 @@ private:
 	OrochiBuffer<unsigned char> m_still_one_ray_active_buffer;
 	// How many pixels have reached the render_settings.stop_noise_threshold
 	OrochiBuffer<unsigned int> m_stop_noise_threshold_count_buffer;
+
+	// ReSTIR reservoirs for the initial candidates
+	OrochiBuffer<Reservoir> m_restir_initial_reservoirs;
+	// ReSTIR reservoirs for the output of the spatial reuse pass
+	OrochiBuffer<Reservoir> m_restir_spatial_reservoirs;
+	// Whether or not the pixel at the given index is active and needs more samples
+	OrochiBuffer<unsigned char> m_pixel_active;
 
 	// The materials are also kept on the CPU side because we want to be able
 	// to modify them interactively with ImGui
@@ -122,8 +147,17 @@ private:
 	GPUKernelOptions m_kernel_options;
 
 	std::shared_ptr<HIPRTOrochiCtx> m_hiprt_orochi_ctx;
+
 	// Path tracing kernel called at each frame
+	oroFunction m_camera_ray_pass = nullptr;
+	oroFunction m_restir_initial_candidates_pass = nullptr;
+	oroFunction m_restir_spatial_reuse = nullptr;
 	oroFunction m_trace_kernel = nullptr;
+	// If false, this means that some kernel files are being compiled asynchronously
+	// on a thread and we'll have to join the threads before rendering the threads.
+	// If true, the threads have already been joined which means that the kernel
+	// passes have been compiled and the GPURenderer is set up for rendering
+	bool m_compiling_kernels = true;
 
 	// Structure containing the data specific to a scene:
 	//	- hiprtGeom
@@ -142,6 +176,9 @@ private:
 	// of bounces, the number of samples per kernel invocation (samples per frame),
 	// whether or not the adaptive sampling is enabled, ...
 	HIPRTRenderSettings m_render_settings;
+
+	// Random number generator used to fill the render_data.random_seed argument
+	Xorshift32Generator m_rng;
 };
 
 #endif

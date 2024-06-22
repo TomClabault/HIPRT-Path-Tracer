@@ -7,6 +7,7 @@
 #define DEVICE_MATERIAL_H
 
 #include "Device/includes/Texture.h"
+
 #include "HostDeviceCommon/HitInfo.h"
 #include "HostDeviceCommon/RenderData.h"
 

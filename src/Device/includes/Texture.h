@@ -7,6 +7,7 @@
 #define DEVICE_TEXTURE_H
 
 #include "Device/includes/FixIntellisense.h"
+
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/RenderData.h"
 

@@ -267,7 +267,7 @@ void SceneParser::dispatch_texture_loading(Scene& parsed_scene, const std::strin
     texture_threads_state->scene_filepath = scene_path;
     texture_threads_state->texture_paths = texture_paths;
 
-    ThreadManager::add_state(ThreadManager::TEXTURE_THREADS_KEY, texture_threads_state);
+    ThreadManager::set_thread_data(ThreadManager::TEXTURE_THREADS_KEY, texture_threads_state);
 
     for (int i = 0; i < nb_threads; i++)
         ThreadManager::start_thread(ThreadManager::TEXTURE_THREADS_KEY, ThreadFunctions::load_texture, std::ref(parsed_scene), texture_threads_state->scene_filepath, std::ref(texture_threads_state->texture_paths), i, nb_threads);

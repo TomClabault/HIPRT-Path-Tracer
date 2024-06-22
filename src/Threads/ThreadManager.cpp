@@ -11,6 +11,7 @@
 #include <vector>
 
 std::string ThreadManager::COMPILE_KERNEL_THREAD_KEY = "CompileKernelKey";
+std::string ThreadManager::COMPILE_KERNEL_PASSES_THREAD_KEY = "CompileKernelPassesKey";
 std::string ThreadManager::TEXTURE_THREADS_KEY = "TextureThreadsKey";
 
 std::unordered_map<std::string, std::shared_ptr<void>> ThreadManager::threads_states;
