@@ -69,7 +69,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool sanity_check(const HIPRTRenderData& render_d
 
     if (invalid)
     {
-        debug_set_final_color(render_data, x, y, res.x, ColorRGB(1.0e15f, 0.0f, 1.0e15f));
+        if (render_data.render_settings.display_NaNs)
+            debug_set_final_color(render_data, x, y, res.x, ColorRGB(1.0e15f, 0.0f, 1.0e15f));
+        else
+            debug_set_final_color(render_data, x, y, res.x, ColorRGB(0.0f));
 #ifndef __KERNELCC__
         Utils::debugbreak();
 #endif

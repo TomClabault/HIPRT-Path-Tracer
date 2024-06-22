@@ -32,6 +32,7 @@ public:
 	void draw_denoiser_panel();
 	void draw_post_process_panel();
 	void draw_performance_panel();
+	void draw_debug_panel();
 
 private:
 	RenderWindow* m_render_window;

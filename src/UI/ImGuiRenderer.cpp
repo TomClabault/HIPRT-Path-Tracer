@@ -59,6 +59,7 @@ void ImGuiRenderer::draw_imgui_interface()
 	draw_denoiser_panel();
 	draw_post_process_panel();
 	draw_performance_panel();
+	draw_debug_panel();
 
 	ImGui::End();
 
@@ -556,5 +557,17 @@ void ImGuiRenderer::draw_performance_panel()
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
+	ImGui::TreePop();
+}
+
+void ImGuiRenderer::draw_debug_panel()
+{
+	if (!ImGui::CollapsingHeader("Debug"))
+		return;
+
+	if (ImGui::Checkbox("Show NaNs", &m_renderer->get_render_settings().display_NaNs))
+		m_render_window->set_render_dirty(true);
+
+	ImGui::TreePush("Debug tree");
 	ImGui::TreePop();
 }

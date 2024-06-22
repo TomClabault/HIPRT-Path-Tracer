@@ -42,6 +42,10 @@ struct ALIGN(8) HIPRTRenderSettings
 	// same path every frame, allowing for more stable benchmarking.
 	int freeze_random = false;
 
+	// If true, NaNs encountered during rendering will be rendered as very bright pink. 
+	// Useful for debugging only.
+	bool display_NaNs = false;
+
 	// If true, this means that the user is moving the camera and we're going to
 	// render the image at a much lower resolution to allow for smooth camera
 	// movements
