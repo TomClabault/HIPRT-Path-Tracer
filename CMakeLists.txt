@@ -49,7 +49,6 @@ file(GLOB_RECURSE SOURCE_FILES src/*.cpp src/*.h)
 file(GLOB_RECURSE OPENGL_HEADERS thirdparties/opengl/include/*.h)
 file(GLOB_RECURSE STBI_HEADERS thirdparties/stbi/*.h)
 file(GLOB_RECURSE IMGUI_FILES thirdparties/imgui/*.h thirdparties/imgui/*.cpp)
-file(GLOB_RECURSE GLM_FILES thirdparties/glm/*.h thirdparties/glm/*.cpp)
 file(GLOB_RECURSE DEVICE_SOURCES src/Device/*.h)
 file(GLOB_RECURSE GLSL_SHADERS src/Shaders/*.frag src/Shaders/*.vert)
 file(GLOB_RECURSE HIPRT_HEADERS ${HIPRT_HEADERS_DIR}/*.h)
@@ -146,6 +145,11 @@ endif()
 
 # Macro to preserve nice beautiful source files hierarchy in Visual Studio
 if(MSVC_IDE)
+	# Enabling parallel compilation on MSVC which isn't enabled by default
+	if(MSVC)
+		add_definitions(/MP)
+	endif()
+	
 	macro(GroupSources curdir)
 		file(GLOB children RELATIVE ${PROJECT_SOURCE_DIR}/${curdir} ${PROJECT_SOURCE_DIR}/${curdir}/*)
 

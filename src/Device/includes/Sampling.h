@@ -12,6 +12,21 @@
 #include "HostDeviceCommon/Xorshift.h"
 
 /**
+ * Returns integer pixel coordinates offset from the center of the disk
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE int2 integer_sample_in_disk(float radius, Xorshift32Generator& random_number_generator)
+{
+    float u1 = random_number_generator();
+    float u2 = random_number_generator();
+
+    float r_sqrt_u2 = radius * sqrtf(u2);
+    float x = r_sqrt_u2 * cos(2.0f * M_PI * u1);
+    float y = r_sqrt_u2 * sin(2.0f * M_PI * u1);
+
+    return make_int2(static_cast<int>(x), static_cast<int>(y));
+}
+
+/**
  * Power heuristic with a hardcoded Beta exponent of 2 and two sampling strategies only
  *
  * This implementation already contains the 1/nb_pdf_a fraction of the MIS estimator. This means

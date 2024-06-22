@@ -3,13 +3,10 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#include "Device/kernels/PathTracerKernel.h"
-#include "HIPRT-Orochi/OrochiTexture.h"
 #include "Image/Image.h"
 #include "Renderer/BVH.h"
 #include "Renderer/CPURenderer.h"
 #include "Renderer/GPURenderer.h"
-#include "Renderer/Triangle.h"
 #include "Scene/Camera.h"
 #include "Scene/SceneParser.h"
 #include "Threads/ThreadManager.h"
@@ -39,7 +36,7 @@ int main(int argc, char* argv[])
     Scene parsed_scene;
     SceneParserOptions options;
 
-    options.nb_texture_threads = 16;
+    options.nb_texture_threads = 10;
     options.override_aspect_ratio = (float)width / height;
     start = std::chrono::high_resolution_clock::now();
     start_full = std::chrono::high_resolution_clock::now();
@@ -51,7 +48,7 @@ int main(int argc, char* argv[])
     std::cout << "Reading \"" << cmd_arguments.skysphere_file_path << "\" envmap..." << std::endl;
     // Not flipping Y here since the Y-flipping is done in the shader
     ImageRGBA envmap_image = ImageRGBA::read_image_hdr(cmd_arguments.skysphere_file_path, /* flip Y */ true);
-    
+
 #if GPU_RENDER
 
     RenderWindow render_window(width, height);

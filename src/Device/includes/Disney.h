@@ -469,6 +469,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_sample(const RendererMaterial* ma
     float metal_weight = (1.0f - material.specular_transmission * (1.0f - material.metallic)) * outside_object;
     float clearcoat_weight = 0.25f * material.clearcoat * outside_object;
 
+    // No sheen weight here because we're not importance sampling the sheen weight,
+    // it's pretty weak of a lobe so there's no need to bother
     float normalize_factor = 1.0f / (diffuse_weight + metal_weight + clearcoat_weight + glass_weight);
     diffuse_weight *= normalize_factor;
     metal_weight *= normalize_factor;

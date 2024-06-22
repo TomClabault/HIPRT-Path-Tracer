@@ -3,7 +3,11 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#include "Device/kernels/PathTracerKernel.h"
+#include "Device/kernels/CameraRays.h"
+#include "Device/kernels/FullPathTracer.h"
+#include "Device/kernels/ReSTIR/ReSTIR_DI_InitialCandidates.h"
+#include "Device/kernels/ReSTIR/ReSTIR_DI_SpatialReuse.h"
+
 #include "Renderer/CPURenderer.h"
 #include "UI/ApplicationSettings.h"
 
@@ -11,16 +15,57 @@
 #include <chrono>
 #include <omp.h>
 
+
+ // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
+ // allowing for fast step into that pixel with the debugger to see what's happening.
+ // Otherwise if 0, all pixels of the image are rendered
+#define DEBUG_PIXEL 1
+// If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner. 
+// If 1, it's bottom left corner.
+// Useful if you're using an image viewer to get the the coordinates of
+// the interesting pixel. If that image viewer has its (0, 0) in the top
+// left corner, you'll need to set that DEBUG_FLIP_Y to 0. Set 1 to if
+// you're measuring the coordinates of the pixel with (0, 0) in the bottom left corner
+#define DEBUG_FLIP_Y 0
+// Coordinates of the pixel to render
+#define DEBUG_PIXEL_X 990
+#define DEBUG_PIXEL_Y 257
+// If 1, a square of DEBUG_NEIGHBORHOOD_SIZE x DEBUG_NEIGHBORHOOD_SIZE pixels
+// will be rendered around the pixel to debug (given by DEBUG_PIXEL_X and
+// DEBUG_PIXEL_Y). The pixel of interest is going to be rendered first so you
+// can just set a breakpoint in the pass of interest and it will break when rendering the
+// pixel that you want to debug.
+// This can be useful when debugging spatial passes such as ReSTIR spatial reusing.
+// If you were only rendering the precise pixel at the given debug coordinates, you
+// wouldn't be able to debug correctly since all the neighborhood wouldn't have been
+// rendered which means no reservoir which means improper rendering
+#define DEBUG_RENDER_NEIGHBORHOOD 1
+// How many pixels to render around the debugged pixel given by the DEBUG_PIXEL_X and
+// DEBUG_PIXEL_Y coordinates.
+#define DEBUG_NEIGHBORHOOD_SIZE 35
+
 CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, height))
 {
     m_framebuffer = Image(width, height);
 
     // Resizing buffers + initial value
-    m_debug_pixel_active_buffer.resize(width * height, 0);
+    m_pixel_active.resize(width * height, 0);
     m_denoiser_albedo.resize(width * height, ColorRGB(0.0f));
     m_denoiser_normals.resize(width * height, float3{ 0.0f, 0.0f, 0.0f });
     m_pixel_sample_count.resize(width * height, 0);
     m_pixel_squared_luminance.resize(width * height, 0.0f);
+    m_restir_initial_reservoirs.resize(width * height);
+    m_restir_spatial_reservoirs.resize(width * height);
+
+    m_g_buffer.materials.resize(width * height);
+    m_g_buffer.geometric_normals.resize(width * height);
+    m_g_buffer.shading_normals.resize(width * height);
+    m_g_buffer.view_directions.resize(width * height);
+    m_g_buffer.first_hits.resize(width * height);
+    m_g_buffer.cameray_ray_hit.resize(width * height);
+    m_g_buffer.ray_volume_states.resize(width * height);
+
+    m_rng = Xorshift32Generator(42);
 }
 
 void CPURenderer::set_scene(Scene& parsed_scene)
@@ -41,12 +86,23 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.buffers.material_textures = parsed_scene.textures.data();
     m_render_data.buffers.textures_dims = parsed_scene.textures_dims.data();
 
+    m_render_data.aux_buffers.pixel_active = m_pixel_active.data();
     m_render_data.aux_buffers.denoiser_albedo = m_denoiser_albedo.data();
     m_render_data.aux_buffers.denoiser_normals = m_denoiser_normals.data();
     m_render_data.aux_buffers.pixel_sample_count = m_pixel_sample_count.data();
     m_render_data.aux_buffers.pixel_squared_luminance = m_pixel_squared_luminance.data();
     m_render_data.aux_buffers.still_one_ray_active = &m_still_one_ray_active;
     m_render_data.aux_buffers.stop_noise_threshold_count = &m_stop_noise_threshold_count;
+    m_render_data.aux_buffers.initial_reservoirs = m_restir_initial_reservoirs.data();
+    m_render_data.aux_buffers.spatial_reservoirs = m_restir_spatial_reservoirs.data();
+
+    m_render_data.g_buffer.materials= m_g_buffer.materials.data();
+    m_render_data.g_buffer.geometric_normals = m_g_buffer.geometric_normals.data();
+    m_render_data.g_buffer.shading_normals = m_g_buffer.shading_normals.data();
+    m_render_data.g_buffer.view_directions = m_g_buffer.view_directions.data();
+    m_render_data.g_buffer.first_hits = m_g_buffer.first_hits.data();
+    m_render_data.g_buffer.camera_ray_hit = m_g_buffer.cameray_ray_hit.data();
+    m_render_data.g_buffer.ray_volume_states = m_g_buffer.ray_volume_states.data();
 
     std::cout << "Building scene BVH..." << std::endl;
     m_triangle_buffer = parsed_scene.get_triangles();
@@ -82,43 +138,173 @@ Image& CPURenderer::get_framebuffer()
     return m_framebuffer;
 }
 
-#define DEBUG_PIXEL 1
-#define DEBUG_EXACT_COORDINATE 0
-#define DEBUG_PIXEL_X 651
-#define DEBUG_PIXEL_Y 321
-
 void CPURenderer::render()  
 {
     std::cout << "CPU rendering..." << std::endl;
 
     auto start = std::chrono::high_resolution_clock::now();
-    std::atomic<int> lines_completed = 0;
-#if DEBUG_PIXEL
-#if DEBUG_EXACT_COORDINATE
-    for (int y = DEBUG_PIXEL_Y; y < m_resolution.y; y++)
+
+    for (int i = 0; i < m_render_data.render_settings.samples_per_frame; i++)
     {
-        for (int x = DEBUG_PIXEL_X; x < m_resolution.x; x++)
-#else
-    for (int y = m_resolution.y - DEBUG_PIXEL_Y - 1; y < m_resolution.y; y++)
-    {
-        for (int x = DEBUG_PIXEL_X; x < m_resolution.x; x++)
+        camera_rays_pass();
+#if DirectLightSamplingStrategy == LSS_RESTIR_DI
+        ReSTIR_DI_initial_candidates_pass();
+        ReSTIR_DI_spatial_reuse_pass();
 #endif
-#else
+        tracing_pass();
+
+        m_render_data.render_settings.sample_number++;
+        m_render_data.random_seed = m_rng.xorshift32();
+
+        if (m_render_data.render_settings.samples_per_frame > 1)
+            std::cout << (i + 1) / static_cast<float>(m_render_data.render_settings.samples_per_frame) * 100.0f << "%" << std::endl;
+    }
+
+    auto stop = std::chrono::high_resolution_clock::now();
+    std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
+}
+
+void CPURenderer::camera_rays_pass()
+{
+    std::cout << "Camera Rays Pass ... " << std::endl;
+
+#if DEBUG_PIXEL
+    int x, y;
+#if DEBUG_FLIP_Y
+    x = DEBUG_PIXEL_X;
+    y = DEBUG_PIXEL_Y;
+#else // DEBUG_FLIP_Y
+    x = DEBUG_PIXEL_X;
+    y = m_resolution.y - DEBUG_PIXEL_Y - 1;
+#endif // DEBUG_FLIP_Y
+
+    CameraRays(m_render_data, m_resolution, m_hiprt_camera, x, y);
+
+#if DEBUG_RENDER_NEIGHBORHOOD
+    // Rendering the neighborhood
+
+#pragma omp parallel for schedule(dynamic)
+    for (int render_y = std::max(0, y - DEBUG_NEIGHBORHOOD_SIZE); render_y <= std::min(m_resolution.y - 1, y + DEBUG_NEIGHBORHOOD_SIZE); render_y++)
+        for (int render_x = std::max(0, x - DEBUG_NEIGHBORHOOD_SIZE); render_x <= std::min(m_resolution.x - 1, x + DEBUG_NEIGHBORHOOD_SIZE); render_x++)
+            CameraRays(m_render_data, m_resolution, m_hiprt_camera, render_x, render_y);
+#endif // DEBUG_RENDER_NEIGHBORHOOD
+#else // DEBUG_PIXEL
+#pragma omp parallel for schedule(dynamic)
+    for (int y = 0; y < m_resolution.y; y++)
+        for (int x = 0; x < m_resolution.x; x++)
+            CameraRays(m_render_data, m_resolution, m_hiprt_camera, x, y);
+#endif // DEBUG_PIXEL
+}
+
+void CPURenderer::ReSTIR_DI_initial_candidates_pass()
+{
+    std::cout << "ReSTIR DI Initial Candidates Pass ... " << std::endl;
+
+#if DEBUG_PIXEL
+    int x, y;
+#if DEBUG_FLIP_Y
+    x = DEBUG_PIXEL_X;
+    y = DEBUG_PIXEL_Y;
+#else // DEBUG_FLIP_Y
+    x = DEBUG_PIXEL_X;
+    y = m_resolution.y - DEBUG_PIXEL_Y - 1;
+#endif // DEBUG_FLIP_Y
+
+    ReSTIR_DI_InitialCandidates(m_render_data, m_resolution, m_hiprt_camera, x, y);
+
+#if DEBUG_RENDER_NEIGHBORHOOD
+    // Rendering the neighborhood
+
+#pragma omp parallel for schedule(dynamic)
+    for (int render_y = std::max(0, y - DEBUG_NEIGHBORHOOD_SIZE); render_y <= std::min(m_resolution.y - 1, y + DEBUG_NEIGHBORHOOD_SIZE); render_y++)
+        for (int render_x = std::max(0, x - DEBUG_NEIGHBORHOOD_SIZE); render_x <= std::min(m_resolution.x - 1, x + DEBUG_NEIGHBORHOOD_SIZE); render_x++)
+            ReSTIR_DI_InitialCandidates(m_render_data, m_resolution, m_hiprt_camera, render_x, render_y);
+#endif // DEBUG_RENDER_NEIGHBORHOOD
+#else // DEBUG_PIXEL
+#pragma omp parallel for schedule(dynamic)
+    for (int y = 0; y < m_resolution.y; y++)
+        for (int x = 0; x < m_resolution.x; x++)
+            ReSTIR_DI_InitialCandidates(m_render_data, m_resolution, m_hiprt_camera, x, y);
+#endif // DEBUG_PIXEL
+}
+
+void CPURenderer::ReSTIR_DI_spatial_reuse_pass()
+{
+    std::cout << "ReSTIR DI Spatial Reuse ..." << std::endl;
+
+#if DEBUG_PIXEL
+    int x, y;
+#if DEBUG_FLIP_Y
+    x = DEBUG_PIXEL_X;
+    y = DEBUG_PIXEL_Y;
+#else // DEBUG_FLIP_Y
+    x = DEBUG_PIXEL_X;
+    y = m_resolution.y - DEBUG_PIXEL_Y - 1;
+#endif // DEBUG_FLIP_Y
+
+    ReSTIR_DI_SpatialReuse(m_render_data, m_resolution, m_hiprt_camera, x, y);
+
+#if DEBUG_RENDER_NEIGHBORHOOD
+    // Rendering the neighborhood
+
+#pragma omp parallel for schedule(dynamic)
+    for (int render_y = std::max(0, y - DEBUG_NEIGHBORHOOD_SIZE); render_y <= std::min(m_resolution.y - 1, y + DEBUG_NEIGHBORHOOD_SIZE); render_y++)
+        for (int render_x = std::max(0, x - DEBUG_NEIGHBORHOOD_SIZE); render_x <= std::min(m_resolution.x - 1, x + DEBUG_NEIGHBORHOOD_SIZE); render_x++)
+            ReSTIR_DI_SpatialReuse(m_render_data, m_resolution, m_hiprt_camera, render_x, render_y);
+#endif // DEBUG_RENDER_NEIGHBORHOOD
+#else // DEBUG_PIXEL
+#pragma omp parallel for schedule(dynamic)
+    for (int y = 0; y < m_resolution.y; y++)
+        for (int x = 0; x < m_resolution.x; x++)
+            ReSTIR_DI_SpatialReuse(m_render_data, m_resolution, m_hiprt_camera, x, y);
+#endif // DEBUG_PIXEL
+}
+
+void CPURenderer::tracing_pass()
+{
+    std::cout << "Tracing Pass... " << std::endl;
+
+#if DEBUG_PIXEL
+    int x, y;
+#if DEBUG_FLIP_Y
+    x = DEBUG_PIXEL_X;
+    y = DEBUG_PIXEL_Y;
+#else // DEBUG_FLIP_Y
+    x = DEBUG_PIXEL_X;
+    y = m_resolution.y - DEBUG_PIXEL_Y - 1;
+#endif // DEBUG_FLIP_Y
+
+    FullPathTracer(m_render_data, m_resolution, m_hiprt_camera, x, y);
+
+#if DEBUG_RENDER_NEIGHBORHOOD
+    // Rendering the neighborhood
+
+#pragma omp parallel for schedule(dynamic)
+    for (int render_y = std::max(0, y - DEBUG_NEIGHBORHOOD_SIZE); render_y <= std::min(m_resolution.y - 1, y + DEBUG_NEIGHBORHOOD_SIZE); render_y++)
+        for (int render_x = std::max(0, x - DEBUG_NEIGHBORHOOD_SIZE); render_x <= std::min(m_resolution.x - 1, x + DEBUG_NEIGHBORHOOD_SIZE); render_x++)
+        {
+            if (render_x == x && render_y == y)
+                continue;
+               
+            FullPathTracer(m_render_data, m_resolution, m_hiprt_camera, render_x, render_y);
+        }
+
+#endif // DEBUG_RENDER_NEIGHBORHOOD
+#else // DEBUG_PIXEL
+    std::atomic<int> lines_completed = 0;
+
 #pragma omp parallel for schedule(dynamic)
     for (int y = 0; y < m_resolution.y; y++)
     {
         for (int x = 0; x < m_resolution.x; x++)
-#endif
-            PathTracerKernel(m_render_data, m_resolution, m_hiprt_camera, x, y);
+            FullPathTracer(m_render_data, m_resolution, m_hiprt_camera, x, y);
 
-        lines_completed++;
-
-        if (omp_get_thread_num() == 0)
+        if (omp_get_thread_num() == 0 && m_render_data.render_settings.samples_per_frame == 1)
+            // Only displaying per frame progress if we're only rendering one frame
             if (m_resolution.y > 25 && lines_completed % (m_resolution.y / 25))
                 std::cout << lines_completed / (float)m_resolution.y * 100 << "%" << std::endl;
     }
-    auto stop = std::chrono::high_resolution_clock::now();
-    std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
+#endif // DEBUG_PIXEL
 }
 
 void CPURenderer::tonemap(float gamma, float exposure)

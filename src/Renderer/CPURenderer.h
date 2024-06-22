@@ -29,18 +29,46 @@ public:
     Image& get_framebuffer();
 
     void render();
+    void camera_rays_pass();
+    void ReSTIR_DI_initial_candidates_pass();
+    void ReSTIR_DI_spatial_reuse_pass();
+    void tracing_pass();
     void tonemap(float gamma, float exposure);
+
 private:
     int2 m_resolution;
 
     Image m_framebuffer;
-    std::vector<int> m_debug_pixel_active_buffer;
+
+    std::vector<unsigned char> m_pixel_active;
     std::vector<ColorRGB> m_denoiser_albedo;
     std::vector<float3> m_denoiser_normals;
+
     std::vector<int> m_pixel_sample_count;
     std::vector<float> m_pixel_squared_luminance;
     unsigned char m_still_one_ray_active = true;
     AtomicType<unsigned int> m_stop_noise_threshold_count;
+
+    struct GBuffer
+    {
+        std::vector<SimplifiedRendererMaterial> materials;
+        std::vector<float3> geometric_normals;
+        std::vector<float3> shading_normals;
+        std::vector<float3> view_directions;
+        std::vector<float3> first_hits;
+
+        std::vector<unsigned char> cameray_ray_hit;
+
+        std::vector<RayVolumeState> ray_volume_states;
+    };
+
+    GBuffer m_g_buffer;
+
+    // Random number generator for given a random seed to the threads at each sample
+    Xorshift32Generator m_rng;
+
+    std::vector<Reservoir> m_restir_initial_reservoirs;
+    std::vector<Reservoir> m_restir_spatial_reservoirs;
 
     std::vector<Triangle> m_triangle_buffer;
     std::shared_ptr<BVH> m_bvh;

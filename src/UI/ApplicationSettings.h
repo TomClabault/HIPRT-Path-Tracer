@@ -14,13 +14,16 @@
 struct ApplicationSettings
 {
 	static const std::string PATH_TRACING_KERNEL;
-	static const std::string NORMALS_KERNEL;
+	static const std::string CAMERA_RAYS_FUNC_NAME;
+	static const std::string RESTIR_DI_INITIAL_CANDIDATES_FUNC_NAME;
+	static const std::string RESTIR_DI_SPATIAL_REUSE_FUNC_NAME;
+
+	static const std::string KERNEL_FILES[];
+	static const std::string KERNEL_FUNCTIONS[];
 
 	// Index of the selected kernel. This corresponds to a pair [kernel file, kernel function] as 
 	// defined in the two vectors below
 	int selected_kernel = 0;
-	std::vector<std::string> kernel_files = { DEVICE_KERNELS_DIRECTORY "/PathTracerKernel.h", DEVICE_KERNELS_DIRECTORY "/NormalsKernel.h" };
-	std::vector<std::string> kernel_functions = { PATH_TRACING_KERNEL, NORMALS_KERNEL };
 
 	// What view is currently displayed in the viewport
 	DisplayView display_view = DisplayView::DEFAULT;
@@ -78,7 +81,7 @@ struct ApplicationSettings
 	// This is because with adaptive sampling on, FPS will keep increasing as the number of
 	// pixels that yet have to converge decreases. And with high FPS count, we get the risk
 	// of being CPU bound since we'll have to display many frames per second.
-	bool auto_sample_per_frame = true;
+	bool auto_sample_per_frame = false;
 
 	// Whether or not to do tonemapping for display fragment shader that support it
 	bool do_tonemapping = 1;

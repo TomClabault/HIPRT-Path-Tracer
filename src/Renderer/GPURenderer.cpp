@@ -5,6 +5,7 @@
 
 #include "Renderer/GPURenderer.h"
 #include "Threads/ThreadManager.h"
+#include "Threads/ThreadFunctions.h"
 #include "UI/ApplicationSettings.h"
 
 #include <Orochi/OrochiUtils.h>
@@ -19,6 +20,13 @@ GPURenderer::GPURenderer()
 
 void GPURenderer::render()
 {
+	if (m_compiling_kernels)
+	{
+		// If some threads were compiling kernels in the background, we're joining all of them
+		ThreadManager::join_threads(ThreadManager::COMPILE_KERNEL_PASSES_THREAD_KEY);
+		m_compiling_kernels = false;
+	}
+
 	int tile_size_x = 8;
 	int tile_size_y = 8;
 
@@ -32,14 +40,30 @@ void GPURenderer::render()
 	HIPRTRenderData render_data = get_render_data();
 	void* launch_args[] = { &render_data, &resolution, &hiprt_cam};
 
+	// Recording GPU frame time start timestamp
 	OROCHI_CHECK_ERROR(oroEventRecord(m_frame_start_event, 0));
 
-	launch_kernel(8, 8, resolution.x, resolution.y, launch_args);
+	// TODO try launch async on the same stream and see performance
+	launch_kernel(m_camera_ray_pass, 8, 8, resolution.x, resolution.y, launch_args);
+	oroStreamSynchronize(0);
 
+	render_data.random_seed = m_rng.xorshift32();
+	launch_kernel(m_restir_initial_candidates_pass, 8, 8, resolution.x, resolution.y, launch_args);
+	oroStreamSynchronize(0);
+
+	render_data.random_seed = m_rng.xorshift32();
+	launch_kernel(m_restir_spatial_reuse, 8, 8, resolution.x, resolution.y, launch_args);
+	oroStreamSynchronize(0);
+
+	render_data.random_seed = m_rng.xorshift32();
+	launch_kernel(m_trace_kernel, 8, 8, resolution.x, resolution.y, launch_args);
+
+	// Recording GPU frame time stop timestamp and computing the frame time
 	OROCHI_CHECK_ERROR(oroEventRecord(m_frame_stop_event, 0));
 	OROCHI_CHECK_ERROR(oroEventSynchronize(m_frame_stop_event));
 	OROCHI_CHECK_ERROR(oroEventElapsedTime(&m_frame_time, m_frame_start_event, m_frame_stop_event));
 
+	// Unmapping OpenGL interop buffers so that they are available to OpenGL for displaying for example
 	m_framebuffer->unmap();
 	m_normals_AOV_buffer->unmap();
 	m_albedo_AOV_buffer->unmap();
@@ -55,8 +79,20 @@ void GPURenderer::change_render_resolution(int new_width, int new_height)
 	m_normals_AOV_buffer->resize(new_width * new_height);
 	m_albedo_AOV_buffer->resize(new_width * new_height);
 
+	m_g_buffer.materials.resize(new_width * new_height);
+	m_g_buffer.geometric_normals.resize(new_width * new_height);
+	m_g_buffer.shading_normals.resize(new_width * new_height);
+	m_g_buffer.view_directions.resize(new_width * new_height);
+	m_g_buffer.first_hits.resize(new_width * new_height);
+	m_g_buffer.cameray_ray_hit.resize(new_width * new_height);
+	m_g_buffer.ray_volume_states.resize(new_width * new_height);
+
 	m_pixels_sample_count.resize(new_width * new_height);
 	m_pixels_squared_luminance.resize(new_width * new_height);
+
+	m_restir_initial_reservoirs.resize(new_width * new_height);
+	m_restir_spatial_reservoirs.resize(new_width * new_height);
+	m_pixel_active.resize(new_width * new_height);
 
 	// Recomputing the perspective projection matrix since the aspect ratio
 	// may have changed
@@ -157,9 +193,22 @@ HIPRTRenderData GPURenderer::get_render_data()
 	render_data.aux_buffers.pixel_squared_luminance = m_pixels_squared_luminance.get_device_pointer();
 	render_data.aux_buffers.still_one_ray_active = m_still_one_ray_active_buffer.get_device_pointer();
 	render_data.aux_buffers.stop_noise_threshold_count = reinterpret_cast<AtomicType<unsigned int>*>(m_stop_noise_threshold_count_buffer.get_device_pointer());
+	render_data.aux_buffers.initial_reservoirs = m_restir_initial_reservoirs.get_device_pointer();
+	render_data.aux_buffers.spatial_reservoirs = m_restir_spatial_reservoirs.get_device_pointer();
+	render_data.aux_buffers.pixel_active = m_pixel_active.get_device_pointer();
+
+	render_data.g_buffer.materials = m_g_buffer.materials.get_device_pointer();
+	render_data.g_buffer.geometric_normals = m_g_buffer.geometric_normals.get_device_pointer();
+	render_data.g_buffer.shading_normals = m_g_buffer.shading_normals.get_device_pointer();
+	render_data.g_buffer.view_directions = m_g_buffer.view_directions.get_device_pointer();
+	render_data.g_buffer.first_hits = m_g_buffer.first_hits.get_device_pointer();
+	render_data.g_buffer.camera_ray_hit = m_g_buffer.cameray_ray_hit.get_device_pointer();
+	render_data.g_buffer.ray_volume_states = m_g_buffer.ray_volume_states.get_device_pointer();
 
 	render_data.world_settings = m_world_settings;
 	render_data.render_settings = m_render_settings;
+
+	render_data.random_seed = m_rng.xorshift32();
 
 	return render_data;
 }
@@ -178,6 +227,13 @@ void GPURenderer::initialize(int device_index)
 
 	OROCHI_CHECK_ERROR(oroEventCreate(&m_frame_start_event));
 	OROCHI_CHECK_ERROR(oroEventCreate(&m_frame_stop_event));
+
+	std::vector<std::string> compiler_options = m_kernel_options.get_compiler_options();
+	// Compiling passes kernels
+	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASSES_THREAD_KEY, ThreadFunctions::compile_kernel_pass, m_hiprt_orochi_ctx->hiprt_ctx, &m_camera_ray_pass, compiler_options, ApplicationSettings::KERNEL_FILES[1], ApplicationSettings::KERNEL_FUNCTIONS[1]);
+	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASSES_THREAD_KEY, ThreadFunctions::compile_kernel_pass, m_hiprt_orochi_ctx->hiprt_ctx, &m_restir_initial_candidates_pass, compiler_options, ApplicationSettings::KERNEL_FILES[2], ApplicationSettings::KERNEL_FUNCTIONS[2]);
+	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASSES_THREAD_KEY, ThreadFunctions::compile_kernel_pass, m_hiprt_orochi_ctx->hiprt_ctx, &m_restir_spatial_reuse, compiler_options, ApplicationSettings::KERNEL_FILES[3], ApplicationSettings::KERNEL_FUNCTIONS[3]);
+	m_compiling_kernels = true;
 }
 
 void GPURenderer::compile_trace_kernel(const char* kernel_file_path, const char* kernel_function_name)
@@ -229,13 +285,13 @@ int* GPURenderer::get_kernel_option_pointer(const std::string& name)
 	return m_kernel_options.get_pointer_to_option_value(name);
 }
 
-void GPURenderer::launch_kernel(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args)
+void GPURenderer::launch_kernel(oroFunction kernel_function, int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args)
 {
 	hiprtInt2 nb_groups;
 	nb_groups.x = std::ceil(static_cast<float>(res_x) / tile_size_x);
 	nb_groups.y = std::ceil(static_cast<float>(res_y) / tile_size_y);
 
-	OROCHI_CHECK_ERROR(oroModuleLaunchKernel(m_trace_kernel, nb_groups.x, nb_groups.y, 1, tile_size_x, tile_size_y, 1, 0, 0, launch_args, 0));
+	OROCHI_CHECK_ERROR(oroModuleLaunchKernel(kernel_function, nb_groups.x, nb_groups.y, 1, tile_size_x, tile_size_y, 1, 0, 0, launch_args, 0));
 }
 
 void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)

@@ -76,7 +76,7 @@ void ImGuiRenderer::draw_render_settings_panel()
 
 	if (ImGui::Combo("Render Kernel", &m_application_settings->selected_kernel, "Full Path Tracer\0Normals Visualisation\0\0"))
 	{
-		m_renderer->compile_trace_kernel(m_application_settings->kernel_files[m_application_settings->selected_kernel].c_str(), m_application_settings->kernel_functions[m_application_settings->selected_kernel].c_str());
+		m_renderer->compile_trace_kernel(m_application_settings->KERNEL_FILES[m_application_settings->selected_kernel].c_str(), m_application_settings->KERNEL_FUNCTIONS[m_application_settings->selected_kernel].c_str());
 		m_render_window->set_render_dirty(true);
 	}
 
@@ -109,11 +109,13 @@ void ImGuiRenderer::draw_render_settings_panel()
 
 	ImGui::Separator();
 
-	ImGui::BeginDisabled(m_application_settings->auto_sample_per_frame);
+	//ImGui::BeginDisabled(m_application_settings->auto_sample_per_frame);
+	// TODO samples per frame needs to be fixed since pass refactor
+	ImGui::BeginDisabled(true);
 	ImGui::InputInt("Samples per frame", &render_settings.samples_per_frame);
-	ImGui::EndDisabled();
 	ImGui::SameLine();
 	ImGui::Checkbox("Auto", &m_application_settings->auto_sample_per_frame);
+	ImGui::EndDisabled();
 
 	if (ImGui::InputInt("Max Sample Count", &m_application_settings->max_sample_count))
 		m_application_settings->max_sample_count = std::max(m_application_settings->max_sample_count, 0);
@@ -121,7 +123,7 @@ void ImGuiRenderer::draw_render_settings_panel()
 	unsigned int converged_count;
 	unsigned int total_pixel_count;
 	ImGui::BeginDisabled(render_settings.enable_adaptive_sampling);
-	if (ImGui::InputFloat("Stop render at noise threshold", &render_settings.stop_noise_threshold))
+	if (ImGui::InputFloat("Noise threshold", &render_settings.stop_noise_threshold))
 	{
 		bool need_buffers = false;
 		need_buffers |= render_settings.enable_adaptive_sampling == 1;
@@ -200,7 +202,7 @@ void ImGuiRenderer::draw_render_settings_panel()
 		const char* items[] = { "- Automatic", "- With priorities" };
 		if (ImGui::Combo("Nested dielectrics strategy", m_renderer->get_kernel_option_pointer(GPUKernelOptions::INTERIOR_STACK_STRATEGY), items, IM_ARRAYSIZE(items)))
 		{
-			m_renderer->compile_trace_kernel(m_application_settings->kernel_files[m_application_settings->selected_kernel].c_str(), m_application_settings->kernel_functions[m_application_settings->selected_kernel].c_str());
+			m_renderer->compile_trace_kernel(m_application_settings->KERNEL_FILES[m_application_settings->selected_kernel].c_str(), m_application_settings->KERNEL_FUNCTIONS[m_application_settings->selected_kernel].c_str());
 
 			m_render_window->set_render_dirty(true);
 		}
@@ -287,10 +289,10 @@ void ImGuiRenderer::draw_sampling_panel()
 	{
 		ImGui::TreePush("Sampling tree");
 
-		const char* items[] = { "- No direct light sampling", "- Uniform one light", "- BSDF Sampling", "- MIS (1 Light + 1 BSDF)", "- RIS BDSF + Light candidates" };
+		const char* items[] = { "- No direct light sampling", "- Uniform one light", "- BSDF Sampling", "- MIS (1 Light + 1 BSDF)", "- RIS BDSF + Light candidates", "- ReSTIR DI"};
 		if (ImGui::Combo("Direct light sampling strategy", m_renderer->get_kernel_option_pointer(GPUKernelOptions::DIRECT_LIGHT_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
 		{
-			m_renderer->compile_trace_kernel(m_application_settings->kernel_files[m_application_settings->selected_kernel].c_str(), m_application_settings->kernel_functions[m_application_settings->selected_kernel].c_str());
+			m_renderer->compile_trace_kernel(m_application_settings->KERNEL_FILES[m_application_settings->selected_kernel].c_str(), m_application_settings->KERNEL_FUNCTIONS[m_application_settings->selected_kernel].c_str());
 
 			m_render_window->set_render_dirty(true);
 		}
@@ -313,7 +315,7 @@ void ImGuiRenderer::draw_sampling_panel()
 			if (ImGui::Checkbox("Use visibility in target function", &use_visiblity_checked))
 			{
 				m_renderer->set_kernel_option(GPUKernelOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, use_visiblity_checked ? 1 : 0);
-				m_renderer->compile_trace_kernel(m_application_settings->kernel_files[m_application_settings->selected_kernel].c_str(), m_application_settings->kernel_functions[m_application_settings->selected_kernel].c_str());
+				m_renderer->compile_trace_kernel(m_application_settings->KERNEL_FILES[m_application_settings->selected_kernel].c_str(), m_application_settings->KERNEL_FUNCTIONS[m_application_settings->selected_kernel].c_str());
 
 				m_render_window->set_render_dirty(true);
 			}
@@ -334,6 +336,9 @@ void ImGuiRenderer::draw_sampling_panel()
 				m_render_window->set_render_dirty(true);
 			}
 
+			break;
+
+		case LSS_RESTIR_DI:
 			break;
 
 		default:
@@ -391,7 +396,7 @@ void ImGuiRenderer::draw_objects_panel()
 		some_material_changed |= ImGui::SliderFloat("Absorption distance", &material.absorption_at_distance, 0.0f, 20.0f);
 		some_material_changed |= ImGui::ColorEdit3("Absorption color", (float*)&material.absorption_color);
 		unsigned short int zero = 0, eight = 8;
-		ImGui::BeginDisabled(material.specular_transmission == 0.0f || m_renderer->get_kernel_option_value(GPUKernelOptions::INTERIOR_STACK_STRATEGY) != ISS_WITH_PRIORITES);
+		ImGui::BeginDisabled(material.specular_transmission == 0.0f || m_renderer->get_kernel_option_value(GPUKernelOptions::INTERIOR_STACK_STRATEGY) != ISS_WITH_PRIORITIES);
 		some_material_changed |= ImGui::SliderScalar("Dielectric priority", ImGuiDataType_U16, &material.dielectric_priority, &zero, &eight);
 		ImGui::EndDisabled();
 		some_material_changed |= ImGui::ColorEdit3("Emission", (float*)&material.emission, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);

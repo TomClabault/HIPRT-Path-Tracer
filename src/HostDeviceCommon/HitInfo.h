@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef RAY_STATE_H
-#define RAY_STATE_H
+#ifndef HIT_INFO_H
+#define HIT_INFO_H
 
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/Math.h"
@@ -19,13 +19,14 @@ struct LightSourceInformation
 
 struct HitInfo
 {
-    float3 inter_point;
-    float3 shading_normal;
-    float3 geometric_normal;
-    float2 texcoords;
-    float2 uv;
+    float3 inter_point = { 0, 0, 0 };
+    float3 shading_normal = { 0, 0, 0 };
+    float3 geometric_normal = { 0, 0, 0 };
+    float2 texcoords = { 0, 0 };
+    float2 uv = { 0, 0 };
 
-    float t = -1.0f; // Distance along ray
+    // Distance along ray
+    float t = -1.0f;
 
     int primitive_index = -1;
 };

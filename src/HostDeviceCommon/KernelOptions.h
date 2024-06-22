@@ -33,13 +33,14 @@
  * This allows the use of LSS_ONE_RANDOM_LIGHT_MIS (for example) instead of a hardcoded '2'
  */
 #define ISS_AUTOMATIC 0
-#define ISS_WITH_PRIORITES 1
+#define ISS_WITH_PRIORITIES 1
 
 #define LSS_NO_DIRECT_LIGHT_SAMPLING 0
 #define LSS_UNIFORM_ONE_LIGHT 1
 #define LSS_BSDF 2
 #define LSS_MIS_LIGHT_BSDF 3
 #define LSS_RIS_BSDF_AND_LIGHT 4
+#define LSS_RESTIR_DI 5
 
 #define RIS_USE_VISIBILITY_FALSE 0
 #define RIS_USE_VISIBILITY_TRUE 1
@@ -60,28 +61,40 @@
  *	- ISS_AUTOMATIC
  *		"automatic" strategy as presented in* Ray Tracing Gems 1, 2019
  * 
- *	- ISS_WITH_PRIORITES
+ *	- ISS_WITH_PRIORITIES
  *		"with priorities" as presented in Simple Nested Dielectrics in Ray Traced Images, Schmidt, 2002
  */
-#define InteriorStackStrategy ISS_WITH_PRIORITES
+#define InteriorStackStrategy ISS_WITH_PRIORITIES
 
 /**
  * What direct lighting sampling strategy to use.
  * 
  * Possible values (the prefix LSS stands for "Light Sampling strategy"):
  * 
+#define LSS_RIS_BSDF_AND_LIGHT 4
+#define LSS_RESTIR_DI 5
  *	- LSS_NO_DIRECT_LIGHT_SAMPLING
  *		No direct light sampling
  * 
  *	- LSS_UNIFORM_ONE_LIGHT
- *		Sample one random light in the scene without MIS
+ *		Samples one random light in the scene without MIS
  * 
  *	- LSS_MIS_LIGHT_BSDF
- *		Sample one random light in the scene with MIS (Multiple Importance Sampling): light sample + BRDF sample
+ *		Samples one random light in the scene with MIS (Multiple Importance Sampling): light sample + BRDF sample
  * 
- *	- LSS_RIS_ONLY_LIGHT_CANDIDATES
- *		Sample render_settings.RIS_number_candidates lights in the scene with RIS
+ *	- LSS_RIS_BSDF_AND_LIGHT
+ *		Samples lights in the scene with Resampled Importance Sampling using 
+ *		render_settings.ris_number_of_light_candidates light candidates and
+ *		render_settings.ris_number_of_bsdf_candidates BSDF candidates
+ * 
+ *	- LSS_RESTIR_DI
+ *		Uses ReSTIR DI to sample direct lighting at the first bounce in the scene.
+ * 
+ *		ReSTIR DI then uses:
+ *			- render_settings.ris_number_of_light_candidates & render_settings.ris_number_of_bsdf_candidates
+ *				when sampling the initial candidates with RIS
  */
+//#define DirectLightSamplingStrategy LSS_RESTIR_DI
 #define DirectLightSamplingStrategy LSS_RIS_BSDF_AND_LIGHT
 
 /**

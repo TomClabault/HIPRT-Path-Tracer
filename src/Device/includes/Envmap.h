@@ -116,7 +116,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_environment_map(const HIPRTRender
             float env_map_pdf;
 
             pixel = sample_environment_map_texture(world_settings, make_float2(u, 1.0f - v));
-            env_map_pdf = luminance(pixel) / env_map_total_sum;
+            env_map_pdf = luminance(pixel) / (env_map_total_sum * render_data.world_settings.envmap_intensity);
             env_map_pdf = (env_map_pdf * world_settings.envmap_width * world_settings.envmap_height) / (2.0f * M_PI * M_PI * sin_theta);
 
             if (env_map_pdf > 0.0f)
@@ -155,7 +155,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_environment_map(const HIPRTRender
             ColorRGB skysphere_color = sample_environment_map_from_direction(world_settings, brdf_sampled_dir);
             float theta_brdf_dir = acos(brdf_sampled_dir.z);
             float sin_theta_bdrf_dir = sin(theta_brdf_dir);
-            float env_map_pdf = skysphere_color.luminance() / env_map_total_sum;
+            float env_map_pdf = skysphere_color.luminance() / (env_map_total_sum * render_data.world_settings.envmap_intensity);
             if (env_map_pdf > 0.0f)
             {
                 float mis_weight;

@@ -6,6 +6,9 @@
 #ifndef HIPRT_SCENE_DATA_H
 #define HIPRT_SCENE_DATA_H
 
+#include "Device/includes/Reservoir.h"
+#include "Device/includes/GBuffer.h"
+
 #include "HostDeviceCommon/AlignMacro.h"
 #include "HostDeviceCommon/Material.h"
 #include "HostDeviceCommon/Math.h"
@@ -73,10 +76,10 @@ struct ALIGN(8) HIPRTRenderSettings
 	float indirect_contribution_clamp = 0.0f;
 
 	// How many candidate lights to sample for RIS (Resampled Importance Sampling)
-	int ris_number_of_light_candidates = 8;
+	int ris_number_of_light_candidates = 4;
 	// How many candidates samples from the BSDF to use in combination
 	// with the light candidates for RIS
-	int ris_number_of_bsdf_candidates = 1;
+	int ris_number_of_bsdf_candidates = 0;
 };
 
 struct RenderBuffers
@@ -120,6 +123,11 @@ struct RenderBuffers
 
 struct AuxiliaryBuffers
 {
+	// Whether or not the pixel at a given index in the buffer is active or not. A pixel can be
+	// inactive when we're rendering at low resolution for example or when adaptive sampling has
+	// judged that the pixel was converged enough and doesn't need more samples
+	unsigned char* pixel_active = nullptr;
+
 	// World space normals for the denoiser
 	// These normals should already be divided by the number of samples
 	float3* denoiser_normals = nullptr;
@@ -147,6 +155,11 @@ struct AuxiliaryBuffers
 	// noise threshold. If this value is equal to the number of pixels of the
 	// framebuffer, then all pixels have converged.
 	AtomicType<unsigned int>* stop_noise_threshold_count = nullptr;
+
+	// These reservoirs contain the initial candidates samples
+	Reservoir* initial_reservoirs = nullptr;
+	// These reservoirs contain the results of the spatial reuse pass
+	Reservoir* spatial_reservoirs = nullptr;
 };
 
 enum AmbientLightType
@@ -200,11 +213,16 @@ struct CPUData
  */
 struct HIPRTRenderData
 {
+	// Random number that is updated by the CPU and that can help generate a
+	// random seed on the GPU for the random number generator to get started
+	unsigned int random_seed = 42;
+
 	hiprtGeometry geom = nullptr;
 
 	RenderBuffers buffers;
 	AuxiliaryBuffers aux_buffers;
 	WorldSettings world_settings;
+	GBuffer g_buffer;
 
 	HIPRTRenderSettings render_settings;
 

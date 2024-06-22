@@ -3,25 +3,19 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
+#ifndef KERNELS_FULL_PATH_TRACER_H
+#define KERNELS_FULL_PATH_TRACER_H
+
 #include "Device/includes/AdaptiveSampling.h"
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Lights.h"
 #include "Device/includes/Envmap.h"
+#include "Device/includes/Hash.h"
 #include "Device/includes/Material.h"
 #include "Device/includes/RayPayload.h"
 #include "Device/includes/Sampling.h"
 #include "HostDeviceCommon/Camera.h"
 #include "HostDeviceCommon/Xorshift.h"
-
-HIPRT_HOST_DEVICE HIPRT_INLINE unsigned int wang_hash(unsigned int seed)
-{
-    seed = (seed ^ 61) ^ (seed >> 16);
-    seed *= 9;
-    seed = seed ^ (seed >> 4);
-    seed *= 0x27d4eb2d;
-    seed = seed ^ (seed >> 15);
-    return seed;
-}
 
 HIPRT_HOST_DEVICE HIPRT_INLINE void debug_set_final_color(const HIPRTRenderData& render_data, int x, int y, int res_x, ColorRGB final_color)
 {
@@ -79,9 +73,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool sanity_check(const HIPRTRenderData& render_d
 }
 
 #ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(HIPRTRenderData render_data, int2 res, HIPRTCamera camera)
+GLOBAL_KERNEL_SIGNATURE(void) FullPathTracer(HIPRTRenderData render_data, int2 res, HIPRTCamera camera)
 #else
-GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_data, int2 res, HIPRTCamera camera, int x, int y)
+GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data, int2 res, HIPRTCamera camera, int x, int y)
 #endif
 {
 #ifdef __KERNELCC__
@@ -91,60 +85,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
     uint32_t pixel_index = (x + y * res.x);
     if (pixel_index >= res.x * res.y)
         return;
-
-    // 'Render low resolution' means that the user is moving the camera for example
-    // so we're going to reduce the quality of the render for increased framerates
-    // while moving
-    if (render_data.render_settings.render_low_resolution)
-    {
-        // Reducing the number of bounces to 3
-        render_data.render_settings.nb_bounces = 3;
-        render_data.render_settings.samples_per_frame = 1;
-        int res_scaling = render_data.render_settings.render_low_resolution_scaling;
-        pixel_index /= res_scaling;
-
-        // If rendering at low resolution, only one pixel out of res_scaling^2 will be rendered
-        if (x % res_scaling != 0 || y % res_scaling != 0)
-            return;
-    }
-
-    if (render_data.render_settings.sample_number == 0)
-    {
-        // Resetting all buffers on the first frame
-        render_data.buffers.pixels[pixel_index] = ColorRGB(0.0f);
-        render_data.aux_buffers.denoiser_normals[pixel_index] = make_float3(1.0f, 1.0f, 1.0f);
-        render_data.aux_buffers.denoiser_albedo[pixel_index] = ColorRGB(0.0f, 0.0f, 0.0f);
-
-        if (render_data.render_settings.stop_noise_threshold > 0.0f || render_data.render_settings.enable_adaptive_sampling)
-        {
-            // These buffers are only available when either the adaptive sampling or the stop noise threshold is enabled
-            render_data.aux_buffers.pixel_sample_count[pixel_index] = 0;
-            render_data.aux_buffers.pixel_squared_luminance[pixel_index] = 0;
-        }
-    }
-
-
-    bool sampling_needed = true;
-    bool stop_noise_threshold_converged = false;
-    sampling_needed = adaptive_sampling(render_data, pixel_index, stop_noise_threshold_converged);
-
-    if (stop_noise_threshold_converged)
-        // Indicating that this pixel has reached the threshold in render_settings.stop_noise_threshold
-        hippt::atomic_add(render_data.aux_buffers.stop_noise_threshold_count, 1u);
-
-    if (!sampling_needed)
-    {
-        // Because when displaying the framebuffer, we're dividing by the number of samples to 
-        // rescale the color of a pixel, we're going to have a problem if some pixels stopped samping
-        // at 10 samples while the other pixels are still being sampled and have 100 samples for example. 
-        // The pixels that only received 10 samples are going to be divided by 100 at display time, making them
-        // appear too dark.
-        // We're rescaling the color of the pixels that stopped sampling here for correct display
-        render_data.buffers.pixels[pixel_index] = render_data.buffers.pixels[pixel_index] / render_data.render_settings.sample_number * (render_data.render_settings.sample_number + render_data.render_settings.samples_per_frame);
-
+    else if (!render_data.aux_buffers.pixel_active[pixel_index])
         return;
-    }
-
 
     unsigned int seed;
     if (render_data.render_settings.freeze_random)
@@ -157,34 +99,41 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
     ColorRGB final_color = ColorRGB(0.0f, 0.0f, 0.0f);
     ColorRGB denoiser_albedo = ColorRGB(0.0f, 0.0f, 0.0f);
     float3 denoiser_normal = make_float3(0.0f, 0.0f, 0.0f);
-    for (int sample = 0; sample < render_data.render_settings.samples_per_frame; sample++)
+
+    // Initializing the closest hit info the information from the camera ray pass
+    HitInfo closest_hit_info;
+    closest_hit_info.inter_point = render_data.g_buffer.first_hits[pixel_index];
+    closest_hit_info.geometric_normal = hippt::normalize(render_data.g_buffer.geometric_normals[pixel_index]);
+    closest_hit_info.shading_normal = hippt::normalize(render_data.g_buffer.shading_normals[pixel_index]);
+
+    // Initializing the ray with the information from the camera ray pass
+    hiprtRay ray;
+    ray.direction = hippt::normalize(-render_data.g_buffer.view_directions[pixel_index]);
+
+    bool intersection_found = render_data.g_buffer.camera_ray_hit[pixel_index] == 1;
+
+    RayPayload ray_payload;
+    ray_payload.next_ray_state = RayState::BOUNCE;
+    ray_payload.material = RendererMaterial(render_data.g_buffer.materials[pixel_index]);
+    ray_payload.volume_state = render_data.g_buffer.ray_volume_states[pixel_index];
+
+    // TODO fix samples per frame not working since we separated the camera ray pass
+    // for (int sample = 0; sample < render_data.render_settings.samples_per_frame; sample++)
+    for (int sample = 0; sample < 1; sample++)
     {
-        //Jittered around the center
-        float x_jittered = (x + 0.5f) + random_number_generator() - 1.0f;
-        float y_jittered = (y + 0.5f) + random_number_generator() - 1.0f;
-
-        hiprtRay ray = camera.get_camera_ray(x_jittered, y_jittered, res);
-        RayPayload ray_payload;
-
-        // Whether or not we've already written to the denoiser's buffers
-        bool denoiser_AOVs_set = false;
-        float denoiser_blend = 1.0f;
-
         for (int bounce = 0; bounce < render_data.render_settings.nb_bounces; bounce++)
         {
             if (ray_payload.next_ray_state == RayState::BOUNCE)
             {
-                HitInfo closest_hit_info;
-                bool intersection_found = trace_ray(render_data, ray, ray_payload, closest_hit_info);
+                if (bounce > 0)
+                {
+                    // Not tracing for the primary ray because this has already been done in the camera ray pass
+
+                    intersection_found = trace_ray(render_data, ray, ray_payload, closest_hit_info);
+                }
 
                 if (intersection_found)
                 {
-                    if (bounce == 0)
-                    {
-                        denoiser_normal = closest_hit_info.shading_normal;
-                        denoiser_albedo = ray_payload.material.base_color;
-                    }
-
                     // For the BRDF calculations, bounces, ... to be correct, we need the normal to be in the same hemisphere as
                     // the view direction. One thing that can go wrong is when we have an emissive triangle (typical area light)
                     // and a ray hits the back of the triangle. The normal will not be facing the view direction in this
@@ -203,16 +152,20 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                     // ----------------- Direct lighting ----------------- //
                     // --------------------------------------------------- //
 
-                    ColorRGB light_sample_radiance = sample_one_light(render_data, ray_payload.material, closest_hit_info, -ray.direction, random_number_generator);
+                    ColorRGB light_sample_radiance = sample_one_light(render_data, ray_payload.material, closest_hit_info, -ray.direction, random_number_generator, make_int2(x, y), res, bounce);
+#if DEBUG_RESTIR_DI_DISPLAY_DEBUG_VALUE
+                    debug_set_final_color(render_data, x, y, res.x, light_sample_radiance);
+                    return;
+#endif
                     ColorRGB envmap_radiance = sample_environment_map(render_data, ray_payload.material, closest_hit_info, -ray.direction, random_number_generator);
 
                     ColorRGB direct_lighting_clamp(render_data.render_settings.direct_contribution_clamp > 0.0f ? render_data.render_settings.direct_contribution_clamp : 1.0e35f);
                     ColorRGB envmap_lighting_clamp(render_data.render_settings.envmap_contribution_clamp > 0.0f ? render_data.render_settings.envmap_contribution_clamp : 1.0e35f);
 
-                    if (bounce == 0)
-                        // Clamping only on the primary rays
-                        light_sample_radiance = ColorRGB::min(direct_lighting_clamp, light_sample_radiance);
-                    envmap_radiance = ColorRGB::min(envmap_lighting_clamp, envmap_radiance);
+                    //if (bounce == 0)
+                    //    // Clamping only on the primary rays for the direct lighting. This matches Blender's behavior
+                    //    light_sample_radiance = ColorRGB::min(direct_lighting_clamp, light_sample_radiance);
+                    //envmap_radiance = ColorRGB::min(envmap_lighting_clamp, envmap_radiance);
 
                     // --------------------------------------- //
                     // ---------- Indirect lighting ---------- //
@@ -288,14 +241,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
         final_color += ray_payload.ray_color;
     }
 
-    // If we got here, this means that we still have at least one ray active
-    render_data.aux_buffers.still_one_ray_active[0] = 1;
-
     if (render_data.render_settings.stop_noise_threshold > 0.0f || render_data.render_settings.enable_adaptive_sampling)
     {
         // We can only use these buffers is the adaptive sampling or the stop noise threshold is enabled
         render_data.aux_buffers.pixel_squared_luminance[pixel_index] += squared_luminance_of_samples;
-        render_data.aux_buffers.pixel_sample_count[pixel_index] += render_data.render_settings.samples_per_frame;
+
+        // TODO fix if we can have more than 1 samples per frame since passes refactor
+        render_data.aux_buffers.pixel_sample_count[pixel_index]++;
     }
     render_data.buffers.pixels[pixel_index] += final_color;
 
@@ -311,3 +263,5 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
         // Checking that it is non-zero otherwise we would accumulate a persistent NaN in the buffer when normalizing by the 0-length
         render_data.aux_buffers.denoiser_normals[pixel_index] = accumulated_normal / normal_length;
 }
+
+#endif

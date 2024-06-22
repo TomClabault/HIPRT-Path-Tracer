@@ -7,6 +7,7 @@
 #define HIPRT_CAMERA_H
 
 #include "HostDeviceCommon/Math.h"
+
 #include <hiprt/hiprt_types.h> // for hiprtRay
 
 struct HIPRTCamera

@@ -17,7 +17,14 @@ enum BRDF
     SpecularFresnel
 };
 
-struct RendererMaterial
+// A simplified material is the material effectively evaluated at a point in the scene.
+// This means that it doesn't contain texture indices for example since the texture
+// has been evaluated at the intersection point and the base color (if we're talking
+// about the base color texture) stored directly in the base_color parameter of the
+// simplified material.
+// 
+// This simplified material structure is used in the GBuffer for example
+struct SimplifiedRendererMaterial
 {
     HIPRT_HOST_DEVICE bool is_emissive() const
     {
@@ -74,58 +81,32 @@ struct RendererMaterial
 
     BRDF brdf_type = BRDF::Uninitialized;
 
-    int normal_map_texture_index = -1;
-
-    int emission_texture_index = -1;
-    int base_color_texture_index = -1;
     ColorRGB emission = ColorRGB{ 0.0f, 0.0f, 0.0f };
     ColorRGB base_color = ColorRGB{ 1.0f, 0.2f, 0.7f };
 
-    // If not -1, there is only one texture for the metallic and the roughness parameters in which.
-    // case the green channel is the roughness and the blue channel is the metalness
-    int roughness_metallic_texture_index = -1;
-
-    int roughness_texture_index = -1;
-    int oren_sigma_texture_index = -1;
-    int subsurface_texture_index = -1;
     float roughness = 0.3f;
     float oren_nayar_sigma = 0.34906585039886591538f; // 20 degrees standard deviation in radian
     float oren_nayar_A = 0.86516788142120468442f; // Precomputed A for sigma = 20 degrees
     float oren_nayar_B = 0.74147689828041305929f; // Precomputed B for sigma = 20 degrees
     float subsurface = 0.0f;
 
-    int metallic_texture_index = -1;
-    int specular_texture_index = -1;
-    int specular_tint_texture_index = -1;
-    int specular_color_texture_index = -1;
     float metallic = 0.0f;
     float specular = 1.0f; // Specular intensity
     float specular_tint = 1.0f; // Specular fresnel strength for the metallic
     ColorRGB specular_color = ColorRGB(1.0f);
-    
-    int anisotropic_texture_index = -1;
-    int anisotropic_rotation_texture_index = -1;
+
     float anisotropic = 0.0f;
     float anisotropic_rotation = 0.0f;
     float alpha_x, alpha_y;
 
-    int clearcoat_texture_index = -1;
-    int clearcoat_roughness_texture_index = -1;
-    int clearcoat_ior_texture_index = -1;
     float clearcoat = 0.0f;
     float clearcoat_roughness = 0.0f;
     float clearcoat_ior = 1.5f;
 
-    int sheen_texture_index = -1;
-    int sheen_tint_color_texture_index = -1;
-    int sheen_color_texture_index = -1;
     float sheen = 0.0f; // Sheen strength
     float sheen_tint = 0.0f; // Sheen tint strength
     ColorRGB sheen_color = ColorRGB(1.0f);
 
-    // IOR texture index not supported because of the cost it would incur to
-    // support it with the nested dielectrics algorithm
-    int specular_transmission_texture_index = -1;
     float ior = 1.40f;
     float specular_transmission = 0.0f;
     // At what distance is the light absorbed to the given absorption_color
@@ -135,6 +116,120 @@ struct RendererMaterial
 
     // Nested dielectric parameter
     unsigned short int dielectric_priority = 0;
+};
+
+struct RendererMaterial : public SimplifiedRendererMaterial
+{
+    HIPRT_HOST_DEVICE RendererMaterial() {}
+    HIPRT_HOST_DEVICE RendererMaterial(SimplifiedRendererMaterial simplified_mat)
+    {
+        this->brdf_type = simplified_mat.brdf_type;
+        this->emission = simplified_mat.emission;
+        this->base_color = simplified_mat.base_color;
+
+        this->roughness = simplified_mat.roughness;
+        this->oren_nayar_sigma = simplified_mat.oren_nayar_sigma;
+        this->oren_nayar_A = simplified_mat.oren_nayar_A;
+        this->oren_nayar_B = simplified_mat.oren_nayar_B;
+        this->subsurface = simplified_mat.subsurface;
+
+        this->metallic = simplified_mat.metallic;
+        this->specular = simplified_mat.specular;
+        this->specular_tint = simplified_mat.specular_tint;
+        this->specular_color = simplified_mat.specular_color;
+
+        this->anisotropic = simplified_mat.anisotropic;
+        this->anisotropic_rotation = simplified_mat.anisotropic_rotation;
+        this->alpha_x = simplified_mat.alpha_x;
+
+        this->clearcoat = simplified_mat.clearcoat;
+        this->clearcoat_roughness = simplified_mat.clearcoat_roughness;
+        this->clearcoat_ior = simplified_mat.clearcoat_ior;
+
+        this->sheen = simplified_mat.sheen;
+        this->sheen_tint = simplified_mat.sheen_tint;
+        this->sheen_color = simplified_mat.sheen_color;
+
+        this->ior = simplified_mat.ior;
+        this->specular_transmission = simplified_mat.specular_transmission;
+        this->absorption_at_distance = simplified_mat.absorption_at_distance;
+        this->absorption_color = simplified_mat.absorption_color;
+
+        this->precompute_properties();
+    }
+
+    HIPRT_HOST_DEVICE SimplifiedRendererMaterial get_simplified_material()
+    {
+        SimplifiedRendererMaterial simplified;
+        simplified.brdf_type = this->brdf_type;
+        simplified.emission = this->emission;
+        simplified.base_color = this->base_color;
+
+        simplified.roughness = this->roughness;
+        simplified.oren_nayar_sigma = this->oren_nayar_sigma;
+        simplified.oren_nayar_A = this->oren_nayar_A;
+        simplified.oren_nayar_B = this->oren_nayar_B;
+        simplified.subsurface = this->subsurface;
+
+        simplified.metallic = this->metallic;
+        simplified.specular = this->specular;
+        simplified.specular_tint = this->specular_tint;
+        simplified.specular_color = this->specular_color;
+
+        simplified.anisotropic = this->anisotropic;
+        simplified.anisotropic_rotation = this->anisotropic_rotation;
+        simplified.alpha_x = this->alpha_x;
+
+        simplified.clearcoat = this->clearcoat;
+        simplified.clearcoat_roughness = this->clearcoat_roughness;
+        simplified.clearcoat_ior = this->clearcoat_ior;
+
+        simplified.sheen = this->sheen;
+        simplified.sheen_tint = this->sheen_tint;
+        simplified.sheen_color = this->sheen_color;
+
+        simplified.ior = this->ior;
+        simplified.specular_transmission = this->specular_transmission;
+        simplified.absorption_at_distance = this->absorption_at_distance;
+        simplified.absorption_color = this->absorption_color;
+
+        simplified.dielectric_priority = this->dielectric_priority;
+
+        simplified.precompute_properties();
+
+        return simplified;
+    }
+
+    int normal_map_texture_index = -1;
+
+    int emission_texture_index = -1;
+    int base_color_texture_index = -1;
+
+    // If not -1, there is only one texture for the metallic and the roughness parameters in which.
+    // case the green channel is the roughness and the blue channel is the metalness
+    int roughness_metallic_texture_index = -1;
+
+    int roughness_texture_index = -1;
+    int oren_sigma_texture_index = -1;
+    int subsurface_texture_index = -1;
+
+    int metallic_texture_index = -1;
+    int specular_texture_index = -1;
+    int specular_tint_texture_index = -1;
+    int specular_color_texture_index = -1;
+    
+    int anisotropic_texture_index = -1;
+    int anisotropic_rotation_texture_index = -1;
+
+    int clearcoat_texture_index = -1;
+    int clearcoat_roughness_texture_index = -1;
+    int clearcoat_ior_texture_index = -1;
+
+    int sheen_texture_index = -1;
+    int sheen_tint_color_texture_index = -1;
+    int sheen_color_texture_index = -1;
+
+    int specular_transmission_texture_index = -1;
 };
 
 #endif

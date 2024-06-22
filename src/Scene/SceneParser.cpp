@@ -47,10 +47,10 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Scene& par
 
     prepare_textures(scene, texture_paths, material_texture_indices, material_indices, texture_per_mesh, texture_indices_offsets, texture_count);
     parsed_scene.materials.resize(texture_per_mesh.size());
-    parsed_scene.textures.resize(texture_count);
+    /*parsed_scene.textures.resize(texture_count);
     parsed_scene.textures_dims.resize(texture_count);
     dispatch_texture_loading(parsed_scene, scene_filepath, options.nb_texture_threads, texture_paths);
-    assign_material_texture_indices(parsed_scene.materials, material_texture_indices, texture_indices_offsets);
+    assign_material_texture_indices(parsed_scene.materials, material_texture_indices, texture_indices_offsets);*/
 
     parse_camera(scene, parsed_scene, options.override_aspect_ratio);
 
@@ -267,7 +267,7 @@ void SceneParser::dispatch_texture_loading(Scene& parsed_scene, const std::strin
     texture_threads_state->scene_filepath = scene_path;
     texture_threads_state->texture_paths = texture_paths;
 
-    ThreadManager::add_state(ThreadManager::TEXTURE_THREADS_KEY, texture_threads_state);
+    ThreadManager::set_thread_data(ThreadManager::TEXTURE_THREADS_KEY, texture_threads_state);
 
     for (int i = 0; i < nb_threads; i++)
         ThreadManager::start_thread(ThreadManager::TEXTURE_THREADS_KEY, ThreadFunctions::load_texture, std::ref(parsed_scene), texture_threads_state->scene_filepath, std::ref(texture_threads_state->texture_paths), i, nb_threads);
