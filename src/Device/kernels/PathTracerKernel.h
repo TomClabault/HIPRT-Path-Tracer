@@ -272,8 +272,16 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
 
                         skysphere_color = sample_environment_map_from_direction(render_data.world_settings, ray.direction);
 
-                        // Un-scaling the envmap if the user doesn't want to scale the background
+#if EnvmapSamplingStrategy == ESS_NO_SAMPLING
+                        // If we don't have envmap sampling, we're only going to unscale on
+                        // bounce 0 (which is when a ray misses directly --> background color).
+                        // Otherwise, if not bounce 2, we do want to take the scaling into
+                        // account so this if will fail and the envmap color will never be unscaled
+                        if (!render_data.world_settings.envmap_scale_background_intensity && bounce == 0)
+#else
                         if (!render_data.world_settings.envmap_scale_background_intensity)
+#endif
+                            // Un-scaling the envmap if the user doesn't want to scale the background
                             skysphere_color /= render_data.world_settings.envmap_intensity;
                     }
 
