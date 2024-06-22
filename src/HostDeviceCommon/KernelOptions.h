@@ -41,6 +41,9 @@
 #define LSS_MIS_LIGHT_BSDF 3
 #define LSS_RIS_BSDF_AND_LIGHT 4
 
+#define ESS_NO_SAMPLING 0
+#define ESS_BINARY_SEARCH 1
+
 #define RIS_USE_VISIBILITY_FALSE 0
 #define RIS_USE_VISIBILITY_TRUE 1
 
@@ -83,6 +86,19 @@
  *		Sample render_settings.RIS_number_candidates lights in the scene with RIS
  */
 #define DirectLightSamplingStrategy LSS_RIS_BSDF_AND_LIGHT
+
+/**
+ * What envmap sampling strategy to use
+ * 
+ * Possible values (the prefix ESS stands for "Envmap Sampling Strategy"):
+ * 
+ *	- ESS_NO_SAMPLING
+ *		No importance sampling of the envmap
+ * 
+ *	- ESS_BINARY_SEARCH
+ *		Importance samples the environment map using a binary search on the CDF distributions of the envmap
+ */
+#define EnvmapSamplingStrategy ESS_BINARY_SEARCH
 
 /**
  * Whether or not to use a visiblity term in the target function whose PDF we're approximating with RIS.

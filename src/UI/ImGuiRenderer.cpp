@@ -288,61 +288,84 @@ void ImGuiRenderer::draw_sampling_panel()
 	{
 		ImGui::TreePush("Sampling tree");
 
-		const char* items[] = { "- No direct light sampling", "- Uniform one light", "- BSDF Sampling", "- MIS (1 Light + 1 BSDF)", "- RIS BDSF + Light candidates" };
-		if (ImGui::Combo("Direct light sampling strategy", m_renderer->get_kernel_option_pointer(GPUKernelOptions::DIRECT_LIGHT_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
+		if (ImGui::CollapsingHeader("Direct lighting"))
 		{
-			m_renderer->compile_trace_kernel(m_application_settings->kernel_files[m_application_settings->selected_kernel].c_str(), m_application_settings->kernel_functions[m_application_settings->selected_kernel].c_str());
+			ImGui::TreePush("Direct lighting sampling tree");
 
-			m_render_window->set_render_dirty(true);
-		}
-
-		// Display additional widgets to control the parameters of the direct light
-		// sampling strategy chosen (the number of candidates for RIS for example)
-		switch (m_renderer->get_kernel_option_value(GPUKernelOptions::DIRECT_LIGHT_SAMPLING_STRATEGY))
-		{
-		case LSS_NO_DIRECT_LIGHT_SAMPLING:
-			break;
-
-		case LSS_UNIFORM_ONE_LIGHT:
-			break;
-
-		case LSS_MIS_LIGHT_BSDF:
-			break;
-
-		case LSS_RIS_BSDF_AND_LIGHT:
-			static bool use_visiblity_checked = m_renderer->get_kernel_option_value(GPUKernelOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION) == 1;
-			if (ImGui::Checkbox("Use visibility in target function", &use_visiblity_checked))
+			const char* items[] = { "- No direct light sampling", "- Uniform one light", "- BSDF Sampling", "- MIS (1 Light + 1 BSDF)", "- RIS BDSF + Light candidates" };
+			if (ImGui::Combo("Direct light sampling strategy", m_renderer->get_kernel_option_pointer(GPUKernelOptions::DIRECT_LIGHT_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
 			{
-				m_renderer->set_kernel_option(GPUKernelOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, use_visiblity_checked ? 1 : 0);
 				m_renderer->compile_trace_kernel(m_application_settings->kernel_files[m_application_settings->selected_kernel].c_str(), m_application_settings->kernel_functions[m_application_settings->selected_kernel].c_str());
 
 				m_render_window->set_render_dirty(true);
 			}
 
-			if (ImGui::SliderInt("RIS # of BSDF candidates", &render_settings.ris_number_of_bsdf_candidates, 0, 32))
+			// Display additional widgets to control the parameters of the direct light
+			// sampling strategy chosen (the number of candidates for RIS for example)
+			switch (m_renderer->get_kernel_option_value(GPUKernelOptions::DIRECT_LIGHT_SAMPLING_STRATEGY))
 			{
-				// Clamping to 0
-				render_settings.ris_number_of_bsdf_candidates = std::max(0, render_settings.ris_number_of_bsdf_candidates);
+			case LSS_NO_DIRECT_LIGHT_SAMPLING:
+				break;
+
+			case LSS_UNIFORM_ONE_LIGHT:
+				break;
+
+			case LSS_MIS_LIGHT_BSDF:
+				break;
+
+			case LSS_RIS_BSDF_AND_LIGHT:
+				static bool use_visiblity_checked = m_renderer->get_kernel_option_value(GPUKernelOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION) == 1;
+				if (ImGui::Checkbox("Use visibility in target function", &use_visiblity_checked))
+				{
+					m_renderer->set_kernel_option(GPUKernelOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, use_visiblity_checked ? 1 : 0);
+					m_renderer->compile_trace_kernel(m_application_settings->kernel_files[m_application_settings->selected_kernel].c_str(), m_application_settings->kernel_functions[m_application_settings->selected_kernel].c_str());
+
+					m_render_window->set_render_dirty(true);
+				}
+
+				if (ImGui::SliderInt("RIS # of BSDF candidates", &render_settings.ris_number_of_bsdf_candidates, 0, 32))
+				{
+					// Clamping to 0
+					render_settings.ris_number_of_bsdf_candidates = std::max(0, render_settings.ris_number_of_bsdf_candidates);
+
+					m_render_window->set_render_dirty(true);
+				}
+
+				if (ImGui::SliderInt("RIS # of light candidates", &render_settings.ris_number_of_light_candidates, 0, 128))
+				{
+					// Clamping to 0
+					render_settings.ris_number_of_light_candidates = std::max(0, render_settings.ris_number_of_light_candidates);
+
+					m_render_window->set_render_dirty(true);
+				}
+
+				break;
+
+			default:
+				break;
+			}
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			ImGui::TreePop();
+		}
+
+		if (ImGui::CollapsingHeader("Envmap"))
+		{
+			ImGui::TreePush("Envmap sampling tree");
+
+			const char* items[] = { "- No envmap sampling", "- Envmap Sampling - Binary Search" };
+			if (ImGui::Combo("Envmap sampling strategy", m_renderer->get_kernel_option_pointer(GPUKernelOptions::ENVMAP_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
+			{
+				m_renderer->compile_trace_kernel(m_application_settings->kernel_files[m_application_settings->selected_kernel].c_str(), m_application_settings->kernel_functions[m_application_settings->selected_kernel].c_str());
 
 				m_render_window->set_render_dirty(true);
 			}
 
-			if (ImGui::SliderInt("RIS # of light candidates", &render_settings.ris_number_of_light_candidates, 0, 128))
-			{
-				// Clamping to 0
-				render_settings.ris_number_of_light_candidates = std::max(0, render_settings.ris_number_of_light_candidates);
-
-				m_render_window->set_render_dirty(true);
-			}
-
-			break;
-
-		default:
-			break;
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			ImGui::TreePop();
 		}
 
 		ImGui::TreePop();
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	}
 }
 

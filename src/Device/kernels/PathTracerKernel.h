@@ -257,7 +257,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                     ColorRGB skysphere_color;
                     if (render_data.world_settings.ambient_light_type == AmbientLightType::UNIFORM)
                         skysphere_color = render_data.world_settings.uniform_light_color;
+#if EnvmapSamplingStrategy != ESS_NO_SAMPLING
+                    // Only checking that it is the first bounce if we're importance sampling the envmap.
+                    // Said otherwise, we're always going to take the envmap radiance into account on a
+                    // ray miss if we're not importance sampling the envmap
                     else if (render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP && bounce == 0)
+#endif
                     {
                         // We're only getting the skysphere radiance for the first rays because the
                         // syksphere is importance sampled.

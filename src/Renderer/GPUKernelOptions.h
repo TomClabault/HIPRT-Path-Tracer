@@ -15,6 +15,7 @@ class GPUKernelOptions
 public:
 	static const std::string INTERIOR_STACK_STRATEGY;
 	static const std::string DIRECT_LIGHT_SAMPLING_STRATEGY;
+	static const std::string ENVMAP_SAMPLING_STRATEGY;
 	static const std::string RIS_USE_VISIBILITY_TARGET_FUNCTION;
 
 	GPUKernelOptions();

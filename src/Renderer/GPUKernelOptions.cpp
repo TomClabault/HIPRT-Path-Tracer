@@ -8,6 +8,7 @@
 
 const std::string GPUKernelOptions::INTERIOR_STACK_STRATEGY = "InteriorStackStrategy";
 const std::string GPUKernelOptions::DIRECT_LIGHT_SAMPLING_STRATEGY = "DirectLightSamplingStrategy";
+const std::string GPUKernelOptions::ENVMAP_SAMPLING_STRATEGY = "EnvmapSamplingStrategy";
 const std::string GPUKernelOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION = "RISUseVisiblityTargetFunction";
 
 GPUKernelOptions::GPUKernelOptions()
@@ -15,6 +16,7 @@ GPUKernelOptions::GPUKernelOptions()
 	// Adding options with their default values
 	set_option(GPUKernelOptions::INTERIOR_STACK_STRATEGY, InteriorStackStrategy);
 	set_option(GPUKernelOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, DirectLightSamplingStrategy);
+	set_option(GPUKernelOptions::ENVMAP_SAMPLING_STRATEGY, EnvmapSamplingStrategy);
 	set_option(GPUKernelOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, RISUseVisiblityTargetFunction);
 }
 

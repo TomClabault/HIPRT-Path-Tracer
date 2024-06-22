@@ -38,7 +38,7 @@ struct RendererMaterial
 
         // Avoiding zero
         absorption_at_distance = hippt::max(absorption_at_distance, 1.0e-4f);
-        absorption_color = ColorRGB::max(absorption_color, ColorRGB(1.0f / 255.0f));
+        absorption_color = ColorRGB::max(absorption_color, ColorRGB(1.0f / 512.0f));
     }
 
     /*
