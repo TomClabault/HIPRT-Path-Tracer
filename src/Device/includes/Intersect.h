@@ -173,13 +173,52 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& r
 #ifdef __KERNELCC__
     ray.maxT = t_max - 1.0e-4f;
 
-    hiprtGeomTraversalAnyHit traversal(render_data.geom, ray);
-    hiprtHit aoHit = traversal.getNextHit();
+    hiprtHit shadow_ray_hit;
+    float alpha;
 
-    return aoHit.hasHit();
+    do
+    {
+        hiprtGeomTraversalClosest traversal(render_data.geom, ray);
+        shadow_ray_hit = traversal.getNextHit();
+        if (!shadow_ray_hit.hasHit())
+            return false;
+
+        alpha = get_hit_base_color_alpha(render_data, shadow_ray_hit);
+
+        float3 inter_point = ray.origin + ray.direction * shadow_ray_hit.t;
+        ray.origin = inter_point + ray.direction * 3.0e-3f;
+        ray.maxT -= shadow_ray_hit.t;
+    } while (alpha < 1.0f);
+
+    // If we're here, this means that we found a hit that is not
+    // alpha-transparent with a distance < t_max so that's a hit and we're shadowed.
+    return true;
 #else
-    hiprtHit hit = intersect_scene_cpu(render_data, ray);
-    return hit.hasHit() && hit.t < t_max - 1.0e-4f;
+    float alpha = 1.0f;
+    // The total distance of our ray. Incremented after each hit
+    // (we may find multiple hits if we hit transparent texture
+    // and keep intersecting the scene)
+    float cumulative_t = 0.0f;
+
+    hiprtHit hit;
+    do
+    {
+        // We should use ray tracing fitler functions here instead of re-tracing new rays
+        hit = intersect_scene_cpu(render_data, ray);
+        if (!hit.hasHit())
+            return false;
+
+        alpha = get_hit_base_color_alpha(render_data, hit);
+
+        float3 inter_point = ray.origin + ray.direction * hit.t;
+        ray.origin = inter_point + ray.direction * 3.0e-3f;
+        cumulative_t += hit.t;
+
+        // We keep going as long as the alpha is < 1.0f meaning that we hit texture transparency
+    } while (alpha < 1.0f && cumulative_t < t_max - 1.0e-4f);
+
+    // If we found a hit and that it is close enough
+    return hit.hasHit() && cumulative_t < t_max - 1.0e-4f;
 #endif // __KERNELCC__
 }
 

@@ -365,6 +365,7 @@ void ImGuiRenderer::draw_sampling_panel()
 			ImGui::TreePop();
 		}
 
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();
 	}
 }
