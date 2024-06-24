@@ -31,16 +31,13 @@
 // - get grab / set grab cursor position needs to be in windows interactor, not render window, get_cursor_position? set_interacting?
 // - investigate why kernel compiling was so much faster in the past (commit db34b23 seems to be a good candidate)
 // - refactor the usage of strings in the compile kernel functions
-// - multiple GLTF, one GLB for different point of views per model
 // - cleanup orochi gl interop buffer #ifdef everywhere
 // - do we need OpenGL Lib/bin in thirdparties?
 // - fork HIPRT and remove the encryption thingy that slows down kernel compilation on NVIDIA
-// - A good way to automatically find MSBuild with CMake? Build HIPRT with make instead of VS maybe?
+// - Use HIPRT with CMake as a subdirectory (available soon)
 // - uniform #ifndef in Device headers
-// - Refactor material editor
 // - Device/ or HostDeviceCommon. Not both
 // - reorganize methods order in RenderWindow
-// - imgui controller to put all the imgui code in one class
 // - check for level of abstractions in functions
 
 
@@ -73,15 +70,14 @@
 // - find a way to not fill the texcoords buffer for meshes that don't have textures
 // - pack RendererMaterial informations such as texture indices (we can probably use 16 bit for a texture index --> 2 texture indices in one 32 bit register)
 // - use 8 bit textures for material properties instead of float
-// - log size of buffers used: vertices, indices, normals, ...
+// - log memory size of buffers used: vertices, indices, normals, ...
 // - display active pixels adaptive sampling
 // - able / disable normal mapping
 // - use only one channel for material property texture to save VRAM
-// - Scene parsing is pretty slow and seems to be CPU bound in our code, not ASSIMP so have a look at that
 // - Remove vertex normals for meshes that have normal maps and save VRAM
 // - texture compression
 // - float compression for render buffers?
-// - Exporter (just serialize the scene to binary file I guess)
+// - Exporter (just serialize the scene to binary file and have a look at how to do backward compatibility)
 // - Allow material parameters textures manipulation with ImGui
 // - Disable material parameters in ImGui that have a texture associated (since the ImGui slider in this case has no effect)
 // - Upload grayscale as one channel to the GPU instead of memory costly RGBA
@@ -115,8 +111,6 @@
 // - Add tooltips when hovering over a parameter in the UI
 // - Statistics on russian roulette efficiency
 // - Minimum contribution to speed things up as in OSPRay ?
-// - Being able to enable / disable env map importance sampling
-// - Being able to enable / disable MIS
 // - Better ray origin offset to avoid self intersections
 // - Realistic Camera Model
 // - Focus blur

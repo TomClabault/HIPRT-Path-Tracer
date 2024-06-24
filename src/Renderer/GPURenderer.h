@@ -51,6 +51,7 @@ public:
 	void set_camera(const Camera& camera);
 
 	const std::vector<RendererMaterial>& get_materials();
+	const std::vector<std::string>& get_material_names();
 	void update_materials(std::vector<RendererMaterial>& materials);
 
 	/**
@@ -112,6 +113,8 @@ private:
 	// The materials are also kept on the CPU side because we want to be able
 	// to modify them interactively with ImGui
 	std::vector<RendererMaterial> m_materials;
+	// The material names are used for displaying in the ImGui editor
+	std::vector<std::string> m_material_names;
 	// Vector to keep the textures data alive otherwise the OrochiTexture objects would
 	// be destroyed which means that the underlying textures would be destroyed
 	std::vector<OrochiTexture> m_materials_textures;

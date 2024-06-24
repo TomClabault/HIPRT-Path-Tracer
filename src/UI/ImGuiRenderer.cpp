@@ -26,7 +26,7 @@ void ImGuiRenderer::draw_imgui_interface()
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 
 	ImGuiIO& io = ImGui::GetIO();
-	ImGui::ShowDemoWindow();
+	// ImGui::ShowDemoWindow();
 
 	ImGui::Begin("Settings");
 
@@ -377,68 +377,104 @@ void ImGuiRenderer::draw_objects_panel()
 	ImGui::TreePush("Objects tree");
 
 	std::vector<RendererMaterial> materials = m_renderer->get_materials();
+	std::vector<std::string> material_names = m_renderer->get_material_names();
 
-	int material_modfied_id = -1;
-	int material_counter = 0;
-	bool some_material_changed = false;
+	bool material_changed = false;
+	static int currently_selected_material = 0;
 
-	ImGui::PushItemWidth(384);
-	for (RendererMaterial& material : materials)
+	if (ImGui::CollapsingHeader("All objects"))
 	{
-		// Multiple ImGui widgets cannot have the same label
-		// If all our materials use the same "Base color", "Subsurface", ... labels for
-		// the slider, there is a chance that the slider will be linked together
-		// and that multiple materials will be modified when only touching one slider
-		// One solution to that is to avoid using the same label for multiple sliders
-		// by naming them "material 1 Base color", "material 2 Base color" for example
-		// This is however not very practical so ImGui provides us with the PushID function which
-		// essentially differentiate the widgets without having to change the labels 
-		ImGui::PushID(material_counter);
+		ImGui::TreePush("All objects tree");
 
-		some_material_changed |= ImGui::ColorEdit3("Base color", (float*)&material.base_color);
-		some_material_changed |= ImGui::SliderFloat("Subsurface", &material.subsurface, 0.0f, 1.0f);
-		some_material_changed |= ImGui::SliderFloat("Metallic", &material.metallic, 0.0f, 1.0f);
-		some_material_changed |= ImGui::SliderFloat("Specular", &material.specular, 0.0f, 1.0f);
-		some_material_changed |= ImGui::SliderFloat("Specular tint strength", &material.specular_tint, 0.0f, 1.0f);
-		some_material_changed |= ImGui::ColorEdit3("Specular color", (float*)&material.specular_color);
-		some_material_changed |= ImGui::SliderFloat("Roughness", &material.roughness, 0.0f, 1.0f);
-		some_material_changed |= ImGui::SliderFloat("Anisotropic", &material.anisotropic, 0.0f, 1.0f);
-		some_material_changed |= ImGui::SliderFloat("Anisotropic rotation", &material.anisotropic_rotation, 0.0f, 1.0f);
-		some_material_changed |= ImGui::SliderFloat("Sheen", &material.sheen, 0.0f, 1.0f);
-		some_material_changed |= ImGui::SliderFloat("Sheen tint strength", &material.sheen_tint, 0.0f, 1.0f);
-		some_material_changed |= ImGui::ColorEdit3("Sheen color", (float*)&material.sheen_color);
-		some_material_changed |= ImGui::SliderFloat("Clearcoat", &material.clearcoat, 0.0f, 1.0f);
-		some_material_changed |= ImGui::SliderFloat("Clearcoat roughness", &material.clearcoat_roughness, 0.0f, 1.0f);
-		some_material_changed |= ImGui::SliderFloat("Clearcoat IOR", &material.clearcoat_ior, 0.0f, 5.0f);
-		some_material_changed |= ImGui::SliderFloat("IOR", &material.ior, 0.0f, 5.0f);
+		if (ImGui::BeginListBox("All objects", ImVec2(-FLT_MIN, 7 * ImGui::GetTextLineHeightWithSpacing())))
+		{
+			for (int n = 0; n < materials.size(); n++)
+			{
+				const bool is_selected = (currently_selected_material == n);
+				if (ImGui::Selectable(material_names[n].c_str(), is_selected))
+					currently_selected_material = n;
+
+				// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
+				if (is_selected)
+					ImGui::SetItemDefaultFocus();
+			}
+			ImGui::EndListBox();
+		}
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::TreePop();
+	}
+
+	if (ImGui::CollapsingHeader("Emissive objects"))
+	{
+		ImGui::TreePush("Emissive objects tree");
+
+		if (ImGui::BeginListBox("Emissive objects", ImVec2(-FLT_MIN, 7 * ImGui::GetTextLineHeightWithSpacing())))
+		{
+			for (int n = 0; n < materials.size(); n++)
+			{
+				if (!materials[n].is_emissive())
+					continue;
+
+				const bool is_selected = (currently_selected_material == n);
+				if (ImGui::Selectable(material_names[n].c_str(), is_selected))
+					currently_selected_material = n;
+
+				// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
+				if (is_selected)
+					ImGui::SetItemDefaultFocus();
+			}
+			ImGui::EndListBox();
+		}
+
+		ImGui::TreePop();
+	}
+
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+	if (materials.size() > 0)
+	{
+		RendererMaterial& material = materials[currently_selected_material];
+
+		ImGui::PushItemWidth(384);
+
+		ImGui::Text(material_names[currently_selected_material].c_str());
+		material_changed |= ImGui::ColorEdit3("Base color", (float*)&material.base_color);
+		material_changed |= ImGui::SliderFloat("Subsurface", &material.subsurface, 0.0f, 1.0f);
+		material_changed |= ImGui::SliderFloat("Metallic", &material.metallic, 0.0f, 1.0f);
+		material_changed |= ImGui::SliderFloat("Specular", &material.specular, 0.0f, 1.0f);
+		material_changed |= ImGui::SliderFloat("Specular tint strength", &material.specular_tint, 0.0f, 1.0f);
+		material_changed |= ImGui::ColorEdit3("Specular color", (float*)&material.specular_color);
+		material_changed |= ImGui::SliderFloat("Roughness", &material.roughness, 0.0f, 1.0f);
+		material_changed |= ImGui::SliderFloat("Anisotropic", &material.anisotropic, 0.0f, 1.0f);
+		material_changed |= ImGui::SliderFloat("Anisotropic rotation", &material.anisotropic_rotation, 0.0f, 1.0f);
+		material_changed |= ImGui::SliderFloat("Sheen", &material.sheen, 0.0f, 1.0f);
+		material_changed |= ImGui::SliderFloat("Sheen tint strength", &material.sheen_tint, 0.0f, 1.0f);
+		material_changed |= ImGui::ColorEdit3("Sheen color", (float*)&material.sheen_color);
+		material_changed |= ImGui::SliderFloat("Clearcoat", &material.clearcoat, 0.0f, 1.0f);
+		material_changed |= ImGui::SliderFloat("Clearcoat roughness", &material.clearcoat_roughness, 0.0f, 1.0f);
+		material_changed |= ImGui::SliderFloat("Clearcoat IOR", &material.clearcoat_ior, 0.0f, 5.0f);
+		material_changed |= ImGui::SliderFloat("IOR", &material.ior, 0.0f, 5.0f);
 		ImGui::Separator();
-		some_material_changed |= ImGui::SliderFloat("Transmission", &material.specular_transmission, 0.0f, 1.0f);
-		some_material_changed |= ImGui::SliderFloat("Absorption distance", &material.absorption_at_distance, 0.0f, 20.0f);
-		some_material_changed |= ImGui::ColorEdit3("Absorption color", (float*)&material.absorption_color);
+		material_changed |= ImGui::SliderFloat("Transmission", &material.specular_transmission, 0.0f, 1.0f);
+		material_changed |= ImGui::SliderFloat("Absorption distance", &material.absorption_at_distance, 0.0f, 20.0f);
+		material_changed |= ImGui::ColorEdit3("Absorption color", (float*)&material.absorption_color);
 		unsigned short int zero = 0, eight = 8;
 		ImGui::BeginDisabled(material.specular_transmission == 0.0f || m_renderer->get_kernel_option_value(GPUKernelOptions::INTERIOR_STACK_STRATEGY) != ISS_WITH_PRIORITES);
-		some_material_changed |= ImGui::SliderScalar("Dielectric priority", ImGuiDataType_U16, &material.dielectric_priority, &zero, &eight);
+		material_changed |= ImGui::SliderScalar("Dielectric priority", ImGuiDataType_U16, &material.dielectric_priority, &zero, &eight);
 		ImGui::EndDisabled();
-		some_material_changed |= ImGui::ColorEdit3("Emission", (float*)&material.emission, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
-
-		ImGui::PopID();
+		material_changed |= ImGui::ColorEdit3("Emission", (float*)&material.emission, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
 
 		ImGui::Separator();
+		ImGui::PopItemWidth();
 
-		if (some_material_changed && material_modfied_id == -1)
-			material_modfied_id = material_counter;
-		material_counter++;
-	}
-	ImGui::PopItemWidth();
+		if (material_changed)
+		{
+			material.make_safe();
+			material.precompute_properties();
 
-	if (some_material_changed)
-	{
-		RendererMaterial& material = materials[material_modfied_id];
-		material.make_safe();
-		material.precompute_properties();
-
-		m_renderer->update_materials(materials);
-		m_render_window->set_render_dirty(true);
+			m_renderer->update_materials(materials);
+			m_render_window->set_render_dirty(true);
+		}
 	}
 
 	ImGui::TreePop();

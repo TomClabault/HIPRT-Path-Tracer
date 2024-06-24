@@ -315,6 +315,7 @@ void GPURenderer::set_scene(const Scene& scene)
 	set_hiprt_scene_from_scene(scene);
 
 	m_materials = scene.materials;
+	m_material_names = scene.material_names;
 }
 
 void GPURenderer::set_envmap(ImageRGBA& envmap_image)
@@ -331,6 +332,11 @@ void GPURenderer::set_envmap(ImageRGBA& envmap_image)
 const std::vector<RendererMaterial>& GPURenderer::get_materials()
 {
 	return m_materials;
+}
+
+const std::vector<std::string>& GPURenderer::get_material_names()
+{
+	return m_material_names;
 }
 
 void GPURenderer::update_materials(std::vector<RendererMaterial>& materials)

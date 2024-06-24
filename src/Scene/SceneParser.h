@@ -63,6 +63,8 @@ struct SceneParserOptions
 struct Scene
 {
     std::vector<RendererMaterial> materials;
+    // The material names are used for displaying in the material editor of ImGui
+    std::vector<std::string> material_names;
     // Material textures. Needs to be index by a material index. 
     std::vector<ImageRGBA> textures;
     // The widths and heights of the material textures

@@ -47,6 +47,7 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Scene& par
 
     prepare_textures(scene, texture_paths, material_texture_indices, material_indices, texture_per_mesh, texture_indices_offsets, texture_count);
     parsed_scene.materials.resize(texture_per_mesh.size());
+    parsed_scene.material_names.resize(texture_per_mesh.size());
     parsed_scene.textures.resize(texture_count);
     parsed_scene.textures_dims.resize(texture_count);
     dispatch_texture_loading(parsed_scene, scene_filepath, options.nb_texture_threads, texture_paths);
@@ -66,6 +67,7 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Scene& par
     {
         aiMesh* mesh = scene->mMeshes[mesh_index];
         aiMaterial* mesh_material = scene->mMaterials[mesh->mMaterialIndex];
+        std::string material_name = std::string(mesh_material->GetName().C_Str());
 
         RendererMaterial& renderer_material = parsed_scene.materials[mesh_index];
         read_material_properties(mesh_material, renderer_material);
@@ -73,6 +75,7 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Scene& par
         //Adding the material to the parsed scene
         bool is_mesh_emissive = renderer_material.is_emissive();
 
+        parsed_scene.material_names[mesh_index] = material_name;
         // Inserting the normals if present
         if (mesh->HasNormals())
             parsed_scene.vertex_normals.insert(parsed_scene.vertex_normals.end(),
