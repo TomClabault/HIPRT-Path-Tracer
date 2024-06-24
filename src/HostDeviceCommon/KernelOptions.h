@@ -85,7 +85,7 @@
  *	- LSS_RIS_ONLY_LIGHT_CANDIDATES
  *		Sample render_settings.RIS_number_candidates lights in the scene with RIS
  */
-#define DirectLightSamplingStrategy LSS_RIS_BSDF_AND_LIGHT
+#define DirectLightSamplingStrategy LSS_MIS_LIGHT_BSDF
 
 /**
  * What envmap sampling strategy to use
@@ -109,7 +109,7 @@
  *	- RIS_USE_VISIBILITY_FALSE
  *		Don't use a visibility term
  */
-#define RISUseVisiblityTargetFunction RIS_USE_VISIBILITY_TRUE
+#define RISUseVisiblityTargetFunction RIS_USE_VISIBILITY_FALSE
 
 #endif
 
