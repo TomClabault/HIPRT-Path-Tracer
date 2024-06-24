@@ -77,7 +77,7 @@ private:
 	void set_hiprt_scene_from_scene(const Scene& scene);
 
 	// Properties of the device
-	oroDeviceProp m_device_properties = {};
+	oroDeviceProp m_device_properties = { .gcnArchName = "" };
 	// GPU events to time the frame
 	oroEvent_t m_frame_start_event = nullptr;
 	oroEvent_t m_frame_stop_event = nullptr;
