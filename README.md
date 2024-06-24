@@ -1,6 +1,6 @@
 # HIPRT-Path-Tracer
 
-![HIPRT path tracer cover](README_data/img/McLaren_P1_Render.jpg)
+![HIPRT path tracer cover](README_data/img/P1_environment.jpg)
 
 Physically based Monte Carlo path tracer written with the [HIP RT](https://gpuopen.com/hiprt/) and [Orochi](https://gpuopen.com/orochi/) libraries.
 
@@ -21,25 +21,25 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 		- A lambertian distribution
 		- The Oren Nayar microfacet diffuse model.
 - Texture support for all the parameters of the BSDF
-- BSDF Direct lighting multiple importance sampling
-- HDR Environment map + importance sampling using
+- BSDF Multiple Importance Sampling for Direct lighting
+- Resampled Importance Sampling + Weighted Reservoir Sampling for many light sampling [\[Talbot, 2005\]](https://www.researchgate.net/publication/220852928_Importance_Resampling_for_Global_Illumination) + [\[M. T. Chao, 1982\]](https://www.jstor.org/stable/2336002)
+- HDR Environment map + Multiple Importance Sampling using
 	- CDF-inversion binary search
 - Emissive geometry light sampling
 - Nested dielectrics support 
-	- Automatic handling as presented in \[Ray Tracing Gems, 2019\]
-	- Handling with priorities as proposed in \[Simple Nested Dielectrics in Ray Traced Images, Schmidt, 2002\]
+	- Automatic handling as presented in [\[Ray Tracing Gems, 2019\]](https://www.realtimerendering.com/raytracinggems/rtg/index.html)
+	- Handling with priorities as proposed in [\[Simple Nested Dielectrics in Ray Traced Images, Schmidt, 2002\]](https://www.researchgate.net/publication/247523037_Simple_Nested_Dielectrics_in_Ray_Traced_Images)
 - Per-pixel adaptive sampling
 - Normal mapping
 - Interactive ImGui interface + interactive first-person camera
 - Different frame-buffer visualisation (visualize the adaptive sampling map, the denoiser normals / albedo, ...)
-- Use of the ASSIMP library to support [many](https://github.com/assimp/assimp/blob/master/doc/Fileformats.md) scene file formats.
+- Use of the [\[ASSIMP\]](https://github.com/assimp/assimp) library to support [many](https://github.com/assimp/assimp/blob/master/doc/Fileformats.md) scene file formats.
 - Optimized application startup time with:
 	- Multithreaded texture loading
 	- Asynchronous path tracing kernel compilation
-- Intel Open Image Denoise + Normals & Albedo AOV support
+- Intel [Open Image Denoise](https://github.com/RenderKit/oidn) + Normals & Albedo AOV support
 
 ### A more detailed explanation & showcase of the features can be found [here](README_data/Features/features.md).
-
 
 # Building
 ## Prerequisites
@@ -103,7 +103,7 @@ With the pre-requisites fulfilled, you now just have to run the CMake:
 ``` sh
 git clone https://github.com/TomClabault/HIPRT-Path-Tracer.git
 cd HIPRT-Path-Tracer
-git submodule update --init --recursive --jobs 10
+git submodule update --init --recursive
 mkdir build
 cd build
 cmake ..
@@ -125,6 +125,15 @@ The following arguments are available:
 - `--w=N` / `--width=N` for the width of the rendering (this argument is CPU-rendering only)
 - `--h=N` / `--height=N` for the height of the rendering (this argument is CPU-rendering only)
 
+# Gallery
+
+![P1 street](README_data/img/P1_environment.jpg)
+![P1 street](README_data/img/contemporary-bedroom.jpg)![P1 street](README_data/img/blender-4.1-splash.jpg)
+![P1 street](README_data/img/dragon-glass.jpg)
+![P1 street](README_data/img/pbrt-dragon-indirect.jpg)
+![P1 street](README_data/img/rolex.jpg)
+
+Sources of the scenes can be found [\here\](https://github.com/TomClabault/HIPRT-Path-Tracer/blob/main/README_data/img/scene%20credits.txt).
 # License
 
 GNU General Public License v3.0 or later

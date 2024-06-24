@@ -14,7 +14,7 @@ set(ASSIMP_SUBMODULE_DIR ${CMAKE_SOURCE_DIR}/ASSIMP-Fork)
 
 if(NOT EXISTS ${ASSIMP_SUBMODULE_DIR}/code)
 	# Making sure that the HIPRT submodule was cloned
-	message(FATAL_ERROR "The ASSIMP submodule couldn't be found. Did you forget to clone the submodules? Run 'git submodule update --init --recursive --jobs 10'.")
+	message(FATAL_ERROR "The ASSIMP submodule couldn't be found. Did you forget to clone the submodules? Run 'git submodule update --init --recursive'.")
 endif()
 
 add_subdirectory(${ASSIMP_SUBMODULE_DIR})
