@@ -184,8 +184,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                 {
                     if (bounce == 0)
                     {
-                        denoiser_normal = closest_hit_info.shading_normal;
-                        denoiser_albedo = ray_payload.material.base_color;
+                        denoiser_normal += closest_hit_info.shading_normal;
+                        denoiser_albedo += ray_payload.material.base_color;
                     }
 
                     // For the BRDF calculations, bounces, ... to be correct, we need the normal to be in the same hemisphere as
