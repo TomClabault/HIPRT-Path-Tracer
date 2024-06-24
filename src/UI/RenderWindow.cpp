@@ -55,7 +55,8 @@
 // - build BVHs one by one to avoid big memory spike? but what about BLAS performance cost?
 // - ray statistics with filter functions
 // - filter function for base color alpha / alpha transparency + better performabce ?
-// - alpha transparency
+// - do not store alpha from envmap
+// - fixed point 18b RGB for envmap? 70% size reduction compared to full size. Can't use texture sampler though. Is not using a sampler ok performance-wise?
 // - look at blender cycles "medium contrast", "medium low constract", "medium high", ...
 // - normal mapping strength
 // - blackbody light emitters
