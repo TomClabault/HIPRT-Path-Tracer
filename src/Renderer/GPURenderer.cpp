@@ -207,7 +207,7 @@ void GPURenderer::compile_trace_kernel(const char* kernel_file_path, const char*
 	int numRegs = 0;
 	int numSmem = 0;
 
-	if ((m_device_properties.major >= 7 && m_device_properties.minor >= 5) || std::string(m_device_properties.gcnArchName) != std::string())
+	if ((m_device_properties.major >= 7 && m_device_properties.minor >= 5) || std::string(m_device_properties.name).find("AMD") != std::string::npos)
 	{
 		// Getting the number of registers / shared memory of the function
 		// doesn't work on a CC 5.2 NVIDIA GPU but does work on a 7.5 so
@@ -215,8 +215,7 @@ void GPURenderer::compile_trace_kernel(const char* kernel_file_path, const char*
 		// it could be a completely different thing)
 		//
 		// Also this if() statement assumes that getting the number of
-		// registers will work on any AMD card (because we're entering the
-		// if as soon as the GCN arch name isn't 0) but this has only been
+		// registers will work on any AMD card but this has only been
 		// tested on a gfx1100 GPU. This should be tested on older hardware
 		// if possible
 		OROCHI_CHECK_ERROR(oroFuncGetAttribute(&numRegs, ORO_FUNC_ATTRIBUTE_NUM_REGS, m_trace_kernel));
