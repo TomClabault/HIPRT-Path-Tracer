@@ -437,7 +437,7 @@ void ImGuiRenderer::draw_objects_panel()
 
 		ImGui::PushItemWidth(384);
 
-		ImGui::Text(material_names[currently_selected_material].c_str());
+		ImGui::Text("%s", material_names[currently_selected_material].c_str());
 		material_changed |= ImGui::ColorEdit3("Base color", (float*)&material.base_color);
 		material_changed |= ImGui::SliderFloat("Subsurface", &material.subsurface, 0.0f, 1.0f);
 		material_changed |= ImGui::SliderFloat("Metallic", &material.metallic, 0.0f, 1.0f);
