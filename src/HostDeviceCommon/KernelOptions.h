@@ -85,7 +85,7 @@
  *	- LSS_RIS_ONLY_LIGHT_CANDIDATES
  *		Sample render_settings.RIS_number_candidates lights in the scene with RIS
  */
-#define DirectLightSamplingStrategy LSS_MIS_LIGHT_BSDF
+#define DirectLightSamplingStrategy LSS_RIS_BSDF_AND_LIGHT
 
 /**
  * What envmap sampling strategy to use

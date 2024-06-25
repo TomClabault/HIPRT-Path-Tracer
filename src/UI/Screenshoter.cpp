@@ -113,7 +113,10 @@ void Screenshoter::resize_output_image(int width, int height)
 		glBindImageTexture(/* location in the shader */ 2, m_output_image, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA8);
 	}
 	else
+	{
+		glActiveTexture(GL_TEXTURE0 + RenderWindow::DISPLAY_COMPUTE_IMAGE_UNIT);
 		glBindTexture(GL_TEXTURE_2D, m_output_image);
+	}
 }
 
 void Screenshoter::write_to_png(const char* filepath)
