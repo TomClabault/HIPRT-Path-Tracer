@@ -137,7 +137,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_light_sources(const HIPRTRenderDa
         RayPayload trash_payload;
         bool inter_found = trace_ray(render_data, new_ray, trash_payload, new_ray_hit_info);
 
-        if (inter_found && new_ray_hit_info.primitive_index == light_source_info.emissive_triangle_index)
+        if (inter_found)
         {
             // abs() here to allow double sided emissive geometry.
             // Without abs() here:
