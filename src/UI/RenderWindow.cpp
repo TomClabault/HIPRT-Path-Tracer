@@ -17,7 +17,6 @@
 #include "stb_image_write.h"
 
 // TODO bugs
-// - denoiser albedo display not properly scaled
 // - TO TEST AGAIN: something is unsafe on NVIDIA + Windows + nested-dielectrics-complex.gltf + 48 bounces minimum + nested dielectric strategy RT Gems. We get a CPU-side orochi error when downloading the framebuffer for displaying indicating that some illegal memory was accessed. Is the buffer corrupted by something?
 // - denoiser AOVs not accounting for transmission correctly since Disney 
 //	  - same with perfect reflection
@@ -566,7 +565,7 @@ void RenderWindow::upload_data_to_display_texture(GLuint display_texture, const 
 void RenderWindow::update_program_uniforms(OpenGLProgram& program)
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
-	int resolution_scaling = (render_settings.render_low_resolution) ? render_settings.render_low_resolution_scaling : 1;
+	int render_low_resolution_scaling = (render_settings.render_low_resolution) ? render_settings.render_low_resolution_scaling : 1;
 
 	program.use();
 
@@ -582,7 +581,7 @@ void RenderWindow::update_program_uniforms(OpenGLProgram& program)
 		program.set_uniform("u_texture", RenderWindow::DISPLAY_TEXTURE_UNIT_1);
 		program.set_uniform("u_sample_number", sample_number);
 		program.set_uniform("u_do_tonemapping", m_application_settings->do_tonemapping);
-		program.set_uniform("u_resolution_scaling", resolution_scaling);
+		program.set_uniform("u_resolution_scaling", render_low_resolution_scaling);
 		program.set_uniform("u_gamma", m_application_settings->tone_mapping_gamma);
 		program.set_uniform("u_exposure", m_application_settings->tone_mapping_exposure);
 
@@ -601,7 +600,7 @@ void RenderWindow::update_program_uniforms(OpenGLProgram& program)
 		program.set_uniform("u_sample_number_1", noisy_sample_number);
 		program.set_uniform("u_sample_number_2", denoised_sample_number);
 		program.set_uniform("u_do_tonemapping", m_application_settings->do_tonemapping);
-		program.set_uniform("u_resolution_scaling", resolution_scaling);
+		program.set_uniform("u_resolution_scaling", render_low_resolution_scaling);
 		program.set_uniform("u_gamma", m_application_settings->tone_mapping_gamma);
 		program.set_uniform("u_exposure", m_application_settings->tone_mapping_exposure);
 
@@ -610,14 +609,14 @@ void RenderWindow::update_program_uniforms(OpenGLProgram& program)
 	case DisplayView::DISPLAY_ALBEDO:
 	case DisplayView::DISPLAY_DENOISED_ALBEDO:
 		program.set_uniform("u_texture", RenderWindow::DISPLAY_TEXTURE_UNIT_1);
-		program.set_uniform("u_resolution_scaling", resolution_scaling);
+		program.set_uniform("u_resolution_scaling", render_low_resolution_scaling);
 
 		break;
 
 	case DisplayView::DISPLAY_NORMALS:
 	case DisplayView::DISPLAY_DENOISED_NORMALS:
 		program.set_uniform("u_texture", RenderWindow::DISPLAY_TEXTURE_UNIT_1);
-		program.set_uniform("u_resolution_scaling", resolution_scaling);
+		program.set_uniform("u_resolution_scaling", render_low_resolution_scaling);
 		program.set_uniform("u_do_tonemapping", m_application_settings->do_tonemapping);
 		program.set_uniform("u_gamma", m_application_settings->tone_mapping_gamma);
 		program.set_uniform("u_exposure", m_application_settings->tone_mapping_exposure);
@@ -631,7 +630,7 @@ void RenderWindow::update_program_uniforms(OpenGLProgram& program)
 		float max_val = std::max((float)render_settings.sample_number, min_val);
 
 		program.set_uniform("u_texture", RenderWindow::DISPLAY_TEXTURE_UNIT_1);
-		program.set_uniform("u_resolution_scaling", resolution_scaling);
+		program.set_uniform("u_resolution_scaling", render_low_resolution_scaling);
 		program.set_uniform("u_color_stops", 3, (float*)color_stops.data());
 		program.set_uniform("u_nb_stops", 3);
 		program.set_uniform("u_min_val", min_val);
