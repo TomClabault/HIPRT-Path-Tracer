@@ -121,14 +121,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
         hit_info.geometric_normal = hippt::normalize(hit.normal);
         hit_info.shading_normal = get_shading_normal(render_data, hit_info.geometric_normal, hit_info.primitive_index, hit.uv, hit_info.texcoords);
 
-        if (!ray_payload.is_inside_volume())
-        {
-            // If we're not in a volume, there's no reason for the normals not to be facing us so we're flipping
-            // if they were wrongly oriented
-            hit_info.geometric_normal *= hippt::dot(hit_info.geometric_normal, -ray.direction) < 0 ? -1 : 1;
-            hit_info.shading_normal *= hippt::dot(hit_info.shading_normal, -ray.direction) < 0 ? -1 : 1;
-        }
-
         hit_info.t = hit.t;
         hit_info.uv = hit.uv;
 
@@ -147,6 +139,18 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
             ray.origin = hit_info.inter_point + ray.direction * 3.0e-3f;
 
             continue;
+        }
+
+        if (!ray_payload.is_inside_volume() || ray_payload.material.specular_transmission == 0.0f)
+        {
+            // If we're not in a volume, there's no reason for the normals not to be facing us so we're flipping
+            // if they were wrongly oriented
+            // 
+            // Same thing with objects that do not let the rays pass through (non transmissive):
+            // because we can never be inside of these objects, we're always outside.
+            // If we're always outside, there's no reason to have the normals of these objects inverted.
+            hit_info.geometric_normal *= hippt::dot(hit_info.geometric_normal, -ray.direction) < 0 ? -1 : 1;
+            hit_info.shading_normal *= hippt::dot(hit_info.shading_normal, -ray.direction) < 0 ? -1 : 1;
         }
 
         skipping_volume_boundary = ray_payload.volume_state.interior_stack.push(ray_payload.volume_state.incident_mat_index, ray_payload.volume_state.outgoing_mat_index, ray_payload.volume_state.leaving_mat, material_index, ray_payload.material.dielectric_priority);

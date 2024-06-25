@@ -393,7 +393,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB disney_eval(const RendererMaterial* mate
     float clearcoat_weight = 0.25f * material.clearcoat * outside_object;
     float sheen_weight = (1.0f - material.metallic) * material.sheen * outside_object;
 
-    float normalize_factor = 1.0f / (diffuse_weight + metal_weight + clearcoat_weight + glass_weight + sheen_weight);
+    float weight_sum = (diffuse_weight + metal_weight + clearcoat_weight + glass_weight + sheen_weight);
+    //if (weight_sum == 0.0f)
+    //    // Some edge cases can make this happen: If the primary ray enters a refractive object that is thin (meaning that the ray will exit the object without intersecting it again), normals won't be automatically flipped anymore (since we're inside a volume 
+    //    return ColorRGB(0.0f);
+
+    float normalize_factor = 1.0f / weight_sum;
     float diffuse_proba = diffuse_weight * normalize_factor;
     float metal_proba = metal_weight * normalize_factor;
     float clearcoat_proba = clearcoat_weight * normalize_factor;

@@ -99,11 +99,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_environment_map_cdf(const HIPRTRe
         bool in_shadow = evaluate_shadow_ray(render_data, shadow_ray, 1.0e38f);
         if (!in_shadow)
         {
-            ColorRGB pixel;
+            ColorRGB env_map_radiance;
             float env_map_pdf;
 
-            pixel = sample_environment_map_texture(world_settings, make_float2(u, 1.0f - v));
-            env_map_pdf = luminance(pixel) / (env_map_total_sum * render_data.world_settings.envmap_intensity);
+            env_map_radiance = sample_environment_map_texture(world_settings, make_float2(u, 1.0f - v));
+            env_map_pdf = luminance(env_map_radiance) / (env_map_total_sum * render_data.world_settings.envmap_intensity);
             env_map_pdf = (env_map_pdf * world_settings.envmap_width * world_settings.envmap_height) / (2.0f * M_PI * M_PI * sin_theta);
 
             if (env_map_pdf > 0.0f)
@@ -112,7 +112,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_environment_map_cdf(const HIPRTRe
                 float mis_weight;
 
                 RayVolumeState trash_state;
-                ColorRGB env_map_radiance = sample_environment_map_texture(world_settings, make_float2(u, 1.0f - v));
                 ColorRGB bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, material, trash_state, view_direction, closest_hit_info.shading_normal, sampled_direction, bsdf_pdf);
 
                 mis_weight = power_heuristic(env_map_pdf, bsdf_pdf);

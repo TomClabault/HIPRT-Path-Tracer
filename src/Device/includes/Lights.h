@@ -175,7 +175,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_one_light_MIS(const HIPRTRenderDa
             // Conversion to solid angle from surface area measure
             light_sample_pdf *= distance_to_light * distance_to_light;
             light_sample_pdf /= dot_light_source;
-            //light_sample_pdf /= render_data.buffers.emissive_triangles_count;
+            light_sample_pdf /= render_data.buffers.emissive_triangles_count;
 
             float bsdf_pdf;
             RayVolumeState trash_volume_state;
