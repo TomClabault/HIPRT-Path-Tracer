@@ -207,7 +207,7 @@ void GPURenderer::compile_trace_kernel(const char* kernel_file_path, const char*
 	int numRegs = 0;
 	int numSmem = 0;
 
-	if ((m_device_properties.major >= 7 && m_device_properties.minor >= 5) || std::string(m_device_properties.name).find("AMD") != std::string::npos || std::string(m_device_properties.name).find("Radeon") != std::string::npos)
+	if ((m_device_properties.major >= 7 && m_device_properties.minor >= 5) || std::string(m_device_properties.name).find("Radeon") != std::string::npos)
 	{
 		// Getting the number of registers / shared memory of the function
 		// doesn't work on a CC 5.2 NVIDIA GPU but does work on a 7.5 so
