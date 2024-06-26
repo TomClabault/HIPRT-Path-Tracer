@@ -133,7 +133,7 @@ The following arguments are available:
 ![P1 street](README_data/img/pbrt-dragon-indirect.jpg)
 ![P1 street](README_data/img/rolex.jpg)
 
-Sources of the scenes can be found [\here\](https://github.com/TomClabault/HIPRT-Path-Tracer/blob/main/README_data/img/scene%20credits.txt).
+Sources of the scenes can be found [here](https://github.com/TomClabault/HIPRT-Path-Tracer/blob/main/README_data/img/scene%20credits.txt).
 # License
 
 GNU General Public License v3.0 or later
