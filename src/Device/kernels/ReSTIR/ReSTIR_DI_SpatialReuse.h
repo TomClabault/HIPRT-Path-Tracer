@@ -9,6 +9,7 @@
 #include "Device/includes/Dispatcher.h"
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Hash.h"
+#include "Device/includes/Intersect.h"
 #include "Device/includes/Sampling.h"
 
 #include "HostDeviceCommon/Camera.h"
@@ -52,14 +53,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	Xorshift32Generator random_number_generator(seed);
 
 	Reservoir new_reservoir;
-
 	int2 neighbor_offsets[NEIGHBOR_REUSE_COUNT];
 	int2 pixel_coords = make_int2(x, y);
-	float3 inter_point = render_data.g_buffer.first_hits[pixel_index];
-	float3 shading_normal = render_data.g_buffer.shading_normals[pixel_index];
-	float3 evaluated_point = inter_point + shading_normal * 1.0e-4f;
-	float3 view_direction = render_data.g_buffer.view_directions[pixel_index];
-	RendererMaterial material = RendererMaterial(render_data.g_buffer.materials[pixel_index]);
 
 	for (int i = 0; i < NEIGHBOR_REUSE_COUNT; i++)
 		neighbor_offsets[i] = uniform_sample_in_disk(REUSE_RADIUS, random_number_generator);
@@ -86,15 +81,16 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 		total_sample_count_mis_weight += neighbor_reservoir.M;
 	}
 
-	for (int i = 0; i < NEIGHBOR_REUSE_COUNT + 1; i++)
+	for (int neighbor = 0; neighbor < NEIGHBOR_REUSE_COUNT + 1; neighbor++)
 	{
+		// Generating neighbor screen space position
 		int neighbor_pixel_index;
 
-		if (i == NEIGHBOR_REUSE_COUNT)
+		if (neighbor == NEIGHBOR_REUSE_COUNT)
 			neighbor_pixel_index = pixel_coords.x + pixel_coords.y * res.x;
 		else
 		{
-			int2 neighbor_offset = neighbor_offsets[i];
+			int2 neighbor_offset = neighbor_offsets[neighbor];
 			int2 neighbor_pixel_coords = pixel_coords + neighbor_offset;
 			if (neighbor_pixel_coords.x < 0 || neighbor_pixel_coords.x >= res.x || neighbor_pixel_coords.y < 0 || neighbor_pixel_coords.y >= res.y)
 				// Rejecting the sample if it's outside of the viewport
@@ -103,19 +99,93 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 			neighbor_pixel_index = neighbor_pixel_coords.x + neighbor_pixel_coords.y * res.x;
 		}
 
+		
+
+		// Computing the MIS weight by iterating over all the neighbors because
+		// we need to take into account all the sampling techniques (one neighbor
+		// is one sampling technique) for each sample (which is the outer loop)
+		float balance_heuristic_nume = 0.0f;
+		float balance_heuristic_denom = 0.0f;
+		for (int j = 0; j < NEIGHBOR_REUSE_COUNT + 1; j++)
+		{		
+			int neighbor_mis_pixel_index;
+
+			int2 neighbor_mis_offset = neighbor_offsets[j];
+			int2 neighbor_mis_pixel_coords = pixel_coords + neighbor_mis_offset;
+			if (neighbor_mis_pixel_coords.x < 0 || neighbor_mis_pixel_coords.x >= res.x || neighbor_mis_pixel_coords.y < 0 || neighbor_mis_pixel_coords.y >= res.y)
+				// Rejecting the sample if it's outside of the viewport
+				continue;
+
+			neighbor_mis_pixel_index = neighbor_mis_pixel_coords.x + neighbor_mis_pixel_coords.y * res.x;
+
+			Reservoir neighbor_mis_reservoir = render_data.aux_buffers.initial_reservoirs[neighbor_mis_pixel_index];
+
+			float bsdf_pdf;
+			float neighbor_distance_to_light;
+			float3 neighbor_view_direction = render_data.g_buffer.view_directions[neighbor_mis_pixel_index];
+			float3 neighbor_shading_normal = render_data.g_buffer.shading_normals[neighbor_mis_pixel_index];
+			float3 neighbor_evaluated_point = render_data.g_buffer.first_hits[neighbor_mis_pixel_index] + neighbor_shading_normal * 1.0e-4f;
+			float3 neighbor_to_light_direction = neighbor_mis_reservoir.sample.point_on_light_source - neighbor_evaluated_point;
+			float3 neighbor_sample_direction = neighbor_to_light_direction / (neighbor_distance_to_light = hippt::length(neighbor_to_light_direction));
+			SimplifiedRendererMaterial neighbor_material = render_data.g_buffer.materials[neighbor_mis_pixel_index];
+
+			RayVolumeState trash_volume_state;
+			// Evaluating the BSDF at the neighbor
+			ColorRGB neighbor_bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, neighbor_material, trash_volume_state, neighbor_view_direction, neighbor_shading_normal, neighbor_sample_direction, bsdf_pdf);
+
+			// Cosine term at the neighbor
+			float cosine_term = hippt::max(0.0f, hippt::dot(neighbor_shading_normal, neighbor_sample_direction));
+			// Target function at the neighbor
+			float target_function_at_neighbor = neighbor_bsdf_color.length() * neighbor_mis_reservoir.sample.emission.length() * cosine_term;
+#if RISUseVisiblityTargetFunction == RIS_USE_VISIBILITY_TRUE
+			hiprtRay shadow_ray;
+			shadow_ray.origin = neighbor_evaluated_point;
+			shadow_ray.direction = neighbor_sample_direction;
+
+			bool visible = !evaluate_shadow_ray(render_data, shadow_ray, neighbor_distance_to_light);
+
+			target_function_at_neighbor *= visible;
+#endif
+
+			balance_heuristic_denom += target_function_at_neighbor;
+			if (j == neighbor)
+				// For the current sample, we want to evaluate it at the current
+				// pixel, not its neighbor so we're going to do this outside of this loop
+				balance_heuristic_nume = target_function_at_neighbor;
+		}
+
+		// Getting the reservoir of the neighbor being resampled
 		Reservoir neighbor_reservoir = render_data.aux_buffers.initial_reservoirs[neighbor_pixel_index];
-		SimplifiedRendererMaterial neighbor_mat = render_data.g_buffer.materials[neighbor_pixel_index];
+
+		float3 inter_point = render_data.g_buffer.first_hits[pixel_index];
+		float3 shading_normal = render_data.g_buffer.shading_normals[pixel_index];
+		float3 evaluated_point = inter_point + shading_normal * 1.0e-4f;
+		float3 view_direction = render_data.g_buffer.view_directions[pixel_index];
+		RendererMaterial material = RendererMaterial(render_data.g_buffer.materials[pixel_index]);
 
 		float bsdf_pdf;
 		float distance_to_light;
 		float3 to_light_direction = neighbor_reservoir.sample.point_on_light_source - evaluated_point;
-		float3 sample_direction = to_light_direction / (distance_to_light = hippt::length(to_light_direction));
+		distance_to_light = hippt::length(to_light_direction);
+		float3 sample_direction = to_light_direction / distance_to_light;
 
 		RayVolumeState trash_volume_state;
 		ColorRGB bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, material, trash_volume_state, view_direction, shading_normal, sample_direction, bsdf_pdf);
 		float target_function = bsdf_color.length() * neighbor_reservoir.sample.emission.length() * hippt::max(0.0f, hippt::dot(shading_normal, sample_direction));
 
-		new_reservoir.combine_with(neighbor_reservoir, 1.0f / total_sample_count_mis_weight, target_function, random_number_generator);
+#if RISUseVisiblityTargetFunction == RIS_USE_VISIBILITY_TRUE
+		hiprtRay shadow_ray;
+		shadow_ray.origin = evaluated_point;
+		shadow_ray.direction = sample_direction;
+
+		bool visible = !evaluate_shadow_ray(render_data, shadow_ray, distance_to_light);
+
+		target_function *= visible;
+#endif
+
+		//float mis_weight = static_cast<float>(neighbor_reservoir.M) / total_sample_count_mis_weight;
+		float mis_weight = balance_heuristic_nume / balance_heuristic_denom;
+		new_reservoir.combine_with(neighbor_reservoir, mis_weight, target_function, random_number_generator);
 	}
 
 	new_reservoir.end();

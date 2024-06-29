@@ -30,7 +30,7 @@ struct Reservoir
 
     HIPRT_HOST_DEVICE void combine_with(Reservoir other_reservoir, float mis_weight, float target_function, Xorshift32Generator& random_number_generator)
     {
-        float reservoir_sample_weight = mis_weight * target_function * other_reservoir.UCW * other_reservoir.M;
+        float reservoir_sample_weight = mis_weight * target_function * other_reservoir.UCW;
 
         M += other_reservoir.M;
         weight_sum += reservoir_sample_weight;
