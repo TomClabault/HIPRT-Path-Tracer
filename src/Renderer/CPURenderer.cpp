@@ -15,6 +15,34 @@
 #include <chrono>
 #include <omp.h>
 
+ // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
+ // allowing for fast step into that pixel with the debugger to see what's happening.
+ // Otherwise if 0, all pixels of the image are rendered
+#define DEBUG_PIXEL 0
+// If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner. 
+// If 1, it's bottom left corner.
+// Useful if you're using an image viewer to get the the coordinates of
+// the interesting pixel. If that image viewer has its (0, 0) in the top
+// left corner, you'll need to set that DEBUG_FLIP_Y to 0. Set 1 to if
+// you're measuring the coordinates of the pixel with (0, 0) in the bottom left corner
+#define DEBUG_FLIP_Y 0
+// Coordinates of the pixel to render
+#define DEBUG_PIXEL_X 385
+#define DEBUG_PIXEL_Y 448
+// If 1, a square of DEBUG_NEIGHBORHOOD_SIZE x DEBUG_NEIGHBORHOOD_SIZE pixels
+// will be rendered around the pixel to debug (given by DEBUG_PIXEL_X and
+// DEBUG_PIXEL_Y). The pixel of interest is going to be rendered first so you
+// can just set a breakpoint in the pass of interest and it will break when rendering the
+// pixel that you want to debug.
+// This can be useful when debugging spatial passes such as ReSTIR spatial reusing.
+// If you were only rendering the precise pixel at the given debug coordinates, you
+// wouldn't be able to debug correctly since all the neighborhood wouldn't have been
+// rendered which means no reservoir which means improper rendering
+#define DEBUG_RENDER_NEIGHBORHOOD 1
+// How many pixels to render around the debugged pixel given by the DEBUG_PIXEL_X and
+// DEBUG_PIXEL_Y coordinates.
+#define DEBUG_NEIGHBORHOOD_SIZE 35
+
 CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, height))
 {
     m_framebuffer = Image(width, height);
@@ -108,34 +136,6 @@ Image& CPURenderer::get_framebuffer()
 {
     return m_framebuffer;
 }
-
-// If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
-// allowing for fast step into that pixel with the debugger to see what's happening.
-// Otherwise if 0, all pixels of the image are rendered
-#define DEBUG_PIXEL 1
-// If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner. 
-// If 1, it's bottom left corner.
-// Useful if you're using an image viewer to get the the coordinates of
-// the interesting pixel. If that image viewer has its (0, 0) in the top
-// left corner, you'll need to set that DEBUG_FLIP_Y to 0. Set 1 to if
-// you're measuring the coordinates of the pixel with (0, 0) in the bottom left corner
-#define DEBUG_FLIP_Y 0
-// Coordinates of the pixel to render
-#define DEBUG_PIXEL_X 398
-#define DEBUG_PIXEL_Y 459
-// If 1, a square of DEBUG_NEIGHBORHOOD_SIZE x DEBUG_NEIGHBORHOOD_SIZE pixels
-// will be rendered around the pixel to debug (given by DEBUG_PIXEL_X and
-// DEBUG_PIXEL_Y). The pixel of interest is going to be rendered first so you
-// can just set a breakpoint in the pass of interest and it will break when rendering the
-// pixel that you want to debug.
-// This can be useful when debugging spatial passes such as ReSTIR spatial reusing.
-// If you were only rendering the precise pixel at the given debug coordinates, you
-// wouldn't be able to debug correctly since all the neighborhood wouldn't have been
-// rendered which means no reservoir which means improper rendering
-#define DEBUG_RENDER_NEIGHBORHOOD 1
-// How many pixels to render around the debugged pixel given by the DEBUG_PIXEL_X and
-// DEBUG_PIXEL_Y coordinates.
-#define DEBUG_NEIGHBORHOOD_SIZE 35
 
 void CPURenderer::render()  
 {
