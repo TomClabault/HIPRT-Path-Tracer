@@ -14,7 +14,7 @@
 /**
  * Returns integer pixel coordinates offset from the center of the disk
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE int2 uniform_sample_in_disk(float radius, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE int2 integer_sample_in_disk(float radius, Xorshift32Generator& random_number_generator)
 {
     float u1 = random_number_generator();
     float u2 = random_number_generator();

@@ -27,8 +27,8 @@
 // you're measuring the coordinates of the pixel with (0, 0) in the bottom left corner
 #define DEBUG_FLIP_Y 0
 // Coordinates of the pixel to render
-#define DEBUG_PIXEL_X 667
-#define DEBUG_PIXEL_Y 250
+#define DEBUG_PIXEL_X 675
+#define DEBUG_PIXEL_Y 345
 // If 1, a square of DEBUG_NEIGHBORHOOD_SIZE x DEBUG_NEIGHBORHOOD_SIZE pixels
 // will be rendered around the pixel to debug (given by DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y). The pixel of interest is going to be rendered first so you
@@ -179,8 +179,10 @@ void CPURenderer::camera_rays_pass()
 
 #if DEBUG_RENDER_NEIGHBORHOOD
     // Rendering the neighborhood
-    for (int render_y = std::max(0, y - DEBUG_NEIGHBORHOOD_SIZE); render_y < std::min(m_resolution.y, y + DEBUG_NEIGHBORHOOD_SIZE); render_y++)
-        for (int render_x = std::max(0, x - DEBUG_NEIGHBORHOOD_SIZE); render_x < std::min(m_resolution.x, x + DEBUG_NEIGHBORHOOD_SIZE); render_x++)
+
+#pragma omp parallel for schedule(dynamic)
+    for (int render_y = std::max(0, y - DEBUG_NEIGHBORHOOD_SIZE); render_y <= std::min(m_resolution.y - 1, y + DEBUG_NEIGHBORHOOD_SIZE); render_y++)
+        for (int render_x = std::max(0, x - DEBUG_NEIGHBORHOOD_SIZE); render_x <= std::min(m_resolution.x - 1, x + DEBUG_NEIGHBORHOOD_SIZE); render_x++)
             CameraRays(m_render_data, m_resolution, m_hiprt_camera, render_x, render_y);
 #endif // DEBUG_RENDER_NEIGHBORHOOD
 #else // DEBUG_PIXEL
@@ -209,8 +211,10 @@ void CPURenderer::ReSTIR_DI_initial_candidates_pass()
 
 #if DEBUG_RENDER_NEIGHBORHOOD
     // Rendering the neighborhood
-    for (int render_y = std::max(0, y - DEBUG_NEIGHBORHOOD_SIZE); render_y < std::min(m_resolution.y, y + DEBUG_NEIGHBORHOOD_SIZE); render_y++)
-        for (int render_x = std::max(0, x - DEBUG_NEIGHBORHOOD_SIZE); render_x < std::min(m_resolution.x, x + DEBUG_NEIGHBORHOOD_SIZE); render_x++)
+
+#pragma omp parallel for schedule(dynamic)
+    for (int render_y = std::max(0, y - DEBUG_NEIGHBORHOOD_SIZE); render_y <= std::min(m_resolution.y - 1, y + DEBUG_NEIGHBORHOOD_SIZE); render_y++)
+        for (int render_x = std::max(0, x - DEBUG_NEIGHBORHOOD_SIZE); render_x <= std::min(m_resolution.x - 1, x + DEBUG_NEIGHBORHOOD_SIZE); render_x++)
             ReSTIR_DI_InitialCandidates(m_render_data, m_resolution, m_hiprt_camera, render_x, render_y);
 #endif // DEBUG_RENDER_NEIGHBORHOOD
 #else // DEBUG_PIXEL
@@ -239,8 +243,10 @@ void CPURenderer::ReSTIR_DI_spatial_reuse_pass()
 
 #if DEBUG_RENDER_NEIGHBORHOOD
     // Rendering the neighborhood
-    for (int render_y = std::max(0, y - DEBUG_NEIGHBORHOOD_SIZE); render_y < std::min(m_resolution.y, y + DEBUG_NEIGHBORHOOD_SIZE); render_y++)
-        for (int render_x = std::max(0, x - DEBUG_NEIGHBORHOOD_SIZE); render_x < std::min(m_resolution.x, x + DEBUG_NEIGHBORHOOD_SIZE); render_x++)
+
+#pragma omp parallel for schedule(dynamic)
+    for (int render_y = std::max(0, y - DEBUG_NEIGHBORHOOD_SIZE); render_y <= std::min(m_resolution.y - 1, y + DEBUG_NEIGHBORHOOD_SIZE); render_y++)
+        for (int render_x = std::max(0, x - DEBUG_NEIGHBORHOOD_SIZE); render_x <= std::min(m_resolution.x - 1, x + DEBUG_NEIGHBORHOOD_SIZE); render_x++)
             ReSTIR_DI_SpatialReuse(m_render_data, m_resolution, m_hiprt_camera, render_x, render_y);
 #endif // DEBUG_RENDER_NEIGHBORHOOD
 #else // DEBUG_PIXEL
@@ -269,8 +275,10 @@ void CPURenderer::tracing_pass()
 
 #if DEBUG_RENDER_NEIGHBORHOOD
     // Rendering the neighborhood
-    for (int render_y = std::max(0, y - DEBUG_NEIGHBORHOOD_SIZE); render_y < std::min(m_resolution.y, y + DEBUG_NEIGHBORHOOD_SIZE); render_y++)
-        for (int render_x = std::max(0, x - DEBUG_NEIGHBORHOOD_SIZE); render_x < std::min(m_resolution.x, x + DEBUG_NEIGHBORHOOD_SIZE); render_x++)
+
+#pragma omp parallel for schedule(dynamic)
+    for (int render_y = std::max(0, y - DEBUG_NEIGHBORHOOD_SIZE); render_y <= std::min(m_resolution.y - 1, y + DEBUG_NEIGHBORHOOD_SIZE); render_y++)
+        for (int render_x = std::max(0, x - DEBUG_NEIGHBORHOOD_SIZE); render_x <= std::min(m_resolution.x - 1, x + DEBUG_NEIGHBORHOOD_SIZE); render_x++)
             FullPathTracer(m_render_data, m_resolution, m_hiprt_camera, render_x, render_y);
 
 #endif // DEBUG_RENDER_NEIGHBORHOOD

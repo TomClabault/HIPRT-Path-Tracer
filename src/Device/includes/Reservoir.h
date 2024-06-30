@@ -50,6 +50,14 @@ struct Reservoir
             UCW = 1.0f / sample.target_function * weight_sum;
     }
 
+    HIPRT_HOST_DEVICE void end_Z(float Z)
+    {
+        if (weight_sum == 0.0f)
+            UCW = 0.0f;
+        else
+            UCW = 1.0f / sample.target_function * weight_sum / Z;
+    }
+
     unsigned int M = 0;
     float weight_sum = 0.0f;
     float UCW = 0.0f;

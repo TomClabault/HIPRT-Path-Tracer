@@ -173,12 +173,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_lights_RIS_reservoir(const HIPRT
             }
         }
 
-        if (candidate_weight != 0.0f)
-            reservoir.add_one_candidate(sample, candidate_weight, random_number_generator);
-        else
-            // Because a candidate with a weight of 0.0f isn't never going to be chosen,
-            // we only need to increment M (the number of candidates seen)
-            reservoir.M++;
+        reservoir.add_one_candidate(sample, candidate_weight, random_number_generator);
     }
 
     reservoir.end();
