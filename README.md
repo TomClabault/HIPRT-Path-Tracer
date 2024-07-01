@@ -101,9 +101,7 @@ sudo apt install libglew-dev
 With the pre-requisites fulfilled, you now just have to run the CMake:
 
 ``` sh
-git clone https://github.com/TomClabault/HIPRT-Path-Tracer.git
-cd HIPRT-Path-Tracer
-git submodule update --init --recursive
+git clone https://github.com/TomClabault/HIPRT-Path-Tracer.git --recursive
 mkdir build
 cd build
 cmake ..
