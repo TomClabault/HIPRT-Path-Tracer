@@ -119,6 +119,9 @@ void ImGuiRenderer::draw_render_settings_panel()
 	if (ImGui::InputInt("Max Sample Count", &m_application_settings->max_sample_count))
 		m_application_settings->max_sample_count = std::max(m_application_settings->max_sample_count, 0);
 
+	if (ImGui::InputFloat("Max Render Time (s)", &m_application_settings->max_render_time))
+		m_application_settings->max_render_time = std::max(m_application_settings->max_render_time, 0.0f);
+
 	unsigned int converged_count;
 	unsigned int total_pixel_count;
 	ImGui::BeginDisabled(render_settings.enable_adaptive_sampling);

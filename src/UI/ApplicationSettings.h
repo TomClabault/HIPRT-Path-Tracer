@@ -70,8 +70,12 @@ struct ApplicationSettings
 	// user ticks the 'keep same resolution' checkbox in ImGui
 	int target_width = 0, target_height = 0;
 
-	// We stop rendering when this number of sample is reached
+	// We stop rendering when this number of sample is reached.
+	// 0 is no limit
 	int max_sample_count = 0;
+	// We stop rendering when the render has been running for that long.
+	// In seconds. 0 is no limit
+	float max_render_time = 0.0f;
 
 	// if true, the number of samples per frame will be adjusted automatically to target 20 FPS. 
 	// This is meant to keep the GPU busy mostly when adaptive sampling is on.

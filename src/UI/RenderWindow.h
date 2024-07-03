@@ -144,7 +144,8 @@ private:
 	// Timer started at the first sample. Used to time how long the render has been running
 	// for so far
 	std::chrono::high_resolution_clock::time_point m_start_cpu_frame_time, m_stop_cpu_frame_time;
-	float m_current_render_time = 0.0f;
+	// How long the current render has been running for in milliseconds
+	float m_current_render_time_ms = 0.0f;
 	float m_samples_per_second = 0.0f;
 
 	std::shared_ptr<ApplicationSettings> m_application_settings;

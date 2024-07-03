@@ -682,9 +682,15 @@ bool RenderWindow::is_rendering_done()
 
 	bool rendering_done = false;
 
+	// No more active pixels (in the case of adaptive sampling for example)
 	rendering_done |= m_renderer->get_ray_active_buffer().download_data()[0] == 0;
+	// All pixels have converged to the noise threshold given
 	rendering_done |= m_renderer->get_stop_noise_threshold_buffer().download_data()[0] == m_renderer->m_render_width * m_renderer->m_render_height;
+	// Max sample count
 	rendering_done |= (m_application_settings->max_sample_count != 0 && render_settings.sample_number + 1 > m_application_settings->max_sample_count);
+	// Max render time
+	float render_time_ms = m_current_render_time_ms / 1000.0f;
+	rendering_done |= (m_application_settings->max_render_time != 0.0f && render_time_ms >= m_application_settings->max_render_time);
 
 	return rendering_done;
 }
@@ -708,7 +714,7 @@ void RenderWindow::reset_render()
 		// point of resetting the number of samples per frame.
 		m_samples_per_second = 0.0f;
 	}
-	m_current_render_time = 0.0f;
+	m_current_render_time_ms = 0.0f;
 	render_settings.sample_number = 0;
 	m_renderer->get_ray_active_buffer().upload_data(&true_data);
 	m_renderer->get_stop_noise_threshold_buffer().upload_data(&zero_data);
@@ -724,7 +730,7 @@ void RenderWindow::set_render_dirty(bool render_dirty)
 
 float RenderWindow::get_current_render_time()
 {
-	return m_current_render_time;
+	return m_current_render_time_ms;
 }
 
 float RenderWindow::get_samples_per_second()
@@ -896,7 +902,7 @@ void RenderWindow::run()
 
 		if (!is_rendering_done())
 		{
-			m_current_render_time += std::chrono::duration_cast<std::chrono::milliseconds>(m_stop_cpu_frame_time - m_start_cpu_frame_time).count();
+			m_current_render_time_ms += std::chrono::duration_cast<std::chrono::milliseconds>(m_stop_cpu_frame_time - m_start_cpu_frame_time).count();
 			m_samples_per_second = 1000.0f / m_renderer->get_sample_time();
 		}
 
