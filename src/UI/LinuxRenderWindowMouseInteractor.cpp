@@ -31,7 +31,8 @@ void LinuxRenderWindowMouseInteractor::glfw_mouse_button_callback(GLFWwindow* wi
     else
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
         
-    reinterpret_cast<RenderWindow*>(glfwGetWindowUserPointer(window))->set_interacting(interacting);
+    RenderWindow* render_window = reinterpret_cast<RenderWindow*>(glfwGetWindowUserPointer(window));
+    render_window->set_render_low_resolution(interacting);
 }
 
 void LinuxRenderWindowMouseInteractor::glfw_mouse_cursor_callback(GLFWwindow* window, double xpos, double ypos)

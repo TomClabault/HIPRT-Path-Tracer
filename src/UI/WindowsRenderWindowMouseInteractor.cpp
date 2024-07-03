@@ -12,6 +12,7 @@
 bool WindowsRenderWindowMouseInteractor::m_interacting_left_button = false;
 bool WindowsRenderWindowMouseInteractor::m_interacting_right_button = false;
 bool WindowsRenderWindowMouseInteractor::m_just_pressed = false;
+std::pair<float, float> WindowsRenderWindowMouseInteractor::m_grab_cursor_position = std::make_pair<float, float>(0.0f, 0.0f);
 
 void WindowsRenderWindowMouseInteractor::glfw_mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 {
@@ -37,14 +38,14 @@ void WindowsRenderWindowMouseInteractor::glfw_mouse_button_callback(GLFWwindow* 
 	{
 		double current_x, current_y;
 		glfwGetCursorPos(window, &current_x, &current_y);
-		render_window->set_grab_cursor_position(std::make_pair(static_cast<float>(current_x), static_cast<float>(current_y)));
+		m_grab_cursor_position = std::make_pair(static_cast<float>(current_x), static_cast<float>(current_y));
 
 		m_just_pressed = true;
 	}
 	else
 		m_just_pressed = false;
 
-	render_window->set_interacting(is_mouse_pressed);
+	render_window->set_render_low_resolution(is_mouse_pressed);
 }
 
 void WindowsRenderWindowMouseInteractor::glfw_mouse_cursor_callback(GLFWwindow* window, double xpos, double ypos)
@@ -69,7 +70,7 @@ void WindowsRenderWindowMouseInteractor::glfw_mouse_cursor_callback(GLFWwindow* 
 		float xposf = static_cast<float>(xpos);
 		float yposf = static_cast<float>(ypos);
 
-		std::pair<float, float> old_position = render_window->get_grab_cursor_position();
+		std::pair<float, float> old_position = m_grab_cursor_position;
 		if (old_position.first == -1 && old_position.second == -1)
 			;
 		// If this is the first position of the cursor, nothing to do

@@ -19,8 +19,6 @@
 
 
 // TODO Code Organization:
-// - add maximum render time
-// - get grab / set grab cursor position needs to be in windows interactor, not render window, get_cursor_position? set_interacting?
 // - investigate why kernel compiling was so much faster in the past (commit db34b23 seems to be a good candidate)
 // - refactor the usage of strings in the compile kernel functions
 // - cleanup orochi gl interop buffer #ifdef everywhere
@@ -370,15 +368,12 @@ int RenderWindow::get_height()
 	return m_viewport_height;
 }
 
-void RenderWindow::set_interacting(bool is_interacting)
+void RenderWindow::set_render_low_resolution(bool on_or_off)
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
+	render_settings.render_low_resolution = on_or_off;
 
-	// The user just released the camera and we were rendering at low resolution
-	if (!is_interacting && render_settings.render_low_resolution)
-		m_render_dirty = true;
-
-	render_settings.render_low_resolution = is_interacting;
+	m_render_dirty = true;
 }
 
 bool RenderWindow::is_interacting()
@@ -756,16 +751,6 @@ std::shared_ptr<PerformanceMetricsComputer> RenderWindow::get_performance_metric
 std::shared_ptr<Screenshoter> RenderWindow::get_screenshoter()
 {
 	return m_screenshoter;
-}
-
-std::pair<float, float> RenderWindow::get_grab_cursor_position()
-{
-	return m_grab_cursor_position;
-}
-
-void RenderWindow::set_grab_cursor_position(std::pair<float, float> new_position)
-{
-	m_grab_cursor_position = new_position;
 }
 
 void RenderWindow::run()

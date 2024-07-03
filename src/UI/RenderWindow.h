@@ -44,7 +44,7 @@ public:
 
 	int get_width();
 	int get_height();
-	void set_interacting(bool is_interacting);
+	void set_render_low_resolution(bool on_or_off);
 	bool is_interacting();
 
 	std::shared_ptr<ApplicationSettings> get_application_settings();
@@ -75,9 +75,6 @@ public:
 
 	float get_current_render_time();
 	float get_samples_per_second();
-
-	std::pair<float, float> get_grab_cursor_position();
-	void set_grab_cursor_position(std::pair<float, float> new_position);
 
 	/**
 	 * Uploads raw data or a buffer to display_texture_1 and draws on
@@ -137,9 +134,6 @@ private:
 	void internal_recreate_display_texture(std::pair<GLuint, DisplayTextureType>& display_texture, GLenum display_texture_unit, DisplayTextureType new_texture_type, int width, int height);
 
 	int m_viewport_width, m_viewport_height;
-	// Current mouse cursor position within the window. Used to compute mouse
-	// mouse delta movement by comparing the new mouse position with this variable
-	std::pair<float, float> m_grab_cursor_position;
 
 	// Timer started at the first sample. Used to time how long the render has been running
 	// for so far
