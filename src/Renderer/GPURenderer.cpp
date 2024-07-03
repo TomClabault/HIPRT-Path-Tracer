@@ -187,7 +187,7 @@ void GPURenderer::compile_trace_kernel(const char* kernel_file_path, const char*
 	auto start = std::chrono::high_resolution_clock::now();
 
 	hiprtApiFunction trace_function_out;
-	std::vector<const char*> options;
+	std::vector<std::string> options;
 	std::vector<std::string> additional_includes = { KERNEL_COMPILER_ADDITIONAL_INCLUDE, DEVICE_INCLUDES_DIRECTORY, OROCHI_INCLUDES_DIRECTORY, "-I./" };
 	std::vector<std::string> macros = m_kernel_options.get_compiler_options();
 	for (const std::string& macro : macros)

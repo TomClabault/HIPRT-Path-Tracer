@@ -20,7 +20,6 @@
 
 // TODO Code Organization:
 // - investigate why kernel compiling was so much faster in the past (commit db34b23 seems to be a good candidate)
-// - refactor the usage of strings in the compile kernel functions
 // - cleanup orochi gl interop buffer #ifdef everywhere
 // - do we need OpenGL Lib/bin in thirdparties?
 // - fork HIPRT and remove the encryption thingy that slows down kernel compilation on NVIDIA

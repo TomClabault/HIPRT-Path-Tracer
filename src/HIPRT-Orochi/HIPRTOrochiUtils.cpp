@@ -131,7 +131,7 @@ namespace HIPPTOrochiUtils
 		const char* function_name,
 		hiprtApiFunction& kernel_function_out,
 		const std::vector<std::string>& additional_include_directories,
-		const std::vector<const char*>& compiler_options,
+		const std::vector<std::string>& compiler_options,
 		unsigned int num_geom_types, unsigned int num_ray_types, 
 		bool use_compiler_cache,
 		hiprtFuncNameSet* func_name_set)
@@ -140,22 +140,18 @@ namespace HIPPTOrochiUtils
 		std::string kernel_source_code;
 		read_source_code(kernel_file_path, kernel_source_code, &include_names);
 
-		// We recreating a vector of options here because we want to the additional_include_directories
-		// as options. For that, we need an existing vector but we're not using the compiler_options options vector
-		// passed in as a parameter because we don't want to modify the input and we're not sure it's
-		// even a valid std::vector (it's an optional)
-		int compiler_options_count = additional_include_directories.size() + compiler_options.size();
-		std::vector<std::string> compiler_options_str;
 		std::vector<const char*> compiler_options_cstr;
-		compiler_options_str.reserve(compiler_options_count);
-		compiler_options_cstr.reserve(compiler_options_count);
-		if (compiler_options.size() > 0)
-			compiler_options_cstr.insert(compiler_options_cstr.end(), compiler_options.begin(), compiler_options.end());
+		
+		for (const std::string& option : compiler_options)
+			compiler_options_cstr.push_back(option.c_str());
+
 		// Adding the additional include directories as options for the GPU compiler (-I flag before the include directory path)
+		std::vector<std::string> additional_includes_str;
+		additional_includes_str.reserve(additional_include_directories.size());
 		for (const std::string& additional_include_dir : additional_include_directories)
 		{
-			compiler_options_str.push_back("-I" + additional_include_dir);
-			compiler_options_cstr.push_back(compiler_options_str.back().c_str());
+			additional_includes_str.push_back("-I" + additional_include_dir);
+			compiler_options_cstr.push_back(additional_includes_str.back().c_str());
 		}
 
 		return hiprtBuildTraceKernels(
@@ -164,9 +160,9 @@ namespace HIPPTOrochiUtils
 			&function_name,
 			kernel_source_code.c_str(),
 			kernel_file_path.c_str(),
-			0, // parsed_header_names.size(),
-			nullptr, // parsed_header_sources.data(),
-			nullptr, // parsed_header_names.data(),
+			0,
+			nullptr,
+			nullptr,
 			compiler_options_cstr.size(),
 			compiler_options_cstr.size() > 0 ? compiler_options_cstr.data() : nullptr,
 			num_geom_types,
