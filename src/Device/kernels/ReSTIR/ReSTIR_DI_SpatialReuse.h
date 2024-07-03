@@ -45,7 +45,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function(const HI
 
 	ColorRGB bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, material, trash_volume_state, view_direction, shading_normal, sample_direction, bsdf_pdf);
 	float cosine_term = hippt::max(0.0f, hippt::dot(shading_normal, sample_direction));
-	float target_function = bsdf_color.length() * sample.emission.length() * cosine_term;
+	float target_function = (bsdf_color * sample.emission * cosine_term).luminance();
 	if (target_function == 0.0f)
 		// Quick exit because computing the visiblity that follows isn't going
 		// to change anything to the fact that we have 0.0f target function here
@@ -62,6 +62,71 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function(const HI
 #endif
 
 	return target_function;
+}
+
+// Adds `newReservoir` into `reservoir`, returns true if the new reservoir's sample was selected.
+// This is a very general form, allowing input parameters to specfiy normalization and targetPdf
+// rather than computing them from `newReservoir`.  Named "internal" since these parameters take
+// different meanings (e.g., in RTXDI_CombineDIReservoirs() or RTXDI_StreamNeighborWithPairwiseMIS())
+HIPRT_HOST_DEVICE HIPRT_INLINE bool RTXDI_InternalSimpleResample(
+	Reservoir& reservoir,
+	Reservoir newReservoir,
+	float random,
+	float targetPdf,            // Usually closely related to the sample normalization, 
+	float sampleNormalization,  //     typically off by some multiplicative factor 
+	float sampleM               // In its most basic form, should be newReservoir.M
+)
+{
+	// What's the current weight (times any prior-step RIS normalization factor)
+	float risWeight = targetPdf * sampleNormalization;
+
+	// Our *effective* candidate pool is the sum of our candidates plus those of our neighbors
+	reservoir.M += sampleM;
+
+	// Update the weight sum
+	reservoir.weight_sum += risWeight;
+
+	// Decide if we will randomly pick this sample
+	bool selectSample = (random * reservoir.weight_sum < risWeight);
+
+	// If we did select this sample, update the relevant data
+	if (selectSample)
+	{
+		reservoir.sample = newReservoir.sample;
+		reservoir.sample.target_function = targetPdf;
+	}
+
+	return selectSample;
+}
+
+// Adds `newReservoir` into `reservoir`, returns true if the new reservoir's sample was selected.
+// Algorithm (4) from the ReSTIR paper, Combining the streams of multiple reservoirs.
+// Normalization - Equation (6) - is postponed until all reservoirs are combined.
+HIPRT_HOST_DEVICE HIPRT_INLINE bool RTXDI_CombineDIReservoirs(
+	Reservoir& reservoir,
+	Reservoir newReservoir,
+	float random,
+	float targetPdf)
+{
+	return RTXDI_InternalSimpleResample(
+		reservoir,
+		newReservoir,
+		random,
+		targetPdf,
+		newReservoir.weight_sum * newReservoir.M,
+		newReservoir.M
+	);
+}
+
+// Performs normalization of the reservoir after streaming. Equation (6) from the ReSTIR paper.
+HIPRT_HOST_DEVICE HIPRT_INLINE void RTXDI_FinalizeResampling(
+	Reservoir& reservoir,
+	float normalizationNumerator,
+	float normalizationDenominator)
+{
+	float denominator = reservoir.sample.target_function * normalizationDenominator;
+
+	reservoir.UCW = (denominator == 0.0) ? 0.0 : (reservoir.weight_sum * normalizationNumerator) / denominator;
 }
 
 #ifdef __KERNELCC__
@@ -181,12 +246,22 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 
 
 
+
+
+
+
+
+
+
+
+
+
+
 	RendererMaterial current_pixel_material = render_data.g_buffer.materials[pixel_index];
 	float3 current_pixel_view_direction = render_data.g_buffer.view_directions[pixel_index];
 	float3 current_pixel_shading_normal = render_data.g_buffer.shading_normals[pixel_index];
 	float3 current_pixel_shading_point = render_data.g_buffer.first_hits[pixel_index] + current_pixel_shading_normal * 1.0e-4f;
 
-	float valid_neighbor_count = 0.0f;
 	for (int neighbor = 0; neighbor < NEIGHBOR_REUSE_COUNT + 1; neighbor++)
 	{
 		int neighbor_pixel_index;
@@ -207,13 +282,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 		Reservoir neighbor_reservoir = render_data.aux_buffers.initial_reservoirs[neighbor_pixel_index];
 
 		float target_function = ReSTIR_DI_evaluate_target_function(render_data, neighbor_reservoir.sample, current_pixel_material, current_pixel_view_direction, current_pixel_shading_point, current_pixel_shading_normal);
-		new_reservoir.combine_with(neighbor_reservoir, neighbor_reservoir.M, target_function, random_number_generator);
-		valid_neighbor_count += neighbor_reservoir.M;
+		if (target_function > 0.0f)
+			new_reservoir.combine_with(neighbor_reservoir, neighbor_reservoir.M, target_function, random_number_generator);
 	}
 
+	float valid_neighbor_count = 0.0f;
 	if (new_reservoir.weight_sum > 0.0f)
 	{
-		valid_neighbor_count = 0.0f;
 		for (int neighbor = 0; neighbor < NEIGHBOR_REUSE_COUNT + 1; neighbor++)
 		{
 			int neighbor_pixel_index;
@@ -244,9 +319,118 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 		}
 	}
 
-		new_reservoir.end_Z(valid_neighbor_count);
-
+	new_reservoir.end_Z(valid_neighbor_count);
 	render_data.aux_buffers.spatial_reservoirs[pixel_index] = new_reservoir;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	//Reservoir state;
+
+	//// Since we're using our bias correction scheme, we need to remember which light selection we made
+	//int selected = -1;
+
+	//Reservoir centerReservoir = render_data.aux_buffers.initial_reservoirs[pixel_index];
+
+	//RTXDI_CombineDIReservoirs(state, centerReservoir, /* random = */ 0.5f, centerReservoir.sample.target_function);
+
+	//// We loop through neighbors twice.  Cache the validity / edge-stopping function
+	////   results for the 2nd time through.
+	//unsigned int cachedResult = 0;
+
+	//RendererMaterial center_material = render_data.g_buffer.materials[pixel_index];
+	//float3 center_view_direction = render_data.g_buffer.view_directions[pixel_index];
+	//float3 center_shading_normal = render_data.g_buffer.shading_normals[pixel_index];
+	//float3 center_shading_point  = render_data.g_buffer.first_hits[pixel_index] + center_shading_normal * 1.0e-4f;
+
+	//// Walk the specified number of neighbors, resampling using RIS
+	//for (int i = 0; i < NEIGHBOR_REUSE_COUNT; ++i)
+	//{
+	//	// Get screen-space location of neighbor
+	//	int2 neighborReservoirPos = neighbor_offsets[i];
+	//	neighborReservoirPos += pixel_coords;
+	//	if (neighborReservoirPos.x < 0 || neighborReservoirPos.x >= res.x || neighborReservoirPos.y < 0 || neighborReservoirPos.y >= res.y)
+	//		// Rejecting the sample if it's outside of the viewport
+	//		continue;
+
+	//	int neighborReservoirIndex = neighborReservoirPos.x + neighborReservoirPos.y * res.x;
+
+	//	Reservoir neighborSample = render_data.aux_buffers.initial_reservoirs[neighborReservoirIndex];
+
+	//	cachedResult |= (1u << i);
+
+	//	// Load that neighbor's RIS state, do resampling
+	//	float neighborWeight = 0;
+	//	if (neighborSample.weight_sum > 0.0f)
+	//		neighborWeight = ReSTIR_DI_evaluate_target_function(render_data, neighborSample.sample, center_material, center_view_direction, center_shading_point, center_shading_normal);
+
+	//	RTXDI_CombineDIReservoirs(state, neighborSample, random_number_generator(), neighborWeight);
+	//}
+
+	//if (state.weight_sum > 0.0f)
+	//{
+	//	// Compute the unbiased normalization term (instead of using 1/M)
+	//	float pi = state.sample.target_function;
+	//	float piSum = state.sample.target_function * centerReservoir.M;
+
+	//	// To do this, we need to walk our neighbors again
+	//	for (int i = 0; i < NEIGHBOR_REUSE_COUNT; ++i)
+	//	{
+	//		// If we skipped this neighbor above, do so again.
+	//		if ((cachedResult & (1u << i)) == 0) continue;
+
+	//		// Get screen-space location of neighbor
+	//		int2 neighborReservoirPos = neighbor_offsets[i];
+	//		neighborReservoirPos += pixel_coords;
+	//		if (neighborReservoirPos.x < 0 || neighborReservoirPos.x >= res.x || neighborReservoirPos.y < 0 || neighborReservoirPos.y >= res.y)
+	//			// Rejecting the sample if it's outside of the viewport
+	//			continue;
+
+	//		int neighborReservoirIndex = neighborReservoirPos.x + neighborReservoirPos.y * res.x;
+
+	//		// Load our neighbor's G-buffer
+	//		Reservoir neighborSample = render_data.aux_buffers.initial_reservoirs[neighborReservoirIndex];
+
+	//		float distance_to_light;
+	//		RendererMaterial neighbor_material = render_data.g_buffer.materials[neighborReservoirIndex];
+	//		float3 neighbor_view_direction = render_data.g_buffer.view_directions[neighborReservoirIndex];
+	//		float3 neighbor_shading_normal = render_data.g_buffer.shading_normals[neighborReservoirIndex];
+	//		float3 neighbor_shading_point = render_data.g_buffer.first_hits[neighborReservoirIndex] + neighbor_shading_normal * 1.0e-4f;
+	//		float3 neighbor_to_light_direction = neighborSample.sample.point_on_light_source - neighbor_shading_point;
+	//		neighbor_to_light_direction /= (distance_to_light = hippt::length(neighbor_to_light_direction));
+
+	//		float ps = ReSTIR_DI_evaluate_target_function(render_data, neighborSample.sample, neighbor_material, neighbor_view_direction, neighbor_shading_point, neighbor_shading_normal);
+
+	//		hiprtRay shadow_ray;
+	//		shadow_ray.origin = neighbor_shading_point;
+	//		shadow_ray.direction = neighbor_to_light_direction;
+
+	//		if (!evaluate_shadow_ray(render_data, shadow_ray, distance_to_light))
+	//			ps = 0;
+
+	//		// Select this sample for the (normalization) numerator if this particular neighbor pixel
+	//		//     was the one we selected via RIS in the first loop, above.
+	//		pi = selected == i ? ps : pi;
+
+	//		// Add to the sums of weights for the (normalization) denominator
+	//		piSum += ps * neighborSample.M;
+	//	}
+
+	//	// Use "MIS-like" normalization
+	//	RTXDI_FinalizeResampling(state, pi, piSum);
+	//}
+
+	//render_data.aux_buffers.spatial_reservoirs[pixel_index] = state;
 }
 
 #endif

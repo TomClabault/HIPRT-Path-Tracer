@@ -96,7 +96,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_lights_RIS_reservoir(const HIPRT
                 light_sample_pdf /= render_data.buffers.emissive_triangles_count;
 
                 // TODO use geometry term in the target function?
-                target_function = bsdf_color.length() * light_source_info.emission.length() * cosine_at_evaluated_point;
+                target_function = (bsdf_color * light_source_info.emission * cosine_at_evaluated_point).luminance();
 
 #if RISUseVisiblityTargetFunction == RIS_USE_VISIBILITY_TRUE
                 hiprtRay shadow_ray;
@@ -157,7 +157,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_lights_RIS_reservoir(const HIPRT
 
                 cosine_light_source = hippt::abs(hippt::dot(bsdf_ray_hit_info.shading_normal, -sampled_direction));
 
-                target_function = bsdf_color.length() * ray_payload.material.emission.length() * cosine_at_evaluated_point;
+                target_function = (bsdf_color * ray_payload.material.emission * cosine_at_evaluated_point).luminance();
 
                 float light_area = triangle_area(render_data, bsdf_ray_hit_info.primitive_index);
                 float light_pdf = bsdf_ray_hit_info.t * bsdf_ray_hit_info.t / cosine_light_source;

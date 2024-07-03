@@ -27,8 +27,8 @@
 // you're measuring the coordinates of the pixel with (0, 0) in the bottom left corner
 #define DEBUG_FLIP_Y 0
 // Coordinates of the pixel to render
-#define DEBUG_PIXEL_X 675
-#define DEBUG_PIXEL_Y 345
+#define DEBUG_PIXEL_X 713
+#define DEBUG_PIXEL_Y 392
 // If 1, a square of DEBUG_NEIGHBORHOOD_SIZE x DEBUG_NEIGHBORHOOD_SIZE pixels
 // will be rendered around the pixel to debug (given by DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y). The pixel of interest is going to be rendered first so you
@@ -279,7 +279,12 @@ void CPURenderer::tracing_pass()
 #pragma omp parallel for schedule(dynamic)
     for (int render_y = std::max(0, y - DEBUG_NEIGHBORHOOD_SIZE); render_y <= std::min(m_resolution.y - 1, y + DEBUG_NEIGHBORHOOD_SIZE); render_y++)
         for (int render_x = std::max(0, x - DEBUG_NEIGHBORHOOD_SIZE); render_x <= std::min(m_resolution.x - 1, x + DEBUG_NEIGHBORHOOD_SIZE); render_x++)
+        {
+            if (render_x == x && render_y == y)
+                continue;
+               
             FullPathTracer(m_render_data, m_resolution, m_hiprt_camera, render_x, render_y);
+        }
 
 #endif // DEBUG_RENDER_NEIGHBORHOOD
 #else // DEBUG_PIXEL
