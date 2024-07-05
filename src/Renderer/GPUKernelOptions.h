@@ -24,7 +24,7 @@ public:
 	 * Gets a list of compiler options of the form { "-D InteriorStackStrategy=1", ... }
 	 * that can directly be passed to the kernel compiler
 	 */
-	std::vector<std::string> get_compiler_options();
+	std::vector<std::string> get_as_std_vector_string();
 
 	/**
 	 * Replace the value of the macro if it has already been added previous to this call

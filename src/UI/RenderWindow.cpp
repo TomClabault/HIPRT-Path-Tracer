@@ -17,7 +17,6 @@
 #include "stb_image_write.h"
 
 // TODO Code Organization:
-// - investigate why kernel compiling was so much faster in the past (commit db34b23 seems to be a good candidate)
 // - cleanup orochi gl interop buffer #ifdef everywhere
 // - do we need OpenGL Lib/bin in thirdparties?
 // - fork HIPRT and remove the encryption thingy that slows down kernel compilation on NVIDIA
@@ -25,12 +24,12 @@
 // - uniform #ifndef in Device headers
 // - Device/ or HostDeviceCommon. Not both
 // - reorganize methods order in RenderWindow
-// - check for level of abstractions in functions
+// - submodules in thirdparty folder
 
 
 
 // TODO Features:
-// - can we do direct lighting + take emissive at all bounces but divide by 2 to avoid double taking into account emissive lights? this would solve missing caustics
+// - enable light sampling while inside mediums because we may have light sources inside mediums
 // - improve performance by only intersecting the selected emissive triangle with the BSDF ray when multiple importance sampling, we don't need a full BVH traversal at all
 // - If could not load given scene file, fallback to cornell box instead of not continuing
 // - CTRL + mouse wheel for zoom in viewport, CTRL click reset zoom
@@ -210,7 +209,6 @@ RenderWindow::RenderWindow(int width, int height) : m_viewport_width(width), m_v
 
 	m_renderer = std::make_shared<GPURenderer>();
 	m_renderer->initialize(0);
-	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_renderer), m_application_settings->kernel_files[m_application_settings->selected_kernel].c_str(), m_application_settings->kernel_functions[m_application_settings->selected_kernel].c_str());
 	m_renderer->change_render_resolution(width, height);
 
 	m_denoiser = std::make_shared<OpenImageDenoiser>();
@@ -373,9 +371,11 @@ int RenderWindow::get_height()
 void RenderWindow::set_render_low_resolution(bool on_or_off)
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
-	render_settings.render_low_resolution = on_or_off;
 
-	m_render_dirty = true;
+	if ((render_settings.render_low_resolution != 0) != on_or_off)
+		m_render_dirty = true;
+
+	render_settings.render_low_resolution = on_or_off;
 }
 
 bool RenderWindow::is_interacting()

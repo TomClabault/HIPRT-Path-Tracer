@@ -20,7 +20,7 @@ GPUKernelOptions::GPUKernelOptions()
 	set_option(GPUKernelOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, RISUseVisiblityTargetFunction);
 }
 
-std::vector<std::string> GPUKernelOptions::get_compiler_options()
+std::vector<std::string> GPUKernelOptions::get_as_std_vector_string()
 {
 	std::vector<std::string> macros;
 

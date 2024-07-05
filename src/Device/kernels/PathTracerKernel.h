@@ -23,6 +23,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE unsigned int wang_hash(unsigned int seed)
     return seed;
 }
 
+
 HIPRT_HOST_DEVICE HIPRT_INLINE void debug_set_final_color(const HIPRTRenderData& render_data, int x, int y, int res_x, ColorRGB final_color)
 {
     if (render_data.render_settings.sample_number == 0)

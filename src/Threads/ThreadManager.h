@@ -42,18 +42,8 @@ public:
 	template <class _Fn, class... _Args>
 	static void start_thread(std::string key, _Fn function, _Args... args)
 	{
-		// We're going to start a thread and store its handle in the map that corresponds to the given key
-
-		auto find = m_threads_map.find(key);
-		if (find == m_threads_map.end())
-			// TODO May not be necessary at all with the [] operator
-			// If the list of threads handles for the given key doesn't exist yet, create it
-			m_threads_map[key] = std::vector<std::thread>();
-
-		std::vector<std::thread>& threads_vec = m_threads_map.find(key)->second;
-
 		// Starting the thread and adding it to the list of threads for the given key
-		threads_vec.push_back(std::thread(function, args...));
+		m_threads_map[key].push_back(std::thread(function, args...));
 	}
 
 	/**

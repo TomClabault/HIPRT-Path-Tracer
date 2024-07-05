@@ -8,6 +8,7 @@
 
 #include "HIPRT-Orochi/OrochiBuffer.h"
 #include "HIPRT-Orochi/OrochiEnvmap.h"
+#include "HIPRT-Orochi/HIPKernel.h"
 #include "HIPRT-Orochi/HIPRTOrochiCtx.h"
 #include "HIPRT-Orochi/HIPRTScene.h"
 #include "HostDeviceCommon/RenderData.h"
@@ -22,6 +23,14 @@
 class GPURenderer
 {
 public:
+	static const std::string PATH_TRACING_KERNEL;
+	static const std::vector<std::string> COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS;
+
+	// Index of the selected kernel. This corresponds to a pair [kernel file, kernel function] as 
+	// defined in the two vectors below
+	std::vector<std::string> kernel_files = { DEVICE_KERNELS_DIRECTORY "/PathTracerKernel.h" };
+	std::vector<std::string> kernel_functions = { PATH_TRACING_KERNEL };
+
 	GPURenderer();
 
 	void render();
@@ -40,11 +49,10 @@ public:
 	HIPRTRenderData get_render_data();
 
 	void initialize(int device_index);
-	void compile_trace_kernel(const char* kernel_file_path, const char* kernel_function_name);
 	void set_kernel_option(const std::string& name, int value);
 	int get_kernel_option_value(const std::string& name);
 	int* get_kernel_option_pointer(const std::string& name);
-	void launch_kernel(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args);
+	void recompile_trace_kernel();
 
 	void set_scene(const Scene& scene);
 	void set_envmap(ImageRGBA& envmap);
@@ -69,7 +77,6 @@ public:
 	float get_gpu_frame_time();
 	float get_sample_time();
 
-
 	int m_render_width = 0, m_render_height = 0;
 
 	Camera m_camera;
@@ -79,6 +86,7 @@ private:
 
 	// Properties of the device
 	oroDeviceProp m_device_properties = { .gcnArchName = "" };
+
 	// GPU events to time the frame
 	oroEvent_t m_frame_start_event = nullptr;
 	oroEvent_t m_frame_stop_event = nullptr;
@@ -126,7 +134,7 @@ private:
 
 	std::shared_ptr<HIPRTOrochiCtx> m_hiprt_orochi_ctx;
 	// Path tracing kernel called at each frame
-	oroFunction m_trace_kernel = nullptr;
+	HIPKernel m_path_trace_kernel;
 
 	// Structure containing the data specific to a scene:
 	//	- hiprtGeom

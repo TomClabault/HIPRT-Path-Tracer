@@ -28,4 +28,6 @@ void ThreadManager::join_threads(std::string key)
 	if (find != m_threads_map.end())
 		for (std::thread& thread : find->second)
 			thread.join();
+
+	m_threads_map[key].clear();
 }

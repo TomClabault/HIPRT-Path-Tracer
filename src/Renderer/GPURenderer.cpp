@@ -4,10 +4,14 @@
  */
 
 #include "Renderer/GPURenderer.h"
+#include "Threads/ThreadFunctions.h"
 #include "Threads/ThreadManager.h"
 #include "UI/ApplicationSettings.h"
 
 #include <Orochi/OrochiUtils.h>
+
+const std::string GPURenderer::PATH_TRACING_KERNEL = "PathTracerKernel";
+const std::vector<std::string> GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS = { KERNEL_COMPILER_ADDITIONAL_INCLUDE, DEVICE_INCLUDES_DIRECTORY, OROCHI_INCLUDES_DIRECTORY, "./"};
 
 GPURenderer::GPURenderer()
 {
@@ -19,6 +23,9 @@ GPURenderer::GPURenderer()
 
 void GPURenderer::render()
 {
+	// Making sure kernels are compiled
+	ThreadManager::join_threads(ThreadManager::COMPILE_KERNEL_THREAD_KEY);
+
 	int tile_size_x = 8;
 	int tile_size_y = 8;
 
@@ -34,7 +41,7 @@ void GPURenderer::render()
 
 	OROCHI_CHECK_ERROR(oroEventRecord(m_frame_start_event, 0));
 
-	launch_kernel(8, 8, resolution.x, resolution.y, launch_args);
+	m_path_trace_kernel.launch_timed(tile_size_x, tile_size_y, resolution.x, resolution.y, launch_args, & m_frame_time);
 
 	OROCHI_CHECK_ERROR(oroEventRecord(m_frame_stop_event, 0));
 	OROCHI_CHECK_ERROR(oroEventSynchronize(m_frame_stop_event));
@@ -170,6 +177,12 @@ void GPURenderer::initialize(int device_index)
 	m_hiprt_orochi_ctx.get()->init(device_index);
 	oroGetDeviceProperties(&m_device_properties, m_hiprt_orochi_ctx->orochi_device);
 
+	m_path_trace_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/PathTracerKernel.h");
+	m_path_trace_kernel.set_kernel_function_name(GPURenderer::PATH_TRACING_KERNEL);
+	m_path_trace_kernel.set_compiler_options(m_kernel_options.get_as_std_vector_string());
+	m_path_trace_kernel.set_additional_includes(GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS);
+	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_path_trace_kernel), std::ref(m_hiprt_orochi_ctx->hiprt_ctx));
+
 	unsigned char true_data = 1;
 	m_still_one_ray_active_buffer.resize(1);
 	m_still_one_ray_active_buffer.upload_data(&true_data);
@@ -178,53 +191,6 @@ void GPURenderer::initialize(int device_index)
 
 	OROCHI_CHECK_ERROR(oroEventCreate(&m_frame_start_event));
 	OROCHI_CHECK_ERROR(oroEventCreate(&m_frame_stop_event));
-}
-
-void GPURenderer::compile_trace_kernel(const char* kernel_file_path, const char* kernel_function_name)
-{
-	std::cout << "Compiling tracer kernel \"" << kernel_function_name << "\"..." << std::endl;
-
-	auto start = std::chrono::high_resolution_clock::now();
-
-	hiprtApiFunction trace_function_out;
-	std::vector<std::string> options;
-	std::vector<std::string> additional_includes = { KERNEL_COMPILER_ADDITIONAL_INCLUDE, DEVICE_INCLUDES_DIRECTORY, OROCHI_INCLUDES_DIRECTORY, "-I./" };
-	std::vector<std::string> macros = m_kernel_options.get_compiler_options();
-	for (const std::string& macro : macros)
-		options.push_back(macro.c_str());
-
-	if (HIPPTOrochiUtils::build_trace_kernel(m_hiprt_orochi_ctx->hiprt_ctx, kernel_file_path, kernel_function_name, trace_function_out, additional_includes, options, 0, 1, false) != hiprtError::hiprtSuccess)
-	{
-		std::cerr << "Unable to compile kernel \"" << kernel_function_name << "\". Cannot continue." << std::endl;
-		int ignored = std::getchar();
-		std::exit(1);
-	}
-
-	std::cout << std::endl;
-
-	m_trace_kernel = *reinterpret_cast<oroFunction*>(&trace_function_out);
-
-	int numRegs = 0;
-	int numSmem = 0;
-
-	if ((m_device_properties.major >= 7 && m_device_properties.minor >= 5) || std::string(m_device_properties.name).find("Radeon") != std::string::npos)
-	{
-		// Getting the number of registers / shared memory of the function
-		// doesn't work on a CC 5.2 NVIDIA GPU but does work on a 7.5 so
-		// I'm assuming this is an issue of compute capability (although
-		// it could be a completely different thing)
-		//
-		// Also this if() statement assumes that getting the number of
-		// registers will work on any AMD card but this has only been
-		// tested on a gfx1100 GPU. This should be tested on older hardware
-		// if possible
-		OROCHI_CHECK_ERROR(oroFuncGetAttribute(&numRegs, ORO_FUNC_ATTRIBUTE_NUM_REGS, m_trace_kernel));
-		OROCHI_CHECK_ERROR(oroFuncGetAttribute(&numSmem, ORO_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES, m_trace_kernel));
-	}
-
-	auto stop = std::chrono::high_resolution_clock::now();
-	std::cout << "Trace kernel: " << numRegs << " registers, shared memory " << numSmem << std::endl;
-	std::cout << "Kernel \"" << kernel_function_name << "\" compiled in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
 }
 
 void GPURenderer::set_kernel_option(const std::string& name, int value)
@@ -242,13 +208,12 @@ int* GPURenderer::get_kernel_option_pointer(const std::string& name)
 	return m_kernel_options.get_pointer_to_option_value(name);
 }
 
-void GPURenderer::launch_kernel(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args)
+void GPURenderer::recompile_trace_kernel()
 {
-	hiprtInt2 nb_groups;
-	nb_groups.x = std::ceil(static_cast<float>(res_x) / tile_size_x);
-	nb_groups.y = std::ceil(static_cast<float>(res_y) / tile_size_y);
-
-	OROCHI_CHECK_ERROR(oroModuleLaunchKernel(m_trace_kernel, nb_groups.x, nb_groups.y, 1, tile_size_x, tile_size_y, 1, 0, 0, launch_args, 0));
+	// Making sure the options are up to date
+	m_path_trace_kernel.set_compiler_options(m_kernel_options.get_as_std_vector_string());
+	// Recompiling
+	m_path_trace_kernel.compile(m_hiprt_orochi_ctx->hiprt_ctx);
 }
 
 void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)

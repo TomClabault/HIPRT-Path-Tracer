@@ -3,11 +3,12 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
+#include "HIPRT-Orochi/HIPKernel.h"
 #include "Threads/ThreadFunctions.h"
 
-void ThreadFunctions::compile_kernel(std::shared_ptr<GPURenderer> renderer, std::string kernel_file, std::string kernel_function)
+void ThreadFunctions::compile_kernel(HIPKernel& kernel, hiprtContext& hiprt_ctx)
 {
-	renderer->compile_trace_kernel(kernel_file.c_str(), kernel_function.c_str());
+    kernel.compile(hiprt_ctx);
 }
 
 void ThreadFunctions::load_texture(Scene& parsed_scene, std::string scene_path, const std::vector<std::pair<aiTextureType, std::string>>& tex_paths, int thread_index, int nb_threads)

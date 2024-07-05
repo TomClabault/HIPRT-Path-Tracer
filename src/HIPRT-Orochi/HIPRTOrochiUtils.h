@@ -24,18 +24,6 @@
 namespace HIPPTOrochiUtils
 {
 	/*
-	 * This function looks for a file that has the name 'header_name'
-	 * in the list of directories given by 'include_directories'
-	 * 
-	 * If the file is found, the path to the file is returned by concatenating
-	 * the include directory in which it was found with the file name
-	 * 
-	 * The empty string is returned if the file is found in none of the include
-	 * directories given
-	 */
-	std::string locate_header_in_include_dirs(const std::string& header_name, const std::vector<std::string> include_directories);
-
-	/*
 	 * Reads a given file, outputs its code in 'sourceCode' and a list of the names
 	 * of the files included in the source file by #include directives in 'includes'
 	 * 
@@ -45,13 +33,14 @@ namespace HIPPTOrochiUtils
 
 	hiprtError build_trace_kernel(hiprtContext ctxt,
 		const std::string& kernel_file_path,
-		const char* function_name,
+		const std::string& function_name,
 		hiprtApiFunction& kernel_function_out,
 		const std::vector<std::string>& additional_include_directories,
 		const std::vector<std::string>& compiler_options,
 		unsigned int num_geom_types, unsigned int num_ray_types,
 		bool use_compiler_cache,
-		hiprtFuncNameSet* func_name_set = nullptr);
+		hiprtFuncNameSet* func_name_set = nullptr,
+		const std::string& additional_cache_key = "");
 }
 
 void orochi_check_error(oroError res, const char* file, uint32_t line);

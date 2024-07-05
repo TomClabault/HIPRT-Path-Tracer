@@ -75,12 +75,6 @@ void ImGuiRenderer::draw_render_settings_panel()
 		return;
 	ImGui::TreePush("Render settings tree");
 
-	if (ImGui::Combo("Render Kernel", &m_application_settings->selected_kernel, "Full Path Tracer\0Normals Visualisation\0\0"))
-	{
-		m_renderer->compile_trace_kernel(m_application_settings->kernel_files[m_application_settings->selected_kernel].c_str(), m_application_settings->kernel_functions[m_application_settings->selected_kernel].c_str());
-		m_render_window->set_render_dirty(true);
-	}
-
 	const char* items[] = { "- Default", "- Denoiser blend", "- Denoiser - Normals", "- Denoiser - Denoised normals", "- Denoiser - Albedo", "- Denoiser - Denoised albedo", "- Adaptive sampling heatmap" };
 	if (ImGui::Combo("Display View", (int*)(&m_application_settings->display_view), items, IM_ARRAYSIZE(items)))
 		m_render_window->change_display_view(m_application_settings->display_view);
@@ -204,8 +198,7 @@ void ImGuiRenderer::draw_render_settings_panel()
 		const char* items[] = { "- Automatic", "- With priorities" };
 		if (ImGui::Combo("Nested dielectrics strategy", m_renderer->get_kernel_option_pointer(GPUKernelOptions::INTERIOR_STACK_STRATEGY), items, IM_ARRAYSIZE(items)))
 		{
-			m_renderer->compile_trace_kernel(m_application_settings->kernel_files[m_application_settings->selected_kernel].c_str(), m_application_settings->kernel_functions[m_application_settings->selected_kernel].c_str());
-
+			m_renderer->recompile_trace_kernel();
 			m_render_window->set_render_dirty(true);
 		}
 
@@ -298,8 +291,7 @@ void ImGuiRenderer::draw_sampling_panel()
 			const char* items[] = { "- No direct light sampling", "- Uniform one light", "- BSDF Sampling", "- MIS (1 Light + 1 BSDF)", "- RIS BDSF + Light candidates" };
 			if (ImGui::Combo("Direct light sampling strategy", m_renderer->get_kernel_option_pointer(GPUKernelOptions::DIRECT_LIGHT_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
 			{
-				m_renderer->compile_trace_kernel(m_application_settings->kernel_files[m_application_settings->selected_kernel].c_str(), m_application_settings->kernel_functions[m_application_settings->selected_kernel].c_str());
-
+				m_renderer->recompile_trace_kernel();
 				m_render_window->set_render_dirty(true);
 			}
 
@@ -321,7 +313,7 @@ void ImGuiRenderer::draw_sampling_panel()
 				if (ImGui::Checkbox("Use visibility in target function", &use_visiblity_checked))
 				{
 					m_renderer->set_kernel_option(GPUKernelOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, use_visiblity_checked ? 1 : 0);
-					m_renderer->compile_trace_kernel(m_application_settings->kernel_files[m_application_settings->selected_kernel].c_str(), m_application_settings->kernel_functions[m_application_settings->selected_kernel].c_str());
+					m_renderer->recompile_trace_kernel();
 
 					m_render_window->set_render_dirty(true);
 				}
@@ -359,8 +351,7 @@ void ImGuiRenderer::draw_sampling_panel()
 			const char* items[] = { "- No envmap sampling", "- Envmap Sampling - Binary Search" };
 			if (ImGui::Combo("Envmap sampling strategy", m_renderer->get_kernel_option_pointer(GPUKernelOptions::ENVMAP_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
 			{
-				m_renderer->compile_trace_kernel(m_application_settings->kernel_files[m_application_settings->selected_kernel].c_str(), m_application_settings->kernel_functions[m_application_settings->selected_kernel].c_str());
-
+				m_renderer->recompile_trace_kernel();
 				m_render_window->set_render_dirty(true);
 			}
 
@@ -643,19 +634,4 @@ void ImGuiRenderer::rescale_ui()
 	ImGuiIO& io = ImGui::GetIO();
 	// Scaling by the DPI -10% as judged more pleasing
 	io.FontGlobalScale = windowDpiScale * 0.9f;
-
-
-	//ImFontConfig font_config;
-	//font_config.OversampleH = 2.0f;
-	//font_config.OversampleV = 2.0f;
-	//font_config.SizePixels = 8 * windowDpiScale;
-
-	//ImGuiIO& io = ImGui::GetIO();
-	//io.Fonts->Clear(); // Clear existing font
-	//io.Fonts->AddFontDefault(&font_config); // Add new font with desired size
-	//io.Fonts->Build(); // Build the new font atlas
-
-	//// Important: Ensure that the texture is updated
-	//ImGui_ImplOpenGL3_DestroyFontsTexture();
-	//ImGui_ImplOpenGL3_CreateFontsTexture();
 }
