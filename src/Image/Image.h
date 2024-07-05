@@ -115,6 +115,7 @@ void ImageBase<PixelType>::compute_cdf()
     m_cdf.resize(height * width);
     m_cdf[0] = 0.0f;
 
+    float max_radiance = 0.0f;
     for (int y = 0; y < height; y++)
     {
         for (int x = 0; x < width; x++)
@@ -122,8 +123,13 @@ void ImageBase<PixelType>::compute_cdf()
             int index = y * width + x;
 
             m_cdf[index] = m_cdf[std::max(index - 1, 0)] + luminance_of_pixel(x, y);
+            max_radiance = std::max(max_radiance, m_pixel_data[x + y * width].r);
+            max_radiance = std::max(max_radiance, m_pixel_data[x + y * width].g);
+            max_radiance = std::max(max_radiance, m_pixel_data[x + y * width].b);
         }
     }
+
+    std::cout << "Max radiance of envmap: " << max_radiance << std::endl;
 
     m_cdf_computed = true;
 }
