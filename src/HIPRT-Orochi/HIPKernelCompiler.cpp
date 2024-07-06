@@ -7,11 +7,6 @@
 #include "HIPRT-Orochi/HIPRTOrochiUtils.h"
 
 #include <chrono>
-#include <format>
-#include <iostream>
-#include <string>
-using namespace std::chrono_literals;
-
 #include <deque>
 
 oroFunction HIPKernelCompiler::compile_kernel(HIPKernel& kernel, hiprtContext& hiprt_ctx, bool use_cache, const std::string& additional_cache_key)
