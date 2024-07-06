@@ -434,14 +434,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_one_light(const HIPRTRenderData& 
         // emissive surface
         return ColorRGB(0.0f);
 
-    if (hippt::dot(view_direction, closest_hit_info.geometric_normal) < 0.0f)
-        // We're not direct sampling if we're inside a surface
-        // 
-        // We're using the geometric normal here because using the shading normal could lead
-        // to false positive because of the black fringes when using smooth normals / normal mapping
-        // + microfacet BRDFs
-        return ColorRGB(0.0f);
-
 #if DirectLightSamplingStrategy == LSS_NO_DIRECT_LIGHT_SAMPLING
     return ColorRGB(0.0f);
 #elif DirectLightSamplingStrategy == LSS_UNIFORM_ONE_LIGHT
