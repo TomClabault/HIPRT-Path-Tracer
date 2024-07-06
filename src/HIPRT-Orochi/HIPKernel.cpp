@@ -63,10 +63,6 @@ void HIPKernel::compile(hiprtContext& hiprt_ctx)
 
 	cache_key = HIPKernelCompiler::get_additional_cache_key(*this);
 	m_kernel_function = HIPKernelCompiler::compile_kernel(*this, hiprt_ctx, true, cache_key);
-
-	// Creating the events for later use
-	OROCHI_CHECK_ERROR(oroEventCreate(&m_execution_start_event));
-	OROCHI_CHECK_ERROR(oroEventCreate(&m_execution_stop_event));
 }
 
 int HIPKernel::get_register_count(oroDeviceProp device_properties)
@@ -97,6 +93,15 @@ int HIPKernel::get_register_count(oroDeviceProp device_properties)
 
 void HIPKernel::launch(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args)
 {
+	if (!m_events_created)
+	{
+		// Creating the events for later use
+		OROCHI_CHECK_ERROR(oroEventCreate(&m_execution_start_event));
+		OROCHI_CHECK_ERROR(oroEventCreate(&m_execution_stop_event));
+
+		m_events_created = true;
+	}
+
 	hiprtInt2 nb_groups;
 	nb_groups.x = std::ceil(static_cast<float>(res_x) / tile_size_x);
 	nb_groups.y = std::ceil(static_cast<float>(res_y) / tile_size_y);
@@ -106,6 +111,15 @@ void HIPKernel::launch(int tile_size_x, int tile_size_y, int res_x, int res_y, v
 
 void HIPKernel::launch_timed(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, float* execution_time_out)
 {
+	if (!m_events_created)
+	{
+		// Creating the events for later use
+		OROCHI_CHECK_ERROR(oroEventCreate(&m_execution_start_event));
+		OROCHI_CHECK_ERROR(oroEventCreate(&m_execution_stop_event));
+
+		m_events_created = true;
+	}
+
 	OROCHI_CHECK_ERROR(oroEventRecord(m_execution_start_event, 0));
 
 	launch(tile_size_x, tile_size_y, res_x, res_y, launch_args);

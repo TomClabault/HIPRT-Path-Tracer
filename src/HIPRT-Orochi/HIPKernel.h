@@ -46,6 +46,9 @@ private:
 	std::vector<std::string> m_additional_include_directories;
 	std::vector<std::string> m_compiler_options;
 
+	// Whether or not the events have been created yet.
+	// We only create them on the first launch() call
+	bool m_events_created = false;
 	// GPU events to time the execution time
 	oroEvent_t m_execution_start_event = nullptr;
 	oroEvent_t m_execution_stop_event = nullptr;
