@@ -20,7 +20,7 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Scene& par
     Assimp::Importer importer;
     const aiScene* scene;
 
-    scene = importer.ReadFile(scene_filepath, aiPostProcessSteps::aiProcess_PreTransformVertices | aiPostProcessSteps::aiProcess_Triangulate);
+    scene = importer.ReadFile(scene_filepath, aiPostProcessSteps::aiProcess_PreTransformVertices | aiPostProcessSteps::aiProcess_Triangulate | aiPostProcessSteps::aiProcess_RemoveRedundantMaterials);
     if (scene == nullptr)
     {
         std::cerr << importer.GetErrorString() << std::endl;
@@ -46,14 +46,22 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Scene& par
     int texture_count;
 
     prepare_textures(scene, texture_paths, material_texture_indices, material_indices, texture_per_mesh, texture_indices_offsets, texture_count);
-    parsed_scene.materials.resize(texture_per_mesh.size());
-    parsed_scene.material_names.resize(texture_per_mesh.size());
+    parsed_scene.materials.resize(scene->mNumMaterials);
+    parsed_scene.material_names.resize(scene->mNumMaterials);
     parsed_scene.textures.resize(texture_count);
     parsed_scene.textures_dims.resize(texture_count);
     dispatch_texture_loading(parsed_scene, scene_filepath, options.nb_texture_threads, texture_paths);
     assign_material_texture_indices(parsed_scene.materials, material_texture_indices, texture_indices_offsets);
 
     parse_camera(scene, parsed_scene, options.override_aspect_ratio);
+
+    // Used to quickly check whether we've already seen a material based on its
+    // index (because multiple meshes may share the same material, we don't want
+    // to duplicate that material in our material array, we want to use only one).
+    // If we've already seen that material, then there's nothing to do and we can
+    // ignore the material of the mesh being processed since we've already added it
+    // to our materials buffer
+    std::unordered_set<int> material_indices_already_seen;
 
     // If the scene contains multiple meshes, each mesh will have
     // its vertices indices starting at 0. We don't want that.
@@ -66,16 +74,26 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Scene& par
     for (int mesh_index = 0; mesh_index < scene->mNumMeshes; mesh_index++)
     {
         aiMesh* mesh = scene->mMeshes[mesh_index];
-        aiMaterial* mesh_material = scene->mMaterials[mesh->mMaterialIndex];
+        int material_index = mesh->mMaterialIndex;
+        aiMaterial* mesh_material = scene->mMaterials[material_index];
         std::string material_name = std::string(mesh_material->GetName().C_Str());
+        if (material_name == "")
+            // Default name for materials that don't have one
+            material_name = "Material." + material_index;
 
-        RendererMaterial& renderer_material = parsed_scene.materials[mesh_index];
-        read_material_properties(mesh_material, renderer_material);
+        RendererMaterial& renderer_material = parsed_scene.materials[material_index];
+        if (material_indices_already_seen.find(mesh->mMaterialIndex) == material_indices_already_seen.end())
+        {
+            // If we haven't seen that material before
+
+            read_material_properties(mesh_material, renderer_material);
+            material_indices_already_seen.insert(mesh->mMaterialIndex);
+        }
 
         //Adding the material to the parsed scene
         bool is_mesh_emissive = renderer_material.is_emissive();
 
-        parsed_scene.material_names[mesh_index] = material_name;
+        parsed_scene.material_names[material_index] = material_name;
         // Inserting the normals if present
         if (mesh->HasNormals())
             parsed_scene.vertex_normals.insert(parsed_scene.vertex_normals.end(),
@@ -86,7 +104,7 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Scene& par
 
         // Inserting texcoords if present, looking at set 0 because that's where "classical" texcoords are.
         // Other sets are assumed not interesting here.
-        if (mesh->HasTextureCoords(0) && texture_per_mesh[mesh_index] > 0)
+        if (mesh->HasTextureCoords(0) && texture_per_mesh[material_index] > 0)
             for (int i = 0; i < mesh->mNumVertices; i++)
                 parsed_scene.texcoords.push_back(make_float2(mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y));
         else
@@ -130,7 +148,7 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Scene& par
         // same material.
         // If you're importing the 3D model of a car, even though you probably think of it as only one "3D mesh",
         // ASSIMP sees it as composed of as many meshes as there are different materials
-        parsed_scene.material_indices.insert(parsed_scene.material_indices.end(), mesh->mNumFaces, mesh_index);
+        parsed_scene.material_indices.insert(parsed_scene.material_indices.end(), mesh->mNumFaces, material_index);
 
         // If the max index of the mesh was 19, we want the next to start
         // at 20, not 19, so we ++
@@ -201,10 +219,9 @@ void SceneParser::prepare_textures(const aiScene* scene, std::vector<std::pair<a
     std::vector<std::pair<aiTextureType, std::string>> mesh_texture_paths;
     int global_texture_index_offset = 0;
 
-    for (int mesh_index = 0; mesh_index < scene->mNumMeshes; mesh_index++)
+    for (int material_index = 0; material_index < scene->mNumMaterials; material_index++)
     {
-        aiMesh* mesh = scene->mMeshes[mesh_index];
-        aiMaterial* mesh_material = scene->mMaterials[mesh->mMaterialIndex];
+        aiMaterial* mesh_material = scene->mMaterials[material_index];
         ParsedMaterialTextureIndices tex_indices;
 
         // Reading the paths of the textures of the mesh
@@ -213,7 +230,7 @@ void SceneParser::prepare_textures(const aiScene* scene, std::vector<std::pair<a
 
         int mesh_texture_count = mesh_texture_paths.size();
 
-        material_indices.insert(material_indices.end(), mesh_texture_count, mesh_index);
+        material_indices.insert(material_indices.end(), mesh_texture_count, material_index);
         material_texture_indices.push_back(tex_indices);
         texture_paths.insert(texture_paths.end(), mesh_texture_paths.begin(), mesh_texture_paths.end());
         texture_per_mesh.push_back(mesh_texture_count);
