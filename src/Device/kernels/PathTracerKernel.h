@@ -258,32 +258,33 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                     ColorRGB skysphere_color;
                     if (render_data.world_settings.ambient_light_type == AmbientLightType::UNIFORM)
                         skysphere_color = render_data.world_settings.uniform_light_color;
-#if EnvmapSamplingStrategy != ESS_NO_SAMPLING
-                    // Only checking that it is the first bounce if we're importance sampling the envmap.
-                    // Said otherwise, we're always going to take the envmap radiance into account on a
-                    // ray miss if we're not importance sampling the envmap
-                    else if (render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP && bounce == 0)
-#endif
+                    else if (render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP)
                     {
-                        // We're only getting the skysphere radiance for the first rays because the
-                        // syksphere is importance sampled.
-                        // 
-                        // We're also getting the skysphere radiance for perfectly specular BRDF since those
-                        // are not importance sampled.
+#if EnvmapSamplingStrategy != ESS_NO_SAMPLING
+                        // If we have sampling, only taking envmap into account on camera ray miss
+                        if (bounce == 0)
+#endif
+                        {
+                            // We're only getting the skysphere radiance for the first rays because the
+                            // syksphere is importance sampled.
+                            // 
+                            // We're also getting the skysphere radiance for perfectly specular BRDF since those
+                            // are not importance sampled.
 
-                        skysphere_color = sample_environment_map_from_direction(render_data.world_settings, ray.direction);
+                            skysphere_color = sample_environment_map_from_direction(render_data.world_settings, ray.direction);
 
 #if EnvmapSamplingStrategy == ESS_NO_SAMPLING
-                        // If we don't have envmap sampling, we're only going to unscale on
-                        // bounce 0 (which is when a ray misses directly --> background color).
-                        // Otherwise, if not bounce 2, we do want to take the scaling into
-                        // account so this if will fail and the envmap color will never be unscaled
-                        if (!render_data.world_settings.envmap_scale_background_intensity && bounce == 0)
+                            // If we don't have envmap sampling, we're only going to unscale on
+                            // bounce 0 (which is when a ray misses directly --> background color).
+                            // Otherwise, if not bounce 2, we do want to take the scaling into
+                            // account so this if will fail and the envmap color will never be unscaled
+                            if (!render_data.world_settings.envmap_scale_background_intensity && bounce == 0)
 #else
-                        if (!render_data.world_settings.envmap_scale_background_intensity)
+                            if (!render_data.world_settings.envmap_scale_background_intensity)
 #endif
-                            // Un-scaling the envmap if the user doesn't want to scale the background
-                            skysphere_color /= render_data.world_settings.envmap_intensity;
+                                // Un-scaling the envmap if the user doesn't want to scale the background
+                                skysphere_color /= render_data.world_settings.envmap_intensity;
+                        }
                     }
 
                     ColorRGB skysphere_clamp(render_data.render_settings.envmap_contribution_clamp > 0.0f ? render_data.render_settings.envmap_contribution_clamp : 1.0e35f);
