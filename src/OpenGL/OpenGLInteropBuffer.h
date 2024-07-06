@@ -18,6 +18,12 @@ namespace CudaGLInterop
 #include <contrib/cuew/include/cuew.h>
 }
 
+#ifdef OROCHI_ENABLE_CUEW
+#define oroGraphicsGLRegisterBuffer CudaGLInterop::cuGraphicsGLRegisterBuffer_oro
+#else
+#define oroGraphicsGLRegisterBuffer hipGraphicsGLRegisterBuffer
+#endif
+
 // TODO this class uses HIP for the registering / mapping because Orochi doesn't have opengl interop yet ?
 // we should be using Orochi here instead of HIP because this is not NVIDIA friendly since we would have to
 // link with HIP during the compilation. That's why NVIDIA OpenGL interop is disabled for now
@@ -70,11 +76,7 @@ OpenGLInteropBuffer<T>::OpenGLInteropBuffer(int element_count)
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, m_buffer_name);
 	glBufferData(GL_PIXEL_UNPACK_BUFFER, element_count * sizeof(T), nullptr, GL_DYNAMIC_DRAW);
 
-#ifdef OROCHI_ENABLE_CUEW
-	CudaGLInterop::CUresult res = CudaGLInterop::cuGraphicsGLRegisterBuffer_oro(&m_buffer_resource, m_buffer_name, CudaGLInterop::CUgraphicsRegisterFlags_enum::CU_GRAPHICS_REGISTER_FLAGS_NONE);
-#else
-	hipGraphicsGLRegisterBuffer((hipGraphicsResource_t*)&m_buffer_resource, m_buffer_name, hipGraphicsRegisterFlagsNone);
-#endif
+	oroGraphicsGLRegisterBuffer(&m_buffer_resource, m_buffer_name, oroGraphicsRegisterFlagsNone);
 
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 
@@ -117,15 +119,14 @@ void OpenGLInteropBuffer<T>::resize(int new_element_count)
 		glBufferData(GL_PIXEL_UNPACK_BUFFER, new_element_count * sizeof(T), nullptr, GL_DYNAMIC_DRAW);
 	}
 
+#ifndef OROCHI_ENABLE_CUEW
 	// TODO hipGLGetDevices here is required for hipGraphicsGLRegisterBuffer to work. This is very scuffed.
-#ifdef OROCHI_ENABLE_CUEW
-	CudaGLInterop::CUresult res = CudaGLInterop::cuGraphicsGLRegisterBuffer_oro(&m_buffer_resource, m_buffer_name, CudaGLInterop::CUgraphicsRegisterFlags_enum::CU_GRAPHICS_REGISTER_FLAGS_NONE);
-#else
 	unsigned int count = 0;
 	std::vector<int> devices(16);
 	hipGLGetDevices(&count, devices.data(), 16, hipGLDeviceListAll);
-	OROCHI_CHECK_ERROR(hipGraphicsGLRegisterBuffer((hipGraphicsResource_t*)&m_buffer_resource, m_buffer_name, hipGraphicsRegisterFlagsNone));
 #endif
+
+	oroGraphicsGLRegisterBuffer(&m_buffer_resource, m_buffer_name, oroGraphicsRegisterFlagsNone);
 
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 
@@ -163,15 +164,8 @@ T* OpenGLInteropBuffer<T>::map()
 		return m_mapped_pointer;
 	}
 
-#ifdef OROCHI_ENABLE_CUEW
-	CudaGLInterop::CUresult res = CudaGLInterop::cuGraphicsMapResources_oro(1, &m_buffer_resource, 0);
-	res = CudaGLInterop::cuGraphicsResourceGetMappedPointer_v2_oro(reinterpret_cast<CudaGLInterop::CUdeviceptr*>(&m_mapped_pointer), &m_byte_size, m_buffer_resource);
-#else
-	// This call to MapResources seems to be the source of a very slow memory leak but it's hard to say why.
-	// https://forums.developer.nvidia.com/t/cudagraphicsmapresources-cause-memoryleak/269349
-	OROCHI_CHECK_ERROR(oroGraphicsMapResources(1, &m_buffer_resource, 0));
-	OROCHI_CHECK_ERROR(oroGraphicsResourceGetMappedPointer((void**)&m_mapped_pointer, &m_byte_size, m_buffer_resource));
-#endif
+	OROCHI_CHECK_ERROR(oroGraphicsMapResources(1, reinterpret_cast<oroGraphicsResource_t*>(&m_buffer_resource), 0));
+	OROCHI_CHECK_ERROR(oroGraphicsResourceGetMappedPointer((void**)(&m_mapped_pointer), & m_byte_size, reinterpret_cast<oroGraphicsResource_t>(m_buffer_resource)));
 
 	m_mapped = true;
 	return m_mapped_pointer;
@@ -184,11 +178,7 @@ void OpenGLInteropBuffer<T>::unmap()
 		// Already unmapped
 		return;
 
-#ifdef OROCHI_ENABLE_CUEW
-	CudaGLInterop::CUresult res = CudaGLInterop::cuGraphicsUnmapResources_oro(1, &m_buffer_resource, 0);
-#else
-	OROCHI_CHECK_ERROR(oroGraphicsUnmapResources(1, &m_buffer_resource, 0));
-#endif
+	OROCHI_CHECK_ERROR(oroGraphicsUnmapResources(1, reinterpret_cast<oroGraphicsResource_t*>(&m_buffer_resource), 0));
 
 	m_mapped = false;
 	m_mapped_pointer = nullptr;
@@ -217,11 +207,7 @@ OpenGLInteropBuffer<T>::~OpenGLInteropBuffer()
 		if (m_mapped)
 			unmap();
 
-#ifdef OROCHI_ENABLE_CUEW
-		CudaGLInterop::CUresult res = CudaGLInterop::cuGraphicsUnregisterResource_oro(m_buffer_resource);
-#else
-		OROCHI_CHECK_ERROR(oroGraphicsUnregisterResource(m_buffer_resource));
-#endif
+		OROCHI_CHECK_ERROR(oroGraphicsUnregisterResource(reinterpret_cast<oroGraphicsResource_t>(m_buffer_resource)));
 	}
 }
 

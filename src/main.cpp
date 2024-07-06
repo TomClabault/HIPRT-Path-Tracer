@@ -61,7 +61,7 @@ int main(int argc, char* argv[])
     renderer->set_camera(parsed_scene.camera);
     renderer->set_scene(parsed_scene);
     stop_full = std::chrono::high_resolution_clock::now();
-    std::cout << "Full scene & textures parsed in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop_full - start_full).count() << "ms" << std::endl;
+    std::cout << "Full scene parsed & built in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop_full - start_full).count() << "ms" << std::endl;
 
     render_window.run();
 
