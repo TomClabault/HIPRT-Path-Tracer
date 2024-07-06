@@ -1,4 +1,4 @@
-set(OROCHI_SUBMODULE_DIR ${CMAKE_SOURCE_DIR}/Orochi-Fork)
+set(OROCHI_SUBMODULE_DIR ${CMAKE_SOURCE_DIR}/thirdparties/Orochi-Fork)
 
 if(NOT EXISTS ${OROCHI_SUBMODULE_DIR}/ParallelPrimitives)
 	# Making sure that the Orochi submodule was cloned

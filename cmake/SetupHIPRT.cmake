@@ -1,4 +1,4 @@
-set(HIPRT_SUBMODULE_DIR ${CMAKE_SOURCE_DIR}/HIPRT-Fork)
+set(HIPRT_SUBMODULE_DIR ${CMAKE_SOURCE_DIR}/thirdparties/HIPRT-Fork)
 
 if(NOT EXISTS ${HIPRT_SUBMODULE_DIR}/hiprt)
 	# Making sure that the HIPRT submodule was cloned

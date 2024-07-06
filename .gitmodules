@@ -1,9 +1,9 @@
 [submodule "Orochi-Fork"]
-	path = Orochi-Fork
+	path = thirdparties/Orochi-Fork
 	url = https://github.com/TomClabault/Orochi.git
 [submodule "HIPRT-Fork"]
-	path = HIPRT-Fork
+	path = thirdparties/HIPRT-Fork
 	url = https://github.com/TomClabault/HIPRT.git
 [submodule "ASSIMP-Fork"]
-	path = ASSIMP-Fork
+	path = thirdparties/ASSIMP-Fork
 	url = https://github.com/TomClabault/assimp.git
