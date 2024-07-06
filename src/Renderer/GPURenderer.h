@@ -48,7 +48,6 @@ public:
 	WorldSettings& get_world_settings();
 	HIPRTRenderData get_render_data();
 
-	void initialize(int device_index);
 	void set_kernel_option(const std::string& name, int value);
 	int get_kernel_option_value(const std::string& name);
 	int* get_kernel_option_pointer(const std::string& name);

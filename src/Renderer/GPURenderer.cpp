@@ -15,10 +15,34 @@ const std::vector<std::string> GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIR
 
 GPURenderer::GPURenderer()
 {
+	// Creating buffers
 	m_framebuffer = std::make_shared<OpenGLInteropBuffer<ColorRGB>>();
 	m_denoised_framebuffer = std::make_shared<OpenGLInteropBuffer<ColorRGB>>();
 	m_normals_AOV_buffer = std::make_shared<OpenGLInteropBuffer<float3>>();
 	m_albedo_AOV_buffer = std::make_shared<OpenGLInteropBuffer<ColorRGB>>();
+
+	// Creating HIPRT's context
+	m_hiprt_orochi_ctx = std::make_shared<HIPRTOrochiCtx>();
+	m_hiprt_orochi_ctx.get()->init(0);
+	oroGetDeviceProperties(&m_device_properties, m_hiprt_orochi_ctx->orochi_device);
+
+	// Compiling the kernels
+	m_path_trace_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/PathTracerKernel.h");
+	m_path_trace_kernel.set_kernel_function_name(GPURenderer::PATH_TRACING_KERNEL);
+	m_path_trace_kernel.set_compiler_options(m_kernel_options.get_as_std_vector_string());
+	m_path_trace_kernel.set_additional_includes(GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS);
+	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_path_trace_kernel), std::ref(m_hiprt_orochi_ctx->hiprt_ctx));
+
+	// Buffer that keeps track of whether at least one ray is still alive or not
+	unsigned char true_data = 1;
+	m_still_one_ray_active_buffer.resize(1);
+	m_still_one_ray_active_buffer.upload_data(&true_data);
+
+	m_stop_noise_threshold_count_buffer.resize(1);
+
+	// Creation of the events for timing the frames
+	OROCHI_CHECK_ERROR(oroEventCreate(&m_frame_start_event));
+	OROCHI_CHECK_ERROR(oroEventCreate(&m_frame_stop_event));
 }
 
 void GPURenderer::render()
@@ -169,28 +193,6 @@ HIPRTRenderData GPURenderer::get_render_data()
 	render_data.render_settings = m_render_settings;
 
 	return render_data;
-}
-
-void GPURenderer::initialize(int device_index)
-{
-	m_hiprt_orochi_ctx = std::make_shared<HIPRTOrochiCtx>();
-	m_hiprt_orochi_ctx.get()->init(device_index);
-	oroGetDeviceProperties(&m_device_properties, m_hiprt_orochi_ctx->orochi_device);
-
-	m_path_trace_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/PathTracerKernel.h");
-	m_path_trace_kernel.set_kernel_function_name(GPURenderer::PATH_TRACING_KERNEL);
-	m_path_trace_kernel.set_compiler_options(m_kernel_options.get_as_std_vector_string());
-	m_path_trace_kernel.set_additional_includes(GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS);
-	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_path_trace_kernel), std::ref(m_hiprt_orochi_ctx->hiprt_ctx));
-
-	unsigned char true_data = 1;
-	m_still_one_ray_active_buffer.resize(1);
-	m_still_one_ray_active_buffer.upload_data(&true_data);
-
-	m_stop_noise_threshold_count_buffer.resize(1);
-
-	OROCHI_CHECK_ERROR(oroEventCreate(&m_frame_start_event));
-	OROCHI_CHECK_ERROR(oroEventCreate(&m_frame_stop_event));
 }
 
 void GPURenderer::set_kernel_option(const std::string& name, int value)

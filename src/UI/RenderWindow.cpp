@@ -208,7 +208,6 @@ RenderWindow::RenderWindow(int width, int height) : m_viewport_width(width), m_v
 	m_application_settings = std::make_shared<ApplicationSettings>();
 
 	m_renderer = std::make_shared<GPURenderer>();
-	m_renderer->initialize(0);
 	m_renderer->change_render_resolution(width, height);
 
 	m_denoiser = std::make_shared<OpenImageDenoiser>();
