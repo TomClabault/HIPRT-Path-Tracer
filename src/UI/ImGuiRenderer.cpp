@@ -26,7 +26,7 @@ void ImGuiRenderer::draw_imgui_interface()
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 
 	ImGuiIO& io = ImGui::GetIO();
-	// ImGui::ShowDemoWindow();
+	ImGui::ShowDemoWindow();
 
 	ImGui::Begin("Settings");
 
@@ -633,4 +633,29 @@ void ImGuiRenderer::draw_debug_panel()
 
 	ImGui::TreePush("Debug tree");
 	ImGui::TreePop();
+}
+
+void ImGuiRenderer::rescale_ui()
+{
+	ImGuiViewport* viewport = ImGui::GetMainViewport();
+	float windowDpiScale = viewport->DpiScale;
+
+	ImGuiIO& io = ImGui::GetIO();
+	// Scaling by the DPI -10% as judged more pleasing
+	io.FontGlobalScale = windowDpiScale * 0.9f;
+
+
+	//ImFontConfig font_config;
+	//font_config.OversampleH = 2.0f;
+	//font_config.OversampleV = 2.0f;
+	//font_config.SizePixels = 8 * windowDpiScale;
+
+	//ImGuiIO& io = ImGui::GetIO();
+	//io.Fonts->Clear(); // Clear existing font
+	//io.Fonts->AddFontDefault(&font_config); // Add new font with desired size
+	//io.Fonts->Build(); // Build the new font atlas
+
+	//// Important: Ensure that the texture is updated
+	//ImGui_ImplOpenGL3_DestroyFontsTexture();
+	//ImGui_ImplOpenGL3_CreateFontsTexture();
 }

@@ -16,8 +16,6 @@
 
 #include "stb_image_write.h"
 
-
-
 // TODO Code Organization:
 // - investigate why kernel compiling was so much faster in the past (commit db34b23 seems to be a good candidate)
 // - cleanup orochi gl interop buffer #ifdef everywhere
@@ -138,12 +136,16 @@ void glfw_window_resized_callback(GLFWwindow* window, int width, int height)
 	int new_width_pixels, new_height_pixels;
 	glfwGetFramebufferSize(window, &new_width_pixels, &new_height_pixels);
 
+
 	if (new_width_pixels == 0 || new_height_pixels == 0)
 		// This probably means that the application has been minimized, we're not doing anything then
 		return;
 	else
+	{
 		// We've stored a pointer to the RenderWindow in the "WindowUserPointer" of glfw
-		reinterpret_cast<RenderWindow*>(glfwGetWindowUserPointer(window))->resize_frame(width, height);
+		RenderWindow* render_window = reinterpret_cast<RenderWindow*>(glfwGetWindowUserPointer(window));
+		render_window->resize_frame(width, height);
+	}
 }
 
 // Implementation from https://learnopengl.com/In-Practice/Debugging
@@ -224,7 +226,8 @@ RenderWindow::RenderWindow(int width, int height) : m_viewport_width(width), m_v
 
 	m_perf_metrics = std::make_shared<PerformanceMetricsComputer>();
 
-	m_imgui_renderer.set_render_window(this);
+	m_imgui_renderer = std::make_shared<ImGuiRenderer>();
+	m_imgui_renderer->set_render_window(this);
 
 	create_display_programs();
 
@@ -752,6 +755,11 @@ std::shared_ptr<Screenshoter> RenderWindow::get_screenshoter()
 	return m_screenshoter;
 }
 
+std::shared_ptr<ImGuiRenderer> RenderWindow::get_imgui_renderer()
+{
+	return m_imgui_renderer;
+}
+
 void RenderWindow::run()
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
@@ -776,6 +784,7 @@ void RenderWindow::run()
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
+		m_imgui_renderer->rescale_ui();
 
 		render();
 
@@ -880,7 +889,7 @@ void RenderWindow::run()
 			break;
 		}
 		
-		m_imgui_renderer.draw_imgui_interface();
+		m_imgui_renderer->draw_imgui_interface();
 
 		m_stop_cpu_frame_time = std::chrono::high_resolution_clock::now();
 

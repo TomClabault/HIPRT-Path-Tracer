@@ -34,6 +34,8 @@ public:
 	void draw_performance_panel();
 	void draw_debug_panel();
 
+	void rescale_ui();
+
 private:
 	RenderWindow* m_render_window;
 

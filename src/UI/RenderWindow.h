@@ -52,6 +52,7 @@ public:
 	std::shared_ptr<OpenImageDenoiser> get_denoiser();
 	std::shared_ptr<PerformanceMetricsComputer> get_performance_metrics();
 	std::shared_ptr<Screenshoter> get_screenshoter();
+	std::shared_ptr<ImGuiRenderer> get_imgui_renderer();
 
 	void create_display_programs();
 	void change_display_view(DisplayView display_view);
@@ -189,7 +190,7 @@ private:
 	// Needs to be a unique_ptr because we're using polymorphism for the Linux/Windows implementation here
 	std::unique_ptr<RenderWindowMouseInteractor> m_mouse_interactor;
 	RenderWindowKeyboardInteractor m_keyboard_interactor;
-	ImGuiRenderer m_imgui_renderer;
+	std::shared_ptr<ImGuiRenderer> m_imgui_renderer;
 
 	std::pair<float, float> m_cursor_position;
 };
