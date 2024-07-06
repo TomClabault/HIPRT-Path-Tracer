@@ -2,7 +2,7 @@
 
 ![HIPRT path tracer cover](README_data/img/P1_environment.jpg)
 
-Physically based Monte Carlo path tracer written with the [HIP RT](https://gpuopen.com/hiprt/) and [Orochi](https://gpuopen.com/orochi/) libraries.
+Physically based Monte Carlo path tracer written with the [HIPRT](https://gpuopen.com/hiprt/) and [Orochi](https://gpuopen.com/orochi/) libraries.
 
 HIPRT is AMD's equivalent to [OptiX](https://developer.nvidia.com/rtx/ray-tracing/optix). It allows the use of the ray tracing accelerators of RDNA2+ AMD GPUs and can run on NVIDIA devices as well (although it wouldn't take advatange of RT cores) as it is not AMD specific. 
 
@@ -22,7 +22,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 		- The Oren Nayar microfacet diffuse model.
 - Texture support for all the parameters of the BSDF
 - BSDF Multiple Importance Sampling for Direct lighting
-- Resampled Importance Sampling + Weighted Reservoir Sampling for many light sampling [\[Talbot, 2005\]](https://www.researchgate.net/publication/220852928_Importance_Resampling_for_Global_Illumination) + [\[M. T. Chao, 1982\]](https://www.jstor.org/stable/2336002)
+- Resampled Importance Sampling (RIS) + Weighted Reservoir Sampling (WRS) for many light sampling [\[Talbot, 2005\]](https://www.researchgate.net/publication/220852928_Importance_Resampling_for_Global_Illumination) + [\[M. T. Chao, 1982\]](https://www.jstor.org/stable/2336002)
 - HDR Environment map + Multiple Importance Sampling using
 	- CDF-inversion binary search
 - Emissive geometry light sampling
@@ -37,6 +37,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 - Optimized application startup time with:
 	- Multithreaded texture loading
 	- Asynchronous path tracing kernel compilation
+	- Shader cache to avoid recompiling kernels unecessarily
 - Intel [Open Image Denoise](https://github.com/RenderKit/oidn) + Normals & Albedo AOV support
 
 ### A more detailed explanation & showcase of the features can be found [here](README_data/Features/features.md).
