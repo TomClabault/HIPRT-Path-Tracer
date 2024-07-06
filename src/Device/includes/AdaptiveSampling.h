@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef ADAPTIVE_SAMPLING_H
-#define ADAPTIVE_SAMPLING_H
+#ifndef DEVICE_ADAPTIVE_SAMPLING_H
+#define DEVICE_ADAPTIVE_SAMPLING_H
 
 #include "HostDeviceCommon/RenderData.h"
 

@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef HIPRT_DISNEY_H
-#define HIPRT_DISNEY_H
+#ifndef DEVICE_DISNEY_H
+#define DEVICE_DISNEY_H
 
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/ONB.h"

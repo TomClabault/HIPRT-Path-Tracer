@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef HIPRT_ONB_H
-#define HIPRT_ONB_H
+#ifndef DEVICE_ONB_H
+#define DEVICE_ONB_H
 
 #include "HostDeviceCommon/Math.h"
 

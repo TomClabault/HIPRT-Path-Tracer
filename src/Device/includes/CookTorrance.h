@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef COOK_TORRANCE_H
-#define COOK_TORRANCE_H
+#ifndef DEVICE_COOK_TORRANCE_H
+#define DEVICE_COOK_TORRANCE_H
 
 #include "HostDeviceCommon/Math.h"
 #include "HostDeviceCommon/Material.h"

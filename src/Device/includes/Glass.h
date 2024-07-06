@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef GLASS_H
-#define GLASS_H
+#ifndef DEVICE_GLASS_H
+#define DEVICE_GLASS_H
 
 #include "HostDeviceCommon/Math.h"
 #include "HostDeviceCommon/Material.h"

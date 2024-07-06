@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef HIPRT_SAMPLING_H
-#define HIPRT_SAMPLING_H
+#ifndef DEVICE_SAMPLING_H
+#define DEVICE_SAMPLING_H
 
 #include "Device/includes/ONB.h"
 #include "HostDeviceCommon/Color.h"

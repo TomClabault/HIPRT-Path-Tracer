@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef MATH_H
-#define MATH_H
+#ifndef HOST_DEVICE_COMMON_MATH_H
+#define HOST_DEVICE_COMMON_MATH_H
 
 #if defined( __KERNELCC__ )
 #include <hiprt/hiprt_device.h>

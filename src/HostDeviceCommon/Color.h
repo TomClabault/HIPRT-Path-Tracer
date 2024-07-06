@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef COLOR_H
-#define COLOR_H
+#ifndef HOST_DEVICE_COMMON_COLOR_H
+#define HOST_DEVICE_COMMON_COLOR_H
 
 #include "HostDeviceCommon/Math.h"
 

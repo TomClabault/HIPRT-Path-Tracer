@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef HIPRT_LAMBERTIAN_H
-#define HIPRT_LAMBERTIAN_H
+#ifndef DEVICE_LAMBERTIAN_H
+#define DEVICE_LAMBERTIAN_H
 
 #include "Device/includes/ONB.h"
 #include "HostDeviceCommon/Color.h"

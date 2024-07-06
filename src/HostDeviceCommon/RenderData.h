@@ -3,10 +3,10 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef HIPRT_SCENE_DATA_H
-#define HIPRT_SCENE_DATA_H
 
-#include "HostDeviceCommon/AlignMacro.h"
+#ifndef HOST_DEVICE_COMMON_RENDER_DATA_H
+#define HOST_DEVICE_COMMON_RENDER_DATA_H
+
 #include "HostDeviceCommon/Material.h"
 #include "HostDeviceCommon/Math.h"
 
@@ -23,7 +23,7 @@ template <typename T>
 using AtomicType = std::atomic<T>;
 #endif
 
-struct ALIGN(8) HIPRTRenderSettings
+struct HIPRTRenderSettings
 {
 	// How many times the render kernel was called (updates after
 	// the call to the kernel so it start at 0)

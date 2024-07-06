@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_COMPILER_OPTIONS_H
-#define DEVICE_COMPILER_OPTIONS_H
+#ifndef HOST_DEVICE_COMMON_KERNEL_OPTIONS_H
+#define HOST_DEVICE_COMMON_KERNEL_OPTIONS_H
 
 /**
  * This file references the path tracer options that can be passed to HIPCC using the -D <macro>=<value> option.

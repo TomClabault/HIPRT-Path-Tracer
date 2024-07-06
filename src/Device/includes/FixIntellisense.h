@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef FIX_INTELLISENSE_H
-#define FIX_INTELLISENSE_H
+#ifndef DEVICE_FIX_INTELLISENSE_H
+#define DEVICE_FIX_INTELLISENSE_H
 
 /*
  * All that is in this file is meant to make Visual Studio's intellisense happy

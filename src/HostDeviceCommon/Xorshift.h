@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef XORSHIFT_H
-#define XORSHIFT_H
+#ifndef HOST_DEVICE_COMMON_XORSHIFT_H
+#define HOST_DEVICE_COMMON_XORSHIFT_H
 
 #include <hiprt/hiprt_device.h>
 

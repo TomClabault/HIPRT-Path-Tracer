@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef OREN_NAYAR_H
-#define OREN_NAYAR_H
+#ifndef DEVICE_OREN_NAYAR_H
+#define DEVICE_OREN_NAYAR_H
 
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/Math.h"

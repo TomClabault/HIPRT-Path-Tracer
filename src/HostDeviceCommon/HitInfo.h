@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef RAY_STATE_H
-#define RAY_STATE_H
+#ifndef HOST_DEVICE_COMMON_HIT_INFO_H
+#define HOST_DEVICE_COMMON_HIT_INFO_H
 
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/Math.h"

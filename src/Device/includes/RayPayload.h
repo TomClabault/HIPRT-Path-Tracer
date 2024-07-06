@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef RAY_PAYLOAD_H
-#define RAY_PAYLOAD_H
+#ifndef DEVICE_RAY_PAYLOAD_H
+#define DEVICE_RAY_PAYLOAD_H
 
 #include "Device/includes/NestedDielectrics.h"
 #include "HostDeviceCommon/Color.h"

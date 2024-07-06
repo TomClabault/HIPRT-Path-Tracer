@@ -17,11 +17,8 @@
 #include "stb_image_write.h"
 
 // TODO Code Organization:
-// - cleanup orochi gl interop buffer #ifdef everywhere
 // - do we need OpenGL Lib/bin in thirdparties?
-// - fork HIPRT and remove the encryption thingy that slows down kernel compilation on NVIDIA
 // - Use HIPRT with CMake as a subdirectory (available soon)
-// - uniform #ifndef in Device headers
 // - Device/ or HostDeviceCommon. Not both
 // - reorganize methods order in RenderWindow
 // - submodules in thirdparty folder

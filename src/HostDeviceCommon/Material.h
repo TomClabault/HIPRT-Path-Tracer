@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef MATERIAL_H
-#define MATERIAL_H
+#ifndef HOST_DEVICE_COMMON_MATERIAL_H
+#define HOST_DEVICE_COMMON_MATERIAL_H
 
 #include "HostDeviceCommon/KernelOptions.h"
 #include "HostDeviceCommon/Color.h"

@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef HIPRT_CAMERA_H
-#define HIPRT_CAMERA_H
+#ifndef HOST_DEVICE_COMMON_CAMERA_H
+#define HOST_DEVICE_COMMON_CAMERA_H
 
 #include "HostDeviceCommon/Math.h"
 #include <hiprt/hiprt_types.h> // for hiprtRay
