@@ -41,12 +41,12 @@ oroFunction HIPKernelCompiler::compile_kernel(HIPKernel& kernel, hiprtContext& h
 	return *reinterpret_cast<oroFunction*>(&trace_function_out);
 }
 
-std::string HIPKernelCompiler::find_in_include_directories(const std::string& file_name, const std::vector<std::string>& include_directories)
+std::string HIPKernelCompiler::find_in_include_directories(const std::string& include_name, const std::vector<std::string>& include_directories)
 {
 	for (const std::string& include_directory : include_directories)
 	{
 		std::string add_slash = include_directory[include_directory.length() - 1] != '/' ? "/" : "";
-		std::string file_path = include_directory + add_slash +  file_name;
+		std::string file_path = include_directory + add_slash +  include_name;
 		std::ifstream try_open_file(file_path);
 		if (try_open_file.is_open())
 			return file_path;
