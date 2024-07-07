@@ -23,10 +23,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float cook_torrance_brdf_pdf(const RendererMateri
     return D * NoH / (4.0f * VoH);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB cook_torrance_brdf(const RendererMaterial& material, const float3& to_light_direction, const float3& view_direction, const float3& surface_normal)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F cook_torrance_brdf(const RendererMaterial& material, const float3& to_light_direction, const float3& view_direction, const float3& surface_normal)
 {
-    ColorRGB brdf_color = ColorRGB(0.0f, 0.0f, 0.0f);
-    ColorRGB base_color = material.base_color;
+    ColorRGB32F brdf_color = ColorRGB32F(0.0f, 0.0f, 0.0f);
+    ColorRGB32F base_color = material.base_color;
 
     float3 halfway_vector = hippt::normalize(view_direction + to_light_direction);
 
@@ -43,22 +43,22 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB cook_torrance_brdf(const RendererMateria
         float alpha = roughness * roughness;
 
         ////////// Cook Torrance BRDF //////////
-        ColorRGB F;
+        ColorRGB32F F;
         float D, G;
 
         //F0 = 0.04 for dielectrics, 1.0 for metals (approximation)
-        ColorRGB F0 = ColorRGB(0.04f * (1.0f - metallic)) + metallic * base_color;
+        ColorRGB32F F0 = ColorRGB32F(0.04f * (1.0f - metallic)) + metallic * base_color;
 
         //GGX Distribution function
         F = fresnel_schlick(F0, VoH);
         D = GGX_normal_distribution(alpha, NoH);
         G = GGX_smith_masking_shadowing(alpha, NoV, NoL);
 
-        ColorRGB kD = ColorRGB(1.0f - metallic); //Metals do not have a base_color part
-        kD = kD * (ColorRGB(1.0f) - F);//Only the transmitted light is diffused
+        ColorRGB32F kD = ColorRGB32F(1.0f - metallic); //Metals do not have a base_color part
+        kD = kD * (ColorRGB32F(1.0f) - F);//Only the transmitted light is diffused
 
-        ColorRGB diffuse_part = kD * base_color / M_PI;
-        ColorRGB specular_part = (F * D * G) / (4.0f * NoV * NoL);
+        ColorRGB32F diffuse_part = kD * base_color / M_PI;
+        ColorRGB32F specular_part = (F * D * G) / (4.0f * NoV * NoL);
 
         brdf_color = diffuse_part + specular_part;
     }
@@ -66,7 +66,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB cook_torrance_brdf(const RendererMateria
     return brdf_color;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB cook_torrance_brdf_importance_sample(const RendererMaterial& material, const float3& view_direction, const float3& surface_normal, float3& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F cook_torrance_brdf_importance_sample(const RendererMaterial& material, const float3& view_direction, const float3& surface_normal, float3& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
 {
     pdf = 0.0f;
 
@@ -87,13 +87,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB cook_torrance_brdf_importance_sample(con
     float3 microfacet_normal = local_to_world_frame(surface_normal, microfacet_normal_local_space);
     if (hippt::dot(microfacet_normal, surface_normal) < 0.0f)
         //The microfacet normal that we sampled was under the surface, this can happen
-        return ColorRGB(0.0f);
+        return ColorRGB32F(0.0f);
     float3 to_light_direction = hippt::normalize(2.0f * hippt::dot(microfacet_normal, view_direction) * microfacet_normal - view_direction);
     float3 halfway_vector = microfacet_normal;
     output_direction = to_light_direction;
 
-    ColorRGB brdf_color = ColorRGB(0.0f, 0.0f, 0.0f);
-    ColorRGB base_color = material.base_color;
+    ColorRGB32F brdf_color = ColorRGB32F(0.0f, 0.0f, 0.0f);
+    ColorRGB32F base_color = material.base_color;
 
     float NoV = hippt::max(0.0f, hippt::dot(surface_normal, view_direction));
     float NoL = hippt::max(0.0f, hippt::dot(surface_normal, to_light_direction));
@@ -103,22 +103,22 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB cook_torrance_brdf_importance_sample(con
     if (NoV > 0.0f && NoL > 0.0f && NoH > 0.0f)
     {
         /////////// Cook Torrance BRDF //////////
-        ColorRGB F;
+        ColorRGB32F F;
         float D, G;
 
         //GGX Distribution function
         D = GGX_normal_distribution(alpha, NoH);
 
         //F0 = 0.04 for dielectrics, 1.0 for metals (approximation)
-        ColorRGB F0 = ColorRGB(0.04f * (1.0f - metallic)) + metallic * base_color;
+        ColorRGB32F F0 = ColorRGB32F(0.04f * (1.0f - metallic)) + metallic * base_color;
         F = fresnel_schlick(F0, VoH);
         G = GGX_smith_masking_shadowing(alpha, NoV, NoL);
 
-        ColorRGB kD = ColorRGB(1.0f - metallic); //Metals do not have a base_color part
-        kD = kD * (ColorRGB(1.0f) - F);//Only the transmitted light is diffused
+        ColorRGB32F kD = ColorRGB32F(1.0f - metallic); //Metals do not have a base_color part
+        kD = kD * (ColorRGB32F(1.0f) - F);//Only the transmitted light is diffused
 
-        ColorRGB diffuse_part = kD * base_color / M_PI;
-        ColorRGB specular_part = (F * D * G) / (4.0f * NoV * NoL);
+        ColorRGB32F diffuse_part = kD * base_color / M_PI;
+        ColorRGB32F specular_part = (F * D * G) / (4.0f * NoV * NoL);
 
         pdf = D * NoH / (4.0f * VoH);
 

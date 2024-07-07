@@ -24,7 +24,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE unsigned int wang_hash(unsigned int seed)
 }
 
 
-HIPRT_HOST_DEVICE HIPRT_INLINE void debug_set_final_color(const HIPRTRenderData& render_data, int x, int y, int res_x, ColorRGB final_color)
+HIPRT_HOST_DEVICE HIPRT_INLINE void debug_set_final_color(const HIPRTRenderData& render_data, int x, int y, int res_x, ColorRGB32F final_color)
 {
     if (render_data.render_settings.sample_number == 0)
         render_data.buffers.pixels[y * res_x + x] = final_color;
@@ -32,7 +32,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void debug_set_final_color(const HIPRTRenderData&
         render_data.buffers.pixels[y * res_x + x] = final_color * render_data.render_settings.sample_number;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE bool check_for_negative_color(ColorRGB ray_color, int x, int y, int sample)
+HIPRT_HOST_DEVICE HIPRT_INLINE bool check_for_negative_color(ColorRGB32F ray_color, int x, int y, int sample)
 {
     if (ray_color.r < 0 || ray_color.g < 0 || ray_color.b < 0)
     {
@@ -46,7 +46,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool check_for_negative_color(ColorRGB ray_color,
     return false;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE bool check_for_nan(ColorRGB ray_color, int x, int y, int sample)
+HIPRT_HOST_DEVICE HIPRT_INLINE bool check_for_nan(ColorRGB32F ray_color, int x, int y, int sample)
 {
     if (hippt::isNaN(ray_color.r) || hippt::isNaN(ray_color.g) || hippt::isNaN(ray_color.b))
     {
@@ -71,9 +71,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool sanity_check(const HIPRTRenderData& render_d
     if (invalid)
     {
         if (render_data.render_settings.display_NaNs)
-            debug_set_final_color(render_data, x, y, res.x, ColorRGB(1.0e15f, 0.0f, 1.0e15f));
+            debug_set_final_color(render_data, x, y, res.x, ColorRGB32F(1.0e15f, 0.0f, 1.0e15f));
         else
-            debug_set_final_color(render_data, x, y, res.x, ColorRGB(0.0f));
+            debug_set_final_color(render_data, x, y, res.x, ColorRGB32F(0.0f));
 #ifndef __KERNELCC__
         Utils::debugbreak();
 #endif
@@ -115,9 +115,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
     if (render_data.render_settings.sample_number == 0)
     {
         // Resetting all buffers on the first frame
-        render_data.buffers.pixels[pixel_index] = ColorRGB(0.0f);
+        render_data.buffers.pixels[pixel_index] = ColorRGB32F(0.0f);
         render_data.aux_buffers.denoiser_normals[pixel_index] = make_float3(1.0f, 1.0f, 1.0f);
-        render_data.aux_buffers.denoiser_albedo[pixel_index] = ColorRGB(0.0f, 0.0f, 0.0f);
+        render_data.aux_buffers.denoiser_albedo[pixel_index] = ColorRGB32F(0.0f, 0.0f, 0.0f);
 
         if (render_data.render_settings.stop_noise_threshold > 0.0f || render_data.render_settings.enable_adaptive_sampling)
         {
@@ -158,8 +158,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
     Xorshift32Generator random_number_generator(seed);
 
     float squared_luminance_of_samples = 0.0f;
-    ColorRGB final_color = ColorRGB(0.0f, 0.0f, 0.0f);
-    ColorRGB denoiser_albedo = ColorRGB(0.0f, 0.0f, 0.0f);
+    ColorRGB32F final_color = ColorRGB32F(0.0f, 0.0f, 0.0f);
+    ColorRGB32F denoiser_albedo = ColorRGB32F(0.0f, 0.0f, 0.0f);
     float3 denoiser_normal = make_float3(0.0f, 0.0f, 0.0f);
     for (int sample = 0; sample < render_data.render_settings.samples_per_frame; sample++)
     {
@@ -207,16 +207,16 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                     // ----------------- Direct lighting ----------------- //
                     // --------------------------------------------------- //
 
-                    ColorRGB light_sample_radiance = sample_one_light(render_data, ray_payload.material, closest_hit_info, -ray.direction, random_number_generator);
-                    ColorRGB envmap_radiance = sample_environment_map(render_data, ray_payload.material, closest_hit_info, -ray.direction, random_number_generator);
+                    ColorRGB32F light_sample_radiance = sample_one_light(render_data, ray_payload.material, closest_hit_info, -ray.direction, random_number_generator);
+                    ColorRGB32F envmap_radiance = sample_environment_map(render_data, ray_payload.material, closest_hit_info, -ray.direction, random_number_generator);
 
-                    ColorRGB direct_lighting_clamp(render_data.render_settings.direct_contribution_clamp > 0.0f ? render_data.render_settings.direct_contribution_clamp : 1.0e35f);
-                    ColorRGB envmap_lighting_clamp(render_data.render_settings.envmap_contribution_clamp > 0.0f ? render_data.render_settings.envmap_contribution_clamp : 1.0e35f);
+                    ColorRGB32F direct_lighting_clamp(render_data.render_settings.direct_contribution_clamp > 0.0f ? render_data.render_settings.direct_contribution_clamp : 1.0e35f);
+                    ColorRGB32F envmap_lighting_clamp(render_data.render_settings.envmap_contribution_clamp > 0.0f ? render_data.render_settings.envmap_contribution_clamp : 1.0e35f);
 
                     if (bounce == 0)
                         // Clamping only on the primary rays
-                        light_sample_radiance = ColorRGB::min(direct_lighting_clamp, light_sample_radiance);
-                    envmap_radiance = ColorRGB::min(envmap_lighting_clamp, envmap_radiance);
+                        light_sample_radiance = ColorRGB32F::min(direct_lighting_clamp, light_sample_radiance);
+                    envmap_radiance = ColorRGB32F::min(envmap_lighting_clamp, envmap_radiance);
 
                     // --------------------------------------- //
                     // ---------- Indirect lighting ---------- //
@@ -224,7 +224,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
 
                     float brdf_pdf;
                     float3 bounce_direction;
-                    ColorRGB bsdf_color = bsdf_dispatcher_sample(render_data.buffers.materials_buffer, ray_payload.material, ray_payload.volume_state, -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bounce_direction, brdf_pdf, random_number_generator);
+                    ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data.buffers.materials_buffer, ray_payload.material, ray_payload.volume_state, -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bounce_direction, brdf_pdf, random_number_generator);
 
                     // Terminate ray if bad sampling
                     if (brdf_pdf <= 0.0f)
@@ -243,9 +243,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
 
                     ray_payload.ray_color += (light_sample_radiance + envmap_radiance) * ray_payload.throughput;
 
-                    ColorRGB indirect_clamp(render_data.render_settings.indirect_contribution_clamp > 0.0f ? render_data.render_settings.indirect_contribution_clamp : 1.0e35f);
+                    ColorRGB32F indirect_clamp(render_data.render_settings.indirect_contribution_clamp > 0.0f ? render_data.render_settings.indirect_contribution_clamp : 1.0e35f);
                     ray_payload.throughput *= bsdf_color * hippt::abs(hippt::dot(bounce_direction, closest_hit_info.shading_normal)) / brdf_pdf;
-                    ray_payload.throughput = ColorRGB::min(indirect_clamp, ray_payload.throughput);
+                    ray_payload.throughput = ColorRGB32F::min(indirect_clamp, ray_payload.throughput);
 
                     int outside_surface = hippt::dot(bounce_direction, closest_hit_info.shading_normal) < 0 ? -1.0f : 1.0;
                     ray.origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 3.0e-3f * outside_surface;
@@ -255,7 +255,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                 }
                 else
                 {
-                    ColorRGB skysphere_color;
+                    ColorRGB32F skysphere_color;
                     if (render_data.world_settings.ambient_light_type == AmbientLightType::UNIFORM)
                         skysphere_color = render_data.world_settings.uniform_light_color;
                     else if (render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP)
@@ -287,8 +287,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                         }
                     }
 
-                    ColorRGB skysphere_clamp(render_data.render_settings.envmap_contribution_clamp > 0.0f ? render_data.render_settings.envmap_contribution_clamp : 1.0e35f);
-                    skysphere_color = ColorRGB::min(skysphere_clamp, skysphere_color);
+                    ColorRGB32F skysphere_clamp(render_data.render_settings.envmap_contribution_clamp > 0.0f ? render_data.render_settings.envmap_contribution_clamp : 1.0e35f);
+                    skysphere_color = ColorRGB32F::min(skysphere_clamp, skysphere_color);
 
                     ray_payload.ray_color += skysphere_color * ray_payload.throughput;
                     ray_payload.next_ray_state = RayState::MISSED;

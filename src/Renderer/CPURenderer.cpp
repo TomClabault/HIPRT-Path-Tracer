@@ -13,11 +13,11 @@
 
 CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, height))
 {
-    m_framebuffer = Image(width, height);
+    m_framebuffer = ImageRGB32F(width, height);
 
     // Resizing buffers + initial value
     m_debug_pixel_active_buffer.resize(width * height, 0);
-    m_denoiser_albedo.resize(width * height, ColorRGB(0.0f));
+    m_denoiser_albedo.resize(width * height, ColorRGB32F(0.0f));
     m_denoiser_normals.resize(width * height, float3{ 0.0f, 0.0f, 0.0f });
     m_pixel_sample_count.resize(width * height, 0);
     m_pixel_squared_luminance.resize(width * height, 0.0f);
@@ -32,7 +32,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.buffers.materials_buffer = parsed_scene.materials.data();
     m_render_data.buffers.material_indices = parsed_scene.material_indices.data();
     m_render_data.buffers.has_vertex_normals = parsed_scene.has_vertex_normals.data();
-    m_render_data.buffers.pixels = m_framebuffer.data().data();
+    m_render_data.buffers.pixels = m_framebuffer.get_data_as_ColorRGB32F();
     m_render_data.buffers.triangles_indices = parsed_scene.triangle_indices.data();
     m_render_data.buffers.vertices_positions = parsed_scene.vertices_positions.data();
     m_render_data.buffers.vertex_normals = parsed_scene.vertex_normals.data();
@@ -54,7 +54,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.cpu_only.bvh = m_bvh.get();
 }
 
-void CPURenderer::set_envmap(ImageRGBA& envmap_image)
+void CPURenderer::set_envmap(ImageRGBA32F& envmap_image)
 {
     m_render_data.world_settings.envmap = &envmap_image;
     m_render_data.world_settings.envmap_width = envmap_image.width;
@@ -77,12 +77,12 @@ HIPRTRenderSettings& CPURenderer::get_render_settings()
     return m_render_data.render_settings;
 }
 
-Image& CPURenderer::get_framebuffer()
+ImageRGB32F& CPURenderer::get_framebuffer()
 {
     return m_framebuffer;
 }
 
-#define DEBUG_PIXEL 1
+#define DEBUG_PIXEL 0
 #define DEBUG_EXACT_COORDINATE 0
 #define DEBUG_PIXEL_X 43
 #define DEBUG_PIXEL_Y 14
@@ -130,11 +130,11 @@ void CPURenderer::tonemap(float gamma, float exposure)
         {
             int index = x + y * m_resolution.x;
 
-            ColorRGB hdr_color = m_render_data.buffers.pixels[index];
+            ColorRGB32F hdr_color = m_render_data.buffers.pixels[index];
             // Scaling by sample count
             hdr_color = hdr_color / float(m_render_data.render_settings.samples_per_frame);
 
-            ColorRGB tone_mapped = ColorRGB(1.0f) - exp(-hdr_color * exposure);
+            ColorRGB32F tone_mapped = ColorRGB32F(1.0f) - exp(-hdr_color * exposure);
             tone_mapped = pow(tone_mapped, 1.0f / gamma);
 
             m_render_data.buffers.pixels[index] = tone_mapped;

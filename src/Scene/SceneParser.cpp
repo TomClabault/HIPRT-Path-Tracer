@@ -323,7 +323,7 @@ void SceneParser::read_material_properties(aiMaterial* mesh_material, RendererMa
     {
         // We sucessfully got the specular color so we're going to assume that we the specular and tin are 100%
         renderer_material.specular_tint = 1.0f;
-        renderer_material.specular_color = ColorRGB(1.0f);
+        renderer_material.specular_color = ColorRGB32F(1.0f);
     }
     mesh_material->Get(AI_MATKEY_CLEARCOAT_FACTOR, renderer_material.clearcoat);
     mesh_material->Get(AI_MATKEY_CLEARCOAT_ROUGHNESS_FACTOR, renderer_material.clearcoat_roughness);

@@ -17,7 +17,7 @@
 template <typename T>
 HIPRT_HOST_DEVICE HIPRT_INLINE void get_material_property(const HIPRTRenderData& render_data, T& output_data, bool is_srgb, const float2& texcoords, int texture_index);
 HIPRT_HOST_DEVICE HIPRT_INLINE void get_metallic_roughness(const HIPRTRenderData& render_data, float& metallic, float& roughness, const float2& texcoords, int metallic_texture_index, int roughness_texture_index, int metallic_roughness_texture_index);
-HIPRT_HOST_DEVICE HIPRT_INLINE void get_base_color(const HIPRTRenderData& render_data, ColorRGB& base_color, float& out_alpha, const float2& texcoords, int base_color_texture_index);
+HIPRT_HOST_DEVICE HIPRT_INLINE void get_base_color(const HIPRTRenderData& render_data, ColorRGB32F& base_color, float& out_alpha, const float2& texcoords, int base_color_texture_index);
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float get_hit_base_color_alpha(const HIPRTRenderData& render_data, hiprtHit hit)
 {
@@ -28,7 +28,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_hit_base_color_alpha(const HIPRTRenderD
 
     // Getting the alpha for transparency check to see if we need to pass the ray through or not
     float alpha;
-    ColorRGB base_color;
+    ColorRGB32F base_color;
     get_base_color(render_data, base_color, alpha, texcoords, material.base_color_texture_index);
 
     return alpha;
@@ -79,7 +79,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void get_metallic_roughness(const HIPRTRenderData
 {
     if (metallic_roughness_texture_index != -1)
     {
-        ColorRGB rgb = sample_texture_rgb(render_data.buffers.material_textures, metallic_roughness_texture_index, render_data.buffers.textures_dims[metallic_roughness_texture_index], false, texcoords);
+        ColorRGB32F rgb = sample_texture_rgb(render_data.buffers.material_textures, metallic_roughness_texture_index, render_data.buffers.textures_dims[metallic_roughness_texture_index], false, texcoords);
 
         // Not converting to linear here because material properties (roughness and metallic) here are assumed to be linear already
         roughness = rgb.g;
@@ -92,30 +92,30 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void get_metallic_roughness(const HIPRTRenderData
     }
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE void get_base_color(const HIPRTRenderData& render_data, ColorRGB& base_color, float& out_alpha, const float2& texcoords, int base_color_texture_index)
+HIPRT_HOST_DEVICE HIPRT_INLINE void get_base_color(const HIPRTRenderData& render_data, ColorRGB32F& base_color, float& out_alpha, const float2& texcoords, int base_color_texture_index)
 {
-    ColorRGBA rgba;
+    ColorRGBA32F rgba;
 
     out_alpha = 1.0;
     get_material_property(render_data, rgba, true, texcoords, base_color_texture_index);
     if (base_color_texture_index != -1)
     {
-        base_color = ColorRGB(rgba.r, rgba.g, rgba.b);
+        base_color = ColorRGB32F(rgba.r, rgba.g, rgba.b);
         out_alpha = rgba.a;
     }
 }
 
 template <typename T>
-HIPRT_HOST_DEVICE HIPRT_INLINE void read_data(const ColorRGBA& rgba, T& data) {}
+HIPRT_HOST_DEVICE HIPRT_INLINE void read_data(const ColorRGBA32F& rgba, T& data) {}
 
 template<>
-HIPRT_HOST_DEVICE HIPRT_INLINE void read_data(const ColorRGBA& rgba, ColorRGBA& data)
+HIPRT_HOST_DEVICE HIPRT_INLINE void read_data(const ColorRGBA32F& rgba, ColorRGBA32F& data)
 {
     data = rgba;
 }
 
 template<>
-HIPRT_HOST_DEVICE HIPRT_INLINE void read_data(const ColorRGBA& rgba, ColorRGB& data)
+HIPRT_HOST_DEVICE HIPRT_INLINE void read_data(const ColorRGBA32F& rgba, ColorRGB32F& data)
 {
     data.r = rgba.r;
     data.g = rgba.g;
@@ -123,7 +123,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void read_data(const ColorRGBA& rgba, ColorRGB& d
 }
 
 template<>
-HIPRT_HOST_DEVICE HIPRT_INLINE void read_data(const ColorRGBA& rgba, float& data)
+HIPRT_HOST_DEVICE HIPRT_INLINE void read_data(const ColorRGBA32F& rgba, float& data)
 {
     data = rgba.r;
 }
@@ -134,7 +134,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void get_material_property(const HIPRTRenderData&
     if (texture_index == -1)
         return;
 
-    ColorRGBA rgba = sample_texture_rgba(render_data.buffers.material_textures, texture_index, render_data.buffers.textures_dims[texture_index], is_srgb, texcoords);
+    ColorRGBA32F rgba = sample_texture_rgba(render_data.buffers.material_textures, texture_index, render_data.buffers.textures_dims[texture_index], is_srgb, texcoords);
     read_data(rgba, output_data);
 }
 

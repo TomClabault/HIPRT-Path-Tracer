@@ -34,11 +34,11 @@ struct RendererMaterial
         clearcoat_roughness = hippt::max(1.0e-4f, clearcoat_roughness);
 
         // Clamping to avoid negative emission
-        emission = ColorRGB::max(ColorRGB(0.0f), emission);
+        emission = ColorRGB32F::max(ColorRGB32F(0.0f), emission);
 
         // Avoiding zero
         absorption_at_distance = hippt::max(absorption_at_distance, 1.0e-4f);
-        absorption_color = ColorRGB::max(absorption_color, ColorRGB(1.0f / 512.0f));
+        absorption_color = ColorRGB32F::max(absorption_color, ColorRGB32F(1.0f / 512.0f));
     }
 
     /*
@@ -78,8 +78,8 @@ struct RendererMaterial
 
     int emission_texture_index = -1;
     int base_color_texture_index = -1;
-    ColorRGB emission = ColorRGB{ 0.0f, 0.0f, 0.0f };
-    ColorRGB base_color = ColorRGB{ 1.0f, 0.2f, 0.7f };
+    ColorRGB32F emission = ColorRGB32F{ 0.0f, 0.0f, 0.0f };
+    ColorRGB32F base_color = ColorRGB32F{ 1.0f, 0.2f, 0.7f };
 
     // If not -1, there is only one texture for the metallic and the roughness parameters in which.
     // case the green channel is the roughness and the blue channel is the metalness
@@ -101,7 +101,7 @@ struct RendererMaterial
     float metallic = 0.0f;
     float specular = 1.0f; // Specular intensity
     float specular_tint = 1.0f; // Specular fresnel strength for the metallic
-    ColorRGB specular_color = ColorRGB(1.0f);
+    ColorRGB32F specular_color = ColorRGB32F(1.0f);
     
     int anisotropic_texture_index = -1;
     int anisotropic_rotation_texture_index = -1;
@@ -121,7 +121,7 @@ struct RendererMaterial
     int sheen_color_texture_index = -1;
     float sheen = 0.0f; // Sheen strength
     float sheen_tint = 0.0f; // Sheen tint strength
-    ColorRGB sheen_color = ColorRGB(1.0f);
+    ColorRGB32F sheen_color = ColorRGB32F(1.0f);
 
     // IOR texture index not supported because of the cost it would incur to
     // support it with the nested dielectrics algorithm
@@ -131,7 +131,7 @@ struct RendererMaterial
     // At what distance is the light absorbed to the given absorption_color
     float absorption_at_distance = 1.0f;
     // Color of the light absorption when traveling through the medium
-    ColorRGB absorption_color = ColorRGB(1.0f);
+    ColorRGB32F absorption_color = ColorRGB32F(1.0f);
 
     // Nested dielectric parameter
     unsigned short int dielectric_priority = 0;

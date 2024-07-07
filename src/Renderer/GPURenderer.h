@@ -36,10 +36,10 @@ public:
 	void render();
 	void change_render_resolution(int new_width, int new_height);
 
-	std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> get_color_framebuffer();
-	std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> get_denoised_framebuffer();
+	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> get_color_framebuffer();
+	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> get_denoised_framebuffer();
 	std::shared_ptr<OpenGLInteropBuffer<float3>> get_denoiser_normals_AOV_buffer();
-	std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> get_denoiser_albedo_AOV_buffer();
+	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> get_denoiser_albedo_AOV_buffer();
 	OrochiBuffer<int>& get_pixels_sample_count_buffer();
 	OrochiBuffer<unsigned char>& get_ray_active_buffer();
 	OrochiBuffer<unsigned int>& get_stop_noise_threshold_buffer();
@@ -54,7 +54,7 @@ public:
 	void recompile_trace_kernel();
 
 	void set_scene(const Scene& scene);
-	void set_envmap(ImageRGBA& envmap);
+	void set_envmap(ImageRGBA32F& envmap);
 	void set_camera(const Camera& camera);
 
 	const std::vector<RendererMaterial>& get_materials();
@@ -96,14 +96,14 @@ private:
 	// This buffer holds the * sum * of the samples computed
 	// This is an accumulation buffer. This needs to be divided by the
 	// number of samples for displaying
-	std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> m_framebuffer;
+	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> m_framebuffer;
 	// Buffer for holding the denoised frame (the denoiser data will be copied
 	// to this buffer and then displayed to the viewport)
-	std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> m_denoised_framebuffer;
+	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> m_denoised_framebuffer;
 	// Normals G-buffer
 	std::shared_ptr<OpenGLInteropBuffer<float3>> m_normals_AOV_buffer;
 	// Albedo G-buffer
-	std::shared_ptr<OpenGLInteropBuffer<ColorRGB>>m_albedo_AOV_buffer;
+	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>>m_albedo_AOV_buffer;
 
 	// Used to calculate the variance of each pixel for adaptive sampling
 	OrochiBuffer<float> m_pixels_squared_luminance;

@@ -87,7 +87,7 @@ struct RenderBuffers
 {
 	// Sum of samples color per pixel. Should not be
 	// pre-divided by the number of samples
-	ColorRGB* pixels = nullptr;
+	ColorRGB32F* pixels = nullptr;
 
 	// A device pointer to the buffer of triangles vertex indices
 	// triangles_indices[0], triangles_indices[1] and triangles_indices[2]
@@ -113,7 +113,7 @@ struct RenderBuffers
 	int emissive_triangles_count = 0;
 	int* emissive_triangles_indices = nullptr;
 
-	// A pointer either to a list of ImageRGBA or to a list of
+	// A pointer either to a list of ImageRGBA32F or to a list of
 	// oroTextureObject_t whether if CPU or GPU renderer respectively
 	// This pointer can be cast for the textures to be be retrieved.
 	void* material_textures = nullptr;
@@ -130,7 +130,7 @@ struct AuxiliaryBuffers
 
 	// Albedo for the denoiser
 	// The albedo should already be divided by the number of samples
-	ColorRGB* denoiser_albedo = nullptr;
+	ColorRGB32F* denoiser_albedo = nullptr;
 
 	// Per pixel sample count. Useful when doing adaptive sampling
 	// where each pixel can have a different number of sample
@@ -163,7 +163,7 @@ enum AmbientLightType
 struct WorldSettings
 {
 	AmbientLightType ambient_light_type = AmbientLightType::ENVMAP;
-	ColorRGB uniform_light_color = ColorRGB(0.5f);
+	ColorRGB32F uniform_light_color = ColorRGB32F(0.5f);
 
 	// Width and height in pixels. Both in the range [1, XXX]
 	unsigned int envmap_width = 0, envmap_height = 0;

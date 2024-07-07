@@ -16,10 +16,10 @@ const std::vector<std::string> GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIR
 GPURenderer::GPURenderer()
 {
 	// Creating buffers
-	m_framebuffer = std::make_shared<OpenGLInteropBuffer<ColorRGB>>();
-	m_denoised_framebuffer = std::make_shared<OpenGLInteropBuffer<ColorRGB>>();
+	m_framebuffer = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
+	m_denoised_framebuffer = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
 	m_normals_AOV_buffer = std::make_shared<OpenGLInteropBuffer<float3>>();
-	m_albedo_AOV_buffer = std::make_shared<OpenGLInteropBuffer<ColorRGB>>();
+	m_albedo_AOV_buffer = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
 
 	// Creating HIPRT's context
 	m_hiprt_orochi_ctx = std::make_shared<HIPRTOrochiCtx>();
@@ -95,12 +95,12 @@ void GPURenderer::change_render_resolution(int new_width, int new_height)
 	m_camera.projection_matrix = glm::transpose(glm::perspective(m_camera.vertical_fov, new_aspect, m_camera.near_plane, m_camera.far_plane));
 }
 
-std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> GPURenderer::get_color_framebuffer()
+std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_color_framebuffer()
 {
 	return m_framebuffer;
 }
 
-std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> GPURenderer::get_denoised_framebuffer()
+std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_denoised_framebuffer()
 {
 	return m_denoised_framebuffer;
 }
@@ -110,7 +110,7 @@ std::shared_ptr<OpenGLInteropBuffer<float3>> GPURenderer::get_denoiser_normals_A
 	return m_normals_AOV_buffer;
 }
 
-std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> GPURenderer::get_denoiser_albedo_AOV_buffer()
+std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_denoiser_albedo_AOV_buffer()
 {
 	return m_albedo_AOV_buffer;
 }
@@ -284,7 +284,7 @@ void GPURenderer::set_scene(const Scene& scene)
 	m_material_names = scene.material_names;
 }
 
-void GPURenderer::set_envmap(ImageRGBA& envmap_image)
+void GPURenderer::set_envmap(ImageRGBA32F& envmap_image)
 {
 	m_envmap.init_from_image(envmap_image);
 	m_envmap.compute_cdf(envmap_image);

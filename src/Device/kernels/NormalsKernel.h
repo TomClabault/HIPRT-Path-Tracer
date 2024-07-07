@@ -44,6 +44,6 @@ GLOBAL_KERNEL_SIGNATURE(void) NormalsKernel(HIPRTRenderData render_data, int2 re
 	else
 		normal = hippt::normalize(hippt::cross(vertex_B - vertex_A, vertex_C - vertex_A));
 
-	ColorRGB final_color(hit.hasHit() ? hippt::abs(normal) : ColorRGB(0.0f, 0.0f, 0.0f));
+	ColorRGB32F final_color(hit.hasHit() ? hippt::abs(normal) : ColorRGB32F(0.0f, 0.0f, 0.0f));
 	render_data.buffers.pixels[index] = final_color * (render_data.render_settings.sample_number + 1);
 }

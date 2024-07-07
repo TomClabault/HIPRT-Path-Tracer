@@ -13,7 +13,7 @@
 /* References:
  * [1] [Physically Based Rendering 3rd Edition] https://www.pbr-book.org/3ed-2018/Reflection_Models/Microfacet_Models
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB oren_nayar_eval(const RendererMaterial& material, const float3& view_direction, const float3& surface_normal, const float3& to_light_direction)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F oren_nayar_eval(const RendererMaterial& material, const float3& view_direction, const float3& surface_normal, const float3& to_light_direction)
 {
     float3 T, B;
     build_ONB(surface_normal, T, B);

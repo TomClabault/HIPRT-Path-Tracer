@@ -19,7 +19,9 @@
 // TODO Code Organization:
 // - Use HIPRT with CMake as a subdirectory (available soon)
 // - reorganize methods order in RenderWindow
+// - macro for clean code disney eval
 
+// 36.8 / 21.3V
 
 // TODO Features:
 // - Kahan summation for weighted reservoir sampling?
@@ -35,8 +37,6 @@
 // - ACES mapping
 // - better post processing: contrast, low, medium, high exposure curve
 // - bloom post processing
-// - hold shift for faster camera
-// - hold CTRL for slower camera
 // - BRDF swapper ImGui : Disney, Lambertian, Oren Nayar, Cook Torrance, Perfect fresnel dielectric reflect/transmit
 // - choose disney diffuse model (disney, lambertian, oren nayar)
 // - Cool colored thread-safe logger singleton class --> loguru lib
@@ -602,7 +602,7 @@ void RenderWindow::update_program_uniforms(OpenGLProgram& program)
 		break;
 
 	case DisplayView::ADAPTIVE_SAMPLING_MAP:
-		std::vector<ColorRGB> color_stops = { ColorRGB(0.0f, 0.0f, 1.0f), ColorRGB(0.0f, 1.0f, 0.0f), ColorRGB(1.0f, 0.0f, 0.0f) };
+		std::vector<ColorRGB32F> color_stops = { ColorRGB32F(0.0f, 0.0f, 1.0f), ColorRGB32F(0.0f, 1.0f, 0.0f), ColorRGB32F(1.0f, 0.0f, 0.0f) };
 
 		float min_val = (float)render_settings.adaptive_sampling_min_samples;
 		float max_val = std::max((float)render_settings.sample_number, min_val);
@@ -819,7 +819,7 @@ void RenderWindow::run()
 			if (need_denoising)
 			{
 				std::shared_ptr<OpenGLInteropBuffer<float3>> normals_buffer = nullptr;
-				std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> albedo_buffer = nullptr;
+				std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> albedo_buffer = nullptr;
 
 				if (m_application_settings->denoiser_use_normals)
 					normals_buffer = m_renderer->get_denoiser_normals_AOV_buffer();

@@ -66,7 +66,18 @@ struct Scene
     // The material names are used for displaying in the material editor of ImGui
     std::vector<std::string> material_names;
     // Material textures. Needs to be index by a material index. 
-    std::vector<ImageRGBA> textures;
+    std::vector<ImageRGBA32F> textures;
+
+
+
+
+    // Base color material textures. Needs to be indexed by a material index. 
+    /*std::vector<ImageRGBA8> base_color_textures;
+    std::vector<ImageR8> material_parameters_textures;*/
+
+
+
+
     // The widths and heights of the material textures
     // Necessary since Orochi doesn't support normalized texture coordinates
     // for texture object creation yet. This mean that we have to use texel coordinates

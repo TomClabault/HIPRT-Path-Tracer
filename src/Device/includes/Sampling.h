@@ -119,9 +119,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 cosine_weighted_sample(const float3& norma
     return hippt::normalize(normal + sphere_point);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB fresnel_schlick(ColorRGB F0, float angle)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F fresnel_schlick(ColorRGB32F F0, float angle)
 {
-    return F0 + (ColorRGB(1.0f) - F0) * pow((1.0f - angle), 5.0f);
+    return F0 + (ColorRGB32F(1.0f) - F0) * pow((1.0f - angle), 5.0f);
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float fresnel_dielectric(float cos_theta_i, float relative_eta)

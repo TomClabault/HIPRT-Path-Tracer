@@ -69,15 +69,15 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float triangle_area(const HIPRTRenderData& render
     return hippt::length(hippt::cross(AB, AC)) / 2.0f;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_one_light_no_MIS(const HIPRTRenderData& render_data, const RendererMaterial& material, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_no_MIS(const HIPRTRenderData& render_data, const RendererMaterial& material, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
 {
     float light_sample_pdf;
     LightSourceInformation light_source_info;
-    ColorRGB light_source_radiance;
+    ColorRGB32F light_source_radiance;
     float3 random_light_point = sample_one_emissive_triangle(render_data, random_number_generator, light_sample_pdf, light_source_info);
     if (!(light_sample_pdf > 0.0f))
         // Can happen for very small triangles
-        return ColorRGB(0.0f);
+        return ColorRGB32F(0.0f);
 
     float3 shadow_ray_origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f;
     float3 shadow_ray_direction = random_light_point - shadow_ray_origin;
@@ -103,7 +103,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_one_light_no_MIS(const HIPRTRende
 
             float brdf_pdf;
             RayVolumeState trash_volume_state;
-            ColorRGB bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, material, trash_volume_state, view_direction, closest_hit_info.shading_normal, shadow_ray.direction, brdf_pdf);
+            ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, material, trash_volume_state, view_direction, closest_hit_info.shading_normal, shadow_ray.direction, brdf_pdf);
             if (brdf_pdf != 0.0f)
             {
                 float cosine_term = hippt::max(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction), 0.0f);
@@ -115,14 +115,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_one_light_no_MIS(const HIPRTRende
     return light_source_radiance;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_one_light_bsdf(const HIPRTRenderData& render_data, const RendererMaterial& material, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_bsdf(const HIPRTRenderData& render_data, const RendererMaterial& material, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
 {
-    ColorRGB bsdf_radiance;
+    ColorRGB32F bsdf_radiance;
 
     float3 sampled_brdf_direction;
     float direction_pdf;
     RayVolumeState trash_volume_state;
-    ColorRGB bsdf_color = bsdf_dispatcher_sample(render_data.buffers.materials_buffer, material, trash_volume_state, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_brdf_direction, direction_pdf, random_number_generator);
+    ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data.buffers.materials_buffer, material, trash_volume_state, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_brdf_direction, direction_pdf, random_number_generator);
     if (direction_pdf > 0.0f)
     {
         hiprtRay new_ray;
@@ -145,15 +145,15 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_one_light_bsdf(const HIPRTRenderD
     return bsdf_radiance;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_one_light_MIS(const HIPRTRenderData& render_data, const RendererMaterial& material, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(const HIPRTRenderData& render_data, const RendererMaterial& material, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
 {
     float light_sample_pdf;
-    ColorRGB light_source_radiance_mis;
+    ColorRGB32F light_source_radiance_mis;
     LightSourceInformation light_source_info;
     float3 random_light_point = sample_one_emissive_triangle(render_data, random_number_generator, light_sample_pdf, light_source_info);
     if (light_sample_pdf <= 0.0f)
         // Can happen for very small triangles
-        return ColorRGB(0.0f);
+        return ColorRGB32F(0.0f);
 
     float3 shadow_ray_origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f;
     float3 shadow_ray_direction = random_light_point - shadow_ray_origin;
@@ -178,7 +178,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_one_light_MIS(const HIPRTRenderDa
 
             float bsdf_pdf;
             RayVolumeState trash_volume_state;
-            ColorRGB bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, material, trash_volume_state, view_direction, closest_hit_info.shading_normal, shadow_ray.direction, bsdf_pdf);
+            ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, material, trash_volume_state, view_direction, closest_hit_info.shading_normal, shadow_ray.direction, bsdf_pdf);
             if (bsdf_pdf != 0.0f)
             {
                 float mis_weight = power_heuristic(light_sample_pdf, bsdf_pdf);
@@ -189,12 +189,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_one_light_MIS(const HIPRTRenderDa
         }
     }
 
-    ColorRGB bsdf_radiance_mis;
+    ColorRGB32F bsdf_radiance_mis;
 
     float3 sampled_brdf_direction;
     float direction_pdf;
     RayVolumeState trash_volume_state;
-    ColorRGB bsdf_color = bsdf_dispatcher_sample(render_data.buffers.materials_buffer, material, trash_volume_state, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_brdf_direction, direction_pdf, random_number_generator);
+    ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data.buffers.materials_buffer, material, trash_volume_state, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_brdf_direction, direction_pdf, random_number_generator);
     if (direction_pdf > 0)
     {
         hiprtRay new_ray;
@@ -236,7 +236,7 @@ struct ReservoirSample
 {
     // Light sample
     float3 point_on_light_source = { 0, 0, 0 };
-    ColorRGB emission = { 0.0f, 0.0f, 0.0f };
+    ColorRGB32F emission = { 0.0f, 0.0f, 0.0f };
 };
 
 struct Reservoir
@@ -266,7 +266,7 @@ struct Reservoir
     ReservoirSample sample;
 };
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_bsdf_and_lights_RIS(const HIPRTRenderData& render_data, const RendererMaterial& material, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_bsdf_and_lights_RIS(const HIPRTRenderData& render_data, const RendererMaterial& material, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
 {
     float3 evaluated_point = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f;
 
@@ -281,7 +281,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_bsdf_and_lights_RIS(const HIPRTRe
         RayVolumeState trash_ray_volume_state;
         LightSourceInformation light_source_info;
 
-        ColorRGB bsdf_color;
+        ColorRGB32F bsdf_color;
         float target_function = 0.0f;
         float candidate_weight = 0.0f;
         float3 random_light_point = sample_one_emissive_triangle(render_data, random_number_generator, light_sample_pdf, light_source_info);
@@ -342,7 +342,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_bsdf_and_lights_RIS(const HIPRTRe
         float cosine_at_evaluated_point = 0.0f;
         float cosine_light_source = 0.0f;
         float3 sampled_direction;
-        ColorRGB bsdf_color;
+        ColorRGB32F bsdf_color;
         RayVolumeState trash_ray_volume_state;
 
         bsdf_color = bsdf_dispatcher_sample(render_data.buffers.materials_buffer, material, trash_ray_volume_state, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_direction, bsdf_sample_pdf, random_number_generator);
@@ -384,11 +384,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_bsdf_and_lights_RIS(const HIPRTRe
         reservoir.update(new_sample, candidate_weight, random_number_generator);
     }
 
-    ColorRGB final_color;
+    ColorRGB32F final_color;
 
     // Getting the sample
     if (reservoir.weight_sum == 0.0f)
-        return ColorRGB(0.0f);
+        return ColorRGB32F(0.0f);
 
     ReservoirSample sample = reservoir.get_sample();
 
@@ -405,7 +405,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_bsdf_and_lights_RIS(const HIPRTRe
     {
         float brdf_pdf;
         float cosine_at_evaluated_point;
-        ColorRGB bsdf_color;
+        ColorRGB32F bsdf_color;
         RayVolumeState trash_volume_state;
 
         bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, material, trash_volume_state, view_direction, closest_hit_info.shading_normal, shadow_ray.direction, brdf_pdf);
@@ -423,19 +423,19 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_bsdf_and_lights_RIS(const HIPRTRe
     return final_color;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_one_light(const HIPRTRenderData& render_data, const RendererMaterial& material, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light(const HIPRTRenderData& render_data, const RendererMaterial& material, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
 {
     if (render_data.buffers.emissive_triangles_count == 0)
         // No emmisive geometry in the scene to sample
-        return ColorRGB(0.0f);
+        return ColorRGB32F(0.0f);
 
     if (material.emission.r != 0.0f || material.emission.g != 0.0f || material.emission.b != 0.0f)
         // We're not sampling direct lighting if we're already on an
         // emissive surface
-        return ColorRGB(0.0f);
+        return ColorRGB32F(0.0f);
 
 #if DirectLightSamplingStrategy == LSS_NO_DIRECT_LIGHT_SAMPLING
-    return ColorRGB(0.0f);
+    return ColorRGB32F(0.0f);
 #elif DirectLightSamplingStrategy == LSS_UNIFORM_ONE_LIGHT
     return sample_one_light_no_MIS(render_data, material, closest_hit_info, view_direction, random_number_generator);
 #elif DirectLightSamplingStrategy == LSS_BSDF

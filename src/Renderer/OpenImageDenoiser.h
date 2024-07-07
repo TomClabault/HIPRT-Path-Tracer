@@ -32,13 +32,13 @@ public:
 	*/
 	void finalize();
 
-	void denoise(std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> data_to_denoise, 
+	void denoise(std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> data_to_denoise, 
 				 std::shared_ptr<OpenGLInteropBuffer<float3>> normals_aov = nullptr, 
-				 std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> albedo_aov = nullptr);
+				 std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> albedo_aov = nullptr);
 	/**
 	 * Function used to copy the denoiser result after a call to denoise() to a given buffer
 	 */
-	void copy_denoised_data_to_buffer(std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> out_buffer);
+	void copy_denoised_data_to_buffer(std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> out_buffer);
 
 
 private:

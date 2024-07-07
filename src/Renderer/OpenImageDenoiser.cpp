@@ -42,8 +42,8 @@ void OpenImageDenoiser::resize(int new_width, int new_height)
     m_width = new_width;
     m_height = new_height;
 
-    m_denoised_buffer = m_device.newBuffer(sizeof(ColorRGB) * new_width * new_height, oidn::Storage::Managed);
-    m_input_color_buffer_oidn = m_device.newBuffer(sizeof(ColorRGB) * new_width * new_height, oidn::Storage::Managed);
+    m_denoised_buffer = m_device.newBuffer(sizeof(ColorRGB32F) * new_width * new_height, oidn::Storage::Managed);
+    m_input_color_buffer_oidn = m_device.newBuffer(sizeof(ColorRGB32F) * new_width * new_height, oidn::Storage::Managed);
 }
 
 void OpenImageDenoiser::initialize()
@@ -90,7 +90,7 @@ void OpenImageDenoiser::finalize()
         // Creating the buffers here instead of in resize() because we want the creation/destruction 
         // to be dynamic in response to ImGui input so we cannot just wait for a window resize event
         // that would trigger OpenImageDenoiser::resize()
-        m_albedo_buffer_denoised_oidn = m_device.newBuffer(sizeof(ColorRGB) * m_width * m_height, oidn::Storage::Managed);
+        m_albedo_buffer_denoised_oidn = m_device.newBuffer(sizeof(ColorRGB32F) * m_width * m_height, oidn::Storage::Managed);
 
         m_beauty_filter.setImage("albedo", m_albedo_buffer_denoised_oidn, oidn::Format::Float3, m_width, m_height);
     }
@@ -113,7 +113,7 @@ void OpenImageDenoiser::finalize()
 
 void OpenImageDenoiser::create_device()
 {
-    // Create an Open Image Denoise device on the GPU depending
+    // Create an Open ImageRGB32F Denoise device on the GPU depending
     // on whether we're running on an NVIDIA or AMD GPU
     //
     // -1 and nullptr correspond respectively to the default CUDA/HIP device
@@ -171,7 +171,7 @@ bool OpenImageDenoiser::check_device()
     return true;
 }
 
-void OpenImageDenoiser::denoise(std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> data_to_denoise, std::shared_ptr<OpenGLInteropBuffer<float3>> normals_aov, std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> albedo_aov)
+void OpenImageDenoiser::denoise(std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> data_to_denoise, std::shared_ptr<OpenGLInteropBuffer<float3>> normals_aov, std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> albedo_aov)
 {
     if (!check_valid_state())
         return;
@@ -190,28 +190,28 @@ void OpenImageDenoiser::denoise(std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> d
 
     if (albedo_aov != nullptr)
     {
-        ColorRGB* albedo_pointer = albedo_aov->map();
-        OROCHI_CHECK_ERROR(oroMemcpy(m_albedo_buffer_denoised_oidn.getData(), albedo_pointer, sizeof(ColorRGB) * m_width * m_height, memcpyKind));
+        ColorRGB32F* albedo_pointer = albedo_aov->map();
+        OROCHI_CHECK_ERROR(oroMemcpy(m_albedo_buffer_denoised_oidn.getData(), albedo_pointer, sizeof(ColorRGB32F) * m_width * m_height, memcpyKind));
         albedo_aov->unmap();
 
         if (m_denoise_albedo)
             m_albedo_filter.execute();
     }
     
-    ColorRGB* data_to_denoise_pointer = data_to_denoise->map();
-    OROCHI_CHECK_ERROR(oroMemcpy(m_input_color_buffer_oidn.getData(), data_to_denoise_pointer, sizeof(ColorRGB) * m_width * m_height, memcpyKind));
+    ColorRGB32F* data_to_denoise_pointer = data_to_denoise->map();
+    OROCHI_CHECK_ERROR(oroMemcpy(m_input_color_buffer_oidn.getData(), data_to_denoise_pointer, sizeof(ColorRGB32F) * m_width * m_height, memcpyKind));
     m_beauty_filter.execute();
 
     data_to_denoise->unmap();
 }
 
-void OpenImageDenoiser::copy_denoised_data_to_buffer(std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> out_buffer)
+void OpenImageDenoiser::copy_denoised_data_to_buffer(std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> out_buffer)
 {
     oroMemcpyKind memcpyKind;
-    ColorRGB* buffer_pointer;
+    ColorRGB32F* buffer_pointer;
     
     memcpyKind = m_cpu_device ? oroMemcpyHostToDevice : oroMemcpyDeviceToDevice;
     buffer_pointer= out_buffer->map();
-    OROCHI_CHECK_ERROR(oroMemcpy(buffer_pointer, m_denoised_buffer.getData(), sizeof(ColorRGB) * m_width * m_height, memcpyKind));
+    OROCHI_CHECK_ERROR(oroMemcpy(buffer_pointer, m_denoised_buffer.getData(), sizeof(ColorRGB32F) * m_width * m_height, memcpyKind));
     out_buffer->unmap();
 }

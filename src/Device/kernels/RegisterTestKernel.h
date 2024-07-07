@@ -83,7 +83,7 @@
 //
 //    int result = sumFunction(data);
 //
-//    render_data.buffers.pixels[threadId] = ColorRGB(result);
+//    render_data.buffers.pixels[threadId] = ColorRGB32F(result);
 //}
 // 9 registers
 
@@ -139,7 +139,7 @@
 //    data.packed = (int)randomGenerator.xorshift32();
 //    int result = sumFunction(data);
 //
-//    render_data.buffers.pixels[threadId] = ColorRGB(result);
+//    render_data.buffers.pixels[threadId] = ColorRGB32F(result);
 //}
 // 7 registers
 
@@ -198,7 +198,7 @@
 //    data.d = (short int)randomGenerator.xorshift32();
 //    int result = sumFunction(data);
 //
-//    render_data.buffers.pixels[threadId] = ColorRGB(result);
+//    render_data.buffers.pixels[threadId] = ColorRGB32F(result);
 //}
 //// 10 registers
 
@@ -258,7 +258,7 @@
 //    data.packed2 = randomGenerator.xorshift32();
 //    int result = sumFunction(data);
 //
-//    render_data.buffers.pixels[threadId] = ColorRGB(result);
+//    render_data.buffers.pixels[threadId] = ColorRGB32F(result);
 //}
 // 7 registers
 
@@ -321,7 +321,7 @@
 //    data.f = randomGenerator.xorshift32();
 //    int result = sumFunction(data);
 //
-//    render_data.buffers.pixels[threadId] = ColorRGB(result);
+//    render_data.buffers.pixels[threadId] = ColorRGB32F(result);
 //}
 // 10 registers
 
@@ -381,5 +381,5 @@ GLOBAL_KERNEL_SIGNATURE(void) inline TestFunction(HIPRTRenderData render_data, i
     data.ef = randomGenerator.xorshift32();
     int result = sumFunction(data);
 
-    render_data.buffers.pixels[threadId] = ColorRGB(result);
+    render_data.buffers.pixels[threadId] = ColorRGB32F(result);
 }

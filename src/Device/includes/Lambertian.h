@@ -10,7 +10,7 @@
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/Material.h"
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB hiprt_lambertian_brdf(const RendererMaterial& material, const float3& to_light_direction, const float3& view_direction, const float3& surface_normal)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F hiprt_lambertian_brdf(const RendererMaterial& material, const float3& to_light_direction, const float3& view_direction, const float3& surface_normal)
 {
     return material.base_color / M_PI;
 }
