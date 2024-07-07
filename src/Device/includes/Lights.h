@@ -270,9 +270,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_bsdf_and_lights_RIS(const HIPR
 {
     float3 evaluated_point = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f;
 
+    // If we're rendering at low resolution, only doing 1 candidate of each for better framerates
+    int nb_light_candidates = render_data.render_settings.render_low_resolution ? 1 : render_data.render_settings.ris_number_of_light_candidates;
+    int nb_bsdf_candidates = render_data.render_settings.render_low_resolution ? 1 : render_data.render_settings.ris_number_of_bsdf_candidates;
+
+
     // Sampling candidates with weighted reservoir sampling
     Reservoir reservoir;
-    for (int i = 0; i < render_data.render_settings.ris_number_of_light_candidates; i++)
+    for (int i = 0; i < nb_light_candidates; i++)
     { 
         float light_sample_pdf;
         float distance_to_light;
@@ -313,16 +318,22 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_bsdf_and_lights_RIS(const HIPR
                 target_function = bsdf_color.length() * light_source_info.emission.length() * cosine_at_evaluated_point;
 
 #if RISUseVisiblityTargetFunction == RIS_USE_VISIBILITY_TRUE
-                hiprtRay shadow_ray;
-                shadow_ray.origin = evaluated_point;
-                shadow_ray.direction = to_light_direction;
+                if (!render_data.render_settings.render_low_resolution)
+                {
+                    // Only doing visiblity if we're render at low resolution
+                    // (meaning we're moving the camera) for better movement framerates
 
-                bool visible = !evaluate_shadow_ray(render_data, shadow_ray, distance_to_light);
+                    hiprtRay shadow_ray;
+                    shadow_ray.origin = evaluated_point;
+                    shadow_ray.direction = to_light_direction;
 
-                target_function *= visible;
+                    bool visible = !evaluate_shadow_ray(render_data, shadow_ray, distance_to_light);
+
+                    target_function *= visible;
+                }
 #endif
 
-                float mis_weight = balance_heuristic(light_sample_pdf, render_data.render_settings.ris_number_of_light_candidates, bsdf_pdf, render_data.render_settings.ris_number_of_bsdf_candidates);
+                float mis_weight = balance_heuristic(light_sample_pdf, nb_light_candidates, bsdf_pdf, nb_bsdf_candidates);
                 candidate_weight = mis_weight * target_function / light_sample_pdf;
             }
         }
@@ -334,7 +345,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_bsdf_and_lights_RIS(const HIPR
         reservoir.update(sample, candidate_weight, random_number_generator);
     }
 
-    for (int i = 0; i < render_data.render_settings.ris_number_of_bsdf_candidates; i++)
+    for (int i = 0; i < nb_bsdf_candidates; i++)
     {
         float bsdf_sample_pdf = 0.0f;
         float target_function = 0.0f;
@@ -373,7 +384,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_bsdf_and_lights_RIS(const HIPR
                 light_pdf /= light_area;
                 light_pdf /= render_data.buffers.emissive_triangles_count;
 
-                float mis_weight = balance_heuristic(bsdf_sample_pdf, render_data.render_settings.ris_number_of_bsdf_candidates, light_pdf, render_data.render_settings.ris_number_of_light_candidates);
+                float mis_weight = balance_heuristic(bsdf_sample_pdf, nb_bsdf_candidates, light_pdf, nb_light_candidates);
                 candidate_weight = mis_weight * target_function / bsdf_sample_pdf;
 
                 new_sample.emission = ray_payload.material.emission;
