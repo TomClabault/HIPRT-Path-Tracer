@@ -8,6 +8,7 @@
 #include "Threads/ThreadFunctions.h"
 #include "Threads/ThreadManager.h"
 #include "Threads/ThreadState.h"
+#include "Utils/CommandlineArguments.h"
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include "glm/gtx/matrix_decompose.hpp"
@@ -24,9 +25,18 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Scene& par
     if (scene == nullptr)
     {
         std::cerr << importer.GetErrorString() << std::endl;
+        std::cerr << "Falling back to cornell box..." << std::endl;
 
-        int charac = std::getchar();
-        std::exit(1);
+        scene = importer.ReadFile(CommandlineArguments::DEFAULT_SCENE, aiPostProcessSteps::aiProcess_PreTransformVertices | aiPostProcessSteps::aiProcess_Triangulate | aiPostProcessSteps::aiProcess_RemoveRedundantMaterials);
+        if (scene == nullptr)
+        {
+            // Couldn't even load the default scene either
+
+            std::cerr << "Couldn't load the default scene either... Aborting" << std::endl;
+
+            int charac = std::getchar();
+            std::exit(1);
+        }
     }
 
     std::vector<std::pair<aiTextureType, std::string>> texture_paths;

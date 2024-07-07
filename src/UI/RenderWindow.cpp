@@ -17,19 +17,11 @@
 #include "stb_image_write.h"
 
 // TODO Code Organization:
-// - do we need OpenGL Lib/bin in thirdparties?
 // - Use HIPRT with CMake as a subdirectory (available soon)
-// - Device/ or HostDeviceCommon. Not both
 // - reorganize methods order in RenderWindow
-// - submodules in thirdparty folder
-
 
 
 // TODO Features:
-// - enable light sampling while inside mediums because we may have light sources inside mediums
-// - improve performance by only intersecting the selected emissive triangle with the BSDF ray when multiple importance sampling, we don't need a full BVH traversal at all
-// - If could not load given scene file, fallback to cornell box instead of not continuing
-// - CTRL + mouse wheel for zoom in viewport, CTRL click reset zoom
 // - Kahan summation for weighted reservoir sampling?
 // - hardware triangle intersection can be disabled in HIPRT Compiler.cpp so that's good for comparing performance (__USE_HWI__ define)
 // - build BVHs one by one to avoid big memory spike? but what about BLAS performance cost?

@@ -27,7 +27,7 @@
 
 int main(int argc, char* argv[])
 {
-    CommandLineArguments cmd_arguments = CommandLineArguments::process_command_line_args(argc, argv);
+    CommandlineArguments cmd_arguments = CommandlineArguments::process_command_line_args(argc, argv);
 
     const int width = cmd_arguments.render_width;
     const int height = cmd_arguments.render_height;
