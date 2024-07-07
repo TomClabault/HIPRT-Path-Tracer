@@ -133,6 +133,12 @@ The following arguments are available:
 ![P1 street](README_data/img/rolex.jpg)
 
 Sources of the scenes can be found [here](https://github.com/TomClabault/HIPRT-Path-Tracer/blob/main/README_data/img/scene%20credits.txt).
+# Live YouTube Demos (click!)
+
+### Material Editor Demo
+[![Material Editor Demo](./README_data/img/Material_editor_thumbnail.jpg)](https://www.youtube.com/watch?v=LOVBwOoLVVQ "Material Editor Demo")
+### OIDN AOVs Quality Comparison
+[![OIDN AOVs Comparison](./README_data/img/OIDN_AOVs_thumbnail.jpg)](https://www.youtube.com/watch?v=GnCi7K2w9go "OIDN AOVs Comparison")
 # License
 
 GNU General Public License v3.0 or later
