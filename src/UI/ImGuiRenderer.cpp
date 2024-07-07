@@ -11,6 +11,11 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include "glm/gtx/euler_angles.hpp"
 
+ImGuiRenderer::ImGuiRenderer()
+{
+	ImGui::GetStyle().ScaleAllSizes(1.5f);
+}
+
 void ImGuiRenderer::set_render_window(RenderWindow* render_window)
 {
 	m_render_window = render_window;
@@ -50,7 +55,7 @@ void ImGuiRenderer::draw_imgui_interface()
 
 	ImGui::Separator();
 
-	ImGui::PushItemWidth(233);
+	ImGui::PushItemWidth(16 * ImGui::GetFontSize());
 
 	draw_render_settings_panel();
 	draw_environment_panel();
@@ -429,7 +434,7 @@ void ImGuiRenderer::draw_objects_panel()
 	{
 		RendererMaterial& material = materials[currently_selected_material];
 
-		ImGui::PushItemWidth(384);
+		ImGui::PushItemWidth(28 * ImGui::GetFontSize());
 
 		ImGui::Text("%s", material_names[currently_selected_material].c_str());
 		material_changed |= ImGui::ColorEdit3("Base color", (float*)&material.base_color);
@@ -458,8 +463,9 @@ void ImGuiRenderer::draw_objects_panel()
 		ImGui::EndDisabled();
 		material_changed |= ImGui::ColorEdit3("Emission", (float*)&material.emission, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
 
-		ImGui::Separator();
 		ImGui::PopItemWidth();
+
+		ImGui::Separator();
 
 		if (material_changed)
 		{
@@ -489,12 +495,15 @@ void ImGuiRenderer::draw_denoiser_panel()
 		ImGui::TreePush("Denoiser AOVs Tree");
 		if (ImGui::Checkbox("Use albedo AOV", &m_application_settings->denoiser_use_albedo))
 		{
+			m_application_settings->denoiser_settings_changed = true;
+
 			m_denoiser->set_use_albedo(m_application_settings->denoiser_use_albedo);
 			if (!m_application_settings->denoiser_use_albedo)
 			{
 				// We're forcing the use of normals AOV off here because it seems like OIDN doesn't support normal
 				// AOV without also using albedo AOV (at least I got some oidn::Exception when I tried
 				// using the normals without the albedo).
+				// TODO this may have to do with wrong HIP buffers being used. Try this out again after we're using proper HIP buffers
 				m_application_settings->denoiser_use_normals = false;
 				m_denoiser->set_use_normals(false);
 			}
@@ -504,18 +513,24 @@ void ImGuiRenderer::draw_denoiser_panel()
 		ImGui::SameLine();
 		if (ImGui::Checkbox("Denoise albedo", &m_application_settings->denoiser_denoise_albedo))
 		{
+			m_application_settings->denoiser_settings_changed = true;
+
 			m_denoiser->set_denoise_albedo(m_application_settings->denoiser_denoise_albedo);
 			m_denoiser->finalize();
 		}
 		ImGui::BeginDisabled(!m_application_settings->denoiser_use_albedo);
 		if (ImGui::Checkbox("Use normals AOV", &m_application_settings->denoiser_use_normals))
 		{
+			m_application_settings->denoiser_settings_changed = true;
+
 			m_denoiser->set_use_normals(m_application_settings->denoiser_use_normals);
 			m_denoiser->finalize();
 		}
 		ImGui::SameLine();
 		if (ImGui::Checkbox("Denoise normals", &m_application_settings->denoiser_denoise_normals))
 		{
+			m_application_settings->denoiser_settings_changed = true;
+
 			m_denoiser->set_denoise_normals(m_application_settings->denoiser_denoise_normals);
 			m_denoiser->finalize();
 		}
@@ -633,5 +648,5 @@ void ImGuiRenderer::rescale_ui()
 
 	ImGuiIO& io = ImGui::GetIO();
 	// Scaling by the DPI -10% as judged more pleasing
-	io.FontGlobalScale = windowDpiScale * 0.9f;
+	io.FontGlobalScale = windowDpiScale * 0.9f * 1.2;
 }

@@ -22,6 +22,8 @@ class RenderWindow;
 class ImGuiRenderer
 {
 public:
+	ImGuiRenderer();
+
 	void set_render_window(RenderWindow* renderer);
 
 	void draw_imgui_interface();

@@ -790,11 +790,17 @@ void RenderWindow::run()
 			bool denoise_at_target = m_application_settings->denoise_at_max_samples;
 			// Have we reached the max sample count? This is going to evaluate to true
 			// if the sample target 'max_sample_count' is 0 but that's fine I guess
-			bool max_samples_reached = denoise_at_target && render_settings.sample_number >= m_application_settings->max_sample_count;
+			// Also, we only want to denoise once when reaching the max sample count, otherwise
+			// the render is over but the denoiser will keep on denoising and burning the PC
+			// pointlessly (that's the third condition)
+			bool max_samples_reached = denoise_at_target && render_settings.sample_number >= m_application_settings->max_sample_count && m_application_settings->last_denoised_sample_count < render_settings.sample_number;
 			// Have we not reached the max sample count while only wanting denoising at max sample count?
 			bool max_samples_not_reached = denoise_at_target && render_settings.sample_number < m_application_settings->max_sample_count;
 			// Have we rendered enough samples since last time we denoised that we need to denoise?
 			bool sample_skip_threshold_reached = !denoise_at_target && (render_settings.sample_number - std::max(0, m_application_settings->last_denoised_sample_count) >= m_application_settings->denoiser_sample_skip);
+			// We're also going to denoiser if we changed the denoiser settings
+			// (meaning that we need to denoise to reflect the changed settings)
+			bool denoiser_settings_changed = m_application_settings->denoiser_settings_changed;
 
 			bool need_denoising = false;
 			bool display_noisy = false;
@@ -805,6 +811,7 @@ void RenderWindow::run()
 			//	- We're not denoising if we're interacting (moving the camera)
 			need_denoising |= max_samples_reached;
 			need_denoising |= sample_skip_threshold_reached;
+			need_denoising |= denoiser_settings_changed;
 			need_denoising &= !is_interacting();
 
 			// Display the noisy framebuffer if: 
@@ -837,6 +844,8 @@ void RenderWindow::run()
 				// We need to display the noisy framebuffer so we're forcing the blending factor to 0.0f to only
 				// choose the first view out of the two that are going to be blend (and the first view is the noisy view)
 				blend_override = 0.0f;
+
+			m_application_settings->denoiser_settings_changed = false;
 		}
 		
 		switch (m_application_settings->display_view)

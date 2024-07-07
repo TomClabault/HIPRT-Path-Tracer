@@ -32,6 +32,8 @@ struct ApplicationSettings
 	// If 0.0f, 100% of the noisy framebuffer is displayed in the viewport
 	// Linearly interpoalted between the two for intermediate values
 	float denoiser_blend = 1.0f;
+	// If the denoiser settings changed since last frame
+	bool denoiser_settings_changed = false;
 
 	// How much to divide the translation distance by when the mouse
 	// has been dragged over the window to move the camera
