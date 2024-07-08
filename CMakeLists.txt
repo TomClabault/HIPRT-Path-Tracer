@@ -81,7 +81,7 @@ find_package(OpenImageDenoise REQUIRED HINTS ${oidnbinaries_SOURCE_DIR}) # HINTS
 
 if (WIN32)
 	# "version" is a library from the Windows SDK
-	target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX assimp OpenImageDenoise ${OPENGL_LIBRARY} glfw3 glew32 hiprt200364D version)
+	target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX assimp OpenImageDenoise ${OPENGL_LIBRARY} glfw3 glew32 hiprt200364Dd version)
 elseif(UNIX)
 	find_package(GLEW REQUIRED)
 	target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX assimp OpenImageDenoise ${OPENGL_LIBRARY} glfw GLEW::GLEW ${hiprt_link_lib})
@@ -146,6 +146,11 @@ endif()
 
 # Macro to preserve nice beautiful source files hierarchy in Visual Studio
 if(MSVC_IDE)
+# Enabling parallel compilation on MSVC which isn't enabled by default
+	if(MSVC)
+		add_definitions(/MP)
+	endif()
+
 	macro(GroupSources curdir)
 		file(GLOB children RELATIVE ${PROJECT_SOURCE_DIR}/${curdir} ${PROJECT_SOURCE_DIR}/${curdir}/*)
 
