@@ -39,7 +39,7 @@
 
 struct float4x4
 {
-	float m[4][4];
+	float m[4][4] = { {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0} };
 };
 
 // Here we're defining aliases for common functions used in shader code.

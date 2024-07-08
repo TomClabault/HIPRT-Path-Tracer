@@ -12,7 +12,7 @@ class OrochiEnvmap : public OrochiTexture
 {
 public:
 	OrochiEnvmap () : OrochiTexture() {}
-	OrochiEnvmap(ImageRGBA32F& image);
+	OrochiEnvmap(Image32Bit& image);
 	OrochiEnvmap(const OrochiEnvmap& other) = delete;
 	OrochiEnvmap(OrochiEnvmap&& other);
 
@@ -20,8 +20,8 @@ public:
 	void operator=(const OrochiEnvmap& other) = delete;
 	void operator=(OrochiEnvmap&& other);
 
-	void init_from_image(const ImageRGBA32F& image);
-	void compute_cdf(ImageRGBA32F& image);
+	void init_from_image(const Image32Bit& image);
+	void compute_cdf(Image32Bit& image);
 	OrochiBuffer<float>& get_cdf_buffer();
 	float* get_cdf_device_pointer();
 

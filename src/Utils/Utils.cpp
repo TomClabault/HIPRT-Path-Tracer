@@ -13,7 +13,7 @@
 #include <string>
 #include <sstream>
 
-std::vector<unsigned char> Utils::tonemap_hdr_image(const ImageRGB32F& hdr_image, int sample_number, float gamma, float exposure)
+std::vector<unsigned char> Utils::tonemap_hdr_image(const Image32Bit& hdr_image, int sample_number, float gamma, float exposure)
 {
     return tonemap_hdr_image(reinterpret_cast<const float*>(hdr_image.data().data()), hdr_image.width * hdr_image.height * 3, sample_number, gamma, exposure);
 }
@@ -63,9 +63,9 @@ std::string Utils::file_to_string(const char* filepath)
     return buffer.str();
 }
 
-ImageRGB32F Utils::OIDN_denoise(const ImageRGB32F& image, int width, int height, float blend_factor)
+Image32Bit Utils::OIDN_denoise(const Image32Bit& image, int width, int height, float blend_factor)
 {
-    // Create an Open ImageRGB32F Denoise device
+    // Create an Open Image Denoise device
     static bool device_done = false;
     static oidn::DeviceRef device;
     if (!device_done)
@@ -81,7 +81,7 @@ ImageRGB32F Utils::OIDN_denoise(const ImageRGB32F& image, int width, int height,
                 if (device.getHandle() == nullptr)
                 {
                     std::cerr << "There was an error getting the device for denoising with OIDN. Perhaps some missing libraries for your hardware?" << std::endl;
-                    return ImageRGB32F();
+                    return Image32Bit();
                 }
                 device.commit();
 
@@ -97,7 +97,7 @@ ImageRGB32F Utils::OIDN_denoise(const ImageRGB32F& image, int width, int height,
         if (device.getHandle() == nullptr)
         {
             std::cerr << "There was an error getting the device for denoising with OIDN. Perhaps some missing libraries for your hardware?" << std::endl;
-            return ImageRGB32F();
+            return Image32Bit();
         }
         device.commit();
 
@@ -107,7 +107,7 @@ ImageRGB32F Utils::OIDN_denoise(const ImageRGB32F& image, int width, int height,
     if (!device_done)
     {
         std::cerr << "Cannot create any OIDN device, aborting denoising..." << std::endl;
-        return ImageRGB32F();
+        return Image32Bit();
     }
 
 
@@ -136,7 +136,7 @@ ImageRGB32F Utils::OIDN_denoise(const ImageRGB32F& image, int width, int height,
     filter.execute();
 
     float* denoised_ptr = (float*)colorBuf.getData();
-    ImageRGB32F output_image(width, height);
+    Image32Bit output_image(width, height, 3);
     ColorRGB32F* output_pixels = output_image.get_data_as_ColorRGB32F();
     for (int y = 0; y < height; y++)
         for (int x = 0; x < width; x++)

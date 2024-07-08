@@ -284,7 +284,7 @@ void GPURenderer::set_scene(const Scene& scene)
 	m_material_names = scene.material_names;
 }
 
-void GPURenderer::set_envmap(ImageRGBA32F& envmap_image)
+void GPURenderer::set_envmap(Image32Bit& envmap_image)
 {
 	m_envmap.init_from_image(envmap_image);
 	m_envmap.compute_cdf(envmap_image);

@@ -17,7 +17,6 @@ struct ApplicationSettings
 	DisplayView display_view = DisplayView::DEFAULT;
 
 	bool enable_denoising = false;
-	// How many samples were denoised by the last denoiser call
 	bool denoiser_use_albedo = true;
 	bool denoiser_denoise_albedo = true;
 	bool denoiser_use_normals = true;

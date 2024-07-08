@@ -13,7 +13,7 @@ class ThreadFunctions
 public:
 	static void compile_kernel(HIPKernel& kernel, hiprtContext& hiprt_ctx);
 
-	static void load_texture(Scene& parsed_scene, std::string scene_path, const std::vector<std::pair<aiTextureType, std::string>>& tex_paths, int thread_index, int nb_threads);
+	static void load_texture(Scene& parsed_scene, std::string scene_path, const std::vector<std::pair<aiTextureType, std::string>>& tex_paths, const std::vector<int>& material_indices, int thread_index, int nb_threads);
 };
 
 #endif

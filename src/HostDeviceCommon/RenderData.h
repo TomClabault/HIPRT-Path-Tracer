@@ -113,8 +113,8 @@ struct RenderBuffers
 	int emissive_triangles_count = 0;
 	int* emissive_triangles_indices = nullptr;
 
-	// A pointer either to a list of ImageRGBA32F or to a list of
-	// oroTextureObject_t whether if CPU or GPU renderer respectively
+	// A pointer either to an array of Image8Bit or to an array of
+	// oroTextureObject_t whether if CPU or GPU rendering respectively
 	// This pointer can be cast for the textures to be be retrieved.
 	void* material_textures = nullptr;
 	// Widths of the textures. Necessary for using texel coordinates in [0, width - 1]

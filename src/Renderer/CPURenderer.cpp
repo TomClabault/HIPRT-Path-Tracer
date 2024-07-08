@@ -13,7 +13,7 @@
 
 CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, height))
 {
-    m_framebuffer = ImageRGB32F(width, height);
+    m_framebuffer = Image32Bit(width, height, 3);
 
     // Resizing buffers + initial value
     m_debug_pixel_active_buffer.resize(width * height, 0);
@@ -54,7 +54,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.cpu_only.bvh = m_bvh.get();
 }
 
-void CPURenderer::set_envmap(ImageRGBA32F& envmap_image)
+void CPURenderer::set_envmap(Image32Bit& envmap_image)
 {
     m_render_data.world_settings.envmap = &envmap_image;
     m_render_data.world_settings.envmap_width = envmap_image.width;
@@ -77,15 +77,15 @@ HIPRTRenderSettings& CPURenderer::get_render_settings()
     return m_render_data.render_settings;
 }
 
-ImageRGB32F& CPURenderer::get_framebuffer()
+Image32Bit& CPURenderer::get_framebuffer()
 {
     return m_framebuffer;
 }
 
 #define DEBUG_PIXEL 0
 #define DEBUG_EXACT_COORDINATE 0
-#define DEBUG_PIXEL_X 43
-#define DEBUG_PIXEL_Y 14
+#define DEBUG_PIXEL_X 830
+#define DEBUG_PIXEL_Y 616
 
 void CPURenderer::render()  
 {

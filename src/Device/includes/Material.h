@@ -79,7 +79,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void get_metallic_roughness(const HIPRTRenderData
 {
     if (metallic_roughness_texture_index != -1)
     {
-        ColorRGB32F rgb = sample_texture_rgb(render_data.buffers.material_textures, metallic_roughness_texture_index, render_data.buffers.textures_dims[metallic_roughness_texture_index], false, texcoords);
+        ColorRGB32F rgb = sample_texture_rgb_8bits(render_data.buffers.material_textures, metallic_roughness_texture_index, render_data.buffers.textures_dims[metallic_roughness_texture_index], false, texcoords);
 
         // Not converting to linear here because material properties (roughness and metallic) here are assumed to be linear already
         roughness = rgb.g;

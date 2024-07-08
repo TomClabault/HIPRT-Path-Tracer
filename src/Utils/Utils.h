@@ -7,16 +7,15 @@
 #define UTILS_H
 
 #include "HostDeviceCommon/Color.h"
+#include "Image/Image.h"
 
 #include <string>
-
-class ImageRGB32F;
 
 class Utils
 {
 public:
 
-    static std::vector<unsigned char> tonemap_hdr_image(const ImageRGB32F& hdr_image, int sample_number, float gamma, float exposure);
+    static std::vector<unsigned char> tonemap_hdr_image(const Image32Bit& hdr_image, int sample_number, float gamma, float exposure);
     static std::vector<unsigned char> tonemap_hdr_image(const std::vector<ColorRGB32F>& hdr_image, int sample_number, float gamma, float exposure);
     static std::vector<unsigned char> tonemap_hdr_image(const std::vector<float>& hdr_image, int sample_number, float gamma, float exposure);
     static std::vector<unsigned char> tonemap_hdr_image(const float* hdr_image, size_t size, int sample_number, float gamma, float exposure);
@@ -26,7 +25,7 @@ public:
     /*
      * A blend factor of 1 gives only the noisy image. 0 only the denoised image
      */
-    static ImageRGB32F OIDN_denoise(const ImageRGB32F& image, int width, int height, float blend_factor);
+    static Image32Bit OIDN_denoise(const Image32Bit& image, int width, int height, float blend_factor);
 
     /**
      * Breaks the debugger when calling this function as if a breakpoint was hit. 

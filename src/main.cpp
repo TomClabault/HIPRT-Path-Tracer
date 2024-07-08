@@ -23,7 +23,7 @@
 #include <cmath>
 #include <iostream>
 
-#define GPU_RENDER 1
+#define GPU_RENDER 0
 
 int main(int argc, char* argv[])
 {
@@ -50,7 +50,8 @@ int main(int argc, char* argv[])
 
     std::cout << "Reading \"" << cmd_arguments.skysphere_file_path << "\" envmap..." << std::endl;
     // Not flipping Y here since the Y-flipping is done in the shader
-    ImageRGBA32F envmap_image = ImageRGBA32F::read_image_hdr(cmd_arguments.skysphere_file_path, /* flip Y */ true);
+    // TODO we only need 3 channels for the envmap but the only supported formats are 1, 2, 4 channels in HIP/CUDA, not 3
+    Image32Bit envmap_image = Image32Bit::read_image_hdr(cmd_arguments.skysphere_file_path, 4, /* flip Y */ true);
     
 #if GPU_RENDER
 
@@ -82,9 +83,9 @@ int main(int argc, char* argv[])
     cpu_renderer.render();
     cpu_renderer.tonemap(2.2f, 1.0f);
 
-    ImageRGB32F image_denoised_1 = Utils::OIDN_denoise(cpu_renderer.get_framebuffer(), width, height, 1.0f);
-    ImageRGB32F image_denoised_075 = Utils::OIDN_denoise(cpu_renderer.get_framebuffer(), width, height, 0.75f);
-    ImageRGB32F image_denoised_05 = Utils::OIDN_denoise(cpu_renderer.get_framebuffer(), width, height, 0.5f);
+    Image32Bit image_denoised_1 = Utils::OIDN_denoise(cpu_renderer.get_framebuffer(), width, height, 1.0f);
+    Image32Bit image_denoised_075 = Utils::OIDN_denoise(cpu_renderer.get_framebuffer(), width, height, 0.75f);
+    Image32Bit image_denoised_05 = Utils::OIDN_denoise(cpu_renderer.get_framebuffer(), width, height, 0.5f);
 
     cpu_renderer.get_framebuffer().write_image_png("CPU_RT_output.png");
     image_denoised_1.write_image_png("CPU_RT_output_denoised_1.png");

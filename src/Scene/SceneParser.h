@@ -66,7 +66,7 @@ struct Scene
     // The material names are used for displaying in the material editor of ImGui
     std::vector<std::string> material_names;
     // Material textures. Needs to be index by a material index. 
-    std::vector<ImageRGBA32F> textures;
+    std::vector<Image8Bit> textures;
 
 
 
@@ -141,12 +141,34 @@ public:
 private:
 
     static void parse_camera(const aiScene* scene, Scene& parsed_scene, float frame_aspect_override);
+
     /** 
      * Prepares all the necessary data for multithreaded texture-loading
+     * 
+     * @ scene is the scene to parse the textures from
+     * @ textures_paths is a list of pair of <texture_type -> the path to the texture>.
+     * @ material_texture_indices is a list that is as long as there are unique materials
+     *      in the scene. Each field of the stucture contains the index of the texture used
+     *      by that material. -1 if the material doesn't have that type of texture
+     *      (if structure.base_color_texture_index == -1 for example, that means
+     *      that the material doesn't have a base color texture)
+     * @ material_indices is a vector which is 'number of textures' long and contains the
+     *      index of the material that the texture belongs to.
+     *      If material_indices[3] == 2, this means that the texture 3 (the fourth texure)
+     *      is used by material 2 (which is the third material)
+     * @ texture_per_mesh is a list that is 'number of mesh' long and that gives the number
+     *      of textures used per mesh
+     * @ texture_indices_offset /By how much to offset the indices of the textures used by a material.
+     *      For example, if there are 5 materials in the scene that all use a different base color
+     *      texture, after the call to prepare_textures(), they will all have 0 as the index of their
+     *      base color texture. This is obviously wrong and it should be 0, 1, 2, 3, 4 for
+     *      each material since they use their own texture. This is what this vector is for, it contains
+     *      the offsets that are going to be used so that each material has proper texture indices.
+     * @ texture_count How many texture are in the scene
      */
     static void prepare_textures(const aiScene* scene, std::vector<std::pair<aiTextureType, std::string>>& texture_paths, std::vector<ParsedMaterialTextureIndices>& material_texture_indices, std::vector<int>& material_indices, std::vector<int>& texture_per_mesh, std::vector<int>& texture_indices_offsets, int& texture_count);
     static void assign_material_texture_indices(std::vector<RendererMaterial>& materials, const std::vector<ParsedMaterialTextureIndices>& material_tex_indices, const std::vector<int>& material_textures_offsets);
-    static void dispatch_texture_loading(Scene& parsed_scene, const std::string& scene_path, int nb_threads, const std::vector<std::pair<aiTextureType, std::string>>& texture_paths);
+    static void dispatch_texture_loading(Scene& parsed_scene, const std::string& scene_path, int nb_threads, const std::vector<std::pair<aiTextureType, std::string>>& texture_paths, const std::vector<int>& material_indices);
 
     static void read_material_properties(aiMaterial* mesh_material, RendererMaterial& renderer_material);
     /**

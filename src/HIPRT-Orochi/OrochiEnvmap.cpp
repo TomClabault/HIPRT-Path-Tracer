@@ -5,7 +5,7 @@
 
 #include "HIPRT-Orochi/OrochiEnvmap.h"
 
-OrochiEnvmap::OrochiEnvmap(ImageRGBA32F& image) : OrochiTexture(image)
+OrochiEnvmap::OrochiEnvmap(Image32Bit& image) : OrochiTexture(image)
 {
 	compute_cdf(image);
 }
@@ -22,12 +22,12 @@ void OrochiEnvmap::operator=(OrochiEnvmap&& other)
 	m_cdf = std::move(other.m_cdf);
 }
 
-void OrochiEnvmap::init_from_image(const ImageRGBA32F& image)
+void OrochiEnvmap::init_from_image(const Image32Bit& image)
 {
 	OrochiTexture::init_from_image(image);
 }
 
-void OrochiEnvmap::compute_cdf(ImageRGBA32F& image)
+void OrochiEnvmap::compute_cdf(Image32Bit& image)
 {
 	std::vector<float> cdf = image.compute_get_cdf();
 

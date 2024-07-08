@@ -48,7 +48,7 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Scene& par
     std::vector<int> texture_per_mesh;
     // By how much to offset the indices of the textures used by a material.
     // For example, if there are 5 materials in the scene that all use a different base color
-    // texture, after the callm to prepare_textures(), they will all have 0 as the index of their
+    // texture, after the call to prepare_textures(), they will all have 0 as the index of their
     // base color texture. This is obviously wrong and it should be 0, 1, 2, 3, 4 for
     // each material since they use their own texture. This is what this vector is for, it contains
     // the offsets that are going to be used so that each material has proper texture indices
@@ -60,8 +60,8 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Scene& par
     parsed_scene.material_names.resize(scene->mNumMaterials);
     parsed_scene.textures.resize(texture_count);
     parsed_scene.textures_dims.resize(texture_count);
-    dispatch_texture_loading(parsed_scene, scene_filepath, options.nb_texture_threads, texture_paths);
     assign_material_texture_indices(parsed_scene.materials, material_texture_indices, texture_indices_offsets);
+    dispatch_texture_loading(parsed_scene, scene_filepath, options.nb_texture_threads, texture_paths, material_indices);
 
     parse_camera(scene, parsed_scene, options.override_aspect_ratio);
 
@@ -204,6 +204,8 @@ void SceneParser::parse_camera(const aiScene* scene, Scene& parsed_scene, float 
     }
     else
     {
+        // Creating a default camera because the scene doesn't have one
+
         glm::mat4x4 lookat = glm::inverse(glm::lookAt(glm::vec3(0, 0, 0), glm::vec3(0, 0, -1), glm::vec3(0, 1, 0)));
 
         glm::vec3 scale, skew, translation;
@@ -286,7 +288,7 @@ void SceneParser::assign_material_texture_indices(std::vector<RendererMaterial>&
     }
 }
 
-void SceneParser::dispatch_texture_loading(Scene& parsed_scene, const std::string& scene_path, int nb_threads, const std::vector<std::pair<aiTextureType, std::string>>& texture_paths)
+void SceneParser::dispatch_texture_loading(Scene& parsed_scene, const std::string& scene_path, int nb_threads, const std::vector<std::pair<aiTextureType, std::string>>& texture_paths, const std::vector<int>& material_indices)
 {
     if (nb_threads == -1)
         // As many threads as there are textures if -1 was given
@@ -296,11 +298,12 @@ void SceneParser::dispatch_texture_loading(Scene& parsed_scene, const std::strin
     std::shared_ptr<TextureLoadingThreadState> texture_threads_state = std::make_shared<TextureLoadingThreadState>();
     texture_threads_state->scene_filepath = scene_path;
     texture_threads_state->texture_paths = texture_paths;
+    texture_threads_state->material_indices = material_indices;
 
     ThreadManager::add_state(ThreadManager::TEXTURE_THREADS_KEY, texture_threads_state);
 
     for (int i = 0; i < nb_threads; i++)
-        ThreadManager::start_thread(ThreadManager::TEXTURE_THREADS_KEY, ThreadFunctions::load_texture, std::ref(parsed_scene), texture_threads_state->scene_filepath, std::ref(texture_threads_state->texture_paths), i, nb_threads);
+        ThreadManager::start_thread(ThreadManager::TEXTURE_THREADS_KEY, ThreadFunctions::load_texture, std::ref(parsed_scene), texture_threads_state->scene_filepath, std::ref(texture_threads_state->texture_paths), std::ref(texture_threads_state->material_indices), i, nb_threads);
 }
 
 void SceneParser::read_material_properties(aiMaterial* mesh_material, RendererMaterial& renderer_material)
