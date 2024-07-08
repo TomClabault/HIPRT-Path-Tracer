@@ -22,7 +22,10 @@ struct ApplicationSettings
 	bool denoiser_denoise_albedo = true;
 	bool denoiser_use_normals = true;
 	bool denoiser_denoise_normals = true;
+	// How many samples were we at when we last denoised a frame
 	int last_denoised_sample_count = -1;
+	// How many microseconds did it take to denoise (last time we denoised)?
+	float last_denoised_duration = 0.0f;
 	// Denoise only when that maximum sample count is reached
 	bool denoise_at_max_samples = false;
 	// How many frames to wait for before denoising (this basically reduces 

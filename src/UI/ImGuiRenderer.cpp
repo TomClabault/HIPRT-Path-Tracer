@@ -542,6 +542,8 @@ void ImGuiRenderer::draw_denoiser_panel()
 	ImGui::SliderFloat("Denoiser blend", &m_application_settings->denoiser_blend, 0.0f, 1.0f);
 	ImGui::EndDisabled();
 
+	ImGui::Text("Denoising time: %.3fms", m_application_settings->last_denoised_duration / 1000.0f);
+
 	ImGui::TreePop();
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 }

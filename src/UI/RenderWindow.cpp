@@ -834,9 +834,13 @@ void RenderWindow::run()
 				if (m_application_settings->denoiser_use_albedo)
 					albedo_buffer = m_renderer->get_denoiser_albedo_AOV_buffer();
 
+				auto start = std::chrono::high_resolution_clock::now();
 				m_denoiser->denoise(m_renderer->get_color_framebuffer(), normals_buffer, albedo_buffer);
+				auto stop = std::chrono::high_resolution_clock::now();
+
 				m_denoiser->copy_denoised_data_to_buffer(m_renderer->get_denoised_framebuffer());
 
+				m_application_settings->last_denoised_duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count();
 				m_application_settings->last_denoised_sample_count = render_settings.sample_number;
 			}
 
