@@ -44,7 +44,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function(const HI
 	sample_direction = sample_direction / distance_to_light;
 
 	ColorRGB bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, material, trash_volume_state, view_direction, shading_normal, sample_direction, bsdf_pdf);
-	float cosine_term = hippt::max(0.0f, hippt::dot(shading_normal, sample_direction));
+	float cosine_term = 1.0f;// hippt::max(0.0f, hippt::dot(shading_normal, sample_direction));
 	float target_function = (bsdf_color * sample.emission * cosine_term).luminance();
 	if (target_function == 0.0f)
 		// Quick exit because computing the visiblity that follows isn't going
