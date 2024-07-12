@@ -27,7 +27,7 @@
  */
 
 #define SPATIAL_REUSE_PASSES_COUNT 1
-#define NEIGHBOR_REUSE_COUNT 1
+#define NEIGHBOR_REUSE_COUNT 5
 #define REUSE_RADIUS 30
 
 /**
@@ -35,14 +35,13 @@
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function(const HIPRTRenderData& render_data, const ReservoirSample& sample, const RendererMaterial& material, float3 view_direction, float3 shading_point, float3 shading_normal)
 {
-	RayVolumeState trash_volume_state;
-
 	float bsdf_pdf;
 	float distance_to_light;
 	float3 sample_direction = sample.point_on_light_source - shading_point;
 	distance_to_light = hippt::length(sample_direction);
 	sample_direction = sample_direction / distance_to_light;
 
+	RayVolumeState trash_volume_state;
 	ColorRGB bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, material, trash_volume_state, view_direction, shading_normal, sample_direction, bsdf_pdf);
 	float cosine_term = hippt::max(0.0f, hippt::dot(shading_normal, sample_direction));
 	float target_function = (bsdf_color * sample.emission * cosine_term).luminance();
@@ -103,7 +102,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	float3 current_pixel_shading_normal = render_data.g_buffer.shading_normals[pixel_index];
 	float3 current_pixel_shading_point = render_data.g_buffer.first_hits[pixel_index] + current_pixel_shading_normal * 1.0e-4f;
 
-	for (int neighbor = 0; neighbor < NEIGHBOR_REUSE_COUNT; neighbor++)
+	for (int neighbor = 0; neighbor < NEIGHBOR_REUSE_COUNT + 1; neighbor++)
 	{
 		int neighbor_pixel_index;
 
@@ -127,11 +126,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 			new_reservoir.combine_with(neighbor_reservoir, neighbor_reservoir.M, target_function, random_number_generator);
 	}
 
+	float valid_neighbor_count = new_reservoir.M;
 	// Now checking how many of our neighbors could have produced the sample that we just picked
-	float valid_neighbor_count = 0.0f;
 	if (new_reservoir.weight_sum > 0.0f)
 	{
-		for (int neighbor = 0; neighbor < NEIGHBOR_REUSE_COUNT; neighbor++)
+		for (int neighbor = 0; neighbor < NEIGHBOR_REUSE_COUNT + 1; neighbor++)
 		{
 			int neighbor_pixel_index;
 

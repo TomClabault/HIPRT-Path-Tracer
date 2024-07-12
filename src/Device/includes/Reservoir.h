@@ -24,7 +24,7 @@ struct Reservoir
         M++;
         weight_sum += weight;
 
-        if (random_number_generator() < (weight / weight_sum))
+        if (random_number_generator() < weight / weight_sum)
             sample = new_sample;
     }
 
@@ -35,7 +35,7 @@ struct Reservoir
         M += other_reservoir.M;
         weight_sum += reservoir_sample_weight;
 
-        if (random_number_generator() < (reservoir_sample_weight / weight_sum))
+        if (random_number_generator() < reservoir_sample_weight / weight_sum)
         {
             sample = other_reservoir.sample;
             sample.target_function = target_function;
