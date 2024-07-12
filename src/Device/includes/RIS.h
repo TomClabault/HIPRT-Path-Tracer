@@ -118,12 +118,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_lights_RIS_reservoir(const HIPRT
         sample.emission = light_source_info.emission;
         sample.target_function = target_function;
 
-        if (candidate_weight != 0.0f)
-            reservoir.add_one_candidate(sample, candidate_weight, random_number_generator);
-        else
-            // Because a candidate with a weight of 0.0f isn't never going to be chosen,
-            // we only need to increment M (the number of candidates seen)
-            reservoir.M++;
+        reservoir.add_one_candidate(sample, candidate_weight, random_number_generator);
     }
 
     for (int i = 0; i < render_data.render_settings.ris_number_of_bsdf_candidates; i++)
