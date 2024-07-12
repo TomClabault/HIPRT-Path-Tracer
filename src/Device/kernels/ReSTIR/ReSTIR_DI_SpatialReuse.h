@@ -44,7 +44,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function(const HI
 	sample_direction = sample_direction / distance_to_light;
 
 	ColorRGB bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, material, trash_volume_state, view_direction, shading_normal, sample_direction, bsdf_pdf);
-	float cosine_term = 1.0f;// hippt::max(0.0f, hippt::dot(shading_normal, sample_direction));
+	float cosine_term = hippt::max(0.0f, hippt::dot(shading_normal, sample_direction));
 	float target_function = (bsdf_color * sample.emission * cosine_term).luminance();
 	if (target_function == 0.0f)
 		// Quick exit because computing the visiblity that follows isn't going
@@ -148,7 +148,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 		seed = wang_hash(pixel_index + 1);
 	else
 		seed = wang_hash((pixel_index + 1) * (render_data.render_settings.sample_number + 1));
-
+	
 	Xorshift32Generator random_number_generator(seed);
 
 	Reservoir new_reservoir;
@@ -163,106 +163,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 		neighbor_offsets[i].y = 0;
 	}
 
-	//for (int neighbor = 0; neighbor < NEIGHBOR_REUSE_COUNT + 1; neighbor++)
-	//{
-	//	int neighbor_pixel_index;
-
-	//	if (neighbor == NEIGHBOR_REUSE_COUNT)
-	//		neighbor_pixel_index = pixel_coords.x + pixel_coords.y * res.x;
-	//	else
-	//	{
-	//		int2 neighbor_offset = neighbor_offsets[neighbor];
-	//		int2 neighbor_pixel_coords = pixel_coords + neighbor_offset;
-	//		if (neighbor_pixel_coords.x < 0 || neighbor_pixel_coords.x >= res.x || neighbor_pixel_coords.y < 0 || neighbor_pixel_coords.y >= res.y)
-	//			// Rejecting the sample if it's outside of the viewport
-	//			continue;
-
-	//		neighbor_pixel_index = neighbor_pixel_coords.x + neighbor_pixel_coords.y * res.x;
-	//	}
-
-	//	// Getting the reservoir of the neighbor being resampled
-	//	Reservoir neighbor_reservoir = render_data.aux_buffers.initial_reservoirs[neighbor_pixel_index];
-	//	if (neighbor_reservoir.UCW == 0.0f)
-	//		continue;
-
-	//	// Computing the MIS weight by iterating over all the neighbors because
-	//	// we need to take into account all the sampling techniques (one neighbor
-	//	// is one sampling technique) for each sample (which is the outer for loop
-	//	// above)
-	//	//float balance_heuristic_nume = 0.0f;
-	//	//float balance_heuristic_denom = 0.0f;
-	//	//for (int j = 0; j < NEIGHBOR_REUSE_COUNT + 1; j++)
-	//	//{	
-	//	//	int2 neighbor_mis_pixel_coords;
-
-	//	//	if (j == NEIGHBOR_REUSE_COUNT)
-	//	//		neighbor_mis_pixel_coords = pixel_coords;
-	//	//	else
-	//	//	{
-	//	//		int2 neighbor_mis_offset = neighbor_offsets[j];
-	//	//		neighbor_mis_pixel_coords = pixel_coords + neighbor_mis_offset;
-	//	//	}
-
-	//	//	if (neighbor_mis_pixel_coords.x < 0 || neighbor_mis_pixel_coords.x >= res.x || neighbor_mis_pixel_coords.y < 0 || neighbor_mis_pixel_coords.y >= res.y)
-	//	//		// Rejecting the sample if it's outside of the viewport
-	//	//		continue;
-
-	//	//	int neighbor_mis_pixel_index = neighbor_mis_pixel_coords.x + neighbor_mis_pixel_coords.y * res.x;
-
-	//	//	float bsdf_pdf;
-	//	//	float neighbor_distance_to_light;
-	//	//	float3 neighbor_view_direction = render_data.g_buffer.view_directions[neighbor_mis_pixel_index];
-	//	//	float3 neighbor_shading_normal = render_data.g_buffer.shading_normals[neighbor_mis_pixel_index];
-	//	//	float3 neighbor_shading_point = render_data.g_buffer.first_hits[neighbor_mis_pixel_index] + neighbor_shading_normal * 1.0e-4f;
-	//	//	float3 neighbor_to_light_direction = neighbor_reservoir.sample.point_on_light_source - neighbor_shading_point;
-	//	//	float3 neighbor_sample_direction = neighbor_to_light_direction / (neighbor_distance_to_light = hippt::length(neighbor_to_light_direction));
-	//	//	SimplifiedRendererMaterial neighbor_material = render_data.g_buffer.materials[neighbor_mis_pixel_index];
-
-	//	//	RayVolumeState trash_volume_state;
-
-	//	//	// Evaluating the target function at the neighbor
-	//	//	float target_function_at_neighbor = ReSTIR_DI_evaluate_target_function(render_data, neighbor_reservoir.sample, neighbor_material, neighbor_view_direction, neighbor_shading_point, neighbor_shading_normal);
-
-	//	//	balance_heuristic_denom += target_function_at_neighbor;
-	//	//	if (j == neighbor)
-	//	//		// For the current sample, we want to evaluate it at the current
-	//	//		// pixel, not its neighbor so we're going to do this outside of this loop
-	//	//		balance_heuristic_nume = target_function_at_neighbor;
-	//	//}
-
-	//	float3 inter_point = render_data.g_buffer.first_hits[pixel_index];
-	//	float3 shading_normal = render_data.g_buffer.shading_normals[pixel_index];
-	//	float3 shading_point = inter_point + shading_normal * 1.0e-4f;
-	//	float3 view_direction = render_data.g_buffer.view_directions[pixel_index];
-	//	RendererMaterial material = RendererMaterial(render_data.g_buffer.materials[pixel_index]);
-
-	//	float target_function = ReSTIR_DI_evaluate_target_function(render_data, neighbor_reservoir.sample, material, view_direction, shading_point, shading_normal);
-	//	if (target_function == 0.0f)
-	//		continue;
-
-	//	//float mis_weight = balance_heuristic_nume / balance_heuristic_denom;
-	//	new_reservoir.combine_with(neighbor_reservoir, 1.0f, target_function, random_number_generator);
-	//}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 	RendererMaterial current_pixel_material = render_data.g_buffer.materials[pixel_index];
 	float3 current_pixel_view_direction = render_data.g_buffer.view_directions[pixel_index];
 	float3 current_pixel_shading_normal = render_data.g_buffer.shading_normals[pixel_index];
 	float3 current_pixel_shading_point = render_data.g_buffer.first_hits[pixel_index] + current_pixel_shading_normal * 1.0e-4f;
 
-	for (int neighbor = 0; neighbor < NEIGHBOR_REUSE_COUNT + 1; neighbor++)
+	for (int neighbor = 0; neighbor < NEIGHBOR_REUSE_COUNT; neighbor++)
 	{
 		int neighbor_pixel_index;
 
@@ -286,10 +192,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 			new_reservoir.combine_with(neighbor_reservoir, neighbor_reservoir.M, target_function, random_number_generator);
 	}
 
+	// Now checking how many of our neighbors could have produced the sample that we just picked
 	float valid_neighbor_count = 0.0f;
 	if (new_reservoir.weight_sum > 0.0f)
 	{
-		for (int neighbor = 0; neighbor < NEIGHBOR_REUSE_COUNT + 1; neighbor++)
+		for (int neighbor = 0; neighbor < NEIGHBOR_REUSE_COUNT; neighbor++)
 		{
 			int neighbor_pixel_index;
 
@@ -306,8 +213,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 				neighbor_pixel_index = neighbor_pixel_coords.x + neighbor_pixel_coords.y * res.x;
 			}
 
-			Reservoir neighbor_reservoir = render_data.aux_buffers.initial_reservoirs[neighbor_pixel_index];
-
 			RendererMaterial neighbor_material = render_data.g_buffer.materials[neighbor_pixel_index];
 			float3 neighbor_view_direction = render_data.g_buffer.view_directions[neighbor_pixel_index];
 			float3 neighbor_shading_normal = render_data.g_buffer.shading_normals[neighbor_pixel_index];
@@ -315,122 +220,16 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 
 			float target_function_at_neighbor = ReSTIR_DI_evaluate_target_function(render_data, new_reservoir.sample, neighbor_material, neighbor_view_direction, neighbor_shading_point, neighbor_shading_normal);
 			if (target_function_at_neighbor > 0.0f)
+			{
+				Reservoir neighbor_reservoir = render_data.aux_buffers.initial_reservoirs[neighbor_pixel_index];
+
 				valid_neighbor_count += neighbor_reservoir.M;
+			}
 		}
 	}
 
 	new_reservoir.end_Z(valid_neighbor_count);
 	render_data.aux_buffers.spatial_reservoirs[pixel_index] = new_reservoir;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	//Reservoir state;
-
-	//// Since we're using our bias correction scheme, we need to remember which light selection we made
-	//int selected = -1;
-
-	//Reservoir centerReservoir = render_data.aux_buffers.initial_reservoirs[pixel_index];
-
-	//RTXDI_CombineDIReservoirs(state, centerReservoir, /* random = */ 0.5f, centerReservoir.sample.target_function);
-
-	//// We loop through neighbors twice.  Cache the validity / edge-stopping function
-	////   results for the 2nd time through.
-	//unsigned int cachedResult = 0;
-
-	//RendererMaterial center_material = render_data.g_buffer.materials[pixel_index];
-	//float3 center_view_direction = render_data.g_buffer.view_directions[pixel_index];
-	//float3 center_shading_normal = render_data.g_buffer.shading_normals[pixel_index];
-	//float3 center_shading_point  = render_data.g_buffer.first_hits[pixel_index] + center_shading_normal * 1.0e-4f;
-
-	//// Walk the specified number of neighbors, resampling using RIS
-	//for (int i = 0; i < NEIGHBOR_REUSE_COUNT; ++i)
-	//{
-	//	// Get screen-space location of neighbor
-	//	int2 neighborReservoirPos = neighbor_offsets[i];
-	//	neighborReservoirPos += pixel_coords;
-	//	if (neighborReservoirPos.x < 0 || neighborReservoirPos.x >= res.x || neighborReservoirPos.y < 0 || neighborReservoirPos.y >= res.y)
-	//		// Rejecting the sample if it's outside of the viewport
-	//		continue;
-
-	//	int neighborReservoirIndex = neighborReservoirPos.x + neighborReservoirPos.y * res.x;
-
-	//	Reservoir neighborSample = render_data.aux_buffers.initial_reservoirs[neighborReservoirIndex];
-
-	//	cachedResult |= (1u << i);
-
-	//	// Load that neighbor's RIS state, do resampling
-	//	float neighborWeight = 0;
-	//	if (neighborSample.weight_sum > 0.0f)
-	//		neighborWeight = ReSTIR_DI_evaluate_target_function(render_data, neighborSample.sample, center_material, center_view_direction, center_shading_point, center_shading_normal);
-
-	//	RTXDI_CombineDIReservoirs(state, neighborSample, random_number_generator(), neighborWeight);
-	//}
-
-	//if (state.weight_sum > 0.0f)
-	//{
-	//	// Compute the unbiased normalization term (instead of using 1/M)
-	//	float pi = state.sample.target_function;
-	//	float piSum = state.sample.target_function * centerReservoir.M;
-
-	//	// To do this, we need to walk our neighbors again
-	//	for (int i = 0; i < NEIGHBOR_REUSE_COUNT; ++i)
-	//	{
-	//		// If we skipped this neighbor above, do so again.
-	//		if ((cachedResult & (1u << i)) == 0) continue;
-
-	//		// Get screen-space location of neighbor
-	//		int2 neighborReservoirPos = neighbor_offsets[i];
-	//		neighborReservoirPos += pixel_coords;
-	//		if (neighborReservoirPos.x < 0 || neighborReservoirPos.x >= res.x || neighborReservoirPos.y < 0 || neighborReservoirPos.y >= res.y)
-	//			// Rejecting the sample if it's outside of the viewport
-	//			continue;
-
-	//		int neighborReservoirIndex = neighborReservoirPos.x + neighborReservoirPos.y * res.x;
-
-	//		// Load our neighbor's G-buffer
-	//		Reservoir neighborSample = render_data.aux_buffers.initial_reservoirs[neighborReservoirIndex];
-
-	//		float distance_to_light;
-	//		RendererMaterial neighbor_material = render_data.g_buffer.materials[neighborReservoirIndex];
-	//		float3 neighbor_view_direction = render_data.g_buffer.view_directions[neighborReservoirIndex];
-	//		float3 neighbor_shading_normal = render_data.g_buffer.shading_normals[neighborReservoirIndex];
-	//		float3 neighbor_shading_point = render_data.g_buffer.first_hits[neighborReservoirIndex] + neighbor_shading_normal * 1.0e-4f;
-	//		float3 neighbor_to_light_direction = neighborSample.sample.point_on_light_source - neighbor_shading_point;
-	//		neighbor_to_light_direction /= (distance_to_light = hippt::length(neighbor_to_light_direction));
-
-	//		float ps = ReSTIR_DI_evaluate_target_function(render_data, neighborSample.sample, neighbor_material, neighbor_view_direction, neighbor_shading_point, neighbor_shading_normal);
-
-	//		hiprtRay shadow_ray;
-	//		shadow_ray.origin = neighbor_shading_point;
-	//		shadow_ray.direction = neighbor_to_light_direction;
-
-	//		if (!evaluate_shadow_ray(render_data, shadow_ray, distance_to_light))
-	//			ps = 0;
-
-	//		// Select this sample for the (normalization) numerator if this particular neighbor pixel
-	//		//     was the one we selected via RIS in the first loop, above.
-	//		pi = selected == i ? ps : pi;
-
-	//		// Add to the sums of weights for the (normalization) denominator
-	//		piSum += ps * neighborSample.M;
-	//	}
-
-	//	// Use "MIS-like" normalization
-	//	RTXDI_FinalizeResampling(state, pi, piSum);
-	//}
-
-	//render_data.aux_buffers.spatial_reservoirs[pixel_index] = state;
 }
 
 #endif

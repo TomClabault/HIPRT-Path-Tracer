@@ -6,7 +6,6 @@
 #ifndef DEVICE_LIGHTS_H
 #define DEVICE_LIGHTS_H
 
-#include "HostDeviceCommon/KernelOptions.h"
 #include "Device/includes/Dispatcher.h"
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Intersect.h"
@@ -15,6 +14,7 @@
 #include "Device/includes/ReSTIR_DI.h"
 #include "Device/includes/Sampling.h"
 #include "HostDeviceCommon/HitInfo.h"
+#include "HostDeviceCommon/KernelOptions.h"
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/Xorshift.h"
 

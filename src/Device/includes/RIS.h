@@ -18,8 +18,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB evaluate_reservoir_sample(const HIPRTRen
 {
     float3 evaluated_point = shading_point + shading_normal * 1.0e-4f;
 
-    ColorRGB final_color;
-
     // Getting the sample
     if (reservoir.weight_sum == 0.0f)
         return ColorRGB(0.0f);
@@ -32,15 +30,16 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB evaluate_reservoir_sample(const HIPRTRen
     shadow_ray.origin = evaluated_point;
     shadow_ray.direction = shadow_ray_direction_normalized;
 
+    ColorRGB final_color;
     bool in_shadow = evaluate_shadow_ray(render_data, shadow_ray, distance_to_light);
     if (!in_shadow)
     {
-        float brdf_pdf;
+        float bsdf_pdf;
         float cosine_at_evaluated_point;
         ColorRGB bsdf_color;
         RayVolumeState trash_volume_state;
 
-        bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, material, trash_volume_state, view_direction, shading_normal, shadow_ray.direction, brdf_pdf);
+        bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, material, trash_volume_state, view_direction, shading_normal, shadow_ray.direction, bsdf_pdf);
         cosine_at_evaluated_point = hippt::max(0.0f, hippt::dot(shading_normal, shadow_ray_direction_normalized));
         if (cosine_at_evaluated_point > 0.0f)
             final_color = bsdf_color * reservoir.UCW * reservoir.sample.emission * cosine_at_evaluated_point;
@@ -109,6 +108,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_lights_RIS_reservoir(const HIPRT
 #endif
 
                 float mis_weight = balance_heuristic(light_sample_pdf, render_data.render_settings.ris_number_of_light_candidates, bsdf_pdf, render_data.render_settings.ris_number_of_bsdf_candidates);
+                mis_weight = 1.0f / (render_data.render_settings.ris_number_of_light_candidates + render_data.render_settings.ris_number_of_bsdf_candidates);
                 candidate_weight = mis_weight * target_function / light_sample_pdf;
             }
         }
@@ -165,6 +165,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_lights_RIS_reservoir(const HIPRT
                 light_pdf /= render_data.buffers.emissive_triangles_count;
 
                 float mis_weight = balance_heuristic(bsdf_sample_pdf, render_data.render_settings.ris_number_of_bsdf_candidates, light_pdf, render_data.render_settings.ris_number_of_light_candidates);
+                mis_weight = 1.0f / (render_data.render_settings.ris_number_of_light_candidates + render_data.render_settings.ris_number_of_bsdf_candidates);
                 candidate_weight = mis_weight * target_function / bsdf_sample_pdf;
 
                 sample.emission = ray_payload.material.emission;
