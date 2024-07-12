@@ -14,7 +14,7 @@
 #include "HostDeviceCommon/HitInfo.h"
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB evaluate_reservoir_sample(const HIPRTRenderData& render_data, const RendererMaterial& material, const float3 shading_point, const float3& shading_normal, const float3& view_direction, const Reservoir& reservoir)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB evaluate_reservoir_sample(const HIPRTRenderData& render_data, const RendererMaterial& material, const float3& shading_point, const float3& shading_normal, const float3& view_direction, const Reservoir& reservoir)
 {
     float3 evaluated_point = shading_point + shading_normal * 1.0e-4f;
 
@@ -35,12 +35,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB evaluate_reservoir_sample(const HIPRTRen
     if (!in_shadow)
     {
         float bsdf_pdf;
-        float cosine_at_evaluated_point;
-        ColorRGB bsdf_color;
         RayVolumeState trash_volume_state;
-
-        bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, material, trash_volume_state, view_direction, shading_normal, shadow_ray.direction, bsdf_pdf);
-        cosine_at_evaluated_point = hippt::max(0.0f, hippt::dot(shading_normal, shadow_ray_direction_normalized));
+        ColorRGB bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, material, trash_volume_state, view_direction, shading_normal, shadow_ray.direction, bsdf_pdf);
+        float cosine_at_evaluated_point = hippt::max(0.0f, hippt::dot(shading_normal, shadow_ray_direction_normalized));
         if (cosine_at_evaluated_point > 0.0f)
             final_color = bsdf_color * reservoir.UCW * reservoir.sample.emission * cosine_at_evaluated_point;
     }
@@ -49,11 +46,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB evaluate_reservoir_sample(const HIPRTRen
 }
 
 /**
- * Samples the lights in the scene and returns a reservoir that has "seen" (in the sense of Weighted Reservoir Sampling) all the samples
+ * Samples the lights in the scene and returns a out_reservoir that has "seen" (in the sense of Weighted Reservoir Sampling) all the samples
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_lights_RIS_reservoir(const HIPRTRenderData& render_data, const RendererMaterial& material, const HitInfo& closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
 {
-    Reservoir reservoir;
+    Reservoir out_reservoir;
     float3 evaluated_point = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f;
 
     // Sampling candidates with weighted reservoir sampling
@@ -70,12 +67,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_lights_RIS_reservoir(const HIPRT
         float target_function = 0.0f;
         float candidate_weight = 0.0f;
         float3 random_light_point = sample_one_emissive_triangle(render_data, random_number_generator, light_sample_pdf, light_source_info);
+
+        // It can happen that the light PDF returned by the emissive triangle
+        // sampling function is 0 because of emissive triangles that are so
+        // small that we cannot compute their normal and their area (the cross
+        // product of their edges gives a quasi-null vector --> length of 0.0f --> area of 0)
         if (light_sample_pdf > 0.0f)
         {
-            // It can happen that the light PDF returned by the emissive triangle
-            // sampling function is 0 because of emissive triangles that are so
-            // small that we cannot compute their normal and their area (the cross
-            // product of their edges gives a quasi-null vector --> length of 0.0f --> area of 0)
             float bsdf_pdf;
             float3 to_light_direction;
 
@@ -90,14 +88,17 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_lights_RIS_reservoir(const HIPRT
                 // Converting the PDF from area measure to solid angle measure requires dividing by
                 // cos(theta) / dist^2. Dividing by that factor is equal to multiplying by the inverse
                 // which is what we're doing here
-                light_sample_pdf *= distance_to_light * distance_to_light;
-                light_sample_pdf /= cosine_at_light_source;
+                // light_sample_pdf *= distance_to_light * distance_to_light;
+                //light_sample_pdf /= cosine_at_light_source;
                 light_sample_pdf /= render_data.buffers.emissive_triangles_count;
+                light_sample_pdf = 1.0f * 20.0f;
 
-                // TODO use geometry term in the target function?
-                target_function = (bsdf_color * light_source_info.emission * cosine_at_evaluated_point).luminance();
+                float geometry_term = 1.0f / distance_to_light / distance_to_light;
+
+                target_function = (bsdf_color * light_source_info.emission * cosine_at_evaluated_point * geometry_term).luminance();
 
 #if RISUseVisiblityTargetFunction == RIS_USE_VISIBILITY_TRUE
+                // Adding visibility to the target function
                 hiprtRay shadow_ray;
                 shadow_ray.origin = evaluated_point;
                 shadow_ray.direction = to_light_direction;
@@ -107,9 +108,15 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_lights_RIS_reservoir(const HIPRT
                 target_function *= visible;
 #endif
 
-                float mis_weight = balance_heuristic(light_sample_pdf, render_data.render_settings.ris_number_of_light_candidates, bsdf_pdf, render_data.render_settings.ris_number_of_bsdf_candidates);
-                mis_weight = 1.0f / (render_data.render_settings.ris_number_of_light_candidates + render_data.render_settings.ris_number_of_bsdf_candidates);
-                candidate_weight = mis_weight * target_function / light_sample_pdf;
+                // TODO using 2020 paper formulation (where 1/M appears only when finalizing the reservoir, not in the resampling weight)
+                // to stay consistent and try to debug the implementation.
+                // Eventually, the MIS weights should be in the resampling weights as in the GRIS theory
+                // 
+                //float mis_weight = balance_heuristic(light_sample_pdf, render_data.render_settings.ris_number_of_light_candidates, bsdf_pdf, render_data.render_settings.ris_number_of_bsdf_candidates);
+                //// TODO REMOVE 1/M MIS WEIGHT HERE
+                //mis_weight = 1.0f / (render_data.render_settings.ris_number_of_light_candidates + render_data.render_settings.ris_number_of_bsdf_candidates);
+                //candidate_weight = mis_weight * target_function / light_sample_pdf;
+                candidate_weight = target_function / light_sample_pdf;
             }
         }
 
@@ -117,13 +124,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_lights_RIS_reservoir(const HIPRT
         sample.point_on_light_source = random_light_point;
         sample.emission = light_source_info.emission;
         sample.target_function = target_function;
+        sample.light_source_normal = light_source_info.light_source_normal;
 
-        if (candidate_weight != 0.0f)
-            reservoir.add_one_candidate(sample, candidate_weight, random_number_generator);
-        else
-            // Because a candidate with a weight of 0.0f isn't never going to be chosen,
-            // we only need to increment M (the number of candidates seen)
-            reservoir.M++;
+        out_reservoir.add_one_candidate(sample, candidate_weight, random_number_generator);
     }
 
     for (int i = 0; i < render_data.render_settings.ris_number_of_bsdf_candidates; i++)
@@ -157,28 +160,32 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_lights_RIS_reservoir(const HIPRT
 
                 cosine_light_source = hippt::abs(hippt::dot(bsdf_ray_hit_info.shading_normal, -sampled_direction));
 
-                target_function = (bsdf_color * ray_payload.material.emission * cosine_at_evaluated_point).luminance();
+                float geometry_term = cosine_at_evaluated_point * cosine_light_source / bsdf_ray_hit_info.t / bsdf_ray_hit_info.t;
+                target_function = (bsdf_color * ray_payload.material.emission * cosine_at_evaluated_point * geometry_term).luminance();
 
                 float light_area = triangle_area(render_data, bsdf_ray_hit_info.primitive_index);
                 float light_pdf = bsdf_ray_hit_info.t * bsdf_ray_hit_info.t / cosine_light_source;
                 light_pdf /= light_area;
                 light_pdf /= render_data.buffers.emissive_triangles_count;
 
-                float mis_weight = balance_heuristic(bsdf_sample_pdf, render_data.render_settings.ris_number_of_bsdf_candidates, light_pdf, render_data.render_settings.ris_number_of_light_candidates);
-                mis_weight = 1.0f / (render_data.render_settings.ris_number_of_light_candidates + render_data.render_settings.ris_number_of_bsdf_candidates);
-                candidate_weight = mis_weight * target_function / bsdf_sample_pdf;
+                //float mis_weight = balance_heuristic(bsdf_sample_pdf, render_data.render_settings.ris_number_of_bsdf_candidates, light_pdf, render_data.render_settings.ris_number_of_light_candidates);
+                //// TODO REMOVE 1/M MIS WEIGHT HERE
+                //mis_weight = 1.0f / (render_data.render_settings.ris_number_of_light_candidates + render_data.render_settings.ris_number_of_bsdf_candidates);
+                //candidate_weight = mis_weight * target_function / bsdf_sample_pdf;
+                candidate_weight = target_function / bsdf_sample_pdf;
 
                 sample.emission = ray_payload.material.emission;
                 sample.point_on_light_source = bsdf_ray_hit_info.inter_point;
+                sample.light_source_normal = bsdf_ray_hit_info.shading_normal;
                 sample.target_function = target_function;
             }
         }
 
-        reservoir.add_one_candidate(sample, candidate_weight, random_number_generator);
+        out_reservoir.add_one_candidate(sample, candidate_weight, random_number_generator);
     }
 
-    reservoir.end();
-    return reservoir;
+    out_reservoir.end_normalized(render_data.render_settings.ris_number_of_bsdf_candidates + render_data.render_settings.ris_number_of_light_candidates);
+    return out_reservoir;
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_lights_RIS(const HIPRTRenderData& render_data, const RendererMaterial& material, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)

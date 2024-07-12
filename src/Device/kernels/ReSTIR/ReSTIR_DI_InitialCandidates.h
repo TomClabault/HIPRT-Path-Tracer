@@ -41,21 +41,20 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_InitialCandidates(HIPRTRenderData
 
     Xorshift32Generator random_number_generator(seed);
 
-    // TODO replace this by using the simplified material directly in sample_light_RIS_reservoir instead of converting to RendererMaterial
-    SimplifiedRendererMaterial simplified_mat = render_data.g_buffer.materials[pixel_index];
-    RendererMaterial material(simplified_mat);
-
-    float3 view_direction = render_data.g_buffer.view_directions[pixel_index];
-
     HitInfo hit_info;
     hit_info.geometric_normal = render_data.g_buffer.geometric_normals[pixel_index];
     hit_info.shading_normal = render_data.g_buffer.shading_normals[pixel_index];
     hit_info.inter_point = render_data.g_buffer.first_hits[pixel_index];
 
-    Reservoir initial_candidates_reservoir = sample_lights_RIS_reservoir(render_data, material, hit_info, view_direction, random_number_generator);
+    // TODO replace this by using the simplified material directly in sample_light_RIS_reservoir instead of converting to RendererMaterial
+    // TODO storing in g_buffer.materials with SimplifiedRendererMaterial loses the texutres information
+    SimplifiedRendererMaterial simplified_mat = render_data.g_buffer.materials[pixel_index];
+    RendererMaterial material(simplified_mat);
 
-    // Storing the produced reservoir
-    render_data.aux_buffers.initial_reservoirs[pixel_index] = initial_candidates_reservoir;
+    float3 view_direction = render_data.g_buffer.view_directions[pixel_index];
+
+    // Producing and storing the reservoir
+    render_data.aux_buffers.initial_reservoirs[pixel_index] = sample_lights_RIS_reservoir(render_data, material, hit_info, view_direction, random_number_generator);
 }
 
 #endif

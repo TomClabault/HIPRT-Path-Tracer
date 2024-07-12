@@ -153,6 +153,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
                     // --------------------------------------------------- //
 
                     ColorRGB light_sample_radiance = sample_one_light(render_data, ray_payload.material, closest_hit_info, -ray.direction, random_number_generator, make_int2(x, y), res, bounce);
+#if DEBUG_RESTIR_DI_DISPLAY_DEBUG_VALUE
+                    debug_set_final_color(render_data, x, y, res.x, light_sample_radiance);
+                    return;
+#endif
                     ColorRGB envmap_radiance = sample_environment_map(render_data, ray_payload.material, closest_hit_info, -ray.direction, random_number_generator);
 
                     ColorRGB direct_lighting_clamp(render_data.render_settings.direct_contribution_clamp > 0.0f ? render_data.render_settings.direct_contribution_clamp : 1.0e35f);

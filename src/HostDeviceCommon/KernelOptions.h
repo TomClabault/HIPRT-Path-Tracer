@@ -95,6 +95,7 @@
  *				when sampling the initial candidates with RIS
  */
 #define DirectLightSamplingStrategy LSS_RESTIR_DI
+//#define DirectLightSamplingStrategy LSS_RIS_BSDF_AND_LIGHT
 
 /**
  * Whether or not to use a visiblity term in the target function whose PDF we're approximating with RIS.
@@ -105,7 +106,7 @@
  *	- RIS_USE_VISIBILITY_FALSE
  *		Don't use a visibility term
  */
-#define RISUseVisiblityTargetFunction RIS_USE_VISIBILITY_FALSE
+#define RISUseVisiblityTargetFunction RIS_USE_VISIBILITY_TRUE
 
 #endif
 

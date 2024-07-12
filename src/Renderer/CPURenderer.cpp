@@ -15,6 +15,7 @@
 #include <chrono>
 #include <omp.h>
 
+
  // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
  // allowing for fast step into that pixel with the debugger to see what's happening.
  // Otherwise if 0, all pixels of the image are rendered
@@ -27,8 +28,8 @@
 // you're measuring the coordinates of the pixel with (0, 0) in the bottom left corner
 #define DEBUG_FLIP_Y 0
 // Coordinates of the pixel to render
-#define DEBUG_PIXEL_X 723
-#define DEBUG_PIXEL_Y 386
+#define DEBUG_PIXEL_X 720
+#define DEBUG_PIXEL_Y 383
 // If 1, a square of DEBUG_NEIGHBORHOOD_SIZE x DEBUG_NEIGHBORHOOD_SIZE pixels
 // will be rendered around the pixel to debug (given by DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y). The pixel of interest is going to be rendered first so you
@@ -146,8 +147,10 @@ void CPURenderer::render()
     for (int i = 0; i < m_render_data.render_settings.samples_per_frame; i++)
     {
         camera_rays_pass();
+#if DirectLightSamplingStrategy == LSS_RESTIR_DI
         ReSTIR_DI_initial_candidates_pass();
         ReSTIR_DI_spatial_reuse_pass();
+#endif
         tracing_pass();
 
         m_render_data.render_settings.sample_number++;

@@ -12,6 +12,7 @@
 struct ReservoirSample
 {
     float3 point_on_light_source = { 0, 0, 0 };
+    float3 light_source_normal = { 0, 0, 0 };
     ColorRGB emission = { 0.0f, 0.0f, 0.0f };
 
     float target_function = 0.0f;
@@ -24,21 +25,26 @@ struct Reservoir
         M++;
         weight_sum += weight;
 
-        if (random_number_generator() < (weight / weight_sum))
+        if (random_number_generator() < weight / weight_sum)
             sample = new_sample;
     }
 
-    HIPRT_HOST_DEVICE void combine_with(Reservoir other_reservoir, float mis_weight, float target_function, Xorshift32Generator& random_number_generator)
+    HIPRT_HOST_DEVICE void combine_with(Reservoir other_reservoir, float r_m, float target_function, Xorshift32Generator& random_number_generator)
     {
-        float reservoir_sample_weight = mis_weight * target_function * other_reservoir.UCW;
+        // ReSTIR 2019, Alg. 6, line 4
+        // pHat_q(r.y) * r.W * r.M
+        // target_function = 
+        float reservoir_sample_weight = target_function * other_reservoir.UCW * r_m;
 
         M += other_reservoir.M;
         weight_sum += reservoir_sample_weight;
 
-        if (random_number_generator() < (reservoir_sample_weight / weight_sum))
+        if (random_number_generator() < reservoir_sample_weight / weight_sum)
         {
             sample = other_reservoir.sample;
             sample.target_function = target_function;
+
+            debug_value = other_reservoir.UCW;
         }
     }
 
@@ -50,17 +56,22 @@ struct Reservoir
             UCW = 1.0f / sample.target_function * weight_sum;
     }
 
-    HIPRT_HOST_DEVICE void end_Z(float Z)
+    HIPRT_HOST_DEVICE void end_normalized(float Z)
     {
-        if (weight_sum == 0.0f)
+        if (weight_sum == 0.0f || Z == 0.0f)
             UCW = 0.0f;
         else
             UCW = 1.0f / sample.target_function * weight_sum / Z;
     }
 
     unsigned int M = 0;
+    // TODO weight sum is never used at the same time as UCW so only one variable can be used for both to save space
     float weight_sum = 0.0f;
     float UCW = 0.0f;
+
+    // This debug value stored in the reservoir can be used to display
+    // a value on the viewport such as the UCW for example or something else
+    float debug_value = 0.0f;
 
     ReservoirSample sample;
 };

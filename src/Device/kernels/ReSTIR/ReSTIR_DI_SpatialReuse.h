@@ -31,21 +31,23 @@
 #define REUSE_RADIUS 30
 
 /**
- * Target function is BSDF * Le * V
+ * Target function is BSDF * Le * cos(theta) * V
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function(const HIPRTRenderData& render_data, const ReservoirSample& sample, const RendererMaterial& material, float3 view_direction, float3 shading_point, float3 shading_normal)
 {
-	RayVolumeState trash_volume_state;
-
 	float bsdf_pdf;
 	float distance_to_light;
-	float3 sample_direction = sample.point_on_light_source - shading_point;
-	distance_to_light = hippt::length(sample_direction);
-	sample_direction = sample_direction / distance_to_light;
+	float3 sample_direction;
+	sample_direction = sample.point_on_light_source - shading_point;
+	sample_direction = sample_direction / (distance_to_light = hippt::length(sample_direction));
 
+	RayVolumeState trash_volume_state;
 	ColorRGB bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, material, trash_volume_state, view_direction, shading_normal, sample_direction, bsdf_pdf);
 	float cosine_term = hippt::max(0.0f, hippt::dot(shading_normal, sample_direction));
-	float target_function = (bsdf_color * sample.emission * cosine_term).luminance();
+	float cosine_at_light_source = hippt::dot(sample.light_source_normal, -sample_direction);
+
+	float geometry_term = 1.0f / distance_to_light / distance_to_light;
+	float target_function = (bsdf_color * sample.emission * cosine_term * geometry_term).luminance();
 	if (target_function == 0.0f)
 		// Quick exit because computing the visiblity that follows isn't going
 		// to change anything to the fact that we have 0.0f target function here
@@ -64,70 +66,29 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function(const HI
 	return target_function;
 }
 
-// Adds `newReservoir` into `reservoir`, returns true if the new reservoir's sample was selected.
-// This is a very general form, allowing input parameters to specfiy normalization and targetPdf
-// rather than computing them from `newReservoir`.  Named "internal" since these parameters take
-// different meanings (e.g., in RTXDI_CombineDIReservoirs() or RTXDI_StreamNeighborWithPairwiseMIS())
-HIPRT_HOST_DEVICE HIPRT_INLINE bool RTXDI_InternalSimpleResample(
-	Reservoir& reservoir,
-	Reservoir newReservoir,
-	float random,
-	float targetPdf,            // Usually closely related to the sample normalization, 
-	float sampleNormalization,  //     typically off by some multiplicative factor 
-	float sampleM               // In its most basic form, should be newReservoir.M
-)
+HIPRT_HOST_DEVICE HIPRT_INLINE int get_neighbor_pixel_index(int neighbor_number, int2* neighbor_offsets, int2 center_pixel_coords, int2 res)
 {
-	// What's the current weight (times any prior-step RIS normalization factor)
-	float risWeight = targetPdf * sampleNormalization;
+	int neighbor_pixel_index;
 
-	// Our *effective* candidate pool is the sum of our candidates plus those of our neighbors
-	reservoir.M += sampleM;
-
-	// Update the weight sum
-	reservoir.weight_sum += risWeight;
-
-	// Decide if we will randomly pick this sample
-	bool selectSample = (random * reservoir.weight_sum < risWeight);
-
-	// If we did select this sample, update the relevant data
-	if (selectSample)
+	if (neighbor_number == NEIGHBOR_REUSE_COUNT)
+		// If this is the last neighbor, we set it to ourselves
+		// This is why our loop on the neighbors goes up to 'i < NEIGHBOR_REUSE_COUNT + 1'
+		// It's so that when i == NEIGHBOR_REUSE_COUNT, we resample ourselves
+		neighbor_pixel_index = center_pixel_coords.x + center_pixel_coords.y * res.x;
+	else
 	{
-		reservoir.sample = newReservoir.sample;
-		reservoir.sample.target_function = targetPdf;
+		int2 neighbor_offset = neighbor_offsets[neighbor_number];
+		int2 neighbor_pixel_coords = center_pixel_coords + neighbor_offset;
+		if (neighbor_pixel_coords.x < 0 || neighbor_pixel_coords.x >= res.x || neighbor_pixel_coords.y < 0 || neighbor_pixel_coords.y >= res.y)
+			// Rejecting the sample if it's outside of the viewport
+			return -1;
+
+		neighbor_pixel_index = neighbor_pixel_coords.x + neighbor_pixel_coords.y * res.x;
 	}
 
-	return selectSample;
+	return neighbor_pixel_index;
 }
 
-// Adds `newReservoir` into `reservoir`, returns true if the new reservoir's sample was selected.
-// Algorithm (4) from the ReSTIR paper, Combining the streams of multiple reservoirs.
-// Normalization - Equation (6) - is postponed until all reservoirs are combined.
-HIPRT_HOST_DEVICE HIPRT_INLINE bool RTXDI_CombineDIReservoirs(
-	Reservoir& reservoir,
-	Reservoir newReservoir,
-	float random,
-	float targetPdf)
-{
-	return RTXDI_InternalSimpleResample(
-		reservoir,
-		newReservoir,
-		random,
-		targetPdf,
-		newReservoir.weight_sum * newReservoir.M,
-		newReservoir.M
-	);
-}
-
-// Performs normalization of the reservoir after streaming. Equation (6) from the ReSTIR paper.
-HIPRT_HOST_DEVICE HIPRT_INLINE void RTXDI_FinalizeResampling(
-	Reservoir& reservoir,
-	float normalizationNumerator,
-	float normalizationDenominator)
-{
-	float denominator = reservoir.sample.target_function * normalizationDenominator;
-
-	reservoir.UCW = (denominator == 0.0) ? 0.0 : (reservoir.weight_sum * normalizationNumerator) / denominator;
-}
 
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) ReSTIR_DI_SpatialReuse(HIPRTRenderData render_data, int2 res, HIPRTCamera camera)
@@ -143,6 +104,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	if (pixel_index >= res.x * res.y)
 		return;
 
+	// Initializing the random generator
 	unsigned int seed;
 	if (render_data.render_settings.freeze_random)
 		seed = wang_hash(pixel_index + 1);
@@ -152,67 +114,57 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	Xorshift32Generator random_number_generator(seed);
 
 	Reservoir new_reservoir;
+	// The neighbor screen space offsets will be in an array. Inefficient but easy implementation for debugging.
 	int2 neighbor_offsets[NEIGHBOR_REUSE_COUNT];
+	// Center pixel coordinates
 	int2 pixel_coords = make_int2(x, y);
 
 	for (int i = 0; i < NEIGHBOR_REUSE_COUNT; i++)
 	{
-		// Generating neighbor screen space position and storing in an array. Inefficient but easy implementation for now.
-		neighbor_offsets[i] = integer_sample_in_disk(REUSE_RADIUS, random_number_generator);
-		neighbor_offsets[i].x = 10; //hippt::abs(neighbor_offsets[i].x) + 2;
+		// Hardcoding to 15 to the right to make the issue obvious
+		neighbor_offsets[i].x = 15;
 		neighbor_offsets[i].y = 0;
 	}
 
-	RendererMaterial current_pixel_material = render_data.g_buffer.materials[pixel_index];
-	float3 current_pixel_view_direction = render_data.g_buffer.view_directions[pixel_index];
-	float3 current_pixel_shading_normal = render_data.g_buffer.shading_normals[pixel_index];
-	float3 current_pixel_shading_point = render_data.g_buffer.first_hits[pixel_index] + current_pixel_shading_normal * 1.0e-4f;
+	// Surface data of the center pixel
+	RendererMaterial center_pixel_material = render_data.g_buffer.materials[pixel_index];
+	float3 center_pixel_view_direction = render_data.g_buffer.view_directions[pixel_index];
+	float3 center_pixel_shading_normal = render_data.g_buffer.shading_normals[pixel_index];
+	float3 center_pixel_shading_point = render_data.g_buffer.first_hits[pixel_index] + center_pixel_shading_normal * 1.0e-4f;
 
-	for (int neighbor = 0; neighbor < NEIGHBOR_REUSE_COUNT; neighbor++)
+	// Resampling the neighbors. Using neighbors + 1 here so that
+	// we can use the last iteration of the loop to resample ourselves (the center pixel)
+	// 
+	// See the implementation of get_neighbor_pixel_index() earlier in this file
+	for (int neighbor = 0; neighbor < NEIGHBOR_REUSE_COUNT + 1; neighbor++)
 	{
-		int neighbor_pixel_index;
-
-		if (neighbor == NEIGHBOR_REUSE_COUNT)
-			neighbor_pixel_index = pixel_coords.x + pixel_coords.y * res.x;
-		else
-		{
-			int2 neighbor_offset = neighbor_offsets[neighbor];
-			int2 neighbor_pixel_coords = pixel_coords + neighbor_offset;
-			if (neighbor_pixel_coords.x < 0 || neighbor_pixel_coords.x >= res.x || neighbor_pixel_coords.y < 0 || neighbor_pixel_coords.y >= res.y)
-				// Rejecting the sample if it's outside of the viewport
-				continue;
-
-			neighbor_pixel_index = neighbor_pixel_coords.x + neighbor_pixel_coords.y * res.x;
-		}
+		int neighbor_pixel_index = get_neighbor_pixel_index(neighbor, neighbor_offsets, pixel_coords, res);
+		if (neighbor_pixel_index == -1)
+			// Neighbor out of the viewport
+			continue;
 
 		Reservoir neighbor_reservoir = render_data.aux_buffers.initial_reservoirs[neighbor_pixel_index];
 
-		float target_function = ReSTIR_DI_evaluate_target_function(render_data, neighbor_reservoir.sample, current_pixel_material, current_pixel_view_direction, current_pixel_shading_point, current_pixel_shading_normal);
-		if (target_function > 0.0f)
-			new_reservoir.combine_with(neighbor_reservoir, neighbor_reservoir.M, target_function, random_number_generator);
+		float target_function_at_center = ReSTIR_DI_evaluate_target_function(render_data, neighbor_reservoir.sample, center_pixel_material, center_pixel_view_direction, center_pixel_shading_point, center_pixel_shading_normal);
+
+		// Combining as in Alg. 6 of the paper
+		new_reservoir.combine_with(neighbor_reservoir, neighbor_reservoir.M, target_function_at_center, random_number_generator);
 	}
 
+	// Unbiased normalization term as in ReSTIR 2019 Alg. 6
+	float Z = 0.0f;
+
 	// Now checking how many of our neighbors could have produced the sample that we just picked
-	float valid_neighbor_count = 0.0f;
 	if (new_reservoir.weight_sum > 0.0f)
 	{
-		for (int neighbor = 0; neighbor < NEIGHBOR_REUSE_COUNT; neighbor++)
+		for (int neighbor = 0; neighbor < NEIGHBOR_REUSE_COUNT + 1; neighbor++)
 		{
-			int neighbor_pixel_index;
+			int neighbor_pixel_index = get_neighbor_pixel_index(neighbor, neighbor_offsets, pixel_coords, res);
+			if (neighbor_pixel_index == -1)
+				// Neighbor out of the viewport
+				continue;
 
-			if (neighbor == NEIGHBOR_REUSE_COUNT)
-				neighbor_pixel_index = pixel_coords.x + pixel_coords.y * res.x;
-			else
-			{
-				int2 neighbor_offset = neighbor_offsets[neighbor];
-				int2 neighbor_pixel_coords = pixel_coords + neighbor_offset;
-				if (neighbor_pixel_coords.x < 0 || neighbor_pixel_coords.x >= res.x || neighbor_pixel_coords.y < 0 || neighbor_pixel_coords.y >= res.y)
-					// Rejecting the sample if it's outside of the viewport
-					continue;
-
-				neighbor_pixel_index = neighbor_pixel_coords.x + neighbor_pixel_coords.y * res.x;
-			}
-
+			// Getting the surface data at the neighbor
 			RendererMaterial neighbor_material = render_data.g_buffer.materials[neighbor_pixel_index];
 			float3 neighbor_view_direction = render_data.g_buffer.view_directions[neighbor_pixel_index];
 			float3 neighbor_shading_normal = render_data.g_buffer.shading_normals[neighbor_pixel_index];
@@ -221,14 +173,18 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 			float target_function_at_neighbor = ReSTIR_DI_evaluate_target_function(render_data, new_reservoir.sample, neighbor_material, neighbor_view_direction, neighbor_shading_point, neighbor_shading_normal);
 			if (target_function_at_neighbor > 0.0f)
 			{
+				// If the neighbor could have produced this sample...
 				Reservoir neighbor_reservoir = render_data.aux_buffers.initial_reservoirs[neighbor_pixel_index];
 
-				valid_neighbor_count += neighbor_reservoir.M;
+				// ... adding M to the Z normalization term
+				Z += neighbor_reservoir.M;
 			}
 		}
 	}
 
-	new_reservoir.end_Z(valid_neighbor_count);
+	// Compute the unbiased contribution weight using 1/Z normalization weight as in ReSTIR 2019 Alg. 6
+	new_reservoir.end_normalized(Z);
+	new_reservoir.debug_value = hippt::dot(hippt::normalize(new_reservoir.sample.point_on_light_source - center_pixel_shading_point), center_pixel_shading_normal);
 	render_data.aux_buffers.spatial_reservoirs[pixel_index] = new_reservoir;
 }
 
