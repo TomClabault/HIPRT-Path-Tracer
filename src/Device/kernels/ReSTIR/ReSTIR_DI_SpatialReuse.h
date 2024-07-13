@@ -27,11 +27,11 @@
  */
 
 #define SPATIAL_REUSE_PASSES_COUNT 1
-#define NEIGHBOR_REUSE_COUNT 5
+#define NEIGHBOR_REUSE_COUNT 1
 #define REUSE_RADIUS 30
 
 /**
- * Target function is BSDF * Le * V
+ * Target function is BSDF * Le * cos(theta) * V
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function(const HIPRTRenderData& render_data, const ReservoirSample& sample, const RendererMaterial& material, float3 view_direction, float3 shading_point, float3 shading_normal)
 {
@@ -93,15 +93,21 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	{
 		// Generating neighbor screen space position and storing in an array. Inefficient but easy implementation for now.
 		neighbor_offsets[i] = integer_sample_in_disk(REUSE_RADIUS, random_number_generator);
-		neighbor_offsets[i].x = 10; //hippt::abs(neighbor_offsets[i].x) + 2;
+
+		// Hardcoding the neighbor to be 15 pixel on the right for debugging
+		neighbor_offsets[i].x = 15;
 		neighbor_offsets[i].y = 0;
 	}
 
-	RendererMaterial current_pixel_material = render_data.g_buffer.materials[pixel_index];
-	float3 current_pixel_view_direction = render_data.g_buffer.view_directions[pixel_index];
-	float3 current_pixel_shading_normal = render_data.g_buffer.shading_normals[pixel_index];
-	float3 current_pixel_shading_point = render_data.g_buffer.first_hits[pixel_index] + current_pixel_shading_normal * 1.0e-4f;
+	// Data of the center pixel
+	RendererMaterial center_pixel_material = render_data.g_buffer.materials[pixel_index];
+	float3 center_pixel_view_direction = render_data.g_buffer.view_directions[pixel_index];
+	float3 center_pixel_shading_normal = render_data.g_buffer.shading_normals[pixel_index];
+	float3 center_pixel_shading_point = render_data.g_buffer.first_hits[pixel_index] + center_pixel_shading_normal * 1.0e-4f;
 
+	// Resampling the neighbors. Using neighbors + 1 here
+	// because we're also going to resample the center pixel
+	// (which is going to be the last iteration of the loop)
 	for (int neighbor = 0; neighbor < NEIGHBOR_REUSE_COUNT + 1; neighbor++)
 	{
 		int neighbor_pixel_index;
@@ -121,12 +127,15 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 
 		Reservoir neighbor_reservoir = render_data.aux_buffers.initial_reservoirs[neighbor_pixel_index];
 
-		float target_function = ReSTIR_DI_evaluate_target_function(render_data, neighbor_reservoir.sample, current_pixel_material, current_pixel_view_direction, current_pixel_shading_point, current_pixel_shading_normal);
-		if (target_function > 0.0f)
-			new_reservoir.combine_with(neighbor_reservoir, neighbor_reservoir.M, target_function, random_number_generator);
+		float target_function_at_center = ReSTIR_DI_evaluate_target_function(render_data, neighbor_reservoir.sample, center_pixel_material, center_pixel_view_direction, center_pixel_shading_point, center_pixel_shading_normal);
+		if (target_function_at_center > 0.0f) 
+			// Combining as in Alg. 6 of the paper
+			new_reservoir.combine_with(neighbor_reservoir, neighbor_reservoir.M, target_function_at_center, random_number_generator);
 	}
 
-	float valid_neighbor_count = new_reservoir.M;
+	// Normalization term as in ReSTIR 2019 Alg. 6
+	float Z = 0.0f;
+
 	// Now checking how many of our neighbors could have produced the sample that we just picked
 	if (new_reservoir.weight_sum > 0.0f)
 	{
@@ -155,14 +164,17 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 			float target_function_at_neighbor = ReSTIR_DI_evaluate_target_function(render_data, new_reservoir.sample, neighbor_material, neighbor_view_direction, neighbor_shading_point, neighbor_shading_normal);
 			if (target_function_at_neighbor > 0.0f)
 			{
+				// If the neighbor could have produced this sample...
 				Reservoir neighbor_reservoir = render_data.aux_buffers.initial_reservoirs[neighbor_pixel_index];
 
-				valid_neighbor_count += neighbor_reservoir.M;
+				// ... adding M to the Z normalization term
+				Z += neighbor_reservoir.M;
 			}
 		}
 	}
 
-	new_reservoir.end_Z(valid_neighbor_count);
+	// Compute the unbiased contribution weight using 1/Z normalization weight as in ReSTIR 2019 Alg. 6
+	new_reservoir.end_Z(Z);
 	render_data.aux_buffers.spatial_reservoirs[pixel_index] = new_reservoir;
 }
 

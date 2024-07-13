@@ -18,12 +18,9 @@
 
 // TODO bugs
 // - denoiser albedo display not properly scaled
-// - TO TEST AGAIN: something is unsafe on NVIDIA + Windows + nested-dielectrics-complex.gltf + 48 bounces minimum + nested dielectric strategy RT Gems. We get a CPU-side orochi error when downloading the framebuffer for displaying indicating that some illegal memory was accessed. Is the buffer corrupted by something?
 // - denoiser AOVs not accounting for transmission correctly since Disney 
 //	  - same with perfect reflection
-// - Issue with screenshoter + resolution scaling, eventually gets darker and darker and eventually outputs a black image
-// - Issue with screenshoter + denoiser, PNG output is way darker than viewport (sometimes?)
-// - Recheck envmap MIS pdfs
+// - Do something for that memory leak on glUnregisterBuffer / .... Maybe update viewport only once in a while to at least reduce the impact of the leak?
 // - envmap sometimes upside down
 
 
@@ -31,21 +28,11 @@
 // TODO Code Organization:
 // - update README.md
 // - 16 threads seems to be too many for texture loading on the contemporary bedroom + HDD, what count could be better?
-// - add maximum render time
-// - get grab / set grab cursor position needs to be in windows interactor, not render window, get_cursor_position? set_interacting?
 // - investigate why kernel compiling was so much faster in the past (commit db34b23 seems to be a good candidate)
-// - refactor the usage of strings in the compile kernel functions
 // - multiple GLTF, one GLB for different point of views per model
-// - cleanup orochi gl interop buffer #ifdef everywhere
-// - do we need OpenGL Lib/bin in thirdparties?
 // - fork HIPRT and remove the encryption thingy that slows down kernel compilation on NVIDIA
-// - A good way to automatically find MSBuild with CMake? Build HIPRT with make instead of VS maybe?
-// - uniform #ifndef in Device headers
-// - Refactor material editor
 // - Device/ or HostDeviceCommon. Not both
 // - reorganize methods order in RenderWindow
-// - imgui controller to put all the imgui code in one class
-// - check for level of abstractions in functions
 // - denoiser albedo and normals still useful now that we have the GBuffer?
 // - make a function get_camera_ray that handles pixel jittering
 // - use simplified material everywhere in the BSDF etc... because we don't need the texture indices of the full material at this point

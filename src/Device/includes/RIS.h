@@ -49,14 +49,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB evaluate_reservoir_sample(const HIPRTRen
 }
 
 /**
- * Samples the lights in the scene and returns a reservoir that has "seen" (in the sense of Weighted Reservoir Sampling) all the samples
+ * Samples the lights in the scene and returns a out_reservoir that has "seen" (in the sense of Weighted Reservoir Sampling) all the samples
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_lights_RIS_reservoir(const HIPRTRenderData& render_data, const RendererMaterial& material, const HitInfo& closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
 {
-    Reservoir reservoir;
+    Reservoir out_reservoir;
     float3 evaluated_point = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f;
 
-    // Sampling candidates with weighted reservoir sampling
+    // Sampling candidates with weighted out_reservoir sampling
     for (int i = 0; i < render_data.render_settings.ris_number_of_light_candidates; i++)
     {
         float light_sample_pdf;
@@ -94,7 +94,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_lights_RIS_reservoir(const HIPRT
                 light_sample_pdf /= cosine_at_light_source;
                 light_sample_pdf /= render_data.buffers.emissive_triangles_count;
 
-                // TODO use geometry term in the target function?
                 target_function = (bsdf_color * light_source_info.emission * cosine_at_evaluated_point).luminance();
 
 #if RISUseVisiblityTargetFunction == RIS_USE_VISIBILITY_TRUE
@@ -118,7 +117,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_lights_RIS_reservoir(const HIPRT
         sample.emission = light_source_info.emission;
         sample.target_function = target_function;
 
-        reservoir.add_one_candidate(sample, candidate_weight, random_number_generator);
+        out_reservoir.add_one_candidate(sample, candidate_weight, random_number_generator);
     }
 
     for (int i = 0; i < render_data.render_settings.ris_number_of_bsdf_candidates; i++)
@@ -169,11 +168,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_lights_RIS_reservoir(const HIPRT
             }
         }
 
-        reservoir.add_one_candidate(sample, candidate_weight, random_number_generator);
+        out_reservoir.add_one_candidate(sample, candidate_weight, random_number_generator);
     }
 
-    reservoir.end();
-    return reservoir;
+    out_reservoir.end();
+    return out_reservoir;
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_lights_RIS(const HIPRTRenderData& render_data, const RendererMaterial& material, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)

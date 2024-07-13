@@ -28,9 +28,11 @@ struct Reservoir
             sample = new_sample;
     }
 
-    HIPRT_HOST_DEVICE void combine_with(Reservoir other_reservoir, float mis_weight, float target_function, Xorshift32Generator& random_number_generator)
+    HIPRT_HOST_DEVICE void combine_with(Reservoir other_reservoir, float r_m, float target_function, Xorshift32Generator& random_number_generator)
     {
-        float reservoir_sample_weight = mis_weight * target_function * other_reservoir.UCW;
+        // ReSTIR 2019, Alg. 6, line 4
+        // pHat_q(r.y) * r.W * r.M
+        float reservoir_sample_weight = target_function * other_reservoir.UCW * r_m;
 
         M += other_reservoir.M;
         weight_sum += reservoir_sample_weight;
@@ -56,11 +58,17 @@ struct Reservoir
             UCW = 0.0f;
         else
             UCW = 1.0f / sample.target_function * weight_sum / Z;
+
+        debug_value = UCW;
     }
 
     unsigned int M = 0;
     float weight_sum = 0.0f;
     float UCW = 0.0f;
+
+    // This debug value stored in the reservoir can be used to display
+    // a value on the viewport such as the UCW for example or something else
+    float debug_value = 0.0f;
 
     ReservoirSample sample;
 };
