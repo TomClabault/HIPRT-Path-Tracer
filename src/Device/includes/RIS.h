@@ -56,7 +56,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_lights_RIS_reservoir(const HIPRT
     Reservoir out_reservoir;
     float3 evaluated_point = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f;
 
-    // Sampling candidates with weighted out_reservoir sampling
+    // Sampling candidates with weighted reservoir sampling
     for (int i = 0; i < render_data.render_settings.ris_number_of_light_candidates; i++)
     {
         float light_sample_pdf;
@@ -70,12 +70,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_lights_RIS_reservoir(const HIPRT
         float target_function = 0.0f;
         float candidate_weight = 0.0f;
         float3 random_light_point = sample_one_emissive_triangle(render_data, random_number_generator, light_sample_pdf, light_source_info);
+
+        // It can happen that the light PDF returned by the emissive triangle
+        // sampling function is 0 because of emissive triangles that are so
+        // small that we cannot compute their normal and their area (the cross
+        // product of their edges gives a quasi-null vector --> length of 0.0f --> area of 0)
         if (light_sample_pdf > 0.0f)
         {
-            // It can happen that the light PDF returned by the emissive triangle
-            // sampling function is 0 because of emissive triangles that are so
-            // small that we cannot compute their normal and their area (the cross
-            // product of their edges gives a quasi-null vector --> length of 0.0f --> area of 0)
             float bsdf_pdf;
             float3 to_light_direction;
 
@@ -83,7 +84,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_lights_RIS_reservoir(const HIPRT
             distance_to_light = hippt::length(to_light_direction);
             to_light_direction = to_light_direction / distance_to_light; // Normalization
             cosine_at_light_source = hippt::abs(hippt::dot(light_source_info.light_source_normal, -to_light_direction));
-            cosine_at_evaluated_point = hippt::dot(closest_hit_info.shading_normal, to_light_direction);
+            cosine_at_evaluated_point = hippt::max(0.0f, hippt::dot(closest_hit_info.shading_normal, to_light_direction));
             if (cosine_at_evaluated_point > 0.0f)
             {
                 bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, material, trash_ray_volume_state, view_direction, closest_hit_info.shading_normal, to_light_direction, bsdf_pdf);
@@ -97,6 +98,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_lights_RIS_reservoir(const HIPRT
                 target_function = (bsdf_color * light_source_info.emission * cosine_at_evaluated_point).luminance();
 
 #if RISUseVisiblityTargetFunction == RIS_USE_VISIBILITY_TRUE
+                // Adding visibility to the target function
                 hiprtRay shadow_ray;
                 shadow_ray.origin = evaluated_point;
                 shadow_ray.direction = to_light_direction;
@@ -107,7 +109,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_lights_RIS_reservoir(const HIPRT
 #endif
 
                 float mis_weight = balance_heuristic(light_sample_pdf, render_data.render_settings.ris_number_of_light_candidates, bsdf_pdf, render_data.render_settings.ris_number_of_bsdf_candidates);
-                //mis_weight = 1.0f / (render_data.render_settings.ris_number_of_light_candidates + render_data.render_settings.ris_number_of_bsdf_candidates);
+                mis_weight = 1.0f / (render_data.render_settings.ris_number_of_light_candidates + render_data.render_settings.ris_number_of_bsdf_candidates);
                 candidate_weight = mis_weight * target_function / light_sample_pdf;
             }
         }
@@ -159,7 +161,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_lights_RIS_reservoir(const HIPRT
                 light_pdf /= render_data.buffers.emissive_triangles_count;
 
                 float mis_weight = balance_heuristic(bsdf_sample_pdf, render_data.render_settings.ris_number_of_bsdf_candidates, light_pdf, render_data.render_settings.ris_number_of_light_candidates);
-                //mis_weight = 1.0f / (render_data.render_settings.ris_number_of_light_candidates + render_data.render_settings.ris_number_of_bsdf_candidates);
+                mis_weight = 1.0f / (render_data.render_settings.ris_number_of_light_candidates + render_data.render_settings.ris_number_of_bsdf_candidates);
                 candidate_weight = mis_weight * target_function / bsdf_sample_pdf;
 
                 sample.emission = ray_payload.material.emission;

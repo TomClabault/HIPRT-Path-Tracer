@@ -54,15 +54,14 @@ struct Reservoir
 
     HIPRT_HOST_DEVICE void end_Z(float Z)
     {
-        if (weight_sum == 0.0f)
+        if (weight_sum == 0.0f || Z == 0.0f)
             UCW = 0.0f;
         else
             UCW = 1.0f / sample.target_function * weight_sum / Z;
-
-        debug_value = UCW;
     }
 
     unsigned int M = 0;
+    // TODO weight sum is never used at the same time as UCW so only one variable can be used for both to save space
     float weight_sum = 0.0f;
     float UCW = 0.0f;
 

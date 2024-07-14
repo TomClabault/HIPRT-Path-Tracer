@@ -22,6 +22,7 @@
 //	  - same with perfect reflection
 // - Do something for that memory leak on glUnregisterBuffer / .... Maybe update viewport only once in a while to at least reduce the impact of the leak?
 // - envmap sometimes upside down
+// - issue in the metallic brdf sample? lots of black pixels because of badly sampled direction
 
 
 
@@ -44,10 +45,14 @@
 //		GPUKernel class (probably from the "abstraction for kernel functions" refactor task) and remove the
 //		selected index entirely because it is not used anymore
 // - only the material index can be stored in the pixel states ofthe wavefront path tracer, don't need to store the whole material
+// - display view needs to become a class so that it's display string, display type, associated shader, needed framebuffer, ... is all in one place and it's easy to add new display view to the application
+// - refactor envmap to have a sampling & eval function
 
 
 
 // TODO Features:
+// - linear interpolation function for the parameters of the BSDF
+// - compensated importance sampling of envmap
 // - have pixel jittering disablable
 // - have accumulation disablable
 // - can we do direct lighting + take emissive at all bounces but divide by 2 to avoid double taking into account emissive lights? this would solve missing caustics
