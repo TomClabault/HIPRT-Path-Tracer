@@ -119,7 +119,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
         render_data.aux_buffers.denoiser_normals[pixel_index] = make_float3(1.0f, 1.0f, 1.0f);
         render_data.aux_buffers.denoiser_albedo[pixel_index] = ColorRGB32F(0.0f, 0.0f, 0.0f);
 
-        if (render_data.render_settings.stop_noise_threshold > 0.0f || render_data.render_settings.enable_adaptive_sampling)
+        if (render_data.render_settings.has_access_to_adaptive_sampling_buffers())
         {
             // These buffers are only available when either the adaptive sampling or the stop noise threshold is enabled
             render_data.aux_buffers.pixel_sample_count[pixel_index] = 0;
@@ -129,11 +129,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
 
 
     bool sampling_needed = true;
-    bool stop_noise_threshold_converged = false;
-    sampling_needed = adaptive_sampling(render_data, pixel_index, stop_noise_threshold_converged);
+    bool pixel_converged = false;
+    sampling_needed = adaptive_sampling(render_data, pixel_index, pixel_converged);
 
-    if (stop_noise_threshold_converged)
-        // Indicating that this pixel has reached the threshold in render_settings.stop_noise_threshold
+    if (pixel_converged || !sampling_needed)
+        // Indicating that this pixel has reached the threshold in render_settings.stop_pixel_noise_threshold
         hippt::atomic_add(render_data.aux_buffers.stop_noise_threshold_count, 1u);
 
     if (!sampling_needed)
@@ -309,12 +309,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
     // If we got here, this means that we still have at least one ray active
     render_data.aux_buffers.still_one_ray_active[0] = 1;
 
-    if (render_data.render_settings.stop_noise_threshold > 0.0f || render_data.render_settings.enable_adaptive_sampling)
+    if (render_data.render_settings.has_access_to_adaptive_sampling_buffers())
     {
-        // We can only use these buffers is the adaptive sampling or the stop noise threshold is enabled
+        // We can only use these buffers if the adaptive sampling or the stop noise threshold is enabled.
+        // Otherwise, the buffers are destroyed to save some VRAM so they are not accessible
         render_data.aux_buffers.pixel_squared_luminance[pixel_index] += squared_luminance_of_samples;
         render_data.aux_buffers.pixel_sample_count[pixel_index] += render_data.render_settings.samples_per_frame;
     }
+
     render_data.buffers.pixels[pixel_index] += final_color;
 
     // Handling denoiser's albedo and normals AOVs    

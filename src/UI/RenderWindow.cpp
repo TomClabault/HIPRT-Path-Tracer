@@ -21,9 +21,8 @@
 // - reorganize methods order in RenderWindow
 // - macro for clean code disney eval
 
-// 36.8 / 21.3V
-
 // TODO Features:
+// - stop rendering after a given % of pixels have converged (the last few pixels are probably the hardest to render so this is going to take a while but for only a few pixels. The denoiser can take care of that)
 // - Kahan summation for weighted reservoir sampling?
 // - hardware triangle intersection can be disabled in HIPRT Compiler.cpp so that's good for comparing performance (__USE_HWI__ define)
 // - build BVHs one by one to avoid big memory spike? but what about BLAS performance cost?
@@ -670,7 +669,10 @@ bool RenderWindow::is_rendering_done()
 	// No more active pixels (in the case of adaptive sampling for example)
 	rendering_done |= m_renderer->get_ray_active_buffer().download_data()[0] == 0;
 	// All pixels have converged to the noise threshold given
-	rendering_done |= m_renderer->get_stop_noise_threshold_buffer().download_data()[0] == m_renderer->m_render_width * m_renderer->m_render_height;
+	float proportion_converged;;
+	proportion_converged = m_renderer->get_pixel_converged_count_buffer().download_data()[0] / static_cast<float>(m_renderer->m_render_width * m_renderer->m_render_height);
+	proportion_converged *= 100.0f; // To human-readable percentage as used in the ImGui interface
+	rendering_done |= proportion_converged > render_settings.stop_pixel_percentage_converged && render_settings.stop_pixel_noise_threshold > 0.0f;
 	// Max sample count
 	rendering_done |= (m_application_settings->max_sample_count != 0 && render_settings.sample_number + 1 > m_application_settings->max_sample_count);
 	// Max render time
@@ -702,7 +704,7 @@ void RenderWindow::reset_render()
 	m_current_render_time_ms = 0.0f;
 	render_settings.sample_number = 0;
 	m_renderer->get_ray_active_buffer().upload_data(&true_data);
-	m_renderer->get_stop_noise_threshold_buffer().upload_data(&zero_data);
+	m_renderer->get_pixel_converged_count_buffer().upload_data(&zero_data);
 	m_application_settings->last_denoised_sample_count = -1;
 
 	m_render_dirty = false;
@@ -782,44 +784,54 @@ void RenderWindow::run()
 			// Evaluating all the conditions for whether or not we want to denoise
 			// the current color framebuffer and whether or not we want to display
 			// the denoised framebuffer to the viewport (we may want NOT to display
-			// the denoised framebuffer if we're only denoising at the target
-			// sample count and we haven't reached the max sample count yet. That's
-			// just one example)
+			// the denoised framebuffer if we're only denoising when the render is done
+			// but the render isn't done yet. That's just one example)
 
-			// Do we want to denoise only when reaching the max sample count?
-			bool denoise_at_target = m_application_settings->denoise_at_max_samples;
-			// Have we reached the max sample count? This is going to evaluate to true
-			// if the sample target 'max_sample_count' is 0 but that's fine I guess
-			// Also, we only want to denoise once when reaching the max sample count, otherwise
-			// the render is over but the denoiser will keep on denoising and burning the PC
-			// pointlessly (that's the third condition)
-			bool max_samples_reached = denoise_at_target && render_settings.sample_number >= m_application_settings->max_sample_count && m_application_settings->last_denoised_sample_count < render_settings.sample_number;
-			// Have we not reached the max sample count while only wanting denoising at max sample count?
-			bool max_samples_not_reached = denoise_at_target && render_settings.sample_number < m_application_settings->max_sample_count;
-			// Have we rendered enough samples since last time we denoised that we need to denoise?
-			bool sample_skip_threshold_reached = !denoise_at_target && (render_settings.sample_number - std::max(0, m_application_settings->last_denoised_sample_count) >= m_application_settings->denoiser_sample_skip);
-			// We're also going to denoiser if we changed the denoiser settings
-			// (meaning that we need to denoise to reflect the changed settings)
+
+
+			// ---- Utility variables ----
+			// Do we want to denoise only when reaching the rendering is done?
+			bool denoise_when_done = m_application_settings->denoise_when_rendering_done;
+			// Is the rendering done?
+			bool rendering_done = is_rendering_done();
+			// Whether or not we've already denoise the framebuffer after the rendering is done.
+			// This is to avoid denoising again and again the framebuffer when the rendering is done (because that would just be using the machine for nothing)
+			bool final_frame_denoised_already = rendering_done && m_application_settings->last_denoised_sample_count == render_settings.sample_number;
+
+
+
+			// ---- Conditions for denoising / displaying noisy ----
+			// - Is the rendering done 
+			// - And we only want to denoise when the rendering is done
+			// - And we haven't alraedy denoised the final frame
+			bool denoise_rendering_done = rendering_done && denoise_when_done && !final_frame_denoised_already;
+			// Have we rendered enough samples since last time we denoised that we need to denoise again?
+			bool sample_skip_threshold_reached = !denoise_when_done && (render_settings.sample_number - std::max(0, m_application_settings->last_denoised_sample_count) >= m_application_settings->denoiser_sample_skip);
+			// We're also going to denoise if we changed the denoiser settings
+			// (because we need to denoise to reflect the new settings)
 			bool denoiser_settings_changed = m_application_settings->denoiser_settings_changed;
+
+
+
 
 			bool need_denoising = false;
 			bool display_noisy = false;
 
 			// Denoise if:
-			//	- We have reached the max sample count
+			//	- The render is done and we're denoising when the render 
 			//	- We have rendered enough samples since the last denoise step that we need to denoise again
 			//	- We're not denoising if we're interacting (moving the camera)
-			need_denoising |= max_samples_reached;
+			need_denoising |= denoise_rendering_done;
 			need_denoising |= sample_skip_threshold_reached;
 			need_denoising |= denoiser_settings_changed;
 			need_denoising &= !is_interacting();
 
 			// Display the noisy framebuffer if: 
-			//	- We want to denoise only at max sample count but haven't reached it yet
+			//	- We only denoise when the rendering is done but it isn't done yet
 			//	- We want to denoise every m_application_settings->denoiser_sample_skip samples
 			//		but we haven't even reached that number yet. We're displaying the noisy framebuffer in the meantime
 			//	- We're moving the camera
-			display_noisy |= max_samples_not_reached;
+			display_noisy |= !rendering_done && denoise_when_done;
 			display_noisy |= !sample_skip_threshold_reached && m_application_settings->last_denoised_sample_count == -1;
 			display_noisy |= is_interacting();
 

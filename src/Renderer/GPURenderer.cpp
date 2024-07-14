@@ -38,7 +38,7 @@ GPURenderer::GPURenderer()
 	m_still_one_ray_active_buffer.resize(1);
 	m_still_one_ray_active_buffer.upload_data(&true_data);
 
-	m_stop_noise_threshold_count_buffer.resize(1);
+	m_pixels_converged_count_buffer.resize(1);
 
 	// Creation of the events for timing the frames
 	OROCHI_CHECK_ERROR(oroEventCreate(&m_frame_start_event));
@@ -125,9 +125,9 @@ OrochiBuffer<unsigned char>& GPURenderer::get_ray_active_buffer()
 	return m_still_one_ray_active_buffer;
 }
 
-OrochiBuffer<unsigned int>& GPURenderer::get_stop_noise_threshold_buffer()
+OrochiBuffer<unsigned int>& GPURenderer::get_pixel_converged_count_buffer()
 {
-	return m_stop_noise_threshold_count_buffer;
+	return m_pixels_converged_count_buffer;
 }
 
 HIPRTRenderSettings& GPURenderer::get_render_settings()
@@ -175,19 +175,20 @@ HIPRTRenderData GPURenderer::get_render_data()
 	render_data.buffers.texcoords = reinterpret_cast<float2*>(m_hiprt_scene.texcoords_buffer.get_device_pointer());
 	render_data.buffers.textures_dims = reinterpret_cast<int2*>(m_hiprt_scene.textures_dims.get_device_pointer());
 
-	// Uploading false to basically reset the flag
 	unsigned char false_data = false;
 	unsigned int zero_data = 0;
+	// Uploading false to reset the flag
 	m_still_one_ray_active_buffer.upload_data(&false_data);
-	if (m_render_settings.stop_noise_threshold > 0.0f)
-		m_stop_noise_threshold_count_buffer.upload_data(&zero_data);
+	if (m_render_settings.stop_pixel_noise_threshold > 0.0f)
+		// Resetting the counter of pixels converged to 0
+		m_pixels_converged_count_buffer.upload_data(&zero_data);
 
 	render_data.aux_buffers.denoiser_normals = m_normals_AOV_buffer->map();
 	render_data.aux_buffers.denoiser_albedo = m_albedo_AOV_buffer->map();
 	render_data.aux_buffers.pixel_sample_count = m_pixels_sample_count.get_device_pointer();
 	render_data.aux_buffers.pixel_squared_luminance = m_pixels_squared_luminance.get_device_pointer();
 	render_data.aux_buffers.still_one_ray_active = m_still_one_ray_active_buffer.get_device_pointer();
-	render_data.aux_buffers.stop_noise_threshold_count = reinterpret_cast<AtomicType<unsigned int>*>(m_stop_noise_threshold_count_buffer.get_device_pointer());
+	render_data.aux_buffers.stop_noise_threshold_count = reinterpret_cast<AtomicType<unsigned int>*>(m_pixels_converged_count_buffer.get_device_pointer());
 
 	render_data.world_settings = m_world_settings;
 	render_data.render_settings = m_render_settings;

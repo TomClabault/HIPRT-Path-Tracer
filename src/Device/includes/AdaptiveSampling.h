@@ -20,43 +20,44 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_pixel_confidence_interval(const HIPRTRe
 }
 
 /**
- * stop_noise_threshold_converged is set to true if the givel pixel has reached
- * the noise threshold given in render_data.render_settings.stop_noise_threshold.
- * False otherwise.
+ * pixel_converged is set to true if the given pixel has reached the noise
+ * threshold given in render_data.render_settings.stop_pixel_percentage_converged. It 
+ * is set to false otherwise.
+ * 
+ * Returns true if the pixel needs more sample according to adaptive sampling (or if adaptive sampling is disabled).
+ * Returns false otherwise
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE bool adaptive_sampling(const HIPRTRenderData& render_data, int pixel_index, bool& stop_noise_threshold_converged)
+HIPRT_HOST_DEVICE HIPRT_INLINE bool adaptive_sampling(const HIPRTRenderData& render_data, int pixel_index, bool& pixel_converged)
 {
     const HIPRTRenderSettings& render_settings = render_data.render_settings;
     const AuxiliaryBuffers& aux_buffers = render_data.aux_buffers;
 
-    if (!render_settings.enable_adaptive_sampling)
+    if (render_settings.stop_pixel_noise_threshold > 0.0f)
     {
-        // If there is no adaptive sampling, we're still going to want
-        // to compute the pixel's error for the stop_noise_threshold
-        // if that stop_noise_threshold is > 0.0f (meaning that the feature
-        // is enabled)
-        if (render_settings.stop_noise_threshold > 0.0f)
-        {
-            int pixel_sample_count;
-            float average_luminance;
-            float confidence_interval;
-            pixel_sample_count = aux_buffers.pixel_sample_count[pixel_index];
-            confidence_interval = get_pixel_confidence_interval(render_data, pixel_index, pixel_sample_count, average_luminance);
+        // The stopping condition on the proportion of
+        // pixels having converged is enabled (stop_pixel_percentage_converged)
+        // 
+        // We're going to compute the erorr of the pixel to see if it's below the threshold or not
 
-            stop_noise_threshold_converged = 
-                // Converged enough
-                (confidence_interval < render_settings.stop_noise_threshold * average_luminance) 
-                // Stop noise threshold enabled
-                && (render_settings.stop_noise_threshold > 0.0f) 
-                // At least 2 samples because the maths break down at 1 sample
-                && (render_settings.sample_number > 1);
-        }
-         
-        // No stop noise threshold (and no adaptive sampling)
-        return true;
+        int pixel_sample_count;
+        float average_luminance;
+        float confidence_interval;
+        pixel_sample_count = aux_buffers.pixel_sample_count[pixel_index];
+        confidence_interval = get_pixel_confidence_interval(render_data, pixel_index, pixel_sample_count, average_luminance);
+
+        // The value of pixel_converged will be used outside of this function
+        pixel_converged =
+            // Converged enough
+            (confidence_interval < render_settings.stop_pixel_noise_threshold * average_luminance)
+            // At least 2 samples because the maths break down at 1 sample
+            && (render_settings.sample_number > 1);
     }
-    else
+
+    if (render_settings.enable_adaptive_sampling)
     {
+        // Computing pixel convergence according to adaptive sampling to
+        // know whether to keep sampling that pixel or not
+
         int pixel_sample_count = aux_buffers.pixel_sample_count[pixel_index];
         if (pixel_sample_count < 0)
             // Pixel is deactivated

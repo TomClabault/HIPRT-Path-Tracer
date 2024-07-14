@@ -42,7 +42,7 @@ public:
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> get_denoiser_albedo_AOV_buffer();
 	OrochiBuffer<int>& get_pixels_sample_count_buffer();
 	OrochiBuffer<unsigned char>& get_ray_active_buffer();
-	OrochiBuffer<unsigned int>& get_stop_noise_threshold_buffer();
+	OrochiBuffer<unsigned int>& get_pixel_converged_count_buffer();
 
 	HIPRTRenderSettings& get_render_settings();
 	WorldSettings& get_world_settings();
@@ -114,8 +114,10 @@ private:
 	// the kernel or not. Mostly useful when adaptive sampling is on and we
 	// want to know if all pixels have converged or not yet
 	OrochiBuffer<unsigned char> m_still_one_ray_active_buffer;
-	// How many pixels have reached the render_settings.stop_noise_threshold
-	OrochiBuffer<unsigned int> m_stop_noise_threshold_count_buffer;
+	// How many pixels have reached the render_settings.stop_pixel_noise_threshold.
+	// Warning: This buffer does not count how many pixels have converged according to
+	// the adaptive sampling noise threshold. This is only for the stop_pixel_noise_threshold
+	OrochiBuffer<unsigned int> m_pixels_converged_count_buffer;
 
 	// The materials are also kept on the CPU side because we want to be able
 	// to modify them interactively with ImGui

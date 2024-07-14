@@ -26,7 +26,7 @@ struct ApplicationSettings
 	// How many microseconds did it take to denoise (last time we denoised)?
 	float last_denoised_duration = 0.0f;
 	// Denoise only when that maximum sample count is reached
-	bool denoise_at_max_samples = false;
+	bool denoise_when_rendering_done = false;
 	// How many frames to wait for before denoising (this basically reduces 
 	// the performance penalty of denoising each frame).
 	int denoiser_sample_skip = 1;

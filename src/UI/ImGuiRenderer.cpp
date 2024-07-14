@@ -114,85 +114,115 @@ void ImGuiRenderer::draw_render_settings_panel()
 	ImGui::EndDisabled();
 	ImGui::SameLine();
 	ImGui::Checkbox("Auto", &m_application_settings->auto_sample_per_frame);
-
-	if (ImGui::InputInt("Max Sample Count", &m_application_settings->max_sample_count))
-		m_application_settings->max_sample_count = std::max(m_application_settings->max_sample_count, 0);
-
-	if (ImGui::InputFloat("Max Render Time (s)", &m_application_settings->max_render_time))
-		m_application_settings->max_render_time = std::max(m_application_settings->max_render_time, 0.0f);
-
-	unsigned int converged_count;
-	unsigned int total_pixel_count;
-	ImGui::BeginDisabled(render_settings.enable_adaptive_sampling);
-	if (ImGui::InputFloat("Stop render at noise threshold", &render_settings.stop_noise_threshold))
-	{
-		bool need_buffers = false;
-		need_buffers |= render_settings.enable_adaptive_sampling == 1;
-		need_buffers |= render_settings.stop_noise_threshold > 0.0f;
-
-		unsigned int zero_data = 0;
-		render_settings.stop_noise_threshold = std::max(0.0f, render_settings.stop_noise_threshold);
-		m_renderer->get_stop_noise_threshold_buffer().upload_data(&zero_data);
-		m_renderer->toggle_adaptive_sampling_buffers(need_buffers);
-	}
-
-	ImGui::TreePush("Tree stop noise threshold");
-	{
-		converged_count = m_renderer->get_stop_noise_threshold_buffer().download_data()[0] * (!render_settings.enable_adaptive_sampling);
-		total_pixel_count = m_renderer->m_render_width * m_renderer->m_render_height;
-		ImGui::Text("Pixels converged: %d / %d - %.4f%%", converged_count, total_pixel_count, static_cast<float>(converged_count) / total_pixel_count * 100.0f);
-	}
-	ImGui::TreePop();
-	ImGui::EndDisabled();
-
 	if (ImGui::InputInt("Max bounces", &render_settings.nb_bounces))
 	{
 		// Clamping to 0 in case the user input a negative number of bounces	
 		render_settings.nb_bounces = std::max(render_settings.nb_bounces, 0);
 		m_render_window->set_render_dirty(true);
 	}
-	ImGui::Separator();
-	if (ImGui::SliderFloat("Direct ligthing contribution clamp", &render_settings.direct_contribution_clamp, 0.0f, 10.0f))
-	{
-		render_settings.direct_contribution_clamp = std::max(0.0f, render_settings.direct_contribution_clamp);
-		m_render_window->set_render_dirty(true);
-	}
-	if (ImGui::SliderFloat("Envmap ligthing contribution clamp", &render_settings.envmap_contribution_clamp, 0.0f, 10.0f))
-	{
-		render_settings.envmap_contribution_clamp = std::max(0.0f, render_settings.envmap_contribution_clamp);
-		m_render_window->set_render_dirty(true);
-	}
-	if (ImGui::SliderFloat("Indirect ligthing contribution clamp", &render_settings.indirect_contribution_clamp, 0.0f, 10.0f))
-	{
-		render_settings.indirect_contribution_clamp = std::max(0.0f, render_settings.indirect_contribution_clamp);
-		m_render_window->set_render_dirty(true);
-	}
 
-	ImGui::Separator();
-	if (ImGui::CollapsingHeader("Adaptive sampling"))
+	if (ImGui::CollapsingHeader("Render stopping condition"))
 	{
-		ImGui::TreePush("Adaptive sampling tree");
+		ImGui::TreePush("Stopping condition tree");
 
-		if (ImGui::Checkbox("Enable adaptive sampling", (bool*)&render_settings.enable_adaptive_sampling))
+		if (ImGui::InputInt("Max Sample Count", &m_application_settings->max_sample_count))
+			m_application_settings->max_sample_count = std::max(m_application_settings->max_sample_count, 0);
+
+		if (ImGui::InputFloat("Max Render Time (s)", &m_application_settings->max_render_time))
+			m_application_settings->max_render_time = std::max(m_application_settings->max_render_time, 0.0f);
+		ImGui::Separator();
+
+		static bool use_pixel_noise_threshold;
+		static bool use_adaptive_sampling_threshold = false;
+		// Whether or not we already have the adaptive sampling buffers allocated
+		bool already_has_buffers = render_settings.has_access_to_adaptive_sampling_buffers();
+		float stop_pixel_noise_threshold_before = render_settings.stop_pixel_noise_threshold;
+		unsigned int converged_count;
+		unsigned int total_pixel_count;
+		ImGui::BeginDisabled(use_adaptive_sampling_threshold);
+		if (ImGui::InputFloat("Pixel noise threshold", &render_settings.stop_pixel_noise_threshold))
 		{
-			bool need_buffers = false;
-			need_buffers |= render_settings.enable_adaptive_sampling == 1;
-			need_buffers |= render_settings.stop_noise_threshold > 0.0f;
 
-			m_renderer->toggle_adaptive_sampling_buffers(need_buffers);
-			m_render_window->set_render_dirty(true);
+			render_settings.stop_pixel_noise_threshold = std::max(0.0f, render_settings.stop_pixel_noise_threshold);
+
+			// We need the buffer if we're using adaptive sampling, or we're using the stop pixel noise threshold, or...
+			// All the conditions are in RenderSettings::has_access_to_adaptive_sampling_buffers()
+			bool need_buffers = render_settings.has_access_to_adaptive_sampling_buffers();
+			if (need_buffers)
+			{
+				if (!already_has_buffers)
+					// We only want to create the buffers if we don't already them. Because if we have them already, this is going to re-create the buffers which will reset our counter of how many pixels have converged
+					m_renderer->toggle_adaptive_sampling_buffers(true);
+			}
+			else
+				m_renderer->toggle_adaptive_sampling_buffers(false);
+
+			unsigned int zero_data = 0;
+			m_renderer->get_pixel_converged_count_buffer().upload_data(&zero_data);
 		}
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+			ImGui::SetTooltip("Cannot be set lower than the adaptive sampling threshold. 0.0 to disable.");
 
+		// Having the stop pixel noise threshold lower than the adaptive sampling noise threshold
+		// is impossible because the adaptive sampling will stop sampling the pixel before it can
+		// converge enough to the stop pixels noise threshold (which is lower than the
+		// adaptive sampling) so we're making sure the values are correct here
+		if (render_settings.enable_adaptive_sampling && render_settings.stop_pixel_noise_threshold > 0.0f)
+			render_settings.stop_pixel_noise_threshold = std::max(render_settings.stop_pixel_noise_threshold, render_settings.adaptive_sampling_noise_threshold);
+
+		ImGui::EndDisabled(); // use_adaptive_sampling_threshold
+
+		ImGui::SameLine();
 		ImGui::BeginDisabled(!render_settings.enable_adaptive_sampling);
-		if (ImGui::InputInt("Adaptive sampling minimum samples", &render_settings.adaptive_sampling_min_samples))
-			m_render_window->set_render_dirty(true);
-		if (ImGui::InputFloat("Adaptive sampling noise threshold", &render_settings.adaptive_sampling_noise_threshold))
+		if (ImGui::Checkbox("Use adaptive sampling threshold", &use_adaptive_sampling_threshold) && use_adaptive_sampling_threshold)
+			render_settings.stop_pixel_noise_threshold = render_settings.adaptive_sampling_noise_threshold;
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+			ImGui::SetTooltip("If checked, the adaptive sampling noise threshold will be used.");
+		ImGui::EndDisabled(); // !render_settings.enable_adaptive_sampling
+
+		bool update_converge_text = render_settings.stop_pixel_noise_threshold > 0.0f;
+		ImGui::BeginDisabled(!update_converge_text);
+		ImGui::TreePush("Tree pixel stop noise threshold");
 		{
-			render_settings.adaptive_sampling_noise_threshold = std::max(0.0f, render_settings.adaptive_sampling_noise_threshold);
-			m_render_window->set_render_dirty(true);
+			if (ImGui::InputFloat("Pixel proportion", &render_settings.stop_pixel_percentage_converged))
+				render_settings.stop_pixel_percentage_converged = std::max(0.0f, std::min(render_settings.stop_pixel_percentage_converged, 100.0f));
+			if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+				ImGui::SetTooltip("The proportion of pixels that need to have converge to the noise threshold for the rendering to stop. In percentage [0, 100].");
+
+			converged_count = m_renderer->get_pixel_converged_count_buffer().download_data()[0] * update_converge_text;
+			total_pixel_count = m_renderer->m_render_width * m_renderer->m_render_height;
+			ImGui::Text("Pixels converged: %d / %d - %.4f%%", converged_count, total_pixel_count, static_cast<float>(converged_count) / total_pixel_count * 100.0f);
 		}
 		ImGui::EndDisabled();
 
+		// Tree stop noise threshold
+		ImGui::TreePop();
+
+		// Stopping condition tree
+		ImGui::TreePop();
+	}
+	
+	if (ImGui::CollapsingHeader("Light clamping"))
+	{
+		ImGui::TreePush("Light clamping tree");
+
+		if (ImGui::SliderFloat("Direct ligthing contribution clamp", &render_settings.direct_contribution_clamp, 0.0f, 10.0f))
+		{
+			render_settings.direct_contribution_clamp = std::max(0.0f, render_settings.direct_contribution_clamp);
+			m_render_window->set_render_dirty(true);
+		}
+		if (ImGui::SliderFloat("Envmap ligthing contribution clamp", &render_settings.envmap_contribution_clamp, 0.0f, 10.0f))
+		{
+			render_settings.envmap_contribution_clamp = std::max(0.0f, render_settings.envmap_contribution_clamp);
+			m_render_window->set_render_dirty(true);
+		}
+		if (ImGui::SliderFloat("Indirect ligthing contribution clamp", &render_settings.indirect_contribution_clamp, 0.0f, 10.0f))
+		{
+			render_settings.indirect_contribution_clamp = std::max(0.0f, render_settings.indirect_contribution_clamp);
+			m_render_window->set_render_dirty(true);
+		}
+
+		// Light clamping tree
 		ImGui::TreePop();
 	}
 
@@ -288,6 +318,33 @@ void ImGuiRenderer::draw_sampling_panel()
 	if (ImGui::CollapsingHeader("Sampling"))
 	{
 		ImGui::TreePush("Sampling tree");
+
+		if (ImGui::CollapsingHeader("Adaptive sampling"))
+		{
+			ImGui::TreePush("Adaptive sampling tree");
+
+			if (ImGui::Checkbox("Enable adaptive sampling", (bool*)&render_settings.enable_adaptive_sampling))
+			{
+				bool need_buffers = false;
+				need_buffers |= render_settings.enable_adaptive_sampling == 1;
+				need_buffers |= render_settings.stop_pixel_noise_threshold > 0.0f;
+
+				m_renderer->toggle_adaptive_sampling_buffers(need_buffers);
+				m_render_window->set_render_dirty(true);
+			}
+
+			ImGui::BeginDisabled(!render_settings.enable_adaptive_sampling);
+			if (ImGui::InputInt("Adaptive sampling minimum samples", &render_settings.adaptive_sampling_min_samples))
+				m_render_window->set_render_dirty(true);
+			if (ImGui::InputFloat("Adaptive sampling noise threshold", &render_settings.adaptive_sampling_noise_threshold))
+			{
+				render_settings.adaptive_sampling_noise_threshold = std::max(0.0f, render_settings.adaptive_sampling_noise_threshold);
+				m_render_window->set_render_dirty(true);
+			}
+			ImGui::EndDisabled();
+
+			ImGui::TreePop();
+		}
 
 		if (ImGui::CollapsingHeader("Direct lighting"))
 		{
@@ -537,7 +594,7 @@ void ImGuiRenderer::draw_denoiser_panel()
 		ImGui::EndDisabled();
 		ImGui::TreePop();
 	}
-	ImGui::Checkbox("Only Denoise at \"Max Sample Count\"", &m_application_settings->denoise_at_max_samples);
+	ImGui::Checkbox("Only denoise when rendering is done", &m_application_settings->denoise_when_rendering_done);
 	ImGui::SliderInt("Denoise Sample Skip", &m_application_settings->denoiser_sample_skip, 1, 128);
 	ImGui::SliderFloat("Denoiser blend", &m_application_settings->denoiser_blend, 0.0f, 1.0f);
 	ImGui::EndDisabled();

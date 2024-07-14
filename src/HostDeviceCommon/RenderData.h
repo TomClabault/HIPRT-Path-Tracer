@@ -59,15 +59,21 @@ struct HIPRTRenderSettings
 	// This is useful mainly for the per-pixel adaptive sampling method
 	// where you want to be sure that each pixel in the image has had enough
 	// chance find a path to a potentially 
-	int adaptive_sampling_min_samples = 128;
+	int adaptive_sampling_min_samples = 96;
 	// Adaptive sampling noise threshold
-	float adaptive_sampling_noise_threshold = 0.1f;
+	float adaptive_sampling_noise_threshold = 0.3f;
 
-	// If != 0.0f, the render will stop after all pixels have reached the given
-	// noise threshold. This is different from adaptive sampling as this does not
-	// stop sampling pixels that have reached the threshold if there are still
-	// some other pixels that haven't. Either everyone stops or noone stops.
-	float stop_noise_threshold = 0.0f;
+	// A percentage in [0, 100] that dictates the proportion of pixels that must
+	// have reached the given noise threshold (stop_pixel_noise_threshold
+	// variable) before we stop rendering.
+	// For example, if this variable is 75, we will stop rendering when 75% of all
+	// pixels have reached the stop_pixel_noise_threshold
+	float stop_pixel_percentage_converged = 75.0f;
+	// Noise threshold for use with the stop_pixel_percentage_converged stopping
+	// condition
+	float stop_pixel_noise_threshold = 0.0f;
+
+
 
 	// Clamp direct lighting contribution to reduce fireflies
 	float direct_contribution_clamp = 0.0f;
@@ -81,6 +87,25 @@ struct HIPRTRenderSettings
 	// How many candidates samples from the BSDF to use in combination
 	// with the light candidates for RIS
 	int ris_number_of_bsdf_candidates = 1;
+
+
+
+	/**
+	 * Returns true if the adaptive sampling buffers are ready for use, false otherwise.
+	 * 
+	 * Adaptive sampling buffers are "ready for use" if the adaptive sampling is enabled or
+	 * if the pixel stop noise threshold is enabled. Otherwise, the adaptive sampling buffers
+	 * are freed to save VRAM so they cannot be used.
+	 */
+	HIPRT_HOST_DEVICE bool has_access_to_adaptive_sampling_buffers()
+	{
+		bool has_access = false;
+
+		has_access |= stop_pixel_noise_threshold > 0.0f; 
+		has_access |= enable_adaptive_sampling == 1;
+
+		return has_access;
+	}
 };
 
 struct RenderBuffers
@@ -146,10 +171,11 @@ struct AuxiliaryBuffers
 	// isn't standard
 	unsigned char* still_one_ray_active = nullptr;
 
-	// If render_settings.stop_noise_threshold > 0, this buffer
+	// If render_settings.stop_pixel_noise_threshold > 0.0f, this buffer
 	// (consisting of a single unsigned int) counts how many pixels have reached the
 	// noise threshold. If this value is equal to the number of pixels of the
-	// framebuffer, then all pixels have converged.
+	// framebuffer, then all pixels have converged according to the given
+	// noise threshold.
 	AtomicType<unsigned int>* stop_noise_threshold_count = nullptr;
 };
 
