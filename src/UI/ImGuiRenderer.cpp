@@ -63,7 +63,8 @@ void ImGuiRenderer::draw_imgui_interface()
 	draw_objects_panel();
 	draw_denoiser_panel();
 	draw_post_process_panel();
-	draw_performance_panel();
+	draw_performance_settings_panel();
+	draw_performance_metrics_panel();
 	draw_debug_panel();
 
 	ImGui::End();
@@ -231,7 +232,7 @@ void ImGuiRenderer::draw_render_settings_panel()
 		ImGui::TreePush("Nested dielectrics tree");
 
 		const char* items[] = { "- Automatic", "- With priorities" };
-		if (ImGui::Combo("Nested dielectrics strategy", m_renderer->get_kernel_option_pointer(GPUKernelOptions::INTERIOR_STACK_STRATEGY), items, IM_ARRAYSIZE(items)))
+		if (ImGui::Combo("Nested dielectrics strategy", m_renderer->get_kernel_macro_pointer(GPUKernelOptions::INTERIOR_STACK_STRATEGY), items, IM_ARRAYSIZE(items)))
 		{
 			m_renderer->recompile_trace_kernel();
 			m_render_window->set_render_dirty(true);
@@ -351,7 +352,7 @@ void ImGuiRenderer::draw_sampling_panel()
 			ImGui::TreePush("Direct lighting sampling tree");
 
 			const char* items[] = { "- No direct light sampling", "- Uniform one light", "- BSDF Sampling", "- MIS (1 Light + 1 BSDF)", "- RIS BDSF + Light candidates" };
-			if (ImGui::Combo("Direct light sampling strategy", m_renderer->get_kernel_option_pointer(GPUKernelOptions::DIRECT_LIGHT_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
+			if (ImGui::Combo("Direct light sampling strategy", m_renderer->get_kernel_macro_pointer(GPUKernelOptions::DIRECT_LIGHT_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
 			{
 				m_renderer->recompile_trace_kernel();
 				m_render_window->set_render_dirty(true);
@@ -359,7 +360,7 @@ void ImGuiRenderer::draw_sampling_panel()
 
 			// Display additional widgets to control the parameters of the direct light
 			// sampling strategy chosen (the number of candidates for RIS for example)
-			switch (m_renderer->get_kernel_option_value(GPUKernelOptions::DIRECT_LIGHT_SAMPLING_STRATEGY))
+			switch (m_renderer->get_kernel_macro_value(GPUKernelOptions::DIRECT_LIGHT_SAMPLING_STRATEGY))
 			{
 			case LSS_NO_DIRECT_LIGHT_SAMPLING:
 				break;
@@ -371,10 +372,10 @@ void ImGuiRenderer::draw_sampling_panel()
 				break;
 
 			case LSS_RIS_BSDF_AND_LIGHT:
-				static bool use_visiblity_checked = m_renderer->get_kernel_option_value(GPUKernelOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION) == 1;
+				static bool use_visiblity_checked = m_renderer->get_kernel_macro_value(GPUKernelOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION) == 1;
 				if (ImGui::Checkbox("Use visibility in target function", &use_visiblity_checked))
 				{
-					m_renderer->set_kernel_option(GPUKernelOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, use_visiblity_checked ? 1 : 0);
+					m_renderer->set_kernel_macro(GPUKernelOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, use_visiblity_checked ? 1 : 0);
 					m_renderer->recompile_trace_kernel();
 
 					m_render_window->set_render_dirty(true);
@@ -411,7 +412,7 @@ void ImGuiRenderer::draw_sampling_panel()
 			ImGui::TreePush("Envmap sampling tree");
 
 			const char* items[] = { "- No envmap sampling", "- Envmap Sampling - Binary Search" };
-			if (ImGui::Combo("Envmap sampling strategy", m_renderer->get_kernel_option_pointer(GPUKernelOptions::ENVMAP_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
+			if (ImGui::Combo("Envmap sampling strategy", m_renderer->get_kernel_macro_pointer(GPUKernelOptions::ENVMAP_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
 			{
 				m_renderer->recompile_trace_kernel();
 				m_render_window->set_render_dirty(true);
@@ -515,7 +516,7 @@ void ImGuiRenderer::draw_objects_panel()
 		material_changed |= ImGui::SliderFloat("Absorption distance", &material.absorption_at_distance, 0.0f, 20.0f);
 		material_changed |= ImGui::ColorEdit3("Absorption color", (float*)&material.absorption_color);
 		unsigned short int zero = 0, eight = 8;
-		ImGui::BeginDisabled(material.specular_transmission == 0.0f || m_renderer->get_kernel_option_value(GPUKernelOptions::INTERIOR_STACK_STRATEGY) != ISS_WITH_PRIORITES);
+		ImGui::BeginDisabled(material.specular_transmission == 0.0f || m_renderer->get_kernel_macro_value(GPUKernelOptions::INTERIOR_STACK_STRATEGY) != ISS_WITH_PRIORITES);
 		material_changed |= ImGui::SliderScalar("Dielectric priority", ImGuiDataType_U16, &material.dielectric_priority, &zero, &eight);
 		ImGui::EndDisabled();
 		material_changed |= ImGui::ColorEdit3("Emission", (float*)&material.emission, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
@@ -619,14 +620,65 @@ void ImGuiRenderer::draw_post_process_panel()
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 }
 
-void ImGuiRenderer::draw_performance_panel()
+void ImGuiRenderer::draw_performance_settings_panel()
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 
-	if (!ImGui::CollapsingHeader("Performance"))
+	if (!ImGui::CollapsingHeader("Performance Settings"))
 		return;
 
-	ImGui::TreePush("Performance tree");
+	ImGui::TreePush("Performance settings tree");
+
+	ImGui::Text("Device: %s", m_renderer->get_device_properties().name);
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+	HardwareAccelerationSupport hwi_supported = m_renderer->device_supports_hardware_acceleration();
+
+	static bool use_hardware_acceleration = m_renderer->has_kernel_macro("__USE_HWI__");
+	ImGui::BeginDisabled(hwi_supported != HardwareAccelerationSupport::SUPPORTED);
+	if (ImGui::Checkbox("Use ray tracing hardware acceleration", &use_hardware_acceleration))
+	{
+		if (use_hardware_acceleration)
+			m_renderer->set_kernel_macro("__USE_HWI__", 1);
+		else
+			m_renderer->remove_kernel_macro("__USE_HWI__");
+
+		m_renderer->recompile_trace_kernel();
+	}
+	ImGui::EndDisabled();
+
+	// Printing a custom tooltip depending on whether or not we support hardware acceleration
+	// and, if not supported, why we don't support it 
+	switch (hwi_supported)
+	{
+	case SUPPORTED:
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+			ImGui::SetTooltip("Whether or not to enable hardware accelerated ray tracing (bbox & triangle intersections)");
+		break;
+
+	case AMD_UNSUPPORTED:
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+			ImGui::SetTooltip("Hardware accelerated ray tracing is only supported on RDNA2+ GPUs.");
+		break;
+
+	case NVIDIA_UNSUPPORTED:
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+			ImGui::SetTooltip("HIPRT cannot access NVIDIA's proprietary hardware accelerated ray-tracing. Feature unavailable.");
+		break;
+	}
+
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+	ImGui::TreePop();
+}
+
+void ImGuiRenderer::draw_performance_metrics_panel()
+{
+	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
+
+	if (!ImGui::CollapsingHeader("Performance Metrics"))
+		return;
+
+	ImGui::TreePush("Performance metrics tree");
 
 	ImGui::Text("Device: %s", m_renderer->get_device_properties().name);
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -676,7 +728,7 @@ void ImGuiRenderer::draw_performance_panel()
 		scale_max = max;
 	}
 	ImGui::SameLine();
-	ImGui::Checkbox("Auto-rescale", & auto_rescale);
+	ImGui::Checkbox("Auto-rescale", &auto_rescale);
 
 	ImGui::Text("Sample time (avg)      : %.3fms (%.1f FPS)", m_perf_metrics->get_average(PerformanceMetricsComputer::SAMPLE_TIME_KEY), 1000.0f / m_perf_metrics->get_average(PerformanceMetricsComputer::SAMPLE_TIME_KEY));
 	ImGui::Text("Sample time (var)      : %.3fms", variance);

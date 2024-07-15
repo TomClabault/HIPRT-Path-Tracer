@@ -33,7 +33,8 @@ public:
 	void draw_objects_panel();
 	void draw_denoiser_panel();
 	void draw_post_process_panel();
-	void draw_performance_panel();
+	void draw_performance_settings_panel();
+	void draw_performance_metrics_panel();
 	void draw_debug_panel();
 
 	void rescale_ui();

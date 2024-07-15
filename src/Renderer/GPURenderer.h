@@ -15,6 +15,7 @@
 #include "OpenGL/OpenGLInteropBuffer.h"
 #include "Renderer/OpenImageDenoiser.h"
 #include "Renderer/GPUKernelOptions.h"
+#include "Renderer/HardwareAccelerationSupport.h"
 #include "Scene/Camera.h"
 #include "Scene/SceneParser.h"
 
@@ -48,9 +49,17 @@ public:
 	WorldSettings& get_world_settings();
 	HIPRTRenderData get_render_data();
 
-	void set_kernel_option(const std::string& name, int value);
-	int get_kernel_option_value(const std::string& name);
-	int* get_kernel_option_pointer(const std::string& name);
+	/**
+	 * Adds a macro to the kernel compiler. 
+	 *
+	 * The @name parameter is expected to be simply the name of the macro "MyMacro"
+	 * without any prefixes added (don't add -D for example)
+	 */
+	void set_kernel_macro(const std::string& name, int value);
+	void remove_kernel_macro(const std::string& name);
+	bool has_kernel_macro(const std::string& name);
+	int get_kernel_macro_value(const std::string& name);
+	int* get_kernel_macro_pointer(const std::string& name);
 	void recompile_trace_kernel();
 
 	void set_scene(const Scene& scene);
@@ -73,6 +82,7 @@ public:
 	void zoom_camera_view(float offset);
 
 	oroDeviceProp get_device_properties();
+	HardwareAccelerationSupport device_supports_hardware_acceleration();
 	float get_gpu_frame_time();
 	float get_sample_time();
 

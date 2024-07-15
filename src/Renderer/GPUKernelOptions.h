@@ -28,22 +28,38 @@ public:
 
 	/**
 	 * Replace the value of the macro if it has already been added previous to this call
+	 * 
+	 * The @name parameter is expected to be given without the '-D' macro prefix.
+	 * For example, if you want to define a macro "MyMacro" equal to 1, you simply
+	 * call set_macro("MyMacro", 1).
+	 * 
+	 * The addition of the -D prefix will be added internally
 	 */
-	void set_option(const std::string& name, int value);
-
-	/** 
-	 * Gets the value of an option or -1 if the option isn't set
-	 */
-	int get_option_value(const std::string& name);
+	void set_macro(const std::string& name, int value);
 
 	/**
-	 * Returns a pointer to the value of an option given its name.
+	 * Removes a macro from the list given to the compiler
+	 */
+	void remove_macro(const std::string& name);
+
+	/**
+	 * Returns true if the given macro is defined. False otherwise
+	 */
+	bool has_macro(const std::string& name);
+
+	/** 
+	 * Gets the value of a macro or -1 if the macro isn't set
+	 */
+	int get_macro_value(const std::string& name);
+
+	/**
+	 * Returns a pointer to the value of a macro given its name.
 	 * 
 	 * Useful for use with ImGui for example.
 	 * 
-	 * nullptr is returned if the option doesn't exist (set_option() wasn't called yet)
+	 * nullptr is returned if the option doesn't exist (set_macro() wasn't called yet)
 	 */
-	int* get_pointer_to_option_value(const std::string& name);
+	int* get_pointer_to_macro_value(const std::string& name);
 
 private:
 	std::unordered_map<std::string, int> m_options_map;

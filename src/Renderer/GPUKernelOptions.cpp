@@ -14,10 +14,10 @@ const std::string GPUKernelOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION = "RISUse
 GPUKernelOptions::GPUKernelOptions()
 {
 	// Adding options with their default values
-	set_option(GPUKernelOptions::INTERIOR_STACK_STRATEGY, InteriorStackStrategy);
-	set_option(GPUKernelOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, DirectLightSamplingStrategy);
-	set_option(GPUKernelOptions::ENVMAP_SAMPLING_STRATEGY, EnvmapSamplingStrategy);
-	set_option(GPUKernelOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, RISUseVisiblityTargetFunction);
+	set_macro(GPUKernelOptions::INTERIOR_STACK_STRATEGY, InteriorStackStrategy);
+	set_macro(GPUKernelOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, DirectLightSamplingStrategy);
+	set_macro(GPUKernelOptions::ENVMAP_SAMPLING_STRATEGY, EnvmapSamplingStrategy);
+	set_macro(GPUKernelOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, RISUseVisiblityTargetFunction);
 }
 
 std::vector<std::string> GPUKernelOptions::get_as_std_vector_string()
@@ -30,12 +30,22 @@ std::vector<std::string> GPUKernelOptions::get_as_std_vector_string()
 	return macros;
 }
 
-void GPUKernelOptions::set_option(const std::string& name, int value)
+void GPUKernelOptions::set_macro(const std::string& name, int value)
 {
 	m_options_map[name] = value;
 }
 
-int GPUKernelOptions::get_option_value(const std::string& name)
+void GPUKernelOptions::remove_macro(const std::string& name)
+{
+	m_options_map.erase(name);
+}
+
+bool GPUKernelOptions::has_macro(const std::string& name)
+{
+	return m_options_map.find(name) != m_options_map.end();
+}
+
+int GPUKernelOptions::get_macro_value(const std::string& name)
 {
 	auto find = m_options_map.find(name);
 
@@ -45,7 +55,7 @@ int GPUKernelOptions::get_option_value(const std::string& name)
 		return find->second;
 }
 
-int* GPUKernelOptions::get_pointer_to_option_value(const std::string& name)
+int* GPUKernelOptions::get_pointer_to_macro_value(const std::string& name)
 {
 	auto find = m_options_map.find(name);
 

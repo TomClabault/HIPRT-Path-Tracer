@@ -149,7 +149,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
         return;
     }
 
-
     unsigned int seed;
     if (render_data.render_settings.freeze_random)
         seed = wang_hash(pixel_index + 1);

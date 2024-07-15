@@ -27,6 +27,12 @@ GPURenderer::GPURenderer()
 	oroGetDeviceProperties(&m_device_properties, m_hiprt_orochi_ctx->orochi_device);
 
 	// Compiling the kernels
+	// Adding hardware acceleration by default if supported
+	if (device_supports_hardware_acceleration() == HardwareAccelerationSupport::SUPPORTED)
+		set_kernel_macro("__USE_HWI__", 1);
+	else
+		remove_kernel_macro("__USE_HWI__");
+
 	m_path_trace_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/PathTracerKernel.h");
 	m_path_trace_kernel.set_kernel_function_name(GPURenderer::PATH_TRACING_KERNEL);
 	m_path_trace_kernel.set_compiler_options(m_kernel_options.get_as_std_vector_string());
@@ -145,6 +151,57 @@ oroDeviceProp GPURenderer::get_device_properties()
 	return m_device_properties;
 }
 
+std::string getDeviceName(oroCtx m_ctxt, oroDevice m_device)
+{
+	oroDeviceProp prop;
+	OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_ctxt));
+	OROCHI_CHECK_ERROR(oroGetDeviceProperties(&prop, m_device));
+	return std::string(prop.name);
+}
+
+std::string getGcnArchName(oroCtx m_ctxt, oroDevice m_device)
+{
+	oroDeviceProp prop;
+	OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_ctxt));
+	OROCHI_CHECK_ERROR(oroGetDeviceProperties(&prop, m_device));
+	return std::string(prop.gcnArchName);
+}
+
+uint32_t getGcnArchNumber(oroCtx m_ctxt, oroDevice m_device)
+{
+	oroDeviceProp prop;
+	OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_ctxt));
+	OROCHI_CHECK_ERROR(oroGetDeviceProperties(&prop, m_device));
+	return prop.gcnArch;
+}
+
+bool enableHwi(oroCtx m_ctxt, oroDevice m_device)
+{
+	std::string	   deviceName = getDeviceName(m_ctxt, m_device);
+	const uint32_t archNumber = getGcnArchNumber(m_ctxt, m_device);
+	return (archNumber >= 1030 && deviceName.find("NVIDIA") == std::string::npos);
+}
+
+HardwareAccelerationSupport GPURenderer::device_supports_hardware_acceleration()
+{
+	bool enabled = reinterpret_cast<hiprt::Context*>(m_hiprt_orochi_ctx->hiprt_ctx)->enableHwi();
+	if (enabled)
+		return HardwareAccelerationSupport::SUPPORTED;
+	else
+	{
+		if (std::string(m_device_properties.name).find("NVIDIA") != std::string::npos)
+		{
+			// Not supported on NVIDIA
+			return HardwareAccelerationSupport::NVIDIA_UNSUPPORTED;
+		}
+		else
+		{
+			// Not NVIDIA but hardware acceleration not supported, assuming too old AMD
+			return HardwareAccelerationSupport::AMD_UNSUPPORTED;
+		}
+	}
+}
+
 float GPURenderer::get_gpu_frame_time()
 {
 	return m_frame_time;
@@ -196,25 +253,36 @@ HIPRTRenderData GPURenderer::get_render_data()
 	return render_data;
 }
 
-void GPURenderer::set_kernel_option(const std::string& name, int value)
+void GPURenderer::set_kernel_macro(const std::string& name, int value)
 {
-	m_kernel_options.set_option(name, value);
+	m_kernel_options.set_macro(name, value);
 }
 
-int GPURenderer::get_kernel_option_value(const std::string& name)
+void GPURenderer::remove_kernel_macro(const std::string& name)
 {
-	return m_kernel_options.get_option_value(name);
+	m_kernel_options.remove_macro(name);
 }
 
-int* GPURenderer::get_kernel_option_pointer(const std::string& name)
+bool GPURenderer::has_kernel_macro(const std::string& name)
 {
-	return m_kernel_options.get_pointer_to_option_value(name);
+	return m_kernel_options.has_macro(name);
+}
+
+int GPURenderer::get_kernel_macro_value(const std::string& name)
+{
+	return m_kernel_options.get_macro_value(name);
+}
+
+int* GPURenderer::get_kernel_macro_pointer(const std::string& name)
+{
+	return m_kernel_options.get_pointer_to_macro_value(name);
 }
 
 void GPURenderer::recompile_trace_kernel()
 {
 	// Making sure the options are up to date
 	m_path_trace_kernel.set_compiler_options(m_kernel_options.get_as_std_vector_string());
+
 	// Recompiling
 	m_path_trace_kernel.compile(m_hiprt_orochi_ctx->hiprt_ctx);
 }

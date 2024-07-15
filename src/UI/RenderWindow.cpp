@@ -18,16 +18,16 @@
 
 // TODO Code Organization:
 // - Use HIPRT with CMake as a subdirectory (available soon)
-// - reorganize methods order in RenderWindow
-// - macro for clean code disney eval
+// - Stop delegating function to m_kernel_options but set a getter on kernel options directly
+// - Kernel options should be in HIPKernel class, not two separate instances in GPURenderer
 
 // TODO Features:
-// - stop rendering after a given % of pixels have converged (the last few pixels are probably the hardest to render so this is going to take a while but for only a few pixels. The denoiser can take care of that)
 // - Kahan summation for weighted reservoir sampling?
-// - hardware triangle intersection can be disabled in HIPRT Compiler.cpp so that's good for comparing performance (__USE_HWI__ define)
 // - build BVHs one by one to avoid big memory spike? but what about BLAS performance cost?
+// - play with SBVH building parameters alpha/beta for memory/performance tradeoff + ImGui for that
+// - ability to change the color of the heatmap shader in ImGui
 // - ray statistics with filter functions
-// - filter function for base color alpha / alpha transparency + better performabce ?
+// - filter function for base color alpha / alpha transparency = better performance
 // - do not store alpha from envmap
 // - fixed point 18b RGB for envmap? 70% size reduction compared to full size. Can't use texture sampler though. Is not using a sampler ok performance-wise?
 // - look at blender cycles "medium contrast", "medium low constract", "medium high", ...

@@ -6,8 +6,12 @@
 #ifndef HIPRT_OROCHI_CTX_H
 #define HIPRT_OROCHI_CTX_H
 
-#include "hiprt/hiprt.h"
-#include "Orochi/Orochi.h"
+#include <memory>
+
+#include <hiprt/hiprt.h>
+#include <hiprt/impl/Context.h>
+#include <Orochi/Orochi.h>
+
 #include "HIPRT-Orochi/HIPRTOrochiUtils.h"
 
 struct HIPRTOrochiCtx
@@ -38,6 +42,7 @@ struct HIPRTOrochiCtx
 	}
 
 	hiprtContextCreationInput hiprt_ctx_input;
+
 	oroCtx orochi_ctx;
 	oroDevice orochi_device;
 
