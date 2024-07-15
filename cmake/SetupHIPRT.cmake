@@ -11,6 +11,9 @@ endif()
 
 add_subdirectory(${HIPRT_SUBMODULE_DIR})
 
+set(HIPRT_BIN_DIR ${HIPRT_SUBMODULE_DIR}/dist/bin/${CMAKE_BUILD_TYPE})
+set(HIPRT_HEADERS_DIR ${HIPRT_SUBMODULE_DIR}/hiprt)
+
 #[===[
 if(NOT EXISTS ${HIPRT_SUBMODULE_DIR}/hiprt)
 	# Making sure that the HIPRT submodule was cloned
