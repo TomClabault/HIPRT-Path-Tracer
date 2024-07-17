@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#include "HIPRT-Orochi/HIPKernel.h"
-#include "HIPRT-Orochi/HIPKernelCompiler.h"
+#include "Compiler/HIPKernelCompiler.h"
+#include "Compiler/HIPKernel.h"
 #include "HIPRT-Orochi/HIPRTOrochiUtils.h"
 #include "Threads/ThreadFunctions.h"
 #include "Threads/ThreadManager.h"
@@ -27,14 +27,9 @@ std::string HIPKernel::get_kernel_function_name()
 	return m_kernel_function_name;
 }
 
-std::vector<std::string> HIPKernel::get_additional_include_directories()
+GPUKernelCompilerOptions& HIPKernel::get_compiler_options()
 {
-	return m_additional_include_directories;
-}
-
-std::vector<std::string> HIPKernel::get_compiler_options()
-{
-	return m_compiler_options;
+	return m_kernel_compiler_options;
 }
 
 void HIPKernel::set_kernel_file_path(const std::string& kernel_file_path)
@@ -47,14 +42,9 @@ void HIPKernel::set_kernel_function_name(const std::string& kernel_function_name
 	m_kernel_function_name = kernel_function_name;
 }
 
-void HIPKernel::set_additional_includes(const std::vector<std::string>& additional_include_directories)
+void HIPKernel::set_compiler_options(const GPUKernelCompilerOptions& options)
 {
-	m_additional_include_directories = additional_include_directories;
-}
-
-void HIPKernel::set_compiler_options(const std::vector<std::string>& compiler_options)
-{
-	m_compiler_options = compiler_options;
+	m_kernel_compiler_options = options;
 }
 
 void HIPKernel::compile(hiprtContext& hiprt_ctx)
@@ -63,15 +53,18 @@ void HIPKernel::compile(hiprtContext& hiprt_ctx)
 
 	cache_key = HIPKernelCompiler::get_additional_cache_key(*this);
 	m_kernel_function = HIPKernelCompiler::compile_kernel(*this, hiprt_ctx, true, cache_key);
+
+	//std::cout << "Registers: " << get_kernel_attribute(m_device_properties, ORO_FUNC_ATTRIBUTE_NUM_REGS) << std::endl;
+	//std::cout << "Shared memory: " << get_kernel_attribute(m_device_properties, ORO_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES) << std::endl;
 }
 
-int HIPKernel::get_register_count(oroDeviceProp device_properties)
+int HIPKernel::get_kernel_attribute(oroDeviceProp device_properties, oroFunction_attribute attribute)
 {
 	int numRegs = 0;
 
 	if (m_kernel_function == nullptr)
 	{
-		std::cerr << "Trying to get the number of registers used by a kernel that wasn't compiled yet." << std::endl;
+		std::cerr << "Trying to get an attribute of a kernel that wasn't compiled yet." << std::endl;
 
 		return 0;
 	}

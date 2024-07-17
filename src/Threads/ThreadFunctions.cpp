@@ -4,7 +4,7 @@
  */
 
 #include "Image/Image.h"
-#include "HIPRT-Orochi/HIPKernel.h"
+#include "Compiler/HIPKernel.h"
 #include "Threads/ThreadFunctions.h"
 
 void ThreadFunctions::compile_kernel(HIPKernel& kernel, hiprtContext& hiprt_ctx)

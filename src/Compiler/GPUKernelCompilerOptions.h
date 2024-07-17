@@ -10,7 +10,7 @@
 #include <unordered_map>
 #include <vector>
 
-class GPUKernelOptions
+class GPUKernelCompilerOptions
 {
 public:
 	static const std::string INTERIOR_STACK_STRATEGY;
@@ -18,13 +18,29 @@ public:
 	static const std::string ENVMAP_SAMPLING_STRATEGY;
 	static const std::string RIS_USE_VISIBILITY_TARGET_FUNCTION;
 
-	GPUKernelOptions();
+	GPUKernelCompilerOptions();
 
 	/**
-	 * Gets a list of compiler options of the form { "-D InteriorStackStrategy=1", ... }
-	 * that can directly be passed to the kernel compiler
+	 * Gets a list of all the compiler options of the form { "-D InteriorStackStrategy=1", ... }
+	 * that can directly be passed to the kernel compiler.
+	 * 
+	 * The returned options do not contain additional include directories.
+	 * Additional include directories are not considered options.
 	 */
-	std::vector<std::string> get_as_std_vector_string();
+	std::vector<std::string> get_options_as_std_vector_string();
+
+	///@{
+	/**
+	 * Returns the list of additional include directories of these CompilerOptions
+	 */
+	const std::vector<std::string>& get_additional_include_directories() const;
+	std::vector<std::string> get_additional_include_directories();
+	///@}
+
+	/**
+	 * Replaces the current list of include directories with the one given
+	 */
+	void set_additional_include_directories(const std::vector<std::string>& additional_include_directories);
 
 	/**
 	 * Replace the value of the macro if it has already been added previous to this call
@@ -62,7 +78,13 @@ public:
 	int* get_pointer_to_macro_value(const std::string& name);
 
 private:
-	std::unordered_map<std::string, int> m_options_map;
+	// Maps the name of the macro to its value. 
+	// Example: ["InteriorStackStrategy", 1]
+	std::unordered_map<std::string, int> m_macro_map;
+
+	// Additional include directories. Does not include the "-I".
+	// Example: "../"
+	std::vector<std::string> m_additional_include_directories;
 };
 
 

@@ -3,7 +3,7 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#include "HIPRT-Orochi/HIPKernelCompiler.h"
+#include "Compiler/HIPKernelCompiler.h"
 #include "HIPRT-Orochi/HIPRTOrochiUtils.h"
 
 #include <chrono>
@@ -13,8 +13,8 @@ oroFunction HIPKernelCompiler::compile_kernel(HIPKernel& kernel, hiprtContext& h
 {
 	std::string kernel_file_path = kernel.get_kernel_file_path();
 	std::string kernel_function_name = kernel.get_kernel_function_name();
-	const std::vector<std::string>& additional_include_dirs = kernel.get_additional_include_directories();
-	const std::vector<std::string>& compiler_options = kernel.get_compiler_options();
+	const std::vector<std::string>& additional_include_dirs = kernel.get_compiler_options().get_additional_include_directories();
+	const std::vector<std::string>& compiler_options = kernel.get_compiler_options().get_options_as_std_vector_string();
 
 	std::cout << "Compiling kernel \"" << kernel_function_name << "\"..." << std::endl;
 
@@ -124,7 +124,7 @@ std::string HIPKernelCompiler::get_additional_cache_key(HIPKernel& kernel)
 		already_processed_includes.insert(current_file);
 
 		std::unordered_set<std::string> new_includes;
-		HIPKernelCompiler::process_include(current_file, kernel.get_additional_include_directories(), new_includes);
+		HIPKernelCompiler::process_include(current_file, kernel.get_compiler_options().get_additional_include_directories(), new_includes);
 
 		for (const std::string& new_include : new_includes)
 			yet_to_process_includes.push_back(new_include);

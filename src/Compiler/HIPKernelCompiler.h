@@ -6,7 +6,7 @@
 #ifndef HIP_KERNEL_COMPILER_H
 #define HIP_KERNEL_COMPILER_H
 
-#include "HIPRT-Orochi/HIPKernel.h"
+#include "Compiler/HIPKernel.h"
 
 #include <unordered_set>
 

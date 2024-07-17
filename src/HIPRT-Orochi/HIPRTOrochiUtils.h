@@ -31,6 +31,10 @@ namespace HIPPTOrochiUtils
 	 */
 	bool read_source_code(const std::string& path, std::string& sourceCode, std::vector<std::string>* includes);
 
+	/**
+	 * Note, the 'additional_include_directories' are expected to be given are relative folder
+	 * path "../../myIncludeDir" without any "-I" prefix
+	 */
 	hiprtError build_trace_kernel(hiprtContext ctxt,
 		const std::string& kernel_file_path,
 		const std::string& function_name,

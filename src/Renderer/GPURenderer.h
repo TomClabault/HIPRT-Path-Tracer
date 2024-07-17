@@ -6,15 +6,14 @@
 #ifndef GPU_RENDERER_H
 #define GPU_RENDERER_H
 
+#include "Compiler/HIPKernel.h"
 #include "HIPRT-Orochi/OrochiBuffer.h"
 #include "HIPRT-Orochi/OrochiEnvmap.h"
-#include "HIPRT-Orochi/HIPKernel.h"
 #include "HIPRT-Orochi/HIPRTOrochiCtx.h"
 #include "HIPRT-Orochi/HIPRTScene.h"
 #include "HostDeviceCommon/RenderData.h"
 #include "OpenGL/OpenGLInteropBuffer.h"
 #include "Renderer/OpenImageDenoiser.h"
-#include "Renderer/GPUKernelOptions.h"
 #include "Renderer/HardwareAccelerationSupport.h"
 #include "Scene/Camera.h"
 #include "Scene/SceneParser.h"
@@ -49,17 +48,7 @@ public:
 	WorldSettings& get_world_settings();
 	HIPRTRenderData get_render_data();
 
-	/**
-	 * Adds a macro to the kernel compiler. 
-	 *
-	 * The @name parameter is expected to be simply the name of the macro "MyMacro"
-	 * without any prefixes added (don't add -D for example)
-	 */
-	void set_kernel_macro(const std::string& name, int value);
-	void remove_kernel_macro(const std::string& name);
-	bool has_kernel_macro(const std::string& name);
-	int get_kernel_macro_value(const std::string& name);
-	int* get_kernel_macro_pointer(const std::string& name);
+	HIPKernel& get_trace_kernel();
 	void recompile_trace_kernel();
 
 	void set_scene(const Scene& scene);
@@ -138,10 +127,6 @@ private:
 	// be destroyed which means that the underlying textures would be destroyed
 	std::vector<OrochiTexture> m_materials_textures;
 	OrochiEnvmap m_envmap;
-
-	// Class that contains the #define macros used by the compiler
-	// to enable / disable certain path tracing features
-	GPUKernelOptions m_kernel_options;
 
 	std::shared_ptr<HIPRTOrochiCtx> m_hiprt_orochi_ctx;
 	// Path tracing kernel called at each frame

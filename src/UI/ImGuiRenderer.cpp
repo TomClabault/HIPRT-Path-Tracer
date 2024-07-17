@@ -237,8 +237,9 @@ void ImGuiRenderer::draw_render_settings_panel()
 	{
 		ImGui::TreePush("Nested dielectrics tree");
 
+		GPUKernelCompilerOptions& kernel_options = m_renderer->get_trace_kernel().get_compiler_options();
 		const char* items[] = { "- Automatic", "- With priorities" };
-		if (ImGui::Combo("Nested dielectrics strategy", m_renderer->get_kernel_macro_pointer(GPUKernelOptions::INTERIOR_STACK_STRATEGY), items, IM_ARRAYSIZE(items)))
+		if (ImGui::Combo("Nested dielectrics strategy", kernel_options.get_pointer_to_macro_value(GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY), items, IM_ARRAYSIZE(items)))
 		{
 			m_renderer->recompile_trace_kernel();
 			m_render_window->set_render_dirty(true);
@@ -321,6 +322,7 @@ void ImGuiRenderer::draw_environment_panel()
 void ImGuiRenderer::draw_sampling_panel()
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
+	GPUKernelCompilerOptions& kernel_options = m_renderer->get_trace_kernel().get_compiler_options();
 
 	if (ImGui::CollapsingHeader("Sampling"))
 	{
@@ -358,7 +360,7 @@ void ImGuiRenderer::draw_sampling_panel()
 			ImGui::TreePush("Direct lighting sampling tree");
 
 			const char* items[] = { "- No direct light sampling", "- Uniform one light", "- BSDF Sampling", "- MIS (1 Light + 1 BSDF)", "- RIS BDSF + Light candidates" };
-			if (ImGui::Combo("Direct light sampling strategy", m_renderer->get_kernel_macro_pointer(GPUKernelOptions::DIRECT_LIGHT_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
+			if (ImGui::Combo("Direct light sampling strategy", kernel_options.get_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
 			{
 				m_renderer->recompile_trace_kernel();
 				m_render_window->set_render_dirty(true);
@@ -366,7 +368,7 @@ void ImGuiRenderer::draw_sampling_panel()
 
 			// Display additional widgets to control the parameters of the direct light
 			// sampling strategy chosen (the number of candidates for RIS for example)
-			switch (m_renderer->get_kernel_macro_value(GPUKernelOptions::DIRECT_LIGHT_SAMPLING_STRATEGY))
+			switch (kernel_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY))
 			{
 			case LSS_NO_DIRECT_LIGHT_SAMPLING:
 				break;
@@ -378,10 +380,10 @@ void ImGuiRenderer::draw_sampling_panel()
 				break;
 
 			case LSS_RIS_BSDF_AND_LIGHT:
-				static bool use_visiblity_checked = m_renderer->get_kernel_macro_value(GPUKernelOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION) == 1;
+				static bool use_visiblity_checked = kernel_options.get_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION) == 1;
 				if (ImGui::Checkbox("Use visibility in target function", &use_visiblity_checked))
 				{
-					m_renderer->set_kernel_macro(GPUKernelOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, use_visiblity_checked ? 1 : 0);
+					kernel_options.set_macro(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, use_visiblity_checked ? 1 : 0);
 					m_renderer->recompile_trace_kernel();
 
 					m_render_window->set_render_dirty(true);
@@ -418,7 +420,7 @@ void ImGuiRenderer::draw_sampling_panel()
 			ImGui::TreePush("Envmap sampling tree");
 
 			const char* items[] = { "- No envmap sampling", "- Envmap Sampling - Binary Search" };
-			if (ImGui::Combo("Envmap sampling strategy", m_renderer->get_kernel_macro_pointer(GPUKernelOptions::ENVMAP_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
+			if (ImGui::Combo("Envmap sampling strategy", kernel_options.get_pointer_to_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
 			{
 				m_renderer->recompile_trace_kernel();
 				m_render_window->set_render_dirty(true);
@@ -496,6 +498,7 @@ void ImGuiRenderer::draw_objects_panel()
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	if (materials.size() > 0)
 	{
+		GPUKernelCompilerOptions& kernel_options = m_renderer->get_trace_kernel().get_compiler_options();
 		RendererMaterial& material = materials[currently_selected_material];
 
 		ImGui::PushItemWidth(28 * ImGui::GetFontSize());
@@ -522,7 +525,7 @@ void ImGuiRenderer::draw_objects_panel()
 		material_changed |= ImGui::SliderFloat("Absorption distance", &material.absorption_at_distance, 0.0f, 20.0f);
 		material_changed |= ImGui::ColorEdit3("Absorption color", (float*)&material.absorption_color);
 		unsigned short int zero = 0, eight = 8;
-		ImGui::BeginDisabled(material.specular_transmission == 0.0f || m_renderer->get_kernel_macro_value(GPUKernelOptions::INTERIOR_STACK_STRATEGY) != ISS_WITH_PRIORITES);
+		ImGui::BeginDisabled(material.specular_transmission == 0.0f || kernel_options.get_macro_value(GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY) != ISS_WITH_PRIORITES);
 		material_changed |= ImGui::SliderScalar("Dielectric priority", ImGuiDataType_U16, &material.dielectric_priority, &zero, &eight);
 		ImGui::EndDisabled();
 		material_changed |= ImGui::ColorEdit3("Emission", (float*)&material.emission, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
@@ -638,16 +641,17 @@ void ImGuiRenderer::draw_performance_settings_panel()
 	ImGui::Text("Device: %s", m_renderer->get_device_properties().name);
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
+	GPUKernelCompilerOptions& kernel_options = m_renderer->get_trace_kernel().get_compiler_options();
 	HardwareAccelerationSupport hwi_supported = m_renderer->device_supports_hardware_acceleration();
 
-	static bool use_hardware_acceleration = m_renderer->has_kernel_macro("__USE_HWI__");
+	static bool use_hardware_acceleration = kernel_options.has_macro("__USE_HWI__");
 	ImGui::BeginDisabled(hwi_supported != HardwareAccelerationSupport::SUPPORTED);
 	if (ImGui::Checkbox("Use ray tracing hardware acceleration", &use_hardware_acceleration))
 	{
 		if (use_hardware_acceleration)
-			m_renderer->set_kernel_macro("__USE_HWI__", 1);
+			kernel_options.set_macro("__USE_HWI__", 1);
 		else
-			m_renderer->remove_kernel_macro("__USE_HWI__");
+			kernel_options.remove_macro("__USE_HWI__");
 
 		m_renderer->recompile_trace_kernel();
 	}

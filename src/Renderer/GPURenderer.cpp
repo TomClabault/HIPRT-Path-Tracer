@@ -29,14 +29,13 @@ GPURenderer::GPURenderer()
 	// Compiling the kernels
 	// Adding hardware acceleration by default if supported
 	if (device_supports_hardware_acceleration() == HardwareAccelerationSupport::SUPPORTED)
-		set_kernel_macro("__USE_HWI__", 1);
+		m_path_trace_kernel.get_compiler_options().set_macro("__USE_HWI__", 1);
 	else
-		remove_kernel_macro("__USE_HWI__");
+		m_path_trace_kernel.get_compiler_options().remove_macro("__USE_HWI__");
 
 	m_path_trace_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/PathTracerKernel.h");
 	m_path_trace_kernel.set_kernel_function_name(GPURenderer::PATH_TRACING_KERNEL);
-	m_path_trace_kernel.set_compiler_options(m_kernel_options.get_as_std_vector_string());
-	m_path_trace_kernel.set_additional_includes(GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS);
+	m_path_trace_kernel.get_compiler_options().set_additional_include_directories(GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS);
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_path_trace_kernel), std::ref(m_hiprt_orochi_ctx->hiprt_ctx));
 
 	// Buffer that keeps track of whether at least one ray is still alive or not
@@ -252,36 +251,13 @@ HIPRTRenderData GPURenderer::get_render_data()
 	return render_data;
 }
 
-void GPURenderer::set_kernel_macro(const std::string& name, int value)
+HIPKernel& GPURenderer::get_trace_kernel()
 {
-	m_kernel_options.set_macro(name, value);
-}
-
-void GPURenderer::remove_kernel_macro(const std::string& name)
-{
-	m_kernel_options.remove_macro(name);
-}
-
-bool GPURenderer::has_kernel_macro(const std::string& name)
-{
-	return m_kernel_options.has_macro(name);
-}
-
-int GPURenderer::get_kernel_macro_value(const std::string& name)
-{
-	return m_kernel_options.get_macro_value(name);
-}
-
-int* GPURenderer::get_kernel_macro_pointer(const std::string& name)
-{
-	return m_kernel_options.get_pointer_to_macro_value(name);
+	return m_path_trace_kernel;
 }
 
 void GPURenderer::recompile_trace_kernel()
 {
-	// Making sure the options are up to date
-	m_path_trace_kernel.set_compiler_options(m_kernel_options.get_as_std_vector_string());
-
 	// Recompiling
 	m_path_trace_kernel.compile(m_hiprt_orochi_ctx->hiprt_ctx);
 }
