@@ -13,7 +13,10 @@
 
 ImGuiRenderer::ImGuiRenderer()
 {
-	ImGui::GetStyle().ScaleAllSizes(1.5f);
+	ImGuiViewport* viewport = ImGui::GetMainViewport();
+	float windowDpiScale = viewport->DpiScale;
+	if (windowDpiScale > 1.0f)
+		ImGui::GetStyle().ScaleAllSizes(windowDpiScale);
 }
 
 void ImGuiRenderer::set_render_window(RenderWindow* render_window)
@@ -175,8 +178,11 @@ void ImGuiRenderer::draw_render_settings_panel()
 
 		ImGui::SameLine();
 		ImGui::BeginDisabled(!render_settings.enable_adaptive_sampling);
-		if (ImGui::Checkbox("Use adaptive sampling threshold", &use_adaptive_sampling_threshold) && use_adaptive_sampling_threshold)
+		ImGui::Checkbox("Use adaptive sampling threshold", &use_adaptive_sampling_threshold);
+		if (use_adaptive_sampling_threshold)
+			// If we're using the adaptive sampling threshold, updating the stop pixel noise threshold with the adaptive sampling threshold
 			render_settings.stop_pixel_noise_threshold = render_settings.adaptive_sampling_noise_threshold;
+
 		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
 			ImGui::SetTooltip("If checked, the adaptive sampling noise threshold will be used.");
 		ImGui::EndDisabled(); // !render_settings.enable_adaptive_sampling
@@ -757,7 +763,11 @@ void ImGuiRenderer::rescale_ui()
 	ImGuiViewport* viewport = ImGui::GetMainViewport();
 	float windowDpiScale = viewport->DpiScale;
 
-	ImGuiIO& io = ImGui::GetIO();
-	// Scaling by the DPI -10% as judged more pleasing
-	io.FontGlobalScale = windowDpiScale * 0.9f * 1.2;
+	if (windowDpiScale > 1.0f)
+	{
+		ImGuiIO& io = ImGui::GetIO();
+
+		// Scaling by the DPI -10% as judged more pleasing
+		io.FontGlobalScale = windowDpiScale * 1.08f;
+	}
 }
