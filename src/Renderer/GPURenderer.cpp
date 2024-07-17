@@ -236,9 +236,8 @@ HIPRTRenderData GPURenderer::get_render_data()
 	unsigned int zero_data = 0;
 	// Uploading false to reset the flag
 	m_still_one_ray_active_buffer.upload_data(&false_data);
-	if (m_render_settings.stop_pixel_noise_threshold > 0.0f)
-		// Resetting the counter of pixels converged to 0
-		m_pixels_converged_count_buffer.upload_data(&zero_data);
+	// Resetting the counter of pixels converged to 0
+	m_pixels_converged_count_buffer.upload_data(&zero_data);
 
 	render_data.aux_buffers.denoiser_normals = m_normals_AOV_buffer->map();
 	render_data.aux_buffers.denoiser_albedo = m_albedo_AOV_buffer->map();
