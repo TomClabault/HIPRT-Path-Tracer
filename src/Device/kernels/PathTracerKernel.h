@@ -217,6 +217,19 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                         light_sample_radiance = ColorRGB32F::min(direct_lighting_clamp, light_sample_radiance);
                     envmap_radiance = ColorRGB32F::min(envmap_lighting_clamp, envmap_radiance);
 
+#if DirectLightSamplingStrategy == LSS_NO_DIRECT_LIGHT_SAMPLING // No direct light sampling
+                    ray_payload.ray_color += ray_payload.material.emission * ray_payload.throughput;
+#else
+                    if (bounce == 0)
+                        // If we do have emissive geometry sampling, we only want to take
+                        // it into account on the first bounce, otherwise we would be
+                        // accounting for direct light sampling twice (bounce on emissive
+                        // geometry + direct light sampling). Otherwise, we don't check for bounce == 0
+                        ray_payload.ray_color += ray_payload.material.emission * ray_payload.throughput;
+#endif
+
+                    ray_payload.ray_color += (light_sample_radiance + envmap_radiance) * ray_payload.throughput;
+
                     // --------------------------------------- //
                     // ---------- Indirect lighting ---------- //
                     // --------------------------------------- //
@@ -228,19 +241,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                     // Terminate ray if bad sampling
                     if (brdf_pdf <= 0.0f)
                         break;
-
-#if DirectLightSamplingStrategy == LSS_NO_DIRECT_LIGHT_SAMPLING // No direct light sampling
-                    ray_payload.ray_color += ray_payload.material.emission * ray_payload.throughput;
-#else
-                    if (bounce == 0)
-                    // If we do have emissive geometry sampling, we only want to take
-                    // it into account on the first bounce, otherwise we would be
-                    // accounting for direct light sampling twice (bounce on emissive
-                    // geometry + direct light sampling). Otherwise, we don't check for bounce == 0
-                        ray_payload.ray_color += ray_payload.material.emission * ray_payload.throughput;
-#endif
-
-                    ray_payload.ray_color += (light_sample_radiance + envmap_radiance) * ray_payload.throughput;
 
                     ColorRGB32F indirect_clamp(render_data.render_settings.indirect_contribution_clamp > 0.0f ? render_data.render_settings.indirect_contribution_clamp : 1.0e35f);
                     ray_payload.throughput *= bsdf_color * hippt::abs(hippt::dot(bounce_direction, closest_hit_info.shading_normal)) / brdf_pdf;
