@@ -76,17 +76,7 @@ int HIPKernel::get_register_count(oroDeviceProp device_properties)
 		return 0;
 	}
 
-	if ((device_properties.major >= 7 && device_properties.minor >= 5) || std::string(device_properties.name).find("Radeon") != std::string::npos)
-		// Getting the number of registers / shared memory of the function
-		// doesn't work on a CC 5.2 NVIDIA GPU but does work on a 7.5 so
-		// I'm assuming this is an issue of compute capability (although
-		// it could be a completely different thing)
-		//
-		// Also this if() statement assumes that getting the number of
-		// registers will work on any AMD card but this has only been
-		// tested on a gfx1100 GPU. This should be tested on older hardware
-		// if possible
-		OROCHI_CHECK_ERROR(oroFuncGetAttribute(&numRegs, ORO_FUNC_ATTRIBUTE_NUM_REGS, m_kernel_function));
+	OROCHI_CHECK_ERROR(oroFuncGetAttribute(&numRegs, ORO_FUNC_ATTRIBUTE_NUM_REGS, m_kernel_function));
 
 	return numRegs;
 }
