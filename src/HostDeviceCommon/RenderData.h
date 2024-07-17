@@ -66,9 +66,9 @@ struct HIPRTRenderSettings
 	// A percentage in [0, 100] that dictates the proportion of pixels that must
 	// have reached the given noise threshold (stop_pixel_noise_threshold
 	// variable) before we stop rendering.
-	// For example, if this variable is 75, we will stop rendering when 75% of all
+	// For example, if this variable is 90, we will stop rendering when 90% of all
 	// pixels have reached the stop_pixel_noise_threshold
-	float stop_pixel_percentage_converged = 75.0f;
+	float stop_pixel_percentage_converged = 90.0f;
 	// Noise threshold for use with the stop_pixel_percentage_converged stopping
 	// condition
 	float stop_pixel_noise_threshold = 0.0f;
