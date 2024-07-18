@@ -928,7 +928,9 @@ void RenderWindow::render()
 {
 	if (!is_rendering_done())
 	{
+		m_renderer->update();
 		m_renderer->render();
+
 		increment_sample_number();
 		m_renderer->get_render_settings().frame_number++;
 	}

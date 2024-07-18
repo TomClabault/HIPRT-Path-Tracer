@@ -50,6 +50,11 @@ GPURenderer::GPURenderer()
 	OROCHI_CHECK_ERROR(oroEventCreate(&m_frame_stop_event));
 }
 
+void GPURenderer::update()
+{
+	toggle_adaptive_sampling_buffers();
+}
+
 void GPURenderer::render()
 {
 	// Making sure kernels are compiled
@@ -376,12 +381,19 @@ void GPURenderer::set_camera(const Camera& camera)
 	m_camera = camera;
 }
 
-void GPURenderer::toggle_adaptive_sampling_buffers(bool adaptive_sampling_enabled)
+void GPURenderer::toggle_adaptive_sampling_buffers()
 {
-	if (adaptive_sampling_enabled)
+	bool buffers_needed = m_render_settings.has_access_to_adaptive_sampling_buffers();
+
+	if (buffers_needed)
 	{
-		m_pixels_squared_luminance.resize(m_render_width * m_render_height);
-		m_pixels_sample_count.resize(m_render_width * m_render_height);
+		if (m_pixels_squared_luminance.get_element_count() == 0)
+			// Only allocating if it isn't already
+			m_pixels_squared_luminance.resize(m_render_width * m_render_height);
+
+		if (m_pixels_sample_count.get_element_count() == 0)
+			// Only allocating if it isn't already
+			m_pixels_sample_count.resize(m_render_width * m_render_height);
 	}
 	else
 	{

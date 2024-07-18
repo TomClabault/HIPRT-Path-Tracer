@@ -33,6 +33,24 @@ public:
 
 	GPURenderer();
 
+	/**
+	 * This function is in charge of updating various "dynamic attributes/properties/buffers" of the renderer before rendering a frame.
+	 * 
+	 * These "dynamic attributes/properties/buffers" can be the adaptive sampling buffers for example.
+	 * 
+	 * It will be checked each whether or not the adaptive sampling buffers need to be
+	 * allocated or freed and action will be taken accordingly. This function basically enables a
+	 * nice behavior of the application in which the renderer "automatically" reacts to changes
+	 * that could be made (through the ImGui interface for example) so that it is always in the
+	 * correct state. Said othrewise, this function can be seen as a centralized place for updating
+	 * various stuff of the renderer instead of having to scatter these update calls everywhere
+	 * in the code?
+	 */
+	void update();
+
+	/**
+	 * Renders a frame
+	 */
 	void render();
 	void change_render_resolution(int new_width, int new_height);
 
@@ -61,11 +79,13 @@ public:
 	void update_materials(std::vector<RendererMaterial>& materials);
 
 	/**
-	 * If the boolean parameter is true, buffers will be created for the adaptive
-	 * sampling. 
-	 * If false, buffers will be freed to save VRAM (since adaptive sampling is not used)
+	 * This function evaluates whether the renderer needs the adaptive
+	 * sampling buffers or not. If the buffers are needed (because the
+	 * adaptive sampling or the stop noise pixel threshold is enabled for example),
+	 * then the buffer will be allocated so that they can be used by the shader.
+	 * If they are not needed, they will be freed to save some VRAM.
 	 */
-	void toggle_adaptive_sampling_buffers(bool adaptive_sampling_enabled);
+	void toggle_adaptive_sampling_buffers();
 
 	void translate_camera_view(glm::vec3 translation);
 	void rotate_camera_view(glm::vec3 rotation_angles);

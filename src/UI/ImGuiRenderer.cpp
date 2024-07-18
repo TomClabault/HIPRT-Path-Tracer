@@ -51,6 +51,31 @@ void ImGuiRenderer::draw_imgui_interface()
 	ImGui::Text("Render time: %.3fs", m_render_window->get_current_render_time() / 1000.0f);
 	ImGui::Text("%d samples | %.2f samples/s @ %dx%d", render_settings.sample_number, m_render_window->get_samples_per_second(), m_renderer->m_render_width, m_renderer->m_render_height);
 
+	if (render_settings.has_access_to_adaptive_sampling_buffers())
+	{
+		unsigned int converged_count = m_renderer->get_pixel_converged_count_buffer().download_data()[0];
+		unsigned int total_pixel_count = m_renderer->m_render_width * m_renderer->m_render_height;
+
+		bool can_print_convergence = false;
+		can_print_convergence |= render_settings.sample_number > render_settings.adaptive_sampling_min_samples;
+		can_print_convergence |= render_settings.stop_pixel_noise_threshold > 0.0f;
+
+		if (can_print_convergence)
+			ImGui::Text("Pixels converged: % d / % d - % .4f % %", converged_count, total_pixel_count, static_cast<float>(converged_count) / total_pixel_count * 100.0f);
+		else
+		{
+			ImGui::Text("Pixels converged: N/A");
+			if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+				ImGui::SetTooltip("Adaptive sampling hasn't kicked in yet... Convergence computation hasn't started.");
+		}
+	}
+	else
+	{
+		ImGui::Text("Pixels converged: N/A");
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+			ImGui::SetTooltip("Convergence is only computed when either adaptive sampling or the \"Pixel noise threshold\" render stopping condition is used.");
+	}
+
 	ImGui::Separator();
 
 	if (ImGui::Button("Save viewport to PNG"))
@@ -146,20 +171,7 @@ void ImGuiRenderer::draw_render_settings_panel()
 		ImGui::BeginDisabled(use_adaptive_sampling_threshold);
 		if (ImGui::InputFloat("Pixel noise threshold", &render_settings.stop_pixel_noise_threshold))
 		{
-
 			render_settings.stop_pixel_noise_threshold = std::max(0.0f, render_settings.stop_pixel_noise_threshold);
-
-			// We need the buffer if we're using adaptive sampling, or we're using the stop pixel noise threshold, or...
-			// All the conditions are in RenderSettings::has_access_to_adaptive_sampling_buffers()
-			bool need_buffers = render_settings.has_access_to_adaptive_sampling_buffers();
-			if (need_buffers)
-			{
-				if (!already_has_buffers)
-					// We only want to create the buffers if we don't already them. Because if we have them already, this is going to re-create the buffers which will reset our counter of how many pixels have converged
-					m_renderer->toggle_adaptive_sampling_buffers(true);
-			}
-			else
-				m_renderer->toggle_adaptive_sampling_buffers(false);
 
 			unsigned int zero_data = 0;
 			m_renderer->get_pixel_converged_count_buffer().upload_data(&zero_data);
@@ -177,7 +189,6 @@ void ImGuiRenderer::draw_render_settings_panel()
 		ImGui::EndDisabled(); // use_adaptive_sampling_threshold
 
 		ImGui::SameLine();
-		ImGui::BeginDisabled(!render_settings.enable_adaptive_sampling);
 		ImGui::Checkbox("Use adaptive sampling threshold", &use_adaptive_sampling_threshold);
 		if (use_adaptive_sampling_threshold)
 			// If we're using the adaptive sampling threshold, updating the stop pixel noise threshold with the adaptive sampling threshold
@@ -340,14 +351,7 @@ void ImGuiRenderer::draw_sampling_panel()
 			ImGui::TreePush("Adaptive sampling tree");
 
 			if (ImGui::Checkbox("Enable adaptive sampling", (bool*)&render_settings.enable_adaptive_sampling))
-			{
-				bool need_buffers = false;
-				need_buffers |= render_settings.enable_adaptive_sampling == 1;
-				need_buffers |= render_settings.stop_pixel_noise_threshold > 0.0f;
-
-				m_renderer->toggle_adaptive_sampling_buffers(need_buffers);
 				m_render_window->set_render_dirty(true);
-			}
 
 			ImGui::BeginDisabled(!render_settings.enable_adaptive_sampling);
 			if (ImGui::InputInt("Adaptive sampling minimum samples", &render_settings.adaptive_sampling_min_samples))

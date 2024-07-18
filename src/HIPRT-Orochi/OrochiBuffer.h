@@ -146,6 +146,7 @@ void OrochiBuffer<T>::free()
 	if (m_data_pointer)
 		OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(m_data_pointer)));
 
+	m_element_count = 0;
 	m_data_pointer = nullptr;
 }
 
