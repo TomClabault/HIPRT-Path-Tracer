@@ -104,7 +104,7 @@ public:
 
     size_t byte_size() const;
 
-    int width, height, channels;
+    int width = 0, height = 0, channels = 0;
 
 protected:
     std::vector<float> m_pixel_data;

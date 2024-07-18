@@ -16,12 +16,17 @@
 
 #include "stb_image_write.h"
 
+// TODO bugs:
+// - Texture order messed up
+// - envmap flipped
+
 // TODO Code Organization:
 // - Use HIPRT with CMake as a subdirectory (available soon)
 // - Stop delegating function to m_kernel_options but set a getter on kernel options directly
 // - Kernel options should be in HIPKernel class, not two separate instances in GPURenderer
 
 // TODO Features:
+// - Scale all emissive in the scene in the material editor
 // - Kahan summation for weighted reservoir sampling?
 // - build BVHs one by one to avoid big memory spike? but what about BLAS performance cost?
 // - play with SBVH building parameters alpha/beta for memory/performance tradeoff + ImGui for that

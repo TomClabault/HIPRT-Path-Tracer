@@ -56,6 +56,14 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 
 void CPURenderer::set_envmap(Image32Bit& envmap_image)
 {
+    if (envmap_image.width == 0 || envmap_image.height == 0)
+    {
+        m_render_data.world_settings.ambient_light_type = AmbientLightType::UNIFORM;
+        m_render_data.world_settings.uniform_light_color = ColorRGB32F(1.0f, 1.0f, 1.0f);
+
+        return;
+    }
+
     m_render_data.world_settings.envmap = &envmap_image;
     m_render_data.world_settings.envmap_width = envmap_image.width;
     m_render_data.world_settings.envmap_height = envmap_image.height;

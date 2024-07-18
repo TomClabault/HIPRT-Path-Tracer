@@ -330,6 +330,15 @@ void GPURenderer::set_scene(const Scene& scene)
 
 void GPURenderer::set_envmap(Image32Bit& envmap_image)
 {
+	if (envmap_image.width == 0 || envmap_image.height == 0)
+	{
+		m_world_settings.ambient_light_type = AmbientLightType::UNIFORM;
+
+		std::cerr << "Empty envmap set on the GPURenderer..." << std::endl;
+
+		return;
+	}
+
 	m_envmap.init_from_image(envmap_image);
 	m_envmap.compute_cdf(envmap_image);
 

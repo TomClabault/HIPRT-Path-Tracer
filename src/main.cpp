@@ -51,7 +51,9 @@ int main(int argc, char* argv[])
     std::cout << "Reading \"" << cmd_arguments.skysphere_file_path << "\" envmap..." << std::endl;
     // Not flipping Y here since the Y-flipping is done in the shader
     // TODO we only need 3 channels for the envmap but the only supported formats are 1, 2, 4 channels in HIP/CUDA, not 3
-    Image32Bit envmap_image = Image32Bit::read_image_hdr(cmd_arguments.skysphere_file_path, 4, /* flip Y */ true);
+    Image32Bit envmap_image;
+    if (!cmd_arguments.skysphere_file_path.empty()) 
+        envmap_image = Image32Bit::read_image_hdr(cmd_arguments.skysphere_file_path, 4, /* flip Y */ true);
     
 #if GPU_RENDER
 
