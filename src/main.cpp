@@ -29,6 +29,8 @@ int main(int argc, char* argv[])
 {
     CommandlineArguments cmd_arguments = CommandlineArguments::process_command_line_args(argc, argv);
 
+    // ThreadManager::set_monothread(true);
+
     const int width = cmd_arguments.render_width;
     const int height = cmd_arguments.render_height;
 

@@ -13,13 +13,13 @@
 std::string ThreadManager::COMPILE_KERNEL_THREAD_KEY = "CompileKernelKey";
 std::string ThreadManager::TEXTURE_THREADS_KEY = "TextureThreadsKey";
 
+bool ThreadManager::m_monothread = false;
 std::unordered_map<std::string, std::shared_ptr<void>> ThreadManager::m_threads_states;
 std::unordered_map<std::string, std::vector<std::thread>> ThreadManager::m_threads_map;
 
-ThreadManager& ThreadManager::instance()
+void ThreadManager::set_monothread(bool is_monothread)
 {
-	static ThreadManager instance;
-	return instance;
+	m_monothread = is_monothread;
 }
 
 void ThreadManager::join_threads(std::string key)

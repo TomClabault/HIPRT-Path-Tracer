@@ -24,6 +24,7 @@
 // - Use HIPRT with CMake as a subdirectory (available soon)
 // - Stop delegating function to m_kernel_options but set a getter on kernel options directly
 // - Kernel options should be in HIPKernel class, not two separate instances in GPURenderer
+// - load envmap on thread
 
 // TODO Features:
 // - Scale all emissive in the scene in the material editor

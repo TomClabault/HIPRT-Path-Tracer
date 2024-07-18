@@ -25,7 +25,7 @@ Image8Bit::Image8Bit(const std::vector<unsigned char>& data, int width, int heig
 
 Image8Bit Image8Bit::read_image(const std::string& filepath, int output_channels, bool flipY)
 {
-    stbi_set_flip_vertically_on_load(flipY);
+    stbi_set_flip_vertically_on_load_thread(flipY);
 
     int width, height, read_channels;
     unsigned char* pixels = stbi_load(filepath.c_str(), &width, &height, &read_channels, output_channels);
@@ -310,7 +310,7 @@ Image32Bit Image32Bit::read_image(const std::string& filepath, int output_channe
 
 Image32Bit Image32Bit::read_image_hdr(const std::string& filepath, int output_channels, bool flipY)
 {
-    stbi_set_flip_vertically_on_load(flipY);
+    stbi_set_flip_vertically_on_load_thread(flipY);
 
     int width, height, read_channels;
     float* pixels = stbi_loadf(filepath.c_str(), &width, &height, &read_channels, output_channels);

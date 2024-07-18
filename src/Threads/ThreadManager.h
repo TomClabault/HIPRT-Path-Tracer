@@ -31,7 +31,11 @@ public:
 	static std::string COMPILE_KERNEL_THREAD_KEY;
 	static std::string TEXTURE_THREADS_KEY;
 
-	static ThreadManager& instance();
+	/**
+	 * If the passed parameter is true, the ThreadManager will execute all
+	 * started threads on the main thread instead of on a separate thread.
+	 */
+	static void set_monothread(bool monothread);
 
 	template <typename T>
 	static void add_state(const std::string& key, std::shared_ptr<T> state)
@@ -42,8 +46,11 @@ public:
 	template <class _Fn, class... _Args>
 	static void start_thread(std::string key, _Fn function, _Args... args)
 	{
-		// Starting the thread and adding it to the list of threads for the given key
-		m_threads_map[key].push_back(std::thread(function, args...));
+		if (m_monothread)
+			start_serial_thread(key, function, args...);
+		else
+			// Starting the thread and adding it to the list of threads for the given key
+			m_threads_map[key].push_back(std::thread(function, args...));
 	}
 
 	/**
@@ -59,6 +66,9 @@ public:
 	static void join_threads(std::string key);
 
 private:
+	// If true, the ThreadManager will execute all threads serially
+	static bool m_monothread;
+
 	// The states are used to keep the data that the threads need alive
 	static std::unordered_map<std::string, std::shared_ptr<void>> m_threads_states;
 

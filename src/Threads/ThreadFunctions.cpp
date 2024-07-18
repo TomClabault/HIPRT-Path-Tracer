@@ -12,7 +12,7 @@ void ThreadFunctions::compile_kernel(HIPKernel& kernel, hiprtContext& hiprt_ctx)
     kernel.compile(hiprt_ctx);
 }
 
-void ThreadFunctions::load_texture(Scene& parsed_scene, std::string scene_path, const std::vector<std::pair<aiTextureType, std::string>>& tex_paths, const std::vector<int>& material_indices, int thread_index, int nb_threads)
+void ThreadFunctions::load_scene_texture(Scene& parsed_scene, std::string scene_path, const std::vector<std::pair<aiTextureType, std::string>>& tex_paths, const std::vector<int>& material_indices, int thread_index, int nb_threads)
 {
     // Preparing the scene_filepath so that it's ready to be appended with the texture name
     std::string corrected_filepath;
@@ -67,5 +67,4 @@ void ThreadFunctions::load_texture(Scene& parsed_scene, std::string scene_path, 
 
         thread_index += nb_threads;
     }
-
 }

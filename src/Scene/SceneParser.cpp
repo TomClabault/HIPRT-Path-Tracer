@@ -303,7 +303,7 @@ void SceneParser::dispatch_texture_loading(Scene& parsed_scene, const std::strin
     ThreadManager::add_state(ThreadManager::TEXTURE_THREADS_KEY, texture_threads_state);
 
     for (int i = 0; i < nb_threads; i++)
-        ThreadManager::start_thread(ThreadManager::TEXTURE_THREADS_KEY, ThreadFunctions::load_texture, std::ref(parsed_scene), texture_threads_state->scene_filepath, std::ref(texture_threads_state->texture_paths), std::ref(texture_threads_state->material_indices), i, nb_threads);
+        ThreadManager::start_thread(ThreadManager::TEXTURE_THREADS_KEY, ThreadFunctions::load_scene_texture, std::ref(parsed_scene), texture_threads_state->scene_filepath, std::ref(texture_threads_state->texture_paths), std::ref(texture_threads_state->material_indices), i, nb_threads);
 }
 
 void SceneParser::read_material_properties(aiMaterial* mesh_material, RendererMaterial& renderer_material)
