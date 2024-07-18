@@ -260,9 +260,16 @@ void ImGuiRenderer::draw_environment_panel()
 	{
 		ImGui::TreePush("Environment tree");
 
+		bool has_envmap = m_renderer->has_envmap();
 		render_made_piggy |= ImGui::RadioButton("None", ((int*)&m_renderer->get_world_settings().ambient_light_type), 0); ImGui::SameLine();
 		render_made_piggy |= ImGui::RadioButton("Use uniform lighting", ((int*)&m_renderer->get_world_settings().ambient_light_type), 1); ImGui::SameLine();
+		ImGui::BeginDisabled(!has_envmap);
 		render_made_piggy |= ImGui::RadioButton("Use envmap lighting", ((int*)&m_renderer->get_world_settings().ambient_light_type), 2);
+		if (!has_envmap)
+			// Showing a tooltip for why the envmap button is disabled
+			if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+				ImGui::SetTooltip("No envmap is loaded.");
+		ImGui::EndDisabled();
 
 		if (m_renderer->get_world_settings().ambient_light_type == AmbientLightType::UNIFORM)
 		{

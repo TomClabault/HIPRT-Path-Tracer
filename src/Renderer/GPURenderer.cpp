@@ -350,6 +350,11 @@ void GPURenderer::set_envmap(Image32Bit& envmap_image)
 	m_world_settings.envmap_cdf = m_envmap.get_cdf_device_pointer();
 }
 
+bool GPURenderer::has_envmap()
+{
+	return m_world_settings.envmap_height != 0 && m_world_settings.envmap_width != 0;
+}
+
 const std::vector<RendererMaterial>& GPURenderer::get_materials()
 {
 	return m_materials;

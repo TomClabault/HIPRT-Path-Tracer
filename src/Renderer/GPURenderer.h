@@ -52,8 +52,9 @@ public:
 	void recompile_trace_kernel();
 
 	void set_scene(const Scene& scene);
-	void set_envmap(Image32Bit& envmap);
 	void set_camera(const Camera& camera);
+	void set_envmap(Image32Bit& envmap);
+	bool has_envmap();
 
 	const std::vector<RendererMaterial>& get_materials();
 	const std::vector<std::string>& get_material_names();
