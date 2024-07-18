@@ -68,3 +68,8 @@ void ThreadFunctions::load_scene_texture(Scene& parsed_scene, std::string scene_
         thread_index += nb_threads;
     }
 }
+
+void ThreadFunctions::read_image_hdr(Image32Bit& hdr_image_out, const std::string& filepath, int wanted_channel_count, bool flip_Y)
+{
+    hdr_image_out = Image32Bit::read_image_hdr(filepath, wanted_channel_count, flip_Y);
+}

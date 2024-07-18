@@ -5,6 +5,7 @@
 
 #include "Device/kernels/PathTracerKernel.h"
 #include "Renderer/CPURenderer.h"
+#include "Threads/ThreadManager.h"
 #include "UI/ApplicationSettings.h"
 
 #include <atomic>
@@ -63,6 +64,8 @@ void CPURenderer::set_envmap(Image32Bit& envmap_image)
 
         return;
     }
+
+    ThreadManager::join_threads(ThreadManager::ENVMAP_LOAD_THREAD_KEY);
 
     m_render_data.world_settings.envmap = &envmap_image;
     m_render_data.world_settings.envmap_width = envmap_image.width;

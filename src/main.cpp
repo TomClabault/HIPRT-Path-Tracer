@@ -12,6 +12,7 @@
 #include "Renderer/Triangle.h"
 #include "Scene/Camera.h"
 #include "Scene/SceneParser.h"
+#include "Threads/ThreadFunctions.h"
 #include "Threads/ThreadManager.h"
 #include "UI/RenderWindow.h"
 #include "Utils/CommandlineArguments.h"
@@ -54,8 +55,7 @@ int main(int argc, char* argv[])
     // Not flipping Y here since the Y-flipping is done in the shader
     // TODO we only need 3 channels for the envmap but the only supported formats are 1, 2, 4 channels in HIP/CUDA, not 3
     Image32Bit envmap_image;
-    if (!cmd_arguments.skysphere_file_path.empty()) 
-        envmap_image = Image32Bit::read_image_hdr(cmd_arguments.skysphere_file_path, 4, /* flip Y */ true);
+    ThreadManager::start_thread(ThreadManager::ENVMAP_LOAD_THREAD_KEY, ThreadFunctions::read_image_hdr, std::ref(envmap_image), cmd_arguments.skysphere_file_path, 4, true);
     
 #if GPU_RENDER
 

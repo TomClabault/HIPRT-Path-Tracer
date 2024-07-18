@@ -31,12 +31,7 @@ Image8Bit Image8Bit::read_image(const std::string& filepath, int output_channels
     unsigned char* pixels = stbi_load(filepath.c_str(), &width, &height, &read_channels, output_channels);
 
     if (!pixels)
-    {
         std::cout << "Error reading image " << filepath << std::endl;
-        Utils::debugbreak();
-
-        std::exit(1);
-    }
 
     Image8Bit output_image(width, height, output_channels);
 #pragma omp parallel for
@@ -62,12 +57,7 @@ Image8Bit Image8Bit::read_image_hdr(const std::string& filepath, int output_chan
     float* pixels = stbi_loadf(filepath.c_str(), &width, &height, &read_channels, output_channels);
 
     if (!pixels)
-    {
         std::cout << "Error reading image " << filepath << std::endl;
-        Utils::debugbreak();
-
-        std::exit(1);
-    }
 
     std::vector<unsigned char> converted_data(width * height * output_channels);
 #pragma omp parallel for
@@ -285,12 +275,7 @@ Image32Bit Image32Bit::read_image(const std::string& filepath, int output_channe
     unsigned char* pixels = stbi_load(filepath.c_str(), &width, &height, &read_channels, output_channels);
 
     if (!pixels)
-    {
         std::cout << "Error reading image " << filepath << std::endl;
-        Utils::debugbreak();
-
-        std::exit(1);
-    }
 
     Image32Bit output_image(width, height, output_channels);
 #pragma omp parallel for
@@ -316,12 +301,7 @@ Image32Bit Image32Bit::read_image_hdr(const std::string& filepath, int output_ch
     float* pixels = stbi_loadf(filepath.c_str(), &width, &height, &read_channels, output_channels);
 
     if (!pixels)
-    {
         std::cout << "Error reading image " << filepath << std::endl;
-        Utils::debugbreak();
-
-        std::exit(1);
-    }
 
     std::vector<float> converted_data(width * height * output_channels);
 #pragma omp parallel for

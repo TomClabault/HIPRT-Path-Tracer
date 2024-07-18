@@ -12,6 +12,7 @@
 
 std::string ThreadManager::COMPILE_KERNEL_THREAD_KEY = "CompileKernelKey";
 std::string ThreadManager::TEXTURE_THREADS_KEY = "TextureThreadsKey";
+std::string ThreadManager::ENVMAP_LOAD_THREAD_KEY = "EnvmapLoadThreadsKey";
 
 bool ThreadManager::m_monothread = false;
 std::unordered_map<std::string, std::shared_ptr<void>> ThreadManager::m_threads_states;

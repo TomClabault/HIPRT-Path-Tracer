@@ -30,6 +30,7 @@ class ThreadManager
 public:
 	static std::string COMPILE_KERNEL_THREAD_KEY;
 	static std::string TEXTURE_THREADS_KEY;
+	static std::string ENVMAP_LOAD_THREAD_KEY;
 
 	/**
 	 * If the passed parameter is true, the ThreadManager will execute all

@@ -339,6 +339,8 @@ void GPURenderer::set_envmap(Image32Bit& envmap_image)
 		return;
 	}
 
+	ThreadManager::join_threads(ThreadManager::ENVMAP_LOAD_THREAD_KEY);
+
 	m_envmap.init_from_image(envmap_image);
 	m_envmap.compute_cdf(envmap_image);
 
