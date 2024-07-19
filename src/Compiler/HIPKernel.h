@@ -16,7 +16,7 @@
 class HIPKernel
 {
 public:
-	HIPKernel() {};
+	HIPKernel();
 	HIPKernel(const std::string& kernel_file_path, const std::string& kernel_function_name);
 
 	std::string get_kernel_file_path();
@@ -28,8 +28,8 @@ public:
 	void set_compiler_options(const GPUKernelCompilerOptions& options);
 
 	void compile(hiprtContext& hiprt_ctx);
-	void launch(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args);
-	void launch_timed(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, float* execution_time_out);
+	void launch_timed_synchronous(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, float* execution_time_out);
+	void launch_timed_asynchronous(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, oroStream_t stream);
 
 	/**
 	 * Returns the number of GPU register that this kernel is using. This function
@@ -39,7 +39,32 @@ public:
 	 */
 	int get_kernel_attribute(oroDeviceProp device_properties, oroFunction_attribute attribute);
 
+	/**
+	 * Structure used to pass data to the compute_elapsed_time_callback that computes the
+	 * elapsed time between the start and end events of this structure and stores the elapsed
+	 * time in 'elapsed_time_out'
+	 */
+	struct ComputeElapsedTimeCallbackData
+	{
+		// Start and end events to compute the elapsed time between
+		oroEvent_t start, end;
+
+		// The elapsed time will be stored in here in milliseconds
+		float* elapsed_time_out;
+	};
+
+	/**
+	 * Callback function that can be given to oroLaunchHostFunc
+	 * to compute the elapsed time between two events.
+	 * 
+	 * Data is expected to be a pointer to a *dynamically allocated* ComputeElapsedTimeCallbackData
+	 * instance (i.e. with a 'new' call) whose fields have been properly set-up.
+	 */
+	static void compute_elapsed_time_callback(void* data);
+
 private:
+	void launch(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, oroStream_t stream);
+
 	std::string m_kernel_file_path = "";
 	std::string m_kernel_function_name = "";
 
@@ -52,6 +77,7 @@ private:
 	// GPU events to time the execution time
 	oroEvent_t m_execution_start_event = nullptr;
 	oroEvent_t m_execution_stop_event = nullptr;
+	float m_last_execution_time = -1.0f;
 
 	oroFunction m_kernel_function = nullptr;
 };

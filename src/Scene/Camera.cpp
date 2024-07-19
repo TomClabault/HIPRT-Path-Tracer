@@ -21,7 +21,6 @@ HIPRTCamera Camera::to_hiprt()
 
     hiprt_cam.inverse_view = *reinterpret_cast<float4x4*>(&view_matrix_inv);
     hiprt_cam.inverse_projection = *reinterpret_cast<float4x4*>(&projection_matrix_inv);
-    hiprt_cam.position = matrix_X_point(hiprt_cam.inverse_view, make_hiprtFloat3(0, 0, 0));
 
     return hiprt_cam;
 }
@@ -40,3 +39,7 @@ glm::vec3 Camera::get_view_direction() const
     return glm::vec3(view_mat[0][2], view_mat[1][2], view_mat[2][2]);
 }
 
+void Camera::auto_adjust_speed(const BoundingBox& scene_bounding_box)
+{
+    camera_movement_speed = scene_bounding_box.get_max_extent() / Camera::SCENE_CROSS_TIME;
+}

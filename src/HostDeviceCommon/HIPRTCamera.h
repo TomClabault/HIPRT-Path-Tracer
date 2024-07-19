@@ -3,17 +3,19 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef HOST_DEVICE_COMMON_CAMERA_H
-#define HOST_DEVICE_COMMON_CAMERA_H
+#ifndef HOST_DEVICE_COMMON_HIPRT_CAMERA_H
+#define HOST_DEVICE_COMMON_HIPRT_CAMERA_H
 
 #include "HostDeviceCommon/Math.h"
 #include <hiprt/hiprt_types.h> // for hiprtRay
 
+/**
+ * Simplified camera class passed to the shader
+ */
 struct HIPRTCamera
 {
     float4x4 inverse_view;
     float4x4 inverse_projection;
-    float3 position;
 
     HIPRT_HOST_DEVICE hiprtRay get_camera_ray(float x, float y, int2 res)
     {

@@ -29,7 +29,7 @@
 #include "Device/includes/FixIntellisense.h"
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/RenderData.h"
-#include "HostDeviceCommon/Camera.h"
+#include "HostDeviceCommon/HIPRTCamera.h"
 #include "HostDeviceCommon/Xorshift.h"
 
 //struct DataStruct

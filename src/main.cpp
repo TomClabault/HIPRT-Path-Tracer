@@ -30,8 +30,6 @@ int main(int argc, char* argv[])
 {
     CommandlineArguments cmd_arguments = CommandlineArguments::process_command_line_args(argc, argv);
 
-    // ThreadManager::set_monothread(true);
-
     const int width = cmd_arguments.render_width;
     const int height = cmd_arguments.render_height;
 
@@ -52,14 +50,15 @@ int main(int argc, char* argv[])
     std::cout << "Scene geometry parsed in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
 
     std::cout << "Reading \"" << cmd_arguments.skysphere_file_path << "\" envmap..." << std::endl;
-    // Not flipping Y here since the Y-flipping is done in the shader
+
     // TODO we only need 3 channels for the envmap but the only supported formats are 1, 2, 4 channels in HIP/CUDA, not 3
     Image32Bit envmap_image;
     ThreadManager::start_thread(ThreadManager::ENVMAP_LOAD_THREAD_KEY, ThreadFunctions::read_image_hdr, std::ref(envmap_image), cmd_arguments.skysphere_file_path, 4, true);
     
 #if GPU_RENDER
+    std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx = std::make_shared<HIPRTOrochiCtx>(0);
 
-    RenderWindow render_window(width, height);
+    RenderWindow render_window(width, height, hiprt_orochi_ctx);
 
     std::shared_ptr<GPURenderer> renderer = render_window.get_renderer();
     renderer->set_envmap(envmap_image);

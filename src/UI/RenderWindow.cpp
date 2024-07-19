@@ -17,16 +17,15 @@
 #include "stb_image_write.h"
 
 // TODO bugs:
-// - Texture order messed up
-// - envmap flipped
+// - memory leak with OpenGL?
 
 // TODO Code Organization:
 // - Use HIPRT with CMake as a subdirectory (available soon)
-// - Stop delegating function to m_kernel_options but set a getter on kernel options directly
-// - Kernel options should be in HIPKernel class, not two separate instances in GPURenderer
-// - load envmap on thread
 
 // TODO Features:
+// - render dirty duration for low resolution render when moving the camera with the keyboard
+// - toggle render low resolution when moving camera, the user may not want that always on
+// - clay render
 // - Scale all emissive in the scene in the material editor
 // - Kahan summation for weighted reservoir sampling?
 // - build BVHs one by one to avoid big memory spike? but what about BLAS performance cost?
@@ -116,14 +115,6 @@
 // - Efficiency Aware Russian roulette and splitting
 // - ReSTIR PT
 
-void wait_and_exit(const char* message)
-{
-	std::cerr << message << std::endl;
-	std::getchar();
-
-	std::exit(1);
-}
-
 void glfw_window_resized_callback(GLFWwindow* window, int width, int height)
 {
 	int new_width_pixels, new_height_pixels;
@@ -193,7 +184,7 @@ void APIENTRY RenderWindow::gl_debug_output_callback(GLenum source,
 	Utils::debugbreak();
 }
 
-RenderWindow::RenderWindow(int width, int height) : m_viewport_width(width), m_viewport_height(height)
+RenderWindow::RenderWindow(int width, int height, std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx) : m_viewport_width(width), m_viewport_height(height)
 {
 	init_glfw(width, height);
 	init_gl(width, height);
@@ -201,8 +192,10 @@ RenderWindow::RenderWindow(int width, int height) : m_viewport_width(width), m_v
 
 	m_application_settings = std::make_shared<ApplicationSettings>();
 
-	m_renderer = std::make_shared<GPURenderer>();
-	m_renderer->change_render_resolution(width, height);
+	m_renderer = std::make_shared<GPURenderer>(hiprt_oro_ctx);
+	m_renderer->resize(width, height);
+
+	m_display_view_system = std::make_shared<DisplayViewSystem>(m_renderer, this);
 
 	m_denoiser = std::make_shared<OpenImageDenoiser>();
 	m_denoiser->initialize();
@@ -220,8 +213,6 @@ RenderWindow::RenderWindow(int width, int height) : m_viewport_width(width), m_v
 	m_imgui_renderer = std::make_shared<ImGuiRenderer>();
 	m_imgui_renderer->set_render_window(this);
 
-	create_display_programs();
-
 	// Making the render dirty to force a cleanup at startup
 	m_render_dirty = true;
 }
@@ -235,22 +226,32 @@ RenderWindow::~RenderWindow()
 void RenderWindow::init_glfw(int width, int height)
 {
 	if (!glfwInit())
-		wait_and_exit("Could not initialize GLFW...");
+	{
+		std::cerr << "Could not initialize GLFW..." << std::endl;
+		int trash = std::getchar();
+
+		std::exit(1);
+	}
 
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
 
 #ifdef __unix__         
-	m_mouse_interactor = std::make_unique<LinuxRenderWindowMouseInteractor>();
+	m_mouse_interactor = std::make_shared<LinuxRenderWindowMouseInteractor>();
 #elif defined(_WIN32) || defined(WIN32) 
-	m_mouse_interactor = std::make_unique<WindowsRenderWindowMouseInteractor>();
+	m_mouse_interactor = std::make_shared<WindowsRenderWindowMouseInteractor>();
 #endif
 	m_keyboard_interactor.set_render_window(this);
 
-	m_glfw_window = glfwCreateWindow(width, height, "HIPRT Path Tracer", NULL, NULL);
+	m_glfw_window = glfwCreateWindow(width, height, "HIPRT-Path-Tracer", NULL, NULL);
 	if (!m_glfw_window)
-		wait_and_exit("Could not initialize the GLFW window...");
+	{
+		std::cerr << "Could not initialize the GLFW window..." << std::endl;
+		int trash = std::getchar();
+
+		std::exit(1);
+	}
 
 	glfwMakeContextCurrent(m_glfw_window);
 	// Setting a pointer to this instance of RenderWindow inside the m_window GLFWwindow so that
@@ -301,8 +302,8 @@ void RenderWindow::resize_frame(int pixels_width, int pixels_height)
 	{
 		// Already the right size, nothing to do. This can happen
 		// when the window comes out of the minized state. Getting
-		// in the minimized state triggers a resize event with a new size
-		// of (0, 0) and getting out of the minimized state triggers a resize
+		// in the minimized state triggers a queue_resize event with a new size
+		// of (0, 0) and getting out of the minimized state triggers a queue_resize
 		// event with a size equal to the one before the minimization, which means
 		// that the window wasn't actually resized and there is nothing to do
 
@@ -327,13 +328,11 @@ void RenderWindow::resize_frame(int pixels_width, int pixels_height)
 		// Integer maths will round it down to 0
 		return;
 	
-	m_renderer->change_render_resolution(new_render_width, new_render_height);
-
+	m_renderer->synchronize_kernel();
+	m_renderer->resize(new_render_width, new_render_height);
 	m_denoiser->resize(new_render_width, new_render_height);
 	m_denoiser->finalize();
-
-	internal_recreate_display_texture(m_display_texture_1, RenderWindow::DISPLAY_TEXTURE_UNIT_1, m_display_texture_1.second, new_render_width, new_render_height);
-	internal_recreate_display_texture(m_display_texture_2, RenderWindow::DISPLAY_TEXTURE_UNIT_2, m_display_texture_2.second, new_render_width, new_render_height);
+	m_display_view_system->resize(new_render_width, new_render_height);
 
 	m_render_dirty = true;
 }
@@ -343,12 +342,10 @@ void RenderWindow::change_resolution_scaling(float new_scaling)
 	float new_render_width = std::floor(m_viewport_width * new_scaling);
 	float new_render_height = std::floor(m_viewport_height * new_scaling);
 
-	m_renderer->change_render_resolution(new_render_width, new_render_height);
+	m_renderer->synchronize_kernel();
+	m_renderer->resize(new_render_width, new_render_height);
 	m_denoiser->resize(new_render_width, new_render_height);
-	m_denoiser->finalize();
-
-	internal_recreate_display_texture(m_display_texture_1, RenderWindow::DISPLAY_TEXTURE_UNIT_1, m_display_texture_1.second, new_render_width, new_render_height);
-	internal_recreate_display_texture(m_display_texture_2, RenderWindow::DISPLAY_TEXTURE_UNIT_2, m_display_texture_2.second, new_render_width, new_render_height);
+	m_display_view_system->resize(new_render_width, new_render_height);
 }
 
 int RenderWindow::get_width()
@@ -361,19 +358,19 @@ int RenderWindow::get_height()
 	return m_viewport_height;
 }
 
-void RenderWindow::set_render_low_resolution(bool on_or_off)
-{
-	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
-
-	if ((render_settings.render_low_resolution != 0) != on_or_off)
-		m_render_dirty = true;
-
-	render_settings.render_low_resolution = on_or_off;
-}
-
 bool RenderWindow::is_interacting()
 {
-	return m_renderer->get_render_settings().render_low_resolution;
+	return m_mouse_interactor->is_interacting() || m_keyboard_interactor.is_interacting();
+}
+
+RenderWindowKeyboardInteractor& RenderWindow::get_keyboard_interactor()
+{
+	return m_keyboard_interactor;
+}
+
+std::shared_ptr<RenderWindowMouseInteractor> RenderWindow::get_mouse_interactor()
+{
+	return m_mouse_interactor;
 }
 
 std::shared_ptr<ApplicationSettings> RenderWindow::get_application_settings()
@@ -381,256 +378,28 @@ std::shared_ptr<ApplicationSettings> RenderWindow::get_application_settings()
 	return m_application_settings;
 }
 
-void RenderWindow::create_display_programs()
+std::shared_ptr<DisplayViewSystem> RenderWindow::get_display_view_system()
 {
-	// Creating the texture that will contain the path traced data to be displayed
-	// by the shader.
-	glGenTextures(1, &m_display_texture_1.first);
-	glGenTextures(1, &m_display_texture_2.first);
-
-	// This empty VAO is necessary on NVIDIA drivers even though
-	// we're hardcoding our full screen quad in the vertex shader
-	glCreateVertexArrays(1, &m_vao);
-
-	OpenGLShader fullscreen_quad_vertex_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/fullscreen_quad.vert", OpenGLShader::VERTEX_SHADER);
-	OpenGLShader default_display_fragment_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/default_display.frag", OpenGLShader::FRAGMENT_SHADER);
-	OpenGLShader blend_2_display_fragment_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/blend_2_display.frag", OpenGLShader::FRAGMENT_SHADER);
-	OpenGLShader normal_display_fragment_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/normal_display.frag", OpenGLShader::FRAGMENT_SHADER);
-	OpenGLShader albedo_display_fragment_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/albedo_display.frag", OpenGLShader::FRAGMENT_SHADER);
-	OpenGLShader adaptive_display_fragment_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/heatmap_int.frag", OpenGLShader::FRAGMENT_SHADER);
-
-	m_default_display_program.attach(fullscreen_quad_vertex_shader);
-	m_default_display_program.attach(default_display_fragment_shader);
-	m_default_display_program.link();
-
-	m_blend_2_display_program.attach(fullscreen_quad_vertex_shader);
-	m_blend_2_display_program.attach(blend_2_display_fragment_shader);
-	m_blend_2_display_program.link();
-
-	m_normal_display_program.attach(fullscreen_quad_vertex_shader);
-	m_normal_display_program.attach(normal_display_fragment_shader);
-	m_normal_display_program.link();
-
-	m_albedo_display_program.attach(fullscreen_quad_vertex_shader);
-	m_albedo_display_program.attach(albedo_display_fragment_shader);
-	m_albedo_display_program.link();
-
-	m_adaptive_sampling_display_program.attach(fullscreen_quad_vertex_shader);
-	m_adaptive_sampling_display_program.attach(adaptive_display_fragment_shader);
-	m_adaptive_sampling_display_program.link();
-
-	change_display_view(m_application_settings->display_view);
+	return m_display_view_system;
 }
 
-void RenderWindow::change_display_view(DisplayView display_view)
+void RenderWindow::update_renderer_view_translation(float translation_x, float translation_y, bool scale_translation)
 {
-	m_application_settings->display_view = display_view;
-
-	// Adjusting the denoiser setting according to the selected view
-	m_application_settings->enable_denoising = display_view == DisplayView::DENOISED_BLEND;
-
-	switch (display_view)
+	if (scale_translation)
 	{
-	case DisplayView::DEFAULT:
-		m_active_display_program = m_default_display_program;
-		break;
+		translation_x *= m_last_delta_time_ms / 1000.0f;
+		translation_y *= m_last_delta_time_ms / 1000.0f;
 
-	case DisplayView::DENOISED_BLEND:
-		m_active_display_program = m_blend_2_display_program;
-		break;
-
-	case DisplayView::DISPLAY_NORMALS:
-	case DisplayView::DISPLAY_DENOISED_NORMALS:
-		m_active_display_program = m_normal_display_program;
-		break;
-
-	case DisplayView::DISPLAY_ALBEDO:
-	case DisplayView::DISPLAY_DENOISED_ALBEDO:
-		m_active_display_program = m_albedo_display_program;
-		break;
-
-	case DisplayView::ADAPTIVE_SAMPLING_MAP:
-		m_active_display_program = m_adaptive_sampling_display_program;
-		break;
-
-	default:
-		break;
+		translation_x *= m_renderer->get_camera().camera_movement_speed;
+		translation_y *= m_renderer->get_camera().camera_movement_speed;
 	}
 
-	internal_recreate_display_textures_from_display_view(display_view);
-}
-
-void RenderWindow::internal_recreate_display_textures_from_display_view(DisplayView display_view)
-{
-	DisplayTextureType texture_1_type_needed = DisplayTextureType::UNINITIALIZED;
-	DisplayTextureType texture_2_type_needed = DisplayTextureType::UNINITIALIZED;
-
-	switch (display_view)
-	{
-	case DisplayView::DISPLAY_NORMALS:
-	case DisplayView::DISPLAY_DENOISED_NORMALS:
-	case DisplayView::DISPLAY_ALBEDO:
-	case DisplayView::DISPLAY_DENOISED_ALBEDO:
-		texture_1_type_needed = DisplayTextureType::FLOAT3;
-		break;
-
-	case DisplayView::ADAPTIVE_SAMPLING_MAP:
-		texture_1_type_needed = DisplayTextureType::INT;
-		break;
-
-	case DisplayView::DENOISED_BLEND:
-		texture_1_type_needed = DisplayTextureType::FLOAT3;
-		texture_2_type_needed = DisplayTextureType::FLOAT3;
-		break;
-
-	case DisplayView::DEFAULT:
-	default:
-		texture_1_type_needed = DisplayTextureType::FLOAT3;
-		break;
-	}
-
-	if (m_display_texture_1.second != texture_1_type_needed)
-		internal_recreate_display_texture(m_display_texture_1, RenderWindow::DISPLAY_TEXTURE_UNIT_1, texture_1_type_needed, m_renderer->m_render_width, m_renderer->m_render_height);
-
-	if (m_display_texture_2.second != texture_2_type_needed)
-		internal_recreate_display_texture(m_display_texture_2, RenderWindow::DISPLAY_TEXTURE_UNIT_2, texture_2_type_needed, m_renderer->m_render_width, m_renderer->m_render_height);
-}
-
-void RenderWindow::internal_recreate_display_texture(std::pair<GLuint, DisplayTextureType>& display_texture, GLenum display_texture_unit, DisplayTextureType new_texture_type, int width, int height)
-{
-	bool freeing = false;
-	if (new_texture_type == DisplayTextureType::UNINITIALIZED)
-	{
-		if (display_texture.second != DisplayTextureType::UNINITIALIZED)
-		{
-			// If the texture was valid before and we've given UNINITIALIZED as the new type, this means
-			// that we're not using the texture anymore. We're going to resize the texture to 1x1,
-			// essentially freeing it but without really destroying the OpenGL object
-			width = height = 1;
-
-			// Not changing the texture type, just resizing
-			new_texture_type = display_texture.second;
-
-			freeing = true;
-		}
-		else
-			// Else, the texture is already UNINITIALIZED
-			return;
-	}
-
-	GLint internal_format = new_texture_type.get_gl_internal_format();
-	GLenum format = new_texture_type.get_gl_format();
-	GLenum type = new_texture_type.get_gl_type();
-
-	// Making sure the buffer isn't bound
-	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-	glActiveTexture(GL_TEXTURE0 + display_texture_unit);
-	glBindTexture(GL_TEXTURE_2D, display_texture.first);
-	glTexImage2D(GL_TEXTURE_2D, 0, internal_format, width, height, 0, format, type, nullptr);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-	if (freeing)
-		// If we just freed the texture, setting it as UNINITIALIZED so that it is basically invalidated
-		// and will be recreated correctly next time
-		display_texture.second = DisplayTextureType::UNINITIALIZED;
-	else
-		display_texture.second = new_texture_type;
-}
-
-void RenderWindow::upload_data_to_display_texture(GLuint display_texture, const void* data, GLenum format, GLenum type)
-{
-	glActiveTexture(GL_TEXTURE0 + RenderWindow::DISPLAY_TEXTURE_UNIT_1);
-	glBindTexture(GL_TEXTURE_2D, display_texture);
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_renderer->m_render_width, m_renderer->m_render_height, format, type, data);
-}
-
-void RenderWindow::update_program_uniforms(OpenGLProgram& program)
-{
-	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
-	int render_low_resolution_scaling = (render_settings.render_low_resolution) ? render_settings.render_low_resolution_scaling : 1;
-
-	program.use();
-
-	switch (m_application_settings->display_view)
-	{
-	case DisplayView::DEFAULT:
-		int sample_number;
-		if (m_application_settings->enable_denoising && m_application_settings->last_denoised_sample_count != -1)
-			sample_number = m_application_settings->last_denoised_sample_count;
-		else
-			sample_number = render_settings.sample_number;
-
-		program.set_uniform("u_texture", RenderWindow::DISPLAY_TEXTURE_UNIT_1);
-		program.set_uniform("u_sample_number", sample_number);
-		program.set_uniform("u_do_tonemapping", m_application_settings->do_tonemapping);
-		program.set_uniform("u_resolution_scaling", render_low_resolution_scaling);
-		program.set_uniform("u_gamma", m_application_settings->tone_mapping_gamma);
-		program.set_uniform("u_exposure", m_application_settings->tone_mapping_exposure);
-
-		break;
-
-	case DisplayView::DENOISED_BLEND:
-		int noisy_sample_number;
-		int denoised_sample_number;
-
-		noisy_sample_number = render_settings.sample_number;
-		denoised_sample_number = m_application_settings->last_denoised_sample_count;
-
-		program.set_uniform("u_blend_factor", m_application_settings->denoiser_blend);
-		program.set_uniform("u_texture_1", RenderWindow::DISPLAY_TEXTURE_UNIT_1);
-		program.set_uniform("u_texture_2", RenderWindow::DISPLAY_TEXTURE_UNIT_2);
-		program.set_uniform("u_sample_number_1", noisy_sample_number);
-		program.set_uniform("u_sample_number_2", denoised_sample_number);
-		program.set_uniform("u_do_tonemapping", m_application_settings->do_tonemapping);
-		program.set_uniform("u_resolution_scaling", render_low_resolution_scaling);
-		program.set_uniform("u_gamma", m_application_settings->tone_mapping_gamma);
-		program.set_uniform("u_exposure", m_application_settings->tone_mapping_exposure);
-
-		break;
-
-	case DisplayView::DISPLAY_ALBEDO:
-	case DisplayView::DISPLAY_DENOISED_ALBEDO:
-		program.set_uniform("u_texture", RenderWindow::DISPLAY_TEXTURE_UNIT_1);
-		program.set_uniform("u_resolution_scaling", render_low_resolution_scaling);
-
-		break;
-
-	case DisplayView::DISPLAY_NORMALS:
-	case DisplayView::DISPLAY_DENOISED_NORMALS:
-		program.set_uniform("u_texture", RenderWindow::DISPLAY_TEXTURE_UNIT_1);
-		program.set_uniform("u_resolution_scaling", render_low_resolution_scaling);
-		program.set_uniform("u_do_tonemapping", m_application_settings->do_tonemapping);
-		program.set_uniform("u_gamma", m_application_settings->tone_mapping_gamma);
-		program.set_uniform("u_exposure", m_application_settings->tone_mapping_exposure);
-
-		break;
-
-	case DisplayView::ADAPTIVE_SAMPLING_MAP:
-		std::vector<ColorRGB32F> color_stops = { ColorRGB32F(0.0f, 0.0f, 1.0f), ColorRGB32F(0.0f, 1.0f, 0.0f), ColorRGB32F(1.0f, 0.0f, 0.0f) };
-
-		float min_val = (float)render_settings.adaptive_sampling_min_samples;
-		float max_val = std::max((float)render_settings.sample_number, min_val);
-
-		program.set_uniform("u_texture", RenderWindow::DISPLAY_TEXTURE_UNIT_1);
-		program.set_uniform("u_resolution_scaling", render_low_resolution_scaling);
-		program.set_uniform("u_color_stops", 3, (float*)color_stops.data());
-		program.set_uniform("u_nb_stops", 3);
-		program.set_uniform("u_min_val", min_val);
-		program.set_uniform("u_max_val", max_val);
-
-		break;
-	}
-}
-
-void RenderWindow::update_renderer_view_translation(float translation_x, float translation_y)
-{
-	if (translation_x == 0.f && translation_y == 0.0f)
+	if (translation_x == 0.0f && translation_y == 0.0f)
 		return;
 
 	m_render_dirty = true;
 
-	glm::vec3 translation = glm::vec3(translation_x / m_application_settings->view_translation_sldwn_x, translation_y / m_application_settings->view_translation_sldwn_y, 0.0f);
+	glm::vec3 translation = glm::vec3(translation_x, translation_y, 0.0f);
 	m_renderer->translate_camera_view(translation);
 }
 
@@ -646,14 +415,18 @@ void RenderWindow::update_renderer_view_rotation(float offset_x, float offset_y)
 	m_renderer->rotate_camera_view(glm::vec3(rotation_x, rotation_y, 0.0f));
 }
 
-void RenderWindow::update_renderer_view_zoom(float offset)
+void RenderWindow::update_renderer_view_zoom(float offset, bool scale_delta_time)
 {
+	if (scale_delta_time)
+		offset *= m_last_delta_time_ms / 1000.0f;
+	offset *= m_renderer->get_camera().camera_movement_speed;
+
 	if (offset == 0.0f)
 		return;
 
 	m_render_dirty = true;
 
-	m_renderer->zoom_camera_view(offset / m_application_settings->view_zoom_sldwn);
+	m_renderer->zoom_camera_view(offset);
 }
 
 void RenderWindow::increment_sample_number()
@@ -664,6 +437,8 @@ void RenderWindow::increment_sample_number()
 		render_settings.sample_number++; // Only doing 1 SPP when moving the camera
 	else
 		render_settings.sample_number += render_settings.samples_per_frame;
+	
+	m_renderer->get_render_settings().frame_number++;
 }
 
 bool RenderWindow::is_rendering_done()
@@ -673,45 +448,35 @@ bool RenderWindow::is_rendering_done()
 	bool rendering_done = false;
 
 	// No more active pixels (in the case of adaptive sampling for example)
-	rendering_done |= m_renderer->get_ray_active_buffer().download_data()[0] == 0;
+	rendering_done |= !m_renderer->get_status_buffer_values().one_ray_active;
+
 	// All pixels have converged to the noise threshold given
-	float proportion_converged;;
-	proportion_converged = m_renderer->get_pixel_converged_count_buffer().download_data()[0] / static_cast<float>(m_renderer->m_render_width * m_renderer->m_render_height);
+	float proportion_converged;
+	proportion_converged = m_renderer->get_status_buffer_values().pixel_converged_count / static_cast<float>(m_renderer->m_render_width * m_renderer->m_render_height);
 	proportion_converged *= 100.0f; // To human-readable percentage as used in the ImGui interface
 	rendering_done |= proportion_converged > render_settings.stop_pixel_percentage_converged && render_settings.stop_pixel_noise_threshold > 0.0f;
+
 	// Max sample count
 	rendering_done |= (m_application_settings->max_sample_count != 0 && render_settings.sample_number + 1 > m_application_settings->max_sample_count);
+
 	// Max render time
 	float render_time_ms = m_current_render_time_ms / 1000.0f;
 	rendering_done |= (m_application_settings->max_render_time != 0.0f && render_time_ms >= m_application_settings->max_render_time);
+
+	// If we are at 0 samples, this means that the render got resetted and so
+	// the render is not done
+	rendering_done &= render_settings.sample_number > 0;
 
 	return rendering_done;
 }
 
 void RenderWindow::reset_render()
 {
-	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
-
-	unsigned char true_data = 1;
-	unsigned int zero_data = 0;
-
-	render_settings.frame_number = 0;
-	if (m_application_settings->auto_sample_per_frame)
-	{
-		// Resetting the number of samples per frame to be sure we're not
-		// going to timeout the GPU driver
-		render_settings.samples_per_frame = 1;
-		// Samples per second manually reset to 0.0f so that samples_per_frame
-		// isn't automatically recalculated from the samples per second of last
-		// frame (before the render reset) which would basically fail the whole
-		// point of resetting the number of samples per frame.
-		m_samples_per_second = 0.0f;
-	}
-	m_current_render_time_ms = 0.0f;
-	render_settings.sample_number = 0;
-	m_renderer->get_ray_active_buffer().upload_data(&true_data);
-	m_renderer->get_pixel_converged_count_buffer().upload_data(&zero_data);
 	m_application_settings->last_denoised_sample_count = -1;
+	m_renderer->reset();
+
+	m_samples_per_second = 0.0f;
+	m_current_render_time_ms = 0.0f;
 
 	m_render_dirty = false;
 }
@@ -729,6 +494,18 @@ float RenderWindow::get_current_render_time()
 float RenderWindow::get_samples_per_second()
 {
 	return m_samples_per_second;
+}
+
+float RenderWindow::compute_samples_per_second()
+{
+	float samples_per_frame = m_renderer->get_render_settings().render_low_resolution ? 1.0f : m_renderer->get_render_settings().samples_per_frame;
+
+	// Frame time divided by the number of samples per frame
+	// 1 sample per frame assumed if rendering at low resolution
+	if (m_renderer->get_last_frame_time() > 0)
+		return 1000.0f / (m_renderer->get_last_frame_time() / samples_per_frame);
+	else
+		return 0.0f;
 }
 
 std::shared_ptr<OpenImageDenoiser> RenderWindow::get_denoiser()
@@ -756,169 +533,46 @@ std::shared_ptr<ImGuiRenderer> RenderWindow::get_imgui_renderer()
 	return m_imgui_renderer;
 }
 
+bool interacting_last_frame = false;
 void RenderWindow::run()
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 
+	uint64_t last_second_start = glfwGetTimerValue();
+
+	uint64_t time_frequency = glfwGetTimerFrequency();
+	uint64_t frame_start_time = 0;
 	while (!glfwWindowShouldClose(m_glfw_window))
 	{
-		m_start_cpu_frame_time = std::chrono::high_resolution_clock::now();
+		frame_start_time = glfwGetTimerValue();
 
 		glfwPollEvents();
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		m_keyboard_interactor.poll_keyboard_inputs();
-
-		// We're resetting the render each frame if rendering at low resolution
-		m_render_dirty |= render_settings.render_low_resolution == 1;
-		if (m_render_dirty)
-			reset_render();
-
-		if (m_application_settings->auto_sample_per_frame && m_samples_per_second > 0)
-			render_settings.samples_per_frame = std::min(std::max(1, static_cast<int>(m_samples_per_second / 20.0f)), 10000);
-
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
-		m_imgui_renderer->rescale_ui();
 
+		m_render_dirty |= is_interacting();
+		m_render_dirty |= interacting_last_frame != is_interacting();
+
+		// We're resetting the render each frame if rendering at low resolution (not accumulating)
 		render();
-
-		float blend_override = -1.0f;
-		if (m_application_settings->enable_denoising)
-		{
-			// Evaluating all the conditions for whether or not we want to denoise
-			// the current color framebuffer and whether or not we want to display
-			// the denoised framebuffer to the viewport (we may want NOT to display
-			// the denoised framebuffer if we're only denoising when the render is done
-			// but the render isn't done yet. That's just one example)
-
-
-
-			// ---- Utility variables ----
-			// Do we want to denoise only when reaching the rendering is done?
-			bool denoise_when_done = m_application_settings->denoise_when_rendering_done;
-			// Is the rendering done?
-			bool rendering_done = is_rendering_done();
-			// Whether or not we've already denoise the framebuffer after the rendering is done.
-			// This is to avoid denoising again and again the framebuffer when the rendering is done (because that would just be using the machine for nothing)
-			bool final_frame_denoised_already = rendering_done && m_application_settings->last_denoised_sample_count == render_settings.sample_number;
-
-
-
-			// ---- Conditions for denoising / displaying noisy ----
-			// - Is the rendering done 
-			// - And we only want to denoise when the rendering is done
-			// - And we haven't alraedy denoised the final frame
-			bool denoise_rendering_done = rendering_done && denoise_when_done && !final_frame_denoised_already;
-			// Have we rendered enough samples since last time we denoised that we need to denoise again?
-			bool sample_skip_threshold_reached = !denoise_when_done && (render_settings.sample_number - std::max(0, m_application_settings->last_denoised_sample_count) >= m_application_settings->denoiser_sample_skip);
-			// We're also going to denoise if we changed the denoiser settings
-			// (because we need to denoise to reflect the new settings)
-			bool denoiser_settings_changed = m_application_settings->denoiser_settings_changed;
-
-
-
-
-			bool need_denoising = false;
-			bool display_noisy = false;
-
-			// Denoise if:
-			//	- The render is done and we're denoising when the render 
-			//	- We have rendered enough samples since the last denoise step that we need to denoise again
-			//	- We're not denoising if we're interacting (moving the camera)
-			need_denoising |= denoise_rendering_done;
-			need_denoising |= sample_skip_threshold_reached;
-			need_denoising |= denoiser_settings_changed;
-			need_denoising &= !is_interacting();
-
-			// Display the noisy framebuffer if: 
-			//	- We only denoise when the rendering is done but it isn't done yet
-			//	- We want to denoise every m_application_settings->denoiser_sample_skip samples
-			//		but we haven't even reached that number yet. We're displaying the noisy framebuffer in the meantime
-			//	- We're moving the camera
-			display_noisy |= !rendering_done && denoise_when_done;
-			display_noisy |= !sample_skip_threshold_reached && m_application_settings->last_denoised_sample_count == -1;
-			display_noisy |= is_interacting();
-
-			if (need_denoising)
-			{
-				std::shared_ptr<OpenGLInteropBuffer<float3>> normals_buffer = nullptr;
-				std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> albedo_buffer = nullptr;
-
-				if (m_application_settings->denoiser_use_normals)
-					normals_buffer = m_renderer->get_denoiser_normals_AOV_buffer();
-
-				if (m_application_settings->denoiser_use_albedo)
-					albedo_buffer = m_renderer->get_denoiser_albedo_AOV_buffer();
-
-				auto start = std::chrono::high_resolution_clock::now();
-				m_denoiser->denoise(m_renderer->get_color_framebuffer(), normals_buffer, albedo_buffer);
-				auto stop = std::chrono::high_resolution_clock::now();
-
-				m_denoiser->copy_denoised_data_to_buffer(m_renderer->get_denoised_framebuffer());
-
-				m_application_settings->last_denoised_duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count();
-				m_application_settings->last_denoised_sample_count = render_settings.sample_number;
-			}
-
-			if (display_noisy)
-				// We need to display the noisy framebuffer so we're forcing the blending factor to 0.0f to only
-				// choose the first view out of the two that are going to be blend (and the first view is the noisy view)
-				blend_override = 0.0f;
-
-			m_application_settings->denoiser_settings_changed = false;
-		}
+		m_display_view_system->display();
 		
-		switch (m_application_settings->display_view)
-		{
-		case DisplayView::DENOISED_BLEND:
-			display_blend(m_renderer->get_color_framebuffer(), m_renderer->get_denoised_framebuffer(), blend_override);
-			break;
-
-		case DisplayView::DISPLAY_NORMALS:
-			display(m_renderer->get_denoiser_normals_AOV_buffer());
-			break;
-
-			/*case DisplayView::DISPLAY_DENOISED_NORMALS:
-				m_denoiser->denoise_normals();
-				display(m_denoiser->get_denoised_normals_pointer());
-				break;*/
-
-		case DisplayView::DISPLAY_ALBEDO:
-			display(m_renderer->get_denoiser_albedo_AOV_buffer());
-			break;
-
-			/*case DisplayView::DISPLAY_DENOISED_ALBEDO:
-				m_denoiser->denoise_albedo();
-				display(m_denoiser->get_denoised_albedo_pointer());
-				break;*/
-
-		case DisplayView::ADAPTIVE_SAMPLING_MAP:
-			display(m_renderer->get_pixels_sample_count_buffer());
-			break;
-
-			/*case DisplayView::ADAPTIVE_SAMPLING_ACTIVE_PIXELS:
-				display(m_renderer->get_debug_pixel_active_buffer().download_data().data());
-				break;*/
-
-		case DisplayView::DEFAULT:
-		default:
-			display(m_renderer->get_color_framebuffer());
-			break;
-		}
-		
+		m_imgui_renderer->rescale_ui();
 		m_imgui_renderer->draw_imgui_interface();
 
-		m_stop_cpu_frame_time = std::chrono::high_resolution_clock::now();
+		glfwSwapBuffers(m_glfw_window);
+
+		uint64_t end_frame_time = glfwGetTimerValue();
+		float delta_time_ms = (end_frame_time - frame_start_time) / static_cast<float>(time_frequency) * 1000.0f;
+		// Saving the delta 
+		m_last_delta_time_ms = delta_time_ms;
 
 		if (!is_rendering_done())
-		{
-			m_current_render_time_ms += std::chrono::duration_cast<std::chrono::milliseconds>(m_stop_cpu_frame_time - m_start_cpu_frame_time).count();
-			m_samples_per_second = 1000.0f / m_renderer->get_sample_time();
-		}
-
-		glfwSwapBuffers(m_glfw_window);
+			m_current_render_time_ms += delta_time_ms;
+		m_keyboard_interactor.poll_keyboard_inputs();
 	}
 
 	quit();
@@ -926,32 +580,199 @@ void RenderWindow::run()
 
 void RenderWindow::render()
 {
-	if (!is_rendering_done())
-	{
-		m_renderer->update();
-		m_renderer->render();
+	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 
-		increment_sample_number();
-		m_renderer->get_render_settings().frame_number++;
+	// Boolean local to this function to remember whether or not we've uploaded the last
+	// frame result (just after is_rendering_done() returns true) to OpenGL for displaying
+	static bool last_frame_uploaded = false;
+
+	if (m_renderer->frame_render_done())
+	{
+		// ------
+		// Everything that is in there is synchronous with the renderer
+		// ------
+		m_renderer->copy_status_buffers();
+
+		if (!is_rendering_done() || m_render_dirty)
+		{
+			// We can unmap the renderer's buffers so that OpenGL can use them when displaying
+			m_renderer->unmap_buffers();
+			// Update the display view system so that the display view is changed to the
+			// one that we want to use (in the DisplayViewSystem's queue)
+			m_display_view_system->update_selected_display_view();
+			
+			// Denoising to fill the buffers with denoised data (if denoising is enabled)
+			denoise();
+
+			// We upload the data to the OpenGL textures for displaying
+			m_display_view_system->upload_relevant_buffers_to_texture();
+			// We want the next frame to be displayed with the same render_low_resolution setting
+			// as it was queued with. This is only useful for first frames when getting in low resolution
+			// (when we start moving the camera for example) or first frames when getting out of low resolution
+			// (when we stop moving the camera). In such situations, the last kernel launch in the GPU queue is
+			// a "first frame" that was queued with the corresponding render_low_resolution (getting in or out of low resolution).
+			// and so we want to display it the same way.
+			m_display_view_system->set_render_low_resolution(m_renderer->was_last_frame_low_resolution());
+			// Updating the uniforms so that next time we display, we display correctly
+			m_display_view_system->update_current_display_program_uniforms();
+
+			// We got a frame rendered --> We can compute the samples per second
+			m_samples_per_second = compute_samples_per_second();
+
+			// Adding the time for *one* sample to the performance metrics counter
+			if (!m_renderer->was_last_frame_low_resolution() && m_samples_per_second > 0.0f)
+				// Not adding the frame time if we're rendering at low resolution, not relevant
+				m_perf_metrics->add_value(PerformanceMetricsComputer::SAMPLE_TIME_KEY, 1000.0f / m_samples_per_second);
+
+			render_settings.render_low_resolution = is_interacting();
+			if (m_application_settings->auto_sample_per_frame && (render_settings.render_low_resolution || m_renderer->was_last_frame_low_resolution()))
+				// Only one sample when low resolution rendering
+				render_settings.samples_per_frame = 1;
+			else if (m_application_settings->auto_sample_per_frame)
+				render_settings.samples_per_frame = std::min(std::max(1, static_cast<int>(m_samples_per_second / m_application_settings->target_GPU_framerate)), 65536);
+
+			if (m_render_dirty)
+				reset_render();
+			interacting_last_frame = is_interacting();
+
+			// Queuing a new frame for the GPU to render
+			m_renderer->update();
+			m_renderer->render();
+
+			increment_sample_number();
+			last_frame_uploaded = false;
+		}
+		else
+		{
+			m_display_view_system->update_selected_display_view();
+
+			if (m_application_settings->enable_denoising)
+			{
+				// We may still want to denoise on the final frame
+				if (denoise())
+				{
+					if (last_frame_uploaded)
+						// Uploading the denoised data.
+						// But only if last_frame_uploaded is true, otherwise, we're going
+						// to upload twice (here and below).
+						// This is an optimization if statement
+						m_display_view_system->upload_relevant_buffers_to_texture();
+				}
+			}
+
+			if (!last_frame_uploaded)
+			{
+				// Uploading 
+				// And then we upload the denoised data for displaying
+				m_display_view_system->upload_relevant_buffers_to_texture();
+
+				last_frame_uploaded = true;
+			}
+
+			m_display_view_system->set_render_low_resolution(m_renderer->was_last_frame_low_resolution());
+			// Updating the uniforms if the user touches the post processing parameters
+			// or something else (denoiser blend, ...)
+			m_display_view_system->update_current_display_program_uniforms();
+
+			// Sleeping so that we don't burn the CPU and GPU
+			std::this_thread::sleep_for(std::chrono::milliseconds(3));
+		}
 	}
-	else
-		// Sleeping so that we don't burn the CPU (and GPU because it'll have to do the display)
-		std::this_thread::sleep_for(std::chrono::milliseconds(5));
 }
 
-void RenderWindow::display(const void* data)
+bool RenderWindow::denoise()
 {
-	DisplayTextureType texture_1_type = m_display_texture_1.second;
-	GLenum format = texture_1_type.get_gl_format();
-	GLenum type = texture_1_type.get_gl_type();
+	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
+	m_application_settings->blend_override = -1.0f;
 
-	upload_data_to_display_texture(m_display_texture_1.first, data, format, type);
-	update_program_uniforms(m_active_display_program);
+	if (m_application_settings->enable_denoising)
+	{
+		// Evaluating all the conditions for whether or not we want to denoise
+		// the current color framebuffer and whether or not we want to display
+		// the denoised framebuffer to the viewport (we may want NOT to display
+		// the denoised framebuffer if we're only denoising when the render is done
+		// but the render isn't done yet. That's just one example)
 
-	// Binding an empty VAO here (empty because we're hardcoding our full-screen quad vertices
-	// in our vertex shader) because this is required on NVIDIA drivers
-	glBindVertexArray(m_vao);
-	glDrawArrays(GL_TRIANGLES, 0, 6);
+
+
+		// ---- Utility variables ----
+		// Do we want to denoise only when reaching the rendering is done?
+		bool denoise_when_done = m_application_settings->denoise_when_rendering_done;
+		// Is the rendering done?
+		bool rendering_done = is_rendering_done();
+		// Whether or not we've already denoise the framebuffer after the rendering is done.
+		// This is to avoid denoising again and again the framebuffer when the rendering is done (because that would just be using the machine for nothing)
+		bool final_frame_denoised_already = !m_application_settings->denoiser_settings_changed && rendering_done && m_application_settings->last_denoised_sample_count == render_settings.sample_number;
+
+
+
+		// ---- Conditions for denoising / displaying noisy ----
+		// - Is the rendering done 
+		// - And we only want to denoise when the rendering is done
+		// - And we haven't alraedy denoised the final frame
+		bool denoise_rendering_done = rendering_done && denoise_when_done && !final_frame_denoised_already;
+		// Have we rendered enough samples since last time we denoised that we need to denoise again?
+		bool sample_skip_threshold_reached = !denoise_when_done && (render_settings.sample_number - std::max(0, m_application_settings->last_denoised_sample_count) >= m_application_settings->denoiser_sample_skip);
+		// We're also going to denoise if we changed the denoiser settings
+		// (because we need to denoise to reflect the new settings)
+		bool denoiser_settings_changed = m_application_settings->denoiser_settings_changed;
+
+
+
+
+		bool need_denoising = false;
+		bool display_noisy = false;
+
+		// Denoise if:
+		//	- The render is done and we're denoising when the render 
+		//	- We have rendered enough samples since the last denoise step that we need to denoise again
+		//	- We're not denoising if we're interacting (moving the camera)
+		need_denoising |= denoise_rendering_done;
+		need_denoising |= sample_skip_threshold_reached;
+		need_denoising |= denoiser_settings_changed;
+		need_denoising &= !is_interacting();
+
+		// Display the noisy framebuffer if: 
+		//	- We only denoise when the rendering is done but it isn't done yet
+		//	- We want to denoise every m_application_settings->denoiser_sample_skip samples
+		//		but we haven't even reached that number yet. We're displaying the noisy framebuffer in the meantime
+		//	- We're moving the camera
+		display_noisy |= !rendering_done && denoise_when_done;
+		display_noisy |= !sample_skip_threshold_reached && m_application_settings->last_denoised_sample_count == -1;
+		display_noisy |= is_interacting();
+
+		if (need_denoising)
+		{
+			std::shared_ptr<OpenGLInteropBuffer<float3>> normals_buffer = nullptr;
+			std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> albedo_buffer = nullptr;
+
+			if (m_application_settings->denoiser_use_normals)
+				normals_buffer = m_renderer->get_denoiser_normals_AOV_buffer();
+
+			if (m_application_settings->denoiser_use_albedo)
+				albedo_buffer = m_renderer->get_denoiser_albedo_AOV_buffer();
+
+			auto start = std::chrono::high_resolution_clock::now();
+			m_denoiser->denoise(m_renderer->get_color_framebuffer(), normals_buffer, albedo_buffer);
+			auto stop = std::chrono::high_resolution_clock::now();
+
+			m_denoiser->copy_denoised_data_to_buffer(m_renderer->get_denoised_framebuffer());
+
+			m_application_settings->last_denoised_duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count();
+			m_application_settings->last_denoised_sample_count = render_settings.sample_number;
+		}
+
+		if (display_noisy)
+			// We need to display the noisy framebuffer so we're forcing the blending factor to 0.0f to only
+			// choose the first view out of the two that are going to be blend (and the first view is the noisy view)
+			m_application_settings->blend_override = 0.0f;
+
+		m_application_settings->denoiser_settings_changed = false;
+
+		return need_denoising && !display_noisy;
+	}
+
+	return false;
 }
 
 void RenderWindow::quit()
@@ -959,10 +780,6 @@ void RenderWindow::quit()
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui_ImplGlfw_Shutdown();
 	ImGui::DestroyContext();
-
-	glDeleteVertexArrays(1, &m_vao);
-	glDeleteTextures(1, &m_display_texture_1.first);
-	glDeleteTextures(1, &m_display_texture_2.first);
 
 	std::exit(0);
 }

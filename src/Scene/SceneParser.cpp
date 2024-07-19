@@ -21,7 +21,7 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Scene& par
     Assimp::Importer importer;
     const aiScene* scene;
 
-    scene = importer.ReadFile(scene_filepath, aiPostProcessSteps::aiProcess_PreTransformVertices | aiPostProcessSteps::aiProcess_Triangulate | aiPostProcessSteps::aiProcess_RemoveRedundantMaterials);
+    scene = importer.ReadFile(scene_filepath, aiPostProcessSteps::aiProcess_PreTransformVertices | aiPostProcessSteps::aiProcess_Triangulate | aiPostProcessSteps::aiProcess_RemoveRedundantMaterials | aiPostProcessSteps::aiProcess_GenBoundingBoxes);
     if (scene == nullptr)
     {
         std::cerr << importer.GetErrorString() << std::endl;
@@ -160,12 +160,25 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Scene& par
         // ASSIMP sees it as composed of as many meshes as there are different materials
         parsed_scene.material_indices.insert(parsed_scene.material_indices.end(), mesh->mNumFaces, material_index);
 
+        // Adding the bounding box to the parsed scene
+        aiAABB mesh_aabb = mesh->mAABB;
+        BoundingBox mesh_bounding_box;
+        mesh_bounding_box.mini = make_float3(mesh_aabb.mMin.x, mesh_aabb.mMin.y, mesh_aabb.mMin.z);
+        mesh_bounding_box.maxi = make_float3(mesh_aabb.mMax.x, mesh_aabb.mMax.y, mesh_aabb.mMax.z);
+
+        parsed_scene.mesh_bounding_boxes.push_back(mesh_bounding_box);
+        // Extending the bounding box of the scene with the bounding box of the mesh
+        parsed_scene.scene_bounding_box.extend(mesh_bounding_box);
+
         // If the max index of the mesh was 19, we want the next to start
         // at 20, not 19, so we ++
         max_mesh_index_offset++;
         // Adding the maximum index of the mesh to our global indices offset 
         global_indices_offset += max_mesh_index_offset;
     }
+
+    // Adjusting the speed of the camera so that we can cross the scene in approximately Camera::SCENE_CROSS_TIME
+    parsed_scene.camera.auto_adjust_speed(parsed_scene.scene_bounding_box);
 
     std::cout << "\t" << parsed_scene.vertices_positions.size() << " vertices" << std::endl;
     std::cout << "\t" << parsed_scene.triangle_indices.size() / 3 << " triangles" << std::endl;

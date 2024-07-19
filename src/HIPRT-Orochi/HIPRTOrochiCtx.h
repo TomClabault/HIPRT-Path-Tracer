@@ -16,6 +16,13 @@
 
 struct HIPRTOrochiCtx
 {
+	HIPRTOrochiCtx() {}
+
+	HIPRTOrochiCtx(int device_index)
+	{
+		init(device_index);
+	}
+
 	void init(int device_index)
 	{
 		OROCHI_CHECK_ERROR(static_cast<oroError>(oroInitialize((oroApi)(ORO_API_HIP | ORO_API_CUDA), 0)));
@@ -41,12 +48,12 @@ struct HIPRTOrochiCtx
 		HIPRT_CHECK_ERROR(hiprtCreateContext(HIPRT_API_VERSION, hiprt_ctx_input, hiprt_ctx));
 	}
 
-	hiprtContextCreationInput hiprt_ctx_input;
+	hiprtContextCreationInput hiprt_ctx_input = { nullptr, -1, hiprtDeviceAMD };
 
-	oroCtx orochi_ctx;
+	oroCtx orochi_ctx = nullptr;
 	oroDevice orochi_device;
 
-	hiprtContext hiprt_ctx;
+	hiprtContext hiprt_ctx = nullptr;
 };
 
 #endif

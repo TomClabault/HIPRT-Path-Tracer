@@ -22,9 +22,13 @@ public:
 	void set_use_normals(bool use_normal);
 	void set_denoise_normals(bool denoise_normals_or_not);
 
+	void initialize();
+
+	/**
+	 * Resizes the buffers of this denoiser. Don't forget to call finalize() after calling resize()!
+	 */
 	void resize(int new_width, int new_height);
 
-	void initialize();
 	/**
 	 * Function that finalizes the creation of the internal denoising
 	 * filters etc... once everything is setup (set_use_albedo / set_use_normals
@@ -43,8 +47,10 @@ public:
 
 private:
 	void create_device();
+
 	bool check_valid_state();
 	bool check_device();
+	bool check_buffer_sizes();
 
 	bool m_use_albedo = false;
 	bool m_denoise_albedo = true;

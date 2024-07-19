@@ -34,12 +34,26 @@ class RenderWindowMouseInteractor
 public:
     virtual void set_callbacks(GLFWwindow* window) {}
 
+    /**
+     * Returns true if either to left mouse button or the right
+     * mouse button is currently held down
+     */
+    bool is_interacting();
+
+    void set_interacting_left_button(bool interacting); 
+    void set_interacting_right_button(bool interacting);
+
+    bool is_interacting_right_button();
+    bool is_interacting_left_button();
+
 protected:
     static void glfw_mouse_scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 
 private:
-    static bool m_interacting_left_button;
-    static bool m_interacting_right_button;
+    // Is the mouse left button beind held down?
+    bool m_interacting_left_button;
+    // Is the mouse right button beind held down?
+    bool m_interacting_right_button;
 };
 
 #endif

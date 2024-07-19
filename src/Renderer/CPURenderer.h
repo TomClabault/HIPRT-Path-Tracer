@@ -30,6 +30,7 @@ public:
 
     void render();
     void tonemap(float gamma, float exposure);
+
 private:
     int2 m_resolution;
 

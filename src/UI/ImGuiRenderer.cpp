@@ -19,14 +19,25 @@ ImGuiRenderer::ImGuiRenderer()
 		ImGui::GetStyle().ScaleAllSizes(windowDpiScale);
 }
 
+void ImGuiRenderer::WrappingTooltip(const std::string& text)
+{
+	ImGui::SetNextWindowSize(ImVec2(ImGui::GetFontSize() * 32.0f, 0.0f));
+	ImGui::BeginTooltip();
+	ImGui::PushTextWrapPos(0.0f);
+	ImGui::Text(text.c_str());
+	ImGui::PopTextWrapPos();
+	ImGui::EndTooltip();
+}
+
 void ImGuiRenderer::set_render_window(RenderWindow* render_window)
 {
 	m_render_window = render_window;
 
 	m_application_settings = render_window->get_application_settings();
 	m_renderer = render_window->get_renderer();
-	m_denoiser = render_window->get_denoiser();
-	m_perf_metrics = m_render_window->get_performance_metrics();
+	m_render_window_denoiser = render_window->get_denoiser();
+	m_render_window_perf_metrics = m_render_window->get_performance_metrics();
+
 }
 
 void ImGuiRenderer::draw_imgui_interface()
@@ -34,26 +45,16 @@ void ImGuiRenderer::draw_imgui_interface()
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 
 	ImGuiIO& io = ImGui::GetIO();
-	// ImGui::ShowDemoWindow();
+	ImGui::ShowDemoWindow();
 
 	ImGui::Begin("Settings");
-
-	auto now_time = std::chrono::high_resolution_clock::now();
-	if (!m_render_window->is_rendering_done())
-	{
-		float sample_time = m_renderer->get_sample_time();
-
-		if (!render_settings.render_low_resolution)
-			// Not adding the frame time if we're rendering low resolution, not relevant
-			m_perf_metrics->add_value(PerformanceMetricsComputer::SAMPLE_TIME_KEY, sample_time);
-	}
 
 	ImGui::Text("Render time: %.3fs", m_render_window->get_current_render_time() / 1000.0f);
 	ImGui::Text("%d samples | %.2f samples/s @ %dx%d", render_settings.sample_number, m_render_window->get_samples_per_second(), m_renderer->m_render_width, m_renderer->m_render_height);
 
 	if (render_settings.has_access_to_adaptive_sampling_buffers())
 	{
-		unsigned int converged_count = m_renderer->get_pixel_converged_count_buffer().download_data()[0];
+		unsigned int converged_count = m_renderer->get_status_buffer_values().pixel_converged_count;
 		unsigned int total_pixel_count = m_renderer->m_render_width * m_renderer->m_render_height;
 
 		bool can_print_convergence = false;
@@ -61,19 +62,40 @@ void ImGuiRenderer::draw_imgui_interface()
 		can_print_convergence |= render_settings.stop_pixel_noise_threshold > 0.0f;
 
 		if (can_print_convergence)
-			ImGui::Text("Pixels converged: % d / % d - % .4f % %", converged_count, total_pixel_count, static_cast<float>(converged_count) / total_pixel_count * 100.0f);
+		{
+			ImGui::Text("Pixels converged: %d / %d - %.4f%%", converged_count, total_pixel_count, static_cast<float>(converged_count) / total_pixel_count * 100.0f);
+			if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+			{
+				// Adding some information on what noise threshold is being used
+				std::string text = "Current adaptive sampling noise threshold is: ";
+				if (render_settings.enable_adaptive_sampling && render_settings.sample_number > render_settings.adaptive_sampling_min_samples)
+				{
+					if (render_settings.stop_pixel_noise_threshold > render_settings.adaptive_sampling_noise_threshold)
+						// If the pixel noise threshold is stronger, then the displayed convergence counter
+						// is going to be according to the stop noise threshold so that's what we're adding in the tooltip
+						// there
+						text += std::to_string(render_settings.stop_pixel_noise_threshold) + " (pixel noise threshold)";
+					else
+						text += std::to_string(render_settings.adaptive_sampling_noise_threshold) + " (adaptive sampling)";
+				}
+				else if (render_settings.stop_pixel_noise_threshold > 0.0f)
+					text += std::to_string(render_settings.stop_pixel_noise_threshold) + " (pixel noise threshold)";
+
+				ImGuiRenderer::WrappingTooltip(text);
+			}
+		}
 		else
 		{
 			ImGui::Text("Pixels converged: N/A");
 			if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-				ImGui::SetTooltip("Adaptive sampling hasn't kicked in yet... Convergence computation hasn't started.");
+				ImGuiRenderer::WrappingTooltip("Adaptive sampling hasn't kicked in yet... Convergence computation hasn't started.");
 		}
 	}
 	else
 	{
 		ImGui::Text("Pixels converged: N/A");
 		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-			ImGui::SetTooltip("Convergence is only computed when either adaptive sampling or the \"Pixel noise threshold\" render stopping condition is used.");
+			ImGuiRenderer::WrappingTooltip("Convergence is only computed when either adaptive sampling or the \"Pixel noise threshold\" render stopping condition is used.");
 	}
 
 	ImGui::Separator();
@@ -109,9 +131,12 @@ void ImGuiRenderer::draw_render_settings_panel()
 		return;
 	ImGui::TreePush("Render settings tree");
 
-	const char* items[] = { "- Default", "- Denoiser blend", "- Denoiser - Normals", "- Denoiser - Denoised normals", "- Denoiser - Albedo", "- Denoiser - Denoised albedo", "- Adaptive sampling heatmap" };
-	if (ImGui::Combo("Display View", (int*)(&m_application_settings->display_view), items, IM_ARRAYSIZE(items)))
-		m_render_window->change_display_view(m_application_settings->display_view);
+	std::vector<const char*> items = { "- Default", "- Denoiser blend", "- Denoiser - Normals", "- Denoiser - Denoised normals", "- Denoiser - Albedo", "- Denoiser - Denoised albedo" };
+	if (render_settings.enable_adaptive_sampling)
+		items.push_back("- Adaptive sampling heatmap");
+	static int display_view_selected = m_render_window->get_display_view_system()->get_current_display_view_type();
+	if (ImGui::Combo("Display View", &display_view_selected, items.data(), items.size()))
+		m_render_window->get_display_view_system()->queue_display_view_change(static_cast<DisplayViewType>(display_view_selected));
 
 	ImGui::BeginDisabled(m_application_settings->keep_same_resolution);
 	float resolution_scaling_backup = m_application_settings->render_resolution_scale;
@@ -143,6 +168,20 @@ void ImGuiRenderer::draw_render_settings_panel()
 	ImGui::EndDisabled();
 	ImGui::SameLine();
 	ImGui::Checkbox("Auto", &m_application_settings->auto_sample_per_frame);
+	if (m_application_settings->auto_sample_per_frame)
+	{
+		ImGui::TreePush("Target GPU framerate tree");
+		if (ImGui::InputFloat("Target GPU framerate", &m_application_settings->target_GPU_framerate))
+			// Clamping to 1 FPS because going below that is dangerous in terms of driver timeouts
+			m_application_settings->target_GPU_framerate = std::max(1.0f, m_application_settings->target_GPU_framerate);
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+			ImGuiRenderer::WrappingTooltip("The samples per frame will be automatically adjusted such that the GPU"
+										   " takes approximately 1000.0f / TargetFramerate milliseconds to complete"
+										   "a frame. Useful to keep the GPU busy after almost all pixels have converged."
+										   "Lowering this settings increases rendering efficiency but can cause camera"
+										   "movements to be stuttery.");
+		ImGui::TreePop();
+	}
 	if (ImGui::InputInt("Max bounces", &render_settings.nb_bounces))
 	{
 		// Clamping to 0 in case the user input a negative number of bounces	
@@ -161,23 +200,14 @@ void ImGuiRenderer::draw_render_settings_panel()
 			m_application_settings->max_render_time = std::max(m_application_settings->max_render_time, 0.0f);
 		ImGui::Separator();
 
-		static bool use_pixel_noise_threshold;
 		static bool use_adaptive_sampling_threshold = false;
-		// Whether or not we already have the adaptive sampling buffers allocated
-		bool already_has_buffers = render_settings.has_access_to_adaptive_sampling_buffers();
-		float stop_pixel_noise_threshold_before = render_settings.stop_pixel_noise_threshold;
 		unsigned int converged_count;
 		unsigned int total_pixel_count;
 		ImGui::BeginDisabled(use_adaptive_sampling_threshold);
 		if (ImGui::InputFloat("Pixel noise threshold", &render_settings.stop_pixel_noise_threshold))
-		{
 			render_settings.stop_pixel_noise_threshold = std::max(0.0f, render_settings.stop_pixel_noise_threshold);
-
-			unsigned int zero_data = 0;
-			m_renderer->get_pixel_converged_count_buffer().upload_data(&zero_data);
-		}
 		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-			ImGui::SetTooltip("Cannot be set lower than the adaptive sampling threshold. 0.0 to disable.");
+			ImGuiRenderer::WrappingTooltip("Cannot be set lower than the adaptive sampling threshold. 0.0 to disable.");
 
 		// Having the stop pixel noise threshold lower than the adaptive sampling noise threshold
 		// is impossible because the adaptive sampling will stop sampling the pixel before it can
@@ -195,8 +225,7 @@ void ImGuiRenderer::draw_render_settings_panel()
 			render_settings.stop_pixel_noise_threshold = render_settings.adaptive_sampling_noise_threshold;
 
 		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-			ImGui::SetTooltip("If checked, the adaptive sampling noise threshold will be used.");
-		ImGui::EndDisabled(); // !render_settings.enable_adaptive_sampling
+			ImGuiRenderer::WrappingTooltip("If checked, the adaptive sampling noise threshold will be used.");
 
 		bool update_converge_text = render_settings.stop_pixel_noise_threshold > 0.0f;
 		ImGui::BeginDisabled(!update_converge_text);
@@ -205,9 +234,15 @@ void ImGuiRenderer::draw_render_settings_panel()
 			if (ImGui::InputFloat("Pixel proportion", &render_settings.stop_pixel_percentage_converged))
 				render_settings.stop_pixel_percentage_converged = std::max(0.0f, std::min(render_settings.stop_pixel_percentage_converged, 100.0f));
 			if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-				ImGui::SetTooltip("The proportion of pixels that need to have converge to the noise threshold for the rendering to stop. In percentage [0, 100].");
+			{
+				std::string additional_info = "";
+				if (render_settings.stop_pixel_noise_threshold == 0.0f)
+					additional_info = "The stop pixel noise threshold must be > 0.0.";
 
-			converged_count = m_renderer->get_pixel_converged_count_buffer().download_data()[0] * update_converge_text;
+				ImGuiRenderer::WrappingTooltip("The proportion of pixels that need to have converge to the noise threshold for the rendering to stop. In percentage [0, 100]." + additional_info);
+			}
+
+			converged_count = m_renderer->get_status_buffer_values().pixel_converged_count * update_converge_text;
 			total_pixel_count = m_renderer->m_render_width * m_renderer->m_render_height;
 			ImGui::Text("Pixels converged: %d / %d - %.4f%%", converged_count, total_pixel_count, static_cast<float>(converged_count) / total_pixel_count * 100.0f);
 		}
@@ -279,7 +314,7 @@ void ImGuiRenderer::draw_environment_panel()
 		if (!has_envmap)
 			// Showing a tooltip for why the envmap button is disabled
 			if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-				ImGui::SetTooltip("No envmap is loaded.");
+				ImGuiRenderer::WrappingTooltip("No envmap is loaded.");
 		ImGui::EndDisabled();
 
 		if (m_renderer->get_world_settings().ambient_light_type == AmbientLightType::UNIFORM)
@@ -353,12 +388,14 @@ void ImGuiRenderer::draw_sampling_panel()
 			if (ImGui::Checkbox("Enable adaptive sampling", (bool*)&render_settings.enable_adaptive_sampling))
 				m_render_window->set_render_dirty(true);
 
+			float adaptive_sampling_noise_threshold_before = render_settings.adaptive_sampling_noise_threshold;
 			ImGui::BeginDisabled(!render_settings.enable_adaptive_sampling);
 			if (ImGui::InputInt("Adaptive sampling minimum samples", &render_settings.adaptive_sampling_min_samples))
 				m_render_window->set_render_dirty(true);
 			if (ImGui::InputFloat("Adaptive sampling noise threshold", &render_settings.adaptive_sampling_noise_threshold))
 			{
 				render_settings.adaptive_sampling_noise_threshold = std::max(0.0f, render_settings.adaptive_sampling_noise_threshold);
+			
 				m_render_window->set_render_dirty(true);
 			}
 			ImGui::EndDisabled();
@@ -566,7 +603,10 @@ void ImGuiRenderer::draw_denoiser_panel()
 	ImGui::TreePush("Denoiser tree");
 
 	if (ImGui::Checkbox("Enable denoiser", &m_application_settings->enable_denoising))
-		m_render_window->change_display_view(m_application_settings->enable_denoising ? DisplayView::DENOISED_BLEND : DisplayView::DEFAULT);
+	{
+		m_render_window->get_display_view_system()->queue_display_view_change(m_application_settings->enable_denoising ? DisplayViewType::DENOISED_BLEND : DisplayViewType::DEFAULT);
+		m_application_settings->denoiser_settings_changed = true;
+	}
 	ImGui::BeginDisabled(!m_application_settings->enable_denoising);
 	if (ImGui::CollapsingHeader("AOVs"))
 	{
@@ -575,7 +615,7 @@ void ImGuiRenderer::draw_denoiser_panel()
 		{
 			m_application_settings->denoiser_settings_changed = true;
 
-			m_denoiser->set_use_albedo(m_application_settings->denoiser_use_albedo);
+			m_render_window_denoiser->set_use_albedo(m_application_settings->denoiser_use_albedo);
 			if (!m_application_settings->denoiser_use_albedo)
 			{
 				// We're forcing the use of normals AOV off here because it seems like OIDN doesn't support normal
@@ -583,34 +623,34 @@ void ImGuiRenderer::draw_denoiser_panel()
 				// using the normals without the albedo).
 				// TODO this may have to do with wrong HIP buffers being used. Try this out again after we're using proper HIP buffers
 				m_application_settings->denoiser_use_normals = false;
-				m_denoiser->set_use_normals(false);
+				m_render_window_denoiser->set_use_normals(false);
 			}
 
-			m_denoiser->finalize();
+			m_render_window_denoiser->finalize();
 		}
 		ImGui::SameLine();
 		if (ImGui::Checkbox("Denoise albedo", &m_application_settings->denoiser_denoise_albedo))
 		{
 			m_application_settings->denoiser_settings_changed = true;
 
-			m_denoiser->set_denoise_albedo(m_application_settings->denoiser_denoise_albedo);
-			m_denoiser->finalize();
+			m_render_window_denoiser->set_denoise_albedo(m_application_settings->denoiser_denoise_albedo);
+			m_render_window_denoiser->finalize();
 		}
 		ImGui::BeginDisabled(!m_application_settings->denoiser_use_albedo);
 		if (ImGui::Checkbox("Use normals AOV", &m_application_settings->denoiser_use_normals))
 		{
 			m_application_settings->denoiser_settings_changed = true;
 
-			m_denoiser->set_use_normals(m_application_settings->denoiser_use_normals);
-			m_denoiser->finalize();
+			m_render_window_denoiser->set_use_normals(m_application_settings->denoiser_use_normals);
+			m_render_window_denoiser->finalize();
 		}
 		ImGui::SameLine();
 		if (ImGui::Checkbox("Denoise normals", &m_application_settings->denoiser_denoise_normals))
 		{
 			m_application_settings->denoiser_settings_changed = true;
 
-			m_denoiser->set_denoise_normals(m_application_settings->denoiser_denoise_normals);
-			m_denoiser->finalize();
+			m_render_window_denoiser->set_denoise_normals(m_application_settings->denoiser_denoise_normals);
+			m_render_window_denoiser->finalize();
 		}
 		ImGui::EndDisabled();
 		ImGui::TreePop();
@@ -674,17 +714,17 @@ void ImGuiRenderer::draw_performance_settings_panel()
 	{
 	case SUPPORTED:
 		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-			ImGui::SetTooltip("Whether or not to enable hardware accelerated ray tracing (bbox & triangle intersections)");
+			ImGuiRenderer::WrappingTooltip("Whether or not to enable hardware accelerated ray tracing (bbox & triangle intersections)");
 		break;
 
 	case AMD_UNSUPPORTED:
 		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-			ImGui::SetTooltip("Hardware accelerated ray tracing is only supported on RDNA2+ GPUs.");
+			ImGuiRenderer::WrappingTooltip("Hardware accelerated ray tracing is only supported on RDNA2+ GPUs.");
 		break;
 
 	case NVIDIA_UNSUPPORTED:
 		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-			ImGui::SetTooltip("HIPRT cannot access NVIDIA's proprietary hardware accelerated ray-tracing. Feature unavailable.");
+			ImGuiRenderer::WrappingTooltip("HIPRT cannot access NVIDIA's proprietary hardware accelerated ray-tracing. Feature unavailable.");
 		break;
 	}
 
@@ -708,6 +748,7 @@ void ImGuiRenderer::draw_performance_metrics_panel()
 		render_settings.freeze_random = true;
 		render_settings.enable_adaptive_sampling = false;
 		m_application_settings->auto_sample_per_frame = false;
+		render_settings.samples_per_frame = 1;
 
 		m_render_window->set_render_dirty(true);
 	}
@@ -715,28 +756,28 @@ void ImGuiRenderer::draw_performance_metrics_panel()
 		m_render_window->set_render_dirty(true);
 
 	bool rolling_window_size_changed = false;
-	int rolling_window_size = m_perf_metrics->get_window_size();
+	int rolling_window_size = m_render_window_perf_metrics->get_window_size();
 	rolling_window_size_changed |= ImGui::RadioButton("25", &rolling_window_size, 25); ImGui::SameLine();
 	rolling_window_size_changed |= ImGui::RadioButton("100", &rolling_window_size, 100); ImGui::SameLine();
 	rolling_window_size_changed |= ImGui::RadioButton("1000", &rolling_window_size, 1000);
 
 	if (rolling_window_size_changed)
-		m_perf_metrics->resize_window(rolling_window_size);
+		m_render_window_perf_metrics->resize_window(rolling_window_size);
 
 	float variance, min, max;
-	variance = m_perf_metrics->get_variance(PerformanceMetricsComputer::SAMPLE_TIME_KEY);
-	min = m_perf_metrics->get_min(PerformanceMetricsComputer::SAMPLE_TIME_KEY);
-	max = m_perf_metrics->get_max(PerformanceMetricsComputer::SAMPLE_TIME_KEY);
+	variance = m_render_window_perf_metrics->get_variance(PerformanceMetricsComputer::SAMPLE_TIME_KEY);
+	min = m_render_window_perf_metrics->get_min(PerformanceMetricsComputer::SAMPLE_TIME_KEY);
+	max = m_render_window_perf_metrics->get_max(PerformanceMetricsComputer::SAMPLE_TIME_KEY);
 
 	static float scale_min = min, scale_max = max;
-	scale_min = m_perf_metrics->get_data_index(PerformanceMetricsComputer::SAMPLE_TIME_KEY) == 0 ? min : scale_min;
-	scale_max = m_perf_metrics->get_data_index(PerformanceMetricsComputer::SAMPLE_TIME_KEY) == 0 ? max : scale_max;
+	scale_min = m_render_window_perf_metrics->get_data_index(PerformanceMetricsComputer::SAMPLE_TIME_KEY) == 0 ? min : scale_min;
+	scale_max = m_render_window_perf_metrics->get_data_index(PerformanceMetricsComputer::SAMPLE_TIME_KEY) == 0 ? max : scale_max;
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	ImGui::PlotHistogram("",
 		PerformanceMetricsComputer::data_getter,
-		m_perf_metrics->get_data(PerformanceMetricsComputer::SAMPLE_TIME_KEY).data(),
-		m_perf_metrics->get_value_count(PerformanceMetricsComputer::SAMPLE_TIME_KEY),
+		m_render_window_perf_metrics->get_data(PerformanceMetricsComputer::SAMPLE_TIME_KEY).data(),
+		m_render_window_perf_metrics->get_value_count(PerformanceMetricsComputer::SAMPLE_TIME_KEY),
 		/* value offset */0,
 		"Sample time",
 		scale_min, scale_max,
@@ -751,7 +792,7 @@ void ImGuiRenderer::draw_performance_metrics_panel()
 	ImGui::SameLine();
 	ImGui::Checkbox("Auto-rescale", &auto_rescale);
 
-	ImGui::Text("Sample time (avg)      : %.3fms (%.1f FPS)", m_perf_metrics->get_average(PerformanceMetricsComputer::SAMPLE_TIME_KEY), 1000.0f / m_perf_metrics->get_average(PerformanceMetricsComputer::SAMPLE_TIME_KEY));
+	ImGui::Text("Sample time (avg)      : %.3fms (%.1f FPS)", m_render_window_perf_metrics->get_average(PerformanceMetricsComputer::SAMPLE_TIME_KEY), 1000.0f / m_render_window_perf_metrics->get_average(PerformanceMetricsComputer::SAMPLE_TIME_KEY));
 	ImGui::Text("Sample time (var)      : %.3fms", variance);
 	ImGui::Text("Sample time (std dev)  : %.3fms", std::sqrt(variance));
 	ImGui::Text("Sample time (min / max): %.3fms / %.3fms", min, max);
@@ -768,6 +809,9 @@ void ImGuiRenderer::draw_debug_panel()
 
 	if (ImGui::Checkbox("Show NaNs", &m_renderer->get_render_settings().display_NaNs))
 		m_render_window->set_render_dirty(true);
+
+	if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+		ImGuiRenderer::WrappingTooltip("If true, NaNs that occur during the rendering will show up as pink pixels.");
 
 	ImGui::TreePush("Debug tree");
 	ImGui::TreePop();

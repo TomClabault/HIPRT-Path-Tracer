@@ -6,42 +6,40 @@
 #include "UI/RenderWindow.h"
 #include "UI/RenderWindowKeyboardInteractor.h"
 
-bool RenderWindowKeyboardInteractor::m_z_pressed = false;
-bool RenderWindowKeyboardInteractor::m_q_pressed = false;
-bool RenderWindowKeyboardInteractor::m_s_pressed = false;
-bool RenderWindowKeyboardInteractor::m_d_pressed = false;
-bool RenderWindowKeyboardInteractor::m_space_pressed = false;
-bool RenderWindowKeyboardInteractor::m_lshift_pressed = false;
-
 void RenderWindowKeyboardInteractor::glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
+	void* user_pointer = glfwGetWindowUserPointer(window);
+	RenderWindow* render_window = reinterpret_cast<RenderWindow*>(user_pointer);
+
+	RenderWindowKeyboardInteractor& interactor_instance = render_window->get_keyboard_interactor();
+
 	switch (key)
 	{
 	case GLFW_KEY_W:
 	case GLFW_KEY_Z:
-		m_z_pressed = (action == GLFW_PRESS) || (action == GLFW_REPEAT);
+		interactor_instance.m_z_pressed = (action == GLFW_PRESS) || (action == GLFW_REPEAT);
 		break;
 
 	case GLFW_KEY_A:
 	case GLFW_KEY_Q:
-		m_q_pressed = (action == GLFW_PRESS) || (action == GLFW_REPEAT);
+		interactor_instance.m_q_pressed = (action == GLFW_PRESS) || (action == GLFW_REPEAT);
 		break;
 
 	case GLFW_KEY_S:
-		m_s_pressed = (action == GLFW_PRESS) || (action == GLFW_REPEAT);
+		interactor_instance.m_s_pressed = (action == GLFW_PRESS) || (action == GLFW_REPEAT);
 
 		break;
 
 	case GLFW_KEY_D:
-		m_d_pressed = (action == GLFW_PRESS) || (action == GLFW_REPEAT);
+		interactor_instance.m_d_pressed = (action == GLFW_PRESS) || (action == GLFW_REPEAT);
 		break;
 
 	case GLFW_KEY_SPACE:
-		m_space_pressed = (action == GLFW_PRESS) || (action == GLFW_REPEAT);
+		interactor_instance.m_space_pressed = (action == GLFW_PRESS) || (action == GLFW_REPEAT);
 		break;
 
 	case GLFW_KEY_LEFT_SHIFT:
-		m_lshift_pressed = (action == GLFW_PRESS) || (action == GLFW_REPEAT);
+		interactor_instance.m_lshift_pressed = (action == GLFW_PRESS) || (action == GLFW_REPEAT);
 		break;
 
 	default:
@@ -62,20 +60,26 @@ void RenderWindowKeyboardInteractor::set_callbacks(GLFWwindow* window)
 void RenderWindowKeyboardInteractor::poll_keyboard_inputs()
 {
 	float zoom = 0.0f;
-	std::pair<float, float> translation;
+	std::pair<float, float> translation = { 0.0f, 0.0f };
+
 	if (m_z_pressed)
 		zoom += 1.0f;
 	if (m_q_pressed)
-		translation.first += 36.0f;
+		translation.first += 1.0f;
 	if (m_s_pressed)
 		zoom -= 1.0f;
 	if (m_d_pressed)
-		translation.first -= 36.0f;
+		translation.first -= 1.0f;
 	if (m_space_pressed)
-		translation.second += 36.0f;
+		translation.second += 1.0f;
 	if (m_lshift_pressed)
-		translation.second -= 36.0f;
+		translation.second -= 1.0f;
 
-	m_render_window->update_renderer_view_translation(-translation.first, translation.second);
-	m_render_window->update_renderer_view_zoom(-zoom);
+	m_render_window->update_renderer_view_translation(-translation.first, translation.second, true);
+	m_render_window->update_renderer_view_zoom(-zoom, true);
+}
+
+bool RenderWindowKeyboardInteractor::is_interacting()
+{
+	return m_z_pressed || m_q_pressed || m_s_pressed || m_d_pressed || m_space_pressed || m_lshift_pressed;
 }

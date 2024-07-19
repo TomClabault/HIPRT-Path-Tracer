@@ -13,8 +13,9 @@
 #include "HIPRT-Orochi/HIPRTScene.h"
 #include "HostDeviceCommon/RenderData.h"
 #include "OpenGL/OpenGLInteropBuffer.h"
-#include "Renderer/OpenImageDenoiser.h"
 #include "Renderer/HardwareAccelerationSupport.h"
+#include "Renderer/OpenImageDenoiser.h"
+#include "Renderer/StatusBuffersValues.h"
 #include "Scene/Camera.h"
 #include "Scene/SceneParser.h"
 
@@ -31,7 +32,11 @@ public:
 	std::vector<std::string> kernel_files = { DEVICE_KERNELS_DIRECTORY "/PathTracerKernel.h" };
 	std::vector<std::string> kernel_functions = { PATH_TRACING_KERNEL };
 
-	GPURenderer();
+	/**
+	 * Constructs a renderer that will be using the given HIPRT/Orochi
+	 * context for handling GPU acceleration structures, buffers, textures, etc...
+	 */
+	GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx);
 
 	/**
 	 * This function is in charge of updating various "dynamic attributes/properties/buffers" of the renderer before rendering a frame.
@@ -44,23 +49,56 @@ public:
 	 * that could be made (through the ImGui interface for example) so that it is always in the
 	 * correct state. Said othrewise, this function can be seen as a centralized place for updating
 	 * various stuff of the renderer instead of having to scatter these update calls everywhere
-	 * in the code?
+	 * in the code.
 	 */
 	void update();
 
 	/**
-	 * Renders a frame
+	 * Renders a frame asynchronously. 
+	 * Querry frame_render_done() to know whether or not the frame has completed or not.
 	 */
 	void render();
-	void change_render_resolution(int new_width, int new_height);
+
+	/**
+	 * Blocking that waits for all the operations queued on
+	 * the main stream to complete
+	 */
+	void synchronize_kernel();
+
+	/**
+	 * Returns false if the frame queued asynchronously by a previous call to render() isn't finished yet. 
+	 * Returns true if the frame is completed
+	 */
+	bool frame_render_done();
+	/**
+	 * Returns true if the last frame was rendered with render_settings.render_low_resolution = true.
+	 * False otherwise
+	 */
+	bool was_last_frame_low_resolution();
+
+	void resize(int new_width, int new_height);
+
+	/**
+	 * Unmap the color framebuffer, the denoiser albedo and the
+	 * denoiser normals buffers so that OpenGL can use them
+	 */
+	void unmap_buffers();
 
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> get_color_framebuffer();
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> get_denoised_framebuffer();
 	std::shared_ptr<OpenGLInteropBuffer<float3>> get_denoiser_normals_AOV_buffer();
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> get_denoiser_albedo_AOV_buffer();
-	OrochiBuffer<int>& get_pixels_sample_count_buffer();
-	OrochiBuffer<unsigned char>& get_ray_active_buffer();
-	OrochiBuffer<unsigned int>& get_pixel_converged_count_buffer();
+	std::shared_ptr<OpenGLInteropBuffer<int>>& get_pixels_sample_count_buffer();
+	/**
+	 * Returns a structure that contains the values of
+	 * various one-variable buffers of the renderer such
+	 * as 'one_ray_active' or 'pixel_converged_count' for example
+	 */
+	const StatusBuffersValues& get_status_buffer_values() const;
+	/**
+	 * Memcpy the values of the status buffers to m_status_buffer_values
+	 */
+	void copy_status_buffers();
 
 	HIPRTRenderSettings& get_render_settings();
 	WorldSettings& get_world_settings();
@@ -68,6 +106,8 @@ public:
 
 	HIPKernel& get_trace_kernel();
 	void recompile_trace_kernel();
+
+	const Camera& get_camera() const;
 
 	void set_scene(const Scene& scene);
 	void set_camera(const Camera& camera);
@@ -78,23 +118,19 @@ public:
 	const std::vector<std::string>& get_material_names();
 	void update_materials(std::vector<RendererMaterial>& materials);
 
-	/**
-	 * This function evaluates whether the renderer needs the adaptive
-	 * sampling buffers or not. If the buffers are needed (because the
-	 * adaptive sampling or the stop noise pixel threshold is enabled for example),
-	 * then the buffer will be allocated so that they can be used by the shader.
-	 * If they are not needed, they will be freed to save some VRAM.
-	 */
-	void toggle_adaptive_sampling_buffers();
-
 	void translate_camera_view(glm::vec3 translation);
+	/**
+	 * Rotates the camera by the given angles (in radians)
+	 */
 	void rotate_camera_view(glm::vec3 rotation_angles);
 	void zoom_camera_view(float offset);
 
 	oroDeviceProp get_device_properties();
 	HardwareAccelerationSupport device_supports_hardware_acceleration();
-	float get_gpu_frame_time();
-	float get_sample_time();
+
+	float get_last_frame_time();
+	void reset_last_frame_time();
+	void reset();
 
 	int m_render_width = 0, m_render_height = 0;
 
@@ -103,6 +139,29 @@ public:
 private:
 	void set_hiprt_scene_from_scene(const Scene& scene);
 
+	// ---- Functions called by the update() method ----
+	//
+
+
+	/**
+	 * Resets the value of the status buffers on the device
+	 */
+	void internal_update_clear_device_status_buffers();
+
+	/**
+	 * This function evaluates whether the renderer needs the adaptive
+	 * sampling buffers or not. If the buffers are needed (because the
+	 * adaptive sampling or the stop noise pixel threshold is enabled for example),
+	 * then the buffer will be allocated so that they can be used by the shader.
+	 * If they are not needed, they will be freed to save some VRAM.
+	 */
+	void internal_update_adaptive_sampling_buffers();
+
+	//
+	// -------- Functions called by the update() method ---------
+
+	void internal_clear_m_status_buffers();
+
 	// Properties of the device
 	oroDeviceProp m_device_properties = { .gcnArchName = "" };
 
@@ -110,8 +169,10 @@ private:
 	oroEvent_t m_frame_start_event = nullptr;
 	oroEvent_t m_frame_stop_event = nullptr;
 	// Time taken to render the last frame
-	float m_frame_time = 0;
-
+	float m_last_frame_time = 0;
+	// If true, the last call to render() rendered a frame where render_settings.render_low_resoltion was true.
+	// False otherwise
+	bool m_was_last_frame_low_resolution = false;
 
 	// This buffer holds the * sum * of the samples computed
 	// This is an accumulation buffer. This needs to be divided by the
@@ -126,10 +187,10 @@ private:
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>>m_albedo_AOV_buffer;
 
 	// Used to calculate the variance of each pixel for adaptive sampling
-	OrochiBuffer<float> m_pixels_squared_luminance;
+	OrochiBuffer<float> m_pixels_squared_luminance_buffer;
 	// This buffer is necessary because with adaptive sampling, each pixel
 	// can have accumulated a different number of sample
-	OrochiBuffer<int> m_pixels_sample_count;
+	std::shared_ptr<OpenGLInteropBuffer<int>> m_pixels_sample_count_buffer;
 	// A single boolean to indicate whether there is still a ray active in
 	// the kernel or not. Mostly useful when adaptive sampling is on and we
 	// want to know if all pixels have converged or not yet
@@ -138,6 +199,11 @@ private:
 	// Warning: This buffer does not count how many pixels have converged according to
 	// the adaptive sampling noise threshold. This is only for the stop_pixel_noise_threshold
 	OrochiBuffer<unsigned int> m_pixels_converged_count_buffer;
+
+	// Structure that holds the values of the one-variable buffers of the renderer.
+	// These values are 'one_ray_active' or 'pixel_converged_count' for example.
+	// These values are updated when the update() is called
+	StatusBuffersValues m_status_buffers_values;
 
 	// The materials are also kept on the CPU side because we want to be able
 	// to modify them interactively with ImGui
@@ -149,9 +215,10 @@ private:
 	std::vector<OrochiTexture> m_materials_textures;
 	OrochiEnvmap m_envmap;
 
-	std::shared_ptr<HIPRTOrochiCtx> m_hiprt_orochi_ctx;
+	std::shared_ptr<HIPRTOrochiCtx> m_hiprt_orochi_ctx = nullptr;
 	// Path tracing kernel called at each frame
 	HIPKernel m_path_trace_kernel;
+	oroStream_t m_main_stream;
 
 	// Structure containing the data specific to a scene:
 	//	- hiprtGeom

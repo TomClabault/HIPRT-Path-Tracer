@@ -5,7 +5,7 @@
 
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Sampling.h"
-#include "HostDeviceCommon/Camera.h"
+#include "HostDeviceCommon/HIPRTCamera.h"
 #include "HostDeviceCommon/Math.h"
 #include "HostDeviceCommon/RenderData.h"
 

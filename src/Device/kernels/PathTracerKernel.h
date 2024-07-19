@@ -10,7 +10,7 @@
 #include "Device/includes/Material.h"
 #include "Device/includes/RayPayload.h"
 #include "Device/includes/Sampling.h"
-#include "HostDeviceCommon/Camera.h"
+#include "HostDeviceCommon/HIPRTCamera.h"
 #include "HostDeviceCommon/Xorshift.h"
 
 HIPRT_HOST_DEVICE HIPRT_INLINE unsigned int wang_hash(unsigned int seed)
@@ -72,7 +72,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool sanity_check(const HIPRTRenderData& render_d
         if (render_data.render_settings.display_NaNs)
             debug_set_final_color(render_data, x, y, res.x, ColorRGB32F(1.0e15f, 0.0f, 1.0e15f));
         else
-            debug_set_final_color(render_data, x, y, res.x, ColorRGB32F(0.0f));
+            ray_payload.ray_color = ColorRGB32F(0.0f);
 #ifndef __KERNELCC__
         Utils::debugbreak();
 #endif

@@ -32,6 +32,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 - Per-pixel adaptive sampling
 - Normal mapping
 - Interactive ImGui interface + interactive first-person camera
+	- Asynchronous interface to guarantee smooth UI interactions even with heavy path tracing kernels
 - Different frame-buffer visualisation (visualize the adaptive sampling map, the denoiser normals / albedo, ...)
 - Use of the [\[ASSIMP\]](https://github.com/assimp/assimp) library to support [many](https://github.com/assimp/assimp/blob/master/doc/Fileformats.md) scene file formats.
 - Optimized application startup time with:
@@ -40,7 +41,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 	- Shader cache to avoid recompiling kernels unecessarily
 - Intel [Open Image Denoise](https://github.com/RenderKit/oidn) + Normals & Albedo AOV support
 
-### A more detailed explanation & showcase of the features can be found [here](README_data/Features/features.md).
+### Some of the features are presented in more details in my [blog posts](https://tomclabault.github.io/blog/)!
 
 # Building
 ## Prerequisites

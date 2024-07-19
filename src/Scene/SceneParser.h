@@ -12,6 +12,7 @@
 
 #include "HostDeviceCommon/Material.h"
 #include "Image/Image.h"
+#include "Scene/BoundingBox.h"
 #include "Scene/Camera.h"
 #include "Renderer/Sphere.h"
 #include "Renderer/Triangle.h"
@@ -68,15 +69,8 @@ struct Scene
     // Material textures. Needs to be index by a material index. 
     std::vector<Image8Bit> textures;
 
-
-
-
-    // Base color material textures. Needs to be indexed by a material index. 
-    /*std::vector<ImageRGBA8> base_color_textures;
-    std::vector<ImageR8> material_parameters_textures;*/
-
-
-
+    std::vector<BoundingBox> mesh_bounding_boxes;
+    BoundingBox scene_bounding_box;
 
     // The widths and heights of the material textures
     // Necessary since Orochi doesn't support normalized texture coordinates
@@ -121,6 +115,8 @@ struct Scene
 
         return triangles;
     }
+
+
 };
 
 class SceneParser

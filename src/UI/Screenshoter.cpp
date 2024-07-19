@@ -9,6 +9,48 @@
 #include "UI/Screenshoter.h"
 #include "Utils/Utils.h"
 
+Screenshoter::Screenshoter()
+{
+	std::vector<std::string> macro = { "#define COMPUTE_SCREENSHOTER" };
+
+	OpenGLShader default_display_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/default_display.frag", OpenGLShader::COMPUTE_SHADER, macro);
+	OpenGLShader blend_2_display_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/blend_2_display.frag", OpenGLShader::COMPUTE_SHADER, macro);
+	OpenGLShader normal_display_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/normal_display.frag", OpenGLShader::COMPUTE_SHADER, macro);
+	OpenGLShader albedo_display_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/albedo_display.frag", OpenGLShader::COMPUTE_SHADER, macro);
+	OpenGLShader adaptive_display_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/heatmap_int.frag", OpenGLShader::COMPUTE_SHADER, macro);
+
+	std::shared_ptr<OpenGLProgram> default_display_program = std::make_shared<OpenGLProgram>();
+	std::shared_ptr<OpenGLProgram> blend_2_display_program = std::make_shared<OpenGLProgram>();
+	std::shared_ptr<OpenGLProgram> normal_display_program = std::make_shared<OpenGLProgram>();
+	std::shared_ptr<OpenGLProgram> albedo_display_program = std::make_shared<OpenGLProgram>();
+	std::shared_ptr<OpenGLProgram> adaptive_sampling_display_program = std::make_shared<OpenGLProgram>();
+
+	default_display_program->attach(default_display_shader);
+	default_display_program->link();
+
+	blend_2_display_program->attach(blend_2_display_shader);
+	blend_2_display_program->link();
+
+	normal_display_program->attach(normal_display_shader);
+	normal_display_program->link();
+
+	albedo_display_program->attach(albedo_display_shader);
+	albedo_display_program->link();
+
+	adaptive_sampling_display_program->attach(adaptive_display_shader);
+	adaptive_sampling_display_program->link();
+
+	m_compute_programs[DisplayViewType::DEFAULT] = default_display_program;
+	m_compute_programs[DisplayViewType::DENOISED_BLEND] = blend_2_display_program;
+	m_compute_programs[DisplayViewType::DISPLAY_ALBEDO] = albedo_display_program;
+	m_compute_programs[DisplayViewType::DISPLAY_DENOISED_ALBEDO] = albedo_display_program;
+	m_compute_programs[DisplayViewType::DISPLAY_NORMALS] = normal_display_program;
+	m_compute_programs[DisplayViewType::DISPLAY_DENOISED_NORMALS] = normal_display_program;
+	m_compute_programs[DisplayViewType::ADAPTIVE_SAMPLING_MAP] = adaptive_sampling_display_program;
+
+	select_compute_program(DisplayViewType::DEFAULT);
+}
+
 void Screenshoter::set_renderer(std::shared_ptr<GPURenderer> renderer)
 {
 	m_renderer = renderer;
@@ -19,36 +61,9 @@ void Screenshoter::set_render_window(RenderWindow* render_window)
 	m_render_window = render_window;
 }
 
-void Screenshoter::select_compute_program(DisplayView display_view)
+void Screenshoter::select_compute_program(DisplayViewType display_view)
 {
-	switch (display_view)
-	{
-	case DisplayView::DEFAULT:
-		m_active_compute_program = m_default_compute_program;
-		break;
-
-	case DisplayView::DENOISED_BLEND:
-		m_active_compute_program = m_blend_2_compute_program;
-		break;
-
-	case DisplayView::DISPLAY_NORMALS:
-	case DisplayView::DISPLAY_DENOISED_NORMALS:
-		m_active_compute_program = m_normal_compute_program;
-		break;
-
-	case DisplayView::DISPLAY_ALBEDO:
-	case DisplayView::DISPLAY_DENOISED_ALBEDO:
-		m_active_compute_program = m_albedo_compute_program;
-		break;
-
-	case DisplayView::ADAPTIVE_SAMPLING_MAP:
-		m_active_compute_program = m_adaptive_sampling_compute_program;
-		break;
-
-	default:
-		std::cerr << "Unable to select a compute shader program based on the given display view" << std::endl;
-		break;
-	}
+	m_active_compute_program = m_compute_programs[display_view];
 }
 
 void Screenshoter::write_to_png()
@@ -60,33 +75,6 @@ void Screenshoter::write_to_png()
 	filename << std::put_time(now, "%m.%d.%Y.%H.%M.%S - ") << m_renderer->get_render_settings().sample_number << "sp @ " << m_renderer->m_render_width << "x" << m_renderer->m_render_height << " - " << m_render_window->get_current_render_time() / 1000.0f << "s" << ".png";
 
 	write_to_png(filename.str().c_str());
-}
-
-void Screenshoter::initialize_programs()
-{
-	std::vector<std::string> macro = { "#define COMPUTE_SCREENSHOTER" };
-	OpenGLShader default_display_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/default_display.frag", OpenGLShader::COMPUTE_SHADER, macro);
-	OpenGLShader blend_2_display_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/blend_2_display.frag", OpenGLShader::COMPUTE_SHADER, macro);
-	OpenGLShader normal_display_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/normal_display.frag", OpenGLShader::COMPUTE_SHADER, macro);
-	OpenGLShader albedo_display_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/albedo_display.frag", OpenGLShader::COMPUTE_SHADER, macro);
-	OpenGLShader adaptive_display_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/heatmap_int.frag", OpenGLShader::COMPUTE_SHADER, macro);
-
-	m_default_compute_program.attach(default_display_shader);
-	m_default_compute_program.link();
-
-	m_blend_2_compute_program.attach(blend_2_display_shader);
-	m_blend_2_compute_program.link();
-
-	m_normal_compute_program.attach(normal_display_shader);
-	m_normal_compute_program.link();
-
-	m_albedo_compute_program.attach(albedo_display_shader);
-	m_albedo_compute_program.link();
-
-	m_adaptive_sampling_compute_program.attach(adaptive_display_shader);
-	m_adaptive_sampling_compute_program.link();
-
-	select_compute_program(m_render_window->get_application_settings()->display_view);
 }
 
 void Screenshoter::resize_output_image(int width, int height)
@@ -106,7 +94,7 @@ void Screenshoter::resize_output_image(int width, int height)
 		m_compute_output_image_height = height;
 
 		glGenTextures(1, &m_output_image);
-		glActiveTexture(GL_TEXTURE0 + RenderWindow::DISPLAY_COMPUTE_IMAGE_UNIT);
+		glActiveTexture(GL_TEXTURE0 + DisplayViewSystem::DISPLAY_COMPUTE_IMAGE_UNIT);
 		glBindTexture(GL_TEXTURE_2D, m_output_image);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
@@ -114,7 +102,7 @@ void Screenshoter::resize_output_image(int width, int height)
 	}
 	else
 	{
-		glActiveTexture(GL_TEXTURE0 + RenderWindow::DISPLAY_COMPUTE_IMAGE_UNIT);
+		glActiveTexture(GL_TEXTURE0 + DisplayViewSystem::DISPLAY_COMPUTE_IMAGE_UNIT);
 		glBindTexture(GL_TEXTURE_2D, m_output_image);
 	}
 }
@@ -151,24 +139,15 @@ void Screenshoter::write_to_png(const char* filepath)
 		// so that the screenshoter outputs the correct image (and needless to say that we would forget, most of time, 
 		// to update the HIP kernels so that's why code duplication here is annoying)
 
-		if (!m_compute_shader_initialized)
-		{
-			// We're initializing the compute shader here because if we do it in the constructor, the 
-			// constructor of RenderWindow which contains an instance of Screenshoter is going to try and 
-			// use OpenGL functions even though OpenGL hasn't even been initialized in the application yet
-			initialize_programs();
-			m_compute_shader_initialized = true;
-		}
-
 		resize_output_image(width, height);
 
 		GLint threads[3];
-		m_active_compute_program.get_compute_threads(threads);
+		m_active_compute_program->get_compute_threads(threads);
 
 		int nb_groups_x = std::ceil(width / (float)threads[0]);
 		int nb_groups_y = std::ceil(height / (float)threads[1]);
 
-		m_render_window->update_program_uniforms(m_active_compute_program);
+		DisplayViewSystem::update_display_program_uniforms(m_render_window->get_display_view_system().get(), m_active_compute_program, m_renderer, m_render_window->get_application_settings());
 
 		glDispatchCompute(nb_groups_x, nb_groups_y, 1);
 		glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);

@@ -24,6 +24,11 @@ class ImGuiRenderer
 public:
 	ImGuiRenderer();
 
+	/**
+  	 * Adds a tooltip to the last widget that auto wraps after 80 characters
+	 */
+	static void WrappingTooltip(const std::string& text);
+
 	void set_render_window(RenderWindow* renderer);
 
 	void draw_imgui_interface();
@@ -40,12 +45,12 @@ public:
 	void rescale_ui();
 
 private:
-	RenderWindow* m_render_window;
+	RenderWindow* m_render_window = nullptr;
 
-	std::shared_ptr<ApplicationSettings> m_application_settings;
-	std::shared_ptr<GPURenderer> m_renderer;
-	std::shared_ptr<OpenImageDenoiser> m_denoiser;
-	std::shared_ptr<PerformanceMetricsComputer> m_perf_metrics;
+	std::shared_ptr<ApplicationSettings> m_application_settings = nullptr;
+	std::shared_ptr<GPURenderer> m_renderer = nullptr;
+	std::shared_ptr<OpenImageDenoiser> m_render_window_denoiser = nullptr;
+	std::shared_ptr<PerformanceMetricsComputer> m_render_window_perf_metrics = nullptr;
 };
 
 #endif

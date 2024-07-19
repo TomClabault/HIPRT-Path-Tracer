@@ -9,13 +9,10 @@
 #include <string>
 #include <vector>
 
-#include "UI/DisplayView.h"
+#include "UI/DisplayViewEnum.h"
 
 struct ApplicationSettings
 {
-	// What view is currently displayed in the viewport
-	DisplayView display_view = DisplayView::DEFAULT;
-
 	bool enable_denoising = false;
 	bool denoiser_use_albedo = true;
 	bool denoiser_denoise_albedo = true;
@@ -34,22 +31,38 @@ struct ApplicationSettings
 	// If 0.0f, 100% of the noisy framebuffer is displayed in the viewport
 	// Linearly interpoalted between the two for intermediate values
 	float denoiser_blend = 1.0f;
+	// Overrides the blending factor for the blend-2-textures display shader
+	// 0.0f displays 100% of texture 1.
+	// 1.0f gives 100% of texture 2.
+	// -1.0f disables the override
+	float blend_override = -1.0f;
 	// If the denoiser settings changed since last frame
 	bool denoiser_settings_changed = false;
 
-	// How much to divide the translation distance by when the mouse
+	// How much to divide the rotation by when the mouse
 	// has been dragged over the window to move the camera
 	// This is necessary because if 1 pixel of movement equalled
-	// 1 world unit of translation, it would be way too fast!
-	double view_translation_sldwn_x = 300.0f, view_translation_sldwn_y = 300.0f;
+	// 1 degree of rotation, it would be way too fast!
 	double view_rotation_sldwn_x = 3.5f, view_rotation_sldwn_y = 3.5f;
-	double view_zoom_sldwn = 5.0f;
 
 	// How much to scale the render resolution by. 
 	// For example, if == 2, and the viewport currently is 1280*720, 
 	// the path tracer will compute a 2560*1440 image and display it
 	// in the 1280*720 viewport
 	float render_resolution_scale = 1.0f;
+	// This variable is meant to keep the GPU busy when using "automatic number of samples"
+	// per frame. The idea is to adjust the number of samples per frame such that the GPU
+	// always has a bunch of work to do.
+	// For example, let's say that after a while, the adaptive sampling has judged that only
+	// 1000 pixels are left to converge out of the ~2M of 1080p image. 1000 pixels to ray trace
+	// is a joke for the GPU. It's going to be extremely fast. So fast that the application is
+	// going to be CPU bound for displaying the image etc...
+	// To avoid being CPU bound, we adjust the work of the GPU such that it still has a significant
+	// amount of work to process.
+	// The amount of work is adjusted by adjusting the number of samples per frame. We adjust the
+	// samples per frame such that the GPU takes (1000ms / target_GPU_framerate) milliseconds
+	// to compute a frame
+	float target_GPU_framerate = 5.0f;
 
 	// Whether or not to keep the same resolution on
 	// viewport rescale. This means that the render resolution

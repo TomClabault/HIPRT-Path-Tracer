@@ -8,6 +8,7 @@
 
 #include "HIPRT-Orochi/HIPRTOrochiUtils.h"
 #include "UI/DisplayTextureType.h"
+#include "Utils/Utils.h"
 
 #include "GL/glew.h"
 #include "GLFW/glfw3.h"
@@ -43,22 +44,40 @@ public:
 
 	/**
 	 * Makes the buffer accessible to HIP/CUDA
+	 * 
+	 * This functions prints an error in the terminal
+	 * if the buffer is already mapped because mapping
+	 * a buffer that is already mapped may be a sign
+	 * of something being wrong in the workflow of the
+	 * application
 	 */
 	T* map();
+	/**
+	 * Makes the buffer accesible to HIP/CUDA and doesn't print an error
+	 * in the terminal if the buffer is already mapped. Can be used if you
+	 * know that the buffer can be mapped already when you call this function
+	 * but you just want to do nothing in that case and reuse the previously mapped pointer
+	 */
+	T* map_no_error();
 
 	/**
 	 * Makes the buffer accessible by OpenGL
 	 */
 	void unmap();
 
+	/**
+	 * Copies the buffer data to an OpenGL texture
+	 */
 	void unpack_to_texture(GLuint texture, GLint texture_unit, int width, int height, DisplayTextureType texture_type);
+
+	void free();
 
 private:
 	bool m_initialized = false;
 	bool m_mapped = false;
 	T* m_mapped_pointer = nullptr;
 
-	size_t m_byte_size = 0;
+	size_t m_element_count = 0;
 
 	GLuint m_buffer_name = -1;
 
@@ -82,7 +101,13 @@ OpenGLInteropBuffer<T>::OpenGLInteropBuffer(int element_count)
 
 	m_initialized = true;
 	m_mapped = false;
-	m_byte_size = element_count * sizeof(T);
+	m_element_count = element_count;
+}
+
+template <typename T>
+OpenGLInteropBuffer<T>::~OpenGLInteropBuffer()
+{
+	free();
 }
 
 template <typename T>
@@ -131,19 +156,19 @@ void OpenGLInteropBuffer<T>::resize(int new_element_count)
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 
 	m_initialized = true;
-	m_byte_size = new_element_count * sizeof(T);
+	m_element_count = new_element_count;
 }
 
 template <typename T>
 size_t OpenGLInteropBuffer<T>::get_element_count() const
 {
-	return m_byte_size / sizeof(T);
+	return m_element_count;
 }
 
 template <typename T>
 size_t OpenGLInteropBuffer<T>::get_byte_size() const
 {
-	return m_byte_size;
+	return m_element_count * sizeof(T);
 }
 
 template <typename T>
@@ -152,6 +177,7 @@ T* OpenGLInteropBuffer<T>::map()
 	if (!m_initialized)
 	{
 		std::cerr << "Mapping a buffer that hasn't been initialized!" << std::endl;
+		Utils::debugbreak();
 
 		return nullptr;
 	}
@@ -163,9 +189,33 @@ T* OpenGLInteropBuffer<T>::map()
 		// Already mapped
 		return m_mapped_pointer;
 	}
-
+	
+	size_t byte_size;
 	OROCHI_CHECK_ERROR(oroGraphicsMapResources(1, reinterpret_cast<oroGraphicsResource_t*>(&m_buffer_resource), 0));
-	OROCHI_CHECK_ERROR(oroGraphicsResourceGetMappedPointer((void**)(&m_mapped_pointer), & m_byte_size, reinterpret_cast<oroGraphicsResource_t>(m_buffer_resource)));
+	OROCHI_CHECK_ERROR(oroGraphicsResourceGetMappedPointer((void**)(&m_mapped_pointer), &byte_size, reinterpret_cast<oroGraphicsResource_t>(m_buffer_resource)));
+
+	m_mapped = true;
+	return m_mapped_pointer;
+}
+
+template <typename T>
+T* OpenGLInteropBuffer<T>::map_no_error()
+{
+	if (!m_initialized)
+	{
+		std::cerr << "Mapping a buffer that hasn't been initialized!" << std::endl;
+		Utils::debugbreak();
+
+		return nullptr;
+	}
+
+	if (m_mapped)
+		// Already mapped
+		return m_mapped_pointer;
+
+	size_t byte_size;
+	OROCHI_CHECK_ERROR(oroGraphicsMapResources(1, reinterpret_cast<oroGraphicsResource_t*>(&m_buffer_resource), 0));
+	OROCHI_CHECK_ERROR(oroGraphicsResourceGetMappedPointer((void**)(&m_mapped_pointer), &byte_size, reinterpret_cast<oroGraphicsResource_t>(m_buffer_resource)));
 
 	m_mapped = true;
 	return m_mapped_pointer;
@@ -197,8 +247,8 @@ void OpenGLInteropBuffer<T>::unpack_to_texture(GLuint texture, GLint texture_uni
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 }
 
-template <typename T>
-OpenGLInteropBuffer<T>::~OpenGLInteropBuffer()
+template<typename T>
+void OpenGLInteropBuffer<T>::free()
 {
 	if (m_initialized)
 	{
@@ -209,6 +259,9 @@ OpenGLInteropBuffer<T>::~OpenGLInteropBuffer()
 
 		OROCHI_CHECK_ERROR(oroGraphicsUnregisterResource(reinterpret_cast<oroGraphicsResource_t>(m_buffer_resource)));
 	}
+	
+	m_element_count = 0;
+	m_initialized = false;
 }
 
 #endif
