@@ -24,7 +24,7 @@ void ImGuiRenderer::WrappingTooltip(const std::string& text)
 	ImGui::SetNextWindowSize(ImVec2(ImGui::GetFontSize() * 32.0f, 0.0f));
 	ImGui::BeginTooltip();
 	ImGui::PushTextWrapPos(0.0f);
-	ImGui::Text(text.c_str());
+	ImGui::Text("%s", text.c_str());
 	ImGui::PopTextWrapPos();
 	ImGui::EndTooltip();
 }
