@@ -45,7 +45,7 @@ void ImGuiRenderer::draw_imgui_interface()
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 
 	ImGuiIO& io = ImGui::GetIO();
-	ImGui::ShowDemoWindow();
+	// ImGui::ShowDemoWindow();
 
 	ImGui::Begin("Settings");
 
