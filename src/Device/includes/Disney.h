@@ -303,9 +303,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_glass_sample(const RendererMaterial
         relative_eta = 1.0f + 1.0e-5f;
 
     float3 microfacet_normal = GGXVNDF_sample(local_view_direction, material.alpha_x, material.alpha_y, random_number_generator);
-    if (microfacet_normal.z < 0)
-        // We want the microfacet normal in the same hemisphere as the normal for the rest of the calculations
-        microfacet_normal = -microfacet_normal;
 
     float F = fresnel_dielectric(hippt::dot(local_view_direction, microfacet_normal), relative_eta);
     float rand_1 = random_number_generator();

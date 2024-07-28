@@ -65,7 +65,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void env_map_cdf_search(const WorldSettings& worl
     x = hippt::max(hippt::min(lower, world_settings.envmap_width), 0u);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_cdf(const HIPRTRenderData& render_data, const RendererMaterial& material, HitInfo& closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_cdf(const HIPRTRenderData& render_data, const RendererMaterial& material, const RayVolumeState& volume_state, HitInfo& closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
 {
     const WorldSettings& world_settings = render_data.world_settings;
 
@@ -112,7 +112,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_cdf(const HIPR
                 float bsdf_pdf;
                 float mis_weight;
 
-                RayVolumeState trash_state;
+                RayVolumeState trash_state = volume_state;
                 ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, material, trash_state, view_direction, closest_hit_info.shading_normal, sampled_direction, bsdf_pdf);
 
                 mis_weight = power_heuristic(env_map_pdf, bsdf_pdf);
@@ -123,7 +123,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_cdf(const HIPR
 
     float brdf_sample_pdf;
     float3 brdf_sampled_dir;
-    RayVolumeState trash_state;
+    RayVolumeState trash_state = volume_state;
     ColorRGB32F brdf_imp_sampling = bsdf_dispatcher_sample(render_data.buffers.materials_buffer, material, trash_state, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, brdf_sampled_dir, brdf_sample_pdf, random_number_generator);
 
     cosine_term = hippt::clamp(0.0f, 1.0f, hippt::dot(closest_hit_info.shading_normal, brdf_sampled_dir));
@@ -157,7 +157,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_cdf(const HIPR
     return brdf_sample + env_sample;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map(const HIPRTRenderData& render_data, const RendererMaterial& material, HitInfo& closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map(const HIPRTRenderData& render_data, const RayPayload& ray_payload, HitInfo& closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
 {
     const WorldSettings& world_settings = render_data.world_settings;
 
@@ -165,7 +165,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map(const HIPRTRen
         // Not using the envmap
         return ColorRGB32F(0.0f);
 
-    if (material.is_emissive())
+    if (ray_payload.material.is_emissive())
         // We're not sampling direct lighting if we're already on an
         // emissive surface
         return ColorRGB32F(0.0f);
@@ -175,7 +175,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map(const HIPRTRen
         return ColorRGB32F(0.0f);
 
 #if EnvmapSamplingStrategy == ESS_BINARY_SEARCH
-    return sample_environment_map_cdf(render_data, material, closest_hit_info, view_direction, random_number_generator);
+    return sample_environment_map_cdf(render_data, ray_payload.material, ray_payload.volume_state, closest_hit_info, view_direction, random_number_generator);
 #elif EnvmapSamplingStrategy == ESS_NO_SAMPLING
     return ColorRGB32F(0.0f);
 #endif

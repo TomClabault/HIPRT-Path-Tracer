@@ -57,6 +57,8 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 
 void CPURenderer::set_envmap(Image32Bit& envmap_image)
 {
+    ThreadManager::join_threads(ThreadManager::ENVMAP_LOAD_THREAD_KEY);
+
     if (envmap_image.width == 0 || envmap_image.height == 0)
     {
         m_render_data.world_settings.ambient_light_type = AmbientLightType::UNIFORM;
@@ -64,8 +66,6 @@ void CPURenderer::set_envmap(Image32Bit& envmap_image)
 
         return;
     }
-
-    ThreadManager::join_threads(ThreadManager::ENVMAP_LOAD_THREAD_KEY);
 
     m_render_data.world_settings.envmap = &envmap_image;
     m_render_data.world_settings.envmap_width = envmap_image.width;
@@ -93,10 +93,10 @@ Image32Bit& CPURenderer::get_framebuffer()
     return m_framebuffer;
 }
 
-#define DEBUG_PIXEL 0
+#define DEBUG_PIXEL 1
 #define DEBUG_EXACT_COORDINATE 0
-#define DEBUG_PIXEL_X 830
-#define DEBUG_PIXEL_Y 616
+#define DEBUG_PIXEL_X 763
+#define DEBUG_PIXEL_Y 211
 
 void CPURenderer::render()  
 {
