@@ -18,11 +18,13 @@
 
 // TODO bugs:
 // - memory leak with OpenGL?
+// - playing with the pixel noise threshold eventually leaves it at 4000/2000000 for example, the counter doesn't reset properly
 
 // TODO Code Organization:
 // - Use HIPRT with CMake as a subdirectory (available soon)
 
 // TODO Features:
+// - limit GPU usage for heat control
 // - render dirty duration for low resolution render when moving the camera with the keyboard
 // - toggle render low resolution when moving camera, the user may not want that always on
 // - clay render
