@@ -10,7 +10,7 @@ const std::string GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY = "InteriorS
 const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY = "DirectLightSamplingStrategy";
 const std::string GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY = "EnvmapSamplingStrategy";
 const std::string GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION = "RISUseVisiblityTargetFunction";
-const std::string GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION = "GGXSampleFunction";
+const std::string GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION = "GGXAnisotropicSampleFunction";
 
 GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 {

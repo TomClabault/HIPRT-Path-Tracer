@@ -137,7 +137,30 @@
  *		
  */
 #define GGXAnisotropicSampleFunction GGX_VNDF_SAMPLING
+//#define GGXAnisotropicSampleFunction GGX_VNDF_SPHERICAL_CAPS
 
+#else // #ifndef __KERNELCC__
+
+#ifndef InteriorStackStrategy
+#error "InteriorStackStrategy kernel option not defined"
 #endif
+
+#ifndef DirectLightSamplingStrategy
+#error "DirectLightSamplingStrategy kernel option not defined"
+#endif
+
+#ifndef EnvmapSamplingStrategy
+#error "EnvmapSamplingStrategy kernel option not defined"
+#endif
+
+#ifndef RISUseVisiblityTargetFunction
+#error "RISUseVisiblityTargetFunction kernel option not defined"
+#endif
+
+#ifndef GGXAnisotropicSampleFunction
+#error "GGXAnisotropicSampleFunction kernel option not defined"
+#endif
+
+#endif // #ifndef __KERNELCC__
 
 #endif
