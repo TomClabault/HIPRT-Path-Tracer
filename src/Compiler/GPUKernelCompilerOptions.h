@@ -17,6 +17,7 @@ public:
 	static const std::string DIRECT_LIGHT_SAMPLING_STRATEGY;
 	static const std::string ENVMAP_SAMPLING_STRATEGY;
 	static const std::string RIS_USE_VISIBILITY_TARGET_FUNCTION;
+	static const std::string GGX_SAMPLE_FUNCTION;
 
 	GPUKernelCompilerOptions();
 

@@ -111,7 +111,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_metallic_sample(const RendererMater
 	// The view direction can sometimes be below the shading normal hemisphere
 	// because of normal mapping
     int below_normal = (local_view_direction.z < 0) ? -1 : 1;
-	float3 microfacet_normal = GGXVNDF_sample(local_view_direction * below_normal, material.alpha_x, material.alpha_y, random_number_generator);
+	float3 microfacet_normal = GGX_sample(local_view_direction * below_normal, material.alpha_x, material.alpha_y, random_number_generator);
 	float3 sampled_direction = reflect_ray(local_view_direction, microfacet_normal * below_normal);
 
     // Should already be normalized but float imprecisions...
@@ -302,7 +302,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_glass_sample(const RendererMaterial
     if (hippt::abs(relative_eta - 1.0f) < 1.0e-5f)
         relative_eta = 1.0f + 1.0e-5f;
 
-    float3 microfacet_normal = GGXVNDF_sample(local_view_direction, material.alpha_x, material.alpha_y, random_number_generator);
+    float3 microfacet_normal = GGX_sample(local_view_direction, material.alpha_x, material.alpha_y, random_number_generator);
 
     float F = fresnel_dielectric(hippt::dot(local_view_direction, microfacet_normal), relative_eta);
     float rand_1 = random_number_generator();

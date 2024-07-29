@@ -8,6 +8,7 @@
 
 #include "Device/includes/ONB.h"
 #include "HostDeviceCommon/Color.h"
+#include "HostDeviceCommon/KernelOptions.h"
 #include "HostDeviceCommon/Material.h"
 #include "HostDeviceCommon/Xorshift.h"
 
@@ -188,7 +189,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float G1(float alpha_x, float alpha_y, const floa
     return 1.0f / (1.0f + lambda);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGXVNDF_sample(const float3& local_view_direction, float alpha_x, float alpha_y, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGX_VNDF_sample(const float3 local_view_direction, float alpha_x, float alpha_y, Xorshift32Generator& random_number_generator)
 {
     float r1 = random_number_generator();
     float r2 = random_number_generator();
@@ -196,7 +197,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGXVNDF_sample(const float3& local_view_di
     float3 Vh = hippt::normalize(float3{ alpha_x * local_view_direction.x, alpha_y * local_view_direction.y, local_view_direction.z });
 
     float lensq = Vh.x * Vh.x + Vh.y * Vh.y;
-    float3 T1 = lensq > 0.0f ? float3{-Vh.y, Vh.x, 0} / sqrt(lensq) : float3{ 1.0f, 0.0f, 0.0f };
+    float3 T1 = lensq > 0.0f ? float3{ -Vh.y, Vh.x, 0 } / sqrt(lensq) : float3{ 1.0f, 0.0f, 0.0f };
     float3 T2 = hippt::cross(Vh, T1);
 
     float r = sqrt(r1);
@@ -208,7 +209,28 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGXVNDF_sample(const float3& local_view_di
 
     float3 Nh = t1 * T1 + t2 * T2 + sqrt(hippt::max(0.0f, 1.0f - t1 * t1 - t2 * t2)) * Vh;
 
-    return hippt::normalize(float3{alpha_x * Nh.x, alpha_y * Nh.y, hippt::max(0.0f, Nh.z)});
+    return hippt::normalize(float3{ alpha_x * Nh.x, alpha_y * Nh.y, hippt::max(0.0f, Nh.z) });
+}
+
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGX_sample(const float3& local_view_direction, float alpha_x, float alpha_y, Xorshift32Generator& random_number_generator)
+{
+#if GGXIsotropicSampleFunction == 
+    if (alpha_x == alpha_y)
+    {
+        // Fast path for the isotropic case
+        // 
+        // TODO also check that we don't a single thread diverging otherwise this is
+        // going to destroy the benefits of the fast path. Fallback all to slower
+        // general anisotropic sampling in that case
+        std::cout << "here";
+    }
+#if GGXAnisotropicSampleFunction == GGX_NO_VNDF
+#elif GGXAnisotropicSampleFunction == GGX_VNDF_SAMPLING
+    return GGX_VNDF_sample(local_view_direction, alpha_x, alpha_y, random_number_generator);
+#elif GGXAnisotropicSampleFunction == GGX_VNDF_SPHERICAL_CAPS
+#elif GGXAnisotropicSampleFunction == GGX_VNDF_BOUNDED
+#else
+#endif
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float GTR1(float alpha_g, float local_halfway_z)

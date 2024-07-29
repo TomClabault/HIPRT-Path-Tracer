@@ -47,6 +47,11 @@
 #define RIS_USE_VISIBILITY_FALSE 0
 #define RIS_USE_VISIBILITY_TRUE 1
 
+#define GGX_NO_VNDF 0
+#define GGX_VNDF_SAMPLING 1
+#define GGX_VNDF_SPHERICAL_CAPS 2
+#define GGX_VNDF_BOUNDED 3
+
 /**
  * Options are defined in a #ifndef __KERNELCC__ block because:
  *	- If they were not, the would be defined on the GPU side. However, the -D <macro>=<value> compiler option
@@ -110,6 +115,28 @@
  *		Don't use a visibility term
  */
 #define RISUseVisiblityTargetFunction RIS_USE_VISIBILITY_FALSE
+
+/**
+ * What sampling strategy to use for thd GGX NDF
+ * 
+ *  - GGX_NO_VNDF
+ *		Not sampling the visible distribution of normals.
+ *		Just classic GGX sampling
+ * 
+ *  - GGX_VNDF_SAMPLING
+ *		Sample the distribution of visible normals as proposed
+ *		in [Sampling the GGX Distribution of Visible Normals, Heitz, 2018]
+ * 
+ *  - GGX_VNDF_SPHERICAL_CAPS
+ *		Sample the distribution of visible normals using spherical
+ *		caps as proposed in [Sampling Visible GGX Normals with Spherical Caps, Dupuy & Benyoub, 2023]
+ * 
+ *  - GGX_VNDF_BOUNDED
+ *		Sample the distribution of visible normals with a bounded VNDF
+ *		sampling range as proposed in [Bounded VNDF Sampling for Smith–GGX Reflections, Eto & Tokuyoshi, 2023]
+ *		
+ */
+#define GGXAnisotropicSampleFunction GGX_VNDF_SAMPLING
 
 #endif
 

@@ -10,6 +10,7 @@ const std::string GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY = "InteriorS
 const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY = "DirectLightSamplingStrategy";
 const std::string GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY = "EnvmapSamplingStrategy";
 const std::string GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION = "RISUseVisiblityTargetFunction";
+const std::string GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION = "GGXSampleFunction";
 
 GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 {
@@ -19,6 +20,7 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	set_macro(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, DirectLightSamplingStrategy);
 	set_macro(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY, EnvmapSamplingStrategy);
 	set_macro(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, RISUseVisiblityTargetFunction);
+	set_macro(GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION, GGXAnisotropicSampleFunction);
 }
 
 std::vector<std::string> GPUKernelCompilerOptions::get_options_as_std_vector_string()
