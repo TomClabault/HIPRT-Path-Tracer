@@ -31,12 +31,11 @@ struct HIPRTOrochiCtx
 		OROCHI_CHECK_ERROR(oroDeviceGet(&orochi_device, device_index));
 		OROCHI_CHECK_ERROR(oroCtxCreate(&orochi_ctx, 0, orochi_device));
 
-		oroDeviceProp props;
-		OROCHI_CHECK_ERROR(oroGetDeviceProperties(&props, orochi_device));
+		OROCHI_CHECK_ERROR(oroGetDeviceProperties(&device_properties, orochi_device));
 
 		std::cout << "hiprt ver." << HIPRT_VERSION_STR << std::endl;
-		std::cout << "Executing on '" << props.name << "'" << std::endl;
-		if (std::string(props.name).find("NVIDIA") != std::string::npos)
+		std::cout << "Executing on '" << device_properties.name << "'" << std::endl;
+		if (std::string(device_properties.name).find("NVIDIA") != std::string::npos)
 			hiprt_ctx_input.deviceType = hiprtDeviceNVIDIA;
 		else
 			hiprt_ctx_input.deviceType = hiprtDeviceAMD;
@@ -52,6 +51,7 @@ struct HIPRTOrochiCtx
 
 	oroCtx orochi_ctx = nullptr;
 	oroDevice orochi_device;
+	oroDeviceProp device_properties;
 
 	hiprtContext hiprt_ctx = nullptr;
 };

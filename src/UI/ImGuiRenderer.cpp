@@ -781,7 +781,7 @@ void ImGuiRenderer::draw_performance_metrics_panel()
 		"Sample time",
 		scale_min, scale_max,
 		/* size */ ImVec2(0, 80));
-	static bool auto_rescale = false;
+	static bool auto_rescale = true;
 	ImGui::SameLine();
 	if (ImGui::Button("Rescale") || auto_rescale)
 	{

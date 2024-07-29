@@ -21,7 +21,9 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
 	m_normals_AOV_buffer = std::make_shared<OpenGLInteropBuffer<float3>>();
 	m_albedo_AOV_buffer = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
 	m_pixels_sample_count_buffer = std::make_shared<OpenGLInteropBuffer<int>>();
+	
 	m_hiprt_orochi_ctx = hiprt_oro_ctx;	
+	m_device_properties = m_hiprt_orochi_ctx->device_properties;
 
 	// Adding hardware acceleration by default if supported
 	if (device_supports_hardware_acceleration() == HardwareAccelerationSupport::SUPPORTED)
