@@ -189,17 +189,23 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float G1(float alpha_x, float alpha_y, const floa
     return 1.0f / (1.0f + lambda);
 }
 
+/**
+ * Reference: [Sampling the GGX Distribution of Visible Normals, Unity: Heitz ; 2018]
+ */
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGX_VNDF_sample(const float3 local_view_direction, float alpha_x, float alpha_y, Xorshift32Generator& random_number_generator)
 {
     float r1 = random_number_generator();
     float r2 = random_number_generator();
 
+    // Stretching the ellipsoid to the hemisphere configuration
     float3 Vh = hippt::normalize(float3{ alpha_x * local_view_direction.x, alpha_y * local_view_direction.y, local_view_direction.z });
 
+    // Orthonormal basis construction
     float lensq = Vh.x * Vh.x + Vh.y * Vh.y;
     float3 T1 = lensq > 0.0f ? float3{ -Vh.y, Vh.x, 0 } / sqrt(lensq) : float3{ 1.0f, 0.0f, 0.0f };
     float3 T2 = hippt::cross(Vh, T1);
 
+    // Parametrization of the projected area of the hemisphere
     float r = sqrt(r1);
     float phi = 2.0f * M_PI * r2;
     float t1 = r * cos(phi);
@@ -207,27 +213,46 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGX_VNDF_sample(const float3 local_view_di
     float s = 0.5f * (1.0f + Vh.z);
     t2 = (1.0f - s) * sqrt(1.0f - t1 * t1) + s * t2;
 
+    // Sampling the hemisphere
     float3 Nh = t1 * T1 + t2 * T2 + sqrt(hippt::max(0.0f, 1.0f - t1 * t1 - t2 * t2)) * Vh;
 
+    // Un-stretching back to our ellipsoid
     return hippt::normalize(float3{ alpha_x * Nh.x, alpha_y * Nh.y, hippt::max(0.0f, Nh.z) });
+}
+
+/**
+ * [Sampling Visible GGX Normals with Spherical Caps, Intel: Dupuy, Benyoub ; 2023]
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGX_VNDF_spherical_caps_sample(const float3 local_view_direction, float alpha_x, float alpha_y, Xorshift32Generator& random_number_generator)
+{
+    float r1 = random_number_generator();
+    float r2 = random_number_generator();
+
+    // Stretching the ellipsoid to the hemisphere configuration
+    float3 Vh = hippt::normalize(make_float3(alpha_x * local_view_direction.x, alpha_y * local_view_direction.y, local_view_direction.z));
+
+    // Sample a spherical cap in (-wi.z, 1]
+    float phi = 2.0f * M_PI * r1;
+    float z = (1.0f - r2) * (1.0f + Vh.z) - Vh.z;
+    float sinTheta = sqrtf(hippt::clamp(0.0f, 1.0f, 1.0f - z * z));
+    float x = sinTheta * cos(phi);
+    float y = sinTheta * sin(phi);
+    float3 c = make_float3(x, y, z);
+
+    // Compute microfacet normal
+    float3 Nh = c + Vh;
+
+    // Un-stretching back to our ellipsoid
+    return hippt::normalize(make_float3(alpha_x * Nh.x, alpha_y * Nh.y, Nh.z));
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGX_sample(const float3& local_view_direction, float alpha_x, float alpha_y, Xorshift32Generator& random_number_generator)
 {
-//#if GGXIsotropicSampleFunction == 
-//    if (alpha_x == alpha_y)
-//    {
-//        // Fast path for the isotropic case
-//        // 
-//        // TODO also check that we don't a single thread diverging otherwise this is
-//        // going to destroy the benefits of the fast path. Fallback all to slower
-//        // general anisotropic sampling in that case
-//        std::cout << "here";
-//    }
 #if GGXAnisotropicSampleFunction == GGX_NO_VNDF
 #elif GGXAnisotropicSampleFunction == GGX_VNDF_SAMPLING
     return GGX_VNDF_sample(local_view_direction, alpha_x, alpha_y, random_number_generator);
 #elif GGXAnisotropicSampleFunction == GGX_VNDF_SPHERICAL_CAPS
+    return GGX_VNDF_spherical_caps_sample(local_view_direction, alpha_x, alpha_y, random_number_generator);
 #elif GGXAnisotropicSampleFunction == GGX_VNDF_BOUNDED
 #else
 #endif

@@ -93,10 +93,10 @@ Image32Bit& CPURenderer::get_framebuffer()
     return m_framebuffer;
 }
 
-#define DEBUG_PIXEL 1
+#define DEBUG_PIXEL 0
 #define DEBUG_EXACT_COORDINATE 0
-#define DEBUG_PIXEL_X 763
-#define DEBUG_PIXEL_Y 211
+#define DEBUG_PIXEL_X 435
+#define DEBUG_PIXEL_Y 158
 
 void CPURenderer::render()  
 {
