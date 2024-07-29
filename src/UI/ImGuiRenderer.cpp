@@ -189,6 +189,7 @@ void ImGuiRenderer::draw_render_settings_panel()
 		m_render_window->set_render_dirty(true);
 	}
 
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	if (ImGui::CollapsingHeader("Render stopping condition"))
 	{
 		ImGui::TreePush("Stopping condition tree");
@@ -201,8 +202,6 @@ void ImGuiRenderer::draw_render_settings_panel()
 		ImGui::Separator();
 
 		static bool use_adaptive_sampling_threshold = false;
-		unsigned int converged_count;
-		unsigned int total_pixel_count;
 		ImGui::BeginDisabled(use_adaptive_sampling_threshold);
 		if (ImGui::InputFloat("Pixel noise threshold", &render_settings.stop_pixel_noise_threshold))
 			render_settings.stop_pixel_noise_threshold = std::max(0.0f, render_settings.stop_pixel_noise_threshold);
@@ -241,12 +240,9 @@ void ImGuiRenderer::draw_render_settings_panel()
 
 				ImGuiRenderer::WrappingTooltip("The proportion of pixels that need to have converge to the noise threshold for the rendering to stop. In percentage [0, 100]." + additional_info);
 			}
-
-			converged_count = m_renderer->get_status_buffer_values().pixel_converged_count * update_converge_text;
-			total_pixel_count = m_renderer->m_render_width * m_renderer->m_render_height;
-			ImGui::Text("Pixels converged: %d / %d - %.4f%%", converged_count, total_pixel_count, static_cast<float>(converged_count) / total_pixel_count * 100.0f);
 		}
 		ImGui::EndDisabled();
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 		// Tree stop noise threshold
 		ImGui::TreePop();
@@ -274,6 +270,8 @@ void ImGuiRenderer::draw_render_settings_panel()
 			render_settings.indirect_contribution_clamp = std::max(0.0f, render_settings.indirect_contribution_clamp);
 			m_render_window->set_render_dirty(true);
 		}
+		
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 		// Light clamping tree
 		ImGui::TreePop();
