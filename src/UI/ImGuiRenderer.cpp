@@ -757,6 +757,7 @@ void ImGuiRenderer::draw_performance_metrics_panel()
 	int rolling_window_size = m_render_window_perf_metrics->get_window_size();
 	rolling_window_size_changed |= ImGui::RadioButton("25", &rolling_window_size, 25); ImGui::SameLine();
 	rolling_window_size_changed |= ImGui::RadioButton("100", &rolling_window_size, 100); ImGui::SameLine();
+	rolling_window_size_changed |= ImGui::RadioButton("250", &rolling_window_size, 250); ImGui::SameLine();
 	rolling_window_size_changed |= ImGui::RadioButton("1000", &rolling_window_size, 1000);
 
 	if (rolling_window_size_changed)

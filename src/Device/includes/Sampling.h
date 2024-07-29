@@ -214,16 +214,16 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGX_VNDF_sample(const float3 local_view_di
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGX_sample(const float3& local_view_direction, float alpha_x, float alpha_y, Xorshift32Generator& random_number_generator)
 {
-#if GGXIsotropicSampleFunction == 
-    if (alpha_x == alpha_y)
-    {
-        // Fast path for the isotropic case
-        // 
-        // TODO also check that we don't a single thread diverging otherwise this is
-        // going to destroy the benefits of the fast path. Fallback all to slower
-        // general anisotropic sampling in that case
-        std::cout << "here";
-    }
+//#if GGXIsotropicSampleFunction == 
+//    if (alpha_x == alpha_y)
+//    {
+//        // Fast path for the isotropic case
+//        // 
+//        // TODO also check that we don't a single thread diverging otherwise this is
+//        // going to destroy the benefits of the fast path. Fallback all to slower
+//        // general anisotropic sampling in that case
+//        std::cout << "here";
+//    }
 #if GGXAnisotropicSampleFunction == GGX_NO_VNDF
 #elif GGXAnisotropicSampleFunction == GGX_VNDF_SAMPLING
     return GGX_VNDF_sample(local_view_direction, alpha_x, alpha_y, random_number_generator);

@@ -59,9 +59,6 @@ void HIPKernel::compile(hiprtContext& hiprt_ctx)
 
 	cache_key = HIPKernelCompiler::get_additional_cache_key(*this);
 	m_kernel_function = HIPKernelCompiler::compile_kernel(*this, hiprt_ctx, true, cache_key);
-
-	//std::cout << "Registers: " << get_kernel_attribute(m_device_properties, ORO_FUNC_ATTRIBUTE_NUM_REGS) << std::endl;
-	//std::cout << "Shared memory: " << get_kernel_attribute(m_device_properties, ORO_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES) << std::endl;
 }
 
 int HIPKernel::get_kernel_attribute(oroDeviceProp device_properties, oroFunction_attribute attribute)
