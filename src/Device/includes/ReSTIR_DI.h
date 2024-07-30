@@ -12,19 +12,18 @@
 #include "HostDeviceCommon/HitInfo.h"
 #include "HostDeviceCommon/RenderData.h"
 
+#define DEBUG_RESTIR_DI_DISPLAY_DEBUG_VALUE 0
+
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_light_ReSTIR_DI(const HIPRTRenderData& render_data, const RendererMaterial& material, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, int2 pixel_coords, int2 resolution)
 {
 	int pixel_index = pixel_coords.x + pixel_coords.y * resolution.x;
 	Reservoir reservoir = render_data.aux_buffers.spatial_reservoirs[pixel_index];
 
-	// restir_di_temporal_reuse();
-	// Storing the reservoir for the next spatial reuse pass
-	/*int pixel_index = pixel_coords.x + pixel_coords.y * resolution.x;
-	render_data.aux_buffers.initial_reservoirs[pixel_index] = reservoir;*/
-
-	//return ColorRGB(render_data.aux_buffers.spatial_reservoirs[pixel_index].debug_value);
-	//return ColorRGB(render_data.aux_buffers.initial_reservoirs[pixel_index].debug_value);
+#if DEBUG_RESTIR_DI_DISPLAY_DEBUG_VALUE
+	return ColorRGB(reservoir.debug_value);
+#else
 	return evaluate_reservoir_sample(render_data, material, closest_hit_info.inter_point, closest_hit_info.shading_normal, view_direction, reservoir);
+#endif
 }
 
 #endif

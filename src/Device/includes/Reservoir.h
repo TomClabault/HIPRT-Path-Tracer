@@ -41,6 +41,8 @@ struct Reservoir
         {
             sample = other_reservoir.sample;
             sample.target_function = target_function;
+
+            debug_value = other_reservoir.UCW;
         }
     }
 
