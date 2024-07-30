@@ -15,31 +15,47 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 
 # Features:
 
+#### BSDFs
 - Disney BSDF (Diffuse, fake subsurface, metallic, roughness, anisotropy + anisotropy rotation, clearcoat, sheen, glass, volumetric Beer-Lambert absorption, ...) [\[Burley, 2015\]](https://blog.selfshadow.com/publications/s2015-shading-course/#course_content)
-	- For experimentation purposes, the BRDF diffuse lobe can be switched for either:
-		- The original "Disney diffuse" presented in [\[Burley, 2012\]](https://disneyanimation.com/publications/physically-based-shading-at-disney/)
-		- A lambertian distribution
-		- The Oren Nayar microfacet diffuse model.
+- Cook Torrance BRDF (metallic & roughness)
+- Oren Nayar diffuse model
+- Specular dielectrics
+
+#### Sampling
+- Light sampling (emissive geometry):
+	- Uniform light sampling for direct lighting
+	- Resampled Importance Sampling (RIS) [\[Talbot, 2005\]](https://www.researchgate.net/publication/220852928_Importance_Resampling_for_Global_Illumination)+ Weighted Reservoir Sampling (WRS) for many light sampling  + [\[M. T. Chao, 1982\]](https://www.jstor.org/stable/2336002)
+	- HDR Environment map + Multiple Importance Sampling using
+		- CDF-inversion binary search
+	
+- BSDF sampling:
+	- Importance sampling
+	- Multiple importance sampling
+	- Smith GGX Sampling:
+		- Visible Normal Distribution Function (VNDF) [\[Heitz, 2018\]](https://jcgt.org/published/0007/04/01/)
+		- Spherical caps VNDF Sampling [\[Dupuy, Benyoub, 2023\]](https://arxiv.org/abs/2306.05044)
+
+#### Other rendering features:
 - Texture support for all the parameters of the BSDF
-- BSDF Multiple Importance Sampling for Direct lighting
-- Resampled Importance Sampling (RIS) + Weighted Reservoir Sampling (WRS) for many light sampling [\[Talbot, 2005\]](https://www.researchgate.net/publication/220852928_Importance_Resampling_for_Global_Illumination) + [\[M. T. Chao, 1982\]](https://www.jstor.org/stable/2336002)
-- HDR Environment map + Multiple Importance Sampling using
-	- CDF-inversion binary search
-- Emissive geometry light sampling
+- Normal mapping
 - Nested dielectrics support 
 	- Automatic handling as presented in [\[Ray Tracing Gems, 2019\]](https://www.realtimerendering.com/raytracinggems/rtg/index.html)
 	- Handling with priorities as proposed in [\[Simple Nested Dielectrics in Ray Traced Images, Schmidt, 2002\]](https://www.researchgate.net/publication/247523037_Simple_Nested_Dielectrics_in_Ray_Traced_Images)
 - Per-pixel adaptive sampling
-- Normal mapping
-- Interactive ImGui interface + interactive first-person camera
+- Intel [Open Image Denoise](https://github.com/RenderKit/oidn) + Normals & Albedo AOV support
+
+#### UI
+- Interactive ImGui interface
 	- Asynchronous interface to guarantee smooth UI interactions even with heavy path tracing kernels
-- Different frame-buffer visualisation (visualize the adaptive sampling map, the denoiser normals / albedo, ...)
+- Interactive first-person camera
+- Different frame-buffer visualization (visualize the adaptive sampling map, the denoiser normals / albedo, ...)
+
+#### Other features
 - Use of the [\[ASSIMP\]](https://github.com/assimp/assimp) library to support [many](https://github.com/assimp/assimp/blob/master/doc/Fileformats.md) scene file formats.
 - Optimized application startup time with:
 	- Multithreaded texture loading
 	- Asynchronous path tracing kernel compilation
-	- Shader cache to avoid recompiling kernels unecessarily
-- Intel [Open Image Denoise](https://github.com/RenderKit/oidn) + Normals & Albedo AOV support
+	- Shader cache to avoid recompiling kernels unnecessarily
 
 ### Some of the features are presented in more details in my [blog posts](https://tomclabault.github.io/blog/)!
 
