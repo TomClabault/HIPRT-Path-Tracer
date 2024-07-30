@@ -61,7 +61,7 @@ struct HIPRTRenderSettings
 	// chance find a path to a potentially 
 	int adaptive_sampling_min_samples = 96;
 	// Adaptive sampling noise threshold
-	float adaptive_sampling_noise_threshold = 0.3f;
+	float adaptive_sampling_noise_threshold = 0.4f;
 
 	// A percentage in [0, 100] that dictates the proportion of pixels that must
 	// have reached the given noise threshold (stop_pixel_noise_threshold

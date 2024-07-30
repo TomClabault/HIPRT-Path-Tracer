@@ -53,8 +53,10 @@ DisplayViewSystem::DisplayViewSystem(std::shared_ptr<GPURenderer> renderer, Rend
 	m_display_views[DisplayViewType::DISPLAY_DENOISED_ALBEDO] = albedo_denoised_display_view;
 	m_display_views[DisplayViewType::ADAPTIVE_SAMPLING_MAP] = adaptive_sampling_display_view;
 
-	// Default display view by default
-	queue_display_view_change(DisplayViewType::DEFAULT);
+	// Denoiser blend by default because we want 
+	DisplayViewType default_display_view_type;
+	default_display_view_type = m_render_window->get_application_settings()->enable_denoising ? DisplayViewType::DENOISED_BLEND : DisplayViewType::DEFAULT;
+	queue_display_view_change(default_display_view_type);
 }
 
 DisplayViewSystem::~DisplayViewSystem()

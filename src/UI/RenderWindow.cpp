@@ -740,7 +740,7 @@ bool RenderWindow::denoise()
 		//		but we haven't even reached that number yet. We're displaying the noisy framebuffer in the meantime
 		//	- We're moving the camera
 		display_noisy |= !rendering_done && denoise_when_done;
-		display_noisy |= !sample_skip_threshold_reached && m_application_settings->last_denoised_sample_count == -1;
+		display_noisy |= !sample_skip_threshold_reached && m_application_settings->last_denoised_sample_count == -1 && !rendering_done;
 		display_noisy |= is_interacting();
 
 		if (need_denoising)
