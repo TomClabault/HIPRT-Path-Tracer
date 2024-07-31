@@ -145,9 +145,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 
 		float target_function_at_center = ReSTIR_DI_evaluate_target_function(render_data, neighbor_reservoir.sample, center_pixel_material, center_pixel_view_direction, center_pixel_shading_point, center_pixel_shading_normal);
 
-		if (target_function_at_center > 0.0f) 
-			// Combining as in Alg. 6 of the paper
-			new_reservoir.combine_with(neighbor_reservoir, neighbor_reservoir.M, target_function_at_center, random_number_generator);
+		// Combining as in Alg. 6 of the paper
+		new_reservoir.combine_with(neighbor_reservoir, neighbor_reservoir.M, target_function_at_center, random_number_generator);
 	}
 
 	// Unbiased normalization term as in ReSTIR 2019 Alg. 6
@@ -183,7 +182,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 
 	// Compute the unbiased contribution weight using 1/Z normalization weight as in ReSTIR 2019 Alg. 6
 	new_reservoir.end_Z(Z);
-
+	new_reservoir.debug_value = Z / 2.0f;
 	render_data.aux_buffers.spatial_reservoirs[pixel_index] = new_reservoir;
 }
 
