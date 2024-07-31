@@ -505,10 +505,28 @@ float RenderWindow::compute_samples_per_second()
 
 	// Frame time divided by the number of samples per frame
 	// 1 sample per frame assumed if rendering at low resolution
-	if (m_renderer->get_last_frame_time() > 0)
-		return 1000.0f / (m_renderer->get_last_frame_time() / samples_per_frame);
+	if (m_application_state->last_GPU_submit_time > 0)
+	{
+		uint64_t current_time = glfwGetTimerValue();
+		float difference_ms = (current_time - m_application_state->last_GPU_submit_time) / static_cast<float>(glfwGetTimerFrequency()) * 1000.0f;
+
+		return 1000.0f / (difference_ms / samples_per_frame);
+	}
 	else
 		return 0.0f;
+}
+
+float RenderWindow::compute_GPU_stall_duration()
+{
+	if (m_application_settings->GPU_stall_percentage > 0.0f)
+	{
+		float last_frame_time = m_renderer->get_last_frame_time();
+		float stall_duration = last_frame_time * (1.0f / (1.0f - m_application_settings->GPU_stall_percentage / 100.0f)) - last_frame_time;
+
+		return stall_duration;
+	}
+
+	return 0.0f;
 }
 
 std::shared_ptr<OpenImageDenoiser> RenderWindow::get_denoiser()
@@ -567,10 +585,7 @@ void RenderWindow::run()
 
 		glfwSwapBuffers(m_glfw_window);
 
-		uint64_t end_frame_time = glfwGetTimerValue();
-		float delta_time_ms = (end_frame_time - frame_start_time) / static_cast<float>(time_frequency) * 1000.0f;
-		std::cout << "Delta: " << delta_time_ms << std::endl;
-		// Saving the delta 
+		float delta_time_ms = (glfwGetTimerValue() - frame_start_time) / static_cast<float>(time_frequency) * 1000.0f;
 		m_application_state->last_delta_time_ms = delta_time_ms;
 
 		if (!is_rendering_done())
@@ -596,18 +611,15 @@ void RenderWindow::render()
 		// ------
 		m_renderer->copy_status_buffers();
 
-		if (m_application_state->GPU_stall_duration_left > 0)
+		if (m_application_state->GPU_stall_duration_left > 0 && !is_rendering_done())
 		{
-			// If we're stalling the GPU
+			// If we're stalling the GPU.
+			// We're whether or not the rendering is done because we don't need to
+			// stall the GPU if the rendering is done
 
 			if (m_application_state->GPU_stall_duration_left > 0.0f)
 				// Updating the duration left to stall the GPU.
 				m_application_state->GPU_stall_duration_left -= m_application_state->last_delta_time_ms;
-
-			// Also stalling the whole application otherwise we would be running the main loop at full speed which
-			// means more CPU & GPU usage (the GPU still has to display ImGui and the last frame
-			// rendered so it's not actually doing nothing)
-			std::this_thread::sleep_for(std::chrono::milliseconds(3));
 		}
 		else if (!is_rendering_done() || m_application_state->render_dirty)
 		{
@@ -650,24 +662,10 @@ void RenderWindow::render()
 			if (m_application_state->render_dirty)
 				reset_render();
 			m_application_state->interacting_last_frame = is_interacting();
-
-			if (m_application_settings->GPU_stall_percentage > 0.0f)
-			{
-				// Computing the stalling duration
-				// TotalTime - Ftime = T * TotalTime
-				// TotalTime = T * TotalTime + Ftime
-				// Ftime: 100ms. Stall = 50% --> 100ms
-				// Ftime: 100ms: Stall = 25% --> (100 + X) = 
-				// 100 + X = 1 / (1 - Percentage) * 100
-				//
-				// 100 + X = 1.33 * 100
-
-				float last_frame_time = m_renderer->get_last_frame_time();
-				float stall_duration = last_frame_time * (1.0f / (1.0f - m_application_settings->GPU_stall_percentage / 100.0f)) - last_frame_time;
-				m_application_state->GPU_stall_duration_left = stall_duration;
-			}
+			m_application_state->GPU_stall_duration_left = compute_GPU_stall_duration();
 			
 			// Otherwise, if we're not stalling, queuing a new frame for the GPU to render
+			m_application_state->last_GPU_submit_time = glfwGetTimerValue();
 			m_renderer->update();
 			m_renderer->render();
 

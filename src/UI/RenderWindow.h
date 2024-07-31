@@ -79,7 +79,15 @@ public:
 
 	float get_current_render_time();
 	float get_samples_per_second();
+	/**
+	 * Computes the number of samples per second as seen from the render window. "As seen by the render window"
+	 * means that the GPU stall percentage is taken into account for example
+	 */
 	float compute_samples_per_second();
+	/**
+	 * Returns how long the GPU has to stall for before next frame according to the application settings
+	 */
+	float compute_GPU_stall_duration();
 
 	void run();
 	void render();
