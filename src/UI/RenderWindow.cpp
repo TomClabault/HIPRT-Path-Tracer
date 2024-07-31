@@ -193,6 +193,7 @@ RenderWindow::RenderWindow(int width, int height, std::shared_ptr<HIPRTOrochiCtx
 	init_imgui();
 
 	m_application_settings = std::make_shared<ApplicationSettings>();
+	m_application_state = std::make_shared<ApplicationState>();
 
 	m_renderer = std::make_shared<GPURenderer>(hiprt_oro_ctx);
 	m_renderer->resize(width, height);
@@ -216,7 +217,7 @@ RenderWindow::RenderWindow(int width, int height, std::shared_ptr<HIPRTOrochiCtx
 	m_imgui_renderer->set_render_window(this);
 
 	// Making the render dirty to force a cleanup at startup
-	m_render_dirty = true;
+	m_application_state->render_dirty = true;
 }
 
 RenderWindow::~RenderWindow()
@@ -336,7 +337,7 @@ void RenderWindow::resize_frame(int pixels_width, int pixels_height)
 	m_denoiser->finalize();
 	m_display_view_system->resize(new_render_width, new_render_height);
 
-	m_render_dirty = true;
+	m_application_state->render_dirty = true;
 }
 
 void RenderWindow::change_resolution_scaling(float new_scaling)
@@ -389,8 +390,8 @@ void RenderWindow::update_renderer_view_translation(float translation_x, float t
 {
 	if (scale_translation)
 	{
-		translation_x *= m_last_delta_time_ms / 1000.0f;
-		translation_y *= m_last_delta_time_ms / 1000.0f;
+		translation_x *= m_application_state->last_delta_time_ms / 1000.0f;
+		translation_y *= m_application_state->last_delta_time_ms / 1000.0f;
 
 		translation_x *= m_renderer->get_camera().camera_movement_speed;
 		translation_y *= m_renderer->get_camera().camera_movement_speed;
@@ -399,7 +400,7 @@ void RenderWindow::update_renderer_view_translation(float translation_x, float t
 	if (translation_x == 0.0f && translation_y == 0.0f)
 		return;
 
-	m_render_dirty = true;
+	m_application_state->render_dirty = true;
 
 	glm::vec3 translation = glm::vec3(translation_x, translation_y, 0.0f);
 	m_renderer->translate_camera_view(translation);
@@ -407,7 +408,7 @@ void RenderWindow::update_renderer_view_translation(float translation_x, float t
 
 void RenderWindow::update_renderer_view_rotation(float offset_x, float offset_y)
 {
-	m_render_dirty = true;
+	m_application_state->render_dirty = true;
 
 	float rotation_x, rotation_y;
 
@@ -420,13 +421,13 @@ void RenderWindow::update_renderer_view_rotation(float offset_x, float offset_y)
 void RenderWindow::update_renderer_view_zoom(float offset, bool scale_delta_time)
 {
 	if (scale_delta_time)
-		offset *= m_last_delta_time_ms / 1000.0f;
+		offset *= m_application_state->last_delta_time_ms / 1000.0f;
 	offset *= m_renderer->get_camera().camera_movement_speed;
 
 	if (offset == 0.0f)
 		return;
 
-	m_render_dirty = true;
+	m_application_state->render_dirty = true;
 
 	m_renderer->zoom_camera_view(offset);
 }
@@ -462,7 +463,7 @@ bool RenderWindow::is_rendering_done()
 	rendering_done |= (m_application_settings->max_sample_count != 0 && render_settings.sample_number + 1 > m_application_settings->max_sample_count);
 
 	// Max render time
-	float render_time_ms = m_current_render_time_ms / 1000.0f;
+	float render_time_ms = m_application_state->current_render_time_ms / 1000.0f;
 	rendering_done |= (m_application_settings->max_render_time != 0.0f && render_time_ms >= m_application_settings->max_render_time);
 
 	// If we are at 0 samples, this means that the render got resetted and so
@@ -477,25 +478,25 @@ void RenderWindow::reset_render()
 	m_application_settings->last_denoised_sample_count = -1;
 	m_renderer->reset();
 
-	m_samples_per_second = 0.0f;
-	m_current_render_time_ms = 0.0f;
+	m_application_state->samples_per_second = 0.0f;
+	m_application_state->current_render_time_ms = 0.0f;
 
-	m_render_dirty = false;
+	m_application_state->render_dirty = false;
 }
 
 void RenderWindow::set_render_dirty(bool render_dirty)
 {
-	m_render_dirty = render_dirty;
+	m_application_state->render_dirty = render_dirty;
 }
 
 float RenderWindow::get_current_render_time()
 {
-	return m_current_render_time_ms;
+	return m_application_state->current_render_time_ms;
 }
 
 float RenderWindow::get_samples_per_second()
 {
-	return m_samples_per_second;
+	return m_application_state->samples_per_second;
 }
 
 float RenderWindow::compute_samples_per_second()
@@ -535,7 +536,6 @@ std::shared_ptr<ImGuiRenderer> RenderWindow::get_imgui_renderer()
 	return m_imgui_renderer;
 }
 
-bool interacting_last_frame = false;
 void RenderWindow::run()
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
@@ -555,8 +555,8 @@ void RenderWindow::run()
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
-		m_render_dirty |= is_interacting();
-		m_render_dirty |= interacting_last_frame != is_interacting();
+		m_application_state->render_dirty |= is_interacting();
+		m_application_state->render_dirty |= m_application_state->interacting_last_frame != is_interacting();
 
 		// We're resetting the render each frame if rendering at low resolution (not accumulating)
 		render();
@@ -569,11 +569,12 @@ void RenderWindow::run()
 
 		uint64_t end_frame_time = glfwGetTimerValue();
 		float delta_time_ms = (end_frame_time - frame_start_time) / static_cast<float>(time_frequency) * 1000.0f;
+		std::cout << "Delta: " << delta_time_ms << std::endl;
 		// Saving the delta 
-		m_last_delta_time_ms = delta_time_ms;
+		m_application_state->last_delta_time_ms = delta_time_ms;
 
 		if (!is_rendering_done())
-			m_current_render_time_ms += delta_time_ms;
+			m_application_state->current_render_time_ms += delta_time_ms;
 		m_keyboard_interactor.poll_keyboard_inputs();
 	}
 
@@ -595,7 +596,20 @@ void RenderWindow::render()
 		// ------
 		m_renderer->copy_status_buffers();
 
-		if (!is_rendering_done() || m_render_dirty)
+		if (m_application_state->GPU_stall_duration_left > 0)
+		{
+			// If we're stalling the GPU
+
+			if (m_application_state->GPU_stall_duration_left > 0.0f)
+				// Updating the duration left to stall the GPU.
+				m_application_state->GPU_stall_duration_left -= m_application_state->last_delta_time_ms;
+
+			// Also stalling the whole application otherwise we would be running the main loop at full speed which
+			// means more CPU & GPU usage (the GPU still has to display ImGui and the last frame
+			// rendered so it's not actually doing nothing)
+			std::this_thread::sleep_for(std::chrono::milliseconds(3));
+		}
+		else if (!is_rendering_done() || m_application_state->render_dirty)
 		{
 			// We can unmap the renderer's buffers so that OpenGL can use them when displaying
 			m_renderer->unmap_buffers();
@@ -619,33 +633,52 @@ void RenderWindow::render()
 			m_display_view_system->update_current_display_program_uniforms();
 
 			// We got a frame rendered --> We can compute the samples per second
-			m_samples_per_second = compute_samples_per_second();
+			m_application_state->samples_per_second = compute_samples_per_second();
 
 			// Adding the time for *one* sample to the performance metrics counter
-			if (!m_renderer->was_last_frame_low_resolution() && m_samples_per_second > 0.0f)
+			if (!m_renderer->was_last_frame_low_resolution() && m_application_state->samples_per_second > 0.0f)
 				// Not adding the frame time if we're rendering at low resolution, not relevant
-				m_perf_metrics->add_value(PerformanceMetricsComputer::SAMPLE_TIME_KEY, 1000.0f / m_samples_per_second);
+				m_perf_metrics->add_value(PerformanceMetricsComputer::SAMPLE_TIME_KEY, 1000.0f / m_application_state->samples_per_second);
 
 			render_settings.render_low_resolution = is_interacting();
 			if (m_application_settings->auto_sample_per_frame && (render_settings.render_low_resolution || m_renderer->was_last_frame_low_resolution()))
 				// Only one sample when low resolution rendering
 				render_settings.samples_per_frame = 1;
 			else if (m_application_settings->auto_sample_per_frame)
-				render_settings.samples_per_frame = std::min(std::max(1, static_cast<int>(m_samples_per_second / m_application_settings->target_GPU_framerate)), 65536);
+				render_settings.samples_per_frame = std::min(std::max(1, static_cast<int>(m_application_state->samples_per_second / m_application_settings->target_GPU_framerate)), 65536);
 
-			if (m_render_dirty)
+			if (m_application_state->render_dirty)
 				reset_render();
-			interacting_last_frame = is_interacting();
+			m_application_state->interacting_last_frame = is_interacting();
 
-			// Queuing a new frame for the GPU to render
+			if (m_application_settings->GPU_stall_percentage > 0.0f)
+			{
+				// Computing the stalling duration
+				// TotalTime - Ftime = T * TotalTime
+				// TotalTime = T * TotalTime + Ftime
+				// Ftime: 100ms. Stall = 50% --> 100ms
+				// Ftime: 100ms: Stall = 25% --> (100 + X) = 
+				// 100 + X = 1 / (1 - Percentage) * 100
+				//
+				// 100 + X = 1.33 * 100
+
+				float last_frame_time = m_renderer->get_last_frame_time();
+				float stall_duration = last_frame_time * (1.0f / (1.0f - m_application_settings->GPU_stall_percentage / 100.0f)) - last_frame_time;
+				m_application_state->GPU_stall_duration_left = stall_duration;
+			}
+			
+			// Otherwise, if we're not stalling, queuing a new frame for the GPU to render
 			m_renderer->update();
 			m_renderer->render();
 
 			increment_sample_number();
+
 			last_frame_uploaded = false;
 		}
 		else
 		{
+			// The rendering is done
+
 			m_display_view_system->update_selected_display_view();
 
 			if (m_application_settings->enable_denoising)

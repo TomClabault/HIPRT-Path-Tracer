@@ -726,6 +726,11 @@ void ImGuiRenderer::draw_performance_settings_panel()
 		break;
 	}
 
+	if (ImGui::InputFloat("GPU Stall Percentage", &m_application_settings->GPU_stall_percentage))
+		m_application_settings->GPU_stall_percentage = std::max(0.0f, std::min(m_application_settings->GPU_stall_percentage, 99.9f));
+	if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+		ImGuiRenderer::WrappingTooltip("How much percent of the time the GPU will be forced to be idle (not rendering anything). This feature is meant only for GPUs that get too hot to avoid burning your GPUs during prolonged renders.");
+
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	ImGui::TreePop();
 }

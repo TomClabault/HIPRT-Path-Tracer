@@ -10,6 +10,7 @@
 #include "Renderer/OpenImageDenoiser.h"
 #include "Renderer/GPURenderer.h"
 #include "UI/ApplicationSettings.h"
+#include "UI/ApplicationState.h"
 #include "UI/DisplayTextureType.h"
 #include "UI/DisplayViewEnum.h"
 #include "UI/DisplayViewSystem.h"
@@ -110,23 +111,11 @@ public:
 private:
 	int m_viewport_width, m_viewport_height;
 
-	// How long the current render has been running for in milliseconds
-	float m_last_delta_time_ms = 0.0f;
-	float m_current_render_time_ms = 0.0f;
-	float m_samples_per_second = 0.0f;
 
+	// All the settings of the application (that can, for the most part, be controlled
+	// through ImGui)
 	std::shared_ptr<ApplicationSettings> m_application_settings;
-
-	// Set to true if some settings of the render changed and we need
-	// to restart rendering from sample 0
-	bool m_render_dirty = true;
-	// If true, this means that the first frame (after a call to reset_render()) is
-	// still being rendered and we should not queue another first frame.
-	// If we keep queuing "first frames" (for example when launching the mouse wheel
-	// really fast) then we'll never display anything because the CUDA/HIP stream will
-	// always have work to do and will never be "ready" for displaying the frame so
-	// that's why we only allow one "first frame"
-	bool m_first_frame_still_queued = false;
+	std::shared_ptr<ApplicationState> m_application_state;
 
 	std::shared_ptr<GPURenderer> m_renderer;
 	std::shared_ptr<OpenImageDenoiser> m_denoiser;

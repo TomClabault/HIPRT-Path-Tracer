@@ -63,6 +63,10 @@ struct ApplicationSettings
 	// samples per frame such that the GPU takes (1000ms / target_GPU_framerate) milliseconds
 	// to compute a frame
 	float target_GPU_framerate = 5.0f;
+	// If > 0.0f, stalls the GPU for a certain amount of time (based on the percentage and the
+	// time taken to render the last frame). This feature is only there to help limit GPU heating
+	// at the cost of longer render times
+	float GPU_stall_percentage = 0.0f;
 
 	// Whether or not to keep the same resolution on
 	// viewport rescale. This means that the render resolution
