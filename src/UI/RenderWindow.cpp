@@ -19,11 +19,25 @@
 // TODO bugs:
 // - memory leak with OpenGL?
 // - playing with the pixel noise threshold eventually leaves it at 4000/2000000 for example, the counter doesn't reset properly
+// - memory leak with OpenGL when resizing the window over and over?
+// - denoiser normals AOV not resized sometimes? try to play to reproduce
+// - pixels converged count sometimes goes above 100%
+// - adaptive sampling heatmap view + disabling the adaptive sampling = crash
+// - light inside monkey + monkey full metallic = light leak
+// - MIS broken when not only the BSDF can sample
+// - light inside monkey rough + RIS gives NaN
+// - light inside monkey --> RIS or MIS don't give the same as no direct light sampling
+// - ill controlled 1.0e35f values poping off in the denoiser on bzd measure seven
+// - different shader cache in release & debug ?
 
 // TODO Code Organization:
 // - Use HIPRT with CMake as a subdirectory (available soon)
+// - put number of triangles in light PDF in sample_one_triangle function
 
 // TODO Features:
+// - add clear shader cache in ImgUI
+// - adapt number of light samples in light sampling routines based on roughness of the material --> no need to sample 8 lights in RIS for perfectly specular material + use ray ballot for that because we don't want to reduce light rays unecessarily if one thread of the warp is going to slow everyone down anyways
+// - push BSDF sampling in the right direction when light sampling if we sampled a refraction to see if there's a light inside the surface
 // - UI scaling in ImGui
 // - render dirty duration for low resolution render when moving the camera with the keyboard
 // - toggle render low resolution when moving camera, the user may not want that always on
@@ -36,7 +50,7 @@
 // - ray statistics with filter functions
 // - filter function for base color alpha / alpha transparency = better performance
 // - do not store alpha from envmap
-// - fixed point 18b RGB for envmap? 70% size reduction compared to full size. Can't use texture sampler though. Is not using a sampler ok performance-wise?
+// - fixed point 18b RGB for envmap? 70% size reduction compared to full size. Can't use texture sampler though. Is not using a sampler ok performance-wise? --> it probably is since we're probably memory lantency bound, not memory bandwidth
 // - look at blender cycles "medium contrast", "medium low constract", "medium high", ...
 // - normal mapping strength
 // - blackbody light emitters

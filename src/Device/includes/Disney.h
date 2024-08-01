@@ -312,8 +312,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_glass_sample(const RendererMaterial
     {
         // Reflection
         sampled_direction = reflect_ray(local_view_direction, microfacet_normal);
-        float3 sampled_direction_norm = hippt::normalize(reflect_ray(local_view_direction, microfacet_normal));
-        float3 sampled_direction_norm_2 = reflect_ray(hippt::normalize(local_view_direction), hippt::normalize(microfacet_normal));
 
         // This is a reflection, we're poping the stack
         ray_volume_state.interior_stack.pop(false);
@@ -367,8 +365,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_eval(const RendererMaterial* m
     bool outside_object = hippt::dot(view_direction, shading_normal) > 0;
     if (!outside_object)
         // For the rest of the computations to be correct, we want the normal
-        // in the same hemisphere as the view direction os if it's not the case already,
-        // flipping the normal
+        // in the same hemisphere as the view direction
         shading_normal = -shading_normal;
 
     float3 T, B;
@@ -545,7 +542,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_sample(const RendererMaterial*
         // is a valid configuration for the glass lobe
         return ColorRGB32F(0.0f);
 
-    return disney_eval(materials_buffer, material, ray_volume_state, view_direction, normal, output_direction, pdf);
+    // Not using 'normal' here because eval() needs to know whether or not we're inside the surface.
+    // This is because is we're inside the surface, we're only going to evaluate the glass lobe.
+    // If we were using 'normal', we would always be outside the surface because 'normal' is flipped
+    // (a few lines above in the code) so that it is in the same hemisphere as the view direction and
+    // eval() will then think that we're always outside the surface even though that's not the case
+    return disney_eval(materials_buffer, material, ray_volume_state, view_direction, shading_normal, output_direction, pdf);
 }
 
 #endif

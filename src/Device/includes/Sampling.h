@@ -51,7 +51,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float balance_heuristic(float pdf_a, int nb_pdf_a
     // numerator but because we're going to divide by nb_pdf_a in the
     // function evaluation that use this MIS weight according to the
     // MIS estimator, this multiplication in the numerator that we
-    // would have here would be canceled at that would be basically
+    // would have here would be canceled and that would be basically
     // wasted maths so we're not doing it and we should not do it
     // in the function evaluation either.
     return pdf_a / (nb_pdf_a * pdf_a + nb_pdf_b * pdf_b);

@@ -83,7 +83,7 @@ struct HIPRTRenderSettings
 	float indirect_contribution_clamp = 0.0f;
 
 	// How many candidate lights to sample for RIS (Resampled Importance Sampling)
-	int ris_number_of_light_candidates = 8;
+	int ris_number_of_light_candidates = 100;
 	// How many candidates samples from the BSDF to use in combination
 	// with the light candidates for RIS
 	int ris_number_of_bsdf_candidates = 1;
@@ -188,7 +188,7 @@ enum AmbientLightType
 
 struct WorldSettings
 {
-	AmbientLightType ambient_light_type = AmbientLightType::ENVMAP;
+	AmbientLightType ambient_light_type = AmbientLightType::NONE;
 	ColorRGB32F uniform_light_color = ColorRGB32F(0.5f);
 
 	// Width and height in pixels. Both in the range [1, XXX]

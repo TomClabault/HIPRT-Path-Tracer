@@ -161,6 +161,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
             ray.origin = hit_info.inter_point + ray.direction * 3.0e-3f;
 
             // Don't forget to increment the distance traveled
+            // TODO: Are we not double counting the distance here and a few lines above (where we set the .t, .uv, .geometric_normal, ...)
             ray_payload.volume_state.distance_in_volume += hit.t;
         }
 

@@ -208,13 +208,21 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                     ColorRGB32F light_sample_radiance = sample_one_light(render_data, ray_payload, closest_hit_info, -ray.direction, random_number_generator);
                     ColorRGB32F envmap_radiance = sample_environment_map(render_data, ray_payload, closest_hit_info, -ray.direction, random_number_generator);
 
-                    ColorRGB32F direct_lighting_clamp(render_data.render_settings.direct_contribution_clamp > 0.0f ? render_data.render_settings.direct_contribution_clamp : 1.0e35f);
-                    ColorRGB32F envmap_lighting_clamp(render_data.render_settings.envmap_contribution_clamp > 0.0f ? render_data.render_settings.envmap_contribution_clamp : 1.0e35f);
+                    //// TODO fix NaNs being clamped to 1.0e35f here
+                    //if (!light_sample_radiance.has_NaN())
+                    //{
+                    //    ColorRGB32F direct_lighting_clamp(render_data.render_settings.direct_contribution_clamp > 0.0f ? render_data.render_settings.direct_contribution_clamp : 1.0e35f);
+                    //    if (bounce == 0)
+                    //        // Clamping only on the primary rays
+                    //        light_sample_radiance = ColorRGB32F::min(direct_lighting_clamp, light_sample_radiance);
+                    //}
 
-                    if (bounce == 0)
-                        // Clamping only on the primary rays
-                        light_sample_radiance = ColorRGB32F::min(direct_lighting_clamp, light_sample_radiance);
-                    envmap_radiance = ColorRGB32F::min(envmap_lighting_clamp, envmap_radiance);
+                    //if (!envmap_radiance.has_NaN())
+                    //{
+                    //    ColorRGB32F envmap_lighting_clamp(render_data.render_settings.envmap_contribution_clamp > 0.0f ? render_data.render_settings.envmap_contribution_clamp : 1.0e35f);
+
+                    //    envmap_radiance = ColorRGB32F::min(envmap_lighting_clamp, envmap_radiance);
+                    //}
 
 #if DirectLightSamplingStrategy == LSS_NO_DIRECT_LIGHT_SAMPLING // No direct light sampling
                     ray_payload.ray_color += ray_payload.material.emission * ray_payload.throughput;
@@ -241,11 +249,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                     if (brdf_pdf <= 0.0f)
                         break;
 
-                    ColorRGB32F indirect_clamp(render_data.render_settings.indirect_contribution_clamp > 0.0f ? render_data.render_settings.indirect_contribution_clamp : 1.0e35f);
+                    //ColorRGB32F indirect_clamp(render_data.render_settings.indirect_contribution_clamp > 0.0f ? render_data.render_settings.indirect_contribution_clamp : 1.0e35f);
                     ray_payload.throughput *= bsdf_color * hippt::abs(hippt::dot(bounce_direction, closest_hit_info.shading_normal)) / brdf_pdf;
-                    ray_payload.throughput = ColorRGB32F::min(indirect_clamp, ray_payload.throughput);
+                    //ray_payload.throughput = ColorRGB32F::min(indirect_clamp, ray_payload.throughput);
 
-                    int outside_surface = hippt::dot(bounce_direction, closest_hit_info.shading_normal) < 0 ? -1.0f : 1.0;
+                    int outside_surface = hippt::dot(bounce_direction, closest_hit_info.shading_normal) < 0 ? -1.0f : 1.0f;
                     ray.origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 3.0e-3f * outside_surface;
                     ray.direction = bounce_direction;
 
@@ -285,8 +293,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
                         }
                     }
 
-                    ColorRGB32F skysphere_clamp(render_data.render_settings.envmap_contribution_clamp > 0.0f ? render_data.render_settings.envmap_contribution_clamp : 1.0e35f);
-                    skysphere_color = ColorRGB32F::min(skysphere_clamp, skysphere_color);
+                    //ColorRGB32F skysphere_clamp(render_data.render_settings.envmap_contribution_clamp > 0.0f ? render_data.render_settings.envmap_contribution_clamp : 1.0e35f);
+                    //skysphere_color = ColorRGB32F::min(skysphere_clamp, skysphere_color);
 
                     ray_payload.ray_color += skysphere_color * ray_payload.throughput;
                     ray_payload.next_ray_state = RayState::MISSED;
