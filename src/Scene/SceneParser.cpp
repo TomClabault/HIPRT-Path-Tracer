@@ -86,10 +86,16 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Scene& par
         aiMesh* mesh = scene->mMeshes[mesh_index];
         int material_index = mesh->mMaterialIndex;
         aiMaterial* mesh_material = scene->mMaterials[material_index];
+
         std::string material_name = std::string(mesh_material->GetName().C_Str());
+        std::string mesh_name = std::string(mesh->mName.C_Str());
+        std::string final_name;
         if (material_name == "")
             // Default name for materials that don't have one
-            material_name = "Material." + std::to_string(material_index);
+            final_name = mesh_name + " (" + std::string("Material.") + std::to_string(material_index) + ")";
+        else
+            final_name += mesh_name + " (" + material_name + ")";
+        parsed_scene.material_names[material_index] = final_name;
 
         RendererMaterial& renderer_material = parsed_scene.materials[material_index];
         if (material_indices_already_seen.find(mesh->mMaterialIndex) == material_indices_already_seen.end())
@@ -103,7 +109,6 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Scene& par
         //Adding the material to the parsed scene
         bool is_mesh_emissive = renderer_material.is_emissive();
 
-        parsed_scene.material_names[material_index] = material_name;
         // Inserting the normals if present
         if (mesh->HasNormals())
             parsed_scene.vertex_normals.insert(parsed_scene.vertex_normals.end(),

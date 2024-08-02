@@ -17,7 +17,7 @@
 #include "stb_image_write.h"
 
 // TODO bugs:
-// - memory leak with OpenGL?
+// - memory leak with OpenGL when resizing the window?
 // - playing with the pixel noise threshold eventually leaves it at 4000/2000000 for example, the counter doesn't reset properly
 // - memory leak with OpenGL when resizing the window over and over?
 // - denoiser normals AOV not resized sometimes? try to play to reproduce
