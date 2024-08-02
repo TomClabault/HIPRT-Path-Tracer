@@ -25,7 +25,6 @@
 // - adaptive sampling heatmap view + disabling the adaptive sampling = crash
 // - light inside monkey + monkey full metallic = light leak
 // - MIS broken when not only the BSDF can sample
-// - light inside monkey rough + RIS gives NaN
 // - light inside monkey --> RIS or MIS don't give the same as no direct light sampling
 // - ill controlled 1.0e35f values poping off in the denoiser on bzd measure seven
 // - different shader cache in release & debug ?
@@ -614,9 +613,9 @@ void RenderWindow::render()
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 
-	// Boolean local to this function to remember whether or not we've uploaded the last
-	// frame result (just after is_rendering_done() returns true) to OpenGL for displaying
-	static bool last_frame_uploaded = false;
+	// Boolean local to this function to remember whether or not we need to upload
+	// the frame result to OpenGL for displaying
+	static bool buffer_upload_necessary = true;
 
 	if (m_renderer->frame_render_done())
 	{
@@ -685,35 +684,25 @@ void RenderWindow::render()
 
 			increment_sample_number();
 
-			last_frame_uploaded = false;
+			buffer_upload_necessary = true;
 		}
 		else
 		{
 			// The rendering is done
 
-			m_display_view_system->update_selected_display_view();
+			buffer_upload_necessary |= m_display_view_system->update_selected_display_view();
 
 			if (m_application_settings->enable_denoising)
-			{
 				// We may still want to denoise on the final frame
 				if (denoise())
-				{
-					if (last_frame_uploaded)
-						// Uploading the denoised data.
-						// But only if last_frame_uploaded is true, otherwise, we're going
-						// to upload twice (here and below).
-						// This is an optimization if statement
-						m_display_view_system->upload_relevant_buffers_to_texture();
-				}
-			}
+					buffer_upload_necessary = true;
 
-			if (!last_frame_uploaded)
+			if (buffer_upload_necessary)
 			{
-				// Uploading 
-				// And then we upload the denoised data for displaying
+				// Re-uploading only if necessary
 				m_display_view_system->upload_relevant_buffers_to_texture();
 
-				last_frame_uploaded = true;
+				buffer_upload_necessary = false;
 			}
 
 			m_display_view_system->set_render_low_resolution(m_renderer->was_last_frame_low_resolution());

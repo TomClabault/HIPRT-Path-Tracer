@@ -66,7 +66,7 @@ DisplayViewSystem::~DisplayViewSystem()
 	glDeleteVertexArrays(1, &m_vao);
 }
 
-void DisplayViewSystem::update_selected_display_view()
+bool DisplayViewSystem::update_selected_display_view()
 {
 	if (m_queued_display_view_change != DisplayViewType::UNDEFINED)
 	{
@@ -78,7 +78,11 @@ void DisplayViewSystem::update_selected_display_view()
 		internal_recreate_display_textures_from_display_view(m_queued_display_view_change);
 
 		m_queued_display_view_change = DisplayViewType::UNDEFINED;
+
+		return true;
 	}
+	
+	return false;
 }
 
 void DisplayViewSystem::display()

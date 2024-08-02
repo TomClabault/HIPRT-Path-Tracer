@@ -83,7 +83,7 @@ struct HIPRTRenderSettings
 	float indirect_contribution_clamp = 0.0f;
 
 	// How many candidate lights to sample for RIS (Resampled Importance Sampling)
-	int ris_number_of_light_candidates = 100;
+	int ris_number_of_light_candidates = 8;
 	// How many candidates samples from the BSDF to use in combination
 	// with the light candidates for RIS
 	int ris_number_of_bsdf_candidates = 1;
@@ -97,7 +97,7 @@ struct HIPRTRenderSettings
 	 * if the pixel stop noise threshold is enabled. Otherwise, the adaptive sampling buffers
 	 * are freed to save VRAM so they cannot be used.
 	 */
-	HIPRT_HOST_DEVICE bool has_access_to_adaptive_sampling_buffers()
+	HIPRT_HOST_DEVICE bool has_access_to_adaptive_sampling_buffers() const
 	{
 		bool has_access = false;
 

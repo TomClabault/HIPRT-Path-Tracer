@@ -34,8 +34,10 @@ public:
 
 	/**
 	 * Applies queued changes (such as changing the display view for example)
+	 * 
+	 * Returns true if the display view was changed. False otherwise
 	 */
-	void update_selected_display_view();
+	bool update_selected_display_view();
 
 	/**
 	 * Displays the currently active texture view onto the viewport

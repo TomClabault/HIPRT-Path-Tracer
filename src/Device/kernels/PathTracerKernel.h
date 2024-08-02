@@ -81,6 +81,21 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool sanity_check(const HIPRTRenderData& render_d
     return !invalid;
 }
 
+HIPRT_HOST_DEVICE HIPRT_INLINE void reset_render(const HIPRTRenderData& render_data, uint32_t pixel_index)
+{
+    // Resetting all buffers on the first frame
+    render_data.buffers.pixels[pixel_index] = ColorRGB32F(0.0f);
+    render_data.aux_buffers.denoiser_normals[pixel_index] = make_float3(1.0f, 1.0f, 1.0f);
+    render_data.aux_buffers.denoiser_albedo[pixel_index] = ColorRGB32F(0.0f, 0.0f, 0.0f);
+
+    if (render_data.render_settings.has_access_to_adaptive_sampling_buffers())
+    {
+        // These buffers are only available when either the adaptive sampling or the stop noise threshold is enabled
+        render_data.aux_buffers.pixel_sample_count[pixel_index] = 0;
+        render_data.aux_buffers.pixel_squared_luminance[pixel_index] = 0;
+    }
+}
+
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) PathTracerKernel(HIPRTRenderData render_data, int2 res, HIPRTCamera camera)
 #else
@@ -106,26 +121,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline PathTracerKernel(HIPRTRenderData render_dat
         int res_scaling = render_data.render_settings.render_low_resolution_scaling;
         pixel_index /= res_scaling;
 
-        // If rendering at low resolution, only one pixel out of res_scaling^2 will be rendered
+        // If rendering at low resolution, only one pixel out of res_scaling^2
+        // (a square of res_scaling * res_scaling) will be rendered
         if (x % res_scaling != 0 || y % res_scaling != 0)
             return;
     }
 
     if (render_data.render_settings.sample_number == 0)
-    {
-        // Resetting all buffers on the first frame
-        render_data.buffers.pixels[pixel_index] = ColorRGB32F(0.0f);
-        render_data.aux_buffers.denoiser_normals[pixel_index] = make_float3(1.0f, 1.0f, 1.0f);
-        render_data.aux_buffers.denoiser_albedo[pixel_index] = ColorRGB32F(0.0f, 0.0f, 0.0f);
-
-        if (render_data.render_settings.has_access_to_adaptive_sampling_buffers())
-        {
-            // These buffers are only available when either the adaptive sampling or the stop noise threshold is enabled
-            render_data.aux_buffers.pixel_sample_count[pixel_index] = 0;
-            render_data.aux_buffers.pixel_squared_luminance[pixel_index] = 0;
-        }
-    }
-
+        reset_render(render_data, pixel_index);
 
     bool sampling_needed = true;
     bool pixel_converged = false;
