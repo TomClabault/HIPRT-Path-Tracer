@@ -89,7 +89,7 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Scene& par
         std::string material_name = std::string(mesh_material->GetName().C_Str());
         if (material_name == "")
             // Default name for materials that don't have one
-            material_name = "Material." + material_index;
+            material_name = "Material." + std::to_string(material_index);
 
         RendererMaterial& renderer_material = parsed_scene.materials[material_index];
         if (material_indices_already_seen.find(mesh->mMaterialIndex) == material_indices_already_seen.end())
