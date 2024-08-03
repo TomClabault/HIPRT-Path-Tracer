@@ -4,4 +4,4 @@ Glass dragon: https://benedikt-bitterli.me/resources/
 McLaren P1 + Environment: https://sketchfab.com/3d-models/mclaren-p1-6d6072b79ae444058a8f7c7ffd548fb4#download + https://www.cgtrader.com/items/4740776/download-page
 PBRT Dragon Indirect Lighting: https://www.pbrt.org/scenes-v3
 Rolex: https://www.cgtrader.com/items/4228612/download-page
-
+Beeple Zero Day: https://developer.nvidia.com/orca/beeple-zero-day

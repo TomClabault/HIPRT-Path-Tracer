@@ -144,10 +144,11 @@ The following arguments are available:
 # Gallery
 
 ![P1 street](README_data/img/P1_environment.jpg)
-![P1 street](README_data/img/contemporary-bedroom.jpg)![P1 street](README_data/img/blender-4.1-splash.jpg)
-![P1 street](README_data/img/dragon-glass.jpg)
-![P1 street](README_data/img/pbrt-dragon-indirect.jpg)
-![P1 street](README_data/img/rolex.jpg)
+![Contemporary bedroom](README_data/img/contemporary-bedroom.jpg)![Blender 4.1 splash](README_data/img/blender-4.1-splash.jpg)
+![Dragon glass](README_data/img/dragon-glass.jpg)
+![Beeple Zero Day Measure Seven](README_data/img/bzd-measure-seven.jpg)
+![Suzanne caustics](README_data/img/suzanne-caustics.jpg)
+![Dragon indirect lighting](README_data/img/pbrt-dragon-indirect.jpg)
 
 Sources of the scenes can be found [here](https://github.com/TomClabault/HIPRT-Path-Tracer/blob/main/README_data/img/scene%20credits.txt).
 # Live YouTube Demos (click!)
