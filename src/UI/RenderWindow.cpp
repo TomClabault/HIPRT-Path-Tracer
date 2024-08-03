@@ -28,6 +28,7 @@
 // - light inside monkey --> RIS or MIS don't give the same as no direct light sampling
 // - ill controlled 1.0e35f values poping off in the denoiser on bzd measure seven
 // - different shader cache in release & debug ?
+// - screenshoter with denoiser + resolution scale = black
 
 // TODO Code Organization:
 // - Use HIPRT with CMake as a subdirectory (available soon)
@@ -361,6 +362,7 @@ void RenderWindow::change_resolution_scaling(float new_scaling)
 	m_renderer->synchronize_kernel();
 	m_renderer->resize(new_render_width, new_render_height);
 	m_denoiser->resize(new_render_width, new_render_height);
+	m_denoiser->finalize();
 	m_display_view_system->resize(new_render_width, new_render_height);
 }
 
