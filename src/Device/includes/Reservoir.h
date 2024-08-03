@@ -12,6 +12,7 @@
 struct ReservoirSample
 {
     float3 point_on_light_source = { 0, 0, 0 };
+    float3 light_source_normal = { 0, 0, 0 };
     ColorRGB emission = { 0.0f, 0.0f, 0.0f };
 
     float target_function = 0.0f;

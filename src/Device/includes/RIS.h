@@ -95,7 +95,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_lights_RIS_reservoir(const HIPRT
                 light_sample_pdf /= cosine_at_light_source;
                 light_sample_pdf /= render_data.buffers.emissive_triangles_count;
 
-                target_function = (bsdf_color * light_source_info.emission * cosine_at_evaluated_point).luminance();
+                float geometry_term = cosine_at_light_source * cosine_at_evaluated_point / distance_to_light / distance_to_light;
+
+                target_function = (bsdf_color * light_source_info.emission * cosine_at_evaluated_point * geometry_term).luminance();
 
 #if RISUseVisiblityTargetFunction == RIS_USE_VISIBILITY_TRUE
                 // Adding visibility to the target function
@@ -118,6 +120,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_lights_RIS_reservoir(const HIPRT
         sample.point_on_light_source = random_light_point;
         sample.emission = light_source_info.emission;
         sample.target_function = target_function;
+        sample.light_source_normal = light_source_info.light_source_normal;
 
         out_reservoir.add_one_candidate(sample, candidate_weight, random_number_generator);
     }
@@ -153,7 +156,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_lights_RIS_reservoir(const HIPRT
 
                 cosine_light_source = hippt::abs(hippt::dot(bsdf_ray_hit_info.shading_normal, -sampled_direction));
 
-                target_function = (bsdf_color * ray_payload.material.emission * cosine_at_evaluated_point).luminance();
+                float geometry_term = cosine_at_evaluated_point * cosine_light_source / bsdf_ray_hit_info.t / bsdf_ray_hit_info.t;
+                target_function = (bsdf_color * ray_payload.material.emission * cosine_at_evaluated_point * geometry_term).luminance();
 
                 float light_area = triangle_area(render_data, bsdf_ray_hit_info.primitive_index);
                 float light_pdf = bsdf_ray_hit_info.t * bsdf_ray_hit_info.t / cosine_light_source;
@@ -166,6 +170,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_lights_RIS_reservoir(const HIPRT
 
                 sample.emission = ray_payload.material.emission;
                 sample.point_on_light_source = bsdf_ray_hit_info.inter_point;
+                sample.light_source_normal = bsdf_ray_hit_info.shading_normal;
                 sample.target_function = target_function;
             }
         }

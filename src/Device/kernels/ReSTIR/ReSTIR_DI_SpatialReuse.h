@@ -44,8 +44,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function(const HI
 	RayVolumeState trash_volume_state;
 	ColorRGB bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, material, trash_volume_state, view_direction, shading_normal, sample_direction, bsdf_pdf);
 	float cosine_term = hippt::max(0.0f, hippt::dot(shading_normal, sample_direction));
+	float cosine_at_light_source = hippt::dot(sample.light_source_normal, -sample_direction);
 
-	float target_function = (bsdf_color * sample.emission * cosine_term).luminance();
+	float geometry_term = cosine_term / distance_to_light / distance_to_light * cosine_at_light_source;
+	float target_function = (bsdf_color * sample.emission * cosine_term * geometry_term).luminance();
 	if (target_function == 0.0f)
 		// Quick exit because computing the visiblity that follows isn't going
 		// to change anything to the fact that we have 0.0f target function here
