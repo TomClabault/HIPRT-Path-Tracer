@@ -111,6 +111,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_lights_RIS_reservoir(const HIPRT
 #endif
 
                 float mis_weight = balance_heuristic(light_sample_pdf, render_data.render_settings.ris_number_of_light_candidates, bsdf_pdf, render_data.render_settings.ris_number_of_bsdf_candidates);
+                // TODO REMOVE 1/M MIS WEIGHT HERE
                 mis_weight = 1.0f / (render_data.render_settings.ris_number_of_light_candidates + render_data.render_settings.ris_number_of_bsdf_candidates);
                 candidate_weight = mis_weight * target_function / light_sample_pdf;
             }
@@ -165,6 +166,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_lights_RIS_reservoir(const HIPRT
                 light_pdf /= render_data.buffers.emissive_triangles_count;
 
                 float mis_weight = balance_heuristic(bsdf_sample_pdf, render_data.render_settings.ris_number_of_bsdf_candidates, light_pdf, render_data.render_settings.ris_number_of_light_candidates);
+                // TODO REMOVE 1/M MIS WEIGHT HERE
                 mis_weight = 1.0f / (render_data.render_settings.ris_number_of_light_candidates + render_data.render_settings.ris_number_of_bsdf_candidates);
                 candidate_weight = mis_weight * target_function / bsdf_sample_pdf;
 

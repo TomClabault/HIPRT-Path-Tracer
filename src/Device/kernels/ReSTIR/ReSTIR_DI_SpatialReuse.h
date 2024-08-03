@@ -37,9 +37,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function(const HI
 {
 	float bsdf_pdf;
 	float distance_to_light;
-	float3 sample_direction = sample.point_on_light_source - shading_point;
-	distance_to_light = hippt::length(sample_direction);
-	sample_direction = sample_direction / distance_to_light;
+	float3 sample_direction;
+	sample_direction = sample.point_on_light_source - shading_point;
+	sample_direction = sample_direction / (distance_to_light = hippt::length(sample_direction));
 
 	RayVolumeState trash_volume_state;
 	ColorRGB bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, material, trash_volume_state, view_direction, shading_normal, sample_direction, bsdf_pdf);
@@ -183,7 +183,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	}
 
 	// Compute the unbiased contribution weight using 1/Z normalization weight as in ReSTIR 2019 Alg. 6
-	new_reservoir.end_Z(new_reservoir.M);
+	new_reservoir.end_normalized(Z);
 	new_reservoir.debug_value = Z / 2.0f;
 	render_data.aux_buffers.spatial_reservoirs[pixel_index] = new_reservoir;
 }
