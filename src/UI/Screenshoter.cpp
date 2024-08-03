@@ -140,6 +140,7 @@ void Screenshoter::write_to_png(const char* filepath)
 		// to update the HIP kernels so that's why code duplication here is annoying)
 
 		resize_output_image(width, height);
+		select_compute_program(m_render_window->get_display_view_system()->get_current_display_view_type());
 
 		GLint threads[3];
 		m_active_compute_program->get_compute_threads(threads);
