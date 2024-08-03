@@ -15,23 +15,15 @@
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/Xorshift.h"
 
-/**
- *  -------------------------------------------------
- *  State of caustics rendering so far:
- *     - No proper caustic solver. This means that:
- *          - For a refractive sphere with a light inside and the camera viewing everything from the outside
- *              the camera ray that hits the sphere may be able to sample the light by sampling a refraction with the BSDF ray.
- *              That BSDF can then hit the light which makes for a successful BSDF sampling --> we can somewhat sample the light
- *              from the outside. However, from the camera ray first hit, light sampling will not be able to sample the light
- *              that is inside the surface because, well, there's the surface in between. This is where we need a proper caustic solver.
- *              In the meantime, this situation kind of breaks Multiple Importance Sampling (and Resampled Importance Sampling with MIS)
- *              because BSDF sampling can sample the light (in this situation at least) where light sampling cannot. This biases MIS weights
- *              and gives darker and darker results as the number of light samples increases relative to the number of BSDF samples (with RIS
- *              for example). 
- *              Although this is all biased and a proper caustic solver is required, this is still better than nothing (otherwise we can
- *              hardly have caustics at all) so we'll keep it like that waiting for some MNEE/SMS/...
- *  -------------------------------------------------
- */
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F clamp_light_contribution(ColorRGB32F light_contribution, float clamp_max_value, bool clamp_condition)
+{
+    if (!light_contribution.has_NaN() && clamp_max_value > 0.0f && clamp_condition)
+        // We don't want to clamp NaNs because that's UB (kind of) and the NaNs get
+        // immediately clamped to 'clamp_max_value' in my experience
+        light_contribution.clamp(0.0f, clamp_max_value);
+
+    return light_contribution;
+}
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 sample_one_emissive_triangle(const HIPRTRenderData& render_data, Xorshift32Generator& random_number_generator, float& pdf, LightSourceInformation& light_info)
 {
@@ -594,17 +586,20 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light(const HIPRTRenderDat
         // emissive surface
         return ColorRGB32F(0.0f);
 
+    ColorRGB32F direct_light_contribution;
 #if DirectLightSamplingStrategy == LSS_NO_DIRECT_LIGHT_SAMPLING
-    return ColorRGB32F(0.0f);
+    direct_light_contribution = ColorRGB32F(0.0f);
 #elif DirectLightSamplingStrategy == LSS_UNIFORM_ONE_LIGHT
-    return sample_one_light_no_MIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+    direct_light_contribution = sample_one_light_no_MIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 #elif DirectLightSamplingStrategy == LSS_BSDF
-    return sample_one_light_bsdf(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+    direct_light_contribution = sample_one_light_bsdf(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 #elif DirectLightSamplingStrategy == LSS_MIS_LIGHT_BSDF
-    return sample_one_light_MIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+    direct_light_contribution = sample_one_light_MIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 #elif DirectLightSamplingStrategy == LSS_RIS_BSDF_AND_LIGHT
-    return sample_bsdf_and_lights_RIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+    direct_light_contribution = sample_bsdf_and_lights_RIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 #endif
+
+    return direct_light_contribution;
 }
 
 #endif

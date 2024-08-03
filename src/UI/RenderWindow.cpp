@@ -26,7 +26,6 @@
 // - light inside monkey + monkey full metallic = light leak
 // - MIS broken when not only the BSDF can sample
 // - light inside monkey --> RIS or MIS don't give the same as no direct light sampling
-// - ill controlled 1.0e35f values poping off in the denoiser on bzd measure seven
 // - different shader cache in release & debug ?
 // - take transmission color into account when direct sampling
 
