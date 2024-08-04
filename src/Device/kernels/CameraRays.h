@@ -59,6 +59,15 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
         render_data.aux_buffers.initial_reservoirs[pixel_index] = Reservoir();
         render_data.aux_buffers.spatial_reservoirs[pixel_index] = Reservoir();
 
+        render_data.g_buffer.geometric_normals[pixel_index] = { 0, 0, 0 };
+        render_data.g_buffer.shading_normals[pixel_index] = { 0, 0, 0 };
+        render_data.g_buffer.materials[pixel_index] = SimplifiedRendererMaterial();
+        render_data.g_buffer.first_hits[pixel_index] = { 0, 0, 0 };
+        render_data.g_buffer.ray_volume_states[pixel_index] = RayVolumeState();
+        render_data.g_buffer.view_directions[pixel_index] = { 0, 0, 0 };
+        render_data.g_buffer.camera_ray_hit[pixel_index] = false;
+        render_data.aux_buffers.pixel_active[pixel_index] = false;
+
         if (render_data.render_settings.stop_noise_threshold > 0.0f || render_data.render_settings.enable_adaptive_sampling)
         {
             // These buffers are only available when either the adaptive sampling or the stop noise threshold is enabled
