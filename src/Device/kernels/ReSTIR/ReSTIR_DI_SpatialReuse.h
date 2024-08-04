@@ -184,7 +184,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 
 	// Compute the unbiased contribution weight using 1/Z normalization weight as in ReSTIR 2019 Alg. 6
 	new_reservoir.end_normalized(Z);
-	new_reservoir.debug_value = Z / 2.0f;
+	new_reservoir.debug_value = hippt::dot(hippt::normalize(new_reservoir.sample.point_on_light_source - center_pixel_shading_point), center_pixel_shading_normal);
 	render_data.aux_buffers.spatial_reservoirs[pixel_index] = new_reservoir;
 }
 
