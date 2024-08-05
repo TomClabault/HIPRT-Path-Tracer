@@ -32,6 +32,7 @@
 // TODO Code Organization:
 // - Use HIPRT with CMake as a subdirectory (available soon)
 // - put number of triangles in light PDF in sample_one_triangle function
+// - add some explicit error messages if initializing orochi failed
 
 // TODO Features:
 // - add clear shader cache in ImgUI
