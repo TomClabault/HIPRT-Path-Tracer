@@ -29,23 +29,37 @@ struct Reservoir
             sample = new_sample;
     }
 
-    HIPRT_HOST_DEVICE void combine_with(Reservoir other_reservoir, float r_m, float target_function, Xorshift32Generator& random_number_generator)
+    HIPRT_HOST_DEVICE void combine_with(Reservoir other_reservoir, float mis_weight, float target_function, Xorshift32Generator& random_number_generator)
     {
-        // ReSTIR 2019, Alg. 6, line 4
-        // pHat_q(r.y) * r.W * r.M
-        float reservoir_sample_weight = target_function * other_reservoir.UCW * r_m;
+        float weight = mis_weight * target_function * other_reservoir.UCW;
 
         M += other_reservoir.M;
-        weight_sum += reservoir_sample_weight;
+        weight_sum += weight;
 
-        if (random_number_generator() < reservoir_sample_weight / weight_sum)
+        if (random_number_generator() < weight / weight_sum)
         {
             sample = other_reservoir.sample;
             sample.target_function = target_function;
-
-            debug_value = other_reservoir.UCW;
         }
     }
+
+    //HIPRT_HOST_DEVICE void combine_with(Reservoir other_reservoir, float r_m, float target_function, Xorshift32Generator& random_number_generator)
+    //{
+    //    // ReSTIR 2019, Alg. 6, line 4
+    //    // pHat_q(r.y) * r.W * r.M
+    //    float reservoir_sample_weight = target_function * other_reservoir.UCW * r_m;
+
+    //    M += other_reservoir.M;
+    //    weight_sum += reservoir_sample_weight;
+
+    //    if (random_number_generator() < reservoir_sample_weight / weight_sum)
+    //    {
+    //        sample = other_reservoir.sample;
+    //        sample.target_function = target_function;
+
+    //        debug_value = other_reservoir.UCW;
+    //    }
+    //}
 
     HIPRT_HOST_DEVICE void end()
     {

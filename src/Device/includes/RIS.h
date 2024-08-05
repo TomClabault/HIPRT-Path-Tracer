@@ -16,17 +16,96 @@
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB evaluate_reservoir_sample(const HIPRTRenderData& render_data, const RendererMaterial& material, const float3 shading_point, const float3& shading_normal, const float3& view_direction, const Reservoir& reservoir)
 {
+	float bsdf_pdf;
+	float distance_to_light;
+	float3 evaluated_point = shading_point + shading_normal * 1.0e-4f;
+	float3 to_light_direction = reservoir.sample.point_on_light_source - evaluated_point;
+	to_light_direction /= (distance_to_light = hippt::length(to_light_direction));
 
+	ColorRGB final_color;
+	float cosine_term_at_evaluated_point = hippt::max(0.0f, hippt::dot(shading_normal, to_light_direction));
+	if (cosine_term_at_evaluated_point > 0.0f)
+	{
+		RayVolumeState trash_volume_state;
+		ColorRGB bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, material, trash_volume_state, view_direction, shading_normal, to_light_direction, bsdf_pdf);
+
+		hiprtRay shadow_ray;
+		shadow_ray.origin = evaluated_point;
+		shadow_ray.direction = to_light_direction;
+		if (!evaluate_shadow_ray(render_data, shadow_ray, distance_to_light))
+			final_color = bsdf_color * reservoir.UCW * reservoir.sample.emission * cosine_term_at_evaluated_point;
+	}
+
+	return final_color;
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_lights_RIS_reservoir(const HIPRTRenderData& render_data, const RendererMaterial& material, const HitInfo& closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
 {
+	Reservoir output_reservoir;
 
+	float3 evaluated_point = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f;
+	for (int i = 0; i < render_data.render_settings.ris_number_of_light_candidates; i++)
+	{
+		float light_pdf;
+		LightSourceInformation light_info;
+		float3 point_on_light = sample_one_emissive_triangle(render_data, random_number_generator, light_pdf, light_info);
+		if (light_pdf > 0.0f)
+		{
+			float cosine_at_light_source;
+			float distance_to_light;
+			float3 to_light_direction = point_on_light - evaluated_point;
+			to_light_direction /= (distance_to_light = hippt::length(to_light_direction));
+
+			float target_function = 0.0f;
+			float candidate_weight = 0.0f;
+			float cosine_at_evaluted_point = hippt::max(0.0f, hippt::dot(to_light_direction, closest_hit_info.shading_normal));
+			if (cosine_at_evaluted_point > 0.0f)
+			{
+				cosine_at_light_source = hippt::abs(hippt::dot(light_info.light_source_normal, -to_light_direction));
+
+				light_pdf *= distance_to_light * distance_to_light;
+				light_pdf /= cosine_at_light_source;
+				light_pdf /= render_data.buffers.emissive_triangles_count;
+
+				float bsdf_pdf;
+				RayVolumeState trash_volume_state;
+				ColorRGB bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, material, trash_volume_state, view_direction, closest_hit_info.shading_normal, to_light_direction, bsdf_pdf);
+
+				bool visibility = true;
+#if RISUseVisiblityTargetFunction == RIS_USE_VISIBILITY_TRUE
+				hiprtRay shadow_ray;
+				shadow_ray.origin = evaluated_point;
+				shadow_ray.direction = to_light_direction;
+
+				visibility = !evaluate_shadow_ray(render_data, shadow_ray, distance_to_light);
+#endif
+
+				float geometry_term = cosine_at_evaluted_point * cosine_at_light_source / (distance_to_light * distance_to_light);
+				target_function = (bsdf_color * cosine_at_evaluted_point * visibility * geometry_term * light_info.emission).luminance();
+
+				float mis_weight = 1.0f / render_data.render_settings.ris_number_of_light_candidates;
+				candidate_weight = mis_weight * target_function / light_pdf;
+			}
+
+			ReservoirSample new_sample;
+			new_sample.emission = light_info.emission;
+			new_sample.light_source_normal = light_info.light_source_normal;
+			new_sample.point_on_light_source = point_on_light;
+			new_sample.target_function = target_function;
+
+			output_reservoir.add_one_candidate(new_sample, candidate_weight, random_number_generator);
+		}
+	}
+
+	output_reservoir.end();
+	return output_reservoir;
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB sample_lights_RIS(const HIPRTRenderData& render_data, const RendererMaterial& material, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
 {
+	Reservoir ris_sample = sample_lights_RIS_reservoir(render_data, material, closest_hit_info, view_direction, random_number_generator);
 
+	return evaluate_reservoir_sample(render_data, material, closest_hit_info.inter_point, closest_hit_info.shading_normal, view_direction, ris_sample);
 }
 
 //HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB evaluate_reservoir_sample(const HIPRTRenderData& render_data, const RendererMaterial& material, const float3 shading_point, const float3& shading_normal, const float3& view_direction, const Reservoir& reservoir)

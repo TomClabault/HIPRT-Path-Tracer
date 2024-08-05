@@ -166,6 +166,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
 
 /**
  * Returns true if in shadow, false otherwise
+ * 
+ * t_max should be given without an epsilon added. The epsilon is handled internally
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& render_data, hiprtRay ray, float t_max)
 {
