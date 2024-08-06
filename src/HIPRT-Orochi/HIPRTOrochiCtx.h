@@ -25,7 +25,13 @@ struct HIPRTOrochiCtx
 
 	void init(int device_index)
 	{
-		OROCHI_CHECK_ERROR(static_cast<oroError>(oroInitialize((oroApi)(ORO_API_HIP | ORO_API_CUDA), 0)));
+		if (static_cast<oroError>(oroInitialize((oroApi)(ORO_API_HIP | ORO_API_CUDA), 0)) != oroSuccess)
+		{
+			std::cerr << "Unable to initialize Orochi... Is CUDA/HIP installed?" << std::endl;
+
+			int trash = std::getchar();
+			std::exit(1);
+		}
 
 		OROCHI_CHECK_ERROR(oroInit(0));
 		OROCHI_CHECK_ERROR(oroDeviceGet(&orochi_device, device_index));
