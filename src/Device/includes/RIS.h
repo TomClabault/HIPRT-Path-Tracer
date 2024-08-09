@@ -39,7 +39,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB evaluate_reservoir_sample(const HIPRTRen
         ColorRGB bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, material, trash_volume_state, view_direction, shading_normal, shadow_ray.direction, bsdf_pdf);
         float cosine_at_evaluated_point = hippt::max(0.0f, hippt::dot(shading_normal, shadow_ray_direction_normalized));
         if (cosine_at_evaluated_point > 0.0f)
-            final_color = bsdf_color * reservoir.UCW * reservoir.sample.emission * cosine_at_evaluated_point;
+            final_color = bsdf_color * reservoir.UCW * reservoir.sample.emission * cosine_at_evaluated_point / (distance_to_light * distance_to_light) * hippt::abs(hippt::dot(reservoir.sample.light_source_normal, -shadow_ray.direction));
     }
 
     return final_color;
@@ -91,7 +91,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_lights_RIS_reservoir(const HIPRT
                 // light_sample_pdf *= distance_to_light * distance_to_light;
                 //light_sample_pdf /= cosine_at_light_source;
                 light_sample_pdf /= render_data.buffers.emissive_triangles_count;
-                light_sample_pdf = 1.0f * 20.0f;
 
                 float geometry_term = 1.0f / distance_to_light / distance_to_light;
 
@@ -112,11 +111,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_lights_RIS_reservoir(const HIPRT
                 // to stay consistent and try to debug the implementation.
                 // Eventually, the MIS weights should be in the resampling weights as in the GRIS theory
                 // 
-                //float mis_weight = balance_heuristic(light_sample_pdf, render_data.render_settings.ris_number_of_light_candidates, bsdf_pdf, render_data.render_settings.ris_number_of_bsdf_candidates);
+                // float mis_weight = balance_heuristic(light_sample_pdf, render_data.render_settings.ris_number_of_light_candidates, bsdf_pdf, render_data.render_settings.ris_number_of_bsdf_candidates);
                 //// TODO REMOVE 1/M MIS WEIGHT HERE
-                //mis_weight = 1.0f / (render_data.render_settings.ris_number_of_light_candidates + render_data.render_settings.ris_number_of_bsdf_candidates);
-                //candidate_weight = mis_weight * target_function / light_sample_pdf;
-                candidate_weight = target_function / light_sample_pdf;
+                float mis_weight = 1.0f / (render_data.render_settings.ris_number_of_light_candidates + render_data.render_settings.ris_number_of_bsdf_candidates);
+                candidate_weight = mis_weight * target_function / light_sample_pdf;
+                //candidate_weight = target_function / light_sample_pdf;
             }
         }
 
@@ -164,15 +163,15 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_lights_RIS_reservoir(const HIPRT
                 target_function = (bsdf_color * ray_payload.material.emission * cosine_at_evaluated_point * geometry_term).luminance();
 
                 float light_area = triangle_area(render_data, bsdf_ray_hit_info.primitive_index);
-                float light_pdf = bsdf_ray_hit_info.t * bsdf_ray_hit_info.t / cosine_light_source;
+                float light_pdf = bsdf_ray_hit_info.t* bsdf_ray_hit_info.t / cosine_light_source;
                 light_pdf /= light_area;
                 light_pdf /= render_data.buffers.emissive_triangles_count;
 
-                //float mis_weight = balance_heuristic(bsdf_sample_pdf, render_data.render_settings.ris_number_of_bsdf_candidates, light_pdf, render_data.render_settings.ris_number_of_light_candidates);
+                float mis_weight = balance_heuristic(bsdf_sample_pdf, render_data.render_settings.ris_number_of_bsdf_candidates, light_pdf, render_data.render_settings.ris_number_of_light_candidates);
                 //// TODO REMOVE 1/M MIS WEIGHT HERE
-                //mis_weight = 1.0f / (render_data.render_settings.ris_number_of_light_candidates + render_data.render_settings.ris_number_of_bsdf_candidates);
-                //candidate_weight = mis_weight * target_function / bsdf_sample_pdf;
-                candidate_weight = target_function / bsdf_sample_pdf;
+                ///mis_weight = 1.0f / (render_data.render_settings.ris_number_of_light_candidates + render_data.render_settings.ris_number_of_bsdf_candidates);
+                candidate_weight = mis_weight * target_function / bsdf_sample_pdf;
+                //candidate_weight = target_function / bsdf_sample_pdf;
 
                 sample.emission = ray_payload.material.emission;
                 sample.point_on_light_source = bsdf_ray_hit_info.inter_point;

@@ -27,7 +27,7 @@
  */
 
 #define SPATIAL_REUSE_PASSES_COUNT 1
-#define NEIGHBOR_REUSE_COUNT 1
+#define NEIGHBOR_REUSE_COUNT 5
 #define REUSE_RADIUS 30
 
 /**
@@ -121,9 +121,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 
 	for (int i = 0; i < NEIGHBOR_REUSE_COUNT; i++)
 	{
+		int2 neighbor_offset = integer_sample_in_disk(REUSE_RADIUS, random_number_generator);
 		// Hardcoding to 15 to the right to make the issue obvious
-		neighbor_offsets[i].x = 15;
-		neighbor_offsets[i].y = 0;
+		neighbor_offsets[i].x = neighbor_offset.x;
+		neighbor_offsets[i].y = neighbor_offset.y;
 	}
 
 	// Surface data of the center pixel
