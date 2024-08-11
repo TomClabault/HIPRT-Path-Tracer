@@ -11,6 +11,7 @@
 
 struct ReservoirSample
 {
+    // TODO store emissive triangle index instead
     float3 point_on_light_source = { 0, 0, 0 };
     float3 light_source_normal = { 0, 0, 0 };
     ColorRGB emission = { 0.0f, 0.0f, 0.0f };
@@ -43,9 +44,9 @@ struct Reservoir
      * 'random_number_generator' for generating the random number that will be used to stochastically
      *      select the sample from 'other_reservoir' or not
      */
-    HIPRT_HOST_DEVICE void combine_with(Reservoir other_reservoir, float target_function, float jacobian_determinant, Xorshift32Generator& random_number_generator)
+    HIPRT_HOST_DEVICE void combine_with(Reservoir other_reservoir, float mis_weight, float target_function, float jacobian_determinant, Xorshift32Generator& random_number_generator)
     {
-        float reservoir_sample_weight = target_function * other_reservoir.UCW * other_reservoir.M * jacobian_determinant;
+        float reservoir_sample_weight = mis_weight * target_function * other_reservoir.UCW * jacobian_determinant;
 
         M += other_reservoir.M;
         weight_sum += reservoir_sample_weight;
@@ -54,8 +55,6 @@ struct Reservoir
         {
             sample = other_reservoir.sample;
             sample.target_function = target_function;
-
-            debug_value = other_reservoir.UCW;
         }
     }
 
@@ -79,10 +78,6 @@ struct Reservoir
     // TODO weight sum is never used at the same time as UCW so only one variable can be used for both to save space
     float weight_sum = 0.0f;
     float UCW = 0.0f;
-
-    // This debug value stored in the reservoir can be used to display
-    // a value on the viewport such as the UCW for example or something else
-    float debug_value = 0.0f;
 
     ReservoirSample sample;
 };

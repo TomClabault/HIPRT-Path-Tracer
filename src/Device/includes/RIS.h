@@ -39,7 +39,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB evaluate_reservoir_sample(const HIPRTRen
         ColorRGB bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, material, trash_volume_state, view_direction, shading_normal, shadow_ray.direction, bsdf_pdf);
         float cosine_at_evaluated_point = hippt::max(0.0f, hippt::dot(shading_normal, shadow_ray_direction_normalized));
         if (cosine_at_evaluated_point > 0.0f)
-            final_color = bsdf_color * reservoir.UCW * reservoir.sample.emission * cosine_at_evaluated_point;
+            final_color = bsdf_color * reservoir.UCW * reservoir.sample.emission * cosine_at_evaluated_point;// / distance_to_light / distance_to_light * hippt::abs(hippt::dot(reservoir.sample.light_source_normal, -shadow_ray_direction_normalized));
     }
 
     return final_color;

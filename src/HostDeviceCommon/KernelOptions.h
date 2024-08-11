@@ -94,8 +94,7 @@
  *			- render_settings.ris_number_of_light_candidates & render_settings.ris_number_of_bsdf_candidates
  *				when sampling the initial candidates with RIS
  */
-//#define DirectLightSamplingStrategy LSS_RESTIR_DI
-#define DirectLightSamplingStrategy LSS_RIS_BSDF_AND_LIGHT
+#define DirectLightSamplingStrategy LSS_RESTIR_DI
 
 /**
  * Whether or not to use a visiblity term in the target function whose PDF we're approximating with RIS.
