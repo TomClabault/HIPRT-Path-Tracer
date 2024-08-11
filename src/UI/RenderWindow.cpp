@@ -864,6 +864,4 @@ void RenderWindow::quit()
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui_ImplGlfw_Shutdown();
 	ImGui::DestroyContext();
-
-	std::exit(0);
 }

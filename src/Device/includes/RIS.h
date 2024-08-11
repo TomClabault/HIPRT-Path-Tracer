@@ -27,7 +27,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_reservoir_sample(const HIPRT
 
     bool in_shadow;
     float distance_to_light;
-    float3 shadow_ray_direction = sample.point_on_light_source - shading_point;
+    float3 evaluated_point = shading_point + shading_normal * 1.0e-4f;
+    float3 shadow_ray_direction = sample.point_on_light_source - evaluated_point;
     float3 shadow_ray_direction_normalized = shadow_ray_direction / (distance_to_light = hippt::length(shadow_ray_direction));
     if (sample.is_bsdf_sample)
         // A BSDF sample that has been picked by RIS cannot be occluded otherwise
@@ -36,7 +37,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_reservoir_sample(const HIPRT
     else
     {
         hiprtRay shadow_ray;
-        shadow_ray.origin = shading_point;
+        shadow_ray.origin = evaluated_point;
         shadow_ray.direction = shadow_ray_direction_normalized;
 
         in_shadow = evaluate_shadow_ray(render_data, shadow_ray, distance_to_light);
@@ -310,12 +311,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_bsdf_and_lights_RIS_reservoir(co
             }
         }
 
-        ReservoirSample sample;
-        sample.is_bsdf_sample = false;
-        sample.point_on_light_source = random_light_point;
-        sample.emission = light_source_info.emission;
+        ReservoirSample light_RIS_sample;
+        light_RIS_sample.is_bsdf_sample = false;
+        light_RIS_sample.point_on_light_source = random_light_point;
+        light_RIS_sample.emission = light_source_info.emission;
+        light_RIS_sample.target_function = target_function;
 
-        reservoir.add_one_candidate(sample, candidate_weight, random_number_generator);
+        reservoir.add_one_candidate(light_RIS_sample, candidate_weight, random_number_generator);
     }
 
     // Whether or not a BSDF sample has been retained by the reservoir
@@ -345,7 +347,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_bsdf_and_lights_RIS_reservoir(co
         }
 
         float cosine_at_evaluated_point = 0.0f;
-        ReservoirSample new_sample;
+        ReservoirSample bsdf_RIS_sample;
         hiprtRay bsdf_ray;
         if (bsdf_sample_pdf > 0.0f)
         {
@@ -402,20 +404,20 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_bsdf_and_lights_RIS_reservoir(co
                 float mis_weight = balance_heuristic(bsdf_sample_pdf, nb_bsdf_candidates, light_pdf, nb_light_candidates);
                 candidate_weight = mis_weight * target_function / bsdf_sample_pdf;
 
-                new_sample.emission = bsdf_ray_payload.material.emission;
-                new_sample.point_on_light_source = bsdf_ray_hit_info.inter_point;
-                new_sample.is_bsdf_sample = true;
-                new_sample.bsdf_sample_contribution = bsdf_color;
-                new_sample.bsdf_sample_cosine_term = cosine_at_evaluated_point;
+                bsdf_RIS_sample.emission = bsdf_ray_payload.material.emission;
+                bsdf_RIS_sample.point_on_light_source = bsdf_ray_hit_info.inter_point;
+                bsdf_RIS_sample.is_bsdf_sample = true;
+                bsdf_RIS_sample.bsdf_sample_contribution = bsdf_color;
+                bsdf_RIS_sample.bsdf_sample_cosine_term = cosine_at_evaluated_point;
+                bsdf_RIS_sample.target_function;
             }
         }
 
         // TODO optimize here and if we keep the sample of the BSDF, we don't have to re-test for visibility at the end of the function
         // because a BSDF sample can only be chosen if it's unoccluded
-        reservoir.add_one_candidate(new_sample, candidate_weight, random_number_generator);
+        reservoir.add_one_candidate(bsdf_RIS_sample, candidate_weight, random_number_generator);
     }
 
-    
     reservoir.end();
     return reservoir;
 }

@@ -169,6 +169,7 @@ void ImGuiRenderer::draw_render_settings_panel()
 	ImGui::InputInt("Samples per frame", &render_settings.samples_per_frame);
 	ImGui::SameLine();
 	ImGui::Checkbox("Auto", &m_application_settings->auto_sample_per_frame);
+	ImGui::EndDisabled();
 	if (m_application_settings->auto_sample_per_frame)
 	{
 		ImGui::TreePush("Target GPU framerate tree");
