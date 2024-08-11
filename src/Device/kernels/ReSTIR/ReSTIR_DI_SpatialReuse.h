@@ -158,14 +158,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 
 		float cosine_ratio = hippt::abs(hippt::dot(-to_light_direction_at_center, neighbor_reservoir.sample.light_source_normal)) / hippt::abs(hippt::dot(-to_light_direction_at_neighbor, neighbor_reservoir.sample.light_source_normal));
 		float distance_squared_ratio = (distance_to_light_at_neighbor * distance_to_light_at_neighbor) / (distance_to_light_at_center * distance_to_light_at_center);
-		float jacobian_determinant = cosine_ratio* distance_squared_ratio;
+		float jacobian_determinant = cosine_ratio * distance_squared_ratio;
 
 		if (neighbor_reservoir.UCW == 0.0f)
 			jacobian_determinant = 1.0f;
 
 		float nume = 0.0f;
 		// We already have the target function at the center pixel, adding it to the denom
-		float denom = nume;
+		float denom = 0.0f;
 		float mis_weight = 1.0f;
 
 		for (int j = 0; j < NEIGHBOR_REUSE_COUNT + 1; j++)

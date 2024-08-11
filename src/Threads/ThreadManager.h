@@ -6,11 +6,14 @@
 #ifndef THREAD_MANAGER_H
 #define THREAD_MANAGER_H
 
+#include <iostream>
 #include <memory>
 #include <string>
 #include <thread>
 #include <unordered_map>
 #include <vector>
+
+// TODO make this class not a singleton but a global variable instead
 
 /**
  * Singleton class so that threads are accessible everywhere to be .join()
@@ -28,10 +31,11 @@
 class ThreadManager
 {
 public:
-	static std::string COMPILE_KERNEL_THREAD_KEY;
-	static std::string COMPILE_KERNEL_PASSES_THREAD_KEY;
+	static std::string COMPILE_KERNEL_PASS_THREAD_KEY;
 	static std::string TEXTURE_THREADS_KEY;
 	static std::string ENVMAP_LOAD_THREAD_KEY;
+
+	~ThreadManager();
 
 	/**
 	 * If the passed parameter is true, the ThreadManager will execute all

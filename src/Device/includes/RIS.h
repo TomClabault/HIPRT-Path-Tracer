@@ -314,6 +314,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_bsdf_and_lights_RIS_reservoir(co
         ReservoirSample light_RIS_sample;
         light_RIS_sample.is_bsdf_sample = false;
         light_RIS_sample.point_on_light_source = random_light_point;
+        light_RIS_sample.light_source_normal = light_source_info.light_source_normal;
         light_RIS_sample.emission = light_source_info.emission;
         light_RIS_sample.target_function = target_function;
 
@@ -406,10 +407,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_bsdf_and_lights_RIS_reservoir(co
 
                 bsdf_RIS_sample.emission = bsdf_ray_payload.material.emission;
                 bsdf_RIS_sample.point_on_light_source = bsdf_ray_hit_info.inter_point;
+                bsdf_RIS_sample.light_source_normal = bsdf_ray_hit_info.shading_normal;
                 bsdf_RIS_sample.is_bsdf_sample = true;
                 bsdf_RIS_sample.bsdf_sample_contribution = bsdf_color;
                 bsdf_RIS_sample.bsdf_sample_cosine_term = cosine_at_evaluated_point;
-                bsdf_RIS_sample.target_function;
+                bsdf_RIS_sample.target_function = target_function;
             }
         }
 

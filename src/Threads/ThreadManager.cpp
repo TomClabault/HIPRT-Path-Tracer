@@ -10,8 +10,7 @@
 #include <unordered_map>
 #include <vector>
 
-std::string ThreadManager::COMPILE_KERNEL_THREAD_KEY = "CompileKernelKey";
-std::string ThreadManager::COMPILE_KERNEL_PASSES_THREAD_KEY = "CompileKernelPassesKey";
+std::string ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY = "CompileKernelPassesKey";
 std::string ThreadManager::TEXTURE_THREADS_KEY = "TextureThreadsKey";
 std::string ThreadManager::ENVMAP_LOAD_THREAD_KEY = "EnvmapLoadThreadsKey";
 

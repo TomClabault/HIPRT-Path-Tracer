@@ -57,10 +57,10 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
 	m_restir_spatial_reuse_pass.get_compiler_options().set_additional_include_directories(GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS);
 
 	// Compiling kernels
-	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_path_trace_pass), std::ref(m_hiprt_orochi_ctx->hiprt_ctx));
-	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASSES_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_camera_ray_pass), std::ref(m_hiprt_orochi_ctx->hiprt_ctx));
-	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASSES_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_restir_initial_candidates_pass), std::ref(m_hiprt_orochi_ctx->hiprt_ctx));
-	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASSES_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_restir_spatial_reuse_pass), std::ref(m_hiprt_orochi_ctx->hiprt_ctx));
+	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_path_trace_pass), std::ref(m_hiprt_orochi_ctx->hiprt_ctx));
+	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_camera_ray_pass), std::ref(m_hiprt_orochi_ctx->hiprt_ctx));
+	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_restir_initial_candidates_pass), std::ref(m_hiprt_orochi_ctx->hiprt_ctx));
+	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_restir_spatial_reuse_pass), std::ref(m_hiprt_orochi_ctx->hiprt_ctx));
 
 	OROCHI_CHECK_ERROR(oroStreamCreate(&m_main_stream));
 
@@ -139,7 +139,7 @@ void GPURenderer::internal_update_adaptive_sampling_buffers()
 void GPURenderer::render()
 {
 	// Making sure kernels are compiled
-	ThreadManager::join_threads(ThreadManager::COMPILE_KERNEL_THREAD_KEY);
+	ThreadManager::join_threads(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY);
 
 	int tile_size_x = 8;
 	int tile_size_y = 8;
