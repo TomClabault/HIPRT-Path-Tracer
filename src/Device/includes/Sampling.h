@@ -3,11 +3,12 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef HIPRT_SAMPLING_H
-#define HIPRT_SAMPLING_H
+#ifndef DEVICE_SAMPLING_H
+#define DEVICE_SAMPLING_H
 
 #include "Device/includes/ONB.h"
 #include "HostDeviceCommon/Color.h"
+#include "HostDeviceCommon/KernelOptions.h"
 #include "HostDeviceCommon/Material.h"
 #include "HostDeviceCommon/Xorshift.h"
 
@@ -65,7 +66,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float balance_heuristic(float pdf_a, int nb_pdf_a
     // numerator but because we're going to divide by nb_pdf_a in the
     // function evaluation that use this MIS weight according to the
     // MIS estimator, this multiplication in the numerator that we
-    // would have here would be canceled at that would be basically
+    // would have here would be canceled and that would be basically
     // wasted maths so we're not doing it and we should not do it
     // in the function evaluation either.
     return pdf_a / (nb_pdf_a * pdf_a + nb_pdf_b * pdf_b);
@@ -134,9 +135,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 cosine_weighted_sample(const float3& norma
     return hippt::normalize(normal + sphere_point);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB fresnel_schlick(ColorRGB F0, float angle)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F fresnel_schlick(ColorRGB32F F0, float angle)
 {
-    return F0 + (ColorRGB(1.0f) - F0) * pow((1.0f - angle), 5.0f);
+    return F0 + (ColorRGB32F(1.0f) - F0) * pow((1.0f - angle), 5.0f);
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float fresnel_dielectric(float cos_theta_i, float relative_eta)
@@ -203,17 +204,23 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float G1(float alpha_x, float alpha_y, const floa
     return 1.0f / (1.0f + lambda);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGXVNDF_sample(const float3& local_view_direction, float alpha_x, float alpha_y, Xorshift32Generator& random_number_generator)
+/**
+ * Reference: [Sampling the GGX Distribution of Visible Normals, Unity: Heitz ; 2018]
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGX_VNDF_sample(const float3 local_view_direction, float alpha_x, float alpha_y, Xorshift32Generator& random_number_generator)
 {
     float r1 = random_number_generator();
     float r2 = random_number_generator();
 
+    // Stretching the ellipsoid to the hemisphere configuration
     float3 Vh = hippt::normalize(float3{ alpha_x * local_view_direction.x, alpha_y * local_view_direction.y, local_view_direction.z });
 
+    // Orthonormal basis construction
     float lensq = Vh.x * Vh.x + Vh.y * Vh.y;
-    float3 T1 = lensq > 0.0f ? float3{-Vh.y, Vh.x, 0} / sqrt(lensq) : float3{ 1.0f, 0.0f, 0.0f };
+    float3 T1 = lensq > 0.0f ? float3{ -Vh.y, Vh.x, 0 } / sqrt(lensq) : float3{ 1.0f, 0.0f, 0.0f };
     float3 T2 = hippt::cross(Vh, T1);
 
+    // Parametrization of the projected area of the hemisphere
     float r = sqrt(r1);
     float phi = 2.0f * M_PI * r2;
     float t1 = r * cos(phi);
@@ -221,9 +228,49 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGXVNDF_sample(const float3& local_view_di
     float s = 0.5f * (1.0f + Vh.z);
     t2 = (1.0f - s) * sqrt(1.0f - t1 * t1) + s * t2;
 
+    // Sampling the hemisphere
     float3 Nh = t1 * T1 + t2 * T2 + sqrt(hippt::max(0.0f, 1.0f - t1 * t1 - t2 * t2)) * Vh;
 
-    return hippt::normalize(float3{alpha_x * Nh.x, alpha_y * Nh.y, hippt::max(0.0f, Nh.z)});
+    // Un-stretching back to our ellipsoid
+    return hippt::normalize(float3{ alpha_x * Nh.x, alpha_y * Nh.y, hippt::max(0.0f, Nh.z) });
+}
+
+/**
+ * [Sampling Visible GGX Normals with Spherical Caps, Intel: Dupuy, Benyoub ; 2023]
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGX_VNDF_spherical_caps_sample(const float3 local_view_direction, float alpha_x, float alpha_y, Xorshift32Generator& random_number_generator)
+{
+    float r1 = random_number_generator();
+    float r2 = random_number_generator();
+
+    // Stretching the ellipsoid to the hemisphere configuration
+    float3 Vh = hippt::normalize(make_float3(alpha_x * local_view_direction.x, alpha_y * local_view_direction.y, local_view_direction.z));
+
+    // Sample a spherical cap in (-wi.z, 1]
+    float phi = 2.0f * M_PI * r1;
+    float z = (1.0f - r2) * (1.0f + Vh.z) - Vh.z;
+    float sinTheta = sqrtf(hippt::clamp(0.0f, 1.0f, 1.0f - z * z));
+    float x = sinTheta * cos(phi);
+    float y = sinTheta * sin(phi);
+    float3 c = make_float3(x, y, z);
+
+    // Compute microfacet normal
+    float3 Nh = c + Vh;
+
+    // Un-stretching back to our ellipsoid
+    return hippt::normalize(make_float3(alpha_x * Nh.x, alpha_y * Nh.y, Nh.z));
+}
+
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGX_sample(const float3& local_view_direction, float alpha_x, float alpha_y, Xorshift32Generator& random_number_generator)
+{
+#if GGXAnisotropicSampleFunction == GGX_NO_VNDF
+#elif GGXAnisotropicSampleFunction == GGX_VNDF_SAMPLING
+    return GGX_VNDF_sample(local_view_direction, alpha_x, alpha_y, random_number_generator);
+#elif GGXAnisotropicSampleFunction == GGX_VNDF_SPHERICAL_CAPS
+    return GGX_VNDF_spherical_caps_sample(local_view_direction, alpha_x, alpha_y, random_number_generator);
+#elif GGXAnisotropicSampleFunction == GGX_VNDF_BOUNDED
+#else
+#endif
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float GTR1(float alpha_g, float local_halfway_z)

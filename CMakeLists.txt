@@ -143,13 +143,13 @@ endif()
 
 
 
-# Macro to preserve nice beautiful source files hierarchy in Visual Studio
 if(MSVC_IDE)
 	# Enabling parallel compilation on MSVC which isn't enabled by default
 	if(MSVC)
 		add_definitions(/MP)
 	endif()
-	
+
+	# Macro to preserve nice beautiful source files hierarchy in Visual Studio
 	macro(GroupSources curdir)
 		file(GLOB children RELATIVE ${PROJECT_SOURCE_DIR}/${curdir} ${PROJECT_SOURCE_DIR}/${curdir}/*)
 

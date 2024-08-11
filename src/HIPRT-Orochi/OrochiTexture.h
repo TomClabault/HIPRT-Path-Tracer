@@ -13,15 +13,18 @@ class OrochiTexture
 {
 public:
 	OrochiTexture() {}
-	OrochiTexture(const ImageRGBA& image);
+	OrochiTexture(const Image8Bit& image);
+	OrochiTexture(const Image32Bit& image);
 	OrochiTexture(const OrochiTexture& other) = delete;
-	OrochiTexture(OrochiTexture&& other);
+	OrochiTexture(OrochiTexture&& other) noexcept;
 	~OrochiTexture();
 
 	void operator=(const OrochiTexture& other) = delete;
 	void operator=(OrochiTexture&& other);
 
-	void init_from_image(const ImageRGBA& image);
+	void init_from_image(const Image8Bit& image);
+	void init_from_image(const Image32Bit& image);
+
 	oroTextureObject_t get_device_texture();
 	oroTextureObject_t* get_device_texture_pointer();
 

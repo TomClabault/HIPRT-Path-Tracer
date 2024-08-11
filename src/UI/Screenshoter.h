@@ -10,16 +10,19 @@
 #include "OpenGL/OpenGLProgram.h"
 #include "Renderer/GPURenderer.h"
 
+#include <unordered_map>
+
 class RenderWindow;
 
 class Screenshoter
 {
 public:
+	Screenshoter();
+
 	void set_renderer(std::shared_ptr<GPURenderer> renderer);
 	void set_render_window(RenderWindow* render_window);
 
-	void select_compute_program(DisplayView display_view);
-	void initialize_programs();
+	void select_compute_program(DisplayViewType display_view);
 	void resize_output_image(int width, int height);
 
 	/**
@@ -37,13 +40,14 @@ private:
 	std::shared_ptr<GPURenderer> m_renderer = nullptr;
 	RenderWindow* m_render_window = nullptr;
 
-	bool m_compute_shader_initialized = false;
-	OpenGLProgram m_active_compute_program;
-	OpenGLProgram m_default_compute_program;
-	OpenGLProgram m_blend_2_compute_program;
-	OpenGLProgram m_normal_compute_program;
-	OpenGLProgram m_albedo_compute_program;
-	OpenGLProgram m_adaptive_sampling_compute_program;
+	/**
+	 * Compute shader program to use for the screenshot given a certain display view type
+	 */
+	std::unordered_map<DisplayViewType, std::shared_ptr<OpenGLProgram>> m_compute_programs;
+	/**
+	 * Compute shader program currently used for the screenshots
+	 */
+	std::shared_ptr<OpenGLProgram> m_active_compute_program;
 
 	GLuint m_output_image = 0;
 	int m_compute_output_image_width = -1;

@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef XORSHIFT_H
-#define XORSHIFT_H
+#ifndef HOST_DEVICE_COMMON_XORSHIFT_H
+#define HOST_DEVICE_COMMON_XORSHIFT_H
 
 #include <hiprt/hiprt_device.h>
 
@@ -44,7 +44,8 @@ struct Xorshift32Generator
     HIPRT_HOST_DEVICE float operator()()
     {
         //Float in [0, 1[
-        return hippt::min(xorshift32() / (float)XORSHIFT_MAX, 1.0f - 1.0e-9f);
+        float a = xorshift32() / (float)XORSHIFT_MAX;
+        return hippt::min(a, 1.0f - 1.0e-7f);
     }
 
     /**

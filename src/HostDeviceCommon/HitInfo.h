@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef HIT_INFO_H
-#define HIT_INFO_H
+#ifndef HOST_DEVICE_COMMON_HIT_INFO_H
+#define HOST_DEVICE_COMMON_HIT_INFO_H
 
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/Math.h"
@@ -14,7 +14,7 @@ struct LightSourceInformation
     int emissive_triangle_index = -1;
     float3 light_source_normal = { 0.0f, 1.0f, 0.0f };
     float light_area = 1.0f;
-    ColorRGB emission;
+    ColorRGB32F emission;
 };
 
 struct HitInfo

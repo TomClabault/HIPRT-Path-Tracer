@@ -4,28 +4,142 @@
  */
 
 #include "Renderer/GPURenderer.h"
+#include "Threads/ThreadFunctions.h"
 #include "Threads/ThreadManager.h"
 #include "Threads/ThreadFunctions.h"
 #include "UI/ApplicationSettings.h"
 
 #include <Orochi/OrochiUtils.h>
 
-GPURenderer::GPURenderer()
+const std::string GPURenderer::PATH_TRACING_KERNEL = "FullPathTracer";
+const std::string GPURenderer::CAMERA_RAYS_FUNC_NAME = "CameraRays";
+const std::string GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_FUNC_NAME = "ReSTIR_DI_InitialCandidates";
+const std::string GPURenderer::RESTIR_DI_SPATIAL_REUSE_FUNC_NAME = "ReSTIR_DI_SpatialReuse";
+
+const std::string GPURenderer::KERNEL_FILES[] = { DEVICE_KERNELS_DIRECTORY "/FullPathTracer.h", DEVICE_KERNELS_DIRECTORY "/CameraRays.h", DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReSTIR_DI_InitialCandidates.h" , DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReSTIR_DI_SpatialReuse.h" };
+const std::string GPURenderer::KERNEL_FUNCTIONS[] = { PATH_TRACING_KERNEL, CAMERA_RAYS_FUNC_NAME, RESTIR_DI_INITIAL_CANDIDATES_FUNC_NAME, RESTIR_DI_SPATIAL_REUSE_FUNC_NAME };
+
+const std::vector<std::string> GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS = { KERNEL_COMPILER_ADDITIONAL_INCLUDE, DEVICE_INCLUDES_DIRECTORY, OROCHI_INCLUDES_DIRECTORY, "./" };
+
+GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
 {
-	m_framebuffer = std::make_shared<OpenGLInteropBuffer<ColorRGB>>();
-	m_denoised_framebuffer = std::make_shared<OpenGLInteropBuffer<ColorRGB>>();
+	// Creating buffers
+	m_framebuffer = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
+	m_denoised_framebuffer = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
 	m_normals_AOV_buffer = std::make_shared<OpenGLInteropBuffer<float3>>();
-	m_albedo_AOV_buffer = std::make_shared<OpenGLInteropBuffer<ColorRGB>>();
+	m_albedo_AOV_buffer = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
+	m_pixels_sample_count_buffer = std::make_shared<OpenGLInteropBuffer<int>>();
+	
+	m_hiprt_orochi_ctx = hiprt_oro_ctx;	
+	m_device_properties = m_hiprt_orochi_ctx->device_properties;
+
+	// Adding hardware acceleration by default if supported
+	if (device_supports_hardware_acceleration() == HardwareAccelerationSupport::SUPPORTED)
+		m_path_trace_pass.get_compiler_options().set_macro("__USE_HWI__", 1);
+	else
+		m_path_trace_pass.get_compiler_options().remove_macro("__USE_HWI__");
+
+	// Configuring the kernels
+	m_path_trace_pass.set_kernel_file_path(GPURenderer::KERNEL_FILES[0]);
+	m_path_trace_pass.set_kernel_function_name(GPURenderer::KERNEL_FUNCTIONS[0]);
+	m_path_trace_pass.get_compiler_options().set_additional_include_directories(GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS);
+
+	m_camera_ray_pass.set_kernel_file_path(GPURenderer::KERNEL_FILES[1]);
+	m_camera_ray_pass.set_kernel_function_name(GPURenderer::KERNEL_FUNCTIONS[1]);
+	m_camera_ray_pass.get_compiler_options().set_additional_include_directories(GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS);
+
+	m_restir_initial_candidates_pass.set_kernel_file_path(GPURenderer::KERNEL_FILES[2]);
+	m_restir_initial_candidates_pass.set_kernel_function_name(GPURenderer::KERNEL_FUNCTIONS[2]);
+	m_restir_initial_candidates_pass.get_compiler_options().set_additional_include_directories(GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS);
+
+	m_restir_spatial_reuse_pass.set_kernel_file_path(GPURenderer::KERNEL_FILES[3]);
+	m_restir_spatial_reuse_pass.set_kernel_function_name(GPURenderer::KERNEL_FUNCTIONS[3]);
+	m_restir_spatial_reuse_pass.get_compiler_options().set_additional_include_directories(GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS);
+
+	// Compiling kernels
+	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_path_trace_pass), std::ref(m_hiprt_orochi_ctx->hiprt_ctx));
+	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASSES_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_camera_ray_pass), std::ref(m_hiprt_orochi_ctx->hiprt_ctx));
+	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASSES_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_restir_initial_candidates_pass), std::ref(m_hiprt_orochi_ctx->hiprt_ctx));
+	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASSES_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_restir_spatial_reuse_pass), std::ref(m_hiprt_orochi_ctx->hiprt_ctx));
+
+	OROCHI_CHECK_ERROR(oroStreamCreate(&m_main_stream));
+
+	// Buffer that keeps track of whether at least one ray is still alive or not
+	unsigned char true_data = 1;
+	m_still_one_ray_active_buffer.resize(1);
+	m_still_one_ray_active_buffer.upload_data(&true_data);
+	m_pixels_converged_count_buffer.resize(1);
+
+	OROCHI_CHECK_ERROR(oroEventCreate(&m_frame_start_event));
+	OROCHI_CHECK_ERROR(oroEventCreate(&m_frame_stop_event));
+}
+
+void GPURenderer::update()
+{
+	internal_update_clear_device_status_buffers();
+	internal_update_adaptive_sampling_buffers();
+}
+
+void GPURenderer::copy_status_buffers()
+{
+	OROCHI_CHECK_ERROR(oroMemcpy(&m_status_buffers_values.one_ray_active, m_still_one_ray_active_buffer.get_device_pointer(), sizeof(unsigned char), oroMemcpyDeviceToHost));
+	OROCHI_CHECK_ERROR(oroMemcpy(&m_status_buffers_values.pixel_converged_count, m_pixels_converged_count_buffer.get_device_pointer(), sizeof(unsigned int), oroMemcpyDeviceToHost));
+}
+
+void GPURenderer::internal_update_clear_device_status_buffers()
+{
+	unsigned char false_data = false;
+	unsigned int zero_data = 0;
+	// Uploading false to reset the flag
+	m_still_one_ray_active_buffer.upload_data(&false_data);
+	// Resetting the counter of pixels converged to 0
+	m_pixels_converged_count_buffer.upload_data(&zero_data);
+}
+
+void GPURenderer::internal_clear_m_status_buffers()
+{
+	m_status_buffers_values.one_ray_active = true;
+	m_status_buffers_values.pixel_converged_count = 0;
+}
+
+void GPURenderer::internal_update_adaptive_sampling_buffers()
+{
+	bool buffers_needed = m_render_settings.has_access_to_adaptive_sampling_buffers();
+
+	if (buffers_needed)
+	{
+		bool pixels_squared_luminance_needs_resize = m_pixels_squared_luminance_buffer.get_element_count() == 0;
+		bool pixels_sample_count_needs_resize = m_pixels_sample_count_buffer->get_element_count() == 0;
+
+		if (pixels_squared_luminance_needs_resize || pixels_sample_count_needs_resize)
+			// If one of the two buffers is going to be resized, synchronizing because we don't want
+			// to resize the buffers if we're currently rendering a frame
+			synchronize_kernel();
+
+		if (pixels_squared_luminance_needs_resize)
+			// Only allocating if it isn't already
+			m_pixels_squared_luminance_buffer.resize(m_render_width * m_render_height);
+
+		if (pixels_sample_count_needs_resize)
+			// Only allocating if it isn't already
+			m_pixels_sample_count_buffer->resize(m_render_width * m_render_height);
+	}
+	else
+	{
+		if (m_pixels_squared_luminance_buffer.get_element_count() > 0 || m_pixels_sample_count_buffer->get_element_count() > 0)
+			// If one of the buffers isn't freed already, we're going to free it. In this case, we need to synchronize to avoid
+			// freeing a buffer that the renderer is actively using in the frame it is rendering right now
+			synchronize_kernel();
+
+		m_pixels_squared_luminance_buffer.free();
+		m_pixels_sample_count_buffer->free();
+	}
 }
 
 void GPURenderer::render()
 {
-	if (m_compiling_kernels)
-	{
-		// If some threads were compiling kernels in the background, we're joining all of them
-		ThreadManager::join_threads(ThreadManager::COMPILE_KERNEL_PASSES_THREAD_KEY);
-		m_compiling_kernels = false;
-	}
+	// Making sure kernels are compiled
+	ThreadManager::join_threads(ThreadManager::COMPILE_KERNEL_THREAD_KEY);
 
 	int tile_size_x = 8;
 	int tile_size_y = 8;
@@ -40,39 +154,56 @@ void GPURenderer::render()
 	HIPRTRenderData render_data = get_render_data();
 	void* launch_args[] = { &render_data, &resolution, &hiprt_cam};
 
-	// Recording GPU frame time start timestamp
-	OROCHI_CHECK_ERROR(oroEventRecord(m_frame_start_event, 0));
-
 	// TODO try launch async on the same stream and see performance
-	launch_kernel(m_camera_ray_pass, 8, 8, resolution.x, resolution.y, launch_args);
-	oroStreamSynchronize(0);
+	OROCHI_CHECK_ERROR(oroEventRecord(m_frame_start_event, m_main_stream));
+	m_camera_ray_pass.launch_timed_asynchronous(8, 8, resolution.x, resolution.y, launch_args, m_main_stream);
+	//oroStreamSynchronize(m_main_stream);
 
 	render_data.random_seed = m_rng.xorshift32();
-	launch_kernel(m_restir_initial_candidates_pass, 8, 8, resolution.x, resolution.y, launch_args);
-	oroStreamSynchronize(0);
+	m_restir_initial_candidates_pass.launch_timed_asynchronous(8, 8, resolution.x, resolution.y, launch_args, m_main_stream);
+	//oroStreamSynchronize(0);
 
 	render_data.random_seed = m_rng.xorshift32();
-	launch_kernel(m_restir_spatial_reuse, 8, 8, resolution.x, resolution.y, launch_args);
-	oroStreamSynchronize(0);
+	m_restir_spatial_reuse_pass.launch_timed_asynchronous(8, 8, resolution.x, resolution.y, launch_args, m_main_stream);
+	//oroStreamSynchronize(0);
 
 	render_data.random_seed = m_rng.xorshift32();
-	launch_kernel(m_trace_kernel, 8, 8, resolution.x, resolution.y, launch_args);
+	m_path_trace_pass.launch_timed_asynchronous(8, 8, resolution.x, resolution.y, launch_args, m_main_stream);
 
 	// Recording GPU frame time stop timestamp and computing the frame time
-	OROCHI_CHECK_ERROR(oroEventRecord(m_frame_stop_event, 0));
-	OROCHI_CHECK_ERROR(oroEventSynchronize(m_frame_stop_event));
-	OROCHI_CHECK_ERROR(oroEventElapsedTime(&m_frame_time, m_frame_start_event, m_frame_stop_event));
+	OROCHI_CHECK_ERROR(oroEventRecord(m_frame_stop_event, m_main_stream));
 
-	// Unmapping OpenGL interop buffers so that they are available to OpenGL for displaying for example
-	m_framebuffer->unmap();
-	m_normals_AOV_buffer->unmap();
-	m_albedo_AOV_buffer->unmap();
+	HIPKernel::ComputeElapsedTimeCallbackData* elapsed_time_data = new HIPKernel::ComputeElapsedTimeCallbackData;
+	elapsed_time_data->start = m_frame_start_event;
+	elapsed_time_data->end = m_frame_stop_event;
+	elapsed_time_data->elapsed_time_out = &m_last_frame_time;
+
+	OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_main_stream, HIPKernel::compute_elapsed_time_callback, elapsed_time_data));
+
+	m_was_last_frame_low_resolution = m_render_settings.render_low_resolution;
 }
 
-void GPURenderer::change_render_resolution(int new_width, int new_height)
+void GPURenderer::synchronize_kernel()
+{
+	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_main_stream));
+}
+
+bool GPURenderer::frame_render_done()
+{
+	return oroStreamQuery(m_main_stream) == oroSuccess;
+}
+
+bool GPURenderer::was_last_frame_low_resolution()
+{
+	return m_was_last_frame_low_resolution;
+}
+
+void GPURenderer::resize(int new_width, int new_height)
 {
 	m_render_width = new_width;
 	m_render_height = new_height;
+
+	unmap_buffers();
 
 	m_framebuffer->resize(new_width * new_height);
 	m_denoised_framebuffer->resize(new_width * new_height);
@@ -87,8 +218,11 @@ void GPURenderer::change_render_resolution(int new_width, int new_height)
 	m_g_buffer.cameray_ray_hit.resize(new_width * new_height);
 	m_g_buffer.ray_volume_states.resize(new_width * new_height);
 
-	m_pixels_sample_count.resize(new_width * new_height);
-	m_pixels_squared_luminance.resize(new_width * new_height);
+	if (m_render_settings.has_access_to_adaptive_sampling_buffers())
+	{
+		m_pixels_sample_count_buffer->resize(new_width * new_height);
+		m_pixels_squared_luminance_buffer.resize(new_width * new_height);
+	}
 
 	m_restir_initial_reservoirs.resize(new_width * new_height);
 	m_restir_spatial_reservoirs.resize(new_width * new_height);
@@ -100,12 +234,21 @@ void GPURenderer::change_render_resolution(int new_width, int new_height)
 	m_camera.projection_matrix = glm::transpose(glm::perspective(m_camera.vertical_fov, new_aspect, m_camera.near_plane, m_camera.far_plane));
 }
 
-std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> GPURenderer::get_color_framebuffer()
+void GPURenderer::unmap_buffers()
+{
+	m_framebuffer->unmap();
+	m_normals_AOV_buffer->unmap();
+	m_albedo_AOV_buffer->unmap();
+	// TODO some unmapping here could be done only if necessary (pixel sample count for example doesn't need to be unmapped unless we're displaying the adaptive sampling map)
+	m_pixels_sample_count_buffer->unmap();
+}
+
+std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_color_framebuffer()
 {
 	return m_framebuffer;
 }
 
-std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> GPURenderer::get_denoised_framebuffer()
+std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_denoised_framebuffer()
 {
 	return m_denoised_framebuffer;
 }
@@ -115,24 +258,19 @@ std::shared_ptr<OpenGLInteropBuffer<float3>> GPURenderer::get_denoiser_normals_A
 	return m_normals_AOV_buffer;
 }
 
-std::shared_ptr<OpenGLInteropBuffer<ColorRGB>> GPURenderer::get_denoiser_albedo_AOV_buffer()
+std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_denoiser_albedo_AOV_buffer()
 {
 	return m_albedo_AOV_buffer;
 }
 
-OrochiBuffer<int>& GPURenderer::get_pixels_sample_count_buffer()
+std::shared_ptr<OpenGLInteropBuffer<int>>& GPURenderer::get_pixels_sample_count_buffer()
 {
-	return m_pixels_sample_count;
+	return m_pixels_sample_count_buffer;
 }
 
-OrochiBuffer<unsigned char>& GPURenderer::get_ray_active_buffer()
+const StatusBuffersValues& GPURenderer::get_status_buffer_values() const
 {
-	return m_still_one_ray_active_buffer;
-}
-
-OrochiBuffer<unsigned int>& GPURenderer::get_stop_noise_threshold_buffer()
-{
-	return m_stop_noise_threshold_count_buffer;
+	return m_status_buffers_values;
 }
 
 HIPRTRenderSettings& GPURenderer::get_render_settings()
@@ -150,14 +288,93 @@ oroDeviceProp GPURenderer::get_device_properties()
 	return m_device_properties;
 }
 
-float GPURenderer::get_gpu_frame_time()
+std::string getDeviceName(oroCtx m_ctxt, oroDevice m_device)
 {
-	return m_frame_time;
+	oroDeviceProp prop;
+	OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_ctxt));
+	OROCHI_CHECK_ERROR(oroGetDeviceProperties(&prop, m_device));
+	return std::string(prop.name);
 }
 
-float GPURenderer::get_sample_time()
+std::string getGcnArchName(oroCtx m_ctxt, oroDevice m_device)
 {
-	return get_gpu_frame_time() / ((m_render_settings.render_low_resolution ? 1 : m_render_settings.samples_per_frame));
+	oroDeviceProp prop;
+	OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_ctxt));
+	OROCHI_CHECK_ERROR(oroGetDeviceProperties(&prop, m_device));
+	return std::string(prop.gcnArchName);
+}
+
+uint32_t getGcnArchNumber(oroCtx m_ctxt, oroDevice m_device)
+{
+	oroDeviceProp prop;
+	OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_ctxt));
+	OROCHI_CHECK_ERROR(oroGetDeviceProperties(&prop, m_device));
+	return prop.gcnArch;
+}
+
+bool enableHwi(oroCtx m_ctxt, oroDevice m_device)
+{
+	std::string	   deviceName = getDeviceName(m_ctxt, m_device);
+	const uint32_t archNumber = getGcnArchNumber(m_ctxt, m_device);
+	return (archNumber >= 1030 && deviceName.find("NVIDIA") == std::string::npos);
+}
+
+HardwareAccelerationSupport GPURenderer::device_supports_hardware_acceleration()
+{
+	bool enabled = reinterpret_cast<hiprt::Context*>(m_hiprt_orochi_ctx->hiprt_ctx)->enableHwi();
+	if (enabled)
+		return HardwareAccelerationSupport::SUPPORTED;
+	else
+	{
+		if (std::string(m_device_properties.name).find("NVIDIA") != std::string::npos)
+		{
+			// Not supported on NVIDIA
+			return HardwareAccelerationSupport::NVIDIA_UNSUPPORTED;
+		}
+		else
+		{
+			// Not NVIDIA but hardware acceleration not supported, assuming too old AMD
+			return HardwareAccelerationSupport::AMD_UNSUPPORTED;
+		}
+	}
+}
+
+HIPKernel& GPURenderer::get_path_trace_kernel()
+{
+	return m_path_trace_pass;
+}
+
+void GPURenderer::recompile_all_kernels(GPUKernelCompilerOptions& options_for_all_kernels)
+{
+	m_camera_ray_pass.set_compiler_options(options_for_all_kernels);
+	m_restir_initial_candidates_pass.set_compiler_options(options_for_all_kernels);
+	m_restir_spatial_reuse_pass.set_compiler_options(options_for_all_kernels);
+	m_path_trace_pass.set_compiler_options(options_for_all_kernels);
+
+	m_camera_ray_pass.compile(m_hiprt_orochi_ctx->hiprt_ctx);
+	m_restir_initial_candidates_pass.compile(m_hiprt_orochi_ctx->hiprt_ctx);
+	m_restir_spatial_reuse_pass.compile(m_hiprt_orochi_ctx->hiprt_ctx);
+	m_path_trace_pass.compile(m_hiprt_orochi_ctx->hiprt_ctx);
+}
+
+float GPURenderer::get_last_frame_time()
+{
+	return m_last_frame_time;
+}
+
+void GPURenderer::reset_last_frame_time()
+{
+	m_last_frame_time = 0.0f;
+}
+
+void GPURenderer::reset()
+{
+	m_render_settings.frame_number = 0;
+	m_render_settings.sample_number = 0;
+	m_render_settings.samples_per_frame = 1;
+
+	reset_last_frame_time();
+	internal_clear_m_status_buffers();
 }
 
 HIPRTRenderData GPURenderer::get_render_data()
@@ -166,7 +383,7 @@ HIPRTRenderData GPURenderer::get_render_data()
 
 	render_data.geom = m_hiprt_scene.geometry.m_geometry;
 
-	render_data.buffers.pixels = m_framebuffer->map();
+	render_data.buffers.pixels = m_framebuffer->map_no_error();
 	render_data.buffers.triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.geometry.m_mesh.triangleIndices);
 	render_data.buffers.vertices_positions = reinterpret_cast<float3*>(m_hiprt_scene.geometry.m_mesh.vertices);
 	render_data.buffers.has_vertex_normals = reinterpret_cast<unsigned char*>(m_hiprt_scene.has_vertex_normals.get_device_pointer());
@@ -180,19 +397,15 @@ HIPRTRenderData GPURenderer::get_render_data()
 	render_data.buffers.texcoords = reinterpret_cast<float2*>(m_hiprt_scene.texcoords_buffer.get_device_pointer());
 	render_data.buffers.textures_dims = reinterpret_cast<int2*>(m_hiprt_scene.textures_dims.get_device_pointer());
 
-	// Uploading false to basically reset the flag
-	unsigned char false_data = false;
-	unsigned int zero_data = 0;
-	m_still_one_ray_active_buffer.upload_data(&false_data);
-	if (m_render_settings.stop_noise_threshold > 0.0f)
-		m_stop_noise_threshold_count_buffer.upload_data(&zero_data);
-
-	render_data.aux_buffers.denoiser_normals = m_normals_AOV_buffer->map();
-	render_data.aux_buffers.denoiser_albedo = m_albedo_AOV_buffer->map();
-	render_data.aux_buffers.pixel_sample_count = m_pixels_sample_count.get_device_pointer();
-	render_data.aux_buffers.pixel_squared_luminance = m_pixels_squared_luminance.get_device_pointer();
+	render_data.aux_buffers.denoiser_normals = m_normals_AOV_buffer->map_no_error();
+	render_data.aux_buffers.denoiser_albedo = m_albedo_AOV_buffer->map_no_error();
+	if (m_render_settings.has_access_to_adaptive_sampling_buffers())
+	{
+		render_data.aux_buffers.pixel_sample_count = m_pixels_sample_count_buffer->map_no_error();
+		render_data.aux_buffers.pixel_squared_luminance = m_pixels_squared_luminance_buffer.get_device_pointer();
+	}
 	render_data.aux_buffers.still_one_ray_active = m_still_one_ray_active_buffer.get_device_pointer();
-	render_data.aux_buffers.stop_noise_threshold_count = reinterpret_cast<AtomicType<unsigned int>*>(m_stop_noise_threshold_count_buffer.get_device_pointer());
+
 	render_data.aux_buffers.initial_reservoirs = m_restir_initial_reservoirs.get_device_pointer();
 	render_data.aux_buffers.spatial_reservoirs = m_restir_spatial_reservoirs.get_device_pointer();
 	render_data.aux_buffers.pixel_active = m_pixel_active.get_device_pointer();
@@ -205,93 +418,14 @@ HIPRTRenderData GPURenderer::get_render_data()
 	render_data.g_buffer.camera_ray_hit = m_g_buffer.cameray_ray_hit.get_device_pointer();
 	render_data.g_buffer.ray_volume_states = m_g_buffer.ray_volume_states.get_device_pointer();
 
+	render_data.aux_buffers.stop_noise_threshold_count = reinterpret_cast<AtomicType<unsigned int>*>(m_pixels_converged_count_buffer.get_device_pointer());
+
 	render_data.world_settings = m_world_settings;
 	render_data.render_settings = m_render_settings;
 
 	render_data.random_seed = m_rng.xorshift32();
 
 	return render_data;
-}
-
-void GPURenderer::initialize(int device_index)
-{
-	m_hiprt_orochi_ctx = std::make_shared<HIPRTOrochiCtx>();
-	m_hiprt_orochi_ctx.get()->init(device_index);
-	oroGetDeviceProperties(&m_device_properties, m_hiprt_orochi_ctx->orochi_device);
-
-	unsigned char true_data = 1;
-	m_still_one_ray_active_buffer.resize(1);
-	m_still_one_ray_active_buffer.upload_data(&true_data);
-
-	m_stop_noise_threshold_count_buffer.resize(1);
-
-	OROCHI_CHECK_ERROR(oroEventCreate(&m_frame_start_event));
-	OROCHI_CHECK_ERROR(oroEventCreate(&m_frame_stop_event));
-
-	std::vector<std::string> compiler_options = m_kernel_options.get_compiler_options();
-	// Compiling passes kernels
-	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASSES_THREAD_KEY, ThreadFunctions::compile_kernel_pass, m_hiprt_orochi_ctx->hiprt_ctx, &m_camera_ray_pass, compiler_options, ApplicationSettings::KERNEL_FILES[1], ApplicationSettings::KERNEL_FUNCTIONS[1]);
-	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASSES_THREAD_KEY, ThreadFunctions::compile_kernel_pass, m_hiprt_orochi_ctx->hiprt_ctx, &m_restir_initial_candidates_pass, compiler_options, ApplicationSettings::KERNEL_FILES[2], ApplicationSettings::KERNEL_FUNCTIONS[2]);
-	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASSES_THREAD_KEY, ThreadFunctions::compile_kernel_pass, m_hiprt_orochi_ctx->hiprt_ctx, &m_restir_spatial_reuse, compiler_options, ApplicationSettings::KERNEL_FILES[3], ApplicationSettings::KERNEL_FUNCTIONS[3]);
-	m_compiling_kernels = true;
-}
-
-void GPURenderer::compile_trace_kernel(const char* kernel_file_path, const char* kernel_function_name)
-{
-	std::cout << "Compiling tracer kernel \"" << kernel_function_name << "\"..." << std::endl;
-
-	auto start = std::chrono::high_resolution_clock::now();
-
-	hiprtApiFunction trace_function_out;
-	std::vector<const char*> options;
-	std::vector<std::string> additional_includes = { KERNEL_COMPILER_ADDITIONAL_INCLUDE, DEVICE_INCLUDES_DIRECTORY, OROCHI_INCLUDES_DIRECTORY, "-I./" };
-	std::vector<std::string> macros = m_kernel_options.get_compiler_options();
-	for (const std::string& macro : macros)
-		options.push_back(macro.c_str());
-
-	if (HIPPTOrochiUtils::build_trace_kernel(m_hiprt_orochi_ctx->hiprt_ctx, kernel_file_path, kernel_function_name, trace_function_out, additional_includes, options, 0, 1, false) != hiprtError::hiprtSuccess)
-	{
-		std::cerr << "Unable to compile kernel \"" << kernel_function_name << "\". Cannot continue." << std::endl;
-		int ignored = std::getchar();
-		std::exit(1);
-	}
-
-	std::cout << std::endl;
-
-	m_trace_kernel = *reinterpret_cast<oroFunction*>(&trace_function_out);
-
-	int numRegs = 0;
-	int numSmem = 0;
-	OROCHI_CHECK_ERROR(oroFuncGetAttribute(&numRegs, ORO_FUNC_ATTRIBUTE_NUM_REGS, m_trace_kernel));
-	OROCHI_CHECK_ERROR(oroFuncGetAttribute(&numSmem, ORO_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES, m_trace_kernel));
-
-	auto stop = std::chrono::high_resolution_clock::now();
-	std::cout << "Trace kernel: " << numRegs << " registers, shared memory " << numSmem << std::endl;
-	std::cout << "Kernel \"" << kernel_function_name << "\" compiled in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
-}
-
-void GPURenderer::set_kernel_option(const std::string& name, int value)
-{
-	m_kernel_options.set_option(name, value);
-}
-
-int GPURenderer::get_kernel_option_value(const std::string& name)
-{
-	return m_kernel_options.get_option_value(name);
-}
-
-int* GPURenderer::get_kernel_option_pointer(const std::string& name)
-{
-	return m_kernel_options.get_pointer_to_option_value(name);
-}
-
-void GPURenderer::launch_kernel(oroFunction kernel_function, int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args)
-{
-	hiprtInt2 nb_groups;
-	nb_groups.x = std::ceil(static_cast<float>(res_x) / tile_size_x);
-	nb_groups.y = std::ceil(static_cast<float>(res_y) / tile_size_y);
-
-	OROCHI_CHECK_ERROR(oroModuleLaunchKernel(kernel_function, nb_groups.x, nb_groups.y, 1, tile_size_x, tile_size_y, 1, 0, 0, launch_args, 0));
 }
 
 void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
@@ -357,10 +491,22 @@ void GPURenderer::set_scene(const Scene& scene)
 	set_hiprt_scene_from_scene(scene);
 
 	m_materials = scene.materials;
+	m_material_names = scene.material_names;
 }
 
-void GPURenderer::set_envmap(ImageRGBA& envmap_image)
+void GPURenderer::set_envmap(Image32Bit& envmap_image)
 {
+	ThreadManager::join_threads(ThreadManager::ENVMAP_LOAD_THREAD_KEY);
+
+	if (envmap_image.width == 0 || envmap_image.height == 0)
+	{
+		m_world_settings.ambient_light_type = AmbientLightType::UNIFORM;
+
+		std::cerr << "Empty envmap set on the GPURenderer..." << std::endl;
+
+		return;
+	}
+
 	m_envmap.init_from_image(envmap_image);
 	m_envmap.compute_cdf(envmap_image);
 
@@ -370,9 +516,19 @@ void GPURenderer::set_envmap(ImageRGBA& envmap_image)
 	m_world_settings.envmap_cdf = m_envmap.get_cdf_device_pointer();
 }
 
+bool GPURenderer::has_envmap()
+{
+	return m_world_settings.envmap_height != 0 && m_world_settings.envmap_width != 0;
+}
+
 const std::vector<RendererMaterial>& GPURenderer::get_materials()
 {
 	return m_materials;
+}
+
+const std::vector<std::string>& GPURenderer::get_material_names()
+{
+	return m_material_names;
 }
 
 void GPURenderer::update_materials(std::vector<RendererMaterial>& materials)
@@ -381,23 +537,14 @@ void GPURenderer::update_materials(std::vector<RendererMaterial>& materials)
 	m_hiprt_scene.materials_buffer.upload_data(materials.data());
 }
 
+const Camera& GPURenderer::get_camera() const
+{
+	return m_camera;
+}
+
 void GPURenderer::set_camera(const Camera& camera)
 {
 	m_camera = camera;
-}
-
-void GPURenderer::toggle_adaptive_sampling_buffers(bool adaptive_sampling_enabled)
-{
-	if (adaptive_sampling_enabled)
-	{
-		m_pixels_squared_luminance.resize(m_render_width * m_render_height);
-		m_pixels_sample_count.resize(m_render_width * m_render_height);
-	}
-	else
-	{
-		m_pixels_squared_luminance.free();
-		m_pixels_sample_count.free();
-	}
 }
 
 void GPURenderer::translate_camera_view(glm::vec3 translation)

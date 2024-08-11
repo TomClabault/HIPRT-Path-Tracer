@@ -11,14 +11,33 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include "glm/gtx/euler_angles.hpp"
 
+ImGuiRenderer::ImGuiRenderer()
+{
+	ImGuiViewport* viewport = ImGui::GetMainViewport();
+	float windowDpiScale = viewport->DpiScale;
+	if (windowDpiScale > 1.0f)
+		ImGui::GetStyle().ScaleAllSizes(windowDpiScale);
+}
+
+void ImGuiRenderer::WrappingTooltip(const std::string& text)
+{
+	ImGui::SetNextWindowSize(ImVec2(ImGui::GetFontSize() * 32.0f, 0.0f));
+	ImGui::BeginTooltip();
+	ImGui::PushTextWrapPos(0.0f);
+	ImGui::Text("%s", text.c_str());
+	ImGui::PopTextWrapPos();
+	ImGui::EndTooltip();
+}
+
 void ImGuiRenderer::set_render_window(RenderWindow* render_window)
 {
 	m_render_window = render_window;
 
 	m_application_settings = render_window->get_application_settings();
 	m_renderer = render_window->get_renderer();
-	m_denoiser = render_window->get_denoiser();
-	m_perf_metrics = m_render_window->get_performance_metrics();
+	m_render_window_denoiser = render_window->get_denoiser();
+	m_render_window_perf_metrics = m_render_window->get_performance_metrics();
+
 }
 
 void ImGuiRenderer::draw_imgui_interface()
@@ -26,22 +45,58 @@ void ImGuiRenderer::draw_imgui_interface()
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 
 	ImGuiIO& io = ImGui::GetIO();
-	ImGui::ShowDemoWindow();
+	// ImGui::ShowDemoWindow();
 
 	ImGui::Begin("Settings");
 
-	auto now_time = std::chrono::high_resolution_clock::now();
-	if (!m_render_window->is_rendering_done())
-	{
-		float sample_time = m_renderer->get_sample_time();
-
-		if (!render_settings.render_low_resolution)
-			// Not adding the frame time if we're rendering low resolution, not relevant
-			m_perf_metrics->add_value(PerformanceMetricsComputer::SAMPLE_TIME_KEY, sample_time);
-	}
-
 	ImGui::Text("Render time: %.3fs", m_render_window->get_current_render_time() / 1000.0f);
 	ImGui::Text("%d samples | %.2f samples/s @ %dx%d", render_settings.sample_number, m_render_window->get_samples_per_second(), m_renderer->m_render_width, m_renderer->m_render_height);
+
+	if (render_settings.has_access_to_adaptive_sampling_buffers())
+	{
+		unsigned int converged_count = m_renderer->get_status_buffer_values().pixel_converged_count;
+		unsigned int total_pixel_count = m_renderer->m_render_width * m_renderer->m_render_height;
+
+		bool can_print_convergence = false;
+		can_print_convergence |= render_settings.sample_number > render_settings.adaptive_sampling_min_samples;
+		can_print_convergence |= render_settings.stop_pixel_noise_threshold > 0.0f;
+
+		if (can_print_convergence)
+		{
+			ImGui::Text("Pixels converged: %d / %d - %.4f%%", converged_count, total_pixel_count, static_cast<float>(converged_count) / total_pixel_count * 100.0f);
+			if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+			{
+				// Adding some information on what noise threshold is being used
+				std::string text = "Current adaptive sampling noise threshold is: ";
+				if (render_settings.enable_adaptive_sampling && render_settings.sample_number > render_settings.adaptive_sampling_min_samples)
+				{
+					if (render_settings.stop_pixel_noise_threshold > render_settings.adaptive_sampling_noise_threshold)
+						// If the pixel noise threshold is stronger, then the displayed convergence counter
+						// is going to be according to the stop noise threshold so that's what we're adding in the tooltip
+						// there
+						text += std::to_string(render_settings.stop_pixel_noise_threshold) + " (pixel noise threshold)";
+					else
+						text += std::to_string(render_settings.adaptive_sampling_noise_threshold) + " (adaptive sampling)";
+				}
+				else if (render_settings.stop_pixel_noise_threshold > 0.0f)
+					text += std::to_string(render_settings.stop_pixel_noise_threshold) + " (pixel noise threshold)";
+
+				ImGuiRenderer::WrappingTooltip(text);
+			}
+		}
+		else
+		{
+			ImGui::Text("Pixels converged: N/A");
+			if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+				ImGuiRenderer::WrappingTooltip("Adaptive sampling hasn't kicked in yet... Convergence computation hasn't started.");
+		}
+	}
+	else
+	{
+		ImGui::Text("Pixels converged: N/A");
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+			ImGuiRenderer::WrappingTooltip("Convergence is only computed when either adaptive sampling or the \"Pixel noise threshold\" render stopping condition is used.");
+	}
 
 	ImGui::Separator();
 
@@ -50,7 +105,7 @@ void ImGuiRenderer::draw_imgui_interface()
 
 	ImGui::Separator();
 
-	ImGui::PushItemWidth(233);
+	ImGui::PushItemWidth(16 * ImGui::GetFontSize());
 
 	draw_render_settings_panel();
 	draw_environment_panel();
@@ -58,7 +113,9 @@ void ImGuiRenderer::draw_imgui_interface()
 	draw_objects_panel();
 	draw_denoiser_panel();
 	draw_post_process_panel();
-	draw_performance_panel();
+	draw_performance_settings_panel();
+	draw_performance_metrics_panel();
+	draw_debug_panel();
 
 	ImGui::End();
 
@@ -74,15 +131,12 @@ void ImGuiRenderer::draw_render_settings_panel()
 		return;
 	ImGui::TreePush("Render settings tree");
 
-	if (ImGui::Combo("Render Kernel", &m_application_settings->selected_kernel, "Full Path Tracer\0Normals Visualisation\0\0"))
-	{
-		m_renderer->compile_trace_kernel(m_application_settings->KERNEL_FILES[m_application_settings->selected_kernel].c_str(), m_application_settings->KERNEL_FUNCTIONS[m_application_settings->selected_kernel].c_str());
-		m_render_window->set_render_dirty(true);
-	}
-
-	const char* items[] = { "- Default", "- Denoiser blend", "- Denoiser - Normals", "- Denoiser - Denoised normals", "- Denoiser - Albedo", "- Denoiser - Denoised albedo", "- Adaptive sampling heatmap" };
-	if (ImGui::Combo("Display View", (int*)(&m_application_settings->display_view), items, IM_ARRAYSIZE(items)))
-		m_render_window->change_display_view(m_application_settings->display_view);
+	std::vector<const char*> items = { "- Default", "- Denoiser blend", "- Denoiser - Normals", "- Denoiser - Denoised normals", "- Denoiser - Albedo", "- Denoiser - Denoised albedo" };
+	if (render_settings.enable_adaptive_sampling)
+		items.push_back("- Adaptive sampling heatmap");
+	static int display_view_selected = m_render_window->get_display_view_system()->get_current_display_view_type();
+	if (ImGui::Combo("Display View", &display_view_selected, items.data(), items.size()))
+		m_render_window->get_display_view_system()->queue_display_view_change(static_cast<DisplayViewType>(display_view_selected));
 
 	ImGui::BeginDisabled(m_application_settings->keep_same_resolution);
 	float resolution_scaling_backup = m_application_settings->render_resolution_scale;
@@ -115,83 +169,112 @@ void ImGuiRenderer::draw_render_settings_panel()
 	ImGui::InputInt("Samples per frame", &render_settings.samples_per_frame);
 	ImGui::SameLine();
 	ImGui::Checkbox("Auto", &m_application_settings->auto_sample_per_frame);
-	ImGui::EndDisabled();
-
-	if (ImGui::InputInt("Max Sample Count", &m_application_settings->max_sample_count))
-		m_application_settings->max_sample_count = std::max(m_application_settings->max_sample_count, 0);
-
-	unsigned int converged_count;
-	unsigned int total_pixel_count;
-	ImGui::BeginDisabled(render_settings.enable_adaptive_sampling);
-	if (ImGui::InputFloat("Noise threshold", &render_settings.stop_noise_threshold))
+	if (m_application_settings->auto_sample_per_frame)
 	{
-		bool need_buffers = false;
-		need_buffers |= render_settings.enable_adaptive_sampling == 1;
-		need_buffers |= render_settings.stop_noise_threshold > 0.0f;
-
-		unsigned int zero_data = 0;
-		render_settings.stop_noise_threshold = std::max(0.0f, render_settings.stop_noise_threshold);
-		m_renderer->get_stop_noise_threshold_buffer().upload_data(&zero_data);
-		m_renderer->toggle_adaptive_sampling_buffers(need_buffers);
+		ImGui::TreePush("Target GPU framerate tree");
+		if (ImGui::InputFloat("Target GPU framerate", &m_application_settings->target_GPU_framerate))
+			// Clamping to 1 FPS because going below that is dangerous in terms of driver timeouts
+			m_application_settings->target_GPU_framerate = std::max(1.0f, m_application_settings->target_GPU_framerate);
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+			ImGuiRenderer::WrappingTooltip("The samples per frame will be automatically adjusted such that the GPU"
+										   " takes approximately 1000.0f / TargetFramerate milliseconds to complete"
+										   "a frame. Useful to keep the GPU busy after almost all pixels have converged."
+										   "Lowering this settings increases rendering efficiency but can cause camera"
+										   "movements to be stuttery.");
+		ImGui::TreePop();
 	}
-
-	ImGui::TreePush("Tree stop noise threshold");
-	{
-		converged_count = m_renderer->get_stop_noise_threshold_buffer().download_data()[0] * (!render_settings.enable_adaptive_sampling);
-		total_pixel_count = m_renderer->m_render_width * m_renderer->m_render_height;
-		ImGui::Text("Pixels converged: %d / %d - %.4f%%", converged_count, total_pixel_count, static_cast<float>(converged_count) / total_pixel_count * 100.0f);
-	}
-	ImGui::TreePop();
-	ImGui::EndDisabled();
-
 	if (ImGui::InputInt("Max bounces", &render_settings.nb_bounces))
 	{
 		// Clamping to 0 in case the user input a negative number of bounces	
 		render_settings.nb_bounces = std::max(render_settings.nb_bounces, 0);
 		m_render_window->set_render_dirty(true);
 	}
-	ImGui::Separator();
-	if (ImGui::SliderFloat("Direct ligthing contribution clamp", &render_settings.direct_contribution_clamp, 0.0f, 10.0f))
-	{
-		render_settings.direct_contribution_clamp = std::max(0.0f, render_settings.direct_contribution_clamp);
-		m_render_window->set_render_dirty(true);
-	}
-	if (ImGui::SliderFloat("Envmap ligthing contribution clamp", &render_settings.envmap_contribution_clamp, 0.0f, 10.0f))
-	{
-		render_settings.envmap_contribution_clamp = std::max(0.0f, render_settings.envmap_contribution_clamp);
-		m_render_window->set_render_dirty(true);
-	}
-	if (ImGui::SliderFloat("Indirect ligthing contribution clamp", &render_settings.indirect_contribution_clamp, 0.0f, 10.0f))
-	{
-		render_settings.indirect_contribution_clamp = std::max(0.0f, render_settings.indirect_contribution_clamp);
-		m_render_window->set_render_dirty(true);
-	}
 
-	ImGui::Separator();
-	if (ImGui::CollapsingHeader("Adaptive sampling"))
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+	if (ImGui::CollapsingHeader("Render stopping condition"))
 	{
-		ImGui::TreePush("Adaptive sampling tree");
+		ImGui::TreePush("Stopping condition tree");
 
-		if (ImGui::Checkbox("Enable adaptive sampling", (bool*)&render_settings.enable_adaptive_sampling))
+		if (ImGui::InputInt("Max Sample Count", &m_application_settings->max_sample_count))
+			m_application_settings->max_sample_count = std::max(m_application_settings->max_sample_count, 0);
+
+		if (ImGui::InputFloat("Max Render Time (s)", &m_application_settings->max_render_time))
+			m_application_settings->max_render_time = std::max(m_application_settings->max_render_time, 0.0f);
+		ImGui::Separator();
+
+		static bool use_adaptive_sampling_threshold = false;
+		ImGui::BeginDisabled(use_adaptive_sampling_threshold);
+		if (ImGui::InputFloat("Pixel noise threshold", &render_settings.stop_pixel_noise_threshold))
+			render_settings.stop_pixel_noise_threshold = std::max(0.0f, render_settings.stop_pixel_noise_threshold);
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+			ImGuiRenderer::WrappingTooltip("Cannot be set lower than the adaptive sampling threshold. 0.0 to disable.");
+
+		// Having the stop pixel noise threshold lower than the adaptive sampling noise threshold
+		// is impossible because the adaptive sampling will stop sampling the pixel before it can
+		// converge enough to the stop pixels noise threshold (which is lower than the
+		// adaptive sampling) so we're making sure the values are correct here
+		if (render_settings.enable_adaptive_sampling && render_settings.stop_pixel_noise_threshold > 0.0f)
+			render_settings.stop_pixel_noise_threshold = std::max(render_settings.stop_pixel_noise_threshold, render_settings.adaptive_sampling_noise_threshold);
+
+		ImGui::EndDisabled(); // use_adaptive_sampling_threshold
+
+		ImGui::SameLine();
+		ImGui::Checkbox("Use adaptive sampling threshold", &use_adaptive_sampling_threshold);
+		if (use_adaptive_sampling_threshold)
+			// If we're using the adaptive sampling threshold, updating the stop pixel noise threshold with the adaptive sampling threshold
+			render_settings.stop_pixel_noise_threshold = render_settings.adaptive_sampling_noise_threshold;
+
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+			ImGuiRenderer::WrappingTooltip("If checked, the adaptive sampling noise threshold will be used.");
+
+		bool update_converge_text = render_settings.stop_pixel_noise_threshold > 0.0f;
+		ImGui::BeginDisabled(!update_converge_text);
+		ImGui::TreePush("Tree pixel stop noise threshold");
 		{
-			bool need_buffers = false;
-			need_buffers |= render_settings.enable_adaptive_sampling == 1;
-			need_buffers |= render_settings.stop_noise_threshold > 0.0f;
+			if (ImGui::InputFloat("Pixel proportion", &render_settings.stop_pixel_percentage_converged))
+				render_settings.stop_pixel_percentage_converged = std::max(0.0f, std::min(render_settings.stop_pixel_percentage_converged, 100.0f));
+			if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+			{
+				std::string additional_info = "";
+				if (render_settings.stop_pixel_noise_threshold == 0.0f)
+					additional_info = "The stop pixel noise threshold must be > 0.0.";
 
-			m_renderer->toggle_adaptive_sampling_buffers(need_buffers);
-			m_render_window->set_render_dirty(true);
-		}
-
-		ImGui::BeginDisabled(!render_settings.enable_adaptive_sampling);
-		if (ImGui::InputInt("Adaptive sampling minimum samples", &render_settings.adaptive_sampling_min_samples))
-			m_render_window->set_render_dirty(true);
-		if (ImGui::InputFloat("Adaptive sampling noise threshold", &render_settings.adaptive_sampling_noise_threshold))
-		{
-			render_settings.adaptive_sampling_noise_threshold = std::max(0.0f, render_settings.adaptive_sampling_noise_threshold);
-			m_render_window->set_render_dirty(true);
+				ImGuiRenderer::WrappingTooltip("The proportion of pixels that need to have converge to the noise threshold for the rendering to stop. In percentage [0, 100]." + additional_info);
+			}
 		}
 		ImGui::EndDisabled();
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
+		// Tree stop noise threshold
+		ImGui::TreePop();
+
+		// Stopping condition tree
+		ImGui::TreePop();
+	}
+	
+	if (ImGui::CollapsingHeader("Light clamping"))
+	{
+		ImGui::TreePush("Light clamping tree");
+
+		if (ImGui::SliderFloat("Direct ligthing contribution clamp", &render_settings.direct_contribution_clamp, 0.0f, 10.0f))
+		{
+			render_settings.direct_contribution_clamp = std::max(0.0f, render_settings.direct_contribution_clamp);
+			m_render_window->set_render_dirty(true);
+		}
+		if (ImGui::SliderFloat("Envmap ligthing contribution clamp", &render_settings.envmap_contribution_clamp, 0.0f, 10.0f))
+		{
+			render_settings.envmap_contribution_clamp = std::max(0.0f, render_settings.envmap_contribution_clamp);
+			m_render_window->set_render_dirty(true);
+		}
+		if (ImGui::SliderFloat("Indirect ligthing contribution clamp", &render_settings.indirect_contribution_clamp, 0.0f, 10.0f))
+		{
+			render_settings.indirect_contribution_clamp = std::max(0.0f, render_settings.indirect_contribution_clamp);
+			m_render_window->set_render_dirty(true);
+		}
+		
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+		// Light clamping tree
 		ImGui::TreePop();
 	}
 
@@ -199,11 +282,11 @@ void ImGuiRenderer::draw_render_settings_panel()
 	{
 		ImGui::TreePush("Nested dielectrics tree");
 
+		GPUKernelCompilerOptions& kernel_options = m_renderer->get_path_trace_kernel().get_compiler_options();
 		const char* items[] = { "- Automatic", "- With priorities" };
-		if (ImGui::Combo("Nested dielectrics strategy", m_renderer->get_kernel_option_pointer(GPUKernelOptions::INTERIOR_STACK_STRATEGY), items, IM_ARRAYSIZE(items)))
+		if (ImGui::Combo("Nested dielectrics strategy", kernel_options.get_pointer_to_macro_value(GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY), items, IM_ARRAYSIZE(items)))
 		{
-			m_renderer->compile_trace_kernel(m_application_settings->KERNEL_FILES[m_application_settings->selected_kernel].c_str(), m_application_settings->KERNEL_FUNCTIONS[m_application_settings->selected_kernel].c_str());
-
+			m_renderer->recompile_all_kernels(kernel_options);
 			m_render_window->set_render_dirty(true);
 		}
 
@@ -222,9 +305,16 @@ void ImGuiRenderer::draw_environment_panel()
 	{
 		ImGui::TreePush("Environment tree");
 
+		bool has_envmap = m_renderer->has_envmap();
 		render_made_piggy |= ImGui::RadioButton("None", ((int*)&m_renderer->get_world_settings().ambient_light_type), 0); ImGui::SameLine();
 		render_made_piggy |= ImGui::RadioButton("Use uniform lighting", ((int*)&m_renderer->get_world_settings().ambient_light_type), 1); ImGui::SameLine();
+		ImGui::BeginDisabled(!has_envmap);
 		render_made_piggy |= ImGui::RadioButton("Use envmap lighting", ((int*)&m_renderer->get_world_settings().ambient_light_type), 2);
+		if (!has_envmap)
+			// Showing a tooltip for why the envmap button is disabled
+			if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+				ImGuiRenderer::WrappingTooltip("No envmap is loaded.");
+		ImGui::EndDisabled();
 
 		if (m_renderer->get_world_settings().ambient_light_type == AmbientLightType::UNIFORM)
 		{
@@ -284,69 +374,111 @@ void ImGuiRenderer::draw_environment_panel()
 void ImGuiRenderer::draw_sampling_panel()
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
+	GPUKernelCompilerOptions& kernel_options = m_renderer->get_path_trace_kernel().get_compiler_options();
 
 	if (ImGui::CollapsingHeader("Sampling"))
 	{
 		ImGui::TreePush("Sampling tree");
 
-		const char* items[] = { "- No direct light sampling", "- Uniform one light", "- BSDF Sampling", "- MIS (1 Light + 1 BSDF)", "- RIS BDSF + Light candidates", "- ReSTIR DI"};
-		if (ImGui::Combo("Direct light sampling strategy", m_renderer->get_kernel_option_pointer(GPUKernelOptions::DIRECT_LIGHT_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
+		if (ImGui::CollapsingHeader("Adaptive sampling"))
 		{
-			m_renderer->compile_trace_kernel(m_application_settings->KERNEL_FILES[m_application_settings->selected_kernel].c_str(), m_application_settings->KERNEL_FUNCTIONS[m_application_settings->selected_kernel].c_str());
+			ImGui::TreePush("Adaptive sampling tree");
 
-			m_render_window->set_render_dirty(true);
+			if (ImGui::Checkbox("Enable adaptive sampling", (bool*)&render_settings.enable_adaptive_sampling))
+				m_render_window->set_render_dirty(true);
+
+			float adaptive_sampling_noise_threshold_before = render_settings.adaptive_sampling_noise_threshold;
+			ImGui::BeginDisabled(!render_settings.enable_adaptive_sampling);
+			if (ImGui::InputInt("Adaptive sampling minimum samples", &render_settings.adaptive_sampling_min_samples))
+				m_render_window->set_render_dirty(true);
+			if (ImGui::InputFloat("Adaptive sampling noise threshold", &render_settings.adaptive_sampling_noise_threshold))
+			{
+				render_settings.adaptive_sampling_noise_threshold = std::max(0.0f, render_settings.adaptive_sampling_noise_threshold);
+			
+				m_render_window->set_render_dirty(true);
+			}
+			ImGui::EndDisabled();
+
+			ImGui::TreePop();
 		}
 
-		// Display additional widgets to control the parameters of the direct light
-		// sampling strategy chosen (the number of candidates for RIS for example)
-		switch (m_renderer->get_kernel_option_value(GPUKernelOptions::DIRECT_LIGHT_SAMPLING_STRATEGY))
+		if (ImGui::CollapsingHeader("Direct lighting"))
 		{
-		case LSS_NO_DIRECT_LIGHT_SAMPLING:
-			break;
+			ImGui::TreePush("Direct lighting sampling tree");
 
-		case LSS_UNIFORM_ONE_LIGHT:
-			break;
-
-		case LSS_MIS_LIGHT_BSDF:
-			break;
-
-		case LSS_RIS_BSDF_AND_LIGHT:
-			static bool use_visiblity_checked = m_renderer->get_kernel_option_value(GPUKernelOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION) == 1;
-			if (ImGui::Checkbox("Use visibility in target function", &use_visiblity_checked))
+			const char* items[] = { "- No direct light sampling", "- Uniform one light", "- BSDF Sampling", "- MIS (1 Light + 1 BSDF)", "- RIS BDSF + Light candidates" };
+			if (ImGui::Combo("Direct light sampling strategy", kernel_options.get_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
 			{
-				m_renderer->set_kernel_option(GPUKernelOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, use_visiblity_checked ? 1 : 0);
-				m_renderer->compile_trace_kernel(m_application_settings->KERNEL_FILES[m_application_settings->selected_kernel].c_str(), m_application_settings->KERNEL_FUNCTIONS[m_application_settings->selected_kernel].c_str());
-
+				m_renderer->recompile_all_kernels(kernel_options);
 				m_render_window->set_render_dirty(true);
 			}
 
-			if (ImGui::SliderInt("RIS # of BSDF candidates", &render_settings.ris_number_of_bsdf_candidates, 0, 32))
+			// Display additional widgets to control the parameters of the direct light
+			// sampling strategy chosen (the number of candidates for RIS for example)
+			switch (kernel_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY))
 			{
-				// Clamping to 0
-				render_settings.ris_number_of_bsdf_candidates = std::max(0, render_settings.ris_number_of_bsdf_candidates);
+			case LSS_NO_DIRECT_LIGHT_SAMPLING:
+				break;
 
-				m_render_window->set_render_dirty(true);
+			case LSS_UNIFORM_ONE_LIGHT:
+				break;
+
+			case LSS_MIS_LIGHT_BSDF:
+				break;
+
+			case LSS_RIS_BSDF_AND_LIGHT:
+				static bool use_visiblity_checked = kernel_options.get_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION) == 1;
+				if (ImGui::Checkbox("Use visibility in target function", &use_visiblity_checked))
+				{
+					kernel_options.set_macro(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, use_visiblity_checked ? 1 : 0);
+					m_renderer->recompile_all_kernels(kernel_options);
+
+					m_render_window->set_render_dirty(true);
+				}
+
+				if (ImGui::SliderInt("RIS # of BSDF candidates", &render_settings.ris_number_of_bsdf_candidates, 0, 32))
+				{
+					// Clamping to 0
+					render_settings.ris_number_of_bsdf_candidates = std::max(0, render_settings.ris_number_of_bsdf_candidates);
+
+					m_render_window->set_render_dirty(true);
+				}
+
+				if (ImGui::SliderInt("RIS # of light candidates", &render_settings.ris_number_of_light_candidates, 0, 128))
+				{
+					// Clamping to 0
+					render_settings.ris_number_of_light_candidates = std::max(0, render_settings.ris_number_of_light_candidates);
+
+					m_render_window->set_render_dirty(true);
+				}
+
+				break;
+
+			default:
+				break;
 			}
 
-			if (ImGui::SliderInt("RIS # of light candidates", &render_settings.ris_number_of_light_candidates, 0, 128))
-			{
-				// Clamping to 0
-				render_settings.ris_number_of_light_candidates = std::max(0, render_settings.ris_number_of_light_candidates);
-
-				m_render_window->set_render_dirty(true);
-			}
-
-			break;
-
-		case LSS_RESTIR_DI:
-			break;
-
-		default:
-			break;
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			ImGui::TreePop();
 		}
 
-		ImGui::TreePop();
+		if (ImGui::CollapsingHeader("Envmap"))
+		{
+			ImGui::TreePush("Envmap sampling tree");
+
+			const char* items[] = { "- No envmap sampling", "- Envmap Sampling - Binary Search" };
+			if (ImGui::Combo("Envmap sampling strategy", kernel_options.get_pointer_to_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
+			{
+				m_renderer->recompile_all_kernels(kernel_options);
+				m_render_window->set_render_dirty(true);
+			}
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			ImGui::TreePop();
+		}
+
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::TreePop();
 	}
 }
 
@@ -357,68 +489,106 @@ void ImGuiRenderer::draw_objects_panel()
 	ImGui::TreePush("Objects tree");
 
 	std::vector<RendererMaterial> materials = m_renderer->get_materials();
+	std::vector<std::string> material_names = m_renderer->get_material_names();
 
-	int material_modfied_id = -1;
-	int material_counter = 0;
-	bool some_material_changed = false;
+	bool material_changed = false;
+	static int currently_selected_material = 0;
 
-	ImGui::PushItemWidth(384);
-	for (RendererMaterial& material : materials)
+	if (ImGui::CollapsingHeader("All objects"))
 	{
-		// Multiple ImGui widgets cannot have the same label
-		// If all our materials use the same "Base color", "Subsurface", ... labels for
-		// the slider, there is a chance that the slider will be linked together
-		// and that multiple materials will be modified when only touching one slider
-		// One solution to that is to avoid using the same label for multiple sliders
-		// by naming them "material 1 Base color", "material 2 Base color" for example
-		// This is however not very practical so ImGui provides us with the PushID function which
-		// essentially differentiate the widgets without having to change the labels 
-		ImGui::PushID(material_counter);
+		ImGui::TreePush("All objects tree");
 
-		some_material_changed |= ImGui::ColorEdit3("Base color", (float*)&material.base_color);
-		some_material_changed |= ImGui::SliderFloat("Subsurface", &material.subsurface, 0.0f, 1.0f);
-		some_material_changed |= ImGui::SliderFloat("Metallic", &material.metallic, 0.0f, 1.0f);
-		some_material_changed |= ImGui::SliderFloat("Specular", &material.specular, 0.0f, 1.0f);
-		some_material_changed |= ImGui::SliderFloat("Specular tint strength", &material.specular_tint, 0.0f, 1.0f);
-		some_material_changed |= ImGui::ColorEdit3("Specular color", (float*)&material.specular_color);
-		some_material_changed |= ImGui::SliderFloat("Roughness", &material.roughness, 0.0f, 1.0f);
-		some_material_changed |= ImGui::SliderFloat("Anisotropic", &material.anisotropic, 0.0f, 1.0f);
-		some_material_changed |= ImGui::SliderFloat("Anisotropic rotation", &material.anisotropic_rotation, 0.0f, 1.0f);
-		some_material_changed |= ImGui::SliderFloat("Sheen", &material.sheen, 0.0f, 1.0f);
-		some_material_changed |= ImGui::SliderFloat("Sheen tint strength", &material.sheen_tint, 0.0f, 1.0f);
-		some_material_changed |= ImGui::ColorEdit3("Sheen color", (float*)&material.sheen_color);
-		some_material_changed |= ImGui::SliderFloat("Clearcoat", &material.clearcoat, 0.0f, 1.0f);
-		some_material_changed |= ImGui::SliderFloat("Clearcoat roughness", &material.clearcoat_roughness, 0.0f, 1.0f);
-		some_material_changed |= ImGui::SliderFloat("Clearcoat IOR", &material.clearcoat_ior, 0.0f, 5.0f);
-		some_material_changed |= ImGui::SliderFloat("IOR", &material.ior, 0.0f, 5.0f);
-		ImGui::Separator();
-		some_material_changed |= ImGui::SliderFloat("Transmission", &material.specular_transmission, 0.0f, 1.0f);
-		some_material_changed |= ImGui::SliderFloat("Absorption distance", &material.absorption_at_distance, 0.0f, 20.0f);
-		some_material_changed |= ImGui::ColorEdit3("Absorption color", (float*)&material.absorption_color);
-		unsigned short int zero = 0, eight = 8;
-		ImGui::BeginDisabled(material.specular_transmission == 0.0f || m_renderer->get_kernel_option_value(GPUKernelOptions::INTERIOR_STACK_STRATEGY) != ISS_WITH_PRIORITIES);
-		some_material_changed |= ImGui::SliderScalar("Dielectric priority", ImGuiDataType_U16, &material.dielectric_priority, &zero, &eight);
-		ImGui::EndDisabled();
-		some_material_changed |= ImGui::ColorEdit3("Emission", (float*)&material.emission, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
+		if (ImGui::BeginListBox("All objects", ImVec2(-FLT_MIN, 7 * ImGui::GetTextLineHeightWithSpacing())))
+		{
+			for (int n = 0; n < materials.size(); n++)
+			{
+				const bool is_selected = (currently_selected_material == n);
+				if (ImGui::Selectable(material_names[n].c_str(), is_selected))
+					currently_selected_material = n;
 
-		ImGui::PopID();
+				// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
+				if (is_selected)
+					ImGui::SetItemDefaultFocus();
+			}
+			ImGui::EndListBox();
+		}
 
-		ImGui::Separator();
-
-		if (some_material_changed && material_modfied_id == -1)
-			material_modfied_id = material_counter;
-		material_counter++;
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::TreePop();
 	}
-	ImGui::PopItemWidth();
 
-	if (some_material_changed)
+	if (ImGui::CollapsingHeader("Emissive objects"))
 	{
-		RendererMaterial& material = materials[material_modfied_id];
-		material.make_safe();
-		material.precompute_properties();
+		ImGui::TreePush("Emissive objects tree");
 
-		m_renderer->update_materials(materials);
-		m_render_window->set_render_dirty(true);
+		if (ImGui::BeginListBox("Emissive objects", ImVec2(-FLT_MIN, 7 * ImGui::GetTextLineHeightWithSpacing())))
+		{
+			for (int n = 0; n < materials.size(); n++)
+			{
+				if (!materials[n].is_emissive())
+					continue;
+
+				const bool is_selected = (currently_selected_material == n);
+				if (ImGui::Selectable(material_names[n].c_str(), is_selected))
+					currently_selected_material = n;
+
+				// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
+				if (is_selected)
+					ImGui::SetItemDefaultFocus();
+			}
+			ImGui::EndListBox();
+		}
+
+		ImGui::TreePop();
+	}
+
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+	if (materials.size() > 0)
+	{
+		GPUKernelCompilerOptions& kernel_options = m_renderer->get_path_trace_kernel().get_compiler_options();
+		RendererMaterial& material = materials[currently_selected_material];
+
+		ImGui::PushItemWidth(28 * ImGui::GetFontSize());
+
+		ImGui::Text("%s", material_names[currently_selected_material].c_str());
+		material_changed |= ImGui::ColorEdit3("Base color", (float*)&material.base_color);
+		material_changed |= ImGui::SliderFloat("Subsurface", &material.subsurface, 0.0f, 1.0f);
+		material_changed |= ImGui::SliderFloat("Metallic", &material.metallic, 0.0f, 1.0f);
+		material_changed |= ImGui::SliderFloat("Specular", &material.specular, 0.0f, 1.0f);
+		material_changed |= ImGui::SliderFloat("Specular tint strength", &material.specular_tint, 0.0f, 1.0f);
+		material_changed |= ImGui::ColorEdit3("Specular color", (float*)&material.specular_color);
+		material_changed |= ImGui::SliderFloat("Roughness", &material.roughness, 0.0f, 1.0f);
+		material_changed |= ImGui::SliderFloat("Anisotropic", &material.anisotropic, 0.0f, 1.0f);
+		material_changed |= ImGui::SliderFloat("Anisotropic rotation", &material.anisotropic_rotation, 0.0f, 1.0f);
+		material_changed |= ImGui::SliderFloat("Sheen", &material.sheen, 0.0f, 1.0f);
+		material_changed |= ImGui::SliderFloat("Sheen tint strength", &material.sheen_tint, 0.0f, 1.0f);
+		material_changed |= ImGui::ColorEdit3("Sheen color", (float*)&material.sheen_color);
+		material_changed |= ImGui::SliderFloat("Clearcoat", &material.clearcoat, 0.0f, 1.0f);
+		material_changed |= ImGui::SliderFloat("Clearcoat roughness", &material.clearcoat_roughness, 0.0f, 1.0f);
+		material_changed |= ImGui::SliderFloat("Clearcoat IOR", &material.clearcoat_ior, 0.0f, 5.0f);
+		material_changed |= ImGui::SliderFloat("IOR", &material.ior, 0.0f, 5.0f);
+		ImGui::Separator();
+		material_changed |= ImGui::SliderFloat("Transmission", &material.specular_transmission, 0.0f, 1.0f);
+		material_changed |= ImGui::SliderFloat("Absorption distance", &material.absorption_at_distance, 0.0f, 20.0f);
+		material_changed |= ImGui::ColorEdit3("Absorption color", (float*)&material.absorption_color);
+		unsigned short int zero = 0, eight = 8;
+		ImGui::BeginDisabled(material.specular_transmission == 0.0f || kernel_options.get_macro_value(GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY) != ISS_WITH_PRIORITIES);
+		material_changed |= ImGui::SliderScalar("Dielectric priority", ImGuiDataType_U16, &material.dielectric_priority, &zero, &eight);
+		ImGui::EndDisabled();
+		material_changed |= ImGui::ColorEdit3("Emission", (float*)&material.emission, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
+
+		ImGui::PopItemWidth();
+
+		ImGui::Separator();
+
+		if (material_changed)
+		{
+			material.make_safe();
+			material.precompute_properties();
+
+			m_renderer->update_materials(materials);
+			m_render_window->set_render_dirty(true);
+		}
 	}
 
 	ImGui::TreePop();
@@ -432,50 +602,64 @@ void ImGuiRenderer::draw_denoiser_panel()
 	ImGui::TreePush("Denoiser tree");
 
 	if (ImGui::Checkbox("Enable denoiser", &m_application_settings->enable_denoising))
-		m_render_window->change_display_view(m_application_settings->enable_denoising ? DisplayView::DENOISED_BLEND : DisplayView::DEFAULT);
+	{
+		m_render_window->get_display_view_system()->queue_display_view_change(m_application_settings->enable_denoising ? DisplayViewType::DENOISED_BLEND : DisplayViewType::DEFAULT);
+		m_application_settings->denoiser_settings_changed = true;
+	}
 	ImGui::BeginDisabled(!m_application_settings->enable_denoising);
 	if (ImGui::CollapsingHeader("AOVs"))
 	{
 		ImGui::TreePush("Denoiser AOVs Tree");
 		if (ImGui::Checkbox("Use albedo AOV", &m_application_settings->denoiser_use_albedo))
 		{
-			m_denoiser->set_use_albedo(m_application_settings->denoiser_use_albedo);
+			m_application_settings->denoiser_settings_changed = true;
+
+			m_render_window_denoiser->set_use_albedo(m_application_settings->denoiser_use_albedo);
 			if (!m_application_settings->denoiser_use_albedo)
 			{
 				// We're forcing the use of normals AOV off here because it seems like OIDN doesn't support normal
 				// AOV without also using albedo AOV (at least I got some oidn::Exception when I tried
 				// using the normals without the albedo).
+				// TODO this may have to do with wrong HIP buffers being used. Try this out again after we're using proper HIP buffers
 				m_application_settings->denoiser_use_normals = false;
-				m_denoiser->set_use_normals(false);
+				m_render_window_denoiser->set_use_normals(false);
 			}
 
-			m_denoiser->finalize();
+			m_render_window_denoiser->finalize();
 		}
 		ImGui::SameLine();
 		if (ImGui::Checkbox("Denoise albedo", &m_application_settings->denoiser_denoise_albedo))
 		{
-			m_denoiser->set_denoise_albedo(m_application_settings->denoiser_denoise_albedo);
-			m_denoiser->finalize();
+			m_application_settings->denoiser_settings_changed = true;
+
+			m_render_window_denoiser->set_denoise_albedo(m_application_settings->denoiser_denoise_albedo);
+			m_render_window_denoiser->finalize();
 		}
 		ImGui::BeginDisabled(!m_application_settings->denoiser_use_albedo);
 		if (ImGui::Checkbox("Use normals AOV", &m_application_settings->denoiser_use_normals))
 		{
-			m_denoiser->set_use_normals(m_application_settings->denoiser_use_normals);
-			m_denoiser->finalize();
+			m_application_settings->denoiser_settings_changed = true;
+
+			m_render_window_denoiser->set_use_normals(m_application_settings->denoiser_use_normals);
+			m_render_window_denoiser->finalize();
 		}
 		ImGui::SameLine();
 		if (ImGui::Checkbox("Denoise normals", &m_application_settings->denoiser_denoise_normals))
 		{
-			m_denoiser->set_denoise_normals(m_application_settings->denoiser_denoise_normals);
-			m_denoiser->finalize();
+			m_application_settings->denoiser_settings_changed = true;
+
+			m_render_window_denoiser->set_denoise_normals(m_application_settings->denoiser_denoise_normals);
+			m_render_window_denoiser->finalize();
 		}
 		ImGui::EndDisabled();
 		ImGui::TreePop();
 	}
-	ImGui::Checkbox("Only Denoise at \"Max Sample Count\"", &m_application_settings->denoise_at_max_samples);
+	ImGui::Checkbox("Only denoise when rendering is done", &m_application_settings->denoise_when_rendering_done);
 	ImGui::SliderInt("Denoise Sample Skip", &m_application_settings->denoiser_sample_skip, 1, 128);
 	ImGui::SliderFloat("Denoiser blend", &m_application_settings->denoiser_blend, 0.0f, 1.0f);
 	ImGui::EndDisabled();
+
+	ImGui::Text("Denoising time: %.3fms", m_application_settings->last_denoised_duration / 1000.0f);
 
 	ImGui::TreePop();
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -495,14 +679,71 @@ void ImGuiRenderer::draw_post_process_panel()
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 }
 
-void ImGuiRenderer::draw_performance_panel()
+void ImGuiRenderer::draw_performance_settings_panel()
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 
-	if (!ImGui::CollapsingHeader("Performance"))
+	if (!ImGui::CollapsingHeader("Performance Settings"))
 		return;
 
-	ImGui::TreePush("Performance tree");
+	ImGui::TreePush("Performance settings tree");
+
+	ImGui::Text("Device: %s", m_renderer->get_device_properties().name);
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+	GPUKernelCompilerOptions& kernel_options = m_renderer->get_path_trace_kernel().get_compiler_options();
+	HardwareAccelerationSupport hwi_supported = m_renderer->device_supports_hardware_acceleration();
+
+	static bool use_hardware_acceleration = kernel_options.has_macro("__USE_HWI__");
+	ImGui::BeginDisabled(hwi_supported != HardwareAccelerationSupport::SUPPORTED);
+	if (ImGui::Checkbox("Use ray tracing hardware acceleration", &use_hardware_acceleration))
+	{
+		if (use_hardware_acceleration)
+			kernel_options.set_macro("__USE_HWI__", 1);
+		else
+			kernel_options.remove_macro("__USE_HWI__");
+
+		m_renderer->recompile_all_kernels(kernel_options);
+	}
+	ImGui::EndDisabled();
+
+	// Printing a custom tooltip depending on whether or not we support hardware acceleration
+	// and, if not supported, why we don't support it 
+	switch (hwi_supported)
+	{
+	case SUPPORTED:
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+			ImGuiRenderer::WrappingTooltip("Whether or not to enable hardware accelerated ray tracing (bbox & triangle intersections)");
+		break;
+
+	case AMD_UNSUPPORTED:
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+			ImGuiRenderer::WrappingTooltip("Hardware accelerated ray tracing is only supported on RDNA2+ GPUs.");
+		break;
+
+	case NVIDIA_UNSUPPORTED:
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+			ImGuiRenderer::WrappingTooltip("HIPRT cannot access NVIDIA's proprietary hardware accelerated ray-tracing. Feature unavailable.");
+		break;
+	}
+
+	if (ImGui::InputFloat("GPU Stall Percentage", &m_application_settings->GPU_stall_percentage))
+		m_application_settings->GPU_stall_percentage = std::max(0.0f, std::min(m_application_settings->GPU_stall_percentage, 99.9f));
+	if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+		ImGuiRenderer::WrappingTooltip("How much percent of the time the GPU will be forced to be idle (not rendering anything). This feature is meant only for GPUs that get too hot to avoid burning your GPUs during prolonged renders.");
+
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+	ImGui::TreePop();
+}
+
+void ImGuiRenderer::draw_performance_metrics_panel()
+{
+	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
+
+	if (!ImGui::CollapsingHeader("Performance Metrics"))
+		return;
+
+	ImGui::TreePush("Performance metrics tree");
 
 	ImGui::Text("Device: %s", m_renderer->get_device_properties().name);
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -511,6 +752,7 @@ void ImGuiRenderer::draw_performance_panel()
 		render_settings.freeze_random = true;
 		render_settings.enable_adaptive_sampling = false;
 		m_application_settings->auto_sample_per_frame = false;
+		render_settings.samples_per_frame = 1;
 
 		m_render_window->set_render_dirty(true);
 	}
@@ -518,33 +760,34 @@ void ImGuiRenderer::draw_performance_panel()
 		m_render_window->set_render_dirty(true);
 
 	bool rolling_window_size_changed = false;
-	int rolling_window_size = m_perf_metrics->get_window_size();
+	int rolling_window_size = m_render_window_perf_metrics->get_window_size();
 	rolling_window_size_changed |= ImGui::RadioButton("25", &rolling_window_size, 25); ImGui::SameLine();
 	rolling_window_size_changed |= ImGui::RadioButton("100", &rolling_window_size, 100); ImGui::SameLine();
+	rolling_window_size_changed |= ImGui::RadioButton("250", &rolling_window_size, 250); ImGui::SameLine();
 	rolling_window_size_changed |= ImGui::RadioButton("1000", &rolling_window_size, 1000);
 
 	if (rolling_window_size_changed)
-		m_perf_metrics->resize_window(rolling_window_size);
+		m_render_window_perf_metrics->resize_window(rolling_window_size);
 
 	float variance, min, max;
-	variance = m_perf_metrics->get_variance(PerformanceMetricsComputer::SAMPLE_TIME_KEY);
-	min = m_perf_metrics->get_min(PerformanceMetricsComputer::SAMPLE_TIME_KEY);
-	max = m_perf_metrics->get_max(PerformanceMetricsComputer::SAMPLE_TIME_KEY);
+	variance = m_render_window_perf_metrics->get_variance(PerformanceMetricsComputer::SAMPLE_TIME_KEY);
+	min = m_render_window_perf_metrics->get_min(PerformanceMetricsComputer::SAMPLE_TIME_KEY);
+	max = m_render_window_perf_metrics->get_max(PerformanceMetricsComputer::SAMPLE_TIME_KEY);
 
 	static float scale_min = min, scale_max = max;
-	scale_min = m_perf_metrics->get_data_index(PerformanceMetricsComputer::SAMPLE_TIME_KEY) == 0 ? min : scale_min;
-	scale_max = m_perf_metrics->get_data_index(PerformanceMetricsComputer::SAMPLE_TIME_KEY) == 0 ? max : scale_max;
+	scale_min = m_render_window_perf_metrics->get_data_index(PerformanceMetricsComputer::SAMPLE_TIME_KEY) == 0 ? min : scale_min;
+	scale_max = m_render_window_perf_metrics->get_data_index(PerformanceMetricsComputer::SAMPLE_TIME_KEY) == 0 ? max : scale_max;
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	ImGui::PlotHistogram("",
 		PerformanceMetricsComputer::data_getter,
-		m_perf_metrics->get_data(PerformanceMetricsComputer::SAMPLE_TIME_KEY).data(),
-		m_perf_metrics->get_value_count(PerformanceMetricsComputer::SAMPLE_TIME_KEY),
+		m_render_window_perf_metrics->get_data(PerformanceMetricsComputer::SAMPLE_TIME_KEY).data(),
+		m_render_window_perf_metrics->get_value_count(PerformanceMetricsComputer::SAMPLE_TIME_KEY),
 		/* value offset */0,
 		"Sample time",
 		scale_min, scale_max,
 		/* size */ ImVec2(0, 80));
-	static bool auto_rescale = false;
+	static bool auto_rescale = true;
 	ImGui::SameLine();
 	if (ImGui::Button("Rescale") || auto_rescale)
 	{
@@ -552,9 +795,9 @@ void ImGuiRenderer::draw_performance_panel()
 		scale_max = max;
 	}
 	ImGui::SameLine();
-	ImGui::Checkbox("Auto-rescale", & auto_rescale);
+	ImGui::Checkbox("Auto-rescale", &auto_rescale);
 
-	ImGui::Text("Sample time (avg)      : %.3fms (%.1f FPS)", m_perf_metrics->get_average(PerformanceMetricsComputer::SAMPLE_TIME_KEY), 1000.0f / m_perf_metrics->get_average(PerformanceMetricsComputer::SAMPLE_TIME_KEY));
+	ImGui::Text("Sample time (avg)      : %.3fms (%.1f FPS)", m_render_window_perf_metrics->get_average(PerformanceMetricsComputer::SAMPLE_TIME_KEY), 1000.0f / m_render_window_perf_metrics->get_average(PerformanceMetricsComputer::SAMPLE_TIME_KEY));
 	ImGui::Text("Sample time (var)      : %.3fms", variance);
 	ImGui::Text("Sample time (std dev)  : %.3fms", std::sqrt(variance));
 	ImGui::Text("Sample time (min / max): %.3fms / %.3fms", min, max);
@@ -562,4 +805,33 @@ void ImGuiRenderer::draw_performance_panel()
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 	ImGui::TreePop();
+}
+
+void ImGuiRenderer::draw_debug_panel()
+{
+	if (!ImGui::CollapsingHeader("Debug"))
+		return;
+
+	if (ImGui::Checkbox("Show NaNs", &m_renderer->get_render_settings().display_NaNs))
+		m_render_window->set_render_dirty(true);
+
+	if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+		ImGuiRenderer::WrappingTooltip("If true, NaNs that occur during the rendering will show up as pink pixels.");
+
+	ImGui::TreePush("Debug tree");
+	ImGui::TreePop();
+}
+
+void ImGuiRenderer::rescale_ui()
+{
+	ImGuiViewport* viewport = ImGui::GetMainViewport();
+	float windowDpiScale = viewport->DpiScale;
+
+	if (windowDpiScale > 1.0f)
+	{
+		ImGuiIO& io = ImGui::GetIO();
+
+		// Scaling by the DPI -10% as judged more pleasing
+		io.FontGlobalScale = windowDpiScale * 1.08f;
+	}
 }

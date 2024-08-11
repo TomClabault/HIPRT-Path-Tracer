@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef OREN_NAYAR_H
-#define OREN_NAYAR_H
+#ifndef DEVICE_OREN_NAYAR_H
+#define DEVICE_OREN_NAYAR_H
 
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/Math.h"
@@ -13,7 +13,7 @@
 /* References:
  * [1] [Physically Based Rendering 3rd Edition] https://www.pbr-book.org/3ed-2018/Reflection_Models/Microfacet_Models
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB oren_nayar_eval(const RendererMaterial& material, const float3& view_direction, const float3& surface_normal, const float3& to_light_direction)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F oren_nayar_eval(const RendererMaterial& material, const float3& view_direction, const float3& surface_normal, const float3& to_light_direction)
 {
     float3 T, B;
     build_ONB(surface_normal, T, B);

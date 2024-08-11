@@ -1,8 +1,8 @@
-set(HIPRT_SUBMODULE_DIR ${CMAKE_SOURCE_DIR}/HIPRT-Fork)
+set(HIPRT_SUBMODULE_DIR ${CMAKE_SOURCE_DIR}/thirdparties/HIPRT-Fork)
 
 if(NOT EXISTS ${HIPRT_SUBMODULE_DIR}/hiprt)
 	# Making sure that the HIPRT submodule was cloned
-	message(FATAL_ERROR "The HIPRT submodule couldn't be found. Did you forget to clone the submodules? Run 'git submodule update --init --recursive --jobs 10'.")
+	message(FATAL_ERROR "The HIPRT submodule couldn't be found. Did you forget to clone the submodules? Run 'git submodule update --init --recursive'.")
 endif()
 
 # Executing HIPRT's premake

@@ -6,7 +6,8 @@
 #ifndef CAMERA_H
 #define CAMERA_H
 
-#include "HostDeviceCommon/Camera.h"
+#include "HostDeviceCommon/HIPRTCamera.h"
+#include "Scene/BoundingBox.h"
 
 #include "glm/mat4x4.hpp"
 #include "glm/vec3.hpp"
@@ -15,17 +16,38 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 
+/**
+ * Camera class meant for being manipulated through used interactions etc... (hence the attributes translation and rotation for example)
+ * The curated camera class that is meant for being used by the shaders is HIPRTCamera
+ */
 struct Camera
 {
+    // Variable used when calling Camera::auto_adjust_speed().
+    // This is a time in seconds that represents how long it will take for the camera
+    // to traverse the scene along its largest extent if the user holds the 'W' key for example.
+    //
+    // Note that this may be a little scuffed for scenes that are very elongated.
+    static constexpr float SCENE_CROSS_TIME = 5.0f;
+
     Camera();
 
     HIPRTCamera to_hiprt();
     glm::mat4x4 get_view_matrix() const;
     glm::vec3 get_view_direction() const;
 
+    /**
+     * Adjusts the speed attributes of this camera so that the camera
+     */
+    void auto_adjust_speed(const BoundingBox& scene_bounding_box);
+
     glm::mat4x4 projection_matrix;
-    float vertical_fov;
-    float near_plane, far_plane;
+
+    // Vertical FOV in radians
+    float vertical_fov = M_PI / 2.0f;
+    float near_plane = 0.1f;
+    float far_plane = 1000.0f;
+    // Camera movement speed. In world unit per second
+    float camera_movement_speed = 1.0f;
 
     glm::vec3 translation = glm::vec3(0, 0, 0);
     glm::quat rotation = glm::quat(glm::vec3(0, 0, 0));

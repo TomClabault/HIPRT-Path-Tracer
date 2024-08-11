@@ -45,9 +45,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 normal_mapping(const HIPRTRenderData& rend
     float3 T = (edge_P0P1 * delta_P2P0_texcoords.y - edge_P0P2 * delta_P1P0_texcoords.y) * det_inverse;
     float3 B = (edge_P0P2 * delta_P1P0_texcoords.x - edge_P0P1 * delta_P2P0_texcoords.x) * det_inverse;
 
-    ColorRGB normal = sample_texture_rgb(render_data.buffers.material_textures, normal_map_texture_index, render_data.buffers.textures_dims[normal_map_texture_index], /* is_srgb */ false, interpolated_texcoords);
+    ColorRGB32F normal = sample_texture_rgb_8bits(render_data.buffers.material_textures, normal_map_texture_index, render_data.buffers.textures_dims[normal_map_texture_index], /* is_srgb */ false, interpolated_texcoords);
     // Bringing the normal in [-x, x]. x doesn't really matter since we normalize the result anyway
-    normal -= ColorRGB(0.5f);
+    normal -= ColorRGB32F(0.5f);
 
     float3 normal_tangent_space = hippt::normalize(make_float3(normal.r, normal.g, normal.b));
 
@@ -120,14 +120,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
         hit_info.geometric_normal = hippt::normalize(hit.normal);
         hit_info.shading_normal = get_shading_normal(render_data, hit_info.geometric_normal, hit_info.primitive_index, hit.uv, hit_info.texcoords);
 
-        if (!ray_payload.is_inside_volume())
-        {
-            // If we're not in a volume, there's no reason for the normals not to be facing us so we're flipping
-            // if they were wrongly oriented
-            hit_info.geometric_normal *= hippt::dot(hit_info.geometric_normal, -ray.direction) < 0 ? -1 : 1;
-            hit_info.shading_normal *= hippt::dot(hit_info.shading_normal, -ray.direction) < 0 ? -1 : 1;
-        }
-
         hit_info.t = hit.t;
         hit_info.uv = hit.uv;
 
@@ -148,6 +140,18 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
             continue;
         }
 
+        if (!ray_payload.is_inside_volume() || ray_payload.material.specular_transmission == 0.0f)
+        {
+            // If we're not in a volume, there's no reason for the normals not to be facing us so we're flipping
+            // if they were wrongly oriented
+            // 
+            // Same thing with objects that do not let the rays pass through (non transmissive):
+            // because we can never be inside of these objects, we're always outside.
+            // If we're always outside, there's no reason to have the normals of these objects inverted.
+            hit_info.geometric_normal *= hippt::dot(hit_info.geometric_normal, -ray.direction) < 0 ? -1 : 1;
+            hit_info.shading_normal *= hippt::dot(hit_info.shading_normal, -ray.direction) < 0 ? -1 : 1;
+        }
+
         skipping_volume_boundary = ray_payload.volume_state.interior_stack.push(ray_payload.volume_state.incident_mat_index, ray_payload.volume_state.outgoing_mat_index, ray_payload.volume_state.leaving_mat, material_index, ray_payload.material.dielectric_priority);
 
         if (skipping_volume_boundary)
@@ -156,6 +160,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
             ray.origin = hit_info.inter_point + ray.direction * 3.0e-3f;
 
             // Don't forget to increment the distance traveled
+            // TODO: Are we not double counting the distance here and a few lines above (where we set the .t, .uv, .geometric_normal, ...)
             ray_payload.volume_state.distance_in_volume += hit.t;
         }
 
@@ -172,13 +177,52 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& r
 #ifdef __KERNELCC__
     ray.maxT = t_max - 1.0e-4f;
 
-    hiprtGeomTraversalAnyHit traversal(render_data.geom, ray);
-    hiprtHit aoHit = traversal.getNextHit();
+    hiprtHit shadow_ray_hit;
+    float alpha;
 
-    return aoHit.hasHit();
+    do
+    {
+        hiprtGeomTraversalClosest traversal(render_data.geom, ray);
+        shadow_ray_hit = traversal.getNextHit();
+        if (!shadow_ray_hit.hasHit())
+            return false;
+
+        alpha = get_hit_base_color_alpha(render_data, shadow_ray_hit);
+
+        float3 inter_point = ray.origin + ray.direction * shadow_ray_hit.t;
+        ray.origin = inter_point + ray.direction * 3.0e-3f;
+        ray.maxT -= shadow_ray_hit.t;
+    } while (alpha < 1.0f);
+
+    // If we're here, this means that we found a hit that is not
+    // alpha-transparent with a distance < t_max so that's a hit and we're shadowed.
+    return true;
 #else
-    hiprtHit hit = intersect_scene_cpu(render_data, ray);
-    return hit.hasHit() && hit.t < t_max - 1.0e-4f;
+    float alpha = 1.0f;
+    // The total distance of our ray. Incremented after each hit
+    // (we may find multiple hits if we hit transparent texture
+    // and keep intersecting the scene)
+    float cumulative_t = 0.0f;
+
+    hiprtHit hit;
+    do
+    {
+        // We should use ray tracing fitler functions here instead of re-tracing new rays
+        hit = intersect_scene_cpu(render_data, ray);
+        if (!hit.hasHit())
+            return false;
+
+        alpha = get_hit_base_color_alpha(render_data, hit);
+
+        float3 inter_point = ray.origin + ray.direction * hit.t;
+        ray.origin = inter_point + ray.direction * 3.0e-3f;
+        cumulative_t += hit.t;
+
+        // We keep going as long as the alpha is < 1.0f meaning that we hit texture transparency
+    } while (alpha < 1.0f && cumulative_t < t_max - 1.0e-4f);
+
+    // If we found a hit and that it is close enough
+    return hit.hasHit() && cumulative_t < t_max - 1.0e-4f;
 #endif // __KERNELCC__
 }
 

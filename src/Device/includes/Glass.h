@@ -3,14 +3,14 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef GLASS_H
-#define GLASS_H
+#ifndef DEVICE_GLASS_H
+#define DEVICE_GLASS_H
 
 #include "HostDeviceCommon/Math.h"
 #include "HostDeviceCommon/Material.h"
 #include "Device/includes/Sampling.h"
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB smooth_glass_bsdf(const RendererMaterial& material, float3& out_bounce_direction, const float3& ray_direction, float3& surface_normal, float eta_i, float eta_t, float& pdf, Xorshift32Generator& random_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F smooth_glass_bsdf(const RendererMaterial& material, float3& out_bounce_direction, const float3& ray_direction, float3& surface_normal, float eta_i, float eta_t, float& pdf, Xorshift32Generator& random_generator)
 {
     // Clamping here because the dot product can eventually returns values less
     // than -1 or greater than 1 because of precision errors in the vectors
@@ -43,7 +43,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB smooth_glass_bsdf(const RendererMaterial
         out_bounce_direction = reflect_ray(-ray_direction, surface_normal);
         pdf = fresnel_reflect;
 
-        return ColorRGB(fresnel_reflect) / hippt::dot(surface_normal, out_bounce_direction);
+        return ColorRGB32F(fresnel_reflect) / hippt::dot(surface_normal, out_bounce_direction);
     }
     else
     {
@@ -53,13 +53,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB smooth_glass_bsdf(const RendererMaterial
         bool can_refract = refract_ray(-ray_direction, surface_normal, refract_direction, eta_t / eta_i);
         if (!can_refract)
             // Shouldn't happen but can because of floating point imprecisions
-            return ColorRGB(0.0f);
+            return ColorRGB32F(0.0f);
 
         out_bounce_direction = refract_direction;
         surface_normal = -surface_normal;
         pdf = 1.0f - fresnel_reflect;
 
-        return ColorRGB(1.0f - fresnel_reflect) * material.base_color / hippt::dot(out_bounce_direction, surface_normal);
+        return ColorRGB32F(1.0f - fresnel_reflect) * material.base_color / hippt::dot(out_bounce_direction, surface_normal);
     }
 }
 

@@ -19,17 +19,23 @@ public:
 
 	/**
 	 * Looks at the key states of the interactor and manipulates
-	 * the render window to reflect on these pressed keys.
+	 * the queue_frame_for_render window to reflect on these pressed keys.
 	 */
 	void poll_keyboard_inputs();
 
-private:
-	static bool m_z_pressed;
-	static bool m_q_pressed;
-	static bool m_s_pressed;
-	static bool m_d_pressed;
-	static bool m_space_pressed;
-	static bool m_lshift_pressed;
+	/**
+	 * Returns true if any key (only keys relevant to this interactor) is currently being held down.
+	 * Returns false otherwise.
+	 */
+	bool is_interacting();
+
+protected:
+	bool m_z_pressed = false;
+	bool m_q_pressed = false;
+	bool m_s_pressed = false;
+	bool m_d_pressed = false;
+	bool m_space_pressed = false;
+	bool m_lshift_pressed = false;
 
 	RenderWindow* m_render_window;
 };

@@ -8,6 +8,7 @@
 #include "Threads/ThreadFunctions.h"
 #include "Threads/ThreadManager.h"
 #include "Threads/ThreadState.h"
+#include "Utils/CommandlineArguments.h"
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include "glm/gtx/matrix_decompose.hpp"
@@ -20,13 +21,22 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Scene& par
     Assimp::Importer importer;
     const aiScene* scene;
 
-    scene = importer.ReadFile(scene_filepath, aiPostProcessSteps::aiProcess_PreTransformVertices | aiPostProcessSteps::aiProcess_Triangulate);
+    scene = importer.ReadFile(scene_filepath, aiPostProcessSteps::aiProcess_PreTransformVertices | aiPostProcessSteps::aiProcess_Triangulate | aiPostProcessSteps::aiProcess_RemoveRedundantMaterials | aiPostProcessSteps::aiProcess_GenBoundingBoxes);
     if (scene == nullptr)
     {
         std::cerr << importer.GetErrorString() << std::endl;
+        std::cerr << "Falling back to cornell box..." << std::endl;
 
-        int charac = std::getchar();
-        std::exit(1);
+        scene = importer.ReadFile(CommandlineArguments::DEFAULT_SCENE, aiPostProcessSteps::aiProcess_PreTransformVertices | aiPostProcessSteps::aiProcess_Triangulate | aiPostProcessSteps::aiProcess_RemoveRedundantMaterials);
+        if (scene == nullptr)
+        {
+            // Couldn't even load the default scene either
+
+            std::cerr << "Couldn't load the default scene either... Aborting" << std::endl;
+
+            int charac = std::getchar();
+            std::exit(1);
+        }
     }
 
     std::vector<std::pair<aiTextureType, std::string>> texture_paths;
@@ -38,7 +48,7 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Scene& par
     std::vector<int> texture_per_mesh;
     // By how much to offset the indices of the textures used by a material.
     // For example, if there are 5 materials in the scene that all use a different base color
-    // texture, after the callm to prepare_textures(), they will all have 0 as the index of their
+    // texture, after the call to prepare_textures(), they will all have 0 as the index of their
     // base color texture. This is obviously wrong and it should be 0, 1, 2, 3, 4 for
     // each material since they use their own texture. This is what this vector is for, it contains
     // the offsets that are going to be used so that each material has proper texture indices
@@ -46,13 +56,22 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Scene& par
     int texture_count;
 
     prepare_textures(scene, texture_paths, material_texture_indices, material_indices, texture_per_mesh, texture_indices_offsets, texture_count);
-    parsed_scene.materials.resize(texture_per_mesh.size());
-    /*parsed_scene.textures.resize(texture_count);
+    parsed_scene.materials.resize(scene->mNumMaterials);
+    parsed_scene.material_names.resize(scene->mNumMaterials);
+    parsed_scene.textures.resize(texture_count);
     parsed_scene.textures_dims.resize(texture_count);
-    dispatch_texture_loading(parsed_scene, scene_filepath, options.nb_texture_threads, texture_paths);
-    assign_material_texture_indices(parsed_scene.materials, material_texture_indices, texture_indices_offsets);*/
+    assign_material_texture_indices(parsed_scene.materials, material_texture_indices, texture_indices_offsets);
+    dispatch_texture_loading(parsed_scene, scene_filepath, options.nb_texture_threads, texture_paths, material_indices);
 
     parse_camera(scene, parsed_scene, options.override_aspect_ratio);
+
+    // Used to quickly check whether we've already seen a material based on its
+    // index (because multiple meshes may share the same material, we don't want
+    // to duplicate that material in our material array, we want to use only one).
+    // If we've already seen that material, then there's nothing to do and we can
+    // ignore the material of the mesh being processed since we've already added it
+    // to our materials buffer
+    std::unordered_set<int> material_indices_already_seen;
 
     // If the scene contains multiple meshes, each mesh will have
     // its vertices indices starting at 0. We don't want that.
@@ -65,10 +84,27 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Scene& par
     for (int mesh_index = 0; mesh_index < scene->mNumMeshes; mesh_index++)
     {
         aiMesh* mesh = scene->mMeshes[mesh_index];
-        aiMaterial* mesh_material = scene->mMaterials[mesh->mMaterialIndex];
+        int material_index = mesh->mMaterialIndex;
+        aiMaterial* mesh_material = scene->mMaterials[material_index];
 
-        RendererMaterial& renderer_material = parsed_scene.materials[mesh_index];
-        read_material_properties(mesh_material, renderer_material);
+        std::string material_name = std::string(mesh_material->GetName().C_Str());
+        std::string mesh_name = std::string(mesh->mName.C_Str());
+        std::string final_name;
+        if (material_name == "")
+            // Default name for materials that don't have one
+            final_name = mesh_name + " (" + std::string("Material.") + std::to_string(material_index) + ")";
+        else
+            final_name += mesh_name + " (" + material_name + ")";
+        parsed_scene.material_names[material_index] = final_name;
+
+        RendererMaterial& renderer_material = parsed_scene.materials[material_index];
+        if (material_indices_already_seen.find(mesh->mMaterialIndex) == material_indices_already_seen.end())
+        {
+            // If we haven't seen that material before
+
+            read_material_properties(mesh_material, renderer_material);
+            material_indices_already_seen.insert(mesh->mMaterialIndex);
+        }
 
         //Adding the material to the parsed scene
         bool is_mesh_emissive = renderer_material.is_emissive();
@@ -83,7 +119,7 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Scene& par
 
         // Inserting texcoords if present, looking at set 0 because that's where "classical" texcoords are.
         // Other sets are assumed not interesting here.
-        if (mesh->HasTextureCoords(0) && texture_per_mesh[mesh_index] > 0)
+        if (mesh->HasTextureCoords(0) && texture_per_mesh[material_index] > 0)
             for (int i = 0; i < mesh->mNumVertices; i++)
                 parsed_scene.texcoords.push_back(make_float2(mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y));
         else
@@ -127,7 +163,17 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Scene& par
         // same material.
         // If you're importing the 3D model of a car, even though you probably think of it as only one "3D mesh",
         // ASSIMP sees it as composed of as many meshes as there are different materials
-        parsed_scene.material_indices.insert(parsed_scene.material_indices.end(), mesh->mNumFaces, mesh_index);
+        parsed_scene.material_indices.insert(parsed_scene.material_indices.end(), mesh->mNumFaces, material_index);
+
+        // Adding the bounding box to the parsed scene
+        aiAABB mesh_aabb = mesh->mAABB;
+        BoundingBox mesh_bounding_box;
+        mesh_bounding_box.mini = make_float3(mesh_aabb.mMin.x, mesh_aabb.mMin.y, mesh_aabb.mMin.z);
+        mesh_bounding_box.maxi = make_float3(mesh_aabb.mMax.x, mesh_aabb.mMax.y, mesh_aabb.mMax.z);
+
+        parsed_scene.mesh_bounding_boxes.push_back(mesh_bounding_box);
+        // Extending the bounding box of the scene with the bounding box of the mesh
+        parsed_scene.scene_bounding_box.extend(mesh_bounding_box);
 
         // If the max index of the mesh was 19, we want the next to start
         // at 20, not 19, so we ++
@@ -135,6 +181,9 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Scene& par
         // Adding the maximum index of the mesh to our global indices offset 
         global_indices_offset += max_mesh_index_offset;
     }
+
+    // Adjusting the speed of the camera so that we can cross the scene in approximately Camera::SCENE_CROSS_TIME
+    parsed_scene.camera.auto_adjust_speed(parsed_scene.scene_bounding_box);
 
     std::cout << "\t" << parsed_scene.vertices_positions.size() << " vertices" << std::endl;
     std::cout << "\t" << parsed_scene.triangle_indices.size() / 3 << " triangles" << std::endl;
@@ -173,6 +222,8 @@ void SceneParser::parse_camera(const aiScene* scene, Scene& parsed_scene, float 
     }
     else
     {
+        // Creating a default camera because the scene doesn't have one
+
         glm::mat4x4 lookat = glm::inverse(glm::lookAt(glm::vec3(0, 0, 0), glm::vec3(0, 0, -1), glm::vec3(0, 1, 0)));
 
         glm::vec3 scale, skew, translation;
@@ -198,10 +249,9 @@ void SceneParser::prepare_textures(const aiScene* scene, std::vector<std::pair<a
     std::vector<std::pair<aiTextureType, std::string>> mesh_texture_paths;
     int global_texture_index_offset = 0;
 
-    for (int mesh_index = 0; mesh_index < scene->mNumMeshes; mesh_index++)
+    for (int material_index = 0; material_index < scene->mNumMaterials; material_index++)
     {
-        aiMesh* mesh = scene->mMeshes[mesh_index];
-        aiMaterial* mesh_material = scene->mMaterials[mesh->mMaterialIndex];
+        aiMaterial* mesh_material = scene->mMaterials[material_index];
         ParsedMaterialTextureIndices tex_indices;
 
         // Reading the paths of the textures of the mesh
@@ -210,7 +260,7 @@ void SceneParser::prepare_textures(const aiScene* scene, std::vector<std::pair<a
 
         int mesh_texture_count = mesh_texture_paths.size();
 
-        material_indices.insert(material_indices.end(), mesh_texture_count, mesh_index);
+        material_indices.insert(material_indices.end(), mesh_texture_count, material_index);
         material_texture_indices.push_back(tex_indices);
         texture_paths.insert(texture_paths.end(), mesh_texture_paths.begin(), mesh_texture_paths.end());
         texture_per_mesh.push_back(mesh_texture_count);
@@ -256,7 +306,7 @@ void SceneParser::assign_material_texture_indices(std::vector<RendererMaterial>&
     }
 }
 
-void SceneParser::dispatch_texture_loading(Scene& parsed_scene, const std::string& scene_path, int nb_threads, const std::vector<std::pair<aiTextureType, std::string>>& texture_paths)
+void SceneParser::dispatch_texture_loading(Scene& parsed_scene, const std::string& scene_path, int nb_threads, const std::vector<std::pair<aiTextureType, std::string>>& texture_paths, const std::vector<int>& material_indices)
 {
     if (nb_threads == -1)
         // As many threads as there are textures if -1 was given
@@ -266,11 +316,12 @@ void SceneParser::dispatch_texture_loading(Scene& parsed_scene, const std::strin
     std::shared_ptr<TextureLoadingThreadState> texture_threads_state = std::make_shared<TextureLoadingThreadState>();
     texture_threads_state->scene_filepath = scene_path;
     texture_threads_state->texture_paths = texture_paths;
+    texture_threads_state->material_indices = material_indices;
 
     ThreadManager::set_thread_data(ThreadManager::TEXTURE_THREADS_KEY, texture_threads_state);
 
     for (int i = 0; i < nb_threads; i++)
-        ThreadManager::start_thread(ThreadManager::TEXTURE_THREADS_KEY, ThreadFunctions::load_texture, std::ref(parsed_scene), texture_threads_state->scene_filepath, std::ref(texture_threads_state->texture_paths), i, nb_threads);
+        ThreadManager::start_thread(ThreadManager::TEXTURE_THREADS_KEY, ThreadFunctions::load_scene_texture, std::ref(parsed_scene), texture_threads_state->scene_filepath, std::ref(texture_threads_state->texture_paths), std::ref(texture_threads_state->material_indices), i, nb_threads);
 }
 
 void SceneParser::read_material_properties(aiMaterial* mesh_material, RendererMaterial& renderer_material)
@@ -293,7 +344,7 @@ void SceneParser::read_material_properties(aiMaterial* mesh_material, RendererMa
     {
         // We sucessfully got the specular color so we're going to assume that we the specular and tin are 100%
         renderer_material.specular_tint = 1.0f;
-        renderer_material.specular_color = ColorRGB(1.0f);
+        renderer_material.specular_color = ColorRGB32F(1.0f);
     }
     mesh_material->Get(AI_MATKEY_CLEARCOAT_FACTOR, renderer_material.clearcoat);
     mesh_material->Get(AI_MATKEY_CLEARCOAT_ROUGHNESS_FACTOR, renderer_material.clearcoat_roughness);

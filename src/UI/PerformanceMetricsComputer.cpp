@@ -61,10 +61,11 @@ void PerformanceMetricsComputer::add_value(const std::string& key, double new_va
 	m_values[key].at(next_index) = new_value;
 
 	// Whether or not we've reached the maximum number of values we can
-	// store and we are now removing a value every single time we want to insert one
+	// store. If true, we are now removing a value every single time we want to insert one
 	bool at_capacity = ++m_values_count[key] > m_window_size;
 	m_values_count[key] -= at_capacity;
 
+	// Updating the sums and sums of squares according to the value we removed / added
 	m_values_sum[key] -= removed_value;
 	m_values_sum[key] += new_value;
 	m_values_sum_of_squares[key] -= removed_value * removed_value;
@@ -144,20 +145,11 @@ void PerformanceMetricsComputer::recompute_data(int new_size)
 	// isn't expected to be called that often at all, let's keep it simple
 
 	if (new_size > m_window_size)
-	{
 		// Nothing to recompute, new elements will be added later
-
-		// If we resized from 25 to 100 for example, we want to insert at [25] to use the
-		// space for new values we just got
-
-		for (auto pair_kv : m_values)
-			m_data_indices[pair_kv.first] = m_window_size;
-
 		return;
-	}
 
-	// Else, elements were removed from the end, we need to reocmpute the sum,
-	// sums of squares, ... without taking these elements into account
+	// Else, elements were removed from the end, we need to recompute the sum,
+	// sums of squares, ... without taking these removed elements into account
 
 	for (auto pair_kv : m_values)
 	{

@@ -1,8 +1,8 @@
-set(OROCHI_SUBMODULE_DIR ${CMAKE_SOURCE_DIR}/Orochi-Fork)
+set(OROCHI_SUBMODULE_DIR ${CMAKE_SOURCE_DIR}/thirdparties/Orochi-Fork)
 
 if(NOT EXISTS ${OROCHI_SUBMODULE_DIR}/ParallelPrimitives)
 	# Making sure that the Orochi submodule was cloned
-	message(FATAL_ERROR "The Orochi submodule couldn't be found. Did you forget to clone the submodules? Run 'git submodule update --init --recursive --jobs 10'.")
+	message(FATAL_ERROR "The Orochi submodule couldn't be found. Did you forget to clone the submodules? Run 'git submodule update --init --recursive'.")
 endif()
 
 set(OROCHI_BIN_DIR ${OROCHI_SUBMODULE_DIR})

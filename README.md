@@ -1,8 +1,8 @@
 # HIPRT-Path-Tracer
 
-![HIPRT path tracer cover](README_data/img/McLaren_P1_Render.jpg)
+![HIPRT path tracer cover](README_data/img/P1_environment.jpg)
 
-Physically based Monte Carlo path tracer written with the [HIP RT](https://gpuopen.com/hiprt/) and [Orochi](https://gpuopen.com/orochi/) libraries.
+Physically based Monte Carlo path tracer written with the [HIPRT](https://gpuopen.com/hiprt/) and [Orochi](https://gpuopen.com/orochi/) libraries.
 
 HIPRT is AMD's equivalent to [OptiX](https://developer.nvidia.com/rtx/ray-tracing/optix). It allows the use of the ray tracing accelerators of RDNA2+ AMD GPUs and can run on NVIDIA devices as well (although it wouldn't take advatange of RT cores) as it is not AMD specific. 
 
@@ -15,31 +15,49 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 
 # Features:
 
+#### BSDFs
 - Disney BSDF (Diffuse, fake subsurface, metallic, roughness, anisotropy + anisotropy rotation, clearcoat, sheen, glass, volumetric Beer-Lambert absorption, ...) [\[Burley, 2015\]](https://blog.selfshadow.com/publications/s2015-shading-course/#course_content)
-	- For experimentation purposes, the BRDF diffuse lobe can be switched for either:
-		- The original "Disney diffuse" presented in [\[Burley, 2012\]](https://disneyanimation.com/publications/physically-based-shading-at-disney/)
-		- A lambertian distribution
-		- The Oren Nayar microfacet diffuse model.
+- Cook Torrance BRDF (metallic & roughness)
+- Oren Nayar diffuse model
+- Specular dielectrics
+
+#### Sampling
+- Light sampling (emissive geometry):
+	- Uniform light sampling for direct lighting
+	- Resampled Importance Sampling (RIS) [\[Talbot, 2005\]](https://www.researchgate.net/publication/220852928_Importance_Resampling_for_Global_Illumination)+ Weighted Reservoir Sampling (WRS) for many light sampling  + [\[M. T. Chao, 1982\]](https://www.jstor.org/stable/2336002)
+	- HDR Environment map + Multiple Importance Sampling using
+		- CDF-inversion binary search
+	
+- BSDF sampling:
+	- Importance sampling
+	- Multiple importance sampling
+	- Smith GGX Sampling:
+		- Visible Normal Distribution Function (VNDF) [\[Heitz, 2018\]](https://jcgt.org/published/0007/04/01/)
+		- Spherical caps VNDF Sampling [\[Dupuy, Benyoub, 2023\]](https://arxiv.org/abs/2306.05044)
+
+#### Other rendering features:
 - Texture support for all the parameters of the BSDF
-- BSDF Direct lighting multiple importance sampling
-- HDR Environment map + importance sampling using
-	- CDF-inversion binary search
-- Emissive geometry light sampling
-- Nested dielectrics support 
-	- Automatic handling as presented in \[Ray Tracing Gems, 2019\]
-	- Handling with priorities as proposed in \[Simple Nested Dielectrics in Ray Traced Images, Schmidt, 2002\]
-- Per-pixel adaptive sampling
 - Normal mapping
-- Interactive ImGui interface + interactive first-person camera
-- Different frame-buffer visualisation (visualize the adaptive sampling map, the denoiser normals / albedo, ...)
-- Use of the ASSIMP library to support [many](https://github.com/assimp/assimp/blob/master/doc/Fileformats.md) scene file formats.
+- Nested dielectrics support 
+	- Automatic handling as presented in [\[Ray Tracing Gems, 2019\]](https://www.realtimerendering.com/raytracinggems/rtg/index.html)
+	- Handling with priorities as proposed in [\[Simple Nested Dielectrics in Ray Traced Images, Schmidt, 2002\]](https://www.researchgate.net/publication/247523037_Simple_Nested_Dielectrics_in_Ray_Traced_Images)
+- Per-pixel adaptive sampling
+- Intel [Open Image Denoise](https://github.com/RenderKit/oidn) + Normals & Albedo AOV support
+
+#### UI
+- Interactive ImGui interface
+	- Asynchronous interface to guarantee smooth UI interactions even with heavy path tracing kernels
+- Interactive first-person camera
+- Different frame-buffer visualization (visualize the adaptive sampling map, the denoiser normals / albedo, ...)
+
+#### Other features
+- Use of the [\[ASSIMP\]](https://github.com/assimp/assimp) library to support [many](https://github.com/assimp/assimp/blob/master/doc/Fileformats.md) scene file formats.
 - Optimized application startup time with:
 	- Multithreaded texture loading
 	- Asynchronous path tracing kernel compilation
-- Intel Open Image Denoise + Normals & Albedo AOV support
+	- Shader cache to avoid recompiling kernels unnecessarily
 
-### A more detailed explanation & showcase of the features can be found [here](README_data/Features/features.md).
-
+### Some of the features are presented in more details in my [blog posts](https://tomclabault.github.io/blog/)!
 
 # Building
 ## Prerequisites
@@ -101,9 +119,7 @@ sudo apt install libglew-dev
 With the pre-requisites fulfilled, you now just have to run the CMake:
 
 ``` sh
-git clone https://github.com/TomClabault/HIPRT-Path-Tracer.git
-cd HIPRT-Path-Tracer
-git submodule update --init --recursive --jobs 10
+git clone https://github.com/TomClabault/HIPRT-Path-Tracer.git --recursive
 mkdir build
 cd build
 cmake ..
@@ -125,6 +141,22 @@ The following arguments are available:
 - `--w=N` / `--width=N` for the width of the rendering (this argument is CPU-rendering only)
 - `--h=N` / `--height=N` for the height of the rendering (this argument is CPU-rendering only)
 
+# Gallery
+
+![P1 street](README_data/img/P1_environment.jpg)
+![Contemporary bedroom](README_data/img/contemporary-bedroom.jpg)![Blender 4.1 splash](README_data/img/blender-4.1-splash.jpg)
+![Dragon glass](README_data/img/dragon-glass.jpg)
+![Beeple Zero Day Measure Seven](README_data/img/bzd-measure-seven.jpg)
+![Suzanne caustics](README_data/img/suzanne-caustics.jpg)
+![Dragon indirect lighting](README_data/img/pbrt-dragon-indirect.jpg)
+
+Sources of the scenes can be found [here](https://github.com/TomClabault/HIPRT-Path-Tracer/blob/main/README_data/img/scene%20credits.txt).
+# Live YouTube Demos (click!)
+
+### Material Editor Demo
+[![Material Editor Demo](./README_data/img/Material_editor_thumbnail.jpg)](https://www.youtube.com/watch?v=LOVBwOoLVVQ "Material Editor Demo")
+### OIDN AOVs Quality Comparison
+[![OIDN AOVs Comparison](./README_data/img/OIDN_AOVs_thumbnail.jpg)](https://www.youtube.com/watch?v=GnCi7K2w9go "OIDN AOVs Comparison")
 # License
 
 GNU General Public License v3.0 or later

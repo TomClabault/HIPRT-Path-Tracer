@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef RAY_PAYLOAD_H
-#define RAY_PAYLOAD_H
+#ifndef DEVICE_RAY_PAYLOAD_H
+#define DEVICE_RAY_PAYLOAD_H
 
 #include "Device/includes/NestedDielectrics.h"
 
@@ -32,9 +32,9 @@ struct RayVolumeState
 struct RayPayload
 {
 	// Energy left in the ray after it bounces around the scene
-	ColorRGB throughput = ColorRGB(1.0f);
+	ColorRGB32F throughput = ColorRGB32F(1.0f);
 	// Final color of the ray
-	ColorRGB ray_color = ColorRGB(0.0f);
+	ColorRGB32F ray_color = ColorRGB32F(0.0f);
 	// Camera ray is "Bounce" to give it a chance to hit the scene
 	RayState next_ray_state = RayState::BOUNCE;
 	// Type of BRDF found at the last intersection

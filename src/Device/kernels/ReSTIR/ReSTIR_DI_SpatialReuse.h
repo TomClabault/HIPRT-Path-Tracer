@@ -12,7 +12,7 @@
 #include "Device/includes/Intersect.h"
 #include "Device/includes/Sampling.h"
 
-#include "HostDeviceCommon/Camera.h"
+#include "HostDeviceCommon/HIPRTCamera.h"
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/HitInfo.h"
 #include "HostDeviceCommon/RenderData.h"
@@ -43,7 +43,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function(const HI
 	sample_direction = sample_direction / (distance_to_light = hippt::length(sample_direction));
 
 	RayVolumeState trash_volume_state;
-	ColorRGB bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, material, trash_volume_state, view_direction, shading_normal, sample_direction, bsdf_pdf);
+	ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, material, trash_volume_state, view_direction, shading_normal, sample_direction, bsdf_pdf);
 	float cosine_term = hippt::max(0.0f, hippt::dot(shading_normal, sample_direction));
 	float cosine_at_light_source = hippt::dot(sample.light_source_normal, -sample_direction);
 

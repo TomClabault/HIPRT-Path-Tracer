@@ -14,9 +14,14 @@ struct ReservoirSample
     // TODO store emissive triangle index instead
     float3 point_on_light_source = { 0, 0, 0 };
     float3 light_source_normal = { 0, 0, 0 };
-    ColorRGB emission = { 0.0f, 0.0f, 0.0f };
+    ColorRGB32F emission = { 0.0f, 0.0f, 0.0f };
 
     float target_function = 0.0f;
+
+    // TODO necessary?
+    bool is_bsdf_sample = false;
+    ColorRGB32F bsdf_sample_contribution;
+    float bsdf_sample_cosine_term;
 };
 
 struct Reservoir

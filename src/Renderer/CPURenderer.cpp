@@ -9,6 +9,7 @@
 #include "Device/kernels/ReSTIR/ReSTIR_DI_SpatialReuse.h"
 
 #include "Renderer/CPURenderer.h"
+#include "Threads/ThreadManager.h"
 #include "UI/ApplicationSettings.h"
 
 #include <atomic>
@@ -46,11 +47,12 @@
 
 CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, height))
 {
-    m_framebuffer = Image(width, height);
+    m_framebuffer = Image32Bit(width, height, 3);
 
     // Resizing buffers + initial value
-    m_pixel_active.resize(width * height, 0);
-    m_denoiser_albedo.resize(width * height, ColorRGB(0.0f));
+    // TODO what is this buffer?
+    m_pixel_active_buffer.resize(width * height, 0);
+    m_denoiser_albedo.resize(width * height, ColorRGB32F(0.0f));
     m_denoiser_normals.resize(width * height, float3{ 0.0f, 0.0f, 0.0f });
     m_pixel_sample_count.resize(width * height, 0);
     m_pixel_squared_luminance.resize(width * height, 0.0f);
@@ -77,7 +79,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.buffers.materials_buffer = parsed_scene.materials.data();
     m_render_data.buffers.material_indices = parsed_scene.material_indices.data();
     m_render_data.buffers.has_vertex_normals = parsed_scene.has_vertex_normals.data();
-    m_render_data.buffers.pixels = m_framebuffer.data().data();
+    m_render_data.buffers.pixels = m_framebuffer.get_data_as_ColorRGB32F();
     m_render_data.buffers.triangles_indices = parsed_scene.triangle_indices.data();
     m_render_data.buffers.vertices_positions = parsed_scene.vertices_positions.data();
     m_render_data.buffers.vertex_normals = parsed_scene.vertex_normals.data();
@@ -86,7 +88,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.buffers.material_textures = parsed_scene.textures.data();
     m_render_data.buffers.textures_dims = parsed_scene.textures_dims.data();
 
-    m_render_data.aux_buffers.pixel_active = m_pixel_active.data();
+    m_render_data.aux_buffers.pixel_active = m_pixel_active_buffer.data();
     m_render_data.aux_buffers.denoiser_albedo = m_denoiser_albedo.data();
     m_render_data.aux_buffers.denoiser_normals = m_denoiser_normals.data();
     m_render_data.aux_buffers.pixel_sample_count = m_pixel_sample_count.data();
@@ -110,8 +112,18 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.cpu_only.bvh = m_bvh.get();
 }
 
-void CPURenderer::set_envmap(ImageRGBA& envmap_image)
+void CPURenderer::set_envmap(Image32Bit& envmap_image)
 {
+    ThreadManager::join_threads(ThreadManager::ENVMAP_LOAD_THREAD_KEY);
+
+    if (envmap_image.width == 0 || envmap_image.height == 0)
+    {
+        m_render_data.world_settings.ambient_light_type = AmbientLightType::UNIFORM;
+        m_render_data.world_settings.uniform_light_color = ColorRGB32F(1.0f, 1.0f, 1.0f);
+
+        return;
+    }
+
     m_render_data.world_settings.envmap = &envmap_image;
     m_render_data.world_settings.envmap_width = envmap_image.width;
     m_render_data.world_settings.envmap_height = envmap_image.height;
@@ -133,7 +145,7 @@ HIPRTRenderSettings& CPURenderer::get_render_settings()
     return m_render_data.render_settings;
 }
 
-Image& CPURenderer::get_framebuffer()
+Image32Bit& CPURenderer::get_framebuffer()
 {
     return m_framebuffer;
 }
@@ -316,11 +328,11 @@ void CPURenderer::tonemap(float gamma, float exposure)
         {
             int index = x + y * m_resolution.x;
 
-            ColorRGB hdr_color = m_render_data.buffers.pixels[index];
+            ColorRGB32F hdr_color = m_render_data.buffers.pixels[index];
             // Scaling by sample count
             hdr_color = hdr_color / float(m_render_data.render_settings.samples_per_frame);
 
-            ColorRGB tone_mapped = ColorRGB(1.0f) - exp(-hdr_color * exposure);
+            ColorRGB32F tone_mapped = ColorRGB32F(1.0f) - exp(-hdr_color * exposure);
             tone_mapped = pow(tone_mapped, 1.0f / gamma);
 
             m_render_data.buffers.pixels[index] = tone_mapped;

@@ -10,7 +10,7 @@
 #include "Device/includes/Hash.h"
 #include "Device/includes/RIS.h"
 
-#include "HostDeviceCommon/Camera.h"
+#include "HostDeviceCommon/HIPRTCamera.h"
 #include "HostDeviceCommon/Math.h"
 #include "HostDeviceCommon/RenderData.h"
 
@@ -49,12 +49,15 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_InitialCandidates(HIPRTRenderData
     // TODO replace this by using the simplified material directly in sample_light_RIS_reservoir instead of converting to RendererMaterial
     // TODO storing in g_buffer.materials with SimplifiedRendererMaterial loses the texutres information
     SimplifiedRendererMaterial simplified_mat = render_data.g_buffer.materials[pixel_index];
-    RendererMaterial material(simplified_mat);
+    RendererMaterial material = RendererMaterial(simplified_mat);
 
     float3 view_direction = render_data.g_buffer.view_directions[pixel_index];
 
+    RayPayload ray_payload;
+    ray_payload.material = material;
+    ray_payload.volume_state = render_data.g_buffer.ray_volume_states[pixel_index];
     // Producing and storing the reservoir
-    render_data.aux_buffers.initial_reservoirs[pixel_index] = sample_lights_RIS_reservoir(render_data, material, hit_info, view_direction, random_number_generator);
+    render_data.aux_buffers.initial_reservoirs[pixel_index] = sample_bsdf_and_lights_RIS_reservoir(render_data, ray_payload, hit_info, view_direction, random_number_generator);
 }
 
 #endif

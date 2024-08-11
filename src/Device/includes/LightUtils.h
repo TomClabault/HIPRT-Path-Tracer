@@ -66,4 +66,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float triangle_area(const HIPRTRenderData& render
     return hippt::length(hippt::cross(AB, AC)) / 2.0f;
 }
 
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F clamp_light_contribution(ColorRGB32F light_contribution, float clamp_max_value, bool clamp_condition)
+{
+    if (!light_contribution.has_NaN() && clamp_max_value > 0.0f && clamp_condition)
+        // We don't want to clamp NaNs because that's UB (kind of) and the NaNs get
+        // immediately clamped to 'clamp_max_value' in my experience
+        light_contribution.clamp(0.0f, clamp_max_value);
+
+    return light_contribution;
+}
+
 #endif

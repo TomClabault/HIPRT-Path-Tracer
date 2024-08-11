@@ -12,7 +12,7 @@
 #include "Device/includes/Intersect.h"
 #include "Device/includes/RayPayload.h"
 
-#include "HostDeviceCommon/Camera.h"
+#include "HostDeviceCommon/HIPRTCamera.h"
 #include "HostDeviceCommon/HitInfo.h"
 #include "HostDeviceCommon/RenderData.h"
 
@@ -53,9 +53,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
     if (render_data.render_settings.sample_number == 0)
     {
         // Resetting all buffers on the first frame
-        render_data.buffers.pixels[pixel_index] = ColorRGB(0.0f);
+        render_data.buffers.pixels[pixel_index] = ColorRGB32F(0.0f);
         render_data.aux_buffers.denoiser_normals[pixel_index] = make_float3(1.0f, 1.0f, 1.0f);
-        render_data.aux_buffers.denoiser_albedo[pixel_index] = ColorRGB(0.0f, 0.0f, 0.0f);
+        render_data.aux_buffers.denoiser_albedo[pixel_index] = ColorRGB32F(0.0f, 0.0f, 0.0f);
         render_data.aux_buffers.initial_reservoirs[pixel_index] = Reservoir();
         render_data.aux_buffers.spatial_reservoirs[pixel_index] = Reservoir();
 
@@ -68,7 +68,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
         render_data.g_buffer.camera_ray_hit[pixel_index] = false;
         render_data.aux_buffers.pixel_active[pixel_index] = false;
 
-        if (render_data.render_settings.stop_noise_threshold > 0.0f || render_data.render_settings.enable_adaptive_sampling)
+        if (render_data.render_settings.stop_pixel_noise_threshold > 0.0f || render_data.render_settings.enable_adaptive_sampling)
         {
             // These buffers are only available when either the adaptive sampling or the stop noise threshold is enabled
             render_data.aux_buffers.pixel_sample_count[pixel_index] = 0;
@@ -77,14 +77,15 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
     }
 
 
-    bool stop_noise_threshold_converged = false;
-    bool sampling_needed = adaptive_sampling(render_data, pixel_index, stop_noise_threshold_converged);
+    bool sampling_needed = true;
+    bool pixel_converged = false;
+    sampling_needed = adaptive_sampling(render_data, pixel_index, pixel_converged);
 
-    if (stop_noise_threshold_converged)
+    if (pixel_converged)
         // Indicating that this pixel has reached the threshold in render_settings.stop_noise_threshold
         hippt::atomic_add(render_data.aux_buffers.stop_noise_threshold_count, 1u);
 
-    if (!sampling_needed)
+    if (pixel_converged || !sampling_needed)
     {
         // Because when displaying the framebuffer, we're dividing by the number of samples to 
         // rescale the color of a pixel, we're going to have a problem if some pixels stopped samping

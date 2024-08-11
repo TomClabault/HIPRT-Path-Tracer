@@ -21,12 +21,12 @@ public:
     CPURenderer(int width, int height);
 
     void set_scene(Scene& parsed_scene);
-    void set_envmap(ImageRGBA& envmap_image);
+    void set_envmap(Image32Bit& envmap_image);
     void set_camera(Camera& camera);
 
     HIPRTRenderData& get_render_data();
     HIPRTRenderSettings& get_render_settings();
-    Image& get_framebuffer();
+    Image32Bit& get_framebuffer();
 
     void render();
     void camera_rays_pass();
@@ -38,10 +38,9 @@ public:
 private:
     int2 m_resolution;
 
-    Image m_framebuffer;
-
-    std::vector<unsigned char> m_pixel_active;
-    std::vector<ColorRGB> m_denoiser_albedo;
+    Image32Bit m_framebuffer;
+    std::vector<unsigned char> m_pixel_active_buffer;
+    std::vector<ColorRGB32F> m_denoiser_albedo;
     std::vector<float3> m_denoiser_normals;
 
     std::vector<int> m_pixel_sample_count;

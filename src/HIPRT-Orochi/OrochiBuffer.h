@@ -9,6 +9,7 @@
 #include "hiprt/hiprt.h"
 #include "HIPRT-Orochi/HIPRTOrochiUtils.h"
 #include "Orochi/Orochi.h"
+#include "Utils/Utils.h"
 
 template <typename T>
 class OrochiBuffer
@@ -28,6 +29,7 @@ public:
 	T** get_pointer_address();
 
 	std::vector<T> download_data() const;
+	void download_data_async(void* out, oroStream_t stream) const;
 	/**
 	 * Uploads as many elements as returned by get_element_count from the data std::vector into the buffer.
 	 * The given std::vector must therefore contain at least get_element_count() elements.
@@ -125,6 +127,22 @@ std::vector<T> OrochiBuffer<T>::download_data() const
 }
 
 template <typename T>
+void OrochiBuffer<T>::download_data_async(void* out, oroStream_t stream) const 
+{
+	if (m_data_pointer == nullptr)
+	{
+		std::cerr << "Trying to download data async from a non-allocated buffer!" << std::endl;
+
+		Utils::debugbreak();
+
+		return;
+	}
+
+	oroMemcpyAsync(out, m_data_pointer, m_element_count * sizeof(T), oroMemcpyDeviceToHost, stream);
+	//oroMemcpyDtoHAsync(out, m_data_pointer, m_element_count * sizeof(T), stream);
+}
+
+template <typename T>
 void OrochiBuffer<T>::upload_data(const std::vector<T>& data)
 {
 	if (m_data_pointer)
@@ -146,6 +164,7 @@ void OrochiBuffer<T>::free()
 	if (m_data_pointer)
 		OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(m_data_pointer)));
 
+	m_element_count = 0;
 	m_data_pointer = nullptr;
 }
 

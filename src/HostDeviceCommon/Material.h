@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef MATERIAL_H
-#define MATERIAL_H
+#ifndef HOST_DEVICE_COMMON_MATERIAL_H
+#define HOST_DEVICE_COMMON_MATERIAL_H
 
 #include "HostDeviceCommon/KernelOptions.h"
 #include "HostDeviceCommon/Color.h"
@@ -41,11 +41,11 @@ struct SimplifiedRendererMaterial
         clearcoat_roughness = hippt::max(1.0e-4f, clearcoat_roughness);
 
         // Clamping to avoid negative emission
-        emission = ColorRGB::max(ColorRGB(0.0f), emission);
+        emission = ColorRGB32F::max(ColorRGB32F(0.0f), emission);
 
         // Avoiding zero
         absorption_at_distance = hippt::max(absorption_at_distance, 1.0e-4f);
-        absorption_color = ColorRGB::max(absorption_color, ColorRGB(1.0f / 255.0f));
+        absorption_color = ColorRGB32F::max(absorption_color, ColorRGB32F(1.0f / 512.0f));
     }
 
     /*
@@ -81,8 +81,12 @@ struct SimplifiedRendererMaterial
 
     BRDF brdf_type = BRDF::Uninitialized;
 
-    ColorRGB emission = ColorRGB{ 0.0f, 0.0f, 0.0f };
-    ColorRGB base_color = ColorRGB{ 1.0f, 0.2f, 0.7f };
+    int normal_map_texture_index = -1;
+
+    int emission_texture_index = -1;
+    int base_color_texture_index = -1;
+    ColorRGB32F emission = ColorRGB32F{ 0.0f, 0.0f, 0.0f };
+    ColorRGB32F base_color = ColorRGB32F{ 1.0f, 0.2f, 0.7f };
 
     float roughness = 0.3f;
     float oren_nayar_sigma = 0.34906585039886591538f; // 20 degrees standard deviation in radian
@@ -93,8 +97,10 @@ struct SimplifiedRendererMaterial
     float metallic = 0.0f;
     float specular = 1.0f; // Specular intensity
     float specular_tint = 1.0f; // Specular fresnel strength for the metallic
-    ColorRGB specular_color = ColorRGB(1.0f);
-
+    ColorRGB32F specular_color = ColorRGB32F(1.0f);
+    
+    int anisotropic_texture_index = -1;
+    int anisotropic_rotation_texture_index = -1;
     float anisotropic = 0.0f;
     float anisotropic_rotation = 0.0f;
     float alpha_x, alpha_y;
@@ -105,14 +111,14 @@ struct SimplifiedRendererMaterial
 
     float sheen = 0.0f; // Sheen strength
     float sheen_tint = 0.0f; // Sheen tint strength
-    ColorRGB sheen_color = ColorRGB(1.0f);
+    ColorRGB32F sheen_color = ColorRGB32F(1.0f);
 
     float ior = 1.40f;
     float specular_transmission = 0.0f;
     // At what distance is the light absorbed to the given absorption_color
     float absorption_at_distance = 1.0f;
     // Color of the light absorption when traveling through the medium
-    ColorRGB absorption_color = ColorRGB(1.0f);
+    ColorRGB32F absorption_color = ColorRGB32F(1.0f);
 
     // Nested dielectric parameter
     unsigned short int dielectric_priority = 0;

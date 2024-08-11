@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_COMPILER_OPTIONS_H
-#define DEVICE_COMPILER_OPTIONS_H
+#ifndef HOST_DEVICE_COMMON_KERNEL_OPTIONS_H
+#define HOST_DEVICE_COMMON_KERNEL_OPTIONS_H
 
 /**
  * This file references the path tracer options that can be passed to HIPCC using the -D <macro>=<value> option.
@@ -42,8 +42,16 @@
 #define LSS_RIS_BSDF_AND_LIGHT 4
 #define LSS_RESTIR_DI 5
 
+#define ESS_NO_SAMPLING 0
+#define ESS_BINARY_SEARCH 1
+
 #define RIS_USE_VISIBILITY_FALSE 0
 #define RIS_USE_VISIBILITY_TRUE 1
+
+#define GGX_NO_VNDF 0
+#define GGX_VNDF_SAMPLING 1
+#define GGX_VNDF_SPHERICAL_CAPS 2
+#define GGX_VNDF_BOUNDED 3
 
 /**
  * Options are defined in a #ifndef __KERNELCC__ block because:
@@ -94,7 +102,20 @@
  *			- render_settings.ris_number_of_light_candidates & render_settings.ris_number_of_bsdf_candidates
  *				when sampling the initial candidates with RIS
  */
-#define DirectLightSamplingStrategy LSS_RESTIR_DI
+#define DirectLightSamplingStrategy LSS_NO_DIRECT_LIGHT_SAMPLING
+
+/**
+ * What envmap sampling strategy to use
+ * 
+ * Possible values (the prefix ESS stands for "Envmap Sampling Strategy"):
+ * 
+ *	- ESS_NO_SAMPLING
+ *		No importance sampling of the envmap
+ * 
+ *	- ESS_BINARY_SEARCH
+ *		Importance samples the environment map using a binary search on the CDF distributions of the envmap
+ */
+#define EnvmapSamplingStrategy ESS_BINARY_SEARCH
 
 /**
  * Whether or not to use a visiblity term in the target function whose PDF we're approximating with RIS.
@@ -105,8 +126,53 @@
  *	- RIS_USE_VISIBILITY_FALSE
  *		Don't use a visibility term
  */
-#define RISUseVisiblityTargetFunction RIS_USE_VISIBILITY_TRUE
+#define RISUseVisiblityTargetFunction RIS_USE_VISIBILITY_FALSE
 
+/**
+ * What sampling strategy to use for thd GGX NDF
+ * 
+ *  - GGX_NO_VNDF
+ *		Not sampling the visible distribution of normals.
+ *		Just classic GGX sampling
+ * 
+ *  - GGX_VNDF_SAMPLING
+ *		Sample the distribution of visible normals as proposed
+ *		in [Sampling the GGX Distribution of Visible Normals, Heitz, 2018]
+ * 
+ *  - GGX_VNDF_SPHERICAL_CAPS
+ *		Sample the distribution of visible normals using spherical
+ *		caps as proposed in [Sampling Visible GGX Normals with Spherical Caps, Dupuy & Benyoub, 2023]
+ * 
+ *  - GGX_VNDF_BOUNDED
+ *		Sample the distribution of visible normals with a bounded VNDF
+ *		sampling range as proposed in [Bounded VNDF Sampling for Smith–GGX Reflections, Eto & Tokuyoshi, 2023]
+ *		
+ */
+#define GGXAnisotropicSampleFunction GGX_VNDF_SAMPLING
+//#define GGXAnisotropicSampleFunction GGX_VNDF_SPHERICAL_CAPS
+
+#else // #ifndef __KERNELCC__
+
+#ifndef InteriorStackStrategy
+#error "InteriorStackStrategy kernel option not defined"
 #endif
+
+#ifndef DirectLightSamplingStrategy
+#error "DirectLightSamplingStrategy kernel option not defined"
+#endif
+
+#ifndef EnvmapSamplingStrategy
+#error "EnvmapSamplingStrategy kernel option not defined"
+#endif
+
+#ifndef RISUseVisiblityTargetFunction
+#error "RISUseVisiblityTargetFunction kernel option not defined"
+#endif
+
+#ifndef GGXAnisotropicSampleFunction
+#error "GGXAnisotropicSampleFunction kernel option not defined"
+#endif
+
+#endif // #ifndef __KERNELCC__
 
 #endif
