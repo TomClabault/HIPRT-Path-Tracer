@@ -407,12 +407,13 @@ void ImGuiRenderer::draw_sampling_panel()
 		{
 			ImGui::TreePush("Direct lighting sampling tree");
 
-			const char* items[] = { "- No direct light sampling", "- Uniform one light", "- BSDF Sampling", "- MIS (1 Light + 1 BSDF)", "- RIS BDSF + Light candidates" };
+			const char* items[] = { "- No direct light sampling", "- Uniform one light", "- BSDF Sampling", "- MIS (1 Light + 1 BSDF)", "- RIS BDSF + Light candidates", "- ReSTIR DI"};
 			if (ImGui::Combo("Direct light sampling strategy", kernel_options.get_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
 			{
 				m_renderer->recompile_all_kernels(kernel_options);
 				m_render_window->set_render_dirty(true);
 			}
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 			// Display additional widgets to control the parameters of the direct light
 			// sampling strategy chosen (the number of candidates for RIS for example)
@@ -428,6 +429,7 @@ void ImGuiRenderer::draw_sampling_panel()
 				break;
 
 			case LSS_RIS_BSDF_AND_LIGHT:
+			{
 				static bool use_visiblity_checked = kernel_options.get_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION) == 1;
 				if (ImGui::Checkbox("Use visibility in target function", &use_visiblity_checked))
 				{
@@ -454,6 +456,53 @@ void ImGuiRenderer::draw_sampling_panel()
 				}
 
 				break;
+			}
+
+			case LSS_RESTIR_DI:
+			{
+				if (ImGui::CollapsingHeader("Initial Candidate Sampling"))
+				{
+					ImGui::TreePush("ReSTIR DI - Initial Candidate Sampling Tree");
+
+					static bool use_visiblity_checked = kernel_options.get_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION) == 1;
+					if (ImGui::Checkbox("Use visibility in target function", &use_visiblity_checked))
+					{
+						kernel_options.set_macro(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, use_visiblity_checked ? 1 : 0);
+						m_renderer->recompile_all_kernels(kernel_options);
+
+						m_render_window->set_render_dirty(true);
+					}
+
+					if (ImGui::SliderInt("RIS # of BSDF candidates", &render_settings.ris_number_of_bsdf_candidates, 0, 32))
+					{
+						// Clamping to 0
+						render_settings.ris_number_of_bsdf_candidates = std::max(0, render_settings.ris_number_of_bsdf_candidates);
+
+						m_render_window->set_render_dirty(true);
+					}
+
+					if (ImGui::SliderInt("RIS # of light candidates", &render_settings.ris_number_of_light_candidates, 0, 128))
+					{
+						// Clamping to 0
+						render_settings.ris_number_of_light_candidates = std::max(0, render_settings.ris_number_of_light_candidates);
+
+						m_render_window->set_render_dirty(true);
+					}
+
+					ImGui::Dummy(ImVec2(0.0f, 20.0f));
+					ImGui::TreePop();
+				}
+
+				if (ImGui::CollapsingHeader("Spatial Reuse Pass"))
+				{
+					ImGui::TreePush("ReSTIR DI - Spatial Reuse Pass Tree");
+
+					ImGui::Dummy(ImVec2(0.0f, 20.0f));
+					ImGui::TreePop();
+				}
+
+				break;
+			}
 
 			default:
 				break;
