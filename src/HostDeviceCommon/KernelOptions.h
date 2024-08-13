@@ -126,7 +126,7 @@
  *	- RIS_USE_VISIBILITY_FALSE
  *		Don't use a visibility term
  */
-#define RISUseVisiblityTargetFunction RIS_USE_VISIBILITY_FALSE
+#define RISUseVisiblityTargetFunction RIS_USE_VISIBILITY_TRUE
 
 /**
  * What sampling strategy to use for thd GGX NDF

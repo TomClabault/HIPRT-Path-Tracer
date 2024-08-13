@@ -85,10 +85,10 @@ struct HIPRTRenderSettings
 	float indirect_contribution_clamp = 0.0f;
 
 	// How many candidate lights to sample for RIS (Resampled Importance Sampling)
-	int ris_number_of_light_candidates = 4;
+	int ris_number_of_light_candidates = 0;
 	// How many candidates samples from the BSDF to use in combination
 	// with the light candidates for RIS
-	int ris_number_of_bsdf_candidates = 1;
+	int ris_number_of_bsdf_candidates = 5;
 
 
 

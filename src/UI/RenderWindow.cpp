@@ -16,13 +16,22 @@
 
 #include "stb_image_write.h"
 
-// TODO bugs
+// TODO bugs:
+// - memory leak with OpenGL when resizing the window?
+// - playing with the pixel noise threshold eventually leaves it at 4000/2000000 for example, the counter doesn't reset properly
+// - memory leak with OpenGL when resizing the window over and over?
+// - denoiser normals AOV not resized sometimes? try to play to reproduce
+// - pixels converged count sometimes goes above 100%
+// - adaptive sampling heatmap view + disabling the adaptive sampling = crash
+// - MIS broken when not only the BSDF can sample
+// - light inside monkey --> RIS or MIS don't give the same as no direct light sampling
+// - different shader cache in release & debug ? seems bugged
+// - take transmission color into account when direct sampling a light source that is inside a volume
 // - denoiser albedo display not properly scaled
 // - denoiser AOVs not accounting for transmission correctly since Disney 
 //	  - same with perfect reflection
 // - Do something for that memory leak on glUnregisterBuffer / .... Maybe update viewport only once in a while to at least reduce the impact of the leak?
-// - envmap sometimes upside down
-// - issue in the metallic brdf sample? lots of black pixels because of badly sampled direction
+// - CPU renderer not converging ? Cornell_pbr + 1024 samples + debug pixel
 
 
 
@@ -47,6 +56,9 @@
 // - only the material index can be stored in the pixel states ofthe wavefront path tracer, don't need to store the whole material
 // - display view needs to become a class so that it's display string, display type, associated shader, needed framebuffer, ... is all in one place and it's easy to add new display view to the application
 // - refactor envmap to have a sampling & eval function
+// - Use HIPRT with CMake as a subdirectory (available soon)
+// - put number of triangles in light PDF in sample_one_triangle function
+// - add some explicit error messages if initializing orochi failed
 
 
 
@@ -59,25 +71,6 @@
 // - improve performance by only intersecting the selected emissive triangle with the BSDF ray when multiple importance sampling, we don't need a full BVH traversal at all
 // - If could not load given scene file, fallback to cornell box instead of not continuing
 // - CTRL + mouse wheel for zoom in viewport, CTRL click reset zoom
-// TODO bugs:
-// - memory leak with OpenGL when resizing the window?
-// - playing with the pixel noise threshold eventually leaves it at 4000/2000000 for example, the counter doesn't reset properly
-// - memory leak with OpenGL when resizing the window over and over?
-// - denoiser normals AOV not resized sometimes? try to play to reproduce
-// - pixels converged count sometimes goes above 100%
-// - adaptive sampling heatmap view + disabling the adaptive sampling = crash
-// - light inside monkey + monkey full metallic = light leak
-// - MIS broken when not only the BSDF can sample
-// - light inside monkey --> RIS or MIS don't give the same as no direct light sampling
-// - different shader cache in release & debug ?
-// - take transmission color into account when direct sampling
-
-// TODO Code Organization:
-// - Use HIPRT with CMake as a subdirectory (available soon)
-// - put number of triangles in light PDF in sample_one_triangle function
-// - add some explicit error messages if initializing orochi failed
-
-// TODO Features:
 // - add clear shader cache in ImgUI
 // - adapt number of light samples in light sampling routines based on roughness of the material --> no need to sample 8 lights in RIS for perfectly specular material + use ray ballot for that because we don't want to reduce light rays unecessarily if one thread of the warp is going to slow everyone down anyways
 // - push BSDF sampling in the right direction when light sampling if we sampled a refraction to see if there's a light inside the surface
@@ -159,7 +152,6 @@
 // - Paths roughness regularization
 // - choose denoiser quality in imgui
 // - try async buffer copy for the denoiser (maybe run a kernel to generate normals and another to generate albedo buffer before the path tracing kernel to be able to async copy while the path tracing kernel is running?)
-// - enable denoising with all combinations of beauty/normal/albedo via imgui
 // - cutout filters
 // - write scene details to imgui (nb vertices, triangles, ...)
 // - ImGui to choose the BVH flags at runtime and be able to compare the performance

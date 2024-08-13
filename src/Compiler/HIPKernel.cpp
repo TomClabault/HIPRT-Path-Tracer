@@ -58,7 +58,7 @@ void HIPKernel::compile(hiprtContext& hiprt_ctx)
 	std::string cache_key;
 
 	cache_key = HIPKernelCompiler::get_additional_cache_key(*this);
-	m_kernel_function = HIPKernelCompiler::compile_kernel(*this, hiprt_ctx, true, cache_key);
+	m_kernel_function = HIPKernelCompiler::compile_kernel(*this, hiprt_ctx, false, cache_key);
 }
 
 int HIPKernel::get_kernel_attribute(oroDeviceProp device_properties, oroFunction_attribute attribute)

@@ -23,14 +23,14 @@
 #define DEBUG_PIXEL 1
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner. 
 // If 1, it's bottom left corner.
-// Useful if you're using an image viewer to get the the coordinates of
+// Useful if you're using an image viewer to get the the coordinates of 
 // the interesting pixel. If that image viewer has its (0, 0) in the top
 // left corner, you'll need to set that DEBUG_FLIP_Y to 0. Set 1 to if
 // you're measuring the coordinates of the pixel with (0, 0) in the bottom left corner
-#define DEBUG_FLIP_Y 1
+#define DEBUG_FLIP_Y 0
 // Coordinates of the pixel to render
-#define DEBUG_PIXEL_X 342
-#define DEBUG_PIXEL_Y 458
+#define DEBUG_PIXEL_X 717
+#define DEBUG_PIXEL_Y 388
 // If 1, a square of DEBUG_NEIGHBORHOOD_SIZE x DEBUG_NEIGHBORHOOD_SIZE pixels
 // will be rendered around the pixel to debug (given by DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y). The pixel of interest is going to be rendered first so you
@@ -177,8 +177,6 @@ void CPURenderer::render()
 
 void CPURenderer::camera_rays_pass()
 {
-    std::cout << "Camera Rays Pass ... " << std::endl;
-
 #if DEBUG_PIXEL
     int x, y;
 #if DEBUG_FLIP_Y
@@ -209,8 +207,6 @@ void CPURenderer::camera_rays_pass()
 
 void CPURenderer::ReSTIR_DI_initial_candidates_pass()
 {
-    std::cout << "ReSTIR DI Initial Candidates Pass ... " << std::endl;
-
 #if DEBUG_PIXEL
     int x, y;
 #if DEBUG_FLIP_Y
@@ -241,8 +237,6 @@ void CPURenderer::ReSTIR_DI_initial_candidates_pass()
 
 void CPURenderer::ReSTIR_DI_spatial_reuse_pass()
 {
-    std::cout << "ReSTIR DI Spatial Reuse ..." << std::endl;
-
 #if DEBUG_PIXEL
     int x, y;
 #if DEBUG_FLIP_Y
@@ -273,8 +267,6 @@ void CPURenderer::ReSTIR_DI_spatial_reuse_pass()
 
 void CPURenderer::tracing_pass()
 {
-    std::cout << "Tracing Pass... " << std::endl;
-
 #if DEBUG_PIXEL
     int x, y;
 #if DEBUG_FLIP_Y
