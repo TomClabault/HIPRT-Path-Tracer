@@ -3,6 +3,7 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
+#include "Compiler/GPUKernelCompilerOptions.h"
 #include "Renderer/GPURenderer.h"
 #include "Threads/ThreadFunctions.h"
 #include "Threads/ThreadManager.h"
@@ -33,35 +34,33 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
 	m_hiprt_orochi_ctx = hiprt_oro_ctx;	
 	m_device_properties = m_hiprt_orochi_ctx->device_properties;
 
+	m_path_tracer_options = std::make_shared<GPUKernelCompilerOptions>();
 	// Adding hardware acceleration by default if supported
 	if (device_supports_hardware_acceleration() == HardwareAccelerationSupport::SUPPORTED)
-		m_path_trace_pass.get_compiler_options().set_macro("__USE_HWI__", 1);
+		m_path_tracer_options->set_macro("__USE_HWI__", 1);
 	else
-		m_path_trace_pass.get_compiler_options().remove_macro("__USE_HWI__");
+		m_path_tracer_options->remove_macro("__USE_HWI__");
+	m_path_tracer_options->set_additional_include_directories(GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS);
 
 	// Configuring the kernels
 	m_path_trace_pass.set_kernel_file_path(GPURenderer::KERNEL_FILES[0]);
 	m_path_trace_pass.set_kernel_function_name(GPURenderer::KERNEL_FUNCTIONS[0]);
-	m_path_trace_pass.get_compiler_options().set_additional_include_directories(GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS);
 
 	m_camera_ray_pass.set_kernel_file_path(GPURenderer::KERNEL_FILES[1]);
 	m_camera_ray_pass.set_kernel_function_name(GPURenderer::KERNEL_FUNCTIONS[1]);
-	m_camera_ray_pass.get_compiler_options().set_additional_include_directories(GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS);
 
 	m_restir_initial_candidates_pass.set_kernel_file_path(GPURenderer::KERNEL_FILES[2]);
 	m_restir_initial_candidates_pass.set_kernel_function_name(GPURenderer::KERNEL_FUNCTIONS[2]);
-	m_restir_initial_candidates_pass.get_compiler_options().set_additional_include_directories(GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS);
 
 	m_restir_spatial_reuse_pass.set_kernel_file_path(GPURenderer::KERNEL_FILES[3]);
 	m_restir_spatial_reuse_pass.set_kernel_function_name(GPURenderer::KERNEL_FUNCTIONS[3]);
-	m_restir_spatial_reuse_pass.get_compiler_options().set_additional_include_directories(GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS);
 
 	// Compiling kernels
 	ThreadManager::set_monothread(true);
-	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_path_trace_pass), std::ref(m_hiprt_orochi_ctx->hiprt_ctx));
-	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_camera_ray_pass), std::ref(m_hiprt_orochi_ctx->hiprt_ctx));
-	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_restir_initial_candidates_pass), std::ref(m_hiprt_orochi_ctx->hiprt_ctx));
-	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_restir_spatial_reuse_pass), std::ref(m_hiprt_orochi_ctx->hiprt_ctx));
+	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_path_trace_pass), m_path_tracer_options, std::ref(m_hiprt_orochi_ctx->hiprt_ctx));
+	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_camera_ray_pass), m_path_tracer_options, std::ref(m_hiprt_orochi_ctx->hiprt_ctx));
+	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_restir_initial_candidates_pass), m_path_tracer_options, std::ref(m_hiprt_orochi_ctx->hiprt_ctx));
+	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_restir_spatial_reuse_pass), m_path_tracer_options, std::ref(m_hiprt_orochi_ctx->hiprt_ctx));
 
 	OROCHI_CHECK_ERROR(oroStreamCreate(&m_main_stream));
 
@@ -79,6 +78,9 @@ void GPURenderer::update()
 {
 	internal_update_clear_device_status_buffers();
 	internal_update_adaptive_sampling_buffers();
+
+	// Resetting this flag as this is a new frame
+	m_render_settings.do_update_status_buffers = false;
 }
 
 void GPURenderer::copy_status_buffers()
@@ -154,22 +156,27 @@ void GPURenderer::render()
 	// TODO try launch async on the same stream and see performance
 	OROCHI_CHECK_ERROR(oroEventRecord(m_frame_start_event, m_main_stream));
 
-	for (int i = 0; i < m_render_settings.samples_per_frame; i++)
+	for (int i = 1; i <= m_render_settings.samples_per_frame; i++)
 	{
+		if (i == m_render_settings.samples_per_frame)
+			m_render_settings.do_update_status_buffers = true;
+
 		HIPRTCamera hiprt_cam = m_camera.to_hiprt();
 		HIPRTRenderData render_data = get_render_data();
-		internal_update_clear_device_status_buffers();
-
 		void* launch_args[] = { &render_data, &resolution, &hiprt_cam};
 
 		render_data.random_seed = m_rng.xorshift32();
 		m_camera_ray_pass.launch_timed_asynchronous(8, 8, resolution.x, resolution.y, launch_args, m_main_stream);
 
-		/*render_data.random_seed = m_rng.xorshift32();
-		m_restir_initial_candidates_pass.launch_timed_asynchronous(8, 8, resolution.x, resolution.y, launch_args, m_main_stream);
+		if (m_path_tracer_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI)
+		{
+			// If ReSTIR DI is enabled
+			render_data.random_seed = m_rng.xorshift32();
+			m_restir_initial_candidates_pass.launch_timed_asynchronous(8, 8, resolution.x, resolution.y, launch_args, m_main_stream);
 
-		render_data.random_seed = m_rng.xorshift32();
-		m_restir_spatial_reuse_pass.launch_timed_asynchronous(8, 8, resolution.x, resolution.y, launch_args, m_main_stream);*/
+			render_data.random_seed = m_rng.xorshift32();
+			m_restir_spatial_reuse_pass.launch_timed_asynchronous(8, 8, resolution.x, resolution.y, launch_args, m_main_stream);
+		}
 
 		render_data.random_seed = m_rng.xorshift32();
 		m_path_trace_pass.launch_timed_asynchronous(8, 8, resolution.x, resolution.y, launch_args, m_main_stream);
@@ -181,12 +188,12 @@ void GPURenderer::render()
 	// Recording GPU frame time stop timestamp and computing the frame time
 	OROCHI_CHECK_ERROR(oroEventRecord(m_frame_stop_event, m_main_stream));
 
-	HIPKernel::ComputeElapsedTimeCallbackData* elapsed_time_data = new HIPKernel::ComputeElapsedTimeCallbackData;
+	GPUKernel::ComputeElapsedTimeCallbackData* elapsed_time_data = new GPUKernel::ComputeElapsedTimeCallbackData;
 	elapsed_time_data->start = m_frame_start_event;
 	elapsed_time_data->end = m_frame_stop_event;
 	elapsed_time_data->elapsed_time_out = &m_last_frame_time;
 
-	OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_main_stream, HIPKernel::compute_elapsed_time_callback, elapsed_time_data));
+	OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_main_stream, GPUKernel::compute_elapsed_time_callback, elapsed_time_data));
 
 	m_was_last_frame_low_resolution = m_render_settings.render_low_resolution;
 }
@@ -346,22 +353,17 @@ HardwareAccelerationSupport GPURenderer::device_supports_hardware_acceleration()
 	}
 }
 
-HIPKernel& GPURenderer::get_path_trace_kernel()
+std::shared_ptr<GPUKernelCompilerOptions> GPURenderer::get_path_tracer_options()
 {
-	return m_path_trace_pass;
+	return m_path_tracer_options;
 }
 
-void GPURenderer::recompile_all_kernels(GPUKernelCompilerOptions& options_for_all_kernels)
+void GPURenderer::force_recompile_all_kernels()
 {
-	m_camera_ray_pass.set_compiler_options(options_for_all_kernels);
-	m_restir_initial_candidates_pass.set_compiler_options(options_for_all_kernels);
-	m_restir_spatial_reuse_pass.set_compiler_options(options_for_all_kernels);
-	m_path_trace_pass.set_compiler_options(options_for_all_kernels);
-
-	m_camera_ray_pass.compile(m_hiprt_orochi_ctx->hiprt_ctx);
-	m_restir_initial_candidates_pass.compile(m_hiprt_orochi_ctx->hiprt_ctx);
-	m_restir_spatial_reuse_pass.compile(m_hiprt_orochi_ctx->hiprt_ctx);
-	m_path_trace_pass.compile(m_hiprt_orochi_ctx->hiprt_ctx);
+	m_camera_ray_pass.compile(m_hiprt_orochi_ctx->hiprt_ctx, m_path_tracer_options, false);
+	m_restir_initial_candidates_pass.compile(m_hiprt_orochi_ctx->hiprt_ctx, m_path_tracer_options, false);
+	m_restir_spatial_reuse_pass.compile(m_hiprt_orochi_ctx->hiprt_ctx, m_path_tracer_options, false);
+	m_path_trace_pass.compile(m_hiprt_orochi_ctx->hiprt_ctx, m_path_tracer_options, false);
 }
 
 float GPURenderer::get_last_frame_time()

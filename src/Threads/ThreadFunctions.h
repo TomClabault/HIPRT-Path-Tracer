@@ -11,8 +11,7 @@
 class ThreadFunctions
 {
 public:
-	static void compile_kernel(HIPKernel& kernel, hiprtContext& hiprt_ctx);
-	static void compile_kernel_pass(hiprtContext hiprt_ctx, oroFunction* out_kernel_pass_function, std::vector<std::string> compiler_options, std::string kernel_file, std::string kernel_function);
+	static void compile_kernel(GPUKernel& kernel, std::shared_ptr<GPUKernelCompilerOptions> kernel_compiler_options, hiprtContext& hiprt_ctx);
 
 	static void load_scene_texture(Scene& parsed_scene, std::string scene_path, const std::vector<std::pair<aiTextureType, std::string>>& tex_paths, const std::vector<int>& material_indices, int thread_index, int nb_threads);
 

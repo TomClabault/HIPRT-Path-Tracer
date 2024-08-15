@@ -4,12 +4,12 @@
  */
 
 #include "Image/Image.h"
-#include "Compiler/HIPKernel.h"
+#include "Compiler/GPUKernel.h"
 #include "Threads/ThreadFunctions.h"
 
-void ThreadFunctions::compile_kernel(HIPKernel& kernel, hiprtContext& hiprt_ctx)
+void ThreadFunctions::compile_kernel(GPUKernel& kernel, std::shared_ptr<GPUKernelCompilerOptions> kernel_compiler_options, hiprtContext& hiprt_ctx)
 {
-    kernel.compile(hiprt_ctx);
+    kernel.compile(hiprt_ctx, kernel_compiler_options);
 }
 
 void ThreadFunctions::load_scene_texture(Scene& parsed_scene, std::string scene_path, const std::vector<std::pair<aiTextureType, std::string>>& tex_paths, const std::vector<int>& material_indices, int thread_index, int nb_threads)

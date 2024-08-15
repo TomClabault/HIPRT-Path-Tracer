@@ -3,34 +3,50 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef HIP_KERNEL_H
-#define HIP_KERNEL_H
-
-#include "Compiler/GPUKernelCompilerOptions.h"
+#ifndef GPU_KERNEL_H
+#define GPU_KERNEL_H
 
 #include <hiprt/hiprt.h>
 #include <Orochi/Orochi.h>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
-// TODO rename this class because it is not specific to HIP
-class HIPKernel
+class GPUKernelCompilerOptions;
+
+class GPUKernel
 {
 public:
-	HIPKernel();
-	HIPKernel(const std::string& kernel_file_path, const std::string& kernel_function_name);
+	GPUKernel();
+	GPUKernel(const std::string& kernel_file_path, const std::string& kernel_function_name);
 
 	std::string get_kernel_file_path();
 	std::string get_kernel_function_name();
-	GPUKernelCompilerOptions& get_compiler_options();
 
 	void set_kernel_file_path(const std::string& kernel_file_path);
 	void set_kernel_function_name(const std::string& kernel_function_name);
-	void set_compiler_options(const GPUKernelCompilerOptions& options);
 
-	void compile(hiprtContext& hiprt_ctx);
+	void compile(hiprtContext& hiprt_ctx, std::shared_ptr<GPUKernelCompilerOptions> kernel_compiler_options, bool use_cache = true);
 	void launch_timed_synchronous(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, float* execution_time_out);
 	void launch_timed_asynchronous(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, oroStream_t stream);
+
+	/**
+	 * Given an option macro name ("InteriorStackStrategy", "DirectLightSamplingStrategy", "EnvmapSamplingStrategy", ...
+	 * for examples. They are all defined in KernelOptions.h), returns true if the kernel uses that option macro.
+	 * False otherwise.
+	 * 
+	 * The kernel "uses" that macro if changing the value of that macro and recompiling the kernel
+	 * changes the output of the compiler. For example, the camera ray kernel doesn't care about
+	 * which direct lighting sampling strategy we're using. It also doesn't care about our envmap
+	 * sampling strategy. So we way that the camera ray kernel doesn't use the
+	 * "DirectLightSamplingStrategy" and "EnvmapSamplingStrategy" options macro
+	 */
+	bool uses_macro(const std::string& macro_name) const;
+
+	/**
+	 * Indicates that this kernel doesn't use the macro with the name given in parameter
+	 */
+	void unuse_macro(const std::string& macro_name);
 
 	/**
 	 * Returns the number of GPU register that this kernel is using. This function
@@ -69,8 +85,13 @@ private:
 	std::string m_kernel_file_path = "";
 	std::string m_kernel_function_name = "";
 
-	// Compiler options for this kernel
-	GPUKernelCompilerOptions m_kernel_compiler_options;
+	// Which option macros (as defined in KernelOptions.h) the kernel doesn't use. 
+	// 
+	// See uses_macro() for some examples of what "use" means.
+	// 
+	// A kernel uses all options macros by default. Call 'unuse_macro()'
+	// if you wish the kernel not to use a given macro
+	std::unordered_set<std::string> m_unused_option_macros;
 
 	// Whether or not the events have been created yet.
 	// We only create them on the first launch() call

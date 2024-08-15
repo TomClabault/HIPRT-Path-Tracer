@@ -4,64 +4,55 @@
  */
 
 #include "Compiler/HIPKernelCompiler.h"
-#include "Compiler/HIPKernel.h"
+#include "Compiler/GPUKernel.h"
+#include "Compiler/GPUKernelCompilerOptions.h"
 #include "HIPRT-Orochi/HIPRTOrochiUtils.h"
 #include "Threads/ThreadFunctions.h"
 #include "Threads/ThreadManager.h"
 
 #include <hiprt/impl/Compiler.h>
 
-HIPKernel::HIPKernel()
+GPUKernel::GPUKernel()
 {
 	OROCHI_CHECK_ERROR(oroEventCreate(&m_execution_start_event));
 	OROCHI_CHECK_ERROR(oroEventCreate(&m_execution_stop_event));
 }
 
-HIPKernel::HIPKernel(const std::string& kernel_file_path, const std::string& kernel_function_name) : HIPKernel()
+GPUKernel::GPUKernel(const std::string& kernel_file_path, const std::string& kernel_function_name) : GPUKernel()
 {
 	m_kernel_file_path = kernel_file_path;
 	m_kernel_function_name = kernel_function_name;
 }
 
-std::string HIPKernel::get_kernel_file_path()
+std::string GPUKernel::get_kernel_file_path()
 {
 	return m_kernel_file_path;
 }
 
-std::string HIPKernel::get_kernel_function_name()
+std::string GPUKernel::get_kernel_function_name()
 {
 	return m_kernel_function_name;
 }
 
-GPUKernelCompilerOptions& HIPKernel::get_compiler_options()
-{
-	return m_kernel_compiler_options;
-}
-
-void HIPKernel::set_kernel_file_path(const std::string& kernel_file_path)
+void GPUKernel::set_kernel_file_path(const std::string& kernel_file_path)
 {
 	m_kernel_file_path = kernel_file_path;
 }
 
-void HIPKernel::set_kernel_function_name(const std::string& kernel_function_name)
+void GPUKernel::set_kernel_function_name(const std::string& kernel_function_name)
 {
 	m_kernel_function_name = kernel_function_name;
 }
 
-void HIPKernel::set_compiler_options(const GPUKernelCompilerOptions& options)
-{
-	m_kernel_compiler_options = options;
-}
-
-void HIPKernel::compile(hiprtContext& hiprt_ctx)
+void GPUKernel::compile(hiprtContext& hiprt_ctx, std::shared_ptr<GPUKernelCompilerOptions> kernel_compiler_options, bool use_cache)
 {
 	std::string cache_key;
 
-	cache_key = HIPKernelCompiler::get_additional_cache_key(*this);
-	m_kernel_function = HIPKernelCompiler::compile_kernel(*this, hiprt_ctx, true, cache_key);
+	cache_key = HIPKernelCompiler::get_additional_cache_key(*this, kernel_compiler_options);
+	m_kernel_function = HIPKernelCompiler::compile_kernel(*this, kernel_compiler_options, hiprt_ctx, use_cache, cache_key);
 }
 
-int HIPKernel::get_kernel_attribute(oroDeviceProp device_properties, oroFunction_attribute attribute)
+int GPUKernel::get_kernel_attribute(oroDeviceProp device_properties, oroFunction_attribute attribute)
 {
 	int numRegs = 0;
 
@@ -77,7 +68,7 @@ int HIPKernel::get_kernel_attribute(oroDeviceProp device_properties, oroFunction
 	return numRegs;
 }
 
-void HIPKernel::launch(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, oroStream_t stream)
+void GPUKernel::launch(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, oroStream_t stream)
 {
 	hiprtInt2 nb_groups;
 	nb_groups.x = std::ceil(static_cast<float>(res_x) / tile_size_x);
@@ -86,7 +77,7 @@ void HIPKernel::launch(int tile_size_x, int tile_size_y, int res_x, int res_y, v
 	OROCHI_CHECK_ERROR(oroModuleLaunchKernel(m_kernel_function, nb_groups.x, nb_groups.y, 1, tile_size_x, tile_size_y, 1, 0, stream, launch_args, 0));
 }
 
-void HIPKernel::launch_timed_synchronous(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, float* execution_time_out)
+void GPUKernel::launch_timed_synchronous(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, float* execution_time_out)
 {
 	OROCHI_CHECK_ERROR(oroEventRecord(m_execution_start_event, 0));
 
@@ -97,16 +88,26 @@ void HIPKernel::launch_timed_synchronous(int tile_size_x, int tile_size_y, int r
 	OROCHI_CHECK_ERROR(oroEventElapsedTime(execution_time_out, m_execution_start_event, m_execution_stop_event));
 }
 
-void HIPKernel::compute_elapsed_time_callback(void* data)
+bool GPUKernel::uses_macro(const std::string& name) const
 {
-	HIPKernel::ComputeElapsedTimeCallbackData* callback_data = reinterpret_cast<ComputeElapsedTimeCallbackData*>(data);
+	return m_unused_option_macros.find(name) == m_unused_option_macros.end();
+}
+
+void GPUKernel::unuse_macro(const std::string& name)
+{
+	m_unused_option_macros.insert(name);
+}
+
+void GPUKernel::compute_elapsed_time_callback(void* data)
+{
+	GPUKernel::ComputeElapsedTimeCallbackData* callback_data = reinterpret_cast<ComputeElapsedTimeCallbackData*>(data);
 	oroEventElapsedTime(callback_data->elapsed_time_out, callback_data->start, callback_data->end);
 
 	// Deleting the callback data because it was dynamically allocated
 	delete callback_data;
 }
 
-void HIPKernel::launch_timed_asynchronous(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, oroStream_t stream)
+void GPUKernel::launch_timed_asynchronous(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, oroStream_t stream)
 {
 	OROCHI_CHECK_ERROR(oroEventRecord(m_execution_start_event, stream));
 
@@ -117,12 +118,12 @@ void HIPKernel::launch_timed_asynchronous(int tile_size_x, int tile_size_y, int 
 	// and oroStreamQuery always (kind of) returns hipErrorDeviceNotReady
 	OROCHI_CHECK_ERROR(oroEventRecord(m_execution_stop_event, stream));
 
-	HIPKernel::ComputeElapsedTimeCallbackData* callback_data = new ComputeElapsedTimeCallbackData;
+	GPUKernel::ComputeElapsedTimeCallbackData* callback_data = new ComputeElapsedTimeCallbackData;
 	callback_data->elapsed_time_out = &m_last_execution_time;
 	callback_data->start = m_execution_start_event;
 	callback_data->end = m_execution_stop_event;
 
 	// Automatically computing the elapsed time of the events with a callback.
 	// hip/cudaLaunchHostFunc adds a host function call on the GPU queue. Pretty nifty
-	OROCHI_CHECK_ERROR(oroLaunchHostFunc(stream, HIPKernel::compute_elapsed_time_callback, callback_data));
+	OROCHI_CHECK_ERROR(oroLaunchHostFunc(stream, GPUKernel::compute_elapsed_time_callback, callback_data));
 }

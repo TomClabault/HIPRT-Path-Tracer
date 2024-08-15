@@ -6,6 +6,8 @@
 #ifndef GPU_KERNEL_OPTIONS_H
 #define GPU_KERNEL_OPTIONS_H
 
+#include "Compiler/GPUKernel.h"
+
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -28,7 +30,22 @@ public:
 	 * The returned options do not contain additional include directories.
 	 * Additional include directories are not considered options.
 	 */
-	std::vector<std::string> get_options_as_std_vector_string();
+	std::vector<std::string> get_all_macros_as_std_vector_string();
+
+	/**
+	 * Same as get_all_macros_as_std_vector_string() but the returned vector doesn't contain
+	 * the macros that do not apply to the kernel given in parameter.
+	 * 
+	 * For example, the camera rays kernel doesn't care about whether our direct lighting
+	 * strategy is MIS, RIS, ReSTIR DI, ... so if a camera ray kernel is given in parameter
+	 * the returned vector will not contain the macro for the direct lighting strategy.
+	 * Same logic for the other macros defined in KernelOptions.h
+	 * 
+	 * The returned vector always contain all the "custom" macros manually defined through
+	 * a call to 'set_macro()' (unless the macro changed through 'set_macro()' is an
+	 * option macro defined in KernelOptions.h as defined above)
+	 */
+	std::vector<std::string> get_relevant_macros_as_std_vector_string(const GPUKernel& kernel);
 
 	///@{
 	/**
@@ -49,8 +66,7 @@ public:
 	 * The @name parameter is expected to be given without the '-D' macro prefix.
 	 * For example, if you want to define a macro "MyMacro" equal to 1, you simply
 	 * call set_macro("MyMacro", 1).
-	 * 
-	 * The addition of the -D prefix will be added internally
+	 * The addition of the -D prefix will be added internally.
 	 */
 	void set_macro(const std::string& name, int value);
 
@@ -81,7 +97,14 @@ public:
 private:
 	// Maps the name of the macro to its value. 
 	// Example: ["InteriorStackStrategy", 1]
-	std::unordered_map<std::string, int> m_macro_map;
+	// 
+	// This "options macro" map only contains the macro as defined in KernelOptions.h
+	// Those are the macros that control the compilation of the kernels to enable / disable
+	// certain behavior of the path tracer by recompilation (to save registers by eliminating code)
+	std::unordered_map<std::string, int> m_options_macro_map;
+
+	// This "custom macro" map contains the macros given by the user with set_macro()
+	std::unordered_map<std::string, int> m_custom_macro_map;
 
 	// Additional include directories. Does not include the "-I".
 	// Example: "../"

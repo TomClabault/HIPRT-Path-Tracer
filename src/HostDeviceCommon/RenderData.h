@@ -27,6 +27,25 @@ using AtomicType = std::atomic<T>;
 
 struct HIPRTRenderSettings
 {
+	// If true, then the kernels are allowed to modify the status buffers (how many pixels have converged so far, ...)
+	// 
+	// Why is this useful?
+	// There is a "status" buffer that contains the number of pixels that have converged for a kernel launch.
+	// It is a simple counter that threads of the kernel increment if the pixel corresponding to the thread has converged.
+	// Because thread keep incrementing this counter, we need to reset it to 0 before each kernel launch.
+	// 
+	// To simulate multiple samples per frame and reduce CPU overhead, we can launch multiple times the kernels per frame.
+	// We would thus need to reset the status buffer before each kernel launch but this is a synchronous operation which then
+	// slows down the UI. This means that we cannot reset the status buffer before each kernel launch, we can only reset it
+	// at each frame before GPURenderer::render() is called.
+	// 
+	// In the case where we have 5 samples per pixel for example, we would have each kernel launch increment the status
+	// buffer and that would largely go above 100% of pixels converged (which doesn't make sense). 
+	// What we do instead is that we only allow the last kernel launch of the frame to increment the status buffers.
+	//
+	// This is the variable that enables / disables the increment of status buffers
+	bool do_update_status_buffers = false;
+
 	// How many times the render kernel was called (updates after
 	// the call to the kernel so it start at 0)
 	int frame_number = 0;

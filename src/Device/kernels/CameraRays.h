@@ -80,10 +80,18 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
     bool sampling_needed = true;
     bool pixel_converged = false;
     sampling_needed = adaptive_sampling(render_data, pixel_index, pixel_converged);
-
+    
     if (pixel_converged || !sampling_needed)
-        // Indicating that this pixel has reached the threshold in render_settings.stop_noise_threshold
-        hippt::atomic_add(render_data.aux_buffers.stop_noise_threshold_count, 1u);
+    {
+        if (render_data.render_settings.do_update_status_buffers)
+        {
+            // Updating if we have the right to (when do_update_status_buffers is true).
+            // do_update_status_buffers is only true on the last sample of a frame
+            // 
+            // Indicating that this pixel has reached the threshold in render_settings.stop_noise_threshold
+            hippt::atomic_add(render_data.aux_buffers.stop_noise_threshold_count, 1u);
+        }
+    }
 
     if (pixel_converged || !sampling_needed)
     {
@@ -94,7 +102,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
         // appear too dark.
         // We're rescaling the color of the pixels that stopped sampling here for correct display
 
-        // TODO + 1 at the end should + samples per frame if we can fix the number of samples per frame to be > 1 with the pass refactor
         render_data.buffers.pixels[pixel_index] = render_data.buffers.pixels[pixel_index] / render_data.render_settings.sample_number * (render_data.render_settings.sample_number + 1);
         render_data.aux_buffers.pixel_active[pixel_index] = false;
 
@@ -138,7 +145,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
     render_data.aux_buffers.pixel_active[pixel_index] = true;
 
     // If we got here, this means that we still have at least one ray active
-    render_data.aux_buffers.still_one_ray_active[0] = 1;
+    if (render_data.render_settings.do_update_status_buffers)
+    {
+        // Updating if we have the right to (when do_update_status_buffers is true).
+        // do_update_status_buffers is only true on the last sample of a frame
+        render_data.aux_buffers.still_one_ray_active[0] = 1;
+    }
 }
 
 #endif

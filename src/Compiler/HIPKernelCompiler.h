@@ -6,14 +6,14 @@
 #ifndef HIP_KERNEL_COMPILER_H
 #define HIP_KERNEL_COMPILER_H
 
-#include "Compiler/HIPKernel.h"
+#include "Compiler/GPUKernel.h"
 
 #include <unordered_set>
 
 class HIPKernelCompiler
 {
 public:
-	static oroFunction compile_kernel(HIPKernel& kernel, hiprtContext& hiprt_ctx, bool use_cache = true, const std::string& additional_cache_key = "");
+	static oroFunction compile_kernel(GPUKernel& kernel, std::shared_ptr<GPUKernelCompilerOptions> kernel_compiler_options, hiprtContext& hiprt_ctx, bool use_cache, const std::string& additional_cache_key);
 
 	/**
 	 * Takes an include name ("Device/includes/MyInclude.h" for example) and a list of include directories.
@@ -51,7 +51,7 @@ public:
 	 * ourselves in the parsing of stdlib headers for example. stdlib headers will be ignored since they are not
 	 * [probably] in the include directories of the kernel).
 	 */
-	static std::string get_additional_cache_key(HIPKernel& kernel);
+	static std::string get_additional_cache_key(GPUKernel& kernel, std::shared_ptr<GPUKernelCompilerOptions> kernel_compiler_options);
 };
 
 #endif

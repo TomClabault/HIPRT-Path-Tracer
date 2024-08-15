@@ -3,18 +3,19 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
+#include "Compiler/GPUKernelCompilerOptions.h"
 #include "Compiler/HIPKernelCompiler.h"
 #include "HIPRT-Orochi/HIPRTOrochiUtils.h"
 
 #include <chrono>
 #include <deque>
 
-oroFunction HIPKernelCompiler::compile_kernel(HIPKernel& kernel, hiprtContext& hiprt_ctx, bool use_cache, const std::string& additional_cache_key)
+oroFunction HIPKernelCompiler::compile_kernel(GPUKernel& kernel, std::shared_ptr<GPUKernelCompilerOptions> kernel_compiler_options, hiprtContext& hiprt_ctx, bool use_cache, const std::string& additional_cache_key)
 {
 	std::string kernel_file_path = kernel.get_kernel_file_path();
 	std::string kernel_function_name = kernel.get_kernel_function_name();
-	const std::vector<std::string>& additional_include_dirs = kernel.get_compiler_options().get_additional_include_directories();
-	const std::vector<std::string>& compiler_options = kernel.get_compiler_options().get_options_as_std_vector_string();
+	const std::vector<std::string>& additional_include_dirs = kernel_compiler_options->get_additional_include_directories();
+	const std::vector<std::string>& compiler_options = kernel_compiler_options->get_relevant_macros_as_std_vector_string(kernel);
 
 	std::cout << "Compiling kernel \"" << kernel_function_name << "\"..." << std::endl;
 
@@ -106,7 +107,7 @@ void HIPKernelCompiler::process_include(const std::string& include_file_path, co
 	}
 }
 
-std::string HIPKernelCompiler::get_additional_cache_key(HIPKernel& kernel)
+std::string HIPKernelCompiler::get_additional_cache_key(GPUKernel& kernel, std::shared_ptr<GPUKernelCompilerOptions> kernel_compiler_options)
 {
 	std::unordered_set<std::string> already_processed_includes;
 	std::deque<std::string> yet_to_process_includes;
@@ -124,7 +125,7 @@ std::string HIPKernelCompiler::get_additional_cache_key(HIPKernel& kernel)
 		already_processed_includes.insert(current_file);
 
 		std::unordered_set<std::string> new_includes;
-		HIPKernelCompiler::process_include(current_file, kernel.get_compiler_options().get_additional_include_directories(), new_includes);
+		HIPKernelCompiler::process_include(current_file, kernel_compiler_options->get_additional_include_directories(), new_includes);
 
 		for (const std::string& new_include : new_includes)
 			yet_to_process_includes.push_back(new_include);

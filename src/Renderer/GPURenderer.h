@@ -6,7 +6,7 @@
 #ifndef GPU_RENDERER_H
 #define GPU_RENDERER_H
 
-#include "Compiler/HIPKernel.h"
+#include "Compiler/GPUKernel.h"
 #include "HIPRT-Orochi/OrochiBuffer.h"
 #include "HIPRT-Orochi/OrochiEnvmap.h"
 #include "HIPRT-Orochi/HIPRTOrochiCtx.h"
@@ -127,9 +127,9 @@ public:
 	oroDeviceProp get_device_properties();
 	HardwareAccelerationSupport device_supports_hardware_acceleration();
 
-	HIPKernel& get_path_trace_kernel();
-	// TODO this is a temporary measure and should be replaced by selective recompilation depending on the kernels that really need to be recompiled depending on the GPUKernelCompilerOptions that changed
-	void recompile_all_kernels(GPUKernelCompilerOptions& options_for_all_kernels);
+	std::shared_ptr<GPUKernelCompilerOptions> get_path_tracer_options();
+
+	void force_recompile_all_kernels();
 
 	float get_last_frame_time();
 	void reset_last_frame_time();
@@ -144,7 +144,6 @@ private:
 
 	// ---- Functions called by the update() method ----
 	//
-
 
 	/**
 	 * Resets the value of the status buffers on the device
@@ -162,6 +161,8 @@ private:
 
 	//
 	// -------- Functions called by the update() method ---------
+
+
 
 	void internal_clear_m_status_buffers();
 
@@ -242,11 +243,12 @@ private:
 	std::vector<OrochiTexture> m_materials_textures;
 	OrochiEnvmap m_envmap;
 
+	std::shared_ptr<GPUKernelCompilerOptions> m_path_tracer_options;
 	// Path tracing kernel called at each frame
-	HIPKernel m_camera_ray_pass;
-	HIPKernel m_restir_initial_candidates_pass;
-	HIPKernel m_restir_spatial_reuse_pass;
-	HIPKernel m_path_trace_pass;
+	GPUKernel m_camera_ray_pass;
+	GPUKernel m_restir_initial_candidates_pass;
+	GPUKernel m_restir_spatial_reuse_pass;
+	GPUKernel m_path_trace_pass;
 	
 	std::shared_ptr<HIPRTOrochiCtx> m_hiprt_orochi_ctx = nullptr;
 
