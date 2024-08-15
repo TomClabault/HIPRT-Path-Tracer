@@ -81,7 +81,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
     bool pixel_converged = false;
     sampling_needed = adaptive_sampling(render_data, pixel_index, pixel_converged);
 
-    if (pixel_converged)
+    if (pixel_converged || !sampling_needed)
         // Indicating that this pixel has reached the threshold in render_settings.stop_noise_threshold
         hippt::atomic_add(render_data.aux_buffers.stop_noise_threshold_count, 1u);
 

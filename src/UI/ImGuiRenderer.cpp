@@ -67,7 +67,7 @@ void ImGuiRenderer::draw_imgui_interface()
 			if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
 			{
 				// Adding some information on what noise threshold is being used
-				std::string text = "Current adaptive sampling noise threshold is: ";
+				std::string text = "Current noise threshold is: ";
 				if (render_settings.enable_adaptive_sampling && render_settings.sample_number > render_settings.adaptive_sampling_min_samples)
 				{
 					if (render_settings.stop_pixel_noise_threshold > render_settings.adaptive_sampling_noise_threshold)

@@ -158,6 +158,7 @@ void GPURenderer::render()
 	{
 		HIPRTCamera hiprt_cam = m_camera.to_hiprt();
 		HIPRTRenderData render_data = get_render_data();
+		internal_update_clear_device_status_buffers();
 
 		void* launch_args[] = { &render_data, &resolution, &hiprt_cam};
 
