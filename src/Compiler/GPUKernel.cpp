@@ -3,7 +3,7 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#include "Compiler/HIPKernelCompiler.h"
+#include "Compiler/GPUKernelCompiler.h"
 #include "Compiler/GPUKernel.h"
 #include "Compiler/GPUKernelCompilerOptions.h"
 #include "HIPRT-Orochi/HIPRTOrochiUtils.h"
@@ -11,6 +11,8 @@
 #include "Threads/ThreadManager.h"
 
 #include <hiprt/impl/Compiler.h>
+
+extern GPUKernelCompiler g_gpu_kernel_compiler;
 
 GPUKernel::GPUKernel()
 {
@@ -24,12 +26,12 @@ GPUKernel::GPUKernel(const std::string& kernel_file_path, const std::string& ker
 	m_kernel_function_name = kernel_function_name;
 }
 
-std::string GPUKernel::get_kernel_file_path()
+std::string GPUKernel::get_kernel_file_path() const
 {
 	return m_kernel_file_path;
 }
 
-std::string GPUKernel::get_kernel_function_name()
+std::string GPUKernel::get_kernel_function_name() const
 {
 	return m_kernel_function_name;
 }
@@ -46,10 +48,11 @@ void GPUKernel::set_kernel_function_name(const std::string& kernel_function_name
 
 void GPUKernel::compile(hiprtContext& hiprt_ctx, std::shared_ptr<GPUKernelCompilerOptions> kernel_compiler_options, bool use_cache)
 {
-	std::string cache_key;
+	if (!m_option_macro_parsed)
+		parse_option_macros_used(kernel_compiler_options);
 
-	cache_key = HIPKernelCompiler::get_additional_cache_key(*this, kernel_compiler_options);
-	m_kernel_function = HIPKernelCompiler::compile_kernel(*this, kernel_compiler_options, hiprt_ctx, use_cache, cache_key);
+	std::string cache_key = g_gpu_kernel_compiler.get_additional_cache_key(*this, kernel_compiler_options);
+	m_kernel_function = g_gpu_kernel_compiler.compile_kernel(*this, kernel_compiler_options, hiprt_ctx, use_cache, cache_key);
 }
 
 int GPUKernel::get_kernel_attribute(oroDeviceProp device_properties, oroFunction_attribute attribute)
@@ -88,14 +91,15 @@ void GPUKernel::launch_timed_synchronous(int tile_size_x, int tile_size_y, int r
 	OROCHI_CHECK_ERROR(oroEventElapsedTime(execution_time_out, m_execution_start_event, m_execution_stop_event));
 }
 
-bool GPUKernel::uses_macro(const std::string& name) const
+void GPUKernel::parse_option_macros_used(std::shared_ptr<GPUKernelCompilerOptions> kernel_compiler_options)
 {
-	return m_unused_option_macros.find(name) == m_unused_option_macros.end();
+	m_used_option_macros = g_gpu_kernel_compiler.get_option_macros_used_by_kernel(*this, kernel_compiler_options);
+	m_option_macro_parsed = true;
 }
 
-void GPUKernel::unuse_macro(const std::string& name)
+bool GPUKernel::uses_macro(const std::string& name) const
 {
-	m_unused_option_macros.insert(name);
+	return m_used_option_macros.find(name) != m_used_option_macros.end();
 }
 
 void GPUKernel::compute_elapsed_time_callback(void* data)

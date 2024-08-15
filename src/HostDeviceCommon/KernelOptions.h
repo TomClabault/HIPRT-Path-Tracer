@@ -102,7 +102,7 @@
  *			- render_settings.ris_number_of_light_candidates & render_settings.ris_number_of_bsdf_candidates
  *				when sampling the initial candidates with RIS
  */
-#define DirectLightSamplingStrategy LSS_RIS_BSDF_AND_LIGHT
+#define DirectLightSamplingStrategy LSS_RESTIR_DI
 
 /**
  * What envmap sampling strategy to use
@@ -149,29 +149,6 @@
  *		
  */
 #define GGXAnisotropicSampleFunction GGX_VNDF_SAMPLING
-//#define GGXAnisotropicSampleFunction GGX_VNDF_SPHERICAL_CAPS
-
-#else // #ifndef __KERNELCC__
-
-#ifndef InteriorStackStrategy
-#error "InteriorStackStrategy kernel option not defined"
-#endif
-
-#ifndef DirectLightSamplingStrategy
-#error "DirectLightSamplingStrategy kernel option not defined"
-#endif
-
-#ifndef EnvmapSamplingStrategy
-#error "EnvmapSamplingStrategy kernel option not defined"
-#endif
-
-#ifndef RISUseVisiblityTargetFunction
-#error "RISUseVisiblityTargetFunction kernel option not defined"
-#endif
-
-#ifndef GGXAnisotropicSampleFunction
-#error "GGXAnisotropicSampleFunction kernel option not defined"
-#endif
 
 #endif // #ifndef __KERNELCC__
 

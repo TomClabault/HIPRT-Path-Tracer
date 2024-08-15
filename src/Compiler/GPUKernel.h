@@ -20,8 +20,8 @@ public:
 	GPUKernel();
 	GPUKernel(const std::string& kernel_file_path, const std::string& kernel_function_name);
 
-	std::string get_kernel_file_path();
-	std::string get_kernel_function_name();
+	std::string get_kernel_file_path() const;
+	std::string get_kernel_function_name() const;
 
 	void set_kernel_file_path(const std::string& kernel_file_path);
 	void set_kernel_function_name(const std::string& kernel_function_name);
@@ -29,6 +29,13 @@ public:
 	void compile(hiprtContext& hiprt_ctx, std::shared_ptr<GPUKernelCompilerOptions> kernel_compiler_options, bool use_cache = true);
 	void launch_timed_synchronous(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, float* execution_time_out);
 	void launch_timed_asynchronous(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, oroStream_t stream);
+
+	/**
+	 * Reads the kernel file and all of its includes to find what option macros this kernel uses.
+	 * 
+	 * Calling this function update the m_used_option_macros member attribute.
+	 */
+	void parse_option_macros_used(std::shared_ptr<GPUKernelCompilerOptions> kernel_compiler_options);
 
 	/**
 	 * Given an option macro name ("InteriorStackStrategy", "DirectLightSamplingStrategy", "EnvmapSamplingStrategy", ...
@@ -42,11 +49,6 @@ public:
 	 * "DirectLightSamplingStrategy" and "EnvmapSamplingStrategy" options macro
 	 */
 	bool uses_macro(const std::string& macro_name) const;
-
-	/**
-	 * Indicates that this kernel doesn't use the macro with the name given in parameter
-	 */
-	void unuse_macro(const std::string& macro_name);
 
 	/**
 	 * Returns the number of GPU register that this kernel is using. This function
@@ -85,13 +87,10 @@ private:
 	std::string m_kernel_file_path = "";
 	std::string m_kernel_function_name = "";
 
-	// Which option macros (as defined in KernelOptions.h) the kernel doesn't use. 
+	// Which option macros (as defined in KernelOptions.h) the kernel uses.
 	// 
 	// See uses_macro() for some examples of what "use" means.
-	// 
-	// A kernel uses all options macros by default. Call 'unuse_macro()'
-	// if you wish the kernel not to use a given macro
-	std::unordered_set<std::string> m_unused_option_macros;
+	std::unordered_set<std::string> m_used_option_macros;
 
 	// Whether or not the events have been created yet.
 	// We only create them on the first launch() call
@@ -100,6 +99,10 @@ private:
 	oroEvent_t m_execution_start_event = nullptr;
 	oroEvent_t m_execution_stop_event = nullptr;
 	float m_last_execution_time = -1.0f;
+
+	// Whether or not we have already parsed the kernel file to see
+	// what option macro it uses or not
+	bool m_option_macro_parsed = false;
 
 	oroFunction m_kernel_function = nullptr;
 };

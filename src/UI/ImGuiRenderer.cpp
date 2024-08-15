@@ -287,7 +287,7 @@ void ImGuiRenderer::draw_render_settings_panel()
 		const char* items[] = { "- Automatic", "- With priorities" };
 		if (ImGui::Combo("Nested dielectrics strategy", kernel_options->get_pointer_to_macro_value(GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY), items, IM_ARRAYSIZE(items)))
 		{
-			m_renderer->force_recompile_all_kernels();
+			m_renderer->recompile_all_kernels();
 			m_render_window->set_render_dirty(true);
 		}
 
@@ -414,7 +414,7 @@ void ImGuiRenderer::draw_sampling_panel()
 			const char* items[] = { "- No direct light sampling", "- Uniform one light", "- BSDF Sampling", "- MIS (1 Light + 1 BSDF)", "- RIS BDSF + Light candidates", "- ReSTIR DI"};
 			if (ImGui::Combo("Direct light sampling strategy", kernel_options->get_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
 			{
-				m_renderer->force_recompile_all_kernels();
+				m_renderer->recompile_all_kernels();
 				m_render_window->set_render_dirty(true);
 			}
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -438,7 +438,7 @@ void ImGuiRenderer::draw_sampling_panel()
 				if (ImGui::Checkbox("Use visibility in target function", &use_visiblity_checked))
 				{
 					kernel_options->set_macro(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, use_visiblity_checked ? 1 : 0);
-					m_renderer->force_recompile_all_kernels();
+					m_renderer->recompile_all_kernels();
 
 					m_render_window->set_render_dirty(true);
 				}
@@ -472,7 +472,7 @@ void ImGuiRenderer::draw_sampling_panel()
 					if (ImGui::Checkbox("Use visibility in target function", &use_visiblity_checked))
 					{
 						kernel_options->set_macro(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, use_visiblity_checked ? 1 : 0);
-						m_renderer->force_recompile_all_kernels();
+						m_renderer->recompile_all_kernels();
 
 						m_render_window->set_render_dirty(true);
 					}
@@ -523,7 +523,7 @@ void ImGuiRenderer::draw_sampling_panel()
 			const char* items[] = { "- No envmap sampling", "- Envmap Sampling - Binary Search" };
 			if (ImGui::Combo("Envmap sampling strategy", kernel_options->get_pointer_to_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
 			{
-				m_renderer->force_recompile_all_kernels();
+				m_renderer->recompile_all_kernels();
 				m_render_window->set_render_dirty(true);
 			}
 
@@ -757,7 +757,7 @@ void ImGuiRenderer::draw_performance_settings_panel()
 		else
 			kernel_options->remove_macro("__USE_HWI__");
 
-		m_renderer->force_recompile_all_kernels();
+		m_renderer->recompile_all_kernels();
 	}
 	ImGui::EndDisabled();
 

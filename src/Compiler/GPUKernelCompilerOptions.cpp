@@ -12,6 +12,14 @@ const std::string GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY = "EnvmapSa
 const std::string GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION = "RISUseVisiblityTargetFunction";
 const std::string GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION = "GGXAnisotropicSampleFunction";
 
+const std::vector<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES = {
+	GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY,
+	GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY,
+	GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY,
+	GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION,
+	GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION,
+};
+
 GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 {
 	// Mandatory options that every kernel must have so we're

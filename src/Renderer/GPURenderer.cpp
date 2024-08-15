@@ -358,12 +358,12 @@ std::shared_ptr<GPUKernelCompilerOptions> GPURenderer::get_path_tracer_options()
 	return m_path_tracer_options;
 }
 
-void GPURenderer::force_recompile_all_kernels()
+void GPURenderer::recompile_all_kernels(bool use_cache)
 {
-	m_camera_ray_pass.compile(m_hiprt_orochi_ctx->hiprt_ctx, m_path_tracer_options, false);
-	m_restir_initial_candidates_pass.compile(m_hiprt_orochi_ctx->hiprt_ctx, m_path_tracer_options, false);
-	m_restir_spatial_reuse_pass.compile(m_hiprt_orochi_ctx->hiprt_ctx, m_path_tracer_options, false);
-	m_path_trace_pass.compile(m_hiprt_orochi_ctx->hiprt_ctx, m_path_tracer_options, false);
+	m_camera_ray_pass.compile(m_hiprt_orochi_ctx->hiprt_ctx, m_path_tracer_options, use_cache);
+	m_restir_initial_candidates_pass.compile(m_hiprt_orochi_ctx->hiprt_ctx, m_path_tracer_options, use_cache);
+	m_restir_spatial_reuse_pass.compile(m_hiprt_orochi_ctx->hiprt_ctx, m_path_tracer_options, use_cache);
+	m_path_trace_pass.compile(m_hiprt_orochi_ctx->hiprt_ctx, m_path_tracer_options, use_cache);
 }
 
 float GPURenderer::get_last_frame_time()

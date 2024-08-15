@@ -21,6 +21,8 @@ public:
 	static const std::string RIS_USE_VISIBILITY_TARGET_FUNCTION;
 	static const std::string GGX_SAMPLE_FUNCTION;
 
+	static const std::vector<std::string> ALL_MACROS_NAMES;
+
 	GPUKernelCompilerOptions();
 
 	/**

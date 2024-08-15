@@ -31,7 +31,7 @@ struct StackEntry
 };
 
 template <>
-struct InteriorStackImpl<0>
+struct InteriorStackImpl<ISS_AUTOMATIC>
 {
 	// TODO leaving material never used ? Or used only where we already know its value so not needed
 	// Unused parameter at the end here to have the same signature as InteriorStackPriority
@@ -143,7 +143,7 @@ struct StackPriorityEntry
 };
 
 template <>
-struct InteriorStackImpl<1>
+struct InteriorStackImpl<ISS_WITH_PRIORITIES>
 {
 	HIPRT_HOST_DEVICE bool push(int& incident_material_index, int& outgoing_material_index, bool& leaving_material, int material_index, int material_priority)
 	{

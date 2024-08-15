@@ -4,13 +4,15 @@
  */
 
 #include "Compiler/GPUKernelCompilerOptions.h"
-#include "Compiler/HIPKernelCompiler.h"
+#include "Compiler/GPUKernelCompiler.h"
 #include "HIPRT-Orochi/HIPRTOrochiUtils.h"
 
 #include <chrono>
 #include <deque>
 
-oroFunction HIPKernelCompiler::compile_kernel(GPUKernel& kernel, std::shared_ptr<GPUKernelCompilerOptions> kernel_compiler_options, hiprtContext& hiprt_ctx, bool use_cache, const std::string& additional_cache_key)
+GPUKernelCompiler g_gpu_kernel_compiler;
+
+oroFunction GPUKernelCompiler::compile_kernel(GPUKernel& kernel, std::shared_ptr<GPUKernelCompilerOptions> kernel_compiler_options, hiprtContext& hiprt_ctx, bool use_cache, const std::string& additional_cache_key)
 {
 	std::string kernel_file_path = kernel.get_kernel_file_path();
 	std::string kernel_function_name = kernel.get_kernel_function_name();
@@ -37,12 +39,12 @@ oroFunction HIPKernelCompiler::compile_kernel(GPUKernel& kernel, std::shared_ptr
 	return *reinterpret_cast<oroFunction*>(&trace_function_out);
 }
 
-std::string HIPKernelCompiler::find_in_include_directories(const std::string& include_name, const std::vector<std::string>& include_directories)
+std::string GPUKernelCompiler::find_in_include_directories(const std::string& include_name, const std::vector<std::string>& include_directories)
 {
 	for (const std::string& include_directory : include_directories)
 	{
 		std::string add_slash = include_directory[include_directory.length() - 1] != '/' ? "/" : "";
-		std::string file_path = include_directory + add_slash +  include_name;
+		std::string file_path = include_directory + add_slash + include_name;
 		std::ifstream try_open_file(file_path);
 		if (try_open_file.is_open())
 			return file_path;
@@ -51,7 +53,7 @@ std::string HIPKernelCompiler::find_in_include_directories(const std::string& in
 	return "";
 }
 
-void HIPKernelCompiler::process_include(const std::string& include_file_path, const std::vector<std::string>& include_directories, std::unordered_set<std::string>& output_includes)
+void GPUKernelCompiler::read_includes_of_file(const std::string& include_file_path, const std::vector<std::string>& include_directories, std::unordered_set<std::string>& output_includes)
 {
 	std::ifstream include_file(include_file_path);
 	if (include_file.is_open())
@@ -102,12 +104,55 @@ void HIPKernelCompiler::process_include(const std::string& include_file_path, co
 
 	}
 	else
-	{
 		std::cerr << "Could not generate additional cache key for kernel with path: " << include_file_path << ". Error is: " << strerror(errno);
-	}
 }
 
-std::string HIPKernelCompiler::get_additional_cache_key(GPUKernel& kernel, std::shared_ptr<GPUKernelCompilerOptions> kernel_compiler_options)
+std::unordered_set<std::string> GPUKernelCompiler::read_option_macro_of_file(const std::string& filepath)
+{
+	std::string file_modification_time;
+
+	try
+	{
+		std::chrono::time_point modification_time = std::filesystem::last_write_time(filepath);
+
+		file_modification_time = std::to_string(modification_time.time_since_epoch().count());
+	}
+	catch (std::filesystem::filesystem_error e)
+	{
+		std::cerr << "HIPKernelCompiler - Unable to open include file \"" << filepath << "\" for option macros analyzing: " << e.what() << std::endl;
+
+		return std::unordered_set<std::string>();
+	}
+
+	auto cache_timestamp_find = m_filepath_to_options_macros_cache_timestamp.find(filepath);
+	if (cache_timestamp_find != m_filepath_to_options_macros_cache_timestamp.end() && cache_timestamp_find->second == file_modification_time)
+	{
+		// Cache hit
+		return m_filepath_to_option_macros_cache[filepath];
+	}
+
+	std::unordered_set<std::string> option_macros;
+	std::ifstream include_file(filepath);
+	if (include_file.is_open())
+	{
+		std::string line;
+		while (std::getline(include_file, line))
+			for (const std::string& existing_macro_option : GPUKernelCompilerOptions::ALL_MACROS_NAMES)
+				if (line.find(existing_macro_option) != std::string::npos)
+					option_macros.insert(existing_macro_option);
+
+	}
+	else
+		std::cerr << "Could not open file " << filepath << " for reading option macros used by that file. Error is : " << strerror(errno);
+
+	// Updating the cache
+	m_filepath_to_option_macros_cache[filepath] = option_macros;
+	m_filepath_to_options_macros_cache_timestamp[filepath] = file_modification_time;
+
+	return option_macros;
+}
+
+std::string GPUKernelCompiler::get_additional_cache_key(GPUKernel& kernel, std::shared_ptr<GPUKernelCompilerOptions> kernel_compiler_options)
 {
 	std::unordered_set<std::string> already_processed_includes;
 	std::deque<std::string> yet_to_process_includes;
@@ -125,7 +170,7 @@ std::string HIPKernelCompiler::get_additional_cache_key(GPUKernel& kernel, std::
 		already_processed_includes.insert(current_file);
 
 		std::unordered_set<std::string> new_includes;
-		HIPKernelCompiler::process_include(current_file, kernel_compiler_options->get_additional_include_directories(), new_includes);
+		read_includes_of_file(current_file, kernel_compiler_options->get_additional_include_directories(), new_includes);
 
 		for (const std::string& new_include : new_includes)
 			yet_to_process_includes.push_back(new_include);
@@ -153,4 +198,47 @@ std::string HIPKernelCompiler::get_additional_cache_key(GPUKernel& kernel, std::
 	}
 
 	return final_cache_key;
+}
+
+std::unordered_set<std::string> GPUKernelCompiler::get_option_macros_used_by_kernel(const GPUKernel& kernel, std::shared_ptr<GPUKernelCompilerOptions> kernel_compiler_options)
+{
+	std::unordered_set<std::string> already_processed_includes;
+	std::deque<std::string> yet_to_process_includes;
+	yet_to_process_includes.push_back(kernel.get_kernel_file_path());
+
+	while (!yet_to_process_includes.empty())
+	{
+		std::string current_file = yet_to_process_includes.front();
+		yet_to_process_includes.pop_front();
+
+		if (already_processed_includes.find(current_file) != already_processed_includes.end())
+			// We've already processed that file
+			continue;
+		else if (current_file.find("KernelOptions.h") != std::string::npos)
+			// Ignoring kernel options when looking for option macros
+			continue;
+		else if (current_file.find("Device/") == std::string::npos)
+			// Excluding files that are not in the Device/ folder because we're only
+			// interested in kernel files, not CPU C++ files
+			continue;
+
+		already_processed_includes.insert(current_file);
+
+		std::unordered_set<std::string> new_includes;
+		read_includes_of_file(current_file, kernel_compiler_options->get_additional_include_directories(), new_includes);
+
+		for (const std::string& new_include : new_includes)
+			yet_to_process_includes.push_back(new_include);
+	}
+
+	std::unordered_set<std::string> option_macro_names;
+	for (const std::string& include : already_processed_includes)
+	{
+		std::unordered_set<std::string> include_option_macros = read_option_macro_of_file(include);
+
+		for (const std::string& option_macro : include_option_macros)
+			option_macro_names.insert(option_macro);
+	}
+
+	return option_macro_names;
 }
