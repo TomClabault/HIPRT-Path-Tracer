@@ -120,14 +120,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_bsdf_and_lights_RIS_reservoir(co
                 float bsdf_pdf;
                 RayVolumeState trash_ray_volume_state = ray_payload.volume_state;
                 bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, ray_payload.material, trash_ray_volume_state, view_direction, closest_hit_info.shading_normal, to_light_direction, bsdf_pdf);
-                // Converting the PDF from area measure to solid angle measure requires dividing by
-                // cos(theta) / dist^2. Dividing by that factor is equal to multiplying by the inverse
-                // which is what we're doing here
-                light_sample_pdf *= distance_to_light * distance_to_light;
-                light_sample_pdf /= cosine_at_light_source;
-                // Uniformly sampling emissive triangles in the scene
-                light_sample_pdf /= render_data.buffers.emissive_triangles_count;
 
+                // TODO use geometry term?
                 float geometry_term = 1.0f / (distance_to_light * distance_to_light) * cosine_at_light_source * cosine_at_evaluated_point;
                 target_function = (bsdf_color * light_source_info.emission * cosine_at_evaluated_point).luminance();
 
@@ -146,6 +140,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_bsdf_and_lights_RIS_reservoir(co
                     target_function *= visible;
                 }
 #endif
+
+                // Converting the PDF from area measure to solid angle measure requires dividing by
+                // cos(theta) / dist^2. Dividing by that factor is equal to multiplying by the inverse
+                // which is what we're doing here
+                light_sample_pdf *= distance_to_light * distance_to_light;
+                light_sample_pdf /= cosine_at_light_source;
 
                 float mis_weight = balance_heuristic(light_sample_pdf, nb_light_candidates, bsdf_pdf, nb_bsdf_candidates);
                 candidate_weight = mis_weight * target_function / light_sample_pdf;
@@ -168,7 +168,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_bsdf_and_lights_RIS_reservoir(co
         float bsdf_sample_pdf = 0.0f;
         float target_function = 0.0f;
         float candidate_weight = 0.0f;
-        float cosine_light_source = 0.0f;
         float3 sampled_direction;
         float3 shadow_ray_origin = evaluated_point;
         RayVolumeState trash_ray_volume_state = ray_payload.volume_state;
@@ -204,8 +203,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_bsdf_and_lights_RIS_reservoir(co
                 // If we intersected an emissive material, compute the weight. 
                 // Otherwise, the weight is 0 because of the emision being 0 so we just don't compute it
 
-                // abs() here to allow backfacing lights
-                cosine_light_source = hippt::abs(hippt::dot(bsdf_ray_hit_info.shading_normal, -sampled_direction));
                 // Using abs here because we want the dot product to be positive.
                 // You may be thinking that if we're doing this, then we're not going to discard BSDF
                 // sampled direction that are below the surface (whereas we should discard them).
@@ -221,11 +218,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_bsdf_and_lights_RIS_reservoir(co
                 //float geometry_term = 1.0f / (bsdf_ray_hit_info.t * bsdf_ray_hit_info.t) * cosine_at_evaluated_point * cosine_light_source;
                 target_function = (bsdf_color * bsdf_ray_payload.material.emission * cosine_at_evaluated_point).luminance();
 
-                float light_area = triangle_area(render_data, bsdf_ray_hit_info.primitive_index);
-                float light_pdf = bsdf_ray_hit_info.t* bsdf_ray_hit_info.t / cosine_light_source;
-                light_pdf /= light_area;
-                light_pdf /= render_data.buffers.emissive_triangles_count;
-
+                float light_pdf = pdf_of_emissive_triangle_hit(render_data, bsdf_ray_hit_info, sampled_direction); 
                 // If we refracting, drop the light PDF to 0
                 // 
                 // Why?

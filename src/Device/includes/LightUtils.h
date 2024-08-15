@@ -47,6 +47,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 sample_one_emissive_triangle(const HIPRTRe
     light_info.emission = render_data.buffers.materials_buffer[render_data.buffers.material_indices[triangle_index]].emission;
 
     pdf = 1.0f / light_info.light_area;
+    pdf /= render_data.buffers.emissive_triangles_count;
 
     return random_point_on_triangle;
 }
@@ -71,6 +72,32 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F clamp_light_contribution(ColorRGB32F 
         light_contribution.clamp(0.0f, clamp_max_value);
 
     return light_contribution;
+}
+
+/**
+ * Returns the PDF (solid angle measure) of the light sampler for the given triangle_hit_info
+ * 
+ * ray_direction is the direction of the ray that hit the triangle. The direction points towards the triangle
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit(const HIPRTRenderData& render_data, HitInfo triangle_hit_info, float3 ray_direction)
+{
+    // Surface area PDF of hitting that point on that triangle in the scene
+    float light_area = triangle_area(render_data, triangle_hit_info.primitive_index);
+    float pdf = 1.0f / light_area;
+    pdf /= render_data.buffers.emissive_triangles_count;
+    
+    // abs() here to allow backfacing lights
+    // Without abs() here:
+    //  - We could be hitting the back of an emissive triangle (think of quad light hanging in the air)
+    //  --> triangle normal not facing the same way 
+    //  --> cos_angle negative
+    float cosine_light_source = hippt::abs(hippt::dot(triangle_hit_info.shading_normal, -ray_direction));
+
+    // Conversion to solid angle from surface area measure
+    pdf *= triangle_hit_info.t * triangle_hit_info.t;
+    pdf /= cosine_light_source;
+
+    return pdf;
 }
 
 #endif

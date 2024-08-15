@@ -45,16 +45,15 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_no_MIS(const HIPRTRe
 
         if (!in_shadow)
         {
-            // Conversion to solid angle from surface area measure
-            light_sample_pdf *= distance_to_light * distance_to_light;
-            light_sample_pdf /= dot_light_source;
-            light_sample_pdf /= render_data.buffers.emissive_triangles_count;
-
             float brdf_pdf;
             RayVolumeState trash_volume_state = ray_payload.volume_state;
             ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, ray_payload.material, trash_volume_state, view_direction, closest_hit_info.shading_normal, shadow_ray.direction, brdf_pdf);
             if (brdf_pdf != 0.0f)
             {
+                // Conversion to solid angle from surface area measure
+                light_sample_pdf *= distance_to_light * distance_to_light;
+                light_sample_pdf /= dot_light_source;
+
                 float cosine_term = hippt::max(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction), 0.0f);
                 light_source_radiance = light_source_info.emission * cosine_term * bsdf_color / light_sample_pdf;
             }
@@ -147,16 +146,15 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(const HIPRTRende
 
         if (!in_shadow)
         {
-            // Conversion to solid angle from surface area measure
-            light_sample_pdf *= distance_to_light * distance_to_light;
-            light_sample_pdf /= dot_light_source;
-            light_sample_pdf /= render_data.buffers.emissive_triangles_count;
-
             float bsdf_pdf;
             RayVolumeState trash_volume_state = ray_payload.volume_state;
             ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, ray_payload.material, trash_volume_state, view_direction, closest_hit_info.shading_normal, shadow_ray.direction, bsdf_pdf);
             if (bsdf_pdf != 0.0f)
             {
+                // Conversion to solid angle from surface area measure
+                light_sample_pdf *= distance_to_light * distance_to_light;
+                light_sample_pdf /= dot_light_source;
+
                 float mis_weight = power_heuristic(light_sample_pdf, bsdf_pdf);
 
                 float cosine_term = hippt::max(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction), 0.0f);
@@ -168,11 +166,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(const HIPRTRende
     ColorRGB32F bsdf_radiance_mis;
 
     float direction_pdf;
-    float3 sampled_brdf_direction;
+    float3 sampled_bsdf_direction;
     float3 bsdf_shadow_ray_origin = evaluated_point;
     RayVolumeState trash_volume_state = ray_payload.volume_state;
-    ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data.buffers.materials_buffer, ray_payload.material, trash_volume_state, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_brdf_direction, direction_pdf, random_number_generator);
-    bool refraction_sampled = hippt::dot(sampled_brdf_direction, closest_hit_info.shading_normal * inside_surface_multiplier) < 0;
+    ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data.buffers.materials_buffer, ray_payload.material, trash_volume_state, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_bsdf_direction, direction_pdf, random_number_generator);
+    bool refraction_sampled = hippt::dot(sampled_bsdf_direction, closest_hit_info.shading_normal * inside_surface_multiplier) < 0;
     if (refraction_sampled)
     {
         // If we sampled a refraction, we're pushing the origin of the shadow ray "through"
@@ -188,28 +186,17 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(const HIPRTRende
     {
         hiprtRay new_ray;
         new_ray.origin = bsdf_shadow_ray_origin;
-        new_ray.direction = sampled_brdf_direction;
+        new_ray.direction = sampled_bsdf_direction;
 
-        HitInfo new_ray_hit_info;
+        HitInfo bsdf_ray_hit_info;
         RayPayload bsdf_ray_payload;
-        bool inter_found = trace_ray(render_data, new_ray, bsdf_ray_payload, new_ray_hit_info);
+        bool inter_found = trace_ray(render_data, new_ray, bsdf_ray_payload, bsdf_ray_hit_info);
 
         // Checking that we did hit something and if we hit something,
         // it needs to be the light that we're currently sampling
         if (inter_found && bsdf_ray_payload.material.is_emissive())
         {
-            // abs() here to allow double sided emissive geometry.
-            // Without abs() here:
-            //  - We could be hitting the back of an emissive triangle (think of quad light hanging in the air)
-            //  --> triangle normal not facing the same way 
-            //  --> cos_angle negative
-            float cos_angle_light = hippt::abs(hippt::dot(new_ray_hit_info.shading_normal, -sampled_brdf_direction));
-
-            float light_pdf = new_ray_hit_info.t * new_ray_hit_info.t;
-            light_pdf /= cos_angle_light;
-            light_pdf /= triangle_area(render_data, new_ray_hit_info.primitive_index);
-            light_pdf /= render_data.buffers.emissive_triangles_count;
-
+            float light_pdf = pdf_of_emissive_triangle_hit(render_data, bsdf_ray_hit_info, sampled_bsdf_direction);
             float mis_weight = power_heuristic(direction_pdf, light_pdf);
 
             // Using abs here because we want the dot product to be positive.
@@ -221,7 +208,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(const HIPRTRende
             // correct for the BSDF. Even if the direction is correct, the dot product may be
             // negative in the case of refractions / total internal reflections and so in this case,
             // we'll need to negative the dot product for it to be positive
-            float cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, sampled_brdf_direction));
+            float cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, sampled_bsdf_direction));
             //float cosine_term = hippt::max(0.0f, hippt::dot(closest_hit_info.shading_normal, sampled_brdf_direction));
             bsdf_radiance_mis = bsdf_color * cosine_term * light_source_info.emission * mis_weight / direction_pdf;
         }
