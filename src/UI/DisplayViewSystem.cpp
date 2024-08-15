@@ -68,6 +68,14 @@ DisplayViewSystem::~DisplayViewSystem()
 
 bool DisplayViewSystem::update_selected_display_view()
 {
+	if (get_current_display_view_type() == DisplayViewType::ADAPTIVE_SAMPLING_MAP 
+	&& !m_render_window->get_renderer()->get_render_settings().has_access_to_adaptive_sampling_buffers())
+		// If the adaptive sampling heatmap is selected as the current view but
+		// the adaptive sampling buffers are no longer available (after a change
+		// to ImGui for example), we need to switch out of the adaptive sampling
+		// view because we don't have the buffers to display it anymore
+		m_queued_display_view_change = DisplayViewType::DEFAULT;
+
 	if (m_queued_display_view_change != DisplayViewType::UNDEFINED)
 	{
 		// Adjusting the denoiser setting according to the selected view
@@ -95,6 +103,9 @@ void DisplayViewSystem::display()
 
 DisplayViewType DisplayViewSystem::get_current_display_view_type()
 {
+	if (m_current_display_view == nullptr)
+		return DisplayViewType::UNDEFINED;
+
 	return m_current_display_view->get_display_view_type();
 }
 

@@ -21,6 +21,15 @@ struct BoundingBox
 	}
 
 	/**
+	 * Extends the bounding box with a vertex
+	 */
+	void extend(float3 vertex)
+	{
+		mini = make_float3(hippt::min(mini.x, vertex.x), hippt::min(mini.y, vertex.y), hippt::min(mini.z, vertex.z));
+		maxi = make_float3(hippt::max(maxi.x, vertex.x), hippt::max(maxi.y, vertex.y), hippt::max(maxi.z, vertex.z));
+	}
+
+	/**
 	 * Returns the length of the longest extent of the bounding box
 	 */
 	float get_max_extent() const

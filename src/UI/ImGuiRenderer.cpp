@@ -132,9 +132,10 @@ void ImGuiRenderer::draw_render_settings_panel()
 	ImGui::TreePush("Render settings tree");
 
 	std::vector<const char*> items = { "- Default", "- Denoiser blend", "- Denoiser - Normals", "- Denoiser - Denoised normals", "- Denoiser - Albedo", "- Denoiser - Denoised albedo" };
-	if (render_settings.enable_adaptive_sampling)
+	if (render_settings.has_access_to_adaptive_sampling_buffers())
 		items.push_back("- Adaptive sampling heatmap");
-	static int display_view_selected = m_render_window->get_display_view_system()->get_current_display_view_type();
+
+	int display_view_selected = m_render_window->get_display_view_system()->get_current_display_view_type();
 	if (ImGui::Combo("Display View", &display_view_selected, items.data(), items.size()))
 		m_render_window->get_display_view_system()->queue_display_view_change(static_cast<DisplayViewType>(display_view_selected));
 
@@ -386,7 +387,11 @@ void ImGuiRenderer::draw_sampling_panel()
 			ImGui::TreePush("Adaptive sampling tree");
 
 			if (ImGui::Checkbox("Enable adaptive sampling", (bool*)&render_settings.enable_adaptive_sampling))
+			{
+				/*if (render_settings.enable_adaptive_sampling)
+				m_render_window->get_display_view_system()->queue_display_view_change()*/
 				m_render_window->set_render_dirty(true);
+			}
 
 			float adaptive_sampling_noise_threshold_before = render_settings.adaptive_sampling_noise_threshold;
 			ImGui::BeginDisabled(!render_settings.enable_adaptive_sampling);

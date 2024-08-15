@@ -170,6 +170,19 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Scene& par
         BoundingBox mesh_bounding_box;
         mesh_bounding_box.mini = make_float3(mesh_aabb.mMin.x, mesh_aabb.mMin.y, mesh_aabb.mMin.z);
         mesh_bounding_box.maxi = make_float3(mesh_aabb.mMax.x, mesh_aabb.mMax.y, mesh_aabb.mMax.z);
+        if (mesh_bounding_box.get_max_extent() == 0.0f)
+        {
+            // I've had cases where the bounding box given by ASSIMP was (0, 0, 0), (0, 0, 0).
+            // Don't know why
+            //
+            // To avoid this weird, we fall back to manual computation of the bounding box
+
+            // Resetting the bounding because we just set its min and max to (0, 0, 0) and (0, 0, 0)
+            // because of the situation we're in
+            mesh_bounding_box = BoundingBox();
+            for (int vert_index = 0; vert_index < mesh->mNumVertices; vert_index++)
+                mesh_bounding_box.extend(*(float3*)(&mesh->mVertices[vert_index]));
+        }
 
         parsed_scene.mesh_bounding_boxes.push_back(mesh_bounding_box);
         // Extending the bounding box of the scene with the bounding box of the mesh

@@ -19,9 +19,8 @@
 // TODO bugs:
 // - memory leak with OpenGL when resizing the window?
 // - playing with the pixel noise threshold eventually leaves it at 4000/2000000 for example, the counter doesn't reset properly
-// - memory leak with OpenGL when resizing the window over and over?
-// - denoiser normals AOV not resized sometimes? try to play to reproduce
 // - pixels converged count sometimes goes above 100%
+// - memory leak with OpenGL when resizing the window over and over?
 // - adaptive sampling heatmap view + disabling the adaptive sampling = crash
 // - MIS broken when not only the BSDF can sample
 // - light inside monkey --> RIS or MIS don't give the same as no direct light sampling
