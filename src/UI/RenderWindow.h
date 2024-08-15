@@ -66,7 +66,6 @@ public:
 	void update_renderer_view_zoom(float offset, bool scale_delta_time);
 	void update_renderer_view_rotation(float offset_x, float offset_y);
 
-	void increment_sample_number();
 	/**
 	 * Returns true if the renderer is not sampling the image anymore. 
 	 * This can be the case if all pixels have converged according to

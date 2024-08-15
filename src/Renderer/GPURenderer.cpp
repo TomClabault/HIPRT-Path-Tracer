@@ -57,6 +57,7 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
 	m_restir_spatial_reuse_pass.get_compiler_options().set_additional_include_directories(GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS);
 
 	// Compiling kernels
+	ThreadManager::set_monothread(true);
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_path_trace_pass), std::ref(m_hiprt_orochi_ctx->hiprt_ctx));
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_camera_ray_pass), std::ref(m_hiprt_orochi_ctx->hiprt_ctx));
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_restir_initial_candidates_pass), std::ref(m_hiprt_orochi_ctx->hiprt_ctx));
@@ -150,25 +151,31 @@ void GPURenderer::render()
 
 	hiprtInt2 resolution = make_hiprtInt2(m_render_width, m_render_height);
 
-	HIPRTCamera hiprt_cam = m_camera.to_hiprt();
-	HIPRTRenderData render_data = get_render_data();
-	void* launch_args[] = { &render_data, &resolution, &hiprt_cam};
-
 	// TODO try launch async on the same stream and see performance
 	OROCHI_CHECK_ERROR(oroEventRecord(m_frame_start_event, m_main_stream));
-	m_camera_ray_pass.launch_timed_asynchronous(8, 8, resolution.x, resolution.y, launch_args, m_main_stream);
-	//oroStreamSynchronize(m_main_stream);
 
-	render_data.random_seed = m_rng.xorshift32();
-	m_restir_initial_candidates_pass.launch_timed_asynchronous(8, 8, resolution.x, resolution.y, launch_args, m_main_stream);
-	//oroStreamSynchronize(0);
+	for (int i = 0; i < m_render_settings.samples_per_frame; i++)
+	{
+		HIPRTCamera hiprt_cam = m_camera.to_hiprt();
+		HIPRTRenderData render_data = get_render_data();
 
-	render_data.random_seed = m_rng.xorshift32();
-	m_restir_spatial_reuse_pass.launch_timed_asynchronous(8, 8, resolution.x, resolution.y, launch_args, m_main_stream);
-	//oroStreamSynchronize(0);
+		void* launch_args[] = { &render_data, &resolution, &hiprt_cam};
 
-	render_data.random_seed = m_rng.xorshift32();
-	m_path_trace_pass.launch_timed_asynchronous(8, 8, resolution.x, resolution.y, launch_args, m_main_stream);
+		render_data.random_seed = m_rng.xorshift32();
+		m_camera_ray_pass.launch_timed_asynchronous(8, 8, resolution.x, resolution.y, launch_args, m_main_stream);
+
+		/*render_data.random_seed = m_rng.xorshift32();
+		m_restir_initial_candidates_pass.launch_timed_asynchronous(8, 8, resolution.x, resolution.y, launch_args, m_main_stream);
+
+		render_data.random_seed = m_rng.xorshift32();
+		m_restir_spatial_reuse_pass.launch_timed_asynchronous(8, 8, resolution.x, resolution.y, launch_args, m_main_stream);*/
+
+		render_data.random_seed = m_rng.xorshift32();
+		m_path_trace_pass.launch_timed_asynchronous(8, 8, resolution.x, resolution.y, launch_args, m_main_stream);
+
+		m_render_settings.sample_number++;
+		m_render_settings.frame_number++;
+	}
 
 	// Recording GPU frame time stop timestamp and computing the frame time
 	OROCHI_CHECK_ERROR(oroEventRecord(m_frame_stop_event, m_main_stream));
@@ -239,7 +246,6 @@ void GPURenderer::unmap_buffers()
 	m_framebuffer->unmap();
 	m_normals_AOV_buffer->unmap();
 	m_albedo_AOV_buffer->unmap();
-	// TODO some unmapping here could be done only if necessary (pixel sample count for example doesn't need to be unmapped unless we're displaying the adaptive sampling map)
 	m_pixels_sample_count_buffer->unmap();
 }
 

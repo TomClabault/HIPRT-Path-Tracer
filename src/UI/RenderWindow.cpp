@@ -18,29 +18,21 @@
 
 // TODO bugs:
 // - memory leak with OpenGL when resizing the window?
+// - memory leak when launching kernels? Does that happen also on Linux or is it only due to Windows drivers?
 // - playing with the pixel noise threshold eventually leaves it at 4000/2000000 for example, the counter doesn't reset properly
 // - pixels converged count sometimes goes above 100%
 // - memory leak with OpenGL when resizing the window over and over?
-// - MIS broken when not only the BSDF can sample
-// - light inside monkey --> RIS or MIS don't give the same as no direct light sampling
-// - different shader cache in release & debug ? seems bugged
 // - take transmission color into account when direct sampling a light source that is inside a volume
-// - denoiser albedo display not properly scaled
 // - denoiser AOVs not accounting for transmission correctly since Disney 
 //	  - same with perfect reflection
-// - Do something for that memory leak on glUnregisterBuffer / .... Maybe update viewport only once in a while to at least reduce the impact of the leak?
 // - CPU renderer not converging ? Cornell_pbr + 1024 samples + debug pixel
 
 
 
 // TODO Code Organization:
-// - update README.md
-// - 16 threads seems to be too many for texture loading on the contemporary bedroom + HDD, what count could be better?
-// - investigate why kernel compiling was so much faster in the past (commit db34b23 seems to be a good candidate)
+// - refactor kernel recompiling when changing an option through ImGui: do no recompile every kernel, only the ones that need it
 // - multiple GLTF, one GLB for different point of views per model
 // - fork HIPRT and remove the encryption thingy that slows down kernel compilation on NVIDIA
-// - Device/ or HostDeviceCommon. Not both
-// - reorganize methods order in RenderWindow
 // - denoiser albedo and normals still useful now that we have the GBuffer?
 // - make a function get_camera_ray that handles pixel jittering
 // - use simplified material everywhere in the BSDF etc... because we don't need the texture indices of the full material at this point
@@ -55,12 +47,13 @@
 // - display view needs to become a class so that it's display string, display type, associated shader, needed framebuffer, ... is all in one place and it's easy to add new display view to the application
 // - refactor envmap to have a sampling & eval function
 // - Use HIPRT with CMake as a subdirectory (available soon)
-// - put number of triangles in light PDF in sample_one_triangle function
 // - add some explicit error messages if initializing orochi failed
 
 
 
 // TODO Features:
+// - use HIP/CUDA graphs to reduce launch overhead
+// - keep compiling kernels in the background after application has started to cache the most common kernel options on disk
 // - linear interpolation function for the parameters of the BSDF
 // - compensated importance sampling of envmap
 // - have pixel jittering disablable
@@ -69,7 +62,7 @@
 // - improve performance by only intersecting the selected emissive triangle with the BSDF ray when multiple importance sampling, we don't need a full BVH traversal at all
 // - If could not load given scene file, fallback to cornell box instead of not continuing
 // - CTRL + mouse wheel for zoom in viewport, CTRL click reset zoom
-// - add clear shader cache in ImgUI
+// - add clear shader cache in ImGui
 // - adapt number of light samples in light sampling routines based on roughness of the material --> no need to sample 8 lights in RIS for perfectly specular material + use ray ballot for that because we don't want to reduce light rays unecessarily if one thread of the warp is going to slow everyone down anyways
 // - push BSDF sampling in the right direction when light sampling if we sampled a refraction to see if there's a light inside the surface
 // - UI scaling in ImGui
@@ -370,7 +363,8 @@ void RenderWindow::resize_frame(int pixels_width, int pixels_height)
 	// Taking resolution scaling into account
 	float& resolution_scale = m_application_settings->render_resolution_scale;
 	if (m_application_settings->keep_same_resolution)
-		resolution_scale = m_application_settings->target_width / (float)pixels_width; // TODO what about the height changing ?
+		// TODO what about the height changing ?
+		resolution_scale = m_application_settings->target_width / (float)pixels_width;
 
 	int new_render_width = std::floor(pixels_width * resolution_scale);
 	int new_render_height = std::floor(pixels_height * resolution_scale);
@@ -480,19 +474,6 @@ void RenderWindow::update_renderer_view_zoom(float offset, bool scale_delta_time
 	m_application_state->render_dirty = true;
 
 	m_renderer->zoom_camera_view(offset);
-}
-
-void RenderWindow::increment_sample_number()
-{
-	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
-
-	if (render_settings.render_low_resolution)
-		render_settings.sample_number++; // Only doing 1 SPP when moving the camera
-	else
-		// TODO fix when we'll be able to do more than 1 sample per frame with the pass refactor
-		render_settings.sample_number++;// += render_settings.samples_per_frame;
-	
-	m_renderer->get_render_settings().frame_number++;
 }
 
 bool RenderWindow::is_rendering_done()
@@ -719,8 +700,6 @@ void RenderWindow::render()
 			m_application_state->last_GPU_submit_time = glfwGetTimerValue();
 			m_renderer->update();
 			m_renderer->render();
-
-			increment_sample_number();
 
 			buffer_upload_necessary = true;
 		}

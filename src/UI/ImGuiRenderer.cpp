@@ -164,13 +164,11 @@ void ImGuiRenderer::draw_render_settings_panel()
 
 	ImGui::Separator();
 
-	//ImGui::BeginDisabled(m_application_settings->auto_sample_per_frame);
-	// TODO samples per frame needs to be fixed since pass refactor
-	ImGui::BeginDisabled(true);
+	ImGui::BeginDisabled(m_application_settings->auto_sample_per_frame);
 	ImGui::InputInt("Samples per frame", &render_settings.samples_per_frame);
+	ImGui::EndDisabled();
 	ImGui::SameLine();
 	ImGui::Checkbox("Auto", &m_application_settings->auto_sample_per_frame);
-	ImGui::EndDisabled();
 	if (m_application_settings->auto_sample_per_frame)
 	{
 		ImGui::TreePush("Target GPU framerate tree");
