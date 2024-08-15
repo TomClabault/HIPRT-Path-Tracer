@@ -13,7 +13,6 @@
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 sample_one_emissive_triangle(const HIPRTRenderData& render_data, Xorshift32Generator& random_number_generator, float& pdf, LightSourceInformation& light_info)
 {
     int random_index = random_number_generator.random_index(render_data.buffers.emissive_triangles_count);
-    //random_index = 1;
     int triangle_index = render_data.buffers.emissive_triangles_indices[random_index];
 
     float3 vertex_A = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[triangle_index * 3 + 0]];
@@ -29,10 +28,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 sample_one_emissive_triangle(const HIPRTRe
 
     float3 AB = vertex_B - vertex_A;
     float3 AC = vertex_C - vertex_A;
-
     float3 random_point_on_triangle = vertex_A + AB * u + AC * v;
-    // TODO remove hardcoded
-    //random_point_on_triangle = (vertex_A + vertex_B + vertex_C) / 3;
 
     float3 normal = hippt::cross(AB, AC);
     float length_normal = hippt::length(normal);

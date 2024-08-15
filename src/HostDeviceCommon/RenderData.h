@@ -88,7 +88,7 @@ struct HIPRTRenderSettings
 	int ris_number_of_light_candidates = 0;
 	// How many candidates samples from the BSDF to use in combination
 	// with the light candidates for RIS
-	int ris_number_of_bsdf_candidates = 5;
+	int ris_number_of_bsdf_candidates = 1;
 
 
 

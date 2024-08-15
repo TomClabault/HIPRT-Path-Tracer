@@ -102,7 +102,7 @@
  *			- render_settings.ris_number_of_light_candidates & render_settings.ris_number_of_bsdf_candidates
  *				when sampling the initial candidates with RIS
  */
-#define DirectLightSamplingStrategy LSS_RESTIR_DI
+#define DirectLightSamplingStrategy LSS_MIS_LIGHT_BSDF
 
 /**
  * What envmap sampling strategy to use

@@ -205,8 +205,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(const HIPRTRende
             //  --> cos_angle negative
             float cos_angle_light = hippt::abs(hippt::dot(new_ray_hit_info.shading_normal, -sampled_brdf_direction));
 
-            float distance_squared = new_ray_hit_info.t * new_ray_hit_info.t;
-            float light_pdf = distance_squared / (light_source_info.light_area * cos_angle_light) / render_data.buffers.emissive_triangles_count;
+            float light_pdf = new_ray_hit_info.t * new_ray_hit_info.t;
+            light_pdf /= cos_angle_light;
+            light_pdf /= triangle_area(render_data, new_ray_hit_info.primitive_index);
+            light_pdf /= render_data.buffers.emissive_triangles_count;
             float mis_weight = power_heuristic(direction_pdf, light_pdf);
 
             // Using abs here because we want the dot product to be positive.
