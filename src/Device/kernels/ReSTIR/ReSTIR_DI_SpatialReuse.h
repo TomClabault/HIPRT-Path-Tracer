@@ -27,12 +27,9 @@
  * [6] [Uniform disk sampling] https://rh8liuqy.github.io/Uniform_Disk.html
  */
 
-#define USE_BALANCE_HEURISTICS 0
-#define MIS_LIKE_WEIGHTS 1
+#define USE_BALANCE_HEURISTICS 1
+#define MIS_LIKE_WEIGHTS 0
 
-/**
- * Target function is BSDF * Le * cos(theta) * V
- */
 HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function(const HIPRTRenderData& render_data, const ReservoirSample& sample, const RendererMaterial& material, const RayVolumeState& volume_state, float3 view_direction, float3 shading_point, float3 shading_normal)
 {
 	float bsdf_pdf;
@@ -45,7 +42,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function(const HI
 	ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, material, trash_volume_state, view_direction, shading_normal, sample_direction, bsdf_pdf);
 	float cosine_term = hippt::max(0.0f, hippt::dot(shading_normal, sample_direction));
 
-	// TODO include geometry term? benchmark variance with and wxithout (ImGui option)
 	//float geometry_term = 1.0f / distance_to_light / distance_to_light;
 	float target_function = (bsdf_color * sample.emission * cosine_term).luminance();
 	if (target_function == 0.0f)
@@ -93,7 +89,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int get_neighbor_pixel_index(int neighbor_number,
 
 		float rotation_theta = 2.0f * M_PI * random_number_generator();
 		float cos_theta = cos(rotation_theta);
-		float sin_theta = sqrt(1.0f - cos_theta * cos_theta);
+		float sin_theta = sin(rotation_theta);
 
 		// 2D rotation matrix: https://en.wikipedia.org/wiki/Rotation_matrix
 		float2 neighbor_offset_rotated = make_float2(neighbor_offset_in_disk.x * cos_theta - neighbor_offset_in_disk.y * sin_theta, neighbor_offset_in_disk.x * sin_theta + neighbor_offset_in_disk.y * cos_theta);
@@ -130,9 +126,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	if (render_data.render_settings.freeze_random)
 		seed = wang_hash(pixel_index + 1);
 	else
-		seed = wang_hash((pixel_index + 1) * (render_data.render_settings.sample_number + 1));
+		seed = wang_hash((pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_seed);
 	
 	Xorshift32Generator random_number_generator(seed);
+
+	Reservoir* input_reservoir_buffer = render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs;
 
 	Reservoir new_reservoir;
 	// Center pixel coordinates
@@ -150,16 +148,16 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	// 
 	// See the implementation of get_neighbor_pixel_index() earlier in this file
 	int selected_neighbor = 0;
-	int reused_neighbors_count = render_data.render_settings.restir_di_render_settings.spatial_reuse_neighbor_count;
+	int reused_neighbors_count = render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count;
 	for (int neighbor = 0; neighbor < reused_neighbors_count + 1; neighbor++)
 	{
 		// reused_neighbors_count + 1 below because we're also reusing ourselves (the center pixel)
-		int neighbor_pixel_index = get_neighbor_pixel_index(neighbor, reused_neighbors_count, render_data.render_settings.restir_di_render_settings.spatial_reuse_radius, center_pixel_coords, res, random_number_generator);
+		int neighbor_pixel_index = get_neighbor_pixel_index(neighbor, reused_neighbors_count, render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_radius, center_pixel_coords, res, random_number_generator);
 		if (neighbor_pixel_index == -1)
 			// Neighbor out of the viewport
 			continue;
 
-		Reservoir neighbor_reservoir = render_data.aux_buffers.initial_reservoirs[neighbor_pixel_index];
+		Reservoir neighbor_reservoir = input_reservoir_buffer[neighbor_pixel_index];
 
 		float target_function_at_center = ReSTIR_DI_evaluate_target_function(render_data, neighbor_reservoir.sample, center_pixel_material, center_volume_state, center_pixel_view_direction, center_pixel_shading_point, center_pixel_shading_normal);
 
@@ -187,7 +185,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 
 		for (int j = 0; j < reused_neighbors_count + 1; j++)
 		{
-			int neighbor_index_j = get_neighbor_pixel_index(j, reused_neighbors_count, render_data.render_settings.restir_di_render_settings.spatial_reuse_radius, center_pixel_coords, res, random_number_generator);
+			int neighbor_index_j = get_neighbor_pixel_index(j, reused_neighbors_count, render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_radius, center_pixel_coords, res, random_number_generator);
 			if (neighbor_index_j == -1)
 				continue;
 
@@ -229,7 +227,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	{
 		for (int neighbor = 0; neighbor < reused_neighbors_count + 1; neighbor++)
 		{
-			int neighbor_pixel_index = get_neighbor_pixel_index(neighbor, reused_neighbors_count, render_data.render_settings.restir_di_render_settings.spatial_reuse_radius, center_pixel_coords, res, random_number_generator);
+			int neighbor_pixel_index = get_neighbor_pixel_index(neighbor, reused_neighbors_count, render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_radius, center_pixel_coords, res, random_number_generator);
 			if (neighbor_pixel_index == -1)
 				// Neighbor out of the viewport
 				continue;
@@ -246,7 +244,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 			if (target_function_at_neighbor > 0.0f)
 			{
 				// If the neighbor could have produced this sample...
-				Reservoir neighbor_reservoir = render_data.aux_buffers.initial_reservoirs[neighbor_pixel_index];
+				Reservoir neighbor_reservoir = input_reservoir_buffer[neighbor_pixel_index];
 
 				// ... adding M to the Z normalization term
 				// TODO add the possibility through ImGui to choose whether we're using confidence
@@ -273,7 +271,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	new_reservoir.end_normalized(Z);
 #endif
 
-	render_data.aux_buffers.spatial_reservoirs[pixel_index] = new_reservoir;
+	render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs[pixel_index] = new_reservoir;
 }
 
 #endif

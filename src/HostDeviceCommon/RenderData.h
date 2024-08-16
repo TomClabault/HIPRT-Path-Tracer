@@ -100,10 +100,15 @@ struct AuxiliaryBuffers
 	// noise threshold.
 	AtomicType<unsigned int>* stop_noise_threshold_count = nullptr;
 
-	// These reservoirs contain the initial candidates samples
-	Reservoir* initial_reservoirs = nullptr;
-	// These reservoirs contain the results of the spatial reuse pass
-	Reservoir* spatial_reservoirs = nullptr;
+	// Pointers to the buffers allocated on the GPU. These pointers
+	// exist basically only to be reset in reset_render(). They should not
+	// be manipulated directly in the ReSTIR passes. 
+	// The buffers that should be used by the ReSTIR passes kernels are the 
+	// 'input_reservoirs' / 'output_reservoirs' buffers of the 'initial_candidates',
+	// 'temporal_pass' and 'spatial_pass' settings
+	Reservoir* initial_reservoirs;
+	Reservoir* temporal_pass_output_reservoirs;
+	Reservoir* final_reservoirs;
 };
 
 enum AmbientLightType

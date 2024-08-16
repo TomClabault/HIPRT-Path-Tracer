@@ -29,8 +29,8 @@
 // you're measuring the coordinates of the pixel with (0, 0) in the bottom left corner
 #define DEBUG_FLIP_Y 0
 // Coordinates of the pixel to render
-#define DEBUG_PIXEL_X 717
-#define DEBUG_PIXEL_Y 388
+#define DEBUG_PIXEL_X 722
+#define DEBUG_PIXEL_Y 378
 // If 1, a square of DEBUG_NEIGHBORHOOD_SIZE x DEBUG_NEIGHBORHOOD_SIZE pixels
 // will be rendered around the pixel to debug (given by DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y). The pixel of interest is going to be rendered first so you
@@ -56,7 +56,8 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
     m_pixel_sample_count.resize(width * height, 0);
     m_pixel_squared_luminance.resize(width * height, 0.0f);
     m_restir_initial_reservoirs.resize(width * height);
-    m_restir_spatial_reservoirs.resize(width * height);
+    m_restir_temporal_reservoirs.resize(width * height);
+    m_restir_final_reservoirs.resize(width * height);
 
     m_g_buffer.materials.resize(width * height);
     m_g_buffer.geometric_normals.resize(width * height);
@@ -94,8 +95,6 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.aux_buffers.pixel_squared_luminance = m_pixel_squared_luminance.data();
     m_render_data.aux_buffers.still_one_ray_active = &m_still_one_ray_active;
     m_render_data.aux_buffers.stop_noise_threshold_count = &m_stop_noise_threshold_count;
-    m_render_data.aux_buffers.initial_reservoirs = m_restir_initial_reservoirs.data();
-    m_render_data.aux_buffers.spatial_reservoirs = m_restir_spatial_reservoirs.data();
 
     m_render_data.g_buffer.materials= m_g_buffer.materials.data();
     m_render_data.g_buffer.geometric_normals = m_g_buffer.geometric_normals.data();
@@ -104,6 +103,11 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.g_buffer.first_hits = m_g_buffer.first_hits.data();
     m_render_data.g_buffer.camera_ray_hit = m_g_buffer.cameray_ray_hit.data();
     m_render_data.g_buffer.ray_volume_states = m_g_buffer.ray_volume_states.data();
+
+    m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs = m_restir_initial_reservoirs.data();
+    m_render_data.aux_buffers.initial_reservoirs = m_restir_initial_reservoirs.data();
+    m_render_data.aux_buffers.temporal_pass_output_reservoirs = m_restir_temporal_reservoirs.data();
+    m_render_data.aux_buffers.final_reservoirs = m_restir_final_reservoirs.data();
 
     std::cout << "Building scene BVH..." << std::endl;
     m_triangle_buffer = parsed_scene.get_triangles();
@@ -236,6 +240,33 @@ void CPURenderer::ReSTIR_DI_initial_candidates_pass()
 }
 
 void CPURenderer::ReSTIR_DI_spatial_reuse_pass()
+{
+    for (int spatial_reuse_pass = 0; spatial_reuse_pass < m_render_data.render_settings.restir_di_settings.spatial_pass.number_of_passes; spatial_reuse_pass++)
+    {
+        // Reading from the initial_candidates reservoir / final_reservoir one spatial pass out of two.
+        // Basically pong-ponging between the two buffers
+        // This is to avoid the concurrency issues that we would have if we were to read and store from the same buffer:
+        //	some pixels would be done with the spatial reuse pass --> they store their reservoir 'R' but now, other pixels 
+        //	that were not done may read from that stored reservoir 'R' even though they were supposed to read from
+        //	the reservoir that got overwritten by that stored reservoir 'R'
+        if ((spatial_reuse_pass & 1) == 0)
+        {
+            m_render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs = m_restir_initial_reservoirs.data();
+            m_render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs = m_restir_final_reservoirs.data();
+        }
+        else
+        {
+            m_render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs = m_restir_final_reservoirs.data();
+            m_render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs = m_restir_initial_reservoirs.data();
+        }
+
+        ReSTIR_DI_spatial_reuse_pass_internal();
+
+        m_render_data.random_seed = m_rng.xorshift32();
+    }
+}
+
+void CPURenderer::ReSTIR_DI_spatial_reuse_pass_internal()
 {
 #if DEBUG_PIXEL
     int x, y;

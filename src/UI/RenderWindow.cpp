@@ -16,6 +16,23 @@
 
 #include "stb_image_write.h"
 
+ // TODOs ReSTIR DI
+ // - fix darkening at the edge of the image because of spatial resampling not finding neighbors outside of image
+ // - some bias issue on the white room love, no converging to reference
+ // - include geometry term? benchmark variance with and wxithout (ImGui option)
+ // - remove visibility from target function spatial reuse and only put it in mis weight calculation for unbiasedness
+ // - update readme for restir di
+ // - optimize center sample resampling because we don't have to evaluate its target function, we already not the target function of the center sample at the center pixel
+ // - imgui bias correction mode
+ // - neighbor similiraty tessts, roughness, normal, depth
+ // - implement visibility reuse
+ // - do we need an initial candidate buffer ? can we maybe generate initial candidates directly in the temporal buffer?
+ // - implement temporal pass
+ // - implement reprojection
+ // - pairwise mis
+ // - cleanup reservoir structure
+ // - allocate / deallocate restir reservoirs if using / not using restir
+
 // TODO bugs:
 // - memory leak with OpenGL when resizing the window?
 // - memory leak when launching kernels? Does that happen also on Linux or is it only due to Windows drivers?

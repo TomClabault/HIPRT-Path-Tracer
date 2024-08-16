@@ -8,7 +8,7 @@
 
 #include <hiprt/hiprt_common.h>
 
-struct RISRenderSettings
+struct RISSettings
 {
 	// Whether or not to use a visiblity term in the target function
 	// when resampling light candidates with RIS
@@ -20,7 +20,7 @@ struct RISRenderSettings
 	int number_of_bsdf_candidates = 1;
 };
 
-struct ReSTIRDIRenderSettings
+struct InitialCandidatesSettings
 {
 	// Whether or not to use the visibility term in the target function used for
 	// resampling the initial candidates
@@ -30,12 +30,32 @@ struct ReSTIRDIRenderSettings
 	// How many BSDF candidates to resamples during the initial candidates sampling pass
 	int number_of_initial_bsdf_candidates = 1;
 
+	// Buffer that contains the reservoirs that will hold the reservoir
+	// for the initial candidates generated
+	Reservoir* output_reservoirs;
+};
+
+struct SpatialPassSettings
+{
 	// How many spatial reuse pass to perform
-	int spatial_reuse_pass_count = 3;
+	int number_of_passes = 1;
 	// The radius within which neighbor are going to be reused spatially
 	int spatial_reuse_radius = 30;
 	// How many neighbors to reuse during the spatial pass
 	int spatial_reuse_neighbor_count = 5;
+
+	// Buffer that contains the input reservoirs for the spatial reuse pass
+	Reservoir* input_reservoirs;
+	// Buffer that contains the output reservoir of the spatial reuse pass
+	Reservoir* output_reservoirs;
+};
+
+struct ReSTIRDISettings
+{
+	// Settings for the initial candidates generation pass
+	InitialCandidatesSettings initial_candidates;
+	// Settings for the spatial reuse pass
+	SpatialPassSettings spatial_pass;
 };
 
 struct HIPRTRenderSettings
@@ -117,10 +137,10 @@ struct HIPRTRenderSettings
 	float indirect_contribution_clamp = 0.0f;
 
 	// Settings for RIS (direct light sampling)
-	RISRenderSettings ris_render_settings;
+	RISSettings ris_settings;
 
 	// Settings for ReSTIR DI
-	ReSTIRDIRenderSettings restir_di_render_settings;
+	ReSTIRDISettings restir_di_settings;
 
 	/**
 	 * Returns true if the adaptive sampling buffers are ready for use, false otherwise.

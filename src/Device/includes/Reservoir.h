@@ -18,7 +18,7 @@ struct ReservoirSample
 
     float target_function = 0.0f;
 
-    // TODO necessary?
+    // TODO necessary? --> no, not for restir di, only for pure RIS
     bool is_bsdf_sample = false;
     ColorRGB32F bsdf_sample_contribution;
     float bsdf_sample_cosine_term;

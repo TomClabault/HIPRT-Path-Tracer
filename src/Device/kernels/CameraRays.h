@@ -16,6 +16,33 @@
 #include "HostDeviceCommon/HitInfo.h"
 #include "HostDeviceCommon/RenderData.h"
 
+HIPRT_HOST_DEVICE HIPRT_INLINE void reset_render(const HIPRTRenderData& render_data, uint32_t pixel_index)
+{
+    // Resetting all buffers on the first frame
+    render_data.buffers.pixels[pixel_index] = ColorRGB32F(0.0f);
+    render_data.aux_buffers.denoiser_normals[pixel_index] = make_float3(1.0f, 1.0f, 1.0f);
+    render_data.aux_buffers.denoiser_albedo[pixel_index] = ColorRGB32F(0.0f, 0.0f, 0.0f);
+    render_data.aux_buffers.initial_reservoirs[pixel_index] = Reservoir();
+    render_data.aux_buffers.temporal_pass_output_reservoirs[pixel_index] = Reservoir();
+    render_data.aux_buffers.final_reservoirs[pixel_index] = Reservoir();
+
+    render_data.g_buffer.geometric_normals[pixel_index] = { 0, 0, 0 };
+    render_data.g_buffer.shading_normals[pixel_index] = { 0, 0, 0 };
+    render_data.g_buffer.materials[pixel_index] = SimplifiedRendererMaterial();
+    render_data.g_buffer.first_hits[pixel_index] = { 0, 0, 0 };
+    render_data.g_buffer.ray_volume_states[pixel_index] = RayVolumeState();
+    render_data.g_buffer.view_directions[pixel_index] = { 0, 0, 0 };
+    render_data.g_buffer.camera_ray_hit[pixel_index] = false;
+    render_data.aux_buffers.pixel_active[pixel_index] = false;
+
+    if (render_data.render_settings.stop_pixel_noise_threshold > 0.0f || render_data.render_settings.enable_adaptive_sampling)
+    {
+        // These buffers are only available when either the adaptive sampling or the stop noise threshold is enabled
+        render_data.aux_buffers.pixel_sample_count[pixel_index] = 0;
+        render_data.aux_buffers.pixel_squared_luminance[pixel_index] = 0;
+    }
+}
+
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) CameraRays(HIPRTRenderData render_data, int2 res, HIPRTCamera camera)
 #else
@@ -51,31 +78,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
     }
 
     if (render_data.render_settings.sample_number == 0)
-    {
-        // Resetting all buffers on the first frame
-        render_data.buffers.pixels[pixel_index] = ColorRGB32F(0.0f);
-        render_data.aux_buffers.denoiser_normals[pixel_index] = make_float3(1.0f, 1.0f, 1.0f);
-        render_data.aux_buffers.denoiser_albedo[pixel_index] = ColorRGB32F(0.0f, 0.0f, 0.0f);
-        render_data.aux_buffers.initial_reservoirs[pixel_index] = Reservoir();
-        render_data.aux_buffers.spatial_reservoirs[pixel_index] = Reservoir();
-
-        render_data.g_buffer.geometric_normals[pixel_index] = { 0, 0, 0 };
-        render_data.g_buffer.shading_normals[pixel_index] = { 0, 0, 0 };
-        render_data.g_buffer.materials[pixel_index] = SimplifiedRendererMaterial();
-        render_data.g_buffer.first_hits[pixel_index] = { 0, 0, 0 };
-        render_data.g_buffer.ray_volume_states[pixel_index] = RayVolumeState();
-        render_data.g_buffer.view_directions[pixel_index] = { 0, 0, 0 };
-        render_data.g_buffer.camera_ray_hit[pixel_index] = false;
-        render_data.aux_buffers.pixel_active[pixel_index] = false;
-
-        if (render_data.render_settings.stop_pixel_noise_threshold > 0.0f || render_data.render_settings.enable_adaptive_sampling)
-        {
-            // These buffers are only available when either the adaptive sampling or the stop noise threshold is enabled
-            render_data.aux_buffers.pixel_sample_count[pixel_index] = 0;
-            render_data.aux_buffers.pixel_squared_luminance[pixel_index] = 0;
-        }
-    }
-
+        reset_render(render_data, pixel_index);
 
     bool sampling_needed = true;
     bool pixel_converged = false;

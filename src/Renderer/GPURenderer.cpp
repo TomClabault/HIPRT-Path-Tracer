@@ -174,8 +174,29 @@ void GPURenderer::render()
 			render_data.random_seed = m_rng.xorshift32();
 			m_restir_initial_candidates_pass.launch_timed_asynchronous(8, 8, resolution.x, resolution.y, launch_args, m_main_stream);
 
-			render_data.random_seed = m_rng.xorshift32();
-			m_restir_spatial_reuse_pass.launch_timed_asynchronous(8, 8, resolution.x, resolution.y, launch_args, m_main_stream);
+			for (int spatial_reuse_pass = 0; spatial_reuse_pass < m_render_settings.restir_di_settings.spatial_pass.number_of_passes; spatial_reuse_pass++)
+			{
+				render_data.random_seed = m_rng.xorshift32();
+
+				// Reading from the initial_candidates reservoir / final_reservoir one spatial pass out of two.
+				// Basically pong-ponging between the two buffers
+				// This is to avoid the concurrency issues that we would have if we were to read and store from the same buffer:
+				//	some pixels would be done with the spatial reuse pass --> they store their reservoir 'R' but now, other pixels 
+				//	that were not done may read from that stored reservoir 'R' even though they were supposed to read from
+				//	the reservoir that got overwritten by that stored reservoir 'R'
+				if ((spatial_reuse_pass & 1) == 0)
+				{
+					render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs = m_restir_di_reservoirs.initial_candidates_reservoirs.get_device_pointer();
+					render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs = m_restir_di_reservoirs.final_reservoirs.get_device_pointer();
+				}
+				else
+				{
+					render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs = m_restir_di_reservoirs.final_reservoirs.get_device_pointer();
+					render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs = m_restir_di_reservoirs.initial_candidates_reservoirs.get_device_pointer();
+				}
+
+				m_restir_spatial_reuse_pass.launch_timed_asynchronous(8, 8, resolution.x, resolution.y, launch_args, m_main_stream);
+			}
 		}
 
 		render_data.random_seed = m_rng.xorshift32();
@@ -239,8 +260,9 @@ void GPURenderer::resize(int new_width, int new_height)
 		m_pixels_squared_luminance_buffer.resize(new_width * new_height);
 	}
 
-	m_restir_initial_reservoirs.resize(new_width * new_height);
-	m_restir_spatial_reservoirs.resize(new_width * new_height);
+	m_restir_di_reservoirs.initial_candidates_reservoirs.resize(new_width * new_height);
+	m_restir_di_reservoirs.temporal_reuse_output_reservoirs.resize(new_width * new_height);
+	m_restir_di_reservoirs.final_reservoirs.resize(new_width * new_height);
 	m_pixel_active.resize(new_width * new_height);
 
 	// Recomputing the perspective projection matrix since the aspect ratio
@@ -413,11 +435,10 @@ HIPRTRenderData GPURenderer::get_render_data()
 		render_data.aux_buffers.pixel_sample_count = m_pixels_sample_count_buffer->map_no_error();
 		render_data.aux_buffers.pixel_squared_luminance = m_pixels_squared_luminance_buffer.get_device_pointer();
 	}
-	render_data.aux_buffers.still_one_ray_active = m_still_one_ray_active_buffer.get_device_pointer();
 
-	render_data.aux_buffers.initial_reservoirs = m_restir_initial_reservoirs.get_device_pointer();
-	render_data.aux_buffers.spatial_reservoirs = m_restir_spatial_reservoirs.get_device_pointer();
+	render_data.aux_buffers.still_one_ray_active = m_still_one_ray_active_buffer.get_device_pointer();
 	render_data.aux_buffers.pixel_active = m_pixel_active.get_device_pointer();
+	render_data.aux_buffers.stop_noise_threshold_count = reinterpret_cast<AtomicType<unsigned int>*>(m_pixels_converged_count_buffer.get_device_pointer());
 
 	render_data.g_buffer.materials = m_g_buffer.materials.get_device_pointer();
 	render_data.g_buffer.geometric_normals = m_g_buffer.geometric_normals.get_device_pointer();
@@ -427,10 +448,15 @@ HIPRTRenderData GPURenderer::get_render_data()
 	render_data.g_buffer.camera_ray_hit = m_g_buffer.cameray_ray_hit.get_device_pointer();
 	render_data.g_buffer.ray_volume_states = m_g_buffer.ray_volume_states.get_device_pointer();
 
-	render_data.aux_buffers.stop_noise_threshold_count = reinterpret_cast<AtomicType<unsigned int>*>(m_pixels_converged_count_buffer.get_device_pointer());
+	// Settings the pointers for use in reset_render() in the cameray rays kernel
+	render_data.aux_buffers.initial_reservoirs = m_restir_di_reservoirs.initial_candidates_reservoirs.get_device_pointer();
+	render_data.aux_buffers.temporal_pass_output_reservoirs = m_restir_di_reservoirs.temporal_reuse_output_reservoirs.get_device_pointer();
+	render_data.aux_buffers.final_reservoirs = m_restir_di_reservoirs.final_reservoirs.get_device_pointer();
 
 	render_data.world_settings = m_world_settings;
 	render_data.render_settings = m_render_settings;
+	// The initial candidate output buffer is always the same so we can just set it here
+	render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs = m_restir_di_reservoirs.initial_candidates_reservoirs.get_device_pointer();
 
 	render_data.random_seed = m_rng.xorshift32();
 

@@ -32,6 +32,7 @@ public:
     void camera_rays_pass();
     void ReSTIR_DI_initial_candidates_pass();
     void ReSTIR_DI_spatial_reuse_pass();
+    void ReSTIR_DI_spatial_reuse_pass_internal();
     void tracing_pass();
     void tonemap(float gamma, float exposure);
 
@@ -67,7 +68,8 @@ private:
     Xorshift32Generator m_rng;
 
     std::vector<Reservoir> m_restir_initial_reservoirs;
-    std::vector<Reservoir> m_restir_spatial_reservoirs;
+    std::vector<Reservoir> m_restir_temporal_reservoirs;
+    std::vector<Reservoir> m_restir_final_reservoirs;
 
     std::vector<Triangle> m_triangle_buffer;
     std::shared_ptr<BVH> m_bvh;

@@ -16,6 +16,7 @@
 #include "Renderer/HardwareAccelerationSupport.h"
 #include "Renderer/OpenImageDenoiser.h"
 #include "Renderer/StatusBuffersValues.h"
+#include "Renderer/ReSTIR/ReSTIR_DI_Reservoirs.h"
 #include "Scene/Camera.h"
 #include "Scene/SceneParser.h"
 
@@ -220,18 +221,16 @@ private:
 	// Warning: This buffer does not count how many pixels have converged according to
 	// the adaptive sampling noise threshold. This is only for the stop_pixel_noise_threshold
 	OrochiBuffer<unsigned int> m_pixels_converged_count_buffer;
+	// Whether or not the pixel at the given index is active and needs more samples
+	OrochiBuffer<unsigned char> m_pixel_active;
 
 	// Structure that holds the values of the one-variable buffers of the renderer.
 	// These values are 'one_ray_active' or 'pixel_converged_count' for example.
 	// These values are updated when the update() is called
 	StatusBuffersValues m_status_buffers_values;
 
-	// ReSTIR reservoirs for the initial candidates
-	OrochiBuffer<Reservoir> m_restir_initial_reservoirs;
-	// ReSTIR reservoirs for the output of the spatial reuse pass
-	OrochiBuffer<Reservoir> m_restir_spatial_reservoirs;
-	// Whether or not the pixel at the given index is active and needs more samples
-	OrochiBuffer<unsigned char> m_pixel_active;
+	// Various reservoirs used by ReSTIR DI
+	ReSTIR_DI_Reservoirs m_restir_di_reservoirs;
 
 	// The materials are also kept on the CPU side because we want to be able
 	// to modify them interactively with ImGui
@@ -273,6 +272,7 @@ private:
 	HIPRTRenderSettings m_render_settings;
 
 	// Random number generator used to fill the render_data.random_seed argument
+	// in get_render_data().
 	Xorshift32Generator m_rng;
 };
 

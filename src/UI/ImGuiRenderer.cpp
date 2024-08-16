@@ -179,9 +179,9 @@ void ImGuiRenderer::draw_render_settings_panel()
 		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
 			ImGuiRenderer::WrappingTooltip("The samples per frame will be automatically adjusted such that the GPU"
 										   " takes approximately 1000.0f / TargetFramerate milliseconds to complete"
-										   "a frame. Useful to keep the GPU busy after almost all pixels have converged."
-										   "Lowering this settings increases rendering efficiency but can cause camera"
-										   "movements to be stuttery.");
+										   " a frame. Useful to keep the GPU busy after almost all pixels have converged."
+										   " Lowering this settings increases rendering efficiency but can cause camera"
+										   " movements to be stuttery.");
 		ImGui::TreePop();
 	}
 	if (ImGui::InputInt("Max bounces", &render_settings.nb_bounces))
@@ -434,26 +434,26 @@ void ImGuiRenderer::draw_sampling_panel()
 
 			case LSS_RIS_BSDF_AND_LIGHT:
 			{
-				if (ImGui::Checkbox("Use visibility in target function", &render_settings.ris_render_settings.use_visibility_in_target_function))
+				if (ImGui::Checkbox("Use visibility in RIS target function", &render_settings.ris_settings.use_visibility_in_target_function))
 				{
-					kernel_options->set_macro(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, render_settings.ris_render_settings.use_visibility_in_target_function ? 1 : 0);
+					kernel_options->set_macro(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, render_settings.ris_settings.use_visibility_in_target_function ? 1 : 0);
 					m_renderer->recompile_kernels();
 
 					m_render_window->set_render_dirty(true);
 				}
 
-				if (ImGui::SliderInt("RIS # of BSDF candidates", &render_settings.ris_render_settings.number_of_bsdf_candidates, 0, 32))
+				if (ImGui::SliderInt("RIS # of BSDF candidates", &render_settings.ris_settings.number_of_bsdf_candidates, 0, 32))
 				{
 					// Clamping to 0
-					render_settings.ris_render_settings.number_of_bsdf_candidates = std::max(0, render_settings.ris_render_settings.number_of_bsdf_candidates);
+					render_settings.ris_settings.number_of_bsdf_candidates = std::max(0, render_settings.ris_settings.number_of_bsdf_candidates);
 
 					m_render_window->set_render_dirty(true);
 				}
 
-				if (ImGui::SliderInt("RIS # of light candidates", &render_settings.ris_render_settings.number_of_light_candidates, 0, 128))
+				if (ImGui::SliderInt("RIS # of light candidates", &render_settings.ris_settings.number_of_light_candidates, 0, 128))
 				{
 					// Clamping to 0
-					render_settings.ris_render_settings.number_of_light_candidates = std::max(0, render_settings.ris_render_settings.number_of_light_candidates);
+					render_settings.ris_settings.number_of_light_candidates = std::max(0, render_settings.ris_settings.number_of_light_candidates);
 
 					m_render_window->set_render_dirty(true);
 				}
@@ -463,30 +463,30 @@ void ImGuiRenderer::draw_sampling_panel()
 
 			case LSS_RESTIR_DI:
 			{
-				if (ImGui::CollapsingHeader("Initial Candidate Sampling"))
+				if (ImGui::CollapsingHeader("Initial Candidates Sampling"))
 				{
 					ImGui::TreePush("ReSTIR DI - Initial Candidate Sampling Tree");
 
-					if (ImGui::Checkbox("Use visibility in target function", &render_settings.restir_di_render_settings.use_visibility_initial_candidates))
+					if (ImGui::Checkbox("Use visibility in target function", &render_settings.restir_di_settings.initial_candidates.use_visibility_initial_candidates))
 					{
-						kernel_options->set_macro(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, render_settings.restir_di_render_settings.use_visibility_initial_candidates ? 1 : 0);
+						kernel_options->set_macro(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, render_settings.restir_di_settings.initial_candidates.use_visibility_initial_candidates ? 1 : 0);
 						m_renderer->recompile_kernels();
 
 						m_render_window->set_render_dirty(true);
 					}
 
-					if (ImGui::SliderInt("# of BSDF initial candidates", &render_settings.restir_di_render_settings.number_of_initial_bsdf_candidates, 0, 32))
+					if (ImGui::SliderInt("# of BSDF initial candidates", &render_settings.restir_di_settings.initial_candidates.number_of_initial_bsdf_candidates, 0, 32))
 					{
 						// Clamping to 0
-						render_settings.restir_di_render_settings.number_of_initial_bsdf_candidates= std::max(0, render_settings.restir_di_render_settings.number_of_initial_bsdf_candidates);
+						render_settings.restir_di_settings.initial_candidates.number_of_initial_bsdf_candidates= std::max(0, render_settings.restir_di_settings.initial_candidates.number_of_initial_bsdf_candidates);
 
 						m_render_window->set_render_dirty(true);
 					}
 
-					if (ImGui::SliderInt("# of initial light candidates", &render_settings.restir_di_render_settings.number_of_initial_light_candidates, 0, 128))
+					if (ImGui::SliderInt("# of initial light candidates", &render_settings.restir_di_settings.initial_candidates.number_of_initial_light_candidates, 0, 128))
 					{
 						// Clamping to 0
-						render_settings.restir_di_render_settings.number_of_initial_light_candidates = std::max(0, render_settings.restir_di_render_settings.number_of_initial_light_candidates);
+						render_settings.restir_di_settings.initial_candidates.number_of_initial_light_candidates = std::max(0, render_settings.restir_di_settings.initial_candidates.number_of_initial_light_candidates);
 
 						m_render_window->set_render_dirty(true);
 					}
@@ -498,6 +498,30 @@ void ImGuiRenderer::draw_sampling_panel()
 				if (ImGui::CollapsingHeader("Spatial Reuse Pass"))
 				{
 					ImGui::TreePush("ReSTIR DI - Spatial Reuse Pass Tree");
+
+					if (ImGui::SliderInt("Spatial Reuse Radius (px)", &render_settings.restir_di_settings.spatial_pass.spatial_reuse_radius, 1, 64))
+					{
+						// Clamping
+						render_settings.restir_di_settings.spatial_pass.spatial_reuse_radius = std::max(1, render_settings.restir_di_settings.spatial_pass.spatial_reuse_radius);
+
+						m_render_window->set_render_dirty(true);
+					}
+
+					if (ImGui::SliderInt("Neighbor Reuse Count", &render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count, 1, 64))
+					{
+						// Clamping
+						render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count = std::max(1, render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count);
+
+						m_render_window->set_render_dirty(true);
+					}
+
+					if (ImGui::SliderInt("Spatial Reuse Pass Count", &render_settings.restir_di_settings.spatial_pass.number_of_passes, 0, 64))
+					{
+						// Clamping
+						render_settings.restir_di_settings.spatial_pass.number_of_passes = std::max(0, render_settings.restir_di_settings.spatial_pass.number_of_passes);
+
+						m_render_window->set_render_dirty(true);
+					}
 
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
 					ImGui::TreePop();
