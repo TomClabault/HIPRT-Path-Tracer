@@ -32,6 +32,9 @@
  * Those are simple defines to give names to the option values.
  * This allows the use of LSS_ONE_RANDOM_LIGHT_MIS (for example) instead of a hardcoded '2'
  */
+#define FALSE 0
+#define TRUE 1
+
 #define ISS_AUTOMATIC 0
 #define ISS_WITH_PRIORITIES 1
 
@@ -44,9 +47,6 @@
 
 #define ESS_NO_SAMPLING 0
 #define ESS_BINARY_SEARCH 1
-
-#define RIS_USE_VISIBILITY_FALSE 0
-#define RIS_USE_VISIBILITY_TRUE 1
 
 #define GGX_NO_VNDF 0
 #define GGX_VNDF_SAMPLING 1
@@ -120,13 +120,13 @@
 /**
  * Whether or not to use a visiblity term in the target function whose PDF we're approximating with RIS.
  * 
- *	- RIS_USE_VISIBILITY_TRUE 
+ *	- TRUE 
  *		Do use a visibility term
  *
- *	- RIS_USE_VISIBILITY_FALSE
+ *	- FALSE
  *		Don't use a visibility term
  */
-#define RISUseVisiblityTargetFunction RIS_USE_VISIBILITY_TRUE
+#define RISUseVisiblityTargetFunction FALSE
 
 /**
  * What sampling strategy to use for thd GGX NDF

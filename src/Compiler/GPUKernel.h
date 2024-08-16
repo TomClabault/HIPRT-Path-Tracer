@@ -9,6 +9,7 @@
 #include <hiprt/hiprt.h>
 #include <Orochi/Orochi.h>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -29,6 +30,17 @@ public:
 	void compile(hiprtContext& hiprt_ctx, std::shared_ptr<GPUKernelCompilerOptions> kernel_compiler_options, bool use_cache = true);
 	void launch_timed_synchronous(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, float* execution_time_out);
 	void launch_timed_asynchronous(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, oroStream_t stream);
+
+	/**
+	 * Sets an additional macro that will be passed to the GPU compiler when compiling this kernel
+	 */
+	void add_additional_macro_for_compilation(const std::string& name, int value);
+
+	/**
+	 * Returns a vector of strings of the form { -DMacroName=value, ... } from all the additional
+	 * macros that were added to this kernel by calling 'add_additional_macro_for_compilation()'
+	 */
+	std::vector<std::string> get_additional_compiler_macros() const;
 
 	/**
 	 * Reads the kernel file and all of its includes to find what option macros this kernel uses.
@@ -87,11 +99,6 @@ private:
 	std::string m_kernel_file_path = "";
 	std::string m_kernel_function_name = "";
 
-	// Which option macros (as defined in KernelOptions.h) the kernel uses.
-	// 
-	// See uses_macro() for some examples of what "use" means.
-	std::unordered_set<std::string> m_used_option_macros;
-
 	// Whether or not the events have been created yet.
 	// We only create them on the first launch() call
 	bool m_events_created = false;
@@ -103,6 +110,16 @@ private:
 	// Whether or not we have already parsed the kernel file to see
 	// what option macro it uses or not
 	bool m_option_macro_parsed = false;
+
+	// Which option macros (as defined in KernelOptions.h) the kernel uses.
+	// 
+	// See uses_macro() for some examples of what "use" means.
+	std::unordered_set<std::string> m_used_option_macros;
+
+	// An additional map of macros to pass to the compiler for this kernel and their values.
+	//
+	// Example: { "ReSTIR_DI_InitialCandidatesKernel", 1 }
+	std::unordered_map<std::string, int> m_additional_compilation_macros;
 
 	oroFunction m_kernel_function = nullptr;
 };

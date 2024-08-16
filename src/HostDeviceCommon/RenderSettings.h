@@ -10,6 +10,9 @@
 
 struct RISRenderSettings
 {
+	// Whether or not to use a visiblity term in the target function
+	// when resampling light candidates with RIS
+	bool use_visibility_in_target_function = false;
 	// How many candidate lights to sample for RIS (Resampled Importance Sampling)
 	int number_of_light_candidates = 4;
 	// How many candidates samples from the BSDF to use in combination
@@ -19,6 +22,9 @@ struct RISRenderSettings
 
 struct ReSTIRDIRenderSettings
 {
+	// Whether or not to use the visibility term in the target function used for
+	// resampling the initial candidates
+	bool use_visibility_initial_candidates = false;
 	// How many light candidates to resamples during the initial candidates sampling pass
 	int number_of_initial_light_candidates = 4;
 	// How many BSDF candidates to resamples during the initial candidates sampling pass

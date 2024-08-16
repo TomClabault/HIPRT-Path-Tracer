@@ -27,8 +27,8 @@
  * [6] [Uniform disk sampling] https://rh8liuqy.github.io/Uniform_Disk.html
  */
 
-#define USE_BALANCE_HEURISTICS 1
-#define MIS_LIKE_WEIGHTS 0
+#define USE_BALANCE_HEURISTICS 0
+#define MIS_LIKE_WEIGHTS 1
 
 /**
  * Target function is BSDF * Le * cos(theta) * V
@@ -53,7 +53,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function(const HI
 		// to change anything to the fact that we have 0.0f target function here
 		return 0.0f;
 
-#if RISUseVisiblityTargetFunction == RIS_USE_VISIBILITY_TRUE
+#if RISUseVisiblityTargetFunction == TRUE
 	hiprtRay shadow_ray;
 	shadow_ray.origin = shading_point;
 	shadow_ray.direction = sample_direction;
@@ -257,8 +257,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 				Z += neighbor_reservoir.M;
 
 				if (neighbor == selected_neighbor)
-					mis_like_nume += target_function_at_neighbor;
-				mis_like_denom += target_function_at_neighbor;
+					mis_like_nume += target_function_at_neighbor * neighbor_reservoir.M;
+				mis_like_denom += target_function_at_neighbor * neighbor_reservoir.M;
 			}
 		}
 	}

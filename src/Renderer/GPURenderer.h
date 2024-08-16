@@ -129,7 +129,7 @@ public:
 
 	std::shared_ptr<GPUKernelCompilerOptions> get_path_tracer_options();
 
-	void recompile_all_kernels(bool use_cache = true);
+	void recompile_kernels(bool use_cache = true);
 
 	float get_last_frame_time();
 	void reset_last_frame_time();

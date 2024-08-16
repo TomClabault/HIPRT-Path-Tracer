@@ -601,7 +601,6 @@ void RenderWindow::run()
 		m_application_state->render_dirty |= is_interacting();
 		m_application_state->render_dirty |= m_application_state->interacting_last_frame != is_interacting();
 
-		// We're resetting the render each frame if rendering at low resolution (not accumulating)
 		render();
 		m_display_view_system->display();
 		

@@ -51,12 +51,12 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
 
 	m_restir_initial_candidates_pass.set_kernel_file_path(GPURenderer::KERNEL_FILES[2]);
 	m_restir_initial_candidates_pass.set_kernel_function_name(GPURenderer::KERNEL_FUNCTIONS[2]);
+	m_restir_initial_candidates_pass.add_additional_macro_for_compilation("ReSTIR_DI_InitialCandidatesKernel", 1);
 
 	m_restir_spatial_reuse_pass.set_kernel_file_path(GPURenderer::KERNEL_FILES[3]);
 	m_restir_spatial_reuse_pass.set_kernel_function_name(GPURenderer::KERNEL_FUNCTIONS[3]);
 
 	// Compiling kernels
-	ThreadManager::set_monothread(true);
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_path_trace_pass), m_path_tracer_options, std::ref(m_hiprt_orochi_ctx->hiprt_ctx));
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_camera_ray_pass), m_path_tracer_options, std::ref(m_hiprt_orochi_ctx->hiprt_ctx));
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_restir_initial_candidates_pass), m_path_tracer_options, std::ref(m_hiprt_orochi_ctx->hiprt_ctx));
@@ -358,7 +358,7 @@ std::shared_ptr<GPUKernelCompilerOptions> GPURenderer::get_path_tracer_options()
 	return m_path_tracer_options;
 }
 
-void GPURenderer::recompile_all_kernels(bool use_cache)
+void GPURenderer::recompile_kernels(bool use_cache)
 {
 	m_camera_ray_pass.compile(m_hiprt_orochi_ctx->hiprt_ctx, m_path_tracer_options, use_cache);
 	m_restir_initial_candidates_pass.compile(m_hiprt_orochi_ctx->hiprt_ctx, m_path_tracer_options, use_cache);

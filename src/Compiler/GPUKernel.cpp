@@ -46,6 +46,21 @@ void GPUKernel::set_kernel_function_name(const std::string& kernel_function_name
 	m_kernel_function_name = kernel_function_name;
 }
 
+void GPUKernel::add_additional_macro_for_compilation(const std::string& name, int value)
+{
+	m_additional_compilation_macros[name] = value;
+}
+
+std::vector<std::string> GPUKernel::get_additional_compiler_macros() const
+{
+	std::vector<std::string> macros;
+
+	for (auto macro_key_value : m_additional_compilation_macros)
+		macros.push_back("-D " + macro_key_value.first + "=" + std::to_string(macro_key_value.second));
+
+	return macros;
+}
+
 void GPUKernel::compile(hiprtContext& hiprt_ctx, std::shared_ptr<GPUKernelCompilerOptions> kernel_compiler_options, bool use_cache)
 {
 	if (!m_option_macro_parsed)

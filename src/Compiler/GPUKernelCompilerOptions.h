@@ -46,6 +46,9 @@ public:
 	 * The returned vector always contain all the "custom" macros manually defined through
 	 * a call to 'set_macro()' (unless the macro changed through 'set_macro()' is an
 	 * option macro defined in KernelOptions.h as defined above)
+	 * 
+	 * The returned vector also contains all the additional compiler macro that were added
+	 * to the kernel by calling 'kernel.add_additional_macro_for_compilation()'
 	 */
 	std::vector<std::string> get_relevant_macros_as_std_vector_string(const GPUKernel& kernel);
 

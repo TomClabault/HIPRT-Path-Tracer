@@ -58,6 +58,10 @@ std::vector<std::string> GPUKernelCompilerOptions::get_relevant_macros_as_std_ve
 	for (auto macro_key_value : m_custom_macro_map)
 		macros.push_back("-D " + macro_key_value.first + "=" + std::to_string(macro_key_value.second));
 
+	std::vector<std::string> additional_macros = kernel.get_additional_compiler_macros();
+	for (const std::string& additional_macro : additional_macros)
+		macros.push_back(additional_macro);
+
 	return macros;
 }
 
