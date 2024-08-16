@@ -73,7 +73,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_reservoir_sample(const HIPRT
     return final_color;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_bsdf_and_lights_RIS_reservoir(const HIPRTRenderData& render_data, const RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_bsdf_and_lights_RIS_reservoir(const HIPRTRenderData& render_data, const RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, int light_candidates, int bsdf_candidates, Xorshift32Generator& random_number_generator)
 {
     // Pushing the intersection point outside the surface (if we're already outside)
     // or inside the surface (if we're inside the surface)
@@ -83,8 +83,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_bsdf_and_lights_RIS_reservoir(co
     float3 evaluated_point = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f * inside_surface_multiplier;
 
     // If we're rendering at low resolution, only doing 1 candidate of each for better framerates
-    int nb_light_candidates = render_data.render_settings.render_low_resolution ? 1 : render_data.render_settings.ris_number_of_light_candidates;
-    int nb_bsdf_candidates = render_data.render_settings.render_low_resolution ? 1 : render_data.render_settings.ris_number_of_bsdf_candidates;
+    int nb_light_candidates = render_data.render_settings.render_low_resolution ? 1 : light_candidates;
+    int nb_bsdf_candidates = render_data.render_settings.render_low_resolution ? 1 : bsdf_candidates;
 
     // Sampling candidates with weighted reservoir sampling
     Reservoir reservoir;
@@ -259,7 +259,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_bsdf_and_lights_RIS_reservoir(co
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_lights_RIS(const HIPRTRenderData& render_data, const RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
 {
-    Reservoir reservoir = sample_bsdf_and_lights_RIS_reservoir(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+    int light_candidates = render_data.render_settings.ris_render_settings.number_of_light_candidates;
+    int bsdf_candidates = render_data.render_settings.ris_render_settings.number_of_bsdf_candidates;
+    Reservoir reservoir = sample_bsdf_and_lights_RIS_reservoir(render_data, ray_payload, closest_hit_info, view_direction, light_candidates, bsdf_candidates, random_number_generator);
 
     return evaluate_reservoir_sample(render_data, ray_payload, closest_hit_info.inter_point, closest_hit_info.shading_normal, view_direction, reservoir);
 }

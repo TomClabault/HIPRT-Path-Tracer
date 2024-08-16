@@ -13,18 +13,52 @@
 #include "HostDeviceCommon/Xorshift.h"
 
 /**
- * Returns integer pixel coordinates offset from the center of the disk
+ * Returns the radical inverse base 2 of a given number.
+ * Used for generating 2D points following the Hammersley point set
+ * 
+ * Reference: [Holger Dammertz, Hammersley Points on the Hemisphere] http://holger.dammertz.org/stuff/notes_HammersleyOnHemisphere.html
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE int2 integer_sample_in_disk(float radius, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE float radical_inverse_base_2(unsigned int index) {
+    index = (index << 16u) | (index >> 16u);
+    index = ((index & 0x55555555u) << 1u) | ((index & 0xAAAAAAAAu) >> 1u);
+    index = ((index & 0x33333333u) << 2u) | ((index & 0xCCCCCCCCu) >> 2u);
+    index = ((index & 0x0F0F0F0Fu) << 4u) | ((index & 0xF0F0F0F0u) >> 4u);
+    index = ((index & 0x00FF00FFu) << 8u) | ((index & 0xFF00FF00u) >> 8u);
+    return float(index) * 2.3283064365386963e-10; // / 0x100000000
+}
+
+/**
+ * Generates a 2D point of the Hammersley point set given the total number
+ * of points that are going to be sampled and the index of the point
+ * (in [0, number_of_points -1]) that we're sampling right now
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE float2 sample_hammersley_2D(unsigned int number_of_points, unsigned int point_index)
+{
+    return make_float2(static_cast<float>(point_index) / static_cast<float>(number_of_points), radical_inverse_base_2(point_index));
+}
+
+/**
+ * Returns integer pixel coordinates offset from the center of the disk
+ * given the radius of the disk and two random numbers in [0, 1] u and v
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE float2 sample_in_disk_uv(float radius, float2 uv)
+{
+    float r_sqrt_v = radius * sqrtf(uv.y);
+    float x = r_sqrt_v * cos(2.0f * M_PI * uv.x);
+    float y = r_sqrt_v* sin(2.0f * M_PI * uv.x);
+
+    return make_float2(x, y);
+}
+
+/**
+ * Returns integer pixel coordinates offset from the center of the disk of radius 'radius'
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE float2 sample_in_disk(float radius, Xorshift32Generator& random_number_generator)
 {
     float u1 = random_number_generator();
     float u2 = random_number_generator();
 
-    float r_sqrt_u2 = radius * sqrtf(u2);
-    float x = r_sqrt_u2 * cos(2.0f * M_PI * u1);
-    float y = r_sqrt_u2 * sin(2.0f * M_PI * u1);
-
-    return make_int2(static_cast<int>(x), static_cast<int>(y));
+    return sample_in_disk_uv(radius, make_float2(u1, u2));
 }
 
 /**

@@ -56,8 +56,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_InitialCandidates(HIPRTRenderData
     RayPayload ray_payload;
     ray_payload.material = material;
     ray_payload.volume_state = render_data.g_buffer.ray_volume_states[pixel_index];
+
+    int light_candidates = render_data.render_settings.restir_di_render_settings.number_of_initial_light_candidates;
+    int bsdf_candidates = render_data.render_settings.restir_di_render_settings.number_of_initial_bsdf_candidates;
     // Producing and storing the reservoir
-    render_data.aux_buffers.initial_reservoirs[pixel_index] = sample_bsdf_and_lights_RIS_reservoir(render_data, ray_payload, hit_info, view_direction, random_number_generator);
+    render_data.aux_buffers.initial_reservoirs[pixel_index] = sample_bsdf_and_lights_RIS_reservoir(render_data, ray_payload, hit_info, view_direction, light_candidates, bsdf_candidates, random_number_generator);
 }
 
 #endif

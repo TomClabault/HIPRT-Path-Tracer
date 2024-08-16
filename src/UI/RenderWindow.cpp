@@ -26,6 +26,7 @@
 // - denoiser AOVs not accounting for transmission correctly since Disney 
 //	  - same with perfect reflection
 // - CPU renderer not converging ? Cornell_pbr + 1024 samples + debug pixel
+// - use visibility in target function RIS/ReSTIR DI does not seem to be applied properly in ImGui
 
 
 
@@ -37,17 +38,9 @@
 // - make a function get_camera_ray that handles pixel jittering
 // - use simplified material everywhere in the BSDF etc... because we don't need the texture indices of the full material at this point
 // - we don't need the full HitInfo 'closest_hit_info' structure everywhere, only the inter point and the two normals for the most part so maybe have a simplified structure 
-// - have an abstraction for kernel functions (that would contain the path to the file, a compile function, the KernelOptions, ...)
-// - refactor application_settings.selected kernel & kernel_files / kernel_functions: With the NormalsKernel gone
-//		(because obsolete), we're not really offering hot swappable kernels at runtime anymore so it would
-//		probably be better to store the kernel file / function name strings as static members of a
-//		GPUKernel class (probably from the "abstraction for kernel functions" refactor task) and remove the
-//		selected index entirely because it is not used anymore
 // - only the material index can be stored in the pixel states ofthe wavefront path tracer, don't need to store the whole material
-// - display view needs to become a class so that it's display string, display type, associated shader, needed framebuffer, ... is all in one place and it's easy to add new display view to the application
 // - refactor envmap to have a sampling & eval function
 // - Use HIPRT with CMake as a subdirectory (available soon)
-// - add some explicit error messages if initializing orochi failed
 
 
 

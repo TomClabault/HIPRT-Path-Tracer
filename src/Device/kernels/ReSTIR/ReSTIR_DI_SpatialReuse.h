@@ -27,11 +27,7 @@
  * [6] [Uniform disk sampling] https://rh8liuqy.github.io/Uniform_Disk.html
  */
 
-#define SPATIAL_REUSE_PASSES_COUNT 1
-#define NEIGHBOR_REUSE_COUNT 1
-#define REUSE_RADIUS 30
-
-#define USE_BALANCE_HEURISTICS 0
+#define USE_BALANCE_HEURISTICS 1
 #define MIS_LIKE_WEIGHTS 0
 
 /**
@@ -70,19 +66,40 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function(const HI
 	return target_function;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE int get_neighbor_pixel_index(int neighbor_number, int2* neighbor_offsets, int2 center_pixel_coords, int2 res)
+/**
+ * Returns the linear index that can be used directly to index a buffer
+ * of render_data of the 'neighbor_number'th neighbor that we're going
+ * to spatially reuse from
+ * 
+ * neighbor_number is in [0, neighbor_reuse_count]
+ * neighbor_reuse_count is in [1, ReSTIR_DI_Settings.spatial_reuse_neighbor_count]
+ * neighbor_reuse_radius is the radius of the disk within which the neighbors are sampled
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE int get_neighbor_pixel_index(int neighbor_number, int neighbor_reuse_count, int neighbor_reuse_radius, int2 center_pixel_coords, int2 res, Xorshift32Generator& random_number_generator)
 {
 	int neighbor_pixel_index;
 
-	if (neighbor_number == NEIGHBOR_REUSE_COUNT)
+	if (neighbor_number == neighbor_reuse_count)
+	{
 		// If this is the last neighbor, we set it to ourselves
 		// This is why our loop on the neighbors goes up to 'i < NEIGHBOR_REUSE_COUNT + 1'
 		// It's so that when i == NEIGHBOR_REUSE_COUNT, we resample ourselves
 		neighbor_pixel_index = center_pixel_coords.x + center_pixel_coords.y * res.x;
+	}
 	else
 	{
-		int2 neighbor_offset = neighbor_offsets[neighbor_number];
-		int2 neighbor_pixel_coords = center_pixel_coords + neighbor_offset;
+		float2 uv = sample_hammersley_2D(neighbor_reuse_count + 1, neighbor_number);
+		float2 neighbor_offset_in_disk = sample_in_disk_uv(neighbor_reuse_radius, uv);
+
+		float rotation_theta = 2.0f * M_PI * random_number_generator();
+		float cos_theta = cos(rotation_theta);
+		float sin_theta = sqrt(1.0f - cos_theta * cos_theta);
+
+		// 2D rotation matrix: https://en.wikipedia.org/wiki/Rotation_matrix
+		float2 neighbor_offset_rotated = make_float2(neighbor_offset_in_disk.x * cos_theta - neighbor_offset_in_disk.y * sin_theta, neighbor_offset_in_disk.x * sin_theta + neighbor_offset_in_disk.y * cos_theta);
+		int2 neighbor_offset_int = make_int2(static_cast<int>(neighbor_offset_rotated.x), static_cast<int>(neighbor_offset_rotated.y));
+
+		int2 neighbor_pixel_coords = center_pixel_coords + neighbor_offset_int;
 		if (neighbor_pixel_coords.x < 0 || neighbor_pixel_coords.x >= res.x || neighbor_pixel_coords.y < 0 || neighbor_pixel_coords.y >= res.y)
 			// Rejecting the sample if it's outside of the viewport
 			return -1;
@@ -118,19 +135,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	Xorshift32Generator random_number_generator(seed);
 
 	Reservoir new_reservoir;
-	// The neighbor screen space offsets will be in an array. Inefficient but easy implementation for debugging.
-	int2 neighbor_offsets[NEIGHBOR_REUSE_COUNT];
 	// Center pixel coordinates
 	int2 center_pixel_coords = make_int2(x, y);
-
-	for (int i = 0; i < NEIGHBOR_REUSE_COUNT; i++)
-	{
-		// TODO low discrepancy sequence here
-		int2 neighbor_offset = integer_sample_in_disk(REUSE_RADIUS, random_number_generator);
-
-		neighbor_offsets[i].x = neighbor_offset.x;
-		neighbor_offsets[i].y = neighbor_offset.y;
-	}
 
 	// Surface data of the center pixel
 	RendererMaterial center_pixel_material = render_data.g_buffer.materials[pixel_index];
@@ -144,9 +150,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	// 
 	// See the implementation of get_neighbor_pixel_index() earlier in this file
 	int selected_neighbor = 0;
-	for (int neighbor = 0; neighbor < NEIGHBOR_REUSE_COUNT + 1; neighbor++)
+	int reused_neighbors_count = render_data.render_settings.restir_di_render_settings.spatial_reuse_neighbor_count;
+	for (int neighbor = 0; neighbor < reused_neighbors_count + 1; neighbor++)
 	{
-		int neighbor_pixel_index = get_neighbor_pixel_index(neighbor, neighbor_offsets, center_pixel_coords, res);
+		// reused_neighbors_count + 1 below because we're also reusing ourselves (the center pixel)
+		int neighbor_pixel_index = get_neighbor_pixel_index(neighbor, reused_neighbors_count, render_data.render_settings.restir_di_render_settings.spatial_reuse_radius, center_pixel_coords, res, random_number_generator);
 		if (neighbor_pixel_index == -1)
 			// Neighbor out of the viewport
 			continue;
@@ -177,9 +185,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 		// We already have the target function at the center pixel, adding it to the denom
 		float denom = 0.0f;
 
-		for (int j = 0; j < NEIGHBOR_REUSE_COUNT + 1; j++)
+		for (int j = 0; j < reused_neighbors_count + 1; j++)
 		{
-			int neighbor_index_j = get_neighbor_pixel_index(j, neighbor_offsets, center_pixel_coords, res);
+			int neighbor_index_j = get_neighbor_pixel_index(j, reused_neighbors_count, render_data.render_settings.restir_di_render_settings.spatial_reuse_radius, center_pixel_coords, res, random_number_generator);
 			if (neighbor_index_j == -1)
 				continue;
 
@@ -219,9 +227,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	// Now checking how many of our neighbors could have produced the sample that we just picked
 	if (new_reservoir.weight_sum > 0.0f)
 	{
-		for (int neighbor = 0; neighbor < NEIGHBOR_REUSE_COUNT + 1; neighbor++)
+		for (int neighbor = 0; neighbor < reused_neighbors_count + 1; neighbor++)
 		{
-			int neighbor_pixel_index = get_neighbor_pixel_index(neighbor, neighbor_offsets, center_pixel_coords, res);
+			int neighbor_pixel_index = get_neighbor_pixel_index(neighbor, reused_neighbors_count, render_data.render_settings.restir_di_render_settings.spatial_reuse_radius, center_pixel_coords, res, random_number_generator);
 			if (neighbor_pixel_index == -1)
 				// Neighbor out of the viewport
 				continue;

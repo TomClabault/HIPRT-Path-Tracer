@@ -443,18 +443,18 @@ void ImGuiRenderer::draw_sampling_panel()
 					m_render_window->set_render_dirty(true);
 				}
 
-				if (ImGui::SliderInt("RIS # of BSDF candidates", &render_settings.ris_number_of_bsdf_candidates, 0, 32))
+				if (ImGui::SliderInt("RIS # of BSDF candidates", &render_settings.ris_render_settings.number_of_bsdf_candidates, 0, 32))
 				{
 					// Clamping to 0
-					render_settings.ris_number_of_bsdf_candidates = std::max(0, render_settings.ris_number_of_bsdf_candidates);
+					render_settings.ris_render_settings.number_of_bsdf_candidates = std::max(0, render_settings.ris_render_settings.number_of_bsdf_candidates);
 
 					m_render_window->set_render_dirty(true);
 				}
 
-				if (ImGui::SliderInt("RIS # of light candidates", &render_settings.ris_number_of_light_candidates, 0, 128))
+				if (ImGui::SliderInt("RIS # of light candidates", &render_settings.ris_render_settings.number_of_light_candidates, 0, 128))
 				{
 					// Clamping to 0
-					render_settings.ris_number_of_light_candidates = std::max(0, render_settings.ris_number_of_light_candidates);
+					render_settings.ris_render_settings.number_of_light_candidates = std::max(0, render_settings.ris_render_settings.number_of_light_candidates);
 
 					m_render_window->set_render_dirty(true);
 				}
@@ -477,18 +477,18 @@ void ImGuiRenderer::draw_sampling_panel()
 						m_render_window->set_render_dirty(true);
 					}
 
-					if (ImGui::SliderInt("RIS # of BSDF candidates", &render_settings.ris_number_of_bsdf_candidates, 0, 32))
+					if (ImGui::SliderInt("RIS # of BSDF candidates", &render_settings.restir_di_render_settings.number_of_initial_bsdf_candidates, 0, 32))
 					{
 						// Clamping to 0
-						render_settings.ris_number_of_bsdf_candidates = std::max(0, render_settings.ris_number_of_bsdf_candidates);
+						render_settings.restir_di_render_settings.number_of_initial_bsdf_candidates= std::max(0, render_settings.restir_di_render_settings.number_of_initial_bsdf_candidates);
 
 						m_render_window->set_render_dirty(true);
 					}
 
-					if (ImGui::SliderInt("RIS # of light candidates", &render_settings.ris_number_of_light_candidates, 0, 128))
+					if (ImGui::SliderInt("RIS # of light candidates", &render_settings.restir_di_render_settings.number_of_initial_light_candidates, 0, 128))
 					{
 						// Clamping to 0
-						render_settings.ris_number_of_light_candidates = std::max(0, render_settings.ris_number_of_light_candidates);
+						render_settings.restir_di_render_settings.number_of_initial_light_candidates = std::max(0, render_settings.restir_di_render_settings.number_of_initial_light_candidates);
 
 						m_render_window->set_render_dirty(true);
 					}
