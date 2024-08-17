@@ -510,7 +510,7 @@ void ImGuiRenderer::draw_sampling_panel()
 					if (ImGui::SliderInt("Neighbor Reuse Count", &render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count, 1, 64))
 					{
 						// Clamping
-						render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count = std::max(1, render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count);
+						render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count = std::max(0, render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count);
 
 						m_render_window->set_render_dirty(true);
 					}

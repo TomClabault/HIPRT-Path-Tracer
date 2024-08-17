@@ -17,13 +17,14 @@
 #include "stb_image_write.h"
 
  // TODOs ReSTIR DI
- // - fix darkening at the edge of the image because of spatial resampling not finding neighbors outside of image
- // - some bias issue on the white room love, no converging to reference
+ // - investigate why we have some weird lines with light sampling initial candidates only + neighbor hardcoded 15 to the right
  // - include geometry term? benchmark variance with and wxithout (ImGui option)
  // - remove visibility from target function spatial reuse and only put it in mis weight calculation for unbiasedness
  // - update readme for restir di
  // - optimize center sample resampling because we don't have to evaluate its target function, we already not the target function of the center sample at the center pixel
  // - imgui bias correction mode
+ // - add sample rotation in spatial reuse to imgui
+ // - add hammersley usage or not imgui for spatial reuse
  // - neighbor similiraty tessts, roughness, normal, depth
  // - implement visibility reuse
  // - do we need an initial candidate buffer ? can we maybe generate initial candidates directly in the temporal buffer?
@@ -48,8 +49,6 @@
 
 
 // TODO Code Organization:
-// - refactor kernel recompiling when changing an option through ImGui: do no recompile every kernel, only the ones that need it
-// - multiple GLTF, one GLB for different point of views per model
 // - fork HIPRT and remove the encryption thingy that slows down kernel compilation on NVIDIA
 // - denoiser albedo and normals still useful now that we have the GBuffer?
 // - make a function get_camera_ray that handles pixel jittering
@@ -62,22 +61,22 @@
 
 
 // TODO Features:
+// - shadow terminator issue on sphere low smooth scene
 // - use HIP/CUDA graphs to reduce launch overhead
 // - keep compiling kernels in the background after application has started to cache the most common kernel options on disk
 // - linear interpolation function for the parameters of the BSDF
 // - compensated importance sampling of envmap
 // - have pixel jittering disablable
 // - have accumulation disablable
+// - have render low resolution when moving disablable
+// - multiple GLTF, one GLB for different point of views per model
 // - can we do direct lighting + take emissive at all bounces but divide by 2 to avoid double taking into account emissive lights? this would solve missing caustics
 // - improve performance by only intersecting the selected emissive triangle with the BSDF ray when multiple importance sampling, we don't need a full BVH traversal at all
 // - If could not load given scene file, fallback to cornell box instead of not continuing
 // - CTRL + mouse wheel for zoom in viewport, CTRL click reset zoom
 // - add clear shader cache in ImGui
 // - adapt number of light samples in light sampling routines based on roughness of the material --> no need to sample 8 lights in RIS for perfectly specular material + use ray ballot for that because we don't want to reduce light rays unecessarily if one thread of the warp is going to slow everyone down anyways
-// - push BSDF sampling in the right direction when light sampling if we sampled a refraction to see if there's a light inside the surface
 // - UI scaling in ImGui
-// - render dirty duration for low resolution render when moving the camera with the keyboard
-// - toggle render low resolution when moving camera, the user may not want that always on
 // - clay render
 // - Scale all emissive in the scene in the material editor
 // - Kahan summation for weighted reservoir sampling?

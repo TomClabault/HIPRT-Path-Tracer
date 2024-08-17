@@ -26,7 +26,7 @@ struct InitialCandidatesSettings
 	// resampling the initial candidates
 	bool use_visibility_initial_candidates = false;
 	// How many light candidates to resamples during the initial candidates sampling pass
-	int number_of_initial_light_candidates = 4;
+	int number_of_initial_light_candidates = 0;
 	// How many BSDF candidates to resamples during the initial candidates sampling pass
 	int number_of_initial_bsdf_candidates = 1;
 

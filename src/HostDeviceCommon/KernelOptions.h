@@ -103,6 +103,10 @@
  *				when sampling the initial candidates with RIS
  */
 #define DirectLightSamplingStrategy LSS_RESTIR_DI
+#if DirectLightSamplingStrategy == LSS_RESTIR_DI
+// We need this define on the CPU side otherwise it will never be defined
+#define ReSTIR_DI_InitialCandidatesKernel
+#endif
 
 /**
  * What envmap sampling strategy to use

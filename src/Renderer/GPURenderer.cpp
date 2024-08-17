@@ -24,6 +24,8 @@ const std::vector<std::string> GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIR
 
 GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
 {
+	m_rng.m_state.seed = 42;
+
 	// Creating buffers
 	m_framebuffer = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
 	m_denoised_framebuffer = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
@@ -400,6 +402,8 @@ void GPURenderer::reset_last_frame_time()
 
 void GPURenderer::reset()
 {
+	m_rng.m_state.seed = 42;
+
 	m_render_settings.frame_number = 0;
 	m_render_settings.sample_number = 0;
 	m_render_settings.samples_per_frame = 1;
