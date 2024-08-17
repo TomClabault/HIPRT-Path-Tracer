@@ -463,13 +463,17 @@ void ImGuiRenderer::draw_sampling_panel()
 
 			case LSS_RESTIR_DI:
 			{
-				if (ImGui::CollapsingHeader("Initial Candidates Sampling"))
+				ImGui::SeparatorText("Initial Candidates Pass");
+				//if (ImGui::CollapsingHeader("Initial Candidates Sampling"))
 				{
-					ImGui::TreePush("ReSTIR DI - Initial Candidate Sampling Tree");
+					ImGui::TreePush("ReSTIR DI - Initial Candidate Pass Tree");
 
-					if (ImGui::Checkbox("Use visibility in target function", &render_settings.restir_di_settings.initial_candidates.use_visibility_initial_candidates))
+					// Whether or not to use the visibility term in the target function used for
+					// resampling the initial candidates
+					static bool use_visibility_initial_candidates = ReSTIR_DI_InitialCandidatesUseVisiblityTargetFunction;
+					if (ImGui::Checkbox("Use visibility in target function", &use_visibility_initial_candidates))
 					{
-						kernel_options->set_macro(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, render_settings.restir_di_settings.initial_candidates.use_visibility_initial_candidates ? 1 : 0);
+						kernel_options->set_macro(GPUKernelCompilerOptions::RESTIR_DI_INITIAL_CANDIDATES_VISIBILITY_TARGET_FUNCTION, use_visibility_initial_candidates ? 1 : 0);
 						m_renderer->recompile_kernels();
 
 						m_render_window->set_render_dirty(true);
@@ -495,9 +499,29 @@ void ImGuiRenderer::draw_sampling_panel()
 					ImGui::TreePop();
 				}
 
-				if (ImGui::CollapsingHeader("Spatial Reuse Pass"))
+				//if (ImGui::CollapsingHeader("Spatial Reuse Pass"))
+				ImGui::SeparatorText("Spatial Reuse Pass");
 				{
 					ImGui::TreePush("ReSTIR DI - Spatial Reuse Pass Tree");
+
+					// Whether or not to use the visibility term in the target function used for
+					// resampling the neighbors in the spatial reuse pass of ReSTIR DI
+					static bool use_visibility_target_function = ReSTIR_DI_SpatialReuseUseVisiblityTargetFunction;
+					if (ImGui::Checkbox("Use visibility in target function", &use_visibility_target_function))
+					{
+						kernel_options->set_macro(GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_VISIBILITY_TARGET_FUNCTION, use_visibility_target_function ? 1 : 0);
+						m_renderer->recompile_kernels();
+
+						m_render_window->set_render_dirty(true);
+					}
+
+					if (ImGui::SliderInt("Spatial Reuse Pass Count", &render_settings.restir_di_settings.spatial_pass.number_of_passes, 0, 64))
+					{
+						// Clamping
+						render_settings.restir_di_settings.spatial_pass.number_of_passes = std::max(0, render_settings.restir_di_settings.spatial_pass.number_of_passes);
+
+						m_render_window->set_render_dirty(true);
+					}
 
 					if (ImGui::SliderInt("Spatial Reuse Radius (px)", &render_settings.restir_di_settings.spatial_pass.spatial_reuse_radius, 1, 64))
 					{
@@ -515,10 +539,14 @@ void ImGuiRenderer::draw_sampling_panel()
 						m_render_window->set_render_dirty(true);
 					}
 
-					if (ImGui::SliderInt("Spatial Reuse Pass Count", &render_settings.restir_di_settings.spatial_pass.number_of_passes, 0, 64))
+					ImGui::Dummy(ImVec2(0.0f, 20.0f));
+					ImGui::SeparatorText("Bias correction");
+
+					static bool bias_correction_use_visibility = ReSTIR_DI_SpatialReuseBiasUseVisiblity;
+					if (ImGui::Checkbox("Use visibility in bias correction", &bias_correction_use_visibility))
 					{
-						// Clamping
-						render_settings.restir_di_settings.spatial_pass.number_of_passes = std::max(0, render_settings.restir_di_settings.spatial_pass.number_of_passes);
+						kernel_options->set_macro(GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_BIAS_CORRECTION_USE_VISIBILITY, bias_correction_use_visibility? 1 : 0);
+						m_renderer->recompile_kernels();
 
 						m_render_window->set_render_dirty(true);
 					}

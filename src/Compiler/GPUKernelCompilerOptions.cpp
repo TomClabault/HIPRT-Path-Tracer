@@ -6,11 +6,16 @@
 #include "Compiler/GPUKernelCompilerOptions.h"
 #include "HostDeviceCommon/KernelOptions.h"
 
+#include <cassert>
+
 const std::string GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY = "InteriorStackStrategy";
 const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY = "DirectLightSamplingStrategy";
 const std::string GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY = "EnvmapSamplingStrategy";
 const std::string GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION = "RISUseVisiblityTargetFunction";
 const std::string GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION = "GGXAnisotropicSampleFunction";
+const std::string GPUKernelCompilerOptions::RESTIR_DI_INITIAL_CANDIDATES_VISIBILITY_TARGET_FUNCTION = "ReSTIR_DI_InitialCandidatesUseVisiblityTargetFunction";
+const std::string GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_VISIBILITY_TARGET_FUNCTION = "ReSTIR_DI_SpatialReuseUseVisiblityTargetFunction";
+const std::string GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_BIAS_CORRECTION_USE_VISIBILITY = "ReSTIR_DI_SpatialReuseBiasUseVisiblity";
 
 const std::vector<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES = {
 	GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY,
@@ -18,6 +23,9 @@ const std::vector<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES = {
 	GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY,
 	GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION,
 	GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION,
+	GPUKernelCompilerOptions::RESTIR_DI_INITIAL_CANDIDATES_VISIBILITY_TARGET_FUNCTION,
+	GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_VISIBILITY_TARGET_FUNCTION,
+	GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_BIAS_CORRECTION_USE_VISIBILITY
 };
 
 GPUKernelCompilerOptions::GPUKernelCompilerOptions()
@@ -29,6 +37,12 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY] = EnvmapSamplingStrategy;
 	m_options_macro_map[GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION] = RISUseVisiblityTargetFunction;
 	m_options_macro_map[GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION] = GGXAnisotropicSampleFunction;
+	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_INITIAL_CANDIDATES_VISIBILITY_TARGET_FUNCTION] = ReSTIR_DI_InitialCandidatesUseVisiblityTargetFunction;
+	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_VISIBILITY_TARGET_FUNCTION] = ReSTIR_DI_SpatialReuseUseVisiblityTargetFunction;
+	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_BIAS_CORRECTION_USE_VISIBILITY] = ReSTIR_DI_SpatialReuseBiasUseVisiblity;
+
+	// Making sure we didn't forget to fill the ALL_MACROS_NAMES vector with all the options that exist
+	assert(GPUKernelCompilerOptions::ALL_MACROS_NAMES.size() == m_options_macro_map.size());
 }
 
 std::vector<std::string> GPUKernelCompilerOptions::get_all_macros_as_std_vector_string()

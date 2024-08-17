@@ -16,23 +16,24 @@
 
 #include "stb_image_write.h"
 
- // TODOs ReSTIR DI
- // - investigate why we have some weird lines with light sampling initial candidates only + neighbor hardcoded 15 to the right
- // - include geometry term? benchmark variance with and wxithout (ImGui option)
- // - remove visibility from target function spatial reuse and only put it in mis weight calculation for unbiasedness
- // - update readme for restir di
- // - optimize center sample resampling because we don't have to evaluate its target function, we already not the target function of the center sample at the center pixel
- // - imgui bias correction mode
- // - add sample rotation in spatial reuse to imgui
- // - add hammersley usage or not imgui for spatial reuse
- // - neighbor similiraty tessts, roughness, normal, depth
- // - implement visibility reuse
- // - do we need an initial candidate buffer ? can we maybe generate initial candidates directly in the temporal buffer?
- // - implement temporal pass
- // - implement reprojection
- // - pairwise mis
- // - cleanup reservoir structure
- // - allocate / deallocate restir reservoirs if using / not using restir
+// TODOs ReSTIR DI
+// - include geometry term? benchmark variance with and wxithout (ImGui option)
+// - add second bounce direct light sampling strategy in imgui
+// - optimize center sample resampling because we don't have to evaluate its target function, we already not the target function of the center sample at the center pixel
+// - imgui bias correction mode
+// - imgui bias status of ReSTIR
+// - add sample rotation in spatial reuse to imgui
+// - add hammersley usage or not imgui for spatial reuse
+// - neighbor similiraty tessts, roughness, normal, depth
+// - implement visibility reuse
+// - do we need an initial candidate buffer ? can we maybe generate initial candidates directly in the temporal buffer?
+// - implement temporal pass
+// - implement temporal (back)reprojection
+// - pairwise mis
+// - cleanup reservoir structure --> one reservoir structure for RIS, another for ReSTIR
+// - allocate / deallocate restir reservoirs if using / not using restir
+// - feature to disable ReSTIR after a certain percentage of convergence --> we don't want to pay the full price of resampling and everything only for a few difficult isolated pixels (especially true with adaptive sampling where neighbors don't get sampled --> no new samples added to their reservoir --> no need to resample)
+// - bug when adaptive sampling is disabled --> restir di --> some pixels unconverge (get more and more red) even though the image looks super clean exactly at those pixels
 
 // TODO bugs:
 // - memory leak with OpenGL when resizing the window?

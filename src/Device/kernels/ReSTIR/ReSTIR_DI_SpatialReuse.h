@@ -30,7 +30,12 @@
 #define USE_BALANCE_HEURISTICS 0
 #define MIS_LIKE_WEIGHTS 1
 
+template <bool withVisiblity>
 HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function(const HIPRTRenderData& render_data, const ReservoirSample& sample, const RendererMaterial& material, const RayVolumeState& volume_state, float3 view_direction, float3 shading_point, float3 shading_normal)
+{}
+
+template <>
+HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<0>(const HIPRTRenderData& render_data, const ReservoirSample& sample, const RendererMaterial& material, const RayVolumeState& volume_state, float3 view_direction, float3 shading_point, float3 shading_normal)
 {
 	float bsdf_pdf;
 	float distance_to_light;
@@ -49,7 +54,29 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function(const HI
 		// to change anything to the fact that we have 0.0f target function here
 		return 0.0f;
 
-#if RISUseVisiblityTargetFunction == TRUE
+	return target_function;
+}
+
+template <>
+HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<1>(const HIPRTRenderData& render_data, const ReservoirSample& sample, const RendererMaterial& material, const RayVolumeState& volume_state, float3 view_direction, float3 shading_point, float3 shading_normal)
+{
+	float bsdf_pdf;
+	float distance_to_light;
+	float3 sample_direction;
+	sample_direction = sample.point_on_light_source - shading_point;
+	sample_direction = sample_direction / (distance_to_light = hippt::length(sample_direction));
+
+	RayVolumeState trash_volume_state = volume_state;
+	ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, material, trash_volume_state, view_direction, shading_normal, sample_direction, bsdf_pdf);
+	float cosine_term = hippt::max(0.0f, hippt::dot(shading_normal, sample_direction));
+
+	//float geometry_term = 1.0f / distance_to_light / distance_to_light;
+	float target_function = (bsdf_color * sample.emission * cosine_term).luminance();
+	if (target_function == 0.0f)
+		// Quick exit because computing the visiblity that follows isn't going
+		// to change anything to the fact that we have 0.0f target function here
+		return 0.0f;
+
 	hiprtRay shadow_ray;
 	shadow_ray.origin = shading_point;
 	shadow_ray.direction = sample_direction;
@@ -57,7 +84,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function(const HI
 	bool visible = !evaluate_shadow_ray(render_data, shadow_ray, distance_to_light);
 
 	target_function *= visible;
-#endif
 
 	return target_function;
 }
@@ -93,8 +119,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int get_neighbor_pixel_index(int neighbor_number,
 	}
 	else
 	{
-		float2 uv = sample_hammersley_2D(neighbor_reuse_count + 1, neighbor_number);
-		// TODO use output of hammersley
+		// +1 and +1 here because we want to skip the frist point as it is always (0, 0)
+		// which means that we would be resampling ourselves (the center pixel) --> 
+		// pointless because we already resample ourselves "manually" (that's why there's that
+		// "if (neighbor_number == neighbor_reuse_count)" above)
+		float2 uv = sample_hammersley_2D(neighbor_reuse_count + 1, neighbor_number + 1);
 		// TODO first sample of hammersley is always in the center of the disk so we're reusing ourselves?
 		float2 neighbor_offset_in_disk = sample_in_disk_uv(neighbor_reuse_radius, uv);
 
@@ -105,8 +134,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int get_neighbor_pixel_index(int neighbor_number,
 		int2 neighbor_offset_int = make_int2(static_cast<int>(neighbor_offset_rotated.x), static_cast<int>(neighbor_offset_rotated.y));
 
 		int2 neighbor_pixel_coords = center_pixel_coords + neighbor_offset_int;
-		// TODO remove hardcoded 15
-		//neighbor_pixel_coords = center_pixel_coords + make_int2(15, 0);
 		if (neighbor_pixel_coords.x < 0 || neighbor_pixel_coords.x >= res.x || neighbor_pixel_coords.y < 0 || neighbor_pixel_coords.y >= res.y)
 			// Rejecting the sample if it's outside of the viewport
 			return -1;
@@ -174,7 +201,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 
 		Reservoir neighbor_reservoir = input_reservoir_buffer[neighbor_pixel_index];
 
-		float target_function_at_center = ReSTIR_DI_evaluate_target_function(render_data, neighbor_reservoir.sample, center_pixel_material, center_volume_state, center_pixel_view_direction, center_pixel_shading_point, center_pixel_shading_normal);
+		float target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_SpatialReuseUseVisiblityTargetFunction>(render_data, neighbor_reservoir.sample, center_pixel_material, center_volume_state, center_pixel_view_direction, center_pixel_shading_point, center_pixel_shading_normal);
 
 		float jacobian_determinant = 1.0f;
 		if (neighbor_reservoir.UCW != 0.0f)
@@ -210,7 +237,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 			SimplifiedRendererMaterial neighbor_material = render_data.g_buffer.materials[neighbor_index_j];
 			RayVolumeState neighbor_ray_volume_state = render_data.g_buffer.ray_volume_states[neighbor_index_j];
 
-			float target_function_at_j = ReSTIR_DI_evaluate_target_function(render_data, neighbor_reservoir.sample, neighbor_material, neighbor_ray_volume_state, neighbor_view_direction, neighbor_shading_point, neighbor_shading_normal);
+			float target_function_at_j = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_SpatialReuseBiasUseVisiblity>(render_data, neighbor_reservoir.sample, neighbor_material, neighbor_ray_volume_state, neighbor_view_direction, neighbor_shading_point, neighbor_shading_normal);
 			denom += target_function_at_j;
 			if (j == neighbor)
 				nume = target_function_at_j;
@@ -254,7 +281,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 			float3 neighbor_shading_normal = render_data.g_buffer.shading_normals[neighbor_pixel_index];
 			float3 neighbor_shading_point = render_data.g_buffer.first_hits[neighbor_pixel_index] + neighbor_shading_normal * 1.0e-4f;
 
-			float target_function_at_neighbor = ReSTIR_DI_evaluate_target_function(render_data, new_reservoir.sample, neighbor_material, neighbor_ray_volume_state, neighbor_view_direction, neighbor_shading_point, neighbor_shading_normal);
+			float target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_SpatialReuseBiasUseVisiblity>(render_data, new_reservoir.sample, neighbor_material, neighbor_ray_volume_state, neighbor_view_direction, neighbor_shading_point, neighbor_shading_normal);
 
 			if (target_function_at_neighbor > 0.0f)
 			{

@@ -117,20 +117,60 @@
  *		No importance sampling of the envmap
  * 
  *	- ESS_BINARY_SEARCH
- *		Importance samples the environment map using a binary search on the CDF distributions of the envmap
+ *		Importance samples the environment map using a binary search on the CDF
+ *		distributions of the envmap
  */
 #define EnvmapSamplingStrategy ESS_BINARY_SEARCH
 
 /**
- * Whether or not to use a visiblity term in the target function whose PDF we're approximating with RIS.
+ * Whether or not to use a visiblity term in the target function whose PDF we're
+ * approximating with RIS.
+ * Only applies for pure RIS direct lighting strategy (i.e. not RIS used by ReSTIR
+ * on the initial candidates pass for example)
  * 
- *	- TRUE 
- *		Do use a visibility term
- *
- *	- FALSE
- *		Don't use a visibility term
+ *	- TRUE or FALSE values are accepted. Self-explanatory
  */
 #define RISUseVisiblityTargetFunction FALSE
+
+/**
+ * Whether or not to use a visibility term in the target function when resampling
+ * initial candidates with ReSTIR DI.
+ * 
+ * This option shouldn't be set to TRUE for efficiency. The additional cost isn't worth it.
+ * This is for experimentation purposes only.
+ * 
+ *	- TRUE or FALSE values are accepted. Self-explanatory
+ */
+#define ReSTIR_DI_InitialCandidatesUseVisiblityTargetFunction FALSE
+
+/**
+ * Whether or not to use a visibility term in the target function when resampling
+ * neighbors in the spatial reuse pass of ReSTIR DI.
+ * 
+ * In the context of efficiency, there's virtually no need to set this to TRUE.
+ *
+ * The cost of tracing yet an additional visibility ray when resampling neighbors
+ * isn't worth it in terms of variance reduction. This option is basically only for
+ * experimentation purposes
+ * 
+ *	- TRUE or FALSE values are accepted. Self-explanatory
+ */
+#define ReSTIR_DI_SpatialReuseUseVisiblityTargetFunction FALSE
+
+/**
+ * Whether or not to use a visibility term in the MIS weights (MIS-like weights,
+ * generalized balance heuristic, pairwise MIS, ...) used to remove bias when
+ * resampling neighbors. An additional visibility ray will be traced for MIS-weight
+ * evaluated. This effectively means for each neighbor resamples or (for each neighbor resampled)^2
+ * if using the generalized balance heuristics (without pairwise-MIS)
+ * 
+ * To guarantee unbiasedness, this needs to be true. A small amount of energy loss
+ * may be observed if this value is FALSE but the performance cost of the spatial
+ * reuse will be reduced noticeably
+ * 
+ *	- TRUE or FALSE values are accepted. Self-explanatory
+ */
+#define ReSTIR_DI_SpatialReuseBiasUseVisiblity TRUE
 
 /**
  * What sampling strategy to use for thd GGX NDF
