@@ -134,28 +134,17 @@
 
 /**
  * Whether or not to use a visibility term in the target function when resampling
- * initial candidates with ReSTIR DI.
- * 
- * This option shouldn't be set to TRUE for efficiency. The additional cost isn't worth it.
- * This is for experimentation purposes only.
- * 
- *	- TRUE or FALSE values are accepted. Self-explanatory
- */
-#define ReSTIR_DI_InitialCandidatesUseVisiblityTargetFunction FALSE
-
-/**
- * Whether or not to use a visibility term in the target function when resampling
- * neighbors in the spatial reuse pass of ReSTIR DI.
+ * samples in ReSTIR DI. This applies to all passes of ReSTIR DI.
  * 
  * In the context of efficiency, there's virtually no need to set this to TRUE.
  *
- * The cost of tracing yet an additional visibility ray when resampling neighbors
+ * The cost of tracing yet an additional visibility ray when resampling
  * isn't worth it in terms of variance reduction. This option is basically only for
- * experimentation purposes
+ * experimentation purposes.
  * 
  *	- TRUE or FALSE values are accepted. Self-explanatory
  */
-#define ReSTIR_DI_SpatialReuseUseVisiblityTargetFunction FALSE
+#define ReSTIR_DI_TargetFunctionVisibility FALSE
 
 /**
  * Whether or not to use a visibility term in the MIS weights (MIS-like weights,

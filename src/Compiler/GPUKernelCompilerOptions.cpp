@@ -13,8 +13,7 @@ const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY = "Di
 const std::string GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY = "EnvmapSamplingStrategy";
 const std::string GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION = "RISUseVisiblityTargetFunction";
 const std::string GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION = "GGXAnisotropicSampleFunction";
-const std::string GPUKernelCompilerOptions::RESTIR_DI_INITIAL_CANDIDATES_VISIBILITY_TARGET_FUNCTION = "ReSTIR_DI_InitialCandidatesUseVisiblityTargetFunction";
-const std::string GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_VISIBILITY_TARGET_FUNCTION = "ReSTIR_DI_SpatialReuseUseVisiblityTargetFunction";
+const std::string GPUKernelCompilerOptions::RESTIR_DI_TARGET_FUNCTION_VISIBILITY = "ReSTIR_DI_TargetFunctionVisibility";
 const std::string GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_BIAS_CORRECTION_USE_VISIBILITY = "ReSTIR_DI_SpatialReuseBiasUseVisiblity";
 
 const std::vector<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES = {
@@ -23,8 +22,7 @@ const std::vector<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES = {
 	GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY,
 	GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION,
 	GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION,
-	GPUKernelCompilerOptions::RESTIR_DI_INITIAL_CANDIDATES_VISIBILITY_TARGET_FUNCTION,
-	GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_VISIBILITY_TARGET_FUNCTION,
+	GPUKernelCompilerOptions::RESTIR_DI_TARGET_FUNCTION_VISIBILITY,
 	GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_BIAS_CORRECTION_USE_VISIBILITY
 };
 
@@ -37,8 +35,7 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY] = EnvmapSamplingStrategy;
 	m_options_macro_map[GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION] = RISUseVisiblityTargetFunction;
 	m_options_macro_map[GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION] = GGXAnisotropicSampleFunction;
-	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_INITIAL_CANDIDATES_VISIBILITY_TARGET_FUNCTION] = ReSTIR_DI_InitialCandidatesUseVisiblityTargetFunction;
-	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_VISIBILITY_TARGET_FUNCTION] = ReSTIR_DI_SpatialReuseUseVisiblityTargetFunction;
+	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_TARGET_FUNCTION_VISIBILITY] = ReSTIR_DI_TargetFunctionVisibility;
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_BIAS_CORRECTION_USE_VISIBILITY] = ReSTIR_DI_SpatialReuseBiasUseVisiblity;
 
 	// Making sure we didn't forget to fill the ALL_MACROS_NAMES vector with all the options that exist

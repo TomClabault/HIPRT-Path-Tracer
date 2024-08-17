@@ -463,22 +463,30 @@ void ImGuiRenderer::draw_sampling_panel()
 
 			case LSS_RESTIR_DI:
 			{
-				ImGui::SeparatorText("Initial Candidates Pass");
-				//if (ImGui::CollapsingHeader("Initial Candidates Sampling"))
+				ImGui::SeparatorText("Target Function Settings");
+				ImGui::TreePush("ReSTIR DI - Target Function Settings Tree");
 				{
-					ImGui::TreePush("ReSTIR DI - Initial Candidate Pass Tree");
-
 					// Whether or not to use the visibility term in the target function used for
-					// resampling the initial candidates
-					static bool use_visibility_initial_candidates = ReSTIR_DI_InitialCandidatesUseVisiblityTargetFunction;
-					if (ImGui::Checkbox("Use visibility in target function", &use_visibility_initial_candidates))
+					// resampling in ReSTIR DI (applies to all passes: initial candidates, temporal reuse, spatial reuse)
+					static bool use_target_function_visibility = ReSTIR_DI_TargetFunctionVisibility;
+					if (ImGui::Checkbox("Use visibility in target function", &use_target_function_visibility))
 					{
-						kernel_options->set_macro(GPUKernelCompilerOptions::RESTIR_DI_INITIAL_CANDIDATES_VISIBILITY_TARGET_FUNCTION, use_visibility_initial_candidates ? 1 : 0);
+						kernel_options->set_macro(GPUKernelCompilerOptions::RESTIR_DI_TARGET_FUNCTION_VISIBILITY, use_target_function_visibility ? 1 : 0);
 						m_renderer->recompile_kernels();
 
 						m_render_window->set_render_dirty(true);
 					}
 
+					if (ImGui::Checkbox("Use geometry term", &render_settings.restir_di_settings.target_function.geometry_term_in_target_function))
+						m_render_window->set_render_dirty(true);
+
+					ImGui::Dummy(ImVec2(0.0f, 20.0f));
+					ImGui::TreePop();
+				}
+
+				ImGui::SeparatorText("Initial Candidates Pass");
+				ImGui::TreePush("ReSTIR DI - Initial Candidate Pass Tree");
+				{
 					if (ImGui::SliderInt("# of BSDF initial candidates", &render_settings.restir_di_settings.initial_candidates.number_of_initial_bsdf_candidates, 0, 32))
 					{
 						// Clamping to 0
@@ -499,22 +507,9 @@ void ImGuiRenderer::draw_sampling_panel()
 					ImGui::TreePop();
 				}
 
-				//if (ImGui::CollapsingHeader("Spatial Reuse Pass"))
 				ImGui::SeparatorText("Spatial Reuse Pass");
+				ImGui::TreePush("ReSTIR DI - Spatial Reuse Pass Tree");
 				{
-					ImGui::TreePush("ReSTIR DI - Spatial Reuse Pass Tree");
-
-					// Whether or not to use the visibility term in the target function used for
-					// resampling the neighbors in the spatial reuse pass of ReSTIR DI
-					static bool use_visibility_target_function = ReSTIR_DI_SpatialReuseUseVisiblityTargetFunction;
-					if (ImGui::Checkbox("Use visibility in target function", &use_visibility_target_function))
-					{
-						kernel_options->set_macro(GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_VISIBILITY_TARGET_FUNCTION, use_visibility_target_function ? 1 : 0);
-						m_renderer->recompile_kernels();
-
-						m_render_window->set_render_dirty(true);
-					}
-
 					if (ImGui::SliderInt("Spatial Reuse Pass Count", &render_settings.restir_di_settings.spatial_pass.number_of_passes, 0, 64))
 					{
 						// Clamping

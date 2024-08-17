@@ -47,8 +47,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<0>(const
 	ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, material, trash_volume_state, view_direction, shading_normal, sample_direction, bsdf_pdf);
 	float cosine_term = hippt::max(0.0f, hippt::dot(shading_normal, sample_direction));
 
-	//float geometry_term = 1.0f / distance_to_light / distance_to_light;
-	float target_function = (bsdf_color * sample.emission * cosine_term).luminance();
+	float geometry_term = 1.0f;
+	if (render_data.render_settings.restir_di_settings.target_function.geometry_term_in_target_function)
+	{
+		float cosine_at_light_source = hippt::abs(hippt::dot(sample_direction, sample.light_source_normal));
+		geometry_term = cosine_at_light_source / (distance_to_light * distance_to_light);
+	}
+
+	float target_function = (bsdf_color * sample.emission * cosine_term * geometry_term).luminance();
 	if (target_function == 0.0f)
 		// Quick exit because computing the visiblity that follows isn't going
 		// to change anything to the fact that we have 0.0f target function here
@@ -70,8 +76,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<1>(const
 	ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, material, trash_volume_state, view_direction, shading_normal, sample_direction, bsdf_pdf);
 	float cosine_term = hippt::max(0.0f, hippt::dot(shading_normal, sample_direction));
 
-	//float geometry_term = 1.0f / distance_to_light / distance_to_light;
-	float target_function = (bsdf_color * sample.emission * cosine_term).luminance();
+	float geometry_term = 1.0f;
+	if (render_data.render_settings.restir_di_settings.target_function.geometry_term_in_target_function)
+	{
+		float cosine_at_light_source = hippt::abs(hippt::dot(sample_direction, sample.light_source_normal));
+		geometry_term = cosine_at_light_source / (distance_to_light * distance_to_light);
+	}
+
+	float target_function = (bsdf_color * sample.emission * cosine_term * geometry_term).luminance();
 	if (target_function == 0.0f)
 		// Quick exit because computing the visiblity that follows isn't going
 		// to change anything to the fact that we have 0.0f target function here
@@ -201,7 +213,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 
 		Reservoir neighbor_reservoir = input_reservoir_buffer[neighbor_pixel_index];
 
-		float target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_SpatialReuseUseVisiblityTargetFunction>(render_data, neighbor_reservoir.sample, center_pixel_material, center_volume_state, center_pixel_view_direction, center_pixel_shading_point, center_pixel_shading_normal);
+		float target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_TargetFunctionVisibility>(render_data, neighbor_reservoir.sample, center_pixel_material, center_volume_state, center_pixel_view_direction, center_pixel_shading_point, center_pixel_shading_normal);
 
 		float jacobian_determinant = 1.0f;
 		if (neighbor_reservoir.UCW != 0.0f)

@@ -131,14 +131,17 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_bsdf_and_lights_RIS_reservoir(co
                 RayVolumeState trash_ray_volume_state = ray_payload.volume_state;
                 bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, ray_payload.material, trash_ray_volume_state, view_direction, closest_hit_info.shading_normal, to_light_direction, bsdf_pdf);
 
-                // TODO use geometry term?
-                float geometry_term = 1.0f / (distance_to_light * distance_to_light) * cosine_at_light_source * cosine_at_evaluated_point;
-                target_function = (bsdf_color * light_source_info.emission * cosine_at_evaluated_point).luminance();
+                float geometry_term = 1.0f;
+#ifdef ReSTIR_DI_InitialCandidatesKernel
+                if (render_data.render_settings.restir_di_settings.target_function.geometry_term_in_target_function)
+                    geometry_term = cosine_at_light_source / (distance_to_light * distance_to_light);
+#endif
+                target_function = (bsdf_color * light_source_info.emission * cosine_at_evaluated_point * geometry_term).luminance();
 
 #ifdef ReSTIR_DI_InitialCandidatesKernel
-#define VisibilityMacroOptionToCheck ReSTIR_DI_InitialCandidatesUseVisiblityTargetFunction
+#define VisibilityMacroOptionToCheck ReSTIR_DI_TargetFunctionVisibility
                 // If we are calling this function from the initial candidates sampling pass
-                // of ReSTIR DI, then we check the ReSTIR_DI_InitialCandidatesUseVisiblityTargetFunction
+                // of ReSTIR DI, then we check the ReSTIR_DI_TargetFunctionVisibility
                 // macro option to determine whether or not we should include visibility
 #else
 #define VisibilityMacroOptionToCheck RISUseVisiblityTargetFunction
@@ -236,9 +239,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_bsdf_and_lights_RIS_reservoir(co
                 // we'll need to negative the dot product for it to be positive
                 cosine_at_evaluated_point = hippt::abs(hippt::dot(closest_hit_info.shading_normal, sampled_direction));
 
-                // TODO add geometry term? Benchmark variance
-                //float geometry_term = 1.0f / (bsdf_ray_hit_info.t * bsdf_ray_hit_info.t) * cosine_at_evaluated_point * cosine_light_source;
-                target_function = (bsdf_color * bsdf_ray_payload.material.emission * cosine_at_evaluated_point).luminance();
+                float geometry_term = 1.0f;
+#ifdef ReSTIR_DI_InitialCandidatesKernel
+                float cosine_at_light_source = hippt::abs(hippt::dot(sampled_direction, bsdf_ray_hit_info.shading_normal));
+                if (render_data.render_settings.restir_di_settings.target_function.geometry_term_in_target_function)
+                    geometry_term = cosine_at_light_source / (bsdf_ray_hit_info.t * bsdf_ray_hit_info.t);
+#endif
+                target_function = (bsdf_color * bsdf_ray_payload.material.emission * cosine_at_evaluated_point * geometry_term).luminance();
 
                 float light_pdf = pdf_of_emissive_triangle_hit(render_data, bsdf_ray_hit_info, sampled_direction); 
                 // If we refracting, drop the light PDF to 0
