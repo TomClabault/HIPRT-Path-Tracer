@@ -17,15 +17,13 @@
 #include "stb_image_write.h"
 
 // TODOs ReSTIR DI
-// - include geometry term? benchmark variance with and wxithout (ImGui option)
+// - why is 5 spatial reuse passes still kind of noisy at the edges of the image? Shouldn't we be reusing from a good pixel at some point and no noise?
 // - add second bounce direct light sampling strategy in imgui
-// - optimize center sample resampling because we don't have to evaluate its target function, we already not the target function of the center sample at the center pixel
 // - imgui bias correction mode
 // - imgui bias status of ReSTIR
 // - add sample rotation in spatial reuse to imgui
 // - add hammersley usage or not imgui for spatial reuse
 // - neighbor similiraty tessts, roughness, normal, depth
-// - implement visibility reuse
 // - do we need an initial candidate buffer ? can we maybe generate initial candidates directly in the temporal buffer?
 // - implement temporal pass
 // - implement temporal (back)reprojection

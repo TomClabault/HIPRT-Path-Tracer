@@ -507,6 +507,22 @@ void ImGuiRenderer::draw_sampling_panel()
 					ImGui::TreePop();
 				}
 
+				ImGui::SeparatorText("Visibility Reuse Pass");
+				ImGui::TreePush("ReSTIR DI - Visibility Reuse Pass Tree");
+				{
+					static bool do_visibility_reuse = ReSTIR_DI_DoVisibilityReuse;
+					if (ImGui::Checkbox("Use visibility in bias correction", &do_visibility_reuse))
+					{
+						kernel_options->set_macro(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE, do_visibility_reuse ? 1 : 0);
+						m_renderer->recompile_kernels();
+
+						m_render_window->set_render_dirty(true);
+					}
+
+					ImGui::Dummy(ImVec2(0.0f, 20.0f));
+					ImGui::TreePop();
+				}
+
 				ImGui::SeparatorText("Spatial Reuse Pass");
 				ImGui::TreePush("ReSTIR DI - Spatial Reuse Pass Tree");
 				{

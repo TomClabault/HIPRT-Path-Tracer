@@ -212,11 +212,25 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 			continue;
 
 		Reservoir neighbor_reservoir = input_reservoir_buffer[neighbor_pixel_index];
+		if (neighbor_reservoir.UCW == 0.0f)
+		{
+			new_reservoir.M += neighbor_reservoir.M;
+			continue;
+		}
 
-		float target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_TargetFunctionVisibility>(render_data, neighbor_reservoir.sample, center_pixel_material, center_volume_state, center_pixel_view_direction, center_pixel_shading_point, center_pixel_shading_normal);
+		float target_function_at_center = 0.0f;
+		if (neighbor == reused_neighbors_count)
+			// No need to evaluate the center sample at the center pixel, that's exactly
+			// the target function of the center reservoir
+			target_function_at_center = neighbor_reservoir.sample.target_function;
+		else
+			target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_TargetFunctionVisibility>(render_data, neighbor_reservoir.sample, center_pixel_material, center_volume_state, center_pixel_view_direction, center_pixel_shading_point, center_pixel_shading_normal);
 
 		float jacobian_determinant = 1.0f;
-		if (neighbor_reservoir.UCW != 0.0f)
+		// If the neighbor reservoir is invalid, do not compute the jacobian
+		// Also, if this is the last neighbor resample (meaning that it is the sample pixel), 
+		// the jacobian is going to be 1.0f so no need to compute
+		if (neighbor_reservoir.UCW != 0.0f && neighbor != reused_neighbors_count)
 		{
 			float distance_to_light_at_center;
 			float distance_to_light_at_neighbor;
@@ -286,14 +300,25 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 				// Neighbor out of the viewport
 				continue;
 
-			// Getting the surface data at the neighbor
-			RendererMaterial neighbor_material = render_data.g_buffer.materials[neighbor_pixel_index];
-			RayVolumeState neighbor_ray_volume_state = render_data.g_buffer.ray_volume_states[neighbor_pixel_index];
-			float3 neighbor_view_direction = render_data.g_buffer.view_directions[neighbor_pixel_index];
-			float3 neighbor_shading_normal = render_data.g_buffer.shading_normals[neighbor_pixel_index];
-			float3 neighbor_shading_point = render_data.g_buffer.first_hits[neighbor_pixel_index] + neighbor_shading_normal * 1.0e-4f;
+			float target_function_at_neighbor = 0.0f;
+			if (neighbor == reused_neighbors_count)
+			{
+				// The last neighbor is the center pixel.
+				// We want to evaluate the target function of the picked sample at the center pixel.
+				// We already have the value of the target function in the reservoir sample
+				target_function_at_neighbor = new_reservoir.sample.target_function;
+			}
+			else
+			{
+				// Getting the surface data at the neighbor
+				RendererMaterial neighbor_material = render_data.g_buffer.materials[neighbor_pixel_index];
+				RayVolumeState neighbor_ray_volume_state = render_data.g_buffer.ray_volume_states[neighbor_pixel_index];
+				float3 neighbor_view_direction = render_data.g_buffer.view_directions[neighbor_pixel_index];
+				float3 neighbor_shading_normal = render_data.g_buffer.shading_normals[neighbor_pixel_index];
+				float3 neighbor_shading_point = render_data.g_buffer.first_hits[neighbor_pixel_index] + neighbor_shading_normal * 1.0e-4f;
 
-			float target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_SpatialReuseBiasUseVisiblity>(render_data, new_reservoir.sample, neighbor_material, neighbor_ray_volume_state, neighbor_view_direction, neighbor_shading_point, neighbor_shading_normal);
+				target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_SpatialReuseBiasUseVisiblity>(render_data, new_reservoir.sample, neighbor_material, neighbor_ray_volume_state, neighbor_view_direction, neighbor_shading_point, neighbor_shading_normal);
+			}
 
 			if (target_function_at_neighbor > 0.0f)
 			{

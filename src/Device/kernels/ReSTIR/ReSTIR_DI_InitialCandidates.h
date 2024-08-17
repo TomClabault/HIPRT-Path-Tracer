@@ -14,6 +14,21 @@
 #include "HostDeviceCommon/Math.h"
 #include "HostDeviceCommon/RenderData.h"
 
+HIPRT_HOST_DEVICE HIPRT_INLINE void visibility_reuse(const HIPRTRenderData& render_data, Reservoir& reservoir, float3 shading_point)
+{
+    float distance_to_light;
+    float3 sample_direction = reservoir.sample.point_on_light_source - shading_point;
+    sample_direction /= (distance_to_light = hippt::length(sample_direction));
+
+    hiprtRay shadow_ray;
+    shadow_ray.origin = shading_point;
+    shadow_ray.direction = sample_direction;
+
+    bool visible = !evaluate_shadow_ray(render_data, shadow_ray, distance_to_light);
+    if (!visible)
+        reservoir.UCW = 0.0f;
+}
+
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) ReSTIR_DI_InitialCandidates(HIPRTRenderData render_data, int2 res, HIPRTCamera camera)
 #else
@@ -58,7 +73,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_InitialCandidates(HIPRTRenderData
     ray_payload.volume_state = render_data.g_buffer.ray_volume_states[pixel_index];
 
     // Producing and storing the reservoir
-    render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs[pixel_index] = sample_bsdf_and_lights_RIS_reservoir(render_data, ray_payload, hit_info, view_direction, random_number_generator);
+    Reservoir initial_candidates_reservoir = sample_bsdf_and_lights_RIS_reservoir(render_data, ray_payload, hit_info, view_direction, random_number_generator);
+
+#if ReSTIR_DI_DoVisibilityReuse == TRUE
+    visibility_reuse(render_data, initial_candidates_reservoir, hit_info.inter_point + hit_info.shading_normal * 1.0e-4f);
+#endif
+
+    render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs[pixel_index] = initial_candidates_reservoir;
 }
 
 #endif

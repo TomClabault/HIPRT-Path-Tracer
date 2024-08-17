@@ -20,14 +20,14 @@
  // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
  // allowing for fast step into that pixel with the debugger to see what's happening.
  // Otherwise if 0, all pixels of the image are rendered
-#define DEBUG_PIXEL 0
+#define DEBUG_PIXEL 1
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner. 
 // If 1, it's bottom left corner.
 // Useful if you're using an image viewer to get the the coordinates of 
 // the interesting pixel. If that image viewer has its (0, 0) in the top
 // left corner, you'll need to set that DEBUG_FLIP_Y to 0. Set 1 to if
 // you're measuring the coordinates of the pixel with (0, 0) in the bottom left corner
-#define DEBUG_FLIP_Y 1
+#define DEBUG_FLIP_Y 0
 // Coordinates of the pixel to render
 #define DEBUG_PIXEL_X 92
 #define DEBUG_PIXEL_Y 198

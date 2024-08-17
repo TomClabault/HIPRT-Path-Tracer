@@ -147,6 +147,16 @@
 #define ReSTIR_DI_TargetFunctionVisibility FALSE
 
 /**
+ * Whether or not to do a visibility check at the end of the initial candidates sampling.
+ * This discards reservoirs (by setting their UCW to 0.0f) whose samples are occluded.
+ * This allows following ReSTIR passes (temporal and spatial) to only resample on samples
+ * that are not occluded which improves quality quite a bit.
+ * 
+ *	- TRUE or FALSE values are accepted. Self-explanatory
+ */
+#define ReSTIR_DI_DoVisibilityReuse TRUE
+
+/**
  * Whether or not to use a visibility term in the MIS weights (MIS-like weights,
  * generalized balance heuristic, pairwise MIS, ...) used to remove bias when
  * resampling neighbors. An additional visibility ray will be traced for MIS-weight

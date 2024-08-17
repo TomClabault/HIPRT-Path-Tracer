@@ -21,7 +21,7 @@ public:
 	static const std::string RIS_USE_VISIBILITY_TARGET_FUNCTION;
 	static const std::string GGX_SAMPLE_FUNCTION;
 	static const std::string RESTIR_DI_TARGET_FUNCTION_VISIBILITY;
-	static const std::string RESTIR_DI_TARGET_FUNCTION_VISIBILITY;
+	static const std::string RESTIR_DI_DO_VISIBILITY_REUSE;
 	static const std::string RESTIR_DI_SPATIAL_REUSE_BIAS_CORRECTION_USE_VISIBILITY;
 
 	static const std::vector<std::string> ALL_MACROS_NAMES;
