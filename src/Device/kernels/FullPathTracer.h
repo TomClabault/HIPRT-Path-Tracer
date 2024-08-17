@@ -17,6 +17,15 @@
 #include "HostDeviceCommon/HIPRTCamera.h"
 #include "HostDeviceCommon/Xorshift.h"
 
+#ifndef __KERNELCC__
+#include "Utils/Utils.h" // For debugbreak in sanity_check()
+
+// For logging stuff on the CPU and avoid everything being mixed
+// up in the terminal because of multithreading
+#include <mutex>
+std::mutex g_mutex;
+#endif
+
 HIPRT_HOST_DEVICE HIPRT_INLINE void debug_set_final_color(const HIPRTRenderData& render_data, int x, int y, int res_x, ColorRGB32F final_color)
 {
     if (render_data.render_settings.sample_number == 0)
@@ -44,6 +53,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool check_for_nan(ColorRGB32F ray_color, int x, 
     if (hippt::isNaN(ray_color.r) || hippt::isNaN(ray_color.g) || hippt::isNaN(ray_color.b))
     {
 #ifndef __KERNELCC__
+        std::lock_guard<std::mutex> logging_lock(g_mutex);
         std::cout << "NaN at [" << x << ", " << y << "], sample" << sample << std::endl;
 #endif
         return true;
@@ -52,9 +62,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool check_for_nan(ColorRGB32F ray_color, int x, 
     return false;
 }
 
-#ifndef __KERNELCC__
-#include "Utils/Utils.h" // For debugbreak in sanity_check()
-#endif
 HIPRT_HOST_DEVICE HIPRT_INLINE bool sanity_check(const HIPRTRenderData& render_data, RayPayload& ray_payload, int x, int y, int2& res, int sample)
 {
     bool invalid = false;
