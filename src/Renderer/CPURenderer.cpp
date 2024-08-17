@@ -27,10 +27,10 @@
 // the interesting pixel. If that image viewer has its (0, 0) in the top
 // left corner, you'll need to set that DEBUG_FLIP_Y to 0. Set 1 to if
 // you're measuring the coordinates of the pixel with (0, 0) in the bottom left corner
-#define DEBUG_FLIP_Y 0
+#define DEBUG_FLIP_Y 1
 // Coordinates of the pixel to render
-#define DEBUG_PIXEL_X 126
-#define DEBUG_PIXEL_Y 168
+#define DEBUG_PIXEL_X 92
+#define DEBUG_PIXEL_Y 198
 // If 1, a square of DEBUG_NEIGHBORHOOD_SIZE x DEBUG_NEIGHBORHOOD_SIZE pixels
 // will be rendered around the pixel to debug (given by DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y). The pixel of interest is going to be rendered first so you

@@ -320,9 +320,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 #if USE_BALANCE_HEURISTICS
 	new_reservoir.end();
 #elif MIS_LIKE_WEIGHTS
-	new_reservoir.end_normalized(mis_like_denom / mis_like_nume);
+	new_reservoir.end_normalized(mis_like_nume, mis_like_denom);
 #else
-	new_reservoir.end_normalized(Z);
+	new_reservoir.end_normalized(1.0f, Z);
 #endif
 
 	render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs[pixel_index] = new_reservoir;
