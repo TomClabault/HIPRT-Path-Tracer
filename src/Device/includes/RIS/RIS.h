@@ -9,13 +9,14 @@
 #include "Device/includes/Dispatcher.h"
 #include "Device/includes/Intersect.h"
 #include "Device/includes/LightUtils.h"
+#include "Device/includes/RIS/RIS_Reservoir.h"
 
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/HitInfo.h"
 #include "HostDeviceCommon/RenderData.h"
 
 // TODO make some simplification assuming that ReSTIR DI is never inside a surface (the camera being inside a surface may be an annoying case to handle)
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_reservoir_sample(const HIPRTRenderData& render_data, const RayPayload& ray_payload, const float3& shading_point, const float3& shading_normal, const float3& view_direction, const Reservoir& reservoir)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_reservoir_sample(const HIPRTRenderData& render_data, const RayPayload& ray_payload, const float3& shading_point, const float3& shading_normal, const float3& view_direction, const RISReservoir& reservoir)
 {
     ColorRGB32F final_color;
 
@@ -23,7 +24,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_reservoir_sample(const HIPRT
         // No valid sample means no light contribution
         return ColorRGB32F(0.0f);
 
-    ReservoirSample sample = reservoir.sample;
+    RISSample sample = reservoir.sample;
 
     bool in_shadow;
     float distance_to_light;
@@ -66,14 +67,18 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_reservoir_sample(const HIPRT
         }
 
         if (cosine_at_evaluated_point > 0.0f)
-            // Visibility of the target function is already included because we can only be here it the light wasn't occluded
-            final_color = bsdf_color * reservoir.UCW * sample.emission * cosine_at_evaluated_point;
+        {
+            int material_index = render_data.buffers.material_indices[sample.emissive_triangle_index];
+            ColorRGB32F sample_emission = render_data.buffers.materials_buffer[material_index].emission;
+
+            final_color = bsdf_color * reservoir.UCW * sample_emission * cosine_at_evaluated_point;
+        }
     }
 
     return final_color;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_bsdf_and_lights_RIS_reservoir(const HIPRTRenderData& render_data, const RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir(const HIPRTRenderData& render_data, const RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
 {
     // Pushing the intersection point outside the surface (if we're already outside)
     // or inside the surface (if we're inside the surface)
@@ -84,20 +89,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_bsdf_and_lights_RIS_reservoir(co
 
     // If we're rendering at low resolution, only doing 1 candidate of each
     // for better interactive framerates
-#ifdef ReSTIR_DI_InitialCandidatesKernel
-    // If the ReSTIR DI initial candidates kernel is calling this function, then we're
-    // using the light and BSDF candidates counts from the ReSTIR DI settings
-    int nb_light_candidates = render_data.render_settings.render_low_resolution ? 1 : render_data.render_settings.restir_di_settings.initial_candidates.number_of_initial_light_candidates;
-    int nb_bsdf_candidates = render_data.render_settings.render_low_resolution ? 1 : render_data.render_settings.restir_di_settings.initial_candidates.number_of_initial_bsdf_candidates;
-#else
-    // If this is not the ReSTIR DI initial candidates kernel calling this function,
-    // then we're using the light and BSDF candidates counts from the RIS settings
     int nb_light_candidates = render_data.render_settings.render_low_resolution ? 1 : render_data.render_settings.ris_settings.number_of_light_candidates;
     int nb_bsdf_candidates = render_data.render_settings.render_low_resolution ? 1 : render_data.render_settings.ris_settings.number_of_bsdf_candidates;
-#endif
 
     // Sampling candidates with weighted reservoir sampling
-    Reservoir reservoir;
+    RISReservoir reservoir;
     for (int i = 0; i < nb_light_candidates; i++)
     {
         float light_sample_pdf;
@@ -132,25 +128,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_bsdf_and_lights_RIS_reservoir(co
                 bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, ray_payload.material, trash_ray_volume_state, view_direction, closest_hit_info.shading_normal, to_light_direction, bsdf_pdf);
 
                 float geometry_term = 1.0f;
-#ifdef ReSTIR_DI_InitialCandidatesKernel
-                if (render_data.render_settings.restir_di_settings.target_function.geometry_term_in_target_function)
+                if (render_data.render_settings.ris_settings.geometry_term_in_target_function)
                     geometry_term = cosine_at_light_source / (distance_to_light * distance_to_light);
-#endif
+      
                 target_function = (bsdf_color * light_source_info.emission * cosine_at_evaluated_point * geometry_term).luminance();
 
-#ifdef ReSTIR_DI_InitialCandidatesKernel
-#define VisibilityMacroOptionToCheck ReSTIR_DI_TargetFunctionVisibility
-                // If we are calling this function from the initial candidates sampling pass
-                // of ReSTIR DI, then we check the ReSTIR_DI_TargetFunctionVisibility
-                // macro option to determine whether or not we should include visibility
-#else
-#define VisibilityMacroOptionToCheck RISUseVisiblityTargetFunction
-                // If this is not the ReSTIR DI initial candidates sampling pass, whether
-                // or not we do the visibility test is determined by the
-                // RISUseVisiblityTargetFunction macro option
-#endif
-
-#if VisibilityMacroOptionToCheck == TRUE
+#if RISUseVisiblityTargetFunction == TRUE
                 if (!render_data.render_settings.render_low_resolution)
                 {
                     // Only doing visiblity if we're render at low resolution
@@ -177,12 +160,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_bsdf_and_lights_RIS_reservoir(co
             }
         }
 
-        ReservoirSample light_RIS_sample;
+        RISSample light_RIS_sample;
         light_RIS_sample.is_bsdf_sample = false;
         light_RIS_sample.point_on_light_source = random_light_point;
-        light_RIS_sample.light_source_normal = light_source_info.light_source_normal;
-        light_RIS_sample.emission = light_source_info.emission;
         light_RIS_sample.target_function = target_function;
+        light_RIS_sample.emissive_triangle_index = light_source_info.emissive_triangle_index;
 
         reservoir.add_one_candidate(light_RIS_sample, candidate_weight, random_number_generator);
     }
@@ -213,7 +195,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_bsdf_and_lights_RIS_reservoir(co
         }
 
         float cosine_at_evaluated_point = 0.0f;
-        ReservoirSample bsdf_RIS_sample;
+        RISSample bsdf_RIS_sample;
         hiprtRay bsdf_ray;
         if (bsdf_sample_pdf > 0.0f)
         {
@@ -240,11 +222,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_bsdf_and_lights_RIS_reservoir(co
                 cosine_at_evaluated_point = hippt::abs(hippt::dot(closest_hit_info.shading_normal, sampled_direction));
 
                 float geometry_term = 1.0f;
-#ifdef ReSTIR_DI_InitialCandidatesKernel
-                float cosine_at_light_source = hippt::abs(hippt::dot(sampled_direction, bsdf_ray_hit_info.shading_normal));
                 if (render_data.render_settings.restir_di_settings.target_function.geometry_term_in_target_function)
+                {
+                    float cosine_at_light_source = hippt::abs(hippt::dot(sampled_direction, bsdf_ray_hit_info.shading_normal));
                     geometry_term = cosine_at_light_source / (bsdf_ray_hit_info.t * bsdf_ray_hit_info.t);
-#endif
+                }
+
                 target_function = (bsdf_color * bsdf_ray_payload.material.emission * cosine_at_evaluated_point * geometry_term).luminance();
 
                 float light_pdf = pdf_of_emissive_triangle_hit(render_data, bsdf_ray_hit_info, sampled_direction); 
@@ -267,9 +250,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_bsdf_and_lights_RIS_reservoir(co
                 float mis_weight = balance_heuristic(bsdf_sample_pdf, nb_bsdf_candidates, light_pdf, nb_light_candidates);
                 candidate_weight = mis_weight * target_function / bsdf_sample_pdf;
 
-                bsdf_RIS_sample.emission = bsdf_ray_payload.material.emission;
+                bsdf_RIS_sample.emissive_triangle_index = bsdf_ray_hit_info.primitive_index;
                 bsdf_RIS_sample.point_on_light_source = bsdf_ray_hit_info.inter_point;
-                bsdf_RIS_sample.light_source_normal = bsdf_ray_hit_info.shading_normal;
                 bsdf_RIS_sample.is_bsdf_sample = true;
                 bsdf_RIS_sample.bsdf_sample_contribution = bsdf_color;
                 bsdf_RIS_sample.bsdf_sample_cosine_term = cosine_at_evaluated_point;
@@ -288,7 +270,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE Reservoir sample_bsdf_and_lights_RIS_reservoir(co
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_lights_RIS(const HIPRTRenderData& render_data, const RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
 {
-    Reservoir reservoir = sample_bsdf_and_lights_RIS_reservoir(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+    RISReservoir reservoir = sample_bsdf_and_lights_RIS_reservoir(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 
     return evaluate_reservoir_sample(render_data, ray_payload, closest_hit_info.inter_point, closest_hit_info.shading_normal, view_direction, reservoir);
 }

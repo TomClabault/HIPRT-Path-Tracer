@@ -3,30 +3,24 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_RESERVOIR_H
-#define DEVICE_RESERVOIR_H
+#ifndef DEVICE_RESTIR_DI_RESERVOIR_H
+#define DEVICE_RESTIR_DI_RESERVOIR_H
 
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/Xorshift.h"
 
-struct ReservoirSample
+struct ReSTIRDISample
 {
-    // TODO store emissive triangle index instead
+    // Global primitive index corresponding to the emissive triangle sampled
+    int emissive_triangle_index;
     float3 point_on_light_source = { 0, 0, 0 };
-    float3 light_source_normal = { 0, 0, 0 };
-    ColorRGB32F emission = { 0.0f, 0.0f, 0.0f };
 
     float target_function = 0.0f;
-
-    // TODO necessary? --> no, not for restir di, only for pure RIS
-    bool is_bsdf_sample = false;
-    ColorRGB32F bsdf_sample_contribution;
-    float bsdf_sample_cosine_term;
 };
 
-struct Reservoir
+struct ReSTIRDIReservoir
 {
-    HIPRT_HOST_DEVICE void add_one_candidate(ReservoirSample new_sample, float weight, Xorshift32Generator& random_number_generator)
+    HIPRT_HOST_DEVICE void add_one_candidate(ReSTIRDISample new_sample, float weight, Xorshift32Generator& random_number_generator)
     {
         M++;
         weight_sum += weight;
@@ -49,7 +43,7 @@ struct Reservoir
      * 'random_number_generator' for generating the random number that will be used to stochastically
      *      select the sample from 'other_reservoir' or not
      */
-    HIPRT_HOST_DEVICE bool combine_with(Reservoir other_reservoir, float mis_weight, float target_function, float jacobian_determinant, Xorshift32Generator& random_number_generator)
+    HIPRT_HOST_DEVICE bool combine_with(ReSTIRDIReservoir other_reservoir, float mis_weight, float target_function, float jacobian_determinant, Xorshift32Generator& random_number_generator)
     {
         float reservoir_sample_weight = mis_weight * target_function * other_reservoir.UCW * jacobian_determinant;
 
@@ -59,7 +53,6 @@ struct Reservoir
         if (random_number_generator() < reservoir_sample_weight / weight_sum)
         {
             sample = other_reservoir.sample;
-            sample.is_bsdf_sample = false;
             sample.target_function = target_function;
 
             return true;
@@ -89,7 +82,7 @@ struct Reservoir
     float weight_sum = 0.0f;
     float UCW = 0.0f;
 
-    ReservoirSample sample;
+    ReSTIRDISample sample;
 };
 
 #endif

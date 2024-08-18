@@ -442,6 +442,13 @@ void ImGuiRenderer::draw_sampling_panel()
 					m_render_window->set_render_dirty(true);
 				}
 
+				if (ImGui::Checkbox("Use geometry term in RIS target function", &render_settings.ris_settings.geometry_term_in_target_function))
+				{
+					m_renderer->recompile_kernels();
+
+					m_render_window->set_render_dirty(true);
+				}
+
 				if (ImGui::SliderInt("RIS # of BSDF candidates", &render_settings.ris_settings.number_of_bsdf_candidates, 0, 32))
 				{
 					// Clamping to 0

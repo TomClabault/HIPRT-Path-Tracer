@@ -6,6 +6,8 @@
 #ifndef HOST_DEVICE_RESTIR_DI_SETTINGS_H
 #define HOST_DEVICE_RESTIR_DI_SETTINGS_H
 
+#include "Device/includes/ReSTIR/ReSTIR_DI_Reservoir.h"
+
 struct InitialCandidatesSettings
 {
 	// How many light candidates to resamples during the initial candidates sampling pass
@@ -15,7 +17,7 @@ struct InitialCandidatesSettings
 
 	// Buffer that contains the reservoirs that will hold the reservoir
 	// for the initial candidates generated
-	Reservoir* output_reservoirs = nullptr;
+	ReSTIRDIReservoir* output_reservoirs = nullptr;
 };
 
 struct SpatialPassSettings
@@ -28,9 +30,9 @@ struct SpatialPassSettings
 	int spatial_reuse_neighbor_count = 5;
 
 	// Buffer that contains the input reservoirs for the spatial reuse pass
-	Reservoir* input_reservoirs = nullptr;
+	ReSTIRDIReservoir* input_reservoirs = nullptr;
 	// Buffer that contains the output reservoir of the spatial reuse pass
-	Reservoir* output_reservoirs = nullptr;
+	ReSTIRDIReservoir* output_reservoirs = nullptr;
 };
 
 struct ReSTIRDITargetFunctionSettings

@@ -17,7 +17,7 @@
 #include "stb_image_write.h"
 
 // TODOs ReSTIR DI
-// - why is 5 spatial reuse passes still kind of noisy at the edges of the image? Shouldn't we be reusing from a good pixel at some point and no noise?
+// - do a "Surface" class for holding the shading point, normal, etc... of a reservoir
 // - add second bounce direct light sampling strategy in imgui
 // - imgui bias correction mode
 // - imgui bias status of ReSTIR
@@ -32,6 +32,7 @@
 // - allocate / deallocate restir reservoirs if using / not using restir
 // - feature to disable ReSTIR after a certain percentage of convergence --> we don't want to pay the full price of resampling and everything only for a few difficult isolated pixels (especially true with adaptive sampling where neighbors don't get sampled --> no new samples added to their reservoir --> no need to resample)
 // - bug when adaptive sampling is disabled --> restir di --> some pixels unconverge (get more and more red) even though the image looks super clean exactly at those pixels
+// - why is 5 spatial reuse passes still kind of noisy at the edges of the image? Shouldn't we be reusing from a good pixel at some point and no noise?
 
 // TODO bugs:
 // - memory leak with OpenGL when resizing the window?

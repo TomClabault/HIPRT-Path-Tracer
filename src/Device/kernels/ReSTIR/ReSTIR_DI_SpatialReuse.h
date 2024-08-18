@@ -10,6 +10,7 @@
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Hash.h"
 #include "Device/includes/Intersect.h"
+#include "Device/includes/LightUtils.h"
 #include "Device/includes/Sampling.h"
 
 #include "HostDeviceCommon/HIPRTCamera.h"
@@ -31,11 +32,11 @@
 #define MIS_LIKE_WEIGHTS 1
 
 template <bool withVisiblity>
-HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function(const HIPRTRenderData& render_data, const ReservoirSample& sample, const RendererMaterial& material, const RayVolumeState& volume_state, float3 view_direction, float3 shading_point, float3 shading_normal)
+HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function(const HIPRTRenderData& render_data, const ReSTIRDISample& sample, const RendererMaterial& material, const RayVolumeState& volume_state, float3 view_direction, float3 shading_point, float3 shading_normal)
 {}
 
 template <>
-HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<0>(const HIPRTRenderData& render_data, const ReservoirSample& sample, const RendererMaterial& material, const RayVolumeState& volume_state, float3 view_direction, float3 shading_point, float3 shading_normal)
+HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<0>(const HIPRTRenderData& render_data, const ReSTIRDISample& sample, const RendererMaterial& material, const RayVolumeState& volume_state, float3 view_direction, float3 shading_point, float3 shading_normal)
 {
 	float bsdf_pdf;
 	float distance_to_light;
@@ -50,11 +51,16 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<0>(const
 	float geometry_term = 1.0f;
 	if (render_data.render_settings.restir_di_settings.target_function.geometry_term_in_target_function)
 	{
-		float cosine_at_light_source = hippt::abs(hippt::dot(sample_direction, sample.light_source_normal));
+		float3 light_source_normal = hippt::normalize(get_triangle_normal_non_normalized(render_data, sample.emissive_triangle_index));
+		float cosine_at_light_source = hippt::abs(hippt::dot(sample_direction, light_source_normal));
+
 		geometry_term = cosine_at_light_source / (distance_to_light * distance_to_light);
 	}
 
-	float target_function = (bsdf_color * sample.emission * cosine_term * geometry_term).luminance();
+	int material_index = render_data.buffers.material_indices[sample.emissive_triangle_index];
+	ColorRGB32F sample_emission = render_data.buffers.materials_buffer[material_index].emission;
+
+	float target_function = (bsdf_color * sample_emission * cosine_term * geometry_term).luminance();
 	if (target_function == 0.0f)
 		// Quick exit because computing the visiblity that follows isn't going
 		// to change anything to the fact that we have 0.0f target function here
@@ -64,7 +70,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<0>(const
 }
 
 template <>
-HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<1>(const HIPRTRenderData& render_data, const ReservoirSample& sample, const RendererMaterial& material, const RayVolumeState& volume_state, float3 view_direction, float3 shading_point, float3 shading_normal)
+HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<1>(const HIPRTRenderData& render_data, const ReSTIRDISample& sample, const RendererMaterial& material, const RayVolumeState& volume_state, float3 view_direction, float3 shading_point, float3 shading_normal)
 {
 	float bsdf_pdf;
 	float distance_to_light;
@@ -79,11 +85,16 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<1>(const
 	float geometry_term = 1.0f;
 	if (render_data.render_settings.restir_di_settings.target_function.geometry_term_in_target_function)
 	{
-		float cosine_at_light_source = hippt::abs(hippt::dot(sample_direction, sample.light_source_normal));
+		float3 light_source_normal = hippt::normalize(get_triangle_normal_non_normalized(render_data, sample.emissive_triangle_index));
+		float cosine_at_light_source = hippt::abs(hippt::dot(sample_direction, light_source_normal));
+
 		geometry_term = cosine_at_light_source / (distance_to_light * distance_to_light);
 	}
 
-	float target_function = (bsdf_color * sample.emission * cosine_term * geometry_term).luminance();
+	int material_index = render_data.buffers.material_indices[sample.emissive_triangle_index];
+	ColorRGB32F sample_emission = render_data.buffers.materials_buffer[material_index].emission;
+
+	float target_function = (bsdf_color * sample_emission * cosine_term * geometry_term).luminance();
 	if (target_function == 0.0f)
 		// Quick exit because computing the visiblity that follows isn't going
 		// to change anything to the fact that we have 0.0f target function here
@@ -180,9 +191,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	
 	Xorshift32Generator random_number_generator(seed);
 
-	Reservoir* input_reservoir_buffer = render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs;
+	ReSTIRDIReservoir* input_reservoir_buffer = render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs;
 
-	Reservoir new_reservoir;
+	ReSTIRDIReservoir new_reservoir;
 	// Center pixel coordinates
 	int2 center_pixel_coords = make_int2(x, y);
 
@@ -211,7 +222,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 			// Neighbor out of the viewport
 			continue;
 
-		Reservoir neighbor_reservoir = input_reservoir_buffer[neighbor_pixel_index];
+		ReSTIRDIReservoir neighbor_reservoir = input_reservoir_buffer[neighbor_pixel_index];
 		if (neighbor_reservoir.UCW == 0.0f)
 		{
 			new_reservoir.M += neighbor_reservoir.M;
@@ -239,7 +250,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 			to_light_direction_at_center /= (distance_to_light_at_center = hippt::length(to_light_direction_at_center));
 			to_light_direction_at_neighbor /= (distance_to_light_at_neighbor = hippt::length(to_light_direction_at_neighbor));
 
-			float cosine_ratio = hippt::abs(hippt::dot(-to_light_direction_at_center, neighbor_reservoir.sample.light_source_normal)) / hippt::abs(hippt::dot(-to_light_direction_at_neighbor, neighbor_reservoir.sample.light_source_normal));
+			float3 light_source_normal = hippt::normalize(get_triangle_normal_non_normalized(render_data, neighbor_reservoir.sample.emissive_triangle_index));
+			float cosine_ratio = hippt::abs(hippt::dot(-to_light_direction_at_center, light_source_normal)) / hippt::abs(hippt::dot(-to_light_direction_at_neighbor, light_source_normal));
 			float distance_squared_ratio = (distance_to_light_at_neighbor * distance_to_light_at_neighbor) / (distance_to_light_at_center * distance_to_light_at_center);
 
 			jacobian_determinant = cosine_ratio * distance_squared_ratio;
@@ -323,7 +335,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 			if (target_function_at_neighbor > 0.0f)
 			{
 				// If the neighbor could have produced this sample...
-				Reservoir neighbor_reservoir = input_reservoir_buffer[neighbor_pixel_index];
+				ReSTIRDIReservoir neighbor_reservoir = input_reservoir_buffer[neighbor_pixel_index];
 
 				// ... adding M to the Z normalization term
 				// TODO add the possibility through ImGui to choose whether we're using confidence

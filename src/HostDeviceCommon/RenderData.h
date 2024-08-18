@@ -6,7 +6,7 @@
 #ifndef HOST_DEVICE_COMMON_RENDER_DATA_H
 #define HOST_DEVICE_COMMON_RENDER_DATA_H
 
-#include "Device/includes/Reservoir.h"
+#include "Device/includes/ReSTIR/ReSTIR_DI_Reservoir.h"
 #include "Device/includes/GBuffer.h"
 #include "HostDeviceCommon/Material.h"
 #include "HostDeviceCommon/Math.h"
@@ -106,9 +106,9 @@ struct AuxiliaryBuffers
 	// The buffers that should be used by the ReSTIR passes kernels are the 
 	// 'input_reservoirs' / 'output_reservoirs' buffers of the 'initial_candidates',
 	// 'temporal_pass' and 'spatial_pass' settings
-	Reservoir* initial_reservoirs = nullptr;
-	Reservoir* temporal_pass_output_reservoirs = nullptr;
-	Reservoir* final_reservoirs = nullptr;
+	ReSTIRDIReservoir* initial_reservoirs = nullptr;
+	ReSTIRDIReservoir* temporal_pass_output_reservoirs = nullptr;
+	ReSTIRDIReservoir* final_reservoirs = nullptr;
 };
 
 enum AmbientLightType

@@ -67,9 +67,9 @@ private:
     // Random number generator for given a random seed to the threads at each sample
     Xorshift32Generator m_rng;
 
-    std::vector<Reservoir> m_restir_initial_reservoirs;
-    std::vector<Reservoir> m_restir_temporal_reservoirs;
-    std::vector<Reservoir> m_restir_final_reservoirs;
+    std::vector<ReSTIRDIReservoir> m_restir_initial_reservoirs;
+    std::vector<ReSTIRDIReservoir> m_restir_temporal_reservoirs;
+    std::vector<ReSTIRDIReservoir> m_restir_final_reservoirs;
 
     std::vector<Triangle> m_triangle_buffer;
     std::shared_ptr<BVH> m_bvh;

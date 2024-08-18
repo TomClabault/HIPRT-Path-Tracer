@@ -22,9 +22,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void reset_render(const HIPRTRenderData& render_d
     render_data.buffers.pixels[pixel_index] = ColorRGB32F(0.0f);
     render_data.aux_buffers.denoiser_normals[pixel_index] = make_float3(1.0f, 1.0f, 1.0f);
     render_data.aux_buffers.denoiser_albedo[pixel_index] = ColorRGB32F(0.0f, 0.0f, 0.0f);
-    render_data.aux_buffers.initial_reservoirs[pixel_index] = Reservoir();
-    render_data.aux_buffers.temporal_pass_output_reservoirs[pixel_index] = Reservoir();
-    render_data.aux_buffers.final_reservoirs[pixel_index] = Reservoir();
+    render_data.aux_buffers.initial_reservoirs[pixel_index] = ReSTIRDIReservoir();
+    render_data.aux_buffers.temporal_pass_output_reservoirs[pixel_index] = ReSTIRDIReservoir();
+    render_data.aux_buffers.final_reservoirs[pixel_index] = ReSTIRDIReservoir();
 
     render_data.g_buffer.geometric_normals[pixel_index] = { 0, 0, 0 };
     render_data.g_buffer.shading_normals[pixel_index] = { 0, 0, 0 };

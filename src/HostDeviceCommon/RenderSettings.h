@@ -15,6 +15,9 @@ struct RISSettings
 	// Whether or not to use a visiblity term in the target function
 	// when resampling light candidates with RIS
 	bool use_visibility_in_target_function = false;
+	// Whether or not to use a geometry term in the target function when resampling
+	// light samples
+	bool geometry_term_in_target_function = false;
 	// How many candidate lights to sample for RIS (Resampled Importance Sampling)
 	int number_of_light_candidates = 4;
 	// How many candidates samples from the BSDF to use in combination

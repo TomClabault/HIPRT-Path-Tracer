@@ -52,7 +52,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 sample_one_emissive_triangle(const HIPRTRe
     return random_point_on_triangle;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float triangle_area(const HIPRTRenderData& render_data, int triangle_index)
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 get_triangle_normal_non_normalized(const HIPRTRenderData& render_data, int triangle_index)
 {
     float3 vertex_A = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[triangle_index * 3 + 0]];
     float3 vertex_B = render_data.buffers.vertices_positions[render_data.buffers.triangles_indices[triangle_index * 3 + 1]];
@@ -61,7 +61,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float triangle_area(const HIPRTRenderData& render
     float3 AB = vertex_B - vertex_A;
     float3 AC = vertex_C - vertex_A;
 
-    return hippt::length(hippt::cross(AB, AC)) / 2.0f;
+    return hippt::cross(AB, AC);
+}
+
+HIPRT_HOST_DEVICE HIPRT_INLINE float triangle_area(const HIPRTRenderData& render_data, int triangle_index)
+{
+    float3 normal = get_triangle_normal_non_normalized(render_data, triangle_index);
+    return hippt::length(normal) / 2.0f;
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F clamp_light_contribution(ColorRGB32F light_contribution, float clamp_max_value, bool clamp_condition)

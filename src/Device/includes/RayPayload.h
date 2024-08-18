@@ -9,6 +9,7 @@
 #include "Device/includes/NestedDielectrics.h"
 
 #include "HostDeviceCommon/Color.h"
+#include "HostDeviceCommon/KernelOptions.h"
 #include "HostDeviceCommon/Material.h"
 
 enum RayState
