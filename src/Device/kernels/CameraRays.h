@@ -96,7 +96,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
         }
     }
 
-    if (pixel_converged || !sampling_needed)
+    if (!sampling_needed)
     {
         // Because when displaying the framebuffer, we're dividing by the number of samples to 
         // rescale the color of a pixel, we're going to have a problem if some pixels stopped samping
