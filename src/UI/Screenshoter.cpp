@@ -23,7 +23,7 @@ Screenshoter::Screenshoter()
 	std::shared_ptr<OpenGLProgram> blend_2_display_program = std::make_shared<OpenGLProgram>();
 	std::shared_ptr<OpenGLProgram> normal_display_program = std::make_shared<OpenGLProgram>();
 	std::shared_ptr<OpenGLProgram> albedo_display_program = std::make_shared<OpenGLProgram>();
-	std::shared_ptr<OpenGLProgram> adaptive_sampling_display_program = std::make_shared<OpenGLProgram>();
+	std::shared_ptr<OpenGLProgram> pixel_convergence_heatmap_display_program = std::make_shared<OpenGLProgram>();
 
 	default_display_program->attach(default_display_shader);
 	default_display_program->link();
@@ -37,8 +37,8 @@ Screenshoter::Screenshoter()
 	albedo_display_program->attach(albedo_display_shader);
 	albedo_display_program->link();
 
-	adaptive_sampling_display_program->attach(adaptive_display_shader);
-	adaptive_sampling_display_program->link();
+	pixel_convergence_heatmap_display_program->attach(adaptive_display_shader);
+	pixel_convergence_heatmap_display_program->link();
 
 	m_compute_programs[DisplayViewType::DEFAULT] = default_display_program;
 	m_compute_programs[DisplayViewType::DENOISED_BLEND] = blend_2_display_program;
@@ -46,7 +46,7 @@ Screenshoter::Screenshoter()
 	m_compute_programs[DisplayViewType::DISPLAY_DENOISED_ALBEDO] = albedo_display_program;
 	m_compute_programs[DisplayViewType::DISPLAY_NORMALS] = normal_display_program;
 	m_compute_programs[DisplayViewType::DISPLAY_DENOISED_NORMALS] = normal_display_program;
-	m_compute_programs[DisplayViewType::ADAPTIVE_SAMPLING_MAP] = adaptive_sampling_display_program;
+	m_compute_programs[DisplayViewType::PIXEL_CONVERGENCE_HEATMAP] = pixel_convergence_heatmap_display_program;
 
 	select_compute_program(DisplayViewType::DEFAULT);
 }

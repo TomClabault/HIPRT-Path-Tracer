@@ -33,7 +33,7 @@ DisplayViewSystem::DisplayViewSystem(std::shared_ptr<GPURenderer> renderer, Rend
 	std::shared_ptr<OpenGLProgram> denoise_blend_display_program = std::make_shared<OpenGLProgram>(fullscreen_quad_vertex_shader, blend_2_display_fragment_shader);
 	std::shared_ptr<OpenGLProgram> normal_display_program = std::make_shared<OpenGLProgram>(fullscreen_quad_vertex_shader, normal_display_fragment_shader);
 	std::shared_ptr<OpenGLProgram> albedo_display_program = std::make_shared<OpenGLProgram>(fullscreen_quad_vertex_shader, albedo_display_fragment_shader);
-	std::shared_ptr<OpenGLProgram> adaptive_sampling_display_program = std::make_shared<OpenGLProgram>(fullscreen_quad_vertex_shader, adaptive_display_fragment_shader);
+	std::shared_ptr<OpenGLProgram> pixel_convergence_heatmap_display_program = std::make_shared<OpenGLProgram>(fullscreen_quad_vertex_shader, adaptive_display_fragment_shader);
 
 	// Creating all the texture views
 	DisplayView default_display_view = DisplayView(DisplayViewType::DEFAULT, default_display_program);
@@ -42,7 +42,7 @@ DisplayViewSystem::DisplayViewSystem(std::shared_ptr<GPURenderer> renderer, Rend
 	DisplayView normals_denoised_display_view = DisplayView(DisplayViewType::DISPLAY_DENOISED_NORMALS, normal_display_program);
 	DisplayView albedo_display_view = DisplayView(DisplayViewType::DISPLAY_ALBEDO, albedo_display_program);
 	DisplayView albedo_denoised_display_view = DisplayView(DisplayViewType::DISPLAY_DENOISED_ALBEDO, albedo_display_program);
-	DisplayView adaptive_sampling_display_view = DisplayView(DisplayViewType::ADAPTIVE_SAMPLING_MAP, adaptive_sampling_display_program);
+	DisplayView pixel_convergence_heatmap_display_view = DisplayView(DisplayViewType::PIXEL_CONVERGENCE_HEATMAP, pixel_convergence_heatmap_display_program);
 
 	// Adding the display views to the map
 	m_display_views[DisplayViewType::DEFAULT] = default_display_view;
@@ -51,7 +51,7 @@ DisplayViewSystem::DisplayViewSystem(std::shared_ptr<GPURenderer> renderer, Rend
 	m_display_views[DisplayViewType::DISPLAY_DENOISED_NORMALS] = normals_denoised_display_view;
 	m_display_views[DisplayViewType::DISPLAY_ALBEDO] = albedo_display_view;
 	m_display_views[DisplayViewType::DISPLAY_DENOISED_ALBEDO] = albedo_denoised_display_view;
-	m_display_views[DisplayViewType::ADAPTIVE_SAMPLING_MAP] = adaptive_sampling_display_view;
+	m_display_views[DisplayViewType::PIXEL_CONVERGENCE_HEATMAP] = pixel_convergence_heatmap_display_view;
 
 	// Denoiser blend by default because we want 
 	DisplayViewType default_display_view_type;
@@ -68,7 +68,7 @@ DisplayViewSystem::~DisplayViewSystem()
 
 bool DisplayViewSystem::update_selected_display_view()
 {
-	if (get_current_display_view_type() == DisplayViewType::ADAPTIVE_SAMPLING_MAP 
+	if (get_current_display_view_type() == DisplayViewType::PIXEL_CONVERGENCE_HEATMAP 
 	&& !m_render_window->get_renderer()->get_render_settings().has_access_to_adaptive_sampling_buffers())
 		// If the adaptive sampling heatmap is selected as the current view but
 		// the adaptive sampling buffers are no longer available (after a change
@@ -192,7 +192,7 @@ void DisplayViewSystem::update_display_program_uniforms(const DisplayViewSystem*
 
 		break;
 
-	case DisplayViewType::ADAPTIVE_SAMPLING_MAP:
+	case DisplayViewType::PIXEL_CONVERGENCE_HEATMAP:
 	{
 		std::vector<ColorRGB32F> color_stops = { ColorRGB32F(0.0f, 0.0f, 1.0f), ColorRGB32F(0.0f, 1.0f, 0.0f), ColorRGB32F(1.0f, 0.0f, 0.0f) };
 
@@ -255,7 +255,7 @@ void DisplayViewSystem::upload_relevant_buffers_to_texture()
 				display(m_render_window_denoiser->get_denoised_albedo_pointer());
 				break;*/
 
-	case DisplayViewType::ADAPTIVE_SAMPLING_MAP:
+	case DisplayViewType::PIXEL_CONVERGENCE_HEATMAP:
 		internal_upload_buffer_to_texture(m_renderer->get_pixels_sample_count_buffer(), m_display_texture_1, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
 		break;
 
@@ -306,7 +306,7 @@ void DisplayViewSystem::internal_recreate_display_textures_from_display_view(Dis
 		texture_1_type_needed = DisplayTextureType::FLOAT3;
 		break;
 
-	case DisplayViewType::ADAPTIVE_SAMPLING_MAP:
+	case DisplayViewType::PIXEL_CONVERGENCE_HEATMAP:
 		texture_1_type_needed = DisplayTextureType::INT;
 		break;
 
