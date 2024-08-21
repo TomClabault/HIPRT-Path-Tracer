@@ -8,6 +8,7 @@
 
 #include <hiprt/hiprt.h>
 #include <Orochi/Orochi.h>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>

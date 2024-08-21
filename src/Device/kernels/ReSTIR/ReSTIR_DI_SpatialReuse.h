@@ -34,8 +34,12 @@
 template <bool withVisiblity>
 HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function(const HIPRTRenderData& render_data, const ReSTIRDISample& sample, const RendererMaterial& material, const RayVolumeState& volume_state, float3 view_direction, float3 shading_point, float3 shading_normal)
 {
+#ifndef __KERNELCC__
 	std::cerr << "ReSTIR_DI_evaluate_target_function() wrong specialization called: " << withVisiblity << std::endl;
 	Utils::debugbreak();
+#endif
+
+	return -1.0f;
 }
 
 template <>

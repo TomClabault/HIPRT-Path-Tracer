@@ -696,7 +696,7 @@ void ImGuiRenderer::display_ReSTIR_DI_bias_status(std::shared_ptr<GPUKernelCompi
 
 		for (int i = 0; i < bias_reasons.size(); i++)
 		{
-			ImGui::Text(bias_reasons[i].c_str());
+			ImGui::Text("%s", bias_reasons[i].c_str());
 			if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
 				ImGuiRenderer::WrappingTooltip(hover_explanations[i].c_str());
 
