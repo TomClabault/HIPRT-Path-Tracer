@@ -134,6 +134,7 @@ void DisplayViewSystem::update_display_program_uniforms(const DisplayViewSystem*
 	switch (display_view->get_display_view_type())
 	{
 	case DisplayViewType::DEFAULT:
+	{
 		int sample_number;
 		if (application_settings->enable_denoising && application_settings->last_denoised_sample_count != -1)
 			sample_number = application_settings->last_denoised_sample_count;
@@ -148,8 +149,10 @@ void DisplayViewSystem::update_display_program_uniforms(const DisplayViewSystem*
 		program->set_uniform("u_exposure", application_settings->tone_mapping_exposure);
 
 		break;
+	}
 
 	case DisplayViewType::DENOISED_BLEND:
+	{
 		int noisy_sample_number;
 		int denoised_sample_number;
 
@@ -170,6 +173,7 @@ void DisplayViewSystem::update_display_program_uniforms(const DisplayViewSystem*
 		program->set_uniform("u_exposure", application_settings->tone_mapping_exposure);
 
 		break;
+	}
 
 	case DisplayViewType::DISPLAY_ALBEDO:
 	case DisplayViewType::DISPLAY_DENOISED_ALBEDO:
@@ -189,6 +193,7 @@ void DisplayViewSystem::update_display_program_uniforms(const DisplayViewSystem*
 		break;
 
 	case DisplayViewType::ADAPTIVE_SAMPLING_MAP:
+	{
 		std::vector<ColorRGB32F> color_stops = { ColorRGB32F(0.0f, 0.0f, 1.0f), ColorRGB32F(0.0f, 1.0f, 0.0f), ColorRGB32F(1.0f, 0.0f, 0.0f) };
 
 		float min_val = (float)render_settings.adaptive_sampling_min_samples;
@@ -201,6 +206,14 @@ void DisplayViewSystem::update_display_program_uniforms(const DisplayViewSystem*
 		program->set_uniform("u_min_val", min_val);
 		program->set_uniform("u_max_val", max_val);
 
+		break;
+	}
+
+	case DisplayViewType::ADAPTIVE_SAMPLING_ACTIVE_PIXELS:
+		std::cerr << "ADAPTIVE_SAMPLING_ACTIVE_PIXELS not yet implemented" << std::endl;
+		break;
+
+	case DisplayViewType::UNDEFINED:
 		break;
 	}
 }

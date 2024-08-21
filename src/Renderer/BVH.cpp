@@ -10,20 +10,21 @@
 #include "Renderer/BVH.h"
 
 const float3 BoundingVolume::PLANE_NORMALS[BVHConstants::PLANES_COUNT] = {
-	float3(1, 0, 0),
-	float3(0, 1, 0),
-    float3(0, 0, 1),
-    float3(std::sqrt(3.0f) / 3, std::sqrt(3.0f) / 3, std::sqrt(3.0f) / 3),
-    float3(-std::sqrt(3.0f) / 3, std::sqrt(3.0f) / 3, std::sqrt(3.0f) / 3),
-    float3(-std::sqrt(3.0f) / 3, -std::sqrt(3.0f) / 3, std::sqrt(3.0f) / 3),
-    float3(std::sqrt(3.0f) / 3, -std::sqrt(3.0f) / 3, std::sqrt(3.0f) / 3),
+	make_float3(1, 0, 0),
+	make_float3(0, 1, 0),
+    make_float3(0, 0, 1),
+    make_float3(std::sqrt(3.0f) / 3, std::sqrt(3.0f) / 3, std::sqrt(3.0f) / 3),
+    make_float3(-std::sqrt(3.0f) / 3, std::sqrt(3.0f) / 3, std::sqrt(3.0f) / 3),
+    make_float3(-std::sqrt(3.0f) / 3, -std::sqrt(3.0f) / 3, std::sqrt(3.0f) / 3),
+    make_float3(std::sqrt(3.0f) / 3, -std::sqrt(3.0f) / 3, std::sqrt(3.0f) / 3),
 };
 
 BVH::BVH() : _root(nullptr), _triangles(nullptr) {}
 BVH::BVH(std::vector<Triangle>* triangles, int max_depth, int leaf_max_obj_count) : _triangles(triangles)
 {
 	BoundingVolume volume;
-	float3 minimum(INFINITY, INFINITY, INFINITY), maximum(-INFINITY, -INFINITY, -INFINITY);
+	float3 minimum = make_float3(INFINITY, INFINITY, INFINITY);
+	float3 maximum = make_float3(-INFINITY, -INFINITY, -INFINITY);
 
 	for (const Triangle& triangle : *triangles)
 	{

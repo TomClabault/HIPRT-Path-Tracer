@@ -76,14 +76,14 @@ public:
             float middle_y = (_min.y + _max.y) / 2;
             float middle_z = (_min.z + _max.z) / 2;
 
-            _children[0] = new OctreeNode(_min, float3(middle_x, middle_y, middle_z));
-            _children[1] = new OctreeNode(float3(middle_x, _min.y, _min.z), float3(_max.x, middle_y, middle_z));
-            _children[2] = new OctreeNode(_min + float3(0, middle_y, 0), float3(middle_x, _max.y, middle_z));
-            _children[3] = new OctreeNode(float3(middle_x, middle_y, _min.z), float3(_max.x, _max.y, middle_z));
-            _children[4] = new OctreeNode(_min + float3(0, 0, middle_z), float3(middle_x, middle_y, _max.z));
-            _children[5] = new OctreeNode(float3(middle_x, _min.y, middle_z), float3(_max.x, middle_y, _max.z));
-            _children[6] = new OctreeNode(_min + float3(0, middle_y, middle_z), float3(middle_x, _max.y, _max.z));
-            _children[7] = new OctreeNode(float3(middle_x, middle_y, middle_z), float3(_max.x, _max.y, _max.z));
+            _children[0] = new OctreeNode(_min, make_float3(middle_x, middle_y, middle_z));
+            _children[1] = new OctreeNode(make_float3(middle_x, _min.y, _min.z), make_float3(_max.x, middle_y, middle_z));
+            _children[2] = new OctreeNode(_min + make_float3(0, middle_y, 0), make_float3(middle_x, _max.y, middle_z));
+            _children[3] = new OctreeNode(make_float3(middle_x, middle_y, _min.z), make_float3(_max.x, _max.y, middle_z));
+            _children[4] = new OctreeNode(_min + make_float3(0, 0, middle_z), make_float3(middle_x, middle_y, _max.z));
+            _children[5] = new OctreeNode(make_float3(middle_x, _min.y, middle_z), make_float3(_max.x, middle_y, _max.z));
+            _children[6] = new OctreeNode(_min + make_float3(0, middle_y, middle_z), make_float3(middle_x, _max.y, _max.z));
+            _children[7] = new OctreeNode(make_float3(middle_x, middle_y, middle_z), make_float3(_max.x, _max.y, _max.z));
         }
 
         void insert(const std::vector<Triangle>& triangles_geometry, int triangle_id_to_insert, int current_depth, int max_depth, int leaf_max_obj_count)
