@@ -23,7 +23,7 @@ struct InitialCandidatesSettings
 struct SpatialPassSettings
 {
 	// How many spatial reuse pass to perform
-	int number_of_passes = 2;
+	int number_of_passes = 1;
 	// What spatial pass are we currently doing?
 	// Takes values in [0, number_of_passes - 1]
 	int spatial_pass_index = 0;

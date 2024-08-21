@@ -159,8 +159,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int get_neighbor_pixel_index(int neighbor_number,
 		float2 neighbor_offset_rotated = make_float2(neighbor_offset_in_disk.x * cos_theta - neighbor_offset_in_disk.y * sin_theta, neighbor_offset_in_disk.x * sin_theta + neighbor_offset_in_disk.y * cos_theta);
 		int2 neighbor_offset_int = make_int2(static_cast<int>(neighbor_offset_rotated.x), static_cast<int>(neighbor_offset_rotated.y));
 
-		//int2 neighbor_pixel_coords = center_pixel_coords + neighbor_offset_int;
-		int2 neighbor_pixel_coords = center_pixel_coords + make_int2(15, 0);
+		int2 neighbor_pixel_coords = center_pixel_coords + neighbor_offset_int;
 		if (neighbor_pixel_coords.x < 0 || neighbor_pixel_coords.x >= res.x || neighbor_pixel_coords.y < 0 || neighbor_pixel_coords.y >= res.y)
 			// Rejecting the sample if it's outside of the viewport
 			return -1;
@@ -307,7 +306,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void get_normalization_denominator_numerator(floa
 		}
 	}
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_GBH || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_GBH_CONFIDENCE_WEIGHTS
-	// Nothing more to normalize, everything is already handled when resampling the neighbors with balance heuristic MIS weights
+	// Nothing more to normalize, everything is already handled when resampling the neighbors with balance heuristic MIS weights in the m_i terms
 	out_normalization_nume = 1.0f;
 	out_normalization_denom = 1.0f;
 #else
@@ -472,8 +471,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	// (because of the visibility reuse pass that discards occluded samples). This means that we need
 	// the visibility in the target function used when counting the neighbors that could have produced
 	// the picked sample otherwise we may think that our neighbor could have produced the picked
-	// sample where actually it couldn't because the sample is occluded at the neighbor. This means
-	// that our Z denominator (with 1/Z weights) will be too large and we'll end up with darkening.
+	// sample where actually it couldn't because the sample is occluded at the neighbor. We would
+	// then have a Z denominator (with 1/Z weights) that is too large and we'll end up with darkening.
 	//
 	// Now at the end of the first spatial reuse pass, the center pixel ends up with a sample that may
 	// or may not be occluded from the center's pixel point of view. We didn't include the visibility
@@ -488,8 +487,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	// have been generated because they are generated without occlusion test. We end up discarding too many
 	// samples --> brightening bias.
 	//
-	// With the visibility reuse from, we force samples at the end of each spatial reuse to take visibility
-	// into account so that when we weight them with visibility testing, everything goes well
+	// With the visibility reuse at the end of each spatial pass, we force samples at the end of each
+	// spatial reuse to take visibility into account so that when we weight them with visibility testing,
+	// everything goes well
 	if (render_data.render_settings.restir_di_settings.spatial_pass.number_of_passes > 1)
 		spatial_visibility_reuse(render_data, new_reservoir, center_pixel_shading_point);
 #endif

@@ -642,25 +642,67 @@ void ImGuiRenderer::display_ReSTIR_DI_bias_status(std::shared_ptr<GPUKernelCompi
 {
 	ImGui::Text("Status: "); ImGui::SameLine();
 
-	bool is_biased = false;
-	std::string bias_explanation = "";
+	std::vector<std::string> bias_reasons;
+	std::vector<std::string> hover_explanations;
 	if (kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_1_OVER_M)
 	{
-		is_biased = true;
-		bias_explanation += "- Using 1/M biased weights.\n";
+		bias_reasons.push_back("- 1/M biased weights");
+		hover_explanations.push_back("1/M weights do not take the number of neighbors that "
+			"could have produced the resampled sample into account.This leads to darkening "
+			"bias because we're not weighting our picked sample as if it could have been "
+			"produced by M neighbors whereas less neighbors than that could have actually produced it.");
 	}
 
-	if (kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE) == KERNEL_OPTION_TRUE && kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_BIAS_CORRECTION_USE_VISIBILITY) == KERNEL_OPTION_FALSE)
+	if (kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE) == KERNEL_OPTION_TRUE
+		&& kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_BIAS_CORRECTION_USE_VISIBILITY) == KERNEL_OPTION_FALSE)
 	{
-		is_biased = true;
-		bias_explanation += "- Using visibility reuse without visibility in bias correction\n";
+		bias_reasons.push_back("- Visibility reuse without visibility in bias correction");
+		hover_explanations.push_back("When using the visibility reuse pass at the end of the "
+			"initial candidates sampling pass, light samples that are occluded are discarded.\n"
+			"Temporal & spatial reuse pass will then only resample on unoccluded samples.\n"
+			"If not accounting for visibility when counting valid neighbors, we may determine "
+			"that a neighbor could have a produced the picked sample when actually, it couldn't "
+			"because from the neighbor's point of view, the sample could have been occluded "
+			"(visibility reuse pass).\n"
+			"This overestimates the number of valid neighbors and results in darkening.\n\n");
 	}
 
-	if (is_biased)
+	if (kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE) == KERNEL_OPTION_FALSE 
+		&& kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_TARGET_FUNCTION_VISIBILITY) == KERNEL_OPTION_FALSE
+	    && kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_BIAS_CORRECTION_USE_VISIBILITY) == KERNEL_OPTION_TRUE
+		&& kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z)
+	{
+		bias_reasons.push_back("- Visibility in bias correction without visibility reuse");
+		hover_explanations.push_back("When taking visibility into account in the counting of "
+			"valid neighbors, we're going to assume that if the picked sample (from resampling "
+			"the neighbors) is occluded from the neighbor's point of view, then that neighbor "
+			"couldn't have produced that sample.\n\n"
+			"However, that's incorrect.\n\n"
+			"The initial candidate sampling pass doesn't take visibility into account and can "
+			"thus produce occluded samples. Without the visibility reuse pass (or visibility used "
+			"directly in the target function), this statement stays true.\n"
+			"This means that \"a sample that is occluded from the neighbor's point of view\" could actually "
+			"have been produced.\n"
+			"We are then underestimating the number of valid neighbors that could have produced "
+			"our sample and we end up with brightening bias.\n"
+			"This is only an issue with 1/Z weights because MIS-like and proper MIS weights do "
+			"not blindly overweight a sample as 1/Z does (and then hopes that we divide by Z accordingly).");
+	}
+
+	if (!bias_reasons.empty())
 	{
 		ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Biased");
-		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-			ImGuiRenderer::WrappingTooltip(bias_explanation.c_str());
+		ImGui::TreePush("Bias reasons");
+
+		for (int i = 0; i < bias_reasons.size(); i++)
+		{
+			ImGui::Text(bias_reasons[i].c_str());
+			if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+				ImGuiRenderer::WrappingTooltip(hover_explanations[i].c_str());
+
+		}
+		ImGui::TreePop();
+
 	}
 	else
 		ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Unbiased");

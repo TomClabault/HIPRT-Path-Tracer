@@ -17,13 +17,10 @@
 #include "stb_image_write.h"
 
 // TODOs ReSTIR DI
-// - 1/Z brightening bias --> must be because the initial candidates aren't generated with visibility in the target function. This means that is we use visibility in the bias correction, we discard samples that could have been produced since the production of the samples doesn't use visibility. Is this correct tgouht? Why do we no have brightening bias issue with only one spatial reuse pass? And how to avoid brightening bais without having to use the very expensive visibility term in the target function of the initial candidates?
-//		What if it's about the target function in the spatial resampling not matching the bias correciton target function?
+// - bug with adaptive sampling is disabled but stop nosie threshold enabled --> restir di --> some pixels unconverge (get more and more red) even though the image looks super clean exactly at those pixels
 // - do a "Surface" class for holding the shading point, normal, etc... of a reservoir
 // - add envmap sampling to light samples with a probability (refactor envmap sampling in eval, sample and PDF functions)
 // - add second bounce direct light sampling strategy in imgui
-// - imgui bias correction mode
-// - imgui bias status of ReSTIR
 // - add sample rotation in spatial reuse to imgui
 // - add hammersley usage or not imgui for spatial reuse
 // - neighbor similiraty tessts, roughness, normal, depth
@@ -33,8 +30,6 @@
 // - pairwise mis
 // - allocate / deallocate restir reservoirs if using / not using restir
 // - feature to disable ReSTIR after a certain percentage of convergence --> we don't want to pay the full price of resampling and everything only for a few difficult isolated pixels (especially true with adaptive sampling where neighbors don't get sampled --> no new samples added to their reservoir --> no need to resample)
-// - bug when adaptive sampling is disabled but stop nosie threshold enabled --> restir di --> some pixels unconverge (get more and more red) even though the image looks super clean exactly at those pixels
-// - why is 5 spatial reuse passes still kind of noisy at the edges of the image? Shouldn't we be reusing from a good pixel at some point and no noise? top right of the white room for example
 // - camera ray jittering causes dark lines
 // - test/fix sampling lights inside dielectrics with ReSTIR DI
 // - driver crash at 0 spatial reuse pass
@@ -48,8 +43,6 @@
 // - take transmission color into account when direct sampling a light source that is inside a volume
 // - denoiser AOVs not accounting for transmission correctly since Disney 
 //	  - same with perfect reflection
-// - CPU renderer not converging ? Cornell_pbr + 1024 samples + debug pixel
-// - use visibility in target function RIS/ReSTIR DI does not seem to be applied properly in ImGui
 
 
 
