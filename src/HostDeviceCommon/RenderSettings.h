@@ -12,9 +12,6 @@
 
 struct RISSettings
 {
-	// Whether or not to use a visiblity term in the target function
-	// when resampling light candidates with RIS
-	bool use_visibility_in_target_function = false;
 	// Whether or not to use a geometry term in the target function when resampling
 	// light samples
 	bool geometry_term_in_target_function = false;
@@ -56,7 +53,9 @@ struct HIPRTRenderSettings
 	int sample_number = 0;
 
 	int samples_per_frame = 1;
-	int nb_bounces = 4;
+	// Maximum number of bounces of rays in the scene. 
+	// 1 is direct light only.
+	int nb_bounces = 1;
 
 	// Whether or not to "freeze" random number generation so that each frame uses
 	// exactly the same random number. This allows every ray to follow the exact
@@ -75,7 +74,7 @@ struct HIPRTRenderSettings
 	// (when interacting with the camera)
 	int render_low_resolution_scaling = 4;
 
-	int enable_adaptive_sampling = true;
+	int enable_adaptive_sampling = false;
 	// How many samples before the adaptive sampling actually kicks in.
 	// This is useful mainly for the per-pixel adaptive sampling method
 	// where you want to be sure that each pixel in the image has had enough

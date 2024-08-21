@@ -32,8 +32,8 @@
  * Those are simple defines to give names to the option values.
  * This allows the use of LSS_ONE_RANDOM_LIGHT_MIS (for example) instead of a hardcoded '2'
  */
-#define FALSE 0
-#define TRUE 1
+#define KERNEL_OPTION_FALSE 0
+#define KERNEL_OPTION_TRUE 1
 
 #define ISS_AUTOMATIC 0
 #define ISS_WITH_PRIORITIES 1
@@ -47,6 +47,13 @@
 
 #define ESS_NO_SAMPLING 0
 #define ESS_BINARY_SEARCH 1
+
+#define RESTIR_DI_BIAS_CORRECTION_1_OVER_M 0
+#define RESTIR_DI_BIAS_CORRECTION_1_OVER_Z 1
+#define RESTIR_DI_BIAS_CORRECTION_MIS_LIKE 2
+#define RESTIR_DI_BIAS_CORRECTION_MIS_LIKE_CONFIDENCE_WEIGHTS 3
+#define RESTIR_DI_BIAS_CORRECTION_MIS_GBH 4
+#define RESTIR_DI_BIAS_CORRECTION_MIS_GBH_CONFIDENCE_WEIGHTS 5
 
 #define GGX_NO_VNDF 0
 #define GGX_VNDF_SAMPLING 1
@@ -103,10 +110,6 @@
  *				when sampling the initial candidates with RIS
  */
 #define DirectLightSamplingStrategy LSS_RESTIR_DI
-#if DirectLightSamplingStrategy == LSS_RESTIR_DI
-// We need this define on the CPU side otherwise it will never be defined
-#define ReSTIR_DI_InitialCandidatesKernel
-#endif
 
 /**
  * What envmap sampling strategy to use
@@ -128,23 +131,23 @@
  * Only applies for pure RIS direct lighting strategy (i.e. not RIS used by ReSTIR
  * on the initial candidates pass for example)
  * 
- *	- TRUE or FALSE values are accepted. Self-explanatory
+ *	- KERNEL_OPTION_TRUE or KERNEL_OPTION_FALSE values are accepted. Self-explanatory
  */
-#define RISUseVisiblityTargetFunction FALSE
+#define RISUseVisiblityTargetFunction KERNEL_OPTION_FALSE
 
 /**
  * Whether or not to use a visibility term in the target function when resampling
  * samples in ReSTIR DI. This applies to all passes of ReSTIR DI.
  * 
- * In the context of efficiency, there's virtually no need to set this to TRUE.
+ * In the context of efficiency, there's virtually no need to set this to KERNEL_OPTION_TRUE.
  *
  * The cost of tracing yet an additional visibility ray when resampling
  * isn't worth it in terms of variance reduction. This option is basically only for
  * experimentation purposes.
  * 
- *	- TRUE or FALSE values are accepted. Self-explanatory
+ *	- KERNEL_OPTION_TRUE or KERNEL_OPTION_FALSE values are accepted. Self-explanatory
  */
-#define ReSTIR_DI_TargetFunctionVisibility FALSE
+#define ReSTIR_DI_TargetFunctionVisibility KERNEL_OPTION_FALSE
 
 /**
  * Whether or not to do a visibility check at the end of the initial candidates sampling.
@@ -152,9 +155,9 @@
  * This allows following ReSTIR passes (temporal and spatial) to only resample on samples
  * that are not occluded which improves quality quite a bit.
  * 
- *	- TRUE or FALSE values are accepted. Self-explanatory
+ *	- KERNEL_OPTION_TRUE or KERNEL_OPTION_FALSE values are accepted. Self-explanatory
  */
-#define ReSTIR_DI_DoVisibilityReuse TRUE
+#define ReSTIR_DI_DoVisibilityReuse KERNEL_OPTION_TRUE
 
 /**
  * Whether or not to use a visibility term in the MIS weights (MIS-like weights,
@@ -164,12 +167,49 @@
  * if using the generalized balance heuristics (without pairwise-MIS)
  * 
  * To guarantee unbiasedness, this needs to be true. A small amount of energy loss
- * may be observed if this value is FALSE but the performance cost of the spatial
+ * may be observed if this value is KERNEL_OPTION_FALSE but the performance cost of the spatial
  * reuse will be reduced noticeably
  * 
- *	- TRUE or FALSE values are accepted. Self-explanatory
+ *	- KERNEL_OPTION_TRUE or KERNEL_OPTION_FALSE values are accepted. Self-explanatory
  */
-#define ReSTIR_DI_SpatialReuseBiasUseVisiblity TRUE
+#define ReSTIR_DI_SpatialReuseBiasUseVisiblity KERNEL_OPTION_TRUE
+
+/**
+ * What bias correction weights to use when resampling neighbors (temporal / spatial)
+ * 
+ *  - RESTIR_DI_BIAS_CORRECTION_1_OVER_M
+ *		Very simple biased weights as described in the 2019 paper (Eq. 6).
+ *		Those weights are biased because they do not account for cases where
+ *		we resample a sample that couldn't have been produced by some neighbors. 
+ *		The bias shows up as darkening, mostly at object boundaries. In GRIS vocabulary, 
+ *		this type of weights can be seen as confidence weights alone c_i / sum(c_j)
+ * 
+ *  - RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
+ *		Simple unbiased weights as described in the 2019 paper (Eq. 16 and Section 4.3)
+ *		Those weights are unbiased but can have **extremely** bad variance when a neighbor being resampled
+ *		has a very low target function (when the neighbor is a glossy surface for example).
+ *		See Fig. 7 of the 2019 paper.
+ * 
+ *  - RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
+ *		Unbiased weights as proposed by Eq. 22 of the paper. Way better than 1/Z in terms of variance
+ *		and still unbiased.
+ * 
+ *  - RESTIR_DI_BIAS_CORRECTION_MIS_LIKE_CONFIDENCE_WEIGHTS
+ *		Unbiased weights as proposed by Eq. 22 of the paper but with confidence weights on top of it. This allows
+ *		favoring samples that are more trustworthy i.e. samples that were produced from resampling a lot of other samples
+ *		(reservoirs that have a large M value) and this helps reduce variance.
+ * 
+ *  - RESTIR_DI_BIAS_CORRECTION_MIS_GBH
+ *		Unbiased MIS weights that use the generalized balance heuristic. Very good variance reduction but O(N^2) complexity,
+		N being the number of neighbors resampled.
+ *		Eq. 36 of the 2022 Generalized Resampled Importance Sampling paper.
+ * 
+ *  - RESTIR_DI_BIAS_CORRECTION_MIS_GBH_CONFIDENCE_WEIGHTS
+ *		Same as RESTIR_DI_BIAS_CORRECTION_MIS_GBH but with confidence weights in them. Eq. 5.11 of
+ *		2023, "A Gentle Introduction to ReSTIR". Should have lower variance than without confidence weights
+ *		due to favoring better samples.
+ */
+#define ReSTIR_DI_BiasCorrectionWeights RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
 
 /**
  * What sampling strategy to use for thd GGX NDF

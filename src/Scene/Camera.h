@@ -17,7 +17,9 @@
 #include <math.h>
 
 /**
- * Camera class meant for being manipulated through used interactions etc... (hence the attributes translation and rotation for example)
+ * Camera class meant for being manipulated through used interactions
+ * etc... (hence the attributes translation and rotation for example)
+ * 
  * The curated camera class that is meant for being used by the shaders is HIPRTCamera
  */
 struct Camera
@@ -42,10 +44,14 @@ struct Camera
 
     glm::mat4x4 projection_matrix;
 
+    // Whether or not to jitter rays direction for anti-aliasing during the rendering
+    bool do_jittering = true;
+
     // Vertical FOV in radians
     float vertical_fov = M_PI / 2.0f;
     float near_plane = 0.1f;
     float far_plane = 1000.0f;
+
     // Camera movement speed. In world unit per second
     float camera_movement_speed = 1.0f;
 

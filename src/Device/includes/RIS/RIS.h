@@ -133,7 +133,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
       
                 target_function = (bsdf_color * light_source_info.emission * cosine_at_evaluated_point * geometry_term).luminance();
 
-#if RISUseVisiblityTargetFunction == TRUE
+#if RISUseVisiblityTargetFunction == KERNEL_OPTION_TRUE
                 if (!render_data.render_settings.render_low_resolution)
                 {
                     // Only doing visiblity if we're render at low resolution

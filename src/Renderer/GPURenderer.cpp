@@ -53,7 +53,6 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
 
 	m_restir_initial_candidates_pass.set_kernel_file_path(GPURenderer::KERNEL_FILES[2]);
 	m_restir_initial_candidates_pass.set_kernel_function_name(GPURenderer::KERNEL_FUNCTIONS[2]);
-	m_restir_initial_candidates_pass.add_additional_macro_for_compilation("ReSTIR_DI_InitialCandidatesKernel", 1);
 
 	m_restir_spatial_reuse_pass.set_kernel_file_path(GPURenderer::KERNEL_FILES[3]);
 	m_restir_spatial_reuse_pass.set_kernel_function_name(GPURenderer::KERNEL_FUNCTIONS[3]);
@@ -179,6 +178,7 @@ void GPURenderer::render()
 			for (int spatial_reuse_pass = 0; spatial_reuse_pass < m_render_settings.restir_di_settings.spatial_pass.number_of_passes; spatial_reuse_pass++)
 			{
 				render_data.random_seed = m_rng.xorshift32();
+				render_data.render_settings.restir_di_settings.spatial_pass.spatial_pass_index = spatial_reuse_pass;
 
 				// Reading from the initial_candidates reservoir / final_reservoir one spatial pass out of two.
 				// Basically pong-ponging between the two buffers
@@ -576,7 +576,7 @@ void GPURenderer::update_materials(std::vector<RendererMaterial>& materials)
 	m_hiprt_scene.materials_buffer.upload_data(materials.data());
 }
 
-const Camera& GPURenderer::get_camera() const
+Camera& GPURenderer::get_camera()
 {
 	return m_camera;
 }

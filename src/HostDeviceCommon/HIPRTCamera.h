@@ -18,6 +18,8 @@ struct HIPRTCamera
     float4x4 inverse_view;
     float4x4 inverse_projection;
 
+    bool do_jittering = true;
+
     HIPRT_HOST_DEVICE hiprtRay get_camera_ray(float x, float y, int2 res)
     {
         float x_ndc_space = x / res.x * 2 - 1;

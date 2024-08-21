@@ -32,9 +32,14 @@ public:
 	void set_render_window(RenderWindow* renderer);
 
 	void draw_imgui_interface();
+
 	void draw_render_settings_panel();
+	void draw_camera_panel();
 	void draw_environment_panel();
+
 	void draw_sampling_panel();
+	void display_ReSTIR_DI_bias_status(std::shared_ptr<GPUKernelCompilerOptions> kernel_options);
+
 	void draw_objects_panel();
 	void draw_denoiser_panel();
 	void draw_post_process_panel();

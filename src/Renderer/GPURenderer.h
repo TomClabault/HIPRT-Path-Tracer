@@ -107,7 +107,7 @@ public:
 	WorldSettings& get_world_settings();
 	HIPRTRenderData get_render_data();
 
-	const Camera& get_camera() const;
+	Camera& get_camera();
 
 	void set_scene(const Scene& scene);
 	void set_camera(const Camera& camera);

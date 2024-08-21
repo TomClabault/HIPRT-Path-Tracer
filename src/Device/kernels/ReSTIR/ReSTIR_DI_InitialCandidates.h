@@ -21,7 +21,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
     // Pushing the intersection point outside the surface (if we're already outside)
     // or inside the surface (if we're inside the surface)
     // We'll use that intersection point as the origin of our shadow rays
-    bool inside_surface = hippt::dot(view_direction, closest_hit_info.geometric_normal) < 0;
+    bool inside_surface = false;// hippt::dot(view_direction, closest_hit_info.geometric_normal) < 0;
     float inside_surface_multiplier = inside_surface ? -1.0f : 1.0f;
     float3 evaluated_point = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f * inside_surface_multiplier;
 
@@ -71,7 +71,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
 
                 target_function = (bsdf_color * light_source_info.emission * cosine_at_evaluated_point * geometry_term).luminance();
 
-#if ReSTIR_DI_TargetFunctionVisibility == TRUE
+#if ReSTIR_DI_TargetFunctionVisibility == KERNEL_OPTION_TRUE
                 if (!render_data.render_settings.render_low_resolution)
                 {
                     // Only doing visiblity if we're render at low resolution
@@ -197,11 +197,19 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
     }
 
     reservoir.end();
+    // There's no need to keep M > 1 here, if you have 4 light candidates and 1 BSDF candidates, that's 5 samples.
+    // But if you divide everyone by 5, everything stays correct. However, this avoids too fast of an exponentiation
+    // of M with spatial and temporal reuse so that's cool
+    reservoir.M = 1;
+
     return reservoir;
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE void visibility_reuse(const HIPRTRenderData& render_data, ReSTIRDIReservoir& reservoir, float3 shading_point)
 {
+    if (reservoir.UCW == 0.0f)
+        return;
+
     float distance_to_light;
     float3 sample_direction = reservoir.sample.point_on_light_source - shading_point;
     sample_direction /= (distance_to_light = hippt::length(sample_direction));
@@ -261,7 +269,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_InitialCandidates(HIPRTRenderData
     // Producing and storing the reservoir
     ReSTIRDIReservoir initial_candidates_reservoir = sample_initial_candidates(render_data, ray_payload, hit_info, view_direction, random_number_generator);
 
-#if ReSTIR_DI_DoVisibilityReuse == TRUE
+#if ReSTIR_DI_DoVisibilityReuse == KERNEL_OPTION_TRUE
     visibility_reuse(render_data, initial_candidates_reservoir, hit_info.inter_point + hit_info.shading_normal * 1.0e-4f);
 #endif
 

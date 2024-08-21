@@ -118,11 +118,17 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
         seed = wang_hash((pixel_index + 1) * (render_data.render_settings.sample_number + 1));
     Xorshift32Generator random_number_generator(seed);
 
-    //Jittered around the center
-    float x_jittered = (x + 0.5f) + random_number_generator() - 1.0f;
-    float y_jittered = (y + 0.5f) + random_number_generator() - 1.0f;
+    // Direction to the center of the pixel
+    float x_ray_point_direction = (x + 0.5f);
+    float y_ray_point_direction = (y + 0.5f);
+    if (camera.do_jittering)
+    {
+        // Jitter randomly around the center
+        x_ray_point_direction += random_number_generator() - 1.0f;
+        y_ray_point_direction += random_number_generator() - 1.0f;
+    }
 
-    hiprtRay ray = camera.get_camera_ray(x_jittered, y_jittered, res);
+    hiprtRay ray = camera.get_camera_ray(x_ray_point_direction, y_ray_point_direction, res);
     RayPayload ray_payload;
 
     HitInfo closest_hit_info;

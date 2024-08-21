@@ -46,7 +46,7 @@ void ImGuiRenderer::draw_imgui_interface()
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 
 	ImGuiIO& io = ImGui::GetIO();
-	// ImGui::ShowDemoWindow();
+	ImGui::ShowDemoWindow();
 
 	ImGui::Begin("Settings");
 
@@ -109,6 +109,7 @@ void ImGuiRenderer::draw_imgui_interface()
 	ImGui::PushItemWidth(16 * ImGui::GetFontSize());
 
 	draw_render_settings_panel();
+	draw_camera_panel();
 	draw_environment_panel();
 	draw_sampling_panel();
 	draw_objects_panel();
@@ -298,6 +299,20 @@ void ImGuiRenderer::draw_render_settings_panel()
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 }
 
+void ImGuiRenderer::draw_camera_panel()
+{
+	if (ImGui::CollapsingHeader("Camera"))
+	{
+		ImGui::TreePush("Camera tree");
+
+		if (ImGui::Checkbox("Do ray jittering", &m_renderer->get_camera().do_jittering))
+			m_render_window->set_render_dirty(true);
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::TreePop();
+	}
+}
+
 void ImGuiRenderer::draw_environment_panel()
 {
 	bool render_made_piggy = false;
@@ -404,6 +419,7 @@ void ImGuiRenderer::draw_sampling_panel()
 			}
 			ImGui::EndDisabled();
 
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::TreePop();
 		}
 
@@ -434,9 +450,10 @@ void ImGuiRenderer::draw_sampling_panel()
 
 			case LSS_RIS_BSDF_AND_LIGHT:
 			{
-				if (ImGui::Checkbox("Use visibility in RIS target function", &render_settings.ris_settings.use_visibility_in_target_function))
+				static bool use_visibility_ris_target_function = RISUseVisiblityTargetFunction;
+				if (ImGui::Checkbox("Use visibility in RIS target function", &use_visibility_ris_target_function))
 				{
-					kernel_options->set_macro(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, render_settings.ris_settings.use_visibility_in_target_function ? 1 : 0);
+					kernel_options->set_macro(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, use_visibility_ris_target_function ? 1 : 0);
 					m_renderer->recompile_kernels();
 
 					m_render_window->set_render_dirty(true);
@@ -470,6 +487,8 @@ void ImGuiRenderer::draw_sampling_panel()
 
 			case LSS_RESTIR_DI:
 			{
+				display_ReSTIR_DI_bias_status(kernel_options);
+
 				ImGui::SeparatorText("Target Function Settings");
 				ImGui::TreePush("ReSTIR DI - Target Function Settings Tree");
 				{
@@ -518,7 +537,7 @@ void ImGuiRenderer::draw_sampling_panel()
 				ImGui::TreePush("ReSTIR DI - Visibility Reuse Pass Tree");
 				{
 					static bool do_visibility_reuse = ReSTIR_DI_DoVisibilityReuse;
-					if (ImGui::Checkbox("Use visibility in bias correction", &do_visibility_reuse))
+					if (ImGui::Checkbox("Do visibility reuse", &do_visibility_reuse))
 					{
 						kernel_options->set_macro(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE, do_visibility_reuse ? 1 : 0);
 						m_renderer->recompile_kernels();
@@ -560,14 +579,29 @@ void ImGuiRenderer::draw_sampling_panel()
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
 					ImGui::SeparatorText("Bias correction");
 
-					static bool bias_correction_use_visibility = ReSTIR_DI_SpatialReuseBiasUseVisiblity;
-					if (ImGui::Checkbox("Use visibility in bias correction", &bias_correction_use_visibility))
+					const char* bias_correction_mode_items[] = { "- 1/M Weights (biased)", "- 1/Z Weights (Unbiased)", "- MIS-like Weights (Unbiased)", "- MIS-like Weights & CW (Unbiased)", "- MIS Weights GBH (Unbiased)", "- MIS Weights GBH & CW (Unbiased)" };
+					if (ImGui::Combo("Bias Correction Weights", kernel_options->get_pointer_to_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS), bias_correction_mode_items, IM_ARRAYSIZE(bias_correction_mode_items)))
 					{
-						kernel_options->set_macro(GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_BIAS_CORRECTION_USE_VISIBILITY, bias_correction_use_visibility? 1 : 0);
 						m_renderer->recompile_kernels();
 
 						m_render_window->set_render_dirty(true);
 					}
+
+					// No visibility bias correction for 1/M weights
+					bool bias_correction_visibility_disabled = kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_1_OVER_M;
+					static bool bias_correction_use_visibility = ReSTIR_DI_SpatialReuseBiasUseVisiblity;
+					ImGui::BeginDisabled(bias_correction_visibility_disabled);
+					if (ImGui::Checkbox("Use visibility in bias correction", &bias_correction_use_visibility))
+					{
+						kernel_options->set_macro(GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_BIAS_CORRECTION_USE_VISIBILITY, bias_correction_use_visibility ? 1 : 0);
+						m_renderer->recompile_kernels();
+
+						m_render_window->set_render_dirty(true);
+					}
+					if (bias_correction_visibility_disabled)
+						if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+							ImGuiRenderer::WrappingTooltip("Visibility bias correction cannot be used with 1/M weights.");
+					ImGui::EndDisabled();
 
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
 					ImGui::TreePop();
@@ -602,6 +636,35 @@ void ImGuiRenderer::draw_sampling_panel()
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();
 	}
+}
+
+void ImGuiRenderer::display_ReSTIR_DI_bias_status(std::shared_ptr<GPUKernelCompilerOptions> kernel_options)
+{
+	ImGui::Text("Status: "); ImGui::SameLine();
+
+	bool is_biased = false;
+	std::string bias_explanation = "";
+	if (kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_1_OVER_M)
+	{
+		is_biased = true;
+		bias_explanation += "- Using 1/M biased weights.\n";
+	}
+
+	if (kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE) == KERNEL_OPTION_TRUE && kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_BIAS_CORRECTION_USE_VISIBILITY) == KERNEL_OPTION_FALSE)
+	{
+		is_biased = true;
+		bias_explanation += "- Using visibility reuse without visibility in bias correction\n";
+	}
+
+	if (is_biased)
+	{
+		ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Biased");
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+			ImGuiRenderer::WrappingTooltip(bias_explanation.c_str());
+	}
+	else
+		ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Unbiased");
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 }
 
 void ImGuiRenderer::draw_objects_panel()

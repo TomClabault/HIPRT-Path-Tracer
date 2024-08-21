@@ -29,8 +29,8 @@
 // you're measuring the coordinates of the pixel with (0, 0) in the bottom left corner
 #define DEBUG_FLIP_Y 0
 // Coordinates of the pixel to render
-#define DEBUG_PIXEL_X 92
-#define DEBUG_PIXEL_Y 198
+#define DEBUG_PIXEL_X 1222
+#define DEBUG_PIXEL_Y 461
 // If 1, a square of DEBUG_NEIGHBORHOOD_SIZE x DEBUG_NEIGHBORHOOD_SIZE pixels
 // will be rendered around the pixel to debug (given by DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y). The pixel of interest is going to be rendered first so you
@@ -243,6 +243,7 @@ void CPURenderer::ReSTIR_DI_spatial_reuse_pass()
 {
     for (int spatial_reuse_pass = 0; spatial_reuse_pass < m_render_data.render_settings.restir_di_settings.spatial_pass.number_of_passes; spatial_reuse_pass++)
     {
+        m_render_data.render_settings.restir_di_settings.spatial_pass.spatial_pass_index = spatial_reuse_pass;
         // Reading from the initial_candidates reservoir / final_reservoir one spatial pass out of two.
         // Basically pong-ponging between the two buffers
         // This is to avoid the concurrency issues that we would have if we were to read and store from the same buffer:
