@@ -196,7 +196,11 @@ void DisplayViewSystem::update_display_program_uniforms(const DisplayViewSystem*
 	{
 		std::vector<ColorRGB32F> color_stops = { ColorRGB32F(0.0f, 0.0f, 1.0f), ColorRGB32F(0.0f, 1.0f, 0.0f), ColorRGB32F(1.0f, 0.0f, 0.0f) };
 
-		float min_val = (float)render_settings.adaptive_sampling_min_samples;
+		// If we don't have adaptive sampling enabled, we want to display the convergence
+		// of pixels as soon as possible so we set the min_val to 0. Otherwise, if we're using
+		// adaptive sampling, we only have the convergence information after the minimum
+		// adaptive sampling samples have been reached so we set that as the min_val
+		float min_val = render_settings.enable_adaptive_sampling ? (float)render_settings.adaptive_sampling_min_samples : 1;
 		float max_val = std::max((float)render_settings.sample_number, min_val);
 
 		program->set_uniform("u_texture", DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);

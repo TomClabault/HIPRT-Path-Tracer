@@ -98,7 +98,7 @@ struct AuxiliaryBuffers
 	// noise threshold. If this value is equal to the number of pixels of the
 	// framebuffer, then all pixels have converged according to the given
 	// noise threshold.
-	AtomicType<unsigned int>* stop_noise_threshold_count = nullptr;
+	AtomicType<unsigned int>* stop_noise_threshold_converged_count = nullptr;
 
 	// Pointers to the buffers allocated on the GPU. These pointers
 	// exist basically only to be reset in reset_render(). They should not

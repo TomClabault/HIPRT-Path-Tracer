@@ -92,23 +92,37 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
             // do_update_status_buffers is only true on the last sample of a frame
             // 
             // Indicating that this pixel has reached the threshold in render_settings.stop_noise_threshold
-            hippt::atomic_add(render_data.aux_buffers.stop_noise_threshold_count, 1u);
+            hippt::atomic_add(render_data.aux_buffers.stop_noise_threshold_converged_count, 1u);
         }
     }
 
-    if (!sampling_needed)
+    if (render_data.render_settings.has_access_to_adaptive_sampling_buffers())
     {
-        // Because when displaying the framebuffer, we're dividing by the number of samples to 
-        // rescale the color of a pixel, we're going to have a problem if some pixels stopped samping
-        // at 10 samples while the other pixels are still being sampled and have 100 samples for example. 
-        // The pixels that only received 10 samples are going to be divided by 100 at display time, making them
-        // appear too dark.
-        // We're rescaling the color of the pixels that stopped sampling here for correct display
+        if (!sampling_needed)
+        {
+            // Because when displaying the framebuffer, we're dividing by the number of samples to 
+            // rescale the color of a pixel, we're going to have a problem if some pixels stopped samping
+            // at 10 samples while the other pixels are still being sampled and have 100 samples for example. 
+            // The pixels that only received 10 samples are going to be divided by 100 at display time, making them
+            // appear too dark.
+            // We're rescaling the color of the pixels that stopped sampling here for correct display
 
-        render_data.buffers.pixels[pixel_index] = render_data.buffers.pixels[pixel_index] / render_data.render_settings.sample_number * (render_data.render_settings.sample_number + 1);
-        render_data.aux_buffers.pixel_active[pixel_index] = false;
+            render_data.buffers.pixels[pixel_index] = render_data.buffers.pixels[pixel_index] / render_data.render_settings.sample_number * (render_data.render_settings.sample_number + 1);
+            render_data.aux_buffers.pixel_active[pixel_index] = false;
 
-        return;
+            return;
+        }
+        else
+        {
+            bool adaptive_sampling_still_active = render_data.render_settings.enable_adaptive_sampling && sampling_needed;
+            bool stop_noise_threshold_not_reached = !pixel_converged && render_data.render_settings.stop_pixel_noise_threshold > 0.0f;
+            if (adaptive_sampling_still_active || stop_noise_threshold_not_reached)
+                //else if( render_data.render_settings.has_access_to_adaptive_sampling_buffers())
+                    // We have the pixel stop noise threshold enabled and the pixel hasn't converged, meaning
+                    // that we should increase the number of relevant sample count for that pixel
+                    // so that the adaptive sampling heatmap can display the convergence properly
+                render_data.aux_buffers.pixel_sample_count[pixel_index]++;
+        }
     }
 
     unsigned int seed;

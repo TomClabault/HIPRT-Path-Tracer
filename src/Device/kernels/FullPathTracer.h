@@ -269,14 +269,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
     render_data.aux_buffers.still_one_ray_active[0] = 1;
 
     if (render_data.render_settings.has_access_to_adaptive_sampling_buffers())
-    {
         // We can only use these buffers if the adaptive sampling or the stop noise threshold is enabled.
         // Otherwise, the buffers are destroyed to save some VRAM so they are not accessible
         render_data.aux_buffers.pixel_squared_luminance[pixel_index] += squared_luminance_of_samples;
-
-        // TODO fix if we can have more than 1 samples per frame since passes refactor
-        render_data.aux_buffers.pixel_sample_count[pixel_index]++;
-    }
 
     render_data.buffers.pixels[pixel_index] += final_color;
 

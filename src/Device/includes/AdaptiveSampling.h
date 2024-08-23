@@ -43,14 +43,25 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool adaptive_sampling(const HIPRTRenderData& ren
         float average_luminance;
         float confidence_interval;
         pixel_sample_count = aux_buffers.pixel_sample_count[pixel_index];
-        confidence_interval = get_pixel_confidence_interval(render_data, pixel_index, pixel_sample_count, average_luminance);
+        if (pixel_sample_count < 0)
+        {
+            // Pixel is deactivated, it has converged
+            pixel_converged = true;
+        }
+        else
+        {
+            confidence_interval = get_pixel_confidence_interval(render_data, pixel_index, pixel_sample_count, average_luminance);
 
-        // The value of pixel_converged will be used outside of this function
-        pixel_converged =
-            // Converged enough
-            (confidence_interval < render_settings.stop_pixel_noise_threshold * average_luminance)
-            // At least 2 samples because the maths break down at 1 sample
-            && (render_settings.sample_number > 1);
+            // The value of pixel_converged will be used outside of this function
+            pixel_converged =
+                // Converged enough
+                (confidence_interval < render_settings.stop_pixel_noise_threshold * average_luminance)
+                // At least 2 samples because we can't evaluate the variance with only 1 sample
+                && (render_settings.sample_number > 1);
+
+            if (pixel_converged)
+                aux_buffers.pixel_sample_count[pixel_index] = -pixel_sample_count;
+        }
     }
 
     if (render_settings.enable_adaptive_sampling)

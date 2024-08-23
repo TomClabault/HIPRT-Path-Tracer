@@ -17,7 +17,6 @@
 #include "stb_image_write.h"
 
 // TODOs ReSTIR DI
-// - bug with adaptive sampling is disabled but stop nosie threshold enabled --> restir di --> some pixels unconverge (get more and more red) even though the image looks super clean exactly at those pixels
 // - do a "Surface" class for holding the shading point, normal, etc... of a reservoir
 // - add envmap sampling to light samples with a probability (refactor envmap sampling in eval, sample and PDF functions)
 // - add second bounce direct light sampling strategy in imgui
@@ -30,9 +29,11 @@
 // - pairwise mis
 // - allocate / deallocate restir reservoirs if using / not using restir
 // - feature to disable ReSTIR after a certain percentage of convergence --> we don't want to pay the full price of resampling and everything only for a few difficult isolated pixels (especially true with adaptive sampling where neighbors don't get sampled --> no new samples added to their reservoir --> no need to resample)
-// - camera ray jittering causes dark lines
 // - test/fix sampling lights inside dielectrics with ReSTIR DI
 // - driver crash at 0 spatial reuse pass
+// - do not do initial candidates / spatial reuse and everything if the pixel is inactive (adaptive sampling)
+// - driver crash on the white room love
+// - camera ray jittering causes dark lines
 
 // TODO bugs:
 // - memory leak with OpenGL when resizing the window?
@@ -43,6 +44,8 @@
 // - take transmission color into account when direct sampling a light source that is inside a volume
 // - denoiser AOVs not accounting for transmission correctly since Disney 
 //	  - same with perfect reflection
+// - heatmap with adaptive sampling and only pixel stopnoise threshold not displaying the same heatmap (particularly in shadows in the white room)
+// - Start render without adaptive sampling --> enable pixel noise threshold --> the convergence counter is broken and starts from when we enabled pixel noise threshold instead of taking all pixels that have converged into account
 
 
 

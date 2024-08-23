@@ -442,7 +442,7 @@ HIPRTRenderData GPURenderer::get_render_data()
 
 	render_data.aux_buffers.still_one_ray_active = m_still_one_ray_active_buffer.get_device_pointer();
 	render_data.aux_buffers.pixel_active = m_pixel_active.get_device_pointer();
-	render_data.aux_buffers.stop_noise_threshold_count = reinterpret_cast<AtomicType<unsigned int>*>(m_pixels_converged_count_buffer.get_device_pointer());
+	render_data.aux_buffers.stop_noise_threshold_converged_count = reinterpret_cast<AtomicType<unsigned int>*>(m_pixels_converged_count_buffer.get_device_pointer());
 
 	render_data.g_buffer.materials = m_g_buffer.materials.get_device_pointer();
 	render_data.g_buffer.geometric_normals = m_g_buffer.geometric_normals.get_device_pointer();
