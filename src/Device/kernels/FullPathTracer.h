@@ -231,7 +231,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
                             // We're also getting the skysphere radiance for perfectly specular BRDF since those
                             // are not importance sampled.
 
-                            skysphere_color = sample_environment_map_from_direction(render_data.world_settings, ray.direction);
+                            skysphere_color = eval_environment_map_no_pdf(render_data.world_settings, ray.direction);
 
 #if EnvmapSamplingStrategy == ESS_NO_SAMPLING
                             // If we don't have envmap sampling, we're only going to unscale on
