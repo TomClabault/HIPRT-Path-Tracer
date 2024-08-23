@@ -17,7 +17,6 @@
 #include "stb_image_write.h"
 
 // TODOs ReSTIR DI
-// - do a "Surface" class for holding the shading point, normal, etc... of a reservoir
 // - add envmap sampling to light samples with a probability (refactor envmap sampling in eval, sample and PDF functions)
 // - add second bounce direct light sampling strategy in imgui
 // - add sample rotation in spatial reuse to imgui
