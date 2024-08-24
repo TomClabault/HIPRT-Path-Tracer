@@ -29,8 +29,10 @@ public:
     Image32Bit& get_framebuffer();
 
     void render();
+    void update_render_data(int sample);
     void camera_rays_pass();
     void ReSTIR_DI_initial_candidates_pass();
+    void ReSTIR_DI_temporal_candidates_pass();
     void ReSTIR_DI_spatial_reuse_pass();
     void ReSTIR_DI_spatial_reuse_pass_internal();
     void tracing_pass();
@@ -67,9 +69,10 @@ private:
     // Random number generator for given a random seed to the threads at each sample
     Xorshift32Generator m_rng;
 
-    std::vector<ReSTIRDIReservoir> m_restir_initial_reservoirs;
-    std::vector<ReSTIRDIReservoir> m_restir_temporal_reservoirs;
-    std::vector<ReSTIRDIReservoir> m_restir_final_reservoirs;
+    std::vector<ReSTIRDIReservoir> m_restir_initial_candidates_reservoirs;
+    std::vector<ReSTIRDIReservoir> m_restir_spatial_output_reservoirs_1;
+    std::vector<ReSTIRDIReservoir> m_restir_spatial_output_reservoirs_2;
+    ReSTIRDIReservoir* m_last_spatial_output_reservoirs;
 
     std::vector<Triangle> m_triangle_buffer;
     std::shared_ptr<BVH> m_bvh;

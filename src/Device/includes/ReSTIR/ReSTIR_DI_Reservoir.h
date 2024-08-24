@@ -9,10 +9,14 @@
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/Xorshift.h"
 
+#ifndef __KERNELCC__
+#include "Utils/Utils.h"
+#endif
+
 struct ReSTIRDISample
 {
     // Global primitive index corresponding to the emissive triangle sampled
-    int emissive_triangle_index;
+    int emissive_triangle_index = -1;
     float3 point_on_light_source = { 0, 0, 0 };
 
     float target_function = 0.0f;
@@ -77,7 +81,52 @@ struct ReSTIRDIReservoir
             UCW = 1.0f / sample.target_function * weight_sum * normalization_numerator / normalization_denominator;
     }
 
-    unsigned int M = 0;
+    HIPRT_HOST_DEVICE HIPRT_INLINE void sanity_check(int2 pixel_coords)
+    {
+#ifndef __KERNELCC__
+#if !defined(NDEBUG)
+        // Only sanity checking on the CPU and in debug mode
+
+        if (M < 0)
+        {
+            std::cerr << "Negative reservoir M value at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << M << std::endl;
+            Utils::debugbreak();
+        }
+        else if (std::isnan(weight_sum) || std::isinf(weight_sum))
+        {
+            std::cerr << "NaN or inf reservoir wieght_sum at pixel (" << pixel_coords.x << ", " << pixel_coords.y << ")" << std::endl;
+            Utils::debugbreak();
+        }
+        else if (weight_sum < 0)
+        {
+            std::cerr << "Negative reservoir wieght_sum at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << weight_sum << std::endl;
+            Utils::debugbreak();
+        }
+        else if (std::isnan(UCW) || std::isinf(UCW))
+        {
+            std::cerr << "NaN or inf reservoir UCW at pixel (" << pixel_coords.x << ", " << pixel_coords.y << ")" << std::endl;
+            Utils::debugbreak();
+        }
+        else if (UCW < 0)
+        {
+            std::cerr << "Negative reservoir UCW at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << UCW << std::endl;
+            Utils::debugbreak();
+        }
+        else if (std::isnan(sample.target_function) || std::isinf(sample.target_function))
+        {
+            std::cerr << "NaN or inf reservoir sample.target_function at pixel (" << pixel_coords.x << ", " << pixel_coords.y << ")" << std::endl;
+            Utils::debugbreak();
+        }
+        else if (sample.target_function < 0)
+        {
+            std::cerr << "Negative reservoir sample.target_function at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << sample.target_function << std::endl;
+            Utils::debugbreak();
+        }
+#endif
+#endif
+    }
+
+    int M = 0;
     // TODO weight sum is never used at the same time as UCW so only one variable can be used for both to save space
     float weight_sum = 0.0f;
     float UCW = 0.0f;

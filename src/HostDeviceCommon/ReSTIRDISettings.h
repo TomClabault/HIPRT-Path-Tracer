@@ -20,17 +20,38 @@ struct InitialCandidatesSettings
 	ReSTIRDIReservoir* output_reservoirs = nullptr;
 };
 
+struct TemporalPassSettings
+{
+	bool do_temporal_reuse_pass = true;
+
+	// The temporal reuse pass resamples the initial candidates as well as the last frame reservoirs which
+	// are accessed through this pointer
+	ReSTIRDIReservoir* input_reservoirs = nullptr;
+	// Buffer that holds the output of the temporal reuse pass
+	ReSTIRDIReservoir* output_reservoirs = nullptr;
+};
+
 struct SpatialPassSettings
 {
 	// How many spatial reuse pass to perform
 	int number_of_passes = 1;
-	// What spatial pass are we currently doing?
-	// Takes values in [0, number_of_passes - 1]
-	int spatial_pass_index = 0;
 	// The radius within which neighbor are going to be reused spatially
 	int spatial_reuse_radius = 32;
 	// How many neighbors to reuse during the spatial pass
 	int spatial_reuse_neighbor_count = 5;
+
+	// When finalizing the reservoir in the spatial reuse pass, what value
+	// to cap the reservoirs's M value to.
+	//
+	// The point of this parameter is to avoid too much correlation between frames if using
+	// a bias correction that uses confidence weights. Without M-capping, the M value of a reservoir
+	// will keep growing exponentially through temporal and spatial reuse and when that exponentially
+	// grown M value is used in confidence weights, it results in new samples being very unlikely 
+	// to be chosen which in turn results in non-convergence since always the same sample is evaluated
+	// for a given pixel.
+	//
+	// A M-cap value between 5 - 30 is usually good
+	int m_cap = 10;
 
 	// Buffer that contains the input reservoirs for the spatial reuse pass
 	ReSTIRDIReservoir* input_reservoirs = nullptr;
@@ -49,6 +70,8 @@ struct ReSTIRDISettings
 {
 	// Settings for the initial candidates generation pass
 	InitialCandidatesSettings initial_candidates;
+	// Settings for the temporal reuse pass
+	TemporalPassSettings temporal_pass;
 	// Settings for the spatial reuse pass
 	SpatialPassSettings spatial_pass;
 	// Settings for the target function used in all passes of ReSTIR DI

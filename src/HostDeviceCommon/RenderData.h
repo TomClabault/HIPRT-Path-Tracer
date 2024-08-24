@@ -8,6 +8,8 @@
 
 #include "Device/includes/ReSTIR/ReSTIR_DI_Reservoir.h"
 #include "Device/includes/GBuffer.h"
+
+#include "HostDeviceCommon/HIPRTCamera.h"
 #include "HostDeviceCommon/Material.h"
 #include "HostDeviceCommon/Math.h"
 #include "HostDeviceCommon/RenderSettings.h"
@@ -108,7 +110,7 @@ struct AuxiliaryBuffers
 	// 'temporal_pass' and 'spatial_pass' settings
 	ReSTIRDIReservoir* initial_reservoirs = nullptr;
 	ReSTIRDIReservoir* temporal_pass_output_reservoirs = nullptr;
-	ReSTIRDIReservoir* final_reservoirs = nullptr;
+	ReSTIRDIReservoir* spatial_reuse_output_1 = nullptr;
 };
 
 enum AmbientLightType
@@ -170,10 +172,15 @@ struct HIPRTRenderData
 
 	RenderBuffers buffers;
 	AuxiliaryBuffers aux_buffers;
-	WorldSettings world_settings;
 	GBuffer g_buffer;
 
 	HIPRTRenderSettings render_settings;
+	WorldSettings world_settings;
+
+	// Camera for the current frame
+	HIPRTCamera current_camera;
+	// Camera of the last frame
+	HIPRTCamera prev_camera;
 
 	CPUData cpu_only;
 };

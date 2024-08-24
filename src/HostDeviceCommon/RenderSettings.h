@@ -24,6 +24,10 @@ struct RISSettings
 
 struct HIPRTRenderSettings
 {
+	// If true, the camera ray kernel will reset all buffers to their default values.
+	// This is mainly useful for the first frame of the render
+	bool need_to_reset = true;
+
 	// If true, then the kernels are allowed to modify the status buffers (how many pixels have converged so far, ...)
 	// 
 	// Why is this useful?

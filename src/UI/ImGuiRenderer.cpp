@@ -30,6 +30,20 @@ void ImGuiRenderer::WrappingTooltip(const std::string& text)
 	ImGui::EndTooltip();
 }
 
+void ImGuiRenderer::ShowHelpMarker(const char* desc)
+{
+	ImGui::SameLine();
+	ImGui::TextDisabled("(?)");
+	if (ImGui::IsItemHovered())
+	{
+		ImGui::BeginTooltip();
+		ImGui::PushTextWrapPos(500.0f);
+		ImGui::TextUnformatted(desc);
+		ImGui::PopTextWrapPos();
+		ImGui::EndTooltip();
+	}
+}
+
 void ImGuiRenderer::set_render_window(RenderWindow* render_window)
 {
 	m_render_window = render_window;
@@ -167,7 +181,9 @@ void ImGuiRenderer::draw_render_settings_panel()
 	ImGui::Separator();
 
 	ImGui::BeginDisabled(m_application_settings->auto_sample_per_frame);
-	ImGui::InputInt("Samples per frame", &render_settings.samples_per_frame);
+	if (ImGui::InputInt("Samples per frame", &render_settings.samples_per_frame))
+		// Clamping to 1
+		render_settings.samples_per_frame = std::max(1, render_settings.samples_per_frame);
 	ImGui::EndDisabled();
 	ImGui::SameLine();
 	ImGui::Checkbox("Auto", &m_application_settings->auto_sample_per_frame);
@@ -545,6 +561,16 @@ void ImGuiRenderer::draw_sampling_panel()
 					ImGui::TreePop();
 				}
 
+				ImGui::SeparatorText("Temporal Reuse Pass");
+				ImGui::TreePush("ReSTIR DI - Temporal Reuse Pass Tree");
+				{
+					if (ImGui::Checkbox("Do Temporal Reuse", &render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass))
+						m_render_window->set_render_dirty(true);
+						
+					ImGui::Dummy(ImVec2(0.0f, 20.0f));
+					ImGui::TreePop();
+				}
+
 				ImGui::SeparatorText("Spatial Reuse Pass");
 				ImGui::TreePush("ReSTIR DI - Spatial Reuse Pass Tree");
 				{
@@ -598,6 +624,12 @@ void ImGuiRenderer::draw_sampling_panel()
 						if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
 							ImGuiRenderer::WrappingTooltip("Visibility bias correction cannot be used with 1/M weights.");
 					ImGui::EndDisabled();
+
+					if (ImGui::SliderInt("Spatial M-cap", &render_settings.restir_di_settings.spatial_pass.m_cap, 0, 256))
+					{
+						render_settings.restir_di_settings.spatial_pass.m_cap = std::max(0, render_settings.restir_di_settings.spatial_pass.m_cap);
+						m_render_window->set_render_dirty(true);
+					}
 
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
 					ImGui::TreePop();

@@ -224,9 +224,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void visibility_reuse(const HIPRTRenderData& rend
 }
 
 #ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void) ReSTIR_DI_InitialCandidates(HIPRTRenderData render_data, int2 res, HIPRTCamera camera)
+GLOBAL_KERNEL_SIGNATURE(void) ReSTIR_DI_InitialCandidates(HIPRTRenderData render_data, int2 res)
 #else
-GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_InitialCandidates(HIPRTRenderData render_data, int2 res, HIPRTCamera camera, int x, int y)
+GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_InitialCandidates(HIPRTRenderData render_data, int2 res, int x, int y)
 #endif
 {
     if (render_data.buffers.emissive_triangles_count == 0)

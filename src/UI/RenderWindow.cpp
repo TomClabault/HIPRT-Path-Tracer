@@ -17,6 +17,7 @@
 #include "stb_image_write.h"
 
 // TODOs ReSTIR DI
+// - debug jacobian computed at the exact same location giving a NaN. How to avoid having problems when computing the jacobian with the exact same two pixels while still being able to catch legitimate NaNs?
 // - add envmap sampling to light samples with a probability (refactor envmap sampling in eval, sample and PDF functions)
 // - add second bounce direct light sampling strategy in imgui
 // - add sample rotation in spatial reuse to imgui
@@ -33,6 +34,7 @@
 // - do not do initial candidates / spatial reuse and everything if the pixel is inactive (adaptive sampling)
 // - driver crash on the white room love
 // - camera ray jittering causes dark lines
+// - expose M-capping in ImGui
 
 // TODO bugs:
 // - memory leak with OpenGL when resizing the window?
@@ -49,7 +51,10 @@
 
 
 // TODO Code Organization:
+// - Use ShowHelpMarker() for tooltips in ImGui
+// - refactor SimplifiedRendererMaterial class
 // - fork HIPRT and remove the encryption thingy that slows down kernel compilation on NVIDIA
+// - cleanup RIS reservoir with all the BSDF stuff
 // - denoiser albedo and normals still useful now that we have the GBuffer?
 // - make a function get_camera_ray that handles pixel jittering
 // - use simplified material everywhere in the BSDF etc... because we don't need the texture indices of the full material at this point

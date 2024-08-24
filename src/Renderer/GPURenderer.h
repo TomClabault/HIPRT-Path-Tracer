@@ -28,6 +28,7 @@ public:
 	static const std::string PATH_TRACING_KERNEL;
 	static const std::string CAMERA_RAYS_FUNC_NAME;
 	static const std::string RESTIR_DI_INITIAL_CANDIDATES_FUNC_NAME;
+	static const std::string RESTIR_DI_TEMPORAL_REUSE_FUNC_NAME;
 	static const std::string RESTIR_DI_SPATIAL_REUSE_FUNC_NAME;
 
 	static const std::string KERNEL_FILES[];
@@ -247,6 +248,7 @@ private:
 	GPUKernel m_camera_ray_pass;
 	GPUKernel m_restir_initial_candidates_pass;
 	GPUKernel m_restir_spatial_reuse_pass;
+	GPUKernel m_restir_temporal_reuse_pass;
 	GPUKernel m_path_trace_pass;
 	
 	std::shared_ptr<HIPRTOrochiCtx> m_hiprt_orochi_ctx = nullptr;

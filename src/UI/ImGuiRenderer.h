@@ -28,6 +28,7 @@ public:
   	 * Adds a tooltip to the last widget that auto wraps after 80 characters
 	 */
 	static void WrappingTooltip(const std::string& text);
+	static void ShowHelpMarker(const char* desc);
 
 	void set_render_window(RenderWindow* renderer);
 

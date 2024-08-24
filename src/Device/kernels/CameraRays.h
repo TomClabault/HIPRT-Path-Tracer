@@ -24,7 +24,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void reset_render(const HIPRTRenderData& render_d
     render_data.aux_buffers.denoiser_albedo[pixel_index] = ColorRGB32F(0.0f, 0.0f, 0.0f);
     render_data.aux_buffers.initial_reservoirs[pixel_index] = ReSTIRDIReservoir();
     render_data.aux_buffers.temporal_pass_output_reservoirs[pixel_index] = ReSTIRDIReservoir();
-    render_data.aux_buffers.final_reservoirs[pixel_index] = ReSTIRDIReservoir();
+    render_data.aux_buffers.spatial_reuse_output_1[pixel_index] = ReSTIRDIReservoir();
 
     render_data.g_buffer.geometric_normals[pixel_index] = { 0, 0, 0 };
     render_data.g_buffer.shading_normals[pixel_index] = { 0, 0, 0 };
@@ -44,9 +44,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void reset_render(const HIPRTRenderData& render_d
 }
 
 #ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void) CameraRays(HIPRTRenderData render_data, int2 res, HIPRTCamera camera)
+GLOBAL_KERNEL_SIGNATURE(void) CameraRays(HIPRTRenderData render_data, int2 res)
 #else
-GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int2 res, HIPRTCamera camera, int x, int y)
+GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int2 res, int x, int y)
 #endif
 {
 #ifdef __KERNELCC__
@@ -77,7 +77,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
         }
     }
 
-    if (render_data.render_settings.sample_number == 0)
+    if (render_data.render_settings.need_to_reset)
         reset_render(render_data, pixel_index);
 
     bool sampling_needed = true;
@@ -135,14 +135,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
     // Direction to the center of the pixel
     float x_ray_point_direction = (x + 0.5f);
     float y_ray_point_direction = (y + 0.5f);
-    if (camera.do_jittering)
+    if (render_data.current_camera.do_jittering)
     {
         // Jitter randomly around the center
         x_ray_point_direction += random_number_generator() - 1.0f;
         y_ray_point_direction += random_number_generator() - 1.0f;
     }
 
-    hiprtRay ray = camera.get_camera_ray(x_ray_point_direction, y_ray_point_direction, res);
+    hiprtRay ray = render_data.current_camera.get_camera_ray(x_ray_point_direction, y_ray_point_direction, res);
     RayPayload ray_payload;
 
     HitInfo closest_hit_info;

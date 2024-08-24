@@ -6,6 +6,7 @@
 #include "Device/kernels/CameraRays.h"
 #include "Device/kernels/FullPathTracer.h"
 #include "Device/kernels/ReSTIR/ReSTIR_DI_InitialCandidates.h"
+#include "Device/kernels/ReSTIR/ReSTIR_DI_TemporalReuse.h"
 #include "Device/kernels/ReSTIR/ReSTIR_DI_SpatialReuse.h"
 
 #include "Renderer/CPURenderer.h"
@@ -20,7 +21,7 @@
  // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
  // allowing for fast step into that pixel with the debugger to see what's happening.
  // Otherwise if 0, all pixels of the image are rendered
-#define DEBUG_PIXEL 0
+#define DEBUG_PIXEL 1
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner. 
 // If 1, it's bottom left corner.
 // Useful if you're using an image viewer to get the the coordinates of 
@@ -29,8 +30,8 @@
 // you're measuring the coordinates of the pixel with (0, 0) in the bottom left corner
 #define DEBUG_FLIP_Y 0
 // Coordinates of the pixel to render
-#define DEBUG_PIXEL_X 1096
-#define DEBUG_PIXEL_Y 441
+#define DEBUG_PIXEL_X 1106
+#define DEBUG_PIXEL_Y 112
 // If 1, a square of DEBUG_NEIGHBORHOOD_SIZE x DEBUG_NEIGHBORHOOD_SIZE pixels
 // will be rendered around the pixel to debug (given by DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y). The pixel of interest is going to be rendered first so you
@@ -55,9 +56,10 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
     m_denoiser_normals.resize(width * height, float3{ 0.0f, 0.0f, 0.0f });
     m_pixel_sample_count.resize(width * height, 0);
     m_pixel_squared_luminance.resize(width * height, 0.0f);
-    m_restir_initial_reservoirs.resize(width * height);
-    m_restir_temporal_reservoirs.resize(width * height);
-    m_restir_final_reservoirs.resize(width * height);
+    m_restir_initial_candidates_reservoirs.resize(width * height);
+    m_restir_spatial_output_reservoirs_1.resize(width * height);
+    m_restir_spatial_output_reservoirs_2.resize(width * height);
+    m_last_spatial_output_reservoirs = m_restir_spatial_output_reservoirs_1.data();
 
     m_g_buffer.materials.resize(width * height);
     m_g_buffer.geometric_normals.resize(width * height);
@@ -104,10 +106,10 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.g_buffer.camera_ray_hit = m_g_buffer.cameray_ray_hit.data();
     m_render_data.g_buffer.ray_volume_states = m_g_buffer.ray_volume_states.data();
 
-    m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs = m_restir_initial_reservoirs.data();
-    m_render_data.aux_buffers.initial_reservoirs = m_restir_initial_reservoirs.data();
-    m_render_data.aux_buffers.temporal_pass_output_reservoirs = m_restir_temporal_reservoirs.data();
-    m_render_data.aux_buffers.final_reservoirs = m_restir_final_reservoirs.data();
+    m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs = m_restir_initial_candidates_reservoirs.data();
+    m_render_data.aux_buffers.initial_reservoirs = m_restir_initial_candidates_reservoirs.data();
+    m_render_data.aux_buffers.temporal_pass_output_reservoirs = m_restir_spatial_output_reservoirs_1.data();
+    m_render_data.aux_buffers.spatial_reuse_output_1 = m_restir_spatial_output_reservoirs_2.data();
 
     std::cout << "Building scene BVH..." << std::endl;
     m_triangle_buffer = parsed_scene.get_triangles();
@@ -159,24 +161,35 @@ void CPURenderer::render()
 
     auto start = std::chrono::high_resolution_clock::now();
 
+    // Using 'samples_per_frame' as the number of samples to render on the CPU
     for (int i = 0; i < m_render_data.render_settings.samples_per_frame; i++)
     {
+        update_render_data(i);
+
         camera_rays_pass();
 #if DirectLightSamplingStrategy == LSS_RESTIR_DI
         ReSTIR_DI_initial_candidates_pass();
+        ReSTIR_DI_temporal_candidates_pass();
         ReSTIR_DI_spatial_reuse_pass();
 #endif
         tracing_pass();
 
         m_render_data.render_settings.sample_number++;
         m_render_data.random_seed = m_rng.xorshift32();
+        m_render_data.render_settings.need_to_reset = false;
 
         if (m_render_data.render_settings.samples_per_frame > 1)
-            std::cout << (i + 1) / static_cast<float>(m_render_data.render_settings.samples_per_frame) * 100.0f << "%" << std::endl;
+            std::cout << "Frame " << i + 1 << ": " << (i + 1) / static_cast<float>(m_render_data.render_settings.samples_per_frame) * 100.0f << "%" << std::endl;
     }
 
     auto stop = std::chrono::high_resolution_clock::now();
     std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
+}
+
+void CPURenderer::update_render_data(int sample)
+{
+    m_render_data.current_camera = m_hiprt_camera;
+    m_render_data.prev_camera = m_hiprt_camera;
 }
 
 void CPURenderer::camera_rays_pass()
@@ -191,7 +204,7 @@ void CPURenderer::camera_rays_pass()
     y = m_resolution.y - DEBUG_PIXEL_Y - 1;
 #endif // DEBUG_FLIP_Y
 
-    CameraRays(m_render_data, m_resolution, m_hiprt_camera, x, y);
+    CameraRays(m_render_data, m_resolution, x, y);
 
 #if DEBUG_RENDER_NEIGHBORHOOD
     // Rendering the neighborhood
@@ -199,13 +212,13 @@ void CPURenderer::camera_rays_pass()
 #pragma omp parallel for schedule(dynamic)
     for (int render_y = std::max(0, y - DEBUG_NEIGHBORHOOD_SIZE); render_y <= std::min(m_resolution.y - 1, y + DEBUG_NEIGHBORHOOD_SIZE); render_y++)
         for (int render_x = std::max(0, x - DEBUG_NEIGHBORHOOD_SIZE); render_x <= std::min(m_resolution.x - 1, x + DEBUG_NEIGHBORHOOD_SIZE); render_x++)
-            CameraRays(m_render_data, m_resolution, m_hiprt_camera, render_x, render_y);
+            CameraRays(m_render_data, m_resolution, render_x, render_y);
 #endif // DEBUG_RENDER_NEIGHBORHOOD
 #else // DEBUG_PIXEL
 #pragma omp parallel for schedule(dynamic)
     for (int y = 0; y < m_resolution.y; y++)
         for (int x = 0; x < m_resolution.x; x++)
-            CameraRays(m_render_data, m_resolution, m_hiprt_camera, x, y);
+            CameraRays(m_render_data, m_resolution, x, y);
 #endif // DEBUG_PIXEL
 }
 
@@ -221,7 +234,7 @@ void CPURenderer::ReSTIR_DI_initial_candidates_pass()
     y = m_resolution.y - DEBUG_PIXEL_Y - 1;
 #endif // DEBUG_FLIP_Y
 
-    ReSTIR_DI_InitialCandidates(m_render_data, m_resolution, m_hiprt_camera, x, y);
+    ReSTIR_DI_InitialCandidates(m_render_data, m_resolution, x, y);
 
 #if DEBUG_RENDER_NEIGHBORHOOD
     // Rendering the neighborhood
@@ -229,13 +242,50 @@ void CPURenderer::ReSTIR_DI_initial_candidates_pass()
 #pragma omp parallel for schedule(dynamic)
     for (int render_y = std::max(0, y - DEBUG_NEIGHBORHOOD_SIZE); render_y <= std::min(m_resolution.y - 1, y + DEBUG_NEIGHBORHOOD_SIZE); render_y++)
         for (int render_x = std::max(0, x - DEBUG_NEIGHBORHOOD_SIZE); render_x <= std::min(m_resolution.x - 1, x + DEBUG_NEIGHBORHOOD_SIZE); render_x++)
-            ReSTIR_DI_InitialCandidates(m_render_data, m_resolution, m_hiprt_camera, render_x, render_y);
+            ReSTIR_DI_InitialCandidates(m_render_data, m_resolution, render_x, render_y);
 #endif // DEBUG_RENDER_NEIGHBORHOOD
 #else // DEBUG_PIXEL
 #pragma omp parallel for schedule(dynamic)
     for (int y = 0; y < m_resolution.y; y++)
         for (int x = 0; x < m_resolution.x; x++)
-            ReSTIR_DI_InitialCandidates(m_render_data, m_resolution, m_hiprt_camera, x, y);
+            ReSTIR_DI_InitialCandidates(m_render_data, m_resolution, x, y);
+#endif // DEBUG_PIXEL
+}
+
+void CPURenderer::ReSTIR_DI_temporal_candidates_pass()
+{
+    if (!m_render_data.render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
+        return;
+
+    m_render_data.random_seed = m_rng.xorshift32();
+    m_render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs = m_last_spatial_output_reservoirs;
+    m_render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs = m_restir_initial_candidates_reservoirs.data();
+
+#if DEBUG_PIXEL
+    int x, y;
+#if DEBUG_FLIP_Y
+    x = DEBUG_PIXEL_X;
+    y = DEBUG_PIXEL_Y;
+#else // DEBUG_FLIP_Y
+    x = DEBUG_PIXEL_X;
+    y = m_resolution.y - DEBUG_PIXEL_Y - 1;
+#endif // DEBUG_FLIP_Y
+
+    ReSTIR_DI_TemporalReuse(m_render_data, m_resolution, x, y);
+
+#if DEBUG_RENDER_NEIGHBORHOOD
+    // Rendering the neighborhood
+
+#pragma omp parallel for schedule(dynamic)
+    for (int render_y = std::max(0, y - DEBUG_NEIGHBORHOOD_SIZE); render_y <= std::min(m_resolution.y - 1, y + DEBUG_NEIGHBORHOOD_SIZE); render_y++)
+        for (int render_x = std::max(0, x - DEBUG_NEIGHBORHOOD_SIZE); render_x <= std::min(m_resolution.x - 1, x + DEBUG_NEIGHBORHOOD_SIZE); render_x++)
+            ReSTIR_DI_TemporalReuse(m_render_data, m_resolution, render_x, render_y);
+#endif // DEBUG_RENDER_NEIGHBORHOOD
+#else // DEBUG_PIXEL
+#pragma omp parallel for schedule(dynamic)
+    for (int y = 0; y < m_resolution.y; y++)
+        for (int x = 0; x < m_resolution.x; x++)
+            ReSTIR_DI_TemporalReuse(m_render_data, m_resolution, x, y);
 #endif // DEBUG_PIXEL
 }
 
@@ -243,28 +293,43 @@ void CPURenderer::ReSTIR_DI_spatial_reuse_pass()
 {
     for (int spatial_reuse_pass = 0; spatial_reuse_pass < m_render_data.render_settings.restir_di_settings.spatial_pass.number_of_passes; spatial_reuse_pass++)
     {
-        m_render_data.render_settings.restir_di_settings.spatial_pass.spatial_pass_index = spatial_reuse_pass;
-        // Reading from the initial_candidates reservoir / final_reservoir one spatial pass out of two.
-        // Basically pong-ponging between the two buffers
-        // This is to avoid the concurrency issues that we would have if we were to read and store from the same buffer:
-        //	some pixels would be done with the spatial reuse pass --> they store their reservoir 'R' but now, other pixels 
-        //	that were not done may read from that stored reservoir 'R' even though they were supposed to read from
-        //	the reservoir that got overwritten by that stored reservoir 'R'
-        if ((spatial_reuse_pass & 1) == 0)
+        if (spatial_reuse_pass == 0)
         {
-            m_render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs = m_restir_initial_reservoirs.data();
-            m_render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs = m_restir_final_reservoirs.data();
+            if (m_render_data.render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
+                // For the first spatial reuse pass, we hardcode reading from the output of the temporal pass and storing into 'spatial_reuse_output_1'
+                m_render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs = m_render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs;
+            else
+                // If there is no temporal reuse pass, using the initial candidates as the input to the spatial reuse pass
+                m_render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs = m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs;
+
+            m_render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs = m_restir_spatial_output_reservoirs_1.data();
         }
         else
         {
-            m_render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs = m_restir_final_reservoirs.data();
-            m_render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs = m_restir_initial_reservoirs.data();
+            // And then, starting at the second spatial reuse pass, we read from the output of the previous spatial pass and store
+            // in either spatial_reuse_output_1 or spatial_reuse_output_2, depending on which one isn't the input (we don't
+            // want to store in the same buffers that is used for output because that's a race condition so
+            // we're ping-ponging between the two outputs of the spatial reuse pass)
+
+            if ((spatial_reuse_pass & 1) == 0)
+            {
+                m_render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs = m_restir_spatial_output_reservoirs_2.data();
+                m_render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs = m_restir_spatial_output_reservoirs_1.data();
+            }
+            else
+            {
+                m_render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs = m_restir_spatial_output_reservoirs_1.data();
+                m_render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs = m_restir_spatial_output_reservoirs_2.data();
+
+            }
         }
 
         ReSTIR_DI_spatial_reuse_pass_internal();
 
         m_render_data.random_seed = m_rng.xorshift32();
     }
+
+    m_last_spatial_output_reservoirs = m_render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs;
 }
 
 void CPURenderer::ReSTIR_DI_spatial_reuse_pass_internal()
@@ -279,7 +344,7 @@ void CPURenderer::ReSTIR_DI_spatial_reuse_pass_internal()
     y = m_resolution.y - DEBUG_PIXEL_Y - 1;
 #endif // DEBUG_FLIP_Y
 
-    ReSTIR_DI_SpatialReuse(m_render_data, m_resolution, m_hiprt_camera, x, y);
+    ReSTIR_DI_SpatialReuse(m_render_data, m_resolution, x, y);
 
 #if DEBUG_RENDER_NEIGHBORHOOD
     // Rendering the neighborhood
@@ -287,13 +352,13 @@ void CPURenderer::ReSTIR_DI_spatial_reuse_pass_internal()
 #pragma omp parallel for schedule(dynamic)
     for (int render_y = std::max(0, y - DEBUG_NEIGHBORHOOD_SIZE); render_y <= std::min(m_resolution.y - 1, y + DEBUG_NEIGHBORHOOD_SIZE); render_y++)
         for (int render_x = std::max(0, x - DEBUG_NEIGHBORHOOD_SIZE); render_x <= std::min(m_resolution.x - 1, x + DEBUG_NEIGHBORHOOD_SIZE); render_x++)
-            ReSTIR_DI_SpatialReuse(m_render_data, m_resolution, m_hiprt_camera, render_x, render_y);
+            ReSTIR_DI_SpatialReuse(m_render_data, m_resolution, render_x, render_y);
 #endif // DEBUG_RENDER_NEIGHBORHOOD
 #else // DEBUG_PIXEL
 #pragma omp parallel for schedule(dynamic)
     for (int y = 0; y < m_resolution.y; y++)
         for (int x = 0; x < m_resolution.x; x++)
-            ReSTIR_DI_SpatialReuse(m_render_data, m_resolution, m_hiprt_camera, x, y);
+            ReSTIR_DI_SpatialReuse(m_render_data, m_resolution, x, y);
 #endif // DEBUG_PIXEL
 }
 
@@ -309,7 +374,7 @@ void CPURenderer::tracing_pass()
     y = m_resolution.y - DEBUG_PIXEL_Y - 1;
 #endif // DEBUG_FLIP_Y
 
-    FullPathTracer(m_render_data, m_resolution, m_hiprt_camera, x, y);
+    FullPathTracer(m_render_data, m_resolution, x, y);
 
 #if DEBUG_RENDER_NEIGHBORHOOD
     // Rendering the neighborhood
@@ -321,7 +386,7 @@ void CPURenderer::tracing_pass()
             if (render_x == x && render_y == y)
                 continue;
                
-            FullPathTracer(m_render_data, m_resolution, m_hiprt_camera, render_x, render_y);
+            FullPathTracer(m_render_data, m_resolution, render_x, render_y);
         }
 
 #endif // DEBUG_RENDER_NEIGHBORHOOD
@@ -332,7 +397,7 @@ void CPURenderer::tracing_pass()
     for (int y = 0; y < m_resolution.y; y++)
     {
         for (int x = 0; x < m_resolution.x; x++)
-            FullPathTracer(m_render_data, m_resolution, m_hiprt_camera, x, y);
+            FullPathTracer(m_render_data, m_resolution, x, y);
 
         if (omp_get_thread_num() == 0 && m_render_data.render_settings.samples_per_frame == 1)
             // Only displaying per frame progress if we're only rendering one frame
@@ -344,7 +409,9 @@ void CPURenderer::tracing_pass()
 
 void CPURenderer::tonemap(float gamma, float exposure)
 {
+#if DEBUG_PIXEL == 0
 #pragma omp parallel for schedule(dynamic)
+#endif
     for (int y = 0; y < m_resolution.y; y++)
     {
         for (int x = 0; x < m_resolution.x; x++)

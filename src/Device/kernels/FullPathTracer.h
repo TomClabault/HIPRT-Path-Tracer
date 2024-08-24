@@ -14,7 +14,6 @@
 #include "Device/includes/Material.h"
 #include "Device/includes/RayPayload.h"
 #include "Device/includes/Sampling.h"
-#include "HostDeviceCommon/HIPRTCamera.h"
 #include "HostDeviceCommon/Xorshift.h"
 
 #ifndef __KERNELCC__
@@ -70,22 +69,23 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool sanity_check(const HIPRTRenderData& render_d
 
     if (invalid)
     {
+#ifndef __KERNELCC__
+        Utils::debugbreak();
+#endif
+
         if (render_data.render_settings.display_NaNs)
             debug_set_final_color(render_data, x, y, res.x, ColorRGB32F(1.0e15f, 0.0f, 1.0e15f));
         else
             ray_payload.ray_color = ColorRGB32F(0.0f);
-#ifndef __KERNELCC__
-        Utils::debugbreak();
-#endif
     }
 
     return !invalid;
 }
 
 #ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void) FullPathTracer(HIPRTRenderData render_data, int2 res, HIPRTCamera camera)
+GLOBAL_KERNEL_SIGNATURE(void) FullPathTracer(HIPRTRenderData render_data, int2 res)
 #else
-GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data, int2 res, HIPRTCamera camera, int x, int y)
+GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data, int2 res, int x, int y)
 #endif
 {
 #ifdef __KERNELCC__

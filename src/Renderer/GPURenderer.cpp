@@ -15,12 +15,34 @@
 const std::string GPURenderer::PATH_TRACING_KERNEL = "FullPathTracer";
 const std::string GPURenderer::CAMERA_RAYS_FUNC_NAME = "CameraRays";
 const std::string GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_FUNC_NAME = "ReSTIR_DI_InitialCandidates";
+const std::string GPURenderer::RESTIR_DI_TEMPORAL_REUSE_FUNC_NAME = "ReSTIR_DI_TemporalReuse";
 const std::string GPURenderer::RESTIR_DI_SPATIAL_REUSE_FUNC_NAME = "ReSTIR_DI_SpatialReuse";
 
-const std::string GPURenderer::KERNEL_FILES[] = { DEVICE_KERNELS_DIRECTORY "/FullPathTracer.h", DEVICE_KERNELS_DIRECTORY "/CameraRays.h", DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReSTIR_DI_InitialCandidates.h" , DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReSTIR_DI_SpatialReuse.h" };
-const std::string GPURenderer::KERNEL_FUNCTIONS[] = { PATH_TRACING_KERNEL, CAMERA_RAYS_FUNC_NAME, RESTIR_DI_INITIAL_CANDIDATES_FUNC_NAME, RESTIR_DI_SPATIAL_REUSE_FUNC_NAME };
+const std::string GPURenderer::KERNEL_FILES[] = 
+{
+	DEVICE_KERNELS_DIRECTORY "/FullPathTracer.h", 
+	DEVICE_KERNELS_DIRECTORY "/CameraRays.h", 
+	DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReSTIR_DI_InitialCandidates.h",
+	DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReSTIR_DI_TemporalReuse.h",
+	DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReSTIR_DI_SpatialReuse.h" 
+};
 
-const std::vector<std::string> GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS = { KERNEL_COMPILER_ADDITIONAL_INCLUDE, DEVICE_INCLUDES_DIRECTORY, OROCHI_INCLUDES_DIRECTORY, "./" };
+const std::string GPURenderer::KERNEL_FUNCTIONS[] = 
+{ 
+	PATH_TRACING_KERNEL, 
+	CAMERA_RAYS_FUNC_NAME, 
+	RESTIR_DI_INITIAL_CANDIDATES_FUNC_NAME, 
+	RESTIR_DI_TEMPORAL_REUSE_FUNC_NAME, 
+	RESTIR_DI_SPATIAL_REUSE_FUNC_NAME 
+};
+
+const std::vector<std::string> GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS = 
+{ 
+	KERNEL_COMPILER_ADDITIONAL_INCLUDE, 
+	DEVICE_INCLUDES_DIRECTORY, 
+	OROCHI_INCLUDES_DIRECTORY, 
+	"./" 
+};
 
 GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
 {
@@ -54,13 +76,17 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
 	m_restir_initial_candidates_pass.set_kernel_file_path(GPURenderer::KERNEL_FILES[2]);
 	m_restir_initial_candidates_pass.set_kernel_function_name(GPURenderer::KERNEL_FUNCTIONS[2]);
 
-	m_restir_spatial_reuse_pass.set_kernel_file_path(GPURenderer::KERNEL_FILES[3]);
-	m_restir_spatial_reuse_pass.set_kernel_function_name(GPURenderer::KERNEL_FUNCTIONS[3]);
+	m_restir_temporal_reuse_pass.set_kernel_file_path(GPURenderer::KERNEL_FILES[3]);
+	m_restir_temporal_reuse_pass.set_kernel_function_name(GPURenderer::KERNEL_FUNCTIONS[3]);
+
+	m_restir_spatial_reuse_pass.set_kernel_file_path(GPURenderer::KERNEL_FILES[4]);
+	m_restir_spatial_reuse_pass.set_kernel_function_name(GPURenderer::KERNEL_FUNCTIONS[4]);
 
 	// Compiling kernels
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_path_trace_pass), m_path_tracer_options, std::ref(m_hiprt_orochi_ctx->hiprt_ctx));
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_camera_ray_pass), m_path_tracer_options, std::ref(m_hiprt_orochi_ctx->hiprt_ctx));
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_restir_initial_candidates_pass), m_path_tracer_options, std::ref(m_hiprt_orochi_ctx->hiprt_ctx));
+	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_restir_temporal_reuse_pass), m_path_tracer_options, std::ref(m_hiprt_orochi_ctx->hiprt_ctx));
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_restir_spatial_reuse_pass), m_path_tracer_options, std::ref(m_hiprt_orochi_ctx->hiprt_ctx));
 
 	OROCHI_CHECK_ERROR(oroStreamCreate(&m_main_stream));
@@ -160,11 +186,13 @@ void GPURenderer::render()
 	for (int i = 1; i <= m_render_settings.samples_per_frame; i++)
 	{
 		if (i == m_render_settings.samples_per_frame)
+			// Last sample of the frame so we are going to enable the update 
+			// of the status buffers (number of pixels converged, how many rays still
+			// active, ...)
 			m_render_settings.do_update_status_buffers = true;
 
-		HIPRTCamera hiprt_cam = m_camera.to_hiprt();
 		HIPRTRenderData render_data = get_render_data();
-		void* launch_args[] = { &render_data, &resolution, &hiprt_cam};
+		void* launch_args[] = { &render_data, &resolution };
 
 		render_data.random_seed = m_rng.xorshift32();
 		m_camera_ray_pass.launch_timed_asynchronous(8, 8, resolution.x, resolution.y, launch_args, m_main_stream);
@@ -175,27 +203,52 @@ void GPURenderer::render()
 			render_data.random_seed = m_rng.xorshift32();
 			m_restir_initial_candidates_pass.launch_timed_asynchronous(8, 8, resolution.x, resolution.y, launch_args, m_main_stream);
 
+			if (m_render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
+			{
+				render_data.random_seed = m_rng.xorshift32();
+				render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs = m_restir_di_reservoirs.last_spatial_pass_output_buffer;
+				render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs = m_restir_di_reservoirs.initial_candidates_reservoirs.get_device_pointer();
+				m_restir_temporal_reuse_pass.launch_timed_asynchronous(8, 8, resolution.x, resolution.y, launch_args, m_main_stream);
+			}
+
 			for (int spatial_reuse_pass = 0; spatial_reuse_pass < m_render_settings.restir_di_settings.spatial_pass.number_of_passes; spatial_reuse_pass++)
 			{
 				render_data.random_seed = m_rng.xorshift32();
-				render_data.render_settings.restir_di_settings.spatial_pass.spatial_pass_index = spatial_reuse_pass;
 
-				// Reading from the initial_candidates reservoir / final_reservoir one spatial pass out of two.
-				// Basically pong-ponging between the two buffers
-				// This is to avoid the concurrency issues that we would have if we were to read and store from the same buffer:
-				//	some pixels would be done with the spatial reuse pass --> they store their reservoir 'R' but now, other pixels 
-				//	that were not done may read from that stored reservoir 'R' even though they were supposed to read from
-				//	the reservoir that got overwritten by that stored reservoir 'R'
-				if ((spatial_reuse_pass & 1) == 0)
+				if (spatial_reuse_pass == 0)
 				{
-					render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs = m_restir_di_reservoirs.initial_candidates_reservoirs.get_device_pointer();
-					render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs = m_restir_di_reservoirs.final_reservoirs.get_device_pointer();
+					if (m_render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
+						// For the first spatial reuse pass, we hardcode reading from the output of the temporal pass and storing into 'spatial_reuse_output_1'
+						render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs = render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs;
+					else
+						// If there is no temporal reuse pass, using the initial candidates as the input to the spatial reuse pass
+						render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs = render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs;
+
+					render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs = m_restir_di_reservoirs.spatial_reuse_output_1.get_device_pointer();
 				}
 				else
 				{
-					render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs = m_restir_di_reservoirs.final_reservoirs.get_device_pointer();
-					render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs = m_restir_di_reservoirs.initial_candidates_reservoirs.get_device_pointer();
+					// And then, starting at the second spatial reuse pass, we read from the output of the previous spatial pass and store
+					// in either spatial_reuse_output_1 or spatial_reuse_output_2, depending on which one isn't the input (we don't
+					// want to store in the same buffers that is used for output because that's a race condition so
+					// we're ping-ponging between the two outputs of the spatial reuse pass)
+
+					if ((spatial_reuse_pass & 1) == 0)
+					{
+						render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs = m_restir_di_reservoirs.spatial_reuse_output_2.get_device_pointer();
+						render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs = m_restir_di_reservoirs.spatial_reuse_output_1.get_device_pointer();
+					}
+					else
+					{
+						render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs = m_restir_di_reservoirs.spatial_reuse_output_1.get_device_pointer();
+						render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs = m_restir_di_reservoirs.spatial_reuse_output_2.get_device_pointer();
+
+					}
 				}
+
+				// Keeping in mind which was the buffer used last for the output of the spatial reuse pass as this is the buffer that
+				// we're going to use as the input to the temporal reuse pass of the next frame
+				m_restir_di_reservoirs.last_spatial_pass_output_buffer = render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs;
 
 				m_restir_spatial_reuse_pass.launch_timed_asynchronous(8, 8, resolution.x, resolution.y, launch_args, m_main_stream);
 			}
@@ -219,6 +272,10 @@ void GPURenderer::render()
 	OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_main_stream, GPUKernel::compute_elapsed_time_callback, elapsed_time_data));
 
 	m_was_last_frame_low_resolution = m_render_settings.render_low_resolution;
+	// We only reset once so after rendering a frame, we're sure that we don't need to reset anymore 
+	// so we're setting the flag to false (it will be set to true again if we need to reset the render
+	// again)
+	m_render_settings.need_to_reset = false;
 }
 
 void GPURenderer::synchronize_kernel()
@@ -263,8 +320,13 @@ void GPURenderer::resize(int new_width, int new_height)
 	}
 
 	m_restir_di_reservoirs.initial_candidates_reservoirs.resize(new_width * new_height);
-	m_restir_di_reservoirs.temporal_reuse_output_reservoirs.resize(new_width * new_height);
-	m_restir_di_reservoirs.final_reservoirs.resize(new_width * new_height);
+	m_restir_di_reservoirs.spatial_reuse_output_2.resize(new_width * new_height);
+	m_restir_di_reservoirs.spatial_reuse_output_1.resize(new_width * new_height);
+	// Initializing to spatial_reuse_output_1 arbitrarily as it doesn't matter for the first frame since the
+	// buffer is going to be empty anyways and no temporal resampling will happen (because this is
+	// the buffer that the temporal reuse pass uses as input)
+	m_restir_di_reservoirs.last_spatial_pass_output_buffer = m_restir_di_reservoirs.spatial_reuse_output_1.get_device_pointer();
+
 	m_pixel_active.resize(new_width * new_height);
 
 	// Recomputing the perspective projection matrix since the aspect ratio
@@ -407,6 +469,7 @@ void GPURenderer::reset()
 	m_render_settings.frame_number = 0;
 	m_render_settings.sample_number = 0;
 	m_render_settings.samples_per_frame = 1;
+	m_render_settings.need_to_reset = true;
 
 	reset_last_frame_time();
 	internal_clear_m_status_buffers();
@@ -454,14 +517,17 @@ HIPRTRenderData GPURenderer::get_render_data()
 
 	// Settings the pointers for use in reset_render() in the cameray rays kernel
 	render_data.aux_buffers.initial_reservoirs = m_restir_di_reservoirs.initial_candidates_reservoirs.get_device_pointer();
-	render_data.aux_buffers.temporal_pass_output_reservoirs = m_restir_di_reservoirs.temporal_reuse_output_reservoirs.get_device_pointer();
-	render_data.aux_buffers.final_reservoirs = m_restir_di_reservoirs.final_reservoirs.get_device_pointer();
+	render_data.aux_buffers.temporal_pass_output_reservoirs = m_restir_di_reservoirs.spatial_reuse_output_2.get_device_pointer();
+	render_data.aux_buffers.spatial_reuse_output_1 = m_restir_di_reservoirs.spatial_reuse_output_1.get_device_pointer();
 
 	render_data.world_settings = m_world_settings;
 	render_data.render_settings = m_render_settings;
 	// The initial candidate output buffer is always the same so we can just set it here
 	render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs = m_restir_di_reservoirs.initial_candidates_reservoirs.get_device_pointer();
 
+	render_data.prev_camera = render_data.current_camera;
+	render_data.current_camera = m_camera.to_hiprt();
+		
 	render_data.random_seed = m_rng.xorshift32();
 
 	return render_data;
