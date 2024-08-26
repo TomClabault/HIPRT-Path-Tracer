@@ -115,8 +115,6 @@ struct Scene
 
         return triangles;
     }
-
-
 };
 
 class SceneParser

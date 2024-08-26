@@ -62,6 +62,9 @@ public:
 	 * Querry frame_render_done() to know whether or not the frame has completed or not.
 	 */
 	void render();
+	void launch_camera_rays(HIPRTRenderData& render_data, int2 resolution);
+	void launch_ReSTIR_DI(HIPRTRenderData& render_data, int2 resolution);
+	void launch_path_tracing(HIPRTRenderData& render_data, int2 resolution);
 
 	/**
 	 * Blocking that waits for all the operations queued on

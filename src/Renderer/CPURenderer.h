@@ -31,10 +31,10 @@ public:
     void render();
     void update_render_data(int sample);
     void camera_rays_pass();
+    void ReSTIR_DI();
     void ReSTIR_DI_initial_candidates_pass();
     void ReSTIR_DI_temporal_candidates_pass();
     void ReSTIR_DI_spatial_reuse_pass();
-    void ReSTIR_DI_spatial_reuse_pass_internal();
     void tracing_pass();
     void tonemap(float gamma, float exposure);
 

@@ -62,7 +62,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_light_ReSTIR_DI(const HIPRTRen
 
 	// Because the spatial reuse pass runs last, the output buffer of the spatial
 	// pass contains the reservoir whose sample we're going to shade
-	ReSTIRDIReservoir reservoir = render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs[pixel_index];
+	ReSTIRDIReservoir reservoir = render_data.render_settings.restir_di_settings.restir_output_reservoirs[pixel_index];
 
 	return evaluate_ReSTIR_DI_reservoir(render_data, ray_payload, closest_hit_info.inter_point, closest_hit_info.shading_normal, view_direction, reservoir);
 }

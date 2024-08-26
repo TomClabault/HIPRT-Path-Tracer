@@ -339,8 +339,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	new_reservoir.end_normalized(normalization_numerator, normalization_denominator);
 	new_reservoir.sanity_check(center_pixel_coords);
 	// M-capping
-	if (render_data.render_settings.restir_di_settings.spatial_pass.m_cap > 0)
-		new_reservoir.M = hippt::min(render_data.render_settings.restir_di_settings.spatial_pass.m_cap, new_reservoir.M);
+	if (render_data.render_settings.restir_di_settings.m_cap > 0)
+		new_reservoir.M = hippt::min(render_data.render_settings.restir_di_settings.m_cap, new_reservoir.M);
 
 #if ReSTIR_DI_DoVisibilityReuse && ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
 	// Why is this needed?

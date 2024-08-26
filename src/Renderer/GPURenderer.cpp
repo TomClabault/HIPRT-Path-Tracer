@@ -192,25 +192,71 @@ void GPURenderer::render()
 			m_render_settings.do_update_status_buffers = true;
 
 		HIPRTRenderData render_data = get_render_data();
-		void* launch_args[] = { &render_data, &resolution };
 
+		launch_camera_rays(render_data, resolution);
+		launch_ReSTIR_DI(render_data, resolution);
+		launch_path_tracing(render_data, resolution);
+
+		m_render_settings.sample_number++;
+		m_render_settings.frame_number++;
+	}
+
+	// Recording GPU frame time stop timestamp and computing the frame time
+	OROCHI_CHECK_ERROR(oroEventRecord(m_frame_stop_event, m_main_stream));
+
+	GPUKernel::ComputeElapsedTimeCallbackData* elapsed_time_data = new GPUKernel::ComputeElapsedTimeCallbackData;
+	elapsed_time_data->start = m_frame_start_event;
+	elapsed_time_data->end = m_frame_stop_event;
+	elapsed_time_data->elapsed_time_out = &m_last_frame_time;
+
+	OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_main_stream, GPUKernel::compute_elapsed_time_callback, elapsed_time_data));
+
+	m_was_last_frame_low_resolution = m_render_settings.render_low_resolution;
+	// We only reset once so after rendering a frame, we're sure that we don't need to reset anymore 
+	// so we're setting the flag to false (it will be set to true again if we need to reset the render
+	// again)
+	m_render_settings.need_to_reset = false;
+}
+
+void GPURenderer::launch_camera_rays(HIPRTRenderData& render_data, int2 resolution)
+{
+	void* launch_args[] = { &render_data, &resolution };
+
+	render_data.random_seed = m_rng.xorshift32();
+	m_camera_ray_pass.launch_timed_asynchronous(8, 8, resolution.x, resolution.y, launch_args, m_main_stream);
+}
+
+void GPURenderer::launch_ReSTIR_DI(HIPRTRenderData& render_data, int2 resolution)
+{
+	void* launch_args[] = { &render_data, &resolution };
+
+	if (m_path_tracer_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI)
+	{
+		// If ReSTIR DI is enabled
 		render_data.random_seed = m_rng.xorshift32();
-		m_camera_ray_pass.launch_timed_asynchronous(8, 8, resolution.x, resolution.y, launch_args, m_main_stream);
+		m_restir_initial_candidates_pass.launch_timed_asynchronous(8, 8, resolution.x, resolution.y, launch_args, m_main_stream);
 
-		if (m_path_tracer_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI)
+		if (m_render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
 		{
-			// If ReSTIR DI is enabled
 			render_data.random_seed = m_rng.xorshift32();
-			m_restir_initial_candidates_pass.launch_timed_asynchronous(8, 8, resolution.x, resolution.y, launch_args, m_main_stream);
 
-			if (m_render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
-			{
-				render_data.random_seed = m_rng.xorshift32();
-				render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs = m_restir_di_reservoirs.last_spatial_pass_output_buffer;
+			// The input of the temporal pass is the output of last frame ReSTIR (and also the initial candidates but this is implicit
+			// and "hardcoded in the shader"
+			render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs = render_data.render_settings.restir_di_settings.restir_output_reservoirs;
+
+			if (render_data.render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)
+				// If we're going to do spatial reuse, reuse the initial candidate reservoirs to store the output of the temporal pass.
+				// The spatial reuse pass will read form that buffer
 				render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs = m_restir_di_reservoirs.initial_candidates_reservoirs.get_device_pointer();
-				m_restir_temporal_reuse_pass.launch_timed_asynchronous(8, 8, resolution.x, resolution.y, launch_args, m_main_stream);
-			}
+			else
+				// Else, no spatial reuse, the output of the temporal pass is going to be in its own buffer, using spatial_reuse_output1
+				// here arbitrarily, could have been spatial reuse 2, doesn't matter, we just need a buffer
+				render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs = m_restir_di_reservoirs.spatial_reuse_output_1.get_device_pointer();
+			m_restir_temporal_reuse_pass.launch_timed_asynchronous(8, 8, resolution.x, resolution.y, launch_args, m_main_stream);
+		}
 
+		if (render_data.render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)
+		{
 			for (int spatial_reuse_pass = 0; spatial_reuse_pass < m_render_settings.restir_di_settings.spatial_pass.number_of_passes; spatial_reuse_pass++)
 			{
 				render_data.random_seed = m_rng.xorshift32();
@@ -245,37 +291,32 @@ void GPURenderer::render()
 
 					}
 				}
-
-				// Keeping in mind which was the buffer used last for the output of the spatial reuse pass as this is the buffer that
-				// we're going to use as the input to the temporal reuse pass of the next frame
-				m_restir_di_reservoirs.last_spatial_pass_output_buffer = render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs;
-
-				m_restir_spatial_reuse_pass.launch_timed_asynchronous(8, 8, resolution.x, resolution.y, launch_args, m_main_stream);
 			}
+
+			m_restir_spatial_reuse_pass.launch_timed_asynchronous(8, 8, resolution.x, resolution.y, launch_args, m_main_stream);
 		}
 
-		render_data.random_seed = m_rng.xorshift32();
-		m_path_trace_pass.launch_timed_asynchronous(8, 8, resolution.x, resolution.y, launch_args, m_main_stream);
-
-		m_render_settings.sample_number++;
-		m_render_settings.frame_number++;
+		// Keeping in mind which was the buffer used last for the output of the spatial reuse pass as this is the buffer that
+		// we're going to use as the input to the temporal reuse pass of the next frame
+		if (render_data.render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)
+			// If there was spatial reuse, using the output of the spatial reuse pass as the input of the temporal
+			// pass of next frame
+			render_data.render_settings.restir_di_settings.restir_output_reservoirs = render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs;
+		else if (render_data.render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
+			// If there was a temporal reuse pass, using that output as the input of the next temporal reuse pass
+			render_data.render_settings.restir_di_settings.restir_output_reservoirs = render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs;
+		else
+			// No spatial or temporal, the output of ReSTIR is just the output of the initial candidates pass
+			render_data.render_settings.restir_di_settings.restir_output_reservoirs = render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs;
 	}
+}
 
-	// Recording GPU frame time stop timestamp and computing the frame time
-	OROCHI_CHECK_ERROR(oroEventRecord(m_frame_stop_event, m_main_stream));
+void GPURenderer::launch_path_tracing(HIPRTRenderData& render_data, int2 resolution)
+{
+	void* launch_args[] = { &render_data, &resolution };
 
-	GPUKernel::ComputeElapsedTimeCallbackData* elapsed_time_data = new GPUKernel::ComputeElapsedTimeCallbackData;
-	elapsed_time_data->start = m_frame_start_event;
-	elapsed_time_data->end = m_frame_stop_event;
-	elapsed_time_data->elapsed_time_out = &m_last_frame_time;
-
-	OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_main_stream, GPUKernel::compute_elapsed_time_callback, elapsed_time_data));
-
-	m_was_last_frame_low_resolution = m_render_settings.render_low_resolution;
-	// We only reset once so after rendering a frame, we're sure that we don't need to reset anymore 
-	// so we're setting the flag to false (it will be set to true again if we need to reset the render
-	// again)
-	m_render_settings.need_to_reset = false;
+	render_data.random_seed = m_rng.xorshift32();
+	m_path_trace_pass.launch_timed_asynchronous(8, 8, resolution.x, resolution.y, launch_args, m_main_stream);
 }
 
 void GPURenderer::synchronize_kernel()
@@ -325,7 +366,7 @@ void GPURenderer::resize(int new_width, int new_height)
 	// Initializing to spatial_reuse_output_1 arbitrarily as it doesn't matter for the first frame since the
 	// buffer is going to be empty anyways and no temporal resampling will happen (because this is
 	// the buffer that the temporal reuse pass uses as input)
-	m_restir_di_reservoirs.last_spatial_pass_output_buffer = m_restir_di_reservoirs.spatial_reuse_output_1.get_device_pointer();
+	m_render_settings.restir_di_settings.restir_output_reservoirs = m_restir_di_reservoirs.spatial_reuse_output_1.get_device_pointer();
 
 	m_pixel_active.resize(new_width * new_height);
 

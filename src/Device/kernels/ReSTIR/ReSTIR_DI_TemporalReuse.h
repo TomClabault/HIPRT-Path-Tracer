@@ -75,7 +75,15 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_temporal_reuse_resampling_MIS_weight(co
 
 		unsigned int M = 1.0f;
 #if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_GBH_CONFIDENCE_WEIGHTS
-		M = render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs[neighbor_index_j].M;
+		ReSTIRDIReservoir* input_reservoirs;
+		if (j == 0)
+			// First neighbor is the temporal neighbor
+			input_reservoirs = render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs;
+		else
+			// Second neighbor is the center pixel itself, from the initial candidates pass
+			input_reservoirs = render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs;
+
+		M = input_reservoirs[neighbor_pixel_index].M;
 #endif
 
 		denom += target_function_at_neighbor * M;
@@ -316,7 +324,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 		if (new_reservoir.combine_with(neighbor_reservoir, mis_weight, target_function_at_center, jacobian_determinant, random_number_generator))
 			selected_neighbor = neighbor;
 		new_reservoir.sanity_check(center_pixel_coords);
-		jacobian_determinant = get_jacobian_determinant_reconnection_shift(render_data, neighbor_reservoir, center_pixel_surface.shading_point, neighbor_pixel_index);
 	}
 
 	float normalization_numerator = 1.0f;
@@ -325,6 +332,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	get_temporal_reuse_normalization_denominator_numerator(normalization_numerator, normalization_denominator, render_data, new_reservoir, selected_neighbor, center_pixel_index, temporal_neighbor_pixel_index, random_number_generator);
 
 	new_reservoir.end_normalized(normalization_numerator, normalization_denominator);
+	// M-capping
+	if (render_data.render_settings.restir_di_settings.m_cap > 0)
+		new_reservoir.M = hippt::min(new_reservoir.M, render_data.render_settings.restir_di_settings.m_cap);
 	new_reservoir.sanity_check(center_pixel_coords);
 
 #if ReSTIR_DI_DoVisibilityReuse && ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z

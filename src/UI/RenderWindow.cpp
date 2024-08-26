@@ -34,7 +34,7 @@
 // - do not do initial candidates / spatial reuse and everything if the pixel is inactive (adaptive sampling)
 // - driver crash on the white room love
 // - camera ray jittering causes dark lines
-// - expose M-capping in ImGui
+// - changing from MIS like to MIS like with CW doesn't actually change the render, compilation issue
 
 // TODO bugs:
 // - memory leak with OpenGL when resizing the window?

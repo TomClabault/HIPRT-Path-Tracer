@@ -501,8 +501,8 @@ void ImGuiRenderer::draw_sampling_panel()
 			{
 				display_ReSTIR_DI_bias_status(kernel_options);
 
-				ImGui::SeparatorText("Target Function Settings");
-				ImGui::TreePush("ReSTIR DI - Target Function Settings Tree");
+				ImGui::SeparatorText("General Settings");
+				ImGui::TreePush("ReSTIR DI - General Settings Tree");
 				{
 					// Whether or not to use the visibility term in the target function used for
 					// resampling in ReSTIR DI (applies to all passes: initial candidates, temporal reuse, spatial reuse)
@@ -517,6 +517,12 @@ void ImGuiRenderer::draw_sampling_panel()
 
 					if (ImGui::Checkbox("Use geometry term", &render_settings.restir_di_settings.target_function.geometry_term_in_target_function))
 						m_render_window->set_render_dirty(true);
+
+					if (ImGui::SliderInt("M-cap", &render_settings.restir_di_settings.m_cap, 0, 256))
+					{
+						render_settings.restir_di_settings.m_cap = std::max(0, render_settings.restir_di_settings.m_cap);
+						m_render_window->set_render_dirty(true);
+					}
 
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
 					ImGui::TreePop();
@@ -574,10 +580,13 @@ void ImGuiRenderer::draw_sampling_panel()
 				ImGui::SeparatorText("Spatial Reuse Pass");
 				ImGui::TreePush("ReSTIR DI - Spatial Reuse Pass Tree");
 				{
+					if (ImGui::Checkbox("Do Spatial Reuse", &render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass))
+						m_render_window->set_render_dirty(true);
+
 					if (ImGui::SliderInt("Spatial Reuse Pass Count", &render_settings.restir_di_settings.spatial_pass.number_of_passes, 0, 64))
 					{
 						// Clamping
-						render_settings.restir_di_settings.spatial_pass.number_of_passes = std::max(0, render_settings.restir_di_settings.spatial_pass.number_of_passes);
+						render_settings.restir_di_settings.spatial_pass.number_of_passes = std::max(1, render_settings.restir_di_settings.spatial_pass.number_of_passes);
 
 						m_render_window->set_render_dirty(true);
 					}
@@ -624,12 +633,6 @@ void ImGuiRenderer::draw_sampling_panel()
 						if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
 							ImGuiRenderer::WrappingTooltip("Visibility bias correction cannot be used with 1/M weights.");
 					ImGui::EndDisabled();
-
-					if (ImGui::SliderInt("Spatial M-cap", &render_settings.restir_di_settings.spatial_pass.m_cap, 0, 256))
-					{
-						render_settings.restir_di_settings.spatial_pass.m_cap = std::max(0, render_settings.restir_di_settings.spatial_pass.m_cap);
-						m_render_window->set_render_dirty(true);
-					}
 
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
 					ImGui::TreePop();
