@@ -489,6 +489,7 @@ void GPURenderer::recompile_kernels(bool use_cache)
 {
 	m_camera_ray_pass.compile(m_hiprt_orochi_ctx->hiprt_ctx, m_path_tracer_options, use_cache);
 	m_restir_initial_candidates_pass.compile(m_hiprt_orochi_ctx->hiprt_ctx, m_path_tracer_options, use_cache);
+	m_restir_temporal_reuse_pass.compile(m_hiprt_orochi_ctx->hiprt_ctx, m_path_tracer_options, use_cache);
 	m_restir_spatial_reuse_pass.compile(m_hiprt_orochi_ctx->hiprt_ctx, m_path_tracer_options, use_cache);
 	m_path_trace_pass.compile(m_hiprt_orochi_ctx->hiprt_ctx, m_path_tracer_options, use_cache);
 }
