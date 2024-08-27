@@ -245,7 +245,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 		seed = wang_hash(center_pixel_index + 1);
 	else
 		seed = wang_hash((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_seed);
-	
 	Xorshift32Generator random_number_generator(seed);
 
 	ReSTIRDIReservoir* input_reservoir_buffer = render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs;
@@ -300,6 +299,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 		// Also, if this is the last neighbor resample (meaning that it is the sample pixel), 
 		// the jacobian is going to be 1.0f so no need to compute
 		if (target_function_at_center > 0.0f && neighbor_reservoir.UCW != 0.0f && neighbor != reused_neighbors_count)
+		{
 			// The reconnection shift is what is implicitely used in ReSTIR DI. We need this because
 			// the initial light sample candidates that we generate on the area of the lights have an
 			// area measure PDF. This area measure PDF is converted to solid angle in the initial candidates
@@ -314,9 +314,15 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 			// angle, Eq. 52 of 2022, "Generalized Resampled Importance Sampling".
 			jacobian_determinant = get_jacobian_determinant_reconnection_shift(render_data, neighbor_reservoir, center_pixel_surface.shading_point, neighbor_pixel_index);
 
-		if (jacobian_determinant == -1.0f)
-			// The sample was too dissimilar and so we're rejecting it
-			continue;
+			if (jacobian_determinant == -1.0f)
+			{
+				new_reservoir.M += neighbor_reservoir.M;
+
+				// The sample was too dissimilar and so we're rejecting it
+				continue;
+			}
+		}
+
 
 		float mis_weight = 1.0f;
 		if (target_function_at_center > 0.0f)

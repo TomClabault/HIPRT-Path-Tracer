@@ -27,8 +27,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
 
     // If we're rendering at low resolution, only doing 1 candidate of each
     // for better interactive framerates
-    int nb_light_candidates = render_data.render_settings.render_low_resolution ? 1 : render_data.render_settings.restir_di_settings.initial_candidates.number_of_initial_light_candidates;
-    int nb_bsdf_candidates = render_data.render_settings.render_low_resolution ? 1 : render_data.render_settings.restir_di_settings.initial_candidates.number_of_initial_bsdf_candidates;
+    int nb_light_candidates = render_data.render_settings.do_render_low_resolution() ? 1 : render_data.render_settings.restir_di_settings.initial_candidates.number_of_initial_light_candidates;
+    int nb_bsdf_candidates = render_data.render_settings.do_render_low_resolution() ? 1 : render_data.render_settings.restir_di_settings.initial_candidates.number_of_initial_bsdf_candidates;
 
     // Sampling candidates with weighted reservoir sampling
     ReSTIRDIReservoir reservoir;
@@ -72,7 +72,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
                 target_function = (bsdf_color * light_source_info.emission * cosine_at_evaluated_point * geometry_term).luminance();
 
 #if ReSTIR_DI_TargetFunctionVisibility == KERNEL_OPTION_TRUE
-                if (!render_data.render_settings.render_low_resolution)
+                if (!render_data.render_settings.do_render_low_resolution())
                 {
                     // Only doing visiblity if we're render at low resolution
                     // (meaning we're moving the camera) for better movement framerates
@@ -246,7 +246,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_InitialCandidates(HIPRTRenderData
     if (render_data.render_settings.freeze_random)
         seed = wang_hash(pixel_index + 1);
     else
-        seed = wang_hash((pixel_index + 1) * (render_data.render_settings.sample_number + 1));
+        seed = wang_hash((pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_seed);
 
     Xorshift32Generator random_number_generator(seed);
 
