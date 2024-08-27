@@ -22,9 +22,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void reset_render(const HIPRTRenderData& render_d
     render_data.buffers.pixels[pixel_index] = ColorRGB32F(0.0f);
     render_data.aux_buffers.denoiser_normals[pixel_index] = make_float3(1.0f, 1.0f, 1.0f);
     render_data.aux_buffers.denoiser_albedo[pixel_index] = ColorRGB32F(0.0f, 0.0f, 0.0f);
-    render_data.aux_buffers.initial_reservoirs[pixel_index] = ReSTIRDIReservoir();
-    render_data.aux_buffers.temporal_pass_output_reservoirs[pixel_index] = ReSTIRDIReservoir();
-    render_data.aux_buffers.spatial_reuse_output_1[pixel_index] = ReSTIRDIReservoir();
+
+    if (render_data.render_settings.accumulate)
+    {
+        render_data.aux_buffers.initial_reservoirs[pixel_index] = ReSTIRDIReservoir();
+        render_data.aux_buffers.temporal_pass_output_reservoirs[pixel_index] = ReSTIRDIReservoir();
+        render_data.aux_buffers.spatial_reuse_output_1[pixel_index] = ReSTIRDIReservoir();
+    }
 
     render_data.g_buffer.geometric_normals[pixel_index] = { 0, 0, 0 };
     render_data.g_buffer.shading_normals[pixel_index] = { 0, 0, 0 };
@@ -35,7 +39,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void reset_render(const HIPRTRenderData& render_d
     render_data.g_buffer.camera_ray_hit[pixel_index] = false;
     render_data.aux_buffers.pixel_active[pixel_index] = false;
 
-    if (render_data.render_settings.stop_pixel_noise_threshold > 0.0f || render_data.render_settings.enable_adaptive_sampling)
+    if (render_data.render_settings.has_access_to_adaptive_sampling_buffers())
     {
         // These buffers are only available when either the adaptive sampling or the stop noise threshold is enabled
         render_data.aux_buffers.pixel_sample_count[pixel_index] = 0;
@@ -60,10 +64,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
     // 'Render low resolution' means that the user is moving the camera for example
     // so we're going to reduce the quality of the render for increased framerates
     // while moving
-    if (render_data.render_settings.render_low_resolution)
+    if (render_data.render_settings.do_render_low_resolution())
     {
         // Reducing the number of bounces to 3
         render_data.render_settings.nb_bounces = 3;
+        // TODO remove this line that follows, not needed here since "wavefront refactor"
         render_data.render_settings.samples_per_frame = 1;
         int res_scaling = render_data.render_settings.render_low_resolution_scaling;
         pixel_index /= res_scaling;
@@ -77,7 +82,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
         }
     }
 
-    if (render_data.render_settings.need_to_reset)
+    if (!render_data.render_settings.accumulate || render_data.render_settings.need_to_reset)
         reset_render(render_data, pixel_index);
 
     bool sampling_needed = true;
@@ -129,7 +134,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
     if (render_data.render_settings.freeze_random)
         seed = wang_hash(pixel_index + 1);
     else
-        seed = wang_hash((pixel_index + 1) * (render_data.render_settings.sample_number + 1));
+        seed = wang_hash((pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_seed);
     Xorshift32Generator random_number_generator(seed);
 
     // Direction to the center of the pixel

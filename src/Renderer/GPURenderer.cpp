@@ -108,6 +108,11 @@ void GPURenderer::update()
 
 	// Resetting this flag as this is a new frame
 	m_render_settings.do_update_status_buffers = false;
+
+	if (!m_render_settings.accumulate)
+	{
+		m_render_settings.sample_number = 0;
+	}
 }
 
 void GPURenderer::copy_status_buffers()
@@ -211,7 +216,7 @@ void GPURenderer::render()
 
 	OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_main_stream, GPUKernel::compute_elapsed_time_callback, elapsed_time_data));
 
-	m_was_last_frame_low_resolution = m_render_settings.render_low_resolution;
+	m_was_last_frame_low_resolution = m_render_settings.do_render_low_resolution();
 	// We only reset once so after rendering a frame, we're sure that we don't need to reset anymore 
 	// so we're setting the flag to false (it will be set to true again if we need to reset the render
 	// again)
@@ -506,7 +511,11 @@ void GPURenderer::reset_last_frame_time()
 
 void GPURenderer::reset()
 {
-	m_rng.m_state.seed = 42;
+	if (m_render_settings.accumulate)
+		// Only resetting the seed for deterministic rendering if we're accumulating.
+		// If we're not accumulating, we want each frame of the render to be different
+		// so we don't get into that if block and we don't reset the seed
+		m_rng.m_state.seed = 42;
 
 	m_render_settings.frame_number = 0;
 	m_render_settings.sample_number = 0;

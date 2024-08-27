@@ -47,6 +47,10 @@ struct HIPRTRenderSettings
 	// This is the variable that enables / disables the increment of status buffers
 	bool do_update_status_buffers = false;
 
+	// Whether or not to accumulate each frame to allow progressive rendering. If false,
+	// each frame will be displayed on screen and discarded on the next frame without accumulation
+	bool accumulate = false;
+
 	// How many times the render kernel was called (updates after
 	// the call to the kernel so it start at 0)
 	int frame_number = 0;
@@ -70,10 +74,19 @@ struct HIPRTRenderSettings
 	// Useful for debugging only.
 	bool display_NaNs = false;
 
-	// If true, this means that the user is moving the camera and we're going to
-	// render the image at a much lower resolution to allow for smooth camera
-	// movements
-	int render_low_resolution = false;
+	// If true, then rendering at low resolution will be performed if 'wants_render_low_resolution'
+	// is also true.
+	// This boolean basically is an additional condition for rendering at low resolution:
+	//	 - If we're interacting with the camera, we *want* to render at low resolution
+	//	 but if rendering at low resolution is not allowed (this boolean), then we will still
+	//	 not render at low resolution
+	bool allow_render_low_resolution = false;
+	// If true, this means that the user is moving the camera and we want to
+	// render the image at a much lower resolution to allow for smoother
+	// interaction. Having this flag at true isn't sufficient for rendering at low
+	// resolution. The user must also *allow* rendering at low resolution
+	// with the 'allow_render_low_resolution' flag
+	int wants_render_low_resolution = false;
 	// How to divide the render resolution by when rendering at low resolution
 	// (when interacting with the camera)
 	int render_low_resolution_scaling = 4;
@@ -113,6 +126,16 @@ struct HIPRTRenderSettings
 	ReSTIRDISettings restir_di_settings;
 
 	/**
+	 * Returns true if the current frame should be renderer at low resolution, false otherwise.
+	 * 
+	 * This function is a simple helper that combines 
+	 */
+	HIPRT_HOST_DEVICE bool do_render_low_resolution() const
+	{
+		return wants_render_low_resolution && allow_render_low_resolution;
+	}
+
+	/**
 	 * Returns true if the adaptive sampling buffers are ready for use, false otherwise.
 	 *
 	 * Adaptive sampling buffers are "ready for use" if the adaptive sampling is enabled or
@@ -125,6 +148,8 @@ struct HIPRTRenderSettings
 
 		has_access |= stop_pixel_noise_threshold > 0.0f;
 		has_access |= enable_adaptive_sampling == 1;
+		// Cannot use adaptive sampling without accumulation
+		has_access &= !accumulate;
 
 		return has_access;
 	}

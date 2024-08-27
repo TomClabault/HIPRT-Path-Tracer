@@ -17,14 +17,12 @@
 #include "stb_image_write.h"
 
 // TODOs ReSTIR DI
-// - debug jacobian computed at the exact same location giving a NaN. How to avoid having problems when computing the jacobian with the exact same two pixels while still being able to catch legitimate NaNs?
 // - add envmap sampling to light samples with a probability (refactor envmap sampling in eval, sample and PDF functions)
 // - add second bounce direct light sampling strategy in imgui
 // - add sample rotation in spatial reuse to imgui
 // - add hammersley usage or not imgui for spatial reuse
 // - neighbor similiraty tessts, roughness, normal, depth
 // - do we need an initial candidate buffer ? can we maybe generate initial candidates directly in the temporal buffer?
-// - implement temporal pass
 // - implement temporal (back)reprojection
 // - pairwise mis
 // - allocate / deallocate restir reservoirs if using / not using restir
@@ -33,8 +31,10 @@
 // - driver crash at 0 spatial reuse pass
 // - do not do initial candidates / spatial reuse and everything if the pixel is inactive (adaptive sampling)
 // - driver crash on the white room love
-// - camera ray jittering causes dark lines
-// - changing from MIS like to MIS like with CW doesn't actually change the render, compilation issue
+// - camera ray jittering causes dark lines and darkens glossy reflections
+// - multiple spatial reuse passes destroy glossy reflections
+// - multiple spatial reuse passes + accumulate = black
+// - refactor temporal reuse to avoid hardcoded for loop on 2 iterations --> just unloop and make things clean by pre-reading the temporal neighbor reservoir instead of re-reading it multiple times
 
 // TODO bugs:
 // - memory leak with OpenGL when resizing the window?
@@ -66,6 +66,7 @@
 
 
 // TODO Features:
+// - maybe allow not resetting ReSTIR buffers while accumulation is on and camera has moved? Probably gives bad results but why not allow it for testing purposes?
 // - shadow terminator issue on sphere low smooth scene
 // - use HIP/CUDA graphs to reduce launch overhead
 // - keep compiling kernels in the background after application has started to cache the most common kernel options on disk
@@ -248,11 +249,13 @@ RenderWindow::RenderWindow(int width, int height, std::shared_ptr<HIPRTOrochiCtx
 	init_gl(width, height);
 	init_imgui();
 
-	m_application_settings = std::make_shared<ApplicationSettings>();
-	m_application_state = std::make_shared<ApplicationState>();
-
 	m_renderer = std::make_shared<GPURenderer>(hiprt_oro_ctx);
 	m_renderer->resize(width, height);
+
+	m_application_settings = std::make_shared<ApplicationSettings>();
+	// Disabling auto samples per frame is accumulation is OFF
+	m_application_settings->auto_sample_per_frame = m_renderer->get_render_settings().accumulate ? m_application_settings->auto_sample_per_frame : false;
+	m_application_state = std::make_shared<ApplicationState>();
 
 	m_display_view_system = std::make_shared<DisplayViewSystem>(m_renderer, this);
 
@@ -547,7 +550,7 @@ float RenderWindow::get_samples_per_second()
 
 float RenderWindow::compute_samples_per_second()
 {
-	float samples_per_frame = m_renderer->get_render_settings().render_low_resolution ? 1.0f : m_renderer->get_render_settings().samples_per_frame;
+	float samples_per_frame = m_renderer->get_render_settings().do_render_low_resolution() ? 1.0f : m_renderer->get_render_settings().samples_per_frame;
 
 	// Frame time divided by the number of samples per frame
 	// 1 sample per frame assumed if rendering at low resolution
@@ -679,11 +682,11 @@ void RenderWindow::render()
 
 			// We upload the data to the OpenGL textures for displaying
 			m_display_view_system->upload_relevant_buffers_to_texture();
-			// We want the next frame to be displayed with the same render_low_resolution setting
+			// We want the next frame to be displayed with the same wants_render_low_resolution setting
 			// as it was queued with. This is only useful for first frames when getting in low resolution
 			// (when we start moving the camera for example) or first frames when getting out of low resolution
 			// (when we stop moving the camera). In such situations, the last kernel launch in the GPU queue is
-			// a "first frame" that was queued with the corresponding render_low_resolution (getting in or out of low resolution).
+			// a "first frame" that was queued with the corresponding wants_render_low_resolution (getting in or out of low resolution).
 			// and so we want to display it the same way.
 			m_display_view_system->set_render_low_resolution(m_renderer->was_last_frame_low_resolution());
 			// Updating the uniforms so that next time we display, we display correctly
@@ -697,8 +700,8 @@ void RenderWindow::render()
 				// Not adding the frame time if we're rendering at low resolution, not relevant
 				m_perf_metrics->add_value(PerformanceMetricsComputer::SAMPLE_TIME_KEY, 1000.0f / m_application_state->samples_per_second);
 
-			render_settings.render_low_resolution = is_interacting();
-			if (m_application_settings->auto_sample_per_frame && (render_settings.render_low_resolution || m_renderer->was_last_frame_low_resolution()))
+			render_settings.wants_render_low_resolution = is_interacting();
+			if (m_application_settings->auto_sample_per_frame && (render_settings.do_render_low_resolution() || m_renderer->was_last_frame_low_resolution()))
 				// Only one sample when low resolution rendering
 				render_settings.samples_per_frame = 1;
 			else if (m_application_settings->auto_sample_per_frame)

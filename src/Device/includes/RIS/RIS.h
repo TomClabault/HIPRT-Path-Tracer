@@ -89,8 +89,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
 
     // If we're rendering at low resolution, only doing 1 candidate of each
     // for better interactive framerates
-    int nb_light_candidates = render_data.render_settings.render_low_resolution ? 1 : render_data.render_settings.ris_settings.number_of_light_candidates;
-    int nb_bsdf_candidates = render_data.render_settings.render_low_resolution ? 1 : render_data.render_settings.ris_settings.number_of_bsdf_candidates;
+    int nb_light_candidates = render_data.render_settings.do_render_low_resolution() ? 1 : render_data.render_settings.ris_settings.number_of_light_candidates;
+    int nb_bsdf_candidates = render_data.render_settings.do_render_low_resolution() ? 1 : render_data.render_settings.ris_settings.number_of_bsdf_candidates;
 
     // Sampling candidates with weighted reservoir sampling
     RISReservoir reservoir;
@@ -134,10 +134,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
                 target_function = (bsdf_color * light_source_info.emission * cosine_at_evaluated_point * geometry_term).luminance();
 
 #if RISUseVisiblityTargetFunction == KERNEL_OPTION_TRUE
-                if (!render_data.render_settings.render_low_resolution)
+                if (!render_data.render_settings.do_render_low_resolution())
                 {
-                    // Only doing visiblity if we're render at low resolution
-                    // (meaning we're moving the camera) for better movement framerates
+                    // Only doing visiblity if we're not rendering at low resolution
+                    // (meaning we're moving the camera) for better interaction framerates
 
                     hiprtRay shadow_ray;
                     shadow_ray.origin = evaluated_point;

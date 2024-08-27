@@ -78,7 +78,7 @@ public:
 	 */
 	bool frame_render_done();
 	/**
-	 * Returns true if the last frame was rendered with render_settings.render_low_resolution = true.
+	 * Returns true if the last frame was rendered with render_settings.wants_render_low_resolution = true.
 	 * False otherwise
 	 */
 	bool was_last_frame_low_resolution();

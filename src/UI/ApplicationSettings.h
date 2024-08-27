@@ -26,7 +26,7 @@ struct ApplicationSettings
 	bool denoise_when_rendering_done = true;
 	// How many frames to wait for before denoising (this basically reduces 
 	// the performance penalty of denoising each frame).
-	int denoiser_sample_skip = 1;
+	int denoiser_sample_skip = 0;
 	// If 1.0f, 100% of the denoised result is displayed in the viewport.
 	// If 0.0f, 100% of the noisy framebuffer is displayed in the viewport
 	// Linearly interpoalted between the two for intermediate values

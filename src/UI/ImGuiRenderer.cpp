@@ -180,7 +180,14 @@ void ImGuiRenderer::draw_render_settings_panel()
 
 	ImGui::Separator();
 
-	ImGui::BeginDisabled(m_application_settings->auto_sample_per_frame);
+	if (ImGui::Checkbox("Accumulate", &render_settings.accumulate))
+	{
+		m_render_window->set_render_dirty(true);
+		m_render_window->get_application_settings()->auto_sample_per_frame = false;
+		render_settings.samples_per_frame = 1;
+	}
+
+	ImGui::BeginDisabled(m_application_settings->auto_sample_per_frame || !render_settings.accumulate);
 	if (ImGui::InputInt("Samples per frame", &render_settings.samples_per_frame))
 		// Clamping to 1
 		render_settings.samples_per_frame = std::max(1, render_settings.samples_per_frame);
@@ -317,12 +324,17 @@ void ImGuiRenderer::draw_render_settings_panel()
 
 void ImGuiRenderer::draw_camera_panel()
 {
+	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
+
 	if (ImGui::CollapsingHeader("Camera"))
 	{
 		ImGui::TreePush("Camera tree");
 
 		if (ImGui::Checkbox("Do ray jittering", &m_renderer->get_camera().do_jittering))
 			m_render_window->set_render_dirty(true);
+
+		ImGui::Checkbox("Render low resolution when interacting", &render_settings.allow_render_low_resolution);
+		ImGui::SliderInt("Render low resolution downscale", &render_settings.render_low_resolution_scaling, 1, 8);
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();
@@ -414,6 +426,9 @@ void ImGuiRenderer::draw_sampling_panel()
 
 		if (ImGui::CollapsingHeader("Adaptive sampling"))
 		{
+			// Cannot use adaptive sampling without accumulation
+			ImGui::BeginDisabled(!render_settings.accumulate);
+
 			ImGui::TreePush("Adaptive sampling tree");
 
 			if (ImGui::Checkbox("Enable adaptive sampling", (bool*)&render_settings.enable_adaptive_sampling))
@@ -433,6 +448,9 @@ void ImGuiRenderer::draw_sampling_panel()
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::TreePop();
+
+			// !render_settings.accumulate
+			ImGui::EndDisabled();
 		}
 
 		if (ImGui::CollapsingHeader("Direct lighting"))
@@ -692,7 +710,7 @@ void ImGuiRenderer::display_ReSTIR_DI_bias_status(std::shared_ptr<GPUKernelCompi
 			"initial candidates sampling pass, light samples that are occluded are discarded.\n"
 			"Temporal & spatial reuse pass will then only resample on unoccluded samples.\n"
 			"If not accounting for visibility when counting valid neighbors, we may determine "
-			"that a neighbor could have a produced the picked sample when actually, it couldn't "
+			"that a neighbor could have produced the picked sample when actually, it couldn't "
 			"because from the neighbor's point of view, the sample could have been occluded "
 			"(visibility reuse pass).\n"
 			"This overestimates the number of valid neighbors and results in darkening.\n\n");
