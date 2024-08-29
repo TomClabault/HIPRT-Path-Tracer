@@ -28,7 +28,7 @@
  * [4] [NVIDIA RTX DI SDK - Github] https://github.com/NVIDIAGameWorks/RTXDI
  * [5] [Generalized Resampled Importance Sampling Foundations of ReSTIR] https://research.nvidia.com/publication/2022-07_generalized-resampled-importance-sampling-foundations-restir
  * [6] [Uniform disk sampling] https://rh8liuqy.github.io/Uniform_Disk.html
- * [7] [Reddit Post for the Jacobian Term needed] https://www.reddit.com/r/GraphicsProgramming/comments/1eo5hqr/restir_di_light_sample_pdf_confusion/
+ * [7] [Reddit Post for the Jacobian term needed] https://www.reddit.com/r/GraphicsProgramming/comments/1eo5hqr/restir_di_light_sample_pdf_confusion/
  */
 
 /**
@@ -77,6 +77,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int get_neighbor_pixel_index(int neighbor_number,
 		int2 neighbor_offset_int = make_int2(static_cast<int>(neighbor_offset_rotated.x), static_cast<int>(neighbor_offset_rotated.y));
 
 		int2 neighbor_pixel_coords = center_pixel_coords + neighbor_offset_int;
+		//int2 neighbor_pixel_coords = center_pixel_coords + make_int2(15, 0);
 		if (neighbor_pixel_coords.x < 0 || neighbor_pixel_coords.x >= res.x || neighbor_pixel_coords.y < 0 || neighbor_pixel_coords.y >= res.y)
 			// Rejecting the sample if it's outside of the viewport
 			return -1;
@@ -89,9 +90,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int get_neighbor_pixel_index(int neighbor_number,
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float get_spatial_reuse_resampling_MIS_weight(const HIPRTRenderData& render_data, const ReSTIRDIReservoir& neighbor_reservoir, int current_neighbor, int reused_neighbors_count, int2 center_pixel_coords, int2 res, float2 cos_sin_theta_rotation, Xorshift32Generator& random_number_generator)
 {
-#if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_M || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
+#if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_M || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE_CONFIDENCE_WEIGHTS
 	return neighbor_reservoir.M;
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE_CONFIDENCE_WEIGHTS
+#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
 	// No resampling MIS weights for this. Everything is computed in the last step where
 	// we check which neighbors could have produced the sample that we picked
 	return 1.0f;
@@ -110,7 +111,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_spatial_reuse_resampling_MIS_weight(con
 
 		float target_function_at_j = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_SpatialReuseBiasUseVisiblity>(render_data, neighbor_reservoir.sample, neighbor_surface);
 
-		unsigned int M = 1.0f;
+		int M = 1;
 #if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_GBH_CONFIDENCE_WEIGHTS
 		M = render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs[neighbor_index_j].M;
 #endif
@@ -193,7 +194,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void get_spatial_reuse_normalization_denominator_
 			out_normalization_denom += target_function_at_neighbor;
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE_CONFIDENCE_WEIGHTS
 			if (neighbor == selected_neighbor)
-				out_normalization_nume += target_function_at_neighbor * neighbor_reservoir.M;
+				out_normalization_nume += target_function_at_neighbor;
 			out_normalization_denom += target_function_at_neighbor * neighbor_reservoir.M;
 #endif
 		}

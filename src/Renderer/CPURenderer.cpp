@@ -21,7 +21,7 @@
  // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
  // allowing for fast step into that pixel with the debugger to see what's happening.
  // Otherwise if 0, all pixels of the image are rendered
-#define DEBUG_PIXEL 1
+#define DEBUG_PIXEL 0
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner. 
 // If 1, it's bottom left corner.
 // Useful if you're using an image viewer to get the the coordinates of 
@@ -30,8 +30,8 @@
 // you're measuring the coordinates of the pixel with (0, 0) in the bottom left corner
 #define DEBUG_FLIP_Y 0
 // Coordinates of the pixel to render
-#define DEBUG_PIXEL_X 592
-#define DEBUG_PIXEL_Y 660
+#define DEBUG_PIXEL_X 568
+#define DEBUG_PIXEL_Y 209
 // If 1, a square of DEBUG_NEIGHBORHOOD_SIZE x DEBUG_NEIGHBORHOOD_SIZE pixels
 // will be rendered around the pixel to debug (given by DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y). The pixel of interest is going to be rendered first so you
@@ -44,7 +44,7 @@
 #define DEBUG_RENDER_NEIGHBORHOOD 1
 // How many pixels to render around the debugged pixel given by the DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y coordinates.
-#define DEBUG_NEIGHBORHOOD_SIZE 35
+#define DEBUG_NEIGHBORHOOD_SIZE 50
 
 CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, height))
 {
@@ -138,7 +138,8 @@ void CPURenderer::set_envmap(Image32Bit& envmap_image)
 
 void CPURenderer::set_camera(Camera& camera)
 {
-    m_hiprt_camera = camera.to_hiprt();
+    m_camera = camera;
+    m_render_data.current_camera = camera.to_hiprt();
 }
 
 HIPRTRenderData& CPURenderer::get_render_data()
@@ -163,9 +164,11 @@ void CPURenderer::render()
     auto start = std::chrono::high_resolution_clock::now();
 
     // Using 'samples_per_frame' as the number of samples to render on the CPU
-    for (int i = 0; i < m_render_data.render_settings.samples_per_frame; i++)
+    m_render_data.render_settings.sample_number = 1;
+    for (int frame_number = 0; frame_number < m_render_data.render_settings.samples_per_frame; frame_number++)
     {
-        update_render_data(i);
+        update(frame_number);
+        update_render_data(frame_number);
 
         camera_rays_pass();
 #if DirectLightSamplingStrategy == LSS_RESTIR_DI
@@ -173,22 +176,31 @@ void CPURenderer::render()
 #endif
         tracing_pass();
 
-        m_render_data.render_settings.sample_number++;
+        if (m_render_data.render_settings.accumulate)
+            m_render_data.render_settings.sample_number++;
         m_render_data.random_seed = m_rng.xorshift32();
         m_render_data.render_settings.need_to_reset = false;
 
         if (m_render_data.render_settings.samples_per_frame > 1)
-            std::cout << "Frame " << i + 1 << ": " << (i + 1) / static_cast<float>(m_render_data.render_settings.samples_per_frame) * 100.0f << "%" << std::endl;
+            std::cout << "Frame " << frame_number + 1 << ": " << (frame_number + 1) / static_cast<float>(m_render_data.render_settings.samples_per_frame) * 100.0f << "%" << std::endl;
+
+        
     }
 
     auto stop = std::chrono::high_resolution_clock::now();
     std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
 }
 
+void CPURenderer::update(int frame_number)
+{
+    if (frame_number == 5)
+        m_camera.translate(glm::vec3(0.2, 0, 0));
+}
+
 void CPURenderer::update_render_data(int sample)
 {
-    m_render_data.current_camera = m_hiprt_camera;
-    m_render_data.prev_camera = m_hiprt_camera;
+    m_render_data.prev_camera = m_render_data.current_camera;
+    m_render_data.current_camera = m_camera.to_hiprt();
 }
 
 void CPURenderer::camera_rays_pass()
@@ -449,7 +461,7 @@ void CPURenderer::tonemap(float gamma, float exposure)
 
             ColorRGB32F hdr_color = m_render_data.buffers.pixels[index];
             // Scaling by sample count
-            hdr_color = hdr_color / float(m_render_data.render_settings.samples_per_frame);
+            hdr_color = hdr_color / float(m_render_data.render_settings.sample_number);
 
             ColorRGB32F tone_mapped = ColorRGB32F(1.0f) - exp(-hdr_color * exposure);
             tone_mapped = pow(tone_mapped, 1.0f / gamma);

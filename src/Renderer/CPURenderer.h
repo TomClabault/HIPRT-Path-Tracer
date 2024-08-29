@@ -29,6 +29,7 @@ public:
     Image32Bit& get_framebuffer();
 
     void render();
+    void update(int frame_number);
     void update_render_data(int sample);
     void camera_rays_pass();
     void ReSTIR_DI();
@@ -77,7 +78,7 @@ private:
     std::vector<Triangle> m_triangle_buffer;
     std::shared_ptr<BVH> m_bvh;
 
-    HIPRTCamera m_hiprt_camera;
+    Camera m_camera;
     HIPRTRenderData m_render_data;
 };
 

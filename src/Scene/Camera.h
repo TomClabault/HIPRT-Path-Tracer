@@ -42,6 +42,14 @@ struct Camera
      */
     void auto_adjust_speed(const BoundingBox& scene_bounding_box);
 
+    void translate(glm::vec3 translation_vec);
+    /**
+     * Basically a handy function for translating a certain distance in the direction
+     * the camera is looking at
+     */
+    void zoom(float offset);
+    void rotate(glm::vec3 rotation_angles);
+
     glm::mat4x4 projection_matrix;
 
     // Whether or not to jitter rays direction for anti-aliasing during the rendering

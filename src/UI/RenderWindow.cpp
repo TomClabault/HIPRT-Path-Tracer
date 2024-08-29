@@ -35,13 +35,14 @@
 // - multiple spatial reuse passes destroy glossy reflections
 // - multiple spatial reuse passes + accumulate = black
 // - refactor temporal reuse to avoid hardcoded for loop on 2 iterations --> just unloop and make things clean by pre-reading the temporal neighbor reservoir instead of re-reading it multiple times
+// - m cap at 0 in ImGui breaks the render --> hardcap M to something like ~1000000 or something
+// - temporal reprojection without camera ray jitter broken
 
 // TODO bugs:
 // - memory leak with OpenGL when resizing the window?
-// - memory leak when launching kernels? Does that happen also on Linux or is it only due to Windows drivers?
+// - memory leak when launching kernels? Does that happen also on Linux or is it only due to AMD Windows drivers?
 // - playing with the pixel noise threshold eventually leaves it at 4000/2000000 for example, the counter doesn't reset properly
 // - pixels converged count sometimes goes above 100%
-// - memory leak with OpenGL when resizing the window over and over?
 // - take transmission color into account when direct sampling a light source that is inside a volume
 // - denoiser AOVs not accounting for transmission correctly since Disney 
 //	  - same with perfect reflection
@@ -66,6 +67,7 @@
 
 
 // TODO Features:
+// - enable samples per frame even when not accumulating
 // - maybe allow not resetting ReSTIR buffers while accumulation is on and camera has moved? Probably gives bad results but why not allow it for testing purposes?
 // - shadow terminator issue on sphere low smooth scene
 // - use HIP/CUDA graphs to reduce launch overhead

@@ -216,6 +216,8 @@ void GPURenderer::render()
 
 	OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_main_stream, GPUKernel::compute_elapsed_time_callback, elapsed_time_data));
 
+	// Saving the camera that we used this frame
+	m_previous_frame_camera = m_camera;
 	m_was_last_frame_low_resolution = m_render_settings.do_render_low_resolution();
 	// We only reset once so after rendering a frame, we're sure that we don't need to reset anymore 
 	// so we're setting the flag to false (it will be set to true again if we need to reset the render
@@ -576,7 +578,7 @@ HIPRTRenderData GPURenderer::get_render_data()
 	// The initial candidate output buffer is always the same so we can just set it here
 	render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs = m_restir_di_reservoirs.initial_candidates_reservoirs.get_device_pointer();
 
-	render_data.prev_camera = render_data.current_camera;
+	render_data.prev_camera = m_previous_frame_camera.to_hiprt();
 	render_data.current_camera = m_camera.to_hiprt();
 		
 	render_data.random_seed = m_rng.xorshift32();
@@ -705,20 +707,15 @@ void GPURenderer::set_camera(const Camera& camera)
 
 void GPURenderer::translate_camera_view(glm::vec3 translation)
 {
-	m_camera.translation = m_camera.translation + translation * glm::conjugate(m_camera.rotation);
+	m_camera.translate(translation);
 }
 
 void GPURenderer::rotate_camera_view(glm::vec3 rotation_angles)
 {
-	glm::quat qx = glm::angleAxis(rotation_angles.y, glm::vec3(1.0f, 0.0f, 0.0f));
-	glm::quat qy = glm::angleAxis(rotation_angles.x, glm::vec3(0.0f, 1.0f, 0.0f));
-
-	glm::quat orientation = glm::normalize(qy * m_camera.rotation * qx);
-	m_camera.rotation = orientation;
+	m_camera.rotate(rotation_angles);
 }
 
 void GPURenderer::zoom_camera_view(float offset)
 {
-	glm::vec3 translation(0, 0, offset);
-	m_camera.translation = m_camera.translation + translation * glm::conjugate(m_camera.rotation);
+	m_camera.zoom(offset);
 }

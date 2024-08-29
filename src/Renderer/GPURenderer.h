@@ -143,6 +143,7 @@ public:
 	int m_render_width = 0, m_render_height = 0;
 
 	Camera m_camera;
+	Camera m_previous_frame_camera;
 
 private:
 	void set_hiprt_scene_from_scene(const Scene& scene);

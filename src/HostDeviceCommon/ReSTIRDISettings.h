@@ -33,7 +33,7 @@ struct TemporalPassSettings
 
 struct SpatialPassSettings
 {
-	bool do_spatial_reuse_pass = true;
+	bool do_spatial_reuse_pass = false;
 
 	// How many spatial reuse pass to perform
 	int number_of_passes = 1;
@@ -77,7 +77,7 @@ struct ReSTIRDISettings
 	// for a given pixel.
 	//
 	// A M-cap value between 5 - 30 is usually good
-	int m_cap = 10;
+	int m_cap = 100;
 
 	// Pointer to the buffer that contains the output of all the passes of ReSTIR DI
 	// This the buffer that should be used when evaluating direct lighting in the path tracer

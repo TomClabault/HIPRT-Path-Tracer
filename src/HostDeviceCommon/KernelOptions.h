@@ -178,17 +178,17 @@
  * What bias correction weights to use when resampling neighbors (temporal / spatial)
  * 
  *  - RESTIR_DI_BIAS_CORRECTION_1_OVER_M
- *		Very simple biased weights as described in the 2019 paper (Eq. 6).
+ *		Very simple biased weights as described in the 2020 paper (Eq. 6).
  *		Those weights are biased because they do not account for cases where
  *		we resample a sample that couldn't have been produced by some neighbors. 
  *		The bias shows up as darkening, mostly at object boundaries. In GRIS vocabulary, 
  *		this type of weights can be seen as confidence weights alone c_i / sum(c_j)
  * 
  *  - RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
- *		Simple unbiased weights as described in the 2019 paper (Eq. 16 and Section 4.3)
+ *		Simple unbiased weights as described in the 2020 paper (Eq. 16 and Section 4.3)
  *		Those weights are unbiased but can have **extremely** bad variance when a neighbor being resampled
  *		has a very low target function (when the neighbor is a glossy surface for example).
- *		See Fig. 7 of the 2019 paper.
+ *		See Fig. 7 of the 2020 paper.
  * 
  *  - RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
  *		Unbiased weights as proposed by Eq. 22 of the paper. Way better than 1/Z in terms of variance
@@ -209,7 +209,7 @@
  *		2023, "A Gentle Introduction to ReSTIR". Should have lower variance than without confidence weights
  *		due to favoring better samples.
  */
-#define ReSTIR_DI_BiasCorrectionWeights RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
+#define ReSTIR_DI_BiasCorrectionWeights RESTIR_DI_BIAS_CORRECTION_MIS_LIKE_CONFIDENCE_WEIGHTS
 
 /**
  * What sampling strategy to use for thd GGX NDF

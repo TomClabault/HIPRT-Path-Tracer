@@ -17,6 +17,7 @@ struct HIPRTCamera
 {
     float4x4 inverse_view;
     float4x4 inverse_projection;
+    float4x4 view_projection;
 
     bool do_jittering = true;
 

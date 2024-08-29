@@ -35,14 +35,25 @@
  * Returns the linear index that can be used directly to index a buffer
  * of render_data for getting data of the temporal neighbor
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE int find_temporal_neighbor(const HIPRTCamera& previous_frame_camera, int center_pixel_index)
+HIPRT_HOST_DEVICE HIPRT_INLINE int find_temporal_neighbor(const HIPRTCamera& previous_frame_camera, float3 current_shading_point, int2 resolution, int center_pixel_index)
 {
-	return center_pixel_index;
+	//return center_pixel_index;
+	float3 previous_screen_space_point = matrix_X_point(previous_frame_camera.view_projection, current_shading_point);
+	// Bringing back in [0, 1] from [-1, 1]
+	previous_screen_space_point += make_float3(1.0f, 1.0f, 0);
+	previous_screen_space_point *= make_float3(0.5f, 0.5f, 1.0f);
+
+	int2 temporal_neighbor_screen_space_pos = make_int2(roundf(previous_screen_space_point.x * resolution.x), roundf(previous_screen_space_point.y * resolution.y));
+	if (temporal_neighbor_screen_space_pos.x < 0 || temporal_neighbor_screen_space_pos.x >= resolution.x || temporal_neighbor_screen_space_pos.y < 0 || temporal_neighbor_screen_space_pos.y >= resolution.y)
+		// Previous pixel is out of the current viewport
+		return -1;
+
+	return temporal_neighbor_screen_space_pos.x + temporal_neighbor_screen_space_pos.y * resolution.x;
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float get_temporal_reuse_resampling_MIS_weight(const HIPRTRenderData& render_data, const ReSTIRDIReservoir& neighbor_reservoir, int current_neighbor, int center_pixel_index, int temporal_neighbor_pixel_index, Xorshift32Generator& random_number_generator)
 {
-#if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_M || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
+#if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_M || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE_CONFIDENCE_WEIGHTS
 	int neighbor_M = neighbor_reservoir.M;
 	if (current_neighbor == 0)
 		// M-capping the temporal neighbor
@@ -50,7 +61,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_temporal_reuse_resampling_MIS_weight(co
 			neighbor_M = hippt::min(neighbor_M, render_data.render_settings.restir_di_settings.m_cap);
 
 	return neighbor_M;
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE_CONFIDENCE_WEIGHTS
+#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
 	// No resampling MIS weights for this. Everything is computed in the last step where
 	// we check which neighbors could have produced the sample that we picked
 	return 1.0f;
@@ -102,6 +113,20 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_temporal_reuse_resampling_MIS_weight(co
 					M = temporal_neighbor_M;
 			}
 		}
+
+#if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_GBH
+		// No confidence weights, using M = 1.
+		// 
+		// Note that we still have to go through the piece of code above because it checks if
+		// the temporal neighbor is valid. If the temporal neighbor isn't valid, then
+		// we skip to reusing the initial candidates and we never get here.
+		//
+		// For this reason, we cannot just set M = 1 if not using confidence weights
+		// and do the piece of code above only for confidence weights, we have to check
+		// for the validity of the temporal neighbor in both cases and so we have to
+		// go through the code above in both cases
+		M = 1;
+#endif
 
 		denom += target_function_at_neighbor * M;
 		if (j == current_neighbor)
@@ -172,6 +197,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void get_temporal_reuse_normalization_denominator
 	// Checking how many of our neighbors could have produced the sample that we just picked
 	// and we're going to divide by the sum of M values of those neighbors
 	out_normalization_denom = 0.0f;
+
 #if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
 	out_normalization_nume = 1.0f;
 #else
@@ -242,7 +268,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void get_temporal_reuse_normalization_denominator
 					neighbor_M = hippt::min(neighbor_M, render_data.render_settings.restir_di_settings.m_cap);
 
 			if (neighbor == selected_neighbor)
-				out_normalization_nume += target_function_at_neighbor * neighbor_M;
+				out_normalization_nume += target_function_at_neighbor;
 			out_normalization_denom += target_function_at_neighbor * neighbor_M;
 #endif
 		}
@@ -302,7 +328,20 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	// Center pixel coordinates
 	int2 center_pixel_coords = make_int2(x, y);
 
-	int temporal_neighbor_pixel_index = find_temporal_neighbor(render_data.prev_camera, center_pixel_index);
+	int temporal_neighbor_pixel_index = find_temporal_neighbor(render_data.prev_camera, center_pixel_surface.shading_point, res, center_pixel_index);
+	if (temporal_neighbor_pixel_index == -1)
+	{
+		// Temporal occlusion / disoccusion, temporal neighbor is invalid,
+		// we're only going to resample the initial candidates so let's set that as
+		// the output right away
+
+		// Clearing the temporal reservoir
+		render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs[center_pixel_index] = ReSTIRDIReservoir();
+		// The output of this temporal pass is just the initial candidates reservoir
+		render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs[center_pixel_index] = render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs[center_pixel_index];
+
+		return;
+	}
 
 	int selected_neighbor = 0;
 	// Resampling 2 reservoirs for the temporal reuse pass: our temporal neighbor and the initial candidate
@@ -314,9 +353,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 		if (neighbor == 0)
 		{
 			neighbor_pixel_index = temporal_neighbor_pixel_index;
-			if (neighbor_pixel_index == -1)
-				// No temporal neighbor found, this is a disocclusion, nothing to temporally resample, skipping
-				continue;
 
 			// If resampling the temporal neighbor, reading from the temporal input buffer
 			input_reservoir_buffer = render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs;
