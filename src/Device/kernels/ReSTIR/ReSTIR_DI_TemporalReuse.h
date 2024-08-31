@@ -63,24 +63,26 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool roughness_check(float center_pixel_roughness
  * Returns the linear index that can be used directly to index a buffer
  * of render_data for getting data of the temporal neighbor
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE int find_temporal_neighbor(const HIPRTRenderData& render_data, const float3& current_shading_point, const float3& current_normal, int2 resolution, int center_pixel_index, float center_pixel_roughness)
+HIPRT_HOST_DEVICE HIPRT_INLINE int find_temporal_neighbor(const HIPRTRenderData& render_data, const float3& current_shading_point, const float3& current_normal, int2 resolution, int center_pixel_index, float center_pixel_roughness, Xorshift32Generator& random_number_generator)
 {
 	float3 previous_screen_space_point = matrix_X_point(render_data.prev_camera.view_projection, current_shading_point);
 	// Bringing back in [0, 1] from [-1, 1]
 	previous_screen_space_point += make_float3(1.0f, 1.0f, 0);
 	previous_screen_space_point *= make_float3(0.5f, 0.5f, 1.0f);
 
-	int2 temporal_neighbor_screen_space_pos = make_int2(roundf(previous_screen_space_point.x * resolution.x), roundf(previous_screen_space_point.y * resolution.y));
-	if (temporal_neighbor_screen_space_pos.x < 0 || temporal_neighbor_screen_space_pos.x >= resolution.x || temporal_neighbor_screen_space_pos.y < 0 || temporal_neighbor_screen_space_pos.y >= resolution.y)
+	float x_pos_float = previous_screen_space_point.x * resolution.x;
+	float y_pos_float = previous_screen_space_point.y * resolution.y;
+	int2 temporal_neighbor_screen_pixel_pos = make_int2(x_pos_float, y_pos_float);
+	if (temporal_neighbor_screen_pixel_pos.x < 0 || temporal_neighbor_screen_pixel_pos.x >= resolution.x || temporal_neighbor_screen_pixel_pos.y < 0 || temporal_neighbor_screen_pixel_pos.y >= resolution.y)
 		// Previous pixel is out of the current viewport
 		return -1;
 
-	int temporal_neighbor_index = temporal_neighbor_screen_space_pos.x + temporal_neighbor_screen_space_pos.y * resolution.x;
+	int temporal_neighbor_index = temporal_neighbor_screen_pixel_pos.x + temporal_neighbor_screen_pixel_pos.y * resolution.x;
 	float3 temporal_neighbor_point = render_data.g_buffer.first_hits[temporal_neighbor_index];
 
 	bool checks_passed = true;
 	checks_passed &= plane_distance_check(temporal_neighbor_point, current_shading_point, current_normal, render_data.render_settings.restir_di_settings.temporal_pass.plane_distance_threshold);
-	checks_passed &= roughness_check(center_pixel_roughness);
+	//checks_passed &= roughness_check(center_pixel_roughness);
 
 	if (checks_passed)
 		return temporal_neighbor_index;
@@ -365,7 +367,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	// Center pixel coordinates
 	int2 center_pixel_coords = make_int2(x, y);
 
-	int temporal_neighbor_pixel_index = find_temporal_neighbor(render_data, center_pixel_surface.shading_point, center_pixel_surface.shading_normal, res, center_pixel_index, center_pixel_surface.material.roughness);
+	int temporal_neighbor_pixel_index = find_temporal_neighbor(render_data, center_pixel_surface.shading_point, center_pixel_surface.shading_normal, res, center_pixel_index, center_pixel_surface.material.roughness, random_number_generator);
 	if (temporal_neighbor_pixel_index == -1)
 	{
 		// Temporal occlusion / disoccusion, temporal neighbor is invalid,

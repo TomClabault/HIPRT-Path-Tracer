@@ -19,7 +19,7 @@ struct HIPRTCamera
     float4x4 inverse_projection;
     float4x4 view_projection;
 
-    bool do_jittering = true;
+    bool do_jittering = false;
 
     HIPRT_HOST_DEVICE hiprtRay get_camera_ray(float x, float y, int2 res)
     {

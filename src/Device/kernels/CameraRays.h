@@ -143,8 +143,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
     if (render_data.current_camera.do_jittering)
     {
         // Jitter randomly around the center
-        x_ray_point_direction += random_number_generator() - 1.0f;
-        y_ray_point_direction += random_number_generator() - 1.0f;
+        x_ray_point_direction += random_number_generator() - 0.5f;
+        y_ray_point_direction += random_number_generator() - 0.5f;
     }
 
     hiprtRay ray = render_data.current_camera.get_camera_ray(x_ray_point_direction, y_ray_point_direction, res);
