@@ -25,9 +25,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void reset_render(const HIPRTRenderData& render_d
 
     if (render_data.render_settings.accumulate)
     {
-        render_data.aux_buffers.initial_reservoirs[pixel_index] = ReSTIRDIReservoir();
-        render_data.aux_buffers.temporal_pass_output_reservoirs[pixel_index] = ReSTIRDIReservoir();
-        render_data.aux_buffers.spatial_reuse_output_1[pixel_index] = ReSTIRDIReservoir();
+        render_data.aux_buffers.restir_reservoir_buffer_1[pixel_index] = ReSTIRDIReservoir();
+        render_data.aux_buffers.restir_reservoir_buffer_2[pixel_index] = ReSTIRDIReservoir();
+        render_data.aux_buffers.restir_reservoir_buffer_3[pixel_index] = ReSTIRDIReservoir();
     }
 
     render_data.g_buffer.geometric_normals[pixel_index] = { 0, 0, 0 };

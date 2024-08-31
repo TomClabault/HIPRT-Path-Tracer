@@ -51,9 +51,17 @@ struct HIPRTRenderSettings
 	// each frame will be displayed on screen and discarded on the next frame without accumulation
 	bool accumulate = false;
 
-	// How many times the render kernel was called (updates after
-	// the call to the kernel so it start at 0)
-	int frame_number = 0;
+	// How many samples were accumulated in the denoiser's AOV buffers (albedo & normals)
+	// This is used mainly for the normals AOVs because we want a way to accumulate the normals.
+	// However, we still want to feed the normalized normals to the denoiser. 
+	// This means that we need to store normalized normals in the normals AOV GPU buffer. 
+	// But if we also want to accumulate, we also need to get the normals back from "normalized"
+	// to their "accumulated" value. We can then add the normal of the first hit of our current
+	// frame to that "accumulated" value and then normalize again.
+	// 
+	// We need denoiser_AOV_accumulation_counter to multiply the normalized normals of the buffer with
+	// and get that "accumulated" normals value.
+	int denoiser_AOV_accumulation_counter = 0;
 
 	// Number of samples rendered so far before the kernel call
 	// This is the sum of samples_per_frame for all frames

@@ -22,8 +22,6 @@
 // - add sample rotation in spatial reuse to imgui
 // - add hammersley usage or not imgui for spatial reuse
 // - neighbor similiraty tessts, roughness, normal, depth
-// - do we need an initial candidate buffer ? can we maybe generate initial candidates directly in the temporal buffer?
-// - implement temporal (back)reprojection
 // - pairwise mis
 // - allocate / deallocate restir reservoirs if using / not using restir
 // - feature to disable ReSTIR after a certain percentage of convergence --> we don't want to pay the full price of resampling and everything only for a few difficult isolated pixels (especially true with adaptive sampling where neighbors don't get sampled --> no new samples added to their reservoir --> no need to resample)
@@ -35,8 +33,9 @@
 // - multiple spatial reuse passes destroy glossy reflections
 // - multiple spatial reuse passes + accumulate = black
 // - refactor temporal reuse to avoid hardcoded for loop on 2 iterations --> just unloop and make things clean by pre-reading the temporal neighbor reservoir instead of re-reading it multiple times
-// - m cap at 0 in ImGui breaks the render --> hardcap M to something like ~1000000 or something
+// - m cap at 0 in ImGui breaks the render because of infinite M growth --> hardcap M to something like ~1000000 or something
 // - temporal reprojection without camera ray jitter broken
+// - different M cap for glossy surfaces ?
 
 // TODO bugs:
 // - memory leak with OpenGL when resizing the window?
@@ -48,6 +47,7 @@
 //	  - same with perfect reflection
 // - heatmap with adaptive sampling and only pixel stopnoise threshold not displaying the same heatmap (particularly in shadows in the white room)
 // - Start render without adaptive sampling --> enable pixel noise threshold --> the convergence counter is broken and starts from when we enabled pixel noise threshold instead of taking all pixels that have converged into account
+// - no accumulation + denoiser + 1 SPP max = denoiser running full blow but shouldn't since the input image doesn't change because of the 1SPP max. More generally, this happens also with accumulation and it just seems that the denoiser still runs even when the renderer has reached the maximum amount of SPP
 
 
 
@@ -63,6 +63,7 @@
 // - only the material index can be stored in the pixel states ofthe wavefront path tracer, don't need to store the whole material
 // - refactor envmap to have a sampling & eval function
 // - Use HIPRT with CMake as a subdirectory (available soon)
+// - free denoiser buffers if not using denoising
 
 
 
@@ -506,7 +507,7 @@ bool RenderWindow::is_rendering_done()
 
 	// All pixels have converged to the noise threshold given
 	float proportion_converged;
-	proportion_converged = m_renderer->get_status_buffer_values().pixel_converged_count / static_cast<float>(m_renderer->m_render_width * m_renderer->m_render_height);
+	proportion_converged = m_renderer->get_status_buffer_values().pixel_converged_count / static_cast<float>(m_renderer->m_render_resolution.x * m_renderer->m_render_resolution.y);
 	proportion_converged *= 100.0f; // To human-readable percentage as used in the ImGui interface
 	rendering_done |= proportion_converged > render_settings.stop_pixel_percentage_converged && render_settings.stop_pixel_noise_threshold > 0.0f;
 
@@ -527,12 +528,12 @@ bool RenderWindow::is_rendering_done()
 void RenderWindow::reset_render()
 {
 	m_application_settings->last_denoised_sample_count = -1;
-	m_renderer->reset();
 
 	m_application_state->samples_per_second = 0.0f;
 	m_application_state->current_render_time_ms = 0.0f;
-
 	m_application_state->render_dirty = false;
+
+	m_renderer->reset();
 }
 
 void RenderWindow::set_render_dirty(bool render_dirty)

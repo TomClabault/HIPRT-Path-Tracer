@@ -107,11 +107,11 @@ void GPURenderer::update()
 	internal_update_adaptive_sampling_buffers();
 
 	// Resetting this flag as this is a new frame
-	m_render_settings.do_update_status_buffers = false;
+	m_render_data.render_settings.do_update_status_buffers = false;
 
-	if (!m_render_settings.accumulate)
+	if (!m_render_data.render_settings.accumulate)
 	{
-		m_render_settings.sample_number = 0;
+		m_render_data.render_settings.sample_number = 0;
 	}
 }
 
@@ -139,7 +139,7 @@ void GPURenderer::internal_clear_m_status_buffers()
 
 void GPURenderer::internal_update_adaptive_sampling_buffers()
 {
-	bool buffers_needed = m_render_settings.has_access_to_adaptive_sampling_buffers();
+	bool buffers_needed = m_render_data.render_settings.has_access_to_adaptive_sampling_buffers();
 
 	if (buffers_needed)
 	{
@@ -153,11 +153,11 @@ void GPURenderer::internal_update_adaptive_sampling_buffers()
 
 		if (pixels_squared_luminance_needs_resize)
 			// Only allocating if it isn't already
-			m_pixels_squared_luminance_buffer.resize(m_render_width * m_render_height);
+			m_pixels_squared_luminance_buffer.resize(m_render_resolution.x * m_render_resolution.y);
 
 		if (pixels_sample_count_needs_resize)
 			// Only allocating if it isn't already
-			m_pixels_sample_count_buffer->resize(m_render_width * m_render_height);
+			m_pixels_sample_count_buffer->resize(m_render_resolution.x * m_render_resolution.y);
 	}
 	else
 	{
@@ -179,31 +179,27 @@ void GPURenderer::render()
 	int tile_size_x = 8;
 	int tile_size_y = 8;
 
-	hiprtInt2 nb_groups;
-	nb_groups.x = std::ceil(m_render_width / (float)tile_size_x);
-	nb_groups.y = std::ceil(m_render_height / (float)tile_size_y);
-
-	hiprtInt2 resolution = make_hiprtInt2(m_render_width, m_render_height);
+	int2 nb_groups = make_int2(std::ceil(m_render_resolution.x / (float)tile_size_x), std::ceil(m_render_resolution.y / (float)tile_size_y));
 
 	// TODO try launch async on the same stream and see performance
 	OROCHI_CHECK_ERROR(oroEventRecord(m_frame_start_event, m_main_stream));
 
-	for (int i = 1; i <= m_render_settings.samples_per_frame; i++)
+	for (int i = 1; i <= m_render_data.render_settings.samples_per_frame; i++)
 	{
-		if (i == m_render_settings.samples_per_frame)
+		if (i == m_render_data.render_settings.samples_per_frame)
 			// Last sample of the frame so we are going to enable the update 
 			// of the status buffers (number of pixels converged, how many rays still
 			// active, ...)
-			m_render_settings.do_update_status_buffers = true;
+			m_render_data.render_settings.do_update_status_buffers = true;
 
-		HIPRTRenderData render_data = get_render_data();
+		update_render_data();
 
-		launch_camera_rays(render_data, resolution);
-		launch_ReSTIR_DI(render_data, resolution);
-		launch_path_tracing(render_data, resolution);
+		launch_camera_rays();
+		launch_ReSTIR_DI();
+		launch_path_tracing();
 
-		m_render_settings.sample_number++;
-		m_render_settings.frame_number++;
+		m_render_data.render_settings.sample_number++;
+		m_render_data.render_settings.denoiser_AOV_accumulation_counter++;
 	}
 
 	// Recording GPU frame time stop timestamp and computing the frame time
@@ -218,112 +214,143 @@ void GPURenderer::render()
 
 	// Saving the camera that we used this frame
 	m_previous_frame_camera = m_camera;
-	m_was_last_frame_low_resolution = m_render_settings.do_render_low_resolution();
+	m_was_last_frame_low_resolution = m_render_data.render_settings.do_render_low_resolution();
 	// We only reset once so after rendering a frame, we're sure that we don't need to reset anymore 
 	// so we're setting the flag to false (it will be set to true again if we need to reset the render
 	// again)
-	m_render_settings.need_to_reset = false;
+	m_render_data.render_settings.need_to_reset = false;
 }
 
-void GPURenderer::launch_camera_rays(HIPRTRenderData& render_data, int2 resolution)
+void GPURenderer::launch_camera_rays()
 {
-	void* launch_args[] = { &render_data, &resolution };
+	void* launch_args[] = { &m_render_data, &m_render_resolution};
 
-	render_data.random_seed = m_rng.xorshift32();
-	m_camera_ray_pass.launch_timed_asynchronous(8, 8, resolution.x, resolution.y, launch_args, m_main_stream);
+	m_render_data.random_seed = m_rng.xorshift32();
+	m_camera_ray_pass.launch_timed_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
 }
 
-void GPURenderer::launch_ReSTIR_DI(HIPRTRenderData& render_data, int2 resolution)
+void GPURenderer::launch_ReSTIR_DI()
 {
-	void* launch_args[] = { &render_data, &resolution };
+	void* launch_args[] = { &m_render_data, &m_render_resolution };
 
 	if (m_path_tracer_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI)
 	{
 		// If ReSTIR DI is enabled
-		render_data.random_seed = m_rng.xorshift32();
-		m_restir_initial_candidates_pass.launch_timed_asynchronous(8, 8, resolution.x, resolution.y, launch_args, m_main_stream);
 
-		if (m_render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
+		configure_ReSTIR_DI_initial_pass();
+		m_restir_initial_candidates_pass.launch_timed_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
+
+		if (m_render_data.render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
 		{
-			render_data.random_seed = m_rng.xorshift32();
+			configure_ReSTIR_DI_temporal_pass();
 
-			// The input of the temporal pass is the output of last frame ReSTIR (and also the initial candidates but this is implicit
-			// and "hardcoded in the shader"
-			render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs = render_data.render_settings.restir_di_settings.restir_output_reservoirs;
-
-			if (render_data.render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)
-				// If we're going to do spatial reuse, reuse the initial candidate reservoirs to store the output of the temporal pass.
-				// The spatial reuse pass will read form that buffer
-				render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs = m_restir_di_reservoirs.initial_candidates_reservoirs.get_device_pointer();
-			else
-				// Else, no spatial reuse, the output of the temporal pass is going to be in its own buffer, using spatial_reuse_output1
-				// here arbitrarily, could have been spatial reuse 2, doesn't matter, we just need a buffer
-				render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs = m_restir_di_reservoirs.spatial_reuse_output_1.get_device_pointer();
-			m_restir_temporal_reuse_pass.launch_timed_asynchronous(8, 8, resolution.x, resolution.y, launch_args, m_main_stream);
+			m_restir_temporal_reuse_pass.launch_timed_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
 		}
 
-		if (render_data.render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)
+
+		if (m_render_data.render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)
 		{
-			for (int spatial_reuse_pass = 0; spatial_reuse_pass < m_render_settings.restir_di_settings.spatial_pass.number_of_passes; spatial_reuse_pass++)
+			for (int spatial_reuse_pass = 0; spatial_reuse_pass < m_render_data.render_settings.restir_di_settings.spatial_pass.number_of_passes; spatial_reuse_pass++)
 			{
-				render_data.random_seed = m_rng.xorshift32();
+				configure_ReSTIR_DI_spatial_pass(spatial_reuse_pass);
 
-				if (spatial_reuse_pass == 0)
-				{
-					if (m_render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
-						// For the first spatial reuse pass, we hardcode reading from the output of the temporal pass and storing into 'spatial_reuse_output_1'
-						render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs = render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs;
-					else
-						// If there is no temporal reuse pass, using the initial candidates as the input to the spatial reuse pass
-						render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs = render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs;
-
-					render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs = m_restir_di_reservoirs.spatial_reuse_output_1.get_device_pointer();
-				}
-				else
-				{
-					// And then, starting at the second spatial reuse pass, we read from the output of the previous spatial pass and store
-					// in either spatial_reuse_output_1 or spatial_reuse_output_2, depending on which one isn't the input (we don't
-					// want to store in the same buffers that is used for output because that's a race condition so
-					// we're ping-ponging between the two outputs of the spatial reuse pass)
-
-					if ((spatial_reuse_pass & 1) == 0)
-					{
-						render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs = m_restir_di_reservoirs.spatial_reuse_output_2.get_device_pointer();
-						render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs = m_restir_di_reservoirs.spatial_reuse_output_1.get_device_pointer();
-					}
-					else
-					{
-						render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs = m_restir_di_reservoirs.spatial_reuse_output_1.get_device_pointer();
-						render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs = m_restir_di_reservoirs.spatial_reuse_output_2.get_device_pointer();
-
-					}
-				}
+				m_restir_spatial_reuse_pass.launch_timed_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
 			}
-
-			m_restir_spatial_reuse_pass.launch_timed_asynchronous(8, 8, resolution.x, resolution.y, launch_args, m_main_stream);
 		}
 
-		// Keeping in mind which was the buffer used last for the output of the spatial reuse pass as this is the buffer that
-		// we're going to use as the input to the temporal reuse pass of the next frame
-		if (render_data.render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)
-			// If there was spatial reuse, using the output of the spatial reuse pass as the input of the temporal
-			// pass of next frame
-			render_data.render_settings.restir_di_settings.restir_output_reservoirs = render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs;
-		else if (render_data.render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
-			// If there was a temporal reuse pass, using that output as the input of the next temporal reuse pass
-			render_data.render_settings.restir_di_settings.restir_output_reservoirs = render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs;
-		else
-			// No spatial or temporal, the output of ReSTIR is just the output of the initial candidates pass
-			render_data.render_settings.restir_di_settings.restir_output_reservoirs = render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs;
+		configure_ReSTIR_DI_output_buffer();
+
+		m_restir_di_state.odd_frame = !m_restir_di_state.odd_frame;
 	}
 }
 
-void GPURenderer::launch_path_tracing(HIPRTRenderData& render_data, int2 resolution)
+void GPURenderer::configure_ReSTIR_DI_initial_pass()
 {
-	void* launch_args[] = { &render_data, &resolution };
+	m_render_data.random_seed = m_rng.xorshift32();
+	m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs = m_restir_di_state.initial_candidates_reservoirs.get_device_pointer();
+}
 
-	render_data.random_seed = m_rng.xorshift32();
-	m_path_trace_pass.launch_timed_asynchronous(8, 8, resolution.x, resolution.y, launch_args, m_main_stream);
+void GPURenderer::configure_ReSTIR_DI_temporal_pass()
+{
+	m_render_data.random_seed = m_rng.xorshift32();
+
+	// The input of the temporal pass is the output of last frame ReSTIR (and also the initial candidates but this is implicit
+	// and "hardcoded in the shader"
+	m_render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs = m_render_data.render_settings.restir_di_settings.restir_output_reservoirs;
+
+	if (m_render_data.render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)
+		m_render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs = m_restir_di_state.initial_candidates_reservoirs.get_device_pointer();
+	// If we're going to do spatial reuse, reuse the initial candidate reservoirs to store the output of the temporal pass.
+	// The spatial reuse pass will read form that buffer
+	else
+	{
+		// Else, no spatial reuse, the output of the temporal pass is going to be in its own buffer.
+		// Alternatively using spatial_reuse_output_1 and spatial_reuse_output_2 to avoid race conditions
+		if (m_restir_di_state.odd_frame)
+			m_render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs = m_restir_di_state.spatial_reuse_output_1.get_device_pointer();
+		else
+			m_render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs = m_restir_di_state.spatial_reuse_output_2.get_device_pointer();
+	}
+}
+
+void GPURenderer::configure_ReSTIR_DI_spatial_pass(int spatial_pass_index)
+{
+	m_render_data.random_seed = m_rng.xorshift32();
+
+	if (spatial_pass_index == 0)
+	{
+		if (m_render_data.render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
+			// For the first spatial reuse pass, we hardcode reading from the output of the temporal pass and storing into 'spatial_reuse_output_1'
+			m_render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs = m_render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs;
+		else
+			// If there is no temporal reuse pass, using the initial candidates as the input to the spatial reuse pass
+			m_render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs = m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs;
+
+		m_render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs = m_restir_di_state.spatial_reuse_output_1.get_device_pointer();
+	}
+	else
+	{
+		// And then, starting at the second spatial reuse pass, we read from the output of the previous spatial pass and store
+		// in either spatial_reuse_output_1 or spatial_reuse_output_2, depending on which one isn't the input (we don't
+		// want to store in the same buffers that is used for output because that's a race condition so
+		// we're ping-ponging between the two outputs of the spatial reuse pass)
+
+		if ((spatial_pass_index & 1) == 0)
+		{
+			m_render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs = m_restir_di_state.spatial_reuse_output_2.get_device_pointer();
+			m_render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs = m_restir_di_state.spatial_reuse_output_1.get_device_pointer();
+		}
+		else
+		{
+			m_render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs = m_restir_di_state.spatial_reuse_output_1.get_device_pointer();
+			m_render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs = m_restir_di_state.spatial_reuse_output_2.get_device_pointer();
+
+		}
+	}
+}
+
+void GPURenderer::configure_ReSTIR_DI_output_buffer()
+{
+	// Keeping in mind which was the buffer used last for the output of the spatial reuse pass as this is the buffer that
+		// we're going to use as the input to the temporal reuse pass of the next frame
+	if (m_render_data.render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)
+		// If there was spatial reuse, using the output of the spatial reuse pass as the input of the temporal
+		// pass of next frame
+		m_render_data.render_settings.restir_di_settings.restir_output_reservoirs = m_render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs;
+	else if (m_render_data.render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
+		// If there was a temporal reuse pass, using that output as the input of the next temporal reuse pass
+		m_render_data.render_settings.restir_di_settings.restir_output_reservoirs = m_render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs;
+	else
+		// No spatial or temporal, the output of ReSTIR is just the output of the initial candidates pass
+		m_render_data.render_settings.restir_di_settings.restir_output_reservoirs = m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs;
+}
+
+void GPURenderer::launch_path_tracing()
+{
+	void* launch_args[] = { &m_render_data, &m_render_resolution };
+
+	m_render_data.random_seed = m_rng.xorshift32();
+	m_path_trace_pass.launch_timed_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
 }
 
 void GPURenderer::synchronize_kernel()
@@ -343,8 +370,7 @@ bool GPURenderer::was_last_frame_low_resolution()
 
 void GPURenderer::resize(int new_width, int new_height)
 {
-	m_render_width = new_width;
-	m_render_height = new_height;
+	m_render_resolution = make_int2(new_width, new_height);
 
 	unmap_buffers();
 
@@ -361,19 +387,19 @@ void GPURenderer::resize(int new_width, int new_height)
 	m_g_buffer.cameray_ray_hit.resize(new_width * new_height);
 	m_g_buffer.ray_volume_states.resize(new_width * new_height);
 
-	if (m_render_settings.has_access_to_adaptive_sampling_buffers())
+	if (m_render_data.render_settings.has_access_to_adaptive_sampling_buffers())
 	{
 		m_pixels_sample_count_buffer->resize(new_width * new_height);
 		m_pixels_squared_luminance_buffer.resize(new_width * new_height);
 	}
 
-	m_restir_di_reservoirs.initial_candidates_reservoirs.resize(new_width * new_height);
-	m_restir_di_reservoirs.spatial_reuse_output_2.resize(new_width * new_height);
-	m_restir_di_reservoirs.spatial_reuse_output_1.resize(new_width * new_height);
+	m_restir_di_state.initial_candidates_reservoirs.resize(new_width * new_height);
+	m_restir_di_state.spatial_reuse_output_2.resize(new_width * new_height);
+	m_restir_di_state.spatial_reuse_output_1.resize(new_width * new_height);
 	// Initializing to spatial_reuse_output_1 arbitrarily as it doesn't matter for the first frame since the
 	// buffer is going to be empty anyways and no temporal resampling will happen (because this is
 	// the buffer that the temporal reuse pass uses as input)
-	m_render_settings.restir_di_settings.restir_output_reservoirs = m_restir_di_reservoirs.spatial_reuse_output_1.get_device_pointer();
+	m_render_data.render_settings.restir_di_settings.restir_output_reservoirs = m_restir_di_state.spatial_reuse_output_1.get_device_pointer();
 
 	m_pixel_active.resize(new_width * new_height);
 
@@ -423,12 +449,12 @@ const StatusBuffersValues& GPURenderer::get_status_buffer_values() const
 
 HIPRTRenderSettings& GPURenderer::get_render_settings()
 {
-	return m_render_settings;
+	return m_render_data.render_settings;
 }
 
 WorldSettings& GPURenderer::get_world_settings()
 {
-	return m_world_settings;
+	return m_render_data.world_settings;
 }
 
 oroDeviceProp GPURenderer::get_device_properties()
@@ -513,77 +539,72 @@ void GPURenderer::reset_last_frame_time()
 
 void GPURenderer::reset()
 {
-	if (m_render_settings.accumulate)
+	if (m_render_data.render_settings.accumulate)
+	{
 		// Only resetting the seed for deterministic rendering if we're accumulating.
 		// If we're not accumulating, we want each frame of the render to be different
 		// so we don't get into that if block and we don't reset the seed
 		m_rng.m_state.seed = 42;
 
-	m_render_settings.frame_number = 0;
-	m_render_settings.sample_number = 0;
-	m_render_settings.samples_per_frame = 1;
-	m_render_settings.need_to_reset = true;
+		m_restir_di_state.odd_frame = false;
+	}
+
+	m_render_data.render_settings.denoiser_AOV_accumulation_counter = 0;
+	m_render_data.render_settings.sample_number = 0;
+	m_render_data.render_settings.samples_per_frame = 1;
+	m_render_data.render_settings.need_to_reset = true;
 
 	reset_last_frame_time();
 	internal_clear_m_status_buffers();
 }
 
-HIPRTRenderData GPURenderer::get_render_data()
+void GPURenderer::update_render_data()
 {
-	HIPRTRenderData render_data;
+	m_render_data.geom = m_hiprt_scene.geometry.m_geometry;
 
-	render_data.geom = m_hiprt_scene.geometry.m_geometry;
+	m_render_data.buffers.pixels = m_framebuffer->map_no_error();
+	m_render_data.buffers.triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.geometry.m_mesh.triangleIndices);
+	m_render_data.buffers.vertices_positions = reinterpret_cast<float3*>(m_hiprt_scene.geometry.m_mesh.vertices);
+	m_render_data.buffers.has_vertex_normals = reinterpret_cast<unsigned char*>(m_hiprt_scene.has_vertex_normals.get_device_pointer());
+	m_render_data.buffers.vertex_normals = reinterpret_cast<float3*>(m_hiprt_scene.vertex_normals.get_device_pointer());
+	m_render_data.buffers.material_indices = reinterpret_cast<int*>(m_hiprt_scene.material_indices.get_device_pointer());
+	m_render_data.buffers.materials_buffer = reinterpret_cast<RendererMaterial*>(m_hiprt_scene.materials_buffer.get_device_pointer());
+	m_render_data.buffers.emissive_triangles_count = m_hiprt_scene.emissive_triangles_count;
+	m_render_data.buffers.emissive_triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.emissive_triangles_indices.get_device_pointer());
 
-	render_data.buffers.pixels = m_framebuffer->map_no_error();
-	render_data.buffers.triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.geometry.m_mesh.triangleIndices);
-	render_data.buffers.vertices_positions = reinterpret_cast<float3*>(m_hiprt_scene.geometry.m_mesh.vertices);
-	render_data.buffers.has_vertex_normals = reinterpret_cast<unsigned char*>(m_hiprt_scene.has_vertex_normals.get_device_pointer());
-	render_data.buffers.vertex_normals = reinterpret_cast<float3*>(m_hiprt_scene.vertex_normals.get_device_pointer());
-	render_data.buffers.material_indices = reinterpret_cast<int*>(m_hiprt_scene.material_indices.get_device_pointer());
-	render_data.buffers.materials_buffer = reinterpret_cast<RendererMaterial*>(m_hiprt_scene.materials_buffer.get_device_pointer());
-	render_data.buffers.emissive_triangles_count = m_hiprt_scene.emissive_triangles_count;
-	render_data.buffers.emissive_triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.emissive_triangles_indices.get_device_pointer());
+	m_render_data.buffers.material_textures = reinterpret_cast<oroTextureObject_t*>(m_hiprt_scene.materials_textures.get_device_pointer());
+	m_render_data.buffers.texcoords = reinterpret_cast<float2*>(m_hiprt_scene.texcoords_buffer.get_device_pointer());
+	m_render_data.buffers.textures_dims = reinterpret_cast<int2*>(m_hiprt_scene.textures_dims.get_device_pointer());
 
-	render_data.buffers.material_textures = reinterpret_cast<oroTextureObject_t*>(m_hiprt_scene.materials_textures.get_device_pointer());
-	render_data.buffers.texcoords = reinterpret_cast<float2*>(m_hiprt_scene.texcoords_buffer.get_device_pointer());
-	render_data.buffers.textures_dims = reinterpret_cast<int2*>(m_hiprt_scene.textures_dims.get_device_pointer());
-
-	render_data.aux_buffers.denoiser_normals = m_normals_AOV_buffer->map_no_error();
-	render_data.aux_buffers.denoiser_albedo = m_albedo_AOV_buffer->map_no_error();
-	if (m_render_settings.has_access_to_adaptive_sampling_buffers())
+	m_render_data.aux_buffers.denoiser_normals = m_normals_AOV_buffer->map_no_error();
+	m_render_data.aux_buffers.denoiser_albedo = m_albedo_AOV_buffer->map_no_error();
+	if (m_render_data.render_settings.has_access_to_adaptive_sampling_buffers())
 	{
-		render_data.aux_buffers.pixel_sample_count = m_pixels_sample_count_buffer->map_no_error();
-		render_data.aux_buffers.pixel_squared_luminance = m_pixels_squared_luminance_buffer.get_device_pointer();
+		m_render_data.aux_buffers.pixel_sample_count = m_pixels_sample_count_buffer->map_no_error();
+		m_render_data.aux_buffers.pixel_squared_luminance = m_pixels_squared_luminance_buffer.get_device_pointer();
 	}
 
-	render_data.aux_buffers.still_one_ray_active = m_still_one_ray_active_buffer.get_device_pointer();
-	render_data.aux_buffers.pixel_active = m_pixel_active.get_device_pointer();
-	render_data.aux_buffers.stop_noise_threshold_converged_count = reinterpret_cast<AtomicType<unsigned int>*>(m_pixels_converged_count_buffer.get_device_pointer());
+	m_render_data.aux_buffers.still_one_ray_active = m_still_one_ray_active_buffer.get_device_pointer();
+	m_render_data.aux_buffers.pixel_active = m_pixel_active.get_device_pointer();
+	m_render_data.aux_buffers.stop_noise_threshold_converged_count = reinterpret_cast<AtomicType<unsigned int>*>(m_pixels_converged_count_buffer.get_device_pointer());
 
-	render_data.g_buffer.materials = m_g_buffer.materials.get_device_pointer();
-	render_data.g_buffer.geometric_normals = m_g_buffer.geometric_normals.get_device_pointer();
-	render_data.g_buffer.shading_normals = m_g_buffer.shading_normals.get_device_pointer();
-	render_data.g_buffer.view_directions = m_g_buffer.view_directions.get_device_pointer();
-	render_data.g_buffer.first_hits = m_g_buffer.first_hits.get_device_pointer();
-	render_data.g_buffer.camera_ray_hit = m_g_buffer.cameray_ray_hit.get_device_pointer();
-	render_data.g_buffer.ray_volume_states = m_g_buffer.ray_volume_states.get_device_pointer();
+	m_render_data.g_buffer.materials = m_g_buffer.materials.get_device_pointer();
+	m_render_data.g_buffer.geometric_normals = m_g_buffer.geometric_normals.get_device_pointer();
+	m_render_data.g_buffer.shading_normals = m_g_buffer.shading_normals.get_device_pointer();
+	m_render_data.g_buffer.view_directions = m_g_buffer.view_directions.get_device_pointer();
+	m_render_data.g_buffer.first_hits = m_g_buffer.first_hits.get_device_pointer();
+	m_render_data.g_buffer.camera_ray_hit = m_g_buffer.cameray_ray_hit.get_device_pointer();
+	m_render_data.g_buffer.ray_volume_states = m_g_buffer.ray_volume_states.get_device_pointer();
 
-	// Settings the pointers for use in reset_render() in the cameray rays kernel
-	render_data.aux_buffers.initial_reservoirs = m_restir_di_reservoirs.initial_candidates_reservoirs.get_device_pointer();
-	render_data.aux_buffers.temporal_pass_output_reservoirs = m_restir_di_reservoirs.spatial_reuse_output_2.get_device_pointer();
-	render_data.aux_buffers.spatial_reuse_output_1 = m_restir_di_reservoirs.spatial_reuse_output_1.get_device_pointer();
+	// Setting the pointers for use in reset_render() in the camera rays kernel
+	m_render_data.aux_buffers.restir_reservoir_buffer_1 = m_restir_di_state.initial_candidates_reservoirs.get_device_pointer();
+	m_render_data.aux_buffers.restir_reservoir_buffer_2 = m_restir_di_state.spatial_reuse_output_1.get_device_pointer();
+	m_render_data.aux_buffers.restir_reservoir_buffer_3 = m_restir_di_state.spatial_reuse_output_2.get_device_pointer();
 
-	render_data.world_settings = m_world_settings;
-	render_data.render_settings = m_render_settings;
-	// The initial candidate output buffer is always the same so we can just set it here
-	render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs = m_restir_di_reservoirs.initial_candidates_reservoirs.get_device_pointer();
-
-	render_data.prev_camera = m_previous_frame_camera.to_hiprt();
-	render_data.current_camera = m_camera.to_hiprt();
+	m_render_data.prev_camera = m_previous_frame_camera.to_hiprt();
+	m_render_data.current_camera = m_camera.to_hiprt();
 		
-	render_data.random_seed = m_rng.xorshift32();
-
-	return render_data;
+	m_render_data.random_seed = m_rng.xorshift32();
 }
 
 void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
@@ -658,7 +679,7 @@ void GPURenderer::set_envmap(Image32Bit& envmap_image)
 
 	if (envmap_image.width == 0 || envmap_image.height == 0)
 	{
-		m_world_settings.ambient_light_type = AmbientLightType::UNIFORM;
+		m_render_data.world_settings.ambient_light_type = AmbientLightType::UNIFORM;
 
 		std::cerr << "Empty envmap set on the GPURenderer..." << std::endl;
 
@@ -668,15 +689,15 @@ void GPURenderer::set_envmap(Image32Bit& envmap_image)
 	m_envmap.init_from_image(envmap_image);
 	m_envmap.compute_cdf(envmap_image);
 
-	m_world_settings.envmap = m_envmap.get_device_texture();
-	m_world_settings.envmap_width = m_envmap.width;
-	m_world_settings.envmap_height = m_envmap.height;
-	m_world_settings.envmap_cdf = m_envmap.get_cdf_device_pointer();
+	m_render_data.world_settings.envmap = m_envmap.get_device_texture();
+	m_render_data.world_settings.envmap_width = m_envmap.width;
+	m_render_data.world_settings.envmap_height = m_envmap.height;
+	m_render_data.world_settings.envmap_cdf = m_envmap.get_cdf_device_pointer();
 }
 
 bool GPURenderer::has_envmap()
 {
-	return m_world_settings.envmap_height != 0 && m_world_settings.envmap_width != 0;
+	return m_render_data.world_settings.envmap_height != 0 && m_render_data.world_settings.envmap_width != 0;
 }
 
 const std::vector<RendererMaterial>& GPURenderer::get_materials()

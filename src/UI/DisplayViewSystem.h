@@ -150,7 +150,7 @@ template<typename T>
 void DisplayViewSystem::internal_upload_buffer_to_texture(std::shared_ptr<OpenGLInteropBuffer<T>> buffer, const std::pair<GLuint, DisplayTextureType>& display_texture, int texture_unit)
 {
 	buffer->unmap();
-	buffer->unpack_to_texture(display_texture.first, GL_TEXTURE0 + texture_unit, m_renderer->m_render_width, m_renderer->m_render_height, display_texture.second);
+	buffer->unpack_to_texture(display_texture.first, GL_TEXTURE0 + texture_unit, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, display_texture.second);
 }
 
 #endif

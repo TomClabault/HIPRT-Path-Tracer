@@ -72,7 +72,7 @@ void Screenshoter::write_to_png()
 	std::time_t t = std::time(0);
 	std::tm* now = std::localtime(&t);
 
-	filename << std::put_time(now, "%m.%d.%Y.%H.%M.%S - ") << m_renderer->get_render_settings().sample_number << "sp @ " << m_renderer->m_render_width << "x" << m_renderer->m_render_height << " - " << m_render_window->get_current_render_time() / 1000.0f << "s" << ".png";
+	filename << std::put_time(now, "%m.%d.%Y.%H.%M.%S - ") << m_renderer->get_render_settings().sample_number << "sp @ " << m_renderer->m_render_resolution.x << "x" << m_renderer->m_render_resolution.y << " - " << m_render_window->get_current_render_time() / 1000.0f << "s" << ".png";
 
 	write_to_png(filename.str().c_str());
 }
@@ -109,8 +109,8 @@ void Screenshoter::resize_output_image(int width, int height)
 
 void Screenshoter::write_to_png(const char* filepath)
 {
-	int width = m_renderer->m_render_width;
-	int height = m_renderer->m_render_height;
+	int width = m_renderer->m_render_resolution.x;
+	int height = m_renderer->m_render_resolution.y;
 
 	if (m_render_window->get_application_settings()->render_resolution_scale == 1.0f)
 	{

@@ -65,12 +65,12 @@ void ImGuiRenderer::draw_imgui_interface()
 	ImGui::Begin("Settings");
 
 	ImGui::Text("Render time: %.3fs", m_render_window->get_current_render_time() / 1000.0f);
-	ImGui::Text("%d samples | %.2f samples/s @ %dx%d", render_settings.sample_number, m_render_window->get_samples_per_second(), m_renderer->m_render_width, m_renderer->m_render_height);
+	ImGui::Text("%d samples | %.2f samples/s @ %dx%d", render_settings.sample_number, m_render_window->get_samples_per_second(), m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y);
 
 	if (render_settings.has_access_to_adaptive_sampling_buffers())
 	{
 		unsigned int converged_count = m_renderer->get_status_buffer_values().pixel_converged_count;
-		unsigned int total_pixel_count = m_renderer->m_render_width * m_renderer->m_render_height;
+		unsigned int total_pixel_count = m_renderer->m_render_resolution.x * m_renderer->m_render_resolution.y;
 
 		bool can_print_convergence = false;
 		can_print_convergence |= render_settings.sample_number > render_settings.adaptive_sampling_min_samples;
@@ -173,8 +173,8 @@ void ImGuiRenderer::draw_render_settings_panel()
 		if (m_application_settings->keep_same_resolution)
 		{
 			// Remembering the width and height we need to target
-			m_application_settings->target_width = m_renderer->m_render_width;
-			m_application_settings->target_height = m_renderer->m_render_height;
+			m_application_settings->target_width = m_renderer->m_render_resolution.x;
+			m_application_settings->target_height = m_renderer->m_render_resolution.y;
 		}
 	}
 

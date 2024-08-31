@@ -108,9 +108,9 @@ struct AuxiliaryBuffers
 	// The buffers that should be used by the ReSTIR passes kernels are the 
 	// 'input_reservoirs' / 'output_reservoirs' buffers of the 'initial_candidates',
 	// 'temporal_pass' and 'spatial_pass' settings
-	ReSTIRDIReservoir* initial_reservoirs = nullptr;
-	ReSTIRDIReservoir* temporal_pass_output_reservoirs = nullptr;
-	ReSTIRDIReservoir* spatial_reuse_output_1 = nullptr;
+	ReSTIRDIReservoir* restir_reservoir_buffer_1 = nullptr;
+	ReSTIRDIReservoir* restir_reservoir_buffer_2 = nullptr;
+	ReSTIRDIReservoir* restir_reservoir_buffer_3 = nullptr;
 };
 
 enum AmbientLightType

@@ -62,9 +62,16 @@ public:
 	 * Querry frame_render_done() to know whether or not the frame has completed or not.
 	 */
 	void render();
-	void launch_camera_rays(HIPRTRenderData& render_data, int2 resolution);
-	void launch_ReSTIR_DI(HIPRTRenderData& render_data, int2 resolution);
-	void launch_path_tracing(HIPRTRenderData& render_data, int2 resolution);
+
+	void launch_camera_rays();
+
+	void launch_ReSTIR_DI();
+	void configure_ReSTIR_DI_initial_pass();
+	void configure_ReSTIR_DI_temporal_pass();
+	void configure_ReSTIR_DI_spatial_pass(int spatial_pass_index);
+	void configure_ReSTIR_DI_output_buffer();
+
+	void launch_path_tracing();
 
 	/**
 	 * Blocking that waits for all the operations queued on
@@ -109,7 +116,7 @@ public:
 
 	HIPRTRenderSettings& get_render_settings();
 	WorldSettings& get_world_settings();
-	HIPRTRenderData get_render_data();
+	void update_render_data();
 
 	Camera& get_camera();
 
@@ -140,7 +147,7 @@ public:
 	void reset_last_frame_time();
 	void reset();
 
-	int m_render_width = 0, m_render_height = 0;
+	int2 m_render_resolution = make_int2(0, 0);
 
 	Camera m_camera;
 	Camera m_previous_frame_camera;
@@ -235,7 +242,7 @@ private:
 	StatusBuffersValues m_status_buffers_values;
 
 	// Various reservoirs used by ReSTIR DI
-	ReSTIR_DI_Reservoirs m_restir_di_reservoirs;
+	ReSTIR_DI_State m_restir_di_state;
 
 	// The materials are also kept on the CPU side because we want to be able
 	// to modify them interactively with ImGui
@@ -259,6 +266,16 @@ private:
 
 	oroStream_t m_main_stream;
 
+	// Render data passed to the GPU for rendering. Most importantly it contains
+	// 
+	// The WorldSettings: Settings relative to the scene such as the intensity of the uniform light, the
+	// environment map used, the rotation of the envmap, ...
+	// 
+	// The RenderSettings: Settings that alter the way the path tracing kernel behaves such as the number
+	// of bounces, the number of samples per kernel invocation (samples per frame),
+	// whether or not the adaptive sampling is enabled, ...
+	HIPRTRenderData m_render_data;
+
 	// Structure containing the data specific to a scene:
 	//	- hiprtGeom
 	//	- hiprtMesh
@@ -269,16 +286,8 @@ private:
 	// Destroying this structure frees the resources
 	HIPRTScene m_hiprt_scene;
 
-	// Settings relative to the scene such as the intensity of the uniform light, the
-	// environment map used, the rotation of the envmap, ...
-	WorldSettings m_world_settings;
-	// Settings that alter the way the path tracing kernel behaves such as the number
-	// of bounces, the number of samples per kernel invocation (samples per frame),
-	// whether or not the adaptive sampling is enabled, ...
-	HIPRTRenderSettings m_render_settings;
-
 	// Random number generator used to fill the render_data.random_seed argument
-	// in get_render_data().
+	// in update_render_data().
 	Xorshift32Generator m_rng;
 };
 

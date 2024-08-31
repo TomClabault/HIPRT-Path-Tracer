@@ -279,9 +279,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
     denoiser_albedo /= (float)render_data.render_settings.samples_per_frame;
     denoiser_normal /= (float)render_data.render_settings.samples_per_frame;
 
-    render_data.aux_buffers.denoiser_albedo[pixel_index] = (render_data.aux_buffers.denoiser_albedo[pixel_index] * render_data.render_settings.frame_number + denoiser_albedo) / (render_data.render_settings.frame_number + 1.0f);
+    render_data.aux_buffers.denoiser_albedo[pixel_index] += (render_data.aux_buffers.denoiser_albedo[pixel_index] * render_data.render_settings.denoiser_AOV_accumulation_counter + denoiser_albedo) / (render_data.render_settings.denoiser_AOV_accumulation_counter + 1.0f);
 
-    float3 accumulated_normal = (render_data.aux_buffers.denoiser_normals[pixel_index] * render_data.render_settings.frame_number + denoiser_normal) / (render_data.render_settings.frame_number + 1.0f);
+    float3 accumulated_normal = (render_data.aux_buffers.denoiser_normals[pixel_index] * render_data.render_settings.denoiser_AOV_accumulation_counter + denoiser_normal) / (render_data.render_settings.denoiser_AOV_accumulation_counter + 1.0f);
     float normal_length = hippt::length(accumulated_normal);
     if (normal_length != 0.0f)
         // Checking that it is non-zero otherwise we would accumulate a persistent NaN in the buffer when normalizing by the 0-length

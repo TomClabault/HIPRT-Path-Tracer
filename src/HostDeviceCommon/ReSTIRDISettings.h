@@ -24,6 +24,11 @@ struct TemporalPassSettings
 {
 	bool do_temporal_reuse_pass = true;
 
+	// Threshold used when determining whether a temporal neighbor is acceptable
+	// for temporal reuse regarding the spatial proximity of the neighbor and the current
+	// point
+	float plane_distance_threshold = 1.0f;
+
 	// The temporal reuse pass resamples the initial candidates as well as the last frame reservoirs which
 	// are accessed through this pointer
 	ReSTIRDIReservoir* input_reservoirs = nullptr;
@@ -77,7 +82,7 @@ struct ReSTIRDISettings
 	// for a given pixel.
 	//
 	// A M-cap value between 5 - 30 is usually good
-	int m_cap = 100;
+	int m_cap = 10;
 
 	// Pointer to the buffer that contains the output of all the passes of ReSTIR DI
 	// This the buffer that should be used when evaluating direct lighting in the path tracer

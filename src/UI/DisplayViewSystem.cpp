@@ -326,10 +326,10 @@ void DisplayViewSystem::internal_recreate_display_textures_from_display_view(Dis
 	}
 
 	if (m_display_texture_1.second != texture_1_type_needed)
-		internal_recreate_display_texture(m_display_texture_1, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1, texture_1_type_needed, m_renderer->m_render_width, m_renderer->m_render_height);
+		internal_recreate_display_texture(m_display_texture_1, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1, texture_1_type_needed, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y);
 
 	if (m_display_texture_2.second != texture_2_type_needed)
-		internal_recreate_display_texture(m_display_texture_2, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_2, texture_2_type_needed, m_renderer->m_render_width, m_renderer->m_render_height);
+		internal_recreate_display_texture(m_display_texture_2, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_2, texture_2_type_needed, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y);
 }
 
 void DisplayViewSystem::internal_recreate_display_texture(std::pair<GLuint, DisplayTextureType>& display_texture, GLenum display_texture_unit, DisplayTextureType new_texture_type, int width, int height)

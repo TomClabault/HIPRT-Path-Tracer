@@ -29,16 +29,43 @@
  * [5] [Generalized Resampled Importance Sampling Foundations of ReSTIR] https://research.nvidia.com/publication/2022-07_generalized-resampled-importance-sampling-foundations-restir
  * [6] [Uniform disk sampling] https://rh8liuqy.github.io/Uniform_Disk.html
  * [7] [Reddit Post for the Jacobian Term needed] https://www.reddit.com/r/GraphicsProgramming/comments/1eo5hqr/restir_di_light_sample_pdf_confusion/
+ * [8] [Rearchitecting Spatiotemporal Resampling for Production] https://research.nvidia.com/publication/2021-07_rearchitecting-spatiotemporal-resampling-production
+ * [9] [Adventures in Hybrid Rendering] https://diharaw.github.io/post/adventures_in_hybrid_rendering/
+ * [10] [NVIDIA ReBLUR - Fast Denoising with Self Stabilizing Recurrent Blurs] https://developer.nvidia.com/gtc/2020/video/s22699-vid
  */
+
+/**
+ * Returns true if the two given points pass the plane distance check, false otherwise
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE bool plane_distance_check(const float3& temporal_point, const float3& current_point, const float3& current_surface_normal, float plane_distance_threshold)
+{
+	float3 direction_between_points = temporal_point - current_point;
+	float distance_to_plane = hippt::abs(hippt::dot(direction_between_points, current_surface_normal));
+
+	return distance_to_plane < plane_distance_threshold;
+}
+
+HIPRT_HOST_DEVICE HIPRT_INLINE bool roughness_check(float center_pixel_roughness)
+{
+	// We don't want to temporally reuse on materials smoother than 0.075f because this
+	// causes near-specular/glossy reflections to darken when camera ray jittering is used.
+	// 
+	// This glossy reflections darkening only happens with confidence weights and 
+	// ray jittering but I'm not sure why. Probably because samples from one pixel (or sub-pixel location)
+	// cannot efficiently be reused at another pixel (or sub-pixel location through jittering)
+	// but confidence weights overweight these bad neighbor samples --> you end up using these
+	// bad samples --> the shading loses in energy since we're now shading with samples that
+	// don't align well with the glossy reflection direction
+	return center_pixel_roughness > 0.075f;
+}
 
 /**
  * Returns the linear index that can be used directly to index a buffer
  * of render_data for getting data of the temporal neighbor
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE int find_temporal_neighbor(const HIPRTCamera& previous_frame_camera, float3 current_shading_point, int2 resolution, int center_pixel_index)
+HIPRT_HOST_DEVICE HIPRT_INLINE int find_temporal_neighbor(const HIPRTRenderData& render_data, const float3& current_shading_point, const float3& current_normal, int2 resolution, int center_pixel_index, float center_pixel_roughness)
 {
-	//return center_pixel_index;
-	float3 previous_screen_space_point = matrix_X_point(previous_frame_camera.view_projection, current_shading_point);
+	float3 previous_screen_space_point = matrix_X_point(render_data.prev_camera.view_projection, current_shading_point);
 	// Bringing back in [0, 1] from [-1, 1]
 	previous_screen_space_point += make_float3(1.0f, 1.0f, 0);
 	previous_screen_space_point *= make_float3(0.5f, 0.5f, 1.0f);
@@ -48,7 +75,17 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int find_temporal_neighbor(const HIPRTCamera& pre
 		// Previous pixel is out of the current viewport
 		return -1;
 
-	return temporal_neighbor_screen_space_pos.x + temporal_neighbor_screen_space_pos.y * resolution.x;
+	int temporal_neighbor_index = temporal_neighbor_screen_space_pos.x + temporal_neighbor_screen_space_pos.y * resolution.x;
+	float3 temporal_neighbor_point = render_data.g_buffer.first_hits[temporal_neighbor_index];
+
+	bool checks_passed = true;
+	checks_passed &= plane_distance_check(temporal_neighbor_point, current_shading_point, current_normal, render_data.render_settings.restir_di_settings.temporal_pass.plane_distance_threshold);
+	checks_passed &= roughness_check(center_pixel_roughness);
+
+	if (checks_passed)
+		return temporal_neighbor_index;
+	else
+		return -1;
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float get_temporal_reuse_resampling_MIS_weight(const HIPRTRenderData& render_data, const ReSTIRDIReservoir& neighbor_reservoir, int current_neighbor, int center_pixel_index, int temporal_neighbor_pixel_index, Xorshift32Generator& random_number_generator)
@@ -328,15 +365,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	// Center pixel coordinates
 	int2 center_pixel_coords = make_int2(x, y);
 
-	int temporal_neighbor_pixel_index = find_temporal_neighbor(render_data.prev_camera, center_pixel_surface.shading_point, res, center_pixel_index);
+	int temporal_neighbor_pixel_index = find_temporal_neighbor(render_data, center_pixel_surface.shading_point, center_pixel_surface.shading_normal, res, center_pixel_index, center_pixel_surface.material.roughness);
 	if (temporal_neighbor_pixel_index == -1)
 	{
 		// Temporal occlusion / disoccusion, temporal neighbor is invalid,
 		// we're only going to resample the initial candidates so let's set that as
 		// the output right away
 
-		// Clearing the temporal reservoir
-		render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs[center_pixel_index] = ReSTIRDIReservoir();
 		// The output of this temporal pass is just the initial candidates reservoir
 		render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs[center_pixel_index] = render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs[center_pixel_index];
 

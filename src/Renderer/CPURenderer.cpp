@@ -17,7 +17,6 @@
 #include <chrono>
 #include <omp.h>
 
-
  // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
  // allowing for fast step into that pixel with the debugger to see what's happening.
  // Otherwise if 0, all pixels of the image are rendered
@@ -30,8 +29,8 @@
 // you're measuring the coordinates of the pixel with (0, 0) in the bottom left corner
 #define DEBUG_FLIP_Y 0
 // Coordinates of the pixel to render
-#define DEBUG_PIXEL_X 568
-#define DEBUG_PIXEL_Y 209
+#define DEBUG_PIXEL_X 1738
+#define DEBUG_PIXEL_Y 578
 // If 1, a square of DEBUG_NEIGHBORHOOD_SIZE x DEBUG_NEIGHBORHOOD_SIZE pixels
 // will be rendered around the pixel to debug (given by DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y). The pixel of interest is going to be rendered first so you
@@ -43,7 +42,7 @@
 // rendered which means no reservoir which means improper rendering
 #define DEBUG_RENDER_NEIGHBORHOOD 1
 // How many pixels to render around the debugged pixel given by the DEBUG_PIXEL_X and
-// DEBUG_PIXEL_Y coordinates.
+// DEBUG_PIXEL_Y coordinates
 #define DEBUG_NEIGHBORHOOD_SIZE 50
 
 CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, height))
@@ -108,9 +107,9 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 
     m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs = m_restir_initial_candidates_reservoirs.data();
     m_render_data.render_settings.restir_di_settings.restir_output_reservoirs = m_restir_spatial_output_reservoirs_1.data();
-    m_render_data.aux_buffers.initial_reservoirs = m_restir_initial_candidates_reservoirs.data();
-    m_render_data.aux_buffers.temporal_pass_output_reservoirs = m_restir_spatial_output_reservoirs_1.data();
-    m_render_data.aux_buffers.spatial_reuse_output_1 = m_restir_spatial_output_reservoirs_2.data();
+    m_render_data.aux_buffers.restir_reservoir_buffer_1 = m_restir_initial_candidates_reservoirs.data();
+    m_render_data.aux_buffers.restir_reservoir_buffer_2 = m_restir_spatial_output_reservoirs_1.data();
+    m_render_data.aux_buffers.restir_reservoir_buffer_3 = m_restir_spatial_output_reservoirs_2.data();
 
     std::cout << "Building scene BVH..." << std::endl;
     m_triangle_buffer = parsed_scene.get_triangles();
@@ -193,7 +192,7 @@ void CPURenderer::render()
 
 void CPURenderer::update(int frame_number)
 {
-    if (frame_number == 5)
+    if (frame_number == 11)
         m_camera.translate(glm::vec3(0.2, 0, 0));
 }
 
