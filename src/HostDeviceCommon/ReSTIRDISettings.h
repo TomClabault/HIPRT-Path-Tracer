@@ -31,6 +31,8 @@ struct TemporalPassSettings
 	// acceptable temporal neighbor
 	int neighbor_search_radius = 8;
 
+	int neighbor_search_strategy = 1;
+
 	// The temporal reuse pass resamples the initial candidates as well as the last frame reservoirs which
 	// are accessed through this pointer
 	ReSTIRDIReservoir* input_reservoirs = nullptr;

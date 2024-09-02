@@ -633,6 +633,9 @@ void ImGuiRenderer::draw_sampling_panel()
 
 						m_render_window->set_render_dirty(true);
 					}
+
+					if (ImGui::InputInt("Neighbor search strategy", &render_settings.restir_di_settings.temporal_pass.neighbor_search_strategy))
+						m_render_window->set_render_dirty(true);
 						
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
 					ImGui::TreePop();

@@ -350,12 +350,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_sheen_eval(const RendererMater
     return sheen_color * pow(1.0f - HoL, 5.0f);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_sheen_sample(const RendererMaterial& material, const float3& view_direction, float3 surface_normal, Xorshift32Generator& random_number_generator)
-{
-    return cosine_weighted_sample(surface_normal, random_number_generator);
-}
-
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_eval(const RendererMaterial* materials_buffer, const RendererMaterial& material, RayVolumeState& ray_volume_state, const float3& view_direction, float3 shading_normal, const float3& to_light_direction, float& pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_bsdf_eval(const RendererMaterial* materials_buffer, const RendererMaterial& material, RayVolumeState& ray_volume_state, const float3& view_direction, float3 shading_normal, const float3& to_light_direction, float& pdf)
 {
     pdf = 0.0f;
 
@@ -429,7 +424,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_eval(const RendererMaterial* m
     return final_color;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_sample(const RendererMaterial* materials_buffer, const RendererMaterial& material, RayVolumeState& ray_volume_state, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal, float3& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_bsdf_sample(const RendererMaterial* materials_buffer, const RendererMaterial& material, RayVolumeState& ray_volume_state, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal, float3& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
 {
     pdf = 0.0f;
 
@@ -549,7 +544,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_sample(const RendererMaterial*
     // If we were using 'normal', we would always be outside the surface because 'normal' is flipped
     // (a few lines above in the code) so that it is in the same hemisphere as the view direction and
     // eval() will then think that we're always outside the surface even though that's not the case
-    return disney_eval(materials_buffer, material, ray_volume_state, view_direction, shading_normal, output_direction, pdf);
+    return disney_bsdf_eval(materials_buffer, material, ray_volume_state, view_direction, shading_normal, output_direction, pdf);
 }
 
 #endif

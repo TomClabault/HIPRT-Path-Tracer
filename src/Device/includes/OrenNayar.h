@@ -6,6 +6,8 @@
 #ifndef DEVICE_OREN_NAYAR_H
 #define DEVICE_OREN_NAYAR_H
 
+#include "Device/includes/Sampling.h"
+
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/Math.h"
 #include "HostDeviceCommon/Material.h"
@@ -13,7 +15,7 @@
 /* References:
  * [1] [Physically Based Rendering 3rd Edition] https://www.pbr-book.org/3ed-2018/Reflection_Models/Microfacet_Models
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F oren_nayar_eval(const RendererMaterial& material, const float3& view_direction, const float3& surface_normal, const float3& to_light_direction)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F oren_nayar_brdf_eval(const RendererMaterial& material, const float3& view_direction, const float3& surface_normal, const float3& to_light_direction, float& pdf)
 {
     float3 T, B;
     build_ONB(surface_normal, T, B);
@@ -55,7 +57,15 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F oren_nayar_eval(const RendererMateria
         tan_beta = sin_theta_o / hippt::abs(local_view_direction.z);
     }
 
+    pdf = local_to_light_direction.z / M_PI;
     return material.base_color / M_PI * (material.oren_nayar_A + material.oren_nayar_B * max_cos * sin_alpha * tan_beta);
+}
+
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F oren_nayar_brdf_sample(const RendererMaterial& material, const float3& view_direction, const float3& shading_normal, float3& sampled_direction, float& pdf, Xorshift32Generator& random_number_generator)
+{
+    sampled_direction = cosine_weighted_sample(shading_normal, random_number_generator);
+
+    return oren_nayar_brdf_eval(material, view_direction, shading_normal, sampled_direction, pdf);
 }
 
 #endif
