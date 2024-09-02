@@ -37,6 +37,7 @@
 // - different M cap for glossy surfaces ?
 // - possibility to use visibility reuse at the end of each spatial pass
 // - temporal reservoirs reset button in ImGui
+// - 1/Z weights look broken with the temporal reuse in movement
 
 // TODO bugs:
 // - memory leak with OpenGL when resizing the window?

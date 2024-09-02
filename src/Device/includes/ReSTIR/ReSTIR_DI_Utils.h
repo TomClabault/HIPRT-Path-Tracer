@@ -108,11 +108,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_O
 	return target_function;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float get_jacobian_determinant_reconnection_shift(const HIPRTRenderData& render_data, const ReSTIRDIReservoir& neighbor_reservoir, float3 center_pixel_shading_point, int neighbor_pixel_index)
+HIPRT_HOST_DEVICE HIPRT_INLINE float get_jacobian_determinant_reconnection_shift(const HIPRTRenderData& render_data, const ReSTIRDIReservoir& neighbor_reservoir, const float3& center_pixel_shading_point, const float3& neighbor_shading_point)
 {
 	float distance_to_light_at_center;
 	float distance_to_light_at_neighbor;
-	float3 neighbor_shading_point = render_data.g_buffer.first_hits[neighbor_pixel_index];
 	float3 to_light_direction_at_center = neighbor_reservoir.sample.point_on_light_source - center_pixel_shading_point;
 	float3 to_light_direction_at_neighbor = neighbor_reservoir.sample.point_on_light_source - neighbor_shading_point;
 	to_light_direction_at_center /= (distance_to_light_at_center = hippt::length(to_light_direction_at_center));
@@ -134,6 +133,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_jacobian_determinant_reconnection_shift
 		return -1;
 	else
 		return jacobian;
+}
+
+HIPRT_HOST_DEVICE HIPRT_INLINE float get_jacobian_determinant_reconnection_shift(const HIPRTRenderData& render_data, const ReSTIRDIReservoir& neighbor_reservoir, const float3& center_pixel_shading_point, int neighbor_pixel_index)
+{
+	return get_jacobian_determinant_reconnection_shift(render_data, neighbor_reservoir, center_pixel_shading_point, render_data.g_buffer.first_hits[neighbor_pixel_index]);
 }
 
 #endif

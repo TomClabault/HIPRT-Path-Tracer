@@ -556,7 +556,10 @@ void ImGuiRenderer::draw_sampling_panel()
 						render_settings.restir_di_settings.normal_similarity_angle_precomp = 0.0f;
 
 					static bool do_plane_distance_test = true;
-					ImGui::Checkbox("Use Plane Distance Heuristic", &do_plane_distance_test);
+					if (ImGui::Checkbox("Use Plane Distance Heuristic", &do_plane_distance_test))
+						// If the user re-enabled the plane distance heuristic after it was disabled, resetting
+						// the plane distance threshold value because otherwise it is still going to be 1.0e35f
+						render_settings.restir_di_settings.plane_distance_threshold = 0.1f;
 					if (do_plane_distance_test)
 						ImGui::SliderFloat("Plane Distance Threshold", &render_settings.restir_di_settings.plane_distance_threshold, 0.0f, 1.0f);
 					else
@@ -564,6 +567,7 @@ void ImGuiRenderer::draw_sampling_panel()
 						render_settings.restir_di_settings.plane_distance_threshold = 1.0e35f;
 
 					static bool do_roughness_heuristic = true;
+					ImGui::Checkbox("Use Roughness Heuristic", &do_roughness_heuristic);
 					if (do_roughness_heuristic)
 						ImGui::SliderFloat("Roughness Threshold", &render_settings.restir_di_settings.roughness_similarity_threshold, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 					else

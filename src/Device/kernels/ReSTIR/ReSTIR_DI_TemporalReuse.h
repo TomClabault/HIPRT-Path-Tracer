@@ -34,6 +34,14 @@
  * [10] [NVIDIA ReBLUR - Fast Denoising with Self Stabilizing Recurrent Blurs] https://developer.nvidia.com/gtc/2020/video/s22699-vid
  */
 
+// By convention, the temporal neighbor is the first one to be resampled in for loops 
+// (for looping over the neighbors when resampling / computing MIS weights)
+// So instead of hardcoding 0 everywhere in the code, we just basically give it a name
+// with a #define
+#define TEMPORAL_NEIGHBOR_RESAMPLE 0
+// Same when resampling the initial candidates
+#define INITIAL_CANDIDATES_RESAMPLE 1
+
 /**
  * Returns true if the two given points pass the plane distance check, false otherwise
  */
@@ -64,6 +72,20 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool roughness_similarity_heuristic(float neighbo
 	return hippt::abs(neighbor_roughness - center_pixel_roughness) < threshold;
 }
 
+HIPRT_HOST_DEVICE HIPRT_INLINE bool check_similarity_heuristics(const HIPRTRenderData& render_data, int temporal_neighbor_index, int center_pixel_index, const float3& current_shading_point, const float3& current_normal)
+{
+	float3 temporal_neighbor_point = render_data.g_buffer.first_hits[temporal_neighbor_index];
+
+	float temporal_neighbor_roughness = render_data.g_buffer.materials[temporal_neighbor_index].roughness;
+	float current_material_roughness = render_data.g_buffer.materials[center_pixel_index].roughness;
+
+	bool plane_distance_passed = plane_distance_heuristic(temporal_neighbor_point, current_shading_point, current_normal, render_data.render_settings.restir_di_settings.plane_distance_threshold);
+	bool normal_similarity_passed = normal_similarity_heuristic(current_normal, render_data.g_buffer.shading_normals[temporal_neighbor_index], render_data.render_settings.restir_di_settings.normal_similarity_angle_precomp);
+	bool roughness_similarity_passed = roughness_similarity_heuristic(temporal_neighbor_roughness, current_material_roughness, render_data.render_settings.restir_di_settings.roughness_similarity_threshold);
+
+	return plane_distance_passed && normal_similarity_passed && roughness_similarity_passed;
+}
+
 /**
  * Returns the linear index that can be used directly to index a buffer
  * of render_data for getting data of the temporal neighbor
@@ -81,107 +103,108 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int find_temporal_neighbor(const HIPRTRenderData&
 	// Trying to find a neighbor that isn't too far away in world space in the neighborhood of the reprojected 
 	// screen space position
 
-	/*float smallest_dist = 1000000.0f;
-	int smallest_index = -1;
-
-	int2 neighbor_1 = make_int2(floorf(pixel_pos_float.x), floorf(pixel_pos_float.y));
-	int neighbor_1_index = neighbor_1.x + neighbor_1.y * resolution.x;
-	if (neighbor_1.x > 0 && neighbor_1.x < resolution.x && neighbor_1.y > 0 && neighbor_1.y < resolution.y)
+	if (render_data.render_settings.restir_di_settings.temporal_pass.neighbor_search_strategy == 0)
 	{
-		float dist_neighbor_1 = hippt::length2(current_shading_point - render_data.g_buffer.first_hits[neighbor_1_index]);
-		smallest_dist = dist_neighbor_1;
-		smallest_index = neighbor_1_index;
-	}
+		float smallest_dist = 1000000.0f;
+		int smallest_index = -1;
 
-	int2 neighbor_2 = make_int2(floorf(pixel_pos_float.x), ceilf(pixel_pos_float.y));
-	int neighbor_2_index = neighbor_2.x + neighbor_2.y * resolution.x;
-	if (neighbor_2.x > 0 && neighbor_2.x < resolution.x && neighbor_2.y > 0 && neighbor_2.y < resolution.y)
-	{
-		float dist_neighbor_2 = hippt::length2(current_shading_point - render_data.g_buffer.first_hits[neighbor_2_index]);
-
-		if (smallest_dist > dist_neighbor_2)
+		int2 neighbor_1 = make_int2(floorf(pixel_pos_float.x), floorf(pixel_pos_float.y));
+		int neighbor_1_index = neighbor_1.x + neighbor_1.y * resolution.x;
+		if (neighbor_1.x > 0 && neighbor_1.x < resolution.x && neighbor_1.y > 0 && neighbor_1.y < resolution.y)
 		{
-			smallest_dist = dist_neighbor_2;
-			smallest_index = neighbor_2_index;
+			float dist_neighbor_1 = hippt::length2(current_shading_point - render_data.g_buffer.first_hits[neighbor_1_index]);
+			smallest_dist = dist_neighbor_1;
+			smallest_index = neighbor_1_index;
 		}
-	}
 
-	int2 neighbor_3 = make_int2(ceilf(pixel_pos_float.x), floorf(pixel_pos_float.y));
-	int neighbor_3_index = neighbor_3.x + neighbor_3.y * resolution.x;
-	if (neighbor_3.x > 0 && neighbor_3.x < resolution.x && neighbor_3.y > 0 && neighbor_3.y < resolution.y)
-	{
-		float dist_neighbor_3 = hippt::length2(current_shading_point - render_data.g_buffer.first_hits[neighbor_3_index]);
-
-		if (smallest_dist > dist_neighbor_3)
+		int2 neighbor_2 = make_int2(floorf(pixel_pos_float.x), ceilf(pixel_pos_float.y));
+		int neighbor_2_index = neighbor_2.x + neighbor_2.y * resolution.x;
+		if (neighbor_2.x > 0 && neighbor_2.x < resolution.x && neighbor_2.y > 0 && neighbor_2.y < resolution.y)
 		{
-			smallest_dist = dist_neighbor_3;
-			smallest_index = neighbor_3_index;
+			float dist_neighbor_2 = hippt::length2(current_shading_point - render_data.g_buffer.first_hits[neighbor_2_index]);
+
+			if (smallest_dist > dist_neighbor_2)
+			{
+				smallest_dist = dist_neighbor_2;
+				smallest_index = neighbor_2_index;
+			}
 		}
-	}
 
-	int2 neighbor_4 = make_int2(ceilf(pixel_pos_float.x), ceilf(pixel_pos_float.y));
-	int neighbor_4_index = neighbor_4.x + neighbor_4.y * resolution.x;
-	if (neighbor_4.x > 0 && neighbor_4.x < resolution.x && neighbor_4.y > 0 && neighbor_4.y < resolution.y)
-	{
-		float dist_neighbor_4 = hippt::length2(current_shading_point - render_data.g_buffer.first_hits[neighbor_4_index]);
-
-		if (smallest_dist > dist_neighbor_4)
+		int2 neighbor_3 = make_int2(ceilf(pixel_pos_float.x), floorf(pixel_pos_float.y));
+		int neighbor_3_index = neighbor_3.x + neighbor_3.y * resolution.x;
+		if (neighbor_3.x > 0 && neighbor_3.x < resolution.x && neighbor_3.y > 0 && neighbor_3.y < resolution.y)
 		{
-			smallest_dist = dist_neighbor_4;
-			smallest_index = neighbor_4_index;
+			float dist_neighbor_3 = hippt::length2(current_shading_point - render_data.g_buffer.first_hits[neighbor_3_index]);
+
+			if (smallest_dist > dist_neighbor_3)
+			{
+				smallest_dist = dist_neighbor_3;
+				smallest_index = neighbor_3_index;
+			}
 		}
+
+		int2 neighbor_4 = make_int2(ceilf(pixel_pos_float.x), ceilf(pixel_pos_float.y));
+		int neighbor_4_index = neighbor_4.x + neighbor_4.y * resolution.x;
+		if (neighbor_4.x > 0 && neighbor_4.x < resolution.x && neighbor_4.y > 0 && neighbor_4.y < resolution.y)
+		{
+			float dist_neighbor_4 = hippt::length2(current_shading_point - render_data.g_buffer.first_hits[neighbor_4_index]);
+
+			if (smallest_dist > dist_neighbor_4)
+			{
+				smallest_dist = dist_neighbor_4;
+				smallest_index = neighbor_4_index;
+			}
+		}
+
+		if (smallest_index != -1)
+			if (!check_similarity_heuristics(render_data, smallest_index, center_pixel_index, current_shading_point, current_normal))
+				smallest_index = -1;
+
+		return smallest_index;
 	}
-
-	return smallest_index;*/
-
-	// We're going to randomly look for an acceptable neighbor around the back-projected pixel location to find
-	// in a given radius
-	int temporal_neighbor_index = -1;
-	for (int i = 0; i < render_data.render_settings.restir_di_settings.temporal_pass.max_neighbor_search_count + 1; i++)
+	else if (render_data.render_settings.restir_di_settings.temporal_pass.neighbor_search_strategy == 1)
 	{
-		float2 offset = make_float2(0.0f, 0.0f);
-		if (i > 0)
-			// Only randomly looking after we've at least checked whether or not the exact temporally reprojected location
-			// is valid or not
-			offset = make_float2(random_number_generator() - 0.5f, random_number_generator() - 0.5f) * render_data.render_settings.restir_di_settings.temporal_pass.neighbor_search_radius;
+		// We're going to randomly look for an acceptable neighbor around the back-projected pixel location to find
+		// in a given radius
+		int temporal_neighbor_index = -1;
+		for (int i = 0; i < render_data.render_settings.restir_di_settings.temporal_pass.max_neighbor_search_count + 1; i++)
+		{
+			float2 offset = make_float2(0.0f, 0.0f);
+			if (i > 0)
+				// Only randomly looking after we've at least checked whether or not the exact temporally reprojected location
+				// is valid or not
+				offset = make_float2(random_number_generator() - 0.5f, random_number_generator() - 0.5f) * render_data.render_settings.restir_di_settings.temporal_pass.neighbor_search_radius;
 
-		int2 temporal_neighbor_screen_pixel_pos = make_int2(pixel_pos_float.x + offset.x, pixel_pos_float.y + offset.y);
-		if (temporal_neighbor_screen_pixel_pos.x < 0 || temporal_neighbor_screen_pixel_pos.x >= resolution.x || temporal_neighbor_screen_pixel_pos.y < 0 || temporal_neighbor_screen_pixel_pos.y >= resolution.y)
-			// Previous pixel is out of the current viewport
-			continue;
+			int2 temporal_neighbor_screen_pixel_pos = make_int2(pixel_pos_float.x + offset.x, pixel_pos_float.y + offset.y);
+			if (temporal_neighbor_screen_pixel_pos.x < 0 || temporal_neighbor_screen_pixel_pos.x >= resolution.x || temporal_neighbor_screen_pixel_pos.y < 0 || temporal_neighbor_screen_pixel_pos.y >= resolution.y)
+				// Previous pixel is out of the current viewport
+				continue;
 
+			temporal_neighbor_index = temporal_neighbor_screen_pixel_pos.x + temporal_neighbor_screen_pixel_pos.y * resolution.x;
+			bool neighbor_heuristics_valid = check_similarity_heuristics(render_data, temporal_neighbor_index, center_pixel_index, current_shading_point, current_normal);
+			if (neighbor_heuristics_valid)
+				// We found a good neighbor
+				break;
 
-		temporal_neighbor_index = temporal_neighbor_screen_pixel_pos.x + temporal_neighbor_screen_pixel_pos.y * resolution.x;
-		float3 temporal_neighbor_point = render_data.g_buffer.first_hits[temporal_neighbor_index];
+			// We didn't break so we didn't find a good neighbor
+			temporal_neighbor_index = -1;
+		}
 
-		float temporal_neighbor_roughness = render_data.g_buffer.materials[temporal_neighbor_index].roughness;
-		float current_material_roughness = render_data.g_buffer.materials[center_pixel_index].roughness;
-
-		bool plane_distance_passed = plane_distance_heuristic(temporal_neighbor_point, current_shading_point, current_normal, render_data.render_settings.restir_di_settings.plane_distance_threshold);
-		bool normal_similarity_passed = normal_similarity_heuristic(current_normal, render_data.g_buffer.shading_normals[temporal_neighbor_index], render_data.render_settings.restir_di_settings.normal_similarity_angle_precomp);
-		bool roughness_similarity_passed = roughness_similarity_heuristic(temporal_neighbor_roughness, current_material_roughness, render_data.render_settings.restir_di_settings.roughness_similarity_threshold);
-
-		if (plane_distance_passed && normal_similarity_passed && roughness_similarity_passed)
-			// We found a good neighbor
-			break;
-
-		// We didn't break so we didn't find a good neighbor
-		temporal_neighbor_index = -1;
+		return temporal_neighbor_index;
 	}
 
-	return temporal_neighbor_index;
+	return -1;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float get_temporal_reuse_resampling_MIS_weight(const HIPRTRenderData& render_data, const ReSTIRDIReservoir& neighbor_reservoir, int current_neighbor, int center_pixel_index, int temporal_neighbor_pixel_index, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE float get_temporal_reuse_resampling_MIS_weight(
+	const HIPRTRenderData& render_data,
+	const ReSTIRDIReservoir& reservoir_being_resampled, const ReSTIRDIReservoir& temporal_neighbor_reservoir,
+	const ReSTIRDISurface& temporal_neighbor_surface, const ReSTIRDISurface& center_pixel_surface,
+	int current_neighbor, int center_pixel_index, int temporal_neighbor_pixel_index,
+	Xorshift32Generator& random_number_generator)
 {
 #if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_M || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE_CONFIDENCE_WEIGHTS
-	int neighbor_M = neighbor_reservoir.M;
-	if (current_neighbor == 0)
-		// M-capping the temporal neighbor
-		if (render_data.render_settings.restir_di_settings.m_cap > 0)
-			neighbor_M = hippt::min(neighbor_M, render_data.render_settings.restir_di_settings.m_cap);
-
-	return neighbor_M;
+	return reservoir_being_resampled.M;
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
 	// No resampling MIS weights for this. Everything is computed in the last step where
 	// we check which neighbors could have produced the sample that we picked
@@ -191,12 +214,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_temporal_reuse_resampling_MIS_weight(co
 	// We already have the target function at the center pixel, adding it to the denom
 	float denom = 0.0f;
 
-	// Hardocding 2 in the loop for temporal reuse since we're only reusing the initial candidate
+	// Hardcoding 2 in the loop for temporal reuse since we're only reusing the initial candidate
 	// at our pixel and our temporal neighbor which makes 2 candidates
 	for (int j = 0; j < 2; j++)
 	{
 		int neighbor_pixel_index;
-		if (j == 0)
+		if (j == TEMPORAL_NEIGHBOR_RESAMPLE)
 		{
 			// Resampling the temporal neighbor on the first iteration
 			neighbor_pixel_index = temporal_neighbor_pixel_index;
@@ -207,33 +230,21 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_temporal_reuse_resampling_MIS_weight(co
 			// Resampling at our center pixel on the second iteration
 			neighbor_pixel_index = center_pixel_index;
 
-		ReSTIRDISurface neighbor_surface = get_pixel_surface(render_data, neighbor_pixel_index);
-
-		float target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_SpatialReuseBiasUseVisiblity>(render_data, neighbor_reservoir.sample, neighbor_surface);
+		// Evaluating the sample that we're resampling at the neighor locations (using the neighbors surfaces)
+		float target_function_at_neighbor;
+		if (j == TEMPORAL_NEIGHBOR_RESAMPLE) 
+			target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_SpatialReuseBiasUseVisiblity>(render_data, reservoir_being_resampled.sample, temporal_neighbor_surface);
+		else
+			target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_SpatialReuseBiasUseVisiblity>(render_data, reservoir_being_resampled.sample, center_pixel_surface);
 
 		int M = 1;
 
-		ReSTIRDIReservoir* input_reservoirs;
-		if (j == 0)
-			// First neighbor is the temporal neighbor
-			input_reservoirs = render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs;
-		else
-			// Second neighbor is the center pixel itself, from the initial candidates pass
-			input_reservoirs = render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs;
+		if (j == TEMPORAL_NEIGHBOR_RESAMPLE)
+			M = temporal_neighbor_reservoir.M;
 
-		if (j == 0)
-		{
-			// M-capping the temporal neighbor
-			if (render_data.render_settings.restir_di_settings.m_cap > 0)
-			{
-				int temporal_neighbor_M = hippt::min(input_reservoirs[neighbor_pixel_index].M, render_data.render_settings.restir_di_settings.m_cap);
-				if (temporal_neighbor_M == 0)
-					// No temporal history, no taking this into account in the MIS weight
-					continue;
-				else
-					M = temporal_neighbor_M;
-			}
-		}
+		if (M == 0)
+			// No temporal history, no resampling to do, skipping this reservoir
+			continue;
 
 #if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_GBH
 		// No confidence weights, using M = 1.
@@ -263,9 +274,15 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_temporal_reuse_resampling_MIS_weight(co
 #endif
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE void get_temporal_reuse_normalization_denominator_numerator(float& out_normalization_nume, float& out_normalization_denom, const HIPRTRenderData& render_data, const ReSTIRDIReservoir& new_reservoir, int selected_neighbor, int center_pixel_index, int temporal_neighbor_pixel_index, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE void get_temporal_reuse_normalization_denominator_numerator(
+	const HIPRTRenderData& render_data, 
+	const ReSTIRDIReservoir& reservoir, const ReSTIRDIReservoir& initial_candidates_reservoir, const ReSTIRDIReservoir& temporal_neighbor_reservoir, 
+	const ReSTIRDISurface& center_pixel_surface, const ReSTIRDISurface& temporal_neighbor_surface, 
+	int selected_neighbor, int center_pixel_index, int temporal_neighbor_pixel_index, 
+	Xorshift32Generator& random_number_generator,
+	float& out_normalization_nume, float& out_normalization_denom)
 {
-	if (new_reservoir.weight_sum <= 0)
+	if (reservoir.weight_sum <= 0)
 	{
 		// Invalid reservoir, returning directly
 		out_normalization_nume = 1.0;
@@ -282,37 +299,15 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void get_temporal_reuse_normalization_denominator
 	// We're simply going to divide by the sum of all the M values of all the neighbors we resampled (including the center pixel)
 	// so we're only going to set the denominator to that and the numerator isn't going to change
 	out_normalization_denom = 0.0f;
-	for (int neighbor = 0; neighbor < 2; neighbor++)
+	for (int neighbor_index = 0; neighbor_index < 2; neighbor_index++)
 	{
-		int neighbor_pixel_index;
-		if (neighbor == 0)
-		{
-			// Resampling the temporal neighbor on the first iteration
-			neighbor_pixel_index = temporal_neighbor_pixel_index;
-			if (neighbor_pixel_index == -1)
-				continue;
-		}
+		ReSTIRDIReservoir neighbor_reservoir;
+		if (neighbor_index == TEMPORAL_NEIGHBOR_RESAMPLE)
+			neighbor_reservoir = temporal_neighbor_reservoir;
 		else
-			// Resampling at our center pixel on the second iteration
-			neighbor_pixel_index = center_pixel_index;
+			neighbor_reservoir = initial_candidates_reservoir;
 
-		ReSTIRDIReservoir* input_reservoirs;
-		if (neighbor == 0)
-			// First neighbor is the temporal neighbor
-			input_reservoirs = render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs;
-		else
-			// Second neighbor is the center pixel itself, from the initial candidates pass
-			input_reservoirs = render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs;
-
-		ReSTIRDIReservoir neighbor_reservoir = input_reservoirs[neighbor_pixel_index];
-
-		int neighbor_M = neighbor_reservoir.M;
-		if (neighbor == 0)
-			if (render_data.render_settings.restir_di_settings.m_cap > 0)
-				// M-capping the temporal neighbor
-				neighbor_M = hippt::min(neighbor_M, render_data.render_settings.restir_di_settings.m_cap);
-
-		out_normalization_denom += neighbor_M;
+		out_normalization_denom += neighbor_reservoir.M;
 	}
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE_CONFIDENCE_WEIGHTS
 	// Checking how many of our neighbors could have produced the sample that we just picked
@@ -325,31 +320,22 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void get_temporal_reuse_normalization_denominator
 	out_normalization_nume = 0.0f;
 #endif
 
-	for (int neighbor = 0; neighbor < 2; neighbor++)
+	for (int neighbor_index = 0; neighbor_index < 2; neighbor_index++)
 	{
-		int neighbor_pixel_index;
-		if (neighbor == 0)
-		{
-			// Resampling the temporal neighbor on the first iteration
-			neighbor_pixel_index = temporal_neighbor_pixel_index;
-			if (neighbor_pixel_index == -1)
-				continue;
-		}
+		float target_function_at_neighbor;
+		if (neighbor_index == TEMPORAL_NEIGHBOR_RESAMPLE)
+			target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_SpatialReuseBiasUseVisiblity>(render_data, reservoir.sample, temporal_neighbor_surface);
 		else
-			// Resampling at our center pixel on the second iteration
-			neighbor_pixel_index = center_pixel_index;
-
-		// Getting the surface data at the neighbor
-		ReSTIRDISurface neighbor_surface = get_pixel_surface(render_data, neighbor_pixel_index);
-		float target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_SpatialReuseBiasUseVisiblity>(render_data, new_reservoir.sample, neighbor_surface);
+			target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_SpatialReuseBiasUseVisiblity>(render_data, reservoir.sample, center_pixel_surface);
 
 		if (target_function_at_neighbor > 0.0f)
 		{
 			// If the neighbor could have produced this sample...
 			ReSTIRDIReservoir neighbor_reservoir;
-			if (neighbor == 0)
+			if (neighbor_index == TEMPORAL_NEIGHBOR_RESAMPLE)
 			{
-				neighbor_reservoir = render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs[neighbor_pixel_index];
+				neighbor_reservoir = temporal_neighbor_reservoir;
+
 				if (neighbor_reservoir.M == 0)
 				{
 					// No temporal neighbor, no taking it into account.
@@ -367,31 +353,19 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void get_temporal_reuse_normalization_denominator
 				}
 			}
 			else
-				neighbor_reservoir = render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs[neighbor_pixel_index];
+				neighbor_reservoir = initial_candidates_reservoir;
 
 #if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
-			int neighbor_M = neighbor_reservoir.M;
-			if (neighbor == 0)
-				if (render_data.render_settings.restir_di_settings.m_cap > 0)
-					// M-capping the temporal neighbor
-					neighbor_M = hippt::min(neighbor_M, render_data.render_settings.restir_di_settings.m_cap);
-
-			out_normalization_denom += neighbor_M;
+			out_normalization_denom += neighbor_reservoir.M;
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
-			if (neighbor == selected_neighbor)
+			if (neighbor_index == selected_neighbor)
 				out_normalization_nume += target_function_at_neighbor;
 			out_normalization_denom += target_function_at_neighbor;
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE_CONFIDENCE_WEIGHTS
-			int neighbor_M = neighbor_reservoir.M;
-			if (neighbor == 0)
-				if (render_data.render_settings.restir_di_settings.m_cap > 0)
-					// M-capping the temporal neighbor
-					neighbor_M = hippt::min(neighbor_M, render_data.render_settings.restir_di_settings.m_cap);
-
-			if (neighbor == selected_neighbor)
+			if (neighbor_index == selected_neighbor)
 				// Not multiplying by M in the numerator because this is already included in the MIS weight when resampling
 				out_normalization_nume += target_function_at_neighbor;
-			out_normalization_denom += target_function_at_neighbor * neighbor_M;
+			out_normalization_denom += target_function_at_neighbor * neighbor_reservoir.M;
 #endif
 		}
 	}
@@ -444,11 +418,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 		seed = wang_hash((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_seed);
 	Xorshift32Generator random_number_generator(seed);
 
-	ReSTIRDIReservoir new_reservoir;
 	// Surface data of the center pixel
 	ReSTIRDISurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index);
-	// Center pixel coordinates
-	int2 center_pixel_coords = make_int2(x, y);
 
 	int temporal_neighbor_pixel_index = find_temporal_neighbor(render_data, center_pixel_surface.shading_point, center_pixel_surface.shading_normal, res, center_pixel_index, center_pixel_surface.material.roughness, random_number_generator);
 	if (temporal_neighbor_pixel_index == -1)
@@ -463,66 +434,51 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 		return;
 	}
 
+	// Resampling the initial candidates
+	ReSTIRDIReservoir new_reservoir;
+	ReSTIRDIReservoir initial_candidates_reservoir = render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs[center_pixel_index];
+	ReSTIRDIReservoir temporal_neighbor_reservoir = render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs[temporal_neighbor_pixel_index];
+	ReSTIRDISurface temporal_neighbor_surface = get_pixel_surface(render_data, temporal_neighbor_pixel_index);
+	
+	// Will keep the index of the neighbor that has been selected by resampling. 
+	// Either 0 or 1 for the temporal resampling pass
 	int selected_neighbor = 0;
-	// Resampling 2 reservoirs for the temporal reuse pass: our temporal neighbor and the initial candidate
-	// reservoir for our pixel (from the initial candidates pass)
-	for (int neighbor = 0; neighbor < 2; neighbor++)
+	float init_cand_mis_weight = get_temporal_reuse_resampling_MIS_weight(render_data, 
+		initial_candidates_reservoir, temporal_neighbor_reservoir, 
+		temporal_neighbor_surface, center_pixel_surface, 
+		/* indicating that we're currently resampling the initial candidates */ INITIAL_CANDIDATES_RESAMPLE,
+		center_pixel_index, temporal_neighbor_pixel_index, 
+		random_number_generator);
+
+	if (new_reservoir.combine_with(initial_candidates_reservoir, init_cand_mis_weight, initial_candidates_reservoir.sample.target_function, /* jacobian is 1 when reusing at the exact same spot */ 1.0f, random_number_generator))
+		selected_neighbor = INITIAL_CANDIDATES_RESAMPLE;
+	new_reservoir.sanity_check(make_int2(x, y));
+
+
+	// ---
+	// The rest of the code resamples the temporal neighbor
+	// ---
+
+	if (temporal_neighbor_reservoir.M > 0)
 	{
-		ReSTIRDIReservoir* input_reservoir_buffer;
-		int neighbor_pixel_index;
-		if (neighbor == 0)
-		{
-			neighbor_pixel_index = temporal_neighbor_pixel_index;
+		// M-capping the temporal neighbor
+		if (render_data.render_settings.restir_di_settings.m_cap > 0)
+			temporal_neighbor_reservoir.M = hippt::min(temporal_neighbor_reservoir.M, render_data.render_settings.restir_di_settings.m_cap);
 
-			// If resampling the temporal neighbor, reading from the temporal input buffer
-			input_reservoir_buffer = render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs;
-		}
-		else
-		{
-			// Resampling the initial candidate at our pixel
-			neighbor_pixel_index = center_pixel_index;
-
-			// Resampling from the initial candidates buffer
-			input_reservoir_buffer = render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs;
-		}
-
-		ReSTIRDIReservoir neighbor_reservoir = input_reservoir_buffer[neighbor_pixel_index];
-		if (neighbor_reservoir.UCW == 0.0f)
-		{
-			// Nothing to do here, just take the M of the resampled neighbor into account.
-			// This is basically euiqvalent to combining the reservoir with the
-			// new_reservoir.combine_with() function knowing that the target function will
-			// be 0.0f (because there's no neighbor reservoir sample)
-
-			int neighbor_M = neighbor_reservoir.M;
-			if (neighbor == 0)
-			{
-				// M-capping the temporal neighbor
-				if (render_data.render_settings.restir_di_settings.m_cap > 0)
-					neighbor_M = hippt::min(neighbor_M, render_data.render_settings.restir_di_settings.m_cap);
-			}
-
-			new_reservoir.M += neighbor_M;
-
-			continue;
-		}
+		int temporal_neighbor_M = temporal_neighbor_reservoir.M;
 
 		float target_function_at_center = 0.0f;
-		if (neighbor == 1)
-			// neighbor == 1 in the temporal reuse pass means that we're resampling 
-			// the initial candidate at the center pixel
-			// 
-			// No need to evaluate the center sample at the center pixel, that's exactly
-			// the target function of the center reservoir
-			target_function_at_center = neighbor_reservoir.sample.target_function;
-		else
-			target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_TargetFunctionVisibility>(render_data, neighbor_reservoir.sample, center_pixel_surface);
+		if (temporal_neighbor_reservoir.UCW != 0.0f)
+			// Only resampling if the temporal neighbor isn't empty
+			//
+			// If the temporal neiughor's reservoir is empty, then we do not get
+			// inside that if() and the target function stays at 0.0f which eliminates
+			// most of the computations afterwards
+			target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_TargetFunctionVisibility>(render_data, temporal_neighbor_reservoir.sample, center_pixel_surface);
 
 		float jacobian_determinant = 1.0f;
 		// If the neighbor reservoir is invalid, do not compute the jacobian
-		// Also, if this is the last neighbor resample (meaning that it is the sample pixel), 
-		// the jacobian is going to be 1.0f so no need to compute
-		if (target_function_at_center > 0.0f && neighbor_reservoir.UCW != 0.0f && neighbor == 0)
+		if (target_function_at_center > 0.0f && temporal_neighbor_reservoir.UCW != 0.0f)
 		{
 			// The reconnection shift is what is implicitely used in ReSTIR DI. We need this because
 			// the initial light sample candidates that we generate on the area of the lights have an
@@ -536,43 +492,49 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 			// "solid angle PDF at the neighbor" to the solid angle at the center pixel and we do
 			// that by multiplying by the jacobian determinant of the reconnection shift in solid
 			// angle, Eq. 52 of 2022, "Generalized Resampled Importance Sampling".
-			jacobian_determinant = get_jacobian_determinant_reconnection_shift(render_data, neighbor_reservoir, center_pixel_surface.shading_point, neighbor_pixel_index);
+			jacobian_determinant = get_jacobian_determinant_reconnection_shift(render_data, 
+				temporal_neighbor_reservoir, 
+				center_pixel_surface.shading_point,
+				/* recomputing the point without the normal offset */ temporal_neighbor_surface.shading_point - temporal_neighbor_surface.shading_normal * 1.0e-4f);
 
 			if (jacobian_determinant == -1.0f)
-			{
-				int neighbor_M = neighbor_reservoir.M;
-				if (render_data.render_settings.restir_di_settings.m_cap > 0)
-					// M-capping the temporal neighbor
-					neighbor_M = hippt::min(neighbor_M, render_data.render_settings.restir_di_settings.m_cap);
-
-				new_reservoir.M += neighbor_M;
-
-				// Sample too dissimilar, not resampling it
-				continue;
-			}
+				// Sample too dissimilar, not going to resample it so setting
+				// the jacobian to 0.0f so that the reservoir combination fails
+				// for this sample
+				jacobian_determinant = 0.0f;
 		}
-
 
 		float mis_weight = 1.0f;
 		if (target_function_at_center > 0.0f)
 			// No need to compute the MIS weight if the target function is 0.0f because we're never going to pick
 			// that sample anyway when combining the reservoir since the resampling weight will be 0.0f because of
 			// the multiplication by the target function that is 0.0f
-			mis_weight = get_temporal_reuse_resampling_MIS_weight(render_data, neighbor_reservoir, neighbor, center_pixel_index, temporal_neighbor_pixel_index, random_number_generator);
+			mis_weight = get_temporal_reuse_resampling_MIS_weight(render_data, 
+				temporal_neighbor_reservoir, temporal_neighbor_reservoir, 
+				temporal_neighbor_surface, center_pixel_surface, 
+				/* indicating that we're currently resampling the temporal neighbor */ TEMPORAL_NEIGHBOR_RESAMPLE, 
+				center_pixel_index, temporal_neighbor_pixel_index, 
+				random_number_generator);
 
 		// Combining as in Alg. 6 of the paper
-		if (new_reservoir.combine_with(neighbor_reservoir, mis_weight, target_function_at_center, jacobian_determinant, random_number_generator))
-			selected_neighbor = neighbor;
-		new_reservoir.sanity_check(center_pixel_coords);
+		if (new_reservoir.combine_with(temporal_neighbor_reservoir, mis_weight, target_function_at_center, jacobian_determinant, random_number_generator))
+			selected_neighbor = 0;
+
+		new_reservoir.sanity_check(make_int2(x, y));
 	}
 
 	float normalization_numerator = 1.0f;
 	float normalization_denominator = 1.0f;
 
-	get_temporal_reuse_normalization_denominator_numerator(normalization_numerator, normalization_denominator, render_data, new_reservoir, selected_neighbor, center_pixel_index, temporal_neighbor_pixel_index, random_number_generator);
+	get_temporal_reuse_normalization_denominator_numerator(render_data, 
+		new_reservoir, initial_candidates_reservoir, temporal_neighbor_reservoir,
+		center_pixel_surface, temporal_neighbor_surface, 
+		selected_neighbor,
+		center_pixel_index, temporal_neighbor_pixel_index,
+		random_number_generator, normalization_numerator, normalization_denominator);
 
 	new_reservoir.end_with_normalization(normalization_numerator, normalization_denominator);
-	new_reservoir.sanity_check(center_pixel_coords);
+	new_reservoir.sanity_check(make_int2(x, y));
 
 #if ReSTIR_DI_DoVisibilityReuse && ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
 	temporal_visibility_reuse(render_data, new_reservoir, center_pixel_surface.shading_point);
