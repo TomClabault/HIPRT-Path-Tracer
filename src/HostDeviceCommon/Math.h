@@ -62,6 +62,7 @@ namespace hippt
 	__device__ float dot(float3 u, float3 v) { return hiprt::dot(u, v); }
 
 	__device__ float length(float3 u) { return sqrt(hiprt::dot(u, u)); }
+	__device__ float length2(float3 u) { return hiprt::dot(u, u); }
 
 	__device__ float3 abs(float3 u) { return make_float3(fabsf(u.x), fabsf(u.y), fabsf(u.z)); }
 	__device__ float abs(float a) { return fabsf(a); }
@@ -85,6 +86,7 @@ namespace hippt
 	inline float dot(float3 u, float3 v) { return hiprt::dot(u, v); }
 
 	inline float length(float3 u) { return sqrtf(dot(u, u)); }
+	inline float length2(float3 u) { return dot(u, u); }
 
 	template <typename T>
 	inline T max(T a, T b) { return hiprt::max(a, b); }

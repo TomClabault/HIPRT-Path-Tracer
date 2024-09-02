@@ -29,8 +29,8 @@
 // you're measuring the coordinates of the pixel with (0, 0) in the bottom left corner
 #define DEBUG_FLIP_Y 0
 // Coordinates of the pixel to render
-#define DEBUG_PIXEL_X 1096
-#define DEBUG_PIXEL_Y 337
+#define DEBUG_PIXEL_X 881
+#define DEBUG_PIXEL_Y 233
 // If 1, a square of DEBUG_NEIGHBORHOOD_SIZE x DEBUG_NEIGHBORHOOD_SIZE pixels
 // will be rendered around the pixel to debug (given by DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y). The pixel of interest is going to be rendered first so you
@@ -193,7 +193,7 @@ void CPURenderer::render()
 void CPURenderer::update(int frame_number)
 {
     if (frame_number == 8)
-        m_camera.translate(glm::vec3(-0.4, 0, 0));
+        m_camera.translate(glm::vec3(0, +0.1, 0));
 }
 
 void CPURenderer::update_render_data(int sample)

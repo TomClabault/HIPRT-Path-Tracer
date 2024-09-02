@@ -543,6 +543,33 @@ void ImGuiRenderer::draw_sampling_panel()
 					}
 
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+					static bool do_normal_similarity_test = true;
+					ImGui::Checkbox("Use Normal Similarity Heuristic", &do_normal_similarity_test);
+					if (do_normal_similarity_test)
+					{
+						if (ImGui::SliderFloat("Normal Similarity Threshold", &render_settings.restir_di_settings.normal_similarity_angle_degrees, 0.0f, 360.0f, "%.3f deg", ImGuiSliderFlags_AlwaysClamp))
+							render_settings.restir_di_settings.normal_similarity_angle_precomp = std::cos(render_settings.restir_di_settings.normal_similarity_angle_degrees * M_PI / 180.0f);
+					}
+					else
+						// If not using the heuristic, setting the threshold to 0.0f so that the normal heuristic always passes
+						render_settings.restir_di_settings.normal_similarity_angle_precomp = 0.0f;
+
+					static bool do_plane_distance_test = true;
+					ImGui::Checkbox("Use Plane Distance Heuristic", &do_plane_distance_test);
+					if (do_plane_distance_test)
+						ImGui::SliderFloat("Plane Distance Threshold", &render_settings.restir_di_settings.plane_distance_threshold, 0.0f, 1.0f);
+					else
+						// Setting a super high value so that the plane distance heuristic always passes if we're not using it
+						render_settings.restir_di_settings.plane_distance_threshold = 1.0e35f;
+
+					static bool do_roughness_heuristic = true;
+					if (do_roughness_heuristic)
+						ImGui::SliderFloat("Roughness Threshold", &render_settings.restir_di_settings.roughness_similarity_threshold, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+					else
+						render_settings.restir_di_settings.roughness_similarity_threshold = 1000.0f;
+
+					ImGui::Dummy(ImVec2(0.0f, 20.0f));
 					ImGui::TreePop();
 				}
 
@@ -583,13 +610,29 @@ void ImGuiRenderer::draw_sampling_panel()
 
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
 					ImGui::TreePop();
-				}
+				}				
 
 				ImGui::SeparatorText("Temporal Reuse Pass");
 				ImGui::TreePush("ReSTIR DI - Temporal Reuse Pass Tree");
 				{
 					if (ImGui::Checkbox("Do Temporal Reuse", &render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass))
 						m_render_window->set_render_dirty(true);
+
+					if (ImGui::SliderInt("Max temporal neighbor search count", &render_settings.restir_di_settings.temporal_pass.max_neighbor_search_count, 0, 16))
+					{
+						// Clamping
+						render_settings.restir_di_settings.temporal_pass.max_neighbor_search_count = std::max(0, render_settings.restir_di_settings.temporal_pass.max_neighbor_search_count);
+
+						m_render_window->set_render_dirty(true);
+					}
+
+					if (ImGui::SliderInt("Temporal neighbor search radius", &render_settings.restir_di_settings.temporal_pass.neighbor_search_radius, 0, 16))
+					{
+						// Clamping
+						render_settings.restir_di_settings.temporal_pass.neighbor_search_radius = std::max(0, render_settings.restir_di_settings.temporal_pass.neighbor_search_radius);
+
+						m_render_window->set_render_dirty(true);
+					}
 						
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
 					ImGui::TreePop();
@@ -601,7 +644,7 @@ void ImGuiRenderer::draw_sampling_panel()
 					if (ImGui::Checkbox("Do Spatial Reuse", &render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass))
 						m_render_window->set_render_dirty(true);
 
-					if (ImGui::SliderInt("Spatial Reuse Pass Count", &render_settings.restir_di_settings.spatial_pass.number_of_passes, 0, 64))
+					if (ImGui::SliderInt("Spatial Reuse Pass Count", &render_settings.restir_di_settings.spatial_pass.number_of_passes, 1, 64))
 					{
 						// Clamping
 						render_settings.restir_di_settings.spatial_pass.number_of_passes = std::max(1, render_settings.restir_di_settings.spatial_pass.number_of_passes);

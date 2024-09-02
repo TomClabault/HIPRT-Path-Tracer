@@ -344,7 +344,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 
 	get_spatial_reuse_normalization_denominator_numerator(normalization_numerator, normalization_denominator, render_data, new_reservoir, selected_neighbor, reused_neighbors_count, center_pixel_coords, res, cos_sin_theta_rotation, random_number_generator);
 
-	new_reservoir.end_normalized(normalization_numerator, normalization_denominator);
+	new_reservoir.end_with_normalization(normalization_numerator, normalization_denominator);
 	new_reservoir.sanity_check(center_pixel_coords);
 	// M-capping
 	if (render_data.render_settings.restir_di_settings.m_cap > 0)

@@ -601,10 +601,37 @@ void GPURenderer::update_render_data()
 	m_render_data.aux_buffers.restir_reservoir_buffer_2 = m_restir_di_state.spatial_reuse_output_1.get_device_pointer();
 	m_render_data.aux_buffers.restir_reservoir_buffer_3 = m_restir_di_state.spatial_reuse_output_2.get_device_pointer();
 
-	m_render_data.prev_camera = m_previous_frame_camera.to_hiprt();
 	m_render_data.current_camera = m_camera.to_hiprt();
-		
+	m_render_data.prev_camera = m_previous_frame_camera.to_hiprt();
+
 	m_render_data.random_seed = m_rng.xorshift32();
+
+
+	// TODO doesn't seem necessary since this method of back also fails
+	glm::vec3 t = m_previous_frame_camera.translation;
+	m_render_data.prev_camera_position = make_float3(t.x, t.y, t.z);
+		
+	float a, b, c;
+
+	a = m_render_data.prev_camera.view_projection.m[0][3] + m_render_data.prev_camera.view_projection.m[0][1];
+	b = m_render_data.prev_camera.view_projection.m[1][3] + m_render_data.prev_camera.view_projection.m[1][1];
+	c = m_render_data.prev_camera.view_projection.m[2][3] + m_render_data.prev_camera.view_projection.m[2][1];
+	m_render_data.bottom_plane_normal = hippt::normalize(make_float3(a, b, c));
+
+	a = m_render_data.prev_camera.view_projection.m[0][3] - m_render_data.prev_camera.view_projection.m[0][1];
+	b = m_render_data.prev_camera.view_projection.m[1][3] - m_render_data.prev_camera.view_projection.m[1][1];
+	c = m_render_data.prev_camera.view_projection.m[2][3] - m_render_data.prev_camera.view_projection.m[2][1];
+	m_render_data.top_plane_normal = hippt::normalize(make_float3(a, b, c));
+
+	a = m_render_data.prev_camera.view_projection.m[0][3] + m_render_data.prev_camera.view_projection.m[0][0];
+	b = m_render_data.prev_camera.view_projection.m[1][3] + m_render_data.prev_camera.view_projection.m[1][0];
+	c = m_render_data.prev_camera.view_projection.m[2][3] + m_render_data.prev_camera.view_projection.m[2][0];
+	m_render_data.left_plane_normal = hippt::normalize(make_float3(a, b, c));
+
+	a = m_render_data.prev_camera.view_projection.m[0][3] - m_render_data.prev_camera.view_projection.m[0][0];
+	b = m_render_data.prev_camera.view_projection.m[1][3] - m_render_data.prev_camera.view_projection.m[1][0];
+	c = m_render_data.prev_camera.view_projection.m[2][3] - m_render_data.prev_camera.view_projection.m[2][0];
+	m_render_data.right_plane_normal = hippt::normalize(make_float3(a, b, c));
 }
 
 void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)

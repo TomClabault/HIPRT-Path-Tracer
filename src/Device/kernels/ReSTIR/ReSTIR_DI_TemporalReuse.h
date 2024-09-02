@@ -37,15 +37,20 @@
 /**
  * Returns true if the two given points pass the plane distance check, false otherwise
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE bool plane_distance_check(const float3& temporal_point, const float3& current_point, const float3& current_surface_normal, float plane_distance_threshold)
+HIPRT_HOST_DEVICE HIPRT_INLINE bool plane_distance_heuristic(const float3& temporal_world_space_point, const float3& current_point, const float3& current_surface_normal, float plane_distance_threshold)
 {
-	float3 direction_between_points = temporal_point - current_point;
+	float3 direction_between_points = temporal_world_space_point - current_point;
 	float distance_to_plane = hippt::abs(hippt::dot(direction_between_points, current_surface_normal));
 
 	return distance_to_plane < plane_distance_threshold;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE bool roughness_check(float center_pixel_roughness)
+HIPRT_HOST_DEVICE HIPRT_INLINE bool normal_similarity_heuristic(const float3& current_normal, const float3& neighbor_normal, float threshold)
+{
+	return hippt::dot(current_normal, neighbor_normal) > threshold;
+}
+
+HIPRT_HOST_DEVICE HIPRT_INLINE bool roughness_similarity_heuristic(float neighbor_roughness, float center_pixel_roughness, float threshold)
 {
 	// We don't want to temporally reuse on materials smoother than 0.075f because this
 	// causes near-specular/glossy reflections to darken when camera ray jittering is used.
@@ -56,7 +61,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool roughness_check(float center_pixel_roughness
 	// but confidence weights overweight these bad neighbor samples --> you end up using these
 	// bad samples --> the shading loses in energy since we're now shading with samples that
 	// don't align well with the glossy reflection direction
-	return center_pixel_roughness > 0.075f;
+	return hippt::abs(neighbor_roughness - center_pixel_roughness) < threshold;
 }
 
 /**
@@ -65,29 +70,106 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool roughness_check(float center_pixel_roughness
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE int find_temporal_neighbor(const HIPRTRenderData& render_data, const float3& current_shading_point, const float3& current_normal, int2 resolution, int center_pixel_index, float center_pixel_roughness, Xorshift32Generator& random_number_generator)
 {
-	float3 previous_screen_space_point = matrix_X_point(render_data.prev_camera.view_projection, current_shading_point);
+	float3 previous_screen_space_point_xyz = matrix_X_point(render_data.prev_camera.view_projection, current_shading_point);
+	float2 previous_screen_space_point = make_float2(previous_screen_space_point_xyz.x, previous_screen_space_point_xyz.y);
 	// Bringing back in [0, 1] from [-1, 1]
-	previous_screen_space_point += make_float3(1.0f, 1.0f, 0);
-	previous_screen_space_point *= make_float3(0.5f, 0.5f, 1.0f);
+	previous_screen_space_point += make_float2(1.0f, 1.0f);
+	previous_screen_space_point *= make_float2(0.5f, 0.5f);
 
-	float x_pos_float = previous_screen_space_point.x * resolution.x;
-	float y_pos_float = previous_screen_space_point.y * resolution.y;
-	int2 temporal_neighbor_screen_pixel_pos = make_int2(x_pos_float, y_pos_float);
-	if (temporal_neighbor_screen_pixel_pos.x < 0 || temporal_neighbor_screen_pixel_pos.x >= resolution.x || temporal_neighbor_screen_pixel_pos.y < 0 || temporal_neighbor_screen_pixel_pos.y >= resolution.y)
-		// Previous pixel is out of the current viewport
-		return -1;
+	float2 pixel_pos_float = make_float2(previous_screen_space_point.x * resolution.x, previous_screen_space_point.y * resolution.y);
 
-	int temporal_neighbor_index = temporal_neighbor_screen_pixel_pos.x + temporal_neighbor_screen_pixel_pos.y * resolution.x;
-	float3 temporal_neighbor_point = render_data.g_buffer.first_hits[temporal_neighbor_index];
+	// Trying to find a neighbor that isn't too far away in world space in the neighborhood of the reprojected 
+	// screen space position
 
-	bool checks_passed = true;
-	checks_passed &= plane_distance_check(temporal_neighbor_point, current_shading_point, current_normal, render_data.render_settings.restir_di_settings.temporal_pass.plane_distance_threshold);
-	//checks_passed &= roughness_check(center_pixel_roughness);
+	/*float smallest_dist = 1000000.0f;
+	int smallest_index = -1;
 
-	if (checks_passed)
-		return temporal_neighbor_index;
-	else
-		return -1;
+	int2 neighbor_1 = make_int2(floorf(pixel_pos_float.x), floorf(pixel_pos_float.y));
+	int neighbor_1_index = neighbor_1.x + neighbor_1.y * resolution.x;
+	if (neighbor_1.x > 0 && neighbor_1.x < resolution.x && neighbor_1.y > 0 && neighbor_1.y < resolution.y)
+	{
+		float dist_neighbor_1 = hippt::length2(current_shading_point - render_data.g_buffer.first_hits[neighbor_1_index]);
+		smallest_dist = dist_neighbor_1;
+		smallest_index = neighbor_1_index;
+	}
+
+	int2 neighbor_2 = make_int2(floorf(pixel_pos_float.x), ceilf(pixel_pos_float.y));
+	int neighbor_2_index = neighbor_2.x + neighbor_2.y * resolution.x;
+	if (neighbor_2.x > 0 && neighbor_2.x < resolution.x && neighbor_2.y > 0 && neighbor_2.y < resolution.y)
+	{
+		float dist_neighbor_2 = hippt::length2(current_shading_point - render_data.g_buffer.first_hits[neighbor_2_index]);
+
+		if (smallest_dist > dist_neighbor_2)
+		{
+			smallest_dist = dist_neighbor_2;
+			smallest_index = neighbor_2_index;
+		}
+	}
+
+	int2 neighbor_3 = make_int2(ceilf(pixel_pos_float.x), floorf(pixel_pos_float.y));
+	int neighbor_3_index = neighbor_3.x + neighbor_3.y * resolution.x;
+	if (neighbor_3.x > 0 && neighbor_3.x < resolution.x && neighbor_3.y > 0 && neighbor_3.y < resolution.y)
+	{
+		float dist_neighbor_3 = hippt::length2(current_shading_point - render_data.g_buffer.first_hits[neighbor_3_index]);
+
+		if (smallest_dist > dist_neighbor_3)
+		{
+			smallest_dist = dist_neighbor_3;
+			smallest_index = neighbor_3_index;
+		}
+	}
+
+	int2 neighbor_4 = make_int2(ceilf(pixel_pos_float.x), ceilf(pixel_pos_float.y));
+	int neighbor_4_index = neighbor_4.x + neighbor_4.y * resolution.x;
+	if (neighbor_4.x > 0 && neighbor_4.x < resolution.x && neighbor_4.y > 0 && neighbor_4.y < resolution.y)
+	{
+		float dist_neighbor_4 = hippt::length2(current_shading_point - render_data.g_buffer.first_hits[neighbor_4_index]);
+
+		if (smallest_dist > dist_neighbor_4)
+		{
+			smallest_dist = dist_neighbor_4;
+			smallest_index = neighbor_4_index;
+		}
+	}
+
+	return smallest_index;*/
+
+	// We're going to randomly look for an acceptable neighbor around the back-projected pixel location to find
+	// in a given radius
+	int temporal_neighbor_index = -1;
+	for (int i = 0; i < render_data.render_settings.restir_di_settings.temporal_pass.max_neighbor_search_count + 1; i++)
+	{
+		float2 offset = make_float2(0.0f, 0.0f);
+		if (i > 0)
+			// Only randomly looking after we've at least checked whether or not the exact temporally reprojected location
+			// is valid or not
+			offset = make_float2(random_number_generator() - 0.5f, random_number_generator() - 0.5f) * render_data.render_settings.restir_di_settings.temporal_pass.neighbor_search_radius;
+
+		int2 temporal_neighbor_screen_pixel_pos = make_int2(pixel_pos_float.x + offset.x, pixel_pos_float.y + offset.y);
+		if (temporal_neighbor_screen_pixel_pos.x < 0 || temporal_neighbor_screen_pixel_pos.x >= resolution.x || temporal_neighbor_screen_pixel_pos.y < 0 || temporal_neighbor_screen_pixel_pos.y >= resolution.y)
+			// Previous pixel is out of the current viewport
+			continue;
+
+
+		temporal_neighbor_index = temporal_neighbor_screen_pixel_pos.x + temporal_neighbor_screen_pixel_pos.y * resolution.x;
+		float3 temporal_neighbor_point = render_data.g_buffer.first_hits[temporal_neighbor_index];
+
+		float temporal_neighbor_roughness = render_data.g_buffer.materials[temporal_neighbor_index].roughness;
+		float current_material_roughness = render_data.g_buffer.materials[center_pixel_index].roughness;
+
+		bool plane_distance_passed = plane_distance_heuristic(temporal_neighbor_point, current_shading_point, current_normal, render_data.render_settings.restir_di_settings.plane_distance_threshold);
+		bool normal_similarity_passed = normal_similarity_heuristic(current_normal, render_data.g_buffer.shading_normals[temporal_neighbor_index], render_data.render_settings.restir_di_settings.normal_similarity_angle_precomp);
+		bool roughness_similarity_passed = roughness_similarity_heuristic(temporal_neighbor_roughness, current_material_roughness, render_data.render_settings.restir_di_settings.roughness_similarity_threshold);
+
+		if (plane_distance_passed && normal_similarity_passed && roughness_similarity_passed)
+			// We found a good neighbor
+			break;
+
+		// We didn't break so we didn't find a good neighbor
+		temporal_neighbor_index = -1;
+	}
+
+	return temporal_neighbor_index;
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float get_temporal_reuse_resampling_MIS_weight(const HIPRTRenderData& render_data, const ReSTIRDIReservoir& neighbor_reservoir, int current_neighbor, int center_pixel_index, int temporal_neighbor_pixel_index, Xorshift32Generator& random_number_generator)
@@ -307,6 +389,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void get_temporal_reuse_normalization_denominator
 					neighbor_M = hippt::min(neighbor_M, render_data.render_settings.restir_di_settings.m_cap);
 
 			if (neighbor == selected_neighbor)
+				// Not multiplying by M in the numerator because this is already included in the MIS weight when resampling
 				out_normalization_nume += target_function_at_neighbor;
 			out_normalization_denom += target_function_at_neighbor * neighbor_M;
 #endif
@@ -488,7 +571,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 
 	get_temporal_reuse_normalization_denominator_numerator(normalization_numerator, normalization_denominator, render_data, new_reservoir, selected_neighbor, center_pixel_index, temporal_neighbor_pixel_index, random_number_generator);
 
-	new_reservoir.end_normalized(normalization_numerator, normalization_denominator);
+	new_reservoir.end_with_normalization(normalization_numerator, normalization_denominator);
 	new_reservoir.sanity_check(center_pixel_coords);
 
 #if ReSTIR_DI_DoVisibilityReuse && ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z

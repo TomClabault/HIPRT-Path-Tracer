@@ -21,12 +21,11 @@
 // - add second bounce direct light sampling strategy in imgui
 // - add sample rotation in spatial reuse to imgui
 // - add hammersley usage or not imgui for spatial reuse
-// - neighbor similiraty tessts, roughness, normal, depth
+// - neighbor similiraty tests in spatial reuse, roughness, normal, depth
 // - pairwise mis
 // - allocate / deallocate restir reservoirs if using / not using restir
 // - feature to disable ReSTIR after a certain percentage of convergence --> we don't want to pay the full price of resampling and everything only for a few difficult isolated pixels (especially true with adaptive sampling where neighbors don't get sampled --> no new samples added to their reservoir --> no need to resample)
 // - test/fix sampling lights inside dielectrics with ReSTIR DI
-// - driver crash at 0 spatial reuse pass
 // - do not do initial candidates / spatial reuse and everything if the pixel is inactive (adaptive sampling)
 // - driver crash on the white room love
 // - camera ray jittering causes dark lines and darkens glossy reflections
@@ -34,8 +33,10 @@
 // - multiple spatial reuse passes + accumulate = black
 // - refactor temporal reuse to avoid hardcoded for loop on 2 iterations --> just unloop and make things clean by pre-reading the temporal neighbor reservoir instead of re-reading it multiple times
 // - m cap at 0 in ImGui breaks the render because of infinite M growth --> hardcap M to something like ~1000000 or something
-// - temporal reprojection without camera ray jitter broken
+// - temporal reprojection at grazing angles broken
 // - different M cap for glossy surfaces ?
+// - possibility to use visibility reuse at the end of each spatial pass
+// - temporal reservoirs reset button in ImGui
 
 // TODO bugs:
 // - memory leak with OpenGL when resizing the window?
@@ -48,6 +49,7 @@
 // - heatmap with adaptive sampling and only pixel stopnoise threshold not displaying the same heatmap (particularly in shadows in the white room)
 // - Start render without adaptive sampling --> enable pixel noise threshold --> the convergence counter is broken and starts from when we enabled pixel noise threshold instead of taking all pixels that have converged into account
 // - no accumulation + denoiser + 1 SPP max = denoiser running full blow but shouldn't since the input image doesn't change because of the 1SPP max. More generally, this happens also with accumulation and it just seems that the denoiser still runs even when the renderer has reached the maximum amount of SPP
+// - GPU limiter not working when interacting?
 
 
 
@@ -68,6 +70,11 @@
 
 
 // TODO Features:
+// - Reuse MIS BSDF sample as path next bounce if the ray didn't hit anything
+// - RIS: do no use BSDF samples for rough surfaces (have a BSDF ray roughness treshold basically
+//		We may have to do something with the lobes of the BSDF specifically for this one. A coated diffuse cannot always ignore light samples for example because the diffuse lobe benefits from light samples even if the surface is not smooth (coating) 
+// - Whole scene BSDF overrider
+// - support stochastic alpha transparency
 // - enable samples per frame even when not accumulating
 // - maybe allow not resetting ReSTIR buffers while accumulation is on and camera has moved? Probably gives bad results but why not allow it for testing purposes?
 // - shadow terminator issue on sphere low smooth scene

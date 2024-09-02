@@ -182,6 +182,12 @@ struct HIPRTRenderData
 	// Camera of the last frame
 	HIPRTCamera prev_camera;
 
+	float3 prev_camera_position;
+	float3 left_plane_normal;
+	float3 right_plane_normal;
+	float3 top_plane_normal;
+	float3 bottom_plane_normal;
+
 	CPUData cpu_only;
 };
 
