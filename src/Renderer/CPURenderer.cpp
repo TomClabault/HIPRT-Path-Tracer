@@ -27,10 +27,10 @@
 // the interesting pixel. If that image viewer has its (0, 0) in the top
 // left corner, you'll need to set that DEBUG_FLIP_Y to 0. Set 1 to if
 // you're measuring the coordinates of the pixel with (0, 0) in the bottom left corner
-#define DEBUG_FLIP_Y 0
+#define DEBUG_FLIP_Y 1
 // Coordinates of the pixel to render
-#define DEBUG_PIXEL_X 881
-#define DEBUG_PIXEL_Y 233
+#define DEBUG_PIXEL_X 849
+#define DEBUG_PIXEL_Y 479
 // If 1, a square of DEBUG_NEIGHBORHOOD_SIZE x DEBUG_NEIGHBORHOOD_SIZE pixels
 // will be rendered around the pixel to debug (given by DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y). The pixel of interest is going to be rendered first so you
@@ -43,7 +43,7 @@
 #define DEBUG_RENDER_NEIGHBORHOOD 1
 // How many pixels to render around the debugged pixel given by the DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y coordinates
-#define DEBUG_NEIGHBORHOOD_SIZE 50
+#define DEBUG_NEIGHBORHOOD_SIZE 15
 
 CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, height))
 {
@@ -182,8 +182,6 @@ void CPURenderer::render()
 
         if (m_render_data.render_settings.samples_per_frame > 1)
             std::cout << "Frame " << frame_number + 1 << ": " << (frame_number + 1) / static_cast<float>(m_render_data.render_settings.samples_per_frame) * 100.0f << "%" << std::endl;
-
-        
     }
 
     auto stop = std::chrono::high_resolution_clock::now();

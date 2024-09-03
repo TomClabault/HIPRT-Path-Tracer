@@ -22,7 +22,7 @@ struct InitialCandidatesSettings
 
 struct TemporalPassSettings
 {
-	bool do_temporal_reuse_pass = false;
+	bool do_temporal_reuse_pass = true;
 
 	// If set to true, the temporal buffers will be cleared by the camera
 	// rays kernel

@@ -75,7 +75,8 @@ struct ReSTIRDIReservoir
 
     HIPRT_HOST_DEVICE void end_with_normalization(float normalization_numerator, float normalization_denominator)
     {
-        if (weight_sum == 0.0f || normalization_denominator == 0.0f || normalization_numerator == 0.0f)
+        // Checking some limit values
+        if (weight_sum == 0.0f || weight_sum < 1.0e-10f || weight_sum > 1.0e10f || normalization_denominator == 0.0f || normalization_numerator == 0.0f)
             UCW = 0.0f;
         else
             UCW = 1.0f / sample.target_function * weight_sum * normalization_numerator / normalization_denominator;
@@ -84,9 +85,6 @@ struct ReSTIRDIReservoir
     HIPRT_HOST_DEVICE HIPRT_INLINE void sanity_check(int2 pixel_coords)
     {
 #ifndef __KERNELCC__
-#if !defined(NDEBUG)
-        // Only sanity checking on the CPU and in debug mode
-
         if (M < 0)
         {
             std::cerr << "Negative reservoir M value at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << M << std::endl;
@@ -94,12 +92,17 @@ struct ReSTIRDIReservoir
         }
         else if (std::isnan(weight_sum) || std::isinf(weight_sum))
         {
-            std::cerr << "NaN or inf reservoir wieght_sum at pixel (" << pixel_coords.x << ", " << pixel_coords.y << ")" << std::endl;
+            std::cerr << "NaN or inf reservoir weight_sum at pixel (" << pixel_coords.x << ", " << pixel_coords.y << ")" << std::endl;
             Utils::debugbreak();
         }
         else if (weight_sum < 0)
         {
-            std::cerr << "Negative reservoir wieght_sum at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << weight_sum << std::endl;
+            std::cerr << "Negative reservoir weight_sum at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << weight_sum << std::endl;
+            Utils::debugbreak();
+        }
+        else if (std::abs(weight_sum) < std::numeric_limits<float>::min() && weight_sum != 0.0f)
+        {
+            std::cerr << "Denormalized weight_sum at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << weight_sum << std::endl;
             Utils::debugbreak();
         }
         else if (std::isnan(UCW) || std::isinf(UCW))
@@ -122,7 +125,6 @@ struct ReSTIRDIReservoir
             std::cerr << "Negative reservoir sample.target_function at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << sample.target_function << std::endl;
             Utils::debugbreak();
         }
-#endif
 #endif
     }
 

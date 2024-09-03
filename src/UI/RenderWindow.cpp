@@ -20,7 +20,7 @@
 // - add envmap sampling to light samples with a probability (refactor envmap sampling in eval, sample and PDF functions)
 // - add second bounce direct light sampling strategy in imgui
 // - add hammersley usage or not imgui for spatial reuse
-// - neighbor similiraty tests in spatial reuse, roughness, normal, depth
+// - neighbor similiraty tests in spatial reuse and all the MIS weights
 // - pairwise mis
 // - allocate / deallocate restir reservoirs if using / not using restir
 // - feature to disable ReSTIR after a certain percentage of convergence --> we don't want to pay the full price of resampling and everything only for a few difficult isolated pixels (especially true with adaptive sampling where neighbors don't get sampled --> no new samples added to their reservoir --> no need to resample)

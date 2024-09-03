@@ -152,6 +152,7 @@ void ImGuiRenderer::draw_render_settings_panel()
 		return;
 	ImGui::TreePush("Render settings tree");
 
+	ImGui::SeparatorText("Viewport Settings");
 	std::vector<const char*> items = { "- Default", "- Denoiser blend", "- Denoiser - Normals", "- Denoiser - Denoised normals", "- Denoiser - Albedo", "- Denoiser - Denoised albedo" };
 	if (render_settings.has_access_to_adaptive_sampling_buffers())
 		items.push_back("- Pixel convergence heatmap");

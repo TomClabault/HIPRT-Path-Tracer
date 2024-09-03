@@ -475,7 +475,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 		// Combining as in Alg. 6 of the paper
 		if (new_reservoir.combine_with(temporal_neighbor_reservoir, mis_weight, target_function_at_center, jacobian_determinant, random_number_generator))
 			selected_neighbor = 0;
-
 		new_reservoir.sanity_check(make_int2(x, y));
 	}
 
