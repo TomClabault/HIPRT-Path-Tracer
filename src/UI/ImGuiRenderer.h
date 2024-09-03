@@ -27,8 +27,9 @@ public:
 	/**
   	 * Adds a tooltip to the last widget that auto wraps after 80 characters
 	 */
-	static void WrappingTooltip(const std::string& text);
-	static void ShowHelpMarker(const char* desc);
+	static void wrapping_tooltip(const std::string& text);
+	static void add_tooltip(const std::string& tooltip_text, ImGuiHoveredFlags flags = ImGuiHoveredFlags_AllowWhenDisabled);
+	static void show_help_marker(const char* desc);
 
 	void set_render_window(RenderWindow* renderer);
 
@@ -44,7 +45,12 @@ public:
 	void draw_objects_panel();
 	void draw_denoiser_panel();
 	void draw_post_process_panel();
+
 	void draw_performance_settings_panel();
+	void draw_perf_metric_specific_panel(std::shared_ptr<PerformanceMetricsComputer> perf_metrics, const std::string& perf_metrics_key, const std::string& label);
+	template <class... Args>
+	std::string format_perf_metrics_tooltip_line(const std::string& label, const std::string& suffix, const std::string& longest_header_for_padding, const std::string& formatter_after_header, const Args& ...args);
+
 	void draw_performance_metrics_panel();
 	void draw_debug_panel();
 

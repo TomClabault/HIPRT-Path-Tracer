@@ -14,8 +14,6 @@
 class PerformanceMetricsComputer
 {
 public:
-	static std::string SAMPLE_TIME_KEY;
-
 	static float data_getter(void* data, int index);
 
 	void init_key(const std::string& key);
@@ -25,6 +23,7 @@ public:
 
 	void add_value(const std::string& key, double value);
 
+	double get_current_value(const std::string& key);
 	double get_average(const std::string& key);
 	double get_variance(const std::string& key);
 	double get_standard_deviation(const std::string& key);

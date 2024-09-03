@@ -8,6 +8,8 @@
 #include "UI/RenderWindow.h"
 
 #include <chrono>
+#include <format>
+#include <unordered_map>
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include "glm/gtx/euler_angles.hpp"
@@ -20,7 +22,13 @@ ImGuiRenderer::ImGuiRenderer()
 		ImGui::GetStyle().ScaleAllSizes(windowDpiScale);
 }
 
-void ImGuiRenderer::WrappingTooltip(const std::string& text)
+void ImGuiRenderer::add_tooltip(const std::string& tooltip_text, ImGuiHoveredFlags flags)
+{
+	if (ImGui::IsItemHovered(flags))
+		ImGuiRenderer::wrapping_tooltip(tooltip_text);
+}
+
+void ImGuiRenderer::wrapping_tooltip(const std::string& text)
 {
 	ImGui::SetNextWindowSize(ImVec2(ImGui::GetFontSize() * 32.0f, 0.0f));
 	ImGui::BeginTooltip();
@@ -30,7 +38,7 @@ void ImGuiRenderer::WrappingTooltip(const std::string& text)
 	ImGui::EndTooltip();
 }
 
-void ImGuiRenderer::ShowHelpMarker(const char* desc)
+void ImGuiRenderer::show_help_marker(const char* desc)
 {
 	ImGui::SameLine();
 	ImGui::TextDisabled("(?)");
@@ -96,21 +104,19 @@ void ImGuiRenderer::draw_imgui_interface()
 				else if (render_settings.stop_pixel_noise_threshold > 0.0f)
 					text += std::to_string(render_settings.stop_pixel_noise_threshold) + " (pixel noise threshold)";
 
-				ImGuiRenderer::WrappingTooltip(text);
+				ImGuiRenderer::wrapping_tooltip(text);
 			}
 		}
 		else
 		{
 			ImGui::Text("Pixels converged: N/A");
-			if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-				ImGuiRenderer::WrappingTooltip("Adaptive sampling hasn't kicked in yet... Convergence computation hasn't started.");
+			ImGuiRenderer::add_tooltip("Adaptive sampling hasn't kicked in yet... Convergence computation hasn't started.");
 		}
 	}
 	else
 	{
 		ImGui::Text("Pixels converged: N/A");
-		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-			ImGuiRenderer::WrappingTooltip("Convergence is only computed when either adaptive sampling or the \"Pixel noise threshold\" render stopping condition is used.");
+		ImGuiRenderer::add_tooltip("Convergence is only computed when either adaptive sampling or the \"Pixel noise threshold\" render stopping condition is used.");
 	}
 
 	ImGui::Separator();
@@ -200,12 +206,12 @@ void ImGuiRenderer::draw_render_settings_panel()
 		if (ImGui::InputFloat("Target GPU framerate", &m_application_settings->target_GPU_framerate))
 			// Clamping to 1 FPS because going below that is dangerous in terms of driver timeouts
 			m_application_settings->target_GPU_framerate = std::max(1.0f, m_application_settings->target_GPU_framerate);
-		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-			ImGuiRenderer::WrappingTooltip("The samples per frame will be automatically adjusted such that the GPU"
-										   " takes approximately 1000.0f / TargetFramerate milliseconds to complete"
-										   " a frame. Useful to keep the GPU busy after almost all pixels have converged."
-										   " Lowering this settings increases rendering efficiency but can cause camera"
-										   " movements to be stuttery.");
+		ImGuiRenderer::add_tooltip("The samples per frame will be automatically adjusted such that the GPU"
+				   " takes approximately 1000.0f / TargetFramerate milliseconds to complete"
+				   " a frame. Useful to keep the GPU busy after almost all pixels have converged."
+				   " Lowering this settings increases rendering efficiency but can cause camera"
+				   " movements to be stuttery.");
+
 		ImGui::TreePop();
 	}
 	if (ImGui::InputInt("Max bounces", &render_settings.nb_bounces))
@@ -231,8 +237,7 @@ void ImGuiRenderer::draw_render_settings_panel()
 		ImGui::BeginDisabled(use_adaptive_sampling_threshold);
 		if (ImGui::InputFloat("Pixel noise threshold", &render_settings.stop_pixel_noise_threshold))
 			render_settings.stop_pixel_noise_threshold = std::max(0.0f, render_settings.stop_pixel_noise_threshold);
-		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-			ImGuiRenderer::WrappingTooltip("Cannot be set lower than the adaptive sampling threshold. 0.0 to disable.");
+		ImGuiRenderer::add_tooltip("Cannot be set lower than the adaptive sampling threshold. 0.0 to disable.");
 
 		// Having the stop pixel noise threshold lower than the adaptive sampling noise threshold
 		// is impossible because the adaptive sampling will stop sampling the pixel before it can
@@ -249,8 +254,7 @@ void ImGuiRenderer::draw_render_settings_panel()
 			// If we're using the adaptive sampling threshold, updating the stop pixel noise threshold with the adaptive sampling threshold
 			render_settings.stop_pixel_noise_threshold = render_settings.adaptive_sampling_noise_threshold;
 
-		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-			ImGuiRenderer::WrappingTooltip("If checked, the adaptive sampling noise threshold will be used.");
+		add_tooltip("If checked, the adaptive sampling noise threshold will be used.");
 
 		bool update_converge_text = render_settings.stop_pixel_noise_threshold > 0.0f;
 		ImGui::BeginDisabled(!update_converge_text);
@@ -264,7 +268,7 @@ void ImGuiRenderer::draw_render_settings_panel()
 				if (render_settings.stop_pixel_noise_threshold == 0.0f)
 					additional_info = "The stop pixel noise threshold must be > 0.0.";
 
-				ImGuiRenderer::WrappingTooltip("The proportion of pixels that need to have converge to the noise threshold for the rendering to stop. In percentage [0, 100]." + additional_info);
+				ImGuiRenderer::wrapping_tooltip("The proportion of pixels that need to have converge to the noise threshold for the rendering to stop. In percentage [0, 100]." + additional_info);
 			}
 		}
 		ImGui::EndDisabled();
@@ -356,8 +360,7 @@ void ImGuiRenderer::draw_environment_panel()
 		render_made_piggy |= ImGui::RadioButton("Use envmap lighting", ((int*)&m_renderer->get_world_settings().ambient_light_type), 2);
 		if (!has_envmap)
 			// Showing a tooltip for why the envmap button is disabled
-			if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-				ImGuiRenderer::WrappingTooltip("No envmap is loaded.");
+			ImGuiRenderer::add_tooltip("No envmap loaded.");
 		ImGui::EndDisabled();
 
 		if (m_renderer->get_world_settings().ambient_light_type == AmbientLightType::UNIFORM)
@@ -698,8 +701,7 @@ void ImGuiRenderer::draw_sampling_panel()
 						m_render_window->set_render_dirty(true);
 					}
 					if (bias_correction_visibility_disabled)
-						if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-							ImGuiRenderer::WrappingTooltip("Visibility bias correction cannot be used with 1/M weights.");
+						ImGuiRenderer::add_tooltip("Visibility bias correction cannot be used with 1/M weights.");
 					ImGui::EndDisabled();
 
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -796,8 +798,7 @@ void ImGuiRenderer::display_ReSTIR_DI_bias_status(std::shared_ptr<GPUKernelCompi
 		for (int i = 0; i < bias_reasons.size(); i++)
 		{
 			ImGui::Text("%s", bias_reasons[i].c_str());
-			if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-				ImGuiRenderer::WrappingTooltip(hover_explanations[i].c_str());
+			ImGuiRenderer::add_tooltip(hover_explanations[i].c_str());
 
 		}
 		ImGui::TreePop();
@@ -1038,25 +1039,21 @@ void ImGuiRenderer::draw_performance_settings_panel()
 	switch (hwi_supported)
 	{
 	case SUPPORTED:
-		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-			ImGuiRenderer::WrappingTooltip("Whether or not to enable hardware accelerated ray tracing (bbox & triangle intersections)");
+		ImGuiRenderer::add_tooltip("Whether or not to enable hardware accelerated ray tracing (bbox & triangle intersections)");
 		break;
 
 	case AMD_UNSUPPORTED:
-		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-			ImGuiRenderer::WrappingTooltip("Hardware accelerated ray tracing is only supported on RDNA2+ GPUs.");
+		ImGuiRenderer::add_tooltip("Hardware accelerated ray tracing is only supported on RDNA2+ GPUs.");
 		break;
 
 	case NVIDIA_UNSUPPORTED:
-		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-			ImGuiRenderer::WrappingTooltip("HIPRT cannot access NVIDIA's proprietary hardware accelerated ray-tracing. Feature unavailable.");
+		ImGuiRenderer::add_tooltip("HIPRT cannot access NVIDIA's proprietary hardware accelerated ray-tracing. Feature unavailable.");
 		break;
 	}
 
 	if (ImGui::InputFloat("GPU Stall Percentage", &m_application_settings->GPU_stall_percentage))
 		m_application_settings->GPU_stall_percentage = std::max(0.0f, std::min(m_application_settings->GPU_stall_percentage, 99.9f));
-	if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-		ImGuiRenderer::WrappingTooltip("How much percent of the time the GPU will be forced to be idle (not rendering anything). This feature is meant only for GPUs that get too hot to avoid burning your GPUs during prolonged renders.");
+	ImGuiRenderer::add_tooltip("How much percent of the time the GPU will be forced to be idle (not rendering anything). This feature is meant only for GPUs that get too hot to avoid burning your GPUs during prolonged renders.");
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	ImGui::TreePop();
@@ -1087,50 +1084,125 @@ void ImGuiRenderer::draw_performance_metrics_panel()
 
 	bool rolling_window_size_changed = false;
 	int rolling_window_size = m_render_window_perf_metrics->get_window_size();
+	ImGui::Text("Graphs Window Size"); ImGui::SameLine();
 	rolling_window_size_changed |= ImGui::RadioButton("25", &rolling_window_size, 25); ImGui::SameLine();
 	rolling_window_size_changed |= ImGui::RadioButton("100", &rolling_window_size, 100); ImGui::SameLine();
 	rolling_window_size_changed |= ImGui::RadioButton("250", &rolling_window_size, 250); ImGui::SameLine();
 	rolling_window_size_changed |= ImGui::RadioButton("1000", &rolling_window_size, 1000);
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 	if (rolling_window_size_changed)
 		m_render_window_perf_metrics->resize_window(rolling_window_size);
 
-	float variance, min, max;
-	variance = m_render_window_perf_metrics->get_variance(PerformanceMetricsComputer::SAMPLE_TIME_KEY);
-	min = m_render_window_perf_metrics->get_min(PerformanceMetricsComputer::SAMPLE_TIME_KEY);
-	max = m_render_window_perf_metrics->get_max(PerformanceMetricsComputer::SAMPLE_TIME_KEY);
-
-	static float scale_min = min, scale_max = max;
-	scale_min = m_render_window_perf_metrics->get_data_index(PerformanceMetricsComputer::SAMPLE_TIME_KEY) == 0 ? min : scale_min;
-	scale_max = m_render_window_perf_metrics->get_data_index(PerformanceMetricsComputer::SAMPLE_TIME_KEY) == 0 ? max : scale_max;
-
-	ImGui::Dummy(ImVec2(0.0f, 20.0f));
-	ImGui::PlotHistogram("",
-		PerformanceMetricsComputer::data_getter,
-		m_render_window_perf_metrics->get_data(PerformanceMetricsComputer::SAMPLE_TIME_KEY).data(),
-		m_render_window_perf_metrics->get_value_count(PerformanceMetricsComputer::SAMPLE_TIME_KEY),
-		/* value offset */0,
-		"Sample time",
-		scale_min, scale_max,
-		/* size */ ImVec2(0, 80));
-	static bool auto_rescale = true;
-	ImGui::SameLine();
-	if (ImGui::Button("Rescale") || auto_rescale)
+	draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::CAMERA_RAYS_FUNC_NAME, "Camera rays pass");
+	if (m_renderer->get_path_tracer_options()->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI)
 	{
-		scale_min = min;
-		scale_max = max;
+		draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_FUNC_NAME, "ReSTIR Initial Candidates");
+		if (render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
+			draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::RESTIR_DI_TEMPORAL_REUSE_FUNC_NAME, "ReSTIR Temporal Reuse");
+		if (render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)
+			draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::RESTIR_DI_SPATIAL_REUSE_FUNC_NAME, "ReSTIR Spatial Reuse");
 	}
-	ImGui::SameLine();
-	ImGui::Checkbox("Auto-rescale", &auto_rescale);
-
-	ImGui::Text("Sample time (avg)      : %.3fms (%.1f FPS)", m_render_window_perf_metrics->get_average(PerformanceMetricsComputer::SAMPLE_TIME_KEY), 1000.0f / m_render_window_perf_metrics->get_average(PerformanceMetricsComputer::SAMPLE_TIME_KEY));
-	ImGui::Text("Sample time (var)      : %.3fms", variance);
-	ImGui::Text("Sample time (std dev)  : %.3fms", std::sqrt(variance));
-	ImGui::Text("Sample time (min / max): %.3fms / %.3fms", min, max);
+	draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::PATH_TRACING_KERNEL, "Path Tracing Pass");
+	ImGui::Separator();
+	draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::FULL_FRAME_TIME_KEY, "Total Sample Time");
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 	ImGui::TreePop();
+}
+
+template<typename... Args>
+inline std::string format_string_helper(const std::format_string<Args...> fmt, Args&&... args)
+{
+	return std::vformat(fmt.get(), std::make_format_args(args...));
+}
+
+template<typename T>
+const T& unmove(T&& x)
+{
+	return x;
+}
+
+void ImGuiRenderer::draw_perf_metric_specific_panel(std::shared_ptr<PerformanceMetricsComputer> perf_metrics, const std::string& perf_metrics_key, const std::string& label)
+{
+	float variance, min, max;
+	variance = perf_metrics->get_variance(perf_metrics_key);
+	min = perf_metrics->get_min(perf_metrics_key);
+	max = perf_metrics->get_max(perf_metrics_key);
+
+	static std::unordered_map<std::string, bool> key_to_display_graph;
+	if (key_to_display_graph.find(perf_metrics_key) == key_to_display_graph.end())
+		key_to_display_graph[perf_metrics_key] = false;
+
+	// Pusing the ID for that perf key metrics so that no ImGui widgets collide
+	ImGui::PushID(perf_metrics_key.c_str());
+
+	ImGui::Text("%s: %.3fms (%.1f FPS)", label.c_str(), perf_metrics->get_current_value(perf_metrics_key), 1000.0f / perf_metrics->get_current_value(perf_metrics_key)); 
+	if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+	{
+		std::string line_1 = format_perf_metrics_tooltip_line(label, " (avg):", " (min / max):", " {:.3f}ms ({:.1f} FPS)", perf_metrics->get_average(perf_metrics_key), 1000.0f / perf_metrics->get_average(perf_metrics_key));
+		std::string line_2 = format_perf_metrics_tooltip_line(label, " (var):", " (min / max):", " {:.3f}ms", variance);
+		std::string line_3 = format_perf_metrics_tooltip_line(label, " (std dev):", " (min / max):", " {:.3f}ms", std::sqrt(variance));
+		std::string line_4 = format_perf_metrics_tooltip_line(label, " (min / max):", " (min / max):", " {:.3f}ms / {:.3f}ms", min, max);
+
+		std::string tooltip = line_1 + "\n" + line_2 + "\n" + line_3 + "\n" + line_4;
+		ImGuiRenderer::wrapping_tooltip(tooltip);
+	}
+	
+	ImGui::SameLine();
+	ImGui::Checkbox("Show graph", &key_to_display_graph[perf_metrics_key]);
+	if (key_to_display_graph[perf_metrics_key])
+	{
+		static std::unordered_map<std::string, std::pair<float, float>> key_to_min_max;
+		if (key_to_min_max.find(perf_metrics_key) == key_to_min_max.end())
+			key_to_min_max[perf_metrics_key] = std::make_pair(min, max);
+
+		float& scale_min = key_to_min_max[perf_metrics_key].first;
+		float& scale_max = key_to_min_max[perf_metrics_key].second;
+		scale_min = perf_metrics->get_data_index(perf_metrics_key) == 0 ? min : scale_min;
+		scale_max = perf_metrics->get_data_index(perf_metrics_key) == 0 ? max : scale_max;
+
+		ImGui::PlotHistogram("",
+			PerformanceMetricsComputer::data_getter,
+			perf_metrics->get_data(perf_metrics_key).data(),
+			perf_metrics->get_value_count(perf_metrics_key),
+			/* value offset */0,
+			label.c_str(),
+			scale_min, scale_max,
+			/* size */ ImVec2(0, 80));
+
+		static std::unordered_map<std::string, bool> key_to_auto_rescale;
+		if (key_to_auto_rescale.find(perf_metrics_key) == key_to_auto_rescale.end())
+			key_to_auto_rescale[perf_metrics_key] = true;
+
+		bool& auto_rescale = key_to_auto_rescale[perf_metrics_key];
+		ImGui::SameLine();
+		if (ImGui::Button("Rescale") || auto_rescale)
+		{
+			scale_min = min;
+			scale_max = max;
+		}
+		ImGui::SameLine();
+		ImGui::Checkbox("Auto-rescale", &auto_rescale);
+	}
+
+	// Popping the ID for that perf key metrics
+	ImGui::PopID();
+}
+
+template <class... Args>
+std::string ImGuiRenderer::format_perf_metrics_tooltip_line(const std::string& label, const std::string& suffix, const std::string& longest_header_for_padding, const std::string& formatter_after_header, const Args& ...args)
+{
+	// Creating the formatter for automatically left-padding the header of the lines to the longer line (which is "(min / max)")
+	std::string header_padding_formatter = "{:<" + std::to_string(label.length() + longest_header_for_padding.length()) + "s}";
+	std::string line_formatter = header_padding_formatter + formatter_after_header;
+	std::string header = label + suffix;
+
+	auto line_args = std::make_format_args(header, const_cast<Args&>(args)...);
+	std::string line = std::vformat(line_formatter, line_args);
+
+	return line;
 }
 
 void ImGuiRenderer::draw_debug_panel()
@@ -1140,9 +1212,7 @@ void ImGuiRenderer::draw_debug_panel()
 
 	if (ImGui::Checkbox("Show NaNs", &m_renderer->get_render_settings().display_NaNs))
 		m_render_window->set_render_dirty(true);
-
-	if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-		ImGuiRenderer::WrappingTooltip("If true, NaNs that occur during the rendering will show up as pink pixels.");
+	ImGuiRenderer::add_tooltip("If true, NaNs that occur during the rendering will show up as pink pixels.");
 
 	ImGui::TreePush("Debug tree");
 	ImGui::TreePop();

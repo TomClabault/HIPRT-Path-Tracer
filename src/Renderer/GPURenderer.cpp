@@ -17,6 +17,7 @@ const std::string GPURenderer::CAMERA_RAYS_FUNC_NAME = "CameraRays";
 const std::string GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_FUNC_NAME = "ReSTIR_DI_InitialCandidates";
 const std::string GPURenderer::RESTIR_DI_TEMPORAL_REUSE_FUNC_NAME = "ReSTIR_DI_TemporalReuse";
 const std::string GPURenderer::RESTIR_DI_SPATIAL_REUSE_FUNC_NAME = "ReSTIR_DI_SpatialReuse";
+const std::string GPURenderer::FULL_FRAME_TIME_KEY = "FullFrameTime";
 
 const std::string GPURenderer::KERNEL_FILES[] = 
 {
@@ -88,6 +89,10 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_restir_initial_candidates_pass), m_path_tracer_options, std::ref(m_hiprt_orochi_ctx->hiprt_ctx));
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_restir_temporal_reuse_pass), m_path_tracer_options, std::ref(m_hiprt_orochi_ctx->hiprt_ctx));
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_restir_spatial_reuse_pass), m_path_tracer_options, std::ref(m_hiprt_orochi_ctx->hiprt_ctx));
+
+	m_ms_time_per_pass["All"] = 0.0f;
+	for (std::string pass : KERNEL_FUNCTIONS)
+		m_ms_time_per_pass[pass] = 0.0f;
 
 	OROCHI_CHECK_ERROR(oroStreamCreate(&m_main_stream));
 
@@ -208,9 +213,15 @@ void GPURenderer::render()
 	GPUKernel::ComputeElapsedTimeCallbackData* elapsed_time_data = new GPUKernel::ComputeElapsedTimeCallbackData;
 	elapsed_time_data->start = m_frame_start_event;
 	elapsed_time_data->end = m_frame_stop_event;
-	elapsed_time_data->elapsed_time_out = &m_last_frame_time;
+	elapsed_time_data->elapsed_time_out = &m_ms_time_per_pass["All"];
 
 	OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_main_stream, GPUKernel::compute_elapsed_time_callback, elapsed_time_data));
+
+	m_ms_time_per_pass[GPURenderer::CAMERA_RAYS_FUNC_NAME] = m_camera_ray_pass.get_last_execution_time();
+	m_ms_time_per_pass[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_FUNC_NAME] = m_restir_initial_candidates_pass.get_last_execution_time();
+	m_ms_time_per_pass[GPURenderer::RESTIR_DI_TEMPORAL_REUSE_FUNC_NAME] = m_restir_temporal_reuse_pass.get_last_execution_time();
+	m_ms_time_per_pass[GPURenderer::RESTIR_DI_SPATIAL_REUSE_FUNC_NAME] = m_restir_spatial_reuse_pass.get_last_execution_time();
+	m_ms_time_per_pass[GPURenderer::PATH_TRACING_KERNEL] = m_path_trace_pass.get_last_execution_time();
 
 	// Saving the camera that we used this frame
 	m_previous_frame_camera = m_camera;
@@ -527,14 +538,16 @@ void GPURenderer::recompile_kernels(bool use_cache)
 	m_path_trace_pass.compile(m_hiprt_orochi_ctx->hiprt_ctx, m_path_tracer_options, use_cache);
 }
 
-float GPURenderer::get_last_frame_time()
+float GPURenderer::get_render_pass_time(const std::string& key)
 {
-	return m_last_frame_time;
+	return m_ms_time_per_pass[key];
 }
 
-void GPURenderer::reset_last_frame_time()
+void GPURenderer::reset_frame_times()
 {
-	m_last_frame_time = 0.0f;
+	m_ms_time_per_pass["All"] = 0.0f;
+	for (std::string pass : KERNEL_FUNCTIONS)
+		m_ms_time_per_pass[pass] = 0.0f;
 }
 
 void GPURenderer::reset()
@@ -554,7 +567,7 @@ void GPURenderer::reset()
 	m_render_data.render_settings.samples_per_frame = 1;
 	m_render_data.render_settings.need_to_reset = true;
 
-	reset_last_frame_time();
+	reset_frame_times();
 	internal_clear_m_status_buffers();
 }
 

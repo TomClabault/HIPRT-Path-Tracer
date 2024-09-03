@@ -126,6 +126,11 @@ void GPUKernel::compute_elapsed_time_callback(void* data)
 	delete callback_data;
 }
 
+float GPUKernel::get_last_execution_time()
+{
+	return m_last_execution_time;
+}
+
 void GPUKernel::launch_timed_asynchronous(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, oroStream_t stream)
 {
 	OROCHI_CHECK_ERROR(oroEventRecord(m_execution_start_event, stream));

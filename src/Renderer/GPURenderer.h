@@ -31,6 +31,10 @@ public:
 	static const std::string RESTIR_DI_TEMPORAL_REUSE_FUNC_NAME;
 	static const std::string RESTIR_DI_SPATIAL_REUSE_FUNC_NAME;
 
+	// Key for indexing m_ms_time_per_pass that contains the times per passes
+	// This key is for the time of the whole frame
+	static const std::string FULL_FRAME_TIME_KEY;
+
 	static const std::string KERNEL_FILES[];
 	static const std::string KERNEL_FUNCTIONS[];
 
@@ -143,8 +147,8 @@ public:
 
 	void recompile_kernels(bool use_cache = true);
 
-	float get_last_frame_time();
-	void reset_last_frame_time();
+	float get_render_pass_time(const std::string& key);
+	void reset_frame_times();
 	void reset();
 
 	int2 m_render_resolution = make_int2(0, 0);
@@ -185,11 +189,14 @@ private:
 	// GPU events to time the frame
 	oroEvent_t m_frame_start_event = nullptr;
 	oroEvent_t m_frame_stop_event = nullptr;
-	// Time taken to render the last frame
-	float m_last_frame_time = 0;
 	// If true, the last call to render() rendered a frame where render_settings.render_low_resoltion was true.
 	// False otherwise
 	bool m_was_last_frame_low_resolution = false;
+
+	// Time taken per each pass of the renderer. 
+	// An additional key "All" can be used to index in this map
+	// and retrieve the time for the whole frame
+	std::unordered_map<std::string, float> m_ms_time_per_pass;
 
 	// This buffer holds the * sum * of the samples computed
 	// This is an accumulation buffer. This needs to be divided by the
@@ -255,7 +262,7 @@ private:
 	OrochiEnvmap m_envmap;
 
 	std::shared_ptr<GPUKernelCompilerOptions> m_path_tracer_options;
-	// Path tracing kernel called at each frame
+
 	GPUKernel m_camera_ray_pass;
 	GPUKernel m_restir_initial_candidates_pass;
 	GPUKernel m_restir_spatial_reuse_pass;

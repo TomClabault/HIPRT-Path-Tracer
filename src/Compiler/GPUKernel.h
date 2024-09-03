@@ -72,6 +72,11 @@ public:
 	int get_kernel_attribute(oroDeviceProp device_properties, oroFunction_attribute attribute);
 
 	/**
+	 * Returns the time taken for the last execution of this kernel in milliseconds
+	 */
+	float get_last_execution_time();
+
+	/**
 	 * Structure used to pass data to the compute_elapsed_time_callback that computes the
 	 * elapsed time between the start and end events of this structure and stores the elapsed
 	 * time in 'elapsed_time_out'

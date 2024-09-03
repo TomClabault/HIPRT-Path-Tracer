@@ -55,7 +55,7 @@
 
 
 // TODO Code Organization:
-// - Use ShowHelpMarker() for tooltips in ImGui
+// - Use show_help_marker() for tooltips in ImGui
 // - refactor SimplifiedRendererMaterial class
 // - fork HIPRT and remove the encryption thingy that slows down kernel compilation on NVIDIA
 // - cleanup RIS reservoir with all the BSDF stuff
@@ -580,7 +580,7 @@ float RenderWindow::compute_GPU_stall_duration()
 {
 	if (m_application_settings->GPU_stall_percentage > 0.0f)
 	{
-		float last_frame_time = m_renderer->get_last_frame_time();
+		float last_frame_time = m_renderer->get_render_pass_time("All");
 		float stall_duration = last_frame_time * (1.0f / (1.0f - m_application_settings->GPU_stall_percentage / 100.0f)) - last_frame_time;
 
 		return stall_duration;
@@ -708,8 +708,17 @@ void RenderWindow::render()
 
 			// Adding the time for *one* sample to the performance metrics counter
 			if (!m_renderer->was_last_frame_low_resolution() && m_application_state->samples_per_second > 0.0f)
+			{
 				// Not adding the frame time if we're rendering at low resolution, not relevant
-				m_perf_metrics->add_value(PerformanceMetricsComputer::SAMPLE_TIME_KEY, 1000.0f / m_application_state->samples_per_second);
+				m_perf_metrics->add_value(GPURenderer::FULL_FRAME_TIME_KEY, 1000.0f / m_application_state->samples_per_second);
+
+				// Also adding the times of the various passes
+				m_perf_metrics->add_value(GPURenderer::CAMERA_RAYS_FUNC_NAME, m_renderer->get_render_pass_time(GPURenderer::CAMERA_RAYS_FUNC_NAME));
+				m_perf_metrics->add_value(GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_FUNC_NAME, m_renderer->get_render_pass_time(GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_FUNC_NAME));
+				m_perf_metrics->add_value(GPURenderer::RESTIR_DI_TEMPORAL_REUSE_FUNC_NAME, m_renderer->get_render_pass_time(GPURenderer::RESTIR_DI_TEMPORAL_REUSE_FUNC_NAME));
+				m_perf_metrics->add_value(GPURenderer::RESTIR_DI_SPATIAL_REUSE_FUNC_NAME, m_renderer->get_render_pass_time(GPURenderer::RESTIR_DI_SPATIAL_REUSE_FUNC_NAME));
+				m_perf_metrics->add_value(GPURenderer::PATH_TRACING_KERNEL, m_renderer->get_render_pass_time(GPURenderer::PATH_TRACING_KERNEL));
+			}
 
 			render_settings.wants_render_low_resolution = is_interacting();
 			if (m_application_settings->auto_sample_per_frame && (render_settings.do_render_low_resolution() || m_renderer->was_last_frame_low_resolution()))
