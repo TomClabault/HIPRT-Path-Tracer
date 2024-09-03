@@ -9,6 +9,8 @@
 #include "Device/includes/ReSTIR/ReSTIR_DI_Reservoir.h"
 #include "HIPRT-Orochi/OrochiBuffer.h"
 
+class GPURenderer;
+
 struct ReSTIR_DI_State
 {
 	// ReSTIR reservoirs for the initial candidates

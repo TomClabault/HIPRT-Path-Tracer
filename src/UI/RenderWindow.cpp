@@ -19,7 +19,6 @@
 // TODOs ReSTIR DI
 // - add envmap sampling to light samples with a probability (refactor envmap sampling in eval, sample and PDF functions)
 // - add second bounce direct light sampling strategy in imgui
-// - add sample rotation in spatial reuse to imgui
 // - add hammersley usage or not imgui for spatial reuse
 // - neighbor similiraty tests in spatial reuse, roughness, normal, depth
 // - pairwise mis
@@ -27,17 +26,14 @@
 // - feature to disable ReSTIR after a certain percentage of convergence --> we don't want to pay the full price of resampling and everything only for a few difficult isolated pixels (especially true with adaptive sampling where neighbors don't get sampled --> no new samples added to their reservoir --> no need to resample)
 // - test/fix sampling lights inside dielectrics with ReSTIR DI
 // - do not do initial candidates / spatial reuse and everything if the pixel is inactive (adaptive sampling)
-// - driver crash on the white room love
 // - camera ray jittering causes dark lines and darkens glossy reflections
 // - multiple spatial reuse passes destroy glossy reflections
-// - multiple spatial reuse passes + accumulate = black
-// - refactor temporal reuse to avoid hardcoded for loop on 2 iterations --> just unloop and make things clean by pre-reading the temporal neighbor reservoir instead of re-reading it multiple times
 // - m cap at 0 in ImGui breaks the render because of infinite M growth --> hardcap M to something like ~1000000 or something
-// - temporal reprojection at grazing angles broken
+// - temporal reprojection at grazing angles broken --> We need a better reprojection 
 // - different M cap for glossy surfaces ?
 // - possibility to use visibility reuse at the end of each spatial pass
-// - temporal reservoirs reset button in ImGui
 // - 1/Z weights look broken with the temporal reuse in movement
+// - temporal permutation sampling
 
 // TODO bugs:
 // - memory leak with OpenGL when resizing the window?

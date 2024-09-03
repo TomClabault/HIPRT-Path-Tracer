@@ -68,13 +68,7 @@ public:
 	void render();
 
 	void launch_camera_rays();
-
 	void launch_ReSTIR_DI();
-	void configure_ReSTIR_DI_initial_pass();
-	void configure_ReSTIR_DI_temporal_pass();
-	void configure_ReSTIR_DI_spatial_pass(int spatial_pass_index);
-	void configure_ReSTIR_DI_output_buffer();
-
 	void launch_path_tracing();
 
 	/**
@@ -179,9 +173,12 @@ private:
 	//
 	// -------- Functions called by the update() method ---------
 
-
-
 	void internal_clear_m_status_buffers();
+
+	void configure_ReSTIR_DI_initial_pass();
+	void configure_ReSTIR_DI_temporal_pass();
+	void configure_ReSTIR_DI_spatial_pass(int spatial_pass_index);
+	void configure_ReSTIR_DI_output_buffer();
 
 	// Properties of the device
 	oroDeviceProp m_device_properties = { .gcnArchName = "" };
@@ -261,8 +258,10 @@ private:
 	std::vector<OrochiTexture> m_materials_textures;
 	OrochiEnvmap m_envmap;
 
+	// Options used for compiling the render passes of this renderer
 	std::shared_ptr<GPUKernelCompilerOptions> m_path_tracer_options;
 
+	// Render passes used for the ray tracing
 	GPUKernel m_camera_ray_pass;
 	GPUKernel m_restir_initial_candidates_pass;
 	GPUKernel m_restir_spatial_reuse_pass;
@@ -271,6 +270,7 @@ private:
 	
 	std::shared_ptr<HIPRTOrochiCtx> m_hiprt_orochi_ctx = nullptr;
 
+	// Custom stream onto which kernels are dispatched asynchronously
 	oroStream_t m_main_stream;
 
 	// Render data passed to the GPU for rendering. Most importantly it contains

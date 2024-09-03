@@ -230,6 +230,9 @@ void GPURenderer::render()
 	// so we're setting the flag to false (it will be set to true again if we need to reset the render
 	// again)
 	m_render_data.render_settings.need_to_reset = false;
+	// If we had requested a temporal buffers clear, this has be done by this frame so we can
+	// now reset the flag
+	m_render_data.render_settings.restir_di_settings.temporal_pass.temporal_buffer_clear_requested = false;
 }
 
 void GPURenderer::launch_camera_rays()

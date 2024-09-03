@@ -22,7 +22,11 @@ struct InitialCandidatesSettings
 
 struct TemporalPassSettings
 {
-	bool do_temporal_reuse_pass = true;
+	bool do_temporal_reuse_pass = false;
+
+	// If set to true, the temporal buffers will be cleared by the camera
+	// rays kernel
+	bool temporal_buffer_clear_requested = false;
 
 	// How many neighbors at most to check around the temporal back-projected pixel location 
 	// to find a valid neighbor
@@ -42,7 +46,7 @@ struct TemporalPassSettings
 
 struct SpatialPassSettings
 {
-	bool do_spatial_reuse_pass = false;
+	bool do_spatial_reuse_pass = true;
 
 	// How many spatial reuse pass to perform
 	int number_of_passes = 1;
@@ -50,6 +54,11 @@ struct SpatialPassSettings
 	int spatial_reuse_radius = 20;
 	// How many neighbors to reuse during the spatial pass
 	int spatial_reuse_neighbor_count = 3;
+
+	// Whether or not to rotate the spatial neighbor locations generated.
+	// Pretty much mandatory when using Hammersley points otherwise the neighbors
+	// will always be the exact same
+	bool do_neighbor_rotation = true;
 
 	// Buffer that contains the input reservoirs for the spatial reuse pass
 	ReSTIRDIReservoir* input_reservoirs = nullptr;
