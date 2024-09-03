@@ -12,7 +12,7 @@
 #include "Device/includes/Intersect.h"
 #include "Device/includes/LightUtils.h"
 #include "Device/includes/ReSTIR/ReSTIR_DI_Surface.h"
-#include "Device/includes/ReSTIR/ReSTIR_DI_Utils.H"
+#include "Device/includes/ReSTIR/ReSTIR_DI_Utils.h"
 #include "Device/includes/Sampling.h"
 
 #include "HostDeviceCommon/HIPRTCamera.h"

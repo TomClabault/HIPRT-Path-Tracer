@@ -8,7 +8,6 @@
 #include "UI/RenderWindow.h"
 
 #include <chrono>
-#include <format>
 #include <unordered_map>
 
 #define GLM_ENABLE_EXPERIMENTAL
@@ -1122,18 +1121,6 @@ void ImGuiRenderer::draw_performance_metrics_panel()
 	ImGui::TreePop();
 }
 
-template<typename... Args>
-inline std::string format_string_helper(const std::format_string<Args...> fmt, Args&&... args)
-{
-	return std::vformat(fmt.get(), std::make_format_args(args...));
-}
-
-template<typename T>
-const T& unmove(T&& x)
-{
-	return x;
-}
-
 void ImGuiRenderer::draw_perf_metric_specific_panel(std::shared_ptr<PerformanceMetricsComputer> perf_metrics, const std::string& perf_metrics_key, const std::string& label)
 {
 	float variance, min, max;
@@ -1151,10 +1138,10 @@ void ImGuiRenderer::draw_perf_metric_specific_panel(std::shared_ptr<PerformanceM
 	ImGui::Text("%s: %.3fms (%.1f FPS)", label.c_str(), perf_metrics->get_current_value(perf_metrics_key), 1000.0f / perf_metrics->get_current_value(perf_metrics_key)); 
 	if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
 	{
-		std::string line_1 = format_perf_metrics_tooltip_line(label, " (avg):", " (min / max):", " {:.3f}ms ({:.1f} FPS)", perf_metrics->get_average(perf_metrics_key), 1000.0f / perf_metrics->get_average(perf_metrics_key));
-		std::string line_2 = format_perf_metrics_tooltip_line(label, " (var):", " (min / max):", " {:.3f}ms", variance);
-		std::string line_3 = format_perf_metrics_tooltip_line(label, " (std dev):", " (min / max):", " {:.3f}ms", std::sqrt(variance));
-		std::string line_4 = format_perf_metrics_tooltip_line(label, " (min / max):", " (min / max):", " {:.3f}ms / {:.3f}ms", min, max);
+		std::string line_1 = format_perf_metrics_tooltip_line(label, " (avg):", " (min / max):", " %.3fms (%.1f FPS)", perf_metrics->get_average(perf_metrics_key), 1000.0f / perf_metrics->get_average(perf_metrics_key));
+		std::string line_2 = format_perf_metrics_tooltip_line(label, " (var):", " (min / max):", " %.3fms", variance);
+		std::string line_3 = format_perf_metrics_tooltip_line(label, " (std dev):", " (min / max):", " %.3fms", std::sqrt(variance));
+		std::string line_4 = format_perf_metrics_tooltip_line(label, " (min / max):", " (min / max):", " %.3fms / %.3fms", min, max);
 
 		std::string tooltip = line_1 + "\n" + line_2 + "\n" + line_3 + "\n" + line_4;
 		ImGuiRenderer::wrapping_tooltip(tooltip);
@@ -1205,14 +1192,15 @@ template <class... Args>
 std::string ImGuiRenderer::format_perf_metrics_tooltip_line(const std::string& label, const std::string& suffix, const std::string& longest_header_for_padding, const std::string& formatter_after_header, const Args& ...args)
 {
 	// Creating the formatter for automatically left-padding the header of the lines to the longer line (which is "(min / max)")
-	std::string header_padding_formatter = "{:<" + std::to_string(label.length() + longest_header_for_padding.length()) + "s}";
+	std::string header_padding_formatter = "%-" + std::to_string(label.length() + longest_header_for_padding.length()) + "s";
 	std::string line_formatter = header_padding_formatter + formatter_after_header;
 	std::string header = label + suffix;
 
-	auto line_args = std::make_format_args(header, const_cast<Args&>(args)...);
-	std::string line = std::vformat(line_formatter, line_args);
+	char line_char[512];
+	std::string test = "%s";
+	snprintf(line_char, 512, line_formatter.c_str(), header.c_str(), args...);
 
-	return line;
+	return std::string(line_char);
 }
 
 void ImGuiRenderer::draw_debug_panel()
