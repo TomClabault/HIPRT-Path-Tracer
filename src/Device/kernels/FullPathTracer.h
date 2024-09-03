@@ -124,7 +124,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
 
     RayPayload ray_payload;
     ray_payload.next_ray_state = RayState::BOUNCE;
-    ray_payload.material = RendererMaterial(render_data.g_buffer.materials[pixel_index]);
+    ray_payload.material = render_data.g_buffer.materials[pixel_index];
     ray_payload.volume_state = render_data.g_buffer.ray_volume_states[pixel_index];
 
     // TODO fix samples per frame not working since we separated the camera ray pass

@@ -35,7 +35,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float disney_schlick_weight(float f0, float abs_c
     return 1.0f + (f0 - 1.0f) * pow(1.0f - abs_cos_angle, 5.0f);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_diffuse_eval(const RendererMaterial& material, const float3& view_direction, const float3& surface_normal, const float3& to_light_direction, float& pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_diffuse_eval(const SimplifiedRendererMaterial& material, const float3& view_direction, const float3& surface_normal, const float3& to_light_direction, float& pdf)
 {
     float3 half_vector = hippt::normalize(to_light_direction + view_direction);
 
@@ -65,12 +65,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_diffuse_eval(const RendererMat
     return (1.0f - material.subsurface) * diffuse_part + material.subsurface * fake_subsurface_part;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_diffuse_sample(const RendererMaterial& material, const float3& surface_normal, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_diffuse_sample(const SimplifiedRendererMaterial& material, const float3& surface_normal, Xorshift32Generator& random_number_generator)
 {
     return cosine_weighted_sample(surface_normal, random_number_generator);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_metallic_fresnel(const RendererMaterial& material, const float3& local_half_vector, const float3& local_to_light_direction)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_metallic_fresnel(const SimplifiedRendererMaterial& material, const float3& local_half_vector, const float3& local_to_light_direction)
 {
     // The summary of what is below is the following:
     //
@@ -88,7 +88,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_metallic_fresnel(const Rendere
     return C0 + (ColorRGB32F(1.0f) - C0) * pow(hippt::clamp(0.0f, 1.0f, 1.0f - hippt::dot(local_half_vector, local_to_light_direction)), 5.0f);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_metallic_eval(const RendererMaterial& material, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_half_vector, ColorRGB32F F, float& pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_metallic_eval(const SimplifiedRendererMaterial& material, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_half_vector, ColorRGB32F F, float& pdf)
 {
     // Maxing 1.0e-8f here to avoid zeros
     float NoV = hippt::max(1.0e-8f, hippt::abs(local_view_direction.z));
@@ -106,7 +106,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_metallic_eval(const RendererMa
 /**
  * The sampled direction is returned in the local shading frame of the basis used for 'local_view_direction'
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_metallic_sample(const RendererMaterial& material, const float3& local_view_direction, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_metallic_sample(const SimplifiedRendererMaterial& material, const float3& local_view_direction, Xorshift32Generator& random_number_generator)
 {
 	// The view direction can sometimes be below the shading normal hemisphere
 	// because of normal mapping
@@ -118,7 +118,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_metallic_sample(const RendererMater
     return hippt::normalize(sampled_direction);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_clearcoat_eval(const RendererMaterial& material, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, float& pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_clearcoat_eval(const SimplifiedRendererMaterial& material, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, float& pdf)
 {
     if (local_view_direction.z * local_to_light_direction.z < 0)
         return ColorRGB32F(0.0f);
@@ -142,7 +142,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_clearcoat_eval(const RendererM
 /**
  * The sampled direction is returned in the local shading frame of the basis used for 'local_view_direction'
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_clearcoat_sample(const RendererMaterial& material, const float3& local_view_direction, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_clearcoat_sample(const SimplifiedRendererMaterial& material, const float3& local_view_direction, Xorshift32Generator& random_number_generator)
 {
     float clearcoat_gloss = 1.0f - material.clearcoat_roughness;
     float alpha_g = (1.0f - clearcoat_gloss) * 0.1f + clearcoat_gloss * 0.001f;
@@ -166,7 +166,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_clearcoat_sample(const RendererMate
 }
 
 // TODO have materials_buffer as a global variable to avoid having to pass it around like that?
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_glass_eval(const RendererMaterial* materials_buffer, const RendererMaterial& material, RayVolumeState& ray_volume_state, const float3& local_view_direction, const float3& local_to_light_direction, float& pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_glass_eval(const RendererMaterial* materials_buffer, const SimplifiedRendererMaterial& material, RayVolumeState& ray_volume_state, const float3& local_view_direction, const float3& local_to_light_direction, float& pdf)
 {
     float NoV = local_view_direction.z;
     float NoL = local_to_light_direction.z;
@@ -270,7 +270,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_glass_eval(const RendererMater
             // by this material that the ray has been absorbed. The ray has been absorded by the volume
             // it was in before refracting here, so it's the incident mat index
 
-            const RendererMaterial& incident_material = materials_buffer[ray_volume_state.incident_mat_index];
+            const SimplifiedRendererMaterial& incident_material = materials_buffer[ray_volume_state.incident_mat_index];
             // Remapping the absorption coefficient so that it is more intuitive to manipulate
             // according to Burley, 2015 [5].
             // This effectively gives us a "at distance" absorption coefficient.
@@ -291,7 +291,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_glass_eval(const RendererMater
 /**
  * The sampled direction is returned in the local shading frame of the basis used for 'local_view_direction'
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_glass_sample(const RendererMaterial* materials_buffer, const RendererMaterial& material, RayVolumeState& ray_volume_state, const float3& local_view_direction, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_glass_sample(const RendererMaterial* materials_buffer, const SimplifiedRendererMaterial& material, RayVolumeState& ray_volume_state, const float3& local_view_direction, Xorshift32Generator& random_number_generator)
 {
     // Relative eta = eta_t / eta_i
     float eta_t = ray_volume_state.outgoing_mat_index == -1 ? 1.0 : materials_buffer[ray_volume_state.outgoing_mat_index].ior;
@@ -334,7 +334,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_glass_sample(const RendererMaterial
     return sampled_direction;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_sheen_eval(const RendererMaterial& material, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_half_vector, float& pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_sheen_eval(const SimplifiedRendererMaterial& material, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_half_vector, float& pdf)
 {
     float base_color_luminance = material.base_color.luminance();
     ColorRGB32F sheen_color = ColorRGB32F(1.0f - material.sheen_tint) + material.sheen_color * material.sheen_tint;
@@ -350,7 +350,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_sheen_eval(const RendererMater
     return sheen_color * pow(1.0f - HoL, 5.0f);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_bsdf_eval(const RendererMaterial* materials_buffer, const RendererMaterial& material, RayVolumeState& ray_volume_state, const float3& view_direction, float3 shading_normal, const float3& to_light_direction, float& pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_bsdf_eval(const RendererMaterial* materials_buffer, const SimplifiedRendererMaterial& material, RayVolumeState& ray_volume_state, const float3& view_direction, float3 shading_normal, const float3& to_light_direction, float& pdf)
 {
     pdf = 0.0f;
 
@@ -424,7 +424,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_bsdf_eval(const RendererMateri
     return final_color;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_bsdf_sample(const RendererMaterial* materials_buffer, const RendererMaterial& material, RayVolumeState& ray_volume_state, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal, float3& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_bsdf_sample(const RendererMaterial* materials_buffer, const SimplifiedRendererMaterial& material, RayVolumeState& ray_volume_state, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal, float3& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
 {
     pdf = 0.0f;
 

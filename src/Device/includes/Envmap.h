@@ -129,7 +129,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F envmap_eval(const HIPRTRenderData& re
     return envmap_radiance;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_cdf(const HIPRTRenderData& render_data, const RendererMaterial& material, const RayVolumeState& volume_state, HitInfo& closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_cdf(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, const RayVolumeState& volume_state, HitInfo& closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
 {
     const WorldSettings& world_settings = render_data.world_settings;
 

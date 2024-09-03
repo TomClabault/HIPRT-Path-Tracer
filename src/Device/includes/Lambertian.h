@@ -11,7 +11,7 @@
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/Material.h"
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F lambertian_brdf_eval(const RendererMaterial& material, const float3& view_direction, const float3& surface_normal, const float3& to_light_direction, float& pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F lambertian_brdf_eval(const SimplifiedRendererMaterial& material, const float3& view_direction, const float3& surface_normal, const float3& to_light_direction, float& pdf)
 {
     pdf = 0.0f;
 
@@ -23,7 +23,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F lambertian_brdf_eval(const RendererMa
     return material.base_color / M_PI;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F lambertian_brdf_sample(const RendererMaterial& material, const float3& view_direction, const float3& shading_normal, float3& sampled_direction, float& pdf, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F lambertian_brdf_sample(const SimplifiedRendererMaterial& material, const float3& view_direction, const float3& shading_normal, float3& sampled_direction, float& pdf, Xorshift32Generator& random_number_generator)
 {
     sampled_direction = cosine_weighted_sample(shading_normal, random_number_generator);
 

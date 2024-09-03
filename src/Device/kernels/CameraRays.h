@@ -175,7 +175,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
 
         render_data.g_buffer.geometric_normals[pixel_index] = closest_hit_info.geometric_normal;
         render_data.g_buffer.shading_normals[pixel_index] = closest_hit_info.shading_normal;
-        render_data.g_buffer.materials[pixel_index] = ray_payload.material.get_simplified_material();
+        render_data.g_buffer.materials[pixel_index] = ray_payload.material;
         render_data.g_buffer.first_hits[pixel_index] = closest_hit_info.inter_point;
         render_data.g_buffer.ray_volume_states[pixel_index] = ray_payload.volume_state;
     }

@@ -207,7 +207,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_normal_distribution(float alpha, float 
     return alpha2 / M_PI / (b * b);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float GTR2_anisotropic(const RendererMaterial& material, const float3& local_half_vector)
+HIPRT_HOST_DEVICE HIPRT_INLINE float GTR2_anisotropic(const SimplifiedRendererMaterial& material, const float3& local_half_vector)
 {
     float denom = (local_half_vector.x * local_half_vector.x) / (material.alpha_x * material.alpha_x) +
         (local_half_vector.y * local_half_vector.y) / (material.alpha_y * material.alpha_y) +

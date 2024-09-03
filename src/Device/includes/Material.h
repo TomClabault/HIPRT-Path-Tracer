@@ -35,7 +35,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_hit_base_color_alpha(const HIPRTRenderD
     return alpha;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE RendererMaterial get_intersection_material(const HIPRTRenderData& render_data, int material_index, float2 texcoords, float& out_base_color_alpha)
+HIPRT_HOST_DEVICE HIPRT_INLINE SimplifiedRendererMaterial get_intersection_material(const HIPRTRenderData& render_data, int material_index, float2 texcoords, float& out_base_color_alpha)
 {
 	RendererMaterial material = render_data.buffers.materials_buffer[material_index];
 

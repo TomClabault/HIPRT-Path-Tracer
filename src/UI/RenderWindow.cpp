@@ -65,6 +65,7 @@
 
 
 // TODO Features:
+// - pack material parameters that are between 0 and 1 into 8 bits, 1/256 is enough precision for parameters in 0-1
 // - Reuse MIS BSDF sample as path next bounce if the ray didn't hit anything
 // - RIS: do no use BSDF samples for rough surfaces (have a BSDF ray roughness treshold basically
 //		We may have to do something with the lobes of the BSDF specifically for this one. A coated diffuse cannot always ignore light samples for example because the diffuse lobe benefits from light samples even if the surface is not smooth (coating) 

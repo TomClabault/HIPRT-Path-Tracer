@@ -11,7 +11,7 @@
 
 struct ReSTIRDISurface
 {
-	RendererMaterial material;
+	SimplifiedRendererMaterial material;
 	RayVolumeState ray_volume_state;
 	float3 view_direction;
 	float3 shading_normal;

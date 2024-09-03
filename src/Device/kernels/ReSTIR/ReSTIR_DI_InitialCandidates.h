@@ -257,8 +257,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_InitialCandidates(HIPRTRenderData
 
     // TODO replace this by using the simplified material directly in sample_light_RIS_reservoir instead of converting to RendererMaterial
     // TODO storing in g_buffer.materials with SimplifiedRendererMaterial loses the texutres information
-    SimplifiedRendererMaterial simplified_mat = render_data.g_buffer.materials[pixel_index];
-    RendererMaterial material = RendererMaterial(simplified_mat);
+    SimplifiedRendererMaterial material = render_data.g_buffer.materials[pixel_index];
 
     float3 view_direction = render_data.g_buffer.view_directions[pixel_index];
 

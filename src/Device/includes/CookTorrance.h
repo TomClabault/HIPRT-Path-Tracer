@@ -10,7 +10,7 @@
 #include "HostDeviceCommon/Material.h"
 #include "Device/includes/Sampling.h"
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float cook_torrance_brdf_pdf(const RendererMaterial& material, const float3& view_direction, const float3& to_light_direction, const float3& surface_normal)
+HIPRT_HOST_DEVICE HIPRT_INLINE float cook_torrance_brdf_pdf(const SimplifiedRendererMaterial& material, const float3& view_direction, const float3& to_light_direction, const float3& surface_normal)
 {
     float3 microfacet_normal = hippt::normalize(view_direction + to_light_direction);
 
@@ -23,7 +23,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float cook_torrance_brdf_pdf(const RendererMateri
     return D * NoH / (4.0f * VoH);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F cook_torrance_brdf(const RendererMaterial& material, const float3& to_light_direction, const float3& view_direction, const float3& surface_normal)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F cook_torrance_brdf(const SimplifiedRendererMaterial& material, const float3& to_light_direction, const float3& view_direction, const float3& surface_normal)
 {
     ColorRGB32F brdf_color = ColorRGB32F(0.0f, 0.0f, 0.0f);
     ColorRGB32F base_color = material.base_color;
@@ -66,7 +66,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F cook_torrance_brdf(const RendererMate
     return brdf_color;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F cook_torrance_brdf_importance_sample(const RendererMaterial& material, const float3& view_direction, const float3& surface_normal, float3& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F cook_torrance_brdf_importance_sample(const SimplifiedRendererMaterial& material, const float3& view_direction, const float3& surface_normal, float3& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
 {
     pdf = 0.0f;
 

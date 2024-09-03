@@ -42,7 +42,7 @@ struct RayPayload
 	BRDF last_brdf_hit_type = BRDF::Uninitialized;
 
 	// Material of the last hit
-	RendererMaterial material;
+	SimplifiedRendererMaterial material;
 
 	RayVolumeState volume_state;
 
