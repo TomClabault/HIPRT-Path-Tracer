@@ -549,9 +549,9 @@ void ImGuiRenderer::draw_sampling_panel()
 
 					// Backup values to remember what the heuristic threshold was before it was disabled
 					// The normal similarity backup is the angle in degrees
-					static float normal_similarity_heuristic_backup = 0.0f;
-					static float plane_distane_heuristic_backup = 0.0f;
-					static float roughness_similarity_heuristic_backup = 0.0f;
+					static float normal_similarity_heuristic_backup = render_settings.restir_di_settings.normal_similarity_angle_degrees;
+					static float plane_distane_heuristic_backup = render_settings.restir_di_settings.plane_distance_threshold;
+					static float roughness_similarity_heuristic_backup = render_settings.restir_di_settings.roughness_similarity_threshold;
 
 					static bool use_heuristics_at_all = true;
 					if (ImGui::Checkbox("Use Heuristics", &use_heuristics_at_all))
