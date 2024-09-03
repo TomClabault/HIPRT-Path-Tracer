@@ -14,7 +14,7 @@
 class GPUKernelCompiler
 {
 public:
-	oroFunction compile_kernel(GPUKernel& kernel, std::shared_ptr<GPUKernelCompilerOptions> kernel_compiler_options, hiprtContext& hiprt_ctx, bool use_cache, const std::string& additional_cache_key);
+	oroFunction_t compile_kernel(GPUKernel& kernel, std::shared_ptr<GPUKernelCompilerOptions> kernel_compiler_options, hiprtContext& hiprt_ctx, bool use_cache, const std::string& additional_cache_key);
 
 	/**
 	 * Takes an include name ("Device/includes/MyInclude.h" for example) and a list of include directories.

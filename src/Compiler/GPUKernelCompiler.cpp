@@ -9,17 +9,17 @@
 
 #include <chrono>
 #include <deque>
+#include <mutex>
 
 GPUKernelCompiler g_gpu_kernel_compiler;
+std::mutex g_log_mutex;
 
-oroFunction GPUKernelCompiler::compile_kernel(GPUKernel& kernel, std::shared_ptr<GPUKernelCompilerOptions> kernel_compiler_options, hiprtContext& hiprt_ctx, bool use_cache, const std::string& additional_cache_key)
+oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, std::shared_ptr<GPUKernelCompilerOptions> kernel_compiler_options, hiprtContext& hiprt_ctx, bool use_cache, const std::string& additional_cache_key)
 {
 	std::string kernel_file_path = kernel.get_kernel_file_path();
 	std::string kernel_function_name = kernel.get_kernel_function_name();
 	const std::vector<std::string>& additional_include_dirs = kernel_compiler_options->get_additional_include_directories();
 	const std::vector<std::string>& compiler_options = kernel_compiler_options->get_relevant_macros_as_std_vector_string(kernel);
-
-	std::cout << "Compiling kernel \"" << kernel_function_name << "\"..." << std::endl;
 
 	auto start = std::chrono::high_resolution_clock::now();
 
@@ -31,12 +31,16 @@ oroFunction GPUKernelCompiler::compile_kernel(GPUKernel& kernel, std::shared_ptr
 		std::exit(1);
 	}
 
-	std::cout << std::endl;
+	oroFunction kernel_function = reinterpret_cast<oroFunction>(trace_function_out);
 
 	auto stop = std::chrono::high_resolution_clock::now();
-	std::cout << "Kernel \"" << kernel_function_name << "\" compiled in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
+	{
+		std::lock_guard<std::mutex> lock(g_log_mutex);
+		std::cout << "Kernel \"" << kernel_function_name << "\" compiled in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms. " 
+			<< GPUKernel::get_kernel_attribute(kernel_function, ORO_FUNC_ATTRIBUTE_NUM_REGS) << " registers." << std::endl;
+	}
 
-	return *reinterpret_cast<oroFunction*>(&trace_function_out);
+	return kernel_function;
 }
 
 std::string GPUKernelCompiler::find_in_include_directories(const std::string& include_name, const std::vector<std::string>& include_directories)

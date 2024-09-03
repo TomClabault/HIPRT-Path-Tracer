@@ -69,7 +69,8 @@ public:
 	 * This function may also return 0 if the device doesn't support querrying
 	 * the number of registers
 	 */
-	int get_kernel_attribute(oroDeviceProp device_properties, oroFunction_attribute attribute);
+	int get_kernel_attribute(oroFunction_attribute attribute);
+	static int get_kernel_attribute(oroFunction compiled_kernel, oroFunction_attribute attribute);
 
 	/**
 	 * Returns the time taken for the last execution of this kernel in milliseconds

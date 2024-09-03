@@ -70,7 +70,23 @@ void GPUKernel::compile(hiprtContext& hiprt_ctx, std::shared_ptr<GPUKernelCompil
 	m_kernel_function = g_gpu_kernel_compiler.compile_kernel(*this, kernel_compiler_options, hiprt_ctx, use_cache, cache_key);
 }
 
-int GPUKernel::get_kernel_attribute(oroDeviceProp device_properties, oroFunction_attribute attribute)
+int GPUKernel::get_kernel_attribute(oroFunction compiled_kernel, oroFunction_attribute attribute)
+{
+	int numRegs = 0;
+
+	if (compiled_kernel == nullptr)
+	{
+		std::cerr << "Trying to get an attribute of a kernel that wasn't compiled yet." << std::endl;
+
+		return 0;
+	}
+
+	OROCHI_CHECK_ERROR(oroFuncGetAttribute(&numRegs, ORO_FUNC_ATTRIBUTE_NUM_REGS, compiled_kernel));
+
+	return numRegs;
+}
+
+int GPUKernel::get_kernel_attribute(oroFunction_attribute attribute)
 {
 	int numRegs = 0;
 
