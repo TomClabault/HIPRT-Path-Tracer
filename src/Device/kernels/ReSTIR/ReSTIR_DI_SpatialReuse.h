@@ -89,7 +89,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int get_neighbor_pixel_index(int neighbor_number,
 	return neighbor_pixel_index;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float get_spatial_reuse_resampling_MIS_weight(const HIPRTRenderData& render_data, const ReSTIRDIReservoir& neighbor_reservoir, int current_neighbor, int reused_neighbors_count, int2 center_pixel_coords, int2 res, float2 cos_sin_theta_rotation, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE float get_spatial_reuse_resampling_MIS_weight(const HIPRTRenderData& render_data, const ReSTIRDIReservoir& neighbor_reservoir, const ReSTIRDISurface& center_pixel_surface, int current_neighbor, int reused_neighbors_count, int2 center_pixel_coords, int2 res, float2 cos_sin_theta_rotation, Xorshift32Generator& random_number_generator)
 {
 #if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_M || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE_CONFIDENCE_WEIGHTS
 	return neighbor_reservoir.M;
@@ -106,6 +106,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_spatial_reuse_resampling_MIS_weight(con
 	{
 		int neighbor_index_j = get_neighbor_pixel_index(j, reused_neighbors_count, render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_radius, center_pixel_coords, res, cos_sin_theta_rotation, random_number_generator);
 		if (neighbor_index_j == -1)
+			continue;
+
+		int center_pixel_index = center_pixel_coords.x + center_pixel_coords.y * res.x;
+		if (!check_similarity_heuristics(render_data, neighbor_index_j, center_pixel_index, center_pixel_surface.shading_point, center_pixel_surface.shading_normal))
 			continue;
 
 		ReSTIRDISurface neighbor_surface = get_pixel_surface(render_data, neighbor_index_j);
@@ -352,7 +356,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 			// No need to compute the MIS weight if the target function is 0.0f because we're never going to pick
 			// that sample anyway when combining the reservoir since the resampling weight will be 0.0f because of
 			// the multiplication by the target function that is 0.0f
-			mis_weight = get_spatial_reuse_resampling_MIS_weight(render_data, neighbor_reservoir, neighbor, reused_neighbors_count, center_pixel_coords, res, cos_sin_theta_rotation, random_number_generator);
+			mis_weight = get_spatial_reuse_resampling_MIS_weight(render_data, 
+				neighbor_reservoir, center_pixel_surface, 
+				neighbor, reused_neighbors_count, 
+				center_pixel_coords, res, 
+				cos_sin_theta_rotation, 
+				random_number_generator);
 
 		// Combining as in Alg. 6 of the paper
 		if (new_reservoir.combine_with(neighbor_reservoir, mis_weight, target_function_at_center, jacobian_determinant, random_number_generator))
