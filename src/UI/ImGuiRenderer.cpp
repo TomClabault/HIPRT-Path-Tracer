@@ -821,6 +821,15 @@ void ImGuiRenderer::draw_objects_panel()
 	bool material_changed = false;
 	static int currently_selected_material = 0;
 
+	std::vector<const char*> items = { "- None", "- Lambertian BRDF", "- Oren Nayar BRDF", "- Disney BSDF" };
+	if (ImGui::Combo("All Objects BSDF Override", m_renderer->get_path_tracer_options()->get_pointer_to_macro_value(GPUKernelCompilerOptions::BSDF_OVERRIDE), items.data(), items.size()))
+	{
+		m_renderer->recompile_kernels();
+
+		m_render_window->set_render_dirty(true);
+	}
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
 	if (ImGui::CollapsingHeader("All objects"))
 	{
 		ImGui::TreePush("All objects tree");
@@ -1098,6 +1107,7 @@ void ImGuiRenderer::draw_performance_metrics_panel()
 	if (m_renderer->get_path_tracer_options()->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI)
 	{
 		draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_FUNC_NAME, "ReSTIR Initial Candidates");
+
 		if (render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
 			draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::RESTIR_DI_TEMPORAL_REUSE_FUNC_NAME, "ReSTIR Temporal Reuse");
 		if (render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)

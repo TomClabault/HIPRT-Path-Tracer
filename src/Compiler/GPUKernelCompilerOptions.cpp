@@ -17,6 +17,7 @@ const std::string GPUKernelCompilerOptions::RESTIR_DI_TARGET_FUNCTION_VISIBILITY
 const std::string GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE = "ReSTIR_DI_DoVisibilityReuse";
 const std::string GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_BIAS_CORRECTION_USE_VISIBILITY = "ReSTIR_DI_SpatialReuseBiasUseVisiblity";
 const std::string GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS = "ReSTIR_DI_BiasCorrectionWeights";
+const std::string GPUKernelCompilerOptions::BSDF_OVERRIDE = "BSDFOverride";
 
 const std::vector<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES = {
 	GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY,
@@ -27,7 +28,8 @@ const std::vector<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES = {
 	GPUKernelCompilerOptions::RESTIR_DI_TARGET_FUNCTION_VISIBILITY,
 	GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE,
 	GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_BIAS_CORRECTION_USE_VISIBILITY,
-	GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS
+	GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS,
+	GPUKernelCompilerOptions::BSDF_OVERRIDE
 };
 
 GPUKernelCompilerOptions::GPUKernelCompilerOptions()
@@ -43,6 +45,7 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE] = ReSTIR_DI_DoVisibilityReuse;
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_BIAS_CORRECTION_USE_VISIBILITY] = ReSTIR_DI_SpatialReuseBiasUseVisiblity;
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS] = ReSTIR_DI_BiasCorrectionWeights;
+	m_options_macro_map[GPUKernelCompilerOptions::BSDF_OVERRIDE] = BSDFOverride;
 
 	// Making sure we didn't forget to fill the ALL_MACROS_NAMES vector with all the options that exist
 	assert(GPUKernelCompilerOptions::ALL_MACROS_NAMES.size() == m_options_macro_map.size());

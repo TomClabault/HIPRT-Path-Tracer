@@ -24,6 +24,7 @@ public:
 	static const std::string RESTIR_DI_DO_VISIBILITY_REUSE;
 	static const std::string RESTIR_DI_SPATIAL_REUSE_BIAS_CORRECTION_USE_VISIBILITY;
 	static const std::string RESTIR_DI_BIAS_CORRECTION_WEIGHTS;
+	static const std::string BSDF_OVERRIDE;
 
 	static const std::vector<std::string> ALL_MACROS_NAMES;
 

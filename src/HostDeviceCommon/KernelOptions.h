@@ -35,6 +35,11 @@
 #define KERNEL_OPTION_FALSE 0
 #define KERNEL_OPTION_TRUE 1
 
+#define BSDF_NONE 0
+#define BSDF_LAMBERTIAN 1
+#define BSDF_OREN_NAYAR 2
+#define BSDF_DISNEY 3
+
 #define ISS_AUTOMATIC 0
 #define ISS_WITH_PRIORITIES 1
 
@@ -69,6 +74,25 @@
  */
 #ifndef __KERNELCC__
 /**
+ * Allows the overriding of the BRDF/BSDF used by the path tracer. When an override is used,
+ * the material retains its properties (color, roughness, ...) but only the parameters relevant
+ * to the overriden BSDF are used.
+ * 
+ *	- BSDF_NONE
+ *		Materials will use their default BRDF/BSDF, no override
+ * 
+ *	- BSDF_LAMBERTIAN
+ *		All materials will use a lambertian BRDF
+ * 
+ *	- BSDF_OREN_NAYAR
+ *		All materials will use the Oren Nayar diffuse BRDF
+ * 
+ *	- BSDF_DISNEY
+ *		All materials will use the Disney BSDF
+ */
+#define BSDFOverride BSDF_NONE
+
+/**
  * What nested dielectrics strategy to use.
  * 
  * Possible values (the prefix ISS stands for "Interior Stack Strategy"):
@@ -86,8 +110,6 @@
  * 
  * Possible values (the prefix LSS stands for "Light Sampling strategy"):
  * 
-#define LSS_RIS_BSDF_AND_LIGHT 4
-#define LSS_RESTIR_DI 5
  *	- LSS_NO_DIRECT_LIGHT_SAMPLING
  *		No direct light sampling
  * 
@@ -209,7 +231,7 @@
  *		2023, "A Gentle Introduction to ReSTIR". Should have lower variance than without confidence weights
  *		due to favoring better samples.
  */
-#define ReSTIR_DI_BiasCorrectionWeights RESTIR_DI_BIAS_CORRECTION_1_OVER_M
+#define ReSTIR_DI_BiasCorrectionWeights RESTIR_DI_BIAS_CORRECTION_MIS_LIKE_CONFIDENCE_WEIGHTS
 
 /**
  * What sampling strategy to use for thd GGX NDF
