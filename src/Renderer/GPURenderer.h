@@ -170,6 +170,12 @@ private:
 	 */
 	void internal_update_adaptive_sampling_buffers();
 
+	/**
+	 * Allocates/frees the ReSTIR DI buffers depending on whether or not the renderer
+	 * needs them (whether or not ReSTIR DI is being used basically) respectively.
+	 */
+	void internal_update_restir_di_buffers();
+
 	//
 	// -------- Functions called by the update() method ---------
 

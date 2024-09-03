@@ -23,8 +23,16 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void reset_render(const HIPRTRenderData& render_d
     render_data.aux_buffers.denoiser_normals[pixel_index] = make_float3(1.0f, 1.0f, 1.0f);
     render_data.aux_buffers.denoiser_albedo[pixel_index] = ColorRGB32F(0.0f, 0.0f, 0.0f);
 
-    if (render_data.render_settings.accumulate)
+    if (render_data.render_settings.accumulate && render_data.aux_buffers.restir_reservoir_buffer_1 != nullptr)
     {
+        // Only resetting if we're accumulating for offline rendering. Otherwise, we want the
+        // temporal side of ReSTIR and so we're not resetting to at least keep the temporal
+        // buffer alive
+        //
+        // Also, we're only resetting if the buffers aren't nullptr (they are nullptr 
+        // if ReSTIR DI is currently disabled (using another direct lighting strategy).
+        // We only need to check 1 buffer for that.
+
         render_data.aux_buffers.restir_reservoir_buffer_1[pixel_index] = ReSTIRDIReservoir();
         render_data.aux_buffers.restir_reservoir_buffer_2[pixel_index] = ReSTIRDIReservoir();
         render_data.aux_buffers.restir_reservoir_buffer_3[pixel_index] = ReSTIRDIReservoir();

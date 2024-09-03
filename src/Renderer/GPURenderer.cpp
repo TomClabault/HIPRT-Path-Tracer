@@ -110,6 +110,7 @@ void GPURenderer::update()
 {
 	internal_update_clear_device_status_buffers();
 	internal_update_adaptive_sampling_buffers();
+	internal_update_restir_di_buffers();
 
 	// Resetting this flag as this is a new frame
 	m_render_data.render_settings.do_update_status_buffers = false;
@@ -173,6 +174,44 @@ void GPURenderer::internal_update_adaptive_sampling_buffers()
 
 		m_pixels_squared_luminance_buffer.free();
 		m_pixels_sample_count_buffer->free();
+	}
+}
+
+void GPURenderer::internal_update_restir_di_buffers()
+{
+	if (m_path_tracer_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI)
+	{
+		// ReSTIR DI enabled
+		bool initial_candidates_reservoir_needs_resize = m_restir_di_state.initial_candidates_reservoirs.get_element_count() == 0;
+		bool spatial_output_1_needs_resize = m_restir_di_state.spatial_reuse_output_1.get_element_count() == 0;
+		bool spatial_output_2_needs_resize = m_restir_di_state.spatial_reuse_output_2.get_element_count() == 0;
+
+		if (initial_candidates_reservoir_needs_resize || spatial_output_1_needs_resize || spatial_output_2_needs_resize)
+			// Synchronizing because we don't want to resize the buffer while the renderer is rendering a frame
+			synchronize_kernel();
+
+		if (initial_candidates_reservoir_needs_resize)
+			m_restir_di_state.initial_candidates_reservoirs.resize(m_render_resolution.x * m_render_resolution.y);
+
+		if (spatial_output_1_needs_resize)
+			m_restir_di_state.spatial_reuse_output_1.resize(m_render_resolution.x * m_render_resolution.y);
+
+		if (spatial_output_2_needs_resize)
+			m_restir_di_state.spatial_reuse_output_2.resize(m_render_resolution.x * m_render_resolution.y);
+	}
+	else
+	{
+		// ReSTIR DI disabled, we're going to free the buffers if that's not already done
+		if (m_restir_di_state.initial_candidates_reservoirs.get_element_count() > 0 
+			|| m_restir_di_state.spatial_reuse_output_1.get_element_count() > 0 ||
+			m_restir_di_state.spatial_reuse_output_2.get_element_count() > 0)
+			// If one of the buffers isn't freed already, we're going to free it. In this case, we need to synchronize to avoid
+			// freeing a buffer that the renderer is actively using in the frame it is rendering right now
+			synchronize_kernel();
+
+		m_restir_di_state.initial_candidates_reservoirs.free();
+		m_restir_di_state.spatial_reuse_output_1.free();
+		m_restir_di_state.spatial_reuse_output_2.free();
 	}
 }
 
@@ -613,9 +652,22 @@ void GPURenderer::update_render_data()
 	m_render_data.g_buffer.ray_volume_states = m_g_buffer.ray_volume_states.get_device_pointer();
 
 	// Setting the pointers for use in reset_render() in the camera rays kernel
-	m_render_data.aux_buffers.restir_reservoir_buffer_1 = m_restir_di_state.initial_candidates_reservoirs.get_device_pointer();
-	m_render_data.aux_buffers.restir_reservoir_buffer_2 = m_restir_di_state.spatial_reuse_output_1.get_device_pointer();
-	m_render_data.aux_buffers.restir_reservoir_buffer_3 = m_restir_di_state.spatial_reuse_output_2.get_device_pointer();
+	if (m_path_tracer_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI)
+	{
+		m_render_data.aux_buffers.restir_reservoir_buffer_1 = m_restir_di_state.initial_candidates_reservoirs.get_device_pointer();
+		m_render_data.aux_buffers.restir_reservoir_buffer_2 = m_restir_di_state.spatial_reuse_output_1.get_device_pointer();
+		m_render_data.aux_buffers.restir_reservoir_buffer_3 = m_restir_di_state.spatial_reuse_output_2.get_device_pointer();
+	}
+	else
+	{
+		// If ReSTIR DI is disabled, setting the pointers to nullptr so that the camera rays kernel
+		// for example can detect that the buffers are freed and doesn't try to reset them or do
+		// anything with them (which would lead to a crash since we would be accessing nullptr buffers)
+
+		m_render_data.aux_buffers.restir_reservoir_buffer_1 = nullptr;
+		m_render_data.aux_buffers.restir_reservoir_buffer_2 = nullptr;
+		m_render_data.aux_buffers.restir_reservoir_buffer_3 = nullptr;
+	}
 
 	m_render_data.current_camera = m_camera.to_hiprt();
 	m_render_data.prev_camera = m_previous_frame_camera.to_hiprt();
