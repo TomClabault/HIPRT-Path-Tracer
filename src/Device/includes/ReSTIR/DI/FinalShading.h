@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_RESTIR_DI_H
-#define DEVICE_RESTIR_DI_H
+#ifndef DEVICE_RESTIR_DI_FINAL_SHADING_H
+#define DEVICE_RESTIR_DI_FINAL_SHADING_H
 
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/HitInfo.h"

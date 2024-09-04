@@ -11,8 +11,8 @@
 #include "Device/includes/Hash.h"
 #include "Device/includes/Intersect.h"
 #include "Device/includes/LightUtils.h"
-#include "Device/includes/ReSTIR/ReSTIR_DI_Surface.h"
-#include "Device/includes/ReSTIR/ReSTIR_DI_Utils.h"
+#include "Device/includes/ReSTIR/DI/Surface.h"
+#include "Device/includes/ReSTIR/DI/Utils.h"
 #include "Device/includes/Sampling.h"
 
 #include "HostDeviceCommon/HIPRTCamera.h"

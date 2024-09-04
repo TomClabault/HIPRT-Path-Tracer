@@ -231,7 +231,7 @@
  *		2023, "A Gentle Introduction to ReSTIR". Should have lower variance than without confidence weights
  *		due to favoring better samples.
  */
-#define ReSTIR_DI_BiasCorrectionWeights RESTIR_DI_BIAS_CORRECTION_MIS_GBH
+#define ReSTIR_DI_BiasCorrectionWeights RESTIR_DI_BIAS_CORRECTION_MIS_LIKE_CONFIDENCE_WEIGHTS
 
 /**
  * What sampling strategy to use for thd GGX NDF

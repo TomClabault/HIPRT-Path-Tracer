@@ -6,10 +6,10 @@
 #ifndef RESTIR_DI_RESERVOIRS_H
 #define RESTIR_DI_RESERVOIRS_H
 
-#include "Device/includes/ReSTIR/ReSTIR_DI_Reservoir.h"
 #include "HIPRT-Orochi/OrochiBuffer.h"
 
 class GPURenderer;
+class ReSTIRDIReservoir;
 
 struct ReSTIR_DI_State
 {

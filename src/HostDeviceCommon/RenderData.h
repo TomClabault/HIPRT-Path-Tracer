@@ -6,7 +6,7 @@
 #ifndef HOST_DEVICE_COMMON_RENDER_DATA_H
 #define HOST_DEVICE_COMMON_RENDER_DATA_H
 
-#include "Device/includes/ReSTIR/ReSTIR_DI_Reservoir.h"
+#include "Device/includes/ReSTIR/DI/Reservoir.h"
 #include "Device/includes/GBuffer.h"
 
 #include "HostDeviceCommon/HIPRTCamera.h"
