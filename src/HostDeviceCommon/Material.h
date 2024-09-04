@@ -81,10 +81,6 @@ struct SimplifiedRendererMaterial
 
     BRDF brdf_type = BRDF::Uninitialized;
 
-    int normal_map_texture_index = -1;
-
-    int emission_texture_index = -1;
-    int base_color_texture_index = -1;
     ColorRGB32F emission = ColorRGB32F{ 0.0f, 0.0f, 0.0f };
     ColorRGB32F base_color = ColorRGB32F{ 1.0f, 0.2f, 0.7f };
 
@@ -99,8 +95,6 @@ struct SimplifiedRendererMaterial
     float specular_tint = 1.0f; // Specular fresnel strength for the metallic
     ColorRGB32F specular_color = ColorRGB32F(1.0f);
     
-    int anisotropic_texture_index = -1;
-    int anisotropic_rotation_texture_index = -1;
     float anisotropic = 0.0f;
     float anisotropic_rotation = 0.0f;
     float alpha_x, alpha_y;

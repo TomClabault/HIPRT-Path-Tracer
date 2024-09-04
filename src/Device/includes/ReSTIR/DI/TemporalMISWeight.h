@@ -146,9 +146,9 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH>
 			// Evaluating the sample that we're resampling at the neighor locations (using the neighbors surfaces)
 			float target_function_at_neighbor;
 			if (j == TEMPORAL_NEIGHBOR_RESAMPLE)
-				target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_SpatialReuseBiasUseVisiblity>(render_data, reservoir_being_resampled.sample, temporal_neighbor_surface);
+				target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, reservoir_being_resampled.sample, temporal_neighbor_surface);
 			else
-				target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_SpatialReuseBiasUseVisiblity>(render_data, reservoir_being_resampled.sample, center_pixel_surface);
+				target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, reservoir_being_resampled.sample, center_pixel_surface);
 
 			if (j == TEMPORAL_NEIGHBOR_RESAMPLE && temporal_neighbor_reservoir.M == 0)
 				// No temporal history, no resampling to do, skipping this reservoir
@@ -201,9 +201,9 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH_CON
 			// Evaluating the sample that we're resampling at the neighor locations (using the neighbors surfaces)
 			float target_function_at_neighbor;
 			if (j == TEMPORAL_NEIGHBOR_RESAMPLE)
-				target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_SpatialReuseBiasUseVisiblity>(render_data, reservoir_being_resampled.sample, temporal_neighbor_surface);
+				target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, reservoir_being_resampled.sample, temporal_neighbor_surface);
 			else
-				target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_SpatialReuseBiasUseVisiblity>(render_data, reservoir_being_resampled.sample, center_pixel_surface);
+				target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, reservoir_being_resampled.sample, center_pixel_surface);
 
 			int M;
 			if (j == TEMPORAL_NEIGHBOR_RESAMPLE)

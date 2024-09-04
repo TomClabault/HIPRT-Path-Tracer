@@ -6,7 +6,7 @@
 #ifndef DEVICE_RAY_PAYLOAD_H
 #define DEVICE_RAY_PAYLOAD_H
 
-#include "Device/includes/NestedDielectrics.h"
+#include "Device/includes/RayVolumeState.h"
 
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/KernelOptions.h"
@@ -16,18 +16,6 @@ enum RayState
 {
 	BOUNCE,
 	MISSED
-};
-
-struct RayVolumeState
-{
-	// How far has the ray traveled in the current volume.
-	float distance_in_volume = 0.0f;
-	// The stack of materials being traversed. Used for nested dielectrics handling
-	InteriorStackImpl<InteriorStackStrategy> interior_stack;
-	// Indices of the material we were in before hitting the current dielectric surface
-	int incident_mat_index = -1, outgoing_mat_index = -1;
-	// Whether or not we're exiting a material
-	bool leaving_mat = false;
 };
 
 struct RayPayload

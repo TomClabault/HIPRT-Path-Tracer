@@ -37,18 +37,19 @@ void ImGuiRenderer::wrapping_tooltip(const std::string& text)
 	ImGui::EndTooltip();
 }
 
-void ImGuiRenderer::show_help_marker(const char* desc)
+void ImGuiRenderer::show_help_marker(const std::string& text)
 {
 	ImGui::SameLine();
 	ImGui::TextDisabled("(?)");
-	if (ImGui::IsItemHovered())
+	add_tooltip(text);
+	/*if (ImGui::IsItemHovered())
 	{
 		ImGui::BeginTooltip();
 		ImGui::PushTextWrapPos(500.0f);
-		ImGui::TextUnformatted(desc);
+		ImGui::TextUnformatted(text);
 		ImGui::PopTextWrapPos();
 		ImGui::EndTooltip();
-	}
+	}*/
 }
 
 void ImGuiRenderer::set_render_window(RenderWindow* render_window)
@@ -716,11 +717,32 @@ void ImGuiRenderer::draw_sampling_panel()
 
 					if (render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
 					{
+						// Same line as "Do Temporal Reuse"
+						ImGui::SameLine();
 						if (ImGui::Button("Reset Temporal Reservoirs"))
 						{
 							render_settings.restir_di_settings.temporal_pass.temporal_buffer_clear_requested = true;
 							m_render_window->set_render_dirty(true);
 						}
+
+						bool last_frame_g_buffer_needed = true;
+						last_frame_g_buffer_needed &= !render_settings.accumulate;
+						last_frame_g_buffer_needed &= render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass;
+
+						if (ImGui::Checkbox("Use Last Frame G-Buffer", &render_settings.restir_di_settings.temporal_pass.use_last_frame_g_buffer))
+							m_render_window->set_render_dirty(true);
+						show_help_marker("For complete unbiasedness with camera motion, the G-buffer of the previous "
+							"frame is required. This however comes at a VRAM cost which we may not want to pay. "
+							"This is especially true when accumulating frames with a still camera in which case "
+							"there is no motion meaning that the G-buffer of the previous frame isn't needed "
+							"and can be freed from VRAM.");
+						//ImGui::EndDisabled();
+						//// Same line as "Use Previous G-Buffer"
+						//ImGui::SameLine();
+						//ImGui::Checkbox("Auto", &m_application_settings->restir_di_use_last_g_buffer_auto);
+						//show_help_marker("With \"Auto\" checked, the G-buffer of the previous frame will automatically "
+						//	"be freed if accumulating frames or not using temporal reuse for example because then "
+						//	"we don't need the G-buffer of the last frame.");
 
 						if (ImGui::SliderInt("Max temporal neighbor search count", &render_settings.restir_di_settings.temporal_pass.max_neighbor_search_count, 0, 16))
 						{
@@ -751,7 +773,7 @@ void ImGuiRenderer::draw_sampling_panel()
 
 					if (render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)
 					{
-						if (ImGui::SliderInt("Spatial Reuse Pass Count", &render_settings.restir_di_settings.spatial_pass.number_of_passes, 1, 64))
+						if (ImGui::SliderInt("Spatial Reuse Pass Count", &render_settings.restir_di_settings.spatial_pass.number_of_passes, 1, 8))
 						{
 							// Clamping
 							render_settings.restir_di_settings.spatial_pass.number_of_passes = std::max(1, render_settings.restir_di_settings.spatial_pass.number_of_passes);
@@ -792,7 +814,7 @@ void ImGuiRenderer::draw_sampling_panel()
 
 					// No visibility bias correction for 1/M weights
 					bool bias_correction_visibility_disabled = kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_1_OVER_M;
-					static bool bias_correction_use_visibility = ReSTIR_DI_SpatialReuseBiasUseVisiblity;
+					static bool bias_correction_use_visibility = ReSTIR_DI_BiasCorrectionUseVisiblity;
 					ImGui::BeginDisabled(bias_correction_visibility_disabled);
 					if (ImGui::Checkbox("Use visibility in bias correction", &bias_correction_use_visibility))
 					{

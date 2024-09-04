@@ -145,7 +145,8 @@ The following arguments are available:
 ![Beeple Zero Day Measure Seven](README_data/img/bzd-measure-seven.jpg)
 ![Suzanne caustics](README_data/img/suzanne-caustics.jpg)
 ![Dragon indirect lighting](README_data/img/pbrt-dragon-indirect.jpg)
-
+![MIS vs. RIS vs. ReSTIR DI Comparison](README_data/img/MIS.RIS.ReSTIR.Comparison.jpg)
+![ImGui Interface](README_data/img/ImGuiDemo.jpg)
 Sources of the scenes can be found [here](https://github.com/TomClabault/HIPRT-Path-Tracer/blob/main/README_data/img/scene%20credits.txt).
 # Live YouTube Demos (click!)
 

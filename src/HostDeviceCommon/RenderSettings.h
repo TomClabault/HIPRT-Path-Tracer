@@ -6,9 +6,12 @@
 #ifndef HOST_DEVICE_COMMON_RENDER_SETTINGS_H
 #define HOST_DEVICE_COMMON_RENDER_SETTINGS_H
 
+#include "HostDeviceCommon/KernelOptions.h"
 #include "HostDeviceCommon/ReSTIRDISettings.h"
 
 #include <hiprt/hiprt_common.h>
+
+class GPURenderer;
 
 struct RISSettings
 {
@@ -161,6 +164,44 @@ struct HIPRTRenderSettings
 
 		return has_access;
 	}
+
+	/**
+	 * Returns true if the renderer needs the G-buffer of the previous frame.
+	 * 
+	 * The boolean parameter is some additional condition that must be satisfied
+	 * for the G-buffer to be needed
+	 * 
+	 * We need two overrides of this function: one for use in the shaders one 
+	 * for use in the CPP CPU side code.
+	 * 
+	 * This is because to determine whether or not we need the g-buffer of last
+	 * frame, we need to check if ReSTIR DI is being used or not. On the CPP side, this
+	 * can be done with the GPURenderer instance by checking the path tracer
+	 * options and check if the DirectLightSamplingStrategy is equal to
+	 * LSS_RESTIR_DI. On the device however, we don't have access to the
+	 * GPURenderer instance but instead, we can check directly using the 
+	 * DirectLightSamplingStrategy macro (and we don't want the GPURenderer parameter 
+	 * because that doesn't exist on the device).
+	 */
+	HIPRT_HOST_DEVICE bool use_prev_frame_g_buffer() const
+	{
+		bool need_g_buffer = restir_di_settings.temporal_pass.use_last_frame_g_buffer;
+		// If ReSTIR DI isn't used, we don't need the last frame's g-buffer
+		need_g_buffer &= DirectLightSamplingStrategy == LSS_RESTIR_DI;
+		// If the temporal reuse isn't used, don't need the G-buffer
+		need_g_buffer &= restir_di_settings.temporal_pass.do_temporal_reuse_pass;
+		// Not using the g-buffer if accumulating because we're rendering still frames
+		// when accumulating which means that we don't need the previous frame's g-buffer
+		// (only required for unbiasedness *in motion*)
+		need_g_buffer &= !accumulate;
+
+		return need_g_buffer;
+	}
+
+	// Only need this one on the host
+#ifndef __KERNELCC__
+	HIPRT_HOST bool use_prev_frame_g_buffer(GPURenderer* renderer) const;
+#endif
 };
 
 #endif

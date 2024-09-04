@@ -9,10 +9,10 @@
 #include "Compiler/GPUKernel.h"
 #include "HIPRT-Orochi/OrochiBuffer.h"
 #include "HIPRT-Orochi/OrochiEnvmap.h"
-#include "HIPRT-Orochi/HIPRTOrochiCtx.h"
 #include "HIPRT-Orochi/HIPRTScene.h"
+#include "HIPRT-Orochi/HIPRTOrochiCtx.h"
 #include "HostDeviceCommon/RenderData.h"
-#include "OpenGL/OpenGLInteropBuffer.h"
+#include "Renderer/GPURendererGBuffer.h"
 #include "Renderer/HardwareAccelerationSupport.h"
 #include "Renderer/OpenImageDenoiser.h"
 #include "Renderer/StatusBuffersValues.h"
@@ -21,6 +21,9 @@
 #include "Scene/SceneParser.h"
 
 #include <vector>
+
+template <typename T>
+class OpenGLInteropBuffer;
 
 class GPURenderer
 {
@@ -89,6 +92,12 @@ public:
 	bool was_last_frame_low_resolution();
 
 	void resize(int new_width, int new_height);
+
+	/**
+	 * Maps the buffers shared with OpenGL that are needed for rendering the frame and sets
+	 * their mapped pointer into m_render_data
+	 */
+	void map_buffers_for_render();
 
 	/**
 	 * Unmap the color framebuffer, the denoiser albedo and the
@@ -162,6 +171,12 @@ private:
 	void internal_update_clear_device_status_buffers();
 
 	/**
+	 * Allocates/deallocates the G-buffer of the previous frame depending
+	 * on whether or not it is needed
+	 */
+	void internal_update_prev_frame_g_buffer();
+
+	/**
 	 * This function evaluates whether the renderer needs the adaptive
 	 * sampling buffers or not. If the buffers are needed (because the
 	 * adaptive sampling or the stop noise pixel threshold is enabled for example),
@@ -195,6 +210,13 @@ private:
 	// If true, the last call to render() rendered a frame where render_settings.render_low_resoltion was true.
 	// False otherwise
 	bool m_was_last_frame_low_resolution = false;
+	// If true, the buffer pointers of m_render_data will be updated when update() is called.
+	// This boolean is mainly set to true when resizing the renderer since resizing re-creates the 
+	// buffers -> invalidates the pointer -> we need to set them back on render_data
+	//
+	// Modifying the scene also invalidates the m_render_data buffers. 
+	// Freeing / allocating ReSTIR DI/adaptive sampling buffers (or any buffers that can be allocated / dealloacted) too
+	bool m_render_data_buffers_invalidated = true;
 
 	// Time taken per each pass of the renderer. 
 	// An additional key "All" can be used to index in this map
@@ -213,22 +235,8 @@ private:
 	// Albedo G-buffer
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>>m_albedo_AOV_buffer;
 
-	// GBuffer that stores information about the current frame first hit data
-	struct GBuffer
-	{
-		OrochiBuffer<SimplifiedRendererMaterial> materials;
-
-		OrochiBuffer<float3> shading_normals;
-		OrochiBuffer<float3> geometric_normals;
-		OrochiBuffer<float3> view_directions;
-		OrochiBuffer<float3> first_hits;
-
-		OrochiBuffer<unsigned char> cameray_ray_hit;
-
-		OrochiBuffer<RayVolumeState> ray_volume_states;
-	};
-
-	GBuffer m_g_buffer;
+	GPURendererGBuffer m_g_buffer;
+	GPURendererGBuffer m_g_buffer_prev_frame;
 
 	// Used to calculate the variance of each pixel for adaptive sampling
 	OrochiBuffer<float> m_pixels_squared_luminance_buffer;

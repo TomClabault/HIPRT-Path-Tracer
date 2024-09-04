@@ -114,7 +114,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_spatial_reuse_resampling_MIS_weight(con
 
 		ReSTIRDISurface neighbor_surface = get_pixel_surface(render_data, neighbor_index_j);
 
-		float target_function_at_j = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_SpatialReuseBiasUseVisiblity>(render_data, neighbor_reservoir.sample, neighbor_surface);
+		float target_function_at_j = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, neighbor_reservoir.sample, neighbor_surface);
 
 		int M = 1;
 #if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_GBH_CONFIDENCE_WEIGHTS
@@ -197,7 +197,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void get_spatial_reuse_normalization_denominator_
 		// Getting the surface data at the neighbor
 		ReSTIRDISurface neighbor_surface = get_pixel_surface(render_data, neighbor_pixel_index);
 
-		float target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_SpatialReuseBiasUseVisiblity>(render_data, new_reservoir.sample, neighbor_surface);
+		float target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, new_reservoir.sample, neighbor_surface);
 
 		if (target_function_at_neighbor > 0.0f)
 		{

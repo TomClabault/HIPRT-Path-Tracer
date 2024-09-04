@@ -45,6 +45,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void reset_render(const HIPRTRenderData& render_d
     render_data.g_buffer.ray_volume_states[pixel_index] = RayVolumeState();
     render_data.g_buffer.view_directions[pixel_index] = { 0, 0, 0 };
     render_data.g_buffer.camera_ray_hit[pixel_index] = false;
+
     render_data.aux_buffers.pixel_active[pixel_index] = false;
 
     if (render_data.render_settings.has_access_to_adaptive_sampling_buffers())
@@ -74,10 +75,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
     // while moving
     if (render_data.render_settings.do_render_low_resolution())
     {
-        // Reducing the number of bounces to 3
-        render_data.render_settings.nb_bounces = 3;
-        // TODO remove this line that follows, not needed here since "wavefront refactor"
-        render_data.render_settings.samples_per_frame = 1;
         int res_scaling = render_data.render_settings.render_low_resolution_scaling;
         pixel_index /= res_scaling;
 

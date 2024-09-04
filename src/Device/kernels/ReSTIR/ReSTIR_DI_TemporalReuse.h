@@ -113,8 +113,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void temporal_visibility_reuse(const HIPRTRenderD
 	shadow_ray.origin = shading_point;
 	shadow_ray.direction = sample_direction;
 
-	bool visible = !evaluate_shadow_ray(render_data, shadow_ray, distance_to_light);
-	if (!visible)
+	if (evaluate_shadow_ray(render_data, shadow_ray, distance_to_light))
 		reservoir.UCW = 0.0f;
 }
 
@@ -164,7 +163,18 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	ReSTIRDIReservoir new_reservoir;
 	ReSTIRDIReservoir initial_candidates_reservoir = render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs[center_pixel_index];
 	ReSTIRDIReservoir temporal_neighbor_reservoir = render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs[temporal_neighbor_pixel_index];
-	ReSTIRDISurface temporal_neighbor_surface = get_pixel_surface(render_data, temporal_neighbor_pixel_index);
+	// M-capping the temporal neighbor
+	if (render_data.render_settings.restir_di_settings.m_cap > 0)
+		temporal_neighbor_reservoir.M = hippt::min(temporal_neighbor_reservoir.M, render_data.render_settings.restir_di_settings.m_cap);
+
+	ReSTIRDISurface temporal_neighbor_surface;
+	if (render_data.render_settings.use_prev_frame_g_buffer())
+		// If we're allowing the use of last frame's g-buffer (which is required for unbiasedness in motion),
+		// then we're reading from that g-buffer
+		temporal_neighbor_surface = get_pixel_surface_previous_frame(render_data, temporal_neighbor_pixel_index);
+	else
+		// Reading from the current frame's g-buffer otherwise
+		temporal_neighbor_surface = get_pixel_surface(render_data, temporal_neighbor_pixel_index);
 	
 	ReSTIRDITemporalResamplingMISWeight<ReSTIR_DI_BiasCorrectionWeights> resampling_mis_weight;
 	// Will keep the index of the neighbor that has been selected by resampling. 
@@ -188,12 +198,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 
 	if (temporal_neighbor_reservoir.M > 0)
 	{
-		// M-capping the temporal neighbor
-		if (render_data.render_settings.restir_di_settings.m_cap > 0)
-			temporal_neighbor_reservoir.M = hippt::min(temporal_neighbor_reservoir.M, render_data.render_settings.restir_di_settings.m_cap);
-
-		int temporal_neighbor_M = temporal_neighbor_reservoir.M;
-
 		float target_function_at_center = 0.0f;
 		if (temporal_neighbor_reservoir.UCW != 0.0f)
 			// Only resampling if the temporal neighbor isn't empty
@@ -245,7 +249,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 
 		// Combining as in Alg. 6 of the paper
 		if (new_reservoir.combine_with(temporal_neighbor_reservoir, temporal_neighbor_resampling_mis_weight, target_function_at_center, jacobian_determinant, random_number_generator))
-			selected_neighbor = 0;
+			selected_neighbor = TEMPORAL_NEIGHBOR_RESAMPLE;
 		new_reservoir.sanity_check(make_int2(x, y));
 	}
 

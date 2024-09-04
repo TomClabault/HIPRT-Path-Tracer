@@ -84,7 +84,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_O
 	{
 		float3 light_source_normal = hippt::normalize(get_triangle_normal_non_normalized(render_data, sample.emissive_triangle_index));
 		float cosine_at_light_source = hippt::abs(hippt::dot(sample_direction, light_source_normal));
-
+		
 		geometry_term = cosine_at_light_source / (distance_to_light * distance_to_light);
 	}
 

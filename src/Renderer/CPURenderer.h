@@ -32,11 +32,18 @@ public:
     void update(int frame_number);
     void update_render_data(int sample);
     void camera_rays_pass();
+
     void ReSTIR_DI();
+    void configure_ReSTIR_DI_initial_pass();
+    void configure_ReSTIR_DI_temporal_pass();
+    void configure_ReSTIR_DI_spatial_pass(int spatial_pass_index);
+	void configure_ReSTIR_DI_output_buffer();
     void ReSTIR_DI_initial_candidates_pass();
-    void ReSTIR_DI_temporal_candidates_pass();
+    void ReSTIR_DI_temporal_reuse_pass();
     void ReSTIR_DI_spatial_reuse_pass();
+
     void tracing_pass();
+
     void tonemap(float gamma, float exposure);
 
 private:
@@ -66,14 +73,21 @@ private:
     };
 
     GBuffer m_g_buffer;
+    GBuffer m_g_buffer_prev_frame;
 
     // Random number generator for given a random seed to the threads at each sample
     Xorshift32Generator m_rng;
 
-    std::vector<ReSTIRDIReservoir> m_restir_initial_candidates_reservoirs;
-    std::vector<ReSTIRDIReservoir> m_restir_spatial_output_reservoirs_1;
-    std::vector<ReSTIRDIReservoir> m_restir_spatial_output_reservoirs_2;
-    ReSTIRDIReservoir* m_last_spatial_output_reservoirs;
+    struct ReSTIRDIState
+    {
+        std::vector<ReSTIRDIReservoir> initial_candidates_reservoirs;
+        std::vector<ReSTIRDIReservoir> spatial_output_reservoirs_1;
+        std::vector<ReSTIRDIReservoir> spatial_output_reservoirs_2;
+
+        ReSTIRDIReservoir* output_reservoirs;
+
+        bool odd_frame;
+    } m_restir_di_state;
 
     std::vector<Triangle> m_triangle_buffer;
     std::shared_ptr<BVH> m_bvh;

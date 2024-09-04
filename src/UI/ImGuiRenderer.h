@@ -29,7 +29,7 @@ public:
 	 */
 	static void wrapping_tooltip(const std::string& text);
 	static void add_tooltip(const std::string& tooltip_text, ImGuiHoveredFlags flags = ImGuiHoveredFlags_AllowWhenDisabled);
-	static void show_help_marker(const char* desc);
+	static void show_help_marker(const std::string& text);
 
 	void set_render_window(RenderWindow* renderer);
 

@@ -98,6 +98,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
     else if (!render_data.aux_buffers.pixel_active[pixel_index])
         return;
 
+    if (render_data.render_settings.do_render_low_resolution())
+    {
+        // Reducing the number of bounces to 3 if rendering at low resolution
+        // for better interactivity
+        render_data.render_settings.nb_bounces = 3;
+    }
+
     unsigned int seed;
     if (render_data.render_settings.freeze_random)
         seed = wang_hash(pixel_index + 1);

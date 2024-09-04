@@ -23,7 +23,6 @@
 // - pairwise mis
 // - feature to disable ReSTIR after a certain percentage of convergence --> we don't want to pay the full price of resampling and everything only for a few difficult isolated pixels (especially true with adaptive sampling where neighbors don't get sampled --> no new samples added to their reservoir --> no need to resample)
 // - test/fix sampling lights inside dielectrics with ReSTIR DI
-// - do not do initial candidates / spatial reuse and everything if the pixel is inactive (adaptive sampling)
 // - camera ray jittering causes dark lines and darkens glossy reflections
 // - multiple spatial reuse passes destroy glossy reflections
 // - m cap at 0 in ImGui breaks the render because of infinite M growth --> hardcap M to something like ~1000000 or something
@@ -32,6 +31,8 @@
 // - possibility to use visibility reuse at the end of each spatial pass
 // - 1/Z weights look broken with the temporal reuse in movement
 // - temporal permutation sampling
+// - maybe not spatially resample as hard everywhere in the image? heuristic to reduce/increase the number of spatial samples per pixel?
+// - possibility to reuse final shading visibility
 
 // TODO bugs:
 // - memory leak with OpenGL when resizing the window?
@@ -46,13 +47,13 @@
 // - no accumulation + denoiser + 1 SPP max = denoiser running full blow but shouldn't since the input image doesn't change because of the 1SPP max. More generally, this happens also with accumulation and it just seems that the denoiser still runs even when the renderer has reached the maximum amount of SPP
 // - ReSTIR DI + enabling adaptive sampling = crash
 // - GPU limiter not working when interacting.
-
+// - reset temporal reservoirs button not working with spatial reuse on
+// - ReSTIR DI at startup --> change to RIS --> accumulate --> crash
+// - samples per frame > 1 without accumulation = darkening
 
 
 // TODO Code Organization:
-// - Use show_help_marker() for tooltips in ImGui
-// - refactor SimplifiedRendererMaterial class
-// - fork HIPRT and remove the encryption thingy that slows down kernel compilation on NVIDIA
+// - Use show_help_marker() for every tooltips in ImGui
 // - cleanup RIS reservoir with all the BSDF stuff
 // - denoiser albedo and normals still useful now that we have the GBuffer?
 // - make a function get_camera_ray that handles pixel jittering
@@ -63,15 +64,21 @@
 // - Use HIPRT with CMake as a subdirectory (available soon)
 // - free denoiser buffers if not using denoising
 // - do furnace tests and check all the BRDFs
+// - replace "render time" by "frame time" at the very top of ImGui if not accumulating
+// All of this on threads:
+//		- ---------------- stream creation duration : 350ms
+//		- ---------------- denoiser creation duration : 804ms
+//		- ---------------- set_envmap() duration : 962ms
+//		- ---------------- set_scene() duration : 136ms
 
 
 
 // TODO Features:
+// - maybe not precompute stuff in the material structure? like anisotropic / oren nayar parameters? Is it even expensive to recompute it? Because that takes space and bandwidth
 // - pack material parameters that are between 0 and 1 into 8 bits, 1/256 is enough precision for parameters in 0-1
 // - Reuse MIS BSDF sample as path next bounce if the ray didn't hit anything
 // - RIS: do no use BSDF samples for rough surfaces (have a BSDF ray roughness treshold basically
 //		We may have to do something with the lobes of the BSDF specifically for this one. A coated diffuse cannot always ignore light samples for example because the diffuse lobe benefits from light samples even if the surface is not smooth (coating) 
-// - Whole scene BSDF overrider
 // - support stochastic alpha transparency
 // - enable samples per frame even when not accumulating
 // - maybe allow not resetting ReSTIR buffers while accumulation is on and camera has moved? Probably gives bad results but why not allow it for testing purposes?
@@ -80,9 +87,6 @@
 // - keep compiling kernels in the background after application has started to cache the most common kernel options on disk
 // - linear interpolation function for the parameters of the BSDF
 // - compensated importance sampling of envmap
-// - have pixel jittering disablable
-// - have accumulation disablable
-// - have render low resolution when moving disablable
 // - multiple GLTF, one GLB for different point of views per model
 // - can we do direct lighting + take emissive at all bounces but divide by 2 to avoid double taking into account emissive lights? this would solve missing caustics
 // - improve performance by only intersecting the selected emissive triangle with the BSDF ray when multiple importance sampling, we don't need a full BVH traversal at all
@@ -679,7 +683,7 @@ void RenderWindow::render()
 		}
 		else if (!is_rendering_done() || m_application_state->render_dirty)
 		{
-			// We can unmap the renderer's buffers so that OpenGL can use them when displaying
+			// We can unmap the renderer's buffers so that OpenGL can use them for displaying
 			m_renderer->unmap_buffers();
 			// Update the display view system so that the display view is changed to the
 			// one that we want to use (in the DisplayViewSystem's queue)

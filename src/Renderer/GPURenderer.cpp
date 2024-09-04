@@ -4,6 +4,7 @@
  */
 
 #include "Compiler/GPUKernelCompilerOptions.h"
+#include "HIPRT-Orochi/HIPRTOrochiCtx.h"
 #include "Renderer/GPURenderer.h"
 #include "Threads/ThreadFunctions.h"
 #include "Threads/ThreadManager.h"
@@ -109,16 +110,21 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
 void GPURenderer::update()
 {
 	internal_update_clear_device_status_buffers();
+	internal_update_prev_frame_g_buffer();
 	internal_update_adaptive_sampling_buffers();
 	internal_update_restir_di_buffers();
+
+	update_render_data();
+
+	// Updating the previous and current camera
+	m_render_data.current_camera = m_camera.to_hiprt();
+	m_render_data.prev_camera = m_previous_frame_camera.to_hiprt();
 
 	// Resetting this flag as this is a new frame
 	m_render_data.render_settings.do_update_status_buffers = false;
 
 	if (!m_render_data.render_settings.accumulate)
-	{
 		m_render_data.render_settings.sample_number = 0;
-	}
 }
 
 void GPURenderer::copy_status_buffers()
@@ -143,6 +149,28 @@ void GPURenderer::internal_clear_m_status_buffers()
 	m_status_buffers_values.pixel_converged_count = 0;
 }
 
+void GPURenderer::internal_update_prev_frame_g_buffer()
+{
+	if (m_render_data.render_settings.use_prev_frame_g_buffer(this))
+	{
+		// If at least one buffer has a size of 0, we assume that this means that the whole G-buffer is deallocated
+		// and so we're going to have to reallocate it
+		bool prev_frame_g_buffer_needs_resize = m_g_buffer_prev_frame.cameray_ray_hit.get_element_count() == 0;
+
+		if (prev_frame_g_buffer_needs_resize)
+			m_g_buffer_prev_frame.resize(m_render_resolution.x * m_render_resolution.y);
+	}
+	else
+	{
+		// If we're not using the G-buffer, indicating that in use_last_frame_g_buffer so that the shader doesn't
+		// try to use it
+
+		if (m_g_buffer_prev_frame.cameray_ray_hit.get_element_count() > 0)
+			// If the buffers aren't freed already
+			m_g_buffer_prev_frame.free();
+	}
+}
+
 void GPURenderer::internal_update_adaptive_sampling_buffers()
 {
 	bool buffers_needed = m_render_data.render_settings.has_access_to_adaptive_sampling_buffers();
@@ -153,9 +181,14 @@ void GPURenderer::internal_update_adaptive_sampling_buffers()
 		bool pixels_sample_count_needs_resize = m_pixels_sample_count_buffer->get_element_count() == 0;
 
 		if (pixels_squared_luminance_needs_resize || pixels_sample_count_needs_resize)
+		{
 			// If one of the two buffers is going to be resized, synchronizing because we don't want
 			// to resize the buffers if we're currently rendering a frame
 			synchronize_kernel();
+
+			// At least on buffer is going to be resized so buffers are invalidated
+			m_render_data_buffers_invalidated = true;
+		}
 
 		if (pixels_squared_luminance_needs_resize)
 			// Only allocating if it isn't already
@@ -164,6 +197,7 @@ void GPURenderer::internal_update_adaptive_sampling_buffers()
 		if (pixels_sample_count_needs_resize)
 			// Only allocating if it isn't already
 			m_pixels_sample_count_buffer->resize(m_render_resolution.x * m_render_resolution.y);
+
 	}
 	else
 	{
@@ -187,8 +221,13 @@ void GPURenderer::internal_update_restir_di_buffers()
 		bool spatial_output_2_needs_resize = m_restir_di_state.spatial_reuse_output_2.get_element_count() == 0;
 
 		if (initial_candidates_reservoir_needs_resize || spatial_output_1_needs_resize || spatial_output_2_needs_resize)
+		{
 			// Synchronizing because we don't want to resize the buffer while the renderer is rendering a frame
 			synchronize_kernel();
+
+			// At least on buffer is going to be resized so buffers are invalidated
+			m_render_data_buffers_invalidated = true;
+		}
 
 		if (initial_candidates_reservoir_needs_resize)
 			m_restir_di_state.initial_candidates_reservoirs.resize(m_render_resolution.x * m_render_resolution.y);
@@ -223,20 +262,30 @@ void GPURenderer::render()
 	int tile_size_x = 8;
 	int tile_size_y = 8;
 
-	int2 nb_groups = make_int2(std::ceil(m_render_resolution.x / (float)tile_size_x), std::ceil(m_render_resolution.y / (float)tile_size_y));
+	int2 nb_groups;
+	nb_groups.x = std::ceil(m_render_resolution.x / (float)tile_size_x);
+	nb_groups.y = std::ceil(m_render_resolution.y / (float)tile_size_y);
 
-	// TODO try launch async on the same stream and see performance
+	map_buffers_for_render();
+	
 	OROCHI_CHECK_ERROR(oroEventRecord(m_frame_start_event, m_main_stream));
 
 	for (int i = 1; i <= m_render_data.render_settings.samples_per_frame; i++)
 	{
+		// Swapping the G-buffers
+		if (m_render_data.render_settings.use_prev_frame_g_buffer(this))
+		{
+			// Only swapping the buffers if we need thre g-buffer of the last frame
+
+			std::swap(m_render_data.g_buffer, m_render_data.g_buffer_prev_frame);
+			std::swap(m_g_buffer, m_g_buffer_prev_frame);
+		}
+
 		if (i == m_render_data.render_settings.samples_per_frame)
 			// Last sample of the frame so we are going to enable the update 
 			// of the status buffers (number of pixels converged, how many rays still
 			// active, ...)
 			m_render_data.render_settings.do_update_status_buffers = true;
-
-		update_render_data();
 
 		launch_camera_rays();
 		launch_ReSTIR_DI();
@@ -276,9 +325,11 @@ void GPURenderer::render()
 
 void GPURenderer::launch_camera_rays()
 {
-	void* launch_args[] = { &m_render_data, &m_render_resolution};
-
 	m_render_data.random_seed = m_rng.xorshift32();
+
+	HIPRTRenderData render_data_camera_rays = m_render_data;
+	void* launch_args[] = { &m_render_data, &m_render_resolution };
+
 	m_camera_ray_pass.launch_timed_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
 }
 
@@ -432,13 +483,10 @@ void GPURenderer::resize(int new_width, int new_height)
 	m_normals_AOV_buffer->resize(new_width * new_height);
 	m_albedo_AOV_buffer->resize(new_width * new_height);
 
-	m_g_buffer.materials.resize(new_width * new_height);
-	m_g_buffer.geometric_normals.resize(new_width * new_height);
-	m_g_buffer.shading_normals.resize(new_width * new_height);
-	m_g_buffer.view_directions.resize(new_width * new_height);
-	m_g_buffer.first_hits.resize(new_width * new_height);
-	m_g_buffer.cameray_ray_hit.resize(new_width * new_height);
-	m_g_buffer.ray_volume_states.resize(new_width * new_height);
+	m_g_buffer.resize(new_width * new_height);
+
+	if (m_render_data.render_settings.use_prev_frame_g_buffer(this))
+		m_g_buffer_prev_frame.resize(new_width * new_height);
 
 	if (m_render_data.render_settings.has_access_to_adaptive_sampling_buffers())
 	{
@@ -446,13 +494,16 @@ void GPURenderer::resize(int new_width, int new_height)
 		m_pixels_squared_luminance_buffer.resize(new_width * new_height);
 	}
 
-	m_restir_di_state.initial_candidates_reservoirs.resize(new_width * new_height);
-	m_restir_di_state.spatial_reuse_output_2.resize(new_width * new_height);
-	m_restir_di_state.spatial_reuse_output_1.resize(new_width * new_height);
-	// Initializing to spatial_reuse_output_1 arbitrarily as it doesn't matter for the first frame since the
-	// buffer is going to be empty anyways and no temporal resampling will happen (because this is
-	// the buffer that the temporal reuse pass uses as input)
-	m_render_data.render_settings.restir_di_settings.restir_output_reservoirs = m_restir_di_state.spatial_reuse_output_1.get_device_pointer();
+	if (m_path_tracer_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI)
+	{
+		m_restir_di_state.initial_candidates_reservoirs.resize(new_width * new_height);
+		m_restir_di_state.spatial_reuse_output_2.resize(new_width * new_height);
+		m_restir_di_state.spatial_reuse_output_1.resize(new_width * new_height);
+		// Initializing to spatial_reuse_output_1 arbitrarily as it doesn't matter for the first frame since the
+		// buffer is going to be empty anyways and no temporal resampling will happen (because this is
+		// the buffer that the temporal reuse pass uses as input)
+		m_render_data.render_settings.restir_di_settings.restir_output_reservoirs = m_restir_di_state.spatial_reuse_output_1.get_device_pointer();
+	}
 
 	m_pixel_active.resize(new_width * new_height);
 
@@ -460,6 +511,17 @@ void GPURenderer::resize(int new_width, int new_height)
 	// may have changed
 	float new_aspect = (float)new_width / new_height;
 	m_camera.projection_matrix = glm::transpose(glm::perspective(m_camera.vertical_fov, new_aspect, m_camera.near_plane, m_camera.far_plane));
+
+	m_render_data_buffers_invalidated = true;
+}
+
+void GPURenderer::map_buffers_for_render()
+{
+	m_render_data.buffers.pixels = m_framebuffer->map_no_error();
+	m_render_data.aux_buffers.denoiser_normals = m_normals_AOV_buffer->map_no_error();
+	m_render_data.aux_buffers.denoiser_albedo = m_albedo_AOV_buffer->map_no_error();
+	if (m_render_data.render_settings.has_access_to_adaptive_sampling_buffers())
+		m_render_data.aux_buffers.pixel_sample_count = m_pixels_sample_count_buffer->map_no_error();
 }
 
 void GPURenderer::unmap_buffers()
@@ -469,6 +531,7 @@ void GPURenderer::unmap_buffers()
 	m_albedo_AOV_buffer->unmap();
 	m_pixels_sample_count_buffer->unmap();
 }
+
 
 std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_color_framebuffer()
 {
@@ -615,91 +678,84 @@ void GPURenderer::reset()
 
 void GPURenderer::update_render_data()
 {
-	m_render_data.geom = m_hiprt_scene.geometry.m_geometry;
-
-	m_render_data.buffers.pixels = m_framebuffer->map_no_error();
-	m_render_data.buffers.triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.geometry.m_mesh.triangleIndices);
-	m_render_data.buffers.vertices_positions = reinterpret_cast<float3*>(m_hiprt_scene.geometry.m_mesh.vertices);
-	m_render_data.buffers.has_vertex_normals = reinterpret_cast<unsigned char*>(m_hiprt_scene.has_vertex_normals.get_device_pointer());
-	m_render_data.buffers.vertex_normals = reinterpret_cast<float3*>(m_hiprt_scene.vertex_normals.get_device_pointer());
-	m_render_data.buffers.material_indices = reinterpret_cast<int*>(m_hiprt_scene.material_indices.get_device_pointer());
-	m_render_data.buffers.materials_buffer = reinterpret_cast<RendererMaterial*>(m_hiprt_scene.materials_buffer.get_device_pointer());
-	m_render_data.buffers.emissive_triangles_count = m_hiprt_scene.emissive_triangles_count;
-	m_render_data.buffers.emissive_triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.emissive_triangles_indices.get_device_pointer());
-
-	m_render_data.buffers.material_textures = reinterpret_cast<oroTextureObject_t*>(m_hiprt_scene.materials_textures.get_device_pointer());
-	m_render_data.buffers.texcoords = reinterpret_cast<float2*>(m_hiprt_scene.texcoords_buffer.get_device_pointer());
-	m_render_data.buffers.textures_dims = reinterpret_cast<int2*>(m_hiprt_scene.textures_dims.get_device_pointer());
-
-	m_render_data.aux_buffers.denoiser_normals = m_normals_AOV_buffer->map_no_error();
-	m_render_data.aux_buffers.denoiser_albedo = m_albedo_AOV_buffer->map_no_error();
-	if (m_render_data.render_settings.has_access_to_adaptive_sampling_buffers())
-	{
-		m_render_data.aux_buffers.pixel_sample_count = m_pixels_sample_count_buffer->map_no_error();
-		m_render_data.aux_buffers.pixel_squared_luminance = m_pixels_squared_luminance_buffer.get_device_pointer();
-	}
-
-	m_render_data.aux_buffers.still_one_ray_active = m_still_one_ray_active_buffer.get_device_pointer();
-	m_render_data.aux_buffers.pixel_active = m_pixel_active.get_device_pointer();
-	m_render_data.aux_buffers.stop_noise_threshold_converged_count = reinterpret_cast<AtomicType<unsigned int>*>(m_pixels_converged_count_buffer.get_device_pointer());
-
-	m_render_data.g_buffer.materials = m_g_buffer.materials.get_device_pointer();
-	m_render_data.g_buffer.geometric_normals = m_g_buffer.geometric_normals.get_device_pointer();
-	m_render_data.g_buffer.shading_normals = m_g_buffer.shading_normals.get_device_pointer();
-	m_render_data.g_buffer.view_directions = m_g_buffer.view_directions.get_device_pointer();
-	m_render_data.g_buffer.first_hits = m_g_buffer.first_hits.get_device_pointer();
-	m_render_data.g_buffer.camera_ray_hit = m_g_buffer.cameray_ray_hit.get_device_pointer();
-	m_render_data.g_buffer.ray_volume_states = m_g_buffer.ray_volume_states.get_device_pointer();
-
-	// Setting the pointers for use in reset_render() in the camera rays kernel
-	if (m_path_tracer_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI)
-	{
-		m_render_data.aux_buffers.restir_reservoir_buffer_1 = m_restir_di_state.initial_candidates_reservoirs.get_device_pointer();
-		m_render_data.aux_buffers.restir_reservoir_buffer_2 = m_restir_di_state.spatial_reuse_output_1.get_device_pointer();
-		m_render_data.aux_buffers.restir_reservoir_buffer_3 = m_restir_di_state.spatial_reuse_output_2.get_device_pointer();
-	}
-	else
-	{
-		// If ReSTIR DI is disabled, setting the pointers to nullptr so that the camera rays kernel
-		// for example can detect that the buffers are freed and doesn't try to reset them or do
-		// anything with them (which would lead to a crash since we would be accessing nullptr buffers)
-
-		m_render_data.aux_buffers.restir_reservoir_buffer_1 = nullptr;
-		m_render_data.aux_buffers.restir_reservoir_buffer_2 = nullptr;
-		m_render_data.aux_buffers.restir_reservoir_buffer_3 = nullptr;
-	}
-
-	m_render_data.current_camera = m_camera.to_hiprt();
-	m_render_data.prev_camera = m_previous_frame_camera.to_hiprt();
-
+	// Always updating the random seed
 	m_render_data.random_seed = m_rng.xorshift32();
 
+	if (m_render_data_buffers_invalidated)
+	{
+		m_render_data.geom = m_hiprt_scene.geometry.m_geometry;
 
-	// TODO doesn't seem necessary since this method of back also fails
-	glm::vec3 t = m_previous_frame_camera.translation;
-	m_render_data.prev_camera_position = make_float3(t.x, t.y, t.z);
-		
-	float a, b, c;
+		m_render_data.buffers.triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.geometry.m_mesh.triangleIndices);
+		m_render_data.buffers.vertices_positions = reinterpret_cast<float3*>(m_hiprt_scene.geometry.m_mesh.vertices);
+		m_render_data.buffers.has_vertex_normals = reinterpret_cast<unsigned char*>(m_hiprt_scene.has_vertex_normals.get_device_pointer());
+		m_render_data.buffers.vertex_normals = reinterpret_cast<float3*>(m_hiprt_scene.vertex_normals.get_device_pointer());
+		m_render_data.buffers.material_indices = reinterpret_cast<int*>(m_hiprt_scene.material_indices.get_device_pointer());
+		m_render_data.buffers.materials_buffer = reinterpret_cast<RendererMaterial*>(m_hiprt_scene.materials_buffer.get_device_pointer());
+		m_render_data.buffers.emissive_triangles_count = m_hiprt_scene.emissive_triangles_count;
+		m_render_data.buffers.emissive_triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.emissive_triangles_indices.get_device_pointer());
 
-	a = m_render_data.prev_camera.view_projection.m[0][3] + m_render_data.prev_camera.view_projection.m[0][1];
-	b = m_render_data.prev_camera.view_projection.m[1][3] + m_render_data.prev_camera.view_projection.m[1][1];
-	c = m_render_data.prev_camera.view_projection.m[2][3] + m_render_data.prev_camera.view_projection.m[2][1];
-	m_render_data.bottom_plane_normal = hippt::normalize(make_float3(a, b, c));
+		m_render_data.buffers.material_textures = reinterpret_cast<oroTextureObject_t*>(m_hiprt_scene.materials_textures.get_device_pointer());
+		m_render_data.buffers.texcoords = reinterpret_cast<float2*>(m_hiprt_scene.texcoords_buffer.get_device_pointer());
+		m_render_data.buffers.textures_dims = reinterpret_cast<int2*>(m_hiprt_scene.textures_dims.get_device_pointer());
 
-	a = m_render_data.prev_camera.view_projection.m[0][3] - m_render_data.prev_camera.view_projection.m[0][1];
-	b = m_render_data.prev_camera.view_projection.m[1][3] - m_render_data.prev_camera.view_projection.m[1][1];
-	c = m_render_data.prev_camera.view_projection.m[2][3] - m_render_data.prev_camera.view_projection.m[2][1];
-	m_render_data.top_plane_normal = hippt::normalize(make_float3(a, b, c));
+		m_render_data.g_buffer.materials = m_g_buffer.materials.get_device_pointer();
+		m_render_data.g_buffer.geometric_normals = m_g_buffer.geometric_normals.get_device_pointer();
+		m_render_data.g_buffer.shading_normals = m_g_buffer.shading_normals.get_device_pointer();
+		m_render_data.g_buffer.view_directions = m_g_buffer.view_directions.get_device_pointer();
+		m_render_data.g_buffer.first_hits = m_g_buffer.first_hits.get_device_pointer();
+		m_render_data.g_buffer.camera_ray_hit = m_g_buffer.cameray_ray_hit.get_device_pointer();
+		m_render_data.g_buffer.ray_volume_states = m_g_buffer.ray_volume_states.get_device_pointer();
 
-	a = m_render_data.prev_camera.view_projection.m[0][3] + m_render_data.prev_camera.view_projection.m[0][0];
-	b = m_render_data.prev_camera.view_projection.m[1][3] + m_render_data.prev_camera.view_projection.m[1][0];
-	c = m_render_data.prev_camera.view_projection.m[2][3] + m_render_data.prev_camera.view_projection.m[2][0];
-	m_render_data.left_plane_normal = hippt::normalize(make_float3(a, b, c));
+		if (m_render_data.render_settings.use_prev_frame_g_buffer(this))
+		{
+			// Only setting the pointers of the buffers if we're actually using the g-buffer of the previous frame
 
-	a = m_render_data.prev_camera.view_projection.m[0][3] - m_render_data.prev_camera.view_projection.m[0][0];
-	b = m_render_data.prev_camera.view_projection.m[1][3] - m_render_data.prev_camera.view_projection.m[1][0];
-	c = m_render_data.prev_camera.view_projection.m[2][3] - m_render_data.prev_camera.view_projection.m[2][0];
-	m_render_data.right_plane_normal = hippt::normalize(make_float3(a, b, c));
+			m_render_data.g_buffer_prev_frame.materials = m_g_buffer_prev_frame.materials.get_device_pointer();
+			m_render_data.g_buffer_prev_frame.geometric_normals = m_g_buffer_prev_frame.geometric_normals.get_device_pointer();
+			m_render_data.g_buffer_prev_frame.shading_normals = m_g_buffer_prev_frame.shading_normals.get_device_pointer();
+			m_render_data.g_buffer_prev_frame.view_directions = m_g_buffer_prev_frame.view_directions.get_device_pointer();
+			m_render_data.g_buffer_prev_frame.first_hits = m_g_buffer_prev_frame.first_hits.get_device_pointer();
+			m_render_data.g_buffer_prev_frame.camera_ray_hit = m_g_buffer_prev_frame.cameray_ray_hit.get_device_pointer();
+			m_render_data.g_buffer_prev_frame.ray_volume_states = m_g_buffer_prev_frame.ray_volume_states.get_device_pointer();
+		}
+		else
+		{
+			m_render_data.g_buffer_prev_frame.materials = nullptr;
+			m_render_data.g_buffer_prev_frame.geometric_normals = nullptr;
+			m_render_data.g_buffer_prev_frame.shading_normals = nullptr;
+			m_render_data.g_buffer_prev_frame.view_directions = nullptr;
+			m_render_data.g_buffer_prev_frame.first_hits = nullptr;
+			m_render_data.g_buffer_prev_frame.camera_ray_hit = nullptr;
+			m_render_data.g_buffer_prev_frame.ray_volume_states = nullptr;
+		}
+
+		if (m_render_data.render_settings.has_access_to_adaptive_sampling_buffers())
+			m_render_data.aux_buffers.pixel_squared_luminance = m_pixels_squared_luminance_buffer.get_device_pointer();
+
+		m_render_data.aux_buffers.pixel_active = m_pixel_active.get_device_pointer();
+		m_render_data.aux_buffers.still_one_ray_active = m_still_one_ray_active_buffer.get_device_pointer();
+		m_render_data.aux_buffers.stop_noise_threshold_converged_count = reinterpret_cast<AtomicType<unsigned int>*>(m_pixels_converged_count_buffer.get_device_pointer());
+
+		// Setting the pointers for use in reset_render() in the camera rays kernel
+		if (m_path_tracer_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI)
+		{
+			m_render_data.aux_buffers.restir_reservoir_buffer_1 = m_restir_di_state.initial_candidates_reservoirs.get_device_pointer();
+			m_render_data.aux_buffers.restir_reservoir_buffer_2 = m_restir_di_state.spatial_reuse_output_1.get_device_pointer();
+			m_render_data.aux_buffers.restir_reservoir_buffer_3 = m_restir_di_state.spatial_reuse_output_2.get_device_pointer();
+		}
+		else
+		{
+			// If ReSTIR DI is disabled, setting the pointers to nullptr so that the camera rays kernel
+			// for example can detect that the buffers are freed and doesn't try to reset them or do
+			// anything with them (which would lead to a crash since we would be accessing nullptr buffers)
+
+			m_render_data.aux_buffers.restir_reservoir_buffer_1 = nullptr;
+			m_render_data.aux_buffers.restir_reservoir_buffer_2 = nullptr;
+			m_render_data.aux_buffers.restir_reservoir_buffer_3 = nullptr;
+		}
+
+		m_render_data_buffers_invalidated = false;
+	}
 }
 
 void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
@@ -788,7 +844,7 @@ void GPURenderer::set_envmap(Image32Bit& envmap_image)
 	m_render_data.world_settings.envmap_width = m_envmap.width;
 	m_render_data.world_settings.envmap_height = m_envmap.height;
 	m_render_data.world_settings.envmap_cdf = m_envmap.get_cdf_device_pointer();
-}
+} 
 
 bool GPURenderer::has_envmap()
 {

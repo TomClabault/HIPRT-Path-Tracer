@@ -173,6 +173,7 @@ struct HIPRTRenderData
 	RenderBuffers buffers;
 	AuxiliaryBuffers aux_buffers;
 	GBuffer g_buffer;
+	GBuffer g_buffer_prev_frame;
 
 	HIPRTRenderSettings render_settings;
 	WorldSettings world_settings;
@@ -181,12 +182,6 @@ struct HIPRTRenderData
 	HIPRTCamera current_camera;
 	// Camera of the last frame
 	HIPRTCamera prev_camera;
-
-	float3 prev_camera_position;
-	float3 left_plane_normal;
-	float3 right_plane_normal;
-	float3 top_plane_normal;
-	float3 bottom_plane_normal;
 
 	CPUData cpu_only;
 };

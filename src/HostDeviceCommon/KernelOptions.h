@@ -194,7 +194,7 @@
  * 
  *	- KERNEL_OPTION_TRUE or KERNEL_OPTION_FALSE values are accepted. Self-explanatory
  */
-#define ReSTIR_DI_SpatialReuseBiasUseVisiblity KERNEL_OPTION_TRUE
+#define ReSTIR_DI_BiasCorrectionUseVisiblity KERNEL_OPTION_TRUE
 
 /**
  * What bias correction weights to use when resampling neighbors (temporal / spatial)
@@ -231,7 +231,7 @@
  *		2023, "A Gentle Introduction to ReSTIR". Should have lower variance than without confidence weights
  *		due to favoring better samples.
  */
-#define ReSTIR_DI_BiasCorrectionWeights RESTIR_DI_BIAS_CORRECTION_MIS_LIKE_CONFIDENCE_WEIGHTS
+#define ReSTIR_DI_BiasCorrectionWeights RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
 
 /**
  * What sampling strategy to use for thd GGX NDF

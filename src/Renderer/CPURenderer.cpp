@@ -27,10 +27,10 @@
 // the interesting pixel. If that image viewer has its (0, 0) in the top
 // left corner, you'll need to set that DEBUG_FLIP_Y to 0. Set 1 to if
 // you're measuring the coordinates of the pixel with (0, 0) in the bottom left corner
-#define DEBUG_FLIP_Y 1
+#define DEBUG_FLIP_Y 0
 // Coordinates of the pixel to render
-#define DEBUG_PIXEL_X 849
-#define DEBUG_PIXEL_Y 479
+#define DEBUG_PIXEL_X 537
+#define DEBUG_PIXEL_Y 144
 // If 1, a square of DEBUG_NEIGHBORHOOD_SIZE x DEBUG_NEIGHBORHOOD_SIZE pixels
 // will be rendered around the pixel to debug (given by DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y). The pixel of interest is going to be rendered first so you
@@ -43,7 +43,7 @@
 #define DEBUG_RENDER_NEIGHBORHOOD 1
 // How many pixels to render around the debugged pixel given by the DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y coordinates
-#define DEBUG_NEIGHBORHOOD_SIZE 15
+#define DEBUG_NEIGHBORHOOD_SIZE 125
 
 CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, height))
 {
@@ -55,10 +55,10 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
     m_denoiser_normals.resize(width * height, float3{ 0.0f, 0.0f, 0.0f });
     m_pixel_sample_count.resize(width * height, 0);
     m_pixel_squared_luminance.resize(width * height, 0.0f);
-    m_restir_initial_candidates_reservoirs.resize(width * height);
-    m_restir_spatial_output_reservoirs_1.resize(width * height);
-    m_restir_spatial_output_reservoirs_2.resize(width * height);
-    m_last_spatial_output_reservoirs = m_restir_spatial_output_reservoirs_1.data();
+    m_restir_di_state.initial_candidates_reservoirs.resize(width * height);
+    m_restir_di_state.spatial_output_reservoirs_1.resize(width * height);
+    m_restir_di_state.spatial_output_reservoirs_2.resize(width * height);
+    m_restir_di_state.output_reservoirs = m_restir_di_state.spatial_output_reservoirs_1.data();
 
     m_g_buffer.materials.resize(width * height);
     m_g_buffer.geometric_normals.resize(width * height);
@@ -67,6 +67,14 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
     m_g_buffer.first_hits.resize(width * height);
     m_g_buffer.cameray_ray_hit.resize(width * height);
     m_g_buffer.ray_volume_states.resize(width * height);
+
+    m_g_buffer_prev_frame.materials.resize(width * height);
+    m_g_buffer_prev_frame.geometric_normals.resize(width * height);
+    m_g_buffer_prev_frame.shading_normals.resize(width * height);
+    m_g_buffer_prev_frame.view_directions.resize(width * height);
+    m_g_buffer_prev_frame.first_hits.resize(width * height);
+    m_g_buffer_prev_frame.cameray_ray_hit.resize(width * height);
+    m_g_buffer_prev_frame.ray_volume_states.resize(width * height);
 
     m_rng = Xorshift32Generator(42);
 }
@@ -97,7 +105,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.aux_buffers.still_one_ray_active = &m_still_one_ray_active;
     m_render_data.aux_buffers.stop_noise_threshold_converged_count = &m_stop_noise_threshold_count;
 
-    m_render_data.g_buffer.materials= m_g_buffer.materials.data();
+    m_render_data.g_buffer.materials = m_g_buffer.materials.data();
     m_render_data.g_buffer.geometric_normals = m_g_buffer.geometric_normals.data();
     m_render_data.g_buffer.shading_normals = m_g_buffer.shading_normals.data();
     m_render_data.g_buffer.view_directions = m_g_buffer.view_directions.data();
@@ -105,11 +113,19 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.g_buffer.camera_ray_hit = m_g_buffer.cameray_ray_hit.data();
     m_render_data.g_buffer.ray_volume_states = m_g_buffer.ray_volume_states.data();
 
-    m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs = m_restir_initial_candidates_reservoirs.data();
-    m_render_data.render_settings.restir_di_settings.restir_output_reservoirs = m_restir_spatial_output_reservoirs_1.data();
-    m_render_data.aux_buffers.restir_reservoir_buffer_1 = m_restir_initial_candidates_reservoirs.data();
-    m_render_data.aux_buffers.restir_reservoir_buffer_2 = m_restir_spatial_output_reservoirs_1.data();
-    m_render_data.aux_buffers.restir_reservoir_buffer_3 = m_restir_spatial_output_reservoirs_2.data();
+    m_render_data.g_buffer_prev_frame.materials = m_g_buffer_prev_frame.materials.data();
+    m_render_data.g_buffer_prev_frame.geometric_normals = m_g_buffer_prev_frame.geometric_normals.data();
+    m_render_data.g_buffer_prev_frame.shading_normals = m_g_buffer_prev_frame.shading_normals.data();
+    m_render_data.g_buffer_prev_frame.view_directions = m_g_buffer_prev_frame.view_directions.data();
+    m_render_data.g_buffer_prev_frame.first_hits = m_g_buffer_prev_frame.first_hits.data();
+    m_render_data.g_buffer_prev_frame.camera_ray_hit = m_g_buffer_prev_frame.cameray_ray_hit.data();
+    m_render_data.g_buffer_prev_frame.ray_volume_states = m_g_buffer_prev_frame.ray_volume_states.data();
+
+    m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs = m_restir_di_state.initial_candidates_reservoirs.data();
+    m_render_data.render_settings.restir_di_settings.restir_output_reservoirs = m_restir_di_state.spatial_output_reservoirs_1.data();
+    m_render_data.aux_buffers.restir_reservoir_buffer_1 = m_restir_di_state.initial_candidates_reservoirs.data();
+    m_render_data.aux_buffers.restir_reservoir_buffer_2 = m_restir_di_state.spatial_output_reservoirs_1.data();
+    m_render_data.aux_buffers.restir_reservoir_buffer_3 = m_restir_di_state.spatial_output_reservoirs_2.data();
 
     std::cout << "Building scene BVH..." << std::endl;
     m_triangle_buffer = parsed_scene.get_triangles();
@@ -179,6 +195,9 @@ void CPURenderer::render()
             m_render_data.render_settings.sample_number++;
         m_render_data.random_seed = m_rng.xorshift32();
         m_render_data.render_settings.need_to_reset = false;
+        // We want the G Buffer of the frame that we just rendered to go in the "g_buffer_prev_frame"
+        // and then we can re-use the old buffers of to be filled by the current frame render
+        std::swap(m_render_data.g_buffer, m_render_data.g_buffer_prev_frame);
 
         if (m_render_data.render_settings.samples_per_frame > 1)
             std::cout << "Frame " << frame_number + 1 << ": " << (frame_number + 1) / static_cast<float>(m_render_data.render_settings.samples_per_frame) * 100.0f << "%" << std::endl;
@@ -190,8 +209,8 @@ void CPURenderer::render()
 
 void CPURenderer::update(int frame_number)
 {
-    if (frame_number == 8)
-        m_camera.translate(glm::vec3(0, +0.1, 0));
+    //if (frame_number == 8)
+    //    m_camera.translate(glm::vec3(-0.2, 0, 0));
 }
 
 void CPURenderer::update_render_data(int sample)
@@ -232,82 +251,108 @@ void CPURenderer::camera_rays_pass()
 
 void CPURenderer::ReSTIR_DI()
 {
-    m_render_data.random_seed = m_rng.xorshift32();
+    configure_ReSTIR_DI_initial_pass();
     ReSTIR_DI_initial_candidates_pass();
 
-    ReSTIRDISettings& restir_di_settings = m_render_data.render_settings.restir_di_settings;
     if (m_render_data.render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
     {
-        m_render_data.random_seed = m_rng.xorshift32();
-
-        // The input of the temporal pass is the output of last frame ReSTIR (and also the initial candidates but this is implicit
-        // and "hardcoded in the shader"
-        restir_di_settings.temporal_pass.input_reservoirs = restir_di_settings.restir_output_reservoirs;
-
-        if (restir_di_settings.spatial_pass.do_spatial_reuse_pass)
-            // If we're going to do spatial reuse, reuse the initial candidate reservoirs to store the output of the temporal pass.
-            // The spatial reuse pass will read form that buffer
-            restir_di_settings.temporal_pass.output_reservoirs = m_restir_initial_candidates_reservoirs.data();
-        else
-            // Else, no spatial reuse, the output of the temporal pass is going to be in its own buffer, using spatial_reuse_output1
-            // here arbitrarily, could have been spatial reuse 2, doesn't matter, we just need a buffer
-            restir_di_settings.temporal_pass.output_reservoirs = m_restir_spatial_output_reservoirs_1.data();
-        ReSTIR_DI_temporal_candidates_pass();
+        configure_ReSTIR_DI_temporal_pass();
+        ReSTIR_DI_temporal_reuse_pass();
     }
 
-    if (restir_di_settings.spatial_pass.do_spatial_reuse_pass)
+
+    if (m_render_data.render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)
     {
-        for (int spatial_reuse_pass = 0; spatial_reuse_pass < restir_di_settings.spatial_pass.number_of_passes; spatial_reuse_pass++)
+        for (int spatial_reuse_pass = 0; spatial_reuse_pass < m_render_data.render_settings.restir_di_settings.spatial_pass.number_of_passes; spatial_reuse_pass++)
         {
-            m_render_data.random_seed = m_rng.xorshift32();
-
-            if (spatial_reuse_pass == 0)
-            {
-                if (restir_di_settings.temporal_pass.do_temporal_reuse_pass)
-                    // For the first spatial reuse pass, we hardcode reading from the output of the temporal pass and storing into 'spatial_reuse_output_1'
-                    restir_di_settings.spatial_pass.input_reservoirs = restir_di_settings.temporal_pass.output_reservoirs;
-                else
-                    // If there is no temporal reuse pass, using the initial candidates as the input to the spatial reuse pass
-                    restir_di_settings.spatial_pass.input_reservoirs = restir_di_settings.initial_candidates.output_reservoirs;
-
-                restir_di_settings.spatial_pass.output_reservoirs = m_restir_spatial_output_reservoirs_1.data();
-            }
-            else
-            {
-                // And then, starting at the second spatial reuse pass, we read from the output of the previous spatial pass and store
-                // in either spatial_reuse_output_1 or spatial_reuse_output_2, depending on which one isn't the input (we don't
-                // want to store in the same buffers that is used for output because that's a race condition so
-                // we're ping-ponging between the two outputs of the spatial reuse pass)
-
-                if ((spatial_reuse_pass & 1) == 0)
-                {
-                    restir_di_settings.spatial_pass.input_reservoirs = m_restir_spatial_output_reservoirs_2.data();
-                    restir_di_settings.spatial_pass.output_reservoirs = m_restir_spatial_output_reservoirs_1.data();
-                }
-                else
-                {
-                    restir_di_settings.spatial_pass.input_reservoirs = m_restir_spatial_output_reservoirs_1.data();
-                    restir_di_settings.spatial_pass.output_reservoirs = m_restir_spatial_output_reservoirs_2.data();
-
-                }
-            }
+            configure_ReSTIR_DI_spatial_pass(spatial_reuse_pass);
+            ReSTIR_DI_spatial_reuse_pass();
         }
+    }
 
-        ReSTIR_DI_spatial_reuse_pass();
+    configure_ReSTIR_DI_output_buffer();
+    m_restir_di_state.odd_frame = !m_restir_di_state.odd_frame;
 }
 
+void CPURenderer::configure_ReSTIR_DI_initial_pass()
+{
+    m_render_data.random_seed = m_rng.xorshift32();
+    m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs = m_restir_di_state.initial_candidates_reservoirs.data();
+}
+
+void CPURenderer::configure_ReSTIR_DI_temporal_pass()
+{
+    m_render_data.random_seed = m_rng.xorshift32();
+
+    // The input of the temporal pass is the output of last frame ReSTIR (and also the initial candidates but this is implicit
+    // and "hardcoded in the shader"
+    m_render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs = m_render_data.render_settings.restir_di_settings.restir_output_reservoirs;
+
+    if (m_render_data.render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)
+        m_render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs = m_restir_di_state.initial_candidates_reservoirs.data();
+    // If we're going to do spatial reuse, reuse the initial candidate reservoirs to store the output of the temporal pass.
+    // The spatial reuse pass will read form that buffer
+    else
+    {
+        // Else, no spatial reuse, the output of the temporal pass is going to be in its own buffer.
+        // Alternatively using spatial_reuse_output_1 and spatial_reuse_output_2 to avoid race conditions
+        if (m_restir_di_state.odd_frame)
+            m_render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs = m_restir_di_state.spatial_output_reservoirs_1.data();
+        else
+            m_render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs = m_restir_di_state.spatial_output_reservoirs_2.data();
+    }
+}
+
+void CPURenderer::configure_ReSTIR_DI_spatial_pass(int spatial_pass_index)
+{
+    m_render_data.random_seed = m_rng.xorshift32();
+
+    if (spatial_pass_index == 0)
+    {
+        if (m_render_data.render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
+            // For the first spatial reuse pass, we hardcode reading from the output of the temporal pass and storing into 'spatial_reuse_output_1'
+            m_render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs = m_render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs;
+        else
+            // If there is no temporal reuse pass, using the initial candidates as the input to the spatial reuse pass
+            m_render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs = m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs;
+
+        m_render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs = m_restir_di_state.spatial_output_reservoirs_1.data();
+    }
+    else
+    {
+        // And then, starting at the second spatial reuse pass, we read from the output of the previous spatial pass and store
+        // in either spatial_reuse_output_1 or spatial_reuse_output_2, depending on which one isn't the input (we don't
+        // want to store in the same buffers that is used for output because that's a race condition so
+        // we're ping-ponging between the two outputs of the spatial reuse pass)
+
+        if ((spatial_pass_index & 1) == 0)
+        {
+            m_render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs = m_restir_di_state.spatial_output_reservoirs_2.data();
+            m_render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs = m_restir_di_state.spatial_output_reservoirs_1.data();
+        }
+        else
+        {
+            m_render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs = m_restir_di_state.spatial_output_reservoirs_1.data();
+            m_render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs = m_restir_di_state.spatial_output_reservoirs_2.data();
+
+        }
+    }
+}
+
+void CPURenderer::configure_ReSTIR_DI_output_buffer()
+{
     // Keeping in mind which was the buffer used last for the output of the spatial reuse pass as this is the buffer that
-    // we're going to use as the input to the temporal reuse pass of the next frame
-    if (restir_di_settings.spatial_pass.do_spatial_reuse_pass)
+        // we're going to use as the input to the temporal reuse pass of the next frame
+    if (m_render_data.render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)
         // If there was spatial reuse, using the output of the spatial reuse pass as the input of the temporal
         // pass of next frame
-        restir_di_settings.restir_output_reservoirs = restir_di_settings.spatial_pass.output_reservoirs;
-    else if (restir_di_settings.temporal_pass.do_temporal_reuse_pass)
+        m_render_data.render_settings.restir_di_settings.restir_output_reservoirs = m_render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs;
+    else if (m_render_data.render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
         // If there was a temporal reuse pass, using that output as the input of the next temporal reuse pass
-        restir_di_settings.restir_output_reservoirs = restir_di_settings.temporal_pass.output_reservoirs;
+        m_render_data.render_settings.restir_di_settings.restir_output_reservoirs = m_render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs;
     else
         // No spatial or temporal, the output of ReSTIR is just the output of the initial candidates pass
-        restir_di_settings.restir_output_reservoirs = restir_di_settings.initial_candidates.output_reservoirs;
+        m_render_data.render_settings.restir_di_settings.restir_output_reservoirs = m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs;
 }
 
 void CPURenderer::ReSTIR_DI_initial_candidates_pass()
@@ -340,7 +385,7 @@ void CPURenderer::ReSTIR_DI_initial_candidates_pass()
 #endif // DEBUG_PIXEL
 }
 
-void CPURenderer::ReSTIR_DI_temporal_candidates_pass()
+void CPURenderer::ReSTIR_DI_temporal_reuse_pass()
 {
 #if DEBUG_PIXEL
     int x, y;

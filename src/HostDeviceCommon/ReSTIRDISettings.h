@@ -24,6 +24,12 @@ struct TemporalPassSettings
 {
 	bool do_temporal_reuse_pass = true;
 
+	// Whether or not to use the G-buffer of last frame when resampling the temporal neighbor.
+	// This is required to avoid bias with camera movements but this comes at a VRAM cost
+	// which we may not want to pay (if we're accumulating frames with a still camera for example, ...
+	// we don't need that)
+	bool use_last_frame_g_buffer = true;
+
 	// If set to true, the temporal buffers will be cleared by the camera
 	// rays kernel
 	bool temporal_buffer_clear_requested = false;
