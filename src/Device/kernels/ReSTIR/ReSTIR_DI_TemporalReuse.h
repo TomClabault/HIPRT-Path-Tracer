@@ -11,7 +11,8 @@
 #include "Device/includes/Hash.h"
 #include "Device/includes/Intersect.h"
 #include "Device/includes/LightUtils.h"
-#include "Device/includes/ReSTIR/DI/MISWeight.h"
+#include "Device/includes/ReSTIR/DI/TemporalMISWeight.h"
+#include "Device/includes/ReSTIR/DI/TemporalNormalizationWeight.h"
 #include "Device/includes/ReSTIR/DI/Surface.h"
 #include "Device/includes/ReSTIR/DI/Utils.h"
 #include "Device/includes/Sampling.h"
@@ -97,110 +98,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int find_temporal_neighbor(const HIPRTRenderData&
 	}
 
 	return temporal_neighbor_index;
-}
-
-HIPRT_HOST_DEVICE HIPRT_INLINE void get_temporal_reuse_normalization_denominator_numerator(
-	const HIPRTRenderData& render_data, 
-	const ReSTIRDIReservoir& reservoir, const ReSTIRDIReservoir& initial_candidates_reservoir, const ReSTIRDIReservoir& temporal_neighbor_reservoir, 
-	const ReSTIRDISurface& center_pixel_surface, const ReSTIRDISurface& temporal_neighbor_surface, 
-	int selected_neighbor, int center_pixel_index, int temporal_neighbor_pixel_index, 
-	Xorshift32Generator& random_number_generator,
-	float& out_normalization_nume, float& out_normalization_denom)
-{
-	if (reservoir.weight_sum <= 0)
-	{
-		// Invalid reservoir, returning directly
-		out_normalization_nume = 1.0;
-		out_normalization_denom = 1.0f;
-
-		return;
-	}
-
-#if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_M
-	// 1/M MIS weights are basically confidence weights only i.e. c_i / sum(c_j) with
-	// c_i = r_i.M
-
-	out_normalization_nume = 1.0f;
-	// We're simply going to divide by the sum of all the M values of all the neighbors we resampled (including the center pixel)
-	// so we're only going to set the denominator to that and the numerator isn't going to change
-	out_normalization_denom = 0.0f;
-	for (int neighbor_index = 0; neighbor_index < 2; neighbor_index++)
-	{
-		ReSTIRDIReservoir neighbor_reservoir;
-		if (neighbor_index == TEMPORAL_NEIGHBOR_RESAMPLE)
-			neighbor_reservoir = temporal_neighbor_reservoir;
-		else
-			neighbor_reservoir = initial_candidates_reservoir;
-
-		out_normalization_denom += neighbor_reservoir.M;
-	}
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE_CONFIDENCE_WEIGHTS
-	// Checking how many of our neighbors could have produced the sample that we just picked
-	// and we're going to divide by the sum of M values of those neighbors
-	out_normalization_denom = 0.0f;
-
-#if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
-	out_normalization_nume = 1.0f;
-#else
-	out_normalization_nume = 0.0f;
-#endif
-
-	for (int neighbor_index = 0; neighbor_index < 2; neighbor_index++)
-	{
-		float target_function_at_neighbor;
-		if (neighbor_index == TEMPORAL_NEIGHBOR_RESAMPLE)
-			target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_SpatialReuseBiasUseVisiblity>(render_data, reservoir.sample, temporal_neighbor_surface);
-		else
-			target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_SpatialReuseBiasUseVisiblity>(render_data, reservoir.sample, center_pixel_surface);
-
-		if (target_function_at_neighbor > 0.0f)
-		{
-			// If the neighbor could have produced this sample...
-			ReSTIRDIReservoir neighbor_reservoir;
-			if (neighbor_index == TEMPORAL_NEIGHBOR_RESAMPLE)
-			{
-				neighbor_reservoir = temporal_neighbor_reservoir;
-
-				if (neighbor_reservoir.M == 0)
-				{
-					// No temporal neighbor, no taking it into account.
-					// 
-					// Note that no temporal neighbor isn't the same as a temporal with an UCW of 0
-					// (in which case it would mean that this is a neighbor that resampled a bunch
-					// of samples but couldn't find any good sample for itself)
-					//
-					// When M == 0 here, this means that we have no temporal history at all (either very
-					// first frame of the render or after a disocclusion for example) in which case
-					// we shouldn't take it into account in the MIS weight computation as, in MIS terms, 
-					// this doesn't constitute a valid sampling technique (there's no sample, no technique, nothing.)
-
-					continue;
-				}
-			}
-			else
-				neighbor_reservoir = initial_candidates_reservoir;
-
-#if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
-			out_normalization_denom += neighbor_reservoir.M;
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
-			if (neighbor_index == selected_neighbor)
-				out_normalization_nume += target_function_at_neighbor;
-			out_normalization_denom += target_function_at_neighbor;
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE_CONFIDENCE_WEIGHTS
-			if (neighbor_index == selected_neighbor)
-				// Not multiplying by M in the numerator because this is already included in the MIS weight when resampling
-				out_normalization_nume += target_function_at_neighbor;
-			out_normalization_denom += target_function_at_neighbor * neighbor_reservoir.M;
-#endif
-		}
-	}
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_GBH || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_GBH_CONFIDENCE_WEIGHTS
-	// Nothing more to normalize, everything is already handled when resampling the neighbors with balance heuristic MIS weights in the m_i terms
-	out_normalization_nume = 1.0f;
-	out_normalization_denom = 1.0f;
-#else
-#error "Unsupported bias correction mode in ReSTIR DI spatial reuse get_normalization_denominator_numerator()"
-#endif
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE void temporal_visibility_reuse(const HIPRTRenderData& render_data, ReSTIRDIReservoir& reservoir, float3 shading_point)
@@ -355,8 +252,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	float normalization_numerator = 1.0f;
 	float normalization_denominator = 1.0f;
 
-	get_temporal_reuse_normalization_denominator_numerator(render_data, 
-		new_reservoir, initial_candidates_reservoir, temporal_neighbor_reservoir,
+	ReSTIRDITemporalNormalizationWeight<ReSTIR_DI_BiasCorrectionWeights> normalization_weight;
+	normalization_weight.get_normalization(render_data,
+		new_reservoir, 
+		initial_candidates_reservoir.M, temporal_neighbor_reservoir.M,
 		center_pixel_surface, temporal_neighbor_surface, 
 		selected_neighbor,
 		center_pixel_index, temporal_neighbor_pixel_index,
