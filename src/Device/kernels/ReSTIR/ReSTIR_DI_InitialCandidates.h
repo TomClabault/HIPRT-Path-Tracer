@@ -250,6 +250,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_InitialCandidates(HIPRTRenderData
 
     Xorshift32Generator random_number_generator(seed);
 
+    if (!render_data.aux_buffers.pixel_active[pixel_index])
+        // Pixel inactive because of adaptive sampling, returning
+        return;
+
     HitInfo hit_info;
     hit_info.geometric_normal = render_data.g_buffer.geometric_normals[pixel_index];
     hit_info.shading_normal = render_data.g_buffer.shading_normals[pixel_index];

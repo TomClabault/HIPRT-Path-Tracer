@@ -44,7 +44,8 @@
 // - heatmap with adaptive sampling and only pixel stopnoise threshold not displaying the same heatmap (particularly in shadows in the white room)
 // - Start render without adaptive sampling --> enable pixel noise threshold --> the convergence counter is broken and starts from when we enabled pixel noise threshold instead of taking all pixels that have converged into account
 // - no accumulation + denoiser + 1 SPP max = denoiser running full blow but shouldn't since the input image doesn't change because of the 1SPP max. More generally, this happens also with accumulation and it just seems that the denoiser still runs even when the renderer has reached the maximum amount of SPP
-// - GPU limiter not working when interacting?
+// - ReSTIR DI + enabling adaptive sampling = crash
+// - GPU limiter not working when interacting.
 
 
 
@@ -61,6 +62,7 @@
 // - refactor envmap to have a sampling & eval function
 // - Use HIPRT with CMake as a subdirectory (available soon)
 // - free denoiser buffers if not using denoising
+// - do furnace tests and check all the BRDFs
 
 
 

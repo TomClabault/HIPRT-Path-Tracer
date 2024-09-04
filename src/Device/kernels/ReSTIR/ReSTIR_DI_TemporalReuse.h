@@ -11,6 +11,7 @@
 #include "Device/includes/Hash.h"
 #include "Device/includes/Intersect.h"
 #include "Device/includes/LightUtils.h"
+#include "Device/includes/ReSTIR/DI/MISWeight.h"
 #include "Device/includes/ReSTIR/DI/Surface.h"
 #include "Device/includes/ReSTIR/DI/Utils.h"
 #include "Device/includes/Sampling.h"
@@ -96,84 +97,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int find_temporal_neighbor(const HIPRTRenderData&
 	}
 
 	return temporal_neighbor_index;
-}
-
-HIPRT_HOST_DEVICE HIPRT_INLINE float get_temporal_reuse_resampling_MIS_weight(
-	const HIPRTRenderData& render_data,
-	const ReSTIRDIReservoir& reservoir_being_resampled, const ReSTIRDIReservoir& temporal_neighbor_reservoir,
-	const ReSTIRDISurface& temporal_neighbor_surface, const ReSTIRDISurface& center_pixel_surface,
-	int current_neighbor, int center_pixel_index, int temporal_neighbor_pixel_index,
-	Xorshift32Generator& random_number_generator)
-{
-#if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_M || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE_CONFIDENCE_WEIGHTS
-	return reservoir_being_resampled.M;
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
-	// No resampling MIS weights for this. Everything is computed in the last step where
-	// we check which neighbors could have produced the sample that we picked
-	return 1.0f;
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_GBH || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_GBH_CONFIDENCE_WEIGHTS
-	float nume = 0.0f;
-	// We already have the target function at the center pixel, adding it to the denom
-	float denom = 0.0f;
-
-	// Hardcoding 2 in the loop for temporal reuse since we're only reusing the initial candidate
-	// at our pixel and our temporal neighbor which makes 2 candidates
-	for (int j = 0; j < 2; j++)
-	{
-		int neighbor_pixel_index;
-		if (j == TEMPORAL_NEIGHBOR_RESAMPLE)
-		{
-			// Resampling the temporal neighbor on the first iteration
-			neighbor_pixel_index = temporal_neighbor_pixel_index;
-			if (neighbor_pixel_index == -1)
-				continue;
-		}
-		else
-			// Resampling at our center pixel on the second iteration
-			neighbor_pixel_index = center_pixel_index;
-
-		// Evaluating the sample that we're resampling at the neighor locations (using the neighbors surfaces)
-		float target_function_at_neighbor;
-		if (j == TEMPORAL_NEIGHBOR_RESAMPLE) 
-			target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_SpatialReuseBiasUseVisiblity>(render_data, reservoir_being_resampled.sample, temporal_neighbor_surface);
-		else
-			target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_SpatialReuseBiasUseVisiblity>(render_data, reservoir_being_resampled.sample, center_pixel_surface);
-
-		int M = 1;
-
-		if (j == TEMPORAL_NEIGHBOR_RESAMPLE)
-			M = temporal_neighbor_reservoir.M;
-
-		if (M == 0)
-			// No temporal history, no resampling to do, skipping this reservoir
-			continue;
-
-#if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_GBH
-		// No confidence weights, using M = 1.
-		// 
-		// Note that we still have to go through the piece of code above because it checks if
-		// the temporal neighbor is valid. If the temporal neighbor isn't valid, then
-		// we skip to reusing the initial candidates and we never get here.
-		//
-		// For this reason, we cannot just set M = 1 if not using confidence weights
-		// and do the piece of code above only for confidence weights, we have to check
-		// for the validity of the temporal neighbor in both cases and so we have to
-		// go through the code above in both cases
-		M = 1;
-#endif
-
-		denom += target_function_at_neighbor * M;
-		if (j == current_neighbor)
-			nume = target_function_at_neighbor * M;
-		}
-
-	if (denom == 0.0f)
-		return 0.0f;
-	else
-		return nume / denom;
-#else
-#error "Unsupported bias correction mode in ReSTIR DI spatial reuse get_resampling_MIS_weight"
-#endif
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE void get_temporal_reuse_normalization_denominator_numerator(
@@ -312,6 +235,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	if (center_pixel_index >= res.x * res.y)
 		return;
 
+	if (!render_data.aux_buffers.pixel_active[center_pixel_index])
+		// Pixel inactive because of adaptive sampling, returning
+		return;
+
 	// Initializing the random generator
 	unsigned int seed;
 	if (render_data.render_settings.freeze_random)
@@ -342,10 +269,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	ReSTIRDIReservoir temporal_neighbor_reservoir = render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs[temporal_neighbor_pixel_index];
 	ReSTIRDISurface temporal_neighbor_surface = get_pixel_surface(render_data, temporal_neighbor_pixel_index);
 	
+	ReSTIRDITemporalResamplingMISWeight<ReSTIR_DI_BiasCorrectionWeights> resampling_mis_weight;
 	// Will keep the index of the neighbor that has been selected by resampling. 
 	// Either 0 or 1 for the temporal resampling pass
 	int selected_neighbor = 0;
-	float init_cand_mis_weight = get_temporal_reuse_resampling_MIS_weight(render_data, 
+	float init_cand_mis_weight = resampling_mis_weight.get_resampling_MIS_weight(render_data, 
 		initial_candidates_reservoir, temporal_neighbor_reservoir, 
 		temporal_neighbor_surface, center_pixel_surface, 
 		/* indicating that we're currently resampling the initial candidates */ INITIAL_CANDIDATES_RESAMPLE,
@@ -406,12 +334,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 				jacobian_determinant = 0.0f;
 		}
 
-		float mis_weight = 1.0f;
+		float temporal_neighbor_resampling_mis_weight = 1.0f;
 		if (target_function_at_center > 0.0f)
 			// No need to compute the MIS weight if the target function is 0.0f because we're never going to pick
 			// that sample anyway when combining the reservoir since the resampling weight will be 0.0f because of
 			// the multiplication by the target function that is 0.0f
-			mis_weight = get_temporal_reuse_resampling_MIS_weight(render_data, 
+			temporal_neighbor_resampling_mis_weight = resampling_mis_weight.get_resampling_MIS_weight(render_data,
 				temporal_neighbor_reservoir, temporal_neighbor_reservoir, 
 				temporal_neighbor_surface, center_pixel_surface, 
 				/* indicating that we're currently resampling the temporal neighbor */ TEMPORAL_NEIGHBOR_RESAMPLE, 
@@ -419,7 +347,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 				random_number_generator);
 
 		// Combining as in Alg. 6 of the paper
-		if (new_reservoir.combine_with(temporal_neighbor_reservoir, mis_weight, target_function_at_center, jacobian_determinant, random_number_generator))
+		if (new_reservoir.combine_with(temporal_neighbor_reservoir, temporal_neighbor_resampling_mis_weight, target_function_at_center, jacobian_determinant, random_number_generator))
 			selected_neighbor = 0;
 		new_reservoir.sanity_check(make_int2(x, y));
 	}

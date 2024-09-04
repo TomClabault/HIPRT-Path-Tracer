@@ -436,6 +436,8 @@ void ImGuiRenderer::draw_sampling_panel()
 
 			if (ImGui::Checkbox("Enable adaptive sampling", (bool*)&render_settings.enable_adaptive_sampling))
 				m_render_window->set_render_dirty(true);
+			if (!render_settings.accumulate)
+				add_tooltip("Cannot use adaptive sampling when accumulation is not on.");
 
 			float adaptive_sampling_noise_threshold_before = render_settings.adaptive_sampling_noise_threshold;
 			ImGui::BeginDisabled(!render_settings.enable_adaptive_sampling);
