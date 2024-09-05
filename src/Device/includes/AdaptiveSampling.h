@@ -14,7 +14,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_pixel_confidence_interval(const HIPRTRe
     average_luminance = luminance / (pixel_sample_count + 1);
 
     float squared_luminance = render_data.aux_buffers.pixel_squared_luminance[pixel_index];
-    float pixel_variance = (squared_luminance - luminance * average_luminance) / (pixel_sample_count);
+    float pixel_variance = (squared_luminance - luminance * average_luminance) / (pixel_sample_count + 1);
 
     return 1.96f * sqrtf(pixel_variance) / sqrtf(pixel_sample_count + 1);
 }
@@ -39,15 +39,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool adaptive_sampling(const HIPRTRenderData& ren
         // 
         // We're going to compute the erorr of the pixel to see if it's below the threshold or not
 
-        int pixel_sample_count;
         float average_luminance;
         float confidence_interval;
-        pixel_sample_count = aux_buffers.pixel_sample_count[pixel_index];
+
+        int pixel_sample_count = aux_buffers.pixel_sample_count[pixel_index];
         if (pixel_sample_count < 0)
-        {
             // Pixel is deactivated, it has converged
             pixel_converged = true;
-        }
         else
         {
             confidence_interval = get_pixel_confidence_interval(render_data, pixel_index, pixel_sample_count, average_luminance);
@@ -55,7 +53,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool adaptive_sampling(const HIPRTRenderData& ren
             // The value of pixel_converged will be used outside of this function
             pixel_converged =
                 // Converged enough
-                (confidence_interval < render_settings.stop_pixel_noise_threshold * average_luminance)
+                (confidence_interval <= render_settings.stop_pixel_noise_threshold * average_luminance)
                 // At least 2 samples because we can't evaluate the variance with only 1 sample
                 && (render_settings.sample_number > 1);
 

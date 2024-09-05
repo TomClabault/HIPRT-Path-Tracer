@@ -236,10 +236,16 @@ void ImGuiRenderer::draw_render_settings_panel()
 			m_application_settings->max_render_time = std::max(m_application_settings->max_render_time, 0.0f);
 		ImGui::Separator();
 
+		bool has_adaptive_sampling_buffers_before_interaction = render_settings.has_access_to_adaptive_sampling_buffers();
+		float stop_pixel_noise_threshold_before_interaction = render_settings.stop_pixel_noise_threshold;
 		static bool use_adaptive_sampling_threshold = false;
 		ImGui::BeginDisabled(use_adaptive_sampling_threshold);
 		if (ImGui::InputFloat("Pixel noise threshold", &render_settings.stop_pixel_noise_threshold))
+		{
 			render_settings.stop_pixel_noise_threshold = std::max(0.0f, render_settings.stop_pixel_noise_threshold);
+				
+			m_render_window->set_render_dirty(true);
+		}
 		ImGuiRenderer::add_tooltip("Cannot be set lower than the adaptive sampling threshold. 0.0 to disable.");
 
 		// Having the stop pixel noise threshold lower than the adaptive sampling noise threshold
@@ -248,21 +254,26 @@ void ImGuiRenderer::draw_render_settings_panel()
 		// adaptive sampling) so we're making sure the values are correct here
 		if (render_settings.enable_adaptive_sampling && render_settings.stop_pixel_noise_threshold > 0.0f)
 			render_settings.stop_pixel_noise_threshold = std::max(render_settings.stop_pixel_noise_threshold, render_settings.adaptive_sampling_noise_threshold);
-
 		ImGui::EndDisabled(); // use_adaptive_sampling_threshold
 
-		ImGui::SameLine();
-		ImGui::Checkbox("Use adaptive sampling threshold", &use_adaptive_sampling_threshold);
-		if (use_adaptive_sampling_threshold)
-			// If we're using the adaptive sampling threshold, updating the stop pixel noise threshold with the adaptive sampling threshold
-			render_settings.stop_pixel_noise_threshold = render_settings.adaptive_sampling_noise_threshold;
-
-		add_tooltip("If checked, the adaptive sampling noise threshold will be used.");
-
 		bool update_converge_text = render_settings.stop_pixel_noise_threshold > 0.0f;
-		ImGui::BeginDisabled(!update_converge_text);
 		ImGui::TreePush("Tree pixel stop noise threshold");
 		{
+			if (ImGui::Checkbox("Use adaptive sampling threshold", &use_adaptive_sampling_threshold))
+			{
+				if (use_adaptive_sampling_threshold)
+					// If we're using the adaptive sampling threshold, updating the stop pixel noise threshold with the adaptive sampling threshold
+					render_settings.stop_pixel_noise_threshold = render_settings.adaptive_sampling_noise_threshold;
+
+				if (!has_adaptive_sampling_buffers_before_interaction && render_settings.has_access_to_adaptive_sampling_buffers())
+					// If the adaptive sampling buffers were not available before but now are, we need to reset the render because
+					// the squared luminance of pixel (for example) was not being tracked so far and so estimating the
+					// convergence of the pixels with then incomplete buffers is incorrect
+					m_render_window->set_render_dirty(true);
+			}
+			show_help_marker("If checked, the adaptive sampling noise threshold will be used.");
+
+			ImGui::BeginDisabled(!update_converge_text);
 			if (ImGui::InputFloat("Pixel proportion", &render_settings.stop_pixel_percentage_converged))
 				render_settings.stop_pixel_percentage_converged = std::max(0.0f, std::min(render_settings.stop_pixel_percentage_converged, 100.0f));
 			if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
@@ -273,8 +284,8 @@ void ImGuiRenderer::draw_render_settings_panel()
 
 				ImGuiRenderer::wrapping_tooltip("The proportion of pixels that need to have converge to the noise threshold for the rendering to stop. In percentage [0, 100]." + additional_info);
 			}
+			ImGui::EndDisabled();
 		}
-		ImGui::EndDisabled();
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 		// Tree stop noise threshold
@@ -544,7 +555,7 @@ void ImGuiRenderer::draw_sampling_panel()
 					// Whether or not to use the visibility term in the target function used for
 					// resampling in ReSTIR DI (applies to all passes: initial candidates, temporal reuse, spatial reuse)
 					static bool use_target_function_visibility = ReSTIR_DI_TargetFunctionVisibility;
-					if (ImGui::Checkbox("Use visibility in target function", &use_target_function_visibility))
+					if (ImGui::Checkbox("Use visibility in target function (in all passes)", &use_target_function_visibility))
 					{
 						kernel_options->set_macro(GPUKernelCompilerOptions::RESTIR_DI_TARGET_FUNCTION_VISIBILITY, use_target_function_visibility ? 1 : 0);
 						m_renderer->recompile_kernels();
@@ -570,7 +581,7 @@ void ImGuiRenderer::draw_sampling_panel()
 					static float roughness_similarity_heuristic_backup = render_settings.restir_di_settings.roughness_similarity_threshold;
 
 					static bool use_heuristics_at_all = true;
-					if (ImGui::Checkbox("Use Heuristics", &use_heuristics_at_all))
+					if (ImGui::Checkbox("Use Heuristics for neighbor rejection", &use_heuristics_at_all))
 					{
 						if (!use_heuristics_at_all)
 						{
@@ -589,6 +600,10 @@ void ImGuiRenderer::draw_sampling_panel()
 
 						m_render_window->set_render_dirty(true);
 					}
+					show_help_marker("Using heuristics to reject neighbor that are too dissimilar (in "
+						"terms of normal orientation/roughnes/... to the pixel doing the resampling "
+						"can help reduce variance. It also reduces bias but never removes it "
+						"completely, it just makes it less obvious.");
 					
 					if (use_heuristics_at_all)
 					{
@@ -859,7 +874,7 @@ void ImGuiRenderer::draw_sampling_panel()
 		{
 			ImGui::TreePush("Envmap sampling tree");
 
-			const char* items[] = { "- No envmap sampling", "- Envmap Sampling - Binary Search" };
+			const char* items[] = { "- No envmap importance sampling", "- Importance Sampling - Binary Search" };
 			if (ImGui::Combo("Envmap sampling strategy", kernel_options->get_pointer_to_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
 			{
 				m_renderer->recompile_kernels();
@@ -878,6 +893,8 @@ void ImGuiRenderer::draw_sampling_panel()
 void ImGuiRenderer::display_ReSTIR_DI_bias_status(std::shared_ptr<GPUKernelCompilerOptions> kernel_options)
 {
 	ImGui::Text("Status: "); ImGui::SameLine();
+
+	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 
 	std::vector<std::string> bias_reasons;
 	std::vector<std::string> hover_explanations;
@@ -924,6 +941,16 @@ void ImGuiRenderer::display_ReSTIR_DI_bias_status(std::shared_ptr<GPUKernelCompi
 			"our sample and we end up with brightening bias.\n"
 			"This is only an issue with 1/Z weights because MIS-like and proper MIS weights do "
 			"not blindly overweight a sample as 1/Z does (and then hopes that we divide by Z accordingly).");
+	}
+
+	if (render_settings.enable_adaptive_sampling)
+	{
+		bias_reasons.push_back("- Adaptive sampling enabled");
+		hover_explanations.push_back("Adaptive sampling disables the sampling of some pixels. The "
+			"spatial reuse pass then reuses from neighbors that do not evolve anymore (if they've "
+			"been disabled by adaptive sampling) and that causes some slight convergence issues, "
+			"especially on parts of the image where adaptive sampling does the more work (shadow "
+			"boundaries with only 1 bounce in the scene are a good example).");
 	}
 
 	if (!bias_reasons.empty())

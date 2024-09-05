@@ -22,7 +22,7 @@ struct InitialCandidatesSettings
 
 struct TemporalPassSettings
 {
-	bool do_temporal_reuse_pass = true;
+	bool do_temporal_reuse_pass = false;
 
 	// Whether or not to use the G-buffer of last frame when resampling the temporal neighbor.
 	// This is required to avoid bias with camera movements but this comes at a VRAM cost
@@ -50,14 +50,14 @@ struct TemporalPassSettings
 
 struct SpatialPassSettings
 {
-	bool do_spatial_reuse_pass = false;
+	bool do_spatial_reuse_pass = true;
 
 	// How many spatial reuse pass to perform
-	int number_of_passes = 1;
+	int number_of_passes = 2;
 	// The radius within which neighbor are going to be reused spatially
 	int spatial_reuse_radius = 20;
 	// How many neighbors to reuse during the spatial pass
-	int spatial_reuse_neighbor_count = 3;
+	int spatial_reuse_neighbor_count = 5;
 
 	// Whether or not to rotate the spatial neighbor locations generated.
 	// Pretty much mandatory when using Hammersley points otherwise the neighbors
@@ -99,7 +99,7 @@ struct ReSTIRDISettings
 	// for a given pixel.
 	//
 	// A M-cap value between 5 - 30 is usually good
-	int m_cap = 10;
+	int m_cap = 2;
 
 	// User-friendly (for ImGui) normal angle. When resampling a neighbor (temporal or spatial),
 	// the normal of the neighbor being re-sampled must be similar to our normal. This angle gives the

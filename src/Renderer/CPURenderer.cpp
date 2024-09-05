@@ -27,10 +27,10 @@
 // the interesting pixel. If that image viewer has its (0, 0) in the top
 // left corner, you'll need to set that DEBUG_FLIP_Y to 0. Set 1 to if
 // you're measuring the coordinates of the pixel with (0, 0) in the bottom left corner
-#define DEBUG_FLIP_Y 0
+#define DEBUG_FLIP_Y 1
 // Coordinates of the pixel to render
-#define DEBUG_PIXEL_X 537
-#define DEBUG_PIXEL_Y 144
+#define DEBUG_PIXEL_X 360
+#define DEBUG_PIXEL_Y 17
 // If 1, a square of DEBUG_NEIGHBORHOOD_SIZE x DEBUG_NEIGHBORHOOD_SIZE pixels
 // will be rendered around the pixel to debug (given by DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y). The pixel of interest is going to be rendered first so you
@@ -43,7 +43,7 @@
 #define DEBUG_RENDER_NEIGHBORHOOD 1
 // How many pixels to render around the debugged pixel given by the DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y coordinates
-#define DEBUG_NEIGHBORHOOD_SIZE 125
+#define DEBUG_NEIGHBORHOOD_SIZE 35
 
 CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, height))
 {
@@ -180,8 +180,15 @@ void CPURenderer::render()
 
     // Using 'samples_per_frame' as the number of samples to render on the CPU
     m_render_data.render_settings.sample_number = 1;
-    for (int frame_number = 0; frame_number < m_render_data.render_settings.samples_per_frame; frame_number++)
+    for (int frame_number = 1; frame_number <= 3; frame_number++)//m_render_data.render_settings.samples_per_frame; frame_number++)
     {
+        m_render_data.render_settings.do_update_status_buffers = true;
+
+        if (frame_number > 2)
+            m_render_data.render_settings.stop_pixel_noise_threshold = 0.5f;
+        else
+            m_render_data.render_settings.stop_pixel_noise_threshold = 0.0f;
+
         update(frame_number);
         update_render_data(frame_number);
 
@@ -199,8 +206,8 @@ void CPURenderer::render()
         // and then we can re-use the old buffers of to be filled by the current frame render
         std::swap(m_render_data.g_buffer, m_render_data.g_buffer_prev_frame);
 
-        if (m_render_data.render_settings.samples_per_frame > 1)
-            std::cout << "Frame " << frame_number + 1 << ": " << (frame_number + 1) / static_cast<float>(m_render_data.render_settings.samples_per_frame) * 100.0f << "%" << std::endl;
+        std::cout << "Frame " << frame_number << ": " << frame_number/ static_cast<float>(m_render_data.render_settings.samples_per_frame) * 100.0f << "%" << std::endl;
+        std::cout << m_render_data.aux_buffers.stop_noise_threshold_converged_count->load() << std::endl;
     }
 
     auto stop = std::chrono::high_resolution_clock::now();
@@ -209,6 +216,12 @@ void CPURenderer::render()
 
 void CPURenderer::update(int frame_number)
 {
+    // Resetting the status buffers
+    // Uploading false to reset the flag
+    *m_render_data.aux_buffers.still_one_ray_active = false;
+    // Resetting the counter of pixels converged to 0
+    m_render_data.aux_buffers.stop_noise_threshold_converged_count->store(0);
+
     //if (frame_number == 8)
     //    m_camera.translate(glm::vec3(-0.2, 0, 0));
 }

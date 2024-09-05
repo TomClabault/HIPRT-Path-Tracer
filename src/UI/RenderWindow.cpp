@@ -42,9 +42,9 @@
 //	  - same with perfect reflection
 // - heatmap with adaptive sampling and only pixel stopnoise threshold not displaying the same heatmap (particularly in shadows in the white room)
 // - Start render without adaptive sampling --> enable pixel noise threshold --> the convergence counter is broken and starts from when we enabled pixel noise threshold instead of taking all pixels that have converged into account
-// - no accumulation + denoiser + 1 SPP max = denoiser running full blow but shouldn't since the input image doesn't change because of the 1SPP max. More generally, this happens also with accumulation and it just seems that the denoiser still runs even when the renderer has reached the maximum amount of SPP
 // - playing with the pixel noise threshold eventually leaves it at 4000/2000000 for example, the counter doesn't reset properly  --> needs more info for reproduction
 // - pixels converged count sometimes goes above 100% --> needs more info for reproduction
+// - multiple spatial reuse passes doesn't show up properly in the perf metrics. It always shows the time for a single spatial reuse pass, not all
 
 
 // TODO Code Organization:
@@ -69,6 +69,7 @@
 
 
 // TODO Features:
+// - experiment with a feature that ignores really dark pixel in the variance estimation of the adaptvie sampling because it seems that very dark areas in the image are always flagged as very noisy / very high variance and they take a very long time to converge (always red on the heatmap) even though they are very dark regions and we don't even noise in them. If our eyes can't see the noise, why bother?
 // - maybe not precompute stuff in the material structure? like anisotropic / oren nayar parameters? Is it even expensive to recompute it? Because that takes space and bandwidth
 // - pack material parameters that are between 0 and 1 into 8 bits, 1/256 is enough precision for parameters in 0-1
 // - Reuse MIS BSDF sample as path next bounce if the ray didn't hit anything

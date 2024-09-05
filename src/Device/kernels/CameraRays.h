@@ -127,7 +127,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
             bool adaptive_sampling_still_active = render_data.render_settings.enable_adaptive_sampling && sampling_needed;
             bool stop_noise_threshold_not_reached = !pixel_converged && render_data.render_settings.stop_pixel_noise_threshold > 0.0f;
             if (adaptive_sampling_still_active || stop_noise_threshold_not_reached)
-                //else if( render_data.render_settings.has_access_to_adaptive_sampling_buffers())
                     // We have the pixel stop noise threshold enabled and the pixel hasn't converged, meaning
                     // that we should increase the number of relevant sample count for that pixel
                     // so that the adaptive sampling heatmap can display the convergence properly
