@@ -90,10 +90,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
     if (render_data.render_settings.sample_number == 0 || render_data.render_settings.need_to_reset)
         reset_render(render_data, pixel_index);
 
-    if (render_data.render_settings.restir_di_settings.temporal_pass.temporal_buffer_clear_requested)
-        // We requested a temporal buffer clear
-        render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs[pixel_index] = ReSTIRDIReservoir();
-
     bool sampling_needed = true;
     bool pixel_converged = false;
     sampling_needed = adaptive_sampling(render_data, pixel_index, pixel_converged);

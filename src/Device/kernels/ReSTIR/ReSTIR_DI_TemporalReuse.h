@@ -143,6 +143,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 		seed = wang_hash((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_seed);
 	Xorshift32Generator random_number_generator(seed);
 
+	if (render_data.render_settings.restir_di_settings.temporal_pass.temporal_buffer_clear_requested)
+		// We requested a temporal buffer clear for ReSTIR DI
+		render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs[center_pixel_index] = ReSTIRDIReservoir();
+
 	// Surface data of the center pixel
 	ReSTIRDISurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index);
 

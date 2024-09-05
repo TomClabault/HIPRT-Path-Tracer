@@ -45,7 +45,6 @@
 // - no accumulation + denoiser + 1 SPP max = denoiser running full blow but shouldn't since the input image doesn't change because of the 1SPP max. More generally, this happens also with accumulation and it just seems that the denoiser still runs even when the renderer has reached the maximum amount of SPP
 // - ReSTIR DI + enabling adaptive sampling = crash
 // - GPU limiter not working when interacting.
-// - reset temporal reservoirs button not working with spatial reuse on
 // - samples per frame > 1 without accumulation = darkening
 // - playing with the pixel noise threshold eventually leaves it at 4000/2000000 for example, the counter doesn't reset properly  --> needs more info for reproduction
 // - pixels converged count sometimes goes above 100% --> needs more info for reproduction
