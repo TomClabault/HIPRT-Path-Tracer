@@ -45,7 +45,6 @@
 // - no accumulation + denoiser + 1 SPP max = denoiser running full blow but shouldn't since the input image doesn't change because of the 1SPP max. More generally, this happens also with accumulation and it just seems that the denoiser still runs even when the renderer has reached the maximum amount of SPP
 // - ReSTIR DI + enabling adaptive sampling = crash
 // - GPU limiter not working when interacting.
-// - samples per frame > 1 without accumulation = darkening
 // - playing with the pixel noise threshold eventually leaves it at 4000/2000000 for example, the counter doesn't reset properly  --> needs more info for reproduction
 // - pixels converged count sometimes goes above 100% --> needs more info for reproduction
 
@@ -729,10 +728,10 @@ void RenderWindow::render()
 			else if (m_application_settings->auto_sample_per_frame)
 				render_settings.samples_per_frame = std::min(std::max(1, static_cast<int>(m_application_state->samples_per_second / m_application_settings->target_GPU_framerate)), 65536);
 
-			if (m_application_state->render_dirty)
-				reset_render();
 			m_application_state->interacting_last_frame = is_interacting();
 			m_application_state->GPU_stall_duration_left = compute_GPU_stall_duration();
+			if (m_application_state->render_dirty)
+				reset_render();
 			
 			// Otherwise, if we're not stalling, queuing a new frame for the GPU to render
 			m_application_state->last_GPU_submit_time = glfwGetTimerValue();
