@@ -37,8 +37,6 @@
 // TODO bugs:
 // - memory leak with OpenGL when resizing the window?
 // - memory leak when launching kernels? Does that happen also on Linux or is it only due to AMD Windows drivers?
-// - playing with the pixel noise threshold eventually leaves it at 4000/2000000 for example, the counter doesn't reset properly
-// - pixels converged count sometimes goes above 100%
 // - take transmission color into account when direct sampling a light source that is inside a volume
 // - denoiser AOVs not accounting for transmission correctly since Disney 
 //	  - same with perfect reflection
@@ -50,6 +48,8 @@
 // - reset temporal reservoirs button not working with spatial reuse on
 // - ReSTIR DI at startup --> change to RIS --> accumulate --> crash
 // - samples per frame > 1 without accumulation = darkening
+// - playing with the pixel noise threshold eventually leaves it at 4000/2000000 for example, the counter doesn't reset properly  --> needs more info for reproduction
+// - pixels converged count sometimes goes above 100% --> needs more info for reproduction
 
 
 // TODO Code Organization:
@@ -722,8 +722,11 @@ void RenderWindow::render()
 			}
 
 			render_settings.wants_render_low_resolution = is_interacting();
-			if (m_application_settings->auto_sample_per_frame && (render_settings.do_render_low_resolution() || m_renderer->was_last_frame_low_resolution()))
-				// Only one sample when low resolution rendering
+			if (m_application_settings->auto_sample_per_frame && (render_settings.do_render_low_resolution() || m_renderer->was_last_frame_low_resolution()) && render_settings.accumulate)
+				// Only one sample when low resolution rendering.
+				// Also, we only want to apply this if we're accumulating. If we're not accumulating, 
+				// (so we the renderer in "interactive mode" we may want more than 1 sample per frame
+				// to experiment
 				render_settings.samples_per_frame = 1;
 			else if (m_application_settings->auto_sample_per_frame)
 				render_settings.samples_per_frame = std::min(std::max(1, static_cast<int>(m_application_state->samples_per_second / m_application_settings->target_GPU_framerate)), 65536);

@@ -116,10 +116,6 @@ void GPURenderer::update()
 
 	update_render_data();
 
-	// Updating the previous and current camera
-	m_render_data.current_camera = m_camera.to_hiprt();
-	m_render_data.prev_camera = m_previous_frame_camera.to_hiprt();
-
 	// Resetting this flag as this is a new frame
 	m_render_data.render_settings.do_update_status_buffers = false;
 
@@ -281,6 +277,10 @@ void GPURenderer::render()
 			std::swap(m_g_buffer, m_g_buffer_prev_frame);
 		}
 
+		// Updating the previous and current camera
+		m_render_data.current_camera = m_camera.to_hiprt();
+		m_render_data.prev_camera = m_previous_frame_camera.to_hiprt();
+
 		if (i == m_render_data.render_settings.samples_per_frame)
 			// Last sample of the frame so we are going to enable the update 
 			// of the status buffers (number of pixels converged, how many rays still
@@ -293,6 +293,17 @@ void GPURenderer::render()
 
 		m_render_data.render_settings.sample_number++;
 		m_render_data.render_settings.denoiser_AOV_accumulation_counter++;
+
+		// We only reset once so after rendering a frame, we're sure that we don't need to reset anymore 
+		// so we're setting the flag to false (it will be set to true again if we need to reset the render
+		// again)
+		m_render_data.render_settings.need_to_reset = false;
+		// If we had requested a temporal buffers clear, this has be done by this frame so we can
+		// now reset the flag
+		m_render_data.render_settings.restir_di_settings.temporal_pass.temporal_buffer_clear_requested = false;
+
+		// Updating the cameras
+		m_previous_frame_camera = m_camera;
 	}
 
 	// Recording GPU frame time stop timestamp and computing the frame time
@@ -311,16 +322,7 @@ void GPURenderer::render()
 	m_ms_time_per_pass[GPURenderer::RESTIR_DI_SPATIAL_REUSE_FUNC_NAME] = m_restir_spatial_reuse_pass.get_last_execution_time();
 	m_ms_time_per_pass[GPURenderer::PATH_TRACING_KERNEL] = m_path_trace_pass.get_last_execution_time();
 
-	// Saving the camera that we used this frame
-	m_previous_frame_camera = m_camera;
 	m_was_last_frame_low_resolution = m_render_data.render_settings.do_render_low_resolution();
-	// We only reset once so after rendering a frame, we're sure that we don't need to reset anymore 
-	// so we're setting the flag to false (it will be set to true again if we need to reset the render
-	// again)
-	m_render_data.render_settings.need_to_reset = false;
-	// If we had requested a temporal buffers clear, this has be done by this frame so we can
-	// now reset the flag
-	m_render_data.render_settings.restir_di_settings.temporal_pass.temporal_buffer_clear_requested = false;
 }
 
 void GPURenderer::launch_camera_rays()
@@ -669,7 +671,7 @@ void GPURenderer::reset()
 
 	m_render_data.render_settings.denoiser_AOV_accumulation_counter = 0;
 	m_render_data.render_settings.sample_number = 0;
-	m_render_data.render_settings.samples_per_frame = 1;
+	// m_render_data.render_settings.samples_per_frame = 1;
 	m_render_data.render_settings.need_to_reset = true;
 
 	reset_frame_times();

@@ -190,15 +190,17 @@ void ImGuiRenderer::draw_render_settings_panel()
 	if (ImGui::Checkbox("Accumulate", &render_settings.accumulate))
 	{
 		m_render_window->set_render_dirty(true);
-		m_render_window->get_application_settings()->auto_sample_per_frame = false;
-		render_settings.samples_per_frame = 1;
+
+		if (!render_settings.accumulate)
+		{
+			m_render_window->get_application_settings()->auto_sample_per_frame = false;
+			render_settings.samples_per_frame = 1;
+		}
 	}
 
-	ImGui::BeginDisabled(m_application_settings->auto_sample_per_frame || !render_settings.accumulate);
 	if (ImGui::InputInt("Samples per frame", &render_settings.samples_per_frame))
 		// Clamping to 1
 		render_settings.samples_per_frame = std::max(1, render_settings.samples_per_frame);
-	ImGui::EndDisabled();
 	ImGui::SameLine();
 	ImGui::Checkbox("Auto", &m_application_settings->auto_sample_per_frame);
 	if (m_application_settings->auto_sample_per_frame)
