@@ -340,8 +340,16 @@ void ImGuiRenderer::draw_camera_panel()
 		if (ImGui::Checkbox("Do ray jittering", &m_renderer->get_camera().do_jittering))
 			m_render_window->set_render_dirty(true);
 
+		ImGui::BeginDisabled(!render_settings.accumulate);
 		ImGui::Checkbox("Render low resolution when interacting", &render_settings.allow_render_low_resolution);
+		if (!render_settings.accumulate)
+			add_tooltip("Cannot render at low resolution when not accumulating. If you want to render at "
+				"a lower resolution, you can use the resolution scale in \"Render Settings\"for that.");
 		ImGui::SliderInt("Render low resolution downscale", &render_settings.render_low_resolution_scaling, 1, 8);
+		if (!render_settings.accumulate)
+			add_tooltip("Cannot render at low resolution when not accumulating. If you want to render at "
+				"a lower resolution, you can use the resolution scale in \"Render Settings\"for that.");
+		ImGui::EndDisabled();
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();

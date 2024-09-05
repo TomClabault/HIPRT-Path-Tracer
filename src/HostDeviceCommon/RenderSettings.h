@@ -139,11 +139,12 @@ struct HIPRTRenderSettings
 	/**
 	 * Returns true if the current frame should be renderer at low resolution, false otherwise.
 	 * 
-	 * This function is a simple helper that combines 
+	 * This function is a simple helper that combines a few flags to make sure that we
+	 * actually want to render at low resolution
 	 */
 	HIPRT_HOST_DEVICE bool do_render_low_resolution() const
 	{
-		return wants_render_low_resolution && allow_render_low_resolution;
+		return wants_render_low_resolution && allow_render_low_resolution && accumulate;
 	}
 
 	/**
