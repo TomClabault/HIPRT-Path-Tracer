@@ -233,20 +233,26 @@ void GPURenderer::internal_update_restir_di_buffers()
 
 		if (spatial_output_2_needs_resize)
 			m_restir_di_state.spatial_reuse_output_2.resize(m_render_resolution.x * m_render_resolution.y);
+
+		m_render_data_buffers_invalidated = true;
 	}
 	else
 	{
 		// ReSTIR DI disabled, we're going to free the buffers if that's not already done
-		if (m_restir_di_state.initial_candidates_reservoirs.get_element_count() > 0 
+		if (m_restir_di_state.initial_candidates_reservoirs.get_element_count() > 0
 			|| m_restir_di_state.spatial_reuse_output_1.get_element_count() > 0 ||
 			m_restir_di_state.spatial_reuse_output_2.get_element_count() > 0)
+		{
 			// If one of the buffers isn't freed already, we're going to free it. In this case, we need to synchronize to avoid
 			// freeing a buffer that the renderer is actively using in the frame it is rendering right now
 			synchronize_kernel();
 
-		m_restir_di_state.initial_candidates_reservoirs.free();
-		m_restir_di_state.spatial_reuse_output_1.free();
-		m_restir_di_state.spatial_reuse_output_2.free();
+			m_restir_di_state.initial_candidates_reservoirs.free();
+			m_restir_di_state.spatial_reuse_output_1.free();
+			m_restir_di_state.spatial_reuse_output_2.free();
+
+			m_render_data_buffers_invalidated = true;
+		}
 	}
 }
 
@@ -327,11 +333,9 @@ void GPURenderer::render()
 
 void GPURenderer::launch_camera_rays()
 {
-	m_render_data.random_seed = m_rng.xorshift32();
-
-	HIPRTRenderData render_data_camera_rays = m_render_data;
 	void* launch_args[] = { &m_render_data, &m_render_resolution };
 
+	m_render_data.random_seed = m_rng.xorshift32();
 	m_camera_ray_pass.launch_timed_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
 }
 

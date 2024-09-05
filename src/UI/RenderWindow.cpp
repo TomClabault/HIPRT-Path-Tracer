@@ -46,7 +46,6 @@
 // - ReSTIR DI + enabling adaptive sampling = crash
 // - GPU limiter not working when interacting.
 // - reset temporal reservoirs button not working with spatial reuse on
-// - ReSTIR DI at startup --> change to RIS --> accumulate --> crash
 // - samples per frame > 1 without accumulation = darkening
 // - playing with the pixel noise threshold eventually leaves it at 4000/2000000 for example, the counter doesn't reset properly  --> needs more info for reproduction
 // - pixels converged count sometimes goes above 100% --> needs more info for reproduction
