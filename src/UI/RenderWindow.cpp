@@ -43,8 +43,6 @@
 // - heatmap with adaptive sampling and only pixel stopnoise threshold not displaying the same heatmap (particularly in shadows in the white room)
 // - Start render without adaptive sampling --> enable pixel noise threshold --> the convergence counter is broken and starts from when we enabled pixel noise threshold instead of taking all pixels that have converged into account
 // - no accumulation + denoiser + 1 SPP max = denoiser running full blow but shouldn't since the input image doesn't change because of the 1SPP max. More generally, this happens also with accumulation and it just seems that the denoiser still runs even when the renderer has reached the maximum amount of SPP
-// - ReSTIR DI + enabling adaptive sampling = crash
-// - GPU limiter not working when interacting.
 // - playing with the pixel noise threshold eventually leaves it at 4000/2000000 for example, the counter doesn't reset properly  --> needs more info for reproduction
 // - pixels converged count sometimes goes above 100% --> needs more info for reproduction
 

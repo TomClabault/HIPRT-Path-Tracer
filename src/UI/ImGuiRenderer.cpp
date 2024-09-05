@@ -432,10 +432,11 @@ void ImGuiRenderer::draw_sampling_panel()
 
 		if (ImGui::CollapsingHeader("Adaptive sampling"))
 		{
-			// Cannot use adaptive sampling without accumulation
-			ImGui::BeginDisabled(!render_settings.accumulate);
 
 			ImGui::TreePush("Adaptive sampling tree");
+
+			// Cannot use adaptive sampling without accumulation
+			ImGui::BeginDisabled(!render_settings.accumulate);
 
 			if (ImGui::Checkbox("Enable adaptive sampling", (bool*)&render_settings.enable_adaptive_sampling))
 				m_render_window->set_render_dirty(true);
@@ -452,6 +453,8 @@ void ImGuiRenderer::draw_sampling_panel()
 			
 				m_render_window->set_render_dirty(true);
 			}
+
+			// !Cannot use adaptive sampling without accumulation
 			ImGui::EndDisabled();
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));

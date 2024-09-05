@@ -91,18 +91,18 @@ struct HIPRTRenderSettings
 	//	 - If we're interacting with the camera, we *want* to render at low resolution
 	//	 but if rendering at low resolution is not allowed (this boolean), then we will still
 	//	 not render at low resolution
-	bool allow_render_low_resolution = false;
+	bool allow_render_low_resolution = true;
 	// If true, this means that the user is moving the camera and we want to
 	// render the image at a much lower resolution to allow for smoother
 	// interaction. Having this flag at true isn't sufficient for rendering at low
 	// resolution. The user must also *allow* rendering at low resolution
 	// with the 'allow_render_low_resolution' flag
-	int wants_render_low_resolution = false;
+	bool wants_render_low_resolution = false;
 	// How to divide the render resolution by when rendering at low resolution
 	// (when interacting with the camera)
-	int render_low_resolution_scaling = 4;
+	int render_low_resolution_scaling = 2;
 
-	int enable_adaptive_sampling = false;
+	bool enable_adaptive_sampling = false;
 	// How many samples before the adaptive sampling actually kicks in.
 	// This is useful mainly for the per-pixel adaptive sampling method
 	// where you want to be sure that each pixel in the image has had enough
@@ -158,9 +158,9 @@ struct HIPRTRenderSettings
 		bool has_access = false;
 
 		has_access |= stop_pixel_noise_threshold > 0.0f;
-		has_access |= enable_adaptive_sampling == 1;
+		has_access |= enable_adaptive_sampling;
 		// Cannot use adaptive sampling without accumulation
-		has_access &= !accumulate;
+		has_access &= accumulate;
 
 		return has_access;
 	}
