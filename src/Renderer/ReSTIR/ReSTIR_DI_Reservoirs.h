@@ -27,6 +27,10 @@ struct ReSTIR_DI_State
 	// This is used to adjust which buffers are used as input/outputs
 	// and ping-pong between them
 	bool odd_frame = false;
+
+	// Events for timing the cumulated render time of all the spatial reuses passes
+	oroEvent_t spatial_reuse_time_start;
+	oroEvent_t spatial_reuse_time_stop;
 };
 
 #endif

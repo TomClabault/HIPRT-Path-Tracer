@@ -17,6 +17,7 @@ const std::string GPURenderer::CAMERA_RAYS_FUNC_NAME = "CameraRays";
 const std::string GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_FUNC_NAME = "ReSTIR_DI_InitialCandidates";
 const std::string GPURenderer::RESTIR_DI_TEMPORAL_REUSE_FUNC_NAME = "ReSTIR_DI_TemporalReuse";
 const std::string GPURenderer::RESTIR_DI_SPATIAL_REUSE_FUNC_NAME = "ReSTIR_DI_SpatialReuse";
+
 const std::string GPURenderer::FULL_FRAME_TIME_KEY = "FullFrameTime";
 
 const std::string GPURenderer::KERNEL_FILES[] = 
@@ -101,6 +102,9 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
 	m_still_one_ray_active_buffer.resize(1);
 	m_still_one_ray_active_buffer.upload_data(&true_data);
 	m_pixels_converged_count_buffer.resize(1);
+
+	OROCHI_CHECK_ERROR(oroEventCreate(&m_restir_di_state.spatial_reuse_time_start));
+	OROCHI_CHECK_ERROR(oroEventCreate(&m_restir_di_state.spatial_reuse_time_stop));
 
 	OROCHI_CHECK_ERROR(oroEventCreate(&m_frame_start_event));
 	OROCHI_CHECK_ERROR(oroEventCreate(&m_frame_stop_event));
@@ -326,10 +330,14 @@ void GPURenderer::render()
 
 	OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_main_stream, GPUKernel::compute_elapsed_time_callback, elapsed_time_data));
 
+	// Updating the times per passes
 	m_ms_time_per_pass[GPURenderer::CAMERA_RAYS_FUNC_NAME] = m_camera_ray_pass.get_last_execution_time();
 	m_ms_time_per_pass[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_FUNC_NAME] = m_restir_initial_candidates_pass.get_last_execution_time();
 	m_ms_time_per_pass[GPURenderer::RESTIR_DI_TEMPORAL_REUSE_FUNC_NAME] = m_restir_temporal_reuse_pass.get_last_execution_time();
-	m_ms_time_per_pass[GPURenderer::RESTIR_DI_SPATIAL_REUSE_FUNC_NAME] = m_restir_spatial_reuse_pass.get_last_execution_time();
+	// RESTIR_DI_SPATIAL_REUSE_FUNC_NAME
+	// - The spatial reuse time is handled directly when the spatial reuse kernel is launched because
+	//	there may be multiple spatial reuse passes in which case, we need to sum the times of all the passes
+	//	but get_last_execution_time() doesn't support that, it only contains the time of the *last* pass
 	m_ms_time_per_pass[GPURenderer::PATH_TRACING_KERNEL] = m_path_trace_pass.get_last_execution_time();
 
 	m_was_last_frame_low_resolution = m_render_data.render_settings.do_render_low_resolution();
@@ -364,12 +372,26 @@ void GPURenderer::launch_ReSTIR_DI()
 
 		if (m_render_data.render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)
 		{
+			// Emitting an event for timing all the spatial reuse passes combined
+			OROCHI_CHECK_ERROR(oroEventRecord(m_restir_di_state.spatial_reuse_time_start, m_main_stream));
+
 			for (int spatial_reuse_pass = 0; spatial_reuse_pass < m_render_data.render_settings.restir_di_settings.spatial_pass.number_of_passes; spatial_reuse_pass++)
 			{
 				configure_ReSTIR_DI_spatial_pass(spatial_reuse_pass);
 
 				m_restir_spatial_reuse_pass.launch_timed_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
 			}
+
+			// Emitting the stop event
+			OROCHI_CHECK_ERROR(oroEventRecord(m_restir_di_state.spatial_reuse_time_stop, m_main_stream));
+
+			GPUKernel::ComputeElapsedTimeCallbackData* elapsed_time_data = new GPUKernel::ComputeElapsedTimeCallbackData;
+			elapsed_time_data->start = m_restir_di_state.spatial_reuse_time_start;
+			elapsed_time_data->end = m_restir_di_state.spatial_reuse_time_stop;
+			elapsed_time_data->elapsed_time_out = &m_ms_time_per_pass[GPURenderer::RESTIR_DI_SPATIAL_REUSE_FUNC_NAME];
+
+			// Computing the time elapsed for all spatial reuse passes
+			OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_main_stream, GPUKernel::compute_elapsed_time_callback, elapsed_time_data));
 		}
 
 		configure_ReSTIR_DI_output_buffer();
