@@ -42,7 +42,6 @@
 // - heatmap with adaptive sampling and only pixel stopnoise threshold not displaying the same heatmap (particularly in shadows in the white room)
 // - multiple spatial reuse passes doesn't show up properly in the perf metrics. It always shows the time for a single spatial reuse pass, not all
 // - fix sampling lights inside dielectrics with ReSTIR DI
-// - seems to be a lag in the sample number count when increasing the number of bounces
 
 
 // TODO Code Organization:
@@ -543,7 +542,7 @@ void RenderWindow::reset_render()
 	m_application_state->current_render_time_ms = 0.0f;
 	m_application_state->render_dirty = false;
 
-	m_renderer->reset();
+	m_renderer->reset(m_application_settings);
 }
 
 void RenderWindow::set_render_dirty(bool render_dirty)

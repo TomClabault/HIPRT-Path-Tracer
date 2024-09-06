@@ -19,6 +19,7 @@
 #include "Renderer/ReSTIR/ReSTIR_DI_Reservoirs.h"
 #include "Scene/Camera.h"
 #include "Scene/SceneParser.h"
+#include "UI/ApplicationSettings.h"
 
 #include <vector>
 
@@ -152,7 +153,7 @@ public:
 
 	float get_render_pass_time(const std::string& key);
 	void reset_frame_times();
-	void reset();
+	void reset(std::shared_ptr<ApplicationSettings> application_settings);
 
 	int2 m_render_resolution = make_int2(0, 0);
 

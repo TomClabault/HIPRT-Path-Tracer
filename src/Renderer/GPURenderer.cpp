@@ -9,7 +9,6 @@
 #include "Threads/ThreadFunctions.h"
 #include "Threads/ThreadManager.h"
 #include "Threads/ThreadFunctions.h"
-#include "UI/ApplicationSettings.h"
 
 #include <Orochi/OrochiUtils.h>
 
@@ -667,7 +666,7 @@ void GPURenderer::reset_frame_times()
 		m_ms_time_per_pass[pass] = 0.0f;
 }
 
-void GPURenderer::reset()
+void GPURenderer::reset(std::shared_ptr<ApplicationSettings> application_settings)
 {
 	if (m_render_data.render_settings.accumulate)
 	{
@@ -677,11 +676,13 @@ void GPURenderer::reset()
 		m_rng.m_state.seed = 42;
 
 		m_restir_di_state.odd_frame = false;
+	
+		if (application_settings->auto_sample_per_frame)
+			m_render_data.render_settings.samples_per_frame = 1;
 	}
 
 	m_render_data.render_settings.denoiser_AOV_accumulation_counter = 0;
 	m_render_data.render_settings.sample_number = 0;
-	// m_render_data.render_settings.samples_per_frame = 1;
 	m_render_data.render_settings.need_to_reset = true;
 
 	reset_frame_times();
