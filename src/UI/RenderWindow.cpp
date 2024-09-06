@@ -32,6 +32,7 @@
 // - temporal permutation sampling
 // - maybe not spatially resample as hard everywhere in the image? heuristic to reduce/increase the number of spatial samples per pixel?
 // - possibility to reuse final shading visibility
+// - check that using rejection heuristics doesn't break convergence
 
 // TODO bugs:
 // - memory leak with OpenGL when resizing the window?
@@ -66,7 +67,11 @@
 
 
 // TODO Features:
-// - experiment with a feature that ignores really dark pixel in the variance estimation of the adaptvie sampling because it seems that very dark areas in the image are always flagged as very noisy / very high variance and they take a very long time to converge (always red on the heatmap) even though they are very dark regions and we don't even noise in them. If our eyes can't see the noise, why bother?
+// - experiment with a feature that ignores really dark pixel in the variance estimation of the adaptive 
+//		sampling because it seems that very dark areas in the image are always flagged as very 
+//		noisy / very high variance and they take a very long time to converge (always red on the heatmap) 
+//		even though they are very dark regions and we don't even noise in them. If our eyes can't see 
+//		the noise, why bother? Same with very bright regions
 // - maybe not precompute stuff in the material structure? like anisotropic / oren nayar parameters? Is it even expensive to recompute it? Because that takes space and bandwidth
 // - pack material parameters that are between 0 and 1 into 8 bits, 1/256 is enough precision for parameters in 0-1
 // - Reuse MIS BSDF sample as path next bounce if the ray didn't hit anything

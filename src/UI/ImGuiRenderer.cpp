@@ -68,7 +68,7 @@ void ImGuiRenderer::draw_imgui_interface()
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 
 	ImGuiIO& io = ImGui::GetIO();
-	ImGui::ShowDemoWindow();
+	// ImGui::ShowDemoWindow();
 
 	ImGui::Begin("Settings");
 
@@ -110,13 +110,13 @@ void ImGuiRenderer::draw_imgui_interface()
 		else
 		{
 			ImGui::Text("Pixels converged: N/A");
-			ImGuiRenderer::add_tooltip("Adaptive sampling hasn't kicked in yet... Convergence computation hasn't started.");
+			ImGuiRenderer::show_help_marker("Adaptive sampling hasn't kicked in yet... Convergence computation hasn't started.");
 		}
 	}
 	else
 	{
 		ImGui::Text("Pixels converged: N/A");
-		ImGuiRenderer::add_tooltip("Convergence is only computed when either adaptive sampling or the \"Pixel noise threshold\" render stopping condition is used.");
+		ImGuiRenderer::show_help_marker("Convergence is only computed when either adaptive sampling or the \"Pixel noise threshold\" render stopping condition is used.");
 	}
 
 	ImGui::Separator();
@@ -209,7 +209,7 @@ void ImGuiRenderer::draw_render_settings_panel()
 		if (ImGui::InputFloat("Target GPU framerate", &m_application_settings->target_GPU_framerate))
 			// Clamping to 1 FPS because going below that is dangerous in terms of driver timeouts
 			m_application_settings->target_GPU_framerate = std::max(1.0f, m_application_settings->target_GPU_framerate);
-		ImGuiRenderer::add_tooltip("The samples per frame will be automatically adjusted such that the GPU"
+		ImGuiRenderer::show_help_marker("The samples per frame will be automatically adjusted such that the GPU"
 				   " takes approximately 1000.0f / TargetFramerate milliseconds to complete"
 				   " a frame. Useful to keep the GPU busy after almost all pixels have converged."
 				   " Lowering this settings increases rendering efficiency but can cause camera"
@@ -381,7 +381,7 @@ void ImGuiRenderer::draw_environment_panel()
 		render_made_piggy |= ImGui::RadioButton("Use envmap lighting", ((int*)&m_renderer->get_world_settings().ambient_light_type), 2);
 		if (!has_envmap)
 			// Showing a tooltip for why the envmap button is disabled
-			ImGuiRenderer::add_tooltip("No envmap loaded.");
+			ImGuiRenderer::show_help_marker("No envmap loaded.");
 		ImGui::EndDisabled();
 
 		if (m_renderer->get_world_settings().ambient_light_type == AmbientLightType::UNIFORM)
@@ -599,7 +599,7 @@ void ImGuiRenderer::draw_sampling_panel()
 
 						m_render_window->set_render_dirty(true);
 					}
-					show_help_marker("Using heuristics to reject neighbor that are too dissimilar (in "
+					ImGuiRenderer::show_help_marker("Using heuristics to reject neighbor that are too dissimilar (in "
 						"terms of normal orientation/roughnes/... to the pixel doing the resampling "
 						"can help reduce variance. It also reduces bias but never removes it "
 						"completely, it just makes it less obvious.");
@@ -758,18 +758,11 @@ void ImGuiRenderer::draw_sampling_panel()
 
 						if (ImGui::Checkbox("Use Last Frame G-Buffer", &render_settings.restir_di_settings.temporal_pass.use_last_frame_g_buffer))
 							m_render_window->set_render_dirty(true);
-						show_help_marker("For complete unbiasedness with camera motion, the G-buffer of the previous "
+						ImGuiRenderer::show_help_marker("For complete unbiasedness with camera motion, the G-buffer of the previous "
 							"frame is required. This however comes at a VRAM cost which we may not want to pay. "
 							"This is especially true when accumulating frames with a still camera in which case "
 							"there is no motion meaning that the G-buffer of the previous frame isn't needed "
 							"and can be freed from VRAM.");
-						//ImGui::EndDisabled();
-						//// Same line as "Use Previous G-Buffer"
-						//ImGui::SameLine();
-						//ImGui::Checkbox("Auto", &m_application_settings->restir_di_use_last_g_buffer_auto);
-						//show_help_marker("With \"Auto\" checked, the G-buffer of the previous frame will automatically "
-						//	"be freed if accumulating frames or not using temporal reuse for example because then "
-						//	"we don't need the G-buffer of the last frame.");
 
 						if (ImGui::SliderInt("Max temporal neighbor search count", &render_settings.restir_di_settings.temporal_pass.max_neighbor_search_count, 0, 16))
 						{
@@ -826,6 +819,25 @@ void ImGuiRenderer::draw_sampling_panel()
 
 						if (ImGui::Checkbox("Neighbor Samples Rotation", &render_settings.restir_di_settings.spatial_pass.do_neighbor_rotation))
 							m_render_window->set_render_dirty(true);
+
+						ImGui::BeginDisabled(!render_settings.enable_adaptive_sampling);
+						if (ImGui::Checkbox("Allow Reuse of Converged Neighbors", &render_settings.restir_di_settings.spatial_pass.allow_converged_neighbors_reuse))
+							m_render_window->set_render_dirty(true);
+						ImGuiRenderer::show_help_marker("If checked, then the spatial reuse passes are allowed "
+							"to reuse from neighboring pixels which have converged (and thus neighbors that "
+							"are not being sampled anymore = neighbors whose reservoirs do not evolve anymore). "
+							"This improves performance speed but at the cost of some bias when non-converged "
+							"pixels try to reuse from converged pixels. The bias will thus typically manifest "
+							"on the parts of the image that are the hardest to render.");
+						if (render_settings.restir_di_settings.spatial_pass.allow_converged_neighbors_reuse)
+						{
+							if (ImGui::SliderFloat("Converged Neighbor Reuse Probability", &render_settings.restir_di_settings.spatial_pass.converged_neighbor_reuse_probability, 0.0f, 1.0f))
+								m_render_window->set_render_dirty(true);
+							ImGuiRenderer::show_help_marker("Allows trading bias for rendering performance by spatially reusing converged neighbors only with a certain probability instead of never / always."
+								"\n\n 0.0 nevers reuses converged neighbors. No bias but performance impact."
+								"\n\n 1.0 always reuses converged neighbors. Biased but no performance impact.");
+						}
+						ImGui::EndDisabled();
 					}
 
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -851,7 +863,7 @@ void ImGuiRenderer::draw_sampling_panel()
 						m_render_window->set_render_dirty(true);
 					}
 					if (bias_correction_visibility_disabled)
-						ImGuiRenderer::add_tooltip("Visibility bias correction cannot be used with 1/M weights.");
+						ImGuiRenderer::show_help_marker("Visibility bias correction cannot be used with 1/M weights.");
 					ImGui::EndDisabled();
 
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -942,14 +954,16 @@ void ImGuiRenderer::display_ReSTIR_DI_bias_status(std::shared_ptr<GPUKernelCompi
 			"not blindly overweight a sample as 1/Z does (and then hopes that we divide by Z accordingly).");
 	}
 
-	if (render_settings.enable_adaptive_sampling)
+	if (render_settings.enable_adaptive_sampling 
+		&& render_settings.restir_di_settings.spatial_pass.allow_converged_neighbors_reuse 
+		&& render_settings.restir_di_settings.spatial_pass.converged_neighbor_reuse_probability > 0.0f)
 	{
-		bias_reasons.push_back("- Adaptive sampling enabled");
+		bias_reasons.push_back("- Adaptive Sampling + \"Allow Reuse of Converged Neighbors\"");
 		hover_explanations.push_back("Adaptive sampling disables the sampling of some pixels. The "
 			"spatial reuse pass then reuses from neighbors that do not evolve anymore (if they've "
 			"been disabled by adaptive sampling) and that causes some slight convergence issues, "
-			"especially on parts of the image where adaptive sampling does the more work (shadow "
-			"boundaries with only 1 bounce in the scene are a good example).");
+			"especially on parts of the image where adaptive sampling does the more work. This "
+			"manifest as bias on the hardest-to-render parts of the scene.");
 	}
 
 	if (!bias_reasons.empty())
@@ -960,7 +974,7 @@ void ImGuiRenderer::display_ReSTIR_DI_bias_status(std::shared_ptr<GPUKernelCompi
 		for (int i = 0; i < bias_reasons.size(); i++)
 		{
 			ImGui::Text("%s", bias_reasons[i].c_str());
-			ImGuiRenderer::add_tooltip(hover_explanations[i].c_str());
+			ImGuiRenderer::show_help_marker(hover_explanations[i].c_str());
 
 		}
 		ImGui::TreePop();
@@ -1210,21 +1224,21 @@ void ImGuiRenderer::draw_performance_settings_panel()
 	switch (hwi_supported)
 	{
 	case SUPPORTED:
-		ImGuiRenderer::add_tooltip("Whether or not to enable hardware accelerated ray tracing (bbox & triangle intersections)");
+		ImGuiRenderer::show_help_marker("Whether or not to enable hardware accelerated ray tracing (bbox & triangle intersections)");
 		break;
 
 	case AMD_UNSUPPORTED:
-		ImGuiRenderer::add_tooltip("Hardware accelerated ray tracing is only supported on RDNA2+ GPUs.");
+		ImGuiRenderer::show_help_marker("Hardware accelerated ray tracing is only supported on RDNA2+ AMD GPUs.");
 		break;
 
 	case NVIDIA_UNSUPPORTED:
-		ImGuiRenderer::add_tooltip("HIPRT cannot access NVIDIA's proprietary hardware accelerated ray-tracing. Feature unavailable.");
+		ImGuiRenderer::show_help_marker("HIPRT cannot access NVIDIA's proprietary hardware accelerated ray-tracing. Hardware ray-tracing unavailable.");
 		break;
 	}
 
 	if (ImGui::InputFloat("GPU Stall Percentage", &m_application_settings->GPU_stall_percentage))
 		m_application_settings->GPU_stall_percentage = std::max(0.0f, std::min(m_application_settings->GPU_stall_percentage, 99.9f));
-	ImGuiRenderer::add_tooltip("How much percent of the time the GPU will be forced to be idle (not rendering anything)."
+	ImGuiRenderer::show_help_marker("How much percent of the time the GPU will be forced to be idle (not rendering anything)."
 		" This feature is basically only meant for GPUs that get too hot to avoid burning your GPUs during long renders if you have"
 		" time to spare.");
 
@@ -1257,7 +1271,7 @@ void ImGuiRenderer::draw_performance_metrics_panel()
 
 	bool rolling_window_size_changed = false;
 	int rolling_window_size = m_render_window_perf_metrics->get_window_size();
-	ImGui::Text("Graphs Window Size"); ImGui::SameLine();
+	ImGui::Text("Measures Window Size"); ImGui::SameLine();
 	rolling_window_size_changed |= ImGui::RadioButton("25", &rolling_window_size, 25); ImGui::SameLine();
 	rolling_window_size_changed |= ImGui::RadioButton("100", &rolling_window_size, 100); ImGui::SameLine();
 	rolling_window_size_changed |= ImGui::RadioButton("250", &rolling_window_size, 250); ImGui::SameLine();
@@ -1375,7 +1389,7 @@ void ImGuiRenderer::draw_debug_panel()
 
 	if (ImGui::Checkbox("Show NaNs", &m_renderer->get_render_settings().display_NaNs))
 		m_render_window->set_render_dirty(true);
-	ImGuiRenderer::add_tooltip("If true, NaNs that occur during the rendering will show up as pink pixels.");
+	ImGuiRenderer::show_help_marker("If true, NaNs that occur during the rendering will show up as pink pixels.");
 
 	ImGui::TreePush("Debug tree");
 	ImGui::TreePop();

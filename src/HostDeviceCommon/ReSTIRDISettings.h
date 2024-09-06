@@ -64,6 +64,14 @@ struct SpatialPassSettings
 	// will always be the exact same
 	bool do_neighbor_rotation = true;
 
+	// If true, neighboring pixels that have converged (if adaptive sampling is enabled)
+	// won't be reused to reduce bias.
+	// If false, even neighboring pixels that have converged can be reused by the spatial pass
+	bool allow_converged_neighbors_reuse = false;
+	// If we're allowing the spatial reuse of converged neighbors, we're doing so we're a given
+	// probability instead of always/never. This helps trade performance for bias.
+	float converged_neighbor_reuse_probability = 0.5f;
+
 	// Buffer that contains the input reservoirs for the spatial reuse pass
 	ReSTIRDIReservoir* input_reservoirs = nullptr;
 	// Buffer that contains the output reservoir of the spatial reuse pass
@@ -99,7 +107,7 @@ struct ReSTIRDISettings
 	// for a given pixel.
 	//
 	// A M-cap value between 5 - 30 is usually good
-	int m_cap = 2;
+	int m_cap = 10;
 
 	// User-friendly (for ImGui) normal angle. When resampling a neighbor (temporal or spatial),
 	// the normal of the neighbor being re-sampled must be similar to our normal. This angle gives the
