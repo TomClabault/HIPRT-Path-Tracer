@@ -111,6 +111,12 @@ struct HIPRTRenderSettings
 	// Adaptive sampling noise threshold
 	float adaptive_sampling_noise_threshold = 0.4f;
 
+	// If true, the rendering will stop after a certain proportion (defined by 'stop_pixel_percentage_converged')
+	// of pixels of the image have converged. "converged" here is defined according to the adaptive sampling if
+	// enabled or according to 'stop_pixel_noise_threshold' if adaptive sampling is not enabled.
+	//
+	// If false, the render will not stop until all pixels have converged
+	bool enable_pixel_stop_noise_threshold = false;
 	// A percentage in [0, 100] that dictates the proportion of pixels that must
 	// have reached the given noise threshold (stop_pixel_noise_threshold
 	// variable) before we stop rendering.

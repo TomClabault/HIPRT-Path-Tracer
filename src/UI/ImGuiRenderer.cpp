@@ -228,70 +228,68 @@ void ImGuiRenderer::draw_render_settings_panel()
 	if (ImGui::CollapsingHeader("Render stopping condition"))
 	{
 		ImGui::TreePush("Stopping condition tree");
-
-		if (ImGui::InputInt("Max Sample Count", &m_application_settings->max_sample_count))
-			m_application_settings->max_sample_count = std::max(m_application_settings->max_sample_count, 0);
-
-		if (ImGui::InputFloat("Max Render Time (s)", &m_application_settings->max_render_time))
-			m_application_settings->max_render_time = std::max(m_application_settings->max_render_time, 0.0f);
-		ImGui::Separator();
-
-		bool has_adaptive_sampling_buffers_before_interaction = render_settings.has_access_to_adaptive_sampling_buffers();
-		float stop_pixel_noise_threshold_before_interaction = render_settings.stop_pixel_noise_threshold;
-		static bool use_adaptive_sampling_threshold = false;
-		ImGui::BeginDisabled(use_adaptive_sampling_threshold);
-		if (ImGui::InputFloat("Pixel noise threshold", &render_settings.stop_pixel_noise_threshold))
 		{
-			render_settings.stop_pixel_noise_threshold = std::max(0.0f, render_settings.stop_pixel_noise_threshold);
-				
-			m_render_window->set_render_dirty(true);
-		}
-		ImGuiRenderer::add_tooltip("Cannot be set lower than the adaptive sampling threshold. 0.0 to disable.");
 
-		// Having the stop pixel noise threshold lower than the adaptive sampling noise threshold
-		// is impossible because the adaptive sampling will stop sampling the pixel before it can
-		// converge enough to the stop pixels noise threshold (which is lower than the
-		// adaptive sampling) so we're making sure the values are correct here
-		if (render_settings.enable_adaptive_sampling && render_settings.stop_pixel_noise_threshold > 0.0f)
-			render_settings.stop_pixel_noise_threshold = std::max(render_settings.stop_pixel_noise_threshold, render_settings.adaptive_sampling_noise_threshold);
-		ImGui::EndDisabled(); // use_adaptive_sampling_threshold
+			if (ImGui::InputInt("Max Sample Count", &m_application_settings->max_sample_count))
+				m_application_settings->max_sample_count = std::max(m_application_settings->max_sample_count, 0);
 
-		bool update_converge_text = render_settings.stop_pixel_noise_threshold > 0.0f;
-		ImGui::TreePush("Tree pixel stop noise threshold");
-		{
-			if (ImGui::Checkbox("Lock to adaptive sampling's threshold", &use_adaptive_sampling_threshold))
-			{
-				if (use_adaptive_sampling_threshold)
-					// If we're using the adaptive sampling threshold, updating the stop pixel noise threshold with the adaptive sampling threshold
-					render_settings.stop_pixel_noise_threshold = render_settings.adaptive_sampling_noise_threshold;
-
-				if (!has_adaptive_sampling_buffers_before_interaction && render_settings.has_access_to_adaptive_sampling_buffers())
-					// If the adaptive sampling buffers were not available before but now are, we need to reset the render because
-					// the squared luminance of pixel (for example) was not being tracked so far and so estimating the
-					// convergence of the pixels with then incomplete buffers is incorrect
-					m_render_window->set_render_dirty(true);
-			}
-			show_help_marker("If checked, the adaptive sampling noise threshold will be used.");
+			if (ImGui::InputFloat("Max Render Time (s)", &m_application_settings->max_render_time))
+				m_application_settings->max_render_time = std::max(m_application_settings->max_render_time, 0.0f);
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			ImGui::BeginDisabled(!update_converge_text);
-			if (ImGui::InputFloat("Pixel proportion", &render_settings.stop_pixel_percentage_converged))
-				render_settings.stop_pixel_percentage_converged = std::max(0.0f, std::min(render_settings.stop_pixel_percentage_converged, 100.0f));
-			if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-			{
-				std::string additional_info = "";
-				if (render_settings.stop_pixel_noise_threshold == 0.0f)
-					additional_info = "The stop pixel noise threshold must be > 0.0.";
+			ImGui::SeparatorText("Pixel Stop Noise Threshold");
+			ImGui::Checkbox("Use pixel stop noise threshold stopping condition", &render_settings.enable_pixel_stop_noise_threshold);
+			ImGuiRenderer::show_help_marker("If enabled, stops the renderer after a certain proportion "
+				"of pixels of the image have converged. \"converged\" is evaluated according to the "
+				"threshold of the adaptive sampling if it is enabled. If adaptive sampling is not "
+				"enabled, \"converged\" is defined by the \"Pixel noise threshold\" variance "
+				"threshold below.");
 
-				ImGuiRenderer::wrapping_tooltip("The proportion of pixels that need to have converge to the noise threshold for the rendering to stop. In percentage [0, 100]." + additional_info);
+			ImGui::BeginDisabled(!render_settings.enable_pixel_stop_noise_threshold);
+			{
+				if (ImGui::InputFloat("Pixel proportion", &render_settings.stop_pixel_percentage_converged))
+					render_settings.stop_pixel_percentage_converged = std::max(0.0f, std::min(render_settings.stop_pixel_percentage_converged, 100.0f));
+				ImGuiRenderer::show_help_marker("The proportion of pixels that need to have converge "
+					"to the noise threshold for the rendering to stop. In percentage [0, 100].");
 			}
 			ImGui::EndDisabled();
+
+			ImGui::BeginDisabled(render_settings.enable_adaptive_sampling || !render_settings.enable_pixel_stop_noise_threshold);
+			{
+				// Only letting the user manipulate the stop pixel noise threshold if adaptive sampling is not enabled
+				// because if adaptive sampling is enabled, then the stop pixel noise threshold feature can only
+				// be used to give a render stopping condition (after a certain proportion of pixels have converged).
+				//
+				// Said otherwise, if adaptive sampling is enabled, then we're not using the stop pixel noise threshold
+				// at all so it doesn't need to be exposed to the user
+				if (ImGui::InputFloat("Pixel noise threshold", &render_settings.stop_pixel_noise_threshold))
+				{
+					render_settings.stop_pixel_noise_threshold = std::max(0.0f, render_settings.stop_pixel_noise_threshold);
+
+					m_render_window->set_render_dirty(true);
+				}
+				std::string pixel_noise_threshold_help_string = "Cannot be set lower than the adaptive sampling threshold. 0.0 to disable.";
+				if (render_settings.enable_adaptive_sampling)
+					pixel_noise_threshold_help_string += "\n\nDisabled because adaptive sampling is enabled. Both cannot be used at the same time.";
+				ImGuiRenderer::show_help_marker(pixel_noise_threshold_help_string);
+
+				if (ImGui::Button("Copy adaptive sampling's threshold"))
+				{
+					render_settings.stop_pixel_noise_threshold = render_settings.adaptive_sampling_noise_threshold;
+
+					m_render_window->set_render_dirty(true);
+				}
+				std::string copy_button_help_string = "Copies the adaptive sampling variance threshold for the stop pixel noise threshold.";
+				if (render_settings.enable_adaptive_sampling)
+					copy_button_help_string += "\n\nDisabled because adaptive sampling is enabled. Both cannot be used at the same time.";
+				ImGuiRenderer::show_help_marker(copy_button_help_string);
+				ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			}
+			ImGui::EndDisabled(); // render_settings.enable_adaptive_sampling
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
 		}
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
-		// Tree stop noise threshold
-		ImGui::TreePop();
-
 		// Stopping condition tree
 		ImGui::TreePop();
 	}

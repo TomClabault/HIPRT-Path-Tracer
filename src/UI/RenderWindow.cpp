@@ -22,7 +22,6 @@
 // - add hammersley usage or not imgui for spatial reuse
 // - pairwise mis
 // - feature to disable ReSTIR after a certain percentage of convergence --> we don't want to pay the full price of resampling and everything only for a few difficult isolated pixels (especially true with adaptive sampling where neighbors don't get sampled --> no new samples added to their reservoir --> no need to resample)
-// - test/fix sampling lights inside dielectrics with ReSTIR DI
 // - camera ray jittering causes dark lines and darkens glossy reflections
 // - multiple spatial reuse passes destroy glossy reflections
 // - m cap at 0 in ImGui breaks the render because of infinite M growth --> hardcap M to something like ~1000000 or something
@@ -42,6 +41,8 @@
 //	  - same with perfect reflection
 // - heatmap with adaptive sampling and only pixel stopnoise threshold not displaying the same heatmap (particularly in shadows in the white room)
 // - multiple spatial reuse passes doesn't show up properly in the perf metrics. It always shows the time for a single spatial reuse pass, not all
+// - fix sampling lights inside dielectrics with ReSTIR DI
+// - seems to be a lag in the sample number count when increasing the number of bounces
 
 
 // TODO Code Organization:
@@ -511,7 +512,14 @@ bool RenderWindow::is_rendering_done()
 	float proportion_converged;
 	proportion_converged = m_renderer->get_status_buffer_values().pixel_converged_count / static_cast<float>(m_renderer->m_render_resolution.x * m_renderer->m_render_resolution.y);
 	proportion_converged *= 100.0f; // To human-readable percentage as used in the ImGui interface
-	rendering_done |= proportion_converged > render_settings.stop_pixel_percentage_converged && render_settings.stop_pixel_noise_threshold > 0.0f;
+
+	// We're allowed to stop the render after the given proportion of pixel of the image converged if we're actually
+	// using the pixel stop noise threshold feature (enabled + threshold > 0.0f) or if we're using the
+	// stop noise threshold but only for the proportion stopping condition (we're not using the threshold of the pixel
+	// stop noise threshold feature) --> (enabled & adaptive sampling enabled)
+	bool use_proportion_stopping_condition = (render_settings.stop_pixel_noise_threshold > 0.0f && render_settings.enable_pixel_stop_noise_threshold) 
+		|| (render_settings.enable_pixel_stop_noise_threshold && render_settings.enable_adaptive_sampling);
+	rendering_done |= proportion_converged > render_settings.stop_pixel_percentage_converged && use_proportion_stopping_condition;
 
 	// Max sample count
 	rendering_done |= (m_application_settings->max_sample_count != 0 && render_settings.sample_number + 1 > m_application_settings->max_sample_count);
