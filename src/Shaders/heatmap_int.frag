@@ -40,9 +40,9 @@ void main()
 	// We're using abs() here because the sampling count can be negative if 
 	// the pixel isn't being sampled anymore (it has converged and has been 
 	// excluded by the adaptive sampling)
-	float scalar = abs(texelFetch(u_texture, thread_id / u_resolution_scaling, 0).r);
+	float scalar = texelFetch(u_texture, thread_id / u_resolution_scaling, 0).r;
 #else
-	float scalar = abs(texture(u_texture, vs_tex_coords / u_resolution_scaling).r);
+	float scalar = texture(u_texture, vs_tex_coords / u_resolution_scaling).r;
 #endif
 	
 	if (u_min_val == u_max_val)
@@ -57,6 +57,13 @@ void main()
 
 		return;
 	}
+
+	if (scalar == -1.0f)
+		// If the value of the scalar is -1, this is a special value which is used
+		// by the adaptive sampling to indicate that a pixel has not converged yet.
+		// If the pixel has not converged yet, then it must have the "hotter" color
+		// which the color of the u_max_val
+		scalar = u_max_val;
 
 	scalar = clamp(scalar, u_min_val, u_max_val);
 	// Brings scalar between 0 and 1 relative to u_min_val and u_max_val

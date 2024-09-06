@@ -259,7 +259,7 @@ void ImGuiRenderer::draw_render_settings_panel()
 		bool update_converge_text = render_settings.stop_pixel_noise_threshold > 0.0f;
 		ImGui::TreePush("Tree pixel stop noise threshold");
 		{
-			if (ImGui::Checkbox("Use adaptive sampling threshold", &use_adaptive_sampling_threshold))
+			if (ImGui::Checkbox("Lock to adaptive sampling's threshold", &use_adaptive_sampling_threshold))
 			{
 				if (use_adaptive_sampling_threshold)
 					// If we're using the adaptive sampling threshold, updating the stop pixel noise threshold with the adaptive sampling threshold
@@ -273,6 +273,7 @@ void ImGuiRenderer::draw_render_settings_panel()
 			}
 			show_help_marker("If checked, the adaptive sampling noise threshold will be used.");
 
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::BeginDisabled(!update_converge_text);
 			if (ImGui::InputFloat("Pixel proportion", &render_settings.stop_pixel_percentage_converged))
 				render_settings.stop_pixel_percentage_converged = std::max(0.0f, std::min(render_settings.stop_pixel_percentage_converged, 100.0f));

@@ -89,6 +89,12 @@ struct AuxiliaryBuffers
 	// This buffer should not be pre-divided by the number of samples
 	float* pixel_squared_luminance = nullptr;
 
+	// If a given pixel has converged, this buffer contains the number of samples
+	// that were necessary for the convergence. 
+	// 
+	// If the pixel hasn't converged yet, the buffer contains the -1 value
+	int * pixel_converged_sample_count = nullptr;
+
 	// A single boolean (contained in a buffer, hence the pointer) 
 	// to indicate whether at least one single ray is still active in the kernel.
 	// This is an unsigned char instead of a boolean because std::vector<bool>.data()

@@ -55,7 +55,7 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
 	m_denoised_framebuffer = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
 	m_normals_AOV_buffer = std::make_shared<OpenGLInteropBuffer<float3>>();
 	m_albedo_AOV_buffer = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
-	m_pixels_sample_count_buffer = std::make_shared<OpenGLInteropBuffer<int>>();
+	m_pixels_converged_sample_count_buffer = std::make_shared<OpenGLInteropBuffer<int>>();
 	
 	m_hiprt_orochi_ctx = hiprt_oro_ctx;	
 	m_device_properties = m_hiprt_orochi_ctx->device_properties;
@@ -174,9 +174,10 @@ void GPURenderer::internal_update_adaptive_sampling_buffers()
 	if (buffers_needed)
 	{
 		bool pixels_squared_luminance_needs_resize = m_pixels_squared_luminance_buffer.get_element_count() == 0;
-		bool pixels_sample_count_needs_resize = m_pixels_sample_count_buffer->get_element_count() == 0;
+		bool pixels_sample_count_needs_resize = m_pixels_sample_count_buffer.get_element_count() == 0;
+		bool pixels_converged_sample_count_needs_resize = m_pixels_converged_sample_count_buffer->get_element_count() == 0;
 
-		if (pixels_squared_luminance_needs_resize || pixels_sample_count_needs_resize)
+		if (pixels_squared_luminance_needs_resize || pixels_sample_count_needs_resize || pixels_converged_sample_count_needs_resize)
 		{
 			// If one of the two buffers is going to be resized, synchronizing because we don't want
 			// to resize the buffers if we're currently rendering a frame
@@ -192,18 +193,22 @@ void GPURenderer::internal_update_adaptive_sampling_buffers()
 
 		if (pixels_sample_count_needs_resize)
 			// Only allocating if it isn't already
-			m_pixels_sample_count_buffer->resize(m_render_resolution.x * m_render_resolution.y);
+			m_pixels_sample_count_buffer.resize(m_render_resolution.x * m_render_resolution.y);
+
+		if (pixels_converged_sample_count_needs_resize)
+			m_pixels_converged_sample_count_buffer->resize(m_render_resolution.x * m_render_resolution.y);
 
 	}
 	else
 	{
-		if (m_pixels_squared_luminance_buffer.get_element_count() > 0 || m_pixels_sample_count_buffer->get_element_count() > 0)
+		if (m_pixels_squared_luminance_buffer.get_element_count() > 0 || m_pixels_sample_count_buffer.get_element_count() > 0 || m_pixels_converged_sample_count_buffer->get_element_count() > 0)
 			// If one of the buffers isn't freed already, we're going to free it. In this case, we need to synchronize to avoid
 			// freeing a buffer that the renderer is actively using in the frame it is rendering right now
 			synchronize_kernel();
 
 		m_pixels_squared_luminance_buffer.free();
-		m_pixels_sample_count_buffer->free();
+		m_pixels_sample_count_buffer.free();
+		m_pixels_converged_sample_count_buffer->free();
 	}
 }
 
@@ -496,8 +501,9 @@ void GPURenderer::resize(int new_width, int new_height)
 
 	if (m_render_data.render_settings.has_access_to_adaptive_sampling_buffers())
 	{
-		m_pixels_sample_count_buffer->resize(new_width * new_height);
 		m_pixels_squared_luminance_buffer.resize(new_width * new_height);
+		m_pixels_sample_count_buffer.resize(new_width * new_height);
+		m_pixels_converged_sample_count_buffer->resize(new_width * new_height);
 	}
 
 	if (m_path_tracer_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI)
@@ -527,7 +533,7 @@ void GPURenderer::map_buffers_for_render()
 	m_render_data.aux_buffers.denoiser_normals = m_normals_AOV_buffer->map_no_error();
 	m_render_data.aux_buffers.denoiser_albedo = m_albedo_AOV_buffer->map_no_error();
 	if (m_render_data.render_settings.has_access_to_adaptive_sampling_buffers())
-		m_render_data.aux_buffers.pixel_sample_count = m_pixels_sample_count_buffer->map_no_error();
+		m_render_data.aux_buffers.pixel_converged_sample_count = m_pixels_converged_sample_count_buffer->map_no_error();
 }
 
 void GPURenderer::unmap_buffers()
@@ -535,7 +541,7 @@ void GPURenderer::unmap_buffers()
 	m_framebuffer->unmap();
 	m_normals_AOV_buffer->unmap();
 	m_albedo_AOV_buffer->unmap();
-	m_pixels_sample_count_buffer->unmap();
+	m_pixels_converged_sample_count_buffer->unmap();
 }
 
 
@@ -559,9 +565,9 @@ std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_denoiser_albe
 	return m_albedo_AOV_buffer;
 }
 
-std::shared_ptr<OpenGLInteropBuffer<int>>& GPURenderer::get_pixels_sample_count_buffer()
+std::shared_ptr<OpenGLInteropBuffer<int>>& GPURenderer::get_pixels_converged_sample_count_buffer()
 {
-	return m_pixels_sample_count_buffer;
+	return m_pixels_converged_sample_count_buffer;
 }
 
 const StatusBuffersValues& GPURenderer::get_status_buffer_values() const
@@ -736,7 +742,10 @@ void GPURenderer::update_render_data()
 		}
 
 		if (m_render_data.render_settings.has_access_to_adaptive_sampling_buffers())
+		{
+			m_render_data.aux_buffers.pixel_sample_count = m_pixels_sample_count_buffer.get_device_pointer();
 			m_render_data.aux_buffers.pixel_squared_luminance = m_pixels_squared_luminance_buffer.get_device_pointer();
+		}
 
 		m_render_data.aux_buffers.pixel_active = m_pixel_active.get_device_pointer();
 		m_render_data.aux_buffers.still_one_ray_active = m_still_one_ray_active_buffer.get_device_pointer();

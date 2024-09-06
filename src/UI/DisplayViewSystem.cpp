@@ -260,7 +260,7 @@ void DisplayViewSystem::upload_relevant_buffers_to_texture()
 				break;*/
 
 	case DisplayViewType::PIXEL_CONVERGENCE_HEATMAP:
-		internal_upload_buffer_to_texture(m_renderer->get_pixels_sample_count_buffer(), m_display_texture_1, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
+		internal_upload_buffer_to_texture(m_renderer->get_pixels_converged_sample_count_buffer(), m_display_texture_1, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
 		break;
 
 		// TODO fix

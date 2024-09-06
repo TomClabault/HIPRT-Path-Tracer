@@ -53,6 +53,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void reset_render(const HIPRTRenderData& render_d
         // These buffers are only available when either the adaptive sampling or the stop noise threshold is enabled
         render_data.aux_buffers.pixel_sample_count[pixel_index] = 0;
         render_data.aux_buffers.pixel_squared_luminance[pixel_index] = 0;
+        render_data.aux_buffers.pixel_converged_sample_count[pixel_index] = -1;
     }
 }
 
@@ -97,13 +98,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
     if (pixel_converged || !sampling_needed)
     {
         if (render_data.render_settings.do_update_status_buffers)
-        {
             // Updating if we have the right to (when do_update_status_buffers is true).
             // do_update_status_buffers is only true on the last sample of a frame
             // 
             // Indicating that this pixel has reached the threshold in render_settings.stop_noise_threshold
             hippt::atomic_add(render_data.aux_buffers.stop_noise_threshold_converged_count, 1u);
-        }
     }
 
     if (render_data.render_settings.has_access_to_adaptive_sampling_buffers())
@@ -124,12 +123,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
         }
         else
         {
-            bool adaptive_sampling_still_active = render_data.render_settings.enable_adaptive_sampling && sampling_needed;
+            /*bool adaptive_sampling_still_active = render_data.render_settings.enable_adaptive_sampling && sampling_needed;
             bool stop_noise_threshold_not_reached = !pixel_converged && render_data.render_settings.stop_pixel_noise_threshold > 0.0f;
-            if (adaptive_sampling_still_active || stop_noise_threshold_not_reached)
-                    // We have the pixel stop noise threshold enabled and the pixel hasn't converged, meaning
-                    // that we should increase the number of relevant sample count for that pixel
-                    // so that the adaptive sampling heatmap can display the convergence properly
+            if (adaptive_sampling_still_active || stop_noise_threshold_not_reached)*/
+                // We have the pixel stop noise threshold enabled and the pixel hasn't converged, meaning
+                // that we should increase the number of relevant sample count for that pixel
+                // so that the adaptive sampling heatmap can display the convergence properly
                 render_data.aux_buffers.pixel_sample_count[pixel_index]++;
         }
     }

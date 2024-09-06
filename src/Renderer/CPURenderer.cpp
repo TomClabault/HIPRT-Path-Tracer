@@ -54,6 +54,7 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
     m_denoiser_albedo.resize(width * height, ColorRGB32F(0.0f));
     m_denoiser_normals.resize(width * height, float3{ 0.0f, 0.0f, 0.0f });
     m_pixel_sample_count.resize(width * height, 0);
+    m_pixel_converged_sample_count.resize(width * height, 0);
     m_pixel_squared_luminance.resize(width * height, 0.0f);
     m_restir_di_state.initial_candidates_reservoirs.resize(width * height);
     m_restir_di_state.spatial_output_reservoirs_1.resize(width * height);
@@ -101,6 +102,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.aux_buffers.denoiser_albedo = m_denoiser_albedo.data();
     m_render_data.aux_buffers.denoiser_normals = m_denoiser_normals.data();
     m_render_data.aux_buffers.pixel_sample_count = m_pixel_sample_count.data();
+    m_render_data.aux_buffers.pixel_converged_sample_count = m_pixel_converged_sample_count.data();
     m_render_data.aux_buffers.pixel_squared_luminance = m_pixel_squared_luminance.data();
     m_render_data.aux_buffers.still_one_ray_active = &m_still_one_ray_active;
     m_render_data.aux_buffers.stop_noise_threshold_converged_count = &m_stop_noise_threshold_count;

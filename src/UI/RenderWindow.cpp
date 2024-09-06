@@ -41,9 +41,6 @@
 // - denoiser AOVs not accounting for transmission correctly since Disney 
 //	  - same with perfect reflection
 // - heatmap with adaptive sampling and only pixel stopnoise threshold not displaying the same heatmap (particularly in shadows in the white room)
-// - Start render without adaptive sampling --> enable pixel noise threshold --> the convergence counter is broken and starts from when we enabled pixel noise threshold instead of taking all pixels that have converged into account
-// - playing with the pixel noise threshold eventually leaves it at 4000/2000000 for example, the counter doesn't reset properly  --> needs more info for reproduction
-// - pixels converged count sometimes goes above 100% --> needs more info for reproduction
 // - multiple spatial reuse passes doesn't show up properly in the perf metrics. It always shows the time for a single spatial reuse pass, not all
 
 

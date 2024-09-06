@@ -109,7 +109,7 @@ public:
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> get_denoised_framebuffer();
 	std::shared_ptr<OpenGLInteropBuffer<float3>> get_denoiser_normals_AOV_buffer();
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> get_denoiser_albedo_AOV_buffer();
-	std::shared_ptr<OpenGLInteropBuffer<int>>& get_pixels_sample_count_buffer();
+	std::shared_ptr<OpenGLInteropBuffer<int>>& get_pixels_converged_sample_count_buffer();
 	/**
 	 * Returns a structure that contains the values of
 	 * various one-variable buffers of the renderer such
@@ -240,9 +240,12 @@ private:
 
 	// Used to calculate the variance of each pixel for adaptive sampling
 	OrochiBuffer<float> m_pixels_squared_luminance_buffer;
+	// This buffer stores the number of samples accumulated *until* a pixel has converged
+	// ("converged" is according to adaptive sampling or pixel stop noise threshold)
+	std::shared_ptr<OpenGLInteropBuffer<int>> m_pixels_converged_sample_count_buffer;
 	// This buffer is necessary because with adaptive sampling, each pixel
 	// can have accumulated a different number of sample
-	std::shared_ptr<OpenGLInteropBuffer<int>> m_pixels_sample_count_buffer;
+	OrochiBuffer<int> m_pixels_sample_count_buffer;
 	// A single boolean to indicate whether there is still a ray active in
 	// the kernel or not. Mostly useful when adaptive sampling is on and we
 	// want to know if all pixels have converged or not yet
