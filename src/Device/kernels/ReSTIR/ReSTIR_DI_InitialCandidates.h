@@ -11,6 +11,7 @@
 #include "Device/includes/Hash.h"
 #include "Device/includes/Intersect.h"
 #include "Device/includes/LightUtils.h"
+#include "Device/includes/ReSTIR/DI/Utils.h"
 
 #include "HostDeviceCommon/HIPRTCamera.h"
 #include "HostDeviceCommon/Math.h"
@@ -205,23 +206,23 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
     return reservoir;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE void visibility_reuse(const HIPRTRenderData& render_data, ReSTIRDIReservoir& reservoir, float3 shading_point)
-{
-    if (reservoir.UCW == 0.0f)
-        return;
-
-    float distance_to_light;
-    float3 sample_direction = reservoir.sample.point_on_light_source - shading_point;
-    sample_direction /= (distance_to_light = hippt::length(sample_direction));
-
-    hiprtRay shadow_ray;
-    shadow_ray.origin = shading_point;
-    shadow_ray.direction = sample_direction;
-
-    bool visible = !evaluate_shadow_ray(render_data, shadow_ray, distance_to_light);
-    if (!visible)
-        reservoir.UCW = 0.0f;
-}
+//HIPRT_HOST_DEVICE HIPRT_INLINE void ReSTIR_DI_visibility_reuse(const HIPRTRenderData& render_data, ReSTIRDIReservoir& reservoir, float3 shading_point)
+//{
+//    if (reservoir.UCW == 0.0f)
+//        return;
+//
+//    float distance_to_light;
+//    float3 sample_direction = reservoir.sample.point_on_light_source - shading_point;
+//    sample_direction /= (distance_to_light = hippt::length(sample_direction));
+//
+//    hiprtRay shadow_ray;
+//    shadow_ray.origin = shading_point;
+//    shadow_ray.direction = sample_direction;
+//
+//    bool visible = !evaluate_shadow_ray(render_data, shadow_ray, distance_to_light);
+//    if (!visible)
+//        reservoir.UCW = 0.0f;
+//}
 
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) ReSTIR_DI_InitialCandidates(HIPRTRenderData render_data, int2 res)
@@ -273,7 +274,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_InitialCandidates(HIPRTRenderData
     ReSTIRDIReservoir initial_candidates_reservoir = sample_initial_candidates(render_data, ray_payload, hit_info, view_direction, random_number_generator);
 
 #if ReSTIR_DI_DoVisibilityReuse == KERNEL_OPTION_TRUE
-    visibility_reuse(render_data, initial_candidates_reservoir, hit_info.inter_point + hit_info.shading_normal * 1.0e-4f);
+    ReSTIR_DI_visibility_reuse(render_data, initial_candidates_reservoir, hit_info.inter_point + hit_info.shading_normal * 1.0e-4f);
 #endif
 
     render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs[pixel_index] = initial_candidates_reservoir;

@@ -44,79 +44,6 @@
 // Same when resampling the initial candidates
 #define INITIAL_CANDIDATES_ID 1
 
-/**
- * Returns the linear index that can be used directly to index a buffer
- * of render_data for getting data of the temporal neighbor
- */
-HIPRT_HOST_DEVICE HIPRT_INLINE int find_temporal_neighbor(const HIPRTRenderData& render_data, const float3& current_shading_point, const float3& current_normal, int2 resolution, int2 center_pixel_coords, int center_pixel_index, float center_pixel_roughness, Xorshift32Generator& random_number_generator)
-{
-	float3 previous_screen_space_point_xyz = matrix_X_point(render_data.prev_camera.view_projection, current_shading_point);
-	float2 previous_screen_space_point = make_float2(previous_screen_space_point_xyz.x, previous_screen_space_point_xyz.y);
-
-	// Bringing back in [0, 1] from [-1, 1]
-	previous_screen_space_point += make_float2(1.0f, 1.0f);
-	previous_screen_space_point *= make_float2(0.5f, 0.5f);
-
-	float2 prev_pixel_float = make_float2(previous_screen_space_point.x * resolution.x, previous_screen_space_point.y * resolution.y);
-
-	/*float2 motionVector;
-	float2 currUV = (pixel + 0.5f) / screenDim;
-	float2 prevUV = currUV - motionVector;
-	int2 prevPixel = prevUV * screenDim;*/
-
-	/*float2 current_pixel_UV = (make_float2(center_pixel_coords.x, center_pixel_coords.y) + make_float2(0.5f, 0.5f)) / make_float2(resolution.x, resolution.y);
-	float2 motion_vector = current_pixel_UV - previous_screen_space_point;
-
-	float2 prev_UV = current_pixel_UV - motion_vector;
-	float2 prev_pixel_float = prev_UV * make_float2(resolution.x, resolution.y);
-	int2 prev_pixel = make_int2(prev_pixel_float.x, prev_pixel_float.y);*/
-
-
-	// We're going to randomly look for an acceptable neighbor around the back-projected pixel location to find
-	// in a given radius
-	int temporal_neighbor_index = -1;
-	for (int i = 0; i < render_data.render_settings.restir_di_settings.temporal_pass.max_neighbor_search_count + 1; i++)
-	{
-		float2 offset = make_float2(0.0f, 0.0f);
-		if (i > 0)
-			// Only randomly looking after we've at least checked whether or not the exact temporally reprojected location
-			// is valid or not
-			offset = make_float2(random_number_generator() - 0.5f, random_number_generator() - 0.5f) * render_data.render_settings.restir_di_settings.temporal_pass.neighbor_search_radius;
-
-		int2 temporal_neighbor_screen_pixel_pos = make_int2(prev_pixel_float.x + offset.x, prev_pixel_float.y + offset.y);
-		if (temporal_neighbor_screen_pixel_pos.x < 0 || temporal_neighbor_screen_pixel_pos.x >= resolution.x || temporal_neighbor_screen_pixel_pos.y < 0 || temporal_neighbor_screen_pixel_pos.y >= resolution.y)
-			// Previous pixel is out of the current viewport
-			continue;
-
-		temporal_neighbor_index = temporal_neighbor_screen_pixel_pos.x + temporal_neighbor_screen_pixel_pos.y * resolution.x;
-		if (check_similarity_heuristics(render_data, temporal_neighbor_index, center_pixel_index, current_shading_point, current_normal))
-			// We found a good neighbor
-			break;
-
-		// We didn't break so we didn't find a good neighbor
-		temporal_neighbor_index = -1;
-	}
-
-	return temporal_neighbor_index;
-}
-
-HIPRT_HOST_DEVICE HIPRT_INLINE void temporal_visibility_reuse(const HIPRTRenderData& render_data, ReSTIRDIReservoir& reservoir, float3 shading_point)
-{
-	if (reservoir.UCW == 0.0f)
-		return;
-
-	float distance_to_light;
-	float3 sample_direction = reservoir.sample.point_on_light_source - shading_point;
-	sample_direction /= (distance_to_light = hippt::length(sample_direction));
-
-	hiprtRay shadow_ray;
-	shadow_ray.origin = shading_point;
-	shadow_ray.direction = sample_direction;
-
-	if (evaluate_shadow_ray(render_data, shadow_ray, distance_to_light))
-		reservoir.UCW = 0.0f;
-}
-
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) ReSTIR_DI_TemporalReuse(HIPRTRenderData render_data, int2 res)
 #else
@@ -150,7 +77,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	// Surface data of the center pixel
 	ReSTIRDISurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index);
 
-	int temporal_neighbor_pixel_index = find_temporal_neighbor(render_data, center_pixel_surface.shading_point, center_pixel_surface.shading_normal, res, make_int2(x, y), center_pixel_index, center_pixel_surface.material.roughness, random_number_generator);
+	int temporal_neighbor_pixel_index = find_temporal_neighbor_index(render_data, center_pixel_surface.shading_point, center_pixel_surface.shading_normal, res, make_int2(x, y), center_pixel_index, center_pixel_surface.material.roughness, random_number_generator);
 	if (temporal_neighbor_pixel_index == -1)
 	{
 		// Temporal occlusion / disoccusion, temporal neighbor is invalid,
@@ -273,7 +200,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	new_reservoir.sanity_check(make_int2(x, y));
 
 #if ReSTIR_DI_DoVisibilityReuse && ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
-	temporal_visibility_reuse(render_data, new_reservoir, center_pixel_surface.shading_point);
+	ReSTIR_DI_visibility_reuse(render_data, new_reservoir, center_pixel_surface.shading_point);
 #endif
 
 	render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs[center_pixel_index] = new_reservoir;

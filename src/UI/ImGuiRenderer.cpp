@@ -42,14 +42,6 @@ void ImGuiRenderer::show_help_marker(const std::string& text)
 	ImGui::SameLine();
 	ImGui::TextDisabled("(?)");
 	add_tooltip(text);
-	/*if (ImGui::IsItemHovered())
-	{
-		ImGui::BeginTooltip();
-		ImGui::PushTextWrapPos(500.0f);
-		ImGui::TextUnformatted(text);
-		ImGui::PopTextWrapPos();
-		ImGui::EndTooltip();
-	}*/
 }
 
 void ImGuiRenderer::set_render_window(RenderWindow* render_window)
@@ -87,25 +79,22 @@ void ImGuiRenderer::draw_imgui_interface()
 		if (can_print_convergence)
 		{
 			ImGui::Text("Pixels converged: %d / %d - %.4f%%", converged_count, total_pixel_count, static_cast<float>(converged_count) / total_pixel_count * 100.0f);
-			if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-			{
-				// Adding some information on what noise threshold is being used
-				std::string text = "Current noise threshold is: ";
-				if (render_settings.enable_adaptive_sampling && render_settings.sample_number > render_settings.adaptive_sampling_min_samples)
-				{
-					if (render_settings.stop_pixel_noise_threshold > render_settings.adaptive_sampling_noise_threshold)
-						// If the pixel noise threshold is stronger, then the displayed convergence counter
-						// is going to be according to the stop noise threshold so that's what we're adding in the tooltip
-						// there
-						text += std::to_string(render_settings.stop_pixel_noise_threshold) + " (pixel noise threshold)";
-					else
-						text += std::to_string(render_settings.adaptive_sampling_noise_threshold) + " (adaptive sampling)";
-				}
-				else if (render_settings.stop_pixel_noise_threshold > 0.0f)
-					text += std::to_string(render_settings.stop_pixel_noise_threshold) + " (pixel noise threshold)";
 
-				ImGuiRenderer::wrapping_tooltip(text);
+			// Adding some information on what noise threshold is being used
+			std::string text = "Current noise threshold is: ";
+			if (render_settings.enable_adaptive_sampling && render_settings.sample_number > render_settings.adaptive_sampling_min_samples)
+			{
+				if (render_settings.stop_pixel_noise_threshold > render_settings.adaptive_sampling_noise_threshold)
+					// If the pixel noise threshold is stronger, then the displayed convergence counter
+					// is going to be according to the stop noise threshold so that's what we're adding in the tooltip
+					// there
+					text += std::to_string(render_settings.stop_pixel_noise_threshold) + " (pixel noise threshold)";
+				else
+					text += std::to_string(render_settings.adaptive_sampling_noise_threshold) + " (adaptive sampling)";
 			}
+			else if (render_settings.stop_pixel_noise_threshold > 0.0f)
+				text += std::to_string(render_settings.stop_pixel_noise_threshold) + " (pixel noise threshold)";
+			ImGuiRenderer::show_help_marker(text);
 		}
 		else
 		{
@@ -1327,7 +1316,7 @@ void ImGuiRenderer::draw_perf_metric_specific_panel(std::shared_ptr<PerformanceM
 		std::string line_4 = format_perf_metrics_tooltip_line(label, " (min / max):", " (min / max):", " %.3fms / %.3fms", min, max);
 
 		std::string tooltip = line_1 + "\n" + line_2 + "\n" + line_3 + "\n" + line_4;
-		ImGuiRenderer::wrapping_tooltip(tooltip);
+		ImGuiRenderer::add_tooltip(tooltip);
 	}
 	
 	ImGui::SameLine();

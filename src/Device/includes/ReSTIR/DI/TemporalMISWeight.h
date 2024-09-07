@@ -99,8 +99,9 @@ template<>
 struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE_CONFIDENCE_WEIGHTS>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
-		const ReSTIRDIReservoir& reservoir_being_resampled, const ReSTIRDIReservoir& temporal_neighbor_reservoir,
+		const ReSTIRDIReservoir& reservoir_being_resampled,
 		const ReSTIRDISurface& temporal_neighbor_surface, const ReSTIRDISurface& center_pixel_surface,
+		int initial_candidates_reservoir_M, int temporal_neighbor_reservoir_M,
 		int current_neighbor,
 		Xorshift32Generator& random_number_generator)
 	{
