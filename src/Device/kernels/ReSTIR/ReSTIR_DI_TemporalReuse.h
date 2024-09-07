@@ -40,9 +40,9 @@
 // (for looping over the neighbors when resampling / computing MIS weights)
 // So instead of hardcoding 0 everywhere in the code, we just basically give it a name
 // with a #define
-#define TEMPORAL_NEIGHBOR_RESAMPLE 0
+#define TEMPORAL_NEIGHBOR_ID 0
 // Same when resampling the initial candidates
-#define INITIAL_CANDIDATES_RESAMPLE 1
+#define INITIAL_CANDIDATES_ID 1
 
 /**
  * Returns the linear index that can be used directly to index a buffer
@@ -185,14 +185,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	// Either 0 or 1 for the temporal resampling pass
 	int selected_neighbor = 0;
 	float init_cand_mis_weight = resampling_mis_weight.get_resampling_MIS_weight(render_data, 
-		initial_candidates_reservoir, temporal_neighbor_reservoir, 
-		temporal_neighbor_surface, center_pixel_surface, 
-		/* indicating that we're currently resampling the initial candidates */ INITIAL_CANDIDATES_RESAMPLE,
-		center_pixel_index, temporal_neighbor_pixel_index, 
+		initial_candidates_reservoir, 
+		temporal_neighbor_surface, center_pixel_surface,
+		initial_candidates_reservoir.M, temporal_neighbor_reservoir.M,
+		/* indicating that we're currently resampling the initial candidates */ INITIAL_CANDIDATES_ID,
 		random_number_generator);
 
 	if (new_reservoir.combine_with(initial_candidates_reservoir, init_cand_mis_weight, initial_candidates_reservoir.sample.target_function, /* jacobian is 1 when reusing at the exact same spot */ 1.0f, random_number_generator))
-		selected_neighbor = INITIAL_CANDIDATES_RESAMPLE;
+		selected_neighbor = INITIAL_CANDIDATES_ID;
 	new_reservoir.sanity_check(make_int2(x, y));
 
 
@@ -245,15 +245,15 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 			// that sample anyway when combining the reservoir since the resampling weight will be 0.0f because of
 			// the multiplication by the target function that is 0.0f
 			temporal_neighbor_resampling_mis_weight = resampling_mis_weight.get_resampling_MIS_weight(render_data,
-				temporal_neighbor_reservoir, temporal_neighbor_reservoir, 
-				temporal_neighbor_surface, center_pixel_surface, 
-				/* indicating that we're currently resampling the temporal neighbor */ TEMPORAL_NEIGHBOR_RESAMPLE, 
-				center_pixel_index, temporal_neighbor_pixel_index, 
+				temporal_neighbor_reservoir, 
+				temporal_neighbor_surface, center_pixel_surface,
+				initial_candidates_reservoir.M, temporal_neighbor_reservoir.M,
+				/* indicating that we're currently resampling the temporal neighbor */ TEMPORAL_NEIGHBOR_ID,
 				random_number_generator);
 
 		// Combining as in Alg. 6 of the paper
 		if (new_reservoir.combine_with(temporal_neighbor_reservoir, temporal_neighbor_resampling_mis_weight, target_function_at_center, jacobian_determinant, random_number_generator))
-			selected_neighbor = TEMPORAL_NEIGHBOR_RESAMPLE;
+			selected_neighbor = TEMPORAL_NEIGHBOR_ID;
 		new_reservoir.sanity_check(make_int2(x, y));
 	}
 

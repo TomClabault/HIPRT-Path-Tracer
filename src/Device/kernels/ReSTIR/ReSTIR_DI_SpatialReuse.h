@@ -100,7 +100,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int get_neighbor_pixel_index(const HIPRTRenderDat
 
 				if (rng_converged_neighbor_reuse() > render_data.render_settings.restir_di_settings.spatial_pass.converged_neighbor_reuse_probability)
 				{
-					// We didn't pass the probability check
+					// We didn't pass the probability check, we are not allowed to reuse the neighbor if it
+					// has converged
 
 					if (render_data.aux_buffers.pixel_converged_sample_count[neighbor_pixel_index] != -1)
 					// The neighbor is indeed converged, returning invalid neighbor with -1
@@ -381,7 +382,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 				continue;
 			}
 		}
-
 
 		float mis_weight = 1.0f;
 		if (target_function_at_center > 0.0f)

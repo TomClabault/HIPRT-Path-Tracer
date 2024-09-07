@@ -14,9 +14,9 @@
  // (for looping over the neighbors when resampling / computing MIS weights)
  // So instead of hardcoding 0 everywhere in the code, we just basically give it a name
  // with a #define
-#define TEMPORAL_NEIGHBOR_RESAMPLE 0
+#define TEMPORAL_NEIGHBOR_ID 0
 // Same when resampling the initial candidates
-#define INITIAL_CANDIDATES_RESAMPLE 1
+#define INITIAL_CANDIDATES_ID 1
 
 /**
  * This structure here is only meant to encapsulate one method that
@@ -146,7 +146,7 @@ struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE>
 			// a sampling technique/strategy to take into account in the MIS weight
 			temporal_neighbor_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, reservoir.sample, temporal_neighbor_surface);
 
-		if (selected_neighbor == INITIAL_CANDIDATES_RESAMPLE)
+		if (selected_neighbor == INITIAL_CANDIDATES_ID)
 			// The point of the MIS-like MIS weights is to have the weight of the sample that picked
 			// in the numerator and the sum of everyone in the denominator.
 			//
@@ -190,7 +190,7 @@ struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE_CO
 			// a sampling technique/strategy to take into account in the MIS weight
 			temporal_neighbor_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, reservoir.sample, temporal_neighbor_surface);
 
-		if (selected_neighbor == INITIAL_CANDIDATES_RESAMPLE)
+		if (selected_neighbor == INITIAL_CANDIDATES_ID)
 			// The point of the MIS-like MIS weights is to have the weight of the sample that picked
 			// in the numerator and the sum of everyone in the denominator.
 			//

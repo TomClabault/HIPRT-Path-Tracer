@@ -817,18 +817,22 @@ void ImGuiRenderer::draw_sampling_panel()
 							m_render_window->set_render_dirty(true);
 						}
 
-						if (ImGui::Checkbox("Neighbor Samples Rotation", &render_settings.restir_di_settings.spatial_pass.do_neighbor_rotation))
+						if (ImGui::Checkbox("Neighbor Samples Random Rotation", &render_settings.restir_di_settings.spatial_pass.do_neighbor_rotation))
 							m_render_window->set_render_dirty(true);
+						ImGuiRenderer::show_help_marker("If checked, spatial neighbors sampled (using the Hammersley point set) will be randomly rotated. Because neighbor locations are generated with a Hammersley point set (deterministic), not rotating them results in every pixel of every rendered image reusing the same neighbor locations which can decrease reuse efficiency.");
 
 						ImGui::BeginDisabled(!render_settings.enable_adaptive_sampling);
 						if (ImGui::Checkbox("Allow Reuse of Converged Neighbors", &render_settings.restir_di_settings.spatial_pass.allow_converged_neighbors_reuse))
 							m_render_window->set_render_dirty(true);
-						ImGuiRenderer::show_help_marker("If checked, then the spatial reuse passes are allowed "
+						std::string reuse_of_converged_neighbors_help = "If checked, then the spatial reuse passes are allowed "
 							"to reuse from neighboring pixels which have converged (and thus neighbors that "
 							"are not being sampled anymore = neighbors whose reservoirs do not evolve anymore). "
-							"This improves performance speed but at the cost of some bias when non-converged "
+							"This improves performance but at the cost of bias when non-converged "
 							"pixels try to reuse from converged pixels. The bias will thus typically manifest "
-							"on the parts of the image that are the hardest to render.");
+							"on the parts of the image that are the hardest to render.";
+						if (!render_settings.enable_adaptive_sampling)
+							reuse_of_converged_neighbors_help += "\n\nDisabled because adaptive sampling isn't enabled.";
+						ImGuiRenderer::show_help_marker(reuse_of_converged_neighbors_help);
 						if (render_settings.restir_di_settings.spatial_pass.allow_converged_neighbors_reuse)
 						{
 							if (ImGui::SliderFloat("Converged Neighbor Reuse Probability", &render_settings.restir_di_settings.spatial_pass.converged_neighbor_reuse_probability, 0.0f, 1.0f))
