@@ -34,97 +34,6 @@
  * [8] [Rearchitecting Spatiotemporal Resampling for Production] https://research.nvidia.com/publication/2021-07_rearchitecting-spatiotemporal-resampling-production
  */
 
-HIPRT_HOST_DEVICE HIPRT_INLINE void get_spatial_reuse_normalization_denominator_numerator(const HIPRTRenderData& render_data, 
-	const ReSTIRDIReservoir& new_reservoir, const ReSTIRDISurface& center_pixel_surface, 
-	int selected_neighbor, int reused_neighbors_count, 
-	int2 center_pixel_coords, int2 res, 
-	float2 cos_sin_theta_rotation, 
-	Xorshift32Generator& random_number_generator, float& out_normalization_nume, float& out_normalization_denom)
-{
-	if (new_reservoir.weight_sum <= 0)
-	{
-		// Invalid reservoir, returning directly
-		out_normalization_nume = 1.0;
-		out_normalization_denom = 1.0f;
-
-		return;
-	}
-
-#if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_M
-	// 1/M MIS weights are basically confidence weights only i.e. c_i / sum(c_j) with
-	// c_i = r_i.M
-
-	out_normalization_nume = 1.0f;
-	// We're simply going to divide by the sum of all the M values of all the neighbors we resampled (including the center pixel)
-	// so we're only going to set the denominator to that and the numerator isn't going to change
-	out_normalization_denom = 0.0f;
-	for (int neighbor = 0; neighbor < reused_neighbors_count + 1; neighbor++)
-	{
-		int neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, neighbor, reused_neighbors_count, render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_radius, center_pixel_coords, res, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
-		if (neighbor_pixel_index == -1)
-			// Neighbor out of the viewport
-			continue;
-
-		int center_pixel_index = center_pixel_coords.x + center_pixel_coords.y * res.x;
-		if (!check_neighbor_similarity_heuristics(render_data, neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point, center_pixel_surface.shading_normal))
-			continue;
-
-		ReSTIRDIReservoir neighbor_reservoir = render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs[neighbor_pixel_index];
-		out_normalization_denom += neighbor_reservoir.M;
-	}
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE_CONFIDENCE_WEIGHTS
-	// Checking how many of our neighbors could have produced the sample that we just picked
-	// and we're going to divide by the sum of M values of those neighbors
-	out_normalization_denom = 0.0f;
-#if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
-	out_normalization_nume = 1.0f;
-#else
-	out_normalization_nume = 0.0f;
-#endif
-
-	for (int neighbor = 0; neighbor < reused_neighbors_count + 1; neighbor++)
-	{
-		int neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, neighbor, reused_neighbors_count, render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_radius, center_pixel_coords, res, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
-		if (neighbor_pixel_index == -1)
-			// Neighbor out of the viewport
-			continue;
-
-		int center_pixel_index = center_pixel_coords.x + center_pixel_coords.y * res.x;
-		if (!check_neighbor_similarity_heuristics(render_data, neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point, center_pixel_surface.shading_normal))
-			continue;
-
-		// Getting the surface data at the neighbor
-		ReSTIRDISurface neighbor_surface = get_pixel_surface(render_data, neighbor_pixel_index);
-
-		float target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, new_reservoir.sample, neighbor_surface);
-
-		if (target_function_at_neighbor > 0.0f)
-		{
-			// If the neighbor could have produced this sample...
-			ReSTIRDIReservoir neighbor_reservoir = render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs[neighbor_pixel_index];
-
-#if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
-			out_normalization_denom += neighbor_reservoir.M;
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
-			if (neighbor == selected_neighbor)
-				out_normalization_nume += target_function_at_neighbor;
-			out_normalization_denom += target_function_at_neighbor;
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE_CONFIDENCE_WEIGHTS
-			if (neighbor == selected_neighbor)
-				out_normalization_nume += target_function_at_neighbor;
-			out_normalization_denom += target_function_at_neighbor * neighbor_reservoir.M;
-#endif
-		}
-	}
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_GBH || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_GBH_CONFIDENCE_WEIGHTS
-	// Nothing more to normalize, everything is already handled when resampling the neighbors with balance heuristic MIS weights in the m_i terms
-	out_normalization_nume = 1.0f;
-	out_normalization_denom = 1.0f;
-#else
-#error "Unsupported bias correction mode in ReSTIR DI spatial reuse get_normalization_denominator_numerator()"
-#endif
-}
-
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) ReSTIR_DI_SpatialReuse(HIPRTRenderData render_data, int2 res)
 #else
@@ -257,7 +166,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	float normalization_numerator = 1.0f;
 	float normalization_denominator = 1.0f;
 
-	get_spatial_reuse_normalization_denominator_numerator(render_data, 
+	ReSTIRDISpatialNormalizationWeight<ReSTIR_DI_BiasCorrectionWeights> normalization_weight;
+	normalization_weight.get_normalization(render_data,
 		new_reservoir, 
 		center_pixel_surface, 
 		selected_neighbor, reused_neighbors_count, 

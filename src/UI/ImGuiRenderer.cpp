@@ -843,6 +843,7 @@ void ImGuiRenderer::draw_sampling_panel()
 
 						m_render_window->set_render_dirty(true);
 					}
+					ImGuiRenderer::show_help_marker("What weights to use to resample reservoirs");
 
 					// No visibility bias correction for 1/M weights
 					bool bias_correction_visibility_disabled = kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_1_OVER_M;
