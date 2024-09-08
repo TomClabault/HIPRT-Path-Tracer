@@ -59,6 +59,10 @@
 #define RESTIR_DI_BIAS_CORRECTION_MIS_LIKE_CONFIDENCE_WEIGHTS 3
 #define RESTIR_DI_BIAS_CORRECTION_MIS_GBH 4
 #define RESTIR_DI_BIAS_CORRECTION_MIS_GBH_CONFIDENCE_WEIGHTS 5
+#define RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS 6
+#define RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_CONFIDENCE_WEIGHTS 7
+#define RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE 8
+#define RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE_CONFIDENCE_WEIGHTS 9
 
 #define GGX_NO_VNDF 0
 #define GGX_VNDF_SAMPLING 1
@@ -230,11 +234,15 @@
  *		Same as RESTIR_DI_BIAS_CORRECTION_MIS_GBH but with confidence weights in them. Eq. 5.11 of
  *		2023, "A Gentle Introduction to ReSTIR". Should have lower variance than without confidence weights
  *		due to favoring better samples.
+ * 
+ *	- RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
+ *		Similar variance reduction to the generalized balance heuristic and only O(N) computational cost.
+ *		Section 7.1.3 of "A Gentle Introduction to ReSTIR", 2023
  */
-#define ReSTIR_DI_BiasCorrectionWeights RESTIR_DI_BIAS_CORRECTION_MIS_GBH_CONFIDENCE_WEIGHTS
+#define ReSTIR_DI_BiasCorrectionWeights RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
 
 /**
- * What sampling strategy to use for thd GGX NDF
+ * What sampling strategy to use for the GGX NDF
  * 
  *  - GGX_NO_VNDF
  *		Not sampling the visible distribution of normals.
@@ -248,7 +256,7 @@
  *		Sample the distribution of visible normals using spherical
  *		caps as proposed in [Sampling Visible GGX Normals with Spherical Caps, Dupuy & Benyoub, 2023]
  * 
- *  - GGX_VNDF_BOUNDED [Not Yet Implemented]]
+ *  - GGX_VNDF_BOUNDED [Not Yet Implemented]
  *		Sample the distribution of visible normals with a bounded VNDF
  *		sampling range as proposed in [Bounded VNDF Sampling for Smith-GGX Reflections, Eto & Tokuyoshi, 2023]
  *		

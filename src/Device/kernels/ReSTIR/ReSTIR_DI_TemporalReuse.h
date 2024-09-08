@@ -94,7 +94,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	ReSTIRDIReservoir new_reservoir;
 	ReSTIRDIReservoir initial_candidates_reservoir = render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs[center_pixel_index];
 	ReSTIRDIReservoir temporal_neighbor_reservoir = render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs[temporal_neighbor_pixel_index];
-	// M-capping the temporal neighbor
+	// M-capping the temporal neighbor if a M-cap has been given
 	if (render_data.render_settings.restir_di_settings.m_cap > 0)
 		temporal_neighbor_reservoir.M = hippt::min(temporal_neighbor_reservoir.M, render_data.render_settings.restir_di_settings.m_cap);
 
@@ -106,26 +106,15 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	else
 		// Reading from the current frame's g-buffer otherwise
 		temporal_neighbor_surface = get_pixel_surface(render_data, temporal_neighbor_pixel_index);
-	
+
 	ReSTIRDITemporalResamplingMISWeight<ReSTIR_DI_BiasCorrectionWeights> resampling_mis_weight;
 	// Will keep the index of the neighbor that has been selected by resampling. 
 	// Either 0 or 1 for the temporal resampling pass
 	int selected_neighbor = 0;
-	float init_cand_mis_weight = resampling_mis_weight.get_resampling_MIS_weight(render_data, 
-		initial_candidates_reservoir, 
-		temporal_neighbor_surface, center_pixel_surface,
-		initial_candidates_reservoir.M, temporal_neighbor_reservoir.M,
-		/* indicating that we're currently resampling the initial candidates */ INITIAL_CANDIDATES_ID,
-		random_number_generator);
 
-	if (new_reservoir.combine_with(initial_candidates_reservoir, init_cand_mis_weight, initial_candidates_reservoir.sample.target_function, /* jacobian is 1 when reusing at the exact same spot */ 1.0f, random_number_generator))
-		selected_neighbor = INITIAL_CANDIDATES_ID;
-	new_reservoir.sanity_check(make_int2(x, y));
-
-
-	// ---
-	// The rest of the code resamples the temporal neighbor
-	// ---
+	// /* ------------------------------- */
+	// Resampling the temporal neighbor
+	// /* ------------------------------- */
 
 	if (temporal_neighbor_reservoir.M > 0)
 	{
@@ -166,23 +155,33 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 				jacobian_determinant = 0.0f;
 		}
 
-		float temporal_neighbor_resampling_mis_weight = 1.0f;
-		if (target_function_at_center > 0.0f)
-			// No need to compute the MIS weight if the target function is 0.0f because we're never going to pick
-			// that sample anyway when combining the reservoir since the resampling weight will be 0.0f because of
-			// the multiplication by the target function that is 0.0f
-			temporal_neighbor_resampling_mis_weight = resampling_mis_weight.get_resampling_MIS_weight(render_data,
-				temporal_neighbor_reservoir, 
-				temporal_neighbor_surface, center_pixel_surface,
-				initial_candidates_reservoir.M, temporal_neighbor_reservoir.M,
-				/* indicating that we're currently resampling the temporal neighbor */ TEMPORAL_NEIGHBOR_ID,
-				random_number_generator);
+		float temporal_neighbor_resampling_mis_weight = resampling_mis_weight.get_resampling_MIS_weight(render_data,
+			temporal_neighbor_reservoir, initial_candidates_reservoir,
+			temporal_neighbor_surface, center_pixel_surface,
+			temporal_neighbor_reservoir.M,
+			/* indicating that we're currently resampling the temporal neighbor */ TEMPORAL_NEIGHBOR_ID,
+			random_number_generator);
 
 		// Combining as in Alg. 6 of the paper
 		if (new_reservoir.combine_with(temporal_neighbor_reservoir, temporal_neighbor_resampling_mis_weight, target_function_at_center, jacobian_determinant, random_number_generator))
 			selected_neighbor = TEMPORAL_NEIGHBOR_ID;
 		new_reservoir.sanity_check(make_int2(x, y));
 	}
+
+	// /* ------------------------------- */
+	// Resampling the initial candidates
+	// /* ------------------------------- */
+
+	float init_cand_mis_weight = resampling_mis_weight.get_resampling_MIS_weight(render_data,
+		initial_candidates_reservoir, initial_candidates_reservoir,
+		temporal_neighbor_surface, center_pixel_surface,
+		temporal_neighbor_reservoir.M,
+		/* indicating that we're currently resampling the initial candidates */ INITIAL_CANDIDATES_ID,
+		random_number_generator);
+
+	if (new_reservoir.combine_with(initial_candidates_reservoir, init_cand_mis_weight, initial_candidates_reservoir.sample.target_function, /* jacobian is 1 when reusing at the exact same spot */ 1.0f, random_number_generator))
+		selected_neighbor = INITIAL_CANDIDATES_ID;
+	new_reservoir.sanity_check(make_int2(x, y));
 
 	float normalization_numerator = 1.0f;
 	float normalization_denominator = 1.0f;

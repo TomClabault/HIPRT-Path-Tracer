@@ -39,14 +39,14 @@ template<>
 struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_M>
 {
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
-		const ReSTIRDIReservoir& reservoir,
+		const ReSTIRDIReservoir& final_reservoir,
 		int initial_candidates_M, int temporal_neighbor_M,
 		const ReSTIRDISurface& center_pixel_surface, const ReSTIRDISurface& temporal_neighbor_surface,
 		int selected_neighbor, int center_pixel_index, int temporal_neighbor_pixel_index,
 		Xorshift32Generator& random_number_generator,
 		float& out_normalization_nume, float& out_normalization_denom)
 	{
-		if (reservoir.weight_sum <= 0)
+		if (final_reservoir.weight_sum <= 0)
 		{
 			// Invalid reservoir, returning directly
 			out_normalization_nume = 1.0;
@@ -69,14 +69,14 @@ template<>
 struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z>
 {
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
-		const ReSTIRDIReservoir& reservoir, 
+		const ReSTIRDIReservoir& final_reservoir, 
 		int initial_candidates_M, int temporal_neighbor_M,
 		const ReSTIRDISurface& center_pixel_surface, const ReSTIRDISurface& temporal_neighbor_surface,
 		int selected_neighbor, int center_pixel_index, int temporal_neighbor_pixel_index,
 		Xorshift32Generator& random_number_generator,
 		float& out_normalization_nume, float& out_normalization_denom)
 	{
-		if (reservoir.weight_sum <= 0)
+		if (final_reservoir.weight_sum <= 0)
 		{
 			// Invalid reservoir, returning directly
 			out_normalization_nume = 1.0;
@@ -99,7 +99,7 @@ struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z>
 		// that sample is > so we're going to check both target function here.
 
 		// Evaluating the target function at the center pixel because this is the pixel of the initial candidates
-		float center_pixel_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, reservoir.sample, center_pixel_surface);
+		float center_pixel_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, final_reservoir.sample, center_pixel_surface);
 		// if the sample contained in our final reservoir (the 'reservoir' parameter) could have been produced by the center
 		// pixel, we're adding the confidence of that pixel to the denominator for normalization
 		out_normalization_denom += (center_pixel_target_function > 0) * initial_candidates_M;
@@ -107,7 +107,7 @@ struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z>
 		if (temporal_neighbor_M > 0)
 		{
 			// We only want to check if the temporal could have produced the sample if we actually have a temporal neighbor
-			float temporal_neighbor_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, reservoir.sample, temporal_neighbor_surface);
+			float temporal_neighbor_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, final_reservoir.sample, temporal_neighbor_surface);
 			out_normalization_denom += (temporal_neighbor_target_function > 0) * temporal_neighbor_M;
 		}
 	}
@@ -121,14 +121,14 @@ template<>
 struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE>
 {
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
-		const ReSTIRDIReservoir& reservoir,
+		const ReSTIRDIReservoir& final_reservoir,
 		int initial_candidates_M, int temporal_neighbor_M,
 		const ReSTIRDISurface& center_pixel_surface, const ReSTIRDISurface& temporal_neighbor_surface,
 		int selected_neighbor, int center_pixel_index, int temporal_neighbor_pixel_index,
 		Xorshift32Generator& random_number_generator,
 		float& out_normalization_nume, float& out_normalization_denom)
 	{
-		if (reservoir.weight_sum <= 0)
+		if (final_reservoir.weight_sum <= 0)
 		{
 			// Invalid/empty reservoir, returning directly
 			out_normalization_nume = 1.0;
@@ -137,14 +137,14 @@ struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE>
 			return;
 		}
 
-		float center_pixel_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, reservoir.sample, center_pixel_surface);
+		float center_pixel_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, final_reservoir.sample, center_pixel_surface);
 		float temporal_neighbor_target_function = 0.0f;
 		if (temporal_neighbor_M > 0)
 			// Only evaluating the target function if we actually have a temporal neighbor because if we don't,
 			// this means that no temporal neighbor contributed to the resampling of the sample in 'reservoir'
 			// and if the temporal neighbor didn't contribute to the resampling, then this is not, in MIS terms,
 			// a sampling technique/strategy to take into account in the MIS weight
-			temporal_neighbor_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, reservoir.sample, temporal_neighbor_surface);
+			temporal_neighbor_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, final_reservoir.sample, temporal_neighbor_surface);
 
 		if (selected_neighbor == INITIAL_CANDIDATES_ID)
 			// The point of the MIS-like MIS weights is to have the weight of the sample that picked
@@ -165,14 +165,14 @@ template<>
 struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE_CONFIDENCE_WEIGHTS>
 {
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
-		const ReSTIRDIReservoir& reservoir,
+		const ReSTIRDIReservoir& final_reservoir,
 		int initial_candidates_M, int temporal_neighbor_M,
 		const ReSTIRDISurface& center_pixel_surface, const ReSTIRDISurface& temporal_neighbor_surface,
 		int selected_neighbor, int center_pixel_index, int temporal_neighbor_pixel_index,
 		Xorshift32Generator& random_number_generator,
 		float& out_normalization_nume, float& out_normalization_denom)
 	{
-		if (reservoir.weight_sum <= 0)
+		if (final_reservoir.weight_sum <= 0)
 		{
 			// Invalid reservoir, returning directly
 			out_normalization_nume = 1.0;
@@ -181,14 +181,14 @@ struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE_CO
 			return;
 		}
 
-		float center_pixel_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, reservoir.sample, center_pixel_surface);
+		float center_pixel_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, final_reservoir.sample, center_pixel_surface);
 		float temporal_neighbor_target_function = 0.0f;
 		if (temporal_neighbor_M > 0)
 			// Only evaluating the target function if we actually have a temporal neighbor because if we don't,
 			// this means that no temporal neighbor contributed to the resampling of the sample in 'reservoir'
 			// and if the temporal neighbor didn't contribute to the resampling, then this is not, in MIS terms,
 			// a sampling technique/strategy to take into account in the MIS weight
-			temporal_neighbor_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, reservoir.sample, temporal_neighbor_surface);
+			temporal_neighbor_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, final_reservoir.sample, temporal_neighbor_surface);
 
 		if (selected_neighbor == INITIAL_CANDIDATES_ID)
 			// The point of the MIS-like MIS weights is to have the weight of the sample that picked
@@ -213,7 +213,7 @@ template<>
 struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH>
 {
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
-		const ReSTIRDIReservoir& reservoir,
+		const ReSTIRDIReservoir& final_reservoir,
 		int initial_candidates_M, int temporal_neighbor_M,
 		const ReSTIRDISurface& center_pixel_surface, const ReSTIRDISurface& temporal_neighbor_surface,
 		int selected_neighbor, int center_pixel_index, int temporal_neighbor_pixel_index,
@@ -231,7 +231,7 @@ template<>
 struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH_CONFIDENCE_WEIGHTS>
 {
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
-		const ReSTIRDIReservoir& reservoir,
+		const ReSTIRDIReservoir& final_reservoir,
 		int initial_candidates_M, int temporal_neighbor_M,
 		const ReSTIRDISurface& center_pixel_surface, const ReSTIRDISurface& temporal_neighbor_surface,
 		int selected_neighbor, int center_pixel_index, int temporal_neighbor_pixel_index,
@@ -240,6 +240,28 @@ struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH_CON
 	{
 		// Nothing more to normalize, everything is already handled when resampling the 
 		// neighbors with balance heuristic MIS weights in the m_i (resampling MIS weights) terms
+		out_normalization_nume = 1.0f;
+		out_normalization_denom = 1.0f;
+	}
+};
+
+
+
+
+
+template<>
+struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS>
+{
+	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
+		const ReSTIRDIReservoir& final_reservoir,
+		int initial_candidates_M, int temporal_neighbor_M,
+		const ReSTIRDISurface& center_pixel_surface, const ReSTIRDISurface& temporal_neighbor_surface,
+		int selected_neighbor, int center_pixel_index, int temporal_neighbor_pixel_index,
+		Xorshift32Generator& random_number_generator,
+		float& out_normalization_nume, float& out_normalization_denom)
+	{
+		// Nothing more to normalize, everything is already handled when resampling the 
+		// neighbors. Everything is already in the MIS weights m_i.
 		out_normalization_nume = 1.0f;
 		out_normalization_denom = 1.0f;
 	}

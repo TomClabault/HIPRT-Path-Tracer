@@ -20,7 +20,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_reservoir_sample(const HIPRT
 {
     ColorRGB32F final_color;
 
-    if (reservoir.weight_sum == 0.0f)
+    if (reservoir.UCW == 0.0f)
         // No valid sample means no light contribution
         return ColorRGB32F(0.0f);
 

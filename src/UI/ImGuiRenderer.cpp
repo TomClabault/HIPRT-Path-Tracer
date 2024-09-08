@@ -573,8 +573,9 @@ void ImGuiRenderer::draw_sampling_panel()
 					{
 						if (!use_heuristics_at_all)
 						{
-							// "Disabling" the heuristics by setting limit values
-							render_settings.restir_di_settings.normal_similarity_angle_precomp = 0.0f;
+							// "Disabling" the heuristics by setting "impossible" values so that the heuristics
+							// tests in the shader always pass
+							render_settings.restir_di_settings.normal_similarity_angle_precomp = -1.0f;
 							render_settings.restir_di_settings.plane_distance_threshold = 1.0e35f;
 							render_settings.restir_di_settings.roughness_similarity_threshold = 1000.0f;
 						}
@@ -801,7 +802,7 @@ void ImGuiRenderer::draw_sampling_panel()
 						if (ImGui::SliderInt("Neighbor Reuse Count", &render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count, 1, 64))
 						{
 							// Clamping
-							render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count = std::max(0, render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count);
+							render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count = std::max(1, render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count);
 
 							m_render_window->set_render_dirty(true);
 						}
@@ -836,7 +837,18 @@ void ImGuiRenderer::draw_sampling_panel()
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
 					ImGui::SeparatorText("Bias correction");
 
-					const char* bias_correction_mode_items[] = { "- 1/M Weights (biased)", "- 1/Z Weights (Unbiased)", "- MIS-like Weights (Unbiased)", "- MIS-like Weights & CW (Unbiased)", "- MIS Weights GBH (Unbiased)", "- MIS Weights GBH & CW (Unbiased)" };
+					const char* bias_correction_mode_items[] = {
+						"- 1/M Weights (Biased)",
+						"- 1/Z Weights (Unbiased)",
+						"- MIS-like Weights (Unbiased)",
+						"- MIS-like Weights & CW (Unbiased)",
+						"- MIS Weights GBH (Unbiased)",
+						"- MIS Weights GBH & CW (Unbiased)",
+						"- Pairwise MIS Weights (Unbiased)",
+						"- Pairwise MIS Weights & CW (Unbiased)",
+						"- Pairwise MIS Weights Defensive (Unbiased)",
+						"- Pairwise MIS Weights Defensive & CW (Unbiased)",
+					};
 					if (ImGui::Combo("Bias Correction Weights", kernel_options->get_pointer_to_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS), bias_correction_mode_items, IM_ARRAYSIZE(bias_correction_mode_items)))
 					{
 						m_renderer->recompile_kernels();

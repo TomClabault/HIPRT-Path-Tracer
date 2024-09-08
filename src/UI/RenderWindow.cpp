@@ -20,7 +20,8 @@
 // - add envmap sampling to light samples with a probability (refactor envmap sampling in eval, sample and PDF functions)
 // - add second bounce direct light sampling strategy in imgui
 // - add hammersley usage or not imgui for spatial reuse
-// - pairwise mis
+// - pairwise mis with defensive & CW
+// - fused spatiotemporal
 // - feature to disable ReSTIR after a certain percentage of convergence --> we don't want to pay the full price of resampling and everything only for a few difficult isolated pixels (especially true with adaptive sampling where neighbors don't get sampled --> no new samples added to their reservoir --> no need to resample)
 // - camera ray jittering causes dark lines and darkens glossy reflections
 // - multiple spatial reuse passes destroy glossy reflections
@@ -28,11 +29,21 @@
 // - temporal reprojection at grazing angles broken --> We need a better reprojection 
 // - different M cap for glossy surfaces ?
 // - possibility to use visibility reuse at the end of each spatial pass
-// - 1/Z weights look broken with the temporal reuse in movement
 // - temporal permutation sampling
 // - maybe not spatially resample as hard everywhere in the image? heuristic to reduce/increase the number of spatial samples per pixel?
 // - possibility to reuse final shading visibility
-// - check that using rejection heuristics doesn't break convergence
+// - for spatial reuse, put the heuristics checks in the 'get_spatial_neighbor_function'
+// - can we somehow store target functions in an array float[] to avoid recomputing them?
+// - Pairwise MIS: If we resample the center pixel first and we discover that the center pixel reservoir is NULL --> we're not going to MIS weight the center pixel --> do we have to compute Mc at all?
+// - In the temporal reuse pass, we have a if (temporal_neighbor_reservoir.M > 0) that guards the resampling of the temporal neighbor
+//		Can we check for that condition earlier and if temporal_neighbor_reservoir.M == 0, then we can immediately return and set the output of the
+//		temporal pass to the initial candidates alone, the same as when temporal_neighbor_index == -1
+// - something is wrong with the heuristics: noisy in movement with the heuristics but not that much without.
+//		disabling all the heuristics at the same time removes the noisiness but one by one (3 checkboxes) doesn't remove the noisiness
+// - temporal reuse broken with pairwise MIS, weights must be broken
+// - maybe use one class per MIS resampling weight with a function with clear arguments because this is getting messy with all the arguments required by the most complicated MIS methods
+// - check that the shenanigans with the visibility reuse at the end of the spatial pass doesn't interfere with the temporal reuse (or we can just always use the visibility when weighting the neighbors in the temporal reuse pass)
+// - test performance by caching heuristics tests of neighbors
 
 // TODO bugs:
 // - memory leak with OpenGL when resizing the window?

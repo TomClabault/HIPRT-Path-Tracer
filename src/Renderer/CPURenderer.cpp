@@ -27,10 +27,24 @@
 // the interesting pixel. If that image viewer has its (0, 0) in the top
 // left corner, you'll need to set that DEBUG_FLIP_Y to 0. Set 1 to if
 // you're measuring the coordinates of the pixel with (0, 0) in the bottom left corner
-#define DEBUG_FLIP_Y 1
-// Coordinates of the pixel to render
-#define DEBUG_PIXEL_X 360
-#define DEBUG_PIXEL_Y 17
+
+#define DEBUG_FLIP_Y 0
+// Coordinates of the pixel whose neighborhood needs to rendered (useful for algorithms
+// where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
+// 
+// The neighborhood around this pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
+#define DEBUG_PIXEL_X 1197
+#define DEBUG_PIXEL_Y 441
+
+// Same as DEBUG_FLIP_Y but for the "other debug pixel"
+#define DEBUG_OTHER_FLIP_Y 1
+// Allows to render the neighborhood around the DEBUG_PIXEL_X/Y but to debug at the location
+// of DEBUG_OTHER_PIXEL_X/Y given below.
+// 
+// -1 to disable. If disabled, the pixel at (DEBUG_PIXEL_X, DEBUG_PIXEL_Y) will be debugged
+#define DEBUG_OTHER_PIXEL_X 1194
+#define DEBUG_OTHER_PIXEL_Y 300
+
 // If 1, a square of DEBUG_NEIGHBORHOOD_SIZE x DEBUG_NEIGHBORHOOD_SIZE pixels
 // will be rendered around the pixel to debug (given by DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y). The pixel of interest is going to be rendered first so you
@@ -43,7 +57,7 @@
 #define DEBUG_RENDER_NEIGHBORHOOD 1
 // How many pixels to render around the debugged pixel given by the DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y coordinates
-#define DEBUG_NEIGHBORHOOD_SIZE 35
+#define DEBUG_NEIGHBORHOOD_SIZE 50
 
 CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, height))
 {
@@ -181,15 +195,9 @@ void CPURenderer::render()
     auto start = std::chrono::high_resolution_clock::now();
 
     // Using 'samples_per_frame' as the number of samples to render on the CPU
-    m_render_data.render_settings.sample_number = 1;
-    for (int frame_number = 1; frame_number <= 3; frame_number++)//m_render_data.render_settings.samples_per_frame; frame_number++)
+    for (int frame_number = 1; frame_number <= m_render_data.render_settings.samples_per_frame; frame_number++)
     {
         m_render_data.render_settings.do_update_status_buffers = true;
-
-        if (frame_number > 2)
-            m_render_data.render_settings.stop_pixel_noise_threshold = 0.5f;
-        else
-            m_render_data.render_settings.stop_pixel_noise_threshold = 0.0f;
 
         update(frame_number);
         update_render_data(frame_number);
@@ -209,7 +217,6 @@ void CPURenderer::render()
         std::swap(m_render_data.g_buffer, m_render_data.g_buffer_prev_frame);
 
         std::cout << "Frame " << frame_number << ": " << frame_number/ static_cast<float>(m_render_data.render_settings.samples_per_frame) * 100.0f << "%" << std::endl;
-        std::cout << m_render_data.aux_buffers.stop_noise_threshold_converged_count->load() << std::endl;
     }
 
     auto stop = std::chrono::high_resolution_clock::now();
@@ -224,6 +231,7 @@ void CPURenderer::update(int frame_number)
     // Resetting the counter of pixels converged to 0
     m_render_data.aux_buffers.stop_noise_threshold_converged_count->store(0);
 
+    // Update the camera
     //if (frame_number == 8)
     //    m_camera.translate(glm::vec3(-0.2, 0, 0));
 }
@@ -246,7 +254,20 @@ void CPURenderer::camera_rays_pass()
     y = m_resolution.y - DEBUG_PIXEL_Y - 1;
 #endif // DEBUG_FLIP_Y
 
+#if DEBUG_OTHER_PIXEL_X != -1 && DEBUG_OTHER_PIXEL_Y != -1
+
+#if DEBUG_OTHER_FLIP_Y
+    int other_x = DEBUG_OTHER_PIXEL_X;
+    int other_y = DEBUG_OTHER_PIXEL_Y;
+#else // DEBUG_OTHER_FLIP_Y
+    int other_x = DEBUG_OTHER_PIXEL_X;
+    int other_y = m_resolution.y - DEBUG_OTHER_PIXEL_Y - 1;
+#endif // DEBUG_OTHER_FLIP_Y
+
+    CameraRays(m_render_data, m_resolution, other_x, other_y);
+#else
     CameraRays(m_render_data, m_resolution, x, y);
+#endif
 
 #if DEBUG_RENDER_NEIGHBORHOOD
     // Rendering the neighborhood
@@ -382,7 +403,19 @@ void CPURenderer::ReSTIR_DI_initial_candidates_pass()
     y = m_resolution.y - DEBUG_PIXEL_Y - 1;
 #endif // DEBUG_FLIP_Y
 
+#if DEBUG_OTHER_PIXEL_X != -1 && DEBUG_OTHER_PIXEL_Y != -1
+#if DEBUG_OTHER_FLIP_Y
+    int other_x = DEBUG_OTHER_PIXEL_X;
+    int other_y = DEBUG_OTHER_PIXEL_Y;
+#else // DEBUG_OTHER_FLIP_Y
+    int other_x = DEBUG_OTHER_PIXEL_X;
+    int other_y = m_resolution.y - DEBUG_OTHER_PIXEL_Y - 1;
+#endif // DEBUG_OTHER_FLIP_Y
+
+    ReSTIR_DI_InitialCandidates(m_render_data, m_resolution, other_x, other_y);
+#else
     ReSTIR_DI_InitialCandidates(m_render_data, m_resolution, x, y);
+#endif // DEBUG_OTHER_PIXEL_X != -1 && DEBUG_OTHER_PIXEL_Y != -1
 
 #if DEBUG_RENDER_NEIGHBORHOOD
     // Rendering the neighborhood
@@ -412,7 +445,21 @@ void CPURenderer::ReSTIR_DI_temporal_reuse_pass()
     y = m_resolution.y - DEBUG_PIXEL_Y - 1;
 #endif // DEBUG_FLIP_Y
 
+
+#if DEBUG_OTHER_PIXEL_X != -1 && DEBUG_OTHER_PIXEL_Y != -1
+#if DEBUG_OTHER_FLIP_Y
+    int other_x = DEBUG_OTHER_PIXEL_X;
+    int other_y = DEBUG_OTHER_PIXEL_Y;
+#else // DEBUG_OTHER_FLIP_Y
+    int other_x = DEBUG_OTHER_PIXEL_X;
+    int other_y = m_resolution.y - DEBUG_OTHER_PIXEL_Y - 1;
+#endif // DEBUG_OTHER_FLIP_Y
+
+    ReSTIR_DI_TemporalReuse(m_render_data, m_resolution, other_x, other_y);
+#else
     ReSTIR_DI_TemporalReuse(m_render_data, m_resolution, x, y);
+#endif // DEBUG_OTHER_PIXEL_X != -1 && DEBUG_OTHER_PIXEL_Y != -1
+
 
 #if DEBUG_RENDER_NEIGHBORHOOD
     // Rendering the neighborhood
@@ -442,7 +489,21 @@ void CPURenderer::ReSTIR_DI_spatial_reuse_pass()
     y = m_resolution.y - DEBUG_PIXEL_Y - 1;
 #endif // DEBUG_FLIP_Y
 
+
+#if DEBUG_OTHER_PIXEL_X != -1 && DEBUG_OTHER_PIXEL_Y != -1
+#if DEBUG_OTHER_FLIP_Y
+    int other_x = DEBUG_OTHER_PIXEL_X;
+    int other_y = DEBUG_OTHER_PIXEL_Y;
+#else // DEBUG_OTHER_FLIP_Y
+    int other_x = DEBUG_OTHER_PIXEL_X;
+    int other_y = m_resolution.y - DEBUG_OTHER_PIXEL_Y - 1;
+#endif // DEBUG_OTHER_FLIP_Y
+
+    ReSTIR_DI_SpatialReuse(m_render_data, m_resolution, other_x, other_y);
+#else
     ReSTIR_DI_SpatialReuse(m_render_data, m_resolution, x, y);
+#endif // DEBUG_OTHER_PIXEL_X != -1 && DEBUG_OTHER_PIXEL_Y != -1
+
 
 #if DEBUG_RENDER_NEIGHBORHOOD
     // Rendering the neighborhood
@@ -453,6 +514,7 @@ void CPURenderer::ReSTIR_DI_spatial_reuse_pass()
             ReSTIR_DI_SpatialReuse(m_render_data, m_resolution, render_x, render_y);
 #endif // DEBUG_RENDER_NEIGHBORHOOD
 #else // DEBUG_PIXEL
+
 #pragma omp parallel for schedule(dynamic)
     for (int y = 0; y < m_resolution.y; y++)
         for (int x = 0; x < m_resolution.x; x++)
@@ -472,7 +534,21 @@ void CPURenderer::tracing_pass()
     y = m_resolution.y - DEBUG_PIXEL_Y - 1;
 #endif // DEBUG_FLIP_Y
 
+
+#if DEBUG_OTHER_PIXEL_X != -1 && DEBUG_OTHER_PIXEL_Y != -1
+#if DEBUG_OTHER_FLIP_Y
+    int other_x = DEBUG_OTHER_PIXEL_X;
+    int other_y = DEBUG_OTHER_PIXEL_Y;
+#else // DEBUG_OTHER_FLIP_Y
+    int other_x = DEBUG_OTHER_PIXEL_X;
+    int other_y = m_resolution.y - DEBUG_OTHER_PIXEL_Y - 1;
+#endif // DEBUG_OTHER_FLIP_Y
+
+    FullPathTracer(m_render_data, m_resolution, other_x, other_y);
+#else
     FullPathTracer(m_render_data, m_resolution, x, y);
+#endif // DEBUG_OTHER_PIXEL_X != -1 && DEBUG_OTHER_PIXEL_Y != -1
+    
 
 #if DEBUG_RENDER_NEIGHBORHOOD
     // Rendering the neighborhood

@@ -37,9 +37,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_O
 	sample_direction = sample.point_on_light_source - surface.shading_point;
 	sample_direction = sample_direction / (distance_to_light = hippt::length(sample_direction));
 
+	float cosine_term = hippt::max(0.0f, hippt::dot(surface.shading_normal, sample_direction));
+	if (cosine_term == 0.0f)
+		// If the cosine term is 0.0f, the rest is going to be multiplied by that zero-cosine-term
+		// and everything is going to be 0.0f anyway so we can return already
+		return 0.0f;
+
 	RayVolumeState trash_volume_state = surface.ray_volume_state;
 	ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, surface.material, trash_volume_state, surface.view_direction, surface.shading_normal, sample_direction, bsdf_pdf);
-	float cosine_term = hippt::max(0.0f, hippt::dot(surface.shading_normal, sample_direction));
 
 	float geometry_term = 1.0f;
 	if (render_data.render_settings.restir_di_settings.target_function.geometry_term_in_target_function)
@@ -75,9 +80,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_O
 	sample_direction = sample.point_on_light_source - surface.shading_point;
 	sample_direction = sample_direction / (distance_to_light = hippt::length(sample_direction));
 
+	float cosine_term = hippt::max(0.0f, hippt::dot(surface.shading_normal, sample_direction));
+	if (cosine_term == 0.0f)
+		// If the cosine term is 0.0f, the rest is going to be multiplied by that zero-cosine-term
+		// and everything is going to be 0.0f anyway so we can return already
+		return 0.0f;
+
 	RayVolumeState trash_volume_state = surface.ray_volume_state;
 	ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, surface.material, trash_volume_state, surface.view_direction, surface.shading_normal, sample_direction, bsdf_pdf);
-	float cosine_term = hippt::max(0.0f, hippt::dot(surface.shading_normal, sample_direction));
 
 	float geometry_term = 1.0f;
 	if (render_data.render_settings.restir_di_settings.target_function.geometry_term_in_target_function)
@@ -190,14 +200,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool roughness_similarity_heuristic(float neighbo
 
 HIPRT_HOST_DEVICE HIPRT_INLINE bool check_neighbor_similarity_heuristics(const HIPRTRenderData& render_data, int neighbor_index, int center_pixel_index, const float3& current_shading_point, const float3& current_normal)
 {
-	float3 temporal_neighbor_point = render_data.g_buffer.first_hits[neighbor_index];
+	float3 neighbor_world_space_point = render_data.g_buffer.first_hits[neighbor_index];
 
-	float temporal_neighbor_roughness = render_data.g_buffer.materials[neighbor_index].roughness;
+	float neighbor_roughness = render_data.g_buffer.materials[neighbor_index].roughness;
 	float current_material_roughness = render_data.g_buffer.materials[center_pixel_index].roughness;
 
-	bool plane_distance_passed = plane_distance_heuristic(temporal_neighbor_point, current_shading_point, current_normal, render_data.render_settings.restir_di_settings.plane_distance_threshold);
+	bool plane_distance_passed = plane_distance_heuristic(neighbor_world_space_point, current_shading_point, current_normal, render_data.render_settings.restir_di_settings.plane_distance_threshold);
 	bool normal_similarity_passed = normal_similarity_heuristic(current_normal, render_data.g_buffer.shading_normals[neighbor_index], render_data.render_settings.restir_di_settings.normal_similarity_angle_precomp);
-	bool roughness_similarity_passed = roughness_similarity_heuristic(temporal_neighbor_roughness, current_material_roughness, render_data.render_settings.restir_di_settings.roughness_similarity_threshold);
+	bool roughness_similarity_passed = roughness_similarity_heuristic(neighbor_roughness, current_material_roughness, render_data.render_settings.restir_di_settings.roughness_similarity_threshold);
 
 	return plane_distance_passed && normal_similarity_passed && roughness_similarity_passed;
 }
@@ -243,7 +253,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int get_spatial_neighbor_pixel_index(const HIPRTR
 		// pointless because we already resample ourselves "manually" (that's why there's that
 		// "if (neighbor_number == neighbor_reuse_count)" above, to resample the center pixel)
 		float2 uv = sample_hammersley_2D(neighbor_reuse_count + 1, neighbor_number + 1);
-		// TODO first sample of hammersley is always in the center of the disk so we're reusing ourselves?
 		float2 neighbor_offset_in_disk = sample_in_disk_uv(neighbor_reuse_radius, uv);
 
 		// 2D rotation matrix: https://en.wikipedia.org/wiki/Rotation_matrix
@@ -253,16 +262,17 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int get_spatial_neighbor_pixel_index(const HIPRTR
 		int2 neighbor_offset_int = make_int2(static_cast<int>(neighbor_offset_rotated.x), static_cast<int>(neighbor_offset_rotated.y));
 
 		int2 neighbor_pixel_coords = center_pixel_coords + neighbor_offset_int;
-		//int2 neighbor_pixel_coords = center_pixel_coords + make_int2(15, 0);
+		//int2 neighbor_pixel_coords = center_pixel_coords + make_int2(15 * (neighbor_number + 1), 0);
 		if (neighbor_pixel_coords.x < 0 || neighbor_pixel_coords.x >= res.x || neighbor_pixel_coords.y < 0 || neighbor_pixel_coords.y >= res.y)
 			// Rejecting the sample if it's outside of the viewport
 			return -1;
 
 		neighbor_pixel_index = neighbor_pixel_coords.x + neighbor_pixel_coords.y * res.x;
-		if (render_data.render_settings.enable_adaptive_sampling)
+		if (render_data.render_settings.enable_adaptive_sampling && render_data.render_settings.sample_number >= render_data.render_settings.adaptive_sampling_min_samples)
 		{
-			// The neighbor pixel is converged already.
-			// We only allow the reuse of converged neighbor if the user wants to as this causes bias.
+			// If adaptive sampling is enabled, we only want to reuse a converged neighbor if the user allowed it
+			// We also check whether or not we've reached the minimum amount of samples of adaptive sampling because
+			// if adaptive sampling hasn't kicked in yet, there's no need to check whether the neighbor has converged or not yet
 
 			if (render_data.render_settings.restir_di_settings.spatial_pass.allow_converged_neighbors_reuse)
 			{

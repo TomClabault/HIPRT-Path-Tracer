@@ -22,7 +22,7 @@ struct InitialCandidatesSettings
 
 struct TemporalPassSettings
 {
-	bool do_temporal_reuse_pass = false;
+	bool do_temporal_reuse_pass = true;
 
 	// Whether or not to use the G-buffer of last frame when resampling the temporal neighbor.
 	// This is required to avoid bias with camera movements but this comes at a VRAM cost
@@ -52,6 +52,9 @@ struct SpatialPassSettings
 {
 	bool do_spatial_reuse_pass = true;
 
+	// What spatial pass are we currently performing?
+	// Takes values in [0, number_of_passes - 1]
+	int spatial_pass_index = 0;
 	// How many spatial reuse pass to perform
 	int number_of_passes = 2;
 	// The radius within which neighbor are going to be reused spatially
@@ -109,12 +112,16 @@ struct ReSTIRDISettings
 	// A M-cap value between 5 - 30 is usually good
 	int m_cap = 10;
 
+
+
+
+
 	// User-friendly (for ImGui) normal angle. When resampling a neighbor (temporal or spatial),
 	// the normal of the neighbor being re-sampled must be similar to our normal. This angle gives the
 	// "similarity threshold". Normals must be within 25 degrees of each other by default
 	float normal_similarity_angle_degrees = 25.0f;
 	// Precomputed cosine of the angle for use in the shader
-	float normal_similarity_angle_precomp = 0.906307787; // Normals must be within 25 degrees by default
+	float normal_similarity_angle_precomp = 0.906307787f; // Normals must be within 25 degrees by default
 
 	// Threshold used when determining whether a temporal neighbor is acceptable
 	// for temporal reuse regarding the spatial proximity of the neighbor and the current
@@ -125,6 +132,31 @@ struct ReSTIRDISettings
 	// How close the roughness of the neighbor's surface must be to ours to resample that neighbor
 	// If this value is 0.25f for example, then the roughnesses must be within 0.25f of each other. Simple.
 	float roughness_similarity_threshold = 0.25f;
+
+
+
+
+
+	//// User-friendly (for ImGui) normal angle. When resampling a neighbor (temporal or spatial),
+	//// the normal of the neighbor being re-sampled must be similar to our normal. This angle gives the
+	//// "similarity threshold". Normals must be within 25 degrees of each other by default
+	//float normal_similarity_angle_degrees = 25.0f;
+	//// Precomputed cosine of the angle for use in the shader
+	//float normal_similarity_angle_precomp = -1.0f; // Normals must be within 25 degrees by default
+
+	//// Threshold used when determining whether a temporal neighbor is acceptable
+	//// for temporal reuse regarding the spatial proximity of the neighbor and the current
+	//// point. 
+	//// This is a world space distance.
+	//float plane_distance_threshold = 1.0e35f;
+
+	//// How close the roughness of the neighbor's surface must be to ours to resample that neighbor
+	//// If this value is 0.25f for example, then the roughnesses must be within 0.25f of each other. Simple.
+	//float roughness_similarity_threshold = 1000.0f;
+
+
+
+
 
 	// Pointer to the buffer that contains the output of all the passes of ReSTIR DI
 	// This the buffer that should be used when evaluating direct lighting in the path tracer

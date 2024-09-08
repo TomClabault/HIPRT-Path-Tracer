@@ -432,6 +432,7 @@ void GPURenderer::configure_ReSTIR_DI_temporal_pass()
 void GPURenderer::configure_ReSTIR_DI_spatial_pass(int spatial_pass_index)
 {
 	m_render_data.random_seed = m_rng.xorshift32();
+	m_render_data.render_settings.restir_di_settings.spatial_pass.spatial_pass_index = spatial_pass_index;
 
 	if (spatial_pass_index == 0)
 	{

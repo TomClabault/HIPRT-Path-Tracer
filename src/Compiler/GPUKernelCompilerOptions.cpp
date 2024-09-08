@@ -19,6 +19,7 @@ const std::string GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_BIAS_CORRECT
 const std::string GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS = "ReSTIR_DI_BiasCorrectionWeights";
 const std::string GPUKernelCompilerOptions::BSDF_OVERRIDE = "BSDFOverride";
 
+
 const std::vector<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES = {
 	GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY,
 	GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY,
