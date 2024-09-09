@@ -41,13 +41,8 @@
  * A neighbor is not eligible if it is outside of the viewport or if 
  * it doesn't satisfy the normal/plane/roughness heuristics
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE int count_valid_neighbors(const HIPRTRenderData& render_data, const ReSTIRDISurface& center_pixel_surface, int2 center_pixel_coords, int2 res, float2 cos_sin_theta_rotation)
+HIPRT_HOST_DEVICE HIPRT_INLINE int count_valid_neighbors(const HIPRTRenderData& render_data, const ReSTIRDISurface& center_pixel_surface, int2 center_pixel_coords, int2 res, float2 cos_sin_theta_rotation, int& neighbor_heuristics_cache)
 {
-#if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS || \
-	ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_CONFIDENCE_WEIGHTS || \
-	ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE || \
-	ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE_CONFIDENCE_WEIGHTS
-
 	int valid_neighbors_count = 0;
 	int center_pixel_index = center_pixel_coords.x + center_pixel_coords.y * res.x;
 	int reused_neighbors_count = render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count;
@@ -63,15 +58,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int count_valid_neighbors(const HIPRTRenderData& 
 			continue;
 
 		valid_neighbors_count++;
+		neighbor_heuristics_cache |= (1 << neighbor_index);
 	}
 
 	return valid_neighbors_count;
-#else
-	// Counting the valid neighbors is only necessary for proper normalization with pairwise MIS.
-	// Thus, if we're not using pairwise MIS, we can just return -1 because we don't care about the
-	// value returned by that function anyways
-	return -1;
-#endif
 }
 
 
@@ -121,8 +111,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	float2 cos_sin_theta_rotation = make_float2(cos(rotation_theta), sin(rotation_theta));
 
 	int selected_neighbor = 0;
+	int neighbor_heuristics_cache = 0;
 	int reused_neighbors_count = render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count;
-	int valid_neighbors_count = count_valid_neighbors(render_data, center_pixel_surface, center_pixel_coords, res, cos_sin_theta_rotation);
+	int valid_neighbors_count = count_valid_neighbors(render_data, center_pixel_surface, center_pixel_coords, res, cos_sin_theta_rotation, neighbor_heuristics_cache);
 
 	ReSTIRDISpatialResamplingMISWeight<ReSTIR_DI_BiasCorrectionWeights> resampling_mis_weight;
 	// Resampling the neighbors. Using neighbors + 1 here so that
@@ -136,8 +127,24 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 			// Neighbor out of the viewport
 			continue;
 
-		if (!check_neighbor_similarity_heuristics(render_data, neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point, center_pixel_surface.shading_normal))
-			continue;
+		if (neighbor < reused_neighbors_count)
+		{
+			// If not the center pixel, we can check the heuristics, otherwise there's no need to
+
+			if (reused_neighbors_count <= 32)
+			{
+				// Our heuristics cache is a 32bit int so we can only cache 32 values are we're
+				// going to have issues if we try to read more than that.
+				if ((neighbor_heuristics_cache & (1 << neighbor)) == 0)
+					continue;
+			}
+			else 
+			{
+				// So if we have more than 32 neighbors, falling back to default heuristic redundant check
+				if (!check_neighbor_similarity_heuristics(render_data, neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point, center_pixel_surface.shading_normal))
+			 		continue;
+			}
+		}
 
 		ReSTIRDISurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index);
 		ReSTIRDIReservoir neighbor_reservoir = input_reservoir_buffer[neighbor_pixel_index];

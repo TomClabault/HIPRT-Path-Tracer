@@ -42,8 +42,7 @@
 //		disabling all the heuristics at the same time removes the noisiness but one by one (3 checkboxes) doesn't remove the noisiness
 // - temporal reuse broken with pairwise MIS, weights must be broken
 // - maybe use one class per MIS resampling weight with a function with clear arguments because this is getting messy with all the arguments required by the most complicated MIS methods
-// - check that the shenanigans with the visibility reuse at the end of the spatial pass doesn't interfere with the temporal reuse (or we can just always use the visibility when weighting the neighbors in the temporal reuse pass)
-// - test performance by caching heuristics tests of neighbors
+// - do not need to recompile for using confidence weights most of the time, just an if to include M or not should be enough
 
 // TODO bugs:
 // - memory leak with OpenGL when resizing the window?
