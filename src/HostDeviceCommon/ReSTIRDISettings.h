@@ -102,10 +102,8 @@ struct ReSTIRDISettings
 	//
 	// A M-cap value between 5 - 30 is usually good
 	int m_cap = 10;
-
 	// Whether or not to use confidence weights when resampling neighbors.
-	bool use_confidence_weights = false;
-
+	bool use_confidence_weights = true;
 	// If true, the pairwise MIS bias correction weights will use the defensive formulation
 	bool use_pairwise_mis_defensive = true;
 

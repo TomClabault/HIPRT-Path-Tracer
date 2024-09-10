@@ -91,11 +91,7 @@ struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z>
 			// Getting the surface data at the neighbor
 			ReSTIRDISurface neighbor_surface = get_pixel_surface(render_data, neighbor_pixel_index);
 
-			float target_function_at_neighbor = 0.0f;
-			if (render_data.render_settings.restir_di_settings.spatial_pass.spatial_pass_index == 0)
-				target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, final_reservoir.sample, neighbor_surface);
-			else
-				target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<KERNEL_OPTION_FALSE>(render_data, final_reservoir.sample, neighbor_surface);
+			float target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, final_reservoir.sample, neighbor_surface);
 
 			if (target_function_at_neighbor > 0.0f)
 			{

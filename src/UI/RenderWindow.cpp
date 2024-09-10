@@ -40,14 +40,10 @@
 //		temporal pass to the initial candidates alone, the same as when temporal_neighbor_index == -1
 // - something is wrong with the heuristics: noisy in movement with the heuristics but not that much without.
 //		disabling all the heuristics at the same time removes the noisiness but one by one (3 checkboxes) doesn't remove the noisiness
-// - temporal reuse broken with pairwise MIS, weights must be broken
-// - maybe use one class per MIS resampling weight with a function with clear arguments because this is getting messy with all the arguments required by the most complicated MIS methods
-// - do not need to recompile for using confidence weights most of the time, just an if to include M or not should be enough
 // - M-capping when using a reservoir in the spatial reuse? M-capping shouldn't be only for temporal input reservoirs right?
 // - with 1/Z weights, many spatial reuse passes destroys glossy reflections
 // - heuristics makes it hard to reuse on the teapot of the white room because of normals dissimilarity i guess?
-// - heuristics makes everything noisy/artifacty
-// - 1/Z broken with multiple spatial passes
+// - heuristics adds some noisy/artifacty pixels. Especially on high details geometry
 
 // TODO bugs:
 // - memory leak with OpenGL when resizing the window?
