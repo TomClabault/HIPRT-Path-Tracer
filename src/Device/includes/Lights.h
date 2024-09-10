@@ -211,7 +211,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(const HIPRTRende
             // we'll need to negative the dot product for it to be positive
             float cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, sampled_bsdf_direction));
             //float cosine_term = hippt::max(0.0f, hippt::dot(closest_hit_info.shading_normal, sampled_brdf_direction));
-            bsdf_radiance_mis = bsdf_color * cosine_term * light_source_info.emission * mis_weight / direction_pdf;
+            bsdf_radiance_mis = bsdf_color * cosine_term * bsdf_ray_payload.material.emission * mis_weight / direction_pdf;
         }
     }
 
