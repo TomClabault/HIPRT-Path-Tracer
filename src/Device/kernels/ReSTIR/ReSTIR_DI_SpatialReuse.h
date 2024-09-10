@@ -34,19 +34,45 @@
  * [8] [Rearchitecting Spatiotemporal Resampling for Production] https://research.nvidia.com/publication/2021-07_rearchitecting-spatiotemporal-resampling-production
  */
 
-// Defining a macro here so that we don't bloat the main code with the #if #elif directives
+// Defining a compute_mis_weight() macro here so that we don't bloat the main code with the #if #elif directives
 #if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_M
 #define compute_mis_weight(mis_weight_computer) mis_weight_computer.get_resampling_MIS_weight(neighbor_reservoir.M)
+
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
 #define compute_mis_weight(mis_weight_computer) mis_weight_computer.get_resampling_MIS_weight(neighbor_reservoir.M)
+
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
 #define compute_mis_weight(mis_weight_computer) mis_weight_computer.get_resampling_MIS_weight(render_data, neighbor_reservoir.M)
+
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_GBH
 #define compute_mis_weight(mis_weight_computer) mis_weight_computer.get_resampling_MIS_weight(render_data, neighbor_reservoir, \
 	center_pixel_surface, neighbor_index, center_pixel_coords, res, cos_sin_theta_rotation)
+
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
 #define compute_mis_weight(mis_weight_computer) mis_weight_computer.get_resampling_MIS_weight(render_data, neighbor_reservoir, \
-	center_pixel_reservoir, target_function_at_center, neighbor_index, neighbor_pixel_index, valid_neighbors_count);                                            
+	center_pixel_reservoir, target_function_at_center, neighbor_index, neighbor_pixel_index, valid_neighbors_count)
+
+#endif
+
+// Defining a compute_normalization_weight() macro here for the same reasons
+#if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_M
+#define compute_normalization_weight(out_nume, out_denom, normalization_function) normalization_function.get_normalization(render_data, \
+	new_reservoir, center_pixel_surface, center_pixel_coords, res, cos_sin_theta_rotation, normalization_numerator, normalization_denominator)
+
+#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
+#define compute_normalization_weight(out_nume, out_denom, normalization_function) normalization_function.get_normalization(render_data, \
+new_reservoir, center_pixel_surface, center_pixel_coords, res, cos_sin_theta_rotation, normalization_numerator, normalization_denominator)
+
+#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
+#define compute_normalization_weight(out_nume, out_denom, normalization_function) normalization_function.get_normalization(render_data, \
+	new_reservoir, center_pixel_surface, selected_neighbor, center_pixel_coords, res, cos_sin_theta_rotation, normalization_numerator, normalization_denominator)
+
+#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_GBH
+#define compute_normalization_weight(out_nume, out_denom, normalization_function) normalization_function.get_normalization(out_nume, out_denom)
+
+#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
+#define compute_normalization_weight(out_nume, out_denom, normalization_function) normalization_function.get_normalization(out_nume, out_denom)
+
 #endif
 
 /**
@@ -213,14 +239,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	float normalization_numerator = 1.0f;
 	float normalization_denominator = 1.0f;
 
-	ReSTIRDISpatialNormalizationWeight<ReSTIR_DI_BiasCorrectionWeights> normalization_weight;
-	normalization_weight.get_normalization(render_data,
-		new_reservoir,
-		center_pixel_surface,
-		selected_neighbor, reused_neighbors_count,
-		center_pixel_coords, res,
-		cos_sin_theta_rotation,
-		random_number_generator, normalization_numerator, normalization_denominator);
+	ReSTIRDISpatialNormalizationWeight<ReSTIR_DI_BiasCorrectionWeights> normalization_function;
+	compute_normalization_weight(normalization_numerator, normalization_denominator, normalization_function);
 
 	new_reservoir.end_with_normalization(normalization_numerator, normalization_denominator);
 	new_reservoir.sanity_check(center_pixel_coords);

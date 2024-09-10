@@ -16,10 +16,8 @@ struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_M>
 {
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
 		const ReSTIRDIReservoir& final_reservoir, const ReSTIRDISurface& center_pixel_surface,
-		int selected_neighbor, int reused_neighbors_count,
 		int2 center_pixel_coords, int2 res,
-		float2 cos_sin_theta_rotation,
-		Xorshift32Generator& random_number_generator, float& out_normalization_nume, float& out_normalization_denom)
+		float2 cos_sin_theta_rotation, float& out_normalization_nume, float& out_normalization_denom)
 	{
 		if (final_reservoir.weight_sum <= 0)
 		{
@@ -37,6 +35,8 @@ struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_M>
 		// We're simply going to divide by the sum of all the M values of all the neighbors we resampled (including the center pixel)
 		// so we're only going to set the denominator to that and the numerator isn't going to change
 		out_normalization_denom = 0.0f;
+
+		int reused_neighbors_count = render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count;
 		for (int neighbor = 0; neighbor < reused_neighbors_count + 1; neighbor++)
 		{
 			int neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, neighbor, reused_neighbors_count, render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_radius, center_pixel_coords, res, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
@@ -59,10 +59,8 @@ struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z>
 {
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
 		const ReSTIRDIReservoir& final_reservoir, const ReSTIRDISurface& center_pixel_surface,
-		int selected_neighbor, int reused_neighbors_count,
 		int2 center_pixel_coords, int2 res,
-		float2 cos_sin_theta_rotation,
-		Xorshift32Generator& random_number_generator, float& out_normalization_nume, float& out_normalization_denom)
+		float2 cos_sin_theta_rotation, float& out_normalization_nume, float& out_normalization_denom)
 	{
 		if (final_reservoir.weight_sum <= 0)
 		{
@@ -78,6 +76,7 @@ struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z>
 		out_normalization_denom = 0.0f;
 		out_normalization_nume = 1.0f;
 
+		int reused_neighbors_count = render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count;
 		for (int neighbor = 0; neighbor < reused_neighbors_count + 1; neighbor++)
 		{
 			int neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, neighbor, reused_neighbors_count, render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_radius, center_pixel_coords, res, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
@@ -114,10 +113,10 @@ struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE>
 {
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
 		const ReSTIRDIReservoir& final_reservoir, const ReSTIRDISurface& center_pixel_surface,
-		int selected_neighbor, int reused_neighbors_count,
+		int selected_neighbor,
 		int2 center_pixel_coords, int2 res,
 		float2 cos_sin_theta_rotation,
-		Xorshift32Generator& random_number_generator, float& out_normalization_nume, float& out_normalization_denom)
+		float& out_normalization_nume, float& out_normalization_denom)
 	{
 		if (final_reservoir.weight_sum <= 0)
 		{
@@ -131,6 +130,7 @@ struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE>
 		out_normalization_denom = 0.0f;
 		out_normalization_nume = 0.0f;
 
+		int reused_neighbors_count = render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count;
 		for (int neighbor = 0; neighbor < reused_neighbors_count + 1; neighbor++)
 		{
 			int neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, neighbor, reused_neighbors_count, render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_radius, center_pixel_coords, res, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
@@ -169,12 +169,7 @@ struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE>
 template <>
 struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH>
 {
-	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
-		const ReSTIRDIReservoir& final_reservoir, const ReSTIRDISurface& center_pixel_surface,
-		int selected_neighbor, int reused_neighbors_count,
-		int2 center_pixel_coords, int2 res,
-		float2 cos_sin_theta_rotation,
-		Xorshift32Generator& random_number_generator, float& out_normalization_nume, float& out_normalization_denom)
+	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{
 		// Nothing more to normalize, everything is already handled when resampling the neighbors with balance heuristic MIS weights in the m_i terms
 		out_normalization_nume = 1.0f;
@@ -185,12 +180,7 @@ struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH>
 template <>
 struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS>
 {
-	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
-		const ReSTIRDIReservoir& final_reservoir, const ReSTIRDISurface& center_pixel_surface,
-		int selected_neighbor, int reused_neighbors_count,
-		int2 center_pixel_coords, int2 res,
-		float2 cos_sin_theta_rotation,
-		Xorshift32Generator& random_number_generator, float& out_normalization_nume, float& out_normalization_denom)
+	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{
 		// Nothing more to normalize, everything is already handled when resampling the neighbors
 		out_normalization_nume = 1.0f;

@@ -47,6 +47,7 @@
 // - with 1/Z weights, many spatial reuse passes destroys glossy reflections
 // - heuristics makes it hard to reuse on the teapot of the white room because of normals dissimilarity i guess?
 // - heuristics makes everything noisy/artifacty
+// - 1/Z broken with multiple spatial passes
 
 // TODO bugs:
 // - memory leak with OpenGL when resizing the window?
