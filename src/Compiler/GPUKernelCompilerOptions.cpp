@@ -15,7 +15,8 @@ const std::string GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION =
 const std::string GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION = "GGXAnisotropicSampleFunction";
 const std::string GPUKernelCompilerOptions::RESTIR_DI_TARGET_FUNCTION_VISIBILITY = "ReSTIR_DI_TargetFunctionVisibility";
 const std::string GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE = "ReSTIR_DI_DoVisibilityReuse";
-const std::string GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_BIAS_CORRECTION_USE_VISIBILITY = "ReSTIR_DI_BiasCorrectionUseVisiblity";
+const std::string GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY = "ReSTIR_DI_BiasCorrectionUseVisiblity";
+const std::string GPUKernelCompilerOptions::RESTIR_DI_RAYTRACE_SPATIAL_REUSE_RESERVOIR = "ReSTIR_DI_RaytraceSpatialReuseReservoirs";
 const std::string GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS = "ReSTIR_DI_BiasCorrectionWeights";
 const std::string GPUKernelCompilerOptions::BSDF_OVERRIDE = "BSDFOverride";
 
@@ -28,7 +29,8 @@ const std::vector<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES = {
 	GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION,
 	GPUKernelCompilerOptions::RESTIR_DI_TARGET_FUNCTION_VISIBILITY,
 	GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE,
-	GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_BIAS_CORRECTION_USE_VISIBILITY,
+	GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY,
+	GPUKernelCompilerOptions::RESTIR_DI_RAYTRACE_SPATIAL_REUSE_RESERVOIR,
 	GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS,
 	GPUKernelCompilerOptions::BSDF_OVERRIDE
 };
@@ -44,7 +46,8 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION] = GGXAnisotropicSampleFunction;
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_TARGET_FUNCTION_VISIBILITY] = ReSTIR_DI_TargetFunctionVisibility;
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE] = ReSTIR_DI_DoVisibilityReuse;
-	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_BIAS_CORRECTION_USE_VISIBILITY] = ReSTIR_DI_BiasCorrectionUseVisiblity;
+	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY] = ReSTIR_DI_BiasCorrectionUseVisiblity;
+	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_RAYTRACE_SPATIAL_REUSE_RESERVOIR] = ReSTIR_DI_RaytraceSpatialReuseReservoirs;
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS] = ReSTIR_DI_BiasCorrectionWeights;
 	m_options_macro_map[GPUKernelCompilerOptions::BSDF_OVERRIDE] = BSDFOverride;
 

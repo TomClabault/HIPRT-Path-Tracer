@@ -22,7 +22,8 @@ public:
 	static const std::string GGX_SAMPLE_FUNCTION;
 	static const std::string RESTIR_DI_TARGET_FUNCTION_VISIBILITY;
 	static const std::string RESTIR_DI_DO_VISIBILITY_REUSE;
-	static const std::string RESTIR_DI_SPATIAL_REUSE_BIAS_CORRECTION_USE_VISIBILITY;
+	static const std::string RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY;
+	static const std::string RESTIR_DI_RAYTRACE_SPATIAL_REUSE_RESERVOIR;
 	static const std::string RESTIR_DI_BIAS_CORRECTION_WEIGHTS;
 	static const std::string BSDF_OVERRIDE;
 

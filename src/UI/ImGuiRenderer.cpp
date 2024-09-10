@@ -873,7 +873,7 @@ void ImGuiRenderer::draw_sampling_panel()
 					ImGui::BeginDisabled(bias_correction_visibility_disabled);
 					if (ImGui::Checkbox("Use visibility in bias correction", &bias_correction_use_visibility))
 					{
-						kernel_options->set_macro(GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_BIAS_CORRECTION_USE_VISIBILITY, bias_correction_use_visibility ? 1 : 0);
+						kernel_options->set_macro(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY, bias_correction_use_visibility ? 1 : 0);
 						m_renderer->recompile_kernels();
 
 						m_render_window->set_render_dirty(true);
@@ -881,6 +881,39 @@ void ImGuiRenderer::draw_sampling_panel()
 					if (bias_correction_visibility_disabled)
 						ImGuiRenderer::show_help_marker("Visibility bias correction cannot be used with 1/M weights.");
 					ImGui::EndDisabled();
+
+					// Only 1/Z or pairwise MIS weights need that option to be fully unbiased
+					// Also, we only need this with one more than 1 spatial reuse pass
+					bool disable_raytrace_spatial_reuse_reservoirs = !(
+						kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
+						|| kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
+						|| kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE)
+						|| render_settings.restir_di_settings.spatial_pass.number_of_passes == 1 || !render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass;
+					static bool raytrace_spatial_reuse_reservoirs = ReSTIR_DI_RaytraceSpatialReuseReservoirs;
+					ImGui::BeginDisabled(disable_raytrace_spatial_reuse_reservoirs);
+					if (ImGui::Checkbox("Ray-trace spatial reuse reservoirs", &raytrace_spatial_reuse_reservoirs))
+					{
+						kernel_options->set_macro(GPUKernelCompilerOptions::RESTIR_DI_RAYTRACE_SPATIAL_REUSE_RESERVOIR, raytrace_spatial_reuse_reservoirs ? 1 : 0);
+						m_renderer->recompile_kernels();
+
+						m_render_window->set_render_dirty(true);
+					}
+					ImGui::EndDisabled();
+					std::string ray_trace_spatial_reuse_reservoirs_string = "Because of some optimizations done in the spatial reuse pass, "
+						"multiple spatial reuse passes may be biased with some weighting schemes. Ray-tracing a visibility "
+						"ray at the end of each spatial reuse pass (if more than 1 pass) is then necessary (even with that additional ray, "
+						"the performance boost is net positive) to ensure unbiasedness. The introduced bias is usually pretty small so disabling "
+						"this option for a small performance boost may be worth it";
+					if (disable_raytrace_spatial_reuse_reservoirs)
+					{
+						if (!render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)
+							ray_trace_spatial_reuse_reservoirs_string += "\n\nDisabled because spatial reuse is not enabled";
+						else if (render_settings.restir_di_settings.spatial_pass.number_of_passes == 1)
+							ray_trace_spatial_reuse_reservoirs_string += "\n\nDisabled because there is only 1 spatial reuse pass. Bias arises with more than 1 spatial reuse pass.";
+						else
+							ray_trace_spatial_reuse_reservoirs_string += "\n\nDisabled because not using either 1/Z or pairwise bias correction weights";
+					}
+					ImGuiRenderer::show_help_marker(ray_trace_spatial_reuse_reservoirs_string);
 
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
 					ImGui::TreePop();
@@ -935,7 +968,7 @@ void ImGuiRenderer::display_ReSTIR_DI_bias_status(std::shared_ptr<GPUKernelCompi
 	}
 
 	if (kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE) == KERNEL_OPTION_TRUE
-		&& kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_BIAS_CORRECTION_USE_VISIBILITY) == KERNEL_OPTION_FALSE)
+		&& kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY) == KERNEL_OPTION_FALSE)
 	{
 		bias_reasons.push_back("- Visibility reuse without visibility in bias correction");
 		hover_explanations.push_back("When using the visibility reuse pass at the end of the "
@@ -950,7 +983,7 @@ void ImGuiRenderer::display_ReSTIR_DI_bias_status(std::shared_ptr<GPUKernelCompi
 
 	if (kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE) == KERNEL_OPTION_FALSE 
 		&& kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_TARGET_FUNCTION_VISIBILITY) == KERNEL_OPTION_FALSE
-	    && kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_BIAS_CORRECTION_USE_VISIBILITY) == KERNEL_OPTION_TRUE
+	    && kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY) == KERNEL_OPTION_TRUE
 		&& kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z)
 	{
 		bias_reasons.push_back("- Visibility in bias correction without visibility reuse");

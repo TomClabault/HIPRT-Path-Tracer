@@ -73,7 +73,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE SimplifiedRendererMaterial get_intersection_mater
     if (material.roughness_texture_index != -1 || material.roughness_metallic_texture_index || material.anisotropic_texture_index != -1 && material.anisotropic > 0.0f)
         material.precompute_anisotropic();
 
-	return material;
+    return SimplifiedRendererMaterial(material);
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE void get_metallic_roughness(const HIPRTRenderData& render_data, float& metallic, float& roughness, const float2& texcoords, int metallic_texture_index, int roughness_texture_index, int metallic_roughness_texture_index)
