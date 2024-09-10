@@ -66,11 +66,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
                 RayVolumeState trash_ray_volume_state = ray_payload.volume_state;
                 bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, ray_payload.material, trash_ray_volume_state, view_direction, closest_hit_info.shading_normal, to_light_direction, bsdf_pdf);
 
-                float geometry_term = 1.0f;
-                if (render_data.render_settings.restir_di_settings.target_function.geometry_term_in_target_function)
-                    geometry_term = cosine_at_light_source / (distance_to_light * distance_to_light);
-
-                target_function = (bsdf_color * light_source_info.emission * cosine_at_evaluated_point * geometry_term).luminance();
+                target_function = (bsdf_color * light_source_info.emission * cosine_at_evaluated_point).luminance();
 
 #if ReSTIR_DI_TargetFunctionVisibility == KERNEL_OPTION_TRUE
                 if (!render_data.render_settings.do_render_low_resolution())
@@ -159,12 +155,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
                 // we'll need to negative the dot product for it to be positive
                 cosine_at_evaluated_point = hippt::abs(hippt::dot(closest_hit_info.shading_normal, sampled_direction));
 
-                float geometry_term = 1.0f;
-                float cosine_at_light_source = hippt::abs(hippt::dot(sampled_direction, bsdf_ray_hit_info.shading_normal));
-                if (render_data.render_settings.restir_di_settings.target_function.geometry_term_in_target_function)
-                    geometry_term = cosine_at_light_source / (bsdf_ray_hit_info.t * bsdf_ray_hit_info.t);
-
-                target_function = (bsdf_color * bsdf_ray_payload.material.emission * cosine_at_evaluated_point * geometry_term).luminance();
+                target_function = (bsdf_color * bsdf_ray_payload.material.emission * cosine_at_evaluated_point).luminance();
 
                 float light_pdf = pdf_of_emissive_triangle_hit(render_data, bsdf_ray_hit_info, sampled_direction);
                 // If we refracting, drop the light PDF to 0

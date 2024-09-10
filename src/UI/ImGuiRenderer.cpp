@@ -551,9 +551,6 @@ void ImGuiRenderer::draw_sampling_panel()
 						m_render_window->set_render_dirty(true);
 					}
 
-					if (ImGui::Checkbox("Use geometry term", &render_settings.restir_di_settings.target_function.geometry_term_in_target_function))
-						m_render_window->set_render_dirty(true);
-
 					if (ImGui::SliderInt("M-cap", &render_settings.restir_di_settings.m_cap, 0, 96))
 					{
 						render_settings.restir_di_settings.m_cap = std::max(0, render_settings.restir_di_settings.m_cap);

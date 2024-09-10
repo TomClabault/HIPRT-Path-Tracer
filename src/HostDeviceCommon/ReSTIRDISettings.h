@@ -81,13 +81,6 @@ struct SpatialPassSettings
 	ReSTIRDIReservoir* output_reservoirs = nullptr;
 };
 
-struct ReSTIRDITargetFunctionSettings
-{
-	// Whether or not to include the geometry term in the target function when resampling neighbors
-	// Defaults to false because of numeric instability when dividing by very small distance to light
-	bool geometry_term_in_target_function = false;
-};
-
 struct ReSTIRDISettings
 {
 	// Settings for the initial candidates generation pass
@@ -96,8 +89,6 @@ struct ReSTIRDISettings
 	TemporalPassSettings temporal_pass;
 	// Settings for the spatial reuse pass
 	SpatialPassSettings spatial_pass;
-	// Settings for the target function used in all passes of ReSTIR DI
-	ReSTIRDITargetFunctionSettings target_function;
 
 	// When finalizing the reservoir in the spatial reuse pass, what value
 	// to cap the reservoirs's M value to.

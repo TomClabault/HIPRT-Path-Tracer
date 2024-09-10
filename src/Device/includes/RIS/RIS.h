@@ -221,14 +221,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
                 // we'll need to negative the dot product for it to be positive
                 cosine_at_evaluated_point = hippt::abs(hippt::dot(closest_hit_info.shading_normal, sampled_direction));
 
-                float geometry_term = 1.0f;
-                if (render_data.render_settings.restir_di_settings.target_function.geometry_term_in_target_function)
-                {
-                    float cosine_at_light_source = hippt::abs(hippt::dot(sampled_direction, bsdf_ray_hit_info.shading_normal));
-                    geometry_term = cosine_at_light_source / (bsdf_ray_hit_info.t * bsdf_ray_hit_info.t);
-                }
-
-                target_function = (bsdf_color * bsdf_ray_payload.material.emission * cosine_at_evaluated_point * geometry_term).luminance();
+                // Our target function does not include the geometry term because we're integrating
+                // in solid angle. The geometry term in the target function ( / in the integrand) is only
+                // for surface area direct lighting integration
+                target_function = (bsdf_color * bsdf_ray_payload.material.emission * cosine_at_evaluated_point).luminance();
 
                 float light_pdf = pdf_of_emissive_triangle_hit(render_data, bsdf_ray_hit_info, sampled_direction); 
                 // If we refracting, drop the light PDF to 0

@@ -46,19 +46,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_O
 	RayVolumeState trash_volume_state = surface.ray_volume_state;
 	ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, surface.material, trash_volume_state, surface.view_direction, surface.shading_normal, sample_direction, bsdf_pdf);
 
-	float geometry_term = 1.0f;
-	if (render_data.render_settings.restir_di_settings.target_function.geometry_term_in_target_function)
-	{
-		float3 light_source_normal = hippt::normalize(get_triangle_normal_non_normalized(render_data, sample.emissive_triangle_index));
-		float cosine_at_light_source = hippt::abs(hippt::dot(sample_direction, light_source_normal));
-
-		geometry_term = cosine_at_light_source / (distance_to_light * distance_to_light);
-	}
-
 	int material_index = render_data.buffers.material_indices[sample.emissive_triangle_index];
 	ColorRGB32F sample_emission = render_data.buffers.materials_buffer[material_index].emission;
 
-	float target_function = (bsdf_color * sample_emission * cosine_term * geometry_term).luminance();
+	float target_function = (bsdf_color * sample_emission * cosine_term).luminance();
 	if (target_function == 0.0f)
 		// Quick exit because computing the visiblity that follows isn't going
 		// to change anything to the fact that we have 0.0f target function here
@@ -89,19 +80,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_O
 	RayVolumeState trash_volume_state = surface.ray_volume_state;
 	ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, surface.material, trash_volume_state, surface.view_direction, surface.shading_normal, sample_direction, bsdf_pdf);
 
-	float geometry_term = 1.0f;
-	if (render_data.render_settings.restir_di_settings.target_function.geometry_term_in_target_function)
-	{
-		float3 light_source_normal = hippt::normalize(get_triangle_normal_non_normalized(render_data, sample.emissive_triangle_index));
-		float cosine_at_light_source = hippt::abs(hippt::dot(sample_direction, light_source_normal));
-		
-		geometry_term = cosine_at_light_source / (distance_to_light * distance_to_light);
-	}
-
 	int material_index = render_data.buffers.material_indices[sample.emissive_triangle_index];
 	ColorRGB32F sample_emission = render_data.buffers.materials_buffer[material_index].emission;
 
-	float target_function = (bsdf_color * sample_emission * cosine_term * geometry_term).luminance();
+	float target_function = (bsdf_color * sample_emission * cosine_term).luminance();
 	if (target_function == 0.0f)
 		// Quick exit because computing the visiblity that follows isn't going
 		// to change anything to the fact that we have 0.0f target function here
