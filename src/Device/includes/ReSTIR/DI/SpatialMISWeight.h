@@ -147,4 +147,71 @@ struct ReSTIRDISpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
 	float mc = 0.0f;
 };
 
+template <>
+struct ReSTIRDISpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE>
+{
+	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
+		const ReSTIRDIReservoir& reservoir_being_resampled, const ReSTIRDIReservoir& center_pixel_reservoir,
+		float target_function_at_center,
+		int current_neighbor_index, int neighbor_pixel_index, int valid_neighbors_count)
+	{
+		int reused_neighbors_count = render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count;
+		if (current_neighbor_index < reused_neighbors_count)
+		{
+			// Resampling a neighbor
+
+			// The target function of the neighbor reservoir's sample at the neighbor surface is just
+			// the target function stored in the neighbor's reservoir.
+			//
+			// Care must be taken however because this is not necessarily true anymore after multiple spatial
+			// reuse passes: a given pixel may now hold a sample from another pixel and that means that the visibility
+			// doesn't match anymore.
+			//
+			// However, this ReSTIR DI implementation does a visibility reuse pass at the end of each spatial reuse pass
+			// so that we know that the visibility is correct and thus we do not run into any issues and we can just$
+			// reuse the target function stored in the neighbor's reservoir
+			float target_function_at_neighbor = reservoir_being_resampled.sample.target_function;
+
+			float nume = target_function_at_neighbor;
+			float denom = target_function_at_neighbor + target_function_at_center / valid_neighbors_count;
+			float mi = denom == 0.0f ? 0.0f : (nume / denom);
+
+			ReSTIRDISurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index);
+			float target_function_center_reservoir_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, center_pixel_reservoir.sample, neighbor_pixel_surface);
+			float target_function_center_reservoir_at_center = center_pixel_reservoir.sample.target_function;
+
+			float nume_mc = target_function_center_reservoir_at_center / valid_neighbors_count;
+			float denom_mc = target_function_center_reservoir_at_neighbor + target_function_center_reservoir_at_center / valid_neighbors_count;
+			mc += (denom_mc == 0.0f ? 0.0f : (nume_mc / denom_mc));
+
+			// In the defensive formulation, we want to divide by M, not M-1.
+				// (Eq. 7.6 of "A Gentle Introduction to ReSTIR")
+			return mi / (valid_neighbors_count + 1);
+		}
+		else
+		{
+			// Resampling the center pixel
+
+			if (mc == 0.0f)
+				// If there was no neighbor resampling (and mc hasn't been accumulated),
+				// then the MIS weight should be 1 for the center pixel. It gets all the weight
+				// since no neighbor was resampled
+				return 1.0f;
+			else
+			{
+				// Returning the weight accumulated so far when resampling the neighbors.
+				// 
+				// !!! This assumes that the center pixel is resampled last (which it is in this ReSTIR implementation) !!!
+
+				// In the defensive formulation, we want to divide by M, not M-1.
+				// (Eq. 7.6 of "A Gentle Introduction to ReSTIR")
+				return (1 + mc) / (valid_neighbors_count + 1);
+			}
+		}
+	}
+
+	// Weight for the canonical sample (center pixel)
+	float mc = 0.0f;
+};
+
 #endif

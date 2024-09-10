@@ -52,6 +52,10 @@
 #define compute_spatial_mis_weight(mis_weight_function) mis_weight_function.get_resampling_MIS_weight(render_data, neighbor_reservoir, \
 	center_pixel_reservoir, target_function_at_center, neighbor_index, neighbor_pixel_index, valid_neighbors_count)
 
+#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
+#define compute_spatial_mis_weight(mis_weight_function) mis_weight_function.get_resampling_MIS_weight(render_data, neighbor_reservoir, \
+	center_pixel_reservoir, target_function_at_center, neighbor_index, neighbor_pixel_index, valid_neighbors_count)
+
 #endif
 
 // Defining a compute_spatial_normalization() macro here for the same reasons
@@ -71,6 +75,9 @@ new_reservoir, center_pixel_surface, center_pixel_coords, res, cos_sin_theta_rot
 #define compute_spatial_normalization(out_nume, out_denom, normalization_function) normalization_function.get_normalization(out_nume, out_denom)
 
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
+#define compute_spatial_normalization(out_nume, out_denom, normalization_function) normalization_function.get_normalization(out_nume, out_denom)
+
+#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
 #define compute_spatial_normalization(out_nume, out_denom, normalization_function) normalization_function.get_normalization(out_nume, out_denom)
 
 #endif
@@ -245,7 +252,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	new_reservoir.end_with_normalization(normalization_numerator, normalization_denominator);
 	new_reservoir.sanity_check(center_pixel_coords);
 
-#if ReSTIR_DI_DoVisibilityReuse && (ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z || ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS)
+#if ReSTIR_DI_DoVisibilityReuse && \
+	(ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z \
+	|| ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS \
+	|| ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE)
 	// Why is this needed?
 	//
 	// Picture the case where we have visibility reuse (at the end of the initial candidates sampling pass),

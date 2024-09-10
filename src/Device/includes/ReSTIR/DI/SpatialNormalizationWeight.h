@@ -184,4 +184,15 @@ struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
 	}
 };
 
+template <>
+struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE>
+{
+	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
+	{
+		// Nothing more to normalize, everything is already handled when resampling the neighbors
+		out_normalization_nume = 1.0f;
+		out_normalization_denom = 1.0f;
+	}
+};
+
 #endif

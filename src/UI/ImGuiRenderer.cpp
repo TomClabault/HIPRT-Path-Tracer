@@ -866,12 +866,6 @@ void ImGuiRenderer::draw_sampling_panel()
 						confidence_weight_help_string += "\n\nDisabled because 1/M or 1/Z weights use confidence weights by design.";
 					ImGuiRenderer::show_help_marker(confidence_weight_help_string);
 					ImGui::EndDisabled();
-					if (kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS)
-					{
-						if (ImGui::Checkbox("Use Defensive Formulation", &render_settings.restir_di_settings.use_pairwise_mis_defensive))
-							m_render_window->set_render_dirty(true);
-						ImGuiRenderer::show_help_marker("The defensive formulation of Pairwise-MIS can help reduce variance at basically no cost.");
-					}
 
 					// No visibility bias correction for 1/M weights
 					bool bias_correction_visibility_disabled = kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_1_OVER_M;

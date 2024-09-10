@@ -193,4 +193,70 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MI
 	// Weight for the canonical sample (center pixel)
 	float mc = 0.0f;
 };
+
+template <>
+struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE>
+{
+	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
+		const ReSTIRDIReservoir& reservoir_being_resampled, const ReSTIRDIReservoir& initial_candidates_reservoir,
+		const ReSTIRDISurface& temporal_neighbor_surface, const ReSTIRDISurface& center_pixel_surface,
+		int current_neighbor_index)
+	{
+		if (current_neighbor_index == TEMPORAL_NEIGHBOR_ID)
+		{
+			// Resampling the temporal neighbor
+
+			// If we're currently resampling the temporal neighbor, that's 1 valid neighbor.
+			// Also, the initial candidates reservoir is always a valid neighbor so that's 2.
+			//
+			// But we want to divide by M - 1 (Eq. 7.5 of "A Gentle Introduction to ReSTIR") so that makes it 1
+			constexpr int valid_neighbors_count = 1;
+
+			float target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, reservoir_being_resampled.sample, temporal_neighbor_surface);
+			float target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, reservoir_being_resampled.sample, center_pixel_surface);
+
+			float nume = target_function_at_neighbor;
+			float denom = target_function_at_neighbor + target_function_at_center / valid_neighbors_count;
+			float mi = denom == 0.0f ? 0.0f : (nume / denom);
+
+			float target_function_center_reservoir_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface);
+			float target_function_center_reservoir_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, initial_candidates_reservoir.sample, center_pixel_surface);
+
+			float nume_mc = target_function_center_reservoir_at_center / valid_neighbors_count;
+			float denom_mc = target_function_center_reservoir_at_neighbor + target_function_center_reservoir_at_center / valid_neighbors_count;
+
+			mc += denom_mc == 0.0f ? 0.0f : nume_mc / denom_mc;
+
+			// In the defensive formulation, we want to divide by M, not M-1.
+			// (Eq. 7.6 of "A Gentle Introduction to ReSTIR")
+			return mi / (valid_neighbors_count + 1);
+		}
+		else
+		{
+			// Resampling the center pixel (initial candidates)
+
+			if (mc == 0.0f)
+				// If there was no neighbor resampling (and mc hasn't been accumulated),
+				// then the MIS weight should be 1 for the center pixel. It gets all the weight
+				// since no neighbor was resampled
+				return 1.0f;
+			else
+			{
+				// Returning the weight accumulated so far when resampling the neighbors.
+				// 
+				// !!! This assumes that the center pixel is resampled last (which it is in this ReSTIR implementation) !!!
+
+				constexpr int valid_neighbors_count = 1;
+
+				// In the defensive formulation, we want to divide by M, not M-1.
+				// (Eq. 7.6 of "A Gentle Introduction to ReSTIR")
+				return (1 + mc) / (valid_neighbors_count + 1);
+			}
+		}
+	}
+
+	// Weight for the canonical sample (center pixel)
+	float mc = 0.0f;
+};
+
 #endif

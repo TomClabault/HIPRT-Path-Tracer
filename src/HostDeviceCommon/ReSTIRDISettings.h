@@ -104,8 +104,6 @@ struct ReSTIRDISettings
 	int m_cap = 10;
 	// Whether or not to use confidence weights when resampling neighbors.
 	bool use_confidence_weights = true;
-	// If true, the pairwise MIS bias correction weights will use the defensive formulation
-	bool use_pairwise_mis_defensive = true;
 
 	// User-friendly (for ImGui) normal angle. When resampling a neighbor (temporal or spatial),
 	// the normal of the neighbor being re-sampled must be similar to our normal. This angle gives the

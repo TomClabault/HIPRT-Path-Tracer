@@ -62,6 +62,10 @@
 #define compute_temporal_mis_weight(mis_weight_function, reservoir, resample_id) mis_weight_function.get_resampling_MIS_weight(render_data, reservoir, \
 	initial_candidates_reservoir, temporal_neighbor_surface, center_pixel_surface, resample_id)
 
+#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
+#define compute_temporal_mis_weight(mis_weight_function, reservoir, resample_id) mis_weight_function.get_resampling_MIS_weight(render_data, reservoir, \
+	initial_candidates_reservoir, temporal_neighbor_surface, center_pixel_surface, resample_id)
+
 #endif
 
 #if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_M
@@ -80,6 +84,9 @@
 #define compute_temporal_normalization(normalization_function, out_nume, out_denom) normalization_function.get_normalization(out_nume, out_denom)
 
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
+#define compute_temporal_normalization(normalization_function, out_nume, out_denom) normalization_function.get_normalization(out_nume, out_denom)
+
+#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
 #define compute_temporal_normalization(normalization_function, out_nume, out_denom) normalization_function.get_normalization(out_nume, out_denom)
 
 #endif
