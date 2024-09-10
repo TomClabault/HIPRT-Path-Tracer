@@ -39,12 +39,7 @@ struct ReSTIRDITemporalResamplingMISWeight {};
 template<>
 struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_M>
 {
-	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
-		const ReSTIRDIReservoir& reservoir_being_resampled, const ReSTIRDIReservoir& initial_candidates_reservoir,
-		const ReSTIRDISurface& temporal_neighbor_surface, const ReSTIRDISurface& center_pixel_surface,
-		int temporal_neighbor_reservoir_M,
-		int current_neighbor_index,
-		Xorshift32Generator& random_number_generator)
+	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const ReSTIRDIReservoir& reservoir_being_resampled)
 	{
 		// 1/M MIS Weights are basically confidence weights only so we only need to return
 		// the confidence of the reservoir
@@ -56,12 +51,7 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_M>
 template<>
 struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z>
 {
-	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
-		const ReSTIRDIReservoir& reservoir_being_resampled, const ReSTIRDIReservoir& initial_candidates_reservoir,
-		const ReSTIRDISurface& temporal_neighbor_surface, const ReSTIRDISurface& center_pixel_surface,
-		int temporal_neighbor_reservoir_M,
-		int current_neighbor_index,
-		Xorshift32Generator& random_number_generator)
+	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const ReSTIRDIReservoir& reservoir_being_resampled)
 	{
 		// 1/Z MIS Weights are basically confidence weights only so we only need to return
 		// the confidence of the reservoir. The difference with 1/M weights is how we're going
@@ -74,12 +64,7 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z>
 template<>
 struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE>
 {
-	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
-		const ReSTIRDIReservoir& reservoir_being_resampled, const ReSTIRDIReservoir& initial_candidates_reservoir,
-		const ReSTIRDISurface& temporal_neighbor_surface, const ReSTIRDISurface& center_pixel_surface,
-		int temporal_neighbor_reservoir_M,
-		int current_neighbor_index,
-		Xorshift32Generator& random_number_generator)
+	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data, const ReSTIRDIReservoir& reservoir_being_resampled)
 	{
 		if (render_data.render_settings.restir_di_settings.use_confidence_weights)
 		{
@@ -109,8 +94,7 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH>
 		const ReSTIRDIReservoir& reservoir_being_resampled, const ReSTIRDIReservoir& initial_candidates_reservoir,
 		const ReSTIRDISurface& temporal_neighbor_surface, const ReSTIRDISurface& center_pixel_surface,
 		int temporal_neighbor_reservoir_M,
-		int current_neighbor_index,
-		Xorshift32Generator& random_number_generator)
+		int current_neighbor_index)
 	{
 		float nume = 0.0f;
 		// We already have the target function at the center pixel, adding it to the denom
@@ -161,9 +145,7 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MI
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
 		const ReSTIRDIReservoir& reservoir_being_resampled, const ReSTIRDIReservoir& initial_candidates_reservoir,
 		const ReSTIRDISurface& temporal_neighbor_surface, const ReSTIRDISurface& center_pixel_surface,
-		int temporal_neighbor_reservoir_M,
-		int current_neighbor_index,
-		Xorshift32Generator& random_number_generator)
+		int current_neighbor_index)
 	{
 		if (current_neighbor_index == TEMPORAL_NEIGHBOR_ID)
 		{

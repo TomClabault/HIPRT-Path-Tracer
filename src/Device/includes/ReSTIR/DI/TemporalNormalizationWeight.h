@@ -41,9 +41,6 @@ struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_M>
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
 		const ReSTIRDIReservoir& final_reservoir,
 		int initial_candidates_M, int temporal_neighbor_M,
-		const ReSTIRDISurface& center_pixel_surface, const ReSTIRDISurface& temporal_neighbor_surface,
-		int selected_neighbor, int center_pixel_index, int temporal_neighbor_pixel_index,
-		Xorshift32Generator& random_number_generator,
 		float& out_normalization_nume, float& out_normalization_denom)
 	{
 		if (final_reservoir.weight_sum <= 0)
@@ -72,8 +69,6 @@ struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z>
 		const ReSTIRDIReservoir& final_reservoir, 
 		int initial_candidates_M, int temporal_neighbor_M,
 		const ReSTIRDISurface& center_pixel_surface, const ReSTIRDISurface& temporal_neighbor_surface,
-		int selected_neighbor, int center_pixel_index, int temporal_neighbor_pixel_index,
-		Xorshift32Generator& random_number_generator,
 		float& out_normalization_nume, float& out_normalization_denom)
 	{
 		if (final_reservoir.weight_sum <= 0)
@@ -120,8 +115,7 @@ struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE>
 		const ReSTIRDIReservoir& final_reservoir,
 		int initial_candidates_M, int temporal_neighbor_M,
 		const ReSTIRDISurface& center_pixel_surface, const ReSTIRDISurface& temporal_neighbor_surface,
-		int selected_neighbor, int center_pixel_index, int temporal_neighbor_pixel_index,
-		Xorshift32Generator& random_number_generator,
+		int selected_neighbor,
 		float& out_normalization_nume, float& out_normalization_denom)
 	{
 		if (final_reservoir.weight_sum <= 0)
@@ -169,13 +163,7 @@ struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE>
 template<>
 struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH>
 {
-	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
-		const ReSTIRDIReservoir& final_reservoir,
-		int initial_candidates_M, int temporal_neighbor_M,
-		const ReSTIRDISurface& center_pixel_surface, const ReSTIRDISurface& temporal_neighbor_surface,
-		int selected_neighbor, int center_pixel_index, int temporal_neighbor_pixel_index,
-		Xorshift32Generator& random_number_generator,
-		float& out_normalization_nume, float& out_normalization_denom)
+	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{
 		// Nothing more to normalize, everything is already handled when resampling the 
 		// neighbors with balance heuristic MIS weights in the m_i terms
@@ -187,13 +175,7 @@ struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH>
 template<>
 struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS>
 {
-	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
-		const ReSTIRDIReservoir& final_reservoir,
-		int initial_candidates_M, int temporal_neighbor_M,
-		const ReSTIRDISurface& center_pixel_surface, const ReSTIRDISurface& temporal_neighbor_surface,
-		int selected_neighbor, int center_pixel_index, int temporal_neighbor_pixel_index,
-		Xorshift32Generator& random_number_generator,
-		float& out_normalization_nume, float& out_normalization_denom)
+	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{
 		// Nothing more to normalize, everything is already handled when resampling the 
 		// neighbors. Everything is already in the MIS weights m_i.

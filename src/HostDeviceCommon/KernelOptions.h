@@ -216,26 +216,16 @@
  *		Unbiased weights as proposed by Eq. 22 of the paper. Way better than 1/Z in terms of variance
  *		and still unbiased.
  * 
- *  - RESTIR_DI_BIAS_CORRECTION_MIS_LIKE_CONFIDENCE_WEIGHTS
- *		Unbiased weights as proposed by Eq. 22 of the paper but with confidence weights on top of it. This allows
- *		favoring samples that are more trustworthy i.e. samples that were produced from resampling a lot of other samples
- *		(reservoirs that have a large M value) and this helps reduce variance.
- * 
  *  - RESTIR_DI_BIAS_CORRECTION_MIS_GBH
  *		Unbiased MIS weights that use the generalized balance heuristic. Very good variance reduction but O(N^2) complexity,
 		N being the number of neighbors resampled.
  *		Eq. 36 of the 2022 Generalized Resampled Importance Sampling paper.
  * 
- *  - RESTIR_DI_BIAS_CORRECTION_MIS_GBH_CONFIDENCE_WEIGHTS
- *		Same as RESTIR_DI_BIAS_CORRECTION_MIS_GBH but with confidence weights in them. Eq. 5.11 of
- *		2023, "A Gentle Introduction to ReSTIR". Should have lower variance than without confidence weights
- *		due to favoring better samples.
- * 
  *	- RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
  *		Similar variance reduction to the generalized balance heuristic and only O(N) computational cost.
  *		Section 7.1.3 of "A Gentle Introduction to ReSTIR", 2023
  */
-#define ReSTIR_DI_BiasCorrectionWeights RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
+#define ReSTIR_DI_BiasCorrectionWeights RESTIR_DI_BIAS_CORRECTION_MIS_GBH
 
 /**
  * What sampling strategy to use for the GGX NDF

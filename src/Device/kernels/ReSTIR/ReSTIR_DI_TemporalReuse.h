@@ -44,6 +44,46 @@
 // Same when resampling the initial candidates
 #define INITIAL_CANDIDATES_ID 1
 
+
+#if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_M
+#define compute_temporal_mis_weight(mis_weight_function, reservoir, resample_id) mis_weight_function.get_resampling_MIS_weight(reservoir);
+
+#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
+#define compute_temporal_mis_weight(mis_weight_function, reservoir, resample_id) mis_weight_function.get_resampling_MIS_weight(reservoir);
+
+#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
+#define compute_temporal_mis_weight(mis_weight_function, reservoir, resample_id) mis_weight_function.get_resampling_MIS_weight(render_data, reservoir)
+
+#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_GBH
+#define compute_temporal_mis_weight(mis_weight_function, reservoir, resample_id) mis_weight_function.get_resampling_MIS_weight(render_data, reservoir, \
+	initial_candidates_reservoir, temporal_neighbor_surface, center_pixel_surface, temporal_neighbor_reservoir.M, resample_id)
+
+#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
+#define compute_temporal_mis_weight(mis_weight_function, reservoir, resample_id) mis_weight_function.get_resampling_MIS_weight(render_data, reservoir, \
+	initial_candidates_reservoir, temporal_neighbor_surface, center_pixel_surface, resample_id)
+
+#endif
+
+#if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_M
+#define compute_temporal_normalization(normalization_function, out_nume, out_denom) normalization_function.get_normalization(render_data, \
+	new_reservoir, initial_candidates_reservoir.M, temporal_neighbor_reservoir.M, out_nume, out_denom);
+
+#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
+#define compute_temporal_normalization(normalization_function, out_nume, out_denom) normalization_function.get_normalization(render_data, \
+	new_reservoir, initial_candidates_reservoir.M, temporal_neighbor_reservoir.M, center_pixel_surface, temporal_neighbor_surface, out_nume, out_denom);
+
+#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
+#define compute_temporal_normalization(normalization_function, out_nume, out_denom) normalization_function.get_normalization(render_data, \
+	new_reservoir, initial_candidates_reservoir.M, temporal_neighbor_reservoir.M, center_pixel_surface, temporal_neighbor_surface, selected_neighbor, out_nume, out_denom)
+
+#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_GBH
+#define compute_temporal_normalization(normalization_function, out_nume, out_denom) normalization_function.get_normalization(out_nume, out_denom)
+
+#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
+#define compute_temporal_normalization(normalization_function, out_nume, out_denom) normalization_function.get_normalization(out_nume, out_denom)
+
+#endif
+
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) ReSTIR_DI_TemporalReuse(HIPRTRenderData render_data, int2 res)
 #else
@@ -107,7 +147,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 		// Reading from the current frame's g-buffer otherwise
 		temporal_neighbor_surface = get_pixel_surface(render_data, temporal_neighbor_pixel_index);
 
-	ReSTIRDITemporalResamplingMISWeight<ReSTIR_DI_BiasCorrectionWeights> resampling_mis_weight;
+	ReSTIRDITemporalResamplingMISWeight<ReSTIR_DI_BiasCorrectionWeights> mis_weight_function;
 	// Will keep the index of the neighbor that has been selected by resampling. 
 	// Either 0 or 1 for the temporal resampling pass
 	int selected_neighbor = 0;
@@ -155,12 +195,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 				jacobian_determinant = 0.0f;
 		}
 
-		float temporal_neighbor_resampling_mis_weight = resampling_mis_weight.get_resampling_MIS_weight(render_data,
-			temporal_neighbor_reservoir, initial_candidates_reservoir,
-			temporal_neighbor_surface, center_pixel_surface,
-			temporal_neighbor_reservoir.M,
-			/* indicating that we're currently resampling the temporal neighbor */ TEMPORAL_NEIGHBOR_ID,
-			random_number_generator);
+		float temporal_neighbor_resampling_mis_weight = compute_temporal_mis_weight(mis_weight_function, temporal_neighbor_reservoir, TEMPORAL_NEIGHBOR_ID);
 
 		// Combining as in Alg. 6 of the paper
 		if (new_reservoir.combine_with(temporal_neighbor_reservoir, temporal_neighbor_resampling_mis_weight, target_function_at_center, jacobian_determinant, random_number_generator))
@@ -172,28 +207,17 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	// Resampling the initial candidates
 	// /* ------------------------------- */
 
-	float init_cand_mis_weight = resampling_mis_weight.get_resampling_MIS_weight(render_data,
-		initial_candidates_reservoir, initial_candidates_reservoir,
-		temporal_neighbor_surface, center_pixel_surface,
-		temporal_neighbor_reservoir.M,
-		/* indicating that we're currently resampling the initial candidates */ INITIAL_CANDIDATES_ID,
-		random_number_generator);
+	float initial_candidates_mis_weight = compute_temporal_mis_weight(mis_weight_function, initial_candidates_reservoir, INITIAL_CANDIDATES_ID);
 
-	if (new_reservoir.combine_with(initial_candidates_reservoir, init_cand_mis_weight, initial_candidates_reservoir.sample.target_function, /* jacobian is 1 when reusing at the exact same spot */ 1.0f, random_number_generator))
+	if (new_reservoir.combine_with(initial_candidates_reservoir, initial_candidates_mis_weight, initial_candidates_reservoir.sample.target_function, /* jacobian is 1 when reusing at the exact same spot */ 1.0f, random_number_generator))
 		selected_neighbor = INITIAL_CANDIDATES_ID;
 	new_reservoir.sanity_check(make_int2(x, y));
 
 	float normalization_numerator = 1.0f;
 	float normalization_denominator = 1.0f;
 
-	ReSTIRDITemporalNormalizationWeight<ReSTIR_DI_BiasCorrectionWeights> normalization_weight;
-	normalization_weight.get_normalization(render_data,
-		new_reservoir, 
-		initial_candidates_reservoir.M, temporal_neighbor_reservoir.M,
-		center_pixel_surface, temporal_neighbor_surface, 
-		selected_neighbor,
-		center_pixel_index, temporal_neighbor_pixel_index,
-		random_number_generator, normalization_numerator, normalization_denominator);
+	ReSTIRDITemporalNormalizationWeight<ReSTIR_DI_BiasCorrectionWeights> normalization_function;
+	compute_temporal_normalization(normalization_function, normalization_numerator, normalization_denominator);
 
 	new_reservoir.end_with_normalization(normalization_numerator, normalization_denominator);
 	new_reservoir.sanity_check(make_int2(x, y));

@@ -13,9 +13,9 @@ struct ReSTIRDISurface
 {
 	SimplifiedRendererMaterial material;
 	RayVolumeState ray_volume_state;
-	float3 view_direction;
-	float3 shading_normal;
-	float3 shading_point;
+	float3 view_direction = { 0.0f, 0.0f, 0.0f};
+	float3 shading_normal = { 0.0f, 0.0f, 0.0f};
+	float3 shading_point = { 0.0f, 0.0f, 0.0f };
 };
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISurface get_pixel_surface(const HIPRTRenderData& render_data, int pixel_index)

@@ -97,7 +97,7 @@ struct SimplifiedRendererMaterial
     
     float anisotropic = 0.0f;
     float anisotropic_rotation = 0.0f;
-    float alpha_x, alpha_y;
+    float alpha_x = 0.0f, alpha_y = 0.0f;
 
     float clearcoat = 0.0f;
     float clearcoat_roughness = 0.0f;

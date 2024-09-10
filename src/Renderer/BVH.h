@@ -20,8 +20,6 @@
 
 #include <hiprt/hiprt_types.h> // for hiprtRay
 
-class FlattenedBVH;
-
 class BVH
 {
 public:
@@ -227,7 +225,17 @@ public:
         bool _is_leaf = true;
 
         std::vector<int> _triangles;
-        std::array<BVH::OctreeNode*, 8> _children;
+        std::array<BVH::OctreeNode*, 8> _children = 
+        {
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr
+        };
 
         float3 _min, _max;
         BoundingVolume _bounding_volume;
@@ -241,7 +249,6 @@ public:
     void operator=(BVH&& bvh);
      
     bool intersect(const hiprtRay& ray, HitInfo& hit_info) const;
-    FlattenedBVH flatten() const;
 
 private:
     void build_bvh(int max_depth, int leaf_max_obj_count, float3 min, float3 max, const BoundingVolume& volume);
