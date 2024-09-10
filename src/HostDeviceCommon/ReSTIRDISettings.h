@@ -103,9 +103,11 @@ struct ReSTIRDISettings
 	// A M-cap value between 5 - 30 is usually good
 	int m_cap = 10;
 
+	// Whether or not to use confidence weights when resampling neighbors.
+	bool use_confidence_weights = false;
 
-
-
+	// If true, the pairwise MIS bias correction weights will use the defensive formulation
+	bool use_pairwise_mis_defensive = true;
 
 	// User-friendly (for ImGui) normal angle. When resampling a neighbor (temporal or spatial),
 	// the normal of the neighbor being re-sampled must be similar to our normal. This angle gives the
@@ -123,31 +125,6 @@ struct ReSTIRDISettings
 	// How close the roughness of the neighbor's surface must be to ours to resample that neighbor
 	// If this value is 0.25f for example, then the roughnesses must be within 0.25f of each other. Simple.
 	float roughness_similarity_threshold = 0.25f;
-
-
-
-
-
-	//// User-friendly (for ImGui) normal angle. When resampling a neighbor (temporal or spatial),
-	//// the normal of the neighbor being re-sampled must be similar to our normal. This angle gives the
-	//// "similarity threshold". Normals must be within 25 degrees of each other by default
-	//float normal_similarity_angle_degrees = 25.0f;
-	//// Precomputed cosine of the angle for use in the shader
-	//float normal_similarity_angle_precomp = -1.0f; // Normals must be within 25 degrees by default
-
-	//// Threshold used when determining whether a temporal neighbor is acceptable
-	//// for temporal reuse regarding the spatial proximity of the neighbor and the current
-	//// point. 
-	//// This is a world space distance.
-	//float plane_distance_threshold = 1.0e35f;
-
-	//// How close the roughness of the neighbor's surface must be to ours to resample that neighbor
-	//// If this value is 0.25f for example, then the roughnesses must be within 0.25f of each other. Simple.
-	//float roughness_similarity_threshold = 1000.0f;
-
-
-
-
 
 	// Pointer to the buffer that contains the output of all the passes of ReSTIR DI
 	// This the buffer that should be used when evaluating direct lighting in the path tracer

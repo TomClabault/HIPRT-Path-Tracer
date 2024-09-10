@@ -34,6 +34,21 @@
  * [8] [Rearchitecting Spatiotemporal Resampling for Production] https://research.nvidia.com/publication/2021-07_rearchitecting-spatiotemporal-resampling-production
  */
 
+// Defining a macro here so that we don't bloat the main code with the #if #elif directives
+#if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_M
+#define compute_mis_weight(mis_weight_computer) mis_weight_computer.get_resampling_MIS_weight(neighbor_reservoir.M)
+#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
+#define compute_mis_weight(mis_weight_computer) mis_weight_computer.get_resampling_MIS_weight(neighbor_reservoir.M)
+#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
+#define compute_mis_weight(mis_weight_computer) mis_weight_computer.get_resampling_MIS_weight(render_data, neighbor_reservoir.M)
+#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_GBH
+#define compute_mis_weight(mis_weight_computer) mis_weight_computer.get_resampling_MIS_weight(render_data, neighbor_reservoir, \
+	center_pixel_surface, neighbor_index, center_pixel_coords, res, cos_sin_theta_rotation)
+#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
+#define compute_mis_weight(mis_weight_computer) mis_weight_computer.get_resampling_MIS_weight(render_data, neighbor_reservoir, \
+	center_pixel_reservoir, target_function_at_center, neighbor_index, neighbor_pixel_index, valid_neighbors_count);                                            
+#endif
+
 /**
  * Counts how many neighbors are eligible for reuse. 
  * This is needed for proper normalization by pairwise MIS weights.
@@ -115,19 +130,19 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	int reused_neighbors_count = render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count;
 	int valid_neighbors_count = count_valid_neighbors(render_data, center_pixel_surface, center_pixel_coords, res, cos_sin_theta_rotation, neighbor_heuristics_cache);
 
-	ReSTIRDISpatialResamplingMISWeight<ReSTIR_DI_BiasCorrectionWeights> resampling_mis_weight;
+	ReSTIRDISpatialResamplingMISWeight<ReSTIR_DI_BiasCorrectionWeights> mis_weight_computer;
 	// Resampling the neighbors. Using neighbors + 1 here so that
 	// we can use the last iteration of the loop to resample ourselves (the center pixel)
 	// 
 	// See the implementation of get_spatial_neighbor_pixel_index() in ReSTIR/DI/Utils.h
-	for (int neighbor = 0; neighbor < reused_neighbors_count + 1; neighbor++)
+	for (int neighbor_index = 0; neighbor_index < reused_neighbors_count + 1; neighbor_index++)
 	{
-		int neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, neighbor, reused_neighbors_count, render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_radius, center_pixel_coords, res, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
+		int neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, neighbor_index, reused_neighbors_count, render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_radius, center_pixel_coords, res, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
 		if (neighbor_pixel_index == -1)
 			// Neighbor out of the viewport
 			continue;
 
-		if (neighbor < reused_neighbors_count)
+		if (neighbor_index < reused_neighbors_count)
 		{
 			// If not the center pixel, we can check the heuristics, otherwise there's no need to
 
@@ -135,7 +150,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 			{
 				// Our heuristics cache is a 32bit int so we can only cache 32 values are we're
 				// going to have issues if we try to read more than that.
-				if ((neighbor_heuristics_cache & (1 << neighbor)) == 0)
+				if ((neighbor_heuristics_cache & (1 << neighbor_index)) == 0)
 					continue;
 			}
 			else 
@@ -146,12 +161,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 			}
 		}
 
-		ReSTIRDISurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index);
 		ReSTIRDIReservoir neighbor_reservoir = input_reservoir_buffer[neighbor_pixel_index];
 		float target_function_at_center = 0.0f;
 		if (neighbor_reservoir.UCW > 0.0f)
 		{
-			if (neighbor == reused_neighbors_count)
+			if (neighbor_index == reused_neighbors_count)
 				// No need to evaluate the center sample at the center pixel, that's exactly
 				// the target function of the center reservoir
 				target_function_at_center = neighbor_reservoir.sample.target_function;
@@ -163,7 +177,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 		// If the neighbor reservoir is invalid, do not compute the jacobian
 		// Also, if this is the last neighbor resample (meaning that it is the sample pixel), 
 		// the jacobian is going to be 1.0f so no need to compute
-		if (target_function_at_center > 0.0f && neighbor_reservoir.UCW != 0.0f && neighbor != reused_neighbors_count)
+		if (target_function_at_center > 0.0f && neighbor_reservoir.UCW != 0.0f && neighbor_index != reused_neighbors_count)
 		{
 			// The reconnection shift is what is implicitely used in ReSTIR DI. We need this because
 			// the initial light sample candidates that we generate on the area of the lights have an
@@ -188,18 +202,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 			}
 		}
 
-		float mis_weight = resampling_mis_weight.get_resampling_MIS_weight(render_data,
-			neighbor_reservoir, center_pixel_reservoir,
-			center_pixel_surface, neighbor_pixel_surface,
-			target_function_at_center,
-			neighbor, reused_neighbors_count, valid_neighbors_count,
-			center_pixel_coords, res,
-			cos_sin_theta_rotation,
-			random_number_generator);
+		float mis_weight = compute_mis_weight(mis_weight_computer);
 
 		// Combining as in Alg. 6 of the paper
 		if (new_reservoir.combine_with(neighbor_reservoir, mis_weight, target_function_at_center, jacobian_determinant, random_number_generator))
-			selected_neighbor = neighbor;
+			selected_neighbor = neighbor_index;
 		new_reservoir.sanity_check(center_pixel_coords);
 	}
 
@@ -250,8 +257,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	// everything goes well
 	//
 	// As an optimization, we also do this for the pairwise MIS because pairwise MIS evaluates the target function
-	// of reservoirs at their own location so doing the visibility reuse here ensure that we do not run into
-	// "invalid visibility issues" that would cause bias.
+	// of reservoirs at their own location. Doing the visibility reuse here ensures that a reservoir sample at its own location
+	// includes visibility and so we do not need to recompute the target function of the neighbors in this case. We can just
+	// reuse the target function stored in the reservoir
 	//
 	// We need this at every spatial reuse pass expect the last one because we're not going to re-use anything
 	// after the last pass.

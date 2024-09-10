@@ -71,10 +71,6 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z>
 	}
 };
 
-
-
-
-
 template<>
 struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE>
 {
@@ -85,38 +81,26 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE>
 		int current_neighbor_index,
 		Xorshift32Generator& random_number_generator)
 	{
-		// MIS-like MIS weights without confidence weights do not weight the neighbor reservoirs
-		// during resampling (the same goes with any MIS weights that doesn't use confidence
-		// weights). We're thus returning 1.0f.
-		// 
-		// The bulk of the work of the MIS-like weights is done in during the normalization of the reservoir
+		if (render_data.render_settings.restir_di_settings.use_confidence_weights)
+		{
+			// MIS-like MIS weights with confidence weights are basically a mix of 1/Z 
+			// and MIS like for the normalization so we're just returning the confidence here
+			// so that a reservoir that is being resampled gets a bigger weight depending on its 
+			// confidence weight (M).
 
-		return 1.0f;
+			return reservoir_being_resampled.M;
+		}
+		else
+		{
+			// MIS-like MIS weights without confidence weights do not weight the neighbor reservoirs
+			// during resampling. We're thus returning 1.0f.
+			// 
+			// The bulk of the work of the MIS-like weights is done in during the normalization of the reservoir
+
+			return 1.0f;
+		}
 	}
 };
-
-template<>
-struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE_CONFIDENCE_WEIGHTS>
-{
-	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
-		const ReSTIRDIReservoir& reservoir_being_resampled, const ReSTIRDIReservoir& initial_candidates_reservoir,
-		const ReSTIRDISurface& temporal_neighbor_surface, const ReSTIRDISurface& center_pixel_surface,
-		int temporal_neighbor_reservoir_M,
-		int current_neighbor_index,
-		Xorshift32Generator& random_number_generator)
-	{
-		// MIS-like MIS weights with confidence weights are basically a mix of 1/Z 
-		// and MIS like for the normalization so we're just returning the confidence here
-		// so that a reservoir that is being resampled gets a bigger weight depending on its 
-		// confidence weight (M).
-
-		return reservoir_being_resampled.M;
-	}
-};
-
-
-
-
 
 template<>
 struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH>
@@ -138,8 +122,6 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH>
 			// Only computing the target function if we do have a temporal neighbor
 			target_function_at_temporal_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, reservoir_being_resampled.sample, temporal_neighbor_surface);
 
-		// TODO compute visibility before in target function
-
 		if (current_neighbor_index == TEMPORAL_NEIGHBOR_ID && target_function_at_temporal_neighbor == 0.0f)
 			// If we're currently computing the MIS weight for the temporal neighbor,
 			// this means that we're going to have the temporal neighbor weight 
@@ -151,11 +133,20 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH>
 
 		float target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, reservoir_being_resampled.sample, center_pixel_surface);
 
-		denom = target_function_at_temporal_neighbor + target_function_at_center;
+		int temporal_M = temporal_neighbor_reservoir_M;
+		int center_reservoir_M = initial_candidates_reservoir.M;
+		if (!render_data.render_settings.restir_di_settings.use_confidence_weights)
+		{
+			temporal_M = 1;
+			center_reservoir_M = 1;
+		}
+
 		if (current_neighbor_index == TEMPORAL_NEIGHBOR_ID)
-			nume = target_function_at_temporal_neighbor;
+			nume = target_function_at_temporal_neighbor * temporal_M;
 		else
-			nume = target_function_at_center;
+			nume = target_function_at_center * center_reservoir_M;
+
+		denom = target_function_at_temporal_neighbor * temporal_M + target_function_at_center * center_reservoir_M;
 
 		if (denom == 0.0f)
 			return 0.0f;
@@ -163,56 +154,6 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH>
 			return nume / denom;
 	}
 };
-
-template<>
-struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH_CONFIDENCE_WEIGHTS>
-{
-	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
-		const ReSTIRDIReservoir& reservoir_being_resampled, const ReSTIRDIReservoir& initial_candidates_reservoir,
-		const ReSTIRDISurface& temporal_neighbor_surface, const ReSTIRDISurface& center_pixel_surface,
-		int temporal_neighbor_reservoir_M,
-		int current_neighbor_index,
-		Xorshift32Generator& random_number_generator)
-	{
-		float nume = 0.0f;
-		// We already have the target function at the center pixel, adding it to the denom
-		float denom = 0.0f;
-
-		// Evaluating the sample that we're resampling at the neighor locations (using the neighbors surfaces)
-		float target_function_at_temporal_neighbor = 0.0f;
-		if (temporal_neighbor_reservoir_M != 0)
-			// Only computing the target function if we do have a temporal neighbor
-			target_function_at_temporal_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, reservoir_being_resampled.sample, temporal_neighbor_surface);
-
-		// TODO compute visibility before in target function
-
-		if (current_neighbor_index == TEMPORAL_NEIGHBOR_ID && target_function_at_temporal_neighbor == 0.0f)
-			// If we're currently computing the MIS weight for the temporal neighbor,
-			// this means that we're going to have the temporal neighbor weight 
-			// (target function) in the numerator. But if the target function
-			// at the temporal neighbor is 0.0f, then we're going to have 0.0f
-			// in the numerator --> 0.0f MIS weight anyways --> no need to
-			// compute anything else, we can already return 0.0f for the MIS weight.
-			return 0.0f;
-
-		float target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, reservoir_being_resampled.sample, center_pixel_surface);
-
-		denom = target_function_at_temporal_neighbor * temporal_neighbor_reservoir_M + target_function_at_center * initial_candidates_reservoir.M;
-		if (current_neighbor_index == TEMPORAL_NEIGHBOR_ID)
-			nume = target_function_at_temporal_neighbor * temporal_neighbor_reservoir_M;
-		else
-			nume = target_function_at_center * initial_candidates_reservoir.M;
-
-		if (denom == 0.0f)
-			return 0.0f;
-		else
-			return nume / denom;
-	}
-};
-
-
-
-
 
 template <>
 struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS>

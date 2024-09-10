@@ -56,13 +56,9 @@
 #define RESTIR_DI_BIAS_CORRECTION_1_OVER_M 0
 #define RESTIR_DI_BIAS_CORRECTION_1_OVER_Z 1
 #define RESTIR_DI_BIAS_CORRECTION_MIS_LIKE 2
-#define RESTIR_DI_BIAS_CORRECTION_MIS_LIKE_CONFIDENCE_WEIGHTS 3
-#define RESTIR_DI_BIAS_CORRECTION_MIS_GBH 4
-#define RESTIR_DI_BIAS_CORRECTION_MIS_GBH_CONFIDENCE_WEIGHTS 5
-#define RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS 6
-#define RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_CONFIDENCE_WEIGHTS 7
-#define RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE 8
-#define RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE_CONFIDENCE_WEIGHTS 9
+#define RESTIR_DI_BIAS_CORRECTION_MIS_GBH 3
+#define RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS 4
+#define RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE 5
 
 #define GGX_NO_VNDF 0
 #define GGX_VNDF_SAMPLING 1
@@ -135,7 +131,7 @@
  *			- render_settings.ris_number_of_light_candidates & render_settings.ris_number_of_bsdf_candidates
  *				when sampling the initial candidates with RIS
  */
-#define DirectLightSamplingStrategy LSS_MIS_LIGHT_BSDF
+#define DirectLightSamplingStrategy LSS_RESTIR_DI
 
 /**
  * What envmap sampling strategy to use
@@ -239,7 +235,7 @@
  *		Similar variance reduction to the generalized balance heuristic and only O(N) computational cost.
  *		Section 7.1.3 of "A Gentle Introduction to ReSTIR", 2023
  */
-#define ReSTIR_DI_BiasCorrectionWeights RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
+#define ReSTIR_DI_BiasCorrectionWeights RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
 
 /**
  * What sampling strategy to use for the GGX NDF

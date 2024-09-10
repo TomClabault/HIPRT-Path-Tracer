@@ -599,7 +599,7 @@ void ImGuiRenderer::draw_sampling_panel()
 
 
 						static bool do_normal_similarity_test = true;
-						if (ImGui::Checkbox("Use Normal Similarity Heuristic", &do_normal_similarity_test) && do_normal_similarity_test)
+						if (ImGui::Checkbox("Use Normal Similarity Heuristic", &do_normal_similarity_test))
 						{
 							if (do_normal_similarity_test)
 							{
@@ -609,7 +609,9 @@ void ImGuiRenderer::draw_sampling_panel()
 							}
 							else
 								// If not using the heuristic, setting the threshold to 0.0f so that the normal heuristic always passes
-								render_settings.restir_di_settings.normal_similarity_angle_precomp = 0.0f;
+								render_settings.restir_di_settings.normal_similarity_angle_precomp = -1.0f;
+
+							m_render_window->set_render_dirty(true);
 						}
 
 						if (do_normal_similarity_test)
@@ -637,6 +639,8 @@ void ImGuiRenderer::draw_sampling_panel()
 							else
 								// Setting a super high value so that the plane distance heuristic always passes if we're not using it
 								render_settings.restir_di_settings.plane_distance_threshold = 1.0e35f;
+
+							m_render_window->set_render_dirty(true);
 						}
 
 						if (do_plane_distance_test)
@@ -663,6 +667,7 @@ void ImGuiRenderer::draw_sampling_panel()
 								// so that the heuristic always passes
 								render_settings.restir_di_settings.roughness_similarity_threshold = 1000.0f;
 
+							m_render_window->set_render_dirty(true);
 						}
 						if (do_roughness_heuristic)
 						{
@@ -838,13 +843,9 @@ void ImGuiRenderer::draw_sampling_panel()
 						"- 1/M Weights (Biased)",
 						"- 1/Z Weights (Unbiased)",
 						"- MIS-like Weights (Unbiased)",
-						"- MIS-like Weights & CW (Unbiased)",
 						"- MIS Weights GBH (Unbiased)",
-						"- MIS Weights GBH & CW (Unbiased)",
 						"- Pairwise MIS Weights (Unbiased)",
-						"- Pairwise MIS Weights & CW (Unbiased)",
 						"- Pairwise MIS Weights Defensive (Unbiased)",
-						"- Pairwise MIS Weights Defensive & CW (Unbiased)",
 					};
 					if (ImGui::Combo("Bias Correction Weights", kernel_options->get_pointer_to_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS), bias_correction_mode_items, IM_ARRAYSIZE(bias_correction_mode_items)))
 					{
@@ -853,6 +854,24 @@ void ImGuiRenderer::draw_sampling_panel()
 						m_render_window->set_render_dirty(true);
 					}
 					ImGuiRenderer::show_help_marker("What weights to use to resample reservoirs");
+
+					bool disable_confidence_weights = kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_1_OVER_M
+						|| kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z;
+
+					ImGui::BeginDisabled(disable_confidence_weights);
+					if (ImGui::Checkbox("Use Confidence Weights", &render_settings.restir_di_settings.use_confidence_weights))
+						m_render_window->set_render_dirty(true);
+					std::string confidence_weight_help_string = "Whether or not to use confidence weights when resampling the samples. Confidence weights allow proper temporal reuse.";
+					if (disable_confidence_weights)
+						confidence_weight_help_string += "\n\nDisabled because 1/M or 1/Z weights use confidence weights by design.";
+					ImGuiRenderer::show_help_marker(confidence_weight_help_string);
+					ImGui::EndDisabled();
+					if (kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS)
+					{
+						if (ImGui::Checkbox("Use Defensive Formulation", &render_settings.restir_di_settings.use_pairwise_mis_defensive))
+							m_render_window->set_render_dirty(true);
+						ImGuiRenderer::show_help_marker("The defensive formulation of Pairwise-MIS can help reduce variance at basically no cost.");
+					}
 
 					// No visibility bias correction for 1/M weights
 					bool bias_correction_visibility_disabled = kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_1_OVER_M;

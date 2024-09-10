@@ -43,6 +43,10 @@
 // - temporal reuse broken with pairwise MIS, weights must be broken
 // - maybe use one class per MIS resampling weight with a function with clear arguments because this is getting messy with all the arguments required by the most complicated MIS methods
 // - do not need to recompile for using confidence weights most of the time, just an if to include M or not should be enough
+// - M-capping when using a reservoir in the spatial reuse? M-capping shouldn't be only for temporal input reservoirs right?
+// - with 1/Z weights, many spatial reuse passes destroys glossy reflections
+// - heuristics makes it hard to reuse on the teapot of the white room because of normals dissimilarity i guess?
+// - heuristics makes everything noisy/artifacty
 
 // TODO bugs:
 // - memory leak with OpenGL when resizing the window?
@@ -50,8 +54,6 @@
 // - take transmission color into account when direct sampling a light source that is inside a volume
 // - denoiser AOVs not accounting for transmission correctly since Disney 
 //	  - same with perfect reflection
-// - heatmap with adaptive sampling and only pixel stopnoise threshold not displaying the same heatmap (particularly in shadows in the white room)
-// - multiple spatial reuse passes doesn't show up properly in the perf metrics. It always shows the time for a single spatial reuse pass, not all
 // - fix sampling lights inside dielectrics with ReSTIR DI
 
 
