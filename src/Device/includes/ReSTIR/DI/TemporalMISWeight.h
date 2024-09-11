@@ -143,27 +143,27 @@ template <>
 struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
-		const ReSTIRDIReservoir& reservoir_being_resampled, const ReSTIRDIReservoir& initial_candidates_reservoir,
+		const ReSTIRDIReservoir& temporal_neighbor_reservoir, const ReSTIRDIReservoir& initial_candidates_reservoir,
 		const ReSTIRDISurface& temporal_neighbor_surface, const ReSTIRDISurface& center_pixel_surface,
-		int current_neighbor_index)
+		float neighbor_sample_target_function_at_center, int current_neighbor_index)
 	{
 		if (current_neighbor_index == TEMPORAL_NEIGHBOR_ID)
 		{
 			// Resampling the temporal neighbor
 
-			float target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, reservoir_being_resampled.sample, temporal_neighbor_surface);
-			float target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, reservoir_being_resampled.sample, center_pixel_surface);
+			float target_function_at_neighbor = temporal_neighbor_reservoir.sample.target_function;
+			float target_function_at_center = neighbor_sample_target_function_at_center;
 
-			float temporal_neighbor_M = render_data.render_settings.restir_di_settings.use_confidence_weights ? reservoir_being_resampled.M : 1;
+			float temporal_neighbor_M = render_data.render_settings.restir_di_settings.use_confidence_weights ? temporal_neighbor_reservoir.M : 1;
 			float center_reservoir_M = render_data.render_settings.restir_di_settings.use_confidence_weights ? initial_candidates_reservoir.M : 1;
-			float neighbors_confidence_sum = render_data.render_settings.restir_di_settings.use_confidence_weights ? reservoir_being_resampled.M : 1;
+			float neighbors_confidence_sum = render_data.render_settings.restir_di_settings.use_confidence_weights ? temporal_neighbor_reservoir.M : 1;
 
 			float nume = target_function_at_neighbor * temporal_neighbor_M;
 			float denom = target_function_at_neighbor * neighbors_confidence_sum + target_function_at_center * center_reservoir_M;
 			float mi = denom == 0.0f ? 0.0f : (nume / denom);
 
 			float target_function_center_reservoir_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface);
-			float target_function_center_reservoir_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, initial_candidates_reservoir.sample, center_pixel_surface);
+			float target_function_center_reservoir_at_center = initial_candidates_reservoir.sample.target_function;
 
 			float nume_mc = target_function_center_reservoir_at_center * center_reservoir_M;
 			float denom_mc = target_function_center_reservoir_at_neighbor * neighbors_confidence_sum + target_function_center_reservoir_at_center * center_reservoir_M;
@@ -204,18 +204,14 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MI
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
 		const ReSTIRDIReservoir& temporal_neighbor_reservoir, const ReSTIRDIReservoir& initial_candidates_reservoir,
 		const ReSTIRDISurface& temporal_neighbor_surface, const ReSTIRDISurface& center_pixel_surface,
-		int current_neighbor_index)
+		float neighbor_sample_target_function_at_center, int current_neighbor_index)
 	{
 		if (current_neighbor_index == TEMPORAL_NEIGHBOR_ID)
 		{
 			// Resampling the temporal neighbor
 
-			// If we're currently resampling the temporal neighbor, that's 1 valid neighbor.
-			// Also, the initial candidates reservoir is always a valid neighbor so that's 2.
-			//
-			// But we want to divide by M - 1 (Eq. 7.5 of "A Gentle Introduction to ReSTIR") so that makes it 1
-			float target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, temporal_neighbor_reservoir.sample, temporal_neighbor_surface);
-			float target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, temporal_neighbor_reservoir.sample, center_pixel_surface);
+			float target_function_at_neighbor = temporal_neighbor_reservoir.sample.target_function;
+			float target_function_at_center = neighbor_sample_target_function_at_center;
 
 			float temporal_neighbor_M = render_data.render_settings.restir_di_settings.use_confidence_weights ? temporal_neighbor_reservoir.M : 1;
 			float center_reservoir_M = render_data.render_settings.restir_di_settings.use_confidence_weights ? initial_candidates_reservoir.M : 1;
@@ -229,7 +225,7 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MI
 				mi *= neighbors_confidence_sum / (neighbors_confidence_sum + center_reservoir_M);
 
 			float target_function_center_reservoir_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface);
-			float target_function_center_reservoir_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, initial_candidates_reservoir.sample, center_pixel_surface);
+			float target_function_center_reservoir_at_center = initial_candidates_reservoir.sample.target_function;
 
 			float nume_mc = target_function_center_reservoir_at_center * center_reservoir_M;
 			float denom_mc = target_function_center_reservoir_at_neighbor * neighbors_confidence_sum + target_function_center_reservoir_at_center * center_reservoir_M;

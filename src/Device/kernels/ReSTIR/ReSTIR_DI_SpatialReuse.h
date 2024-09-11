@@ -299,12 +299,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	// includes visibility and so we do not need to recompute the target function of the neighbors in this case. We can just
 	// reuse the target function stored in the reservoir
 	//
-	// We need this at every spatial reuse pass expect the last one because we're not going to re-use anything
-	// after the last pass.
-	//
 	// We also give the user the choice to remove bias using this option or not as it introduces very little bias
 	// in practice (but noticeable when switching back and forth between reference image/biased image)
-	if (render_data.render_settings.restir_di_settings.spatial_pass.number_of_passes - 1 != render_data.render_settings.restir_di_settings.spatial_pass.spatial_pass_index)
+	//
+	// We only need this if we're going to temporally reuse (because then the output of the spatial reuse must be correct
+	// for the temporal reuse pass) or if we have multiple spatial reuse passes and this is not the last spatial pass
+	if (render_data.render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass || render_data.render_settings.restir_di_settings.spatial_pass.number_of_passes - 1 != render_data.render_settings.restir_di_settings.spatial_pass.spatial_pass_index)
 		ReSTIR_DI_visibility_reuse(render_data, new_reservoir, center_pixel_surface.shading_point);
 #endif
 
