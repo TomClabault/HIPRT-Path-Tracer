@@ -112,12 +112,12 @@ struct ReSTIRDISpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
 			// reuse the target function stored in the neighbor's reservoir
 			float target_function_at_neighbor = reservoir_being_resampled.sample.target_function;
 
-			int reservoir_resampled_M = render_data.render_settings.restir_di_settings.use_confidence_weights ? reservoir_being_resampled.M : 1;
-			int center_reservoir_M = render_data.render_settings.restir_di_settings.use_confidence_weights ? center_pixel_reservoir.M : 1;
-			int neighbors_confidence_sum = render_data.render_settings.restir_di_settings.use_confidence_weights ? valid_neighbors_M_sum : 1;
+			float reservoir_resampled_M = render_data.render_settings.restir_di_settings.use_confidence_weights ? reservoir_being_resampled.M : 1;
+			float center_reservoir_M = render_data.render_settings.restir_di_settings.use_confidence_weights ? center_pixel_reservoir.M : 1;
+			float neighbors_confidence_sum = render_data.render_settings.restir_di_settings.use_confidence_weights ? valid_neighbors_M_sum : 1;
 			// We only want to divide by M-1 if we're not using confidence weights.
 			// (Eq. 7.6 and 7.7 of "A Gentle Introduction to ReSTIR")
-			int valid_neighbor_division_term = render_data.render_settings.restir_di_settings.use_confidence_weights ? 1 : valid_neighbors_count;
+			float valid_neighbor_division_term = render_data.render_settings.restir_di_settings.use_confidence_weights ? 1 : valid_neighbors_count;
 
 			float nume = target_function_at_neighbor * reservoir_resampled_M;
 			float denom = target_function_at_neighbor * neighbors_confidence_sum + target_function_at_center / valid_neighbor_division_term * center_reservoir_M;
@@ -131,7 +131,7 @@ struct ReSTIRDISpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
 			float denom_mc = target_function_center_reservoir_at_neighbor * neighbors_confidence_sum + target_function_center_reservoir_at_center / valid_neighbor_division_term * center_reservoir_M;
 
 			// (Eq. 7.7 of "A Gentle Introduction to ReSTIR"), c_j / (Sum_{k!=c}^M c_k)
-			float confidence_weights_multiplier = render_data.render_settings.restir_di_settings.use_confidence_weights ? reservoir_resampled_M / (float)neighbors_confidence_sum : 1;
+			float confidence_weights_multiplier = render_data.render_settings.restir_di_settings.use_confidence_weights ? reservoir_resampled_M / neighbors_confidence_sum : 1;
 			if (denom_mc != 0.0f)
 				mc += nume_mc / denom_mc / valid_neighbor_division_term * confidence_weights_multiplier;
 
@@ -183,21 +183,41 @@ struct ReSTIRDISpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
 			// reuse the target function stored in the neighbor's reservoir
 			float target_function_at_neighbor = reservoir_being_resampled.sample.target_function;
 
-			float nume = target_function_at_neighbor;
-			float denom = target_function_at_neighbor + target_function_at_center / valid_neighbors_count;
-			float mi = denom == 0.0f ? 0.0f : (nume / denom);
+			float reservoir_resampled_M = render_data.render_settings.restir_di_settings.use_confidence_weights ? reservoir_being_resampled.M : 1;
+			float center_reservoir_M = render_data.render_settings.restir_di_settings.use_confidence_weights ? center_pixel_reservoir.M : 1;
+			float neighbors_confidence_sum = render_data.render_settings.restir_di_settings.use_confidence_weights ? valid_neighbors_M_sum : 1;
+			// We only want to divide by M-1 if we're not using confidence weights.
+			// (Eq. 7.6 and 7.7 of "A Gentle Introduction to ReSTIR")
+			float valid_neighbor_division_term = render_data.render_settings.restir_di_settings.use_confidence_weights ? 1 : valid_neighbors_count;
+
+			float nume = target_function_at_neighbor * reservoir_resampled_M;
+			float denom = target_function_at_neighbor * neighbors_confidence_sum + target_function_at_center / valid_neighbor_division_term * center_reservoir_M;
+			float mi = 0.0f;
+			if (denom != 0.0f)
+				mi = nume / denom;
+			if (render_data.render_settings.restir_di_settings.use_confidence_weights)
+				mi *= neighbors_confidence_sum / (neighbors_confidence_sum + center_reservoir_M);
 
 			ReSTIRDISurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index);
 			float target_function_center_reservoir_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, center_pixel_reservoir.sample, neighbor_pixel_surface);
 			float target_function_center_reservoir_at_center = center_pixel_reservoir.sample.target_function;
 
-			float nume_mc = target_function_center_reservoir_at_center / valid_neighbors_count;
-			float denom_mc = target_function_center_reservoir_at_neighbor + target_function_center_reservoir_at_center / valid_neighbors_count;
-			mc += (denom_mc == 0.0f ? 0.0f : (nume_mc / denom_mc));
+			float nume_mc = target_function_center_reservoir_at_center / valid_neighbor_division_term * center_reservoir_M;
+			float denom_mc = target_function_center_reservoir_at_neighbor * neighbors_confidence_sum + target_function_center_reservoir_at_center / valid_neighbor_division_term * center_reservoir_M;
+			float confidence_multiplier = 1.0f;
+			if (render_data.render_settings.restir_di_settings.use_confidence_weights)
+				confidence_multiplier = reservoir_resampled_M / (center_reservoir_M + neighbors_confidence_sum);
+			if (denom_mc != 0.0f)
+				mc += nume_mc / denom_mc * confidence_multiplier;
 
-			// In the defensive formulation, we want to divide by M, not M-1.
-			// (Eq. 7.6 of "A Gentle Introduction to ReSTIR")
-			return mi / (valid_neighbors_count + 1);
+			if (render_data.render_settings.restir_di_settings.use_confidence_weights)
+				return mi;
+			else
+				// In the defensive formulation, we want to divide by M, not M-1.
+				// (Eq. 7.6 of "A Gentle Introduction to ReSTIR")
+				//
+				// We also only want that division when not using confidence weights
+				return mi / (valid_neighbors_count + 1);
 		}
 		else
 		{
@@ -214,9 +234,12 @@ struct ReSTIRDISpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
 				// 
 				// !!! This assumes that the center pixel is resampled last (which it is in this ReSTIR implementation) !!!
 
-				// In the defensive formulation, we want to divide by M, not M-1.
-				// (Eq. 7.6 of "A Gentle Introduction to ReSTIR")
-				return (1 + mc) / (valid_neighbors_count + 1);
+				if (render_data.render_settings.restir_di_settings.use_confidence_weights)
+					return mc + (float)center_pixel_reservoir.M / (center_pixel_reservoir.M + valid_neighbors_M_sum);
+				else
+					// In the defensive formulation, we want to divide by M, not M-1.
+					// (Eq. 7.6 of "A Gentle Introduction to ReSTIR")
+					return (1 + mc) / (valid_neighbors_count + 1);
 			}
 		}
 	}

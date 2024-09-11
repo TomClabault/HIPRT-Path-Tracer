@@ -151,43 +151,31 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MI
 		{
 			// Resampling the temporal neighbor
 
-			// If we're currently resampling the temporal neighbor, that's 1 valid neighbor.
-			// Also, the initial candidates reservoir is always a valid neighbor so that's 2.
-			//
-			// But we want to divide by M - 1 (Eq. 7.5 of "A Gentle Introduction to ReSTIR") so that makes it 1
-			constexpr int valid_neighbors_count = 1;
-			// We only have one neighbor and that's the temporal reservoir. We currently resampling the temporal
-			// reservoir ( if() above ) so that's the M value of our neighbors
-			int valid_neighbors_M_sum = reservoir_being_resampled.M;
-
 			float target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, reservoir_being_resampled.sample, temporal_neighbor_surface);
 			float target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, reservoir_being_resampled.sample, center_pixel_surface);
 
-			int temporal_neighbor_M = render_data.render_settings.restir_di_settings.use_confidence_weights ? reservoir_being_resampled.M : 1;
-			int center_reservoir_M = render_data.render_settings.restir_di_settings.use_confidence_weights ? initial_candidates_reservoir.M : 1;
-			int neighbors_confidence_sum = render_data.render_settings.restir_di_settings.use_confidence_weights ? valid_neighbors_M_sum : 1;
-			// We only want to divide by M-1 if we're not using confidence weights.
-			// (Eq. 7.6 and 7.7 of "A Gentle Introduction to ReSTIR")
-			int valid_neighbor_division_term = render_data.render_settings.restir_di_settings.use_confidence_weights ? 1 : valid_neighbors_count;
+			float temporal_neighbor_M = render_data.render_settings.restir_di_settings.use_confidence_weights ? reservoir_being_resampled.M : 1;
+			float center_reservoir_M = render_data.render_settings.restir_di_settings.use_confidence_weights ? initial_candidates_reservoir.M : 1;
+			float neighbors_confidence_sum = render_data.render_settings.restir_di_settings.use_confidence_weights ? reservoir_being_resampled.M : 1;
 
 			float nume = target_function_at_neighbor * temporal_neighbor_M;
-			float denom = target_function_at_neighbor * neighbors_confidence_sum + target_function_at_center / valid_neighbors_count * center_reservoir_M;
+			float denom = target_function_at_neighbor * neighbors_confidence_sum + target_function_at_center * center_reservoir_M;
 			float mi = denom == 0.0f ? 0.0f : (nume / denom);
 
 			float target_function_center_reservoir_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface);
 			float target_function_center_reservoir_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, initial_candidates_reservoir.sample, center_pixel_surface);
 
-			float nume_mc = target_function_center_reservoir_at_center / valid_neighbors_count * center_reservoir_M;
-			float denom_mc = target_function_center_reservoir_at_neighbor * neighbors_confidence_sum + target_function_center_reservoir_at_center / valid_neighbors_count * center_reservoir_M;
+			float nume_mc = target_function_center_reservoir_at_center * center_reservoir_M;
+			float denom_mc = target_function_center_reservoir_at_neighbor * neighbors_confidence_sum + target_function_center_reservoir_at_center * center_reservoir_M;
 
 			float confidence_multiplier = 1.0f;
 			if (render_data.render_settings.restir_di_settings.use_confidence_weights)
-				confidence_multiplier = (float)temporal_neighbor_M / neighbors_confidence_sum;
+				confidence_multiplier = temporal_neighbor_M / neighbors_confidence_sum;
 
 			if (denom_mc != 0.0f)
-				mc += nume_mc / denom_mc / valid_neighbors_count * confidence_multiplier;
+				mc += nume_mc / denom_mc * confidence_multiplier;
 
-			return mi / valid_neighbors_count;
+			return mi;
 		}
 		else
 		{
@@ -214,7 +202,7 @@ template <>
 struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
-		const ReSTIRDIReservoir& reservoir_being_resampled, const ReSTIRDIReservoir& initial_candidates_reservoir,
+		const ReSTIRDIReservoir& temporal_neighbor_reservoir, const ReSTIRDIReservoir& initial_candidates_reservoir,
 		const ReSTIRDISurface& temporal_neighbor_surface, const ReSTIRDISurface& center_pixel_surface,
 		int current_neighbor_index)
 	{
@@ -226,26 +214,41 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MI
 			// Also, the initial candidates reservoir is always a valid neighbor so that's 2.
 			//
 			// But we want to divide by M - 1 (Eq. 7.5 of "A Gentle Introduction to ReSTIR") so that makes it 1
-			constexpr int valid_neighbors_count = 1;
+			float target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, temporal_neighbor_reservoir.sample, temporal_neighbor_surface);
+			float target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, temporal_neighbor_reservoir.sample, center_pixel_surface);
 
-			float target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, reservoir_being_resampled.sample, temporal_neighbor_surface);
-			float target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, reservoir_being_resampled.sample, center_pixel_surface);
+			float temporal_neighbor_M = render_data.render_settings.restir_di_settings.use_confidence_weights ? temporal_neighbor_reservoir.M : 1;
+			float center_reservoir_M = render_data.render_settings.restir_di_settings.use_confidence_weights ? initial_candidates_reservoir.M : 1;
+			float neighbors_confidence_sum = render_data.render_settings.restir_di_settings.use_confidence_weights ? temporal_neighbor_reservoir.M : 1;
 
-			float nume = target_function_at_neighbor;
-			float denom = target_function_at_neighbor + target_function_at_center / valid_neighbors_count;
+			float nume = target_function_at_neighbor * temporal_neighbor_M;
+			float denom = target_function_at_neighbor * neighbors_confidence_sum + target_function_at_center * center_reservoir_M;
 			float mi = denom == 0.0f ? 0.0f : (nume / denom);
+			if (render_data.render_settings.restir_di_settings.use_confidence_weights)
+				// Eq 7.8
+				mi *= neighbors_confidence_sum / (neighbors_confidence_sum + center_reservoir_M);
 
 			float target_function_center_reservoir_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface);
 			float target_function_center_reservoir_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, initial_candidates_reservoir.sample, center_pixel_surface);
 
-			float nume_mc = target_function_center_reservoir_at_center / valid_neighbors_count;
-			float denom_mc = target_function_center_reservoir_at_neighbor + target_function_center_reservoir_at_center / valid_neighbors_count;
+			float nume_mc = target_function_center_reservoir_at_center * center_reservoir_M;
+			float denom_mc = target_function_center_reservoir_at_neighbor * neighbors_confidence_sum + target_function_center_reservoir_at_center * center_reservoir_M;
+			float confidence_multiplier = 1.0f;
+			if (render_data.render_settings.restir_di_settings.use_confidence_weights)
+				confidence_multiplier = neighbors_confidence_sum / (neighbors_confidence_sum + center_reservoir_M);
 
-			mc += denom_mc == 0.0f ? 0.0f : nume_mc / denom_mc;
+			if (denom_mc != 0.0f)
+				mc += nume_mc / denom_mc * confidence_multiplier;
 
-			// In the defensive formulation, we want to divide by M, not M-1.
-			// (Eq. 7.6 of "A Gentle Introduction to ReSTIR")
-			return mi / (valid_neighbors_count + 1);
+			if (render_data.render_settings.restir_di_settings.use_confidence_weights)
+				return mi;
+			else
+				// In the defensive formulation, we want to divide by M, not M-1.
+				// (Eq. 7.6 of "A Gentle Introduction to ReSTIR")
+				// And we only want to divide if not using confidence weights
+				// 
+				// M = 2 (center reservoir + temporal reservoir)
+				return mi / 2.0f;
 		}
 		else
 		{
@@ -262,11 +265,12 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MI
 				// 
 				// !!! This assumes that the center pixel is resampled last (which it is in this ReSTIR implementation) !!!
 
-				constexpr int valid_neighbors_count = 1;
-
 				// In the defensive formulation, we want to divide by M, not M-1.
 				// (Eq. 7.6 of "A Gentle Introduction to ReSTIR")
-				return (1 + mc) / (valid_neighbors_count + 1);
+				if (render_data.render_settings.restir_di_settings.use_confidence_weights)
+					return mc + (float)initial_candidates_reservoir.M / (initial_candidates_reservoir.M + temporal_neighbor_reservoir.M);
+				else
+					return (1.0f + mc) / 2.0f;
 			}
 		}
 	}

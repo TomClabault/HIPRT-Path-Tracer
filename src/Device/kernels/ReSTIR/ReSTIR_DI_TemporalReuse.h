@@ -63,7 +63,7 @@
 	initial_candidates_reservoir, temporal_neighbor_surface, center_pixel_surface, resample_id)
 
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
-#define compute_temporal_mis_weight(mis_weight_function, reservoir, resample_id) mis_weight_function.get_resampling_MIS_weight(render_data, reservoir, \
+#define compute_temporal_mis_weight(mis_weight_function, reservoir, resample_id) mis_weight_function.get_resampling_MIS_weight(render_data, temporal_neighbor_reservoir, \
 	initial_candidates_reservoir, temporal_neighbor_surface, center_pixel_surface, resample_id)
 
 #endif
