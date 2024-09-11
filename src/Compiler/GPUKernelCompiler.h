@@ -8,6 +8,7 @@
 
 #include "Compiler/GPUKernel.h"
 
+#include <mutex>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -80,6 +81,10 @@ private:
 	// Useful to invalidate the cache if the file was modified (meaning that the option
 	// macros used by that file may have changed so we have to reparse the file)
 	std::unordered_map<std::string, std::string> m_filepath_to_options_macros_cache_timestamp;
+
+	// Because this GPUKernelCompiler may be used by multiple threads at the same time,
+	// we may use that mutex sometimes to protect from race conditions
+	std::mutex m_mutex;
 };
 
 #endif

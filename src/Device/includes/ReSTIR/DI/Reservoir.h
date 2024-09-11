@@ -11,6 +11,10 @@
 
 #ifndef __KERNELCC__
 #include "Utils/Utils.h"
+
+// For multithreaded console error logging if NaNs are detected
+#include <mutex>
+static std::mutex log_mutex;
 #endif
 
 struct ReSTIRDISample
@@ -87,41 +91,49 @@ struct ReSTIRDIReservoir
 #ifndef __KERNELCC__
         if (M < 0)
         {
+            std::lock_guard<std::mutex> lock(log_mutex);
             std::cerr << "Negative reservoir M value at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << M << std::endl;
             Utils::debugbreak();
         }
         else if (std::isnan(weight_sum) || std::isinf(weight_sum))
         {
+            std::lock_guard<std::mutex> lock(log_mutex);
             std::cerr << "NaN or inf reservoir weight_sum at pixel (" << pixel_coords.x << ", " << pixel_coords.y << ")" << std::endl;
             Utils::debugbreak();
         }
         else if (weight_sum < 0)
         {
+            std::lock_guard<std::mutex> lock(log_mutex);
             std::cerr << "Negative reservoir weight_sum at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << weight_sum << std::endl;
             Utils::debugbreak();
         }
         else if (std::abs(weight_sum) < std::numeric_limits<float>::min() && weight_sum != 0.0f)
         {
+            std::lock_guard<std::mutex> lock(log_mutex);
             std::cerr << "Denormalized weight_sum at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << weight_sum << std::endl;
             Utils::debugbreak();
         }
         else if (std::isnan(UCW) || std::isinf(UCW))
         {
+            std::lock_guard<std::mutex> lock(log_mutex);
             std::cerr << "NaN or inf reservoir UCW at pixel (" << pixel_coords.x << ", " << pixel_coords.y << ")" << std::endl;
             Utils::debugbreak();
         }
         else if (UCW < 0)
         {
+            std::lock_guard<std::mutex> lock(log_mutex);
             std::cerr << "Negative reservoir UCW at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << UCW << std::endl;
             Utils::debugbreak();
         }
         else if (std::isnan(sample.target_function) || std::isinf(sample.target_function))
         {
+            std::lock_guard<std::mutex> lock(log_mutex);
             std::cerr << "NaN or inf reservoir sample.target_function at pixel (" << pixel_coords.x << ", " << pixel_coords.y << ")" << std::endl;
             Utils::debugbreak();
         }
         else if (sample.target_function < 0)
         {
+            std::lock_guard<std::mutex> lock(log_mutex);
             std::cerr << "Negative reservoir sample.target_function at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << sample.target_function << std::endl;
             Utils::debugbreak();
         }

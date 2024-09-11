@@ -50,11 +50,11 @@
 
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
 #define compute_spatial_mis_weight(mis_weight_function) mis_weight_function.get_resampling_MIS_weight(render_data, neighbor_reservoir, \
-	center_pixel_reservoir, target_function_at_center, neighbor_index, neighbor_pixel_index, valid_neighbors_count)
+	center_pixel_reservoir, target_function_at_center, neighbor_index, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum)
 
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
 #define compute_spatial_mis_weight(mis_weight_function) mis_weight_function.get_resampling_MIS_weight(render_data, neighbor_reservoir, \
-	center_pixel_reservoir, target_function_at_center, neighbor_index, neighbor_pixel_index, valid_neighbors_count)
+	center_pixel_reservoir, target_function_at_center, neighbor_index, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum)
 
 #endif
 
@@ -88,13 +88,20 @@ new_reservoir, center_pixel_surface, center_pixel_coords, res, cos_sin_theta_rot
  * 
  * A neighbor is not eligible if it is outside of the viewport or if 
  * it doesn't satisfy the normal/plane/roughness heuristics
+ * 
+ * 'out_valid_neighbor_M_sum' is the sum of the M values (confidences) of the
+ * valid neighbors. Used by confidence-weights pairwise MIS weights
+ * 
+ * The bits of 'out_neighbor_heuristics_cache' are 1 or 0 depending on whether or not
+ * the corresponding neighbor was valid or not (can be reused later to avoid having to 
+ * re-evauate the heuristics). Neighbor 0 is LSB.
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE int count_valid_neighbors(const HIPRTRenderData& render_data, const ReSTIRDISurface& center_pixel_surface, int2 center_pixel_coords, int2 res, float2 cos_sin_theta_rotation, int& neighbor_heuristics_cache)
+HIPRT_HOST_DEVICE HIPRT_INLINE void count_valid_neighbors(const HIPRTRenderData& render_data, const ReSTIRDISurface& center_pixel_surface, int2 center_pixel_coords, int2 res, float2 cos_sin_theta_rotation, int& out_valid_neighbor_count, int& out_valid_neighbor_M_sum, int& out_neighbor_heuristics_cache)
 {
-	int valid_neighbors_count = 0;
 	int center_pixel_index = center_pixel_coords.x + center_pixel_coords.y * res.x;
 	int reused_neighbors_count = render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count;
 
+	out_valid_neighbor_count = 0;
 	for (int neighbor_index = 0; neighbor_index < reused_neighbors_count; neighbor_index++)
 	{
 		int neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, neighbor_index, reused_neighbors_count, render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_radius, center_pixel_coords, res, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
@@ -105,11 +112,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int count_valid_neighbors(const HIPRTRenderData& 
 		if (!check_neighbor_similarity_heuristics(render_data, neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point, center_pixel_surface.shading_normal))
 			continue;
 
-		valid_neighbors_count++;
-		neighbor_heuristics_cache |= (1 << neighbor_index);
+		out_valid_neighbor_M_sum += render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs[neighbor_pixel_index].M;
+		out_valid_neighbor_count++;
+		out_neighbor_heuristics_cache |= (1 << neighbor_index);
 	}
-
-	return valid_neighbors_count;
 }
 
 
@@ -160,14 +166,16 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 
 	int selected_neighbor = 0;
 	int neighbor_heuristics_cache = 0;
-	int reused_neighbors_count = render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count;
-	int valid_neighbors_count = count_valid_neighbors(render_data, center_pixel_surface, center_pixel_coords, res, cos_sin_theta_rotation, neighbor_heuristics_cache);
+	int valid_neighbors_count = 0;
+	int valid_neighbors_M_sum = 0;
+	count_valid_neighbors(render_data, center_pixel_surface, center_pixel_coords, res, cos_sin_theta_rotation, valid_neighbors_count, valid_neighbors_M_sum, neighbor_heuristics_cache);
 
 	ReSTIRDISpatialResamplingMISWeight<ReSTIR_DI_BiasCorrectionWeights> mis_weight_function;
 	// Resampling the neighbors. Using neighbors + 1 here so that
 	// we can use the last iteration of the loop to resample ourselves (the center pixel)
 	// 
 	// See the implementation of get_spatial_neighbor_pixel_index() in ReSTIR/DI/Utils.h
+	int reused_neighbors_count = render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count;
 	for (int neighbor_index = 0; neighbor_index < reused_neighbors_count + 1; neighbor_index++)
 	{
 		int neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, neighbor_index, reused_neighbors_count, render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_radius, center_pixel_coords, res, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));

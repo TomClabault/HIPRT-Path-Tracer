@@ -12,7 +12,6 @@
 #include <mutex>
 
 GPUKernelCompiler g_gpu_kernel_compiler;
-std::mutex g_log_mutex;
 
 oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, std::shared_ptr<GPUKernelCompilerOptions> kernel_compiler_options, hiprtContext& hiprt_ctx, bool use_cache, const std::string& additional_cache_key)
 {
@@ -35,7 +34,7 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, std::shared_p
 
 	auto stop = std::chrono::high_resolution_clock::now();
 	{
-		std::lock_guard<std::mutex> lock(g_log_mutex);
+		std::lock_guard<std::mutex> lock(m_mutex);
 		std::cout << "Kernel \"" << kernel_function_name << "\" compiled in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms. " 
 			<< GPUKernel::get_kernel_attribute(kernel_function, ORO_FUNC_ATTRIBUTE_NUM_REGS) << " registers." << std::endl;
 	}
@@ -148,6 +147,9 @@ std::unordered_set<std::string> GPUKernelCompiler::read_option_macro_of_file(con
 	}
 	else
 		std::cerr << "Could not open file " << filepath << " for reading option macros used by that file. Error is : " << strerror(errno);
+
+	// The cache is shared to all threads using this GPUKernelCompiler so we're locking that operation
+	std::lock_guard<std::mutex> lock(m_mutex);
 
 	// Updating the cache
 	m_filepath_to_option_macros_cache[filepath] = option_macros;

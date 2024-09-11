@@ -41,7 +41,7 @@
 // - something is wrong with the heuristics: noisy in movement with the heuristics but not that much without.
 //		disabling all the heuristics at the same time removes the noisiness but one by one (3 checkboxes) doesn't remove the noisiness
 // - M-capping when using a reservoir in the spatial reuse? M-capping shouldn't be only for temporal input reservoirs right?
-// - with 1/Z weights, many spatial reuse passes destroys glossy reflections
+// - optimise target function calls in temporal mis weight pairwise
 // - heuristics makes it hard to reuse on the teapot of the white room because of normals dissimilarity i guess?
 // - heuristics adds some noisy/artifacty pixels. Especially on high details geometry
 
