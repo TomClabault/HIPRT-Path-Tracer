@@ -34,54 +34,6 @@
  * [8] [Rearchitecting Spatiotemporal Resampling for Production] https://research.nvidia.com/publication/2021-07_rearchitecting-spatiotemporal-resampling-production
  */
 
-// Defining a compute_spatial_mis_weight() macro here so that we don't bloat the main code with the #if #elif directives
-#if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_M
-#define compute_spatial_mis_weight(mis_weight_function) mis_weight_function.get_resampling_MIS_weight(neighbor_reservoir.M)
-
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
-#define compute_spatial_mis_weight(mis_weight_function) mis_weight_function.get_resampling_MIS_weight(neighbor_reservoir.M)
-
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
-#define compute_spatial_mis_weight(mis_weight_function) mis_weight_function.get_resampling_MIS_weight(render_data, neighbor_reservoir.M)
-
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_GBH
-#define compute_spatial_mis_weight(mis_weight_function) mis_weight_function.get_resampling_MIS_weight(render_data, neighbor_reservoir, \
-	center_pixel_surface, neighbor_index, center_pixel_coords, res, cos_sin_theta_rotation)
-
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
-#define compute_spatial_mis_weight(mis_weight_function) mis_weight_function.get_resampling_MIS_weight(render_data, neighbor_reservoir, \
-	center_pixel_reservoir, target_function_at_center, neighbor_index, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum)
-
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
-#define compute_spatial_mis_weight(mis_weight_function) mis_weight_function.get_resampling_MIS_weight(render_data, neighbor_reservoir, \
-	center_pixel_reservoir, target_function_at_center, neighbor_index, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum)
-
-#endif
-
-// Defining a compute_spatial_normalization() macro here for the same reasons
-#if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_M
-#define compute_spatial_normalization(out_nume, out_denom, normalization_function) normalization_function.get_normalization(render_data, \
-	new_reservoir, center_pixel_surface, center_pixel_coords, res, cos_sin_theta_rotation, normalization_numerator, normalization_denominator)
-
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
-#define compute_spatial_normalization(out_nume, out_denom, normalization_function) normalization_function.get_normalization(render_data, \
-new_reservoir, center_pixel_surface, center_pixel_coords, res, cos_sin_theta_rotation, normalization_numerator, normalization_denominator)
-
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
-#define compute_spatial_normalization(out_nume, out_denom, normalization_function) normalization_function.get_normalization(render_data, \
-	new_reservoir, center_pixel_surface, selected_neighbor, center_pixel_coords, res, cos_sin_theta_rotation, normalization_numerator, normalization_denominator)
-
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_GBH
-#define compute_spatial_normalization(out_nume, out_denom, normalization_function) normalization_function.get_normalization(out_nume, out_denom)
-
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
-#define compute_spatial_normalization(out_nume, out_denom, normalization_function) normalization_function.get_normalization(out_nume, out_denom)
-
-#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
-#define compute_spatial_normalization(out_nume, out_denom, normalization_function) normalization_function.get_normalization(out_nume, out_denom)
-
-#endif
-
 /**
  * Counts how many neighbors are eligible for reuse. 
  * This is needed for proper normalization by pairwise MIS weights.
@@ -243,7 +195,22 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 			}
 		}
 
-		float mis_weight = compute_spatial_mis_weight(mis_weight_function);
+#if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_M
+		float mis_weight = mis_weight_function.get_resampling_MIS_weight(neighbor_reservoir.M);
+#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
+		float mis_weight = mis_weight_function.get_resampling_MIS_weight(neighbor_reservoir.M);
+#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
+		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, neighbor_reservoir.M);
+#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_GBH
+		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, neighbor_reservoir,
+			center_pixel_surface, neighbor_index, center_pixel_coords, res, cos_sin_theta_rotation);
+#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
+		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, neighbor_reservoir,
+			center_pixel_reservoir, target_function_at_center, neighbor_index, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum);
+#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
+		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, neighbor_reservoir,
+			center_pixel_reservoir, target_function_at_center, neighbor_index, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum);
+#endif
 
 		// Combining as in Alg. 6 of the paper
 		if (new_reservoir.combine_with(neighbor_reservoir, mis_weight, target_function_at_center, jacobian_determinant, random_number_generator))
@@ -255,7 +222,22 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	float normalization_denominator = 1.0f;
 
 	ReSTIRDISpatialNormalizationWeight<ReSTIR_DI_BiasCorrectionWeights> normalization_function;
-	compute_spatial_normalization(normalization_numerator, normalization_denominator, normalization_function);
+#if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_M
+	normalization_function.get_normalization(render_data, new_reservoir,
+		center_pixel_surface, center_pixel_coords, res, cos_sin_theta_rotation, normalization_numerator, normalization_denominator);
+#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
+	normalization_function.get_normalization(render_data, new_reservoir,
+		center_pixel_surface, center_pixel_coords, res, cos_sin_theta_rotation, normalization_numerator, normalization_denominator);
+#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
+	normalization_function.get_normalization(render_data, new_reservoir,
+		center_pixel_surface, selected_neighbor, center_pixel_coords, res, cos_sin_theta_rotation, normalization_numerator, normalization_denominator);
+#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_GBH
+	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
+#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
+	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
+#elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
+	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
+#endif
 
 	new_reservoir.end_with_normalization(normalization_numerator, normalization_denominator);
 	new_reservoir.sanity_check(center_pixel_coords);
