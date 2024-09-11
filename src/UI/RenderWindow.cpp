@@ -28,12 +28,10 @@
 // - m cap at 0 in ImGui breaks the render because of infinite M growth --> hardcap M to something like ~1000000 or something
 // - temporal reprojection at grazing angles broken --> We need a better reprojection 
 // - different M cap for glossy surfaces ?
-// - possibility to use visibility reuse at the end of each spatial pass
 // - temporal permutation sampling
 // - maybe not spatially resample as hard everywhere in the image? heuristic to reduce/increase the number of spatial samples per pixel?
 // - possibility to reuse final shading visibility
 // - for spatial reuse, put the heuristics checks in the 'get_spatial_neighbor_function'
-// - can we somehow store target functions in an array float[] to avoid recomputing them?
 // - Pairwise MIS: If we resample the center pixel first and we discover that the center pixel reservoir is NULL --> we're not going to MIS weight the center pixel --> do we have to compute Mc at all?
 // - In the temporal reuse pass, we have a if (temporal_neighbor_reservoir.M > 0) that guards the resampling of the temporal neighbor
 //		Can we check for that condition earlier and if temporal_neighbor_reservoir.M == 0, then we can immediately return and set the output of the
@@ -44,6 +42,8 @@
 // - optimise target function calls in temporal mis weight pairwise
 // - heuristics makes it hard to reuse on the teapot of the white room because of normals dissimilarity i guess?
 // - heuristics adds some noisy/artifacty pixels. Especially on high details geometry
+// - bias status if not tracing spatial reservoirs
+// - not tracing spatial reservoirs + temporal reuse = bias explosion
 
 // TODO bugs:
 // - memory leak with OpenGL when resizing the window?

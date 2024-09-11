@@ -242,7 +242,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_InitialCandidates(HIPRTRenderData
 
     Xorshift32Generator random_number_generator(seed);
 
-    if (!render_data.aux_buffers.pixel_active[pixel_index])
+    if (!render_data.aux_buffers.pixel_active[pixel_index] || !render_data.g_buffer.camera_ray_hit[pixel_index])
         // Pixel inactive because of adaptive sampling, returning
         return;
 

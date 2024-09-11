@@ -18,11 +18,6 @@
 
 HIPRT_HOST_DEVICE HIPRT_INLINE void reset_render(const HIPRTRenderData& render_data, uint32_t pixel_index)
 {
-    // Resetting all buffers on the first frame
-    render_data.buffers.pixels[pixel_index] = ColorRGB32F(0.0f);
-    render_data.aux_buffers.denoiser_normals[pixel_index] = make_float3(1.0f, 1.0f, 1.0f);
-    render_data.aux_buffers.denoiser_albedo[pixel_index] = ColorRGB32F(0.0f, 0.0f, 0.0f);
-
     if (render_data.render_settings.accumulate && render_data.aux_buffers.restir_reservoir_buffer_1 != nullptr)
     {
         // Only resetting if we're accumulating for offline rendering. Otherwise, we want the
@@ -37,16 +32,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void reset_render(const HIPRTRenderData& render_d
         render_data.aux_buffers.restir_reservoir_buffer_2[pixel_index] = ReSTIRDIReservoir();
         render_data.aux_buffers.restir_reservoir_buffer_3[pixel_index] = ReSTIRDIReservoir();
     }
-
-    render_data.g_buffer.geometric_normals[pixel_index] = { 0, 0, 0 };
-    render_data.g_buffer.shading_normals[pixel_index] = { 0, 0, 0 };
-    render_data.g_buffer.materials[pixel_index] = SimplifiedRendererMaterial();
-    render_data.g_buffer.first_hits[pixel_index] = { 0, 0, 0 };
-    render_data.g_buffer.ray_volume_states[pixel_index] = RayVolumeState();
-    render_data.g_buffer.view_directions[pixel_index] = { 0, 0, 0 };
-    render_data.g_buffer.camera_ray_hit[pixel_index] = false;
-
-    render_data.aux_buffers.pixel_active[pixel_index] = false;
 
     if (render_data.render_settings.has_access_to_adaptive_sampling_buffers())
     {

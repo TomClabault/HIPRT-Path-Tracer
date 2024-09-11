@@ -275,19 +275,27 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
         // Otherwise, the buffers are destroyed to save some VRAM so they are not accessible
         render_data.aux_buffers.pixel_squared_luminance[pixel_index] += squared_luminance_of_samples;
 
-    render_data.buffers.pixels[pixel_index] += final_color;
+    if (render_data.render_settings.sample_number == 0)
+        render_data.buffers.pixels[pixel_index] = final_color;
+    else
+        // If we are at a sample that is not 0, this means that we are accumulating
+        render_data.buffers.pixels[pixel_index] += final_color;
 
-    // Handling denoiser's albedo and normals AOVs    
-    denoiser_albedo /= (float)render_data.render_settings.samples_per_frame;
-    denoiser_normal /= (float)render_data.render_settings.samples_per_frame;
+    if (render_data.render_settings.sample_number == 0)
+        render_data.aux_buffers.denoiser_albedo[pixel_index] = denoiser_albedo;
+    else
+        render_data.aux_buffers.denoiser_albedo[pixel_index] = (render_data.aux_buffers.denoiser_albedo[pixel_index] * render_data.render_settings.denoiser_AOV_accumulation_counter + denoiser_albedo) / (render_data.render_settings.denoiser_AOV_accumulation_counter + 1.0f);
 
-    render_data.aux_buffers.denoiser_albedo[pixel_index] += (render_data.aux_buffers.denoiser_albedo[pixel_index] * render_data.render_settings.denoiser_AOV_accumulation_counter + denoiser_albedo) / (render_data.render_settings.denoiser_AOV_accumulation_counter + 1.0f);
-
-    float3 accumulated_normal = (render_data.aux_buffers.denoiser_normals[pixel_index] * render_data.render_settings.denoiser_AOV_accumulation_counter + denoiser_normal) / (render_data.render_settings.denoiser_AOV_accumulation_counter + 1.0f);
-    float normal_length = hippt::length(accumulated_normal);
-    if (normal_length != 0.0f)
-        // Checking that it is non-zero otherwise we would accumulate a persistent NaN in the buffer when normalizing by the 0-length
-        render_data.aux_buffers.denoiser_normals[pixel_index] = accumulated_normal / normal_length;
+    if (render_data.render_settings.sample_number == 0)
+        render_data.aux_buffers.denoiser_normals[pixel_index] = denoiser_normal;
+    else
+    {
+        float3 accumulated_normal = (render_data.aux_buffers.denoiser_normals[pixel_index] * render_data.render_settings.denoiser_AOV_accumulation_counter + denoiser_normal) / (render_data.render_settings.denoiser_AOV_accumulation_counter + 1.0f);
+        float normal_length = hippt::length(accumulated_normal);
+        if (normal_length != 0.0f)
+            // Checking that it is non-zero otherwise we would accumulate a persistent NaN in the buffer when normalizing by the 0-length
+            render_data.aux_buffers.denoiser_normals[pixel_index] = accumulated_normal / normal_length;
+    }
 }
 
 #endif

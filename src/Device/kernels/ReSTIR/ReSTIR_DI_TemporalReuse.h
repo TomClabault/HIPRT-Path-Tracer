@@ -58,7 +58,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	if (center_pixel_index >= res.x * res.y)
 		return;
 
-	if (!render_data.aux_buffers.pixel_active[center_pixel_index])
+	if (!render_data.aux_buffers.pixel_active[center_pixel_index] || !render_data.g_buffer.camera_ray_hit[center_pixel_index])
 		// Pixel inactive because of adaptive sampling, returning
 		return;
 
