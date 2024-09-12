@@ -234,9 +234,6 @@
  * includes visibility and so we do not need to recompute the target function of the neighbors in this case. We can just
  * reuse the target function stored in the reservoir
  *
- * We need this at every spatial reuse pass expect the last one because we're not going to re-use anything
- * after the last pass.
- *
  * The user is given the choice to remove bias using this option or not. It introduces very little bias
  * in practice (but noticeable when switching back and forth between reference image/biased image) so the
  * performance boost of not tracing rays at the end of each spatial reuse pass given the very small increase

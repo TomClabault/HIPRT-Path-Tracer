@@ -63,7 +63,7 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
 	m_path_tracer_options = std::make_shared<GPUKernelCompilerOptions>();
 	// Adding hardware acceleration by default if supported
 	if (device_supports_hardware_acceleration() == HardwareAccelerationSupport::SUPPORTED)
-		m_path_tracer_options->set_macro("__USE_HWI__", 1);
+		m_path_tracer_options->set_macro_value("__USE_HWI__", 1);
 	else
 		m_path_tracer_options->remove_macro("__USE_HWI__");
 	m_path_tracer_options->set_additional_include_directories(GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS);
@@ -157,7 +157,10 @@ void GPURenderer::internal_update_prev_frame_g_buffer()
 		bool prev_frame_g_buffer_needs_resize = m_g_buffer_prev_frame.cameray_ray_hit.get_element_count() == 0;
 
 		if (prev_frame_g_buffer_needs_resize)
+		{
 			m_g_buffer_prev_frame.resize(m_render_resolution.x * m_render_resolution.y);
+			m_render_data_buffers_invalidated = true;
+		}
 	}
 	else
 	{
@@ -165,8 +168,11 @@ void GPURenderer::internal_update_prev_frame_g_buffer()
 		// try to use it
 
 		if (m_g_buffer_prev_frame.cameray_ray_hit.get_element_count() > 0)
+		{
 			// If the buffers aren't freed already
 			m_g_buffer_prev_frame.free();
+			m_render_data_buffers_invalidated = true;
+		}
 	}
 }
 
@@ -205,9 +211,13 @@ void GPURenderer::internal_update_adaptive_sampling_buffers()
 	else
 	{
 		if (m_pixels_squared_luminance_buffer.get_element_count() > 0 || m_pixels_sample_count_buffer.get_element_count() > 0 || m_pixels_converged_sample_count_buffer->get_element_count() > 0)
+		{
 			// If one of the buffers isn't freed already, we're going to free it. In this case, we need to synchronize to avoid
 			// freeing a buffer that the renderer is actively using in the frame it is rendering right now
 			synchronize_kernel();
+
+			m_render_data_buffers_invalidated = true;
+		}
 
 		m_pixels_squared_luminance_buffer.free();
 		m_pixels_sample_count_buffer.free();
@@ -241,8 +251,6 @@ void GPURenderer::internal_update_restir_di_buffers()
 
 		if (spatial_output_2_needs_resize)
 			m_restir_di_state.spatial_reuse_output_2.resize(m_render_resolution.x * m_render_resolution.y);
-
-		m_render_data_buffers_invalidated = true;
 	}
 	else
 	{
@@ -255,12 +263,12 @@ void GPURenderer::internal_update_restir_di_buffers()
 			// freeing a buffer that the renderer is actively using in the frame it is rendering right now
 			synchronize_kernel();
 
-			m_restir_di_state.initial_candidates_reservoirs.free();
-			m_restir_di_state.spatial_reuse_output_1.free();
-			m_restir_di_state.spatial_reuse_output_2.free();
-
 			m_render_data_buffers_invalidated = true;
 		}
+
+		m_restir_di_state.initial_candidates_reservoirs.free();
+		m_restir_di_state.spatial_reuse_output_1.free();
+		m_restir_di_state.spatial_reuse_output_2.free();
 	}
 }
 
@@ -282,15 +290,6 @@ void GPURenderer::render()
 
 	for (int i = 1; i <= m_render_data.render_settings.samples_per_frame; i++)
 	{
-		// Swapping the G-buffers
-		if (m_render_data.render_settings.use_prev_frame_g_buffer(this))
-		{
-			// Only swapping the buffers if we need thre g-buffer of the last frame
-
-			std::swap(m_render_data.g_buffer, m_render_data.g_buffer_prev_frame);
-			std::swap(m_g_buffer, m_g_buffer_prev_frame);
-		}
-
 		// Updating the previous and current camera
 		m_render_data.current_camera = m_camera.to_hiprt();
 		m_render_data.prev_camera = m_previous_frame_camera.to_hiprt();
@@ -509,6 +508,7 @@ void GPURenderer::resize(int new_width, int new_height)
 {
 	m_render_resolution = make_int2(new_width, new_height);
 
+	synchronize_kernel();
 	unmap_buffers();
 
 	m_framebuffer->resize(new_width * new_height);
@@ -533,10 +533,6 @@ void GPURenderer::resize(int new_width, int new_height)
 		m_restir_di_state.initial_candidates_reservoirs.resize(new_width * new_height);
 		m_restir_di_state.spatial_reuse_output_2.resize(new_width * new_height);
 		m_restir_di_state.spatial_reuse_output_1.resize(new_width * new_height);
-		// Initializing to spatial_reuse_output_1 arbitrarily as it doesn't matter for the first frame since the
-		// buffer is going to be empty anyways and no temporal resampling will happen (because this is
-		// the buffer that the temporal reuse pass uses as input)
-		m_render_data.render_settings.restir_di_settings.restir_output_reservoirs = m_restir_di_state.spatial_reuse_output_1.get_device_pointer();
 	}
 
 	m_pixel_active.resize(new_width * new_height);
@@ -670,6 +666,8 @@ std::shared_ptr<GPUKernelCompilerOptions> GPURenderer::get_path_tracer_options()
 
 void GPURenderer::recompile_kernels(bool use_cache)
 {
+	synchronize_kernel();
+
 	m_camera_ray_pass.compile(m_hiprt_orochi_ctx->hiprt_ctx, m_path_tracer_options, use_cache);
 	m_restir_initial_candidates_pass.compile(m_hiprt_orochi_ctx->hiprt_ctx, m_path_tracer_options, use_cache);
 	m_restir_temporal_reuse_pass.compile(m_hiprt_orochi_ctx->hiprt_ctx, m_path_tracer_options, use_cache);
@@ -781,6 +779,11 @@ void GPURenderer::update_render_data()
 			m_render_data.aux_buffers.restir_reservoir_buffer_1 = m_restir_di_state.initial_candidates_reservoirs.get_device_pointer();
 			m_render_data.aux_buffers.restir_reservoir_buffer_2 = m_restir_di_state.spatial_reuse_output_1.get_device_pointer();
 			m_render_data.aux_buffers.restir_reservoir_buffer_3 = m_restir_di_state.spatial_reuse_output_2.get_device_pointer();
+
+			// If we just got ReSTIR enabled back, setting this one arbitrarily and resetting its content
+			std::vector<ReSTIRDIReservoir> empty_reservoirs(m_render_resolution.x * m_render_resolution.y, ReSTIRDIReservoir());
+			m_render_data.render_settings.restir_di_settings.restir_output_reservoirs = m_restir_di_state.spatial_reuse_output_1.get_device_pointer();
+			m_restir_di_state.spatial_reuse_output_1.upload_data(empty_reservoirs);
 		}
 		else
 		{
@@ -799,35 +802,32 @@ void GPURenderer::update_render_data()
 
 void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 {
-	HIPRTScene& hiprt_scene = m_hiprt_scene;
-	HIPRTGeometry& geometry = hiprt_scene.geometry;
-	
-	geometry.m_hiprt_ctx = m_hiprt_orochi_ctx->hiprt_ctx;
-	geometry.upload_indices(scene.triangle_indices);
-	geometry.upload_vertices(scene.vertices_positions);
-	geometry.build_bvh();
+	m_hiprt_scene.geometry.m_hiprt_ctx = m_hiprt_orochi_ctx->hiprt_ctx;
+	m_hiprt_scene.geometry.upload_indices(scene.triangle_indices);
+	m_hiprt_scene.geometry.upload_vertices(scene.vertices_positions);
+	m_hiprt_scene.geometry.build_bvh();
 
-	hiprt_scene.has_vertex_normals.resize(scene.has_vertex_normals.size());
-	hiprt_scene.has_vertex_normals.upload_data(scene.has_vertex_normals.data());
+	m_hiprt_scene.has_vertex_normals.resize(scene.has_vertex_normals.size());
+	m_hiprt_scene.has_vertex_normals.upload_data(scene.has_vertex_normals.data());
 
-	hiprt_scene.vertex_normals.resize(scene.vertex_normals.size());
-	hiprt_scene.vertex_normals.upload_data(scene.vertex_normals.data());
+	m_hiprt_scene.vertex_normals.resize(scene.vertex_normals.size());
+	m_hiprt_scene.vertex_normals.upload_data(scene.vertex_normals.data());
 
-	hiprt_scene.material_indices.resize(scene.material_indices.size());
-	hiprt_scene.material_indices.upload_data(scene.material_indices.data());
+	m_hiprt_scene.material_indices.resize(scene.material_indices.size());
+	m_hiprt_scene.material_indices.upload_data(scene.material_indices.data());
 
-	hiprt_scene.materials_buffer.resize(scene.materials.size());
-	hiprt_scene.materials_buffer.upload_data(scene.materials.data());
+	m_hiprt_scene.materials_buffer.resize(scene.materials.size());
+	m_hiprt_scene.materials_buffer.upload_data(scene.materials.data());
 
-	hiprt_scene.emissive_triangles_count = scene.emissive_triangle_indices.size();
-	if (hiprt_scene.emissive_triangles_count > 0)
+	m_hiprt_scene.emissive_triangles_count = scene.emissive_triangle_indices.size();
+	if (m_hiprt_scene.emissive_triangles_count > 0)
 	{
-		hiprt_scene.emissive_triangles_indices.resize(scene.emissive_triangle_indices.size());
-		hiprt_scene.emissive_triangles_indices.upload_data(scene.emissive_triangle_indices.data());
+		m_hiprt_scene.emissive_triangles_indices.resize(scene.emissive_triangle_indices.size());
+		m_hiprt_scene.emissive_triangles_indices.upload_data(scene.emissive_triangle_indices.data());
 	}
 
-	hiprt_scene.texcoords_buffer.resize(scene.texcoords.size());
-	hiprt_scene.texcoords_buffer.upload_data(scene.texcoords.data());
+	m_hiprt_scene.texcoords_buffer.resize(scene.texcoords.size());
+	m_hiprt_scene.texcoords_buffer.upload_data(scene.texcoords.data());
 
 	// We're joining the threads that were loading the scene textures in the background
 	// at the last moment so that they had the maximum amount of time to load the textures
@@ -847,11 +847,11 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 			oro_textures[i] = m_materials_textures.back().get_device_texture();
 		}
 
-		hiprt_scene.materials_textures.resize(oro_textures.size());
-		hiprt_scene.materials_textures.upload_data(oro_textures.data());
+		m_hiprt_scene.materials_textures.resize(oro_textures.size());
+		m_hiprt_scene.materials_textures.upload_data(oro_textures.data());
 
-		hiprt_scene.textures_dims.resize(scene.textures_dims.size());
-		hiprt_scene.textures_dims.upload_data(scene.textures_dims.data());
+		m_hiprt_scene.textures_dims.resize(scene.textures_dims.size());
+		m_hiprt_scene.textures_dims.upload_data(scene.textures_dims.data());
 	}
 }
 

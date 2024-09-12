@@ -93,10 +93,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	// Resampling the initial candidates
 	ReSTIRDIReservoir new_reservoir;
 	ReSTIRDIReservoir initial_candidates_reservoir = render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs[center_pixel_index];
-	ReSTIRDIReservoir temporal_neighbor_reservoir = render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs[temporal_neighbor_pixel_index];
-	// M-capping the temporal neighbor if a M-cap has been given
-	if (render_data.render_settings.restir_di_settings.m_cap > 0)
-		temporal_neighbor_reservoir.M = hippt::min(temporal_neighbor_reservoir.M, render_data.render_settings.restir_di_settings.m_cap);
 
 	ReSTIRDISurface temporal_neighbor_surface;
 	if (render_data.render_settings.use_prev_frame_g_buffer())
@@ -116,6 +112,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	// Resampling the temporal neighbor
 	// /* ------------------------------- */
 
+	ReSTIRDIReservoir temporal_neighbor_reservoir = render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs[temporal_neighbor_pixel_index];
+	// M-capping the temporal neighbor if a M-cap has been given
+	if (render_data.render_settings.restir_di_settings.m_cap > 0)
+		temporal_neighbor_reservoir.M = hippt::min(temporal_neighbor_reservoir.M, render_data.render_settings.restir_di_settings.m_cap);
 	if (temporal_neighbor_reservoir.M > 0)
 	{
 		float target_function_at_center = 0.0f;
@@ -170,6 +170,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
 		float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, temporal_neighbor_reservoir,
 			initial_candidates_reservoir, temporal_neighbor_surface, center_pixel_surface, target_function_at_center, TEMPORAL_NEIGHBOR_ID);
+#else
+#error "Unsupported bias correction mode"
 #endif
 
 		// Combining as in Alg. 6 of the paper
@@ -197,6 +199,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
 	float initial_candidates_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, temporal_neighbor_reservoir,
 		initial_candidates_reservoir, temporal_neighbor_surface, center_pixel_surface, /* unused */ 0.0f, INITIAL_CANDIDATES_ID);
+#else
+#error "Unsupported bias correction mode"
 #endif
 
 	if (new_reservoir.combine_with(initial_candidates_reservoir, initial_candidates_mis_weight, initial_candidates_reservoir.sample.target_function, /* jacobian is 1 when reusing at the exact same spot */ 1.0f, random_number_generator))
@@ -222,6 +226,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
+#else
+#error "Unsupported bias correction mode"
 #endif
 
 	new_reservoir.end_with_normalization(normalization_numerator, normalization_denominator);

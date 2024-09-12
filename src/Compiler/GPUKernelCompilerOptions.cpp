@@ -104,7 +104,7 @@ void GPUKernelCompilerOptions::set_additional_include_directories(const std::vec
 	m_additional_include_directories = additional_include_directories;
 }
 
-void GPUKernelCompilerOptions::set_macro(const std::string& name, int value)
+void GPUKernelCompilerOptions::set_macro_value(const std::string& name, int value)
 {
 	if (m_options_macro_map.find(name) != m_options_macro_map.end())
 		// If you could find the name in the options-macro, settings its value

@@ -22,7 +22,7 @@ struct InitialCandidatesSettings
 
 struct TemporalPassSettings
 {
-	bool do_temporal_reuse_pass = true;
+	bool do_temporal_reuse_pass = false;
 
 	// Whether or not to use the G-buffer of last frame when resampling the temporal neighbor.
 	// This is required to avoid bias with camera movements but this comes at a VRAM cost

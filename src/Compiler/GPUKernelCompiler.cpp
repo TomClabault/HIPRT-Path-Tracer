@@ -18,7 +18,7 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, std::shared_p
 	std::string kernel_file_path = kernel.get_kernel_file_path();
 	std::string kernel_function_name = kernel.get_kernel_function_name();
 	const std::vector<std::string>& additional_include_dirs = kernel_compiler_options->get_additional_include_directories();
-	const std::vector<std::string>& compiler_options = kernel_compiler_options->get_relevant_macros_as_std_vector_string(kernel);
+	std::vector<std::string> compiler_options = kernel_compiler_options->get_relevant_macros_as_std_vector_string(kernel);
 
 	auto start = std::chrono::high_resolution_clock::now();
 

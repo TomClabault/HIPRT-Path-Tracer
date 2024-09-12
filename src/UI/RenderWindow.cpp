@@ -44,6 +44,7 @@
 // - heuristics adds some noisy/artifacty pixels. Especially on high details geometry
 // - bias status if not tracing spatial reservoirs
 // - not tracing spatial reservoirs + temporal reuse = bias explosion
+// - just start and uncheck visibility reuse = bias explosion
 
 // TODO bugs:
 // - memory leak with OpenGL when resizing the window?
@@ -412,8 +413,10 @@ void RenderWindow::resize_frame(int pixels_width, int pixels_height)
 	
 	m_renderer->synchronize_kernel();
 	m_renderer->resize(new_render_width, new_render_height);
+
 	m_denoiser->resize(new_render_width, new_render_height);
 	m_denoiser->finalize();
+
 	m_display_view_system->resize(new_render_width, new_render_height);
 
 	m_application_state->render_dirty = true;

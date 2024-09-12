@@ -50,7 +50,7 @@ public:
 	 * Same logic for the other macros defined in KernelOptions.h
 	 * 
 	 * The returned vector always contain all the "custom" macros manually defined through
-	 * a call to 'set_macro()' (unless the macro changed through 'set_macro()' is an
+	 * a call to 'set_macro_value()' (unless the macro changed through 'set_macro_value()' is an
 	 * option macro defined in KernelOptions.h as defined above)
 	 * 
 	 * The returned vector also contains all the additional compiler macro that were added
@@ -76,10 +76,10 @@ public:
 	 * 
 	 * The @name parameter is expected to be given without the '-D' macro prefix.
 	 * For example, if you want to define a macro "MyMacro" equal to 1, you simply
-	 * call set_macro("MyMacro", 1).
+	 * call set_macro_value("MyMacro", 1).
 	 * The addition of the -D prefix will be added internally.
 	 */
-	void set_macro(const std::string& name, int value);
+	void set_macro_value(const std::string& name, int value);
 
 	/**
 	 * Removes a macro from the list given to the compiler
@@ -101,7 +101,7 @@ public:
 	 * 
 	 * Useful for use with ImGui for example.
 	 * 
-	 * nullptr is returned if the option doesn't exist (set_macro() wasn't called yet)
+	 * nullptr is returned if the option doesn't exist (set_macro_value() wasn't called yet)
 	 */
 	int* get_pointer_to_macro_value(const std::string& name);
 
@@ -114,7 +114,7 @@ private:
 	// certain behavior of the path tracer by recompilation (to save registers by eliminating code)
 	std::unordered_map<std::string, int> m_options_macro_map;
 
-	// This "custom macro" map contains the macros given by the user with set_macro()
+	// This "custom macro" map contains the macros given by the user with set_macro_value()
 	std::unordered_map<std::string, int> m_custom_macro_map;
 
 	// Additional include directories. Does not include the "-I".

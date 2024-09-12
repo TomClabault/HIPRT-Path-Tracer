@@ -501,7 +501,7 @@ void ImGuiRenderer::draw_sampling_panel()
 				static bool use_visibility_ris_target_function = RISUseVisiblityTargetFunction;
 				if (ImGui::Checkbox("Use visibility in RIS target function", &use_visibility_ris_target_function))
 				{
-					kernel_options->set_macro(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, use_visibility_ris_target_function ? 1 : 0);
+					kernel_options->set_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, use_visibility_ris_target_function ? 1 : 0);
 					m_renderer->recompile_kernels();
 
 					m_render_window->set_render_dirty(true);
@@ -545,7 +545,7 @@ void ImGuiRenderer::draw_sampling_panel()
 					static bool use_target_function_visibility = ReSTIR_DI_TargetFunctionVisibility;
 					if (ImGui::Checkbox("Use visibility in target function (in all passes)", &use_target_function_visibility))
 					{
-						kernel_options->set_macro(GPUKernelCompilerOptions::RESTIR_DI_TARGET_FUNCTION_VISIBILITY, use_target_function_visibility ? 1 : 0);
+						kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_TARGET_FUNCTION_VISIBILITY, use_target_function_visibility ? 1 : 0);
 						m_renderer->recompile_kernels();
 
 						m_render_window->set_render_dirty(true);
@@ -718,7 +718,7 @@ void ImGuiRenderer::draw_sampling_panel()
 					static bool do_visibility_reuse = ReSTIR_DI_DoVisibilityReuse;
 					if (ImGui::Checkbox("Do visibility reuse", &do_visibility_reuse))
 					{
-						kernel_options->set_macro(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE, do_visibility_reuse ? 1 : 0);
+						kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE, do_visibility_reuse ? 1 : 0);
 						m_renderer->recompile_kernels();
 
 						m_render_window->set_render_dirty(true);
@@ -873,7 +873,7 @@ void ImGuiRenderer::draw_sampling_panel()
 					ImGui::BeginDisabled(bias_correction_visibility_disabled);
 					if (ImGui::Checkbox("Use visibility in bias correction", &bias_correction_use_visibility))
 					{
-						kernel_options->set_macro(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY, bias_correction_use_visibility ? 1 : 0);
+						kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY, bias_correction_use_visibility ? 1 : 0);
 						m_renderer->recompile_kernels();
 
 						m_render_window->set_render_dirty(true);
@@ -893,7 +893,7 @@ void ImGuiRenderer::draw_sampling_panel()
 					ImGui::BeginDisabled(disable_raytrace_spatial_reuse_reservoirs);
 					if (ImGui::Checkbox("Ray-trace spatial reuse reservoirs", &raytrace_spatial_reuse_reservoirs))
 					{
-						kernel_options->set_macro(GPUKernelCompilerOptions::RESTIR_DI_RAYTRACE_SPATIAL_REUSE_RESERVOIR, raytrace_spatial_reuse_reservoirs ? 1 : 0);
+						kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_RAYTRACE_SPATIAL_REUSE_RESERVOIR, raytrace_spatial_reuse_reservoirs ? 1 : 0);
 						m_renderer->recompile_kernels();
 
 						m_render_window->set_render_dirty(true);
@@ -1260,7 +1260,7 @@ void ImGuiRenderer::draw_performance_settings_panel()
 	if (ImGui::Checkbox("Use ray tracing hardware acceleration", &use_hardware_acceleration))
 	{
 		if (use_hardware_acceleration)
-			kernel_options->set_macro("__USE_HWI__", 1);
+			kernel_options->set_macro_value("__USE_HWI__", 1);
 		else
 			kernel_options->remove_macro("__USE_HWI__");
 

@@ -201,20 +201,24 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
                 // ---------- Indirect lighting ---------- //
                 // --------------------------------------- //
 
-                float brdf_pdf;
-                float3 bounce_direction;
-                ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data.buffers.materials_buffer, ray_payload.material, ray_payload.volume_state, -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bounce_direction, brdf_pdf, random_number_generator);
+                if (bounce + 1 < render_data.render_settings.nb_bounces)
+                {
+                    // Only sampling the next bounce if we actually need it
+                    float brdf_pdf;
+                    float3 bounce_direction;
+                    ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data.buffers.materials_buffer, ray_payload.material, ray_payload.volume_state, -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bounce_direction, brdf_pdf, random_number_generator);
 
-                // Terminate ray if bad sampling
-                if (brdf_pdf <= 0.0f)
-                    break;
+                    ray_payload.throughput *= bsdf_color * hippt::abs(hippt::dot(bounce_direction, closest_hit_info.shading_normal)) / brdf_pdf;
+                    ray_payload.next_ray_state = RayState::BOUNCE;
 
-                int outside_surface = hippt::dot(bounce_direction, closest_hit_info.shading_normal) < 0 ? -1.0f : 1.0f;
-                ray.origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 3.0e-3f * outside_surface;
-                ray.direction = bounce_direction;
+                    // Terminate ray if bad sampling
+                    if (brdf_pdf <= 0.0f)
+                        break;
 
-                ray_payload.throughput *= bsdf_color * hippt::abs(hippt::dot(bounce_direction, closest_hit_info.shading_normal)) / brdf_pdf;
-                ray_payload.next_ray_state = RayState::BOUNCE;
+                    int outside_surface = hippt::dot(bounce_direction, closest_hit_info.shading_normal) < 0 ? -1.0f : 1.0f;
+                    ray.origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 3.0e-3f * outside_surface;
+                    ray.direction = bounce_direction;
+                }
             }
             else
             {

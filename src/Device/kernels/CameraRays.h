@@ -73,6 +73,17 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
         }
     }
 
+    if (render_data.render_settings.use_prev_frame_g_buffer())
+    {
+        render_data.g_buffer_prev_frame.geometric_normals[pixel_index] = render_data.g_buffer.geometric_normals[pixel_index];
+        render_data.g_buffer_prev_frame.shading_normals[pixel_index] = render_data.g_buffer.shading_normals[pixel_index];
+        render_data.g_buffer_prev_frame.materials[pixel_index] = render_data.g_buffer.materials[pixel_index];
+        render_data.g_buffer_prev_frame.first_hits[pixel_index] = render_data.g_buffer.first_hits[pixel_index];
+        render_data.g_buffer_prev_frame.ray_volume_states[pixel_index] = render_data.g_buffer.ray_volume_states[pixel_index];
+        render_data.g_buffer_prev_frame.view_directions[pixel_index] = render_data.g_buffer.view_directions[pixel_index];
+        render_data.g_buffer_prev_frame.camera_ray_hit[pixel_index] = render_data.g_buffer.camera_ray_hit[pixel_index];
+    }
+
     if (render_data.render_settings.sample_number == 0 || render_data.render_settings.need_to_reset)
         reset_render(render_data, pixel_index);
 
