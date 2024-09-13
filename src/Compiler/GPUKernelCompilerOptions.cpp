@@ -8,6 +8,8 @@
 
 #include <cassert>
 
+const std::string GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL = "SharedStackBVHTraversal";
+const std::string GPUKernelCompilerOptions::BSDF_OVERRIDE = "BSDFOverride";
 const std::string GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY = "InteriorStackStrategy";
 const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY = "DirectLightSamplingStrategy";
 const std::string GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY = "EnvmapSamplingStrategy";
@@ -18,10 +20,11 @@ const std::string GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE = "ReS
 const std::string GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY = "ReSTIR_DI_BiasCorrectionUseVisiblity";
 const std::string GPUKernelCompilerOptions::RESTIR_DI_RAYTRACE_SPATIAL_REUSE_RESERVOIR = "ReSTIR_DI_RaytraceSpatialReuseReservoirs";
 const std::string GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS = "ReSTIR_DI_BiasCorrectionWeights";
-const std::string GPUKernelCompilerOptions::BSDF_OVERRIDE = "BSDFOverride";
 
 
 const std::vector<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES = {
+	GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL,
+	GPUKernelCompilerOptions::BSDF_OVERRIDE,
 	GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY,
 	GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY,
 	GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY,
@@ -32,13 +35,14 @@ const std::vector<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES = {
 	GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY,
 	GPUKernelCompilerOptions::RESTIR_DI_RAYTRACE_SPATIAL_REUSE_RESERVOIR,
 	GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS,
-	GPUKernelCompilerOptions::BSDF_OVERRIDE
 };
 
 GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 {
 	// Mandatory options that every kernel must have so we're
 	// adding them here with their default values
+	m_options_macro_map[GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL] = SharedStackBVHTraversal;
+	m_options_macro_map[GPUKernelCompilerOptions::BSDF_OVERRIDE] = BSDFOverride;
 	m_options_macro_map[GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY] = InteriorStackStrategy;
 	m_options_macro_map[GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY] = DirectLightSamplingStrategy;
 	m_options_macro_map[GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY] = EnvmapSamplingStrategy;
@@ -49,7 +53,6 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY] = ReSTIR_DI_BiasCorrectionUseVisiblity;
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_RAYTRACE_SPATIAL_REUSE_RESERVOIR] = ReSTIR_DI_RaytraceSpatialReuseReservoirs;
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS] = ReSTIR_DI_BiasCorrectionWeights;
-	m_options_macro_map[GPUKernelCompilerOptions::BSDF_OVERRIDE] = BSDFOverride;
 
 	// Making sure we didn't forget to fill the ALL_MACROS_NAMES vector with all the options that exist
 	assert(GPUKernelCompilerOptions::ALL_MACROS_NAMES.size() == m_options_macro_map.size());

@@ -37,6 +37,7 @@ static dummyVec3 blockDim, blockIdx, threadIdx;
 
 #define GLOBAL_KERNEL_SIGNATURE(returnType) returnType
 #define DEVICE_KERNEL_SIGNATURE(returnType) returnType
+#define __shared__
 #endif
 
 #endif // FIX_INTELISSENSE_H

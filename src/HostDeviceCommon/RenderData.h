@@ -175,6 +175,7 @@ struct HIPRTRenderData
 	unsigned int random_seed = 42;
 
 	hiprtGeometry geom = nullptr;
+	hiprtGlobalStackBuffer global_traversal_stack_buffer = { 0, 0, nullptr };
 
 	RenderBuffers buffers;
 	AuxiliaryBuffers aux_buffers;

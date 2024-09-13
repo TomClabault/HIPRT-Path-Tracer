@@ -74,6 +74,13 @@
  */
 #ifndef __KERNELCC__
 /**
+ * Whether or not to use shared memory and a global buffer for BVH traversal.
+ * 
+ * This improves performance at the cost of a higher VRAM usage
+ */
+#define SharedStackBVHTraversal KERNEL_OPTION_TRUE
+
+/**
  * Allows the overriding of the BRDF/BSDF used by the path tracer. When an override is used,
  * the material retains its properties (color, roughness, ...) but only the parameters relevant
  * to the overriden BSDF are used.

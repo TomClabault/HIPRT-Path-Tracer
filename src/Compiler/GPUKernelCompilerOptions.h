@@ -15,6 +15,8 @@
 class GPUKernelCompilerOptions
 {
 public:
+	static const std::string SHARED_STACK_BVH_TRAVERSAL;
+	static const std::string BSDF_OVERRIDE;
 	static const std::string INTERIOR_STACK_STRATEGY;
 	static const std::string DIRECT_LIGHT_SAMPLING_STRATEGY;
 	static const std::string ENVMAP_SAMPLING_STRATEGY;
@@ -25,7 +27,6 @@ public:
 	static const std::string RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY;
 	static const std::string RESTIR_DI_RAYTRACE_SPATIAL_REUSE_RESERVOIR;
 	static const std::string RESTIR_DI_BIAS_CORRECTION_WEIGHTS;
-	static const std::string BSDF_OVERRIDE;
 
 	static const std::vector<std::string> ALL_MACROS_NAMES;
 

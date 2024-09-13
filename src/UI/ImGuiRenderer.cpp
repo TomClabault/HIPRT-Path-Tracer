@@ -501,7 +501,7 @@ void ImGuiRenderer::draw_sampling_panel()
 				static bool use_visibility_ris_target_function = RISUseVisiblityTargetFunction;
 				if (ImGui::Checkbox("Use visibility in RIS target function", &use_visibility_ris_target_function))
 				{
-					kernel_options->set_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, use_visibility_ris_target_function ? 1 : 0);
+					kernel_options->set_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, use_visibility_ris_target_function ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 					m_renderer->recompile_kernels();
 
 					m_render_window->set_render_dirty(true);
@@ -545,7 +545,7 @@ void ImGuiRenderer::draw_sampling_panel()
 					static bool use_target_function_visibility = ReSTIR_DI_TargetFunctionVisibility;
 					if (ImGui::Checkbox("Use visibility in target function (in all passes)", &use_target_function_visibility))
 					{
-						kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_TARGET_FUNCTION_VISIBILITY, use_target_function_visibility ? 1 : 0);
+						kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_TARGET_FUNCTION_VISIBILITY, use_target_function_visibility ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 						m_renderer->recompile_kernels();
 
 						m_render_window->set_render_dirty(true);
@@ -718,7 +718,7 @@ void ImGuiRenderer::draw_sampling_panel()
 					static bool do_visibility_reuse = ReSTIR_DI_DoVisibilityReuse;
 					if (ImGui::Checkbox("Do visibility reuse", &do_visibility_reuse))
 					{
-						kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE, do_visibility_reuse ? 1 : 0);
+						kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE, do_visibility_reuse ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 						m_renderer->recompile_kernels();
 
 						m_render_window->set_render_dirty(true);
@@ -873,7 +873,7 @@ void ImGuiRenderer::draw_sampling_panel()
 					ImGui::BeginDisabled(bias_correction_visibility_disabled);
 					if (ImGui::Checkbox("Use visibility in bias correction", &bias_correction_use_visibility))
 					{
-						kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY, bias_correction_use_visibility ? 1 : 0);
+						kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY, bias_correction_use_visibility ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 						m_renderer->recompile_kernels();
 
 						m_render_window->set_render_dirty(true);
@@ -893,7 +893,7 @@ void ImGuiRenderer::draw_sampling_panel()
 					ImGui::BeginDisabled(disable_raytrace_spatial_reuse_reservoirs);
 					if (ImGui::Checkbox("Ray-trace spatial reuse reservoirs", &raytrace_spatial_reuse_reservoirs))
 					{
-						kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_RAYTRACE_SPATIAL_REUSE_RESERVOIR, raytrace_spatial_reuse_reservoirs ? 1 : 0);
+						kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_RAYTRACE_SPATIAL_REUSE_RESERVOIR, raytrace_spatial_reuse_reservoirs ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 						m_renderer->recompile_kernels();
 
 						m_render_window->set_render_dirty(true);
@@ -1284,6 +1284,15 @@ void ImGuiRenderer::draw_performance_settings_panel()
 		ImGuiRenderer::show_help_marker("HIPRT cannot access NVIDIA's proprietary hardware accelerated ray-tracing. Hardware ray-tracing unavailable.");
 		break;
 	}
+
+	static bool use_shared_stack_traversal = SharedStackBVHTraversal;
+	if (ImGui::Checkbox("Use shared/global stack BVH traversal", &use_shared_stack_traversal))
+	{
+		kernel_options->set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL, use_shared_stack_traversal ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+		m_renderer->recompile_kernels();
+	}
+	ImGuiRenderer::show_help_marker("If checked, shared memory + a globally allocated buffer will be used for BVH "
+		"traversal. This incurs an additional cost in VRAM but improves traversal performance.");
 
 	if (ImGui::InputFloat("GPU Stall Percentage", &m_application_settings->GPU_stall_percentage))
 		m_application_settings->GPU_stall_percentage = std::max(0.0f, std::min(m_application_settings->GPU_stall_percentage, 99.9f));

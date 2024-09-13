@@ -542,6 +542,22 @@ void GPURenderer::resize(int new_width, int new_height)
 	float new_aspect = (float)new_width / new_height;
 	m_camera.projection_matrix = glm::transpose(glm::perspective(m_camera.vertical_fov, new_aspect, m_camera.near_plane, m_camera.far_plane));
 
+	// Resizing the global stack buffer for BVH traversal
+	hiprtGlobalStackBufferInput stackBufferInput
+	{
+		hiprtStackTypeGlobal, 
+		hiprtStackEntryTypeInteger,
+		16,
+		static_cast<uint32_t>(std::ceil(m_render_resolution.x / 8.0f) * 8 * 8 * std::ceil(m_render_resolution.y / 8.0f))
+	};
+
+	if (m_render_data.global_traversal_stack_buffer.stackData != nullptr)
+		// Freeing if the buffer already exists
+		HIPRT_CHECK_ERROR(hiprtDestroyGlobalStackBuffer(m_hiprt_orochi_ctx->hiprt_ctx, m_render_data.global_traversal_stack_buffer));
+
+	HIPRT_CHECK_ERROR(hiprtCreateGlobalStackBuffer(m_hiprt_orochi_ctx->hiprt_ctx, stackBufferInput, m_render_data.global_traversal_stack_buffer));
+
+
 	m_render_data_buffers_invalidated = true;
 }
 
