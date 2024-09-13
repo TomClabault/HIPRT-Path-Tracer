@@ -25,7 +25,7 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Scene& par
     if (scene == nullptr)
     {
         std::cerr << importer.GetErrorString() << std::endl;
-        std::cerr << "Falling back to cornell box..." << std::endl;
+        std::cerr << "Falling back to default scene..." << std::endl;
 
         scene = importer.ReadFile(CommandlineArguments::DEFAULT_SCENE, aiPostProcessSteps::aiProcess_PreTransformVertices | aiPostProcessSteps::aiProcess_Triangulate | aiPostProcessSteps::aiProcess_RemoveRedundantMaterials);
         if (scene == nullptr)
