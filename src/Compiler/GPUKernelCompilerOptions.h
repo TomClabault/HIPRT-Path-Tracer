@@ -6,16 +6,20 @@
 #ifndef GPU_KERNEL_OPTIONS_H
 #define GPU_KERNEL_OPTIONS_H
 
-#include "Compiler/GPUKernel.h"
-
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
+
+class GPUKernel;
 
 class GPUKernelCompilerOptions
 {
 public:
 	static const std::string SHARED_STACK_BVH_TRAVERSAL;
+	static const std::string SHARED_STACK_BVH_TRAVERSAL_BLOCK_SIZE;
+	static const std::string SHARED_STACK_BVH_TRAVERSAL_SIZE_GLOBAL_RAYS;
+	static const std::string SHARED_STACK_BVH_TRAVERSAL_SIZE_SHADOW_RAYS;
 	static const std::string BSDF_OVERRIDE;
 	static const std::string INTERIOR_STACK_STRATEGY;
 	static const std::string DIRECT_LIGHT_SAMPLING_STRATEGY;
@@ -57,7 +61,7 @@ public:
 	 * The returned vector also contains all the additional compiler macro that were added
 	 * to the kernel by calling 'kernel.add_additional_macro_for_compilation()'
 	 */
-	std::vector<std::string> get_relevant_macros_as_std_vector_string(const GPUKernel& kernel);
+	std::vector<std::string> get_relevant_macros_as_std_vector_string(const GPUKernel* kernel) const;
 
 	///@{
 	/**
@@ -73,9 +77,12 @@ public:
 	void set_additional_include_directories(const std::vector<std::string>& additional_include_directories);
 
 	/**
-	 * Replace the value of the macro if it has already been added previous to this call
+	 * Replace the value of the macro if it has already been added previous to this call.
+	 * If the macro doesn't exist in these compiler options, it it added to the custom
+	 * options map.
 	 * 
-	 * The @name parameter is expected to be given without the '-D' macro prefix.
+	 * The 'name' parameter is expected to be given without the '-D' macro prefix commonly 
+	 * given to compilers.
 	 * For example, if you want to define a macro "MyMacro" equal to 1, you simply
 	 * call set_macro_value("MyMacro", 1).
 	 * The addition of the -D prefix will be added internally.
@@ -104,7 +111,26 @@ public:
 	 * 
 	 * nullptr is returned if the option doesn't exist (set_macro_value() wasn't called yet)
 	 */
-	int* get_pointer_to_macro_value(const std::string& name);
+	std::shared_ptr<int> get_pointer_to_macro_value(const std::string& name);
+	const std::shared_ptr<int> get_pointer_to_macro_value(const std::string& name) const;
+	int* get_raw_pointer_to_macro_value(const std::string& name);
+
+	/**
+	 * Links the value of the macro 'name' with the given pointer such that if the value at the given
+	 * 'pointer_to_value' is modified, the value of the same macro in this instance of GPUKernelCompilerOptions
+	 * will also be modified to the same value
+	 */
+	void set_pointer_to_macro(const std::string& name, std::shared_ptr<int> pointer_to_value);
+
+	/**
+	 * Returns the map that stores the macro names with their associated values
+	 */
+	const std::unordered_map<std::string, std::shared_ptr<int>>& get_options_macro_map() const;
+
+	/**
+	 * Returns the map that stores the custom macro names with their associated values
+	 */
+	const std::unordered_map<std::string, std::shared_ptr<int>>& get_custom_macro_map() const;
 
 private:
 	// Maps the name of the macro to its value. 
@@ -113,10 +139,17 @@ private:
 	// This "options macro" map only contains the macro as defined in KernelOptions.h
 	// Those are the macros that control the compilation of the kernels to enable / disable
 	// certain behavior of the path tracer by recompilation (to save registers by eliminating code)
-	std::unordered_map<std::string, int> m_options_macro_map;
+	//
+	// This macro map and the 'custom_macro_map' contain pointers to int for their values
+	// because we want to be able to synchronize the value of the options with
+	// another instance of GPUKernelCompilerOptions. This requires having the value
+	// of our macro point to the value of the other GPUKernelCompilerOptions instance
+	// and we need pointers for that
+	std::unordered_map<std::string, std::shared_ptr<int>> m_options_macro_map;
 
-	// This "custom macro" map contains the macros given by the user with set_macro_value()
-	std::unordered_map<std::string, int> m_custom_macro_map;
+	// This "custom macro" map contains the macros given by the user with set_macro_value().
+	// Any macro that isn't defined in KernelOptions.h will be found in this custom macro map
+	std::unordered_map<std::string, std::shared_ptr<int>> m_custom_macro_map;
 
 	// Additional include directories. Does not include the "-I".
 	// Example: "../"

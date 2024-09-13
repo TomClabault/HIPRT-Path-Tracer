@@ -175,6 +175,9 @@ struct HIPRTRenderData
 	unsigned int random_seed = 42;
 
 	hiprtGeometry geom = nullptr;
+
+	// Size of the *global* stack per thread. Default is 32.
+	int global_traversal_stack_buffer_size = 32;
 	hiprtGlobalStackBuffer global_traversal_stack_buffer = { 0, 0, nullptr };
 
 	RenderBuffers buffers;

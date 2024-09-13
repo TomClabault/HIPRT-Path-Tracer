@@ -81,6 +81,24 @@
 #define SharedStackBVHTraversal KERNEL_OPTION_TRUE
 
 /**
+ * Size of the thread blocks used when dispatching the kernels. 
+ * This value is used for allocating the shared memory stack for traversal
+ */
+#define SharedStackBVHTraversalBlockSize 64
+
+ /**
+  * Size of the shared memory stack for BVH traversal of "global" rays 
+  * (rays that search for the closest hit with no maximum distance)
+  */
+#define SharedStackBVHTraversalSizeGlobalRays 16
+
+ /**
+  * Size of the shared memory stack for BVH traversal of shadow rays 
+  * (rays that search for anyhit with a given maximum distance)
+  */
+#define SharedStackBVHTraversalSizeShadowRays 16
+
+/**
  * Allows the overriding of the BRDF/BSDF used by the path tracer. When an override is used,
  * the material retains its properties (color, roughness, ...) but only the parameters relevant
  * to the overriden BSDF are used.

@@ -6,6 +6,9 @@
 #ifndef GPU_KERNEL_H
 #define GPU_KERNEL_H
 
+#include "Compiler/GPUKernelCompilerOptions.h"
+#include "HIPRT-Orochi/HIPRTOrochiCtx.h"
+
 #include <hiprt/hiprt.h>
 #include <Orochi/Orochi.h>
 #include <memory>
@@ -13,10 +16,6 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-
-#include "HIPRT-Orochi/HIPRTOrochiCtx.h"
-
-class GPUKernelCompilerOptions;
 
 class GPUKernel
 {
@@ -30,7 +29,7 @@ public:
 	void set_kernel_file_path(const std::string& kernel_file_path);
 	void set_kernel_function_name(const std::string& kernel_function_name);
 
-	void compile(HIPRTOrochiCtx& hiprt_ctx, std::shared_ptr<GPUKernelCompilerOptions> kernel_compiler_options, bool use_cache = true);
+	void compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, bool use_cache = true);
 	void launch_timed_synchronous(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, float* execution_time_out);
 	void launch_timed_asynchronous(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, oroStream_t stream);
 
@@ -50,7 +49,7 @@ public:
 	 * 
 	 * Calling this function update the m_used_option_macros member attribute.
 	 */
-	void parse_option_macros_used(std::shared_ptr<GPUKernelCompilerOptions> kernel_compiler_options);
+	void parse_option_macros_used();
 
 	/**
 	 * Given an option macro name ("InteriorStackStrategy", "DirectLightSamplingStrategy", "EnvmapSamplingStrategy", ...
@@ -73,6 +72,27 @@ public:
 	 */
 	int get_kernel_attribute(oroFunction_attribute attribute);
 	static int get_kernel_attribute(oroFunction compiled_kernel, oroFunction_attribute attribute);
+
+	/**
+	 * Returns the compiler options of this kernel so that they can be modified
+	 */
+	GPUKernelCompilerOptions& get_kernel_options();
+
+	/**
+	 * Synchronizes the value of the options of this kernel with the values of the macros of 'other_options'.
+	 * This means that if the value of the macro "MY_MACRO" is modified in 'other_options', the value of 'MY_MACRO'
+	 * will also be modified in this kernel options.
+	 * 
+	 * Macros that are in the 'options_excluded" set will not be synchronized.
+	 * 
+	 * Macros that are present in 'other_options' but that are not present in this kernel's option
+	 * will be added to this kernel and their vlaue will be synchronized with 'other_options'
+	 * 
+	 * This function can be useful if you want to have a global set of macros shared by multiple kernels. 
+	 * You can thus synchronize all your kernel with that global set of macros and when it is modified, 
+	 * all the kernels will use the new values.
+	 */
+	void synchronize_options_with(const GPUKernelCompilerOptions& other_options, const std::unordered_set<std::string>& options_excluded = {});
 
 	/**
 	 * Returns the time taken for the last execution of this kernel in milliseconds
@@ -116,9 +136,12 @@ private:
 	oroEvent_t m_execution_stop_event = nullptr;
 	float m_last_execution_time = -1.0f;
 
-	// Whether or not we have already parsed the kernel file to see
-	// what option macro it uses or not
-	bool m_option_macro_parsed = false;
+	// Whether or not the macros used by this kernel have been modified recently.
+	// Only adding new macros / removing macros invalidate the macros.
+	// Changing the values of macros doesn't invalidate the macros.
+	// This variable is used to determine whether or not we need to parse the kernel
+	// source file to collect the macro actually used during the compilation of the kernel
+	bool m_option_macro_invalidated = true;
 
 	// Which option macros (as defined in KernelOptions.h) the kernel uses.
 	// 
@@ -129,6 +152,9 @@ private:
 	//
 	// Example: { "ReSTIR_DI_InitialCandidatesKernel", 1 }
 	std::unordered_map<std::string, int> m_additional_compilation_macros;
+
+	// Options/macros used by the compiler when compiling this kernel
+	GPUKernelCompilerOptions m_compiler_options;
 
 	oroFunction m_kernel_function = nullptr;
 };

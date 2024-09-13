@@ -59,13 +59,13 @@ std::vector<std::string> GPUKernel::get_additional_compiler_macros() const
 	return macros;
 }
 
-void GPUKernel::compile(HIPRTOrochiCtx& hiprt_ctx, std::shared_ptr<GPUKernelCompilerOptions> kernel_compiler_options, bool use_cache)
+void GPUKernel::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, bool use_cache)
 {
-	if (!m_option_macro_parsed)
-		parse_option_macros_used(kernel_compiler_options);
+	if (m_option_macro_invalidated)
+		parse_option_macros_used();
 
-	std::string cache_key = g_gpu_kernel_compiler.get_additional_cache_key(*this, kernel_compiler_options);
-	m_kernel_function = g_gpu_kernel_compiler.compile_kernel(*this, kernel_compiler_options, hiprt_ctx, use_cache, cache_key);
+	std::string cache_key = g_gpu_kernel_compiler.get_additional_cache_key(*this, m_compiler_options);
+	m_kernel_function = g_gpu_kernel_compiler.compile_kernel(*this, m_compiler_options, hiprt_ctx, use_cache, cache_key);
 }
 
 int GPUKernel::get_kernel_attribute(oroFunction compiled_kernel, oroFunction_attribute attribute)
@@ -100,6 +100,35 @@ int GPUKernel::get_kernel_attribute(oroFunction_attribute attribute)
 	return numRegs;
 }
 
+GPUKernelCompilerOptions& GPUKernel::get_kernel_options()
+{
+	return m_compiler_options;
+}
+
+void GPUKernel::synchronize_options_with(const GPUKernelCompilerOptions& other_options, const std::unordered_set<std::string>& options_excluded)
+{
+	for (auto macro_to_value : other_options.get_options_macro_map())
+	{
+		const std::string& macro_name = macro_to_value.first;
+		int macro_value = *macro_to_value.second;
+
+		if (options_excluded.find(macro_name) == options_excluded.end())
+			// Option is not excluded
+			m_compiler_options.set_pointer_to_macro(macro_name, other_options.get_pointer_to_macro_value(macro_name));
+	}
+
+	// Same thing with the custom macros
+	for (auto macro_to_value : other_options.get_custom_macro_map())
+	{
+		const std::string& macro_name = macro_to_value.first;
+		int macro_value = *macro_to_value.second;
+
+		if (options_excluded.find(macro_name) == options_excluded.end())
+			// Option is not excluded
+			m_compiler_options.set_pointer_to_macro(macro_name, other_options.get_pointer_to_macro_value(macro_name));
+	}
+}
+
 void GPUKernel::launch(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, oroStream_t stream)
 {
 	hiprtInt2 nb_groups;
@@ -120,10 +149,10 @@ void GPUKernel::launch_timed_synchronous(int tile_size_x, int tile_size_y, int r
 	OROCHI_CHECK_ERROR(oroEventElapsedTime(execution_time_out, m_execution_start_event, m_execution_stop_event));
 }
 
-void GPUKernel::parse_option_macros_used(std::shared_ptr<GPUKernelCompilerOptions> kernel_compiler_options)
+void GPUKernel::parse_option_macros_used()
 {
-	m_used_option_macros = g_gpu_kernel_compiler.get_option_macros_used_by_kernel(*this, kernel_compiler_options);
-	m_option_macro_parsed = true;
+	m_used_option_macros = g_gpu_kernel_compiler.get_option_macros_used_by_kernel(*this, m_compiler_options.get_additional_include_directories());
+	m_option_macro_invalidated = false;
 }
 
 bool GPUKernel::uses_macro(const std::string& name) const

@@ -26,8 +26,6 @@ struct RayPayload
 	ColorRGB32F ray_color = ColorRGB32F(0.0f);
 	// Camera ray is "Bounce" to give it a chance to hit the scene
 	RayState next_ray_state = RayState::BOUNCE;
-	// Type of BRDF found at the last intersection
-	BRDF last_brdf_hit_type = BRDF::Uninitialized;
 
 	// Material of the last hit
 	SimplifiedRendererMaterial material;

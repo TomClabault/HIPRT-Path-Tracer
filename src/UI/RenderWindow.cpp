@@ -55,7 +55,6 @@
 
 
 // TODO Code Organization:
-// - Use show_help_marker() for every tooltips in ImGui
 // - cleanup RIS reservoir with all the BSDF stuff
 // - denoiser albedo and normals still useful now that we have the GBuffer?
 // - make a function get_camera_ray that handles pixel jittering
@@ -77,6 +76,10 @@
 
 // TODO Features:
 // - reload shaders button
+// - pack ray payload
+// - pack nested dielectrics structure
+// - performance/bias tradeoff by ignoring alpha tests after N bounce?
+// - performance/bias tradeoff by ignoring direct lighting occlusion after N bounce?
 // - experiment with a feature that ignores really dark pixel in the variance estimation of the adaptive 
 //		sampling because it seems that very dark areas in the image are always flagged as very 
 //		noisy / very high variance and they take a very long time to converge (always red on the heatmap) 
@@ -727,11 +730,11 @@ void RenderWindow::render()
 				m_perf_metrics->add_value(GPURenderer::FULL_FRAME_TIME_KEY, 1000.0f / m_application_state->samples_per_second);
 
 				// Also adding the times of the various passes
-				m_perf_metrics->add_value(GPURenderer::CAMERA_RAYS_FUNC_NAME, m_renderer->get_render_pass_time(GPURenderer::CAMERA_RAYS_FUNC_NAME));
-				m_perf_metrics->add_value(GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_FUNC_NAME, m_renderer->get_render_pass_time(GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_FUNC_NAME));
-				m_perf_metrics->add_value(GPURenderer::RESTIR_DI_TEMPORAL_REUSE_FUNC_NAME, m_renderer->get_render_pass_time(GPURenderer::RESTIR_DI_TEMPORAL_REUSE_FUNC_NAME));
-				m_perf_metrics->add_value(GPURenderer::RESTIR_DI_SPATIAL_REUSE_FUNC_NAME, m_renderer->get_render_pass_time(GPURenderer::RESTIR_DI_SPATIAL_REUSE_FUNC_NAME));
-				m_perf_metrics->add_value(GPURenderer::PATH_TRACING_KERNEL, m_renderer->get_render_pass_time(GPURenderer::PATH_TRACING_KERNEL));
+				m_perf_metrics->add_value(GPURenderer::CAMERA_RAYS_KERNEL_ID, m_renderer->get_render_pass_time(GPURenderer::CAMERA_RAYS_KERNEL_ID));
+				m_perf_metrics->add_value(GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID, m_renderer->get_render_pass_time(GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID));
+				m_perf_metrics->add_value(GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID, m_renderer->get_render_pass_time(GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID));
+				m_perf_metrics->add_value(GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID, m_renderer->get_render_pass_time(GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID));
+				m_perf_metrics->add_value(GPURenderer::PATH_TRACING_KERNEL_ID, m_renderer->get_render_pass_time(GPURenderer::PATH_TRACING_KERNEL_ID));
 			}
 
 			render_settings.wants_render_low_resolution = is_interacting();

@@ -29,11 +29,31 @@ class OpenGLInteropBuffer;
 class GPURenderer
 {
 public:
-	static const std::string PATH_TRACING_KERNEL;
-	static const std::string CAMERA_RAYS_FUNC_NAME;
-	static const std::string RESTIR_DI_INITIAL_CANDIDATES_FUNC_NAME;
-	static const std::string RESTIR_DI_TEMPORAL_REUSE_FUNC_NAME;
-	static const std::string RESTIR_DI_SPATIAL_REUSE_FUNC_NAME;
+	/**
+	 * These constants here are used to reference kernel objects in the 'm_kernels' map
+	 * or in the 'm_ms_time_per_pass' map
+	 */
+	static const std::string PATH_TRACING_KERNEL_ID;
+	static const std::string CAMERA_RAYS_KERNEL_ID;
+	static const std::string RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID;
+	static const std::string RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID;
+	static const std::string RESTIR_DI_SPATIAL_REUSE_KERNEL_ID;
+
+	/**
+	 * These constants are the name of the main function of the kernels, the entry points.
+	 * They are used when compiling the kernels.
+	 * 
+	 * This means that if you define your camera ray kernel main function as:
+	 * 
+	 * GLOBAL_KERNEL_SIGNATURE(void) CameraRays(HIPRTRenderData render_data, int2 res)
+	 * 
+	 * Then the CAMERA_RAYS_KERNEL_FUNC_NAME must be "CameraRays"
+	 */
+	static const std::string PATH_TRACING_KERNEL_FUNC_NAME;
+	static const std::string CAMERA_RAYS_KERNEL_FUNC_NAME;
+	static const std::string RESTIR_DI_INITIAL_CANDIDATES_KERNEL_FUNC_NAME;
+	static const std::string RESTIR_DI_TEMPORAL_REUSE_KERNEL_FUNC_NAME;
+	static const std::string RESTIR_DI_SPATIAL_REUSE_KERNEL_FUNC_NAME;
 
 	// Key for indexing m_ms_time_per_pass that contains the times per passes
 	// This key is for the time of the whole frame
@@ -49,6 +69,11 @@ public:
 	 * context for handling GPU acceleration structures, buffers, textures, etc...
 	 */
 	GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx);
+
+	/**
+	 * Initializes and compiles the kernels
+	 */
+	void setup_kernels();
 
 	/**
 	 * This function is in charge of updating various "dynamic attributes/properties/buffers" of the renderer before rendering a frame.
@@ -124,7 +149,7 @@ public:
 
 	HIPRTRenderSettings& get_render_settings();
 	WorldSettings& get_world_settings();
-	void update_render_data();
+	HIPRTRenderData& get_render_data();
 
 	Camera& get_camera();
 
@@ -147,9 +172,10 @@ public:
 	oroDeviceProp get_device_properties();
 	HardwareAccelerationSupport device_supports_hardware_acceleration();
 
-	std::shared_ptr<GPUKernelCompilerOptions> get_path_tracer_options();
+	std::shared_ptr<GPUKernelCompilerOptions> get_global_compiler_options();
 
 	void recompile_kernels(bool use_cache = true);
+	std::map<std::string, GPUKernel>& get_kernels();
 
 	float get_render_pass_time(const std::string& key);
 	void reset_frame_times();
@@ -162,6 +188,8 @@ public:
 
 private:
 	void set_hiprt_scene_from_scene(const Scene& scene);
+	void update_render_data();
+
 
 	// ---- Functions called by the update() method ----
 	//
@@ -191,6 +219,11 @@ private:
 	 * needs them (whether or not ReSTIR DI is being used basically) respectively.
 	 */
 	void internal_update_restir_di_buffers();
+
+	/**
+	 * Allocates/frees the global buffer for BVH traversal when SharedStackBVHTraversal is TRUE
+	 */
+	void internal_update_global_stack_buffer();
 
 	//
 	// -------- Functions called by the update() method ---------
@@ -276,16 +309,22 @@ private:
 	std::vector<OrochiTexture> m_materials_textures;
 	OrochiEnvmap m_envmap;
 
-	// Options used for compiling the render passes of this renderer
-	std::shared_ptr<GPUKernelCompilerOptions> m_path_tracer_options;
+	// Options used for compiling the render passes of this renderer.
+	// 
+	// Most of the options in there are shared with all the passes. For example,
+	// the "__USE_HWI__" macro that dictates whether to use hardware acceleration
+	// ray tracing is shared between all kernels (because there's no real reasons for 
+	// one kernel not to use it if all other kernels use it).
+	// The value 1 or 0 of this macro is stored in this 'm_global_compiler_options' member
+	// and is 'synchronized' through the use of pointers with the options of the other kernels.
+	// See 'setup_kernels' for more details on how that "synchronization" is setup
+	std::shared_ptr<GPUKernelCompilerOptions> m_global_compiler_options;
 
-	// Render passes used for the ray tracing
-	GPUKernel m_camera_ray_pass;
-	GPUKernel m_restir_initial_candidates_pass;
-	GPUKernel m_restir_spatial_reuse_pass;
-	GPUKernel m_restir_temporal_reuse_pass;
-	GPUKernel m_path_trace_pass;
-	
+	// Render passes/kernels used for the ray tracing
+	// They are all organized in a map so that we can iterate over them. The key
+	// of this map is a "name"
+	std::map<std::string, GPUKernel> m_kernels;
+
 	std::shared_ptr<HIPRTOrochiCtx> m_hiprt_orochi_ctx = nullptr;
 
 	// Custom stream onto which kernels are dispatched asynchronously

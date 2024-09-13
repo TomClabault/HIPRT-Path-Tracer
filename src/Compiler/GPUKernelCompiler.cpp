@@ -13,17 +13,17 @@
 
 GPUKernelCompiler g_gpu_kernel_compiler;
 
-oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, std::shared_ptr<GPUKernelCompilerOptions> kernel_compiler_options, HIPRTOrochiCtx& hiprt_orochi_ctx, bool use_cache, const std::string& additional_cache_key)
+oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, const GPUKernelCompilerOptions& kernel_compiler_options, std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, bool use_cache, const std::string& additional_cache_key)
 {
 	std::string kernel_file_path = kernel.get_kernel_file_path();
 	std::string kernel_function_name = kernel.get_kernel_function_name();
-	const std::vector<std::string>& additional_include_dirs = kernel_compiler_options->get_additional_include_directories();
-	std::vector<std::string> compiler_options = kernel_compiler_options->get_relevant_macros_as_std_vector_string(kernel);
+	const std::vector<std::string>& additional_include_dirs = kernel_compiler_options.get_additional_include_directories();
+	std::vector<std::string> compiler_options = kernel_compiler_options.get_relevant_macros_as_std_vector_string(&kernel);
 
 	auto start = std::chrono::high_resolution_clock::now();
 
 	hiprtApiFunction trace_function_out;
-	if (HIPPTOrochiUtils::build_trace_kernel(hiprt_orochi_ctx.hiprt_ctx, kernel_file_path, kernel_function_name, trace_function_out, additional_include_dirs, compiler_options, 0, 1, use_cache, nullptr, additional_cache_key) != hiprtError::hiprtSuccess)
+	if (HIPPTOrochiUtils::build_trace_kernel(hiprt_orochi_ctx->hiprt_ctx, kernel_file_path, kernel_function_name, trace_function_out, additional_include_dirs, compiler_options, 0, 1, use_cache, nullptr, additional_cache_key) != hiprtError::hiprtSuccess)
 	{
 		std::cerr << "Unable to compile kernel \"" << kernel_function_name << "\". Cannot continue." << std::endl;
 		int ignored = std::getchar();
@@ -37,7 +37,7 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, std::shared_p
 		std::lock_guard<std::mutex> lock(m_mutex);
 		std::cout << "Kernel \"" << kernel_function_name << "\" compiled in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms. ";
 
-		if (hiprt_orochi_ctx.device_properties.major >= 7 && hiprt_orochi_ctx.device_properties.minor >= 5)
+		if (hiprt_orochi_ctx->device_properties.major >= 7 && hiprt_orochi_ctx->device_properties.minor >= 5)
 			// Getting the registers of a kernel only seems to be available on 7.5 and above 
 			// (works on a 2060S but doesn't on a GTX 970 or GTX 1060, couldn't try more hardware 
 			// so maybe 7.5 is too conservative)
@@ -134,11 +134,14 @@ std::unordered_set<std::string> GPUKernelCompiler::read_option_macro_of_file(con
 		return std::unordered_set<std::string>();
 	}
 
-	auto cache_timestamp_find = m_filepath_to_options_macros_cache_timestamp.find(filepath);
-	if (cache_timestamp_find != m_filepath_to_options_macros_cache_timestamp.end() && cache_timestamp_find->second == file_modification_time)
 	{
-		// Cache hit
-		return m_filepath_to_option_macros_cache[filepath];
+		std::lock_guard<std::mutex> lock(m_mutex);
+		auto cache_timestamp_find = m_filepath_to_options_macros_cache_timestamp.find(filepath);
+		if (cache_timestamp_find != m_filepath_to_options_macros_cache_timestamp.end() && cache_timestamp_find->second == file_modification_time)
+		{
+			// Cache hit
+			return m_filepath_to_option_macros_cache[filepath];
+		}
 	}
 
 	std::unordered_set<std::string> option_macros;
@@ -156,6 +159,7 @@ std::unordered_set<std::string> GPUKernelCompiler::read_option_macro_of_file(con
 		std::cerr << "Could not open file " << filepath << " for reading option macros used by that file. Error is : " << strerror(errno);
 
 	// The cache is shared to all threads using this GPUKernelCompiler so we're locking that operation
+	// The lock is destroyed when the function returns
 	std::lock_guard<std::mutex> lock(m_mutex);
 
 	// Updating the cache
@@ -165,7 +169,7 @@ std::unordered_set<std::string> GPUKernelCompiler::read_option_macro_of_file(con
 	return option_macros;
 }
 
-std::string GPUKernelCompiler::get_additional_cache_key(GPUKernel& kernel, std::shared_ptr<GPUKernelCompilerOptions> kernel_compiler_options)
+std::string GPUKernelCompiler::get_additional_cache_key(GPUKernel& kernel, const GPUKernelCompilerOptions& kernel_compiler_options)
 {
 	std::unordered_set<std::string> already_processed_includes;
 	std::deque<std::string> yet_to_process_includes;
@@ -183,7 +187,7 @@ std::string GPUKernelCompiler::get_additional_cache_key(GPUKernel& kernel, std::
 		already_processed_includes.insert(current_file);
 
 		std::unordered_set<std::string> new_includes;
-		read_includes_of_file(current_file, kernel_compiler_options->get_additional_include_directories(), new_includes);
+		read_includes_of_file(current_file, kernel_compiler_options.get_additional_include_directories(), new_includes);
 
 		for (const std::string& new_include : new_includes)
 			yet_to_process_includes.push_back(new_include);
@@ -213,7 +217,7 @@ std::string GPUKernelCompiler::get_additional_cache_key(GPUKernel& kernel, std::
 	return final_cache_key;
 }
 
-std::unordered_set<std::string> GPUKernelCompiler::get_option_macros_used_by_kernel(const GPUKernel& kernel, std::shared_ptr<GPUKernelCompilerOptions> kernel_compiler_options)
+std::unordered_set<std::string> GPUKernelCompiler::get_option_macros_used_by_kernel(const GPUKernel& kernel, const std::vector<std::string> kernel_additional_include_directories)
 {
 	std::unordered_set<std::string> already_processed_includes;
 	std::deque<std::string> yet_to_process_includes;
@@ -238,7 +242,7 @@ std::unordered_set<std::string> GPUKernelCompiler::get_option_macros_used_by_ker
 		already_processed_includes.insert(current_file);
 
 		std::unordered_set<std::string> new_includes;
-		read_includes_of_file(current_file, kernel_compiler_options->get_additional_include_directories(), new_includes);
+		read_includes_of_file(current_file, kernel_additional_include_directories, new_includes);
 
 		for (const std::string& new_include : new_includes)
 			yet_to_process_includes.push_back(new_include);

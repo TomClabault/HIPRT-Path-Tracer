@@ -2,17 +2,18 @@
 
 ![HIPRT path tracer cover](README_data/img/P1_environment.jpg)
 
-Physically based Monte Carlo path tracer written with the [HIPRT](https://gpuopen.com/hiprt/) and [Orochi](https://gpuopen.com/orochi/) libraries.
+Physically based unidirectional (backwards) monte carlo path tracer written with the [HIPRT](https://gpuopen.com/hiprt/) and [Orochi](https://gpuopen.com/orochi/) libraries.
 
 HIPRT is AMD's equivalent to [OptiX](https://developer.nvidia.com/rtx/ray-tracing/optix). It allows the use of the ray tracing accelerators of RDNA2+ AMD GPUs and can run on NVIDIA devices as well (although it wouldn't take advatange of RT cores) as it is not AMD specific. 
 
-The Orochi library allows the loading of HIP and CUDA libraries at runtime meaning that the application doesn't have to be recompiled to be used on a GPU from a different vendor (unlike HIP which would require a recompilation + linking).
+The Orochi library allows the loading of HIP and CUDA libraries at runtime meaning that the application doesn't have to be recompiled to be used on a GPU from a different vendor (unlike HIP alone which, despite being compatible with NVIDIA and AMD hardware, would require a recompilation).
 
 # System requirements
 
 - AMD RDNA1 GPU or newer (RX 5000 or newer) **or** NVIDIA Maxwell GPU or newer (GTX 700 & GTX 900 Series or newer)
 - Visual Studio 2022 (only version tested but older versions might work as well) on Windows
-
+- CMake
+- CUDA for NVIDIA compilation
 # Features:
 
 ### BSDFs
@@ -21,16 +22,15 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 - Oren Nayar diffuse model
 - Specular dielectrics
 ### Sampling
-- Light sampling (emissive geometry):
-	- Uniform light sampling for direct lighting
+- Light sampling:
+	- Uniform light sampling for direct lighting estimation + MIS
 	- Resampled Importance Sampling (RIS) [\[Talbot et. al, 2005\]](https://www.researchgate.net/publication/220852928_Importance_Resampling_for_Global_Illumination)+ Weighted Reservoir Sampling (WRS) for many light sampling  + [\[M. T. Chao, 1982\]](https://www.jstor.org/stable/2336002)
 	- ReSTIR DI [\[Bitterli et. al, 2020\]](https://research.nvidia.com/labs/rtr/publication/bitterli2020spatiotemporal/)
 	- HDR Environment map + Multiple Importance Sampling using
 		- CDF-inversion binary search
 	
 - BSDF sampling:
-	- Importance sampling
-	- Multiple importance sampling
+	- MIS
 	- Smith GGX Sampling:
 		- Visible Normal Distribution Function (VNDF) [\[Heitz, 2018\]](https://jcgt.org/published/0007/04/01/)
 		- Spherical caps VNDF Sampling [\[Dupuy, Benyoub, 2023\]](https://arxiv.org/abs/2306.05044)
@@ -65,7 +65,7 @@ Nothing to do, go to the "[**Compiling**](#compiling)" step.
 
 To build the project on NVIDIA hardware, you will need to install the NVIDIA CUDA SDK v12.2. It can be downloaded and installed from [here](https://developer.nvidia.com/cuda-12-2-0-download-archive).
 
-The CMake build then expects the CUDA_PATH environment variable to be defined. This should automatically be the case after installing the CUDA Toolkit but just in case, you can define it yourself such that CUDA_PATH/include/cuda.h is a valid file path.
+The CMake build then expects the `CUDA_PATH` environment variable to be defined. This should automatically be the case after installing the CUDA Toolkit but just in case, you can define it yourself such that `CUDA_PATH/include/cuda.h` is a valid file path.
 
 ### Linux
 
@@ -116,6 +116,7 @@ With the pre-requisites fulfilled, you now just have to run the CMake:
 
 ``` sh
 git clone https://github.com/TomClabault/HIPRT-Path-Tracer.git --recursive
+cd HIPRT-Path-Tracer
 mkdir build
 cd build
 cmake ..
@@ -123,7 +124,7 @@ cmake ..
 
 On Windows, a Visual Studio solution will be generated in the `build` folder that you can open and compile the project with (select `HIPRTPathTracer` as startup project).
 
-On Linux, the executable will be generated in the `build` folder.
+On Linux, the `HIPRTPathTracer` executable will be generated in the `build` folder.
 
 ## Usage
 
@@ -132,10 +133,11 @@ On Linux, the executable will be generated in the `build` folder.
 The following arguments are available:
 - `<scene file path>` an argument of the commandline without prefix will be considered as the scene file. File formats [supported](https://github.com/assimp/assimp/blob/master/doc/Fileformats.md).
 - `--sky=<path>` for the equirectangular skysphere used during rendering (HDR or not)
-- `--samples=N` for the number of samples to trace (this argument is CPU-rendering only)
-- `--bounces=N` for the maximum number of bounces in the scene (this argument is CPU-rendering only)
-- `--w=N` / `--width=N` for the width of the rendering (this argument is CPU-rendering only)
-- `--h=N` / `--height=N` for the height of the rendering (this argument is CPU-rendering only)
+- `--samples=N` for the number of samples to trace*
+- `--bounces=N` for the maximum number of bounces in the scene*
+- `--w=N` / `--width=N` for the width of the rendering*
+- `--h=N` / `--height=N` for the height of the rendering*
+\* CPU only commandline arguments. These parameters are controlled through the UI when running on the GPU.
 
 # Gallery
 

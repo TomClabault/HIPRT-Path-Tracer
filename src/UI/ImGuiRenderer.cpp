@@ -60,7 +60,7 @@ void ImGuiRenderer::draw_imgui_interface()
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 
 	ImGuiIO& io = ImGui::GetIO();
-	// ImGui::ShowDemoWindow();
+	ImGui::ShowDemoWindow();
 
 	ImGui::Begin("Settings");
 
@@ -313,9 +313,9 @@ void ImGuiRenderer::draw_render_settings_panel()
 	{
 		ImGui::TreePush("Nested dielectrics tree");
 
-	 	std::shared_ptr<GPUKernelCompilerOptions> kernel_options = m_renderer->get_path_tracer_options();
+	 	std::shared_ptr<GPUKernelCompilerOptions> kernel_options = m_renderer->get_global_compiler_options();
 		const char* items[] = { "- Automatic", "- With priorities" };
-		if (ImGui::Combo("Nested dielectrics strategy", kernel_options->get_pointer_to_macro_value(GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY), items, IM_ARRAYSIZE(items)))
+		if (ImGui::Combo("Nested dielectrics strategy", kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY), items, IM_ARRAYSIZE(items)))
 		{
 			m_renderer->recompile_kernels();
 			m_render_window->set_render_dirty(true);
@@ -431,7 +431,7 @@ void ImGuiRenderer::draw_environment_panel()
 void ImGuiRenderer::draw_sampling_panel()
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
-	std::shared_ptr<GPUKernelCompilerOptions> kernel_options = m_renderer->get_path_tracer_options();
+	std::shared_ptr<GPUKernelCompilerOptions> kernel_options = m_renderer->get_global_compiler_options();
 
 	if (ImGui::CollapsingHeader("Sampling"))
 	{
@@ -476,7 +476,7 @@ void ImGuiRenderer::draw_sampling_panel()
 			ImGui::TreePush("Direct lighting sampling tree");
 
 			const char* items[] = { "- No direct light sampling", "- Uniform one light", "- BSDF Sampling", "- MIS (1 Light + 1 BSDF)", "- RIS BDSF + Light candidates", "- ReSTIR DI (Primary Hit Only) + RIS"};
-			if (ImGui::Combo("Direct light sampling strategy", kernel_options->get_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
+			if (ImGui::Combo("Direct light sampling strategy", kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
 			{
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
@@ -847,7 +847,7 @@ void ImGuiRenderer::draw_sampling_panel()
 						"- Pairwise MIS Weights (Unbiased)",
 						"- Pairwise MIS Weights Defensive (Unbiased)",
 					};
-					if (ImGui::Combo("Bias Correction Weights", kernel_options->get_pointer_to_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS), bias_correction_mode_items, IM_ARRAYSIZE(bias_correction_mode_items)))
+					if (ImGui::Combo("Bias Correction Weights", kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS), bias_correction_mode_items, IM_ARRAYSIZE(bias_correction_mode_items)))
 					{
 						m_renderer->recompile_kernels();
 
@@ -935,7 +935,7 @@ void ImGuiRenderer::draw_sampling_panel()
 			ImGui::TreePush("Envmap sampling tree");
 
 			const char* items[] = { "- No envmap importance sampling", "- Importance Sampling - Binary Search" };
-			if (ImGui::Combo("Envmap sampling strategy", kernel_options->get_pointer_to_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
+			if (ImGui::Combo("Envmap sampling strategy", kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
 			{
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
@@ -1047,7 +1047,7 @@ void ImGuiRenderer::draw_objects_panel()
 	static int currently_selected_material = 0;
 
 	std::vector<const char*> items = { "- None", "- Lambertian BRDF", "- Oren Nayar BRDF", "- Disney BSDF" };
-	if (ImGui::Combo("All Objects BSDF Override", m_renderer->get_path_tracer_options()->get_pointer_to_macro_value(GPUKernelCompilerOptions::BSDF_OVERRIDE), items.data(), items.size()))
+	if (ImGui::Combo("All Objects BSDF Override", m_renderer->get_global_compiler_options()->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::BSDF_OVERRIDE), items.data(), items.size()))
 	{
 		m_renderer->recompile_kernels();
 
@@ -1106,7 +1106,7 @@ void ImGuiRenderer::draw_objects_panel()
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	if (materials.size() > 0)
 	{
-		std::shared_ptr<GPUKernelCompilerOptions> kernel_options = m_renderer->get_path_tracer_options();
+		std::shared_ptr<GPUKernelCompilerOptions> kernel_options = m_renderer->get_global_compiler_options();
 		RendererMaterial& material = materials[currently_selected_material];
 
 		ImGui::PushItemWidth(28 * ImGui::GetFontSize());
@@ -1252,17 +1252,14 @@ void ImGuiRenderer::draw_performance_settings_panel()
 	ImGui::Text("Device: %s", m_renderer->get_device_properties().name);
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
-	std::shared_ptr<GPUKernelCompilerOptions> kernel_options = m_renderer->get_path_tracer_options();
+	std::shared_ptr<GPUKernelCompilerOptions> kernel_options = m_renderer->get_global_compiler_options();
 	HardwareAccelerationSupport hwi_supported = m_renderer->device_supports_hardware_acceleration();
 
 	static bool use_hardware_acceleration = kernel_options->has_macro("__USE_HWI__");
 	ImGui::BeginDisabled(hwi_supported != HardwareAccelerationSupport::SUPPORTED);
 	if (ImGui::Checkbox("Use ray tracing hardware acceleration", &use_hardware_acceleration))
 	{
-		if (use_hardware_acceleration)
-			kernel_options->set_macro_value("__USE_HWI__", 1);
-		else
-			kernel_options->remove_macro("__USE_HWI__");
+		kernel_options->set_macro_value("__USE_HWI__", use_hardware_acceleration);
 
 		m_renderer->recompile_kernels();
 	}
@@ -1290,9 +1287,137 @@ void ImGuiRenderer::draw_performance_settings_panel()
 	{
 		kernel_options->set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL, use_shared_stack_traversal ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 		m_renderer->recompile_kernels();
+		m_render_window->set_render_dirty(true);
 	}
 	ImGuiRenderer::show_help_marker("If checked, shared memory + a globally allocated buffer will be used for BVH "
 		"traversal. This incurs an additional cost in VRAM but improves traversal performance.");
+	if (use_shared_stack_traversal)
+	{
+		ImGui::TreePush("Shared/global stack Traversal Options Tree");
+
+		{
+			std::vector<std::string> kernel_names;
+			std::map<std::string, GPUKernel>& kernels = m_renderer->get_kernels();
+			for (const auto& name_to_kernel : kernels)
+				kernel_names.push_back(name_to_kernel.first);
+
+			static std::string selected_kernel_name = GPURenderer::CAMERA_RAYS_KERNEL_ID;
+			static GPUKernel* selected_kernel = &kernels[selected_kernel_name];
+
+			if (ImGui::BeginCombo("Kernel", selected_kernel_name.c_str()))
+			{
+				for (const std::string& kernel_name : kernel_names)
+				{
+					const bool is_selected = (selected_kernel_name == kernel_name);
+					if (ImGui::Selectable(kernel_name.c_str(), is_selected))
+					{
+						selected_kernel_name = kernel_name;
+						selected_kernel = &kernels[selected_kernel_name];
+					}
+
+					if (is_selected)
+						ImGui::SetItemDefaultFocus();
+				}
+				ImGui::EndCombo();
+			}
+
+
+
+
+			ImGui::TreePush("Kernel selection for stack size");
+
+			{
+				static std::unordered_map<std::string, int> pending_stack_size_change_shadow_rays;
+				if (pending_stack_size_change_shadow_rays.find(selected_kernel_name) == pending_stack_size_change_shadow_rays.end())
+					pending_stack_size_change_shadow_rays[selected_kernel_name] = selected_kernel->get_kernel_options().get_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_SHADOW_RAYS);
+				int& pending_stack_change_shadow_ray = pending_stack_size_change_shadow_rays[selected_kernel_name];
+
+				if (ImGui::InputInt("Shared stack size - Shadow Rays", &pending_stack_change_shadow_ray))
+					pending_stack_change_shadow_ray = std::max(0, pending_stack_change_shadow_ray);
+				ImGuiRenderer::show_help_marker("Fast shared memory stack used for the BVH traversal of shadow rays (rays that search for a closest hit with a given maximum distance)\n\n"
+					"Allocating more of this speeds up the BVH traversal but reduces the amount of L1 cache available to "
+					"the rest of the shader which thus reduces its performance. A tradeoff must be made.\n\n"
+					"If this shared memory stack isn't large enough for traversing the BVH, then "
+					"it is complemented by using the global stack buffer. If both combined aren't enough "
+					"for the traversal, then occlusion artifacts will start to appear in renders.");
+
+				if (pending_stack_change_shadow_ray != selected_kernel->get_kernel_options().get_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_SHADOW_RAYS))
+				{
+					// If the user has modified the size of the shared stack, showing a button to apply the changes 
+					// (not applying the changes everytime because this requires a recompilation of basically all shaders and that's heavy)
+
+					ImGui::TreePush("Apply button shared stack size");
+					if (ImGui::Button("Apply"))
+					{
+						selected_kernel->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_SHADOW_RAYS, pending_stack_change_shadow_ray);
+
+						m_renderer->recompile_kernels();
+						m_render_window->set_render_dirty(true);
+					}
+					ImGui::TreePop();
+				}
+
+
+
+
+				static std::unordered_map<std::string, int> pending_stack_size_change_global_rays;
+				if (pending_stack_size_change_global_rays.find(selected_kernel_name) == pending_stack_size_change_global_rays.end())
+					pending_stack_size_change_global_rays[selected_kernel_name] = selected_kernel->get_kernel_options().get_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_GLOBAL_RAYS);
+				int& pending_stack_change_global_rays = pending_stack_size_change_global_rays[selected_kernel_name];
+
+				if (ImGui::InputInt("Shared stack size - Global Rays", &pending_stack_change_global_rays))
+					pending_stack_change_global_rays = std::max(0, pending_stack_change_global_rays);
+				ImGuiRenderer::show_help_marker("Fast shared memory stack used for the BVH traversal of \"global\" rays (rays that search for a closest hit with no maximum distance)\n\n"
+					"Allocating more of this speeds up the BVH traversal but reduces the amount of L1 cache available to "
+					"the rest of the shader which thus reduces its performance. A tradeoff must be made.\n\n"
+					"If this shared memory stack isn't large enough for traversing the BVH, then "
+					"it is complemented by using the global stack buffer. If both combined aren't enough "
+					"for the traversal, then artifacts start showing up in renders.");
+
+				if (pending_stack_change_global_rays != selected_kernel->get_kernel_options().get_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_GLOBAL_RAYS))
+				{
+					// If the user has modified the size of the shared stack, showing a button to apply the changes 
+					// (not applying the changes everytime because this requires a recompilation of basically all shaders and that's heavy)
+
+					ImGui::TreePush("Apply button shared stack size");
+					if (ImGui::Button("Apply"))
+					{
+						selected_kernel->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_GLOBAL_RAYS, pending_stack_change_global_rays);
+						m_renderer->recompile_kernels();
+						m_render_window->set_render_dirty(true);
+					}
+					ImGui::TreePop();
+				}
+			}
+
+			ImGui::TreePop();
+
+
+
+			if (ImGui::InputInt("Global stack per-thread size", &m_renderer->get_render_data().global_traversal_stack_buffer_size))
+			{
+				m_renderer->get_render_data().global_traversal_stack_buffer_size = std::max(0, m_renderer->get_render_data().global_traversal_stack_buffer_size);
+				m_render_window->set_render_dirty(true);
+			}
+
+			ImGuiRenderer::show_help_marker("Size of the global stack buffer for each thread. Used for complementing the shared memory stack allocated in the kernels."
+				"A good value for this parameter is scene-complexity dependent.\n\n"
+				"A lower value will use less VRAM but will start introducing artifacts if the value is too low due "
+				"to insufficient stack size for the BVH traversal.\n\n"
+				"16 seems to be a good value to start with. If lowering this value improves performance, then that "
+				"means that the BVH traversal is starting to suffer (the traversal is incomplete --> improved performance) "
+				"and rendering artifacts will start to show up.");
+
+			std::string size_string = "Global Stack Buffer VRAM Usage: ";
+			size_string += std::to_string(m_renderer->get_render_data().global_traversal_stack_buffer_size * std::ceil(m_renderer->m_render_resolution.x / 8.0f) * 8.0f * std::ceil(m_renderer->m_render_resolution.y / 8.0f) * 8.0f * sizeof(int) / 1000000.0f);
+			size_string += " MB";
+			ImGui::Text(size_string.c_str());
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		}
+
+		ImGui::TreePop();
+	}
 
 	if (ImGui::InputFloat("GPU Stall Percentage", &m_application_settings->GPU_stall_percentage))
 		m_application_settings->GPU_stall_percentage = std::max(0.0f, std::min(m_application_settings->GPU_stall_percentage, 99.9f));
@@ -1339,17 +1464,17 @@ void ImGuiRenderer::draw_performance_metrics_panel()
 	if (rolling_window_size_changed)
 		m_render_window_perf_metrics->resize_window(rolling_window_size);
 
-	draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::CAMERA_RAYS_FUNC_NAME, "Camera rays pass");
-	if (m_renderer->get_path_tracer_options()->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI)
+	draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::CAMERA_RAYS_KERNEL_ID, "Camera rays pass");
+	if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI)
 	{
-		draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_FUNC_NAME, "ReSTIR Initial Candidates");
+		draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID, "ReSTIR Initial Candidates");
 
 		if (render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
-			draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::RESTIR_DI_TEMPORAL_REUSE_FUNC_NAME, "ReSTIR Temporal Reuse");
+			draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID, "ReSTIR Temporal Reuse");
 		if (render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)
-			draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::RESTIR_DI_SPATIAL_REUSE_FUNC_NAME, "ReSTIR Spatial Reuse");
+			draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID, "ReSTIR Spatial Reuse");
 	}
-	draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::PATH_TRACING_KERNEL, "Path Tracing Pass");
+	draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::PATH_TRACING_KERNEL_ID, "Path Tracing Pass");
 	ImGui::Separator();
 	draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::FULL_FRAME_TIME_KEY, "Total Sample Time");
 

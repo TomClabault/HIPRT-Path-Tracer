@@ -95,9 +95,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE hiprtHit intersect_scene_cpu(const HIPRTRenderDat
 }
 #endif
 
-#define SHARED_STACK_SIZE 16
-#define BLOCK_SIZE 64
-
 HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data, hiprtRay ray, RayPayload& ray_payload, HitInfo& hit_info)
 {
     hiprtHit hit;
@@ -107,8 +104,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
     {
     #ifdef __KERNELCC__
     #if SharedStackBVHTraversal == KERNEL_OPTION_TRUE
-        __shared__ int shared_stack_cache[SHARED_STACK_SIZE * BLOCK_SIZE];
-        hiprtSharedStackBuffer shared_stack_buffer { SHARED_STACK_SIZE, shared_stack_cache };
+        __shared__ int shared_stack_cache[SharedStackBVHTraversalSizeGlobalRays * SharedStackBVHTraversalBlockSize];
+        hiprtSharedStackBuffer shared_stack_buffer { SharedStackBVHTraversalSizeGlobalRays, shared_stack_cache };
         hiprtGlobalStack global_stack(render_data.global_traversal_stack_buffer, shared_stack_buffer);
 
         hiprtGeomTraversalClosestCustomStack<hiprtGlobalStack> traversal(render_data.geom, ray, global_stack);
@@ -194,8 +191,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& r
     do
     {
     #if SharedStackBVHTraversal == KERNEL_OPTION_TRUE
-        __shared__ int shared_stack_cache[SHARED_STACK_SIZE * BLOCK_SIZE];
-        hiprtSharedStackBuffer shared_stack_buffer { SHARED_STACK_SIZE, shared_stack_cache };
+        __shared__ int shared_stack_cache[SharedStackBVHTraversalSizeShadowRays * SharedStackBVHTraversalBlockSize];
+        hiprtSharedStackBuffer shared_stack_buffer { SharedStackBVHTraversalSizeShadowRays, shared_stack_cache };
         hiprtGlobalStack global_stack(render_data.global_traversal_stack_buffer, shared_stack_buffer);
 
         hiprtGeomTraversalClosestCustomStack<hiprtGlobalStack> traversal(render_data.geom, ray, global_stack);
