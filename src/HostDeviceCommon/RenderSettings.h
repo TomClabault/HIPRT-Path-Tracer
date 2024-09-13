@@ -74,7 +74,7 @@ struct HIPRTRenderSettings
 	int samples_per_frame = 1;
 	// Maximum number of bounces of rays in the scene. 
 	// 1 is direct light only.
-	int nb_bounces = 1;
+	int nb_bounces = 3;
 
 	// Whether or not to "freeze" random number generation so that each frame uses
 	// exactly the same random number. This allows every ray to follow the exact
@@ -91,7 +91,8 @@ struct HIPRTRenderSettings
 	//	 - If we're interacting with the camera, we *want* to render at low resolution
 	//	 but if rendering at low resolution is not allowed (this boolean), then we will still
 	//	 not render at low resolution
-	bool allow_render_low_resolution = true;
+	// This boolean is controlled by the user in Imgui
+	bool allow_render_low_resolution = false;
 	// If true, this means that the user is moving the camera and we want to
 	// render the image at a much lower resolution to allow for smoother
 	// interaction. Having this flag at true isn't sufficient for rendering at low
