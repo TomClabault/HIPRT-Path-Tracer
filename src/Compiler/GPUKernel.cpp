@@ -7,11 +7,8 @@
 #include "Compiler/GPUKernel.h"
 #include "Compiler/GPUKernelCompilerOptions.h"
 #include "HIPRT-Orochi/HIPRTOrochiUtils.h"
-#include "Orochi/Orochi.h"
 #include "Threads/ThreadFunctions.h"
 #include "Threads/ThreadManager.h"
-
-#include <hiprt/impl/Compiler.h>
 
 extern GPUKernelCompiler g_gpu_kernel_compiler;
 
@@ -138,8 +135,12 @@ void GPUKernel::compute_elapsed_time_callback(void* data)
 {
 	GPUKernel::ComputeElapsedTimeCallbackData* callback_data = reinterpret_cast<ComputeElapsedTimeCallbackData*>(data);
 #ifdef OROCHI_ENABLE_CUEW
-	// Elapsed time not supported on CUDA with low compute capability (it seems)
-	*callback_data->elapsed_time_out = -1.0f;
+	// Elapsed time throws some errors when used through Orochi on NVIDIA GPUs with old Compute Capability (< 7.5).
+	// Not sure why. The difference is that Orochi (the oroEventElapsedTime() fucntion) ends up calling on the newer
+	// CUDA API: cudaEventElapsedTime and this seems to be broken (on "old" hardware at least)
+	// 
+	// Using the old driver API: cuEventElapsedTime seems to work though
+	CudaGLInterop::CUresult res = CudaGLInterop::cuEventElapsedTime_oro(callback_data->elapsed_time_out, reinterpret_cast<CudaGLInterop::cudaEvent_t>(callback_data->start), reinterpret_cast<CudaGLInterop::cudaEvent_t>(callback_data->end));
 #else
 	oroEventElapsedTime(callback_data->elapsed_time_out, callback_data->start, callback_data->end);
 #endif
