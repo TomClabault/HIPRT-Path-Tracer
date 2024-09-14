@@ -1,4 +1,4 @@
-/*
+	/*
  * Copyright 2024 Tom Clabault. GNU GPL3 license.
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
@@ -85,11 +85,11 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
 	m_restir_spatial_reuse_pass.set_kernel_function_name(GPURenderer::KERNEL_FUNCTIONS[4]);
 
 	// Compiling kernels
-	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_path_trace_pass), m_path_tracer_options, std::ref(m_hiprt_orochi_ctx->hiprt_ctx));
-	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_camera_ray_pass), m_path_tracer_options, std::ref(m_hiprt_orochi_ctx->hiprt_ctx));
-	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_restir_initial_candidates_pass), m_path_tracer_options, std::ref(m_hiprt_orochi_ctx->hiprt_ctx));
-	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_restir_temporal_reuse_pass), m_path_tracer_options, std::ref(m_hiprt_orochi_ctx->hiprt_ctx));
-	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_restir_spatial_reuse_pass), m_path_tracer_options, std::ref(m_hiprt_orochi_ctx->hiprt_ctx));
+	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_path_trace_pass), m_path_tracer_options, std::ref(*m_hiprt_orochi_ctx));
+	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_camera_ray_pass), m_path_tracer_options, std::ref(*m_hiprt_orochi_ctx));
+	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_restir_initial_candidates_pass), m_path_tracer_options, std::ref(*m_hiprt_orochi_ctx));
+	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_restir_temporal_reuse_pass), m_path_tracer_options, std::ref(*m_hiprt_orochi_ctx));
+	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_restir_spatial_reuse_pass), m_path_tracer_options, std::ref(*m_hiprt_orochi_ctx));
 
 	m_ms_time_per_pass["All"] = 0.0f;
 	for (std::string pass : KERNEL_FUNCTIONS)
@@ -684,11 +684,11 @@ void GPURenderer::recompile_kernels(bool use_cache)
 {
 	synchronize_kernel();
 
-	m_camera_ray_pass.compile(m_hiprt_orochi_ctx->hiprt_ctx, m_path_tracer_options, use_cache);
-	m_restir_initial_candidates_pass.compile(m_hiprt_orochi_ctx->hiprt_ctx, m_path_tracer_options, use_cache);
-	m_restir_temporal_reuse_pass.compile(m_hiprt_orochi_ctx->hiprt_ctx, m_path_tracer_options, use_cache);
-	m_restir_spatial_reuse_pass.compile(m_hiprt_orochi_ctx->hiprt_ctx, m_path_tracer_options, use_cache);
-	m_path_trace_pass.compile(m_hiprt_orochi_ctx->hiprt_ctx, m_path_tracer_options, use_cache);
+	m_camera_ray_pass.compile(*m_hiprt_orochi_ctx, m_path_tracer_options, use_cache);
+	m_restir_initial_candidates_pass.compile(*m_hiprt_orochi_ctx, m_path_tracer_options, use_cache);
+	m_restir_temporal_reuse_pass.compile(*m_hiprt_orochi_ctx, m_path_tracer_options, use_cache);
+	m_restir_spatial_reuse_pass.compile(*m_hiprt_orochi_ctx, m_path_tracer_options, use_cache);
+	m_path_trace_pass.compile(*m_hiprt_orochi_ctx, m_path_tracer_options, use_cache);
 }
 
 float GPURenderer::get_render_pass_time(const std::string& key)

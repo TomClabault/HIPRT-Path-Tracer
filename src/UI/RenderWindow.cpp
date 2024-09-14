@@ -299,12 +299,6 @@ RenderWindow::RenderWindow(int width, int height, std::shared_ptr<HIPRTOrochiCtx
 	m_application_state->render_dirty = true;
 }
 
-RenderWindow::~RenderWindow()
-{
-	glfwDestroyWindow(m_glfw_window);
-	glfwTerminate();
-}
-
 void RenderWindow::init_glfw(int width, int height)
 {
 	if (!glfwInit())

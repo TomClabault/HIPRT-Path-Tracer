@@ -14,6 +14,8 @@
 #include <unordered_set>
 #include <vector>
 
+#include "HIPRT-Orochi/HIPRTOrochiCtx.h"
+
 class GPUKernelCompilerOptions;
 
 class GPUKernel
@@ -28,7 +30,7 @@ public:
 	void set_kernel_file_path(const std::string& kernel_file_path);
 	void set_kernel_function_name(const std::string& kernel_function_name);
 
-	void compile(hiprtContext& hiprt_ctx, std::shared_ptr<GPUKernelCompilerOptions> kernel_compiler_options, bool use_cache = true);
+	void compile(HIPRTOrochiCtx& hiprt_ctx, std::shared_ptr<GPUKernelCompilerOptions> kernel_compiler_options, bool use_cache = true);
 	void launch_timed_synchronous(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, float* execution_time_out);
 	void launch_timed_asynchronous(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, oroStream_t stream);
 

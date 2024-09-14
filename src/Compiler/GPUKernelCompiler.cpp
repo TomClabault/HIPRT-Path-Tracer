@@ -13,7 +13,7 @@
 
 GPUKernelCompiler g_gpu_kernel_compiler;
 
-oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, std::shared_ptr<GPUKernelCompilerOptions> kernel_compiler_options, hiprtContext& hiprt_ctx, bool use_cache, const std::string& additional_cache_key)
+oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, std::shared_ptr<GPUKernelCompilerOptions> kernel_compiler_options, HIPRTOrochiCtx& hiprt_orochi_ctx, bool use_cache, const std::string& additional_cache_key)
 {
 	std::string kernel_file_path = kernel.get_kernel_file_path();
 	std::string kernel_function_name = kernel.get_kernel_function_name();
@@ -23,7 +23,7 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, std::shared_p
 	auto start = std::chrono::high_resolution_clock::now();
 
 	hiprtApiFunction trace_function_out;
-	if (HIPPTOrochiUtils::build_trace_kernel(hiprt_ctx, kernel_file_path, kernel_function_name, trace_function_out, additional_include_dirs, compiler_options, 0, 1, use_cache, nullptr, additional_cache_key) != hiprtError::hiprtSuccess)
+	if (HIPPTOrochiUtils::build_trace_kernel(hiprt_orochi_ctx.hiprt_ctx, kernel_file_path, kernel_function_name, trace_function_out, additional_include_dirs, compiler_options, 0, 1, use_cache, nullptr, additional_cache_key) != hiprtError::hiprtSuccess)
 	{
 		std::cerr << "Unable to compile kernel \"" << kernel_function_name << "\". Cannot continue." << std::endl;
 		int ignored = std::getchar();
@@ -35,8 +35,15 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, std::shared_p
 	auto stop = std::chrono::high_resolution_clock::now();
 	{
 		std::lock_guard<std::mutex> lock(m_mutex);
-		std::cout << "Kernel \"" << kernel_function_name << "\" compiled in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms. " 
-			<< GPUKernel::get_kernel_attribute(kernel_function, ORO_FUNC_ATTRIBUTE_NUM_REGS) << " registers." << std::endl;
+		std::cout << "Kernel \"" << kernel_function_name << "\" compiled in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms. ";
+
+		if (hiprt_orochi_ctx.device_properties.major >= 7 && hiprt_orochi_ctx.device_properties.minor >= 5)
+			// Getting the registers of a kernel only seems to be available on 7.5 and above 
+			// (works on a 2060S but doesn't on a GTX 970 or GTX 1060, couldn't try more hardware 
+			// so maybe 7.5 is too conservative)
+			std::cout << GPUKernel::get_kernel_attribute(kernel_function, ORO_FUNC_ATTRIBUTE_NUM_REGS) << " registers." << std::endl;
+		else
+			std::cout << std::endl;
 	}
 
 	return kernel_function;

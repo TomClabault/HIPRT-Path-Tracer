@@ -7,7 +7,7 @@
 #include "Compiler/GPUKernel.h"
 #include "Threads/ThreadFunctions.h"
 
-void ThreadFunctions::compile_kernel(GPUKernel& kernel, std::shared_ptr<GPUKernelCompilerOptions> kernel_compiler_options, hiprtContext& hiprt_ctx)
+void ThreadFunctions::compile_kernel(GPUKernel& kernel, std::shared_ptr<GPUKernelCompilerOptions> kernel_compiler_options, HIPRTOrochiCtx& hiprt_ctx)
 {
     kernel.compile(hiprt_ctx, kernel_compiler_options);
 }

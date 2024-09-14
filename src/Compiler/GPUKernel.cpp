@@ -7,6 +7,7 @@
 #include "Compiler/GPUKernel.h"
 #include "Compiler/GPUKernelCompilerOptions.h"
 #include "HIPRT-Orochi/HIPRTOrochiUtils.h"
+#include "Orochi/Orochi.h"
 #include "Threads/ThreadFunctions.h"
 #include "Threads/ThreadManager.h"
 
@@ -61,7 +62,7 @@ std::vector<std::string> GPUKernel::get_additional_compiler_macros() const
 	return macros;
 }
 
-void GPUKernel::compile(hiprtContext& hiprt_ctx, std::shared_ptr<GPUKernelCompilerOptions> kernel_compiler_options, bool use_cache)
+void GPUKernel::compile(HIPRTOrochiCtx& hiprt_ctx, std::shared_ptr<GPUKernelCompilerOptions> kernel_compiler_options, bool use_cache)
 {
 	if (!m_option_macro_parsed)
 		parse_option_macros_used(kernel_compiler_options);
@@ -136,7 +137,12 @@ bool GPUKernel::uses_macro(const std::string& name) const
 void GPUKernel::compute_elapsed_time_callback(void* data)
 {
 	GPUKernel::ComputeElapsedTimeCallbackData* callback_data = reinterpret_cast<ComputeElapsedTimeCallbackData*>(data);
+#ifdef OROCHI_ENABLE_CUEW
+	// Elapsed time not supported on CUDA with low compute capability (it seems)
+	*callback_data->elapsed_time_out = -1.0f;
+#else
 	oroEventElapsedTime(callback_data->elapsed_time_out, callback_data->start, callback_data->end);
+#endif
 
 	// Deleting the callback data because it was dynamically allocated
 	delete callback_data;

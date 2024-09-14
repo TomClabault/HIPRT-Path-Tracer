@@ -28,7 +28,6 @@ class RenderWindow
 {
 public:
 	RenderWindow(int width, int height, std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx);
-	~RenderWindow();
 
 	void init_glfw(int width, int height);
 	void init_gl(int width, int height);
