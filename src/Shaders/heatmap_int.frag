@@ -20,7 +20,7 @@ uniform float u_min_val;
 uniform float u_max_val;
 
 #ifdef COMPUTE_SCREENSHOTER
-layout(binding = 2, rgba8) writeonly uniform image2D u_output_image;
+uniform layout(binding = 2, rgba8ui) writeonly uimage2D u_output_image;
 #else
 in vec2 vs_tex_coords;
 out vec4 out_color;
@@ -50,7 +50,8 @@ void main()
 		// If the bounds are the same, arbitrarily choosing
 		// to color with the last color stop
 #ifdef COMPUTE_SCREENSHOTER
-	imageStore(u_output_image, thread_id, vec4(u_color_stops[u_nb_stops - 1], 1.0f));
+	uvec4 output_color = uvec4(uvec3(u_color_stops[u_nb_stops - 1] * 255), 255);
+	imageStore(u_output_image, thread_id, output_color);
 #else
 	out_color = vec4(u_color_stops[u_nb_stops - 1], 1.0f);
 #endif
@@ -89,7 +90,8 @@ void main()
 	// which is more of stop2 than stop3
 	vec4 final_color = vec4(mix(u_color_stops[low_stop], u_color_stops[high_stop], fraction_of_high_stop), 1.0f);
 #ifdef COMPUTE_SCREENSHOTER
-	imageStore(u_output_image, thread_id, final_color);
+	uvec4 ufinal_color = uvec4(final_color * 255.0f);
+	imageStore(u_output_image, thread_id, ufinal_color);
 #else
 	out_color = final_color;
 #endif // COMPUTE_SCREENSHOTER

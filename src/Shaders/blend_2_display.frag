@@ -23,7 +23,7 @@ uniform float u_exposure;
 uniform int u_do_tonemapping;
 
 #ifdef COMPUTE_SCREENSHOTER
-layout(binding = 2, rgba8) writeonly uniform image2D u_output_image;
+uniform layout(binding = 2, rgba8ui) writeonly uimage2D u_output_image;
 #else
 in vec2 vs_tex_coords;
 out vec4 out_color;
@@ -69,7 +69,8 @@ void main()
 
 	vec4 blended_color = final_color_1 * (1.0f - u_blend_factor) + final_color_2 * u_blend_factor;
 #ifdef COMPUTE_SCREENSHOTER
-	imageStore(u_output_image, thread_id, blended_color);
+	uvec4 ublended_color = uvec4(blended_color * 255);
+	imageStore(u_output_image, thread_id, ublended_color);
 #else
 	out_color = blended_color;
 #endif // COMPUTE_SCREENSHOTER

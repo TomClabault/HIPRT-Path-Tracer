@@ -14,7 +14,7 @@ uniform float u_exposure;
 uniform int u_do_tonemapping;
 
 #ifdef COMPUTE_SCREENSHOTER
-layout(binding = 2, rgba8) writeonly uniform image2D u_output_image;
+uniform layout(binding = 2, rgba8ui) writeonly uimage2D u_output_image;
 #else
 in vec2 vs_tex_coords;
 out vec4 out_color;
@@ -50,7 +50,7 @@ void main()
 	final_color = vec4(final_color.rgb, 1.0f);
 
 #ifdef COMPUTE_SCREENSHOTER
-	imageStore(u_output_image, thread_id, final_color);
+	imageStore(u_output_image, thread_id, uvec4(final_color * 255));
 #else
 	out_color = final_color;
 #endif // COMPUTE_SCREENSHOTER

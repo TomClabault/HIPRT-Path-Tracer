@@ -9,7 +9,7 @@ uniform sampler2D u_texture;
 uniform int u_resolution_scaling;
 
 #ifdef COMPUTE_SCREENSHOTER
-layout(binding = 2, rgba8) writeonly uniform image2D u_output_image;
+uniform layout(binding = 2, rgba8ui) writeonly uimage2D u_output_image;
 #else
 in vec2 vs_tex_coords;
 out vec4 out_color;
@@ -27,7 +27,8 @@ void main()
 	if (thread_id.x >= dims.x || thread_id.y >= dims.y)							
 		return;
 
-	imageStore(u_output_image, thread_id, texelFetch(u_texture, thread_id / u_resolution_scaling, 0));
+	uvec4 ucolor = uvec4(texelFetch(u_texture, thread_id / u_resolution_scaling, 0) * 255);
+	imageStore(u_output_image, thread_id, ucolor);
 #else
 	out_color = texture(u_texture, vs_tex_coords / u_resolution_scaling);
 #endif

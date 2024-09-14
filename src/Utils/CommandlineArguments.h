@@ -15,7 +15,7 @@ struct CommandlineArguments
 
     static CommandlineArguments process_command_line_args(int argc, char** argv);
 
-    int render_width = 1290, render_height = 720;
+    int render_width = 1280, render_height = 720;
 
     // Default scene and skysphere paths as expected if running the application from a build
     // directory inside the repo root folder

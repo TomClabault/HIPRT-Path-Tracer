@@ -96,9 +96,9 @@ void Screenshoter::resize_output_image(int width, int height)
 		glGenTextures(1, &m_output_image);
 		glActiveTexture(GL_TEXTURE0 + DisplayViewSystem::DISPLAY_COMPUTE_IMAGE_UNIT);
 		glBindTexture(GL_TEXTURE_2D, m_output_image);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+		glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8UI, width, height);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-		glBindImageTexture(/* location in the shader */ 2, m_output_image, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA8);
+		glBindImageTexture(/* location in the shader */ 2, m_output_image, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA8UI);
 	}
 	else
 	{
@@ -140,6 +140,9 @@ void Screenshoter::write_to_png(const char* filepath)
 		// so that the screenshoter outputs the correct image (and needless to say that we would forget, most of time, 
 		// to update the HIP kernels so that's why code duplication here is annoying)
 
+		m_renderer->synchronize_kernel();
+		m_renderer->unmap_buffers();
+
 		resize_output_image(width, height);
 		select_compute_program(m_render_window->get_display_view_system()->get_current_display_view_type());
 
@@ -155,7 +158,7 @@ void Screenshoter::write_to_png(const char* filepath)
 		glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
 		std::vector<unsigned char> mapped_data(width * height * 4);
-		glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, mapped_data.data());
+		glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA_INTEGER, GL_UNSIGNED_BYTE, mapped_data.data());
 
 		stbi_flip_vertically_on_write(true);
 		if (stbi_write_png(filepath, width, height, 4, mapped_data.data(), width * sizeof(unsigned char) * 4))

@@ -696,6 +696,7 @@ void RenderWindow::render()
 		{
 			// We can unmap the renderer's buffers so that OpenGL can use them for displaying
 			m_renderer->unmap_buffers();
+
 			// Update the display view system so that the display view is changed to the
 			// one that we want to use (in the DisplayViewSystem's queue)
 			m_display_view_system->update_selected_display_view();
@@ -705,6 +706,7 @@ void RenderWindow::render()
 
 			// We upload the data to the OpenGL textures for displaying
 			m_display_view_system->upload_relevant_buffers_to_texture();
+
 			// We want the next frame to be displayed with the same wants_render_low_resolution setting
 			// as it was queued with. This is only useful for first frames when getting in low resolution
 			// (when we start moving the camera for example) or first frames when getting out of low resolution
