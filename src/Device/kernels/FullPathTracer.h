@@ -92,10 +92,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
     const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
     const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
 #endif
-    uint32_t pixel_index = (x + y * res.x);
-    if (pixel_index >= res.x * res.y)
+    if (x >= res.x || y >= res.y)
         return;
-    else if (!render_data.aux_buffers.pixel_active[pixel_index])
+
+    uint32_t pixel_index = (x + y * res.x);
+    if (!render_data.aux_buffers.pixel_active[pixel_index])
         return;
 
     if (render_data.render_settings.do_render_low_resolution())

@@ -52,9 +52,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
     const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
     const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
 #endif
-    uint32_t pixel_index = (x + y * res.x);
-    if (pixel_index >= res.x * res.y)
+    if (x >= res.x || y >= res.y)
         return;
+
+    uint32_t pixel_index = (x + y * res.x);
 
     // 'Render low resolution' means that the user is moving the camera for example
     // so we're going to reduce the quality of the render for increased framerates

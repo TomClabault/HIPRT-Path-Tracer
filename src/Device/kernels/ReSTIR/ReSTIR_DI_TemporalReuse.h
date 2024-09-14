@@ -54,9 +54,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
 	const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
 #endif
-	uint32_t center_pixel_index = (x + y * res.x);
-	if (center_pixel_index >= res.x * res.y)
+	if (x >= res.x || y >= res.y)
 		return;
+
+	uint32_t center_pixel_index = (x + y * res.x);
 
 	if (!render_data.aux_buffers.pixel_active[center_pixel_index] || !render_data.g_buffer.camera_ray_hit[center_pixel_index])
 		// Pixel inactive because of adaptive sampling, returning
