@@ -118,7 +118,8 @@ void Screenshoter::write_to_png(const char* filepath)
 		// because the viewport is the same resolution as the render resolution so the viewport
 		// is exactly what we should have in the screenshot
 		std::vector<unsigned char> mapped_data(width * height * 3);
-		glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, mapped_data.data());
+		glPixelStorei(GL_PACK_ALIGNMENT, 1);
+		glReadnPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, mapped_data.size(), mapped_data.data());
 
 		stbi_flip_vertically_on_write(true);
 		if (stbi_write_png(filepath, width, height, 3, mapped_data.data(), width * sizeof(unsigned char) * 3))
