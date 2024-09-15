@@ -103,15 +103,19 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
     do
     {
     #ifdef __KERNELCC__
-    #if SharedStackBVHTraversal == KERNEL_OPTION_TRUE
+#if SharedStackBVHTraversalGlobalRays == KERNEL_OPTION_TRUE
+#if SharedStackBVHTraversalSizeGlobalRays > 0
         __shared__ int shared_stack_cache[SharedStackBVHTraversalSizeGlobalRays * SharedStackBVHTraversalBlockSize];
         hiprtSharedStackBuffer shared_stack_buffer { SharedStackBVHTraversalSizeGlobalRays, shared_stack_cache };
+#else
+        hiprtSharedStackBuffer shared_stack_buffer{ 0, nullptr };
+#endif
         hiprtGlobalStack global_stack(render_data.global_traversal_stack_buffer, shared_stack_buffer);
 
         hiprtGeomTraversalClosestCustomStack<hiprtGlobalStack> traversal(render_data.geom, ray, global_stack);
-    #else
+#else
         hiprtGeomTraversalClosest traversal(render_data.geom, ray);
-    #endif
+#endif
 
         hit = traversal.getNextHit();
     #else
@@ -190,15 +194,19 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& r
 
     do
     {
-    #if SharedStackBVHTraversal == KERNEL_OPTION_TRUE
+#if SharedStackBVHTraversalShadowRays == KERNEL_OPTION_TRUE
+#if SharedStackBVHTraversalSizeShadowRays > 0
         __shared__ int shared_stack_cache[SharedStackBVHTraversalSizeShadowRays * SharedStackBVHTraversalBlockSize];
         hiprtSharedStackBuffer shared_stack_buffer { SharedStackBVHTraversalSizeShadowRays, shared_stack_cache };
+#else
+        hiprtSharedStackBuffer shared_stack_buffer{ 0, nullptr };
+#endif
         hiprtGlobalStack global_stack(render_data.global_traversal_stack_buffer, shared_stack_buffer);
 
         hiprtGeomTraversalClosestCustomStack<hiprtGlobalStack> traversal(render_data.geom, ray, global_stack);
-    #else
+#else
         hiprtGeomTraversalClosest traversal(render_data.geom, ray);
-    #endif
+#endif
 
         shadow_ray_hit = traversal.getNextHit();
         if (!shadow_ray_hit.hasHit())

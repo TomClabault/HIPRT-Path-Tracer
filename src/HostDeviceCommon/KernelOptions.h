@@ -74,11 +74,18 @@
  */
 #ifndef __KERNELCC__
 /**
- * Whether or not to use shared memory and a global buffer for BVH traversal.
+ * Whether or not to use shared memory and a global buffer for BVH traversal of global rays (no maximum distance).
  * 
- * This improves performance at the cost of a higher VRAM usage
+ * This improves performance at the cost of a higher VRAM usage (because of the global buffer needed)
  */
-#define SharedStackBVHTraversal KERNEL_OPTION_TRUE
+#define SharedStackBVHTraversalGlobalRays KERNEL_OPTION_TRUE
+
+/**
+ * Same as SharedStackBVHTraversalGlobalRays but for shadow rays. The global buffer is shared between global and shadow
+ * rays so using only SharedStackBVHTraversalGlobalRays or both with also SharedStackBVHTraversalShadowRays doesn't increase
+ * VRAM usage further.
+ */
+#define SharedStackBVHTraversalShadowRays KERNEL_OPTION_TRUE
 
 /**
  * Size of the thread blocks used when dispatching the kernels. 

@@ -77,6 +77,7 @@ public:
 	 * Returns the compiler options of this kernel so that they can be modified
 	 */
 	GPUKernelCompilerOptions& get_kernel_options();
+	const GPUKernelCompilerOptions& get_kernel_options() const;
 
 	/**
 	 * Synchronizes the value of the options of this kernel with the values of the macros of 'other_options'.

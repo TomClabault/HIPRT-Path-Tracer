@@ -9,7 +9,8 @@
 
 #include <cassert>
 
-const std::string GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL = "SharedStackBVHTraversal";
+const std::string GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_GLOBAL_RAYS = "SharedStackBVHTraversalGlobalRays";
+const std::string GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SHADOW_RAYS = "SharedStackBVHTraversalShadowRays";
 const std::string GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_BLOCK_SIZE = "SharedStackBVHTraversalBlockSize";
 const std::string GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_GLOBAL_RAYS = "SharedStackBVHTraversalSizeGlobalRays";
 const std::string GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_SHADOW_RAYS = "SharedStackBVHTraversalSizeShadowRays";
@@ -26,7 +27,8 @@ const std::string GPUKernelCompilerOptions::RESTIR_DI_RAYTRACE_SPATIAL_REUSE_RES
 const std::string GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS = "ReSTIR_DI_BiasCorrectionWeights";
 
 const std::vector<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES = {
-	GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL,
+	GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_GLOBAL_RAYS,
+	GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SHADOW_RAYS,
 	GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_BLOCK_SIZE,
 	GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_GLOBAL_RAYS,
 	GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_SHADOW_RAYS,
@@ -47,7 +49,8 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 {
 	// Mandatory options that every kernel must have so we're
 	// adding them here with their default values
-	m_options_macro_map[GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL] = std::make_shared<int>(SharedStackBVHTraversal);
+	m_options_macro_map[GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_GLOBAL_RAYS] = std::make_shared<int>(SharedStackBVHTraversalGlobalRays);
+	m_options_macro_map[GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SHADOW_RAYS] = std::make_shared<int>(SharedStackBVHTraversalShadowRays);
 	m_options_macro_map[GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_BLOCK_SIZE] = std::make_shared<int>(SharedStackBVHTraversalBlockSize);
 	m_options_macro_map[GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_GLOBAL_RAYS] = std::make_shared<int>(SharedStackBVHTraversalSizeGlobalRays);
 	m_options_macro_map[GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_SHADOW_RAYS] = std::make_shared<int>(SharedStackBVHTraversalSizeShadowRays);
@@ -147,7 +150,7 @@ bool GPUKernelCompilerOptions::has_macro(const std::string& name)
 	return m_custom_macro_map.find(name) != m_custom_macro_map.end();
 }
 
-int GPUKernelCompilerOptions::get_macro_value(const std::string& name)
+int GPUKernelCompilerOptions::get_macro_value(const std::string& name) const
 {
 	auto find = m_options_macro_map.find(name);
 
@@ -162,23 +165,6 @@ int GPUKernelCompilerOptions::get_macro_value(const std::string& name)
 	}
 	else
 		return *find->second;
-}
-
-std::shared_ptr<int> GPUKernelCompilerOptions::get_pointer_to_macro_value(const std::string& name)
-{
-	auto find = m_options_macro_map.find(name);
-
-	if (find == m_options_macro_map.end())
-	{
-		// Wasn't found in the options-macro, trying in the custom macros
-		auto find_custom = m_custom_macro_map.find(name);
-		if (find_custom == m_custom_macro_map.end())
-			return nullptr;
-		else
-			return find_custom->second;
-	}
-	else
-		return find->second;
 }
 
 const std::shared_ptr<int> GPUKernelCompilerOptions::get_pointer_to_macro_value(const std::string& name) const

@@ -16,7 +16,8 @@ class GPUKernel;
 class GPUKernelCompilerOptions
 {
 public:
-	static const std::string SHARED_STACK_BVH_TRAVERSAL;
+	static const std::string SHARED_STACK_BVH_TRAVERSAL_GLOBAL_RAYS;
+	static const std::string SHARED_STACK_BVH_TRAVERSAL_SHADOW_RAYS;
 	static const std::string SHARED_STACK_BVH_TRAVERSAL_BLOCK_SIZE;
 	static const std::string SHARED_STACK_BVH_TRAVERSAL_SIZE_GLOBAL_RAYS;
 	static const std::string SHARED_STACK_BVH_TRAVERSAL_SIZE_SHADOW_RAYS;
@@ -102,7 +103,7 @@ public:
 	/** 
 	 * Gets the value of a macro or -1 if the macro isn't set
 	 */
-	int get_macro_value(const std::string& name);
+	int get_macro_value(const std::string& name) const;
 
 	/**
 	 * Returns a pointer to the value of a macro given its name.
@@ -111,7 +112,6 @@ public:
 	 * 
 	 * nullptr is returned if the option doesn't exist (set_macro_value() wasn't called yet)
 	 */
-	std::shared_ptr<int> get_pointer_to_macro_value(const std::string& name);
 	const std::shared_ptr<int> get_pointer_to_macro_value(const std::string& name) const;
 	int* get_raw_pointer_to_macro_value(const std::string& name);
 

@@ -71,10 +71,12 @@
 //		- ---------------- denoiser creation duration : 804ms
 //		- ---------------- set_envmap() duration : 962ms
 //		- ---------------- set_scene() duration : 136ms
+// - refactor ImGuiRenderer in several sub classes that each draw a panel
 
 
 
 // TODO Features:
+// - only update the display every so often if accumulating because displaying is expensive (especially at high resolution)
 // - reload shaders button
 // - pack ray payload
 // - pack nested dielectrics structure

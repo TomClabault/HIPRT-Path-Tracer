@@ -105,6 +105,11 @@ GPUKernelCompilerOptions& GPUKernel::get_kernel_options()
 	return m_compiler_options;
 }
 
+const GPUKernelCompilerOptions& GPUKernel::get_kernel_options() const
+{
+	return m_compiler_options;
+}
+
 void GPUKernel::synchronize_options_with(const GPUKernelCompilerOptions& other_options, const std::unordered_set<std::string>& options_excluded)
 {
 	for (auto macro_to_value : other_options.get_options_macro_map())
