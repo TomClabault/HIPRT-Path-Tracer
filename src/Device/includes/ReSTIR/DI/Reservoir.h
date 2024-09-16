@@ -20,18 +20,23 @@ static std::mutex log_mutex;
 enum ReSTIRDISampleFlags
 {
     RESTIR_DI_FLAGS_NONE = 0,
-    RESTIR_DI_FLAGS_BSDF_SAMPLE = 1 << 1,
-    RESTIR_DI_FLAGS_ENVMAP_SAMPLE = 1 << 2
+    RESTIR_DI_FLAGS_ENVMAP_SAMPLE = 1 << 0,
+    RESTIR_DI_FLAGS_INITIAL_CANDIDATE_UNOCCLUDED = 1 << 1,
 };
 
 struct ReSTIRDISample
 {
     // Global primitive index corresponding to the emissive triangle sampled
     int emissive_triangle_index = -1;
+
+    // For envmap samples, this 'point_on_light_source' is the envmap direction
+    // A sample is an envmap sample if 'flags' contains 'RESTIR_DI_FLAGS_ENVMAP_SAMPLE'
     float3 point_on_light_source = { 0, 0, 0 };
 
     float target_function = 0.0f;
-    int flags = RESTIR_DI_FLAGS_NONE;
+
+    // Some flags about the sample
+    unsigned char flags = RESTIR_DI_FLAGS_NONE;
 };
 
 struct ReSTIRDIReservoir
@@ -61,6 +66,14 @@ struct ReSTIRDIReservoir
      */
     HIPRT_HOST_DEVICE bool combine_with(ReSTIRDIReservoir other_reservoir, float mis_weight, float target_function, float jacobian_determinant, Xorshift32Generator& random_number_generator)
     {
+        if (other_reservoir.UCW <= 0.0f)
+        {
+            // Not going to be resampled anyways because of invalid UCW so quit exit
+            M += other_reservoir.M;
+
+            return false;
+        }
+
         float reservoir_sample_weight = mis_weight * target_function * other_reservoir.UCW * jacobian_determinant;
 
         M += other_reservoir.M;

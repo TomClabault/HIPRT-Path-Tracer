@@ -21,13 +21,19 @@ public:
 	static const std::string SHARED_STACK_BVH_TRAVERSAL_BLOCK_SIZE;
 	static const std::string SHARED_STACK_BVH_TRAVERSAL_SIZE_GLOBAL_RAYS;
 	static const std::string SHARED_STACK_BVH_TRAVERSAL_SIZE_SHADOW_RAYS;
+
 	static const std::string BSDF_OVERRIDE;
 	static const std::string INTERIOR_STACK_STRATEGY;
+
 	static const std::string DIRECT_LIGHT_SAMPLING_STRATEGY;
 	static const std::string ENVMAP_SAMPLING_STRATEGY;
+	static const std::string ENVMAP_SAMPLING_DO_BSDF_MIS;
+
 	static const std::string RIS_USE_VISIBILITY_TARGET_FUNCTION;
 	static const std::string GGX_SAMPLE_FUNCTION;
+
 	static const std::string RESTIR_DI_TARGET_FUNCTION_VISIBILITY;
+	static const std::string RESTIR_DI_ENVMAP_SAMPLES_MIS_LIGHT_SAMPLER;
 	static const std::string RESTIR_DI_DO_VISIBILITY_REUSE;
 	static const std::string RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY;
 	static const std::string RESTIR_DI_RAYTRACE_SPATIAL_REUSE_RESERVOIR;

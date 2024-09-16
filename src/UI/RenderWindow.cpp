@@ -31,6 +31,8 @@
 // - limit distance of BSDF ray for initial sampling (biased but reduces BVH traversal so performance++)
 // - maybe not spatially resample as hard everywhere in the image? heuristic to reduce/increase the number of spatial samples per pixel?
 // - possibility to reuse final shading visibility
+// - if we're ray tracing reservoirs with final visibility then we don't need to ray trace in the final shading, we know it's unoccluded
+// - what can we do when we know that BSDF samples are unoccluded? Have a flag to not retry occlusion in the temporal reuse/spatial reuse/spatial visibility/...?
 // - for spatial reuse, put the heuristics checks in the 'get_spatial_neighbor_function'
 // - Pairwise MIS: If we resample the center pixel first and we discover that the center pixel reservoir is NULL --> we're not going to MIS weight the center pixel --> do we have to compute Mc at all?
 // - In the temporal reuse pass, we have a if (temporal_neighbor_reservoir.M > 0) that guards the resampling of the temporal neighbor
@@ -38,21 +40,27 @@
 //		temporal pass to the initial candidates alone, the same as when temporal_neighbor_index == -1
 // - something is wrong with the heuristics: noisy in movement with the heuristics but not that much without.
 //		disabling all the heuristics at the same time removes the noisiness but one by one (3 checkboxes) doesn't remove the noisiness
-// - M-capping when using a reservoir in the spatial reuse? M-capping shouldn't be only for temporal input reservoirs right?
+// - M-capping when using a reservoir in the spatial reuse? M-capping shouldn't be only for temporal input reservoirs right? --> too many spatial reuse passes/too many neighbors reused = blow up
 // - heuristics makes it hard to reuse on the teapot of the white room because of normals dissimilarity i guess?
 // - heuristics adds some noisy/artifacty pixels. Especially on high details geometry
-// - bias status if not tracing spatial reservoirs
-// - bias status when unchecking visibility reuse while still using bias correction visiblity (should be biased because we may discard samples that could have been produced but isn't)
-// - not tracing spatial reservoirs + temporal reuse = bias explosion
-// - just start and uncheck visibility reuse = bias explosion
+// - BSDF initial samples are natively taking occlusion into account, probably should produce them without occlusion into account to stay consistent because this means that, to guarantee unbiasedness, the moment we use BSDF samples, we need visibility bias correction. That's expensive and we may not want that --> we would need a any hit on emissive triangle for that, annoying
+// - When we add envmap samples to the mix in ReSTIR, this adds quite a bit of noise if these envmap samples do not take occlusion into account because they usually have a very high contribution --> RIS favors them --> only to realize in the end that it was occluded.
+//		- SOLUTION FOR BSDF AND ENVMAP INIITIAL CANDIDATES TAKING OCCLUSION INTO ACCOUNT:
+//		maybe add an "adaptive" visibility bias correction that only uses visibility for these special samples?
+// 
+// 
+// 
+// - bias status if not tracing spatial reservoirs --> bias with temporal reuse? strong darkening in the white room --> test in the cornell boix with hardocded reuse 15 to the right
+
 
 // TODO bugs:
 // - memory leak with OpenGL when resizing the window?
-// - memory leak when launching kernels? Does that happen also on Linux or is it only due to AMD Windows drivers?
 // - take transmission color into account when direct sampling a light source that is inside a volume
 // - denoiser AOVs not accounting for transmission correctly since Disney 
 //	  - same with perfect reflection
 // - fix sampling lights inside dielectrics with ReSTIR DI
+// - envmap importance sampling in Envmap.h seems biased: a little bit too dark compared to no direct lighting sampling (i.e. just pure brute force path tracer). This only happens when taking the BSDF sample for MIS into account AND with proper MIS weight. Using 0.5f MIS weight doesn't give that darkening. Something wrong with the PDFs causing the MIS weights to not sum to 1 or something?
+// - when using a BSDF override, transmissive materials keep their dielectric priorities and this can mess up shadow rays and intersections in general if the BSDF used for the override doesn't support transmissive materials
 
 
 // TODO Code Organization:
@@ -79,6 +87,8 @@
 
 // TODO Features:
 // - only update the display every so often if accumulating because displaying is expensive (especially at high resolution)
+// - do we really need a shadow ray and global ray shared stack? We can probably have only one function for tracing rays that takes a TMax and that's it: sharing the shared memory for both instead of allocating it twice
+// - only update the display every so often if accumulating because displaying is expensive (especially at high resolution) on AMD drivers at least
 // - reload shaders button
 // - pack ray payload
 // - pack nested dielectrics structure
@@ -95,6 +105,7 @@
 // - RIS: do no use BSDF samples for rough surfaces (have a BSDF ray roughness treshold basically
 //		We may have to do something with the lobes of the BSDF specifically for this one. A coated diffuse cannot always ignore light samples for example because the diffuse lobe benefits from light samples even if the surface is not smooth (coating) 
 // - support stochastic alpha transparency
+// - have a light BVH for intersecting light triangles only: useful when we want to know whether or not a direction could have be sampled by the light sampler: we don't need to intersect the whole scene BVH, just the light geometry, less expensive
 // - enable samples per frame even when not accumulating
 // - maybe allow not resetting ReSTIR buffers while accumulation is on and camera has moved? Probably gives bad results but why not allow it for testing purposes?
 // - shadow terminator issue on sphere low smooth scene

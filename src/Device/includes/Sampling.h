@@ -94,7 +94,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float power_heuristic(float pdf_a, float pdf_b)
  * that you should not divide by 1/nb_pdf_a in the evaluation of your function where you use
  * the MIS weight
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float balance_heuristic(float pdf_a, int nb_pdf_a, float pdf_b, int nb_pdf_b)
+HIPRT_HOST_DEVICE HIPRT_INLINE float balance_heuristic(float pdf_a, float nb_pdf_a, float pdf_b, float nb_pdf_b)
 {
     // Note that we should have a multiplication by nb_pdf_a in the
     // numerator but because we're going to divide by nb_pdf_a in the
@@ -118,7 +118,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float balance_heuristic(float pdf_a, int nb_pdf_a
     // would have here would be canceled and that would be basically
     // wasted maths so we're not doing it and we should not do it
     // in the function evaluation either.
-    return pdf_a / (nb_pdf_a * pdf_a + nb_pdf_b * pdf_b+  nb_pdf_c * pdf_c);
+    return pdf_a / (nb_pdf_a * pdf_a + nb_pdf_b * pdf_b + nb_pdf_c * pdf_c);
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float balance_heuristic(float pdf_a, float pdf_b)

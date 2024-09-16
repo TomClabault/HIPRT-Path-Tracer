@@ -15,16 +15,6 @@
 #include "Image/Image.h"
 #endif
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float luminance(ColorRGB32F pixel)
-{
-    return 0.3086f * pixel.r + 0.6094f * pixel.g + 0.0820f * pixel.b;
-}
-
-HIPRT_HOST_DEVICE HIPRT_INLINE float luminance(ColorRGBA32F pixel)
-{
-    return 0.3086f * pixel.r + 0.6094f * pixel.g + 0.0820f * pixel.b;
-}
-
 #ifdef __KERNELCC__
 // Dummy usings so that the GPU compiler doesn't complain that Image8Bit / Image32Bit don't exist.
 // It's okay to dummy use them as int because they are not used on the GPU side anyway, this is
@@ -43,7 +33,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA32F sample_texture_rgba(const void* text
     ColorRGBA32F rgba;
 
 #ifdef __KERNELCC__
-    // We're doing the UV addressing oursevles since it seems to be broken in Orochi...
+    // We're doing the UV addressing ourselves since it seems to be broken in Orochi...
     // 
     // Sampling in repeat mode so we're just keeping the fractional part
     float u = uv.x - (int)uv.x;

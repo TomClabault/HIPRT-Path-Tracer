@@ -120,7 +120,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	if (temporal_neighbor_reservoir.M > 0)
 	{
 		float target_function_at_center = 0.0f;
-		if (temporal_neighbor_reservoir.UCW != 0.0f)
+		if (temporal_neighbor_reservoir.UCW > 0.0f)
 			// Only resampling if the temporal neighbor isn't empty
 			//
 			// If the temporal neiughor's reservoir is empty, then we do not get
@@ -130,7 +130,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 
 		float jacobian_determinant = 1.0f;
 		// If the neighbor reservoir is invalid, do not compute the jacobian
-		if (target_function_at_center > 0.0f && temporal_neighbor_reservoir.UCW != 0.0f)
+		if (target_function_at_center > 0.0f && temporal_neighbor_reservoir.UCW > 0.0f && !(temporal_neighbor_reservoir.sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE))
 		{
 			// The reconnection shift is what is implicitely used in ReSTIR DI. We need this because
 			// the initial light sample candidates that we generate on the area of the lights have an
@@ -233,10 +233,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 
 	new_reservoir.end_with_normalization(normalization_numerator, normalization_denominator);
 	new_reservoir.sanity_check(make_int2(x, y));
-
-#if ReSTIR_DI_DoVisibilityReuse && ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
-	ReSTIR_DI_visibility_reuse(render_data, new_reservoir, center_pixel_surface.shading_point);
-#endif
 
 	render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs[center_pixel_index] = new_reservoir;
 }
