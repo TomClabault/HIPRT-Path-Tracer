@@ -33,8 +33,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around this pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 1019
-#define DEBUG_PIXEL_Y 285
+#define DEBUG_PIXEL_X 910
+#define DEBUG_PIXEL_Y 440
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 1
@@ -57,7 +57,7 @@
 #define DEBUG_RENDER_NEIGHBORHOOD 1
 // How many pixels to render around the debugged pixel given by the DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y coordinates
-#define DEBUG_NEIGHBORHOOD_SIZE 50
+#define DEBUG_NEIGHBORHOOD_SIZE 125
 
 CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, height))
 {

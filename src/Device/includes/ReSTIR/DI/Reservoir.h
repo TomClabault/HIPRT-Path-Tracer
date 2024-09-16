@@ -17,6 +17,13 @@
 static std::mutex log_mutex;
 #endif
 
+enum ReSTIRDISampleFlags
+{
+    RESTIR_DI_FLAGS_NONE = 0,
+    RESTIR_DI_FLAGS_BSDF_SAMPLE = 1 << 1,
+    RESTIR_DI_FLAGS_ENVMAP_SAMPLE = 1 << 2
+};
+
 struct ReSTIRDISample
 {
     // Global primitive index corresponding to the emissive triangle sampled
@@ -24,6 +31,7 @@ struct ReSTIRDISample
     float3 point_on_light_source = { 0, 0, 0 };
 
     float target_function = 0.0f;
+    int flags = RESTIR_DI_FLAGS_NONE;
 };
 
 struct ReSTIRDIReservoir

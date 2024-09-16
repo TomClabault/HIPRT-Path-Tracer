@@ -17,10 +17,9 @@
 #include "stb_image_write.h"
 
 // TODOs ReSTIR DI
-// - add envmap sampling to light samples with a probability (refactor envmap sampling in eval, sample and PDF functions)
 // - add second bounce direct light sampling strategy in imgui
 // - add hammersley usage or not imgui for spatial reuse
-// - pairwise mis with defensive & CW
+// - restore M value of initial candidates to 5 (not 1) and implicitly multiply M-cap by the number of initial candidates so that everything stays correct
 // - fused spatiotemporal
 // - feature to disable ReSTIR after a certain percentage of convergence --> we don't want to pay the full price of resampling and everything only for a few difficult isolated pixels (especially true with adaptive sampling where neighbors don't get sampled --> no new samples added to their reservoir --> no need to resample)
 // - camera ray jittering causes dark lines and darkens glossy reflections
@@ -29,6 +28,7 @@
 // - temporal reprojection at grazing angles broken --> We need a better reprojection 
 // - different M cap for glossy surfaces ?
 // - temporal permutation sampling
+// - limit distance of BSDF ray for initial sampling (biased but reduces BVH traversal so performance++)
 // - maybe not spatially resample as hard everywhere in the image? heuristic to reduce/increase the number of spatial samples per pixel?
 // - possibility to reuse final shading visibility
 // - for spatial reuse, put the heuristics checks in the 'get_spatial_neighbor_function'
@@ -73,6 +73,7 @@
 //		- ---------------- set_envmap() duration : 962ms
 //		- ---------------- set_scene() duration : 136ms
 // - refactor ImGuiRenderer in several sub classes that each draw a panel
+// - search for calls to 'trace_ray' and replace them with 'evaluate_shadow_ray' where possible for performance (emissive texture support though?)
 
 
 
