@@ -58,6 +58,8 @@ struct HIPRTGeometry
 			std::cout << "PLOC BVH";
 		else if (build_flags & hiprtBuildFlagBitPreferHighQualityBuild)
 			std::cout << "SBVH";
+
+		std::cout << std::endl;
 	}
 
 	void build_bvh()
