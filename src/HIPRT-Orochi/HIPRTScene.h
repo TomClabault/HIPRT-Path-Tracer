@@ -58,8 +58,6 @@ struct HIPRTGeometry
 			std::cout << "PLOC BVH";
 		else if (build_flags & hiprtBuildFlagBitPreferHighQualityBuild)
 			std::cout << "SBVH";
-
-		std::cout << "... (This can take 30s+ on NVIDIA hardware)" << std::endl;
 	}
 
 	void build_bvh()
