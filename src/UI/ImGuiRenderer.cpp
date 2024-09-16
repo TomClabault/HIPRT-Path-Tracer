@@ -162,10 +162,12 @@ void ImGuiRenderer::draw_render_settings_panel()
 		if (ImGui::Button("Apply"))
 		{
 			if (resolution_scaling_current_widget_value <= 0.0f)
+				// Wrong resolution scaling factor, restoring to previous value
 				resolution_scaling_current_widget_value = m_application_settings->render_resolution_scale;
 			else
 			{
 				// Valid scaling factor
+				m_application_settings->render_resolution_scale = resolution_scaling_current_widget_value;
 				m_render_window->change_resolution_scaling(resolution_scaling_current_widget_value);
 				m_render_window->set_render_dirty(true);
 			}
