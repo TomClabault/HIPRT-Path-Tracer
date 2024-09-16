@@ -42,6 +42,7 @@
 // - heuristics makes it hard to reuse on the teapot of the white room because of normals dissimilarity i guess?
 // - heuristics adds some noisy/artifacty pixels. Especially on high details geometry
 // - bias status if not tracing spatial reservoirs
+// - bias status when unchecking visibility reuse while still using bias correction visiblity (should be biased because we may discard samples that could have been produced but isn't)
 // - not tracing spatial reservoirs + temporal reuse = bias explosion
 // - just start and uncheck visibility reuse = bias explosion
 
