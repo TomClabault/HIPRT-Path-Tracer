@@ -202,10 +202,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
             bsdf_ray.origin = shadow_ray_origin;
             bsdf_ray.direction = sampled_direction;
 
-            HitInfo bsdf_ray_hit_info;
-            RayPayload bsdf_ray_payload;
-            bool hit_found = trace_ray(render_data, bsdf_ray, bsdf_ray_payload, bsdf_ray_hit_info);
-            if (hit_found && bsdf_ray_payload.material.is_emissive())
+            ShadowLightRayHitInfo shadow_light_ray_hit_info;
+            bool hit_found = evaluate_shadow_light_ray(render_data, bsdf_ray, 1.0e35f, shadow_light_ray_hit_info);
+            if (hit_found && !shadow_light_ray_hit_info.hit_emission.is_black())
             {
                 // If we intersected an emissive material, compute the weight. 
                 // Otherwise, the weight is 0 because of the emision being 0 so we just don't compute it
@@ -224,9 +223,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
                 // Our target function does not include the geometry term because we're integrating
                 // in solid angle. The geometry term in the target function ( / in the integrand) is only
                 // for surface area direct lighting integration
-                target_function = (bsdf_color * bsdf_ray_payload.material.emission * cosine_at_evaluated_point).luminance();
+                target_function = (bsdf_color * shadow_light_ray_hit_info .hit_emission * cosine_at_evaluated_point).luminance();
 
-                float light_pdf = pdf_of_emissive_triangle_hit(render_data, bsdf_ray_hit_info, sampled_direction); 
+                float light_pdf = pdf_of_emissive_triangle_hit(render_data, shadow_light_ray_hit_info, sampled_direction);
                 // If we refracting, drop the light PDF to 0
                 // 
                 // Why?
@@ -246,8 +245,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
                 float mis_weight = balance_heuristic(bsdf_sample_pdf, nb_bsdf_candidates, light_pdf, nb_light_candidates);
                 candidate_weight = mis_weight * target_function / bsdf_sample_pdf;
 
-                bsdf_RIS_sample.emissive_triangle_index = bsdf_ray_hit_info.primitive_index;
-                bsdf_RIS_sample.point_on_light_source = bsdf_ray_hit_info.inter_point;
+                bsdf_RIS_sample.emissive_triangle_index = shadow_light_ray_hit_info.hit_prim_index;
+                bsdf_RIS_sample.point_on_light_source = bsdf_ray.origin + bsdf_ray.direction * shadow_light_ray_hit_info.hit_distance;
                 bsdf_RIS_sample.is_bsdf_sample = true;
                 bsdf_RIS_sample.bsdf_sample_contribution = bsdf_color;
                 bsdf_RIS_sample.bsdf_sample_cosine_term = cosine_at_evaluated_point;

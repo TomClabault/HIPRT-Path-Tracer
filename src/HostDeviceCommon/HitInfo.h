@@ -31,4 +31,17 @@ struct HitInfo
     int primitive_index = -1;
 };
 
+/**
+ * Information returned by a shadow ray used to test visibility with a light.
+ * 
+ * Returned by the evaluated_shadow_light_ray() function
+ */
+struct ShadowLightRayHitInfo
+{
+    int hit_prim_index;
+    float hit_distance;
+    float3 hit_shading_normal;
+    ColorRGB32F hit_emission;
+};
+
 #endif

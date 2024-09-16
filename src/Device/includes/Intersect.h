@@ -95,7 +95,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE hiprtHit intersect_scene_cpu(const HIPRTRenderDat
 }
 #endif
 
-HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data, hiprtRay ray, RayPayload& ray_payload, HitInfo& hit_info)
+/**
+ * Returns true if a hit was found, false otherwise
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data, hiprtRay ray, RayPayload& in_out_ray_payload, HitInfo& out_hit_info)
 {
     hiprtHit hit;
     bool skipping_volume_boundary = false;
@@ -125,34 +128,34 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
         if (!hit.hasHit())
             return false;
 
-        hit_info.inter_point = ray.origin + hit.t * ray.direction;
-        hit_info.primitive_index = hit.primID;
-        hit_info.texcoords = uv_interpolate(render_data.buffers.triangles_indices, hit_info.primitive_index, render_data.buffers.texcoords, hit.uv);
+        out_hit_info.inter_point = ray.origin + hit.t * ray.direction;
+        out_hit_info.primitive_index = hit.primID;
+        out_hit_info.texcoords = uv_interpolate(render_data.buffers.triangles_indices, out_hit_info.primitive_index, render_data.buffers.texcoords, hit.uv);
         // hit.normal is in object space, this simple approach will not work if using
         // multiple-levels BVH (TLAS/BLAS)
-        hit_info.geometric_normal = hippt::normalize(hit.normal);
-        hit_info.shading_normal = get_shading_normal(render_data, hit_info.geometric_normal, hit_info.primitive_index, hit.uv, hit_info.texcoords);
+        out_hit_info.geometric_normal = hippt::normalize(hit.normal);
+        out_hit_info.shading_normal = get_shading_normal(render_data, out_hit_info.geometric_normal, out_hit_info.primitive_index, hit.uv, out_hit_info.texcoords);
 
-        hit_info.t = hit.t;
-        hit_info.uv = hit.uv;
+        out_hit_info.t = hit.t;
+        out_hit_info.uv = hit.uv;
 
-        if (ray_payload.is_inside_volume())
-            ray_payload.volume_state.distance_in_volume += hit.t;
+        if (in_out_ray_payload.is_inside_volume())
+            in_out_ray_payload.volume_state.distance_in_volume += hit.t;
 
         float base_color_alpha = 1.0f;
         int material_index = render_data.buffers.material_indices[hit.primID];
-        ray_payload.material = get_intersection_material(render_data, material_index, hit_info.texcoords, base_color_alpha);
+        in_out_ray_payload.material = get_intersection_material(render_data, material_index, out_hit_info.texcoords, base_color_alpha);
 
         skipping_intersection = base_color_alpha < 1.0f;
         if (skipping_intersection)
         {
             // Skipping the intersection now and not doing the volume stack handling
-            ray.origin = hit_info.inter_point + ray.direction * 3.0e-3f;
+            ray.origin = out_hit_info.inter_point + ray.direction * 3.0e-3f;
 
             continue;
         }
 
-        if (!ray_payload.is_inside_volume() || ray_payload.material.specular_transmission == 0.0f)
+        if (!in_out_ray_payload.is_inside_volume() || in_out_ray_payload.material.specular_transmission == 0.0f)
         {
             // If we're not in a volume, there's no reason for the normals not to be facing us so we're flipping
             // if they were wrongly oriented
@@ -160,20 +163,20 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
             // Same thing with objects that do not let the rays pass through (non transmissive):
             // because we can never be inside of these objects, we're always outside.
             // If we're always outside, there's no reason to have the normals of these objects inverted.
-            hit_info.geometric_normal *= hippt::dot(hit_info.geometric_normal, -ray.direction) < 0 ? -1 : 1;
-            hit_info.shading_normal *= hippt::dot(hit_info.shading_normal, -ray.direction) < 0 ? -1 : 1;
+            out_hit_info.geometric_normal *= hippt::dot(out_hit_info.geometric_normal, -ray.direction) < 0 ? -1 : 1;
+            out_hit_info.shading_normal *= hippt::dot(out_hit_info.shading_normal, -ray.direction) < 0 ? -1 : 1;
         }
 
-        skipping_volume_boundary = ray_payload.volume_state.interior_stack.push(ray_payload.volume_state.incident_mat_index, ray_payload.volume_state.outgoing_mat_index, ray_payload.volume_state.leaving_mat, material_index, ray_payload.material.dielectric_priority);
+        skipping_volume_boundary = in_out_ray_payload.volume_state.interior_stack.push(in_out_ray_payload.volume_state.incident_mat_index, in_out_ray_payload.volume_state.outgoing_mat_index, in_out_ray_payload.volume_state.leaving_mat, material_index, in_out_ray_payload.material.dielectric_priority);
 
         if (skipping_volume_boundary)
         {
             // If we're skipping, the boundary, the ray just keeps going on its way
-            ray.origin = hit_info.inter_point + ray.direction * 3.0e-3f;
+            ray.origin = out_hit_info.inter_point + ray.direction * 3.0e-3f;
 
             // Don't forget to increment the distance traveled
             // TODO: Are we not double counting the distance here and a few lines above (where we set the .t, .uv, .geometric_normal, ...)
-            ray_payload.volume_state.distance_in_volume += hit.t;
+            in_out_ray_payload.volume_state.distance_in_volume += hit.t;
         }
 
     } while ((skipping_volume_boundary && hit.hasHit()) || skipping_intersection);
@@ -197,7 +200,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& r
 #if SharedStackBVHTraversalShadowRays == KERNEL_OPTION_TRUE
 #if SharedStackBVHTraversalSizeShadowRays > 0
         __shared__ int shared_stack_cache[SharedStackBVHTraversalSizeShadowRays * SharedStackBVHTraversalBlockSize];
-        hiprtSharedStackBuffer shared_stack_buffer { SharedStackBVHTraversalSizeShadowRays, shared_stack_cache };
+        hiprtSharedStackBuffer shared_stack_buffer{ SharedStackBVHTraversalSizeShadowRays, shared_stack_cache };
 #else
         hiprtSharedStackBuffer shared_stack_buffer{ 0, nullptr };
 #endif
@@ -248,6 +251,134 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& r
 
     // If we found a hit and that it is close enough
     return hit.hasHit() && cumulative_t < t_max - 1.0e-4f;
+#endif // __KERNELCC__
+}
+
+/**
+ * Returns true if in shadow, false otherwise.
+ * 
+ * Also, if a hit was found, outputs the emission of the material at the hit point in 'out_hit_emission'
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderData& render_data, hiprtRay ray, float t_max, ShadowLightRayHitInfo& out_light_hit_info)
+{
+#ifdef __KERNELCC__
+    ray.maxT = t_max - 1.0e-4f;
+
+    hiprtHit shadow_ray_hit;
+    float alpha;
+    out_light_hit_info.hit_distance = 0.0f;
+
+    do
+    {
+#if SharedStackBVHTraversalShadowRays == KERNEL_OPTION_TRUE
+#if SharedStackBVHTraversalSizeShadowRays > 0
+        __shared__ int shared_stack_cache[SharedStackBVHTraversalSizeShadowRays * SharedStackBVHTraversalBlockSize];
+        hiprtSharedStackBuffer shared_stack_buffer{ SharedStackBVHTraversalSizeShadowRays, shared_stack_cache };
+#else
+        hiprtSharedStackBuffer shared_stack_buffer{ 0, nullptr };
+#endif
+        hiprtGlobalStack global_stack(render_data.global_traversal_stack_buffer, shared_stack_buffer);
+
+        hiprtGeomTraversalClosestCustomStack<hiprtGlobalStack> traversal(render_data.geom, ray, global_stack);
+#else
+        hiprtGeomTraversalClosest traversal(render_data.geom, ray);
+#endif
+
+        shadow_ray_hit = traversal.getNextHit();
+        if (!shadow_ray_hit.hasHit())
+            return false;
+
+        alpha = get_hit_base_color_alpha(render_data, shadow_ray_hit);
+
+        float3 inter_point = ray.origin + ray.direction * shadow_ray_hit.t;
+        ray.origin = inter_point + ray.direction * 3.0e-3f;
+        ray.maxT -= shadow_ray_hit.t;
+        out_light_hit_info.hit_distance += shadow_ray_hit.t;
+    } while (alpha < 1.0f);
+
+
+    // If we're here, this means that we found a hit that is not
+    // alpha-transparent with a distance < t_max so that's a hit and we're shadowed.
+
+    // Reading the emission of the material
+    int material_index = render_data.buffers.material_indices[shadow_ray_hit.primID];
+    int emission_texture_index = render_data.buffers.materials_buffer[material_index].emission_texture_index;
+
+    if (emission_texture_index != -1)
+    {
+        float2 texcoords = uv_interpolate(render_data.buffers.triangles_indices, shadow_ray_hit.primID, render_data.buffers.texcoords, shadow_ray_hit.uv);
+        get_material_property(render_data, out_light_hit_info.hit_emission, false, texcoords, emission_texture_index);
+
+        // Using the already computed texcoords to get the shading normal
+        out_light_hit_info.hit_shading_normal = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), shadow_ray_hit.primID, shadow_ray_hit.uv, texcoords);
+    }
+    else
+    {
+        out_light_hit_info.hit_emission = render_data.buffers.materials_buffer[material_index].emission;
+
+        float2 texcoords = uv_interpolate(render_data.buffers.triangles_indices, shadow_ray_hit.primID, render_data.buffers.texcoords, shadow_ray_hit.uv);
+        out_light_hit_info.hit_shading_normal = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), shadow_ray_hit.primID, shadow_ray_hit.uv, texcoords);
+    }
+
+    out_light_hit_info.hit_prim_index = shadow_ray_hit.primID;
+
+    return true;
+#else
+    float alpha = 1.0f;
+    // The total distance of our ray. Incremented after each hit
+    // (we may find multiple hits if we hit transparent texture
+    // and keep intersecting the scene)
+    float cumulative_t = 0.0f;
+
+    hiprtHit shadow_ray_hit;
+    do
+    {
+        // We should use ray tracing fitler functions here instead of re-tracing new rays
+        shadow_ray_hit = intersect_scene_cpu(render_data, ray);
+        if (!shadow_ray_hit.hasHit())
+            return false;
+
+        alpha = get_hit_base_color_alpha(render_data, shadow_ray_hit);
+
+        float3 inter_point = ray.origin + ray.direction * shadow_ray_hit.t;
+        ray.origin = inter_point + ray.direction * 3.0e-3f;
+        cumulative_t += shadow_ray_hit.t;
+
+        // We keep going as long as the alpha is < 1.0f meaning that we hit texture transparency
+    } while (alpha < 1.0f && cumulative_t < t_max - 1.0e-4f);
+
+    bool hit_found = shadow_ray_hit.hasHit() && cumulative_t < t_max - 1.0e-4f;
+
+    if (hit_found)
+    {
+        // If we found a hit and that it is close enough (hit_found conditions)
+
+        int material_index = render_data.buffers.material_indices[shadow_ray_hit.primID];
+        int emission_texture_index = render_data.buffers.materials_buffer[material_index].emission_texture_index;
+
+        if (emission_texture_index != -1)
+        {
+            float2 texcoords = uv_interpolate(render_data.buffers.triangles_indices, shadow_ray_hit.primID, render_data.buffers.texcoords, shadow_ray_hit.uv);
+            get_material_property(render_data, out_light_hit_info.hit_emission, false, texcoords, emission_texture_index);
+
+            // Using the already computed texcoords to get the shading normal
+            out_light_hit_info.hit_shading_normal = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), shadow_ray_hit.primID, shadow_ray_hit.uv, texcoords);
+        }
+        else
+        {
+            out_light_hit_info.hit_emission = render_data.buffers.materials_buffer[material_index].emission;
+
+            float2 texcoords = uv_interpolate(render_data.buffers.triangles_indices, shadow_ray_hit.primID, render_data.buffers.texcoords, shadow_ray_hit.uv);
+            out_light_hit_info.hit_shading_normal = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), shadow_ray_hit.primID, shadow_ray_hit.uv, texcoords);
+        }
+
+        out_light_hit_info.hit_prim_index = shadow_ray_hit.primID;
+        out_light_hit_info.hit_distance = cumulative_t;
+
+        return true;
+    }
+    else
+        return false;
 #endif // __KERNELCC__
 }
 

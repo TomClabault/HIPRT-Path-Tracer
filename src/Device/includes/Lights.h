@@ -98,16 +98,15 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_bsdf(const HIPRTRend
             new_ray.origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f * inside_surface_multiplier * -1.0f;
         }
 
-        HitInfo new_ray_hit_info;
-        RayPayload bsdf_ray_payload;
-        bool inter_found = trace_ray(render_data, new_ray, bsdf_ray_payload, new_ray_hit_info);
+        ShadowLightRayHitInfo shadow_light_ray_hit_info;
+        bool inter_found = evaluate_shadow_light_ray(render_data, new_ray, 1.0e35f, shadow_light_ray_hit_info);
 
         // Checking that we did hit something and if we hit something,
-        // it needs to be the light that we're currently sampling
-        if (inter_found && bsdf_ray_payload.material.is_emissive())
+        // it needs to be emissive
+        if (inter_found && !shadow_light_ray_hit_info.hit_emission.is_black())
         {
             float cosine_term = hippt::max(0.0f, hippt::dot(closest_hit_info.shading_normal, sampled_brdf_direction));
-            bsdf_radiance = bsdf_color * cosine_term * bsdf_ray_payload.material.emission / direction_pdf;
+            bsdf_radiance = bsdf_color * cosine_term * shadow_light_ray_hit_info.hit_emission / direction_pdf;
         }
     }
 
@@ -189,15 +188,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(const HIPRTRende
         new_ray.origin = bsdf_shadow_ray_origin;
         new_ray.direction = sampled_bsdf_direction;
 
-        HitInfo bsdf_ray_hit_info;
-        RayPayload bsdf_ray_payload;
-        bool inter_found = trace_ray(render_data, new_ray, bsdf_ray_payload, bsdf_ray_hit_info);
+        ShadowLightRayHitInfo shadow_light_ray_hit_info;
+        bool inter_found = evaluate_shadow_light_ray(render_data, new_ray, 1.0e35f, shadow_light_ray_hit_info);
 
         // Checking that we did hit something and if we hit something,
-        // it needs to be the light that we're currently sampling
-        if (inter_found && bsdf_ray_payload.material.is_emissive())
+        // it needs to be emissive
+        if (inter_found && !shadow_light_ray_hit_info.hit_emission.is_black())
         {
-            float light_pdf = pdf_of_emissive_triangle_hit(render_data, bsdf_ray_hit_info, sampled_bsdf_direction);
+            float light_pdf = pdf_of_emissive_triangle_hit(render_data, shadow_light_ray_hit_info, sampled_bsdf_direction);
             float mis_weight = power_heuristic(direction_pdf, light_pdf);
 
             // Using abs here because we want the dot product to be positive.
@@ -211,7 +209,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(const HIPRTRende
             // we'll need to negative the dot product for it to be positive
             float cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, sampled_bsdf_direction));
             //float cosine_term = hippt::max(0.0f, hippt::dot(closest_hit_info.shading_normal, sampled_brdf_direction));
-            bsdf_radiance_mis = bsdf_color * cosine_term * bsdf_ray_payload.material.emission * mis_weight / direction_pdf;
+            bsdf_radiance_mis = bsdf_color * cosine_term * shadow_light_ray_hit_info.hit_emission * mis_weight / direction_pdf;
         }
     }
 

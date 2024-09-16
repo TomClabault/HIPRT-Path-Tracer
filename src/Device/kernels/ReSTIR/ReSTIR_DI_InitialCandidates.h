@@ -30,6 +30,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
     // for better interactive framerates
     int nb_light_candidates = render_data.render_settings.do_render_low_resolution() ? 1 : render_data.render_settings.restir_di_settings.initial_candidates.number_of_initial_light_candidates;
     int nb_bsdf_candidates = render_data.render_settings.do_render_low_resolution() ? 1 : render_data.render_settings.restir_di_settings.initial_candidates.number_of_initial_bsdf_candidates;
+    int nb_envmap_candidates = render_data.render_settings.do_render_low_resolution() ? 1 : render_data.render_settings.restir_di_settings.initial_candidates.number_of_initial_envmap_candidates;
 
     // Sampling candidates with weighted reservoir sampling
     ReSTIRDIReservoir reservoir;
@@ -136,10 +137,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
             bsdf_ray.origin = shadow_ray_origin;
             bsdf_ray.direction = sampled_direction;
 
-            HitInfo bsdf_ray_hit_info;
-            RayPayload bsdf_ray_payload;
-            bool hit_found = trace_ray(render_data, bsdf_ray, bsdf_ray_payload, bsdf_ray_hit_info);
-            if (hit_found && bsdf_ray_payload.material.is_emissive())
+            ShadowLightRayHitInfo shadow_light_ray_hit_info;
+            bool hit_found = evaluate_shadow_light_ray(render_data, bsdf_ray, 1.0e35f, shadow_light_ray_hit_info);
+            if (hit_found && !shadow_light_ray_hit_info.hit_emission.is_black())
             {
                 // If we intersected an emissive material, compute the weight. 
                 // Otherwise, the weight is 0 because of the emision being 0 so we just don't compute it
@@ -155,9 +155,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
                 // we'll need to negative the dot product for it to be positive
                 cosine_at_evaluated_point = hippt::abs(hippt::dot(closest_hit_info.shading_normal, sampled_direction));
 
-                target_function = (bsdf_color * bsdf_ray_payload.material.emission * cosine_at_evaluated_point).luminance();
+                target_function = (bsdf_color * shadow_light_ray_hit_info.hit_emission * cosine_at_evaluated_point).luminance();
 
-                float light_pdf = pdf_of_emissive_triangle_hit(render_data, bsdf_ray_hit_info, sampled_direction);
+                float light_pdf = pdf_of_emissive_triangle_hit(render_data, shadow_light_ray_hit_info, sampled_direction);
                 // If we refracting, drop the light PDF to 0
                 // 
                 // Why?
@@ -177,8 +177,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
                 float mis_weight = balance_heuristic(bsdf_sample_pdf, nb_bsdf_candidates, light_pdf, nb_light_candidates);
                 candidate_weight = mis_weight * target_function / bsdf_sample_pdf;
 
-                bsdf_RIS_sample.emissive_triangle_index = bsdf_ray_hit_info.primitive_index;
-                bsdf_RIS_sample.point_on_light_source = bsdf_ray_hit_info.inter_point;
+                bsdf_RIS_sample.emissive_triangle_index = shadow_light_ray_hit_info.hit_prim_index;
+                bsdf_RIS_sample.point_on_light_source = bsdf_ray.origin + bsdf_ray.direction * shadow_light_ray_hit_info.hit_distance;
                 bsdf_RIS_sample.target_function = target_function;
             }
         }
@@ -188,32 +188,44 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
         reservoir.add_one_candidate(bsdf_RIS_sample, candidate_weight, random_number_generator);
     }
 
+    /*for (int i = 0; i < nb_envmap_candidates; i++)
+    {
+        float envmap_pdf;
+        float3 envmap_direction;
+        ColorRGB32F envmap_color = envmap_sample(render_data, envmap_direction, envmap_pdf, random_number_generator);
+
+        hiprtRay shadow_ray;
+        shadow_ray.origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f;
+        shadow_ray.direction = envmap_direction;
+
+        evaluate_shadow_ray(render_data, shadow_ray, 1.0e35f);
+
+        float cosine_term = hippt::max(0.0f, hippt::dot(closest_hit_info.shading_normal, envmap_direction));
+        if (cosine_term > 0.0f && envmap_pdf > 0.0f)
+        {
+            float bsdf_pdf;
+            RayVolumeState ray_volume_state = ray_payload.volume_state;
+            ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, ray_payload.material, ray_volume_state, view_direction, closest_hit_info.shading_normal, envmap_direction, bsdf_pdf);
+
+            float light_pdf = 0.0f;
+
+
+            if (e)
+
+            float mis_weight = balance_heuristic(envmap_pdf, nb_envmap_candidates, bsdf_pdf, nb_bsdf_candidates, light_pdf, nb_light_candidates);
+
+            ColorRGB32F envmap_mis_contribution = envmap_color / envmap_pdf * bsdf_color * cosine_term * mis_weight;
+        }
+    }*/
+
     reservoir.end();
     // There's no need to keep M > 1 here, if you have 4 light candidates and 1 BSDF candidates, that's 5 samples.
-    // But if you divide everyone by 5, everything stays correct. However, this avoids too fast of an exponentiation
-    // of M with spatial and temporal reuse so that's cool
+    // But if you divide everyone by 5, everything stays correct. That allows manipulating the M-cap without having
+    // to take the number of initial candidates into account
     reservoir.M = 1;
 
     return reservoir;
 }
-
-//HIPRT_HOST_DEVICE HIPRT_INLINE void ReSTIR_DI_visibility_reuse(const HIPRTRenderData& render_data, ReSTIRDIReservoir& reservoir, float3 shading_point)
-//{
-//    if (reservoir.UCW == 0.0f)
-//        return;
-//
-//    float distance_to_light;
-//    float3 sample_direction = reservoir.sample.point_on_light_source - shading_point;
-//    sample_direction /= (distance_to_light = hippt::length(sample_direction));
-//
-//    hiprtRay shadow_ray;
-//    shadow_ray.origin = shading_point;
-//    shadow_ray.direction = sample_direction;
-//
-//    bool visible = !evaluate_shadow_ray(render_data, shadow_ray, distance_to_light);
-//    if (!visible)
-//        reservoir.UCW = 0.0f;
-//}
 
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) ReSTIR_DI_InitialCandidates(HIPRTRenderData render_data, int2 res)
@@ -252,8 +264,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_InitialCandidates(HIPRTRenderData
     hit_info.shading_normal = render_data.g_buffer.shading_normals[pixel_index];
     hit_info.inter_point = render_data.g_buffer.first_hits[pixel_index];
 
-    // TODO replace this by using the simplified material directly in sample_light_RIS_reservoir instead of converting to RendererMaterial
-    // TODO storing in g_buffer.materials with SimplifiedRendererMaterial loses the texutres information
     SimplifiedRendererMaterial material = render_data.g_buffer.materials[pixel_index];
 
     float3 view_direction = render_data.g_buffer.view_directions[pixel_index];
