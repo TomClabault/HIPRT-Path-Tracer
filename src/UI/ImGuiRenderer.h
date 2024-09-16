@@ -8,6 +8,7 @@
 
 #include "Renderer/OpenImageDenoiser.h"
 #include "UI/ApplicationSettings.h"
+#include "UI/ImGuiRendererPerformancePreset.h"
 #include "UI/PerformanceMetricsComputer.h"
 
 #include "imgui.h"
@@ -36,6 +37,7 @@ public:
 	void draw_imgui_interface();
 
 	void draw_render_settings_panel();
+	void apply_performance_preset(ImGuiRendererPerformancePreset performance_preset);
 	void draw_camera_panel();
 	void draw_environment_panel();
 

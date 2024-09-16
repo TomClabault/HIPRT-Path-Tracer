@@ -142,6 +142,13 @@ void ImGuiRenderer::draw_render_settings_panel()
 		return;
 	ImGui::TreePush("Render settings tree");
 
+	ImGui::SeparatorText("Global Performance Presets");
+	static int preset_selected = 0;
+	std::vector<const char*> preset_items = { "None", "Fastest", "Fast", "Medium", "High Quality" };
+	if (ImGui::Combo("Performance Preset", &preset_selected, preset_items.data(), preset_items.size()))
+		apply_performance_preset(static_cast<ImGuiRendererPerformancePreset>(preset_selected));
+
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	ImGui::SeparatorText("Viewport Settings");
 	std::vector<const char*> items = { "- Default", "- Denoiser blend", "- Denoiser - Normals", "- Denoiser - Denoised normals", "- Denoiser - Albedo", "- Denoiser - Denoised albedo" };
 	if (render_settings.has_access_to_adaptive_sampling_buffers())
@@ -187,7 +194,8 @@ void ImGuiRenderer::draw_render_settings_panel()
 		}
 	}
 
-	ImGui::Separator();
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+	ImGui::SeparatorText("General Settings");
 
 	if (ImGui::Checkbox("Accumulate", &render_settings.accumulate))
 	{
@@ -339,6 +347,94 @@ void ImGuiRenderer::draw_render_settings_panel()
 
 	ImGui::TreePop();
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+}
+
+void ImGuiRenderer::apply_performance_preset(ImGuiRendererPerformancePreset performance_preset)
+{
+switch (performance_preset)
+{
+	case PERF_PRESET_NONE:
+		break;
+
+	case PERF_PRESET_FASTEST:
+	{
+		m_application_settings->render_resolution_scale = 0.5f;
+		m_application_settings->target_GPU_framerate = 25.0f;
+
+		HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
+		render_settings.nb_bounces = 1;
+		render_settings.ris_settings.number_of_bsdf_candidates = 0;
+		render_settings.ris_settings.number_of_light_candidates = 1;
+
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_RIS_BSDF_AND_LIGHT);
+		m_renderer->recompile_kernels();
+
+		m_render_window->change_resolution_scaling(0.5f);
+		m_render_window->set_render_dirty(true);
+
+		break;
+	}
+
+	case PERF_PRESET_FAST:
+	{
+		m_application_settings->render_resolution_scale = 0.75f;
+		m_application_settings->target_GPU_framerate = 15.0f;
+
+		HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
+		render_settings.nb_bounces = 2;
+		render_settings.ris_settings.number_of_bsdf_candidates = 1;
+		render_settings.ris_settings.number_of_light_candidates = 4;
+
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_RIS_BSDF_AND_LIGHT);
+		m_renderer->recompile_kernels();
+
+		m_render_window->change_resolution_scaling(0.75f);
+		m_render_window->set_render_dirty(true);
+
+		break;
+	}
+
+	case PERF_PRESET_MEDIUM:
+	{
+		m_application_settings->render_resolution_scale = 1.0f;
+		m_application_settings->target_GPU_framerate = 5.0f;
+
+		HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
+		render_settings.nb_bounces = 2;
+		render_settings.ris_settings.number_of_bsdf_candidates = 1;
+		render_settings.ris_settings.number_of_light_candidates = 8;
+
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_RIS_BSDF_AND_LIGHT);
+		m_renderer->recompile_kernels();
+
+		m_render_window->change_resolution_scaling(1.0f);
+		m_render_window->set_render_dirty(true);
+
+		break;
+	}
+
+	case PERF_PRESET_HIGH_QUALITY:
+	{
+		m_application_settings->render_resolution_scale = 1.0f;
+		m_application_settings->target_GPU_framerate = 5.0f;
+
+		HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
+		render_settings.nb_bounces = 4;
+		render_settings.ris_settings.number_of_bsdf_candidates = 1;
+		render_settings.ris_settings.number_of_light_candidates = 8;
+
+		m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_RESTIR_DI);
+		m_renderer->recompile_kernels();
+
+		m_render_window->change_resolution_scaling(1.0f);
+		m_render_window->set_render_dirty(true);
+
+		break;
+	}
+
+default:
+	break;
+}
 }
 
 void ImGuiRenderer::draw_camera_panel()
