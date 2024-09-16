@@ -180,6 +180,12 @@
 #define EnvmapSamplingStrategy ESS_BINARY_SEARCH
 
 /**
+ * Whether or not to do Muliple Importance Sampling between the envmap sample and a BSDF
+ * sample when importance sampling direct lighting contribution from the envmap
+ */
+#define EnvmapSamplingDoBSDFMIS KERNEL_OPTION_TRUE
+
+/**
  * Whether or not to use a visiblity term in the target function whose PDF we're
  * approximating with RIS.
  * Only applies for pure RIS direct lighting strategy (i.e. not RIS used by ReSTIR
@@ -202,6 +208,22 @@
  *	- KERNEL_OPTION_TRUE or KERNEL_OPTION_FALSE values are accepted. Self-explanatory
  */
 #define ReSTIR_DI_TargetFunctionVisibility KERNEL_OPTION_FALSE
+
+/**
+ * If false, the light sampler PDF will not be taken into account when computing the MIS weight
+ * of initial envmap sample candidates i.e. :
+ *	 
+ *	envmap_mis_weight = envmapPDF / (bsdfPDF + envmapPDF)
+ *	 
+ *	instead of
+ *	
+ *	envmap_mis_weight = envmapPDF / (bsdfPDF + envmapPDF + lightPDF)
+ *		
+ * This is technically biased (because the MIS weights now don't sum to 1) but the bias is
+ * litteraly imperceptible in my experience (or I haven't found a scene that shows the bias) and this
+ * saves casting a shadow ray (needed for the light sampler PDF evaluation)
+ */
+#define ReSTIR_DI_EnvmapSamplesMISLightSampler KERNEL_OPTION_FALSE
 
 /**
  * Whether or not to do a visibility check at the end of the initial candidates sampling.
@@ -271,7 +293,7 @@
  * performance boost of not tracing rays at the end of each spatial reuse pass given the very small increase
  * in bias may be worth it
  */
-#define ReSTIR_DI_RaytraceSpatialReuseReservoirs KERNEL_OPTION_TRUE
+#define ReSTIR_DI_RaytraceSpatialReuseReservoirs KERNEL_OPTION_FALSE
 
 /**
  * What bias correction weights to use when resampling neighbors (temporal / spatial)

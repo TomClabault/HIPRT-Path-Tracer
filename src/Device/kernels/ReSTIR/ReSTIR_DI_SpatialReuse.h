@@ -171,7 +171,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 		// If the neighbor reservoir is invalid, do not compute the jacobian
 		// Also, if this is the last neighbor resample (meaning that it is the sample pixel), 
 		// the jacobian is going to be 1.0f so no need to compute
-		if (target_function_at_center > 0.0f && neighbor_reservoir.UCW != 0.0f && neighbor_index != reused_neighbors_count)
+		if (target_function_at_center > 0.0f && neighbor_reservoir.UCW > 0.0f && neighbor_index != reused_neighbors_count && !(neighbor_reservoir.sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE))
 		{
 			// The reconnection shift is what is implicitely used in ReSTIR DI. We need this because
 			// the initial light sample candidates that we generate on the area of the lights have an
@@ -247,10 +247,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	new_reservoir.end_with_normalization(normalization_numerator, normalization_denominator);
 	new_reservoir.sanity_check(center_pixel_coords);
 
-#if ReSTIR_DI_DoVisibilityReuse && ReSTIR_DI_RaytraceSpatialReuseReservoirs && \
-	(ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z \
+#if (ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z \
 	|| ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS \
-	|| ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE)
+	|| ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE) \
+	&& ReSTIR_DI_DoVisibilityReuse && ReSTIR_DI_RaytraceSpatialReuseReservoirs
 	// Why is this needed?
 	//
 	// Picture the case where we have visibility reuse (at the end of the initial candidates sampling pass),
@@ -291,52 +291,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	//
 	// We only need this if we're going to temporally reuse (because then the output of the spatial reuse must be correct
 	// for the temporal reuse pass) or if we have multiple spatial reuse passes and this is not the last spatial pass
-	if (render_data.render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass || render_data.render_settings.restir_di_settings.spatial_pass.number_of_passes - 1 != render_data.render_settings.restir_di_settings.spatial_pass.spatial_pass_index)
+	//if (render_data.render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass && render_data.render_settings.restir_di_settings.spatial_pass.number_of_passes - 1 != render_data.render_settings.restir_di_settings.spatial_pass.spatial_pass_index)
 		ReSTIR_DI_visibility_reuse(render_data, new_reservoir, center_pixel_surface.shading_point);
-#else
-	// There are also some edge cases that we want to cover which would cause bias explosion and lead to
-	// unusable renders. So this #else part is basically forcing the visibility reuse even if the user
-	// doesn't want it (but that's for their own good hehe)
-#if ReSTIR_DI_DoVisibilityReuse == KERNEL_OPTION_FALSE \
-	&& ReSTIR_DI_BiasCorrectionUseVisiblity == KERNEL_OPTION_TRUE \
-	&& ReSTIR_DI_TargetFunctionVisibility == KERNEL_OPTION_FALSE
-	// Without visibility reuse, samples that are occluded can be produced. If we're not discarding
-	// them here, they may be discarded in the subsequent temporal/spatial reuse
-	// (which use visibility bias correction because ReSTIR_DI_BiasCorrectionUseVisiblity == KERNEL_OPTION_TRUE)
-	// and this will cause brightening bias
-	//
-	// Using visibility in the target function completely stops the bias anyways because reservoir
-	// always account for visibility. That's it. No issues of reusing/discarding/occluded/unoccluded/... samples. No bias.
-
-	if (render_data.render_settings.restir_di_settings.use_confidence_weights)
-	{
-		// With confidence weights, the bias will compound so hard that it will blow up and completely corrupt the render
-		// so we need to visibility-reuse the reservoir here anyways
-		ReSTIR_DI_visibility_reuse(render_data, new_reservoir, center_pixel_surface.shading_point);
-	}
-#elif ReSTIR_DI_DoVisibilityReuse == KERNEL_OPTION_TRUE \
-	&& ReSTIR_DI_BiasCorrectionUseVisiblity == KERNEL_OPTION_TRUE \
-	&& ReSTIR_DI_RaytraceSpatialReuseReservoirs == KERNEL_OPTION_FALSE \
-	&& ReSTIR_DI_TargetFunctionVisibility == KERNEL_OPTION_FALSE
-	// This is almost the same situation as above: we're resampling neighbors into the center pixel
-	// but we don't ray trace the final reservoir (because ReSTIR_DI_RaytraceSpatialReuseReservoirs == KERNEL_OPTION_FALSE).
-	// This means that we may now have a reservoir in the center pixel that is actually occluded:
-	// the center pixel is now able to produce samples (through resampling its neighbors) that
-	// are actually occluded. In the next temporal/spatial pass, this center pixel may be
-	// resampled itself by one of its neighbors but with visibility in mind
-	// (because && ReSTIR_DI_BiasCorrectionUseVisiblity == KERNEL_OPTION_TRUE) and this may cause
-	// that center pixel to be wrongly discarded --> brightening bias
-	//
-	// Using visibility in the target function completely stops the bias anyways because reservoir
-	// always account for visibility. That's it. No issues of reusing/discarding/occluded/unoccluded/... samples. No bias.
-	if (render_data.render_settings.restir_di_settings.use_confidence_weights)
-	{
-		// With confidence weights, the bias will compound so hard that it will blow up and completely corrupt the render
-		// so we need to visibility-reuse the reservoir here anyways
-		ReSTIR_DI_visibility_reuse(render_data, new_reservoir, center_pixel_surface.shading_point);
-	}
-#endif
-
 #endif
 
 	render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs[center_pixel_index] = new_reservoir;

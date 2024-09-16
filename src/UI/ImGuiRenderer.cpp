@@ -540,7 +540,7 @@ void ImGuiRenderer::draw_environment_panel()
 void ImGuiRenderer::draw_sampling_panel()
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
-	std::shared_ptr<GPUKernelCompilerOptions> kernel_options = m_renderer->get_global_compiler_options();
+	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 
 	if (ImGui::CollapsingHeader("Sampling"))
 	{
@@ -585,7 +585,7 @@ void ImGuiRenderer::draw_sampling_panel()
 			ImGui::TreePush("Direct lighting sampling tree");
 
 			const char* items[] = { "- No direct light sampling", "- Uniform one light", "- BSDF Sampling", "- MIS (1 Light + 1 BSDF)", "- RIS BDSF + Light candidates", "- ReSTIR DI (Primary Hit Only) + RIS"};
-			if (ImGui::Combo("Direct light sampling strategy", kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
+			if (ImGui::Combo("Direct light sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
 			{
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
@@ -594,7 +594,7 @@ void ImGuiRenderer::draw_sampling_panel()
 
 			// Display additional widgets to control the parameters of the direct light
 			// sampling strategy chosen (the number of candidates for RIS for example)
-			switch (kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY))
+			switch (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY))
 			{
 			case LSS_NO_DIRECT_LIGHT_SAMPLING:
 				break;
@@ -610,7 +610,7 @@ void ImGuiRenderer::draw_sampling_panel()
 				static bool use_visibility_ris_target_function = RISUseVisiblityTargetFunction;
 				if (ImGui::Checkbox("Use visibility in RIS target function", &use_visibility_ris_target_function))
 				{
-					kernel_options->set_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, use_visibility_ris_target_function ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, use_visibility_ris_target_function ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 					m_renderer->recompile_kernels();
 
 					m_render_window->set_render_dirty(true);
@@ -623,7 +623,7 @@ void ImGuiRenderer::draw_sampling_panel()
 					m_render_window->set_render_dirty(true);
 				}
 
-				if (ImGui::SliderInt("RIS # of BSDF candidates", &render_settings.ris_settings.number_of_bsdf_candidates, 0, 32))
+				if (ImGui::SliderInt("RIS # of BSDF candidates", &render_settings.ris_settings.number_of_bsdf_candidates, 0, 16))
 				{
 					// Clamping to 0
 					render_settings.ris_settings.number_of_bsdf_candidates = std::max(0, render_settings.ris_settings.number_of_bsdf_candidates);
@@ -631,7 +631,7 @@ void ImGuiRenderer::draw_sampling_panel()
 					m_render_window->set_render_dirty(true);
 				}
 
-				if (ImGui::SliderInt("RIS # of light candidates", &render_settings.ris_settings.number_of_light_candidates, 0, 128))
+				if (ImGui::SliderInt("RIS # of light candidates", &render_settings.ris_settings.number_of_light_candidates, 0, 32))
 				{
 					// Clamping to 0
 					render_settings.ris_settings.number_of_light_candidates = std::max(0, render_settings.ris_settings.number_of_light_candidates);
@@ -644,7 +644,7 @@ void ImGuiRenderer::draw_sampling_panel()
 
 			case LSS_RESTIR_DI:
 			{
-				display_ReSTIR_DI_bias_status(kernel_options);
+				display_ReSTIR_DI_bias_status(global_kernel_options);
 
 				ImGui::SeparatorText("General Settings");
 				ImGui::TreePush("ReSTIR DI - General Settings Tree");
@@ -654,7 +654,7 @@ void ImGuiRenderer::draw_sampling_panel()
 					static bool use_target_function_visibility = ReSTIR_DI_TargetFunctionVisibility;
 					if (ImGui::Checkbox("Use visibility in target function (in all passes)", &use_target_function_visibility))
 					{
-						kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_TARGET_FUNCTION_VISIBILITY, use_target_function_visibility ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_TARGET_FUNCTION_VISIBILITY, use_target_function_visibility ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 						m_renderer->recompile_kernels();
 
 						m_render_window->set_render_dirty(true);
@@ -801,7 +801,7 @@ void ImGuiRenderer::draw_sampling_panel()
 				ImGui::SeparatorText("Initial Candidates Pass");
 				ImGui::TreePush("ReSTIR DI - Initial Candidate Pass Tree");
 				{
-					if (ImGui::SliderInt("# of BSDF initial candidates", &render_settings.restir_di_settings.initial_candidates.number_of_initial_bsdf_candidates, 0, 32))
+					if (ImGui::SliderInt("# of BSDF initial candidates", &render_settings.restir_di_settings.initial_candidates.number_of_initial_bsdf_candidates, 0, 16))
 					{
 						// Clamping to 0
 						render_settings.restir_di_settings.initial_candidates.number_of_initial_bsdf_candidates= std::max(0, render_settings.restir_di_settings.initial_candidates.number_of_initial_bsdf_candidates);
@@ -809,13 +809,42 @@ void ImGuiRenderer::draw_sampling_panel()
 						m_render_window->set_render_dirty(true);
 					}
 
-					if (ImGui::SliderInt("# of initial light candidates", &render_settings.restir_di_settings.initial_candidates.number_of_initial_light_candidates, 0, 128))
+					if (ImGui::SliderInt("# of initial light candidates", &render_settings.restir_di_settings.initial_candidates.number_of_initial_light_candidates, 0, 32))
 					{
 						// Clamping to 0
 						render_settings.restir_di_settings.initial_candidates.number_of_initial_light_candidates = std::max(0, render_settings.restir_di_settings.initial_candidates.number_of_initial_light_candidates);
 
 						m_render_window->set_render_dirty(true);
 					}
+
+					ImGui::BeginDisabled(!m_renderer->has_envmap());
+					if (ImGui::SliderFloat("Envmap candidate probability", &render_settings.restir_di_settings.initial_candidates.envmap_candidate_probability, 0.0f, 1.0f))
+					{
+						render_settings.restir_di_settings.initial_candidates.envmap_candidate_probability = hippt::clamp(0.0f, 1.0f, render_settings.restir_di_settings.initial_candidates.envmap_candidate_probability);
+
+						m_render_window->set_render_dirty(true);
+					}
+					ImGuiRenderer::show_help_marker("The probability to sample the envmap per each \"initial light candidates\"");
+					ImGui::EndDisabled();
+
+					/*ImGui::BeginDisabled(render_settings.restir_di_settings.initial_candidates.number_of_initial_envmap_candidates == 0);
+					static bool envmap_candidates_light_sampler_in_MIS = ReSTIR_DI_EnvmapSamplesMISLightSampler;
+					if (ImGui::Checkbox("Envmap Candidates - Light sampler in MIS", &envmap_candidates_light_sampler_in_MIS))
+					{
+						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_ENVMAP_SAMPLES_MIS_LIGHT_SAMPLER, envmap_candidates_light_sampler_in_MIS);
+
+						m_renderer->recompile_kernels();
+						m_render_window->set_render_dirty(true);
+					}
+					ImGui::EndDisabled();
+					std::string envmap_candidates_light_sampler_in_MIS_help_string = "If not checked, the MIS weight of "
+						"envmap sample candidates will not include the light PDF (probability of sampling the envmap "
+						"direction with the light sampler). This is technically biased but imperceptible as per my "
+						"testings and saves a shadow ray.";
+					if (render_settings.restir_di_settings.initial_candidates.number_of_initial_envmap_candidates == 0)
+						envmap_candidates_light_sampler_in_MIS_help_string += "\n\nDisabled because \"Envmap candidates\""
+						"== 0 so this option does not make sense";
+					ImGuiRenderer::show_help_marker(envmap_candidates_light_sampler_in_MIS_help_string);*/
 
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
 					ImGui::TreePop();
@@ -827,7 +856,7 @@ void ImGuiRenderer::draw_sampling_panel()
 					static bool do_visibility_reuse = ReSTIR_DI_DoVisibilityReuse;
 					if (ImGui::Checkbox("Do visibility reuse", &do_visibility_reuse))
 					{
-						kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE, do_visibility_reuse ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE, do_visibility_reuse ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 						m_renderer->recompile_kernels();
 
 						m_render_window->set_render_dirty(true);
@@ -910,7 +939,7 @@ void ImGuiRenderer::draw_sampling_panel()
 							m_render_window->set_render_dirty(true);
 						}
 
-						if (ImGui::SliderInt("Neighbor Reuse Count", &render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count, 1, 64))
+						if (ImGui::SliderInt("Neighbor Reuse Count", &render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count, 1, 32))
 						{
 							// Clamping
 							render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count = std::max(1, render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count);
@@ -920,7 +949,10 @@ void ImGuiRenderer::draw_sampling_panel()
 
 						if (ImGui::Checkbox("Neighbor Samples Random Rotation", &render_settings.restir_di_settings.spatial_pass.do_neighbor_rotation))
 							m_render_window->set_render_dirty(true);
-						ImGuiRenderer::show_help_marker("If checked, spatial neighbors sampled (using the Hammersley point set) will be randomly rotated. Because neighbor locations are generated with a Hammersley point set (deterministic), not rotating them results in every pixel of every rendered image reusing the same neighbor locations which can decrease reuse efficiency.");
+						ImGuiRenderer::show_help_marker("If checked, spatial neighbors sampled (using the Hammersley point set) "
+							"will be randomly rotated. Because neighbor locations are generated with a Hammersley point set "
+							"(deterministic), not rotating them results in every pixel of every rendered image reusing the "
+							"same neighbor locations which decreases reuse efficiency.");
 
 						ImGui::BeginDisabled(!render_settings.enable_adaptive_sampling);
 						if (ImGui::Checkbox("Allow Reuse of Converged Neighbors", &render_settings.restir_di_settings.spatial_pass.allow_converged_neighbors_reuse))
@@ -938,11 +970,17 @@ void ImGuiRenderer::draw_sampling_panel()
 						{
 							if (ImGui::SliderFloat("Converged Neighbor Reuse Probability", &render_settings.restir_di_settings.spatial_pass.converged_neighbor_reuse_probability, 0.0f, 1.0f))
 								m_render_window->set_render_dirty(true);
-							ImGuiRenderer::show_help_marker("Allows trading bias for rendering performance by spatially reusing converged neighbors only with a certain probability instead of never / always."
+							ImGuiRenderer::show_help_marker("Allows trading bias for rendering performance by "
+								"spatially reusing converged neighbors only with a certain probability instead of never / always."
 								"\n\n 0.0 nevers reuses converged neighbors. No bias but performance impact."
 								"\n\n 1.0 always reuses converged neighbors. Biased but no performance impact.");
 						}
 						ImGui::EndDisabled();
+
+						if (ImGui::Checkbox("Debug Neighbor Reuse Positions", &render_settings.restir_di_settings.spatial_pass.debug_neighbor_location))
+							m_render_window->set_render_dirty(true);
+						ImGuiRenderer::show_help_marker("If checked, neighbor in the spatial reuse pass will be hardcoded to always be "
+							"15 pixels to the right, not in a circle. This makes spotting bias easier when debugging.");
 					}
 
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -956,7 +994,7 @@ void ImGuiRenderer::draw_sampling_panel()
 						"- Pairwise MIS Weights (Unbiased)",
 						"- Pairwise MIS Weights Defensive (Unbiased)",
 					};
-					if (ImGui::Combo("Bias Correction Weights", kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS), bias_correction_mode_items, IM_ARRAYSIZE(bias_correction_mode_items)))
+					if (ImGui::Combo("Bias Correction Weights", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS), bias_correction_mode_items, IM_ARRAYSIZE(bias_correction_mode_items)))
 					{
 						m_renderer->recompile_kernels();
 
@@ -964,8 +1002,8 @@ void ImGuiRenderer::draw_sampling_panel()
 					}
 					ImGuiRenderer::show_help_marker("What weights to use to resample reservoirs");
 
-					bool disable_confidence_weights = kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_1_OVER_M
-						|| kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z;
+					bool disable_confidence_weights = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_1_OVER_M
+						|| global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z;
 
 					ImGui::BeginDisabled(disable_confidence_weights);
 					if (ImGui::Checkbox("Use Confidence Weights", &render_settings.restir_di_settings.use_confidence_weights))
@@ -977,12 +1015,12 @@ void ImGuiRenderer::draw_sampling_panel()
 					ImGui::EndDisabled();
 
 					// No visibility bias correction for 1/M weights
-					bool bias_correction_visibility_disabled = kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_1_OVER_M;
+					bool bias_correction_visibility_disabled = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_1_OVER_M;
 					static bool bias_correction_use_visibility = ReSTIR_DI_BiasCorrectionUseVisiblity;
 					ImGui::BeginDisabled(bias_correction_visibility_disabled);
 					if (ImGui::Checkbox("Use visibility in bias correction", &bias_correction_use_visibility))
 					{
-						kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY, bias_correction_use_visibility ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY, bias_correction_use_visibility ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 						m_renderer->recompile_kernels();
 
 						m_render_window->set_render_dirty(true);
@@ -994,15 +1032,62 @@ void ImGuiRenderer::draw_sampling_panel()
 					// Only 1/Z or pairwise MIS weights need that option to be fully unbiased
 					// Also, we only need this with one more than 1 spatial reuse pass
 					bool disable_raytrace_spatial_reuse_reservoirs = !(
-						kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
-						|| kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
-						|| kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE)
+						global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
+						|| global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
+						|| global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE)
 						|| render_settings.restir_di_settings.spatial_pass.number_of_passes == 1 || !render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass;
+
+					// Some special cases to avoid bias explosions. In those cases, ray tracing the reservoirs is mandatory 
+					// to avoid bias explosions so the choice isn't let to the user.
+					// So more explanations on why these special cases at the end of the spatial reuse kernel
+	//				bool special_case_1_condition = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE) == KERNEL_OPTION_FALSE
+	//					&& global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY) == KERNEL_OPTION_TRUE
+	//					&& global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_TARGET_FUNCTION_VISIBILITY) == KERNEL_OPTION_FALSE
+	//					&& render_settings.restir_di_settings.use_confidence_weights;
+	//				disable_raytrace_spatial_reuse_reservoirs |= special_case_1_condition;
+
+	//				// There are also some edge cases that we want to cover which would cause bias explosion and lead to
+	//// unusable renders. So this #else part is basically forcing the visibility reuse even if the user
+	//// doesn't want it (but that's for their own good hehe)
+	//// 
+	//// Without visibility reuse, samples that are occluded can be produced. If we're not discarding
+	//// them here, they may be discarded in the subsequent temporal/spatial reuse
+	//// (which use visibility bias correction because ReSTIR_DI_BiasCorrectionUseVisiblity == KERNEL_OPTION_TRUE)
+	//// and this will cause brightening bias
+	////
+	//// Using visibility in the target function completely stops the bias anyways because reservoir
+	//// always account for visibility. That's it. No issues of reusing/discarding/occluded/unoccluded/... samples. No bias.
+
+	//	// With confidence weights, the bias will compound so hard that it will blow up and completely corrupt the render
+	//	// so we need to visibility-reuse the reservoir here anyways
+	//	// 
+	//// This is almost the same situation as above: we're resampling neighbors into the center pixel
+	//// but we don't ray trace the final reservoir (because ReSTIR_DI_RaytraceSpatialReuseReservoirs == KERNEL_OPTION_FALSE).
+	//// This means that we may now have a reservoir in the center pixel that is actually occluded:
+	//// the center pixel is now able to produce samples (through resampling its neighbors) that
+	//// are actually occluded. In the next temporal/spatial pass, this center pixel may be
+	//// resampled itself by one of its neighbors but with visibility in mind
+	//// (because && ReSTIR_DI_BiasCorrectionUseVisiblity == KERNEL_OPTION_TRUE) and this may cause
+	//// that center pixel to be wrongly discarded --> brightening bias
+	////
+	//// Using visibility in the target function completely stops the bias anyways because reservoir
+	//// always account for visibility. That's it. No issues of reusing/discarding/occluded/unoccluded/... samples. No bias.
+
+	//	// With confidence weights, the bias will compound so hard that it will blow up and completely corrupt the render
+	//	// so we need to visibility-reuse the reservoir here anyways
+
+	//				bool special_case_2_condition = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE) == KERNEL_OPTION_TRUE
+	//					&& global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY) == KERNEL_OPTION_TRUE
+	//					&& global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_RAYTRACE_SPATIAL_REUSE_RESERVOIR) == KERNEL_OPTION_FALSE
+	//					&& global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_TARGET_FUNCTION_VISIBILITY) == KERNEL_OPTION_FALSE
+	//					&& render_settings.restir_di_settings.use_confidence_weights;
+	//				disable_raytrace_spatial_reuse_reservoirs |= special_case_2_condition;
+
 					static bool raytrace_spatial_reuse_reservoirs = ReSTIR_DI_RaytraceSpatialReuseReservoirs;
 					ImGui::BeginDisabled(disable_raytrace_spatial_reuse_reservoirs);
-					if (ImGui::Checkbox("Ray-trace spatial reuse reservoirs", &raytrace_spatial_reuse_reservoirs))
+					if (ImGui::Checkbox("Ray-trace spatial reuse final reservoirs", &raytrace_spatial_reuse_reservoirs))
 					{
-						kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_RAYTRACE_SPATIAL_REUSE_RESERVOIR, raytrace_spatial_reuse_reservoirs ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_RAYTRACE_SPATIAL_REUSE_RESERVOIR, raytrace_spatial_reuse_reservoirs ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 						m_renderer->recompile_kernels();
 
 						m_render_window->set_render_dirty(true);
@@ -1044,10 +1129,23 @@ void ImGuiRenderer::draw_sampling_panel()
 			ImGui::TreePush("Envmap sampling tree");
 
 			const char* items[] = { "- No envmap importance sampling", "- Importance Sampling - Binary Search" };
-			if (ImGui::Combo("Envmap sampling strategy", kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
+			if (ImGui::Combo("Envmap sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
 			{
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
+			}
+
+			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY) != ESS_NO_SAMPLING)
+			{
+				// If we do have an importance sampling strategy
+				static bool do_envmap_bsdf_mis = EnvmapSamplingDoBSDFMIS;
+				if (ImGui::Checkbox("Do MIS with BSDF", &do_envmap_bsdf_mis))
+				{
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BSDF_MIS, do_envmap_bsdf_mis ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+					m_renderer->recompile_kernels();
+					m_render_window->set_render_dirty(true);
+				}
+				ImGuiRenderer::show_help_marker("");
 			}
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -1090,10 +1188,26 @@ void ImGuiRenderer::display_ReSTIR_DI_bias_status(std::shared_ptr<GPUKernelCompi
 			"This overestimates the number of valid neighbors and results in darkening.\n\n");
 	}
 
+	if (kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_TARGET_FUNCTION_VISIBILITY) == KERNEL_OPTION_TRUE
+		&& kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY) == KERNEL_OPTION_FALSE)
+	{
+		bias_reasons.push_back("- Target function visibility without visibility in bias correction");
+		hover_explanations.push_back("When using the visibility term in the target function used to "
+			"produce initial candidate samples, all remaining samples are unoccluded.\n"
+			"Temporal & spatial reuse pass will then only resample on unoccluded samples.\n"
+			"If not accounting for visibility when counting valid neighbors, we may determine "
+			"that a neighbor could have produced the picked sample when actually, it couldn't "
+			"because from the neighbor's point of view, the sample could have been occluded "
+			"(visibility term in target function).\n"
+			"This overestimates the number of valid neighbors and results in darkening.\n\n");
+	}
+
 	if (kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE) == KERNEL_OPTION_FALSE 
 		&& kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_TARGET_FUNCTION_VISIBILITY) == KERNEL_OPTION_FALSE
 	    && kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY) == KERNEL_OPTION_TRUE
-		&& kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z)
+		&& (kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
+		|| kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
+		|| kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE))
 	{
 		bias_reasons.push_back("- Visibility in bias correction without visibility reuse");
 		hover_explanations.push_back("When taking visibility into account in the counting of "
@@ -1108,8 +1222,9 @@ void ImGuiRenderer::display_ReSTIR_DI_bias_status(std::shared_ptr<GPUKernelCompi
 			"have been produced.\n"
 			"We are then underestimating the number of valid neighbors that could have produced "
 			"our sample and we end up with brightening bias.\n"
-			"This is only an issue with 1/Z weights because MIS-like and proper MIS weights do "
-			"not blindly overweight a sample as 1/Z does (and then hopes that we divide by Z accordingly).");
+			"This is an issue with 1/Z weights (and pairwise-MIS) because MIS-like and proper MIS "
+			"(generalized balance heuristic/GBH) weights do not blindly overweight a sample as "
+			"1/Z does (and then hopes that we divide by Z accordingly).");
 	}
 
 	if (render_settings.enable_adaptive_sampling 
@@ -1124,6 +1239,23 @@ void ImGuiRenderer::display_ReSTIR_DI_bias_status(std::shared_ptr<GPUKernelCompi
 			"manifest as bias on the hardest-to-render parts of the scene.");
 	}
 
+	/*if (kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE) == KERNEL_OPTION_FALSE
+		&& kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY) == KERNEL_OPTION_TRUE
+		&& kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_TARGET_FUNCTION_VISIBILITY) == KERNEL_OPTION_FALSE)
+	{
+		bias_reasons.push_back("- \"Use visibility in bias correction\" without\n"
+			"\"Visibility Reuse\" or \"Use visibility in target function\"");
+		hover_explanations.push_back("When using visibility in the bias correction weights, "
+			"if the final sample/reservoir is occluded from the neighbor's point of view, "
+			"then that neighbor will not be considered a \"valid\" sampling strategy and "
+			"will not contribute to the normalization weight of the final sample. However, "
+			"samples *are* produced without visibility taken into account (because not using "
+			"\"Visibility Reuse\" or \"Use visibility in target function\") and so using "
+			"visibility in the bias correction will wrongly discard samples, leading to a brightening bias."
+			"\n\nThis bias can be very strong and make the renders unusable with temporal reuse because the "
+			"bias will temporally compound.");
+	}*/
+
 	if (!bias_reasons.empty())
 	{
 		ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Biased");
@@ -1132,6 +1264,7 @@ void ImGuiRenderer::display_ReSTIR_DI_bias_status(std::shared_ptr<GPUKernelCompi
 		for (int i = 0; i < bias_reasons.size(); i++)
 		{
 			ImGui::Text("%s", bias_reasons[i].c_str());
+			ImGuiRenderer::add_tooltip(hover_explanations[i].c_str());
 			ImGuiRenderer::show_help_marker(hover_explanations[i].c_str());
 
 		}

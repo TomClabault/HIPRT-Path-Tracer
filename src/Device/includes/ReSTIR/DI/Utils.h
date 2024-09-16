@@ -7,6 +7,7 @@
 #define DEVICE_RESTIR_DI_UTILS_H 
 
 #include "Device/includes/Dispatcher.h"
+#include "Device/includes/Envmap.h"
 #include "Device/includes/Intersect.h"
 #include "Device/includes/LightUtils.h"
 #include "Device/includes/ReSTIR/DI/Surface.h"
@@ -27,15 +28,17 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function(const HI
 template <>
 HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_OPTION_FALSE>(const HIPRTRenderData& render_data, const ReSTIRDISample& sample, const ReSTIRDISurface& surface)
 {
-	if (sample.emissive_triangle_index == -1)
-		// No sample
+	if (sample.emissive_triangle_index == -1 && !(sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE))
+		// Not an envmap sample and no emissive triangle sampled
 		return 0.0f;
 
 	float bsdf_pdf;
-	float distance_to_light;
 	float3 sample_direction;
-	sample_direction = sample.point_on_light_source - surface.shading_point;
-	sample_direction = sample_direction / (distance_to_light = hippt::length(sample_direction));
+
+	if (sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE)
+		sample_direction = sample.point_on_light_source;
+	else
+		sample_direction = hippt::normalize(sample.point_on_light_source - surface.shading_point);
 
 	float cosine_term = hippt::max(0.0f, hippt::dot(surface.shading_normal, sample_direction));
 	if (cosine_term == 0.0f)
@@ -46,8 +49,17 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_O
 	RayVolumeState trash_volume_state = surface.ray_volume_state;
 	ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, surface.material, trash_volume_state, surface.view_direction, surface.shading_normal, sample_direction, bsdf_pdf);
 
-	int material_index = render_data.buffers.material_indices[sample.emissive_triangle_index];
-	ColorRGB32F sample_emission = render_data.buffers.materials_buffer[material_index].emission;
+	ColorRGB32F sample_emission;
+	if (sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE)
+	{
+		float envmap_pdf;
+		sample_emission = envmap_eval(render_data, sample_direction, envmap_pdf);
+	}
+	else
+	{
+		int material_index = render_data.buffers.material_indices[sample.emissive_triangle_index];
+		sample_emission = render_data.buffers.materials_buffer[material_index].emission;
+	}
 
 	float target_function = (bsdf_color * sample_emission * cosine_term).luminance();
 	if (target_function == 0.0f)
@@ -61,15 +73,23 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_O
 template <>
 HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_OPTION_TRUE>(const HIPRTRenderData& render_data, const ReSTIRDISample& sample, const ReSTIRDISurface& surface)
 {
-	if (sample.emissive_triangle_index == -1)
+	if (sample.emissive_triangle_index == -1 && !(sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE))
 		// No sample
 		return 0.0f;
 
 	float bsdf_pdf;
 	float distance_to_light;
 	float3 sample_direction;
-	sample_direction = sample.point_on_light_source - surface.shading_point;
-	sample_direction = sample_direction / (distance_to_light = hippt::length(sample_direction));
+	if (sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE)
+	{
+		sample_direction = sample.point_on_light_source;
+		distance_to_light = 1.0e35f;
+	}
+	else
+	{
+		sample_direction = sample.point_on_light_source - surface.shading_point;
+		sample_direction = sample_direction / (distance_to_light = hippt::length(sample_direction));
+	}
 
 	float cosine_term = hippt::max(0.0f, hippt::dot(surface.shading_normal, sample_direction));
 	if (cosine_term == 0.0f)
@@ -80,8 +100,17 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_O
 	RayVolumeState trash_volume_state = surface.ray_volume_state;
 	ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, surface.material, trash_volume_state, surface.view_direction, surface.shading_normal, sample_direction, bsdf_pdf);
 
-	int material_index = render_data.buffers.material_indices[sample.emissive_triangle_index];
-	ColorRGB32F sample_emission = render_data.buffers.materials_buffer[material_index].emission;
+	ColorRGB32F sample_emission;
+	if (sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE)
+	{
+		float envmap_pdf;
+		sample_emission = envmap_eval(render_data, sample_direction, envmap_pdf);
+	}
+	else
+	{
+		int material_index = render_data.buffers.material_indices[sample.emissive_triangle_index];
+		sample_emission = render_data.buffers.materials_buffer[material_index].emission;
+	}
 
 	float target_function = (bsdf_color * sample_emission * cosine_term).luminance();
 	if (target_function == 0.0f)
@@ -102,12 +131,21 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_O
 
 HIPRT_HOST_DEVICE HIPRT_INLINE void ReSTIR_DI_visibility_reuse(const HIPRTRenderData& render_data, ReSTIRDIReservoir& reservoir, float3 shading_point)
 {
-	if (reservoir.UCW == 0.0f)
+	if (reservoir.UCW <= 0.0f)
 		return;
+	// TODO try uncomment this to see performance difference
+	/*else if (reservoir.sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_INITIAL_CANDIDATE_UNOCCLUDED)
+		return;*/
 
 	float distance_to_light;
 	float3 sample_direction = reservoir.sample.point_on_light_source - shading_point;
-	sample_direction /= (distance_to_light = hippt::length(sample_direction));
+	if (reservoir.sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE)
+	{
+		sample_direction = reservoir.sample.point_on_light_source;
+		distance_to_light = 1.0e35f;
+	}
+	else
+		sample_direction /= (distance_to_light = hippt::length(sample_direction));
 
 	hiprtRay shadow_ray;
 	shadow_ray.origin = shading_point;
@@ -115,7 +153,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void ReSTIR_DI_visibility_reuse(const HIPRTRender
 
 	bool visible = !evaluate_shadow_ray(render_data, shadow_ray, distance_to_light);
 	if (!visible)
-		reservoir.UCW = 0.0f;
+		// Setting to -1 here so that we know when debugging that this is because of visibility reuse
+		reservoir.UCW = -1.0f;
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float get_jacobian_determinant_reconnection_shift(const HIPRTRenderData& render_data, const ReSTIRDIReservoir& neighbor_reservoir, const float3& center_pixel_shading_point, const float3& neighbor_shading_point)
@@ -243,8 +282,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int get_spatial_neighbor_pixel_index(const HIPRTR
 		float2 neighbor_offset_rotated = make_float2(neighbor_offset_in_disk.x * cos_theta - neighbor_offset_in_disk.y * sin_theta, neighbor_offset_in_disk.x * sin_theta + neighbor_offset_in_disk.y * cos_theta);
 		int2 neighbor_offset_int = make_int2(static_cast<int>(neighbor_offset_rotated.x), static_cast<int>(neighbor_offset_rotated.y));
 
-		int2 neighbor_pixel_coords = center_pixel_coords + neighbor_offset_int;
-		//int2 neighbor_pixel_coords = center_pixel_coords + make_int2(15 * (neighbor_number + 1), 0);
+		int2 neighbor_pixel_coords;
+		if (render_data.render_settings.restir_di_settings.spatial_pass.debug_neighbor_location)
+			neighbor_pixel_coords = center_pixel_coords + make_int2(15, 0);
+		else
+			neighbor_pixel_coords = center_pixel_coords + neighbor_offset_int;
 		if (neighbor_pixel_coords.x < 0 || neighbor_pixel_coords.x >= res.x || neighbor_pixel_coords.y < 0 || neighbor_pixel_coords.y >= res.y)
 			// Rejecting the sample if it's outside of the viewport
 			return -1;

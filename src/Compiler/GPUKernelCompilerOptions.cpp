@@ -14,13 +14,19 @@ const std::string GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SHADOW_RA
 const std::string GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_BLOCK_SIZE = "SharedStackBVHTraversalBlockSize";
 const std::string GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_GLOBAL_RAYS = "SharedStackBVHTraversalSizeGlobalRays";
 const std::string GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_SHADOW_RAYS = "SharedStackBVHTraversalSizeShadowRays";
+
 const std::string GPUKernelCompilerOptions::BSDF_OVERRIDE = "BSDFOverride";
 const std::string GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY = "InteriorStackStrategy";
+
 const std::string GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY = "DirectLightSamplingStrategy";
 const std::string GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY = "EnvmapSamplingStrategy";
+const std::string GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BSDF_MIS = "EnvmapSamplingDoBSDFMIS";
+
 const std::string GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION = "RISUseVisiblityTargetFunction";
 const std::string GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION = "GGXAnisotropicSampleFunction";
+
 const std::string GPUKernelCompilerOptions::RESTIR_DI_TARGET_FUNCTION_VISIBILITY = "ReSTIR_DI_TargetFunctionVisibility";
+const std::string GPUKernelCompilerOptions::RESTIR_DI_ENVMAP_SAMPLES_MIS_LIGHT_SAMPLER = "ReSTIR_DI_EnvmapSamplesMISLightSampler";
 const std::string GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE = "ReSTIR_DI_DoVisibilityReuse";
 const std::string GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY = "ReSTIR_DI_BiasCorrectionUseVisiblity";
 const std::string GPUKernelCompilerOptions::RESTIR_DI_RAYTRACE_SPATIAL_REUSE_RESERVOIR = "ReSTIR_DI_RaytraceSpatialReuseReservoirs";
@@ -32,13 +38,19 @@ const std::vector<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES = {
 	GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_BLOCK_SIZE,
 	GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_GLOBAL_RAYS,
 	GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_SHADOW_RAYS,
+
 	GPUKernelCompilerOptions::BSDF_OVERRIDE,
 	GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY,
+
 	GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY,
 	GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY,
+	GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BSDF_MIS,
+
 	GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION,
 	GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION,
+
 	GPUKernelCompilerOptions::RESTIR_DI_TARGET_FUNCTION_VISIBILITY,
+	GPUKernelCompilerOptions::RESTIR_DI_ENVMAP_SAMPLES_MIS_LIGHT_SAMPLER,
 	GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE,
 	GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY,
 	GPUKernelCompilerOptions::RESTIR_DI_RAYTRACE_SPATIAL_REUSE_RESERVOIR,
@@ -54,13 +66,19 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_BLOCK_SIZE] = std::make_shared<int>(SharedStackBVHTraversalBlockSize);
 	m_options_macro_map[GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_GLOBAL_RAYS] = std::make_shared<int>(SharedStackBVHTraversalSizeGlobalRays);
 	m_options_macro_map[GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_SHADOW_RAYS] = std::make_shared<int>(SharedStackBVHTraversalSizeShadowRays);
+
 	m_options_macro_map[GPUKernelCompilerOptions::BSDF_OVERRIDE] = std::make_shared<int>(BSDFOverride);
 	m_options_macro_map[GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY] = std::make_shared<int>(InteriorStackStrategy);
+
 	m_options_macro_map[GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY] = std::make_shared<int>(DirectLightSamplingStrategy);
 	m_options_macro_map[GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY] = std::make_shared<int>(EnvmapSamplingStrategy);
+	m_options_macro_map[GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BSDF_MIS] = std::make_shared<int>(EnvmapSamplingDoBSDFMIS);
+
 	m_options_macro_map[GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION] = std::make_shared<int>(RISUseVisiblityTargetFunction);
 	m_options_macro_map[GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION] = std::make_shared<int>(GGXAnisotropicSampleFunction);
+
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_TARGET_FUNCTION_VISIBILITY] = std::make_shared<int>(ReSTIR_DI_TargetFunctionVisibility);
+	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_ENVMAP_SAMPLES_MIS_LIGHT_SAMPLER] = std::make_shared<int>(ReSTIR_DI_EnvmapSamplesMISLightSampler);
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE] = std::make_shared<int>(ReSTIR_DI_DoVisibilityReuse);
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY] = std::make_shared<int>(ReSTIR_DI_BiasCorrectionUseVisiblity);
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_RAYTRACE_SPATIAL_REUSE_RESERVOIR] = std::make_shared<int>(ReSTIR_DI_RaytraceSpatialReuseReservoirs);

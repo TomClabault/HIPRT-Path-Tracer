@@ -47,7 +47,7 @@ struct ReSTIRDISpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH>
 		int current_neighbor,
 		int2 center_pixel_coords, int2 res, float2 cos_sin_theta_rotation)
 	{
-		if (reservoir_being_resampled.UCW == 0.0f)
+		if (reservoir_being_resampled.UCW <= 0.0f)
 			// Reservoir that doesn't contain any sample, returning 
 			// 1.0f MIS weight so that multiplying by that doesn't do anything
 			return 1.0f;

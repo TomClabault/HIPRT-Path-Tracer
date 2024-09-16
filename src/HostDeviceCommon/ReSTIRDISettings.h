@@ -14,8 +14,9 @@ struct InitialCandidatesSettings
 	int number_of_initial_light_candidates = 4;
 	// How many BSDF candidates to resamples during the initial candidates sampling pass
 	int number_of_initial_bsdf_candidates = 1;
-	// How many envmap candidates to resamples during the initial candidates sampling pass
-	int number_of_initial_envmap_candidates = 1;
+	// For each 'number_of_initial_light_candidates', the probability that this light sample
+	// will sample the envmap instead of a light in the scene
+	float envmap_candidate_probability = 0.25f;
 
 	// Buffer that contains the reservoirs that will hold the reservoir
 	// for the initial candidates generated
@@ -24,7 +25,7 @@ struct InitialCandidatesSettings
 
 struct TemporalPassSettings
 {
-	bool do_temporal_reuse_pass = true;
+	bool do_temporal_reuse_pass = false;
 
 	// Whether or not to use the G-buffer of last frame when resampling the temporal neighbor.
 	// This is required to avoid bias with camera movements but this comes at a VRAM cost
@@ -62,7 +63,11 @@ struct SpatialPassSettings
 	// The radius within which neighbor are going to be reused spatially
 	int spatial_reuse_radius = 20;
 	// How many neighbors to reuse during the spatial pass
-	int spatial_reuse_neighbor_count = 3;
+	int spatial_reuse_neighbor_count = 2;
+
+	// If true, reused neighbors will be hardcoded to always be 15 pixels to the right,
+	// not in a circle around the center pixel.
+	bool debug_neighbor_location = false;
 
 	// Whether or not to rotate the spatial neighbor locations generated.
 	// Pretty much mandatory when using Hammersley points otherwise the neighbors

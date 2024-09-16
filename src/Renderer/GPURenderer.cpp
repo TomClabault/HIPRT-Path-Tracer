@@ -122,10 +122,10 @@ void GPURenderer::setup_kernels()
 	m_kernels[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].set_kernel_function_name(GPURenderer::KERNEL_FUNCTIONS[1]);
 	m_kernels[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].synchronize_options_with(*m_global_compiler_options, options_excluded_from_synchro);
 	m_kernels[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].get_kernel_options().set_additional_include_directories(GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS);
-	m_kernels[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_GLOBAL_RAYS, KERNEL_OPTION_TRUE);
+	m_kernels[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_GLOBAL_RAYS, KERNEL_OPTION_FALSE);
 	m_kernels[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SHADOW_RAYS, KERNEL_OPTION_TRUE);
-	m_kernels[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_GLOBAL_RAYS, 8);
-	m_kernels[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_SHADOW_RAYS, 0);
+	m_kernels[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_GLOBAL_RAYS, 0);
+	m_kernels[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_SHADOW_RAYS, 1);
 
 	m_kernels[GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID].set_kernel_file_path(GPURenderer::KERNEL_FILES[2]);
 	m_kernels[GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID].set_kernel_function_name(GPURenderer::KERNEL_FUNCTIONS[2]);
@@ -1000,7 +1000,7 @@ void GPURenderer::set_envmap(Image32Bit& envmap_image)
 	{
 		m_render_data.world_settings.ambient_light_type = AmbientLightType::UNIFORM;
 
-		std::cerr << "Empty envmap set on the GPURenderer..." << std::endl;
+		std::cerr << "Empty envmap set on the GPURenderer... Defaulting to uniform ambient light type" << std::endl;
 
 		return;
 	}

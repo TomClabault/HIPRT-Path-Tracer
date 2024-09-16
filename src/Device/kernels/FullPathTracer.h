@@ -172,7 +172,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
                 // --------------------------------------------------- //
 
                 ColorRGB32F light_direct_contribution = sample_one_light(render_data, ray_payload, closest_hit_info, -ray.direction, random_number_generator, make_int2(x, y), res, bounce);
-                ColorRGB32F envmap_direct_contribution = sample_environment_map(render_data, ray_payload, closest_hit_info, -ray.direction, random_number_generator);
+                ColorRGB32F envmap_direct_contribution = sample_environment_map(render_data, ray_payload, closest_hit_info, -ray.direction, bounce, random_number_generator);
 
                 // Clamping direct lighting
                 light_direct_contribution = clamp_light_contribution(light_direct_contribution, render_data.render_settings.direct_contribution_clamp, bounce == 0);
@@ -194,9 +194,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
                     // accounting for direct light sampling twice (bounce on emissive
                     // geometry + direct light sampling). Otherwise, we don't check for bounce == 0
                     ray_payload.ray_color += ray_payload.material.emission * ray_payload.throughput;
-#endif
 
                 ray_payload.ray_color += (light_direct_contribution + envmap_direct_contribution) * ray_payload.throughput;
+#endif
+
 
                 // --------------------------------------- //
                 // ---------- Indirect lighting ---------- //
@@ -224,6 +225,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
             else
             {
                 ColorRGB32F skysphere_color;
+
                 if (render_data.world_settings.ambient_light_type == AmbientLightType::UNIFORM)
                     skysphere_color = render_data.world_settings.uniform_light_color;
                 else if (render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP)
@@ -235,11 +237,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
                     {
                         // We're only getting the skysphere radiance for the first rays because the
                         // syksphere is importance sampled.
-                        // 
-                        // We're also getting the skysphere radiance for perfectly specular BRDF since those
-                        // are not importance sampled.
 
-                        skysphere_color = eval_environment_map_no_pdf(render_data.world_settings, ray.direction);
+                        skysphere_color = eval_envmap_no_pdf(render_data.world_settings, ray.direction);
 
 #if EnvmapSamplingStrategy == ESS_NO_SAMPLING
                         // If we don't have envmap sampling, we're only going to unscale on
@@ -255,7 +254,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
                     }
                 }
 
-                skysphere_color = clamp_light_contribution(skysphere_color, render_data.render_settings.envmap_contribution_clamp, true);
+                skysphere_color = clamp_light_contribution(skysphere_color, render_data.render_settings.envmap_contribution_clamp, /* clamp condition */ true);
 
                 ray_payload.ray_color += skysphere_color * ray_payload.throughput;
                 ray_payload.next_ray_state = RayState::MISSED;
