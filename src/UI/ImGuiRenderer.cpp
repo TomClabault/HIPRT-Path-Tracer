@@ -1578,7 +1578,7 @@ void ImGuiRenderer::draw_performance_settings_panel()
 		std::string size_string = "Global Stack Buffer VRAM Usage: ";
 		size_string += std::to_string(m_renderer->get_render_data().global_traversal_stack_buffer_size * std::ceil(m_renderer->m_render_resolution.x / 8.0f) * 8.0f * std::ceil(m_renderer->m_render_resolution.y / 8.0f) * 8.0f * sizeof(int) / 1000000.0f);
 		size_string += " MB";
-		ImGui::Text(size_string.c_str());
+		ImGui::Text("%s", size_string.c_str());
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();
