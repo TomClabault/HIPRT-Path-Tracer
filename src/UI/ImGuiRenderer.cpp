@@ -64,7 +64,10 @@ void ImGuiRenderer::draw_imgui_interface()
 
 	ImGui::Begin("Settings");
 
-	ImGui::Text("Render time: %.3fs", m_render_window->get_current_render_time() / 1000.0f);
+	if (render_settings.accumulate)
+		ImGui::Text("Render time: %.3fs", m_render_window->get_current_render_time() / 1000.0f);
+	else
+		ImGui::Text("Frame time: %.3fms", m_render_window_perf_metrics->get_current_value(GPURenderer::FULL_FRAME_TIME_KEY));
 	ImGui::Text("%d samples | %.2f samples/s @ %dx%d", render_settings.sample_number, m_render_window->get_samples_per_second(), m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y);
 
 	if (render_settings.has_access_to_adaptive_sampling_buffers())
