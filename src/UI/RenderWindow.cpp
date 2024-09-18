@@ -25,7 +25,6 @@
 // - camera ray jittering causes dark lines and darkens glossy reflections
 // - multiple spatial reuse passes destroy glossy reflections
 // - m cap at 0 in ImGui breaks the render because of infinite M growth --> hardcap M to something like ~1000000 or something
-// - temporal reprojection at grazing angles broken --> We need a better reprojection 
 // - different M cap for glossy surfaces ?
 // - temporal permutation sampling
 // - limit distance of BSDF ray for initial sampling (biased but reduces BVH traversal so performance++)
@@ -50,7 +49,7 @@
 
 
 // TODO bugs:
-// - memory leak with OpenGL when resizing the window?
+// - memory leak with OpenGL when resizing the window? only AMD?
 // - take transmission color into account when direct sampling a light source that is inside a volume
 // - denoiser AOVs not accounting for transmission correctly since Disney 
 //	  - same with perfect reflection

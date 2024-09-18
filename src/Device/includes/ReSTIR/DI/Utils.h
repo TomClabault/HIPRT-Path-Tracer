@@ -192,21 +192,30 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_jacobian_determinant_reconnection_shift
 /**
  * Returns true if the two given points pass the plane distance check, false otherwise
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE bool plane_distance_heuristic(const float3& temporal_world_space_point, const float3& current_point, const float3& current_surface_normal, float plane_distance_threshold)
+HIPRT_HOST_DEVICE HIPRT_INLINE bool plane_distance_heuristic(const ReSTIRDISettings& restir_di_settings, const float3& temporal_world_space_point, const float3& current_point, const float3& current_surface_normal, float plane_distance_threshold)
 {
+	if (!restir_di_settings.use_plane_distance_heuristic)
+		return true;
+
 	float3 direction_between_points = temporal_world_space_point - current_point;
 	float distance_to_plane = hippt::abs(hippt::dot(direction_between_points, current_surface_normal));
 
 	return distance_to_plane < plane_distance_threshold;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE bool normal_similarity_heuristic(const float3& current_normal, const float3& neighbor_normal, float threshold)
+HIPRT_HOST_DEVICE HIPRT_INLINE bool normal_similarity_heuristic(const ReSTIRDISettings& restir_di_settings, const float3& current_normal, const float3& neighbor_normal, float threshold)
 {
+	if (restir_di_settings.use_normal_similarity_heuristic)
+		return true;
+
 	return hippt::dot(current_normal, neighbor_normal) > threshold;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE bool roughness_similarity_heuristic(float neighbor_roughness, float center_pixel_roughness, float threshold)
+HIPRT_HOST_DEVICE HIPRT_INLINE bool roughness_similarity_heuristic(const ReSTIRDISettings& restir_di_settings, float neighbor_roughness, float center_pixel_roughness, float threshold)
 {
+	if (!restir_di_settings.use_roughness_similarity_heuristic)
+		return true;
+
 	// We don't want to temporally reuse on materials smoother than 0.075f because this
 	// causes near-specular/glossy reflections to darken when camera ray jittering is used.
 	// 
@@ -226,9 +235,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool check_neighbor_similarity_heuristics(const H
 	float neighbor_roughness = render_data.g_buffer.materials[neighbor_index].roughness;
 	float current_material_roughness = render_data.g_buffer.materials[center_pixel_index].roughness;
 
-	bool plane_distance_passed = plane_distance_heuristic(neighbor_world_space_point, current_shading_point, current_normal, render_data.render_settings.restir_di_settings.plane_distance_threshold);
-	bool normal_similarity_passed = normal_similarity_heuristic(current_normal, render_data.g_buffer.shading_normals[neighbor_index], render_data.render_settings.restir_di_settings.normal_similarity_angle_precomp);
-	bool roughness_similarity_passed = roughness_similarity_heuristic(neighbor_roughness, current_material_roughness, render_data.render_settings.restir_di_settings.roughness_similarity_threshold);
+	bool plane_distance_passed = plane_distance_heuristic(render_data.render_settings.restir_di_settings, neighbor_world_space_point, current_shading_point, current_normal, render_data.render_settings.restir_di_settings.plane_distance_threshold);
+	bool normal_similarity_passed = normal_similarity_heuristic(render_data.render_settings.restir_di_settings, current_normal, render_data.g_buffer.shading_normals[neighbor_index], render_data.render_settings.restir_di_settings.normal_similarity_angle_precomp);
+	bool roughness_similarity_passed = roughness_similarity_heuristic(render_data.render_settings.restir_di_settings, neighbor_roughness, current_material_roughness, render_data.render_settings.restir_di_settings.roughness_similarity_threshold);
 
 	return plane_distance_passed && normal_similarity_passed && roughness_similarity_passed;
 }
@@ -336,6 +345,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int find_temporal_neighbor_index(const HIPRTRende
 	previous_screen_space_point *= make_float2(0.5f, 0.5f);
 
 	float2 prev_pixel_float = make_float2(previous_screen_space_point.x * resolution.x, previous_screen_space_point.y * resolution.y);
+	// Bringing back in the center of the pixel
+	prev_pixel_float -= make_float2(0.5f, 0.5f);
 
 	// We're going to randomly look for an acceptable neighbor around the back-projected pixel location to find
 	// in a given radius
@@ -348,7 +359,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int find_temporal_neighbor_index(const HIPRTRende
 			// is valid or not
 			offset = make_float2(random_number_generator() - 0.5f, random_number_generator() - 0.5f) * render_data.render_settings.restir_di_settings.temporal_pass.neighbor_search_radius;
 
-		int2 temporal_neighbor_screen_pixel_pos = make_int2(prev_pixel_float.x + offset.x, prev_pixel_float.y + offset.y);
+		int2 temporal_neighbor_screen_pixel_pos = make_int2(round(prev_pixel_float.x + offset.x), round(prev_pixel_float.y + offset.y));
 		if (temporal_neighbor_screen_pixel_pos.x < 0 || temporal_neighbor_screen_pixel_pos.x >= resolution.x || temporal_neighbor_screen_pixel_pos.y < 0 || temporal_neighbor_screen_pixel_pos.y >= resolution.y)
 			// Previous pixel is out of the current viewport
 			continue;

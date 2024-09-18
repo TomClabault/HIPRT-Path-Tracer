@@ -53,7 +53,7 @@ struct TemporalPassSettings
 
 struct SpatialPassSettings
 {
-	bool do_spatial_reuse_pass = true;
+	bool do_spatial_reuse_pass = false;
 
 	// What spatial pass are we currently performing?
 	// Takes values in [0, number_of_passes - 1]
@@ -112,6 +112,7 @@ struct ReSTIRDISettings
 	// Whether or not to use confidence weights when resampling neighbors.
 	bool use_confidence_weights = true;
 
+	bool use_normal_similarity_heuristic = true;
 	// User-friendly (for ImGui) normal angle. When resampling a neighbor (temporal or spatial),
 	// the normal of the neighbor being re-sampled must be similar to our normal. This angle gives the
 	// "similarity threshold". Normals must be within 25 degrees of each other by default
@@ -119,12 +120,14 @@ struct ReSTIRDISettings
 	// Precomputed cosine of the angle for use in the shader
 	float normal_similarity_angle_precomp = 0.906307787f; // Normals must be within 25 degrees by default
 
+	bool use_plane_distance_heuristic = true;
 	// Threshold used when determining whether a temporal neighbor is acceptable
 	// for temporal reuse regarding the spatial proximity of the neighbor and the current
 	// point. 
 	// This is a world space distance.
 	float plane_distance_threshold = 0.1f;
 
+	bool use_roughness_similarity_heuristic = true;
 	// How close the roughness of the neighbor's surface must be to ours to resample that neighbor
 	// If this value is 0.25f for example, then the roughnesses must be within 0.25f of each other. Simple.
 	float roughness_similarity_threshold = 0.25f;
