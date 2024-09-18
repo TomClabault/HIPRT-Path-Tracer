@@ -47,10 +47,6 @@
 // - When we add envmap samples to the mix in ReSTIR, this adds quite a bit of noise if these envmap samples do not take occlusion into account because they usually have a very high contribution --> RIS favors them --> only to realize in the end that it was occluded.
 //		- SOLUTION FOR BSDF AND ENVMAP INIITIAL CANDIDATES TAKING OCCLUSION INTO ACCOUNT:
 //		maybe add an "adaptive" visibility bias correction that only uses visibility for these special samples?
-// 
-// 
-// 
-// - bias status if not tracing spatial reservoirs --> bias with temporal reuse? strong darkening in the white room --> test in the cornell boix with hardocded reuse 15 to the right
 
 
 // TODO bugs:
