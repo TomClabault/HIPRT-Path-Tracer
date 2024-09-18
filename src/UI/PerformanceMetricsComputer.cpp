@@ -103,6 +103,9 @@ void PerformanceMetricsComputer::add_value(const std::string& key, double new_va
 
 double PerformanceMetricsComputer::get_current_value(const std::string& key)
 {
+	if (m_values_count[key] == 0)
+		return 0.0f;
+
 	// m_data_indices[key] is the index of the value that we're going to insert next
 	// but we want the index of the value last inserted so we -1 that value
 	int current_index = m_data_indices[key];

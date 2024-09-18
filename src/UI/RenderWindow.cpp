@@ -66,10 +66,7 @@
 // - we don't need the full HitInfo 'closest_hit_info' structure everywhere, only the inter point and the two normals for the most part so maybe have a simplified structure 
 // - only the material index can be stored in the pixel states ofthe wavefront path tracer, don't need to store the whole material
 // - refactor envmap to have a sampling & eval function
-// - Use HIPRT with CMake as a subdirectory (available soon)
 // - free denoiser buffers if not using denoising
-// - do furnace tests and check all the BRDFs
-// - replace "render time" by "frame time" at the very top of ImGui if not accumulating
 // All of this on threads:
 //		- ---------------- stream creation duration : 350ms
 //		- ---------------- denoiser creation duration : 804ms
