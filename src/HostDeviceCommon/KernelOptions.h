@@ -293,7 +293,7 @@
  * performance boost of not tracing rays at the end of each spatial reuse pass given the very small increase
  * in bias may be worth it
  */
-#define ReSTIR_DI_RaytraceSpatialReuseReservoirs KERNEL_OPTION_FALSE
+#define ReSTIR_DI_SpatialReuseOutputVisibilityCheck KERNEL_OPTION_TRUE
 
 /**
  * What bias correction weights to use when resampling neighbors (temporal / spatial)

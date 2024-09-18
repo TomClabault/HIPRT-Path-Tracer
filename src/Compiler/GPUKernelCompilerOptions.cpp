@@ -29,7 +29,7 @@ const std::string GPUKernelCompilerOptions::RESTIR_DI_TARGET_FUNCTION_VISIBILITY
 const std::string GPUKernelCompilerOptions::RESTIR_DI_ENVMAP_SAMPLES_MIS_LIGHT_SAMPLER = "ReSTIR_DI_EnvmapSamplesMISLightSampler";
 const std::string GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE = "ReSTIR_DI_DoVisibilityReuse";
 const std::string GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY = "ReSTIR_DI_BiasCorrectionUseVisiblity";
-const std::string GPUKernelCompilerOptions::RESTIR_DI_RAYTRACE_SPATIAL_REUSE_RESERVOIR = "ReSTIR_DI_RaytraceSpatialReuseReservoirs";
+const std::string GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_OUTPUT_VISIBILITY_CHECK = "ReSTIR_DI_SpatialReuseOutputVisibilityCheck";
 const std::string GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS = "ReSTIR_DI_BiasCorrectionWeights";
 
 const std::vector<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES = {
@@ -53,7 +53,7 @@ const std::vector<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES = {
 	GPUKernelCompilerOptions::RESTIR_DI_ENVMAP_SAMPLES_MIS_LIGHT_SAMPLER,
 	GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE,
 	GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY,
-	GPUKernelCompilerOptions::RESTIR_DI_RAYTRACE_SPATIAL_REUSE_RESERVOIR,
+	GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_OUTPUT_VISIBILITY_CHECK,
 	GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS,
 };
 
@@ -81,7 +81,7 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_ENVMAP_SAMPLES_MIS_LIGHT_SAMPLER] = std::make_shared<int>(ReSTIR_DI_EnvmapSamplesMISLightSampler);
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE] = std::make_shared<int>(ReSTIR_DI_DoVisibilityReuse);
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY] = std::make_shared<int>(ReSTIR_DI_BiasCorrectionUseVisiblity);
-	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_RAYTRACE_SPATIAL_REUSE_RESERVOIR] = std::make_shared<int>(ReSTIR_DI_RaytraceSpatialReuseReservoirs);
+	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_OUTPUT_VISIBILITY_CHECK] = std::make_shared<int>(ReSTIR_DI_SpatialReuseOutputVisibilityCheck);
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS] = std::make_shared<int>(ReSTIR_DI_BiasCorrectionWeights);
 
 	// Making sure we didn't forget to fill the ALL_MACROS_NAMES vector with all the options that exist

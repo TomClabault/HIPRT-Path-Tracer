@@ -1037,57 +1037,12 @@ void ImGuiRenderer::draw_sampling_panel()
 						|| global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE)
 						|| render_settings.restir_di_settings.spatial_pass.number_of_passes == 1 || !render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass;
 
-					// Some special cases to avoid bias explosions. In those cases, ray tracing the reservoirs is mandatory 
-					// to avoid bias explosions so the choice isn't let to the user.
-					// So more explanations on why these special cases at the end of the spatial reuse kernel
-	//				bool special_case_1_condition = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE) == KERNEL_OPTION_FALSE
-	//					&& global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY) == KERNEL_OPTION_TRUE
-	//					&& global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_TARGET_FUNCTION_VISIBILITY) == KERNEL_OPTION_FALSE
-	//					&& render_settings.restir_di_settings.use_confidence_weights;
-	//				disable_raytrace_spatial_reuse_reservoirs |= special_case_1_condition;
-
-	//				// There are also some edge cases that we want to cover which would cause bias explosion and lead to
-	//// unusable renders. So this #else part is basically forcing the visibility reuse even if the user
-	//// doesn't want it (but that's for their own good hehe)
-	//// 
-	//// Without visibility reuse, samples that are occluded can be produced. If we're not discarding
-	//// them here, they may be discarded in the subsequent temporal/spatial reuse
-	//// (which use visibility bias correction because ReSTIR_DI_BiasCorrectionUseVisiblity == KERNEL_OPTION_TRUE)
-	//// and this will cause brightening bias
-	////
-	//// Using visibility in the target function completely stops the bias anyways because reservoir
-	//// always account for visibility. That's it. No issues of reusing/discarding/occluded/unoccluded/... samples. No bias.
-
-	//	// With confidence weights, the bias will compound so hard that it will blow up and completely corrupt the render
-	//	// so we need to visibility-reuse the reservoir here anyways
-	//	// 
-	//// This is almost the same situation as above: we're resampling neighbors into the center pixel
-	//// but we don't ray trace the final reservoir (because ReSTIR_DI_RaytraceSpatialReuseReservoirs == KERNEL_OPTION_FALSE).
-	//// This means that we may now have a reservoir in the center pixel that is actually occluded:
-	//// the center pixel is now able to produce samples (through resampling its neighbors) that
-	//// are actually occluded. In the next temporal/spatial pass, this center pixel may be
-	//// resampled itself by one of its neighbors but with visibility in mind
-	//// (because && ReSTIR_DI_BiasCorrectionUseVisiblity == KERNEL_OPTION_TRUE) and this may cause
-	//// that center pixel to be wrongly discarded --> brightening bias
-	////
-	//// Using visibility in the target function completely stops the bias anyways because reservoir
-	//// always account for visibility. That's it. No issues of reusing/discarding/occluded/unoccluded/... samples. No bias.
-
-	//	// With confidence weights, the bias will compound so hard that it will blow up and completely corrupt the render
-	//	// so we need to visibility-reuse the reservoir here anyways
-
-	//				bool special_case_2_condition = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE) == KERNEL_OPTION_TRUE
-	//					&& global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY) == KERNEL_OPTION_TRUE
-	//					&& global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_RAYTRACE_SPATIAL_REUSE_RESERVOIR) == KERNEL_OPTION_FALSE
-	//					&& global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_TARGET_FUNCTION_VISIBILITY) == KERNEL_OPTION_FALSE
-	//					&& render_settings.restir_di_settings.use_confidence_weights;
-	//				disable_raytrace_spatial_reuse_reservoirs |= special_case_2_condition;
-
-					static bool raytrace_spatial_reuse_reservoirs = ReSTIR_DI_RaytraceSpatialReuseReservoirs;
-					ImGui::BeginDisabled(disable_raytrace_spatial_reuse_reservoirs);
-					if (ImGui::Checkbox("Ray-trace spatial reuse final reservoirs", &raytrace_spatial_reuse_reservoirs))
+					static bool raytrace_spatial_reuse_reservoirs = ReSTIR_DI_SpatialReuseOutputVisibilityCheck;
+					//ImGui::BeginDisabled(disable_raytrace_spatial_reuse_reservoirs);
+					ImGui::BeginDisabled(false);
+					if (ImGui::Checkbox("Spatial reuse output visibility check", &raytrace_spatial_reuse_reservoirs))
 					{
-						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_RAYTRACE_SPATIAL_REUSE_RESERVOIR, raytrace_spatial_reuse_reservoirs ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_OUTPUT_VISIBILITY_CHECK, raytrace_spatial_reuse_reservoirs ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 						m_renderer->recompile_kernels();
 
 						m_render_window->set_render_dirty(true);
@@ -1191,7 +1146,8 @@ void ImGuiRenderer::display_ReSTIR_DI_bias_status(std::shared_ptr<GPUKernelCompi
 	if (kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_TARGET_FUNCTION_VISIBILITY) == KERNEL_OPTION_TRUE
 		&& kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY) == KERNEL_OPTION_FALSE)
 	{
-		bias_reasons.push_back("- Target function visibility without visibility in bias correction");
+		bias_reasons.push_back("- Target function visibility without\n"
+			"    visibility in bias correction");
 		hover_explanations.push_back("When using the visibility term in the target function used to "
 			"produce initial candidate samples, all remaining samples are unoccluded.\n"
 			"Temporal & spatial reuse pass will then only resample on unoccluded samples.\n"
@@ -1239,22 +1195,31 @@ void ImGuiRenderer::display_ReSTIR_DI_bias_status(std::shared_ptr<GPUKernelCompi
 			"manifest as bias on the hardest-to-render parts of the scene.");
 	}
 
-	/*if (kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE) == KERNEL_OPTION_FALSE
-		&& kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY) == KERNEL_OPTION_TRUE
-		&& kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_TARGET_FUNCTION_VISIBILITY) == KERNEL_OPTION_FALSE)
+	if (kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY) == KERNEL_OPTION_TRUE
+		&& kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_OUTPUT_VISIBILITY_CHECK) == KERNEL_OPTION_FALSE
+		&& kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_TARGET_FUNCTION_VISIBILITY) == KERNEL_OPTION_FALSE
+		&& (kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
+		|| kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
+		|| kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS)
+		&& render_settings.restir_di_settings.spatial_pass.number_of_passes > 1)
 	{
-		bias_reasons.push_back("- \"Use visibility in bias correction\" without\n"
-			"\"Visibility Reuse\" or \"Use visibility in target function\"");
-		hover_explanations.push_back("When using visibility in the bias correction weights, "
-			"if the final sample/reservoir is occluded from the neighbor's point of view, "
-			"then that neighbor will not be considered a \"valid\" sampling strategy and "
-			"will not contribute to the normalization weight of the final sample. However, "
-			"samples *are* produced without visibility taken into account (because not using "
-			"\"Visibility Reuse\" or \"Use visibility in target function\") and so using "
-			"visibility in the bias correction will wrongly discard samples, leading to a brightening bias."
-			"\n\nThis bias can be very strong and make the renders unusable with temporal reuse because the "
-			"bias will temporally compound.");
-	}*/
+		bias_reasons.push_back("- Multiple spatial reuse passes + visibility\n"
+			"    in bias correction but no visibility\n"
+			"    reuse at the end of spatial passes");
+		hover_explanations.push_back("With visibility in the bias correction, "
+			"samples/reservoirs must take occlusion into account for things to "
+			"stay unbiased, otherwise, samples may be discarded during normalization "
+			"(because the bias correction includes visibility) even though those were valid samples.\n\n"
+			"The issue with multiple spatial reuse passes is that even though everything "
+			"may be correct during the first pass (i.e. if using visibility reuse at the "
+			"end of the initial candidate pass + visibility in bias correction = samples "
+			"accounting for occlusion + bias correction accounting for occlusion = unbiased), "
+			"the reservoirs output by the first pass now contain samples that may come from "
+			"their neighbor and we have no guarantee that their occlusion is correct which "
+			"may lead to bias in the subsequent passes. The visibility reuse pass at the "
+			"end of each spatial pass is thus necessary for unbiasedness. Only 1/Z and "
+			"pairwise MIS weights are affected.");
+	}
 
 	if (!bias_reasons.empty())
 	{

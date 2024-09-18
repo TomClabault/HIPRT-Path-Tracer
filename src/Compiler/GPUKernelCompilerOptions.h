@@ -36,7 +36,7 @@ public:
 	static const std::string RESTIR_DI_ENVMAP_SAMPLES_MIS_LIGHT_SAMPLER;
 	static const std::string RESTIR_DI_DO_VISIBILITY_REUSE;
 	static const std::string RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY;
-	static const std::string RESTIR_DI_RAYTRACE_SPATIAL_REUSE_RESERVOIR;
+	static const std::string RESTIR_DI_SPATIAL_REUSE_OUTPUT_VISIBILITY_CHECK;
 	static const std::string RESTIR_DI_BIAS_CORRECTION_WEIGHTS;
 
 	static const std::vector<std::string> ALL_MACROS_NAMES;
