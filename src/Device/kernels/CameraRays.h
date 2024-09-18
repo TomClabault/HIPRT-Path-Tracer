@@ -166,6 +166,15 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
         render_data.g_buffer.materials[pixel_index] = ray_payload.material;
         render_data.g_buffer.first_hits[pixel_index] = closest_hit_info.inter_point;
         render_data.g_buffer.ray_volume_states[pixel_index] = ray_payload.volume_state;
+
+        /*float3 screen_pos_xyz = matrix_X_point(render_data.current_camera.view_projection, closest_hit_info.inter_point);
+        float2 screen_pos_xy = make_float2(screen_pos_xyz.x, screen_pos_xyz.y);
+        screen_pos_xy += make_float2(1.0f, 1.0f);
+        screen_pos_xy *= make_float2(0.5f, 0.5f);
+
+        float2 reprojected_pixel_pos = screen_pos_xy * make_float2(res.x, res.y);
+        int2 pixel_pos = make_int2(round(reprojected_pixel_pos.x), round(reprojected_pixel_pos.y));
+            std::cout << std::endl;*/
     }
 
     render_data.g_buffer.view_directions[pixel_index] = -ray.direction;

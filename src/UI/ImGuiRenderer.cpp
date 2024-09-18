@@ -60,7 +60,7 @@ void ImGuiRenderer::draw_imgui_interface()
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 
 	ImGuiIO& io = ImGui::GetIO();
-	ImGui::ShowDemoWindow();
+	// ImGui::ShowDemoWindow();
 
 	ImGui::Begin("Settings");
 
@@ -668,29 +668,29 @@ void ImGuiRenderer::draw_sampling_panel()
 
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
-					// Backup values to remember what the heuristic threshold was before it was disabled
-					// The normal similarity backup is the angle in degrees
-					static float normal_similarity_heuristic_backup = render_settings.restir_di_settings.normal_similarity_angle_degrees;
-					static float plane_distane_heuristic_backup = render_settings.restir_di_settings.plane_distance_threshold;
-					static float roughness_similarity_heuristic_backup = render_settings.restir_di_settings.roughness_similarity_threshold;
-
 					static bool use_heuristics_at_all = true;
+					static bool use_normal_heuristic_backup = render_settings.restir_di_settings.use_normal_similarity_heuristic;
+					static bool use_plane_distance_heuristic_backup = render_settings.restir_di_settings.use_plane_distance_heuristic;
+					static bool use_roughness_heuristic_backup = render_settings.restir_di_settings.use_roughness_similarity_heuristic;
 					if (ImGui::Checkbox("Use Heuristics for neighbor rejection", &use_heuristics_at_all))
 					{
 						if (!use_heuristics_at_all)
 						{
-							// "Disabling" the heuristics by setting "impossible" values so that the heuristics
-							// tests in the shader always pass
-							render_settings.restir_di_settings.normal_similarity_angle_precomp = -1.0f;
-							render_settings.restir_di_settings.plane_distance_threshold = 1.0e35f;
-							render_settings.restir_di_settings.roughness_similarity_threshold = 1000.0f;
+							// Saving the usage of the heuristics for later restoration
+							use_normal_heuristic_backup = render_settings.restir_di_settings.use_normal_similarity_heuristic;
+							use_plane_distance_heuristic_backup = render_settings.restir_di_settings.use_plane_distance_heuristic;
+							use_roughness_heuristic_backup = render_settings.restir_di_settings.use_roughness_similarity_heuristic;
+
+							render_settings.restir_di_settings.use_normal_similarity_heuristic = false;
+							render_settings.restir_di_settings.use_plane_distance_heuristic = false;
+							render_settings.restir_di_settings.use_roughness_similarity_heuristic = false;
 						}
 						else
 						{
-							// Restoring heuristics to their backup values
-							render_settings.restir_di_settings.normal_similarity_angle_precomp = std::cos(normal_similarity_heuristic_backup * M_PI / 180.0f);
-							render_settings.restir_di_settings.plane_distance_threshold = plane_distane_heuristic_backup;
-							render_settings.restir_di_settings.roughness_similarity_threshold = roughness_similarity_heuristic_backup;
+							// Restoring heuristics usage to their backup values
+							render_settings.restir_di_settings.use_normal_similarity_heuristic = use_normal_heuristic_backup;
+							render_settings.restir_di_settings.use_plane_distance_heuristic = use_plane_distance_heuristic_backup;
+							render_settings.restir_di_settings.use_roughness_similarity_heuristic = use_roughness_heuristic_backup;
 						}
 
 						m_render_window->set_render_dirty(true);
@@ -707,31 +707,15 @@ void ImGuiRenderer::draw_sampling_panel()
 
 
 
-						static bool do_normal_similarity_test = true;
-						if (ImGui::Checkbox("Use Normal Similarity Heuristic", &do_normal_similarity_test))
-						{
-							if (do_normal_similarity_test)
-							{
-								// The user re-enabled the normal heuristic, restoring the threshold to its backup value
-								render_settings.restir_di_settings.normal_similarity_angle_degrees = normal_similarity_heuristic_backup;
-								render_settings.restir_di_settings.normal_similarity_angle_precomp = std::cos(normal_similarity_heuristic_backup * M_PI / 180.0f);
-							}
-							else
-								// If not using the heuristic, setting the threshold to 0.0f so that the normal heuristic always passes
-								render_settings.restir_di_settings.normal_similarity_angle_precomp = -1.0f;
-
+						if (ImGui::Checkbox("Use Normal Similarity Heuristic", &render_settings.restir_di_settings.use_normal_similarity_heuristic))
 							m_render_window->set_render_dirty(true);
-						}
 
-						if (do_normal_similarity_test)
+						if (render_settings.restir_di_settings.use_normal_similarity_heuristic)
 						{
 							if (ImGui::SliderFloat("Normal Similarity Threshold", &render_settings.restir_di_settings.normal_similarity_angle_degrees, 0.0f, 360.0f, "%.3f deg", ImGuiSliderFlags_AlwaysClamp))
 							{
 								render_settings.restir_di_settings.normal_similarity_angle_precomp = std::cos(render_settings.restir_di_settings.normal_similarity_angle_degrees * M_PI / 180.0f);
 
-								// Backuping the value for later if user disables the normal similarity
-								normal_similarity_heuristic_backup = render_settings.restir_di_settings.normal_similarity_angle_degrees;
-
 								m_render_window->set_render_dirty(true);
 							}
 						}
@@ -739,54 +723,22 @@ void ImGuiRenderer::draw_sampling_panel()
 
 
 
-						static bool do_plane_distance_test = true;
-						if (ImGui::Checkbox("Use Plane Distance Heuristic", &do_plane_distance_test))
-						{
-							if (do_plane_distance_test)
-								// Restoring the value of the plane distance heuristic
-								render_settings.restir_di_settings.plane_distance_threshold = plane_distane_heuristic_backup;
-							else
-								// Setting a super high value so that the plane distance heuristic always passes if we're not using it
-								render_settings.restir_di_settings.plane_distance_threshold = 1.0e35f;
-
+						if (ImGui::Checkbox("Use Plane Distance Heuristic", &render_settings.restir_di_settings.use_plane_distance_heuristic))
 							m_render_window->set_render_dirty(true);
-						}
 
-						if (do_plane_distance_test)
-						{
+						if (render_settings.restir_di_settings.use_plane_distance_heuristic)
 							if (ImGui::SliderFloat("Plane Distance Threshold", &render_settings.restir_di_settings.plane_distance_threshold, 0.0f, 1.0f))
-							{
-								plane_distane_heuristic_backup = render_settings.restir_di_settings.plane_distance_threshold;
-
 								m_render_window->set_render_dirty(true);
-							}
-						}
 
 
 
 
-						static bool do_roughness_heuristic = true;
-						if (ImGui::Checkbox("Use Roughness Heuristic", &do_roughness_heuristic))
-						{
-							if (do_roughness_heuristic)
-								// The user re-enabled the heuristic so we're restoring its value
-								render_settings.restir_di_settings.roughness_similarity_threshold = roughness_similarity_heuristic_backup;
-							else
-								// Basically disabling the heuristic by setting a very high tolerance for the difference in roughness
-								// so that the heuristic always passes
-								render_settings.restir_di_settings.roughness_similarity_threshold = 1000.0f;
-
+						if (ImGui::Checkbox("Use Roughness Heuristic", &render_settings.restir_di_settings.use_roughness_similarity_heuristic))
 							m_render_window->set_render_dirty(true);
-						}
-						if (do_roughness_heuristic)
-						{
-							if (ImGui::SliderFloat("Roughness Threshold", &render_settings.restir_di_settings.roughness_similarity_threshold, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp))
-							{
-								roughness_similarity_heuristic_backup = render_settings.restir_di_settings.roughness_similarity_threshold;
 
+						if (render_settings.restir_di_settings.use_roughness_similarity_heuristic)
+							if (ImGui::SliderFloat("Roughness Threshold", &render_settings.restir_di_settings.roughness_similarity_threshold, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp))
 								m_render_window->set_render_dirty(true);
-							}
-						}
 
 
 
@@ -918,6 +870,7 @@ void ImGuiRenderer::draw_sampling_panel()
 				ImGui::SeparatorText("Spatial Reuse Pass");
 				ImGui::TreePush("ReSTIR DI - Spatial Reuse Pass Tree");
 				{
+					ImGui::Checkbox("Old", &render_settings.old);
 					if (ImGui::Checkbox("Do Spatial Reuse", &render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass))
 						m_render_window->set_render_dirty(true);
 

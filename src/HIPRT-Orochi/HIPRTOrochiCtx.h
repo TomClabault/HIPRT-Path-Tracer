@@ -56,8 +56,8 @@ struct HIPRTOrochiCtx
 	hiprtContextCreationInput hiprt_ctx_input = { nullptr, -1, hiprtDeviceAMD };
 
 	oroCtx orochi_ctx = nullptr;
-	oroDevice orochi_device;
-	oroDeviceProp device_properties;
+	oroDevice orochi_device = -1;
+	oroDeviceProp device_properties = {};
 
 	hiprtContext hiprt_ctx = nullptr;
 };

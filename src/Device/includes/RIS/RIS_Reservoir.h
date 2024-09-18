@@ -11,7 +11,7 @@
 
 struct RISSample
 {
-    int emissive_triangle_index;
+    int emissive_triangle_index = -1;
     float3 point_on_light_source = { 0, 0, 0 };
 
     float target_function = 0.0f;
@@ -19,7 +19,7 @@ struct RISSample
     // TODO Can this be refactored? Is this needed?
     bool is_bsdf_sample = false;
     ColorRGB32F bsdf_sample_contribution;
-    float bsdf_sample_cosine_term;
+    float bsdf_sample_cosine_term = 0.0f;
 };
 
 struct RISReservoir

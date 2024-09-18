@@ -85,9 +85,9 @@ private:
         std::vector<ReSTIRDIReservoir> spatial_output_reservoirs_1;
         std::vector<ReSTIRDIReservoir> spatial_output_reservoirs_2;
 
-        ReSTIRDIReservoir* output_reservoirs;
+        ReSTIRDIReservoir* output_reservoirs = nullptr;
 
-        bool odd_frame;
+        bool odd_frame = false;
     } m_restir_di_state;
 
     std::vector<Triangle> m_triangle_buffer;

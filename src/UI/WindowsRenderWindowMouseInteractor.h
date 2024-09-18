@@ -18,7 +18,7 @@ public:
     void set_callbacks(GLFWwindow* window);
 
 protected:
-    bool m_just_pressed;
+    bool m_just_pressed = false;
 
 private:
     static void glfw_mouse_button_callback(GLFWwindow* window, int button, int action, int mods);

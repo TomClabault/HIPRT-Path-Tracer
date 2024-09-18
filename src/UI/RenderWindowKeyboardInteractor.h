@@ -37,7 +37,7 @@ protected:
 	bool m_space_pressed = false;
 	bool m_lshift_pressed = false;
 
-	RenderWindow* m_render_window;
+	RenderWindow* m_render_window = nullptr;
 };
 
 #endif

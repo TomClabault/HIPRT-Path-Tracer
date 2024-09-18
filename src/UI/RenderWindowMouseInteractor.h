@@ -51,9 +51,9 @@ protected:
 
 private:
     // Is the mouse left button beind held down?
-    bool m_interacting_left_button;
+    bool m_interacting_left_button = false;
     // Is the mouse right button beind held down?
-    bool m_interacting_right_button;
+    bool m_interacting_right_button = false;
 };
 
 #endif
