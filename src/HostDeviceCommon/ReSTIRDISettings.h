@@ -25,7 +25,7 @@ struct InitialCandidatesSettings
 
 struct TemporalPassSettings
 {
-	bool do_temporal_reuse_pass = false;
+	bool do_temporal_reuse_pass = true;
 
 	// Whether or not to use the G-buffer of last frame when resampling the temporal neighbor.
 	// This is required to avoid bias with camera movements but this comes at a VRAM cost
@@ -53,13 +53,13 @@ struct TemporalPassSettings
 
 struct SpatialPassSettings
 {
-	bool do_spatial_reuse_pass = false;
+	bool do_spatial_reuse_pass = true;
 
 	// What spatial pass are we currently performing?
 	// Takes values in [0, number_of_passes - 1]
 	int spatial_pass_index = 0;
 	// How many spatial reuse pass to perform
-	int number_of_passes = 1;
+	int number_of_passes = 2;
 	// The radius within which neighbor are going to be reused spatially
 	int spatial_reuse_radius = 20;
 	// How many neighbors to reuse during the spatial pass

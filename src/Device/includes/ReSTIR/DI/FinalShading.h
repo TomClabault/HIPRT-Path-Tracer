@@ -43,7 +43,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_ReSTIR_DI_reservoir(const HI
     shadow_ray.origin = evaluated_point;
     shadow_ray.direction = shadow_ray_direction_normalized;
 
-    in_shadow = evaluate_shadow_ray(render_data, shadow_ray, distance_to_light);
+    if (sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED)
+        in_shadow = false;
+    else
+        in_shadow = evaluate_shadow_ray(render_data, shadow_ray, distance_to_light);
 
     if (!in_shadow)
     {

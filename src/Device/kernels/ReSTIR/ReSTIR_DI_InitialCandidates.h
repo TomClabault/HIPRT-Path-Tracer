@@ -85,7 +85,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
                     // (which has probability 'envmap_candidate_probability')
                     light_sample_pdf *= (1.0f - envmap_candidate_probability);
 
-                    float mis_weight = balance_heuristic(light_sample_pdf, nb_light_candidates, bsdf_pdf, nb_bsdf_candidates);
+                    float mis_weight = power_heuristic(light_sample_pdf, nb_light_candidates, bsdf_pdf, nb_bsdf_candidates);
 
                     candidate_weight = mis_weight * target_function / light_sample_pdf;
 
@@ -112,7 +112,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
                 // Taking into account the fact that we only have a 1 in 'envmap_candidate_probability' chance to sample
                 // the envmap
                 envmap_pdf *= envmap_candidate_probability;
-                float mis_weight = balance_heuristic(envmap_pdf, nb_light_candidates, bsdf_pdf, nb_bsdf_candidates);
+                float mis_weight = power_heuristic(envmap_pdf, nb_light_candidates, bsdf_pdf, nb_bsdf_candidates);
 
                 float target_function = (envmap_radiance * cosine_term * bsdf_contribution).luminance();
 
@@ -160,6 +160,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
                 // And we go onto the next sample
                 continue;
             }
+
+            // We are now sure that if the sample survived, it is unoccluded
+            light_RIS_sample.flags |= RESTIR_DI_FLAGS_UNOCCLUDED;
         }
 #endif
 
@@ -171,14 +174,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
     for (int i = 0; i < nb_bsdf_candidates; i++)
     {
         float bsdf_sample_pdf = 0.0f;
-        float candidate_weight = 0.0f;
         float3 sampled_direction;
-        float3 shadow_ray_origin = evaluated_point;
+
         RayVolumeState trash_ray_volume_state = ray_payload.volume_state;
         ColorRGB32F bsdf_color;
-
         bsdf_color = bsdf_dispatcher_sample(render_data.buffers.materials_buffer, ray_payload.material, trash_ray_volume_state, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_direction, bsdf_sample_pdf, random_number_generator);
 
+        float3 shadow_ray_origin = evaluated_point;
         bool refraction_sampled = hippt::dot(sampled_direction, closest_hit_info.shading_normal * inside_surface_multiplier) < 0;
         if (refraction_sampled)
         {
@@ -238,14 +240,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
                 // so we multiply that here to take that into account
                 light_pdf *= (1.0f - envmap_candidate_probability);
 
-                float mis_weight = balance_heuristic(bsdf_sample_pdf, nb_bsdf_candidates, light_pdf, nb_light_candidates);
-
-                candidate_weight = mis_weight * target_function / bsdf_sample_pdf;
+                float mis_weight = power_heuristic(bsdf_sample_pdf, nb_bsdf_candidates, light_pdf, nb_light_candidates);
+                float candidate_weight = mis_weight * target_function / bsdf_sample_pdf;
 
                 ReSTIRDISample bsdf_RIS_sample;
                 bsdf_RIS_sample.emissive_triangle_index = shadow_light_ray_hit_info.hit_prim_index;
                 bsdf_RIS_sample.point_on_light_source = bsdf_ray.origin + bsdf_ray.direction * shadow_light_ray_hit_info.hit_distance;
                 bsdf_RIS_sample.target_function = target_function;
+                bsdf_RIS_sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
 
                 // TODO optimize here and if we keep the sample of the BSDF, we don't have to re-test for visibility when evaluating the reservoir
                 // because a BSDF sample can only be chosen if it's unoccluded (otherwise its weight is 0)
@@ -272,7 +274,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
                     // Not taking the light sampling PDF into account in the balance heuristic because a envmap hit
                     // (not a light surface hit) can never be sampled by a light-surface sampler and so the PDF
                     // of the current envmap sample is always 0 for a light sampler.
-                    float mis_weight = balance_heuristic(bsdf_sample_pdf, nb_bsdf_candidates, envmap_pdf, nb_light_candidates);
+                    float mis_weight = power_heuristic(bsdf_sample_pdf, nb_bsdf_candidates, envmap_pdf, nb_light_candidates);
                     float candidate_weight = mis_weight * target_function / bsdf_sample_pdf;
 
                     ReSTIRDISample bsdf_RIS_sample;
@@ -280,6 +282,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
                     bsdf_RIS_sample.point_on_light_source = sampled_direction;
                     bsdf_RIS_sample.target_function = target_function;
                     bsdf_RIS_sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE;
+                    bsdf_RIS_sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
 
                     // TODO optimize here and if we keep the sample of the BSDF, we don't have to re-test for visibility when evaluating the reservoir
                     // because a BSDF sample can only be chosen if it's unoccluded (otherwise its weight is 0)

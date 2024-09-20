@@ -133,9 +133,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void ReSTIR_DI_visibility_reuse(const HIPRTRender
 {
 	if (reservoir.UCW <= 0.0f)
 		return;
-	// TODO try uncomment this to see performance difference
-	/*else if (reservoir.sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_INITIAL_CANDIDATE_UNOCCLUDED)
-		return;*/
+	else if (reservoir.sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED)
+		// The sample is already unoccluded, no need to test for visibility reuse
+		return;
 
 	float distance_to_light;
 	float3 sample_direction = reservoir.sample.point_on_light_source - shading_point;
@@ -155,6 +155,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void ReSTIR_DI_visibility_reuse(const HIPRTRender
 	if (!visible)
 		// Setting to -1 here so that we know when debugging that this is because of visibility reuse
 		reservoir.UCW = -1.0f;
+	else
+		// Visible so the sample is unoccluded
+		reservoir.sample.flags |= RESTIR_DI_FLAGS_UNOCCLUDED;
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float get_jacobian_determinant_reconnection_shift(const HIPRTRenderData& render_data, const ReSTIRDIReservoir& neighbor_reservoir, const float3& center_pixel_shading_point, const float3& neighbor_shading_point)
