@@ -45,7 +45,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
         float candidate_weight = 0.0f;
         ReSTIRDISample light_RIS_sample;
 
-        // 18.44ms
         ColorRGB32F sample_radiance;
         float sample_cosine_term = 0.0f;
         float sample_pdf = 0.0f;
@@ -92,6 +91,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
 
             float3 envmap_sampled_direction;
             sample_radiance = envmap_sample(render_data, envmap_sampled_direction, sample_pdf, random_number_generator);
+            float opdf;
+            ColorRGB32F radiance_2 = envmap_eval(render_data, envmap_sampled_direction, opdf);
 
             // Taking into account the fact that we only have a 1 in 'envmap_candidate_probability' chance to sample
             // the envmap
@@ -171,8 +172,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
         float3 sampled_direction;
 
         RayVolumeState trash_ray_volume_state = ray_payload.volume_state;
-        ColorRGB32F bsdf_color;
-        bsdf_color = bsdf_dispatcher_sample(render_data.buffers.materials_buffer, ray_payload.material, trash_ray_volume_state, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_direction, bsdf_sample_pdf, random_number_generator);
+        ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data.buffers.materials_buffer, ray_payload.material, trash_ray_volume_state, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_direction, bsdf_sample_pdf, random_number_generator);
 
         float3 shadow_ray_origin = evaluated_point;
         bool refraction_sampled = hippt::dot(sampled_direction, closest_hit_info.shading_normal * inside_surface_multiplier) < 0;

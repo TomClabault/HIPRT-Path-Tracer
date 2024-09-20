@@ -16,7 +16,7 @@ struct InitialCandidatesSettings
 	int number_of_initial_bsdf_candidates = 1;
 	// For each 'number_of_initial_light_candidates', the probability that this light sample
 	// will sample the envmap instead of a light in the scene
-	float envmap_candidate_probability = 0.25f;
+	float envmap_candidate_probability = 0.20f;
 
 	// Buffer that contains the reservoirs that will hold the reservoir
 	// for the initial candidates generated
@@ -127,7 +127,7 @@ struct ReSTIRDISettings
 	// This is a world space distance.
 	float plane_distance_threshold = 0.1f;
 
-	bool use_roughness_similarity_heuristic = true;
+	bool use_roughness_similarity_heuristic = false;
 	// How close the roughness of the neighbor's surface must be to ours to resample that neighbor
 	// If this value is 0.25f for example, then the roughnesses must be within 0.25f of each other. Simple.
 	float roughness_similarity_threshold = 0.25f;

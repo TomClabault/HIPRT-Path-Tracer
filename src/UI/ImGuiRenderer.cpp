@@ -501,7 +501,7 @@ void ImGuiRenderer::draw_environment_panel()
 
 			if (rotation_changed)
 			{
-				glm::mat4x4 rotation_matrix;
+				glm::mat4x4 rotation_matrix, rotation_matrix_inv;
 
 				// glm::orientate3 interprets the X, Y and Z angles we give it as a yaw/pitch/roll semantic.
 				// 
@@ -518,7 +518,10 @@ void ImGuiRenderer::draw_environment_panel()
 				// See this picture for a visual aid on what we **don't** want (the z-up):
 				// https://www.researchgate.net/figure/xyz-and-pitch-roll-and-yaw-systems_fig4_253569466
 				rotation_matrix = glm::orientate3(glm::vec3(rota_X * 2.0f * M_PI, rota_Z * 2.0f * M_PI, rota_Y * 2.0f * M_PI));
-				m_renderer->get_world_settings().envmap_rotation_matrix = *reinterpret_cast<float4x4*>(&rotation_matrix);
+				rotation_matrix_inv = glm::inverse(rotation_matrix);
+
+				m_renderer->get_world_settings().envmap_to_world_matrix = *reinterpret_cast<float4x4*>(&rotation_matrix);
+				m_renderer->get_world_settings().world_to_envmap_matrix = *reinterpret_cast<float4x4*>(&rotation_matrix_inv);
 			}
 
 			render_made_piggy |= rotation_changed;

@@ -23,14 +23,21 @@
  * [2] [PBR Book 3rd Ed - Infinite Light Sampling] https://www.pbr-book.org/3ed-2018/Light_Transport_I_Surface_Reflection/Sampling_Light_Sources
  */ 
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F eval_envmap_no_pdf(const WorldSettings& world_settings, const float3& direction)
+/**
+ * This function expects 'direction' to be in the space indicated by 'is_direction_world_space'.
+ * If 'is_direction_world_space' is false, then the direction is expected to be in envmap space
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F eval_envmap_no_pdf(const WorldSettings& world_settings, const float3& direction, bool is_direction_world_space = true)
 {
-    // Taking envmap rotation into account
-    float3 rotated_direction = matrix_X_vec(world_settings.envmap_rotation_matrix, direction);
-    float u, v;
+    // Bringing the direction in envmap space for sampling the envmap
+    float3 rotated_direction;
+    if (is_direction_world_space)
+        rotated_direction = matrix_X_vec(world_settings.world_to_envmap_matrix, direction);
+    else
+        rotated_direction = direction;
 
-    u = 0.5f + atan2(rotated_direction.z, rotated_direction.x) / (2.0f * M_PI);
-    v = 0.5f + asin(rotated_direction.y) / M_PI;
+    float u = 0.5f + atan2(rotated_direction.z, rotated_direction.x) / (2.0f * M_PI);
+    float v = 0.5f + asin(rotated_direction.y) / M_PI;
 
     return sample_environment_map_texture(world_settings, make_float2(u, 1.0 - v));
 }
@@ -74,42 +81,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void envmap_cdf_search(const WorldSettings& world
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F envmap_sample(const HIPRTRenderData& render_data, float3& sampled_direction, float& envmap_pdf, Xorshift32Generator& random_number_generator)
 {
-    //const WorldSettings& world_settings = render_data.world_settings;
-
-    //float u = random_number_generator();
-    //float v = random_number_generator();
-
-    //u = 0.25f;
-    //v = 0.5f;
-
-    //// Full -Z = (0.25f, 0.5f)
-    //// Full Z = (0.75f, 0.5f)
-    //// Full Y = (0.5f, 1.0f)
-    //// Full X = (1.0f, 0.5f)
-
-    //float phi = 2 * M_PI * random_number_generator();
-    //float theta = acos(1 - 2 * random_number_generator());
-    //theta = M_PI * v;
-
-    //float cos_theta = cos(theta);
-    //float sin_theta = sin(theta);
-
-    ////sampled_direction = make_float3(-sin_theta * cos(phi), -cos_theta, -sin_theta * sin(phi));
-    //sampled_direction = make_float3(sin_theta * cos(phi), sin_theta * sin(phi), cos_theta);
-    //envmap_pdf = world_settings.envmap_width * world_settings.envmap_height;
-    //envmap_pdf = (2.0f * M_PI * M_PI * sin_theta);
-    //envmap_pdf = 1.0f / (4.0f * M_PI);
-
-    //ColorRGB32F envmap_radiance = sample_environment_map_texture(world_settings, make_float2(u, 1.0f - v));
-
-    //return envmap_radiance;
-
-
-
-
-
-
-
     const WorldSettings& world_settings = render_data.world_settings;
 
     // Importance sampling a texel of the envmap
@@ -131,47 +102,32 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F envmap_sample(const HIPRTRenderData& 
     // Convert to cartesian coordinates
     float cos_theta = cos(theta);
     float sin_theta = sin(theta);
+    // Using this formula here instead of the usual (sin_theta * cos(phi), sin_theta * sin(phi), cos_theta)
+    // because we want our envmap to be Y-up
     sampled_direction = make_float3(-sin_theta * cos(phi), -cos_theta, -sin_theta * sin(phi));
 
     // Taking envmap rotation into account
-    sampled_direction = matrix_X_vec(world_settings.envmap_rotation_matrix, sampled_direction);
+    sampled_direction = matrix_X_vec(world_settings.envmap_to_world_matrix, sampled_direction);
 
     ColorRGB32F env_map_radiance = sample_environment_map_texture(world_settings, make_float2(u, 1.0f - v));
+    // Computing envmap PDF
     envmap_pdf = env_map_radiance.luminance() / (env_map_total_sum * world_settings.envmap_intensity);
     envmap_pdf *= world_settings.envmap_width * world_settings.envmap_height;
+    // Covnerting the PDF from area measure on the envmap to solid angle measure
     envmap_pdf /= (2.0f * M_PI * M_PI * sin_theta);
 
     return env_map_radiance;
 }
 
+/**
+ * This function expects the given direction to already be in envmap-space i.e.
+ * the direction is already rotated by the envmap rotation matrix
+ */
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F envmap_eval(const HIPRTRenderData& render_data, const float3& direction, float& pdf)
 {
-    /*const WorldSettings& world_settings = render_data.world_settings;
-
-    ColorRGB32F envmap_radiance = eval_envmap_no_pdf(world_settings, direction);
-
-    unsigned int cdf_size = world_settings.envmap_width * world_settings.envmap_height;
-    float envmap_total_sum = world_settings.envmap_cdf[cdf_size - 1];
-
-    float theta_bsdf_dir = acos(-direction.y);
-    float sin_theta = sin(theta_bsdf_dir);
-
-    // Probability of sampling that texel on the envmap
-    pdf = envmap_radiance.luminance() / (envmap_total_sum * render_data.world_settings.envmap_intensity);
-    pdf *= world_settings.envmap_width * world_settings.envmap_height;
-
-    // Converting from "texel on envmap measure" to solid angle
-    pdf /= (2.0f * M_PI * M_PI * sin_theta);
-
-    return envmap_radiance;*/
-
-
-
-
-
     const WorldSettings& world_settings = render_data.world_settings;
 
-    ColorRGB32F envmap_radiance = eval_envmap_no_pdf(world_settings, direction);
+    ColorRGB32F envmap_radiance = eval_envmap_no_pdf(world_settings, direction, true);
 
     unsigned int cdf_size = world_settings.envmap_width * world_settings.envmap_height;
     float envmap_total_sum = world_settings.envmap_cdf[cdf_size - 1];
@@ -197,9 +153,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_cdf(const HIPR
     float3 sampled_direction;
     ColorRGB32F envmap_color = envmap_sample(render_data, sampled_direction, envmap_pdf, random_number_generator);
     ColorRGB32F envmap_mis_contribution;
-
-    float elva_pdf;
-    envmap_eval(render_data, sampled_direction, elva_pdf);
 
     // Sampling the envmap with MIS
     float cosine_term = hippt::dot(closest_hit_info.shading_normal, sampled_direction);

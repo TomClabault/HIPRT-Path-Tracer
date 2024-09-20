@@ -17,6 +17,7 @@
 #include "stb_image_write.h"
 
 // TODOs ReSTIR DI
+// - if we resample the center pixel reservoir out of all the neighbors, we can keep the unoccluded flag
 // - add hammersley usage or not imgui for spatial reuse
 // - restore M value of initial candidates to 5 (not 1) and implicitly multiply M-cap by the number of initial candidates so that everything stays correct
 // - fused spatiotemporal
@@ -36,8 +37,6 @@
 // - In the temporal reuse pass, we have a if (temporal_neighbor_reservoir.M > 0) that guards the resampling of the temporal neighbor
 //		Can we check for that condition earlier and if temporal_neighbor_reservoir.M == 0, then we can immediately return and set the output of the
 //		temporal pass to the initial candidates alone, the same as when temporal_neighbor_index == -1
-// - something is wrong with the heuristics: noisy in movement with the heuristics but not that much without.
-//		disabling all the heuristics at the same time removes the noisiness but one by one (3 checkboxes) doesn't remove the noisiness
 // - M-capping when using a reservoir in the spatial reuse? M-capping shouldn't be only for temporal input reservoirs right? --> too many spatial reuse passes/too many neighbors reused = blow up
 // - heuristics makes it hard to reuse on the teapot of the white room because of normals dissimilarity i guess?
 // - heuristics adds some noisy/artifacty pixels. Especially on high details geometry
