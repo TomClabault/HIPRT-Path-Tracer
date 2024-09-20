@@ -17,7 +17,6 @@
 #include "stb_image_write.h"
 
 // TODOs ReSTIR DI
-// - add second bounce direct light sampling strategy in imgui
 // - add hammersley usage or not imgui for spatial reuse
 // - restore M value of initial candidates to 5 (not 1) and implicitly multiply M-cap by the number of initial candidates so that everything stays correct
 // - fused spatiotemporal

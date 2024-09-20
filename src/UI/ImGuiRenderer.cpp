@@ -587,7 +587,7 @@ void ImGuiRenderer::draw_sampling_panel()
 		{
 			ImGui::TreePush("Direct lighting sampling tree");
 
-			const char* items[] = { "- No direct light sampling", "- Uniform one light", "- BSDF Sampling", "- MIS (1 Light + 1 BSDF)", "- RIS BDSF + Light candidates", "- ReSTIR DI (Primary Hit Only) + RIS"};
+			const char* items[] = { "- No direct light sampling", "- Uniform one light", "- BSDF Sampling", "- MIS (1 Light + 1 BSDF)", "- RIS BDSF + Light candidates", "- ReSTIR DI (Primary Hit Only)"};
 			if (ImGui::Combo("Direct light sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
 			{
 				m_renderer->recompile_kernels();
@@ -614,13 +614,6 @@ void ImGuiRenderer::draw_sampling_panel()
 				if (ImGui::Checkbox("Use visibility in RIS target function", &use_visibility_ris_target_function))
 				{
 					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, use_visibility_ris_target_function ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-					m_renderer->recompile_kernels();
-
-					m_render_window->set_render_dirty(true);
-				}
-
-				if (ImGui::Checkbox("Use geometry term in RIS target function", &render_settings.ris_settings.geometry_term_in_target_function))
-				{
 					m_renderer->recompile_kernels();
 
 					m_render_window->set_render_dirty(true);
@@ -781,25 +774,6 @@ void ImGuiRenderer::draw_sampling_panel()
 					}
 					ImGuiRenderer::show_help_marker("The probability to sample the envmap per each \"initial light candidates\"");
 					ImGui::EndDisabled();
-
-					/*ImGui::BeginDisabled(render_settings.restir_di_settings.initial_candidates.number_of_initial_envmap_candidates == 0);
-					static bool envmap_candidates_light_sampler_in_MIS = ReSTIR_DI_EnvmapSamplesMISLightSampler;
-					if (ImGui::Checkbox("Envmap Candidates - Light sampler in MIS", &envmap_candidates_light_sampler_in_MIS))
-					{
-						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_ENVMAP_SAMPLES_MIS_LIGHT_SAMPLER, envmap_candidates_light_sampler_in_MIS);
-
-						m_renderer->recompile_kernels();
-						m_render_window->set_render_dirty(true);
-					}
-					ImGui::EndDisabled();
-					std::string envmap_candidates_light_sampler_in_MIS_help_string = "If not checked, the MIS weight of "
-						"envmap sample candidates will not include the light PDF (probability of sampling the envmap "
-						"direction with the light sampler). This is technically biased but imperceptible as per my "
-						"testings and saves a shadow ray.";
-					if (render_settings.restir_di_settings.initial_candidates.number_of_initial_envmap_candidates == 0)
-						envmap_candidates_light_sampler_in_MIS_help_string += "\n\nDisabled because \"Envmap candidates\""
-						"== 0 so this option does not make sense";
-					ImGuiRenderer::show_help_marker(envmap_candidates_light_sampler_in_MIS_help_string);*/
 
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
 					ImGui::TreePop();
@@ -1018,6 +992,59 @@ void ImGuiRenderer::draw_sampling_panel()
 							ray_trace_spatial_reuse_reservoirs_string += "\n\nDisabled because not using either 1/Z or pairwise bias correction weights";
 					}
 					ImGuiRenderer::show_help_marker(ray_trace_spatial_reuse_reservoirs_string);
+
+					ImGui::Dummy(ImVec2(0.0f, 20.0f));
+					ImGui::SeparatorText("Later Bounces Sampling Strategy");
+
+					const char* second_bounce_items[] = { "- Uniform one light", "- BSDF Sampling", "- MIS (1 Light + 1 BSDF)", "- RIS BDSF + Light candidates" };
+					if (ImGui::Combo("Later bounces direct light sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::RESTIR_DI_LATER_BOUNCES_SAMPLING_STRATEGY), second_bounce_items, IM_ARRAYSIZE(second_bounce_items)))
+					{
+						m_renderer->recompile_kernels();
+						m_render_window->set_render_dirty(true);
+					}
+					ImGuiRenderer::show_help_marker("What direct lighting strategy to use for bounces that come after the first one (camera ray hit) since ReSTIR DI only applies on the first bounce.");
+
+					switch (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_LATER_BOUNCES_SAMPLING_STRATEGY))
+					{
+					case RESTIR_DI_LATER_BOUNCES_UNIFORM_ONE_LIGHT:
+						break;
+
+					case RESTIR_DI_LATER_BOUNCES_MIS_LIGHT_BSDF:
+						break;
+
+					case RESTIR_DI_LATER_BOUNCES_RIS_BSDF_AND_LIGHT:
+					{
+						static bool use_visibility_ris_target_function = RISUseVisiblityTargetFunction;
+						if (ImGui::Checkbox("Use visibility in RIS target function", &use_visibility_ris_target_function))
+						{
+							global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, use_visibility_ris_target_function ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+							m_renderer->recompile_kernels();
+
+							m_render_window->set_render_dirty(true);
+						}
+
+						if (ImGui::SliderInt("RIS # of BSDF candidates", &render_settings.ris_settings.number_of_bsdf_candidates, 0, 16))
+						{
+							// Clamping to 0
+							render_settings.ris_settings.number_of_bsdf_candidates = std::max(0, render_settings.ris_settings.number_of_bsdf_candidates);
+
+							m_render_window->set_render_dirty(true);
+						}
+
+						if (ImGui::SliderInt("RIS # of light candidates", &render_settings.ris_settings.number_of_light_candidates, 0, 32))
+						{
+							// Clamping to 0
+							render_settings.ris_settings.number_of_light_candidates = std::max(0, render_settings.ris_settings.number_of_light_candidates);
+
+							m_render_window->set_render_dirty(true);
+						}
+
+						break;
+					}
+
+					default:
+						break;
+					}
 
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
 					ImGui::TreePop();

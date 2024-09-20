@@ -127,11 +127,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
                 RayVolumeState trash_ray_volume_state = ray_payload.volume_state;
                 bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, ray_payload.material, trash_ray_volume_state, view_direction, closest_hit_info.shading_normal, to_light_direction, bsdf_pdf);
 
-                float geometry_term = 1.0f;
-                if (render_data.render_settings.ris_settings.geometry_term_in_target_function)
-                    geometry_term = cosine_at_light_source / (distance_to_light * distance_to_light);
-      
-                target_function = (bsdf_color * light_source_info.emission * cosine_at_evaluated_point * geometry_term).luminance();
+                target_function = (bsdf_color * light_source_info.emission * cosine_at_evaluated_point).luminance();
 
 #if RISUseVisiblityTargetFunction == KERNEL_OPTION_TRUE
                 if (!render_data.render_settings.do_render_low_resolution())

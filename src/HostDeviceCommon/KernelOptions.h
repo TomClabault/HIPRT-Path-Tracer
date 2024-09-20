@@ -60,6 +60,11 @@
 #define RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS 4
 #define RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE 5
 
+#define RESTIR_DI_LATER_BOUNCES_UNIFORM_ONE_LIGHT 0
+#define RESTIR_DI_LATER_BOUNCES_BSDF 1
+#define RESTIR_DI_LATER_BOUNCES_MIS_LIGHT_BSDF 2
+#define RESTIR_DI_LATER_BOUNCES_RIS_BSDF_AND_LIGHT 3
+
 #define GGX_NO_VNDF 0
 #define GGX_VNDF_SAMPLING 1
 #define GGX_VNDF_SPHERICAL_CAPS 2
@@ -146,22 +151,22 @@
  *		No direct light sampling
  * 
  *	- LSS_UNIFORM_ONE_LIGHT
- *		Samples one random light in the scene without MIS
+ *		Samples one random light in the scene without MIS. 
+ *		Efficient as long as there are not too many lights in the scene and no glossy surfaces
+ * 
+ *  - LSS_BSDF
+ *		Samples lights only using a BSDF sample
+ *		Efficient as long as light sources in the scene are large
  * 
  *	- LSS_MIS_LIGHT_BSDF
  *		Samples one random light in the scene with MIS (Multiple Importance Sampling): light sample + BRDF sample
  * 
  *	- LSS_RIS_BSDF_AND_LIGHT
- *		Samples lights in the scene with Resampled Importance Sampling using 
- *		render_settings.ris_number_of_light_candidates light candidates and
- *		render_settings.ris_number_of_bsdf_candidates BSDF candidates
+ *		Samples lights in the scene with Resampled Importance Sampling
  * 
  *	- LSS_RESTIR_DI
  *		Uses ReSTIR DI to sample direct lighting at the first bounce in the scene.
- * 
- *		ReSTIR DI then uses:
- *			- render_settings.ris_number_of_light_candidates & render_settings.ris_number_of_bsdf_candidates
- *				when sampling the initial candidates with RIS
+ *		Later bounces use the strategy given by ReSTIR_DI_LaterBouncesSamplingStrategy
  */
 #define DirectLightSamplingStrategy LSS_RESTIR_DI
 
@@ -325,6 +330,26 @@
  *		Section 7.1.3 of "A Gentle Introduction to ReSTIR", 2023
  */
 #define ReSTIR_DI_BiasCorrectionWeights RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
+
+/**
+ * What direct lighting sampling strategy to use for secondary bounces when ReSTIR DI is used for sampling the first bounce
+ * 
+ * Possible values (the prefix LSS stands for "Light Sampling strategy"):
+ * 
+ *	- RESTIR_DI_LATER_BOUNCES_UNIFORM_ONE_LIGHT
+ *		Samples one random light in the scene without MIS
+ * 
+ *	- RESTIR_DI_LATER_BOUNCES_MIS_LIGHT_BSDF
+ *		Samples one random light in the scene with MIS (Multiple Importance Sampling): light sample + BRDF sample
+ * 
+ *  - RESTIR_DI_LATER_BOUNCES_BSDF
+ *		Samples a light using a BSDF sample.
+ *		Efficient as long as the light sources in the scene are large.
+ * 
+ *	- RESTIR_DI_LATER_BOUNCES_RIS_BSDF_AND_LIGHT
+ *		Samples lights in the scene with Resampled Importance Sampling
+ */
+#define ReSTIR_DI_LaterBouncesSamplingStrategy RESTIR_DI_LATER_BOUNCES_RIS_BSDF_AND_LIGHT
 
 /**
  * What sampling strategy to use for the GGX NDF

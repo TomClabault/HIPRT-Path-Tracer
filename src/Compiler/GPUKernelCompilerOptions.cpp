@@ -9,6 +9,12 @@
 
 #include <cassert>
 
+/**
+ * Defining the strings that go with the option so that they can be passed to the shader compiler
+ * with the -D<string>=<value> option.
+ * 
+ * The strings used here must match the ones used in KernelOptions.h
+ */
 const std::string GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_GLOBAL_RAYS = "SharedStackBVHTraversalGlobalRays";
 const std::string GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SHADOW_RAYS = "SharedStackBVHTraversalShadowRays";
 const std::string GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_BLOCK_SIZE = "SharedStackBVHTraversalBlockSize";
@@ -31,6 +37,7 @@ const std::string GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE = "ReS
 const std::string GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY = "ReSTIR_DI_BiasCorrectionUseVisiblity";
 const std::string GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_OUTPUT_VISIBILITY_CHECK = "ReSTIR_DI_SpatialReuseOutputVisibilityCheck";
 const std::string GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS = "ReSTIR_DI_BiasCorrectionWeights";
+const std::string GPUKernelCompilerOptions::RESTIR_DI_LATER_BOUNCES_SAMPLING_STRATEGY = "ReSTIR_DI_LaterBouncesSamplingStrategy";
 
 const std::vector<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES = {
 	GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_GLOBAL_RAYS,
@@ -55,6 +62,7 @@ const std::vector<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES = {
 	GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY,
 	GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_OUTPUT_VISIBILITY_CHECK,
 	GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS,
+	GPUKernelCompilerOptions::RESTIR_DI_LATER_BOUNCES_SAMPLING_STRATEGY,
 };
 
 GPUKernelCompilerOptions::GPUKernelCompilerOptions()
@@ -83,6 +91,7 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY] = std::make_shared<int>(ReSTIR_DI_BiasCorrectionUseVisiblity);
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_OUTPUT_VISIBILITY_CHECK] = std::make_shared<int>(ReSTIR_DI_SpatialReuseOutputVisibilityCheck);
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS] = std::make_shared<int>(ReSTIR_DI_BiasCorrectionWeights);
+	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_LATER_BOUNCES_SAMPLING_STRATEGY] = std::make_shared<int>(ReSTIR_DI_LaterBouncesSamplingStrategy);
 
 	// Making sure we didn't forget to fill the ALL_MACROS_NAMES vector with all the options that exist
 	assert(GPUKernelCompilerOptions::ALL_MACROS_NAMES.size() == m_options_macro_map.size());

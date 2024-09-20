@@ -248,7 +248,17 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light(const HIPRTRenderDat
         // Can only do ReSTIR DI on the first bounce
         direct_light_contribution = sample_light_ReSTIR_DI(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, pixel_coords, resolution);
     else
-        direct_light_contribution = sample_lights_RIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+    {
+#if ReSTIR_DI_LaterBouncesSamplingStrategy == RESTIR_DI_LATER_BOUNCES_UNIFORM_ONE_LIGHT
+    direct_light_contribution = sample_one_light_no_MIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+#elif ReSTIR_DI_LaterBouncesSamplingStrategy == RESTIR_DI_LATER_BOUNCES_BSDF
+    direct_light_contribution = sample_one_light_bsdf(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+#elif ReSTIR_DI_LaterBouncesSamplingStrategy == RESTIR_DI_LATER_BOUNCES_MIS_LIGHT_BSDF
+    direct_light_contribution = sample_one_light_MIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+#elif ReSTIR_DI_LaterBouncesSamplingStrategy == RESTIR_DI_LATER_BOUNCES_RIS_BSDF_AND_LIGHT
+    direct_light_contribution = sample_lights_RIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+#endif
+    }
 #endif
 
     return direct_light_contribution;
