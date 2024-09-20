@@ -155,7 +155,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(const HIPRTRende
                 light_sample_pdf *= distance_to_light * distance_to_light;
                 light_sample_pdf /= dot_light_source;
 
-                float mis_weight = power_heuristic(light_sample_pdf, bsdf_pdf);
+                float mis_weight = balance_heuristic(light_sample_pdf, bsdf_pdf);
 
                 float cosine_term = hippt::max(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction), 0.0f);
                 light_source_radiance_mis = bsdf_color * cosine_term * light_source_info.emission * mis_weight / light_sample_pdf;
@@ -196,7 +196,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(const HIPRTRende
         if (inter_found && !shadow_light_ray_hit_info.hit_emission.is_black())
         {
             float light_pdf = pdf_of_emissive_triangle_hit(render_data, shadow_light_ray_hit_info, sampled_bsdf_direction);
-            float mis_weight = power_heuristic(direction_pdf, light_pdf);
+            float mis_weight = balance_heuristic(direction_pdf, light_pdf);
 
             // Using abs here because we want the dot product to be positive.
             // You may be thinking that if we're doing this, then we're not going to discard BSDF
