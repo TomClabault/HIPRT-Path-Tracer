@@ -873,7 +873,6 @@ void ImGuiRenderer::draw_sampling_panel()
 				ImGui::SeparatorText("Spatial Reuse Pass");
 				ImGui::TreePush("ReSTIR DI - Spatial Reuse Pass Tree");
 				{
-					ImGui::Checkbox("Old", &render_settings.old);
 					if (ImGui::Checkbox("Do Spatial Reuse", &render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass))
 						m_render_window->set_render_dirty(true);
 
