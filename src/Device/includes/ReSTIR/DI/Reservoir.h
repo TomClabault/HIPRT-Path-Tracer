@@ -122,6 +122,9 @@ struct ReSTIRDIReservoir
             UCW = 0.0f;
         else
             UCW = 1.0f / sample.target_function * weight_sum * normalization_numerator / normalization_denominator;
+
+        // Hard limiting M to avoid explosions if the user decides not to use any M-cap (M-cap == 0)
+        M = hippt::min(M, 1000000);
     }
 
     HIPRT_HOST_DEVICE HIPRT_INLINE void sanity_check(int2 pixel_coords)

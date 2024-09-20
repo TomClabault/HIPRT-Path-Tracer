@@ -16,18 +16,9 @@
 
 #include "stb_image_write.h"
 
-// 17.45ms
-
 // TODOs ReSTIR DI
-// - if we resample the center pixel reservoir out of all the neighbors, we can keep the unoccluded flag
-// - add hammersley usage or not imgui for spatial reuse
-// - restore M value of initial candidates to 5 (not 1) and implicitly multiply M-cap by the number of initial candidates so that everything stays correct
 // - fused spatiotemporal
 // - feature to disable ReSTIR after a certain percentage of convergence --> we don't want to pay the full price of resampling and everything only for a few difficult isolated pixels (especially true with adaptive sampling where neighbors don't get sampled --> no new samples added to their reservoir --> no need to resample)
-// - camera ray jittering causes dark lines and darkens glossy reflections
-// - multiple spatial reuse passes destroy glossy reflections
-// - m cap at 0 in ImGui breaks the render because of infinite M growth --> hardcap M to something like ~1000000 or something
-// - different M cap for glossy surfaces ?
 // - temporal permutation sampling
 // - limit distance of BSDF ray for initial sampling (biased but reduces BVH traversal so performance++)
 // - maybe not spatially resample as hard everywhere in the image? heuristic to reduce/increase the number of spatial samples per pixel?
@@ -59,6 +50,7 @@
 
 
 // TODO Code Organization:
+// - what if everywhere in the code we use a minT for the rays instead of pushing the points in the right direction (annoying to determine the right direction everytime depending on inside/outside surface)
 // - cleanup RIS reservoir with all the BSDF stuff
 // - denoiser albedo and normals still useful now that we have the GBuffer?
 // - make a function get_camera_ray that handles pixel jittering
