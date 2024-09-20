@@ -45,15 +45,19 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
         float candidate_weight = 0.0f;
         ReSTIRDISample light_RIS_sample;
 
+        // 18.44ms
+        ColorRGB32F sample_radiance;
+        float sample_cosine_term = 0.0f;
+        float sample_pdf = 0.0f;
         if (random_number_generator() > envmap_candidate_probability)
         {
             // Light sample
 
-            float light_sample_pdf;
             LightSourceInformation light_source_info;
-            light_RIS_sample.point_on_light_source = sample_one_emissive_triangle(render_data, random_number_generator, light_sample_pdf, light_source_info);
+            light_RIS_sample.point_on_light_source = sample_one_emissive_triangle(render_data, random_number_generator, sample_pdf, light_source_info);
+            light_RIS_sample.emissive_triangle_index = light_source_info.emissive_triangle_index;
 
-            if (light_sample_pdf > 0.0f)
+            if (sample_pdf > 0.0f)
             {
                 // It can happen that the light PDF returned by the emissive triangle
                 // sampling function is 0 because of emissive triangles that are so
@@ -66,63 +70,66 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
 
                 // Multiplying by the inside_surface_multiplier here because if we're inside the surface, we want to flip the normal
                 // for the dot product to be "properly" oriented.
-                float cosine_at_evaluated_point = hippt::max(0.0f, hippt::dot(closest_hit_info.shading_normal * inside_surface_multiplier, to_light_direction));
-                if (cosine_at_evaluated_point > 0.0f)
-                {
-                    float bsdf_pdf;
-                    RayVolumeState trash_ray_volume_state = ray_payload.volume_state;
-                    ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, ray_payload.material, trash_ray_volume_state, view_direction, closest_hit_info.shading_normal, to_light_direction, bsdf_pdf);
+                sample_cosine_term = hippt::max(0.0f, hippt::dot(closest_hit_info.shading_normal * inside_surface_multiplier, to_light_direction));
 
-                    target_function = (bsdf_color * light_source_info.emission * cosine_at_evaluated_point).luminance();
+                float cosine_at_light_source = hippt::abs(hippt::dot(light_source_info.light_source_normal, -to_light_direction));
+                // Converting the PDF from area measure to solid angle measure requires dividing by
+                // cos(theta) / dist^2. Dividing by that factor is equal to multiplying by the inverse
+                // which is what we're doing here
+                sample_pdf *= distance_to_light * distance_to_light;
+                sample_pdf /= cosine_at_light_source;
 
-                    float cosine_at_light_source = hippt::abs(hippt::dot(light_source_info.light_source_normal, -to_light_direction));
-                    // Converting the PDF from area measure to solid angle measure requires dividing by
-                    // cos(theta) / dist^2. Dividing by that factor is equal to multiplying by the inverse
-                    // which is what we're doing here
-                    light_sample_pdf *= distance_to_light * distance_to_light;
-                    light_sample_pdf /= cosine_at_light_source;
-                    // Accounting for the probability of sampling a light, not the envmap
-                    // (which has probability 'envmap_candidate_probability')
-                    light_sample_pdf *= (1.0f - envmap_candidate_probability);
+                // Accounting for the probability of sampling a light, not the envmap
+                // (which has probability 'envmap_candidate_probability')
+                sample_pdf *= (1.0f - envmap_candidate_probability);
 
-                    float mis_weight = power_heuristic(light_sample_pdf, nb_light_candidates, bsdf_pdf, nb_bsdf_candidates);
-
-                    candidate_weight = mis_weight * target_function / light_sample_pdf;
-
-                    light_RIS_sample.emissive_triangle_index = light_source_info.emissive_triangle_index;
-                    light_RIS_sample.target_function = target_function;
-                }
+                sample_radiance = light_source_info.emission;
             }
         }
         else
         {
             // Envmap sample
 
-            float envmap_pdf;
             float3 envmap_sampled_direction;
-            ColorRGB32F envmap_radiance = envmap_sample(render_data, envmap_sampled_direction, envmap_pdf, random_number_generator);
+            sample_radiance = envmap_sample(render_data, envmap_sampled_direction, sample_pdf, random_number_generator);
 
-            float cosine_term = hippt::max(0.0f, hippt::dot(envmap_sampled_direction, closest_hit_info.shading_normal));
-            if (cosine_term > 0.0f)
-            {
-                float bsdf_pdf;
-                RayVolumeState volume_state = ray_payload.volume_state;
-                ColorRGB32F bsdf_contribution = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, ray_payload.material, volume_state, view_direction, closest_hit_info.shading_normal, envmap_sampled_direction, bsdf_pdf);
+            // Taking into account the fact that we only have a 1 in 'envmap_candidate_probability' chance to sample
+            // the envmap
+            sample_pdf *= envmap_candidate_probability;
 
-                // Taking into account the fact that we only have a 1 in 'envmap_candidate_probability' chance to sample
-                // the envmap
-                envmap_pdf *= envmap_candidate_probability;
-                float mis_weight = power_heuristic(envmap_pdf, nb_light_candidates, bsdf_pdf, nb_bsdf_candidates);
+            sample_cosine_term = hippt::max(0.0f, hippt::dot(envmap_sampled_direction, closest_hit_info.shading_normal));
 
-                float target_function = (envmap_radiance * cosine_term * bsdf_contribution).luminance();
+            light_RIS_sample.emissive_triangle_index = -1;
+            light_RIS_sample.point_on_light_source = envmap_sampled_direction;
+            light_RIS_sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE;
+        }
 
-                candidate_weight = mis_weight * target_function / envmap_pdf;
+        float distance_to_light;
+        float3 to_light_direction;
+        if (light_RIS_sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE)
+        {
+            to_light_direction = light_RIS_sample.point_on_light_source;
+            distance_to_light = 1.0e35f;
+        }
+        else
+        {
+            to_light_direction = light_RIS_sample.point_on_light_source - evaluated_point;
+            to_light_direction = to_light_direction / (distance_to_light = hippt::length(to_light_direction)); // Normalization
+        }
 
-                light_RIS_sample.emissive_triangle_index = -1;
-                light_RIS_sample.point_on_light_source = envmap_sampled_direction;
-                light_RIS_sample.target_function = target_function;
-                light_RIS_sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE;
-            }
+        if (sample_cosine_term > 0.0f)
+        {
+            float bsdf_pdf;
+            RayVolumeState volume_state = ray_payload.volume_state;
+            ColorRGB32F bsdf_contribution = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, ray_payload.material, volume_state, view_direction, closest_hit_info.shading_normal, to_light_direction, bsdf_pdf);
+
+            float mis_weight = power_heuristic(sample_pdf, nb_light_candidates, bsdf_pdf, nb_bsdf_candidates);
+
+            float target_function = (bsdf_contribution * sample_radiance * sample_cosine_term).luminance();
+
+            candidate_weight = mis_weight * target_function / sample_pdf;
+
+            light_RIS_sample.target_function = target_function;
         }
 
 #if ReSTIR_DI_TargetFunctionVisibility == KERNEL_OPTION_TRUE
@@ -131,19 +138,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
             // Only doing visiblity if we're render at low resolution
             // (meaning we're moving the camera) for better movement framerates
             // Also, only testing visibility if we got a valid sample
-
-            float distance_to_light = 0.0f;
-            float3 to_light_direction;
-            if (light_RIS_sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE)
-            {
-                to_light_direction = light_RIS_sample.point_on_light_source;
-                distance_to_light = 1.0e35f;
-            }
-            else
-            {
-                to_light_direction = light_RIS_sample.point_on_light_source - evaluated_point;
-                to_light_direction /= (distance_to_light = hippt::length(to_light_direction));
-            }
 
             hiprtRay shadow_ray;
             shadow_ray.origin = evaluated_point;
