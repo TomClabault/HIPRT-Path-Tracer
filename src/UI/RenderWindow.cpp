@@ -16,6 +16,8 @@
 
 #include "stb_image_write.h"
 
+// 17.45ms
+
 // TODOs ReSTIR DI
 // - if we resample the center pixel reservoir out of all the neighbors, we can keep the unoccluded flag
 // - add hammersley usage or not imgui for spatial reuse

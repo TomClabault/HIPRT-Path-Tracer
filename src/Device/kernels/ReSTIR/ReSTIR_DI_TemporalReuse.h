@@ -205,7 +205,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 #endif
 
 	if (new_reservoir.combine_with(initial_candidates_reservoir, initial_candidates_mis_weight, initial_candidates_reservoir.sample.target_function, /* jacobian is 1 when reusing at the exact same spot */ 1.0f, random_number_generator))
+	{
 		selected_neighbor = INITIAL_CANDIDATES_ID;
+		// We resampled the center pixel so we can copy the unoccluded flag
+		new_reservoir.sample.flags |= initial_candidates_reservoir.sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
+	}
 	new_reservoir.sanity_check(make_int2(x, y));
 
 	float normalization_numerator = 1.0f;
