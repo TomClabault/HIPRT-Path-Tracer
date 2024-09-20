@@ -93,7 +93,7 @@
 // - pack ray payload
 // - pack nested dielectrics structure
 // - performance/bias tradeoff by ignoring alpha tests after N bounce?
-// - performance/bias tradeoff by ignoring direct lighting occlusion after N bounce?
+// - performance/bias tradeoff by ignoring direct lighting occlusion after N bounce? --> strong bias but maybe something to do by reducing the length of shadow rays instead of just hard-disabling occlusion
 // - experiment with a feature that ignores really dark pixel in the variance estimation of the adaptive 
 //		sampling because it seems that very dark areas in the image are always flagged as very 
 //		noisy / very high variance and they take a very long time to converge (always red on the heatmap) 
