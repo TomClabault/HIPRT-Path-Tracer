@@ -109,4 +109,26 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float pdf_of_emissive_triangle_hit(const HIPRTRen
     return pdf;
 }
 
+/**
+ * Returns true if the given contribution satisfies the minimum light contribution
+ * required for a light to be 
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE bool check_minimum_light_contribution(float minimum_contribution, const ColorRGB32F& contribution)
+{
+    if (minimum_contribution > 0.0f)
+    {
+        if (contribution.r < minimum_contribution
+            && contribution.g < minimum_contribution
+            && contribution.b < minimum_contribution)
+            // The light doesn't contribute enough
+            return false;
+        else
+            // The light contributes enough
+            return true;
+    }
+    else
+        // Minimum light contribution threshold disabled
+        return true;
+}
+
 #endif

@@ -327,6 +327,16 @@ void ImGuiRenderer::draw_render_settings_panel()
 			m_render_window->set_render_dirty(true);
 		}
 		
+		if (ImGui::SliderFloat("Minimum Light Contribution", &render_settings.minimum_light_contribution, 0.0f, 10.0f))
+		{
+			render_settings.minimum_light_contribution = std::max(0.0f, render_settings.minimum_light_contribution);
+			m_render_window->set_render_dirty(true);
+		}
+		ImGuiRenderer::show_help_marker("If a selected light (for direct lighting estimation) contributes at a given "
+			" point less than this 'minimum_light_contribution' value then the light sample is discarded. "
+			"This can improve performance at the cost of some bias depending on the scene.\n"
+			"0.0f to disable");
+
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 		// Light clamping tree
@@ -1703,6 +1713,23 @@ void ImGuiRenderer::draw_performance_settings_panel()
 		size_string += std::to_string(m_renderer->get_render_data().global_traversal_stack_buffer_size * std::ceil(m_renderer->m_render_resolution.x / 8.0f) * 8.0f * std::ceil(m_renderer->m_render_resolution.y / 8.0f) * 8.0f * sizeof(int) / 1000000.0f);
 		size_string += " MB";
 		ImGui::Text(size_string.c_str());
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::TreePop();
+	}
+
+	ImGui::SeparatorText("Lighting Settings");
+	ImGui::TreePush("Lighting Settings Performance Tree");
+	{
+		if (ImGui::SliderFloat("Minimum Light Contribution", &render_settings.minimum_light_contribution, 0.0f, 10.0f))
+		{
+			render_settings.minimum_light_contribution = std::max(0.0f, render_settings.minimum_light_contribution);
+			m_render_window->set_render_dirty(true);
+		}
+		ImGuiRenderer::show_help_marker("If a selected light (for direct lighting estimation) contributes at a given "
+			" point less than this 'minimum_light_contribution' value then the light sample is discarded. "
+			"This can improve performance at the cost of some bias depending on the scene.\n"
+			"0.0f to disable");
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();

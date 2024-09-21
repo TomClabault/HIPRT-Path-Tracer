@@ -15,6 +15,10 @@
 #include "HostDeviceCommon/HitInfo.h"
 #include "HostDeviceCommon/RenderData.h"
 
+// 27.86ms
+// 27.1
+
+
 // TODO make some simplification assuming that ReSTIR DI is never inside a surface (the camera being inside a surface may be an annoying case to handle)
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_reservoir_sample(const HIPRTRenderData& render_data, const RayPayload& ray_payload, const float3& shading_point, const float3& shading_normal, const float3& view_direction, const RISReservoir& reservoir)
 {
@@ -123,14 +127,44 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
             cosine_at_evaluated_point = hippt::max(0.0f, hippt::dot(closest_hit_info.shading_normal * inside_surface_multiplier, to_light_direction));
             if (cosine_at_evaluated_point > 0.0f)
             {
-                float bsdf_pdf;
-                RayVolumeState trash_ray_volume_state = ray_payload.volume_state;
-                bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, ray_payload.material, trash_ray_volume_state, view_direction, closest_hit_info.shading_normal, to_light_direction, bsdf_pdf);
+                //9.69ms
 
-                target_function = (bsdf_color * light_source_info.emission * cosine_at_evaluated_point).luminance();
+                // Converting the PDF from area measure to solid angle measure requires dividing by
+                // cos(theta) / dist^2. Dividing by that factor is equal to multiplying by the inverse
+                // which is what we're doing here
+                light_sample_pdf *= distance_to_light * distance_to_light;
+                light_sample_pdf /= cosine_at_light_source;
+
+                float bsdf_pdf;
+                // Early check for minimum light contribution: if the light itself doesn't contribute enough,
+                // adding the BSDF attenuation on top of it will only make it worse so we can already
+                // skip the light and saves ourselves the evaluation of the BSDF
+                bool contributes_enough = check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, light_source_info.emission / light_sample_pdf);
+                if (!contributes_enough)
+                    target_function = 0.0f;
+                else
+                {
+                    // Only going to evaluate the target function if we passed the preliminary minimum light contribution test
+
+                    RayVolumeState trash_ray_volume_state = ray_payload.volume_state;
+                    bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, ray_payload.material, trash_ray_volume_state, view_direction, closest_hit_info.shading_normal, to_light_direction, bsdf_pdf);
+
+                    ColorRGB32F light_contribution = bsdf_color * light_source_info.emission * cosine_at_evaluated_point;
+                    // Checking the light contribution and taking the BSDF and light PDFs into account
+                    bool contributes_enough = check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, light_contribution / bsdf_pdf / light_sample_pdf);
+                    if (!contributes_enough)
+                        // The light doesn't contribute enough, setting the target function to 0.0f
+                        // so that this light sample is skipped
+                        // 
+                        // Also, if at least one thread is going to evaluate the light anyways, because of the divergence that this would
+                        // create, we may as well evaluate the light for all threads and not loose that much performance anyways
+                        target_function = 0.0f;
+                    else
+                        target_function = light_contribution.luminance();
+                }
 
 #if RISUseVisiblityTargetFunction == KERNEL_OPTION_TRUE
-                if (!render_data.render_settings.do_render_low_resolution())
+                if (!render_data.render_settings.do_render_low_resolution() && target_function > 0.0f)
                 {
                     // Only doing visiblity if we're not rendering at low resolution
                     // (meaning we're moving the camera) for better interaction framerates
@@ -144,12 +178,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
                     target_function *= visible;
                 }
 #endif
-
-                // Converting the PDF from area measure to solid angle measure requires dividing by
-                // cos(theta) / dist^2. Dividing by that factor is equal to multiplying by the inverse
-                // which is what we're doing here
-                light_sample_pdf *= distance_to_light * distance_to_light;
-                light_sample_pdf /= cosine_at_light_source;
 
                 float mis_weight = balance_heuristic(light_sample_pdf, nb_light_candidates, bsdf_pdf, nb_bsdf_candidates);
                 candidate_weight = mis_weight * target_function / light_sample_pdf;
@@ -219,7 +247,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
                 // Our target function does not include the geometry term because we're integrating
                 // in solid angle. The geometry term in the target function ( / in the integrand) is only
                 // for surface area direct lighting integration
-                target_function = (bsdf_color * shadow_light_ray_hit_info .hit_emission * cosine_at_evaluated_point).luminance();
+                ColorRGB32F light_contribution = bsdf_color * shadow_light_ray_hit_info.hit_emission * cosine_at_evaluated_point;
+                target_function = light_contribution.luminance();
 
                 float light_pdf = pdf_of_emissive_triangle_hit(render_data, shadow_light_ray_hit_info, sampled_direction);
                 // If we refracting, drop the light PDF to 0
@@ -237,6 +266,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
                 // will have weight 1 / (1 + nb_light_samples) [or to be precise: 1 / (nb_bsdf_samples + nb_light_samples)]
                 // and this is going to cause darkening as the number of light samples grows)
                 light_pdf *= !refraction_sampled;
+
+                bool contributes_enough = check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, light_contribution / light_pdf / bsdf_sample_pdf);
+                if (!contributes_enough)
+                    target_function = 0.0f;
 
                 float mis_weight = balance_heuristic(bsdf_sample_pdf, nb_bsdf_candidates, light_pdf, nb_light_candidates);
                 candidate_weight = mis_weight * target_function / bsdf_sample_pdf;

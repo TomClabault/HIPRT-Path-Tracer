@@ -78,6 +78,18 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
                 sample_pdf *= distance_to_light * distance_to_light;
                 sample_pdf /= cosine_at_light_source;
 
+                bool contributes_enough = check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, light_source_info.emission * sample_cosine_term / sample_pdf);
+                if (!contributes_enough)
+                {
+                    // Early check that the light contributes enough to the point, and if it doesn't, skip that light sample
+                    // 
+                    // Also, if at least one thread is going to evaluate the light anyways, because of the divergence that this would
+                    // create, we may as well evaluate the light for all threads and not loose that much performance anyways
+                    reservoir.M++;
+
+                    continue;
+                }
+
                 // Accounting for the probability of sampling a light, not the envmap
                 // (which has probability 'envmap_candidate_probability')
                 sample_pdf *= (1.0f - envmap_candidate_probability);
@@ -91,14 +103,25 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
 
             float3 envmap_sampled_direction;
             sample_radiance = envmap_sample(render_data, envmap_sampled_direction, sample_pdf, random_number_generator);
-            float opdf;
-            ColorRGB32F radiance_2 = envmap_eval(render_data, envmap_sampled_direction, opdf);
+
+            sample_cosine_term = hippt::max(0.0f, hippt::dot(envmap_sampled_direction, closest_hit_info.shading_normal));
+
+            bool contributes_enough = check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, sample_radiance * sample_cosine_term / sample_pdf);
+            if (!contributes_enough)
+            {
+                // Early check that the envmap sample contributes enough to the point, and if it doesn't, skip it
+                // 
+                // Also, if at least one thread is going to evaluate the light anyways, because of the divergence that this would
+                // create, we may as well evaluate the light for all threads and not loose that much performance anyways
+                reservoir.M++;
+
+                continue;
+
+            }
 
             // Taking into account the fact that we only have a 1 in 'envmap_candidate_probability' chance to sample
             // the envmap
             sample_pdf *= envmap_candidate_probability;
-
-            sample_cosine_term = hippt::max(0.0f, hippt::dot(envmap_sampled_direction, closest_hit_info.shading_normal));
 
             light_RIS_sample.emissive_triangle_index = -1;
             light_RIS_sample.point_on_light_source = envmap_sampled_direction;
@@ -124,13 +147,19 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
             RayVolumeState volume_state = ray_payload.volume_state;
             ColorRGB32F bsdf_contribution = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, ray_payload.material, volume_state, view_direction, closest_hit_info.shading_normal, to_light_direction, bsdf_pdf);
 
-            float mis_weight = power_heuristic(sample_pdf, nb_light_candidates, bsdf_pdf, nb_bsdf_candidates);
+            ColorRGB32F light_contribution = bsdf_contribution * sample_radiance * sample_cosine_term;
+            float target_function = light_contribution.luminance();
 
-            float target_function = (bsdf_contribution * sample_radiance * sample_cosine_term).luminance();
+            if (!check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, light_contribution / sample_pdf / bsdf_pdf))
+                // TODO use warp ballot stuff to still compute target function if at least 1 thread goes through?
+                target_function = 0.0f;
+            else
+            {
+                float mis_weight = power_heuristic(sample_pdf, nb_light_candidates, bsdf_pdf, nb_bsdf_candidates);
+                candidate_weight = mis_weight * target_function / sample_pdf;
 
-            candidate_weight = mis_weight * target_function / sample_pdf;
-
-            light_RIS_sample.target_function = target_function;
+                light_RIS_sample.target_function = target_function;
+            }
         }
 
 #if ReSTIR_DI_InitialTargetFunctionVisibility == KERNEL_OPTION_TRUE
@@ -211,7 +240,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
                 // we'll need to negative the dot product for it to be positive
                 float cosine_at_evaluated_point = hippt::abs(hippt::dot(closest_hit_info.shading_normal, sampled_direction));
 
-                float target_function = (bsdf_color * shadow_light_ray_hit_info.hit_emission * cosine_at_evaluated_point).luminance();
+                ColorRGB32F light_contribution = bsdf_color * shadow_light_ray_hit_info.hit_emission * cosine_at_evaluated_point;
+                float target_function = light_contribution.luminance();
 
                 float light_pdf = 0.0f;
                 if (!refraction_sampled)
@@ -230,6 +260,15 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
                     // will have weight 1 / (1 + nb_light_samples) [or to be precise: 1 / (nb_bsdf_samples + nb_light_samples)]
                     // and this is going to cause darkening as the number of light samples grows)
                     light_pdf = pdf_of_emissive_triangle_hit(render_data, shadow_light_ray_hit_info, sampled_direction);
+
+                if (!check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, light_contribution / light_pdf / bsdf_sample_pdf))
+                {
+                    // Skipping if the light doesn't contribute enough
+                    reservoir.M;
+
+                    continue;
+                }
+
                 // Our light sampler is only chosen with probability '1.0f - envmap_candidate_probability'
                 // so we multiply that here to take that into account
                 light_pdf *= (1.0f - envmap_candidate_probability);
@@ -243,8 +282,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
                 bsdf_RIS_sample.target_function = target_function;
                 bsdf_RIS_sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
 
-                // TODO optimize here and if we keep the sample of the BSDF, we don't have to re-test for visibility when evaluating the reservoir
-                // because a BSDF sample can only be chosen if it's unoccluded (otherwise its weight is 0)
                 reservoir.add_one_candidate(bsdf_RIS_sample, candidate_weight, random_number_generator);
                 reservoir.sanity_check(make_int2(-1, -1));
             }
@@ -259,15 +296,25 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
                 {
                     float envmap_pdf;
                     ColorRGB32F envmap_radiance = envmap_eval(render_data, sampled_direction, envmap_pdf);
+
+                    ColorRGB32F envmap_contribution = bsdf_color * envmap_radiance * cosine_at_evaluated_point;
+                    // Not taking the light sampling PDF into account in the balance heuristic because a envmap hit
+                    // (not a light surface hit) can never be sampled by a light-surface sampler and so the PDF
+                    // of the current envmap sample is always 0 for a light sampler.
+                    if (!check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, envmap_contribution / envmap_pdf / bsdf_sample_pdf))
+                    {
+                        // Skipping if the light doesn't contribute enough
+                        reservoir.M;
+
+                        continue;
+                    }
+
+                    float target_function = envmap_contribution.luminance();
+
                     // We're evaluating the probability of choosing that BSDF-sample direction with the envmap sampler.
                     // Because our envmap sampler is chosen only with probability 'envmap_candidate_probability', we multiply
                     // that here to account for that
                     envmap_pdf *= envmap_candidate_probability;
-
-                    float target_function = (bsdf_color * envmap_radiance * cosine_at_evaluated_point).luminance();
-                    // Not taking the light sampling PDF into account in the balance heuristic because a envmap hit
-                    // (not a light surface hit) can never be sampled by a light-surface sampler and so the PDF
-                    // of the current envmap sample is always 0 for a light sampler.
                     float mis_weight = power_heuristic(bsdf_sample_pdf, nb_bsdf_candidates, envmap_pdf, nb_light_candidates);
                     float candidate_weight = mis_weight * target_function / bsdf_sample_pdf;
 
@@ -278,8 +325,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
                     bsdf_RIS_sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE;
                     bsdf_RIS_sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
 
-                    // TODO optimize here and if we keep the sample of the BSDF, we don't have to re-test for visibility when evaluating the reservoir
-                    // because a BSDF sample can only be chosen if it's unoccluded (otherwise its weight is 0)
                     reservoir.add_one_candidate(bsdf_RIS_sample, candidate_weight, random_number_generator);
                     reservoir.sanity_check(make_int2(-1, -1));
                 }
