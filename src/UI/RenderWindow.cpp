@@ -70,6 +70,12 @@
 
 
 // TODO Features:
+// - opacity micromaps
+// - simpler BSDF for indirect bounces
+// - limit first bounce distance: objects far away won't contribute much to what the camera sees
+// - limit direct lighting occlusion distance: maybe stochastically so that we get a falloff instead of a hard cut where an important may not contribute anymore
+//		- for maximum ray length, limit that length even more for indirect bounces and even more so if the ray is far away from the camera (beware of mirrors in the scene which the camera can look into and see a far away part of the scene where light could be very biased)
+// - don't take direct lighting occlusion into account if the light isn't going to contribute much (or terminate the light altogether)
 // - only update the display every so often if accumulating because displaying is expensive (especially at high resolution)
 // - do we really need a shadow ray and global ray shared stack? We can probably have only one function for tracing rays that takes a TMax and that's it: sharing the shared memory for both instead of allocating it twice
 // - only update the display every so often if accumulating because displaying is expensive (especially at high resolution) on AMD drivers at least

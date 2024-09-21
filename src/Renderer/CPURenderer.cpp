@@ -321,6 +321,7 @@ void CPURenderer::configure_ReSTIR_DI_initial_pass()
 void CPURenderer::configure_ReSTIR_DI_temporal_pass()
 {
     m_render_data.random_seed = m_rng.xorshift32();
+    m_render_data.render_settings.restir_di_settings.temporal_pass.permutation_sampling_random_bits = m_rng.xorshift32();
 
     // The input of the temporal pass is the output of last frame ReSTIR (and also the initial candidates but this is implicit
     // and "hardcoded in the shader"

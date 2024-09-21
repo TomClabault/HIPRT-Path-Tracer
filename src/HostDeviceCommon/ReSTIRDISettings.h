@@ -33,9 +33,11 @@ struct TemporalPassSettings
 	// we don't need that)
 	bool use_last_frame_g_buffer = true;
 
-	// If set to true, the temporal buffers will be cleared by the camera
-	// rays kernel
-	bool temporal_buffer_clear_requested = false;
+	// If true, the position of the canonical temporal neighbor will be shuffled to increase
+	// variation between frames and make the render more denoiser friendly
+	bool use_permutation_sampling = false;
+	// Random bits used for all the pixels in the image for the permutation sampling
+	int permutation_sampling_random_bits = 42;
 
 	// How many neighbors at most to check around the temporal back-projected pixel location 
 	// to find a valid neighbor
@@ -43,6 +45,10 @@ struct TemporalPassSettings
 	// Radius around the temporal reprojected location of a pixel in which to look for an
 	// acceptable temporal neighbor
 	int neighbor_search_radius = 8;
+
+	// If set to true, the temporal buffers will be cleared by the camera
+	// rays kernel
+	bool temporal_buffer_clear_requested = false;
 
 	// The temporal reuse pass resamples the initial candidates as well as the last frame reservoirs which
 	// are accessed through this pointer

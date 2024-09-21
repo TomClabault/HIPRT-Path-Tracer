@@ -853,6 +853,11 @@ void ImGuiRenderer::draw_sampling_panel()
 
 							m_render_window->set_render_dirty(true);
 						}
+
+						if (ImGui::Checkbox("Use Permutation Sampling", &render_settings.restir_di_settings.temporal_pass.use_permutation_sampling))
+							m_render_window->set_render_dirty(true);
+						ImGuiRenderer::show_help_marker("If true, the back-projected position of the current pixel (temporal neighbor position) will be shuffled"
+							" to add temporal variations.");
 					}
 						
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
