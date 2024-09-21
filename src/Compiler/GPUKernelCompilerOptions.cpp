@@ -31,8 +31,9 @@ const std::string GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BSDF_MIS = "Envma
 const std::string GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION = "RISUseVisiblityTargetFunction";
 const std::string GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION = "GGXAnisotropicSampleFunction";
 
-const std::string GPUKernelCompilerOptions::RESTIR_DI_TARGET_FUNCTION_VISIBILITY = "ReSTIR_DI_TargetFunctionVisibility";
-const std::string GPUKernelCompilerOptions::RESTIR_DI_ENVMAP_SAMPLES_MIS_LIGHT_SAMPLER = "ReSTIR_DI_EnvmapSamplesMISLightSampler";
+const std::string GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY = "ReSTIR_DI_InitialTargetFunctionVisibility";
+const std::string GPUKernelCompilerOptions::RESTIR_DI_TEMPORAL_TARGET_FUNCTION_VISIBILITY = "ReSTIR_DI_TemporalTargetFunctionVisibility";
+const std::string GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_TARGET_FUNCTION_VISIBILITY = "ReSTIR_DI_SpatialTargetFunctionVisibility";
 const std::string GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE = "ReSTIR_DI_DoVisibilityReuse";
 const std::string GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY = "ReSTIR_DI_BiasCorrectionUseVisiblity";
 const std::string GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_OUTPUT_VISIBILITY_CHECK = "ReSTIR_DI_SpatialReuseOutputVisibilityCheck";
@@ -56,8 +57,9 @@ const std::vector<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES = {
 	GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION,
 	GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION,
 
-	GPUKernelCompilerOptions::RESTIR_DI_TARGET_FUNCTION_VISIBILITY,
-	GPUKernelCompilerOptions::RESTIR_DI_ENVMAP_SAMPLES_MIS_LIGHT_SAMPLER,
+	GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY,
+	GPUKernelCompilerOptions::RESTIR_DI_TEMPORAL_TARGET_FUNCTION_VISIBILITY,
+	GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_TARGET_FUNCTION_VISIBILITY,
 	GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE,
 	GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY,
 	GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_OUTPUT_VISIBILITY_CHECK,
@@ -85,8 +87,9 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION] = std::make_shared<int>(RISUseVisiblityTargetFunction);
 	m_options_macro_map[GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION] = std::make_shared<int>(GGXAnisotropicSampleFunction);
 
-	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_TARGET_FUNCTION_VISIBILITY] = std::make_shared<int>(ReSTIR_DI_TargetFunctionVisibility);
-	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_ENVMAP_SAMPLES_MIS_LIGHT_SAMPLER] = std::make_shared<int>(ReSTIR_DI_EnvmapSamplesMISLightSampler);
+	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY] = std::make_shared<int>(ReSTIR_DI_InitialTargetFunctionVisibility);
+	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_TEMPORAL_TARGET_FUNCTION_VISIBILITY] = std::make_shared<int>(ReSTIR_DI_TemporalTargetFunctionVisibility);
+	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_TARGET_FUNCTION_VISIBILITY] = std::make_shared<int>(ReSTIR_DI_SpatialTargetFunctionVisibility);
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE] = std::make_shared<int>(ReSTIR_DI_DoVisibilityReuse);
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY] = std::make_shared<int>(ReSTIR_DI_BiasCorrectionUseVisiblity);
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_OUTPUT_VISIBILITY_CHECK] = std::make_shared<int>(ReSTIR_DI_SpatialReuseOutputVisibilityCheck);

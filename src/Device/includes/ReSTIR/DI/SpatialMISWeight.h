@@ -179,7 +179,7 @@ struct ReSTIRDISpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
 			// doesn't match anymore.
 			//
 			// However, this ReSTIR DI implementation does a visibility reuse pass at the end of each spatial reuse pass
-			// so that we know that the visibility is correct and thus we do not run into any issues and we can just$
+			// so that we know that the visibility is correct and thus we do not run into any issues and we can just
 			// reuse the target function stored in the neighbor's reservoir
 			float target_function_at_neighbor = reservoir_being_resampled.sample.target_function;
 

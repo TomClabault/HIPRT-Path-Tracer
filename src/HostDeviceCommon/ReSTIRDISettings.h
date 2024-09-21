@@ -117,7 +117,7 @@ struct ReSTIRDISettings
 	int m_cap = 10;
 	// M-cap for glossy surfaces: helps to reduce darkening with cameray ray jittering + temporal reuse 
 	// + accumulation
-	int glossy_m_cap = 3;
+	int glossy_m_cap = 1;
 	// Below what roughness is a surface considering glossy and will use the glossy m-cap
 	float glossy_threshold = 0.1f;
 

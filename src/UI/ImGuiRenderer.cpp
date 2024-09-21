@@ -648,17 +648,6 @@ void ImGuiRenderer::draw_sampling_panel()
 				ImGui::SeparatorText("General Settings");
 				ImGui::TreePush("ReSTIR DI - General Settings Tree");
 				{
-					// Whether or not to use the visibility term in the target function used for
-					// resampling in ReSTIR DI (applies to all passes: initial candidates, temporal reuse, spatial reuse)
-					static bool use_target_function_visibility = ReSTIR_DI_TargetFunctionVisibility;
-					if (ImGui::Checkbox("Use visibility in target function (in all passes)", &use_target_function_visibility))
-					{
-						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_TARGET_FUNCTION_VISIBILITY, use_target_function_visibility ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-						m_renderer->recompile_kernels();
-
-						m_render_window->set_render_dirty(true);
-					}
-
 					if (ImGui::SliderInt("M-cap", &render_settings.restir_di_settings.m_cap, 0, 96))
 					{
 						render_settings.restir_di_settings.m_cap = std::max(0, render_settings.restir_di_settings.m_cap);
@@ -764,6 +753,17 @@ void ImGuiRenderer::draw_sampling_panel()
 				ImGui::SeparatorText("Initial Candidates Pass");
 				ImGui::TreePush("ReSTIR DI - Initial Candidate Pass Tree");
 				{
+					static bool use_initial_target_function_visibility = ReSTIR_DI_InitialTargetFunctionVisibility;
+					if (ImGui::Checkbox("Use visibility in target function", &use_initial_target_function_visibility))
+					{
+						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY, use_initial_target_function_visibility ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+						m_renderer->recompile_kernels();
+
+						m_render_window->set_render_dirty(true);
+					}
+					ImGuiRenderer::show_help_marker("Whether or not to use the visibility term in the target function used for "
+						"resampling initial candidates");
+
 					if (ImGui::SliderInt("# of BSDF initial candidates", &render_settings.restir_di_settings.initial_candidates.number_of_initial_bsdf_candidates, 0, 16))
 					{
 						// Clamping to 0
@@ -830,6 +830,17 @@ void ImGuiRenderer::draw_sampling_panel()
 						last_frame_g_buffer_needed &= !render_settings.accumulate;
 						last_frame_g_buffer_needed &= render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass;
 
+						static bool use_temporal_target_function_visibility = ReSTIR_DI_TemporalTargetFunctionVisibility;
+						if (ImGui::Checkbox("Use visibility in target function", &use_temporal_target_function_visibility))
+						{
+							global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_TEMPORAL_TARGET_FUNCTION_VISIBILITY, use_temporal_target_function_visibility ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+							m_renderer->recompile_kernels();
+
+							m_render_window->set_render_dirty(true);
+						}
+						ImGuiRenderer::show_help_marker("Whether or not to use the visibility term in the target function used for "
+							"resampling the temporal neighbor and also combining the initial candidates reservoir");
+
 						if (ImGui::Checkbox("Use Last Frame G-Buffer", &render_settings.restir_di_settings.temporal_pass.use_last_frame_g_buffer))
 							m_render_window->set_render_dirty(true);
 						ImGuiRenderer::show_help_marker("For complete unbiasedness with camera motion, the G-buffer of the previous "
@@ -872,6 +883,17 @@ void ImGuiRenderer::draw_sampling_panel()
 
 					if (render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)
 					{
+						static bool use_spatial_target_function_visibility = ReSTIR_DI_SpatialTargetFunctionVisibility;
+						if (ImGui::Checkbox("Use visibility in target function", &use_spatial_target_function_visibility))
+						{
+							global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_TARGET_FUNCTION_VISIBILITY, use_spatial_target_function_visibility ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+							m_renderer->recompile_kernels();
+
+							m_render_window->set_render_dirty(true);
+						}
+						ImGuiRenderer::show_help_marker("Whether or not to use the visibility term in the target function used for "
+							"resampling spatial neighbors.");
+
 						if (ImGui::SliderInt("Spatial Reuse Pass Count", &render_settings.restir_di_settings.spatial_pass.number_of_passes, 1, 8))
 						{
 							// Clamping
@@ -1145,15 +1167,17 @@ void ImGuiRenderer::display_ReSTIR_DI_bias_status(std::shared_ptr<GPUKernelCompi
 			"This overestimates the number of valid neighbors and results in darkening.\n\n");
 	}
 
-	if (kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_TARGET_FUNCTION_VISIBILITY) == KERNEL_OPTION_TRUE
+	if ((kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY) == KERNEL_OPTION_TRUE
+		|| (kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_TEMPORAL_TARGET_FUNCTION_VISIBILITY) == KERNEL_OPTION_TRUE && render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
+		|| (kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_TARGET_FUNCTION_VISIBILITY) == KERNEL_OPTION_TRUE && render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass) )
 		&& kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY) == KERNEL_OPTION_FALSE)
 	{
 		bias_reasons.push_back("- Target function visibility without\n"
 			"    visibility in bias correction");
 		hover_explanations.push_back("When using the visibility term in the target function used to "
-			"produce initial candidate samples, all remaining samples are unoccluded.\n"
-			"Temporal & spatial reuse pass will then only resample on unoccluded samples.\n"
-			"If not accounting for visibility when counting valid neighbors, we may determine "
+			"produce initial candidate samples (or temporally/spatially resample), all remaining samples are unoccluded.\n"
+			"Temporal & spatial reuse passes will then only resample on unoccluded samples.\n"
+			"If not accounting for visibility when counting valid neighbors (visibility in bias correction), we may determine "
 			"that a neighbor could have produced the picked sample when actually, it couldn't "
 			"because from the neighbor's point of view, the sample could have been occluded "
 			"(visibility term in target function).\n"
@@ -1161,7 +1185,7 @@ void ImGuiRenderer::display_ReSTIR_DI_bias_status(std::shared_ptr<GPUKernelCompi
 	}
 
 	if (kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE) == KERNEL_OPTION_FALSE 
-		&& kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_TARGET_FUNCTION_VISIBILITY) == KERNEL_OPTION_FALSE
+		&& kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY) == KERNEL_OPTION_FALSE
 	    && kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY) == KERNEL_OPTION_TRUE
 		&& (kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
 		|| kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
@@ -1169,7 +1193,7 @@ void ImGuiRenderer::display_ReSTIR_DI_bias_status(std::shared_ptr<GPUKernelCompi
 	{
 		bias_reasons.push_back("- Visibility in bias correction without visibility reuse");
 		hover_explanations.push_back("When taking visibility into account in the counting of "
-			"valid neighbors, we're going to assume that if the picked sample (from resampling "
+			"valid neighbors (visibility in bias correction), we're going to assume that if the picked sample (from resampling "
 			"the neighbors) is occluded from the neighbor's point of view, then that neighbor "
 			"couldn't have produced that sample.\n\n"
 			"However, that's incorrect.\n\n"
@@ -1199,7 +1223,7 @@ void ImGuiRenderer::display_ReSTIR_DI_bias_status(std::shared_ptr<GPUKernelCompi
 
 	if (kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY) == KERNEL_OPTION_TRUE
 		&& kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_OUTPUT_VISIBILITY_CHECK) == KERNEL_OPTION_FALSE
-		&& kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_TARGET_FUNCTION_VISIBILITY) == KERNEL_OPTION_FALSE
+		&& kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY) == KERNEL_OPTION_FALSE
 		&& (kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
 		|| kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
 		|| kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS)

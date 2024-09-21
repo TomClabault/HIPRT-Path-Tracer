@@ -88,19 +88,6 @@ struct ReSTIRDIReservoir
             sample = other_reservoir.sample;
             sample.target_function = target_function;
 
-#if ReSTIR_DI_TargetFunctionVisibility == KERNEL_OPTION_FALSE
-            // When combining with a neighbor reservoir, we cannot be certain 
-            // that we are still unoccluded so we're clearing the unoccluded flag bit
-            sample.flags &= ~ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
-#else
-            // However, if we're using the visibility in the target function, then
-            // an occluded neighbor cannot be resampled since it will have a target
-            // function value of 0 --> no chance to be resampled. This means that when
-            // using the visibility in the target function, if a neighbor passed the resampling probability test
-            // then this means that it is unoccluded
-            sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
-#endif
-
             return true;
         }
 

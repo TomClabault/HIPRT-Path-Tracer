@@ -135,7 +135,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 			// If the temporal neiughor's reservoir is empty, then we do not get
 			// inside that if() and the target function stays at 0.0f which eliminates
 			// most of the computations afterwards
-			target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_TargetFunctionVisibility>(render_data, temporal_neighbor_reservoir.sample, center_pixel_surface);
+			target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_TemporalTargetFunctionVisibility>(render_data, temporal_neighbor_reservoir.sample, center_pixel_surface);
 
 		float jacobian_determinant = 1.0f;
 		// If the neighbor reservoir is invalid, do not compute the jacobian
@@ -186,7 +186,20 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 
 		// Combining as in Alg. 6 of the paper
 		if (new_reservoir.combine_with(temporal_neighbor_reservoir, temporal_neighbor_resampling_mis_weight, target_function_at_center, jacobian_determinant, random_number_generator))
+		{
 			selected_neighbor = TEMPORAL_NEIGHBOR_ID;
+
+#if ReSTIR_DI_TemporalTargetFunctionVisibility == KERNEL_OPTION_FALSE
+			// We cannot be certain that the visibility of the temporal neighbor
+			// chosen is exactly the same so we're clearing the unoccluded flag
+			new_reservoir.sample.flags &= ~ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
+#else
+			// However, if we're using the visibility in the target function, then
+			// the temporal neighobr could never have been selected unless it is
+			// unoccluded so we can add the flag
+			new_reservoir.sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
+#endif
+		}
 		new_reservoir.sanity_check(make_int2(x, y));
 	}
 
@@ -216,8 +229,16 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	if (new_reservoir.combine_with(initial_candidates_reservoir, initial_candidates_mis_weight, initial_candidates_reservoir.sample.target_function, /* jacobian is 1 when reusing at the exact same spot */ 1.0f, random_number_generator))
 	{
 		selected_neighbor = INITIAL_CANDIDATES_ID;
+
+#if ReSTIR_DI_TemporalTargetFunctionVisibility == KERNEL_OPTION_FALSE
 		// We resampled the center pixel so we can copy the unoccluded flag
 		new_reservoir.sample.flags |= initial_candidates_reservoir.sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
+		new_reservoir.sample.flags &= ~ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
+#else
+		// However, if we're using the visibility in the target function, then
+		// we are sure that the sample is now unoccluded
+		new_reservoir.sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
+#endif
 	}
 	new_reservoir.sanity_check(make_int2(x, y));
 

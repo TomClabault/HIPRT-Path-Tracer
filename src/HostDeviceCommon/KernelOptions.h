@@ -202,33 +202,30 @@
 
 /**
  * Whether or not to use a visibility term in the target function when resampling
- * samples in ReSTIR DI. This applies to all passes of ReSTIR DI.
- * 
- * In the context of efficiency, there's virtually no need to set this to KERNEL_OPTION_TRUE.
- *
- * The cost of tracing yet an additional visibility ray when resampling
- * isn't worth it in terms of variance reduction. This option is basically only for
- * experimentation purposes.
+ * initial candidates in ReSTIR DI. *
  * 
  *	- KERNEL_OPTION_TRUE or KERNEL_OPTION_FALSE values are accepted. Self-explanatory
  */
-#define ReSTIR_DI_TargetFunctionVisibility KERNEL_OPTION_FALSE
+#define ReSTIR_DI_InitialTargetFunctionVisibility KERNEL_OPTION_FALSE
 
 /**
- * If false, the light sampler PDF will not be taken into account when computing the MIS weight
- * of initial envmap sample candidates i.e. :
- *	 
- *	envmap_mis_weight = envmapPDF / (bsdfPDF + envmapPDF)
- *	 
- *	instead of
- *	
- *	envmap_mis_weight = envmapPDF / (bsdfPDF + envmapPDF + lightPDF)
- *		
- * This is technically biased (because the MIS weights now don't sum to 1) but the bias is
- * litteraly imperceptible in my experience (or I haven't found a scene that shows the bias) and this
- * saves casting a shadow ray (needed for the light sampler PDF evaluation)
+ * Whether or not to use a visibility term in the target function when resampling
+ * samples in ReSTIR DI. This applies to the temporal reuse pass only.
+ *
+ *	- KERNEL_OPTION_TRUE or KERNEL_OPTION_FALSE values are accepted. Self-explanatory
  */
-#define ReSTIR_DI_EnvmapSamplesMISLightSampler KERNEL_OPTION_FALSE
+#define ReSTIR_DI_TemporalTargetFunctionVisibility KERNEL_OPTION_FALSE
+
+/**
+ * Whether or not to use a visibility term in the target function when resampling
+ * samples in ReSTIR DI. This applies to the spatial reuse pass only.
+ * This option can have a good impact on quality and be worth it in terms of cost.
+ *
+ *	- KERNEL_OPTION_TRUE or KERNEL_OPTION_FALSE values are accepted. Self-explanatory
+ */
+#define ReSTIR_DI_SpatialTargetFunctionVisibility KERNEL_OPTION_FALSE
+
+
 
 /**
  * Whether or not to do a visibility check at the end of the initial candidates sampling.

@@ -22,9 +22,6 @@
 // - temporal permutation sampling
 // - limit distance of BSDF ray for initial sampling (biased but reduces BVH traversal so performance++)
 // - maybe not spatially resample as hard everywhere in the image? heuristic to reduce/increase the number of spatial samples per pixel?
-// - possibility to reuse final shading visibility
-// - if we're ray tracing reservoirs with final visibility then we don't need to ray trace in the final shading, we know it's unoccluded
-// - what can we do when we know that BSDF samples are unoccluded? Have a flag to not retry occlusion in the temporal reuse/spatial reuse/spatial visibility/...?
 // - for spatial reuse, put the heuristics checks in the 'get_spatial_neighbor_function'
 // - Pairwise MIS: If we resample the center pixel first and we discover that the center pixel reservoir is NULL --> we're not going to MIS weight the center pixel --> do we have to compute Mc at all?
 // - In the temporal reuse pass, we have a if (temporal_neighbor_reservoir.M > 0) that guards the resampling of the temporal neighbor

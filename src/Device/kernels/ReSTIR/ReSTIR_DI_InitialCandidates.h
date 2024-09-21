@@ -133,7 +133,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
             light_RIS_sample.target_function = target_function;
         }
 
-#if ReSTIR_DI_TargetFunctionVisibility == KERNEL_OPTION_TRUE
+#if ReSTIR_DI_InitialTargetFunctionVisibility == KERNEL_OPTION_TRUE
         if (!render_data.render_settings.do_render_low_resolution() && light_RIS_sample.target_function > 0.0f)
         {
             // Only doing visiblity if we're render at low resolution

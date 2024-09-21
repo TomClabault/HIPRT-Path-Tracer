@@ -164,7 +164,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 				// the target function of the center reservoir
 				target_function_at_center = neighbor_reservoir.sample.target_function;
 			else
-				target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_TargetFunctionVisibility>(render_data, neighbor_reservoir.sample, center_pixel_surface);
+				target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_SpatialTargetFunctionVisibility>(render_data, neighbor_reservoir.sample, center_pixel_surface);
 		}
 
 		float jacobian_determinant = 1.0f;
@@ -219,9 +219,25 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 		if (new_reservoir.combine_with(neighbor_reservoir, mis_weight, target_function_at_center, jacobian_determinant, random_number_generator))
 		{
 			selected_neighbor = neighbor_index;
-			if (neighbor_index == reused_neighbors_count)
-				// We resampled the center pixel so we can copy the unoccluded flag
+
+#if ReSTIR_DI_SpatialTargetFunctionVisibility == KERNEL_OPTION_FALSE
+			if (neighbor_index != reused_neighbors_count)
+				// When combining with a neighbor reservoir, we cannot be certain 
+				// that we are still unoccluded so we're clearing the unoccluded flag bit
+				new_reservoir.sample.flags &= ~ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
+			else
+				// Unless we resampled the center pixel so we can copy the unoccluded flag because
+				// we know that the visibility is the same here
 				new_reservoir.sample.flags |= neighbor_reservoir.sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
+#else
+			// However, if we're using the visibility in the target function, then
+			// an occluded neighbor cannot be resampled since it will have a target
+			// function value of 0 --> no chance to be resampled. This means that when
+			// using the visibility in the target function, if a neighbor passed the
+			// resampling probability test and was selected as the new sample of the reservoir,
+			// then this means that it is unoccluded so we can add the unoccluded flag
+			new_reservoir.sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
+#endif
 		}
 		new_reservoir.sanity_check(center_pixel_coords);
 	}
