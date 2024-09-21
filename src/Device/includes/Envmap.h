@@ -113,7 +113,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F envmap_sample(const HIPRTRenderData& 
     // Computing envmap PDF
     envmap_pdf = env_map_radiance.luminance() / (env_map_total_sum * world_settings.envmap_intensity);
     envmap_pdf *= world_settings.envmap_width * world_settings.envmap_height;
-    // Covnerting the PDF from area measure on the envmap to solid angle measure
+    // Converting the PDF from area measure on the envmap to solid angle measure
     envmap_pdf /= (2.0f * M_PI * M_PI * sin_theta);
 
     return env_map_radiance;
@@ -153,6 +153,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_cdf(const HIPR
     float3 sampled_direction;
     ColorRGB32F envmap_color = envmap_sample(render_data, sampled_direction, envmap_pdf, random_number_generator);
     ColorRGB32F envmap_mis_contribution;
+
+    float elva_pdf;
+    envmap_eval(render_data, sampled_direction, elva_pdf);
 
     // Sampling the envmap with MIS
     float cosine_term = hippt::dot(closest_hit_info.shading_normal, sampled_direction);

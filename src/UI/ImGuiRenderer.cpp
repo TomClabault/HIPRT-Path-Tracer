@@ -658,17 +658,12 @@ void ImGuiRenderer::draw_sampling_panel()
 				ImGui::SeparatorText("General Settings");
 				ImGui::TreePush("ReSTIR DI - General Settings Tree");
 				{
-					if (ImGui::SliderInt("M-cap", &render_settings.restir_di_settings.m_cap, 0, 96))
-					{
+					if (ImGui::SliderInt("M-cap", &render_settings.restir_di_settings.m_cap, 0, 48))
 						render_settings.restir_di_settings.m_cap = std::max(0, render_settings.restir_di_settings.m_cap);
-						m_render_window->set_render_dirty(true);
-					}
 
 					if (ImGui::SliderInt("Glossy M-cap", &render_settings.restir_di_settings.glossy_m_cap, 0, 16))
-					{
 						render_settings.restir_di_settings.glossy_m_cap = std::max(0, render_settings.restir_di_settings.glossy_m_cap);
-						m_render_window->set_render_dirty(true);
-					}
+
 					ImGuiRenderer::show_help_marker("M-cap for glossy surfaces. Glossy surfaces tend to darken when jittering "
 					"camera rays, using temporal reuse and accumulating. Using a lower M-cap helps.");
 
@@ -920,7 +915,7 @@ void ImGuiRenderer::draw_sampling_panel()
 							m_render_window->set_render_dirty(true);
 						}
 
-						if (ImGui::SliderInt("Neighbor Reuse Count", &render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count, 1, 32))
+						if (ImGui::SliderInt("Neighbor Reuse Count", &render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count, 1, 16))
 						{
 							// Clamping
 							render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count = std::max(1, render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count);
@@ -1712,7 +1707,7 @@ void ImGuiRenderer::draw_performance_settings_panel()
 		std::string size_string = "Global Stack Buffer VRAM Usage: ";
 		size_string += std::to_string(m_renderer->get_render_data().global_traversal_stack_buffer_size * std::ceil(m_renderer->m_render_resolution.x / 8.0f) * 8.0f * std::ceil(m_renderer->m_render_resolution.y / 8.0f) * 8.0f * sizeof(int) / 1000000.0f);
 		size_string += " MB";
-		ImGui::Text(size_string.c_str());
+		ImGui::Text("%s", size_string.c_str());
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();

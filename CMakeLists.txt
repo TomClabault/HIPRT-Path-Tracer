@@ -80,10 +80,10 @@ find_package(OpenImageDenoise REQUIRED HINTS ${oidnbinaries_SOURCE_DIR}) # HINTS
 
 if (WIN32)
 	# "version" is a library from the Windows SDK
-	target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX assimp OpenImageDenoise ${OPENGL_LIBRARY} glfw3 glew32 ${hiprt_link_lib} version)
+	target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX assimp OpenImageDenoise ${OPENGL_LIBRARY} glfw3 glew32 hiprt02004 version)
 elseif(UNIX)
 	find_package(GLEW REQUIRED)
-	target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX assimp OpenImageDenoise ${OPENGL_LIBRARY} glfw GLEW::GLEW ${hiprt_link_lib})
+	target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX assimp OpenImageDenoise ${OPENGL_LIBRARY} glfw GLEW::GLEW hiprt02004)
 endif()
 
 target_include_directories(HIPRTPathTracer PRIVATE "src/")
@@ -98,6 +98,8 @@ target_include_directories(HIPRTPathTracer PRIVATE ".")
 
 # ------------- Handling NVIDIA compilation details -------------
 # If CUDA is installed, meaning NVIDIA
+include(${HIPRT_SUBMODULE_DIR}/contrib/Orochi/Orochi/enable_cuew.cmake)
+#[===[
 set(USING_NVIDIA False)
 
 if (WIN32)
@@ -117,6 +119,7 @@ endif()
 if (USING_NVIDIA)
 	# Adding the required macro for Orochi
 	add_compile_definitions(OROCHI_ENABLE_CUEW)
+endif()
 
 	# Adding the include directory for CUDA headers (needed for Orochi compilation)
 	if (WIN32)
@@ -124,7 +127,10 @@ if (USING_NVIDIA)
 	elseif(UNIX)
 		target_include_directories(HIPRTPathTracer PRIVATE ${CUDA_INCLUDE_DIRS})
 	endif()
-endif()
+#]===]
+
+#This all shouldn't be necessary anymore with the new CMake-HIPRT
+
 # ---------------------------------------------------------------
 
 
@@ -133,9 +139,24 @@ if (WIN32)
 	file(GLOB OIDN_BINARIES ${oidnbinaries_SOURCE_DIR}/bin/*.dll)
 	file(COPY ${OIDN_BINARIES} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
 
-	message(STATUS "Copying HIPRT binaries...")
-	file(GLOB HIPRT_BINARIES ${HIPRT_BIN_DIR}/amd*.dll ${HIPRT_BIN_DIR}/hip*.dll)
-	file(COPY ${HIPRT_BINARIES} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+	# For copying HIPRT's DLL
+	get_target_property(HIPRT_DLL_NAME hiprt02004 OUTPUT_NAME)
+
+	if (${CMAKE_BUILD_TYPE} STREQUAL "Debug" AND MSVC_IDE)
+		# Adding the 'd' suffix that MSVC adds to debug libraries file names
+		set(HIPRT_DLL_NAME ${HIPRT_DLL_NAME}d)
+	endif()
+	# Appending .dll extension
+	set(HIPRT_DLL_NAME ${HIPRT_DLL_NAME}.dll)
+
+	add_custom_command(OUTPUT
+        ${CMAKE_BINARY_DIR}/${HIPRT_DLL_NAME}
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:hiprt02004>
+        ${CMAKE_BINARY_DIR}/${HIPRT_DLL_NAME}
+    DEPENDS hiprt02004)
+	# Create target which consume the command via DEPENDS.
+	add_custom_target(hiprtCopyDLL ALL DEPENDS ${CMAKE_BINARY_DIR}/${HIPRT_DLL_NAME})
+	add_dependencies(HIPRTPathTracer hiprtCopyDLL)
 
 	message(STATUS "Copying Glew binaries...")
 	file(COPY ${CMAKE_SOURCE_DIR}/${GLEW_BIN_DIR}/glew32.dll DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
@@ -170,5 +191,8 @@ if(MSVC_IDE)
 	# Creating a Visual Studio folder for the targets we don't care about so we have
 	# a way to have our IDE look clean
 	set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-	set_target_properties(assimp uninstall zlibstatic UpdateAssimpLibsDebugSymbolsAndDLLs PROPERTIES FOLDER ExternalTargets)
+	set_target_properties(
+		assimp uninstall zlibstatic UpdateAssimpLibsDebugSymbolsAndDLLs # ASSIMP Targets
+		hiprt02004 hiprtCopyDLL # HIPRT Targets
+		PROPERTIES FOLDER ExternalTargets)
 endif()

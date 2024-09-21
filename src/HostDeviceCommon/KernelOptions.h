@@ -228,6 +228,22 @@
 
 
 /**
+ * If false, the light sampler PDF will not be taken into account when computing the MIS weight
+ * of initial envmap sample candidates i.e. :
+ *	 
+ *	envmap_mis_weight = envmapPDF / (bsdfPDF + envmapPDF)
+ *	 
+ *	instead of
+ *	
+ *	envmap_mis_weight = envmapPDF / (bsdfPDF + envmapPDF + lightPDF)
+ *		
+ * This is technically biased (because the MIS weights now don't sum to 1) but the bias is
+ * litteraly imperceptible in my experience (or I haven't found a scene that shows the bias) and this
+ * saves casting a shadow ray (needed for the light sampler PDF evaluation)
+ */
+#define ReSTIR_DI_EnvmapSamplesMISLightSampler KERNEL_OPTION_FALSE
+
+/**
  * Whether or not to do a visibility check at the end of the initial candidates sampling.
  * This discards reservoirs (by setting their UCW to 0.0f) whose samples are occluded.
  * This allows following ReSTIR passes (temporal and spatial) to only resample on samples

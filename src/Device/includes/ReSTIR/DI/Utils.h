@@ -137,7 +137,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void ReSTIR_DI_visibility_reuse(const HIPRTRender
 		// The sample is already unoccluded, no need to test for visibility reuse
 		return;
 
-	float distance_to_light;
+	float distance_to_light = 0.0f;
 	float3 sample_direction = reservoir.sample.point_on_light_source - shading_point;
 	if (reservoir.sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE)
 	{
