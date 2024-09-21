@@ -80,10 +80,10 @@ find_package(OpenImageDenoise REQUIRED HINTS ${oidnbinaries_SOURCE_DIR}) # HINTS
 
 if (WIN32)
 	# "version" is a library from the Windows SDK
-	target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX assimp OpenImageDenoise ${OPENGL_LIBRARY} glfw3 glew32 hiprt02003 version)
+	target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX assimp OpenImageDenoise ${OPENGL_LIBRARY} glfw3 glew32 hiprt02004 version)
 elseif(UNIX)
 	find_package(GLEW REQUIRED)
-	target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX assimp OpenImageDenoise ${OPENGL_LIBRARY} glfw GLEW::GLEW hiprt02003)
+	target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX assimp OpenImageDenoise ${OPENGL_LIBRARY} glfw GLEW::GLEW hiprt02004)
 endif()
 
 target_include_directories(HIPRTPathTracer PRIVATE "src/")
@@ -140,7 +140,7 @@ if (WIN32)
 	file(COPY ${OIDN_BINARIES} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
 
 	# For copying HIPRT's DLL
-	get_target_property(HIPRT_DLL_NAME hiprt02003 OUTPUT_NAME)
+	get_target_property(HIPRT_DLL_NAME hiprt02004 OUTPUT_NAME)
 
 	if (${CMAKE_BUILD_TYPE} STREQUAL "Debug" AND MSVC_IDE)
 		# Adding the 'd' suffix that MSVC adds to debug libraries file names
@@ -151,9 +151,9 @@ if (WIN32)
 
 	add_custom_command(OUTPUT
         ${CMAKE_BINARY_DIR}/${HIPRT_DLL_NAME}
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:hiprt02003>
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:hiprt02004>
         ${CMAKE_BINARY_DIR}/${HIPRT_DLL_NAME}
-    DEPENDS hiprt02003)
+    DEPENDS hiprt02004)
 	# Create target which consume the command via DEPENDS.
 	add_custom_target(hiprtCopyDLL ALL DEPENDS ${CMAKE_BINARY_DIR}/${HIPRT_DLL_NAME})
 	add_dependencies(HIPRTPathTracer hiprtCopyDLL)
@@ -193,6 +193,6 @@ if(MSVC_IDE)
 	set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 	set_target_properties(
 		assimp uninstall zlibstatic UpdateAssimpLibsDebugSymbolsAndDLLs # ASSIMP Targets
-		hiprt02003 hiprtCopyDLL # HIPRT Targets
+		hiprt02004 hiprtCopyDLL # HIPRT Targets
 		PROPERTIES FOLDER ExternalTargets)
 endif()
