@@ -150,12 +150,14 @@ The following arguments are available:
 ![MIS vs. RIS vs. ReSTIR DI Comparison](README_data/img/MIS.RIS.ReSTIR.Comparison.jpg)
 ![ImGui Interface](README_data/img/ImGuiDemo.jpg)
 Sources of the scenes can be found [here](https://github.com/TomClabault/HIPRT-Path-Tracer/blob/main/README_data/img/scene%20credits.txt).
-# Live YouTube Demos (click!)
+# Live YouTube Demos
 
 ### Material Editor Demo
 [![Material Editor Demo](./README_data/img/Material_editor_thumbnail.jpg)](https://www.youtube.com/watch?v=LOVBwOoLVVQ "Material Editor Demo")
 ### OIDN AOVs Quality Comparison
 [![OIDN AOVs Comparison](./README_data/img/OIDN_AOVs_thumbnail.jpg)](https://www.youtube.com/watch?v=GnCi7K2w9go "OIDN AOVs Comparison")
+### ReSTIR DI vs. RIS vs. MIS Showcase
+[![ReSTIR DI Showcase](./README_data/img/ReSTIR_DI_Showcase_thumbnail.jpg)](https://www.youtube.com/watch?v=R6nkhSDoJ4U "ReSTIR DI vs. RIS vs. MIS Showcase")
 # License
 
 GNU General Public License v3.0 or later
