@@ -846,14 +846,6 @@ void ImGuiRenderer::draw_sampling_panel()
 						ImGuiRenderer::show_help_marker("Whether or not to use the visibility term in the target function used for "
 							"resampling the temporal neighbor and also combining the initial candidates reservoir");
 
-						if (ImGui::Checkbox("Use Last Frame G-Buffer", &render_settings.restir_di_settings.temporal_pass.use_last_frame_g_buffer))
-							m_render_window->set_render_dirty(true);
-						ImGuiRenderer::show_help_marker("For complete unbiasedness with camera motion, the G-buffer of the previous "
-							"frame is required. This however comes at a VRAM cost which we may not want to pay. "
-							"This is especially true when accumulating frames with a still camera in which case "
-							"there is no motion meaning that the G-buffer of the previous frame isn't needed "
-							"and can be freed from VRAM.");
-
 						if (ImGui::SliderInt("Max temporal neighbor search count", &render_settings.restir_di_settings.temporal_pass.max_neighbor_search_count, 0, 16))
 						{
 							// Clamping

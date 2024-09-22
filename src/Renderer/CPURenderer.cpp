@@ -22,7 +22,7 @@
  // Otherwise if 0, all pixels of the image are rendered
 #define DEBUG_PIXEL 1
 
-// If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner. 
+// If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner.
 // If 1, it's bottom left corner.
 // Useful if you're using an image viewer to get the the coordinates of 
 // the interesting pixel. If that image viewer has its (0, 0) in the top
@@ -34,18 +34,18 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around this pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 749
-#define DEBUG_PIXEL_Y 288
+#define DEBUG_PIXEL_X 991
+#define DEBUG_PIXEL_Y 412
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
-#define DEBUG_OTHER_FLIP_Y 1
+#define DEBUG_OTHER_FLIP_Y 0
 
 // Allows to render the neighborhood around the DEBUG_PIXEL_X/Y but to debug at the location
 // of DEBUG_OTHER_PIXEL_X/Y given below.
 // 
 // -1 to disable. If disabled, the pixel at (DEBUG_PIXEL_X, DEBUG_PIXEL_Y) will be debugged
-#define DEBUG_OTHER_PIXEL_X -1
-#define DEBUG_OTHER_PIXEL_Y -1
+#define DEBUG_OTHER_PIXEL_X 990
+#define DEBUG_OTHER_PIXEL_Y 420
 
 // If 1, a square of DEBUG_NEIGHBORHOOD_SIZE x DEBUG_NEIGHBORHOOD_SIZE pixels
 // will be rendered around the pixel to debug (given by DEBUG_PIXEL_X and
@@ -59,7 +59,7 @@
 #define DEBUG_RENDER_NEIGHBORHOOD 1
 // How many pixels to render around the debugged pixel given by the DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y coordinates
-#define DEBUG_NEIGHBORHOOD_SIZE 35
+#define DEBUG_NEIGHBORHOOD_SIZE 50
 
 CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, height))
 {
@@ -216,7 +216,6 @@ void CPURenderer::render()
         m_render_data.render_settings.need_to_reset = false;
         // We want the G Buffer of the frame that we just rendered to go in the "g_buffer_prev_frame"
         // and then we can re-use the old buffers of to be filled by the current frame render
-        std::swap(m_render_data.g_buffer, m_render_data.g_buffer_prev_frame);
 
         std::cout << "Frame " << frame_number << ": " << frame_number/ static_cast<float>(m_render_data.render_settings.samples_per_frame) * 100.0f << "%" << std::endl;
     }
@@ -234,8 +233,10 @@ void CPURenderer::update(int frame_number)
     m_render_data.aux_buffers.stop_noise_threshold_converged_count->store(0);
 
     // Update the camera
-    //if (frame_number == 8)
-    //    m_camera.translate(glm::vec3(-0.2, 0, 0));
+    if (frame_number == 2)
+        m_camera.translate(glm::vec3(0.1, 0.0, 0.0));
+    /*else if (frame_number == 2)
+        m_camera.translate(glm::vec3(-0.6, 0, 0));*/
 }
 
 void CPURenderer::update_render_data(int sample)
@@ -596,8 +597,10 @@ void CPURenderer::tonemap(float gamma, float exposure)
             int index = x + y * m_resolution.x;
 
             ColorRGB32F hdr_color = m_render_data.buffers.pixels[index];
-            // Scaling by sample count
-            hdr_color = hdr_color / float(m_render_data.render_settings.sample_number);
+
+            if (m_render_data.render_settings.accumulate)
+                // Scaling by sample count
+                hdr_color = hdr_color / float(m_render_data.render_settings.sample_number);
 
             ColorRGB32F tone_mapped = ColorRGB32F(1.0f) - exp(-hdr_color * exposure);
             tone_mapped = pow(tone_mapped, 1.0f / gamma);

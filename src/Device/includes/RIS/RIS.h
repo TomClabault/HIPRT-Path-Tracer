@@ -15,10 +15,6 @@
 #include "HostDeviceCommon/HitInfo.h"
 #include "HostDeviceCommon/RenderData.h"
 
-// 27.86ms
-// 27.1
-
-
 // TODO make some simplification assuming that ReSTIR DI is never inside a surface (the camera being inside a surface may be an annoying case to handle)
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_reservoir_sample(const HIPRTRenderData& render_data, const RayPayload& ray_payload, const float3& shading_point, const float3& shading_normal, const float3& view_direction, const RISReservoir& reservoir)
 {
@@ -127,8 +123,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
             cosine_at_evaluated_point = hippt::max(0.0f, hippt::dot(closest_hit_info.shading_normal * inside_surface_multiplier, to_light_direction));
             if (cosine_at_evaluated_point > 0.0f)
             {
-                //9.69ms
-
                 // Converting the PDF from area measure to solid angle measure requires dividing by
                 // cos(theta) / dist^2. Dividing by that factor is equal to multiplying by the inverse
                 // which is what we're doing here

@@ -233,7 +233,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 #if ReSTIR_DI_TemporalTargetFunctionVisibility == KERNEL_OPTION_FALSE
 		// We resampled the center pixel so we can copy the unoccluded flag
 		new_reservoir.sample.flags |= initial_candidates_reservoir.sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
-		new_reservoir.sample.flags &= ~ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
 #else
 		// However, if we're using the visibility in the target function, then
 		// we are sure that the sample is now unoccluded

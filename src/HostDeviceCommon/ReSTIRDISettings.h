@@ -27,12 +27,6 @@ struct TemporalPassSettings
 {
 	bool do_temporal_reuse_pass = true;
 
-	// Whether or not to use the G-buffer of last frame when resampling the temporal neighbor.
-	// This is required to avoid bias with camera movements but this comes at a VRAM cost
-	// which we may not want to pay (if we're accumulating frames with a still camera for example, ...
-	// we don't need that)
-	bool use_last_frame_g_buffer = true;
-
 	// If true, the position of the canonical temporal neighbor will be shuffled to increase
 	// variation between frames and make the render more denoiser friendly
 	bool use_permutation_sampling = false;
@@ -41,7 +35,7 @@ struct TemporalPassSettings
 
 	// How many neighbors at most to check around the temporal back-projected pixel location 
 	// to find a valid neighbor
-	int max_neighbor_search_count = 8;
+	int max_neighbor_search_count = 0;
 	// Radius around the temporal reprojected location of a pixel in which to look for an
 	// acceptable temporal neighbor
 	int neighbor_search_radius = 8;
@@ -65,11 +59,11 @@ struct SpatialPassSettings
 	// Takes values in [0, number_of_passes - 1]
 	int spatial_pass_index = 0;
 	// How many spatial reuse pass to perform
-	int number_of_passes = 2;
+	int number_of_passes = 1;
 	// The radius within which neighbor are going to be reused spatially
 	int spatial_reuse_radius = 20;
 	// How many neighbors to reuse during the spatial pass
-	int spatial_reuse_neighbor_count = 2;
+	int spatial_reuse_neighbor_count = 1;
 
 	// If true, reused neighbors will be hardcoded to always be 15 pixels to the right,
 	// not in a circle around the center pixel.

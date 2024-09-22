@@ -17,6 +17,7 @@
 #include "stb_image_write.h"
 
 // TODOs ReSTIR DI
+// - bias when using visibility in spatial reuse target function and moving with temporal reuse on
 // - add hammersley usage or not imgui for spatial reuse
 // - fused spatiotemporal
 // - feature to disable ReSTIR after a certain percentage of convergence --> we don't want to pay the full price of resampling and everything only for a few difficult isolated pixels (especially true with adaptive sampling where neighbors don't get sampled --> no new samples added to their reservoir --> no need to resample)

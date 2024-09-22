@@ -50,7 +50,7 @@ struct HIPRTRenderSettings
 
 	// Whether or not to accumulate each frame to allow progressive rendering. If false,
 	// each frame will be displayed on screen and discarded on the next frame without accumulation
-	bool accumulate = true;
+	bool accumulate = false;
 
 	// How many samples were accumulated in the denoiser's AOV buffers (albedo & normals)
 	// This is used mainly for the normals AOVs because we want a way to accumulate the normals.
@@ -196,14 +196,14 @@ struct HIPRTRenderSettings
 	 */
 	HIPRT_DEVICE bool use_prev_frame_g_buffer() const
 	{
-		bool need_g_buffer = restir_di_settings.temporal_pass.use_last_frame_g_buffer;
 		// If ReSTIR DI isn't used, we don't need the last frame's g-buffer
-		need_g_buffer &= DirectLightSamplingStrategy == LSS_RESTIR_DI;
+		// (as far as the codebase goes at the time of writing this function anyways)
+		bool need_g_buffer = DirectLightSamplingStrategy == LSS_RESTIR_DI;
 		// If the temporal reuse isn't used, don't need the G-buffer
 		need_g_buffer &= restir_di_settings.temporal_pass.do_temporal_reuse_pass;
 		// Not using the g-buffer if accumulating because we're rendering still frames
-		// when accumulating which means that we don't need the previous frame's g-buffer
-		// (only required for unbiasedness *in motion*)
+	// when accumulating which means that we don't need the previous frame's g-buffer
+	// since we're not going to reproject anything
 		need_g_buffer &= !accumulate;
 
 		return need_g_buffer;
