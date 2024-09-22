@@ -29,7 +29,6 @@
 // - M-capping when using a reservoir in the spatial reuse? M-capping shouldn't be only for temporal input reservoirs right? --> too many spatial reuse passes/too many neighbors reused = blow up
 // - heuristics makes it hard to reuse on the teapot of the white room because of normals dissimilarity i guess?
 // - heuristics adds some noisy/artifacty pixels. Especially on high details geometry
-// - BSDF initial samples are natively taking occlusion into account, probably should produce them without occlusion into account to stay consistent because this means that, to guarantee unbiasedness, the moment we use BSDF samples, we need visibility bias correction. That's expensive and we may not want that --> we would need a any hit on emissive triangle for that, annoying
 
 
 // TODO bugs:

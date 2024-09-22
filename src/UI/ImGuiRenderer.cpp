@@ -101,8 +101,12 @@ void ImGuiRenderer::draw_imgui_interface()
 		}
 		else
 		{
-			ImGui::Text("Pixels converged: N/A");
-			ImGuiRenderer::show_help_marker("Adaptive sampling hasn't kicked in yet... Convergence computation hasn't started.");
+			if (render_settings.accumulate)
+			// No need to show the text if we're not accumulating
+			{
+				ImGui::Text("Pixels converged: N/A");
+				ImGuiRenderer::show_help_marker("Adaptive sampling hasn't kicked in yet... Convergence computation hasn't started.");
+			}
 		}
 	}
 	else
@@ -1190,10 +1194,18 @@ void ImGuiRenderer::display_ReSTIR_DI_bias_status(std::shared_ptr<GPUKernelCompi
 
 	if ((kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY) == KERNEL_OPTION_TRUE
 		|| (kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_TEMPORAL_TARGET_FUNCTION_VISIBILITY) == KERNEL_OPTION_TRUE && render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
-		|| (kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_TARGET_FUNCTION_VISIBILITY) == KERNEL_OPTION_TRUE && render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass) )
+		|| (kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_TARGET_FUNCTION_VISIBILITY) == KERNEL_OPTION_TRUE && render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass))
 		&& kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY) == KERNEL_OPTION_FALSE)
 	{
-		bias_reasons.push_back("- Target function visibility without\n"
+		std::string prefix;
+		if (kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY) == KERNEL_OPTION_TRUE)
+			prefix = " - Initial ";
+		else if (kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_TEMPORAL_TARGET_FUNCTION_VISIBILITY) == KERNEL_OPTION_TRUE && render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
+			prefix = " - Temporal ";
+		else if (kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_TARGET_FUNCTION_VISIBILITY) == KERNEL_OPTION_TRUE && render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)
+			prefix = " - Spatial ";
+
+		bias_reasons.push_back(prefix + "target function visibility without\n"
 			"    visibility in bias correction");
 		hover_explanations.push_back("When using the visibility term in the target function used to "
 			"produce initial candidate samples (or temporally/spatially resample), all remaining samples are unoccluded.\n"
