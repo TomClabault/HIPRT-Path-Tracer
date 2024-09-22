@@ -355,6 +355,18 @@ void ImGuiRenderer::draw_render_settings_panel()
 			m_render_window->set_render_dirty(true);
 		}
 
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+		ImGui::TreePop();
+	}
+
+	if (ImGui::CollapsingHeader("Alpha Testing"))
+	{
+		ImGui::TreePush("Alpha testing tree");
+
+		if (ImGui::Checkbox("Do alpha testing", &render_settings.do_alpha_testing))
+			m_render_window->set_render_dirty(true);
+
 		ImGui::TreePop();
 	}
 

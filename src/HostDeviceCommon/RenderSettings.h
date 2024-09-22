@@ -24,7 +24,6 @@ struct RISSettings
 
 struct HIPRTRenderSettings
 {
-	bool old = false;
 	// If true, the camera ray kernel will reset all buffers to their default values.
 	// This is mainly useful for the first frame of the render
 	bool need_to_reset = true;
@@ -139,6 +138,9 @@ struct HIPRTRenderSettings
 	// point less than this 'minimum_light_contribution' value then the light sample is discarded
 	// 0.0f to disable
 	float minimum_light_contribution = 0.08f;
+
+	// Whether or not to do alpha testing for geometry with transparent base color textures
+	bool do_alpha_testing = true;
 
 	// Settings for RIS (direct light sampling)
 	RISSettings ris_settings;

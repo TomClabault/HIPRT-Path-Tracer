@@ -102,7 +102,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
 {
     hiprtHit hit;
     bool skipping_volume_boundary = false;
-    bool skipping_intersection = false;
+    bool skipping_intersection_alpha_test = false;
     do
     {
     #ifdef __KERNELCC__
@@ -146,8 +146,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
         int material_index = render_data.buffers.material_indices[hit.primID];
         in_out_ray_payload.material = get_intersection_material(render_data, material_index, out_hit_info.texcoords, base_color_alpha);
 
-        skipping_intersection = base_color_alpha < 1.0f;
-        if (skipping_intersection)
+        skipping_intersection_alpha_test = base_color_alpha < 1.0f && render_data.render_settings.do_alpha_testing;
+        if (skipping_intersection_alpha_test)
         {
             // Skipping the intersection now and not doing the volume stack handling
             ray.origin = out_hit_info.inter_point + ray.direction * 3.0e-3f;
@@ -179,7 +179,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
             in_out_ray_payload.volume_state.distance_in_volume += hit.t;
         }
 
-    } while ((skipping_volume_boundary && hit.hasHit()) || skipping_intersection);
+    } while ((skipping_volume_boundary && hit.hasHit()) || skipping_intersection_alpha_test);
 
     return hit.hasHit();
 }
@@ -215,7 +215,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& r
         if (!shadow_ray_hit.hasHit())
             return false;
 
-        alpha = get_hit_base_color_alpha(render_data, shadow_ray_hit);
+        if (render_data.render_settings.do_alpha_testing)
+            alpha = get_hit_base_color_alpha(render_data, shadow_ray_hit);
+        else
+            alpha = 1.0f;
 
         float3 inter_point = ray.origin + ray.direction * shadow_ray_hit.t;
         ray.origin = inter_point + ray.direction * 3.0e-3f;
@@ -240,7 +243,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& r
         if (!hit.hasHit())
             return false;
 
-        alpha = get_hit_base_color_alpha(render_data, hit);
+        if (render_data.render_settings.do_alpha_testing)
+            alpha = get_hit_base_color_alpha(render_data, hit);
+        else
+            alpha = 1.0f;
 
         float3 inter_point = ray.origin + ray.direction * hit.t;
         ray.origin = inter_point + ray.direction * 3.0e-3f;
@@ -288,7 +294,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderD
         if (!shadow_ray_hit.hasHit())
             return false;
 
-        alpha = get_hit_base_color_alpha(render_data, shadow_ray_hit);
+        if (render_data.render_settings.do_alpha_testing)
+            alpha = get_hit_base_color_alpha(render_data, shadow_ray_hit);
+        else
+            alpha = 1.0f;
 
         float3 inter_point = ray.origin + ray.direction * shadow_ray_hit.t;
         ray.origin = inter_point + ray.direction * 3.0e-3f;
@@ -338,7 +347,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderD
         if (!shadow_ray_hit.hasHit())
             return false;
 
-        alpha = get_hit_base_color_alpha(render_data, shadow_ray_hit);
+        if (render_data.render_settings.do_alpha_testing)
+            alpha = get_hit_base_color_alpha(render_data, shadow_ray_hit);
+        else
+            alpha = 1.0f;
 
         float3 inter_point = ray.origin + ray.direction * shadow_ray_hit.t;
         ray.origin = inter_point + ray.direction * 3.0e-3f;
