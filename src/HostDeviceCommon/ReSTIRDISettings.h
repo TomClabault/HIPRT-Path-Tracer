@@ -35,7 +35,7 @@ struct TemporalPassSettings
 
 	// How many neighbors at most to check around the temporal back-projected pixel location 
 	// to find a valid neighbor
-	int max_neighbor_search_count = 0;
+	int max_neighbor_search_count = 8;
 	// Radius around the temporal reprojected location of a pixel in which to look for an
 	// acceptable temporal neighbor
 	int neighbor_search_radius = 8;

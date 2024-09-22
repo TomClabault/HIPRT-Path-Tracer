@@ -6,6 +6,7 @@
 #include "UI/ApplicationSettings.h"
 #include "UI/DisplayViewSystem.h"
 #include "UI/RenderWindow.h"
+#include "Utils/Utils.h"
 
 DisplayViewSystem::DisplayViewSystem(std::shared_ptr<GPURenderer> renderer, RenderWindow* render_window)
 {
@@ -27,6 +28,7 @@ DisplayViewSystem::DisplayViewSystem(std::shared_ptr<GPURenderer> renderer, Rend
 	OpenGLShader normal_display_fragment_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/normal_display.frag", OpenGLShader::FRAGMENT_SHADER);
 	OpenGLShader albedo_display_fragment_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/albedo_display.frag", OpenGLShader::FRAGMENT_SHADER);
 	OpenGLShader adaptive_display_fragment_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/heatmap_int.frag", OpenGLShader::FRAGMENT_SHADER);
+	OpenGLShader pixel_converged_display_fragment_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/boolmap_int.frag", OpenGLShader::FRAGMENT_SHADER);
 
 	// Making shared_ptr<OpenGLProgram>s here because multiple display views may share the same OpenGLProgram
 	std::shared_ptr<OpenGLProgram> default_display_program = std::make_shared<OpenGLProgram>(fullscreen_quad_vertex_shader, default_display_fragment_shader);
@@ -34,6 +36,7 @@ DisplayViewSystem::DisplayViewSystem(std::shared_ptr<GPURenderer> renderer, Rend
 	std::shared_ptr<OpenGLProgram> normal_display_program = std::make_shared<OpenGLProgram>(fullscreen_quad_vertex_shader, normal_display_fragment_shader);
 	std::shared_ptr<OpenGLProgram> albedo_display_program = std::make_shared<OpenGLProgram>(fullscreen_quad_vertex_shader, albedo_display_fragment_shader);
 	std::shared_ptr<OpenGLProgram> pixel_convergence_heatmap_display_program = std::make_shared<OpenGLProgram>(fullscreen_quad_vertex_shader, adaptive_display_fragment_shader);
+	std::shared_ptr<OpenGLProgram> pixel_converged_display_program = std::make_shared<OpenGLProgram>(fullscreen_quad_vertex_shader, pixel_converged_display_fragment_shader);
 
 	// Creating all the texture views
 	DisplayView default_display_view = DisplayView(DisplayViewType::DEFAULT, default_display_program);
@@ -43,6 +46,7 @@ DisplayViewSystem::DisplayViewSystem(std::shared_ptr<GPURenderer> renderer, Rend
 	DisplayView albedo_display_view = DisplayView(DisplayViewType::DISPLAY_ALBEDO, albedo_display_program);
 	DisplayView albedo_denoised_display_view = DisplayView(DisplayViewType::DISPLAY_DENOISED_ALBEDO, albedo_display_program);
 	DisplayView pixel_convergence_heatmap_display_view = DisplayView(DisplayViewType::PIXEL_CONVERGENCE_HEATMAP, pixel_convergence_heatmap_display_program);
+	DisplayView pixel_converged_display_view = DisplayView(DisplayViewType::PIXEL_CONVERGED_MAP, pixel_converged_display_program);
 
 	// Adding the display views to the map
 	m_display_views[DisplayViewType::DEFAULT] = default_display_view;
@@ -52,8 +56,9 @@ DisplayViewSystem::DisplayViewSystem(std::shared_ptr<GPURenderer> renderer, Rend
 	m_display_views[DisplayViewType::DISPLAY_ALBEDO] = albedo_display_view;
 	m_display_views[DisplayViewType::DISPLAY_DENOISED_ALBEDO] = albedo_denoised_display_view;
 	m_display_views[DisplayViewType::PIXEL_CONVERGENCE_HEATMAP] = pixel_convergence_heatmap_display_view;
+	m_display_views[DisplayViewType::PIXEL_CONVERGED_MAP] = pixel_converged_display_view;
 
-	// Denoiser blend by default because we want 
+	// Denoiser blend by default if denoising enabled. Default view otherwise
 	DisplayViewType default_display_view_type;
 	default_display_view_type = m_render_window->get_application_settings()->enable_denoising ? DisplayViewType::DENOISED_BLEND : DisplayViewType::DEFAULT;
 	queue_display_view_change(default_display_view_type);
@@ -68,7 +73,7 @@ DisplayViewSystem::~DisplayViewSystem()
 
 bool DisplayViewSystem::update_selected_display_view()
 {
-	if (get_current_display_view_type() == DisplayViewType::PIXEL_CONVERGENCE_HEATMAP 
+	if (current_display_view_needs_adaptive_sampling_buffers()
 	&& !m_render_window->get_renderer()->get_render_settings().has_access_to_adaptive_sampling_buffers())
 		// If the adaptive sampling heatmap is selected as the current view but
 		// the adaptive sampling buffers are no longer available (after a change
@@ -91,6 +96,12 @@ bool DisplayViewSystem::update_selected_display_view()
 	}
 	
 	return false;
+}
+
+bool DisplayViewSystem::current_display_view_needs_adaptive_sampling_buffers()
+{
+	return get_current_display_view_type() == DisplayViewType::PIXEL_CONVERGENCE_HEATMAP
+		|| get_current_display_view_type() == DisplayViewType::PIXEL_CONVERGED_MAP;
 }
 
 void DisplayViewSystem::display()
@@ -197,7 +208,7 @@ void DisplayViewSystem::update_display_program_uniforms(const DisplayViewSystem*
 		std::vector<ColorRGB32F> color_stops = { ColorRGB32F(0.0f, 0.0f, 1.0f), ColorRGB32F(0.0f, 1.0f, 0.0f), ColorRGB32F(1.0f, 0.0f, 0.0f) };
 
 		// If we don't have adaptive sampling enabled, we want to display the convergence
-		// of pixels as soon as possible so we set the min_val to 0. Otherwise, if we're using
+		// of pixels as soon as possible so we set the min_val to 1. Otherwise, if we're using
 		// adaptive sampling, we only have the convergence information after the minimum
 		// adaptive sampling samples have been reached so we set that as the min_val
 		float min_val = render_settings.enable_adaptive_sampling ? (float)render_settings.adaptive_sampling_min_samples : 1;
@@ -213,9 +224,18 @@ void DisplayViewSystem::update_display_program_uniforms(const DisplayViewSystem*
 		break;
 	}
 
-	case DisplayViewType::ADAPTIVE_SAMPLING_ACTIVE_PIXELS:
-		std::cerr << "ADAPTIVE_SAMPLING_ACTIVE_PIXELS not yet implemented" << std::endl;
+	case DisplayViewType::PIXEL_CONVERGED_MAP:
+	{
+		float min_val = render_settings.enable_adaptive_sampling ? (float)render_settings.adaptive_sampling_min_samples : 1;
+
+		// If a pixel has a lower sample count than the threshold val, then it has converged
+		float threshold_val = std::max((float)render_settings.sample_number, min_val);
+
+		program->set_uniform("u_texture", DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
+		program->set_uniform("u_resolution_scaling", render_low_resolution_scaling);
+		program->set_uniform("u_threshold_val", threshold_val);
 		break;
+	}
 
 	case DisplayViewType::UNDEFINED:
 		break;
@@ -259,14 +279,10 @@ void DisplayViewSystem::upload_relevant_buffers_to_texture()
 				display(m_render_window_denoiser->get_denoised_albedo_pointer());
 				break;*/
 
+	case DisplayViewType::PIXEL_CONVERGED_MAP:
 	case DisplayViewType::PIXEL_CONVERGENCE_HEATMAP:
 		internal_upload_buffer_to_texture(m_renderer->get_pixels_converged_sample_count_buffer(), m_display_texture_1, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
 		break;
-
-		// TODO fix
-		/*case DisplayViewType::ADAPTIVE_SAMPLING_ACTIVE_PIXELS:
-			display(m_renderer->get_debug_pixel_active_buffer().download_data().data());
-			break;*/
 
 	case DisplayViewType::DEFAULT:
 	default:
@@ -303,6 +319,7 @@ void DisplayViewSystem::internal_recreate_display_textures_from_display_view(Dis
 
 	switch (display_view)
 	{
+	case DisplayViewType::DEFAULT:
 	case DisplayViewType::DISPLAY_NORMALS:
 	case DisplayViewType::DISPLAY_DENOISED_NORMALS:
 	case DisplayViewType::DISPLAY_ALBEDO:
@@ -311,6 +328,7 @@ void DisplayViewSystem::internal_recreate_display_textures_from_display_view(Dis
 		break;
 
 	case DisplayViewType::PIXEL_CONVERGENCE_HEATMAP:
+	case DisplayViewType::PIXEL_CONVERGED_MAP:
 		texture_1_type_needed = DisplayTextureType::INT;
 		break;
 
@@ -319,9 +337,10 @@ void DisplayViewSystem::internal_recreate_display_textures_from_display_view(Dis
 		texture_2_type_needed = DisplayTextureType::FLOAT3;
 		break;
 
-	case DisplayViewType::DEFAULT:
 	default:
-		texture_1_type_needed = DisplayTextureType::FLOAT3;
+		std::cerr << "Unhandled display texture type in 'internal_recreate_display_textures_from_display_view'" << std::endl;
+		Utils::debugbreak();
+
 		break;
 	}
 

@@ -155,7 +155,10 @@ void ImGuiRenderer::draw_render_settings_panel()
 	ImGui::SeparatorText("Viewport Settings");
 	std::vector<const char*> items = { "- Default", "- Denoiser blend", "- Denoiser - Normals", "- Denoiser - Denoised normals", "- Denoiser - Albedo", "- Denoiser - Denoised albedo" };
 	if (render_settings.has_access_to_adaptive_sampling_buffers())
+	{
 		items.push_back("- Pixel convergence heatmap");
+		items.push_back("- Converged pixels map");
+	}
 
 	int display_view_selected = m_render_window->get_display_view_system()->get_current_display_view_type();
 	if (ImGui::Combo("Display View", &display_view_selected, items.data(), items.size()))
@@ -578,6 +581,15 @@ void ImGuiRenderer::draw_sampling_panel()
 		{
 
 			ImGui::TreePush("Adaptive sampling tree");
+
+			if (!render_settings.accumulate)
+			{
+				if (ImGui::Button("Enable accumulation"))
+				{
+					render_settings.accumulate = true;
+					m_render_window->set_render_dirty(true);
+				}
+			}
 
 			// Cannot use adaptive sampling without accumulation
 			ImGui::BeginDisabled(!render_settings.accumulate);

@@ -40,6 +40,12 @@ public:
 	bool update_selected_display_view();
 
 	/**
+	 * Returns true if the current display view needs the adaptive sampling buffers for
+	 * displaying
+	 */
+	bool current_display_view_needs_adaptive_sampling_buffers();
+
+	/**
 	 * Displays the currently active texture view onto the viewport
 	 */
 	void display();

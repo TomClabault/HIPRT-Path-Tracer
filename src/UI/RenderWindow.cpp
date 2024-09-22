@@ -17,10 +17,8 @@
 #include "stb_image_write.h"
 
 // TODOs ReSTIR DI
-// - bias when using visibility in spatial reuse target function and moving with temporal reuse on
 // - add hammersley usage or not imgui for spatial reuse
 // - fused spatiotemporal
-// - feature to disable ReSTIR after a certain percentage of convergence --> we don't want to pay the full price of resampling and everything only for a few difficult isolated pixels (especially true with adaptive sampling where neighbors don't get sampled --> no new samples added to their reservoir --> no need to resample)
 // - limit distance of BSDF ray for initial sampling (biased but reduces BVH traversal so performance++)
 // - maybe not spatially resample as hard everywhere in the image? heuristic to reduce/increase the number of spatial samples per pixel?
 // - for spatial reuse, put the heuristics checks in the 'get_spatial_neighbor_function'
@@ -32,18 +30,14 @@
 // - heuristics makes it hard to reuse on the teapot of the white room because of normals dissimilarity i guess?
 // - heuristics adds some noisy/artifacty pixels. Especially on high details geometry
 // - BSDF initial samples are natively taking occlusion into account, probably should produce them without occlusion into account to stay consistent because this means that, to guarantee unbiasedness, the moment we use BSDF samples, we need visibility bias correction. That's expensive and we may not want that --> we would need a any hit on emissive triangle for that, annoying
-// - When we add envmap samples to the mix in ReSTIR, this adds quite a bit of noise if these envmap samples do not take occlusion into account because they usually have a very high contribution --> RIS favors them --> only to realize in the end that it was occluded.
-//		- SOLUTION FOR BSDF AND ENVMAP INIITIAL CANDIDATES TAKING OCCLUSION INTO ACCOUNT:
-//		maybe add an "adaptive" visibility bias correction that only uses visibility for these special samples?
 
 
 // TODO bugs:
-// - memory leak with OpenGL when resizing the window? only AMD?
+// - memory leak with OpenGL when resizing the window? only on AMD?
 // - take transmission color into account when direct sampling a light source that is inside a volume
 // - denoiser AOVs not accounting for transmission correctly since Disney 
 //	  - same with perfect reflection
 // - fix sampling lights inside dielectrics with ReSTIR DI
-// - envmap importance sampling in Envmap.h seems biased: a little bit too dark compared to no direct lighting sampling (i.e. just pure brute force path tracer). This only happens when taking the BSDF sample for MIS into account AND with proper MIS weight. Using 0.5f MIS weight doesn't give that darkening. Something wrong with the PDFs causing the MIS weights to not sum to 1 or something?
 // - when using a BSDF override, transmissive materials keep their dielectric priorities and this can mess up shadow rays and intersections in general if the BSDF used for the override doesn't support transmissive materials
 
 
@@ -94,8 +88,6 @@
 //		We may have to do something with the lobes of the BSDF specifically for this one. A coated diffuse cannot always ignore light samples for example because the diffuse lobe benefits from light samples even if the surface is not smooth (coating) 
 // - support stochastic alpha transparency
 // - have a light BVH for intersecting light triangles only: useful when we want to know whether or not a direction could have be sampled by the light sampler: we don't need to intersect the whole scene BVH, just the light geometry, less expensive
-// - enable samples per frame even when not accumulating
-// - maybe allow not resetting ReSTIR buffers while accumulation is on and camera has moved? Probably gives bad results but why not allow it for testing purposes?
 // - shadow terminator issue on sphere low smooth scene
 // - use HIP/CUDA graphs to reduce launch overhead
 // - keep compiling kernels in the background after application has started to cache the most common kernel options on disk
@@ -107,7 +99,7 @@
 // - If could not load given scene file, fallback to cornell box instead of not continuing
 // - CTRL + mouse wheel for zoom in viewport, CTRL click reset zoom
 // - add clear shader cache in ImGui
-// - adapt number of light samples in light sampling routines based on roughness of the material --> no need to sample 8 lights in RIS for perfectly specular material + use ray ballot for that because we don't want to reduce light rays unecessarily if one thread of the warp is going to slow everyone down anyways
+// - adapt number of light samples in light sampling routines based on roughness of the material --> no need to sample 8 lights in RIS for perfectly specular material + use __any() intrinsic for that because we don't want to reduce light rays unecessarily if one thread of the warp is going to slow everyone down anyways
 // - UI scaling in ImGui
 // - clay render
 // - Scale all emissive in the scene in the material editor
@@ -136,7 +128,6 @@
 // - use fixed point 8 bit for materials parameters in [0, 1], should be good enough
 // - log size of buffers used: vertices, indices, normals, ...
 // - log memory size of buffers used: vertices, indices, normals, ...
-// - display active pixels adaptive sampling
 // - able / disable normal mapping
 // - use only one channel for material property texture to save VRAM
 // - Remove vertex normals for meshes that have normal maps and save VRAM
@@ -158,7 +149,6 @@
 // - benchmarker to measure frame times precisely (avg, std dev, ...) + fixed random seed for reproducible results
 // - alias table for sampling env map instead of log(n) binary search
 // - image comparator slider (to have adaptive sampling view + default view on the same viewport for example)
-// - auto adaptive sample per frame with adaptive sampling to keep GPU busy
 // - Maybe look at better Disney sampling (luminance?)
 // - thin materials
 // - Look at what Orochi & HIPCC can do in terms of displaying registers used / options to specify shared stack size / block size (-DBLOCK_SIZE, -DSHARED_STACK_SIZE)
@@ -175,8 +165,8 @@
 // - Visualizing russian roulette depth termination
 // - Add tooltips when hovering over a parameter in the UI
 // - Statistics on russian roulette efficiency
-// - Minimum contribution to speed things up as in OSPRay ?
-// - Better ray origin offset to avoid self intersections
+// - feature to disable ReSTIR after a certain percentage of convergence --> we don't want to pay the full price of resampling and everything only for a few difficult isolated pixels (especially true with adaptive sampling where neighbors don't get sampled --> no new samples added to their reservoir --> no need to resample)
+// - Better ray origin offset to avoid self intersections --> Use ray TMin
 // - Realistic Camera Model
 // - Focus blur
 // - Flakes BRDF (maybe look at OSPRay implementation for a reference ?)
@@ -184,16 +174,13 @@
 // - Paths roughness regularization
 // - choose denoiser quality in imgui
 // - try async buffer copy for the denoiser (maybe run a kernel to generate normals and another to generate albedo buffer before the path tracing kernel to be able to async copy while the path tracing kernel is running?)
-// - cutout filters
 // - write scene details to imgui (nb vertices, triangles, ...)
 // - ImGui to choose the BVH flags at runtime and be able to compare the performance
 // - ImGui widgets for SBVH / LBVH
 // - BVH compaction + imgui checkbox
-// - shader cache (write our own or wait for HIPRT to fix it?)
 // - choose env map at runtime imgui
 // - choose scene file at runtime imgui
 // - lock camera checkbox to avoid messing up when big render in progress
-// - use defines insead of IFs in the kernel code and recompile kernel everytime (for some options at least to reduce register pressure)
 // - PBRT v3 scene parser
 // - Wavefront path tracing
 // - Manifold Next Event Estimation (for refractive caustics) https://jo.dreggn.org/home/2015_mnee.pdf
