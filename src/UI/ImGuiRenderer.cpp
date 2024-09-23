@@ -354,12 +354,30 @@ void ImGuiRenderer::draw_render_settings_panel()
 	{
 		ImGui::TreePush("Nested dielectrics tree");
 
-	 	std::shared_ptr<GPUKernelCompilerOptions> kernel_options = m_renderer->get_global_compiler_options();
+	 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 		const char* items[] = { "- Automatic", "- With priorities" };
-		if (ImGui::Combo("Nested dielectrics strategy", kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY), items, IM_ARRAYSIZE(items)))
+		if (ImGui::Combo("Nested dielectrics strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY), items, IM_ARRAYSIZE(items)))
 		{
 			m_renderer->recompile_kernels();
 			m_render_window->set_render_dirty(true);
+		}
+
+		static int nested_dielectrics_stack_size = NestedDielectricsStackSize;
+		if (ImGui::SliderInt("Stack Size", &nested_dielectrics_stack_size, 3, 8))
+			nested_dielectrics_stack_size = std::max(1, nested_dielectrics_stack_size);
+
+		if (nested_dielectrics_stack_size != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::NESTED_DIELETRCICS_STACK_SIZE_OPTION))
+		{
+			ImGui::TreePush("Apply button nested dielectric stack size");
+			if (ImGui::Button("Apply"))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::NESTED_DIELETRCICS_STACK_SIZE_OPTION, nested_dielectrics_stack_size);
+
+				m_renderer->recompile_kernels();
+				m_renderer->resize_g_buffer_ray_volume_states();
+				m_render_window->set_render_dirty(true);
+			}
+			ImGui::TreePop();
 		}
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));

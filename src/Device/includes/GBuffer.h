@@ -6,7 +6,7 @@
 #ifndef DEVICE_GBUFFER_H
 #define DEVICE_GBUFFER_H
 
-#include "Device/includes/RayPayload.h"
+#include "Device/includes/RayVolumeState.h"
 
 #include "HostDeviceCommon/Material.h"
 

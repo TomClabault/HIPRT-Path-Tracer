@@ -21,6 +21,7 @@
 // - limit distance of BSDF ray for initial sampling (biased but reduces BVH traversal so performance++)
 // - maybe not spatially resample as hard everywhere in the image? heuristic to reduce/increase the number of spatial samples per pixel?
 // - psosibility not to use target function on all spatial reuse passes?
+// - use previous world to envmap matrix for temporal reuse of samples?
 
 // TODO bugs:
 // - memory leak with OpenGL when resizing the window? only on AMD?
@@ -40,6 +41,7 @@
 // - we don't need the full HitInfo 'closest_hit_info' structure everywhere, only the inter point and the two normals for the most part so maybe have a simplified structure 
 // - only the material index can be stored in the pixel states ofthe wavefront path tracer, don't need to store the whole material
 // - refactor envmap to have a sampling & eval function
+// - use 3x3 matrix for envmap matrices
 // - free denoiser buffers if not using denoising
 // All of this on threads:
 //		- ---------------- stream creation duration : 350ms
@@ -64,7 +66,6 @@
 // - reload shaders button
 // - pack ray payload
 // - pack nested dielectrics structure
-// - nested dielectrics stack size in ImGui
 // - performance/bias tradeoff by ignoring alpha tests after N bounce?
 // - performance/bias tradeoff by ignoring direct lighting occlusion after N bounce? --> strong bias but maybe something to do by reducing the length of shadow rays instead of just hard-disabling occlusion
 // - experiment with a feature that ignores really dark pixel in the variance estimation of the adaptive 

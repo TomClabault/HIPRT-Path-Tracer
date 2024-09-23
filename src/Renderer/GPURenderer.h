@@ -49,11 +49,12 @@ public:
 	 * 
 	 * Then the CAMERA_RAYS_KERNEL_FUNC_NAME must be "CameraRays"
 	 */
-	static const std::string PATH_TRACING_KERNEL_FUNC_NAME;
 	static const std::string CAMERA_RAYS_KERNEL_FUNC_NAME;
 	static const std::string RESTIR_DI_INITIAL_CANDIDATES_KERNEL_FUNC_NAME;
 	static const std::string RESTIR_DI_TEMPORAL_REUSE_KERNEL_FUNC_NAME;
 	static const std::string RESTIR_DI_SPATIAL_REUSE_KERNEL_FUNC_NAME;
+	static const std::string PATH_TRACING_KERNEL_FUNC_NAME;
+	static const std::string RAY_VOLUME_STATE_SIZE_KERNEL_FUNC_NAME;
 
 	// Key for indexing m_ms_time_per_pass that contains the times per passes
 	// This key is for the time of the whole frame
@@ -166,6 +167,33 @@ public:
 	const std::vector<RendererMaterial>& get_materials();
 	const std::vector<std::string>& get_material_names();
 	void update_materials(std::vector<RendererMaterial>& materials);
+
+	/**
+	 * Returns the size of the RayVolumeState struct on the GPU.
+	 * 
+	 * Useful when the size of the struct changes because the nested dielectrics
+	 * stack size changed but we have no easy way to find out what's the new size
+	 * of the struct on the CPU to upload the correct data size.
+	 * 
+	 * There's no easy way to find the new size of the struct on the CPU because
+	 * the RayVolumeState struct includes a InteriorStackImpl struct whose size
+	 * is defined at compilation time. If the nested dielectrics stack size changes
+	 * at runtime (possible through ImGui), then we need to recompute the size of
+	 * the RayVolumeState structure on the CPU to be able to properly resize the
+	 * GPU buffers that use the RayVolumeState (in the GBuffer for example).
+	 * However, again, that size is determined at compilation time so we can't
+	 * know on the CPU what's going to be the new size. To circumvent that, we
+	 * use the fact that shader are recompiled on the GPU and so the shaders know
+	 * the new size. This function thus launches a kernel on the GPU to querry
+	 * the size of the structure.
+	 */
+	size_t get_ray_volume_state_byte_size();
+
+	/**
+	 * Resizes the ray_volume_states array of the GBuffers
+	 * (current frame and previous frames if used) so that it matches the size of RayVolumeState being used on the GPU
+	 */
+	void resize_g_buffer_ray_volume_states();
 
 	void translate_camera_view(glm::vec3 translation);
 	/**
@@ -329,6 +357,9 @@ private:
 	// They are all organized in a map so that we can iterate over them. The key
 	// of this map is a "name"
 	std::map<std::string, GPUKernel> m_kernels;
+
+	// Kernel used for retrieving the size of the RayVolumeState structure on the GPU
+	GPUKernel m_ray_volume_state_byte_size_kernel;
 
 	std::shared_ptr<HIPRTOrochiCtx> m_hiprt_orochi_ctx = nullptr;
 

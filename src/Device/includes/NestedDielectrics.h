@@ -10,8 +10,6 @@
 
 #include <hiprt/hiprt_common.h>
 
-#define INTERIOR_STACK_SIZE 8
-
 template <int Strategy>
 struct InteriorStackImpl {};
 
@@ -66,7 +64,7 @@ struct InteriorStackImpl<ISS_AUTOMATIC>
 				break;
 
 		// Inserting the material in the stack
-		if (stack_position < INTERIOR_STACK_SIZE - 1)
+		if (stack_position < NestedDielectricsStackSize - 1)
 			stack_position++;
 		stack[stack_position].material_index = material_index;
 		stack[stack_position].odd_parity = odd_parity;
@@ -128,7 +126,7 @@ struct InteriorStackImpl<ISS_AUTOMATIC>
 		}
 	}
 
-	StackEntry stack[INTERIOR_STACK_SIZE];
+	StackEntry stack[NestedDielectricsStackSize];
 
 	char stack_position = 0;
 };
@@ -164,7 +162,7 @@ struct InteriorStackImpl<ISS_WITH_PRIORITIES>
 		{
 			if (stack[previous_same_mat_index].material_index == material_index)
 			{
-				// The previous material is not the topmost anymore
+				// The previous stack entry of the same material is not the topmost anymore
 				stack[previous_same_mat_index].topmost = false;
 				// The current parity is the inverse of the previous one
 				odd_parity = !stack[previous_same_mat_index].odd_parity;
@@ -176,7 +174,7 @@ struct InteriorStackImpl<ISS_WITH_PRIORITIES>
 		leaving_material = !odd_parity;
 
 		// Inserting the material in the stack
-		if (stack_position < INTERIOR_STACK_SIZE - 1)
+		if (stack_position < NestedDielectricsStackSize - 1)
 			stack_position++;
 		stack[stack_position].material_index = material_index;
 		stack[stack_position].odd_parity = odd_parity;
@@ -246,7 +244,10 @@ struct InteriorStackImpl<ISS_WITH_PRIORITIES>
 		}
 	}
 
-	StackPriorityEntry stack[INTERIOR_STACK_SIZE];
+	// We only need all of this if the stack size is actually > 0,
+	// otherwise, we're just not going to do the nested dielectrics handling at all
+
+	StackPriorityEntry stack[NestedDielectricsStackSize];
 
 	// Stack position is pointing one past the last valid entry
 	char stack_position = 0;

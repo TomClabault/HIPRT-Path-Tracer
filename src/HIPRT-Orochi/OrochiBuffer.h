@@ -22,7 +22,7 @@ public:
 
 	void operator=(OrochiBuffer<T>&& other);
 
-	void resize(int new_element_count);
+	void resize(int new_element_count, size_t type_size_override = 0);
 	size_t get_element_count();
 
 	T* get_device_pointer();
@@ -85,12 +85,13 @@ void OrochiBuffer<T>::operator=(OrochiBuffer&& other)
 }
 
 template <typename T>
-void OrochiBuffer<T>::resize(int new_element_count)
+void OrochiBuffer<T>::resize(int new_element_count, size_t type_size_override)
 {
 	if (m_data_pointer)
 		OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(m_data_pointer)));
 
-	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&m_data_pointer), sizeof(T) * new_element_count));
+	size_t buffer_size = type_size_override != 0 ? (type_size_override * new_element_count) : (sizeof(T) * new_element_count);
+	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&m_data_pointer), buffer_size));
 
 	m_element_count = new_element_count;
 }

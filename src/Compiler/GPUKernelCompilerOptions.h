@@ -24,6 +24,7 @@ public:
 
 	static const std::string BSDF_OVERRIDE;
 	static const std::string INTERIOR_STACK_STRATEGY;
+	static const std::string NESTED_DIELETRCICS_STACK_SIZE_OPTION;
 
 	static const std::string DIRECT_LIGHT_SAMPLING_STRATEGY;
 	static const std::string ENVMAP_SAMPLING_STRATEGY;

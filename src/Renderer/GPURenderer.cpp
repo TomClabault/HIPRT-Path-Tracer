@@ -23,6 +23,7 @@ const std::string GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_FUNC_NAME = "
 const std::string GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_FUNC_NAME = "ReSTIR_DI_TemporalReuse";
 const std::string GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_FUNC_NAME = "ReSTIR_DI_SpatialReuse";
 const std::string GPURenderer::PATH_TRACING_KERNEL_FUNC_NAME = "FullPathTracer";
+const std::string GPURenderer::RAY_VOLUME_STATE_SIZE_KERNEL_FUNC_NAME = "RayVolumeStateSize";
 
 const std::string GPURenderer::FULL_FRAME_TIME_KEY = "FullFrameTime";
 
@@ -33,6 +34,7 @@ const std::string GPURenderer::KERNEL_FILES[] =
 	DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReSTIR_DI_TemporalReuse.h",
 	DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReSTIR_DI_SpatialReuse.h",
 	DEVICE_KERNELS_DIRECTORY "/FullPathTracer.h", 
+	DEVICE_KERNELS_DIRECTORY "/Utils/RayVolumeStateSize.h", 
 };
 
 const std::string GPURenderer::KERNEL_FUNCTIONS[] = 
@@ -42,6 +44,7 @@ const std::string GPURenderer::KERNEL_FUNCTIONS[] =
 	RESTIR_DI_TEMPORAL_REUSE_KERNEL_FUNC_NAME,
 	RESTIR_DI_SPATIAL_REUSE_KERNEL_FUNC_NAME,
 	PATH_TRACING_KERNEL_FUNC_NAME,
+	RAY_VOLUME_STATE_SIZE_KERNEL_FUNC_NAME,
 };
 
 const std::vector<std::string> GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS = 
@@ -152,6 +155,18 @@ void GPURenderer::setup_kernels()
 	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_GLOBAL_RAYS, 12);
 	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_SHADOW_RAYS, 0);
 
+	// Configuring the kernel that will be used to retrieve the size of the RayVolumeState structure.
+	// This size will be needed to resize the 'ray_volume_states' buffer in the GBuffer if the nested dielectrics
+	// stack size changes
+	m_ray_volume_state_byte_size_kernel.set_kernel_file_path(GPURenderer::KERNEL_FILES[5]);
+	m_ray_volume_state_byte_size_kernel.set_kernel_function_name(GPURenderer::KERNEL_FUNCTIONS[5]);
+	m_ray_volume_state_byte_size_kernel.get_kernel_options().set_additional_include_directories(GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS);
+	m_ray_volume_state_byte_size_kernel.compile(m_hiprt_orochi_ctx);
+	// Synchronizing here so that when the nested dielectrics stack size of the
+	// global kernel option changes, this kernel has the size change too and can
+	// be recompiled accordingly
+	m_ray_volume_state_byte_size_kernel.synchronize_options_with(*m_global_compiler_options, options_excluded_from_synchro);
+
 	// Compiling kernels
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID]), m_hiprt_orochi_ctx);
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID]), m_hiprt_orochi_ctx);
@@ -209,7 +224,7 @@ void GPURenderer::internal_update_prev_frame_g_buffer()
 
 		if (prev_frame_g_buffer_needs_resize)
 		{
-			m_g_buffer_prev_frame.resize(m_render_resolution.x * m_render_resolution.y);
+			m_g_buffer_prev_frame.resize(m_render_resolution.x * m_render_resolution.y, get_ray_volume_state_byte_size());
 			m_render_data_buffers_invalidated = true;
 		}
 	}
@@ -621,10 +636,10 @@ void GPURenderer::resize(int new_width, int new_height)
 	m_normals_AOV_buffer->resize(new_width * new_height);
 	m_albedo_AOV_buffer->resize(new_width * new_height);
 
-	m_g_buffer.resize(new_width * new_height);
+	m_g_buffer.resize(new_width * new_height, get_ray_volume_state_byte_size());
 
 	if (m_render_data.render_settings.use_prev_frame_g_buffer(this))
-		m_g_buffer_prev_frame.resize(new_width * new_height);
+		m_g_buffer_prev_frame.resize(new_width * new_height, get_ray_volume_state_byte_size());
 
 	if (m_render_data.render_settings.has_access_to_adaptive_sampling_buffers())
 	{
@@ -798,6 +813,7 @@ void GPURenderer::recompile_kernels(bool use_cache)
 
 	for (auto& name_to_kenel : m_kernels)
 		name_to_kenel.second.compile(m_hiprt_orochi_ctx, use_cache);
+	m_ray_volume_state_byte_size_kernel.compile(m_hiprt_orochi_ctx, true);
 }
 
 std::map<std::string, GPUKernel>& GPURenderer::get_kernels()
@@ -1034,6 +1050,30 @@ void GPURenderer::update_materials(std::vector<RendererMaterial>& materials)
 {
 	m_materials = materials;
 	m_hiprt_scene.materials_buffer.upload_data(materials.data());
+}
+
+size_t GPURenderer::get_ray_volume_state_byte_size()
+{
+	OrochiBuffer<size_t> out_size_buffer(1);
+	size_t* out_size_buffer_pointer = out_size_buffer.get_device_pointer();
+
+	void* launch_args[] = { &out_size_buffer_pointer };
+	m_ray_volume_state_byte_size_kernel.launch(1, 1, 1, 1, launch_args, 0);
+	oroStreamSynchronize(0);
+
+	std::vector<size_t> ray_volume_state_size = out_size_buffer.download_data();
+	return ray_volume_state_size[0];
+}
+
+void GPURenderer::resize_g_buffer_ray_volume_states()
+{
+	synchronize_kernel();
+
+	m_g_buffer.ray_volume_states.resize(m_render_resolution.x * m_render_resolution.y, get_ray_volume_state_byte_size());
+	if (m_render_data.render_settings.use_prev_frame_g_buffer())
+		m_g_buffer_prev_frame.ray_volume_states.resize(m_render_resolution.x * m_render_resolution.y, get_ray_volume_state_byte_size());
+
+	m_render_data_buffers_invalidated = true;
 }
 
 Camera& GPURenderer::get_camera()

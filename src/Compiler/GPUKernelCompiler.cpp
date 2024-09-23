@@ -13,14 +13,12 @@
 
 GPUKernelCompiler g_gpu_kernel_compiler;
 
-oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, const GPUKernelCompilerOptions& kernel_compiler_options, std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, bool use_cache, const std::string& additional_cache_key)
+oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, const GPUKernelCompilerOptions& kernel_compiler_options, std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, bool use_cache, const std::string& additional_cache_key, bool silent)
 {
 	std::string kernel_file_path = kernel.get_kernel_file_path();
 	std::string kernel_function_name = kernel.get_kernel_function_name();
 	const std::vector<std::string>& additional_include_dirs = kernel_compiler_options.get_additional_include_directories();
 	std::vector<std::string> compiler_options = kernel_compiler_options.get_relevant_macros_as_std_vector_string(&kernel);
-	compiler_options.push_back(std::string("-ggdb"));
-	compiler_options.push_back(std::string("-g"));
 
 	auto start = std::chrono::high_resolution_clock::now();
 
@@ -35,6 +33,8 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, const GPUKern
 	oroFunction kernel_function = reinterpret_cast<oroFunction>(trace_function_out);
 
 	auto stop = std::chrono::high_resolution_clock::now();
+
+	if (!silent)
 	{
 		std::lock_guard<std::mutex> lock(m_mutex);
 		std::cout << "Kernel \"" << kernel_function_name << "\" compiled in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms. ";

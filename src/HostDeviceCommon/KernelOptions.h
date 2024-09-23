@@ -43,6 +43,8 @@
 #define ISS_AUTOMATIC 0
 #define ISS_WITH_PRIORITIES 1
 
+#define NESTED_DIELECTRICS_STACK_SIZE 4
+
 #define LSS_NO_DIRECT_LIGHT_SAMPLING 0
 #define LSS_UNIFORM_ONE_LIGHT 1
 #define LSS_BSDF 2
@@ -141,6 +143,11 @@
  *		"with priorities" as presented in Simple Nested Dielectrics in Ray Traced Images, Schmidt, 2002
  */
 #define InteriorStackStrategy ISS_WITH_PRIORITIES
+
+/**
+ * The stack size for handling nested dielectrics
+ */
+#define NestedDielectricsStackSize NESTED_DIELECTRICS_STACK_SIZE
 
 /**
  * What direct lighting sampling strategy to use.
