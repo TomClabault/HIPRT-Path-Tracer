@@ -24,7 +24,47 @@
 #define GPU_RENDER 1
 
 int main(int argc, char* argv[])
-{
+{   
+    StackPriorityEntry entry;
+    entry.store_material_index(8);
+    std::cout << "8?: " << entry.get_material_index() << std::endl;
+    entry.store_material_index(42);
+    std::cout << "42?: " << entry.get_material_index() << std::endl;
+    entry.store_material_index(7);
+    std::cout << "7?: " << entry.get_material_index() << std::endl;
+    entry.store_material_index(StackPriorityEntry::MATERIAL_INDEX_BIT_MASK);
+    std::cout << StackPriorityEntry::MATERIAL_INDEX_BIT_MASK << "?: " << entry.get_material_index() << std::endl;
+
+    entry.store_odd_parity(true);
+    std::cout << "true?: " << entry.get_odd_parity() << std::endl;
+    entry.store_odd_parity(false);
+    std::cout << "false?: " << entry.get_odd_parity() << std::endl;
+    entry.store_odd_parity(true);
+    std::cout << "true?: " << entry.get_odd_parity() << std::endl;
+    entry.store_odd_parity(true);
+    std::cout << "true?: " << entry.get_odd_parity() << std::endl;
+
+    entry.store_topmost(true);
+    std::cout << "true?: " << entry.get_topmost() << std::endl;
+    entry.store_topmost(false);
+    std::cout << "false?: " << entry.get_topmost() << std::endl;
+    entry.store_topmost(false);
+    std::cout << "false?: " << entry.get_topmost() << std::endl;
+    entry.store_topmost(true);
+    std::cout << "true?: " << entry.get_topmost() << std::endl;
+    entry.store_topmost(true);
+    std::cout << "true?: " << entry.get_topmost() << std::endl;
+
+    entry.store_priority(7);
+    std::cout << "7?: " << entry.get_priority() << std::endl;
+    entry.store_priority(5);
+    std::cout << "5?: " << entry.get_priority() << std::endl;
+    entry.store_priority(12);
+    std::cout << "12?: " << entry.get_priority() << std::endl;
+    entry.store_priority(11);
+    std::cout << "11?: " << entry.get_priority() << std::endl;
+
+
     CommandlineArguments cmd_arguments = CommandlineArguments::process_command_line_args(argc, argv);
 
     const int width = cmd_arguments.render_width;
