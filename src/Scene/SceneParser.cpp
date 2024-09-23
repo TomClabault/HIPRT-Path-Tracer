@@ -38,6 +38,15 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Assimp::Im
         }
     }
 
+    if (scene->mNumMaterials > InteriorStackImpl<InteriorStackStrategy>::MAX_MATERIAL_INDEX)
+    {
+        std::cerr << "This scene contains too many materials for the renderer. Maximum number of material is: " << InteriorStackImpl<InteriorStackStrategy>::MAX_MATERIAL_INDEX << std::endl;
+
+        int charac = std::getchar();
+
+        std::exit(1);
+    }
+
     std::vector<std::pair<aiTextureType, std::string>> texture_paths;
     // Indices of the texture used by a material
     std::vector<ParsedMaterialTextureIndices> material_texture_indices;

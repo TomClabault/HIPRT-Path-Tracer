@@ -10,15 +10,16 @@
 
 #include <hiprt/hiprt_common.h>
 
+ /**
+  * Reference:
+  *
+  * [1] [Ray Tracing Gems 1 - Automatic Handling of Materials in Nested Volumes] https://www.realtimerendering.com/raytracinggems/rtg/index.html
+  * [2] [Simple Nested Dielectrics in Ray Traced Images, Schmidt, 2002]
+  */
+
 template <int Strategy>
 struct InteriorStackImpl {};
 
-/**
- * Reference:
- *
- * [1] [Ray Tracing Gems 1 - Automatic Handling of Materials in Nested Volumes] https://www.realtimerendering.com/raytracinggems/rtg/index.html
- * [2] [Simple Nested Dielectrics in Ray Traced Images, Schmidt, 2002]
- */
 struct StackEntry
 {
 	// TODO do packing in there
@@ -133,11 +134,35 @@ struct InteriorStackImpl<ISS_AUTOMATIC>
 
 struct StackPriorityEntry
 {
-	// TODO do packing in here, can all fit in 1 int and test num registers with the playground
-	int material_index = -1;
-	bool topmost = true;
-	bool odd_parity = true;
-	char priority = -1;
+	// How many bits for encoding the packed priority
+	static constexpr unsigned int PRIORITY_BITS = 4;
+	static constexpr unsigned int PRIORITY_MAXIMUM = (1 << PRIORITY_BITS) - 1;
+	// How many bits for encoding the topmost flag
+	static constexpr unsigned int TOPMOST_BITS = 1;
+	// How many bits for encoding the odd_parity flag
+	static constexpr unsigned int ODD_PARTIY_BITS = 1;
+
+	// How many bits for encoding the material_index flag
+	// 
+	// This is the rest of the bits after we've added the other 
+	// flags
+	static constexpr unsigned int MATERIAL_INDEX_BITS = 32 - PRIORITY_BITS - TOPMOST_BITS - ODD_PARTIY_BITS;
+	static constexpr unsigned int MATERIAL_INDEX_MAXIMUM = (1 << MATERIAL_INDEX_BITS) - 1;
+
+	HIPRT_HOST_DEVICE StackPriorityEntry()
+	{
+		priority = 0;
+		odd_parity = true;
+		topmost = true;
+		// Setting the material index to the maximum
+		material_index = MATERIAL_INDEX_MAXIMUM;
+	}
+
+	// Using bitfields to pack the data in a single 32 bits variable and still keep a nice syntax
+	unsigned int priority : ODD_PARTIY_BITS;
+	bool odd_parity : PRIORITY_BITS;
+	bool topmost : TOPMOST_BITS;
+	unsigned int material_index : MATERIAL_INDEX_BITS;
 };
 
 template <>
@@ -149,6 +174,12 @@ struct InteriorStackImpl<ISS_WITH_PRIORITIES>
 		// material we're currently inserting in the stack
 		int last_entered_mat_index = 0;
 		for (last_entered_mat_index = stack_position; last_entered_mat_index >= 0; last_entered_mat_index--)
+			// The three conditions in order are:
+			// 	- We found a materal in the stack that is not the material that we're currently intersecting
+			//	- The entry of that material in the stack is the topmost (the last entry of its material kind)
+			//	- The entry of that material in the stack is odd_parity = we've entered that material but haven't left it yet
+			//
+			//	= the last entered material
 			if (stack[last_entered_mat_index].material_index != material_index && stack[last_entered_mat_index].topmost && stack[last_entered_mat_index].odd_parity)
 				break;
 
@@ -229,8 +260,9 @@ struct InteriorStackImpl<ISS_WITH_PRIORITIES>
 				for (int i = previous_same_mat_index + 1; i <= stack_position; i++)
 					stack[i - 1] = stack[i];
 
+			// For very small stacks (2 for example), we may not be able to pop twice
+			// at all so we check the position on the stack first
 			if (stack_position > 0)
-				// For very small stacks (2 for example), we may not be able to pop twice at all
 				stack_position--;
 		}
 
@@ -248,9 +280,11 @@ struct InteriorStackImpl<ISS_WITH_PRIORITIES>
 	// otherwise, we're just not going to do the nested dielectrics handling at all
 
 	StackPriorityEntry stack[NestedDielectricsStackSize];
+	static constexpr unsigned int MAX_MATERIAL_INDEX = StackPriorityEntry::MATERIAL_INDEX_MAXIMUM;
 
-	// Stack position is pointing one past the last valid entry
-	int stack_position = 0;
+	// Stack position is pointing at the last valid entry.
+	// Entry 0 is always present and represent air basically
+	char stack_position = 0;
 };
 
 #endif

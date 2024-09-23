@@ -1224,8 +1224,7 @@ size_t GPURenderer::get_ray_volume_state_byte_size()
 	m_ray_volume_state_byte_size_kernel.launch(1, 1, 1, 1, launch_args, 0);
 	oroStreamSynchronize(0);
 
-	std::vector<size_t> ray_volume_state_size = out_size_buffer.download_data();
-	return ray_volume_state_size[0];
+	return out_size_buffer.download_data()[0];
 }
 
 void GPURenderer::resize_g_buffer_ray_volume_states()

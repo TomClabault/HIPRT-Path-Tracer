@@ -6,6 +6,8 @@
 #ifndef HOST_DEVICE_COMMON_MATERIAL_H
 #define HOST_DEVICE_COMMON_MATERIAL_H
 
+#include "Device/includes/NestedDielectrics.h"
+
 #include "HostDeviceCommon/KernelOptions.h"
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/Math.h"
@@ -60,7 +62,7 @@ struct SimplifiedRendererMaterial
 
         if (specular_transmission == 0.0f)
             // No transmission means that we should never skip this boundary --> max priority
-            dielectric_priority = 65535;
+            dielectric_priority = (1 << StackPriorityEntry::PRIORITY_MAXIMUM) - 1;
     }
 
     HIPRT_HOST_DEVICE void precompute_anisotropic()
@@ -132,7 +134,7 @@ struct SimplifiedRendererMaterial
     ColorRGB32F absorption_color = ColorRGB32F(1.0f);
 
     // Nested dielectric parameter
-    unsigned short int dielectric_priority = 0;
+    int dielectric_priority = 0;
 
 private:
     ColorRGB32F emission = ColorRGB32F{ 0.0f, 0.0f, 0.0f };

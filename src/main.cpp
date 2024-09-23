@@ -24,7 +24,7 @@
 #define GPU_RENDER 1
 
 int main(int argc, char* argv[])
-{
+{   
     CommandlineArguments cmd_arguments = CommandlineArguments::process_command_line_args(argc, argv);
 
     const int width = cmd_arguments.render_width;

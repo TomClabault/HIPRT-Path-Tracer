@@ -1558,12 +1558,18 @@ void ImGuiRenderer::draw_objects_panel()
 		material_changed |= ImGui::SliderFloat("IOR", &material.ior, 0.0f, 5.0f);
 		ImGui::Separator();
 		material_changed |= ImGui::SliderFloat("Transmission", &material.specular_transmission, 0.0f, 1.0f);
-		material_changed |= ImGui::SliderFloat("Absorption distance", &material.absorption_at_distance, 0.0f, 20.0f);
-		material_changed |= ImGui::ColorEdit3("Absorption color", (float*)&material.absorption_color);
-		unsigned short int zero = 0, eight = 8;
-		ImGui::BeginDisabled(material.specular_transmission == 0.0f || kernel_options->get_macro_value(GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY) != ISS_WITH_PRIORITIES);
-		material_changed |= ImGui::SliderScalar("Dielectric priority", ImGuiDataType_U16, &material.dielectric_priority, &zero, &eight);
-		ImGui::EndDisabled();
+
+		if (material.specular_transmission > 0.0f)
+		{
+			material_changed |= ImGui::SliderFloat("Absorption distance", &material.absorption_at_distance, 0.0f, 20.0f);
+			material_changed |= ImGui::ColorEdit3("Absorption color", (float*)&material.absorption_color);
+
+			ImGui::BeginDisabled(kernel_options->get_macro_value(GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY) != ISS_WITH_PRIORITIES);
+			material_changed |= ImGui::SliderInt("Dielectric priority", &material.dielectric_priority, 1, StackPriorityEntry::PRIORITY_MAXIMUM);
+			if (kernel_options->get_macro_value(GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY) != ISS_WITH_PRIORITIES)
+				ImGuiRenderer::show_help_marker("Disabled because not using nested dielectrics with priorities.");
+			ImGui::EndDisabled();
+		}
 
 		// Displaying original emission
 		ImGui::BeginDisabled(material.emission_texture_index > 0);
