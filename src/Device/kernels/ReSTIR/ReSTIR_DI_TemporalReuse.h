@@ -77,6 +77,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 
 	// Surface data of the center pixel
 	ReSTIRDISurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index);
+	if (center_pixel_surface.material.is_emissive())
+		// Not doing ReSTIR on directly visible emissive materials
+		return;
+
+	ReSTIRDIReservoir initial_candidates_reservoir = render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs[center_pixel_index];
 
 	int temporal_neighbor_pixel_index = find_temporal_neighbor_index(render_data, render_data.g_buffer.first_hits[center_pixel_index], center_pixel_surface.shading_normal, res, make_int2(x, y), center_pixel_index, center_pixel_surface.material.roughness, random_number_generator);
 	if (temporal_neighbor_pixel_index == -1 || render_data.render_settings.freeze_random)
@@ -97,7 +102,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 
 	// Resampling the initial candidates
 	ReSTIRDIReservoir new_reservoir;
-	ReSTIRDIReservoir initial_candidates_reservoir = render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs[center_pixel_index];
 
 	ReSTIRDISurface temporal_neighbor_surface;
 	if (render_data.render_settings.use_prev_frame_g_buffer())
@@ -107,6 +111,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	else
 		// Reading from the current frame's g-buffer otherwise
 		temporal_neighbor_surface = get_pixel_surface(render_data, temporal_neighbor_pixel_index);
+	if (temporal_neighbor_surface.material.is_emissive())
+	{
+		// Can't resample the temporal neighbor if it's emissive so output the initial candidates right away
+		render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs[center_pixel_index] = render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs[center_pixel_index];
+
+		return;
+	}
 
 	ReSTIRDITemporalResamplingMISWeight<ReSTIR_DI_BiasCorrectionWeights> mis_weight_function;
 	// Will keep the index of the neighbor that has been selected by resampling. 

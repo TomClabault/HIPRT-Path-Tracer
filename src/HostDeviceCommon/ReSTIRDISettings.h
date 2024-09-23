@@ -38,7 +38,7 @@ struct TemporalPassSettings
 	int max_neighbor_search_count = 8;
 	// Radius around the temporal reprojected location of a pixel in which to look for an
 	// acceptable temporal neighbor
-	int neighbor_search_radius = 8;
+	int neighbor_search_radius = 4;
 
 	// If set to true, the temporal buffers will be cleared by the camera
 	// rays kernel
@@ -61,7 +61,7 @@ struct SpatialPassSettings
 	// How many spatial reuse pass to perform
 	int number_of_passes = 1;
 	// The radius within which neighbor are going to be reused spatially
-	int spatial_reuse_radius = 20;
+	int spatial_reuse_radius = 16;
 	// How many neighbors to reuse during the spatial pass
 	int spatial_reuse_neighbor_count = 1;
 

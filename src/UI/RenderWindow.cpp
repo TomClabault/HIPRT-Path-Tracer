@@ -17,7 +17,6 @@
 #include "stb_image_write.h"
 
 // TODOs ReSTIR DI
-// - add hammersley usage or not imgui for spatial reuse
 // - fused spatiotemporal
 // - limit distance of BSDF ray for initial sampling (biased but reduces BVH traversal so performance++)
 // - maybe not spatially resample as hard everywhere in the image? heuristic to reduce/increase the number of spatial samples per pixel?
@@ -27,8 +26,6 @@
 //		Can we check for that condition earlier and if temporal_neighbor_reservoir.M == 0, then we can immediately return and set the output of the
 //		temporal pass to the initial candidates alone, the same as when temporal_neighbor_index == -1
 // - M-capping when using a reservoir in the spatial reuse? M-capping shouldn't be only for temporal input reservoirs right? --> too many spatial reuse passes/too many neighbors reused = blow up
-// - heuristics makes it hard to reuse on the teapot of the white room because of normals dissimilarity i guess?
-// - heuristics adds some noisy/artifacty pixels. Especially on high details geometry
 
 
 // TODO bugs:
@@ -686,7 +683,7 @@ void RenderWindow::render()
 		}
 		else if (!is_rendering_done() || m_application_state->render_dirty)
 		{
-			// We can unmap the renderer's buffers so that OpenGL can use them for displaying
+			//// We can unmap the renderer's buffers so that OpenGL can use them for displaying
 			m_renderer->unmap_buffers();
 
 			// Update the display view system so that the display view is changed to the
@@ -696,10 +693,10 @@ void RenderWindow::render()
 			// Denoising to fill the buffers with denoised data (if denoising is enabled)
 			denoise();
 
-			// We upload the data to the OpenGL textures for displaying
+			//// We upload the data to the OpenGL textures for displaying
 			m_display_view_system->upload_relevant_buffers_to_texture();
 
-			// We want the next frame to be displayed with the same wants_render_low_resolution setting
+			// We want the next frame to be displayed with the same 'wants_render_low_resolution' setting
 			// as it was queued with. This is only useful for first frames when getting in low resolution
 			// (when we start moving the camera for example) or first frames when getting out of low resolution
 			// (when we stop moving the camera). In such situations, the last kernel launch in the GPU queue is

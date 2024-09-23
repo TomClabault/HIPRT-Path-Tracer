@@ -27,8 +27,8 @@ struct ColorRGB32F
     HIPRT_HOST_DEVICE float length2() const { return r * r + g * g + b * b; }
     HIPRT_HOST_DEVICE float luminance() const { return 0.3086f * r + 0.6094f * g + 0.0820f * b; }
     HIPRT_HOST_DEVICE void clamp(float min, float max) { r = hippt::clamp(min, max, r); g = hippt::clamp(min, max, g); b = hippt::clamp(min, max, b); }
-    HIPRT_HOST_DEVICE bool has_NaN() { return hippt::isNaN(r) || hippt::isNaN(g) || hippt::isNaN(b); }
-    HIPRT_HOST_DEVICE bool is_black() { return !(r > 0.0f || g > 0.0f || b > 0.0f); }
+    HIPRT_HOST_DEVICE bool has_NaN() const { return hippt::isNaN(r) || hippt::isNaN(g) || hippt::isNaN(b); }
+    HIPRT_HOST_DEVICE bool is_black() const { return !(r > 0.0f || g > 0.0f || b > 0.0f); }
 
     HIPRT_HOST_DEVICE static ColorRGB32F max(const ColorRGB32F& a, const ColorRGB32F& b) { return ColorRGB32F(hippt::max(a.r, b.r), hippt::max(a.g, b.g), hippt::max(a.b, b.b)); }
     HIPRT_HOST_DEVICE static ColorRGB32F min(const ColorRGB32F& a, const ColorRGB32F& b) { return ColorRGB32F(hippt::min(a.r, b.r), hippt::min(a.g, b.g), hippt::min(a.b, b.b)); }
@@ -71,8 +71,8 @@ struct ColorRGBA32F
     HIPRT_HOST_DEVICE float length2() const { return r * r + g * g + b * b + a * a; }
     HIPRT_HOST_DEVICE float luminance() const { return 0.3086f * r + 0.6094f * g + 0.0820f * b; }
     HIPRT_HOST_DEVICE void clamp(float min, float max) { r = hippt::clamp(min, max, r); g = hippt::clamp(min, max, g); b = hippt::clamp(min, max, b); a = hippt::clamp(min, max, a); }
-    HIPRT_HOST_DEVICE bool has_NaN() { return hippt::isNaN(r) || hippt::isNaN(g) || hippt::isNaN(b) || hippt::isNaN(a); }
-    HIPRT_HOST_DEVICE bool is_black() { return !(r > 0.0f || g > 0.0f || b > 0.0f); }
+    HIPRT_HOST_DEVICE bool has_NaN() const { return hippt::isNaN(r) || hippt::isNaN(g) || hippt::isNaN(b) || hippt::isNaN(a); }
+    HIPRT_HOST_DEVICE bool is_black() const { return !(r > 0.0f || g > 0.0f || b > 0.0f); }
 
     HIPRT_HOST_DEVICE static ColorRGBA32F max(const ColorRGBA32F& a, const ColorRGBA32F& b) { return ColorRGBA32F(hippt::max(a.r, b.r), hippt::max(a.g, b.g), hippt::max(a.b, b.b), hippt::max(a.a, b.a)); }
     HIPRT_HOST_DEVICE static ColorRGBA32F min(const ColorRGBA32F& a, const ColorRGBA32F& b) { return ColorRGBA32F(hippt::min(a.r, b.r), hippt::min(a.g, b.g), hippt::min(a.b, b.b), hippt::min(a.a, b.a)); }

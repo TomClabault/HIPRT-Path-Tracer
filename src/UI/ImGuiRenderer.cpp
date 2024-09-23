@@ -1306,6 +1306,12 @@ void ImGuiRenderer::draw_objects_panel()
 		return;
 	ImGui::TreePush("Objects tree");
 
+	// Keeping a backup of the materials. Useful when modifying the global emissive factor
+	// of objects in the scene because we want the global factor to affect the original
+	// emission of the materials, not the emission that has already been multiplied by
+	// a previous factor: this would lead to a buggy exponential growth of the emission
+	static std::vector<RendererMaterial> original_materials = m_renderer->get_materials();
+
 	std::vector<RendererMaterial> materials = m_renderer->get_materials();
 	std::vector<std::string> material_names = m_renderer->get_material_names();
 
@@ -1347,6 +1353,26 @@ void ImGuiRenderer::draw_objects_panel()
 	if (ImGui::CollapsingHeader("Emissive objects"))
 	{
 		ImGui::TreePush("Emissive objects tree");
+
+		static float global_emissive_objects_factor = 1.0f;
+		if (ImGui::SliderFloat("Global Emissive Objects Factor", &global_emissive_objects_factor, 0.0f, 10.0f))
+		{
+			for (int n = 0; n < original_materials.size(); n++)
+			{
+				if (original_materials[n].is_emissive())
+				{
+					materials[n].emission = original_materials[n].emission * global_emissive_objects_factor;
+
+					materials[n].make_safe();
+					materials[n].precompute_properties();
+				}
+			}
+
+			// TODO we would need to recompute the alias table for the emissive lights here
+			m_renderer->update_materials(materials);
+			m_render_window->set_render_dirty(true);
+		}
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 		if (ImGui::BeginListBox("Emissive objects", ImVec2(-FLT_MIN, 7 * ImGui::GetTextLineHeightWithSpacing())))
 		{

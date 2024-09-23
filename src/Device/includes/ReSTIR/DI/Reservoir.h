@@ -25,7 +25,7 @@ enum ReSTIRDISampleFlags
     RESTIR_DI_FLAGS_ENVMAP_SAMPLE = 1 << 0,
     // This sample *AT ITS OWN PIXEL* is unoccluded. This can be used to avoid tracing
     // rays for visibility since we know it's unoccluded already
-    RESTIR_DI_FLAGS_UNOCCLUDED = 1 << 1,
+    RESTIR_DI_FLAGS_UNOCCLUDED = 1 << 1
 };
 
 struct ReSTIRDISample
