@@ -20,13 +20,7 @@
 // - fused spatiotemporal
 // - limit distance of BSDF ray for initial sampling (biased but reduces BVH traversal so performance++)
 // - maybe not spatially resample as hard everywhere in the image? heuristic to reduce/increase the number of spatial samples per pixel?
-// - for spatial reuse, put the heuristics checks in the 'get_spatial_neighbor_function'
-// - Pairwise MIS: If we resample the center pixel first and we discover that the center pixel reservoir is NULL --> we're not going to MIS weight the center pixel --> do we have to compute Mc at all?
-// - In the temporal reuse pass, we have a if (temporal_neighbor_reservoir.M > 0) that guards the resampling of the temporal neighbor
-//		Can we check for that condition earlier and if temporal_neighbor_reservoir.M == 0, then we can immediately return and set the output of the
-//		temporal pass to the initial candidates alone, the same as when temporal_neighbor_index == -1
-// - M-capping when using a reservoir in the spatial reuse? M-capping shouldn't be only for temporal input reservoirs right? --> too many spatial reuse passes/too many neighbors reused = blow up
-
+// - psosibility not to use target function on all spatial reuse passes?
 
 // TODO bugs:
 // - memory leak with OpenGL when resizing the window? only on AMD?
@@ -59,7 +53,7 @@
 
 // TODO Features:
 // - opacity micromaps
-// - simpler BSDF for indirect bounces
+// - simpler BSDF for indirect bounces?
 // - limit first bounce distance: objects far away won't contribute much to what the camera sees
 // - limit direct lighting occlusion distance: maybe stochastically so that we get a falloff instead of a hard cut where an important may not contribute anymore
 //		- for maximum ray length, limit that length even more for indirect bounces and even more so if the ray is far away from the camera (beware of mirrors in the scene which the camera can look into and see a far away part of the scene where light could be very biased)
@@ -70,6 +64,7 @@
 // - reload shaders button
 // - pack ray payload
 // - pack nested dielectrics structure
+// - nested dielectrics stack size in ImGui
 // - performance/bias tradeoff by ignoring alpha tests after N bounce?
 // - performance/bias tradeoff by ignoring direct lighting occlusion after N bounce? --> strong bias but maybe something to do by reducing the length of shadow rays instead of just hard-disabling occlusion
 // - experiment with a feature that ignores really dark pixel in the variance estimation of the adaptive 

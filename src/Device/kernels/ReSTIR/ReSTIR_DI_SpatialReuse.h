@@ -135,29 +135,30 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	int reused_neighbors_count = render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count;
 	for (int neighbor_index = 0; neighbor_index < reused_neighbors_count + 1; neighbor_index++)
 	{
+		// We can already check whether or not this neighbor is going to be
+		// accepted at all by checking the heuristic cache
+		if (neighbor_index < reused_neighbors_count && reused_neighbors_count <= 32)
+			// If not the center pixel, we can check the heuristics, otherwise there's no need to,
+			// we know that the center pixel will be accepted
+			// 
+			// Our heuristics cache is a 32bit int so we can only cache 32 values are we're
+			// going to have issues if we try to read more than that.
+			if ((neighbor_heuristics_cache & (1 << neighbor_index)) == 0)
+				// Neighbor not passing the heuristics tests, skipping it right away
+				continue;
+
 		int neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, neighbor_index, reused_neighbors_count, render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_radius, center_pixel_coords, res, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
 		if (neighbor_pixel_index == -1)
 			// Neighbor out of the viewport
 			continue;
 
-		if (neighbor_index < reused_neighbors_count)
-		{
-			// If not the center pixel, we can check the heuristics, otherwise there's no need to
-
-			if (reused_neighbors_count <= 32)
-			{
-				// Our heuristics cache is a 32bit int so we can only cache 32 values are we're
-				// going to have issues if we try to read more than that.
-				if ((neighbor_heuristics_cache & (1 << neighbor_index)) == 0)
-					continue;
-			}
-			else 
-			{
-				// So if we have more than 32 neighbors, falling back to default heuristic redundant check
-				if (!check_neighbor_similarity_heuristics(render_data, neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point, center_pixel_surface.shading_normal))
-			 		continue;
-			}
-		}
+		if (neighbor_index < reused_neighbors_count && reused_neighbors_count > 32)
+			// If not the center pixel, we can check the heuristics
+			// 
+			// Only checking the heuristic if we have more than 32 neighbors (does not fit in the heuristic cache)
+			// If we have less than 32 neighbors, we've already checked the cache at the beginning of this for loop
+			if (!check_neighbor_similarity_heuristics(render_data, neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point, center_pixel_surface.shading_normal))
+			 	continue;
 
 		ReSTIRDIReservoir neighbor_reservoir = input_reservoir_buffer[neighbor_pixel_index];
 		float target_function_at_center = 0.0f;
@@ -210,11 +211,17 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, neighbor_reservoir,
 			center_pixel_surface, neighbor_index, center_pixel_coords, res, cos_sin_theta_rotation);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
+		bool update_mc = center_pixel_reservoir.M > 0 && center_pixel_reservoir.UCW > 0.0f;
+
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, neighbor_reservoir,
-			center_pixel_reservoir, target_function_at_center, neighbor_index, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum);
+			center_pixel_reservoir, target_function_at_center, neighbor_index, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
+			update_mc);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
+		bool update_mc = center_pixel_reservoir.M > 0 && center_pixel_reservoir.UCW > 0.0f;
+
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, neighbor_reservoir,
-			center_pixel_reservoir, target_function_at_center, neighbor_index, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum);
+			center_pixel_reservoir, target_function_at_center, neighbor_index, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
+			update_mc);
 #else
 #error "Unsupported bias correction mode"
 #endif

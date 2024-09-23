@@ -687,10 +687,18 @@ void ImGuiRenderer::draw_sampling_panel()
 				ImGui::TreePush("ReSTIR DI - General Settings Tree");
 				{
 					if (ImGui::SliderInt("M-cap", &render_settings.restir_di_settings.m_cap, 0, 48))
+					{
 						render_settings.restir_di_settings.m_cap = std::max(0, render_settings.restir_di_settings.m_cap);
+						if (render_settings.accumulate)
+							m_render_window->set_render_dirty(true);
+					}
 
 					if (ImGui::SliderInt("Glossy M-cap", &render_settings.restir_di_settings.glossy_m_cap, 0, 16))
+					{
 						render_settings.restir_di_settings.glossy_m_cap = std::max(0, render_settings.restir_di_settings.glossy_m_cap);
+						if (render_settings.accumulate)
+							m_render_window->set_render_dirty(true);
+					}
 
 					ImGuiRenderer::show_help_marker("M-cap for glossy surfaces. Glossy surfaces tend to darken when jittering "
 					"camera rays, using temporal reuse and accumulating. Using a lower M-cap helps.");

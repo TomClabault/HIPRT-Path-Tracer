@@ -81,8 +81,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 		// Not doing ReSTIR on directly visible emissive materials
 		return;
 
-	ReSTIRDIReservoir initial_candidates_reservoir = render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs[center_pixel_index];
-
 	int temporal_neighbor_pixel_index = find_temporal_neighbor_index(render_data, render_data.g_buffer.first_hits[center_pixel_index], center_pixel_surface.shading_normal, res, make_int2(x, y), center_pixel_index, center_pixel_surface.material.roughness, random_number_generator);
 	if (temporal_neighbor_pixel_index == -1 || render_data.render_settings.freeze_random)
 	{
@@ -95,6 +93,15 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 		// performance measurements (which we're probably trying to measure since we froze the random)
 
 		// The output of this temporal pass is just the initial candidates reservoir
+		render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs[center_pixel_index] = render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs[center_pixel_index];
+
+		return;
+	}
+
+	ReSTIRDIReservoir temporal_neighbor_reservoir = render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs[temporal_neighbor_pixel_index];
+	if (temporal_neighbor_reservoir.M == 0)
+	{
+		// No temporal neighbor, the output of this temporal pass is just the initial candidates reservoir
 		render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs[center_pixel_index] = render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs[center_pixel_index];
 
 		return;
@@ -128,15 +135,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	// Resampling the temporal neighbor
 	// /* ------------------------------- */
 
-	ReSTIRDIReservoir temporal_neighbor_reservoir = render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs[temporal_neighbor_pixel_index];
-
 	// M-capping the temporal neighbor with the glossy M-cap if the surface is glossy enough
 	if (render_data.render_settings.restir_di_settings.glossy_m_cap > 0 && temporal_neighbor_surface.material.roughness <= render_data.render_settings.restir_di_settings.glossy_threshold)
 		temporal_neighbor_reservoir.M = hippt::min(temporal_neighbor_reservoir.M, render_data.render_settings.restir_di_settings.glossy_m_cap);
 	else if (render_data.render_settings.restir_di_settings.m_cap > 0)
 	// M-capping the temporal neighbor if a M-cap has been given
 		temporal_neighbor_reservoir.M = hippt::min(temporal_neighbor_reservoir.M, render_data.render_settings.restir_di_settings.m_cap);
-
+	
+	ReSTIRDIReservoir initial_candidates_reservoir = render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs[center_pixel_index];
 	if (temporal_neighbor_reservoir.M > 0)
 	{
 		float target_function_at_center = 0.0f;
