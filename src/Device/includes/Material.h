@@ -70,7 +70,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE SimplifiedRendererMaterial get_intersection_mater
         material.precompute_oren_nayar();
 
     // Same for the anisotropic, recomputing the precomputed alpha_x and alpha_y if necessary
-    if (material.roughness_texture_index != -1 || material.roughness_metallic_texture_index || material.anisotropic_texture_index != -1 && material.anisotropic > 0.0f)
+    if ((material.roughness_texture_index != -1 || material.roughness_metallic_texture_index || material.anisotropic_texture_index != -1) && material.anisotropic > 0.0f)
         material.precompute_anisotropic();
 
     return SimplifiedRendererMaterial(material);

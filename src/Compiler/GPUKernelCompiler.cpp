@@ -19,6 +19,10 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, const GPUKern
 	std::string kernel_function_name = kernel.get_kernel_function_name();
 	const std::vector<std::string>& additional_include_dirs = kernel_compiler_options.get_additional_include_directories();
 	std::vector<std::string> compiler_options = kernel_compiler_options.get_relevant_macros_as_std_vector_string(&kernel);
+	compiler_options.push_back("-Wall");
+	compiler_options.push_back("-Weverything");
+	compiler_options.push_back("-Wno-reorder-ctor");
+	compiler_options.push_back("-Wno-c++98-compat");
 
 	auto start = std::chrono::high_resolution_clock::now();
 

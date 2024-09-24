@@ -128,7 +128,7 @@ struct InteriorStackImpl<ISS_AUTOMATIC>
 
 	StackEntry stack[NestedDielectricsStackSize];
 
-	char stack_position = 0;
+	int stack_position = 0;
 };
 
 struct StackPriorityEntry
@@ -250,7 +250,7 @@ struct InteriorStackImpl<ISS_WITH_PRIORITIES>
 	StackPriorityEntry stack[NestedDielectricsStackSize];
 
 	// Stack position is pointing one past the last valid entry
-	char stack_position = 0;
+	int stack_position = 0;
 };
 
 #endif

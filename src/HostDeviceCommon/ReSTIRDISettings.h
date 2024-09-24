@@ -6,7 +6,7 @@
 #ifndef HOST_DEVICE_RESTIR_DI_SETTINGS_H
 #define HOST_DEVICE_RESTIR_DI_SETTINGS_H
 
-class ReSTIRDIReservoir;
+struct ReSTIRDIReservoir;
 
 struct InitialCandidatesSettings
 {

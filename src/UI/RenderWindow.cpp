@@ -33,6 +33,7 @@
 // - fix sampling lights inside dielectrics with ReSTIR DI
 // - when using a BSDF override, transmissive materials keep their dielectric priorities and this can mess up shadow rays and intersections in general if the BSDF used for the override doesn't support transmissive materials
 // - make_int2 in temporal permuatation sampling to fix NVIDIA compilation
+// - is DisneySheen correct?
 
 
 // TODO Code Organization:
@@ -57,6 +58,7 @@
 
 
 // TODO Features:
+// - better disney sheen lobe as in Blender
 // - use shared memory for nested dielectrics stack?
 // - opacity micromaps
 // - simpler BSDF for indirect bounces?

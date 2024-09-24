@@ -100,7 +100,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_metallic_eval(const Simplified
     float G = G1_V * G1_L;
 
     pdf = D * G1_V / (4.0f * NoV);
-    return F * D * G / (4.0 * NoL * NoV);
+    return F * D * G / (4.0f * NoL * NoV);
 }
 
 /**
@@ -336,9 +336,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_glass_sample(const RendererMaterial
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_sheen_eval(const SimplifiedRendererMaterial& material, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_half_vector, float& pdf)
 {
-    float base_color_luminance = material.base_color.luminance();
     ColorRGB32F sheen_color = ColorRGB32F(1.0f - material.sheen_tint) + material.sheen_color * material.sheen_tint;
-    ColorRGB32F specular_color = base_color_luminance > 0 ? material.base_color / base_color_luminance : ColorRGB32F(1.0f);
 
     float NoL = hippt::abs(local_to_light_direction.z);
     // Clamping here because floating point errors can give us a dot > 1 sometimes
@@ -508,10 +506,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_bsdf_sample(const RendererMate
         // We want the normal in the same hemisphere as the view direction
         // for the rest of the calculations
         normal = -normal;
-
-    float3 T, B;
-    build_ONB(normal, T, B);
-    float3 local_view_direction = world_to_local_frame(T, B, normal, view_direction);
 
     // Rotated ONB for the anisotropic GTR2 evaluation (metallic and glass only)
     float3 local_view_direction_rotated;

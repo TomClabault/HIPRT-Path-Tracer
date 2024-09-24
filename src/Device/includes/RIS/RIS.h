@@ -129,7 +129,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
                 light_sample_pdf *= distance_to_light * distance_to_light;
                 light_sample_pdf /= cosine_at_light_source;
 
-                float bsdf_pdf;
+                float bsdf_pdf = 0.0f;
                 // Early check for minimum light contribution: if the light itself doesn't contribute enough,
                 // adding the BSDF attenuation on top of it will only make it worse so we can already
                 // skip the light and saves ourselves the evaluation of the BSDF
