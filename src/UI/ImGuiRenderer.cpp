@@ -945,6 +945,34 @@ void ImGuiRenderer::draw_sampling_panel()
 						ImGuiRenderer::show_help_marker("Whether or not to use the visibility term in the target function used for "
 							"resampling spatial neighbors.");
 
+						static int partial_visibility_neighbor_index = render_settings.restir_di_settings.spatial_pass.partial_neighbor_visibility_index;
+						if (use_spatial_target_function_visibility)
+						{
+							ImGui::TreePush("VisibilitySpatialReuseLastPassOnly Tree");
+
+							{
+								if (ImGui::Checkbox("Only on the last pass", &render_settings.restir_di_settings.spatial_pass.do_visibility_only_last_pass))
+									m_render_window->set_render_dirty(true);
+								ImGuiRenderer::show_help_marker("If checked, the visibility in the resampling target function will only be used on the last spatial reuse pass");
+
+								if (ImGui::SliderInt("Partial Neighbor Visibility", &partial_visibility_neighbor_index, 0, render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count, "%d", ImGuiSliderFlags_AlwaysClamp))
+								{
+									// Using -1 so that the user manipulates intuitive numbers between 0 and
+									// 'render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count'
+									// but the shader actually wants value between -1 and
+									// 'render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count' for it to be meaningful
+									render_settings.restir_di_settings.spatial_pass.partial_neighbor_visibility_index = partial_visibility_neighbor_index - 1;
+
+									m_render_window->set_render_dirty(true);
+								}
+								ImGuiRenderer::show_help_marker("How many neighbors will actually use a visibility term");
+							}
+							ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+							ImGui::TreePop();
+						}
+
+
 						if (ImGui::SliderInt("Spatial Reuse Pass Count", &render_settings.restir_di_settings.spatial_pass.number_of_passes, 1, 8))
 						{
 							// Clamping
@@ -961,10 +989,19 @@ void ImGuiRenderer::draw_sampling_panel()
 							m_render_window->set_render_dirty(true);
 						}
 
+						// Checking the value before the "Neighbor Reuse Count" slider is modified
+						// so that we know whether or not we'll have to keep the
+						// 'partial_visibility_neighbor_index' value updated for the "Partial Neighbor Visibility" slider
+						bool will_need_to_update_partial_visibility = partial_visibility_neighbor_index == render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count;
 						if (ImGui::SliderInt("Neighbor Reuse Count", &render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count, 1, 16))
 						{
 							// Clamping
 							render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count = std::max(1, render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count);
+
+							if (will_need_to_update_partial_visibility)
+								// Also updating the partial visibility neighbor index slider if it was set to the maximum
+								// amount of neighbors
+								partial_visibility_neighbor_index = render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count;
 
 							m_render_window->set_render_dirty(true);
 						}

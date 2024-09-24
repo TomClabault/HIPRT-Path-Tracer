@@ -70,6 +70,24 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void count_valid_neighbors(const HIPRTRenderData&
 	}
 }
 
+HIPRT_HOST_DEVICE HIPRT_INLINE bool determine_whether_to_include_visibility_term(const HIPRTRenderData& render_data, int current_neighbor_index)
+{
+	bool visibility_only_on_last_pass = render_data.render_settings.restir_di_settings.spatial_pass.do_visibility_only_last_pass;
+	bool is_last_pass = render_data.render_settings.restir_di_settings.spatial_pass.spatial_pass_index == render_data.render_settings.restir_di_settings.spatial_pass.number_of_passes - 1;
+
+	// Only using the visibility term on the last pass if so desired
+	bool include_target_function_visibility = visibility_only_on_last_pass && is_last_pass;
+	// Also allowing visibility if we want it at every pass
+	include_target_function_visibility |= !render_data.render_settings.restir_di_settings.spatial_pass.do_visibility_only_last_pass;
+
+	// Only doing visibility for a few neighbors depending on 'partial_neighbor_visibility_index'
+	include_target_function_visibility &= current_neighbor_index <= render_data.render_settings.restir_di_settings.spatial_pass.partial_neighbor_visibility_index;
+
+	// Only doing visibility if we want it at all
+	include_target_function_visibility &= ReSTIR_DI_SpatialTargetFunctionVisibility;
+
+	return include_target_function_visibility;
+}
 
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) ReSTIR_DI_SpatialReuse(HIPRTRenderData render_data, int2 res)
@@ -162,6 +180,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 
 		ReSTIRDIReservoir neighbor_reservoir = input_reservoir_buffer[neighbor_pixel_index];
 		float target_function_at_center = 0.0f;
+
+		bool do_neighbor_target_function_visibility = determine_whether_to_include_visibility_term(render_data, neighbor_index);
 		if (neighbor_reservoir.UCW > 0.0f)
 		{
 			if (neighbor_index == reused_neighbors_count)
@@ -169,7 +189,31 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 				// the target function of the center reservoir
 				target_function_at_center = neighbor_reservoir.sample.target_function;
 			else
-				target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_SpatialTargetFunctionVisibility>(render_data, neighbor_reservoir.sample, center_pixel_surface);
+			{
+				if (do_neighbor_target_function_visibility)
+					target_function_at_center = ReSTIR_DI_evaluate_target_function<KERNEL_OPTION_TRUE>(render_data, neighbor_reservoir.sample, center_pixel_surface);
+				else
+					target_function_at_center = ReSTIR_DI_evaluate_target_function<KERNEL_OPTION_FALSE>(render_data, neighbor_reservoir.sample, center_pixel_surface);
+
+				//if (!render_data.render_settings.restir_di_settings.spatial_pass.do_visibility_only_last_pass)
+				//{
+				//	if (neighbor_index > render_data.render_settings.restir_di_settings.spatial_pass.partial_neighbor_visibility_index)
+				//		target_function_at_center = ReSTIR_DI_evaluate_target_function<KERNEL_OPTION_FALSE>(render_data, neighbor_reservoir.sample, center_pixel_surface);
+				//	else
+				//		target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_SpatialTargetFunctionVisibility>(render_data, neighbor_reservoir.sample, center_pixel_surface);
+				//}
+				//else 
+				//{
+				//	// We only want to use visibility in the last pass
+
+				//	if (render_data.render_settings.restir_di_settings.spatial_pass.spatial_pass_index == render_data.render_settings.restir_di_settings.spatial_pass.number_of_passes - 1)
+				//		// This is the last pass
+				//		target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_SpatialTargetFunctionVisibility>(render_data, neighbor_reservoir.sample, center_pixel_surface);
+				//	else
+				//		// This is not the last pass
+				//		target_function_at_center = ReSTIR_DI_evaluate_target_function<KERNEL_OPTION_FALSE>(render_data, neighbor_reservoir.sample, center_pixel_surface);
+				//}
+			}
 		}
 
 		float jacobian_determinant = 1.0f;
@@ -231,24 +275,50 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 		{
 			selected_neighbor = neighbor_index;
 
-#if ReSTIR_DI_SpatialTargetFunctionVisibility == KERNEL_OPTION_FALSE
-			if (neighbor_index != reused_neighbors_count)
-				// When combining with a neighbor reservoir, we cannot be certain 
-				// that we are still unoccluded so we're clearing the unoccluded flag bit
-				new_reservoir.sample.flags &= ~ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
+			if (do_neighbor_target_function_visibility)
+				// If we resampled the neighbor with visibility, then we are sure that we can set the flag
+				new_reservoir.sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
 			else
-				// Unless we resampled the center pixel so we can copy the unoccluded flag because
-				// we know that the visibility is the same here
-				new_reservoir.sample.flags |= neighbor_reservoir.sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
-#else
-			// However, if we're using the visibility in the target function, then
-			// an occluded neighbor cannot be resampled since it will have a target
-			// function value of 0 --> no chance to be resampled. This means that when
-			// using the visibility in the target function, if a neighbor passed the
-			// resampling probability test and was selected as the new sample of the reservoir,
-			// then this means that it is unoccluded so we can add the unoccluded flag
-			new_reservoir.sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
-#endif
+			{
+				// If we didn't resample the neighbor with visibility
+				if (neighbor_index == reused_neighbors_count)
+					// If we just resampled the center pixel, then we can copy the visibility flag
+					new_reservoir.sample.flags |= neighbor_reservoir.sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
+				else
+					// This was not the center pixel, we cannot be certain what the visibility at the center
+					// pixel of the neighbor sample we just resample is so we're clearing the bit
+					new_reservoir.sample.flags &= ~ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
+			}
+			//bool visibility_only_in_last_pass = render_data.render_settings.restir_di_settings.spatial_pass.do_visibility_only_last_pass;
+			//bool this_is_not_the_last_pass = render_data.render_settings.restir_di_settings.spatial_pass.spatial_pass_index != render_data.render_settings.restir_di_settings.spatial_pass.number_of_passes - 1;
+			//if (ReSTIR_DI_SpatialTargetFunctionVisibility == KERNEL_OPTION_FALSE || (visibility_only_in_last_pass && this_is_not_the_last_pass))
+			//{
+			//	// We haven't tested visibility for this neighbor
+
+			//	if (neighbor_index != reused_neighbors_count)
+			//		// When combining with a neighbor reservoir, we cannot be certain 
+			//		// that we are still unoccluded so we're clearing the unoccluded flag bit
+			//		new_reservoir.sample.flags &= ~ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
+			//	else
+			//		// Unless we resampled the center pixel so we can copy the unoccluded flag because
+			//		// we know that the visibility is the same here
+			//		new_reservoir.sample.flags |= neighbor_reservoir.sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
+			//	}
+			//else
+			//{
+			//	// However, if we're using the visibility in the target function, then
+			//	// an occluded neighbor cannot be resampled since it will have a target
+			//	// function value of 0 --> no chance to be resampled. This means that when
+			//	// using the visibility in the target function, if a neighbor passed the
+			//	// resampling probability test and was selected as the new sample of the reservoir,
+			//	// then this means that it is unoccluded so we can add the unoccluded flag
+
+			//	if (neighbor_index <= render_data.render_settings.restir_di_settings.spatial_pass.partial_neighbor_visibility_index)
+			//		// We're only doing visibility after a certain neighbor index
+			//		new_reservoir.sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
+			//	else
+			//		new_reservoir.sample.flags &= ~ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
+			//}
 		}
 		new_reservoir.sanity_check(center_pixel_coords);
 	}

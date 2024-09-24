@@ -16,12 +16,14 @@
 
 #include "stb_image_write.h"
 
+// TODO fix weird performance drop between partial visibility neighbor = MAX and MAX - 1
+
 // TODOs ReSTIR DI
 // - fused spatiotemporal
 // - limit distance of BSDF ray for initial sampling (biased but reduces BVH traversal so performance++)
 // - maybe not spatially resample as hard everywhere in the image? heuristic to reduce/increase the number of spatial samples per pixel?
-// - psosibility not to use target function on all spatial reuse passes?
-// - use previous world to envmap matrix for temporal reuse of samples?
+// - psosibility not to use target function on all spatial reuse passes? --> finish visibility only on last neighbors
+// - use previous world to envmap matrix for temporal reuse of envmap samples?
 
 // TODO bugs:
 // - memory leak with OpenGL when resizing the window? only on AMD?
@@ -30,6 +32,7 @@
 //	  - same with perfect reflection
 // - fix sampling lights inside dielectrics with ReSTIR DI
 // - when using a BSDF override, transmissive materials keep their dielectric priorities and this can mess up shadow rays and intersections in general if the BSDF used for the override doesn't support transmissive materials
+// - make_int2 in temporal permuatation sampling to fix NVIDIA compilation
 
 
 // TODO Code Organization:
@@ -54,6 +57,7 @@
 
 
 // TODO Features:
+// - use shared memory for nested dielectrics stack?
 // - opacity micromaps
 // - simpler BSDF for indirect bounces?
 // - limit first bounce distance: objects far away won't contribute much to what the camera sees

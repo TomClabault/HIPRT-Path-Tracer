@@ -25,7 +25,7 @@ struct InitialCandidatesSettings
 
 struct TemporalPassSettings
 {
-	bool do_temporal_reuse_pass = true;
+	bool do_temporal_reuse_pass = false;
 
 	// If true, the position of the canonical temporal neighbor will be shuffled to increase
 	// variation between frames and make the render more denoiser friendly
@@ -59,11 +59,11 @@ struct SpatialPassSettings
 	// Takes values in [0, number_of_passes - 1]
 	int spatial_pass_index = 0;
 	// How many spatial reuse pass to perform
-	int number_of_passes = 1;
+	int number_of_passes = 2;
 	// The radius within which neighbor are going to be reused spatially
 	int spatial_reuse_radius = 16;
 	// How many neighbors to reuse during the spatial pass
-	int spatial_reuse_neighbor_count = 1;
+	int spatial_reuse_neighbor_count = 8;
 
 	// If true, reused neighbors will be hardcoded to always be 15 pixels to the right,
 	// not in a circle around the center pixel.
@@ -81,6 +81,21 @@ struct SpatialPassSettings
 	// If we're allowing the spatial reuse of converged neighbors, we're doing so we're a given
 	// probability instead of always/never. This helps trade performance for bias.
 	float converged_neighbor_reuse_probability = 0.5f;
+
+	// If true, the visibility in the target function will only be used on the last spatial reuse
+	// pass (and also if visibility is wanted)
+	bool do_visibility_only_last_pass = true;
+	// Visibility term in the target function will only be used when resampling some neighbors, not all.
+	// 
+	// Precisely, visibility will only be used if the index (in [0, 'spatial_reuse_neighbor_count - 1'])
+	// of the neighbor being resampled is stricly less or equal than 'partial_neighbor_visibility_index'.
+	// So using 'spatial_reuse_neighbor_count' as the value basically uses visibility for all neighbors
+	// (if visibility is used at all obviously and also according to the 'do_visibility_only_last_pass' option)
+	//
+	// Note that the visibility at the center pixel is already known and so having
+	// 'partial_neighbor_visibility_index' = spatial_reuse_neighbor_count (so that the center pixel,
+	// which has index = 'spatial_reuse_neighbor_count' uses visibility when resampled) is useless.
+	int partial_neighbor_visibility_index = spatial_reuse_neighbor_count;
 
 	// Buffer that contains the input reservoirs for the spatial reuse pass
 	ReSTIRDIReservoir* input_reservoirs = nullptr;
