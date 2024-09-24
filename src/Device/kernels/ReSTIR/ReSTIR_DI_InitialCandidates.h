@@ -41,7 +41,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
     ReSTIRDIReservoir reservoir;
     for (int i = 0; i < nb_light_candidates; i++)
     {
-        float target_function = 0.0f;
         float candidate_weight = 0.0f;
         ReSTIRDISample light_RIS_sample;
 
@@ -264,7 +263,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
                 if (!check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, light_contribution / light_pdf / bsdf_sample_pdf))
                 {
                     // Skipping if the light doesn't contribute enough
-                    reservoir.M;
+                    reservoir.M++;
 
                     continue;
                 }
@@ -304,7 +303,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
                     if (!check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, envmap_contribution / envmap_pdf / bsdf_sample_pdf))
                     {
                         // Skipping if the light doesn't contribute enough
-                        reservoir.M;
+                        reservoir.M++;
 
                         continue;
                     }

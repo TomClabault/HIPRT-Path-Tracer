@@ -357,7 +357,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int get_spatial_neighbor_pixel_index(const HIPRTR
 
 HIPRT_HOST_DEVICE HIPRT_INLINE int2 apply_permutation_sampling(int2 pixel_position, int random_bits)
 {
-	int2 offset = int2(random_bits & 3, (random_bits >> 2) & 3);
+	int2 offset = make_int2(random_bits & 3, (random_bits >> 2) & 3);
 	pixel_position += offset;
 
 	pixel_position.x ^= 3;
