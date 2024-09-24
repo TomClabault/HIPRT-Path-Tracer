@@ -207,11 +207,11 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Scene& par
     // Adjusting the speed of the camera so that we can cross the scene in approximately Camera::SCENE_CROSS_TIME
     parsed_scene.camera.auto_adjust_speed(parsed_scene.scene_bounding_box);
 
-    std::cout << "\t" << parsed_scene.vertices_positions.size() << " vertices" << std::endl;
+    /*std::cout << "\t" << parsed_scene.vertices_positions.size() << " vertices" << std::endl;
     std::cout << "\t" << parsed_scene.triangle_indices.size() / 3 << " triangles" << std::endl;
     std::cout << "\t" << parsed_scene.emissive_triangle_indices.size() << " emissive triangles" << std::endl;
     std::cout << "\t" << parsed_scene.materials.size() << " materials" << std::endl;
-    std::cout << "\t" << parsed_scene.textures.size() << " textures" << std::endl;
+    std::cout << "\t" << parsed_scene.textures.size() << " textures" << std::endl;*/
 }
 
 void SceneParser::parse_camera(const aiScene* scene, Scene& parsed_scene, float frame_aspect_override)

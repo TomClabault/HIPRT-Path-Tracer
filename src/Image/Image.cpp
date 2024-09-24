@@ -217,7 +217,7 @@ void Image8Bit::compute_cdf()
         }
     }
 
-    std::cout << "Max radiance of envmap: " << max_radiance << std::endl;
+    //std::cout << "Max radiance of envmap: " << max_radiance << std::endl;
 
     m_cdf_computed = true;
 }
@@ -464,7 +464,7 @@ void Image32Bit::compute_cdf()
         }
     }
 
-    std::cout << "Max radiance of envmap: " << max_radiance << std::endl;
+    //std::cout << "Max radiance of envmap: " << max_radiance << std::endl;
 
     m_cdf_computed = true;
 }

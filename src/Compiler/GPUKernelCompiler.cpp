@@ -47,7 +47,6 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, const GPUKern
 			std::cout << std::endl;
 			std::cout << "\t" << GPUKernel::get_kernel_attribute(kernel_function, ORO_FUNC_ATTRIBUTE_NUM_REGS) << " registers." << std::endl;
 			std::cout << "\t" << GPUKernel::get_kernel_attribute(kernel_function, ORO_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES) << " shared memory." << std::endl;
-			std::cout << "\t" << GPUKernel::get_kernel_attribute(kernel_function, ORO_FUNC_ATTRIBUTE_LOCAL_SIZE_BYTES) << " local memory." << std::endl;
 		}
 		else
 			std::cout << std::endl;

@@ -50,16 +50,16 @@ struct HIPRTGeometry
 
 	void log_bvh_building(hiprtBuildFlags build_flags)
 	{
-		std::cout << "Compiling BVH building kernels & building scene ";
-		if (build_flags == 0)
-			// This is hiprtBuildFlagBitPreferFastBuild
-			std::cout << "LBVH";
-		else if (build_flags & hiprtBuildFlagBitPreferBalancedBuild)
-			std::cout << "PLOC BVH";
-		else if (build_flags & hiprtBuildFlagBitPreferHighQualityBuild)
-			std::cout << "SBVH";
+		//std::cout << "Compiling BVH building kernels & building scene ";
+		//if (build_flags == 0)
+		//	// This is hiprtBuildFlagBitPreferFastBuild
+		//	std::cout << "LBVH";
+		//else if (build_flags & hiprtBuildFlagBitPreferBalancedBuild)
+		//	std::cout << "PLOC BVH";
+		//else if (build_flags & hiprtBuildFlagBitPreferHighQualityBuild)
+		//	std::cout << "SBVH";
 
-		std::cout << std::endl;
+		//std::cout << std::endl;
 	}
 
 	void build_bvh()
@@ -86,7 +86,7 @@ struct HIPRTGeometry
 		OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(geometry_temp)));
 
 		auto stop = std::chrono::high_resolution_clock::now();
-		std::cout << "BVH built in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
+		//std::cout << "BVH built in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
 	}
 
 	hiprtContext m_hiprt_ctx = nullptr;
