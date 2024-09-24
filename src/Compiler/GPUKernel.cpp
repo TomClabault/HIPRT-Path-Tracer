@@ -88,7 +88,7 @@ int GPUKernel::get_kernel_attribute(oroFunction compiled_kernel, oroFunction_att
 		return 0;
 	}
 
-	OROCHI_CHECK_ERROR(oroFuncGetAttribute(&numRegs, ORO_FUNC_ATTRIBUTE_NUM_REGS, compiled_kernel));
+	OROCHI_CHECK_ERROR(oroFuncGetAttribute(&numRegs, attribute, compiled_kernel));
 
 	return numRegs;
 }
