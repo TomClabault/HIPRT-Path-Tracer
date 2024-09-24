@@ -61,7 +61,7 @@ struct SimplifiedRendererMaterial
 
         if (specular_transmission == 0.0f)
             // No transmission means that we should never skip this boundary --> max priority
-            dielectric_priority = StackPriorityEntry::PRIORITY_BIT_MASK >> StackPriorityEntry::PRIORITY_BIT_SHIFT;
+            dielectric_priority = 65535;
     }
 
     HIPRT_HOST_DEVICE void precompute_anisotropic()

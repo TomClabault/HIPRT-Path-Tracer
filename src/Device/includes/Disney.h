@@ -179,8 +179,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_glass_eval(const RendererMater
     bool reflecting = NoL * NoV > 0;
 
     // Relative eta = eta_t / eta_i
-    float eta_t = ray_volume_state.outgoing_mat_index == InteriorStackImpl<InteriorStackStrategy>::MAX_MATERIAL_INDEX ? 1.0 : materials_buffer[ray_volume_state.outgoing_mat_index].ior;
-    float eta_i = ray_volume_state.incident_mat_index == InteriorStackImpl<InteriorStackStrategy>::MAX_MATERIAL_INDEX ? 1.0 : materials_buffer[ray_volume_state.incident_mat_index].ior;
+    float eta_t = ray_volume_state.outgoing_mat_index == -1 ? 1.0 : materials_buffer[ray_volume_state.outgoing_mat_index].ior;
+    float eta_i = ray_volume_state.incident_mat_index == -1 ? 1.0 : materials_buffer[ray_volume_state.incident_mat_index].ior;
     float relative_eta = eta_t / eta_i;
 
     // relative_eta can be 1 when refracting from a volume into another volume of the same IOR.
@@ -260,7 +260,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_glass_eval(const RendererMater
         // The PDF being non-zero, we could actualy compute it, it's valid but absolutely not with floats :D
         color = sqrt(material.base_color) * D * (1 - F) * G * hippt::abs(HoL * HoV / denom);
 
-        if (ray_volume_state.incident_mat_index != InteriorStackImpl<InteriorStackStrategy>::MAX_MATERIAL_INDEX)
+        if (ray_volume_state.incident_mat_index != -1)
         {
             // If we're not coming from the air, this means that we were in a volume and we're currently
             // refracting out of the volume or into another volume.
@@ -294,8 +294,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_glass_eval(const RendererMater
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_glass_sample(const RendererMaterial* materials_buffer, const SimplifiedRendererMaterial& material, RayVolumeState& ray_volume_state, const float3& local_view_direction, Xorshift32Generator& random_number_generator)
 {
     // Relative eta = eta_t / eta_i
-    float eta_t = ray_volume_state.outgoing_mat_index == InteriorStackImpl<InteriorStackStrategy>::MAX_MATERIAL_INDEX ? 1.0 : materials_buffer[ray_volume_state.outgoing_mat_index].ior;
-    float eta_i = ray_volume_state.incident_mat_index == InteriorStackImpl<InteriorStackStrategy>::MAX_MATERIAL_INDEX ? 1.0 : materials_buffer[ray_volume_state.incident_mat_index].ior;
+    float eta_t = ray_volume_state.outgoing_mat_index == -1 ? 1.0 : materials_buffer[ray_volume_state.outgoing_mat_index].ior;
+    float eta_i = ray_volume_state.incident_mat_index == -1 ? 1.0 : materials_buffer[ray_volume_state.incident_mat_index].ior;
     float relative_eta = eta_t / eta_i;
     // To avoid sampling directions that would lead to a null half_vector. 
     // Explained in more details in glass_eval.
