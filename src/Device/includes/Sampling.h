@@ -24,7 +24,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float radical_inverse_base_2(unsigned int index) 
     index = ((index & 0x33333333u) << 2u) | ((index & 0xCCCCCCCCu) >> 2u);
     index = ((index & 0x0F0F0F0Fu) << 4u) | ((index & 0xF0F0F0F0u) >> 4u);
     index = ((index & 0x00FF00FFu) << 8u) | ((index & 0xFF00FF00u) >> 8u);
-    return float(index) * 2.3283064365386963e-10; // / 0x100000000
+    return float(index) * 2.3283064365386963e-10f; // / 0x100000000
 }
 
 /**

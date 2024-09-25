@@ -144,7 +144,7 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MI
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
 		const ReSTIRDIReservoir& temporal_neighbor_reservoir, const ReSTIRDIReservoir& initial_candidates_reservoir,
-		const ReSTIRDISurface& temporal_neighbor_surface, const ReSTIRDISurface& center_pixel_surface,
+		const ReSTIRDISurface& temporal_neighbor_surface,
 		float neighbor_sample_target_function_at_center, int current_neighbor_index)
 	{
 		if (current_neighbor_index == TEMPORAL_NEIGHBOR_ID)
@@ -264,7 +264,7 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MI
 				// In the defensive formulation, we want to divide by M, not M-1.
 				// (Eq. 7.6 of "A Gentle Introduction to ReSTIR")
 				if (render_data.render_settings.restir_di_settings.use_confidence_weights)
-					return mc + (float)initial_candidates_reservoir.M / (initial_candidates_reservoir.M + temporal_neighbor_reservoir.M);
+					return mc + static_cast<float>(initial_candidates_reservoir.M) / (initial_candidates_reservoir.M + temporal_neighbor_reservoir.M);
 				else
 					return (1.0f + mc) / 2.0f;
 			}

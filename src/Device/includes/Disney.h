@@ -65,7 +65,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_diffuse_eval(const SimplifiedR
     return (1.0f - material.subsurface) * diffuse_part + material.subsurface * fake_subsurface_part;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_diffuse_sample(const SimplifiedRendererMaterial& material, const float3& surface_normal, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_diffuse_sample(const float3& surface_normal, Xorshift32Generator& random_number_generator)
 {
     return cosine_weighted_sample(surface_normal, random_number_generator);
 }
@@ -334,7 +334,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_glass_sample(const RendererMaterial
     return sampled_direction;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_sheen_eval(const SimplifiedRendererMaterial& material, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_half_vector, float& pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_sheen_eval(const SimplifiedRendererMaterial& material, const float3& local_to_light_direction, const float3& local_half_vector, float& pdf)
 {
     ColorRGB32F sheen_color = ColorRGB32F(1.0f - material.sheen_tint) + material.sheen_color * material.sheen_tint;
 
@@ -416,7 +416,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_bsdf_eval(const RendererMateri
     tmp_pdf = 0.0f;
 
     // Sheen
-    final_color += sheen_weight > 0 && outside_object ? sheen_weight * disney_sheen_eval(material, local_view_direction, local_to_light_direction, local_half_vector, tmp_pdf) : ColorRGB32F(0.0f);
+    final_color += sheen_weight > 0 && outside_object ? sheen_weight * disney_sheen_eval(material, local_to_light_direction, local_half_vector, tmp_pdf) : ColorRGB32F(0.0f);
     pdf += tmp_pdf * sheen_proba;
 
     return final_color;
@@ -514,7 +514,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_bsdf_sample(const RendererMate
     local_view_direction_rotated = world_to_local_frame(TR, BR, normal, view_direction);
 
     if (rand_1 < cdf[0])
-        output_direction = disney_diffuse_sample(material, normal, random_number_generator);
+        output_direction = disney_diffuse_sample(normal, random_number_generator);
     else if (rand_1 < cdf[1])
         output_direction = local_to_world_frame(TR, BR, normal, disney_metallic_sample(material, local_view_direction_rotated, random_number_generator));
     else if (rand_1 < cdf[2])

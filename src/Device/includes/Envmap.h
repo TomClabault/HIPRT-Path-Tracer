@@ -39,7 +39,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F eval_envmap_no_pdf(const WorldSetting
     float u = 0.5f + atan2(rotated_direction.z, rotated_direction.x) / (2.0f * M_PI);
     float v = 0.5f + asin(rotated_direction.y) / M_PI;
 
-    return sample_environment_map_texture(world_settings, make_float2(u, 1.0 - v));
+    return sample_environment_map_texture(world_settings, make_float2(u, 1.0f - v));
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE void envmap_cdf_search(const WorldSettings& world_settings, float value, int& x, int& y)
@@ -201,12 +201,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_cdf(const HIPR
         bool in_shadow = evaluate_shadow_ray(render_data, shadow_ray, 1.0e35f);
         if (!in_shadow)
         {
-            float envmap_pdf;
-            ColorRGB32F envmap_color = envmap_eval(render_data, bsdf_sampled_dir, envmap_pdf);
-            if (envmap_pdf > 0.0f)
+            float envmap_eval_pdf;
+            ColorRGB32F envmap_radiance = envmap_eval(render_data, bsdf_sampled_dir, envmap_eval_pdf);
+            if (envmap_eval_pdf > 0.0f)
             {
-                float mis_weight = balance_heuristic(bsdf_sample_pdf, envmap_pdf);
-                bsdf_mis_contribution = envmap_color * mis_weight * cosine_term * bsdf_color / bsdf_sample_pdf;
+                float mis_weight = balance_heuristic(bsdf_sample_pdf, envmap_eval_pdf);
+                bsdf_mis_contribution = envmap_radiance * mis_weight * cosine_term * bsdf_color / bsdf_sample_pdf;
             }
         }
     }

@@ -32,6 +32,16 @@
 #include "HostDeviceCommon/HIPRTCamera.h"
 #include "HostDeviceCommon/Xorshift.h"
 
+HIPRT_HOST_DEVICE HIPRT_INLINE unsigned int wang_hash(unsigned int seed)
+{
+    seed = (seed ^ 61) ^ (seed >> 16);
+    seed *= 9;
+    seed = seed ^ (seed >> 4);
+    seed *= 0x27d4eb2d;
+    seed = seed ^ (seed >> 15);
+    return seed;
+}
+
 //struct DataStruct
 //{
 //    unsigned char a, b, c, d;
@@ -330,33 +340,61 @@
 
 
 
-struct DataStruct
-{
-    int ab;
-    int cd;
-    int ef;
-};
+//struct DataStruct
+//{
+//    int ab;
+//    int cd;
+//    int ef;
+//};
+//
+//HIPRT_HOST_DEVICE HIPRT_INLINE unsigned int wang_hash(unsigned int seed)
+//{
+//    seed = (seed ^ 61) ^ (seed >> 16);
+//    seed *= 9;
+//    seed = seed ^ (seed >> 4);
+//    seed *= 0x27d4eb2d;
+//    seed = seed ^ (seed >> 15);
+//    return seed;
+//}
+//
+//HIPRT_HOST_DEVICE HIPRT_INLINE int sumFunction(DataStruct& data)
+//{
+//    int a = data.ab & (0xFFFF << 0);
+//    int b = data.ab & (0xFFFF << 16);
+//    int c = data.cd & (0xFFFF << 0);
+//    int d = data.cd & (0xFFFF << 16);
+//    int e = data.ef & (0xFFFF << 0);
+//    int f = data.ef & (0xFFFF << 16);
+//    return a % b + c + d + e + f;
+//}
+//
+//#ifdef __KERNELCC__
+//GLOBAL_KERNEL_SIGNATURE(void) TestFunction(HIPRTRenderData render_data, int2 res, HIPRTCamera camera)
+//#else
+//GLOBAL_KERNEL_SIGNATURE(void) inline TestFunction(HIPRTRenderData render_data, int2 res, HIPRTCamera camera, int x, int y)
+//#endif
+//{
+//#ifdef __KERNELCC__
+//    const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
+//    const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
+//#endif
+//    const uint32_t threadId = (x + y * res.x);
+//
+//    if (threadId >= res.x * res.y)
+//        return;
+//
+//    Xorshift32Generator randomGenerator(wang_hash(threadId + 1));
+//
+//    DataStruct data;
+//    data.ab = randomGenerator.xorshift32();
+//    data.cd = randomGenerator.xorshift32();
+//    data.ef = randomGenerator.xorshift32();
+//    int result = sumFunction(data);
+//
+//    render_data.buffers.pixels[threadId] = ColorRGB32F(result);
+//}
 
-HIPRT_HOST_DEVICE HIPRT_INLINE unsigned int wang_hash(unsigned int seed)
-{
-    seed = (seed ^ 61) ^ (seed >> 16);
-    seed *= 9;
-    seed = seed ^ (seed >> 4);
-    seed *= 0x27d4eb2d;
-    seed = seed ^ (seed >> 15);
-    return seed;
-}
-
-HIPRT_HOST_DEVICE HIPRT_INLINE int sumFunction(DataStruct& data)
-{
-    int a = data.ab & (0xFFFF << 0);
-    int b = data.ab & (0xFFFF << 16);
-    int c = data.cd & (0xFFFF << 0);
-    int d = data.cd & (0xFFFF << 16);
-    int e = data.ef & (0xFFFF << 0);
-    int f = data.ef & (0xFFFF << 16);
-    return a % b + c + d + e + f;
-}
+#include "Device/includes/Dispatcher.h"
 
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) TestFunction(HIPRTRenderData render_data, int2 res, HIPRTCamera camera)
@@ -375,11 +413,17 @@ GLOBAL_KERNEL_SIGNATURE(void) inline TestFunction(HIPRTRenderData render_data, i
 
     Xorshift32Generator randomGenerator(wang_hash(threadId + 1));
 
-    DataStruct data;
-    data.ab = randomGenerator.xorshift32();
-    data.cd = randomGenerator.xorshift32();
-    data.ef = randomGenerator.xorshift32();
-    int result = sumFunction(data);
+    float pdf;
+    int mat_index = (int)(threadId * randomGenerator() * 50);
+    RendererMaterial mat = render_data.buffers.materials_buffer[(int)(threadId * randomGenerator() * 50) % 10];
+    ColorRGB32F eval_out = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, mat, render_data.g_buffer.ray_volume_states[threadId], make_float3(0.5, 1.0, 2), make_float3(0.5, 1.0, 2), make_float3(0.5, 1.0, 2), pdf);
 
-    render_data.buffers.pixels[threadId] = ColorRGB32F(result);
+    int incident, outgoing;
+    bool leaving;
+    render_data.g_buffer.ray_volume_states[threadId].interior_stack.push(incident, outgoing, leaving, mat_index, render_data.buffers.materials_buffer[mat_index].dielectric_priority);
+    render_data.g_buffer.ray_volume_states[threadId].interior_stack.push(incident, outgoing, leaving, mat_index + 5, render_data.buffers.materials_buffer[mat_index + 5].dielectric_priority);
+    render_data.g_buffer.ray_volume_states[threadId].interior_stack.push(incident, outgoing, leaving, mat_index * 5, render_data.buffers.materials_buffer[mat_index * 5].dielectric_priority);
+    render_data.g_buffer.ray_volume_states[threadId].interior_stack.push(incident, outgoing, leaving, mat_index * 25, render_data.buffers.materials_buffer[mat_index * 25].dielectric_priority);
+
+    render_data.buffers.pixels[threadId] = ColorRGB32F(render_data.g_buffer.ray_volume_states[threadId].interior_stack.stack[1].odd_parity) * eval_out;
 }

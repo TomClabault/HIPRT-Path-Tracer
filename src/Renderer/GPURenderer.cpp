@@ -92,6 +92,12 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
 
 void GPURenderer::setup_kernels()
 {
+	/*GPUKernel test_kernel;
+	test_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/RegistersTest.h");
+	test_kernel.set_kernel_function_name("TestFunction");
+	test_kernel.get_kernel_options().set_additional_include_directories(GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS);
+	test_kernel.compile(m_hiprt_orochi_ctx);*/
+
 	m_global_compiler_options = std::make_shared<GPUKernelCompilerOptions>();
 	// Adding hardware acceleration by default if supported
 	m_global_compiler_options->set_macro_value("__USE_HWI__", device_supports_hardware_acceleration() == HardwareAccelerationSupport::SUPPORTED);
@@ -161,11 +167,11 @@ void GPURenderer::setup_kernels()
 	m_ray_volume_state_byte_size_kernel.set_kernel_file_path(GPURenderer::KERNEL_FILES[5]);
 	m_ray_volume_state_byte_size_kernel.set_kernel_function_name(GPURenderer::KERNEL_FUNCTIONS[5]);
 	m_ray_volume_state_byte_size_kernel.get_kernel_options().set_additional_include_directories(GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS);
-	m_ray_volume_state_byte_size_kernel.compile(m_hiprt_orochi_ctx);
 	// Synchronizing here so that when the nested dielectrics stack size of the
 	// global kernel option changes, this kernel has the size change too and can
 	// be recompiled accordingly
 	m_ray_volume_state_byte_size_kernel.synchronize_options_with(*m_global_compiler_options, options_excluded_from_synchro);
+	m_ray_volume_state_byte_size_kernel.compile_silent(m_hiprt_orochi_ctx);
 
 	// Compiling kernels
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID]), m_hiprt_orochi_ctx);
@@ -813,7 +819,7 @@ void GPURenderer::recompile_kernels(bool use_cache)
 
 	for (auto& name_to_kenel : m_kernels)
 		name_to_kenel.second.compile(m_hiprt_orochi_ctx, use_cache);
-	m_ray_volume_state_byte_size_kernel.compile(m_hiprt_orochi_ctx, true);
+	m_ray_volume_state_byte_size_kernel.compile_silent(m_hiprt_orochi_ctx);
 }
 
 std::map<std::string, GPUKernel>& GPURenderer::get_kernels()

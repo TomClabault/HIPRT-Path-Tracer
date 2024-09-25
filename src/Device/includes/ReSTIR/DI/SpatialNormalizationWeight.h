@@ -101,7 +101,7 @@ struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z>
 				out_normalization_denom += neighbor_reservoir.M;
 			}
 		}
-	};
+	}
 };
 
 template <>

@@ -371,7 +371,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int2 apply_permutation_sampling(int2 pixel_positi
  * Returns the linear index that can be used directly to index a buffer
  * of render_data for getting data of the temporal neighbor
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE int find_temporal_neighbor_index(const HIPRTRenderData& render_data, const float3& current_shading_point, const float3& current_normal, int2 resolution, int2 center_pixel_coords, int center_pixel_index, float center_pixel_roughness, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE int find_temporal_neighbor_index(const HIPRTRenderData& render_data, const float3& current_shading_point, const float3& current_normal, int2 resolution, int center_pixel_index, Xorshift32Generator& random_number_generator)
 {
 	float3 previous_screen_space_point_xyz = matrix_X_point(render_data.prev_camera.view_projection, current_shading_point);
 	float2 previous_screen_space_point = make_float2(previous_screen_space_point_xyz.x, previous_screen_space_point_xyz.y);

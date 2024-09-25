@@ -137,7 +137,7 @@ struct StackPriorityEntry
 	int material_index = -1;
 	bool topmost = true;
 	bool odd_parity = true;
-	int priority = -1;
+	char priority = -1;
 };
 
 template <>

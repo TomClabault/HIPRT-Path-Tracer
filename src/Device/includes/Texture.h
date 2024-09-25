@@ -36,8 +36,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA32F sample_texture_rgba(const void* text
     // We're doing the UV addressing ourselves since it seems to be broken in Orochi...
     // 
     // Sampling in repeat mode so we're just keeping the fractional part
-    float u = uv.x - (int)uv.x;
-    float v = uv.y - (int)uv.y;
+    float u = uv.x - static_cast<int>(uv.x);
+    float v = uv.y - static_cast<int>(uv.y);
 
     // For negative UVs, we also want to repeat and we want, for example, 
     // -0.1f to behave as 0.9f

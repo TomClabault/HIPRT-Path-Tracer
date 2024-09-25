@@ -34,7 +34,7 @@ struct Xorshift32Generator
      */
     HIPRT_HOST_DEVICE int random_index(int array_size)
     {
-        int random_num = xorshift32() / (float)XORSHIFT_MAX * array_size;
+        int random_num = xorshift32() / static_cast<float>(XORSHIFT_MAX) * array_size;
         return hippt::min(random_num, array_size - 1);
     }
 
@@ -44,7 +44,7 @@ struct Xorshift32Generator
     HIPRT_HOST_DEVICE float operator()()
     {
         //Float in [0, 1[
-        float a = xorshift32() / (float)XORSHIFT_MAX;
+        float a = xorshift32() / static_cast<float>(XORSHIFT_MAX);
         return hippt::min(a, 1.0f - 1.0e-7f);
     }
 

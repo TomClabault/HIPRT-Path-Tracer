@@ -81,7 +81,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 		// Not doing ReSTIR on directly visible emissive materials
 		return;
 
-	int temporal_neighbor_pixel_index = find_temporal_neighbor_index(render_data, render_data.g_buffer.first_hits[center_pixel_index], center_pixel_surface.shading_normal, res, make_int2(x, y), center_pixel_index, center_pixel_surface.material.roughness, random_number_generator);
+	int temporal_neighbor_pixel_index = find_temporal_neighbor_index(render_data, render_data.g_buffer.first_hits[center_pixel_index], center_pixel_surface.shading_normal, res, center_pixel_index, random_number_generator);
 	if (temporal_neighbor_pixel_index == -1 || render_data.render_settings.freeze_random)
 	{
 		// Temporal occlusion / disoccusion, temporal neighbor is invalid,
@@ -193,7 +193,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 			initial_candidates_reservoir, temporal_neighbor_surface, center_pixel_surface, temporal_neighbor_reservoir.M, TEMPORAL_NEIGHBOR_ID);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
 		float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, temporal_neighbor_reservoir,
-			initial_candidates_reservoir, temporal_neighbor_surface, center_pixel_surface, target_function_at_center, TEMPORAL_NEIGHBOR_ID);
+			initial_candidates_reservoir, temporal_neighbor_surface, target_function_at_center, TEMPORAL_NEIGHBOR_ID);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
 		float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, temporal_neighbor_reservoir,
 			initial_candidates_reservoir, temporal_neighbor_surface, center_pixel_surface, target_function_at_center, TEMPORAL_NEIGHBOR_ID);
@@ -235,7 +235,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 		initial_candidates_reservoir, temporal_neighbor_surface, center_pixel_surface, temporal_neighbor_reservoir.M, INITIAL_CANDIDATES_ID);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
 	float initial_candidates_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, temporal_neighbor_reservoir,
-		initial_candidates_reservoir, temporal_neighbor_surface, center_pixel_surface, /* unused */ 0.0f, INITIAL_CANDIDATES_ID);
+		initial_candidates_reservoir, temporal_neighbor_surface, /* unused */ 0.0f, INITIAL_CANDIDATES_ID);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
 	float initial_candidates_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, temporal_neighbor_reservoir,
 		initial_candidates_reservoir, temporal_neighbor_surface, center_pixel_surface, /* unused */ 0.0f, INITIAL_CANDIDATES_ID);
