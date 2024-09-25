@@ -490,13 +490,22 @@ default:
 void ImGuiRenderer::draw_camera_panel()
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
+	Camera& camera = m_renderer->get_camera();
 
 	if (ImGui::CollapsingHeader("Camera"))
 	{
 		ImGui::TreePush("Camera tree");
 
-		if (ImGui::Checkbox("Do ray jittering", &m_renderer->get_camera().do_jittering))
+		if (ImGui::Checkbox("Do ray jittering", &camera.do_jittering))
 			m_render_window->set_render_dirty(true);
+
+		static float camera_fov = camera.vertical_fov / M_PI * 180.0f;
+		if (ImGui::SliderFloat("FOV", &camera_fov, 0.0f, 180.0f, "%.3fdeg", ImGuiSliderFlags_AlwaysClamp))
+		{
+			camera.set_FOV(camera_fov / 180.0f * M_PI);
+
+			m_render_window->set_render_dirty(true);
+		}
 
 		ImGui::BeginDisabled(!render_settings.accumulate);
 		ImGui::Checkbox("Render low resolution when interacting", &render_settings.allow_render_low_resolution);

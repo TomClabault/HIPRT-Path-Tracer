@@ -44,6 +44,22 @@ glm::vec3 Camera::get_view_direction() const
     return glm::vec3(view_mat[0][2], view_mat[1][2], view_mat[2][2]);
 }
 
+void Camera::set_aspect(float new_aspect)
+{
+    aspect = new_aspect;
+
+    // Recomputing the projection matrix with the new aspect
+    projection_matrix = glm::transpose(glm::perspective(vertical_fov, new_aspect, near_plane, far_plane));
+}
+
+void Camera::set_FOV(float new_fov)
+{
+    vertical_fov = new_fov;
+
+    // Recomputing the projection matrix with the new FOV
+    projection_matrix = glm::transpose(glm::perspective(new_fov, aspect, near_plane, far_plane));
+}
+
 void Camera::auto_adjust_speed(const BoundingBox& scene_bounding_box)
 {
     camera_movement_speed = scene_bounding_box.get_max_extent() / Camera::SCENE_CROSS_TIME;

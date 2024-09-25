@@ -666,7 +666,7 @@ void GPURenderer::resize(int new_width, int new_height)
 	// Recomputing the perspective projection matrix since the aspect ratio
 	// may have changed
 	float new_aspect = (float)new_width / new_height;
-	m_camera.projection_matrix = glm::transpose(glm::perspective(m_camera.vertical_fov, new_aspect, m_camera.near_plane, m_camera.far_plane));
+	m_camera.set_aspect(new_aspect);
 
 	if (needs_global_bvh_stack_buffer())
 	{

@@ -37,6 +37,13 @@ struct Camera
     glm::mat4x4 get_view_matrix() const;
     glm::vec3 get_view_direction() const;
 
+    void set_aspect(float new_aspect);
+
+    /**
+     * The given FOV must be in radians
+     */
+    void set_FOV(float new_fov);
+
     /**
      * Adjusts the speed attributes of this camera so that the camera
      */
@@ -59,6 +66,8 @@ struct Camera
     float vertical_fov = M_PI / 2.0f;
     float near_plane = 0.1f;
     float far_plane = 1000.0f;
+    // Aspect ratio
+    float aspect = 16.0f / 9.0f;
 
     // Camera movement speed. In world unit per second
     float camera_movement_speed = 1.0f;
