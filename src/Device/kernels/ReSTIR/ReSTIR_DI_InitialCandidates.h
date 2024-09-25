@@ -35,7 +35,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
     int nb_bsdf_candidates = render_data.render_settings.do_render_low_resolution() ? hippt::min(1, initial_nb_bsdf_cand) : initial_nb_bsdf_cand;
     float envmap_candidate_probability = 0.0f;
     if (render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP)
-        envmap_candidate_probability = render_data.render_settings.restir_di_settings.initial_candidates.envmap_candidate_probability;
+    {
+        if (render_data.buffers.emissive_triangles_count == 0)
+            // Only the envmap to sample
+            envmap_candidate_probability = 1.0f;
+        else
+            envmap_candidate_probability = render_data.render_settings.restir_di_settings.initial_candidates.envmap_candidate_probability;
+    }
 
     // Sampling candidates with weighted reservoir sampling
     ReSTIRDIReservoir reservoir;
@@ -347,7 +353,7 @@ GLOBAL_KERNEL_SIGNATURE(void) ReSTIR_DI_InitialCandidates(HIPRTRenderData render
 GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_InitialCandidates(HIPRTRenderData render_data, int2 res, int x, int y)
 #endif
 {
-    if (render_data.buffers.emissive_triangles_count == 0)
+    if (render_data.buffers.emissive_triangles_count == 0 && render_data.world_settings.ambient_light_type != AmbientLightType::ENVMAP)
         // No initial candidates to sample since no lights
         // TODO this is incorrect for the envmap since ReSTIR should also sample the envmap
         return;

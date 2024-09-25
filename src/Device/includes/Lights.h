@@ -221,8 +221,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(const HIPRTRende
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light(const HIPRTRenderData& render_data, const RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, int2 pixel_coords, int2 resolution, int bounce)
 {
-    if (render_data.buffers.emissive_triangles_count == 0)
-        // No emmisive geometry in the scene to sample
+    if (render_data.buffers.emissive_triangles_count == 0 
+        && !(render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP && DirectLightSamplingStrategy == LSS_RESTIR_DI))
+        // No emissive geometry in the scene to sample
+        // And we're not sampling the envmap with ReSTIR DI
         return ColorRGB32F(0.0f);
 
     if (ray_payload.material.emission.r != 0.0f || ray_payload.material.emission.g != 0.0f || ray_payload.material.emission.b != 0.0f)
