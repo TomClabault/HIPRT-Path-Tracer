@@ -26,21 +26,21 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_ReSTIR_DI_reservoir(const HI
     float distance_to_light;
     float3 evaluated_point = shading_point + shading_normal * 1.0e-4f;
 
-    float3 shadow_ray_direction_normalized;
+    float3 shadow_ray_direction;
     if (sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE)
     {
-        shadow_ray_direction_normalized = sample.point_on_light_source;
+        shadow_ray_direction = matrix_X_vec(render_data.world_settings.envmap_to_world_matrix, sample.point_on_light_source);
         distance_to_light = 1.0e35f;
     }
     else
     {
-        float3 shadow_ray_direction = sample.point_on_light_source - evaluated_point;
-        shadow_ray_direction_normalized = shadow_ray_direction / (distance_to_light = hippt::length(shadow_ray_direction));
+        shadow_ray_direction = sample.point_on_light_source - evaluated_point;
+        shadow_ray_direction = shadow_ray_direction / (distance_to_light = hippt::length(shadow_ray_direction));
     }
      
     hiprtRay shadow_ray;
     shadow_ray.origin = evaluated_point;
-    shadow_ray.direction = shadow_ray_direction_normalized;
+    shadow_ray.direction = shadow_ray_direction;
 
     bool in_shadow = false;
     if (sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED)
@@ -55,9 +55,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_ReSTIR_DI_reservoir(const HI
         ColorRGB32F bsdf_color;
         RayVolumeState trash_volume_state = ray_payload.volume_state;
 
-        bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, ray_payload.material, trash_volume_state, view_direction, shading_normal, shadow_ray_direction_normalized, bsdf_pdf);
+        bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, ray_payload.material, trash_volume_state, view_direction, shading_normal, shadow_ray_direction, bsdf_pdf);
 
-        cosine_at_evaluated_point = hippt::max(0.0f, hippt::dot(shading_normal, shadow_ray_direction_normalized));
+        cosine_at_evaluated_point = hippt::max(0.0f, hippt::dot(shading_normal, shadow_ray_direction));
 
         if (cosine_at_evaluated_point > 0.0f)
         {
@@ -66,7 +66,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_ReSTIR_DI_reservoir(const HI
             if (sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE)
             {
                 float envmap_pdf;
-                sample_emission = envmap_eval(render_data, shadow_ray_direction_normalized, envmap_pdf);
+                sample_emission = envmap_eval(render_data, shadow_ray_direction, envmap_pdf);
             }
             else
             {

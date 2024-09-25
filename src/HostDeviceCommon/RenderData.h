@@ -148,7 +148,8 @@ struct WorldSettings
 	// Cumulative distribution function. 1D float array of length width * height for
 	// importance sampling the envmap
 	float* envmap_cdf = nullptr;
-	// Rotation matrix for rotating the envmap around
+
+	// Rotation matrix for rotating the envmap around in the current frame
 	float4x4 envmap_to_world_matrix = float4x4{ { {1.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f } } };
 	float4x4 world_to_envmap_matrix = float4x4{ { {1.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f } } };
 };

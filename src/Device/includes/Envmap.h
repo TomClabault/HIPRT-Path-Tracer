@@ -24,17 +24,12 @@
  */ 
 
 /**
- * This function expects 'direction' to be in the space indicated by 'is_direction_world_space'.
- * If 'is_direction_world_space' is false, then the direction is expected to be in envmap space
+ * This function expects 'direction' to be in world space
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F eval_envmap_no_pdf(const WorldSettings& world_settings, const float3& direction, bool is_direction_world_space = true)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F eval_envmap_no_pdf(const WorldSettings& world_settings, const float3& direction)
 {
     // Bringing the direction in envmap space for sampling the envmap
-    float3 rotated_direction;
-    if (is_direction_world_space)
-        rotated_direction = matrix_X_vec(world_settings.world_to_envmap_matrix, direction);
-    else
-        rotated_direction = direction;
+    float3 rotated_direction = matrix_X_vec(world_settings.world_to_envmap_matrix, direction);
 
     float u = 0.5f + atan2(rotated_direction.z, rotated_direction.x) / (2.0f * M_PI);
     float v = 0.5f + asin(rotated_direction.y) / M_PI;
@@ -106,7 +101,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F envmap_sample(const HIPRTRenderData& 
     // because we want our envmap to be Y-up
     sampled_direction = make_float3(-sin_theta * cos(phi), -cos_theta, -sin_theta * sin(phi));
 
-    // Taking envmap rotation into account
+    // Taking envmap rotation into account to bring the direction in world space
     sampled_direction = matrix_X_vec(world_settings.envmap_to_world_matrix, sampled_direction);
 
     ColorRGB32F env_map_radiance = sample_environment_map_texture(world_settings, make_float2(u, 1.0f - v));
@@ -120,14 +115,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F envmap_sample(const HIPRTRenderData& 
 }
 
 /**
- * This function expects the given direction to already be in envmap-space i.e.
+ * This function expects the given direction to be in world space i.e.
  * the direction is already rotated by the envmap rotation matrix
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F envmap_eval(const HIPRTRenderData& render_data, const float3& direction, float& pdf)
 {
     const WorldSettings& world_settings = render_data.world_settings;
 
-    ColorRGB32F envmap_radiance = eval_envmap_no_pdf(world_settings, direction, true);
+    ColorRGB32F envmap_radiance = eval_envmap_no_pdf(world_settings, direction);
 
     unsigned int cdf_size = world_settings.envmap_width * world_settings.envmap_height;
     float envmap_total_sum = world_settings.envmap_cdf[cdf_size - 1];

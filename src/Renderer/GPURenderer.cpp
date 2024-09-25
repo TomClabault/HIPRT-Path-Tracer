@@ -411,7 +411,7 @@ void GPURenderer::render()
 
 	map_buffers_for_render();
 	
-	OROCHI_CHECK_ERROR(oroEventRecord(m_frame_start_event, m_main_stream));
+	oroEventRecord(m_frame_start_event, m_main_stream);
 
 	for (int i = 1; i <= m_render_data.render_settings.samples_per_frame; i++)
 	{
@@ -440,19 +440,19 @@ void GPURenderer::render()
 		// now reset the flag
 		m_render_data.render_settings.restir_di_settings.temporal_pass.temporal_buffer_clear_requested = false;
 
-		// Updating the cameras
+		// Saving the current frame camera to be the previous camera of the next frame
 		m_previous_frame_camera = m_camera;
 	}
 
 	// Recording GPU frame time stop timestamp and computing the frame time
-	OROCHI_CHECK_ERROR(oroEventRecord(m_frame_stop_event, m_main_stream));
+	oroEventRecord(m_frame_stop_event, m_main_stream);
 
 	GPUKernel::ComputeElapsedTimeCallbackData* elapsed_time_data = new GPUKernel::ComputeElapsedTimeCallbackData;
 	elapsed_time_data->start = m_frame_start_event;
 	elapsed_time_data->end = m_frame_stop_event;
 	elapsed_time_data->elapsed_time_out = &m_ms_time_per_pass["All"];
 
-	OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_main_stream, GPUKernel::compute_elapsed_time_callback, elapsed_time_data));
+	oroLaunchHostFunc(m_main_stream, GPUKernel::compute_elapsed_time_callback, elapsed_time_data);
 
 	// Updating the times per passes
 	m_ms_time_per_pass[GPURenderer::CAMERA_RAYS_KERNEL_ID] = m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].get_last_execution_time();

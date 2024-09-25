@@ -36,7 +36,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_O
 	float3 sample_direction;
 
 	if (sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE)
-		sample_direction = sample.point_on_light_source;
+		sample_direction = matrix_X_vec(render_data.world_settings.envmap_to_world_matrix, sample.point_on_light_source);
 	else
 		sample_direction = hippt::normalize(sample.point_on_light_source - surface.shading_point);
 
@@ -82,7 +82,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_O
 	float3 sample_direction;
 	if (sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE)
 	{
-		sample_direction = sample.point_on_light_source;
+		sample_direction = matrix_X_vec(render_data.world_settings.envmap_to_world_matrix, sample.point_on_light_source);
 		distance_to_light = 1.0e35f;
 	}
 	else
@@ -137,15 +137,18 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void ReSTIR_DI_visibility_reuse(const HIPRTRender
 		// The sample is already unoccluded, no need to test for visibility reuse
 		return;
 
-	float distance_to_light = 0.0f;
-	float3 sample_direction = reservoir.sample.point_on_light_source - shading_point;
+	float distance_to_light;
+	float3 sample_direction;
 	if (reservoir.sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE)
 	{
-		sample_direction = reservoir.sample.point_on_light_source;
+		sample_direction = matrix_X_vec(render_data.world_settings.envmap_to_world_matrix, reservoir.sample.point_on_light_source);
 		distance_to_light = 1.0e35f;
 	}
 	else
+	{
+		sample_direction = reservoir.sample.point_on_light_source - shading_point;
 		sample_direction /= (distance_to_light = hippt::length(sample_direction));
+	}
 
 	hiprtRay shadow_ray;
 	shadow_ray.origin = shading_point;

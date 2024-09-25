@@ -108,7 +108,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
 
             float3 envmap_sampled_direction;
             sample_radiance = envmap_sample(render_data, envmap_sampled_direction, sample_pdf, random_number_generator);
-
             sample_cosine_term = hippt::max(0.0f, hippt::dot(envmap_sampled_direction, closest_hit_info.shading_normal));
 
             bool contributes_enough = check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, sample_radiance * sample_cosine_term / sample_pdf);
@@ -129,7 +128,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
             sample_pdf *= envmap_candidate_probability;
 
             light_RIS_sample.emissive_triangle_index = -1;
-            light_RIS_sample.point_on_light_source = envmap_sampled_direction;
+            // Storing in envmap space
+            light_RIS_sample.point_on_light_source = matrix_X_vec(render_data.world_settings.world_to_envmap_matrix, envmap_sampled_direction);
             light_RIS_sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE;
         }
 
@@ -137,7 +137,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
         float3 to_light_direction;
         if (light_RIS_sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE)
         {
-            to_light_direction = light_RIS_sample.point_on_light_source;
+            to_light_direction = matrix_X_vec(render_data.world_settings.envmap_to_world_matrix, light_RIS_sample.point_on_light_source);
             distance_to_light = 1.0e35f;
         }
         else
@@ -325,7 +325,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
 
                     ReSTIRDISample bsdf_RIS_sample;
                     bsdf_RIS_sample.emissive_triangle_index = -1;
-                    bsdf_RIS_sample.point_on_light_source = sampled_direction;
+                    // Storing in envmap space
+                    bsdf_RIS_sample.point_on_light_source = matrix_X_vec(render_data.world_settings.world_to_envmap_matrix, sampled_direction);
                     bsdf_RIS_sample.target_function = target_function;
                     bsdf_RIS_sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE;
                     bsdf_RIS_sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;

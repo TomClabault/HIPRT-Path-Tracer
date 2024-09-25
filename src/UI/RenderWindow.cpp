@@ -16,8 +16,6 @@
 
 #include "stb_image_write.h"
 
-// TODO fix weird performance drop between partial visibility neighbor = MAX and MAX - 1
-
 // TODOs ReSTIR DI
 // - fused spatiotemporal
 // - limit distance of BSDF ray for initial sampling (biased but reduces BVH traversal so performance++)
@@ -32,7 +30,6 @@
 //	  - same with perfect reflection
 // - fix sampling lights inside dielectrics with ReSTIR DI
 // - when using a BSDF override, transmissive materials keep their dielectric priorities and this can mess up shadow rays and intersections in general if the BSDF used for the override doesn't support transmissive materials
-// - make_int2 in temporal permuatation sampling to fix NVIDIA compilation
 // - is DisneySheen correct?
 
 

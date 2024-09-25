@@ -15,7 +15,6 @@
 #include "HostDeviceCommon/HitInfo.h"
 #include "HostDeviceCommon/RenderData.h"
 
-// TODO make some simplification assuming that ReSTIR DI is never inside a surface (the camera being inside a surface may be an annoying case to handle)
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_reservoir_sample(const HIPRTRenderData& render_data, const RayPayload& ray_payload, const float3& shading_point, const float3& shading_normal, const float3& view_direction, const RISReservoir& reservoir)
 {
     ColorRGB32F final_color;
