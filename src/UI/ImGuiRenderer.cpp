@@ -507,6 +507,10 @@ void ImGuiRenderer::draw_camera_panel()
 			m_render_window->set_render_dirty(true);
 		}
 
+		if (ImGui::SliderFloat("Camera Speed", &camera.user_movement_speed_multiplier, 0.0f, 10.0f))
+			camera.user_movement_speed_multiplier = std::max(0.0f, camera.user_movement_speed_multiplier);
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::BeginDisabled(!render_settings.accumulate);
 		ImGui::Checkbox("Render low resolution when interacting", &render_settings.allow_render_low_resolution);
 		if (!render_settings.accumulate)

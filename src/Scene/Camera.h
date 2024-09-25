@@ -71,6 +71,8 @@ struct Camera
 
     // Camera movement speed. In world unit per second
     float camera_movement_speed = 1.0f;
+    // Multiplier on the camera speed that the user can manipulate through the UI
+    float user_movement_speed_multiplier = 1.0f;
 
     glm::vec3 translation = glm::vec3(0, 0, 0);
     glm::quat rotation = glm::quat(glm::vec3(0, 0, 0));

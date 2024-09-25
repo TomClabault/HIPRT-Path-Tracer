@@ -461,8 +461,8 @@ void RenderWindow::update_renderer_view_translation(float translation_x, float t
 		translation_x *= m_application_state->last_delta_time_ms / 1000.0f;
 		translation_y *= m_application_state->last_delta_time_ms / 1000.0f;
 
-		translation_x *= m_renderer->get_camera().camera_movement_speed;
-		translation_y *= m_renderer->get_camera().camera_movement_speed;
+		translation_x *= m_renderer->get_camera().camera_movement_speed * m_renderer->get_camera().user_movement_speed_multiplier;
+		translation_y *= m_renderer->get_camera().camera_movement_speed * m_renderer->get_camera().user_movement_speed_multiplier;
 	}
 
 	if (translation_x == 0.0f && translation_y == 0.0f)
@@ -490,7 +490,7 @@ void RenderWindow::update_renderer_view_zoom(float offset, bool scale_delta_time
 {
 	if (scale_delta_time)
 		offset *= m_application_state->last_delta_time_ms / 1000.0f;
-	offset *= m_renderer->get_camera().camera_movement_speed;
+	offset *= m_renderer->get_camera().camera_movement_speed * m_renderer->get_camera().user_movement_speed_multiplier;
 
 	if (offset == 0.0f)
 		return;
