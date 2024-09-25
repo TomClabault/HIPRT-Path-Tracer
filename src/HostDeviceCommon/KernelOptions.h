@@ -213,15 +213,7 @@
  * 
  *	- KERNEL_OPTION_TRUE or KERNEL_OPTION_FALSE values are accepted. Self-explanatory
  */
-#define ReSTIR_DI_InitialTargetFunctionVisibility KERNEL_OPTION_FALSE
-
-/**
- * Whether or not to use a visibility term in the target function when resampling
- * samples in ReSTIR DI. This applies to the temporal reuse pass only.
- *
- *	- KERNEL_OPTION_TRUE or KERNEL_OPTION_FALSE values are accepted. Self-explanatory
- */
-#define ReSTIR_DI_TemporalTargetFunctionVisibility KERNEL_OPTION_FALSE
+#define ReSTIR_DI_InitialTargetFunctionVisibility KERNEL_OPTION_TRUE
 
 /**
  * Whether or not to use a visibility term in the target function when resampling
@@ -240,7 +232,7 @@
  * 
  *	- KERNEL_OPTION_TRUE or KERNEL_OPTION_FALSE values are accepted. Self-explanatory
  */
-#define ReSTIR_DI_DoVisibilityReuse KERNEL_OPTION_TRUE
+#define ReSTIR_DI_DoVisibilityReuse KERNEL_OPTION_FALSE
 
 /**
  * Whether or not to use a visibility term in the MIS weights (MIS-like weights,
@@ -256,51 +248,6 @@
  *	- KERNEL_OPTION_TRUE or KERNEL_OPTION_FALSE values are accepted. Self-explanatory
  */
 #define ReSTIR_DI_BiasCorrectionUseVisiblity KERNEL_OPTION_TRUE
-
-/**
- * This option allows using multiple spatial reuse passes without bias (required by some weighting schemes)
- * 
- * Why is this needed?
- *
- * Picture the case where we have visibility reuse (at the end of the initial candidates sampling pass),
- * visibility term in the bias correction target function (when counting the neighbors that could
- * have produced the picked sample) and 2 spatial reuse passes.
- *
- * The first spatial reuse pass reuses from samples that were produced with visibility in mind
- * (because of the visibility reuse pass that discards occluded samples). This means that we need
- * the visibility in the target function used when counting the neighbors that could have produced
- * the picked sample otherwise we may think that our neighbor could have produced the picked
- * sample where actually it couldn't because the sample is occluded at the neighbor. We would
- * then have a Z denominator (with 1/Z weights) that is too large and we'll end up with darkening.
- *
- * Now at the end of the first spatial reuse pass, the center pixel ends up with a sample that may
- * or may not be occluded from the center's pixel point of view. We didn't include the visibility
- * in the target function when resampling the neighbors (only when counting the "correct" neighbors
- * but that's all) so we are not giving a 0 weight to occluded resampled neighbors --> it is possible
- * that we picked an occluded sample.
- *
- * In the second spatial reuse pass, we are now going to resample from our neighbors and get some
- * samples that were not generated with occlusion in mind (because the resampling target function of
- * the first spatial reuse doesn't include visibility). Yet, we are going to weight them with occlusion
- * in mind. This means that we are probably going to discard samples because of occlusion that could
- * have been generated because they are generated without occlusion test. We end up discarding too many
- * samples --> brightening bias.
- *
- * With the visibility reuse at the end of each spatial pass, we force samples at the end of each
- * spatial reuse to take visibility into account so that when we weight them with visibility testing,
- * everything goes well
- *
- * As an optimization, we also do this for the pairwise MIS because pairwise MIS evaluates the target function
- * of reservoirs at their own location. Doing the visibility reuse here ensures that a reservoir sample at its own location
- * includes visibility and so we do not need to recompute the target function of the neighbors in this case. We can just
- * reuse the target function stored in the reservoir
- *
- * The user is given the choice to remove bias using this option or not. It introduces very little bias
- * in practice (but noticeable when switching back and forth between reference image/biased image) so the
- * performance boost of not tracing rays at the end of each spatial reuse pass given the very small increase
- * in bias may be worth it
- */
-#define ReSTIR_DI_SpatialReuseOutputVisibilityCheck KERNEL_OPTION_TRUE
 
 /**
  * What bias correction weights to use when resampling neighbors (temporal / spatial)

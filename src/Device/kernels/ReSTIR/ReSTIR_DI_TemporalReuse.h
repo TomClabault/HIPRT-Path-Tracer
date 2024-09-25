@@ -152,7 +152,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 			// If the temporal neiughor's reservoir is empty, then we do not get
 			// inside that if() and the target function stays at 0.0f which eliminates
 			// most of the computations afterwards
-			target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_TemporalTargetFunctionVisibility>(render_data, temporal_neighbor_reservoir.sample, center_pixel_surface);
+			//
+			// Matching the visibility used here with the bias correction mode for ease 
+			// of use (and because manually handling the visibility in the target 
+			// function of the temporal reuse is tricky for the user to use in 
+			// combination with other parameters and on top of that, it makes little 
+			// technical sense since our temporal neighbor is supposed to be unoccluded 
+			// (unless geometry moves around in the scene but that's another problem)
+			target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, temporal_neighbor_reservoir.sample, center_pixel_surface);
 
 		float jacobian_determinant = 1.0f;
 		// If the neighbor reservoir is invalid, do not compute the jacobian
@@ -206,7 +213,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 		{
 			selected_neighbor = TEMPORAL_NEIGHBOR_ID;
 
-#if ReSTIR_DI_TemporalTargetFunctionVisibility == KERNEL_OPTION_FALSE
+			// Using ReSTIR_DI_BiasCorrectionUseVisiblity here because that's what we use in the resampling target function
+#if ReSTIR_DI_BiasCorrectionUseVisiblity == KERNEL_OPTION_FALSE
 			// We cannot be certain that the visibility of the temporal neighbor
 			// chosen is exactly the same so we're clearing the unoccluded flag
 			new_reservoir.sample.flags &= ~ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
@@ -247,7 +255,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	{
 		selected_neighbor = INITIAL_CANDIDATES_ID;
 
-#if ReSTIR_DI_TemporalTargetFunctionVisibility == KERNEL_OPTION_FALSE
+		// Using ReSTIR_DI_BiasCorrectionUseVisiblity here because that's what we use in the resampling target function
+#if ReSTIR_DI_BiasCorrectionUseVisiblity == KERNEL_OPTION_FALSE
 		// We resampled the center pixel so we can copy the unoccluded flag
 		new_reservoir.sample.flags |= initial_candidates_reservoir.sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
 #else

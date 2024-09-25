@@ -727,6 +727,14 @@ void ImGuiRenderer::draw_sampling_panel()
 
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
+					if (ImGui::Checkbox("Use Final Visibility", &render_settings.restir_di_settings.do_final_shading_visibility))
+					{
+						m_renderer->recompile_kernels();
+						m_render_window->set_render_dirty(true);
+					}
+
+					ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
 					static bool use_heuristics_at_all = true;
 					static bool use_normal_heuristic_backup = render_settings.restir_di_settings.use_normal_similarity_heuristic;
 					static bool use_plane_distance_heuristic_backup = render_settings.restir_di_settings.use_plane_distance_heuristic;
@@ -889,17 +897,6 @@ void ImGuiRenderer::draw_sampling_panel()
 						last_frame_g_buffer_needed &= !render_settings.accumulate;
 						last_frame_g_buffer_needed &= render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass;
 
-						static bool use_temporal_target_function_visibility = ReSTIR_DI_TemporalTargetFunctionVisibility;
-						if (ImGui::Checkbox("Use visibility in target function", &use_temporal_target_function_visibility))
-						{
-							global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_TEMPORAL_TARGET_FUNCTION_VISIBILITY, use_temporal_target_function_visibility ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-							m_renderer->recompile_kernels();
-
-							m_render_window->set_render_dirty(true);
-						}
-						ImGuiRenderer::show_help_marker("Whether or not to use the visibility term in the target function used for "
-							"resampling the temporal neighbor and also combining the initial candidates reservoir");
-
 						if (ImGui::SliderInt("Max temporal neighbor search count", &render_settings.restir_di_settings.temporal_pass.max_neighbor_search_count, 0, 16))
 						{
 							// Clamping
@@ -945,27 +942,33 @@ void ImGuiRenderer::draw_sampling_panel()
 						ImGuiRenderer::show_help_marker("Whether or not to use the visibility term in the target function used for "
 							"resampling spatial neighbors.");
 
-						static int partial_visibility_neighbor_index = render_settings.restir_di_settings.spatial_pass.partial_neighbor_visibility_index;
+						static int partial_visibility_neighbor_count = render_settings.restir_di_settings.spatial_pass.neighbor_visibility_count + 1;
 						if (use_spatial_target_function_visibility)
 						{
 							ImGui::TreePush("VisibilitySpatialReuseLastPassOnly Tree");
 
 							{
-								if (ImGui::Checkbox("Only on the last pass", &render_settings.restir_di_settings.spatial_pass.do_visibility_only_last_pass))
-									m_render_window->set_render_dirty(true);
-								ImGuiRenderer::show_help_marker("If checked, the visibility in the resampling target function will only be used on the last spatial reuse pass");
-
-								if (ImGui::SliderInt("Partial Neighbor Visibility", &partial_visibility_neighbor_index, 0, render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count, "%d", ImGuiSliderFlags_AlwaysClamp))
+								if (ImGui::SliderInt("Partial Neighbor Visibility", &partial_visibility_neighbor_count, 0, render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count, "%d", ImGuiSliderFlags_AlwaysClamp))
 								{
 									// Using -1 so that the user manipulates intuitive numbers between 0 and
 									// 'render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count'
 									// but the shader actually wants value between -1 and
 									// 'render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count' for it to be meaningful
-									render_settings.restir_di_settings.spatial_pass.partial_neighbor_visibility_index = partial_visibility_neighbor_index - 1;
+									render_settings.restir_di_settings.spatial_pass.neighbor_visibility_count = partial_visibility_neighbor_count - 1;
 
 									m_render_window->set_render_dirty(true);
 								}
-								ImGuiRenderer::show_help_marker("How many neighbors will actually use a visibility term");
+								ImGuiRenderer::show_help_marker("How many neighbors will actually use a visibility term, can be useful to balance "
+									"performance/variance but lowering this value below the maximum amount of neighbors may actually reduce "
+									"performance because the final shading pass will have more visibility tests to do: if all neighbors use "
+									"visibility during spatial resampling, then the final shading pass can be certain that all neighbors "
+									"already take occlusion into account and so the final shading pass doesn't compute visibility. "
+									"However, if 1 or 2 neighbors do not include visibility for example, then the final shading pass will "
+									"have to trace rays for these neighbors and this will slow down the final shading pass quite a bit.");
+
+								if (ImGui::Checkbox("Only on the last pass", &render_settings.restir_di_settings.spatial_pass.do_visibility_only_last_pass))
+									m_render_window->set_render_dirty(true);
+								ImGuiRenderer::show_help_marker("If checked, the visibility in the resampling target function will only be used on the last spatial reuse pass");
 							}
 							ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
@@ -991,8 +994,8 @@ void ImGuiRenderer::draw_sampling_panel()
 
 						// Checking the value before the "Neighbor Reuse Count" slider is modified
 						// so that we know whether or not we'll have to keep the
-						// 'partial_visibility_neighbor_index' value updated for the "Partial Neighbor Visibility" slider
-						bool will_need_to_update_partial_visibility = partial_visibility_neighbor_index == render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count;
+						// 'partial_visibility_neighbor_count' value updated for the "Partial Neighbor Visibility" slider
+						bool will_need_to_update_partial_visibility = partial_visibility_neighbor_count == render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count;
 						if (ImGui::SliderInt("Neighbor Reuse Count", &render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count, 1, 16))
 						{
 							// Clamping
@@ -1001,7 +1004,7 @@ void ImGuiRenderer::draw_sampling_panel()
 							if (will_need_to_update_partial_visibility)
 								// Also updating the partial visibility neighbor index slider if it was set to the maximum
 								// amount of neighbors
-								partial_visibility_neighbor_index = render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count;
+								partial_visibility_neighbor_count = render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count;
 
 							m_render_window->set_render_dirty(true);
 						}
@@ -1095,33 +1098,6 @@ void ImGuiRenderer::draw_sampling_panel()
 						|| global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
 						|| global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE)
 						|| render_settings.restir_di_settings.spatial_pass.number_of_passes == 1 || !render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass;
-
-					static bool raytrace_spatial_reuse_reservoirs = ReSTIR_DI_SpatialReuseOutputVisibilityCheck;
-					//ImGui::BeginDisabled(disable_raytrace_spatial_reuse_reservoirs);
-					ImGui::BeginDisabled(false);
-					if (ImGui::Checkbox("Spatial reuse output visibility check", &raytrace_spatial_reuse_reservoirs))
-					{
-						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_OUTPUT_VISIBILITY_CHECK, raytrace_spatial_reuse_reservoirs ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-						m_renderer->recompile_kernels();
-
-						m_render_window->set_render_dirty(true);
-					}
-					ImGui::EndDisabled();
-					std::string ray_trace_spatial_reuse_reservoirs_string = "Because of some optimizations done in the spatial reuse pass, "
-						"multiple spatial reuse passes may be biased with some weighting schemes. Ray-tracing a visibility "
-						"ray at the end of each spatial reuse pass (if more than 1 pass) is then necessary (even with that additional ray, "
-						"the performance boost is net positive) to ensure unbiasedness. The introduced bias is usually pretty small so disabling "
-						"this option for a small performance boost may be worth it";
-					if (disable_raytrace_spatial_reuse_reservoirs)
-					{
-						if (!render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)
-							ray_trace_spatial_reuse_reservoirs_string += "\n\nDisabled because spatial reuse is not enabled";
-						else if (render_settings.restir_di_settings.spatial_pass.number_of_passes == 1)
-							ray_trace_spatial_reuse_reservoirs_string += "\n\nDisabled because there is only 1 spatial reuse pass. Bias arises with more than 1 spatial reuse pass.";
-						else
-							ray_trace_spatial_reuse_reservoirs_string += "\n\nDisabled because not using either 1/Z or pairwise bias correction weights";
-					}
-					ImGuiRenderer::show_help_marker(ray_trace_spatial_reuse_reservoirs_string);
 
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
 					ImGui::SeparatorText("Later Bounces Sampling Strategy");
@@ -1256,15 +1232,12 @@ void ImGuiRenderer::display_ReSTIR_DI_bias_status(std::shared_ptr<GPUKernelCompi
 	}
 
 	if ((kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY) == KERNEL_OPTION_TRUE
-		|| (kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_TEMPORAL_TARGET_FUNCTION_VISIBILITY) == KERNEL_OPTION_TRUE && render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
 		|| (kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_TARGET_FUNCTION_VISIBILITY) == KERNEL_OPTION_TRUE && render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass))
 		&& kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY) == KERNEL_OPTION_FALSE)
 	{
 		std::string prefix;
 		if (kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY) == KERNEL_OPTION_TRUE)
 			prefix = " - Initial ";
-		else if (kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_TEMPORAL_TARGET_FUNCTION_VISIBILITY) == KERNEL_OPTION_TRUE && render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
-			prefix = " - Temporal ";
 		else if (kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_TARGET_FUNCTION_VISIBILITY) == KERNEL_OPTION_TRUE && render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)
 			prefix = " - Spatial ";
 
@@ -1287,7 +1260,8 @@ void ImGuiRenderer::display_ReSTIR_DI_bias_status(std::shared_ptr<GPUKernelCompi
 		|| kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
 		|| kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE))
 	{
-		bias_reasons.push_back("- Visibility in bias correction without visibility reuse");
+		bias_reasons.push_back("- Visibility in bias correction without\n"
+			"visibility reuse (or initial candidates visibility)");
 		hover_explanations.push_back("When taking visibility into account in the counting of "
 			"valid neighbors (visibility in bias correction), we're going to assume that if the picked sample (from resampling "
 			"the neighbors) is occluded from the neighbor's point of view, then that neighbor "
@@ -1317,30 +1291,12 @@ void ImGuiRenderer::display_ReSTIR_DI_bias_status(std::shared_ptr<GPUKernelCompi
 			"manifest as bias on the hardest-to-render parts of the scene.");
 	}
 
-	if (kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY) == KERNEL_OPTION_TRUE
-		&& kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_REUSE_OUTPUT_VISIBILITY_CHECK) == KERNEL_OPTION_FALSE
-		&& kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY) == KERNEL_OPTION_FALSE
-		&& (kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
-		|| kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
-		|| kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS)
-		&& render_settings.restir_di_settings.spatial_pass.number_of_passes > 1)
+	if (!render_settings.restir_di_settings.do_final_shading_visibility)
 	{
-		bias_reasons.push_back("- Multiple spatial reuse passes + visibility\n"
-			"    in bias correction but no visibility\n"
-			"    reuse at the end of spatial passes");
-		hover_explanations.push_back("With visibility in the bias correction, "
-			"samples/reservoirs must take occlusion into account for things to "
-			"stay unbiased, otherwise, samples may be discarded during normalization "
-			"(because the bias correction includes visibility) even though those were valid samples.\n\n"
-			"The issue with multiple spatial reuse passes is that even though everything "
-			"may be correct during the first pass (i.e. if using visibility reuse at the "
-			"end of the initial candidate pass + visibility in bias correction = samples "
-			"accounting for occlusion + bias correction accounting for occlusion = unbiased), "
-			"the reservoirs output by the first pass now contain samples that may come from "
-			"their neighbor and we have no guarantee that their occlusion is correct which "
-			"may lead to bias in the subsequent passes. The visibility reuse pass at the "
-			"end of each spatial pass is thus necessary for unbiasedness. Only 1/Z and "
-			"pairwise MIS weights are affected.");
+		bias_reasons.push_back("- Not using final shading visibility");
+		hover_explanations.push_back("Not using visibility during the final shading of samples "
+			"produced by ReSTIR leads to \"missing\" shadows and an overall brightening of the "
+			"scene because light samples are assumed unoccluded when they actually aren't.");
 	}
 
 	if (!bias_reasons.empty())

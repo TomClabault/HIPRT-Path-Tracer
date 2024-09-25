@@ -25,7 +25,7 @@ struct InitialCandidatesSettings
 
 struct TemporalPassSettings
 {
-	bool do_temporal_reuse_pass = false;
+	bool do_temporal_reuse_pass = true;
 
 	// If true, the position of the canonical temporal neighbor will be shuffled to increase
 	// variation between frames and make the render more denoiser friendly
@@ -59,7 +59,7 @@ struct SpatialPassSettings
 	// Takes values in [0, number_of_passes - 1]
 	int spatial_pass_index = 0;
 	// How many spatial reuse pass to perform
-	int number_of_passes = 2;
+	int number_of_passes = 5;
 	// The radius within which neighbor are going to be reused spatially
 	int spatial_reuse_radius = 16;
 	// How many neighbors to reuse during the spatial pass
@@ -85,17 +85,9 @@ struct SpatialPassSettings
 	// If true, the visibility in the target function will only be used on the last spatial reuse
 	// pass (and also if visibility is wanted)
 	bool do_visibility_only_last_pass = true;
-	// Visibility term in the target function will only be used when resampling some neighbors, not all.
-	// 
-	// Precisely, visibility will only be used if the index (in [0, 'spatial_reuse_neighbor_count - 1'])
-	// of the neighbor being resampled is stricly less or equal than 'partial_neighbor_visibility_index'.
-	// So using 'spatial_reuse_neighbor_count' as the value basically uses visibility for all neighbors
-	// (if visibility is used at all obviously and also according to the 'do_visibility_only_last_pass' option)
-	//
-	// Note that the visibility at the center pixel is already known and so having
-	// 'partial_neighbor_visibility_index' = spatial_reuse_neighbor_count (so that the center pixel,
-	// which has index = 'spatial_reuse_neighbor_count' uses visibility when resampled) is useless.
-	int partial_neighbor_visibility_index = spatial_reuse_neighbor_count;
+	// Visibility term in the target function will only be used for the first
+	// 'neighbor_visibility_count' neighbors, not all.
+	int neighbor_visibility_count = spatial_reuse_neighbor_count - 1;
 
 	// Buffer that contains the input reservoirs for the spatial reuse pass
 	ReSTIRDIReservoir* input_reservoirs = nullptr;
@@ -152,6 +144,10 @@ struct ReSTIRDISettings
 	// How close the roughness of the neighbor's surface must be to ours to resample that neighbor
 	// If this value is 0.25f for example, then the roughnesses must be within 0.25f of each other. Simple.
 	float roughness_similarity_threshold = 0.25f;
+
+	// Whether or not to trace a visibility ray when evaluating the final light sample produced by ReSTIR.
+	// This is strongly biased but allows good performance.
+	bool do_final_shading_visibility = true;
 
 	// Pointer to the buffer that contains the output of all the passes of ReSTIR DI
 	// This the buffer that should be used when evaluating direct lighting in the path tracer
