@@ -21,7 +21,7 @@
  // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
  // allowing for fast step into that pixel with the debugger to see what's happening.
  // Otherwise if 0, all pixels of the image are rendered
-#define DEBUG_PIXEL 1
+#define DEBUG_PIXEL 0
 
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner.
 // If 1, it's bottom left corner.
@@ -34,9 +34,9 @@
 // Coordinates of the pixel whose neighborhood needs to rendered (useful for algorithms
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
-// The neighborhood around this pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 828
-#define DEBUG_PIXEL_Y 271
+// The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
+#define DEBUG_PIXEL_X 452
+#define DEBUG_PIXEL_Y 329
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -60,7 +60,7 @@
 #define DEBUG_RENDER_NEIGHBORHOOD 1
 // How many pixels to render around the debugged pixel given by the DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y coordinates
-#define DEBUG_NEIGHBORHOOD_SIZE 50
+#define DEBUG_NEIGHBORHOOD_SIZE 75
 
 CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, height))
 {
@@ -234,8 +234,8 @@ void CPURenderer::update(int frame_number)
     m_render_data.aux_buffers.stop_noise_threshold_converged_count->store(0);
 
     // Update the camera
-    /*if (frame_number == 2)
-        m_camera.translate(glm::vec3(0.1, 0.0, 0.0));*/
+    if (frame_number == 2)
+        m_camera.translate(glm::vec3(0.05, 0.0, 0.0));
 }
 
 void CPURenderer::update_render_data(int sample)
@@ -326,46 +326,6 @@ void CPURenderer::camera_rays_pass()
     debug_render_pass([this](int x, int y) {
         CameraRays(m_render_data, m_resolution, x, y);
     });
-
-//#if DEBUG_PIXEL
-//    int x, y;
-//#if DEBUG_FLIP_Y
-//    x = DEBUG_PIXEL_X;
-//    y = DEBUG_PIXEL_Y;
-//#else // DEBUG_FLIP_Y
-//    x = DEBUG_PIXEL_X;
-//    y = m_resolution.y - DEBUG_PIXEL_Y - 1;
-//#endif // DEBUG_FLIP_Y
-//
-//#if DEBUG_OTHER_PIXEL_X != -1 && DEBUG_OTHER_PIXEL_Y != -1
-//
-//#if DEBUG_OTHER_FLIP_Y
-//    int other_x = DEBUG_OTHER_PIXEL_X;
-//    int other_y = DEBUG_OTHER_PIXEL_Y;
-//#else // DEBUG_OTHER_FLIP_Y
-//    int other_x = DEBUG_OTHER_PIXEL_X;
-//    int other_y = m_resolution.y - DEBUG_OTHER_PIXEL_Y - 1;
-//#endif // DEBUG_OTHER_FLIP_Y
-//
-//    CameraRays(m_render_data, m_resolution, other_x, other_y);
-//#else
-//    CameraRays(m_render_data, m_resolution, x, y);
-//#endif
-//
-//#if DEBUG_RENDER_NEIGHBORHOOD
-//    // Rendering the neighborhood
-//
-//#pragma omp parallel for schedule(dynamic)
-//    for (int render_y = std::max(0, y - DEBUG_NEIGHBORHOOD_SIZE); render_y <= std::min(m_resolution.y - 1, y + DEBUG_NEIGHBORHOOD_SIZE); render_y++)
-//        for (int render_x = std::max(0, x - DEBUG_NEIGHBORHOOD_SIZE); render_x <= std::min(m_resolution.x - 1, x + DEBUG_NEIGHBORHOOD_SIZE); render_x++)
-//            CameraRays(m_render_data, m_resolution, render_x, render_y);
-//#endif // DEBUG_RENDER_NEIGHBORHOOD
-//#else // DEBUG_PIXEL
-//#pragma omp parallel for schedule(dynamic)
-//    for (int y = 0; y < m_resolution.y; y++)
-//        for (int x = 0; x < m_resolution.x; x++)
-//            CameraRays(m_render_data, m_resolution, x, y);
-//#endif // DEBUG_PIXEL
 }
 
 void CPURenderer::ReSTIR_DI()
@@ -553,47 +513,6 @@ void CPURenderer::ReSTIR_DI_temporal_reuse_pass()
     debug_render_pass([this](int x, int y) {
         ReSTIR_DI_TemporalReuse(m_render_data, m_resolution, x, y);
     });
-
-//#if DEBUG_PIXEL
-//    int x, y;
-//#if DEBUG_FLIP_Y
-//    x = DEBUG_PIXEL_X;
-//    y = DEBUG_PIXEL_Y;
-//#else // DEBUG_FLIP_Y
-//    x = DEBUG_PIXEL_X;
-//    y = m_resolution.y - DEBUG_PIXEL_Y - 1;
-//#endif // DEBUG_FLIP_Y
-//
-//
-//#if DEBUG_OTHER_PIXEL_X != -1 && DEBUG_OTHER_PIXEL_Y != -1
-//#if DEBUG_OTHER_FLIP_Y
-//    int other_x = DEBUG_OTHER_PIXEL_X;
-//    int other_y = DEBUG_OTHER_PIXEL_Y;
-//#else // DEBUG_OTHER_FLIP_Y
-//    int other_x = DEBUG_OTHER_PIXEL_X;
-//    int other_y = m_resolution.y - DEBUG_OTHER_PIXEL_Y - 1;
-//#endif // DEBUG_OTHER_FLIP_Y
-//
-//    ReSTIR_DI_TemporalReuse(m_render_data, m_resolution, other_x, other_y);
-//#else
-//    ReSTIR_DI_TemporalReuse(m_render_data, m_resolution, x, y);
-//#endif // DEBUG_OTHER_PIXEL_X != -1 && DEBUG_OTHER_PIXEL_Y != -1
-//
-//
-//#if DEBUG_RENDER_NEIGHBORHOOD
-//    // Rendering the neighborhood
-//
-//#pragma omp parallel for schedule(dynamic)
-//    for (int render_y = std::max(0, y - DEBUG_NEIGHBORHOOD_SIZE); render_y <= std::min(m_resolution.y - 1, y + DEBUG_NEIGHBORHOOD_SIZE); render_y++)
-//        for (int render_x = std::max(0, x - DEBUG_NEIGHBORHOOD_SIZE); render_x <= std::min(m_resolution.x - 1, x + DEBUG_NEIGHBORHOOD_SIZE); render_x++)
-//            ReSTIR_DI_TemporalReuse(m_render_data, m_resolution, render_x, render_y);
-//#endif // DEBUG_RENDER_NEIGHBORHOOD
-//#else // DEBUG_PIXEL
-//#pragma omp parallel for schedule(dynamic)
-//    for (int y = 0; y < m_resolution.y; y++)
-//        for (int x = 0; x < m_resolution.x; x++)
-//            ReSTIR_DI_TemporalReuse(m_render_data, m_resolution, x, y);
-//#endif // DEBUG_PIXEL
 }
 
 void CPURenderer::ReSTIR_DI_spatial_reuse_pass()
@@ -601,48 +520,6 @@ void CPURenderer::ReSTIR_DI_spatial_reuse_pass()
     debug_render_pass([this](int x, int y) {
         ReSTIR_DI_SpatialReuse(m_render_data, m_resolution, x, y);
     });
-
-//#if DEBUG_PIXEL
-//    int x, y;
-//#if DEBUG_FLIP_Y
-//    x = DEBUG_PIXEL_X;
-//    y = DEBUG_PIXEL_Y;
-//#else // DEBUG_FLIP_Y
-//    x = DEBUG_PIXEL_X;
-//    y = m_resolution.y - DEBUG_PIXEL_Y - 1;
-//#endif // DEBUG_FLIP_Y
-//
-//
-//#if DEBUG_OTHER_PIXEL_X != -1 && DEBUG_OTHER_PIXEL_Y != -1
-//#if DEBUG_OTHER_FLIP_Y
-//    int other_x = DEBUG_OTHER_PIXEL_X;
-//    int other_y = DEBUG_OTHER_PIXEL_Y;
-//#else // DEBUG_OTHER_FLIP_Y
-//    int other_x = DEBUG_OTHER_PIXEL_X;
-//    int other_y = m_resolution.y - DEBUG_OTHER_PIXEL_Y - 1;
-//#endif // DEBUG_OTHER_FLIP_Y
-//
-//    ReSTIR_DI_SpatialReuse(m_render_data, m_resolution, other_x, other_y);
-//#else
-//    ReSTIR_DI_SpatialReuse(m_render_data, m_resolution, x, y);
-//#endif // DEBUG_OTHER_PIXEL_X != -1 && DEBUG_OTHER_PIXEL_Y != -1
-//
-//
-//#if DEBUG_RENDER_NEIGHBORHOOD
-//    // Rendering the neighborhood
-//
-//#pragma omp parallel for schedule(dynamic)
-//    for (int render_y = std::max(0, y - DEBUG_NEIGHBORHOOD_SIZE); render_y <= std::min(m_resolution.y - 1, y + DEBUG_NEIGHBORHOOD_SIZE); render_y++)
-//        for (int render_x = std::max(0, x - DEBUG_NEIGHBORHOOD_SIZE); render_x <= std::min(m_resolution.x - 1, x + DEBUG_NEIGHBORHOOD_SIZE); render_x++)
-//            ReSTIR_DI_SpatialReuse(m_render_data, m_resolution, render_x, render_y);
-//#endif // DEBUG_RENDER_NEIGHBORHOOD
-//#else // DEBUG_PIXEL
-//
-//#pragma omp parallel for schedule(dynamic)
-//    for (int y = 0; y < m_resolution.y; y++)
-//        for (int x = 0; x < m_resolution.x; x++)
-//            ReSTIR_DI_SpatialReuse(m_render_data, m_resolution, x, y);
-//#endif // DEBUG_PIXEL
 }
 
 void CPURenderer::ReSTIR_DI_spatiotemporal_reuse_pass()
@@ -650,48 +527,6 @@ void CPURenderer::ReSTIR_DI_spatiotemporal_reuse_pass()
     debug_render_pass([this](int x, int y) {
         ReSTIR_DI_SpatiotemporalReuse(m_render_data, m_resolution, x, y);
     });
-
-//#if DEBUG_PIXEL
-//    int x, y;
-//#if DEBUG_FLIP_Y
-//    x = DEBUG_PIXEL_X;
-//    y = DEBUG_PIXEL_Y;
-//#else // DEBUG_FLIP_Y
-//    x = DEBUG_PIXEL_X;
-//    y = m_resolution.y - DEBUG_PIXEL_Y - 1;
-//#endif // DEBUG_FLIP_Y
-//
-//
-//#if DEBUG_OTHER_PIXEL_X != -1 && DEBUG_OTHER_PIXEL_Y != -1
-//#if DEBUG_OTHER_FLIP_Y
-//    int other_x = DEBUG_OTHER_PIXEL_X;
-//    int other_y = DEBUG_OTHER_PIXEL_Y;
-//#else // DEBUG_OTHER_FLIP_Y
-//    int other_x = DEBUG_OTHER_PIXEL_X;
-//    int other_y = m_resolution.y - DEBUG_OTHER_PIXEL_Y - 1;
-//#endif // DEBUG_OTHER_FLIP_Y
-//
-//    ReSTIR_DI_SpatiotemporalReuse(m_render_data, m_resolution, other_x, other_y);
-//#else
-//    ReSTIR_DI_SpatiotemporalReuse(m_render_data, m_resolution, x, y);
-//#endif // DEBUG_OTHER_PIXEL_X != -1 && DEBUG_OTHER_PIXEL_Y != -1
-//
-//
-//#if DEBUG_RENDER_NEIGHBORHOOD
-//    // Rendering the neighborhood
-//
-//#pragma omp parallel for schedule(dynamic)
-//    for (int render_y = std::max(0, y - DEBUG_NEIGHBORHOOD_SIZE); render_y <= std::min(m_resolution.y - 1, y + DEBUG_NEIGHBORHOOD_SIZE); render_y++)
-//        for (int render_x = std::max(0, x - DEBUG_NEIGHBORHOOD_SIZE); render_x <= std::min(m_resolution.x - 1, x + DEBUG_NEIGHBORHOOD_SIZE); render_x++)
-//            ReSTIR_DI_SpatiotemporalReuse(m_render_data, m_resolution, render_x, render_y);
-//#endif // DEBUG_RENDER_NEIGHBORHOOD
-//#else // DEBUG_PIXEL
-//
-//#pragma omp parallel for schedule(dynamic)
-//    for (int y = 0; y < m_resolution.y; y++)
-//        for (int x = 0; x < m_resolution.x; x++)
-//            ReSTIR_DI_SpatiotemporalReuse(m_render_data, m_resolution, x, y);
-//#endif // DEBUG_PIXEL
 }
 
 void CPURenderer::tracing_pass()
@@ -699,61 +534,6 @@ void CPURenderer::tracing_pass()
     debug_render_pass([this](int x, int y) {
         FullPathTracer(m_render_data, m_resolution, x, y);
     });
-//#if DEBUG_PIXEL
-//    int x, y;
-//#if DEBUG_FLIP_Y
-//    x = DEBUG_PIXEL_X;
-//    y = DEBUG_PIXEL_Y;
-//#else // DEBUG_FLIP_Y
-//    x = DEBUG_PIXEL_X;
-//    y = m_resolution.y - DEBUG_PIXEL_Y - 1;
-//#endif // DEBUG_FLIP_Y
-//
-//
-//#if DEBUG_OTHER_PIXEL_X != -1 && DEBUG_OTHER_PIXEL_Y != -1
-//#if DEBUG_OTHER_FLIP_Y
-//    int other_x = DEBUG_OTHER_PIXEL_X;
-//    int other_y = DEBUG_OTHER_PIXEL_Y;
-//#else // DEBUG_OTHER_FLIP_Y
-//    int other_x = DEBUG_OTHER_PIXEL_X;
-//    int other_y = m_resolution.y - DEBUG_OTHER_PIXEL_Y - 1;
-//#endif // DEBUG_OTHER_FLIP_Y
-//
-//    FullPathTracer(m_render_data, m_resolution, other_x, other_y);
-//#else
-//    FullPathTracer(m_render_data, m_resolution, x, y);
-//#endif // DEBUG_OTHER_PIXEL_X != -1 && DEBUG_OTHER_PIXEL_Y != -1
-//    
-//
-//#if DEBUG_RENDER_NEIGHBORHOOD
-//    // Rendering the neighborhood
-//
-//#pragma omp parallel for schedule(dynamic)
-//    for (int render_y = std::max(0, y - DEBUG_NEIGHBORHOOD_SIZE); render_y <= std::min(m_resolution.y - 1, y + DEBUG_NEIGHBORHOOD_SIZE); render_y++)
-//        for (int render_x = std::max(0, x - DEBUG_NEIGHBORHOOD_SIZE); render_x <= std::min(m_resolution.x - 1, x + DEBUG_NEIGHBORHOOD_SIZE); render_x++)
-//        {
-//            if (render_x == x && render_y == y)
-//                continue;
-//               
-//            FullPathTracer(m_render_data, m_resolution, render_x, render_y);
-//        }
-//
-//#endif // DEBUG_RENDER_NEIGHBORHOOD
-//#else // DEBUG_PIXEL
-//    std::atomic<int> lines_completed = 0;
-//
-//#pragma omp parallel for schedule(dynamic)
-//    for (int y = 0; y < m_resolution.y; y++)
-//    {
-//        for (int x = 0; x < m_resolution.x; x++)
-//            FullPathTracer(m_render_data, m_resolution, x, y);
-//
-//        if (omp_get_thread_num() == 0 && m_render_data.render_settings.samples_per_frame == 1)
-//            // Only displaying per frame progress if we're only rendering one frame
-//            if (m_resolution.y > 25 && lines_completed % (m_resolution.y / 25))
-//                std::cout << lines_completed / (float)m_resolution.y * 100 << "%" << std::endl;
-//    }
-//#endif // DEBUG_PIXEL
 }
 
 void CPURenderer::tonemap(float gamma, float exposure)

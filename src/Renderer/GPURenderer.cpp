@@ -464,11 +464,16 @@ void GPURenderer::render()
 	// Updating the times per passes
 	m_ms_time_per_pass[GPURenderer::CAMERA_RAYS_KERNEL_ID] = m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].get_last_execution_time();
 	m_ms_time_per_pass[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID] = m_kernels[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].get_last_execution_time();
-	m_ms_time_per_pass[GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID] = m_kernels[GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID].get_last_execution_time();
-	// RESTIR_DI_SPATIAL_REUSE_KERNEL_ID
-	// - The spatial reuse time is handled directly when the spatial reuse kernel is launched because
-	//	there may be multiple spatial reuse passes in which case, we need to sum the times of all the passes
-	//	but get_last_execution_time() doesn't support that, it only contains the time of the *last* pass
+	if (m_render_data.render_settings.restir_di_settings.do_fused_spatiotemporal)
+		m_ms_time_per_pass[GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID] = m_kernels[GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID].get_last_execution_time();
+	else
+	{
+		m_ms_time_per_pass[GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID] = m_kernels[GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID].get_last_execution_time();
+		// RESTIR_DI_SPATIAL_REUSE_KERNEL_ID
+		// - The spatial reuse time is handled directly when the spatial reuse kernel is launched because
+		//	there may be multiple spatial reuse passes in which case, we need to sum the times of all the passes
+		//	but get_last_execution_time() doesn't support that, it only contains the time of the *last* pass
+	}
 	m_ms_time_per_pass[GPURenderer::PATH_TRACING_KERNEL_ID] = m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].get_last_execution_time();
 
 	m_was_last_frame_low_resolution = m_render_data.render_settings.do_render_low_resolution();
@@ -638,6 +643,9 @@ void GPURenderer::configure_ReSTIR_DI_spatial_pass(int spatial_pass_index)
 
 void GPURenderer::configure_ReSTIR_DI_spatial_pass_for_fused_spatiotemporal(int spatial_pass_index)
 {
+	m_render_data.random_seed = m_rng.xorshift32();
+	m_render_data.render_settings.restir_di_settings.spatial_pass.spatial_pass_index = spatial_pass_index;
+
 	if (spatial_pass_index == 0)
 	{
 		// The input of the spatial resampling in the fused spatiotemporal pass is the

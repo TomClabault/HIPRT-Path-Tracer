@@ -11,10 +11,8 @@
 #include "Device/includes/Hash.h"
 #include "Device/includes/Intersect.h"
 #include "Device/includes/LightUtils.h"
-#include "Device/includes/ReSTIR/DI/SpatialMISWeight.h"
-#include "Device/includes/ReSTIR/DI/SpatialNormalizationWeight.h"
-#include "Device/includes/ReSTIR/DI/TemporalMISWeight.h"
-#include "Device/includes/ReSTIR/DI/TemporalNormalizationWeight.h"
+#include "Device/includes/ReSTIR/DI/SpatiotemporalMISWeight.h"
+#include "Device/includes/ReSTIR/DI/SpatiotemporalNormalizationWeight.h"
 #include "Device/includes/ReSTIR/DI/Surface.h"
 #include "Device/includes/ReSTIR/DI/Utils.h"
 #include "Device/includes/Sampling.h"
@@ -68,46 +66,69 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool do_include_spatial_visibility_term_or_not(co
  * Returns -1 if there is no valid temporal neighbor.
  * The linear buffer index of the temporal neighbor otherwise
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE int load_temporal_neighbor_data(const HIPRTRenderData& render_data, const ReSTIRDISurface& center_pixel_surface, int center_pixel_index, int2 res, 
+HIPRT_HOST_DEVICE HIPRT_INLINE int3 load_temporal_neighbor_data(const HIPRTRenderData& render_data, const ReSTIRDISurface& center_pixel_surface, int center_pixel_index, int2 res, 
 	ReSTIRDIReservoir& out_temporal_neighbor_reservoir, ReSTIRDISurface& out_temporal_neighbor_surface, Xorshift32Generator& random_number_generator)
 {
-	int temporal_neighbor_pixel_index = find_temporal_neighbor_index(render_data, render_data.g_buffer.first_hits[center_pixel_index], center_pixel_surface.shading_normal, res, center_pixel_index, random_number_generator);
-	if (temporal_neighbor_pixel_index == -1 || render_data.render_settings.freeze_random)
-		// Temporal occlusion / disoccusion, temporal neighbor is invalid,
+	int3 temporal_neighbor_pixel_index_and_pos = find_temporal_neighbor_index(render_data, render_data.g_buffer.first_hits[center_pixel_index], center_pixel_surface.shading_normal, res, center_pixel_index, random_number_generator);
+	if (temporal_neighbor_pixel_index_and_pos.x == -1 || render_data.render_settings.freeze_random)
+		// Temporal occlusion / disoccusion --> temporal neighbor is invalid,
 		// we're only going to resample the initial candidates so let's set that as
 		// the output right away
 		//
-		// We're also 'disabling' temporal accumulation if the random is frozen otherwise
+		// We're also 'disabling' temporal accumulation if the renderer's random is frozen otherwise
 		// very strong correlations will creep up, corrupt the render and potentially invalidate
 		// performance measurements (which we're probably trying to measure since we froze the random)
-		return -1;
+		return temporal_neighbor_pixel_index_and_pos;
 
-	out_temporal_neighbor_reservoir = render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs[temporal_neighbor_pixel_index];
+	out_temporal_neighbor_reservoir = render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs[temporal_neighbor_pixel_index_and_pos.x];
 	if (out_temporal_neighbor_reservoir.M == 0)
 		// No temporal neighbor
-		return -1;
+		return temporal_neighbor_pixel_index_and_pos;
 
-	out_temporal_neighbor_surface;
-	if (render_data.render_settings.use_prev_frame_g_buffer())
-		// If we're allowing the use of last frame's g-buffer (which is required for unbiasedness in motion),
-		// then we're reading from that g-buffer
-		out_temporal_neighbor_surface = get_pixel_surface_previous_frame(render_data, temporal_neighbor_pixel_index);
-	else
-		// Reading from the current frame's g-buffer otherwise (used when accumulating for example)
-		out_temporal_neighbor_surface = get_pixel_surface(render_data, temporal_neighbor_pixel_index);
+	// Reading from the previous g-buffer or not depending on whether or not the prev g-buffer is available
+	// (it may not be if we're accumulating because then, it's useless since there is no motion)
+	out_temporal_neighbor_surface = get_pixel_surface(render_data, temporal_neighbor_pixel_index_and_pos.x, render_data.render_settings.use_prev_frame_g_buffer());
 
 	if (out_temporal_neighbor_surface.material.is_emissive())
 		// Can't resample the temporal neighbor if it's emissive
-		return -1;
+		return temporal_neighbor_pixel_index_and_pos;
 
-	// M-capping the temporal neighbor with the glossy M-cap if the surface is glossy enough
-	if (render_data.render_settings.restir_di_settings.glossy_m_cap > 0 && out_temporal_neighbor_surface.material.roughness <= render_data.render_settings.restir_di_settings.glossy_threshold)
-		out_temporal_neighbor_reservoir.M = hippt::min(out_temporal_neighbor_reservoir.M, render_data.render_settings.restir_di_settings.glossy_m_cap);
-	else if (render_data.render_settings.restir_di_settings.m_cap > 0)
-		// M-capping the temporal neighbor if an M-cap has been given
-		out_temporal_neighbor_reservoir.M = hippt::min(out_temporal_neighbor_reservoir.M, render_data.render_settings.restir_di_settings.m_cap);
+	return temporal_neighbor_pixel_index_and_pos;
+}
 
-	return temporal_neighbor_pixel_index;
+/**
+ * Counts how many neighbors are eligible for reuse.
+ * This is needed for proper normalization by pairwise MIS weights.
+ *
+ * A neighbor is not eligible if it is outside of the viewport or if
+ * it doesn't satisfy the normal/plane/roughness heuristics
+ *
+ * 'out_valid_neighbor_M_sum' is the sum of the M values (confidences) of the
+ * valid neighbors. Used by confidence-weights pairwise MIS weights
+ *
+ * The bits of 'out_neighbor_heuristics_cache' are 1 or 0 depending on whether or not
+ * the corresponding neighbor was valid or not (can be reused later to avoid having to
+ * re-evauate the heuristics). Neighbor 0 is LSB.
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE void count_valid_spatiotemporal_neighbors(const HIPRTRenderData& render_data, const ReSTIRDISurface& center_pixel_surface, int center_pixel_index, int2 temporal_neighbor_position, int2 res, float2 cos_sin_theta_rotation, int& out_valid_neighbor_count, int& out_valid_neighbor_M_sum, int& out_neighbor_heuristics_cache)
+{
+	int reused_neighbors_count = render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count;
+
+	out_valid_neighbor_count = 0;
+	for (int neighbor_index = 0; neighbor_index < reused_neighbors_count; neighbor_index++)
+	{
+		int neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, neighbor_index, reused_neighbors_count, render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_radius, temporal_neighbor_position, res, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
+		if (neighbor_pixel_index == -1)
+			// Neighbor out of the viewport / invalid
+			continue;
+
+		if (!check_neighbor_similarity_heuristics(render_data, neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point, center_pixel_surface.shading_normal, render_data.render_settings.use_prev_frame_g_buffer()))
+			continue;
+
+		out_valid_neighbor_M_sum += render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs[neighbor_pixel_index].M;
+		out_valid_neighbor_count++;
+		out_neighbor_heuristics_cache |= (1 << neighbor_index);
+	}
 }
 
 #ifdef __KERNELCC__
@@ -151,7 +172,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 
 	ReSTIRDIReservoir temporal_neighbor_reservoir;
 	ReSTIRDISurface temporal_neighbor_surface;
-	int temporal_neighbor_pixel_index = load_temporal_neighbor_data(render_data, center_pixel_surface, center_pixel_index, res, temporal_neighbor_reservoir, temporal_neighbor_surface, random_number_generator);
+	int3 temporal_neighbor_pixel_index_and_pos = load_temporal_neighbor_data(render_data, center_pixel_surface, center_pixel_index, res, temporal_neighbor_reservoir, temporal_neighbor_surface, random_number_generator);
 
 	// Rotation that is going to be used to rotate the points generated by the Hammersley sampler
 	// for generating the spatial neighbors location to resample
@@ -168,18 +189,18 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 	int neighbor_heuristics_cache = 0;
 	int valid_neighbors_count = 0;
 	int valid_neighbors_M_sum = 0;
-	count_valid_spatial_neighbors(render_data, center_pixel_surface, center_pixel_coords, res, cos_sin_theta_rotation, valid_neighbors_count, valid_neighbors_M_sum, neighbor_heuristics_cache);
-	if (temporal_neighbor_pixel_index != -1)
+	count_valid_spatiotemporal_neighbors(render_data, center_pixel_surface, center_pixel_index, make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z), res, cos_sin_theta_rotation, valid_neighbors_count, valid_neighbors_M_sum, neighbor_heuristics_cache);
+	if (temporal_neighbor_pixel_index_and_pos.x != -1 && temporal_neighbor_reservoir.M > 0)
 	{
 		// Adding the temporal neighbor to the count 
 		valid_neighbors_count++;
 		valid_neighbors_M_sum += temporal_neighbor_reservoir.M;
 	}
 
-	ReSTIRDIReservoir initial_candidates_reservoir = render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs[center_pixel_index];
 	ReSTIRDIReservoir spatiotemporal_output_reservoir;
-	ReSTIRDISpatialResamplingMISWeight<ReSTIR_DI_BiasCorrectionWeights> mis_weight_function;
-	if (temporal_neighbor_pixel_index != -1)
+	ReSTIRDIReservoir initial_candidates_reservoir = render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs[center_pixel_index];
+	ReSTIRDISpatiotemporalResamplingMISWeight<ReSTIR_DI_BiasCorrectionWeights> mis_weight_function;
+	if (temporal_neighbor_pixel_index_and_pos.x != -1)
 	{
 		// Resampling the temporal neighbor
 
@@ -199,7 +220,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 				// combination with other parameters and on top of that, it makes little 
 				// technical sense since our temporal neighbor is supposed to be unoccluded 
 				// (unless geometry moves around in the scene but that's another problem)
-				target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, temporal_neighbor_reservoir.sample, center_pixel_surface);
+				target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, temporal_neighbor_reservoir.sample, center_pixel_surface);
 
 			float jacobian_determinant = 1.0f;
 			// If the neighbor reservoir is invalid, do not compute the jacobian
@@ -230,25 +251,27 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 			}
 
 #if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_M
-			float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(temporal_neighbor_reservoir);
+			float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(temporal_neighbor_reservoir.M);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
-			float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(temporal_neighbor_reservoir);
+			float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(temporal_neighbor_reservoir.M);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
-			float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, temporal_neighbor_reservoir);
+			float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, temporal_neighbor_reservoir.M);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_GBH
-			float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, temporal_neighbor_reservoir,
-				initial_candidates_reservoir, temporal_neighbor_surface, center_pixel_surface, temporal_neighbor_reservoir.M, TEMPORAL_NEIGHBOR_ID);
+			float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data,
+				temporal_neighbor_reservoir, center_pixel_surface, temporal_neighbor_surface,
+				TEMPORAL_NEIGHBOR_ID, initial_candidates_reservoir.M, temporal_neighbor_reservoir.M, center_pixel_index, make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z),
+				res, cos_sin_theta_rotation);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
 			bool update_mc = initial_candidates_reservoir.M > 0 && initial_candidates_reservoir.UCW > 0.0f;
 
 			float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, temporal_neighbor_reservoir, initial_candidates_reservoir,
-				target_function_at_center, temporal_neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum, 
+				target_function_at_center, temporal_neighbor_pixel_index_and_pos.x, valid_neighbors_count, valid_neighbors_M_sum, 
 				update_mc, /* resample canonical */ false);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
 			bool update_mc = initial_candidates_reservoir.M > 0 && initial_candidates_reservoir.UCW > 0.0f;
 
 			float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, temporal_neighbor_reservoir,
-				initial_candidates_reservoir, target_function_at_center, temporal_neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum, 
+				initial_candidates_reservoir, target_function_at_center, temporal_neighbor_pixel_index_and_pos.x, valid_neighbors_count, valid_neighbors_M_sum, 
 				update_mc, /* resample canonical */ false);
 #else
 #error "Unsupported bias correction mode"
@@ -259,15 +282,15 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 			{
 				selected_neighbor = TEMPORAL_NEIGHBOR_ID;
 
-				// Using ReSTIR_DI_BiasCorrectionUseVisiblity here because that's what we use in the resampling target function
-#if ReSTIR_DI_BiasCorrectionUseVisiblity == KERNEL_OPTION_FALSE
-			// We cannot be certain that the visibility of the temporal neighbor
-			// chosen is exactly the same so we're clearing the unoccluded flag
+				// Using ReSTIR_DI_BiasCorrectionUseVisibility here because that's what we use in the resampling target function
+#if ReSTIR_DI_BiasCorrectionUseVisibility == KERNEL_OPTION_FALSE
+				// We cannot be certain that the visibility of the temporal neighbor
+				// chosen is exactly the same so we're clearing the unoccluded flag
 				spatiotemporal_output_reservoir.sample.flags &= ~ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
 #else
-			// However, if we're using the visibility in the target function, then
-			// the temporal neighobr could never have been selected unless it is
-			// unoccluded so we can add the flag
+				// However, if we're using the visibility in the target function, then
+				// the temporal neighobr could never have been selected unless it is
+				// unoccluded so we can add the flag
 				spatiotemporal_output_reservoir.sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
 #endif
 			}
@@ -320,7 +343,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 			// Last iteration, resampling the initial candidates
 			neighbor_pixel_index = center_pixel_index;
 		else
-			neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, spatial_neighbor_index, reused_neighbors_count, render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_radius, center_pixel_coords, res, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
+			// Resampling around the temporal neighbor location
+			neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, spatial_neighbor_index, reused_neighbors_count, render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_radius, 
+				make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z), res, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
 
 		if (neighbor_pixel_index == -1)
 			// Neighbor out of the viewport
@@ -331,9 +356,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 			// 
 			// Only checking the heuristic if we have more than 32 neighbors (does not fit in the heuristic cache)
 			// If we have less than 32 neighbors, we've already checked the cache at the beginning of this for loop
-			if (!check_neighbor_similarity_heuristics(render_data, neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point, center_pixel_surface.shading_normal))
+			if (!check_neighbor_similarity_heuristics(render_data, neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point, center_pixel_surface.shading_normal, render_data.render_settings.use_prev_frame_g_buffer()))
 				continue;
 
+		// Neighbor surface needed for roughness m-capping and jacobian determinant
 		ReSTIRDIReservoir neighbor_reservoir;
 		if (spatial_neighbor_index == reused_neighbors_count)
 			// Last iteration, resampling the initial candidates
@@ -376,7 +402,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 			// "solid angle PDF at the neighbor" to the solid angle at the center pixel and we do
 			// that by multiplying by the jacobian determinant of the reconnection shift in solid
 			// angle, Eq. 52 of 2022, "Generalized Resampled Importance Sampling".
-			jacobian_determinant = get_jacobian_determinant_reconnection_shift(render_data, neighbor_reservoir, center_pixel_surface.shading_point, neighbor_pixel_index);
+			ReSTIRDISurface neighbor_surface = get_pixel_surface(render_data, neighbor_pixel_index, render_data.render_settings.use_prev_frame_g_buffer());
+
+			jacobian_determinant = get_jacobian_determinant_reconnection_shift(render_data, neighbor_reservoir, center_pixel_surface.shading_point, neighbor_surface.shading_point);
 
 			if (jacobian_determinant == -1.0f)
 			{
@@ -395,8 +423,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, neighbor_reservoir.M);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_GBH
-		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, neighbor_reservoir,
-			center_pixel_surface, spatial_neighbor_index, center_pixel_coords, res, cos_sin_theta_rotation);
+		// Using 'spatial_neighbor_index + 1' in this function call because the index
+		// 0 is for the temporal neighbor so we start at 1 by using '+ 1'
+		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, neighbor_reservoir, center_pixel_surface, temporal_neighbor_surface,
+			spatial_neighbor_index + 1, initial_candidates_reservoir.M, temporal_neighbor_reservoir.M, center_pixel_index, make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z),
+			res, cos_sin_theta_rotation);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
 		bool update_mc = initial_candidates_reservoir.M > 0 && initial_candidates_reservoir.UCW > 0.0f;
 
@@ -424,7 +455,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 		// Combining as in Alg. 6 of the paper
 		if (spatiotemporal_output_reservoir.combine_with(neighbor_reservoir, mis_weight, target_function_at_center, jacobian_determinant, random_number_generator))
 		{
-			// +1 here because we've already resampled the temporal neighbor
+			// + 1 here because we've already resampled the temporal neighbor so we need to account for that
 			selected_neighbor = spatial_neighbor_index + 1;
 
 			if (do_neighbor_target_function_visibility)
@@ -448,44 +479,20 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 	float normalization_numerator = 1.0f;
 	float normalization_denominator = 1.0f;
 
-	ReSTIRDISpatialNormalizationWeight<ReSTIR_DI_BiasCorrectionWeights> normalization_function;
+	ReSTIRDISpatiotemporalNormalizationWeight<ReSTIR_DI_BiasCorrectionWeights> normalization_function;
 #if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_M
-	normalization_function.get_normalization(render_data, spatiotemporal_output_reservoir,
-		center_pixel_surface, center_pixel_coords, res, cos_sin_theta_rotation, normalization_numerator, normalization_denominator);
+	normalization_function.get_normalization(render_data, spatiotemporal_output_reservoir, initial_candidates_reservoir, center_pixel_surface, 
+		temporal_neighbor_reservoir.M, center_pixel_index, make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z),
+		res, cos_sin_theta_rotation, normalization_numerator, normalization_denominator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
-	normalization_function.get_normalization(render_data, spatiotemporal_output_reservoir,
-		center_pixel_surface, center_pixel_coords, res, cos_sin_theta_rotation, normalization_numerator, normalization_denominator);
+	normalization_function.get_normalization(render_data, 
+		spatiotemporal_output_reservoir, center_pixel_surface, temporal_neighbor_surface,
+		initial_candidates_reservoir.M, temporal_neighbor_reservoir.M, center_pixel_index, 
+		make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z), res, cos_sin_theta_rotation, normalization_numerator, normalization_denominator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
-	if (selected_neighbor == TEMPORAL_NEIGHBOR_ID)
-	{
-		// Little implementation trick because I'm lazy: in the spatiotemporal
-		// reuse pass, if the selected neighbor is the temporal neighbor, its index is 0.
-		// However, in the 'get_normalization' of MIS_LIKE weights, 0 is
-		// the first spatial neighbor, not the temporal neighbor.
-		// This will cause the numerator of the MIS-like weight to be wrong
-		// (it will the target function of the spatial neighbor 0 instead of being the temporal neighbor).
-		//
-		// So we're setting it to -1 here that the 'get_normalization' function
-		// doesn't compute the numerator for us. We'll do it manually
-		selected_neighbor = -1;
-
-		// The normalization numerator is the target function evaluated at the temporal
-		// neighbor surface with the sample that we resampled so far
-		normalization_numerator = 0.0f;
-		if (spatiotemporal_output_reservoir.weight_sum > 0.0f)
-			// If we at least resampled something
-			ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, spatiotemporal_output_reservoir.sample, temporal_neighbor_surface);
-	}
-	else
-		// Otherwise, we need to 'shift' the selected neighbor index: if the
-		// selected index here is 1, that's the first spatial neighbor
-		// (because 0 is the temporal neighbor). the 'get_normalization'
-		// function expects '0' to be the first spatial neighbor, not 1, so
-		// we do --
-		selected_neighbor--;
-
-	normalization_function.get_normalization(render_data, spatiotemporal_output_reservoir,
-		center_pixel_surface, selected_neighbor, center_pixel_coords, res, cos_sin_theta_rotation, normalization_numerator, normalization_denominator);
+	normalization_function.get_normalization(render_data, spatiotemporal_output_reservoir, center_pixel_surface, temporal_neighbor_surface, 
+		selected_neighbor, initial_candidates_reservoir.M, temporal_neighbor_reservoir.M, center_pixel_index, make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z),
+		res, cos_sin_theta_rotation, normalization_numerator, normalization_denominator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_GBH
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
@@ -503,7 +510,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 #if (ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z \
 	|| ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS \
 	|| ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE) \
-	&& ReSTIR_DI_BiasCorrectionUseVisiblity == KERNEL_OPTION_TRUE \
+	&& ReSTIR_DI_BiasCorrectionUseVisibility == KERNEL_OPTION_TRUE \
 	&& (ReSTIR_DI_DoVisibilityReuse == KERNEL_OPTION_TRUE || (ReSTIR_DI_InitialTargetFunctionVisibility == KERNEL_OPTION_TRUE && ReSTIR_DI_SpatialTargetFunctionVisibility == KERNEL_OPTION_TRUE))
 	// Why is this needed?
 	//
@@ -549,6 +556,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 		ReSTIR_DI_visibility_reuse(render_data, spatiotemporal_output_reservoir, center_pixel_surface.shading_point);
 #endif
 
+	// M-capping so that we don't have to M-cap when reading reservoirs on the next frame
+	if (render_data.render_settings.restir_di_settings.glossy_m_cap > 0 && center_pixel_surface.material.roughness <= render_data.render_settings.restir_di_settings.glossy_threshold)
+		spatiotemporal_output_reservoir.M = hippt::min(spatiotemporal_output_reservoir.M, render_data.render_settings.restir_di_settings.glossy_m_cap);
+	else if (render_data.render_settings.restir_di_settings.m_cap > 0)
+		// M-capping the temporal neighbor if an M-cap has been given
+		spatiotemporal_output_reservoir.M = hippt::min(spatiotemporal_output_reservoir.M, render_data.render_settings.restir_di_settings.m_cap);
 	render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs[center_pixel_index] = spatiotemporal_output_reservoir;
 }
 

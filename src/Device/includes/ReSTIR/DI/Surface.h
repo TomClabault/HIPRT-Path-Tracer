@@ -50,4 +50,15 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISurface get_pixel_surface_previous_frame(
 	return surface;
 }
 
+/**
+ * Simple overload of the function to base the 'previous_frame' decision on a boolean instead of on the name of the function
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISurface get_pixel_surface(const HIPRTRenderData& render_data, int pixel_index, bool previous_frame)
+{
+	if (previous_frame)
+		return get_pixel_surface_previous_frame(render_data, pixel_index);
+	else
+		return get_pixel_surface(render_data, pixel_index);
+}
+
 #endif

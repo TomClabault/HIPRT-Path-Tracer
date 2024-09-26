@@ -104,7 +104,7 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH>
 		float target_function_at_temporal_neighbor = 0.0f;
 		if (temporal_neighbor_reservoir_M != 0)
 			// Only computing the target function if we do have a temporal neighbor
-			target_function_at_temporal_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, reservoir_being_resampled.sample, temporal_neighbor_surface);
+			target_function_at_temporal_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, reservoir_being_resampled.sample, temporal_neighbor_surface);
 
 		if (current_neighbor_index == TEMPORAL_NEIGHBOR_ID && target_function_at_temporal_neighbor == 0.0f)
 			// If we're currently computing the MIS weight for the temporal neighbor,
@@ -115,7 +115,7 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH>
 			// compute anything else, we can already return 0.0f for the MIS weight.
 			return 0.0f;
 
-		float target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, reservoir_being_resampled.sample, center_pixel_surface);
+		float target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, reservoir_being_resampled.sample, center_pixel_surface);
 
 		int temporal_M = temporal_neighbor_reservoir_M;
 		int center_reservoir_M = initial_candidates_reservoir.M;
@@ -162,7 +162,7 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MI
 			float denom = target_function_at_neighbor * neighbors_confidence_sum + target_function_at_center * center_reservoir_M;
 			float mi = denom == 0.0f ? 0.0f : (nume / denom);
 
-			float target_function_center_reservoir_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface);
+			float target_function_center_reservoir_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface);
 			float target_function_center_reservoir_at_center = initial_candidates_reservoir.sample.target_function;
 
 			float nume_mc = target_function_center_reservoir_at_center * center_reservoir_M;
@@ -224,7 +224,7 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MI
 				// Eq 7.8
 				mi *= neighbors_confidence_sum / (neighbors_confidence_sum + center_reservoir_M);
 
-			float target_function_center_reservoir_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface);
+			float target_function_center_reservoir_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface);
 			float target_function_center_reservoir_at_center = initial_candidates_reservoir.sample.target_function;
 
 			float nume_mc = target_function_center_reservoir_at_center * center_reservoir_M;

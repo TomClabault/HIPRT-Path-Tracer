@@ -21,7 +21,7 @@
 #include <cmath>
 #include <iostream>
 
-#define GPU_RENDER 0
+#define GPU_RENDER 1
 
 int main(int argc, char* argv[])
 {
@@ -32,19 +32,19 @@ int main(int argc, char* argv[])
 
     std::cout << "Reading scene file " << cmd_arguments.scene_file_path << " ..." << std::endl;
 
-    std::chrono::high_resolution_clock::time_point start, start_full;
-    std::chrono::high_resolution_clock::time_point stop, stop_full;
+    std::chrono::high_resolution_clock::time_point start_scene, start_full;
+    std::chrono::high_resolution_clock::time_point stop_scene, stop_full;
     Scene parsed_scene;
     SceneParserOptions options;
 
     options.nb_texture_threads = 10;
     options.override_aspect_ratio = (float)width / height;
-    start = std::chrono::high_resolution_clock::now();
+    start_scene = std::chrono::high_resolution_clock::now();
     start_full = std::chrono::high_resolution_clock::now();
     SceneParser::parse_scene_file(cmd_arguments.scene_file_path, parsed_scene, options);
-    stop = std::chrono::high_resolution_clock::now();
+    stop_scene = std::chrono::high_resolution_clock::now();
 
-    std::cout << "Scene geometry parsed in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
+    std::cout << "Scene geometry parsed in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop_scene - start_scene).count() << "ms" << std::endl;
 
     std::cout << "Reading \"" << cmd_arguments.skysphere_file_path << "\" envmap..." << std::endl;
 

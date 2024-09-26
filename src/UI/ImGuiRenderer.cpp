@@ -896,9 +896,13 @@ void ImGuiRenderer::draw_sampling_panel()
 					if (render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass && render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
 					{
 						if (ImGui::Checkbox("Do Fused Spatiotemporal", &render_settings.restir_di_settings.do_fused_spatiotemporal))
+						{
+							render_settings.restir_di_settings.temporal_pass.temporal_buffer_clear_requested = true;
+
 							m_render_window->set_render_dirty(true);
+						}
 						ImGuiRenderer::show_help_marker("If checked, the spatial and temporal pass will be fused into a single kernel call. "
-							"This avois a synchronization barrier between the temporal pass and the spatial pass "
+							"This avoids a synchronization barrier between the temporal pass and the spatial pass "
 							"and increases performance. Because the spatial must then resample without the output of the temporal pass, the spatial "
 							"pass only resamples on the temporal reservoir buffer, not the temporal + initial candidates reservoir "
 							"(which is the output of the temporal pass). This is usually imperceptible.");
@@ -959,7 +963,11 @@ void ImGuiRenderer::draw_sampling_panel()
 					if (render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass && render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
 					{
 						if (ImGui::Checkbox("Do Fused Spatiotemporal", &render_settings.restir_di_settings.do_fused_spatiotemporal))
+						{
+							render_settings.restir_di_settings.temporal_pass.temporal_buffer_clear_requested = true;
+
 							m_render_window->set_render_dirty(true);
+						}
 						ImGuiRenderer::show_help_marker("If checked, the spatial and temporal pass will be fused into a single kernel call. "
 							"This avois a synchronization barrier between the temporal pass and the spatial pass "
 							"and increases performance. Because the spatial must then resample without the output of the temporal pass, the spatial "
@@ -1125,7 +1133,7 @@ void ImGuiRenderer::draw_sampling_panel()
 
 					// No visibility bias correction for 1/M weights
 					bool bias_correction_visibility_disabled = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_1_OVER_M;
-					static bool bias_correction_use_visibility = ReSTIR_DI_BiasCorrectionUseVisiblity;
+					static bool bias_correction_use_visibility = ReSTIR_DI_BiasCorrectionUseVisibility;
 					ImGui::BeginDisabled(bias_correction_visibility_disabled);
 					if (ImGui::Checkbox("Use visibility in bias correction", &bias_correction_use_visibility))
 					{
@@ -1150,7 +1158,7 @@ void ImGuiRenderer::draw_sampling_panel()
 					ImGui::SeparatorText("Later Bounces Sampling Strategy");
 
 					const char* second_bounce_items[] = { "- Uniform one light", "- BSDF Sampling", "- MIS (1 Light + 1 BSDF)", "- RIS BDSF + Light candidates" };
-					if (ImGui::Combo("Later bounces direct light sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::RESTIR_DI_LATER_BOUNCES_SAMPLING_STRATEGY), second_bounce_items, IM_ARRAYSIZE(second_bounce_items)))
+					if (ImGui::Combo("Direct Lighting Strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::RESTIR_DI_LATER_BOUNCES_SAMPLING_STRATEGY), second_bounce_items, IM_ARRAYSIZE(second_bounce_items)))
 					{
 						m_renderer->recompile_kernels();
 						m_render_window->set_render_dirty(true);
@@ -1893,10 +1901,15 @@ void ImGuiRenderer::draw_performance_metrics_panel()
 	{
 		draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID, "ReSTIR Initial Candidates");
 
-		if (render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
-			draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID, "ReSTIR Temporal Reuse");
-		if (render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)
-			draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID, "ReSTIR Spatial Reuse");
+		if (render_settings.restir_di_settings.do_fused_spatiotemporal)
+			draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID, "ReSTIR Spatio-Temporal Reuse");
+		else
+		{
+			if (render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
+				draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID, "ReSTIR Temporal Reuse");
+			if (render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)
+				draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID, "ReSTIR Spatial Reuse");
+		}
 	}
 	draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::PATH_TRACING_KERNEL_ID, "Path Tracing Pass");
 	ImGui::Separator();

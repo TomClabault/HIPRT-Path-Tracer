@@ -20,6 +20,8 @@
 // - fused spatiotemporal
 // - limit distance of BSDF ray for initial sampling (biased but reduces BVH traversal so performance++)
 // - maybe not spatially resample as hard everywhere in the image? Dark regions for example? heuristic to reduce/increase the number of spatial samples per pixel?
+// - disocclusion boost
+// - clamp spatial neighbors out of viewport instead of discarding them? option in Imgui
 
 // TODO known bugs / incorectness:
 // - take transmission color into account when direct sampling a light source that is inside a volume
@@ -28,12 +30,13 @@
 // - fix sampling lights inside dielectrics with ReSTIR DI
 // - when using a BSDF override, transmissive materials keep their dielectric priorities and this can mess up shadow rays and intersections in general if the BSDF used for the override doesn't support transmissive materials
 // - is DisneySheen correct?
-// - ray volume state size doesn't always give the same size as CPU with MSVC
+// - some multithreaded bug happening in GPURenderer when joining the texture loading threads while joining the emissive triangles processing threads at the same time :shrug:
 
 
 // TODO Code Organization:
 // - what if everywhere in the code we use a minT for the rays instead of pushing the points in the right direction (annoying to determine the right direction everytime depending on inside/outside surface)
 // - cleanup RIS reservoir with all the BSDF stuff
+// - only recompile relevant kernels in GPURenderer::recompile_kernels (i.e. not restir if not using restir for example)
 // - denoiser albedo and normals still useful now that we have the GBuffer?
 // - make a function get_camera_ray that handles pixel jittering
 // - use simplified material everywhere in the BSDF etc... because we don't need the texture indices of the full material at this point
@@ -53,6 +56,7 @@
 
 
 // TODO Features:
+// - try __launch_bounds__ for kernels performance
 // - better disney sheen lobe as in Blender
 // - use shared memory for nested dielectrics stack?
 // - opacity micromaps
@@ -138,7 +142,7 @@
 // - data packing in buffer --> use one 32 bit buffer to store multiple information if not using all 32 bits
 //		- pack active pixel in same buffer as pixel sample count
 // - pack two texture indices in one int for register saving, 65536 (16 bit per index when packed) textures is enough
-// - hint shadow rays for better traversal perf
+// - hint shadow rays for better traversal perf on RDNA3?
 // - benchmarker to measure frame times precisely (avg, std dev, ...) + fixed random seed for reproducible results
 // - alias table for sampling env map instead of log(n) binary search
 // - image comparator slider (to have adaptive sampling view + default view on the same viewport for example)
@@ -708,17 +712,7 @@ void RenderWindow::render()
 
 			// Adding the time for *one* sample to the performance metrics counter
 			if (!m_renderer->was_last_frame_low_resolution() && m_application_state->samples_per_second > 0.0f)
-			{
-				// Not adding the frame time if we're rendering at low resolution, not relevant
-				m_perf_metrics->add_value(GPURenderer::FULL_FRAME_TIME_KEY, 1000.0f / m_application_state->samples_per_second);
-
-				// Also adding the times of the various passes
-				m_perf_metrics->add_value(GPURenderer::CAMERA_RAYS_KERNEL_ID, m_renderer->get_render_pass_time(GPURenderer::CAMERA_RAYS_KERNEL_ID));
-				m_perf_metrics->add_value(GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID, m_renderer->get_render_pass_time(GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID));
-				m_perf_metrics->add_value(GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID, m_renderer->get_render_pass_time(GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID));
-				m_perf_metrics->add_value(GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID, m_renderer->get_render_pass_time(GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID));
-				m_perf_metrics->add_value(GPURenderer::PATH_TRACING_KERNEL_ID, m_renderer->get_render_pass_time(GPURenderer::PATH_TRACING_KERNEL_ID));
-			}
+				update_perf_metrics();
 
 			render_settings.wants_render_low_resolution = is_interacting();
 			if (m_application_settings->auto_sample_per_frame && (render_settings.do_render_low_resolution() || m_renderer->was_last_frame_low_resolution()) && render_settings.accumulate)
@@ -770,6 +764,24 @@ void RenderWindow::render()
 			std::this_thread::sleep_for(std::chrono::milliseconds(3));
 		}
 	}
+}
+
+void RenderWindow::update_perf_metrics()
+{
+	// Not adding the frame time if we're rendering at low resolution, not relevant
+	m_perf_metrics->add_value(GPURenderer::FULL_FRAME_TIME_KEY, 1000.0f / m_application_state->samples_per_second);
+
+	// Also adding the times of the various passes
+	m_perf_metrics->add_value(GPURenderer::CAMERA_RAYS_KERNEL_ID, m_renderer->get_render_pass_time(GPURenderer::CAMERA_RAYS_KERNEL_ID));
+	m_perf_metrics->add_value(GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID, m_renderer->get_render_pass_time(GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID));
+	if (m_renderer->get_render_settings().restir_di_settings.do_fused_spatiotemporal)
+		m_perf_metrics->add_value(GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID, m_renderer->get_render_pass_time(GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID));
+	else
+	{
+		m_perf_metrics->add_value(GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID, m_renderer->get_render_pass_time(GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID));
+		m_perf_metrics->add_value(GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID, m_renderer->get_render_pass_time(GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID));
+	}
+	m_perf_metrics->add_value(GPURenderer::PATH_TRACING_KERNEL_ID, m_renderer->get_render_pass_time(GPURenderer::PATH_TRACING_KERNEL_ID));
 }
 
 bool RenderWindow::denoise()

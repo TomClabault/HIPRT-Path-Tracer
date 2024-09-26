@@ -277,7 +277,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool check_neighbor_similarity_heuristics(const H
  * 'neighbor_reuse_count' is in [1, ReSTIR_DI_Settings.spatial_reuse_neighbor_count]
  * 'neighbor_reuse_radius' is the radius of the disk within which the neighbors are sampled
  * 'center_pixel_coords' is the coordinates of the center pixel that is currently
- *		doing the resampling of its neighbors
+ *		doing the resampling of its neighbors. Neighbors will be spatially sampled
+ *		around that position
  * 'res' is the resolution of the viewport. This is used to check whether the generated
  *		neighbor location is outside of the viewport or not
  * 'cos_sin_theta_rotation' is a pair of float [x, y] with x = cos(random_rotation) and
@@ -291,7 +292,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool check_neighbor_similarity_heuristics(const H
  *		The same random number generator with the same seed must be given to *all* get_spatial_neighbor_pixel_index()
  *		calls of this thread invocation
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE int get_spatial_neighbor_pixel_index(const HIPRTRenderData& render_data, int neighbor_number, int neighbor_reuse_count, int neighbor_reuse_radius, int2 center_pixel_coords, int2 res, float2 cos_sin_theta_rotation, Xorshift32Generator rng_converged_neighbor_reuse)
+HIPRT_HOST_DEVICE HIPRT_INLINE int get_spatial_neighbor_pixel_index(const HIPRTRenderData& render_data, int neighbor_number, int neighbor_reuse_count, int neighbor_reuse_radius, 
+	int2 center_pixel_coords, int2 res, float2 cos_sin_theta_rotation, Xorshift32Generator rng_converged_neighbor_reuse)
 {
 	int neighbor_pixel_index;
 
@@ -406,10 +408,16 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int2 apply_permutation_sampling(int2 pixel_positi
 	return pixel_position;
 }
 /**
- * Returns the linear index that can be used directly to index a buffer
- * of render_data for getting data of the temporal neighbor
+ * Returns a pair (x, y, z) with 
+ *	x the linear index that can be used directly to index a buffer
+ *	of render_data for getting data of the temporal neighbor. x is -1
+ *	if there is no valid temporal neighbor (disoccluion / occlusion / out of viewport)
+ * 
+ *	(y, z) the pixel coordinates of the backproject temporal neighbor position
+ *	These two values will always be filled even if the temporal neighbor is invalid
+ *	(disoccluion / occlusion / out of viewport)
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE int find_temporal_neighbor_index(const HIPRTRenderData& render_data, const float3& current_shading_point, const float3& current_normal, int2 resolution, int center_pixel_index, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE int3 find_temporal_neighbor_index(const HIPRTRenderData& render_data, const float3& current_shading_point, const float3& current_normal, int2 resolution, int center_pixel_index, Xorshift32Generator& random_number_generator)
 {
 	float3 previous_screen_space_point_xyz = matrix_X_point(render_data.prev_camera.view_projection, current_shading_point);
 	float2 previous_screen_space_point = make_float2(previous_screen_space_point_xyz.x, previous_screen_space_point_xyz.y);
@@ -444,9 +452,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int find_temporal_neighbor_index(const HIPRTRende
 			continue;
 
 		temporal_neighbor_index = temporal_neighbor_screen_pixel_pos.x + temporal_neighbor_screen_pixel_pos.y * resolution.x;
+
+		// We always want to read from the previous frame g-buffer for temporal neighbors
 		bool use_previous_frame_g_buffer = true;
-		// We don't the previous frame's g-buffer if we're accumulating
-		use_previous_frame_g_buffer &= !render_data.render_settings.accumulate;
+		// except if we're accumulating because then the camera is not moving --> no motion
+		// --> temporal neighbor are on the same surface as the current -> the previous
+		// g-buffer is the same as the current frame's --> no need to read from previous
+		// frame g-buffer --> the previous frame G-buffer is deallocated to save VRAM
+		use_previous_frame_g_buffer &= render_data.render_settings.use_prev_frame_g_buffer();
 		if (check_neighbor_similarity_heuristics(render_data, temporal_neighbor_index, center_pixel_index, current_shading_point, current_normal, use_previous_frame_g_buffer))
 			// We found a good neighbor
 			break;
@@ -455,7 +468,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int find_temporal_neighbor_index(const HIPRTRende
 		temporal_neighbor_index = -1;
 	}
 
-	return temporal_neighbor_index;
+	return make_int3(temporal_neighbor_index, static_cast<int>(round(prev_pixel_float.x)), static_cast<int>(round(prev_pixel_float.y)));
 }
 
 #endif

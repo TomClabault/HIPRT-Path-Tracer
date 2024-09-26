@@ -81,7 +81,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 		// Not doing ReSTIR on directly visible emissive materials
 		return;
 
-	int temporal_neighbor_pixel_index = find_temporal_neighbor_index(render_data, render_data.g_buffer.first_hits[center_pixel_index], center_pixel_surface.shading_normal, res, center_pixel_index, random_number_generator);
+	int temporal_neighbor_pixel_index = find_temporal_neighbor_index(render_data, render_data.g_buffer.first_hits[center_pixel_index], center_pixel_surface.shading_normal, res, center_pixel_index, random_number_generator).x;
 	if (temporal_neighbor_pixel_index == -1 || render_data.render_settings.freeze_random)
 	{
 		// Temporal occlusion / disoccusion, temporal neighbor is invalid,
@@ -109,15 +109,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 
 	// Resampling the initial candidates
 	ReSTIRDIReservoir temporal_reuse_output_reservoir;
+	ReSTIRDISurface temporal_neighbor_surface = get_pixel_surface(render_data, temporal_neighbor_pixel_index, render_data.render_settings.use_prev_frame_g_buffer());
 
-	ReSTIRDISurface temporal_neighbor_surface;
-	if (render_data.render_settings.use_prev_frame_g_buffer())
-		// If we're allowing the use of last frame's g-buffer (which is required for unbiasedness in motion),
-		// then we're reading from that g-buffer
-		temporal_neighbor_surface = get_pixel_surface_previous_frame(render_data, temporal_neighbor_pixel_index);
-	else
-		// Reading from the current frame's g-buffer otherwise
-		temporal_neighbor_surface = get_pixel_surface(render_data, temporal_neighbor_pixel_index);
 	if (temporal_neighbor_surface.material.is_emissive())
 	{
 		// Can't resample the temporal neighbor if it's emissive so output the initial candidates right away
@@ -159,7 +152,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 			// combination with other parameters and on top of that, it makes little 
 			// technical sense since our temporal neighbor is supposed to be unoccluded 
 			// (unless geometry moves around in the scene but that's another problem)
-			target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisiblity>(render_data, temporal_neighbor_reservoir.sample, center_pixel_surface);
+			target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, temporal_neighbor_reservoir.sample, center_pixel_surface);
 
 		float jacobian_determinant = 1.0f;
 		// If the neighbor reservoir is invalid, do not compute the jacobian
@@ -213,8 +206,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 		{
 			selected_neighbor = TEMPORAL_NEIGHBOR_ID;
 
-			// Using ReSTIR_DI_BiasCorrectionUseVisiblity here because that's what we use in the resampling target function
-#if ReSTIR_DI_BiasCorrectionUseVisiblity == KERNEL_OPTION_FALSE
+			// Using ReSTIR_DI_BiasCorrectionUseVisibility here because that's what we use in the resampling target function
+#if ReSTIR_DI_BiasCorrectionUseVisibility == KERNEL_OPTION_FALSE
 			// We cannot be certain that the visibility of the temporal neighbor
 			// chosen is exactly the same so we're clearing the unoccluded flag
 			temporal_reuse_output_reservoir.sample.flags &= ~ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
@@ -255,8 +248,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	{
 		selected_neighbor = INITIAL_CANDIDATES_ID;
 
-		// Using ReSTIR_DI_BiasCorrectionUseVisiblity here because that's what we use in the resampling target function
-#if ReSTIR_DI_BiasCorrectionUseVisiblity == KERNEL_OPTION_FALSE
+		// Using ReSTIR_DI_BiasCorrectionUseVisibility here because that's what we use in the resampling target function
+#if ReSTIR_DI_BiasCorrectionUseVisibility == KERNEL_OPTION_FALSE
 		// We resampled the center pixel so we can copy the unoccluded flag
 		temporal_reuse_output_reservoir.sample.flags |= initial_candidates_reservoir.sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
 #else

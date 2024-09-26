@@ -27,8 +27,11 @@ void ThreadManager::join_threads(std::string key)
 {
 	auto find = m_threads_map.find(key);
 	if (find != m_threads_map.end())
+	{
 		for (std::thread& thread : find->second)
-			thread.join();
+			if (thread.joinable())
+				thread.join();
+	}
 
 	m_threads_map[key].clear();
 }
