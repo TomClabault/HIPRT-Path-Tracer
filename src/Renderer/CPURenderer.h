@@ -12,6 +12,7 @@
 #include "Scene/SceneParser.h"
 #include "Utils/CommandlineArguments.h"
 
+#include <functional>
 #include <memory>
 #include <vector>
 
@@ -31,6 +32,8 @@ public:
     void render();
     void update(int frame_number);
     void update_render_data(int sample);
+
+    void debug_render_pass(std::function<void(int, int)> render_pass_function);
     void camera_rays_pass();
 
     void ReSTIR_DI();
