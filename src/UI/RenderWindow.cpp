@@ -19,18 +19,16 @@
 // TODOs ReSTIR DI
 // - fused spatiotemporal
 // - limit distance of BSDF ray for initial sampling (biased but reduces BVH traversal so performance++)
-// - maybe not spatially resample as hard everywhere in the image? heuristic to reduce/increase the number of spatial samples per pixel?
-// - psosibility not to use target function on all spatial reuse passes? --> finish visibility only on last neighbors
-// - use previous world to envmap matrix for temporal reuse of envmap samples?
+// - maybe not spatially resample as hard everywhere in the image? Dark regions for example? heuristic to reduce/increase the number of spatial samples per pixel?
 
-// TODO bugs:
-// - memory leak with OpenGL when resizing the window? only on AMD?
+// TODO known bugs / incorectness:
 // - take transmission color into account when direct sampling a light source that is inside a volume
 // - denoiser AOVs not accounting for transmission correctly since Disney 
 //	  - same with perfect reflection
 // - fix sampling lights inside dielectrics with ReSTIR DI
 // - when using a BSDF override, transmissive materials keep their dielectric priorities and this can mess up shadow rays and intersections in general if the BSDF used for the override doesn't support transmissive materials
 // - is DisneySheen correct?
+// - ray volume state size doesn't always give the same size as CPU with MSVC
 
 
 // TODO Code Organization:

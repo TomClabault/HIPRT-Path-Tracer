@@ -34,42 +34,6 @@
  * [8] [Rearchitecting Spatiotemporal Resampling for Production] https://research.nvidia.com/publication/2021-07_rearchitecting-spatiotemporal-resampling-production
  */
 
-/**
- * Counts how many neighbors are eligible for reuse. 
- * This is needed for proper normalization by pairwise MIS weights.
- * 
- * A neighbor is not eligible if it is outside of the viewport or if 
- * it doesn't satisfy the normal/plane/roughness heuristics
- * 
- * 'out_valid_neighbor_M_sum' is the sum of the M values (confidences) of the
- * valid neighbors. Used by confidence-weights pairwise MIS weights
- * 
- * The bits of 'out_neighbor_heuristics_cache' are 1 or 0 depending on whether or not
- * the corresponding neighbor was valid or not (can be reused later to avoid having to 
- * re-evauate the heuristics). Neighbor 0 is LSB.
- */
-HIPRT_HOST_DEVICE HIPRT_INLINE void count_valid_neighbors(const HIPRTRenderData& render_data, const ReSTIRDISurface& center_pixel_surface, int2 center_pixel_coords, int2 res, float2 cos_sin_theta_rotation, int& out_valid_neighbor_count, int& out_valid_neighbor_M_sum, int& out_neighbor_heuristics_cache)
-{
-	int center_pixel_index = center_pixel_coords.x + center_pixel_coords.y * res.x;
-	int reused_neighbors_count = render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count;
-
-	out_valid_neighbor_count = 0;
-	for (int neighbor_index = 0; neighbor_index < reused_neighbors_count; neighbor_index++)
-	{
-		int neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, neighbor_index, reused_neighbors_count, render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_radius, center_pixel_coords, res, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
-		if (neighbor_pixel_index == -1)
-			// Neighbor out of the viewport / invalid
-			continue;
-
-		if (!check_neighbor_similarity_heuristics(render_data, neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point, center_pixel_surface.shading_normal))
-			continue;
-
-		out_valid_neighbor_M_sum += render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs[neighbor_pixel_index].M;
-		out_valid_neighbor_count++;
-		out_neighbor_heuristics_cache |= (1 << neighbor_index);
-	}
-}
-
 HIPRT_HOST_DEVICE HIPRT_INLINE bool do_include_visibility_term_or_not(const HIPRTRenderData& render_data, int current_neighbor_index)
 {
 	const SpatialPassSettings& spatial_settings = render_data.render_settings.restir_di_settings.spatial_pass;
@@ -124,10 +88,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	Xorshift32Generator random_number_generator(seed);
 
 	ReSTIRDIReservoir* input_reservoir_buffer = render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs;
+	ReSTIRDIReservoir spatial_reuse_output_reservoir;
 
-	ReSTIRDIReservoir new_reservoir;
-	// Center pixel coordinates
 	int2 center_pixel_coords = make_int2(x, y);
+
 	// Surface data of the center pixel
 	ReSTIRDISurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index);
 	if (center_pixel_surface.material.is_emissive())
@@ -150,7 +114,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	int neighbor_heuristics_cache = 0;
 	int valid_neighbors_count = 0;
 	int valid_neighbors_M_sum = 0;
-	count_valid_neighbors(render_data, center_pixel_surface, center_pixel_coords, res, cos_sin_theta_rotation, valid_neighbors_count, valid_neighbors_M_sum, neighbor_heuristics_cache);
+	count_valid_spatial_neighbors(render_data, center_pixel_surface, center_pixel_coords, res, cos_sin_theta_rotation, valid_neighbors_count, valid_neighbors_M_sum, neighbor_heuristics_cache);
 
 	ReSTIRDISpatialResamplingMISWeight<ReSTIR_DI_BiasCorrectionWeights> mis_weight_function;
 	// Resampling the neighbors. Using neighbors + 1 here so that
@@ -226,7 +190,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 
 			if (jacobian_determinant == -1.0f)
 			{
-				new_reservoir.M += neighbor_reservoir.M;
+				spatial_reuse_output_reservoir.M += neighbor_reservoir.M;
 
 				// The sample was too dissimilar and so we're rejecting it
 				continue;
@@ -259,26 +223,26 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 #endif
 
 		// Combining as in Alg. 6 of the paper
-		if (new_reservoir.combine_with(neighbor_reservoir, mis_weight, target_function_at_center, jacobian_determinant, random_number_generator))
+		if (spatial_reuse_output_reservoir.combine_with(neighbor_reservoir, mis_weight, target_function_at_center, jacobian_determinant, random_number_generator))
 		{
 			selected_neighbor = neighbor_index;
 
 			if (do_neighbor_target_function_visibility)
 				// If we resampled the neighbor with visibility, then we are sure that we can set the flag
-				new_reservoir.sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
+				spatial_reuse_output_reservoir.sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
 			else
 			{
 				// If we didn't resample the neighbor with visibility
 				if (neighbor_index == reused_neighbors_count)
 					// If we just resampled the center pixel, then we can copy the visibility flag
-					new_reservoir.sample.flags |= neighbor_reservoir.sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
+					spatial_reuse_output_reservoir.sample.flags |= neighbor_reservoir.sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
 				else
 					// This was not the center pixel, we cannot be certain what the visibility at the center
 					// pixel of the neighbor sample we just resample is so we're clearing the bit
-					new_reservoir.sample.flags &= ~ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
+					spatial_reuse_output_reservoir.sample.flags &= ~ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
 			}
 		}
-		new_reservoir.sanity_check(center_pixel_coords);
+		spatial_reuse_output_reservoir.sanity_check(center_pixel_coords);
 	}
 
 	float normalization_numerator = 1.0f;
@@ -286,13 +250,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 
 	ReSTIRDISpatialNormalizationWeight<ReSTIR_DI_BiasCorrectionWeights> normalization_function;
 #if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_M
-	normalization_function.get_normalization(render_data, new_reservoir,
+	normalization_function.get_normalization(render_data, spatial_reuse_output_reservoir,
 		center_pixel_surface, center_pixel_coords, res, cos_sin_theta_rotation, normalization_numerator, normalization_denominator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
-	normalization_function.get_normalization(render_data, new_reservoir,
+	normalization_function.get_normalization(render_data, spatial_reuse_output_reservoir,
 		center_pixel_surface, center_pixel_coords, res, cos_sin_theta_rotation, normalization_numerator, normalization_denominator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
-	normalization_function.get_normalization(render_data, new_reservoir,
+	normalization_function.get_normalization(render_data, spatial_reuse_output_reservoir,
 		center_pixel_surface, selected_neighbor, center_pixel_coords, res, cos_sin_theta_rotation, normalization_numerator, normalization_denominator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_GBH
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
@@ -304,8 +268,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 #error "Unsupported bias correction mode"
 #endif
 
-	new_reservoir.end_with_normalization(normalization_numerator, normalization_denominator);
-	new_reservoir.sanity_check(center_pixel_coords);
+	spatial_reuse_output_reservoir.end_with_normalization(normalization_numerator, normalization_denominator);
+	spatial_reuse_output_reservoir.sanity_check(center_pixel_coords);
 
 	// Only these 3 weighting schemes are affected
 #if (ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z \
@@ -354,10 +318,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	// We only need this if we're going to temporally reuse (because then the output of the spatial reuse must be correct
 	// for the temporal reuse pass) or if we have multiple spatial reuse passes and this is not the last spatial pass
 	if (render_data.render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass || render_data.render_settings.restir_di_settings.spatial_pass.number_of_passes - 1 != render_data.render_settings.restir_di_settings.spatial_pass.spatial_pass_index)
-		ReSTIR_DI_visibility_reuse(render_data, new_reservoir, center_pixel_surface.shading_point);
+		ReSTIR_DI_visibility_reuse(render_data, spatial_reuse_output_reservoir, center_pixel_surface.shading_point);
 #endif
 
-	render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs[center_pixel_index] = new_reservoir;
+	render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs[center_pixel_index] = spatial_reuse_output_reservoir;
 }
 
 #endif

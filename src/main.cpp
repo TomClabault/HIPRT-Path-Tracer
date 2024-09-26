@@ -21,10 +21,7 @@
 #include <cmath>
 #include <iostream>
 
-#define GPU_RENDER 1
-
-#define GLM_ENABLE_EXPERIMENTAL
-#include "glm/gtx/euler_angles.hpp"
+#define GPU_RENDER 0
 
 int main(int argc, char* argv[])
 {
@@ -78,12 +75,6 @@ int main(int argc, char* argv[])
     cpu_renderer.set_camera(parsed_scene.camera);
     cpu_renderer.get_render_settings().nb_bounces = cmd_arguments.bounces;
     cpu_renderer.get_render_settings().samples_per_frame = cmd_arguments.render_samples;
-
-    glm::mat4x4 rotation_matrix = glm::orientate3(glm::vec3(0.0f * 2.0f * M_PI, 1.0f * 2.0f * M_PI, 0.0f * 2.0f * M_PI));
-    glm::mat4x4 rotation_matrix_inv = glm::inverse(rotation_matrix);
-
-    cpu_renderer.get_render_data().world_settings.envmap_to_world_matrix = *reinterpret_cast<float4x4*>(&rotation_matrix);
-    cpu_renderer.get_render_data().world_settings.world_to_envmap_matrix = *reinterpret_cast<float4x4*>(&rotation_matrix_inv);
 
     ThreadManager::join_threads(ThreadManager::TEXTURE_THREADS_KEY);
     stop_full = std::chrono::high_resolution_clock::now();

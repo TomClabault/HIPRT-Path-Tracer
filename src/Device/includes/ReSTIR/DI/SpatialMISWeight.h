@@ -92,12 +92,11 @@ struct ReSTIRDISpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
 		const ReSTIRDIReservoir& reservoir_being_resampled, const ReSTIRDIReservoir& center_pixel_reservoir,
-		float target_function_at_center,
-		int current_neighbor_index, int neighbor_pixel_index, int valid_neighbors_count, int valid_neighbors_M_sum,
-		bool update_mc)
+		float target_function_at_center, int neighbor_pixel_index, int valid_neighbors_count, int valid_neighbors_M_sum,
+		bool update_mc, bool resample_canonical)
 	{
 		int reused_neighbors_count = render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count;
-		if (current_neighbor_index < reused_neighbors_count)
+		if (!resample_canonical)
 		{
 			// Resampling a neighbor
 
@@ -167,12 +166,11 @@ struct ReSTIRDISpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
 		const ReSTIRDIReservoir& reservoir_being_resampled, const ReSTIRDIReservoir& center_pixel_reservoir,
-		float target_function_at_center,
-		int current_neighbor_index, int neighbor_pixel_index, int valid_neighbors_count, int valid_neighbors_M_sum,
-		bool update_mc)
+		float target_function_at_center, int neighbor_pixel_index, int valid_neighbors_count, int valid_neighbors_M_sum,
+		bool update_mc, bool resample_canonical)
 	{
 		int reused_neighbors_count = render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count;
-		if (current_neighbor_index < reused_neighbors_count)
+		if (!resample_canonical)
 		{
 			// Resampling a neighbor
 

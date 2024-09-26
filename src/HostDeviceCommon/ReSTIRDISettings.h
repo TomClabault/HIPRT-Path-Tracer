@@ -59,15 +59,15 @@ struct SpatialPassSettings
 	// Takes values in [0, number_of_passes - 1]
 	int spatial_pass_index = 0;
 	// How many spatial reuse pass to perform
-	int number_of_passes = 2;
+	int number_of_passes = 1;
 	// The radius within which neighbor are going to be reused spatially
 	int spatial_reuse_radius = 16;
 	// How many neighbors to reuse during the spatial pass
-	int spatial_reuse_neighbor_count = 2;
+	int spatial_reuse_neighbor_count = 1;
 
 	// If true, reused neighbors will be hardcoded to always be 15 pixels to the right,
 	// not in a circle around the center pixel.
-	bool debug_neighbor_location = false;
+	bool debug_neighbor_location = true;
 
 	// Whether or not to rotate the spatial neighbor locations generated.
 	// Pretty much mandatory when using Hammersley points otherwise the neighbors
@@ -103,6 +103,14 @@ struct ReSTIRDISettings
 	TemporalPassSettings temporal_pass;
 	// Settings for the spatial reuse pass
 	SpatialPassSettings spatial_pass;
+
+	// If true, the spatial and temporal pass will be fused into a single kernel call.
+	// This avois a synchronization barrier between the temporal pass and the spatial pass
+	// and increases performance.
+	// Because the spatial must then resample without the output of the temporal pass, the spatial
+	// pass only resamples on the temporal reservoir buffer, not the temporal + initial candidates reservoir
+	// (which is the output of the temporal pass). This is usually imperceptible.
+	bool do_fused_spatiotemporal = true;
 
 	// When finalizing the reservoir in the spatial reuse pass, what value
 	// to cap the reservoirs's M value to.

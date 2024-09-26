@@ -16,12 +16,12 @@ struct ReSTIR_DI_State
 	// ReSTIR reservoirs for the initial candidates
 	OrochiBuffer<ReSTIRDIReservoir> initial_candidates_reservoirs;
 	// ReSTIR reservoirs for the output of the spatial reuse pass
-	OrochiBuffer<ReSTIRDIReservoir> spatial_reuse_output_1;
+	OrochiBuffer<ReSTIRDIReservoir> spatial_output_reservoirs_1;
 	// ReSTIR DI final reservoirs of the frame. 
 	// This the output of the spatial reuse passes.
 	// Those are the reservoirs that are carried over between frames for
 	// the temporal reuse pass to feed upon
-	OrochiBuffer<ReSTIRDIReservoir> spatial_reuse_output_2;
+	OrochiBuffer<ReSTIRDIReservoir> spatial_output_reservoirs_2;
 
 	// Whether or not we're currently rendering an odd frame.
 	// This is used to adjust which buffers are used as input/outputs

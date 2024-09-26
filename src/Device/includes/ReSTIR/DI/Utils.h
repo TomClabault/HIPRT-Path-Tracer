@@ -357,6 +357,41 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int get_spatial_neighbor_pixel_index(const HIPRTR
 	return neighbor_pixel_index;
 }
 
+/**
+ * Counts how many neighbors are eligible for reuse.
+ * This is needed for proper normalization by pairwise MIS weights.
+ *
+ * A neighbor is not eligible if it is outside of the viewport or if
+ * it doesn't satisfy the normal/plane/roughness heuristics
+ *
+ * 'out_valid_neighbor_M_sum' is the sum of the M values (confidences) of the
+ * valid neighbors. Used by confidence-weights pairwise MIS weights
+ *
+ * The bits of 'out_neighbor_heuristics_cache' are 1 or 0 depending on whether or not
+ * the corresponding neighbor was valid or not (can be reused later to avoid having to
+ * re-evauate the heuristics). Neighbor 0 is LSB.
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE void count_valid_spatial_neighbors(const HIPRTRenderData& render_data, const ReSTIRDISurface& center_pixel_surface, int2 center_pixel_coords, int2 res, float2 cos_sin_theta_rotation, int& out_valid_neighbor_count, int& out_valid_neighbor_M_sum, int& out_neighbor_heuristics_cache)
+{
+	int center_pixel_index = center_pixel_coords.x + center_pixel_coords.y * res.x;
+	int reused_neighbors_count = render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count;
+
+	out_valid_neighbor_count = 0;
+	for (int neighbor_index = 0; neighbor_index < reused_neighbors_count; neighbor_index++)
+	{
+		int neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, neighbor_index, reused_neighbors_count, render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_radius, center_pixel_coords, res, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
+		if (neighbor_pixel_index == -1)
+			// Neighbor out of the viewport / invalid
+			continue;
+
+		if (!check_neighbor_similarity_heuristics(render_data, neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point, center_pixel_surface.shading_normal))
+			continue;
+
+		out_valid_neighbor_M_sum += render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs[neighbor_pixel_index].M;
+		out_valid_neighbor_count++;
+		out_neighbor_heuristics_cache |= (1 << neighbor_index);
+	}
+}
 
 HIPRT_HOST_DEVICE HIPRT_INLINE int2 apply_permutation_sampling(int2 pixel_position, int random_bits)
 {

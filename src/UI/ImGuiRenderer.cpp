@@ -893,8 +893,25 @@ void ImGuiRenderer::draw_sampling_panel()
 				ImGui::SeparatorText("Temporal Reuse Pass");
 				ImGui::TreePush("ReSTIR DI - Temporal Reuse Pass Tree");
 				{
+					if (render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass && render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
+					{
+						if (ImGui::Checkbox("Do Fused Spatiotemporal", &render_settings.restir_di_settings.do_fused_spatiotemporal))
+							m_render_window->set_render_dirty(true);
+						ImGuiRenderer::show_help_marker("If checked, the spatial and temporal pass will be fused into a single kernel call. "
+							"This avois a synchronization barrier between the temporal pass and the spatial pass "
+							"and increases performance. Because the spatial must then resample without the output of the temporal pass, the spatial "
+							"pass only resamples on the temporal reservoir buffer, not the temporal + initial candidates reservoir "
+							"(which is the output of the temporal pass). This is usually imperceptible.");
+					}
+
 					if (ImGui::Checkbox("Do Temporal Reuse", &render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass))
+					{
 						m_render_window->set_render_dirty(true);
+
+						if (!render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
+							// Disabling fused spatiotemporal if we just disabled the temporal reuse
+							render_settings.restir_di_settings.do_fused_spatiotemporal = false;
+					}
 
 					if (render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
 					{
@@ -939,8 +956,25 @@ void ImGuiRenderer::draw_sampling_panel()
 				ImGui::SeparatorText("Spatial Reuse Pass");
 				ImGui::TreePush("ReSTIR DI - Spatial Reuse Pass Tree");
 				{
+					if (render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass && render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
+					{
+						if (ImGui::Checkbox("Do Fused Spatiotemporal", &render_settings.restir_di_settings.do_fused_spatiotemporal))
+							m_render_window->set_render_dirty(true);
+						ImGuiRenderer::show_help_marker("If checked, the spatial and temporal pass will be fused into a single kernel call. "
+							"This avois a synchronization barrier between the temporal pass and the spatial pass "
+							"and increases performance. Because the spatial must then resample without the output of the temporal pass, the spatial "
+							"pass only resamples on the temporal reservoir buffer, not the temporal + initial candidates reservoir "
+							"(which is the output of the temporal pass). This is usually imperceptible.");
+					}
+
 					if (ImGui::Checkbox("Do Spatial Reuse", &render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass))
+					{
 						m_render_window->set_render_dirty(true);
+
+						if (!render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)
+							// Disabling fused spatiotemporal if we just disabled the spatial reuse
+							render_settings.restir_di_settings.do_fused_spatiotemporal = false;
+					}
 
 					if (render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)
 					{

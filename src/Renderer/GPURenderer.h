@@ -21,6 +21,7 @@
 #include "Scene/SceneParser.h"
 #include "UI/ApplicationSettings.h"
 
+#include <unordered_map>
 #include <vector>
 
 template <typename T>
@@ -33,35 +34,34 @@ public:
 	 * These constants here are used to reference kernel objects in the 'm_kernels' map
 	 * or in the 'm_ms_time_per_pass' map
 	 */
-	static const std::string PATH_TRACING_KERNEL_ID;
 	static const std::string CAMERA_RAYS_KERNEL_ID;
 	static const std::string RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID;
 	static const std::string RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID;
 	static const std::string RESTIR_DI_SPATIAL_REUSE_KERNEL_ID;
+	static const std::string RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID;
+	static const std::string PATH_TRACING_KERNEL_ID;
+	static const std::string RAY_VOLUME_STATE_SIZE_KERNEL_ID;
 
 	/**
-	 * These constants are the name of the main function of the kernels, the entry points.
+	 * This map contains constants that are the name of the main function of the kernels, their entry points.
 	 * They are used when compiling the kernels.
 	 * 
 	 * This means that if you define your camera ray kernel main function as:
 	 * 
 	 * GLOBAL_KERNEL_SIGNATURE(void) CameraRays(HIPRTRenderData render_data, int2 res)
 	 * 
-	 * Then the CAMERA_RAYS_KERNEL_FUNC_NAME must be "CameraRays"
+	 * Then KERNEL_FUNCTION_NAMES[CAMERA_RAYS_KERNEL_ID] = "CameraRays"
 	 */
-	static const std::string CAMERA_RAYS_KERNEL_FUNC_NAME;
-	static const std::string RESTIR_DI_INITIAL_CANDIDATES_KERNEL_FUNC_NAME;
-	static const std::string RESTIR_DI_TEMPORAL_REUSE_KERNEL_FUNC_NAME;
-	static const std::string RESTIR_DI_SPATIAL_REUSE_KERNEL_FUNC_NAME;
-	static const std::string PATH_TRACING_KERNEL_FUNC_NAME;
-	static const std::string RAY_VOLUME_STATE_SIZE_KERNEL_FUNC_NAME;
+	static const std::unordered_map<std::string, std::string> KERNEL_FUNCTION_NAMES;
+
+	/**
+	 * Same as 'KERNELfUNCTION_NAMES' but for kernel files
+	 */
+	static const std::unordered_map<std::string, std::string> KERNEL_FILES;
 
 	// Key for indexing m_ms_time_per_pass that contains the times per passes
 	// This key is for the time of the whole frame
 	static const std::string FULL_FRAME_TIME_KEY;
-
-	static const std::string KERNEL_FILES[];
-	static const std::string KERNEL_FUNCTIONS[];
 
 	static const std::vector<std::string> COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS;
 
@@ -265,7 +265,10 @@ private:
 
 	void configure_ReSTIR_DI_initial_pass();
 	void configure_ReSTIR_DI_temporal_pass();
+	void configure_ReSTIR_DI_temporal_pass_for_fused_spatiotemporal();
 	void configure_ReSTIR_DI_spatial_pass(int spatial_pass_index);
+	void configure_ReSTIR_DI_spatial_pass_for_fused_spatiotemporal(int spatial_pass_index);
+	void configure_ReSTIR_DI_spatiotemporal_pass();
 	void configure_ReSTIR_DI_output_buffer();
 
 	// Properties of the device

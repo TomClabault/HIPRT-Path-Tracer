@@ -8,6 +8,7 @@
 #include "Device/kernels/ReSTIR/ReSTIR_DI_InitialCandidates.h"
 #include "Device/kernels/ReSTIR/ReSTIR_DI_TemporalReuse.h"
 #include "Device/kernels/ReSTIR/ReSTIR_DI_SpatialReuse.h"
+#include "Device/kernels/ReSTIR/ReSTIR_DI_FusedSpatiotemporalReuse.h"
 
 #include "Renderer/CPURenderer.h"
 #include "Threads/ThreadManager.h"
@@ -20,7 +21,7 @@
  // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
  // allowing for fast step into that pixel with the debugger to see what's happening.
  // Otherwise if 0, all pixels of the image are rendered
-#define DEBUG_PIXEL 0
+#define DEBUG_PIXEL 1
 
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner.
 // If 1, it's bottom left corner.
@@ -34,8 +35,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around this pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 641
-#define DEBUG_PIXEL_Y 316
+#define DEBUG_PIXEL_X -1
+#define DEBUG_PIXEL_Y -1
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -44,8 +45,8 @@
 // of DEBUG_OTHER_PIXEL_X/Y given below.
 // 
 // -1 to disable. If disabled, the pixel at (DEBUG_PIXEL_X, DEBUG_PIXEL_Y) will be debugged
-#define DEBUG_OTHER_PIXEL_X -1
-#define DEBUG_OTHER_PIXEL_Y -1
+#define DEBUG_OTHER_PIXEL_X 828
+#define DEBUG_OTHER_PIXEL_Y 273
 
 // If 1, a square of DEBUG_NEIGHBORHOOD_SIZE x DEBUG_NEIGHBORHOOD_SIZE pixels
 // will be rendered around the pixel to debug (given by DEBUG_PIXEL_X and
@@ -291,19 +292,29 @@ void CPURenderer::ReSTIR_DI()
     configure_ReSTIR_DI_initial_pass();
     ReSTIR_DI_initial_candidates_pass();
 
-    if (m_render_data.render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
+    if (m_render_data.render_settings.restir_di_settings.do_fused_spatiotemporal)
     {
-        configure_ReSTIR_DI_temporal_pass();
-        ReSTIR_DI_temporal_reuse_pass();
+        // If fused-spatiotemporal
+        // Also not doing it on the very first frame as we would get no samples through
+        configure_ReSTIR_DI_spatiotemporal_pass();
+        ReSTIR_DI_spatiotemporal_reuse_pass();
     }
-
-
-    if (m_render_data.render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)
+    else
     {
-        for (int spatial_reuse_pass = 0; spatial_reuse_pass < m_render_data.render_settings.restir_di_settings.spatial_pass.number_of_passes; spatial_reuse_pass++)
+        if (m_render_data.render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
         {
-            configure_ReSTIR_DI_spatial_pass(spatial_reuse_pass);
-            ReSTIR_DI_spatial_reuse_pass();
+            configure_ReSTIR_DI_temporal_pass();
+            ReSTIR_DI_temporal_reuse_pass();
+        }
+
+
+        if (m_render_data.render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)
+        {
+            for (int spatial_reuse_pass = 0; spatial_reuse_pass < m_render_data.render_settings.restir_di_settings.spatial_pass.number_of_passes; spatial_reuse_pass++)
+            {
+                configure_ReSTIR_DI_spatial_pass(spatial_reuse_pass);
+                ReSTIR_DI_spatial_reuse_pass();
+            }
         }
     }
 
@@ -322,23 +333,50 @@ void CPURenderer::configure_ReSTIR_DI_temporal_pass()
     m_render_data.random_seed = m_rng.xorshift32();
     m_render_data.render_settings.restir_di_settings.temporal_pass.permutation_sampling_random_bits = m_rng.xorshift32();
 
-    // The input of the temporal pass is the output of last frame ReSTIR (and also the initial candidates but this is implicit
+    // The input of the temporal pass is the output of last frame's
+    // ReSTIR (and also the initial candidates but this is implicit
     // and "hardcoded in the shader"
     m_render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs = m_render_data.render_settings.restir_di_settings.restir_output_reservoirs;
 
     if (m_render_data.render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)
+        // If we're going to do spatial reuse, reuse the initial
+        // candidate reservoirs to store the output of the temporal pass.
+        // The spatial reuse pass will read form that buffer.
+        // 
+        // Reusing the initial candidates buffer (which is an input
+        // to the temporal pass) as the output is legal and does not
+        // cause a race condition because a given pixel only read and
+        // writes to its own pixel in the initial candidates buffer.
+        // We're not risking another pixel reading in someone else's
+        // pixel in the initial candidates buffer while we write into
+        // it (that would be a race condition)
         m_render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs = m_restir_di_state.initial_candidates_reservoirs.data();
-    // If we're going to do spatial reuse, reuse the initial candidate reservoirs to store the output of the temporal pass.
-    // The spatial reuse pass will read form that buffer
     else
     {
         // Else, no spatial reuse, the output of the temporal pass is going to be in its own buffer.
-        // Alternatively using spatial_reuse_output_1 and spatial_reuse_output_2 to avoid race conditions
+        // Alternatively using spatial_output_reservoirs_1 and spatial_output_reservoirs_2 to avoid race conditions
         if (m_restir_di_state.odd_frame)
             m_render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs = m_restir_di_state.spatial_output_reservoirs_1.data();
         else
             m_render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs = m_restir_di_state.spatial_output_reservoirs_2.data();
     }
+}
+
+void CPURenderer::configure_ReSTIR_DI_temporal_pass_for_fused_spatiotemporal()
+{
+    m_render_data.random_seed = m_rng.xorshift32();
+    m_render_data.render_settings.restir_di_settings.temporal_pass.permutation_sampling_random_bits = m_rng.xorshift32();
+
+    // The input of the temporal pass is the output of last frame's
+    // ReSTIR (and also the initial candidates but this is implicit
+    // and hardcoded in the shader)
+    if (m_restir_di_state.odd_frame)
+        m_render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs = m_restir_di_state.spatial_output_reservoirs_1.data();
+    else
+        m_render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs = m_restir_di_state.spatial_output_reservoirs_2.data();
+
+    // Not needed. In the fused spatiotemporal pass, everything is output by the spatial pass
+    m_render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs = nullptr;
 }
 
 void CPURenderer::configure_ReSTIR_DI_spatial_pass(int spatial_pass_index)
@@ -348,7 +386,7 @@ void CPURenderer::configure_ReSTIR_DI_spatial_pass(int spatial_pass_index)
     if (spatial_pass_index == 0)
     {
         if (m_render_data.render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
-            // For the first spatial reuse pass, we hardcode reading from the output of the temporal pass and storing into 'spatial_reuse_output_1'
+            // For the first spatial reuse pass, we hardcode reading from the output of the temporal pass and storing into 'spatial_output_reservoirs_1'
             m_render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs = m_render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs;
         else
             // If there is no temporal reuse pass, using the initial candidates as the input to the spatial reuse pass
@@ -359,7 +397,7 @@ void CPURenderer::configure_ReSTIR_DI_spatial_pass(int spatial_pass_index)
     else
     {
         // And then, starting at the second spatial reuse pass, we read from the output of the previous spatial pass and store
-        // in either spatial_reuse_output_1 or spatial_reuse_output_2, depending on which one isn't the input (we don't
+        // in either spatial_output_reservoirs_1 or spatial_output_reservoirs_2, depending on which one isn't the input (we don't
         // want to store in the same buffers that is used for output because that's a race condition so
         // we're ping-ponging between the two outputs of the spatial reuse pass)
 
@@ -375,6 +413,35 @@ void CPURenderer::configure_ReSTIR_DI_spatial_pass(int spatial_pass_index)
 
         }
     }
+}
+
+void CPURenderer::configure_ReSTIR_DI_spatial_pass_for_fused_spatiotemporal(int spatial_pass_index)
+{
+    if (spatial_pass_index == 0)
+    {
+        // The input of the spatial resampling in the fused spatiotemporal pass is the
+        // temporal buffer of the last frame i.e. the input to the temporal pass
+        //
+        // Note, this line of code below assumes that the temporal pass was configured
+        // prior to calling this function such that
+        // 'm_render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs'
+        // is the proper pointer
+        m_render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs = m_render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs;
+
+        if (m_restir_di_state.odd_frame)
+            m_render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs = m_restir_di_state.spatial_output_reservoirs_2.data();
+        else
+            m_render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs = m_restir_di_state.spatial_output_reservoirs_1.data();
+    }
+}
+
+void CPURenderer::configure_ReSTIR_DI_spatiotemporal_pass()
+{
+    // The buffers of the temporal pass are going to be configured in the same way
+    configure_ReSTIR_DI_temporal_pass_for_fused_spatiotemporal();
+
+    // But the spatial pass is going to read from the input of the temporal pass i.e. the temporal buffer of the last frame, it's not going to read from the output of the temporal pass
+    configure_ReSTIR_DI_spatial_pass_for_fused_spatiotemporal(0);
 }
 
 void CPURenderer::configure_ReSTIR_DI_output_buffer()
@@ -521,6 +588,51 @@ void CPURenderer::ReSTIR_DI_spatial_reuse_pass()
     for (int y = 0; y < m_resolution.y; y++)
         for (int x = 0; x < m_resolution.x; x++)
             ReSTIR_DI_SpatialReuse(m_render_data, m_resolution, x, y);
+#endif // DEBUG_PIXEL
+}
+
+void CPURenderer::ReSTIR_DI_spatiotemporal_reuse_pass()
+{
+#if DEBUG_PIXEL
+    int x, y;
+#if DEBUG_FLIP_Y
+    x = DEBUG_PIXEL_X;
+    y = DEBUG_PIXEL_Y;
+#else // DEBUG_FLIP_Y
+    x = DEBUG_PIXEL_X;
+    y = m_resolution.y - DEBUG_PIXEL_Y - 1;
+#endif // DEBUG_FLIP_Y
+
+
+#if DEBUG_OTHER_PIXEL_X != -1 && DEBUG_OTHER_PIXEL_Y != -1
+#if DEBUG_OTHER_FLIP_Y
+    int other_x = DEBUG_OTHER_PIXEL_X;
+    int other_y = DEBUG_OTHER_PIXEL_Y;
+#else // DEBUG_OTHER_FLIP_Y
+    int other_x = DEBUG_OTHER_PIXEL_X;
+    int other_y = m_resolution.y - DEBUG_OTHER_PIXEL_Y - 1;
+#endif // DEBUG_OTHER_FLIP_Y
+
+    ReSTIR_DI_SpatiotemporalReuse(m_render_data, m_resolution, other_x, other_y);
+#else
+    ReSTIR_DI_SpatiotemporalReuse(m_render_data, m_resolution, x, y);
+#endif // DEBUG_OTHER_PIXEL_X != -1 && DEBUG_OTHER_PIXEL_Y != -1
+
+
+#if DEBUG_RENDER_NEIGHBORHOOD
+    // Rendering the neighborhood
+
+#pragma omp parallel for schedule(dynamic)
+    for (int render_y = std::max(0, y - DEBUG_NEIGHBORHOOD_SIZE); render_y <= std::min(m_resolution.y - 1, y + DEBUG_NEIGHBORHOOD_SIZE); render_y++)
+        for (int render_x = std::max(0, x - DEBUG_NEIGHBORHOOD_SIZE); render_x <= std::min(m_resolution.x - 1, x + DEBUG_NEIGHBORHOOD_SIZE); render_x++)
+            ReSTIR_DI_SpatiotemporalReuse(m_render_data, m_resolution, render_x, render_y);
+#endif // DEBUG_RENDER_NEIGHBORHOOD
+#else // DEBUG_PIXEL
+
+#pragma omp parallel for schedule(dynamic)
+    for (int y = 0; y < m_resolution.y; y++)
+        for (int x = 0; x < m_resolution.x; x++)
+            ReSTIR_DI_SpatiotemporalReuse(m_render_data, m_resolution, x, y);
 #endif // DEBUG_PIXEL
 }
 

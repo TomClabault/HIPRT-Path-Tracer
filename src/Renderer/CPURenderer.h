@@ -36,11 +36,16 @@ public:
     void ReSTIR_DI();
     void configure_ReSTIR_DI_initial_pass();
     void configure_ReSTIR_DI_temporal_pass();
+    void configure_ReSTIR_DI_temporal_pass_for_fused_spatiotemporal();
     void configure_ReSTIR_DI_spatial_pass(int spatial_pass_index);
+    void configure_ReSTIR_DI_spatial_pass_for_fused_spatiotemporal(int spatial_pass_index);
+    void configure_ReSTIR_DI_spatiotemporal_pass();
 	void configure_ReSTIR_DI_output_buffer();
+
     void ReSTIR_DI_initial_candidates_pass();
     void ReSTIR_DI_temporal_reuse_pass();
     void ReSTIR_DI_spatial_reuse_pass();
+    void ReSTIR_DI_spatiotemporal_reuse_pass();
 
     void tracing_pass();
 

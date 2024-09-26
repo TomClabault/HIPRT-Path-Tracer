@@ -108,7 +108,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	}
 
 	// Resampling the initial candidates
-	ReSTIRDIReservoir new_reservoir;
+	ReSTIRDIReservoir temporal_reuse_output_reservoir;
 
 	ReSTIRDISurface temporal_neighbor_surface;
 	if (render_data.render_settings.use_prev_frame_g_buffer())
@@ -209,7 +209,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 #endif
 
 		// Combining as in Alg. 6 of the paper
-		if (new_reservoir.combine_with(temporal_neighbor_reservoir, temporal_neighbor_resampling_mis_weight, target_function_at_center, jacobian_determinant, random_number_generator))
+		if (temporal_reuse_output_reservoir.combine_with(temporal_neighbor_reservoir, temporal_neighbor_resampling_mis_weight, target_function_at_center, jacobian_determinant, random_number_generator))
 		{
 			selected_neighbor = TEMPORAL_NEIGHBOR_ID;
 
@@ -217,15 +217,15 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 #if ReSTIR_DI_BiasCorrectionUseVisiblity == KERNEL_OPTION_FALSE
 			// We cannot be certain that the visibility of the temporal neighbor
 			// chosen is exactly the same so we're clearing the unoccluded flag
-			new_reservoir.sample.flags &= ~ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
+			temporal_reuse_output_reservoir.sample.flags &= ~ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
 #else
 			// However, if we're using the visibility in the target function, then
 			// the temporal neighobr could never have been selected unless it is
 			// unoccluded so we can add the flag
-			new_reservoir.sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
+			temporal_reuse_output_reservoir.sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
 #endif
 		}
-		new_reservoir.sanity_check(make_int2(x, y));
+		temporal_reuse_output_reservoir.sanity_check(make_int2(x, y));
 	}
 
 	// /* ------------------------------- */
@@ -251,34 +251,34 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 #error "Unsupported bias correction mode"
 #endif
 
-	if (new_reservoir.combine_with(initial_candidates_reservoir, initial_candidates_mis_weight, initial_candidates_reservoir.sample.target_function, /* jacobian is 1 when reusing at the exact same spot */ 1.0f, random_number_generator))
+	if (temporal_reuse_output_reservoir.combine_with(initial_candidates_reservoir, initial_candidates_mis_weight, initial_candidates_reservoir.sample.target_function, /* jacobian is 1 when reusing at the exact same spot */ 1.0f, random_number_generator))
 	{
 		selected_neighbor = INITIAL_CANDIDATES_ID;
 
 		// Using ReSTIR_DI_BiasCorrectionUseVisiblity here because that's what we use in the resampling target function
 #if ReSTIR_DI_BiasCorrectionUseVisiblity == KERNEL_OPTION_FALSE
 		// We resampled the center pixel so we can copy the unoccluded flag
-		new_reservoir.sample.flags |= initial_candidates_reservoir.sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
+		temporal_reuse_output_reservoir.sample.flags |= initial_candidates_reservoir.sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
 #else
 		// However, if we're using the visibility in the target function, then
 		// we are sure that the sample is now unoccluded
-		new_reservoir.sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
+		temporal_reuse_output_reservoir.sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
 #endif
 	}
-	new_reservoir.sanity_check(make_int2(x, y));
+	temporal_reuse_output_reservoir.sanity_check(make_int2(x, y));
 
 	float normalization_numerator = 1.0f;
 	float normalization_denominator = 1.0f;
 
 	ReSTIRDITemporalNormalizationWeight<ReSTIR_DI_BiasCorrectionWeights> normalization_function;
 #if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_M
-	normalization_function.get_normalization(render_data, new_reservoir, 
+	normalization_function.get_normalization(render_data, temporal_reuse_output_reservoir, 
 		initial_candidates_reservoir.M, temporal_neighbor_reservoir.M, normalization_numerator, normalization_denominator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
-	normalization_function.get_normalization(render_data, new_reservoir,
+	normalization_function.get_normalization(render_data, temporal_reuse_output_reservoir,
 		initial_candidates_reservoir.M, temporal_neighbor_reservoir.M, center_pixel_surface, temporal_neighbor_surface, normalization_numerator, normalization_denominator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
-	normalization_function.get_normalization(render_data, new_reservoir,
+	normalization_function.get_normalization(render_data, temporal_reuse_output_reservoir,
 		initial_candidates_reservoir.M, temporal_neighbor_reservoir.M, center_pixel_surface, temporal_neighbor_surface, selected_neighbor, normalization_numerator, normalization_denominator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_GBH
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
@@ -290,10 +290,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 #error "Unsupported bias correction mode"
 #endif
 
-	new_reservoir.end_with_normalization(normalization_numerator, normalization_denominator);
-	new_reservoir.sanity_check(make_int2(x, y));
+	temporal_reuse_output_reservoir.end_with_normalization(normalization_numerator, normalization_denominator);
+	temporal_reuse_output_reservoir.sanity_check(make_int2(x, y));
 
-	render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs[center_pixel_index] = new_reservoir;
+	render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs[center_pixel_index] = temporal_reuse_output_reservoir;
 }
 
 #endif

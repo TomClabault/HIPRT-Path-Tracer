@@ -16,35 +16,30 @@ const std::string GPURenderer::CAMERA_RAYS_KERNEL_ID = "Camera Rays";
 const std::string GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID = "ReSTIR DI Initial Candidates";
 const std::string GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID = "ReSTIR DI Temporal Reuse";
 const std::string GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID = "ReSTIR DI Spatial Reuse";
+const std::string GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID = "ReSTIR DI Spatiotemporal Reuse";
 const std::string GPURenderer::PATH_TRACING_KERNEL_ID = "Path Tracing";
+const std::string GPURenderer::RAY_VOLUME_STATE_SIZE_KERNEL_ID = "Ray Volume State Size";
 
-const std::string GPURenderer::CAMERA_RAYS_KERNEL_FUNC_NAME = "CameraRays";
-const std::string GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_FUNC_NAME = "ReSTIR_DI_InitialCandidates";
-const std::string GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_FUNC_NAME = "ReSTIR_DI_TemporalReuse";
-const std::string GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_FUNC_NAME = "ReSTIR_DI_SpatialReuse";
-const std::string GPURenderer::PATH_TRACING_KERNEL_FUNC_NAME = "FullPathTracer";
-const std::string GPURenderer::RAY_VOLUME_STATE_SIZE_KERNEL_FUNC_NAME = "RayVolumeStateSize";
-
-const std::string GPURenderer::FULL_FRAME_TIME_KEY = "FullFrameTime";
-
-const std::string GPURenderer::KERNEL_FILES[] = 
+const std::unordered_map<std::string, std::string> GPURenderer::KERNEL_FUNCTION_NAMES = 
 {
-	DEVICE_KERNELS_DIRECTORY "/CameraRays.h", 
-	DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReSTIR_DI_InitialCandidates.h",
-	DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReSTIR_DI_TemporalReuse.h",
-	DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReSTIR_DI_SpatialReuse.h",
-	DEVICE_KERNELS_DIRECTORY "/FullPathTracer.h", 
-	DEVICE_KERNELS_DIRECTORY "/Utils/RayVolumeStateSize.h", 
+	{ CAMERA_RAYS_KERNEL_ID, "CameraRays" },
+	{ RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID, "ReSTIR_DI_InitialCandidates" },
+	{ RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID, "ReSTIR_DI_TemporalReuse" },
+	{ RESTIR_DI_SPATIAL_REUSE_KERNEL_ID, "ReSTIR_DI_SpatialReuse" },
+	{ RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID, "ReSTIR_DI_SpatiotemporalReuse" },
+	{ PATH_TRACING_KERNEL_ID, "FullPathTracer" },
+	{ RAY_VOLUME_STATE_SIZE_KERNEL_ID, "RayVolumeStateSize" },
 };
 
-const std::string GPURenderer::KERNEL_FUNCTIONS[] = 
-{ 
-	CAMERA_RAYS_KERNEL_FUNC_NAME,
-	RESTIR_DI_INITIAL_CANDIDATES_KERNEL_FUNC_NAME,
-	RESTIR_DI_TEMPORAL_REUSE_KERNEL_FUNC_NAME,
-	RESTIR_DI_SPATIAL_REUSE_KERNEL_FUNC_NAME,
-	PATH_TRACING_KERNEL_FUNC_NAME,
-	RAY_VOLUME_STATE_SIZE_KERNEL_FUNC_NAME,
+const std::unordered_map<std::string, std::string> GPURenderer::KERNEL_FILES =
+{
+	{ CAMERA_RAYS_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/CameraRays.h" },
+	{ RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReSTIR_DI_InitialCandidates.h" },
+	{ RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReSTIR_DI_TemporalReuse.h" },
+	{ RESTIR_DI_SPATIAL_REUSE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReSTIR_DI_SpatialReuse.h" },
+	{ RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReSTIR_DI_FusedSpatiotemporalReuse.h" },
+	{ PATH_TRACING_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/FullPathTracer.h" },
+	{ RAY_VOLUME_STATE_SIZE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/Utils/RayVolumeStateSize.h" },
 };
 
 const std::vector<std::string> GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS = 
@@ -54,6 +49,8 @@ const std::vector<std::string> GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIR
 	OROCHI_INCLUDES_DIRECTORY, 
 	"./" 
 };
+
+const std::string GPURenderer::FULL_FRAME_TIME_KEY = "FullFrameTime";
 
 GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
 {
@@ -72,8 +69,8 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
 	setup_kernels();
 
 	m_ms_time_per_pass["All"] = 0.0f;
-	for (std::string pass : KERNEL_FUNCTIONS)
-		m_ms_time_per_pass[pass] = 0.0f;
+	for (auto id_to_pass : KERNEL_FUNCTION_NAMES)
+		m_ms_time_per_pass[id_to_pass.first] = 0.0f;
 
 	OROCHI_CHECK_ERROR(oroStreamCreate(&m_main_stream));
 
@@ -118,8 +115,8 @@ void GPURenderer::setup_kernels()
 	// numbers are the best may vary. A lot.)
 	
 	// Configuring the kernels
-	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].set_kernel_file_path(GPURenderer::KERNEL_FILES[0]);
-	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].set_kernel_function_name(GPURenderer::KERNEL_FUNCTIONS[0]);
+	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].set_kernel_file_path(GPURenderer::KERNEL_FILES.at(GPURenderer::CAMERA_RAYS_KERNEL_ID));
+	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].set_kernel_function_name(GPURenderer::KERNEL_FUNCTION_NAMES.at(GPURenderer::CAMERA_RAYS_KERNEL_ID));
 	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].synchronize_options_with(*m_global_compiler_options, options_excluded_from_synchro);
 	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].get_kernel_options().set_additional_include_directories(GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS);
 	// The camera rays kernel doesn't need shadow rays so let's not use shared memory for that
@@ -127,8 +124,8 @@ void GPURenderer::setup_kernels()
 	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_SHADOW_RAYS, 0);
 	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_GLOBAL_RAYS, 48);
 
-	m_kernels[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].set_kernel_file_path(GPURenderer::KERNEL_FILES[1]);
-	m_kernels[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].set_kernel_function_name(GPURenderer::KERNEL_FUNCTIONS[1]);
+	m_kernels[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].set_kernel_file_path(GPURenderer::KERNEL_FILES.at(GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID));
+	m_kernels[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].set_kernel_function_name(GPURenderer::KERNEL_FUNCTION_NAMES.at(GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID));
 	m_kernels[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].synchronize_options_with(*m_global_compiler_options, options_excluded_from_synchro);
 	m_kernels[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].get_kernel_options().set_additional_include_directories(GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS);
 	m_kernels[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_GLOBAL_RAYS, KERNEL_OPTION_FALSE);
@@ -136,8 +133,8 @@ void GPURenderer::setup_kernels()
 	m_kernels[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_GLOBAL_RAYS, 0);
 	m_kernels[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_SHADOW_RAYS, 1);
 
-	m_kernels[GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID].set_kernel_file_path(GPURenderer::KERNEL_FILES[2]);
-	m_kernels[GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID].set_kernel_function_name(GPURenderer::KERNEL_FUNCTIONS[2]);
+	m_kernels[GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID].set_kernel_file_path(GPURenderer::KERNEL_FILES.at(GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID));
+	m_kernels[GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID].set_kernel_function_name(GPURenderer::KERNEL_FUNCTION_NAMES.at(GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID));
 	m_kernels[GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID].synchronize_options_with(*m_global_compiler_options, options_excluded_from_synchro);
 	m_kernels[GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID].get_kernel_options().set_additional_include_directories(GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS);
 	m_kernels[GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_GLOBAL_RAYS, KERNEL_OPTION_FALSE);
@@ -145,8 +142,8 @@ void GPURenderer::setup_kernels()
 	m_kernels[GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_GLOBAL_RAYS, 0);
 	m_kernels[GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_SHADOW_RAYS, 16);
 
-	m_kernels[GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID].set_kernel_file_path(GPURenderer::KERNEL_FILES[3]);
-	m_kernels[GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID].set_kernel_function_name(GPURenderer::KERNEL_FUNCTIONS[3]);
+	m_kernels[GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID].set_kernel_file_path(GPURenderer::KERNEL_FILES.at(GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID));
+	m_kernels[GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID].set_kernel_function_name(GPURenderer::KERNEL_FUNCTION_NAMES.at(GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID));
 	m_kernels[GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID].synchronize_options_with(*m_global_compiler_options, options_excluded_from_synchro);
 	m_kernels[GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID].get_kernel_options().set_additional_include_directories(GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS);
 	m_kernels[GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_GLOBAL_RAYS, KERNEL_OPTION_FALSE);
@@ -154,8 +151,17 @@ void GPURenderer::setup_kernels()
 	m_kernels[GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_GLOBAL_RAYS, 0);
 	m_kernels[GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_SHADOW_RAYS, 0);
 
-	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].set_kernel_file_path(GPURenderer::KERNEL_FILES[4]);
-	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].set_kernel_function_name(GPURenderer::KERNEL_FUNCTIONS[4]);
+	m_kernels[GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID].set_kernel_file_path(GPURenderer::KERNEL_FILES.at(GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID));
+	m_kernels[GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID].set_kernel_function_name(GPURenderer::KERNEL_FUNCTION_NAMES.at(GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID));
+	m_kernels[GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID].synchronize_options_with(*m_global_compiler_options, options_excluded_from_synchro);
+	m_kernels[GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID].get_kernel_options().set_additional_include_directories(GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS);
+	m_kernels[GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_GLOBAL_RAYS, KERNEL_OPTION_FALSE);
+	m_kernels[GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SHADOW_RAYS, KERNEL_OPTION_TRUE);
+	m_kernels[GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_GLOBAL_RAYS, 0);
+	m_kernels[GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_SHADOW_RAYS, 0);
+
+	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].set_kernel_file_path(GPURenderer::KERNEL_FILES.at(GPURenderer::PATH_TRACING_KERNEL_ID));
+	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].set_kernel_function_name(GPURenderer::KERNEL_FUNCTION_NAMES.at(GPURenderer::PATH_TRACING_KERNEL_ID));
 	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].synchronize_options_with(*m_global_compiler_options, options_excluded_from_synchro);
 	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].get_kernel_options().set_additional_include_directories(GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS);
 	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_GLOBAL_RAYS, 12);
@@ -164,8 +170,8 @@ void GPURenderer::setup_kernels()
 	// Configuring the kernel that will be used to retrieve the size of the RayVolumeState structure.
 	// This size will be needed to resize the 'ray_volume_states' buffer in the GBuffer if the nested dielectrics
 	// stack size changes
-	m_ray_volume_state_byte_size_kernel.set_kernel_file_path(GPURenderer::KERNEL_FILES[5]);
-	m_ray_volume_state_byte_size_kernel.set_kernel_function_name(GPURenderer::KERNEL_FUNCTIONS[5]);
+	m_ray_volume_state_byte_size_kernel.set_kernel_file_path(GPURenderer::KERNEL_FILES.at(GPURenderer::RAY_VOLUME_STATE_SIZE_KERNEL_ID));
+	m_ray_volume_state_byte_size_kernel.set_kernel_function_name(GPURenderer::KERNEL_FUNCTION_NAMES.at(GPURenderer::RAY_VOLUME_STATE_SIZE_KERNEL_ID));
 	m_ray_volume_state_byte_size_kernel.get_kernel_options().set_additional_include_directories(GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS);
 	// Synchronizing here so that when the nested dielectrics stack size of the
 	// global kernel option changes, this kernel has the size change too and can
@@ -178,6 +184,7 @@ void GPURenderer::setup_kernels()
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID]), m_hiprt_orochi_ctx);
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID]), m_hiprt_orochi_ctx);
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID]), m_hiprt_orochi_ctx);
+	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID]), m_hiprt_orochi_ctx);
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID]), m_hiprt_orochi_ctx);
 }
 
@@ -303,8 +310,8 @@ void GPURenderer::internal_update_restir_di_buffers()
 	{
 		// ReSTIR DI enabled
 		bool initial_candidates_reservoir_needs_resize = m_restir_di_state.initial_candidates_reservoirs.get_element_count() == 0;
-		bool spatial_output_1_needs_resize = m_restir_di_state.spatial_reuse_output_1.get_element_count() == 0;
-		bool spatial_output_2_needs_resize = m_restir_di_state.spatial_reuse_output_2.get_element_count() == 0;
+		bool spatial_output_1_needs_resize = m_restir_di_state.spatial_output_reservoirs_1.get_element_count() == 0;
+		bool spatial_output_2_needs_resize = m_restir_di_state.spatial_output_reservoirs_2.get_element_count() == 0;
 
 		if (initial_candidates_reservoir_needs_resize || spatial_output_1_needs_resize || spatial_output_2_needs_resize)
 		{
@@ -319,17 +326,17 @@ void GPURenderer::internal_update_restir_di_buffers()
 			m_restir_di_state.initial_candidates_reservoirs.resize(m_render_resolution.x * m_render_resolution.y);
 
 		if (spatial_output_1_needs_resize)
-			m_restir_di_state.spatial_reuse_output_1.resize(m_render_resolution.x * m_render_resolution.y);
+			m_restir_di_state.spatial_output_reservoirs_1.resize(m_render_resolution.x * m_render_resolution.y);
 
 		if (spatial_output_2_needs_resize)
-			m_restir_di_state.spatial_reuse_output_2.resize(m_render_resolution.x * m_render_resolution.y);
+			m_restir_di_state.spatial_output_reservoirs_2.resize(m_render_resolution.x * m_render_resolution.y);
 	}
 	else
 	{
 		// ReSTIR DI disabled, we're going to free the buffers if that's not already done
 		if (m_restir_di_state.initial_candidates_reservoirs.get_element_count() > 0
-			|| m_restir_di_state.spatial_reuse_output_1.get_element_count() > 0 ||
-			m_restir_di_state.spatial_reuse_output_2.get_element_count() > 0)
+			|| m_restir_di_state.spatial_output_reservoirs_1.get_element_count() > 0 ||
+			m_restir_di_state.spatial_output_reservoirs_2.get_element_count() > 0)
 		{
 			// If one of the buffers isn't freed already, we're going to free it. In this case, we need to synchronize to avoid
 			// freeing a buffer that the renderer is actively using in the frame it is rendering right now
@@ -339,8 +346,8 @@ void GPURenderer::internal_update_restir_di_buffers()
 		}
 
 		m_restir_di_state.initial_candidates_reservoirs.free();
-		m_restir_di_state.spatial_reuse_output_1.free();
-		m_restir_di_state.spatial_reuse_output_2.free();
+		m_restir_di_state.spatial_output_reservoirs_1.free();
+		m_restir_di_state.spatial_output_reservoirs_2.free();
 	}
 }
 
@@ -416,7 +423,7 @@ void GPURenderer::render()
 	for (int i = 1; i <= m_render_data.render_settings.samples_per_frame; i++)
 	{
 		// Updating the previous and current camera
-		m_render_data.current_camera = m_camera.to_hiprt();
+     	m_render_data.current_camera = m_camera.to_hiprt();
 		m_render_data.prev_camera = m_previous_frame_camera.to_hiprt();
 
 		if (i == m_render_data.render_settings.samples_per_frame)
@@ -486,36 +493,46 @@ void GPURenderer::launch_ReSTIR_DI()
 		configure_ReSTIR_DI_initial_pass();
 		m_kernels[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].launch_timed_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
 
-		if (m_render_data.render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
+		if (m_render_data.render_settings.restir_di_settings.do_fused_spatiotemporal)
 		{
-			configure_ReSTIR_DI_temporal_pass();
-
-			m_kernels[GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID].launch_timed_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
+			// Launching the fused spatiotemporal kernel
+			configure_ReSTIR_DI_spatiotemporal_pass();
+			m_kernels[GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID].launch_timed_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
 		}
-
-
-		if (m_render_data.render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)
+		else
 		{
-			// Emitting an event for timing all the spatial reuse passes combined
-			OROCHI_CHECK_ERROR(oroEventRecord(m_restir_di_state.spatial_reuse_time_start, m_main_stream));
+			// Launching the temporal and spatial passes separately
 
-			for (int spatial_reuse_pass = 0; spatial_reuse_pass < m_render_data.render_settings.restir_di_settings.spatial_pass.number_of_passes; spatial_reuse_pass++)
+			if (m_render_data.render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
 			{
-				configure_ReSTIR_DI_spatial_pass(spatial_reuse_pass);
+				configure_ReSTIR_DI_temporal_pass();
 
-				m_kernels[GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID].launch_timed_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
+				m_kernels[GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID].launch_timed_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
 			}
 
-			// Emitting the stop event
-			OROCHI_CHECK_ERROR(oroEventRecord(m_restir_di_state.spatial_reuse_time_stop, m_main_stream));
+			if (m_render_data.render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)
+			{
+				// Emitting an event for timing all the spatial reuse passes combined
+				OROCHI_CHECK_ERROR(oroEventRecord(m_restir_di_state.spatial_reuse_time_start, m_main_stream));
 
-			GPUKernel::ComputeElapsedTimeCallbackData* elapsed_time_data = new GPUKernel::ComputeElapsedTimeCallbackData;
-			elapsed_time_data->start = m_restir_di_state.spatial_reuse_time_start;
-			elapsed_time_data->end = m_restir_di_state.spatial_reuse_time_stop;
-			elapsed_time_data->elapsed_time_out = &m_ms_time_per_pass[GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID];
+				for (int spatial_reuse_pass = 0; spatial_reuse_pass < m_render_data.render_settings.restir_di_settings.spatial_pass.number_of_passes; spatial_reuse_pass++)
+				{
+					configure_ReSTIR_DI_spatial_pass(spatial_reuse_pass);
 
-			// Computing the time elapsed for all spatial reuse passes
-			OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_main_stream, GPUKernel::compute_elapsed_time_callback, elapsed_time_data));
+					m_kernels[GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID].launch_timed_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
+				}
+
+				// Emitting the stop event
+				OROCHI_CHECK_ERROR(oroEventRecord(m_restir_di_state.spatial_reuse_time_stop, m_main_stream));
+
+				GPUKernel::ComputeElapsedTimeCallbackData* elapsed_time_data = new GPUKernel::ComputeElapsedTimeCallbackData;
+				elapsed_time_data->start = m_restir_di_state.spatial_reuse_time_start;
+				elapsed_time_data->end = m_restir_di_state.spatial_reuse_time_stop;
+				elapsed_time_data->elapsed_time_out = &m_ms_time_per_pass[GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID];
+
+				// Computing the time elapsed for all spatial reuse passes
+				OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_main_stream, GPUKernel::compute_elapsed_time_callback, elapsed_time_data));
+			}
 		}
 
 		configure_ReSTIR_DI_output_buffer();
@@ -535,23 +552,51 @@ void GPURenderer::configure_ReSTIR_DI_temporal_pass()
 	m_render_data.random_seed = m_rng.xorshift32();
 	m_render_data.render_settings.restir_di_settings.temporal_pass.permutation_sampling_random_bits = m_rng.xorshift32();
 
-	// The input of the temporal pass is the output of last frame ReSTIR (and also the initial candidates but this is implicit
-	// and "hardcoded in the shader"
+	// The input of the temporal pass is the output of last frame's
+	// ReSTIR (and also the initial candidates but this is implicit
+	// and hardcoded in the shader)
 	m_render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs = m_render_data.render_settings.restir_di_settings.restir_output_reservoirs;
 
 	if (m_render_data.render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)
+		// If we're going to do spatial reuse, reuse the initial
+		// candidate reservoirs to store the output of the temporal pass.
+		// The spatial reuse pass will read form that buffer.
+		// 
+		// Reusing the initial candidates buffer (which is an input
+		// to the temporal pass) as the output is legal and does not
+		// cause a race condition because a given pixel only read and
+		// writes to its own pixel in the initial candidates buffer.
+		// We're not risking another pixel reading in someone else's
+		// pixel in the initial candidates buffer while we write into
+		// it (that would be a race condition)
 		m_render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs = m_restir_di_state.initial_candidates_reservoirs.get_device_pointer();
-	// If we're going to do spatial reuse, reuse the initial candidate reservoirs to store the output of the temporal pass.
-	// The spatial reuse pass will read form that buffer
 	else
 	{
-		// Else, no spatial reuse, the output of the temporal pass is going to be in its own buffer.
-		// Alternatively using spatial_reuse_output_1 and spatial_reuse_output_2 to avoid race conditions
+		// Else, no spatial reuse, the output of the temporal pass is going to be in its own buffer (because otherwise, 
+		// if we output in the initial candidates buffer, then it's going to be overriden by the initial candidates pass of the next frame).
+		// Alternatively using spatial_output_reservoirs_1 and spatial_output_reservoirs_2 to avoid race conditions
 		if (m_restir_di_state.odd_frame)
-			m_render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs = m_restir_di_state.spatial_reuse_output_1.get_device_pointer();
+			m_render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs = m_restir_di_state.spatial_output_reservoirs_1.get_device_pointer();
 		else
-			m_render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs = m_restir_di_state.spatial_reuse_output_2.get_device_pointer();
+			m_render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs = m_restir_di_state.spatial_output_reservoirs_2.get_device_pointer();
 	}
+}
+
+void GPURenderer::configure_ReSTIR_DI_temporal_pass_for_fused_spatiotemporal()
+{
+	m_render_data.random_seed = m_rng.xorshift32();
+	m_render_data.render_settings.restir_di_settings.temporal_pass.permutation_sampling_random_bits = m_rng.xorshift32();
+
+	// The input of the temporal pass is the output of last frame's
+	// ReSTIR (and also the initial candidates but this is implicit
+	// and hardcoded in the shader)
+	if (m_restir_di_state.odd_frame)
+		m_render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs = m_restir_di_state.spatial_output_reservoirs_1.get_device_pointer();
+	else
+		m_render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs = m_restir_di_state.spatial_output_reservoirs_2.get_device_pointer();
+
+	// Not needed. In the fused spatiotemporal pass, everything is output by the spatial pass
+	m_render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs = nullptr;
 }
 
 void GPURenderer::configure_ReSTIR_DI_spatial_pass(int spatial_pass_index)
@@ -562,40 +607,69 @@ void GPURenderer::configure_ReSTIR_DI_spatial_pass(int spatial_pass_index)
 	if (spatial_pass_index == 0)
 	{
 		if (m_render_data.render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
-			// For the first spatial reuse pass, we hardcode reading from the output of the temporal pass and storing into 'spatial_reuse_output_1'
+			// For the first spatial reuse pass, we hardcode reading from the output of the temporal pass and storing into 'spatial_output_reservoirs_1'
 			m_render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs = m_render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs;
 		else
 			// If there is no temporal reuse pass, using the initial candidates as the input to the spatial reuse pass
 			m_render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs = m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs;
 
-		m_render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs = m_restir_di_state.spatial_reuse_output_1.get_device_pointer();
+		m_render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs = m_restir_di_state.spatial_output_reservoirs_1.get_device_pointer();
 	}
 	else
 	{
 		// And then, starting at the second spatial reuse pass, we read from the output of the previous spatial pass and store
-		// in either spatial_reuse_output_1 or spatial_reuse_output_2, depending on which one isn't the input (we don't
+		// in either spatial_output_reservoirs_1 or spatial_output_reservoirs_2, depending on which one isn't the input (we don't
 		// want to store in the same buffers that is used for output because that's a race condition so
 		// we're ping-ponging between the two outputs of the spatial reuse pass)
 
 		if ((spatial_pass_index & 1) == 0)
 		{
-			m_render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs = m_restir_di_state.spatial_reuse_output_2.get_device_pointer();
-			m_render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs = m_restir_di_state.spatial_reuse_output_1.get_device_pointer();
+			m_render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs = m_restir_di_state.spatial_output_reservoirs_2.get_device_pointer();
+			m_render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs = m_restir_di_state.spatial_output_reservoirs_1.get_device_pointer();
 		}
 		else
 		{
-			m_render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs = m_restir_di_state.spatial_reuse_output_1.get_device_pointer();
-			m_render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs = m_restir_di_state.spatial_reuse_output_2.get_device_pointer();
+			m_render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs = m_restir_di_state.spatial_output_reservoirs_1.get_device_pointer();
+			m_render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs = m_restir_di_state.spatial_output_reservoirs_2.get_device_pointer();
 
 		}
 	}
 }
 
+void GPURenderer::configure_ReSTIR_DI_spatial_pass_for_fused_spatiotemporal(int spatial_pass_index)
+{
+	if (spatial_pass_index == 0)
+	{
+		// The input of the spatial resampling in the fused spatiotemporal pass is the
+		// temporal buffer of the last frame i.e. the input to the temporal pass
+		//
+		// Note, this line of code below assumes that the temporal pass was configured
+		// prior to calling this function such that
+		// 'm_render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs'
+		// is the proper pointer
+		m_render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs = m_render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs;
+
+		if (m_restir_di_state.odd_frame)
+			m_render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs = m_restir_di_state.spatial_output_reservoirs_2.get_device_pointer();
+		else
+			m_render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs = m_restir_di_state.spatial_output_reservoirs_1.get_device_pointer();
+	}
+}
+
+void GPURenderer::configure_ReSTIR_DI_spatiotemporal_pass()
+{
+	// The buffers of the temporal pass are going to be configured in the same way
+	configure_ReSTIR_DI_temporal_pass_for_fused_spatiotemporal();
+
+	// But the spatial pass is going to read from the input of the temporal pass i.e. the temporal buffer of the last frame, it's not going to read from the output of the temporal pass
+	configure_ReSTIR_DI_spatial_pass_for_fused_spatiotemporal(0);
+}
+
 void GPURenderer::configure_ReSTIR_DI_output_buffer()
 {
 	// Keeping in mind which was the buffer used last for the output of the spatial reuse pass as this is the buffer that
-		// we're going to use as the input to the temporal reuse pass of the next frame
-	if (m_render_data.render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)
+	// we're going to use as the input to the temporal reuse pass of the next frame
+	if (m_render_data.render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass || m_render_data.render_settings.restir_di_settings.do_fused_spatiotemporal)
 		// If there was spatial reuse, using the output of the spatial reuse pass as the input of the temporal
 		// pass of next frame
 		m_render_data.render_settings.restir_di_settings.restir_output_reservoirs = m_render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs;
@@ -657,8 +731,8 @@ void GPURenderer::resize(int new_width, int new_height)
 	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI)
 	{
 		m_restir_di_state.initial_candidates_reservoirs.resize(new_width * new_height);
-		m_restir_di_state.spatial_reuse_output_2.resize(new_width * new_height);
-		m_restir_di_state.spatial_reuse_output_1.resize(new_width * new_height);
+		m_restir_di_state.spatial_output_reservoirs_2.resize(new_width * new_height);
+		m_restir_di_state.spatial_output_reservoirs_1.resize(new_width * new_height);
 	}
 
 	m_pixel_active.resize(new_width * new_height);
@@ -835,8 +909,8 @@ float GPURenderer::get_render_pass_time(const std::string& key)
 void GPURenderer::reset_frame_times()
 {
 	m_ms_time_per_pass["All"] = 0.0f;
-	for (std::string pass : KERNEL_FUNCTIONS)
-		m_ms_time_per_pass[pass] = 0.0f;
+	for (auto id_to_pass : KERNEL_FUNCTION_NAMES)
+		m_ms_time_per_pass[id_to_pass.first] = 0.0f;
 }
 
 void GPURenderer::reset(std::shared_ptr<ApplicationSettings> application_settings)
@@ -929,13 +1003,13 @@ void GPURenderer::update_render_data()
 		if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI)
 		{
 			m_render_data.aux_buffers.restir_reservoir_buffer_1 = m_restir_di_state.initial_candidates_reservoirs.get_device_pointer();
-			m_render_data.aux_buffers.restir_reservoir_buffer_2 = m_restir_di_state.spatial_reuse_output_1.get_device_pointer();
-			m_render_data.aux_buffers.restir_reservoir_buffer_3 = m_restir_di_state.spatial_reuse_output_2.get_device_pointer();
+			m_render_data.aux_buffers.restir_reservoir_buffer_2 = m_restir_di_state.spatial_output_reservoirs_1.get_device_pointer();
+			m_render_data.aux_buffers.restir_reservoir_buffer_3 = m_restir_di_state.spatial_output_reservoirs_2.get_device_pointer();
 
 			// If we just got ReSTIR enabled back, setting this one arbitrarily and resetting its content
 			std::vector<ReSTIRDIReservoir> empty_reservoirs(m_render_resolution.x * m_render_resolution.y, ReSTIRDIReservoir());
-			m_render_data.render_settings.restir_di_settings.restir_output_reservoirs = m_restir_di_state.spatial_reuse_output_1.get_device_pointer();
-			m_restir_di_state.spatial_reuse_output_1.upload_data(empty_reservoirs);
+			m_render_data.render_settings.restir_di_settings.restir_output_reservoirs = m_restir_di_state.spatial_output_reservoirs_1.get_device_pointer();
+			m_restir_di_state.spatial_output_reservoirs_1.upload_data(empty_reservoirs);
 		}
 		else
 		{
