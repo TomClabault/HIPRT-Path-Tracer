@@ -32,7 +32,8 @@ class ThreadManager
 {
 public:
 	static std::string COMPILE_KERNEL_PASS_THREAD_KEY;
-	static std::string TEXTURE_THREADS_KEY;
+	static std::string SCENE_TEXTURES_LOADING_THREAD_KEY;
+	static std::string SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES;
 	static std::string ENVMAP_LOAD_THREAD_KEY;
 
 	~ThreadManager();
@@ -52,11 +53,45 @@ public:
 	template <class _Fn, class... _Args>
 	static void start_thread(std::string key, _Fn function, _Args... args)
 	{
-		if (m_monothread)
-			start_serial_thread(key, function, args...);
+		std::vector<std::string>& dependencies = m_dependencies[key];
+		if (!dependencies.empty())
+			start_with_dependencies(dependencies, key, function, args...);
 		else
-			// Starting the thread and adding it to the list of threads for the given key
-			m_threads_map[key].push_back(std::thread(function, args...));
+		{
+			if (m_monothread)
+				start_serial_thread(key, function, args...);
+			else
+				// Starting the thread and adding it to the list of threads for the given key
+				m_threads_map[key].push_back(std::thread(function, args...));
+		}
+	}
+
+	template <class _Fn, class... _Args>
+	static void start_with_dependencies(const std::vector<std::string>& dependencies, const std::string& thread_key_to_start, _Fn function, _Args... args)
+	{
+		// These threads have a dependency
+
+		// Executing the given function after waiting for the dependencies
+		if (m_monothread)
+		{
+			for (const std::string& dependency : dependencies)
+				join_threads(dependency);
+
+			start_serial_thread(thread_key_to_start, function, args...);
+		}
+		else
+		{
+			// Starting a thread that will wait for the dependencies before calling the given function
+			m_threads_map[thread_key_to_start].push_back(std::thread([dependencies, function, args...]() {
+				for (const std::string& dependency : dependencies)
+					join_threads(dependency);
+
+				std::cout << "Waiting dependnecy done" << std::endl;
+
+				std::thread function_thread(function, args...);
+				function_thread.join();
+			}));
+		}
 	}
 
 	/**
@@ -71,6 +106,12 @@ public:
 
 	static void join_threads(std::string key);
 
+	/**
+	 * Adds a dependecy on 'dependency_key' from 'key' such that all the threads started with key
+	 * 'key' only start after all threads from 'dependency_key' are finished
+	 */
+	static void add_dependency(const std::string& key, const std::string& dependency_key);
+
 private:
 	// If true, the ThreadManager will execute all threads serially
 	static bool m_monothread;
@@ -81,6 +122,10 @@ private:
 	// The ThreadManager can hold as many thread as we want and to find the thread
 	// we want amongst all the threads stored, we use keys, hence the unordered_map
 	static std::unordered_map<std::string, std::vector<std::thread>> m_threads_map;
+
+	// For each thread key, maps to a vector of the dependencies of these threads
+	// (thread with the thread key given as key to the map)
+	static std::unordered_map<std::string, std::vector<std::string>> m_dependencies;
 };
 
 #endif

@@ -39,7 +39,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE SimplifiedRendererMaterial get_intersection_mater
 {
 	RendererMaterial material = render_data.buffers.materials_buffer[material_index];
 
-    get_material_property(render_data, material.emission, false, texcoords, material.emission_texture_index);
+    ColorRGB32F emission = material.get_emission() / material.emission_strength;
+    get_material_property(render_data, emission, false, texcoords, material.emission_texture_index);
+    material.set_emission(emission);
+
     get_base_color(render_data, material.base_color, out_base_color_alpha, texcoords, material.base_color_texture_index);
 
     get_metallic_roughness(render_data, material.metallic, material.roughness, texcoords, material.metallic_texture_index, material.roughness_texture_index, material.roughness_metallic_texture_index);
@@ -66,19 +69,23 @@ HIPRT_HOST_DEVICE HIPRT_INLINE SimplifiedRendererMaterial get_intersection_mater
     // If the oren nayar microfacet normal standard deviation is spatially varying on the
     // surface, we'll need to make sure that the A and B precomputed coefficient are actually
     // precomputed according to that standard deviation
-    if (material.oren_sigma_texture_index != -1)
+    if (material.oren_sigma_texture_index != RendererMaterial::NO_TEXTURE)
         material.precompute_oren_nayar();
 
     // Same for the anisotropic, recomputing the precomputed alpha_x and alpha_y if necessary
-    if ((material.roughness_texture_index != -1 || material.roughness_metallic_texture_index || material.anisotropic_texture_index != -1) && material.anisotropic > 0.0f)
+    if ((material.roughness_texture_index != RendererMaterial::NO_TEXTURE || material.roughness_metallic_texture_index || material.anisotropic_texture_index != RendererMaterial::NO_TEXTURE) 
+        && material.anisotropic > 0.0f)
         material.precompute_anisotropic();
 
-    return SimplifiedRendererMaterial(material);
+    SimplifiedRendererMaterial simplified_material(material);
+    simplified_material.emissive_texture_used = material.emission_texture_index > 0;
+
+    return simplified_material;
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE void get_metallic_roughness(const HIPRTRenderData& render_data, float& metallic, float& roughness, const float2& texcoords, int metallic_texture_index, int roughness_texture_index, int metallic_roughness_texture_index)
 {
-    if (metallic_roughness_texture_index != -1)
+    if (metallic_roughness_texture_index != RendererMaterial::NO_TEXTURE)
     {
         ColorRGB32F rgb = sample_texture_rgb_8bits(render_data.buffers.material_textures, metallic_roughness_texture_index, render_data.buffers.textures_dims[metallic_roughness_texture_index], false, texcoords);
 
@@ -99,7 +106,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void get_base_color(const HIPRTRenderData& render
 
     out_alpha = 1.0;
     get_material_property(render_data, rgba, true, texcoords, base_color_texture_index);
-    if (base_color_texture_index != -1)
+    if (base_color_texture_index != RendererMaterial::NO_TEXTURE)
     {
         base_color = ColorRGB32F(rgba.r, rgba.g, rgba.b);
         out_alpha = rgba.a;
@@ -132,7 +139,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void read_data(const ColorRGBA32F& rgba, float& d
 template <typename T>
 HIPRT_HOST_DEVICE HIPRT_INLINE void get_material_property(const HIPRTRenderData& render_data, T& output_data, bool is_srgb, const float2& texcoords, int texture_index)
 {
-    if (texture_index == -1)
+    if (texture_index == RendererMaterial::NO_TEXTURE || texture_index == RendererMaterial::CONSTANT_EMISSIVE_TEXTURE)
         return;
 
     ColorRGBA32F rgba = sample_texture_rgba(render_data.buffers.material_textures, texture_index, render_data.buffers.textures_dims[texture_index], is_srgb, texcoords);

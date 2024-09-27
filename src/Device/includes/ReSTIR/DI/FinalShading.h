@@ -71,7 +71,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_ReSTIR_DI_reservoir(const HI
             else
             {
                 int material_index = render_data.buffers.material_indices[sample.emissive_triangle_index];
-                sample_emission = render_data.buffers.materials_buffer[material_index].emission;
+                sample_emission = render_data.buffers.materials_buffer[material_index].get_emission();
             }
 
             final_color = bsdf_color * reservoir.UCW * sample_emission * cosine_at_evaluated_point;

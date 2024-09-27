@@ -183,7 +183,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
                 envmap_direct_contribution = clamp_light_contribution(envmap_direct_contribution, render_data.render_settings.indirect_contribution_clamp, bounce > 0);
 
 #if DirectLightSamplingStrategy == LSS_NO_DIRECT_LIGHT_SAMPLING // No direct light sampling
-                ColorRGB32F hit_emission = ray_payload.material.emission;
+                ColorRGB32F hit_emission = ray_payload.material.get_emission();
                 hit_emission = clamp_light_contribution(hit_emission, render_data.render_settings.indirect_contribution_clamp, bounce > 0);
 
                 ray_payload.ray_color += hit_emission * ray_payload.throughput;
@@ -193,7 +193,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
                     // it into account on the first bounce, otherwise we would be
                     // accounting for direct light sampling twice (bounce on emissive
                     // geometry + direct light sampling). Otherwise, we don't check for bounce == 0
-                    ray_payload.ray_color += ray_payload.material.emission * ray_payload.throughput;
+                    ray_payload.ray_color += ray_payload.material.get_emission() * ray_payload.throughput;
 
                 ray_payload.ray_color += (light_direct_contribution + envmap_direct_contribution) * ray_payload.throughput;
 #endif

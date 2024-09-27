@@ -19,6 +19,7 @@ void ThreadFunctions::load_scene_texture(Scene& parsed_scene, std::string scene_
     corrected_filepath = scene_path;
     corrected_filepath = corrected_filepath.substr(0, corrected_filepath.rfind('/') + 1);
 
+    // While loop here so that a single thread can parse multiple textures
     while (thread_index < parsed_scene.textures.size())
     {
         std::string full_path = corrected_filepath + tex_paths[thread_index].second;
@@ -41,7 +42,7 @@ void ThreadFunctions::load_scene_texture(Scene& parsed_scene, std::string scene_
             break;
 
         case aiTextureType_DIFFUSE_ROUGHNESS:
-            if (parsed_scene.materials[material_indices[thread_index]].roughness_metallic_texture_index != -1)
+            if (parsed_scene.materials[material_indices[thread_index]].roughness_metallic_texture_index != RendererMaterial::NO_TEXTURE)
             {
                 // This means we have a packed metallic/roughness texture
                 nb_channels = 2;
@@ -56,16 +57,73 @@ void ThreadFunctions::load_scene_texture(Scene& parsed_scene, std::string scene_
                 break;
             }
 
+        case aiTextureType_EMISSIVE:
+            // TODO we only need 3 channels here but it's tricky to handle 3 channels texture with HIP/CUDA. Supported formats are only 1, 2, 4 channels, not three
+            nb_channels = 4;
+            break;
+
         default:
             nb_channels = 1;
             break;
         }
 
         Image8Bit texture = Image8Bit::read_image(full_path, nb_channels, false);
-        parsed_scene.textures_dims[thread_index] = make_int2(texture.width, texture.height);
-        parsed_scene.textures[thread_index] = texture;
+
+        if (type == aiTextureType_EMISSIVE)
+        {
+            if (texture.is_constant_color(/* threshold */ 5))
+            {
+                // The emissive texture is constant color, we can then just not use that texture and use 
+                // the emission filed of the material to store the emission of the texture
+                parsed_scene.materials[material_indices[thread_index]].emission_texture_index = RendererMaterial::CONSTANT_EMISSIVE_TEXTURE;
+
+                ColorRGBA32F emission_rgba = texture.sample_rgba32f(make_float2(0, 0));
+                parsed_scene.materials[material_indices[thread_index]].set_emission(ColorRGB32F(emission_rgba.r, emission_rgba.g, emission_rgba.b));
+            }
+            else
+            {
+                // If not emissive texture special case, we can actually read the texture
+                parsed_scene.textures_dims[thread_index] = make_int2(texture.width, texture.height);
+                parsed_scene.textures[thread_index] = texture;
+            }
+        }
+        else
+        {
+            // If not emissive texture special case, we can actually read the texture
+            parsed_scene.textures_dims[thread_index] = make_int2(texture.width, texture.height);
+            parsed_scene.textures[thread_index] = texture;
+        }
 
         thread_index += nb_threads;
+    }
+}
+
+void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, Scene& parsed_scene)
+{
+    // Looping over all the meshes
+    int current_triangle_index = 0;
+    for (int mesh_index = 0; mesh_index < scene->mNumMeshes; mesh_index++)
+    {
+        aiMesh* mesh = scene->mMeshes[mesh_index];
+        int material_index = mesh->mMaterialIndex;
+
+        RendererMaterial& renderer_material = parsed_scene.materials[material_index];
+
+        // If the mesh is emissive, we're going to add the indices of its faces to the emissive triangles
+        // of the scene such that the triangles can be importance sampled (direct lighting estimation / next-event estimation)
+        //
+        // We are not importance sampling emissive texture so if the mesh has an emissive texture attached, we're
+        // not counting it
+        bool is_mesh_emissive = renderer_material.is_emissive() && !renderer_material.emissive_texture_used;
+
+        if (is_mesh_emissive)
+        {
+            for (int face_index = 0; face_index < mesh->mNumFaces; face_index++, current_triangle_index++)
+                // Pushing the index of the current triangle if we're looping on an emissive mesh
+                parsed_scene.emissive_triangle_indices.push_back(current_triangle_index);
+        }
+        else
+            current_triangle_index += mesh->mNumFaces;
     }
 }
 

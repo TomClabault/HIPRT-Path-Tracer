@@ -41,7 +41,8 @@ int main(int argc, char* argv[])
     options.override_aspect_ratio = (float)width / height;
     start_scene = std::chrono::high_resolution_clock::now();
     start_full = std::chrono::high_resolution_clock::now();
-    SceneParser::parse_scene_file(cmd_arguments.scene_file_path, parsed_scene, options);
+    Assimp::Importer assimp_importer;
+    SceneParser::parse_scene_file(cmd_arguments.scene_file_path, assimp_importer, parsed_scene, options);
     stop_scene = std::chrono::high_resolution_clock::now();
 
     std::cout << "Scene geometry parsed in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop_scene - start_scene).count() << "ms" << std::endl;
@@ -63,6 +64,8 @@ int main(int argc, char* argv[])
     stop_full = std::chrono::high_resolution_clock::now();
     std::cout << "Full scene parsed & built in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop_full - start_full).count() << "ms" << std::endl;
 
+    // We don't need the scene anymore, we can free it now
+    assimp_importer.FreeScene();
     render_window.run();
 
 #else
@@ -76,7 +79,7 @@ int main(int argc, char* argv[])
     cpu_renderer.get_render_settings().nb_bounces = cmd_arguments.bounces;
     cpu_renderer.get_render_settings().samples_per_frame = cmd_arguments.render_samples;
 
-    ThreadManager::join_threads(ThreadManager::TEXTURE_THREADS_KEY);
+    ThreadManager::join_threads(ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY);
     stop_full = std::chrono::high_resolution_clock::now();
     std::cout << "Full scene & textures parsed in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop_full - start_full).count() << "ms" << std::endl;
     cpu_renderer.render();

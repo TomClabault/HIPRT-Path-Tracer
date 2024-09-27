@@ -16,6 +16,11 @@ public:
 	static void load_scene_texture(Scene& parsed_scene, std::string scene_path, const std::vector<std::pair<aiTextureType, std::string>>& tex_paths, const std::vector<int>& material_indices, int thread_index, int nb_threads);
 
 	/**
+	 * Frees the memory allocated by the aiScene needed when parsing the scene
+	 */
+	static void load_scene_parse_emissive_triangles(const aiScene* scene, Scene& parsed_scene);
+
+	/**
 	 * Reads 'wanted_channel_count' channels of a 32 bit HDR image from 'filepath' and stores it in 'hdr_image_out'.
 	 * If flip_y is true, the image will be postprocessed such that its origin is in the bottom left corner
 	 * (as used by OpenGL or CUDA for example)

@@ -130,7 +130,7 @@ public:
      * Without this parameter, this would result in rendering the scene with an aspect different of 16:9 in the default 
      * framebuffer of the renderer which is 16:9, resulting in deformations.
      */
-    static void parse_scene_file(const std::string& filepath, Scene& parsed_scene, SceneParserOptions& options);
+    static void parse_scene_file(const std::string& filepath, Assimp::Importer& assimp_importer, Scene& parsed_scene, SceneParserOptions& options);
 
 private:
 
@@ -144,7 +144,7 @@ private:
      * @ material_texture_indices is a list that is as long as there are unique materials
      *      in the scene. Each field of the stucture contains the index of the texture used
      *      by that material. -1 if the material doesn't have that type of texture
-     *      (if structure.base_color_texture_index == -1 for example, that means
+     *      (if structure.base_color_texture_index == RendererMaterial::NO_TEXTURE for example, that means
      *      that the material doesn't have a base color texture)
      * @ material_indices is a vector which is 'number of textures' long and contains the
      *      index of the material that the texture belongs to.

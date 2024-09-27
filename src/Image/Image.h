@@ -55,6 +55,14 @@ public:
 
     size_t byte_size() const;
 
+    // Returns true if all the pixels of the texture are the same color
+    // False otherwise
+    //
+    // A threshold can be given to assume that a color is equal to another
+    // if the R, G and B channels of the two colors are each within 'threshold'
+    // distance
+    bool is_constant_color(int threshold = 0) const;
+
     int width, height, channels;
 
 protected:
@@ -103,6 +111,8 @@ public:
     std::vector<float>& get_cdf();
 
     size_t byte_size() const;
+
+    bool is_constant_color(float threshold) const;
 
     int width = 0, height = 0, channels = 0;
 

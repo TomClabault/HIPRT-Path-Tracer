@@ -58,7 +58,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_O
 	else
 	{
 		int material_index = render_data.buffers.material_indices[sample.emissive_triangle_index];
-		sample_emission = render_data.buffers.materials_buffer[material_index].emission;
+		sample_emission = render_data.buffers.materials_buffer[material_index].get_emission();
 	}
 
 	float target_function = (bsdf_color * sample_emission * cosine_term).luminance();
@@ -109,7 +109,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_O
 	else
 	{
 		int material_index = render_data.buffers.material_indices[sample.emissive_triangle_index];
-		sample_emission = render_data.buffers.materials_buffer[material_index].emission;
+		sample_emission = render_data.buffers.materials_buffer[material_index].get_emission();
 	}
 
 	float target_function = (bsdf_color * sample_emission * cosine_term).luminance();

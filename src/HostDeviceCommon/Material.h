@@ -28,7 +28,7 @@ struct SimplifiedRendererMaterial
 {
     HIPRT_HOST_DEVICE bool is_emissive() const
     {
-        return emission.r != 0.0f || emission.g != 0.0f || emission.b != 0.0f;
+        return emission.r * emission_strength != 0.0f || emission.g * emission_strength != 0.0f || emission.b * emission_strength != 0.0f || emissive_texture_used;
     }
 
     /*
@@ -42,6 +42,7 @@ struct SimplifiedRendererMaterial
 
         // Clamping to avoid negative emission
         emission = ColorRGB32F::max(ColorRGB32F(0.0f), emission);
+        emission_strength = hippt::max(0.0f, emission_strength);
 
         // Avoiding zero
         absorption_at_distance = hippt::max(absorption_at_distance, 1.0e-4f);
@@ -79,9 +80,25 @@ struct SimplifiedRendererMaterial
         oren_nayar_B = 0.45f * sigma2 / (sigma2 + 0.09f);
     }
 
+    HIPRT_HOST_DEVICE void set_emission(ColorRGB32F new_emission)
+    {
+        emission = new_emission;
+    }
+
+    HIPRT_HOST_DEVICE ColorRGB32F get_emission() const
+    {
+        return emission * emission_strength;
+    }
+
+    HIPRT_HOST_DEVICE ColorRGB32F get_original_emission() const
+    {
+        return emission;
+    }
+
     BRDF brdf_type = BRDF::Uninitialized;
 
-    ColorRGB32F emission = ColorRGB32F{ 0.0f, 0.0f, 0.0f };
+    bool emissive_texture_used = false;
+    float emission_strength = 1.0f;
     ColorRGB32F base_color = ColorRGB32F{ 1.0f, 0.2f, 0.7f };
 
     float roughness = 0.3f;
@@ -116,10 +133,21 @@ struct SimplifiedRendererMaterial
 
     // Nested dielectric parameter
     unsigned short int dielectric_priority = 0;
+
+private:
+    ColorRGB32F emission = ColorRGB32F{ 0.0f, 0.0f, 0.0f };
 };
 
 struct RendererMaterial : public SimplifiedRendererMaterial
 {
+    static constexpr int NO_TEXTURE = -1;
+    // When an emissive texture is read and is determine to be
+    // constant, no emissive texture will be used. Instead,
+    // we'll just set the emission of the material to that constant emission value
+    // and the emissive texture index of the material will be replaced by
+    // CONSTANT_EMISSIVE_TEXTURE
+    static constexpr int CONSTANT_EMISSIVE_TEXTURE = -2;
+
     int normal_map_texture_index = -1;
 
     int emission_texture_index = -1;

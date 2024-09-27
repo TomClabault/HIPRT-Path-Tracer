@@ -11,12 +11,14 @@
 #include <vector>
 
 std::string ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY = "CompileKernelPassesKey";
-std::string ThreadManager::TEXTURE_THREADS_KEY = "TextureThreadsKey";
+std::string ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY = "TextureThreadsKey";
+std::string ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES = "DestroyAiScene";
 std::string ThreadManager::ENVMAP_LOAD_THREAD_KEY = "EnvmapLoadThreadsKey";
 
 bool ThreadManager::m_monothread = false;
 std::unordered_map<std::string, std::shared_ptr<void>> ThreadManager::m_threads_states;
 std::unordered_map<std::string, std::vector<std::thread>> ThreadManager::m_threads_map;
+std::unordered_map<std::string, std::vector<std::string>> ThreadManager::m_dependencies;
 
 void ThreadManager::set_monothread(bool is_monothread)
 {
@@ -34,4 +36,9 @@ void ThreadManager::join_threads(std::string key)
 	}
 
 	m_threads_map[key].clear();
+}
+
+void ThreadManager::add_dependency(const std::string& key, const std::string& dependency)
+{
+	m_dependencies[key].push_back(dependency);
 }

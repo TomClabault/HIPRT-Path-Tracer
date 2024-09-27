@@ -1435,7 +1435,7 @@ void ImGuiRenderer::draw_objects_panel()
 			{
 				if (original_materials[n].is_emissive())
 				{
-					materials[n].emission = original_materials[n].emission * global_emissive_objects_factor;
+					materials[n].set_emission(original_materials[n].get_original_emission() * global_emissive_objects_factor);
 
 					materials[n].make_safe();
 					materials[n].precompute_properties();
@@ -1502,7 +1502,21 @@ void ImGuiRenderer::draw_objects_panel()
 		ImGui::BeginDisabled(material.specular_transmission == 0.0f || kernel_options->get_macro_value(GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY) != ISS_WITH_PRIORITIES);
 		material_changed |= ImGui::SliderScalar("Dielectric priority", ImGuiDataType_U16, &material.dielectric_priority, &zero, &eight);
 		ImGui::EndDisabled();
-		material_changed |= ImGui::ColorEdit3("Emission", (float*)&material.emission, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
+
+		// Displaying original emission
+		ImGui::BeginDisabled(material.emission_texture_index > 0);
+		ColorRGB32F material_emission = material.get_emission() / material.emission_strength;
+		if (ImGui::ColorEdit3("Emission", (float*)&material_emission, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float))
+		{
+			material.set_emission(material_emission / material.emission_strength);
+
+			material_changed = true;
+		}
+		ImGui::EndDisabled();
+		if (material.emission_texture_index > 0)
+			ImGuiRenderer::show_help_marker("Disabled because the emission of this material is controlled by a texture");
+
+		material_changed |= ImGui::SliderFloat("Emission Strength", &material.emission_strength, 0.0f, 10.0f);
 
 		ImGui::PopItemWidth();
 

@@ -227,10 +227,20 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light(const HIPRTRenderDat
         // And we're not sampling the envmap with ReSTIR DI
         return ColorRGB32F(0.0f);
 
-    if (ray_payload.material.emission.r != 0.0f || ray_payload.material.emission.g != 0.0f || ray_payload.material.emission.b != 0.0f)
-        // We're not sampling direct lighting if we're already on an
-        // emissive surface
-        return ColorRGB32F(0.0f);
+    if (ray_payload.material.is_emissive())
+    {
+        if (ray_payload.material.emissive_texture_used && bounce > 0)
+            // If the material is using an emissive texture, we can return its emission when hitting
+            // it because we're not importance sampling emissive textures so doing it the brute force
+            // way is the only way
+            //
+            // We're already doing that externally for the first bounce so not doing it again here
+            return ray_payload.material.get_emission();
+        else
+            // We're not sampling direct lighting if we're already on an
+            // emissive surface
+            return ColorRGB32F(0.0f);
+    }
 
     ColorRGB32F direct_light_contribution;
 #if DirectLightSamplingStrategy == LSS_NO_DIRECT_LIGHT_SAMPLING

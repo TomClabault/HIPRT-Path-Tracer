@@ -1053,20 +1053,13 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 	m_hiprt_scene.materials_buffer.resize(scene.materials.size());
 	m_hiprt_scene.materials_buffer.upload_data(scene.materials.data());
 
-	m_hiprt_scene.emissive_triangles_count = scene.emissive_triangle_indices.size();
-	if (m_hiprt_scene.emissive_triangles_count > 0)
-	{
-		m_hiprt_scene.emissive_triangles_indices.resize(scene.emissive_triangle_indices.size());
-		m_hiprt_scene.emissive_triangles_indices.upload_data(scene.emissive_triangle_indices.data());
-	}
-
 	m_hiprt_scene.texcoords_buffer.resize(scene.texcoords.size());
 	m_hiprt_scene.texcoords_buffer.upload_data(scene.texcoords.data());
 
 	// We're joining the threads that were loading the scene textures in the background
 	// at the last moment so that they had the maximum amount of time to load the textures
 	// while the main thread was doing something else
-	ThreadManager::join_threads(ThreadManager::TEXTURE_THREADS_KEY);
+	ThreadManager::join_threads(ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY);
 
 	if (scene.textures.size() > 0)
 	{
@@ -1074,6 +1067,19 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 		m_materials_textures.reserve(scene.textures.size());
 		for (int i = 0; i < scene.textures.size(); i++)
 		{
+			if (scene.textures[i].width == 0 || scene.textures[i].height == 0)
+			{
+				// It can happen that for emissive textures for example, we had a texture but its color is constant.
+				// As a result, we have not read the texture but rather just stored the constant emissive color in the
+				// emission filed of the material so we have no texture to read here
+
+				// The shader will never read from that texture (because the texture index of the material has been set to -1)
+				// so we set it to nullptr
+				oro_textures[i] = nullptr;
+
+				continue;
+			}
+
 			// We need to keep the texture alive so they are not destroyed when returning from 
 			// this function so we're adding them to a member buffer
 			m_materials_textures.push_back(OrochiTexture(scene.textures[i]));
@@ -1086,6 +1092,14 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 
 		m_hiprt_scene.textures_dims.resize(scene.textures_dims.size());
 		m_hiprt_scene.textures_dims.upload_data(scene.textures_dims.data());
+	}
+
+	ThreadManager::join_threads(ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES);
+	m_hiprt_scene.emissive_triangles_count = scene.emissive_triangle_indices.size();
+	if (m_hiprt_scene.emissive_triangles_count > 0)
+	{
+		m_hiprt_scene.emissive_triangles_indices.resize(scene.emissive_triangle_indices.size());
+		m_hiprt_scene.emissive_triangles_indices.upload_data(scene.emissive_triangle_indices.data());
 	}
 }
 

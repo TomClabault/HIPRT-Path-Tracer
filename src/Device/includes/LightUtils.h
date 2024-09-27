@@ -44,7 +44,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 sample_one_emissive_triangle(const HIPRTRe
     light_info.emissive_triangle_index = triangle_index;
     light_info.light_source_normal = normal / length_normal; // Normalization
     light_info.light_area = length_normal * 0.5f;
-    light_info.emission = render_data.buffers.materials_buffer[render_data.buffers.material_indices[triangle_index]].emission;
+    light_info.emission = render_data.buffers.materials_buffer[render_data.buffers.material_indices[triangle_index]].get_emission();
 
     pdf = 1.0f / light_info.light_area;
     pdf /= render_data.buffers.emissive_triangles_count;

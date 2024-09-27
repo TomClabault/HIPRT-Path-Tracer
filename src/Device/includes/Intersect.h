@@ -69,7 +69,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 get_shading_normal(const HIPRTRenderData& 
         surface_normal = geometric_normal;
 
     // Do normal mapping if we have a normal map
-    if (material.normal_map_texture_index != -1)
+    if (material.normal_map_texture_index != RendererMaterial::NO_TEXTURE)
         surface_normal = normal_mapping(render_data, material.normal_map_texture_index, primitive_index, interpolated_texcoords, surface_normal);
 
     return surface_normal;
@@ -313,7 +313,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderD
     int material_index = render_data.buffers.material_indices[shadow_ray_hit.primID];
     int emission_texture_index = render_data.buffers.materials_buffer[material_index].emission_texture_index;
 
-    if (emission_texture_index != -1)
+    if (emission_texture_index != RendererMaterial::NO_TEXTURE)
     {
         float2 texcoords = uv_interpolate(render_data.buffers.triangles_indices, shadow_ray_hit.primID, render_data.buffers.texcoords, shadow_ray_hit.uv);
         get_material_property(render_data, out_light_hit_info.hit_emission, false, texcoords, emission_texture_index);
@@ -323,7 +323,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderD
     }
     else
     {
-        out_light_hit_info.hit_emission = render_data.buffers.materials_buffer[material_index].emission;
+        out_light_hit_info.hit_emission = render_data.buffers.materials_buffer[material_index].get_emission();
 
         float2 texcoords = uv_interpolate(render_data.buffers.triangles_indices, shadow_ray_hit.primID, render_data.buffers.texcoords, shadow_ray_hit.uv);
         out_light_hit_info.hit_shading_normal = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), shadow_ray_hit.primID, shadow_ray_hit.uv, texcoords);
@@ -368,7 +368,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderD
         int material_index = render_data.buffers.material_indices[shadow_ray_hit.primID];
         int emission_texture_index = render_data.buffers.materials_buffer[material_index].emission_texture_index;
 
-        if (emission_texture_index != -1)
+        if (emission_texture_index != RendererMaterial::NO_TEXTURE)
         {
             float2 texcoords = uv_interpolate(render_data.buffers.triangles_indices, shadow_ray_hit.primID, render_data.buffers.texcoords, shadow_ray_hit.uv);
             get_material_property(render_data, out_light_hit_info.hit_emission, false, texcoords, emission_texture_index);
@@ -378,7 +378,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderD
         }
         else
         {
-            out_light_hit_info.hit_emission = render_data.buffers.materials_buffer[material_index].emission;
+            out_light_hit_info.hit_emission = render_data.buffers.materials_buffer[material_index].get_emission();
 
             float2 texcoords = uv_interpolate(render_data.buffers.triangles_indices, shadow_ray_hit.primID, render_data.buffers.texcoords, shadow_ray_hit.uv);
             out_light_hit_info.hit_shading_normal = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), shadow_ray_hit.primID, shadow_ray_hit.uv, texcoords);

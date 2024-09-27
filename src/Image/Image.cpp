@@ -241,6 +241,28 @@ size_t Image8Bit::byte_size() const
     return width * height * sizeof(unsigned char);
 }
 
+bool Image8Bit::is_constant_color(int threshold) const
+{
+    if (width == 0 || height == 0)
+        // Incorrect image
+        return false;
+
+    std::vector<unsigned char> first_pixel_color(channels);
+    for (int i = 0; i < channels; i++)
+        first_pixel_color[i] = m_pixel_data[i];
+
+    std::atomic<bool> different_pixel_found = false;
+
+    // Comparing the first pixel to all pixels of the texture and returning as soon as we find one
+    // that is not within the threshold
+    for (int y = 0; y < height; y++)
+        for (int x = 0; x < width; x++)
+            for (int i = 0; i < channels; i++)
+                if (std::abs(first_pixel_color[i] - m_pixel_data[(y * width + x) * channels + i]) > threshold)
+                    return false;
+
+    return true;
+}
 
 
 
@@ -486,6 +508,29 @@ std::vector<float>& Image32Bit::get_cdf()
 size_t Image32Bit::byte_size() const
 {
     return width * height * sizeof(unsigned char);
+}
+
+bool Image32Bit::is_constant_color(float threshold) const
+{
+    if (width == 0 || height == 0)
+        // Incorrect image
+        return false;
+
+    std::vector<float> first_pixel_color(channels);
+    for (int i = 0; i < channels; i++)
+        first_pixel_color[i] = m_pixel_data[i];
+
+    std::atomic<bool> different_pixel_found = false;
+
+    // Comparing the first pixel to all pixels of the texture and returning as soon as we find one
+    // that is not within the threshold
+    for (int y = 0; y < height; y++)
+        for (int x = 0; x < width; x++)
+            for (int i = 0; i < channels; i++)
+                if (std::abs(first_pixel_color[i] - m_pixel_data[(y * width + x) * channels + i]) > threshold)
+                    return false;
+
+    return true;
 }
 
 ColorRGB32F* Image32Bit::get_data_as_ColorRGB32F()
