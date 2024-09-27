@@ -87,6 +87,11 @@ public:
 	 */
 	float compute_GPU_stall_duration();
 
+	/**
+	 * Returns the time in milliseconds of the last UI frame (decoupled from the renderer's frame)
+	 */
+	float get_UI_delta_time();
+
 	void run();
 	void render();
 	void update_perf_metrics();

@@ -175,7 +175,7 @@
  *		Uses ReSTIR DI to sample direct lighting at the first bounce in the scene.
  *		Later bounces use the strategy given by ReSTIR_DI_LaterBouncesSamplingStrategy
  */
-#define DirectLightSamplingStrategy LSS_RIS_BSDF_AND_LIGHT
+#define DirectLightSamplingStrategy LSS_RESTIR_DI
 
 /**
  * What envmap sampling strategy to use
@@ -213,7 +213,7 @@
  * 
  *	- KERNEL_OPTION_TRUE or KERNEL_OPTION_FALSE values are accepted. Self-explanatory
  */
-#define ReSTIR_DI_InitialTargetFunctionVisibility KERNEL_OPTION_TRUE
+#define ReSTIR_DI_InitialTargetFunctionVisibility KERNEL_OPTION_FALSE
 
 /**
  * Whether or not to use a visibility term in the target function when resampling
@@ -247,7 +247,7 @@
  * 
  *	- KERNEL_OPTION_TRUE or KERNEL_OPTION_FALSE values are accepted. Self-explanatory
  */
-#define ReSTIR_DI_BiasCorrectionUseVisibility KERNEL_OPTION_TRUE
+#define ReSTIR_DI_BiasCorrectionUseVisibility KERNEL_OPTION_FALSE
 
 /**
  * What bias correction weights to use when resampling neighbors (temporal / spatial)

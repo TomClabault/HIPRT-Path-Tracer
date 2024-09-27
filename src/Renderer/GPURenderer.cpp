@@ -68,7 +68,7 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
 
 	setup_kernels();
 
-	m_ms_time_per_pass["All"] = 0.0f;
+	m_ms_time_per_pass[GPURenderer::FULL_FRAME_TIME_KEY] = 0.0f;
 	for (auto id_to_pass : KERNEL_FUNCTION_NAMES)
 		m_ms_time_per_pass[id_to_pass.first] = 0.0f;
 
@@ -190,6 +190,8 @@ void GPURenderer::setup_kernels()
 
 void GPURenderer::update()
 {
+	m_envmap.update(this);
+
 	internal_update_clear_device_status_buffers();
 	internal_update_prev_frame_g_buffer();
 	internal_update_adaptive_sampling_buffers();
@@ -457,7 +459,7 @@ void GPURenderer::render()
 	GPUKernel::ComputeElapsedTimeCallbackData* elapsed_time_data = new GPUKernel::ComputeElapsedTimeCallbackData;
 	elapsed_time_data->start = m_frame_start_event;
 	elapsed_time_data->end = m_frame_stop_event;
-	elapsed_time_data->elapsed_time_out = &m_ms_time_per_pass["All"];
+	elapsed_time_data->elapsed_time_out = &m_ms_time_per_pass[GPURenderer::FULL_FRAME_TIME_KEY];
 
 	oroLaunchHostFunc(m_main_stream, GPUKernel::compute_elapsed_time_callback, elapsed_time_data);
 
@@ -916,7 +918,7 @@ float GPURenderer::get_render_pass_time(const std::string& key)
 
 void GPURenderer::reset_frame_times()
 {
-	m_ms_time_per_pass["All"] = 0.0f;
+	m_ms_time_per_pass[GPURenderer::FULL_FRAME_TIME_KEY] = 0.0f;
 	for (auto id_to_pass : KERNEL_FUNCTION_NAMES)
 		m_ms_time_per_pass[id_to_pass.first] = 0.0f;
 }
@@ -940,7 +942,8 @@ void GPURenderer::reset(std::shared_ptr<ApplicationSettings> application_setting
 	m_render_data.render_settings.sample_number = 0;
 	m_render_data.render_settings.need_to_reset = true;
 
-	reset_frame_times();
+	// TODO remove this comment if it's been a while and nothing is broken, not sure why it's needed and it breaks ImGui FPS counters when interacting
+	// reset_frame_times();
 	internal_clear_m_status_buffers();
 }
 
@@ -1124,13 +1127,13 @@ void GPURenderer::set_envmap(Image32Bit& envmap_image)
 		return;
 	}
 
-	m_envmap.init_from_image(envmap_image);
-	m_envmap.compute_cdf(envmap_image);
+	m_envmap.get_orochi_envmap().init_from_image(envmap_image);
+	m_envmap.get_orochi_envmap().compute_cdf(envmap_image);
 
-	m_render_data.world_settings.envmap = m_envmap.get_device_texture();
-	m_render_data.world_settings.envmap_width = m_envmap.width;
-	m_render_data.world_settings.envmap_height = m_envmap.height;
-	m_render_data.world_settings.envmap_cdf = m_envmap.get_cdf_device_pointer();
+	m_render_data.world_settings.envmap = m_envmap.get_orochi_envmap().get_device_texture();
+	m_render_data.world_settings.envmap_width = m_envmap.get_orochi_envmap().width;
+	m_render_data.world_settings.envmap_height = m_envmap.get_orochi_envmap().height;
+	m_render_data.world_settings.envmap_cdf = m_envmap.get_orochi_envmap().get_cdf_device_pointer();
 } 
 
 bool GPURenderer::has_envmap()
@@ -1181,6 +1184,11 @@ void GPURenderer::resize_g_buffer_ray_volume_states()
 Camera& GPURenderer::get_camera()
 {
 	return m_camera;
+}
+
+RendererEnvmap& GPURenderer::get_envmap()
+{
+	return m_envmap;
 }
 
 void GPURenderer::set_camera(const Camera& camera)

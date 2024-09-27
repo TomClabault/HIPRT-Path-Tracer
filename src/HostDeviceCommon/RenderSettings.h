@@ -49,7 +49,7 @@ struct HIPRTRenderSettings
 
 	// Whether or not to accumulate each frame to allow progressive rendering. If false,
 	// each frame will be displayed on screen and discarded on the next frame without accumulation
-	bool accumulate = true;
+	bool accumulate = false;
 
 	// How many samples were accumulated in the denoiser's AOV buffers (albedo & normals)
 	// This is used mainly for the normals AOVs because we want a way to accumulate the normals.

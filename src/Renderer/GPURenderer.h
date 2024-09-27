@@ -8,10 +8,10 @@
 
 #include "Compiler/GPUKernel.h"
 #include "HIPRT-Orochi/OrochiBuffer.h"
-#include "HIPRT-Orochi/OrochiEnvmap.h"
 #include "HIPRT-Orochi/HIPRTScene.h"
 #include "HIPRT-Orochi/HIPRTOrochiCtx.h"
 #include "HostDeviceCommon/RenderData.h"
+#include "Renderer/RendererEnvmap.h"
 #include "Renderer/GPURendererGBuffer.h"
 #include "Renderer/HardwareAccelerationSupport.h"
 #include "Renderer/OpenImageDenoiser.h"
@@ -158,6 +158,7 @@ public:
 	HIPRTRenderData& get_render_data();
 
 	Camera& get_camera();
+	RendererEnvmap& get_envmap();
 
 	void set_scene(const Scene& scene);
 	void set_camera(const Camera& camera);
@@ -289,7 +290,7 @@ private:
 	bool m_render_data_buffers_invalidated = true;
 
 	// Time taken per each pass of the renderer. 
-	// An additional key "All" can be used to index in this map
+	// An additional key GPURenderer::FULL_FRAME_TIME_KEY can be used to index in this map
 	// and retrieve the time for the whole frame
 	std::unordered_map<std::string, float> m_ms_time_per_pass;
 
@@ -343,7 +344,9 @@ private:
 	// Vector to keep the textures data alive otherwise the OrochiTexture objects would
 	// be destroyed which means that the underlying textures would be destroyed
 	std::vector<OrochiTexture> m_materials_textures;
-	OrochiEnvmap m_envmap;
+
+	// Envmap of the renderer
+	RendererEnvmap m_envmap;
 
 	// Options used for compiling the render passes of this renderer.
 	// 

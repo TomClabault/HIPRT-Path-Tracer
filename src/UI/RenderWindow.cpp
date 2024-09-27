@@ -539,7 +539,8 @@ void RenderWindow::reset_render()
 {
 	m_application_settings->last_denoised_sample_count = -1;
 
-	m_application_state->samples_per_second = 0.0f;
+	// TODO remove this comment if it's been a while and nothing is broken
+	// m_application_state->samples_per_second = 0.0f;
 	m_application_state->current_render_time_ms = 0.0f;
 	m_application_state->render_dirty = false;
 
@@ -582,13 +583,18 @@ float RenderWindow::compute_GPU_stall_duration()
 {
 	if (m_application_settings->GPU_stall_percentage > 0.0f)
 	{
-		float last_frame_time = m_renderer->get_render_pass_time("All");
+		float last_frame_time = m_renderer->get_render_pass_time(GPURenderer::FULL_FRAME_TIME_KEY);
 		float stall_duration = last_frame_time * (1.0f / (1.0f - m_application_settings->GPU_stall_percentage / 100.0f)) - last_frame_time;
 
 		return stall_duration;
 	}
 
 	return 0.0f;
+}
+
+float RenderWindow::get_UI_delta_time()
+{
+	return m_application_state->last_delta_time_ms;
 }
 
 std::shared_ptr<OpenImageDenoiser> RenderWindow::get_denoiser()

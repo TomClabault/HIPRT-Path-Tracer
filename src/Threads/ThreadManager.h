@@ -86,8 +86,6 @@ public:
 				for (const std::string& dependency : dependencies)
 					join_threads(dependency);
 
-				std::cout << "Waiting dependnecy done" << std::endl;
-
 				std::thread function_thread(function, args...);
 				function_thread.join();
 			}));

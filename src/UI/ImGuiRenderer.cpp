@@ -10,9 +10,6 @@
 #include <chrono>
 #include <unordered_map>
 
-#define GLM_ENABLE_EXPERIMENTAL
-#include "glm/gtx/euler_angles.hpp"
-
 ImGuiRenderer::ImGuiRenderer()
 {
 	ImGuiViewport* viewport = ImGui::GetMainViewport();
@@ -551,39 +548,45 @@ void ImGuiRenderer::draw_environment_panel()
 		}
 		else if (m_renderer->get_world_settings().ambient_light_type == AmbientLightType::ENVMAP)
 		{
-			static float rota_X = 0.0f, rota_Y = 0.0f, rota_Z = 0.0f;
-			bool rotation_changed;
+			float& rota_X = m_renderer->get_envmap().rotation_X;
+			float& rota_Y = m_renderer->get_envmap().rotation_Y;
+			float& rota_Z = m_renderer->get_envmap().rotation_Z;
 
-			rotation_changed = false;
+			bool& animate_envmap = m_renderer->get_envmap().animate;
+			float& animation_speed_X = m_renderer->get_envmap().animation_speed_X;
+			float& animation_speed_Y = m_renderer->get_envmap().animation_speed_Y;
+			float& animation_speed_Z = m_renderer->get_envmap().animation_speed_Z;
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			ImGui::Checkbox("Animate", &animate_envmap);
+
+			if (animate_envmap)
+			{
+				ImGui::Text("Speeds are in degrees per second");
+				ImGui::SliderFloat("Animation Speed X", &animation_speed_X, 0.0f, 360.0f);
+				ImGui::SliderFloat("Animation Speed Y", &animation_speed_Y, 0.0f, 360.0f);
+				ImGui::SliderFloat("Animation Speed Z", &animation_speed_Z, 0.0f, 360.0f);
+
+				//float delta_time = m_render_window->get_UI_delta_time();
+				//rota_X += animation_speed_X / 360.0f / (1000.0f / delta_time);
+				//rota_Y += animation_speed_Y / 360.0f / (1000.0f / delta_time);
+				//rota_Z += animation_speed_Z / 360.0f / (1000.0f / delta_time);
+
+				//// Keeping only the fractional part. This effectively brings a value
+				//// that went above 1 back to between 0 and 1 to keep the rotation between
+				//// 0 and 360 degrees
+				//rota_X = rota_X - static_cast<int>(rota_X);
+				//rota_Y = rota_Y - static_cast<int>(rota_Y);
+				//rota_Z = rota_Z - static_cast<int>(rota_Z);
+			}
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			bool rotation_changed = false;
 			rotation_changed |= ImGui::SliderFloat("Envmap rotation X", &rota_X, 0.0f, 1.0f);
 			rotation_changed |= ImGui::SliderFloat("Envmap rotation Y", &rota_Y, 0.0f, 1.0f);
 			rotation_changed |= ImGui::SliderFloat("Envmap rotation Z", &rota_Z, 0.0f, 1.0f);
 
-			if (rotation_changed)
-			{
-				glm::mat4x4 rotation_matrix, rotation_matrix_inv;
-
-				// glm::orientate3 interprets the X, Y and Z angles we give it as a yaw/pitch/roll semantic.
-				// 
-				// The standard yaw/pitch/roll interpretation is:
-				//	- Yaw for rotation around Z
-				//	- Pitch for rotation around Y
-				//	- Roll for rotation around X
-				// 
-				// but with a Z-up coordinate system. We want a Y-up coordinate system so
-				// we want our Yaw to rotate around Y instead of Z (and our Pitch to rotate around Z).
-				// 
-				// This means that we need to reverse Y and Z.
-				// 
-				// See this picture for a visual aid on what we **don't** want (the z-up):
-				// https://www.researchgate.net/figure/xyz-and-pitch-roll-and-yaw-systems_fig4_253569466
-				rotation_matrix = glm::orientate3(glm::vec3(rota_X * 2.0f * M_PI, rota_Z * 2.0f * M_PI, rota_Y * 2.0f * M_PI));
-				rotation_matrix_inv = glm::inverse(rotation_matrix);
-
-				m_renderer->get_world_settings().envmap_to_world_matrix = *reinterpret_cast<float4x4*>(&rotation_matrix);
-				m_renderer->get_world_settings().world_to_envmap_matrix = *reinterpret_cast<float4x4*>(&rotation_matrix_inv);
-			}
-
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			render_made_piggy |= rotation_changed;
 			render_made_piggy |= ImGui::SliderFloat("Envmap intensity", (float*)&m_renderer->get_world_settings().envmap_intensity, 0.0f, 10.0f);
 			ImGui::TreePush("Envmap intensity tree");

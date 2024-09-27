@@ -67,7 +67,7 @@ struct SpatialPassSettings
 
 	// If true, reused neighbors will be hardcoded to always be 15 pixels to the right,
 	// not in a circle around the center pixel.
-	bool debug_neighbor_location = true;
+	bool debug_neighbor_location = false;
 
 	// Whether or not to rotate the spatial neighbor locations generated.
 	// Pretty much mandatory when using Hammersley points otherwise the neighbors
@@ -110,7 +110,7 @@ struct ReSTIRDISettings
 	// Because the spatial must then resample without the output of the temporal pass, the spatial
 	// pass only resamples on the temporal reservoir buffer, not the temporal + initial candidates reservoir
 	// (which is the output of the temporal pass). This is usually imperceptible.
-	bool do_fused_spatiotemporal = true;
+	bool do_fused_spatiotemporal = false;
 
 	// When finalizing the reservoir in the spatial reuse pass, what value
 	// to cap the reservoirs's M value to.
@@ -123,7 +123,7 @@ struct ReSTIRDISettings
 	// for a given pixel.
 	//
 	// A M-cap value between 5 - 30 is usually good
-	int m_cap = 10;
+	int m_cap = 32;
 	// M-cap for glossy surfaces: helps to reduce darkening with cameray ray jittering + temporal reuse 
 	// + accumulation
 	int glossy_m_cap = 3;
