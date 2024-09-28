@@ -1060,9 +1060,12 @@ void ImGuiRenderer::draw_sampling_panel()
 							render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count = std::max(1, render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count);
 
 							if (will_need_to_update_partial_visibility)
+							{
 								// Also updating the partial visibility neighbor index slider if it was set to the maximum
 								// amount of neighbors
 								partial_visibility_neighbor_count = render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count;
+								render_settings.restir_di_settings.spatial_pass.neighbor_visibility_count = partial_visibility_neighbor_count - 1;
+							}
 
 							m_render_window->set_render_dirty(true);
 						}
