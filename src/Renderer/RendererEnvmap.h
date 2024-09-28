@@ -20,7 +20,7 @@ public:
 	bool animate = false;
 	// How many degrees per second will the envmap rotate if 'animate' is true
 	float animation_speed_X = 0.0f;
-	float animation_speed_Y = 0.0f;
+	float animation_speed_Y = 8.0f;
 	float animation_speed_Z = 0.0f;
 
 	float4x4 envmap_to_world_matrix;

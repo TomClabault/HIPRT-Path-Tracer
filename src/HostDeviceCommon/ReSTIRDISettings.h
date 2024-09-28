@@ -110,7 +110,7 @@ struct ReSTIRDISettings
 	// Because the spatial must then resample without the output of the temporal pass, the spatial
 	// pass only resamples on the temporal reservoir buffer, not the temporal + initial candidates reservoir
 	// (which is the output of the temporal pass). This is usually imperceptible.
-	bool do_fused_spatiotemporal = false;
+	bool do_fused_spatiotemporal = true;
 
 	// When finalizing the reservoir in the spatial reuse pass, what value
 	// to cap the reservoirs's M value to.
@@ -123,17 +123,17 @@ struct ReSTIRDISettings
 	// for a given pixel.
 	//
 	// A M-cap value between 5 - 30 is usually good
-	int m_cap = 32;
+	int m_cap = 25;
 	// M-cap for glossy surfaces: helps to reduce darkening with cameray ray jittering + temporal reuse 
 	// + accumulation
 	int glossy_m_cap = 3;
 	// Below what roughness is a surface considering glossy and will use the glossy m-cap
-	float glossy_threshold = 0.1f;
+	float glossy_threshold = 0.0f;
 
 	// Whether or not to use confidence weights when resampling neighbors.
 	bool use_confidence_weights = true;
 
-	bool use_normal_similarity_heuristic = true;
+	bool use_normal_similarity_heuristic = false;
 	// User-friendly (for ImGui) normal angle. When resampling a neighbor (temporal or spatial),
 	// the normal of the neighbor being re-sampled must be similar to our normal. This angle gives the
 	// "similarity threshold". Normals must be within 25 degrees of each other by default
