@@ -45,7 +45,7 @@
 #define INITIAL_CANDIDATES_ID 1
 
 #ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void) ReSTIR_DI_TemporalReuse(HIPRTRenderData render_data, int2 res)
+GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_DI_TemporalReuse(HIPRTRenderData render_data, int2 res)
 #else
 GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData render_data, int2 res, int x, int y)
 #endif

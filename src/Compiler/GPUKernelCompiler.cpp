@@ -57,7 +57,9 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, const GPUKern
 		std::lock_guard<std::mutex> lock(m_mutex);
 		std::cout << "Kernel \"" << kernel_function_name << "\" compiled in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms. ";
 
-		if ((hiprt_orochi_ctx->device_properties.major >= 7 && hiprt_orochi_ctx->device_properties.minor >= 5) || std::string(hiprt_orochi_ctx->device_properties.name).find("AMD") != std::string::npos)
+		if ((hiprt_orochi_ctx->device_properties.major >= 7 && hiprt_orochi_ctx->device_properties.minor >= 5) 
+		|| std::string(hiprt_orochi_ctx->device_properties.name).find("AMD") != std::string::npos
+		|| std::string(hiprt_orochi_ctx->device_properties.name).find("Radeon") != std::string::npos)
 		{
 			// Getting the registers of a kernel only seems to be available on 7.5 and above 
 			// (works on a 2060S but doesn't on a GTX 970 or GTX 1060, couldn't try more hardware 
