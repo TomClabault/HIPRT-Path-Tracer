@@ -73,13 +73,12 @@ int main(int argc, char* argv[])
     std::cout << "[" << width << "x" << height << "]: " << cmd_arguments.render_samples << " samples ; " << cmd_arguments.bounces << " bounces" << std::endl << std::endl;
 
     CPURenderer cpu_renderer(width, height);
-    cpu_renderer.set_scene(parsed_scene);
-    cpu_renderer.set_envmap(envmap_image);
-    cpu_renderer.set_camera(parsed_scene.camera);
     cpu_renderer.get_render_settings().nb_bounces = cmd_arguments.bounces;
     cpu_renderer.get_render_settings().samples_per_frame = cmd_arguments.render_samples;
+    cpu_renderer.set_envmap(envmap_image);
+    cpu_renderer.set_camera(parsed_scene.camera);
+    cpu_renderer.set_scene(parsed_scene);
 
-    ThreadManager::join_threads(ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY);
     stop_full = std::chrono::high_resolution_clock::now();
     std::cout << "Full scene & textures parsed in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop_full - start_full).count() << "ms" << std::endl;
     cpu_renderer.render();

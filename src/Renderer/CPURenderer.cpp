@@ -35,18 +35,18 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 674
-#define DEBUG_PIXEL_Y 86
+#define DEBUG_PIXEL_X 951
+#define DEBUG_PIXEL_Y 132
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
-#define DEBUG_OTHER_FLIP_Y 0
+#define DEBUG_OTHER_FLIP_Y 1
 
 // Allows to render the neighborhood around the DEBUG_PIXEL_X/Y but to debug at the location
 // of DEBUG_OTHER_PIXEL_X/Y given below.
 // 
 // -1 to disable. If disabled, the pixel at (DEBUG_PIXEL_X, DEBUG_PIXEL_Y) will be debugged
-#define DEBUG_OTHER_PIXEL_X -1
-#define DEBUG_OTHER_PIXEL_Y -1
+#define DEBUG_OTHER_PIXEL_X 916
+#define DEBUG_OTHER_PIXEL_Y 536
 
 // If 1, a square of DEBUG_NEIGHBORHOOD_SIZE x DEBUG_NEIGHBORHOOD_SIZE pixels
 // will be rendered around the pixel to debug (given by DEBUG_PIXEL_X and
@@ -101,8 +101,6 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 {
     m_render_data.geom = nullptr;
 
-    m_render_data.buffers.emissive_triangles_count = parsed_scene.emissive_triangle_indices.size();
-    m_render_data.buffers.emissive_triangles_indices = parsed_scene.emissive_triangle_indices.data();
     m_render_data.buffers.materials_buffer = parsed_scene.materials.data();
     m_render_data.buffers.material_indices = parsed_scene.material_indices.data();
     m_render_data.buffers.has_vertex_normals = parsed_scene.has_vertex_normals.data();
@@ -145,6 +143,10 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.aux_buffers.restir_reservoir_buffer_1 = m_restir_di_state.initial_candidates_reservoirs.data();
     m_render_data.aux_buffers.restir_reservoir_buffer_2 = m_restir_di_state.spatial_output_reservoirs_1.data();
     m_render_data.aux_buffers.restir_reservoir_buffer_3 = m_restir_di_state.spatial_output_reservoirs_2.data();
+    
+    ThreadManager::join_threads(ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES);
+    m_render_data.buffers.emissive_triangles_count = parsed_scene.emissive_triangle_indices.size();
+    m_render_data.buffers.emissive_triangles_indices = parsed_scene.emissive_triangle_indices.data();
 
     std::cout << "Building scene BVH..." << std::endl;
     m_triangle_buffer = parsed_scene.get_triangles();

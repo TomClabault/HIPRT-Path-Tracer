@@ -33,8 +33,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 normal_mapping(const HIPRTRenderData& rend
     float2 delta_P1P0_texcoords = P1_texcoords - P0_texcoords;
     float2 delta_P2P0_texcoords = P2_texcoords - P0_texcoords;
 
-    float det_inverse = 1.0f / (delta_P1P0_texcoords.x * delta_P2P0_texcoords.y - delta_P1P0_texcoords.y * delta_P2P0_texcoords.x);
-
     float3 P0 = render_data.buffers.vertices_positions[vertex_A_index];
     float3 P1 = render_data.buffers.vertices_positions[vertex_B_index];
     float3 P2 = render_data.buffers.vertices_positions[vertex_C_index];
@@ -42,6 +40,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 normal_mapping(const HIPRTRenderData& rend
     float3 edge_P0P1 = P1 - P0;
     float3 edge_P0P2 = P2 - P0;
 
+    float det_inverse = 1.0f / (delta_P1P0_texcoords.x * delta_P2P0_texcoords.y - delta_P1P0_texcoords.y * delta_P2P0_texcoords.x);
     float3 T = (edge_P0P1 * delta_P2P0_texcoords.y - edge_P0P2 * delta_P1P0_texcoords.y) * det_inverse;
     float3 B = (edge_P0P2 * delta_P1P0_texcoords.x - edge_P0P1 * delta_P2P0_texcoords.x) * det_inverse;
 
@@ -164,7 +163,16 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
             // because we can never be inside of these objects, we're always outside.
             // If we're always outside, there's no reason to have the normals of these objects inverted.
             out_hit_info.geometric_normal *= hippt::dot(out_hit_info.geometric_normal, -ray.direction) < 0 ? -1 : 1;
-            out_hit_info.shading_normal *= hippt::dot(out_hit_info.shading_normal, -ray.direction) < 0 ? -1 : 1;
+
+            // If that's not enough and the shading normal is below the geometric surface, this will lead to light leaking
+            // because BSDF samples may now be able to sample below the surface so we're flipping the normal to be in the same
+            // hemisphere as the geometric normal
+            out_hit_info.shading_normal *= hippt::dot(out_hit_info.shading_normal, out_hit_info.geometric_normal) < 0 ? -1 : 1;
+
+            // Reflecting the shading normal about the view direction so that the shading 
+            // normal is in the same hemisphere as the view direction
+            float NdotV = hippt::dot(out_hit_info.shading_normal, -ray.direction);
+            out_hit_info.shading_normal += (2.0f * hippt::clamp(0.0f, 1.0f, -NdotV)) * -ray.direction;
         }
 
         skipping_volume_boundary = in_out_ray_payload.volume_state.interior_stack.push(in_out_ray_payload.volume_state.incident_mat_index, in_out_ray_payload.volume_state.outgoing_mat_index, in_out_ray_payload.volume_state.leaving_mat, material_index, in_out_ray_payload.material.dielectric_priority);
