@@ -12,6 +12,11 @@ void ThreadFunctions::compile_kernel(GPUKernel& kernel, std::shared_ptr<HIPRTOro
     kernel.compile(hiprt_ctx);
 }
 
+void ThreadFunctions::compile_kernel_silent(GPUKernel& kernel, std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx)
+{
+    kernel.compile_silent(hiprt_ctx);
+}
+
 void ThreadFunctions::load_scene_texture(Scene& parsed_scene, std::string scene_path, const std::vector<std::pair<aiTextureType, std::string>>& tex_paths, const std::vector<int>& material_indices, int thread_index, int nb_threads)
 {
     // Preparing the scene_filepath so that it's ready to be appended with the texture name

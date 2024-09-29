@@ -61,7 +61,7 @@ public:
 	 * ourselves in the parsing of stdlib headers for example. stdlib headers will be ignored since they are not
 	 * [probably] in the include directories of the kernel).
 	 */
-	std::string get_additional_cache_key(GPUKernel& kernel, const GPUKernelCompilerOptions& kernel_compiler_options);
+	std::string get_additional_cache_key(GPUKernel& kernel);
 
 	/**
 	 * Returns a list of the option macro names used by the given kernel.
@@ -70,7 +70,7 @@ public:
 	 * if the given kernel uses this two macros (if the kernel has some "#if == DirectLightSamplingStrategy", "#ifdef DirectLightSamplingStrategy"
 	 * directives or similar in its code)
 	 */
-	std::unordered_set<std::string> get_option_macros_used_by_kernel(const GPUKernel& kernel, const std::vector<std::string> kernel_additional_include_directories);
+	std::unordered_set<std::string> get_option_macros_used_by_kernel(const GPUKernel& kernel);
 
 private:
 	// Cache that maps a filepath to the option macros that it contains.

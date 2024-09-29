@@ -12,6 +12,14 @@
 
 extern GPUKernelCompiler g_gpu_kernel_compiler;
 
+const std::vector<std::string> GPUKernel::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS =
+{
+	KERNEL_COMPILER_ADDITIONAL_INCLUDE,
+	DEVICE_INCLUDES_DIRECTORY,
+	OROCHI_INCLUDES_DIRECTORY,
+	"./"
+};
+
 GPUKernel::GPUKernel()
 {
 	OROCHI_CHECK_ERROR(oroEventCreate(&m_execution_start_event));
@@ -64,7 +72,7 @@ void GPUKernel::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, bool use_cach
 	if (m_option_macro_invalidated)
 		parse_option_macros_used();
 
-	std::string cache_key = g_gpu_kernel_compiler.get_additional_cache_key(*this, m_compiler_options);
+	std::string cache_key = g_gpu_kernel_compiler.get_additional_cache_key(*this);
 	m_kernel_function = g_gpu_kernel_compiler.compile_kernel(*this, m_compiler_options, hiprt_ctx, use_cache, cache_key);
 }
 
@@ -73,7 +81,7 @@ void GPUKernel::compile_silent(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, bool u
 	if (m_option_macro_invalidated)
 		parse_option_macros_used();
 
-	std::string cache_key = g_gpu_kernel_compiler.get_additional_cache_key(*this, m_compiler_options);
+	std::string cache_key = g_gpu_kernel_compiler.get_additional_cache_key(*this);
 	m_kernel_function = g_gpu_kernel_compiler.compile_kernel(*this, m_compiler_options, hiprt_ctx, use_cache, cache_key, /* silent */ true);
 }
 
@@ -165,7 +173,7 @@ void GPUKernel::launch_timed_synchronous(int tile_size_x, int tile_size_y, int r
 
 void GPUKernel::parse_option_macros_used()
 {
-	m_used_option_macros = g_gpu_kernel_compiler.get_option_macros_used_by_kernel(*this, m_compiler_options.get_additional_include_directories());
+	m_used_option_macros = g_gpu_kernel_compiler.get_option_macros_used_by_kernel(*this);
 	m_option_macro_invalidated = false;
 }
 

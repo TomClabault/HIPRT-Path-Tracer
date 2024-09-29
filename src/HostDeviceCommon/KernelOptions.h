@@ -301,6 +301,17 @@
 #define ReSTIR_DI_LaterBouncesSamplingStrategy RESTIR_DI_LATER_BOUNCES_RIS_BSDF_AND_LIGHT
 
 /**
+ * If true, lights are presampled in a pre-process pass as described in 
+ * [Rearchitecting Spatiotemporal Resampling for Production, Wyman, Panteleev, 2021] 
+ * https://research.nvidia.com/publication/2021-07_rearchitecting-spatiotemporal-resampling-production.
+ * 
+ * This improves performance in scenes with dozens of thousands / millions of 
+ * lights by avoiding cache trashing because of the memory random walk that 
+ * light sampling becomes with that many lights
+ */
+#define ReSTIR_DI_DoLightsPresampling KERNEL_OPTION_TRUE
+
+/**
  * What sampling strategy to use for the GGX NDF
  * 
  *  - GGX_NO_VNDF

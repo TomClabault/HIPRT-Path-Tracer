@@ -74,10 +74,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void envmap_cdf_search(const WorldSettings& world
     x = hippt::max(hippt::min(lower, world_settings.envmap_width), 0u);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F envmap_sample(const HIPRTRenderData& render_data, float3& sampled_direction, float& envmap_pdf, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F envmap_sample(const WorldSettings& world_settings, float3& sampled_direction, float& envmap_pdf, Xorshift32Generator& random_number_generator)
 {
-    const WorldSettings& world_settings = render_data.world_settings;
-
     // Importance sampling a texel of the envmap
     int x, y;
     unsigned int cdf_size = world_settings.envmap_width * world_settings.envmap_height;
@@ -144,7 +142,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_cdf(const HIPR
 {
     float envmap_pdf;
     float3 sampled_direction;
-    ColorRGB32F envmap_color = envmap_sample(render_data, sampled_direction, envmap_pdf, random_number_generator);
+    ColorRGB32F envmap_color = envmap_sample(render_data.world_settings, sampled_direction, envmap_pdf, random_number_generator);
     ColorRGB32F envmap_mis_contribution;
 
     float elva_pdf;

@@ -38,6 +38,7 @@ const std::string GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE = "ReS
 const std::string GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY = "ReSTIR_DI_BiasCorrectionUseVisibility";
 const std::string GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS = "ReSTIR_DI_BiasCorrectionWeights";
 const std::string GPUKernelCompilerOptions::RESTIR_DI_LATER_BOUNCES_SAMPLING_STRATEGY = "ReSTIR_DI_LaterBouncesSamplingStrategy";
+const std::string GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING = "ReSTIR_DI_DoLightsPresampling";
 
 const std::vector<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES = {
 	GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_GLOBAL_RAYS,
@@ -63,6 +64,7 @@ const std::vector<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES = {
 	GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY,
 	GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS,
 	GPUKernelCompilerOptions::RESTIR_DI_LATER_BOUNCES_SAMPLING_STRATEGY,
+	GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING,
 };
 
 GPUKernelCompilerOptions::GPUKernelCompilerOptions()
@@ -92,6 +94,7 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY] = std::make_shared<int>(ReSTIR_DI_BiasCorrectionUseVisibility);
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS] = std::make_shared<int>(ReSTIR_DI_BiasCorrectionWeights);
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_LATER_BOUNCES_SAMPLING_STRATEGY] = std::make_shared<int>(ReSTIR_DI_LaterBouncesSamplingStrategy);
+	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING] = std::make_shared<int>(ReSTIR_DI_DoLightsPresampling);
 
 	// Making sure we didn't forget to fill the ALL_MACROS_NAMES vector with all the options that exist
 	assert(GPUKernelCompilerOptions::ALL_MACROS_NAMES.size() == m_options_macro_map.size());
@@ -129,21 +132,6 @@ std::vector<std::string> GPUKernelCompilerOptions::get_relevant_macros_as_std_ve
 		macros.push_back(additional_macro);
 
 	return macros;
-}
-
-const std::vector<std::string>& GPUKernelCompilerOptions::get_additional_include_directories() const
-{
-	return m_additional_include_directories;
-}
-
-std::vector<std::string> GPUKernelCompilerOptions::get_additional_include_directories()
-{
-	return m_additional_include_directories;
-}
-
-void GPUKernelCompilerOptions::set_additional_include_directories(const std::vector<std::string>& additional_include_directories)
-{
-	m_additional_include_directories = additional_include_directories;
 }
 
 void GPUKernelCompilerOptions::set_macro_value(const std::string& name, int value)

@@ -39,6 +39,7 @@ public:
 	static const std::string RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY;
 	static const std::string RESTIR_DI_BIAS_CORRECTION_WEIGHTS;
 	static const std::string RESTIR_DI_LATER_BOUNCES_SAMPLING_STRATEGY;
+	static const std::string RESTIR_DI_DO_LIGHTS_PRESAMPLING;
 
 	static const std::vector<std::string> ALL_MACROS_NAMES;
 
@@ -70,19 +71,6 @@ public:
 	 * to the kernel by calling 'kernel.add_additional_macro_for_compilation()'
 	 */
 	std::vector<std::string> get_relevant_macros_as_std_vector_string(const GPUKernel* kernel) const;
-
-	///@{
-	/**
-	 * Returns the list of additional include directories of these CompilerOptions
-	 */
-	const std::vector<std::string>& get_additional_include_directories() const;
-	std::vector<std::string> get_additional_include_directories();
-	///@}
-
-	/**
-	 * Replaces the current list of include directories with the one given
-	 */
-	void set_additional_include_directories(const std::vector<std::string>& additional_include_directories);
 
 	/**
 	 * Replace the value of the macro if it has already been added previous to this call.

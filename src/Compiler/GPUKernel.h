@@ -20,6 +20,8 @@
 class GPUKernel
 {
 public:
+	static const std::vector<std::string> COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS;
+
 	GPUKernel();
 	GPUKernel(const std::string& kernel_file_path, const std::string& kernel_function_name);
 

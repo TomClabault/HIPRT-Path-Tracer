@@ -6,6 +6,7 @@
 #ifndef CPU_RENDERER_H
 #define CPU_RENDERER_H
 
+#include "Device/kernel_parameters/ReSTIR/DI/LightPresamplingParameters.h"
 #include "HostDeviceCommon/RenderData.h"
 #include "Image/Image.h"
 #include "Renderer/BVH.h"
@@ -37,7 +38,13 @@ public:
     void camera_rays_pass();
 
     void ReSTIR_DI();
+
+    LightPresamplingParameters configure_ReSTIR_DI_light_presampling_pass();
     void configure_ReSTIR_DI_initial_pass();
+
+    void launch_ReSTIR_DI_presampling_lights_pass();
+    void launch_ReSTIR_DI_initial_candidates_pass();
+
     void configure_ReSTIR_DI_temporal_pass();
     void configure_ReSTIR_DI_temporal_pass_for_fused_spatiotemporal();
     void configure_ReSTIR_DI_spatial_pass(int spatial_pass_index);
@@ -45,7 +52,6 @@ public:
     void configure_ReSTIR_DI_spatiotemporal_pass();
 	void configure_ReSTIR_DI_output_buffer();
 
-    void ReSTIR_DI_initial_candidates_pass();
     void ReSTIR_DI_temporal_reuse_pass();
     void ReSTIR_DI_spatial_reuse_pass();
     void ReSTIR_DI_spatiotemporal_reuse_pass();
@@ -92,8 +98,10 @@ private:
         std::vector<ReSTIRDIReservoir> initial_candidates_reservoirs;
         std::vector<ReSTIRDIReservoir> spatial_output_reservoirs_1;
         std::vector<ReSTIRDIReservoir> spatial_output_reservoirs_2;
+        std::vector<ReSTIRDIPresampledLight> presampled_lights_buffer;
 
         ReSTIRDIReservoir* output_reservoirs = nullptr;
+
 
         bool odd_frame = false;
     } m_restir_di_state;

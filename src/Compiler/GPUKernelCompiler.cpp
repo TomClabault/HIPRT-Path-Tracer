@@ -6,6 +6,7 @@
 #include "Compiler/GPUKernelCompilerOptions.h"
 #include "Compiler/GPUKernelCompiler.h"
 #include "HIPRT-Orochi/HIPRTOrochiUtils.h"
+#include "Utils/Utils.h"
 
 #include <chrono>
 #include <deque>
@@ -17,7 +18,7 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, const GPUKern
 {
 	std::string kernel_file_path = kernel.get_kernel_file_path();
 	std::string kernel_function_name = kernel.get_kernel_function_name();
-	const std::vector<std::string>& additional_include_dirs = kernel_compiler_options.get_additional_include_directories();
+	const std::vector<std::string>& additional_include_dirs = GPUKernel::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS;
 	std::vector<std::string> compiler_options = kernel_compiler_options.get_relevant_macros_as_std_vector_string(&kernel);
 	/*compiler_options.push_back("-Wall");
 	compiler_options.push_back("-Weverything");
@@ -141,7 +142,11 @@ void GPUKernelCompiler::read_includes_of_file(const std::string& include_file_pa
 
 	}
 	else
+	{
 		std::cerr << "Could not generate additional cache key for kernel with path: " << include_file_path << ". Error is: " << strerror(errno);
+
+		Utils::debugbreak();
+	}
 }
 
 std::unordered_set<std::string> GPUKernelCompiler::read_option_macro_of_file(const std::string& filepath)
@@ -196,7 +201,7 @@ std::unordered_set<std::string> GPUKernelCompiler::read_option_macro_of_file(con
 	return option_macros;
 }
 
-std::string GPUKernelCompiler::get_additional_cache_key(GPUKernel& kernel, const GPUKernelCompilerOptions& kernel_compiler_options)
+std::string GPUKernelCompiler::get_additional_cache_key(GPUKernel& kernel)
 {
 	std::unordered_set<std::string> already_processed_includes;
 	std::deque<std::string> yet_to_process_includes;
@@ -214,7 +219,7 @@ std::string GPUKernelCompiler::get_additional_cache_key(GPUKernel& kernel, const
 		already_processed_includes.insert(current_file);
 
 		std::unordered_set<std::string> new_includes;
-		read_includes_of_file(current_file, kernel_compiler_options.get_additional_include_directories(), new_includes);
+		read_includes_of_file(current_file, GPUKernel::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS, new_includes);
 
 		for (const std::string& new_include : new_includes)
 			yet_to_process_includes.push_back(new_include);
@@ -244,7 +249,7 @@ std::string GPUKernelCompiler::get_additional_cache_key(GPUKernel& kernel, const
 	return final_cache_key;
 }
 
-std::unordered_set<std::string> GPUKernelCompiler::get_option_macros_used_by_kernel(const GPUKernel& kernel, const std::vector<std::string> kernel_additional_include_directories)
+std::unordered_set<std::string> GPUKernelCompiler::get_option_macros_used_by_kernel(const GPUKernel& kernel)
 {
 	std::unordered_set<std::string> already_processed_includes;
 	std::deque<std::string> yet_to_process_includes;
@@ -269,7 +274,7 @@ std::unordered_set<std::string> GPUKernelCompiler::get_option_macros_used_by_ker
 		already_processed_includes.insert(current_file);
 
 		std::unordered_set<std::string> new_includes;
-		read_includes_of_file(current_file, kernel_additional_include_directories, new_includes);
+		read_includes_of_file(current_file, GPUKernel::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS, new_includes);
 
 		for (const std::string& new_include : new_includes)
 			yet_to_process_includes.push_back(new_include);

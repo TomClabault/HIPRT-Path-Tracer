@@ -12,141 +12,220 @@
 #include "Device/includes/Intersect.h"
 #include "Device/includes/LightUtils.h"
 #include "Device/includes/ReSTIR/DI/Utils.h"
+#include "Device/includes/ReSTIR/DI/PresampledLight.h"
 
 #include "HostDeviceCommon/HIPRTCamera.h"
 #include "HostDeviceCommon/Math.h"
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const HIPRTRenderData& render_data, const RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
+/**
+ * Reference: https://en.wikipedia.org/wiki/Pairing_function
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE int cantor_pairing_function(int x, int y)
 {
-    // Pushing the intersection point outside the surface (if we're already outside)
-    // or inside the surface (if we're inside the surface)
-    // We'll use that intersection point as the origin of our shadow rays
+    return (x + y + 1) * (x + y) / 2 + y;
+}
+
+HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISample use_presampled_light_candidate(const HIPRTRenderData& render_data, const int2& pixel_coords,
+    const float3& evaluated_point, const float3& shading_normal,
+    ColorRGB32F& out_sample_radiance, float& out_sample_cosine_term, float& out_sample_pdf, float& out_distance_to_light, float3& out_to_light_direction,
+    Xorshift32Generator& random_number_generator)
+{
+    ReSTIRDISample light_sample;
+    const LightPresamplingSettings& light_presampling_settings = render_data.render_settings.restir_di_settings.light_presampling;
+
+    // We want all threads in a block of light_presampling_settings.tile_size * light_presampling_settings.tile_size
+    // pixels to sample from the same random subset of lights.
+    // We compute a unique number per each light_presampling_settings.tile_size * light_presampling_settings.tile_size
+    // tile of pixels and use that unique number as seed for our random number generator
+    int tile_index_seed = cantor_pairing_function(pixel_coords.x / light_presampling_settings.tile_size, pixel_coords.y / light_presampling_settings.tile_size);
+
+    Xorshift32Generator subset_rng(render_data.random_seed * (tile_index_seed + 1));
+    int random_subset_index = subset_rng.random_index(light_presampling_settings.number_of_subsets);
+    int random_light_index_in_subset = random_number_generator.random_index(light_presampling_settings.subset_size);
+    int light_sample_index = random_subset_index * light_presampling_settings.subset_size + random_light_index_in_subset;
+
+    ReSTIRDIPresampledLight presampled_light_sample = light_presampling_settings.light_samples[light_sample_index];
+
+    light_sample.emissive_triangle_index = presampled_light_sample.emissive_triangle_index;
+    light_sample.point_on_light_source = presampled_light_sample.point_on_light_source;
+    light_sample.flags = presampled_light_sample.flags;
+
+    out_sample_radiance = presampled_light_sample.radiance;
+    out_sample_pdf = presampled_light_sample.pdf;
+
+    if (light_sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE)
+    {
+        out_to_light_direction = matrix_X_vec(render_data.world_settings.envmap_to_world_matrix, light_sample.point_on_light_source);
+        out_distance_to_light = 1.0e35f;
+    }
+    else
+    {
+        out_to_light_direction = light_sample.point_on_light_source - evaluated_point;
+        out_to_light_direction = out_to_light_direction / (out_distance_to_light = hippt::length(out_to_light_direction)); // Normalization
+    }
+
+    out_sample_cosine_term = hippt::dot(shading_normal, out_to_light_direction);
+
+    if (!(light_sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE))
+    {
+        // To solid angle conversion if not envmap sample (already in solid angle)
+        float cosine_at_light_source = hippt::abs(hippt::dot(presampled_light_sample.light_source_normal, -out_to_light_direction));
+        out_sample_pdf *= out_distance_to_light * out_distance_to_light;
+        out_sample_pdf /= cosine_at_light_source;
+
+        bool contributes_enough = check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, out_sample_radiance * out_sample_cosine_term / out_sample_pdf);
+        if (!contributes_enough)
+        {
+            // Early check that the light contributes enough to the point, and if it doesn't, skip that light sample
+
+            // Setting it to -42.0f so that we know that the sample is invalid when the caller of this
+            // function will look at the target function's value
+            light_sample.target_function = -42.0f;
+
+            return light_sample;
+        }
+    }
+
+    return light_sample;
+}
+
+HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISample sample_fresh_light_candidate(const HIPRTRenderData& render_data, float envmap_candidate_probability, const HitInfo& closest_hit_info, ColorRGB32F& out_sample_radiance, float& out_sample_cosine_term, float& out_sample_pdf, Xorshift32Generator& random_number_generator)
+{
+    ReSTIRDISample light_sample;
+
     bool inside_surface = false;// hippt::dot(view_direction, closest_hit_info.geometric_normal) < 0;
     float inside_surface_multiplier = inside_surface ? -1.0f : 1.0f;
     float3 evaluated_point = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f * inside_surface_multiplier;
 
-    // If we're rendering at low resolution, only doing 1 candidate of each
-    // for better interactive framerates
-    int initial_nb_light_cand = render_data.render_settings.restir_di_settings.initial_candidates.number_of_initial_light_candidates;
-    int initial_nb_bsdf_cand = render_data.render_settings.restir_di_settings.initial_candidates.number_of_initial_bsdf_candidates;
-
-    int nb_light_candidates = render_data.render_settings.do_render_low_resolution() ? hippt::min(1, initial_nb_light_cand) : initial_nb_light_cand;
-    int nb_bsdf_candidates = render_data.render_settings.do_render_low_resolution() ? hippt::min(1, initial_nb_bsdf_cand) : initial_nb_bsdf_cand;
-    float envmap_candidate_probability = 0.0f;
-    if (render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP)
+    if (random_number_generator() > envmap_candidate_probability)
     {
-        if (render_data.buffers.emissive_triangles_count == 0)
-            // Only the envmap to sample
-            envmap_candidate_probability = 1.0f;
-        else
-            envmap_candidate_probability = render_data.render_settings.restir_di_settings.initial_candidates.envmap_candidate_probability;
+        // Light sample
+
+        LightSourceInformation light_source_info;
+        light_sample.point_on_light_source = uniform_sample_one_emissive_triangle(render_data, random_number_generator, out_sample_pdf, light_source_info);
+        light_sample.emissive_triangle_index = light_source_info.emissive_triangle_index;
+
+        if (out_sample_pdf > 0.0f)
+        {
+            // It can happen that the light PDF returned by the emissive triangle
+            // sampling function is 0 because of emissive triangles that are so
+            // small that we cannot compute their normal and their area (the cross
+            // product of their edges gives a quasi-null vector --> length of 0.0f --> area of 0)
+
+            float distance_to_light;
+            float3 to_light_direction = light_sample.point_on_light_source - evaluated_point;
+            to_light_direction = to_light_direction / (distance_to_light = hippt::length(to_light_direction)); // Normalization
+
+            // Multiplying by the inside_surface_multiplier here because if we're inside the surface, we want to flip the normal
+            // for the dot product to be "properly" oriented.
+            out_sample_cosine_term = hippt::max(0.0f, hippt::dot(closest_hit_info.shading_normal * inside_surface_multiplier, to_light_direction));
+
+            float cosine_at_light_source = hippt::abs(hippt::dot(light_source_info.light_source_normal, -to_light_direction));
+            // Converting the PDF from area measure to solid angle measure requires dividing by
+            // cos(theta) / dist^2. Dividing by that factor is equal to multiplying by the inverse
+            // which is what we're doing here
+            out_sample_pdf *= distance_to_light * distance_to_light;
+            out_sample_pdf /= cosine_at_light_source;
+
+            bool contributes_enough = check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, light_source_info.emission * out_sample_cosine_term / out_sample_pdf);
+            if (!contributes_enough)
+            {
+                // Early check that the light contributes enough to the point, and if it doesn't, skip that light sample
+
+                // Setting it to -42.0f so that we know that the sample is invalid when the caller of this
+                // function will look at the target function's value
+                light_sample.target_function = -42.0f;
+
+                return light_sample;
+            }
+
+            // Accounting for the probability of sampling a light, not the envmap
+            // (which has probability 'envmap_candidate_probability')
+            out_sample_pdf *= (1.0f - envmap_candidate_probability);
+
+            out_sample_radiance = light_source_info.emission;
+        }
+    }
+    else
+    {
+        // Envmap sample
+
+        float3 envmap_sampled_direction;
+        out_sample_radiance = envmap_sample(render_data.world_settings, envmap_sampled_direction, out_sample_pdf, random_number_generator);
+        out_sample_cosine_term = hippt::max(0.0f, hippt::dot(envmap_sampled_direction, closest_hit_info.shading_normal));
+
+        bool contributes_enough = check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, out_sample_radiance * out_sample_cosine_term / out_sample_pdf);
+        if (!contributes_enough)
+        {
+            // Early check that the envmap sample contributes enough to the point, and if it doesn't, skip it
+
+            // Setting it to -42.0f so that we know that the sample is invalid when the caller of this
+            // function will look at the target function's value
+            light_sample.target_function = -42.0f;
+
+            return light_sample;
+
+        }
+
+        // Taking into account the fact that we only have a 1 in 'envmap_candidate_probability' chance to sample
+        // the envmap
+        out_sample_pdf *= envmap_candidate_probability;
+
+        light_sample.emissive_triangle_index = -1;
+        // Storing in envmap space
+        light_sample.point_on_light_source = matrix_X_vec(render_data.world_settings.world_to_envmap_matrix, envmap_sampled_direction);
+        light_sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE;
     }
 
-    // Sampling candidates with weighted reservoir sampling
-    ReSTIRDIReservoir reservoir;
+    return light_sample;
+}
+
+// Try passing only volume state in here, not ray payload
+HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderData& render_data, const int2& pixel_coords, ReSTIRDIReservoir& reservoir, int nb_light_candidates, int nb_bsdf_candidates, float envmap_candidate_probability, const float3& view_direction, const HitInfo& closest_hit_info, const RayPayload& ray_payload, Xorshift32Generator& random_number_generator)
+{
+    bool inside_surface = false;// hippt::dot(view_direction, closest_hit_info.geometric_normal) < 0;
+    float inside_surface_multiplier = inside_surface ? -1.0f : 1.0f;
+    float3 evaluated_point = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f * inside_surface_multiplier;
+
     for (int i = 0; i < nb_light_candidates; i++)
     {
-        float candidate_weight = 0.0f;
-        ReSTIRDISample light_RIS_sample;
-
         ColorRGB32F sample_radiance;
         float sample_cosine_term = 0.0f;
         float sample_pdf = 0.0f;
-        if (random_number_generator() > envmap_candidate_probability)
+
+        float distance_to_light = 0.0f;
+        float3 to_light_direction{ 0.0f, 0.0f, 0.0f };
+#if ReSTIR_DI_DoLightsPresampling == KERNEL_OPTION_TRUE
+        ReSTIRDISample light_sample = use_presampled_light_candidate(render_data, pixel_coords, 
+            evaluated_point, closest_hit_info.shading_normal * inside_surface_multiplier, 
+            sample_radiance, sample_cosine_term, sample_pdf, distance_to_light, to_light_direction, 
+            random_number_generator);
+#else
+        ReSTIRDISample light_sample = sample_fresh_light_candidate(render_data, envmap_candidate_probability, closest_hit_info, sample_radiance, sample_cosine_term, sample_pdf, random_number_generator);
+
+        if (light_sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE)
         {
-            // Light sample
-
-            LightSourceInformation light_source_info;
-            light_RIS_sample.point_on_light_source = sample_one_emissive_triangle(render_data, random_number_generator, sample_pdf, light_source_info);
-            light_RIS_sample.emissive_triangle_index = light_source_info.emissive_triangle_index;
-
-            if (sample_pdf > 0.0f)
-            {
-                // It can happen that the light PDF returned by the emissive triangle
-                // sampling function is 0 because of emissive triangles that are so
-                // small that we cannot compute their normal and their area (the cross
-                // product of their edges gives a quasi-null vector --> length of 0.0f --> area of 0)
-
-                float distance_to_light;
-                float3 to_light_direction = light_RIS_sample.point_on_light_source - evaluated_point;
-                to_light_direction = to_light_direction / (distance_to_light = hippt::length(to_light_direction)); // Normalization
-
-                // Multiplying by the inside_surface_multiplier here because if we're inside the surface, we want to flip the normal
-                // for the dot product to be "properly" oriented.
-                sample_cosine_term = hippt::max(0.0f, hippt::dot(closest_hit_info.shading_normal * inside_surface_multiplier, to_light_direction));
-
-                float cosine_at_light_source = hippt::abs(hippt::dot(light_source_info.light_source_normal, -to_light_direction));
-                // Converting the PDF from area measure to solid angle measure requires dividing by
-                // cos(theta) / dist^2. Dividing by that factor is equal to multiplying by the inverse
-                // which is what we're doing here
-                sample_pdf *= distance_to_light * distance_to_light;
-                sample_pdf /= cosine_at_light_source;
-
-                bool contributes_enough = check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, light_source_info.emission * sample_cosine_term / sample_pdf);
-                if (!contributes_enough)
-                {
-                    // Early check that the light contributes enough to the point, and if it doesn't, skip that light sample
-                    // 
-                    // Also, if at least one thread is going to evaluate the light anyways, because of the divergence that this would
-                    // create, we may as well evaluate the light for all threads and not loose that much performance anyways
-                    reservoir.M++;
-
-                    continue;
-                }
-
-                // Accounting for the probability of sampling a light, not the envmap
-                // (which has probability 'envmap_candidate_probability')
-                sample_pdf *= (1.0f - envmap_candidate_probability);
-
-                sample_radiance = light_source_info.emission;
-            }
-        }
-        else
-        {
-            // Envmap sample
-
-            float3 envmap_sampled_direction;
-            sample_radiance = envmap_sample(render_data, envmap_sampled_direction, sample_pdf, random_number_generator);
-            sample_cosine_term = hippt::max(0.0f, hippt::dot(envmap_sampled_direction, closest_hit_info.shading_normal));
-
-            bool contributes_enough = check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, sample_radiance * sample_cosine_term / sample_pdf);
-            if (!contributes_enough)
-            {
-                // Early check that the envmap sample contributes enough to the point, and if it doesn't, skip it
-                // 
-                // Also, if at least one thread is going to evaluate the light anyways, because of the divergence that this would
-                // create, we may as well evaluate the light for all threads and not loose that much performance anyways
-                reservoir.M++;
-
-                continue;
-
-            }
-
-            // Taking into account the fact that we only have a 1 in 'envmap_candidate_probability' chance to sample
-            // the envmap
-            sample_pdf *= envmap_candidate_probability;
-
-            light_RIS_sample.emissive_triangle_index = -1;
-            // Storing in envmap space
-            light_RIS_sample.point_on_light_source = matrix_X_vec(render_data.world_settings.world_to_envmap_matrix, envmap_sampled_direction);
-            light_RIS_sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE;
-        }
-
-        float distance_to_light;
-        float3 to_light_direction;
-        if (light_RIS_sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE)
-        {
-            to_light_direction = matrix_X_vec(render_data.world_settings.envmap_to_world_matrix, light_RIS_sample.point_on_light_source);
+            to_light_direction = matrix_X_vec(render_data.world_settings.envmap_to_world_matrix, light_sample.point_on_light_source);
             distance_to_light = 1.0e35f;
         }
         else
         {
-            to_light_direction = light_RIS_sample.point_on_light_source - evaluated_point;
+            to_light_direction = light_sample.point_on_light_source - evaluated_point;
             to_light_direction = to_light_direction / (distance_to_light = hippt::length(to_light_direction)); // Normalization
         }
+#endif
 
-        if (sample_cosine_term > 0.0f)
+        if (light_sample.target_function == -42.0f)
+        {
+            // Special value to indicate that this sample should be skipped
+
+            reservoir.M++;
+            continue;
+        }
+
+        float candidate_weight = 0.0f;
+        if (sample_cosine_term > 0.0f && sample_pdf > 0.0f)
         {
             float bsdf_pdf;
             RayVolumeState volume_state = ray_payload.volume_state;
@@ -156,19 +235,18 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
             float target_function = light_contribution.luminance();
 
             if (!check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, light_contribution / sample_pdf / bsdf_pdf))
-                // TODO use warp ballot stuff to still compute target function if at least 1 thread goes through?
                 target_function = 0.0f;
             else
             {
                 float mis_weight = power_heuristic(sample_pdf, nb_light_candidates, bsdf_pdf, nb_bsdf_candidates);
                 candidate_weight = mis_weight * target_function / sample_pdf;
 
-                light_RIS_sample.target_function = target_function;
+                light_sample.target_function = target_function;
             }
         }
 
 #if ReSTIR_DI_InitialTargetFunctionVisibility == KERNEL_OPTION_TRUE
-        if (!render_data.render_settings.do_render_low_resolution() && light_RIS_sample.target_function > 0.0f)
+        if (!render_data.render_settings.do_render_low_resolution() && light_sample.target_function > 0.0f)
         {
             // Only doing visiblity if we're render at low resolution
             // (meaning we're moving the camera) for better movement framerates
@@ -191,13 +269,20 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
             }
 
             // We are now sure that if the sample survived, it is unoccluded
-            light_RIS_sample.flags |= RESTIR_DI_FLAGS_UNOCCLUDED;
+            light_sample.flags |= RESTIR_DI_FLAGS_UNOCCLUDED;
         }
 #endif
 
-        reservoir.add_one_candidate(light_RIS_sample, candidate_weight, random_number_generator);
+        reservoir.add_one_candidate(light_sample, candidate_weight, random_number_generator);
         reservoir.sanity_check(make_int2(-1, -1));
     }
+}
+
+HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData& render_data, ReSTIRDIReservoir& reservoir, int nb_light_candidates, int nb_bsdf_candidates, float envmap_candidate_probability, const float3& view_direction, const HitInfo& closest_hit_info, const RayPayload& ray_payload, Xorshift32Generator& random_number_generator)
+{
+    bool inside_surface = false;// hippt::dot(view_direction, closest_hit_info.geometric_normal) < 0;
+    float inside_surface_multiplier = inside_surface ? -1.0f : 1.0f;
+    float3 evaluated_point = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f * inside_surface_multiplier;
 
     // Sampling the BSDF candidates
     for (int i = 0; i < nb_bsdf_candidates; i++)
@@ -293,7 +378,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
             else if (!hit_found && render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP)
             {
                 // Envmap hit, this becomes an envmap sample
-                
+
                 // max(0.0f) here because we're not allowing envmap samples below the surface anyways (refraction envmap samples)
                 float cosine_at_evaluated_point = hippt::max(0.0f, hippt::dot(closest_hit_info.shading_normal, sampled_direction));
 
@@ -337,9 +422,42 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
             }
         }
     }
+}
+
+HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const HIPRTRenderData& render_data, const int2& pixel_coords, const RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
+{
+    // Pushing the intersection point outside the surface (if we're already outside)
+    // or inside the surface (if we're inside the surface)
+    // We'll use that intersection point as the origin of our shadow rays
+    bool inside_surface = false;// hippt::dot(view_direction, closest_hit_info.geometric_normal) < 0;
+    float inside_surface_multiplier = inside_surface ? -1.0f : 1.0f;
+    float3 evaluated_point = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f * inside_surface_multiplier;
+
+    // If we're rendering at low resolution, only doing 1 candidate of each
+    // for better interactive framerates
+    int initial_nb_light_cand = render_data.render_settings.restir_di_settings.initial_candidates.number_of_initial_light_candidates;
+    int initial_nb_bsdf_cand = render_data.render_settings.restir_di_settings.initial_candidates.number_of_initial_bsdf_candidates;
+
+    int nb_light_candidates = render_data.render_settings.do_render_low_resolution() ? hippt::min(1, initial_nb_light_cand) : initial_nb_light_cand;
+    int nb_bsdf_candidates = render_data.render_settings.do_render_low_resolution() ? hippt::min(1, initial_nb_bsdf_cand) : initial_nb_bsdf_cand;
+    float envmap_candidate_probability = 0.0f;
+    if (render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP)
+    {
+        if (render_data.buffers.emissive_triangles_count == 0)
+            // Only the envmap to sample
+            envmap_candidate_probability = 1.0f;
+        else
+            envmap_candidate_probability = render_data.render_settings.restir_di_settings.initial_candidates.envmap_candidate_probability;
+    }
+
+    // Sampling candidates with weighted reservoir sampling
+    ReSTIRDIReservoir reservoir;
+
+    sample_light_candidates(render_data, pixel_coords, reservoir, nb_light_candidates, nb_bsdf_candidates, envmap_candidate_probability, view_direction, closest_hit_info, ray_payload, random_number_generator);
+    sample_bsdf_candidates(render_data, reservoir, nb_light_candidates, nb_bsdf_candidates, envmap_candidate_probability, view_direction, closest_hit_info, ray_payload, random_number_generator);
 
     reservoir.end();
-    reservoir.sanity_check(make_int2(-1, -1));
+    reservoir.sanity_check(pixel_coords);
     // There's no need to keep M > 1 here, if you have 4 light candidates and 1 BSDF candidates, that's 5 samples.
     // But if you divide everyone by 5, everything stays correct. That allows manipulating the M-cap without having
     // to take the number of initial candidates into account
@@ -356,7 +474,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_InitialCandidates(HIPRTRenderData
 {
     if (render_data.buffers.emissive_triangles_count == 0 && render_data.world_settings.ambient_light_type != AmbientLightType::ENVMAP)
         // No initial candidates to sample since no lights
-        // TODO this is incorrect for the envmap since ReSTIR should also sample the envmap
         return;
 
 #ifdef __KERNELCC__
@@ -401,7 +518,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_InitialCandidates(HIPRTRenderData
     ray_payload.volume_state = render_data.g_buffer.ray_volume_states[pixel_index];
 
     // Producing and storing the reservoir
-    ReSTIRDIReservoir initial_candidates_reservoir = sample_initial_candidates(render_data, ray_payload, hit_info, view_direction, random_number_generator);
+    ReSTIRDIReservoir initial_candidates_reservoir = sample_initial_candidates(render_data, make_int2(x, y), ray_payload, hit_info, view_direction, random_number_generator);
 
 #if ReSTIR_DI_DoVisibilityReuse == KERNEL_OPTION_TRUE
     ReSTIR_DI_visibility_reuse(render_data, initial_candidates_reservoir, hit_info.inter_point + hit_info.shading_normal * 1.0e-4f);

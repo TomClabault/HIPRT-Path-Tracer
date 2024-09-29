@@ -6,27 +6,18 @@
 #ifndef DEVICE_RESTIR_DI_RESERVOIR_H
 #define DEVICE_RESTIR_DI_RESERVOIR_H
 
+#include "Device/includes/ReSTIR/DI/SampleFlags.h"
+
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/Xorshift.h"
 
 #ifndef __KERNELCC__
 #include "Utils/Utils.h"
 
-// For multithreaded console error logging if NaNs are detected
+// For multithreaded console error logging on the CPU if NaNs are detected
 #include <mutex>
 static std::mutex log_mutex;
 #endif
-
-enum ReSTIRDISampleFlags
-{
-    RESTIR_DI_FLAGS_NONE = 0,
-    // The sample is an evmap sample and 'point_on_light_source'
-    // should be interpreted as a direction, not a point on a light source
-    RESTIR_DI_FLAGS_ENVMAP_SAMPLE = 1 << 0,
-    // This sample *AT ITS OWN PIXEL* is unoccluded. This can be used to avoid tracing
-    // rays for visibility since we know it's unoccluded already
-    RESTIR_DI_FLAGS_UNOCCLUDED = 1 << 1
-};
 
 struct ReSTIRDISample
 {

@@ -10,6 +10,7 @@
 #include <unordered_map>
 #include <vector>
 
+std::string ThreadManager::COMPILE_RAY_VOLUME_STATE_SIZE_KERNEL_KEY = "CompileRayVolumeStateSizeKernelKey";
 std::string ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY = "CompileKernelPassesKey";
 std::string ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY = "TextureThreadsKey";
 std::string ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES = "DestroyAiScene";

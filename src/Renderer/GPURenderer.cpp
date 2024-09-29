@@ -17,6 +17,7 @@ const std::string GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID = "ReSTIR 
 const std::string GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID = "ReSTIR DI Temporal Reuse";
 const std::string GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID = "ReSTIR DI Spatial Reuse";
 const std::string GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID = "ReSTIR DI Spatiotemporal Reuse";
+const std::string GPURenderer::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID = "ReSTIR DI Lights Presampling";
 const std::string GPURenderer::PATH_TRACING_KERNEL_ID = "Path Tracing";
 const std::string GPURenderer::RAY_VOLUME_STATE_SIZE_KERNEL_ID = "Ray Volume State Size";
 
@@ -27,6 +28,7 @@ const std::unordered_map<std::string, std::string> GPURenderer::KERNEL_FUNCTION_
 	{ RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID, "ReSTIR_DI_TemporalReuse" },
 	{ RESTIR_DI_SPATIAL_REUSE_KERNEL_ID, "ReSTIR_DI_SpatialReuse" },
 	{ RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID, "ReSTIR_DI_SpatiotemporalReuse" },
+	{ RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID, "ReSTIR_DI_LightsPresampling" },
 	{ PATH_TRACING_KERNEL_ID, "FullPathTracer" },
 	{ RAY_VOLUME_STATE_SIZE_KERNEL_ID, "RayVolumeStateSize" },
 };
@@ -34,20 +36,13 @@ const std::unordered_map<std::string, std::string> GPURenderer::KERNEL_FUNCTION_
 const std::unordered_map<std::string, std::string> GPURenderer::KERNEL_FILES =
 {
 	{ CAMERA_RAYS_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/CameraRays.h" },
-	{ RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReSTIR_DI_InitialCandidates.h" },
-	{ RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReSTIR_DI_TemporalReuse.h" },
-	{ RESTIR_DI_SPATIAL_REUSE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReSTIR_DI_SpatialReuse.h" },
-	{ RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/ReSTIR_DI_FusedSpatiotemporalReuse.h" },
+	{ RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/DI/InitialCandidates.h" },
+	{ RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/DI/TemporalReuse.h" },
+	{ RESTIR_DI_SPATIAL_REUSE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/DI/SpatialReuse.h" },
+	{ RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/DI/FusedSpatiotemporalReuse.h" },
+	{ RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/DI/LightsPresampling.h" },
 	{ PATH_TRACING_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/FullPathTracer.h" },
 	{ RAY_VOLUME_STATE_SIZE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/Utils/RayVolumeStateSize.h" },
-};
-
-const std::vector<std::string> GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS = 
-{ 
-	KERNEL_COMPILER_ADDITIONAL_INCLUDE, 
-	DEVICE_INCLUDES_DIRECTORY, 
-	OROCHI_INCLUDES_DIRECTORY, 
-	"./" 
 };
 
 const std::string GPURenderer::FULL_FRAME_TIME_KEY = "FullFrameTime";
@@ -118,8 +113,6 @@ void GPURenderer::setup_kernels()
 	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].set_kernel_file_path(GPURenderer::KERNEL_FILES.at(GPURenderer::CAMERA_RAYS_KERNEL_ID));
 	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].set_kernel_function_name(GPURenderer::KERNEL_FUNCTION_NAMES.at(GPURenderer::CAMERA_RAYS_KERNEL_ID));
 	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].synchronize_options_with(*m_global_compiler_options, options_excluded_from_synchro);
-	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].get_kernel_options().set_additional_include_directories(GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS);
-	// The camera rays kernel doesn't need shadow rays so let's not use shared memory for that
 	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SHADOW_RAYS, KERNEL_OPTION_FALSE);
 	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_SHADOW_RAYS, 0);
 	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_GLOBAL_RAYS, 48);
@@ -127,7 +120,6 @@ void GPURenderer::setup_kernels()
 	m_kernels[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].set_kernel_file_path(GPURenderer::KERNEL_FILES.at(GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID));
 	m_kernels[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].set_kernel_function_name(GPURenderer::KERNEL_FUNCTION_NAMES.at(GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID));
 	m_kernels[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].synchronize_options_with(*m_global_compiler_options, options_excluded_from_synchro);
-	m_kernels[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].get_kernel_options().set_additional_include_directories(GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS);
 	m_kernels[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_GLOBAL_RAYS, KERNEL_OPTION_FALSE);
 	m_kernels[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SHADOW_RAYS, KERNEL_OPTION_TRUE);
 	m_kernels[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_GLOBAL_RAYS, 0);
@@ -136,7 +128,6 @@ void GPURenderer::setup_kernels()
 	m_kernels[GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID].set_kernel_file_path(GPURenderer::KERNEL_FILES.at(GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID));
 	m_kernels[GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID].set_kernel_function_name(GPURenderer::KERNEL_FUNCTION_NAMES.at(GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID));
 	m_kernels[GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID].synchronize_options_with(*m_global_compiler_options, options_excluded_from_synchro);
-	m_kernels[GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID].get_kernel_options().set_additional_include_directories(GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS);
 	m_kernels[GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_GLOBAL_RAYS, KERNEL_OPTION_FALSE);
 	m_kernels[GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SHADOW_RAYS, KERNEL_OPTION_TRUE);
 	m_kernels[GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_GLOBAL_RAYS, 0);
@@ -145,39 +136,45 @@ void GPURenderer::setup_kernels()
 	m_kernels[GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID].set_kernel_file_path(GPURenderer::KERNEL_FILES.at(GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID));
 	m_kernels[GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID].set_kernel_function_name(GPURenderer::KERNEL_FUNCTION_NAMES.at(GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID));
 	m_kernels[GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID].synchronize_options_with(*m_global_compiler_options, options_excluded_from_synchro);
-	m_kernels[GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID].get_kernel_options().set_additional_include_directories(GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS);
 	m_kernels[GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_GLOBAL_RAYS, KERNEL_OPTION_FALSE);
 	m_kernels[GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SHADOW_RAYS, KERNEL_OPTION_TRUE);
 	m_kernels[GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_GLOBAL_RAYS, 0);
-	m_kernels[GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_SHADOW_RAYS, 0);
+	m_kernels[GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_SHADOW_RAYS, 16);
 
 	m_kernels[GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID].set_kernel_file_path(GPURenderer::KERNEL_FILES.at(GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID));
 	m_kernels[GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID].set_kernel_function_name(GPURenderer::KERNEL_FUNCTION_NAMES.at(GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID));
 	m_kernels[GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID].synchronize_options_with(*m_global_compiler_options, options_excluded_from_synchro);
-	m_kernels[GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID].get_kernel_options().set_additional_include_directories(GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS);
 	m_kernels[GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_GLOBAL_RAYS, KERNEL_OPTION_FALSE);
 	m_kernels[GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SHADOW_RAYS, KERNEL_OPTION_TRUE);
 	m_kernels[GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_GLOBAL_RAYS, 0);
-	m_kernels[GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_SHADOW_RAYS, 0);
+	m_kernels[GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_SHADOW_RAYS, 16);
+
+	m_kernels[GPURenderer::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID].set_kernel_file_path(GPURenderer::KERNEL_FILES.at(GPURenderer::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID));
+	m_kernels[GPURenderer::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID].set_kernel_function_name(GPURenderer::KERNEL_FUNCTION_NAMES.at(GPURenderer::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID));
+	m_kernels[GPURenderer::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID].synchronize_options_with(*m_global_compiler_options, options_excluded_from_synchro);
+	m_kernels[GPURenderer::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_GLOBAL_RAYS, KERNEL_OPTION_FALSE);
+	m_kernels[GPURenderer::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SHADOW_RAYS, KERNEL_OPTION_TRUE);
+	m_kernels[GPURenderer::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_GLOBAL_RAYS, 0);
+	m_kernels[GPURenderer::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_SHADOW_RAYS, 16);
 
 	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].set_kernel_file_path(GPURenderer::KERNEL_FILES.at(GPURenderer::PATH_TRACING_KERNEL_ID));
 	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].set_kernel_function_name(GPURenderer::KERNEL_FUNCTION_NAMES.at(GPURenderer::PATH_TRACING_KERNEL_ID));
 	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].synchronize_options_with(*m_global_compiler_options, options_excluded_from_synchro);
-	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].get_kernel_options().set_additional_include_directories(GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS);
 	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_GLOBAL_RAYS, 12);
 	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_SHADOW_RAYS, 0);
+
+	ThreadManager::set_monothread(true);
 
 	// Configuring the kernel that will be used to retrieve the size of the RayVolumeState structure.
 	// This size will be needed to resize the 'ray_volume_states' buffer in the GBuffer if the nested dielectrics
 	// stack size changes
+	//
+	// We're compiling it serially so that we're sure that we can retrieve the RayVolumeState size on the GPU after the
+	// GPURenderer is constructed
 	m_ray_volume_state_byte_size_kernel.set_kernel_file_path(GPURenderer::KERNEL_FILES.at(GPURenderer::RAY_VOLUME_STATE_SIZE_KERNEL_ID));
 	m_ray_volume_state_byte_size_kernel.set_kernel_function_name(GPURenderer::KERNEL_FUNCTION_NAMES.at(GPURenderer::RAY_VOLUME_STATE_SIZE_KERNEL_ID));
-	m_ray_volume_state_byte_size_kernel.get_kernel_options().set_additional_include_directories(GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS);
-	// Synchronizing here so that when the nested dielectrics stack size of the
-	// global kernel option changes, this kernel has the size change too and can
-	// be recompiled accordingly
 	m_ray_volume_state_byte_size_kernel.synchronize_options_with(*m_global_compiler_options, options_excluded_from_synchro);
-	m_ray_volume_state_byte_size_kernel.compile_silent(m_hiprt_orochi_ctx);
+	ThreadManager::start_thread(ThreadManager::COMPILE_RAY_VOLUME_STATE_SIZE_KERNEL_KEY, ThreadFunctions::compile_kernel_silent, std::ref(m_ray_volume_state_byte_size_kernel), m_hiprt_orochi_ctx);
 
 	// Compiling kernels
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID]), m_hiprt_orochi_ctx);
@@ -185,6 +182,7 @@ void GPURenderer::setup_kernels()
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID]), m_hiprt_orochi_ctx);
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID]), m_hiprt_orochi_ctx);
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID]), m_hiprt_orochi_ctx);
+	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[GPURenderer::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID]), m_hiprt_orochi_ctx);
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID]), m_hiprt_orochi_ctx);
 }
 
@@ -268,14 +266,8 @@ void GPURenderer::internal_update_adaptive_sampling_buffers()
 		bool pixels_converged_sample_count_needs_resize = m_pixels_converged_sample_count_buffer->get_element_count() == 0;
 
 		if (pixels_squared_luminance_needs_resize || pixels_sample_count_needs_resize || pixels_converged_sample_count_needs_resize)
-		{
-			// If one of the two buffers is going to be resized, synchronizing because we don't want
-			// to resize the buffers if we're currently rendering a frame
-			synchronize_kernel();
-
 			// At least on buffer is going to be resized so buffers are invalidated
 			m_render_data_buffers_invalidated = true;
-		}
 
 		if (pixels_squared_luminance_needs_resize)
 			// Only allocating if it isn't already
@@ -292,13 +284,7 @@ void GPURenderer::internal_update_adaptive_sampling_buffers()
 	else
 	{
 		if (m_pixels_squared_luminance_buffer.get_element_count() > 0 || m_pixels_sample_count_buffer.get_element_count() > 0 || m_pixels_converged_sample_count_buffer->get_element_count() > 0)
-		{
-			// If one of the buffers isn't freed already, we're going to free it. In this case, we need to synchronize to avoid
-			// freeing a buffer that the renderer is actively using in the frame it is rendering right now
-			synchronize_kernel();
-
 			m_render_data_buffers_invalidated = true;
-		}
 
 		m_pixels_squared_luminance_buffer.free();
 		m_pixels_sample_count_buffer.free();
@@ -316,13 +302,8 @@ void GPURenderer::internal_update_restir_di_buffers()
 		bool spatial_output_2_needs_resize = m_restir_di_state.spatial_output_reservoirs_2.get_element_count() == 0;
 
 		if (initial_candidates_reservoir_needs_resize || spatial_output_1_needs_resize || spatial_output_2_needs_resize)
-		{
-			// Synchronizing because we don't want to resize the buffer while the renderer is rendering a frame
-			synchronize_kernel();
-
 			// At least on buffer is going to be resized so buffers are invalidated
 			m_render_data_buffers_invalidated = true;
-		}
 
 		if (initial_candidates_reservoir_needs_resize)
 			m_restir_di_state.initial_candidates_reservoirs.resize(m_render_resolution.x * m_render_resolution.y);
@@ -332,6 +313,25 @@ void GPURenderer::internal_update_restir_di_buffers()
 
 		if (spatial_output_2_needs_resize)
 			m_restir_di_state.spatial_output_reservoirs_2.resize(m_render_resolution.x * m_render_resolution.y);
+
+
+
+		// Also allocating / deallocating the presampled lights buffer
+		if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING) == KERNEL_OPTION_TRUE)
+		{
+			int presampled_light_count = m_render_data.render_settings.restir_di_settings.light_presampling.number_of_subsets * m_render_data.render_settings.restir_di_settings.light_presampling.subset_size;
+			bool presampled_lights_needs_allocation = m_restir_di_state.presampled_lights_buffer.get_element_count() != presampled_light_count;
+
+			if (presampled_lights_needs_allocation)
+			{
+				m_restir_di_state.presampled_lights_buffer.resize(presampled_light_count);
+
+				// At least on buffer is going to be resized so buffers are invalidated
+				m_render_data_buffers_invalidated = true;
+			}
+		}
+		else
+			m_restir_di_state.presampled_lights_buffer.free();
 	}
 	else
 	{
@@ -340,10 +340,6 @@ void GPURenderer::internal_update_restir_di_buffers()
 			|| m_restir_di_state.spatial_output_reservoirs_1.get_element_count() > 0 ||
 			m_restir_di_state.spatial_output_reservoirs_2.get_element_count() > 0)
 		{
-			// If one of the buffers isn't freed already, we're going to free it. In this case, we need to synchronize to avoid
-			// freeing a buffer that the renderer is actively using in the frame it is rendering right now
-			synchronize_kernel();
-
 			m_render_data_buffers_invalidated = true;
 		}
 
@@ -465,6 +461,9 @@ void GPURenderer::render()
 
 	// Updating the times per passes
 	m_ms_time_per_pass[GPURenderer::CAMERA_RAYS_KERNEL_ID] = m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].get_last_execution_time();
+	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING) == KERNEL_OPTION_TRUE)
+		m_ms_time_per_pass[GPURenderer::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID] = m_kernels[GPURenderer::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID].get_last_execution_time();
+
 	m_ms_time_per_pass[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID] = m_kernels[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].get_last_execution_time();
 	if (m_render_data.render_settings.restir_di_settings.do_fused_spatiotemporal)
 		m_ms_time_per_pass[GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID] = m_kernels[GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID].get_last_execution_time();
@@ -497,6 +496,9 @@ void GPURenderer::launch_ReSTIR_DI()
 	{
 		// If ReSTIR DI is enabled
 
+		if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING) == KERNEL_OPTION_TRUE)
+			launch_ReSTIR_DI_presampling_lights_pass();
+
 		configure_ReSTIR_DI_initial_pass();
 		m_kernels[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].launch_timed_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
 
@@ -513,7 +515,6 @@ void GPURenderer::launch_ReSTIR_DI()
 			if (m_render_data.render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
 			{
 				configure_ReSTIR_DI_temporal_pass();
-
 				m_kernels[GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID].launch_timed_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
 			}
 
@@ -525,7 +526,6 @@ void GPURenderer::launch_ReSTIR_DI()
 				for (int spatial_reuse_pass = 0; spatial_reuse_pass < m_render_data.render_settings.restir_di_settings.spatial_pass.number_of_passes; spatial_reuse_pass++)
 				{
 					configure_ReSTIR_DI_spatial_pass(spatial_reuse_pass);
-
 					m_kernels[GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID].launch_timed_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
 				}
 
@@ -548,9 +548,61 @@ void GPURenderer::launch_ReSTIR_DI()
 	}
 }
 
+LightPresamplingParameters GPURenderer::configure_ReSTIR_DI_light_presampling_pass()
+{
+	LightPresamplingParameters parameters;
+
+	/**
+	 * Parameters specific to the kernel
+	 */
+
+	 // From all the lights of the scene, how many subsets to presample
+	parameters.number_of_subsets = m_render_data.render_settings.restir_di_settings.light_presampling.number_of_subsets;
+	// How many lights to presample in each subset
+	parameters.subset_size = m_render_data.render_settings.restir_di_settings.light_presampling.subset_size;
+	// Buffer that holds the presampled lights
+	parameters.out_light_samples = m_restir_di_state.presampled_lights_buffer.get_device_pointer();
+
+
+
+
+	/**
+	 * Generic parameters needed by the kernel
+	 */
+	parameters.emissive_triangles_count = m_render_data.buffers.emissive_triangles_count;
+	parameters.emissive_triangles_indices = m_render_data.buffers.emissive_triangles_indices;
+	parameters.triangles_indices = m_render_data.buffers.triangles_indices;
+	parameters.vertices_positions = m_render_data.buffers.vertices_positions;
+	parameters.material_indices = m_render_data.buffers.material_indices;
+	parameters.materials = m_render_data.buffers.materials_buffer;
+
+	// World settings for sampling the envmap
+	parameters.world_settings = m_render_data.world_settings;
+
+	parameters.freeze_random = m_render_data.render_settings.freeze_random;
+	parameters.sample_number = m_render_data.render_settings.sample_number;
+	parameters.random_seed = m_rng.xorshift32();
+
+	// For each presampled light, the probability that this is going to be an envmap sample
+	parameters.envmap_sampling_probability = m_render_data.render_settings.restir_di_settings.initial_candidates.envmap_candidate_probability;
+
+	return parameters;
+}
+
+void GPURenderer::launch_ReSTIR_DI_presampling_lights_pass()
+{
+	LightPresamplingParameters launch_parameters = configure_ReSTIR_DI_light_presampling_pass();
+
+	void* launch_args[] = {&launch_parameters};
+	int thread_count = m_render_data.render_settings.restir_di_settings.light_presampling.number_of_subsets * m_render_data.render_settings.restir_di_settings.light_presampling.subset_size;
+
+	m_kernels[GPURenderer::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID].launch_timed_asynchronous(32, 1, thread_count, 1, launch_args, m_main_stream);
+}
+
 void GPURenderer::configure_ReSTIR_DI_initial_pass()
 {
 	m_render_data.random_seed = m_rng.xorshift32();
+	m_render_data.render_settings.restir_di_settings.light_presampling.light_samples = m_restir_di_state.presampled_lights_buffer.get_device_pointer();
 	m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs = m_restir_di_state.initial_candidates_reservoirs.get_device_pointer();
 }
 
@@ -1161,6 +1213,8 @@ size_t GPURenderer::get_ray_volume_state_byte_size()
 {
 	OrochiBuffer<size_t> out_size_buffer(1);
 	size_t* out_size_buffer_pointer = out_size_buffer.get_device_pointer();
+
+	ThreadManager::join_threads(ThreadManager::COMPILE_RAY_VOLUME_STATE_SIZE_KERNEL_KEY);
 
 	void* launch_args[] = { &out_size_buffer_pointer };
 	m_ray_volume_state_byte_size_kernel.launch(1, 1, 1, 1, launch_args, 0);

@@ -7,7 +7,8 @@
 #define GPU_RENDERER_H
 
 #include "Compiler/GPUKernel.h"
-#include "HIPRT-Orochi/OrochiBuffer.h"
+#include "Device/kernel_parameters/ReSTIR/DI/LightPresamplingParameters.h"
+#include "HIPRT-Orochi/OrochiBuffer.h"	
 #include "HIPRT-Orochi/HIPRTScene.h"
 #include "HIPRT-Orochi/HIPRTOrochiCtx.h"
 #include "HostDeviceCommon/RenderData.h"
@@ -39,6 +40,7 @@ public:
 	static const std::string RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID;
 	static const std::string RESTIR_DI_SPATIAL_REUSE_KERNEL_ID;
 	static const std::string RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID;
+	static const std::string RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID;
 	static const std::string PATH_TRACING_KERNEL_ID;
 	static const std::string RAY_VOLUME_STATE_SIZE_KERNEL_ID;
 
@@ -62,8 +64,6 @@ public:
 	// Key for indexing m_ms_time_per_pass that contains the times per passes
 	// This key is for the time of the whole frame
 	static const std::string FULL_FRAME_TIME_KEY;
-
-	static const std::vector<std::string> COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS;
 
 	/**
 	 * Constructs a renderer that will be using the given HIPRT/Orochi
@@ -264,6 +264,8 @@ private:
 
 	void internal_clear_m_status_buffers();
 
+	LightPresamplingParameters configure_ReSTIR_DI_light_presampling_pass();
+	void launch_ReSTIR_DI_presampling_lights_pass();
 	void configure_ReSTIR_DI_initial_pass();
 	void configure_ReSTIR_DI_temporal_pass();
 	void configure_ReSTIR_DI_temporal_pass_for_fused_spatiotemporal();

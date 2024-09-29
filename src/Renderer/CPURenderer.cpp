@@ -5,10 +5,11 @@
 
 #include "Device/kernels/CameraRays.h"
 #include "Device/kernels/FullPathTracer.h"
-#include "Device/kernels/ReSTIR/ReSTIR_DI_InitialCandidates.h"
-#include "Device/kernels/ReSTIR/ReSTIR_DI_TemporalReuse.h"
-#include "Device/kernels/ReSTIR/ReSTIR_DI_SpatialReuse.h"
-#include "Device/kernels/ReSTIR/ReSTIR_DI_FusedSpatiotemporalReuse.h"
+#include "Device/kernels/ReSTIR/DI/LightsPresampling.h"
+#include "Device/kernels/ReSTIR/DI/InitialCandidates.h"
+#include "Device/kernels/ReSTIR/DI/TemporalReuse.h"
+#include "Device/kernels/ReSTIR/DI/SpatialReuse.h"
+#include "Device/kernels/ReSTIR/DI/FusedSpatiotemporalReuse.h"
 
 #include "Renderer/CPURenderer.h"
 #include "Threads/ThreadManager.h"
@@ -21,7 +22,7 @@
  // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
  // allowing for fast step into that pixel with the debugger to see what's happening.
  // Otherwise if 0, all pixels of the image are rendered
-#define DEBUG_PIXEL 1
+#define DEBUG_PIXEL 0
 
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner.
 // If 1, it's bottom left corner.
@@ -35,8 +36,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 951
-#define DEBUG_PIXEL_Y 132
+#define DEBUG_PIXEL_X 876
+#define DEBUG_PIXEL_Y 79
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 1
@@ -45,8 +46,8 @@
 // of DEBUG_OTHER_PIXEL_X/Y given below.
 // 
 // -1 to disable. If disabled, the pixel at (DEBUG_PIXEL_X, DEBUG_PIXEL_Y) will be debugged
-#define DEBUG_OTHER_PIXEL_X 916
-#define DEBUG_OTHER_PIXEL_Y 536
+#define DEBUG_OTHER_PIXEL_X -1
+#define DEBUG_OTHER_PIXEL_Y -1
 
 // If 1, a square of DEBUG_NEIGHBORHOOD_SIZE x DEBUG_NEIGHBORHOOD_SIZE pixels
 // will be rendered around the pixel to debug (given by DEBUG_PIXEL_X and
@@ -60,7 +61,7 @@
 #define DEBUG_RENDER_NEIGHBORHOOD 1
 // How many pixels to render around the debugged pixel given by the DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y coordinates
-#define DEBUG_NEIGHBORHOOD_SIZE 75
+#define DEBUG_NEIGHBORHOOD_SIZE 25
 
 CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, height))
 {
@@ -76,6 +77,7 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
     m_restir_di_state.initial_candidates_reservoirs.resize(width * height);
     m_restir_di_state.spatial_output_reservoirs_1.resize(width * height);
     m_restir_di_state.spatial_output_reservoirs_2.resize(width * height);
+    m_restir_di_state.presampled_lights_buffer.resize(width * height);
     m_restir_di_state.output_reservoirs = m_restir_di_state.spatial_output_reservoirs_1.data();
 
     m_g_buffer.materials.resize(width * height);
@@ -110,6 +112,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.buffers.vertex_normals = parsed_scene.vertex_normals.data();
     m_render_data.buffers.texcoords = parsed_scene.texcoords.data();
 
+    ThreadManager::join_threads(ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY);
     m_render_data.buffers.material_textures = parsed_scene.textures.data();
     m_render_data.buffers.textures_dims = parsed_scene.textures_dims.data();
 
@@ -138,6 +141,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.g_buffer_prev_frame.camera_ray_hit = m_g_buffer_prev_frame.cameray_ray_hit.data();
     m_render_data.g_buffer_prev_frame.ray_volume_states = m_g_buffer_prev_frame.ray_volume_states.data();
 
+    m_render_data.render_settings.restir_di_settings.light_presampling.light_samples = m_restir_di_state.presampled_lights_buffer.data();
     m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs = m_restir_di_state.initial_candidates_reservoirs.data();
     m_render_data.render_settings.restir_di_settings.restir_output_reservoirs = m_restir_di_state.spatial_output_reservoirs_1.data();
     m_render_data.aux_buffers.restir_reservoir_buffer_1 = m_restir_di_state.initial_candidates_reservoirs.data();
@@ -332,8 +336,8 @@ void CPURenderer::camera_rays_pass()
 
 void CPURenderer::ReSTIR_DI()
 {
-    configure_ReSTIR_DI_initial_pass();
-    ReSTIR_DI_initial_candidates_pass();
+    launch_ReSTIR_DI_presampling_lights_pass();
+    launch_ReSTIR_DI_initial_candidates_pass();
 
     if (m_render_data.render_settings.restir_di_settings.do_fused_spatiotemporal)
     {
@@ -365,10 +369,71 @@ void CPURenderer::ReSTIR_DI()
     m_restir_di_state.odd_frame = !m_restir_di_state.odd_frame;
 }
 
+LightPresamplingParameters CPURenderer::configure_ReSTIR_DI_light_presampling_pass()
+{
+    LightPresamplingParameters parameters;
+
+    /**
+     * Parameters specific to the kernel
+     */
+
+     // From all the lights of the scene, how many subsets to presample
+    parameters.number_of_subsets = m_render_data.render_settings.restir_di_settings.light_presampling.number_of_subsets;
+    // How many lights to presample in each subset
+    parameters.subset_size = m_render_data.render_settings.restir_di_settings.light_presampling.subset_size;
+    // Buffer that holds the presampled lights
+    parameters.out_light_samples = m_restir_di_state.presampled_lights_buffer.data();
+
+
+
+    /**
+     * Generic parameters needed by the kernel
+     */
+    parameters.emissive_triangles_count = m_render_data.buffers.emissive_triangles_count;
+    parameters.emissive_triangles_indices = m_render_data.buffers.emissive_triangles_indices;
+    parameters.triangles_indices = m_render_data.buffers.triangles_indices;
+    parameters.vertices_positions = m_render_data.buffers.vertices_positions;
+    parameters.material_indices = m_render_data.buffers.material_indices;
+    parameters.materials = m_render_data.buffers.materials_buffer;
+
+    // World settings for sampling the envmap
+    parameters.world_settings = m_render_data.world_settings;
+
+    parameters.freeze_random = m_render_data.render_settings.freeze_random;
+    parameters.sample_number = m_render_data.render_settings.sample_number;
+    parameters.random_seed = m_rng.xorshift32();
+
+    // For each presampled light, the probability that this is going to be an envmap sample
+    parameters.envmap_sampling_probability = m_render_data.render_settings.restir_di_settings.initial_candidates.envmap_candidate_probability;
+
+    return parameters;
+}
+
+void CPURenderer::launch_ReSTIR_DI_presampling_lights_pass()
+{
+    if (ReSTIR_DI_DoLightsPresampling == KERNEL_OPTION_TRUE)
+    {
+        LightPresamplingParameters launch_parameters = configure_ReSTIR_DI_light_presampling_pass();
+
+        for (int index = 0; index < launch_parameters.number_of_subsets * launch_parameters.subset_size; index++)
+            ReSTIR_DI_LightsPresampling(launch_parameters, index);
+    }
+}
+
 void CPURenderer::configure_ReSTIR_DI_initial_pass()
 {
     m_render_data.random_seed = m_rng.xorshift32();
+    m_render_data.render_settings.restir_di_settings.light_presampling.light_samples = m_restir_di_state.presampled_lights_buffer.data();
     m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs = m_restir_di_state.initial_candidates_reservoirs.data();
+}
+
+void CPURenderer::launch_ReSTIR_DI_initial_candidates_pass()
+{
+    configure_ReSTIR_DI_initial_pass();
+
+    debug_render_pass([this](int x, int y) {
+        ReSTIR_DI_InitialCandidates(m_render_data, m_resolution, x, y);
+    });
 }
 
 void CPURenderer::configure_ReSTIR_DI_temporal_pass()
@@ -501,13 +566,6 @@ void CPURenderer::configure_ReSTIR_DI_output_buffer()
     else
         // No spatial or temporal, the output of ReSTIR is just the output of the initial candidates pass
         m_render_data.render_settings.restir_di_settings.restir_output_reservoirs = m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs;
-}
-
-void CPURenderer::ReSTIR_DI_initial_candidates_pass()
-{
-    debug_render_pass([this](int x, int y) {
-        ReSTIR_DI_InitialCandidates(m_render_data, m_resolution, x, y);
-    });
 }
 
 void CPURenderer::ReSTIR_DI_temporal_reuse_pass()

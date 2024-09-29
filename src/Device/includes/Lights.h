@@ -24,7 +24,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_no_MIS(const HIPRTRe
     float light_sample_pdf;
     LightSourceInformation light_source_info;
     ColorRGB32F light_source_radiance;
-    float3 random_light_point = sample_one_emissive_triangle(render_data, random_number_generator, light_sample_pdf, light_source_info);
+    float3 random_light_point = uniform_sample_one_emissive_triangle(render_data, random_number_generator, light_sample_pdf, light_source_info);
     if (!(light_sample_pdf > 0.0f))
         // Can happen for very small triangles
         return ColorRGB32F(0.0f);
@@ -124,7 +124,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(const HIPRTRende
     float light_sample_pdf;
     ColorRGB32F light_source_radiance_mis;
     LightSourceInformation light_source_info;
-    float3 random_light_point = sample_one_emissive_triangle(render_data, random_number_generator, light_sample_pdf, light_source_info);
+    float3 random_light_point = uniform_sample_one_emissive_triangle(render_data, random_number_generator, light_sample_pdf, light_source_info);
     if (light_sample_pdf <= 0.0f)
         // Can happen for very small triangles
         return ColorRGB32F(0.0f);

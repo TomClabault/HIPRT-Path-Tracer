@@ -33,6 +33,7 @@
 class ThreadManager
 {
 public:
+	static std::string COMPILE_RAY_VOLUME_STATE_SIZE_KERNEL_KEY;
 	static std::string COMPILE_KERNEL_PASS_THREAD_KEY;
 	static std::string SCENE_TEXTURES_LOADING_THREAD_KEY;
 	static std::string SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES;
@@ -61,7 +62,14 @@ public:
 		else
 		{
 			if (m_monothread)
+			{
 				start_serial_thread(key, function, args...);
+
+				// Creates the entry in the map if it doesn't exist. Doesn't do anything if it already exists.
+				// This is so that other parts of the ThreadManager don't scream when trying to join threads
+				// that haven't been started ("started" meaning that there is an entry in the map) for example
+				bool empty = m_threads_map[key].empty();
+			}
 			else
 			{
 				lock_thread_key(key);

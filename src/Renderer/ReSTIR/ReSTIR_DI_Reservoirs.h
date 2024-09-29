@@ -23,6 +23,13 @@ struct ReSTIR_DI_State
 	// the temporal reuse pass to feed upon
 	OrochiBuffer<ReSTIRDIReservoir> spatial_output_reservoirs_2;
 
+	// Buffer that holds the presampled lights if light presampling is enabled 
+	// (GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING)
+	//
+	// Implementation from the paper
+	// [Rearchitecting Spatiotemporal Resampling for Production] https://research.nvidia.com/publication/2021-07_rearchitecting-spatiotemporal-resampling-production
+	OrochiBuffer<ReSTIRDIPresampledLight> presampled_lights_buffer;
+
 	// Whether or not we're currently rendering an odd frame.
 	// This is used to adjust which buffers are used as input/outputs
 	// and ping-pong between them

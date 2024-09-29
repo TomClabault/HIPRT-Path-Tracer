@@ -17,11 +17,11 @@
 #include "stb_image_write.h"
 
 // TODOs ReSTIR DI
-// - fused spatiotemporal
 // - limit distance of BSDF ray for initial sampling (biased but reduces BVH traversal so performance++)
 // - maybe not spatially resample as hard everywhere in the image? Dark regions for example? heuristic to reduce/increase the number of spatial samples per pixel?
 // - disocclusion boost
 // - clamp spatial neighbors out of viewport instead of discarding them? option in Imgui
+// - multiple spatial reuse passes with fused spatiotemporal
 
 // TODO known bugs / incorectness:
 // - take transmission color into account when direct sampling a light source that is inside a volume
@@ -34,6 +34,7 @@
 
 
 // TODO Code Organization:
+// - do not pass so many arguments to kernels everytime: make a "KernelArguments" folder in the source files with one file that contains the arguments needed for a kernel: ReSTIR_DI_InitialCandidatesArguments, ReSTIR_DI_SpatialReuseArguments, ...
 // - what if everywhere in the code we use a minT for the rays instead of pushing the points in the right direction (annoying to determine the right direction everytime depending on inside/outside surface)
 // - cleanup RIS reservoir with all the BSDF stuff
 // - only recompile relevant kernels in GPURenderer::recompile_kernels (i.e. not restir if not using restir for example)
@@ -779,14 +780,22 @@ void RenderWindow::update_perf_metrics()
 
 	// Also adding the times of the various passes
 	m_perf_metrics->add_value(GPURenderer::CAMERA_RAYS_KERNEL_ID, m_renderer->get_render_pass_time(GPURenderer::CAMERA_RAYS_KERNEL_ID));
-	m_perf_metrics->add_value(GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID, m_renderer->get_render_pass_time(GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID));
-	if (m_renderer->get_render_settings().restir_di_settings.do_fused_spatiotemporal)
-		m_perf_metrics->add_value(GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID, m_renderer->get_render_pass_time(GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID));
-	else
+
+	if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI)
 	{
-		m_perf_metrics->add_value(GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID, m_renderer->get_render_pass_time(GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID));
-		m_perf_metrics->add_value(GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID, m_renderer->get_render_pass_time(GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID));
+		if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING) == KERNEL_OPTION_TRUE)
+			m_perf_metrics->add_value(GPURenderer::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID, m_renderer->get_render_pass_time(GPURenderer::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID));
+		m_perf_metrics->add_value(GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID, m_renderer->get_render_pass_time(GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID));
+
+		if (m_renderer->get_render_settings().restir_di_settings.do_fused_spatiotemporal)
+			m_perf_metrics->add_value(GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID, m_renderer->get_render_pass_time(GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID));
+		else
+		{
+			m_perf_metrics->add_value(GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID, m_renderer->get_render_pass_time(GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID));
+			m_perf_metrics->add_value(GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID, m_renderer->get_render_pass_time(GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID));
+		}
 	}
+
 	m_perf_metrics->add_value(GPURenderer::PATH_TRACING_KERNEL_ID, m_renderer->get_render_pass_time(GPURenderer::PATH_TRACING_KERNEL_ID));
 }
 

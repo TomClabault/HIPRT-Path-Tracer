@@ -10,7 +10,7 @@
 #include "HostDeviceCommon/HitInfo.h"
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 sample_one_emissive_triangle(const HIPRTRenderData& render_data, Xorshift32Generator& random_number_generator, float& pdf, LightSourceInformation& light_info)
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 uniform_sample_one_emissive_triangle(const HIPRTRenderData& render_data, Xorshift32Generator& random_number_generator, float& pdf, LightSourceInformation& light_info)
 {
     int random_index = random_number_generator.random_index(render_data.buffers.emissive_triangles_count);
     int triangle_index = render_data.buffers.emissive_triangles_indices[random_index];
