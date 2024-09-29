@@ -81,13 +81,24 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_ReSTIR_DI_reservoir(const HI
     return final_color;
 }
 
+HIPRT_HOST_DEVICE HIPRT_INLINE void validate_reservoir(const HIPRTRenderData& render_data, ReSTIRDIReservoir& reservoir)
+{
+    if (reservoir.sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE && render_data.world_settings.ambient_light_type != AmbientLightType::ENVMAP)
+        // Killing the reservoir if it was an envmap sample but the envmap is not used anymore
+        reservoir.UCW = 0.0f;
+}
+
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_light_ReSTIR_DI(const HIPRTRenderData& render_data, const RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, int2 pixel_coords, int2 resolution)
 {
 	int pixel_index = pixel_coords.x + pixel_coords.y * resolution.x;
 
 	// Because the spatial reuse pass runs last, the output buffer of the spatial
 	// pass contains the reservoir whose sample we're going to shade
-	ReSTIRDIReservoir reservoir = render_data.render_settings.restir_di_settings.restir_output_reservoirs[pixel_index];
+	ReSTIRDIReservoir& reservoir = render_data.render_settings.restir_di_settings.restir_output_reservoirs[pixel_index];
+
+    // Validates the reservoir i.e. kills the reservoir if it isn't valid
+    // anymore i.e. if it refers to a light that doesn't exist anymore
+    validate_reservoir(render_data, reservoir);
 
 	return evaluate_ReSTIR_DI_reservoir(render_data, ray_payload, closest_hit_info.inter_point, closest_hit_info.shading_normal, view_direction, reservoir);
 }
