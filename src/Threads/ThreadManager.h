@@ -6,8 +6,10 @@
 #ifndef THREAD_MANAGER_H
 #define THREAD_MANAGER_H
 
+#include <condition_variable>
 #include <iostream>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <thread>
 #include <unordered_map>
@@ -61,8 +63,12 @@ public:
 			if (m_monothread)
 				start_serial_thread(key, function, args...);
 			else
+			{
+				lock_thread_key(key);
+
 				// Starting the thread and adding it to the list of threads for the given key
 				m_threads_map[key].push_back(std::thread(function, args...));
+			}
 		}
 	}
 
@@ -74,22 +80,44 @@ public:
 		// Executing the given function after waiting for the dependencies
 		if (m_monothread)
 		{
+			// Waiting for the condition variable to signal that the threads of
+			// 'dependency' are finished (join_threads() sends the signal)
 			for (const std::string& dependency : dependencies)
-				join_threads(dependency);
+				m_condition_variables[dependency].second.wait(m_unique_locks[dependency]);
 
 			start_serial_thread(thread_key_to_start, function, args...);
 		}
 		else
 		{
+			lock_thread_key(thread_key_to_start);
+
 			// Starting a thread that will wait for the dependencies before calling the given function
 			m_threads_map[thread_key_to_start].push_back(std::thread([dependencies, function, args...]() {
+				// Waiting for the condition variable to signal that the threads of
+				// 'dependency' are finished (join_threads() sends the signal)
 				for (const std::string& dependency : dependencies)
-					join_threads(dependency);
+					if (m_condition_variables.find(dependency) != m_condition_variables.end())
+						//  The condition variable exists, i.e. some dependency threads have actually
+						// been started (otherwise, there is no one to wait for)
+						m_condition_variables[dependency].second.wait(m_unique_locks[dependency]);
 
 				std::thread function_thread(function, args...);
 				function_thread.join();
 			}));
 		}
+	}
+
+	static void lock_thread_key(const std::string& key)
+	{
+		if (m_unique_locks.find(key) == m_unique_locks.end())
+			// No unique lock created yet, creating on the mutex of these threads.
+			// The constructor automatically locks the mutex
+			m_unique_locks[key] = std::unique_lock(m_condition_variables[key].first);
+		else if (!m_unique_locks[key].owns_lock())
+			// Locking the mutex of this thread key so that any thread keys with
+			// dependencies on this one cannot start until this mutex is unlock
+			// (the mutex will be unlocked in join_threads())
+			m_unique_locks[key].lock();
 	}
 
 	/**
@@ -124,6 +152,13 @@ private:
 	// For each thread key, maps to a vector of the dependencies of these threads
 	// (thread with the thread key given as key to the map)
 	static std::unordered_map<std::string, std::vector<std::string>> m_dependencies;
+
+	// For a given key, a condition variable and its mutex.
+	// This allows managing dependencies between thread keys: a thread 
+	// key can wait on all threads of another key to complete by waiting on the condition variable
+	static std::unordered_map<std::string, std::pair<std::mutex, std::condition_variable>> m_condition_variables;
+	// Unique locks used to lock the mutexes of 'm_condition_variables'
+	static std::unordered_map<std::string, std::unique_lock<std::mutex>> m_unique_locks;
 };
 
 #endif

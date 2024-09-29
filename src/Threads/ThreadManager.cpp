@@ -20,6 +20,9 @@ std::unordered_map<std::string, std::shared_ptr<void>> ThreadManager::m_threads_
 std::unordered_map<std::string, std::vector<std::thread>> ThreadManager::m_threads_map;
 std::unordered_map<std::string, std::vector<std::string>> ThreadManager::m_dependencies;
 
+std::unordered_map<std::string, std::pair<std::mutex, std::condition_variable>> ThreadManager::m_condition_variables;
+std::unordered_map<std::string, std::unique_lock<std::mutex>> ThreadManager::m_unique_locks;
+
 void ThreadManager::set_monothread(bool is_monothread)
 {
 	m_monothread = is_monothread;
@@ -30,12 +33,23 @@ void ThreadManager::join_threads(std::string key)
 	auto find = m_threads_map.find(key);
 	if (find != m_threads_map.end())
 	{
+		if (find->second.empty())
+			// No threads to wait for
+			return;
+
 		for (std::thread& thread : find->second)
 			if (thread.joinable())
 				thread.join();
 	}
+	else
+	{
+		std::cerr << "Trying to joing threads with key \"" << key << "\" but no threads have been started with this key.";
+		return;
+	}
 
 	m_threads_map[key].clear();
+	m_unique_locks[key].unlock();
+	m_condition_variables[key].second.notify_all();
 }
 
 void ThreadManager::add_dependency(const std::string& key, const std::string& dependency)
