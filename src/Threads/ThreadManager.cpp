@@ -29,7 +29,7 @@ void ThreadManager::set_monothread(bool is_monothread)
 	m_monothread = is_monothread;
 }
 
-void ThreadManager::join_threads(std::string key)
+void ThreadManager::join_threads(const std::string& key)
 {
 	auto find = m_threads_map.find(key);
 	if (find != m_threads_map.end())
@@ -51,6 +51,12 @@ void ThreadManager::join_threads(std::string key)
 	m_threads_map[key].clear();
 	m_unique_locks[key].unlock();
 	m_condition_variables[key].second.notify_all();
+}
+
+void ThreadManager::join_all_threads()
+{
+	for (const auto& key_to_threads : m_threads_map)
+		join_threads(key_to_threads.first);
 }
 
 void ThreadManager::add_dependency(const std::string& key, const std::string& dependency)

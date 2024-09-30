@@ -7,6 +7,7 @@
 #define HIPRT_SCENE_H
 
 #include "HIPRT-Orochi/HIPRTOrochiUtils.h"
+#include "HIPRT-Orochi/OrochiTexture.h"
 #include "HostDeviceCommon/Material.h"
 
 #include "hiprt/hiprt.h"
@@ -96,6 +97,16 @@ struct HIPRTGeometry
 
 struct HIPRTScene
 {
+	void print_statistics(std::ostream& stream)
+	{
+		stream << "Scene statistics: " << std::endl;
+		stream << "\t" << geometry.m_mesh.vertexCount << " vertices" << std::endl;
+		stream << "\t" << geometry.m_mesh.triangleCount << " vertices" << std::endl;
+		stream << "\t" << emissive_triangles_indices.get_element_count() << " emissive triangles" << std::endl;
+		stream << "\t" << materials_buffer.get_element_count() << " materials" << std::endl;
+		stream << "\t" << orochi_materials_textures.size() << " textures" << std::endl;
+	}
+
 	HIPRTGeometry geometry;
 
 	OrochiBuffer<bool> has_vertex_normals;
@@ -106,7 +117,10 @@ struct HIPRTScene
 	int emissive_triangles_count = 0;
 	OrochiBuffer<int> emissive_triangles_indices;
 
-	OrochiBuffer<oroTextureObject_t> materials_textures;
+	// Vector to keep the textures data alive otherwise the OrochiTexture objects would
+	// be destroyed which means that the underlying textures would be destroyed
+	std::vector<OrochiTexture> orochi_materials_textures;
+	OrochiBuffer<oroTextureObject_t> gpu_materials_textures;
 	OrochiBuffer<int2> textures_dims;
 	OrochiBuffer<float2> texcoords_buffer;
 };

@@ -61,8 +61,12 @@ int main(int argc, char* argv[])
     renderer->set_envmap(envmap_image);
     renderer->set_camera(parsed_scene.camera);
     renderer->set_scene(parsed_scene);
+
     stop_full = std::chrono::high_resolution_clock::now();
     std::cout << "Full scene parsed & built in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop_full - start_full).count() << "ms" << std::endl;
+    renderer->get_hiprt_scene().print_statistics(std::cout);
+
+    ThreadManager::join_all_threads();
 
     // We don't need the scene anymore, we can free it now
     assimp_importer.FreeScene();

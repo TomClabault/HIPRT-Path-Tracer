@@ -212,12 +212,6 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Assimp::Im
     // the information of the potential constant-emission textures
     ThreadManager::add_dependency(ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES, ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY);
     ThreadManager::start_thread(ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES, ThreadFunctions::load_scene_parse_emissive_triangles, scene, std::ref(parsed_scene));
-
-    std::cout << "\t" << parsed_scene.vertices_positions.size() << " vertices" << std::endl;
-    std::cout << "\t" << parsed_scene.triangle_indices.size() / 3 << " triangles" << std::endl;
-    std::cout << "\t" << parsed_scene.emissive_triangle_indices.size() << " emissive triangles" << std::endl;
-    std::cout << "\t" << parsed_scene.materials.size() << " materials" << std::endl;
-    std::cout << "\t" << parsed_scene.textures.size() << " textures" << std::endl;
 }
 
 void SceneParser::parse_camera(const aiScene* scene, Scene& parsed_scene, float frame_aspect_override)

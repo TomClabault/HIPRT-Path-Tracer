@@ -888,6 +888,11 @@ HIPRTRenderData& GPURenderer::get_render_data()
 	return m_render_data;
 }
 
+HIPRTScene& GPURenderer::get_hiprt_scene()
+{
+	return m_hiprt_scene;
+}
+
 oroDeviceProp GPURenderer::get_device_properties()
 {
 	return m_device_properties;
@@ -1017,7 +1022,7 @@ void GPURenderer::update_render_data()
 		m_render_data.buffers.emissive_triangles_count = m_hiprt_scene.emissive_triangles_count;
 		m_render_data.buffers.emissive_triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.emissive_triangles_indices.get_device_pointer());
 
-		m_render_data.buffers.material_textures = reinterpret_cast<oroTextureObject_t*>(m_hiprt_scene.materials_textures.get_device_pointer());
+		m_render_data.buffers.material_textures = reinterpret_cast<oroTextureObject_t*>(m_hiprt_scene.gpu_materials_textures.get_device_pointer());
 		m_render_data.buffers.texcoords = reinterpret_cast<float2*>(m_hiprt_scene.texcoords_buffer.get_device_pointer());
 		m_render_data.buffers.textures_dims = reinterpret_cast<int2*>(m_hiprt_scene.textures_dims.get_device_pointer());
 
@@ -1120,7 +1125,7 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 	if (scene.textures.size() > 0)
 	{
 		std::vector<oroTextureObject_t> oro_textures(scene.textures.size());
-		m_materials_textures.reserve(scene.textures.size());
+		m_hiprt_scene.orochi_materials_textures.reserve(scene.textures.size());
 		for (int i = 0; i < scene.textures.size(); i++)
 		{
 			if (scene.textures[i].width == 0 || scene.textures[i].height == 0)
@@ -1138,13 +1143,13 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 
 			// We need to keep the texture alive so they are not destroyed when returning from 
 			// this function so we're adding them to a member buffer
-			m_materials_textures.push_back(OrochiTexture(scene.textures[i]));
+			m_hiprt_scene.orochi_materials_textures.push_back(OrochiTexture(scene.textures[i]));
 
-			oro_textures[i] = m_materials_textures.back().get_device_texture();
+			oro_textures[i] = m_hiprt_scene.orochi_materials_textures.back().get_device_texture();
 		}
 
-		m_hiprt_scene.materials_textures.resize(oro_textures.size());
-		m_hiprt_scene.materials_textures.upload_data(oro_textures.data());
+		m_hiprt_scene.gpu_materials_textures.resize(oro_textures.size());
+		m_hiprt_scene.gpu_materials_textures.upload_data(oro_textures.data());
 
 		m_hiprt_scene.textures_dims.resize(scene.textures_dims.size());
 		m_hiprt_scene.textures_dims.upload_data(scene.textures_dims.data());

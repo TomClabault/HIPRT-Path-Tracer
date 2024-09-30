@@ -8,7 +8,7 @@
 
 #include "Compiler/GPUKernel.h"
 #include "Device/kernel_parameters/ReSTIR/DI/LightPresamplingParameters.h"
-#include "HIPRT-Orochi/OrochiBuffer.h"	
+#include "HIPRT-Orochi/OrochiBuffer.h"
 #include "HIPRT-Orochi/HIPRTScene.h"
 #include "HIPRT-Orochi/HIPRTOrochiCtx.h"
 #include "HostDeviceCommon/RenderData.h"
@@ -156,6 +156,7 @@ public:
 	HIPRTRenderSettings& get_render_settings();
 	WorldSettings& get_world_settings();
 	HIPRTRenderData& get_render_data();
+	HIPRTScene& get_hiprt_scene();
 
 	Camera& get_camera();
 	RendererEnvmap& get_envmap();
@@ -343,9 +344,6 @@ private:
 	std::vector<RendererMaterial> m_materials;
 	// The material names are used for displaying in the ImGui editor
 	std::vector<std::string> m_material_names;
-	// Vector to keep the textures data alive otherwise the OrochiTexture objects would
-	// be destroyed which means that the underlying textures would be destroyed
-	std::vector<OrochiTexture> m_materials_textures;
 
 	// Envmap of the renderer
 	RendererEnvmap m_envmap;

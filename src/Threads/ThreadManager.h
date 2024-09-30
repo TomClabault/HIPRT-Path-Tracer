@@ -138,7 +138,8 @@ public:
 		function(args...);
 	}
 
-	static void join_threads(std::string key);
+	static void join_threads(const std::string& key);
+	static void join_all_threads();
 
 	/**
 	 * Adds a dependecy on 'dependency_key' from 'key' such that all the threads started with key
