@@ -5,61 +5,32 @@
 
 #include "Threads/ThreadManager.h"
 
+#include <deque>
 #include <memory>
 #include <thread>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 std::string ThreadManager::COMPILE_RAY_VOLUME_STATE_SIZE_KERNEL_KEY = "CompileRayVolumeStateSizeKernelKey";
-std::string ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY = "CompileKernelPassesKey";
+std::string ThreadManager::COMPILE_KERNELS_THREAD_KEY = "CompileKernelPassesKey";
+
+std::string ThreadManager::RENDER_WINDOW_CONSTRUCTOR = "RenderWindowConstructor";
+std::string ThreadManager::RENDER_WINDOW_RENDERER_INITIAL_RESIZE = "RenderWindowRendererInitialResize";
+
+std::string ThreadManager::RENDERER_STREAM_CREATE = "RendererStreamCreate";
+std::string ThreadManager::RENDERER_SET_ENVMAP = "RendererSetEnvmapKey";
+std::string ThreadManager::RENDERER_BUILD_BVH = "RendererBuildBVH";
+std::string ThreadManager::RENDERER_UPLOAD_MATERIALS = "RendererUploadMaterials";
+std::string ThreadManager::RENDERER_UPLOAD_TEXTURES = "RendererUploadTextures";
+std::string ThreadManager::RENDERER_UPLOAD_EMISSIVE_TRIANGLES = "RendererUploadEmissiveTriangles";
+
 std::string ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY = "TextureThreadsKey";
-std::string ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES = "DestroyAiScene";
-std::string ThreadManager::ENVMAP_LOAD_THREAD_KEY = "EnvmapLoadThreadsKey";
+std::string ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES = "ParseEmissiveTrianglesKey";
+std::string ThreadManager::ENVMAP_LOAD_FROM_DISK_THREAD = "EnvmapLoadThreadsKey";
 
 bool ThreadManager::m_monothread = false;
 std::unordered_map<std::string, std::shared_ptr<void>> ThreadManager::m_threads_states;
 std::unordered_map<std::string, std::vector<std::thread>> ThreadManager::m_threads_map;
-std::unordered_map<std::string, std::vector<std::string>> ThreadManager::m_dependencies;
-
-std::unordered_map<std::string, std::pair<std::mutex, std::condition_variable>> ThreadManager::m_condition_variables;
-std::unordered_map<std::string, std::unique_lock<std::mutex>> ThreadManager::m_unique_locks;
-
-void ThreadManager::set_monothread(bool is_monothread)
-{
-	m_monothread = is_monothread;
-}
-
-void ThreadManager::join_threads(const std::string& key)
-{
-	auto find = m_threads_map.find(key);
-	if (find != m_threads_map.end())
-	{
-		if (find->second.empty())
-			// No threads to wait for
-			return;
-
-		for (std::thread& thread : find->second)
-			if (thread.joinable())
-				thread.join();
-	}
-	else
-	{
-		std::cerr << "Trying to joing threads with key \"" << key << "\" but no threads have been started with this key.";
-		return;
-	}
-
-	m_threads_map[key].clear();
-	m_unique_locks[key].unlock();
-	m_condition_variables[key].second.notify_all();
-}
-
-void ThreadManager::join_all_threads()
-{
-	for (const auto& key_to_threads : m_threads_map)
-		join_threads(key_to_threads.first);
-}
-
-void ThreadManager::add_dependency(const std::string& key, const std::string& dependency)
-{
-	m_dependencies[key].push_back(dependency);
-}
+std::unordered_map<std::string, std::mutex> ThreadManager::m_join_mutexes;
+std::unordered_map<std::string, std::unordered_set<std::string>> ThreadManager::m_dependencies;

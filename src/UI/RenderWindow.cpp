@@ -47,9 +47,6 @@
 // - use 3x3 matrix for envmap matrices
 // - free denoiser buffers if not using denoising
 // All of this on threads:
-//		- ---------------- stream creation duration : 350ms
-//		- ---------------- denoiser creation duration : 804ms
-//		- ---------------- set_envmap() duration : 962ms
 //		- ---------------- set_scene() duration : 136ms
 //		- ---------------- textures upload if possible duration : 700ms on bistro + compile release
 // - refactor ImGuiRenderer in several sub classes that each draw a panel
@@ -75,6 +72,8 @@
 // - pack nested dielectrics structure
 // - presample lights per each tile of pixels the same as for ReSTIR DI and use that for second bounces sampling?
 // - next event estimation++?
+// - Exploiting Visibility Correlation in Direct Illumination
+// - Progressive Visibility Caching for Fast Indirect Illumination
 // - performance/bias tradeoff by ignoring alpha tests after N bounce?
 // - performance/bias tradeoff by ignoring direct lighting occlusion after N bounce? --> strong bias but maybe something to do by reducing the length of shadow rays instead of just hard-disabling occlusion
 // - experiment with a feature that ignores really dark pixel in the variance estimation of the adaptive 
@@ -264,33 +263,46 @@ RenderWindow::RenderWindow(int width, int height, std::shared_ptr<HIPRTOrochiCtx
 	init_imgui();
 
 	m_renderer = std::make_shared<GPURenderer>(hiprt_oro_ctx);
-	m_renderer->resize(width, height);
 
-	m_application_settings = std::make_shared<ApplicationSettings>();
-	// Disabling auto samples per frame is accumulation is OFF
-	m_application_settings->auto_sample_per_frame = m_renderer->get_render_settings().accumulate ? m_application_settings->auto_sample_per_frame : false;
-	m_application_state = std::make_shared<ApplicationState>();
+	ThreadManager::add_dependency(ThreadManager::RENDERER_STREAM_CREATE, ThreadManager::RENDER_WINDOW_RENDERER_INITIAL_RESIZE);
+	ThreadManager::start_thread(ThreadManager::RENDER_WINDOW_RENDERER_INITIAL_RESIZE, [this, width, height]() {
+		m_renderer->resize(width, height, /* resize interop buffers */ false);
+	});
+	// We need to resize OpenGL interop buffers on the main thread becaues they
+	// need the OpenGL context which is only available to the main thread
+	m_renderer->resize_interop_buffers(width, height);
 
+	ThreadManager::start_thread(ThreadManager::RENDER_WINDOW_CONSTRUCTOR, [this, width, height]() {
+		m_application_settings = std::make_shared<ApplicationSettings>();
+		// Disabling auto samples per frame is accumulation is OFF
+		m_application_settings->auto_sample_per_frame = m_renderer->get_render_settings().accumulate ? m_application_settings->auto_sample_per_frame : false;
+		m_application_state = std::make_shared<ApplicationState>();
+
+		m_denoiser = std::make_shared<OpenImageDenoiser>();
+		m_denoiser->initialize();
+		m_denoiser->resize(width, height);
+		m_denoiser->set_use_albedo(m_application_settings->denoiser_use_albedo);
+		m_denoiser->set_use_normals(m_application_settings->denoiser_use_normals);
+		m_denoiser->finalize();
+
+		m_perf_metrics = std::make_shared<PerformanceMetricsComputer>();
+
+		m_imgui_renderer = std::make_shared<ImGuiRenderer>();
+		m_imgui_renderer->set_render_window(this);
+
+		// Making the render dirty to force a cleanup at startup
+		m_application_state->render_dirty = true;
+	});
+
+
+	// Cannot create that on a thread since it compiles OpenGL shaders
+	// which the OpenGL context which is only available to the thread it was created on (the main thread)
 	m_display_view_system = std::make_shared<DisplayViewSystem>(m_renderer, this);
 
-	m_denoiser = std::make_shared<OpenImageDenoiser>();
-	m_denoiser->initialize();
-	m_denoiser->resize(width, height);
-	m_denoiser->set_use_albedo(m_application_settings->denoiser_use_albedo);
-	m_denoiser->set_use_normals(m_application_settings->denoiser_use_normals);
-	m_denoiser->finalize();
-
+	// Same for the screenshoter
 	m_screenshoter = std::make_shared<Screenshoter>();
 	m_screenshoter->set_renderer(m_renderer);
 	m_screenshoter->set_render_window(this);
-
-	m_perf_metrics = std::make_shared<PerformanceMetricsComputer>();
-
-	m_imgui_renderer = std::make_shared<ImGuiRenderer>();
-	m_imgui_renderer->set_render_window(this);
-
-	// Making the render dirty to force a cleanup at startup
-	m_application_state->render_dirty = true;
 }
 
 void RenderWindow::init_glfw(int width, int height)

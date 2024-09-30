@@ -67,7 +67,12 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
 	for (auto id_to_pass : KERNEL_FUNCTION_NAMES)
 		m_ms_time_per_pass[id_to_pass.first] = 0.0f;
 
-	OROCHI_CHECK_ERROR(oroStreamCreate(&m_main_stream));
+	// Creating the main stream on a thread with dependency on kernels compilation
+	// because it seems to randomly hang otherwise, not sure why
+	ThreadManager::add_dependency(ThreadManager::RENDERER_STREAM_CREATE, ThreadManager::COMPILE_KERNELS_THREAD_KEY);
+	ThreadManager::start_thread(ThreadManager::RENDERER_STREAM_CREATE, [this]() {
+		OROCHI_CHECK_ERROR(oroStreamCreate(&m_main_stream));
+	});
 
 	// Buffer that keeps track of whether at least one ray is still alive or not
 	unsigned char true_data = 1;
@@ -163,8 +168,6 @@ void GPURenderer::setup_kernels()
 	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_GLOBAL_RAYS, 12);
 	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_SHADOW_RAYS, 0);
 
-	ThreadManager::set_monothread(true);
-
 	// Configuring the kernel that will be used to retrieve the size of the RayVolumeState structure.
 	// This size will be needed to resize the 'ray_volume_states' buffer in the GBuffer if the nested dielectrics
 	// stack size changes
@@ -177,13 +180,13 @@ void GPURenderer::setup_kernels()
 	ThreadManager::start_thread(ThreadManager::COMPILE_RAY_VOLUME_STATE_SIZE_KERNEL_KEY, ThreadFunctions::compile_kernel_silent, std::ref(m_ray_volume_state_byte_size_kernel), m_hiprt_orochi_ctx);
 
 	// Compiling kernels
-	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID]), m_hiprt_orochi_ctx);
-	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID]), m_hiprt_orochi_ctx);
-	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID]), m_hiprt_orochi_ctx);
-	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID]), m_hiprt_orochi_ctx);
-	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID]), m_hiprt_orochi_ctx);
-	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[GPURenderer::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID]), m_hiprt_orochi_ctx);
-	ThreadManager::start_thread(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID]), m_hiprt_orochi_ctx);
+	ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID]), m_hiprt_orochi_ctx);
+	ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID]), m_hiprt_orochi_ctx);
+	ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID]), m_hiprt_orochi_ctx);
+	ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID]), m_hiprt_orochi_ctx);
+	ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID]), m_hiprt_orochi_ctx);
+	ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[GPURenderer::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID]), m_hiprt_orochi_ctx);
+	ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID]), m_hiprt_orochi_ctx);
 }
 
 void GPURenderer::update()
@@ -405,7 +408,7 @@ bool GPURenderer::needs_global_bvh_stack_buffer()
 void GPURenderer::render()
 {
 	// Making sure kernels are compiled
-	ThreadManager::join_threads(ThreadManager::COMPILE_KERNEL_PASS_THREAD_KEY);
+	ThreadManager::join_threads(ThreadManager::COMPILE_KERNELS_THREAD_KEY);
 
 	int tile_size_x = 8;
 	int tile_size_y = 8;
@@ -753,6 +756,7 @@ void GPURenderer::launch_path_tracing()
 
 void GPURenderer::synchronize_kernel()
 {
+	ThreadManager::join_threads(ThreadManager::RENDERER_STREAM_CREATE);
 	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_main_stream));
 }
 
@@ -766,17 +770,15 @@ bool GPURenderer::was_last_frame_low_resolution()
 	return m_was_last_frame_low_resolution;
 }
 
-void GPURenderer::resize(int new_width, int new_height)
+void GPURenderer::resize(int new_width, int new_height, bool also_resize_interop)
 {
 	m_render_resolution = make_int2(new_width, new_height);
 
 	synchronize_kernel();
 	unmap_buffers();
 
-	m_framebuffer->resize(new_width * new_height);
-	m_denoised_framebuffer->resize(new_width * new_height);
-	m_normals_AOV_buffer->resize(new_width * new_height);
-	m_albedo_AOV_buffer->resize(new_width * new_height);
+	if (also_resize_interop)
+		resize_interop_buffers(new_width, new_height);
 
 	m_g_buffer.resize(new_width * new_height, get_ray_volume_state_byte_size());
 
@@ -787,7 +789,6 @@ void GPURenderer::resize(int new_width, int new_height)
 	{
 		m_pixels_squared_luminance_buffer.resize(new_width * new_height);
 		m_pixels_sample_count_buffer.resize(new_width * new_height);
-		m_pixels_converged_sample_count_buffer->resize(new_width * new_height);
 	}
 
 	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI)
@@ -823,6 +824,17 @@ void GPURenderer::resize(int new_width, int new_height)
 	}
 
 	m_render_data_buffers_invalidated = true;
+}
+
+void GPURenderer::resize_interop_buffers(int new_width, int new_height)
+{
+	m_framebuffer->resize(new_width * new_height);
+	m_denoised_framebuffer->resize(new_width * new_height);
+	m_normals_AOV_buffer->resize(new_width * new_height);
+	m_albedo_AOV_buffer->resize(new_width * new_height);
+
+	if (m_render_data.render_settings.has_access_to_adaptive_sampling_buffers())
+		m_pixels_converged_sample_count_buffer->resize(new_width * new_height);
 }
 
 void GPURenderer::map_buffers_for_render()
@@ -1096,10 +1108,12 @@ void GPURenderer::update_render_data()
 
 void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 {
-	m_hiprt_scene.geometry.m_hiprt_ctx = m_hiprt_orochi_ctx->hiprt_ctx;
-	m_hiprt_scene.geometry.upload_indices(scene.triangle_indices);
-	m_hiprt_scene.geometry.upload_vertices(scene.vertices_positions);
-	m_hiprt_scene.geometry.build_bvh();
+	ThreadManager::start_thread(ThreadManager::RENDERER_BUILD_BVH, [this, &scene]() {
+		m_hiprt_scene.geometry.m_hiprt_ctx = m_hiprt_orochi_ctx->hiprt_ctx;
+		m_hiprt_scene.geometry.upload_indices(scene.triangle_indices);
+		m_hiprt_scene.geometry.upload_vertices(scene.vertices_positions);
+		m_hiprt_scene.geometry.build_bvh();
+	});
 
 	m_hiprt_scene.has_vertex_normals.resize(scene.has_vertex_normals.size());
 	m_hiprt_scene.has_vertex_normals.upload_data(scene.has_vertex_normals.data());
@@ -1110,61 +1124,64 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 	m_hiprt_scene.material_indices.resize(scene.material_indices.size());
 	m_hiprt_scene.material_indices.upload_data(scene.material_indices.data());
 
-	// We're joining the threads that were loading the scene textures in the background
-	// at the last moment so that they had the maximum amount of time to load the textures
-	// while the main thread was doing something else
-	ThreadManager::join_threads(ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY);
-
 	// Uploading the materials after the textures have been parsed because texture
 	// parsing can modify the materials (emission of constant textures are stored in the
 	// material directly for example) so we need to wait for the end of texture parsing
 	// to upload the materials
-	m_hiprt_scene.materials_buffer.resize(scene.materials.size());
-	m_hiprt_scene.materials_buffer.upload_data(scene.materials.data());
+	ThreadManager::add_dependency(ThreadManager::RENDERER_UPLOAD_MATERIALS, ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY);
+	ThreadManager::start_thread(ThreadManager::RENDERER_UPLOAD_MATERIALS, [this, &scene]() {
+		m_hiprt_scene.materials_buffer.resize(scene.materials.size());
+		m_hiprt_scene.materials_buffer.upload_data(scene.materials.data());
+	});
 
-	if (scene.textures.size() > 0)
-	{
-		std::vector<oroTextureObject_t> oro_textures(scene.textures.size());
-		m_hiprt_scene.orochi_materials_textures.reserve(scene.textures.size());
-		for (int i = 0; i < scene.textures.size(); i++)
+	ThreadManager::add_dependency(ThreadManager::RENDERER_UPLOAD_TEXTURES, ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY);
+	ThreadManager::start_thread(ThreadManager::RENDERER_UPLOAD_TEXTURES, [this, &scene]() {
+		if (scene.textures.size() > 0)
 		{
-			if (scene.textures[i].width == 0 || scene.textures[i].height == 0)
+			std::vector<oroTextureObject_t> oro_textures(scene.textures.size());
+			m_hiprt_scene.orochi_materials_textures.reserve(scene.textures.size());
+			for (int i = 0; i < scene.textures.size(); i++)
 			{
-				// It can happen that for emissive textures for example, we had a texture but its color is constant.
-				// As a result, we have not read the texture but rather just stored the constant emissive color in the
-				// emission filed of the material so we have no texture to read here
+				if (scene.textures[i].width == 0 || scene.textures[i].height == 0)
+				{
+					// It can happen that for emissive textures for example, we had a texture but its color is constant.
+					// As a result, we have not read the texture but rather just stored the constant emissive color in the
+					// emission filed of the material so we have no texture to read here
 
-				// The shader will never read from that texture (because the texture index of the material has been set to -1)
-				// so we set it to nullptr
-				oro_textures[i] = nullptr;
+					// The shader will never read from that texture (because the texture index of the material has been set to -1)
+					// so we set it to nullptr
+					oro_textures[i] = nullptr;
 
-				continue;
+					continue;
+				}
+
+				// We need to keep the texture alive so they are not destroyed when returning from 
+				// this function so we're adding them to a member buffer
+				m_hiprt_scene.orochi_materials_textures.push_back(OrochiTexture(scene.textures[i]));
+
+				oro_textures[i] = m_hiprt_scene.orochi_materials_textures.back().get_device_texture();
 			}
 
-			// We need to keep the texture alive so they are not destroyed when returning from 
-			// this function so we're adding them to a member buffer
-			m_hiprt_scene.orochi_materials_textures.push_back(OrochiTexture(scene.textures[i]));
+			m_hiprt_scene.gpu_materials_textures.resize(oro_textures.size());
+			m_hiprt_scene.gpu_materials_textures.upload_data(oro_textures.data());
 
-			oro_textures[i] = m_hiprt_scene.orochi_materials_textures.back().get_device_texture();
+			m_hiprt_scene.textures_dims.resize(scene.textures_dims.size());
+			m_hiprt_scene.textures_dims.upload_data(scene.textures_dims.data());
+
+			m_hiprt_scene.texcoords_buffer.resize(scene.texcoords.size());
+			m_hiprt_scene.texcoords_buffer.upload_data(scene.texcoords.data());
 		}
+	});
 
-		m_hiprt_scene.gpu_materials_textures.resize(oro_textures.size());
-		m_hiprt_scene.gpu_materials_textures.upload_data(oro_textures.data());
-
-		m_hiprt_scene.textures_dims.resize(scene.textures_dims.size());
-		m_hiprt_scene.textures_dims.upload_data(scene.textures_dims.data());
-
-		m_hiprt_scene.texcoords_buffer.resize(scene.texcoords.size());
-		m_hiprt_scene.texcoords_buffer.upload_data(scene.texcoords.data());
-	}
-
-	ThreadManager::join_threads(ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES);
-	m_hiprt_scene.emissive_triangles_count = scene.emissive_triangle_indices.size();
-	if (m_hiprt_scene.emissive_triangles_count > 0)
-	{
-		m_hiprt_scene.emissive_triangles_indices.resize(scene.emissive_triangle_indices.size());
-		m_hiprt_scene.emissive_triangles_indices.upload_data(scene.emissive_triangle_indices.data());
-	}
+	ThreadManager::add_dependency(ThreadManager::RENDERER_UPLOAD_EMISSIVE_TRIANGLES, ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES);
+	ThreadManager::start_thread(ThreadManager::RENDERER_UPLOAD_EMISSIVE_TRIANGLES, [this, &scene]() {
+		m_hiprt_scene.emissive_triangles_count = scene.emissive_triangle_indices.size();
+		if (m_hiprt_scene.emissive_triangles_count > 0)
+		{
+			m_hiprt_scene.emissive_triangles_indices.resize(scene.emissive_triangle_indices.size());
+			m_hiprt_scene.emissive_triangles_indices.upload_data(scene.emissive_triangle_indices.data());
+		}
+	});
 }
 
 void GPURenderer::set_scene(const Scene& scene)
@@ -1177,24 +1194,25 @@ void GPURenderer::set_scene(const Scene& scene)
 
 void GPURenderer::set_envmap(Image32Bit& envmap_image)
 {
-	ThreadManager::join_threads(ThreadManager::ENVMAP_LOAD_THREAD_KEY);
+	ThreadManager::add_dependency(ThreadManager::RENDERER_SET_ENVMAP, ThreadManager::ENVMAP_LOAD_FROM_DISK_THREAD);
+	ThreadManager::start_thread(ThreadManager::RENDERER_SET_ENVMAP, [this, &envmap_image]() {
+		if (envmap_image.width == 0 || envmap_image.height == 0)
+		{
+			m_render_data.world_settings.ambient_light_type = AmbientLightType::UNIFORM;
 
-	if (envmap_image.width == 0 || envmap_image.height == 0)
-	{
-		m_render_data.world_settings.ambient_light_type = AmbientLightType::UNIFORM;
+			std::cerr << "Empty envmap set on the GPURenderer... Defaulting to uniform ambient light type" << std::endl;
 
-		std::cerr << "Empty envmap set on the GPURenderer... Defaulting to uniform ambient light type" << std::endl;
+			return;
+		}
 
-		return;
-	}
+		m_envmap.get_orochi_envmap().init_from_image(envmap_image);
+		m_envmap.get_orochi_envmap().compute_cdf(envmap_image);
 
-	m_envmap.get_orochi_envmap().init_from_image(envmap_image);
-	m_envmap.get_orochi_envmap().compute_cdf(envmap_image);
-
-	m_render_data.world_settings.envmap = m_envmap.get_orochi_envmap().get_device_texture();
-	m_render_data.world_settings.envmap_width = m_envmap.get_orochi_envmap().width;
-	m_render_data.world_settings.envmap_height = m_envmap.get_orochi_envmap().height;
-	m_render_data.world_settings.envmap_cdf = m_envmap.get_orochi_envmap().get_cdf_device_pointer();
+		m_render_data.world_settings.envmap = m_envmap.get_orochi_envmap().get_device_texture();
+		m_render_data.world_settings.envmap_width = m_envmap.get_orochi_envmap().width;
+		m_render_data.world_settings.envmap_height = m_envmap.get_orochi_envmap().height;
+		m_render_data.world_settings.envmap_cdf = m_envmap.get_orochi_envmap().get_cdf_device_pointer();
+	});
 } 
 
 bool GPURenderer::has_envmap()

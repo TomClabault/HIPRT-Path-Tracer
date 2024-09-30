@@ -160,7 +160,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 
 void CPURenderer::set_envmap(Image32Bit& envmap_image)
 {
-    ThreadManager::join_threads(ThreadManager::ENVMAP_LOAD_THREAD_KEY);
+    ThreadManager::join_threads(ThreadManager::ENVMAP_LOAD_FROM_DISK_THREAD);
 
     if (envmap_image.width == 0 || envmap_image.height == 0)
     {

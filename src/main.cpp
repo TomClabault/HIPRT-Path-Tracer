@@ -51,7 +51,7 @@ int main(int argc, char* argv[])
 
     // TODO we only need 3 channels for the envmap but the only supported formats are 1, 2, 4 channels in HIP/CUDA, not 3
     Image32Bit envmap_image;
-    ThreadManager::start_thread(ThreadManager::ENVMAP_LOAD_THREAD_KEY, ThreadFunctions::read_image_hdr, std::ref(envmap_image), cmd_arguments.skysphere_file_path, 4, true);
+    ThreadManager::start_thread(ThreadManager::ENVMAP_LOAD_FROM_DISK_THREAD, ThreadFunctions::read_image_hdr, std::ref(envmap_image), cmd_arguments.skysphere_file_path, 4, true);
 #if GPU_RENDER
     std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx = std::make_shared<HIPRTOrochiCtx>(0);
 
@@ -62,11 +62,13 @@ int main(int argc, char* argv[])
     renderer->set_camera(parsed_scene.camera);
     renderer->set_scene(parsed_scene);
 
+    ThreadManager::join_all_threads();
+
     stop_full = std::chrono::high_resolution_clock::now();
     std::cout << "Full scene parsed & built in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop_full - start_full).count() << "ms" << std::endl;
     renderer->get_hiprt_scene().print_statistics(std::cout);
 
-    ThreadManager::join_all_threads();
+    return 0;
 
     // We don't need the scene anymore, we can free it now
     assimp_importer.FreeScene();

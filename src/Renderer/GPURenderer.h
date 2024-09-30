@@ -113,7 +113,8 @@ public:
 	void synchronize_kernel();
 
 	/**
-	 * Returns false if the frame queued asynchronously by a previous call to render() isn't finished yet. 
+	 * Returns false if the frame queued asynchronously by a previous call to render()
+	 * isn't finished yet. 
 	 * Returns true if the frame is completed
 	 */
 	bool frame_render_done();
@@ -123,7 +124,23 @@ public:
 	 */
 	bool was_last_frame_low_resolution();
 
-	void resize(int new_width, int new_height);
+	/**
+	 * Resizes all the buffers of the renderer to the given new width and height
+	 * 
+	 * If 'also_resize_interop' is true, OpenGL Interop buffers will also be resized
+	 * by this function call. Resizing OpenGL Interop buffers cannot be done on a
+	 * thread other than the main thread so if resizing the renderer asynchronously 
+	 * on multiple threads, 'also_resize_interop' needs to be passed as false and 
+	 * GPURenderer::resize_interop_buffers() must then be called on the main thread
+	 */
+	void resize(int new_width, int new_height, bool also_resize_interop = true);
+	/**
+	 * Resizes only OpenGL Interop Buffers. Useful to resize the renderer on
+	 * a separate thread because OpenGL interop buffers cannot be resized on a
+	 * separate thread so we need to resize them on the main thread,
+	 * using this function
+	 */
+	void resize_interop_buffers(int new_width, int new_height);
 
 	/**
 	 * Maps the buffers shared with OpenGL that are needed for rendering the frame and sets
