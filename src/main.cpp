@@ -68,8 +68,6 @@ int main(int argc, char* argv[])
     std::cout << "Full scene parsed & built in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop_full - start_full).count() << "ms" << std::endl;
     renderer->get_hiprt_scene().print_statistics(std::cout);
 
-    return 0;
-
     // We don't need the scene anymore, we can free it now
     assimp_importer.FreeScene();
     render_window.run();

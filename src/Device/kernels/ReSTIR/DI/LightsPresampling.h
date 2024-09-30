@@ -33,19 +33,16 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIPresampledLight presample_envmap(const Wo
     return presampled_envmap;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIPresampledLight presample_emissive_triangle(int emissive_triangles_count,
-    int* emissive_triangles_indices, int* triangles_indices, float3* vertices_positions, 
-    int* material_indices, RendererMaterial* materials,
-    Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIPresampledLight presample_emissive_triangle(const LightPresamplingParameters& parameters, Xorshift32Generator& random_number_generator)
 {
     ReSTIRDIPresampledLight presampled_light;
 
-    int random_index = random_number_generator.random_index(emissive_triangles_count);
-    int triangle_index = emissive_triangles_indices[random_index];
+    int random_index = random_number_generator.random_index(parameters.emissive_triangles_count);
+    int triangle_index = parameters.emissive_triangles_indices[random_index];
 
-    float3 vertex_A = vertices_positions[triangles_indices[triangle_index * 3 + 0]];
-    float3 vertex_B = vertices_positions[triangles_indices[triangle_index * 3 + 1]];
-    float3 vertex_C = vertices_positions[triangles_indices[triangle_index * 3 + 2]];
+    float3 vertex_A = parameters.vertices_positions[parameters.triangles_indices[triangle_index * 3 + 0]];
+    float3 vertex_B = parameters.vertices_positions[parameters.triangles_indices[triangle_index * 3 + 1]];
+    float3 vertex_C = parameters.vertices_positions[parameters.triangles_indices[triangle_index * 3 + 2]];
 
     float rand_1 = random_number_generator();
     float rand_2 = random_number_generator();
@@ -70,27 +67,21 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIPresampledLight presample_emissive_triang
         presampled_light.light_source_normal = normal / length_normal;
         presampled_light.emissive_triangle_index = triangle_index;
         presampled_light.pdf = 1.0f / triangle_area;
-        presampled_light.pdf /= emissive_triangles_count;
-        presampled_light.radiance = materials[material_indices[triangle_index]].get_emission();
+        presampled_light.pdf /= parameters.emissive_triangles_count;
+        presampled_light.radiance = parameters.materials[parameters.material_indices[triangle_index]].get_emission();
     }
 
     return presampled_light;
 }
 
 // TODO try just passing LightPresamplingParameters in there instead of everything individually
-HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIPresampledLight ReSTIR_DI_presample_one_light(int emissive_triangles_count,
-    int* emissive_triangles_indices, int* triangles_indices, float3* vertices_positions, 
-    int* material_indices, RendererMaterial* materials,
-    const WorldSettings& world_settings, float envmap_sampling_probability, 
-    Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIPresampledLight ReSTIR_DI_presample_one_light(const LightPresamplingParameters& parameters, float envmap_sampling_probability, Xorshift32Generator& random_number_generator)
 {
     ReSTIRDIPresampledLight presampled_light;
     if (random_number_generator() < envmap_sampling_probability)
-        presampled_light = presample_envmap(world_settings, random_number_generator);
+        presampled_light = presample_envmap(parameters.world_settings, random_number_generator);
     else
-        presampled_light = presample_emissive_triangle(emissive_triangles_count, emissive_triangles_indices, triangles_indices, vertices_positions, 
-            material_indices, materials, 
-            random_number_generator);
+        presampled_light = presample_emissive_triangle(parameters, random_number_generator);
 
     return presampled_light;
 }
@@ -131,11 +122,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_LightsPresampling(LightPresamplin
             envmap_candidate_probability = presampling_parameters.envmap_sampling_probability;
     }
 
-    presampling_parameters.out_light_samples[x] = ReSTIR_DI_presample_one_light(presampling_parameters.emissive_triangles_count,
-        presampling_parameters.emissive_triangles_indices, presampling_parameters.triangles_indices, presampling_parameters.vertices_positions,
-        presampling_parameters.material_indices, presampling_parameters.materials,
-        presampling_parameters.world_settings, envmap_candidate_probability,
-        random_number_generator);
+    presampling_parameters.out_light_samples[x] = ReSTIR_DI_presample_one_light(presampling_parameters, envmap_candidate_probability, random_number_generator);
 }
 
 #endif
