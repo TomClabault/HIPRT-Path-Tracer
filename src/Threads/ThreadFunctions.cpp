@@ -118,7 +118,7 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
         // of the scene such that the triangles can be importance sampled (direct lighting estimation / next-event estimation)
         //
         // We are not importance sampling emissive texture so if the mesh has an emissive texture attached, we're
-        // not counting it
+        // not adding its triangles to the list of emissive triangles
         bool is_mesh_emissive = renderer_material.is_emissive() && !renderer_material.emissive_texture_used;
 
         if (is_mesh_emissive)

@@ -1105,16 +1105,17 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 	m_hiprt_scene.material_indices.resize(scene.material_indices.size());
 	m_hiprt_scene.material_indices.upload_data(scene.material_indices.data());
 
-	m_hiprt_scene.materials_buffer.resize(scene.materials.size());
-	m_hiprt_scene.materials_buffer.upload_data(scene.materials.data());
-
-	m_hiprt_scene.texcoords_buffer.resize(scene.texcoords.size());
-	m_hiprt_scene.texcoords_buffer.upload_data(scene.texcoords.data());
-
 	// We're joining the threads that were loading the scene textures in the background
 	// at the last moment so that they had the maximum amount of time to load the textures
 	// while the main thread was doing something else
 	ThreadManager::join_threads(ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY);
+
+	// Uploading the materials after the textures have been parsed because texture
+	// parsing can modify the materials (emission of constant textures are stored in the
+	// material directly for example) so we need to wait for the end of texture parsing
+	// to upload the materials
+	m_hiprt_scene.materials_buffer.resize(scene.materials.size());
+	m_hiprt_scene.materials_buffer.upload_data(scene.materials.data());
 
 	if (scene.textures.size() > 0)
 	{
@@ -1147,6 +1148,9 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 
 		m_hiprt_scene.textures_dims.resize(scene.textures_dims.size());
 		m_hiprt_scene.textures_dims.upload_data(scene.textures_dims.data());
+
+		m_hiprt_scene.texcoords_buffer.resize(scene.texcoords.size());
+		m_hiprt_scene.texcoords_buffer.upload_data(scene.texcoords.data());
 	}
 
 	ThreadManager::join_threads(ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES);

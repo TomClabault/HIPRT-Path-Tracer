@@ -51,6 +51,7 @@
 //		- ---------------- denoiser creation duration : 804ms
 //		- ---------------- set_envmap() duration : 962ms
 //		- ---------------- set_scene() duration : 136ms
+//		- ---------------- textures upload if possible duration : 700ms on bistro + compile release
 // - refactor ImGuiRenderer in several sub classes that each draw a panel
 // - search for calls to 'trace_ray' and replace them with 'evaluate_shadow_ray' where possible for performance (emissive texture support though?)
 
@@ -72,6 +73,8 @@
 // - reload shaders button
 // - pack ray payload
 // - pack nested dielectrics structure
+// - presample lights per each tile of pixels the same as for ReSTIR DI and use that for second bounces sampling?
+// - next event estimation++?
 // - performance/bias tradeoff by ignoring alpha tests after N bounce?
 // - performance/bias tradeoff by ignoring direct lighting occlusion after N bounce? --> strong bias but maybe something to do by reducing the length of shadow rays instead of just hard-disabling occlusion
 // - experiment with a feature that ignores really dark pixel in the variance estimation of the adaptive 
