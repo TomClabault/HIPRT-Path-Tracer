@@ -96,6 +96,9 @@ public:
 	template <class _Fn, class... _Args>
 	static void start_serial_thread(std::string key, _Fn function, _Args... args)
 	{
+		// Creating an entry in the map to 'fake' that we've started a thread
+		bool empty = m_threads_map[key].empty();
+
 		function(args...);
 	}
 

@@ -62,6 +62,7 @@ int main(int argc, char* argv[])
     renderer->set_camera(parsed_scene.camera);
     renderer->set_scene(parsed_scene);
 
+    // Joining everyone before starting the render
     ThreadManager::join_all_threads();
 
     stop_full = std::chrono::high_resolution_clock::now();

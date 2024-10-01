@@ -30,10 +30,11 @@
 // - fix sampling lights inside dielectrics with ReSTIR DI
 // - when using a BSDF override, transmissive materials keep their dielectric priorities and this can mess up shadow rays and intersections in general if the BSDF used for the override doesn't support transmissive materials
 // - is DisneySheen correct?
-// - some multithreaded bug happening in GPURenderer when joining the texture loading threads while joining the emissive triangles processing threads at the same time :shrug:
+// - threadmanager: what if we start a thread with a dependency A on a thread that itself has a dependency B? we're going to try join dependency A even if thread with dependency on B hasn't even started yet --> joining nothing --> immediate return --> should have waited for the dependency but hasn't
 
 
 // TODO Code Organization:
+// - init opengl context and all that expensive stuff while the scene is being parsed
 // - do not pass so many arguments to kernels everytime: make a "KernelArguments" folder in the source files with one file that contains the arguments needed for a kernel: ReSTIR_DI_InitialCandidatesArguments, ReSTIR_DI_SpatialReuseArguments, ...
 // - what if everywhere in the code we use a minT for the rays instead of pushing the points in the right direction (annoying to determine the right direction everytime depending on inside/outside surface)
 // - cleanup RIS reservoir with all the BSDF stuff
@@ -264,7 +265,7 @@ RenderWindow::RenderWindow(int width, int height, std::shared_ptr<HIPRTOrochiCtx
 
 	m_renderer = std::make_shared<GPURenderer>(hiprt_oro_ctx);
 
-	ThreadManager::add_dependency(ThreadManager::RENDERER_STREAM_CREATE, ThreadManager::RENDER_WINDOW_RENDERER_INITIAL_RESIZE);
+	ThreadManager::add_dependency(ThreadManager::RENDER_WINDOW_RENDERER_INITIAL_RESIZE, ThreadManager::RENDERER_STREAM_CREATE);
 	ThreadManager::start_thread(ThreadManager::RENDER_WINDOW_RENDERER_INITIAL_RESIZE, [this, width, height]() {
 		m_renderer->resize(width, height, /* resize interop buffers */ false);
 	});

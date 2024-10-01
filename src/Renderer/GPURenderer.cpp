@@ -1132,6 +1132,9 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 	ThreadManager::start_thread(ThreadManager::RENDERER_UPLOAD_MATERIALS, [this, &scene]() {
 		m_hiprt_scene.materials_buffer.resize(scene.materials.size());
 		m_hiprt_scene.materials_buffer.upload_data(scene.materials.data());
+
+		m_hiprt_scene.texcoords_buffer.resize(scene.texcoords.size());
+		m_hiprt_scene.texcoords_buffer.upload_data(scene.texcoords.data());
 	});
 
 	ThreadManager::add_dependency(ThreadManager::RENDERER_UPLOAD_TEXTURES, ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY);
@@ -1167,9 +1170,6 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 
 			m_hiprt_scene.textures_dims.resize(scene.textures_dims.size());
 			m_hiprt_scene.textures_dims.upload_data(scene.textures_dims.data());
-
-			m_hiprt_scene.texcoords_buffer.resize(scene.texcoords.size());
-			m_hiprt_scene.texcoords_buffer.upload_data(scene.texcoords.data());
 		}
 	});
 
