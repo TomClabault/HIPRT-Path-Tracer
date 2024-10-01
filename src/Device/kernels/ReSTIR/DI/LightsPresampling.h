@@ -19,7 +19,7 @@
  * [1] [Rearchitecting Spatiotemporal Resampling for Production] https://research.nvidia.com/publication/2021-07_rearchitecting-spatiotemporal-resampling-production
  */
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIPresampledLight presample_envmap(const WorldSettings& world_settings, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIPresampledLight presample_envmap(const WorldSettings& world_settings, float envmap_sampling_probability, Xorshift32Generator& random_number_generator)
 {
     ReSTIRDIPresampledLight presampled_envmap;
     presampled_envmap.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE;
@@ -29,11 +29,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIPresampledLight presample_envmap(const Wo
     // Moving the direction to envmap space because that's what we use for ReSTIR DI
     presampled_envmap.point_on_light_source = matrix_X_vec(world_settings.world_to_envmap_matrix, presampled_envmap.point_on_light_source);
     presampled_envmap.radiance = radiance;
+    presampled_envmap.pdf *= envmap_sampling_probability;
 
     return presampled_envmap;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIPresampledLight presample_emissive_triangle(const LightPresamplingParameters& parameters, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIPresampledLight presample_emissive_triangle(const LightPresamplingParameters& parameters, float light_sampling_probability, Xorshift32Generator& random_number_generator)
 {
     ReSTIRDIPresampledLight presampled_light;
 
@@ -68,6 +69,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIPresampledLight presample_emissive_triang
         presampled_light.emissive_triangle_index = triangle_index;
         presampled_light.pdf = 1.0f / triangle_area;
         presampled_light.pdf /= parameters.emissive_triangles_count;
+        presampled_light.pdf *= light_sampling_probability;
         presampled_light.radiance = parameters.materials[parameters.material_indices[triangle_index]].get_emission();
     }
 
@@ -79,9 +81,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIPresampledLight ReSTIR_DI_presample_one_l
 {
     ReSTIRDIPresampledLight presampled_light;
     if (random_number_generator() < envmap_sampling_probability)
-        presampled_light = presample_envmap(parameters.world_settings, random_number_generator);
+        presampled_light = presample_envmap(parameters.world_settings, envmap_sampling_probability, random_number_generator);
     else
-        presampled_light = presample_emissive_triangle(parameters, random_number_generator);
+        presampled_light = presample_emissive_triangle(parameters, 1.0f - envmap_sampling_probability, random_number_generator);
 
     return presampled_light;
 }
