@@ -3,13 +3,55 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
+#include "Image/Image.h"
 #include "Renderer/GPURenderer.h"
 #include "Renderer/RendererEnvmap.h"
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include "glm/gtx/euler_angles.hpp"
 
+void RendererEnvmap::init_from_image(const Image32Bit& image, const std::string& envmap_filepath)
+{
+	m_orochi_envmap.init_from_image(image);
+	m_envmap_filepath = envmap_filepath;
+}
+
 void RendererEnvmap::update(GPURenderer* renderer)
+{
+	do_animation(renderer);
+
+	// Updates the data/pointers in WorldSettings that the shaders will use
+	update_renderer(renderer);
+}
+
+void RendererEnvmap::recompute_sampling_data_structure(GPURenderer* renderer, const Image32Bit* image)
+{
+	if (renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY) == ESS_NO_SAMPLING)
+	{
+		m_orochi_envmap.free_cdf();
+		m_orochi_envmap.free_alias_table();
+	}
+	else if (renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY) == ESS_BINARY_SEARCH)
+	{
+		if (image != nullptr)
+			m_orochi_envmap.compute_cdf(*image);
+		else
+			m_orochi_envmap.compute_cdf(Image32Bit::read_image_hdr(m_envmap_filepath, 4, true));
+
+		m_orochi_envmap.free_alias_table();
+	}
+	else if (renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY) == ESS_ALIAS_TABLE)
+	{
+		if (image != nullptr)
+			m_orochi_envmap.compute_alias_table(*image);
+		else
+			m_orochi_envmap.compute_alias_table(Image32Bit::read_image_hdr(m_envmap_filepath, 4, true));
+
+		m_orochi_envmap.free_cdf();
+	}
+}
+
+void RendererEnvmap::do_animation(GPURenderer* renderer)
 {
 	if (animate)
 	{
@@ -47,20 +89,40 @@ void RendererEnvmap::update(GPURenderer* renderer)
 
 		envmap_to_world_matrix = *reinterpret_cast<float4x4*>(&rotation_matrix);
 		world_to_envmap_matrix = *reinterpret_cast<float4x4*>(&rotation_matrix_inv);
-
-		update_renderer(renderer);
 	}
 
 	prev_rotation_X = rotation_X;
 	prev_rotation_Y = rotation_Y;
 	prev_rotation_Z = rotation_Z;
-
 }
 
 void RendererEnvmap::update_renderer(GPURenderer* renderer)
 {
 	renderer->get_world_settings().envmap_to_world_matrix = envmap_to_world_matrix;
 	renderer->get_world_settings().world_to_envmap_matrix = world_to_envmap_matrix;
+
+	if (renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY) == ESS_NO_SAMPLING)
+	{
+		renderer->get_world_settings().envmap_cdf = nullptr;
+
+		renderer->get_world_settings().alias_table_probas = nullptr;
+		renderer->get_world_settings().alias_table_alias = nullptr;
+	}
+	else if (renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY) == ESS_BINARY_SEARCH)
+	{
+		renderer->get_world_settings().envmap_cdf = m_orochi_envmap.get_cdf_device_pointer();
+		renderer->get_world_settings().envmap_total_sum = m_orochi_envmap.get_luminance_total_sum();
+
+		renderer->get_world_settings().alias_table_probas = nullptr;
+		renderer->get_world_settings().alias_table_alias = nullptr;
+	}
+	else if (renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY) == ESS_ALIAS_TABLE)
+	{
+		renderer->get_world_settings().envmap_cdf = nullptr;
+		renderer->get_world_settings().envmap_total_sum = m_orochi_envmap.get_luminance_total_sum();
+
+		m_orochi_envmap.get_alias_table_device_pointers(renderer->get_world_settings().alias_table_probas, renderer->get_world_settings().alias_table_alias);
+	}
 }
 
 OrochiEnvmap& RendererEnvmap::get_orochi_envmap()

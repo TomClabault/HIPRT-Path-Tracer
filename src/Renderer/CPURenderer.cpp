@@ -36,8 +36,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 876
-#define DEBUG_PIXEL_Y 79
+#define DEBUG_PIXEL_X 540
+#define DEBUG_PIXEL_Y 406
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 1
@@ -170,10 +170,30 @@ void CPURenderer::set_envmap(Image32Bit& envmap_image)
         return;
     }
 
+    if (EnvmapSamplingStrategy == ESS_BINARY_SEARCH)
+    {
+        m_envmap_cdf = envmap_image.compute_cdf();
+        m_render_data.world_settings.envmap_total_sum = m_envmap_cdf.back();
+    }
+    else if (EnvmapSamplingStrategy == ESS_ALIAS_TABLE)
+    {
+        float total_sum;
+
+        envmap_image.compute_alias_table(m_alias_table_probas, m_alias_table_alias, &total_sum);
+        m_render_data.world_settings.envmap_total_sum = total_sum;
+    }
+
     m_render_data.world_settings.envmap = &envmap_image;
     m_render_data.world_settings.envmap_width = envmap_image.width;
     m_render_data.world_settings.envmap_height = envmap_image.height;
-    m_render_data.world_settings.envmap_cdf = envmap_image.get_cdf().data();
+
+    if (EnvmapSamplingStrategy == ESS_BINARY_SEARCH)
+        m_render_data.world_settings.envmap_cdf = m_envmap_cdf.data();
+    else if (EnvmapSamplingStrategy == ESS_ALIAS_TABLE)
+    {
+        m_render_data.world_settings.alias_table_probas = m_alias_table_probas.data();
+        m_render_data.world_settings.alias_table_alias = m_alias_table_alias.data();
+    }
 }
 
 void CPURenderer::set_camera(Camera& camera)

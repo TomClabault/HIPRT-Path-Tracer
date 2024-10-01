@@ -54,6 +54,7 @@
 
 #define ESS_NO_SAMPLING 0
 #define ESS_BINARY_SEARCH 1
+#define ESS_ALIAS_TABLE 2
 
 #define RESTIR_DI_BIAS_CORRECTION_1_OVER_M 0
 #define RESTIR_DI_BIAS_CORRECTION_1_OVER_Z 1
@@ -189,7 +190,7 @@
  *		Importance samples the environment map using a binary search on the CDF
  *		distributions of the envmap
  */
-#define EnvmapSamplingStrategy ESS_BINARY_SEARCH
+#define EnvmapSamplingStrategy ESS_ALIAS_TABLE
 
 /**
  * Whether or not to do Muliple Importance Sampling between the envmap sample and a BSDF

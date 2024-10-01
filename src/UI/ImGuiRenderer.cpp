@@ -4,6 +4,7 @@
  */
 
 #include "Compiler/GPUKernelCompilerOptions.h"
+#include "Threads/ThreadManager.h"
 #include "UI/ImGuiRenderer.h"
 #include "UI/RenderWindow.h"
 
@@ -1288,11 +1289,17 @@ void ImGuiRenderer::draw_sampling_panel()
 		{
 			ImGui::TreePush("Envmap sampling tree");
 
-			const char* items[] = { "- No envmap importance sampling", "- Importance Sampling - Binary Search" };
+			const char* items[] = { "- No envmap importance sampling", "- Importance Sampling - Binary Search", "- Importance Sampling - Alias Table " };
 			if (ImGui::Combo("Envmap sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
 			{
+				ThreadManager::start_thread("RecomputeEnvmapSamplingStructure", [this]() {
+					m_renderer->get_envmap().recompute_sampling_data_structure(m_renderer.get());
+				});
+
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
+
+				ThreadManager::join_threads("RecomputeEnvmapSamplingStructure");
 			}
 
 			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY) != ESS_NO_SAMPLING)

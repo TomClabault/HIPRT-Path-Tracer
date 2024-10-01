@@ -74,6 +74,10 @@ private:
     unsigned char m_still_one_ray_active = true;
     AtomicType<unsigned int> m_stop_noise_threshold_count;
 
+    std::vector<float> m_envmap_cdf;
+    std::vector<float> m_alias_table_probas;
+    std::vector<int> m_alias_table_alias;
+
     struct GBuffer
     {
         std::vector<SimplifiedRendererMaterial> materials;

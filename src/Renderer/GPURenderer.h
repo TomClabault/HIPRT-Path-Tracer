@@ -180,7 +180,7 @@ public:
 
 	void set_scene(const Scene& scene);
 	void set_camera(const Camera& camera);
-	void set_envmap(Image32Bit& envmap);
+	void set_envmap(const Image32Bit& envmap, const std::string& envmap_filepath);
 	bool has_envmap();
 
 	const std::vector<RendererMaterial>& get_materials();

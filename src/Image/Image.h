@@ -49,27 +49,29 @@ public:
     const unsigned char& operator[](int index) const;
     unsigned char& operator[](int index);
 
-    void compute_cdf();
-    std::vector<float> compute_get_cdf();
-    std::vector<float>& get_cdf();
+    std::vector<float> compute_cdf() const;
 
     size_t byte_size() const;
 
-    // Returns true if all the pixels of the texture are the same color
-    // False otherwise
-    //
-    // A threshold can be given to assume that a color is equal to another
-    // if the R, G and B channels of the two colors are each within 'threshold'
-    // distance
-    bool is_constant_color(int threshold = 0) const;
+    /** 
+     * Returns true if all the pixels of the texture are the same color
+     * False otherwise
+     *
+     * A threshold can be given to assume that a color is equal to another
+     * if the R, G and B channels of the two colors are each within 'threshold'
+     * distance
+     */ 
+     bool is_constant_color(int threshold = 0) const;
+
+    /**
+     * Frees the data of this image and sets its width, height and channels back to 0
+     */
+    void free();
 
     int width, height, channels;
 
 protected:
     std::vector<unsigned char> m_pixel_data;
-
-    std::vector<float> m_cdf;
-    bool m_cdf_computed = false;
 };
 
 class Image32Bit
@@ -106,21 +108,30 @@ public:
     const float& operator[](int index) const;
     float& operator[](int index);
 
-    void compute_cdf();
-    std::vector<float> compute_get_cdf();
-    std::vector<float>& get_cdf();
+    std::vector<float> compute_cdf() const;
+    void compute_alias_table(std::vector<float>& out_probas, std::vector<int>& out_alias, float* out_luminance_total_sum = nullptr) const;
 
     size_t byte_size() const;
 
+    /** 
+     * Returns true if all the pixels of the texture are the same color
+     * False otherwise
+     *
+     * A threshold can be given to assume that a color is equal to another
+     * if the R, G and B channels of the two colors are each within 'threshold'
+     * distance
+     */
     bool is_constant_color(float threshold) const;
+
+    /**
+     * Frees the data of this image and sets its width, height and channels back to 0
+     */
+    void free();
 
     int width = 0, height = 0, channels = 0;
 
 protected:
     std::vector<float> m_pixel_data;
-
-    std::vector<float> m_cdf;
-    bool m_cdf_computed = false;
 };
 
 #endif

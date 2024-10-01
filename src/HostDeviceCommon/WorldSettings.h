@@ -34,9 +34,17 @@ struct WorldSettings
 	// or a oroTextureObject_t for the GPU.
 	// Proper reinterpreting of the pointer is done in the kernel.
 	void* envmap = nullptr;
+
+	// Luminance sum of all the texels of the envmap
+	float envmap_total_sum = 0.0f;
+
 	// Cumulative distribution function. 1D float array of length width * height for
-	// importance sampling the envmap
+	// importance sampling the envmap with a binary search strategy
 	float* envmap_cdf = nullptr;
+
+	// Probabilities and aliases for sampling the envmap with the alias table strategy
+	int* alias_table_alias = nullptr;
+	float* alias_table_probas = nullptr;
 
 	// Rotation matrix for rotating the envmap around in the current frame
 	float4x4 envmap_to_world_matrix = float4x4{ { {1.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f } } };

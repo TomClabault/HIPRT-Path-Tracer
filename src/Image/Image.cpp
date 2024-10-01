@@ -13,6 +13,8 @@
 #include "stb_image.h"
 #include "stb_image_write.h"
 
+#include <deque>
+
 Image8Bit::Image8Bit(int width, int height, int channels) : Image8Bit(std::vector<unsigned char>(width * height * channels, 0), width, height, channels) {}
 
 Image8Bit::Image8Bit(unsigned char* data, int width, int height, int channels) : width(width), height(height), channels(channels)
@@ -198,10 +200,11 @@ unsigned char& Image8Bit::operator[](int index)
     return m_pixel_data[index];
 }
 
-void Image8Bit::compute_cdf()
+std::vector<float> Image8Bit::compute_cdf() const
 {
-    m_cdf.resize(height * width);
-    m_cdf[0] = 0.0f;
+    std::vector<float> out_cdf;
+    out_cdf.resize(height * width);
+    out_cdf[0] = 0.0f;
 
     float max_radiance = 0.0f;
     for (int y = 0; y < height; y++)
@@ -210,7 +213,7 @@ void Image8Bit::compute_cdf()
         {
             int index = y * width + x;
 
-            m_cdf[index] = m_cdf[std::max(index - 1, 0)] + luminance_of_pixel(x, y);
+            out_cdf[index] = out_cdf[std::max(index - 1, 0)] + luminance_of_pixel(x, y);
 
             for (int i = 0; i < hippt::min(3, channels); i++)
                 max_radiance = hippt::max(max_radiance, static_cast<float>(m_pixel_data[(x + y * width) * channels + i]));
@@ -219,21 +222,7 @@ void Image8Bit::compute_cdf()
 
     std::cout << "Max radiance of envmap: " << max_radiance << std::endl;
 
-    m_cdf_computed = true;
-}
-
-std::vector<float> Image8Bit::compute_get_cdf()
-{
-    compute_cdf();
-    return m_cdf;
-}
-
-std::vector<float>& Image8Bit::get_cdf()
-{
-    if (!m_cdf_computed)
-        compute_cdf();
-
-    return m_cdf;
+    return out_cdf;
 }
 
 size_t Image8Bit::byte_size() const
@@ -262,6 +251,14 @@ bool Image8Bit::is_constant_color(int threshold) const
                     return false;
 
     return true;
+}
+
+void Image8Bit::free()
+{
+    m_pixel_data.clear();
+    width = 0;
+    height = 0;
+    channels = 0;
 }
 
 
@@ -350,6 +347,7 @@ Image32Bit Image32Bit::read_image_hdr(const std::string& filepath, int output_ch
         }
     }
 
+    stbi_image_free(pixels);
     return Image32Bit(converted_data, width, height, output_channels);
 }
 
@@ -467,10 +465,11 @@ float& Image32Bit::operator[](int index)
     return m_pixel_data[index];
 }
 
-void Image32Bit::compute_cdf()
+std::vector<float> Image32Bit::compute_cdf() const
 {
-    m_cdf.resize(height * width);
-    m_cdf[0] = 0.0f;
+    std::vector<float> out_cdf;
+    out_cdf.resize(height * width);
+    out_cdf[0] = 0.0f;
 
     float max_radiance = 0.0f;
     for (int y = 0; y < height; y++)
@@ -479,7 +478,7 @@ void Image32Bit::compute_cdf()
         {
             int index = y * width + x;
 
-            m_cdf[index] = m_cdf[std::max(index - 1, 0)] + luminance_of_pixel(x, y);
+            out_cdf[index] = out_cdf[std::max(index - 1, 0)] + luminance_of_pixel(x, y);
 
             for (int i = 0; i < hippt::min(3, channels); i++)
                 max_radiance = hippt::max(max_radiance, m_pixel_data[(x + y * width) * channels + i]);
@@ -488,21 +487,92 @@ void Image32Bit::compute_cdf()
 
     std::cout << "Max radiance of envmap: " << max_radiance << std::endl;
 
-    m_cdf_computed = true;
+    return out_cdf;
 }
 
-std::vector<float> Image32Bit::compute_get_cdf()
+/**
+ * Reference: Vose's Alias Method [https://www.keithschwarz.com/darts-dice-coins/]
+ */
+void Image32Bit::compute_alias_table(std::vector<float>& out_probas, std::vector<int>& out_alias, float* out_luminance_total_sum) const
 {
-    compute_cdf();
-    return m_cdf;
-}
+    // TODO try using floats here to reduce memory usage during the construction and see if precision is an issue or not
 
-std::vector<float>& Image32Bit::get_cdf()
-{
-    if (!m_cdf_computed)
-        compute_cdf();
+    // A vector of the luminance of all the pixels of the envmap
+    // normalized such that the average of the elements of this vector is 'width*height'
+    std::vector<double> normalized_luminance_of_pixels(width * height);
+    double luminance_sum = 0.0f;
+    for (int y = 0; y < height; y++)
+    {
+        for (int x = 0; x < width; x++)
+        {
+            int index = y * width + x;
 
-    return m_cdf;
+            double luminance = static_cast<double>(luminance_of_pixel(x, y));
+            normalized_luminance_of_pixels[index] = luminance;
+            luminance_sum += luminance;
+        }
+    }
+
+    if (out_luminance_total_sum != nullptr)
+        *out_luminance_total_sum = luminance_sum;
+
+    for (double& luminance_value : normalized_luminance_of_pixels)
+    {
+        // Normalize so that the sum of the elements is 1
+        luminance_value /= luminance_sum;
+
+        // Scale for alias table construction such that the average of
+        // the elements is 1
+        luminance_value *= (width * height);
+    }
+
+    out_probas.resize(width * height);
+    out_alias.resize(width * height);
+
+    std::deque<int> small;
+    std::deque<int> large;
+
+    for (int i = 0; i < normalized_luminance_of_pixels.size(); i++)
+    {
+        if (normalized_luminance_of_pixels[i] < 1.0)
+            small.push_back(i);
+        else
+            large.push_back(i);
+    }
+
+    while (!small.empty() && !large.empty())
+    {
+        int small_index = small.front();
+        int large_index = large.front();
+
+        small.pop_front();
+        large.pop_front();
+
+        out_probas[small_index] = normalized_luminance_of_pixels[small_index];
+        out_alias[small_index] = large_index;
+
+        normalized_luminance_of_pixels[large_index] = (normalized_luminance_of_pixels[large_index] + normalized_luminance_of_pixels[small_index]) - 1.0;
+        if (normalized_luminance_of_pixels[large_index] > 1.0)
+            large.push_back(large_index);
+        else
+            small.push_back(large_index);
+    }
+
+    while (!large.empty())
+    {
+        int index = large.front();
+        large.pop_front();
+
+        out_probas[index] = 1.0;
+    }
+
+    while (!small.empty())
+    {
+        int index = small.front();
+        small.pop_front();
+
+        out_probas[index] = 1.0;
+    }
 }
 
 size_t Image32Bit::byte_size() const
@@ -551,4 +621,12 @@ ColorRGBA32F* Image32Bit::get_data_as_ColorRGBA32F()
 ColorRGBA32F Image32Bit::get_pixel_ColorRGBA32F(int pixel_index) const
 {
     return ColorRGBA32F(m_pixel_data[pixel_index * 4 + 0], m_pixel_data[pixel_index * 4 + 1], m_pixel_data[pixel_index * 4 + 2], m_pixel_data[pixel_index * 4 + 3]);
+}
+
+void Image32Bit::free()
+{
+    m_pixel_data.clear();
+    width = 0;
+    height = 0;
+    channels = 0;
 }

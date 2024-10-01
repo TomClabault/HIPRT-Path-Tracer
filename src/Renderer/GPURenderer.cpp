@@ -1192,10 +1192,10 @@ void GPURenderer::set_scene(const Scene& scene)
 	m_material_names = scene.material_names;
 }
 
-void GPURenderer::set_envmap(Image32Bit& envmap_image)
+void GPURenderer::set_envmap(const Image32Bit& envmap_image, const std::string& envmap_filepath)
 {
 	ThreadManager::add_dependency(ThreadManager::RENDERER_SET_ENVMAP, ThreadManager::ENVMAP_LOAD_FROM_DISK_THREAD);
-	ThreadManager::start_thread(ThreadManager::RENDERER_SET_ENVMAP, [this, &envmap_image]() {
+	ThreadManager::start_thread(ThreadManager::RENDERER_SET_ENVMAP, [this, &envmap_image, &envmap_filepath]() {
 		if (envmap_image.width == 0 || envmap_image.height == 0)
 		{
 			m_render_data.world_settings.ambient_light_type = AmbientLightType::UNIFORM;
@@ -1205,15 +1205,25 @@ void GPURenderer::set_envmap(Image32Bit& envmap_image)
 			return;
 		}
 
-		m_envmap.get_orochi_envmap().init_from_image(envmap_image);
-		m_envmap.get_orochi_envmap().compute_cdf(envmap_image);
+		m_envmap.init_from_image(envmap_image, envmap_filepath);
+		m_envmap.recompute_sampling_data_structure(this, &envmap_image);
 
 		m_render_data.world_settings.envmap = m_envmap.get_orochi_envmap().get_device_texture();
 		m_render_data.world_settings.envmap_width = m_envmap.get_orochi_envmap().width;
 		m_render_data.world_settings.envmap_height = m_envmap.get_orochi_envmap().height;
+
+#if EnvmapSamplingStrategy == ESS_BINARY_SEARCH
 		m_render_data.world_settings.envmap_cdf = m_envmap.get_orochi_envmap().get_cdf_device_pointer();
+
+		m_render_data.world_settings.alias_table_probas = nullptr;
+		m_render_data.world_settings.alias_table_alias = nullptr;
+#elif EnvmapSamplingStrategy == ESS_ALIAS_TABLE
+		m_render_data.world_settings.envmap_cdf = nullptr;
+
+		m_envmap.get_orochi_envmap().get_alias_table_device_pointers(m_render_data.world_settings.alias_table_probas, m_render_data.world_settings.alias_table_alias);
+#endif
 	});
-} 
+}
 
 bool GPURenderer::has_envmap()
 {

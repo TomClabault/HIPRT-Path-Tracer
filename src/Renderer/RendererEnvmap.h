@@ -27,14 +27,38 @@ public:
 	float4x4 world_to_envmap_matrix;
 
 	/**
-	 * Recomputes the envmap matrices if necessary based on
-	 the current values of rotation_X, rotation_Y and rotation_Z
+	 * Uploads the data from 'image' to a texture on the GPU and remembers the path
+	 * of the envmap if needed later (when recomputing the CDF/alias table for example
+	 * since we do not keep the data of the envmap in memory (envmaps can be quite big), 
+	 * we'll have to read it again from the disk)
+	 */
+	void init_from_image(const Image32Bit& image, const std::string& envmap_filepath);
+
+	/**
+	 * - Updates the animation of the envmap
+	 * - Recomputes the sampling data structure (CDF for binary search sampling, 
+	 *		alias table for alias table sampling) if necessary
 	 */
 	void update(GPURenderer* renderer);
+
+	/**
+	 * Computes the CDF or alias table of the envmap based of the envmap sampling strategy used
+	 * by the renderer.
+	 * 
+	 * The data structure that is unused will also be freed to free some VRAM.
+	 */
+	void recompute_sampling_data_structure(GPURenderer* renderer, const Image32Bit* = nullptr);
 
 	OrochiEnvmap& get_orochi_envmap();
 
 private:
+
+	/**
+		* Recomputes the envmap matrices if necessary based on
+		* the current values of rotation_X, rotation_Y and rotation_Z
+		*/
+	void do_animation(GPURenderer* renderer);
+
 	/**
 	 * Updates the world settings, envmap itself, etc... of the renderer
 	 */
@@ -45,6 +69,8 @@ private:
 	float prev_rotation_X = -1.0f;
 	float prev_rotation_Y = -1.0f;
 	float prev_rotation_Z = -1.0f;
+
+	std::string m_envmap_filepath;
 
 	// This object contains the memory data of the envmap
 	OrochiEnvmap m_orochi_envmap;

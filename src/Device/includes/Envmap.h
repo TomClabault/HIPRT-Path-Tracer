@@ -76,11 +76,22 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void envmap_cdf_search(const WorldSettings& world
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F envmap_sample(const WorldSettings& world_settings, float3& sampled_direction, float& envmap_pdf, Xorshift32Generator& random_number_generator)
 {
-    // Importance sampling a texel of the envmap
     int x, y;
-    unsigned int cdf_size = world_settings.envmap_width * world_settings.envmap_height;
-    float env_map_total_sum = world_settings.envmap_cdf[cdf_size - 1];
+    float env_map_total_sum = world_settings.envmap_total_sum;
+
+#if EnvmapSamplingStrategy == ESS_BINARY_SEARCH
+    // Importance sampling a texel of the envmap with a binary search on the CDF
     envmap_cdf_search(world_settings, random_number_generator() * env_map_total_sum, x, y);
+#else
+    int random_index = random_number_generator.random_index(world_settings.envmap_height * world_settings.envmap_width);
+    float probability = world_settings.alias_table_probas[random_index];
+    if (random_number_generator() > probability)
+        // Picking the alias
+        random_index = world_settings.alias_table_alias[random_index];
+
+    y = static_cast<int>(random_index / world_settings.envmap_width);
+    x = static_cast<int>(random_index - y * world_settings.envmap_width);
+#endif
 
     // Converting to UV coordinates
     float u = (float)x / world_settings.envmap_width;
@@ -122,8 +133,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F envmap_eval(const HIPRTRenderData& re
 
     ColorRGB32F envmap_radiance = eval_envmap_no_pdf(world_settings, direction);
 
-    unsigned int cdf_size = world_settings.envmap_width * world_settings.envmap_height;
-    float envmap_total_sum = world_settings.envmap_cdf[cdf_size - 1];
+    float envmap_total_sum = world_settings.envmap_total_sum;
 
     float theta_bsdf_dir = acos(-direction.y);
     float sin_theta = sin(theta_bsdf_dir);
@@ -138,15 +148,15 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F envmap_eval(const HIPRTRenderData& re
     return envmap_radiance;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_cdf(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, const RayVolumeState& volume_state, HitInfo& closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_with_mis(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, const RayVolumeState& volume_state, HitInfo& closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
 {
     float envmap_pdf;
     float3 sampled_direction;
     ColorRGB32F envmap_color = envmap_sample(render_data.world_settings, sampled_direction, envmap_pdf, random_number_generator);
     ColorRGB32F envmap_mis_contribution;
 
-    float elva_pdf;
-    envmap_eval(render_data, sampled_direction, elva_pdf);
+    float eval_pdf;
+    envmap_eval(render_data, sampled_direction, eval_pdf);
 
     // Sampling the envmap with MIS
     float cosine_term = hippt::dot(closest_hit_info.shading_normal, sampled_direction);
@@ -233,10 +243,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map(const HIPRTRen
         return ColorRGB32F(0.0f);
 #endif
 
-#if EnvmapSamplingStrategy == ESS_BINARY_SEARCH
-    return sample_environment_map_cdf(render_data, ray_payload.material, ray_payload.volume_state, closest_hit_info, view_direction, random_number_generator);
-#elif EnvmapSamplingStrategy == ESS_NO_SAMPLING
+#if EnvmapSamplingStrategy == ESS_NO_SAMPLING
     return ColorRGB32F(0.0f);
+#else
+    return sample_environment_map_with_mis(render_data, ray_payload.material, ray_payload.volume_state, closest_hit_info, view_direction, random_number_generator);
 #endif
 }
 
