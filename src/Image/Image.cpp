@@ -51,6 +51,7 @@ Image8Bit Image8Bit::read_image(const std::string& filepath, int output_channels
         }
     }
 
+    stbi_image_free(pixels);
     return output_image;
 }
 
@@ -82,6 +83,7 @@ Image8Bit Image8Bit::read_image_hdr(const std::string& filepath, int output_chan
         }
     }
 
+    stbi_image_free(pixels);
     return Image8Bit(converted_data, width, height, output_channels);
 }
 
@@ -318,6 +320,7 @@ Image32Bit Image32Bit::read_image(const std::string& filepath, int output_channe
         }
     }
 
+    stbi_image_free(pixels);
     return output_image;
 }
 
