@@ -11,6 +11,7 @@
 #include "Device/includes/ONB.h"
 #include "Device/includes/RayPayload.h"
 #include "Device/includes/Texture.h"
+#include "Device/functions/AlphaTesting.h"
 
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/Math.h"
@@ -101,10 +102,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
 {
     hiprtHit hit;
     bool skipping_volume_boundary = false;
-    bool skipping_intersection_alpha_test = false;
     do
     {
-    #ifdef __KERNELCC__
+#ifdef __KERNELCC__
 #if SharedStackBVHTraversalGlobalRays == KERNEL_OPTION_TRUE
 #if SharedStackBVHTraversalSizeGlobalRays > 0
         __shared__ int shared_stack_cache[SharedStackBVHTraversalSizeGlobalRays * SharedStackBVHTraversalBlockSize];
@@ -114,9 +114,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
 #endif
         hiprtGlobalStack global_stack(render_data.global_traversal_stack_buffer, shared_stack_buffer);
 
-        hiprtGeomTraversalClosestCustomStack<hiprtGlobalStack> traversal(render_data.geom, ray, global_stack);
+        hiprtGeomTraversalClosestCustomStack<hiprtGlobalStack> traversal(render_data.geom, ray, global_stack, hiprtTraversalHintDefault, const_cast<HIPRTRenderData*>(&render_data), render_data.func_table, 0);
 #else
-        hiprtGeomTraversalClosest traversal(render_data.geom, ray);
+        hiprtGeomTraversalClosest traversal(render_data.geom, ray, hiprtTraversalHintDefault, const_cast<HIPRTRenderData*>(&render_data), render_data.func_table, 0);
 #endif
 
         hit = traversal.getNextHit();
@@ -141,18 +141,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
         if (in_out_ray_payload.is_inside_volume())
             in_out_ray_payload.volume_state.distance_in_volume += hit.t;
 
-        float base_color_alpha = 1.0f;
         int material_index = render_data.buffers.material_indices[hit.primID];
-        in_out_ray_payload.material = get_intersection_material(render_data, material_index, out_hit_info.texcoords, base_color_alpha);
-
-        skipping_intersection_alpha_test = base_color_alpha < 1.0f && render_data.render_settings.do_alpha_testing;
-        if (skipping_intersection_alpha_test)
-        {
-            // Skipping the intersection now and not doing the volume stack handling
-            ray.origin = out_hit_info.inter_point + ray.direction * 3.0e-3f;
-
-            continue;
-        }
+        in_out_ray_payload.material = get_intersection_material(render_data, material_index, out_hit_info.texcoords);
 
         if (!in_out_ray_payload.is_inside_volume() || in_out_ray_payload.material.specular_transmission == 0.0f)
         {
@@ -187,7 +177,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
             in_out_ray_payload.volume_state.distance_in_volume += hit.t;
         }
 
-    } while ((skipping_volume_boundary && hit.hasHit()) || skipping_intersection_alpha_test);
+    } while ((skipping_volume_boundary && hit.hasHit()));
 
     return hit.hasHit();
 }
@@ -200,41 +190,24 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& r
 #ifdef __KERNELCC__
     ray.maxT = t_max - 1.0e-4f;
 
-    hiprtHit shadow_ray_hit;
-    float alpha;
-
-    do
-    {
 #if SharedStackBVHTraversalShadowRays == KERNEL_OPTION_TRUE
 #if SharedStackBVHTraversalSizeShadowRays > 0
-        __shared__ int shared_stack_cache[SharedStackBVHTraversalSizeShadowRays * SharedStackBVHTraversalBlockSize];
-        hiprtSharedStackBuffer shared_stack_buffer{ SharedStackBVHTraversalSizeShadowRays, shared_stack_cache };
+    __shared__ int shared_stack_cache[SharedStackBVHTraversalSizeShadowRays * SharedStackBVHTraversalBlockSize];
+    hiprtSharedStackBuffer shared_stack_buffer{ SharedStackBVHTraversalSizeShadowRays, shared_stack_cache };
 #else
-        hiprtSharedStackBuffer shared_stack_buffer{ 0, nullptr };
+    hiprtSharedStackBuffer shared_stack_buffer{ 0, nullptr };
 #endif
-        hiprtGlobalStack global_stack(render_data.global_traversal_stack_buffer, shared_stack_buffer);
+    hiprtGlobalStack global_stack(render_data.global_traversal_stack_buffer, shared_stack_buffer);
 
-        hiprtGeomTraversalClosestCustomStack<hiprtGlobalStack> traversal(render_data.geom, ray, global_stack);
+    hiprtGeomTraversalClosestCustomStack<hiprtGlobalStack> traversal(render_data.geom, ray, global_stack, hiprtTraversalHintDefault, const_cast<HIPRTRenderData*>(&render_data), render_data.func_table, 0);
 #else
-        hiprtGeomTraversalClosest traversal(render_data.geom, ray);
+    hiprtGeomTraversalClosest traversal(render_data.geom, ray, hiprtTraversalHintDefault, const_cast<HIPRTRenderData*>(&render_data), render_data.func_table, 0);
 #endif
 
-        shadow_ray_hit = traversal.getNextHit();
-        if (!shadow_ray_hit.hasHit())
-            return false;
+    hiprtHit shadow_ray_hit = traversal.getNextHit();
+    if (!shadow_ray_hit.hasHit())
+        return false;
 
-        if (render_data.render_settings.do_alpha_testing)
-            alpha = get_hit_base_color_alpha(render_data, shadow_ray_hit);
-        else
-            alpha = 1.0f;
-
-        float3 inter_point = ray.origin + ray.direction * shadow_ray_hit.t;
-        ray.origin = inter_point + ray.direction * 3.0e-3f;
-        ray.maxT -= shadow_ray_hit.t;
-    } while (alpha < 1.0f);
-
-    // If we're here, this means that we found a hit that is not
-    // alpha-transparent with a distance < t_max so that's a hit and we're shadowed.
     return true;
 #else
     float alpha = 1.0f;
@@ -278,41 +251,23 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderD
 #ifdef __KERNELCC__
     ray.maxT = t_max - 1.0e-4f;
 
-    hiprtHit shadow_ray_hit;
-    float alpha;
-    out_light_hit_info.hit_distance = 0.0f;
-
-    do
-    {
 #if SharedStackBVHTraversalShadowRays == KERNEL_OPTION_TRUE
 #if SharedStackBVHTraversalSizeShadowRays > 0
-        __shared__ int shared_stack_cache[SharedStackBVHTraversalSizeShadowRays * SharedStackBVHTraversalBlockSize];
-        hiprtSharedStackBuffer shared_stack_buffer{ SharedStackBVHTraversalSizeShadowRays, shared_stack_cache };
+    __shared__ int shared_stack_cache[SharedStackBVHTraversalSizeShadowRays * SharedStackBVHTraversalBlockSize];
+    hiprtSharedStackBuffer shared_stack_buffer{ SharedStackBVHTraversalSizeShadowRays, shared_stack_cache };
 #else
-        hiprtSharedStackBuffer shared_stack_buffer{ 0, nullptr };
+    hiprtSharedStackBuffer shared_stack_buffer{ 0, nullptr };
 #endif
-        hiprtGlobalStack global_stack(render_data.global_traversal_stack_buffer, shared_stack_buffer);
+    hiprtGlobalStack global_stack(render_data.global_traversal_stack_buffer, shared_stack_buffer);
 
-        hiprtGeomTraversalClosestCustomStack<hiprtGlobalStack> traversal(render_data.geom, ray, global_stack);
+    hiprtGeomTraversalClosestCustomStack<hiprtGlobalStack> traversal(render_data.geom, ray, global_stack, hiprtTraversalHintDefault, const_cast<HIPRTRenderData*>(&render_data), render_data.func_table, 0);
 #else
-        hiprtGeomTraversalClosest traversal(render_data.geom, ray);
+    hiprtGeomTraversalClosest traversal(render_data.geom, ray, hiprtTraversalHintDefault, const_cast<HIPRTRenderData*>(&render_data), render_data.func_table, 0);
 #endif
 
-        shadow_ray_hit = traversal.getNextHit();
-        if (!shadow_ray_hit.hasHit())
-            return false;
-
-        if (render_data.render_settings.do_alpha_testing)
-            alpha = get_hit_base_color_alpha(render_data, shadow_ray_hit);
-        else
-            alpha = 1.0f;
-
-        float3 inter_point = ray.origin + ray.direction * shadow_ray_hit.t;
-        ray.origin = inter_point + ray.direction * 3.0e-3f;
-        ray.maxT -= shadow_ray_hit.t;
-        out_light_hit_info.hit_distance += shadow_ray_hit.t;
-    } while (alpha < 1.0f);
-
+    hiprtHit shadow_ray_hit = traversal.getNextHit();
+    if (!shadow_ray_hit.hasHit())
+        return false;
 
     // If we're here, this means that we found a hit that is not
     // alpha-transparent with a distance < t_max so that's a hit and we're shadowed.
@@ -336,7 +291,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderD
         float2 texcoords = uv_interpolate(render_data.buffers.triangles_indices, shadow_ray_hit.primID, render_data.buffers.texcoords, shadow_ray_hit.uv);
         out_light_hit_info.hit_shading_normal = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), shadow_ray_hit.primID, shadow_ray_hit.uv, texcoords);
     }
-
+    
+    out_light_hit_info.hit_distance = shadow_ray_hit.t;
     out_light_hit_info.hit_prim_index = shadow_ray_hit.primID;
 
     return true;

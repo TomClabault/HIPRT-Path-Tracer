@@ -43,39 +43,32 @@
 // - make a function get_camera_ray that handles pixel jittering
 // - use simplified material everywhere in the BSDF etc... because we don't need the texture indices of the full material at this point
 // - we don't need the full HitInfo 'closest_hit_info' structure everywhere, only the inter point and the two normals for the most part so maybe have a simplified structure 
-// - only the material index can be stored in the pixel states ofthe wavefront path tracer, don't need to store the whole material
-// - refactor envmap to have a sampling & eval function
+// - only the material index can be stored in the pixel states of the wavefront path tracer, don't need to store the whole material
 // - use 3x3 matrix for envmap matrices
 // - free denoiser buffers if not using denoising
-// All of this on threads:
-//		- ---------------- set_scene() duration : 136ms
-//		- ---------------- textures upload if possible duration : 700ms on bistro + compile release
 // - refactor ImGuiRenderer in several sub classes that each draw a panel
-// - search for calls to 'trace_ray' and replace them with 'evaluate_shadow_ray' where possible for performance (emissive texture support though?)
+// - refactor closestHitTypes with something like 'hiprtGeomTraversalClosestHitType<SharedStackBVHTraversalGlobalRays>' to avoid the big #if #elif blocks
 
 
 
 // TODO Features:
-// - try __launch_bounds__ for kernels performance
+// - try dynamic stack for better memory usage than full brute force global stack buffer and see performance impact
 // - better disney sheen lobe as in Blender
 // - use shared memory for nested dielectrics stack?
 // - opacity micromaps
-// - simpler BSDF for indirect bounces?
+// - simpler BSDF for indirect bounces as a biased option for performance?
 // - limit first bounce distance: objects far away won't contribute much to what the camera sees
 // - limit direct lighting occlusion distance: maybe stochastically so that we get a falloff instead of a hard cut where an important may not contribute anymore
 //		- for maximum ray length, limit that length even more for indirect bounces and even more so if the ray is far away from the camera (beware of mirrors in the scene which the camera can look into and see a far away part of the scene where light could be very biased)
-// - don't take direct lighting occlusion into account if the light isn't going to contribute much (or terminate the light altogether)
-// - only update the display every so often if accumulating because displaying is expensive (especially at high resolution)
 // - do we really need a shadow ray and global ray shared stack? We can probably have only one function for tracing rays that takes a TMax and that's it: sharing the shared memory for both instead of allocating it twice
 // - only update the display every so often if accumulating because displaying is expensive (especially at high resolution) on AMD drivers at least
 // - reload shaders button
 // - pack ray payload
-// - pack nested dielectrics structure
 // - presample lights per each tile of pixels the same as for ReSTIR DI and use that for second bounces sampling?
 // - next event estimation++?
 // - Exploiting Visibility Correlation in Direct Illumination
 // - Progressive Visibility Caching for Fast Indirect Illumination
-// - performance/bias tradeoff by ignoring alpha tests after N bounce?
+// - performance/bias tradeoff by ignoring alpha tests (either for global rays or only shadow rays) after N bounce?
 // - performance/bias tradeoff by ignoring direct lighting occlusion after N bounce? --> strong bias but maybe something to do by reducing the length of shadow rays instead of just hard-disabling occlusion
 // - experiment with a feature that ignores really dark pixel in the variance estimation of the adaptive 
 //		sampling because it seems that very dark areas in the image are always flagged as very 
@@ -103,8 +96,6 @@
 // - adapt number of light samples in light sampling routines based on roughness of the material --> no need to sample 8 lights in RIS for perfectly specular material + use __any() intrinsic for that because we don't want to reduce light rays unecessarily if one thread of the warp is going to slow everyone down anyways
 // - UI scaling in ImGui
 // - clay render
-// - Scale all emissive in the scene in the material editor
-// - Kahan summation for weighted reservoir sampling?
 // - build BVHs one by one to avoid big memory spike? but what about BLAS performance cost?
 // - play with SBVH building parameters alpha/beta for memory/performance tradeoff + ImGui for that
 // - ability to change the color of the heatmap shader in ImGui

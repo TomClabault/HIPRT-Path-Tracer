@@ -384,6 +384,9 @@ private:
 	// Kernel used for retrieving the size of the RayVolumeState structure on the GPU
 	GPUKernel m_ray_volume_state_byte_size_kernel;
 
+	// Additional functions called on hits when tracing rays (alpha testing for example)
+	std::vector<hiprtFuncNameSet> m_func_name_sets;
+
 	std::shared_ptr<HIPRTOrochiCtx> m_hiprt_orochi_ctx = nullptr;
 
 	// Custom stream onto which kernels are dispatched asynchronously

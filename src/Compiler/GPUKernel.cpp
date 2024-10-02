@@ -67,22 +67,22 @@ std::vector<std::string> GPUKernel::get_additional_compiler_macros() const
 	return macros;
 }
 
-void GPUKernel::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, bool use_cache)
+void GPUKernel::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, std::vector<hiprtFuncNameSet> func_name_sets, bool use_cache)
 {
 	if (m_option_macro_invalidated)
 		parse_option_macros_used();
 
 	std::string cache_key = g_gpu_kernel_compiler.get_additional_cache_key(*this);
-	m_kernel_function = g_gpu_kernel_compiler.compile_kernel(*this, m_compiler_options, hiprt_ctx, use_cache, cache_key);
+	m_kernel_function = g_gpu_kernel_compiler.compile_kernel(*this, m_compiler_options, hiprt_ctx, func_name_sets.data(), use_cache, cache_key);
 }
 
-void GPUKernel::compile_silent(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, bool use_cache)
+void GPUKernel::compile_silent(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, std::vector<hiprtFuncNameSet> func_name_sets, bool use_cache)
 {
 	if (m_option_macro_invalidated)
 		parse_option_macros_used();
 
 	std::string cache_key = g_gpu_kernel_compiler.get_additional_cache_key(*this);
-	m_kernel_function = g_gpu_kernel_compiler.compile_kernel(*this, m_compiler_options, hiprt_ctx, use_cache, cache_key, /* silent */ true);
+	m_kernel_function = g_gpu_kernel_compiler.compile_kernel(*this, m_compiler_options, hiprt_ctx, func_name_sets.data(), use_cache, cache_key, /* silent */ true);
 }
 
 int GPUKernel::get_kernel_attribute(oroFunction compiled_kernel, oroFunction_attribute attribute)

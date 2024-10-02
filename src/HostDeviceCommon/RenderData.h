@@ -142,7 +142,10 @@ struct HIPRTRenderData
 	// random seed on the GPU for the random number generator to get started
 	unsigned int random_seed = 42;
 
+	// GPU BVH
 	hiprtGeometry geom = nullptr;
+	// GPU Intersection functions (for alpha testing for example)
+	hiprtFuncTable func_table = nullptr;
 
 	// Size of the *global* stack per thread. Default is 32.
 	int global_traversal_stack_buffer_size = 32;
@@ -161,6 +164,7 @@ struct HIPRTRenderData
 	// Camera of the last frame
 	HIPRTCamera prev_camera;
 
+	// Data only used by the CPU
 	CPUData cpu_only;
 };
 

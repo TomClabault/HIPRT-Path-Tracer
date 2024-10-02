@@ -75,6 +75,8 @@ struct HIPRTGeometry
 		build_options.buildFlags = hiprtBuildFlagBitPreferHighQualityBuild;
 		geometry_build_input.type = hiprtPrimitiveTypeTriangleMesh;
 		geometry_build_input.primitive.triangleMesh = m_mesh;
+		// Geom type 0 here 
+		geometry_build_input.geomType = 0;
 
 		log_bvh_building(build_options.buildFlags);
 		// Getting the buffer sizes for the construction of the BVH

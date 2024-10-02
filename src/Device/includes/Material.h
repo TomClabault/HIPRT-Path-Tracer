@@ -35,7 +35,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_hit_base_color_alpha(const HIPRTRenderD
     return alpha;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE SimplifiedRendererMaterial get_intersection_material(const HIPRTRenderData& render_data, int material_index, float2 texcoords, float& out_base_color_alpha)
+HIPRT_HOST_DEVICE HIPRT_INLINE SimplifiedRendererMaterial get_intersection_material(const HIPRTRenderData& render_data, int material_index, float2 texcoords)
 {
 	RendererMaterial material = render_data.buffers.materials_buffer[material_index];
 
@@ -43,7 +43,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE SimplifiedRendererMaterial get_intersection_mater
     get_material_property(render_data, emission, false, texcoords, material.emission_texture_index);
     material.set_emission(emission);
 
-    get_base_color(render_data, material.base_color, out_base_color_alpha, texcoords, material.base_color_texture_index);
+    float trash_alpha;
+    get_base_color(render_data, material.base_color, trash_alpha, texcoords, material.base_color_texture_index);
 
     get_metallic_roughness(render_data, material.metallic, material.roughness, texcoords, material.metallic_texture_index, material.roughness_texture_index, material.roughness_metallic_texture_index);
     get_material_property(render_data, material.oren_nayar_sigma, false, texcoords, material.oren_sigma_texture_index);
