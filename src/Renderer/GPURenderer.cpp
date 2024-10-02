@@ -499,47 +499,20 @@ void GPURenderer::launch_ReSTIR_DI()
 		if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING) == KERNEL_OPTION_TRUE)
 			launch_ReSTIR_DI_presampling_lights_pass();
 
-		configure_ReSTIR_DI_initial_pass();
-		m_kernels[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].launch_timed_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
+		launch_ReSTIR_DI_initial_candidates_pass();
 
 		if (m_render_data.render_settings.restir_di_settings.do_fused_spatiotemporal)
-		{
 			// Launching the fused spatiotemporal kernel
-			configure_ReSTIR_DI_spatiotemporal_pass();
-			m_kernels[GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID].launch_timed_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
-		}
+			launch_ReSTIR_DI_spatiotemporal_pass();
 		else
 		{
 			// Launching the temporal and spatial passes separately
 
 			if (m_render_data.render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
-			{
-				configure_ReSTIR_DI_temporal_pass();
-				m_kernels[GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID].launch_timed_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
-			}
+				launch_ReSTIR_DI_temporal_reuse_pass();
 
 			if (m_render_data.render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)
-			{
-				// Emitting an event for timing all the spatial reuse passes combined
-				OROCHI_CHECK_ERROR(oroEventRecord(m_restir_di_state.spatial_reuse_time_start, m_main_stream));
-
-				for (int spatial_reuse_pass = 0; spatial_reuse_pass < m_render_data.render_settings.restir_di_settings.spatial_pass.number_of_passes; spatial_reuse_pass++)
-				{
-					configure_ReSTIR_DI_spatial_pass(spatial_reuse_pass);
-					m_kernels[GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID].launch_timed_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
-				}
-
-				// Emitting the stop event
-				OROCHI_CHECK_ERROR(oroEventRecord(m_restir_di_state.spatial_reuse_time_stop, m_main_stream));
-
-				GPUKernel::ComputeElapsedTimeCallbackData* elapsed_time_data = new GPUKernel::ComputeElapsedTimeCallbackData;
-				elapsed_time_data->start = m_restir_di_state.spatial_reuse_time_start;
-				elapsed_time_data->end = m_restir_di_state.spatial_reuse_time_stop;
-				elapsed_time_data->elapsed_time_out = &m_ms_time_per_pass[GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID];
-
-				// Computing the time elapsed for all spatial reuse passes
-				OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_main_stream, GPUKernel::compute_elapsed_time_callback, elapsed_time_data));
-			}
+				launch_ReSTIR_DI_spatial_reuse_passes();
 		}
 
 		configure_ReSTIR_DI_output_buffer();
@@ -606,6 +579,14 @@ void GPURenderer::configure_ReSTIR_DI_initial_pass()
 	m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs = m_restir_di_state.initial_candidates_reservoirs.get_device_pointer();
 }
 
+void GPURenderer::launch_ReSTIR_DI_initial_candidates_pass()
+{
+	void* launch_args[] = { &m_render_data, &m_render_resolution };
+
+	configure_ReSTIR_DI_initial_pass();
+	m_kernels[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].launch_timed_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
+}
+
 void GPURenderer::configure_ReSTIR_DI_temporal_pass()
 {
 	m_render_data.random_seed = m_rng.xorshift32();
@@ -639,6 +620,14 @@ void GPURenderer::configure_ReSTIR_DI_temporal_pass()
 		else
 			m_render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs = m_restir_di_state.spatial_output_reservoirs_2.get_device_pointer();
 	}
+}
+
+void GPURenderer::launch_ReSTIR_DI_temporal_reuse_pass()
+{
+	void* launch_args[] = { &m_render_data, &m_render_resolution };
+
+	configure_ReSTIR_DI_temporal_pass();
+	m_kernels[GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID].launch_timed_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
 }
 
 void GPURenderer::configure_ReSTIR_DI_temporal_pass_for_fused_spatiotemporal()
@@ -718,6 +707,31 @@ void GPURenderer::configure_ReSTIR_DI_spatial_pass_for_fused_spatiotemporal(int 
 	}
 }
 
+void GPURenderer::launch_ReSTIR_DI_spatial_reuse_passes()
+{
+	void* launch_args[] = { &m_render_data, &m_render_resolution };
+
+	// Emitting an event for timing all the spatial reuse passes combined
+	OROCHI_CHECK_ERROR(oroEventRecord(m_restir_di_state.spatial_reuse_time_start, m_main_stream));
+
+	for (int spatial_reuse_pass = 0; spatial_reuse_pass < m_render_data.render_settings.restir_di_settings.spatial_pass.number_of_passes; spatial_reuse_pass++)
+	{
+		configure_ReSTIR_DI_spatial_pass(spatial_reuse_pass);
+		m_kernels[GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID].launch_timed_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
+	}
+
+	// Emitting the stop event
+	OROCHI_CHECK_ERROR(oroEventRecord(m_restir_di_state.spatial_reuse_time_stop, m_main_stream));
+
+	GPUKernel::ComputeElapsedTimeCallbackData* elapsed_time_data = new GPUKernel::ComputeElapsedTimeCallbackData;
+	elapsed_time_data->start = m_restir_di_state.spatial_reuse_time_start;
+	elapsed_time_data->end = m_restir_di_state.spatial_reuse_time_stop;
+	elapsed_time_data->elapsed_time_out = &m_ms_time_per_pass[GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID];
+
+	// Computing the time elapsed for all spatial reuse passes
+	OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_main_stream, GPUKernel::compute_elapsed_time_callback, elapsed_time_data));
+}
+
 void GPURenderer::configure_ReSTIR_DI_spatiotemporal_pass()
 {
 	// The buffers of the temporal pass are going to be configured in the same way
@@ -725,6 +739,14 @@ void GPURenderer::configure_ReSTIR_DI_spatiotemporal_pass()
 
 	// But the spatial pass is going to read from the input of the temporal pass i.e. the temporal buffer of the last frame, it's not going to read from the output of the temporal pass
 	configure_ReSTIR_DI_spatial_pass_for_fused_spatiotemporal(0);
+}
+
+void GPURenderer::launch_ReSTIR_DI_spatiotemporal_pass()
+{
+	void* launch_args[] = { &m_render_data, &m_render_resolution };
+
+	configure_ReSTIR_DI_spatiotemporal_pass();
+	m_kernels[GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID].launch_timed_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
 }
 
 void GPURenderer::configure_ReSTIR_DI_output_buffer()

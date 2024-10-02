@@ -284,12 +284,21 @@ private:
 
 	LightPresamplingParameters configure_ReSTIR_DI_light_presampling_pass();
 	void launch_ReSTIR_DI_presampling_lights_pass();
+
 	void configure_ReSTIR_DI_initial_pass();
+	void launch_ReSTIR_DI_initial_candidates_pass();
+
 	void configure_ReSTIR_DI_temporal_pass();
-	void configure_ReSTIR_DI_temporal_pass_for_fused_spatiotemporal();
+	void launch_ReSTIR_DI_temporal_reuse_pass();
+
 	void configure_ReSTIR_DI_spatial_pass(int spatial_pass_index);
-	void configure_ReSTIR_DI_spatial_pass_for_fused_spatiotemporal(int spatial_pass_index);
+	void launch_ReSTIR_DI_spatial_reuse_passes();
+
 	void configure_ReSTIR_DI_spatiotemporal_pass();
+	void configure_ReSTIR_DI_temporal_pass_for_fused_spatiotemporal();
+	void configure_ReSTIR_DI_spatial_pass_for_fused_spatiotemporal(int spatial_pass_index);
+	void launch_ReSTIR_DI_spatiotemporal_pass();
+
 	void configure_ReSTIR_DI_output_buffer();
 
 	// Properties of the device
