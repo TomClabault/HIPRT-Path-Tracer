@@ -6,6 +6,7 @@
 #ifndef BVH_H
 #define BVH_H
 
+#include "Device/functions/AlphaTesting.h"
 
 #include "Renderer/BoundingVolume.h"
 #include "Renderer/BVHConstants.h"
@@ -27,28 +28,28 @@ public:
     {
         struct QueueElement
         {
-            QueueElement(const BVH::OctreeNode* node, float t_near) : _node(node), _t_near(t_near) {}
+            QueueElement(const BVH::OctreeNode* node, float t_near) : m_node(node), _t_near(t_near) {}
 
             bool operator > (const QueueElement& a) const
             {
                 return _t_near > a._t_near;
             }
 
-            const OctreeNode* _node;//Reference on the node
+            const OctreeNode* m_node;//Reference on the node
 
             float _t_near;//Intersection distance used to order the elements in the priority queue used
             //by the OctreeNode to compute the intersection with a ray
         };
 
-        OctreeNode(float3 min, float3 max) : _min(min), _max(max) {}
+        OctreeNode(float3 min, float3 max) : m_min(min), m_max(max) {}
         ~OctreeNode()
         {
-            if (_is_leaf)
+            if (m_is_leaf)
                 return;
             else
             {
                 for (int i = 0; i < 8; i++)
-                    delete _children[i];
+                    delete m_children[i];
             }
         }
 
@@ -58,51 +59,51 @@ public:
           */
         BoundingVolume compute_volume(const std::vector<Triangle>& triangles_geometry)
         {
-            if (_is_leaf)
-                for (int triangle_id : _triangles)
-                    _bounding_volume.extend_volume(triangles_geometry[triangle_id]);
+            if (m_is_leaf)
+                for (int triangle_id : m_triangles)
+                    m_bounding_volume.extend_volume(triangles_geometry[triangle_id]);
             else
                 for (int i = 0; i < 8; i++)
-                    _bounding_volume.extend_volume(_children[i]->compute_volume(triangles_geometry));
+                    m_bounding_volume.extend_volume(m_children[i]->compute_volume(triangles_geometry));
 
-            return _bounding_volume;
+            return m_bounding_volume;
         }
 
         void create_children(int max_depth, int leaf_max_obj_count)
         {
-            float middle_x = (_min.x + _max.x) / 2;
-            float middle_y = (_min.y + _max.y) / 2;
-            float middle_z = (_min.z + _max.z) / 2;
+            float middle_x = (m_min.x + m_max.x) / 2;
+            float middle_y = (m_min.y + m_max.y) / 2;
+            float middle_z = (m_min.z + m_max.z) / 2;
 
-            _children[0] = new OctreeNode(_min, make_float3(middle_x, middle_y, middle_z));
-            _children[1] = new OctreeNode(make_float3(middle_x, _min.y, _min.z), make_float3(_max.x, middle_y, middle_z));
-            _children[2] = new OctreeNode(_min + make_float3(0, middle_y, 0), make_float3(middle_x, _max.y, middle_z));
-            _children[3] = new OctreeNode(make_float3(middle_x, middle_y, _min.z), make_float3(_max.x, _max.y, middle_z));
-            _children[4] = new OctreeNode(_min + make_float3(0, 0, middle_z), make_float3(middle_x, middle_y, _max.z));
-            _children[5] = new OctreeNode(make_float3(middle_x, _min.y, middle_z), make_float3(_max.x, middle_y, _max.z));
-            _children[6] = new OctreeNode(_min + make_float3(0, middle_y, middle_z), make_float3(middle_x, _max.y, _max.z));
-            _children[7] = new OctreeNode(make_float3(middle_x, middle_y, middle_z), make_float3(_max.x, _max.y, _max.z));
+            m_children[0] = new OctreeNode(m_min, make_float3(middle_x, middle_y, middle_z));
+            m_children[1] = new OctreeNode(make_float3(middle_x, m_min.y, m_min.z), make_float3(m_max.x, middle_y, middle_z));
+            m_children[2] = new OctreeNode(m_min + make_float3(0, middle_y, 0), make_float3(middle_x, m_max.y, middle_z));
+            m_children[3] = new OctreeNode(make_float3(middle_x, middle_y, m_min.z), make_float3(m_max.x, m_max.y, middle_z));
+            m_children[4] = new OctreeNode(m_min + make_float3(0, 0, middle_z), make_float3(middle_x, middle_y, m_max.z));
+            m_children[5] = new OctreeNode(make_float3(middle_x, m_min.y, middle_z), make_float3(m_max.x, middle_y, m_max.z));
+            m_children[6] = new OctreeNode(m_min + make_float3(0, middle_y, middle_z), make_float3(middle_x, m_max.y, m_max.z));
+            m_children[7] = new OctreeNode(make_float3(middle_x, middle_y, middle_z), make_float3(m_max.x, m_max.y, m_max.z));
         }
 
         void insert(const std::vector<Triangle>& triangles_geometry, int triangle_id_to_insert, int current_depth, int max_depth, int leaf_max_obj_count)
         {
             bool depth_exceeded = max_depth != -1 && current_depth == max_depth;
 
-            if (_is_leaf || depth_exceeded)
+            if (m_is_leaf || depth_exceeded)
             {
-                _triangles.push_back(triangle_id_to_insert);
+                m_triangles.push_back(triangle_id_to_insert);
 
-                if (_triangles.size() > leaf_max_obj_count && !depth_exceeded)
+                if (m_triangles.size() > leaf_max_obj_count && !depth_exceeded)
                 {
-                    _is_leaf = false;//This node isn't a leaf anymore
+                    m_is_leaf = false;//This node isn't a leaf anymore
 
                     create_children(max_depth, leaf_max_obj_count);
 
-                    for (int triangle_id : _triangles)
+                    for (int triangle_id : m_triangles)
                         insert_to_children(triangles_geometry, triangle_id, current_depth, max_depth, leaf_max_obj_count);
 
-                    _triangles.clear();
-                    _triangles.shrink_to_fit();
+                    m_triangles.clear();
+                    m_triangles.shrink_to_fit();
                 }
             }
             else
@@ -115,9 +116,9 @@ public:
             const Triangle& triangle = triangles_geometry[triangle_id_to_insert];
             float3 bbox_centroid = triangle.bbox_centroid();
 
-            float middle_x = (_min.x + _max.x) / 2;
-            float middle_y = (_min.y + _max.y) / 2;
-            float middle_z = (_min.z + _max.z) / 2;
+            float middle_x = (m_min.x + m_max.x) / 2;
+            float middle_y = (m_min.y + m_max.y) / 2;
+            float middle_z = (m_min.z + m_max.z) / 2;
 
             int octant_index = 0;
 
@@ -125,10 +126,10 @@ public:
             if (bbox_centroid.y > middle_y) octant_index += 2;
             if (bbox_centroid.z > middle_z) octant_index += 4;
 
-            _children[octant_index]->insert(triangles_geometry, triangle_id_to_insert, current_depth + 1, max_depth, leaf_max_obj_count);
+            m_children[octant_index]->insert(triangles_geometry, triangle_id_to_insert, current_depth + 1, max_depth, leaf_max_obj_count);
         }
 
-        bool intersect(const std::vector<Triangle>& triangles_geometry, const hiprtRay& ray, HitInfo& hit_info) const
+        bool intersect(const std::vector<Triangle>& triangles_geometry, const hiprtRay& ray, HitInfo& hit_info, void* filter_function_payload) const
         {
             float trash;
 
@@ -141,19 +142,19 @@ public:
                 numers[i] = hippt::dot(BoundingVolume::PLANE_NORMALS[i], float3(ray.origin));
             }
 
-            return intersect(triangles_geometry, ray, hit_info, trash, denoms, numers);
+            return intersect(triangles_geometry, ray, hit_info, trash, denoms, numers, filter_function_payload);
         }
 
-        bool intersect(const std::vector<Triangle>& triangles_geometry, const hiprtRay& ray, HitInfo& hit_info, float& t_near, float* denoms, float* numers) const
+        bool intersect(const std::vector<Triangle>& triangles_geometry, const hiprtRay& ray, HitInfo& hit_info, float& t_near, float* denoms, float* numers, void* filter_function_payload) const
         {
             float t_far, trash;
 
-            if (!_bounding_volume.intersect(trash, t_far, denoms, numers))
+            if (!m_bounding_volume.intersect(trash, t_far, denoms, numers))
                 return false;
 
-            if (_is_leaf)
+            if (m_is_leaf)
             {
-                for (int triangle_id : _triangles)
+                for (int triangle_id : m_triangles)
                 {
                     const Triangle& triangle = triangles_geometry[triangle_id];
 
@@ -165,6 +166,11 @@ public:
                         hit.primID = triangle_id;
                         hit.t = local_hit_info.t;
                         hit.uv = local_hit_info.uv;
+
+
+                        if (alpha_testing(ray, nullptr, filter_function_payload, hit))
+                            // Hit is filtered
+                            continue;
 
                         if (local_hit_info.t < hit_info.t || hit_info.t == -1)
                         {
@@ -183,8 +189,8 @@ public:
             for (int i = 0; i < 8; i++)
             {
                 float inter_distance;
-                if (_children[i]->_bounding_volume.intersect(inter_distance, t_far, denoms, numers))
-                    intersection_queue.emplace(QueueElement(_children[i], inter_distance));
+                if (m_children[i]->m_bounding_volume.intersect(inter_distance, t_far, denoms, numers))
+                    intersection_queue.emplace(QueueElement(m_children[i], inter_distance));
             }
 
             bool intersection_found = false;
@@ -194,7 +200,7 @@ public:
                 QueueElement top_element = intersection_queue.top();
                 intersection_queue.pop();
 
-                if (top_element._node->intersect(triangles_geometry, ray, hit_info, inter_distance, denoms, numers))
+                if (top_element.m_node->intersect(triangles_geometry, ray, hit_info, inter_distance, denoms, numers, filter_function_payload))
                 {
                     closest_inter = std::min(closest_inter, inter_distance);
                     intersection_found = true;
@@ -222,10 +228,10 @@ public:
 
         //If this node has been subdivided (and thus cannot accept any triangles),
         //this boolean will be set to false
-        bool _is_leaf = true;
+        bool m_is_leaf = true;
 
-        std::vector<int> _triangles;
-        std::array<BVH::OctreeNode*, 8> _children = 
+        std::vector<int> m_triangles;
+        std::array<BVH::OctreeNode*, 8> m_children = 
         {
             nullptr,
             nullptr,
@@ -237,8 +243,8 @@ public:
             nullptr
         };
 
-        float3 _min, _max;
-        BoundingVolume _bounding_volume;
+        float3 m_min, m_max;
+        BoundingVolume m_bounding_volume;
     };
 
 public:
@@ -248,15 +254,15 @@ public:
 
     void operator=(BVH&& bvh);
      
-    bool intersect(const hiprtRay& ray, HitInfo& hit_info) const;
+    bool intersect(const hiprtRay& ray, HitInfo& hit_info, void* filter_function_payload) const;
 
 private:
     void build_bvh(int max_depth, int leaf_max_obj_count, float3 min, float3 max, const BoundingVolume& volume);
 
 public:
-    OctreeNode* _root;
+    OctreeNode* m_root;
 
-    std::vector<Triangle>* _triangles;
+    std::vector<Triangle>* m_triangles;
 };
 
 #endif

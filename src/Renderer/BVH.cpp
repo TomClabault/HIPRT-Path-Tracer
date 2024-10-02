@@ -19,8 +19,8 @@ const float3 BoundingVolume::PLANE_NORMALS[BVHConstants::PLANES_COUNT] = {
     make_float3(std::sqrt(3.0f) / 3, -std::sqrt(3.0f) / 3, std::sqrt(3.0f) / 3),
 };
 
-BVH::BVH() : _root(nullptr), _triangles(nullptr) {}
-BVH::BVH(std::vector<Triangle>* triangles, int max_depth, int leaf_max_obj_count) : _triangles(triangles)
+BVH::BVH() : m_root(nullptr), m_triangles(nullptr) {}
+BVH::BVH(std::vector<Triangle>* triangles, int max_depth, int leaf_max_obj_count) : m_triangles(triangles)
 {
 	BoundingVolume volume;
 	float3 minimum = make_float3(INFINITY, INFINITY, INFINITY);
@@ -43,28 +43,28 @@ BVH::BVH(std::vector<Triangle>* triangles, int max_depth, int leaf_max_obj_count
 
 BVH::~BVH()
 {
-	delete _root;
+	delete m_root;
 }
 
 void BVH::operator=(BVH&& bvh)
 {
-	_triangles = bvh._triangles;
-	_root = bvh._root;
+	m_triangles = bvh.m_triangles;
+	m_root = bvh.m_root;
 
-	bvh._root = nullptr;
+	bvh.m_root = nullptr;
 }
 
 void BVH::build_bvh(int max_depth, int leaf_max_obj_count, float3 min, float3 max, const BoundingVolume& volume)
 {
-	_root = new OctreeNode(min, max);
+	m_root = new OctreeNode(min, max);
 
-    for (int triangle_id = 0; triangle_id < _triangles->size(); triangle_id++)
-        _root->insert(*_triangles, triangle_id, 0, max_depth, leaf_max_obj_count);
+    for (int triangle_id = 0; triangle_id < m_triangles->size(); triangle_id++)
+        m_root->insert(*m_triangles, triangle_id, 0, max_depth, leaf_max_obj_count);
 
-    _root->compute_volume(*_triangles);
+    m_root->compute_volume(*m_triangles);
 }
 
-bool BVH::intersect(const hiprtRay& ray, HitInfo& hit_info) const
+bool BVH::intersect(const hiprtRay& ray, HitInfo& hit_info, void* filter_function_payload) const
 {
-    return _root->intersect(*_triangles, ray, hit_info);
+    return m_root->intersect(*m_triangles, ray, hit_info, filter_function_payload);
 }

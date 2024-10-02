@@ -31,7 +31,6 @@
 // - when using a BSDF override, transmissive materials keep their dielectric priorities and this can mess up shadow rays and intersections in general if the BSDF used for the override doesn't support transmissive materials
 // - is DisneySheen correct?
 // - threadmanager: what if we start a thread with a dependency A on a thread that itself has a dependency B? we're going to try join dependency A even if thread with dependency on B hasn't even started yet --> joining nothing --> immediate return --> should have waited for the dependency but hasn't
-// - bias with temporal reuse ReSTIR + stochastic alpha transparency: probably due to the fact that a given sample may or may not have the same visibility through a non-opaque material from one frame to another since we're replaying the random number for alpha testing 
 
 
 // TODO Code Organization:
@@ -57,6 +56,7 @@
 // - better disney sheen lobe as in Blender
 // - use shared memory for nested dielectrics stack?
 // - opacity micromaps
+// - cache opacity of materials textures? --> analyze the texture when loading it from the texture and if there isn't a single transparent pixel, then we know that we won't have to fetch the material / texture in the alpha test filter function because the alpha is going to be 1.0f anyways
 // - simpler BSDF for indirect bounces as a biased option for performance?
 // - limit first bounce distance: objects far away won't contribute much to what the camera sees
 // - limit direct lighting occlusion distance: maybe stochastically so that we get a falloff instead of a hard cut where an important may not contribute anymore

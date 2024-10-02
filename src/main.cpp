@@ -23,63 +23,8 @@
 
 #define GPU_RENDER 1
 
-#define HEIGHT 4
-#define WIDTH 4
-
 int main(int argc, char* argv[])
 {   
-    //std::vector<float> data(WIDTH * HEIGHT * 3);
-    //for (int j = 0; j < HEIGHT; j++)
-    //{
-    //    for (int i = 0; i < WIDTH; i++)
-    //    {
-    //        int index = j * WIDTH + i;
-
-    //        data[index * 3 + 0] = index + 1;
-    //        data[index * 3 + 1] = index + 1;
-    //        data[index * 3 + 2] = index + 1;
-    //    }
-    //}
-
-    //Image32Bit image(data, WIDTH, HEIGHT, 3);
-
-    //std::vector<float> probas;
-    //std::vector<int> alias;
-    //image.compute_alias_table(probas, alias);
-
-    //Xorshift32Generator random_number_generator;
-
-    //std::vector<std::vector<int>> results;
-    //results.resize(HEIGHT);
-    //for (int i = 0; i < HEIGHT; i++)
-    //    results[i].resize(WIDTH, 0);
-
-    //for (int i = 0; i < (WIDTH * HEIGHT) * (WIDTH * HEIGHT + 1) / 2 * 1000; i++)
-    //{
-    //    int random_index = random_number_generator.random_index(WIDTH * HEIGHT);
-    //    float probability = probas[random_index];
-    //    if (random_number_generator() > probability)
-    //        // Picking the alias
-    //        random_index = alias[random_index];
-
-    //    int y = static_cast<int>(random_index / WIDTH);
-    //    int x = static_cast<int>(random_index - y * WIDTH);
-
-    //    results[y][x]++;
-    //}
-
-    //for (int j = 0; j < HEIGHT; j++)
-    //{
-    //    for (int i = 0; i < WIDTH; i++)
-    //    {
-    //        std::cout << results[j][i] << ", ";
-    //    }
-
-    //    std::cout << std::endl;
-    //}
-
-    //return 0;
-
     CommandlineArguments cmd_arguments = CommandlineArguments::process_command_line_args(argc, argv);
 
     const int width = cmd_arguments.render_width;

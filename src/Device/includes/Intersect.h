@@ -79,13 +79,16 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 get_shading_normal(const HIPRTRenderData& 
 
 #ifndef __KERNELCC__
 #include "Renderer/BVH.h"
-HIPRT_HOST_DEVICE HIPRT_INLINE hiprtHit intersect_scene_cpu(const HIPRTRenderData& render_data, const hiprtRay& ray)
+HIPRT_HOST_DEVICE HIPRT_INLINE hiprtHit intersect_scene_cpu(const HIPRTRenderData& render_data, const hiprtRay& ray, Xorshift32Generator& random_number_generator)
 {
     hiprtHit hiprtHit;
     HitInfo closest_hit_info;
     closest_hit_info.t = -1.0f;
 
-    if (render_data.cpu_only.bvh->intersect(ray, closest_hit_info))
+    AlphaTestingPayload filter_function_payload;
+    filter_function_payload.render_data = &render_data;
+    filter_function_payload.random_number_generator = &random_number_generator;
+    if (render_data.cpu_only.bvh->intersect(ray, closest_hit_info, &filter_function_payload))
     {
         hiprtHit.primID = closest_hit_info.primitive_index;
         hiprtHit.normal = closest_hit_info.geometric_normal;
@@ -127,7 +130,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
 
         hit = traversal.getNextHit();
     #else
-        hit = intersect_scene_cpu(render_data, ray);
+        hit = intersect_scene_cpu(render_data, ray, random_number_generator);
     #endif
 
         if (!hit.hasHit())
@@ -230,7 +233,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& r
     do
     {
         // We should use ray tracing fitler functions here instead of re-tracing new rays
-        hit = intersect_scene_cpu(render_data, ray);
+        hit = intersect_scene_cpu(render_data, ray, random_number_generator);
         if (!hit.hasHit())
             return false;
 
@@ -321,7 +324,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderD
     do
     {
         // We should use ray tracing fitler functions here instead of re-tracing new rays
-        shadow_ray_hit = intersect_scene_cpu(render_data, ray);
+        shadow_ray_hit = intersect_scene_cpu(render_data, ray, random_number_generator);
         if (!shadow_ray_hit.hasHit())
             return false;
 

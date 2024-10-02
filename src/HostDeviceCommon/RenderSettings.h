@@ -203,10 +203,6 @@ struct HIPRTRenderSettings
 		bool need_g_buffer = DirectLightSamplingStrategy == LSS_RESTIR_DI;
 		// If the temporal reuse isn't used, don't need the G-buffer
 		need_g_buffer &= restir_di_settings.temporal_pass.do_temporal_reuse_pass;
-		// Not using the g-buffer if accumulating because we're rendering still frames
-		// when accumulating which means that we don't need the previous frame's g-buffer
-		// since we're not going to reproject anything
-		need_g_buffer &= !accumulate;
 
 		return need_g_buffer;
 	}
