@@ -60,7 +60,7 @@ struct SpatialPassSettings
 	// Takes values in [0, number_of_passes - 1]
 	int spatial_pass_index = 0;
 	// How many spatial reuse pass to perform
-	int number_of_passes = 1;
+	int number_of_passes = 2;
 	// The radius within which neighbor are going to be reused spatially
 	int spatial_reuse_radius = 16;
 	// How many neighbors to reuse during the spatial pass
@@ -149,7 +149,7 @@ struct ReSTIRDISettings
 	// Whether or not to use confidence weights when resampling neighbors.
 	bool use_confidence_weights = true;
 
-	bool use_normal_similarity_heuristic = false;
+	bool use_normal_similarity_heuristic = true;
 	// User-friendly (for ImGui) normal angle. When resampling a neighbor (temporal or spatial),
 	// the normal of the neighbor being re-sampled must be similar to our normal. This angle gives the
 	// "similarity threshold". Normals must be within 25 degrees of each other by default

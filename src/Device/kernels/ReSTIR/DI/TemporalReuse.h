@@ -127,13 +127,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	// /* ------------------------------- */
 	// Resampling the temporal neighbor
 	// /* ------------------------------- */
-
-	// M-capping the temporal neighbor with the glossy M-cap if the surface is glossy enough
-	if (render_data.render_settings.restir_di_settings.glossy_m_cap > 0 && temporal_neighbor_surface.material.roughness <= render_data.render_settings.restir_di_settings.glossy_threshold)
-		temporal_neighbor_reservoir.M = hippt::min(temporal_neighbor_reservoir.M, render_data.render_settings.restir_di_settings.glossy_m_cap);
-	else if (render_data.render_settings.restir_di_settings.m_cap > 0)
-	// M-capping the temporal neighbor if a M-cap has been given
-		temporal_neighbor_reservoir.M = hippt::min(temporal_neighbor_reservoir.M, render_data.render_settings.restir_di_settings.m_cap);
 	
 	ReSTIRDIReservoir initial_candidates_reservoir = render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs[center_pixel_index];
 	if (temporal_neighbor_reservoir.M > 0)
@@ -285,6 +278,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 
 	temporal_reuse_output_reservoir.end_with_normalization(normalization_numerator, normalization_denominator);
 	temporal_reuse_output_reservoir.sanity_check(make_int2(x, y));
+
+	// M-capping so that we don't have to M-cap when reading reservoirs on the next frame
+	if (render_data.render_settings.restir_di_settings.glossy_m_cap > 0 && center_pixel_surface.material.roughness <= render_data.render_settings.restir_di_settings.glossy_threshold)
+		temporal_reuse_output_reservoir.M = hippt::min(temporal_reuse_output_reservoir.M, render_data.render_settings.restir_di_settings.glossy_m_cap);
+	else if (render_data.render_settings.restir_di_settings.m_cap > 0)
+		// M-capping the temporal neighbor if an M-cap has been given
+		temporal_reuse_output_reservoir.M = hippt::min(temporal_reuse_output_reservoir.M, render_data.render_settings.restir_di_settings.m_cap);
 
 	render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs[center_pixel_index] = temporal_reuse_output_reservoir;
 }

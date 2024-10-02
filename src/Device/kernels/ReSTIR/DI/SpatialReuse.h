@@ -326,6 +326,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 		ReSTIR_DI_visibility_reuse(render_data, spatial_reuse_output_reservoir, center_pixel_surface.shading_point, random_number_generator);
 #endif
 
+	// M-capping so that we don't have to M-cap when reading reservoirs on the next frame
+	if (render_data.render_settings.restir_di_settings.glossy_m_cap > 0 && center_pixel_surface.material.roughness <= render_data.render_settings.restir_di_settings.glossy_threshold)
+		spatial_reuse_output_reservoir.M = hippt::min(spatial_reuse_output_reservoir.M, render_data.render_settings.restir_di_settings.glossy_m_cap);
+	else if (render_data.render_settings.restir_di_settings.m_cap > 0)
+		// M-capping the temporal neighbor if an M-cap has been given
+		spatial_reuse_output_reservoir.M = hippt::min(spatial_reuse_output_reservoir.M, render_data.render_settings.restir_di_settings.m_cap);
+
 	render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs[center_pixel_index] = spatial_reuse_output_reservoir;
 }
 

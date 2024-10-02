@@ -1932,13 +1932,18 @@ void ImGuiRenderer::draw_performance_metrics_panel()
 		draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID, "ReSTIR Initial Candidates");
 
 		if (render_settings.restir_di_settings.do_fused_spatiotemporal)
+		{
 			draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID, "ReSTIR Spatio-Temporal Reuse");
+			if (render_settings.restir_di_settings.spatial_pass.number_of_passes > 1)
+			{
+				std::string spatial_reuse_text = "ReSTIR " + std::to_string(render_settings.restir_di_settings.spatial_pass.number_of_passes - 1) + " Spatial Reuse";
+				draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID, spatial_reuse_text);
+			}
+		}
 		else
 		{
 			if (render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
 				draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID, "ReSTIR Temporal Reuse");
-			if (render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)
-				draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID, "ReSTIR Spatial Reuse");
 		}
 	}
 	draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::PATH_TRACING_KERNEL_ID, "Path Tracing Pass");

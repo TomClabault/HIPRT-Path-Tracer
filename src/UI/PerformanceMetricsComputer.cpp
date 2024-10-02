@@ -119,11 +119,7 @@ double PerformanceMetricsComputer::get_current_value(const std::string& key)
 double PerformanceMetricsComputer::get_average(const std::string& key)
 {
 	if (m_values_count[key] == 0)
-	{
-		std::cerr << "Trying to get the average value of the key \"" << key << "\" but this key has no values!" << std::endl;
-
 		return -1.0;
-	}
 
 	return m_values_sum[key] / m_values_count[key];
 }
@@ -131,11 +127,7 @@ double PerformanceMetricsComputer::get_average(const std::string& key)
 double PerformanceMetricsComputer::get_variance(const std::string& key)
 {
 	if (m_values_count[key] == 0)
-	{
-		std::cerr << "Trying to get the variance value of the key \"" << key << "\" but this key has no values!" << std::endl;
-
 		return -1.0;
-	}
 
 	double average = get_average(key);
 	return m_values_sum_of_squares[key] / m_values_count[key] - average * average;
@@ -144,11 +136,7 @@ double PerformanceMetricsComputer::get_variance(const std::string& key)
 double PerformanceMetricsComputer::get_standard_deviation(const std::string& key)
 {
 	if (m_values_count[key] == 0)
-	{
-		std::cerr << "Trying to get the standard deviation value of the key \"" << key << "\" but this key has no values!" << std::endl;
-
 		return -1.0;
-	}
 
 	return std::sqrt(get_variance(key));
 }
@@ -156,11 +144,7 @@ double PerformanceMetricsComputer::get_standard_deviation(const std::string& key
 double PerformanceMetricsComputer::get_min(const std::string& key)
 {
 	if (m_min_max_data[key].size() == 0)
-	{
-		std::cerr << "Trying to get the minimum value of the key \"" << key << "\" but this key has no values!" << std::endl;
-
 		return -1.0;
-	}
 
 	return *m_min_max_data[key].begin();
 }
@@ -168,11 +152,7 @@ double PerformanceMetricsComputer::get_min(const std::string& key)
 double PerformanceMetricsComputer::get_max(const std::string& key)
 {
 	if (m_min_max_data[key].size() == 0)
-	{
-		std::cerr << "Trying to get the maximum value of the key \"" << key << "\" but this key has no values!" << std::endl;
-
 		return -1.0;
-	}
 
 	// rbegin() is the last element
 	// end() would be past the last element so we're not using end() here

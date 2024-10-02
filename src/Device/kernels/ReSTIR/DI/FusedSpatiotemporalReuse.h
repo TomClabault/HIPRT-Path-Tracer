@@ -562,6 +562,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 	else if (render_data.render_settings.restir_di_settings.m_cap > 0)
 		// M-capping the temporal neighbor if an M-cap has been given
 		spatiotemporal_output_reservoir.M = hippt::min(spatiotemporal_output_reservoir.M, render_data.render_settings.restir_di_settings.m_cap);
+
 	render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs[center_pixel_index] = spatiotemporal_output_reservoir;
 }
 

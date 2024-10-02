@@ -22,6 +22,7 @@
 // - disocclusion boost
 // - clamp spatial neighbors out of viewport instead of discarding them? option in Imgui
 // - multiple spatial reuse passes with fused spatiotemporal
+// - limit UI speed because it actually uses some resources (maybe Vsync or something)
 
 // TODO known bugs / incorectness:
 // - take transmission color into account when direct sampling a light source that is inside a volume
@@ -34,7 +35,7 @@
 
 
 // TODO Code Organization:
-// - init opengl context and all that expensive stuff while the scene is being parsed
+// - init opengl context and all that expensive stuff (compile kernels too) while the scene is being parsed
 // - do not pass so many arguments to kernels everytime: make a "KernelArguments" folder in the source files with one file that contains the arguments needed for a kernel: ReSTIR_DI_InitialCandidatesArguments, ReSTIR_DI_SpatialReuseArguments, ...
 // - what if everywhere in the code we use a minT for the rays instead of pushing the points in the right direction (annoying to determine the right direction everytime depending on inside/outside surface)
 // - cleanup RIS reservoir with all the BSDF stuff
@@ -544,8 +545,6 @@ void RenderWindow::reset_render()
 {
 	m_application_settings->last_denoised_sample_count = -1;
 
-	// TODO remove this comment if it's been a while and nothing is broken
-	// m_application_state->samples_per_second = 0.0f;
 	m_application_state->current_render_time_ms = 0.0f;
 	m_application_state->render_dirty = false;
 
@@ -792,7 +791,11 @@ void RenderWindow::update_perf_metrics()
 		m_perf_metrics->add_value(GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID, m_renderer->get_render_pass_time(GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID));
 
 		if (m_renderer->get_render_settings().restir_di_settings.do_fused_spatiotemporal)
+		{
 			m_perf_metrics->add_value(GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID, m_renderer->get_render_pass_time(GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID));
+			if (m_renderer->get_render_settings().restir_di_settings.spatial_pass.number_of_passes > 1)
+				m_perf_metrics->add_value(GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID, m_renderer->get_render_pass_time(GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID));
+		}
 		else
 		{
 			m_perf_metrics->add_value(GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID, m_renderer->get_render_pass_time(GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID));
