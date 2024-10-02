@@ -182,30 +182,37 @@ bool GPUKernel::uses_macro(const std::string& name) const
 	return m_used_option_macros.find(name) != m_used_option_macros.end();
 }
 
-void GPUKernel::compute_elapsed_time_callback(void* data)
-{
-	GPUKernel::ComputeElapsedTimeCallbackData* callback_data = reinterpret_cast<ComputeElapsedTimeCallbackData*>(data);
-#ifdef OROCHI_ENABLE_CUEW
-	// Elapsed time throws some errors when used through Orochi on NVIDIA GPUs with old Compute Capability (< 7.5).
-	// Not sure why. The difference is that Orochi (the oroEventElapsedTime() fucntion) ends up calling on the newer
-	// CUDA API: cudaEventElapsedTime and this seems to be broken (on "old" hardware at least)
-	// 
-	// Using the old driver API: cuEventElapsedTime seems to work though
-	CudaGLInterop::CUresult res = CudaGLInterop::cuEventElapsedTime_oro(callback_data->elapsed_time_out, reinterpret_cast<CudaGLInterop::cudaEvent_t>(callback_data->start), reinterpret_cast<CudaGLInterop::cudaEvent_t>(callback_data->end));
-#else
-	oroEventElapsedTime(callback_data->elapsed_time_out, callback_data->start, callback_data->end);
-#endif
-
-	// Deleting the callback data because it was dynamically allocated
-	delete callback_data;
-}
+//void GPUKernel::compute_elapsed_time_callback(void* data)
+//{
+//	GPUKernel::ComputeElapsedTimeCallbackData* callback_data = reinterpret_cast<ComputeElapsedTimeCallbackData*>(data);
+//#ifdef OROCHI_ENABLE_CUEW
+//	// Elapsed time throws some errors when used through Orochi on NVIDIA GPUs with old Compute Capability (< 7.5).
+//	// Not sure why. The difference is that Orochi (the oroEventElapsedTime() fucntion) ends up calling on the newer
+//	// CUDA API: cudaEventElapsedTime and this seems to be broken (on "old" hardware at least)
+//	// 
+//	// Using the old driver API: cuEventElapsedTime seems to work though
+//	//CudaGLInterop::CUresult res = CudaGLInterop::cuEventElapsedTime_oro(callback_data->elapsed_time_out, reinterpret_cast<CudaGLInterop::cudaEvent_t>(callback_data->start), reinterpret_cast<CudaGLInterop::cudaEvent_t>(callback_data->end));
+//	//oroEventElapsedTime()
+//	*callback_data->elapsed_time_out = 0.0f;
+//	OROCHI_CHECK_ERROR(oroCtxSetCurrent(callback_data->hiprt_orochi_ctx->orochi_ctx));
+//	oroEventElapsedTime(callback_data->elapsed_time_out, callback_data->start, callback_data->end);
+//#else
+//	oroEventElapsedTime(callback_data->elapsed_time_out, callback_data->start, callback_data->end);
+//#endif
+//
+//	// Deleting the callback data because it was dynamically allocated
+//	delete callback_data;
+//}
 
 float GPUKernel::get_last_execution_time()
 {
-	return m_last_execution_time;
+	float out;
+	oroEventElapsedTime(&out, m_execution_start_event, m_execution_stop_event);
+
+	return out;
 }
 
-void GPUKernel::launch_timed_asynchronous(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, oroStream_t stream)
+void GPUKernel::launch_timed_asynchronous(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, oroStream_t stream, HIPRTOrochiCtx* hiprt_orochi_ctx)
 {
 	OROCHI_CHECK_ERROR(oroEventRecord(m_execution_start_event, stream));
 
@@ -216,12 +223,13 @@ void GPUKernel::launch_timed_asynchronous(int tile_size_x, int tile_size_y, int 
 	// and oroStreamQuery always (kind of) returns hipErrorDeviceNotReady
 	OROCHI_CHECK_ERROR(oroEventRecord(m_execution_stop_event, stream));
 
-	GPUKernel::ComputeElapsedTimeCallbackData* callback_data = new ComputeElapsedTimeCallbackData;
+	/*GPUKernel::ComputeElapsedTimeCallbackData* callback_data = new ComputeElapsedTimeCallbackData;
 	callback_data->elapsed_time_out = &m_last_execution_time;
 	callback_data->start = m_execution_start_event;
 	callback_data->end = m_execution_stop_event;
+	callback_data->hiprt_orochi_ctx = hiprt_orochi_ctx;*/
 
 	// Automatically computing the elapsed time of the events with a callback.
 	// hip/cudaLaunchHostFunc adds a host function call on the GPU queue. Pretty nifty
-	OROCHI_CHECK_ERROR(oroLaunchHostFunc(stream, GPUKernel::compute_elapsed_time_callback, callback_data));
+	//OROCHI_CHECK_ERROR(oroLaunchHostFunc(stream, GPUKernel::compute_elapsed_time_callback, callback_data));
 }

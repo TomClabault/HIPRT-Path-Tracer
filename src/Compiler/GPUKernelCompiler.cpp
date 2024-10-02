@@ -61,20 +61,15 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, const GPUKern
 		std::lock_guard<std::mutex> lock(m_mutex);
 		std::cout << "Kernel \"" << kernel_function_name << "\" compiled in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms. ";
 
-		if ((hiprt_orochi_ctx->device_properties.major >= 7 && hiprt_orochi_ctx->device_properties.minor >= 5) 
-		|| std::string(hiprt_orochi_ctx->device_properties.name).find("AMD") != std::string::npos
-		|| std::string(hiprt_orochi_ctx->device_properties.name).find("Radeon") != std::string::npos)
-		{
-			// Getting the registers of a kernel only seems to be available on 7.5 and above 
-			// (works on a 2060S but doesn't on a GTX 970 or GTX 1060, couldn't try more hardware 
-			// so maybe 7.5 is too conservative)
-			std::cout << std::endl;
-			std::cout << "\t" << GPUKernel::get_kernel_attribute(kernel_function, ORO_FUNC_ATTRIBUTE_NUM_REGS) << " registers." << std::endl;
-			std::cout << "\t" << GPUKernel::get_kernel_attribute(kernel_function, ORO_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES) << " shared memory." << std::endl;
-			std::cout << "\t" << GPUKernel::get_kernel_attribute(kernel_function, ORO_FUNC_ATTRIBUTE_LOCAL_SIZE_BYTES) << " local memory." << std::endl;
-		}
-		else
-			std::cout << std::endl;
+		// Setting the current context is necessary because getting
+		// functions attributes necessitates calling CUDA/HIP functions
+		// which need their context to be current if not calling from
+		// the main thread (which we are not if we are compiling kernels on multithreads)
+		OROCHI_CHECK_ERROR(oroCtxSetCurrent(hiprt_orochi_ctx->orochi_ctx));
+		std::cout << std::endl;
+		std::cout << "\t" << GPUKernel::get_kernel_attribute(kernel_function, ORO_FUNC_ATTRIBUTE_NUM_REGS) << " registers." << std::endl;
+		std::cout << "\t" << GPUKernel::get_kernel_attribute(kernel_function, ORO_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES) << " shared memory." << std::endl;
+		std::cout << "\t" << GPUKernel::get_kernel_attribute(kernel_function, ORO_FUNC_ATTRIBUTE_LOCAL_SIZE_BYTES) << " local memory." << std::endl;
 	}
 
 	return kernel_function;

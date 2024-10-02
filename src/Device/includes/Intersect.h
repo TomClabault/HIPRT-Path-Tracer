@@ -16,7 +16,9 @@
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/Math.h"
 
+#if SharedStackBVHTraversalSize > 0
 __shared__ int shared_stack_cache[SharedStackBVHTraversalSize * SharedStackBVHTraversalBlockSize];
+#endif
 
 /* References:
  * 

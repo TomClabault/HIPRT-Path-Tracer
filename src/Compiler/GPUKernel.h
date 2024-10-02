@@ -35,7 +35,7 @@ public:
 	void compile_silent(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, std::vector<hiprtFuncNameSet> func_name_sets = {}, bool use_cache = true);
 	void launch(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, oroStream_t stream);
 	void launch_timed_synchronous(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, float* execution_time_out);
-	void launch_timed_asynchronous(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, oroStream_t stream);
+	void launch_timed_asynchronous(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, oroStream_t stream, HIPRTOrochiCtx* hiprt_orochi_ctx);
 
 	/**
 	 * Sets an additional macro that will be passed to the GPU compiler when compiling this kernel
@@ -116,6 +116,10 @@ public:
 
 		// The elapsed time will be stored in here in milliseconds
 		float* elapsed_time_out;
+
+		// Needed to set the CUDA/HIP context as current to be able to call
+		// CUDA/HIP functions from the callback
+		HIPRTOrochiCtx* hiprt_orochi_ctx;
 	};
 
 	/**
@@ -125,7 +129,7 @@ public:
 	 * Data is expected to be a pointer to a *dynamically allocated* ComputeElapsedTimeCallbackData
 	 * instance (i.e. with a 'new' call) whose fields have been properly set-up.
 	 */
-	static void compute_elapsed_time_callback(void* data);
+	//static void compute_elapsed_time_callback(void* data);
 
 private:
 	std::string m_kernel_file_path = "";

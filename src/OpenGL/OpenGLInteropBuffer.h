@@ -14,17 +14,6 @@
 #include "GLFW/glfw3.h"
 #include "Orochi/Orochi.h"
 
-// namespace CudaGLInterop
-// {
-// #include <contrib/cuew/include/cuew.h>
-// }
-
-// #ifdef OROCHI_ENABLE_CUEW
-// #define oroGraphicsGLRegisterBuffer CudaGLInterop::cuGraphicsGLRegisterBuffer_oro
-// #else
-// #define oroGraphicsGLRegisterBuffer hipGraphicsGLRegisterBuffer
-// #endif
-
 template <typename T>
 class OpenGLInteropBuffer
 {
@@ -78,11 +67,7 @@ private:
 
 	GLuint m_buffer_name = -1;
 
-#ifdef OROCHI_ENABLE_CUEW
-	CudaGLInterop::CUgraphicsResource m_buffer_resource = nullptr;
-#else
 	oroGraphicsResource_t m_buffer_resource = nullptr;
-#endif
 };
 
 template <typename T>
@@ -125,11 +110,7 @@ void OpenGLInteropBuffer<T>::resize(int new_element_count)
 
 	if (m_initialized)
 	{
-#ifdef OROCHI_ENABLE_CUEW
-		CudaGLInterop::CUresult res = CudaGLInterop::cuGraphicsUnregisterResource_oro(m_buffer_resource);
-#else
-		hipGraphicsUnregisterResource(m_buffer_resource);
-#endif
+		oroGraphicsUnregisterResource(m_buffer_resource);
 
 		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, m_buffer_name);
 		glBufferData(GL_PIXEL_UNPACK_BUFFER, new_element_count * sizeof(T), nullptr, GL_DYNAMIC_DRAW);

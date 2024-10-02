@@ -229,6 +229,7 @@ public:
 	void recompile_kernels(bool use_cache = true);
 	std::map<std::string, GPUKernel>& get_kernels();
 
+	void compute_render_pass_times();
 	float get_render_pass_time(const std::string& key);
 	void reset_frame_times();
 	void reset(std::shared_ptr<ApplicationSettings> application_settings);

@@ -71,6 +71,7 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
 	// because it seems to randomly hang otherwise, not sure why
 	ThreadManager::add_dependency(ThreadManager::RENDERER_STREAM_CREATE, ThreadManager::COMPILE_KERNELS_THREAD_KEY);
 	ThreadManager::start_thread(ThreadManager::RENDERER_STREAM_CREATE, [this]() {
+		OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
 		OROCHI_CHECK_ERROR(oroStreamCreate(&m_main_stream));
 	});
 
@@ -452,31 +453,6 @@ void GPURenderer::render()
 	// Recording GPU frame time stop timestamp and computing the frame time
 	oroEventRecord(m_frame_stop_event, m_main_stream);
 
-	GPUKernel::ComputeElapsedTimeCallbackData* elapsed_time_data = new GPUKernel::ComputeElapsedTimeCallbackData;
-	elapsed_time_data->start = m_frame_start_event;
-	elapsed_time_data->end = m_frame_stop_event;
-	elapsed_time_data->elapsed_time_out = &m_ms_time_per_pass[GPURenderer::FULL_FRAME_TIME_KEY];
-
-	oroLaunchHostFunc(m_main_stream, GPUKernel::compute_elapsed_time_callback, elapsed_time_data);
-
-	// Updating the times per passes
-	m_ms_time_per_pass[GPURenderer::CAMERA_RAYS_KERNEL_ID] = m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].get_last_execution_time();
-	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING) == KERNEL_OPTION_TRUE)
-		m_ms_time_per_pass[GPURenderer::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID] = m_kernels[GPURenderer::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID].get_last_execution_time();
-
-	m_ms_time_per_pass[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID] = m_kernels[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].get_last_execution_time();
-	if (m_render_data.render_settings.restir_di_settings.do_fused_spatiotemporal)
-		m_ms_time_per_pass[GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID] = m_kernels[GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID].get_last_execution_time();
-	else
-	{
-		m_ms_time_per_pass[GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID] = m_kernels[GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID].get_last_execution_time();
-		// RESTIR_DI_SPATIAL_REUSE_KERNEL_ID
-		// - The spatial reuse time is handled directly when the spatial reuse kernel is launched because
-		//	there may be multiple spatial reuse passes in which case, we need to sum the times of all the passes
-		//	but get_last_execution_time() doesn't support that, it only contains the time of the *last* pass
-	}
-	m_ms_time_per_pass[GPURenderer::PATH_TRACING_KERNEL_ID] = m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].get_last_execution_time();
-
 	m_was_last_frame_low_resolution = m_render_data.render_settings.do_render_low_resolution();
 }
 
@@ -485,7 +461,7 @@ void GPURenderer::launch_camera_rays()
 	void* launch_args[] = { &m_render_data, &m_render_resolution };
 
 	m_render_data.random_seed = m_rng.xorshift32();
-	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].launch_timed_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
+	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].launch_timed_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream, m_hiprt_orochi_ctx.get());
 }
 
 void GPURenderer::launch_ReSTIR_DI()
@@ -569,7 +545,7 @@ void GPURenderer::launch_ReSTIR_DI_presampling_lights_pass()
 	void* launch_args[] = {&launch_parameters};
 	int thread_count = m_render_data.render_settings.restir_di_settings.light_presampling.number_of_subsets * m_render_data.render_settings.restir_di_settings.light_presampling.subset_size;
 
-	m_kernels[GPURenderer::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID].launch_timed_asynchronous(32, 1, thread_count, 1, launch_args, m_main_stream);
+	m_kernels[GPURenderer::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID].launch_timed_asynchronous(32, 1, thread_count, 1, launch_args, m_main_stream, m_hiprt_orochi_ctx.get());
 }
 
 void GPURenderer::configure_ReSTIR_DI_initial_pass()
@@ -584,7 +560,7 @@ void GPURenderer::launch_ReSTIR_DI_initial_candidates_pass()
 	void* launch_args[] = { &m_render_data, &m_render_resolution };
 
 	configure_ReSTIR_DI_initial_pass();
-	m_kernels[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].launch_timed_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
+	m_kernels[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].launch_timed_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream, m_hiprt_orochi_ctx.get());
 }
 
 void GPURenderer::configure_ReSTIR_DI_temporal_pass()
@@ -627,7 +603,7 @@ void GPURenderer::launch_ReSTIR_DI_temporal_reuse_pass()
 	void* launch_args[] = { &m_render_data, &m_render_resolution };
 
 	configure_ReSTIR_DI_temporal_pass();
-	m_kernels[GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID].launch_timed_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
+	m_kernels[GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID].launch_timed_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream, m_hiprt_orochi_ctx.get());
 }
 
 void GPURenderer::configure_ReSTIR_DI_temporal_pass_for_fused_spatiotemporal()
@@ -721,19 +697,11 @@ void GPURenderer::launch_ReSTIR_DI_spatial_reuse_passes()
 	for (int spatial_reuse_pass = 0; spatial_reuse_pass < m_render_data.render_settings.restir_di_settings.spatial_pass.number_of_passes; spatial_reuse_pass++)
 	{
 		configure_ReSTIR_DI_spatial_pass(spatial_reuse_pass);
-		m_kernels[GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID].launch_timed_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
+		m_kernels[GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID].launch_timed_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream, m_hiprt_orochi_ctx.get());
 	}
 
 	// Emitting the stop event
 	OROCHI_CHECK_ERROR(oroEventRecord(m_restir_di_state.spatial_reuse_time_stop, m_main_stream));
-
-	GPUKernel::ComputeElapsedTimeCallbackData* elapsed_time_data = new GPUKernel::ComputeElapsedTimeCallbackData;
-	elapsed_time_data->start = m_restir_di_state.spatial_reuse_time_start;
-	elapsed_time_data->end = m_restir_di_state.spatial_reuse_time_stop;
-	elapsed_time_data->elapsed_time_out = &m_ms_time_per_pass[GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID];
-
-	// Computing the time elapsed for all spatial reuse passes
-	OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_main_stream, GPUKernel::compute_elapsed_time_callback, elapsed_time_data));
 }
 
 void GPURenderer::configure_ReSTIR_DI_spatiotemporal_pass()
@@ -750,7 +718,7 @@ void GPURenderer::launch_ReSTIR_DI_spatiotemporal_pass()
 	void* launch_args[] = { &m_render_data, &m_render_resolution };
 
 	configure_ReSTIR_DI_spatiotemporal_pass();
-	m_kernels[GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID].launch_timed_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
+	m_kernels[GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID].launch_timed_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream, m_hiprt_orochi_ctx.get());
 
 	if (m_render_data.render_settings.restir_di_settings.spatial_pass.number_of_passes > 1)
 	{
@@ -760,19 +728,20 @@ void GPURenderer::launch_ReSTIR_DI_spatiotemporal_pass()
 		for (int spatial_pass_index = 1; spatial_pass_index < m_render_data.render_settings.restir_di_settings.spatial_pass.number_of_passes; spatial_pass_index++)
 		{
 			configure_ReSTIR_DI_spatial_pass_for_fused_spatiotemporal(spatial_pass_index);
-			m_kernels[GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID].launch_timed_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
+			m_kernels[GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID].launch_timed_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream, m_hiprt_orochi_ctx.get());
 		}
 
 		// Emitting the stop event
 		OROCHI_CHECK_ERROR(oroEventRecord(m_restir_di_state.spatial_reuse_time_stop, m_main_stream));
 
-		GPUKernel::ComputeElapsedTimeCallbackData* elapsed_time_data = new GPUKernel::ComputeElapsedTimeCallbackData;
-		elapsed_time_data->start = m_restir_di_state.spatial_reuse_time_start;
-		elapsed_time_data->end = m_restir_di_state.spatial_reuse_time_stop;
-		elapsed_time_data->elapsed_time_out = &m_ms_time_per_pass[GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID];
+		//GPUKernel::ComputeElapsedTimeCallbackData* elapsed_time_data = new GPUKernel::ComputeElapsedTimeCallbackData;
+		//elapsed_time_data->start = m_restir_di_state.spatial_reuse_time_start;
+		//elapsed_time_data->end = m_restir_di_state.spatial_reuse_time_stop;
+		//elapsed_time_data->elapsed_time_out = &m_ms_time_per_pass[GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID];
+		//elapsed_time_data->hiprt_orochi_ctx = m_hiprt_orochi_ctx.get();
 
-		// Computing the time elapsed for all spatial reuse passes
-		OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_main_stream, GPUKernel::compute_elapsed_time_callback, elapsed_time_data));
+		//// Computing the time elapsed for all spatial reuse passes
+		//OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_main_stream, GPUKernel::compute_elapsed_time_callback, elapsed_time_data));
 	}
 }
 
@@ -797,7 +766,7 @@ void GPURenderer::launch_path_tracing()
 	void* launch_args[] = { &m_render_data, &m_render_resolution };
 
 	m_render_data.random_seed = m_rng.xorshift32();
-	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].launch_timed_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
+	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].launch_timed_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream, m_hiprt_orochi_ctx.get());
 }
 
 void GPURenderer::synchronize_kernel()
@@ -818,6 +787,9 @@ bool GPURenderer::was_last_frame_low_resolution()
 
 void GPURenderer::resize(int new_width, int new_height, bool also_resize_interop)
 {
+	// Needed so that this function can eventually be called from another thread
+	OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
+
 	m_render_resolution = make_int2(new_width, new_height);
 
 	synchronize_kernel();
@@ -1026,6 +998,28 @@ std::map<std::string, GPUKernel>& GPURenderer::get_kernels()
 	return m_kernels;
 }
 
+void GPURenderer::compute_render_pass_times()
+{
+	m_ms_time_per_pass[GPURenderer::CAMERA_RAYS_KERNEL_ID] = m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].get_last_execution_time();
+	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING) == KERNEL_OPTION_TRUE)
+		m_ms_time_per_pass[GPURenderer::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID] = m_kernels[GPURenderer::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID].get_last_execution_time();
+
+	m_ms_time_per_pass[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID] = m_kernels[GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].get_last_execution_time();
+	if (m_render_data.render_settings.restir_di_settings.do_fused_spatiotemporal)
+	{
+		m_ms_time_per_pass[GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID] = m_kernels[GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID].get_last_execution_time();
+		if (m_render_data.render_settings.restir_di_settings.spatial_pass.number_of_passes > 1)
+			oroEventElapsedTime(&m_ms_time_per_pass[GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID], m_restir_di_state.spatial_reuse_time_start, m_restir_di_state.spatial_reuse_time_stop);
+	}
+	else
+	{
+		m_ms_time_per_pass[GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID] = m_kernels[GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID].get_last_execution_time();
+
+		oroEventElapsedTime(&m_ms_time_per_pass[GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID], m_restir_di_state.spatial_reuse_time_start, m_restir_di_state.spatial_reuse_time_stop);
+	}
+	m_ms_time_per_pass[GPURenderer::PATH_TRACING_KERNEL_ID] = m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].get_last_execution_time();
+}
+
 float GPURenderer::get_render_pass_time(const std::string& key)
 {
 	return m_ms_time_per_pass[key];
@@ -1153,6 +1147,8 @@ void GPURenderer::update_render_data()
 void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 {
 	ThreadManager::start_thread(ThreadManager::RENDERER_BUILD_BVH, [this, &scene]() {
+		OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
+
 		m_hiprt_scene.geometry.m_hiprt_ctx = m_hiprt_orochi_ctx->hiprt_ctx;
 		m_hiprt_scene.geometry.upload_indices(scene.triangle_indices);
 		m_hiprt_scene.geometry.upload_vertices(scene.vertices_positions);
@@ -1174,6 +1170,8 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 	// to upload the materials
 	ThreadManager::add_dependency(ThreadManager::RENDERER_UPLOAD_MATERIALS, ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY);
 	ThreadManager::start_thread(ThreadManager::RENDERER_UPLOAD_MATERIALS, [this, &scene]() {
+		OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
+
 		m_hiprt_scene.materials_buffer.resize(scene.materials.size());
 		m_hiprt_scene.materials_buffer.upload_data(scene.materials.data());
 
@@ -1183,6 +1181,8 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 
 	ThreadManager::add_dependency(ThreadManager::RENDERER_UPLOAD_TEXTURES, ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY);
 	ThreadManager::start_thread(ThreadManager::RENDERER_UPLOAD_TEXTURES, [this, &scene]() {
+		OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
+
 		if (scene.textures.size() > 0)
 		{
 			std::vector<oroTextureObject_t> oro_textures(scene.textures.size());
@@ -1222,6 +1222,8 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 		m_hiprt_scene.emissive_triangles_count = scene.emissive_triangle_indices.size();
 		if (m_hiprt_scene.emissive_triangles_count > 0)
 		{
+			OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
+
 			m_hiprt_scene.emissive_triangles_indices.resize(scene.emissive_triangle_indices.size());
 			m_hiprt_scene.emissive_triangles_indices.upload_data(scene.emissive_triangle_indices.data());
 		}

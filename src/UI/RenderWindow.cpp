@@ -262,12 +262,12 @@ RenderWindow::RenderWindow(int width, int height, std::shared_ptr<HIPRTOrochiCtx
 	// need the OpenGL context which is only available to the main thread
 	m_renderer->resize_interop_buffers(width, height);
 
-	ThreadManager::start_thread(ThreadManager::RENDER_WINDOW_CONSTRUCTOR, [this, width, height]() {
-		m_application_settings = std::make_shared<ApplicationSettings>();
-		// Disabling auto samples per frame is accumulation is OFF
-		m_application_settings->auto_sample_per_frame = m_renderer->get_render_settings().accumulate ? m_application_settings->auto_sample_per_frame : false;
-		m_application_state = std::make_shared<ApplicationState>();
+	m_application_settings = std::make_shared<ApplicationSettings>();
+	// Disabling auto samples per frame is accumulation is OFF
+	m_application_settings->auto_sample_per_frame = m_renderer->get_render_settings().accumulate ? m_application_settings->auto_sample_per_frame : false;
+	m_application_state = std::make_shared<ApplicationState>();
 
+	ThreadManager::start_thread(ThreadManager::RENDER_WINDOW_CONSTRUCTOR, [this, width, height]() {
 		m_denoiser = std::make_shared<OpenImageDenoiser>();
 		m_denoiser->initialize();
 		m_denoiser->resize(width, height);
@@ -778,6 +778,8 @@ void RenderWindow::render()
 
 void RenderWindow::update_perf_metrics()
 {
+	m_renderer->compute_render_pass_times();
+
 	// Not adding the frame time if we're rendering at low resolution, not relevant
 	m_perf_metrics->add_value(GPURenderer::FULL_FRAME_TIME_KEY, 1000.0f / m_application_state->samples_per_second);
 
