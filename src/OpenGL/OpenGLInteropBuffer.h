@@ -14,20 +14,17 @@
 #include "GLFW/glfw3.h"
 #include "Orochi/Orochi.h"
 
-namespace CudaGLInterop
-{
-#include <contrib/cuew/include/cuew.h>
-}
+// namespace CudaGLInterop
+// {
+// #include <contrib/cuew/include/cuew.h>
+// }
 
-#ifdef OROCHI_ENABLE_CUEW
-#define oroGraphicsGLRegisterBuffer CudaGLInterop::cuGraphicsGLRegisterBuffer_oro
-#else
-#define oroGraphicsGLRegisterBuffer hipGraphicsGLRegisterBuffer
-#endif
+// #ifdef OROCHI_ENABLE_CUEW
+// #define oroGraphicsGLRegisterBuffer CudaGLInterop::cuGraphicsGLRegisterBuffer_oro
+// #else
+// #define oroGraphicsGLRegisterBuffer hipGraphicsGLRegisterBuffer
+// #endif
 
-// TODO this class uses HIP for the registering / mapping because Orochi doesn't have opengl interop yet ?
-// we should be using Orochi here instead of HIP because this is not NVIDIA friendly since we would have to
-// link with HIP during the compilation. That's why NVIDIA OpenGL interop is disabled for now
 template <typename T>
 class OpenGLInteropBuffer
 {
