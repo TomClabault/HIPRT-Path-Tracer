@@ -313,7 +313,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData
             bsdf_ray.direction = sampled_direction;
 
             ShadowLightRayHitInfo shadow_light_ray_hit_info;
-            bool hit_found = evaluate_shadow_light_ray(render_data, bsdf_ray, 1.0e35f, shadow_light_ray_hit_info);
+            bool hit_found = evaluate_shadow_light_ray(render_data, bsdf_ray, 1.0e35f, shadow_light_ray_hit_info, random_number_generator);
             if (hit_found && !shadow_light_ray_hit_info.hit_emission.is_black())
             {
                 // If we intersected an emissive material, compute the weight. 
@@ -521,7 +521,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_InitialCandidates(HIPRTRenderData
     ReSTIRDIReservoir initial_candidates_reservoir = sample_initial_candidates(render_data, make_int2(x, y), ray_payload, hit_info, view_direction, random_number_generator);
 
 #if ReSTIR_DI_DoVisibilityReuse == KERNEL_OPTION_TRUE
-    ReSTIR_DI_visibility_reuse(render_data, initial_candidates_reservoir, hit_info.inter_point + hit_info.shading_normal * 1.0e-4f);
+    ReSTIR_DI_visibility_reuse(render_data, initial_candidates_reservoir, hit_info.inter_point + hit_info.shading_normal * 1.0e-4f, random_number_generator);
 #endif
 
     render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs[pixel_index] = initial_candidates_reservoir;

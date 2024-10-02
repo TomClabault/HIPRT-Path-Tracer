@@ -41,6 +41,8 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 		- Spherical caps VNDF Sampling [\[Dupuy, Benyoub, 2023\]](https://arxiv.org/abs/2306.05044)
 ### Other rendering features:
 - Texture support for all the parameters of the BSDF
+- Texture alpha transparency support
+- Stochastic material opacity support
 - Normal mapping
 - Nested dielectrics support 
 	- Automatic handling as presented in [\[Ray Tracing Gems, 2019\]](https://www.realtimerendering.com/raytracinggems/rtg/index.html)

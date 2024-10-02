@@ -220,7 +220,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 				// combination with other parameters and on top of that, it makes little 
 				// technical sense since our temporal neighbor is supposed to be unoccluded 
 				// (unless geometry moves around in the scene but that's another problem)
-				target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, temporal_neighbor_reservoir.sample, center_pixel_surface);
+				target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, temporal_neighbor_reservoir.sample, center_pixel_surface, random_number_generator);
 
 			float jacobian_determinant = 1.0f;
 			// If the neighbor reservoir is invalid, do not compute the jacobian
@@ -266,13 +266,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 
 			float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, temporal_neighbor_reservoir, initial_candidates_reservoir,
 				target_function_at_center, temporal_neighbor_pixel_index_and_pos.x, valid_neighbors_count, valid_neighbors_M_sum, 
-				update_mc, /* resample canonical */ false);
+				update_mc, /* resample canonical */ false, random_number_generator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
 			bool update_mc = initial_candidates_reservoir.M > 0 && initial_candidates_reservoir.UCW > 0.0f;
 
 			float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, temporal_neighbor_reservoir,
 				initial_candidates_reservoir, target_function_at_center, temporal_neighbor_pixel_index_and_pos.x, valid_neighbors_count, valid_neighbors_M_sum, 
-				update_mc, /* resample canonical */ false);
+				update_mc, /* resample canonical */ false, random_number_generator);
 #else
 #error "Unsupported bias correction mode"
 #endif
@@ -378,9 +378,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 			else
 			{
 				if (do_neighbor_target_function_visibility)
-					target_function_at_center = ReSTIR_DI_evaluate_target_function<KERNEL_OPTION_TRUE>(render_data, neighbor_reservoir.sample, center_pixel_surface);
+					target_function_at_center = ReSTIR_DI_evaluate_target_function<KERNEL_OPTION_TRUE>(render_data, neighbor_reservoir.sample, center_pixel_surface, random_number_generator);
 				else
-					target_function_at_center = ReSTIR_DI_evaluate_target_function<KERNEL_OPTION_FALSE>(render_data, neighbor_reservoir.sample, center_pixel_surface);
+					target_function_at_center = ReSTIR_DI_evaluate_target_function<KERNEL_OPTION_FALSE>(render_data, neighbor_reservoir.sample, center_pixel_surface, random_number_generator);
 			}
 		}
 
@@ -437,7 +437,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 		else
 			mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, neighbor_reservoir, initial_candidates_reservoir,
 				target_function_at_center, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
-				update_mc, spatial_neighbor_index == reused_neighbors_count);
+				update_mc, spatial_neighbor_index == reused_neighbors_count, random_number_generator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
 		bool update_mc = initial_candidates_reservoir.M > 0 && initial_candidates_reservoir.UCW > 0.0f;
 
@@ -447,7 +447,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 		else
 			mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, neighbor_reservoir, initial_candidates_reservoir, 
 				target_function_at_center, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
-				update_mc, spatial_neighbor_index == reused_neighbors_count);
+				update_mc, spatial_neighbor_index == reused_neighbors_count, random_number_generator);
 #else
 #error "Unsupported bias correction mode"
 #endif
@@ -553,7 +553,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 	// We only need this if we're going to temporally reuse (because then the output of the spatial reuse must be correct
 	// for the temporal reuse pass) or if we have multiple spatial reuse passes and this is not the last spatial pass
 	if (render_data.render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass || render_data.render_settings.restir_di_settings.spatial_pass.number_of_passes - 1 != render_data.render_settings.restir_di_settings.spatial_pass.spatial_pass_index)
-		ReSTIR_DI_visibility_reuse(render_data, spatiotemporal_output_reservoir, center_pixel_surface.shading_point);
+		ReSTIR_DI_visibility_reuse(render_data, spatiotemporal_output_reservoir, center_pixel_surface.shading_point, random_number_generator);
 #endif
 
 	// M-capping so that we don't have to M-cap when reading reservoirs on the next frame

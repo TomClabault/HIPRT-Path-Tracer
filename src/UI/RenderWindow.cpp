@@ -31,6 +31,7 @@
 // - when using a BSDF override, transmissive materials keep their dielectric priorities and this can mess up shadow rays and intersections in general if the BSDF used for the override doesn't support transmissive materials
 // - is DisneySheen correct?
 // - threadmanager: what if we start a thread with a dependency A on a thread that itself has a dependency B? we're going to try join dependency A even if thread with dependency on B hasn't even started yet --> joining nothing --> immediate return --> should have waited for the dependency but hasn't
+// - bias with temporal reuse ReSTIR + stochastic alpha transparency: probably due to the fact that a given sample may or may not have the same visibility through a non-opaque material from one frame to another since we're replaying the random number for alpha testing 
 
 
 // TODO Code Organization:
@@ -60,7 +61,6 @@
 // - limit first bounce distance: objects far away won't contribute much to what the camera sees
 // - limit direct lighting occlusion distance: maybe stochastically so that we get a falloff instead of a hard cut where an important may not contribute anymore
 //		- for maximum ray length, limit that length even more for indirect bounces and even more so if the ray is far away from the camera (beware of mirrors in the scene which the camera can look into and see a far away part of the scene where light could be very biased)
-// - do we really need a shadow ray and global ray shared stack? We can probably have only one function for tracing rays that takes a TMax and that's it: sharing the shared memory for both instead of allocating it twice
 // - only update the display every so often if accumulating because displaying is expensive (especially at high resolution) on AMD drivers at least
 // - reload shaders button
 // - pack ray payload
@@ -80,7 +80,6 @@
 // - Reuse MIS BSDF sample as path next bounce if the ray didn't hit anything
 // - RIS: do no use BSDF samples for rough surfaces (have a BSDF ray roughness treshold basically
 //		We may have to do something with the lobes of the BSDF specifically for this one. A coated diffuse cannot always ignore light samples for example because the diffuse lobe benefits from light samples even if the surface is not smooth (coating) 
-// - support stochastic alpha transparency
 // - have a light BVH for intersecting light triangles only: useful when we want to know whether or not a direction could have be sampled by the light sampler: we don't need to intersect the whole scene BVH, just the light geometry, less expensive
 // - shadow terminator issue on sphere low smooth scene
 // - use HIP/CUDA graphs to reduce launch overhead
@@ -100,7 +99,6 @@
 // - play with SBVH building parameters alpha/beta for memory/performance tradeoff + ImGui for that
 // - ability to change the color of the heatmap shader in ImGui
 // - ray statistics with filter functions
-// - filter function for base color alpha / alpha transparency = better performance
 // - do not store alpha from envmap
 // - fixed point 18b RGB for envmap? 70% size reduction compared to full size. Can't use texture sampler though. Is not using a sampler ok performance-wise? --> it probably is since we're probably memory lantency bound, not memory bandwidth
 // - look at blender cycles "medium contrast", "medium low constract", "medium high", ...
@@ -143,7 +141,6 @@
 // - image comparator slider (to have adaptive sampling view + default view on the same viewport for example)
 // - Maybe look at better Disney sampling (luminance?)
 // - thin materials
-// - Look at what Orochi & HIPCC can do in terms of displaying registers used / options to specify shared stack size / block size (-DBLOCK_SIZE, -DSHARED_STACK_SIZE)
 // - Have the UI run at its own framerate to avoid having the UI come to a crawl when the path tracing is expensive
 // - When modifying the emission of a material with the material editor, it should be reflected in the scene and allow the direct sampling of the geometry so the emissive triangles buffer should be updated
 // - Ray differentials for texture mipampping (better bandwidth utilization since sampling potentially smaller texture --> fit better in cache)

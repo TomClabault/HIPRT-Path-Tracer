@@ -15,7 +15,9 @@
 #include "HostDeviceCommon/HitInfo.h"
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_reservoir_sample(const HIPRTRenderData& render_data, const RayPayload& ray_payload, const float3& shading_point, const float3& shading_normal, const float3& view_direction, const RISReservoir& reservoir)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_reservoir_sample(const HIPRTRenderData& render_data, const RayPayload& ray_payload, 
+    const float3& shading_point, const float3& shading_normal, const float3& view_direction, 
+    const RISReservoir& reservoir, Xorshift32Generator& random_number_generator)
 {
     ColorRGB32F final_color;
 
@@ -40,7 +42,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_reservoir_sample(const HIPRT
         shadow_ray.origin = evaluated_point;
         shadow_ray.direction = shadow_ray_direction_normalized;
 
-        in_shadow = evaluate_shadow_ray(render_data, shadow_ray, distance_to_light);
+        in_shadow = evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, random_number_generator);
     }
 
     if (!in_shadow)
@@ -220,7 +222,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
             bsdf_ray.direction = sampled_direction;
 
             ShadowLightRayHitInfo shadow_light_ray_hit_info;
-            bool hit_found = evaluate_shadow_light_ray(render_data, bsdf_ray, 1.0e35f, shadow_light_ray_hit_info);
+            bool hit_found = evaluate_shadow_light_ray(render_data, bsdf_ray, 1.0e35f, shadow_light_ray_hit_info, random_number_generator);
             if (hit_found && !shadow_light_ray_hit_info.hit_emission.is_black())
             {
                 // If we intersected an emissive material, compute the weight. 
@@ -289,7 +291,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_lights_RIS(const HIPRTRenderDa
 {
     RISReservoir reservoir = sample_bsdf_and_lights_RIS_reservoir(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 
-    return evaluate_reservoir_sample(render_data, ray_payload, closest_hit_info.inter_point, closest_hit_info.shading_normal, view_direction, reservoir);
+    return evaluate_reservoir_sample(render_data, ray_payload, 
+        closest_hit_info.inter_point, closest_hit_info.shading_normal, view_direction, 
+        reservoir, random_number_generator);
 }
 
 #endif

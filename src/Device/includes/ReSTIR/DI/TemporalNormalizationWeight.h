@@ -69,7 +69,8 @@ struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z>
 		const ReSTIRDIReservoir& final_reservoir, 
 		int initial_candidates_M, int temporal_neighbor_M,
 		const ReSTIRDISurface& center_pixel_surface, const ReSTIRDISurface& temporal_neighbor_surface,
-		float& out_normalization_nume, float& out_normalization_denom)
+		float& out_normalization_nume, float& out_normalization_denom,
+		Xorshift32Generator& random_number_generator)
 	{
 		if (final_reservoir.weight_sum <= 0)
 		{
@@ -94,7 +95,7 @@ struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z>
 		// that sample is > so we're going to check both target function here.
 
 		// Evaluating the target function at the center pixel because this is the pixel of the initial candidates
-		float center_pixel_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, final_reservoir.sample, center_pixel_surface);
+		float center_pixel_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, final_reservoir.sample, center_pixel_surface, random_number_generator);
 		// if the sample contained in our final reservoir (the 'reservoir' parameter) could have been produced by the center
 		// pixel, we're adding the confidence of that pixel to the denominator for normalization
 		out_normalization_denom += (center_pixel_target_function > 0) * initial_candidates_M;
@@ -102,7 +103,7 @@ struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z>
 		if (temporal_neighbor_M > 0)
 		{
 			// We only want to check if the temporal could have produced the sample if we actually have a temporal neighbor
-			float temporal_neighbor_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, final_reservoir.sample, temporal_neighbor_surface);
+			float temporal_neighbor_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, final_reservoir.sample, temporal_neighbor_surface, random_number_generator);
 			out_normalization_denom += (temporal_neighbor_target_function > 0) * temporal_neighbor_M;
 		}
 	}
@@ -116,7 +117,8 @@ struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE>
 		int initial_candidates_M, int temporal_neighbor_M,
 		const ReSTIRDISurface& center_pixel_surface, const ReSTIRDISurface& temporal_neighbor_surface,
 		int selected_neighbor,
-		float& out_normalization_nume, float& out_normalization_denom)
+		float& out_normalization_nume, float& out_normalization_denom,
+		Xorshift32Generator& random_number_generator)
 	{
 		if (final_reservoir.weight_sum <= 0)
 		{
@@ -127,14 +129,14 @@ struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE>
 			return;
 		}
 
-		float center_pixel_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, final_reservoir.sample, center_pixel_surface);
+		float center_pixel_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, final_reservoir.sample, center_pixel_surface, random_number_generator);
 		float temporal_neighbor_target_function = 0.0f;
 		if (temporal_neighbor_M > 0)
 			// Only evaluating the target function if we actually have a temporal neighbor because if we don't,
 			// this means that no temporal neighbor contributed to the resampling of the sample in 'reservoir'
 			// and if the temporal neighbor didn't contribute to the resampling, then this is not, in MIS terms,
 			// a sampling technique/strategy to take into account in the MIS weight
-			temporal_neighbor_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, final_reservoir.sample, temporal_neighbor_surface);
+			temporal_neighbor_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, final_reservoir.sample, temporal_neighbor_surface, random_number_generator);
 
 		if (selected_neighbor == INITIAL_CANDIDATES_ID)
 			// The point of the MIS-like MIS weights is to have the weight of the sample that we picked

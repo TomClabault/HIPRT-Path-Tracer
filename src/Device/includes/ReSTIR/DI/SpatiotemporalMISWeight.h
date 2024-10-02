@@ -47,7 +47,8 @@ struct ReSTIRDISpatiotemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_G
 		const ReSTIRDIReservoir& reservoir_being_resampled,
 		const ReSTIRDISurface& center_pixel_surface, const ReSTIRDISurface& temporal_neighbor_surface,
 		int current_neighbor, int initial_candidates_M, int temporal_neighbor_M,
-		int center_pixel_index, int2 temporal_neighbor_coords, int2 res, float2 cos_sin_theta_rotation)
+		int center_pixel_index, int2 temporal_neighbor_coords, int2 res, float2 cos_sin_theta_rotation,
+		Xorshift32Generator& random_number_generator)
 	{
 		if (reservoir_being_resampled.UCW <= 0.0f)
 			// Reservoir that doesn't contain any sample, returning 
@@ -81,7 +82,7 @@ struct ReSTIRDISpatiotemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_G
 			else
 				neighbor_surface = get_pixel_surface(render_data, neighbor_index_j, render_data.render_settings.use_prev_frame_g_buffer());
 
-			float target_function_at_j = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, reservoir_being_resampled.sample, neighbor_surface);
+			float target_function_at_j = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, reservoir_being_resampled.sample, neighbor_surface, random_number_generator);
 
 			int M = 1;
 			if (render_data.render_settings.restir_di_settings.use_confidence_weights)
@@ -100,7 +101,7 @@ struct ReSTIRDISpatiotemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_G
 		}
 
 		// Taking the temporal neighbor into account
-		float target_function_at_temporal_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, reservoir_being_resampled.sample, temporal_neighbor_surface);
+		float target_function_at_temporal_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, reservoir_being_resampled.sample, temporal_neighbor_surface, random_number_generator);
 		int M = render_data.render_settings.restir_di_settings.use_confidence_weights ? temporal_neighbor_M : 1;
 
 		denom += target_function_at_temporal_neighbor * M;
@@ -120,7 +121,8 @@ struct ReSTIRDISpatiotemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRW
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
 		const ReSTIRDIReservoir& reservoir_being_resampled, const ReSTIRDIReservoir& center_pixel_reservoir,
 		float target_function_at_center, int neighbor_pixel_index, int valid_neighbors_count, int valid_neighbors_M_sum,
-		bool update_mc, bool resample_canonical)
+		bool update_mc, bool resample_canonical,
+		Xorshift32Generator& random_number_generator)
 	{
 		int reused_neighbors_count = render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count;
 		if (!resample_canonical)
@@ -153,7 +155,7 @@ struct ReSTIRDISpatiotemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRW
 			if (update_mc)
 			{
 				ReSTIRDISurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index, render_data.render_settings.use_prev_frame_g_buffer());
-				float target_function_center_reservoir_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, center_pixel_reservoir.sample, neighbor_pixel_surface);
+				float target_function_center_reservoir_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, center_pixel_reservoir.sample, neighbor_pixel_surface, random_number_generator);
 				float target_function_center_reservoir_at_center = center_pixel_reservoir.sample.target_function;
 
 				float nume_mc = target_function_center_reservoir_at_center / valid_neighbor_division_term * center_reservoir_M;
@@ -194,7 +196,8 @@ struct ReSTIRDISpatiotemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRW
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
 		const ReSTIRDIReservoir& reservoir_being_resampled, const ReSTIRDIReservoir& center_pixel_reservoir,
 		float target_function_at_center, int neighbor_pixel_index, int valid_neighbors_count, int valid_neighbors_M_sum,
-		bool update_mc, bool resample_canonical)
+		bool update_mc, bool resample_canonical, 
+		Xorshift32Generator& random_number_generator)
 	{
 		int reused_neighbors_count = render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count;
 		if (!resample_canonical)
@@ -238,7 +241,7 @@ struct ReSTIRDISpatiotemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRW
 				// So we can avoid computing all that stuff
 
 				ReSTIRDISurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index, render_data.render_settings.use_prev_frame_g_buffer());
-				float target_function_center_reservoir_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, center_pixel_reservoir.sample, neighbor_pixel_surface);
+				float target_function_center_reservoir_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, center_pixel_reservoir.sample, neighbor_pixel_surface, random_number_generator);
 				float target_function_center_reservoir_at_center = center_pixel_reservoir.sample.target_function;
 
 				float nume_mc = target_function_center_reservoir_at_center / valid_neighbor_division_term * center_reservoir_M;

@@ -152,7 +152,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 			// combination with other parameters and on top of that, it makes little 
 			// technical sense since our temporal neighbor is supposed to be unoccluded 
 			// (unless geometry moves around in the scene but that's another problem)
-			target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, temporal_neighbor_reservoir.sample, center_pixel_surface);
+			target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, temporal_neighbor_reservoir.sample, center_pixel_surface, random_number_generator);
 
 		float jacobian_determinant = 1.0f;
 		// If the neighbor reservoir is invalid, do not compute the jacobian
@@ -196,7 +196,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 			initial_candidates_reservoir, temporal_neighbor_surface, target_function_at_center, TEMPORAL_NEIGHBOR_ID);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
 		float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, temporal_neighbor_reservoir,
-			initial_candidates_reservoir, temporal_neighbor_surface, center_pixel_surface, target_function_at_center, TEMPORAL_NEIGHBOR_ID);
+			initial_candidates_reservoir, temporal_neighbor_surface, center_pixel_surface, target_function_at_center, TEMPORAL_NEIGHBOR_ID, random_number_generator);
 #else
 #error "Unsupported bias correction mode"
 #endif
@@ -239,7 +239,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 		initial_candidates_reservoir, temporal_neighbor_surface, /* unused */ 0.0f, INITIAL_CANDIDATES_ID);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
 	float initial_candidates_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, temporal_neighbor_reservoir,
-		initial_candidates_reservoir, temporal_neighbor_surface, center_pixel_surface, /* unused */ 0.0f, INITIAL_CANDIDATES_ID);
+		initial_candidates_reservoir, temporal_neighbor_surface, center_pixel_surface, /* unused */ 0.0f, INITIAL_CANDIDATES_ID, random_number_generator);
 #else
 #error "Unsupported bias correction mode"
 #endif

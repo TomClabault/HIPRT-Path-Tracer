@@ -10,14 +10,31 @@
 
 #include "HostDeviceCommon/RenderData.h"
 
-__device__ bool alpha_testing(const hiprtRay& ray, const void* data, void* payload, const hiprtHit& hit)
+struct AlphaTestingPayload
 {
-	HIPRTRenderData* render_data = reinterpret_cast<HIPRTRenderData*>(payload);
+	const HIPRTRenderData* render_data;
+	Xorshift32Generator* random_number_generator;
+};
 
-	if (render_data->render_settings.do_alpha_testing)
-		return get_hit_base_color_alpha(*render_data, hit) < 1.0f;
+__device__ bool alpha_testing(const hiprtRay& ray, const void* data, void* payld, const hiprtHit& hit)
+{
+	AlphaTestingPayload* payload = reinterpret_cast<AlphaTestingPayload*>(payld);
+	if (!payload->render_data->render_settings.do_alpha_testing)
+		return false;
 
-	return false;
+	int material_index = payload->render_data->buffers.material_indices[hit.primID];
+	RendererMaterial material = payload->render_data->buffers.materials_buffer[material_index];
+
+	// Composition both the alpha of the base color texture and the material
+	float base_color_alpha = get_hit_base_color_alpha(*payload->render_data, material, hit);
+	float composited_alpha = material.alpha_opacity * base_color_alpha;
+
+	if ((*payload->random_number_generator)() < composited_alpha)
+		return false;
+
+	// No tests stopped the ray, that's not a hit.
+	// Returning 'true' to filter out the intersection
+	return true;
 }
 
 #endif

@@ -235,7 +235,7 @@
  * 
  *	- KERNEL_OPTION_TRUE or KERNEL_OPTION_FALSE values are accepted. Self-explanatory
  */
-#define ReSTIR_DI_BiasCorrectionUseVisibility KERNEL_OPTION_FALSE
+#define ReSTIR_DI_BiasCorrectionUseVisibility KERNEL_OPTION_TRUE
 
 /**
  * What bias correction weights to use when resampling neighbors (temporal / spatial)

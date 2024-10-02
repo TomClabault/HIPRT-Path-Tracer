@@ -1563,7 +1563,6 @@ void ImGuiRenderer::draw_objects_panel()
 		material_changed |= ImGui::SliderFloat("Clearcoat roughness", &material.clearcoat_roughness, 0.0f, 1.0f);
 		material_changed |= ImGui::SliderFloat("Clearcoat IOR", &material.clearcoat_ior, 0.0f, 5.0f);
 		material_changed |= ImGui::SliderFloat("IOR", &material.ior, 0.0f, 5.0f);
-		ImGui::Separator();
 		material_changed |= ImGui::SliderFloat("Transmission", &material.specular_transmission, 0.0f, 1.0f);
 
 		if (material.specular_transmission > 0.0f)
@@ -1578,6 +1577,7 @@ void ImGuiRenderer::draw_objects_panel()
 			ImGui::EndDisabled();
 		}
 
+		ImGui::Separator();
 		// Displaying original emission
 		ImGui::BeginDisabled(material.emission_texture_index > 0);
 		ColorRGB32F material_emission = material.get_emission() / material.emission_strength;
@@ -1592,6 +1592,7 @@ void ImGuiRenderer::draw_objects_panel()
 			ImGuiRenderer::show_help_marker("Disabled because the emission of this material is controlled by a texture");
 
 		material_changed |= ImGui::SliderFloat("Emission Strength", &material.emission_strength, 0.0f, 10.0f);
+		material_changed |= ImGui::SliderFloat("Opacity", &material.alpha_opacity, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 
 		ImGui::PopItemWidth();
 
@@ -1784,10 +1785,10 @@ void ImGuiRenderer::draw_performance_settings_panel()
 		ImGui::TreePush("Kernel selection for stack size");
 
 		{
-			static std::unordered_map<std::string, bool> use_shared_stack_traversal_global_rays;
-			if (use_shared_stack_traversal_global_rays.find(selected_kernel_name) == use_shared_stack_traversal_global_rays.end())
-				use_shared_stack_traversal_global_rays[selected_kernel_name] = selected_kernel_options->get_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL);
-			bool& use_shared_stack_traversal_bool = use_shared_stack_traversal_global_rays[selected_kernel_name];
+			static std::unordered_map<std::string, bool> use_shared_stack_traversal;
+			if (use_shared_stack_traversal.find(selected_kernel_name) == use_shared_stack_traversal.end())
+				use_shared_stack_traversal[selected_kernel_name] = selected_kernel_options->get_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL);
+			bool& use_shared_stack_traversal_bool = use_shared_stack_traversal[selected_kernel_name];
 
 			if (ImGui::Checkbox("Use shared/global stack BVH traversal", &use_shared_stack_traversal_bool))
 			{

@@ -15,7 +15,7 @@
 #include "HostDeviceCommon/RenderData.h"
 
 template <bool withVisiblity>
-HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function(const HIPRTRenderData& render_data, const ReSTIRDISample& sample, const ReSTIRDISurface& surface)
+HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function(const HIPRTRenderData& render_data, const ReSTIRDISample& sample, const ReSTIRDISurface& surface, Xorshift32Generator& random_number_generator)
 {
 #ifndef __KERNELCC__
 	std::cerr << "ReSTIR_DI_evaluate_target_function() wrong specialization called: " << withVisiblity << std::endl;
@@ -26,7 +26,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function(const HI
 }
 
 template <>
-HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_OPTION_FALSE>(const HIPRTRenderData& render_data, const ReSTIRDISample& sample, const ReSTIRDISurface& surface)
+HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_OPTION_FALSE>(const HIPRTRenderData& render_data, const ReSTIRDISample& sample, const ReSTIRDISurface& surface, Xorshift32Generator& random_number_generator)
 {
 	if (sample.emissive_triangle_index == -1 && !(sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE))
 		// Not an envmap sample and no emissive triangle sampled
@@ -71,7 +71,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_O
 }
 
 template <>
-HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_OPTION_TRUE>(const HIPRTRenderData& render_data, const ReSTIRDISample& sample, const ReSTIRDISurface& surface)
+HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_OPTION_TRUE>(const HIPRTRenderData& render_data, const ReSTIRDISample& sample, const ReSTIRDISurface& surface, Xorshift32Generator& random_number_generator)
 {
 	if (sample.emissive_triangle_index == -1 && !(sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE))
 		// No sample
@@ -122,14 +122,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_O
 	shadow_ray.origin = surface.shading_point;
 	shadow_ray.direction = sample_direction;
 
-	bool visible = !evaluate_shadow_ray(render_data, shadow_ray, distance_to_light);
+	bool visible = !evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, random_number_generator);
 
 	target_function *= visible;
 
 	return target_function;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE void ReSTIR_DI_visibility_reuse(const HIPRTRenderData& render_data, ReSTIRDIReservoir& reservoir, float3 shading_point)
+HIPRT_HOST_DEVICE HIPRT_INLINE void ReSTIR_DI_visibility_reuse(const HIPRTRenderData& render_data, ReSTIRDIReservoir& reservoir, float3 shading_point, Xorshift32Generator& random_number_generator)
 {
 	if (reservoir.UCW <= 0.0f)
 		return;
@@ -154,7 +154,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void ReSTIR_DI_visibility_reuse(const HIPRTRender
 	shadow_ray.origin = shading_point;
 	shadow_ray.direction = sample_direction;
 
-	bool visible = !evaluate_shadow_ray(render_data, shadow_ray, distance_to_light);
+	bool visible = !evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, random_number_generator);
 	if (!visible)
 		// Setting to -1 here so that we know when debugging that this is because of visibility reuse
 		reservoir.UCW = -1.0f;

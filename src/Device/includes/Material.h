@@ -20,12 +20,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void get_material_property(const HIPRTRenderData&
 HIPRT_HOST_DEVICE HIPRT_INLINE void get_metallic_roughness(const HIPRTRenderData& render_data, float& metallic, float& roughness, const float2& texcoords, int metallic_texture_index, int roughness_texture_index, int metallic_roughness_texture_index);
 HIPRT_HOST_DEVICE HIPRT_INLINE void get_base_color(const HIPRTRenderData& render_data, ColorRGB32F& base_color, float& out_alpha, const float2& texcoords, int base_color_texture_index);
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float get_hit_base_color_alpha(const HIPRTRenderData& render_data, hiprtHit hit)
+HIPRT_HOST_DEVICE HIPRT_INLINE float get_hit_base_color_alpha(const HIPRTRenderData& render_data, const RendererMaterial& material, hiprtHit hit)
 {
-    float2 texcoords = uv_interpolate(render_data.buffers.triangles_indices, hit.primID, render_data.buffers.texcoords, hit.uv);
+    if (material.base_color_texture_index == -1)
+        // Quick exit if no texture
+        return 1.0f;
 
-    int material_index = render_data.buffers.material_indices[hit.primID];
-    RendererMaterial material = render_data.buffers.materials_buffer[material_index];
+    float2 texcoords = uv_interpolate(render_data.buffers.triangles_indices, hit.primID, render_data.buffers.texcoords, hit.uv);
 
     // Getting the alpha for transparency check to see if we need to pass the ray through or not
     float alpha;
@@ -33,6 +34,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_hit_base_color_alpha(const HIPRTRenderD
     get_base_color(render_data, base_color, alpha, texcoords, material.base_color_texture_index);
 
     return alpha;
+}
+
+HIPRT_HOST_DEVICE HIPRT_INLINE float get_hit_base_color_alpha(const HIPRTRenderData& render_data, hiprtHit hit)
+{
+    int material_index = render_data.buffers.material_indices[hit.primID];
+    RendererMaterial material = render_data.buffers.materials_buffer[material_index];
+
+    return get_hit_base_color_alpha(render_data, material, hit);
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE SimplifiedRendererMaterial get_intersection_material(const HIPRTRenderData& render_data, int material_index, float2 texcoords)

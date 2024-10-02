@@ -140,7 +140,7 @@ struct HIPRTRenderSettings
 	float minimum_light_contribution = 0.08f;
 
 	// Whether or not to do alpha testing for geometry with transparent base color textures
-	bool do_alpha_testing = false;
+	bool do_alpha_testing = true;
 
 	// Settings for RIS (direct light sampling)
 	RISSettings ris_settings;

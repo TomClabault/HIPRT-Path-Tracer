@@ -100,7 +100,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE hiprtHit intersect_scene_cpu(const HIPRTRenderDat
 /**
  * Returns true if a hit was found, false otherwise
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data, hiprtRay ray, RayPayload& in_out_ray_payload, HitInfo& out_hit_info)
+HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data, hiprtRay ray, RayPayload& in_out_ray_payload, HitInfo& out_hit_info, Xorshift32Generator& random_number_generator)
 {
     hiprtHit hit;
     bool skipping_volume_boundary = false;
@@ -108,6 +108,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
     {
 #ifdef __KERNELCC__
 #if UseSharedStackBVHTraversal == KERNEL_OPTION_TRUE
+        // Payload for the alpha testing filter function
+        AlphaTestingPayload payload;
+        payload.render_data = &render_data;
+        payload.random_number_generator = &random_number_generator;
+
 #if SharedStackBVHTraversalSize > 0
         hiprtSharedStackBuffer shared_stack_buffer { SharedStackBVHTraversalSize, shared_stack_cache };
 #else
@@ -115,9 +120,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
 #endif
         hiprtGlobalStack global_stack(render_data.global_traversal_stack_buffer, shared_stack_buffer);
 
-        hiprtGeomTraversalClosestCustomStack<hiprtGlobalStack> traversal(render_data.geom, ray, global_stack, hiprtTraversalHintDefault, const_cast<HIPRTRenderData*>(&render_data), render_data.func_table, 0);
+        hiprtGeomTraversalClosestCustomStack<hiprtGlobalStack> traversal(render_data.geom, ray, global_stack, hiprtTraversalHintDefault, &payload, render_data.func_table, 0);
 #else
-        hiprtGeomTraversalClosest traversal(render_data.geom, ray, hiprtTraversalHintDefault, const_cast<HIPRTRenderData*>(&render_data), render_data.func_table, 0);
+        hiprtGeomTraversalClosest traversal(render_data.geom, ray, hiprtTraversalHintDefault, &payload, render_data.func_table, 0);
 #endif
 
         hit = traversal.getNextHit();
@@ -186,12 +191,17 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
 /**
  * Returns true if in shadow, false otherwise
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& render_data, hiprtRay ray, float t_max)
+HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& render_data, hiprtRay ray, float t_max, Xorshift32Generator& random_number_generator)
 {
 #ifdef __KERNELCC__
     ray.maxT = t_max - 1.0e-4f;
 
 #if UseSharedStackBVHTraversal == KERNEL_OPTION_TRUE
+    // Payload for the alpha testing filter function
+    AlphaTestingPayload payload;
+    payload.render_data = &render_data;
+    payload.random_number_generator = &random_number_generator;
+
 #if SharedStackBVHTraversalSize > 0
     hiprtSharedStackBuffer shared_stack_buffer{ SharedStackBVHTraversalSize, shared_stack_cache };
 #else
@@ -199,9 +209,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& r
 #endif
     hiprtGlobalStack global_stack(render_data.global_traversal_stack_buffer, shared_stack_buffer);
 
-    hiprtGeomTraversalClosestCustomStack<hiprtGlobalStack> traversal(render_data.geom, ray, global_stack, hiprtTraversalHintDefault, const_cast<HIPRTRenderData*>(&render_data), render_data.func_table, 0);
+    hiprtGeomTraversalClosestCustomStack<hiprtGlobalStack> traversal(render_data.geom, ray, global_stack, hiprtTraversalHintDefault, &payload, render_data.func_table, 0);
 #else
-    hiprtGeomTraversalClosest traversal(render_data.geom, ray, hiprtTraversalHintDefault, const_cast<HIPRTRenderData*>(&render_data), render_data.func_table, 0);
+    hiprtGeomTraversalClosest traversal(render_data.geom, ray, hiprtTraversalHintDefault, &payload, render_data.func_table, 0);
 #endif
 
     hiprtHit shadow_ray_hit = traversal.getNextHit();
@@ -246,12 +256,17 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& r
  * 
  * Also, if a hit was found, outputs the emission of the material at the hit point in 'out_hit_emission'
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderData& render_data, hiprtRay ray, float t_max, ShadowLightRayHitInfo& out_light_hit_info)
+HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderData& render_data, hiprtRay ray, float t_max, ShadowLightRayHitInfo& out_light_hit_info, Xorshift32Generator& random_number_generator)
 {
 #ifdef __KERNELCC__
     ray.maxT = t_max - 1.0e-4f;
 
 #if UseSharedStackBVHTraversal == KERNEL_OPTION_TRUE
+    // Payload for the alpha testing filter function
+    AlphaTestingPayload payload;
+    payload.render_data = &render_data;
+    payload.random_number_generator = &random_number_generator;
+
 #if SharedStackBVHTraversalSize > 0
     hiprtSharedStackBuffer shared_stack_buffer{ SharedStackBVHTraversalSize, shared_stack_cache };
 #else
@@ -259,9 +274,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderD
 #endif
     hiprtGlobalStack global_stack(render_data.global_traversal_stack_buffer, shared_stack_buffer);
 
-    hiprtGeomTraversalClosestCustomStack<hiprtGlobalStack> traversal(render_data.geom, ray, global_stack, hiprtTraversalHintDefault, const_cast<HIPRTRenderData*>(&render_data), render_data.func_table, 0);
+    hiprtGeomTraversalClosestCustomStack<hiprtGlobalStack> traversal(render_data.geom, ray, global_stack, hiprtTraversalHintDefault, &payload, render_data.func_table, 0);
 #else
-    hiprtGeomTraversalClosest traversal(render_data.geom, ray, hiprtTraversalHintDefault, const_cast<HIPRTRenderData*>(&render_data), render_data.func_table, 0);
+    hiprtGeomTraversalClosest traversal(render_data.geom, ray, hiprtTraversalHintDefault, &payload, render_data.func_table, 0);
 #endif
 
     hiprtHit shadow_ray_hit = traversal.getNextHit();

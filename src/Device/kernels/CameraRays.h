@@ -151,7 +151,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
     RayPayload ray_payload;
 
     HitInfo closest_hit_info;
-    bool intersection_found = trace_ray(render_data, ray, ray_payload, closest_hit_info);
+    bool intersection_found = trace_ray(render_data, ray, ray_payload, closest_hit_info, random_number_generator);
 
     if (intersection_found)
     {

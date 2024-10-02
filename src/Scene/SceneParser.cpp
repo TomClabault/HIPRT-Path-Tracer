@@ -377,12 +377,14 @@ void SceneParser::read_material_properties(aiMaterial* mesh_material, RendererMa
         renderer_material.specular_tint = 1.0f;
         renderer_material.specular_color = ColorRGB32F(1.0f);
     }
+    
     mesh_material->Get(AI_MATKEY_CLEARCOAT_FACTOR, renderer_material.clearcoat);
     mesh_material->Get(AI_MATKEY_CLEARCOAT_ROUGHNESS_FACTOR, renderer_material.clearcoat_roughness);
     mesh_material->Get(AI_MATKEY_REFRACTI, renderer_material.ior);
     mesh_material->Get(AI_MATKEY_TRANSMISSION_FACTOR, renderer_material.specular_transmission);
     mesh_material->Get(AI_MATKEY_VOLUME_ATTENUATION_COLOR, renderer_material.absorption_color);
     mesh_material->Get(AI_MATKEY_VOLUME_ATTENUATION_DISTANCE, renderer_material.absorption_at_distance);
+    mesh_material->Get(AI_MATKEY_OPACITY, renderer_material.alpha_opacity);
 
     renderer_material.make_safe();
     renderer_material.precompute_properties();

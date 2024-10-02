@@ -13,7 +13,9 @@
 #include "HostDeviceCommon/RenderData.h"
 
  // TODO make some simplification assuming that ReSTIR DI is never inside a surface (the camera being inside a surface may be an annoying case to handle)
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_ReSTIR_DI_reservoir(const HIPRTRenderData& render_data, const RayPayload& ray_payload, const float3& shading_point, const float3& shading_normal, const float3& view_direction, const ReSTIRDIReservoir& reservoir)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_ReSTIR_DI_reservoir(const HIPRTRenderData& render_data, const RayPayload& ray_payload, 
+    const float3& shading_point, const float3& shading_normal, const float3& view_direction, 
+    const ReSTIRDIReservoir& reservoir, Xorshift32Generator& random_number_generator)
 {
     ColorRGB32F final_color;
 
@@ -46,7 +48,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_ReSTIR_DI_reservoir(const HI
     if (sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED)
         in_shadow = false;
     else if (render_data.render_settings.restir_di_settings.do_final_shading_visibility)
-        in_shadow = evaluate_shadow_ray(render_data, shadow_ray, distance_to_light);
+        in_shadow = evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, random_number_generator);
 
     if (!in_shadow)
     {
@@ -100,7 +102,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_light_ReSTIR_DI(const HIPRTRen
     // anymore i.e. if it refers to a light that doesn't exist anymore
     validate_reservoir(render_data, reservoir);
 
-	return evaluate_ReSTIR_DI_reservoir(render_data, ray_payload, closest_hit_info.inter_point, closest_hit_info.shading_normal, view_direction, reservoir);
+	return evaluate_ReSTIR_DI_reservoir(render_data, ray_payload, 
+        closest_hit_info.inter_point, closest_hit_info.shading_normal, view_direction, 
+        reservoir, random_number_generator);
 }
 
 #endif

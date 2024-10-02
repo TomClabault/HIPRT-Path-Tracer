@@ -45,7 +45,8 @@ struct ReSTIRDISpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH>
 		const ReSTIRDIReservoir& reservoir_being_resampled,
 		const ReSTIRDISurface& center_pixel_surface,
 		int current_neighbor,
-		int2 center_pixel_coords, int2 res, float2 cos_sin_theta_rotation)
+		int2 center_pixel_coords, int2 res, float2 cos_sin_theta_rotation,
+		Xorshift32Generator& random_number_generator)
 	{
 		if (reservoir_being_resampled.UCW <= 0.0f)
 			// Reservoir that doesn't contain any sample, returning 
@@ -70,7 +71,7 @@ struct ReSTIRDISpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH>
 
 			ReSTIRDISurface neighbor_surface = get_pixel_surface(render_data, neighbor_index_j);
 
-			float target_function_at_j = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, reservoir_being_resampled.sample, neighbor_surface);
+			float target_function_at_j = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, reservoir_being_resampled.sample, neighbor_surface, random_number_generator);
 
 			int M = 1;
 			if (render_data.render_settings.restir_di_settings.use_confidence_weights)
@@ -94,7 +95,8 @@ struct ReSTIRDISpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
 		const ReSTIRDIReservoir& reservoir_being_resampled, const ReSTIRDIReservoir& center_pixel_reservoir,
 		float target_function_at_center,
 		int neighbor_pixel_index, int valid_neighbors_count, int valid_neighbors_M_sum,
-		bool update_mc, bool resampling_canonical)
+		bool update_mc, bool resampling_canonical,
+		Xorshift32Generator& random_number_generator)
 	{
 		int reused_neighbors_count = render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count;
 		if (!resampling_canonical)
@@ -127,7 +129,7 @@ struct ReSTIRDISpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
 			if (update_mc)
 			{
 				ReSTIRDISurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index);
-				float target_function_center_reservoir_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, center_pixel_reservoir.sample, neighbor_pixel_surface);
+				float target_function_center_reservoir_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, center_pixel_reservoir.sample, neighbor_pixel_surface, random_number_generator);
 				float target_function_center_reservoir_at_center = center_pixel_reservoir.sample.target_function;
 
 				float nume_mc = target_function_center_reservoir_at_center / valid_neighbor_division_term * center_reservoir_M;
@@ -169,7 +171,8 @@ struct ReSTIRDISpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
 		const ReSTIRDIReservoir& reservoir_being_resampled, const ReSTIRDIReservoir& center_pixel_reservoir,
 		float target_function_at_center,
 		int neighbor_pixel_index, int valid_neighbors_count, int valid_neighbors_M_sum,
-		bool update_mc, bool resampling_canonical)
+		bool update_mc, bool resampling_canonical,
+		Xorshift32Generator& random_number_generator)
 	{
 		int reused_neighbors_count = render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count;
 		if (!resampling_canonical)
@@ -213,7 +216,7 @@ struct ReSTIRDISpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
 				// So we can avoid computing all that stuff
 
 				ReSTIRDISurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index);
-				float target_function_center_reservoir_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, center_pixel_reservoir.sample, neighbor_pixel_surface);
+				float target_function_center_reservoir_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, center_pixel_reservoir.sample, neighbor_pixel_surface, random_number_generator);
 				float target_function_center_reservoir_at_center = center_pixel_reservoir.sample.target_function;
 
 				float nume_mc = target_function_center_reservoir_at_center / valid_neighbor_division_term * center_reservoir_M;

@@ -143,7 +143,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
             {
                 // Not tracing for the primary ray because this has already been done in the camera ray pass
 
-                intersection_found = trace_ray(render_data, ray, ray_payload, closest_hit_info);
+                intersection_found = trace_ray(render_data, ray, ray_payload, closest_hit_info, random_number_generator);
             }
 
             if (intersection_found)

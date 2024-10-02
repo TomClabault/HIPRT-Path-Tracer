@@ -133,6 +133,10 @@ struct SimplifiedRendererMaterial
     // Color of the light absorption when traveling through the medium
     ColorRGB32F absorption_color = ColorRGB32F(1.0f);
 
+    // 1.0f makes the material completely opaque
+    // 0.0f completely transparent (becomes invisible)
+    float alpha_opacity = 1.0f;
+
     // Nested dielectric parameter
     int dielectric_priority = 0;
 
