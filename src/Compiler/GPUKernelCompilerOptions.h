@@ -16,11 +16,9 @@ class GPUKernel;
 class GPUKernelCompilerOptions
 {
 public:
-	static const std::string SHARED_STACK_BVH_TRAVERSAL_GLOBAL_RAYS;
-	static const std::string SHARED_STACK_BVH_TRAVERSAL_SHADOW_RAYS;
+	static const std::string USE_SHARED_STACK_BVH_TRAVERSAL;
 	static const std::string SHARED_STACK_BVH_TRAVERSAL_BLOCK_SIZE;
-	static const std::string SHARED_STACK_BVH_TRAVERSAL_SIZE_GLOBAL_RAYS;
-	static const std::string SHARED_STACK_BVH_TRAVERSAL_SIZE_SHADOW_RAYS;
+	static const std::string SHARED_STACK_BVH_TRAVERSAL_SIZE;
 
 	static const std::string BSDF_OVERRIDE;
 	static const std::string INTERIOR_STACK_STRATEGY;

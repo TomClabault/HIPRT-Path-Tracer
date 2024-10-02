@@ -16,6 +16,8 @@
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/Math.h"
 
+__shared__ int shared_stack_cache[SharedStackBVHTraversalSize * SharedStackBVHTraversalBlockSize];
+
 /* References:
  * 
  * [1] [Foundations of Game Engine Development: Rendering - Tangent/Bitangent calculation] http://foundationsofgameenginedev.com/#fged2
@@ -105,10 +107,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
     do
     {
 #ifdef __KERNELCC__
-#if SharedStackBVHTraversalGlobalRays == KERNEL_OPTION_TRUE
-#if SharedStackBVHTraversalSizeGlobalRays > 0
-        __shared__ int shared_stack_cache[SharedStackBVHTraversalSizeGlobalRays * SharedStackBVHTraversalBlockSize];
-        hiprtSharedStackBuffer shared_stack_buffer { SharedStackBVHTraversalSizeGlobalRays, shared_stack_cache };
+#if UseSharedStackBVHTraversal == KERNEL_OPTION_TRUE
+#if SharedStackBVHTraversalSize > 0
+        hiprtSharedStackBuffer shared_stack_buffer { SharedStackBVHTraversalSize, shared_stack_cache };
 #else
         hiprtSharedStackBuffer shared_stack_buffer{ 0, nullptr };
 #endif
@@ -190,10 +191,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& r
 #ifdef __KERNELCC__
     ray.maxT = t_max - 1.0e-4f;
 
-#if SharedStackBVHTraversalShadowRays == KERNEL_OPTION_TRUE
-#if SharedStackBVHTraversalSizeShadowRays > 0
-    __shared__ int shared_stack_cache[SharedStackBVHTraversalSizeShadowRays * SharedStackBVHTraversalBlockSize];
-    hiprtSharedStackBuffer shared_stack_buffer{ SharedStackBVHTraversalSizeShadowRays, shared_stack_cache };
+#if UseSharedStackBVHTraversal == KERNEL_OPTION_TRUE
+#if SharedStackBVHTraversalSize > 0
+    hiprtSharedStackBuffer shared_stack_buffer{ SharedStackBVHTraversalSize, shared_stack_cache };
 #else
     hiprtSharedStackBuffer shared_stack_buffer{ 0, nullptr };
 #endif
@@ -251,10 +251,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderD
 #ifdef __KERNELCC__
     ray.maxT = t_max - 1.0e-4f;
 
-#if SharedStackBVHTraversalShadowRays == KERNEL_OPTION_TRUE
-#if SharedStackBVHTraversalSizeShadowRays > 0
-    __shared__ int shared_stack_cache[SharedStackBVHTraversalSizeShadowRays * SharedStackBVHTraversalBlockSize];
-    hiprtSharedStackBuffer shared_stack_buffer{ SharedStackBVHTraversalSizeShadowRays, shared_stack_cache };
+#if UseSharedStackBVHTraversal == KERNEL_OPTION_TRUE
+#if SharedStackBVHTraversalSize > 0
+    hiprtSharedStackBuffer shared_stack_buffer{ SharedStackBVHTraversalSize, shared_stack_cache };
 #else
     hiprtSharedStackBuffer shared_stack_buffer{ 0, nullptr };
 #endif

@@ -86,14 +86,7 @@
  * 
  * This improves performance at the cost of a higher VRAM usage (because of the global buffer needed)
  */
-#define SharedStackBVHTraversalGlobalRays KERNEL_OPTION_TRUE
-
-/**
- * Same as SharedStackBVHTraversalGlobalRays but for shadow rays. The global buffer is shared between global and shadow
- * rays so using only SharedStackBVHTraversalGlobalRays or both with also SharedStackBVHTraversalShadowRays doesn't increase
- * VRAM usage further.
- */
-#define SharedStackBVHTraversalShadowRays KERNEL_OPTION_TRUE
+#define UseSharedStackBVHTraversal KERNEL_OPTION_TRUE
 
 /**
  * Size of the thread blocks used when dispatching the kernels. 
@@ -105,13 +98,7 @@
   * Size of the shared memory stack for BVH traversal of "global" rays 
   * (rays that search for the closest hit with no maximum distance)
   */
-#define SharedStackBVHTraversalSizeGlobalRays 16
-
- /**
-  * Size of the shared memory stack for BVH traversal of shadow rays 
-  * (rays that search for anyhit with a given maximum distance)
-  */
-#define SharedStackBVHTraversalSizeShadowRays 16
+#define SharedStackBVHTraversalSize 16
 
 /**
  * Allows the overriding of the BRDF/BSDF used by the path tracer. When an override is used,

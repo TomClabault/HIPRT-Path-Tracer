@@ -1758,7 +1758,7 @@ void ImGuiRenderer::draw_performance_settings_panel()
 
 		static std::string selected_kernel_name = GPURenderer::CAMERA_RAYS_KERNEL_ID;
 		static GPUKernel* selected_kernel = &kernels[selected_kernel_name];
-		static GPUKernelCompilerOptions& selected_kernel_options = selected_kernel->get_kernel_options();
+		static GPUKernelCompilerOptions* selected_kernel_options = &selected_kernel->get_kernel_options();
 
 		if (ImGui::BeginCombo("Kernel", selected_kernel_name.c_str()))
 		{
@@ -1769,7 +1769,7 @@ void ImGuiRenderer::draw_performance_settings_panel()
 				{
 					selected_kernel_name = kernel_name;
 					selected_kernel = &kernels[selected_kernel_name];
-					selected_kernel_options = selected_kernel->get_kernel_options();
+					selected_kernel_options = &selected_kernel->get_kernel_options();
 				}
 
 				if (is_selected)
@@ -1786,57 +1786,33 @@ void ImGuiRenderer::draw_performance_settings_panel()
 		{
 			static std::unordered_map<std::string, bool> use_shared_stack_traversal_global_rays;
 			if (use_shared_stack_traversal_global_rays.find(selected_kernel_name) == use_shared_stack_traversal_global_rays.end())
-				use_shared_stack_traversal_global_rays[selected_kernel_name] = selected_kernel_options.get_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_GLOBAL_RAYS);
-			bool& use_shared_stack_traversal_global_rays_bool = use_shared_stack_traversal_global_rays[selected_kernel_name];
+				use_shared_stack_traversal_global_rays[selected_kernel_name] = selected_kernel_options->get_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL);
+			bool& use_shared_stack_traversal_bool = use_shared_stack_traversal_global_rays[selected_kernel_name];
 
-			if (ImGui::Checkbox("Use shared/global stack BVH traversal - Global Rays", &use_shared_stack_traversal_global_rays_bool))
+			if (ImGui::Checkbox("Use shared/global stack BVH traversal", &use_shared_stack_traversal_bool))
 			{
-				selected_kernel_options.set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_GLOBAL_RAYS, use_shared_stack_traversal_global_rays_bool ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+				selected_kernel_options->set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, use_shared_stack_traversal_bool ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
 			}
 			ImGuiRenderer::show_help_marker("If checked, shared memory + a globally allocated buffer will be used for the BVH "
-				"traversal of global rays (rays that don't have a given maximum traversal distance as opposed to shadow rays). "
+				"traversal of rays.\n"
 				"This incurs an additional cost in VRAM but improves traversal performance.");
 
 
 
 
 
-			static std::unordered_map<std::string, bool> use_shared_stack_traversal_shadow_rays;
-			if (use_shared_stack_traversal_shadow_rays.find(selected_kernel_name) == use_shared_stack_traversal_shadow_rays.end())
-				use_shared_stack_traversal_shadow_rays[selected_kernel_name] = selected_kernel_options.get_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SHADOW_RAYS);
-			bool& use_shared_stack_traversal_shadow_rays_bool = use_shared_stack_traversal_shadow_rays[selected_kernel_name];
-
-			if (ImGui::Checkbox("Use shared/global stack BVH traversal - Shadow Rays", &use_shared_stack_traversal_shadow_rays_bool))
+			if (use_shared_stack_traversal_bool)
 			{
-				selected_kernel_options.set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SHADOW_RAYS, use_shared_stack_traversal_shadow_rays_bool ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker("If checked, shared memory + a globally allocated buffer will be used for the BVH "
-				"traversal of global rays (rays that don't have a given maximum traversal distance as opposed to shadow rays). "
-				"This incurs an additional cost in VRAM but improves traversal performance.");
+				static std::unordered_map<std::string, int> pending_stack_size_changes;
+				if (pending_stack_size_changes.find(selected_kernel_name) == pending_stack_size_changes.end())
+					pending_stack_size_changes[selected_kernel_name] = selected_kernel_options->get_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE);
+				int& pending_stack_size = pending_stack_size_changes[selected_kernel_name];
 
+				if (ImGui::InputInt("Shared stack size", &pending_stack_size))
+					pending_stack_size = std::max(0, pending_stack_size);
 
-
-
-
-			if (use_shared_stack_traversal_global_rays_bool)
-			{
-				static std::unordered_map<std::string, int> pending_stack_size_change_global_rays;
-				if (pending_stack_size_change_global_rays.find(selected_kernel_name) == pending_stack_size_change_global_rays.end())
-					pending_stack_size_change_global_rays[selected_kernel_name] = selected_kernel_options.get_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_GLOBAL_RAYS);
-				int& pending_stack_change_global_rays = pending_stack_size_change_global_rays[selected_kernel_name];
-
-				if (ImGui::InputInt("Shared stack size - Global Rays", &pending_stack_change_global_rays))
-				{
-					pending_stack_change_global_rays = std::max(0, pending_stack_change_global_rays);
-					if (pending_stack_change_global_rays == 0)
-					{
-						// If we just set it to 0, then we're disabling
-					}
-				}
 				ImGuiRenderer::show_help_marker("Fast shared memory stack used for the BVH traversal of \"global\" rays (rays that search for a closest hit with no maximum distance)\n\n"
 					"Allocating more of this speeds up the BVH traversal but reduces the amount of L1 cache available to "
 					"the rest of the shader which thus reduces its performance. A tradeoff must be made.\n\n"
@@ -1847,7 +1823,7 @@ void ImGuiRenderer::draw_performance_settings_panel()
 					"for traversal. This approach is still better that not using any of these two memories at all (this "
 					"becomes the case when the checkboxes above are not checked.)");
 
-				if (pending_stack_change_global_rays != selected_kernel_options.get_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_GLOBAL_RAYS))
+				if (pending_stack_size != selected_kernel_options->get_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE))
 				{
 					// If the user has modified the size of the shared stack, showing a button to apply the changes 
 					// (not applying the changes everytime because this requires a recompilation of basically all shaders and that's heavy)
@@ -1855,46 +1831,7 @@ void ImGuiRenderer::draw_performance_settings_panel()
 					ImGui::TreePush("Apply button shared stack size");
 					if (ImGui::Button("Apply"))
 					{
-						selected_kernel_options.set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_GLOBAL_RAYS, pending_stack_change_global_rays);
-						m_renderer->recompile_kernels();
-						m_render_window->set_render_dirty(true);
-					}
-					ImGui::TreePop();
-				}
-			}
-
-
-
-
-			if (use_shared_stack_traversal_shadow_rays_bool)
-			{
-				static std::unordered_map<std::string, int> pending_stack_size_change_shadow_rays;
-				if (pending_stack_size_change_shadow_rays.find(selected_kernel_name) == pending_stack_size_change_shadow_rays.end())
-					pending_stack_size_change_shadow_rays[selected_kernel_name] = selected_kernel_options.get_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_SHADOW_RAYS);
-				int& pending_stack_change_shadow_ray = pending_stack_size_change_shadow_rays[selected_kernel_name];
-
-				if (ImGui::InputInt("Shared stack size - Shadow Rays", &pending_stack_change_shadow_ray))
-					pending_stack_change_shadow_ray = std::max(0, pending_stack_change_shadow_ray);
-				ImGuiRenderer::show_help_marker("Fast shared memory stack used for the BVH traversal of shadow rays (rays that search for a closest hit with a given maximum distance)\n\n"
-					"Allocating more of this speeds up the BVH traversal but reduces the amount of L1 cache available to "
-					"the rest of the shader which thus reduces its performance. A tradeoff must be made.\n\n"
-					"If this shared memory stack isn't large enough for traversing the BVH, then "
-					"it is complemented by using the global stack buffer. If both combined aren't enough "
-					"for the traversal, then occlusion artifacts will start to appear in renders.\n\n"
-					"Note that setting this value to 0 disables the shared stack usage but still uses the global buffer "
-					"for traversal. This approach is still better that not using any of these two memories at all (this "
-					"becomes the case when the checkboxes above are not checked.)");
-
-				if (pending_stack_change_shadow_ray != selected_kernel_options.get_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_SHADOW_RAYS))
-				{
-					// If the user has modified the size of the shared stack, showing a button to apply the changes 
-					// (not applying the changes everytime because this requires a recompilation of basically all shaders and that's heavy)
-
-					ImGui::TreePush("Apply button shared stack size");
-					if (ImGui::Button("Apply"))
-					{
-						selected_kernel_options.set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE_SHADOW_RAYS, pending_stack_change_shadow_ray);
-
+						selected_kernel_options->set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, pending_stack_size);
 						m_renderer->recompile_kernels();
 						m_render_window->set_render_dirty(true);
 					}

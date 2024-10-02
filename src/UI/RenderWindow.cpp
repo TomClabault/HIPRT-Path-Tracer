@@ -47,7 +47,7 @@
 // - use 3x3 matrix for envmap matrices
 // - free denoiser buffers if not using denoising
 // - refactor ImGuiRenderer in several sub classes that each draw a panel
-// - refactor closestHitTypes with something like 'hiprtGeomTraversalClosestHitType<SharedStackBVHTraversalGlobalRays>' to avoid the big #if #elif blocks
+// - refactor closestHitTypes with something like 'hiprtGeomTraversalClosestHitType<UseSharedStackBVHTraversal>' to avoid the big #if #elif blocks
 
 
 

@@ -273,7 +273,7 @@ private:
 	void internal_update_restir_di_buffers();
 
 	/**
-	 * Allocates/frees the global buffer for BVH traversal when SharedStackBVHTraversal is TRUE
+	 * Allocates/frees the global buffer for BVH traversal when UseSharedStackBVHTraversal is TRUE
 	 */
 	void internal_update_global_stack_buffer();
 
