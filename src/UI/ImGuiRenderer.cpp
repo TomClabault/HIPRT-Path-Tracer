@@ -2060,11 +2060,11 @@ void ImGuiRenderer::rescale_ui()
 	ImGuiViewport* viewport = ImGui::GetMainViewport();
 	float windowDpiScale = viewport->DpiScale;
 
-	if (windowDpiScale > 1.0f)
-	{
-		ImGuiIO& io = ImGui::GetIO();
+	//if (windowDpiScale > 1.0f)
+	//{
+	//	ImGuiIO& io = ImGui::GetIO();
 
-		// Scaling by the DPI -10% as judged more pleasing
-		io.FontGlobalScale = windowDpiScale * 1.08f;
-	}
+	//	// Scaling by the DPI -10% as judged more pleasing
+	//	io.FontGlobalScale = windowDpiScale * 1.08f;
+	//}
 }

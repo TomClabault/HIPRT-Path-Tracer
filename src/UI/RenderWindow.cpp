@@ -21,7 +21,6 @@
 // - maybe not spatially resample as hard everywhere in the image? Dark regions for example? heuristic to reduce/increase the number of spatial samples per pixel?
 // - disocclusion boost
 // - clamp spatial neighbors out of viewport instead of discarding them? option in Imgui
-// - multiple spatial reuse passes with fused spatiotemporal
 // - limit UI speed because it actually uses some resources (maybe Vsync or something)
 
 // TODO known bugs / incorectness:
@@ -57,6 +56,7 @@
 // - better disney sheen lobe as in Blender
 // - use shared memory for nested dielectrics stack?
 // - opacity micromaps
+// - use anyhits for shadow rays
 // - cache opacity of materials textures? --> analyze the texture when loading it from the texture and if there isn't a single transparent pixel, then we know that we won't have to fetch the material / texture in the alpha test filter function because the alpha is going to be 1.0f anyways
 // - simpler BSDF for indirect bounces as a biased option for performance?
 // - limit first bounce distance: objects far away won't contribute much to what the camera sees

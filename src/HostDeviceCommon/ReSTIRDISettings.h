@@ -64,7 +64,7 @@ struct SpatialPassSettings
 	// The radius within which neighbor are going to be reused spatially
 	int spatial_reuse_radius = 16;
 	// How many neighbors to reuse during the spatial pass
-	int spatial_reuse_neighbor_count = 1;
+	int spatial_reuse_neighbor_count = 3;
 
 	// If true, reused neighbors will be hardcoded to always be 15 pixels to the right,
 	// not in a circle around the center pixel.

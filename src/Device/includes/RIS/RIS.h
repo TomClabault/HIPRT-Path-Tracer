@@ -168,7 +168,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
                     shadow_ray.origin = evaluated_point;
                     shadow_ray.direction = to_light_direction;
 
-                    bool visible = !evaluate_shadow_ray(render_data, shadow_ray, distance_to_light);
+                    bool visible = !evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, random_number_generator);
 
                     target_function *= visible;
                 }
