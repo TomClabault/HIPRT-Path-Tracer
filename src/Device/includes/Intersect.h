@@ -214,7 +214,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& r
 #endif
     hiprtGlobalStack global_stack(render_data.global_traversal_stack_buffer, shared_stack_buffer);
 
-    hiprtGeomTraversalClosestCustomStack<hiprtGlobalStack> traversal(render_data.geom, ray, global_stack, hiprtTraversalHintDefault, &payload, render_data.func_table, 0);
+    hiprtGeomTraversalAnyHitCustomStack<hiprtGlobalStack> traversal(render_data.geom, ray, global_stack, hiprtTraversalHintDefault, &payload, render_data.func_table, 0);
     //hiprtGeomTraversalAnyHitCustomStack<hiprtGlobalStack> traversal()
 #else
     hiprtGeomTraversalClosest traversal(render_data.geom, ray, hiprtTraversalHintDefault, &payload, render_data.func_table, 0);

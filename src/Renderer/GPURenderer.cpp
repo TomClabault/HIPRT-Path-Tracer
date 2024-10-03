@@ -12,6 +12,8 @@
 
 #include <Orochi/OrochiUtils.h>
 
+#include <condition_variable>
+
 const std::string GPURenderer::CAMERA_RAYS_KERNEL_ID = "Camera Rays";
 const std::string GPURenderer::PATH_TRACING_KERNEL_ID = "Path Tracing";
 const std::string GPURenderer::RAY_VOLUME_STATE_SIZE_KERNEL_ID = "Ray Volume State Size";
