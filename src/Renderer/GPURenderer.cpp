@@ -706,9 +706,17 @@ void GPURenderer::precompile_kernel(const std::string& id, GPUKernelCompilerOpti
 	ThreadManager::detach_threads(ThreadManager::RENDERER_PRECOMPILE_KERNELS);
 }
 
-std::map<std::string, GPUKernel>& GPURenderer::get_kernels()
+std::map<std::string, GPUKernel*> GPURenderer::get_kernels()
 {
-	return m_kernels;
+	std::map<std::string, GPUKernel*> kernels;
+
+	for (auto& pair : m_kernels)
+		kernels[pair.first] = &pair.second;
+
+	for (auto& pair : m_restir_di_render_pass.m_kernels)
+		kernels[pair.first] = &pair.second;
+
+	return kernels;
 }
 
 oroStream_t GPURenderer::get_main_stream()

@@ -230,7 +230,7 @@ public:
 	 */
 	void precompile_kernels();
 
-	std::map<std::string, GPUKernel>& get_kernels();
+	std::map<std::string, GPUKernel*> get_kernels();
 	oroStream_t get_main_stream();
 
 	void compute_render_pass_times();

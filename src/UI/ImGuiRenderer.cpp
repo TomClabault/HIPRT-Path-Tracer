@@ -1755,13 +1755,19 @@ void ImGuiRenderer::draw_performance_settings_panel()
 	ImGui::TreePush("Shared/global stack Traversal Options Tree");
 
 	{
-		std::vector<std::string> kernel_names;
-		std::map<std::string, GPUKernel>& kernels = m_renderer->get_kernels();
-		for (const auto& name_to_kernel : kernels)
-			kernel_names.push_back(name_to_kernel.first);
+		// List of exceptions because these kernels do not trace any rays
+		static std::unordered_set<std::string> exceptions = { ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID };
+		static std::vector<std::string> kernel_names;
+		static std::map<std::string, GPUKernel*> kernels = m_renderer->get_kernels();
+		if (kernel_names.empty())
+		{
+			for (const auto& name_to_kernel : kernels)
+				if (exceptions.find(name_to_kernel.first) == exceptions.end())
+					kernel_names.push_back(name_to_kernel.first);
+		}
 
 		static std::string selected_kernel_name = GPURenderer::CAMERA_RAYS_KERNEL_ID;
-		static GPUKernel* selected_kernel = &kernels[selected_kernel_name];
+		static GPUKernel* selected_kernel = kernels[selected_kernel_name];
 		static GPUKernelCompilerOptions* selected_kernel_options = &selected_kernel->get_kernel_options();
 
 		if (ImGui::BeginCombo("Kernel", selected_kernel_name.c_str()))
@@ -1772,7 +1778,7 @@ void ImGuiRenderer::draw_performance_settings_panel()
 				if (ImGui::Selectable(kernel_name.c_str(), is_selected))
 				{
 					selected_kernel_name = kernel_name;
-					selected_kernel = &kernels[selected_kernel_name];
+					selected_kernel = kernels[selected_kernel_name];
 					selected_kernel_options = &selected_kernel->get_kernel_options();
 				}
 
