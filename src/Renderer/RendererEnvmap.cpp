@@ -53,7 +53,7 @@ void RendererEnvmap::recompute_sampling_data_structure(GPURenderer* renderer, co
 
 void RendererEnvmap::do_animation(GPURenderer* renderer)
 {
-	if (animate)
+	if (animate && !renderer->get_render_settings().accumulate)
 	{
 		float renderer_delta_time = renderer->get_last_frame_time();
 

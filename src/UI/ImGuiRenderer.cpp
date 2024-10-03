@@ -558,6 +558,7 @@ void ImGuiRenderer::draw_environment_panel()
 			float& animation_speed_Y = m_renderer->get_envmap().animation_speed_Y;
 			float& animation_speed_Z = m_renderer->get_envmap().animation_speed_Z;
 
+			ImGui::BeginDisabled(m_renderer->get_render_settings().accumulate);
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::Checkbox("Animate", &animate_envmap);
 
@@ -580,6 +581,8 @@ void ImGuiRenderer::draw_environment_panel()
 				//rota_Y = rota_Y - static_cast<int>(rota_Y);
 				//rota_Z = rota_Z - static_cast<int>(rota_Z);
 			}
+
+			ImGui::EndDisabled();
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			bool rotation_changed = false;

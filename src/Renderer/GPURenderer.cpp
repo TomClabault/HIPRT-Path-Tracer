@@ -731,6 +731,17 @@ void GPURenderer::compute_render_pass_times()
 	m_render_pass_times[GPURenderer::CAMERA_RAYS_KERNEL_ID] = m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].get_last_execution_time();
 	m_restir_di_render_pass.compute_render_times(m_render_pass_times);
 	m_render_pass_times[GPURenderer::PATH_TRACING_KERNEL_ID] = m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].get_last_execution_time();
+
+	// The total frame time is the sum of every passes
+	float sum = 0.0f;
+	for (auto pair : m_render_pass_times)
+	{
+		if (pair.first == GPURenderer::FULL_FRAME_TIME_KEY)
+			continue;
+
+		sum += pair.second;
+	}
+	m_render_pass_times[GPURenderer::FULL_FRAME_TIME_KEY] = sum;
 }
 
 std::unordered_map<std::string, float>& GPURenderer::get_render_pass_times()
