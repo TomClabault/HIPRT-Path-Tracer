@@ -60,7 +60,7 @@ struct SpatialPassSettings
 	// Takes values in [0, number_of_passes - 1]
 	int spatial_pass_index = 0;
 	// How many spatial reuse pass to perform
-	int number_of_passes = 2;
+	int number_of_passes = 1;
 	// The radius within which neighbor are going to be reused spatially
 	int spatial_reuse_radius = 16;
 	// How many neighbors to reuse during the spatial pass
