@@ -125,9 +125,8 @@ namespace HIPPTOrochiUtils
 		const std::string& additional_cache_key, 
 		bool print_warnings)
 	{
-		std::vector<std::string> include_names;
 		std::string kernel_source_code;
-		read_source_code(kernel_file_path, kernel_source_code, &include_names);
+		read_source_code(kernel_file_path, kernel_source_code);
 
 		std::vector<const char*> compiler_options_cstr;
 		

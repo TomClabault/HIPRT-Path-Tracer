@@ -224,6 +224,12 @@ public:
 	std::shared_ptr<GPUKernelCompilerOptions> get_global_compiler_options();
 
 	void recompile_kernels();
+	/**
+	 * Precompiles a variety of kernel option combinations to avoid
+	 * having to compile too many kernels at runtime
+	 */
+	void precompile_kernels();
+
 	std::map<std::string, GPUKernel>& get_kernels();
 	oroStream_t get_main_stream();
 
@@ -246,6 +252,19 @@ private:
 	void set_hiprt_scene_from_scene(const Scene& scene);
 	void update_render_data();
 
+	/**
+	 * Precompiles direct lighting strategy kernels
+	 */
+	void precompile_direct_light_sampling_kernels();
+	/**
+	 * Precompiles ReSTIR DI kernels
+	 */
+	void precompile_ReSTIR_DI_kernels();
+	/**
+	 * Precompiles a single kernel given its ID and the options
+	 * that will be overriden when compiling the kernel
+	 */
+	void precompile_kernel(const std::string& id, GPUKernelCompilerOptions partial_options);
 
 	// ---- Functions called by the update() method ----
 	//
@@ -367,6 +386,8 @@ private:
 	// They are all organized in a map so that we can iterate over them. The key
 	// of this map is a "name"
 	std::map<std::string, GPUKernel> m_kernels;
+	// Whether or not kernel precompilation has been launched yet
+	bool m_kernel_precompilation_launched = false;
 
 	// Kernel used for retrieving the size of the RayVolumeState structure on the GPU
 	GPUKernel m_ray_volume_state_byte_size_kernel;

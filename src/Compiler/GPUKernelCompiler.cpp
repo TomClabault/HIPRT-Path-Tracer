@@ -9,10 +9,19 @@
 #include "Utils/Utils.h"
 
 #include <chrono>
+#include <condition_variable>
 #include <deque>
 #include <mutex>
 
 GPUKernelCompiler g_gpu_kernel_compiler;
+
+// This variable will be initialized before the main function by the main thread
+std::thread::id g_main_thread_id = std::this_thread::get_id();
+// Whether or not the main thread is currently compiling. Used in the condition variable.
+// If the main thread is currently compiling (very likely that his was asked by the user through the UI), 
+// other threads may not compile to give the user the priority for the compilation
+bool g_main_thread_compiling = false;
+std::condition_variable g_condition_for_compilation;
 
 oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, const GPUKernelCompilerOptions& kernel_compiler_options, std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, hiprtFuncNameSet* function_name_sets, bool use_cache, const std::string& additional_cache_key, bool silent)
 {
@@ -42,6 +51,14 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, const GPUKern
 	compiler_options.push_back("-Wno-padded");
 	compiler_options.push_back("-Wno-sign-conversion");*/
 
+	// Locking because neither NVIDIA or AMD can compile kernels on multiple threads so we may as well
+	// lock here to have better control on when to compile a kernel as well as have proper compilation times
+	std::unique_lock<std::mutex> lock(m_mutex);
+
+	if (std::this_thread::get_id() != g_main_thread_id)
+		// Other thread waits if the main thread is compiling
+		g_condition_for_compilation.wait(lock, []() { return !g_main_thread_compiling; });
+
 	auto start = std::chrono::high_resolution_clock::now();
 
 	hiprtApiFunction trace_function_out;
@@ -58,7 +75,6 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, const GPUKern
 
 	if (!silent)
 	{
-		std::lock_guard<std::mutex> lock(m_mutex);
 		std::cout << "Kernel \"" << kernel_function_name << "\" compiled in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms. ";
 
 		// Setting the current context is necessary because getting
@@ -249,6 +265,8 @@ std::string GPUKernelCompiler::get_additional_cache_key(GPUKernel& kernel)
 
 std::unordered_set<std::string> GPUKernelCompiler::get_option_macros_used_by_kernel(const GPUKernel& kernel)
 {
+	m_read_macros_semaphore.acquire();
+
 	std::unordered_set<std::string> already_processed_includes;
 	std::deque<std::string> yet_to_process_includes;
 	yet_to_process_includes.push_back(kernel.get_kernel_file_path());
@@ -287,5 +305,6 @@ std::unordered_set<std::string> GPUKernelCompiler::get_option_macros_used_by_ker
 			option_macro_names.insert(option_macro);
 	}
 
+	m_read_macros_semaphore.release();
 	return option_macro_names;
 }

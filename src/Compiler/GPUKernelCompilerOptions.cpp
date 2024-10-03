@@ -38,7 +38,7 @@ const std::string GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS = 
 const std::string GPUKernelCompilerOptions::RESTIR_DI_LATER_BOUNCES_SAMPLING_STRATEGY = "ReSTIR_DI_LaterBouncesSamplingStrategy";
 const std::string GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING = "ReSTIR_DI_DoLightsPresampling";
 
-const std::vector<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES = {
+const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES = {
 	GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL,
 	GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE,
 	GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_BLOCK_SIZE,
@@ -94,6 +94,32 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	assert(GPUKernelCompilerOptions::ALL_MACROS_NAMES.size() == m_options_macro_map.size());
 }
 
+GPUKernelCompilerOptions::GPUKernelCompilerOptions(const GPUKernelCompilerOptions& other)
+{
+	*this = other;
+}
+
+GPUKernelCompilerOptions GPUKernelCompilerOptions::operator=(const GPUKernelCompilerOptions& other)
+{
+	GPUKernelCompilerOptions copy;
+	copy.clear();
+
+	copy.m_additional_include_directories = other.m_additional_include_directories;
+	for (auto& pair : other.m_options_macro_map)
+		// Creating new shared ptr for the copy
+		copy.m_options_macro_map[pair.first] = std::make_shared<int>(*pair.second);
+
+	for (auto& pair : other.m_custom_macro_map)
+		// Creating new shared ptr for the copy
+		copy.m_custom_macro_map[pair.first] = std::make_shared<int>(*pair.second);
+
+	m_additional_include_directories = copy.m_additional_include_directories;
+	m_options_macro_map = copy.m_options_macro_map;
+	m_custom_macro_map = copy.m_custom_macro_map;
+
+	return copy;
+}
+
 std::vector<std::string> GPUKernelCompilerOptions::get_all_macros_as_std_vector_string()
 {
 	std::vector<std::string> macros;
@@ -130,14 +156,20 @@ std::vector<std::string> GPUKernelCompilerOptions::get_relevant_macros_as_std_ve
 
 void GPUKernelCompilerOptions::set_macro_value(const std::string& name, int value)
 {
-	if (m_options_macro_map.find(name) != m_options_macro_map.end())
-		// If you could find the name in the options-macro, settings its value
-		*m_options_macro_map[name] = value;
+	if (ALL_MACROS_NAMES.find(name) != ALL_MACROS_NAMES.end())
+	{
+		if (m_options_macro_map.find(name) != m_options_macro_map.end())
+			// If you could find the name in the options-macro, settings its value
+			*m_options_macro_map[name] = value;
+		else
+			// Otherwise, creating it
+			m_options_macro_map[name] = std::make_shared<int>(value);
+	}
 	else
 	{
 		// Otherwise, this is a user defined macro, putting it in the custom macro map
 		if (m_custom_macro_map.find(name) != m_custom_macro_map.end())
-			// Updating the macro if it already exists
+			// Updating the macro's alue if it already exists
 			*m_custom_macro_map[name] = value;
 		else
 			// Creating it otherwise
@@ -221,4 +253,34 @@ const std::unordered_map<std::string, std::shared_ptr<int>>& GPUKernelCompilerOp
 const std::unordered_map<std::string, std::shared_ptr<int>>& GPUKernelCompilerOptions::get_custom_macro_map() const
 {
 	return m_custom_macro_map;
+}
+
+void GPUKernelCompilerOptions::clear()
+{
+	m_custom_macro_map.clear();
+	m_options_macro_map.clear();
+	m_additional_include_directories.clear();
+}
+
+void GPUKernelCompilerOptions::apply_onto(GPUKernelCompilerOptions& other)
+{
+	for (auto& pair : m_options_macro_map)
+	{
+		if (other.m_options_macro_map.find(pair.first) == other.m_options_macro_map.end())
+			// The option doesn't exist, we need to create the shared ptr
+			other.m_options_macro_map[pair.first] = std::make_shared<int>(*pair.second);
+		else
+			// No need to create a shared ptr, we can just copy the value
+			*other.m_options_macro_map[pair.first] = *pair.second;
+	}
+
+	for (auto& pair : m_custom_macro_map)
+	{
+		if (other.m_custom_macro_map.find(pair.first) == other.m_custom_macro_map.end())
+			// The option doesn't exist, we need to create the shared ptr
+			other.m_custom_macro_map[pair.first] = std::make_shared<int>(*pair.second);
+		else
+			// No need to create a shared ptr, we can just copy the value
+			*other.m_custom_macro_map[pair.first] = *pair.second;
+	}
 }

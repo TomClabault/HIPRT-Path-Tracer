@@ -209,13 +209,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, neighbor_reservoir.M);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_GBH
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, neighbor_reservoir,
-			center_pixel_surface, neighbor_index, center_pixel_coords, res, cos_sin_theta_rotation);
+			center_pixel_surface, neighbor_index, center_pixel_coords, res, cos_sin_theta_rotation, random_number_generator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
 		bool update_mc = center_pixel_reservoir.M > 0 && center_pixel_reservoir.UCW > 0.0f;
 
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, neighbor_reservoir, center_pixel_reservoir, 
 			target_function_at_center, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
-			update_mc,/* resampling canonical */ neighbor_index == reused_neighbors_count);
+			update_mc,/* resampling canonical */ neighbor_index == reused_neighbors_count, random_number_generator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
 		bool update_mc = center_pixel_reservoir.M > 0 && center_pixel_reservoir.UCW > 0.0f;
 
@@ -259,10 +259,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
 	normalization_function.get_normalization(render_data,
 		spatial_reuse_output_reservoir, center_pixel_surface,
-		center_pixel_coords, res, cos_sin_theta_rotation, normalization_numerator, normalization_denominator);
+		center_pixel_coords, res, cos_sin_theta_rotation, normalization_numerator, normalization_denominator, random_number_generator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
 	normalization_function.get_normalization(render_data, spatial_reuse_output_reservoir,
-		center_pixel_surface, selected_neighbor, center_pixel_coords, res, cos_sin_theta_rotation, normalization_numerator, normalization_denominator);
+		center_pixel_surface, selected_neighbor, 
+		center_pixel_coords, res, cos_sin_theta_rotation, normalization_numerator, normalization_denominator, random_number_generator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_GBH
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS

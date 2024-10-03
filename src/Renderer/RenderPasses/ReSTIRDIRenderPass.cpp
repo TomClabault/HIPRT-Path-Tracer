@@ -85,6 +85,48 @@ void ReSTIRDIRenderPass::recompile(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi
 		name_to_kernel.second.compile(hiprt_orochi_ctx, func_name_sets);
 }
 
+void ReSTIRDIRenderPass::precompile_kernels(GPUKernelCompilerOptions partial_options, std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets)
+{
+	GPUKernelCompilerOptions options;
+
+	options = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID].get_kernel_options();
+	partial_options.apply_onto(options);
+	ThreadManager::start_thread(ThreadManager::RESTIR_DI_PRECOMPILE_KERNELS, ThreadFunctions::precompile_kernel,
+		ReSTIRDIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID),
+		ReSTIRDIRenderPass::KERNEL_FILES.at(ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID),
+		options, hiprt_orochi_ctx, std::ref(func_name_sets));
+
+	options = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].get_kernel_options();
+	partial_options.apply_onto(options);
+	ThreadManager::start_thread(ThreadManager::RESTIR_DI_PRECOMPILE_KERNELS, ThreadFunctions::precompile_kernel,
+		ReSTIRDIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID),
+		ReSTIRDIRenderPass::KERNEL_FILES.at(ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID),
+		options, hiprt_orochi_ctx, std::ref(func_name_sets));
+
+	options = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID].get_kernel_options();
+	partial_options.apply_onto(options);
+	ThreadManager::start_thread(ThreadManager::RESTIR_DI_PRECOMPILE_KERNELS, ThreadFunctions::precompile_kernel,
+		ReSTIRDIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID),
+		ReSTIRDIRenderPass::KERNEL_FILES.at(ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID),
+		options, hiprt_orochi_ctx, std::ref(func_name_sets));
+
+	options = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID].get_kernel_options();
+	partial_options.apply_onto(options);
+	ThreadManager::start_thread(ThreadManager::RESTIR_DI_PRECOMPILE_KERNELS, ThreadFunctions::precompile_kernel,
+		ReSTIRDIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID),
+		ReSTIRDIRenderPass::KERNEL_FILES.at(ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID),
+		options, hiprt_orochi_ctx, std::ref(func_name_sets));
+
+	options = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID].get_kernel_options();
+	partial_options.apply_onto(options);
+	ThreadManager::start_thread(ThreadManager::RESTIR_DI_PRECOMPILE_KERNELS, ThreadFunctions::precompile_kernel,
+		ReSTIRDIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID),
+		ReSTIRDIRenderPass::KERNEL_FILES.at(ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID),
+		options, hiprt_orochi_ctx, std::ref(func_name_sets));
+
+	ThreadManager::detach_threads(ThreadManager::RESTIR_DI_PRECOMPILE_KERNELS);
+}
+
 void ReSTIRDIRenderPass::update()
 {
 	int2 render_resolution = m_renderer->m_render_resolution;

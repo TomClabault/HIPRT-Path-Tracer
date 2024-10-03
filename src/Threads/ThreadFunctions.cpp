@@ -17,6 +17,13 @@ void ThreadFunctions::compile_kernel_silent(GPUKernel& kernel, std::shared_ptr<H
     kernel.compile_silent(hiprt_ctx, func_name_sets);
 }
 
+void ThreadFunctions::precompile_kernel(const std::string& kernel_function_name, const std::string& kernel_filepath, GPUKernelCompilerOptions options, std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets)
+{
+    GPUKernel kernel(kernel_filepath, kernel_function_name);
+    kernel.get_kernel_options() = options;
+    kernel.compile_silent(hiprt_ctx, func_name_sets);
+}
+
 void ThreadFunctions::load_scene_texture(Scene& parsed_scene, std::string scene_path, const std::vector<std::pair<aiTextureType, std::string>>& tex_paths, const std::vector<int>& material_indices, int thread_index, int nb_threads)
 {
     // Preparing the scene_filepath so that it's ready to be appended with the texture name

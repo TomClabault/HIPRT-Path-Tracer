@@ -29,7 +29,7 @@ namespace HIPPTOrochiUtils
 	 * 
 	 * If 'includes' is nullptr, then no include names will be returned
 	 */
-	bool read_source_code(const std::string& path, std::string& sourceCode, std::vector<std::string>* includes);
+	bool read_source_code(const std::string& path, std::string& sourceCode, std::vector<std::string>* includes = nullptr);
 
 	/**
 	 * Note, the 'additional_include_directories' are expected to be given are relative folder

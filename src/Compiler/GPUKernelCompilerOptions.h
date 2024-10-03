@@ -9,6 +9,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 class GPUKernel;
@@ -39,9 +40,12 @@ public:
 	static const std::string RESTIR_DI_LATER_BOUNCES_SAMPLING_STRATEGY;
 	static const std::string RESTIR_DI_DO_LIGHTS_PRESAMPLING;
 
-	static const std::vector<std::string> ALL_MACROS_NAMES;
+	static const std::unordered_set<std::string> ALL_MACROS_NAMES;
 
 	GPUKernelCompilerOptions();
+	GPUKernelCompilerOptions(const GPUKernelCompilerOptions& other);
+
+	GPUKernelCompilerOptions operator=(const GPUKernelCompilerOptions& other);
 
 	/**
 	 * Gets a list of all the compiler options of the form { "-D InteriorStackStrategy=1", ... }
@@ -124,6 +128,17 @@ public:
 	 * Returns the map that stores the custom macro names with their associated values
 	 */
 	const std::unordered_map<std::string, std::shared_ptr<int>>& get_custom_macro_map() const;
+
+	/**
+	 * Removes all options from this instance
+	 */
+	void clear();
+
+	/**
+	 * Overrides any option value of 'other' with the value of the corresponding option of this instance
+	 * If the option doesn't exist in other, it is added
+	 */
+	void apply_onto(GPUKernelCompilerOptions& other);
 
 private:
 	// Maps the name of the macro to its value. 

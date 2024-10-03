@@ -16,12 +16,13 @@
 
 #include "stb_image_write.h"
 
-// TODOs ReSTIR DI
+// TODOs ongoing
 // - limit distance of BSDF ray for initial sampling (biased but reduces BVH traversal so performance++)
 // - maybe not spatially resample as hard everywhere in the image? Dark regions for example? heuristic to reduce/increase the number of spatial samples per pixel?
 // - disocclusion boost
 // - clamp spatial neighbors out of viewport instead of discarding them? option in Imgui
 // - limit UI speed because it actually uses some resources (maybe Vsync or something)
+// - dock UI to the side
 
 // TODO known bugs / incorectness:
 // - take transmission color into account when direct sampling a light source that is inside a volume

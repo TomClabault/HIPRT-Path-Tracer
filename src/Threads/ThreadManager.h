@@ -46,6 +46,9 @@ public:
 	static std::string RENDERER_UPLOAD_MATERIALS;
 	static std::string RENDERER_UPLOAD_TEXTURES;
 	static std::string RENDERER_UPLOAD_EMISSIVE_TRIANGLES;
+
+	static std::string RENDERER_PRECOMPILE_KERNELS;
+	static std::string RESTIR_DI_PRECOMPILE_KERNELS;
 		
 	static std::string SCENE_TEXTURES_LOADING_THREAD_KEY;
 	static std::string SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES;
@@ -164,6 +167,17 @@ public:
 				}
 			}
 		}
+	}
+
+	static void detach_threads(const std::string& key)
+	{
+		auto find = m_threads_map.find(key);
+		if (find == m_threads_map.end())
+			return;
+
+		for (std::thread& thread : find->second)
+			if (thread.joinable())
+				thread.detach();
 	}
 
 	/**

@@ -49,6 +49,13 @@ public:
 
 	void compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::unordered_set<std::string>& options_excluded_from_synchro, std::vector<hiprtFuncNameSet>& func_name_sets);
 	void recompile(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets);
+	/**
+	 * Precompiles all kernels of this render pass to fill to shader cache in advance.
+	 * 
+	 * Kernels will be compiled with their *current* options but with the options contained
+	 * in 'partial_options' overriding the corresponding options of the kernels
+	 */
+	void precompile_kernels(GPUKernelCompilerOptions partial_options, std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets);
 
 	/**
 	 * Allocates/frees the ReSTIR DI buffers depending on whether or not the renderer
@@ -81,6 +88,8 @@ public:
 	void compute_render_times(std::unordered_map<std::string, float>& times);
 	void update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer> perf_metrics);
 
+	std::map<std::string, GPUKernel> m_kernels;
+
 private:
 	// ReSTIR reservoirs for the initial candidates
 	OrochiBuffer<ReSTIRDIReservoir> initial_candidates_reservoirs;
@@ -107,8 +116,6 @@ private:
 	// Events for timing the cumulated render time of all the spatial reuses passes
 	oroEvent_t spatial_reuse_time_start = nullptr;
 	oroEvent_t spatial_reuse_time_stop = nullptr;
-
-	std::map<std::string, GPUKernel> m_kernels;
 
 	GPURenderer* m_renderer = nullptr;
 	// Quick access to the renderer's render_data
