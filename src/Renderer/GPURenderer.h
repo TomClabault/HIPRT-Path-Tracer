@@ -17,10 +17,11 @@
 #include "Renderer/HardwareAccelerationSupport.h"
 #include "Renderer/OpenImageDenoiser.h"
 #include "Renderer/StatusBuffersValues.h"
-#include "Renderer/ReSTIR/ReSTIR_DI_Reservoirs.h"
+#include "Renderer/RenderPasses/ReSTIRDIRenderPass.h"
 #include "Scene/Camera.h"
 #include "Scene/SceneParser.h"
 #include "UI/ApplicationSettings.h"
+#include "UI/PerformanceMetricsComputer.h"
 
 #include <unordered_map>
 #include <vector>
@@ -33,14 +34,9 @@ class GPURenderer
 public:
 	/**
 	 * These constants here are used to reference kernel objects in the 'm_kernels' map
-	 * or in the 'm_ms_time_per_pass' map
+	 * or in the 'm_render_pass_times' map
 	 */
 	static const std::string CAMERA_RAYS_KERNEL_ID;
-	static const std::string RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID;
-	static const std::string RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID;
-	static const std::string RESTIR_DI_SPATIAL_REUSE_KERNEL_ID;
-	static const std::string RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID;
-	static const std::string RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID;
 	static const std::string PATH_TRACING_KERNEL_ID;
 	static const std::string RAY_VOLUME_STATE_SIZE_KERNEL_ID;
 
@@ -61,7 +57,7 @@ public:
 	 */
 	static const std::unordered_map<std::string, std::string> KERNEL_FILES;
 
-	// Key for indexing m_ms_time_per_pass that contains the times per passes
+	// Key for indexing m_render_pass_times that contains the times per passes
 	// This key is for the time of the whole frame
 	static const std::string FULL_FRAME_TIME_KEY;
 
@@ -174,6 +170,7 @@ public:
 	WorldSettings& get_world_settings();
 	HIPRTRenderData& get_render_data();
 	HIPRTScene& get_hiprt_scene();
+	void invalidate_render_data_buffers();
 
 	Camera& get_camera();
 	RendererEnvmap& get_envmap();
@@ -226,13 +223,19 @@ public:
 
 	std::shared_ptr<GPUKernelCompilerOptions> get_global_compiler_options();
 
-	void recompile_kernels(bool use_cache = true);
+	void recompile_kernels();
 	std::map<std::string, GPUKernel>& get_kernels();
+	oroStream_t get_main_stream();
 
 	void compute_render_pass_times();
-	float get_render_pass_time(const std::string& key);
-	void reset_frame_times();
+	std::unordered_map<std::string, float>& get_render_pass_times();
+	float get_last_frame_time();
+
+	void update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer> perf_metrics);
+
 	void reset(std::shared_ptr<ApplicationSettings> application_settings);
+
+	Xorshift32Generator& rng();
 
 	int2 m_render_resolution = make_int2(0, 0);
 
@@ -268,12 +271,6 @@ private:
 	void internal_update_adaptive_sampling_buffers();
 
 	/**
-	 * Allocates/frees the ReSTIR DI buffers depending on whether or not the renderer
-	 * needs them (whether or not ReSTIR DI is being used basically) respectively.
-	 */
-	void internal_update_restir_di_buffers();
-
-	/**
 	 * Allocates/frees the global buffer for BVH traversal when UseSharedStackBVHTraversal is TRUE
 	 */
 	void internal_update_global_stack_buffer();
@@ -282,25 +279,6 @@ private:
 	// -------- Functions called by the update() method ---------
 
 	void internal_clear_m_status_buffers();
-
-	LightPresamplingParameters configure_ReSTIR_DI_light_presampling_pass();
-	void launch_ReSTIR_DI_presampling_lights_pass();
-
-	void configure_ReSTIR_DI_initial_pass();
-	void launch_ReSTIR_DI_initial_candidates_pass();
-
-	void configure_ReSTIR_DI_temporal_pass();
-	void launch_ReSTIR_DI_temporal_reuse_pass();
-
-	void configure_ReSTIR_DI_spatial_pass(int spatial_pass_index);
-	void launch_ReSTIR_DI_spatial_reuse_passes();
-
-	void configure_ReSTIR_DI_spatiotemporal_pass();
-	void configure_ReSTIR_DI_temporal_pass_for_fused_spatiotemporal();
-	void configure_ReSTIR_DI_spatial_pass_for_fused_spatiotemporal(int spatial_pass_index);
-	void launch_ReSTIR_DI_spatiotemporal_pass();
-
-	void configure_ReSTIR_DI_output_buffer();
 
 	// Properties of the device
 	oroDeviceProp m_device_properties = { .gcnArchName = "" };
@@ -322,7 +300,7 @@ private:
 	// Time taken per each pass of the renderer. 
 	// An additional key GPURenderer::FULL_FRAME_TIME_KEY can be used to index in this map
 	// and retrieve the time for the whole frame
-	std::unordered_map<std::string, float> m_ms_time_per_pass;
+	std::unordered_map<std::string, float> m_render_pass_times;
 
 	// This buffer holds the * sum * of the samples computed
 	// This is an accumulation buffer. This needs to be divided by the
@@ -363,8 +341,7 @@ private:
 	// These values are updated when the update() is called
 	StatusBuffersValues m_status_buffers_values;
 
-	// Various reservoirs used by ReSTIR DI
-	ReSTIR_DI_State m_restir_di_state;
+	ReSTIRDIRenderPass m_restir_di_render_pass;
 
 	// The materials are also kept on the CPU side because we want to be able
 	// to modify them interactively with ImGui

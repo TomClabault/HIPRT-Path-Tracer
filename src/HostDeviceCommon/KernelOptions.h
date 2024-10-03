@@ -125,7 +125,7 @@
  * Possible values (the prefix ISS stands for "Interior Stack Strategy"):
  * 
  *	- ISS_AUTOMATIC
- *		"automatic" strategy as presented in* Ray Tracing Gems 1, 2019
+ *		"automatic" strategy as presented in Ray Tracing Gems 1, 2019
  * 
  *	- ISS_WITH_PRIORITIES
  *		"with priorities" as presented in Simple Nested Dielectrics in Ray Traced Images, Schmidt, 2002

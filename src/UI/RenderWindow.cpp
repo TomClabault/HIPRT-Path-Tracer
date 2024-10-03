@@ -587,7 +587,7 @@ float RenderWindow::compute_GPU_stall_duration()
 {
 	if (m_application_settings->GPU_stall_percentage > 0.0f)
 	{
-		float last_frame_time = m_renderer->get_render_pass_time(GPURenderer::FULL_FRAME_TIME_KEY);
+		float last_frame_time = m_renderer->get_last_frame_time();
 		float stall_duration = last_frame_time * (1.0f / (1.0f - m_application_settings->GPU_stall_percentage / 100.0f)) - last_frame_time;
 
 		return stall_duration;
@@ -783,29 +783,7 @@ void RenderWindow::update_perf_metrics()
 	// Not adding the frame time if we're rendering at low resolution, not relevant
 	m_perf_metrics->add_value(GPURenderer::FULL_FRAME_TIME_KEY, 1000.0f / m_application_state->samples_per_second);
 
-	// Also adding the times of the various passes
-	m_perf_metrics->add_value(GPURenderer::CAMERA_RAYS_KERNEL_ID, m_renderer->get_render_pass_time(GPURenderer::CAMERA_RAYS_KERNEL_ID));
-
-	if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI)
-	{
-		if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING) == KERNEL_OPTION_TRUE)
-			m_perf_metrics->add_value(GPURenderer::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID, m_renderer->get_render_pass_time(GPURenderer::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID));
-		m_perf_metrics->add_value(GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID, m_renderer->get_render_pass_time(GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID));
-
-		if (m_renderer->get_render_settings().restir_di_settings.do_fused_spatiotemporal)
-		{
-			m_perf_metrics->add_value(GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID, m_renderer->get_render_pass_time(GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID));
-			if (m_renderer->get_render_settings().restir_di_settings.spatial_pass.number_of_passes > 1)
-				m_perf_metrics->add_value(GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID, m_renderer->get_render_pass_time(GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID));
-		}
-		else
-		{
-			m_perf_metrics->add_value(GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID, m_renderer->get_render_pass_time(GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID));
-			m_perf_metrics->add_value(GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID, m_renderer->get_render_pass_time(GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID));
-		}
-	}
-
-	m_perf_metrics->add_value(GPURenderer::PATH_TRACING_KERNEL_ID, m_renderer->get_render_pass_time(GPURenderer::PATH_TRACING_KERNEL_ID));
+	m_renderer->update_perf_metrics(m_perf_metrics);
 }
 
 bool RenderWindow::denoise()

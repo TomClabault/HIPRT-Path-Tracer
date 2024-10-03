@@ -55,7 +55,7 @@ void RendererEnvmap::do_animation(GPURenderer* renderer)
 {
 	if (animate)
 	{
-		float renderer_delta_time = renderer->get_render_pass_time(GPURenderer::FULL_FRAME_TIME_KEY);
+		float renderer_delta_time = renderer->get_last_frame_time();
 
 		rotation_X += animation_speed_X / 360.0f / (1000.0f / renderer_delta_time);
 		rotation_Y += animation_speed_Y / 360.0f / (1000.0f / renderer_delta_time);

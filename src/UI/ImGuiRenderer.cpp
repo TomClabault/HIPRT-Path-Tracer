@@ -1927,27 +1927,27 @@ void ImGuiRenderer::draw_performance_metrics_panel()
 	if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI)
 	{
 		if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING) == KERNEL_OPTION_TRUE)
-			draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID, "ReSTIR Light Presampling");
+			draw_perf_metric_specific_panel(m_render_window_perf_metrics, ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID, "ReSTIR Light Presampling");
 
-		draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID, "ReSTIR Initial Candidates");
+		draw_perf_metric_specific_panel(m_render_window_perf_metrics, ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID, "ReSTIR Initial Candidates");
 
 		if (render_settings.restir_di_settings.do_fused_spatiotemporal)
 		{
-			draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID, "ReSTIR Spatio-Temporal Reuse");
+			draw_perf_metric_specific_panel(m_render_window_perf_metrics, ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID, "ReSTIR Spatio-Temporal Reuse");
 			if (render_settings.restir_di_settings.spatial_pass.number_of_passes > 1)
 			{
 				std::string spatial_reuse_text = "ReSTIR " + std::to_string(render_settings.restir_di_settings.spatial_pass.number_of_passes - 1) + " Spatial Reuse";
-				draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID, spatial_reuse_text);
+				draw_perf_metric_specific_panel(m_render_window_perf_metrics, ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID, spatial_reuse_text);
 			}
 		}
 		else
 		{
 			if (render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
-				draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID, "ReSTIR Temporal Reuse"); if (render_settings.restir_di_settings.spatial_pass.number_of_passes > 1)
+				draw_perf_metric_specific_panel(m_render_window_perf_metrics, ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID, "ReSTIR Temporal Reuse"); if (render_settings.restir_di_settings.spatial_pass.number_of_passes > 1)
 			if (render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)
 			{
 				std::string spatial_reuse_text = "ReSTIR " + std::to_string(render_settings.restir_di_settings.spatial_pass.number_of_passes) + " Spatial Reuse";
-				draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID, spatial_reuse_text);
+				draw_perf_metric_specific_panel(m_render_window_perf_metrics, ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID, spatial_reuse_text);
 			}
 		}
 	}
