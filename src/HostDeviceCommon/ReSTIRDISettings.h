@@ -140,11 +140,6 @@ struct ReSTIRDISettings
 	//
 	// A M-cap value between 5 - 30 is usually good
 	int m_cap = 25;
-	// M-cap for glossy surfaces: helps to reduce darkening with cameray ray jittering + temporal reuse 
-	// + accumulation
-	int glossy_m_cap = 3;
-	// Below what roughness is a surface considering glossy and will use the glossy m-cap
-	float glossy_threshold = 0.0f;
 
 	// Whether or not to use confidence weights when resampling neighbors.
 	bool use_confidence_weights = true;

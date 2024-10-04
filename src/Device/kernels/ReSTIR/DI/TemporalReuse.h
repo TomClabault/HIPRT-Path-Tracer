@@ -296,9 +296,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	temporal_reuse_output_reservoir.sanity_check(make_int2(x, y));
 
 	// M-capping so that we don't have to M-cap when reading reservoirs on the next frame
-	if (render_data.render_settings.restir_di_settings.glossy_m_cap > 0 && center_pixel_surface.material.roughness <= render_data.render_settings.restir_di_settings.glossy_threshold)
-		temporal_reuse_output_reservoir.M = hippt::min(temporal_reuse_output_reservoir.M, render_data.render_settings.restir_di_settings.glossy_m_cap);
-	else if (render_data.render_settings.restir_di_settings.m_cap > 0)
+	if (render_data.render_settings.restir_di_settings.m_cap > 0)
 		// M-capping the temporal neighbor if an M-cap has been given
 		temporal_reuse_output_reservoir.M = hippt::min(temporal_reuse_output_reservoir.M, render_data.render_settings.restir_di_settings.m_cap);
 

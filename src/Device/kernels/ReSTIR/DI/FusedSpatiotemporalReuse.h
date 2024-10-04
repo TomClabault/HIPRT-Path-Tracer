@@ -573,9 +573,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 #endif
 
 	// M-capping so that we don't have to M-cap when reading reservoirs on the next frame
-	if (render_data.render_settings.restir_di_settings.glossy_m_cap > 0 && center_pixel_surface.material.roughness <= render_data.render_settings.restir_di_settings.glossy_threshold)
-		spatiotemporal_output_reservoir.M = hippt::min(spatiotemporal_output_reservoir.M, render_data.render_settings.restir_di_settings.glossy_m_cap);
-	else if (render_data.render_settings.restir_di_settings.m_cap > 0)
+	if (render_data.render_settings.restir_di_settings.m_cap > 0)
 		// M-capping the temporal neighbor if an M-cap has been given
 		spatiotemporal_output_reservoir.M = hippt::min(spatiotemporal_output_reservoir.M, render_data.render_settings.restir_di_settings.m_cap);
 

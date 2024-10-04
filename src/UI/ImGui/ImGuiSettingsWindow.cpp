@@ -709,20 +709,6 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 								m_render_window->set_render_dirty(true);
 						}
 
-						if (ImGui::SliderInt("Glossy M-cap", &render_settings.restir_di_settings.glossy_m_cap, 0, 16))
-						{
-							render_settings.restir_di_settings.glossy_m_cap = std::max(0, render_settings.restir_di_settings.glossy_m_cap);
-							if (render_settings.accumulate)
-								m_render_window->set_render_dirty(true);
-						}
-
-						ImGuiRenderer::show_help_marker("M-cap for glossy surfaces. Glossy surfaces tend to darken when jittering "
-							"camera rays, using temporal reuse and accumulating. Using a lower M-cap helps.");
-
-						if (ImGui::SliderFloat("Glossy Threshold", &render_settings.restir_di_settings.glossy_threshold, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp))
-							m_render_window->set_render_dirty(true);
-						ImGuiRenderer::show_help_marker("Below what roughness a surface is considered glossy and will use the glossy M-cap instead of the \"standard\" M-cap");
-
 						ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 						if (ImGui::Checkbox("Use Final Visibility", &render_settings.restir_di_settings.do_final_shading_visibility))

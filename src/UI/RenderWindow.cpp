@@ -69,6 +69,7 @@
 // - only update the display every so often if accumulating because displaying is expensive (especially at high resolution) on AMD drivers at least
 // - reload shaders button
 // - pack ray payload
+// - pack HDR as color as 9/9/9/5 RGBE? https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/MiniEngine/Core/Shaders/PixelPacking_RGBE.hlsli
 // - presample lights per each tile of pixels the same as for ReSTIR DI and use that for second bounces sampling?
 // - next event estimation++?
 // - Exploiting Visibility Correlation in Direct Illumination
