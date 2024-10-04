@@ -17,7 +17,7 @@ struct AlphaTestingPayload
 	Xorshift32Generator* random_number_generator;
 };
 
-HIPRT_DEVICE HIPRT_INLINE bool alpha_testing(const hiprtRay& ray, const void* data, void* payld, const hiprtHit& hit)
+HIPRT_DEVICE HIPRT_INLINE bool alpha_testing(const hiprtRay&, const void*, void* payld, const hiprtHit& hit)
 {
 	AlphaTestingPayload* payload = reinterpret_cast<AlphaTestingPayload*>(payld);
 	if (!payload->render_data->render_settings.do_alpha_testing)

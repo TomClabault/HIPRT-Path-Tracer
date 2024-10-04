@@ -156,6 +156,8 @@ struct ReSTIRDIReservoir
             std::cerr << "Negative reservoir sample.target_function at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << sample.target_function << std::endl;
             Utils::debugbreak();
         }
+#else
+        (void)pixel_coords;
 #endif
     }
 

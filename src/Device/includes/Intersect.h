@@ -17,7 +17,7 @@
 #include "HostDeviceCommon/Math.h"
 
 #if SharedStackBVHTraversalSize > 0
-__shared__ int shared_stack_cache[SharedStackBVHTraversalSize * SharedStackBVHTraversalBlockSize];
+__shared__ static int shared_stack_cache[SharedStackBVHTraversalSize * SharedStackBVHTraversalBlockSize];
 #endif
 
 /* References:

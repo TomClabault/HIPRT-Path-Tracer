@@ -38,8 +38,7 @@ struct ReSTIRDITemporalNormalizationWeight {};
 template<>
 struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_M>
 {
-	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
-		const ReSTIRDIReservoir& final_reservoir,
+	HIPRT_HOST_DEVICE void get_normalization(const ReSTIRDIReservoir& final_reservoir,
 		int initial_candidates_M, int temporal_neighbor_M,
 		float& out_normalization_nume, float& out_normalization_denom)
 	{

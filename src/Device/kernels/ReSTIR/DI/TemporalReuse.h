@@ -120,9 +120,15 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	}
 
 	ReSTIRDITemporalResamplingMISWeight<ReSTIR_DI_BiasCorrectionWeights> mis_weight_function;
+
+
+#if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
+	// Only used with MIS-like weight
+	// 
 	// Will keep the index of the neighbor that has been selected by resampling. 
 	// Either 0 or 1 for the temporal resampling pass
 	int selected_neighbor = 0;
+#endif
 
 	// /* ------------------------------- */
 	// Resampling the temporal neighbor
@@ -190,7 +196,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 			initial_candidates_reservoir, temporal_neighbor_surface, target_function_at_center, TEMPORAL_NEIGHBOR_ID, random_number_generator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
 		float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, temporal_neighbor_reservoir,
-			initial_candidates_reservoir, temporal_neighbor_surface, center_pixel_surface, target_function_at_center, TEMPORAL_NEIGHBOR_ID, random_number_generator);
+			initial_candidates_reservoir, temporal_neighbor_surface, target_function_at_center, TEMPORAL_NEIGHBOR_ID, random_number_generator);
 #else
 #error "Unsupported bias correction mode"
 #endif
@@ -198,7 +204,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 		// Combining as in Alg. 6 of the paper
 		if (temporal_reuse_output_reservoir.combine_with(temporal_neighbor_reservoir, temporal_neighbor_resampling_mis_weight, target_function_at_center, jacobian_determinant, random_number_generator))
 		{
+#if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
+			// Only used with MIS-like weight
 			selected_neighbor = TEMPORAL_NEIGHBOR_ID;
+#endif
 
 			// Using ReSTIR_DI_BiasCorrectionUseVisibility here because that's what we use in the resampling target function
 #if ReSTIR_DI_BiasCorrectionUseVisibility == KERNEL_OPTION_FALSE
@@ -234,14 +243,17 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 		initial_candidates_reservoir, temporal_neighbor_surface, /* unused */ 0.0f, INITIAL_CANDIDATES_ID, random_number_generator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
 	float initial_candidates_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, temporal_neighbor_reservoir,
-		initial_candidates_reservoir, temporal_neighbor_surface, center_pixel_surface, /* unused */ 0.0f, INITIAL_CANDIDATES_ID, random_number_generator);
+		initial_candidates_reservoir, temporal_neighbor_surface, /* unused */ 0.0f, INITIAL_CANDIDATES_ID, random_number_generator);
 #else
 #error "Unsupported bias correction mode"
 #endif
 
 	if (temporal_reuse_output_reservoir.combine_with(initial_candidates_reservoir, initial_candidates_mis_weight, initial_candidates_reservoir.sample.target_function, /* jacobian is 1 when reusing at the exact same spot */ 1.0f, random_number_generator))
 	{
+#if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
+		// Only used with MIS-like weight
 		selected_neighbor = INITIAL_CANDIDATES_ID;
+#endif
 
 		// Using ReSTIR_DI_BiasCorrectionUseVisibility here because that's what we use in the resampling target function
 #if ReSTIR_DI_BiasCorrectionUseVisibility == KERNEL_OPTION_FALSE
@@ -260,7 +272,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 
 	ReSTIRDITemporalNormalizationWeight<ReSTIR_DI_BiasCorrectionWeights> normalization_function;
 #if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_M
-	normalization_function.get_normalization(render_data, temporal_reuse_output_reservoir, 
+	normalization_function.get_normalization(temporal_reuse_output_reservoir, 
 		initial_candidates_reservoir.M, temporal_neighbor_reservoir.M, normalization_numerator, normalization_denominator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
 	normalization_function.get_normalization(render_data, temporal_reuse_output_reservoir,

@@ -98,7 +98,6 @@ struct ReSTIRDISpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
 		bool update_mc, bool resampling_canonical,
 		Xorshift32Generator& random_number_generator)
 	{
-		int reused_neighbors_count = render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count;
 		if (!resampling_canonical)
 		{
 			// Resampling a neighbor
@@ -174,7 +173,6 @@ struct ReSTIRDISpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
 		bool update_mc, bool resampling_canonical,
 		Xorshift32Generator& random_number_generator)
 	{
-		int reused_neighbors_count = render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count;
 		if (!resampling_canonical)
 		{
 			// Resampling a neighbor

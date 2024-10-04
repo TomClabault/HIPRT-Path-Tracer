@@ -35,6 +35,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void debug_set_final_color(const HIPRTRenderData&
 
 HIPRT_HOST_DEVICE HIPRT_INLINE bool check_for_negative_color(ColorRGB32F ray_color, int x, int y, int sample)
 {
+    (void)x;
+    (void)y;
+    (void)sample;
+
     if (ray_color.r < 0 || ray_color.g < 0 || ray_color.b < 0)
     {
 #ifndef __KERNELCC__
@@ -49,6 +53,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool check_for_negative_color(ColorRGB32F ray_col
 
 HIPRT_HOST_DEVICE HIPRT_INLINE bool check_for_nan(ColorRGB32F ray_color, int x, int y, int sample)
 {
+    (void)x;
+    (void)y;
+    (void)sample;
+
     if (hippt::isNaN(ray_color.r) || hippt::isNaN(ray_color.g) || hippt::isNaN(ray_color.b))
     {
 #ifndef __KERNELCC__

@@ -49,7 +49,9 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, const GPUKern
 	compiler_options.push_back("-Wno-float-equal");
 	compiler_options.push_back("-Wno-sign-compare");
 	compiler_options.push_back("-Wno-padded");
-	compiler_options.push_back("-Wno-sign-conversion");*/
+	compiler_options.push_back("-Wno-sign-conversion");
+	compiler_options.push_back("-Wno-gnu-zero-variadic-macro-arguments");
+	compiler_options.push_back("-Wno-missing-variable-declarations");*/
 
 	// Locking because neither NVIDIA or AMD can compile kernels on multiple threads so we may as well
 	// lock here to have better control on when to compile a kernel as well as have proper compilation times

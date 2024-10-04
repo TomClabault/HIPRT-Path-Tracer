@@ -28,6 +28,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function(const HI
 template <>
 HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_OPTION_FALSE>(const HIPRTRenderData& render_data, const ReSTIRDISample& sample, const ReSTIRDISurface& surface, Xorshift32Generator& random_number_generator)
 {
+	(void)random_number_generator; //Unused
+
 	if (sample.emissive_triangle_index == -1 && !(sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE))
 		// Not an envmap sample and no emissive triangle sampled
 		return 0.0f;

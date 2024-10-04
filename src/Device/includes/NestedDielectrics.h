@@ -284,7 +284,7 @@ struct InteriorStackImpl<ISS_WITH_PRIORITIES>
 
 	// Stack position is pointing at the last valid entry.
 	// Entry 0 is always present and represent air basically
-	char stack_position = 0;
+	int stack_position = 0;
 };
 
 #endif

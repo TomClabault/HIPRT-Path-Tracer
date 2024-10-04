@@ -13,6 +13,9 @@
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F lambertian_brdf_eval(const SimplifiedRendererMaterial& material, const float3& view_direction, const float3& surface_normal, const float3& to_light_direction, float& pdf)
 {
+    // Unused but still in the list of parameters for BSDF eval function signature consistency
+    (void)view_direction;
+
     pdf = 0.0f;
 
     float cos_theta = hippt::dot(to_light_direction, surface_normal);

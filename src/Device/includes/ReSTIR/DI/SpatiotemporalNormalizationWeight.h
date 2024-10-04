@@ -70,8 +70,6 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVE
 			else
 				neighbor_surface = get_pixel_surface(render_data, neighbor_pixel_index, render_data.render_settings.use_prev_frame_g_buffer());
 
-			ReSTIRDIReservoir neighbor_reservoir = render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs[neighbor_pixel_index];
-
 			if (neighbor == reused_neighbors_count)
 				out_normalization_denom += initial_candidates_reservoir.M;
 			else

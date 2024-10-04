@@ -63,13 +63,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void envmap_cdf_search(const WorldSettings& world
     int y_index = y;
     while (lower < upper)
     {
-        int x_index = (lower + upper) / 2;
-        int env_map_index = y_index * world_settings.envmap_width + x_index;
+        int x_idx = (lower + upper) / 2;
+        int env_map_index = y_index * world_settings.envmap_width + x_idx;
 
         if (value < world_settings.envmap_cdf[env_map_index])
-            upper = x_index;
+            upper = x_idx;
         else
-            lower = x_index + 1;
+            lower = x_idx + 1;
     }
     x = hippt::max(hippt::min(lower, world_settings.envmap_width), 0u);
 }
@@ -94,8 +94,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F envmap_sample(const WorldSettings& wo
 #endif
 
     // Converting to UV coordinates
-    float u = (float)x / world_settings.envmap_width;
-    float v = (float)y / world_settings.envmap_height;
+    float u = static_cast<float>(x) / world_settings.envmap_width;
+    float v = static_cast<float>(y) / world_settings.envmap_height;
 
     // Converting to polar coordinates
     float phi = u * 2.0f * M_PI;
@@ -241,6 +241,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map(const HIPRTRen
     if (bounce == 0)
         // The envmap lighting is handled by ReSTIR DI on the first bounce
         return ColorRGB32F(0.0f);
+#else
+    // Unused parameter
+    (void)bounce;
 #endif
 
 #if EnvmapSamplingStrategy == ESS_NO_SAMPLING

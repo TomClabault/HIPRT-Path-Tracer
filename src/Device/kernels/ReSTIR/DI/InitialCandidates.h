@@ -426,13 +426,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const HIPRTRenderData& render_data, const int2& pixel_coords, const RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
 {
-    // Pushing the intersection point outside the surface (if we're already outside)
-    // or inside the surface (if we're inside the surface)
-    // We'll use that intersection point as the origin of our shadow rays
-    bool inside_surface = false;// hippt::dot(view_direction, closest_hit_info.geometric_normal) < 0;
-    float inside_surface_multiplier = inside_surface ? -1.0f : 1.0f;
-    float3 evaluated_point = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f * inside_surface_multiplier;
-
     // If we're rendering at low resolution, only doing 1 candidate of each
     // for better interactive framerates
     int initial_nb_light_cand = render_data.render_settings.restir_di_settings.initial_candidates.number_of_initial_light_candidates;

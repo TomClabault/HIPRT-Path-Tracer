@@ -184,8 +184,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 
 	float2 cos_sin_theta_rotation = make_float2(cos(rotation_theta), sin(rotation_theta));
 
+#if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
+	// Only used with MIS-like weight
+	// 
 	// Will keep the index of the neighbor that has been selected by resampling. 
 	int selected_neighbor = 0;
+#endif
+
 	int neighbor_heuristics_cache = 0;
 	int valid_neighbors_count = 0;
 	int valid_neighbors_M_sum = 0;
@@ -281,7 +286,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 			// Combining as in Alg. 6 of the paper
 			if (spatiotemporal_output_reservoir.combine_with(temporal_neighbor_reservoir, temporal_neighbor_resampling_mis_weight, target_function_at_center, jacobian_determinant, random_number_generator))
 			{
+#if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
+				// Only used with MIS-like weight
 				selected_neighbor = TEMPORAL_NEIGHBOR_ID;
+#endif
 
 				// Using ReSTIR_DI_BiasCorrectionUseVisibility here because that's what we use in the resampling target function
 #if ReSTIR_DI_BiasCorrectionUseVisibility == KERNEL_OPTION_FALSE
@@ -457,8 +465,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 		// Combining as in Alg. 6 of the paper
 		if (spatiotemporal_output_reservoir.combine_with(neighbor_reservoir, mis_weight, target_function_at_center, jacobian_determinant, random_number_generator))
 		{
+#if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
+			// Only used with MIS-like weight
+			// 
 			// + 1 here because we've already resampled the temporal neighbor so we need to account for that
 			selected_neighbor = spatial_neighbor_index + 1;
+#endif
 
 			if (do_neighbor_target_function_visibility)
 				// If we resampled the neighbor with visibility, then we are sure that we can set the flag

@@ -32,6 +32,7 @@
 // - when using a BSDF override, transmissive materials keep their dielectric priorities and this can mess up shadow rays and intersections in general if the BSDF used for the override doesn't support transmissive materials
 // - is DisneySheen correct?
 // - threadmanager: what if we start a thread with a dependency A on a thread that itself has a dependency B? we're going to try join dependency A even if thread with dependency on B hasn't even started yet --> joining nothing --> immediate return --> should have waited for the dependency but hasn't
+// - background kernel compilation: may crash if we close the app while some thread is doing IO operations to read from the macros used by a kernel for example
 
 
 // TODO Code Organization:
