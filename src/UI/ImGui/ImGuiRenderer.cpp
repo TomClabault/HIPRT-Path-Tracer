@@ -84,22 +84,16 @@ void ImGuiRenderer::draw_interface()
 
 void ImGuiRenderer::rescale_ui()
 {
+	ImGuiIO& io = ImGui::GetIO();
 	ImGuiViewport* viewport = ImGui::GetMainViewport();
 	float windowDpiScale = viewport->DpiScale;
 
-	if (windowDpiScale > 1.0f)
-	{
-		ImGuiIO& io = ImGui::GetIO();
-
-		// Scaling by the DPI -10% as judged more pleasing
-		io.FontGlobalScale = windowDpiScale * 1.08f;
-	}
+	// Scaling by the DPI -10% as judged more pleasing
+	io.FontGlobalScale = windowDpiScale;
 }
 
 void ImGuiRenderer::draw_dockspace()
 {
-	static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_PassthruCentralNode;
-
 	// We are using the ImGuiWindowFlags_NoDocking flag to make the parent window not dockable into,
 	// because it would be confusing to have two docking targets within each others.
 	ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDocking;
@@ -110,28 +104,17 @@ void ImGuiRenderer::draw_dockspace()
 	ImGui::SetNextWindowViewport(viewport->ID);
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-	window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
-	window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
-
-
-	// When using ImGuiDockNodeFlags_PassthruCentralNode, DockSpace() will render our background and handle the pass-thru hole, so we ask Begin() to not render a background.
-	if (dockspace_flags & ImGuiDockNodeFlags_PassthruCentralNode)
-		window_flags |= ImGuiWindowFlags_NoBackground;
-
-	// Important: note that we proceed even if Begin() returns false (aka window is collapsed).
-	// This is because we want to keep our DockSpace() active. If a DockSpace() is inactive, 
-	// all active windows docked into it will lose their parent and become undocked.
-	// We cannot preserve the docking relationship between an active window and an inactive docking, otherwise 
-	// any change of dockspace/settings would lead to windows being stuck in limbo and never being visible.
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+	window_flags |= ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration;
+
 	ImGui::Begin("HIPRT-Path-Tracer", nullptr, window_flags);
-	ImGui::PopStyleVar();
-	ImGui::PopStyleVar(2);
 
 	// DockSpace
 	ImGuiIO& io = ImGui::GetIO();
 	if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable)
 	{
+		static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_PassthruCentralNode;
+
 		ImGuiID dockspace_id = ImGui::GetID("DockSpace");
 		ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags);
 
@@ -144,7 +127,8 @@ void ImGuiRenderer::draw_dockspace()
 			ImGui::DockBuilderAddNode(dockspace_id, dockspace_flags | ImGuiDockNodeFlags_DockSpace);
 			ImGui::DockBuilderSetNodeSize(dockspace_id, viewport->Size);
 
-			auto dock_id_left = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.3f, nullptr, &dockspace_id);
+			int renderer_width = m_render_window->get_renderer()->m_render_resolution.x;
+			auto dock_id_left = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, ImGuiSettingsWindow::BASE_SIZE / renderer_width, nullptr, &dockspace_id);
 
 			// we now dock our windows into the docking node we made above
 			ImGui::DockBuilderDockWindow(ImGuiSettingsWindow::TITLE, dock_id_left);
@@ -153,6 +137,7 @@ void ImGuiRenderer::draw_dockspace()
 		}
 	}
 
+	ImGui::PopStyleVar(3);
 	ImGui::End();
 }
 
@@ -166,12 +151,7 @@ void ImGuiRenderer::draw_render_window()
 	m_imgui_render_window.draw();
 }
 
-int ImGuiRenderer::get_render_viewport_width()
+ImGuiRenderWindow& ImGuiRenderer::get_imgui_render_window()
 {
-	return m_imgui_render_window.get_width();
-}
-
-int ImGuiRenderer::get_render_viewport_height()
-{
-	return m_imgui_render_window.get_height();
+	return m_imgui_render_window;
 }

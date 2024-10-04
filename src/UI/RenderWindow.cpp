@@ -7,8 +7,8 @@
 #include "Threads/ThreadFunctions.h"
 #include "Threads/ThreadManager.h"
 #include "UI/RenderWindow.h"
-#include "UI/LinuxRenderWindowMouseInteractor.h"
-#include "UI/WindowsRenderWindowMouseInteractor.h"
+#include "UI/Interaction/LinuxRenderWindowMouseInteractor.h"
+#include "UI/Interaction/WindowsRenderWindowMouseInteractor.h"
 #include "Utils/Utils.h"
 
 #include <functional>
@@ -251,6 +251,9 @@ void APIENTRY RenderWindow::gl_debug_output_callback(GLenum source,
 
 RenderWindow::RenderWindow(int width, int height, std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx) : m_viewport_width(width), m_viewport_height(height)
 {
+	// Adding the size of the settings panel on the left
+	width = width + ImGuiSettingsWindow::BASE_SIZE;
+
 	init_glfw(width, height);
 	init_gl(width, height);
 	ImGuiRenderer::init_imgui(m_glfw_window);
@@ -619,8 +622,6 @@ std::shared_ptr<ImGuiRenderer> RenderWindow::get_imgui_renderer()
 void RenderWindow::run()
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
-
-	uint64_t last_second_start = glfwGetTimerValue();
 
 	uint64_t time_frequency = glfwGetTimerFrequency();
 	uint64_t frame_start_time = 0;

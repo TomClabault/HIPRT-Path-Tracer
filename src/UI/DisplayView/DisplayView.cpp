@@ -1,4 +1,9 @@
-#include "UI/DisplayView.h"
+/*
+ * Copyright 2024 Tom Clabault. GNU GPL3 license.
+ * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
+ */
+
+#include "UI/DisplayView/DisplayView.h"
 
 DisplayView::DisplayView(DisplayViewType display_view_type, std::shared_ptr<OpenGLProgram> display_program)
 {

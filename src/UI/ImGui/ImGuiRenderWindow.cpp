@@ -6,7 +6,7 @@
 #include "UI/ImGui/ImGuiRenderWindow.h"
 #include "UI/RenderWindow.h"
 
-const char* ImGuiRenderWindow::TITLE = "RenderWindow";
+const char* ImGuiRenderWindow::TITLE = "Viewport";
 
 void ImGuiRenderWindow::set_render_window(RenderWindow* render_window)
 {
@@ -15,28 +15,30 @@ void ImGuiRenderWindow::set_render_window(RenderWindow* render_window)
 
 void ImGuiRenderWindow::draw()
 {
-	ImGuiWindowFlags window_flags = 0;
-	window_flags |= ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_::ImGuiWindowFlags_NoInputs;
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 
-	ImGui::Begin(ImGuiRenderWindow::TITLE, nullptr, window_flags);
+	ImGui::Begin(ImGuiRenderWindow::TITLE, nullptr, ImGuiWindowFlags_NoMove);
 
-	ImGui::Image((void*)(intptr_t)m_render_window->get_display_view_system()->m_fbo_texture, ImGui::GetWindowSize(), ImVec2(0, 1), ImVec2(1, 0));
+	// GetWindowContentRegion() to get the size without the title bar and other decorations.
+	ImVec2 content_min = ImGui::GetWindowContentRegionMin();
+	ImVec2 content_max = ImGui::GetWindowContentRegionMax();
+	ImVec2 current_size = ImVec2(content_max.x - content_min.x, content_max.y - content_min.y);
 
-	ImVec2 current_size = ImGui::GetWindowSize();
+	ImGui::Image((void*)(intptr_t)m_render_window->get_display_view_system()->m_fbo_texture, current_size, ImVec2(0, 1), ImVec2(1, 0));
+
 	if (current_size.x != m_current_size.x || current_size.y != m_current_size.y)
-		m_render_window->resize(current_size.x, current_size.y);
+			m_render_window->resize(current_size.x, current_size.y);
 
 	m_current_size = current_size;
+	m_is_hovered = ImGui::IsWindowHovered();
 
+	ImGui::PopStyleVar(3);
 	ImGui::End();
 }
 
-int ImGuiRenderWindow::get_width()
+bool ImGuiRenderWindow::is_hovered() const
 {
-	return static_cast<int>(m_current_size.x);
-}
-
-int ImGuiRenderWindow::get_height()
-{
-	return static_cast<int>(m_current_size.y);
+	return m_is_hovered;
 }

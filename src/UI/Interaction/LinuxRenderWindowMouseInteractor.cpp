@@ -3,7 +3,7 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#include "UI/LinuxRenderWindowMouseInteractor.h"
+#include "UI/Interaction/LinuxRenderWindowMouseInteractor.h"
 #include "UI/RenderWindow.h"
 
 #include "GLFW/glfw3.h"
@@ -17,7 +17,10 @@ void LinuxRenderWindowMouseInteractor::glfw_mouse_button_callback(GLFWwindow* wi
 
     std::shared_ptr<RenderWindowMouseInteractor> interactor_instance = render_window->get_mouse_interactor();
 
-    bool imgui_wants_mouse = ImGui::GetIO().WantCaptureMouse;
+    // If it is the render window that is hovered, we're going to move the camera so we take
+    // the inputs
+    bool render_window_hovered = render_window->get_imgui_renderer()->get_imgui_render_window().is_hovered();
+    bool imgui_wants_mouse = ImGui::GetIO().WantCaptureMouse && !render_window_hovered;
 
     switch (button)
     {
@@ -42,7 +45,14 @@ void LinuxRenderWindowMouseInteractor::glfw_mouse_button_callback(GLFWwindow* wi
 void LinuxRenderWindowMouseInteractor::glfw_mouse_cursor_callback(GLFWwindow* window, double xpos, double ypos)
 {
     ImGuiIO& io = ImGui::GetIO();
-    if (!io.WantCaptureMouse)
+    void* user_pointer = glfwGetWindowUserPointer(window);
+
+    // If it is the render window that is hovered, we're going to move the camera so we take
+    // the inputs
+    RenderWindow* render_window = reinterpret_cast<RenderWindow*>(user_pointer);
+    bool render_window_hovered = render_window->get_imgui_renderer()->get_imgui_render_window().is_hovered();
+    bool imgui_want_mouse = io.WantCaptureMouse && !render_window_hovered;
+    if (!imgui_want_mouse)
     {
         RenderWindow* render_window = reinterpret_cast<RenderWindow*>(glfwGetWindowUserPointer(window));
 

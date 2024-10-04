@@ -4,7 +4,7 @@
  */
 
 #include "UI/ApplicationSettings.h"
-#include "UI/DisplayViewSystem.h"
+#include "UI/DisplayView/DisplayViewSystem.h"
 #include "UI/RenderWindow.h"
 #include "Utils/Utils.h"
 

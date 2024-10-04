@@ -8,8 +8,8 @@
 
 #include "Renderer/GPURenderer.h"
 #include "OpenGL/OpenGLInteropBuffer.h"
-#include "UI/DisplayView.h"
-#include "UI/DisplayViewEnum.h"
+#include "UI/DisplayView/DisplayView.h"
+#include "UI/DisplayView/DisplayViewEnum.h"
 
 #include <unordered_map>
 

@@ -13,6 +13,7 @@
 #include <iostream>
 
 const char* ImGuiSettingsWindow::TITLE = "Settings";
+const float ImGuiSettingsWindow::BASE_SIZE = 700.0f;
 
 void ImGuiSettingsWindow::set_render_window(RenderWindow* render_window)
 {
@@ -26,7 +27,10 @@ void ImGuiSettingsWindow::set_render_window(RenderWindow* render_window)
 
 void ImGuiSettingsWindow::draw()
 {
-	ImGui::Begin(ImGuiSettingsWindow::TITLE, nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f, 0.0f));
+	ImGui::Begin(ImGuiSettingsWindow::TITLE, nullptr, ImGuiWindowFlags_NoDecoration);
 
 	draw_header();
 	draw_render_settings_panel();
@@ -41,6 +45,8 @@ void ImGuiSettingsWindow::draw()
 	draw_debug_panel();
 
 	m_current_size = ImGui::GetWindowSize();
+
+	ImGui::PopStyleVar(3);
 	ImGui::End();
 }
 

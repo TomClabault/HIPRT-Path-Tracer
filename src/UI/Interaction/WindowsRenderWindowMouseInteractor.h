@@ -6,7 +6,7 @@
 #ifndef WINDOWS_RENDER_WINDOW_MOUSE_INTERACTOR_H
 #define WINDOWS_RENDER_WINDOW_MOUSE_INTERACTOR_H
 
-#include "UI/RenderWindowMouseInteractor.h"
+#include "UI/Interaction/RenderWindowMouseInteractor.h"
 
 #include <utility>
 

@@ -7,7 +7,7 @@
 #define OPENGL_INTEROP_BUFFER_H
 
 #include "HIPRT-Orochi/HIPRTOrochiUtils.h"
-#include "UI/DisplayTextureType.h"
+#include "UI/DisplayView/DisplayTextureType.h"
 #include "Utils/Utils.h"
 
 #include "GL/glew.h"

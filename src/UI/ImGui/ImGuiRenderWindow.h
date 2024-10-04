@@ -19,13 +19,13 @@ public:
 
 	void draw();
 
-	int get_width();
-	int get_height();
+	bool is_hovered() const;
 
 private:
 	RenderWindow* m_render_window;
 
 	ImVec2 m_current_size;
+	bool m_is_hovered = false;
 };
 
 #endif

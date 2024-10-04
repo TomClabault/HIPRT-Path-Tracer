@@ -4,7 +4,7 @@
  */
 
 #include "UI/RenderWindow.h"
-#include "UI/RenderWindowKeyboardInteractor.h"
+#include "UI/Interaction/RenderWindowKeyboardInteractor.h"
 
 void RenderWindowKeyboardInteractor::glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {

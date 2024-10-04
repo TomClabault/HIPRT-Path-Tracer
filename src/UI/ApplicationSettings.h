@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-#include "UI/DisplayViewEnum.h"
+#include "UI/DisplayView/DisplayViewEnum.h"
 
 struct ApplicationSettings
 {

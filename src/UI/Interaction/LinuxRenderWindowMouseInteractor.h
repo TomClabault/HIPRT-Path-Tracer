@@ -6,7 +6,7 @@
 #ifndef LINUX_RENDER_WINDOW_MOUSE_INTERACTOR_H
 #define LINUX_RENDER_WINDOW_MOUSE_INTERACTOR_H
 
-#include "UI/RenderWindowMouseInteractor.h"
+#include "UI/Interaction/RenderWindowMouseInteractor.h"
 
 struct GLFWwindow;
 

@@ -19,6 +19,7 @@ class ImGuiSettingsWindow
 {
 public:
 	static const char* TITLE;
+	static const float BASE_SIZE;
 
 	void set_render_window(RenderWindow* render_window);
 

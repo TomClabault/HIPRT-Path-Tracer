@@ -44,8 +44,7 @@ public:
 	void draw_settings_window();
 	void draw_render_window();
 
-	int get_render_viewport_width();
-	int get_render_viewport_height();
+	ImGuiRenderWindow& get_imgui_render_window();
 
 private:
 	ImGuiSettingsWindow m_imgui_settings_window;

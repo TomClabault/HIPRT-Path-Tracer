@@ -7,8 +7,8 @@
 #define DISPLAY_VIEW_H
 
 #include "OpenGL/OpenGLProgram.h"
-#include "UI/DisplayTextureType.h"
-#include "UI/DisplayViewEnum.h"
+#include "UI/DisplayView/DisplayTextureType.h"
+#include "UI/DisplayView/DisplayViewEnum.h"
 
 #include <memory>
 

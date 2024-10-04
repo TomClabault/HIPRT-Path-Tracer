@@ -3,7 +3,7 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#include "UI/WindowsRenderWindowMouseInteractor.h"
+#include "UI/Interaction/WindowsRenderWindowMouseInteractor.h"
 #include "UI/RenderWindow.h"
 
 #include "GLFW/glfw3.h"
@@ -17,7 +17,10 @@ void WindowsRenderWindowMouseInteractor::glfw_mouse_button_callback(GLFWwindow* 
 	std::shared_ptr<RenderWindowMouseInteractor> interactor_instance = render_window->get_mouse_interactor();
 	std::shared_ptr<WindowsRenderWindowMouseInteractor> windows_interactor = std::dynamic_pointer_cast<WindowsRenderWindowMouseInteractor>(interactor_instance);
 
-	bool imgui_wants_mouse = ImGui::GetIO().WantCaptureMouse;
+	// If it is the render window that is hovered, we're going to move the camera so we take
+	// the inputs
+	bool render_window_hovered = render_window->get_imgui_renderer()->get_imgui_render_window().is_hovered();
+	bool imgui_wants_mouse = ImGui::GetIO().WantCaptureMouse && !render_window_hovered;
 
 	switch (button)
 	{
@@ -54,7 +57,12 @@ void WindowsRenderWindowMouseInteractor::glfw_mouse_cursor_callback(GLFWwindow* 
 	std::shared_ptr<WindowsRenderWindowMouseInteractor> windows_interactor = std::dynamic_pointer_cast<WindowsRenderWindowMouseInteractor>(interactor_instance);
 
 	ImGuiIO& io = ImGui::GetIO();
-	if (!io.WantCaptureMouse)
+
+	// If it is the render window that is hovered, we're going to move the camera so we take
+	// the inputs
+	bool render_window_hovered = render_window->get_imgui_renderer()->get_imgui_render_window().is_hovered();
+	bool imgui_want_mouse = io.WantCaptureMouse && !render_window_hovered;
+	if (!imgui_want_mouse)
 	{
 		if (windows_interactor->m_just_pressed)
 		{
