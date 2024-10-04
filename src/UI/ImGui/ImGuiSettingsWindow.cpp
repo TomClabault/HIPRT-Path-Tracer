@@ -3,46 +3,18 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#include "Compiler/GPUKernelCompilerOptions.h"
+#include "HostDeviceCommon/RenderSettings.h"
+#include "Renderer/GPURenderer.h"
 #include "Threads/ThreadManager.h"
-#include "UI/ImGuiRenderer.h"
+#include "UI/ImGui/ImGuiRenderer.h"
+#include "UI/ImGui/ImGuiSettingsWindow.h"
 #include "UI/RenderWindow.h"
 
-#include <chrono>
-#include <unordered_map>
+#include <iostream>
 
-ImGuiRenderer::ImGuiRenderer()
-{
-	ImGuiViewport* viewport = ImGui::GetMainViewport();
-	float windowDpiScale = viewport->DpiScale;
-	if (windowDpiScale > 1.0f)
-		ImGui::GetStyle().ScaleAllSizes(windowDpiScale);
-}
+const char* ImGuiSettingsWindow::TITLE = "Settings";
 
-void ImGuiRenderer::add_tooltip(const std::string& tooltip_text, ImGuiHoveredFlags flags)
-{
-	if (ImGui::IsItemHovered(flags))
-		ImGuiRenderer::wrapping_tooltip(tooltip_text);
-}
-
-void ImGuiRenderer::wrapping_tooltip(const std::string& text)
-{
-	ImGui::SetNextWindowSize(ImVec2(ImGui::GetFontSize() * 32.0f, 0.0f));
-	ImGui::BeginTooltip();
-	ImGui::PushTextWrapPos(0.0f);
-	ImGui::Text("%s", text.c_str());
-	ImGui::PopTextWrapPos();
-	ImGui::EndTooltip();
-}
-
-void ImGuiRenderer::show_help_marker(const std::string& text)
-{
-	ImGui::SameLine();
-	ImGui::TextDisabled("(?)");
-	add_tooltip(text);
-}
-
-void ImGuiRenderer::set_render_window(RenderWindow* render_window)
+void ImGuiSettingsWindow::set_render_window(RenderWindow* render_window)
 {
 	m_render_window = render_window;
 
@@ -50,17 +22,31 @@ void ImGuiRenderer::set_render_window(RenderWindow* render_window)
 	m_renderer = render_window->get_renderer();
 	m_render_window_denoiser = render_window->get_denoiser();
 	m_render_window_perf_metrics = m_render_window->get_performance_metrics();
-
 }
 
-void ImGuiRenderer::draw_imgui_interface()
+void ImGuiSettingsWindow::draw()
+{
+	ImGui::Begin(ImGuiSettingsWindow::TITLE, nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove);
+
+	draw_header();
+	draw_render_settings_panel();
+	draw_camera_panel();
+	draw_environment_panel();
+	draw_sampling_panel();
+	draw_objects_panel();
+	draw_denoiser_panel();
+	draw_post_process_panel();
+	draw_performance_settings_panel();
+	draw_performance_metrics_panel();
+	draw_debug_panel();
+
+	m_current_size = ImGui::GetWindowSize();
+	ImGui::End();
+}
+
+void ImGuiSettingsWindow::draw_header()
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
-
-	ImGuiIO& io = ImGui::GetIO();
-	// ImGui::ShowDemoWindow();
-
-	ImGui::Begin("Settings");
 
 	if (render_settings.accumulate)
 		ImGui::Text("Render time: %.3fs", m_render_window->get_current_render_time() / 1000.0f);
@@ -121,25 +107,9 @@ void ImGuiRenderer::draw_imgui_interface()
 	ImGui::Separator();
 
 	ImGui::PushItemWidth(16 * ImGui::GetFontSize());
-
-	draw_render_settings_panel();
-	draw_camera_panel();
-	draw_environment_panel();
-	draw_sampling_panel();
-	draw_objects_panel();
-	draw_denoiser_panel();
-	draw_post_process_panel();
-	draw_performance_settings_panel();
-	draw_performance_metrics_panel();
-	draw_debug_panel();
-
-	ImGui::End();
-
-	ImGui::Render();
-	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
-void ImGuiRenderer::draw_render_settings_panel()
+void ImGuiSettingsWindow::draw_render_settings_panel()
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 
@@ -397,7 +367,7 @@ void ImGuiRenderer::draw_render_settings_panel()
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 }
 
-void ImGuiRenderer::apply_performance_preset(ImGuiRendererPerformancePreset performance_preset)
+void ImGuiSettingsWindow::apply_performance_preset(ImGuiRendererPerformancePreset performance_preset)
 {
 	switch (performance_preset)
 	{
@@ -485,7 +455,7 @@ void ImGuiRenderer::apply_performance_preset(ImGuiRendererPerformancePreset perf
 	}
 }
 
-void ImGuiRenderer::draw_camera_panel()
+void ImGuiSettingsWindow::draw_camera_panel()
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 	Camera& camera = m_renderer->get_camera();
@@ -512,11 +482,11 @@ void ImGuiRenderer::draw_camera_panel()
 		ImGui::BeginDisabled(!render_settings.accumulate);
 		ImGui::Checkbox("Render low resolution when interacting", &render_settings.allow_render_low_resolution);
 		if (!render_settings.accumulate)
-			add_tooltip("Cannot render at low resolution when not accumulating. If you want to render at "
+			ImGuiRenderer::add_tooltip("Cannot render at low resolution when not accumulating. If you want to render at "
 				"a lower resolution, you can use the resolution scale in \"Render Settings\"for that.");
 		ImGui::SliderInt("Render low resolution downscale", &render_settings.render_low_resolution_scaling, 1, 8);
 		if (!render_settings.accumulate)
-			add_tooltip("Cannot render at low resolution when not accumulating. If you want to render at "
+			ImGuiRenderer::add_tooltip("Cannot render at low resolution when not accumulating. If you want to render at "
 				"a lower resolution, you can use the resolution scale in \"Render Settings\"for that.");
 		ImGui::EndDisabled();
 
@@ -525,7 +495,7 @@ void ImGuiRenderer::draw_camera_panel()
 	}
 }
 
-void ImGuiRenderer::draw_environment_panel()
+void ImGuiSettingsWindow::draw_environment_panel()
 {
 	bool render_made_piggy = false;
 
@@ -610,7 +580,7 @@ void ImGuiRenderer::draw_environment_panel()
 		m_render_window->set_render_dirty(true);
 }
 
-void ImGuiRenderer::draw_sampling_panel()
+void ImGuiSettingsWindow::draw_sampling_panel()
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
@@ -639,7 +609,7 @@ void ImGuiRenderer::draw_sampling_panel()
 			if (ImGui::Checkbox("Enable adaptive sampling", (bool*)&render_settings.enable_adaptive_sampling))
 				m_render_window->set_render_dirty(true);
 			if (!render_settings.accumulate)
-				add_tooltip("Cannot use adaptive sampling when accumulation is not on.");
+				ImGuiRenderer::add_tooltip("Cannot use adaptive sampling when accumulation is not on.");
 
 			float adaptive_sampling_noise_threshold_before = render_settings.adaptive_sampling_noise_threshold;
 			ImGui::BeginDisabled(!render_settings.enable_adaptive_sampling);
@@ -1276,7 +1246,7 @@ void ImGuiRenderer::draw_sampling_panel()
 							break;
 						}
 					}
-						
+
 					ImGui::TreePop();
 
 					break;
@@ -1300,7 +1270,7 @@ void ImGuiRenderer::draw_sampling_panel()
 			{
 				ThreadManager::start_thread("RecomputeEnvmapSamplingStructure", [this]() {
 					m_renderer->get_envmap().recompute_sampling_data_structure(m_renderer.get());
-				});
+					});
 
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
@@ -1330,7 +1300,7 @@ void ImGuiRenderer::draw_sampling_panel()
 	}
 }
 
-void ImGuiRenderer::display_ReSTIR_DI_bias_status(std::shared_ptr<GPUKernelCompilerOptions> kernel_options)
+void ImGuiSettingsWindow::display_ReSTIR_DI_bias_status(std::shared_ptr<GPUKernelCompilerOptions> kernel_options)
 {
 	ImGui::Text("Status: "); ImGui::SameLine();
 
@@ -1449,7 +1419,7 @@ void ImGuiRenderer::display_ReSTIR_DI_bias_status(std::shared_ptr<GPUKernelCompi
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 }
 
-void ImGuiRenderer::draw_objects_panel()
+void ImGuiSettingsWindow::draw_objects_panel()
 {
 	if (!ImGui::CollapsingHeader("Objects"))
 		return;
@@ -1618,7 +1588,7 @@ void ImGuiRenderer::draw_objects_panel()
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 }
 
-void ImGuiRenderer::draw_denoiser_panel()
+void ImGuiSettingsWindow::draw_denoiser_panel()
 {
 	if (!ImGui::CollapsingHeader("Denoiser"))
 		return;
@@ -1688,7 +1658,7 @@ void ImGuiRenderer::draw_denoiser_panel()
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 }
 
-void ImGuiRenderer::draw_post_process_panel()
+void ImGuiSettingsWindow::draw_post_process_panel()
 {
 	if (!ImGui::CollapsingHeader("Post-processing"))
 		return;
@@ -1702,7 +1672,7 @@ void ImGuiRenderer::draw_post_process_panel()
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 }
 
-void ImGuiRenderer::draw_performance_settings_panel()
+void ImGuiSettingsWindow::draw_performance_settings_panel()
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 
@@ -1900,7 +1870,7 @@ void ImGuiRenderer::draw_performance_settings_panel()
 	ImGui::TreePop();
 }
 
-void ImGuiRenderer::draw_performance_metrics_panel()
+void ImGuiSettingsWindow::draw_performance_metrics_panel()
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 
@@ -1956,11 +1926,11 @@ void ImGuiRenderer::draw_performance_metrics_panel()
 		{
 			if (render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
 				draw_perf_metric_specific_panel(m_render_window_perf_metrics, ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID, "ReSTIR Temporal Reuse"); if (render_settings.restir_di_settings.spatial_pass.number_of_passes > 1)
-			if (render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)
-			{
-				std::string spatial_reuse_text = "ReSTIR " + std::to_string(render_settings.restir_di_settings.spatial_pass.number_of_passes) + " Spatial Reuse";
-				draw_perf_metric_specific_panel(m_render_window_perf_metrics, ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID, spatial_reuse_text);
-			}
+				if (render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)
+				{
+					std::string spatial_reuse_text = "ReSTIR " + std::to_string(render_settings.restir_di_settings.spatial_pass.number_of_passes) + " Spatial Reuse";
+					draw_perf_metric_specific_panel(m_render_window_perf_metrics, ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID, spatial_reuse_text);
+				}
 		}
 	}
 	draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::PATH_TRACING_KERNEL_ID, "Path Tracing Pass");
@@ -1972,7 +1942,7 @@ void ImGuiRenderer::draw_performance_metrics_panel()
 	ImGui::TreePop();
 }
 
-void ImGuiRenderer::draw_perf_metric_specific_panel(std::shared_ptr<PerformanceMetricsComputer> perf_metrics, const std::string& perf_metrics_key, const std::string& label)
+void ImGuiSettingsWindow::draw_perf_metric_specific_panel(std::shared_ptr<PerformanceMetricsComputer> perf_metrics, const std::string& perf_metrics_key, const std::string& label)
 {
 	float variance, min, max;
 	variance = perf_metrics->get_variance(perf_metrics_key);
@@ -2040,7 +2010,7 @@ void ImGuiRenderer::draw_perf_metric_specific_panel(std::shared_ptr<PerformanceM
 }
 
 template <class... Args>
-std::string ImGuiRenderer::format_perf_metrics_tooltip_line(const std::string& label, const std::string& suffix, const std::string& longest_header_for_padding, const std::string& formatter_after_header, const Args& ...args)
+std::string ImGuiSettingsWindow::format_perf_metrics_tooltip_line(const std::string& label, const std::string& suffix, const std::string& longest_header_for_padding, const std::string& formatter_after_header, const Args& ...args)
 {
 	// Creating the formatter for automatically left-padding the header of the lines to the longer line (which is "(min / max)")
 	std::string header_padding_formatter = "%-" + std::to_string(label.length() + longest_header_for_padding.length()) + "s";
@@ -2054,7 +2024,7 @@ std::string ImGuiRenderer::format_perf_metrics_tooltip_line(const std::string& l
 	return std::string(line_char);
 }
 
-void ImGuiRenderer::draw_debug_panel()
+void ImGuiSettingsWindow::draw_debug_panel()
 {
 	if (!ImGui::CollapsingHeader("Debug"))
 		return;
@@ -2065,18 +2035,4 @@ void ImGuiRenderer::draw_debug_panel()
 
 	ImGui::TreePush("Debug tree");
 	ImGui::TreePop();
-}
-
-void ImGuiRenderer::rescale_ui()
-{
-	ImGuiViewport* viewport = ImGui::GetMainViewport();
-	float windowDpiScale = viewport->DpiScale;
-
-	if (windowDpiScale > 1.0f)
-	{
-		ImGuiIO& io = ImGui::GetIO();
-
-		// Scaling by the DPI -10% as judged more pleasing
-		io.FontGlobalScale = windowDpiScale * 1.08f;
-	}
 }

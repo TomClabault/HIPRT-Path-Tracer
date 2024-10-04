@@ -28,6 +28,9 @@ public:
 	DisplayViewSystem(std::shared_ptr<GPURenderer> renderer, RenderWindow* render_window);
 	~DisplayViewSystem();
 
+	void configure_framebuffer();
+	void resize_framebuffer();
+
 	DisplayViewType get_current_display_view_type();
 	const DisplayView* get_current_display_view() const;
 	std::shared_ptr<OpenGLProgram> get_active_display_program();
@@ -74,7 +77,6 @@ public:
 	 */
 	void update_current_display_program_uniforms();
 	void upload_relevant_buffers_to_texture();
-
 
 private:
 	template <typename T>
@@ -138,6 +140,7 @@ private:
 	// The first texture is used by the display program to draw on the fullscreen quad.
 	// Also used as the first blending texture when a blending display view is selected
 	std::pair<GLuint, DisplayTextureType> m_display_texture_1 = { -1, DisplayTextureType::UNINITIALIZED };
+
 	// Second display texture.
 	// Used as the second texture for blending when a blending display view is selected
 	// (used by the denoiser blending for example)
@@ -147,6 +150,13 @@ private:
 	// quad vertices in our vertex shader but we still need an empty/fake
 	// VAO for NVIDIA drivers to avoid errors
 	GLuint m_vao;
+
+	// Framebuffer we're drawing. We're not directly drawing to the back buffer because we
+	// want ImGui to do the drawing in one of its ImGui window
+	GLuint m_framebuffer;
+	public:
+	GLuint m_fbo_texture;
+	private:
 
 	std::shared_ptr<GPURenderer> m_renderer = nullptr;
 	RenderWindow* m_render_window = nullptr;

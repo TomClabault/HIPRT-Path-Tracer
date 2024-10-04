@@ -62,6 +62,8 @@ DisplayViewSystem::DisplayViewSystem(std::shared_ptr<GPURenderer> renderer, Rend
 	DisplayViewType default_display_view_type;
 	default_display_view_type = m_render_window->get_application_settings()->enable_denoising ? DisplayViewType::DENOISED_BLEND : DisplayViewType::DEFAULT;
 	queue_display_view_change(default_display_view_type);
+
+	configure_framebuffer();
 }
 
 DisplayViewSystem::~DisplayViewSystem()
@@ -69,6 +71,55 @@ DisplayViewSystem::~DisplayViewSystem()
 	glDeleteTextures(1, &m_display_texture_1.first);
 	glDeleteTextures(1, &m_display_texture_2.first);
 	glDeleteVertexArrays(1, &m_vao);
+}
+
+void DisplayViewSystem::configure_framebuffer()
+{
+	glCreateFramebuffers(1, &m_framebuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, m_framebuffer);
+
+	// Creating the texture for drawing to the FBO
+	glGenTextures(1, &m_fbo_texture);
+	glBindTexture(GL_TEXTURE_2D, m_fbo_texture);
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, m_render_window->get_width(), m_render_window->get_height(), 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+
+	// GL_NEAREST because we don't want to linearly interpolate between those beautiful pixels, THAT'S DISGUSTING!
+	// We want maximum monte carlo noise crispiness!
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_fbo_texture, 0);
+
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE)
+	{
+		// Procedes with a victory dance: Dance dance dance dance
+		return;
+	}
+	else
+	{
+		std::cerr << "Incomplete framebuffer in DisplayViewSystem!" << std::endl;
+
+		Utils::debugbreak();
+		std::exit(1);
+	}
+}
+
+void DisplayViewSystem::resize_framebuffer()
+{
+	glDeleteTextures(1, &m_fbo_texture);
+	glGenTextures(1, &m_fbo_texture);
+	glBindTexture(GL_TEXTURE_2D, m_fbo_texture);
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, m_render_window->get_width(), m_render_window->get_height(), 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+
+	// GL_NEAREST because we don't want to linearly interpolate between those beautiful pixels, THAT'S DISGUSTING!
+	// We want maximum monte carlo noise crispiness!
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, m_framebuffer);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_fbo_texture, 0);
 }
 
 bool DisplayViewSystem::update_selected_display_view()
@@ -106,6 +157,8 @@ bool DisplayViewSystem::current_display_view_needs_adaptive_sampling_buffers()
 
 void DisplayViewSystem::display()
 {
+	glBindFramebuffer(GL_FRAMEBUFFER, m_framebuffer);
+
 	// Binding an empty VAO here (empty because we're hardcoding our full-screen quad vertices
 	// in our vertex shader) because this is required on NVIDIA drivers
 	glBindVertexArray(m_vao);
@@ -308,6 +361,7 @@ bool DisplayViewSystem::get_render_low_resolution() const
 
 void DisplayViewSystem::resize(int new_render_width, int new_render_height)
 {
+	resize_framebuffer();
 	internal_recreate_display_texture(m_display_texture_1, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1, m_display_texture_1.second, new_render_width, new_render_height);
 	internal_recreate_display_texture(m_display_texture_2, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_2, m_display_texture_2.second, new_render_width, new_render_height);
 }

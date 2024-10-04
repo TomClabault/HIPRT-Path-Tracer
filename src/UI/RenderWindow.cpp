@@ -22,7 +22,7 @@
 // - disocclusion boost
 // - clamp spatial neighbors out of viewport instead of discarding them? option in Imgui
 // - limit UI speed because it actually uses some resources (maybe Vsync or something)
-// - dock UI to the side
+// - smarter shader cache (hints to avoid using all kernel options when compiling a kernel? We know that Camera ray doesn't care about direct lighting strategy for example)
 
 // TODO known bugs / incorectness:
 // - take transmission color into account when direct sampling a light source that is inside a volume
@@ -44,11 +44,12 @@
 // - make a function get_camera_ray that handles pixel jittering
 // - use simplified material everywhere in the BSDF etc... because we don't need the texture indices of the full material at this point
 // - we don't need the full HitInfo 'closest_hit_info' structure everywhere, only the inter point and the two normals for the most part so maybe have a simplified structure 
-// - only the material index can be stored in the pixel states of the wavefront path tracer, don't need to store the whole material
+// - only the material index can be stored in the pixel states of the wavefront path tracer, don't need to store the whole material (is that correct though? Because then we need to re-evaluate the textures at the hit point)
 // - use 3x3 matrix for envmap matrices
 // - free denoiser buffers if not using denoising
 // - refactor ImGuiRenderer in several sub classes that each draw a panel
 // - refactor closestHitTypes with something like 'hiprtGeomTraversalClosestHitType<UseSharedStackBVHTraversal>' to avoid the big #if #elif blocks
+// glViewport() to avoid managing the resolution scaling in the display shaders ourselves?
 
 
 
@@ -183,7 +184,6 @@ void glfw_window_resized_callback(GLFWwindow* window, int width, int height)
 	int new_width_pixels, new_height_pixels;
 	glfwGetFramebufferSize(window, &new_width_pixels, &new_height_pixels);
 
-
 	if (new_width_pixels == 0 || new_height_pixels == 0)
 		// This probably means that the application has been minimized, we're not doing anything then
 		return;
@@ -191,7 +191,7 @@ void glfw_window_resized_callback(GLFWwindow* window, int width, int height)
 	{
 		// We've stored a pointer to the RenderWindow in the "WindowUserPointer" of glfw
 		RenderWindow* render_window = reinterpret_cast<RenderWindow*>(glfwGetWindowUserPointer(window));
-		render_window->resize_frame(width, height);
+		render_window->resize(width, height);
 	}
 }
 
@@ -251,7 +251,7 @@ RenderWindow::RenderWindow(int width, int height, std::shared_ptr<HIPRTOrochiCtx
 {
 	init_glfw(width, height);
 	init_gl(width, height);
-	init_imgui();
+	ImGuiRenderer::init_imgui(m_glfw_window);
 
 	m_renderer = std::make_shared<GPURenderer>(hiprt_oro_ctx);
 
@@ -356,20 +356,7 @@ void RenderWindow::init_gl(int width, int height)
 	}
 }
 
-void RenderWindow::init_imgui()
-{
-	// Setting ImGui up
-	IMGUI_CHECKVERSION();
-	ImGui::CreateContext();
-	ImGuiIO& io = ImGui::GetIO();
-	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-
-	ImGui_ImplGlfw_InitForOpenGL(m_glfw_window, true);
-	ImGui_ImplOpenGL3_Init();
-}
-
-void RenderWindow::resize_frame(int pixels_width, int pixels_height)
+void RenderWindow::resize(int pixels_width, int pixels_height)
 {
 	if (pixels_width == m_viewport_width && pixels_height == m_viewport_height)
 	{
@@ -642,18 +629,13 @@ void RenderWindow::run()
 		glfwPollEvents();
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		ImGui_ImplOpenGL3_NewFrame();
-		ImGui_ImplGlfw_NewFrame();
-		ImGui::NewFrame();
-
 		m_application_state->render_dirty |= is_interacting();
 		m_application_state->render_dirty |= m_application_state->interacting_last_frame != is_interacting();
 
 		render();
 		m_display_view_system->display();
 		
-		m_imgui_renderer->rescale_ui();
-		m_imgui_renderer->draw_imgui_interface();
+		m_imgui_renderer->draw_interface();
 
 		glfwSwapBuffers(m_glfw_window);
 

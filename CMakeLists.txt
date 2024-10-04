@@ -48,7 +48,16 @@ link_directories(${CMAKE_SOURCE_DIR}/${GLEW_LIB_DIR})
 file(GLOB_RECURSE SOURCE_FILES src/*.cpp src/*.h)
 file(GLOB_RECURSE OPENGL_HEADERS thirdparties/opengl/include/*.h)
 file(GLOB_RECURSE STBI_HEADERS thirdparties/stbi/*.h)
-file(GLOB_RECURSE IMGUI_FILES thirdparties/imgui/*.h thirdparties/imgui/*.cpp)
+# Selecting only what we need from the whole ImGui submodule
+file(GLOB_RECURSE IMGUI_FILES thirdparties/imgui/imgui.h
+	thirdparties/imgui/imgui.cpp
+	thirdparties/imgui/imgui_demo.cpp
+	thirdparties/imgui/imgui_draw.cpp
+	thirdparties/imgui/imgui_tables.cpp
+	thirdparties/imgui/imgui_widgets.cpp
+	thirdparties/imgui/backends/imgui_impl_glfw.cpp
+	thirdparties/imgui/backends/imgui_impl_opengl3.cpp)
+
 file(GLOB_RECURSE DEVICE_SOURCES src/Device/*.h)
 file(GLOB_RECURSE GLSL_SHADERS src/Shaders/*.frag src/Shaders/*.vert)
 file(GLOB_RECURSE HIPRT_HEADERS ${HIPRT_HEADERS_DIR}/*.h)
@@ -91,6 +100,7 @@ target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/opengl/include"
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/stbi/")
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/glm/")
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/imgui/")
+target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/imgui/backends")
 target_include_directories(HIPRTPathTracer PRIVATE ${HIPRT_HEADERS_DIR}/..)
 target_include_directories(HIPRTPathTracer PRIVATE ${OROCHI_SOURCES_DIR}/..)
 target_include_directories(HIPRTPathTracer PRIVATE "${EXTERNAL_ASSIMP_INSTALL_LOCATION}/include/")

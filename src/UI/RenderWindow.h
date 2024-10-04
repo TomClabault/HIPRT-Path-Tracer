@@ -14,7 +14,7 @@
 #include "UI/DisplayTextureType.h"
 #include "UI/DisplayViewEnum.h"
 #include "UI/DisplayViewSystem.h"
-#include "UI/ImGuiRenderer.h"
+#include "UI/ImGui/ImGuiRenderer.h"
 #include "UI/PerformanceMetricsComputer.h"
 #include "UI/RenderWindowKeyboardInteractor.h"
 #include "UI/RenderWindowMouseInteractor.h"
@@ -31,10 +31,9 @@ public:
 
 	void init_glfw(int width, int height);
 	void init_gl(int width, int height);
-	void init_imgui();
 
 	static void APIENTRY gl_debug_output_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam);
-	void resize_frame(int pixels_width, int pixels_height);
+	void resize(int pixels_width, int pixels_height);
 	void change_resolution_scaling(float new_scaling);
 
 	int get_width();
