@@ -44,8 +44,7 @@ namespace HIPPTOrochiUtils
 		unsigned int num_geom_types, unsigned int num_ray_types,
 		bool use_compiler_cache,
 		hiprtFuncNameSet* func_name_set = nullptr,
-		const std::string& additional_cache_key = "",
-		bool print_warnings = false);
+		const std::string& additional_cache_key = "");
 }
 
 void orochi_check_error(oroError res, const char* file, uint32_t line);
