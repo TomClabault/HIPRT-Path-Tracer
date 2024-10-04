@@ -631,31 +631,38 @@ void GPURenderer::precompile_direct_light_sampling_kernels()
 {
 	for (int init_target_function_vis = 0; init_target_function_vis <= 1; init_target_function_vis++)
 	{
-		for (int direct_light_sampling_strategy = LSS_NO_DIRECT_LIGHT_SAMPLING; direct_light_sampling_strategy <= LSS_RESTIR_DI - 1; direct_light_sampling_strategy++)
+		for (int use_envmap_mis = 0; use_envmap_mis <= 1; use_envmap_mis++)
 		{
-			// Starting from what the renderer is currently using to ease our life a little
-			// (partials_options like USE_HWI, BVH_TRAVERSAL_STACK_SIZE, ... would have to be copied
-			// manually otherwise so just copying everything here is handy)
-			GPUKernelCompilerOptions partials_options;
-			// Clearing the default state of the partials_options added by the constructor
-			partials_options.clear();
-			partials_options.set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, direct_light_sampling_strategy);
-
-			precompile_kernel(GPURenderer::CAMERA_RAYS_KERNEL_ID, partials_options);
-			precompile_kernel(GPURenderer::PATH_TRACING_KERNEL_ID, partials_options);
-			m_restir_di_render_pass.precompile_kernels(partials_options, m_hiprt_orochi_ctx, m_func_name_sets);
-
-			if (direct_light_sampling_strategy == LSS_RIS_BSDF_AND_LIGHT)
+			for (int envmap_sampling_strategy = ESS_NO_SAMPLING; envmap_sampling_strategy < ESS_ALIAS_TABLE; envmap_sampling_strategy++)
 			{
-				// Additional compilation for RIS with the visibility in the target function
-				// for the value we haven't compiled yet
-				partials_options.set_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, 1 - m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION));
+				for (int direct_light_sampling_strategy = LSS_NO_DIRECT_LIGHT_SAMPLING; direct_light_sampling_strategy <= LSS_RESTIR_DI - 1; direct_light_sampling_strategy++)
+				{
+					// Starting from what the renderer is currently using to ease our life a little
+					// (partials_options like USE_HWI, BVH_TRAVERSAL_STACK_SIZE, ... would have to be copied
+					// manually otherwise so just copying everything here is handy)
+					GPUKernelCompilerOptions partials_options;
+					// Clearing the default state of the partials_options added by the constructor
+					partials_options.clear();
+					partials_options.set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, direct_light_sampling_strategy);
+					partials_options.set_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY, envmap_sampling_strategy);
+					partials_options.set_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BSDF_MIS, use_envmap_mis);
 
-				precompile_kernel(GPURenderer::CAMERA_RAYS_KERNEL_ID, partials_options);
-				precompile_kernel(GPURenderer::PATH_TRACING_KERNEL_ID, partials_options);
-				m_restir_di_render_pass.precompile_kernels(partials_options, m_hiprt_orochi_ctx, m_func_name_sets);
+					precompile_kernel(GPURenderer::CAMERA_RAYS_KERNEL_ID, partials_options);
+					precompile_kernel(GPURenderer::PATH_TRACING_KERNEL_ID, partials_options);
+					m_restir_di_render_pass.precompile_kernels(partials_options, m_hiprt_orochi_ctx, m_func_name_sets);
+
+					if (direct_light_sampling_strategy == LSS_RIS_BSDF_AND_LIGHT)
+					{
+						// Additional compilation for RIS with the visibility in the target function
+						// for the value we haven't compiled yet
+						partials_options.set_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, 1 - m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION));
+
+						precompile_kernel(GPURenderer::CAMERA_RAYS_KERNEL_ID, partials_options);
+						precompile_kernel(GPURenderer::PATH_TRACING_KERNEL_ID, partials_options);
+						m_restir_di_render_pass.precompile_kernels(partials_options, m_hiprt_orochi_ctx, m_func_name_sets);
+					}
+				}
 			}
-
 		}
 	}
 }
@@ -666,28 +673,32 @@ void GPURenderer::precompile_ReSTIR_DI_kernels()
 	{
 		for (int spatial_target_function_vis = 0; spatial_target_function_vis <= 1; spatial_target_function_vis++)
 		{
-			for (int visibility_bias_correction = 0; visibility_bias_correction <= 1; visibility_bias_correction++)
+			for (int do_light_presampling = 0; do_light_presampling <= 1; do_light_presampling++)
 			{
-				for (int do_visibility_reuse = 0; do_visibility_reuse <= 1; do_visibility_reuse++)
+				for (int visibility_bias_correction = 0; visibility_bias_correction <= 1; visibility_bias_correction++)
 				{
-					for (int bias_correction_weight = RESTIR_DI_BIAS_CORRECTION_1_OVER_M; bias_correction_weight <= RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE; bias_correction_weight++)
+					for (int do_visibility_reuse = 0; do_visibility_reuse <= 1; do_visibility_reuse++)
 					{
-						// Starting from what the renderer is currently using to ease our life a little
-						// (partials_options like USE_HWI, BVH_TRAVERSAL_STACK_SIZE, ... would have to be copied
-						// manually otherwise so just copying everything here is handy)
-						GPUKernelCompilerOptions partials_options;
-						// Clearing the default state of the partials_options added by the constructor
-						partials_options.clear();
-						partials_options.set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY, init_target_function_vis);
-						partials_options.set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_TARGET_FUNCTION_VISIBILITY, spatial_target_function_vis);
-						partials_options.set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE, do_visibility_reuse);
-						partials_options.set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY, visibility_bias_correction);
-						partials_options.set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS, bias_correction_weight);
-						partials_options.set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_RESTIR_DI);
+						for (int bias_correction_weight = RESTIR_DI_BIAS_CORRECTION_1_OVER_M; bias_correction_weight <= RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE; bias_correction_weight++)
+						{
+							// Starting from what the renderer is currently using to ease our life a little
+							// (partials_options like USE_HWI, BVH_TRAVERSAL_STACK_SIZE, ... would have to be copied
+							// manually otherwise so just copying everything here is handy)
+							GPUKernelCompilerOptions partials_options;
+							// Clearing the default state of the partials_options added by the constructor
+							partials_options.clear();
+							partials_options.set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY, init_target_function_vis);
+							partials_options.set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_TARGET_FUNCTION_VISIBILITY, spatial_target_function_vis);
+							partials_options.set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE, do_visibility_reuse);
+							partials_options.set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY, visibility_bias_correction);
+							partials_options.set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS, bias_correction_weight);
+							partials_options.set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING, do_light_presampling);
+							partials_options.set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_RESTIR_DI);
 
-						precompile_kernel(GPURenderer::CAMERA_RAYS_KERNEL_ID, partials_options);
-						precompile_kernel(GPURenderer::PATH_TRACING_KERNEL_ID, partials_options);
-						m_restir_di_render_pass.precompile_kernels(partials_options, m_hiprt_orochi_ctx, m_func_name_sets);
+							precompile_kernel(GPURenderer::CAMERA_RAYS_KERNEL_ID, partials_options);
+							precompile_kernel(GPURenderer::PATH_TRACING_KERNEL_ID, partials_options);
+							m_restir_di_render_pass.precompile_kernels(partials_options, m_hiprt_orochi_ctx, m_func_name_sets);
+						}
 					}
 				}
 			}
