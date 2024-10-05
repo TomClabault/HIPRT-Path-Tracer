@@ -276,7 +276,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool check_neighbor_similarity_heuristics(const H
  * to spatially reuse from
  *
  * 'neighbor_number' is in [0, neighbor_reuse_count]
- * 'neighbor_reuse_count' is in [1, ReSTIR_DI_Settings.spatial_reuse_neighbor_count]
+ * 'neighbor_reuse_count' is in [1, ReSTIR_DI_Settings.reuse_neighbor_count]
  * 'neighbor_reuse_radius' is the radius of the disk within which the neighbors are sampled
  * 'center_pixel_coords' is the coordinates of the center pixel that is currently
  *		doing the resampling of its neighbors. Neighbors will be spatially sampled
@@ -378,12 +378,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int get_spatial_neighbor_pixel_index(const HIPRTR
 HIPRT_HOST_DEVICE HIPRT_INLINE void count_valid_spatial_neighbors(const HIPRTRenderData& render_data, const ReSTIRDISurface& center_pixel_surface, int2 center_pixel_coords, int2 res, float2 cos_sin_theta_rotation, int& out_valid_neighbor_count, int& out_valid_neighbor_M_sum, int& out_neighbor_heuristics_cache)
 {
 	int center_pixel_index = center_pixel_coords.x + center_pixel_coords.y * res.x;
-	int reused_neighbors_count = render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count;
+	int reused_neighbors_count = render_data.render_settings.restir_di_settings.spatial_pass.reuse_neighbor_count;
 
 	out_valid_neighbor_count = 0;
 	for (int neighbor_index = 0; neighbor_index < reused_neighbors_count; neighbor_index++)
 	{
-		int neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, neighbor_index, reused_neighbors_count, render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_radius, center_pixel_coords, res, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
+		int neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, neighbor_index, reused_neighbors_count, render_data.render_settings.restir_di_settings.spatial_pass.reuse_radius, center_pixel_coords, res, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
 		if (neighbor_pixel_index == -1)
 			// Neighbor out of the viewport / invalid
 			continue;

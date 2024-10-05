@@ -53,13 +53,12 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 - Interactive ImGui interface
 	- Asynchronous interface to guarantee smooth UI interactions even with heavy path tracing kernels
 - Interactive first-person camera
-- Different frame-buffer visualization (visualize the adaptive sampling map, the denoiser normals / albedo, ...)
+- Different frame-buffer visualization (visualize the adaptive sampling heatmap, the denoiser normals / albedo, ...)
 ### Other features
 - Use of the [\[ASSIMP\]](https://github.com/assimp/assimp) library to support [many](https://github.com/assimp/assimp/blob/master/doc/Fileformats.md) scene file formats.
-- Optimized application startup time with:
-	- Multithreaded texture loading
-	- Asynchronous path tracing kernel compilation
-	- Shader cache to avoid recompiling kernels unnecessarily
+- Multithreaded scene parsing/texture loading/shader compiling/BVH building/envmap processing/... for faster application startup times
+- Background-asynchronous path tracing kernel pre-compilations
+- Shader cache to avoid recompiling kernels unnecessarily
 ### Some of the features are presented in more details in my [blog posts](https://tomclabault.github.io/blog/)!
 
 # Building

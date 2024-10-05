@@ -307,6 +307,10 @@ std::unordered_set<std::string> GPUKernelCompiler::get_option_macros_used_by_ker
 			option_macro_names.insert(option_macro);
 	}
 
+	std::cout << " Parsing done" << std::endl;
+
 	m_read_macros_semaphore.release();
+
+
 	return option_macro_names;
 }

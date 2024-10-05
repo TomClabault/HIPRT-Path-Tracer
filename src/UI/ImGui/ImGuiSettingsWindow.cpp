@@ -223,7 +223,6 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 	{
 		ImGui::TreePush("Stopping condition tree");
 		{
-
 			if (ImGui::InputInt("Max Sample Count", &m_application_settings->max_sample_count))
 				m_application_settings->max_sample_count = std::max(m_application_settings->max_sample_count, 0);
 
@@ -231,6 +230,16 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 				m_application_settings->max_render_time = std::max(m_application_settings->max_render_time, 0.0f);
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			if (!render_settings.accumulate)
+			{
+				// Adding a shortcut button to re-enable accumulation
+				if (ImGui::Button("Enable accumulation"))
+				{
+					render_settings.accumulate = true;
+					m_render_window->set_render_dirty(true);
+				}
+			}
+			ImGui::BeginDisabled(!render_settings.accumulate); // Cannot use stopping condition if not accumulating
 			ImGui::SeparatorText("Pixel Stop Noise Threshold");
 			ImGui::Checkbox("Use pixel stop noise threshold stopping condition", &render_settings.enable_pixel_stop_noise_threshold);
 			ImGuiRenderer::show_help_marker("If enabled, stops the renderer after a certain proportion "
@@ -280,6 +289,7 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			}
 			ImGui::EndDisabled(); // render_settings.enable_adaptive_sampling
+			ImGui::EndDisabled(); // !render_settings.accumulate
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
@@ -1011,19 +1021,22 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 							ImGuiRenderer::show_help_marker("Whether or not to use the visibility term in the target function used for "
 								"resampling spatial neighbors.");
 
-							static int partial_visibility_neighbor_count = render_settings.restir_di_settings.spatial_pass.neighbor_visibility_count + 1;
+							int max_neighbor_count = render_settings.restir_di_settings.spatial_pass.reuse_neighbor_count;
+							if (render_settings.restir_di_settings.spatial_pass.do_disocclusion_reuse_boost)
+								max_neighbor_count = std::max(max_neighbor_count, render_settings.restir_di_settings.spatial_pass.disocclusion_reuse_count);
+							static int partial_visibility_neighbor_count = max_neighbor_count;
 							if (use_spatial_target_function_visibility)
 							{
 								ImGui::TreePush("VisibilitySpatialReuseLastPassOnly Tree");
 
 								{
-									if (ImGui::SliderInt("Partial Neighbor Visibility", &partial_visibility_neighbor_count, 0, render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count, "%d", ImGuiSliderFlags_AlwaysClamp))
+									if (ImGui::SliderInt("Partial Neighbor Visibility", &partial_visibility_neighbor_count, 0, max_neighbor_count, "%d", ImGuiSliderFlags_AlwaysClamp))
 									{
 										// Using -1 so that the user manipulates intuitive numbers between 0 and
-										// 'render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count'
+										// 'render_settings.restir_di_settings.spatial_pass.reuse_neighbor_count'
 										// but the shader actually wants value between -1 and
-										// 'render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count' for it to be meaningful
-										render_settings.restir_di_settings.spatial_pass.neighbor_visibility_count = partial_visibility_neighbor_count - 1;
+										// 'render_settings.restir_di_settings.spatial_pass.reuse_neighbor_count' for it to be meaningful
+										render_settings.restir_di_settings.spatial_pass.neighbor_visibility_count = partial_visibility_neighbor_count;
 
 										m_render_window->set_render_dirty(true);
 									}
@@ -1053,10 +1066,10 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 								m_render_window->set_render_dirty(true);
 							}
 
-							if (ImGui::SliderInt("Spatial Reuse Radius (px)", &render_settings.restir_di_settings.spatial_pass.spatial_reuse_radius, 1, 64))
+							if (ImGui::SliderInt("Spatial Reuse Radius (px)", &render_settings.restir_di_settings.spatial_pass.reuse_radius, 1, 64))
 							{
 								// Clamping
-								render_settings.restir_di_settings.spatial_pass.spatial_reuse_radius = std::max(1, render_settings.restir_di_settings.spatial_pass.spatial_reuse_radius);
+								render_settings.restir_di_settings.spatial_pass.reuse_radius = std::max(1, render_settings.restir_di_settings.spatial_pass.reuse_radius);
 
 								m_render_window->set_render_dirty(true);
 							}
@@ -1064,21 +1077,92 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 							// Checking the value before the "Neighbor Reuse Count" slider is modified
 							// so that we know whether or not we'll have to keep the
 							// 'partial_visibility_neighbor_count' value updated for the "Partial Neighbor Visibility" slider
-							bool will_need_to_update_partial_visibility = partial_visibility_neighbor_count == render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count;
-							if (ImGui::SliderInt("Neighbor Reuse Count", &render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count, 1, 16))
+							bool will_need_to_update_partial_visibility = partial_visibility_neighbor_count == max_neighbor_count;
+							if (ImGui::SliderInt("Neighbor Reuse Count", &render_settings.restir_di_settings.spatial_pass.reuse_neighbor_count, 1, 16))
 							{
 								// Clamping
-								render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count = std::max(1, render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count);
+								render_settings.restir_di_settings.spatial_pass.reuse_neighbor_count = std::max(1, render_settings.restir_di_settings.spatial_pass.reuse_neighbor_count);
 
-								if (will_need_to_update_partial_visibility)
+								// Updating the maximum
+								max_neighbor_count = render_settings.restir_di_settings.spatial_pass.reuse_neighbor_count;
+								if (render_settings.restir_di_settings.spatial_pass.do_disocclusion_reuse_boost)
+									max_neighbor_count = std::max(max_neighbor_count, render_settings.restir_di_settings.spatial_pass.disocclusion_reuse_count);
+
+								bool reuse_count_is_the_max = max_neighbor_count == render_settings.restir_di_settings.spatial_pass.reuse_neighbor_count;
+								reuse_count_is_the_max |= !render_settings.restir_di_settings.spatial_pass.do_disocclusion_reuse_boost;
+								if (will_need_to_update_partial_visibility && reuse_count_is_the_max)
 								{
 									// Also updating the partial visibility neighbor index slider if it was set to the maximum
 									// amount of neighbors
-									partial_visibility_neighbor_count = render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count;
-									render_settings.restir_di_settings.spatial_pass.neighbor_visibility_count = partial_visibility_neighbor_count - 1;
+									partial_visibility_neighbor_count = render_settings.restir_di_settings.spatial_pass.reuse_neighbor_count;
+									render_settings.restir_di_settings.spatial_pass.neighbor_visibility_count = partial_visibility_neighbor_count;
 								}
 
+								if (render_settings.restir_di_settings.spatial_pass.disocclusion_reuse_count < render_settings.restir_di_settings.spatial_pass.reuse_neighbor_count)
+									// If disocclusion boost is now below the spatial neighbor count, bumping it up
+									// because it makes no sense to have the disocclusion boost below the base
+									// spatial neighbor count
+									render_settings.restir_di_settings.spatial_pass.disocclusion_reuse_count = render_settings.restir_di_settings.spatial_pass.reuse_neighbor_count;
+
 								m_render_window->set_render_dirty(true);
+							}
+
+							if (ImGui::Checkbox("Increase Disocclusion Reuse Count", &render_settings.restir_di_settings.spatial_pass.do_disocclusion_reuse_boost))
+							{
+								m_render_window->set_render_dirty(true);
+								if (render_settings.restir_di_settings.spatial_pass.do_disocclusion_reuse_boost)
+								{
+									// We just enabled disocclusion boost
+
+									// Recomputing the max neighbor with the disocclusion boost taken into account
+									max_neighbor_count = std::max(max_neighbor_count, render_settings.restir_di_settings.spatial_pass.disocclusion_reuse_count);
+
+									partial_visibility_neighbor_count = max_neighbor_count;
+								}
+								else
+									// Disabled disocclusion boost, bringing the value back to its maximum before
+									// disocclusion boost which is just the number of reused spatial neighbors
+									partial_visibility_neighbor_count = render_settings.restir_di_settings.spatial_pass.reuse_neighbor_count;
+										
+								render_settings.restir_di_settings.spatial_pass.neighbor_visibility_count = partial_visibility_neighbor_count;
+							}
+							ImGuiRenderer::show_help_marker("If checked, more neighbors will be reused for pixels that just got "
+								"disoccluded due to camera movement (and thus that have no temporal history). This helps "
+								"reduce noise in disoccluded regions.");
+							if (render_settings.restir_di_settings.spatial_pass.do_disocclusion_reuse_boost)
+							{
+								{
+									ImGui::TreePush("Disocclusion boost tree");
+
+									if (ImGui::SliderInt("Disoccluded Neighbor Reuse Count", &render_settings.restir_di_settings.spatial_pass.disocclusion_reuse_count, render_settings.restir_di_settings.spatial_pass.reuse_neighbor_count, 16 + render_settings.restir_di_settings.spatial_pass.reuse_neighbor_count))
+									{
+										m_render_window->set_render_dirty(true);
+
+										// Updating the maximum
+										max_neighbor_count = render_settings.restir_di_settings.spatial_pass.reuse_neighbor_count;
+										if (render_settings.restir_di_settings.spatial_pass.do_disocclusion_reuse_boost)
+											max_neighbor_count = std::max(max_neighbor_count, render_settings.restir_di_settings.spatial_pass.disocclusion_reuse_count);
+
+										if (will_need_to_update_partial_visibility)
+										{
+											// If the number of neighbors using visibility is set at the maximum, then we should
+											// keep that value at the maximum as we modify the disoccluded neighbor reuse count
+											max_neighbor_count = render_settings.restir_di_settings.spatial_pass.disocclusion_reuse_count;
+											partial_visibility_neighbor_count = max_neighbor_count;
+											render_settings.restir_di_settings.spatial_pass.neighbor_visibility_count = max_neighbor_count;
+										}
+									}
+									ImGuiRenderer::show_help_marker("How many neighbors a pixel will reuse if that pixel just got disoccluded.");
+
+									if (render_settings.restir_di_settings.spatial_pass.neighbor_visibility_count == render_settings.restir_di_settings.spatial_pass.reuse_neighbor_count
+										|| render_settings.restir_di_settings.spatial_pass.neighbor_visibility_count == render_settings.restir_di_settings.spatial_pass.reuse_neighbor_count)
+										// If the user is using the visibility in the target function of all spatial neighbors,
+										// modifying that maximum number should still keep the visibility target function count
+										// to the maximum
+										render_settings.restir_di_settings.spatial_pass.neighbor_visibility_count = std::max(render_settings.restir_di_settings.spatial_pass.disocclusion_reuse_count, render_settings.restir_di_settings.spatial_pass.reuse_neighbor_count);
+
+									ImGui::TreePop();
+								}
 							}
 
 							if (ImGui::Checkbox("Neighbor Samples Random Rotation", &render_settings.restir_di_settings.spatial_pass.do_neighbor_rotation))

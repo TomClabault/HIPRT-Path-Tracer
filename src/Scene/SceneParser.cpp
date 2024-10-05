@@ -138,9 +138,7 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Assimp::Im
         parsed_scene.has_vertex_normals.insert(parsed_scene.has_vertex_normals.end(), mesh->mNumVertices, mesh->HasNormals());
 
         // Inserting all the vertices of the mesh
-        parsed_scene.vertices_positions.insert(parsed_scene.vertices_positions.end(), 
-            reinterpret_cast<hiprtFloat3*>(&mesh->mVertices[0]), 
-            reinterpret_cast<hiprtFloat3*>(&mesh->mVertices[mesh->mNumVertices]));
+        parsed_scene.vertices_positions.insert(parsed_scene.vertices_positions.end(), reinterpret_cast<hiprtFloat3*>(&mesh->mVertices[0]), reinterpret_cast<hiprtFloat3*>(&mesh->mVertices[mesh->mNumVertices]));
 
         int max_mesh_index_offset = 0;
         for (int face_index = 0; face_index < mesh->mNumFaces; face_index++)

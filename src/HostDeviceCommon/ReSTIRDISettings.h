@@ -62,9 +62,18 @@ struct SpatialPassSettings
 	// How many spatial reuse pass to perform
 	int number_of_passes = 1;
 	// The radius within which neighbor are going to be reused spatially
-	int spatial_reuse_radius = 16;
+	int reuse_radius = 16;
 	// How many neighbors to reuse during the spatial pass
-	int spatial_reuse_neighbor_count = 3;
+	int reuse_neighbor_count = 3;
+
+	// constexpr here just to be able to auto-initialize 'neighbor_visibility_count' properly at compile time
+	static constexpr bool DO_DISOCCLUSION_BOOST = true;
+	// Whether or not to increase the number of spatially resampled neighbor
+	// for disoccluded pixels (that have no temporal history)
+	bool do_disocclusion_reuse_boost = DO_DISOCCLUSION_BOOST;
+	// How many neighbors to spatially reuse when a disocclusion is detected.
+	// This reduces the increased variance of disoccluded regions
+	int disocclusion_reuse_count = 5;
 
 	// If true, reused neighbors will be hardcoded to always be 15 pixels to the right,
 	// not in a circle around the center pixel.
@@ -88,7 +97,7 @@ struct SpatialPassSettings
 	bool do_visibility_only_last_pass = true;
 	// Visibility term in the target function will only be used for the first
 	// 'neighbor_visibility_count' neighbors, not all.
-	int neighbor_visibility_count = spatial_reuse_neighbor_count - 1;
+	int neighbor_visibility_count = DO_DISOCCLUSION_BOOST ? disocclusion_reuse_count : reuse_neighbor_count;
 
 	// Buffer that contains the input reservoirs for the spatial reuse pass
 	ReSTIRDIReservoir* input_reservoirs = nullptr;

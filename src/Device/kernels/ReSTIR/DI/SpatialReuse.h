@@ -46,16 +46,16 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool do_include_visibility_term_or_not(const HIPR
 	include_target_function_visibility |= !spatial_settings.do_visibility_only_last_pass;
 
 	// Only doing visibility for a few neighbors depending on 'neighbor_visibility_count'
-	include_target_function_visibility &= current_neighbor_index <= spatial_settings.neighbor_visibility_count;
+	include_target_function_visibility &= current_neighbor_index < spatial_settings.neighbor_visibility_count;
 
 	// Only doing visibility if we want it at all
 	include_target_function_visibility &= ReSTIR_DI_SpatialTargetFunctionVisibility;
 
 	// We don't want visibility for the center pixel because we're going to reuse the
 	// target function stored in the reservoir anyways
-	// Note: the center pixel has index 'spatial_settings.spatial_reuse_neighbor_count'
-	// while actual *neighbors* have index between [0, spatial_settings.spatial_reuse_neighbor_count - 1]
-	include_target_function_visibility &= current_neighbor_index != spatial_settings.spatial_reuse_neighbor_count;
+	// Note: the center pixel has index 'spatial_settings.reuse_neighbor_count'
+	// while actual *neighbors* have index between [0, spatial_settings.reuse_neighbor_count - 1]
+	include_target_function_visibility &= current_neighbor_index != spatial_settings.reuse_neighbor_count;
 
 	return include_target_function_visibility;
 }
@@ -108,6 +108,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 
 	float2 cos_sin_theta_rotation = make_float2(cos(rotation_theta), sin(rotation_theta));
 
+	ReSTIRDIReservoir center_pixel_reservoir = input_reservoir_buffer[center_pixel_index];
+	if ((center_pixel_reservoir.M <= 1) && render_data.render_settings.restir_di_settings.spatial_pass.do_disocclusion_reuse_boost)
+		// Increasing the number of spatial samples for disoclussions
+		render_data.render_settings.restir_di_settings.spatial_pass.reuse_neighbor_count = render_data.render_settings.restir_di_settings.spatial_pass.disocclusion_reuse_count;
+
 #if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
 	// Only used with MIS-like weight
 	int selected_neighbor = 0;
@@ -123,7 +128,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	// we can use the last iteration of the loop to resample ourselves (the center pixel)
 	// 
 	// See the implementation of get_spatial_neighbor_pixel_index() in ReSTIR/DI/Utils.h
-	int reused_neighbors_count = render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count;
+	int reused_neighbors_count = render_data.render_settings.restir_di_settings.spatial_pass.reuse_neighbor_count;
 	int start_index = 0;
 	if (valid_neighbors_M_sum == 0)
 		// No valid neighbor to resample from, skip to the initial candidate right away
@@ -142,7 +147,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 				// Neighbor not passing the heuristics tests, skipping it right away
 				continue;
 
-		int neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, neighbor_index, reused_neighbors_count, render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_radius, center_pixel_coords, res, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
+		int neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, neighbor_index, reused_neighbors_count, render_data.render_settings.restir_di_settings.spatial_pass.reuse_radius, center_pixel_coords, res, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
 		if (neighbor_pixel_index == -1)
 			// Neighbor out of the viewport
 			continue;
@@ -213,16 +218,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, neighbor_reservoir,
 			center_pixel_surface, neighbor_index, center_pixel_coords, res, cos_sin_theta_rotation, random_number_generator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
-		ReSTIRDIReservoir center_pixel_reservoir = input_reservoir_buffer[center_pixel_index];
-
 		bool update_mc = center_pixel_reservoir.M > 0 && center_pixel_reservoir.UCW > 0.0f;
 
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, neighbor_reservoir, center_pixel_reservoir, 
 			target_function_at_center, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
 			update_mc,/* resampling canonical */ neighbor_index == reused_neighbors_count, random_number_generator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
-		ReSTIRDIReservoir center_pixel_reservoir = input_reservoir_buffer[center_pixel_index];
-
 		bool update_mc = center_pixel_reservoir.M > 0 && center_pixel_reservoir.UCW > 0.0f;
 
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, neighbor_reservoir, center_pixel_reservoir, 

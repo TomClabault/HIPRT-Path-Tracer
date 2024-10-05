@@ -32,6 +32,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool adaptive_sampling(const HIPRTRenderData& ren
     const HIPRTRenderSettings& render_settings = render_data.render_settings;
     const AuxiliaryBuffers& aux_buffers = render_data.aux_buffers;
 
+    if (!render_settings.has_access_to_adaptive_sampling_buffers())
+        // Adaptive sampling is not on so returning true to indicate
+        // that this pixel is going to need sampling
+        return true;
+
     if (render_settings.enable_adaptive_sampling)
     {
         // Computing pixel convergence according to adaptive sampling to

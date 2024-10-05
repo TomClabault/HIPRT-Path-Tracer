@@ -24,6 +24,8 @@
 // - limit UI speed because it actually uses some resources (maybe Vsync or something)
 // - smarter shader cache (hints to avoid using all kernel options when compiling a kernel? We know that Camera ray doesn't care about direct lighting strategy for example)
 // - use self bit packing (no bitfields) for nested dielectrics because bitfields are implementation dependent in size, that's bad --> We don't get our nice packing with every compiler
+// - console at the bottom of the window with shader precompilation infos and other stuff
+// - warnings when compiling BVH kernels
 
 // TODO known bugs / incorectness:
 // - take transmission color into account when direct sampling a light source that is inside a volume
@@ -57,7 +59,7 @@
 
 // TODO Features:
 // - try dynamic stack for better memory usage than full brute force global stack buffer and see performance impact
-// - better disney sheen lobe as in Blender
+// - better disney sheen lobe as in Blender --> Practical Multiple-Scattering Sheen Using Linearly Transformed Cosines
 // - use shared memory for nested dielectrics stack?
 // - opacity micromaps
 // - use anyhits for shadow rays

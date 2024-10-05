@@ -36,10 +36,10 @@ struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_M>
 		// so we're only going to set the denominator to that and the numerator isn't going to change
 		out_normalization_denom = 0.0f;
 
-		int reused_neighbors_count = render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count;
+		int reused_neighbors_count = render_data.render_settings.restir_di_settings.spatial_pass.reuse_neighbor_count;
 		for (int neighbor = 0; neighbor < reused_neighbors_count + 1; neighbor++)
 		{
-			int neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, neighbor, reused_neighbors_count, render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_radius, center_pixel_coords, res, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
+			int neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, neighbor, reused_neighbors_count, render_data.render_settings.restir_di_settings.spatial_pass.reuse_radius, center_pixel_coords, res, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
 			if (neighbor_pixel_index == -1)
 				// Neighbor out of the viewport
 				continue;
@@ -77,10 +77,10 @@ struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z>
 		out_normalization_denom = 0.0f;
 		out_normalization_nume = 1.0f;
 
-		int reused_neighbors_count = render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count;
+		int reused_neighbors_count = render_data.render_settings.restir_di_settings.spatial_pass.reuse_neighbor_count;
 		for (int neighbor = 0; neighbor < reused_neighbors_count + 1; neighbor++)
 		{
-			int neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, neighbor, reused_neighbors_count, render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_radius, center_pixel_coords, res, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
+			int neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, neighbor, reused_neighbors_count, render_data.render_settings.restir_di_settings.spatial_pass.reuse_radius, center_pixel_coords, res, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
 			if (neighbor_pixel_index == -1)
 				// Invalid neighbor
 				continue;
@@ -128,10 +128,10 @@ struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE>
 		out_normalization_denom = 0.0f;
 		out_normalization_nume = 0.0f;
 
-		int reused_neighbors_count = render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_neighbor_count;
+		int reused_neighbors_count = render_data.render_settings.restir_di_settings.spatial_pass.reuse_neighbor_count;
 		for (int neighbor = 0; neighbor < reused_neighbors_count + 1; neighbor++)
 		{
-			int neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, neighbor, reused_neighbors_count, render_data.render_settings.restir_di_settings.spatial_pass.spatial_reuse_radius, center_pixel_coords, res, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
+			int neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, neighbor, reused_neighbors_count, render_data.render_settings.restir_di_settings.spatial_pass.reuse_radius, center_pixel_coords, res, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
 			if (neighbor_pixel_index == -1)
 				// Invalid neighbor
 				continue;
