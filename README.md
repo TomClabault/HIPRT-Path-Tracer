@@ -59,7 +59,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 - Multithreaded scene parsing/texture loading/shader compiling/BVH building/envmap processing/... for faster application startup times
 - Background-asynchronous path tracing kernel pre-compilations
 - Shader cache to avoid recompiling kernels unnecessarily
-### Some of the features are presented in more details in my [blog posts](https://tomclabault.github.io/blog/)!
+### Some of the features are (or will be) presented in more details in my [blog posts](https://tomclabault.github.io/blog/)!
 
 # Building
 ## Prerequisites

@@ -55,10 +55,10 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, const GPUKern
 
 	// Locking because neither NVIDIA or AMD can compile kernels on multiple threads so we may as well
 	// lock here to have better control on when to compile a kernel as well as have proper compilation times
-	std::unique_lock<std::mutex> lock(m_mutex);
+	std::unique_lock<std::mutex> lock(m_compile_mutex);
 
 	if (std::this_thread::get_id() != g_main_thread_id)
-		// Other thread waits if the main thread is compiling
+		// Other threads wait if the main thread is compiling
 		g_condition_for_compilation.wait(lock, []() { return !g_main_thread_compiling; });
 
 	auto start = std::chrono::high_resolution_clock::now();
@@ -183,7 +183,10 @@ std::unordered_set<std::string> GPUKernelCompiler::read_option_macro_of_file(con
 	}
 
 	{
-		std::lock_guard<std::mutex> lock(m_mutex);
+		// We don't to read into the cache while someone may be writing to it (at the end of this function)
+		// so we lock
+		std::lock_guard<std::mutex> lock(m_option_macro_cache_mutex);
+
 		auto cache_timestamp_find = m_filepath_to_options_macros_cache_timestamp.find(filepath);
 		if (cache_timestamp_find != m_filepath_to_options_macros_cache_timestamp.end() && cache_timestamp_find->second == file_modification_time)
 		{
@@ -208,7 +211,7 @@ std::unordered_set<std::string> GPUKernelCompiler::read_option_macro_of_file(con
 
 	// The cache is shared to all threads using this GPUKernelCompiler so we're locking that operation
 	// The lock is destroyed when the function returns
-	std::lock_guard<std::mutex> lock(m_mutex);
+	std::lock_guard<std::mutex> lock(m_option_macro_cache_mutex);
 
 	// Updating the cache
 	m_filepath_to_option_macros_cache[filepath] = option_macros;
@@ -307,10 +310,7 @@ std::unordered_set<std::string> GPUKernelCompiler::get_option_macros_used_by_ker
 			option_macro_names.insert(option_macro);
 	}
 
-	std::cout << " Parsing done" << std::endl;
-
 	m_read_macros_semaphore.release();
-
 
 	return option_macro_names;
 }

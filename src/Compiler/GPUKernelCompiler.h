@@ -85,7 +85,8 @@ private:
 
 	// Because this GPUKernelCompiler may be used by multiple threads at the same time,
 	// we may use that mutex sometimes to protect from race conditions
-	std::mutex m_mutex;
+	std::mutex m_option_macro_cache_mutex;
+	std::mutex m_compile_mutex;
 
 	// Semaphore used by 'get_option_macros_used_by_kernel' so that not too many threads
 	// read kernel files at the same time: this can cause a "Too many files open" error

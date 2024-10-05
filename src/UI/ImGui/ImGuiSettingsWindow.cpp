@@ -1126,7 +1126,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 										
 								render_settings.restir_di_settings.spatial_pass.neighbor_visibility_count = partial_visibility_neighbor_count;
 							}
-							ImGuiRenderer::show_help_marker("If checked, more neighbors will be reused for pixels that just got "
+							ImGuiRenderer::show_help_marker("If checked, the given number of neighbors will be reused for pixels that just got "
 								"disoccluded due to camera movement (and thus that have no temporal history). This helps "
 								"reduce noise in disoccluded regions.");
 							if (render_settings.restir_di_settings.spatial_pass.do_disocclusion_reuse_boost)
