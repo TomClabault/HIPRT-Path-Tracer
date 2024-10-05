@@ -23,9 +23,8 @@
 // - limit UI speed because it actually uses some resources (maybe Vsync or something)
 // - smarter shader cache (hints to avoid using all kernel options when compiling a kernel? We know that Camera ray doesn't care about direct lighting strategy for example)
 // - use self bit packing (no bitfields) for nested dielectrics because bitfields are implementation dependent in size, that's bad --> We don't get our nice packing with every compiler
-// - console at the bottom of the window with shader precompilation infos and other stuff
 // - warnings when compiling BVH kernels
-// - fix lock guard file cache in shader cache
+// - background kernel compilation: may crash if we close the app while some thread is doing IO operations to read from the macros used by a kernel for example
 
 // TODO known bugs / incorectness:
 // - take transmission color into account when direct sampling a light source that is inside a volume
@@ -35,7 +34,6 @@
 // - when using a BSDF override, transmissive materials keep their dielectric priorities and this can mess up shadow rays and intersections in general if the BSDF used for the override doesn't support transmissive materials
 // - is DisneySheen correct?
 // - threadmanager: what if we start a thread with a dependency A on a thread that itself has a dependency B? we're going to try join dependency A even if thread with dependency on B hasn't even started yet --> joining nothing --> immediate return --> should have waited for the dependency but hasn't
-// - background kernel compilation: may crash if we close the app while some thread is doing IO operations to read from the macros used by a kernel for example
 
 
 // TODO Code Organization:
@@ -252,34 +250,37 @@ void APIENTRY RenderWindow::gl_debug_output_callback(GLenum source,
 	Utils::debugbreak();
 }
 
-RenderWindow::RenderWindow(int width, int height, std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx) : m_viewport_width(width), m_viewport_height(height)
+RenderWindow::RenderWindow(int renderer_width, int renderer_height, std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx) : m_viewport_width(renderer_width), m_viewport_height(renderer_height)
 {
-	// Adding the size of the settings panel on the left
-	width = width + ImGuiSettingsWindow::BASE_SIZE;
+	// Adding the size of the windows around the viewport such that these windows
+	// have their base size and the viewport has the size the the user has asked for
+	// (through the commandline)
+	int window_width = renderer_width + ImGuiSettingsWindow::BASE_SIZE;
+	int window_height = renderer_height + ImGuiLogWindow::BASE_SIZE;
 
-	init_glfw(width, height);
-	init_gl(width, height);
+	init_glfw(window_width, window_height);
+	init_gl(renderer_width, renderer_height);
 	ImGuiRenderer::init_imgui(m_glfw_window);
 
 	m_renderer = std::make_shared<GPURenderer>(hiprt_oro_ctx);
 
 	ThreadManager::add_dependency(ThreadManager::RENDER_WINDOW_RENDERER_INITIAL_RESIZE, ThreadManager::RENDERER_STREAM_CREATE);
-	ThreadManager::start_thread(ThreadManager::RENDER_WINDOW_RENDERER_INITIAL_RESIZE, [this, width, height]() {
-		m_renderer->resize(width, height, /* resize interop buffers */ false);
+	ThreadManager::start_thread(ThreadManager::RENDER_WINDOW_RENDERER_INITIAL_RESIZE, [this, renderer_width, renderer_height]() {
+		m_renderer->resize(renderer_width, renderer_height, /* resize interop buffers */ false);
 	});
 	// We need to resize OpenGL interop buffers on the main thread becaues they
 	// need the OpenGL context which is only available to the main thread
-	m_renderer->resize_interop_buffers(width, height);
+	m_renderer->resize_interop_buffers(renderer_width, renderer_height);
 
 	m_application_settings = std::make_shared<ApplicationSettings>();
 	// Disabling auto samples per frame is accumulation is OFF
 	m_application_settings->auto_sample_per_frame = m_renderer->get_render_settings().accumulate ? m_application_settings->auto_sample_per_frame : false;
 	m_application_state = std::make_shared<ApplicationState>();
 
-	ThreadManager::start_thread(ThreadManager::RENDER_WINDOW_CONSTRUCTOR, [this, width, height]() {
+	ThreadManager::start_thread(ThreadManager::RENDER_WINDOW_CONSTRUCTOR, [this, renderer_width, renderer_height]() {
 		m_denoiser = std::make_shared<OpenImageDenoiser>();
 		m_denoiser->initialize();
-		m_denoiser->resize(width, height);
+		m_denoiser->resize(renderer_width, renderer_height);
 		m_denoiser->set_use_albedo(m_application_settings->denoiser_use_albedo);
 		m_denoiser->set_use_normals(m_application_settings->denoiser_use_normals);
 		m_denoiser->finalize();
@@ -304,7 +305,7 @@ RenderWindow::RenderWindow(int width, int height, std::shared_ptr<HIPRTOrochiCtx
 	m_screenshoter->set_render_window(this);
 }
 
-void RenderWindow::init_glfw(int width, int height)
+void RenderWindow::init_glfw(int window_width, int window_height)
 {
 	if (!glfwInit())
 	{
@@ -325,7 +326,9 @@ void RenderWindow::init_glfw(int width, int height)
 #endif
 	m_keyboard_interactor.set_render_window(this);
 
-	m_glfw_window = glfwCreateWindow(width, height, "HIPRT-Path-Tracer", NULL, NULL);
+	const GLFWvidmode* mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+
+	m_glfw_window = glfwCreateWindow(window_width, window_height, "HIPRT-Path-Tracer", NULL, NULL);
 	if (!m_glfw_window)
 	{
 		std::cerr << "Could not initialize the GLFW window..." << std::endl;

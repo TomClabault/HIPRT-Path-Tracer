@@ -29,7 +29,7 @@ class RenderWindow
 public:
 	RenderWindow(int width, int height, std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx);
 
-	void init_glfw(int width, int height);
+	void init_glfw(int window_width, int window_height);
 	void init_gl(int width, int height);
 
 	static void APIENTRY gl_debug_output_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam);

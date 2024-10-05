@@ -62,6 +62,7 @@ void ImGuiRenderer::set_render_window(RenderWindow* render_window)
 	m_render_window = render_window;
 	m_imgui_settings_window.set_render_window(render_window);
 	m_imgui_render_window.set_render_window(render_window);
+	m_imgui_log_window.set_render_window(render_window);
 }
 
 void ImGuiRenderer::draw_interface()
@@ -73,6 +74,7 @@ void ImGuiRenderer::draw_interface()
 	rescale_ui();
 	draw_dockspace();
 	draw_settings_window();
+	draw_log_window();
 	draw_render_window();
 
 	ImGui::ShowDemoWindow();
@@ -128,9 +130,12 @@ void ImGuiRenderer::draw_dockspace()
 			ImGui::DockBuilderSetNodeSize(dockspace_id, viewport->Size);
 
 			int renderer_width = m_render_window->get_renderer()->m_render_resolution.x;
-			auto dock_id_left = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, ImGuiSettingsWindow::BASE_SIZE / renderer_width, nullptr, &dockspace_id);
+			int renderer_height = m_render_window->get_renderer()->m_render_resolution.y;
+			auto dock_id_left = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, ImGuiSettingsWindow::BASE_SIZE / (renderer_width + ImGuiSettingsWindow::BASE_SIZE), nullptr, &dockspace_id);
+			auto dock_id_bottom = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Down, ImGuiLogWindow::BASE_SIZE / (renderer_height + ImGuiLogWindow::BASE_SIZE), nullptr, &dockspace_id);
 
 			// we now dock our windows into the docking node we made above
+			ImGui::DockBuilderDockWindow(ImGuiLogWindow::TITLE, dock_id_bottom);
 			ImGui::DockBuilderDockWindow(ImGuiSettingsWindow::TITLE, dock_id_left);
 			ImGui::DockBuilderDockWindow(ImGuiRenderWindow::TITLE, dockspace_id);
 			ImGui::DockBuilderFinish(dockspace_id);
@@ -149,6 +154,11 @@ void ImGuiRenderer::draw_settings_window()
 void ImGuiRenderer::draw_render_window()
 {
 	m_imgui_render_window.draw();
+}
+
+void ImGuiRenderer::draw_log_window()
+{
+	m_imgui_log_window.draw();
 }
 
 ImGuiRenderWindow& ImGuiRenderer::get_imgui_render_window()

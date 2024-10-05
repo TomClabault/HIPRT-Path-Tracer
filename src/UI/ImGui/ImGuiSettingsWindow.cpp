@@ -13,7 +13,7 @@
 #include <iostream>
 
 const char* ImGuiSettingsWindow::TITLE = "Settings";
-const float ImGuiSettingsWindow::BASE_SIZE = 700.0f;
+const float ImGuiSettingsWindow::BASE_SIZE = 630.0f;
 
 void ImGuiSettingsWindow::set_render_window(RenderWindow* render_window)
 {
@@ -1154,8 +1154,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 									}
 									ImGuiRenderer::show_help_marker("How many neighbors a pixel will reuse if that pixel just got disoccluded.");
 
-									if (render_settings.restir_di_settings.spatial_pass.neighbor_visibility_count == render_settings.restir_di_settings.spatial_pass.reuse_neighbor_count
-										|| render_settings.restir_di_settings.spatial_pass.neighbor_visibility_count == render_settings.restir_di_settings.spatial_pass.reuse_neighbor_count)
+									if (render_settings.restir_di_settings.spatial_pass.neighbor_visibility_count == render_settings.restir_di_settings.spatial_pass.reuse_neighbor_count)
 										// If the user is using the visibility in the target function of all spatial neighbors,
 										// modifying that maximum number should still keep the visibility target function count
 										// to the maximum
@@ -1328,6 +1327,8 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					break;
 				}
 			}
+
+			break;
 
 			default:
 				break;

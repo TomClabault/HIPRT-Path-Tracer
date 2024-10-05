@@ -3,30 +3,29 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef IMGUI_RENDER_WINDOW_H
-#define IMGUI_RENDER_WINDOW_H
+#ifndef IMGUI_LOG_WINDOW_H
+#define IMGUI_LOG_WINDOW_H
+
+#include "UI/ImGui/ImGuiLogger.h"
 
 #include "imgui.h"
 
 class RenderWindow;
 
-class ImGuiRenderWindow
+class ImGuiLogWindow
 {
 public:
 	static const char* TITLE;
+	static const float BASE_SIZE;
 
 	void set_render_window(RenderWindow* render_window);
 
 	void draw();
 
-	bool is_hovered() const;
-	ImVec2 get_size() const;
-
 private:
 	RenderWindow* m_render_window;
 
 	ImVec2 m_current_size;
-	bool m_is_hovered = false;
 };
 
 #endif

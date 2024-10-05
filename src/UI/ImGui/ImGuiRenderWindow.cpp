@@ -19,7 +19,7 @@ void ImGuiRenderWindow::draw()
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 
-	ImGui::Begin(ImGuiRenderWindow::TITLE, nullptr, ImGuiWindowFlags_NoMove);
+	ImGui::Begin(ImGuiRenderWindow::TITLE, nullptr);
 
 	// GetWindowContentRegion() to get the size without the title bar and other decorations.
 	ImVec2 content_min = ImGui::GetWindowContentRegionMin();
@@ -29,7 +29,7 @@ void ImGuiRenderWindow::draw()
 	ImGui::Image((void*)(intptr_t)m_render_window->get_display_view_system()->m_fbo_texture, current_size, ImVec2(0, 1), ImVec2(1, 0));
 
 	if (current_size.x != m_current_size.x || current_size.y != m_current_size.y)
-			m_render_window->resize(current_size.x, current_size.y);
+		m_render_window->resize(current_size.x, current_size.y);
 
 	m_current_size = current_size;
 	m_is_hovered = ImGui::IsWindowHovered();
@@ -41,4 +41,9 @@ void ImGuiRenderWindow::draw()
 bool ImGuiRenderWindow::is_hovered() const
 {
 	return m_is_hovered;
+}
+
+ImVec2 ImGuiRenderWindow::get_size() const
+{
+	return m_current_size;
 }
