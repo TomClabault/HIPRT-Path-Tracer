@@ -11,8 +11,19 @@ void RenderWindowKeyboardInteractor::glfw_key_callback(GLFWwindow* window, int k
 	void* user_pointer = glfwGetWindowUserPointer(window);
 	RenderWindow* render_window = reinterpret_cast<RenderWindow*>(user_pointer);
 
-	RenderWindowKeyboardInteractor& interactor_instance = render_window->get_keyboard_interactor();
+	// We still want to process the inputs if we're hovering the render window because then
+	// we *are* trying to move the camera with the keyboard
+	bool render_window_hovered = render_window->get_imgui_renderer()->get_imgui_render_window().is_hovered();
 
+	ImGuiIO& io = ImGui::GetIO();
+	if (io.WantCaptureKeyboard && !render_window_hovered && !(action == GLFW_RELEASE))
+		// We always want to handle release key otherwise we could press a key while
+		// hovering the render window and then release the with our mouse over another window
+		// --> not hovering the render window --> the key won't be released and the camera
+		// will keep moving
+		return;
+
+	RenderWindowKeyboardInteractor& interactor_instance = render_window->get_keyboard_interactor();
 	switch (key)
 	{
 	case GLFW_KEY_W:
