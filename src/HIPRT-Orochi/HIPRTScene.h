@@ -54,7 +54,7 @@ struct HIPRTGeometry
 
 	void log_bvh_building(hiprtBuildFlags build_flags)
 	{
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Compiling BVH building kernels & building scene BVH");
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Compiling BVH building kernels & building scene BVH...");
 	}
 
 	void build_bvh()

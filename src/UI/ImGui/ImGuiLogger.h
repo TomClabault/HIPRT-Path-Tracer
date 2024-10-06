@@ -55,11 +55,13 @@ public:
         vprintf(fmt_prefix, args); // Logging to the console as well
         va_end(args);
         for (int new_size = m_text_buffer.size(); old_size < new_size; old_size++)
+        {
             if (m_text_buffer[old_size] == '\n')
+            {
+                m_line_severities.push_back(severity);
                 m_line_offsets.push_back(old_size + 1);
-
-        m_line_severities.push_back(severity);
-
+            }
+        }
     }
 
     void draw(const char* title, bool* p_open = NULL)

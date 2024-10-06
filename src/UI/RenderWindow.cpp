@@ -25,7 +25,6 @@ extern ImGuiLogger g_imgui_logger;
 // - limit UI speed because it actually uses some resources (maybe Vsync or something)
 // - smarter shader cache (hints to avoid using all kernel options when compiling a kernel? We know that Camera ray doesn't care about direct lighting strategy for example)
 // - use self bit packing (no bitfields) for nested dielectrics because bitfields are implementation dependent in size, that's bad --> We don't get our nice packing with every compiler
-// - warnings when compiling BVH kernels
 // - background kernel compilation: may crash if we close the app while some thread is doing IO operations to read from the macros used by a kernel for example
 
 // TODO known bugs / incorectness:
