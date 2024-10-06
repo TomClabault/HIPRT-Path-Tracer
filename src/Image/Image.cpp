@@ -4,7 +4,10 @@
  */
 
 #include "Image/Image.h"
+#include "UI/ImGui/ImGuiLogger.h"
 #include "Utils/Utils.h"
+
+extern ImGuiLogger g_imgui_logger;
 
 // This CPP file is used to define the STBI implementation once and for all
 #define STB_IMAGE_IMPLEMENTATION
@@ -34,7 +37,7 @@ Image8Bit Image8Bit::read_image(const std::string& filepath, int output_channels
 
     if (!pixels)
     {
-        std::cout << "Error reading image " << filepath << std::endl;
+        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Error reading image %s", filepath.c_str());
         return Image8Bit();
     }
 
@@ -64,7 +67,7 @@ Image8Bit Image8Bit::read_image_hdr(const std::string& filepath, int output_chan
 
     if (!pixels)
     {
-        std::cout << "Error reading image " << filepath << std::endl;
+        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Error reading image %s", filepath.c_str());
         return Image8Bit();
     }
 
@@ -222,8 +225,6 @@ std::vector<float> Image8Bit::compute_cdf() const
         }
     }
 
-    std::cout << "Max radiance of envmap: " << max_radiance << std::endl;
-
     return out_cdf;
 }
 
@@ -303,7 +304,7 @@ Image32Bit Image32Bit::read_image(const std::string& filepath, int output_channe
 
     if (!pixels)
     {
-        std::cout << "Error reading image " << filepath << std::endl;
+        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Error reading image %s", filepath.c_str());
         return Image32Bit();
     }
 
@@ -333,7 +334,7 @@ Image32Bit Image32Bit::read_image_hdr(const std::string& filepath, int output_ch
 
     if (!pixels)
     {
-        std::cout << "Error reading image " << filepath << std::endl;
+        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Error reading image %s", filepath.c_str());
         return Image32Bit();
     }
 
@@ -487,8 +488,6 @@ std::vector<float> Image32Bit::compute_cdf() const
                 max_radiance = hippt::max(max_radiance, m_pixel_data[(x + y * width) * channels + i]);
         }
     }
-
-    std::cout << "Max radiance of envmap: " << max_radiance << std::endl;
 
     return out_cdf;
 }

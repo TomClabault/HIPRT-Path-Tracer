@@ -5,9 +5,12 @@
 
 #include "GL/glew.h"
 #include "stb_image_write.h"
+#include "UI/ImGui/ImGuiLogger.h"
 #include "UI/RenderWindow.h"
 #include "UI/Screenshoter.h"
 #include "Utils/Utils.h"
+
+extern ImGuiLogger g_imgui_logger;
 
 Screenshoter::Screenshoter()
 {
@@ -123,7 +126,7 @@ void Screenshoter::write_to_png(const char* filepath)
 
 		stbi_flip_vertically_on_write(true);
 		if (stbi_write_png(filepath, width, height, 3, mapped_data.data(), width * sizeof(unsigned char) * 3))
-			std::cout << "Render written to \"" << filepath << "\"" << std::endl;
+			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Screenshot written to \"%s\"", filepath);
 	}
 	else
 	{
@@ -162,7 +165,7 @@ void Screenshoter::write_to_png(const char* filepath)
 
 		stbi_flip_vertically_on_write(true);
 		if (stbi_write_png(filepath, width, height, 4, mapped_data.data(), width * sizeof(unsigned char) * 4))
-			std::cout << "Render written to \"" << filepath << "\"" << std::endl;
+			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Screenshot written to \"%s\"", filepath);
 	}
 }
 

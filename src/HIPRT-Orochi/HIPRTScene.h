@@ -9,9 +9,12 @@
 #include "HIPRT-Orochi/HIPRTOrochiUtils.h"
 #include "HIPRT-Orochi/OrochiTexture.h"
 #include "HostDeviceCommon/Material.h"
+#include "UI/ImGui/ImGuiLogger.h"
 
 #include "hiprt/hiprt.h"
 #include "Orochi/Orochi.h"
+
+extern ImGuiLogger g_imgui_logger;
 
 struct HIPRTGeometry
 {
@@ -51,16 +54,7 @@ struct HIPRTGeometry
 
 	void log_bvh_building(hiprtBuildFlags build_flags)
 	{
-		std::cout << "Compiling BVH building kernels & building scene ";
-		if (build_flags == 0)
-			// This is hiprtBuildFlagBitPreferFastBuild
-			std::cout << "LBVH";
-		else if (build_flags & hiprtBuildFlagBitPreferBalancedBuild)
-			std::cout << "PLOC BVH";
-		else if (build_flags & hiprtBuildFlagBitPreferHighQualityBuild)
-			std::cout << "SBVH";
-
-		std::cout << std::endl;
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Compiling BVH building kernels & building scene BVH");
 	}
 
 	void build_bvh()
@@ -89,7 +83,7 @@ struct HIPRTGeometry
 		OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(geometry_temp)));
 
 		auto stop = std::chrono::high_resolution_clock::now();
-		std::cout << "BVH built in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "BVH built in %dms", std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count());
 	}
 
 	hiprtContext m_hiprt_ctx = nullptr;

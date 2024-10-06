@@ -8,6 +8,7 @@
 
 #include "imgui.h"
 
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -39,6 +40,9 @@ public:
 
     void add_line(ImGuiLoggerSeverity severity, const char* fmt, ...) IM_FMTARGS(2)
     {
+        // For logger's thread safety
+        std::lock_guard<std::mutex> lock(m_mutex);
+
         std::string fmt_prefix_str = ImGuiLogger::add_severity_prefix(severity, fmt);
         fmt_prefix_str += "\n";
         const char* fmt_prefix = fmt_prefix_str.c_str();
@@ -48,12 +52,14 @@ public:
         va_list args;
         va_start(args, fmt);
         m_text_buffer.appendfv(fmt_prefix, args);
+        vprintf(fmt_prefix, args); // Logging to the console as well
         va_end(args);
         for (int new_size = m_text_buffer.size(); old_size < new_size; old_size++)
             if (m_text_buffer[old_size] == '\n')
                 m_line_offsets.push_back(old_size + 1);
 
         m_line_severities.push_back(severity);
+
     }
 
     void draw(const char* title, bool* p_open = NULL)
@@ -166,7 +172,7 @@ public:
         switch (severity)
         {
         case IMGUI_LOGGER_INFO:
-            return IM_COL32(0, 255, 0, 255);
+            return IM_COL32(255, 255, 255, 255);
 
         case IMGUI_LOGGER_WARNING:
             return IM_COL32(255, 255, 0, 255);
@@ -175,10 +181,11 @@ public:
             return IM_COL32(255, 0, 0, 255);
 
         default:
-            return IM_COL32(0, 0, 0, 255);
+            return IM_COL32(255, 255, 255, 255);
         }
     }
 
+private:
     static std::string add_severity_prefix(ImGuiLoggerSeverity severity, const char* fmt)
     {
         std::string prefix;
@@ -204,13 +211,15 @@ public:
         return prefix + std::string(fmt);
     }
 
-    private:
-        ImGuiTextBuffer m_text_buffer;
-        ImGuiTextFilter m_text_filter;
-        ImVector<int> m_line_offsets; // Index to lines offset. We maintain this with AddLog() calls.
-        std::vector<ImGuiLoggerSeverity> m_line_severities;
+    ImGuiTextBuffer m_text_buffer;
+    ImGuiTextFilter m_text_filter;
+    ImVector<int> m_line_offsets; // Index to lines offset. We maintain this with AddLog() calls.
+    std::vector<ImGuiLoggerSeverity> m_line_severities;
 
-        bool m_auto_scroll;  // Keep scrolling if already at the bottom.
+    bool m_auto_scroll;  // Keep scrolling if already at the bottom.
+
+    // For logger thread safety
+    std::mutex m_mutex;
 };
 
 #endif

@@ -8,11 +8,14 @@
 
 #include "HIPRT-Orochi/HIPRTOrochiUtils.h"
 #include "UI/DisplayView/DisplayTextureType.h"
+#include "UI/ImGui/ImGuiLogger.h"
 #include "Utils/Utils.h"
 
 #include "GL/glew.h"
 #include "GLFW/glfw3.h"
 #include "Orochi/Orochi.h"
+
+extern ImGuiLogger g_imgui_logger;
 
 template <typename T>
 class OpenGLInteropBuffer
@@ -103,7 +106,7 @@ void OpenGLInteropBuffer<T>::resize(int new_element_count)
 {
 	if (m_mapped)
 	{
-		std::cerr << "Trying to resize interop buffer while it is mapped! This is undefined behavior" << std::endl;
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Trying to resize interop buffer while it is mapped! This is undefined behavior");
 
 		return;
 	}
@@ -154,7 +157,8 @@ T* OpenGLInteropBuffer<T>::map()
 {
 	if (!m_initialized)
 	{
-		std::cerr << "Mapping a buffer that hasn't been initialized!" << std::endl;
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Mapping a buffer that hasn't been initialized!");
+
 		Utils::debugbreak();
 
 		return nullptr;
@@ -162,7 +166,7 @@ T* OpenGLInteropBuffer<T>::map()
 
 	if (m_mapped)
 	{
-		std::cerr << "Mapping a buffer that is already mapped. Did you forget to call unmap()?" << std::endl;
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Mapping a buffer that is already mapped. Did you forget to call unmap()?");
 
 		// Already mapped
 		return m_mapped_pointer;
@@ -181,7 +185,8 @@ T* OpenGLInteropBuffer<T>::map_no_error()
 {
 	if (!m_initialized)
 	{
-		std::cerr << "Mapping a buffer that hasn't been initialized!" << std::endl;
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Mapping a buffer that hasn't been initialized!");
+
 		Utils::debugbreak();
 
 		return nullptr;

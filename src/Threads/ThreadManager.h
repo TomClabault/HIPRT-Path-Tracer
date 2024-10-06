@@ -16,6 +16,10 @@
 #include <unordered_set>
 #include <vector>
 
+#include "UI/ImGui/ImGuiLogger.h"
+
+extern ImGuiLogger g_imgui_logger;
+
 // TODO make this class not a singleton but a global variable instead
 
 /**
@@ -122,7 +126,8 @@ public:
 		}
 		else
 		{
-			std::cerr << "Trying to joing threads with key \"" << key << "\" but no threads have been started with this key.";
+			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Trying to joing threads with key \"%s\" but no threads have been started with this key.", key.c_str());
+
 			return;
 		}
 

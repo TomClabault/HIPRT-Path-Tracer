@@ -971,7 +971,7 @@ void GPURenderer::set_envmap(const Image32Bit& envmap_image, const std::string& 
 		{
 			m_render_data.world_settings.ambient_light_type = AmbientLightType::UNIFORM;
 
-			std::cerr << "Empty envmap set on the GPURenderer... Defaulting to uniform ambient light type" << std::endl;
+			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_WARNING, "Empty envmap set on the GPURenderer... Defaulting to uniform ambient light type");
 
 			return;
 		}

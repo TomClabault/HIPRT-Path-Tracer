@@ -88,10 +88,8 @@ void ImGuiRenderer::rescale_ui()
 {
 	ImGuiIO& io = ImGui::GetIO();
 	ImGuiViewport* viewport = ImGui::GetMainViewport();
-	float windowDpiScale = viewport->DpiScale;
 
-	// Scaling by the DPI -10% as judged more pleasing
-	io.FontGlobalScale = windowDpiScale;
+	io.FontGlobalScale = viewport->DpiScale;
 }
 
 void ImGuiRenderer::draw_dockspace()

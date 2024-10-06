@@ -1,3 +1,3 @@
 #include "UI/ImGui/ImGuiLogger.h"
 
-ImGuiLogger m_imgui_logger;
+ImGuiLogger g_imgui_logger;

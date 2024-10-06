@@ -4,10 +4,13 @@
  */
 
 #include "HIPRT-Orochi/HIPRTOrochiUtils.h"
+#include "UI/ImGui/ImGuiLogger.h"
 #include "Utils/Utils.h"
 
 #include <deque>
 #include <unordered_set>
+
+extern ImGuiLogger g_imgui_logger;
 
 void orochi_check_error(oroError res, const char* file, uint32_t line)
 {
@@ -15,7 +18,7 @@ void orochi_check_error(oroError res, const char* file, uint32_t line)
 	{
 		const char* msg;
 		oroGetErrorString(res, &msg);
-		std::cerr << "Orochi error: '" << msg << "' on line " << line << " " << " in '" << file << "'." << std::endl;
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Orochi error: '%s' on line %d in '%s'.", msg, line, file);
 
 		Utils::debugbreak();
 		exit(EXIT_FAILURE);
@@ -26,8 +29,7 @@ void orochi_rtc_check_error(orortcResult res, const char* file, uint32_t line)
 {
 	if (res != ORORTC_SUCCESS)
 	{
-		std::cerr << "ORORTC error: '" << orortcGetErrorString(res) << "' [ " << res << " ] on line " << line << " "
-			<< " in '" << file << "'." << std::endl;
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "ORORTC error: '%s' [ %d ] on line %d in '%s'", orortcGetErrorString(res), res, line, file);
 
 		Utils::debugbreak();
 		exit(EXIT_FAILURE);
@@ -38,7 +40,7 @@ void hiprt_check_error(hiprtError res, const char* file, uint32_t line)
 {
 	if (res != hiprtSuccess)
 	{
-		std::cerr << "HIPRT error: '" << res << "' on line " << line << " " << " in '" << file << "'." << std::endl;
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "HIPRT error: '%s' on line %d in '%s'.", res, line, file);
 
 		Utils::debugbreak();
 		exit(EXIT_FAILURE);
@@ -74,7 +76,7 @@ namespace HIPPTOrochiUtils
 							if (!a)
 							{
 								// Not even '"' was find, that's invalid #include syntax
-								std::cerr << "Unable to parse header name in line: " << line << std::endl;
+								g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Unable to parse header name in line '%s'", line.c_str());
 
 								continue;
 							}
@@ -87,7 +89,7 @@ namespace HIPPTOrochiUtils
 
 							if (!b)
 							{
-								std::cerr << "Unable to parse header name in line: " << line << std::endl;
+								g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Unable to parse header name in line '%s'", line.c_str());
 
 								continue;
 							}

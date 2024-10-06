@@ -6,12 +6,15 @@
 #include "stb_image.h"
 
 #include "Image/Image.h"
+#include "UI/ImGui/ImGuiLogger.h"
 #include "Utils/Utils.h"
 
 #include <iostream>
 #include <OpenImageDenoise/oidn.hpp>
 #include <string>
 #include <sstream>
+
+extern ImGuiLogger g_imgui_logger;
 
 std::vector<unsigned char> Utils::tonemap_hdr_image(const Image32Bit& hdr_image, int sample_number, float gamma, float exposure)
 {
@@ -52,7 +55,7 @@ std::string Utils::file_to_string(const char* filepath)
     std::ifstream file(filepath);
     if (!file.is_open())
     {
-        std::cerr << "Unable to open file " << filepath << std::endl;
+        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Unable to open file %s", filepath);
 
         return std::string();
     }
@@ -80,7 +83,7 @@ Image32Bit Utils::OIDN_denoise(const Image32Bit& image, int width, int height, f
                 device = oidn::newDevice(i);
                 if (device.getHandle() == nullptr)
                 {
-                    std::cerr << "There was an error getting the device for denoising with OIDN. Perhaps some missing libraries for your hardware?" << std::endl;
+                    g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "There was an error getting the device for denoising with OIDN. Perhaps some missing libraries for your hardware?");
                     return Image32Bit();
                 }
                 device.commit();
@@ -96,7 +99,7 @@ Image32Bit Utils::OIDN_denoise(const Image32Bit& image, int width, int height, f
         device = oidn::newDevice();
         if (device.getHandle() == nullptr)
         {
-            std::cerr << "There was an error getting the device for denoising with OIDN. Perhaps some missing libraries for your hardware?" << std::endl;
+            g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "There was an error getting the device for denoising with OIDN. Perhaps some missing libraries for your hardware?");
             return Image32Bit();
         }
         device.commit();
@@ -106,7 +109,7 @@ Image32Bit Utils::OIDN_denoise(const Image32Bit& image, int width, int height, f
 
     if (!device_done)
     {
-        std::cerr << "Cannot create any OIDN device, aborting denoising..." << std::endl;
+        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Cannot create any OIDN device, aborting denoising...");
         return Image32Bit();
     }
 
@@ -150,7 +153,7 @@ Image32Bit Utils::OIDN_denoise(const Image32Bit& image, int width, int height, f
 
     const char* errorMessage;
     if (device.getError(errorMessage) != oidn::Error::None)
-        std::cout << "Error: " << errorMessage << std::endl;
+        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Error: %s", errorMessage);
 
     return output_image;
 }

@@ -21,6 +21,8 @@
 #include <cmath>
 #include <iostream>
 
+extern ImGuiLogger g_imgui_logger;
+
 #define GPU_RENDER 1
 
 int main(int argc, char* argv[])
@@ -30,7 +32,7 @@ int main(int argc, char* argv[])
     const int width = cmd_arguments.render_width;
     const int height = cmd_arguments.render_height;
 
-    std::cout << "Reading scene file " << cmd_arguments.scene_file_path << " ..." << std::endl;
+    g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Reading scene file %s...", cmd_arguments.scene_file_path.c_str());
 
     std::chrono::high_resolution_clock::time_point start_scene, start_full;
     std::chrono::high_resolution_clock::time_point stop_scene, stop_full;
@@ -45,9 +47,8 @@ int main(int argc, char* argv[])
     SceneParser::parse_scene_file(cmd_arguments.scene_file_path, assimp_importer, parsed_scene, options);
     stop_scene = std::chrono::high_resolution_clock::now();
 
-    std::cout << "Scene geometry parsed in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop_scene - start_scene).count() << "ms" << std::endl;
-
-    std::cout << "Reading \"" << cmd_arguments.skysphere_file_path << "\" envmap..." << std::endl;
+    g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Scene geometry parsed in %dms", std::chrono::duration_cast<std::chrono::milliseconds>(stop_scene - start_scene).count());
+    g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Reading envmap %s...", cmd_arguments.skysphere_file_path.c_str());
 
     // TODO we only need 3 channels for the envmap but the only supported formats are 1, 2, 4 channels in HIP/CUDA, not 3
     Image32Bit envmap_image;
@@ -66,7 +67,7 @@ int main(int argc, char* argv[])
     ThreadManager::join_all_threads();
 
     stop_full = std::chrono::high_resolution_clock::now();
-    std::cout << "Full scene parsed & built in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop_full - start_full).count() << "ms" << std::endl;
+    g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Full scene parsed & built in %dms", std::chrono::duration_cast<std::chrono::milliseconds>(stop_full - start_full).count());
     renderer->get_hiprt_scene().print_statistics(std::cout);
 
     // We don't need the scene anymore, we can free it now

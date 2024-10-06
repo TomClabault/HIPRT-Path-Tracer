@@ -16,6 +16,8 @@
 
 #include "stb_image_write.h"
 
+extern ImGuiLogger g_imgui_logger;
+
 // TODOs ongoing
 // - limit distance of BSDF ray for initial sampling (biased but reduces BVH traversal so performance++)
 // - maybe not spatially resample as hard everywhere in the image? Dark regions for example? heuristic to reduce/increase the number of spatial samples per pixel?
@@ -210,40 +212,45 @@ void APIENTRY RenderWindow::gl_debug_output_callback(GLenum source,
 	// ignore non-significant error/warning codes
 	if (id == 131169 || id == 131185 || id == 131218 || id == 131204) return;
 
-	std::cout << "---------------" << std::endl;
-	std::cout << "Debug message (" << id << "): " << message << std::endl;
+	std::string source_str;
+	std::string type_str;
+	std::string severity_str;
 
 	switch (source)
 	{
-	case GL_DEBUG_SOURCE_API:             std::cout << "Source: API"; break;
-	case GL_DEBUG_SOURCE_WINDOW_SYSTEM:   std::cout << "Source: Window System"; break;
-	case GL_DEBUG_SOURCE_SHADER_COMPILER: std::cout << "Source: Shader Compiler"; break;
-	case GL_DEBUG_SOURCE_THIRD_PARTY:     std::cout << "Source: Third Party"; break;
-	case GL_DEBUG_SOURCE_APPLICATION:     std::cout << "Source: Application"; break;
-	case GL_DEBUG_SOURCE_OTHER:           std::cout << "Source: Other"; break;
-	} std::cout << std::endl;
+	case GL_DEBUG_SOURCE_API:             source_str = "Source: API"; break;
+	case GL_DEBUG_SOURCE_WINDOW_SYSTEM:   source_str = "Source: Window System"; break;
+	case GL_DEBUG_SOURCE_SHADER_COMPILER: source_str = "Source: Shader Compiler"; break;
+	case GL_DEBUG_SOURCE_THIRD_PARTY:     source_str = "Source: Third Party"; break;
+	case GL_DEBUG_SOURCE_APPLICATION:     source_str = "Source: Application"; break;
+	case GL_DEBUG_SOURCE_OTHER:           source_str = "Source: Other"; break;
+	}
 
 	switch (type)
 	{
-	case GL_DEBUG_TYPE_ERROR:               std::cout << "Type: Error"; break;
-	case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: std::cout << "Type: Deprecated Behaviour"; break;
-	case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:  std::cout << "Type: Undefined Behaviour"; break;
-	case GL_DEBUG_TYPE_PORTABILITY:         std::cout << "Type: Portability"; break;
-	case GL_DEBUG_TYPE_PERFORMANCE:         std::cout << "Type: Performance"; break;
-	case GL_DEBUG_TYPE_MARKER:              std::cout << "Type: Marker"; break;
-	case GL_DEBUG_TYPE_PUSH_GROUP:          std::cout << "Type: Push Group"; break;
-	case GL_DEBUG_TYPE_POP_GROUP:           std::cout << "Type: Pop Group"; break;
-	case GL_DEBUG_TYPE_OTHER:               std::cout << "Type: Other"; break;
-	} std::cout << std::endl;
+	case GL_DEBUG_TYPE_ERROR:               type_str = "Type: Error"; break;
+	case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: type_str = "Type: Deprecated Behaviour"; break;
+	case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:  type_str = "Type: Undefined Behaviour"; break;
+	case GL_DEBUG_TYPE_PORTABILITY:         type_str = "Type: Portability"; break;
+	case GL_DEBUG_TYPE_PERFORMANCE:         type_str = "Type: Performance"; break;
+	case GL_DEBUG_TYPE_MARKER:              type_str = "Type: Marker"; break;
+	case GL_DEBUG_TYPE_PUSH_GROUP:          type_str = "Type: Push Group"; break;
+	case GL_DEBUG_TYPE_POP_GROUP:           type_str = "Type: Pop Group"; break;
+	case GL_DEBUG_TYPE_OTHER:               type_str = "Type: Other"; break;
+	}
 
 	switch (severity)
 	{
-	case GL_DEBUG_SEVERITY_HIGH:         std::cout << "Severity: high"; break;
-	case GL_DEBUG_SEVERITY_MEDIUM:       std::cout << "Severity: medium"; break;
-	case GL_DEBUG_SEVERITY_LOW:          std::cout << "Severity: low"; break;
-	case GL_DEBUG_SEVERITY_NOTIFICATION: std::cout << "Severity: notification"; break;
-	} std::cout << std::endl;
-	std::cout << std::endl;
+	case GL_DEBUG_SEVERITY_HIGH:         severity_str = "Severity: high"; break;
+	case GL_DEBUG_SEVERITY_MEDIUM:       severity_str = "Severity: medium"; break;
+	case GL_DEBUG_SEVERITY_LOW:          severity_str = "Severity: low"; break;
+	case GL_DEBUG_SEVERITY_NOTIFICATION: severity_str = "Severity: notification"; break;
+	}
+
+	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, 
+		"---------------\n"
+		"Debug message (%d): %s\n"
+		"%s\n%s\n%s\n\n", id, message, source_str.c_str(), type_str.c_str(), severity_str.c_str());
 
 	// The following breaks into the debugger to help pinpoint what OpenGL
 	// call errored
@@ -309,7 +316,8 @@ void RenderWindow::init_glfw(int window_width, int window_height)
 {
 	if (!glfwInit())
 	{
-		std::cerr << "Could not initialize GLFW..." << std::endl;
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Could not initialize GLFW...");
+
 		int trash = std::getchar();
 
 		std::exit(1);
@@ -331,7 +339,8 @@ void RenderWindow::init_glfw(int window_width, int window_height)
 	m_glfw_window = glfwCreateWindow(window_width, window_height, "HIPRT-Path-Tracer", NULL, NULL);
 	if (!m_glfw_window)
 	{
-		std::cerr << "Could not initialize the GLFW window..." << std::endl;
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Could not initialize the GLFW window...");
+
 		int trash = std::getchar();
 
 		std::exit(1);

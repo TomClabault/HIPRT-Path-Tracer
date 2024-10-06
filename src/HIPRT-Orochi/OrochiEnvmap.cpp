@@ -4,6 +4,9 @@
  */
 
 #include "HIPRT-Orochi/OrochiEnvmap.h"
+#include "UI/ImGui/ImGuiLogger.h"
+
+extern ImGuiLogger g_imgui_logger;
 
 OrochiEnvmap::OrochiEnvmap(Image32Bit& image) : OrochiTexture(image)
 {
@@ -40,7 +43,7 @@ void OrochiEnvmap::compute_cdf(const Image32Bit& image)
 float* OrochiEnvmap::get_cdf_device_pointer()
 {
 	if (m_cdf.get_element_count() == 0)
-		std::cerr << "Trying to get the CDF of an OrochiEnvmap whose CDF wasn't computed in the first place..." << std::endl;
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Trying to get the CDF of an OrochiEnvmap whose CDF wasn't computed in the first place...");
 
 	return m_cdf.get_device_pointer();
 }

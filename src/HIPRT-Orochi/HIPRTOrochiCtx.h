@@ -13,6 +13,9 @@
 #include <Orochi/Orochi.h>
 
 #include "HIPRT-Orochi/HIPRTOrochiUtils.h"
+#include "UI/ImGui/ImGuiLogger.h"
+
+extern ImGuiLogger g_imgui_logger;
 
 struct HIPRTOrochiCtx
 {
@@ -27,7 +30,7 @@ struct HIPRTOrochiCtx
 	{
 		if (static_cast<oroError>(oroInitialize((oroApi)(ORO_API_HIP | ORO_API_CUDA), 0)) != oroSuccess)
 		{
-			std::cerr << "Unable to initialize Orochi... Is CUDA/HIP installed?" << std::endl;
+			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Unable to initialize Orochi... Is CUDA/HIP installed?");
 
 			int trash = std::getchar();
 			std::exit(1);
@@ -39,8 +42,8 @@ struct HIPRTOrochiCtx
 
 		OROCHI_CHECK_ERROR(oroGetDeviceProperties(&device_properties, orochi_device));
 
-		std::cout << "hiprt ver." << HIPRT_VERSION_STR << std::endl;
-		std::cout << "Executing on '" << device_properties.name << "'" << std::endl;
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "HIPRT ver.%s", HIPRT_VERSION_STR);
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Executing on '%s'\n", device_properties.name);
 		if (std::string(device_properties.name).find("NVIDIA") != std::string::npos)
 			hiprt_ctx_input.deviceType = hiprtDeviceNVIDIA;
 		else

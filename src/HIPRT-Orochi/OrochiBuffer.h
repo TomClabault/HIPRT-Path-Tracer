@@ -9,7 +9,10 @@
 #include "hiprt/hiprt.h"
 #include "HIPRT-Orochi/HIPRTOrochiUtils.h"
 #include "Orochi/Orochi.h"
+#include "UI/ImGui/ImGuiLogger.h"
 #include "Utils/Utils.h"
+
+extern ImGuiLogger g_imgui_logger;
 
 template <typename T>
 class OrochiBuffer
@@ -132,7 +135,7 @@ void OrochiBuffer<T>::download_data_async(void* out, oroStream_t stream) const
 {
 	if (m_data_pointer == nullptr)
 	{
-		std::cerr << "Trying to download data async from a non-allocated buffer!" << std::endl;
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Trying to download data async from a non-allocated buffer!");
 
 		Utils::debugbreak();
 
@@ -156,7 +159,7 @@ void OrochiBuffer<T>::upload_data(const void* data)
 	if (m_data_pointer)
 		OROCHI_CHECK_ERROR(oroMemcpy(reinterpret_cast<oroDeviceptr>(m_data_pointer), data, sizeof(T) * m_element_count, oroMemcpyHostToDevice));
 	else
-		std::cerr << "Trying to upload data to an OrochiBuffer that hasn't been allocated yet!" << std::endl;
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Trying to upload data to an OrochiBuffer that hasn't been allocated yet!");
 }
 
 template <typename T>

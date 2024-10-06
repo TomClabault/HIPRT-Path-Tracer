@@ -4,7 +4,10 @@
  */
 
 #include "OpenGL/OpenGLShader.h"
+#include "UI/ImGui/ImGuiLogger.h"
 #include "Utils/Utils.h"
+
+extern ImGuiLogger g_imgui_logger;
 
 OpenGLShader::OpenGLShader(const std::string& source_code, ShaderType type, const std::vector<std::string>& macros)
 {
@@ -98,7 +101,7 @@ bool OpenGLShader::print_shader_compile_error(GLuint shader)
 		std::vector<GLchar> errorLog(maxLength);
 		glGetShaderInfoLog(shader, maxLength, &maxLength, &errorLog[0]);
 
-		std::cout << errorLog.data() << std::endl;
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "%s", errorLog.data());
 
 		// Provide the infolog in whatever manor you deem best.
 		// Exit with failure.

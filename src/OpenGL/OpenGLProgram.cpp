@@ -4,6 +4,9 @@
  */
 
 #include "OpenGL/OpenGLProgram.h"
+#include "UI/ImGui/ImGuiLogger.h"
+
+extern ImGuiLogger g_imgui_logger;
 
 OpenGLProgram::OpenGLProgram(const OpenGLShader& compiled_vertex)
 {
@@ -52,7 +55,7 @@ void OpenGLProgram::get_compute_threads(GLint threads[3])
 {
 	if (!m_is_compute)
 	{
-		std::cerr << "This program isn't a compute shader" << std::endl;
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "This program isn't a compute shader");
 
 		return;
 	}

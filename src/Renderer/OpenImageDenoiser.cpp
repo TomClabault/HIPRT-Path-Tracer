@@ -126,13 +126,14 @@ void OpenImageDenoiser::create_device()
 
     if (m_device.getError() == oidn::Error::UnsupportedHardware)
     {
-        std::cerr << "Could not create an OIDN GPU device. Falling back to CPU..." << std::endl;
+        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_WARNING, "Could not create an OIDN GPU device. Falling back to CPU...");
+
         m_device = oidn::newDevice(oidn::DeviceType::CPU);
 
         const char* errorMessage;
         if (m_device.getError(errorMessage) != oidn::Error::None)
         {
-            std::cerr << "There was an error getting a CPU device for denoising with OIDN. Denoiser will be unavailable. " << errorMessage << std::endl;
+            g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "There was an error getting a CPU device for denoising with OIDN. Denoiser will be unavailable. %s", errorMessage);
 
             m_denoiser_invalid = true;
             return;
@@ -163,7 +164,7 @@ bool OpenImageDenoiser::check_device()
 {
     if (m_device.getHandle() == nullptr)
     {
-        std::cerr << "OIDN denoiser's device isn't initialized..." << std::endl;
+        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "OIDN denoiser's device isn't initialized...");
 
         return false;
     }
@@ -180,17 +181,20 @@ bool OpenImageDenoiser::check_buffer_sizes()
 
     if (m_use_normals && normals_buffer_size != m_width * m_height)
     {
-        std::cerr << "The denoiser normals buffer isn't the same size as the denoiser. Did you forget to call finalize() after a call to resize()?" << std::endl;
+        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "The denoiser normals buffer isn't the same size as the denoiser. Did you forget to call finalize() after a call to resize()?");
+
         return false;
     }
     else if (m_use_albedo && albedo_buffer_size != m_width * m_height)
     {
-        std::cerr << "The denoiser albedo buffer isn't the same size as the denoiser. Did you forget to call finalize() after a call to resize()?" << std::endl;
+        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "The denoiser albedo buffer isn't the same size as the denoiser. Did you forget to call finalize() after a call to resize()?");
+
         return false;
     }
     else if (denoised_buffer_size != m_width * m_height || noisy_input_buffer_size != m_width * m_height)
     {
-        std::cerr << "The denoiser output buffer or input noisy buffer isn't the same size as the denoiser. This has to be an internal error since resize() resizes these two buffers." << std::endl;
+        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "The denoiser output buffer or input noisy buffer isn't the same size as the denoiser. This has to be an internal error since resize() resizes these two buffers.");
+
         return false;
     }
 

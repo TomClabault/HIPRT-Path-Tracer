@@ -9,7 +9,7 @@
 const char* ImGuiLogWindow::TITLE = "Logs";
 const float ImGuiLogWindow::BASE_SIZE = 250.0f;
 
-extern ImGuiLogger m_imgui_logger;
+extern ImGuiLogger g_imgui_logger;
 
 void ImGuiLogWindow::set_render_window(RenderWindow* render_window)
 {
@@ -24,7 +24,7 @@ void ImGuiLogWindow::draw()
 
 	ImGui::Begin(ImGuiLogWindow::TITLE, nullptr);
 
-	m_imgui_logger.draw(ImGuiLogWindow::TITLE);
+	g_imgui_logger.draw(ImGuiLogWindow::TITLE);
 
 	ImGui::PopStyleVar(3);
 	ImGui::End();

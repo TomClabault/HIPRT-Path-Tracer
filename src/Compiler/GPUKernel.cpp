@@ -9,8 +9,10 @@
 #include "HIPRT-Orochi/HIPRTOrochiUtils.h"
 #include "Threads/ThreadFunctions.h"
 #include "Threads/ThreadManager.h"
+#include "UI/ImGui/ImGuiLogger.h"
 
 extern GPUKernelCompiler g_gpu_kernel_compiler;
+extern ImGuiLogger g_imgui_logger;
 
 const std::vector<std::string> GPUKernel::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS =
 {
@@ -91,7 +93,7 @@ int GPUKernel::get_kernel_attribute(oroFunction compiled_kernel, oroFunction_att
 
 	if (compiled_kernel == nullptr)
 	{
-		std::cerr << "Trying to get an attribute of a kernel that wasn't compiled yet." << std::endl;
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Trying to get an attribute of a kernel that wasn't compiled yet.");
 
 		return 0;
 	}
@@ -107,7 +109,7 @@ int GPUKernel::get_kernel_attribute(oroFunction_attribute attribute)
 
 	if (m_kernel_function == nullptr)
 	{
-		std::cerr << "Trying to get an attribute of a kernel that wasn't compiled yet." << std::endl;
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Trying to get an attribute of a kernel that wasn't compiled yet.");
 
 		return 0;
 	}

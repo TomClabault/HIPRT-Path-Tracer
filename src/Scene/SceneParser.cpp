@@ -8,6 +8,7 @@
 #include "Threads/ThreadFunctions.h"
 #include "Threads/ThreadManager.h"
 #include "Threads/ThreadState.h"
+#include "UI/ImGui/ImGuiLogger.h"
 #include "Utils/CommandlineArguments.h"
 
 #define GLM_ENABLE_EXPERIMENTAL
@@ -15,6 +16,8 @@
 
 #include <chrono>
 #include <memory>
+
+extern ImGuiLogger g_imgui_logger;
 
 void SceneParser::parse_scene_file(const std::string& scene_filepath, Assimp::Importer& assimp_importer, Scene& parsed_scene, SceneParserOptions& options)
 {
@@ -24,14 +27,14 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Assimp::Im
     if (scene == nullptr)
     {
         std::cerr << assimp_importer.GetErrorString() << std::endl;
-        std::cerr << "Falling back to default scene..." << std::endl;
+        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_WARNING, "Falling back to default scene...");
 
         scene = assimp_importer.ReadFile(CommandlineArguments::DEFAULT_SCENE, aiPostProcessSteps::aiProcess_PreTransformVertices | aiPostProcessSteps::aiProcess_Triangulate | aiPostProcessSteps::aiProcess_RemoveRedundantMaterials);
         if (scene == nullptr)
         {
             // Couldn't even load the default scene either
 
-            std::cerr << "Couldn't load the default scene either... Aborting" << std::endl;
+            g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Couldn't load the default scene either... Aborting");
 
             int charac = std::getchar();
             std::exit(1);
@@ -40,7 +43,7 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Assimp::Im
 
     if (scene->mNumMaterials > InteriorStackImpl<InteriorStackStrategy>::MAX_MATERIAL_INDEX)
     {
-        std::cerr << "This scene contains too many materials for the renderer. Maximum number of material is: " << InteriorStackImpl<InteriorStackStrategy>::MAX_MATERIAL_INDEX << std::endl;
+        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "This scene contains too many materials for the renderer. Maximum number of material is: %d", InteriorStackImpl<InteriorStackStrategy>::MAX_MATERIAL_INDEX);
 
         int charac = std::getchar();
 

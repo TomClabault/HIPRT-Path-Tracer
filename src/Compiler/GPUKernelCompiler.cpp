@@ -6,6 +6,7 @@
 #include "Compiler/GPUKernelCompilerOptions.h"
 #include "Compiler/GPUKernelCompiler.h"
 #include "HIPRT-Orochi/HIPRTOrochiUtils.h"
+#include "UI/ImGui/ImGuiLogger.h"
 #include "Utils/Utils.h"
 
 #include <chrono>
@@ -14,6 +15,7 @@
 #include <mutex>
 
 GPUKernelCompiler g_gpu_kernel_compiler;
+extern ImGuiLogger g_imgui_logger;
 
 // This variable will be initialized before the main function by the main thread
 std::thread::id g_main_thread_id = std::this_thread::get_id();
@@ -66,7 +68,7 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, const GPUKern
 	hiprtApiFunction trace_function_out;
 	if (HIPPTOrochiUtils::build_trace_kernel(hiprt_orochi_ctx->hiprt_ctx, kernel_file_path, kernel_function_name, trace_function_out, additional_include_dirs, compiler_options, 1, 1, use_cache, function_name_sets, additional_cache_key) != hiprtError::hiprtSuccess)
 	{
-		std::cerr << "Unable to compile kernel \"" << kernel_function_name << "\". Cannot continue." << std::endl;
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Unable to compile kernel \"%s\". Cannot continue.", kernel_function_name.c_str());
 		int ignored = std::getchar();
 		std::exit(1);
 	}
@@ -77,17 +79,17 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, const GPUKern
 
 	if (!silent)
 	{
-		std::cout << "Kernel \"" << kernel_function_name << "\" compiled in " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms. ";
-
 		// Setting the current context is necessary because getting
 		// functions attributes necessitates calling CUDA/HIP functions
 		// which need their context to be current if not calling from
 		// the main thread (which we are not if we are compiling kernels on multithreads)
 		OROCHI_CHECK_ERROR(oroCtxSetCurrent(hiprt_orochi_ctx->orochi_ctx));
-		std::cout << std::endl;
-		std::cout << "\t" << GPUKernel::get_kernel_attribute(kernel_function, ORO_FUNC_ATTRIBUTE_NUM_REGS) << " registers." << std::endl;
-		std::cout << "\t" << GPUKernel::get_kernel_attribute(kernel_function, ORO_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES) << " shared memory." << std::endl;
-		std::cout << "\t" << GPUKernel::get_kernel_attribute(kernel_function, ORO_FUNC_ATTRIBUTE_LOCAL_SIZE_BYTES) << " local memory." << std::endl;
+
+		int nb_reg = GPUKernel::get_kernel_attribute(kernel_function, ORO_FUNC_ATTRIBUTE_NUM_REGS);
+		int nb_shared = GPUKernel::get_kernel_attribute(kernel_function, ORO_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES);
+		int nb_local = GPUKernel::get_kernel_attribute(kernel_function, ORO_FUNC_ATTRIBUTE_LOCAL_SIZE_BYTES);
+
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Kernel \"%s\" compiled in %dms.\n\t[Reg, Shared, Local] = [%d, %d, %d]\n", kernel_function_name.c_str(), std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count(), nb_reg, nb_shared, nb_local);
 	}
 
 	return kernel_function;
@@ -159,7 +161,7 @@ void GPUKernelCompiler::read_includes_of_file(const std::string& include_file_pa
 	}
 	else
 	{
-		std::cerr << "Could not generate additional cache key for kernel with path: " << include_file_path << ". Error is: " << strerror(errno);
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Could not generate additional cache key for kernel with path \"%s\": %s", include_file_path.c_str(), strerror(errno));
 
 		Utils::debugbreak();
 	}
@@ -177,7 +179,7 @@ std::unordered_set<std::string> GPUKernelCompiler::read_option_macro_of_file(con
 	}
 	catch (std::filesystem::filesystem_error e)
 	{
-		std::cerr << "HIPKernelCompiler - Unable to open include file \"" << filepath << "\" for option macros analyzing: " << e.what() << std::endl;
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "HIPKernelCompiler - Unable to open include file \"%s\" for option macros analyzing: %s", filepath.c_str(), e.what());
 
 		return std::unordered_set<std::string>();
 	}
@@ -207,7 +209,7 @@ std::unordered_set<std::string> GPUKernelCompiler::read_option_macro_of_file(con
 
 	}
 	else
-		std::cerr << "Could not open file " << filepath << " for reading option macros used by that file. Error is : " << strerror(errno);
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Could not open file \"%s\" for reading option macros used by that file: %s", filepath, strerror(errno));
 
 	// The cache is shared to all threads using this GPUKernelCompiler so we're locking that operation
 	// The lock is destroyed when the function returns
@@ -259,7 +261,7 @@ std::string GPUKernelCompiler::get_additional_cache_key(GPUKernel& kernel)
 		}
 		catch (std::filesystem::filesystem_error e)
 		{
-			std::cerr << "HIPKernelCompiler - Unable to open include file \"" << include << "\" for shader cache validation: " << e.what() << std::endl;
+			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "HIPKernelCompiler - Unable to open include file \"%s\" for shader cache validation: ", include.c_str(), e.what());
 
 			return "";
 		}

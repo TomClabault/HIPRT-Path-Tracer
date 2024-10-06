@@ -5,8 +5,11 @@
 
 #include "UI/ApplicationSettings.h"
 #include "UI/DisplayView/DisplayViewSystem.h"
+#include "UI/ImGui/ImGuiLogWindow.h"
 #include "UI/RenderWindow.h"
 #include "Utils/Utils.h"
+
+extern ImGuiLogger g_imgui_logger;
 
 DisplayViewSystem::DisplayViewSystem(std::shared_ptr<GPURenderer> renderer, RenderWindow* render_window)
 {
@@ -98,7 +101,7 @@ void DisplayViewSystem::configure_framebuffer()
 	}
 	else
 	{
-		std::cerr << "Incomplete framebuffer in DisplayViewSystem!" << std::endl;
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Incomplete framebuffer in DisplayViewSystem!");
 
 		Utils::debugbreak();
 		std::exit(1);
@@ -392,7 +395,8 @@ void DisplayViewSystem::internal_recreate_display_textures_from_display_view(Dis
 		break;
 
 	default:
-		std::cerr << "Unhandled display texture type in 'internal_recreate_display_textures_from_display_view'" << std::endl;
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Unhandled display texture type in 'internal_recreate_display_textures_from_display_view'");
+
 		Utils::debugbreak();
 
 		break;
