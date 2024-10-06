@@ -55,7 +55,7 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, const GPUKern
 	compiler_options.push_back("-Wno-gnu-zero-variadic-macro-arguments");
 	compiler_options.push_back("-Wno-missing-variable-declarations");*/
 
-	// Locking because neither NVIDIA or AMD can compile kernels on multiple threads so we may as well
+	// Locking because neither NVIDIA or AMD cannot compile kernels on multiple threads so we may as well
 	// lock here to have better control on when to compile a kernel as well as have proper compilation times
 	std::unique_lock<std::mutex> lock(m_compile_mutex);
 
@@ -74,6 +74,14 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, const GPUKern
 	}
 
 	oroFunction kernel_function = reinterpret_cast<oroFunction>(trace_function_out);
+
+	if (kernel.is_precompiled())
+	{
+		// Updating the logs
+		m_precompiled_kernels_compilation_ended++;
+
+		g_imgui_logger.update_line(ImGuiLogger::BACKGROUND_KERNEL_COMPILATION_LINE_NAME, "Compiling kernels in the background... [%d / %d]", m_precompiled_kernels_compilation_ended.load(), m_precompiled_kernels_parsing_started.load());
+	}
 
 	auto stop = std::chrono::high_resolution_clock::now();
 
@@ -272,7 +280,10 @@ std::string GPUKernelCompiler::get_additional_cache_key(GPUKernel& kernel)
 
 std::unordered_set<std::string> GPUKernelCompiler::get_option_macros_used_by_kernel(const GPUKernel& kernel)
 {
-	m_option_macro_parsing_started++;
+	if (kernel.is_precompiled())
+		// If this kernel is being precompiled, we can increment the counter
+		// used for logging
+		m_precompiled_kernels_parsing_started++;
 
 	// Limiting the number of threads that can get in here at the same time otherwise we may
 	// get some "Too many files open!" error
@@ -319,7 +330,17 @@ std::unordered_set<std::string> GPUKernelCompiler::get_option_macros_used_by_ker
 	m_read_macros_semaphore.release();
 	m_read_macros_cv.notify_all();
 
-	m_option_macro_parsing_done++;
+	if (kernel.is_precompiled())
+	{
+		// If this kernel is being precompiled, we can increment the counter
+		// used for logging
+		m_precompiled_kernels_parsing_ended++;
+
+		// And update the log line
+		g_imgui_logger.update_line(ImGuiLogger::BACKGROUND_KERNEL_PARSING_LINE_NAME, "Parsing kernels in the background... [%d / %d]", m_precompiled_kernels_parsing_ended.load(), m_precompiled_kernels_parsing_started.load());
+	}
+
+
 	return option_macro_names;
 }
 
@@ -328,5 +349,5 @@ void GPUKernelCompiler::wait_option_macro_parsing()
 	std::mutex mutex;
 	std::unique_lock<std::mutex> lock(mutex);
 
-	m_read_macros_cv.wait(lock, [this]() { return m_option_macro_parsing_started == m_option_macro_parsing_done; });
+	m_read_macros_cv.wait(lock, [this]() { return m_precompiled_kernels_parsing_started == m_precompiled_kernels_parsing_ended; });
 }

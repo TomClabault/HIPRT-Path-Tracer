@@ -145,7 +145,11 @@ void GPURenderer::update()
 	// Launching the background kernels precompilation if not already launched
 	if (!m_kernel_precompilation_launched)
 	{
+		g_imgui_logger.add_line_with_name(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, ImGuiLogger::BACKGROUND_KERNEL_PARSING_LINE_NAME, "Parsing kernels in the background... [%d / %d]", 0, 1);
+		g_imgui_logger.add_line_with_name(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, ImGuiLogger::BACKGROUND_KERNEL_COMPILATION_LINE_NAME, "Pre-compiling kernels in the background... [%d / %d]", 0, 1);
+
 		precompile_kernels();
+
 		m_kernel_precompilation_launched = true;
 	}
 
@@ -604,6 +608,8 @@ void GPURenderer::recompile_kernels()
 {
 	synchronize_kernel();
 
+	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Recompiling kernels...");
+
 	// Notifying all threads that may be compiling that the main thread wants to
 	// compile. This will block threads other than the main thread from compiling
 	// and thus give the priority to the main thread
@@ -611,8 +617,8 @@ void GPURenderer::recompile_kernels()
 	g_condition_for_compilation.notify_all();
 
 	for (auto& name_to_kenel : m_kernels)
-		name_to_kenel.second.compile(m_hiprt_orochi_ctx, m_func_name_sets);
-	m_restir_di_render_pass.recompile(m_hiprt_orochi_ctx, m_func_name_sets);
+		name_to_kenel.second.compile_silent(m_hiprt_orochi_ctx, m_func_name_sets);
+	m_restir_di_render_pass.recompile(m_hiprt_orochi_ctx, m_func_name_sets, true);
 	m_ray_volume_state_byte_size_kernel.compile_silent(m_hiprt_orochi_ctx, m_func_name_sets);
 
 	// The main thread is done with the compilation, we can release the other threads

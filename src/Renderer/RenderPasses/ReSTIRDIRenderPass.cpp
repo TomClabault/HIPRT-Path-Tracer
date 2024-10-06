@@ -79,10 +79,15 @@ void ReSTIRDIRenderPass::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ct
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID]), hiprt_orochi_ctx, std::ref(func_name_sets));
 }
 
-void ReSTIRDIRenderPass::recompile(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets)
+void ReSTIRDIRenderPass::recompile(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets, bool silent)
 {
 	for (auto& name_to_kernel : m_kernels)
-		name_to_kernel.second.compile(hiprt_orochi_ctx, func_name_sets);
+	{
+		if (silent)
+			name_to_kernel.second.compile_silent(hiprt_orochi_ctx, func_name_sets);
+		else
+			name_to_kernel.second.compile(hiprt_orochi_ctx, func_name_sets);
+	}
 }
 
 void ReSTIRDIRenderPass::precompile_kernels(GPUKernelCompilerOptions partial_options, std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets)

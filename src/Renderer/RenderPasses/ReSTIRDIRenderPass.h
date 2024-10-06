@@ -48,7 +48,7 @@ public:
 	ReSTIRDIRenderPass(GPURenderer* renderer);
 
 	void compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::unordered_set<std::string>& options_excluded_from_synchro, std::vector<hiprtFuncNameSet>& func_name_sets);
-	void recompile(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets);
+	void recompile(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets, bool silent = false);
 	/**
 	 * Precompiles all kernels of this render pass to fill to shader cache in advance.
 	 * 

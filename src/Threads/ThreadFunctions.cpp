@@ -22,6 +22,7 @@ void ThreadFunctions::precompile_kernel(const std::string& kernel_function_name,
     OROCHI_CHECK_ERROR(oroCtxSetCurrent(hiprt_orochi_ctx->orochi_ctx));
 
     GPUKernel kernel(kernel_filepath, kernel_function_name);
+    kernel.set_precompiled(true);
     kernel.get_kernel_options() = options;
     kernel.compile_silent(hiprt_orochi_ctx, func_name_sets);
 }

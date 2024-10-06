@@ -122,14 +122,8 @@ public:
 		HIPRTOrochiCtx* hiprt_orochi_ctx;
 	};
 
-	/**
-	 * Callback function that can be given to oroLaunchHostFunc
-	 * to compute the elapsed time between two events.
-	 * 
-	 * Data is expected to be a pointer to a *dynamically allocated* ComputeElapsedTimeCallbackData
-	 * instance (i.e. with a 'new' call) whose fields have been properly set-up.
-	 */
-	//static void compute_elapsed_time_callback(void* data);
+	bool is_precompiled() const;
+	void set_precompiled(bool precompiled);
 
 private:
 	std::string m_kernel_file_path = "";
@@ -164,6 +158,13 @@ private:
 	GPUKernelCompilerOptions m_compiler_options;
 
 	oroFunction m_kernel_function = nullptr;
+
+	// If true, this means that this kernel is only used for precompilation and will be
+	// discarded after it's been compiled
+	// This is used in the GPUKernelCompiler to determine whether or not we should increment
+	// the counter of the ImGuiLoggerLine that counts how many kernels have been precompiled
+	// so far
+	bool m_is_precompiled_kernel = false;
 };
 
 #endif

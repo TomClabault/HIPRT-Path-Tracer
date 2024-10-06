@@ -6,219 +6,85 @@
 #ifndef IMGUI_LOGGER_H
 #define IMGUI_LOGGER_H
 
+#include "UI/ImGui/ImGuiLoggerSeverity.h"
+#include "UI/ImGui/ImGuiLoggerLine.h"
+
 #include "imgui.h"
 
+#include <iostream>
 #include <mutex>
 #include <string>
+#include <string_view>
+#include <unordered_map>
 #include <vector>
 
-enum ImGuiLoggerSeverity
-{
-    IMGUI_LOGGER_INFO,
-    IMGUI_LOGGER_WARNING,
-    IMGUI_LOGGER_ERROR
-};
-
 /**
- * Class from imgui_demo.cpp "ExampleAppLog"
+ * Class derived from imgui_demo.cpp "ExampleAppLog"
  */
+
 class ImGuiLogger
 {
 public:
-    ImGuiLogger()
-    {
-        m_auto_scroll = true;
-        clear();
-    }
+    static const char* BACKGROUND_KERNEL_PARSING_LINE_NAME;
+    static const char* BACKGROUND_KERNEL_COMPILATION_LINE_NAME;
 
-    void clear()
-    {
-        m_text_buffer.clear();
-        m_line_offsets.clear();
-        m_line_offsets.push_back(0);
-    }
+    ImGuiLogger();
 
-    void add_line(ImGuiLoggerSeverity severity, const char* fmt, ...) IM_FMTARGS(2)
-    {
-        // For logger's thread safety
-        std::lock_guard<std::mutex> lock(m_mutex);
+    void add_line_with_name(ImGuiLoggerSeverity severity, const char* line_name, const char* fmt, ...);
+    void add_line(ImGuiLoggerSeverity severity, const char* fmt, ...);
 
-        std::string fmt_prefix_str = ImGuiLogger::add_severity_prefix(severity, fmt);
-        fmt_prefix_str += "\n";
-        const char* fmt_prefix = fmt_prefix_str.c_str();
+    void draw(const char* title, bool* p_open = NULL);
+    void clear();
 
+    void update_line(const char* line_name, const char* fmt, ...);
 
-        int old_size = m_text_buffer.size();
-        va_list args;
-        va_start(args, fmt);
-        m_text_buffer.appendfv(fmt_prefix, args);
-        vprintf(fmt_prefix, args); // Logging to the console as well
-        va_end(args);
-        for (int new_size = m_text_buffer.size(); old_size < new_size; old_size++)
-        {
-            if (m_text_buffer[old_size] == '\n')
-            {
-                m_line_severities.push_back(severity);
-                m_line_offsets.push_back(old_size + 1);
-            }
-        }
-    }
-
-    void draw(const char* title, bool* p_open = NULL)
-    {
-        if (!ImGui::Begin(title, p_open))
-        {
-            ImGui::End();
-            return;
-        }
-
-        // Options menu
-        if (ImGui::BeginPopup("Options"))
-        {
-            ImGui::Checkbox("Auto-scroll", &m_auto_scroll);
-            ImGui::EndPopup();
-        }
-
-        // Main window
-        if (ImGui::Button("Options"))
-            ImGui::OpenPopup("Options");
-        ImGui::SameLine();
-        bool clear_button = ImGui::Button("Clear");
-        ImGui::SameLine();
-        bool copy = ImGui::Button("Copy");
-        ImGui::SameLine();
-        m_text_filter.Draw("Filter", -100.0f);
-        ImGui::SameLine();
-
-        ImGui::Separator();
-
-        if (ImGui::BeginChild("scrolling", ImVec2(0, 0), ImGuiChildFlags_None, ImGuiWindowFlags_HorizontalScrollbar))
-        {
-            if (clear_button)
-                clear();
-            if (copy)
-                ImGui::LogToClipboard();
-            if (m_text_buffer.size() == 0)
-            {
-                ImGui::EndChild();
-                ImGui::End();
-
-                return;
-            }
-
-            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
-            const char* buf = m_text_buffer.begin();
-            const char* buf_end = m_text_buffer.end();
-            if (m_text_filter.IsActive())
-            {
-                // In this example we don't use the clipper when Filter is enabled.
-                // This is because we don't have random access to the result of our filter.
-                // A real application processing logs with ten of thousands of entries may want to store the result of
-                // search/filter.. especially if the filtering function is not trivial (e.g. reg-exp).
-                for (int line_no = 0; line_no < m_line_offsets.Size; line_no++)
-                {
-                    const char* line_start = buf + m_line_offsets[line_no];
-                    const char* line_end = (line_no + 1 < m_line_offsets.Size) ? (buf + m_line_offsets[line_no + 1] - 1) : buf_end;
-                    if (m_text_filter.PassFilter(line_start, line_end))
-                    {
-                        ImGui::PushStyleColor(ImGuiCol_Text, ImGuiLogger::get_severity_color(m_line_severities[line_no]));
-                        ImGui::TextUnformatted(line_start, line_end);
-                        ImGui::PopStyleColor();
-                    }
-                }
-            }
-            else
-            {
-                // The simplest and easy way to display the entire buffer:
-                //   ImGui::TextUnformatted(buf_begin, buf_end);
-                // And it'll just work. TextUnformatted() has specialization for large blob of text and will fast-forward
-                // to skip non-visible lines. Here we instead demonstrate using the clipper to only process lines that are
-                // within the visible area.
-                // If you have tens of thousands of items and their processing cost is non-negligible, coarse clipping them
-                // on your side is recommended. Using ImGuiListClipper requires
-                // - A) random access into your data
-                // - B) items all being the  same height,
-                // both of which we can handle since we have an array pointing to the beginning of each line of text.
-                // When using the filter (in the block of code above) we don't have random access into the data to display
-                // anymore, which is why we don't use the clipper. Storing or skimming through the search result would make
-                // it possible (and would be recommended if you want to search through tens of thousands of entries).
-                ImGuiListClipper clipper;
-                clipper.Begin(m_line_offsets.Size);
-                while (clipper.Step())
-                {
-                    for (int line_no = clipper.DisplayStart; line_no < clipper.DisplayEnd; line_no++)
-                    {
-                        const char* line_start = buf + m_line_offsets[line_no];
-                        const char* line_end = (line_no + 1 < m_line_offsets.Size) ? (buf + m_line_offsets[line_no + 1] - 1) : buf_end;
-
-                        ImGui::PushStyleColor(ImGuiCol_Text, ImGuiLogger::get_severity_color(m_line_severities[line_no]));
-                        ImGui::TextUnformatted(line_start, line_end);
-                        ImGui::PopStyleColor();
-                    }
-                }
-                clipper.End();
-            }
-            ImGui::PopStyleVar();
-
-            // Keep up at the bottom of the scroll region if we were already at the bottom at the beginning of the frame.
-            // Using a scrollbar or mouse-wheel will take away from the bottom edge.
-            if (m_auto_scroll && ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
-                ImGui::SetScrollHereY(1.0f);
-        }
-        ImGui::EndChild();
-        ImGui::End();
-    }
-
-    static ImU32 get_severity_color(ImGuiLoggerSeverity severity)
-    {
-        switch (severity)
-        {
-        case IMGUI_LOGGER_INFO:
-            return IM_COL32(255, 255, 255, 255);
-
-        case IMGUI_LOGGER_WARNING:
-            return IM_COL32(255, 255, 0, 255);
-
-        case IMGUI_LOGGER_ERROR:
-            return IM_COL32(255, 0, 0, 255);
-
-        default:
-            return IM_COL32(255, 255, 255, 255);
-        }
-    }
+    static ImU32 get_severity_color(ImGuiLoggerSeverity severity);
 
 private:
-    static std::string add_severity_prefix(ImGuiLoggerSeverity severity, const char* fmt)
-    {
-        std::string prefix;
-        switch (severity)
-        {
-        case IMGUI_LOGGER_INFO:
-            prefix = "[INFO] ";
-            break;
+    void add_line_internal(ImGuiLoggerSeverity severity, const char* line_name, const char* fmt, va_list args);
 
-        case IMGUI_LOGGER_WARNING:
-            prefix = "[WARN] ";
-            break;
+    void set_line_name(std::shared_ptr<ImGuiLoggerLine> line, const char* line_name);
 
-        case IMGUI_LOGGER_ERROR:
-            prefix = "[ERR ] ";
-            break;
+    std::string compute_formatted_string(const char* fmt, va_list args);
+    void compute_actual_lines(std::shared_ptr<ImGuiLoggerLine> logger_line);
 
-        default:
-            prefix = "";
-            break;
-        }
+    std::pair<std::shared_ptr<ImGuiLoggerLine>, std::string_view*> get_line_from_index(int index);
 
-        return prefix + std::string(fmt);
-    }
+    static std::string get_severity_prefix(ImGuiLoggerSeverity severity);
 
-    ImGuiTextBuffer m_text_buffer;
+    // Each time you call add_log(), one entry is added in there with the whole text
+    // and severity.
+    // We're using shared_ptr here because when adding new lines to m_log_lines, the
+    // vector may be resized in which case, all instances of ImGuiLoggerLine will be
+    // moved and references/pointers that we had on it become invalid.
+    // By using shared_ptr, we're allocating the lines on the heap and thus we always
+    // keep valid references to them
+    std::vector<std::shared_ptr<ImGuiLoggerLine>> m_log_lines;
+
+    // If you call add_log() with a text that contains multiple "\n" (i.e. multiple lines)
+    // each individual line will be added in that vector. This is used for drawing properly
+    // because drawing needs the actual lines separated by \n, not the "lines" that the entire
+    // string that the user gave when calling add_log()
+    std::vector<std::vector<std::string_view>> m_actual_lines;
+    // For a given ImGuiLoggerLine, the value is the index in 'm_actual_lines' of that ImGuiLoggerLine
+    // so this map can be used to retrieve the actual lines (vector of std::string_view)
+    // of an ImGuiLoggerLine
+    std::unordered_map<std::shared_ptr<ImGuiLoggerLine>, int> m_index_in_actual_lines;
+    // Cache for the get_line_from_index() method. If we ask for the same index twice, 
+    // we can just look in the cache for what the line was for this index.
+    // The cache is invalidated if a call to 'update_line()' modifies the number of
+    // actual lines of an ImGuiLoggerLine (by giving a text that contains more '\n' than
+    // the previous for example)
+    std::unordered_map<int, std::pair<std::shared_ptr<ImGuiLoggerLine>, std::string_view*>> m_index_to_line_cache;
+    // This variable is equivalent to: for (auto& l : m_actual_lines) total += l.size();
+    int m_total_number_of_lines = 0;
+
+    // User given names to their associated line
+    std::unordered_map<const char*, std::shared_ptr<ImGuiLoggerLine>> m_names_to_lines;
+
     ImGuiTextFilter m_text_filter;
-    ImVector<int> m_line_offsets; // Index to lines offset. We maintain this with AddLog() calls.
-    std::vector<ImGuiLoggerSeverity> m_line_severities;
 
-    bool m_auto_scroll;  // Keep scrolling if already at the bottom.
+    bool m_auto_scroll = true;  // Keep scrolling if already at the bottom.
 
     // For logger thread safety
     std::mutex m_mutex;

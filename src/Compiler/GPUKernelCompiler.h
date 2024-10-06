@@ -105,10 +105,13 @@ private:
 	// read kernel files at the same time: this can cause a "Too many files open" error
 	// 
 	// Limiting to a maximum of 16 threads at a time
-	std::counting_semaphore<> m_read_macros_semaphore { 16 };
+	std::counting_semaphore<> m_read_macros_semaphore { 12 };
 	std::condition_variable m_read_macros_cv;
-	int m_option_macro_parsing_started = 0;
-	int m_option_macro_parsing_done = 0;
+
+	// Counters for logging the progress of background kernel precompilation
+	std::atomic<int> m_precompiled_kernels_parsing_started = 0;
+	std::atomic<int> m_precompiled_kernels_parsing_ended = 0;
+	std::atomic<int> m_precompiled_kernels_compilation_ended = 0;
 };
 
 #endif
