@@ -3,6 +3,7 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
+#include "Compiler/GPUKernelCompiler.h"
 #include "Scene/SceneParser.h"
 #include "Threads/ThreadFunctions.h"
 #include "Threads/ThreadManager.h"
@@ -16,6 +17,8 @@
 
 #include "stb_image_write.h"
 
+// Kernel compiler for waiting on threads currently reading files on disk
+extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // TODOs ongoing
@@ -25,7 +28,7 @@ extern ImGuiLogger g_imgui_logger;
 // - limit UI speed because it actually uses some resources (maybe Vsync or something)
 // - smarter shader cache (hints to avoid using all kernel options when compiling a kernel? We know that Camera ray doesn't care about direct lighting strategy for example)
 // - use self bit packing (no bitfields) for nested dielectrics because bitfields are implementation dependent in size, that's bad --> We don't get our nice packing with every compiler
-// - background kernel compilation: may crash if we close the app while some thread is doing IO operations to read from the macros used by a kernel for example
+// - backgfround kernel compilation counter in log window
 
 // TODO known bugs / incorectness:
 // - take transmission color into account when direct sampling a light source that is inside a volume
@@ -309,6 +312,15 @@ RenderWindow::RenderWindow(int renderer_width, int renderer_height, std::shared_
 	m_screenshoter = std::make_shared<Screenshoter>();
 	m_screenshoter->set_renderer(m_renderer);
 	m_screenshoter->set_render_window(this);
+}
+
+RenderWindow::~RenderWindow()
+{
+	glfwDestroyWindow(m_glfw_window);
+
+	// Waiting for all threads that are currently reading from the disk (for compiling kernels in the background)
+	// to finish the reading to avoid SEGFAULTING
+	g_gpu_kernel_compiler.wait_option_macro_parsing();
 }
 
 void RenderWindow::init_glfw(int window_width, int window_height)

@@ -74,7 +74,6 @@ int main(int argc, char* argv[])
     assimp_importer.FreeScene();
     envmap_image.free();
     render_window.run();
-
 #else
 
     std::cout << "[" << width << "x" << height << "]: " << cmd_arguments.render_samples << " samples ; " << cmd_arguments.bounces << " bounces" << std::endl << std::endl;

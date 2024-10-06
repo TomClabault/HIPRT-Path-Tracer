@@ -272,6 +272,10 @@ std::string GPUKernelCompiler::get_additional_cache_key(GPUKernel& kernel)
 
 std::unordered_set<std::string> GPUKernelCompiler::get_option_macros_used_by_kernel(const GPUKernel& kernel)
 {
+	m_option_macro_parsing_started++;
+
+	// Limiting the number of threads that can get in here at the same time otherwise we may
+	// get some "Too many files open!" error
 	m_read_macros_semaphore.acquire();
 
 	std::unordered_set<std::string> already_processed_includes;
@@ -313,6 +317,16 @@ std::unordered_set<std::string> GPUKernelCompiler::get_option_macros_used_by_ker
 	}
 
 	m_read_macros_semaphore.release();
+	m_read_macros_cv.notify_all();
 
+	m_option_macro_parsing_done++;
 	return option_macro_names;
+}
+
+void GPUKernelCompiler::wait_option_macro_parsing()
+{
+	std::mutex mutex;
+	std::unique_lock<std::mutex> lock(mutex);
+
+	m_read_macros_cv.wait(lock, [this]() { return m_option_macro_parsing_started == m_option_macro_parsing_done; });
 }

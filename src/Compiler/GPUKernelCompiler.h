@@ -73,6 +73,19 @@ public:
 	 */
 	std::unordered_set<std::string> get_option_macros_used_by_kernel(const GPUKernel& kernel);
 
+	/**
+	 * For background kernel precompilation, threads compiling kernels actually open the kernel
+	 * files on the disk to read the macros used by the kernels.
+	 * 
+	 * If the application is closed while these files are being opened, this can SEGFAULT.
+	 * 
+	 * This function blocks the calling thread until all threads have parsed the kernel files and
+	 * thus avoids a crash.
+	 * 
+	 * This function is mostly called when exiting the Renderwindow
+	 */
+	void wait_option_macro_parsing();
+
 private:
 	// Cache that maps a filepath to the option macros that it contains.
 	// This saves us having to reparse the file to find the options macros
@@ -93,6 +106,9 @@ private:
 	// 
 	// Limiting to a maximum of 16 threads at a time
 	std::counting_semaphore<> m_read_macros_semaphore { 16 };
+	std::condition_variable m_read_macros_cv;
+	int m_option_macro_parsing_started = 0;
+	int m_option_macro_parsing_done = 0;
 };
 
 #endif
