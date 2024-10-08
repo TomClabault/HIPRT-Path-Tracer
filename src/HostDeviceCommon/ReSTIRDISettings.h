@@ -8,6 +8,7 @@
 
 struct ReSTIRDIReservoir;
 struct ReSTIRDIPresampledLight;
+struct ColorRGB32F;
 
 struct InitialCandidatesSettings
 {
@@ -121,6 +122,12 @@ struct LightPresamplingSettings
 
 struct DecoupledShadingReuseSettings
 {
+	// Whether or not to shade the initial candidates / temporal / spatial neighbors
+	// respectively
+	bool shade_initial_candidates = false;
+	bool shade_temporal_neighbor = false;
+	bool shade_spatial_neighbor = true;
+
 	// The buffer that holds the shading of the initial candidates/temporal/spatial neighbors
 	ColorRGB32F* shading_buffer = nullptr;
 };
@@ -135,6 +142,7 @@ struct ReSTIRDISettings
 	SpatialPassSettings spatial_pass;
 	// Settings for the light presampling pass
 	LightPresamplingSettings light_presampling;
+	// Settings for the decoupled shading and reuse feature
 	DecoupledShadingReuseSettings decoupled_shading_reuse;
 
 	// If true, the spatial and temporal pass will be fused into a single kernel call.

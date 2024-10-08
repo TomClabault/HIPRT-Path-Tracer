@@ -30,6 +30,8 @@ extern ImGuiLogger g_imgui_logger;
 // - use self bit packing (no bitfields) for nested dielectrics because bitfields are implementation dependent in size, that's bad --> We don't get our nice packing with every compiler
 // - cmake to disable optimizations in reldebinfo
 // - remove broken apply button for resolution scaling
+// - decoupled reuse and shading: don't need to re-evaluate the BSDF again: we have the evaluation already when resampling the reservoir
+// - maybe we can shade all neighbors that already include visibiity (unoccluded flag)
 
 // TODO known bugs / incorectness:
 // - take transmission color into account when direct sampling a light source that is inside a volume
@@ -38,7 +40,7 @@ extern ImGuiLogger g_imgui_logger;
 // - fix sampling lights inside dielectrics with ReSTIR DI
 // - when using a BSDF override, transmissive materials keep their dielectric priorities and this can mess up shadow rays and intersections in general if the BSDF used for the override doesn't support transmissive materials
 // - threadmanager: what if we start a thread with a dependency A on a thread that itself has a dependency B? we're going to try join dependency A even if thread with dependency on B hasn't even started yet --> joining nothing --> immediate return --> should have waited for the dependency but hasn't
-// -pairwise MIS temporally unstable/more noisy with spatiotemporal reuse compared to no fused spatiotemporal-reuse: easy to see by switching from pairwise to MIS-like or GBH when using fused spatiotemporal
+// - pairwise MIS temporally more noisy with fused spatiotemporal reuse compared to no fused spatiotemporal-reuse: easy to see by switching from pairwise to MIS-like or GBH when using fused spatiotemporal: these two are less noisy than pairwise
 
 
 

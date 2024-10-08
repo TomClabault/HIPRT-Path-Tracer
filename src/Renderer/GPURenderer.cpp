@@ -608,7 +608,8 @@ void GPURenderer::recompile_kernels()
 {
 	synchronize_kernel();
 
-	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Recompiling kernels...");
+	auto start = std::chrono::high_resolution_clock::now();
+
 
 	// Notifying all threads that may be compiling that the main thread wants to
 	// compile. This will block threads other than the main thread from compiling
@@ -625,6 +626,9 @@ void GPURenderer::recompile_kernels()
 	// so that they can continue compiling (background compilation of shaders most likely)
 	g_main_thread_compiling = false;
 	g_condition_for_compilation.notify_all();
+
+	auto stop = std::chrono::high_resolution_clock::now();
+	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Kernels recompiled in %dms...", std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count());
 }
 
 void GPURenderer::precompile_kernels()

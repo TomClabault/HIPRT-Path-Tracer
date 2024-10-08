@@ -300,6 +300,16 @@
 #define ReSTIR_DI_DoLightsPresampling KERNEL_OPTION_TRUE
 
 /**
+ * If true, performs decoupled shading and reuse on the initial candidates, temporal
+ * neighbor and one spatial neighbor as prposed in 
+ * [Rearchitecting Spatiotemporal Resampling for Production, Wyman, Panteleev, 2021] 
+ * https://research.nvidia.com/publication/2021-07_rearchitecting-spatiotemporal-resampling-production.
+ * 
+ * What neighbors to shade is controlled by the ReSTIRDISettings::DecoupledShadingReuse settings
+ */
+#define ReSTIR_DI_DoDecoupledShadingReuse KERNEL_OPTION_TRUE
+
+/**
  * What sampling strategy to use for the GGX NDF
  * 
  *  - GGX_NO_VNDF

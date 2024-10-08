@@ -16,6 +16,10 @@
 #include "HostDeviceCommon/HitInfo.h"
 #include "HostDeviceCommon/RenderData.h"
 
+/**
+ * Function called when moving the camera while accumulating (we need to reset to avoid bad accumulation with movement)
+ * or at each frame if not accumulating (because then we don't want to accumulate frames so we reset at each frame)
+ */
 HIPRT_HOST_DEVICE HIPRT_INLINE void reset_render(const HIPRTRenderData& render_data, uint32_t pixel_index)
 {
     if (render_data.render_settings.accumulate && render_data.aux_buffers.restir_reservoir_buffer_1 != nullptr)

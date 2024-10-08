@@ -727,6 +727,41 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 							m_render_window->set_render_dirty(true);
 						}
 
+						static bool do_decoupled_shading_and_reuse = ReSTIR_DI_DoDecoupledShadingReuse;
+						ImGui::BeginDisabled(!render_settings.restir_di_settings.do_fused_spatiotemporal);
+						if (ImGui::Checkbox("Decouple Shading and Reuse", &do_decoupled_shading_and_reuse))
+						{
+							global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_DECOUPLED_SHADING_AND_REUSE, do_decoupled_shading_and_reuse ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+							m_renderer->recompile_kernels();
+							m_render_window->set_render_dirty(true);
+						}
+						std::string help_string = "Decouples shading of samples and reuse by shading three "
+							"samples per frame: the initial candidates, the temporal neighbor and one of the "
+							"spatial neighbors. This triples the shading count for only one more shadow ray.\n\n"
+							"Implemented after [Rearchitecting Spatiotemporal Resampling for Production, Wyman, Panteleev, 2021].";
+						if (!render_settings.restir_di_settings.do_fused_spatiotemporal)
+							// Explanation for why it's disabled
+							help_string += "\n\nDisabled because only available with the fused-spatiotemporal pass.";
+						ImGuiRenderer::show_help_marker(help_string);
+
+						if (do_decoupled_shading_and_reuse)
+						{
+							bool changed = false;
+
+							ImGui::TreePush("Shade neighbors tree");
+
+							changed |= ImGui::Checkbox("Shade Initial Candidates", &render_settings.restir_di_settings.decoupled_shading_reuse.shade_initial_candidates);
+							changed |= ImGui::Checkbox("Shade Temporal Neighbor", &render_settings.restir_di_settings.decoupled_shading_reuse.shade_temporal_neighbor);
+							changed |= ImGui::Checkbox("Shade One Spatial Neighbor", &render_settings.restir_di_settings.decoupled_shading_reuse.shade_spatial_neighbor);
+
+							ImGui::TreePop();
+
+							if (changed)
+								m_render_window->set_render_dirty(true);
+						}
+						ImGui::EndDisabled();
+
+
 						ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 						static bool use_heuristics_at_all = true;
