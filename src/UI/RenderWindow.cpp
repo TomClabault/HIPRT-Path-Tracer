@@ -28,8 +28,8 @@ extern ImGuiLogger g_imgui_logger;
 // - limit UI speed because it actually uses some resources (maybe Vsync or something)
 // - smarter shader cache (hints to avoid using all kernel options when compiling a kernel? We know that Camera ray doesn't care about direct lighting strategy for example)
 // - use self bit packing (no bitfields) for nested dielectrics because bitfields are implementation dependent in size, that's bad --> We don't get our nice packing with every compiler
-// - backgfround kernel compilation counter in log window
 // - cmake to disable optimizations in reldebinfo
+// - remove broken apply button for resolution scaling
 
 // TODO known bugs / incorectness:
 // - take transmission color into account when direct sampling a light source that is inside a volume
@@ -37,8 +37,9 @@ extern ImGuiLogger g_imgui_logger;
 //	  - same with perfect reflection
 // - fix sampling lights inside dielectrics with ReSTIR DI
 // - when using a BSDF override, transmissive materials keep their dielectric priorities and this can mess up shadow rays and intersections in general if the BSDF used for the override doesn't support transmissive materials
-// - is DisneySheen correct?
 // - threadmanager: what if we start a thread with a dependency A on a thread that itself has a dependency B? we're going to try join dependency A even if thread with dependency on B hasn't even started yet --> joining nothing --> immediate return --> should have waited for the dependency but hasn't
+// -pairwise MIS temporally unstable/more noisy with spatiotemporal reuse compared to no fused spatiotemporal-reuse: easy to see by switching from pairwise to MIS-like or GBH when using fused spatiotemporal
+
 
 
 // TODO Code Organization:
@@ -56,7 +57,6 @@ extern ImGuiLogger g_imgui_logger;
 // - free denoiser buffers if not using denoising
 // - refactor ImGuiRenderer in several sub classes that each draw a panel
 // - refactor closestHitTypes with something like 'hiprtGeomTraversalClosestHitType<UseSharedStackBVHTraversal>' to avoid the big #if #elif blocks
-// glViewport() to avoid managing the resolution scaling in the display shaders ourselves?
 
 
 
@@ -98,7 +98,6 @@ extern ImGuiLogger g_imgui_logger;
 // - linear interpolation function for the parameters of the BSDF
 // - compensated importance sampling of envmap
 // - multiple GLTF, one GLB for different point of views per model
-// - can we do direct lighting + take emissive at all bounces but divide by 2 to avoid double taking into account emissive lights? this would solve missing caustics
 // - improve performance by only intersecting the selected emissive triangle with the BSDF ray when multiple importance sampling, we don't need a full BVH traversal at all
 // - If could not load given scene file, fallback to cornell box instead of not continuing
 // - CTRL + mouse wheel for zoom in viewport, CTRL click reset zoom
@@ -150,7 +149,6 @@ extern ImGuiLogger g_imgui_logger;
 // - benchmarker to measure frame times precisely (avg, std dev, ...) + fixed random seed for reproducible results
 // - alias table for sampling env map instead of log(n) binary search
 // - image comparator slider (to have adaptive sampling view + default view on the same viewport for example)
-// - Maybe look at better Disney sampling (luminance?)
 // - thin materials
 // - Have the UI run at its own framerate to avoid having the UI come to a crawl when the path tracing is expensive
 // - When modifying the emission of a material with the material editor, it should be reflected in the scene and allow the direct sampling of the geometry so the emissive triangles buffer should be updated

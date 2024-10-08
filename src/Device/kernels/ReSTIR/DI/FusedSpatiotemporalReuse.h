@@ -205,6 +205,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 		valid_neighbors_M_sum += temporal_neighbor_reservoir.M;
 	}
 
+#if ReSTIR_DI_DoDecoupledShadingReuse == KERNEL_OPTION_TRUE
+	// Holding the resampling weights of the neighbors that we're going to shade
+	float initial_candidates_resampling_weight;
+	float temporal_neighbor_resampling_weight;
+	float spatial_neighbor_resampling_weight;
+#endif
+
+
 	ReSTIRDIReservoir spatiotemporal_output_reservoir;
 	ReSTIRDIReservoir initial_candidates_reservoir = render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs[center_pixel_index];
 	ReSTIRDISpatiotemporalResamplingMISWeight<ReSTIR_DI_BiasCorrectionWeights> mis_weight_function;
@@ -286,15 +294,17 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 #error "Unsupported bias correction mode"
 #endif
 
-			// Combining as in Alg. 6 of the paper
-			if (spatiotemporal_output_reservoir.combine_with(temporal_neighbor_reservoir, temporal_neighbor_resampling_mis_weight, target_function_at_center, jacobian_determinant, random_number_generator))
+
+			// Combining as in Alg. 6 of the 2020 paper
+			if (spatiotemporal_output_reservoir.combine_with(temporal_neighbor_reservoir, temporal_neighbor_resampling_mis_weight, target_function_at_center, jacobian_determinant, &temporal_neighbor_resampling_weight, random_number_generator))
 			{
 #if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
 				// Only used with MIS-like weight
 				selected_neighbor = TEMPORAL_NEIGHBOR_ID;
 #endif
 
-				// Using ReSTIR_DI_BiasCorrectionUseVisibility here because that's what we use in the resampling target function
+				// Using ReSTIR_DI_BiasCorrectionUseVisibility here because that's
+				// what we use in the resampling target function for the temporal neighbor
 #if ReSTIR_DI_BiasCorrectionUseVisibility == KERNEL_OPTION_FALSE
 				// We cannot be certain that the visibility of the temporal neighbor
 				// chosen is exactly the same so we're clearing the unoccluded flag
@@ -581,6 +591,37 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 		spatiotemporal_output_reservoir.M = hippt::min(spatiotemporal_output_reservoir.M, render_data.render_settings.restir_di_settings.m_cap);
 
 	render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs[center_pixel_index] = spatiotemporal_output_reservoir;
+
+#if ReSTIR_DI_DoDecoupledShadingReuse == KERNEL_OPTION_TRUE
+	// Shading the neighbors
+	
+	// Weighting by the resampling proba: [Rearchitecting Spatiotemporal Resampling for Production, Wyman, Panteleev, 2021],
+	// last paragraph just above 7.2
+	float weights_sum = initial_candidates_resampling_weight + temporal_neighbor_resampling_weight + spatial_neighbor_resampling_weight;
+	float initial_candidates_resampling_weight_norm = initial_candidates_resampling_weight / weights_sum;
+	float temporal_neighbor_resampling_weight_norm = temporal_neighbor_resampling_weight / weights_sum;
+	float spatial_neighbor_resampling_weight_norm = spatial_neighbor_resampling_weight/ weights_sum;
+
+	ColorRGB32F initial_candidates_shading = evaluate_ReSTIR_DI_reservoir(render_data,
+		center_pixel_surface.material, center_pixel_surface.ray_volume_state,
+		center_pixel_surface.shading_point, center_pixel_surface.shading_normal, center_pixel_surface.view_direction,
+		initial_candidates_reservoir, random_number_generator);
+	initial_candidates_shading *= temporal_neighbor_resampling_weight_norm;
+
+	ColorRGB32F temporal_neighbor_shading = evaluate_ReSTIR_DI_reservoir(render_data,
+		center_pixel_surface.material, center_pixel_surface.ray_volume_state,
+		center_pixel_surface.shading_point, center_pixel_surface.shading_normal, center_pixel_surface.view_direction,
+		temporal_neighbor_reservoir, random_number_generator);
+	temporal_neighbor_shading *= temporal_neighbor_resampling_weight_norm;
+
+	ColorRGB32F spatial_neighbor_shading = evaluate_ReSTIR_DI_reservoir(render_data,
+		center_pixel_surface.material, center_pixel_surface.ray_volume_state,
+		center_pixel_surface.shading_point, center_pixel_surface.shading_normal, center_pixel_surface.view_direction,
+		temporal_neighbor_reservoir, random_number_generator);
+	spatial_neighbor_shading *= temporal_neighbor_resampling_weight_norm;
+
+	render_data.render_settings.restir_di_settings.decoupled_shading_reuse.shading_buffer[center_pixel_index] = initial_candidates_shading + temporal_neighbor_shading + spatial_neighbor_shading;
+#endif
 }
 
 #endif

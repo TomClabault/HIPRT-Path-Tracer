@@ -56,10 +56,12 @@ struct ReSTIRDIReservoir
      *      with respect to the shading point of the reservoir we're resampling to the solid
      *      angle PDF with respect to the shading point of 'this' reservoir
      * 
+     * 'out_resampling_weight' is set to the resampling probability of that reservoir if not nullptr
+     * 
      * 'random_number_generator' for generating the random number that will be used to stochastically
      *      select the sample from 'other_reservoir' or not
      */
-    HIPRT_HOST_DEVICE bool combine_with(ReSTIRDIReservoir other_reservoir, float mis_weight, float target_function, float jacobian_determinant, Xorshift32Generator& random_number_generator)
+    HIPRT_HOST_DEVICE bool combine_with(ReSTIRDIReservoir other_reservoir, float mis_weight, float target_function, float jacobian_determinant, float* out_resampling_weight, Xorshift32Generator& random_number_generator)
     {
         if (other_reservoir.UCW <= 0.0f)
         {
@@ -70,6 +72,8 @@ struct ReSTIRDIReservoir
         }
 
         float reservoir_sample_weight = mis_weight * target_function * other_reservoir.UCW * jacobian_determinant;
+        if (out_resampling_weight != nullptr)
+            *out_resampling_weight = reservoir_sample_weight;
 
         M += other_reservoir.M;
         weight_sum += reservoir_sample_weight;
@@ -83,6 +87,11 @@ struct ReSTIRDIReservoir
         }
 
         return false;
+    }
+
+    HIPRT_HOST_DEVICE bool combine_with(ReSTIRDIReservoir other_reservoir, float mis_weight, float target_function, float jacobian_determinant, Xorshift32Generator& random_number_generator)
+    {
+        return combine_with(other_reservoir, mis_weight, target_function, jacobian_determinant, nullptr, random_number_generator);
     }
 
     HIPRT_HOST_DEVICE void end()
