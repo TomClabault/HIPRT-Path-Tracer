@@ -36,8 +36,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 640
-#define DEBUG_PIXEL_Y 636
+#define DEBUG_PIXEL_X 1035
+#define DEBUG_PIXEL_Y 398
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -46,8 +46,8 @@
 // of DEBUG_OTHER_PIXEL_X/Y given below.
 // 
 // -1 to disable. If disabled, the pixel at (DEBUG_PIXEL_X, DEBUG_PIXEL_Y) will be debugged
-#define DEBUG_OTHER_PIXEL_X 632
-#define DEBUG_OTHER_PIXEL_Y 636
+#define DEBUG_OTHER_PIXEL_X -1
+#define DEBUG_OTHER_PIXEL_Y -1
 
 // If 1, a square of DEBUG_NEIGHBORHOOD_SIZE x DEBUG_NEIGHBORHOOD_SIZE pixels
 // will be rendered around the pixel to debug (given by DEBUG_PIXEL_X and

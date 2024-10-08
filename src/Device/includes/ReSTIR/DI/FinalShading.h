@@ -13,7 +13,8 @@
 #include "HostDeviceCommon/RenderData.h"
 
  // TODO make some simplification assuming that ReSTIR DI is never inside a surface (the camera being inside a surface may be an annoying case to handle)
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_ReSTIR_DI_reservoir(const HIPRTRenderData& render_data, const RayPayload& ray_payload, 
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_ReSTIR_DI_reservoir(const HIPRTRenderData& render_data, 
+    const SimplifiedRendererMaterial& surface_material, const RayVolumeState& ray_volume_state,
     const float3& shading_point, const float3& shading_normal, const float3& view_direction, 
     const ReSTIRDIReservoir& reservoir, Xorshift32Generator& random_number_generator)
 {
@@ -55,9 +56,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_ReSTIR_DI_reservoir(const HI
         float bsdf_pdf;
         float cosine_at_evaluated_point;
         ColorRGB32F bsdf_color;
-        RayVolumeState trash_volume_state = ray_payload.volume_state;
+        RayVolumeState trash_volume_state = ray_volume_state;
 
-        bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, ray_payload.material, trash_volume_state, view_direction, shading_normal, shadow_ray_direction, bsdf_pdf);
+        bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, surface_material, trash_volume_state, view_direction, shading_normal, shadow_ray_direction, bsdf_pdf);
 
         cosine_at_evaluated_point = hippt::max(0.0f, hippt::dot(shading_normal, shadow_ray_direction));
 
@@ -93,6 +94,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void validate_reservoir(const HIPRTRenderData& re
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_light_ReSTIR_DI(const HIPRTRenderData& render_data, const RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, int2 pixel_coords, int2 resolution)
 {
 	int pixel_index = pixel_coords.x + pixel_coords.y * resolution.x;
+#if ReSTIR_DI_DoDecoupledShadingReuse == KERNEL_OPTION_TRUE
+    // Pixel is already shaded if using decoupled shading and reuse
+    return render_data.render_settings.restir_di_settings.decoupled_shading_reuse.shading_buffer[pixel_index];
+#endif
 
 	// Because the spatial reuse pass runs last, the output buffer of the spatial
 	// pass contains the reservoir whose sample we're going to shade
@@ -102,7 +107,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_light_ReSTIR_DI(const HIPRTRen
     // anymore i.e. if it refers to a light that doesn't exist anymore
     validate_reservoir(render_data, reservoir);
 
-	return evaluate_ReSTIR_DI_reservoir(render_data, ray_payload, 
+	return evaluate_ReSTIR_DI_reservoir(render_data, 
+        ray_payload.material, ray_payload.volume_state, 
         closest_hit_info.inter_point, closest_hit_info.shading_normal, view_direction, 
         reservoir, random_number_generator);
 }

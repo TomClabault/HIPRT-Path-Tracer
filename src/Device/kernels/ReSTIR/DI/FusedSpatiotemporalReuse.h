@@ -11,6 +11,7 @@
 #include "Device/includes/Hash.h"
 #include "Device/includes/Intersect.h"
 #include "Device/includes/LightUtils.h"
+#include "Device/includes/ReSTIR/DI/FinalShading.h"
 #include "Device/includes/ReSTIR/DI/SpatiotemporalMISWeight.h"
 #include "Device/includes/ReSTIR/DI/SpatiotemporalNormalizationWeight.h"
 #include "Device/includes/ReSTIR/DI/Surface.h"
@@ -207,9 +208,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 
 #if ReSTIR_DI_DoDecoupledShadingReuse == KERNEL_OPTION_TRUE
 	// Holding the resampling weights of the neighbors that we're going to shade
-	float initial_candidates_resampling_weight;
-	float temporal_neighbor_resampling_weight;
-	float spatial_neighbor_resampling_weight;
+	float initial_candidates_resampling_weight = 0.0f;
+	float temporal_neighbor_resampling_weight = 0.0f;
+	float spatial_neighbor_resampling_weight = 0.0f;
+	// Index of the one spatial neighbor that we use for the shading
+	int spatial_neighbor_shading_index = -1;
 #endif
 
 
@@ -275,28 +278,36 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_GBH
 			float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data,
 				temporal_neighbor_reservoir, center_pixel_surface, temporal_neighbor_surface,
-				TEMPORAL_NEIGHBOR_ID, initial_candidates_reservoir.M, temporal_neighbor_reservoir.M, 
+				TEMPORAL_NEIGHBOR_ID, initial_candidates_reservoir.M, temporal_neighbor_reservoir.M,
 				center_pixel_index, make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z),
 				res, cos_sin_theta_rotation, random_number_generator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
 			bool update_mc = initial_candidates_reservoir.M > 0 && initial_candidates_reservoir.UCW > 0.0f;
 
 			float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, temporal_neighbor_reservoir, initial_candidates_reservoir,
-				target_function_at_center, temporal_neighbor_pixel_index_and_pos.x, valid_neighbors_count, valid_neighbors_M_sum, 
+				target_function_at_center, temporal_neighbor_pixel_index_and_pos.x, valid_neighbors_count, valid_neighbors_M_sum,
 				update_mc, /* resample canonical */ false, random_number_generator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
 			bool update_mc = initial_candidates_reservoir.M > 0 && initial_candidates_reservoir.UCW > 0.0f;
 
 			float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, temporal_neighbor_reservoir,
-				initial_candidates_reservoir, target_function_at_center, temporal_neighbor_pixel_index_and_pos.x, valid_neighbors_count, valid_neighbors_M_sum, 
+				initial_candidates_reservoir, target_function_at_center, temporal_neighbor_pixel_index_and_pos.x, valid_neighbors_count, valid_neighbors_M_sum,
 				update_mc, /* resample canonical */ false, random_number_generator);
 #else
 #error "Unsupported bias correction mode"
 #endif
 
 
+			// If we're doing decoupled shading and reuse, we're going to need to resampling weight of the temporal neighbor
+			// so we're getting the address of 'temporal_neighbor_resampling_weight' in that case.
+			float* out_resampling_weight = nullptr;
+#if ReSTIR_DI_DoDecoupledShadingReuse == KERNEL_OPTION_TRUE
+			if (render_data.render_settings.restir_di_settings.decoupled_shading_reuse.shade_temporal_neighbor)
+				out_resampling_weight = &temporal_neighbor_resampling_weight;
+#endif
+
 			// Combining as in Alg. 6 of the 2020 paper
-			if (spatiotemporal_output_reservoir.combine_with(temporal_neighbor_reservoir, temporal_neighbor_resampling_mis_weight, target_function_at_center, jacobian_determinant, &temporal_neighbor_resampling_weight, random_number_generator))
+			if (spatiotemporal_output_reservoir.combine_with(temporal_neighbor_reservoir, temporal_neighbor_resampling_mis_weight, target_function_at_center, jacobian_determinant, out_resampling_weight, random_number_generator))
 			{
 #if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
 				// Only used with MIS-like weight
@@ -366,7 +377,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 			neighbor_pixel_index = center_pixel_index;
 		else
 			// Resampling around the temporal neighbor location
-			neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, spatial_neighbor_index, reused_neighbors_count, render_data.render_settings.restir_di_settings.spatial_pass.reuse_radius, 
+			neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, spatial_neighbor_index, reused_neighbors_count, render_data.render_settings.restir_di_settings.spatial_pass.reuse_radius,
 				make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z), res, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
 
 		if (neighbor_pixel_index == -1)
@@ -448,7 +459,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 		// Using 'spatial_neighbor_index + 1' in this function call because the index
 		// 0 is for the temporal neighbor so we start at 1 by using '+ 1'
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, neighbor_reservoir, center_pixel_surface, temporal_neighbor_surface,
-			spatial_neighbor_index + 1, initial_candidates_reservoir.M, temporal_neighbor_reservoir.M, 
+			spatial_neighbor_index + 1, initial_candidates_reservoir.M, temporal_neighbor_reservoir.M,
 			center_pixel_index, make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z),
 			res, cos_sin_theta_rotation, random_number_generator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
@@ -468,15 +479,34 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 		if (neighbor_reservoir.UCW == 0.0f && !update_mc)
 			mis_weight = 1.0f;
 		else
-			mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, neighbor_reservoir, initial_candidates_reservoir, 
+			mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, neighbor_reservoir, initial_candidates_reservoir,
 				target_function_at_center, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
 				update_mc, spatial_neighbor_index == reused_neighbors_count, random_number_generator);
 #else
 #error "Unsupported bias correction mode"
 #endif
 
+		// If we're doing decoupled shading and reuse, we're going to need to resampling weight of the initial
+		// candidates neighbor and one spatial neighbor so we're getting the address of the variables in that case
+		// to get the resampling weight out of the combine_with() function.
+#if ReSTIR_DI_DoDecoupledShadingReuse == KERNEL_OPTION_TRUE
+		float* out_resampling_weight = nullptr;
+		if (spatial_neighbor_index == reused_neighbors_count && render_data.render_settings.restir_di_settings.decoupled_shading_reuse.shade_initial_candidates)
+			// Giving the address for the initial candidates weight
+			out_resampling_weight = &initial_candidates_resampling_weight;
+		else
+		{
+			if (spatial_neighbor_resampling_weight == 0.0f && render_data.render_settings.restir_di_settings.decoupled_shading_reuse.shade_spatial_neighbor)
+			{
+				// Spatial neighbor otherwise if we don't already have a weight
+				out_resampling_weight = &spatial_neighbor_resampling_weight;
+				spatial_neighbor_shading_index = spatial_neighbor_index;
+			}
+		}
+#endif
+
 		// Combining as in Alg. 6 of the paper
-		if (spatiotemporal_output_reservoir.combine_with(neighbor_reservoir, mis_weight, target_function_at_center, jacobian_determinant, random_number_generator))
+		if (spatiotemporal_output_reservoir.combine_with(neighbor_reservoir, mis_weight, target_function_at_center, jacobian_determinant, out_resampling_weight, random_number_generator))
 		{
 #if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
 			// Only used with MIS-like weight
@@ -508,19 +538,19 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 
 	ReSTIRDISpatiotemporalNormalizationWeight<ReSTIR_DI_BiasCorrectionWeights> normalization_function;
 #if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_M
-	normalization_function.get_normalization(render_data, spatiotemporal_output_reservoir, initial_candidates_reservoir, center_pixel_surface, 
+	normalization_function.get_normalization(render_data, spatiotemporal_output_reservoir, initial_candidates_reservoir, center_pixel_surface,
 		temporal_neighbor_reservoir.M, center_pixel_index, make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z),
 		res, cos_sin_theta_rotation, normalization_numerator, normalization_denominator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
-	normalization_function.get_normalization(render_data, 
+	normalization_function.get_normalization(render_data,
 		spatiotemporal_output_reservoir, center_pixel_surface, temporal_neighbor_surface,
-		initial_candidates_reservoir.M, temporal_neighbor_reservoir.M, center_pixel_index, 
-		make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z), res, cos_sin_theta_rotation, 
+		initial_candidates_reservoir.M, temporal_neighbor_reservoir.M, center_pixel_index,
+		make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z), res, cos_sin_theta_rotation,
 		normalization_numerator, normalization_denominator, random_number_generator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
-	normalization_function.get_normalization(render_data, spatiotemporal_output_reservoir, center_pixel_surface, temporal_neighbor_surface, 
+	normalization_function.get_normalization(render_data, spatiotemporal_output_reservoir, center_pixel_surface, temporal_neighbor_surface,
 		selected_neighbor, initial_candidates_reservoir.M, temporal_neighbor_reservoir.M, center_pixel_index, make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z),
-		res, cos_sin_theta_rotation, normalization_numerator, normalization_denominator, 
+		res, cos_sin_theta_rotation, normalization_numerator, normalization_denominator,
 		random_number_generator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_GBH
 	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
@@ -594,31 +624,43 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 
 #if ReSTIR_DI_DoDecoupledShadingReuse == KERNEL_OPTION_TRUE
 	// Shading the neighbors
-	
+
 	// Weighting by the resampling proba: [Rearchitecting Spatiotemporal Resampling for Production, Wyman, Panteleev, 2021],
 	// last paragraph just above 7.2
 	float weights_sum = initial_candidates_resampling_weight + temporal_neighbor_resampling_weight + spatial_neighbor_resampling_weight;
+	if (weights_sum == 0.0f)
+	{
+		// Nothing to shade
+		render_data.render_settings.restir_di_settings.decoupled_shading_reuse.shading_buffer[center_pixel_index] = ColorRGB32F(0.0f);
+		return;
+	}
+
 	float initial_candidates_resampling_weight_norm = initial_candidates_resampling_weight / weights_sum;
 	float temporal_neighbor_resampling_weight_norm = temporal_neighbor_resampling_weight / weights_sum;
-	float spatial_neighbor_resampling_weight_norm = spatial_neighbor_resampling_weight/ weights_sum;
+	float spatial_neighbor_resampling_weight_norm = spatial_neighbor_resampling_weight / weights_sum;
 
 	ColorRGB32F initial_candidates_shading = evaluate_ReSTIR_DI_reservoir(render_data,
 		center_pixel_surface.material, center_pixel_surface.ray_volume_state,
 		center_pixel_surface.shading_point, center_pixel_surface.shading_normal, center_pixel_surface.view_direction,
 		initial_candidates_reservoir, random_number_generator);
-	initial_candidates_shading *= temporal_neighbor_resampling_weight_norm;
+	initial_candidates_shading *= initial_candidates_resampling_weight_norm;
 
+	temporal_neighbor_reservoir.sample.flags &= ~ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
 	ColorRGB32F temporal_neighbor_shading = evaluate_ReSTIR_DI_reservoir(render_data,
 		center_pixel_surface.material, center_pixel_surface.ray_volume_state,
 		center_pixel_surface.shading_point, center_pixel_surface.shading_normal, center_pixel_surface.view_direction,
 		temporal_neighbor_reservoir, random_number_generator);
 	temporal_neighbor_shading *= temporal_neighbor_resampling_weight_norm;
 
+	int shading_neighbor_index = get_spatial_neighbor_pixel_index(render_data, spatial_neighbor_shading_index, reused_neighbors_count, render_data.render_settings.restir_di_settings.spatial_pass.reuse_radius, center_pixel_coords, res, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
+	ReSTIRDIReservoir spatial_neighbor_shading_reservoir = spatial_input_reservoir_buffer[shading_neighbor_index];
+	spatial_neighbor_shading_reservoir.sample.flags &= ~ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
+
 	ColorRGB32F spatial_neighbor_shading = evaluate_ReSTIR_DI_reservoir(render_data,
 		center_pixel_surface.material, center_pixel_surface.ray_volume_state,
 		center_pixel_surface.shading_point, center_pixel_surface.shading_normal, center_pixel_surface.view_direction,
-		temporal_neighbor_reservoir, random_number_generator);
-	spatial_neighbor_shading *= temporal_neighbor_resampling_weight_norm;
+		spatial_neighbor_shading_reservoir, random_number_generator);
+	spatial_neighbor_shading *= spatial_neighbor_resampling_weight_norm;
 
 	render_data.render_settings.restir_di_settings.decoupled_shading_reuse.shading_buffer[center_pixel_index] = initial_candidates_shading + temporal_neighbor_shading + spatial_neighbor_shading;
 #endif

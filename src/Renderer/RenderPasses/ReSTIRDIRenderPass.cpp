@@ -144,7 +144,7 @@ void ReSTIRDIRenderPass::update()
 		bool spatial_output_2_needs_resize = spatial_output_reservoirs_2.get_element_count() == 0;
 
 		if (initial_candidates_reservoir_needs_resize || spatial_output_1_needs_resize || spatial_output_2_needs_resize)
-			// At least on buffer is going to be resized so buffers are invalidated
+			// At least one buffer is going to be resized so buffers are invalidated
 			m_renderer->invalidate_render_data_buffers();
 
 		if (initial_candidates_reservoir_needs_resize)
@@ -169,12 +169,28 @@ void ReSTIRDIRenderPass::update()
 			{
 				presampled_lights_buffer.resize(presampled_light_count);
 
-				// At least on buffer is going to be resized so buffers are invalidated
+				// At least one buffer is going to be resized so buffers are invalidated
 				m_renderer->invalidate_render_data_buffers();
 			}
 		}
 		else
 			presampled_lights_buffer.free();
+
+		// Also allocating / deallocating the shading buffer for decoupled shading and reuse
+		if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_DECOUPLED_SHADING_AND_REUSE) == KERNEL_OPTION_TRUE)
+		{
+			bool shading_buffer_needs_allocation = decoupled_shading_reuse_shade_buffer.get_element_count() == 0;
+
+			if (shading_buffer_needs_allocation)
+			{
+				decoupled_shading_reuse_shade_buffer.resize(render_resolution.x * render_resolution.y);
+
+				// At least one buffer is going to be resized so buffers are invalidated
+				m_renderer->invalidate_render_data_buffers();
+			}
+		}
+		else
+			decoupled_shading_reuse_shade_buffer.free();
 	}
 	else
 	{
@@ -205,6 +221,8 @@ void ReSTIRDIRenderPass::update_render_data()
 		std::vector<ReSTIRDIReservoir> empty_reservoirs(m_renderer->m_render_resolution.x * m_renderer->m_render_resolution.y, ReSTIRDIReservoir());
 		render_data->render_settings.restir_di_settings.restir_output_reservoirs = spatial_output_reservoirs_1.get_device_pointer();
 		spatial_output_reservoirs_1.upload_data(empty_reservoirs);
+
+		render_data->render_settings.restir_di_settings.decoupled_shading_reuse.shading_buffer = decoupled_shading_reuse_shade_buffer.get_device_pointer();
 	}
 	else
 	{
@@ -223,6 +241,7 @@ void ReSTIRDIRenderPass::resize(int new_width, int new_height)
 	initial_candidates_reservoirs.resize(new_width * new_height);
 	spatial_output_reservoirs_2.resize(new_width * new_height);
 	spatial_output_reservoirs_1.resize(new_width * new_height);
+	decoupled_shading_reuse_shade_buffer.resize(new_width * new_height);
 }
 
 void ReSTIRDIRenderPass::reset()

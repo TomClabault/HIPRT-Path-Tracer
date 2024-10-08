@@ -105,8 +105,17 @@ private:
 	// (GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING)
 	//
 	// Implementation from the paper
-	// [Rearchitecting Spatiotemporal Resampling for Production] https://research.nvidia.com/publication/2021-07_rearchitecting-spatiotemporal-resampling-production
+	// [Rearchitecting Spatiotemporal Resampling for Production, Wyman, Panteleev, 2021]
+	// https://research.nvidia.com/publication/2021-07_rearchitecting-spatiotemporal-resampling-production.
 	OrochiBuffer<ReSTIRDIPresampledLight> presampled_lights_buffer;
+
+	// Buffer that holds the shaded contribution of neighbors if decoupled shading and reuse is enabled 
+	// (GPUKernelCompilerOptions::RESTIR_DI_DO_DECOUPLED_SHADING_AND_REUSE)
+	//
+	// Implementation from the paper, Section 7
+	// [Rearchitecting Spatiotemporal Resampling for Production, Wyman, Panteleev, 2021]
+	// https://research.nvidia.com/publication/2021-07_rearchitecting-spatiotemporal-resampling-production.
+	OrochiBuffer<ColorRGB32F> decoupled_shading_reuse_shade_buffer;
 
 	// Whether or not we're currently rendering an odd frame.
 	// This is used to adjust which buffers are used as input/outputs

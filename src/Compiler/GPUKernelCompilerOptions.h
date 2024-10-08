@@ -39,6 +39,7 @@ public:
 	static const std::string RESTIR_DI_BIAS_CORRECTION_WEIGHTS;
 	static const std::string RESTIR_DI_LATER_BOUNCES_SAMPLING_STRATEGY;
 	static const std::string RESTIR_DI_DO_LIGHTS_PRESAMPLING;
+	static const std::string RESTIR_DI_DO_DECOUPLED_SHADING_AND_REUSE;
 
 	static const std::unordered_set<std::string> ALL_MACROS_NAMES;
 
