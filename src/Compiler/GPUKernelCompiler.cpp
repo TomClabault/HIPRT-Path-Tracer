@@ -69,8 +69,8 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, const GPUKern
 	if (HIPPTOrochiUtils::build_trace_kernel(hiprt_orochi_ctx->hiprt_ctx, kernel_file_path, kernel_function_name, trace_function_out, additional_include_dirs, compiler_options, 1, 1, use_cache, function_name_sets, additional_cache_key) != hiprtError::hiprtSuccess)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Unable to compile kernel \"%s\". Cannot continue.", kernel_function_name.c_str());
-		int ignored = std::getchar();
-		std::exit(1);
+		
+		Utils::debugbreak();
 	}
 
 	oroFunction kernel_function = reinterpret_cast<oroFunction>(trace_function_out);
