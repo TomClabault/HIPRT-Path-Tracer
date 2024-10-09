@@ -131,6 +131,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_O
 	return target_function;
 }
 
+/**
+ * Returns true if the sample of the reservoir was occluded and the reservoir has been killed.
+ * False otherwise
+ */
 HIPRT_HOST_DEVICE HIPRT_INLINE void ReSTIR_DI_visibility_reuse(const HIPRTRenderData& render_data, ReSTIRDIReservoir& reservoir, float3 shading_point, Xorshift32Generator& random_number_generator)
 {
 	if (reservoir.UCW <= 0.0f)
@@ -213,7 +217,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool plane_distance_heuristic(const ReSTIRDISetti
 
 HIPRT_HOST_DEVICE HIPRT_INLINE bool normal_similarity_heuristic(const ReSTIRDISettings& restir_di_settings, const float3& current_normal, const float3& neighbor_normal, float threshold)
 {
-	if (restir_di_settings.use_normal_similarity_heuristic)
+	if (!restir_di_settings.use_normal_similarity_heuristic)
 		return true;
 
 	return hippt::dot(current_normal, neighbor_normal) > threshold;

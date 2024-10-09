@@ -23,7 +23,7 @@
 
 extern ImGuiLogger g_imgui_logger;
 
-#define GPU_RENDER 0
+#define GPU_RENDER 1
 
 int main(int argc, char* argv[])
 {   
@@ -68,7 +68,7 @@ int main(int argc, char* argv[])
 
     stop_full = std::chrono::high_resolution_clock::now();
     g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Full scene parsed & built in %dms", std::chrono::duration_cast<std::chrono::milliseconds>(stop_full - start_full).count());
-    renderer->get_hiprt_scene().print_statistics(std::cout);
+    renderer->get_hiprt_scene().print_statistics();
 
     // We don't need the scene anymore, we can free it now
     assimp_importer.FreeScene();

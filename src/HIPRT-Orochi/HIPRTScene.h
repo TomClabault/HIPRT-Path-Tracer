@@ -93,14 +93,16 @@ struct HIPRTGeometry
 
 struct HIPRTScene
 {
-	void print_statistics(std::ostream& stream)
+	void print_statistics()
 	{
-		stream << "Scene statistics: " << std::endl;
-		stream << "\t" << geometry.m_mesh.vertexCount << " vertices" << std::endl;
-		stream << "\t" << geometry.m_mesh.triangleCount << " vertices" << std::endl;
-		stream << "\t" << emissive_triangles_indices.get_element_count() << " emissive triangles" << std::endl;
-		stream << "\t" << materials_buffer.get_element_count() << " materials" << std::endl;
-		stream << "\t" << orochi_materials_textures.size() << " textures" << std::endl;
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Scene statistics:\n"
+			"\t%d vertices\n"
+			"\t%d triangles\n"
+			"\t%d emissive triangles\n"
+			"\t%d materials\n"
+			"\t%d textures", 
+			geometry.m_mesh.vertexCount, geometry.m_mesh.triangleCount, emissive_triangles_indices.get_element_count(),
+			materials_buffer.get_element_count(), orochi_materials_textures.size());
 	}
 
 	HIPRTGeometry geometry;

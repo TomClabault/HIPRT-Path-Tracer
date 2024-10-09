@@ -212,7 +212,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 	float temporal_neighbor_resampling_weight = 0.0f;
 	float spatial_neighbor_resampling_weight = 0.0f;
 	// Index of the one spatial neighbor that we use for the shading
-	int spatial_neighbor_shading_index = -1;
+	ReSTIRDIReservoir spatial_neighbor_shading_reservoir;
 #endif
 
 
@@ -489,19 +489,19 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 		// If we're doing decoupled shading and reuse, we're going to need to resampling weight of the initial
 		// candidates neighbor and one spatial neighbor so we're getting the address of the variables in that case
 		// to get the resampling weight out of the combine_with() function.
-#if ReSTIR_DI_DoDecoupledShadingReuse == KERNEL_OPTION_TRUE
 		float* out_resampling_weight = nullptr;
-		if (spatial_neighbor_index == reused_neighbors_count && render_data.render_settings.restir_di_settings.decoupled_shading_reuse.shade_initial_candidates)
-			// Giving the address for the initial candidates weight
-			out_resampling_weight = &initial_candidates_resampling_weight;
+#if ReSTIR_DI_DoDecoupledShadingReuse == KERNEL_OPTION_TRUE
+		if (spatial_neighbor_index == reused_neighbors_count)
+		{
+			if (render_data.render_settings.restir_di_settings.decoupled_shading_reuse.shade_initial_candidates)
+				// Giving the address for the initial candidates weight
+				out_resampling_weight = &initial_candidates_resampling_weight;
+		}
 		else
 		{
 			if (spatial_neighbor_resampling_weight == 0.0f && render_data.render_settings.restir_di_settings.decoupled_shading_reuse.shade_spatial_neighbor)
-			{
 				// Spatial neighbor otherwise if we don't already have a weight
 				out_resampling_weight = &spatial_neighbor_resampling_weight;
-				spatial_neighbor_shading_index = spatial_neighbor_index;
-			}
 		}
 #endif
 
@@ -530,7 +530,20 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 					spatiotemporal_output_reservoir.sample.flags &= ~ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
 			}
 		}
+
 		spatiotemporal_output_reservoir.sanity_check(center_pixel_coords);
+
+#if ReSTIR_DI_DoDecoupledShadingReuse == KERNEL_OPTION_TRUE
+		if (spatial_neighbor_resampling_weight != 0.0f && spatial_neighbor_shading_reservoir.UCW == 0.0f && render_data.render_settings.restir_di_settings.decoupled_shading_reuse.shade_spatial_neighbor)
+		{
+			// We resampled a good spatial neighbor, using it for the decoupled shading
+			
+			// "Bringing" the spatial neighbor onto the current pixel by combining with a reservoir
+			// that we will use for decoupled shading at the end of this pass
+			spatial_neighbor_shading_reservoir.combine_with(neighbor_reservoir, 1.0f / (neighbor_reservoir.M +1), target_function_at_center, jacobian_determinant, random_number_generator);
+			spatial_neighbor_shading_reservoir.end();
+		}
+#endif
 	}
 
 	float normalization_numerator = 1.0f;
@@ -562,7 +575,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 #error "Unsupported bias correction mode"
 #endif
 
-	spatiotemporal_output_reservoir.end_with_normalization(normalization_numerator, normalization_denominator);
+	spatiotemporal_output_reservoir.end(normalization_numerator, normalization_denominator);
 	spatiotemporal_output_reservoir.sanity_check(center_pixel_coords);
 
 	// Only these 3 weighting schemes are affected
@@ -620,49 +633,46 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 		// M-capping the temporal neighbor if an M-cap has been given
 		spatiotemporal_output_reservoir.M = hippt::min(spatiotemporal_output_reservoir.M, render_data.render_settings.restir_di_settings.m_cap);
 
+	// Outputting the reservoir
 	render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs[center_pixel_index] = spatiotemporal_output_reservoir;
 
 #if ReSTIR_DI_DoDecoupledShadingReuse == KERNEL_OPTION_TRUE
-	// Shading the neighbors
-
-	// Weighting by the resampling proba: [Rearchitecting Spatiotemporal Resampling for Production, Wyman, Panteleev, 2021],
-	// last paragraph just above 7.2
 	float weights_sum = initial_candidates_resampling_weight + temporal_neighbor_resampling_weight + spatial_neighbor_resampling_weight;
-	if (weights_sum == 0.0f)
+	if (weights_sum > 0.0f)
 	{
+		// Shading the neighbors
+
+		// Weighting by the resampling proba: [Rearchitecting Spatiotemporal Resampling for Production, Wyman, Panteleev, 2021],
+		// last paragraph just above 7.2
+		float initial_candidates_resampling_weight_norm = 1.0f;//initial_candidates_resampling_weight / weights_sum;
+		float temporal_neighbor_resampling_weight_norm = 1.0f;//temporal_neighbor_resampling_weight / weights_sum;
+		float spatial_neighbor_resampling_weight_norm = 1.0f;//spatial_neighbor_resampling_weight / weights_sum;
+
+		ColorRGB32F initial_candidates_shading = evaluate_ReSTIR_DI_reservoir(render_data,
+			center_pixel_surface.material, center_pixel_surface.ray_volume_state,
+			center_pixel_surface.shading_point, center_pixel_surface.shading_normal, center_pixel_surface.view_direction,
+			initial_candidates_reservoir, random_number_generator);
+		initial_candidates_shading *= initial_candidates_resampling_weight_norm;
+
+		temporal_neighbor_reservoir.sample.flags &= ~ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
+		ColorRGB32F temporal_neighbor_shading = evaluate_ReSTIR_DI_reservoir(render_data,
+			center_pixel_surface.material, center_pixel_surface.ray_volume_state,
+			center_pixel_surface.shading_point, center_pixel_surface.shading_normal, center_pixel_surface.view_direction,
+			temporal_neighbor_reservoir, random_number_generator);
+		temporal_neighbor_shading *= temporal_neighbor_resampling_weight_norm;
+
+		spatial_neighbor_shading_reservoir.sample.flags &= ~ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
+		ColorRGB32F spatial_neighbor_shading = evaluate_ReSTIR_DI_reservoir(render_data,
+			center_pixel_surface.material, center_pixel_surface.ray_volume_state,
+			center_pixel_surface.shading_point, center_pixel_surface.shading_normal, center_pixel_surface.view_direction,
+			spatial_neighbor_shading_reservoir, random_number_generator);
+		spatial_neighbor_shading *= spatial_neighbor_resampling_weight_norm;
+
+		render_data.render_settings.restir_di_settings.decoupled_shading_reuse.shading_buffer[center_pixel_index] = initial_candidates_shading + temporal_neighbor_shading + spatial_neighbor_shading;
+	}
+	else
 		// Nothing to shade
 		render_data.render_settings.restir_di_settings.decoupled_shading_reuse.shading_buffer[center_pixel_index] = ColorRGB32F(0.0f);
-		return;
-	}
-
-	float initial_candidates_resampling_weight_norm = initial_candidates_resampling_weight / weights_sum;
-	float temporal_neighbor_resampling_weight_norm = temporal_neighbor_resampling_weight / weights_sum;
-	float spatial_neighbor_resampling_weight_norm = spatial_neighbor_resampling_weight / weights_sum;
-
-	ColorRGB32F initial_candidates_shading = evaluate_ReSTIR_DI_reservoir(render_data,
-		center_pixel_surface.material, center_pixel_surface.ray_volume_state,
-		center_pixel_surface.shading_point, center_pixel_surface.shading_normal, center_pixel_surface.view_direction,
-		initial_candidates_reservoir, random_number_generator);
-	initial_candidates_shading *= initial_candidates_resampling_weight_norm;
-
-	temporal_neighbor_reservoir.sample.flags &= ~ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
-	ColorRGB32F temporal_neighbor_shading = evaluate_ReSTIR_DI_reservoir(render_data,
-		center_pixel_surface.material, center_pixel_surface.ray_volume_state,
-		center_pixel_surface.shading_point, center_pixel_surface.shading_normal, center_pixel_surface.view_direction,
-		temporal_neighbor_reservoir, random_number_generator);
-	temporal_neighbor_shading *= temporal_neighbor_resampling_weight_norm;
-
-	int shading_neighbor_index = get_spatial_neighbor_pixel_index(render_data, spatial_neighbor_shading_index, reused_neighbors_count, render_data.render_settings.restir_di_settings.spatial_pass.reuse_radius, center_pixel_coords, res, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
-	ReSTIRDIReservoir spatial_neighbor_shading_reservoir = spatial_input_reservoir_buffer[shading_neighbor_index];
-	spatial_neighbor_shading_reservoir.sample.flags &= ~ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
-
-	ColorRGB32F spatial_neighbor_shading = evaluate_ReSTIR_DI_reservoir(render_data,
-		center_pixel_surface.material, center_pixel_surface.ray_volume_state,
-		center_pixel_surface.shading_point, center_pixel_surface.shading_normal, center_pixel_surface.view_direction,
-		spatial_neighbor_shading_reservoir, random_number_generator);
-	spatial_neighbor_shading *= spatial_neighbor_resampling_weight_norm;
-
-	render_data.render_settings.restir_di_settings.decoupled_shading_reuse.shading_buffer[center_pixel_index] = initial_candidates_shading + temporal_neighbor_shading + spatial_neighbor_shading;
 #endif
 }
 
