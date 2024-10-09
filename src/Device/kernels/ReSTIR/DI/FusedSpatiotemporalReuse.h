@@ -540,7 +540,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 			
 			// "Bringing" the spatial neighbor onto the current pixel by combining with a reservoir
 			// that we will use for decoupled shading at the end of this pass
-			spatial_neighbor_shading_reservoir.combine_with(neighbor_reservoir, 1.0f / (neighbor_reservoir.M +1), target_function_at_center, jacobian_determinant, random_number_generator);
+			spatial_neighbor_shading_reservoir.combine_with(neighbor_reservoir, 1.0f, target_function_at_center, jacobian_determinant, random_number_generator);
 			spatial_neighbor_shading_reservoir.end();
 		}
 #endif
@@ -644,9 +644,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 
 		// Weighting by the resampling proba: [Rearchitecting Spatiotemporal Resampling for Production, Wyman, Panteleev, 2021],
 		// last paragraph just above 7.2
-		float initial_candidates_resampling_weight_norm = 1.0f;//initial_candidates_resampling_weight / weights_sum;
-		float temporal_neighbor_resampling_weight_norm = 1.0f;//temporal_neighbor_resampling_weight / weights_sum;
-		float spatial_neighbor_resampling_weight_norm = 1.0f;//spatial_neighbor_resampling_weight / weights_sum;
+		float initial_candidates_resampling_weight_norm = initial_candidates_resampling_weight / weights_sum;
+		float temporal_neighbor_resampling_weight_norm = temporal_neighbor_resampling_weight / weights_sum;
+		float spatial_neighbor_resampling_weight_norm = spatial_neighbor_resampling_weight / weights_sum;
 
 		ColorRGB32F initial_candidates_shading = evaluate_ReSTIR_DI_reservoir(render_data,
 			center_pixel_surface.material, center_pixel_surface.ray_volume_state,

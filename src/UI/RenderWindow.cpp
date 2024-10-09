@@ -35,6 +35,7 @@ extern ImGuiLogger g_imgui_logger;
 // - maybe we can shade all neighbors that already include visibiity (unoccluded flag) in decoupled shading/reuse
 // - fix error reading envmap when no envmap is given on the commandline
 // - launch kernel precompilation on a separate thread because this can actually take some time and stall the main thread
+// - horizontal scrolling bar for setting window ImGui ?
 
 // TODO known bugs / incorectness:
 // - take transmission color into account when direct sampling a light source that is inside a volume
