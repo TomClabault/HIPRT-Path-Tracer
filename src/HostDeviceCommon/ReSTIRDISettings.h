@@ -68,7 +68,7 @@ struct SpatialPassSettings
 
 	// constexpr here just to be able to auto-initialize the 'neighbor_visibility_count'
 	// property at compile time
-	static constexpr bool DO_DISOCCLUSION_BOOST = false;
+	static constexpr bool DO_DISOCCLUSION_BOOST = true;
 	// Whether or not to increase the number of spatially resampled neighbor
 	// for disoccluded pixels (that have no temporal history)
 	bool do_disocclusion_reuse_boost = DO_DISOCCLUSION_BOOST;
@@ -78,7 +78,7 @@ struct SpatialPassSettings
 
 	// If true, reused neighbors will be hardcoded to always be 15 pixels to the right,
 	// not in a circle around the center pixel.
-	bool debug_neighbor_location = true;
+	bool debug_neighbor_location = false;
 
 	// Whether or not to rotate the spatial neighbor locations generated.
 	// Pretty much mandatory when using Hammersley points otherwise the neighbors

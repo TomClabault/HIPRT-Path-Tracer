@@ -77,7 +77,7 @@ void ImGuiRenderer::draw_interface()
 	draw_log_window();
 	draw_render_window();
 
-	ImGui::ShowDemoWindow();
+	// ImGui::ShowDemoWindow();
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	ImGui::Render();

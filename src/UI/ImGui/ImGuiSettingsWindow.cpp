@@ -821,9 +821,6 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					ImGui::TreePush("ReSTIR DI - Initial Candidate Pass Tree");
 
 					{
-						if (ImGui::Button("Precompile kernels"))
-							m_renderer->precompile_kernels();
-
 						static bool do_light_presampling = ReSTIR_DI_DoLightsPresampling;
 						if (ImGui::Checkbox("Do Light Presampling", &do_light_presampling))
 						{
