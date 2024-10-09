@@ -648,6 +648,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 		float temporal_neighbor_resampling_weight_norm = temporal_neighbor_resampling_weight / weights_sum;
 		float spatial_neighbor_resampling_weight_norm = spatial_neighbor_resampling_weight / weights_sum;
 
+		initial_candidates_resampling_weight_norm = spatial_neighbor_resampling_weight_norm = 0.5f;
+		if (spatial_neighbor_resampling_weight == 0.0f)
+		{
+			initial_candidates_resampling_weight_norm = 1.0f;
+			spatial_neighbor_resampling_weight_norm = 0.0f;
+		}
+
 		ColorRGB32F initial_candidates_shading = evaluate_ReSTIR_DI_reservoir(render_data,
 			center_pixel_surface.material, center_pixel_surface.ray_volume_state,
 			center_pixel_surface.shading_point, center_pixel_surface.shading_normal, center_pixel_surface.view_direction,
@@ -668,7 +675,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 			spatial_neighbor_shading_reservoir, random_number_generator);
 		spatial_neighbor_shading *= spatial_neighbor_resampling_weight_norm;
 
-		render_data.render_settings.restir_di_settings.decoupled_shading_reuse.shading_buffer[center_pixel_index] = initial_candidates_shading + temporal_neighbor_shading + spatial_neighbor_shading;
+		render_data.render_settings.restir_di_settings.decoupled_shading_reuse.shading_buffer[center_pixel_index] = initial_candidates_shading + spatial_neighbor_shading;
 	}
 	else
 		// Nothing to shade
