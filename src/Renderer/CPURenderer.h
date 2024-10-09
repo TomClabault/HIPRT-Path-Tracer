@@ -103,6 +103,7 @@ private:
         std::vector<ReSTIRDIReservoir> spatial_output_reservoirs_1;
         std::vector<ReSTIRDIReservoir> spatial_output_reservoirs_2;
         std::vector<ReSTIRDIPresampledLight> presampled_lights_buffer;
+        std::vector<ColorRGB32F> decoupled_shading_buffer;
 
         ReSTIRDIReservoir* output_reservoirs = nullptr;
 

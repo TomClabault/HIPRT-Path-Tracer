@@ -292,7 +292,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 #error "Unsupported bias correction mode"
 #endif
 
-	temporal_reuse_output_reservoir.end_with_normalization(normalization_numerator, normalization_denominator);
+	temporal_reuse_output_reservoir.end(normalization_numerator, normalization_denominator);
 	temporal_reuse_output_reservoir.sanity_check(make_int2(x, y));
 
 	// M-capping so that we don't have to M-cap when reading reservoirs on the next frame

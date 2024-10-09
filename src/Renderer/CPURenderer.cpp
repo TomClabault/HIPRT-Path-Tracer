@@ -36,8 +36,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 1035
-#define DEBUG_PIXEL_Y 398
+#define DEBUG_PIXEL_X 1268
+#define DEBUG_PIXEL_Y 351
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -78,6 +78,7 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
     m_restir_di_state.spatial_output_reservoirs_1.resize(width * height);
     m_restir_di_state.spatial_output_reservoirs_2.resize(width * height);
     m_restir_di_state.presampled_lights_buffer.resize(width * height);
+    m_restir_di_state.decoupled_shading_buffer.resize(width * height);
     m_restir_di_state.output_reservoirs = m_restir_di_state.spatial_output_reservoirs_1.data();
 
     m_g_buffer.materials.resize(width * height);
@@ -144,6 +145,8 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.render_settings.restir_di_settings.light_presampling.light_samples = m_restir_di_state.presampled_lights_buffer.data();
     m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs = m_restir_di_state.initial_candidates_reservoirs.data();
     m_render_data.render_settings.restir_di_settings.restir_output_reservoirs = m_restir_di_state.spatial_output_reservoirs_1.data();
+    m_render_data.render_settings.restir_di_settings.decoupled_shading_reuse.shading_buffer = m_restir_di_state.decoupled_shading_buffer.data();
+
     m_render_data.aux_buffers.restir_reservoir_buffer_1 = m_restir_di_state.initial_candidates_reservoirs.data();
     m_render_data.aux_buffers.restir_reservoir_buffer_2 = m_restir_di_state.spatial_output_reservoirs_1.data();
     m_render_data.aux_buffers.restir_reservoir_buffer_3 = m_restir_di_state.spatial_output_reservoirs_2.data();

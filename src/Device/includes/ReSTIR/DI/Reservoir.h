@@ -94,15 +94,7 @@ struct ReSTIRDIReservoir
         return combine_with(other_reservoir, mis_weight, target_function, jacobian_determinant, nullptr, random_number_generator);
     }
 
-    HIPRT_HOST_DEVICE void end()
-    {
-        if (weight_sum == 0.0f)
-            UCW = 0.0f;
-        else
-            UCW = 1.0f / sample.target_function * weight_sum;
-    }
-
-    HIPRT_HOST_DEVICE void end_with_normalization(float normalization_numerator, float normalization_denominator)
+    HIPRT_HOST_DEVICE void end(float normalization_numerator = 1.0f, float normalization_denominator = 1.0f)
     {
         // Checking some limit values
         if (weight_sum == 0.0f || weight_sum < 1.0e-10f || weight_sum > 1.0e10f || normalization_denominator == 0.0f || normalization_numerator == 0.0f)

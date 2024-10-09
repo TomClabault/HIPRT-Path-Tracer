@@ -284,7 +284,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 #error "Unsupported bias correction mode"
 #endif
 
-	spatial_reuse_output_reservoir.end_with_normalization(normalization_numerator, normalization_denominator);
+	spatial_reuse_output_reservoir.end(normalization_numerator, normalization_denominator);
 	spatial_reuse_output_reservoir.sanity_check(center_pixel_coords);
 
 	// Only these 3 weighting schemes are affected

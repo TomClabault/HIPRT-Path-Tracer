@@ -79,7 +79,7 @@ struct SpatialPassSettings
 
 	// If true, reused neighbors will be hardcoded to always be 15 pixels to the right,
 	// not in a circle around the center pixel.
-	bool debug_neighbor_location = false;
+	bool debug_neighbor_location = true;
 
 	// Whether or not to rotate the spatial neighbor locations generated.
 	// Pretty much mandatory when using Hammersley points otherwise the neighbors
@@ -124,7 +124,7 @@ struct DecoupledShadingReuseSettings
 {
 	// Whether or not to shade the initial candidates / temporal / spatial neighbors
 	// respectively
-	bool shade_initial_candidates = false;
+	bool shade_initial_candidates = true;
 	bool shade_temporal_neighbor = false;
 	bool shade_spatial_neighbor = true;
 
@@ -167,9 +167,9 @@ struct ReSTIRDISettings
 	int m_cap = 25;
 
 	// Whether or not to use confidence weights when resampling neighbors.
-	bool use_confidence_weights = true;
+	bool use_confidence_weights = false;
 
-	bool use_normal_similarity_heuristic = true;
+	bool use_normal_similarity_heuristic = false;
 	// User-friendly (for ImGui) normal angle. When resampling a neighbor (temporal or spatial),
 	// the normal of the neighbor being re-sampled must be similar to our normal. This angle gives the
 	// "similarity threshold". Normals must be within 25 degrees of each other by default
@@ -177,7 +177,7 @@ struct ReSTIRDISettings
 	// Precomputed cosine of the angle for use in the shader
 	float normal_similarity_angle_precomp = 0.906307787f; // Normals must be within 25 degrees by default
 
-	bool use_plane_distance_heuristic = true;
+	bool use_plane_distance_heuristic = false;
 	// Threshold used when determining whether a temporal neighbor is acceptable
 	// for temporal reuse regarding the spatial proximity of the neighbor and the current
 	// point. 
