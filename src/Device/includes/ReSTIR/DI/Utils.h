@@ -327,7 +327,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int get_spatial_neighbor_pixel_index(const HIPRTR
 
 		int2 neighbor_pixel_coords;
 		if (render_data.render_settings.restir_di_settings.spatial_pass.debug_neighbor_location)
-			neighbor_pixel_coords = center_pixel_coords + make_int2(15, 0);
+			neighbor_pixel_coords = center_pixel_coords + make_int2(render_data.render_settings.restir_di_settings.spatial_pass.debug_neighbor_distance, 0);
 		else
 			neighbor_pixel_coords = center_pixel_coords + neighbor_offset_int;
 		if (neighbor_pixel_coords.x < 0 || neighbor_pixel_coords.x >= res.x || neighbor_pixel_coords.y < 0 || neighbor_pixel_coords.y >= res.y)
