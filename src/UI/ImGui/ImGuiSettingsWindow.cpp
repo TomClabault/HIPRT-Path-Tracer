@@ -652,6 +652,24 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 		{
 			ImGui::TreePush("Direct lighting sampling tree");
 
+			if (ImGui::Checkbox("Custom", &render_settings.custom))
+				m_render_window->set_render_dirty(true);
+
+			if (ImGui::Checkbox("Rand", &render_settings.rand))
+				m_render_window->set_render_dirty(true);
+
+			if (ImGui::SliderFloat("Init", &render_settings.init, 0.0f, 1.0f))
+			{
+				m_render_window->set_render_dirty(true);
+				render_settings.spat = 1.0f - render_settings.init;
+			}
+
+			if (ImGui::SliderFloat("Spat", &render_settings.spat, 0.0f, 1.0f))
+			{
+				m_render_window->set_render_dirty(true);
+				render_settings.init  = 1.0f - render_settings.spat;
+			}
+
 			const char* items[] = { "- No direct light sampling", "- Uniform one light", "- BSDF Sampling", "- MIS (1 Light + 1 BSDF)", "- RIS BDSF + Light candidates", "- ReSTIR DI (Primary Hit)" };
 			if (ImGui::Combo("Direct light sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
 			{
@@ -1229,7 +1247,14 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 							if (ImGui::Checkbox("Debug Neighbor Reuse Positions", &render_settings.restir_di_settings.spatial_pass.debug_neighbor_location))
 								m_render_window->set_render_dirty(true);
 							ImGuiRenderer::show_help_marker("If checked, neighbor in the spatial reuse pass will be hardcoded to always be "
-								"15 pixels to the right, not in a circle. This makes spotting bias easier when debugging.");
+								"N (see below) pixels to the right, not in a circle. This makes spotting bias easier when debugging.");
+							if (render_settings.restir_di_settings.spatial_pass.debug_neighbor_location)
+							{
+								ImGui::TreePush("neighbor debug distance tree");
+								if (ImGui::SliderInt("Debug distance (N)", &render_settings.restir_di_settings.spatial_pass.debug_neighbor_distance, 1, 32))
+									m_render_window->set_render_dirty(true);
+								ImGui::TreePop();
+							}
 						}
 					}
 

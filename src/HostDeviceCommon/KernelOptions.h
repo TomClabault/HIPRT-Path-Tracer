@@ -210,7 +210,7 @@
  *
  *	- KERNEL_OPTION_TRUE or KERNEL_OPTION_FALSE values are accepted. Self-explanatory
  */
-#define ReSTIR_DI_SpatialTargetFunctionVisibility KERNEL_OPTION_TRUE
+#define ReSTIR_DI_SpatialTargetFunctionVisibility KERNEL_OPTION_FALSE
 
 /**
  * Whether or not to do a visibility check at the end of the initial candidates sampling.
@@ -220,7 +220,7 @@
  * 
  *	- KERNEL_OPTION_TRUE or KERNEL_OPTION_FALSE values are accepted. Self-explanatory
  */
-#define ReSTIR_DI_DoVisibilityReuse KERNEL_OPTION_TRUE
+#define ReSTIR_DI_DoVisibilityReuse KERNEL_OPTION_FALSE
 
 /**
  * Whether or not to use a visibility term in the MIS weights (MIS-like weights,
@@ -235,7 +235,7 @@
  * 
  *	- KERNEL_OPTION_TRUE or KERNEL_OPTION_FALSE values are accepted. Self-explanatory
  */
-#define ReSTIR_DI_BiasCorrectionUseVisibility KERNEL_OPTION_TRUE
+#define ReSTIR_DI_BiasCorrectionUseVisibility KERNEL_OPTION_FALSE
 
 /**
  * What bias correction weights to use when resampling neighbors (temporal / spatial)
