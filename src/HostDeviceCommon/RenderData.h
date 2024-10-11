@@ -55,6 +55,11 @@ struct RenderBuffers
 	// Materials array to be indexed by an index retrieved from the 
 	// material_indices array
 	RendererMaterial* materials_buffer = nullptr;
+	// 32x32 texture containing the precomputed parameters of the LTC
+	// fitted to approximate the SSGX sheen volumetric layer.
+	// See SheenLTCFittedParameters.h
+	void* sheen_ltc_parameters_texture = nullptr;
+
 	int emissive_triangles_count = 0;
 	int* emissive_triangles_indices = nullptr;
 
@@ -145,7 +150,7 @@ struct HIPRTRenderData
 	// GPU BVH
 	hiprtGeometry geom = nullptr;
 	// GPU Intersection functions (for alpha testing for example)
-	hiprtFuncTable func_table = nullptr;
+	hiprtFuncTable hiprt_function_table = nullptr;
 
 	// Size of the *global* stack per thread. Default is 32.
 	int global_traversal_stack_buffer_size = 32;
