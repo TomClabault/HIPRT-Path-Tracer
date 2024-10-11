@@ -48,7 +48,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_no_MIS(const HIPRTRe
         {
             float brdf_pdf;
             RayVolumeState trash_volume_state = ray_payload.volume_state;
-            ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, ray_payload.material, trash_volume_state, view_direction, closest_hit_info.shading_normal, shadow_ray.direction, brdf_pdf);
+            ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, ray_payload.material, trash_volume_state, view_direction, closest_hit_info.shading_normal, shadow_ray.direction, brdf_pdf);
             if (brdf_pdf != 0.0f)
             {
                 // Conversion to solid angle from surface area measure
@@ -77,7 +77,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_bsdf(const HIPRTRend
     float direction_pdf;
     float3 sampled_brdf_direction;
     RayVolumeState trash_volume_state = ray_payload.volume_state;
-    ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data.buffers.materials_buffer, ray_payload.material, trash_volume_state, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_brdf_direction, direction_pdf, random_number_generator);
+    ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, trash_volume_state, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_brdf_direction, direction_pdf, random_number_generator);
 
     bool refraction_sampled = hippt::dot(sampled_brdf_direction, closest_hit_info.shading_normal * inside_surface_multiplier) < 0;
     if (direction_pdf > 0.0f)
@@ -147,7 +147,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(const HIPRTRende
         {
             float bsdf_pdf;
             RayVolumeState trash_volume_state = ray_payload.volume_state;
-            ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, ray_payload.material, trash_volume_state, view_direction, closest_hit_info.shading_normal, shadow_ray.direction, bsdf_pdf);
+            ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, ray_payload.material, trash_volume_state, view_direction, closest_hit_info.shading_normal, shadow_ray.direction, bsdf_pdf);
             if (bsdf_pdf != 0.0f)
             {
                 // Conversion to solid angle from surface area measure
@@ -168,7 +168,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(const HIPRTRende
     float3 sampled_bsdf_direction;
     float3 bsdf_shadow_ray_origin = evaluated_point;
     RayVolumeState trash_volume_state = ray_payload.volume_state;
-    ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data.buffers.materials_buffer, ray_payload.material, trash_volume_state, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_bsdf_direction, direction_pdf, random_number_generator);
+    ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, trash_volume_state, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_bsdf_direction, direction_pdf, random_number_generator);
     bool refraction_sampled = hippt::dot(sampled_bsdf_direction, closest_hit_info.shading_normal * inside_surface_multiplier) < 0;
     if (refraction_sampled)
     {

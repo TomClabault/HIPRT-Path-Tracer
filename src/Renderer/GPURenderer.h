@@ -68,6 +68,12 @@ public:
 	GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx);
 
 	/**
+	 * Initializes and uploads the fitted parameters for the LTC sheen lobe
+	 * of the Disney BSDF
+	 */
+	void init_sheen_ltc_texture();
+
+	/**
 	 * Initializes and compiles the kernels
 	 */
 	void setup_kernels();
@@ -335,6 +341,7 @@ private:
 	// Albedo G-buffer
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>>m_albedo_AOV_buffer;
 
+	// G-buffers of the current frame (camera rays hits) and previous frame
 	GPURendererGBuffer m_g_buffer;
 	GPURendererGBuffer m_g_buffer_prev_frame;
 
@@ -373,6 +380,11 @@ private:
 	// Envmap of the renderer
 	RendererEnvmap m_envmap;
 
+	// 32x32 texture containing the precomputed parameters of the LTC
+	// fitted to approximate the SSGX sheen volumetric layer.
+	// See SheenLTCFittedParameters.h
+	OrochiTexture m_sheen_ltc_params;
+
 	// Options used for compiling the render passes of this renderer.
 	// 
 	// Most of the options in there are shared with all the passes. For example,
@@ -397,6 +409,7 @@ private:
 	// Additional functions called on hits when tracing rays (alpha testing for example)
 	std::vector<hiprtFuncNameSet> m_func_name_sets;
 
+	// HIPRT and Orochi contexts
 	std::shared_ptr<HIPRTOrochiCtx> m_hiprt_orochi_ctx = nullptr;
 
 	// Custom stream onto which kernels are dispatched asynchronously

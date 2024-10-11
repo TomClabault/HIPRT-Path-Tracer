@@ -125,9 +125,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
 #endif
         hiprtGlobalStack global_stack(render_data.global_traversal_stack_buffer, shared_stack_buffer);
 
-        hiprtGeomTraversalClosestCustomStack<hiprtGlobalStack> traversal(render_data.geom, ray, global_stack, hiprtTraversalHintDefault, &payload, render_data.func_table, 0);
+        hiprtGeomTraversalClosestCustomStack<hiprtGlobalStack> traversal(render_data.geom, ray, global_stack, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0);
 #else
-        hiprtGeomTraversalClosest traversal(render_data.geom, ray, hiprtTraversalHintDefault, &payload, render_data.func_table, 0);
+        hiprtGeomTraversalClosest traversal(render_data.geom, ray, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0);
 #endif
 
         hit = traversal.getNextHit();
@@ -214,10 +214,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& r
 #endif
     hiprtGlobalStack global_stack(render_data.global_traversal_stack_buffer, shared_stack_buffer);
 
-    hiprtGeomTraversalAnyHitCustomStack<hiprtGlobalStack> traversal(render_data.geom, ray, global_stack, hiprtTraversalHintDefault, &payload, render_data.func_table, 0);
+    hiprtGeomTraversalAnyHitCustomStack<hiprtGlobalStack> traversal(render_data.geom, ray, global_stack, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0);
     //hiprtGeomTraversalAnyHitCustomStack<hiprtGlobalStack> traversal()
 #else
-    hiprtGeomTraversalClosest traversal(render_data.geom, ray, hiprtTraversalHintDefault, &payload, render_data.func_table, 0);
+    hiprtGeomTraversalClosest traversal(render_data.geom, ray, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0);
 #endif
 
     hiprtHit shadow_ray_hit = traversal.getNextHit();
@@ -280,9 +280,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderD
 #endif
     hiprtGlobalStack global_stack(render_data.global_traversal_stack_buffer, shared_stack_buffer);
 
-    hiprtGeomTraversalClosestCustomStack<hiprtGlobalStack> traversal(render_data.geom, ray, global_stack, hiprtTraversalHintDefault, &payload, render_data.func_table, 0);
+    hiprtGeomTraversalClosestCustomStack<hiprtGlobalStack> traversal(render_data.geom, ray, global_stack, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0);
 #else
-    hiprtGeomTraversalClosest traversal(render_data.geom, ray, hiprtTraversalHintDefault, &payload, render_data.func_table, 0);
+    hiprtGeomTraversalClosest traversal(render_data.geom, ray, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0);
 #endif
 
     hiprtHit shadow_ray_hit = traversal.getNextHit();

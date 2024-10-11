@@ -42,6 +42,8 @@ struct SimplifiedRendererMaterial
         roughness = hippt::max(1.0e-4f, roughness);
         clearcoat_roughness = hippt::max(1.0e-4f, clearcoat_roughness);
 
+        sheen_roughness = hippt::max(1.0e-4f, sheen_roughness);
+
         // Clamping to avoid negative emission
         emission = ColorRGB32F::max(ColorRGB32F(0.0f), emission);
         emission_strength = hippt::max(0.0f, emission_strength);
@@ -123,7 +125,7 @@ struct SimplifiedRendererMaterial
     float clearcoat_ior = 1.5f;
 
     float sheen = 0.0f; // Sheen strength
-    float sheen_tint = 0.0f; // Sheen tint strength
+    float sheen_roughness = 0.5f;
     ColorRGB32F sheen_color = ColorRGB32F(1.0f);
 
     float ior = 1.40f;
@@ -180,7 +182,7 @@ struct RendererMaterial : public SimplifiedRendererMaterial
     int clearcoat_ior_texture_index = -1;
 
     int sheen_texture_index = -1;
-    int sheen_tint_color_texture_index = -1;
+    int sheen_roughness_texture_index = -1;
     int sheen_color_texture_index = -1;
 
     int specular_transmission_texture_index = -1;

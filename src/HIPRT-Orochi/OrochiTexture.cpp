@@ -46,6 +46,13 @@ void OrochiTexture::operator=(OrochiTexture&& other)
 
 void OrochiTexture::init_from_image(const Image8Bit& image)
 {
+	if (image.channels == 3)
+	{
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "3-channels textures not supported on the GPU yet.");
+
+		return;
+	}
+
 	width = image.width;
 	height = image.height;
 
@@ -72,6 +79,13 @@ void OrochiTexture::init_from_image(const Image8Bit& image)
 
 void OrochiTexture::init_from_image(const Image32Bit& image)
 {
+	if (image.channels == 3)
+	{
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "3-channels textures not supported on the GPU yet.");
+
+		return;
+	}
+
 	width = image.width;
 	height = image.height;
 
@@ -99,9 +113,4 @@ void OrochiTexture::init_from_image(const Image32Bit& image)
 oroTextureObject_t OrochiTexture::get_device_texture()
 {
 	return m_texture;
-}
-
-oroTextureObject_t* OrochiTexture::get_device_texture_pointer()
-{
-	return &m_texture;
 }

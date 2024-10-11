@@ -39,7 +39,12 @@
 
 struct float4x4
 {
-	float m[4][4] = { {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0} };
+	float m[4][4] = { {0.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f} };
+};
+
+struct float3x3
+{
+	float m[3][3] = { {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f} };
 };
 
 // Here we're defining aliases for common functions used in shader code.
@@ -127,6 +132,20 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 matrix_X_point(const float4x4& m, const fl
 		inv_w = 1.0f / wt;
 
 	return make_float3(xt * inv_w, yt * inv_w, zt * inv_w);
+}
+
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 matrix_X_vec(const float3x3& m, const float3& u)
+{
+	float x = u.x;
+	float y = u.y;
+	float z = u.z;
+
+	// Assuming w = 0.0f for the vector u
+	float xt = m.m[0][0] * x + m.m[1][0] * y + m.m[2][0] * z;
+	float yt = m.m[0][1] * x + m.m[1][1] * y + m.m[2][1] * z;
+	float zt = m.m[0][2] * x + m.m[1][2] * y + m.m[2][2] * z;
+
+	return make_float3(xt, yt, zt);
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 matrix_X_vec(const float4x4& m, const float3& u)

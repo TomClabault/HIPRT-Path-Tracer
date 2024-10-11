@@ -110,6 +110,8 @@ private:
         bool odd_frame = false;
     } m_restir_di_state;
 
+    Image32Bit m_sheen_ltc_params;
+
     std::vector<Triangle> m_triangle_buffer;
     std::shared_ptr<BVH> m_bvh;
 

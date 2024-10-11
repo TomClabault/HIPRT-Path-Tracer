@@ -22,7 +22,7 @@
  // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
  // allowing for fast step into that pixel with the debugger to see what's happening.
  // Otherwise if 0, all pixels of the image are rendered
-#define DEBUG_PIXEL 1
+#define DEBUG_PIXEL 0
 
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner.
 // If 1, it's bottom left corner.
@@ -36,8 +36,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 640
-#define DEBUG_PIXEL_Y 636
+#define DEBUG_PIXEL_X 584
+#define DEBUG_PIXEL_Y 144
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -46,8 +46,8 @@
 // of DEBUG_OTHER_PIXEL_X/Y given below.
 // 
 // -1 to disable. If disabled, the pixel at (DEBUG_PIXEL_X, DEBUG_PIXEL_Y) will be debugged
-#define DEBUG_OTHER_PIXEL_X 632
-#define DEBUG_OTHER_PIXEL_Y 636
+#define DEBUG_OTHER_PIXEL_X -1
+#define DEBUG_OTHER_PIXEL_Y -1
 
 // If 1, a square of DEBUG_NEIGHBORHOOD_SIZE x DEBUG_NEIGHBORHOOD_SIZE pixels
 // will be rendered around the pixel to debug (given by DEBUG_PIXEL_X and
@@ -96,6 +96,8 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
     m_g_buffer_prev_frame.cameray_ray_hit.resize(width * height);
     m_g_buffer_prev_frame.ray_volume_states.resize(width * height);
 
+    m_sheen_ltc_params = Image32Bit(reinterpret_cast<float*>(ltc_parameters_table_approximation.data()), 32, 32, 3);
+
     m_rng = Xorshift32Generator(42);
 }
 
@@ -111,6 +113,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.buffers.vertices_positions = parsed_scene.vertices_positions.data();
     m_render_data.buffers.vertex_normals = parsed_scene.vertex_normals.data();
     m_render_data.buffers.texcoords = parsed_scene.texcoords.data();
+    m_render_data.buffers.sheen_ltc_parameters_texture = &m_sheen_ltc_params;
 
     ThreadManager::join_threads(ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY);
     m_render_data.buffers.material_textures = parsed_scene.textures.data();

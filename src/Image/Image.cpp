@@ -23,7 +23,7 @@ Image8Bit::Image8Bit(int width, int height, int channels) : Image8Bit(std::vecto
 Image8Bit::Image8Bit(unsigned char* data, int width, int height, int channels) : width(width), height(height), channels(channels)
 {
     m_pixel_data = std::vector<unsigned char>();
-    m_pixel_data.insert(m_pixel_data.end(), &data[0], &data[width * height]);
+    m_pixel_data.insert(m_pixel_data.end(), &data[0], &data[width * height * channels]);
 }
 
 Image8Bit::Image8Bit(const std::vector<unsigned char>& data, int width, int height, int channels) : width(width), height(height), channels(channels), m_pixel_data(data) {}
@@ -131,7 +131,7 @@ float Image8Bit::luminance_of_pixel(int x, int y) const
     // the 3 components and apply the weights.
     // 
     // If the image has 4 components, we will still only take RGB into account for the
-    // luminance compoutation but not alpha
+    // luminance computation but not alpha
     float luminance = 0.0;
     float weights[3] = { 0.3086f, 0.6094f, 0.0820f };
     for (int i = 0; i < hippt::min(channels, 3); i++)
@@ -285,12 +285,12 @@ void Image8Bit::free()
 
 
 
-Image32Bit::Image32Bit(int width, int height, int channels) : Image32Bit(std::vector<float>(width* height* channels, 0), width, height, channels) {}
+Image32Bit::Image32Bit(int width, int height, int channels) : Image32Bit(std::vector<float>(width * height * channels, 0), width, height, channels) {}
 
 Image32Bit::Image32Bit(float* data, int width, int height, int channels) : width(width), height(height), channels(channels)
 {
     m_pixel_data = std::vector<float>();
-    m_pixel_data.insert(m_pixel_data.end(), &data[0], &data[width * height]);
+    m_pixel_data.insert(m_pixel_data.end(), &data[0], &data[width * height * channels]);
 }
 
 Image32Bit::Image32Bit(const std::vector<float>& data, int width, int height, int channels) : width(width), height(height), channels(channels), m_pixel_data(data) {}
@@ -395,7 +395,7 @@ float Image32Bit::luminance_of_pixel(int x, int y) const
     // the 3 components and apply the weights.
     // 
     // If the image has 4 components, we will still only take RGB into account for the
-    // luminance compoutation but not alpha
+    // luminance computation but not alpha
     float luminance = 0.0;
     float weights[3] = { 0.3086f, 0.6094f, 0.0820f };
     for (int i = 0; i < hippt::min(channels, 3); i++)

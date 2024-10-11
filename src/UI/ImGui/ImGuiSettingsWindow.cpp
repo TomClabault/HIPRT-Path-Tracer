@@ -1606,19 +1606,23 @@ void ImGuiSettingsWindow::draw_objects_panel()
 		material_changed |= ImGui::ColorEdit3("Base color", (float*)&material.base_color);
 		material_changed |= ImGui::SliderFloat("Subsurface", &material.subsurface, 0.0f, 1.0f);
 		material_changed |= ImGui::SliderFloat("Metallic", &material.metallic, 0.0f, 1.0f);
-		material_changed |= ImGui::SliderFloat("Specular", &material.specular, 0.0f, 1.0f);
-		material_changed |= ImGui::SliderFloat("Specular tint strength", &material.specular_tint, 0.0f, 1.0f);
-		material_changed |= ImGui::ColorEdit3("Specular color", (float*)&material.specular_color);
 		material_changed |= ImGui::SliderFloat("Roughness", &material.roughness, 0.0f, 1.0f);
 		material_changed |= ImGui::SliderFloat("Anisotropic", &material.anisotropic, 0.0f, 1.0f);
 		material_changed |= ImGui::SliderFloat("Anisotropic rotation", &material.anisotropic_rotation, 0.0f, 1.0f);
+		ImGui::Separator();
+		material_changed |= ImGui::SliderFloat("Specular", &material.specular, 0.0f, 1.0f);
+		material_changed |= ImGui::SliderFloat("Specular tint strength", &material.specular_tint, 0.0f, 1.0f);
+		material_changed |= ImGui::ColorEdit3("Specular color", (float*)&material.specular_color);
+		ImGui::Separator();
 		material_changed |= ImGui::SliderFloat("Sheen", &material.sheen, 0.0f, 1.0f);
-		material_changed |= ImGui::SliderFloat("Sheen tint strength", &material.sheen_tint, 0.0f, 1.0f);
+		material_changed |= ImGui::SliderFloat("Sheen Roughness", &material.sheen_roughness, 0.0f, 1.0f);
 		material_changed |= ImGui::ColorEdit3("Sheen color", (float*)&material.sheen_color);
+		ImGui::Separator();
 		material_changed |= ImGui::SliderFloat("Clearcoat", &material.clearcoat, 0.0f, 1.0f);
 		material_changed |= ImGui::SliderFloat("Clearcoat roughness", &material.clearcoat_roughness, 0.0f, 1.0f);
 		material_changed |= ImGui::SliderFloat("Clearcoat IOR", &material.clearcoat_ior, 0.0f, 5.0f);
 		material_changed |= ImGui::SliderFloat("IOR", &material.ior, 0.0f, 5.0f);
+		ImGui::Separator();
 		material_changed |= ImGui::SliderFloat("Transmission", &material.specular_transmission, 0.0f, 1.0f);
 
 		if (material.specular_transmission > 0.0f)

@@ -49,7 +49,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_O
 		return 0.0f;
 
 	RayVolumeState trash_volume_state = surface.ray_volume_state;
-	ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, surface.material, trash_volume_state, surface.view_direction, surface.shading_normal, sample_direction, bsdf_pdf);
+	ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, surface.material, trash_volume_state, surface.view_direction, surface.shading_normal, sample_direction, bsdf_pdf);
 
 	ColorRGB32F sample_emission;
 	if (sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE)
@@ -100,7 +100,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_O
 		return 0.0f;
 
 	RayVolumeState trash_volume_state = surface.ray_volume_state;
-	ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, surface.material, trash_volume_state, surface.view_direction, surface.shading_normal, sample_direction, bsdf_pdf);
+	ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, surface.material, trash_volume_state, surface.view_direction, surface.shading_normal, sample_direction, bsdf_pdf);
 
 	ColorRGB32F sample_emission;
 	if (sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE)

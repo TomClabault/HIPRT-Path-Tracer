@@ -30,6 +30,7 @@ extern ImGuiLogger g_imgui_logger;
 // - use self bit packing (no bitfields) for nested dielectrics because bitfields are implementation dependent in size, that's bad --> We don't get our nice packing with every compiler
 // - backgfround kernel compilation counter in log window
 // - cmake to disable optimizations in reldebinfo
+// - for LTC sheen lobe, have the option to use either SGGX volumetric sheen or approximation precomputed LTC data
 
 // TODO known bugs / incorectness:
 // - take transmission color into account when direct sampling a light source that is inside a volume

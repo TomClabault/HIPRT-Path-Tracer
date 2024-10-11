@@ -4,6 +4,7 @@
  */
 
 #include "Compiler/GPUKernelCompilerOptions.h"
+#include "Device/includes/BSDFs/SheenLTCFittedParameters.h"
 #include "HIPRT-Orochi/HIPRTOrochiCtx.h"
 #include "Renderer/GPURenderer.h"
 #include "Threads/ThreadFunctions.h"
@@ -48,6 +49,8 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
 	m_hiprt_orochi_ctx = hiprt_oro_ctx;	
 	m_device_properties = m_hiprt_orochi_ctx->device_properties;
 
+	init_sheen_ltc_texture();
+
 	setup_kernels();
 
 	m_render_pass_times[GPURenderer::FULL_FRAME_TIME_KEY] = 0.0f;
@@ -72,6 +75,29 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
 	OROCHI_CHECK_ERROR(oroEventCreate(&m_frame_stop_event));
 }
 
+void GPURenderer::init_sheen_ltc_texture()
+{
+	// CUDA/HIP do not handle 3 channels textures so we're padding it to 4 channels
+	std::vector<float> padded_ltc(32 * 32 * 4);
+
+	for (int y = 0; y < 32; y++)
+	{
+		for (int x = 0; x < 32; x++)
+		{
+			int padded_index = (y * 32 + x) * 4;
+			int non_padded_index = y * 32 + x;
+
+			padded_ltc[padded_index + 0] = ltc_parameters_table_approximation[non_padded_index].x;
+			padded_ltc[padded_index + 1] = ltc_parameters_table_approximation[non_padded_index].y;
+			padded_ltc[padded_index + 2] = ltc_parameters_table_approximation[non_padded_index].z;
+			padded_ltc[padded_index + 3] = 0.0f;
+		}
+	}
+
+	Image32Bit sheen_ltc_params_image(padded_ltc.data(), 32, 32, 4);
+	m_sheen_ltc_params = OrochiTexture(sheen_ltc_params_image);
+}
+
 void GPURenderer::setup_kernels()
 {
 	/*GPUKernel test_kernel;
@@ -89,7 +115,7 @@ void GPURenderer::setup_kernels()
 	HIPRT_CHECK_ERROR(hiprtCreateFuncTable(m_hiprt_orochi_ctx->hiprt_ctx, 1, 1, func_table));
 	HIPRT_CHECK_ERROR(hiprtSetFuncTable(m_hiprt_orochi_ctx->hiprt_ctx, func_table, 0, 0, func_data_set));
 
-	m_render_data.func_table = func_table;
+	m_render_data.hiprt_function_table = func_table;
 
 	m_global_compiler_options = std::make_shared<GPUKernelCompilerOptions>();
 	// Adding hardware acceleration by default if supported
@@ -848,6 +874,7 @@ void GPURenderer::update_render_data()
 		m_render_data.buffers.materials_buffer = reinterpret_cast<RendererMaterial*>(m_hiprt_scene.materials_buffer.get_device_pointer());
 		m_render_data.buffers.emissive_triangles_count = m_hiprt_scene.emissive_triangles_count;
 		m_render_data.buffers.emissive_triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.emissive_triangles_indices.get_device_pointer());
+		m_render_data.buffers.sheen_ltc_parameters_texture = m_sheen_ltc_params.get_device_texture();
 
 		m_render_data.buffers.material_textures = reinterpret_cast<oroTextureObject_t*>(m_hiprt_scene.gpu_materials_textures.get_device_pointer());
 		m_render_data.buffers.texcoords = reinterpret_cast<float2*>(m_hiprt_scene.texcoords_buffer.get_device_pointer());
