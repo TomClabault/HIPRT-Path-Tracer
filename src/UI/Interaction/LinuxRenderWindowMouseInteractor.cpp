@@ -15,7 +15,8 @@ void LinuxRenderWindowMouseInteractor::glfw_mouse_button_callback(GLFWwindow* wi
     void* user_pointer = glfwGetWindowUserPointer(window);
     RenderWindow* render_window = reinterpret_cast<RenderWindow*>(user_pointer);
 
-    std::shared_ptr<RenderWindowMouseInteractor> interactor_instance = render_window->get_mouse_interactor();
+    std::shared_ptr<RenderWindowMouseInteractor> interactor_instance_ptr = render_window->get_mouse_interactor();
+    LinuxRenderWindowMouseInteractor* interactor_instance = static_cast<LinuxRenderWindowMouseInteractor*>(interactor_instance_ptr.get());
 
     // If it is the render window that is hovered, we're going to move the camera so we take
     // the inputs
@@ -34,7 +35,13 @@ void LinuxRenderWindowMouseInteractor::glfw_mouse_button_callback(GLFWwindow* wi
 
         break;
     }
-    
+
+    if (action == GLFW_PRESS)
+        // If the user just clicked over the render window, setting the boolean to true, false otherwise
+        interactor_instance->render_window_hovered_on_click = render_window_hovered;
+    else if (action == GLFW_RELEASE)
+        interactor_instance->render_window_hovered_on_click = false;
+
     bool interacting = interactor_instance->is_interacting();
     if (interacting)
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
@@ -50,29 +57,39 @@ void LinuxRenderWindowMouseInteractor::glfw_mouse_cursor_callback(GLFWwindow* wi
     // If it is the render window that is hovered, we're going to move the camera so we take
     // the inputs
     RenderWindow* render_window = reinterpret_cast<RenderWindow*>(user_pointer);
-    bool render_window_hovered = render_window->get_imgui_renderer()->get_imgui_render_window().is_hovered();
-    bool imgui_want_mouse = io.WantCaptureMouse && !render_window_hovered;
-    if (!imgui_want_mouse)
-    {
-        RenderWindow* render_window = reinterpret_cast<RenderWindow*>(glfwGetWindowUserPointer(window));
+    std::shared_ptr<RenderWindowMouseInteractor> interactor_instance_ptr = render_window->get_mouse_interactor();
+    LinuxRenderWindowMouseInteractor* interactor_instance = static_cast<LinuxRenderWindowMouseInteractor*>(interactor_instance_ptr.get());
 
+    // If the render window was hovered when the user clicked, then the user is trying to move the camera
+    bool render_window_hovered_when_clicked = interactor_instance->render_window_hovered_on_click;
+
+    bool render_window_hovered = render_window->get_imgui_renderer()->get_imgui_render_window().is_hovered();
+    bool imgui_wants_mouse = io.WantCaptureMouse && !render_window_hovered && !render_window_hovered_when_clicked;
+
+    if (!imgui_wants_mouse)
+    {
         float xposf = static_cast<float>(xpos);
         float yposf = static_cast<float>(ypos);
 
-        std::pair<float, float> old_position = render_window->get_cursor_position();
-        if (old_position.first == -1 && old_position.second == -1)
-            // If this is the first position of the cursor, nothing to do
-            ;
-        else
+        if (render_window_hovered_when_clicked)
         {
-            // Computing the difference in movement
-            std::pair<float, float> difference = std::make_pair(xposf - old_position.first, yposf - old_position.second);
+            std::pair<float, float> old_position = render_window->get_cursor_position();
+            if (old_position.first == -1 && old_position.second == -1)
+                // If this is the first position of the cursor, nothing to do
+                ;
+            else
+            {
+                // Computing the difference in movement
+                std::pair<float, float> difference = std::make_pair(xposf - old_position.first, yposf - old_position.second);
+                static int counter = 0;
 
-            if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
-                render_window->update_renderer_view_translation(-difference.first, difference.second, true);
+                if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
+                    render_window->update_renderer_view_translation(-difference.first, difference.second, true);
 
-            if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
-                render_window->update_renderer_view_rotation(-difference.first, -difference.second);
+                if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+                    render_window->update_renderer_view_rotation(-difference.first, -difference.second);
+            }
+
         }
 
         // Updating the position
