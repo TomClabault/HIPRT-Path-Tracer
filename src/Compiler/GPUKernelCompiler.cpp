@@ -31,8 +31,8 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, const GPUKern
 	std::string kernel_function_name = kernel.get_kernel_function_name();
 	const std::vector<std::string>& additional_include_dirs = GPUKernel::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS;
 	std::vector<std::string> compiler_options = kernel_compiler_options.get_relevant_macros_as_std_vector_string(&kernel);
-	// compiler_options.push_back("-ggdb");
-	// compiler_options.push_back("-g");
+	compiler_options.push_back("-ggdb");
+	compiler_options.push_back("-g");
 
 	/*compiler_options.push_back("-Wall");
 	compiler_options.push_back("-Weverything");
@@ -97,7 +97,7 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, const GPUKern
 		int nb_shared = GPUKernel::get_kernel_attribute(kernel_function, ORO_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES);
 		int nb_local = GPUKernel::get_kernel_attribute(kernel_function, ORO_FUNC_ATTRIBUTE_LOCAL_SIZE_BYTES);
 
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Kernel \"%s\" compiled in %dms.\n\t[Reg, Shared, Local] = [%d, %d, %d]\n", kernel_function_name.c_str(), std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count(), nb_reg, nb_shared, nb_local);
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Kernel \"%s\" compiled in %ldms.\n\t[Reg, Shared, Local] = [%d, %d, %d]\n", kernel_function_name.c_str(), std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count(), nb_reg, nb_shared, nb_local);
 	}
 
 	return kernel_function;
@@ -217,7 +217,7 @@ std::unordered_set<std::string> GPUKernelCompiler::read_option_macro_of_file(con
 
 	}
 	else
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Could not open file \"%s\" for reading option macros used by that file: %s", filepath, strerror(errno));
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Could not open file \"%s\" for reading option macros used by that file: %s", filepath.c_str(), strerror(errno));
 
 	// The cache is shared to all threads using this GPUKernelCompiler so we're locking that operation
 	// The lock is destroyed when the function returns
@@ -269,7 +269,7 @@ std::string GPUKernelCompiler::get_additional_cache_key(GPUKernel& kernel)
 		}
 		catch (std::filesystem::filesystem_error e)
 		{
-			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "HIPKernelCompiler - Unable to open include file \"%s\" for shader cache validation: ", include.c_str(), e.what());
+			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "HIPKernelCompiler - Unable to open include file \"%s\" for shader cache validation: %s", include.c_str(), e.what());
 
 			return "";
 		}

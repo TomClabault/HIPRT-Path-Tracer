@@ -40,7 +40,7 @@ void hiprt_check_error(hiprtError res, const char* file, uint32_t line)
 {
 	if (res != hiprtSuccess)
 	{
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "HIPRT error: '%s' on line %d in '%s'.", res, line, file);
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "HIPRT error: '%d' on line %d in '%s'.", res, line, file);
 
 		Utils::debugbreak();
 		exit(EXIT_FAILURE);

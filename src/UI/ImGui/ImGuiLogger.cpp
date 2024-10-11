@@ -251,8 +251,16 @@ void ImGuiLogger::set_line_name(std::shared_ptr<ImGuiLoggerLine> line, const cha
 
 std::string ImGuiLogger::compute_formatted_string(const char* fmt, va_list args)
 {
+    // Copying the arg list because the first call to vsnprintf modifies args
+    // and so if we use args again in the second call to vsnprintf, we're going
+    // to get garbage in the formatted output 
+    va_list args_copy;
+    va_copy(args_copy, args);
+
     // Calculating formatted string length by calling with NULL. + 1 for the '\0'
-    int string_length = vsnprintf(NULL, 0, fmt, args) + 1;
+    int string_length = vsnprintf(NULL, 0, fmt, args_copy) + 1;
+
+    va_end(args_copy);
 
     std::vector<char> string_buffer(string_length);
     vsnprintf(string_buffer.data(), string_length, fmt, args);

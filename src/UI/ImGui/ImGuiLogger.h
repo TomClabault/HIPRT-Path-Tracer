@@ -12,12 +12,12 @@
 #include "imgui.h"
 
 #include <iostream>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
-#include <memory>
 
 /**
  * Class derived from imgui_demo.cpp "ExampleAppLog"
@@ -31,8 +31,8 @@ public:
 
     ImGuiLogger();
 
-    void add_line_with_name(ImGuiLoggerSeverity severity, const char* line_name, const char* fmt, ...);
-    void add_line(ImGuiLoggerSeverity severity, const char* fmt, ...);
+    void add_line_with_name(ImGuiLoggerSeverity severity, const char* line_name, const char* fmt, ...) IM_FMTARGS(4);
+    void add_line(ImGuiLoggerSeverity severity, const char* fmt, ...) IM_FMTARGS(3);
 
     void draw(const char* title, bool* p_open = NULL);
     void clear();

@@ -47,7 +47,7 @@ int main(int argc, char* argv[])
     SceneParser::parse_scene_file(cmd_arguments.scene_file_path, assimp_importer, parsed_scene, options);
     stop_scene = std::chrono::high_resolution_clock::now();
 
-    g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Scene geometry parsed in %dms", std::chrono::duration_cast<std::chrono::milliseconds>(stop_scene - start_scene).count());
+    g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Scene geometry parsed in %ldms", std::chrono::duration_cast<std::chrono::milliseconds>(stop_scene - start_scene).count());
     g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Reading envmap %s...", cmd_arguments.skysphere_file_path.c_str());
 
     // TODO we only need 3 channels for the envmap but the only supported formats are 1, 2, 4 channels in HIP/CUDA, not 3
@@ -67,7 +67,7 @@ int main(int argc, char* argv[])
     ThreadManager::join_all_threads();
 
     stop_full = std::chrono::high_resolution_clock::now();
-    g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Full scene parsed & built in %dms", std::chrono::duration_cast<std::chrono::milliseconds>(stop_full - start_full).count());
+    g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Full scene parsed & built in %ldms", std::chrono::duration_cast<std::chrono::milliseconds>(stop_full - start_full).count());
     renderer->get_hiprt_scene().print_statistics(std::cout);
 
     // We don't need the scene anymore, we can free it now

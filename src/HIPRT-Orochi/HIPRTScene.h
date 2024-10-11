@@ -83,7 +83,7 @@ struct HIPRTGeometry
 		OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(geometry_temp)));
 
 		auto stop = std::chrono::high_resolution_clock::now();
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "BVH built in %dms", std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count());
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "BVH built in %ldms", std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count());
 	}
 
 	hiprtContext m_hiprt_ctx = nullptr;
