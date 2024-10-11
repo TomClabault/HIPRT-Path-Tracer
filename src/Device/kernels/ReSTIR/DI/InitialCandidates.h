@@ -229,7 +229,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderDat
         {
             float bsdf_pdf;
             RayVolumeState volume_state = ray_payload.volume_state;
-            ColorRGB32F bsdf_contribution = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, ray_payload.material, volume_state, view_direction, closest_hit_info.shading_normal, to_light_direction, bsdf_pdf);
+            ColorRGB32F bsdf_contribution = bsdf_dispatcher_eval(render_data, ray_payload.material, volume_state, view_direction, closest_hit_info.shading_normal, to_light_direction, bsdf_pdf);
 
             ColorRGB32F light_contribution = bsdf_contribution * sample_radiance * sample_cosine_term;
             float target_function = light_contribution.luminance();
@@ -291,7 +291,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData
         float3 sampled_direction;
 
         RayVolumeState trash_ray_volume_state = ray_payload.volume_state;
-        ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data.buffers.materials_buffer, ray_payload.material, trash_ray_volume_state, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_direction, bsdf_sample_pdf, random_number_generator);
+        ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, trash_ray_volume_state, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_direction, bsdf_sample_pdf, random_number_generator);
 
         float3 shadow_ray_origin = evaluated_point;
         bool refraction_sampled = hippt::dot(sampled_direction, closest_hit_info.shading_normal * inside_surface_multiplier) < 0;

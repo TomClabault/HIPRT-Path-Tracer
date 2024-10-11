@@ -57,7 +57,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_ReSTIR_DI_reservoir(const HI
         ColorRGB32F bsdf_color;
         RayVolumeState trash_volume_state = ray_payload.volume_state;
 
-        bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, ray_payload.material, trash_volume_state, view_direction, shading_normal, shadow_ray_direction, bsdf_pdf);
+        bsdf_color = bsdf_dispatcher_eval(render_data, ray_payload.material, trash_volume_state, view_direction, shading_normal, shadow_ray_direction, bsdf_pdf);
 
         cosine_at_evaluated_point = hippt::max(0.0f, hippt::dot(shading_normal, shadow_ray_direction));
 

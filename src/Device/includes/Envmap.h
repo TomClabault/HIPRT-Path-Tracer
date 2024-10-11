@@ -171,7 +171,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_with_mis(const
         {
             float bsdf_pdf;
             RayVolumeState trash_state = volume_state;
-            ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, material, trash_state, view_direction, closest_hit_info.shading_normal, sampled_direction, bsdf_pdf);
+            ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, material, trash_state, view_direction, closest_hit_info.shading_normal, sampled_direction, bsdf_pdf);
 
 #if EnvmapSamplingDoBSDFMIS
             float mis_weight = balance_heuristic(envmap_pdf, bsdf_pdf);
@@ -190,7 +190,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_with_mis(const
     float bsdf_sample_pdf;
     float3 bsdf_sampled_dir;
     RayVolumeState trash_state = volume_state;
-    ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data.buffers.materials_buffer, material, trash_state, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bsdf_sampled_dir, bsdf_sample_pdf, random_number_generator);
+    ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, material, trash_state, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bsdf_sampled_dir, bsdf_sample_pdf, random_number_generator);
     ColorRGB32F bsdf_mis_contribution;
 
     // Sampling the BSDF with MIS

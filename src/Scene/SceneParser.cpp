@@ -370,8 +370,13 @@ void SceneParser::read_material_properties(aiMaterial* mesh_material, RendererMa
     mesh_material->Get(AI_MATKEY_ROUGHNESS_FACTOR, renderer_material.roughness);
     mesh_material->Get(AI_MATKEY_ANISOTROPY_FACTOR, renderer_material.anisotropic);
     if (!mesh_material->Get(AI_MATKEY_SHEEN_COLOR_FACTOR, *((aiColor3D*)&renderer_material.sheen_color)))
-        // We did get sheen color from the parsed scene, assuming sheen is on 100%, can't do better
-        renderer_material.sheen = renderer_material.sheen_tint = 1.0f;
+    {
+        // We did get sheen color from the parsed scene, also trying the roughness
+        mesh_material->Get(AI_MATKEY_SHEEN_ROUGHNESS_FACTOR, renderer_material.sheen_roughness);
+        // Setting the sheen factor to the maximum because we can't really do better than
+        // that sith ASSIMP
+        renderer_material.sheen = 1.0f;
+    }
     if (!mesh_material->Get(AI_MATKEY_SPECULAR_FACTOR, renderer_material.specular))
     {
         // We sucessfully got the specular color so we're going to assume that we the specular and tin are 100%
@@ -379,8 +384,12 @@ void SceneParser::read_material_properties(aiMaterial* mesh_material, RendererMa
         renderer_material.specular_color = ColorRGB32F(1.0f);
     }
     
-    mesh_material->Get(AI_MATKEY_CLEARCOAT_FACTOR, renderer_material.clearcoat);
-    mesh_material->Get(AI_MATKEY_CLEARCOAT_ROUGHNESS_FACTOR, renderer_material.clearcoat_roughness);
+    mesh_material->Get(AI_MATKEY_CLEARCOAT_FACTOR, renderer_material.coat);
+    /*renderer_material.coat = 1.0f;
+    renderer_material.coat_roughness = 0.0f;*/
+    renderer_material.sheen = 1.0f;
+    renderer_material.sheen_roughness = 0.2f;
+    mesh_material->Get(AI_MATKEY_CLEARCOAT_ROUGHNESS_FACTOR, renderer_material.coat_roughness);
     mesh_material->Get(AI_MATKEY_REFRACTI, renderer_material.ior);
     mesh_material->Get(AI_MATKEY_TRANSMISSION_FACTOR, renderer_material.specular_transmission);
     mesh_material->Get(AI_MATKEY_VOLUME_ATTENUATION_COLOR, renderer_material.absorption_color);
@@ -497,7 +506,7 @@ RendererMaterial SceneParser::offset_textures_indices(const RendererMaterial& re
    out_mat.clearcoat_ior_texture_index += (renderer_material.clearcoat_ior_texture_index == RendererMaterial::NO_TEXTURE) ? 0 : offset;
 
    out_mat.sheen_texture_index += (renderer_material.sheen_texture_index == RendererMaterial::NO_TEXTURE) ? 0 : offset;
-   out_mat.sheen_tint_color_texture_index += (renderer_material.sheen_tint_color_texture_index == RendererMaterial::NO_TEXTURE) ? 0 : offset;
+   out_mat.sheen_roughness_texture_index += (renderer_material.sheen_roughness_texture_index == RendererMaterial::NO_TEXTURE) ? 0 : offset;
    out_mat.sheen_color_texture_index += (renderer_material.sheen_color_texture_index == RendererMaterial::NO_TEXTURE) ? 0 : offset;
     
    out_mat.specular_transmission_texture_index += (renderer_material.specular_transmission_texture_index == RendererMaterial::NO_TEXTURE) ? 0 : offset;
