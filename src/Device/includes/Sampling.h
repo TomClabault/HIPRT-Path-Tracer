@@ -337,10 +337,4 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float GTR1(float alpha_g, float local_halfway_z)
     return num / denom;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float disney_clearcoat_masking_shadowing(const float3& direction)
-{
-    // The clearcoat geometry term always uses 0.25f roughness
-    return G1(0.25f, 0.25f, direction);
-}
-
 #endif

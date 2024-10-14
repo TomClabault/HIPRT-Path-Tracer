@@ -310,7 +310,7 @@ void SceneParser::assign_material_texture_indices(std::vector<RendererMaterial>&
         renderer_material.metallic_texture_index = mat_tex_indices.metallic_texture_index;
         renderer_material.roughness_metallic_texture_index = mat_tex_indices.roughness_metallic_texture_index;
         renderer_material.specular_texture_index = mat_tex_indices.specular_texture_index;
-        renderer_material.clearcoat_texture_index = mat_tex_indices.clearcoat_texture_index;
+        renderer_material.coat_texture_index = mat_tex_indices.coat_texture_index;
         renderer_material.sheen_texture_index = mat_tex_indices.sheen_texture_index;
         renderer_material.specular_transmission_texture_index = mat_tex_indices.specular_transmission_texture_index;
         renderer_material.normal_map_texture_index = mat_tex_indices.normal_map_texture_index;
@@ -322,7 +322,7 @@ void SceneParser::assign_material_texture_indices(std::vector<RendererMaterial>&
         renderer_material.metallic_texture_index += renderer_material.metallic_texture_index == RendererMaterial::NO_TEXTURE ? 0 : tex_index_offset;
         renderer_material.roughness_metallic_texture_index += renderer_material.roughness_metallic_texture_index == RendererMaterial::NO_TEXTURE ? 0 : tex_index_offset;
         renderer_material.specular_texture_index += renderer_material.specular_texture_index == RendererMaterial::NO_TEXTURE ? 0 : tex_index_offset;
-        renderer_material.clearcoat_texture_index += renderer_material.clearcoat_texture_index == RendererMaterial::NO_TEXTURE ? 0 : tex_index_offset;
+        renderer_material.coat_texture_index += renderer_material.coat_texture_index == RendererMaterial::NO_TEXTURE ? 0 : tex_index_offset;
         renderer_material.sheen_texture_index += renderer_material.sheen_texture_index == RendererMaterial::NO_TEXTURE ? 0 : tex_index_offset;
         renderer_material.specular_transmission_texture_index += renderer_material.specular_transmission_texture_index == RendererMaterial::NO_TEXTURE ? 0 : tex_index_offset;
         renderer_material.normal_map_texture_index += renderer_material.normal_map_texture_index == RendererMaterial::NO_TEXTURE ? 0 : tex_index_offset;
@@ -430,7 +430,7 @@ std::vector<std::pair<aiTextureType, std::string>> SceneParser::get_textures_pat
     }
 
     texture_indices.specular_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_SPECULAR, texture_paths);
-    texture_indices.clearcoat_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_CLEARCOAT, texture_paths);
+    texture_indices.coat_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_CLEARCOAT, texture_paths);
     texture_indices.sheen_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_SHEEN, texture_paths);
     texture_indices.specular_transmission_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_TRANSMISSION, texture_paths);
 
@@ -501,9 +501,9 @@ RendererMaterial SceneParser::offset_textures_indices(const RendererMaterial& re
    out_mat.anisotropic_texture_index += (renderer_material.anisotropic_texture_index == RendererMaterial::NO_TEXTURE) ? 0 : offset;
    out_mat.anisotropic_rotation_texture_index += (renderer_material.anisotropic_rotation_texture_index == RendererMaterial::NO_TEXTURE) ? 0 : offset;
 
-   out_mat.clearcoat_texture_index += (renderer_material.clearcoat_texture_index == RendererMaterial::NO_TEXTURE) ? 0 : offset;
-   out_mat.clearcoat_roughness_texture_index += (renderer_material.clearcoat_roughness_texture_index == RendererMaterial::NO_TEXTURE) ? 0 : offset;
-   out_mat.clearcoat_ior_texture_index += (renderer_material.clearcoat_ior_texture_index == RendererMaterial::NO_TEXTURE) ? 0 : offset;
+   out_mat.coat_texture_index += (renderer_material.coat_texture_index == RendererMaterial::NO_TEXTURE) ? 0 : offset;
+   out_mat.coat_roughness_texture_index += (renderer_material.coat_roughness_texture_index == RendererMaterial::NO_TEXTURE) ? 0 : offset;
+   out_mat.coat_ior_texture_index += (renderer_material.coat_ior_texture_index == RendererMaterial::NO_TEXTURE) ? 0 : offset;
 
    out_mat.sheen_texture_index += (renderer_material.sheen_texture_index == RendererMaterial::NO_TEXTURE) ? 0 : offset;
    out_mat.sheen_roughness_texture_index += (renderer_material.sheen_roughness_texture_index == RendererMaterial::NO_TEXTURE) ? 0 : offset;
