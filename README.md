@@ -16,14 +16,12 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 - CUDA for NVIDIA compilation
 # Features:
 
-### BSDFs
-- Disney BSDF 
-	- Base BRDF (Diffuse, fake subsurface, metallic, "specular", roughness, anisotropy + anisotropy rotation \[custom implementation\], clearcoat, sheen): [\[Burley, 2012\]](https://disneyanimation.com/publications/physically-based-shading-at-disney/)
-	- Dielectric BSDF + Beer Lambert volumetric absorption: [\[Burley, 2015\]](https://blog.selfshadow.com/publications/s2015-shading-course/#course_content)
-	- SGGX volumetric sheen lobe LTC fit [\[Heitz et al., 2016\]](https://eheitzresearch.wordpress.com/415-2/), [\[Zeltner, Burley, Chiang, 2022\]](https://tizianzeltner.com/projects/Zeltner2022Practical/)
-- Cook Torrance BRDF (metallic & roughness)
-- Oren Nayar diffuse model
-- Specular dielectrics
+### Layered/principled BSDF:
+- Coat Microfacet GGX Layer
+- SGGX Volumetric Sheen Lobe LTC Fit [\[Zeltner, Burley, Chiang, 2022\]](https://tizianzeltner.com/projects/Zeltner2022Practical/)
+- Lambert or Oren-Nayar Diffuse BRDF Lobe + Fake Subsurface [\[Burley, 2012\]](https://disneyanimation.com/publications/physically-based-shading-at-disney/)
+- Metallic Microfacet GGX (GTR2, [\[Burley, 2012\]](https://disneyanimation.com/publications/physically-based-shading-at-disney/)) Layer + Anisotropy & Anisotropy Rotation
+- Specular transmission BTDF + Beer Lambert Volumetric Absorption: [\[Burley, 2015\]](https://blog.selfshadow.com/publications/s2015-shading-course/#course_content)
 ### Sampling
 - Light sampling:
 	- Uniform light sampling for direct lighting estimation + MIS
