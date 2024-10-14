@@ -3,8 +3,8 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_DISNEY_H
-#define DEVICE_DISNEY_H
+#ifndef DEVICE_PRINCIPLED_H
+#define DEVICE_PRINCIPLED_H
 
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/ONB.h"
@@ -26,53 +26,25 @@
   * [6] [PBRT v3 Source Code] https://github.com/mmp/pbrt-v3
   * [7] [PBRT v4 Source Code] https://github.com/mmp/pbrt-v4
   * [8] [Blender's Cycles Source Code] https://github.com/blender/cycles
-  * [9] [CS184 Adaptive sampling] https://cs184.eecs.berkeley.edu/sp24/docs/hw3-1-part-5
-  *
+  * [9] [Autodesk Standard Surface] https://autodesk.github.io/standard-surface/
+  * [10] [Blender Principled BSDF] https://docs.blender.org/manual/fr/dev/render/shader_nodes/shader/principled.html
+  * 
   * Important note: none of the lobes of this implementation includes the cosine term.
   * The cosine term NoL needs to be taken into account outside of the BSDF
   */
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float disney_schlick_weight(float f0, float abs_cos_angle)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_diffuse_eval(const SimplifiedRendererMaterial& material, const float3& view_direction, const float3& surface_normal, const float3& to_light_direction, float& pdf)
 {
-    return 1.0f + (f0 - 1.0f) * pow(1.0f - abs_cos_angle, 5.0f);
+    // The diffuse lobe is a simple Oren Nayar lobe
+    return oren_nayar_brdf_eval(material, view_direction, surface_normal, to_light_direction, pdf);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_diffuse_eval(const SimplifiedRendererMaterial& material, const float3& view_direction, const float3& surface_normal, const float3& to_light_direction, float& pdf)
-{
-    float3 half_vector = hippt::normalize(to_light_direction + view_direction);
-
-    float LoH = hippt::clamp(0.0f, 1.0f, hippt::abs(hippt::dot(to_light_direction, half_vector)));
-    float NoL = hippt::clamp(0.0f, 1.0f, hippt::abs(hippt::dot(surface_normal, to_light_direction)));
-    float NoV = hippt::clamp(0.0f, 1.0f, hippt::abs(hippt::dot(surface_normal, view_direction)));
-
-    pdf = NoL / M_PI;
-
-    ColorRGB32F diffuse_part;
-    float diffuse_90 = 0.5f + 2.0f * material.roughness * LoH * LoH;
-    // Lambertian base_color
-    //diffuse_part = material.base_color / M_PI;
-    // Disney base_color
-    diffuse_part = material.base_color / M_PI * disney_schlick_weight(diffuse_90, NoL) * disney_schlick_weight(diffuse_90, NoV);
-    // Oren nayar base_color
-    //diffuse_part = oren_nayar_eval(material, view_direction, surface_normal, to_light_direction);
-
-    ColorRGB32F fake_subsurface_part = ColorRGB32F(0.0f);
-    if (material.subsurface > 0.0f)
-    {
-        float subsurface_90 = material.roughness * LoH * LoH;
-        fake_subsurface_part = 1.25f * material.base_color / M_PI *
-            (disney_schlick_weight(subsurface_90, NoL) * disney_schlick_weight(subsurface_90, NoV) * (1.0f / (NoL + NoV) - 0.5f) + 0.5f);
-    }
-
-    return (1.0f - material.subsurface) * diffuse_part + material.subsurface * fake_subsurface_part;
-}
-
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_diffuse_sample(const float3& surface_normal, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_diffuse_sample(const float3& surface_normal, Xorshift32Generator& random_number_generator)
 {
     return cosine_weighted_sample(surface_normal, random_number_generator);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_metallic_fresnel(const SimplifiedRendererMaterial& material, const float3& local_half_vector, const float3& local_to_light_direction)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_metallic_fresnel(const SimplifiedRendererMaterial& material, const float3& local_half_vector, const float3& local_to_light_direction)
 {
     // The summary of what is below is the following:
     //
@@ -90,7 +62,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_metallic_fresnel(const Simplif
     return C0 + (ColorRGB32F(1.0f) - C0) * pow(hippt::clamp(0.0f, 1.0f, 1.0f - hippt::dot(local_half_vector, local_to_light_direction)), 5.0f);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_metallic_eval(const SimplifiedRendererMaterial& material, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_half_vector, ColorRGB32F F, float& pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_metallic_eval(const SimplifiedRendererMaterial& material, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_half_vector, ColorRGB32F F, float& pdf)
 {
     // Maxing 1.0e-8f here to avoid zeros
     float NoV = hippt::max(1.0e-8f, hippt::abs(local_view_direction.z));
@@ -108,7 +80,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_metallic_eval(const Simplified
 /**
  * The sampled direction is returned in the local shading frame of the basis used for 'local_view_direction'
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_metallic_sample(const SimplifiedRendererMaterial& material, const float3& local_view_direction, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_metallic_sample(const SimplifiedRendererMaterial& material, const float3& local_view_direction, Xorshift32Generator& random_number_generator)
 {
     // The view direction can sometimes be below the shading normal hemisphere
     // because of normal mapping
@@ -120,34 +92,34 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_metallic_sample(const SimplifiedRen
     return hippt::normalize(sampled_direction);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_clearcoat_eval(const SimplifiedRendererMaterial& material, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, float& pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_coat_eval(const SimplifiedRendererMaterial& material, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, float& pdf)
 {
     if (local_view_direction.z * local_to_light_direction.z < 0)
         return ColorRGB32F(0.0f);
 
-    float num = material.clearcoat_ior - 1.0f;
-    float denom = material.clearcoat_ior + 1.0f;
+    float num = material.coat_ior - 1.0f;
+    float denom = material.coat_ior + 1.0f;
     ColorRGB32F R0 = ColorRGB32F((num * num) / (denom * denom));
 
     float HoL = hippt::clamp(1.0e-8f, 1.0f, hippt::dot(local_halfway_vector, local_to_light_direction));
-    float clearcoat_gloss = 1.0f - material.clearcoat_roughness;
-    float alpha_g = (1.0f - clearcoat_gloss) * 0.1f + clearcoat_gloss * 0.001f;
+    float coat_gloss = 1.0f - material.coat_roughness;
+    float alpha_g = (1.0f - coat_gloss) * 0.1f + coat_gloss * 0.001f;
 
-    ColorRGB32F F_clearcoat = fresnel_schlick(R0, HoL);
-    float D_clearcoat = GTR1(alpha_g, hippt::abs(local_halfway_vector.z));
-    float G_clearcoat = disney_clearcoat_masking_shadowing(local_view_direction) * disney_clearcoat_masking_shadowing(local_to_light_direction);
+    ColorRGB32F F_coat = fresnel_schlick(R0, HoL);
+    float D_coat = GTR1(alpha_g, hippt::abs(local_halfway_vector.z));
+    float G_coat = G1(material.alpha_x, material.alpha_y, local_view_direction) * G1(material.alpha_x, material.alpha_y, local_to_light_direction);
 
-    pdf = D_clearcoat * hippt::abs(local_halfway_vector.z) / (4.0f * HoL);
-    return F_clearcoat * D_clearcoat * G_clearcoat / (4.0f * local_view_direction.z);
+    pdf = D_coat * hippt::abs(local_halfway_vector.z) / (4.0f * HoL);
+    return F_coat * D_coat * G_coat / (4.0f * local_view_direction.z);
 }
 
 /**
  * The sampled direction is returned in the local shading frame of the basis used for 'local_view_direction'
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_clearcoat_sample(const SimplifiedRendererMaterial& material, const float3& local_view_direction, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_coat_sample(const SimplifiedRendererMaterial& material, const float3& local_view_direction, Xorshift32Generator& random_number_generator)
 {
-    float clearcoat_gloss = 1.0f - material.clearcoat_roughness;
-    float alpha_g = (1.0f - clearcoat_gloss) * 0.1f + clearcoat_gloss * 0.001f;
+    float coat_gloss = 1.0f - material.coat_roughness;
+    float alpha_g = (1.0f - coat_gloss) * 0.1f + coat_gloss * 0.001f;
     float alpha_g_2 = alpha_g * alpha_g;
 
     float rand_1 = random_number_generator();
@@ -236,7 +208,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_glass_eval(const RendererMater
     float F = fresnel_dielectric(hippt::dot(local_view_direction, local_half_vector), relative_eta);
     if (reflecting)
     {
-        color = disney_metallic_eval(material, local_view_direction, local_to_light_direction, local_half_vector, ColorRGB32F(F), pdf);
+        color = principled_metallic_eval(material, local_view_direction, local_to_light_direction, local_half_vector, ColorRGB32F(F), pdf);
 
         // Scaling the PDF by the probability of being here (reflection of the ray and not transmission)
         pdf *= F;
@@ -346,12 +318,17 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_sheen_sample(const HIPRTRenderData&
     return sheen_ltc_sample(render_data, material, local_view_direction, shading_normal, random_number_generator);
 }
 
+// TODO rework weights properly
+// TODO rework layer absorption properly: if red coat, green below should give black
+// TODO coat broken?
+
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_bsdf_eval(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, RayVolumeState& ray_volume_state, const float3& view_direction, float3 shading_normal, const float3& to_light_direction, float& pdf)
 {
     pdf = 0.0f;
 
-    // We're only going to compute the diffuse, metallic, clearcoat and sheen lobes if we're 
-    // outside of the object. Said otherwise, only the glass lobe is considered while traveling 
+    // Only the glass lobe is considered when evaluating
+    // the BSDF from inside the object so we're going to use that
+    // 'outside_object' flag to negate the other lobes if we're
     // inside the object
     bool outside_object = hippt::dot(view_direction, shading_normal) > 0;
     if (!outside_object)
@@ -365,57 +342,56 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_bsdf_eval(const HIPRTRenderDat
     float3 local_to_light_direction = world_to_local_frame(T, B, shading_normal, to_light_direction);
     float3 local_half_vector = hippt::normalize(local_view_direction + local_to_light_direction);
 
-    // Rotated ONB for the anisotropic GTR2 evaluation (metallic and glass only)
+    // Rotated ONB for the anisotropic GTR2 evaluation (metallic and glass lobes for example)
     float3 TR, BR;
     build_rotated_ONB(shading_normal, TR, BR, material.anisotropic_rotation * M_PI);
     float3 local_view_direction_rotated = world_to_local_frame(TR, BR, shading_normal, view_direction);
     float3 local_to_light_direction_rotated = world_to_local_frame(TR, BR, shading_normal, to_light_direction);
     float3 local_half_vector_rotated = hippt::normalize(local_view_direction_rotated + local_to_light_direction_rotated);
 
-    float sheen_weight = material.sheen * outside_object;
+    // Everytime we multiply by "outside_object" is because we want to disable
+    // the lobe if we're inside the object
+    float coat_weight = material.coat * outside_object;
+    /*float sheen_weight = material.sheen * outside_object;
     float diffuse_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission) * outside_object;
     float glass_weight = (1.0f - material.metallic) * material.specular_transmission;
-    float metal_weight = (1.0f - material.specular_transmission * (1.0f - material.metallic)) * outside_object;
-    float clearcoat_weight = 0.25f * material.clearcoat * outside_object;
+    float metal_weight = (1.0f - material.specular_transmission * (1.0f - material.metallic)) * outside_object;*/
 
-    float weight_sum = (sheen_weight + diffuse_weight + metal_weight + clearcoat_weight + glass_weight);
-
-    float normalize_factor = 1.0f / weight_sum;
-    float sheen_proba = sheen_weight * normalize_factor;
-    float diffuse_proba = diffuse_weight * normalize_factor;
-    float metal_proba = metal_weight * normalize_factor;
-    float clearcoat_proba = clearcoat_weight * normalize_factor;
-    float glass_proba = glass_weight * normalize_factor;
+    float coat_proba = coat_weight;
+    /*float sheen_proba = sheen_weight;
+    float diffuse_proba = diffuse_weight;
+    float metal_proba = metal_weight;
+    float glass_proba = glass_weight;*/
 
     ColorRGB32F final_color = ColorRGB32F(0.0f);
     float tmp_pdf = 0.0f;
 
-    // Sheen
-    final_color += sheen_weight > 0 && outside_object ? sheen_weight * disney_sheen_eval(render_data, material, local_to_light_direction, local_view_direction, tmp_pdf) : ColorRGB32F(0.0f);
-    pdf += tmp_pdf * sheen_proba;
-
-    // Diffuse
-    final_color += diffuse_weight > 0 && outside_object ? diffuse_weight * disney_diffuse_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : ColorRGB32F(0.0f);
-    pdf += tmp_pdf * diffuse_proba;
+    // Coat layer
+    final_color += coat_weight > 0 && outside_object ? coat_weight * principled_coat_eval(material, local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated, tmp_pdf) : ColorRGB32F(0.0f);
+    pdf += tmp_pdf * coat_proba;
     tmp_pdf = 0.0f;
 
-    // Metallic
-    // Computing a custom fresnel term based on the material specular, specular tint, ... coefficients
-    ColorRGB32F metallic_fresnel = disney_metallic_fresnel(material, local_half_vector, local_to_light_direction);
-    metal_weight = (1.0f - material.specular_transmission * (1.0f - material.metallic));
-    final_color += metal_weight > 0 && outside_object ? metal_weight * disney_metallic_eval(material, local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated, metallic_fresnel, tmp_pdf) : ColorRGB32F(0.0f);
-    pdf += tmp_pdf * metal_proba;
-    tmp_pdf = 0.0f;
+    //// Sheen
+    //final_color += sheen_weight > 0 && outside_object ? sheen_weight * disney_sheen_eval(render_data, material, local_to_light_direction, local_view_direction, tmp_pdf) : ColorRGB32F(0.0f);
+    //pdf += tmp_pdf * sheen_proba;
 
-    // Clearcoat
-    final_color += clearcoat_weight > 0 && outside_object ? clearcoat_weight * disney_clearcoat_eval(material, local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated, tmp_pdf) : ColorRGB32F(0.0f);
-    pdf += tmp_pdf * clearcoat_proba;
-    tmp_pdf = 0.0f;
+    //// Diffuse
+    //final_color += diffuse_weight > 0 && outside_object ? diffuse_weight * principled_diffuse_eval(material, view_direction, shading_normal, to_light_direction, tmp_pdf) : ColorRGB32F(0.0f);
+    //pdf += tmp_pdf * diffuse_proba;
+    //tmp_pdf = 0.0f;
 
-    // Glass
-    final_color += glass_weight > 0 ? glass_weight * disney_glass_eval(render_data.buffers.materials_buffer, material, ray_volume_state, local_view_direction_rotated, local_to_light_direction_rotated, tmp_pdf) : ColorRGB32F(0.0f);
-    pdf += tmp_pdf * glass_proba;
-    tmp_pdf = 0.0f;
+    //// Metallic
+    //// Computing a custom fresnel term based on the material specular, specular tint, ... coefficients
+    //ColorRGB32F metallic_fresnel = principled_metallic_fresnel(material, local_half_vector, local_to_light_direction);
+    //metal_weight = (1.0f - material.specular_transmission * (1.0f - material.metallic));
+    //final_color += metal_weight > 0 && outside_object ? metal_weight * principled_metallic_eval(material, local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated, metallic_fresnel, tmp_pdf) : ColorRGB32F(0.0f);
+    //pdf += tmp_pdf * metal_proba;
+    //tmp_pdf = 0.0f;
+
+    //// Glass
+    //final_color += glass_weight > 0 ? glass_weight * disney_glass_eval(render_data.buffers.materials_buffer, material, ray_volume_state, local_view_direction_rotated, local_to_light_direction_rotated, tmp_pdf) : ColorRGB32F(0.0f);
+    //pdf += tmp_pdf * glass_proba;
+    //tmp_pdf = 0.0f;
 
     return final_color;
 }
@@ -450,29 +426,28 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_bsdf_sample(const HIPRTRenderD
         outside_object = true;
     }
 
-    float sheen_weight = material.sheen * outside_object;
+    float coat_weight = material.coat * outside_object;
+    /*float sheen_weight = material.sheen * outside_object;
     float diffuse_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission) * outside_object;
-    float metal_weight = (1.0f - material.specular_transmission * (1.0f - material.metallic)) * outside_object;
-    float clearcoat_weight = 0.25f * material.clearcoat * outside_object;
+    float metal_weight = (1.0f - material.specular_transmission * (1.0f - material.metallic)) * outside_object;*/
 
-    // No sheen weight here because we're not importance sampling the sheen weight,
-    // it's pretty weak of a lobe so there's no need to bother
-    float normalize_factor = 1.0f / (sheen_weight + diffuse_weight + metal_weight + clearcoat_weight + glass_weight);
+    // float normalize_factor = 1.0f / (sheen_weight + diffuse_weight + metal_weight + coat_weight + glass_weight);
+    /*coat_weight *= normalize_factor;
     sheen_weight *= normalize_factor;
     diffuse_weight *= normalize_factor;
     metal_weight *= normalize_factor;
-    clearcoat_weight *= normalize_factor;
-    glass_weight *= normalize_factor;
+    glass_weight *= normalize_factor;*/
 
-    float cdf[5];
+    /*float cdf[5];
     cdf[0] = sheen_weight;
     cdf[1] = cdf[0] + diffuse_weight;
     cdf[2] = cdf[1] + metal_weight;
-    cdf[3] = cdf[2] + clearcoat_weight;
-    cdf[4] = cdf[3] + glass_weight;
+    cdf[3] = cdf[2] + coat_weight;
+    cdf[4] = cdf[3] + glass_weight;*/
 
     float rand_1 = random_number_generator();
-    if (rand_1 > cdf[3])
+    bool sampling_glass_lobe = false;// rand_1 > cdf[3];
+    if (sampling_glass_lobe)
     {
         // We're going to sample the glass lobe
 
@@ -498,9 +473,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_bsdf_sample(const HIPRTRenderD
         }
     }
 
-    if (rand_1 < cdf[3])
-        // This means that we're going to sample the diffuse, metallic or clearcoat lobe which are all
-        // reflective so we're poping the stack
+    if (!sampling_glass_lobe)
+        // We're going to sample a reflective lobe so we're poping the stack
         ray_volume_state.interior_stack.pop(false);
 
     if (hippt::dot(view_direction, normal) < 0)
@@ -517,26 +491,27 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_bsdf_sample(const HIPRTRenderD
     build_ONB(normal, T, B);
     float3 local_view_direction = world_to_local_frame(T, B, normal, view_direction);
 
-    if (rand_1 < cdf[0])
-        output_direction = local_to_world_frame(T, B, normal, disney_sheen_sample(render_data, material, local_view_direction, normal, random_number_generator));
-    else if (rand_1 < cdf[1])
-        output_direction = disney_diffuse_sample(normal, random_number_generator);
-    else if (rand_1 < cdf[2])
-        output_direction = local_to_world_frame(TR, BR, normal, disney_metallic_sample(material, local_view_direction_rotated, random_number_generator));
-    else if (rand_1 < cdf[3])
-        output_direction = local_to_world_frame(TR, BR, normal, disney_clearcoat_sample(material, local_view_direction_rotated, random_number_generator));
-    else
-        // When sampling the glass lobe, if we're reflecting off the glass, we're going to have to pop the stack.
-        // This is handled inside glass_sample because we cannot know from here if we refracted or reflected
-        output_direction = local_to_world_frame(TR, BR, normal, disney_glass_sample(render_data.buffers.materials_buffer, material, ray_volume_state, local_view_direction_rotated, random_number_generator));
+    output_direction = local_to_world_frame(T, B, normal, principled_coat_sample(material, local_view_direction, random_number_generator));
 
-    if (hippt::dot(output_direction, shading_normal) < 0 && !(rand_1 > cdf[2]))
+    //if (rand_1 < cdf[0])
+    //    output_direction = local_to_world_frame(T, B, normal, disney_sheen_sample(render_data, material, local_view_direction, normal, random_number_generator));
+    //else if (rand_1 < cdf[1])
+    //    // No call to local_to_world_frame() since the sample diffuse functions
+    //    // already returns in world space around the given normal
+    //    output_direction = principled_diffuse_sample(normal, random_number_generator);
+    //else if (rand_1 < cdf[2])
+    //    output_direction = local_to_world_frame(TR, BR, normal, principled_metallic_sample(material, local_view_direction_rotated, random_number_generator));
+    //else if (rand_1 < cdf[3])
+    //    output_direction = local_to_world_frame(TR, BR, normal, principled_coat_sample(material, local_view_direction_rotated, random_number_generator));
+    //else
+    //    // When sampling the glass lobe, if we're reflecting off the glass, we're going to have to pop the stack.
+    //    // This is handled inside glass_sample because we cannot know from here if we refracted or reflected
+    //    output_direction = local_to_world_frame(TR, BR, normal, disney_glass_sample(render_data.buffers.materials_buffer, material, ray_volume_state, local_view_direction_rotated, random_number_generator));
+
+    if (hippt::dot(output_direction, shading_normal) < 0 && !sampling_glass_lobe)
         // It can happen that the light direction sampled is below the surface. 
-        // We return 0.0 in this case because the glass lobe wasn't sampled
-        // so we can't have a bounce direction below the surface
-        // 
-        // We're also checking that we're not sampling the glass lobe because this
-        // is a valid configuration for the glass lobe
+        // We return 0.0 in this case if we didn't sample the glass lobe
+        // because no lobe other than the glass lobe allows refractions
         return ColorRGB32F(0.0f);
 
     // Not using 'normal' here because eval() needs to know whether or not we're inside the surface.

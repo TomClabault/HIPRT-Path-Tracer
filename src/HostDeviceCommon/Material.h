@@ -40,7 +40,7 @@ struct SimplifiedRendererMaterial
     HIPRT_HOST_DEVICE void make_safe()
     {
         roughness = hippt::max(1.0e-4f, roughness);
-        clearcoat_roughness = hippt::max(1.0e-4f, clearcoat_roughness);
+        coat_roughness = hippt::max(1.0e-4f, coat_roughness);
 
         sheen_roughness = hippt::max(1.0e-4f, sheen_roughness);
 
@@ -109,7 +109,6 @@ struct SimplifiedRendererMaterial
     float oren_nayar_sigma = 0.34906585039886591538f; // 20 degrees standard deviation in radian
     float oren_nayar_A = 0.86516788142120468442f; // Precomputed A for sigma = 20 degrees
     float oren_nayar_B = 0.74147689828041305929f; // Precomputed B for sigma = 20 degrees
-    float subsurface = 0.0f;
 
     float metallic = 0.0f;
     float specular = 1.0f; // Specular intensity
@@ -120,9 +119,9 @@ struct SimplifiedRendererMaterial
     float anisotropic_rotation = 0.0f;
     float alpha_x = 0.0f, alpha_y = 0.0f;
 
-    float clearcoat = 0.0f;
-    float clearcoat_roughness = 0.0f;
-    float clearcoat_ior = 1.5f;
+    float coat = 0.0f;
+    float coat_roughness = 0.0f;
+    float coat_ior = 1.5f;
 
     float sheen = 0.0f; // Sheen strength
     float sheen_roughness = 0.5f;
@@ -177,9 +176,9 @@ struct RendererMaterial : public SimplifiedRendererMaterial
     int anisotropic_texture_index = -1;
     int anisotropic_rotation_texture_index = -1;
 
-    int clearcoat_texture_index = -1;
-    int clearcoat_roughness_texture_index = -1;
-    int clearcoat_ior_texture_index = -1;
+    int coat_texture_index = -1;
+    int coat_roughness_texture_index = -1;
+    int coat_ior_texture_index = -1;
 
     int sheen_texture_index = -1;
     int sheen_roughness_texture_index = -1;

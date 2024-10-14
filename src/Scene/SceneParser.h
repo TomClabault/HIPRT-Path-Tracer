@@ -33,7 +33,7 @@ struct ParsedMaterialTextureIndices
     int roughness_metallic_texture_index = -1;
 
     int specular_texture_index = -1;
-    int clearcoat_texture_index = -1;
+    int coat_texture_index = -1;
     int sheen_texture_index = -1;
     int specular_transmission_texture_index = -1;
 

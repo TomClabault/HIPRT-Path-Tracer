@@ -66,9 +66,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE SimplifiedRendererMaterial get_intersection_mater
     get_material_property(render_data, material.anisotropic, false, texcoords, material.anisotropic_texture_index);
     get_material_property(render_data, material.anisotropic_rotation, false, texcoords, material.anisotropic_rotation_texture_index);
     
-    get_material_property(render_data, material.clearcoat, false, texcoords, material.clearcoat_texture_index);
-    get_material_property(render_data, material.clearcoat_roughness, false, texcoords, material.clearcoat_roughness_texture_index);
-    get_material_property(render_data, material.clearcoat_ior, false, texcoords, material.clearcoat_ior_texture_index);
+    get_material_property(render_data, material.coat, false, texcoords, material.coat_texture_index);
+    get_material_property(render_data, material.coat_roughness, false, texcoords, material.coat_roughness_texture_index);
+    get_material_property(render_data, material.coat_ior, false, texcoords, material.coat_ior_texture_index);
     
     get_material_property(render_data, material.sheen, false, texcoords, material.sheen_texture_index);
     get_material_property(render_data, material.sheen_roughness, false, texcoords, material.sheen_roughness_texture_index);
