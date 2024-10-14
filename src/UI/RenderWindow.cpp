@@ -317,7 +317,12 @@ RenderWindow::RenderWindow(int renderer_width, int renderer_height, std::shared_
 
 RenderWindow::~RenderWindow()
 {
-	// glfwDestroyWindow(m_glfw_window);
+	// Hiding the window to show the user that the app has exited. This is basically only useful if the
+	// wait function call below hangs for a while: we don't want the user to see the application
+	// frozen in this case. Note that we're *hiding* the window and not *destroying* it because
+	// destroying the window also destroys the GL context which may cause crashes is some
+	// other part of the app is still using buffers or whatnot
+	glfwHideWindow(m_glfw_window);
 
 	// Waiting for all threads that are currently reading from the disk (for compiling kernels in the background)
 	// to finish the reading to avoid SEGFAULTING
