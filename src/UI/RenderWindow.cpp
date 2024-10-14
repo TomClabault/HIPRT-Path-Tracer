@@ -327,6 +327,27 @@ RenderWindow::~RenderWindow()
 	// Waiting for all threads that are currently reading from the disk (for compiling kernels in the background)
 	// to finish the reading to avoid SEGFAULTING
 	g_gpu_kernel_compiler.wait_compiler_file_operations();
+
+	// Waiting for the renderer to finish its frame otherwise
+	// we're probably going to close the window / destroy the
+	// GL context / etc... while the renderer might still be
+	// using so OpenGL Interop buffers --> segfault
+	m_renderer->synchronize_kernel();
+	// Manually destroying the renderer now before we destroy the GL context
+	// glfwDestroyWindow()
+	m_renderer = nullptr;
+	// Same for the screenshoter
+	m_screenshoter = nullptr;
+	// Same for the display view system
+	m_display_view_system = nullptr;
+	// Same for the imgui renderer
+	m_imgui_renderer = nullptr;
+
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplGlfw_Shutdown();
+	ImGui::DestroyContext();
+
+	glfwDestroyWindow(m_glfw_window);
 }
 
 void RenderWindow::init_glfw(int window_width, int window_height)
@@ -681,8 +702,6 @@ void RenderWindow::run()
 			m_application_state->current_render_time_ms += delta_time_ms;
 		m_keyboard_interactor.poll_keyboard_inputs();
 	}
-
-	quit();
 }
 
 void RenderWindow::render()
@@ -897,11 +916,4 @@ bool RenderWindow::denoise()
 	}
 
 	return false;
-}
-
-void RenderWindow::quit()
-{
-	ImGui_ImplOpenGL3_Shutdown();
-	ImGui_ImplGlfw_Shutdown();
-	ImGui::DestroyContext();
 }
