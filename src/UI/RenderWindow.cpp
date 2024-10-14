@@ -317,11 +317,11 @@ RenderWindow::RenderWindow(int renderer_width, int renderer_height, std::shared_
 
 RenderWindow::~RenderWindow()
 {
-	glfwDestroyWindow(m_glfw_window);
+	// glfwDestroyWindow(m_glfw_window);
 
 	// Waiting for all threads that are currently reading from the disk (for compiling kernels in the background)
 	// to finish the reading to avoid SEGFAULTING
-	g_gpu_kernel_compiler.wait_option_macro_parsing();
+	g_gpu_kernel_compiler.wait_compiler_file_operations();
 }
 
 void RenderWindow::init_glfw(int window_width, int window_height)

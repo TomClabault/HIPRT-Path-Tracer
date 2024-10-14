@@ -86,7 +86,7 @@ public:
 	 * 
 	 * This function is mostly called when exiting the Renderwindow
 	 */
-	void wait_option_macro_parsing();
+	void wait_compiler_file_operations();
 
 private:
 	// Cache that maps a filepath to the option macros that it contains.
@@ -111,8 +111,12 @@ private:
 	std::condition_variable m_read_macros_cv;
 
 	// Counters for logging the progress of background kernel precompilation
+	// These variables are also used for making sure that all threads have completed
+	// their IO operations before exiting the app
 	std::atomic<int> m_precompiled_kernels_parsing_started = 0;
 	std::atomic<int> m_precompiled_kernels_parsing_ended = 0;
+	std::atomic<int> m_additional_cache_key_started = 0;
+	std::atomic<int> m_additional_cache_key_ended = 0;
 	std::atomic<int> m_precompiled_kernels_compilation_ended = 0;
 };
 

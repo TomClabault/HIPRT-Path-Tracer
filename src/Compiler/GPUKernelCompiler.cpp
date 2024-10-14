@@ -230,6 +230,8 @@ std::unordered_set<std::string> GPUKernelCompiler::read_option_macro_of_file(con
 
 std::string GPUKernelCompiler::get_additional_cache_key(GPUKernel& kernel)
 {
+	m_additional_cache_key_started++;
+
 	std::unordered_set<std::string> already_processed_includes;
 	std::deque<std::string> yet_to_process_includes;
 	yet_to_process_includes.push_back(kernel.get_kernel_file_path());
@@ -269,9 +271,19 @@ std::string GPUKernelCompiler::get_additional_cache_key(GPUKernel& kernel)
 		{
 			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "HIPKernelCompiler - Unable to open include file \"%s\" for shader cache validation: %s", include.c_str(), e.what());
 
+			m_additional_cache_key_ended++;
+			// Notifying the condition variable that's used to
+			// avoid exiting the application with ongoing IO operations
+			m_read_macros_cv.notify_all();
+
 			return "";
 		}
 	}
+
+	m_additional_cache_key_ended++;
+	// Notifying the condition variable that's used to
+	// avoid exiting the application with ongoing IO operations
+	m_read_macros_cv.notify_all();
 
 	return final_cache_key;
 }
@@ -342,10 +354,11 @@ std::unordered_set<std::string> GPUKernelCompiler::get_option_macros_used_by_ker
 	return option_macro_names;
 }
 
-void GPUKernelCompiler::wait_option_macro_parsing()
+void GPUKernelCompiler::wait_compiler_file_operations()
 {
 	std::mutex mutex;
 	std::unique_lock<std::mutex> lock(mutex);
 
 	m_read_macros_cv.wait(lock, [this]() { return m_precompiled_kernels_parsing_started == m_precompiled_kernels_parsing_ended; });
+	m_read_macros_cv.wait(lock, [this]() { return m_additional_cache_key_started == m_additional_cache_key_ended; });
 }
