@@ -38,6 +38,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float eval_ltc(const float3& to_light_direction_s
 	float length = hippt::length(light_dir_original);
 	light_dir_original /= length; // Normalization
 
+	// Determinant of M^-1
 	float M_inv_determinant = AiBiRi.r * AiBiRi.r;
 	float jacobian = M_inv_determinant / (length * length * length);
 
