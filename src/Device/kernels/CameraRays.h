@@ -119,15 +119,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
             return;
         }
         else
-        {
-            /*bool adaptive_sampling_still_active = render_data.render_settings.enable_adaptive_sampling && sampling_needed;
-            bool stop_noise_threshold_not_reached = !pixel_converged && render_data.render_settings.stop_pixel_noise_threshold > 0.0f;
-            if (adaptive_sampling_still_active || stop_noise_threshold_not_reached)*/
-                // We have the pixel stop noise threshold enabled and the pixel hasn't converged, meaning
-                // that we should increase the number of relevant sample count for that pixel
-                // so that the adaptive sampling heatmap can display the convergence properly
-                render_data.aux_buffers.pixel_sample_count[pixel_index]++;
-        }
+            render_data.aux_buffers.pixel_sample_count[pixel_index]++;
     }
 
     unsigned int seed;
@@ -157,6 +149,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
     {
         if (ray_payload.material.is_emissive() && hippt::dot(-ray.direction, closest_hit_info.geometric_normal) < 0)
         {
+            // TODO necessary? Not already handled by trace_ray() ?
             closest_hit_info.geometric_normal = -closest_hit_info.geometric_normal;
             closest_hit_info.shading_normal = -closest_hit_info.shading_normal;
         }
