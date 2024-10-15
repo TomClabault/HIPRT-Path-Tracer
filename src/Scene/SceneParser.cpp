@@ -385,10 +385,11 @@ void SceneParser::read_material_properties(aiMaterial* mesh_material, RendererMa
     }
     
     mesh_material->Get(AI_MATKEY_CLEARCOAT_FACTOR, renderer_material.coat);
-    /*renderer_material.coat = 1.0f;
-    renderer_material.coat_roughness = 0.0f;*/
+    renderer_material.coat = 1.0f;
+    renderer_material.coat_roughness = 0.0f;
+    renderer_material.coat_ior = 1.5f;
     renderer_material.sheen = 1.0f;
-    renderer_material.sheen_roughness = 0.2f;
+    renderer_material.sheen_roughness = 1.0f;
     mesh_material->Get(AI_MATKEY_CLEARCOAT_ROUGHNESS_FACTOR, renderer_material.coat_roughness);
     mesh_material->Get(AI_MATKEY_REFRACTI, renderer_material.ior);
     mesh_material->Get(AI_MATKEY_TRANSMISSION_FACTOR, renderer_material.specular_transmission);
