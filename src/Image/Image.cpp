@@ -37,7 +37,7 @@ Image8Bit Image8Bit::read_image(const std::string& filepath, int output_channels
 
     if (!pixels)
     {
-        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Error reading image %s", filepath.c_str());
+        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Error reading image %s: %s", filepath.c_str(), stbi_failure_reason());
         return Image8Bit();
     }
 
@@ -67,7 +67,7 @@ Image8Bit Image8Bit::read_image_hdr(const std::string& filepath, int output_chan
 
     if (!pixels)
     {
-        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Error reading image %s", filepath.c_str());
+        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Error reading image %s: %s", filepath.c_str(), stbi_failure_reason());
         return Image8Bit();
     }
 
@@ -304,7 +304,7 @@ Image32Bit Image32Bit::read_image(const std::string& filepath, int output_channe
 
     if (!pixels)
     {
-        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Error reading image %s", filepath.c_str());
+        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Error reading image %s: %s", filepath.c_str(), stbi_failure_reason());
         return Image32Bit();
     }
 
@@ -334,7 +334,7 @@ Image32Bit Image32Bit::read_image_hdr(const std::string& filepath, int output_ch
 
     if (!pixels)
     {
-        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Error reading image %s", filepath.c_str());
+        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Error reading image %s: %s", filepath.c_str(), stbi_failure_reason());
         return Image32Bit();
     }
 
