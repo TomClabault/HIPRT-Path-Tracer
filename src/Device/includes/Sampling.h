@@ -189,11 +189,17 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 cosine_weighted_sample(const float3& norma
     return hippt::normalize(normal + sphere_point);
 }
 
+/**
+ * Schlick's approximation for dielectric fresnel reflectance
+ */
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F fresnel_schlick(ColorRGB32F F0, float angle)
 {
     return F0 + (ColorRGB32F(1.0f) - F0) * pow((1.0f - angle), 5.0f);
 }
 
+/**
+ * Full reflectance fresnel dielectric formula
+ */
 HIPRT_HOST_DEVICE HIPRT_INLINE float fresnel_dielectric(float cos_theta_i, float relative_eta)
 {
     // Computing cos_theta_t
@@ -210,9 +216,32 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float fresnel_dielectric(float cos_theta_i, float
     return (r_parallel * r_parallel + r_perpendicular * r_perpendicular) / 2;
 }
 
+/**
+ * Override of fresnel_dielectric with two separate eta
+ */
 HIPRT_HOST_DEVICE HIPRT_INLINE float fresnel_dielectric(float cos_theta_i, float eta_i, float eta_t)
 {
     return fresnel_dielectric(cos_theta_i, eta_t / eta_i);
+}
+
+/**
+ * Computes the reflectance at normal incidence from the two
+ * given eta and uses that reflectance to compute the dielectric
+ * fresnel reflectance using schlick's approximation
+ * 
+ * This function is basically a shorthand for:
+ *      ColorRGB32F F0 = <compute F0 from etas>
+ *      return schlick(F0, NoL)
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F fresnel_reflectance_from_ior(float eta_i, float eta_t, const float3& normal, const float3& local_to_light_direction)
+{
+    float HoL = hippt::clamp(1.0e-8f, 1.0f, hippt::dot(normal, local_to_light_direction));
+
+    float R0_nume = eta_t - eta_i;
+    float R0_denom = eta_t + eta_i;
+    ColorRGB32F R0 = ColorRGB32F((R0_nume * R0_nume) / (R0_denom * R0_denom));
+
+    return fresnel_schlick(R0, HoL);
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_normal_distribution(float alpha, float NoH)
@@ -227,13 +256,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_normal_distribution(float alpha, float 
     return alpha2 / M_PI / (b * b);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float GTR2_anisotropic(const SimplifiedRendererMaterial& material, const float3& local_half_vector)
+HIPRT_HOST_DEVICE HIPRT_INLINE float GTR2_anisotropic(float alpha_x, float alpha_y, const float3& local_half_vector)
 {
-    float denom = (local_half_vector.x * local_half_vector.x) / (material.alpha_x * material.alpha_x) +
-        (local_half_vector.y * local_half_vector.y) / (material.alpha_y * material.alpha_y) +
+    float denom = (local_half_vector.x * local_half_vector.x) / (alpha_x * alpha_x) +
+        (local_half_vector.y * local_half_vector.y) / (alpha_y * alpha_y) +
         (local_half_vector.z * local_half_vector.z);
 
-    return 1.0f / (M_PI * material.alpha_x * material.alpha_y * denom * denom);
+    return 1.0f / (M_PI * alpha_x * alpha_y * denom * denom);
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float G1_schlick_ggx(float k, float dot_prod)
@@ -315,7 +344,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGX_VNDF_spherical_caps_sample(const float
     return hippt::normalize(make_float3(alpha_x * Nh.x, alpha_y * Nh.y, Nh.z));
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGX_sample(const float3& local_view_direction, float alpha_x, float alpha_y, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGX_aniso_sample(const float3& local_view_direction, float alpha_x, float alpha_y, Xorshift32Generator& random_number_generator)
 {
 #if GGXAnisotropicSampleFunction == GGX_NO_VNDF
 #elif GGXAnisotropicSampleFunction == GGX_VNDF_SAMPLING
@@ -335,6 +364,52 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float GTR1(float alpha_g, float local_halfway_z)
     float denom = M_PI * log(alpha_g_2) * (1.0f + (alpha_g_2 - 1.0f) * local_halfway_z * local_halfway_z);
 
     return num / denom;
+}
+
+/**
+ * Evaluation of a torrance-sparrow model with the GTR2 normal distribution
+ * and G1 masking-shadowing
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F microfacet_GTR2_eval(float material_roughness, float material_IOR, float incident_IOR, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, float& out_pdf)
+{
+    float HoL = hippt::clamp(1.0e-8f, 1.0f, hippt::dot(local_halfway_vector, local_to_light_direction));
+
+    float R0_nume = material_IOR - incident_IOR;
+    float R0_denom = material_IOR + incident_IOR;
+    ColorRGB32F R0 = ColorRGB32F((R0_nume * R0_nume) / (R0_denom * R0_denom));
+    ColorRGB32F F = fresnel_schlick(R0, HoL);
+
+    float alpha_x;
+    float alpha_y;
+    SimplifiedRendererMaterial::get_alphas(material_roughness, 0.0f, alpha_x, alpha_y);
+
+    float D = GTR2_anisotropic(alpha_x, alpha_y, local_halfway_vector);
+
+    float G1V = G1(alpha_x, alpha_y, local_view_direction);
+    float G1L = G1(alpha_x, alpha_y, local_to_light_direction);
+    float G2 = G1V * G1L;
+
+    // Maxing 1.0e-8f here to avoid zeros
+    float NoV = hippt::max(1.0e-8f, hippt::abs(local_view_direction.z));
+    float NoL = hippt::max(1.0e-8f, hippt::abs(local_to_light_direction.z));
+
+    out_pdf = D * G1V / (4.0f * NoV);
+    return F * D * G2 / (4.0f * NoL * NoV);
+}
+
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 microfacet_GTR2_sample(float roughness, float anisotropic, const float3& local_view_direction, Xorshift32Generator& random_number_generator)
+{
+    // The view direction can sometimes be below the shading normal hemisphere
+    // because of normal mapping / smooth normals
+    int below_normal = (local_view_direction.z < 0) ? -1 : 1;
+    float alpha_x, alpha_y;
+    SimplifiedRendererMaterial::get_alphas(roughness, anisotropic, alpha_x, alpha_y);
+
+    float3 microfacet_normal = GGX_aniso_sample(local_view_direction * below_normal, alpha_x, alpha_y, random_number_generator);
+    float3 sampled_direction = reflect_ray(local_view_direction, microfacet_normal * below_normal);
+
+    // Should already be normalized but float imprecisions...
+    return hippt::normalize(sampled_direction);
 }
 
 #endif

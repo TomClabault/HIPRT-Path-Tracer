@@ -352,7 +352,7 @@ void SceneParser::read_material_properties(aiMaterial* mesh_material, RendererMa
     //Getting the properties that are going to be used by the materials
     //of the application
 
-    renderer_material.brdf_type = BRDF::Disney;
+    renderer_material.brdf_type = BRDF::Principled;
 
     aiReturn error_code_emissive;
     mesh_material->Get(AI_MATKEY_COLOR_DIFFUSE, *((aiColor3D*)&renderer_material.base_color));
@@ -491,7 +491,6 @@ RendererMaterial SceneParser::offset_textures_indices(const RendererMaterial& re
 
    out_mat.roughness_texture_index += (renderer_material.roughness_texture_index == RendererMaterial::NO_TEXTURE) ? 0 : offset;
    out_mat.oren_sigma_texture_index += (renderer_material.oren_sigma_texture_index == RendererMaterial::NO_TEXTURE) ? 0 : offset;
-   out_mat.subsurface_texture_index += (renderer_material.subsurface_texture_index == RendererMaterial::NO_TEXTURE) ? 0 : offset;
 
    out_mat.metallic_texture_index += (renderer_material.metallic_texture_index == RendererMaterial::NO_TEXTURE) ? 0 : offset;
    out_mat.specular_texture_index += (renderer_material.specular_texture_index == RendererMaterial::NO_TEXTURE) ? 0 : offset;

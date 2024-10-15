@@ -57,8 +57,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F oren_nayar_brdf_eval(const Simplified
         tan_beta = sin_theta_o / hippt::abs(local_view_direction.z);
     }
 
+    float oren_nayar_A;
+    float oren_nayar_B;
+    SimplifiedRendererMaterial::get_oren_nayar_AB(material.oren_nayar_sigma, oren_nayar_A, oren_nayar_B);
     pdf = local_to_light_direction.z / M_PI;
-    return material.base_color / M_PI * (material.oren_nayar_A + material.oren_nayar_B * max_cos * sin_alpha * tan_beta);
+    return material.base_color / M_PI * (oren_nayar_A + oren_nayar_B * max_cos * sin_alpha * tan_beta);
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F oren_nayar_brdf_sample(const SimplifiedRendererMaterial& material, const float3& view_direction, const float3& shading_normal, float3& sampled_direction, float& pdf, Xorshift32Generator& random_number_generator)

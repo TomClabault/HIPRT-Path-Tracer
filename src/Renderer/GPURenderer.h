@@ -69,7 +69,7 @@ public:
 
 	/**
 	 * Initializes and uploads the fitted parameters for the LTC sheen lobe
-	 * of the Disney BSDF
+	 * of the Principled BSDF
 	 */
 	void init_sheen_ltc_texture();
 

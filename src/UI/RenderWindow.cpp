@@ -34,11 +34,10 @@ extern ImGuiLogger g_imgui_logger;
 
 // TODO known bugs / incorectness:
 // - take transmission color into account when direct sampling a light source that is inside a volume
-// - denoiser AOVs not accounting for transmission correctly since Disney 
+// - denoiser AOVs not accounting for transmission correctly since Disney  BSDF
 //	  - same with perfect reflection
 // - fix sampling lights inside dielectrics with ReSTIR DI
 // - when using a BSDF override, transmissive materials keep their dielectric priorities and this can mess up shadow rays and intersections in general if the BSDF used for the override doesn't support transmissive materials
-// - is DisneySheen correct?
 // - threadmanager: what if we start a thread with a dependency A on a thread that itself has a dependency B? we're going to try join dependency A even if thread with dependency on B hasn't even started yet --> joining nothing --> immediate return --> should have waited for the dependency but hasn't
 
 
@@ -63,7 +62,6 @@ extern ImGuiLogger g_imgui_logger;
 
 // TODO Features:
 // - try dynamic stack for better memory usage than full brute force global stack buffer and see performance impact
-// - better disney sheen lobe as in Blender --> Practical Multiple-Scattering Sheen Using Linearly Transformed Cosines
 // - use shared memory for nested dielectrics stack?
 // - opacity micromaps
 // - use anyhits for shadow rays
@@ -121,7 +119,7 @@ extern ImGuiLogger g_imgui_logger;
 // - better post processing: contrast, low, medium, high exposure curve
 // - bloom post processing
 // - BRDF swapper ImGui : Disney, Lambertian, Oren Nayar, Cook Torrance, Perfect fresnel dielectric reflect/transmit
-// - choose disney diffuse model (disney, lambertian, oren nayar)
+// - choose principled BSDF diffuse model (disney, lambertian, oren nayar)
 // - Cool colored thread-safe logger singleton class --> loguru lib
 // - portal envmap sampling --> choose portals with ImGui
 // - recursive trace through transmissive / reflective materials for caustics
@@ -152,7 +150,6 @@ extern ImGuiLogger g_imgui_logger;
 // - benchmarker to measure frame times precisely (avg, std dev, ...) + fixed random seed for reproducible results
 // - alias table for sampling env map instead of log(n) binary search
 // - image comparator slider (to have adaptive sampling view + default view on the same viewport for example)
-// - Maybe look at better Disney sampling (luminance?)
 // - thin materials
 // - Have the UI run at its own framerate to avoid having the UI come to a crawl when the path tracing is expensive
 // - When modifying the emission of a material with the material editor, it should be reflected in the scene and allow the direct sampling of the geometry so the emissive triangles buffer should be updated
@@ -215,7 +212,15 @@ void APIENTRY RenderWindow::gl_debug_output_callback(GLenum source,
 	const void* userParam)
 {
 	// ignore non-significant error/warning codes
-	if (id == 131169 || id == 131185 || id == 131218 || id == 131204) return;
+	if (id == 131169 || id == 131185 || id == 131218 || id == 131204) 
+		return;
+
+	if (id == 131154)
+		// NVIDIA specific warning
+		// Pixel-path performance warning: Pixel transfer is synchronized with 3D rendering.
+		// 
+		// When we take a screenshot for example
+		return;
 
 	if (id == 131154)
 		// NVIDIA specific warning
@@ -326,6 +331,8 @@ RenderWindow::RenderWindow(int renderer_width, int renderer_height, std::shared_
 
 RenderWindow::~RenderWindow()
 {
+	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Exiting...");
+
 	// Hiding the window to show the user that the app has exited. This is basically only useful if the
 	// wait function call below hangs for a while: we don't want the user to see the application
 	// frozen in this case. Note that we're *hiding* the window and not *destroying* it because

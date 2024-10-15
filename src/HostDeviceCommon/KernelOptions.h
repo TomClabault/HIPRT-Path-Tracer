@@ -38,7 +38,7 @@
 #define BSDF_NONE 0
 #define BSDF_LAMBERTIAN 1
 #define BSDF_OREN_NAYAR 2
-#define BSDF_DISNEY 3
+#define BSDF_PRINCIPLED 3
 
 #define ISS_AUTOMATIC 0
 #define ISS_WITH_PRIORITIES 1
@@ -114,8 +114,8 @@
  *	- BSDF_OREN_NAYAR
  *		All materials will use the Oren Nayar diffuse BRDF
  * 
- *	- BSDF_DISNEY
- *		All materials will use the Disney BSDF
+ *	- BSDF_PRINCIPLED
+ *		All materials will use the Principled BSDF
  */
 #define BSDFOverride BSDF_NONE
 

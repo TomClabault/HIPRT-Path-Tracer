@@ -57,7 +57,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE SimplifiedRendererMaterial get_intersection_mater
 
     get_metallic_roughness(render_data, material.metallic, material.roughness, texcoords, material.metallic_texture_index, material.roughness_texture_index, material.roughness_metallic_texture_index);
     get_material_property(render_data, material.oren_nayar_sigma, false, texcoords, material.oren_sigma_texture_index);
-    get_material_property(render_data, material.subsurface, false, texcoords, material.subsurface_texture_index);
     
     get_material_property(render_data, material.specular, false, texcoords, material.specular_texture_index);
     get_material_property(render_data, material.specular_tint, false, texcoords, material.specular_tint_texture_index);
@@ -75,17 +74,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE SimplifiedRendererMaterial get_intersection_mater
     get_material_property(render_data, material.sheen_color, false, texcoords, material.sheen_color_texture_index);
     
     get_material_property(render_data, material.specular_transmission, false, texcoords, material.specular_transmission_texture_index);
-
-    // If the oren nayar microfacet normal standard deviation is spatially varying on the
-    // surface, we'll need to make sure that the A and B precomputed coefficient are actually
-    // precomputed according to that standard deviation
-    if (material.oren_sigma_texture_index != RendererMaterial::NO_TEXTURE)
-        material.precompute_oren_nayar();
-
-    // Same for the anisotropic, recomputing the precomputed alpha_x and alpha_y if necessary
-    if ((material.roughness_texture_index != RendererMaterial::NO_TEXTURE || material.roughness_metallic_texture_index || material.anisotropic_texture_index != RendererMaterial::NO_TEXTURE) 
-        && material.anisotropic > 0.0f)
-        material.precompute_anisotropic();
 
     SimplifiedRendererMaterial simplified_material(material);
     simplified_material.emissive_texture_used = material.emission_texture_index > 0;

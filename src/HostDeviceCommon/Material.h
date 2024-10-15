@@ -15,7 +15,7 @@
 enum BRDF
 {
     Uninitialized,
-    Disney,
+    Principled,
     SpecularFresnel
 };
 
@@ -59,29 +59,23 @@ struct SimplifiedRendererMaterial
      */
     HIPRT_HOST_DEVICE void precompute_properties()
     {
-        precompute_anisotropic();
-        precompute_oren_nayar();
-
         if (specular_transmission == 0.0f)
             // No transmission means that we should never skip this boundary --> max priority
             dielectric_priority = (1 << StackPriorityEntry::PRIORITY_MAXIMUM) - 1;
     }
 
-    HIPRT_HOST_DEVICE void precompute_anisotropic()
+    HIPRT_HOST_DEVICE static void get_oren_nayar_AB(float sigma, float& out_oren_A, float& out_oren_B)
     {
-        // Precomputing alpha_x and alpha_y related to Disney's anisotropic metallic lobe
-        float aspect = sqrt(1.0f - 0.9f * anisotropic);
-        alpha_x = hippt::max(1.0e-4f, roughness * roughness / aspect);
-        alpha_y = hippt::max(1.0e-4f, roughness * roughness * aspect);
+        float sigma2 = sigma * sigma;
+        out_oren_A = 1.0f - sigma2 / (2.0f * (sigma2 + 0.33f));
+        out_oren_B = 0.45f * sigma2 / (sigma2 + 0.09f);
     }
 
-    HIPRT_HOST_DEVICE void precompute_oren_nayar()
+    HIPRT_HOST_DEVICE static void get_alphas(float roughness, float anisotropy, float& out_alpha_x, float& out_alpha_y)
     {
-        // Oren Nayar base_color BRDF parameters
-        float sigma = oren_nayar_sigma;
-        float sigma2 = sigma * sigma;
-        oren_nayar_A = 1.0f - sigma2 / (2.0f * (sigma2 + 0.33f));
-        oren_nayar_B = 0.45f * sigma2 / (sigma2 + 0.09f);
+        float aspect = sqrtf(1.0f - 0.9f * anisotropy);
+        out_alpha_x = hippt::max(1.0e-4f, roughness * roughness / aspect);
+        out_alpha_y = hippt::max(1.0e-4f, roughness * roughness * aspect);
     }
 
     HIPRT_HOST_DEVICE void set_emission(ColorRGB32F new_emission)
@@ -107,8 +101,6 @@ struct SimplifiedRendererMaterial
 
     float roughness = 0.3f;
     float oren_nayar_sigma = 0.34906585039886591538f; // 20 degrees standard deviation in radian
-    float oren_nayar_A = 0.86516788142120468442f; // Precomputed A for sigma = 20 degrees
-    float oren_nayar_B = 0.74147689828041305929f; // Precomputed B for sigma = 20 degrees
 
     float metallic = 0.0f;
     float specular = 1.0f; // Specular intensity
@@ -117,8 +109,8 @@ struct SimplifiedRendererMaterial
     
     float anisotropic = 0.0f;
     float anisotropic_rotation = 0.0f;
-    float alpha_x = 0.0f, alpha_y = 0.0f;
 
+    ColorRGB32F coat_color = ColorRGB32F{ 1.0f, 1.0f, 1.0f };
     float coat = 0.0f;
     float coat_roughness = 0.0f;
     float coat_ior = 1.5f;
@@ -166,7 +158,6 @@ struct RendererMaterial : public SimplifiedRendererMaterial
 
     int roughness_texture_index = -1;
     int oren_sigma_texture_index = -1;
-    int subsurface_texture_index = -1;
 
     int metallic_texture_index = -1;
     int specular_texture_index = -1;

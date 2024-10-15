@@ -1517,7 +1517,7 @@ void ImGuiSettingsWindow::draw_objects_panel()
 	bool material_changed = false;
 	static int currently_selected_material = 0;
 
-	std::vector<const char*> items = { "- None", "- Lambertian BRDF", "- Oren Nayar BRDF", "- Disney BSDF" };
+	std::vector<const char*> items = { "- None", "- Lambertian BRDF", "- Oren Nayar BRDF", "- Principled BSDF" };
 	if (ImGui::Combo("All Objects BSDF Override", m_renderer->get_global_compiler_options()->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::BSDF_OVERRIDE), items.data(), items.size()))
 	{
 		m_renderer->recompile_kernels();
@@ -1604,7 +1604,6 @@ void ImGuiSettingsWindow::draw_objects_panel()
 
 		ImGui::Text("%s", material_names[currently_selected_material].c_str());
 		material_changed |= ImGui::ColorEdit3("Base color", (float*)&material.base_color);
-		material_changed |= ImGui::SliderFloat("Subsurface", &material.subsurface, 0.0f, 1.0f);
 		material_changed |= ImGui::SliderFloat("Metallic", &material.metallic, 0.0f, 1.0f);
 		material_changed |= ImGui::SliderFloat("Roughness", &material.roughness, 0.0f, 1.0f);
 		material_changed |= ImGui::SliderFloat("Anisotropic", &material.anisotropic, 0.0f, 1.0f);
@@ -1618,11 +1617,12 @@ void ImGuiSettingsWindow::draw_objects_panel()
 		material_changed |= ImGui::SliderFloat("Sheen Roughness", &material.sheen_roughness, 0.0f, 1.0f);
 		material_changed |= ImGui::ColorEdit3("Sheen color", (float*)&material.sheen_color);
 		ImGui::Separator();
+		material_changed |= ImGui::ColorEdit3("Coat Color", (float*)&material.coat_color);
 		material_changed |= ImGui::SliderFloat("Coat Strength", &material.coat, 0.0f, 1.0f);
-		material_changed |= ImGui::SliderFloat("Coat roughness", &material.coat_roughness, 0.0f, 1.0f);
+		material_changed |= ImGui::SliderFloat("Coat Roughness", &material.coat_roughness, 0.0f, 1.0f);
 		material_changed |= ImGui::SliderFloat("Coat IOR", &material.coat_ior, 0.0f, 5.0f);
-		material_changed |= ImGui::SliderFloat("IOR", &material.ior, 0.0f, 5.0f);
 		ImGui::Separator();
+		material_changed |= ImGui::SliderFloat("IOR", &material.ior, 0.0f, 5.0f);
 		material_changed |= ImGui::SliderFloat("Transmission", &material.specular_transmission, 0.0f, 1.0f);
 
 		if (material.specular_transmission > 0.0f)

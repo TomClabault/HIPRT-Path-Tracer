@@ -80,7 +80,7 @@ struct HIPRTRenderSettings
 
 	// If true, NaNs encountered during rendering will be rendered as very bright pink. 
 	// Useful for debugging only.
-	bool display_NaNs = false;
+	bool display_NaNs = true;
 
 	// If true, then rendering at low resolution will be performed if 'wants_render_low_resolution'
 	// is also true.
@@ -137,7 +137,7 @@ struct HIPRTRenderSettings
 	// If a selected light (for direct lighting estimation) contributes at a given
 	// point less than this 'minimum_light_contribution' value then the light sample is discarded
 	// 0.0f to disable
-	float minimum_light_contribution = 0.08f;
+	float minimum_light_contribution = 0.0f;
 
 	// Whether or not to do alpha testing for geometry with transparent base color textures
 	bool do_alpha_testing = true;
