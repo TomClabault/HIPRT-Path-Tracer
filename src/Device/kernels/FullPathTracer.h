@@ -215,15 +215,15 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
                 if (bounce + 1 < render_data.render_settings.nb_bounces)
                 {
                     // Only sampling the next bounce if we actually need it
-                    float brdf_pdf;
+                    float bsdf_pdf;
                     float3 bounce_direction;
-                    ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bounce_direction, brdf_pdf, random_number_generator);
+                    ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bounce_direction, bsdf_pdf, random_number_generator);
 
-                    ray_payload.throughput *= bsdf_color * hippt::abs(hippt::dot(bounce_direction, closest_hit_info.shading_normal)) / brdf_pdf;
+                    ray_payload.throughput *= bsdf_color * hippt::abs(hippt::dot(bounce_direction, closest_hit_info.shading_normal)) / bsdf_pdf;
                     ray_payload.next_ray_state = RayState::BOUNCE;
 
                     // Terminate ray if bad sampling
-                    if (brdf_pdf <= 0.0f)
+                    if (bsdf_pdf <= 0.0f)
                         break;
 
                     int outside_surface = hippt::dot(bounce_direction, closest_hit_info.shading_normal) < 0 ? -1.0f : 1.0f;
