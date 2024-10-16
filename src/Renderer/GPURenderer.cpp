@@ -973,6 +973,8 @@ void GPURenderer::set_envmap(const Image32Bit& envmap_image, const std::string& 
 {
 	ThreadManager::add_dependency(ThreadManager::RENDERER_SET_ENVMAP, ThreadManager::ENVMAP_LOAD_FROM_DISK_THREAD);
 	ThreadManager::start_thread(ThreadManager::RENDERER_SET_ENVMAP, [this, &envmap_image, &envmap_filepath]() {
+		oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx);
+
 		if (envmap_image.width == 0 || envmap_image.height == 0)
 		{
 			m_render_data.world_settings.ambient_light_type = AmbientLightType::UNIFORM;
