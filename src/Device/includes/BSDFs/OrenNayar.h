@@ -15,15 +15,8 @@
 /* References:
  * [1] [Physically Based Rendering 3rd Edition] https://www.pbr-book.org/3ed-2018/Reflection_Models/Microfacet_Models
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F oren_nayar_brdf_eval(const SimplifiedRendererMaterial& material, const float3& view_direction, const float3& surface_normal, const float3& to_light_direction, float& pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F oren_nayar_brdf_eval(const SimplifiedRendererMaterial& material, const float3& local_view_direction, const float3& local_to_light_direction, float& pdf)
 {
-    float3 T, B;
-    build_ONB(surface_normal, T, B);
-
-    // Using local view and light directions to simply following computations
-    float3 local_view_direction = world_to_local_frame(T, B, surface_normal, view_direction);
-    float3 local_to_light_direction = world_to_local_frame(T, B, surface_normal, to_light_direction);
-
     // sin(theta)^2 = 1.0 - cos(theta)^2
 	float sin_theta_i = sqrt(1.0f - local_to_light_direction.z * local_to_light_direction.z);
 	float sin_theta_o = sqrt(1.0f - local_view_direction.z * local_view_direction.z);
@@ -64,11 +57,26 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F oren_nayar_brdf_eval(const Simplified
     return material.base_color / M_PI * (oren_nayar_A + oren_nayar_B * max_cos * sin_alpha * tan_beta);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F oren_nayar_brdf_sample(const SimplifiedRendererMaterial& material, const float3& view_direction, const float3& shading_normal, float3& sampled_direction, float& pdf, Xorshift32Generator& random_number_generator)
+/**
+ * Override of the eval function for world space directions
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F oren_nayar_brdf_eval(const SimplifiedRendererMaterial& material, const float3& world_space_view_direction, const float3& surface_normal, const float3& world_space_to_light_direction, float& pdf)
 {
-    sampled_direction = cosine_weighted_sample(shading_normal, random_number_generator);
+    float3 T, B;
+    build_ONB(surface_normal, T, B);
 
-    return oren_nayar_brdf_eval(material, view_direction, shading_normal, sampled_direction, pdf);
+    // Using local view and light directions to simply following computations
+    float3 local_view_direction = world_to_local_frame(T, B, surface_normal, world_space_view_direction);
+    float3 local_to_light_direction = world_to_local_frame(T, B, surface_normal, world_space_to_light_direction);
+
+    return oren_nayar_brdf_eval(material, local_view_direction, local_to_light_direction, pdf);
+}
+
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F oren_nayar_brdf_sample(const SimplifiedRendererMaterial& material, const float3& world_space_view_direction, const float3& shading_normal, float3& out_sampled_direction, float& pdf, Xorshift32Generator& random_number_generator)
+{
+    out_sampled_direction = cosine_weighted_sample(shading_normal, random_number_generator);
+
+    return oren_nayar_brdf_eval(material, world_space_view_direction, shading_normal, out_sampled_direction, pdf);
 }
 
 #endif

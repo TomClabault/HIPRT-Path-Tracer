@@ -655,8 +655,13 @@ void GPURenderer::recompile_kernels()
 
 void GPURenderer::precompile_kernels()
 {
+	auto start = std::chrono::high_resolution_clock::now();
+
 	precompile_direct_light_sampling_kernels();
 	precompile_ReSTIR_DI_kernels();
+
+	auto stop = std::chrono::high_resolution_clock::now();
+	std::cout << "Startup time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
 }
 
 void GPURenderer::precompile_direct_light_sampling_kernels()

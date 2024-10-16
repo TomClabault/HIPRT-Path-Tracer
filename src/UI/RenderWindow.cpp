@@ -21,14 +21,17 @@
 extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
+// TODO demos:
+// new sheen lobe
+// energy conserving GGX
+
 // TODOs ongoing
 // - limit distance of BSDF ray for initial sampling (biased but reduces BVH traversal so performance++)
 // - maybe not spatially resample as hard everywhere in the image? Dark regions for example? heuristic to reduce/increase the number of spatial samples per pixel?
 // - clamp spatial neighbors out of viewport instead of discarding them? option in Imgui
-// - limit UI speed because it actually uses some resources (maybe Vsync or something)
+// - limit UI speed because it actually uses some resources (maybe Vsync or something) or does it?
 // - smarter shader cache (hints to avoid using all kernel options when compiling a kernel? We know that Camera ray doesn't care about direct lighting strategy for example)
 // - use self bit packing (no bitfields) for nested dielectrics because bitfields are implementation dependent in size, that's bad --> We don't get our nice packing with every compiler
-// - backgfround kernel compilation counter in log window
 // - cmake to disable optimizations in reldebinfo
 // - for LTC sheen lobe, have the option to use either SGGX volumetric sheen or approximation precomputed LTC data
 
@@ -72,6 +75,7 @@ extern ImGuiLogger g_imgui_logger;
 //		- for maximum ray length, limit that length even more for indirect bounces and even more so if the ray is far away from the camera (beware of mirrors in the scene which the camera can look into and see a far away part of the scene where light could be very biased)
 // - only update the display every so often if accumulating because displaying is expensive (especially at high resolution) on AMD drivers at least
 // - reload shaders button
+// - energy conserving GGX & Fresnel [https://blog.selfshadow.com/publications/s2017-shading-course/imageworks/s2017_pbs_imageworks_slides_v2.pdf]
 // - pack ray payload
 // - pack HDR as color as 9/9/9/5 RGBE? https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/MiniEngine/Core/Shaders/PixelPacking_RGBE.hlsli
 // - presample lights per each tile of pixels the same as for ReSTIR DI and use that for second bounces sampling?
@@ -89,6 +93,7 @@ extern ImGuiLogger g_imgui_logger;
 // - maybe not precompute stuff in the material structure? like anisotropic / oren nayar parameters? Is it even expensive to recompute it? Because that takes space and bandwidth
 // - pack material parameters that are between 0 and 1 into 8 bits, 1/256 is enough precision for parameters in 0-1
 // - Reuse MIS BSDF sample as path next bounce if the ray didn't hit anything
+// - Reuse second bounce BSDF sampled direction for light sampling in MIS if we bounced in a light ?
 // - RIS: do no use BSDF samples for rough surfaces (have a BSDF ray roughness treshold basically
 //		We may have to do something with the lobes of the BSDF specifically for this one. A coated diffuse cannot always ignore light samples for example because the diffuse lobe benefits from light samples even if the surface is not smooth (coating) 
 // - have a light BVH for intersecting light triangles only: useful when we want to know whether or not a direction could have be sampled by the light sampler: we don't need to intersect the whole scene BVH, just the light geometry, less expensive
