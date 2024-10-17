@@ -1604,8 +1604,24 @@ void ImGuiSettingsWindow::draw_objects_panel()
 
 		ImGui::Text("%s", material_names[currently_selected_material].c_str());
 		material_changed |= ImGui::ColorEdit3("Base color", (float*)&material.base_color);
-		material_changed |= ImGui::SliderFloat("Metallic", &material.metallic, 0.0f, 1.0f);
 		material_changed |= ImGui::SliderFloat("Roughness", &material.roughness, 0.0f, 1.0f);
+		ImGui::Separator();
+		material_changed |= ImGui::SliderFloat("Metallic", &material.metallic, 0.0f, 1.0f);
+		material_changed |= ImGui::Checkbox("Advanced Metallic Color", &material.advanced_metallic_fresnel);
+		ImGuiRenderer::show_help_marker("If checked, the metallic color will math \"Base color\".\n"
+										"If not checked, some more parameters will be exposed to control"
+										"the metallic reflectance, enabling more expressivity.");
+		if (material.advanced_metallic_fresnel)
+		{
+			ImGui::TreePush("Metallic artist parameters tree");
+			material_changed |= ImGui::ColorEdit3("Metallic Reflectivity", (float*)&material.metallic_reflectivity);
+			ImGuiRenderer::show_help_marker("'Reflectivity' parameter of [Artist Friendly Metallic Fresnel, Gulbrandsen, 2014].\n"
+											"Controls the main color response of the metallic material.");
+			material_changed |= ImGui::ColorEdit3("Metallic Edge Tint", (float*)&material.metallic_edge_tint);
+			ImGuiRenderer::show_help_marker("'Edge Tint' parameter of [Artist Friendly Metallic Fresnel, Gulbrandsen, 2014].\n"
+											"The color response of the metallic material is biased towards this color at the incident angle increases.");
+			ImGui::TreePop();
+		}
 		material_changed |= ImGui::SliderFloat("Anisotropy", &material.anisotropy, 0.0f, 1.0f);
 		material_changed |= ImGui::SliderFloat("Anisotropy Rotation", &material.anisotropy_rotation, 0.0f, 1.0f);
 		ImGui::Separator();

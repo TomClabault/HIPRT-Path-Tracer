@@ -103,7 +103,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
     if (x >= res.x || y >= res.y)
         return;
 
-    uint32_t pixel_index = (x + y * res.x);
+    uint32_t pixel_index = x + y * res.x;
 
     if (!render_data.aux_buffers.pixel_active[pixel_index])
         return;
@@ -206,7 +206,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
 
                 ray_payload.ray_color += (light_direct_contribution + envmap_direct_contribution) * ray_payload.throughput;
 #endif
-
 
                 // --------------------------------------- //
                 // ---------- Indirect lighting ---------- //

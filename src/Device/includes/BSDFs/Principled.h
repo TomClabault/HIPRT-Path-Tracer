@@ -65,7 +65,17 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_sheen_sample(const HIPRTRenderD
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_metallic_eval(const SimplifiedRendererMaterial& material, float incident_ior, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_half_vector, float& pdf)
 {
     float HoL = hippt::clamp(1.0e-8f, 1.0f, hippt::dot(local_half_vector, local_to_light_direction));
-    ColorRGB32F F = fresnel_schlick(material.base_color, HoL);
+
+    ColorRGB32F F;
+    if (material.advanced_metallic_fresnel)
+        // Computing the complex fresnel response from conductor material using
+        // the intuitive parameters
+        F = gulbrandsen_metallic_fresnel(material.metallic_reflectivity, material.metallic_edge_tint, HoL);
+    else
+        // The reflectance of the metal is here assumed to be the same color as
+        // the base color of the material which can be easier to manipulate
+        // than the metallic specialization above
+        F = fresnel_schlick(material.base_color, HoL);
 
     return microfacet_GTR2_eval(material.roughness, F, local_view_direction, local_to_light_direction, local_half_vector, pdf);
 }
@@ -173,7 +183,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const RendererM
     float F = fresnel_dielectric(hippt::dot(local_view_direction, local_half_vector), relative_eta);
     if (reflecting)
     {
-        color = principled_metallic_eval(material, eta_i, local_view_direction, local_to_light_direction, local_half_vector, pdf);
+        color = microfacet_GTR2_eval(material.roughness, ColorRGB32F(F), local_view_direction, local_to_light_direction, local_half_vector, pdf);
 
         // Scaling the PDF by the probability of being here (reflection of the ray and not transmission)
         pdf *= F;

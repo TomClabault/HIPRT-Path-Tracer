@@ -51,6 +51,8 @@ struct SimplifiedRendererMaterial
         // Avoiding zero
         absorption_at_distance = hippt::max(absorption_at_distance, 1.0e-4f);
         absorption_color = ColorRGB32F::max(absorption_color, ColorRGB32F(1.0f / 512.0f));
+
+        metallic_reflectivity.clamp(0.0f, 0.999f);
     }
 
     /*
@@ -103,15 +105,18 @@ struct SimplifiedRendererMaterial
     float oren_nayar_sigma = 0.34906585039886591538f; // 20 degrees standard deviation in radian
 
     float metallic = 0.0f;
+    bool advanced_metallic_fresnel = true;
+    ColorRGB32F metallic_reflectivity = ColorRGB32F{ 1.0f, 0.2f, 0.7f };
+    ColorRGB32F metallic_edge_tint = ColorRGB32F{ 1.0f, 0.2f, 0.7f };
+    float anisotropy = 0.0f;
+    float anisotropy_rotation = 0.0f;
+
     // Specular intensity
     float specular = 0.0f;
     // Specular tint intensity. 
     // Specular will be white if 0.0f and will be 'specular_color' if 1.0f
     float specular_tint = 1.0f;
     ColorRGB32F specular_color = ColorRGB32F(1.0f);
-    
-    float anisotropy = 0.0f;
-    float anisotropy_rotation = 0.0f;
 
     ColorRGB32F coat_color = ColorRGB32F{ 1.0f, 1.0f, 1.0f };
     float coat = 0.0f;

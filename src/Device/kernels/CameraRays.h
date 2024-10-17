@@ -55,7 +55,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
     if (x >= res.x || y >= res.y)
         return;
 
-    uint32_t pixel_index = (x + y * res.x);
+    uint32_t pixel_index = x + y * res.x;
 
     // 'Render low resolution' means that the user is moving the camera for example
     // so we're going to reduce the quality of the render for increased framerates
@@ -63,7 +63,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
     if (render_data.render_settings.do_render_low_resolution())
     {
         int res_scaling = render_data.render_settings.render_low_resolution_scaling;
-        pixel_index /= res_scaling;
 
         // If rendering at low resolution, only one pixel out of res_scaling^2 will be rendered
         if (x % res_scaling != 0 || y % res_scaling != 0)
@@ -72,6 +71,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
 
             return;
         }
+
+        pixel_index /= res_scaling;
     }
 
     if (render_data.render_settings.use_prev_frame_g_buffer())
