@@ -126,7 +126,7 @@ git clone https://github.com/TomClabault/HIPRT-Path-Tracer.git --recursive
 cd HIPRT-Path-Tracer
 mkdir build
 cd build
-cmake ..
+cmake -DCMAKE_BUILD_TYPE=Debug ..
 ```
 
 On Windows, a Visual Studio solution will be generated in the `build` folder that you can open and compile the project with (select `HIPRTPathTracer` as startup project).
@@ -144,6 +144,7 @@ The following arguments are available:
 - `--bounces=N` for the maximum number of bounces in the scene*
 - `--w=N` / `--width=N` for the width of the rendering*
 - `--h=N` / `--height=N` for the height of the rendering*
+
 \* CPU only commandline arguments. These parameters are controlled through the UI when running on the GPU.
 
 # Gallery

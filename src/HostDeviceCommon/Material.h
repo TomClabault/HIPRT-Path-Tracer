@@ -103,8 +103,11 @@ struct SimplifiedRendererMaterial
     float oren_nayar_sigma = 0.34906585039886591538f; // 20 degrees standard deviation in radian
 
     float metallic = 0.0f;
-    float specular = 1.0f; // Specular intensity
-    float specular_tint = 1.0f; // Specular fresnel strength for the metallic
+    // Specular intensity
+    float specular = 1.0f;
+    // Specular tint intensity. 
+    // Specular will be white if 0.0f and will be 'specular_color' if 1.0f
+    float specular_tint = 1.0f;
     ColorRGB32F specular_color = ColorRGB32F(1.0f);
     
     float anisotropic = 0.0f;
