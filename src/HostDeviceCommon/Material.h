@@ -104,18 +104,20 @@ struct SimplifiedRendererMaterial
 
     float metallic = 0.0f;
     // Specular intensity
-    float specular = 1.0f;
+    float specular = 0.0f;
     // Specular tint intensity. 
     // Specular will be white if 0.0f and will be 'specular_color' if 1.0f
     float specular_tint = 1.0f;
     ColorRGB32F specular_color = ColorRGB32F(1.0f);
     
-    float anisotropic = 0.0f;
-    float anisotropic_rotation = 0.0f;
+    float anisotropy = 0.0f;
+    float anisotropy_rotation = 0.0f;
 
     ColorRGB32F coat_color = ColorRGB32F{ 1.0f, 1.0f, 1.0f };
     float coat = 0.0f;
     float coat_roughness = 0.0f;
+    float coat_anisotropy = 0.0f;
+    float coat_anisotropy_rotation = 0.0f;
     float coat_ior = 1.5f;
 
     float sheen = 0.0f; // Sheen strength

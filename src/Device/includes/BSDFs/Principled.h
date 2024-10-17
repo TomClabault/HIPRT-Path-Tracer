@@ -49,7 +49,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_coat_eval(const Simplified
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_coat_sample(const SimplifiedRendererMaterial& material, const float3& local_view_direction, Xorshift32Generator& random_number_generator)
 {
-    return microfacet_GTR2_sample(material.coat_roughness, /* anisotropy */ 0.0f, local_view_direction, random_number_generator);
+    return microfacet_GTR2_sample(material.coat_roughness, material.coat_anisotropy, local_view_direction, random_number_generator);
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_sheen_eval(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, const float3& local_view_direction, const float3& local_to_light_direction, float& pdf)
@@ -75,7 +75,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_metallic_eval(const Simpli
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_metallic_sample(const SimplifiedRendererMaterial& material, const float3& local_view_direction, Xorshift32Generator& random_number_generator)
 {
-    return microfacet_GTR2_sample(material.roughness, material.anisotropic, local_view_direction, random_number_generator);
+    return microfacet_GTR2_sample(material.roughness, material.anisotropy, local_view_direction, random_number_generator);
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_diffuse_eval(const SimplifiedRendererMaterial& material, const float3& local_view_direction, const float3& local_to_light_direction, float& pdf)
@@ -101,7 +101,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_specular_eval(const Simpli
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_specular_sample(const SimplifiedRendererMaterial& material, const float3& local_view_direction, Xorshift32Generator& random_number_generator)
 {
-    return microfacet_GTR2_sample(material.roughness, material.anisotropic, local_view_direction, random_number_generator);
+    return microfacet_GTR2_sample(material.roughness, material.anisotropy, local_view_direction, random_number_generator);
 }
 
 // TODO have materials_buffer as a global variable to avoid having to pass it around like that?
@@ -186,7 +186,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const RendererM
 
         float alpha_x;
         float alpha_y;
-        SimplifiedRendererMaterial::get_alphas(material.roughness, material.anisotropic, alpha_x, alpha_y);
+        SimplifiedRendererMaterial::get_alphas(material.roughness, material.anisotropy, alpha_x, alpha_y);
 
         float D = GTR2_anisotropic(alpha_x, alpha_y, local_half_vector);
         float G1_V = G1(alpha_x, alpha_y, local_view_direction);
@@ -247,7 +247,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_glass_sample(const RendererMate
 
     float alpha_x;
     float alpha_y;
-    SimplifiedRendererMaterial::get_alphas(material.roughness, material.anisotropic, alpha_x, alpha_y);
+    SimplifiedRendererMaterial::get_alphas(material.roughness, material.anisotropy, alpha_x, alpha_y);
     float3 microfacet_normal = GGX_aniso_sample(local_view_direction, alpha_x, alpha_y, random_number_generator);
 
     float F = fresnel_dielectric(hippt::dot(local_view_direction, microfacet_normal), relative_eta);
@@ -419,7 +419,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRende
 
     // Rotated ONB for the anisotropic GTR2 evaluation (metallic/glass lobes for example)
     float3 TR, BR;
-    build_rotated_ONB(shading_normal, TR, BR, material.anisotropic_rotation * M_PI);
+    build_rotated_ONB(shading_normal, TR, BR, material.anisotropy_rotation * M_PI);
     float3 local_view_direction_rotated = world_to_local_frame(TR, BR, shading_normal, view_direction);
     float3 local_to_light_direction_rotated = world_to_local_frame(TR, BR, shading_normal, to_light_direction);
     float3 local_half_vector_rotated = hippt::normalize(local_view_direction_rotated + local_to_light_direction_rotated);
@@ -569,25 +569,41 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRen
         // We want the normal in the same hemisphere as the view direction
         // for the rest of the calculations
         normal = -normal;
-
-    // Rotated ONB for the anisotropic GTR2 evaluation (metallic and glass only)
-    float3 TR, BR;
-    build_rotated_ONB(normal, TR, BR, material.anisotropic_rotation * M_PI);
-    float3 local_view_direction_rotated = world_to_local_frame(TR, BR, normal, view_direction);
-
-    float3 T, B;
-    build_ONB(normal, T, B);
-    float3 local_view_direction = world_to_local_frame(T, B, normal, view_direction);
         
     if (rand_1 < cdf[0])
-        // TODO handle coat anisotropy
-        output_direction = local_to_world_frame(T, B, normal, principled_coat_sample(material, local_view_direction, random_number_generator));
+    {
+        float3 TR_coat, BR_coat;
+        build_rotated_ONB(normal, TR_coat, BR_coat, material.coat_anisotropy_rotation * M_PI);
+        float3 local_view_direction_rotated_coat = world_to_local_frame(TR_coat, BR_coat, normal, view_direction);
+
+        output_direction = local_to_world_frame(TR_coat, BR_coat, normal, principled_coat_sample(material, local_view_direction_rotated_coat, random_number_generator));
+    }
     else if (rand_1 < cdf[1])
+    {
+        float3 T, B;
+        build_ONB(normal, T, B);
+        float3 local_view_direction = world_to_local_frame(T, B, normal, view_direction);
+
         output_direction = local_to_world_frame(T, B, normal, principled_sheen_sample(render_data, material, local_view_direction, normal, random_number_generator));
+    }
     else if (rand_1 < cdf[2])
+    {
+        // Rotated ONB for the anisotropic GTR2 evaluation
+        float3 TR, BR;
+        build_rotated_ONB(normal, TR, BR, material.anisotropy_rotation* M_PI);
+        float3 local_view_direction_rotated = world_to_local_frame(TR, BR, normal, view_direction);
+
         output_direction = local_to_world_frame(TR, BR, normal, principled_metallic_sample(material, local_view_direction_rotated, random_number_generator));
+    }
     else if (rand_1 < cdf[3])
-        output_direction = local_to_world_frame(TR, BR, normal, principled_specular_sample(material, local_view_direction, random_number_generator));
+    {
+        // Rotated ONB for the anisotropic GTR2 evaluation
+        float3 TR, BR;
+        build_rotated_ONB(normal, TR, BR, material.anisotropy_rotation* M_PI);
+        float3 local_view_direction_rotated = world_to_local_frame(TR, BR, normal, view_direction);
+
+        output_direction = local_to_world_frame(TR, BR, normal, principled_specular_sample(material, local_view_direction_rotated, random_number_generator));
+    }
     else if (rand_1 < cdf[4])
         // No call to local_to_world_frame() since the sample diffuse functions
         // already returns in world space around the given normal
