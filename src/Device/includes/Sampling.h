@@ -192,13 +192,15 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 cosine_weighted_sample(const float3& norma
 /**
  * Schlick's approximation for dielectric fresnel reflectance
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F fresnel_schlick(ColorRGB32F F0, float angle)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F fresnel_schlick(ColorRGB32F R0, float angle)
 {
-    return F0 + (ColorRGB32F(1.0f) - F0) * pow((1.0f - angle), 5.0f);
+    return R0 + (ColorRGB32F(1.0f) - R0) * pow((1.0f - angle), 5.0f);
 }
 
 /**
  * Full reflectance fresnel dielectric formula
+ * 
+ * 'relative_eta' is eta_t / eta_i: transmitted media IOR / incident media IOR
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE float fresnel_dielectric(float cos_theta_i, float relative_eta)
 {
@@ -230,8 +232,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float fresnel_dielectric(float cos_theta_i, float
  * fresnel reflectance using schlick's approximation
  * 
  * This function is basically a shorthand for:
- *      ColorRGB32F F0 = <compute F0 from etas>
- *      return schlick(F0, NoL)
+ *      ColorRGB32F R0 = <compute R0 from etas>
+ *      return schlick(R0, NoL)
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F fresnel_reflectance_from_ior(float eta_i, float eta_t, const float3& normal, const float3& local_to_light_direction)
 {
@@ -366,19 +368,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float GTR1(float alpha_g, float local_halfway_z)
     return num / denom;
 }
 
-/**
- * Evaluation of a torrance-sparrow model with the GTR2 normal distribution
- * and G1 masking-shadowing
- */
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F microfacet_GTR2_eval(float material_roughness, float material_IOR, float incident_IOR, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, float& out_pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F microfacet_GTR2_eval(float material_roughness, const ColorRGB32F& F, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, float& out_pdf)
 {
-    float HoL = hippt::clamp(1.0e-8f, 1.0f, hippt::dot(local_halfway_vector, local_to_light_direction));
-
-    float R0_nume = material_IOR - incident_IOR;
-    float R0_denom = material_IOR + incident_IOR;
-    ColorRGB32F R0 = ColorRGB32F((R0_nume * R0_nume) / (R0_denom * R0_denom));
-    ColorRGB32F F = fresnel_schlick(R0, HoL);
-
     float alpha_x;
     float alpha_y;
     SimplifiedRendererMaterial::get_alphas(material_roughness, 0.0f, alpha_x, alpha_y);
@@ -395,6 +386,22 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F microfacet_GTR2_eval(float material_r
 
     out_pdf = D * G1V / (4.0f * NoV);
     return F * D * G2 / (4.0f * NoL * NoV);
+}
+
+/**
+ * Evaluation of a torrance-sparrow model with the GTR2 normal distribution
+ * and G1 masking-shadowing
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F microfacet_GTR2_eval(float material_roughness, float material_ior, float incident_ior, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, float& out_pdf)
+{
+    float HoL = hippt::clamp(1.0e-8f, 1.0f, hippt::dot(local_halfway_vector, local_to_light_direction));
+
+    float R0_nume = material_ior - incident_ior;
+    float R0_denom = material_ior + incident_ior;
+    ColorRGB32F R0 = ColorRGB32F((R0_nume * R0_nume) / (R0_denom * R0_denom));
+    ColorRGB32F F = fresnel_schlick(R0, HoL);
+
+    return microfacet_GTR2_eval(material_roughness, F, local_view_direction, local_to_light_direction, local_halfway_vector, out_pdf);
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 microfacet_GTR2_sample(float roughness, float anisotropic, const float3& local_view_direction, Xorshift32Generator& random_number_generator)

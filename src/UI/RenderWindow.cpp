@@ -84,7 +84,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Progressive Visibility Caching for Fast Indirect Illumination
 // - performance/bias tradeoff by ignoring alpha tests (either for global rays or only shadow rays) after N bounce?
 // - performance/bias tradeoff by ignoring direct lighting occlusion after N bounce? --> strong bias but maybe something to do by reducing the length of shadow rays instead of just hard-disabling occlusion
-// - GMON estimator fireflies reduction
+// - MoN/GMoN estimator fireflies reduction
 // - experiment with a feature that ignores really dark pixel in the variance estimation of the adaptive 
 //		sampling because it seems that very dark areas in the image are always flagged as very 
 //		noisy / very high variance and they take a very long time to converge (always red on the heatmap) 
@@ -94,7 +94,7 @@ extern ImGuiLogger g_imgui_logger;
 // - pack material parameters that are between 0 and 1 into 8 bits, 1/256 is enough precision for parameters in 0-1
 // - Reuse MIS BSDF sample as path next bounce if the ray didn't hit anything
 // - Reuse second bounce BSDF sampled direction for light sampling in MIS if we bounced in a light ?
-// - RIS: do no use BSDF samples for rough surfaces (have a BSDF ray roughness treshold basically
+// - RIS: do no use BSDF samples for rough surfaces (have a BSDF ray roughness treshold basically)
 //		We may have to do something with the lobes of the BSDF specifically for this one. A coated diffuse cannot always ignore light samples for example because the diffuse lobe benefits from light samples even if the surface is not smooth (coating) 
 // - have a light BVH for intersecting light triangles only: useful when we want to know whether or not a direction could have be sampled by the light sampler: we don't need to intersect the whole scene BVH, just the light geometry, less expensive
 // - shadow terminator issue on sphere low smooth scene

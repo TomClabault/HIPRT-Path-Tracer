@@ -1620,10 +1620,10 @@ void ImGuiSettingsWindow::draw_objects_panel()
 		material_changed |= ImGui::ColorEdit3("Coat Color", (float*)&material.coat_color);
 		material_changed |= ImGui::SliderFloat("Coat Strength", &material.coat, 0.0f, 1.0f);
 		material_changed |= ImGui::SliderFloat("Coat Roughness", &material.coat_roughness, 0.0f, 1.0f);
-		material_changed |= ImGui::SliderFloat("Coat IOR", &material.coat_ior, 0.0f, 5.0f);
+		material_changed |= ImGui::SliderFloat("Coat IOR", &material.coat_ior, 0.0f, 3.0f);
 		ImGui::Separator();
 		material_changed |= ImGui::SliderFloat("Transmission", &material.specular_transmission, 0.0f, 1.0f);
-		material_changed |= ImGui::SliderFloat("IOR", &material.ior, 0.0f, 5.0f);
+		material_changed |= ImGui::SliderFloat("IOR", &material.ior, 0.0f, 3.0f);
 
 		if (material.specular_transmission > 0.0f)
 		{
@@ -1638,8 +1638,8 @@ void ImGuiSettingsWindow::draw_objects_panel()
 		}
 
 		ImGui::Separator();
-		// Displaying original emission
 		ImGui::BeginDisabled(material.emission_texture_index > 0);
+		// Displaying original emission in ImGui
 		ColorRGB32F material_emission = material.get_emission() / material.emission_strength;
 		if (ImGui::ColorEdit3("Emission", (float*)&material_emission, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float))
 		{
