@@ -90,7 +90,6 @@ extern ImGuiLogger g_imgui_logger;
 //		noisy / very high variance and they take a very long time to converge (always red on the heatmap) 
 //		even though they are very dark regions and we don't even noise in them. If our eyes can't see 
 //		the noise, why bother? Same with very bright regions
-// - maybe not precompute stuff in the material structure? like anisotropic / oren nayar parameters? Is it even expensive to recompute it? Because that takes space and bandwidth
 // - pack material parameters that are between 0 and 1 into 8 bits, 1/256 is enough precision for parameters in 0-1
 // - Reuse MIS BSDF sample as path next bounce if the ray didn't hit anything
 // - Reuse second bounce BSDF sampled direction for light sampling in MIS if we bounced in a light ?
