@@ -246,6 +246,40 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F fresnel_reflectance_from_ior(float et
     return fresnel_schlick(R0, HoL);
 }
 
+/**
+ * Implementation of [Artist Friendly Metallic Fresnel, Gulbrandsen, 2014] for
+ * computing the complex index of refraction of metals from two intuitive color parameters
+ * 'reflectivity' and 'edge_tint'
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F gulbrandsen_metallic_fresnel(const ColorRGB32F& reflectivity, const ColorRGB32F& edge_tint, float cos_theta_i)
+{
+    // Computing n and k from the 'reflectivity' and 'edge_tint' artist parameters
+    ColorRGB32F one = ColorRGB32F(1.0f);
+    ColorRGB32F sqrt_r = sqrt(reflectivity);
+    ColorRGB32F left_n = edge_tint * ((one - reflectivity) / (one + reflectivity));
+    ColorRGB32F right_n = (one - edge_tint) * ((one + sqrt_r) / (one - sqrt_r));
+    ColorRGB32F n = left_n + right_n;
+
+    ColorRGB32F k_left = n + one;
+    k_left *= k_left;
+    k_left *= reflectivity;
+    ColorRGB32F k_right = n - one;
+    k_right *= k_right;
+    ColorRGB32F k_sqr = (k_left - k_right) / (one - reflectivity);
+
+    // Computing the approximation for non polarized light based on Rs and Rp
+    // for the perpendicular and parallel components of the light
+    ColorRGB32F Rs_nume = n * n + k_sqr - 2.0f * n * cos_theta_i + ColorRGB32F(cos_theta_i * cos_theta_i);
+    ColorRGB32F Rs_denom = n * n + k_sqr + 2.0f * n * cos_theta_i + ColorRGB32F(cos_theta_i * cos_theta_i);
+    ColorRGB32F Rs = Rs_nume / Rs_denom;
+
+    ColorRGB32F Rp_nume = (n * n + k_sqr) * cos_theta_i * cos_theta_i - 2.0f * n * cos_theta_i + one;
+    ColorRGB32F Rp_denom = (n * n + k_sqr) * cos_theta_i * cos_theta_i + 2.0f * n * cos_theta_i + one;
+    ColorRGB32F Rp = Rp_nume / Rp_denom;
+
+    return 0.5f * (Rs + Rp);
+}
+
 HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_normal_distribution(float alpha, float NoH)
 {
     //To avoid numerical instability when NoH basically == 1, i.e when the
