@@ -44,7 +44,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F operator- (const ColorRGB32F& a, cons
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F operator* (const ColorRGB32F& a, const ColorRGB32F& b) { return ColorRGB32F(a.r * b.r, a.g * b.g, a.b * b.b); }
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F operator* (const float k, const ColorRGB32F& c) { return ColorRGB32F(c.r * k, c.g * k, c.b * k); }
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F operator* (const ColorRGB32F& c, const float k) { return ColorRGB32F(c.r * k, c.g * k, c.b * k); }
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F operator/ (const ColorRGB32F& a, const ColorRGB32F& b) { return ColorRGB32F(a.r * b.r, a.g / b.g, a.b / b.b); }
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F operator/ (const ColorRGB32F& a, const ColorRGB32F& b) { return ColorRGB32F(a.r / b.r, a.g / b.g, a.b / b.b); }
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F operator/ (const float k, const ColorRGB32F& c) { return ColorRGB32F(k / c.r, k / c.g, k / c.b); }
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F operator/ (const ColorRGB32F& c, const float k) { return ColorRGB32F(c.r / k, c.g / k, c.b / k); }
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sqrt(const ColorRGB32F& col) { return ColorRGB32F(sqrtf(col.r), sqrtf(col.g), sqrtf(col.b)); }
@@ -88,7 +88,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA32F operator- (const ColorRGBA32F& a, co
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA32F operator* (const ColorRGBA32F& a, const ColorRGBA32F& b) { return ColorRGBA32F(a.r * b.r, a.g * b.g, a.b * b.b, a.a * b.a); }
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA32F operator* (const float k, const ColorRGBA32F& c) { return ColorRGBA32F(c.r * k, c.g * k, c.b * k, c.a * k); }
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA32F operator* (const ColorRGBA32F& c, const float k) { return ColorRGBA32F(c.r * k, c.g * k, c.b * k, c.a * k); }
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA32F operator/ (const ColorRGBA32F& a, const ColorRGBA32F& b) { return ColorRGBA32F(a.r * b.r, a.g / b.g, a.b / b.b, a.a / b.a); }
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA32F operator/ (const ColorRGBA32F& a, const ColorRGBA32F& b) { return ColorRGBA32F(a.r / b.r, a.g / b.g, a.b / b.b, a.a / b.a); }
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA32F operator/ (const float k, const ColorRGBA32F& c) { return ColorRGBA32F(k / c.r, k / c.g, k / c.b, k / c.a); }
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA32F operator/ (const ColorRGBA32F& c, const float k) { return ColorRGBA32F(c.r / k, c.g / k, c.b / k, c.a / k); }
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA32F sqrt(const ColorRGBA32F& col) { return ColorRGBA32F(sqrtf(col.r), sqrtf(col.g), sqrtf(col.b), sqrtf(col.a)); }
