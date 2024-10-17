@@ -368,7 +368,7 @@ void SceneParser::read_material_properties(aiMaterial* mesh_material, RendererMa
 
     mesh_material->Get(AI_MATKEY_METALLIC_FACTOR, renderer_material.metallic);
     mesh_material->Get(AI_MATKEY_ROUGHNESS_FACTOR, renderer_material.roughness);
-    mesh_material->Get(AI_MATKEY_ANISOTROPY_FACTOR, renderer_material.anisotropic);
+    mesh_material->Get(AI_MATKEY_ANISOTROPY_FACTOR, renderer_material.anisotropy);
     if (!mesh_material->Get(AI_MATKEY_SHEEN_COLOR_FACTOR, *((aiColor3D*)&renderer_material.sheen_color)))
     {
         // We did get sheen color from the parsed scene, also trying the roughness

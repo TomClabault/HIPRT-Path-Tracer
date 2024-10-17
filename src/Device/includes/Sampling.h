@@ -404,13 +404,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F microfacet_GTR2_eval(float material_r
     return microfacet_GTR2_eval(material_roughness, F, local_view_direction, local_to_light_direction, local_halfway_vector, out_pdf);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 microfacet_GTR2_sample(float roughness, float anisotropic, const float3& local_view_direction, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 microfacet_GTR2_sample(float roughness, float anisotropy, const float3& local_view_direction, Xorshift32Generator& random_number_generator)
 {
     // The view direction can sometimes be below the shading normal hemisphere
     // because of normal mapping / smooth normals
     int below_normal = (local_view_direction.z < 0) ? -1 : 1;
     float alpha_x, alpha_y;
-    SimplifiedRendererMaterial::get_alphas(roughness, anisotropic, alpha_x, alpha_y);
+    SimplifiedRendererMaterial::get_alphas(roughness, anisotropy, alpha_x, alpha_y);
 
     float3 microfacet_normal = GGX_aniso_sample(local_view_direction * below_normal, alpha_x, alpha_y, random_number_generator);
     float3 sampled_direction = reflect_ray(local_view_direction, microfacet_normal * below_normal);

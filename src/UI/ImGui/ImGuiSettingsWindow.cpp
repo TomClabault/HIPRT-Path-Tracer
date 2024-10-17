@@ -1606,8 +1606,8 @@ void ImGuiSettingsWindow::draw_objects_panel()
 		material_changed |= ImGui::ColorEdit3("Base color", (float*)&material.base_color);
 		material_changed |= ImGui::SliderFloat("Metallic", &material.metallic, 0.0f, 1.0f);
 		material_changed |= ImGui::SliderFloat("Roughness", &material.roughness, 0.0f, 1.0f);
-		material_changed |= ImGui::SliderFloat("Anisotropic", &material.anisotropic, 0.0f, 1.0f);
-		material_changed |= ImGui::SliderFloat("Anisotropic rotation", &material.anisotropic_rotation, 0.0f, 1.0f);
+		material_changed |= ImGui::SliderFloat("Anisotropy", &material.anisotropy, 0.0f, 1.0f);
+		material_changed |= ImGui::SliderFloat("Anisotropy Rotation", &material.anisotropy_rotation, 0.0f, 1.0f);
 		ImGui::Separator();
 		material_changed |= ImGui::ColorEdit3("Specular color", (float*)&material.specular_color);
 		material_changed |= ImGui::SliderFloat("Specular", &material.specular, 0.0f, 1.0f);
@@ -1620,6 +1620,8 @@ void ImGuiSettingsWindow::draw_objects_panel()
 		material_changed |= ImGui::ColorEdit3("Coat Color", (float*)&material.coat_color);
 		material_changed |= ImGui::SliderFloat("Coat Strength", &material.coat, 0.0f, 1.0f);
 		material_changed |= ImGui::SliderFloat("Coat Roughness", &material.coat_roughness, 0.0f, 1.0f);
+		material_changed |= ImGui::SliderFloat("Coat Anisotropy", &material.coat_anisotropy, 0.0f, 1.0f);
+		material_changed |= ImGui::SliderFloat("Coat Anisotropy Rotation", &material.coat_anisotropy_rotation, 0.0f, 1.0f);
 		material_changed |= ImGui::SliderFloat("Coat IOR", &material.coat_ior, 0.0f, 3.0f);
 		ImGui::Separator();
 		material_changed |= ImGui::SliderFloat("Transmission", &material.specular_transmission, 0.0f, 1.0f);
