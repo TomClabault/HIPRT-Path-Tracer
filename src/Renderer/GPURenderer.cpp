@@ -145,9 +145,6 @@ void GPURenderer::update()
 	// Launching the background kernels precompilation if not already launched
 	if (!m_kernel_precompilation_launched)
 	{
-		g_imgui_logger.add_line_with_name(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, ImGuiLogger::BACKGROUND_KERNEL_PARSING_LINE_NAME, "Parsing kernels in the background... [%d / %d]", 0, 1);
-		g_imgui_logger.add_line_with_name(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, ImGuiLogger::BACKGROUND_KERNEL_COMPILATION_LINE_NAME, "Pre-compiling kernels in the background... [%d / %d]", 0, 1);
-
 		precompile_kernels();
 
 		m_kernel_precompilation_launched = true;
@@ -629,8 +626,23 @@ void GPURenderer::recompile_kernels()
 
 void GPURenderer::precompile_kernels()
 {
-	precompile_direct_light_sampling_kernels();
-	precompile_ReSTIR_DI_kernels();
+	g_imgui_logger.add_line_with_name(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, ImGuiLogger::BACKGROUND_KERNEL_PARSING_LINE_NAME, "Parsing kernels in the background... [%d / %d]", 0, 1);
+	g_imgui_logger.add_line_with_name(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, ImGuiLogger::BACKGROUND_KERNEL_COMPILATION_LINE_NAME, "Pre-compiling kernels in the background... [%d / %d]", 0, 1);
+
+	// Launching all the threads actually takes some time
+	// so we're launching threads from a thread :D
+	// 
+	// We're not going to join the thread started right below
+	// so we can use a const char* for the key, we don't a constant
+	// defined in ThreadManager. Quick and dirty.
+	ThreadManager::start_thread("GPURendererPrecompileKernelsKey", [this]() {
+		OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
+
+		precompile_direct_light_sampling_kernels();
+		precompile_ReSTIR_DI_kernels();
+	});
+
+	ThreadManager::detach_threads("GPURendererPrecompileKernelsKey");
 }
 
 void GPURenderer::precompile_direct_light_sampling_kernels()
@@ -973,7 +985,7 @@ void GPURenderer::set_envmap(const Image32Bit& envmap_image, const std::string& 
 {
 	ThreadManager::add_dependency(ThreadManager::RENDERER_SET_ENVMAP, ThreadManager::ENVMAP_LOAD_FROM_DISK_THREAD);
 	ThreadManager::start_thread(ThreadManager::RENDERER_SET_ENVMAP, [this, &envmap_image, &envmap_filepath]() {
-		oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx);
+		OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
 
 		if (envmap_image.width == 0 || envmap_image.height == 0)
 		{
