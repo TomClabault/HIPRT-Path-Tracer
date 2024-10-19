@@ -166,7 +166,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool refract_ray(const float3& ray_direction, con
  * 
  * The sampled direction is returned in world space
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 cosine_weighted_sample(const float3& normal, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 cosine_weighted_sample_around_normal(const float3& normal, Xorshift32Generator& random_number_generator)
 {
     float rand_1 = random_number_generator();
     float rand_2 = 2.0f * random_number_generator() - 1.0f;
@@ -187,6 +187,25 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 cosine_weighted_sample(const float3& norma
     float3 sphere_point = make_float3(xy.x, xy.y, rand_2);
 
     return hippt::normalize(normal + sphere_point);
+}
+
+/**
+ * Reference:
+ *
+ * [1] [Global Illumination Compendium], https://people.cs.kuleuven.be/~philip.dutre/GI/TotalCompendium.pdf
+ *
+ * The sampled direction is returned in a local frame with Z as the up axis
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 cosine_weighted_sample_z_up_frame(Xorshift32Generator& random_number_generator)
+{
+    float r1 = random_number_generator();
+    float r2 = random_number_generator();
+
+    float phi = 2.0f * M_PI * r1;
+    float cos_theta = sqrt(r2);
+    float sin_theta = sqrt(1 - cos_theta * cos_theta);
+
+    return hippt::normalize(make_float3(cos(phi) * sin_theta, sin(phi) * sin_theta, cos_theta));
 }
 
 /**

@@ -16,8 +16,9 @@
 /**
  * Reference:
  * 
- * [1] [Practical Multiple-Scattering Sheen Using Linearly Transformed Cosines] [https://tizianzeltner.com/projects/Zeltner2022Practical/]
- * [2] [Real-Time Polygonal-Light Shading with Linearly Transformed Cosines] [https://eheitzresearch.wordpress.com/415-2/]
+ * [1] [Practical Multiple-Scattering Sheen Using Linearly Transformed Cosines] https://tizianzeltner.com/projects/Zeltner2022Practical/
+ * [2] [Real-Time Polygonal-Light Shading with Linearly Transformed Cosines] https://eheitzresearch.wordpress.com/415-2/
+ * [3] [Blender's Cycles Implementation] https://github.com/blender/cycles/blob/main/src/kernel/closure/bsdf_sheen.h
  */
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float eval_ltc(const float3& to_light_direction_standard, const ColorRGB32F& AiBiRi)
@@ -31,7 +32,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float eval_ltc(const float3& to_light_direction_s
 	// with identity transformation is thus done by multiplying
 	// the direction by the M^-1 matrix
 	float3 light_dir_original = make_float3(
-		to_light_direction_standard.x * AiBiRi.r + to_light_direction_standard.z * AiBiRi.b,
+		to_light_direction_standard.x * AiBiRi.r + to_light_direction_standard.z * AiBiRi.g,
 		to_light_direction_standard.y * AiBiRi.r,
 		to_light_direction_standard.z);
 
@@ -64,8 +65,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F read_LTC_parameters(const HIPRTRender
 HIPRT_HOST_DEVICE HIPRT_INLINE float get_phi(const float3& direction) 
 {
 	float p = atan2(direction.y, direction.x);
-	if (p < 0) 
-		p += 2 * M_PI;
+	if (p < 0.0f)
+		p += 2.0f * M_PI;
 
 	return p;
 }
@@ -92,21 +93,21 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sheen_ltc_eval(const HIPRTRenderData&
 
 	// Rotating the to light direction around z axis such that the view direction is aligned
 	// with phi=0 (because we computed the rotation angle, phi, from the view direction)
-	float3 to_light_standard_frame = rotate_vector(local_to_light_direction, make_float3(0, 0, 1), -phi);
+	float3 to_light_standard_frame = rotate_vector(local_to_light_direction, make_float3(0.0f, 0.0f, 1.0f), -phi);
 
 	ColorRGB32F AiBiRi = read_LTC_parameters(render_data, material.sheen_roughness, local_view_direction.z);
 	float Do = eval_ltc(to_light_standard_frame, AiBiRi);
 
+	pdf = Do;
 	// The cosine term is included in the LTC distribution but the renderer expects that
 	// the cosine term isn't included in the BSDFs so we cancel it here.
-	pdf = Do;
 	return material.sheen_color * AiBiRi.b * Do / local_to_light_direction.z;
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 sheen_ltc_sample(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, const float3& local_view_direction, const float3& shading_normal, Xorshift32Generator& random_number_generator)
 {
 	// Sampling a direction in the original space of the LTC
-	float3 cosine_sample = cosine_weighted_sample(shading_normal, random_number_generator);
+	float3 cosine_sample = cosine_weighted_sample_z_up_frame(random_number_generator);
 
 	ColorRGB32F AiBiRi = read_LTC_parameters(render_data, material.sheen_roughness, local_view_direction.z);
 
@@ -124,7 +125,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 sheen_ltc_sample(const HIPRTRenderData& re
 	float Ai_inv = 1.0f / AiBiRi.r;
 	float Bi = AiBiRi.g;
 
-	return hippt::normalize(make_float3(cosine_sample.x * Ai_inv - cosine_sample.z * Bi * Ai_inv, cosine_sample.y * Ai_inv, cosine_sample.z));
+	// Creating the sampled direction in a space at phi=0
+	float3 sampled_direction_ltc_space = hippt::normalize(make_float3(cosine_sample.x * Ai_inv - cosine_sample.z * Bi * Ai_inv, cosine_sample.y * Ai_inv, cosine_sample.z));
+
+	// Bringing out of the phi=0 configuration by rotating
+	return rotate_vector(sampled_direction_ltc_space, make_float3(0.0f, 0.0f, 1.0f), get_phi(local_view_direction));
 }
 
 #endif

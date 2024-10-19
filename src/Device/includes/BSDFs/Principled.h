@@ -100,7 +100,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_diffuse_eval(const Simplif
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_diffuse_sample(const float3& surface_normal, Xorshift32Generator& random_number_generator)
 {
     // Our Oren-Nayar diffuse lobe is sampled by a cosine weighted distribution
-    return cosine_weighted_sample(surface_normal, random_number_generator);
+    return cosine_weighted_sample_around_normal(surface_normal, random_number_generator);
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_specular_eval(const SimplifiedRendererMaterial& material, float incident_ior, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_half_vector, float& pdf)
