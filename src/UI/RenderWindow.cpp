@@ -34,6 +34,7 @@ extern ImGuiLogger g_imgui_logger;
 // - use self bit packing (no bitfields) for nested dielectrics because bitfields are implementation dependent in size, that's bad --> We don't get our nice packing with every compiler
 // - cmake to disable optimizations in reldebinfo
 // - for LTC sheen lobe, have the option to use either SGGX volumetric sheen or approximation precomputed LTC data
+// - rework bounces in UI so that 0 bounce still gives an image. The number of bounce is currently offset by 1 basically.
 
 // TODO known bugs / incorectness:
 // - take transmission color into account when direct sampling a light source that is inside a volume
@@ -59,7 +60,6 @@ extern ImGuiLogger g_imgui_logger;
 // - free denoiser buffers if not using denoising
 // - refactor ImGuiRenderer in several sub classes that each draw a panel
 // - refactor closestHitTypes with something like 'hiprtGeomTraversalClosestHitType<UseSharedStackBVHTraversal>' to avoid the big #if #elif blocks
-// glViewport() to avoid managing the resolution scaling in the display shaders ourselves?
 
 
 
@@ -91,6 +91,7 @@ extern ImGuiLogger g_imgui_logger;
 //		even though they are very dark regions and we don't even noise in them. If our eyes can't see 
 //		the noise, why bother? Same with very bright regions
 // - pack material parameters that are between 0 and 1 into 8 bits, 1/256 is enough precision for parameters in 0-1
+// - Reuse miss BSDF ray on the last bounce to sample envmap with MIS
 // - Reuse MIS BSDF sample as path next bounce if the ray didn't hit anything
 // - Reuse second bounce BSDF sampled direction for light sampling in MIS if we bounced in a light ?
 // - RIS: do no use BSDF samples for rough surfaces (have a BSDF ray roughness treshold basically)

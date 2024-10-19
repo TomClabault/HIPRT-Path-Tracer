@@ -82,7 +82,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool sanity_check(const HIPRTRenderData& render_d
 #endif
 
         if (render_data.render_settings.display_NaNs)
-            debug_set_final_color(render_data, x, y, res.x, ColorRGB32F(1.0e15f, 0.0f, 1.0e15f));
+            debug_set_final_color(render_data, x, y, res.x, ColorRGB32F(1.0e30f, 0.0f, 1.0e30f));
         else
             ray_payload.ray_color = ColorRGB32F(0.0f);
     }

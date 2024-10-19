@@ -105,7 +105,7 @@ struct SimplifiedRendererMaterial
     float oren_nayar_sigma = 0.34906585039886591538f; // 20 degrees standard deviation in radian
 
     float metallic = 0.0f;
-    bool advanced_metallic_fresnel = true;
+    bool advanced_metallic_fresnel = false;
     ColorRGB32F metallic_reflectivity = ColorRGB32F{ 1.0f, 0.2f, 0.7f };
     ColorRGB32F metallic_edge_tint = ColorRGB32F{ 1.0f, 0.2f, 0.7f };
     float anisotropy = 0.0f;
