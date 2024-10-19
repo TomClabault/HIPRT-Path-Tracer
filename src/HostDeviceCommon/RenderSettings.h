@@ -71,7 +71,7 @@ struct HIPRTRenderSettings
 	int samples_per_frame = 1;
 	// Maximum number of bounces of rays in the scene. 
 	// 1 is direct light only.
-	int nb_bounces = 2;
+	int nb_bounces = 3;
 
 	// Whether or not to "freeze" random number generation so that each frame uses
 	// exactly the same random number. This allows every ray to follow the exact

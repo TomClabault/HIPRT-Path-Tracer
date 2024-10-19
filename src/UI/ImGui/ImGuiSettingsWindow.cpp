@@ -1605,6 +1605,7 @@ void ImGuiSettingsWindow::draw_objects_panel()
 		ImGui::Text("%s", material_names[currently_selected_material].c_str());
 		material_changed |= ImGui::ColorEdit3("Base color", (float*)&material.base_color);
 		material_changed |= ImGui::SliderFloat("Roughness", &material.roughness, 0.0f, 1.0f);
+
 		ImGui::Separator();
 		material_changed |= ImGui::SliderFloat("Metallic", &material.metallic, 0.0f, 1.0f);
 		material_changed |= ImGui::Checkbox("Advanced Metallic Color", &material.advanced_metallic_fresnel);
@@ -1624,14 +1625,17 @@ void ImGuiSettingsWindow::draw_objects_panel()
 		}
 		material_changed |= ImGui::SliderFloat("Anisotropy", &material.anisotropy, 0.0f, 1.0f);
 		material_changed |= ImGui::SliderFloat("Anisotropy Rotation", &material.anisotropy_rotation, 0.0f, 1.0f);
+
 		ImGui::Separator();
 		material_changed |= ImGui::ColorEdit3("Specular color", (float*)&material.specular_color);
 		material_changed |= ImGui::SliderFloat("Specular", &material.specular, 0.0f, 1.0f);
 		material_changed |= ImGui::SliderFloat("Specular tint strength", &material.specular_tint, 0.0f, 1.0f);
+
 		ImGui::Separator();
 		material_changed |= ImGui::ColorEdit3("Sheen color", (float*)&material.sheen_color);
 		material_changed |= ImGui::SliderFloat("Sheen", &material.sheen, 0.0f, 1.0f);
 		material_changed |= ImGui::SliderFloat("Sheen Roughness", &material.sheen_roughness, 0.0f, 1.0f);
+
 		ImGui::Separator();
 		material_changed |= ImGui::ColorEdit3("Coat Color", (float*)&material.coat_color);
 		material_changed |= ImGui::SliderFloat("Coat Strength", &material.coat, 0.0f, 1.0f);
@@ -1639,21 +1643,17 @@ void ImGuiSettingsWindow::draw_objects_panel()
 		material_changed |= ImGui::SliderFloat("Coat Anisotropy", &material.coat_anisotropy, 0.0f, 1.0f);
 		material_changed |= ImGui::SliderFloat("Coat Anisotropy Rotation", &material.coat_anisotropy_rotation, 0.0f, 1.0f);
 		material_changed |= ImGui::SliderFloat("Coat IOR", &material.coat_ior, 0.0f, 3.0f);
+
 		ImGui::Separator();
 		material_changed |= ImGui::SliderFloat("Transmission", &material.specular_transmission, 0.0f, 1.0f);
 		material_changed |= ImGui::SliderFloat("IOR", &material.ior, 0.0f, 3.0f);
-
-		if (material.specular_transmission > 0.0f)
-		{
-			material_changed |= ImGui::SliderFloat("Absorption distance", &material.absorption_at_distance, 0.0f, 20.0f);
-			material_changed |= ImGui::ColorEdit3("Absorption color", (float*)&material.absorption_color);
-
-			ImGui::BeginDisabled(kernel_options->get_macro_value(GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY) != ISS_WITH_PRIORITIES);
-			material_changed |= ImGui::SliderInt("Dielectric priority", &material.dielectric_priority, 1, StackPriorityEntry::PRIORITY_MAXIMUM);
-			if (kernel_options->get_macro_value(GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY) != ISS_WITH_PRIORITIES)
-				ImGuiRenderer::show_help_marker("Disabled because not using nested dielectrics with priorities.");
-			ImGui::EndDisabled();
-		}
+		material_changed |= ImGui::SliderFloat("Absorption distance", &material.absorption_at_distance, 0.0f, 20.0f);
+		material_changed |= ImGui::ColorEdit3("Absorption color", (float*)&material.absorption_color);
+		ImGui::BeginDisabled(kernel_options->get_macro_value(GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY) != ISS_WITH_PRIORITIES);
+		material_changed |= ImGui::SliderInt("Dielectric priority", &material.dielectric_priority, 1, StackPriorityEntry::PRIORITY_MAXIMUM);
+		if (kernel_options->get_macro_value(GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY) != ISS_WITH_PRIORITIES)
+			ImGuiRenderer::show_help_marker("Disabled because not using nested dielectrics with priorities.");
+		ImGui::EndDisabled();
 
 		ImGui::Separator();
 		ImGui::BeginDisabled(material.emission_texture_index > 0);
