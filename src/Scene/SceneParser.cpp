@@ -388,11 +388,11 @@ void SceneParser::read_material_properties(aiMaterial* mesh_material, RendererMa
     renderer_material.coat = 0.0f;
     renderer_material.coat_roughness = 0.0f;
     renderer_material.coat_ior = 1.5f;
-    renderer_material.sheen = 0.0f;
+    renderer_material.sheen = 1.0f;
     renderer_material.sheen_roughness = 1.0f;
-    renderer_material.roughness = 0.3f;
-    renderer_material.metallic = 1.0f;
-    renderer_material.anisotropy = 1.0f;
+    renderer_material.roughness = 0.0f;
+    renderer_material.metallic = 0.0f;
+    renderer_material.anisotropy = 0.0f;
     mesh_material->Get(AI_MATKEY_CLEARCOAT_ROUGHNESS_FACTOR, renderer_material.coat_roughness);
     mesh_material->Get(AI_MATKEY_REFRACTI, renderer_material.ior);
     mesh_material->Get(AI_MATKEY_TRANSMISSION_FACTOR, renderer_material.specular_transmission);
