@@ -115,57 +115,37 @@ void Screenshoter::write_to_png(const char* filepath)
 	int width = m_renderer->m_render_resolution.x;
 	int height = m_renderer->m_render_resolution.y;
 
-	if (m_render_window->get_application_settings()->render_resolution_scale == 1.0f)
-	{
-		// Fast path when no resolution scaling, we can just dump the viewport to a file
-		// because the viewport is the same resolution as the render resolution so the viewport
-		// is exactly what we should have in the screenshot
-		std::vector<unsigned char> mapped_data(width * height * 3);
-		glPixelStorei(GL_PACK_ALIGNMENT, 1);
-		glReadnPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, mapped_data.size(), mapped_data.data());
 
-		stbi_flip_vertically_on_write(true);
-		if (stbi_write_png(filepath, width, height, 3, mapped_data.data(), width * sizeof(unsigned char) * 3))
-			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Screenshot written to \"%s\"", filepath);
-	}
-	else
-	{
-		// If the viewport isn't the same resolution as the render resolution (when render_resolution_scale != 1.0f),
-		// we're going to have to get the buffer of the renderer and apply post-processing to it 
-		// (tone mapping, heatmap visualization, ...) in order the get the same visuals as in the viewport
-		// This post-processing is done using a compute shader. 
-		// 
-		// We're using OpenGL compute shader here and not an HIP kernel because we want to be able to use the same 
-		// fragment shader files that we use for the displaying. If we were doing the post-processing with an HIP kernel, 
-		// we would have to write HIP kernels that would basically be copy-pasting of the OpenGL display shaders 
-		// with just some syntax changes. That would basically mean duplicating code which would be annoying to 
-		// maintain because we would have to update the HIP kernels everytime we changed the OpenGL display shader 
-		// so that the screenshoter outputs the correct image (and needless to say that we would forget, most of time, 
-		// to update the HIP kernels so that's why code duplication here is annoying)
+	// We're using OpenGL compute shader here and not an HIP kernel because we want to be able to use the same 
+	// fragment shader files that we use for the displaying. If we were doing the post-processing with an HIP kernel, 
+	// we would have to write HIP kernels that would basically be copy-pasting of the OpenGL display shaders 
+	// with just some syntax changes. That would basically mean duplicating code which would be annoying to 
+	// maintain because we would have to update the HIP kernels everytime we changed the OpenGL display shader 
+	// so that the screenshoter outputs the correct image (and needless to say that we would forget, most of time, 
+	// to update the HIP kernels so that's why code duplication here is annoying)
 
-		m_renderer->synchronize_kernel();
-		m_renderer->unmap_buffers();
+	m_renderer->synchronize_kernel();
+	m_renderer->unmap_buffers();
 
-		resize_output_image(width, height);
-		select_compute_program(m_render_window->get_display_view_system()->get_current_display_view_type());
+	resize_output_image(width, height);
+	select_compute_program(m_render_window->get_display_view_system()->get_current_display_view_type());
 
-		GLint threads[3];
-		m_active_compute_program->get_compute_threads(threads);
+	GLint threads[3];
+	m_active_compute_program->get_compute_threads(threads);
 
-		int nb_groups_x = std::ceil(width / (float)threads[0]);
-		int nb_groups_y = std::ceil(height / (float)threads[1]);
+	int nb_groups_x = std::ceil(width / (float)threads[0]);
+	int nb_groups_y = std::ceil(height / (float)threads[1]);
 
-		DisplayViewSystem::update_display_program_uniforms(m_render_window->get_display_view_system().get(), m_active_compute_program, m_renderer, m_render_window->get_application_settings());
+	DisplayViewSystem::update_display_program_uniforms(m_render_window->get_display_view_system().get(), m_active_compute_program, m_renderer, m_render_window->get_application_settings());
 
-		glDispatchCompute(nb_groups_x, nb_groups_y, 1);
-		glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+	glDispatchCompute(nb_groups_x, nb_groups_y, 1);
+	glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
-		std::vector<unsigned char> mapped_data(width * height * 4);
-		glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA_INTEGER, GL_UNSIGNED_BYTE, mapped_data.data());
+	std::vector<unsigned char> mapped_data(width * height * 4);
+	glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA_INTEGER, GL_UNSIGNED_BYTE, mapped_data.data());
 
-		stbi_flip_vertically_on_write(true);
-		if (stbi_write_png(filepath, width, height, 4, mapped_data.data(), width * sizeof(unsigned char) * 4))
-			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Screenshot written to \"%s\"", filepath);
-	}
+	stbi_flip_vertically_on_write(true);
+	if (stbi_write_png(filepath, width, height, 4, mapped_data.data(), width * sizeof(unsigned char) * 4))
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Screenshot written to \"%s\"", filepath);
 }
 

@@ -112,7 +112,7 @@ struct SimplifiedRendererMaterial
     float anisotropy_rotation = 0.0f;
 
     // Specular intensity
-    float specular = 0.0f;
+    float specular = 1.0f;
     // Specular tint intensity. 
     // Specular will be white if 0.0f and will be 'specular_color' if 1.0f
     float specular_tint = 1.0f;

@@ -8,9 +8,10 @@
 
 #include "Renderer/OpenImageDenoiser.h"
 #include "UI/ApplicationSettings.h"
-#include "UI/ImGui/ImGuiRendererPerformancePreset.h"
+#include "UI/ImGui/ImGuiAnimationWindow.h"
 #include "UI/ImGui/ImGuiLogWindow.h"
 #include "UI/ImGui/ImGuiRenderWindow.h"
+#include "UI/ImGui/ImGuiRendererPerformancePreset.h"
 #include "UI/ImGui/ImGuiSettingsWindow.h"
 #include "UI/PerformanceMetricsComputer.h"
 
@@ -41,15 +42,19 @@ public:
 	void draw_interface();
 	void rescale_ui();
 	void draw_dockspace();
-
 	void draw_settings_window();
+	void draw_animation_window();
 	void draw_render_window();
 	void draw_log_window();
 
 	ImGuiRenderWindow& get_imgui_render_window();
 
 private:
+	ImGuiID m_dock_id_left;
+	ImGuiID m_dock_id_bottom;
+
 	ImGuiSettingsWindow m_imgui_settings_window;
+	ImGuiAnimationWindow m_imgui_animation_window;
 	ImGuiRenderWindow m_imgui_render_window;
 	ImGuiLogWindow m_imgui_log_window;
 

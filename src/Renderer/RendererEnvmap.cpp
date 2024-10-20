@@ -53,7 +53,13 @@ void RendererEnvmap::recompute_sampling_data_structure(GPURenderer* renderer, co
 
 void RendererEnvmap::do_animation(GPURenderer* renderer)
 {
-	if (animate && !renderer->get_render_settings().accumulate)
+	// We can step the animation either if we're not accumulating or
+	// if we're accumulating and we're allowed to step the animations
+	bool can_step_animation = false;
+	can_step_animation |= renderer->get_render_settings().accumulate && renderer->get_animation_state().can_step_animation;
+	can_step_animation |= !renderer->get_render_settings().accumulate;
+
+	if (animate && renderer->get_animation_state().do_animations && can_step_animation)
 	{
 		float renderer_delta_time = renderer->get_last_frame_time();
 
