@@ -60,6 +60,7 @@ void ImGuiRenderer::show_help_marker(const std::string& text)
 void ImGuiRenderer::set_render_window(RenderWindow* render_window)
 {
 	m_render_window = render_window;
+	m_imgui_animation_window.set_render_window(render_window);
 	m_imgui_settings_window.set_render_window(render_window);
 	m_imgui_render_window.set_render_window(render_window);
 	m_imgui_log_window.set_render_window(render_window);
@@ -74,10 +75,9 @@ void ImGuiRenderer::draw_interface()
 	rescale_ui();
 	draw_dockspace();
 	draw_settings_window();
+	draw_animation_window();
 	draw_log_window();
 	draw_render_window();
-
-	// ImGui::ShowDemoWindow();
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	ImGui::Render();
@@ -129,12 +129,12 @@ void ImGuiRenderer::draw_dockspace()
 
 			int renderer_width = m_render_window->get_renderer()->m_render_resolution.x;
 			int renderer_height = m_render_window->get_renderer()->m_render_resolution.y;
-			auto dock_id_left = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, ImGuiSettingsWindow::BASE_SIZE / (renderer_width + ImGuiSettingsWindow::BASE_SIZE), nullptr, &dockspace_id);
-			auto dock_id_bottom = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Down, ImGuiLogWindow::BASE_SIZE / (renderer_height + ImGuiLogWindow::BASE_SIZE), nullptr, &dockspace_id);
+			m_dock_id_left = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, ImGuiSettingsWindow::BASE_SIZE / (renderer_width + ImGuiSettingsWindow::BASE_SIZE), nullptr, &dockspace_id);
+			m_dock_id_bottom = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Down, ImGuiLogWindow::BASE_SIZE / (renderer_height + ImGuiLogWindow::BASE_SIZE), nullptr, &dockspace_id);
 
 			// we now dock our windows into the docking node we made above
-			ImGui::DockBuilderDockWindow(ImGuiLogWindow::TITLE, dock_id_bottom);
-			ImGui::DockBuilderDockWindow(ImGuiSettingsWindow::TITLE, dock_id_left);
+			ImGui::DockBuilderDockWindow(ImGuiLogWindow::TITLE, m_dock_id_bottom);
+			ImGui::DockBuilderDockWindow(ImGuiSettingsWindow::TITLE, m_dock_id_left);
 			ImGui::DockBuilderDockWindow(ImGuiRenderWindow::TITLE, dockspace_id);
 			ImGui::DockBuilderFinish(dockspace_id);
 		}
@@ -147,6 +147,15 @@ void ImGuiRenderer::draw_dockspace()
 void ImGuiRenderer::draw_settings_window()
 {
 	m_imgui_settings_window.draw();
+}
+
+void ImGuiRenderer::draw_animation_window()
+{
+	// "Tabbing" / "docking" / "putting" the window into the left part of the dock
+	// (basically, this window will act as a tab of the "Settings" window
+	ImGui::SetNextWindowDockID(m_dock_id_left, ImGuiCond_Always);
+
+	m_imgui_animation_window.draw();
 }
 
 void ImGuiRenderer::draw_render_window()

@@ -61,16 +61,29 @@ struct SceneParserOptions
     int nb_texture_threads = 16;
 };
 
-struct Scene
+struct SceneMetadata
 {
-    std::vector<RendererMaterial> materials;
     // The material names are used for displaying in the material editor of ImGui
     std::vector<std::string> material_names;
+    // Names of the objects in the scene
+    std::vector<std::string> mesh_names;
+    // For a given mesh index, its material index
+    std::vector<int> mesh_material_indices;
+
+    // AABBs of the meshes of the scene
+    std::vector<BoundingBox> mesh_bounding_boxes;
+
+    // AABB of the whole scene
+    BoundingBox scene_bounding_box;
+};
+
+struct Scene
+{
+    SceneMetadata metadata;
+
+    std::vector<RendererMaterial> materials;
     // Material textures. Needs to be index by a material index. 
     std::vector<Image8Bit> textures;
-
-    std::vector<BoundingBox> mesh_bounding_boxes;
-    BoundingBox scene_bounding_box;
 
     // The widths and heights of the material textures
     // Necessary since Orochi doesn't support normalized texture coordinates

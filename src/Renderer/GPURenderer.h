@@ -12,6 +12,7 @@
 #include "HIPRT-Orochi/HIPRTScene.h"
 #include "HIPRT-Orochi/HIPRTOrochiCtx.h"
 #include "HostDeviceCommon/RenderData.h"
+#include "Renderer/RendererAnimationState.h"
 #include "Renderer/RendererEnvmap.h"
 #include "Renderer/GPURendererGBuffer.h"
 #include "Renderer/HardwareAccelerationSupport.h"
@@ -19,6 +20,7 @@
 #include "Renderer/StatusBuffersValues.h"
 #include "Renderer/RenderPasses/ReSTIRDIRenderPass.h"
 #include "Scene/Camera.h"
+#include "Scene/CameraAnimation.h"
 #include "Scene/SceneParser.h"
 #include "UI/ApplicationSettings.h"
 #include "UI/PerformanceMetricsComputer.h"
@@ -179,6 +181,7 @@ public:
 	void invalidate_render_data_buffers();
 
 	Camera& get_camera();
+	CameraAnimation& get_camera_animation();
 	RendererEnvmap& get_envmap();
 
 	void set_scene(const Scene& scene);
@@ -189,6 +192,10 @@ public:
 	const std::vector<RendererMaterial>& get_materials();
 	const std::vector<std::string>& get_material_names();
 	void update_materials(std::vector<RendererMaterial>& materials);
+
+	const std::vector<BoundingBox>& get_mesh_bounding_boxes();
+	const std::vector<std::string>& get_mesh_names();
+	const std::vector<int>& get_mesh_material_indices();
 
 	/**
 	 * Returns the size of the RayVolumeState struct on the GPU.
@@ -224,6 +231,8 @@ public:
 	void rotate_camera_view(glm::vec3 rotation_angles);
 	void zoom_camera_view(float offset);
 
+	RendererAnimationState& get_animation_state();
+
 	oroDeviceProp get_device_properties();
 	HardwareAccelerationSupport device_supports_hardware_acceleration();
 
@@ -243,6 +252,9 @@ public:
 
 	void compute_render_pass_times();
 	std::unordered_map<std::string, float>& get_render_pass_times();
+	/**
+	 * Returns the time taken to compute the last frame in milliseconds
+	 */
 	float get_last_frame_time();
 
 	void update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer> perf_metrics);
@@ -255,6 +267,8 @@ public:
 
 	Camera m_camera;
 	Camera m_previous_frame_camera;
+	// Animator of the camera of the current frame ('m_camera')
+	CameraAnimation m_camera_animation;
 
 private:
 	void set_hiprt_scene_from_scene(const Scene& scene);
@@ -371,11 +385,13 @@ private:
 
 	ReSTIRDIRenderPass m_restir_di_render_pass;
 
+	SceneMetadata m_parsed_scene_metadata;
 	// The materials are also kept on the CPU side because we want to be able
 	// to modify them interactively with ImGui
 	std::vector<RendererMaterial> m_materials;
 	// The material names are used for displaying in the ImGui editor
-	std::vector<std::string> m_material_names;
+	// AABB of the meshes of the scene
+	std::vector<BoundingBox> m_mesh_bounding_boxes;
 
 	// Envmap of the renderer
 	RendererEnvmap m_envmap;
@@ -438,6 +454,9 @@ private:
 	// Random number generator used to fill the render_data.random_seed argument
 	// in update_render_data().
 	Xorshift32Generator m_rng;
+
+	// State of the animation of the renderer
+	RendererAnimationState m_animation_state;
 };
 
 #endif

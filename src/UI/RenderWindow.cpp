@@ -43,6 +43,7 @@ extern ImGuiLogger g_imgui_logger;
 // - fix sampling lights inside dielectrics with ReSTIR DI
 // - when using a BSDF override, transmissive materials keep their dielectric priorities and this can mess up shadow rays and intersections in general if the BSDF used for the override doesn't support transmissive materials
 // - threadmanager: what if we start a thread with a dependency A on a thread that itself has a dependency B? we're going to try join dependency A even if thread with dependency on B hasn't even started yet --> joining nothing --> immediate return --> should have waited for the dependency but hasn't
+// - very rarely: quitting the application destroys the ImGuiLogger while some thread might still be updating a line --> access to the destroyed imguilogger to update the line --> segfault
 
 
 // TODO Code Organization:
@@ -555,7 +556,9 @@ void RenderWindow::update_renderer_view_rotation(float offset_x, float offset_y)
 	rotation_x = offset_x / m_viewport_width * 2.0f * M_PI / m_application_settings->view_rotation_sldwn_x;
 	rotation_y = offset_y / m_viewport_height * 2.0f * M_PI / m_application_settings->view_rotation_sldwn_y;
 
-	m_renderer->rotate_camera_view(glm::vec3(rotation_x, rotation_y, 0.0f));
+	// Inverting X and Y here because moving your mouse to the right actually means
+	// rotating the camera around the Y axis
+	m_renderer->rotate_camera_view(glm::vec3(rotation_y, rotation_x, 0.0f));
 }
 
 void RenderWindow::update_renderer_view_zoom(float offset, bool scale_delta_time)
@@ -827,6 +830,19 @@ void RenderWindow::render()
 			// Updating the uniforms if the user touches the post processing parameters
 			// or something else (denoiser blend, ...)
 			m_display_view_system->update_current_display_program_uniforms();
+
+			RendererAnimationState& renderer_animation_state = m_renderer->get_animation_state();
+			if (renderer_animation_state.is_rendering_frame_sequence && renderer_animation_state.frames_rendered_so_far < renderer_animation_state.number_of_animation_frames)
+			{
+				// If we're rendering an animation and the frame just converged
+				m_screenshoter->write_to_png();
+				// Indicating that the animations can step forward since we're done
+				// with this frame
+				renderer_animation_state.can_step_animation = true;
+				renderer_animation_state.frames_rendered_so_far++;
+
+				set_render_dirty(true);
+			}
 
 			// Sleeping so that we don't burn the CPU and GPU
 			std::this_thread::sleep_for(std::chrono::milliseconds(3));

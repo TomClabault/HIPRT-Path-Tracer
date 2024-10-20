@@ -177,6 +177,7 @@ void GPURenderer::update()
 	}
 
 	m_envmap.update(this);
+	m_camera_animation.animation_step(this);
 	m_restir_di_render_pass.update();
 
 	internal_update_clear_device_status_buffers();
@@ -383,6 +384,11 @@ void GPURenderer::render()
 	oroEventRecord(m_frame_stop_event, m_main_stream);
 
 	m_was_last_frame_low_resolution = m_render_data.render_settings.do_render_low_resolution();
+	// We just rendered a new frame so we're setting this flag to true
+	// such that the animated components of the scene are not allowed to step
+	// their animations until the render window signals the renderer the the
+	// frame has been fully rendered and thus that the animations can step forward
+	m_animation_state.can_step_animation = false;
 }
 
 void GPURenderer::launch_camera_rays()
@@ -1018,7 +1024,7 @@ void GPURenderer::set_scene(const Scene& scene)
 	set_hiprt_scene_from_scene(scene);
 
 	m_materials = scene.materials;
-	m_material_names = scene.material_names;
+	m_parsed_scene_metadata = scene.metadata;
 }
 
 void GPURenderer::set_envmap(const Image32Bit& envmap_image, const std::string& envmap_filepath)
@@ -1071,13 +1077,28 @@ const std::vector<RendererMaterial>& GPURenderer::get_materials()
 
 const std::vector<std::string>& GPURenderer::get_material_names()
 {
-	return m_material_names;
+	return m_parsed_scene_metadata.material_names;
 }
 
 void GPURenderer::update_materials(std::vector<RendererMaterial>& materials)
 {
 	m_materials = materials;
 	m_hiprt_scene.materials_buffer.upload_data(materials.data());
+}
+
+const std::vector<BoundingBox>& GPURenderer::get_mesh_bounding_boxes()
+{
+	return m_parsed_scene_metadata.mesh_bounding_boxes;
+}
+
+const std::vector<std::string>& GPURenderer::get_mesh_names()
+{
+	return m_parsed_scene_metadata.mesh_names;
+}
+
+const std::vector<int>& GPURenderer::get_mesh_material_indices()
+{
+	return m_parsed_scene_metadata.mesh_material_indices;
 }
 
 size_t GPURenderer::get_ray_volume_state_byte_size()
@@ -1110,6 +1131,11 @@ Camera& GPURenderer::get_camera()
 	return m_camera;
 }
 
+CameraAnimation& GPURenderer::get_camera_animation()
+{
+	return m_camera_animation;
+}
+
 RendererEnvmap& GPURenderer::get_envmap()
 {
 	return m_envmap;
@@ -1118,6 +1144,7 @@ RendererEnvmap& GPURenderer::get_envmap()
 void GPURenderer::set_camera(const Camera& camera)
 {
 	m_camera = camera;
+	m_camera_animation.set_camera(&m_camera);
 }
 
 void GPURenderer::translate_camera_view(glm::vec3 translation)
@@ -1133,4 +1160,9 @@ void GPURenderer::rotate_camera_view(glm::vec3 rotation_angles)
 void GPURenderer::zoom_camera_view(float offset)
 {
 	m_camera.zoom(offset);
+}
+
+RendererAnimationState& GPURenderer::get_animation_state()
+{
+	return m_animation_state;
 }

@@ -6,6 +6,7 @@
 #include "Compiler/GPUKernelCompiler.h"
 #include "HostDeviceCommon/RenderSettings.h"
 #include "Renderer/GPURenderer.h"
+#include "Scene/CameraAnimation.h"
 #include "Threads/ThreadManager.h"
 #include "UI/ImGui/ImGuiRenderer.h"
 #include "UI/ImGui/ImGuiSettingsWindow.h"
@@ -486,6 +487,12 @@ void ImGuiSettingsWindow::draw_camera_panel()
 	{
 		ImGui::TreePush("Camera tree");
 
+		ImGui::SeparatorText("Transformation");
+		if (ImGui::DragFloat3("Position", reinterpret_cast<float*>(&camera.m_translation)))
+			m_render_window->set_render_dirty(true);
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::SeparatorText("Settings");
 		if (ImGui::Checkbox("Do ray jittering", &camera.do_jittering))
 			m_render_window->set_render_dirty(true);
 
@@ -544,37 +551,6 @@ void ImGuiSettingsWindow::draw_environment_panel()
 			float& rota_X = m_renderer->get_envmap().rotation_X;
 			float& rota_Y = m_renderer->get_envmap().rotation_Y;
 			float& rota_Z = m_renderer->get_envmap().rotation_Z;
-
-			bool& animate_envmap = m_renderer->get_envmap().animate;
-			float& animation_speed_X = m_renderer->get_envmap().animation_speed_X;
-			float& animation_speed_Y = m_renderer->get_envmap().animation_speed_Y;
-			float& animation_speed_Z = m_renderer->get_envmap().animation_speed_Z;
-
-			ImGui::BeginDisabled(m_renderer->get_render_settings().accumulate);
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			ImGui::Checkbox("Animate", &animate_envmap);
-
-			if (animate_envmap)
-			{
-				ImGui::Text("Speeds are in degrees per second");
-				ImGui::SliderFloat("Animation Speed X", &animation_speed_X, 0.0f, 360.0f);
-				ImGui::SliderFloat("Animation Speed Y", &animation_speed_Y, 0.0f, 360.0f);
-				ImGui::SliderFloat("Animation Speed Z", &animation_speed_Z, 0.0f, 360.0f);
-
-				//float delta_time = m_render_window->get_UI_delta_time();
-				//rota_X += animation_speed_X / 360.0f / (1000.0f / delta_time);
-				//rota_Y += animation_speed_Y / 360.0f / (1000.0f / delta_time);
-				//rota_Z += animation_speed_Z / 360.0f / (1000.0f / delta_time);
-
-				//// Keeping only the fractional part. This effectively brings a value
-				//// that went above 1 back to between 0 and 1 to keep the rotation between
-				//// 0 and 360 degrees
-				//rota_X = rota_X - static_cast<int>(rota_X);
-				//rota_Y = rota_Y - static_cast<int>(rota_Y);
-				//rota_Z = rota_Z - static_cast<int>(rota_Z);
-			}
-
-			ImGui::EndDisabled();
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			bool rotation_changed = false;
@@ -1512,7 +1488,8 @@ void ImGuiSettingsWindow::draw_objects_panel()
 	static std::vector<RendererMaterial> original_materials = m_renderer->get_materials();
 
 	std::vector<RendererMaterial> materials = m_renderer->get_materials();
-	std::vector<std::string> material_names = m_renderer->get_material_names();
+	const std::vector<std::string>& material_names = m_renderer->get_material_names();
+	const std::vector<std::string>& mesh_names = m_renderer->get_mesh_names();
 
 	bool material_changed = false;
 	static int currently_selected_material = 0;
@@ -1530,12 +1507,13 @@ void ImGuiSettingsWindow::draw_objects_panel()
 	{
 		ImGui::TreePush("All objects tree");
 
-		if (ImGui::BeginListBox("All objects", ImVec2(-FLT_MIN, 7 * ImGui::GetTextLineHeightWithSpacing())))
+		if (ImGui::BeginListBox("##all_objects", ImVec2(-FLT_MIN, 7 * ImGui::GetTextLineHeightWithSpacing())))
 		{
 			for (int n = 0; n < materials.size(); n++)
 			{
 				const bool is_selected = (currently_selected_material == n);
-				if (ImGui::Selectable(material_names[n].c_str(), is_selected))
+				std::string text = mesh_names[n] + " (" + material_names[n] + ")";
+				if (ImGui::Selectable(text.c_str(), is_selected))
 					currently_selected_material = n;
 
 				// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)

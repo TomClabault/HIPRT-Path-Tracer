@@ -37,6 +37,21 @@ struct BoundingBox
 		return hippt::max(hippt::abs(mini.x - maxi.x), hippt::max(hippt::abs(mini.y -maxi.y), hippt::abs(mini.z - maxi.z)));
 	}
 
+	/**
+	 * Returns the length of the extent in the coordinate 'coord'
+	 * 
+	 * X = 0, Y = 1, Z = 2
+	 */
+	float get_extent(int coord) const
+	{
+		return *(&maxi.x + coord) - *(&mini.x + coord);
+	}
+
+	float3 get_center() const
+	{
+		return (mini + maxi) / 2.0f;
+	}
+
 	float3 mini = { std::numeric_limits<float>::max(), std::numeric_limits<float>::max() , std::numeric_limits<float>::max() };
 	float3 maxi = { -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max() , -std::numeric_limits<float>::max() };
 };

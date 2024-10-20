@@ -22,7 +22,6 @@ extern ImGuiLogger g_imgui_logger;
 void SceneParser::parse_scene_file(const std::string& scene_filepath, Assimp::Importer& assimp_importer, Scene& parsed_scene, SceneParserOptions& options)
 {
     const aiScene* scene;
-
     scene = assimp_importer.ReadFile(scene_filepath, aiPostProcessSteps::aiProcess_PreTransformVertices | aiPostProcessSteps::aiProcess_Triangulate | aiPostProcessSteps::aiProcess_RemoveRedundantMaterials | aiPostProcessSteps::aiProcess_GenBoundingBoxes);
     if (scene == nullptr)
     {
@@ -68,7 +67,9 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Assimp::Im
 
     prepare_textures(scene, texture_paths, material_texture_indices, material_indices, texture_per_mesh, texture_indices_offsets, texture_count);
     parsed_scene.materials.resize(scene->mNumMaterials);
-    parsed_scene.material_names.resize(scene->mNumMaterials);
+    parsed_scene.metadata.material_names.resize(scene->mNumMaterials);
+    parsed_scene.metadata.mesh_names.resize(scene->mNumMeshes);
+    parsed_scene.metadata.mesh_material_indices.resize(scene->mNumMeshes);
     parsed_scene.textures.resize(texture_count);
     parsed_scene.textures_dims.resize(texture_count);
     assign_material_texture_indices(parsed_scene.materials, material_texture_indices, texture_indices_offsets);
@@ -101,13 +102,11 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Assimp::Im
 
         std::string material_name = std::string(mesh_material->GetName().C_Str());
         std::string mesh_name = std::string(mesh->mName.C_Str());
-        std::string final_name;
         if (material_name == "")
-            // Default name for materials that don't have one
-            final_name = mesh_name + " (" + std::string("Material.") + std::to_string(material_index) + ")";
-        else
-            final_name += mesh_name + " (" + material_name + ")";
-        parsed_scene.material_names[material_index] = final_name;
+            material_name = std::string("Material.") + std::to_string(material_index);
+        parsed_scene.metadata.material_names[material_index] = material_name;
+        parsed_scene.metadata.mesh_names[mesh_index] = mesh_name;
+        parsed_scene.metadata.mesh_material_indices[mesh_index] = material_index;
 
         RendererMaterial& renderer_material = parsed_scene.materials[material_index];
         if (material_indices_already_seen.find(mesh->mMaterialIndex) == material_indices_already_seen.end())
@@ -187,9 +186,9 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Assimp::Im
                 mesh_bounding_box.extend(*(float3*)(&mesh->mVertices[vert_index]));
         }
 
-        parsed_scene.mesh_bounding_boxes.push_back(mesh_bounding_box);
+        parsed_scene.metadata.mesh_bounding_boxes.push_back(mesh_bounding_box);
         // Extending the bounding box of the scene with the bounding box of the mesh
-        parsed_scene.scene_bounding_box.extend(mesh_bounding_box);
+        parsed_scene.metadata.scene_bounding_box.extend(mesh_bounding_box);
 
         // If the max index of the mesh was 19, we want the next to start
         // at 20, not 19, so we ++
@@ -199,7 +198,7 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Assimp::Im
     }
 
     // Adjusting the speed of the camera so that we can cross the scene in approximately Camera::SCENE_CROSS_TIME
-    parsed_scene.camera.auto_adjust_speed(parsed_scene.scene_bounding_box);
+    parsed_scene.camera.auto_adjust_speed(parsed_scene.metadata.scene_bounding_box);
 
     // We need to process the emissive triangles in a separate pass because:
     //  - Some meshes may be using emissive textures
@@ -226,6 +225,10 @@ void SceneParser::parse_camera(const aiScene* scene, Scene& parsed_scene, float 
         glm::vec3 camera_lookat = *reinterpret_cast<glm::vec3*>(&camera->mLookAt);
         glm::vec3 camera_up = *reinterpret_cast<glm::vec3*>(&camera->mUp);
 
+        // Inversing the lookat because glm::lookat creates a world->view matrix which means
+        // that the position of the camera in world->view matrix is going to be '-true_position'
+        // 
+        // Same for the other properties of the matrix
         glm::mat4x4 lookat = glm::inverse(glm::lookAt(camera_position, camera_lookat, camera_up));
 
         glm::vec3 scale, skew, translation;
@@ -233,12 +236,12 @@ void SceneParser::parse_camera(const aiScene* scene, Scene& parsed_scene, float 
         glm::quat orientation;
         glm::decompose(lookat, scale, orientation, translation, skew, perspective);
 
-        parsed_scene.camera.translation = translation;
-        parsed_scene.camera.rotation = orientation;
+        parsed_scene.camera.m_translation = translation;
+        parsed_scene.camera.m_rotation = orientation;
 
         float aspect_ratio = frame_aspect_override == -1 ? camera->mAspect : frame_aspect_override;
         float vertical_fov = 2.0f * std::atan(std::tan(camera->mHorizontalFOV / 2.0f) * aspect_ratio) + 0.425f;
-        parsed_scene.camera.projection_matrix = glm::transpose(glm::perspective(vertical_fov, aspect_ratio, camera->mClipPlaneNear, camera->mClipPlaneFar));
+        parsed_scene.camera.projection_matrix = glm::perspective(vertical_fov, aspect_ratio, camera->mClipPlaneNear, camera->mClipPlaneFar);
         parsed_scene.camera.vertical_fov = vertical_fov;
         parsed_scene.camera.near_plane = camera->mClipPlaneNear;
         parsed_scene.camera.far_plane = camera->mClipPlaneFar;
@@ -254,13 +257,13 @@ void SceneParser::parse_camera(const aiScene* scene, Scene& parsed_scene, float 
         glm::quat orientation;
         glm::decompose(lookat, scale, orientation, translation, skew, perspective);
 
-        parsed_scene.camera.translation = translation;
-        parsed_scene.camera.rotation = orientation;
+        parsed_scene.camera.m_translation = translation;
+        parsed_scene.camera.m_rotation = orientation;
 
         float aspect_ratio = 1280.0f / 720.0f;
         float horizontal_fov = 40.0f / 180 * M_PI;
         float vertical_fov = 2.0f * std::atan(std::tan(horizontal_fov / 2.0f) * aspect_ratio) + 0.425f;
-        parsed_scene.camera.projection_matrix = glm::transpose(glm::perspective(vertical_fov, aspect_ratio, 0.1f, 100.0f));
+        parsed_scene.camera.projection_matrix = glm::perspective(vertical_fov, aspect_ratio, 0.1f, 100.0f);
         parsed_scene.camera.vertical_fov = vertical_fov;
         parsed_scene.camera.near_plane = 0.1f;
         parsed_scene.camera.far_plane = 100.0f;
@@ -385,14 +388,6 @@ void SceneParser::read_material_properties(aiMaterial* mesh_material, RendererMa
     }
     
     mesh_material->Get(AI_MATKEY_CLEARCOAT_FACTOR, renderer_material.coat);
-    renderer_material.coat = 0.0f;
-    renderer_material.coat_roughness = 0.0f;
-    renderer_material.coat_ior = 1.5f;
-    renderer_material.sheen = 1.0f;
-    renderer_material.sheen_roughness = 1.0f;
-    renderer_material.roughness = 0.0f;
-    renderer_material.metallic = 0.0f;
-    renderer_material.anisotropy = 0.0f;
     mesh_material->Get(AI_MATKEY_CLEARCOAT_ROUGHNESS_FACTOR, renderer_material.coat_roughness);
     mesh_material->Get(AI_MATKEY_REFRACTI, renderer_material.ior);
     mesh_material->Get(AI_MATKEY_TRANSMISSION_FACTOR, renderer_material.specular_transmission);

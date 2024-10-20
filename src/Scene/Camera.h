@@ -16,9 +16,11 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 
+class GPURenderer;
+
 /**
  * Camera class meant for being manipulated through used interactions
- * etc... (hence the attributes translation and rotation for example)
+ * etc... (hence the attributes m_translation and m_rotation for example)
  * 
  * The curated camera class that is meant for being used by the shaders is HIPRTCamera
  */
@@ -31,11 +33,8 @@ struct Camera
     // Note that this may be a little scuffed for scenes that are very elongated.
     static constexpr float SCENE_CROSS_TIME = 5.0f;
 
-    Camera();
-
     HIPRTCamera to_hiprt();
     glm::mat4x4 get_view_matrix() const;
-    glm::vec3 get_view_direction() const;
 
     void set_aspect(float new_aspect);
 
@@ -50,12 +49,21 @@ struct Camera
     void auto_adjust_speed(const BoundingBox& scene_bounding_box);
 
     void translate(glm::vec3 translation_vec);
+    void translate(float3 translation_vec);
+
     /**
      * Basically a handy function for translating a certain distance in the direction
      * the camera is looking at
      */
     void zoom(float offset);
+
+    void look_at_object(const BoundingBox& object_bounding_box);
+
     void rotate(glm::vec3 rotation_angles);
+    void rotate(float3 rotation_angles);
+    
+    void rotate_around_point(const float3& point, const float3& angles_rad);
+    void rotate_around_point(const glm::vec3& point, const float3& angles_rad);
 
     glm::mat4x4 projection_matrix;
 
@@ -74,8 +82,8 @@ struct Camera
     // Multiplier on the camera speed that the user can manipulate through the UI
     float user_movement_speed_multiplier = 1.0f;
 
-    glm::vec3 translation = glm::vec3(0, 0, 0);
-    glm::quat rotation = glm::quat(glm::vec3(0, 0, 0));
+    glm::vec3 m_translation = glm::vec3(0.0f);
+    glm::quat m_rotation = glm::quat(glm::vec3(0.0f));
 };
 
 #endif
