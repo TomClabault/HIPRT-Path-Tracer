@@ -331,8 +331,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float GTR2_anisotropic(float alpha_x, float alpha
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE float GTR2_anisotropic_vndf(float alpha_x, float alpha_y, float D, float G1V, const float3& local_view_direction, const float3& local_halfway_vector)
 {
-    float HoL = hippt::dot(local_view_direction, local_halfway_vector);
-    return G1V * D * hippt::max(0.0f, HoL) / local_view_direction.z;
+    float HoL = hippt::max(0.0f, hippt::dot(local_view_direction, local_halfway_vector));
+    return G1V * D * HoL / local_view_direction.z;
 }
 
 /**
@@ -461,7 +461,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GTR2_eval(float mate
     // jacobian determinant of that reflection operator is the (4.0f * NoV) in the
     // denominator
     out_pdf = Dvisible / (4.0f * NoV);
-    return F * D * G2 / (4.0f * NoL * NoV);
+    if (out_pdf == 0.0f)
+        return ColorRGB32F(0.0f);
+    else
+        return F * D * G2 / (4.0f * NoL * NoV);
 }
 
 /**

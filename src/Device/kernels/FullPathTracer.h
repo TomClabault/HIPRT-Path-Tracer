@@ -53,6 +53,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool check_for_negative_color(ColorRGB32F ray_col
 
 HIPRT_HOST_DEVICE HIPRT_INLINE bool check_for_nan(ColorRGB32F ray_color, int x, int y, int sample)
 {
+    // To avoid unused variables on the GPU
     (void)x;
     (void)y;
     (void)sample;
