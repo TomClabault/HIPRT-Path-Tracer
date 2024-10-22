@@ -10,6 +10,30 @@
 #include "HostDeviceCommon/Material.h"
 #include "Device/includes/Sampling.h"
 
+HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_normal_distribution(float alpha, float NoH)
+{
+    //To avoid numerical instability when NoH basically == 1, i.e when the
+    //material is a perfect mirror and the normal distribution function is a Dirac
+
+    NoH = hippt::min(NoH, 0.999999f);
+    float alpha2 = alpha * alpha;
+    float NoH2 = NoH * NoH;
+    float b = (NoH2 * (alpha2 - 1.0f) + 1.0f);
+    return alpha2 / M_PI / (b * b);
+}
+
+HIPRT_HOST_DEVICE HIPRT_INLINE float G1_schlick_ggx(float k, float dot_prod)
+{
+    return dot_prod / (dot_prod * (1.0f - k) + k);
+}
+
+HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_smith_masking_shadowing(float roughness_squared, float NoV, float NoL)
+{
+    float k = roughness_squared / 2.0f;
+
+    return G1_schlick_ggx(k, NoL) * G1_schlick_ggx(k, NoV);
+}
+
 HIPRT_HOST_DEVICE HIPRT_INLINE float cook_torrance_brdf_pdf(const SimplifiedRendererMaterial& material, const float3& view_direction, const float3& to_light_direction, const float3& surface_normal)
 {
     float3 microfacet_normal = hippt::normalize(view_direction + to_light_direction);

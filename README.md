@@ -20,7 +20,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 - Coat Microfacet GGX Layer + Anisotropy & Anisotropy Rotation
 - SGGX Volumetric Sheen Lobe LTC Fit [\[Zeltner, Burley, Chiang, 2022\]](https://tizianzeltner.com/projects/Zeltner2022Practical/)
 - Specular Microfacet GGX Layer
-- Lambert or Oren-Nayar Diffuse BRDF Lobe + Fake Subsurface [\[Burley, 2012\]](https://disneyanimation.com/publications/physically-based-shading-at-disney/)
+- Oren-Nayar Diffuse BRDF Lobe
 - Metallic Microfacet GGX (GTR2, [\[Burley, 2012\]](https://disneyanimation.com/publications/physically-based-shading-at-disney/)) Layer + Anisotropy & Anisotropy Rotation
 - Specular transmission BTDF + Beer Lambert Volumetric Absorption: [\[Burley, 2015\]](https://blog.selfshadow.com/publications/s2015-shading-course/#course_content)
 ### Sampling

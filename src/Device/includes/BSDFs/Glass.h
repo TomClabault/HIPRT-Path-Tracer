@@ -35,7 +35,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F smooth_glass_bsdf(const SimplifiedRen
     // Computing the proportion of reflected light using fresnel equations
     // We're going to use the result to decide whether to refract or reflect the
     // ray
-    float fresnel_reflect = fresnel_dielectric(cos_theta_i, eta_i, eta_t);
+    float fresnel_reflect = full_fresnel_dielectric(cos_theta_i, eta_i, eta_t);
     if (random_generator() <= fresnel_reflect)
     {
         // Reflect the ray
