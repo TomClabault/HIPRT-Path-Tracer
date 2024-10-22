@@ -219,9 +219,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F fresnel_schlick(ColorRGB32F R0, float
 /**
  * Full reflectance fresnel dielectric formula
  * 
- * 'relative_eta' is eta_t / eta_i: transmitted media IOR / incident media IOR
+ * 'relative_eta' is eta_t / eta_i = transmitted media IOR / incident media IOR
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float fresnel_dielectric(float cos_theta_i, float relative_eta)
+HIPRT_HOST_DEVICE HIPRT_INLINE float full_fresnel_dielectric(float cos_theta_i, float relative_eta)
 {
     // Computing cos_theta_t
     float sin_theta_i2 = 1.0f - cos_theta_i * cos_theta_i;
@@ -238,11 +238,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float fresnel_dielectric(float cos_theta_i, float
 }
 
 /**
- * Override of fresnel_dielectric with two separate eta
+ * Override of full_fresnel_dielectric with two separate eta
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float fresnel_dielectric(float cos_theta_i, float eta_i, float eta_t)
+HIPRT_HOST_DEVICE HIPRT_INLINE float full_fresnel_dielectric(float cos_theta_i, float eta_i, float eta_t)
 {
-    return fresnel_dielectric(cos_theta_i, eta_t / eta_i);
+    return full_fresnel_dielectric(cos_theta_i, eta_t / eta_i);
 }
 
 /**
@@ -254,15 +254,23 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float fresnel_dielectric(float cos_theta_i, float
  *      ColorRGB32F R0 = <compute R0 from etas>
  *      return schlick(R0, NoL)
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F fresnel_reflectance_from_ior(float eta_i, float eta_t, const float3& normal, const float3& local_to_light_direction)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F fresnel_schlick_from_ior(float eta_i, float eta_t, float cos_theta_i)
 {
-    float HoL = hippt::clamp(1.0e-8f, 1.0f, hippt::dot(normal, local_to_light_direction));
-
     float R0_nume = eta_t - eta_i;
     float R0_denom = eta_t + eta_i;
     ColorRGB32F R0 = ColorRGB32F((R0_nume * R0_nume) / (R0_denom * R0_denom));
 
-    return fresnel_schlick(R0, HoL);
+    return fresnel_schlick(R0, cos_theta_i);
+}
+
+/**
+ * Overload with normal and light direction
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F fresnel_schlick_from_ior(float eta_i, float eta_t, const float3& normal, const float3& local_to_light_direction)
+{
+    float NoL = hippt::clamp(1.0e-8f, 1.0f, hippt::dot(normal, local_to_light_direction));
+ 
+    return fresnel_schlick_from_ior(eta_i, eta_t, NoL);
 }
 
 /**
@@ -270,8 +278,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F fresnel_reflectance_from_ior(float et
  * computing the complex index of refraction of metals from two intuitive color parameters
  * 'reflectivity' and 'edge_tint'
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F gulbrandsen_metallic_fresnel(const ColorRGB32F& reflectivity, const ColorRGB32F& edge_tint, float cos_theta_i)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F gulbrandsen_metallic_complex_fresnel(const ColorRGB32F& reflectivity, const ColorRGB32F& edge_tint, float cos_theta_i)
 {
+    // TODO we should precompute k and n on the CPU from 'reflectivity' and 'edge_tint'
+
+    
     // Computing n and k from the 'reflectivity' and 'edge_tint' artist parameters
     ColorRGB32F one = ColorRGB32F(1.0f);
     ColorRGB32F sqrt_r = sqrt(reflectivity);
@@ -299,18 +310,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F gulbrandsen_metallic_fresnel(const Co
     return 0.5f * (Rs + Rp);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_normal_distribution(float alpha, float NoH)
-{
-    //To avoid numerical instability when NoH basically == 1, i.e when the
-    //material is a perfect mirror and the normal distribution function is a Dirac
-
-    NoH = hippt::min(NoH, 0.999999f);
-    float alpha2 = alpha * alpha;
-    float NoH2 = NoH * NoH;
-    float b = (NoH2 * (alpha2 - 1.0f) + 1.0f);
-    return alpha2 / M_PI / (b * b);
-}
-
+/*
+ * Evaluates GTR2 anisotropic normal distribution function 
+ */ 
 HIPRT_HOST_DEVICE HIPRT_INLINE float GTR2_anisotropic(float alpha_x, float alpha_y, const float3& local_half_vector)
 {
     float denom = (local_half_vector.x * local_half_vector.x) / (alpha_x * alpha_x) +
@@ -320,18 +322,25 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float GTR2_anisotropic(float alpha_x, float alpha
     return 1.0f / (M_PI * alpha_x * alpha_y * denom * denom);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float G1_schlick_ggx(float k, float dot_prod)
+/**
+ * Evaluates the visible normal distribution function with GTR2 as
+ * the normal disitrbution function
+ *
+ * Reference: [Sampling the GGX Distribution of Visible Normals, Heitz, 2018]
+ * Equation 3
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE float GTR2_anisotropic_vndf(float alpha_x, float alpha_y, float D, float G1V, const float3& local_view_direction, const float3& local_halfway_vector)
 {
-    return dot_prod / (dot_prod * (1.0f - k) + k);
+    float HoL = hippt::dot(local_view_direction, local_halfway_vector);
+    return G1V * D * hippt::max(0.0f, HoL) / local_view_direction.z;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_smith_masking_shadowing(float roughness_squared, float NoV, float NoL)
-{
-    float k = roughness_squared / 2.0f;
-
-    return G1_schlick_ggx(k, NoL) * G1_schlick_ggx(k, NoV);
-}
-
+/**
+ * G1 Smith masking/shadowing (depending on whether local_direction is wo or wi) function
+ * 
+ * Reference: [Understanding the Masking-Shadowing Function in Microfacet-Based BRDFs, Heitz, 2014]
+ * Equation 43
+ */
 HIPRT_HOST_DEVICE HIPRT_INLINE float G1(float alpha_x, float alpha_y, const float3& local_direction)
 {
     float ax = local_direction.x * alpha_x;
@@ -374,7 +383,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGX_VNDF_sample(const float3 local_view_di
 }
 
 /**
- * [Sampling Visible GGX Normals with Spherical Caps, Intel: Dupuy, Benyoub ; 2023]
+ * Sample the distribution (anisotropic GGX/GTR2) of visible normals using
+ * the spherical caps formulation which is slightly faster than the traditional
+ * VNDF sampling by Heitz 2018.
+ * 
+ * Reference: [Sampling Visible GGX Normals with Spherical Caps, Dupuy, Benyoub, 2023]
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGX_VNDF_spherical_caps_sample(const float3 local_view_direction, float alpha_x, float alpha_y, Xorshift32Generator& random_number_generator)
 {
@@ -399,7 +412,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGX_VNDF_spherical_caps_sample(const float
     return hippt::normalize(make_float3(alpha_x * Nh.x, alpha_y * Nh.y, Nh.z));
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGX_aniso_sample(const float3& local_view_direction, float alpha_x, float alpha_y, Xorshift32Generator& random_number_generator)
+/**
+ * Samples a microfacet normal from the distribution of visible normals of
+ * the GTR2 normal function distribution
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 GTR2_anisotropic_sample_microfacet(const float3& local_view_direction, float alpha_x, float alpha_y, Xorshift32Generator& random_number_generator)
 {
 #if GGXAnisotropicSampleFunction == GGX_NO_VNDF
 #elif GGXAnisotropicSampleFunction == GGX_VNDF_SAMPLING
@@ -411,33 +428,39 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGX_aniso_sample(const float3& local_view_
 #endif
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float GTR1(float alpha_g, float local_halfway_z)
-{
-    float alpha_g_2 = alpha_g * alpha_g;
-
-    float num = alpha_g_2 - 1.0f;
-    float denom = M_PI * log(alpha_g_2) * (1.0f + (alpha_g_2 - 1.0f) * local_halfway_z * local_halfway_z);
-
-    return num / denom;
-}
-
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F microfacet_GTR2_eval(float material_roughness, float material_anisotropy, const ColorRGB32F& F, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, float& out_pdf)
+/**
+ * Evaluates the Torrance Sparrow BRDF 'FDG / 4.NoL.NoV' with the
+ * Generalized Trowbridge-Reitz 2 (GTR2) as the microfacet distribution
+ * function
+ * 
+ * Reference: [Sampling the GGX Distribution of Visible Normals, Heitz, 2018]
+ * Equation 15
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GTR2_eval(float material_roughness, float material_anisotropy, const ColorRGB32F& F, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, float& out_pdf)
 {
     float alpha_x;
     float alpha_y;
     SimplifiedRendererMaterial::get_alphas(material_roughness, material_anisotropy, alpha_x, alpha_y);
 
-    float D = GTR2_anisotropic(alpha_x, alpha_y, local_halfway_vector);
-
     float G1V = G1(alpha_x, alpha_y, local_view_direction);
     float G1L = G1(alpha_x, alpha_y, local_to_light_direction);
     float G2 = G1V * G1L;
+
+    float D = GTR2_anisotropic(alpha_x, alpha_y, local_halfway_vector);
+    float Dvisible = GTR2_anisotropic_vndf(alpha_x, alpha_y, D, G1V, local_view_direction, local_halfway_vector);
 
     // Maxing 1.0e-8f here to avoid zeros
     float NoV = hippt::max(1.0e-8f, hippt::abs(local_view_direction.z));
     float NoL = hippt::max(1.0e-8f, hippt::abs(local_to_light_direction.z));
 
-    out_pdf = D * G1V / (4.0f * NoV);
+    // Because we're exactly sampling the visible normals distribution function,
+    // that's exactly our PDF.
+    // 
+    // Additionally, because we need to take into account the reflection operator
+    // that we're going to apply to get our final 'to light direction' and so the
+    // jacobian determinant of that reflection operator is the (4.0f * NoV) in the
+    // denominator
+    out_pdf = Dvisible / (4.0f * NoV);
     return F * D * G2 / (4.0f * NoL * NoV);
 }
 
@@ -445,7 +468,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F microfacet_GTR2_eval(float material_r
  * Evaluation of a torrance-sparrow model with the GTR2 normal distribution
  * and G1 masking-shadowing
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F microfacet_GTR2_eval(float material_roughness, float material_anisotropy, float material_ior, float incident_ior, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, float& out_pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GTR2_eval(float material_roughness, float material_anisotropy, float material_ior, float incident_ior, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, float& out_pdf)
 {
     float HoL = hippt::clamp(1.0e-8f, 1.0f, hippt::dot(local_halfway_vector, local_to_light_direction));
 
@@ -454,9 +477,15 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F microfacet_GTR2_eval(float material_r
     ColorRGB32F R0 = ColorRGB32F((R0_nume * R0_nume) / (R0_denom * R0_denom));
     ColorRGB32F F = fresnel_schlick(R0, HoL);
 
-    return microfacet_GTR2_eval(material_roughness, material_anisotropy, F, local_view_direction, local_to_light_direction, local_halfway_vector, out_pdf);
+    return torrance_sparrow_GTR2_eval(material_roughness, material_anisotropy, F, local_view_direction, local_to_light_direction, local_halfway_vector, out_pdf);
 }
 
+/*
+ * Samples a microfacet normal from the distribution of visible normals of
+ * the GTR2 normal function distribution and reflects the given view direction
+ * about that microfacet normal to produce a 'to_light_direction' in local
+ * shading space that is then returned by that function
+ */
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 microfacet_GTR2_sample_reflection(float roughness, float anisotropy, const float3& local_view_direction, Xorshift32Generator& random_number_generator)
 {
     // The view direction can sometimes be below the shading normal hemisphere
@@ -465,7 +494,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 microfacet_GTR2_sample_reflection(float ro
     float alpha_x, alpha_y;
     SimplifiedRendererMaterial::get_alphas(roughness, anisotropy, alpha_x, alpha_y);
 
-    float3 microfacet_normal = GGX_aniso_sample(local_view_direction * below_normal, alpha_x, alpha_y, random_number_generator);
+    float3 microfacet_normal = GTR2_anisotropic_sample_microfacet(local_view_direction * below_normal, alpha_x, alpha_y, random_number_generator);
     float3 sampled_direction = reflect_ray(local_view_direction, microfacet_normal * below_normal);
 
     // Should already be normalized but float imprecisions...
