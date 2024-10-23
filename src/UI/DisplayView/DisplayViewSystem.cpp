@@ -32,6 +32,7 @@ DisplayViewSystem::DisplayViewSystem(std::shared_ptr<GPURenderer> renderer, Rend
 	OpenGLShader albedo_display_fragment_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/albedo_display.frag", OpenGLShader::FRAGMENT_SHADER);
 	OpenGLShader adaptive_display_fragment_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/heatmap_int.frag", OpenGLShader::FRAGMENT_SHADER);
 	OpenGLShader pixel_converged_display_fragment_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/boolmap_int.frag", OpenGLShader::FRAGMENT_SHADER);
+	OpenGLShader white_furnace_threshold_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/white_furnace_threshold.frag", OpenGLShader::FRAGMENT_SHADER);
 
 	// Making shared_ptr<OpenGLProgram>s here because multiple display views may share the same OpenGLProgram
 	std::shared_ptr<OpenGLProgram> default_display_program = std::make_shared<OpenGLProgram>(fullscreen_quad_vertex_shader, default_display_fragment_shader);
@@ -40,8 +41,9 @@ DisplayViewSystem::DisplayViewSystem(std::shared_ptr<GPURenderer> renderer, Rend
 	std::shared_ptr<OpenGLProgram> albedo_display_program = std::make_shared<OpenGLProgram>(fullscreen_quad_vertex_shader, albedo_display_fragment_shader);
 	std::shared_ptr<OpenGLProgram> pixel_convergence_heatmap_display_program = std::make_shared<OpenGLProgram>(fullscreen_quad_vertex_shader, adaptive_display_fragment_shader);
 	std::shared_ptr<OpenGLProgram> pixel_converged_display_program = std::make_shared<OpenGLProgram>(fullscreen_quad_vertex_shader, pixel_converged_display_fragment_shader);
+	std::shared_ptr<OpenGLProgram> white_furnace_threshold_program = std::make_shared<OpenGLProgram>(fullscreen_quad_vertex_shader, white_furnace_threshold_shader);
 
-	// Creating all the texture views
+	// Creating all the display views
 	DisplayView default_display_view = DisplayView(DisplayViewType::DEFAULT, default_display_program);
 	DisplayView denoise_blend_display_view = DisplayView(DisplayViewType::DENOISED_BLEND, denoise_blend_display_program);
 	DisplayView normals_display_view = DisplayView(DisplayViewType::DISPLAY_NORMALS, normal_display_program);
@@ -50,6 +52,7 @@ DisplayViewSystem::DisplayViewSystem(std::shared_ptr<GPURenderer> renderer, Rend
 	DisplayView albedo_denoised_display_view = DisplayView(DisplayViewType::DISPLAY_DENOISED_ALBEDO, albedo_display_program);
 	DisplayView pixel_convergence_heatmap_display_view = DisplayView(DisplayViewType::PIXEL_CONVERGENCE_HEATMAP, pixel_convergence_heatmap_display_program);
 	DisplayView pixel_converged_display_view = DisplayView(DisplayViewType::PIXEL_CONVERGED_MAP, pixel_converged_display_program);
+	DisplayView white_furnace_threshold_view = DisplayView(DisplayViewType::WHITE_FURNACE_THRESHOLD, white_furnace_threshold_program);
 
 	// Adding the display views to the map
 	m_display_views[DisplayViewType::DEFAULT] = default_display_view;
@@ -60,6 +63,7 @@ DisplayViewSystem::DisplayViewSystem(std::shared_ptr<GPURenderer> renderer, Rend
 	m_display_views[DisplayViewType::DISPLAY_DENOISED_ALBEDO] = albedo_denoised_display_view;
 	m_display_views[DisplayViewType::PIXEL_CONVERGENCE_HEATMAP] = pixel_convergence_heatmap_display_view;
 	m_display_views[DisplayViewType::PIXEL_CONVERGED_MAP] = pixel_converged_display_view;
+	m_display_views[DisplayViewType::WHITE_FURNACE_THRESHOLD] = white_furnace_threshold_view;
 
 	// Denoiser blend by default if denoising enabled. Default view otherwise
 	DisplayViewType default_display_view_type;
@@ -186,9 +190,15 @@ std::shared_ptr<OpenGLProgram> DisplayViewSystem::get_active_display_program()
 	return m_current_display_view->get_display_program();
 }
 
+DisplaySettings& DisplayViewSystem::get_display_settings()
+{
+	return m_display_settings;
+}
+
 void DisplayViewSystem::update_display_program_uniforms(const DisplayViewSystem* display_view_system, std::shared_ptr<OpenGLProgram> program, std::shared_ptr<GPURenderer> renderer, std::shared_ptr<ApplicationSettings> application_settings)
 {
 	const DisplayView* display_view = display_view_system->get_current_display_view();
+	const DisplaySettings& display_settings = display_view_system->m_display_settings;
 	
 	HIPRTRenderSettings render_settings = renderer->get_render_settings();
 	render_settings.sample_number = std::max(1, render_settings.sample_number); 
@@ -210,10 +220,30 @@ void DisplayViewSystem::update_display_program_uniforms(const DisplayViewSystem*
 
 		program->set_uniform("u_texture", DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
 		program->set_uniform("u_sample_number", sample_number);
-		program->set_uniform("u_do_tonemapping", application_settings->do_tonemapping);
+		program->set_uniform("u_do_tonemapping", display_settings.do_tonemapping);
 		program->set_uniform("u_resolution_scaling", render_low_resolution_scaling);
-		program->set_uniform("u_gamma", application_settings->tone_mapping_gamma);
-		program->set_uniform("u_exposure", application_settings->tone_mapping_exposure);
+		program->set_uniform("u_gamma", display_settings.tone_mapping_gamma);
+		program->set_uniform("u_exposure", display_settings.tone_mapping_exposure);
+
+		break;
+	}
+
+	case DisplayViewType::WHITE_FURNACE_THRESHOLD:
+	{
+		int sample_number;
+		if (application_settings->enable_denoising && application_settings->last_denoised_sample_count != -1)
+			sample_number = application_settings->last_denoised_sample_count;
+		else
+			sample_number = render_settings.sample_number;
+
+		program->set_uniform("u_texture", DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
+		program->set_uniform("u_sample_number", sample_number);
+		program->set_uniform("u_do_tonemapping", display_settings.do_tonemapping);
+		program->set_uniform("u_resolution_scaling", render_low_resolution_scaling);
+		program->set_uniform("u_gamma", display_settings.tone_mapping_gamma);
+		program->set_uniform("u_exposure", display_settings.tone_mapping_exposure);
+		program->set_uniform("u_use_low_threshold", display_settings.white_furnace_display_use_low_threshold);
+		program->set_uniform("u_use_high_threshold", display_settings.white_furnace_display_use_high_threshold);
 
 		break;
 	}
@@ -226,18 +256,18 @@ void DisplayViewSystem::update_display_program_uniforms(const DisplayViewSystem*
 		noisy_sample_number = render_settings.sample_number;
 		denoised_sample_number = application_settings->last_denoised_sample_count;
 
-		if (application_settings->blend_override != -1.0f)
-			program->set_uniform("u_blend_factor", application_settings->blend_override);
+		if (display_settings.blend_override != -1.0f)
+			program->set_uniform("u_blend_factor", display_settings.blend_override);
 		else
-			program->set_uniform("u_blend_factor", application_settings->denoiser_blend);
+			program->set_uniform("u_blend_factor", display_settings.denoiser_blend);
 		program->set_uniform("u_texture_1", DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
 		program->set_uniform("u_texture_2", DisplayViewSystem::DISPLAY_TEXTURE_UNIT_2);
 		program->set_uniform("u_sample_number_1", noisy_sample_number);
 		program->set_uniform("u_sample_number_2", denoised_sample_number);
-		program->set_uniform("u_do_tonemapping", application_settings->do_tonemapping);
+		program->set_uniform("u_do_tonemapping", display_settings.do_tonemapping);
 		program->set_uniform("u_resolution_scaling", render_low_resolution_scaling);
-		program->set_uniform("u_gamma", application_settings->tone_mapping_gamma);
-		program->set_uniform("u_exposure", application_settings->tone_mapping_exposure);
+		program->set_uniform("u_gamma", display_settings.tone_mapping_gamma);
+		program->set_uniform("u_exposure", display_settings.tone_mapping_exposure);
 
 		break;
 	}
@@ -253,9 +283,9 @@ void DisplayViewSystem::update_display_program_uniforms(const DisplayViewSystem*
 	case DisplayViewType::DISPLAY_DENOISED_NORMALS:
 		program->set_uniform("u_texture", DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
 		program->set_uniform("u_resolution_scaling", render_low_resolution_scaling);
-		program->set_uniform("u_do_tonemapping", application_settings->do_tonemapping);
-		program->set_uniform("u_gamma", application_settings->tone_mapping_gamma);
-		program->set_uniform("u_exposure", application_settings->tone_mapping_exposure);
+		program->set_uniform("u_do_tonemapping", display_settings.do_tonemapping);
+		program->set_uniform("u_gamma", display_settings.tone_mapping_gamma);
+		program->set_uniform("u_exposure", display_settings.tone_mapping_exposure);
 
 		break;
 
@@ -341,6 +371,7 @@ void DisplayViewSystem::upload_relevant_buffers_to_texture()
 		break;
 
 	case DisplayViewType::DEFAULT:
+	case DisplayViewType::WHITE_FURNACE_THRESHOLD:
 	default:
 		internal_upload_buffer_to_texture(m_renderer->get_color_framebuffer(), m_display_texture_1, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
 		break;
@@ -381,6 +412,7 @@ void DisplayViewSystem::internal_recreate_display_textures_from_display_view(Dis
 	case DisplayViewType::DISPLAY_DENOISED_NORMALS:
 	case DisplayViewType::DISPLAY_ALBEDO:
 	case DisplayViewType::DISPLAY_DENOISED_ALBEDO:
+	case DisplayViewType::WHITE_FURNACE_THRESHOLD:
 		texture_1_type_needed = DisplayTextureType::FLOAT3;
 		break;
 

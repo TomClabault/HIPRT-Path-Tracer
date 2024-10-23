@@ -34,6 +34,7 @@ public:
 	DisplayViewType get_current_display_view_type();
 	const DisplayView* get_current_display_view() const;
 	std::shared_ptr<OpenGLProgram> get_active_display_program();
+	DisplaySettings& get_display_settings();
 
 	/**
 	 * Applies queued changes (such as changing the display view for example)
@@ -154,10 +155,11 @@ private:
 	// Framebuffer we're drawing. We're not directly drawing to the back buffer because we
 	// want ImGui to do the drawing in one of its ImGui window
 	GLuint m_framebuffer;
-	public:
+public:
 	GLuint m_fbo_texture;
-	private:
 
+private:
+	DisplaySettings m_display_settings;
 	std::shared_ptr<GPURenderer> m_renderer = nullptr;
 	RenderWindow* m_render_window = nullptr;
 };

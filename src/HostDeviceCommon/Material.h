@@ -76,8 +76,8 @@ struct SimplifiedRendererMaterial
     HIPRT_HOST_DEVICE static void get_alphas(float roughness, float anisotropy, float& out_alpha_x, float& out_alpha_y)
     {
         float aspect = sqrtf(1.0f - 0.9f * anisotropy);
-        out_alpha_x = hippt::max(1.0e-4f, roughness * roughness / aspect);
-        out_alpha_y = hippt::max(1.0e-4f, roughness * roughness * aspect);
+        out_alpha_x = roughness * roughness / aspect;
+        out_alpha_y = roughness * roughness * aspect;
     }
 
     HIPRT_HOST_DEVICE void set_emission(ColorRGB32F new_emission)

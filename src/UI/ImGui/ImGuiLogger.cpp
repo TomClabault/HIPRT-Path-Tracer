@@ -10,6 +10,11 @@ ImGuiLogger::ImGuiLogger()
     clear();
 }
 
+ImGuiLogger::~ImGuiLogger()
+{
+    m_destroyed = true;
+}
+
 void ImGuiLogger::add_line_with_name(ImGuiLoggerSeverity severity, const char* line_name, const char* fmt, ...)
 {
     va_list args;
@@ -153,6 +158,9 @@ void ImGuiLogger::clear()
 void ImGuiLogger::update_line(const char* line_name, const char* fmt, ...)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
+
+    if (m_destroyed)
+        return;
 
     auto find = m_names_to_lines.find(line_name);
     if (find == m_names_to_lines.end())
