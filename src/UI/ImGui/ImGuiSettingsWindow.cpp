@@ -138,16 +138,7 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	ImGui::SeparatorText("Viewport Settings");
-	std::vector<const char*> items = { "- Default", "- Denoiser blend", "- Denoiser - Normals", "- Denoiser - Denoised normals", "- Denoiser - Albedo", "- Denoiser - Denoised albedo" };
-	if (render_settings.has_access_to_adaptive_sampling_buffers())
-	{
-		items.push_back("- Pixel convergence heatmap");
-		items.push_back("- Converged pixels map");
-	}
-
-	int display_view_selected = m_render_window->get_display_view_system()->get_current_display_view_type();
-	if (ImGui::Combo("Display View", &display_view_selected, items.data(), items.size()))
-		m_render_window->get_display_view_system()->queue_display_view_change(static_cast<DisplayViewType>(display_view_selected));
+	display_view_selector();
 
 	static float resolution_scaling_current_widget_value = m_application_settings->render_resolution_scale;
 	ImGui::BeginDisabled(m_application_settings->keep_same_resolution);
@@ -388,6 +379,71 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 
 	ImGui::TreePop();
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+}
+
+void ImGuiSettingsWindow::display_view_selector()
+{
+	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
+	std::shared_ptr<DisplayViewSystem> display_view_system = m_render_window->get_display_view_system();
+
+	static std::unordered_map<std::string, DisplayViewType> display_string_to_type = {
+		{ "- Default", DisplayViewType::DEFAULT },
+		{ "- Denoiser blend", DisplayViewType::DENOISED_BLEND },
+		{ "- Denoiser - Normals", DisplayViewType::DISPLAY_NORMALS },
+		{ "- Denoiser - Denoised normals", DisplayViewType::DISPLAY_DENOISED_NORMALS},
+		{ "- Denoiser - Albedo", DisplayViewType::DISPLAY_ALBEDO },
+		{ "- Denoiser - Denoised albedo", DisplayViewType::DISPLAY_DENOISED_ALBEDO },
+		{ "- Pixel convergence heatmap", DisplayViewType::PIXEL_CONVERGENCE_HEATMAP },
+		{ "- Converged pixels map", DisplayViewType::PIXEL_CONVERGED_MAP },
+		{ "- White Furnace Threshold", DisplayViewType::WHITE_FURNACE_THRESHOLD }
+	};
+
+	std::vector<const char*> items = { "- Default", "- Denoiser blend", "- Denoiser - Normals", "- Denoiser - Denoised normals", "- Denoiser - Albedo", "- Denoiser - Denoised albedo" };
+	if (render_settings.has_access_to_adaptive_sampling_buffers())
+	{
+		items.push_back("- Pixel convergence heatmap");
+		items.push_back("- Converged pixels map");
+	}
+	items.push_back("- White Furnace Threshold");
+
+	static DisplayViewType display_view_type_selected = display_view_system->get_current_display_view_type();
+	static int display_view_selected_index = display_view_system->get_current_display_view_type();
+	if (ImGui::BeginCombo("Display View", items[display_view_selected_index]))
+	{
+		for (int i = 0; i < items.size(); i++)
+		{
+			const bool is_selected = (display_view_selected_index == i);
+			if (ImGui::Selectable(items[i], is_selected))
+			{
+				display_view_type_selected = display_string_to_type[std::string(items[i])];
+				display_view_selected_index = i;
+
+				display_view_system->queue_display_view_change(display_view_type_selected);
+			}
+
+			if (is_selected)
+				ImGui::SetItemDefaultFocus();
+		}
+		ImGui::EndCombo();
+	}
+
+	DisplaySettings& display_settings = display_view_system->get_display_settings();
+	// Adding some more UI for certain display views
+	switch (display_view_type_selected)
+	{
+		case DisplayViewType::WHITE_FURNACE_THRESHOLD:
+			ImGui::Checkbox("Use low threshold", &display_settings.white_furnace_display_use_low_threshold);
+			ImGuiRenderer::show_help_marker("If checked, the white furnace threshold shader will display "
+											"pixel that lose energy as green. Pixels will not be highlighted "
+											"if unchecked");
+			ImGui::Checkbox("Use high threshold", &display_settings.white_furnace_display_use_high_threshold);
+			ImGuiRenderer::show_help_marker("If checked, the white furnace threshold shader will display "
+											"pixel that gain energy as red. Pixels will not be highlighted "
+											"if unchecked");
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			break;
+	}
 }
 
 void ImGuiSettingsWindow::apply_performance_preset(ImGuiRendererPerformancePreset performance_preset)
@@ -1727,9 +1783,10 @@ void ImGuiSettingsWindow::draw_denoiser_panel()
 		ImGui::EndDisabled();
 		ImGui::TreePop();
 	}
+	DisplaySettings& display_settings = m_render_window->get_display_view_system()->get_display_settings();
 	ImGui::Checkbox("Only denoise when rendering is done", &m_application_settings->denoise_when_rendering_done);
 	ImGui::SliderInt("Denoise Sample Skip", &m_application_settings->denoiser_sample_skip, 1, 128);
-	ImGui::SliderFloat("Denoiser blend", &m_application_settings->denoiser_blend, 0.0f, 1.0f);
+	ImGui::SliderFloat("Denoiser blend", &display_settings.denoiser_blend, 0.0f, 1.0f);
 	ImGui::EndDisabled();
 
 	ImGui::Text("Denoising time: %.3fms", m_application_settings->last_denoised_duration / 1000.0f);
@@ -1744,9 +1801,10 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 		return;
 	ImGui::TreePush("Post-processing tree");
 
-	ImGui::Checkbox("Do tonemapping", &m_application_settings->do_tonemapping);
-	ImGui::InputFloat("Gamma", &m_application_settings->tone_mapping_gamma);
-	ImGui::InputFloat("Exposure", &m_application_settings->tone_mapping_exposure);
+	DisplaySettings& display_settings = m_render_window->get_display_view_system()->get_display_settings();
+	ImGui::Checkbox("Do tonemapping", &display_settings.do_tonemapping);
+	ImGui::InputFloat("Gamma", &display_settings.tone_mapping_gamma);
+	ImGui::InputFloat("Exposure", &display_settings.tone_mapping_exposure);
 
 	ImGui::TreePop();
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));

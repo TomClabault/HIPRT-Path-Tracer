@@ -17,12 +17,11 @@
 
 #include "stb_image_write.h"
 
-// Kernel compiler for waiting on threads currently reading files on disk
+// GPUKernelCompiler for waiting on threads currently reading files on disk
 extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // TODO demos:
-// new sheen lobe
 // energy conserving GGX
 
 // TODOs ongoing
@@ -40,10 +39,9 @@ extern ImGuiLogger g_imgui_logger;
 // - take transmission color into account when direct sampling a light source that is inside a volume
 // - denoiser AOVs not accounting for transmission correctly since Disney  BSDF
 //	  - same with perfect reflection
-// - fix sampling lights inside dielectrics with ReSTIR DI
+// - fix sampling lights inside dielectrics with ReSTIR DI (using minT for rays)
 // - when using a BSDF override, transmissive materials keep their dielectric priorities and this can mess up shadow rays and intersections in general if the BSDF used for the override doesn't support transmissive materials
 // - threadmanager: what if we start a thread with a dependency A on a thread that itself has a dependency B? we're going to try join dependency A even if thread with dependency on B hasn't even started yet --> joining nothing --> immediate return --> should have waited for the dependency but hasn't
-// - very rarely: quitting the application destroys the ImGuiLogger while some thread might still be updating a line --> access to the destroyed imguilogger to update the line --> segfault
 
 
 // TODO Code Organization:
@@ -79,6 +77,7 @@ extern ImGuiLogger g_imgui_logger;
 // - ImGui: Sampling --> Materials panel under "Envmap Sampling" panel for choosing VNDF / Spherical Caps VNDF / SGGX LTC parameters or approx for sheen, ...
 // - do not evaluate perfectly smooth specular materials to save on computations? Because evaluating is going to yield 0.0f anyways --> dirac distribution. We should only sample those I guess
 // - energy conserving GGX & Fresnel [https://blog.selfshadow.com/publications/s2017-shading-course/imageworks/s2017_pbs_imageworks_slides_v2.pdf]
+// - use bare variables for principled_bsdf_sample CDF[] because local arrays are bad on AMD GPUs
 // - pack ray payload
 // - pack HDR as color as 9/9/9/5 RGBE? https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/MiniEngine/Core/Shaders/PixelPacking_RGBE.hlsli
 // - presample lights per each tile of pixels the same as for ReSTIR DI and use that for second bounces sampling?
@@ -865,7 +864,9 @@ void RenderWindow::update_perf_metrics()
 bool RenderWindow::denoise()
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
-	m_application_settings->blend_override = -1.0f;
+	DisplaySettings& display_settings = m_display_view_system->get_display_settings();
+
+	display_settings.blend_override = -1.0f;
 
 	if (m_application_settings->enable_denoising)
 	{
@@ -947,7 +948,7 @@ bool RenderWindow::denoise()
 		if (display_noisy)
 			// We need to display the noisy framebuffer so we're forcing the blending factor to 0.0f to only
 			// choose the first view out of the two that are going to be blend (and the first view is the noisy view)
-			m_application_settings->blend_override = 0.0f;
+			display_settings.blend_override = 0.0f;
 
 		m_application_settings->denoiser_settings_changed = false;
 

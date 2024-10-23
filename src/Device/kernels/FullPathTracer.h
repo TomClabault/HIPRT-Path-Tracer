@@ -70,11 +70,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool check_for_nan(ColorRGB32F ray_color, int x, 
     return false;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE bool sanity_check(const HIPRTRenderData& render_data, RayPayload& ray_payload, int x, int y, int2& res, int sample)
+HIPRT_HOST_DEVICE HIPRT_INLINE bool sanity_check(const HIPRTRenderData& render_data, RayPayload& ray_payload, int x, int y, int2& res)
 {
     bool invalid = false;
-    invalid |= check_for_negative_color(ray_payload.ray_color, x, y, sample);
-    invalid |= check_for_nan(ray_payload.ray_color, x, y, sample);
+    invalid |= check_for_negative_color(ray_payload.ray_color, x, y, render_data.render_settings.sample_number);
+    invalid |= check_for_nan(ray_payload.ray_color, x, y, render_data.render_settings.sample_number);
 
     if (invalid)
     {
@@ -214,6 +214,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
 
                 if (bounce + 1 < render_data.render_settings.nb_bounces)
                 {
+                    // These two lines are for debugging only to be able to reproduce the random
+                    // behavior when sampling the BSDF below. In a line by line debugger, we can
+                    // just move the debugger to the line that sets the seed so that the BSDF
+                    // sampling then reproduces the sampled direction that cause an issue
+                    unsigned int seed_before = random_number_generator.m_state.seed;
+                    random_number_generator.m_state.seed = seed_before;
+
                     // Only sampling the next bounce if we actually need it
                     float bsdf_pdf;
                     float3 bounce_direction;
@@ -274,7 +281,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
     }
 
     // Checking for NaNs / negative value samples. Output 
-    if (!sanity_check(render_data, ray_payload, x, y, res, render_data.render_settings.sample_number))
+    if (!sanity_check(render_data, ray_payload, x, y, res))
         return;
 
     squared_luminance_of_samples += ray_payload.ray_color.luminance() * ray_payload.ray_color.luminance();

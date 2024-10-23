@@ -12,6 +12,36 @@
 #include "HostDeviceCommon/Math.h"
 #include "HostDeviceCommon/Material.h"
 
+// // BSDF Inline Functions
+//inline float CosTheta(const float3& w) { return w.z; }
+//inline float Cos2Theta(const float3& w) { return w.z * w.z; }
+//inline float AbsCosTheta(const float3& w) { return std::abs(w.z); }
+//inline float Sin2Theta(const float3& w) {
+//    return std::max((float)0, (float)1 - Cos2Theta(w));
+//}
+//
+//inline float SinTheta(const float3& w) { return std::sqrt(Sin2Theta(w)); }
+//
+//inline float TanTheta(const float3& w) { return SinTheta(w) / CosTheta(w); }
+//
+//inline float Tan2Theta(const float3& w) {
+//    return Sin2Theta(w) / Cos2Theta(w);
+//}
+//
+//inline float CosPhi(const float3& w) {
+//    float sinTheta = SinTheta(w);
+//    return (sinTheta == 0) ? 1 : hippt::clamp(-1.0f, 1.0f, w.x / sinTheta);
+//}
+//
+//inline float SinPhi(const float3& w) {
+//    float sinTheta = SinTheta(w);
+//    return (sinTheta == 0) ? 0 : hippt::clamp(-1.0f, 1.0f, w.y / sinTheta);
+//}
+//
+//inline float Cos2Phi(const float3& w) { return CosPhi(w) * CosPhi(w); }
+//
+//inline float Sin2Phi(const float3& w) { return SinPhi(w) * SinPhi(w); }
+
 /* References:
  * [1] [Physically Based Rendering 3rd Edition] https://www.pbr-book.org/3ed-2018/Reflection_Models/Microfacet_Models
  */
@@ -53,6 +83,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F oren_nayar_brdf_eval(const Simplified
     float oren_nayar_A;
     float oren_nayar_B;
     SimplifiedRendererMaterial::get_oren_nayar_AB(material.oren_nayar_sigma, oren_nayar_A, oren_nayar_B);
+
     pdf = local_to_light_direction.z / M_PI;
     return material.base_color / M_PI * (oren_nayar_A + oren_nayar_B * max_cos * sin_alpha * tan_beta);
 }

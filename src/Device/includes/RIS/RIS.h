@@ -122,7 +122,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
             // Multiplying by the inside_surface_multiplier here because if we're inside the surface, we want to flip the normal
             // for the dot product to be "properly" oriented.
             cosine_at_evaluated_point = hippt::max(0.0f, hippt::dot(closest_hit_info.shading_normal * inside_surface_multiplier, to_light_direction));
-            if (cosine_at_evaluated_point > 0.0f)
+            if (cosine_at_evaluated_point > 0.0f && cosine_at_light_source > 1.0e-6f)
             {
                 // Converting the PDF from area measure to solid angle measure requires dividing by
                 // cos(theta) / dist^2. Dividing by that factor is equal to multiplying by the inverse

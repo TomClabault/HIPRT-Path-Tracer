@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include "UI/DisplayView/DisplaySettings.h"
 #include "UI/DisplayView/DisplayViewEnum.h"
 
 struct ApplicationSettings
@@ -27,15 +28,6 @@ struct ApplicationSettings
 	// How many frames to wait for before denoising (this basically reduces 
 	// the performance penalty of denoising each frame).
 	int denoiser_sample_skip = 0;
-	// If 1.0f, 100% of the denoised result is displayed in the viewport.
-	// If 0.0f, 100% of the noisy framebuffer is displayed in the viewport
-	// Linearly interpoalted between the two for intermediate values
-	float denoiser_blend = 1.0f;
-	// Overrides the blending factor for the blend-2-textures display shader
-	// 0.0f displays 100% of texture 1.
-	// 1.0f gives 100% of texture 2.
-	// -1.0f disables the override
-	float blend_override = -1.0f;
 	// If the denoiser settings changed since last frame
 	bool denoiser_settings_changed = false;
 
@@ -95,13 +87,6 @@ struct ApplicationSettings
 	// pixels that yet have to converge decreases. And with high FPS count, we get the risk
 	// of being CPU bound since we'll have to display many frames per second.
 	bool auto_sample_per_frame = true;
-
-	// Whether or not to do tonemapping for display fragment shader that support it
-	bool do_tonemapping = 1;
-	// Tone mapping gamma
-	float tone_mapping_gamma = 2.2f;
-	// Tone mapping exposure
-	float tone_mapping_exposure = 1.8f;
 };
 
 #endif

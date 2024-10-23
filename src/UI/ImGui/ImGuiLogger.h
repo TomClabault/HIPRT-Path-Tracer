@@ -30,6 +30,7 @@ public:
     static const char* BACKGROUND_KERNEL_COMPILATION_LINE_NAME;
 
     ImGuiLogger();
+    ~ImGuiLogger();
 
     void add_line_with_name(ImGuiLoggerSeverity severity, const char* line_name, const char* fmt, ...) IM_FMTARGS(4);
     void add_line(ImGuiLoggerSeverity severity, const char* fmt, ...) IM_FMTARGS(3);
@@ -89,6 +90,10 @@ private:
 
     // For logger thread safety
     std::mutex m_mutex;
+
+    // Used for threads that may still want to access this logger after
+    // it's been destroyed by another thread
+    bool m_destroyed = false;
 };
 
 #endif

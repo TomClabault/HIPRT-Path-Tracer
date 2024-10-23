@@ -380,9 +380,28 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_specular_layer(const Si
         ColorRGB32F contribution = principled_specular_eval(material, incident_ior, local_view_direction, local_to_light_direction, local_half_vector, specular_pdf);
         contribution *= (1.0f - material.specular_tint) * ColorRGB32F(1.0f) + material.specular_tint * material.specular_color;
         contribution *= specular_weight;
+        contribution *= specular_proba;
         contribution *= layers_throughput;
 
         // Only the transmitted portion of the light goes to the layer below
+        // We're using the shading normal here and not the microfacet normal because:
+        // We want the proportion of light that reaches the layer below. That's given
+        // by 1.0f - fresnelReflection.
+        // 
+        // However, that's quite incorrect.
+        // 
+        // By computing 1.0f - fresnelReflectionMicrofacetNormal, we're computing the light
+        // that goes through only that one microfacet with the microfacet normal. But light
+        // reaches the layer below through all microfacets, not just the one with our current
+        // normal here (local_half_vector). To compute this correctly, we would actually need
+        // to integrate over the microfacet normals and compute the fresnel refraction
+        // (1.0f - fresnelReflection) for each of them and weight that contribution by the
+        // probability given by the normal distribution function for the microfacet normal.
+        // 
+        // We can't do that integration online so we're instead using the "average normal" of
+        // the microfacets to compute the fresnel.
+        // And the "average normal" is actually the surface normal, shading_normal, because that's
+        // how the NDF is defined
         layers_throughput *= ColorRGB32F(1.0f) - material.specular * fresnel_schlick_from_ior(incident_ior, material.ior, shading_normal, local_to_light_direction);
 
         out_cumulative_pdf += specular_pdf * specular_proba;
@@ -400,6 +419,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_diffuse_layer(const Sim
         float diffuse_pdf;
         ColorRGB32F contribution = principled_diffuse_eval(material, local_view_direction, local_to_light_direction, diffuse_pdf);
         contribution *= diffuse_weight;
+        contribution *= diffuse_proba;
         contribution *= layers_throughput;
 
         out_cumulative_pdf += diffuse_pdf * diffuse_proba;
@@ -429,6 +449,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_glass_layer(const Rende
 
     return ColorRGB32F(0.0f);
 }
+
+#define DISABLE_DIFFUSE_LOBE 0
 
 // TODO total internal reflection fresnel on the way out of a layer
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, RayVolumeState& ray_volume_state, const float3& view_direction, float3 shading_normal, const float3& to_light_direction, float& pdf)
@@ -474,6 +496,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRende
     float specular_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission) * material.specular * outside_object;
     float diffuse_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission) * outside_object;
     float glass_weight = (1.0f - material.metallic) * material.specular_transmission;
+#if DISABLE_DIFFUSE_LOBE
+    diffuse_weight = 0.0f;
+#endif
 
     float coat_sample_proba = coat_weight;
     float sheen_sample_proba = sheen_weight;
@@ -523,9 +548,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRen
 
     float3 normal = shading_normal;
 
-    float glass_weight = (1.0f - material.metallic) * material.specular_transmission;
+    float glass_sampling_weight = (1.0f - material.metallic) * material.specular_transmission;
     bool outside_object = hippt::dot(view_direction, normal) > 0;
-    if (glass_weight == 0.0f && !outside_object)
+    if (glass_sampling_weight == 0.0f && !outside_object)
     {
         // If we're not sampling the glass lobe so we're checking
         // whether the view direction is below the upper hemisphere around the shading
@@ -548,28 +573,31 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRen
     }
 
     // Computing the weights for sampling the lobes
-    float coat_weight = material.coat * outside_object;
-    float sheen_weight = material.sheen * outside_object;
-    float metal_weight = material.metallic * outside_object;
-    float specular_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission) * material.specular * outside_object;
+    float coat_sampling_weight = material.coat * outside_object;
+    float sheen_sampling_weight = material.sheen * outside_object;
+    float metal_sampling_weight = material.metallic * outside_object;
+    float specular_sampling_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission) * material.specular * outside_object;
     // The diffuse lobe is below the specular lobe so it 
     // has the same probability of being sampled
-    float diffuse_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission) * outside_object;
+    float diffuse_sampling_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission) * outside_object;
+#if DISABLE_DIFFUSE_LOBE
+    diffuse_sampling_weight = 0.0f;
+#endif
 
-    float normalize_factor = 1.0f / (coat_weight + sheen_weight + metal_weight + specular_weight + diffuse_weight + glass_weight);
-    coat_weight *= normalize_factor;
-    sheen_weight *= normalize_factor;
-    metal_weight *= normalize_factor;
-    specular_weight *= normalize_factor;
-    diffuse_weight *= normalize_factor;
-    glass_weight *= normalize_factor;
+    float normalize_factor = 1.0f / (coat_sampling_weight + sheen_sampling_weight + metal_sampling_weight + specular_sampling_weight + diffuse_sampling_weight + glass_sampling_weight);
+    coat_sampling_weight *= normalize_factor;
+    sheen_sampling_weight *= normalize_factor;
+    metal_sampling_weight *= normalize_factor;
+    specular_sampling_weight *= normalize_factor;
+    diffuse_sampling_weight *= normalize_factor;
+    glass_sampling_weight *= normalize_factor;
 
     float cdf[5];
-    cdf[0] = coat_weight;
-    cdf[1] = cdf[0] + sheen_weight;
-    cdf[2] = cdf[1] + metal_weight;
-    cdf[3] = cdf[2] + specular_weight;
-    cdf[4] = cdf[3] + diffuse_weight;
+    cdf[0] = coat_sampling_weight;
+    cdf[1] = cdf[0] + sheen_sampling_weight;
+    cdf[2] = cdf[1] + metal_sampling_weight;
+    cdf[3] = cdf[2] + specular_sampling_weight;
+    cdf[4] = cdf[3] + diffuse_sampling_weight;
     // The last cdf[] is implicitely 1.0f so don't need to include it
 
     float rand_1 = random_number_generator();
