@@ -82,7 +82,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 rotate_vector(const float3& vec, const flo
 	return vec * cos_angle + axis * hippt::dot(vec, axis) * (1.0f - cos_angle) + sin_angle * hippt::cross(axis, vec);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sheen_ltc_eval(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, const float3& local_to_light_direction, const float3& local_view_direction, float& pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sheen_ltc_eval(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, const float3& local_to_light_direction, const float3& local_view_direction, float& out_pdf, float& out_sheen_reflectance)
 {
 	// The LTC needs to be evaluated in a Z-up coordinate frame with view direction aligned
 	// with phi=0 (so no rotation on the X/Y plane).
@@ -98,7 +98,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sheen_ltc_eval(const HIPRTRenderData&
 	ColorRGB32F AiBiRi = read_LTC_parameters(render_data, material.sheen_roughness, local_view_direction.z);
 	float Do = eval_ltc(to_light_standard_frame, AiBiRi);
 
-	pdf = Do;
+	out_pdf = Do;
+	out_sheen_reflectance = AiBiRi.b;
 	// The cosine term is included in the LTC distribution but the renderer expects that
 	// the cosine term isn't included in the BSDFs so we cancel it here.
 	return material.sheen_color * AiBiRi.b * Do / local_to_light_direction.z;

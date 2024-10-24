@@ -47,9 +47,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_coat_sample(const SimplifiedRen
     return microfacet_GTR2_sample_reflection(material.coat_roughness, material.coat_anisotropy, local_view_direction, random_number_generator);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_sheen_eval(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, const float3& local_view_direction, const float3& local_to_light_direction, float& pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_sheen_eval(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, const float3& local_view_direction, const float3& local_to_light_direction, float& pdf, float& out_sheen_reflectance)
 {
-    return sheen_ltc_eval(render_data, material, local_to_light_direction, local_view_direction, pdf);
+    return sheen_ltc_eval(render_data, material, local_to_light_direction, local_view_direction, pdf, out_sheen_reflectance);
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_sheen_sample(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, const float3& local_view_direction, const float3& shading_normal, Xorshift32Generator& random_number_generator)
@@ -333,8 +333,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_sheen_layer(const HIPRT
 {
     if (sheen_weight > 0.0f)
     {
+        float sheen_reflectance;
         float sheen_pdf;
-        ColorRGB32F contribution = principled_sheen_eval(render_data, material, local_view_direction, local_to_light_direction, sheen_pdf);
+        ColorRGB32F contribution = principled_sheen_eval(render_data, material, local_view_direction, local_to_light_direction, sheen_pdf, sheen_reflectance);
         contribution *= sheen_weight;
         contribution *= layers_throughput;
 
@@ -346,7 +347,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_sheen_layer(const HIPRT
         //
         // Also, we're using the world space shading normal here and not half-vector because
         // the sheen lobe isn't a microfacet lobe so its normal isn't the halfway-vector
-        layers_throughput *= ColorRGB32F(1.0f) - material.sheen * fresnel_schlick_from_ior(incident_ior, material.ior, local_to_light_direction.z);
+        layers_throughput *= 1.0f - material.sheen * sheen_reflectance;
 
         return contribution;
     }
