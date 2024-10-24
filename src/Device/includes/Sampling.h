@@ -388,6 +388,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float G1(float alpha_x, float alpha_y, const floa
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GTR2_eval(float material_roughness, float material_anisotropy, const ColorRGB32F& F, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, float& out_pdf)
 {
+    out_pdf = 0.0f;
+
     float alpha_x;
     float alpha_y;
     SimplifiedRendererMaterial::get_alphas(material_roughness, material_anisotropy, alpha_x, alpha_y);
