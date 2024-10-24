@@ -1407,6 +1407,21 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			ImGui::TreePop();
 		}
 
+		if (ImGui::CollapsingHeader("Materials"))
+		{
+			ImGui::TreePush("Sampling Materials Tree");
+
+			const char* items[] = { "- Lambertian", "- Oren-Nayar" };
+			if (ImGui::Combo("Principled BSDF Diffuse Lobe", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DIFFUSE_LOBE), items, IM_ARRAYSIZE(items)))
+			{
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			ImGui::TreePop();
+		}
+
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();
 	}
