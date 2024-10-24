@@ -2195,6 +2195,8 @@ void ImGuiSettingsWindow::draw_debug_panel()
 	if (!ImGui::CollapsingHeader("Debug"))
 		return;
 
+	ImGui::TreePush("Debug tree");
+
 	if (ImGui::Checkbox("Show NaNs", &m_renderer->get_render_settings().display_NaNs))
 		m_render_window->set_render_dirty(true);
 	ImGuiRenderer::show_help_marker("If true, NaNs that occur during the rendering will show up as pink pixels.");
