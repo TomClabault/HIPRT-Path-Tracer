@@ -427,10 +427,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GTR2_eval(float mate
 {
     float HoL = hippt::clamp(1.0e-8f, 1.0f, hippt::dot(local_halfway_vector, local_to_light_direction));
 
-    float R0_nume = material_ior - incident_ior;
-    float R0_denom = material_ior + incident_ior;
-    ColorRGB32F R0 = ColorRGB32F((R0_nume * R0_nume) / (R0_denom * R0_denom));
-    ColorRGB32F F = fresnel_schlick(R0, HoL);
+    ColorRGB32F F = ColorRGB32F(full_fresnel_dielectric(HoL, incident_ior, material_ior));
 
     return torrance_sparrow_GTR2_eval(material_roughness, material_anisotropy, F, local_view_direction, local_to_light_direction, local_halfway_vector, out_pdf);
 }

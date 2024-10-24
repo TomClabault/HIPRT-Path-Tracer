@@ -21,12 +21,16 @@ Screenshoter::Screenshoter()
 	OpenGLShader normal_display_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/normal_display.frag", OpenGLShader::COMPUTE_SHADER, macro);
 	OpenGLShader albedo_display_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/albedo_display.frag", OpenGLShader::COMPUTE_SHADER, macro);
 	OpenGLShader adaptive_display_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/heatmap_int.frag", OpenGLShader::COMPUTE_SHADER, macro);
+	OpenGLShader pixel_converged_map_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/boolmap_int.frag", OpenGLShader::COMPUTE_SHADER, macro);
+	OpenGLShader white_furnace_display_shader = OpenGLShader(GLSL_SHADERS_DIRECTORY "/white_furnace_threshold.frag", OpenGLShader::COMPUTE_SHADER, macro);
 
 	std::shared_ptr<OpenGLProgram> default_display_program = std::make_shared<OpenGLProgram>();
 	std::shared_ptr<OpenGLProgram> blend_2_display_program = std::make_shared<OpenGLProgram>();
 	std::shared_ptr<OpenGLProgram> normal_display_program = std::make_shared<OpenGLProgram>();
 	std::shared_ptr<OpenGLProgram> albedo_display_program = std::make_shared<OpenGLProgram>();
 	std::shared_ptr<OpenGLProgram> pixel_convergence_heatmap_display_program = std::make_shared<OpenGLProgram>();
+	std::shared_ptr<OpenGLProgram> pixel_converged_map_display_program = std::make_shared<OpenGLProgram>();
+	std::shared_ptr<OpenGLProgram> white_furnace_display_program = std::make_shared<OpenGLProgram>();
 
 	default_display_program->attach(default_display_shader);
 	default_display_program->link();
@@ -43,6 +47,12 @@ Screenshoter::Screenshoter()
 	pixel_convergence_heatmap_display_program->attach(adaptive_display_shader);
 	pixel_convergence_heatmap_display_program->link();
 
+	pixel_converged_map_display_program->attach(pixel_converged_map_shader);
+	pixel_converged_map_display_program->link();
+
+	white_furnace_display_program->attach(white_furnace_display_shader);
+	white_furnace_display_program->link();
+
 	m_compute_programs[DisplayViewType::DEFAULT] = default_display_program;
 	m_compute_programs[DisplayViewType::DENOISED_BLEND] = blend_2_display_program;
 	m_compute_programs[DisplayViewType::DISPLAY_ALBEDO] = albedo_display_program;
@@ -50,6 +60,8 @@ Screenshoter::Screenshoter()
 	m_compute_programs[DisplayViewType::DISPLAY_NORMALS] = normal_display_program;
 	m_compute_programs[DisplayViewType::DISPLAY_DENOISED_NORMALS] = normal_display_program;
 	m_compute_programs[DisplayViewType::PIXEL_CONVERGENCE_HEATMAP] = pixel_convergence_heatmap_display_program;
+	m_compute_programs[DisplayViewType::PIXEL_CONVERGED_MAP] = pixel_converged_map_display_program;
+	m_compute_programs[DisplayViewType::WHITE_FURNACE_THRESHOLD] = white_furnace_display_program;
 
 	select_compute_program(DisplayViewType::DEFAULT);
 }

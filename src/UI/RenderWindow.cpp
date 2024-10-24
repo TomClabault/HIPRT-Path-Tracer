@@ -86,6 +86,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Progressive Visibility Caching for Fast Indirect Illumination
 // - performance/bias tradeoff by ignoring alpha tests (either for global rays or only shadow rays) after N bounce?
 // - performance/bias tradeoff by ignoring direct lighting occlusion after N bounce? --> strong bias but maybe something to do by reducing the length of shadow rays instead of just hard-disabling occlusion
+// - energy conserving Oren Nayar: https://mimosa-pudica.net/improved-oren-nayar.html#images
 // - MoN/GMoN estimator fireflies reduction
 // - experiment with a feature that ignores really dark pixel in the variance estimation of the adaptive 
 //		sampling because it seems that very dark areas in the image are always flagged as very 
@@ -99,7 +100,7 @@ extern ImGuiLogger g_imgui_logger;
 // - RIS: do no use BSDF samples for rough surfaces (have a BSDF ray roughness treshold basically)
 //		We may have to do something with the lobes of the BSDF specifically for this one. A coated diffuse cannot always ignore light samples for example because the diffuse lobe benefits from light samples even if the surface is not smooth (coating) 
 // - have a light BVH for intersecting light triangles only: useful when we want to know whether or not a direction could have be sampled by the light sampler: we don't need to intersect the whole scene BVH, just the light geometry, less expensive
-// - shadow terminator issue on sphere low smooth scene
+// - shadow terminator issue on sphere low smooth scene: [Taming the Shadow Terminator], Matt Jen-Yuan Chiang
 // - use HIP/CUDA graphs to reduce launch overhead
 // - keep compiling kernels in the background after application has started to cache the most common kernel options on disk
 // - linear interpolation function for the parameters of the BSDF

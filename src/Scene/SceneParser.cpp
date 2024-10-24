@@ -395,9 +395,11 @@ void SceneParser::read_material_properties(aiMaterial* mesh_material, RendererMa
     mesh_material->Get(AI_MATKEY_VOLUME_ATTENUATION_DISTANCE, renderer_material.absorption_at_distance);
     mesh_material->Get(AI_MATKEY_OPACITY, renderer_material.alpha_opacity);
 
-    renderer_material.specular = 0.0f;
-    /*renderer_material.roughness = 0.0f;
-    renderer_material.metallic = 0.5f;*/
+    renderer_material.coat = 0.5f;
+    renderer_material.roughness = 0.0f;
+    /*renderer_material.sheen = 1.0f;
+    renderer_material.specular = 0.0f;*/
+    //renderer_material.metallic = 0.5f;
 
     renderer_material.make_safe();
     renderer_material.precompute_properties();
