@@ -306,6 +306,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_coat_layer(const Simpli
 
         out_cumulative_pdf += coat_pdf * coat_proba;
 
+        // Taking the color of the absorbing coat medium into account when the light that got transmitted
+        // travels through it
+        ColorRGB32F transmitted_light = material.coat_color;
+        // Blending the coat layer between completely transparent (no effect on the transmitted light
+        // throughput when material.coat is 0.0f) and full absorption contribution.
+        transmitted_light = (1.0f - coat_weight) * ColorRGB32F(1.0f) + coat_weight * transmitted_light;
         // When light hits the coat layer, only the refracted part gets transmitted to the layer below.
         // Because the coat layer is a dielectric layer, that refracted part is given by the Fresnel laws
         // 
@@ -313,13 +319,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_coat_layer(const Simpli
         //
         // Why we're using the shading normal here and not the microfacet normal is explained
         // in the internal_eval_specular_layer()
-        ColorRGB32F transmitted_light = ColorRGB32F(1.0f - material.coat * hippt::max(full_fresnel_dielectric(local_to_light_direction.z, incident_ior, material.coat_ior), full_fresnel_dielectric(local_view_direction.z, incident_ior, material.coat_ior)));
-        // Taking the color of the absorbing coat medium into account when the light that got transmitted
-        // travels through it
-        transmitted_light *= material.coat_color;
-        // Blending the coat layer between completely transparent (no effect on the transmitted light
-        // throughput when material.coat is 0.0f) and full absorption contribution.
-        transmitted_light = (1.0f - material.coat) * ColorRGB32F(1.0f) + material.coat * transmitted_light;
+        transmitted_light *= ColorRGB32F(1.0f - coat_weight * hippt::max(full_fresnel_dielectric(local_to_light_direction.z, incident_ior, material.coat_ior), full_fresnel_dielectric(local_view_direction.z, incident_ior, material.coat_ior)));
 
         layers_throughput *= transmitted_light;
 
@@ -342,11 +342,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_sheen_layer(const HIPRT
         out_cumulative_pdf += sheen_pdf * sheen_proba;
 
         // Same as the coat layer for the sheen: only the refracted light goes into the layer below
-        // and the sheen layer doesn't absorb light so we're not taking color into account as
-        // in the coat layer here
-        //
-        // Also, we're using the world space shading normal here and not half-vector because
-        // the sheen lobe isn't a microfacet lobe so its normal isn't the halfway-vector
+        // 
+        // The proportion of light that is reflected is given by the Ri component of AiBiRi
+        // (see 'sheen_ltc_eval') which is returned by 'principled_sheen_eval' in 'sheen_reflectance'
         layers_throughput *= 1.0f - material.sheen * sheen_reflectance;
 
         return contribution;

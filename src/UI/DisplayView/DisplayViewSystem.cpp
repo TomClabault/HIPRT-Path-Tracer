@@ -68,6 +68,7 @@ DisplayViewSystem::DisplayViewSystem(std::shared_ptr<GPURenderer> renderer, Rend
 	// Denoiser blend by default if denoising enabled. Default view otherwise
 	DisplayViewType default_display_view_type;
 	default_display_view_type = m_render_window->get_application_settings()->enable_denoising ? DisplayViewType::DENOISED_BLEND : DisplayViewType::DEFAULT;
+	default_display_view_type = DisplayViewType::WHITE_FURNACE_THRESHOLD;
 	queue_display_view_change(default_display_view_type);
 
 	configure_framebuffer();

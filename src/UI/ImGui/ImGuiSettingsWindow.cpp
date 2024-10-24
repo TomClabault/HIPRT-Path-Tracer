@@ -407,7 +407,19 @@ void ImGuiSettingsWindow::display_view_selector()
 	items.push_back("- White Furnace Threshold");
 
 	static DisplayViewType display_view_type_selected = display_view_system->get_current_display_view_type();
-	static int display_view_selected_index = display_view_system->get_current_display_view_type();
+	static int display_view_selected_index = -1;
+	if (display_view_selected_index == -1)
+	{
+		// First initialization
+		display_view_selected_index = display_view_system->get_current_display_view_type();
+		if (display_view_selected_index > DisplayViewType::PIXEL_CONVERGED_MAP && !render_settings.has_access_to_adaptive_sampling_buffers())
+			// It may happen that we startup the application with the white
+			// furnace threshold view selected by default. This means that the
+			// selected index is 8 but if we don't have the adaptive sampling on,
+			// 8 is going to be out of bounds of the list so we need to substract
+			// 2 for the adaptive sampling views that are not present
+			display_view_selected_index -= 2;
+	}
 	if (ImGui::BeginCombo("Display View", items[display_view_selected_index]))
 	{
 		for (int i = 0; i < items.size(); i++)
