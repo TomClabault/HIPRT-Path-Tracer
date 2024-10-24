@@ -35,11 +35,6 @@
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_coat_eval(const SimplifiedRendererMaterial& material, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, float incident_ior, float& out_pdf)
 {
-    if (local_view_direction.z * local_to_light_direction.z < 0)
-        // View direction and to light direction not in the same hemisphere
-        // This lobe only reflects so this is an invalid configuration
-        return ColorRGB32F(0.0f);
-
     // The coat lobe is just a microfacet lobe
     return torrance_sparrow_GTR2_eval(material.coat_roughness, material.coat_anisotropy, material.coat_ior, incident_ior, local_view_direction, local_to_light_direction, local_halfway_vector, out_pdf);
 }
@@ -296,7 +291,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_glass_sample(const RendererMate
 /**
  * 'internal' functions are just so that 'principled_bsdf_eval' looks nicer
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_coat_layer(const SimplifiedRendererMaterial& material, const float3& local_view_direction, const float3 local_to_light_direction, const float3& local_half_vector, float incident_ior, float coat_weight, float coat_proba, ColorRGB32F& layers_throughput, float& out_cumulative_pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_coat_layer(const SimplifiedRendererMaterial& material, const float3& local_view_direction, const float3 local_to_light_direction, const float3& local_half_vector, const float3& shading_normal, float incident_ior, float coat_weight, float coat_proba, ColorRGB32F& layers_throughput, float& out_cumulative_pdf)
 {
     if (coat_weight > 0.0f)
     {
@@ -311,13 +306,17 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_coat_layer(const Simpli
         // Because the coat layer is a dielectric layer, that refracted part is given by the Fresnel laws
         // 
         // Also, the coat layer color absorbs the light so we're taking that color into account as well
-        ColorRGB32F transmitted_light = ColorRGB32F(1.0f) - fresnel_schlick_from_ior(incident_ior, material.coat_ior, local_half_vector, local_to_light_direction);
+        //
+        // Why we're using the shading normal here and not the microfacet normal is explained
+        // in the internal_eval_specular_layer()
+        ColorRGB32F transmitted_light = ColorRGB32F(1.0f - material.coat * hippt::max(full_fresnel_dielectric(local_to_light_direction.z, incident_ior, material.coat_ior), full_fresnel_dielectric(local_view_direction.z, incident_ior, material.coat_ior)));
         // Taking the color of the absorbing coat medium into account when the light that got transmitted
         // travels through it
         transmitted_light *= material.coat_color;
         // Blending the coat layer between completely transparent (no effect on the transmitted light
         // throughput when material.coat is 0.0f) and full absorption contribution.
         transmitted_light = (1.0f - material.coat) * ColorRGB32F(1.0f) + material.coat * transmitted_light;
+
         layers_throughput *= transmitted_light;
 
         return contribution;
@@ -380,7 +379,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_specular_layer(const Si
         ColorRGB32F contribution = principled_specular_eval(material, incident_ior, local_view_direction, local_to_light_direction, local_half_vector, specular_pdf);
         contribution *= (1.0f - material.specular_tint) * ColorRGB32F(1.0f) + material.specular_tint * material.specular_color;
         contribution *= specular_weight;
-        contribution *= specular_proba;
         contribution *= layers_throughput;
 
         // Only the transmitted portion of the light goes to the layer below
@@ -402,7 +400,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_specular_layer(const Si
         // the microfacets to compute the fresnel.
         // And the "average normal" is actually the surface normal, shading_normal, because that's
         // how the NDF is defined
-        layers_throughput *= ColorRGB32F(1.0f) - material.specular * fresnel_schlick_from_ior(incident_ior, material.ior, shading_normal, local_to_light_direction);
+        layers_throughput *= 1.0f - material.specular * hippt::max(full_fresnel_dielectric(local_to_light_direction.z, incident_ior, material.ior), full_fresnel_dielectric(local_view_direction.z, incident_ior, material.ior));
 
         out_cumulative_pdf += specular_pdf * specular_proba;
 
@@ -419,7 +417,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_diffuse_layer(const Sim
         float diffuse_pdf;
         ColorRGB32F contribution = principled_diffuse_eval(material, local_view_direction, local_to_light_direction, diffuse_pdf);
         contribution *= diffuse_weight;
-        contribution *= diffuse_proba;
         contribution *= layers_throughput;
 
         out_cumulative_pdf += diffuse_pdf * diffuse_proba;
@@ -526,7 +523,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRende
     // (which is pretty much all of them except glass) do no get evaluated
     // (because their weight becomes 0)
     float incident_ior = ray_volume_state.incident_mat_index == InteriorStackImpl<InteriorStackStrategy>::MAX_MATERIAL_INDEX ? 1.0f : render_data.buffers.materials_buffer[ray_volume_state.incident_mat_index].ior;
-    final_color += internal_eval_coat_layer(material, local_view_direction, local_to_light_direction, local_half_vector, incident_ior, coat_weight * !refracting_in, coat_proba_norm, layers_throughput, pdf);
+    final_color += internal_eval_coat_layer(material, local_view_direction, local_to_light_direction, local_half_vector, shading_normal, incident_ior, coat_weight * !refracting_in, coat_proba_norm, layers_throughput, pdf);
     final_color += internal_eval_sheen_layer(render_data, material, local_view_direction, local_to_light_direction, to_light_direction, shading_normal, incident_ior, sheen_weight * !refracting_in, sheen_proba_norm, layers_throughput, pdf);
     final_color += internal_eval_metal_layer(material, local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated, incident_ior, metal_weight * !refracting_in, metal_proba_norm, layers_throughput, pdf);
     // Careful here to evaluate the glass layer before the specular
