@@ -86,7 +86,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_metallic_sample(const Simplifie
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_diffuse_eval(const SimplifiedRendererMaterial& material, const float3& local_view_direction, const float3& local_to_light_direction, float& pdf)
 {
     // The diffuse lobe is a simple Oren Nayar lobe
+#if PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_LAMBERTIAN
+    return lambertian_brdf_eval(material, local_to_light_direction.z, pdf);
+#elif PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR
     return oren_nayar_brdf_eval(material, local_view_direction, local_to_light_direction, pdf);
+#endif
 }
 
 /**
@@ -342,7 +346,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_sheen_layer(const HIPRT
         //
         // Also, we're using the world space shading normal here and not half-vector because
         // the sheen lobe isn't a microfacet lobe so its normal isn't the halfway-vector
-        // (contrary to the coat / specular lobes for example)
         layers_throughput *= ColorRGB32F(1.0f) - material.sheen * fresnel_schlick_from_ior(incident_ior, material.ior, local_to_light_direction.z);
 
         return contribution;

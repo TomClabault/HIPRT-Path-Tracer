@@ -40,6 +40,9 @@
 #define BSDF_OREN_NAYAR 2
 #define BSDF_PRINCIPLED 3
 
+#define PRINCIPLED_DIFFUSE_LOBE_LAMBERTIAN 0
+#define PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR 1
+
 #define ISS_AUTOMATIC 0
 #define ISS_WITH_PRIORITIES 1
 
@@ -118,6 +121,17 @@
  *		All materials will use the Principled BSDF
  */
 #define BSDFOverride BSDF_NONE
+
+/**
+ * What diffuse lobe to use in the principled BSDF.
+ * 
+ *	- PRINCIPLED_DIFFUSE_LOBE_LAMBERTIAN
+ *		Use a lambertian BRDF for the diffuse lobe
+ * 
+ *	- PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR
+ *		Use an Oren-Nayar BRDF for the diffuse lobe
+ */
+#define PrincipledBSDFDiffuseLobe PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR
 
 /**
  * What nested dielectrics strategy to use.
