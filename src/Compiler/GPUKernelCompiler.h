@@ -25,7 +25,7 @@ public:
 		FORCE_SHADER_CACHE_ON,
 	};
 
-	oroFunction_t compile_kernel(GPUKernel& kernel, const GPUKernelCompilerOptions& kernel_compiler_options, std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, hiprtFuncNameSet* function_name_sets, bool use_cache, const std::string& additional_cache_key, bool silent = false);
+	oroFunction_t compile_kernel(GPUKernel& kernel, const GPUKernelCompilerOptions& kernel_compiler_options, std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, hiprtFuncNameSet* function_name_sets, int num_geom_types, int num_ray_types, bool use_cache, const std::string& additional_cache_key, bool silent = false);
 
 	/**
 	 * Takes an include name ("Device/includes/MyInclude.h" for example) and a list of include directories.

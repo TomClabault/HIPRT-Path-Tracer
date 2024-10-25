@@ -75,7 +75,11 @@ void GPUKernel::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, std::vector<h
 		parse_option_macros_used();
 
 	std::string cache_key = g_gpu_kernel_compiler.get_additional_cache_key(*this);
-	m_kernel_function = g_gpu_kernel_compiler.compile_kernel(*this, m_compiler_options, hiprt_ctx, func_name_sets.data(), use_cache, cache_key);
+	m_kernel_function = g_gpu_kernel_compiler.compile_kernel(*this, m_compiler_options, hiprt_ctx,
+															 func_name_sets.data(), 
+															 /* num geom */1,
+															 /* num ray */ func_name_sets.size() == 0 ? 0 : 1,
+															 use_cache, cache_key);
 }
 
 void GPUKernel::compile_silent(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, std::vector<hiprtFuncNameSet> func_name_sets, bool use_cache)
@@ -84,7 +88,11 @@ void GPUKernel::compile_silent(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, std::v
 		parse_option_macros_used();
 
 	std::string cache_key = g_gpu_kernel_compiler.get_additional_cache_key(*this);
-	m_kernel_function = g_gpu_kernel_compiler.compile_kernel(*this, m_compiler_options, hiprt_ctx, func_name_sets.data(), use_cache, cache_key, /* silent */ true);
+	m_kernel_function = g_gpu_kernel_compiler.compile_kernel(*this, m_compiler_options, hiprt_ctx, 
+															 func_name_sets.data(),
+															 /* num geom */1,
+															 /* num rays */ func_name_sets.size() == 0 ? 0 : 1,
+															 use_cache, cache_key, /* silent */ true);
 }
 
 int GPUKernel::get_kernel_attribute(oroFunction compiled_kernel, oroFunction_attribute attribute)
@@ -162,7 +170,7 @@ void GPUKernel::launch(int tile_size_x, int tile_size_y, int res_x, int res_y, v
 	OROCHI_CHECK_ERROR(oroModuleLaunchKernel(m_kernel_function, nb_groups.x, nb_groups.y, 1, tile_size_x, tile_size_y, 1, 0, stream, launch_args, 0));
 }
 
-void GPUKernel::launch_timed_synchronous(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, float* execution_time_out)
+void GPUKernel::launch_synchronous(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, float* execution_time_out)
 {
 	OROCHI_CHECK_ERROR(oroEventRecord(m_execution_start_event, 0));
 
@@ -192,6 +200,11 @@ float GPUKernel::get_last_execution_time()
 	return out;
 }
 
+bool GPUKernel::has_been_compiled() const
+{
+	return m_kernel_function != nullptr;
+}
+
 bool GPUKernel::is_precompiled() const
 {
 	return m_is_precompiled_kernel;
@@ -202,7 +215,7 @@ void GPUKernel::set_precompiled(bool precompiled)
 	m_is_precompiled_kernel = precompiled;
 }
 
-void GPUKernel::launch_timed_asynchronous(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, oroStream_t stream)
+void GPUKernel::launch_asynchronous(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, oroStream_t stream)
 {
 	OROCHI_CHECK_ERROR(oroEventRecord(m_execution_start_event, stream));
 

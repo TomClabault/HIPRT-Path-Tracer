@@ -96,9 +96,15 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
     m_g_buffer_prev_frame.cameray_ray_hit.resize(width * height);
     m_g_buffer_prev_frame.ray_volume_states.resize(width * height);
 
-    m_sheen_ltc_params = Image32Bit(reinterpret_cast<float*>(ltc_parameters_table_approximation.data()), 32, 32, 3);
+    setup_brdfs_data();
 
     m_rng = Xorshift32Generator(42);
+}
+
+void CPURenderer::setup_brdfs_data()
+{
+    m_sheen_ltc_params = Image32Bit(reinterpret_cast<float*>(ltc_parameters_table_approximation.data()), 32, 32, 3);
+    m_GGX_Ess = Image32Bit::read_image_hdr("../data/BRDFsData/GGX_Ess.hdr", 4, false);
 }
 
 void CPURenderer::set_scene(Scene& parsed_scene)
@@ -113,7 +119,9 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.buffers.vertices_positions = parsed_scene.vertices_positions.data();
     m_render_data.buffers.vertex_normals = parsed_scene.vertex_normals.data();
     m_render_data.buffers.texcoords = parsed_scene.texcoords.data();
-    m_render_data.buffers.sheen_ltc_parameters_texture = &m_sheen_ltc_params;
+
+    m_render_data.brdfs_data.sheen_ltc_parameters_texture = &m_sheen_ltc_params;
+    m_render_data.brdfs_data.GGX_Ess= &m_GGX_Ess;
 
     ThreadManager::join_threads(ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY);
     m_render_data.buffers.material_textures = parsed_scene.textures.data();

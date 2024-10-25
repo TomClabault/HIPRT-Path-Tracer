@@ -18,7 +18,7 @@ GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // This variable will be initialized before the main function by the main thread
-std::thread::id g_main_thread_id = std::this_thread::get_id();
+std::thread::id g_priority_thread_id = std::this_thread::get_id();
 // Whether or not the main thread is currently compiling. Used in the condition variable.
 // If the main thread is currently compiling (very likely that his was asked by the user through the UI), 
 // other threads may not compile to give the user the priority for the compilation
@@ -55,7 +55,7 @@ void enable_compilation_warnings(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ct
 	}
 }
 
-oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, const GPUKernelCompilerOptions& kernel_compiler_options, std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, hiprtFuncNameSet* function_name_sets, bool use_cache, const std::string& additional_cache_key, bool silent)
+oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, const GPUKernelCompilerOptions& kernel_compiler_options, std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, hiprtFuncNameSet* function_name_sets, int num_geom_types, int num_ray_types, bool use_cache, const std::string& additional_cache_key, bool silent)
 {
 	std::string kernel_file_path = kernel.get_kernel_file_path();
 	std::string kernel_function_name = kernel.get_kernel_function_name();
@@ -68,7 +68,7 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, const GPUKern
 	// lock here to have better control on when to compile a kernel as well as have proper compilation times
 	std::unique_lock<std::mutex> lock(m_compile_mutex);
 
-	if (std::this_thread::get_id() != g_main_thread_id)
+	if (std::this_thread::get_id() != g_priority_thread_id)
 		// Other threads wait if the main thread is compiling
 		g_condition_for_compilation.wait(lock, []() { return !g_main_thread_compiling && g_background_shader_compilation_enabled; });
 
@@ -83,7 +83,7 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, const GPUKern
 	else
 		use_shader_cache = use_cache;
 
-	if (HIPPTOrochiUtils::build_trace_kernel(hiprt_orochi_ctx->hiprt_ctx, kernel_file_path, kernel_function_name, trace_function_out, additional_include_dirs, compiler_options, 1, 1, use_shader_cache, function_name_sets, additional_cache_key) != hiprtError::hiprtSuccess)
+	if (HIPPTOrochiUtils::build_trace_kernel(hiprt_orochi_ctx->hiprt_ctx, kernel_file_path, kernel_function_name, trace_function_out, additional_include_dirs, compiler_options, num_geom_types, num_ray_types, use_shader_cache, function_name_sets, additional_cache_key) != hiprtError::hiprtSuccess)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Unable to compile kernel \"%s\". Cannot continue.", kernel_function_name.c_str());
 		int ignored = std::getchar();

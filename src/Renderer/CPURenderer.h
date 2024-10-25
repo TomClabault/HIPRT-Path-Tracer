@@ -21,6 +21,7 @@ class CPURenderer
 {
 public:
     CPURenderer(int width, int height);
+    void setup_brdfs_data();
 
     void set_scene(Scene& parsed_scene);
     void set_envmap(Image32Bit& envmap_image);
@@ -111,6 +112,7 @@ private:
     } m_restir_di_state;
 
     Image32Bit m_sheen_ltc_params;
+    Image32Bit m_GGX_Ess;
 
     std::vector<Triangle> m_triangle_buffer;
     std::shared_ptr<BVH> m_bvh;

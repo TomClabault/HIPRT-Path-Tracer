@@ -310,7 +310,7 @@ void ReSTIRDIRenderPass::launch_presampling_lights_pass()
 	void* launch_args[] = { &launch_parameters };
 	int thread_count = render_data->render_settings.restir_di_settings.light_presampling.number_of_subsets * render_data->render_settings.restir_di_settings.light_presampling.subset_size;
 
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID].launch_timed_asynchronous(32, 1, thread_count, 1, launch_args, m_renderer->get_main_stream());
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID].launch_asynchronous(32, 1, thread_count, 1, launch_args, m_renderer->get_main_stream());
 }
 
 void ReSTIRDIRenderPass::configure_initial_pass()
@@ -326,7 +326,7 @@ void ReSTIRDIRenderPass::launch_initial_candidates_pass()
 	void* launch_args[] = { &m_renderer->get_render_data(), &m_renderer->m_render_resolution };
 
 	configure_initial_pass();
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].launch_timed_asynchronous(8, 8, render_resolution.x, render_resolution.y, launch_args, m_renderer->get_main_stream());
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].launch_asynchronous(8, 8, render_resolution.x, render_resolution.y, launch_args, m_renderer->get_main_stream());
 }
 
 void ReSTIRDIRenderPass::configure_temporal_pass()
@@ -370,7 +370,7 @@ void ReSTIRDIRenderPass::launch_temporal_reuse_pass()
 	void* launch_args[] = { &m_renderer->get_render_data(), &render_resolution };
 
 	configure_temporal_pass();
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID].launch_timed_asynchronous(8, 8, render_resolution.x, render_resolution.y, launch_args, m_renderer->get_main_stream());
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID].launch_asynchronous(8, 8, render_resolution.x, render_resolution.y, launch_args, m_renderer->get_main_stream());
 }
 
 void ReSTIRDIRenderPass::configure_temporal_pass_for_fused_spatiotemporal()
@@ -465,7 +465,7 @@ void ReSTIRDIRenderPass::launch_spatial_reuse_passes()
 	for (int spatial_reuse_pass = 0; spatial_reuse_pass < render_data->render_settings.restir_di_settings.spatial_pass.number_of_passes; spatial_reuse_pass++)
 	{
 		configure_spatial_pass(spatial_reuse_pass);
-		m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID].launch_timed_asynchronous(8, 8, render_resolution.x, render_resolution.y, launch_args, m_renderer->get_main_stream());
+		m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID].launch_asynchronous(8, 8, render_resolution.x, render_resolution.y, launch_args, m_renderer->get_main_stream());
 	}
 
 	// Emitting the stop event
@@ -495,7 +495,7 @@ void ReSTIRDIRenderPass::launch_spatiotemporal_pass()
 	void* launch_args[] = { &m_renderer->get_render_data(), &m_renderer->m_render_resolution };
 
 	configure_spatiotemporal_pass();
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID].launch_timed_asynchronous(8, 8, render_resolution.x, render_resolution.y, launch_args, m_renderer->get_main_stream());
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID].launch_asynchronous(8, 8, render_resolution.x, render_resolution.y, launch_args, m_renderer->get_main_stream());
 
 	if (render_data->render_settings.restir_di_settings.spatial_pass.number_of_passes > 1)
 	{
@@ -505,7 +505,7 @@ void ReSTIRDIRenderPass::launch_spatiotemporal_pass()
 		for (int spatial_pass_index = 1; spatial_pass_index < render_data->render_settings.restir_di_settings.spatial_pass.number_of_passes; spatial_pass_index++)
 		{
 			configure_spatial_pass_for_fused_spatiotemporal(spatial_pass_index);
-			m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID].launch_timed_asynchronous(8, 8, render_resolution.x, render_resolution.y, launch_args, m_renderer->get_main_stream());
+			m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID].launch_asynchronous(8, 8, render_resolution.x, render_resolution.y, launch_args, m_renderer->get_main_stream());
 		}
 
 		// Emitting the stop event

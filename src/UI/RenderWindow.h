@@ -9,6 +9,7 @@
 #include "OpenGL/OpenGLProgram.h"
 #include "Renderer/OpenImageDenoiser.h"
 #include "Renderer/GPURenderer.h"
+#include "Renderer/Baker/GPUBaker.h"
 #include "UI/ApplicationSettings.h"
 #include "UI/ApplicationState.h"
 #include "UI/DisplayView/DisplayTextureType.h"
@@ -46,6 +47,7 @@ public:
 
 	std::shared_ptr<ApplicationSettings> get_application_settings();
 	std::shared_ptr<GPURenderer> get_renderer();
+	std::shared_ptr<GPUBaker> get_baker();
 	std::shared_ptr<OpenImageDenoiser> get_denoiser();
 	std::shared_ptr<PerformanceMetricsComputer> get_performance_metrics();
 	std::shared_ptr<Screenshoter> get_screenshoter();
@@ -130,6 +132,7 @@ private:
 	std::shared_ptr<ApplicationState> m_application_state;
 
 	std::shared_ptr<GPURenderer> m_renderer;
+	std::shared_ptr<GPUBaker> m_gpu_baker;
 	std::shared_ptr<OpenImageDenoiser> m_denoiser;
 	std::shared_ptr<PerformanceMetricsComputer> m_perf_metrics;
 	std::shared_ptr<Screenshoter> m_screenshoter;
@@ -138,10 +141,10 @@ private:
 	std::shared_ptr<DisplayViewSystem> m_display_view_system;
 
 	GLFWwindow* m_glfw_window;
-	// Needs to be a pointer (using unique_ptr here) because we're using polymorphism for the Linux/Windows implementation here
+	std::shared_ptr<ImGuiRenderer> m_imgui_renderer;
+
 	std::shared_ptr<RenderWindowMouseInteractor> m_mouse_interactor;
 	RenderWindowKeyboardInteractor m_keyboard_interactor;
-	std::shared_ptr<ImGuiRenderer> m_imgui_renderer;
 
 	std::pair<float, float> m_cursor_position;
 };

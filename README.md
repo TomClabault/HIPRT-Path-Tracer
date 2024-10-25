@@ -23,6 +23,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 - Oren-Nayar Diffuse BRDF Lobe
 - Metallic Microfacet GGX (GTR2, [\[Burley, 2012\]](https://disneyanimation.com/publications/physically-based-shading-at-disney/)) Layer + Anisotropy & Anisotropy Rotation
 - Specular transmission BTDF + Beer Lambert Volumetric Absorption: [\[Burley, 2015\]](https://blog.selfshadow.com/publications/s2015-shading-course/#course_content)
+- GGX Multiple Scattering Energy Compensation [\[Turquin, 2017\]](https://blog.selfshadow.com/publications/turquin/ms_comp_final.pdf)
 ### Sampling
 - Light sampling:
 	- Uniform light sampling for direct lighting estimation + MIS

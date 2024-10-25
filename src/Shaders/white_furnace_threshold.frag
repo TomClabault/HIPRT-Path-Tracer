@@ -60,7 +60,7 @@ void main()
 	
 	if ((final_color.r > 0.51f || final_color.g > 0.51f || final_color.b > 0.51f) && u_use_high_threshold)
 		final_color = vec4(1.0f, 0.0f, 0.0f, 1.0f);
-	if ((final_color.r < 0.49f || final_color.g < 0.49f || final_color.b < 0.49f) && u_use_low_threshold)
+	else if ((final_color.r < 0.49f || final_color.g < 0.49f || final_color.b < 0.49f) && u_use_low_threshold)
 		final_color = vec4(0.0f, 1.0f, 0.0f, 1.0f);
 		
 	if (u_do_tonemapping == 1)

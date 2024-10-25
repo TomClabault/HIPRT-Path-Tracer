@@ -133,6 +133,51 @@
  */
 #define PrincipledBSDFDiffuseLobe PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR
 
+ /**
+  * What sampling strategy to use for the GGX NDF
+  *
+  *  - GGX_NO_VNDF [Not Yet Implemented]
+  *		Not sampling the visible distribution of normals.
+  *		Just classic GGX sampling
+  *
+  *  - GGX_VNDF_SAMPLING
+  *		Sample the distribution of visible normals as proposed
+  *		in [Sampling the GGX Distribution of Visible Normals, Heitz, 2018]
+  *
+  *  - GGX_VNDF_SPHERICAL_CAPS
+  *		Sample the distribution of visible normals using spherical
+  *		caps as proposed in [Sampling Visible GGX Normals with Spherical Caps, Dupuy & Benyoub, 2023]
+  *
+  *  - GGX_VNDF_BOUNDED [Not Yet Implemented]
+  *		Sample the distribution of visible normals with a bounded VNDF
+  *		sampling range as proposed in [Bounded VNDF Sampling for Smith-GGX Reflections, Eto & Tokuyoshi, 2023]
+  *
+  */
+#define PrincipledBSDFAnisotropicGGXSampleFunction GGX_VNDF_SAMPLING
+
+/**
+ * Whether or not to use multiple scattering to conserve energy when evaluating
+ * GGX BRDF lobes in the Principled BSDF
+ * 
+ * This is implemented by following 
+ * [Practical multiple scattering compensation for microfacet models, Turquin, 2017]
+ * 
+ * Possible options are KERNEL_OPTION_TRUE and KERNEL_OPTION_FALSE. Self explanatory.
+ */
+#define PrincipledBSDFGGXUseMultipleScattering KERNEL_OPTION_TRUE
+
+ /**
+  * Whether or not to use multiple scattering to conserve energy and use a
+  * Fresnel compensation term i.e. account for Fresnel when light scatters multiple
+  * times on the microsurface. This increases saturation and has a noticeable impact
+  *
+  * This is implemented by following
+  * [Practical multiple scattering compensation for microfacet models, Turquin, 2017]
+  *
+  * Possible options are KERNEL_OPTION_TRUE and KERNEL_OPTION_FALSE. Self explanatory.
+  */
+#define PrincipledBSDFGGXUseMultipleScatteringDoFresnel KERNEL_OPTION_TRUE
+
 /**
  * What nested dielectrics strategy to use.
  * 
@@ -312,28 +357,6 @@
  * light sampling becomes with that many lights
  */
 #define ReSTIR_DI_DoLightsPresampling KERNEL_OPTION_TRUE
-
-/**
- * What sampling strategy to use for the GGX NDF
- * 
- *  - GGX_NO_VNDF
- *		Not sampling the visible distribution of normals.
- *		Just classic GGX sampling
- * 
- *  - GGX_VNDF_SAMPLING
- *		Sample the distribution of visible normals as proposed
- *		in [Sampling the GGX Distribution of Visible Normals, Heitz, 2018]
- * 
- *  - GGX_VNDF_SPHERICAL_CAPS
- *		Sample the distribution of visible normals using spherical
- *		caps as proposed in [Sampling Visible GGX Normals with Spherical Caps, Dupuy & Benyoub, 2023]
- * 
- *  - GGX_VNDF_BOUNDED [Not Yet Implemented]
- *		Sample the distribution of visible normals with a bounded VNDF
- *		sampling range as proposed in [Bounded VNDF Sampling for Smith-GGX Reflections, Eto & Tokuyoshi, 2023]
- *		
- */
-#define GGXAnisotropicSampleFunction GGX_VNDF_SAMPLING
 
 #endif // #ifndef __KERNELCC__
 

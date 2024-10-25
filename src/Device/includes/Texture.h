@@ -82,6 +82,16 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_texture_rgb_8bits(const void* 
     return ColorRGB32F(rgba.r, rgba.g, rgba.b);
 }
 
+/**
+ * Samples a texture given by indexing the texture array 'texture_buffer' with 'texture_buffer[texture_index]'.
+ * 
+ * To read from a single texture, pass the pointer to the texture in 'texture_buffer' and
+ * pass texture_index = 0
+ * 
+ * Not that on the GPU, 'texture_buffer' must be of type oroTextureObject_t*, i.e. it's a pointer on oroTextureObject_t
+ * this means that if the pointer is set in RenderData with OrochiTexture::get_device_texture() on the CPU, then
+ * &get_device_texture() must be passed to this function for 'texture_buffer'
+ */
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_texture_rgb_32bits(const void* texture_buffer, int texture_index, int2 texture_dims, bool is_srgb, float2 uv)
 {
     ColorRGBA32F rgba = sample_texture_rgba<Image32Bit>(texture_buffer, texture_index, texture_dims, is_srgb, uv);

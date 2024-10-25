@@ -68,12 +68,18 @@ public:
 	 * context for handling GPU acceleration structures, buffers, textures, etc...
 	 */
 	GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx);
+	void setup_brdfs_data();
 
 	/**
 	 * Initializes and uploads the fitted parameters for the LTC sheen lobe
 	 * of the Principled BSDF
 	 */
 	void init_sheen_ltc_texture();
+
+	/**
+ 	 * Initializes the precomputed texture used for GGX energy conservation
+	 */
+	void init_GGX_Ess_texture();
 
 	/**
 	 * Initializes and compiles the kernels
@@ -178,6 +184,7 @@ public:
 	WorldSettings& get_world_settings();
 	HIPRTRenderData& get_render_data();
 	HIPRTScene& get_hiprt_scene();
+	std::shared_ptr<HIPRTOrochiCtx> get_hiprt_orochi_ctx();
 	void invalidate_render_data_buffers();
 
 	Camera& get_camera();
@@ -239,6 +246,8 @@ public:
 	std::shared_ptr<GPUKernelCompilerOptions> get_global_compiler_options();
 
 	void recompile_kernels(bool use_cache = true);
+	void take_kernel_compilation_priority();
+	void release_kernel_compilation_priority();
 	/**
 	 * Precompiles a variety of kernel option combinations to avoid
 	 * having to compile too many kernels at runtime
@@ -457,6 +466,8 @@ private:
 
 	// State of the animation of the renderer
 	RendererAnimationState m_animation_state;
+
+	OrochiTexture m_GGX_Ess;
 };
 
 #endif

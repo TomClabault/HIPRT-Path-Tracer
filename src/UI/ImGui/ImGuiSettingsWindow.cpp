@@ -1430,6 +1430,27 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				m_render_window->set_render_dirty(true);
 			}
 
+			static bool use_multiple_scattering = PrincipledBSDFGGXUseMultipleScattering;
+			if (ImGui::Checkbox("Use GGX Multiple Scattering", &use_multiple_scattering))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_GGX_MULTIPLE_SCATTERING, use_multiple_scattering ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("Implementation of [Practical multiple scattering compensation for microfacet models, Turquin, 2017]"
+											" for GGX energy conservation.");
+
+			static bool use_multiple_scattering_fresnel = PrincipledBSDFGGXUseMultipleScatteringDoFresnel;
+			if (ImGui::Checkbox("Use GGX Multiple Scattering Fresnel", &use_multiple_scattering_fresnel))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_GGX_MULTIPLE_SCATTERING_DO_FRESNEL, use_multiple_scattering_fresnel ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("Implementation of [Practical multiple scattering compensation for microfacet models, Turquin, 2017]"
+											" for GGX energy conservation. The multiple scattering fresnel term takes into account the Fresnel"
+											"reflection/transmission effect when the rays bounce multiple times on the microsurface.");
+
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::TreePop();
 		}

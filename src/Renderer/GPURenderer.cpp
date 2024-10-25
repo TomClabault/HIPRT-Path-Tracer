@@ -49,7 +49,7 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
 	m_hiprt_orochi_ctx = hiprt_oro_ctx;	
 	m_device_properties = m_hiprt_orochi_ctx->device_properties;
 
-	init_sheen_ltc_texture();
+	setup_brdfs_data();
 
 	setup_kernels();
 
@@ -75,6 +75,12 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
 	OROCHI_CHECK_ERROR(oroEventCreate(&m_frame_stop_event));
 }
 
+void GPURenderer::setup_brdfs_data()
+{
+	init_sheen_ltc_texture();
+	init_GGX_Ess_texture();
+}
+
 void GPURenderer::init_sheen_ltc_texture()
 {
 	// CUDA/HIP do not handle 3 channels textures so we're padding it to 4 channels
@@ -98,14 +104,14 @@ void GPURenderer::init_sheen_ltc_texture()
 	m_sheen_ltc_params = OrochiTexture(sheen_ltc_params_image);
 }
 
+void GPURenderer::init_GGX_Ess_texture()
+{
+	Image32Bit GGXEss_image = Image32Bit::read_image_hdr("../data/BRDFsData/GGX_Ess_96x96.hdr", 4, true);
+	m_GGX_Ess = OrochiTexture(GGXEss_image);
+}
+
 void GPURenderer::setup_kernels()
 {
-	/*GPUKernel test_kernel;
-	test_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/RegistersTest.h");
-	test_kernel.set_kernel_function_name("TestFunction");
-	test_kernel.get_kernel_options().set_additional_include_directories(GPURenderer::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS);
-	test_kernel.compile(m_hiprt_orochi_ctx);*/
-
 	// Function called on intersections for handling alpha testing
 	hiprtFuncNameSet alpha_testing_func_set = { nullptr, "alpha_testing" };
 	m_func_name_sets.push_back(alpha_testing_func_set);
@@ -396,7 +402,7 @@ void GPURenderer::launch_camera_rays()
 	void* launch_args[] = { &m_render_data, &m_render_resolution };
 
 	m_render_data.random_seed = m_rng.xorshift32();
-	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].launch_timed_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
+	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].launch_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
 }
 
 void GPURenderer::launch_ReSTIR_DI()
@@ -410,7 +416,7 @@ void GPURenderer::launch_path_tracing()
 	void* launch_args[] = { &m_render_data, &m_render_resolution };
 
 	m_render_data.random_seed = m_rng.xorshift32();
-	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].launch_timed_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
+	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].launch_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
 }
 
 void GPURenderer::synchronize_kernel()
@@ -563,6 +569,11 @@ HIPRTScene& GPURenderer::get_hiprt_scene()
 	return m_hiprt_scene;
 }
 
+std::shared_ptr<HIPRTOrochiCtx> GPURenderer::get_hiprt_orochi_ctx()
+{
+	return m_hiprt_orochi_ctx;
+}
+
 void GPURenderer::invalidate_render_data_buffers()
 {
 	m_render_data_buffers_invalidated = true;
@@ -642,14 +653,34 @@ void GPURenderer::recompile_kernels(bool use_cache)
 	// Notifying all threads that may be compiling that the main thread wants to
 	// compile. This will block threads other than the main thread from compiling
 	// and thus give the priority to the main thread
-	g_main_thread_compiling = true;
-	g_condition_for_compilation.notify_all();
+	take_kernel_compilation_priority();
 
 	for (auto& name_to_kenel : m_kernels)
 		name_to_kenel.second.compile_silent(m_hiprt_orochi_ctx, m_func_name_sets, use_cache);
 	m_restir_di_render_pass.recompile(m_hiprt_orochi_ctx, m_func_name_sets, true, use_cache);
 	m_ray_volume_state_byte_size_kernel.compile_silent(m_hiprt_orochi_ctx, m_func_name_sets, use_cache);
 
+	// The main thread is done with the compilation, we can release the other threads
+	// so that they can continue compiling (background compilation of shaders most likely)
+	release_kernel_compilation_priority();
+}
+
+// Variables used to give the priority to the main thread when compiling shaders
+extern std::thread::id g_priority_thread_id;
+extern bool g_main_thread_compiling;
+extern std::condition_variable g_condition_for_compilation;
+void GPURenderer::take_kernel_compilation_priority()
+{
+	// Notifying all threads that may be compiling that the main thread wants to
+	// compile. This will block threads other than the main thread from compiling
+	// and thus give the priority to the main thread
+	g_main_thread_compiling = true;
+	g_condition_for_compilation.notify_all();
+	g_priority_thread_id = std::this_thread::get_id();
+}
+
+void GPURenderer::release_kernel_compilation_priority()
+{
 	// The main thread is done with the compilation, we can release the other threads
 	// so that they can continue compiling (background compilation of shaders most likely)
 	g_main_thread_compiling = false;
@@ -880,7 +911,9 @@ void GPURenderer::update_render_data()
 		m_render_data.buffers.materials_buffer = reinterpret_cast<RendererMaterial*>(m_hiprt_scene.materials_buffer.get_device_pointer());
 		m_render_data.buffers.emissive_triangles_count = m_hiprt_scene.emissive_triangles_count;
 		m_render_data.buffers.emissive_triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.emissive_triangles_indices.get_device_pointer());
-		m_render_data.buffers.sheen_ltc_parameters_texture = m_sheen_ltc_params.get_device_texture();
+
+		m_render_data.brdfs_data.sheen_ltc_parameters_texture = m_sheen_ltc_params.get_device_texture();
+		m_render_data.brdfs_data.GGX_Ess = m_GGX_Ess.get_device_texture();
 
 		m_render_data.buffers.material_textures = reinterpret_cast<oroTextureObject_t*>(m_hiprt_scene.gpu_materials_textures.get_device_pointer());
 		m_render_data.buffers.texcoords = reinterpret_cast<float2*>(m_hiprt_scene.texcoords_buffer.get_device_pointer());

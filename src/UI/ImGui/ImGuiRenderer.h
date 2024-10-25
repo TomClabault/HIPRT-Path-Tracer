@@ -9,6 +9,7 @@
 #include "Renderer/OpenImageDenoiser.h"
 #include "UI/ApplicationSettings.h"
 #include "UI/ImGui/ImGuiAnimationWindow.h"
+#include "UI/ImGui/ImGuiBakingWindow.h"
 #include "UI/ImGui/ImGuiLogWindow.h"
 #include "UI/ImGui/ImGuiRenderWindow.h"
 #include "UI/ImGui/ImGuiRendererPerformancePreset.h"
@@ -44,6 +45,7 @@ public:
 	void draw_dockspace();
 	void draw_settings_window();
 	void draw_animation_window();
+	void draw_baking_window();
 	void draw_render_window();
 	void draw_log_window();
 
@@ -55,6 +57,7 @@ private:
 
 	ImGuiSettingsWindow m_imgui_settings_window;
 	ImGuiAnimationWindow m_imgui_animation_window;
+	ImGuiBakingWindow m_imgui_baking_window;
 	ImGuiRenderWindow m_imgui_render_window;
 	ImGuiLogWindow m_imgui_log_window;
 

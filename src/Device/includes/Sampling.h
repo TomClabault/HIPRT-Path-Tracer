@@ -7,9 +7,12 @@
 #define DEVICE_SAMPLING_H
 
 #include "Device/includes/ONB.h"
+#include "Device/includes/Texture.h"
+
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/KernelOptions.h"
 #include "HostDeviceCommon/Material.h"
+#include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/Xorshift.h"
 
 /**
@@ -310,15 +313,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F gulbrandsen_metallic_complex_fresnel(
     return 0.5f * (Rs + Rp);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float GTR2_anisotropic_original(float alpha_x, float alpha_y, const float3& local_half_vector)
-{
-    float denom = (local_half_vector.x * local_half_vector.x) / (alpha_x * alpha_x) +
-        (local_half_vector.y * local_half_vector.y) / (alpha_y * alpha_y) +
-        (local_half_vector.z * local_half_vector.z);
-
-    return 1.0f / (M_PI * alpha_x * alpha_y * denom * denom);
-}
-
 /**
  * Evaluates GTR2 anisotropic normal distribution function
  */
@@ -371,22 +365,30 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float G1_Smith_lambda(float alpha_x, float alpha_
  * Reference: [Understanding the Masking-Shadowing Function in Microfacet-Based BRDFs, Heitz, 2014]
  * Equation 43
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float G1(float alpha_x, float alpha_y, const float3& local_direction)
+HIPRT_HOST_DEVICE HIPRT_INLINE float G1_Smith(float alpha_x, float alpha_y, const float3& local_direction)
 {
     float lambda = G1_Smith_lambda(alpha_x, alpha_y, local_direction);
 
     return 1.0f / (1.0f + lambda);
 }
 
+template <bool useMultipleScatteringEnergyCompensation>
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GTR2_eval(const HIPRTRenderData& render_data, const ColorRGB32F& F0, float material_roughness, float material_anisotropy, const ColorRGB32F& F, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, float& out_pdf)
+{
+    out_pdf = -1.0f;
+    return ColorRGB32F(-1.0f);
+}
+
 /**
  * Evaluates the Torrance Sparrow BRDF 'FDG / 4.NoL.NoV' with the
  * Generalized Trowbridge-Reitz 2 (GTR2) as the microfacet distribution
- * function
+ * function with single scattering (no energy compensation)
  * 
  * Reference: [Sampling the GGX Distribution of Visible Normals, Heitz, 2018]
  * Equation 15
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GTR2_eval(float material_roughness, float material_anisotropy, const ColorRGB32F& F, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, float& out_pdf)
+template <>
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GTR2_eval<0>(const HIPRTRenderData& render_data, const ColorRGB32F& F0, float material_roughness, float material_anisotropy, const ColorRGB32F& F, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, float& out_pdf)
 {
     out_pdf = 0.0f;
 
@@ -398,8 +400,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GTR2_eval(float mate
     float D = GTR2_anisotropic(alpha_x, alpha_y, local_halfway_vector);
 
     // GTR2 visible normal distribution for evaluating the PDF
-    float lambda_V = G1_Smith_lambda(alpha_x, alpha_y, local_view_direction);
-    float G1V = 1.0f / (1.0f + lambda_V);
+    float lambda_V2 = G1_Smith_lambda(alpha_x, alpha_y, local_view_direction);
+    float G1V = 1.0f / (1.0f + lambda_V2);
     float Dvisible = GTR2_anisotropic_vndf(alpha_x, alpha_y, D, G1V, local_view_direction, local_halfway_vector);
 
     // Maxing 1.0e-8f here to avoid zeros and numerical imprecisions
@@ -413,29 +415,61 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GTR2_eval(float mate
     // that we're going to apply to get our final 'to light direction' and so the
     // jacobian determinant of that reflection operator is the (4.0f * NoV) in the
     // denominator
-    out_pdf = Dvisible / (4.0f * NoV);
+    out_pdf = Dvisible / (4.0f * hippt::dot(local_view_direction, local_halfway_vector));
     if (out_pdf == 0.0f)
         return ColorRGB32F(0.0f);
     else
     {
         float lambda_L = G1_Smith_lambda(alpha_x, alpha_y, local_to_light_direction);
-        float G2HeightCorrelated = 1.0f / (1.0f + lambda_V * lambda_L);
+        float G2HeightCorrelated = 1.0f / (1.0f + lambda_V2 + lambda_L);
 
         return F * D * G2HeightCorrelated / (4.0f * NoL * NoV);
     }
+}
+
+template <>
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GTR2_eval<1>(const HIPRTRenderData& render_data, const ColorRGB32F& F0, float material_roughness, float material_anisotropy, const ColorRGB32F& F, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, float& out_pdf)
+{
+    const void* GGX_Ess_texture_pointer = nullptr;
+#ifdef __KERNELCC__
+    GGX_Ess_texture_pointer = &render_data.brdfs_data.GGX_Ess;
+#else
+    GGX_Ess_texture_pointer = render_data.brdfs_data.GGX_Ess;
+#endif
+
+    // Reading the precomputed hemispherical directional albedo from the texture
+    float Ess = sample_texture_rgb_32bits(GGX_Ess_texture_pointer, 0, make_int2(96, 96), false, make_float2(hippt::max(0.0f, local_view_direction.z), material_roughness)).r;
+
+    // Computing kms, [Practical multiple scattering compensation for microfacet models, Turquin, 2017], Eq. 10
+    float kms = (1.0f - Ess) / Ess;
+
+    ColorRGB32F fresnel_compensation_term;
+#if PrincipledBSDFGGXUseMultipleScatteringDoFresnel == KERNEL_OPTION_TRUE
+    // [Practical multiple scattering compensation for microfacet models, Turquin, 2017], Eq. 15
+    fresnel_compensation_term = F0;
+#else
+    // 1.0f F so that the fresnel compensation has no effect
+    fresnel_compensation_term = ColorRGB32F(1.0f);
+#endif
+    // Computing the compensation term and multiplying by the single scattering non-energy conserving base GGX BRDF,
+    // Eq. 9
+    ColorRGB32F ms_compensation_term = ColorRGB32F(1.0f) + fresnel_compensation_term * kms;
+
+    ColorRGB32F single_scattering = torrance_sparrow_GTR2_eval<0>(render_data, F0, material_roughness, material_anisotropy, F, local_view_direction, local_to_light_direction, local_halfway_vector, out_pdf);
+    return single_scattering * ms_compensation_term;
 }
 
 /**
  * Evaluation of a torrance-sparrow model with the GTR2 normal distribution
  * and G1 masking-shadowing
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GTR2_eval(float material_roughness, float material_anisotropy, float material_ior, float incident_ior, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, float& out_pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GTR2_eval(const HIPRTRenderData& render_data, const ColorRGB32F& F0, float material_roughness, float material_anisotropy, float material_ior, float incident_ior, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, float& out_pdf)
 {
     float HoL = hippt::clamp(1.0e-8f, 1.0f, hippt::dot(local_halfway_vector, local_to_light_direction));
 
     ColorRGB32F F = ColorRGB32F(full_fresnel_dielectric(HoL, incident_ior, material_ior));
 
-    return torrance_sparrow_GTR2_eval(material_roughness, material_anisotropy, F, local_view_direction, local_to_light_direction, local_halfway_vector, out_pdf);
+    return torrance_sparrow_GTR2_eval<PrincipledBSDFGGXUseMultipleScattering>(render_data, F0, material_roughness, material_anisotropy, F, local_view_direction, local_to_light_direction, local_halfway_vector, out_pdf);
 }
 
 /**
@@ -505,12 +539,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGX_VNDF_spherical_caps_sample(const float
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 GTR2_anisotropic_sample_microfacet(const float3& local_view_direction, float alpha_x, float alpha_y, Xorshift32Generator& random_number_generator)
 {
-#if GGXAnisotropicSampleFunction == GGX_NO_VNDF
-#elif GGXAnisotropicSampleFunction == GGX_VNDF_SAMPLING
+#if PrincipledBSDFAnisotropicGGXSampleFunction == GGX_NO_VNDF
+#elif PrincipledBSDFAnisotropicGGXSampleFunction == GGX_VNDF_SAMPLING
     return GGX_VNDF_sample(local_view_direction, alpha_x, alpha_y, random_number_generator);
-#elif GGXAnisotropicSampleFunction == GGX_VNDF_SPHERICAL_CAPS
+#elif PrincipledBSDFAnisotropicGGXSampleFunction == GGX_VNDF_SPHERICAL_CAPS
     return GGX_VNDF_spherical_caps_sample(local_view_direction, alpha_x, alpha_y, random_number_generator);
-#elif GGXAnisotropicSampleFunction == GGX_VNDF_BOUNDED
+#elif PrincipledBSDFAnisotropicGGXSampleFunction == GGX_VNDF_BOUNDED
 #else
 #endif
 }

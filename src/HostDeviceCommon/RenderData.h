@@ -55,10 +55,6 @@ struct RenderBuffers
 	// Materials array to be indexed by an index retrieved from the 
 	// material_indices array
 	RendererMaterial* materials_buffer = nullptr;
-	// 32x32 texture containing the precomputed parameters of the LTC
-	// fitted to approximate the SSGX sheen volumetric layer.
-	// See SheenLTCFittedParameters.h
-	void* sheen_ltc_parameters_texture = nullptr;
 
 	int emissive_triangles_count = 0;
 	int* emissive_triangles_indices = nullptr;
@@ -70,6 +66,19 @@ struct RenderBuffers
 	// Widths of the textures. Necessary for using texel coordinates in [0, width - 1]
 	// in the shader (required because Orochi doesn't support normalized texture coordinates).
 	int2* textures_dims = nullptr;
+
+};
+
+struct BRDFsData
+{
+	// 32x32 texture containing the precomputed parameters of the LTC
+	// fitted to approximate the SSGX sheen volumetric layer.
+	// See SheenLTCFittedParameters.h
+	void* sheen_ltc_parameters_texture = nullptr;
+
+	// 32x32 texture for the precomputed hemispherical directional albedo
+	// for the GGX BRDFs used in the principled BSDF
+	void* GGX_Ess = nullptr;
 };
 
 struct AuxiliaryBuffers
@@ -157,6 +166,7 @@ struct HIPRTRenderData
 	hiprtGlobalStackBuffer global_traversal_stack_buffer = { 0, 0, nullptr };
 
 	RenderBuffers buffers;
+	BRDFsData brdfs_data;
 	AuxiliaryBuffers aux_buffers;
 	GBuffer g_buffer;
 	GBuffer g_buffer_prev_frame;

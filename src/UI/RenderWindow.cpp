@@ -42,6 +42,7 @@ extern ImGuiLogger g_imgui_logger;
 // - fix sampling lights inside dielectrics with ReSTIR DI (using minT for rays)
 // - when using a BSDF override, transmissive materials keep their dielectric priorities and this can mess up shadow rays and intersections in general if the BSDF used for the override doesn't support transmissive materials
 // - threadmanager: what if we start a thread with a dependency A on a thread that itself has a dependency B? we're going to try join dependency A even if thread with dependency on B hasn't even started yet --> joining nothing --> immediate return --> should have waited for the dependency but hasn't
+// - crash std::vector::deallocate somewhere when exiting the application
 
 
 // TODO Code Organization:
@@ -295,6 +296,7 @@ RenderWindow::RenderWindow(int renderer_width, int renderer_height, std::shared_
 	ImGuiRenderer::init_imgui(m_glfw_window);
 
 	m_renderer = std::make_shared<GPURenderer>(hiprt_oro_ctx);
+	m_gpu_baker = std::make_shared<GPUBaker>(m_renderer);
 
 	ThreadManager::add_dependency(ThreadManager::RENDER_WINDOW_RENDERER_INITIAL_RESIZE, ThreadManager::RENDERER_STREAM_CREATE);
 	ThreadManager::start_thread(ThreadManager::RENDER_WINDOW_RENDERER_INITIAL_RESIZE, [this, renderer_width, renderer_height]() {
@@ -362,6 +364,8 @@ RenderWindow::~RenderWindow()
 	m_renderer = nullptr;
 	// Same for the screenshoter
 	m_screenshoter = nullptr;
+	// Same for the baker
+	m_gpu_baker = nullptr;
 	// Same for the display view system
 	m_display_view_system = nullptr;
 	// Same for the imgui renderer
@@ -681,6 +685,11 @@ std::shared_ptr<OpenImageDenoiser> RenderWindow::get_denoiser()
 std::shared_ptr<GPURenderer> RenderWindow::get_renderer()
 {
 	return m_renderer;
+}
+
+std::shared_ptr<GPUBaker> RenderWindow::get_baker()
+{
+	return m_gpu_baker;
 }
 
 std::shared_ptr<PerformanceMetricsComputer> RenderWindow::get_performance_metrics()

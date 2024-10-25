@@ -29,8 +29,6 @@ include(cmake/SetupHIPRT.cmake)
 # Preparing Orochi
 include(cmake/SetupOrochi.cmake)
 
-# add_subdirectory(${CMAKE8_SOURCE_DIR} "thirdparties/tinyexr")
-
 set(GLFW_LIB_DIR "thirdparties/opengl/lib/GLFW")
 set(GLEW_LIB_DIR "thirdparties/opengl/lib/GLEW")
 set(GLEW_BIN_DIR "thirdparties/opengl/bin/GLEW")
@@ -57,7 +55,8 @@ file(GLOB_RECURSE IMGUI_FILES thirdparties/imgui/imgui.h
 	thirdparties/imgui/imgui_tables.cpp
 	thirdparties/imgui/imgui_widgets.cpp
 	thirdparties/imgui/backends/imgui_impl_glfw.cpp
-	thirdparties/imgui/backends/imgui_impl_opengl3.cpp)
+	thirdparties/imgui/backends/imgui_impl_opengl3.cpp
+	thirdparties/imgui/misc/cpp/imgui_stdlib.cpp)
 
 file(GLOB_RECURSE DEVICE_SOURCES src/Device/*.h)
 file(GLOB_RECURSE GLSL_SHADERS src/Shaders/*.frag src/Shaders/*.vert)
@@ -102,7 +101,7 @@ target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/stbi/")
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/glm/")
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/imgui/")
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/imgui/backends")
-target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/tinyexr_inc/")
+target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/tinyexr/")
 target_include_directories(HIPRTPathTracer PRIVATE ${HIPRT_HEADERS_DIR}/..)
 target_include_directories(HIPRTPathTracer PRIVATE ${OROCHI_SOURCES_DIR}/..)
 target_include_directories(HIPRTPathTracer PRIVATE "${EXTERNAL_ASSIMP_INSTALL_LOCATION}/include/")

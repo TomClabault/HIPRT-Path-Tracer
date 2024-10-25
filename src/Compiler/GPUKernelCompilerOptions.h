@@ -23,6 +23,8 @@ public:
 
 	static const std::string BSDF_OVERRIDE;
 	static const std::string PRINCIPLED_BSDF_DIFFUSE_LOBE;
+	static const std::string PRINCIPLED_BSDF_GGX_MULTIPLE_SCATTERING;
+	static const std::string PRINCIPLED_BSDF_GGX_MULTIPLE_SCATTERING_DO_FRESNEL;
 	static const std::string INTERIOR_STACK_STRATEGY;
 	static const std::string NESTED_DIELETRCICS_STACK_SIZE_OPTION;
 
