@@ -34,10 +34,22 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA32F sample_texture_rgba(const void* text
 
 #ifdef __KERNELCC__
     // We're doing the UV addressing ourselves since it seems to be broken in Orochi...
-    // 
+    float u = uv.x;
+    float v = uv.y;
+
     // Sampling in repeat mode so we're just keeping the fractional part
-    float u = uv.x - static_cast<int>(uv.x);
-    float v = uv.y - static_cast<int>(uv.y);
+    if (u != 1.0f)
+        // Only doing that if u != 1.0f because if we actually have
+        // uv.x == 1.0f, then subtracting static_cast<int>(uv.x) will
+        // give us 0.0f even though we actually want 1.0f (which is correct).
+        // 
+        // Basically, 1.0f gets transformed into 0.0f even though 1.0f is a correct
+        // U coordinate which needs not to be wrapped
+        u -= static_cast<int>(uv.x);
+
+    if (v != 1.0f)
+        // Same for v
+        v -= static_cast<int>(uv.y);
 
     // For negative UVs, we also want to repeat and we want, for example, 
     // -0.1f to behave as 0.9f

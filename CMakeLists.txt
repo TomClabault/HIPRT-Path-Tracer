@@ -29,6 +29,7 @@ include(cmake/SetupHIPRT.cmake)
 # Preparing Orochi
 include(cmake/SetupOrochi.cmake)
 
+# add_subdirectory(${CMAKE8_SOURCE_DIR} "thirdparties/tinyexr")
 
 set(GLFW_LIB_DIR "thirdparties/opengl/lib/GLFW")
 set(GLEW_LIB_DIR "thirdparties/opengl/lib/GLEW")
@@ -101,47 +102,14 @@ target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/stbi/")
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/glm/")
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/imgui/")
 target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/imgui/backends")
+target_include_directories(HIPRTPathTracer PRIVATE "thirdparties/tinyexr_inc/")
 target_include_directories(HIPRTPathTracer PRIVATE ${HIPRT_HEADERS_DIR}/..)
 target_include_directories(HIPRTPathTracer PRIVATE ${OROCHI_SOURCES_DIR}/..)
 target_include_directories(HIPRTPathTracer PRIVATE "${EXTERNAL_ASSIMP_INSTALL_LOCATION}/include/")
 target_include_directories(HIPRTPathTracer PRIVATE ".")
 
-# ------------- Handling NVIDIA compilation details -------------
-# If CUDA is installed, meaning NVIDIA
+# Auto setup of Orochi for NVIDIA by including their cmake file
 include(${HIPRT_SUBMODULE_DIR}/contrib/Orochi/Orochi/enable_cuew.cmake)
-#[===[
-set(USING_NVIDIA False)
-
-if (WIN32)
-	if (DEFINED ENV{CUDA_PATH})
-		set(USING_NVIDIA True)
-	endif()
-elseif (UNIX)
-	# TODO find_package(CUDA) is deprecated and we may want to use enable_language(CUDA) + ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES} if this becomes an issue
-	# 	--> Setting the policy to OLD in the meantime
-	cmake_policy(SET CMP0146 OLD)
-	find_package(CUDA QUIET)
-	if (CUDA_FOUND)
-		set (USING_NVIDIA True)
-	endif()
-endif()
-
-if (USING_NVIDIA)
-	# Adding the required macro for Orochi
-	add_compile_definitions(OROCHI_ENABLE_CUEW)
-endif()
-
-	# Adding the include directory for CUDA headers (needed for Orochi compilation)
-	if (WIN32)
-		target_include_directories(HIPRTPathTracer PRIVATE $ENV{CUDA_PATH}/include)
-	elseif(UNIX)
-		target_include_directories(HIPRTPathTracer PRIVATE ${CUDA_INCLUDE_DIRS})
-	endif()
-#]===]
-
-#This all shouldn't be necessary anymore with the new CMake-HIPRT
-
-# ---------------------------------------------------------------
 
 
 if (WIN32)

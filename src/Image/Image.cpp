@@ -16,6 +16,8 @@ extern ImGuiLogger g_imgui_logger;
 #include "stb_image.h"
 #include "stb_image_write.h"
 
+#include "tinyexr.cc"
+
 #include <deque>
 
 Image8Bit::Image8Bit(int width, int height, int channels) : Image8Bit(std::vector<unsigned char>(width * height * channels, 0), width, height, channels) {}
@@ -353,6 +355,61 @@ Image32Bit Image32Bit::read_image_hdr(const std::string& filepath, int output_ch
 
     stbi_image_free(pixels);
     return Image32Bit(converted_data, width, height, output_channels);
+}
+
+Image32Bit Image32Bit::read_image_exr(const std::string& filepath, bool flipY)
+{
+    float* out;
+    int width;
+    int height;
+    const char* err = nullptr;
+
+    int ret = LoadEXR(&out, &width, &height, filepath.c_str(), &err);
+
+    if (ret != TINYEXR_SUCCESS) 
+    {
+        if (err) 
+        {
+            g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Error reading EXR image: %s", err);
+            FreeEXRErrorMessage(err); // release memory of error message.
+        }
+
+        return Image32Bit();
+    }
+    else 
+    {
+        if (!flipY)
+        {
+            std::vector<float> vector_data(out, out + width * height * 4);
+            std::free(out); // release memory of image data
+
+            return Image32Bit(vector_data, width, height, 4);
+        }
+        else
+        {
+            std::vector<float> vector_data(width * height * 4);
+
+            for (int y = height - 1; y >= 0; y--)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    int index_y_flipped = x + (height - 1 - y) * width;
+                    int index = x + y * width;
+
+                    index *= 4; // for RGBA
+                    index_y_flipped *= 4; // for RGBA
+
+                    vector_data[index + 0] = out[index_y_flipped + 0];
+                    vector_data[index + 1] = out[index_y_flipped + 1];
+                    vector_data[index + 2] = out[index_y_flipped + 2];
+                    vector_data[index + 3] = out[index_y_flipped + 3];
+                }
+            }
+
+            std::free(out); // release memory of image data
+            return Image32Bit(vector_data, width, height, 4);
+        }
+    }
 }
 
 bool Image32Bit::write_image_png(const char* filename, const bool flipY) const

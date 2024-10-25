@@ -27,8 +27,6 @@ public:
     Image8Bit(int width, int height, int channels);
     Image8Bit(unsigned char* data, int width, int height, int channels);
     Image8Bit(const std::vector<unsigned char>& data, int width, int height, int channels);
-    Image8Bit(const std::string& filepath);
-    Image8Bit(const char* filepath);
 
     static Image8Bit read_image(const std::string& filepath, int output_channels, bool flipY);
     static Image8Bit read_image_hdr(const std::string& filepath, int output_channels, bool flipY);
@@ -81,11 +79,10 @@ public:
     Image32Bit(int width, int height, int channels);
     Image32Bit(float* data, int width, int height, int channels);
     Image32Bit(const std::vector<float>& data, int width, int height, int channels);
-    Image32Bit(const std::string& filepath);
-    Image32Bit(const char* filepath);
 
     static Image32Bit read_image(const std::string& filepath, int output_channels, bool flipY);
     static Image32Bit read_image_hdr(const std::string& filepath, int output_channels, bool flipY);
+    static Image32Bit read_image_exr(const std::string& filepath, bool flipY);
 
     bool write_image_png(const char* filename, const bool flipY = true) const;
     bool write_image_hdr(const char* filename, const bool flipY = true) const;
