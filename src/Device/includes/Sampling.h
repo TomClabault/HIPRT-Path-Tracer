@@ -362,7 +362,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float G1_Smith_lambda(float alpha_x, float alpha_
     float ax = local_direction.x * alpha_x;
     float ay = local_direction.y * alpha_y;
 
-    return (sqrt(1.0f + (ax * ax + ay * ay) / (local_direction.z * local_direction.z)) - 1.0f) * 0.5f;
+    return (-1.0f + sqrt(1.0f + (ax * ax + ay * ay) / (local_direction.z * local_direction.z))) * 0.5f;
 }
 
 /**
@@ -394,13 +394,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GTR2_eval(float mate
     float alpha_y;
     SimplifiedRendererMaterial::get_alphas(material_roughness, material_anisotropy, alpha_x, alpha_y);
 
-    float G1V = G1(alpha_x, alpha_y, local_view_direction);
-    float G1L = G1(alpha_x, alpha_y, local_to_light_direction);
-    float G2 = G1V * G1L;
-
     // GTR2 normal distribution
     float D = GTR2_anisotropic(alpha_x, alpha_y, local_halfway_vector);
+
     // GTR2 visible normal distribution for evaluating the PDF
+    float lambda_V = G1_Smith_lambda(alpha_x, alpha_y, local_view_direction);
+    float G1V = 1.0f / (1.0f + lambda_V);
     float Dvisible = GTR2_anisotropic_vndf(alpha_x, alpha_y, D, G1V, local_view_direction, local_halfway_vector);
 
     // Maxing 1.0e-8f here to avoid zeros and numerical imprecisions
@@ -418,7 +417,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GTR2_eval(float mate
     if (out_pdf == 0.0f)
         return ColorRGB32F(0.0f);
     else
-        return F * D * G2 / (4.0f * NoL * NoV);
+    {
+        float lambda_L = G1_Smith_lambda(alpha_x, alpha_y, local_to_light_direction);
+        float G2HeightCorrelated = 1.0f / (1.0f + lambda_V * lambda_L);
+
+        return F * D * G2HeightCorrelated / (4.0f * NoL * NoV);
+    }
 }
 
 /**
