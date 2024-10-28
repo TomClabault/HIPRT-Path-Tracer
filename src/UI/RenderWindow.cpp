@@ -42,7 +42,6 @@ extern ImGuiLogger g_imgui_logger;
 // - fix sampling lights inside dielectrics with ReSTIR DI (using minT for rays)
 // - when using a BSDF override, transmissive materials keep their dielectric priorities and this can mess up shadow rays and intersections in general if the BSDF used for the override doesn't support transmissive materials
 // - threadmanager: what if we start a thread with a dependency A on a thread that itself has a dependency B? we're going to try join dependency A even if thread with dependency on B hasn't even started yet --> joining nothing --> immediate return --> should have waited for the dependency but hasn't
-// - crash std::vector::deallocate somewhere when exiting the application
 
 
 // TODO Code Organization:
@@ -65,6 +64,7 @@ extern ImGuiLogger g_imgui_logger;
 
 // TODO Features:
 // - try dynamic stack for better memory usage than full brute force global stack buffer and see performance impact
+// - implement ideas of https://blog.selfshadow.com/publications/s2017-shading-course/imageworks/s2017_pbs_imageworks_slides_v2.pdf
 // - use shared memory for nested dielectrics stack?
 // - opacity micromaps
 // - use anyhits for shadow rays
@@ -77,7 +77,6 @@ extern ImGuiLogger g_imgui_logger;
 // - reload shaders button
 // - ImGui: Sampling --> Materials panel under "Envmap Sampling" panel for choosing VNDF / Spherical Caps VNDF / SGGX LTC parameters or approx for sheen, ...
 // - do not evaluate perfectly smooth specular materials to save on computations? Because evaluating is going to yield 0.0f anyways --> dirac distribution. We should only sample those I guess
-// - energy conserving GGX & Fresnel [https://blog.selfshadow.com/publications/s2017-shading-course/imageworks/s2017_pbs_imageworks_slides_v2.pdf]
 // - use bare variables for principled_bsdf_sample CDF[] because local arrays are bad on AMD GPUs
 // - pack ray payload
 // - pack HDR as color as 9/9/9/5 RGBE? https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/MiniEngine/Core/Shaders/PixelPacking_RGBE.hlsli
@@ -101,15 +100,13 @@ extern ImGuiLogger g_imgui_logger;
 // - RIS: do no use BSDF samples for rough surfaces (have a BSDF ray roughness treshold basically)
 //		We may have to do something with the lobes of the BSDF specifically for this one. A coated diffuse cannot always ignore light samples for example because the diffuse lobe benefits from light samples even if the surface is not smooth (coating) 
 // - have a light BVH for intersecting light triangles only: useful when we want to know whether or not a direction could have be sampled by the light sampler: we don't need to intersect the whole scene BVH, just the light geometry, less expensive
-// - shadow terminator issue on sphere low smooth scene: [Taming the Shadow Terminator], Matt Jen-Yuan Chiang
+// - shadow terminator issue on sphere low smooth scene: [Taming the Shadow Terminator], Matt Jen-Yuan Chiang, https://github.com/aconty/aconty/blob/main/pdf/bump-terminator-nvidia2019.pdf
 // - use HIP/CUDA graphs to reduce launch overhead
-// - keep compiling kernels in the background after application has started to cache the most common kernel options on disk
-// - linear interpolation function for the parameters of the BSDF
+// - linear interpolation (spatial, object space, world space) function for the parameters of the BSDF
 // - compensated importance sampling of envmap
+// - Product importance sampling envmap: https://github.com/aconty/aconty/blob/main/pdf/fast-product-importance-abstract.pdf
 // - multiple GLTF, one GLB for different point of views per model
-// - can we do direct lighting + take emissive at all bounces but divide by 2 to avoid double taking into account emissive lights? this would solve missing caustics
 // - improve performance by only intersecting the selected emissive triangle with the BSDF ray when multiple importance sampling, we don't need a full BVH traversal at all
-// - If could not load given scene file, fallback to cornell box instead of not continuing
 // - CTRL + mouse wheel for zoom in viewport, CTRL click reset zoom
 // - add clear shader cache in ImGui
 // - adapt number of light samples in light sampling routines based on roughness of the material --> no need to sample 8 lights in RIS for perfectly specular material + use __any() intrinsic for that because we don't want to reduce light rays unecessarily if one thread of the warp is going to slow everyone down anyways
@@ -118,7 +115,6 @@ extern ImGuiLogger g_imgui_logger;
 // - build BVHs one by one to avoid big memory spike? but what about BLAS performance cost?
 // - play with SBVH building parameters alpha/beta for memory/performance tradeoff + ImGui for that
 // - ability to change the color of the heatmap shader in ImGui
-// - ray statistics with filter functions
 // - do not store alpha from envmap
 // - fixed point 18b RGB for envmap? 70% size reduction compared to full size. Can't use texture sampler though. Is not using a sampler ok performance-wise? --> it probably is since we're probably memory lantency bound, not memory bandwidth
 // - look at blender cycles "medium contrast", "medium low constract", "medium high", ...
@@ -129,9 +125,7 @@ extern ImGuiLogger g_imgui_logger;
 // - bloom post processing
 // - BRDF swapper ImGui : Disney, Lambertian, Oren Nayar, Cook Torrance, Perfect fresnel dielectric reflect/transmit
 // - choose principled BSDF diffuse model (disney, lambertian, oren nayar)
-// - Cool colored thread-safe logger singleton class --> loguru lib
 // - portal envmap sampling --> choose portals with ImGui
-// - recursive trace through transmissive / reflective materials for caustics
 // - find a way to not fill the texcoords buffer for meshes that don't have textures
 // - pack RendererMaterial informations such as texture indices (we can probably use 16 bit for a texture index --> 2 texture indices in one 32 bit register)
 // - use 8 bit textures for material properties instead of float

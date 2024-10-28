@@ -453,7 +453,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GTR2_eval<1>(const H
 #endif
     // Computing the compensation term and multiplying by the single scattering non-energy conserving base GGX BRDF,
     // Eq. 9
-    ColorRGB32F ms_compensation_term = ColorRGB32F(1.0f) + fresnel_compensation_term * kms;
+    ColorRGB32F ms_compensation_term = ColorRGB32F(1.0f) + kms * fresnel_compensation_term;
 
     ColorRGB32F single_scattering = torrance_sparrow_GTR2_eval<0>(render_data, F0, material_roughness, material_anisotropy, F, local_view_direction, local_to_light_direction, local_halfway_vector, out_pdf);
     return single_scattering * ms_compensation_term;

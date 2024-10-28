@@ -209,7 +209,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
 
         float dwm_dwi = hippt::abs(HoL) / dot_prod2;
         float D_pdf = G1_V / hippt::abs(NoV) * D * hippt::abs(HoV);
-        pdf = dwm_dwi * D_pdf * (1.0f - F);
+        pdf = dwm_dwi * D_pdf;
+        // Taking refraction probability into account
+        pdf *= (1.0f - F);
 
         // We added a check a few lines above to "avoid dividing by 0 later on". This is where.
         // When NoL is 0, denom is 0 too and we're dividing by 0. 

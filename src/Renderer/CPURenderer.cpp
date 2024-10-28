@@ -30,14 +30,14 @@
 // the interesting pixel. If that image viewer has its (0, 0) in the top
 // left corner, you'll need to set that DEBUG_FLIP_Y to 0. Set 1 to if
 // you're measuring the coordinates of the pixel with (0, 0) in the bottom left corner
-#define DEBUG_FLIP_Y 1
+#define DEBUG_FLIP_Y 0
 
 // Coordinates of the pixel whose neighborhood needs to rendered (useful for algorithms
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 685
-#define DEBUG_PIXEL_Y 357
+#define DEBUG_PIXEL_X 969
+#define DEBUG_PIXEL_Y 338
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -61,7 +61,7 @@
 #define DEBUG_RENDER_NEIGHBORHOOD 0
 // How many pixels to render around the debugged pixel given by the DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y coordinates
-#define DEBUG_NEIGHBORHOOD_SIZE 10
+#define DEBUG_NEIGHBORHOOD_SIZE 30
 
 CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, height))
 {
@@ -104,7 +104,7 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
 void CPURenderer::setup_brdfs_data()
 {
     m_sheen_ltc_params = Image32Bit(reinterpret_cast<float*>(ltc_parameters_table_approximation.data()), 32, 32, 3);
-    m_GGX_Ess = Image32Bit::read_image_hdr("../data/BRDFsData/GGX_Ess.hdr", 4, false);
+    m_GGX_Ess = Image32Bit::read_image_hdr("../data/BRDFsData/GGX_Ess_96x96.hdr", 4, false);
 }
 
 void CPURenderer::set_scene(Scene& parsed_scene)

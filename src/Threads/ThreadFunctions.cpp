@@ -142,7 +142,10 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
     }
 }
 
-void ThreadFunctions::read_image_hdr(Image32Bit& hdr_image_out, const std::string& filepath, int wanted_channel_count, bool flip_Y)
+void ThreadFunctions::read_envmap(Image32Bit& hdr_image_out, const std::string& filepath, int wanted_channel_count, bool flip_Y)
 {
-    hdr_image_out = Image32Bit::read_image_hdr(filepath, wanted_channel_count, flip_Y);
+    if (filepath.ends_with(".hdr"))
+        hdr_image_out = Image32Bit::read_image_hdr(filepath, wanted_channel_count, flip_Y);
+    else if (filepath.ends_with(".exr"))
+        hdr_image_out = Image32Bit::read_image_exr(filepath, flip_Y);
 }
