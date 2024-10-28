@@ -22,7 +22,7 @@ extern ImGuiLogger g_imgui_logger;
 
 Image8Bit::Image8Bit(int width, int height, int channels) : Image8Bit(std::vector<unsigned char>(width * height * channels, 0), width, height, channels) {}
 
-Image8Bit::Image8Bit(unsigned char* data, int width, int height, int channels) : width(width), height(height), channels(channels)
+Image8Bit::Image8Bit(const unsigned char* data, int width, int height, int channels) : width(width), height(height), channels(channels)
 {
     m_pixel_data = std::vector<unsigned char>();
     m_pixel_data.insert(m_pixel_data.end(), &data[0], &data[width * height * channels]);
@@ -161,8 +161,20 @@ float Image8Bit::luminance_of_area(const ImageBin& area) const
 ColorRGBA32F Image8Bit::sample_rgba32f(float2 uv) const
 {
     // Sampling in repeat mode so we're just keeping the fractional part
-    float u = uv.x - (int)uv.x;
-    float v = uv.y - (int)uv.y;
+    float u = uv.x;
+    if (u != 1.0f)
+        // Only doing that if u != 1.0f because if we actually have
+        // uv.x == 1.0f, then subtracting static_cast<int>(uv.x) will
+        // give us 0.0f even though we actually want 1.0f (which is correct).
+        // 
+        // Basically, 1.0f gets transformed into 0.0f even though 1.0f is a correct
+        // U coordinate which needs not to be wrapped
+        u -= static_cast<int>(uv.x);
+
+    float v = uv.y;
+    if (v != 1.0f)
+        // Same for v
+        v -= static_cast<int>(uv.y);
 
     // For negative UVs, we also want to repeat and we want, for example, 
     // -0.1f to behave as 0.9f
@@ -289,7 +301,7 @@ void Image8Bit::free()
 
 Image32Bit::Image32Bit(int width, int height, int channels) : Image32Bit(std::vector<float>(width * height * channels, 0), width, height, channels) {}
 
-Image32Bit::Image32Bit(float* data, int width, int height, int channels) : width(width), height(height), channels(channels)
+Image32Bit::Image32Bit(const float* data, int width, int height, int channels) : width(width), height(height), channels(channels)
 {
     m_pixel_data = std::vector<float>();
     m_pixel_data.insert(m_pixel_data.end(), &data[0], &data[width * height * channels]);
@@ -480,8 +492,20 @@ float Image32Bit::luminance_of_area(const ImageBin& area) const
 ColorRGBA32F Image32Bit::sample_rgba32f(float2 uv) const
 {
     // Sampling in repeat mode so we're just keeping the fractional part
-    float u = uv.x - (int)uv.x;
-    float v = uv.y - (int)uv.y;
+    float u = uv.x;
+    if (u != 1.0f)
+        // Only doing that if u != 1.0f because if we actually have
+        // uv.x == 1.0f, then subtracting static_cast<int>(uv.x) will
+        // give us 0.0f even though we actually want 1.0f (which is correct).
+        // 
+        // Basically, 1.0f gets transformed into 0.0f even though 1.0f is a correct
+        // U coordinate which needs not to be wrapped
+        u -= static_cast<int>(uv.x);
+
+    float v = uv.y;
+    if (v != 1.0f)
+        // Same for v
+        v -= static_cast<int>(uv.y);
 
     // For negative UVs, we also want to repeat and we want, for example, 
     // -0.1f to behave as 0.9f
@@ -688,4 +712,68 @@ void Image32Bit::free()
     width = 0;
     height = 0;
     channels = 0;
+}
+
+Image32Bit3D::Image32Bit3D() 
+{
+    width = 0;
+    height = 0;
+    depth = 0;
+
+    channels = 0;
+}
+
+Image32Bit3D::Image32Bit3D(const std::vector<Image32Bit> images)
+{
+    m_images = images;
+
+    width = images[0].width;
+    height = images[0].height;
+    depth = images.size();
+
+    channels = images[0].channels;
+}
+
+ColorRGBA32F Image32Bit3D::sample_rgba32f(float3 uvw) const
+{
+    // Sampling in repeat mode so we're just keeping the fractional part
+    float u = uvw.x;
+    if (u != 1.0f)
+        // Only doing that if u != 1.0f because if we actually have
+        // uv.x == 1.0f, then subtracting static_cast<int>(uv.x) will
+        // give us 0.0f even though we actually want 1.0f (which is correct).
+        // 
+        // Basically, 1.0f gets transformed into 0.0f even though 1.0f is a correct
+        // U coordinate which needs not to be wrapped
+        u -= static_cast<int>(uvw.x);
+
+    float v = uvw.y;
+    if (v != 1.0f)
+        // Same for v
+        v -= static_cast<int>(uvw.y);
+
+    float w = uvw.z;
+    if (w != 1.0f)
+        // Same for w
+        w -= static_cast<int>(uvw.z);
+    
+
+    // For negative UVs, we also want to repeat and we want, for example, 
+    // -0.1f to behave as 0.9f
+    u = u < 0 ? 1.0f + u : u;
+    v = v < 0 ? 1.0f + v : v;
+    w = w < 0 ? 1.0f + w : w;
+
+    // Sampling with [0, 0] bottom-left convention
+    v = 1.0f - v;
+
+    int x = (u * (width - 1));
+    int y = (v * (height - 1));
+    int z = (w * (depth - 1));
+
+    ColorRGBA32F out_color;
+    for (int i = 0; i < channels; i++)
+        out_color[i] = m_images[z][(x + y * width) * channels + i];
+
+    return out_color;
 }

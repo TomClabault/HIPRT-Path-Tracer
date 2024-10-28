@@ -76,9 +76,21 @@ struct BRDFsData
 	// See SheenLTCFittedParameters.h
 	void* sheen_ltc_parameters_texture = nullptr;
 
-	// 32x32 texture for the precomputed hemispherical directional albedo
-	// for the GGX BRDFs used in the principled BSDF
+	// 2D texture for the precomputed hemispherical directional albedo
+	// for the GGX BRDFs used in the principled BSDF for energy conservation
+	// of conductors
 	void* GGX_Ess = nullptr;
+
+	// 3D texture (cos_theta_o, roughness, relative_eta) for the precomputed
+	// directional albedo used for energy conservation of glass objects when
+	// entering a medium
+	void* GGX_Ess_glass = nullptr;
+	// Table when leaving a medium
+	void* GGX_Ess_glass_inverse = nullptr;
+
+	// Whether or not to use the texture unit's hardware texel interpolation
+	// when fetching the LUTs. It's faster but less precise.
+	bool use_hardware_tex_interpolation = false;
 };
 
 struct AuxiliaryBuffers
@@ -152,6 +164,8 @@ struct CPUData
  */
 struct HIPRTRenderData
 {
+	bool fix = false;
+
 	// Random number that is updated by the CPU and that can help generate a
 	// random seed on the GPU for the random number generator to get started
 	unsigned int random_seed = 42;

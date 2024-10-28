@@ -9,6 +9,7 @@
 #include "Compiler/GPUKernel.h"
 #include "Device/kernel_parameters/ReSTIR/DI/LightPresamplingParameters.h"
 #include "HIPRT-Orochi/OrochiBuffer.h"
+#include "HIPRT-Orochi/OrochiTexture3D.h"
 #include "HIPRT-Orochi/HIPRTScene.h"
 #include "HIPRT-Orochi/HIPRTOrochiCtx.h"
 #include "HostDeviceCommon/RenderData.h"
@@ -79,7 +80,12 @@ public:
 	/**
  	 * Initializes the precomputed texture used for GGX energy conservation
 	 */
-	void init_GGX_Ess_texture();
+	void init_GGX_Ess_texture(HIPfilter_mode filtering_mode = ORO_TR_FILTER_MODE_LINEAR);
+
+	/**
+	 * Initializes the precomputed textures used for GGX glass BSDF energy conservation
+	 */
+	void init_GGX_glass_Ess_texture(HIPfilter_mode filtering_mode = ORO_TR_FILTER_MODE_POINT);
 
 	/**
 	 * Initializes and compiles the kernels
@@ -438,7 +444,7 @@ private:
 	std::shared_ptr<HIPRTOrochiCtx> m_hiprt_orochi_ctx = nullptr;
 
 	// Custom stream onto which kernels are dispatched asynchronously
-	oroStream_t m_main_stream;
+	oroStream_t m_main_stream= nullptr;
 
 	// Render data passed to the GPU for rendering. Most importantly it contains
 	// 
@@ -467,7 +473,11 @@ private:
 	// State of the animation of the renderer
 	RendererAnimationState m_animation_state;
 
+	// Precomputed tables for GGX energy conservation
+	// [Practical multiple scattering compensation for microfacet models, Turquin, 2019]
 	OrochiTexture m_GGX_Ess;
+	OrochiTexture3D m_GGX_Ess_glass;
+	OrochiTexture3D m_GGX_Ess_glass_inverse;
 };
 
 #endif

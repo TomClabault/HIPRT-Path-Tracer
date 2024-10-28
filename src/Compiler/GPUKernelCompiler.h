@@ -127,7 +127,7 @@ private:
 	// Semaphore used by 'get_option_macros_used_by_kernel' so that not too many threads
 	// read kernel files at the same time: this can cause a "Too many files open" error
 	// 
-	// Limiting to a maximum of 16 threads at a time
+	// Limiting to a number of maximum threads at a time
 	std::counting_semaphore<> m_read_macros_semaphore { 1 };
 	std::condition_variable m_read_macros_cv;
 

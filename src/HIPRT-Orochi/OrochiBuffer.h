@@ -26,7 +26,7 @@ public:
 	void operator=(OrochiBuffer<T>&& other);
 
 	void resize(int new_element_count, size_t type_size_override = 0);
-	size_t get_element_count();
+	size_t get_element_count() const;
 
 	T* get_device_pointer();
 	T** get_pointer_address();
@@ -100,7 +100,7 @@ void OrochiBuffer<T>::resize(int new_element_count, size_t type_size_override)
 }
 
 template <typename T>
-size_t OrochiBuffer<T>::get_element_count()
+size_t OrochiBuffer<T>::get_element_count() const
 {
 	return m_element_count;
 }

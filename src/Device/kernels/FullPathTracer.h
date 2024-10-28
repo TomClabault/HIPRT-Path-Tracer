@@ -154,6 +154,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
                 // Not tracing for the primary ray because this has already been done in the camera ray pass
 
                 intersection_found = trace_ray(render_data, ray, ray_payload, closest_hit_info, random_number_generator);
+                if (render_data.fix)
+                    intersection_found = false;
             }
 
             if (intersection_found)
@@ -224,6 +226,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
                     // Only sampling the next bounce if we actually need it
                     float bsdf_pdf;
                     float3 bounce_direction;
+
                     ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bounce_direction, bsdf_pdf, random_number_generator);
 
                     ray_payload.throughput *= bsdf_color * hippt::abs(hippt::dot(bounce_direction, closest_hit_info.shading_normal)) / bsdf_pdf;

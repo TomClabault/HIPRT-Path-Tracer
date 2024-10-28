@@ -60,9 +60,9 @@ void ImGuiRenderer::show_help_marker(const std::string& text)
 void ImGuiRenderer::set_render_window(RenderWindow* render_window)
 {
 	m_render_window = render_window;
+	m_imgui_settings_window.set_render_window(render_window);
 	m_imgui_animation_window.set_render_window(render_window);
 	m_imgui_baking_window.set_render_window(render_window);
-	m_imgui_settings_window.set_render_window(render_window);
 	m_imgui_render_window.set_render_window(render_window);
 	m_imgui_log_window.set_render_window(render_window);
 }

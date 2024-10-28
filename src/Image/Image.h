@@ -25,7 +25,7 @@ class Image8Bit
 public:
     Image8Bit() : width(0), height(0), channels(0) {}
     Image8Bit(int width, int height, int channels);
-    Image8Bit(unsigned char* data, int width, int height, int channels);
+    Image8Bit(const unsigned char* data, int width, int height, int channels);
     Image8Bit(const std::vector<unsigned char>& data, int width, int height, int channels);
 
     static Image8Bit read_image(const std::string& filepath, int output_channels, bool flipY);
@@ -77,7 +77,7 @@ class Image32Bit
 public:
     Image32Bit() {}
     Image32Bit(int width, int height, int channels);
-    Image32Bit(float* data, int width, int height, int channels);
+    Image32Bit(const float* data, int width, int height, int channels);
     Image32Bit(const std::vector<float>& data, int width, int height, int channels);
 
     static Image32Bit read_image(const std::string& filepath, int output_channels, bool flipY);
@@ -129,6 +129,20 @@ public:
 
 protected:
     std::vector<float> m_pixel_data;
+};
+
+class Image32Bit3D
+{
+public:
+    Image32Bit3D();
+    Image32Bit3D(const std::vector<Image32Bit> images);
+
+    ColorRGBA32F sample_rgba32f(float3 uvw) const;
+
+    int width, height, depth, channels;
+
+private:
+    std::vector<Image32Bit> m_images;
 };
 
 #endif

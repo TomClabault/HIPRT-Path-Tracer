@@ -11,6 +11,8 @@
 #include "Device/kernels/ReSTIR/DI/SpatialReuse.h"
 #include "Device/kernels/ReSTIR/DI/FusedSpatiotemporalReuse.h"
 
+#include "Renderer/Baker/GPUBaker.h"
+#include "Renderer/Baker/GPUBakerConstants.h"
 #include "Renderer/CPURenderer.h"
 #include "Threads/ThreadManager.h"
 #include "UI/ApplicationSettings.h"
@@ -36,8 +38,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 969
-#define DEBUG_PIXEL_Y 338
+#define DEBUG_PIXEL_X 876
+#define DEBUG_PIXEL_Y 165
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -61,7 +63,7 @@
 #define DEBUG_RENDER_NEIGHBORHOOD 0
 // How many pixels to render around the debugged pixel given by the DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y coordinates
-#define DEBUG_NEIGHBORHOOD_SIZE 30
+#define DEBUG_NEIGHBORHOOD_SIZE 10
 
 CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, height))
 {
@@ -104,7 +106,25 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
 void CPURenderer::setup_brdfs_data()
 {
     m_sheen_ltc_params = Image32Bit(reinterpret_cast<float*>(ltc_parameters_table_approximation.data()), 32, 32, 3);
-    m_GGX_Ess = Image32Bit::read_image_hdr("../data/BRDFsData/GGX_Ess_96x96.hdr", 4, false);
+    m_GGX_Ess = Image32Bit::read_image_hdr("../data/BRDFsData/GGX/" + GPUBakerConstants::GGX_ESS_FILE_NAME, 4, true);
+
+    std::vector<Image32Bit> GGX_Ess_glass_images(GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_IOR);
+
+    for (int i = 0; i < GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_IOR; i++)
+    {
+        std::string filename = std::to_string(i) + GPUBakerConstants::GGX_GLASS_ESS_FILE_NAME;
+        std::string filepath = "../data/BRDFsData/GGX/Glass/" + filename;
+        GGX_Ess_glass_images[i] = Image32Bit::read_image_hdr(filepath, 4, true);
+    }
+    m_GGX_Ess_glass = Image32Bit3D(GGX_Ess_glass_images);
+
+    for (int i = 0; i < GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_IOR; i++)
+    {
+        std::string filename = std::to_string(i) + GPUBakerConstants::GGX_GLASS_INVERSE_ESS_FILE_NAME;
+        std::string filepath = "../data/BRDFsData/GGX/Glass/" + filename;
+        GGX_Ess_glass_images[i] = Image32Bit::read_image_hdr(filepath, 4, true);
+    }
+    m_GGX_Ess_glass_inverse = Image32Bit3D(GGX_Ess_glass_images);
 }
 
 void CPURenderer::set_scene(Scene& parsed_scene)
@@ -121,7 +141,9 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.buffers.texcoords = parsed_scene.texcoords.data();
 
     m_render_data.brdfs_data.sheen_ltc_parameters_texture = &m_sheen_ltc_params;
-    m_render_data.brdfs_data.GGX_Ess= &m_GGX_Ess;
+    m_render_data.brdfs_data.GGX_Ess = &m_GGX_Ess;
+    m_render_data.brdfs_data.GGX_Ess_glass = &m_GGX_Ess_glass;
+    m_render_data.brdfs_data.GGX_Ess_glass_inverse = &m_GGX_Ess_glass_inverse;
 
     ThreadManager::join_threads(ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY);
     m_render_data.buffers.material_textures = parsed_scene.textures.data();

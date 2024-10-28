@@ -15,6 +15,9 @@
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/Xorshift.h"
 
+ // To be able to access GPUBakerConstants::GGX_ESS_TEXTURE_SIZE && GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE
+#include "Renderer/Baker/GPUBakerConstants.h"
+
 /**
  * Returns the radical inverse base 2 of a given number.
  * Used for generating 2D points following the Hammersley point set
@@ -146,9 +149,23 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 reflect_ray(const float3& ray_direction, c
 /**
  * Refracts a ray about a normal. This function requires that dot(ray_direction, surface_normal) > 0 i.e.
  * ray_direction and surface_normal are in the same hemisphere
+ * 
+ * relative_eta here must be eta_i / eta_t
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE bool refract_ray(const float3& ray_direction, const float3& surface_normal, float3& refract_direction, float relative_eta)
 {
+//    float NoI = hippt::dot(ray_direction, surface_normal);
+//
+//    float sin_theta_i_2 = 1.0f - NoI * NoI;
+//    float sin_theta_t_2 = sin_theta_i_2 * relative_eta * relative_eta;
+//    if (sin_theta_t_2 >= 1.0f)
+//        return false;
+//
+//    float cos_theta_t = sqrt(1.0f - sin_theta_t_2);
+//    refract_direction = relative_eta  * -ray_direction + (relative_eta * NoI - cos_theta_t) * surface_normal;
+//
+//    return true;
+//}
     float NoI = hippt::dot(ray_direction, surface_normal);
 
     float sin_theta_i_2 = 1.0f - NoI * NoI;
@@ -211,12 +228,21 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 cosine_weighted_sample_z_up_frame(Xorshift
     return hippt::normalize(make_float3(cos(phi) * sin_theta, sin(phi) * sin_theta, cos_theta));
 }
 
+HIPRT_HOST_DEVICE HIPRT_INLINE float F0_from_eta(float eta_t, float eta_i)
+{
+    float nume_F0 = (eta_t - eta_i);
+    float denom_F0 = (eta_t + eta_i);
+    float F0 = (nume_F0 * nume_F0) / (denom_F0 * denom_F0);
+
+    return F0;
+}
+
 /**
  * Schlick's approximation for dielectric fresnel reflectance
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F fresnel_schlick(ColorRGB32F R0, float angle)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F fresnel_schlick(ColorRGB32F F0, float angle)
 {
-    return R0 + (ColorRGB32F(1.0f) - R0) * pow((1.0f - angle), 5.0f);
+    return F0 + (ColorRGB32F(1.0f) - F0) * pow((1.0f - angle), 5.0f);
 }
 
 /**
@@ -254,16 +280,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float full_fresnel_dielectric(float cos_theta_i, 
  * fresnel reflectance using schlick's approximation
  * 
  * This function is basically a shorthand for:
- *      ColorRGB32F R0 = <compute R0 from etas>
- *      return schlick(R0, NoL)
+ *      ColorRGB32F F0 = <compute F0 from etas>
+ *      return schlick(F0, NoL)
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F fresnel_schlick_from_ior(float eta_i, float eta_t, float cos_theta_i)
 {
-    float R0_nume = eta_t - eta_i;
-    float R0_denom = eta_t + eta_i;
-    float R0 = (R0_nume * R0_nume) / (R0_denom * R0_denom);
+    float F0 = F0_from_eta(eta_t, eta_i);
 
-    return fresnel_schlick(ColorRGB32F(R0), cos_theta_i);
+    return fresnel_schlick(ColorRGB32F(F0), cos_theta_i);
 }
 
 /**
@@ -372,6 +396,105 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float G1_Smith(float alpha_x, float alpha_y, cons
     return 1.0f / (1.0f + lambda);
 }
 
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F get_GGX_energy_compensation_conductors(const HIPRTRenderData& render_data, const ColorRGB32F& F0, float material_roughness, const float3& local_view_direction)
+{
+    const void* GGX_Ess_texture_pointer = nullptr;
+#ifdef __KERNELCC__
+    GGX_Ess_texture_pointer = &render_data.brdfs_data.GGX_Ess;
+#else
+    GGX_Ess_texture_pointer = render_data.brdfs_data.GGX_Ess;
+#endif
+
+    // Reading the precomputed hemispherical directional albedo from the texture
+    int2 dims = make_int2(GPUBakerConstants::GGX_ESS_TEXTURE_SIZE, GPUBakerConstants::GGX_ESS_TEXTURE_SIZE);
+    float Ess = sample_texture_rgb_32bits(GGX_Ess_texture_pointer, 0, dims, false, make_float2(hippt::max(0.0f, local_view_direction.z), material_roughness)).r;
+
+    // Computing kms, [Practical multiple scattering compensation for microfacet models, Turquin, 2019], Eq. 10
+    float kms = (1.0f - Ess) / Ess;
+
+    ColorRGB32F fresnel_compensation_term;
+#if PrincipledBSDFGGXUseMultipleScatteringDoFresnel == KERNEL_OPTION_TRUE
+    // [Practical multiple scattering compensation for microfacet models, Turquin, 2019], Eq. 15
+    fresnel_compensation_term = F0;
+#else
+    // 1.0f F so that the fresnel compensation has no effect
+    fresnel_compensation_term = ColorRGB32F(1.0f);
+#endif
+    // Computing the compensation term and multiplying by the single scattering non-energy conserving base GGX BRDF,
+    // Eq. 9
+    return ColorRGB32F(1.0f) + kms * fresnel_compensation_term;
+}
+
+/**
+ * The energy conservation LUT for GGX Glass materials is computed by remapping cos_theta
+ * with cos_theta^2.5
+ *
+ * However cos_theta^2.5 still results in energy gains at grazing angles so we're going to bias
+ * the exponent used for fetching in the table here.
+ *
+ * This means that we store in the LUT during the precomputation but we're going to fetch
+ * from the LUT with an exponent higher than 2.5f to try and force-remove energy gains
+ *
+ * The "ideal" exponent depends primarily on roughness so I've fined tuned some parameters
+ * here to try and get the best white furnace tests
+ *
+ *
+ * --------------------
+ * If you're reading this code for a reference implementation, read what follows:
+ * In the end, what we're doing here is to fix the unwanted energy gains that we with
+ * the base implementation as proposed in
+ * [Practical multiple scattering compensation for microfacet models, Turquin, 2019].
+ *
+ * I don't think that these energy gains are supposed to happen, they are not mentioned
+ * anywhere in the papers. And the papers use 32x32x32 tables. We use 256x16x192. And
+ * we still have issues. I'm lead to believe that the issue is elsewhere in the codebase
+ * but oh well... I can't find where this is coming from so we're fixing the broken code
+ * instead of fixing the root of the issue which probably isn't what you should do if you're
+ * reading this
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_glass_energy_conservation_get_corection_exponent(float roughness, float relative_eta)
+{
+    float exponent_correction = 2.5f;
+    if (roughness == 0.0f || hippt::abs(1.0f - relative_eta) < 1.0e-3f)
+        // No correction for these
+        return exponent_correction;
+
+    if (roughness > 0.0f && roughness <= 0.5f)
+    {
+        if (relative_eta <= 1.01f)
+            exponent_correction = 2.509375f;
+        else if (relative_eta <= 1.03f)
+            exponent_correction = 2.53f;
+        else if (relative_eta <= 1.1f)
+            exponent_correction = 2.575f;
+        else if (relative_eta <= 1.3f)
+            exponent_correction = 2.68f;
+        else if (relative_eta <= 1.5f)
+            exponent_correction = 2.75f;
+        else
+            exponent_correction = 2.8f;
+    }
+    else if (roughness <= 1.0f)
+    {
+        if (relative_eta <= 1.01f)
+            exponent_correction = 2.509375f;
+        else if (relative_eta <= 1.03f)
+            exponent_correction = 2.5f;
+        else if (relative_eta <= 1.1f)
+            exponent_correction = 2.5225f;
+        else if (relative_eta <= 1.3f)
+            exponent_correction = 2.545f;
+        else if (relative_eta <= 1.5f)
+            exponent_correction = 2.59f;
+        else if (relative_eta <= 2.0f)
+            exponent_correction = 2.8f;
+        else
+            exponent_correction = 3.0f;
+    }
+
+    return exponent_correction;
+}
+
 template <bool useMultipleScatteringEnergyCompensation>
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GTR2_eval(const HIPRTRenderData& render_data, const ColorRGB32F& F0, float material_roughness, float material_anisotropy, const ColorRGB32F& F, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, float& out_pdf)
 {
@@ -400,8 +523,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GTR2_eval<0>(const H
     float D = GTR2_anisotropic(alpha_x, alpha_y, local_halfway_vector);
 
     // GTR2 visible normal distribution for evaluating the PDF
-    float lambda_V2 = G1_Smith_lambda(alpha_x, alpha_y, local_view_direction);
-    float G1V = 1.0f / (1.0f + lambda_V2);
+    float lambda_V = G1_Smith_lambda(alpha_x, alpha_y, local_view_direction);
+    float G1V = 1.0f / (1.0f + lambda_V);
     float Dvisible = GTR2_anisotropic_vndf(alpha_x, alpha_y, D, G1V, local_view_direction, local_halfway_vector);
 
     // Maxing 1.0e-8f here to avoid zeros and numerical imprecisions
@@ -421,41 +544,24 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GTR2_eval<0>(const H
     else
     {
         float lambda_L = G1_Smith_lambda(alpha_x, alpha_y, local_to_light_direction);
-        float G2HeightCorrelated = 1.0f / (1.0f + lambda_V2 + lambda_L);
 
+#if PrincipledBSDFGGXMaskingShadowingTerm == GGX_MASKING_SHADOWING_SMITH_HEIGHT_CORRELATED
+        float G2HeightCorrelated = 1.0f / (1.0f + lambda_V + lambda_L);
         return F * D * G2HeightCorrelated / (4.0f * NoL * NoV);
+#elif PrincipledBSDFGGXMaskingShadowingTerm == GGX_MASKING_SHADOWING_SMITH_HEIGHT_UNCORRELATED
+        float G1L = 1.0f / (1.0f + lambda_L);
+        float G2 = G1V * G1L;
+        return F * D * G2 / (4.0f * NoL * NoV);
+#endif
     }
 }
 
 template <>
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GTR2_eval<1>(const HIPRTRenderData& render_data, const ColorRGB32F& F0, float material_roughness, float material_anisotropy, const ColorRGB32F& F, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, float& out_pdf)
 {
-    const void* GGX_Ess_texture_pointer = nullptr;
-#ifdef __KERNELCC__
-    GGX_Ess_texture_pointer = &render_data.brdfs_data.GGX_Ess;
-#else
-    GGX_Ess_texture_pointer = render_data.brdfs_data.GGX_Ess;
-#endif
-
-    // Reading the precomputed hemispherical directional albedo from the texture
-    float Ess = sample_texture_rgb_32bits(GGX_Ess_texture_pointer, 0, make_int2(96, 96), false, make_float2(hippt::max(0.0f, local_view_direction.z), material_roughness)).r;
-
-    // Computing kms, [Practical multiple scattering compensation for microfacet models, Turquin, 2017], Eq. 10
-    float kms = (1.0f - Ess) / Ess;
-
-    ColorRGB32F fresnel_compensation_term;
-#if PrincipledBSDFGGXUseMultipleScatteringDoFresnel == KERNEL_OPTION_TRUE
-    // [Practical multiple scattering compensation for microfacet models, Turquin, 2017], Eq. 15
-    fresnel_compensation_term = F0;
-#else
-    // 1.0f F so that the fresnel compensation has no effect
-    fresnel_compensation_term = ColorRGB32F(1.0f);
-#endif
-    // Computing the compensation term and multiplying by the single scattering non-energy conserving base GGX BRDF,
-    // Eq. 9
-    ColorRGB32F ms_compensation_term = ColorRGB32F(1.0f) + kms * fresnel_compensation_term;
-
+    ColorRGB32F ms_compensation_term = get_GGX_energy_compensation_conductors(render_data, F0, material_roughness, local_view_direction);
     ColorRGB32F single_scattering = torrance_sparrow_GTR2_eval<0>(render_data, F0, material_roughness, material_anisotropy, F, local_view_direction, local_to_light_direction, local_halfway_vector, out_pdf);
+
     return single_scattering * ms_compensation_term;
 }
 

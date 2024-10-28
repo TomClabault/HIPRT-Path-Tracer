@@ -21,6 +21,9 @@ struct HIPRTCamera
 
     bool do_jittering = true;
 
+    /**
+     * Returns a camera ray for pixel (x, y) and the given render solution
+     */
     HIPRT_HOST_DEVICE hiprtRay get_camera_ray(float x, float y, int2 res)
     {
         float x_ndc_space = x / res.x * 2 - 1;

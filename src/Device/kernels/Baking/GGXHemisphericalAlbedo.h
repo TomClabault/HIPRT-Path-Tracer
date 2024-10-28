@@ -25,16 +25,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GGXHemisphericalAlbedoBake(HIPRTRenderData 
     const int texture_size = bake_settings.texture_size;
     const uint32_t pixel_index = (x + y * bake_settings.texture_size);
 
-
-    if (pixel_index >= texture_size * texture_size)
+    if (x >= texture_size || y >= texture_size)
         return;
 
     Xorshift32Generator random_number_generator(wang_hash(pixel_index + 1));
 
     out_buffer[pixel_index] = 0.0f;
 
-    // Flipping the y axis here so that we have 1.0f roughness in the bottom left
-    // corner of the texture
     float roughness = 1.0f / (texture_size - 1) * y;
     roughness = hippt::max(roughness, 1.0e-4f);
 
@@ -52,8 +49,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GGXHemisphericalAlbedoBake(HIPRTRenderData 
             continue;
 
         float eval_pdf;
-        float directional_albedo = torrance_sparrow_GTR2_eval<0>(HIPRTRenderData(), /* doesn't matter */ ColorRGB32F(0.0f), roughness, 0.0f, 
-                                                                 ColorRGB32F(1.0f), local_view_direction, sampled_local_to_light_direction, hippt::normalize(local_view_direction + sampled_local_to_light_direction), eval_pdf).r;
+        float directional_albedo = torrance_sparrow_GTR2_eval<0>(HIPRTRenderData(), /* F0 doesn't matter */ ColorRGB32F(0.0f), roughness, 0.0f, /* fresnel */ ColorRGB32F(1.0f), 
+                                                                 local_view_direction, sampled_local_to_light_direction, hippt::normalize(local_view_direction + sampled_local_to_light_direction), eval_pdf).r;
         directional_albedo /= eval_pdf;
         directional_albedo *= sampled_local_to_light_direction.z;
 

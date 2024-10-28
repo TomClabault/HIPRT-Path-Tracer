@@ -113,6 +113,8 @@ private:
 
     Image32Bit m_sheen_ltc_params;
     Image32Bit m_GGX_Ess;
+    Image32Bit3D m_GGX_Ess_glass;
+    Image32Bit3D m_GGX_Ess_glass_inverse;
 
     std::vector<Triangle> m_triangle_buffer;
     std::shared_ptr<BVH> m_bvh;

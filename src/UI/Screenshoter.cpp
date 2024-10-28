@@ -122,6 +122,11 @@ void Screenshoter::resize_output_image(int width, int height)
 	}
 }
 
+void Screenshoter::write_to_png(std::string filepath)
+{
+	write_to_png(filepath.c_str());
+}
+
 void Screenshoter::write_to_png(const char* filepath)
 {
 	int width = m_renderer->m_render_resolution.x;

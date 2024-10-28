@@ -9,7 +9,7 @@
 struct GGXHemisphericalAlbedoSettings
 {
 	int texture_size = 64;
-	int integration_sample_count = 65536 * 2 * 2 * 2 * 2;
+	int integration_sample_count = 65536;
 };
 
 #endif

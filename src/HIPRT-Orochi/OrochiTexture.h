@@ -13,17 +13,17 @@ class OrochiTexture
 {
 public:
 	OrochiTexture() {}
-	OrochiTexture(const Image8Bit& image);
-	OrochiTexture(const Image32Bit& image);
+	OrochiTexture(const Image8Bit& image, HIPfilter_mode filtering_mode = ORO_TR_FILTER_MODE_POINT);
+	OrochiTexture(const Image32Bit& image, HIPfilter_mode filtering_mode = ORO_TR_FILTER_MODE_POINT);
 	OrochiTexture(const OrochiTexture& other) = delete;
 	OrochiTexture(OrochiTexture&& other) noexcept;
 	~OrochiTexture();
 
 	void operator=(const OrochiTexture& other) = delete;
-	void operator=(OrochiTexture&& other);
+	void operator=(OrochiTexture&& other) noexcept;
 
-	void init_from_image(const Image8Bit& image);
-	void init_from_image(const Image32Bit& image);
+	void init_from_image(const Image8Bit& image, HIPfilter_mode filtering_mode = ORO_TR_FILTER_MODE_POINT);
+	void init_from_image(const Image32Bit& image, HIPfilter_mode filtering_mode = ORO_TR_FILTER_MODE_POINT);
 
 	oroTextureObject_t get_device_texture();
 

@@ -25,6 +25,7 @@ public:
 	void select_compute_program(DisplayViewType display_view);
 	void resize_output_image(int width, int height);
 
+
 	/**
 	 * A filename with a time stamp, the render resolution and the
 	 * number of samples is automatically generated:
@@ -35,6 +36,7 @@ public:
 	 */
 	void write_to_png();
 	void write_to_png(const char* filepath);
+	void write_to_png(std::string filepath);
 
 private:
 	std::shared_ptr<GPURenderer> m_renderer = nullptr;

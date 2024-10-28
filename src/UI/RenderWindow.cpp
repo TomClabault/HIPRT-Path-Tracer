@@ -23,6 +23,7 @@ extern ImGuiLogger g_imgui_logger;
 
 // TODO demos:
 // energy conserving GGX
+// new oren nayar BRDF: EON
 
 // TODOs ongoing
 // - limit distance of BSDF ray for initial sampling (biased but reduces BVH traversal so performance++)
@@ -34,6 +35,7 @@ extern ImGuiLogger g_imgui_logger;
 // - cmake to disable optimizations in reldebinfo
 // - for LTC sheen lobe, have the option to use either SGGX volumetric sheen or approximation precomputed LTC data
 // - rework bounces in UI so that 0 bounce still gives an image. The number of bounce is currently offset by 1 basically.
+// - GGX G term not using compiled kernel option, just do if()
 
 // TODO known bugs / incorectness:
 // - take transmission color into account when direct sampling a light source that is inside a volume
@@ -42,7 +44,7 @@ extern ImGuiLogger g_imgui_logger;
 // - fix sampling lights inside dielectrics with ReSTIR DI (using minT for rays)
 // - when using a BSDF override, transmissive materials keep their dielectric priorities and this can mess up shadow rays and intersections in general if the BSDF used for the override doesn't support transmissive materials
 // - threadmanager: what if we start a thread with a dependency A on a thread that itself has a dependency B? we're going to try join dependency A even if thread with dependency on B hasn't even started yet --> joining nothing --> immediate return --> should have waited for the dependency but hasn't
-
+// - Volumetric absorption beer lambert doesn't seem to absorb correctly. It doesn't get super dark (black) with  more absorption distance, something must be wrong
 
 // TODO Code Organization:
 // - init opengl context and all that expensive stuff (compile kernels too) while the scene is being parsed
@@ -65,9 +67,9 @@ extern ImGuiLogger g_imgui_logger;
 // TODO Features:
 // - try dynamic stack for better memory usage than full brute force global stack buffer and see performance impact
 // - implement ideas of https://blog.selfshadow.com/publications/s2017-shading-course/imageworks/s2017_pbs_imageworks_slides_v2.pdf
+// - Better artistic fresnel Adobe: https://renderwonk.com/publications/wp-generalization-adobe/gen-adobe.pdf
 // - use shared memory for nested dielectrics stack?
 // - opacity micromaps
-// - use anyhits for shadow rays
 // - cache opacity of materials textures? --> analyze the texture when loading it from the texture and if there isn't a single transparent pixel, then we know that we won't have to fetch the material / texture in the alpha test filter function because the alpha is going to be 1.0f anyways
 // - simpler BSDF for indirect bounces as a biased option for performance?
 // - limit first bounce distance: objects far away won't contribute much to what the camera sees
@@ -75,13 +77,12 @@ extern ImGuiLogger g_imgui_logger;
 //		- for maximum ray length, limit that length even more for indirect bounces and even more so if the ray is far away from the camera (beware of mirrors in the scene which the camera can look into and see a far away part of the scene where light could be very biased)
 // - only update the display every so often if accumulating because displaying is expensive (especially at high resolution) on AMD drivers at least
 // - reload shaders button
-// - ImGui: Sampling --> Materials panel under "Envmap Sampling" panel for choosing VNDF / Spherical Caps VNDF / SGGX LTC parameters or approx for sheen, ...
 // - do not evaluate perfectly smooth specular materials to save on computations? Because evaluating is going to yield 0.0f anyways --> dirac distribution. We should only sample those I guess
 // - use bare variables for principled_bsdf_sample CDF[] because local arrays are bad on AMD GPUs
 // - pack ray payload
 // - pack HDR as color as 9/9/9/5 RGBE? https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/MiniEngine/Core/Shaders/PixelPacking_RGBE.hlsli
-// - presample lights per each tile of pixels the same as for ReSTIR DI and use that for second bounces sampling?
 // - next event estimation++?
+// - russian roulette on light sampling based on light contribution?
 // - Exploiting Visibility Correlation in Direct Illumination
 // - Progressive Visibility Caching for Fast Indirect Illumination
 // - performance/bias tradeoff by ignoring alpha tests (either for global rays or only shadow rays) after N bounce?
@@ -587,7 +588,7 @@ bool RenderWindow::is_rendering_done()
 	// All pixels have converged to the noise threshold given
 	float proportion_converged;
 	proportion_converged = m_renderer->get_status_buffer_values().pixel_converged_count / static_cast<float>(m_renderer->m_render_resolution.x * m_renderer->m_render_resolution.y);
-	proportion_converged *= 100.0f; // To human-readable percentage as used in the ImGui interface
+	proportion_converged *= 100.0f; // To percentage as used in the ImGui interface
 
 	// We're allowed to stop the render after the given proportion of pixel of the image converged if we're actually
 	// using the pixel stop noise threshold feature (enabled + threshold > 0.0f) or if we're using the

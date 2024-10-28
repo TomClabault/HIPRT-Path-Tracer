@@ -34,8 +34,10 @@ public:
 	void compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, std::vector<hiprtFuncNameSet> func_name_sets = {}, bool use_cache = true);
 	void compile_silent(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, std::vector<hiprtFuncNameSet> func_name_sets = {}, bool use_cache = true);
 	void launch(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, oroStream_t stream);
+	void launch_3D(int tile_size_x, int tile_size_y, int tile_size_z, int res_x, int res_y, int res_z, void** launch_args, oroStream_t stream);
 	void launch_synchronous(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, float* execution_time_out);
 	void launch_asynchronous(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, oroStream_t stream);
+	void launch_asynchronous_3D(int tile_size_x, int tile_size_y, int tile_size_z, int res_x, int res_y, int res_z, void** launch_args, oroStream_t stream);
 
 	/**
 	 * Sets an additional macro that will be passed to the GPU compiler when compiling this kernel

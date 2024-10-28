@@ -6,6 +6,8 @@
 #include "Compiler/GPUKernelCompilerOptions.h"
 #include "Device/includes/BSDFs/SheenLTCFittedParameters.h"
 #include "HIPRT-Orochi/HIPRTOrochiCtx.h"
+#include "Renderer/Baker/GPUBaker.h"
+#include "Renderer/Baker/GPUBakerConstants.h"
 #include "Renderer/GPURenderer.h"
 #include "Threads/ThreadFunctions.h"
 #include "Threads/ThreadManager.h"
@@ -78,7 +80,9 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
 void GPURenderer::setup_brdfs_data()
 {
 	init_sheen_ltc_texture();
+
 	init_GGX_Ess_texture();
+	init_GGX_glass_Ess_texture();
 }
 
 void GPURenderer::init_sheen_ltc_texture()
@@ -104,10 +108,32 @@ void GPURenderer::init_sheen_ltc_texture()
 	m_sheen_ltc_params = OrochiTexture(sheen_ltc_params_image);
 }
 
-void GPURenderer::init_GGX_Ess_texture()
+void GPURenderer::init_GGX_Ess_texture(HIPfilter_mode filtering_mode)
 {
-	Image32Bit GGXEss_image = Image32Bit::read_image_hdr("../data/BRDFsData/GGX_Ess_96x96.hdr", 4, true);
-	m_GGX_Ess = OrochiTexture(GGXEss_image);
+	Image32Bit GGXEss_image = Image32Bit::read_image_hdr("../data/BRDFsData/GGX/" + GPUBakerConstants::GGX_ESS_FILE_NAME, 4, true);
+	m_GGX_Ess = OrochiTexture(GGXEss_image, filtering_mode);
+}
+
+void GPURenderer::init_GGX_glass_Ess_texture(HIPfilter_mode filtering_mode)
+{
+	synchronize_kernel();
+
+	std::vector<Image32Bit> images(GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_IOR);
+	for (int i = 0; i < GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_IOR; i++)
+	{
+		std::string filename = std::to_string(i) + GPUBakerConstants::GGX_GLASS_ESS_FILE_NAME;
+		std::string filepath = "../data/BRDFsData/GGX/Glass/" + filename;
+		images[i] = Image32Bit::read_image_hdr(filepath, 4, true);
+	}
+	m_GGX_Ess_glass = OrochiTexture3D(images, filtering_mode);
+
+	for (int i = 0; i < GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_IOR; i++)
+	{
+		std::string filename = std::to_string(i) + GPUBakerConstants::GGX_GLASS_INVERSE_ESS_FILE_NAME;
+		std::string filepath = "../data/BRDFsData/GGX/Glass/" + filename;
+		images[i] = Image32Bit::read_image_hdr(filepath, 4, true);
+	}
+	m_GGX_Ess_glass_inverse = OrochiTexture3D(images, filtering_mode);
 }
 
 void GPURenderer::setup_kernels()
@@ -421,6 +447,9 @@ void GPURenderer::launch_path_tracing()
 
 void GPURenderer::synchronize_kernel()
 {
+	if (m_main_stream == nullptr)
+		return;
+
 	ThreadManager::join_threads(ThreadManager::RENDERER_STREAM_CREATE);
 	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_main_stream));
 }
@@ -914,6 +943,8 @@ void GPURenderer::update_render_data()
 
 		m_render_data.brdfs_data.sheen_ltc_parameters_texture = m_sheen_ltc_params.get_device_texture();
 		m_render_data.brdfs_data.GGX_Ess = m_GGX_Ess.get_device_texture();
+		m_render_data.brdfs_data.GGX_Ess_glass = m_GGX_Ess_glass.get_device_texture();
+		m_render_data.brdfs_data.GGX_Ess_glass_inverse = m_GGX_Ess_glass_inverse.get_device_texture();
 
 		m_render_data.buffers.material_textures = reinterpret_cast<oroTextureObject_t*>(m_hiprt_scene.gpu_materials_textures.get_device_pointer());
 		m_render_data.buffers.texcoords = reinterpret_cast<float2*>(m_hiprt_scene.texcoords_buffer.get_device_pointer());

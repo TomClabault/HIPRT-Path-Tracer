@@ -19,6 +19,8 @@ public:
 
 	void draw();
 	void draw_ggx_energy_conservation_panel();
+	void draw_GGX_E();
+	void draw_GGX_glass_E();
 
 private:
 	RenderWindow* m_render_window = nullptr;

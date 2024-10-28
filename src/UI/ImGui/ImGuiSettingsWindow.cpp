@@ -407,19 +407,15 @@ void ImGuiSettingsWindow::display_view_selector()
 	items.push_back("- White Furnace Threshold");
 
 	static DisplayViewType display_view_type_selected = display_view_system->get_current_display_view_type();
-	static int display_view_selected_index = -1;
-	if (display_view_selected_index == -1)
-	{
-		// First initialization
-		display_view_selected_index = display_view_system->get_current_display_view_type();
-		if (display_view_selected_index > DisplayViewType::PIXEL_CONVERGED_MAP && !render_settings.has_access_to_adaptive_sampling_buffers())
-			// It may happen that we startup the application with the white
-			// furnace threshold view selected by default. This means that the
-			// selected index is 8 but if we don't have the adaptive sampling on,
-			// 8 is going to be out of bounds of the list so we need to substract
-			// 2 for the adaptive sampling views that are not present
-			display_view_selected_index -= 2;
-	}
+	static int display_view_selected_index = display_view_system->get_current_display_view_type();;
+	if (display_view_selected_index > DisplayViewType::PIXEL_CONVERGED_MAP && !render_settings.has_access_to_adaptive_sampling_buffers())
+		// It may happen that we startup the application with the white
+		// furnace threshold view selected by default. This means that the
+		// selected index is 8 but if we don't have the adaptive sampling on,
+		// 8 is going to be out of bounds of the list so we need to substract
+		// 2 for the adaptive sampling views that are not present
+		display_view_selected_index -= 2;
+
 	if (ImGui::BeginCombo("Display View", items[display_view_selected_index]))
 	{
 		for (int i = 0; i < items.size(); i++)
@@ -1430,6 +1426,9 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				m_render_window->set_render_dirty(true);
 			}
 
+			if (ImGui::Checkbox("Fix", &m_renderer->get_render_data().fix))
+				m_render_window->set_render_dirty(true);
+
 			static bool use_multiple_scattering = PrincipledBSDFGGXUseMultipleScattering;
 			if (ImGui::Checkbox("Use GGX Multiple Scattering", &use_multiple_scattering))
 			{
@@ -1437,19 +1436,41 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
 			}
-			ImGuiRenderer::show_help_marker("Implementation of [Practical multiple scattering compensation for microfacet models, Turquin, 2017]"
+			ImGuiRenderer::show_help_marker("Implementation of [Practical multiple scattering compensation for microfacet models, Turquin, 2019]"
 											" for GGX energy conservation.");
 
-			static bool use_multiple_scattering_fresnel = PrincipledBSDFGGXUseMultipleScatteringDoFresnel;
-			if (ImGui::Checkbox("Use GGX Multiple Scattering Fresnel", &use_multiple_scattering_fresnel))
+			if (use_multiple_scattering)
 			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_GGX_MULTIPLE_SCATTERING_DO_FRESNEL, use_multiple_scattering_fresnel ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+				ImGui::TreePush("GGX Multiple Scattering tree");
+				static bool use_multiple_scattering_fresnel = PrincipledBSDFGGXUseMultipleScatteringDoFresnel;
+				if (ImGui::Checkbox("Use GGX Multiple Scattering Fresnel", &use_multiple_scattering_fresnel))
+				{
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_GGX_MULTIPLE_SCATTERING_DO_FRESNEL, use_multiple_scattering_fresnel ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+					m_renderer->recompile_kernels();
+					m_render_window->set_render_dirty(true);
+				}
+				ImGuiRenderer::show_help_marker("Implementation of [Practical multiple scattering compensation for microfacet models, Turquin, 2019]"
+												" for GGX energy conservation. The multiple scattering fresnel term takes into account the Fresnel"
+												"reflection/transmission effect when the rays bounce multiple times on the microsurface.");
+
+				if (ImGui::Checkbox("Use Hardware Texture Interpolation", &m_renderer->get_render_data().brdfs_data.use_hardware_tex_interpolation))
+				{
+					m_renderer->init_GGX_glass_Ess_texture(m_renderer->get_render_data().brdfs_data.use_hardware_tex_interpolation ? ORO_TR_FILTER_MODE_LINEAR : ORO_TR_FILTER_MODE_POINT);
+					m_render_window->set_render_dirty(true);
+				}
+				ImGuiRenderer::show_help_marker("Using the hardware for texture interpolation is faster but less precise than doing manual interpolation in the shader.");
+				ImGui::TreePop();
+			}
+
+			std::vector<const char*> masking_shadowing_items = { "- Smith height-uncorrelated", "- Smith height-correlated" };
+			if (ImGui::Combo("GGX Masking-Shadowing Term", m_renderer->get_global_compiler_options()->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::GGX_MASKING_SHADOWING_TERM), masking_shadowing_items.data(), masking_shadowing_items.size()))
+			{
 				m_renderer->recompile_kernels();
+
 				m_render_window->set_render_dirty(true);
 			}
-			ImGuiRenderer::show_help_marker("Implementation of [Practical multiple scattering compensation for microfacet models, Turquin, 2017]"
-											" for GGX energy conservation. The multiple scattering fresnel term takes into account the Fresnel"
-											"reflection/transmission effect when the rays bounce multiple times on the microsurface.");
+			ImGuiRenderer::show_help_marker("Which masking-shadowing term to use with the GGX NDF.");
+
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::TreePop();
@@ -1724,11 +1745,11 @@ void ImGuiSettingsWindow::draw_objects_panel()
 		material_changed |= ImGui::SliderFloat("Coat Roughness", &material.coat_roughness, 0.0f, 1.0f);
 		material_changed |= ImGui::SliderFloat("Coat Anisotropy", &material.coat_anisotropy, 0.0f, 1.0f);
 		material_changed |= ImGui::SliderFloat("Coat Anisotropy Rotation", &material.coat_anisotropy_rotation, 0.0f, 1.0f);
-		material_changed |= ImGui::SliderFloat("Coat IOR", &material.coat_ior, 0.0f, 3.0f);
+		material_changed |= ImGui::SliderFloat("Coat IOR", &material.coat_ior, 1.0f, 3.0f);
 
 		ImGui::Separator();
 		material_changed |= ImGui::SliderFloat("Transmission", &material.specular_transmission, 0.0f, 1.0f);
-		material_changed |= ImGui::SliderFloat("IOR", &material.ior, 0.0f, 3.0f);
+		material_changed |= ImGui::SliderFloat("IOR", &material.ior, 1.0f, 3.0f);
 		material_changed |= ImGui::SliderFloat("Absorption distance", &material.absorption_at_distance, 0.0f, 20.0f);
 		material_changed |= ImGui::ColorEdit3("Absorption color", (float*)&material.absorption_color);
 		ImGui::BeginDisabled(kernel_options->get_macro_value(GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY) != ISS_WITH_PRIORITIES);

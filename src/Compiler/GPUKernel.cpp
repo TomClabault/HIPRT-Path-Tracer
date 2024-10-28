@@ -163,11 +163,17 @@ void GPUKernel::synchronize_options_with(const GPUKernelCompilerOptions& other_o
 
 void GPUKernel::launch(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, oroStream_t stream)
 {
-	hiprtInt2 nb_groups;
+	launch_3D(tile_size_x, tile_size_y, 1, res_x, res_y, 1, launch_args, stream);
+}
+
+void GPUKernel::launch_3D(int tile_size_x, int tile_size_y, int tile_size_z, int res_x, int res_y, int res_z, void** launch_args, oroStream_t stream)
+{
+	int3 nb_groups;
 	nb_groups.x = std::ceil(static_cast<float>(res_x) / tile_size_x);
 	nb_groups.y = std::ceil(static_cast<float>(res_y) / tile_size_y);
+	nb_groups.z = std::ceil(static_cast<float>(res_z) / tile_size_z);
 
-	OROCHI_CHECK_ERROR(oroModuleLaunchKernel(m_kernel_function, nb_groups.x, nb_groups.y, 1, tile_size_x, tile_size_y, 1, 0, stream, launch_args, 0));
+	OROCHI_CHECK_ERROR(oroModuleLaunchKernel(m_kernel_function, nb_groups.x, nb_groups.y, nb_groups.z, tile_size_x, tile_size_y, tile_size_z, 0, stream, launch_args, 0));
 }
 
 void GPUKernel::launch_synchronous(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, float* execution_time_out)
@@ -217,9 +223,14 @@ void GPUKernel::set_precompiled(bool precompiled)
 
 void GPUKernel::launch_asynchronous(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, oroStream_t stream)
 {
+	launch_asynchronous_3D(tile_size_x, tile_size_y, 1, res_x, res_y, 1, launch_args, stream);
+}
+
+void GPUKernel::launch_asynchronous_3D(int tile_size_x, int tile_size_y, int tile_size_z, int res_x, int res_y, int res_z, void** launch_args, oroStream_t stream)
+{
 	OROCHI_CHECK_ERROR(oroEventRecord(m_execution_start_event, stream));
 
-	launch(tile_size_x, tile_size_y, res_x, res_y, launch_args, stream);
+	launch_3D(tile_size_x, tile_size_y, tile_size_z, res_x, res_y, res_z, launch_args, stream);
 
 	OROCHI_CHECK_ERROR(oroEventRecord(m_execution_stop_event, stream));
 

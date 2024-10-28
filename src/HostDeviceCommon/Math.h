@@ -83,6 +83,14 @@ namespace hippt
 	template <typename T>
 	__device__ T atomic_add(T* address, T increment) { return atomicAdd(address, increment); }
 
+	/**
+	 * For t=0, returns a
+	 */
+	template <typename T>
+	__device__ inline T lerp(T a, T b, float t) { return (1.0f - t) * a + t * b; }
+
+	__device__ float fract(float a) { return a - floorf(a); }
+
 #else
 #undef M_PI
 #define M_PI 3.14159265358979323846f
@@ -112,6 +120,14 @@ namespace hippt
 
 	template <typename T>
 	T atomic_add(std::atomic<T>* atomic_address, T increment) { return atomic_address->fetch_add(increment); }
+
+	/**
+	 * For t=0, returns a
+	 */
+	template <typename T>
+	inline T lerp(T a, T b, float t) { return (1.0f - t) * a + t * b; }
+
+	inline float fract(float a) { return a - floorf(a); }
 #endif
 }
 
@@ -121,10 +137,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 matrix_X_point(const float4x4& m, const fl
 	float y = p.y;
 	float z = p.z;
 
-	/*float xt = m.m[0][0] * x + m.m[1][0] * y + m.m[2][0] * z + m.m[3][0];
-	float yt = m.m[0][1] * x + m.m[1][1] * y + m.m[2][1] * z + m.m[3][1];
-	float zt = m.m[0][2] * x + m.m[1][2] * y + m.m[2][2] * z + m.m[3][2];
-	float wt = m.m[0][3] * x + m.m[1][3] * y + m.m[2][3] * z + m.m[3][3];*/
 	// Assuming w = 1.0f for the point p
 	float xt = m.m[0][0] * x + m.m[0][1] * y + m.m[0][2] * z + m.m[0][3];
 	float yt = m.m[1][0] * x + m.m[1][1] * y + m.m[1][2] * z + m.m[1][3];

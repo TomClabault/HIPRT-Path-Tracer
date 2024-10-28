@@ -25,15 +25,15 @@ public:
 	static const std::string PRINCIPLED_BSDF_DIFFUSE_LOBE;
 	static const std::string PRINCIPLED_BSDF_GGX_MULTIPLE_SCATTERING;
 	static const std::string PRINCIPLED_BSDF_GGX_MULTIPLE_SCATTERING_DO_FRESNEL;
+	static const std::string GGX_SAMPLE_FUNCTION;
+	static const std::string GGX_MASKING_SHADOWING_TERM;
 	static const std::string INTERIOR_STACK_STRATEGY;
 	static const std::string NESTED_DIELETRCICS_STACK_SIZE_OPTION;
 
 	static const std::string DIRECT_LIGHT_SAMPLING_STRATEGY;
+	static const std::string RIS_USE_VISIBILITY_TARGET_FUNCTION;
 	static const std::string ENVMAP_SAMPLING_STRATEGY;
 	static const std::string ENVMAP_SAMPLING_DO_BSDF_MIS;
-
-	static const std::string RIS_USE_VISIBILITY_TARGET_FUNCTION;
-	static const std::string GGX_SAMPLE_FUNCTION;
 
 	static const std::string RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY;
 	static const std::string RESTIR_DI_SPATIAL_TARGET_FUNCTION_VISIBILITY;

@@ -43,6 +43,14 @@
 #define PRINCIPLED_DIFFUSE_LOBE_LAMBERTIAN 0
 #define PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR 1
 
+#define GGX_NO_VNDF 0
+#define GGX_VNDF_SAMPLING 1
+#define GGX_VNDF_SPHERICAL_CAPS 2
+#define GGX_VNDF_BOUNDED 3
+
+#define GGX_MASKING_SHADOWING_SMITH_HEIGHT_UNCORRELATED 0
+#define GGX_MASKING_SHADOWING_SMITH_HEIGHT_CORRELATED 1
+
 #define ISS_AUTOMATIC 0
 #define ISS_WITH_PRIORITIES 1
 
@@ -70,11 +78,6 @@
 #define RESTIR_DI_LATER_BOUNCES_BSDF 1
 #define RESTIR_DI_LATER_BOUNCES_MIS_LIGHT_BSDF 2
 #define RESTIR_DI_LATER_BOUNCES_RIS_BSDF_AND_LIGHT 3
-
-#define GGX_NO_VNDF 0
-#define GGX_VNDF_SAMPLING 1
-#define GGX_VNDF_SPHERICAL_CAPS 2
-#define GGX_VNDF_BOUNDED 3
 
 /**
  * Options are defined in a #ifndef __KERNELCC__ block because:
@@ -156,11 +159,22 @@
 #define PrincipledBSDFAnisotropicGGXSampleFunction GGX_VNDF_SAMPLING
 
 /**
+ * What masking-shadowing term to use with the GGX NDF.
+ * 
+ * GGX_MASKING_SHADOWING_SMITH_HEIGHT_CORRELATED is a little be more precise and
+ * corect than GGX_MASKING_SHADOWING_SMITH_HEIGHT_UNCORRELATED so it should basically
+ * always be preferred. 
+ *
+ * This kernel option is basically only for experimentation purposes
+ */
+#define PrincipledBSDFGGXMaskingShadowingTerm GGX_MASKING_SHADOWING_SMITH_HEIGHT_CORRELATED
+
+/**
  * Whether or not to use multiple scattering to conserve energy when evaluating
  * GGX BRDF lobes in the Principled BSDF
  * 
  * This is implemented by following 
- * [Practical multiple scattering compensation for microfacet models, Turquin, 2017]
+ * [Practical multiple scattering compensation for microfacet models, Turquin, 2019]
  * 
  * Possible options are KERNEL_OPTION_TRUE and KERNEL_OPTION_FALSE. Self explanatory.
  */
@@ -169,10 +183,11 @@
  /**
   * Whether or not to use multiple scattering to conserve energy and use a
   * Fresnel compensation term i.e. account for Fresnel when light scatters multiple
-  * times on the microsurface. This increases saturation and has a noticeable impact
+  * times on the microsurface. This increases saturation and has a noticeable impact.
+  * Only applies to conductors. This term always is implicitely used for dielectrics
   *
   * This is implemented by following
-  * [Practical multiple scattering compensation for microfacet models, Turquin, 2017]
+  * [Practical multiple scattering compensation for microfacet models, Turquin, 2019]
   *
   * Possible options are KERNEL_OPTION_TRUE and KERNEL_OPTION_FALSE. Self explanatory.
   */
