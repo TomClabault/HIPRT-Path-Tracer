@@ -12,9 +12,27 @@
 
 #include "Renderer/Baker/GGXGlassHemisphericalAlbedoSettings.h"
 
-/**
- * The two functions below are adapted from BSDF/Principled.h
- */
+/* References:
+* [1][Practical multiple scattering compensation for microfacet models, Turquin, 2019]
+* [2][Revisiting Physically Based Shading at Imageworks, Kulla & Conty, SIGGRAPH 2017]
+* [3][Dassault Enterprise PBR 2025 Specification]
+* [4][Google - Physically Based Rendering in Filament]
+* [5][MaterialX codebase on Github]
+* [6][Blender's Cycles codebase on Github]
+* 
+* This kernel computes the hemispherical albedo of a glass BSDF for use
+* in energy conservation code (Sampling.h) as proposed in
+* [Practical multiple scattering compensation for microfacet models, Turquin, 2019]
+* 
+* The kernel outputs its results in two buffers (which are then written to disk as textures).
+* The two textures are parameterized by cos_theta_o (cosine view direction), the roughness of
+* the BSDF and the reflectance at normal incidence F0 which relates to the relative IOR at
+* the interface of the BSDF
+* 
+* The first texture is the hemispherical albedo precomputation when hitting the object
+* from the outside
+* The second texture is used when inside the object: its IOR is simply inversed
+*/
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_glass_E_eval(float relative_ior, float roughness, const float3& local_view_direction, const float3& local_to_light_direction, float& pdf)
 {

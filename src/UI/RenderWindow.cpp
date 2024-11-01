@@ -36,6 +36,8 @@ extern ImGuiLogger g_imgui_logger;
 // - for LTC sheen lobe, have the option to use either SGGX volumetric sheen or approximation precomputed LTC data
 // - rework bounces in UI so that 0 bounce still gives an image. The number of bounce is currently offset by 1 basically.
 // - GGX G term not using compiled kernel option, just do if()
+// - GGX conductor multiple scattering blowing up with a lot of bounces
+// - specular and clearcoat TIR check, should effectively be an energy loss
 
 // TODO known bugs / incorectness:
 // - take transmission color into account when direct sampling a light source that is inside a volume
@@ -44,7 +46,8 @@ extern ImGuiLogger g_imgui_logger;
 // - fix sampling lights inside dielectrics with ReSTIR DI (using minT for rays)
 // - when using a BSDF override, transmissive materials keep their dielectric priorities and this can mess up shadow rays and intersections in general if the BSDF used for the override doesn't support transmissive materials
 // - threadmanager: what if we start a thread with a dependency A on a thread that itself has a dependency B? we're going to try join dependency A even if thread with dependency on B hasn't even started yet --> joining nothing --> immediate return --> should have waited for the dependency but hasn't
-// - Volumetric absorption beer lambert doesn't seem to absorb correctly. It doesn't get super dark (black) with  more absorption distance, something must be wrong
+// - Volumetric absorption beer lambert doesn't seem to absorb correctly. It doesn't get super dark (black) with a small absorption distance, something must be wrong
+// - When checking "Enable denoiser", it always denoises once immediately even if "denoise only when render done" is checked
 
 // TODO Code Organization:
 // - init opengl context and all that expensive stuff (compile kernels too) while the scene is being parsed
@@ -125,6 +128,7 @@ extern ImGuiLogger g_imgui_logger;
 // - better post processing: contrast, low, medium, high exposure curve
 // - bloom post processing
 // - BRDF swapper ImGui : Disney, Lambertian, Oren Nayar, Cook Torrance, Perfect fresnel dielectric reflect/transmit
+// - Hemispherical albedo sampling weights for the principled BSDF importance sampling. Also, can we do "perfect importance" sampling where we sample each relevant lobe, evaluate them (because we have to evaluate them anyways in eval()) and choose which one is sampled proportionally to its contribution or is it exactly the idea of sampling based on hemispherical albedo?
 // - choose principled BSDF diffuse model (disney, lambertian, oren nayar)
 // - portal envmap sampling --> choose portals with ImGui
 // - find a way to not fill the texcoords buffer for meshes that don't have textures

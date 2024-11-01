@@ -25,39 +25,8 @@ extern ImGuiLogger g_imgui_logger;
 
 #define GPU_RENDER 1
 
-#define TEXTURE_SIZE 32
-#include "Device/kernels/Baking/GGXGlassHemisphericalAlbedo.h"
-
 int main(int argc, char* argv[])
 {   
-    HIPRTRenderData render_data;
-    std::vector<float> out_buffer(TEXTURE_SIZE * TEXTURE_SIZE * TEXTURE_SIZE);
-    std::vector<float> out_buffer_inverse(TEXTURE_SIZE * TEXTURE_SIZE * TEXTURE_SIZE);
-    GGXGlassHemisphericalAlbedoSettings bake_settings;
-    bake_settings.texture_size_cos_theta_o = TEXTURE_SIZE;
-    bake_settings.texture_size_roughness = TEXTURE_SIZE;
-    bake_settings.texture_size_ior = TEXTURE_SIZE;
-    bake_settings.integration_sample_count = 16;
-    for (int z = 0; z < TEXTURE_SIZE; z++)
-    {
-        for (int y = 0; y < TEXTURE_SIZE; y++)
-        {
-            for (int x = 0; x < TEXTURE_SIZE; x++)
-            {
-                GGXGlassHemisphericalAlbedoBake(render_data, bake_settings, out_buffer.data(), out_buffer_inverse.data(), x, y, z);
-            }
-        }
-    }
-
-    /*for (int i = 0; i < TEXTURE_SIZE; i++)
-    {
-        Image32Bit image(out_buffer.data() + i * TEXTURE_SIZE * TEXTURE_SIZE, TEXTURE_SIZE, TEXTURE_SIZE, 1);
-
-        std::string filename = std::to_string(i) + "_GGXGlass_" + std::to_string(TEXTURE_SIZE) + "x" + std::to_string(TEXTURE_SIZE) + ".hdr";
-        image.write_image_hdr(filename.c_str(), false);
-    }*/
-
-    // return 0;
     CommandlineArguments cmd_arguments = CommandlineArguments::process_command_line_args(argc, argv);
 
     const int width = cmd_arguments.render_width;

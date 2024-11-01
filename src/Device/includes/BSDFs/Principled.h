@@ -486,8 +486,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_glass_layer(bool inside
     return ColorRGB32F(0.0f);
 }
 
-#define DISABLE_DIFFUSE_LOBE 0
-
 // TODO total internal reflection fresnel on the way out of a layer
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, RayVolumeState& ray_volume_state, const float3& view_direction, float3 shading_normal, const float3& to_light_direction, float& pdf)
 {
@@ -529,9 +527,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRende
     float specular_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission) * material.specular * outside_object;
     float diffuse_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission) * outside_object;
     float glass_weight = (1.0f - material.metallic) * material.specular_transmission;
-#if DISABLE_DIFFUSE_LOBE
-    diffuse_weight = 0.0f;
-#endif
 
     float coat_sample_proba = coat_weight;
     float sheen_sample_proba = sheen_weight;
@@ -616,9 +611,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRen
     // The diffuse lobe is below the specular lobe so it 
     // has the same probability of being sampled
     float diffuse_sampling_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission) * outside_object;
-#if DISABLE_DIFFUSE_LOBE
-    diffuse_sampling_weight = 0.0f;
-#endif
 
     float normalize_factor = 1.0f / (coat_sampling_weight + sheen_sampling_weight + metal_sampling_weight + specular_sampling_weight + diffuse_sampling_weight + glass_sampling_weight);
     coat_sampling_weight *= normalize_factor;

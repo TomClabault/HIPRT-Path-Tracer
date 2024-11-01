@@ -42,7 +42,7 @@ void GPUBaker::bake_ggx_hemispherical_albedo(const GGXHemisphericalAlbedoSetting
 			m_renderer->release_kernel_compilation_priority();
 		}
 
-		m_ggx_hemispherical_albedo_bake_buffer.resize(bake_settings.texture_size * bake_settings.texture_size);
+		m_ggx_hemispherical_albedo_bake_buffer.resize(bake_settings.texture_size_cos_theta * bake_settings.texture_size_roughness);
 
 		// Forcefully dropping the const because launch_args wants non-const arguments even though
 		// they are never going to be modified
@@ -53,14 +53,14 @@ void GPUBaker::bake_ggx_hemispherical_albedo(const GGXHemisphericalAlbedoSetting
 		void* launch_args[] = { &render_data, &bake_settings_non_const, &device_buffer };
 
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Launching GGX hemispherical directional albedo baking...");
-		m_ggx_hemispherical_albedo_bake_kernel.launch_asynchronous(8, 8, bake_settings.texture_size, bake_settings.texture_size, launch_args, m_bake_stream);
+		m_ggx_hemispherical_albedo_bake_kernel.launch_asynchronous(8, 8, bake_settings.texture_size_cos_theta, bake_settings.texture_size_roughness, launch_args, m_bake_stream);
 
 		OROCHI_CHECK_ERROR(oroStreamSynchronize(m_bake_stream));
 		
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "GGX hemispherical directional albedo bake completed!");
 
 		std::vector<float> baked_data = m_ggx_hemispherical_albedo_bake_buffer.download_data();
-		Image32Bit image = Image32Bit(baked_data, bake_settings.texture_size, bake_settings.texture_size, 1);
+		Image32Bit image = Image32Bit(baked_data, bake_settings.texture_size_cos_theta, bake_settings.texture_size_roughness, 1);
 		image.write_image_hdr(output_filename.c_str(), false);
 
 		m_ggx_glass_hemispherical_albedo_bake_buffer.free();

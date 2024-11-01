@@ -42,7 +42,7 @@ void ImGuiBakingWindow::draw_ggx_energy_conservation_panel()
 		draw_GGX_E();
 		draw_GGX_glass_E();
 
-		static std::vector<float> roughnesses = { 1.0f };
+		/*static std::vector<float> roughnesses = { 1.0f };
 		static std::vector<float> iors = { 1.3f, 1.5f, 2.0f, 2.5f };
 		static bool cooking = false;
 		static bool next_step_ready = true;
@@ -82,7 +82,7 @@ void ImGuiBakingWindow::draw_ggx_energy_conservation_panel()
 						cooking = false;
 				}
 			}
-		}
+		}*/
 
 		ImGui::TreePop();
 	}
@@ -102,15 +102,17 @@ void ImGuiBakingWindow::draw_GGX_E()
 		static bool filename_modified = false;
 		static std::string output_filename;
 
-		ImGui::InputInt("Texture Size", &ggx_hemispherical_settings.texture_size);
+		ImGui::InputInt("Texture Size - Cos Theta", &ggx_hemispherical_settings.texture_size_cos_theta);
+		ImGui::InputInt("Texture Size - Roughness", &ggx_hemispherical_settings.texture_size_roughness);
 		ImGui::InputInt("Integration Sample Count", &ggx_hemispherical_settings.integration_sample_count);
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		if (ImGui::InputText("Output Texture Filename", &output_filename))
 			filename_modified = true;
 
 		if (!filename_modified)
 			// As long as the user hasn't touched the output filename,
 			// we modify it automatically so that's its more convenient
-			output_filename = GPUBakerConstants::get_GGX_Ess_filename(ggx_hemispherical_settings.texture_size);
+			output_filename = GPUBakerConstants::get_GGX_Ess_filename(ggx_hemispherical_settings.texture_size_cos_theta, ggx_hemispherical_settings.texture_size_roughness);
 
 		std::shared_ptr<GPUBaker> baker = m_render_window->get_baker();
 
@@ -128,7 +130,7 @@ void ImGuiBakingWindow::draw_GGX_E()
 		static std::string baking_text = "";
 		if (!baker->is_ggx_hemispherical_albedo_bake_complete() && bake_started_at_least_once)
 			baking_text = " Baking...";
-		else if (!baker->is_ggx_hemispherical_albedo_bake_complete() && bake_started_at_least_once)
+		else if (baker->is_ggx_hemispherical_albedo_bake_complete() && bake_started_at_least_once)
 			baking_text = " Baking complete!";
 
 		ImGui::SameLine();
@@ -158,6 +160,7 @@ void ImGuiBakingWindow::draw_GGX_glass_E()
 		ImGui::InputInt("Texture Size - Roughness", &ggx_glass_hemispherical_settings.texture_size_roughness);
 		ImGui::InputInt("Texture Size - IOR", &ggx_glass_hemispherical_settings.texture_size_ior);
 		ImGui::InputInt("Integration Sample Count", &ggx_glass_hemispherical_settings.integration_sample_count);
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		if (ImGui::InputText("Output Texture Filename", &output_filename))
 			filename_modified = true;
 

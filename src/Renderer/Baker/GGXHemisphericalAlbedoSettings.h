@@ -6,9 +6,13 @@
 #ifndef GGX_HEMISPHERICAL_ALBEDO_SETTINGS_H
 #define GGX_HEMISPHERICAL_ALBEDO_SETTINGS_H
 
+#include "Renderer/Baker/GPUBakerConstants.h"
+
 struct GGXHemisphericalAlbedoSettings
 {
-	int texture_size = 64;
+	int texture_size_cos_theta = GPUBakerConstants::GGX_ESS_TEXTURE_SIZE_COS_THETA_O;
+	int texture_size_roughness = GPUBakerConstants::GGX_ESS_TEXTURE_SIZE_ROUGHNESS;
+
 	int integration_sample_count = 65536;
 };
 

@@ -16,14 +16,14 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 - CUDA for NVIDIA compilation
 # Features:
 
-### Principled BSDF:
-- Coat Microfacet GGX Layer + Anisotropy & Anisotropy Rotation
+### Layered Principled BSDF:
+- Coat Microfacet GGX Layer + Anisotropy, Anisotropy Rotation, Medium Absorption
 - SGGX Volumetric Sheen Lobe LTC Fit [\[Zeltner, Burley, Chiang, 2022\]](https://tizianzeltner.com/projects/Zeltner2022Practical/)
 - Specular Microfacet GGX Layer
 - Oren-Nayar Diffuse BRDF Lobe
 - Metallic Microfacet GGX (GTR2, [\[Burley, 2012\]](https://disneyanimation.com/publications/physically-based-shading-at-disney/)) Layer + Anisotropy & Anisotropy Rotation
 - Specular transmission BTDF + Beer Lambert Volumetric Absorption: [\[Burley, 2015\]](https://blog.selfshadow.com/publications/s2015-shading-course/#course_content)
-- GGX Multiple Scattering Energy Compensation [\[Turquin, 2017\]](https://blog.selfshadow.com/publications/turquin/ms_comp_final.pdf)
+- GGX multiple-scattering energy compensation for conductors and dielectrics [\[Turquin, 2019\]](https://blog.selfshadow.com/publications/turquin/ms_comp_final.pdf)
 ### Sampling
 - Light sampling:
 	- Uniform light sampling for direct lighting estimation + MIS

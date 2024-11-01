@@ -24,6 +24,7 @@ public:
 	void set_render_window(RenderWindow* render_window);
 
 	void draw();
+	static void draw_camera_panel_static(RenderWindow* render_window, std::shared_ptr<GPURenderer> renderer);
 
 private:
 	void draw_header();
@@ -31,6 +32,8 @@ private:
 	void display_view_selector();
 	void apply_performance_preset(ImGuiRendererPerformancePreset performance_preset);
 	void draw_camera_panel();
+	// Static because we call this method from other ImGui classes to be able
+	// to render the same panel
 	void draw_environment_panel();
 
 	void draw_sampling_panel();

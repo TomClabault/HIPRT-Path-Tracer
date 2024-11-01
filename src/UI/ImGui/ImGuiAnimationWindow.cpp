@@ -23,7 +23,8 @@ void ImGuiAnimationWindow::draw()
 
 	ImGui::PushItemWidth(16 * ImGui::GetFontSize());
 
-	draw_general_settings();
+	draw_header();
+	draw_frame_sequence_rendering_panel();
 	draw_camera_panel();
 	draw_envmap_panel();
 
@@ -32,18 +33,53 @@ void ImGuiAnimationWindow::draw()
 	ImGui::End();
 }
 
-void ImGuiAnimationWindow::draw_general_settings()
+void ImGuiAnimationWindow::draw_header()
 {
-	if (ImGui::CollapsingHeader("General Settings"))
+	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
+	RendererAnimationState& animation_state = m_renderer->get_animation_state();
+
+	ImGui::SeparatorText("General settings");
+	if (ImGui::Checkbox("Accumulate", &render_settings.accumulate))
 	{
+		m_render_window->set_render_dirty(true);
+
+		if (!render_settings.accumulate)
+		{
+			m_render_window->get_application_settings()->auto_sample_per_frame = false;
+			render_settings.samples_per_frame = 1;
+		}
+	}
+
+	std::string animation_button_text = animation_state.do_animations ? "Disable animations" : "Enable animations";
+	if (ImGui::Button(animation_button_text.c_str()))
+		animation_state.do_animations = !animation_state.do_animations;
+	if (m_renderer->get_render_settings().accumulate && !animation_state.is_rendering_frame_sequence)
+	{
+		ImGui::TreePush("Animations info tree");
+		ImGui::Text("Info: ");
+		ImGuiRenderer::show_help_marker("Animations are not playing right now because\n"
+					"accumulation is on. Nothing can move while accumulation\n"
+					"is on (unless you're rendering a frame sequence, in\n"
+					"which case animations will step forward after a frame\n"
+					"is rendered (converged according to the renderer settings).");
+		ImGui::TreePop();
+	}
+
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+}
+
+void ImGuiAnimationWindow::draw_frame_sequence_rendering_panel()
+{
+	if (ImGui::CollapsingHeader("Frame Sequence Rendering"))
+	{
+		ImGui::TreePush("Frame Sequence Rendering Tree");
+
 		RendererAnimationState& animation_state = m_renderer->get_animation_state();
-		if (ImGui::InputInt("Number of animation frames", &animation_state.number_of_animation_frames))
+		if (ImGui::InputInt("Number frames to render", &animation_state.number_of_animation_frames))
 			animation_state.reset();
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		std::string animation_button_text = animation_state.do_animations ? "Stop animations" : "Start animations";
-		if (ImGui::Button(animation_button_text.c_str()))
-			animation_state.do_animations = !animation_state.do_animations;
+		
 
 		ImGui::BeginDisabled(!m_renderer->get_render_settings().accumulate);
 		std::string start_rendering_animation_text = animation_state.is_rendering_frame_sequence ? "Stop rendering frame sequence" : "Start rendering frame sequence";
@@ -80,6 +116,7 @@ void ImGuiAnimationWindow::draw_general_settings()
 			ImGui::TreePop();
 		}
 
+		ImGui::TreePop();
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	}
 }
@@ -94,11 +131,6 @@ void ImGuiAnimationWindow::draw_camera_panel()
 		CameraAnimation& camera_animation = m_renderer->get_camera_animation();
 
 		ImGui::Checkbox("Animate", &camera_animation.animate);
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
-		ImGui::SeparatorText("Transformation");
-		if (ImGui::DragFloat3("Position", reinterpret_cast<float*>(&camera.m_translation)))
-			m_render_window->set_render_dirty(true);
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		if (ImGui::CollapsingHeader("Rotate around object"))
@@ -149,13 +181,7 @@ void ImGuiAnimationWindow::draw_camera_panel()
 				}
 			}
 
-			if (ImGui::Button("Center camera on object"))
-			{
-				camera.look_at_object(m_renderer->get_mesh_bounding_boxes()[selected_object]);
-
-				m_render_window->set_render_dirty(true);
-			}
-
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::SeparatorText("Rotation options");
 
 			static float& rotation_value = camera_animation.m_rotation_value;
@@ -164,8 +190,11 @@ void ImGuiAnimationWindow::draw_camera_panel()
 				rotation_value = 8.0f;
 			ImGui::SameLine();
 			ImGui::BeginDisabled(rotation_type != 0);
-			if (ImGui::SliderFloat("Rotation duration (seconds per rotation)", &rotation_value, 2.0f, 10.0f))
+			if (ImGui::SliderFloat("Rotation duration (seconds per 360 degrees)", &rotation_value, 2.0f, 10.0f))
 				rotation_value = std::max(0.001f, rotation_value);
+			ImGuiRenderer::show_help_marker("The camera will take that much time to rotate "
+											"by 360 degrees. This is probably what you want "
+											"for real time (no accumulation) camera animation.");
 			ImGui::EndDisabled();
 
 			if (ImGui::RadioButton("##degrees_per_frame", (int*)&rotation_type, 1))
@@ -173,10 +202,15 @@ void ImGuiAnimationWindow::draw_camera_panel()
 			ImGui::SameLine();
 			ImGui::BeginDisabled(rotation_type != 1);
 			ImGui::SliderFloat("Rotation speed (degrees per frame)", &rotation_value, 0.0f, 90.0f);
+			ImGuiRenderer::show_help_marker("The camera will rotate by the given degrees "
+											"at each frame. This is probably what you want "
+											"for frame sequence rendering.");
 			ImGui::EndDisabled();
 
 			ImGui::TreePop();
 		}
+		if (ImGui::CollapsingHeader("Camera Settings"))
+			ImGuiSettingsWindow::draw_camera_panel_static(m_render_window, m_renderer);
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();
@@ -195,12 +229,16 @@ void ImGuiAnimationWindow::draw_envmap_panel()
 		float& animation_speed_Z = m_renderer->get_envmap().animation_speed_Z;
 
 		ImGui::Checkbox("Animate", &animate_envmap);
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
-		ImGui::Text("Speeds are in degrees per second");
-		ImGui::SliderFloat("Animation Speed X", &animation_speed_X, 0.0f, 360.0f);
-		ImGui::SliderFloat("Animation Speed Y", &animation_speed_Y, 0.0f, 360.0f);
-		ImGui::SliderFloat("Animation Speed Z", &animation_speed_Z, 0.0f, 360.0f);
+		if (animate_envmap)
+		{
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+			ImGui::Text("Speeds are in degrees per second");
+			ImGui::SliderFloat("Animation Speed X", &animation_speed_X, 0.0f, 360.0f);
+			ImGui::SliderFloat("Animation Speed Y", &animation_speed_Y, 0.0f, 360.0f);
+			ImGui::SliderFloat("Animation Speed Z", &animation_speed_Z, 0.0f, 360.0f);
+		}
 
 		ImGui::TreePop();
 	}

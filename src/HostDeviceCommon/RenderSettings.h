@@ -71,7 +71,7 @@ struct HIPRTRenderSettings
 	int samples_per_frame = 1;
 	// Maximum number of bounces of rays in the scene. 
 	// 1 is direct light only.
-	int nb_bounces = 1000;
+	int nb_bounces = 3;
 
 	// Whether or not to "freeze" random number generation so that each frame uses
 	// exactly the same random number. This allows every ray to follow the exact
@@ -80,7 +80,7 @@ struct HIPRTRenderSettings
 
 	// If true, NaNs encountered during rendering will be rendered as very bright pink. 
 	// Useful for debugging only.
-	bool display_NaNs = true;
+	bool display_NaNs = false;
 
 	// If true, then rendering at low resolution will be performed if 'wants_render_low_resolution'
 	// is also true.
@@ -100,27 +100,27 @@ struct HIPRTRenderSettings
 	// (when interacting with the camera)
 	int render_low_resolution_scaling = 2;
 
-	bool enable_adaptive_sampling = true;
+	bool enable_adaptive_sampling = false;
 	// How many samples before the adaptive sampling actually kicks in.
 	// This is useful mainly for the per-pixel adaptive sampling method
 	// where you want to be sure that each pixel in the image has had enough
 	// chance find a path to a potentially 
 	int adaptive_sampling_min_samples = 96;
 	// Adaptive sampling noise threshold
-	float adaptive_sampling_noise_threshold = 0.04f;
+	float adaptive_sampling_noise_threshold = 0.4f;
 
 	// If true, the rendering will stop after a certain proportion (defined by 'stop_pixel_percentage_converged')
 	// of pixels of the image have converged. "converged" here is defined according to the adaptive sampling if
 	// enabled or according to 'stop_pixel_noise_threshold' if adaptive sampling is not enabled.
 	//
 	// If false, the render will not stop until all pixels have converged
-	bool enable_pixel_stop_noise_threshold = true;
+	bool enable_pixel_stop_noise_threshold = false;
 	// A percentage in [0, 100] that dictates the proportion of pixels that must
 	// have reached the given noise threshold (stop_pixel_noise_threshold
 	// variable) before we stop rendering.
 	// For example, if this variable is 90, we will stop rendering when 90% of all
 	// pixels have reached the stop_pixel_noise_threshold
-	float stop_pixel_percentage_converged = 99.0f;
+	float stop_pixel_percentage_converged = 90.0f;
 	// Noise threshold for use with the stop_pixel_percentage_converged stopping
 	// condition
 	float stop_pixel_noise_threshold = 0.0f;
@@ -137,7 +137,7 @@ struct HIPRTRenderSettings
 	// If a selected light (for direct lighting estimation) contributes at a given
 	// point less than this 'minimum_light_contribution' value then the light sample is discarded
 	// 0.0f to disable
-	float minimum_light_contribution = 0.0f;
+	float minimum_light_contribution = 0.08f;
 
 	// Whether or not to do alpha testing for geometry with transparent base color textures
 	bool do_alpha_testing = true;

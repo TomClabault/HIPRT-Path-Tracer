@@ -396,6 +396,15 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float G1_Smith(float alpha_x, float alpha_y, cons
     return 1.0f / (1.0f + lambda);
 }
 
+/**
+ * References:
+ * [1] [Practical multiple scattering compensation for microfacet models, Turquin, 2019]
+ * [2] [Revisiting Physically Based Shading at Imageworks, Kulla & Conty, SIGGRAPH 2017]
+ * [3] [Dassault Enterprise PBR 2025 Specification]
+ * [4] [Google - Physically Based Rendering in Filament]
+ * [5] [MaterialX codebase on Github]
+ * [6] [Blender's Cycles codebase on Github]
+ */
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F get_GGX_energy_compensation_conductors(const HIPRTRenderData& render_data, const ColorRGB32F& F0, float material_roughness, const float3& local_view_direction)
 {
     const void* GGX_Ess_texture_pointer = nullptr;
@@ -406,7 +415,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F get_GGX_energy_compensation_conductor
 #endif
 
     // Reading the precomputed hemispherical directional albedo from the texture
-    int2 dims = make_int2(GPUBakerConstants::GGX_ESS_TEXTURE_SIZE, GPUBakerConstants::GGX_ESS_TEXTURE_SIZE);
+    int2 dims = make_int2(GPUBakerConstants::GGX_ESS_TEXTURE_SIZE_COS_THETA_O, GPUBakerConstants::GGX_ESS_TEXTURE_SIZE_ROUGHNESS);
     float Ess = sample_texture_rgb_32bits(GGX_Ess_texture_pointer, 0, dims, false, make_float2(hippt::max(0.0f, local_view_direction.z), material_roughness)).r;
 
     // Computing kms, [Practical multiple scattering compensation for microfacet models, Turquin, 2019], Eq. 10
@@ -426,6 +435,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F get_GGX_energy_compensation_conductor
 }
 
 /**
+ * References:
+ * [1] [Practical multiple scattering compensation for microfacet models, Turquin, 2019] [Main implementation]
+ * [2] [Revisiting Physically Based Shading at Imageworks, Kulla & Conty, SIGGRAPH 2017]
+ * [3] [Dassault Enterprise PBR 2025 Specification]
+ * [4] [Google - Physically Based Rendering in Filament]
+ * [5] [MaterialX codebase on Github]
+ * [6] [Blender's Cycles codebase on Github]
+ *
  * The energy conservation LUT for GGX Glass materials is computed by remapping cos_theta
  * with cos_theta^2.5
  *
@@ -547,10 +564,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GTR2_eval<0>(const H
 
 #if PrincipledBSDFGGXMaskingShadowingTerm == GGX_MASKING_SHADOWING_SMITH_HEIGHT_CORRELATED
         float G2HeightCorrelated = 1.0f / (1.0f + lambda_V + lambda_L);
+
         return F * D * G2HeightCorrelated / (4.0f * NoL * NoV);
 #elif PrincipledBSDFGGXMaskingShadowingTerm == GGX_MASKING_SHADOWING_SMITH_HEIGHT_UNCORRELATED
         float G1L = 1.0f / (1.0f + lambda_L);
         float G2 = G1V * G1L;
+
         return F * D * G2 / (4.0f * NoL * NoV);
 #endif
     }

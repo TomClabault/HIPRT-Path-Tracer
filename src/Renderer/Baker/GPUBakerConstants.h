@@ -12,7 +12,9 @@
 
 struct GPUBakerConstants
 {
-	static const int GGX_ESS_TEXTURE_SIZE = 96;
+	static const int GGX_ESS_TEXTURE_SIZE_COS_THETA_O = 96;
+	static const int GGX_ESS_TEXTURE_SIZE_ROUGHNESS = 96;
+
 	static const int GGX_GLASS_ESS_TEXTURE_SIZE_COS_THETA_O = 256;
 	static const int GGX_GLASS_ESS_TEXTURE_SIZE_ROUGHNESS = 16;
 	static const int GGX_GLASS_ESS_TEXTURE_SIZE_IOR = 128;
@@ -24,9 +26,9 @@ struct GPUBakerConstants
 	static const std::string GGX_GLASS_ESS_FILE_NAME;
 	static const std::string GGX_GLASS_INVERSE_ESS_FILE_NAME;
 
-	static constexpr std::string get_GGX_Ess_filename(int texture_size)
+	static constexpr std::string get_GGX_Ess_filename(int texture_size_cos_theta, int texture_size_roughness)
 	{
-		return "GGX_Ess_" + std::to_string(texture_size) + "x" + std::to_string(texture_size) + ".hdr";
+		return "GGX_Ess_" + std::to_string(texture_size_cos_theta) + "x" + std::to_string(texture_size_roughness) + ".hdr";
 	}
 
 	static constexpr std::string get_GGX_glass_Ess_filename(int texture_size_cos_theta, int texture_size_roughness, int texture_size_ior)

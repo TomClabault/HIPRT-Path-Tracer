@@ -544,8 +544,13 @@ void ImGuiSettingsWindow::apply_performance_preset(ImGuiRendererPerformancePrese
 
 void ImGuiSettingsWindow::draw_camera_panel()
 {
-	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
-	Camera& camera = m_renderer->get_camera();
+	draw_camera_panel_static(m_render_window, m_renderer);
+}
+
+void ImGuiSettingsWindow::draw_camera_panel_static(RenderWindow* render_window, std::shared_ptr<GPURenderer> renderer)
+{
+	HIPRTRenderSettings& render_settings = renderer->get_render_settings();
+	Camera& camera = renderer->get_camera();
 
 	if (ImGui::CollapsingHeader("Camera"))
 	{
@@ -553,19 +558,19 @@ void ImGuiSettingsWindow::draw_camera_panel()
 
 		ImGui::SeparatorText("Transformation");
 		if (ImGui::DragFloat3("Position", reinterpret_cast<float*>(&camera.m_translation)))
-			m_render_window->set_render_dirty(true);
+			render_window->set_render_dirty(true);
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::SeparatorText("Settings");
 		if (ImGui::Checkbox("Do ray jittering", &camera.do_jittering))
-			m_render_window->set_render_dirty(true);
+			render_window->set_render_dirty(true);
 
 		static float camera_fov = camera.vertical_fov / M_PI * 180.0f;
 		if (ImGui::SliderFloat("FOV", &camera_fov, 0.0f, 180.0f, "%.3fdeg", ImGuiSliderFlags_AlwaysClamp))
 		{
 			camera.set_FOV(camera_fov / 180.0f * M_PI);
 
-			m_render_window->set_render_dirty(true);
+			render_window->set_render_dirty(true);
 		}
 
 		if (ImGui::SliderFloat("Camera Speed", &camera.user_movement_speed_multiplier, 0.0f, 10.0f))
@@ -582,6 +587,45 @@ void ImGuiSettingsWindow::draw_camera_panel()
 			ImGuiRenderer::add_tooltip("Cannot render at low resolution when not accumulating. If you want to render at "
 				"a lower resolution, you can use the resolution scale in \"Render Settings\"for that.");
 		ImGui::EndDisabled();
+
+
+
+
+
+		static int selected_object = 0;
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::Text("Center camera on object");
+		if (ImGui::BeginListBox("##center_on_object", ImVec2(-FLT_MIN, 7 * ImGui::GetTextLineHeightWithSpacing())))
+		{
+			const std::vector<std::string>& mesh_names = renderer->get_mesh_names();
+			const std::vector<std::string>& material_names = renderer->get_material_names();
+			for (int n = 0; n < mesh_names.size(); n++)
+			{
+				const bool is_selected = (selected_object == n);
+
+				const std::string& mesh_name = mesh_names[n];
+				const std::string& material_name = material_names[renderer->get_mesh_material_indices()[n]];
+				std::string object_text = mesh_name + " (" + material_name + ")";
+				if (ImGui::Selectable(object_text.c_str(), is_selected))
+				{
+					selected_object = n;
+
+					float3 object_center = renderer->get_mesh_bounding_boxes()[n].get_center();
+				}
+
+				// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
+				if (is_selected)
+					ImGui::SetItemDefaultFocus();
+			}
+			ImGui::EndListBox();
+		}
+
+		if (ImGui::Button("Center"))
+		{
+			camera.look_at_object(renderer->get_mesh_bounding_boxes()[selected_object]);
+
+			render_window->set_render_dirty(true);
+		}
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();
@@ -1426,9 +1470,6 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				m_render_window->set_render_dirty(true);
 			}
 
-			if (ImGui::Checkbox("Fix", &m_renderer->get_render_data().fix))
-				m_render_window->set_render_dirty(true);
-
 			static bool use_multiple_scattering = PrincipledBSDFGGXUseMultipleScattering;
 			if (ImGui::Checkbox("Use GGX Multiple Scattering", &use_multiple_scattering))
 			{
@@ -1740,7 +1781,7 @@ void ImGuiSettingsWindow::draw_objects_panel()
 		material_changed |= ImGui::SliderFloat("Sheen Roughness", &material.sheen_roughness, 0.0f, 1.0f);
 
 		ImGui::Separator();
-		material_changed |= ImGui::ColorEdit3("Coat Color", (float*)&material.coat_color);
+		material_changed |= ImGui::ColorEdit3("Coat Medium Absorption", (float*)&material.coat_color);
 		material_changed |= ImGui::SliderFloat("Coat Strength", &material.coat, 0.0f, 1.0f);
 		material_changed |= ImGui::SliderFloat("Coat Roughness", &material.coat_roughness, 0.0f, 1.0f);
 		material_changed |= ImGui::SliderFloat("Coat Anisotropy", &material.coat_anisotropy, 0.0f, 1.0f);
@@ -1894,47 +1935,51 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 	std::shared_ptr<GPUKernelCompilerOptions> kernel_options = m_renderer->get_global_compiler_options();
 	HardwareAccelerationSupport hwi_supported = m_renderer->device_supports_hardware_acceleration();
 
-	ImGui::SeparatorText("General Settings");
-
-	static bool use_hardware_acceleration = kernel_options->has_macro("__USE_HWI__");
-	ImGui::BeginDisabled(hwi_supported != HardwareAccelerationSupport::SUPPORTED);
-	if (ImGui::Checkbox("Use ray tracing hardware acceleration", &use_hardware_acceleration))
+	if (ImGui::CollapsingHeader("General Settings"))
 	{
-		kernel_options->set_macro_value("__USE_HWI__", use_hardware_acceleration);
+		ImGui::TreePush("Perf settings general settings tree");
 
-		m_renderer->recompile_kernels();
+		static bool use_hardware_acceleration = kernel_options->has_macro("__USE_HWI__");
+		ImGui::BeginDisabled(hwi_supported != HardwareAccelerationSupport::SUPPORTED);
+		if (ImGui::Checkbox("Use ray tracing hardware acceleration", &use_hardware_acceleration))
+		{
+			kernel_options->set_macro_value("__USE_HWI__", use_hardware_acceleration);
+
+			m_renderer->recompile_kernels();
+		}
+		ImGui::EndDisabled();
+
+		// Printing a custom tooltip depending on whether or not we support hardware acceleration
+		// and, if not supported, why we don't support it 
+		switch (hwi_supported)
+		{
+			case SUPPORTED:
+				ImGuiRenderer::show_help_marker("Whether or not to enable hardware accelerated ray tracing (bbox & triangle intersections)");
+				break;
+
+			case AMD_UNSUPPORTED:
+				ImGuiRenderer::show_help_marker("Hardware accelerated ray tracing is only supported on RDNA2+ AMD GPUs.");
+				break;
+
+			case NVIDIA_UNSUPPORTED:
+				ImGuiRenderer::show_help_marker("HIPRT cannot access NVIDIA's proprietary hardware accelerated ray-tracing. Hardware ray-tracing unavailable.");
+				break;
+		}
+
+		if (ImGui::InputFloat("GPU Stall Percentage", &m_application_settings->GPU_stall_percentage))
+			m_application_settings->GPU_stall_percentage = std::max(0.0f, std::min(m_application_settings->GPU_stall_percentage, 99.9f));
+		ImGuiRenderer::show_help_marker("How much percent of the time the GPU will be forced to be idle (not rendering anything)."
+										" This feature is basically only meant for GPUs that get too hot to avoid burning your GPUs during long renders if you have"
+										" time to spare.");
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::TreePop();
 	}
-	ImGui::EndDisabled();
 
-	// Printing a custom tooltip depending on whether or not we support hardware acceleration
-	// and, if not supported, why we don't support it 
-	switch (hwi_supported)
+	if (ImGui::CollapsingHeader("Kernel Settings"))
 	{
-	case SUPPORTED:
-		ImGuiRenderer::show_help_marker("Whether or not to enable hardware accelerated ray tracing (bbox & triangle intersections)");
-		break;
+		ImGui::TreePush("Shared/global stack Traversal Options Tree");
 
-	case AMD_UNSUPPORTED:
-		ImGuiRenderer::show_help_marker("Hardware accelerated ray tracing is only supported on RDNA2+ AMD GPUs.");
-		break;
-
-	case NVIDIA_UNSUPPORTED:
-		ImGuiRenderer::show_help_marker("HIPRT cannot access NVIDIA's proprietary hardware accelerated ray-tracing. Hardware ray-tracing unavailable.");
-		break;
-	}
-
-	if (ImGui::InputFloat("GPU Stall Percentage", &m_application_settings->GPU_stall_percentage))
-		m_application_settings->GPU_stall_percentage = std::max(0.0f, std::min(m_application_settings->GPU_stall_percentage, 99.9f));
-	ImGuiRenderer::show_help_marker("How much percent of the time the GPU will be forced to be idle (not rendering anything)."
-		" This feature is basically only meant for GPUs that get too hot to avoid burning your GPUs during long renders if you have"
-		" time to spare.");
-
-	ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
-	ImGui::SeparatorText("Kernel Settings");
-	ImGui::TreePush("Shared/global stack Traversal Options Tree");
-
-	{
 		// List of exceptions because these kernels do not trace any rays
 		static std::unordered_set<std::string> exceptions = { ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID };
 		static std::vector<std::string> kernel_names;
@@ -1986,8 +2031,8 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 				m_render_window->set_render_dirty(true);
 			}
 			ImGuiRenderer::show_help_marker("If checked, shared memory + a globally allocated buffer will be used for the BVH "
-				"traversal of rays.\n"
-				"This incurs an additional cost in VRAM but improves traversal performance.");
+											"traversal of rays.\n"
+											"This incurs an additional cost in VRAM but improves traversal performance.");
 
 
 
@@ -2004,14 +2049,14 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 					pending_stack_size = std::max(0, pending_stack_size);
 
 				ImGuiRenderer::show_help_marker("Fast shared memory stack used for the BVH traversal of \"global\" rays (rays that search for a closest hit with no maximum distance)\n\n"
-					"Allocating more of this speeds up the BVH traversal but reduces the amount of L1 cache available to "
-					"the rest of the shader which thus reduces its performance. A tradeoff must be made.\n\n"
-					"If this shared memory stack isn't large enough for traversing the BVH, then "
-					"it is complemented by using the global stack buffer. If both combined aren't enough "
-					"for the traversal, then artifacts start showing up in renders.\n\n"
-					"Note that setting this value to 0 disables the shared stack usage but still uses the global buffer "
-					"for traversal. This approach is still better that not using any of these two memories at all (this "
-					"becomes the case when the checkboxes above are not checked.)");
+												"Allocating more of this speeds up the BVH traversal but reduces the amount of L1 cache available to "
+												"the rest of the shader which thus reduces its performance. A tradeoff must be made.\n\n"
+												"If this shared memory stack isn't large enough for traversing the BVH, then "
+												"it is complemented by using the global stack buffer. If both combined aren't enough "
+												"for the traversal, then artifacts start showing up in renders.\n\n"
+												"Note that setting this value to 0 disables the shared stack usage but still uses the global buffer "
+												"for traversal. This approach is still better that not using any of these two memories at all (this "
+												"becomes the case when the checkboxes above are not checked.)");
 
 				if (pending_stack_size != selected_kernel_options->get_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE))
 				{
@@ -2041,12 +2086,12 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 		}
 
 		ImGuiRenderer::show_help_marker("Size of the global stack buffer for each thread. Used for complementing the shared memory stack allocated in the kernels."
-			"A good value for this parameter is scene-complexity dependent.\n\n"
-			"A lower value will use less VRAM but will start introducing artifacts if the value is too low due "
-			"to insufficient stack size for the BVH traversal.\n\n"
-			"16 seems to be a good value to start with. If lowering this value improves performance, then that "
-			"means that the BVH traversal is starting to suffer (the traversal is incomplete --> improved performance) "
-			"and rendering artifacts will start to show up.");
+										"A good value for this parameter is scene-complexity dependent.\n\n"
+										"A lower value will use less VRAM but will start introducing artifacts if the value is too low due "
+										"to insufficient stack size for the BVH traversal.\n\n"
+										"16 seems to be a good value to start with. If lowering this value improves performance, then that "
+										"means that the BVH traversal is starting to suffer (the traversal is incomplete --> improved performance) "
+										"and rendering artifacts will start to show up.");
 
 		std::string size_string = "Global Stack Buffer VRAM Usage: ";
 		size_string += std::to_string(m_renderer->get_render_data().global_traversal_stack_buffer_size * std::ceil(m_renderer->m_render_resolution.x / 8.0f) * 8.0f * std::ceil(m_renderer->m_render_resolution.y / 8.0f) * 8.0f * sizeof(int) / 1000000.0f);
@@ -2057,23 +2102,25 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 		ImGui::TreePop();
 	}
 
-	ImGui::SeparatorText("Lighting Settings");
-	ImGui::TreePush("Lighting Settings Performance Tree");
+	if (ImGui::CollapsingHeader("Lighting Settings"))
 	{
+		ImGui::TreePush("Lighting Settings Performance Tree");
+
 		if (ImGui::SliderFloat("Minimum Light Contribution", &render_settings.minimum_light_contribution, 0.0f, 10.0f))
 		{
 			render_settings.minimum_light_contribution = std::max(0.0f, render_settings.minimum_light_contribution);
 			m_render_window->set_render_dirty(true);
 		}
 		ImGuiRenderer::show_help_marker("If a selected light (for direct lighting estimation) contributes at a given "
-			" point less than this 'minimum_light_contribution' value then the light sample is discarded. "
-			"This can improve performance at the cost of some bias depending on the scene.\n"
-			"0.0f to disable");
+										" point less than this 'minimum_light_contribution' value then the light sample is discarded. "
+										"This can improve performance at the cost of some bias depending on the scene.\n"
+										"0.0f to disable");
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();
 	}
 
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	ImGui::TreePop();
 }
 

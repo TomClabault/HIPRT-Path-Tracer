@@ -18,9 +18,10 @@ public:
 	void set_render_window(RenderWindow* render_window);
 
 	void draw();
+	void draw_header();
 	void draw_camera_panel();
 	void draw_envmap_panel();
-	void draw_general_settings();
+	void draw_frame_sequence_rendering_panel();
 
 private:
 	RenderWindow* m_render_window = nullptr;
