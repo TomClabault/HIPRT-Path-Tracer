@@ -134,6 +134,8 @@ void GPURenderer::init_GGX_glass_Ess_texture(HIPfilter_mode filtering_mode)
 		images[i] = Image32Bit::read_image_hdr(filepath, 4, true);
 	}
 	m_GGX_Ess_glass_inverse = OrochiTexture3D(images, filtering_mode);
+
+	m_render_data_buffers_invalidated = true;
 }
 
 void GPURenderer::setup_kernels()
