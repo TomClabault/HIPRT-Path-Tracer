@@ -11,6 +11,7 @@
 #include "Device/includes/Intersect.h"
 #include "Device/includes/Sampling.h"
 #include "Device/includes/Texture.h"
+#include "HostDeviceCommon/Math.h"
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/HitInfo.h"
 #include "HostDeviceCommon/RenderData.h"
@@ -31,8 +32,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F eval_envmap_no_pdf(const WorldSetting
     // Bringing the direction in envmap space for sampling the envmap
     float3 rotated_direction = matrix_X_vec(world_settings.world_to_envmap_matrix, direction);
 
-    float u = 0.5f + atan2(rotated_direction.z, rotated_direction.x) / (2.0f * M_PI);
-    float v = 0.5f + asin(rotated_direction.y) / M_PI;
+    float u = 0.5f + atan2(rotated_direction.z, rotated_direction.x) * M_INV_2PI;
+    float v = 0.5f + asin(rotated_direction.y) * M_INV_PI;
 
     return sample_environment_map_texture(world_settings, make_float2(u, 1.0f - v));
 }
@@ -98,7 +99,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F envmap_sample(const WorldSettings& wo
     float v = static_cast<float>(y) / world_settings.envmap_height;
 
     // Converting to polar coordinates
-    float phi = u * 2.0f * M_PI;
+    float phi = u * M_TWO_PI;
     // Clamping because a theta of 0.0f would mean straight up which means singularity
     // which means not good for numerical stability
     float theta = hippt::max(1.0e-5f, v * M_PI);
@@ -118,7 +119,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F envmap_sample(const WorldSettings& wo
     envmap_pdf = env_map_radiance.luminance() / (env_map_total_sum * world_settings.envmap_intensity);
     envmap_pdf *= world_settings.envmap_width * world_settings.envmap_height;
     // Converting the PDF from area measure on the envmap to solid angle measure
-    envmap_pdf /= (2.0f * M_PI * M_PI * sin_theta);
+    envmap_pdf /= (M_TWO_PIPI * sin_theta);
 
     return env_map_radiance;
 }
@@ -143,7 +144,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F envmap_eval(const HIPRTRenderData& re
     pdf *= world_settings.envmap_width * world_settings.envmap_height;
 
     // Converting from "texel on envmap measure" to solid angle
-    pdf /= (2.0f * M_PI * M_PI * sin_theta);
+    pdf /= (M_TWO_PIPI * sin_theta);
 
     return envmap_radiance;
 }

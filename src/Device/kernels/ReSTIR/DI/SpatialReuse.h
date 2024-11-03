@@ -17,6 +17,7 @@
 #include "Device/includes/ReSTIR/DI/Utils.h"
 #include "Device/includes/Sampling.h"
 
+#include "HostDeviceCommon/Math.h"
 #include "HostDeviceCommon/HIPRTCamera.h"
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/HitInfo.h"
@@ -102,7 +103,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	// for generating the neighbors location to resample
 	float rotation_theta;
 	if (render_data.render_settings.restir_di_settings.spatial_pass.do_neighbor_rotation)
-		rotation_theta = 2.0f * M_PI * random_number_generator();
+		rotation_theta = M_TWO_PI * random_number_generator();
 	else
 		rotation_theta = 0.0f;
 

@@ -11,6 +11,7 @@
 #include "Device/includes/OrenNayar.h"
 #include "Device/includes/RayPayload.h"
 #include "Device/includes/Sampling.h"
+#include "HostDeviceCommon/Math.h"
 #include "HostDeviceCommon/Material.h"
 #include "HostDeviceCommon/Xorshift.h"
 
@@ -32,7 +33,7 @@
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float disney_schlick_weight(float f0, float abs_cos_angle)
 {
-    return 1.0f + (f0 - 1.0f) * pow(1.0f - abs_cos_angle, 5.0f);
+    return 1.0f + (f0 - 1.0f) * hippt::pow5(1.0f - abs_cos_angle);
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_diffuse_eval(const SimplifiedRendererMaterial& material, const float3& view_direction, const float3& surface_normal, const float3& to_light_direction, float& pdf)
@@ -43,22 +44,22 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_diffuse_eval(const SimplifiedR
     float NoL = hippt::clamp(0.0f, 1.0f, hippt::abs(hippt::dot(surface_normal, to_light_direction)));
     float NoV = hippt::clamp(0.0f, 1.0f, hippt::abs(hippt::dot(surface_normal, view_direction)));
 
-    pdf = NoL / M_PI;
+    pdf = NoL * M_INV_PI;
 
     ColorRGB32F diffuse_part;
-    float diffuse_90 = 0.5f + 2.0f * material.roughness * LoH * LoH;
+    float subsurface_90 = material.roughness * LoH * LoH;
+    float diffuse_90 = 0.5f + subsurface_90 + subsurface_90;
     // Lambertian base_color
-    //diffuse_part = material.base_color / M_PI;
+    //diffuse_part = material.base_color * M_INV_PI;
     // Disney base_color
-    diffuse_part = material.base_color / M_PI * disney_schlick_weight(diffuse_90, NoL) * disney_schlick_weight(diffuse_90, NoV);
+    diffuse_part = material.base_color * M_INV_PI * disney_schlick_weight(diffuse_90, NoL) * disney_schlick_weight(diffuse_90, NoV);
     // Oren nayar base_color
     //diffuse_part = oren_nayar_eval(material, view_direction, surface_normal, to_light_direction);
 
     ColorRGB32F fake_subsurface_part = ColorRGB32F(0.0f);
     if (material.subsurface > 0.0f)
     {
-        float subsurface_90 = material.roughness * LoH * LoH;
-        fake_subsurface_part = 1.25f * material.base_color / M_PI *
+        fake_subsurface_part = 1.25f * material.base_color * M_INV_PI *
             (disney_schlick_weight(subsurface_90, NoL) * disney_schlick_weight(subsurface_90, NoV) * (1.0f / (NoL + NoV) - 0.5f) + 0.5f);
     }
 
@@ -85,7 +86,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_metallic_fresnel(const Simplif
     float R0 = ((material.ior - 1.0f) * (material.ior - 1.0f)) / ((material.ior + 1.0f) * (material.ior + 1.0f));
     ColorRGB32F C0 = material.specular * R0 * (1.0f - material.metallic) * Ks + material.metallic * material.base_color;
 
-    return C0 + (ColorRGB32F(1.0f) - C0) * pow(hippt::clamp(0.0f, 1.0f, 1.0f - hippt::dot(local_half_vector, local_to_light_direction)), 5.0f);
+    return C0 + (ColorRGB32F(1.0f) - C0) * hippt::pow5(hippt::clamp(0.0f, 1.0f, 1.0f - hippt::dot(local_half_vector, local_to_light_direction)));
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_metallic_eval(const SimplifiedRendererMaterial& material, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_half_vector, ColorRGB32F F, float& pdf)
@@ -154,7 +155,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 disney_clearcoat_sample(const SimplifiedRe
     float cos_theta = sqrt((1.0f - pow(alpha_g_2, 1.0f - rand_1)) / (1.0f - alpha_g_2));
     float sin_theta = sqrt(1.0f - cos_theta * cos_theta);
 
-    float phi = 2.0f * M_PI * rand_2;
+    float phi = M_TWO_PI * rand_2;
     float cos_phi = cos(phi);
     float sin_phi = sqrt(1.0f - cos_phi * cos_phi);
 
@@ -343,9 +344,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_sheen_eval(const SimplifiedRen
     // leading to 1.0f - dot being negative and the BRDF returns a negative color
     float HoL = hippt::clamp(0.0f, 1.0f, hippt::dot(local_half_vector, local_to_light_direction));
 
-    pdf = NoL / M_PI;
+    pdf = NoL * M_INV_PI;
 
-    return sheen_color * pow(1.0f - HoL, 5.0f);
+    return sheen_color * hippt::pow5(1.0f - HoL);
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_bsdf_eval(const RendererMaterial* materials_buffer, const SimplifiedRendererMaterial& material, RayVolumeState& ray_volume_state, const float3& view_direction, float3 shading_normal, const float3& to_light_direction, float& pdf)
@@ -430,7 +431,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F disney_bsdf_sample(const RendererMate
 
     float glass_weight = (1.0f - material.metallic) * material.specular_transmission;
     bool outside_object = hippt::dot(view_direction, normal) > 0;
-    if (glass_weight == 0.0f && !outside_object)
+    if (hippt::isZERO(glass_weight) && !outside_object)
     {
         // If we're not sampling the glass lobe so we're checking
         // whether the view direction is below the upper hemisphere around the shading

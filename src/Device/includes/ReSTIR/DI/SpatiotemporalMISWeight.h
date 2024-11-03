@@ -8,6 +8,8 @@
 
 #include "Device/includes/ReSTIR/DI/Utils.h"
 
+#include "HostDeviceCommon/Math.h"
+
 #define TEMPORAL_NEIGHBOR_ID 0
 
 template <int BiasCorrectionMode>
@@ -108,7 +110,7 @@ struct ReSTIRDISpatiotemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_G
 		if (current_neighbor == TEMPORAL_NEIGHBOR_ID)
 			nume = target_function_at_temporal_neighbor * M;
 
-		if (denom == 0.0f)
+		if (hippt::isZERO(denom))
 			return 0.0f;
 		else
 			return nume / denom;
@@ -149,7 +151,7 @@ struct ReSTIRDISpatiotemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRW
 
 			float nume = target_function_at_neighbor * reservoir_resampled_M;
 			float denom = target_function_at_neighbor * neighbors_confidence_sum + target_function_at_center / valid_neighbor_division_term * center_reservoir_M;
-			float mi = denom == 0.0f ? 0.0f : (nume / denom);
+			float mi = hippt::isZERO(denom) ? 0.0f : (nume / denom);
 
 			if (update_mc)
 			{
@@ -172,7 +174,7 @@ struct ReSTIRDISpatiotemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRW
 		{
 			// Resampling the center pixel
 
-			if (mc == 0.0f)
+			if (hippt::isZERO(mc))
 				// If there was no neighbor resampling (and mc hasn't been accumulated),
 				// then the MIS weight should be 1 for the center pixel. It gets all the weight
 				// since no neighbor was resampled
@@ -264,7 +266,7 @@ struct ReSTIRDISpatiotemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRW
 		{
 			// Resampling the center pixel
 
-			if (mc == 0.0f)
+			if (hippt::isZERO(mc))
 				// If there was no neighbor resampling (and mc hasn't been accumulated),
 				// then the MIS weight should be 1 for the center pixel. It gets all the weight
 				// since no neighbor was resampled

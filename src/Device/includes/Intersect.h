@@ -155,7 +155,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
         int material_index = render_data.buffers.material_indices[hit.primID];
         in_out_ray_payload.material = get_intersection_material(render_data, material_index, out_hit_info.texcoords);
 
-        if (!in_out_ray_payload.is_inside_volume() || in_out_ray_payload.material.specular_transmission == 0.0f)
+        if (!in_out_ray_payload.is_inside_volume() || hippt::isZERO(in_out_ray_payload.material.specular_transmission))
         {
             // If we're not in a volume, there's no reason for the normals not to be facing us so we're flipping
             // if they were wrongly oriented
