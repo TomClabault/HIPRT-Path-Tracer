@@ -116,7 +116,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_specular_sample(const Simplifie
     return microfacet_GTR2_sample_reflection(material.roughness, material.anisotropy, local_view_direction, random_number_generator);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(bool inside, const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, RayVolumeState& ray_volume_state, const float3& local_view_direction, const float3& local_to_light_direction, float& pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, RayVolumeState& ray_volume_state, const float3& local_view_direction, const float3& local_to_light_direction, float& pdf)
 {
     pdf = 0.0f;
 
@@ -185,21 +185,25 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(bool inside, co
 
 
 #if PrincipledBSDFGGXUseMultipleScattering == KERNEL_OPTION_TRUE
-    // Sqrtf cos_theta_o here because we're storing cos_theta_o^2 in the LUT
-    //float view_direction_tex_fetch = sqrtf(hippt::max(0.0f, local_view_direction.z));
-    float relative_eta_for_correction = inside ? 1.0f / relative_eta : relative_eta;
-    float exponent_correction = GGX_glass_energy_conservation_get_corection_exponent(material.roughness, relative_eta_for_correction);
+    bool inside_object = ray_volume_state.inside_material;
+    float relative_eta_for_correction = inside_object ? 1.0f / relative_eta : relative_eta;
+    float exponent_correction = GGX_glass_energy_conservation_get_correction_exponent(material.roughness, relative_eta_for_correction);
 
+    // We're storing cos_theta_o^2.5 in the LUT so we're retrieving it with pow(1.0f / 2.5f) i.e.
+    // sqrt 2.5
+    //
+    // We're using a "correction exponent" to forcefully get rid of energy gains at grazing angles due
+    // to float precision issues: storing in the LUT with cos_theta^2.5 but fetching with pow(1.0f / 2.6f)
+    // for example darkens to overall appearance and helps remove energy gains
     float view_direction_tex_fetch = powf(hippt::max(0.0f, local_view_direction.z), 1.0f / exponent_correction);
-    //float view_direction_tex_fetch = hippt::max(0.0f, local_view_direction.z);
 
     float F0 = F0_from_eta(eta_t, eta_i);
-    // root4 of F0 here because we're storing F0^4 in the LUT
+    // sqrt(sqrt()) of F0 here because we're storing F0^4 in the LUT
     float F0_remapped = sqrt(sqrt(F0));
 
     float3 uvw = make_float3(view_direction_tex_fetch, material.roughness, F0_remapped);
 
-    void* texture = inside ? render_data.brdfs_data.GGX_Ess_glass_inverse : render_data.brdfs_data.GGX_Ess_glass;
+    void* texture = inside_object ? render_data.brdfs_data.GGX_Ess_glass_inverse : render_data.brdfs_data.GGX_Ess_glass;
     int3 dims = make_int3(GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_COS_THETA_O, GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_ROUGHNESS, GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_IOR);
     float compensation_term = sample_texture_3D_rgb_32bits(texture, dims, uvw, render_data.brdfs_data.use_hardware_tex_interpolation).r;
 #endif
@@ -210,6 +214,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(bool inside, co
         color = torrance_sparrow_GTR2_eval<0>(render_data, material.base_color, material.roughness, material.anisotropy, ColorRGB32F(F), local_view_direction, local_to_light_direction, local_half_vector, pdf);
 
 #if PrincipledBSDFGGXUseMultipleScattering == KERNEL_OPTION_TRUE
+        // [Turquin, 2019] Eq. 18
         color /= compensation_term;
 #endif
 
@@ -248,6 +253,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(bool inside, co
         color = sqrt(material.base_color) * D * (1 - F) * G2 * hippt::abs(HoL * HoV / denom);
 
 #if PrincipledBSDFGGXUseMultipleScattering == KERNEL_OPTION_TRUE
+        // [Turquin, 2019] Eq. 18
         color /= compensation_term;
 #endif
 
@@ -270,9 +276,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(bool inside, co
 
             // We changed volume so we're resetting the distance
             ray_volume_state.distance_in_volume = 0.0f;
-            if (ray_volume_state.leaving_mat)
+            if (ray_volume_state.inside_material)
                 // We refracting out of a volume so we're poping the stack
-                ray_volume_state.interior_stack.pop(ray_volume_state.leaving_mat);
+                ray_volume_state.interior_stack.pop(ray_volume_state.inside_material);
         }
     }
 
@@ -466,12 +472,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_diffuse_layer(const Sim
     return ColorRGB32F(0.0f);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_glass_layer(bool inside, const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, RayVolumeState& ray_volume_state, const float3& local_view_direction, const float3 local_to_light_direction, float glass_weight, float glass_proba, ColorRGB32F& layers_throughput, float& out_cumulative_pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_glass_layer(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, RayVolumeState& ray_volume_state, const float3& local_view_direction, const float3 local_to_light_direction, float glass_weight, float glass_proba, ColorRGB32F& layers_throughput, float& out_cumulative_pdf)
 {
     if (glass_weight > 0.0f)
     {
         float glass_pdf;
-        ColorRGB32F contribution = principled_glass_eval(inside, render_data, material, ray_volume_state, local_view_direction, local_to_light_direction, glass_pdf);
+        ColorRGB32F contribution = principled_glass_eval(render_data, material, ray_volume_state, local_view_direction, local_to_light_direction, glass_pdf);
         contribution *= glass_weight;
         contribution *= layers_throughput;
 
@@ -566,7 +572,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRende
     // specular layer into account. But we don't want that for the
     // glass layer. The glass layer isn't below the specular layer 
     // so we don't want to take that into account
-    final_color += internal_eval_glass_layer(!outside_object, render_data, material, ray_volume_state, local_view_direction_rotated, local_to_light_direction_rotated, glass_weight, glass_proba_norm, layers_throughput, pdf);
+    final_color += internal_eval_glass_layer(render_data, material, ray_volume_state, local_view_direction_rotated, local_to_light_direction_rotated, glass_weight, glass_proba_norm, layers_throughput, pdf);
     final_color += internal_eval_specular_layer(render_data, material, local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated, shading_normal, incident_ior, specular_weight * !refracting_in, specular_proba_norm, layers_throughput, pdf);
     final_color += internal_eval_diffuse_layer(material, local_view_direction, local_to_light_direction, diffuse_weight * !refracting_in, diffuse_proba_norm, layers_throughput, pdf);
 

@@ -176,7 +176,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
             out_hit_info.shading_normal += (2.0f * hippt::clamp(0.0f, 1.0f, -NdotV)) * -ray.direction;
         }
 
-        skipping_volume_boundary = in_out_ray_payload.volume_state.interior_stack.push(in_out_ray_payload.volume_state.incident_mat_index, in_out_ray_payload.volume_state.outgoing_mat_index, in_out_ray_payload.volume_state.leaving_mat, material_index, in_out_ray_payload.material.dielectric_priority);
+        skipping_volume_boundary = in_out_ray_payload.volume_state.interior_stack.push(in_out_ray_payload.volume_state.incident_mat_index, in_out_ray_payload.volume_state.outgoing_mat_index, in_out_ray_payload.volume_state.inside_material, material_index, in_out_ray_payload.material.dielectric_priority);
 
         if (skipping_volume_boundary)
         {

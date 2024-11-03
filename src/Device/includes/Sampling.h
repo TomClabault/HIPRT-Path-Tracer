@@ -469,7 +469,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F get_GGX_energy_compensation_conductor
  * instead of fixing the root of the issue which probably isn't what you should do if you're
  * reading this
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_glass_energy_conservation_get_corection_exponent(float roughness, float relative_eta)
+HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_glass_energy_conservation_get_correction_exponent(float roughness, float relative_eta)
 {
     float exponent_correction = 2.5f;
     if (roughness == 0.0f || hippt::abs(1.0f - relative_eta) < 1.0e-3f)

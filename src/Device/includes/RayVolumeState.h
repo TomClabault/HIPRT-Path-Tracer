@@ -17,7 +17,7 @@ struct RayVolumeState
 	// Indices of the material we were in before hitting the current dielectric surface
 	int incident_mat_index = -1, outgoing_mat_index = -1;
 	// Whether or not we're exiting a material
-	bool leaving_mat = false;
+	bool inside_material = false;
 };
 
 #endif

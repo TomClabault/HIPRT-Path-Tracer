@@ -34,7 +34,7 @@ struct InteriorStackImpl<ISS_AUTOMATIC>
 {
 	// TODO leaving material never used ? Or used only where we already know its value so not needed
 	// Unused parameter at the end here to have the same signature as InteriorStackPriority
-	HIPRT_HOST_DEVICE bool push(int& incident_material_index, int& outgoing_material_index, bool& leaving_material, int material_index, int)
+	HIPRT_HOST_DEVICE bool push(int& incident_material_index, int& outgoing_material_index, bool& inside_material, int material_index, int)
 	{
 		// Parity of the material we're inserting in the stack
 		bool odd_parity = true;
@@ -93,17 +93,17 @@ struct InteriorStackImpl<ISS_AUTOMATIC>
 			}
 		}
 
-		leaving_material = !odd_parity;
+		inside_material = !odd_parity;
 
 		return false;
 	}
 
-	HIPRT_HOST_DEVICE void pop(bool leaving_material)
+	HIPRT_HOST_DEVICE void pop(bool inside_material)
 	{
 		int stack_top_mat_index = stack[stack_position].material_index;
 		stack_position--;
 
-		if (leaving_material)
+		if (inside_material)
 		{
 			int previous_same_mat_index;
 			for (previous_same_mat_index = stack_position; previous_same_mat_index >= 0; previous_same_mat_index--)
@@ -168,7 +168,7 @@ struct StackPriorityEntry
 template <>
 struct InteriorStackImpl<ISS_WITH_PRIORITIES>
 {
-	HIPRT_HOST_DEVICE bool push(int& incident_material_index, int& outgoing_material_index, bool& leaving_material, int material_index, int material_priority)
+	HIPRT_HOST_DEVICE bool push(int& incident_material_index, int& outgoing_material_index, bool& inside_material, int material_index, int material_priority)
 	{
 		// Index of the material we last entered before intersecting the
 		// material we're currently inserting in the stack
@@ -202,7 +202,7 @@ struct InteriorStackImpl<ISS_WITH_PRIORITIES>
 			}
 		}
 		
-		leaving_material = !odd_parity;
+		inside_material = !odd_parity;
 
 		// Inserting the material in the stack
 		if (stack_position < NestedDielectricsStackSize - 1)
@@ -238,7 +238,7 @@ struct InteriorStackImpl<ISS_WITH_PRIORITIES>
 		}
 	}
 
-	HIPRT_HOST_DEVICE void pop(bool leaving_material)
+	HIPRT_HOST_DEVICE void pop(bool inside_material)
 	{
 		int stack_top_mat_index = stack[stack_position].material_index;
 		if (stack_position > 0)
@@ -249,7 +249,7 @@ struct InteriorStackImpl<ISS_WITH_PRIORITIES>
 			// at this point is already 0 and we cannot pop.
 			stack_position--;
 
-		if (leaving_material)
+		if (inside_material)
 		{
 			int previous_same_mat_index;
 			for (previous_same_mat_index = stack_position; previous_same_mat_index >= 0; previous_same_mat_index--)
