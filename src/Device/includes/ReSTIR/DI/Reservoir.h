@@ -8,6 +8,7 @@
 
 #include "Device/includes/ReSTIR/DI/SampleFlags.h"
 
+#include "HostDeviceCommon/Math.h"
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/Xorshift.h"
 
@@ -87,7 +88,7 @@ struct ReSTIRDIReservoir
 
     HIPRT_HOST_DEVICE void end()
     {
-        if (weight_sum == 0.0f)
+        if (hippt::isZERO(weight_sum))
             UCW = 0.0f;
         else
             UCW = 1.0f / sample.target_function * weight_sum;
@@ -96,7 +97,7 @@ struct ReSTIRDIReservoir
     HIPRT_HOST_DEVICE void end_with_normalization(float normalization_numerator, float normalization_denominator)
     {
         // Checking some limit values
-        if (weight_sum == 0.0f || weight_sum < 1.0e-10f || weight_sum > 1.0e10f || normalization_denominator == 0.0f || normalization_numerator == 0.0f)
+        if (hippt::isZERO(weight_sum) || weight_sum > 1.0e10f || hippt::isZERO(normalization_denominator) || hippt::isZERO(normalization_numerator))
             UCW = 0.0f;
         else
             UCW = 1.0f / sample.target_function * weight_sum * normalization_numerator / normalization_denominator;

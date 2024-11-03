@@ -7,6 +7,7 @@
 #define DEVICE_SAMPLING_H
 
 #include "Device/includes/ONB.h"
+#include "HostDeviceCommon/Math.h"
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/KernelOptions.h"
 #include "HostDeviceCommon/Material.h"
@@ -44,8 +45,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float2 sample_hammersley_2D(unsigned int number_o
 HIPRT_HOST_DEVICE HIPRT_INLINE float2 sample_in_disk_uv(float radius, float2 uv)
 {
     float r_sqrt_v = radius * sqrtf(uv.y);
-    float x = r_sqrt_v * cos(2.0f * M_PI * uv.x);
-    float y = r_sqrt_v* sin(2.0f * M_PI * uv.x);
+    float x = r_sqrt_v * cos(M_TWO_PI * uv.x);
+    float y = r_sqrt_v* sin(M_TWO_PI * uv.x);
 
     return make_float2(x, y);
 }
@@ -181,7 +182,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 cosine_weighted_sample(const float3& norma
         rand_2 += 1.0e-7f;
     }
 
-    float theta = 2.0f * M_PI * rand_1;
+    float theta = M_TWO_PI * rand_1;
 
     float2 xy = sqrt(1.0f - rand_2 * rand_2) * make_float2(cos(theta), sin(theta));
     float3 sphere_point = make_float3(xy.x, xy.y, rand_2);
@@ -191,7 +192,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 cosine_weighted_sample(const float3& norma
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F fresnel_schlick(ColorRGB32F F0, float angle)
 {
-    return F0 + (ColorRGB32F(1.0f) - F0) * pow((1.0f - angle), 5.0f);
+    return F0 + (ColorRGB32F(1.0f) - F0) * hippt::pow5(1.0f - angle);
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float fresnel_dielectric(float cos_theta_i, float relative_eta)
@@ -207,7 +208,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float fresnel_dielectric(float cos_theta_i, float
     float cos_theta_t = sqrt(1.0f - sin_theta_t2);
     float r_parallel = (relative_eta * cos_theta_i - cos_theta_t) / (relative_eta * cos_theta_i + cos_theta_t);
     float r_perpendicular = (cos_theta_i - relative_eta * cos_theta_t) / (cos_theta_i + relative_eta * cos_theta_t);
-    return (r_parallel * r_parallel + r_perpendicular * r_perpendicular) / 2;
+    return (r_parallel * r_parallel + r_perpendicular * r_perpendicular) * 0.5f;
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float fresnel_dielectric(float cos_theta_i, float eta_i, float eta_t)
@@ -224,7 +225,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_normal_distribution(float alpha, float 
     float alpha2 = alpha * alpha;
     float NoH2 = NoH * NoH;
     float b = (NoH2 * (alpha2 - 1.0f) + 1.0f);
-    return alpha2 / M_PI / (b * b);
+    return alpha2 * M_INV_PI / (b * b);
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float GTR2_anisotropic(const SimplifiedRendererMaterial& material, const float3& local_half_vector)
@@ -243,7 +244,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float G1_schlick_ggx(float k, float dot_prod)
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_smith_masking_shadowing(float roughness_squared, float NoV, float NoL)
 {
-    float k = roughness_squared / 2.0f;
+    float k = roughness_squared * 0.5f;
 
     return G1_schlick_ggx(k, NoL) * G1_schlick_ggx(k, NoV);
 }
@@ -276,7 +277,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGX_VNDF_sample(const float3 local_view_di
 
     // Parametrization of the projected area of the hemisphere
     float r = sqrt(r1);
-    float phi = 2.0f * M_PI * r2;
+    float phi = M_TWO_PI * r2;
     float t1 = r * cos(phi);
     float t2 = r * sin(phi);
     float s = 0.5f * (1.0f + Vh.z);
@@ -301,8 +302,42 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGX_VNDF_spherical_caps_sample(const float
     float3 Vh = hippt::normalize(make_float3(alpha_x * local_view_direction.x, alpha_y * local_view_direction.y, local_view_direction.z));
 
     // Sample a spherical cap in (-wi.z, 1]
-    float phi = 2.0f * M_PI * r1;
+    float phi = M_TWO_PI * r1;
     float z = (1.0f - r2) * (1.0f + Vh.z) - Vh.z;
+    float sinTheta = sqrtf(hippt::clamp(0.0f, 1.0f, 1.0f - z * z));
+    float x = sinTheta * cos(phi);
+    float y = sinTheta * sin(phi);
+    float3 c = make_float3(x, y, z);
+
+    // Compute microfacet normal
+    float3 Nh = c + Vh;
+
+    // Un-stretching back to our ellipsoid
+    return hippt::normalize(make_float3(alpha_x * Nh.x, alpha_y * Nh.y, Nh.z));
+}
+
+/**
+ * [Bounded VNDF Sampling for Smith–GGX Reflections, Kenta Eto and Yusuke Tokuyoshi; 2023]
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGX_VNDF_bounded_sample(const float3 local_view_direction, float alpha_x, float alpha_y, Xorshift32Generator& random_number_generator)
+{
+    float r1 = random_number_generator();
+    float r2 = random_number_generator();
+
+    // Stretching the ellipsoid to the hemisphere configuration
+    float3 Vh = hippt::normalize(make_float3(alpha_x * local_view_direction.x, alpha_y * local_view_direction.y, local_view_direction.z));
+
+    // Sample a spherical cap in (-wi.z, 1]
+    float phi = M_TWO_PI * r1;
+	
+	float b = Vh.z ;
+	if(local_view_direction.z > 0) {
+		  float a = hippt::clamp(0.0f, 1.0f, min(alpha_x, alpha_y)); // Eq. 6
+		  float awiz_s = a * local_view_direction.z / (1.0f + hippt::length(make_float2(local_view_direction.x, local_view_direction.y)));
+		  b *= ((1.0f - a * a) / (1.0f + awiz_s * awiz_s));
+	}
+	
+    float z = (1.0f - r2) * (1.0f + b) - b;
     float sinTheta = sqrtf(hippt::clamp(0.0f, 1.0f, 1.0f - z * z));
     float x = sinTheta * cos(phi);
     float y = sinTheta * sin(phi);
@@ -323,6 +358,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGX_sample(const float3& local_view_direct
 #elif GGXAnisotropicSampleFunction == GGX_VNDF_SPHERICAL_CAPS
     return GGX_VNDF_spherical_caps_sample(local_view_direction, alpha_x, alpha_y, random_number_generator);
 #elif GGXAnisotropicSampleFunction == GGX_VNDF_BOUNDED
+    return GGX_VNDF_bounded_sample(local_view_direction, alpha_x, alpha_y, random_number_generator);
 #else
 #endif
 }

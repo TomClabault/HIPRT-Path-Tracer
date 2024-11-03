@@ -17,6 +17,7 @@
 #include "Device/includes/ReSTIR/DI/Utils.h"
 #include "Device/includes/Sampling.h"
 
+#include "HostDeviceCommon/Math.h"
 #include "HostDeviceCommon/HIPRTCamera.h"
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/HitInfo.h"
@@ -181,7 +182,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 	// for generating the spatial neighbors location to resample
 	float rotation_theta;
 	if (render_data.render_settings.restir_di_settings.spatial_pass.do_neighbor_rotation)
-		rotation_theta = 2.0f * M_PI * random_number_generator();
+		rotation_theta = M_TWO_PI * random_number_generator();
 	else
 		rotation_theta = 0.0f;
 
@@ -445,7 +446,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 		bool update_mc = initial_candidates_reservoir.M > 0 && initial_candidates_reservoir.UCW > 0.0f;
 
 		float mis_weight;
-		if (neighbor_reservoir.UCW == 0.0f && !update_mc)
+		if (hippt::isZERO(neighbor_reservoir.UCW) && !update_mc)
 			mis_weight = 1.0f;
 		else
 			mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, neighbor_reservoir, initial_candidates_reservoir,
@@ -455,7 +456,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 		bool update_mc = initial_candidates_reservoir.M > 0 && initial_candidates_reservoir.UCW > 0.0f;
 
 		float mis_weight;
-		if (neighbor_reservoir.UCW == 0.0f && !update_mc)
+		if (hippt::isZERO(neighbor_reservoir.UCW) && !update_mc)
 			mis_weight = 1.0f;
 		else
 			mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, neighbor_reservoir, initial_candidates_reservoir, 

@@ -8,6 +8,8 @@
 
 #include "Device/includes/ReSTIR/DI/Utils.h"
 
+#include "HostDeviceCommon/Math.h"
+
 template <int BiasCorrectionMode>
 struct ReSTIRDISpatialResamplingMISWeight {};
 
@@ -81,7 +83,7 @@ struct ReSTIRDISpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH>
 				nume = target_function_at_j * M;
 		}
 
-		if (denom == 0.0f)
+		if (hippt::isZERO(denom))
 			return 0.0f;
 		else
 			return nume / denom;
@@ -123,7 +125,7 @@ struct ReSTIRDISpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
 
 			float nume = target_function_at_neighbor * reservoir_resampled_M;
 			float denom = target_function_at_neighbor * neighbors_confidence_sum + target_function_at_center / valid_neighbor_division_term * center_reservoir_M;
-			float mi = denom == 0.0f ? 0.0f : (nume / denom);
+			float mi = hippt::isZERO(denom) ? 0.0f : (nume / denom);
 
 			if (update_mc)
 			{
@@ -146,7 +148,7 @@ struct ReSTIRDISpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
 		{
 			// Resampling the center pixel
 
-			if (mc == 0.0f)
+			if (hippt::isZERO(mc))
 				// If there was no neighbor resampling (and mc hasn't been accumulated),
 				// then the MIS weight should be 1 for the center pixel. It gets all the weight
 				// since no neighbor was resampled
@@ -239,7 +241,7 @@ struct ReSTIRDISpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
 		{
 			// Resampling the center pixel
 
-			if (mc == 0.0f)
+			if (hippt::isZERO(mc))
 				// If there was no neighbor resampling (and mc hasn't been accumulated),
 				// then the MIS weight should be 1 for the center pixel. It gets all the weight
 				// since no neighbor was resampled

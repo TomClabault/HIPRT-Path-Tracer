@@ -107,7 +107,7 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH>
 			// Only computing the target function if we do have a temporal neighbor
 			target_function_at_temporal_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, reservoir_being_resampled.sample, temporal_neighbor_surface, random_number_generator);
 
-		if (current_neighbor_index == TEMPORAL_NEIGHBOR_ID && target_function_at_temporal_neighbor == 0.0f)
+		if (current_neighbor_index == TEMPORAL_NEIGHBOR_ID && hippt::isZERO(target_function_at_temporal_neighbor))
 			// If we're currently computing the MIS weight for the temporal neighbor,
 			// this means that we're going to have the temporal neighbor weight 
 			// (target function) in the numerator. But if the target function
@@ -133,7 +133,7 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH>
 
 		denom = target_function_at_temporal_neighbor * temporal_M + target_function_at_center * center_reservoir_M;
 
-		if (denom == 0.0f)
+		if (hippt::isZERO(denom))
 			return 0.0f;
 		else
 			return nume / denom;
@@ -162,7 +162,7 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MI
 
 			float nume = target_function_at_neighbor * temporal_neighbor_M;
 			float denom = target_function_at_neighbor * neighbors_confidence_sum + target_function_at_center * center_reservoir_M;
-			float mi = denom == 0.0f ? 0.0f : (nume / denom);
+			float mi = hippt::isZERO(denom) ? 0.0f : (nume / denom);
 
 			float target_function_center_reservoir_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface, random_number_generator);
 			float target_function_center_reservoir_at_center = initial_candidates_reservoir.sample.target_function;
@@ -183,7 +183,7 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MI
 		{
 			// Resampling the center pixel (initial candidates)
 
-			if (mc == 0.0f)
+			if (hippt::isZERO(mc))
 				// If there was no neighbor resampling (and mc hasn't been accumulated),
 				// then the MIS weight should be 1 for the center pixel. It gets all the weight
 				// since no neighbor was resampled
@@ -222,7 +222,7 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MI
 
 			float nume = target_function_at_neighbor * temporal_neighbor_M;
 			float denom = target_function_at_neighbor * neighbors_confidence_sum + target_function_at_center * center_reservoir_M;
-			float mi = denom == 0.0f ? 0.0f : (nume / denom);
+			float mi = hippt::isZERO(denom) ? 0.0f : (nume / denom);
 			if (render_data.render_settings.restir_di_settings.use_confidence_weights)
 				// Eq 7.8
 				mi *= neighbors_confidence_sum / (neighbors_confidence_sum + center_reservoir_M);
@@ -247,13 +247,13 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MI
 				// And we only want to divide if not using confidence weights
 				// 
 				// M = 2 (center reservoir + temporal reservoir)
-				return mi / 2.0f;
+				return mi * 0.5f;
 		}
 		else
 		{
 			// Resampling the center pixel (initial candidates)
 
-			if (mc == 0.0f)
+			if (hippt::isZERO(mc))
 				// If there was no neighbor resampling (and mc hasn't been accumulated),
 				// then the MIS weight should be 1 for the center pixel. It gets all the weight
 				// since no neighbor was resampled
@@ -269,7 +269,7 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MI
 				if (render_data.render_settings.restir_di_settings.use_confidence_weights)
 					return mc + static_cast<float>(initial_candidates_reservoir.M) / (initial_candidates_reservoir.M + temporal_neighbor_reservoir.M);
 				else
-					return (1.0f + mc) / 2.0f;
+					return (1.0f + mc) * 0.5f;
 			}
 		}
 	}

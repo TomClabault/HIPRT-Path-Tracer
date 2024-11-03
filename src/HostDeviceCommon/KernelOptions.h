@@ -314,12 +314,14 @@
  *		Sample the distribution of visible normals using spherical
  *		caps as proposed in [Sampling Visible GGX Normals with Spherical Caps, Dupuy & Benyoub, 2023]
  * 
- *  - GGX_VNDF_BOUNDED [Not Yet Implemented]
+ *  - GGX_VNDF_BOUNDED
  *		Sample the distribution of visible normals with a bounded VNDF
  *		sampling range as proposed in [Bounded VNDF Sampling for Smith-GGX Reflections, Eto & Tokuyoshi, 2023]
  *		
  */
-#define GGXAnisotropicSampleFunction GGX_VNDF_SAMPLING
+//#define GGXAnisotropicSampleFunction GGX_VNDF_SAMPLING
+#define GGXAnisotropicSampleFunction GGX_VNDF_SPHERICAL_CAPS
+//#define GGXAnisotropicSampleFunction GGX_VNDF_BOUNDED
 
 #endif // #ifndef __KERNELCC__
 

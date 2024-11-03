@@ -57,11 +57,21 @@ namespace hippt
 {
 #ifdef __KERNELCC__
 #define M_PI hiprt::Pi
+#define M_TWO_PI	6.28318530717958647693f
+#define M_INV_PI	0.31830988618379067154f
+#define M_INV_2PI	0.63661977236758134308f
+#define M_TWO_PIPI	19.73920880217871723767f
+
+#define NEARzero	1.0e-10f
+
+	__device__ bool isZERO(float x) { return (x < NEARzero) && (x > -NEARzero); }
+	__device__ float pow5(float x) { return x*x*x*x*x; }
 
 	__device__ float3 cross(float3 u, float3 v) { return hiprt::cross(u, v); }
 	__device__ float dot(float3 u, float3 v) { return hiprt::dot(u, v); }
 
 	__device__ float length(float3 u) { return sqrt(hiprt::dot(u, u)); }
+	__device__ float length(float2 u) { return sqrt(u.x * u.x + u.y * u.y); }
 	__device__ float length2(float3 u) { return hiprt::dot(u, u); }
 
 	__device__ float3 abs(float3 u) { return make_float3(fabsf(u.x), fabsf(u.y), fabsf(u.z)); }
@@ -80,12 +90,22 @@ namespace hippt
 
 #else
 #undef M_PI
-#define M_PI 3.14159265358979323846f
+#define M_PI		3.14159265358979323846f
+#define M_TWO_PI	6.28318530717958647693f
+#define M_INV_PI	0.31830988618379067154f
+#define M_INV_2PI	0.63661977236758134308f
+#define M_TWO_PIPI	19.73920880217871723767f
+
+#define NEARzero	1.0e-10f
+
+	inline bool isZERO(float x) { return (x < NEARzero) && (x > -NEARzero); }
+	inline float pow5(float x) { return x*x*x*x*x; }
 
 	inline float3 cross(float3 u, float3 v) { return hiprt::cross(u, v); }
 	inline float dot(float3 u, float3 v) { return hiprt::dot(u, v); }
 
 	inline float length(float3 u) { return sqrtf(dot(u, u)); }
+	inline float length(float2 u) { return sqrtf(u.x * u.x + u.y * u.y); }
 	inline float length2(float3 u) { return dot(u, u); }
 
 	template <typename T>

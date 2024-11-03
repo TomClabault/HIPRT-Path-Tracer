@@ -12,6 +12,7 @@
 #include "Device/includes/LightUtils.h"
 #include "Device/includes/ReSTIR/DI/Surface.h"
 
+#include "HostDeviceCommon/Math.h"
 #include "HostDeviceCommon/RenderData.h"
 
 template <bool withVisiblity>
@@ -43,7 +44,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_O
 		sample_direction = hippt::normalize(sample.point_on_light_source - surface.shading_point);
 
 	float cosine_term = hippt::max(0.0f, hippt::dot(surface.shading_normal, sample_direction));
-	if (cosine_term == 0.0f)
+	if (hippt::isZERO(cosine_term))
 		// If the cosine term is 0.0f, the rest is going to be multiplied by that zero-cosine-term
 		// and everything is going to be 0.0f anyway so we can return already
 		return 0.0f;
@@ -64,7 +65,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_O
 	}
 
 	float target_function = (bsdf_color * sample_emission * cosine_term).luminance();
-	if (target_function == 0.0f)
+	if (hippt::isZERO(target_function))
 		// Quick exit because computing the visiblity that follows isn't going
 		// to change anything to the fact that we have 0.0f target function here
 		return 0.0f;
@@ -94,7 +95,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_O
 	}
 
 	float cosine_term = hippt::max(0.0f, hippt::dot(surface.shading_normal, sample_direction));
-	if (cosine_term == 0.0f)
+	if (hippt::isZERO(cosine_term))
 		// If the cosine term is 0.0f, the rest is going to be multiplied by that zero-cosine-term
 		// and everything is going to be 0.0f anyway so we can return already
 		return 0.0f;
@@ -115,7 +116,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_O
 	}
 
 	float target_function = (bsdf_color * sample_emission * cosine_term).luminance();
-	if (target_function == 0.0f)
+	if (hippt::isZERO(target_function))
 		// Quick exit because computing the visiblity that follows isn't going
 		// to change anything to the fact that we have 0.0f target function here
 		return 0.0f;

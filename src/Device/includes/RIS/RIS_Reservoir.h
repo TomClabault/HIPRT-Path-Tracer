@@ -35,7 +35,7 @@ struct RISReservoir
 
     HIPRT_HOST_DEVICE void end()
     {
-        if (weight_sum == 0.0f)
+        if (hippt::isZERO(weight_sum))
             UCW = 0.0f;
         else
             UCW = 1.0f / sample.target_function * weight_sum;
