@@ -23,6 +23,7 @@ std::thread::id g_main_thread_id = std::this_thread::get_id();
 // If the main thread is currently compiling (very likely that his was asked by the user through the UI), 
 // other threads may not compile to give the user the priority for the compilation
 bool g_main_thread_compiling = false;
+bool g_background_shader_compilation_enabled = true;
 std::condition_variable g_condition_for_compilation;
 
 oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, const GPUKernelCompilerOptions& kernel_compiler_options, std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, hiprtFuncNameSet* function_name_sets, bool use_cache, const std::string& additional_cache_key, bool silent)
@@ -59,12 +60,20 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, const GPUKern
 
 	if (std::this_thread::get_id() != g_main_thread_id)
 		// Other threads wait if the main thread is compiling
-		g_condition_for_compilation.wait(lock, []() { return !g_main_thread_compiling; });
+		g_condition_for_compilation.wait(lock, []() { return !g_main_thread_compiling && g_background_shader_compilation_enabled; });
 
 	auto start = std::chrono::high_resolution_clock::now();
 
 	hiprtApiFunction trace_function_out;
-	if (HIPPTOrochiUtils::build_trace_kernel(hiprt_orochi_ctx->hiprt_ctx, kernel_file_path, kernel_function_name, trace_function_out, additional_include_dirs, compiler_options, 1, 1, use_cache, function_name_sets, additional_cache_key) != hiprtError::hiprtSuccess)
+	bool use_shader_cache;
+	if (m_shader_cache_force_usage == GPUKernelCompiler::ShaderCacheUsageOverride::FORCE_SHADER_CACHE_OFF)
+		use_shader_cache = false;
+	else if (m_shader_cache_force_usage == GPUKernelCompiler::ShaderCacheUsageOverride::FORCE_SHADER_CACHE_ON)
+		use_shader_cache = true;
+	else
+		use_shader_cache = use_cache;
+
+	if (HIPPTOrochiUtils::build_trace_kernel(hiprt_orochi_ctx->hiprt_ctx, kernel_file_path, kernel_function_name, trace_function_out, additional_include_dirs, compiler_options, 1, 1, use_shader_cache, function_name_sets, additional_cache_key) != hiprtError::hiprtSuccess)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Unable to compile kernel \"%s\". Cannot continue.", kernel_function_name.c_str());
 		int ignored = std::getchar();
@@ -362,3 +371,14 @@ void GPUKernelCompiler::wait_compiler_file_operations()
 	m_read_macros_cv.wait(lock, [this]() { return m_precompiled_kernels_parsing_started == m_precompiled_kernels_parsing_ended; });
 	m_read_macros_cv.wait(lock, [this]() { return m_additional_cache_key_started == m_additional_cache_key_ended; });
 }
+
+GPUKernelCompiler::ShaderCacheUsageOverride GPUKernelCompiler::get_shader_cache_usage_override() const
+{
+	return m_shader_cache_force_usage;
+}
+
+void GPUKernelCompiler::set_shader_cache_usage_override(GPUKernelCompiler::ShaderCacheUsageOverride override_usage)
+{
+	m_shader_cache_force_usage = override_usage;
+}
+

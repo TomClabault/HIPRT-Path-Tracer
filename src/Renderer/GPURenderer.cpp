@@ -601,7 +601,7 @@ std::shared_ptr<GPUKernelCompilerOptions> GPURenderer::get_global_compiler_optio
 extern bool g_main_thread_compiling;
 extern std::condition_variable g_condition_for_compilation;
 
-void GPURenderer::recompile_kernels()
+void GPURenderer::recompile_kernels(bool use_cache)
 {
 	synchronize_kernel();
 
@@ -614,9 +614,9 @@ void GPURenderer::recompile_kernels()
 	g_condition_for_compilation.notify_all();
 
 	for (auto& name_to_kenel : m_kernels)
-		name_to_kenel.second.compile_silent(m_hiprt_orochi_ctx, m_func_name_sets);
-	m_restir_di_render_pass.recompile(m_hiprt_orochi_ctx, m_func_name_sets, true);
-	m_ray_volume_state_byte_size_kernel.compile_silent(m_hiprt_orochi_ctx, m_func_name_sets);
+		name_to_kenel.second.compile_silent(m_hiprt_orochi_ctx, m_func_name_sets, use_cache);
+	m_restir_di_render_pass.recompile(m_hiprt_orochi_ctx, m_func_name_sets, true, use_cache);
+	m_ray_volume_state_byte_size_kernel.compile_silent(m_hiprt_orochi_ctx, m_func_name_sets, use_cache);
 
 	// The main thread is done with the compilation, we can release the other threads
 	// so that they can continue compiling (background compilation of shaders most likely)
@@ -643,6 +643,19 @@ void GPURenderer::precompile_kernels()
 	});
 
 	ThreadManager::detach_threads("GPURendererPrecompileKernelsKey");
+}
+
+extern bool g_background_shader_compilation_enabled;
+void GPURenderer::stop_background_shader_compilation()
+{
+	g_background_shader_compilation_enabled = false;
+	g_condition_for_compilation.notify_all();
+}
+
+void GPURenderer::resume_background_shader_compilation()
+{
+	g_background_shader_compilation_enabled = true;
+	g_condition_for_compilation.notify_all();
 }
 
 void GPURenderer::precompile_direct_light_sampling_kernels()

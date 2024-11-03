@@ -18,6 +18,13 @@
 class GPUKernelCompiler
 {
 public:
+	enum ShaderCacheUsageOverride
+	{
+		FORCE_SHADER_CACHE_DEFAULT,
+		FORCE_SHADER_CACHE_OFF,
+		FORCE_SHADER_CACHE_ON,
+	};
+
 	oroFunction_t compile_kernel(GPUKernel& kernel, const GPUKernelCompilerOptions& kernel_compiler_options, std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, hiprtFuncNameSet* function_name_sets, bool use_cache, const std::string& additional_cache_key, bool silent = false);
 
 	/**
@@ -88,6 +95,20 @@ public:
 	 */
 	void wait_compiler_file_operations();
 
+	/**
+	 * Possible values for `override_usage`:
+	 * 
+	 *	- GPUKernelCompiler::ShaderCacheUsageOverride::FORCE_SHADER_CACHE_OFF			
+	 *		--> The shader compiler will be forced *not* to use the shader cache
+	 *	- GPUKernelCompiler::ShaderCacheUsageOverride::FORCE_SHADER_CACHE_ON      
+	 *		--> The shader compiler will be forced to use the shader cache
+	 *	- GPUKernelCompiler::ShaderCacheUsageOverride::FORCE_SHADER_CACHE_DEFAULT 
+	 *		--> The shader compiler will use whatever 'use_cache' parameter is passed to 'GPUKernelCompiler::compile_kernel()'
+	 */
+	void set_shader_cache_usage_override(ShaderCacheUsageOverride override_usage);
+
+	ShaderCacheUsageOverride get_shader_cache_usage_override() const;
+
 private:
 	// Cache that maps a filepath to the option macros that it contains.
 	// This saves us having to reparse the file to find the options macros
@@ -107,7 +128,7 @@ private:
 	// read kernel files at the same time: this can cause a "Too many files open" error
 	// 
 	// Limiting to a maximum of 16 threads at a time
-	std::counting_semaphore<> m_read_macros_semaphore { 12 };
+	std::counting_semaphore<> m_read_macros_semaphore { 1 };
 	std::condition_variable m_read_macros_cv;
 
 	// Counters for logging the progress of background kernel precompilation
@@ -118,6 +139,8 @@ private:
 	std::atomic<int> m_additional_cache_key_started = 0;
 	std::atomic<int> m_additional_cache_key_ended = 0;
 	std::atomic<int> m_precompiled_kernels_compilation_ended = 0;
+
+	ShaderCacheUsageOverride m_shader_cache_force_usage = ShaderCacheUsageOverride::FORCE_SHADER_CACHE_DEFAULT;
 };
 
 #endif

@@ -223,12 +223,14 @@ public:
 
 	std::shared_ptr<GPUKernelCompilerOptions> get_global_compiler_options();
 
-	void recompile_kernels();
+	void recompile_kernels(bool use_cache = true);
 	/**
 	 * Precompiles a variety of kernel option combinations to avoid
 	 * having to compile too many kernels at runtime
 	 */
 	void precompile_kernels();
+	void stop_background_shader_compilation();
+	void resume_background_shader_compilation();
 
 	std::map<std::string, GPUKernel*> get_kernels();
 	oroStream_t get_main_stream();
