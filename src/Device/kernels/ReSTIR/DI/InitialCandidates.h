@@ -31,7 +31,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISample use_presampled_light_candidate(con
     ColorRGB32F& out_sample_radiance, float& out_sample_cosine_term, float& out_sample_pdf, float& out_distance_to_light, float3& out_to_light_direction,
     Xorshift32Generator& random_number_generator)
 {
-    ReSTIRDISample light_sample;
     const LightPresamplingSettings& light_presampling_settings = render_data.render_settings.restir_di_settings.light_presampling;
 
     // We want all threads in a block of light_presampling_settings.tile_size * light_presampling_settings.tile_size
@@ -47,6 +46,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISample use_presampled_light_candidate(con
 
     ReSTIRDIPresampledLight presampled_light_sample = light_presampling_settings.light_samples[light_sample_index];
 
+    ReSTIRDISample light_sample;
     light_sample.emissive_triangle_index = presampled_light_sample.emissive_triangle_index;
     light_sample.point_on_light_source = presampled_light_sample.point_on_light_source;
     light_sample.flags = presampled_light_sample.flags;
@@ -503,13 +503,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_InitialCandidates(HIPRTRenderData
     hit_info.shading_normal = render_data.g_buffer.shading_normals[pixel_index];
     hit_info.inter_point = render_data.g_buffer.first_hits[pixel_index];
 
-
-    float3 view_direction = render_data.g_buffer.view_directions[pixel_index];
-
     RayPayload ray_payload;
     ray_payload.material = material;
     ray_payload.volume_state = render_data.g_buffer.ray_volume_states[pixel_index];
 
+    float3 view_direction = render_data.g_buffer.view_directions[pixel_index];
     // Producing and storing the reservoir
     ReSTIRDIReservoir initial_candidates_reservoir = sample_initial_candidates(render_data, make_int2(x, y), ray_payload, hit_info, view_direction, random_number_generator);
 

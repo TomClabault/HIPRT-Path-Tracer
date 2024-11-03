@@ -224,7 +224,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light(const HIPRTRenderDat
     if (render_data.buffers.emissive_triangles_count == 0 
         && !(render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP && DirectLightSamplingStrategy == LSS_RESTIR_DI))
         // No emissive geometry in the scene to sample
-        // And we're not sampling the envmap with ReSTIR DI
+        // And we're not sampling the envmap with ReSTIR DI which means
+        // that we're not sampling anything so return black
         return ColorRGB32F(0.0f);
 
     if (ray_payload.material.is_emissive())

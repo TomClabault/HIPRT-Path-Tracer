@@ -17,7 +17,7 @@ struct InitialCandidatesSettings
 	int number_of_initial_bsdf_candidates = 1;
 	// For each 'number_of_initial_light_candidates', the probability that this light sample
 	// will sample the envmap instead of a light in the scene
-	float envmap_candidate_probability = 0.25f;
+	float envmap_candidate_probability = 1.0f;
 
 	// Buffer that contains the reservoirs that will hold the reservoir
 	// for the initial candidates generated

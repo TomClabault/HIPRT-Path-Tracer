@@ -8,10 +8,7 @@
 
 extern ImGuiLogger g_imgui_logger;
 
-OrochiEnvmap::OrochiEnvmap(Image32Bit& image) : OrochiTexture(image)
-{
-	
-}
+OrochiEnvmap::OrochiEnvmap(Image32Bit& image) : OrochiTexture(image) {}
 
 OrochiEnvmap::OrochiEnvmap(OrochiEnvmap&& other) noexcept : OrochiTexture(std::move(other))
 {

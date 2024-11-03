@@ -408,14 +408,6 @@ private:
 	// AABB of the meshes of the scene
 	std::vector<BoundingBox> m_mesh_bounding_boxes;
 
-	// Envmap of the renderer
-	RendererEnvmap m_envmap;
-
-	// 32x32 texture containing the precomputed parameters of the LTC
-	// fitted to approximate the SSGX sheen volumetric layer.
-	// See SheenLTCFittedParameters.h
-	OrochiTexture m_sheen_ltc_params;
-
 	// Options used for compiling the render passes of this renderer.
 	// 
 	// Most of the options in there are shared with all the passes. For example,
@@ -472,6 +464,14 @@ private:
 
 	// State of the animation of the renderer
 	RendererAnimationState m_animation_state;
+
+	// Envmap of the renderer
+	RendererEnvmap m_envmap;
+
+	// 32x32 texture containing the precomputed parameters of the LTC
+	// fitted to approximate the SSGX sheen volumetric layer.
+	// See SheenLTCFittedParameters.h
+	OrochiTexture m_sheen_ltc_params;
 
 	// Precomputed tables for GGX energy conservation
 	// [Practical multiple scattering compensation for microfacet models, Turquin, 2019]

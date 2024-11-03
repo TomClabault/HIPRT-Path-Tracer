@@ -470,14 +470,6 @@ void ReSTIRDIRenderPass::launch_spatial_reuse_passes()
 
 	// Emitting the stop event
 	OROCHI_CHECK_ERROR(oroEventRecord(spatial_reuse_time_stop, m_renderer->get_main_stream()));
-
-	//GPUKernel::ComputeElapsedTimeCallbackData* elapsed_time_data = new GPUKernel::ComputeElapsedTimeCallbackData;
-	//elapsed_time_data->start = spatial_reuse_time_start;
-	//elapsed_time_data->end = spatial_reuse_time_stop;
-	//elapsed_time_data->elapsed_time_out = &m_renderer->get_render_pass_times()[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID];
-
-	//// Computing the time elapsed for all spatial reuse passes
-	//OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_renderer->get_main_stream(), GPUKernel::compute_elapsed_time_callback, elapsed_time_data));
 }
 
 void ReSTIRDIRenderPass::configure_spatiotemporal_pass()
@@ -510,14 +502,6 @@ void ReSTIRDIRenderPass::launch_spatiotemporal_pass()
 
 		// Emitting the stop event
 		OROCHI_CHECK_ERROR(oroEventRecord(spatial_reuse_time_stop, m_renderer->get_main_stream()));
-
-		//GPUKernel::ComputeElapsedTimeCallbackData* elapsed_time_data = new GPUKernel::ComputeElapsedTimeCallbackData;
-		//elapsed_time_data->start = spatial_reuse_time_start;
-		//elapsed_time_data->end = spatial_reuse_time_stop;
-		//elapsed_time_data->elapsed_time_out = &ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID];
-
-		//// Computing the time elapsed for all spatial reuse passes
-		//OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_main_stream, GPUKernel::compute_elapsed_time_callback, elapsed_time_data));
 	}
 }
 

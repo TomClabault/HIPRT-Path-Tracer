@@ -458,7 +458,17 @@ void GPURenderer::synchronize_kernel()
 
 bool GPURenderer::frame_render_done()
 {
-	return oroStreamQuery(m_main_stream) == oroSuccess;
+	oroError_t error = oroStreamQuery(m_main_stream);
+	if (error == oroSuccess)
+		return true;
+	else if (error == oroErrorNotReady)
+		return false;
+	else
+	{
+		OROCHI_CHECK_ERROR(error);
+
+		return false;
+	}
 }
 
 bool GPURenderer::was_last_frame_low_resolution()
@@ -1176,7 +1186,7 @@ size_t GPURenderer::get_ray_volume_state_byte_size()
 
 	void* launch_args[] = { &out_size_buffer_pointer };
 	m_ray_volume_state_byte_size_kernel.launch(1, 1, 1, 1, launch_args, 0);
-	oroStreamSynchronize(0);
+	OROCHI_CHECK_ERROR(oroStreamSynchronize(0));
 
 	return out_size_buffer.download_data()[0];
 }

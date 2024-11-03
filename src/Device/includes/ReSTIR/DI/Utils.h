@@ -136,7 +136,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void ReSTIR_DI_visibility_reuse(const HIPRTRender
 	if (reservoir.UCW <= 0.0f)
 		return;
 	else if (reservoir.sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED)
-		// The sample is already unoccluded, no need to test for visibility reuse
+		// The sample is already unoccluded, no need to test for visibility
 		return;
 
 	float distance_to_light;

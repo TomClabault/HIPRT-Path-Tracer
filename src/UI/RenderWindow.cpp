@@ -22,7 +22,6 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // TODO demos:
-// energy conserving GGX
 // new oren nayar BRDF: EON
 
 // TODOs ongoing
@@ -36,8 +35,9 @@ extern ImGuiLogger g_imgui_logger;
 // - for LTC sheen lobe, have the option to use either SGGX volumetric sheen or approximation precomputed LTC data
 // - rework bounces in UI so that 0 bounce still gives an image. The number of bounce is currently offset by 1 basically.
 // - GGX G term not using compiled kernel option, just do if()
-// - GGX conductor multiple scattering blowing up with a lot of bounces
-// - specular and clearcoat TIR check, should effectively be an energy loss
+// - specular and clearcoat TIR check, should effectively be an energy loss because we're not simulating full multiple scattering
+// - energy conservation with glass weight < 1
+// - energy conservation with glass & sheen
 
 // TODO known bugs / incorectness:
 // - take transmission color into account when direct sampling a light source that is inside a volume
@@ -46,7 +46,6 @@ extern ImGuiLogger g_imgui_logger;
 // - fix sampling lights inside dielectrics with ReSTIR DI (using minT for rays)
 // - when using a BSDF override, transmissive materials keep their dielectric priorities and this can mess up shadow rays and intersections in general if the BSDF used for the override doesn't support transmissive materials
 // - threadmanager: what if we start a thread with a dependency A on a thread that itself has a dependency B? we're going to try join dependency A even if thread with dependency on B hasn't even started yet --> joining nothing --> immediate return --> should have waited for the dependency but hasn't
-// - Volumetric absorption beer lambert doesn't seem to absorb correctly. It doesn't get super dark (black) with a small absorption distance, something must be wrong
 // - When checking "Enable denoiser", it always denoises once immediately even if "denoise only when render done" is checked
 
 // TODO Code Organization:
@@ -73,6 +72,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Better artistic fresnel Adobe: https://renderwonk.com/publications/wp-generalization-adobe/gen-adobe.pdf
 // - use shared memory for nested dielectrics stack?
 // - opacity micromaps
+// - pack RGB8 colors into float length + uint packed: https://github.com/nvpro-samples/vk_raytrace/blob/master/shaders/compress.glsl @ compress_unit_vec
 // - cache opacity of materials textures? --> analyze the texture when loading it from the texture and if there isn't a single transparent pixel, then we know that we won't have to fetch the material / texture in the alpha test filter function because the alpha is going to be 1.0f anyways
 // - simpler BSDF for indirect bounces as a biased option for performance?
 // - limit first bounce distance: objects far away won't contribute much to what the camera sees
@@ -227,7 +227,7 @@ void APIENTRY RenderWindow::gl_debug_output_callback(GLenum source,
 		// NVIDIA specific warning
 		// Pixel-path performance warning: Pixel transfer is synchronized with 3D rendering.
 		// 
-		// When we take a screenshot for example
+		// Mainly happens when we take a screenshot
 		return;
 
 	if (id == 131154)

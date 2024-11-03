@@ -95,39 +95,41 @@ void RendererEnvmap::do_animation(GPURenderer* renderer)
 
 		envmap_to_world_matrix = *reinterpret_cast<float4x4*>(&rotation_matrix);
 		world_to_envmap_matrix = *reinterpret_cast<float4x4*>(&rotation_matrix_inv);
-	}
 
-	prev_rotation_X = rotation_X;
-	prev_rotation_Y = rotation_Y;
-	prev_rotation_Z = rotation_Z;
+		prev_rotation_X = rotation_X;
+		prev_rotation_Y = rotation_Y;
+		prev_rotation_Z = rotation_Z;
+	}
 }
 
 void RendererEnvmap::update_renderer(GPURenderer* renderer)
 {
-	renderer->get_world_settings().envmap_to_world_matrix = envmap_to_world_matrix;
-	renderer->get_world_settings().world_to_envmap_matrix = world_to_envmap_matrix;
+	WorldSettings& world_settings = renderer->get_world_settings();
+
+	world_settings.envmap_to_world_matrix = envmap_to_world_matrix;
+	world_settings.world_to_envmap_matrix = world_to_envmap_matrix;
 
 	if (renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY) == ESS_NO_SAMPLING)
 	{
-		renderer->get_world_settings().envmap_cdf = nullptr;
+		world_settings.envmap_cdf = nullptr;
 
-		renderer->get_world_settings().alias_table_probas = nullptr;
-		renderer->get_world_settings().alias_table_alias = nullptr;
+		world_settings.alias_table_probas = nullptr;
+		world_settings.alias_table_alias = nullptr;
 	}
 	else if (renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY) == ESS_BINARY_SEARCH)
 	{
-		renderer->get_world_settings().envmap_cdf = m_orochi_envmap.get_cdf_device_pointer();
-		renderer->get_world_settings().envmap_total_sum = m_orochi_envmap.get_luminance_total_sum();
+		world_settings.envmap_cdf = m_orochi_envmap.get_cdf_device_pointer();
+		world_settings.envmap_total_sum = m_orochi_envmap.get_luminance_total_sum();
 
-		renderer->get_world_settings().alias_table_probas = nullptr;
-		renderer->get_world_settings().alias_table_alias = nullptr;
+		world_settings.alias_table_probas = nullptr;
+		world_settings.alias_table_alias = nullptr;
 	}
 	else if (renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY) == ESS_ALIAS_TABLE)
 	{
-		renderer->get_world_settings().envmap_cdf = nullptr;
-		renderer->get_world_settings().envmap_total_sum = m_orochi_envmap.get_luminance_total_sum();
+		world_settings.envmap_cdf = nullptr;
+		world_settings.envmap_total_sum = m_orochi_envmap.get_luminance_total_sum();
 
-		m_orochi_envmap.get_alias_table_device_pointers(renderer->get_world_settings().alias_table_probas, renderer->get_world_settings().alias_table_alias);
+		m_orochi_envmap.get_alias_table_device_pointers(world_settings.alias_table_probas, world_settings.alias_table_alias);
 	}
 }
 
