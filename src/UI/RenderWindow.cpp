@@ -215,6 +215,13 @@ void APIENTRY RenderWindow::gl_debug_output_callback(GLenum source,
 	// ignore non-significant error/warning codes
 	if (id == 131169 || id == 131185 || id == 131218 || id == 131204) return;
 
+	if (id == 131154)
+		// NVIDIA specific warning
+		// Pixel-path performance warning: Pixel transfer is synchronized with 3D rendering.
+		// 
+		// Mainly happens when we take a screenshot
+		return;
+
 	std::string source_str;
 	std::string type_str;
 	std::string severity_str;
