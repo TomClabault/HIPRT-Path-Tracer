@@ -174,6 +174,7 @@ void GPUKernel::launch_3D(int tile_size_x, int tile_size_y, int tile_size_z, int
 	nb_groups.z = std::ceil(static_cast<float>(res_z) / tile_size_z);
 
 	OROCHI_CHECK_ERROR(oroModuleLaunchKernel(m_kernel_function, nb_groups.x, nb_groups.y, nb_groups.z, tile_size_x, tile_size_y, tile_size_z, 0, stream, launch_args, 0));
+	m_launched_at_least_once = true;
 }
 
 void GPUKernel::launch_synchronous(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, float* execution_time_out)
@@ -200,8 +201,11 @@ bool GPUKernel::uses_macro(const std::string& name) const
 
 float GPUKernel::get_last_execution_time()
 {
+	if (!m_launched_at_least_once)
+		return 0.0f;
+
 	float out;
-	oroEventElapsedTime(&out, m_execution_start_event, m_execution_stop_event);
+	OROCHI_CHECK_ERROR(oroEventElapsedTime(&out, m_execution_start_event, m_execution_stop_event));
 
 	return out;
 }

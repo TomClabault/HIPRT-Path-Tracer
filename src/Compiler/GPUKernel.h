@@ -133,9 +133,11 @@ private:
 	std::string m_kernel_file_path = "";
 	std::string m_kernel_function_name = "";
 
-	// Whether or not the events have been created yet.
-	// We only create them on the first launch() call
-	bool m_events_created = false;
+	// Whether or not the kernel has been launched at least once
+	// This is used to avoid CUDA/HIP errors when trying to read
+	// the stop/start event elapsed time whereas the kernel has never
+	// been launched
+	bool m_launched_at_least_once = false;
 	// GPU events to time the execution time
 	oroEvent_t m_execution_start_event = nullptr;
 	oroEvent_t m_execution_stop_event = nullptr;
