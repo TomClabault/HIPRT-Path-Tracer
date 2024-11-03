@@ -320,8 +320,8 @@
  *		
  */
 //#define GGXAnisotropicSampleFunction GGX_VNDF_SAMPLING
-#define GGXAnisotropicSampleFunction GGX_VNDF_SPHERICAL_CAPS
-//#define GGXAnisotropicSampleFunction GGX_VNDF_BOUNDED
+//#define GGXAnisotropicSampleFunction GGX_VNDF_SPHERICAL_CAPS
+#define GGXAnisotropicSampleFunction GGX_VNDF_BOUNDED
 
 #endif // #ifndef __KERNELCC__
 
