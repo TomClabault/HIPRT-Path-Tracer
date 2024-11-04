@@ -181,7 +181,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 	// for generating the spatial neighbors location to resample
 	float rotation_theta;
 	if (render_data.render_settings.restir_di_settings.spatial_pass.do_neighbor_rotation)
-		rotation_theta = 2.0f * M_PI * random_number_generator();
+		rotation_theta = M_TWO_PI * random_number_generator();
 	else
 		rotation_theta = 0.0f;
 

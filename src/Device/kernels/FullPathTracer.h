@@ -58,7 +58,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool check_for_nan(ColorRGB32F ray_color, int x, 
     (void)y;
     (void)sample;
 
-    if (hippt::isNaN(ray_color.r) || hippt::isNaN(ray_color.g) || hippt::isNaN(ray_color.b))
+    if (hippt::is_NaN(ray_color.r) || hippt::is_NaN(ray_color.g) || hippt::is_NaN(ray_color.b))
     {
 #ifndef __KERNELCC__
         std::lock_guard<std::mutex> logging_lock(g_mutex);
@@ -313,7 +313,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
     {
         float3 accumulated_normal = (render_data.aux_buffers.denoiser_normals[pixel_index] * render_data.render_settings.denoiser_AOV_accumulation_counter + denoiser_normal) / (render_data.render_settings.denoiser_AOV_accumulation_counter + 1.0f);
         float normal_length = hippt::length(accumulated_normal);
-        if (normal_length != 0.0f)
+        if (!hippt::is_zero(normal_length))
             // Checking that it is non-zero otherwise we would accumulate a persistent NaN in the buffer when normalizing by the 0-length
             render_data.aux_buffers.denoiser_normals[pixel_index] = accumulated_normal / normal_length;
     }

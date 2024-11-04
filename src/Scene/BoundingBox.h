@@ -49,7 +49,7 @@ struct BoundingBox
 
 	float3 get_center() const
 	{
-		return (mini + maxi) / 2.0f;
+		return (mini + maxi) * 0.5f;
 	}
 
 	float3 mini = { std::numeric_limits<float>::max(), std::numeric_limits<float>::max() , std::numeric_limits<float>::max() };

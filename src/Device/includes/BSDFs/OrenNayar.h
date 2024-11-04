@@ -84,8 +84,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F oren_nayar_brdf_eval(const Simplified
     float oren_nayar_B;
     SimplifiedRendererMaterial::get_oren_nayar_AB(material.oren_nayar_sigma, oren_nayar_A, oren_nayar_B);
 
-    pdf = local_to_light_direction.z / M_PI;
-    return material.base_color / M_PI * (oren_nayar_A + oren_nayar_B * max_cos * sin_alpha * tan_beta);
+    pdf = local_to_light_direction.z * M_INV_PI;
+    return material.base_color * M_INV_PI * (oren_nayar_A + oren_nayar_B * max_cos * sin_alpha * tan_beta);
 }
 
 /**

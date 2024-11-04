@@ -27,7 +27,7 @@ struct ColorRGBA32F
     HIPRT_HOST_DEVICE float length2() const { return r * r + g * g + b * b + a * a; }
     HIPRT_HOST_DEVICE float luminance() const { return 0.3086f * r + 0.6094f * g + 0.0820f * b; }
     HIPRT_HOST_DEVICE void clamp(float min, float max) { r = hippt::clamp(min, max, r); g = hippt::clamp(min, max, g); b = hippt::clamp(min, max, b); a = hippt::clamp(min, max, a); }
-    HIPRT_HOST_DEVICE bool has_NaN() const { return hippt::isNaN(r) || hippt::isNaN(g) || hippt::isNaN(b) || hippt::isNaN(a); }
+    HIPRT_HOST_DEVICE bool has_NaN() const { return hippt::is_NaN(r) || hippt::is_NaN(g) || hippt::is_NaN(b) || hippt::is_NaN(a); }
     HIPRT_HOST_DEVICE bool is_black() const { return !(r > 0.0f || g > 0.0f || b > 0.0f); }
 
     HIPRT_HOST_DEVICE float max_component() const { return hippt::max(r, hippt::max(g, hippt::max(b, a))); }
@@ -75,7 +75,7 @@ struct ColorRGB32F
     HIPRT_HOST_DEVICE float length2() const { return r * r + g * g + b * b; }
     HIPRT_HOST_DEVICE float luminance() const { return 0.3086f * r + 0.6094f * g + 0.0820f * b; }
     HIPRT_HOST_DEVICE void clamp(float min, float max) { r = hippt::clamp(min, max, r); g = hippt::clamp(min, max, g); b = hippt::clamp(min, max, b); }
-    HIPRT_HOST_DEVICE bool has_NaN() const { return hippt::isNaN(r) || hippt::isNaN(g) || hippt::isNaN(b); }
+    HIPRT_HOST_DEVICE bool has_NaN() const { return hippt::is_NaN(r) || hippt::is_NaN(g) || hippt::is_NaN(b); }
     HIPRT_HOST_DEVICE bool is_black() const { return !(r > 0.0f || g > 0.0f || b > 0.0f); }
 
     HIPRT_HOST_DEVICE float max_component() const { return hippt::max(r, hippt::max(g, b)); }

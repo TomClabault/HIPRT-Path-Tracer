@@ -18,8 +18,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F lambertian_brdf_eval(const Simplified
     if (NoL <= 0.0f)
         return ColorRGB32F(0.0f);
 
-    pdf = NoL / M_PI;
-    return material.base_color / M_PI;
+    pdf = NoL * M_INV_PI;
+    return material.base_color * M_INV_PI;
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F lambertian_brdf_sample(const SimplifiedRendererMaterial& material, const float3& view_direction, const float3& shading_normal, float3& sampled_direction, float& pdf, Xorshift32Generator& random_number_generator)

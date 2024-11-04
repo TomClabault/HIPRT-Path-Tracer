@@ -558,8 +558,8 @@ void RenderWindow::update_renderer_view_rotation(float offset_x, float offset_y)
 
 	float rotation_x, rotation_y;
 
-	rotation_x = offset_x / m_viewport_width * 2.0f * M_PI / m_application_settings->view_rotation_sldwn_x;
-	rotation_y = offset_y / m_viewport_height * 2.0f * M_PI / m_application_settings->view_rotation_sldwn_y;
+	rotation_x = offset_x / m_viewport_width * M_TWO_PI / m_application_settings->view_rotation_sldwn_x;
+	rotation_y = offset_y / m_viewport_height * M_TWO_PI / m_application_settings->view_rotation_sldwn_y;
 
 	// Inverting X and Y here because moving your mouse to the right actually means
 	// rotating the camera around the Y axis

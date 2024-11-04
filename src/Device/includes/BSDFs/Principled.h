@@ -587,7 +587,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRen
 
     float glass_sampling_weight = (1.0f - material.metallic) * material.specular_transmission;
     bool outside_object = hippt::dot(view_direction, normal) > 0;
-    if (glass_sampling_weight == 0.0f && !outside_object)
+    if (hippt::is_zero(glass_sampling_weight) && !outside_object)
     {
         // If we're not sampling the glass lobe so we're checking
         // whether the view direction is below the upper hemisphere around the shading

@@ -43,7 +43,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float eval_ltc(const float3& to_light_direction_s
 	float M_inv_determinant = AiBiRi.r * AiBiRi.r;
 	float jacobian = M_inv_determinant / (length * length * length);
 
-	return light_dir_original.z / M_PI * jacobian;
+	return light_dir_original.z * M_INV_PI * jacobian;
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F read_LTC_parameters(const HIPRTRenderData& render_data, float roughness, float cos_theta)
@@ -66,7 +66,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_phi(const float3& direction)
 {
 	float p = atan2(direction.y, direction.x);
 	if (p < 0.0f)
-		p += 2.0f * M_PI;
+		p += M_TWO_PI;
 
 	return p;
 }

@@ -50,8 +50,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float2 sample_hammersley_2D(unsigned int number_o
 HIPRT_HOST_DEVICE HIPRT_INLINE float2 sample_in_disk_uv(float radius, float2 uv)
 {
     float r_sqrt_v = radius * sqrtf(uv.y);
-    float x = r_sqrt_v * cos(2.0f * M_PI * uv.x);
-    float y = r_sqrt_v* sin(2.0f * M_PI * uv.x);
+    float x = r_sqrt_v * cos(M_TWO_PI * uv.x);
+    float y = r_sqrt_v* sin(M_TWO_PI * uv.x);
 
     return make_float2(x, y);
 }
@@ -201,7 +201,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 cosine_weighted_sample_around_normal(const
         rand_2 += 1.0e-7f;
     }
 
-    float theta = 2.0f * M_PI * rand_1;
+    float theta = M_TWO_PI * rand_1;
 
     float2 xy = sqrt(1.0f - rand_2 * rand_2) * make_float2(cos(theta), sin(theta));
     float3 sphere_point = make_float3(xy.x, xy.y, rand_2);
@@ -221,7 +221,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 cosine_weighted_sample_z_up_frame(Xorshift
     float r1 = random_number_generator();
     float r2 = random_number_generator();
 
-    float phi = 2.0f * M_PI * r1;
+    float phi = M_TWO_PI * r1;
     float cos_theta = sqrt(r2);
     float sin_theta = sqrt(1 - cos_theta * cos_theta);
 
@@ -242,7 +242,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float F0_from_eta(float eta_t, float eta_i)
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F fresnel_schlick(ColorRGB32F F0, float angle)
 {
-    return F0 + (ColorRGB32F(1.0f) - F0) * pow((1.0f - angle), 5.0f);
+    return F0 + (ColorRGB32F(1.0f) - F0) * hippt::pow_5(1.0f - angle);
 }
 
 /**
@@ -472,7 +472,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F get_GGX_energy_compensation_conductor
 HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_glass_energy_conservation_get_correction_exponent(float roughness, float relative_eta)
 {
     float exponent_correction = 2.5f;
-    if (roughness == 0.0f || hippt::abs(1.0f - relative_eta) < 1.0e-3f)
+    if (hippt::is_zero(roughness) || hippt::abs(1.0f - relative_eta) < 1.0e-3f)
         // No correction for these
         return exponent_correction;
 
@@ -615,7 +615,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGX_VNDF_sample(const float3 local_view_di
 
     // Parametrization of the projected area of the hemisphere
     float r = sqrt(r1);
-    float phi = 2.0f * M_PI * r2;
+    float phi = M_TWO_PI * r2;
     float t1 = r * cos(phi);
     float t2 = r * sin(phi);
     float s = 0.5f * (1.0f + Vh.z);
@@ -644,7 +644,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGX_VNDF_spherical_caps_sample(const float
     float3 Vh = hippt::normalize(make_float3(alpha_x * local_view_direction.x, alpha_y * local_view_direction.y, local_view_direction.z));
 
     // Sample a spherical cap in (-wi.z, 1]
-    float phi = 2.0f * M_PI * r1;
+    float phi = M_TWO_PI * r1;
     float z = (1.0f - r2) * (1.0f + Vh.z) - Vh.z;
     float sinTheta = sqrtf(hippt::clamp(0.0f, 1.0f, 1.0f - z * z));
     float x = sinTheta * cos(phi);

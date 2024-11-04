@@ -240,7 +240,7 @@ void SceneParser::parse_camera(const aiScene* scene, Scene& parsed_scene, float 
         parsed_scene.camera.m_rotation = orientation;
 
         float aspect_ratio = frame_aspect_override == -1 ? camera->mAspect : frame_aspect_override;
-        float vertical_fov = 2.0f * std::atan(std::tan(camera->mHorizontalFOV / 2.0f) * aspect_ratio) + 0.425f;
+        float vertical_fov = 2.0f * std::atan(std::tan(camera->mHorizontalFOV * 0.5f) * aspect_ratio) + 0.425f;
         parsed_scene.camera.projection_matrix = glm::perspective(vertical_fov, aspect_ratio, camera->mClipPlaneNear, camera->mClipPlaneFar);
         parsed_scene.camera.vertical_fov = vertical_fov;
         parsed_scene.camera.near_plane = camera->mClipPlaneNear;
@@ -262,7 +262,7 @@ void SceneParser::parse_camera(const aiScene* scene, Scene& parsed_scene, float 
 
         float aspect_ratio = 1280.0f / 720.0f;
         float horizontal_fov = 40.0f / 180 * M_PI;
-        float vertical_fov = 2.0f * std::atan(std::tan(horizontal_fov / 2.0f) * aspect_ratio) + 0.425f;
+        float vertical_fov = 2.0f * std::atan(std::tan(horizontal_fov * 0.5f) * aspect_ratio) + 0.425f;
         parsed_scene.camera.projection_matrix = glm::perspective(vertical_fov, aspect_ratio, 0.1f, 100.0f);
         parsed_scene.camera.vertical_fov = vertical_fov;
         parsed_scene.camera.near_plane = 0.1f;

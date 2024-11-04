@@ -62,6 +62,14 @@ namespace hippt
 {
 #ifdef __KERNELCC__
 #define M_PI hiprt::Pi
+#define M_TWO_PI	6.28318530717958647693f
+#define M_INV_PI	0.31830988618379067154f
+	// 2.0f / M_PI
+#define M_INV_2_PI	0.63661977236758134308f
+	// 1.0f / (2.0f * M_PI)
+#define M_INV_2_PI	0.15915494309189533577f
+#define M_TWO_PIPI	19.73920880217871723767f
+#define NEAR_ZERO	1.0e-10f
 
 	__device__ float3 cross(float3 u, float3 v) { return hiprt::cross(u, v); }
 	__device__ float dot(float3 u, float3 v) { return hiprt::dot(u, v); }
@@ -74,11 +82,13 @@ namespace hippt
 	__device__ float max(float a, float b) { return a > b ? a : b; }
 	__device__ float min(float a, float b) { return a < b ? a : b; }
 	__device__ float clamp(float min_val, float max_val, float val) { return hiprt::clamp(val, min_val, max_val); }
+	__device__ float pow_5(float x) { return x * x * x * x * x; }
 
 	__device__ float3 normalize(float3 u) { return hiprt::normalize(u); }
 
 	template <typename T>
-	__device__ bool isNaN(const T& v) { return isnan(v); }
+	__device__ bool is_NaN(const T& v) { return isnan(v); }
+	__device__ bool is_zero(float x) { return x < NEAR_ZERO && x > -NEAR_ZERO; }
 
 	template <typename T>
 	__device__ T atomic_add(T* address, T increment) { return atomicAdd(address, increment); }
@@ -93,13 +103,21 @@ namespace hippt
 
 #else
 #undef M_PI
-#define M_PI 3.14159265358979323846f
+#define M_PI		3.14159265358979323846f
+#define M_TWO_PI	6.28318530717958647693f
+#define M_INV_PI	0.31830988618379067154f
+#define M_INV_2_PI	0.15915494309189533577f
+#define M_TWO_PIPI	19.73920880217871723767f
+#define NEAR_ZERO	1.0e-10f
 
 	inline float3 cross(float3 u, float3 v) { return hiprt::cross(u, v); }
 	inline float dot(float3 u, float3 v) { return hiprt::dot(u, v); }
 
 	inline float length(float3 u) { return sqrtf(dot(u, u)); }
 	inline float length2(float3 u) { return dot(u, u); }
+
+	inline float3 abs(float3 u) { return make_float3(std::abs(u.x), std::abs(u.y), std::abs(u.z)); }
+	inline float abs(float a) { return std::abs(a); }
 
 	template <typename T>
 	inline T max(T a, T b) { return hiprt::max(a, b); }
@@ -110,13 +128,13 @@ namespace hippt
 	template <typename T>
 	inline T clamp(T min_val, T max_val, T val) { return hiprt::min(max_val, hiprt::max(min_val, val)); }
 
-	inline float3 abs(float3 u) { return make_float3(std::abs(u.x), std::abs(u.y), std::abs(u.z)); }
-	inline float abs(float a) { return std::abs(a); }
+	inline float pow_5(float x) { return x * x * x * x * x; }
 
 	inline float3 normalize(float3 u) { return hiprt::normalize(u); }
 
 	template <typename T>
-	inline bool isNaN (const T& v) { return std::isnan(v); }
+	inline bool is_NaN (const T& v) { return std::isnan(v); }
+	inline bool is_zero(float x) { return x < NEAR_ZERO && x > -NEAR_ZERO; }
 
 	template <typename T>
 	T atomic_add(std::atomic<T>* atomic_address, T increment) { return atomic_address->fetch_add(increment); }
@@ -144,7 +162,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 matrix_X_point(const float4x4& m, const fl
 	float wt = m.m[3][0] * x + m.m[3][1] * y + m.m[3][2] * z + m.m[3][3];
 
 	float inv_w = 1.0f;
-	if (wt != 0.0f)
+	if (!hippt::is_zero(wt))
 		inv_w = 1.0f / wt;
 
 	return make_float3(xt * inv_w, yt * inv_w, zt * inv_w);
@@ -177,7 +195,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 matrix_X_vec(const float4x4& m, const floa
 	float wt = m.m[0][3] * x + m.m[1][3] * y + m.m[2][3] * z;
 
 	float inv_w = 1.0f;
-	if (wt != 0.0f)
+	if (!hippt::is_zero(wt))
 		inv_w = 1.0f / wt;
 
 	return make_float3(xt * inv_w, yt * inv_w, zt * inv_w);

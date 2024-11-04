@@ -30,7 +30,10 @@ struct SimplifiedRendererMaterial
 {
     HIPRT_HOST_DEVICE bool is_emissive() const
     {
-        return emission.r * emission_strength != 0.0f || emission.g * emission_strength != 0.0f || emission.b * emission_strength != 0.0f || emissive_texture_used;
+        return !hippt::is_zero(emission.r * emission_strength) 
+            || !hippt::is_zero(emission.g * emission_strength) 
+            || !hippt::is_zero(emission.b * emission_strength) 
+            || emissive_texture_used;
     }
 
     /*

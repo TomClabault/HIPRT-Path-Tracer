@@ -19,7 +19,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_normal_distribution(float alpha, float 
     float alpha2 = alpha * alpha;
     float NoH2 = NoH * NoH;
     float b = (NoH2 * (alpha2 - 1.0f) + 1.0f);
-    return alpha2 / M_PI / (b * b);
+    return alpha2 * M_INV_PI / (b * b);
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float G1_schlick_ggx(float k, float dot_prod)
@@ -29,7 +29,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float G1_schlick_ggx(float k, float dot_prod)
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_smith_masking_shadowing(float roughness_squared, float NoV, float NoL)
 {
-    float k = roughness_squared / 2.0f;
+    float k = roughness_squared * 0.5f;
 
     return G1_schlick_ggx(k, NoL) * G1_schlick_ggx(k, NoV);
 }
@@ -81,7 +81,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F cook_torrance_brdf(const SimplifiedRe
         ColorRGB32F kD = ColorRGB32F(1.0f - metallic); //Metals do not have a base_color part
         kD = kD * (ColorRGB32F(1.0f) - F);//Only the transmitted light is diffused
 
-        ColorRGB32F diffuse_part = kD * base_color / M_PI;
+        ColorRGB32F diffuse_part = kD * base_color * M_INV_PI;
         ColorRGB32F specular_part = (F * D * G) / (4.0f * NoV * NoL);
 
         brdf_color = diffuse_part + specular_part;
@@ -101,7 +101,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F cook_torrance_brdf_importance_sample(
     float rand1 = random_number_generator();
     float rand2 = random_number_generator();
 
-    float phi = 2.0f * M_PI * rand1;
+    float phi = M_TWO_PI * rand1;
     float theta = acos((1.0f - rand2) / (rand2 * (alpha * alpha - 1.0f) + 1.0f));
     float sin_theta = sin(theta);
 
@@ -141,7 +141,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F cook_torrance_brdf_importance_sample(
         ColorRGB32F kD = ColorRGB32F(1.0f - metallic); //Metals do not have a base_color part
         kD = kD * (ColorRGB32F(1.0f) - F);//Only the transmitted light is diffused
 
-        ColorRGB32F diffuse_part = kD * base_color / M_PI;
+        ColorRGB32F diffuse_part = kD * base_color * M_INV_PI;
         ColorRGB32F specular_part = (F * D * G) / (4.0f * NoV * NoL);
 
         pdf = D * NoH / (4.0f * VoH);

@@ -71,7 +71,7 @@ struct Camera
     bool do_jittering = true;
 
     // Vertical FOV in radians
-    float vertical_fov = M_PI / 2.0f;
+    float vertical_fov = M_PI * 0.5f;
     float near_plane = 0.1f;
     float far_plane = 1000.0f;
     // Aspect ratio

@@ -247,7 +247,7 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MI
 				// And we only want to divide if not using confidence weights
 				// 
 				// M = 2 (center reservoir + temporal reservoir)
-				return mi / 2.0f;
+				return mi * 0.5f;
 		}
 		else
 		{
@@ -269,7 +269,7 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MI
 				if (render_data.render_settings.restir_di_settings.use_confidence_weights)
 					return mc + static_cast<float>(initial_candidates_reservoir.M) / (initial_candidates_reservoir.M + temporal_neighbor_reservoir.M);
 				else
-					return (1.0f + mc) / 2.0f;
+					return (1.0f + mc) * 0.5f;
 			}
 		}
 	}

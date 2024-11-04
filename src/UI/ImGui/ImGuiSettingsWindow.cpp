@@ -565,7 +565,7 @@ void ImGuiSettingsWindow::draw_camera_panel_static(RenderWindow* render_window, 
 		if (ImGui::Checkbox("Do ray jittering", &camera.do_jittering))
 			render_window->set_render_dirty(true);
 
-		static float camera_fov = camera.vertical_fov / M_PI * 180.0f;
+		static float camera_fov = camera.vertical_fov * M_INV_PI * 180.0f;
 		if (ImGui::SliderFloat("FOV", &camera_fov, 0.0f, 180.0f, "%.3fdeg", ImGuiSliderFlags_AlwaysClamp))
 		{
 			camera.set_FOV(camera_fov / 180.0f * M_PI);
