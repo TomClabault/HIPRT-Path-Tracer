@@ -664,8 +664,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGX_VNDF_spherical_caps_sample(const float
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 GTR2_anisotropic_sample_microfacet(const float3& local_view_direction, float alpha_x, float alpha_y, Xorshift32Generator& random_number_generator)
 {
-#if PrincipledBSDFAnisotropicGGXSampleFunction == GGX_NO_VNDF
-#elif PrincipledBSDFAnisotropicGGXSampleFunction == GGX_VNDF_SAMPLING
+#if PrincipledBSDFAnisotropicGGXSampleFunction == GGX_VNDF_SAMPLING
     return GGX_VNDF_sample(local_view_direction, alpha_x, alpha_y, random_number_generator);
 #elif PrincipledBSDFAnisotropicGGXSampleFunction == GGX_VNDF_SPHERICAL_CAPS
     return GGX_VNDF_spherical_caps_sample(local_view_direction, alpha_x, alpha_y, random_number_generator);

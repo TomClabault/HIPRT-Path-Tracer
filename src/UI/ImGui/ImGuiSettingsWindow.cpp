@@ -1463,55 +1463,74 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 		{
 			ImGui::TreePush("Sampling Materials Tree");
 
-			const char* items[] = { "- Lambertian", "- Oren-Nayar" };
-			if (ImGui::Combo("Principled BSDF Diffuse Lobe", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DIFFUSE_LOBE), items, IM_ARRAYSIZE(items)))
+			if (ImGui::CollapsingHeader("Principled BSDF"))
 			{
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
+				ImGui::TreePush("Materials Principled BSDF Tree");
 
-			static bool use_multiple_scattering = PrincipledBSDFGGXUseMultipleScattering;
-			if (ImGui::Checkbox("Use GGX Multiple Scattering", &use_multiple_scattering))
-			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_GGX_MULTIPLE_SCATTERING, use_multiple_scattering ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker("Implementation of [Practical multiple scattering compensation for microfacet models, Turquin, 2019]"
-											" for GGX energy conservation.");
-
-			if (use_multiple_scattering)
-			{
-				ImGui::TreePush("GGX Multiple Scattering tree");
-				static bool use_multiple_scattering_fresnel = PrincipledBSDFGGXUseMultipleScatteringDoFresnel;
-				if (ImGui::Checkbox("Use GGX Multiple Scattering Fresnel", &use_multiple_scattering_fresnel))
+				ImGui::SeparatorText("Diffuse Lobe");
+				const char* items[] = { "- Lambertian", "- Oren-Nayar" };
+				if (ImGui::Combo("Principled BSDF Diffuse Lobe", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DIFFUSE_LOBE), items, IM_ARRAYSIZE(items)))
 				{
-					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_GGX_MULTIPLE_SCATTERING_DO_FRESNEL, use_multiple_scattering_fresnel ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+					m_renderer->recompile_kernels();
+					m_render_window->set_render_dirty(true);
+				}
+
+				ImGui::Dummy(ImVec2(0.0f, 20.0f));
+				ImGui::SeparatorText("GGX");
+
+				std::vector<const char*> ggx_sampling_items = { "- VNDF", "- VNDF Spherical Caps" };
+				if (ImGui::Combo("GGX Sampling Method", m_renderer->get_global_compiler_options()->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION), ggx_sampling_items.data(), ggx_sampling_items.size()))
+				{
+					m_renderer->recompile_kernels();
+
+					m_render_window->set_render_dirty(true);
+				}
+				ImGuiRenderer::show_help_marker("How to sample the GGX (or GTR2) NDF");
+
+				static bool use_multiple_scattering = PrincipledBSDFGGXUseMultipleScattering;
+				if (ImGui::Checkbox("Use GGX Multiple Scattering", &use_multiple_scattering))
+				{
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_GGX_MULTIPLE_SCATTERING, use_multiple_scattering ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 					m_renderer->recompile_kernels();
 					m_render_window->set_render_dirty(true);
 				}
 				ImGuiRenderer::show_help_marker("Implementation of [Practical multiple scattering compensation for microfacet models, Turquin, 2019]"
-												" for GGX energy conservation. The multiple scattering fresnel term takes into account the Fresnel"
-												"reflection/transmission effect when the rays bounce multiple times on the microsurface.");
+												" for GGX energy conservation.");
 
-				if (ImGui::Checkbox("Use Hardware Texture Interpolation", &m_renderer->get_render_data().brdfs_data.use_hardware_tex_interpolation))
+				if (use_multiple_scattering)
 				{
-					m_renderer->init_GGX_glass_Ess_texture(m_renderer->get_render_data().brdfs_data.use_hardware_tex_interpolation ? ORO_TR_FILTER_MODE_LINEAR : ORO_TR_FILTER_MODE_POINT);
+					ImGui::TreePush("GGX Multiple Scattering tree");
+					static bool use_multiple_scattering_fresnel = PrincipledBSDFGGXUseMultipleScatteringDoFresnel;
+					if (ImGui::Checkbox("Use GGX Multiple Scattering Fresnel", &use_multiple_scattering_fresnel))
+					{
+						global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_GGX_MULTIPLE_SCATTERING_DO_FRESNEL, use_multiple_scattering_fresnel ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+						m_renderer->recompile_kernels();
+						m_render_window->set_render_dirty(true);
+					}
+					ImGuiRenderer::show_help_marker("Implementation of [Practical multiple scattering compensation for microfacet models, Turquin, 2019]"
+													" for GGX energy conservation. The multiple scattering fresnel term takes into account the Fresnel"
+													"reflection/transmission effect when the rays bounce multiple times on the microsurface.");
+
+					if (ImGui::Checkbox("Use Hardware Texture Interpolation", &m_renderer->get_render_data().brdfs_data.use_hardware_tex_interpolation))
+					{
+						m_renderer->init_GGX_glass_Ess_texture(m_renderer->get_render_data().brdfs_data.use_hardware_tex_interpolation ? ORO_TR_FILTER_MODE_LINEAR : ORO_TR_FILTER_MODE_POINT);
+						m_render_window->set_render_dirty(true);
+					}
+					ImGuiRenderer::show_help_marker("Using the hardware for texture interpolation is faster but less precise than doing manual interpolation in the shader.");
+					ImGui::TreePop();
+				}
+
+				std::vector<const char*> masking_shadowing_items = { "- Smith height-uncorrelated", "- Smith height-correlated" };
+				if (ImGui::Combo("GGX Masking-Shadowing Term", m_renderer->get_global_compiler_options()->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::GGX_MASKING_SHADOWING_TERM), masking_shadowing_items.data(), masking_shadowing_items.size()))
+				{
+					m_renderer->recompile_kernels();
+
 					m_render_window->set_render_dirty(true);
 				}
-				ImGuiRenderer::show_help_marker("Using the hardware for texture interpolation is faster but less precise than doing manual interpolation in the shader.");
+				ImGuiRenderer::show_help_marker("Which masking-shadowing term to use with the GGX NDF.");
+
 				ImGui::TreePop();
 			}
-
-			std::vector<const char*> masking_shadowing_items = { "- Smith height-uncorrelated", "- Smith height-correlated" };
-			if (ImGui::Combo("GGX Masking-Shadowing Term", m_renderer->get_global_compiler_options()->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::GGX_MASKING_SHADOWING_TERM), masking_shadowing_items.data(), masking_shadowing_items.size()))
-			{
-				m_renderer->recompile_kernels();
-
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker("Which masking-shadowing term to use with the GGX NDF.");
-
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::TreePop();
@@ -2320,6 +2339,5 @@ void ImGuiSettingsWindow::draw_debug_panel()
 	if (ImGui::Combo("Shader cache use override", (int*)&shader_cache_use_override, shader_cache_override_values.data(), shader_cache_override_values.size()))
 		g_gpu_kernel_compiler.set_shader_cache_usage_override(shader_cache_use_override);
 
-	ImGui::TreePush("Debug tree");
 	ImGui::TreePop();
 }

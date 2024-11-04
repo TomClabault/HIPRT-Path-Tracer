@@ -169,7 +169,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_texture_3D_rgb_32bits(const vo
         float y = (v * (texture_dims.y - 1));
         float z = (w * (texture_dims.z - 1));
 
-        return ColorRGB32F(ColorRGBA32F(tex3D<float4>(reinterpret_cast<const oroTextureObject_t>(texture), x, y, z)));
+        return ColorRGB32F(ColorRGBA32F(tex3D<float4>(reinterpret_cast<oroTextureObject_t>(texture), x, y, z)));
     }
     else
     {
