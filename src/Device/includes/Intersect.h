@@ -112,12 +112,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
     do
     {
 #ifdef __KERNELCC__
-#if UseSharedStackBVHTraversal == KERNEL_OPTION_TRUE
         // Payload for the alpha testing filter function
         AlphaTestingPayload payload;
         payload.render_data = &render_data;
         payload.random_number_generator = &random_number_generator;
 
+#if UseSharedStackBVHTraversal == KERNEL_OPTION_TRUE
 #if SharedStackBVHTraversalSize > 0
         hiprtSharedStackBuffer shared_stack_buffer { SharedStackBVHTraversalSize, shared_stack_cache };
 #else
@@ -201,12 +201,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& r
 #ifdef __KERNELCC__
     ray.maxT = t_max - 1.0e-4f;
 
-#if UseSharedStackBVHTraversal == KERNEL_OPTION_TRUE
     // Payload for the alpha testing filter function
     AlphaTestingPayload payload;
     payload.render_data = &render_data;
     payload.random_number_generator = &random_number_generator;
 
+#if UseSharedStackBVHTraversal == KERNEL_OPTION_TRUE
 #if SharedStackBVHTraversalSize > 0
     hiprtSharedStackBuffer shared_stack_buffer{ SharedStackBVHTraversalSize, shared_stack_cache };
 #else
@@ -267,12 +267,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderD
 #ifdef __KERNELCC__
     ray.maxT = t_max - 1.0e-4f;
 
-#if UseSharedStackBVHTraversal == KERNEL_OPTION_TRUE
     // Payload for the alpha testing filter function
     AlphaTestingPayload payload;
     payload.render_data = &render_data;
     payload.random_number_generator = &random_number_generator;
 
+#if UseSharedStackBVHTraversal == KERNEL_OPTION_TRUE
 #if SharedStackBVHTraversalSize > 0
     hiprtSharedStackBuffer shared_stack_buffer{ SharedStackBVHTraversalSize, shared_stack_cache };
 #else
