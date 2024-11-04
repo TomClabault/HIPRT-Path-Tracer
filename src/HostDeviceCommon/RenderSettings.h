@@ -73,6 +73,12 @@ struct HIPRTRenderSettings
 	// 1 is direct light only.
 	int nb_bounces = 3;
 
+	bool use_russian_roulette = true;
+	// After how many bounces can russian roulette kick in?
+	// 0 means that the camera ray hits, and then the next bounce
+	// is already susceptible to russian roulette kill
+	int russian_roulette_min_depth = 2;
+
 	// Whether or not to "freeze" random number generation so that each frame uses
 	// exactly the same random number. This allows every ray to follow the exact
 	// same path every frame, allowing for more stable benchmarking.
