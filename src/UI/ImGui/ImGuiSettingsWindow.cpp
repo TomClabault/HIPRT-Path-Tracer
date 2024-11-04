@@ -46,6 +46,7 @@ void ImGuiSettingsWindow::draw()
 	draw_post_process_panel();
 	draw_performance_settings_panel();
 	draw_performance_metrics_panel();
+	draw_shader_kernels_panel();
 	draw_debug_panel();
 
 	// For a little bit of space at the very bottom of the window
@@ -752,6 +753,20 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 		{
 			ImGui::TreePush("Direct lighting sampling tree");
 
+			if (ImGui::SliderInt("Light samples per path vertex", &render_settings.number_of_light_samples, 1, 8))
+				m_render_window->set_render_dirty(true);
+			ImGuiRenderer::show_help_marker("How many light samples to take and shade per each vertex of the "
+											"ray's path.\n"
+											"\n"
+											"Said otherwise, we're going to run next-event estimation that many "
+											"times per each intersection point along the ray.\n"
+											"\n"
+											"This is good because this amortizes camera rays and bounce rays i.e. "
+											"we get better shading quality for as many camera rays and bounce rays.\n"
+											"\n"
+											"With ReSTIR DI this only applies to the secondary bounces shading.");
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			const char* items[] = { "- No direct light sampling", "- Uniform one light", "- BSDF Sampling", "- MIS (1 Light + 1 BSDF)", "- RIS BDSF + Light candidates", "- ReSTIR DI (Primary Hit Only)" };
 			if (ImGui::Combo("Direct light sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
 			{
@@ -2308,6 +2323,45 @@ std::string ImGuiSettingsWindow::format_perf_metrics_tooltip_line(const std::str
 }
 
 extern bool g_background_shader_compilation_enabled;
+void ImGuiSettingsWindow::draw_shader_kernels_panel()
+{
+	if (ImGui::CollapsingHeader("Shaders/Kernels"))
+	{
+		ImGui::TreePush("Shaders kernels tree");
+		std::string background_shader_compilation_button_string;
+		if (g_background_shader_compilation_enabled)
+			background_shader_compilation_button_string = "Stop background shader compilation";
+		else
+			background_shader_compilation_button_string = "Resume background shader compilation";
+
+		if (ImGui::Button(background_shader_compilation_button_string.c_str()))
+		{
+			if (g_background_shader_compilation_enabled)
+				m_renderer->stop_background_shader_compilation();
+			else
+				m_renderer->resume_background_shader_compilation();
+		}
+		ImGuiRenderer::show_help_marker("Click to " + (g_background_shader_compilation_enabled ? std::string("stop") : std::string("resume")) + " background shaders precompilation");
+
+		if (ImGui::Button("Force shaders reload"))
+		{
+			m_renderer->recompile_kernels(false);
+			m_render_window->set_render_dirty(true);
+		}
+		if (ImGui::Button("Clear shader cache"))
+			std::filesystem::remove_all("shader_cache");
+		ImGuiRenderer::show_help_marker("Completely clears the shader cache on the disk.");
+
+		static GPUKernelCompiler::ShaderCacheUsageOverride shader_cache_use_override = g_gpu_kernel_compiler.get_shader_cache_usage_override();
+		std::vector<const char*> shader_cache_override_values = { "No override", "Do not use shader cache", "Always use shader cache" };
+		if (ImGui::Combo("Shader cache use override", (int*)&shader_cache_use_override, shader_cache_override_values.data(), shader_cache_override_values.size()))
+			g_gpu_kernel_compiler.set_shader_cache_usage_override(shader_cache_use_override);
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::TreePop();
+	}
+}
+
 void ImGuiSettingsWindow::draw_debug_panel()
 {
 	if (!ImGui::CollapsingHeader("Debug"))
@@ -2318,36 +2372,6 @@ void ImGuiSettingsWindow::draw_debug_panel()
 	if (ImGui::Checkbox("Show NaNs", &m_renderer->get_render_settings().display_NaNs))
 		m_render_window->set_render_dirty(true);
 	ImGuiRenderer::show_help_marker("If true, NaNs that occur during the rendering will show up as pink pixels.");
-
-	ImGui::Dummy(ImVec2(0.0f, 20.0f));
-	std::string background_shader_compilation_button_string;
-	if (g_background_shader_compilation_enabled) 
-		background_shader_compilation_button_string = "Stop background shader compilation";
-	else
-		background_shader_compilation_button_string = "Resume background shader compilation";
-
-	if (ImGui::Button(background_shader_compilation_button_string.c_str()))
-	{
-		if (g_background_shader_compilation_enabled)
-			m_renderer->stop_background_shader_compilation();
-		else
-			m_renderer->resume_background_shader_compilation();
-	}
-	ImGuiRenderer::show_help_marker("Click to " + (g_background_shader_compilation_enabled ? std::string("stop") : std::string("resume")) + " background shaders precompilation");
-
-	if (ImGui::Button("Force shaders reload"))
-	{
-		m_renderer->recompile_kernels(false);
-		m_render_window->set_render_dirty(true);
-	}
-	if (ImGui::Button("Clear shader cache"))
-		std::filesystem::remove_all("shader_cache");
-	ImGuiRenderer::show_help_marker("Completely clears the shader cache on the disk.");
-
-	static GPUKernelCompiler::ShaderCacheUsageOverride shader_cache_use_override = g_gpu_kernel_compiler.get_shader_cache_usage_override();
-	std::vector<const char*> shader_cache_override_values = { "No override", "Do not use shader cache", "Always use shader cache" };
-	if (ImGui::Combo("Shader cache use override", (int*)&shader_cache_use_override, shader_cache_override_values.data(), shader_cache_override_values.size()))
-		g_gpu_kernel_compiler.set_shader_cache_usage_override(shader_cache_use_override);
 
 	ImGui::TreePop();
 }

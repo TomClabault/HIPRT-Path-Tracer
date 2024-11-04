@@ -145,6 +145,21 @@ struct HIPRTRenderSettings
 	// 0.0f to disable
 	float minimum_light_contribution = 0.08f;
 
+	// How many light samples to take and shade per each vertex of the
+	// ray's path.
+	//
+	// Said otherwise, we're going to run next-event estimation that many
+	// times per each intersection point along the ray.
+	// 
+	// This is good because this amortizes camera rays and bounce rays i.e.
+	// we get better shading quality for as many camera rays and bounce rays
+	//
+	// This is not supported by ReSTIR DI because this would require recomputing
+	// a new reservoir = full re-run of ReSTIR = too expensive.
+	// It does apply to the secondary bounces shading when using ReSTIR DI for the
+	// primary bounce though.
+	int number_of_light_samples = 1;
+
 	// Whether or not to do alpha testing for geometry with transparent base color textures
 	bool do_alpha_testing = true;
 

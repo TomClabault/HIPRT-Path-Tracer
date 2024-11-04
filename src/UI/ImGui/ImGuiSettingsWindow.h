@@ -49,6 +49,7 @@ private:
 	std::string format_perf_metrics_tooltip_line(const std::string& label, const std::string& suffix, const std::string& longest_header_for_padding, const std::string& formatter_after_header, const Args& ...args);
 
 	void draw_performance_metrics_panel();
+	void draw_shader_kernels_panel();
 	void draw_debug_panel();
 
 	RenderWindow* m_render_window = nullptr;

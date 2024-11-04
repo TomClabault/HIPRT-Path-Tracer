@@ -219,6 +219,61 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(const HIPRTRende
     return light_source_radiance_mis + bsdf_radiance_mis;
 }
 
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_many_lights(const HIPRTRenderData& render_data, const RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, int2 pixel_coords, int2 resolution, int bounce)
+{
+    ColorRGB32F direct_light_contribution;
+
+    // Any of these light sampling strategy support sampling multiple lights
+    // per each shading point, effectively "amortizing" camera and bounce rays
+    for (int i = 0; i < render_data.render_settings.number_of_light_samples; i++)
+    {
+#if DirectLightSamplingStrategy == LSS_UNIFORM_ONE_LIGHT
+        direct_light_contribution += sample_one_light_no_MIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+#elif DirectLightSamplingStrategy == LSS_BSDF
+        direct_light_contribution += sample_one_light_bsdf(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+#elif DirectLightSamplingStrategy == LSS_MIS_LIGHT_BSDF
+        direct_light_contribution += sample_one_light_MIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+#elif DirectLightSamplingStrategy == LSS_RIS_BSDF_AND_LIGHT
+        direct_light_contribution += sample_lights_RIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+#endif
+    }
+
+    return direct_light_contribution / render_data.render_settings.number_of_light_samples;
+}
+
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_ReSTIR_DI(const HIPRTRenderData& render_data, const RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, int2 pixel_coords, int2 resolution, int bounce)
+{
+    // ReSTIR DI doesn't support explicitely looping to sample
+    // multiple lights per shading point so that's why we don't
+    // have a loop for it
+
+    ColorRGB32F direct_light_contribution;
+    if (bounce == 0)
+        // Can only do ReSTIR DI on the first bounce
+        direct_light_contribution = sample_light_ReSTIR_DI(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, pixel_coords, resolution);
+    else
+    {
+        // ReSTIR DI isn't used for the secondary/tertiary/... bounces
+        // so there we can take multiple light samples per path vertex
+        for (int i = 0; i < render_data.render_settings.number_of_light_samples; i++)
+        {
+#if ReSTIR_DI_LaterBouncesSamplingStrategy == RESTIR_DI_LATER_BOUNCES_UNIFORM_ONE_LIGHT
+            direct_light_contribution += sample_one_light_no_MIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+#elif ReSTIR_DI_LaterBouncesSamplingStrategy == RESTIR_DI_LATER_BOUNCES_BSDF
+            direct_light_contribution += sample_one_light_bsdf(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+#elif ReSTIR_DI_LaterBouncesSamplingStrategy == RESTIR_DI_LATER_BOUNCES_MIS_LIGHT_BSDF
+            direct_light_contribution += sample_one_light_MIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+#elif ReSTIR_DI_LaterBouncesSamplingStrategy == RESTIR_DI_LATER_BOUNCES_RIS_BSDF_AND_LIGHT
+            direct_light_contribution += sample_lights_RIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+#endif
+        }
+
+        direct_light_contribution /= render_data.render_settings.number_of_light_samples;
+    }
+
+    return direct_light_contribution;
+}
+
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light(const HIPRTRenderData& render_data, const RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, int2 pixel_coords, int2 resolution, int bounce)
 {
     if (render_data.buffers.emissive_triangles_count == 0 
@@ -246,31 +301,17 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light(const HIPRTRenderDat
     ColorRGB32F direct_light_contribution;
 #if DirectLightSamplingStrategy == LSS_NO_DIRECT_LIGHT_SAMPLING
     direct_light_contribution = ColorRGB32F(0.0f);
-#elif DirectLightSamplingStrategy == LSS_UNIFORM_ONE_LIGHT
-    direct_light_contribution = sample_one_light_no_MIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
-#elif DirectLightSamplingStrategy == LSS_BSDF
-    direct_light_contribution = sample_one_light_bsdf(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
-#elif DirectLightSamplingStrategy == LSS_MIS_LIGHT_BSDF
-    direct_light_contribution = sample_one_light_MIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
-#elif DirectLightSamplingStrategy == LSS_RIS_BSDF_AND_LIGHT
-    direct_light_contribution = sample_lights_RIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
-#elif DirectLightSamplingStrategy == LSS_RESTIR_DI
+#else // A light sampling strategy is used
 
-    if (bounce == 0)
-        // Can only do ReSTIR DI on the first bounce
-        direct_light_contribution = sample_light_ReSTIR_DI(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, pixel_coords, resolution);
-    else
-    {
-#if ReSTIR_DI_LaterBouncesSamplingStrategy == RESTIR_DI_LATER_BOUNCES_UNIFORM_ONE_LIGHT
-    direct_light_contribution = sample_one_light_no_MIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
-#elif ReSTIR_DI_LaterBouncesSamplingStrategy == RESTIR_DI_LATER_BOUNCES_BSDF
-    direct_light_contribution = sample_one_light_bsdf(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
-#elif ReSTIR_DI_LaterBouncesSamplingStrategy == RESTIR_DI_LATER_BOUNCES_MIS_LIGHT_BSDF
-    direct_light_contribution = sample_one_light_MIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
-#elif ReSTIR_DI_LaterBouncesSamplingStrategy == RESTIR_DI_LATER_BOUNCES_RIS_BSDF_AND_LIGHT
-    direct_light_contribution = sample_lights_RIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+#if DirectLightSamplingStrategy != LSS_RESTIR_DI
+    // A light sampling strategy that is not ReSTIR DI
+    // meaning that we can sample more than 1 light per
+    // path vertex
+    direct_light_contribution = sample_many_lights(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, pixel_coords, resolution, bounce);
+
+#elif DirectLightSamplingStrategy == LSS_RESTIR_DI
+    direct_light_contribution = sample_one_light_ReSTIR_DI(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, pixel_coords, resolution, bounce);
 #endif
-    }
 #endif
 
     return direct_light_contribution;
