@@ -17,16 +17,16 @@
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE void build_ONB(const float3& N, float3& T, float3& B)
 {
-    if (N.z < -0.99998796F)  // Handle the singularity
+    if (N.z < -0.99998796f)  // Handle the singularity
     {
-        T = make_float3(0.0F, -1.0F, 0.0F);
-        B = make_float3(-1.0F, 0.0F, 0.0F);
+        T = make_float3(0.0f, -1.0f, 0.0f);
+        B = make_float3(-1.0f, 0.0f, 0.0f);
         return;
     }
 
-    float nxa = -N.x / (1.0F + N.z);
-    T = make_float3(1.0F + N.x * nxa, nxa * N.y, -N.x);
-    B = make_float3(T.y, 1.0f - N.y * N.y / (1.0F + N.z), -N.y);
+    float nxa = -N.x / (1.0f + N.z);
+    T = make_float3(1.0f + N.x * nxa, nxa * N.y, -N.x);
+    B = make_float3(T.y, 1.0f - N.y * N.y / (1.0f + N.z), -N.y);
 }
 
 /*
@@ -34,13 +34,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void build_ONB(const float3& N, float3& T, float3
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE void build_rotated_ONB(const float3& N, float3& T, float3& B, float basis_rotation)
 {
-    if (N.z < -0.99998796F)  // Handle the singularity
-        T = make_float3(0.0F, -1.0F, 0.0F);
-    else
-    {
-        float nxa = -N.x / (1.0F + N.z);
-        T = make_float3(1.0F + N.x * nxa, nxa * N.y, -N.x);
-    }
+    float3 up = hippt::abs(N.z) < 0.9999999f ? make_float3(0.0f, 0.0f, 1.0f) : make_float3(1.0f, 0.0f, 0.0f);
+    T = hippt::normalize(hippt::cross(up, N));
 
     // Rodrigues' rotation
     T = T * cos(basis_rotation) + hippt::cross(N, T) * sin(basis_rotation) + N * hippt::dot(N, T) * (1.0f - cos(basis_rotation));
