@@ -145,6 +145,25 @@ if(MSVC_IDE)
 	# Enabling parallel compilation on MSVC which isn't enabled by default
 	if(MSVC)
 		add_definitions(/MP)
+
+		if (${CMAKE_BUILD_TYPE} STREQUAL "RelWithDebInfo")
+			# In RelWithDebInfo, we're disabling all optimizations
+			# for easier debugging:
+			#	- RelWithDebInfo is faster than debug so we want to use
+			#	that when debugging line by line
+			#	
+			#	- But the optimizations that are enabled by default in
+			#	RelWithDebInfo still mess up with MSVC debugger and the
+			#	debugger jumps everywhere, variables are optimized away etc...
+			#	Even if we're supposed to include debug infos in the compilation...
+			#	So we're just disabling optimizations then
+
+			# No optimizations
+			add_definitions(/Od)
+
+			# No inlining of functions
+			add_definitions(/Ob0)
+		endif()
 	endif()
 
 	# Macro to preserve nice beautiful source files hierarchy in Visual Studio

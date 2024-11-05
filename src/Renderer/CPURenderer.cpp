@@ -38,7 +38,7 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 322
+#define DEBUG_PIXEL_X 318
 #define DEBUG_PIXEL_Y 150
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
@@ -150,6 +150,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.g_buffer.shading_normals = m_g_buffer.shading_normals.data();
     m_render_data.g_buffer.view_directions = m_g_buffer.view_directions.data();
     m_render_data.g_buffer.first_hits = m_g_buffer.first_hits.data();
+    m_render_data.g_buffer.first_hit_prim_index = m_g_buffer.first_hit_prim_index.data();
     m_render_data.g_buffer.camera_ray_hit = m_g_buffer.cameray_ray_hit.data();
     m_render_data.g_buffer.ray_volume_states = m_g_buffer.ray_volume_states.data();
 
@@ -158,6 +159,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.g_buffer_prev_frame.shading_normals = m_g_buffer_prev_frame.shading_normals.data();
     m_render_data.g_buffer_prev_frame.view_directions = m_g_buffer_prev_frame.view_directions.data();
     m_render_data.g_buffer_prev_frame.first_hits = m_g_buffer_prev_frame.first_hits.data();
+    m_render_data.g_buffer_prev_frame.first_hit_prim_index = m_g_buffer_prev_frame.first_hit_prim_index.data();
     m_render_data.g_buffer_prev_frame.camera_ray_hit = m_g_buffer_prev_frame.cameray_ray_hit.data();
     m_render_data.g_buffer_prev_frame.ray_volume_states = m_g_buffer_prev_frame.ray_volume_states.data();
 
