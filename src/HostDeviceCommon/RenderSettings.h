@@ -76,7 +76,7 @@ struct HIPRTRenderSettings
 	bool use_russian_roulette = true;
 	// After how many bounces can russian roulette kick in?
 	// 0 means that the camera ray hits, and then the next bounce
-	// is already susceptible to russian roulette kill
+	// is already susceptible to russian roulette termination
 	int russian_roulette_min_depth = 2;
 
 	// Whether or not to "freeze" random number generation so that each frame uses
@@ -86,7 +86,7 @@ struct HIPRTRenderSettings
 
 	// If true, NaNs encountered during rendering will be rendered as very bright pink. 
 	// Useful for debugging only.
-	bool display_NaNs = false;
+	bool display_NaNs = true;
 
 	// If true, then rendering at low resolution will be performed if 'wants_render_low_resolution'
 	// is also true.

@@ -338,6 +338,30 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F gulbrandsen_metallic_complex_fresnel(
 }
 
 /**
+ * Reference:
+ * 
+ * [1] [Generalization of Adobe’s Fresnel Model, Hoffman, 2023]
+ * [2] [Adobe Standard Material, Technical Documentation, Kutz, Hasan, Edmondson]
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F adobe_f82_tint_fresnel(const ColorRGB32F& F0, const ColorRGB32F& F82, const ColorRGB32F& F90, float F90_falloff_exponent, float cos_theta)
+{
+    ColorRGB32F base_term = F0 + (F90 - F0) * pow(1.0f - cos_theta, F90_falloff_exponent);
+    float lazanyi_correction = cos_theta * hippt::pow_6(1.0f - cos_theta);
+
+    // cos_theta_max for beta exponent = 6 in the lazanyi correction term
+    constexpr float cos_theta_max = 1.0f / 7.0f;
+    constexpr float denom_a = cos_theta_max * hippt::pow_6(1.0f - cos_theta_max);
+
+    ColorRGB32F nume_a = (F0 + (F90 - F0) * pow(1.0f - cos_theta_max, F90_falloff_exponent)) * (ColorRGB32F(1.0f) - F82);
+    ColorRGB32F a = nume_a / denom_a;
+
+    ColorRGB32F F = base_term - a * lazanyi_correction;
+    F.clamp(0.0f, 1.0f);
+
+    return F;
+}
+
+/**
  * Evaluates GTR2 anisotropic normal distribution function
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE float GTR2_anisotropic(float alpha_x, float alpha_y, const float3& local_half_vector)

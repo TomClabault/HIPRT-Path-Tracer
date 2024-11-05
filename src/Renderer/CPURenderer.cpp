@@ -32,14 +32,14 @@
 // the interesting pixel. If that image viewer has its (0, 0) in the top
 // left corner, you'll need to set that DEBUG_FLIP_Y to 0. Set 1 to if
 // you're measuring the coordinates of the pixel with (0, 0) in the bottom left corner
-#define DEBUG_FLIP_Y 0
+#define DEBUG_FLIP_Y 1
 
 // Coordinates of the pixel whose neighborhood needs to rendered (useful for algorithms
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 318
-#define DEBUG_PIXEL_Y 150
+#define DEBUG_PIXEL_X 319
+#define DEBUG_PIXEL_Y 322
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -60,10 +60,10 @@
 // If you were only rendering the precise pixel at the given debug coordinates, you
 // wouldn't be able to debug correctly since all the neighborhood wouldn't have been
 // rendered which means no reservoir which means improper rendering
-#define DEBUG_RENDER_NEIGHBORHOOD 0
+#define DEBUG_RENDER_NEIGHBORHOOD 1
 // How many pixels to render around the debugged pixel given by the DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y coordinates
-#define DEBUG_NEIGHBORHOOD_SIZE 5
+#define DEBUG_NEIGHBORHOOD_SIZE 25
 
 CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, height))
 {

@@ -1795,22 +1795,13 @@ void ImGuiSettingsWindow::draw_objects_panel()
 		material_changed |= ImGui::SliderFloat("Roughness", &material.roughness, 0.0f, 1.0f);
 
 		ImGui::Separator();
+		static bool metallic_use_base_color = false;
 		material_changed |= ImGui::SliderFloat("Metallic", &material.metallic, 0.0f, 1.0f);
-		material_changed |= ImGui::Checkbox("Advanced Metallic Color", &material.advanced_metallic_fresnel);
-		ImGuiRenderer::show_help_marker("If checked, the metallic color will math \"Base color\".\n"
-										"If not checked, some more parameters will be exposed to control"
-										"the metallic reflectance, enabling more expressivity.");
-		if (material.advanced_metallic_fresnel)
-		{
-			ImGui::TreePush("Metallic artist parameters tree");
-			material_changed |= ImGui::ColorEdit3("Metallic Reflectivity", (float*)&material.metallic_reflectivity);
-			ImGuiRenderer::show_help_marker("'Reflectivity' parameter of [Artist Friendly Metallic Fresnel, Gulbrandsen, 2014].\n"
-											"Controls the main color response of the metallic material.");
-			material_changed |= ImGui::ColorEdit3("Metallic Edge Tint", (float*)&material.metallic_edge_tint);
-			ImGuiRenderer::show_help_marker("'Edge Tint' parameter of [Artist Friendly Metallic Fresnel, Gulbrandsen, 2014].\n"
-											"The color response of the metallic material is biased towards this color at the incident angle increases.");
-			ImGui::TreePop();
-		}
+		material_changed |= ImGui::ColorEdit3("F0 Reflectivity", (float*)&material.base_color);
+		material_changed |= ImGui::ColorEdit3("F82 Reflectivity", (float*)&material.metallic_F82);
+		material_changed |= ImGui::ColorEdit3("F90 Reflectivity", (float*)&material.metallic_F90);
+		material_changed |= ImGui::SliderFloat("F90 Falloff exponent", &material.metallic_F90_falloff_exponent, 0.5f, 5.0f);
+		
 		material_changed |= ImGui::SliderFloat("Anisotropy", &material.anisotropy, 0.0f, 1.0f);
 		material_changed |= ImGui::SliderFloat("Anisotropy Rotation", &material.anisotropy_rotation, 0.0f, 1.0f);
 
@@ -1861,8 +1852,9 @@ void ImGuiSettingsWindow::draw_objects_panel()
 		material_changed |= ImGui::SliderFloat("Opacity", &material.alpha_opacity, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 
 		ImGui::PopItemWidth();
-
 		ImGui::Separator();
+
+		material_changed |= draw_material_presets(material);
 
 		if (material_changed)
 		{
@@ -1876,6 +1868,74 @@ void ImGuiSettingsWindow::draw_objects_panel()
 
 	ImGui::TreePop();
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+}
+
+bool ImGuiSettingsWindow::draw_material_presets(RendererMaterial& material)
+{
+	bool material_changed = false;
+
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+	if (!ImGui::CollapsingHeader("Material presets"))
+		return false;
+
+	ImGui::TreePush("Materials presets tree");
+	ImGui::Text("Metals");
+	ImGui::Separator();
+
+	// Reference: [Adobe Standard Material, Technical Documentation, Kutz, Hasan, Edmondson]
+	const std::vector<std::pair<std::string, std::pair<ColorRGB32F, ColorRGB32F>>> names_to_f0_f82 = {
+		{ "Silver", { ColorRGB32F(0.9868, 0.9830, 0.9667), ColorRGB32F(0.9929, 0.9961, 1.0000) } },
+		{ "Aluminum", { ColorRGB32F(0.9157, 0.9226, 0.9236), ColorRGB32F(0.9090, 0.9365, 0.9596) } },
+		{ "Gold", { ColorRGB32F(1.0000, 0.7099, 0.3148), ColorRGB32F(0.9408, 0.9636, 0.9099) } },
+		{ "Chromium", { ColorRGB32F(0.5496, 0.5561, 0.5531), ColorRGB32F(0.7372, 0.7511, 0.8170) } },
+		{ "Copper", { ColorRGB32F(1.0000, 0.6504, 0.5274), ColorRGB32F(0.9755, 0.9349, 0.9301) } },
+		{ "Iron", { ColorRGB32F(0.8951, 0.8755, 0.8154), ColorRGB32F(0.8551, 0.8800, 0.8966) } },
+		{ "Mercury", { ColorRGB32F(0.7815, 0.7795, 0.7783), ColorRGB32F(0.8103, 0.8532, 0.9046) } },
+		{ "Magnesium", { ColorRGB32F(0.8918, 0.8821, 0.8948), ColorRGB32F(0.8949, 0.9147, 0.9504) } },
+		{ "Nickel", { ColorRGB32F(0.7014, 0.6382, 0.5593), ColorRGB32F(0.8134, 0.8352, 0.8725) } },
+		{ "Lead", { ColorRGB32F(0.7363, 0.7023, 0.6602), ColorRGB32F(0.8095, 0.8369, 0.8739) } },
+		{ "Platinum", { ColorRGB32F(0.9602, 0.9317, 0.8260), ColorRGB32F(0.9501, 0.9461, 0.9352) } },
+		{ "Titanium", { ColorRGB32F(0.4432, 0.3993, 0.3599), ColorRGB32F(0.8627, 0.9066, 0.9481) } },
+		{ "Zinc", { ColorRGB32F(0.8759, 0.8685, 0.8542), ColorRGB32F(0.8769, 0.9037, 0.9341) } },
+	};
+
+	int line_count = 0;
+	for (int i = 0; i < names_to_f0_f82.size(); i++)
+	{
+		ColorRGB32F F0 = names_to_f0_f82[i].second.first;
+		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(F0.r, F0.g, F0.b, 1.0f));
+		// Changing text color from black to white depending on luminance for readability
+		ImGui::PushStyleColor(ImGuiCol_Text, F0.luminance() > 0.6f ? ImVec4(0.0f, 0.0f, 0.0f, 1.0f) : ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+
+		if (ImGui::Button(names_to_f0_f82[i].first.c_str(), /* size */ ImVec2(6.0f * ImGui::GetFontSize(), 1.5f * ImGui::GetFontSize())))
+		{
+			material_changed = true;
+
+			float original_roughness = material.roughness;
+
+			// Resetting the material
+			material = RendererMaterial();
+
+			// Applying preset
+			material.roughness = original_roughness;
+			material.metallic = 1.0f;
+			material.base_color = names_to_f0_f82[i].second.first;
+			material.metallic_F82 = names_to_f0_f82[i].second.second;
+		}
+
+		ImGui::PopStyleColor();
+		ImGui::PopStyleColor();
+
+		line_count++;
+		if (line_count == 5)
+			line_count = 0;
+		else
+			ImGui::SameLine();
+	}
+
+	ImGui::TreePop();
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+	return material_changed;
 }
 
 void ImGuiSettingsWindow::draw_denoiser_panel()

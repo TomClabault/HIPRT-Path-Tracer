@@ -61,21 +61,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_metallic_eval(const HIPRTR
 {
     float HoL = hippt::clamp(1.0e-8f, 1.0f, hippt::dot(local_half_vector, local_to_light_direction));
 
-    ColorRGB32F F;
-    if (material.advanced_metallic_fresnel)
-        // Computing the complex fresnel response from conductor material using
-        // the intuitive parameters
-        F = gulbrandsen_metallic_complex_fresnel(material.metallic_reflectivity, material.metallic_edge_tint, HoL);
-    else
-        // The reflectance of the metal is here assumed to be the same color as
-        // the base color of the material which can be easier to manipulate
-        // than the metallic specialization above
-        F = fresnel_schlick(material.base_color, HoL);
+    ColorRGB32F F = adobe_f82_tint_fresnel(material.base_color, material.metallic_F82, material.metallic_F90, material.metallic_F90_falloff_exponent, HoL);
 
-    ColorRGB32F F0 = material.base_color;
-    if (material.advanced_metallic_fresnel)
-        F0 = material.metallic_reflectivity;
-    return torrance_sparrow_GTR2_eval<PrincipledBSDFGGXUseMultipleScattering>(render_data, F0, material.roughness, material.anisotropy, F, local_view_direction, local_to_light_direction, local_half_vector, pdf);
+    return torrance_sparrow_GTR2_eval<PrincipledBSDFGGXUseMultipleScattering>(render_data, material.base_color, material.roughness, material.anisotropy, F, local_view_direction, local_to_light_direction, local_half_vector, pdf);
 }
 
 /**

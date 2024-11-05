@@ -64,9 +64,6 @@ namespace hippt
 #define M_PI hiprt::Pi
 #define M_TWO_PI	6.28318530717958647693f
 #define M_INV_PI	0.31830988618379067154f
-	// 2.0f / M_PI
-#define M_INV_2_PI	0.63661977236758134308f
-	// 1.0f / (2.0f * M_PI)
 #define M_INV_2_PI	0.15915494309189533577f
 #define M_TWO_PIPI	19.73920880217871723767f
 #define NEAR_ZERO	1.0e-10f
@@ -82,7 +79,8 @@ namespace hippt
 	__device__ float max(float a, float b) { return a > b ? a : b; }
 	__device__ float min(float a, float b) { return a < b ? a : b; }
 	__device__ float clamp(float min_val, float max_val, float val) { return hiprt::clamp(val, min_val, max_val); }
-	__device__ float pow_5(float x) { return x * x * x * x * x; }
+	__device__ constexpr float pow_5(float x) { float x2 = x * x; float x4 = x2 * x2; return x4 * x; }
+	__device__ constexpr float pow_6(float x) { float x2 = x * x; float x4 = x2 * x2; return x4 * x2; }
 
 	__device__ float3 normalize(float3 u) { return hiprt::normalize(u); }
 
@@ -128,7 +126,8 @@ namespace hippt
 	template <typename T>
 	inline T clamp(T min_val, T max_val, T val) { return hiprt::min(max_val, hiprt::max(min_val, val)); }
 
-	inline float pow_5(float x) { return x * x * x * x * x; }
+	inline constexpr float pow_5(float x) { float x2 = x * x; float x4 = x2 * x2; return x4 * x; }
+	inline constexpr float pow_6(float x) { float x2 = x * x; float x4 = x2 * x2; return x4 * x2; }
 
 	inline float3 normalize(float3 u) { return hiprt::normalize(u); }
 

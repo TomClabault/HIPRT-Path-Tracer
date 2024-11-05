@@ -55,8 +55,6 @@ struct SimplifiedRendererMaterial
         // Avoiding zero
         absorption_at_distance = hippt::max(absorption_at_distance, 1.0e-4f);
         absorption_color = ColorRGB32F::max(absorption_color, ColorRGB32F(1.0f / 512.0f));
-
-        metallic_reflectivity.clamp(0.0f, 0.999f);
     }
 
     /*
@@ -99,21 +97,22 @@ struct SimplifiedRendererMaterial
         return emission;
     }
 
-    BRDF brdf_type = BRDF::Uninitialized;
-
     bool emissive_texture_used = false;
     float emission_strength = 1.0f;
-    ColorRGB32F base_color = ColorRGB32F{ 1.0f, 0.2f, 0.7f };
+    ColorRGB32F base_color = ColorRGB32F{ 0.9868f, 0.9830f, 0.9667f };
 
     float roughness = 0.3f;
     float oren_nayar_sigma = 0.34906585039886591538f; // 20 degrees standard deviation in radian
 
-    float metallic = 0.0f;
-    bool advanced_metallic_fresnel = false;
-    ColorRGB32F metallic_reflectivity = ColorRGB32F{ 1.0f, 0.2f, 0.7f };
-    ColorRGB32F metallic_edge_tint = ColorRGB32F{ 1.0f, 0.2f, 0.7f };
     float anisotropy = 0.0f;
     float anisotropy_rotation = 0.0f;
+
+    // Parameters for Adobe 2023 F82-tint model
+    float metallic = 0.0f;
+    float metallic_F90_falloff_exponent = 5.0f;
+    // F0 is not here as it uses the 'base_color' of the material
+    ColorRGB32F metallic_F82 = ColorRGB32F(1.0f);
+    ColorRGB32F metallic_F90 = ColorRGB32F(1.0f);
 
     // Specular intensity
     float specular = 1.0f;

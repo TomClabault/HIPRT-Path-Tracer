@@ -31,13 +31,13 @@ extern ImGuiLogger g_imgui_logger;
 // - limit UI speed because it actually uses some resources (maybe Vsync or something) or does it?
 // - smarter shader cache (hints to avoid using all kernel options when compiling a kernel? We know that Camera ray doesn't care about direct lighting strategy for example)
 // - use self bit packing (no bitfields) for nested dielectrics because bitfields are implementation dependent in size, that's bad --> We don't get our nice packing with every compiler
-// - cmake to disable optimizations in reldebinfo
 // - for LTC sheen lobe, have the option to use either SGGX volumetric sheen or approximation precomputed LTC data
 // - rework bounces in UI so that 0 bounce still gives an image. The number of bounce is currently offset by 1 basically.
 // - GGX G term not using compiled kernel option, just do if()
 // - specular and clearcoat TIR check, should effectively be an energy loss because we're not simulating full multiple scattering
 // - energy conservation with glass weight < 1
 // - energy conservation with glass & sheen
+// - russian roulette firefly avoidance biased clamping
 
 // TODO known bugs / incorectness:
 // - take transmission color into account when direct sampling a light source that is inside a volume

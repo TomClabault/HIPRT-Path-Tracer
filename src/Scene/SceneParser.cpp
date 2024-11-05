@@ -355,8 +355,6 @@ void SceneParser::read_material_properties(aiMaterial* mesh_material, RendererMa
     //Getting the properties that are going to be used by the materials
     //of the application
 
-    renderer_material.brdf_type = BRDF::Principled;
-
     aiReturn error_code_emissive;
     mesh_material->Get(AI_MATKEY_COLOR_DIFFUSE, *((aiColor3D*)&renderer_material.base_color));
     if (renderer_material.emission_texture_index == RendererMaterial::NO_TEXTURE)

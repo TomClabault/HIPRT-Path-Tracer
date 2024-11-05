@@ -40,6 +40,7 @@ private:
 	void display_ReSTIR_DI_bias_status(std::shared_ptr<GPUKernelCompilerOptions> kernel_options);
 
 	void draw_objects_panel();
+	bool draw_material_presets(RendererMaterial& material);
 	void draw_denoiser_panel();
 	void draw_post_process_panel();
 
