@@ -88,6 +88,11 @@ public:
 	void init_GGX_glass_Ess_texture(HIPfilter_mode filtering_mode = ORO_TR_FILTER_MODE_POINT);
 
 	/**
+	 * Initializes the filter function used by the kernels
+	 */
+	void setup_filter_functions();
+
+	/**
 	 * Initializes and compiles the kernels
 	 */
 	void setup_kernels();

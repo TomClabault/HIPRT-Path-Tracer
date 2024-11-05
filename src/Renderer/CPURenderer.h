@@ -10,6 +10,7 @@
 #include "HostDeviceCommon/RenderData.h"
 #include "Image/Image.h"
 #include "Renderer/BVH.h"
+#include "Renderer/CPURendererGBuffer.h"
 #include "Scene/SceneParser.h"
 #include "Utils/CommandlineArguments.h"
 
@@ -79,21 +80,8 @@ private:
     std::vector<float> m_alias_table_probas;
     std::vector<int> m_alias_table_alias;
 
-    struct GBuffer
-    {
-        std::vector<SimplifiedRendererMaterial> materials;
-        std::vector<float3> geometric_normals;
-        std::vector<float3> shading_normals;
-        std::vector<float3> view_directions;
-        std::vector<float3> first_hits;
-
-        std::vector<unsigned char> cameray_ray_hit;
-
-        std::vector<RayVolumeState> ray_volume_states;
-    };
-
-    GBuffer m_g_buffer;
-    GBuffer m_g_buffer_prev_frame;
+    CPURendererGBuffer m_g_buffer;
+    CPURendererGBuffer m_g_buffer_prev_frame;
 
     // Random number generator for given a random seed to the threads at each sample
     Xorshift32Generator m_rng;

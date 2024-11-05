@@ -134,6 +134,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
     closest_hit_info.inter_point = render_data.g_buffer.first_hits[pixel_index];
     closest_hit_info.geometric_normal = hippt::normalize(render_data.g_buffer.geometric_normals[pixel_index]);
     closest_hit_info.shading_normal = hippt::normalize(render_data.g_buffer.shading_normals[pixel_index]);
+    closest_hit_info.primitive_index = render_data.g_buffer.first_hit_prim_index[pixel_index];
 
     // Initializing the ray with the information from the camera ray pass
     hiprtRay ray;
@@ -154,7 +155,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
             {
                 // Not tracing for the primary ray because this has already been done in the camera ray pass
 
-                intersection_found = trace_ray(render_data, ray, ray_payload, closest_hit_info, random_number_generator);
+                intersection_found = trace_ray(render_data, ray, ray_payload, closest_hit_info, closest_hit_info.primitive_index, random_number_generator);
             }
 
             if (intersection_found)
@@ -240,7 +241,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
                         break;
 
                     int outside_surface = hippt::dot(bounce_direction, closest_hit_info.shading_normal) < 0 ? -1.0f : 1.0f;
-                    ray.origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 3.0e-3f * outside_surface;
+                    ray.origin = closest_hit_info.inter_point;// +closest_hit_info.shading_normal * 3.0e-3f * outside_surface;
                     ray.direction = bounce_direction;
                 }
             }

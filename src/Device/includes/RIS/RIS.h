@@ -16,7 +16,7 @@
 #include "HostDeviceCommon/RenderData.h"
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_reservoir_sample(const HIPRTRenderData& render_data, const RayPayload& ray_payload, 
-    const float3& shading_point, const float3& shading_normal, const float3& view_direction, 
+    const HitInfo& closest_hit_info, const float3& view_direction,
     const RISReservoir& reservoir, Xorshift32Generator& random_number_generator)
 {
     ColorRGB32F final_color;
@@ -29,7 +29,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_reservoir_sample(const HIPRT
 
     bool in_shadow;
     float distance_to_light;
-    float3 evaluated_point = shading_point + shading_normal * 1.0e-4f;
+    float3 evaluated_point = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f;
     float3 shadow_ray_direction = sample.point_on_light_source - evaluated_point;
     float3 shadow_ray_direction_normalized = shadow_ray_direction / (distance_to_light = hippt::length(shadow_ray_direction));
     if (sample.is_bsdf_sample)
@@ -42,7 +42,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_reservoir_sample(const HIPRT
         shadow_ray.origin = evaluated_point;
         shadow_ray.direction = shadow_ray_direction_normalized;
 
-        in_shadow = evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, random_number_generator);
+        in_shadow = evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, random_number_generator);
     }
 
     if (!in_shadow)
@@ -62,9 +62,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_reservoir_sample(const HIPRT
         }
         else
         {
-            bsdf_color = bsdf_dispatcher_eval(render_data, ray_payload.material, trash_volume_state, view_direction, shading_normal, shadow_ray_direction_normalized, bsdf_pdf);
+            bsdf_color = bsdf_dispatcher_eval(render_data, ray_payload.material, trash_volume_state, view_direction, closest_hit_info.shading_normal, shadow_ray_direction_normalized, bsdf_pdf);
 
-            cosine_at_evaluated_point = hippt::max(0.0f, hippt::dot(shading_normal, shadow_ray_direction_normalized));
+            cosine_at_evaluated_point = hippt::max(0.0f, hippt::dot(closest_hit_info.shading_normal, shadow_ray_direction_normalized));
         }
 
         if (cosine_at_evaluated_point > 0.0f)
@@ -168,7 +168,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
                     shadow_ray.origin = evaluated_point;
                     shadow_ray.direction = to_light_direction;
 
-                    bool visible = !evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, random_number_generator);
+                    bool visible = !evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, random_number_generator);
 
                     target_function *= visible;
                 }
@@ -223,7 +223,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
             bsdf_ray.direction = sampled_direction;
 
             ShadowLightRayHitInfo shadow_light_ray_hit_info;
-            bool hit_found = evaluate_shadow_light_ray(render_data, bsdf_ray, 1.0e35f, shadow_light_ray_hit_info, random_number_generator);
+            bool hit_found = evaluate_shadow_light_ray(render_data, bsdf_ray, 1.0e35f, shadow_light_ray_hit_info, closest_hit_info.primitive_index, random_number_generator);
             if (hit_found && !shadow_light_ray_hit_info.hit_emission.is_black())
             {
                 // If we intersected an emissive material, compute the weight. 
@@ -297,7 +297,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_lights_RIS(const HIPRTRenderDa
     RISReservoir reservoir = sample_bsdf_and_lights_RIS_reservoir(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 
     return evaluate_reservoir_sample(render_data, ray_payload, 
-        closest_hit_info.inter_point, closest_hit_info.shading_normal, view_direction, 
+        closest_hit_info, view_direction, 
         reservoir, random_number_generator);
 }
 

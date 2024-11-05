@@ -11,12 +11,14 @@
 #include "Device/includes/ONB.h"
 #include "Device/includes/RayPayload.h"
 #include "Device/includes/Texture.h"
-#include "Device/functions/AlphaTesting.h"
+#include "Device/functions/FilterFunction.h"
 
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/Math.h"
 
 #if SharedStackBVHTraversalSize > 0
+// This if is necessary to avoid declaring 0 size arrays if the
+// shared stack traversal sizes are 0
 __shared__ static int shared_stack_cache[SharedStackBVHTraversalSize * SharedStackBVHTraversalBlockSize];
 #endif
 
@@ -81,15 +83,18 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 get_shading_normal(const HIPRTRenderData& 
 
 #ifndef __KERNELCC__
 #include "Renderer/BVH.h"
-HIPRT_HOST_DEVICE HIPRT_INLINE hiprtHit intersect_scene_cpu(const HIPRTRenderData& render_data, const hiprtRay& ray, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE hiprtHit intersect_scene_cpu(const HIPRTRenderData& render_data, const hiprtRay& ray, int last_hit_primitive_index, Xorshift32Generator& random_number_generator)
 {
     hiprtHit hiprtHit;
     HitInfo closest_hit_info;
     closest_hit_info.t = -1.0f;
 
-    AlphaTestingPayload filter_function_payload;
+    FilterFunctionPayload filter_function_payload;
     filter_function_payload.render_data = &render_data;
     filter_function_payload.random_number_generator = &random_number_generator;
+    // Filling the payload with the last hit primitive index to avoid self intersections
+    // (avoid that the ray intersects the triangle it is currently sitting on)
+    filter_function_payload.last_hit_primitive_index = last_hit_primitive_index;
     if (render_data.cpu_only.bvh->intersect(ray, closest_hit_info, &filter_function_payload))
     {
         hiprtHit.primID = closest_hit_info.primitive_index;
@@ -105,7 +110,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE hiprtHit intersect_scene_cpu(const HIPRTRenderDat
 /**
  * Returns true if a hit was found, false otherwise
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data, hiprtRay ray, RayPayload& in_out_ray_payload, HitInfo& out_hit_info, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data, hiprtRay ray, RayPayload& in_out_ray_payload, HitInfo& out_hit_info, int last_hit_primitive_index, Xorshift32Generator& random_number_generator)
 {
     hiprtHit hit;
     bool skipping_volume_boundary = false;
@@ -113,9 +118,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
     {
 #ifdef __KERNELCC__
         // Payload for the alpha testing filter function
-        AlphaTestingPayload payload;
+        FilterFunctionPayload payload;
         payload.render_data = &render_data;
         payload.random_number_generator = &random_number_generator;
+        // Filling the payload with the last hit primitive index to avoid self intersections
+        // (avoid that the ray intersects the triangle it is currently sitting on)
+        payload.last_hit_primitive_index = last_hit_primitive_index;
 
 #if UseSharedStackBVHTraversal == KERNEL_OPTION_TRUE
 #if SharedStackBVHTraversalSize > 0
@@ -132,7 +140,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
 
         hit = traversal.getNextHit();
     #else
-        hit = intersect_scene_cpu(render_data, ray, random_number_generator);
+        hit = intersect_scene_cpu(render_data, ray, last_hit_primitive_index, random_number_generator);
     #endif
 
         if (!hit.hasHit())
@@ -196,15 +204,18 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
 /**
  * Returns true if in shadow, false otherwise
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& render_data, hiprtRay ray, float t_max, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& render_data, hiprtRay ray, float t_max, int last_hit_primitive_index, Xorshift32Generator& random_number_generator)
 {
 #ifdef __KERNELCC__
     ray.maxT = t_max - 1.0e-4f;
 
     // Payload for the alpha testing filter function
-    AlphaTestingPayload payload;
+    FilterFunctionPayload payload;
     payload.render_data = &render_data;
     payload.random_number_generator = &random_number_generator;
+    // Filling the payload with the last hit primitive index to avoid self intersections
+    // (avoid that the ray intersects the triangle it is currently sitting on)
+    payload.last_hit_primitive_index = last_hit_primitive_index;
 
 #if UseSharedStackBVHTraversal == KERNEL_OPTION_TRUE
 #if SharedStackBVHTraversalSize > 0
@@ -236,7 +247,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& r
     do
     {
         // We should use ray tracing fitler functions here instead of re-tracing new rays
-        hit = intersect_scene_cpu(render_data, ray, random_number_generator);
+        hit = intersect_scene_cpu(render_data, ray, last_hit_primitive_index, random_number_generator);
         if (!hit.hasHit())
             return false;
 
@@ -262,15 +273,18 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& r
  * 
  * Also, if a hit was found, outputs the emission of the material at the hit point in 'out_hit_emission'
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderData& render_data, hiprtRay ray, float t_max, ShadowLightRayHitInfo& out_light_hit_info, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderData& render_data, hiprtRay ray, float t_max, ShadowLightRayHitInfo& out_light_hit_info, int last_hit_primitive_index, Xorshift32Generator& random_number_generator)
 {
 #ifdef __KERNELCC__
     ray.maxT = t_max - 1.0e-4f;
 
     // Payload for the alpha testing filter function
-    AlphaTestingPayload payload;
+    FilterFunctionPayload payload;
     payload.render_data = &render_data;
     payload.random_number_generator = &random_number_generator;
+    // Filling the payload with the last hit primitive index to avoid self intersections
+    // (avoid that the ray intersects the triangle it is currently sitting on)
+    payload.last_hit_primitive_index = last_hit_primitive_index;
 
 #if UseSharedStackBVHTraversal == KERNEL_OPTION_TRUE
 #if SharedStackBVHTraversalSize > 0
@@ -327,7 +341,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderD
     do
     {
         // We should use ray tracing fitler functions here instead of re-tracing new rays
-        shadow_ray_hit = intersect_scene_cpu(render_data, ray, random_number_generator);
+        shadow_ray_hit = intersect_scene_cpu(render_data, ray, last_hit_primitive_index, random_number_generator);
         if (!shadow_ray_hit.hasHit())
             return false;
 

@@ -18,6 +18,8 @@ struct GBuffer
 {
 	SimplifiedRendererMaterial* materials = nullptr;
 
+	int* first_hit_prim_index = nullptr;
+
 	// We need both normals to correct the blakc fringes from the microfacet
 	// model when used with smooth normals / normal mapping
 	float3* shading_normals = nullptr;

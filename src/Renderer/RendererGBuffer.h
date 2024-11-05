@@ -21,7 +21,6 @@ struct GPURendererGBuffer
 		shading_normals.resize(new_element_count);
 		view_directions.resize(new_element_count);
 		first_hits.resize(new_element_count);
-		first_hit_prim_index.resize(new_element_count);
 		cameray_ray_hit.resize(new_element_count);
 
 		// We need to be careful here because the ray volume states contain the nested dielectric stack and the stack size can be changed at runtime through ImGui. However, on the CPU, the stack size is determined at compile time. Changing the stack size through ImGui only resizes the GPU shaders which then adapts to the new stack size thanks to the recompilation. However, on the CPU, we're not recompiling anything. This means that the stack size on the CPU doesn't match the stack size on the GPU anymore and the buffer will not be properly resized --> this is huge undefined behavior.
@@ -36,25 +35,8 @@ struct GPURendererGBuffer
 		shading_normals.free();
 		view_directions.free();
 		first_hits.free();
-		first_hit_prim_index.free();
 		cameray_ray_hit.free();
 		ray_volume_states.free();
-	}
-
-	GBuffer get_device_g_buffer()
-	{
-		GBuffer out;
-
-		out.materials = materials.get_device_pointer();
-		out.geometric_normals = geometric_normals.get_device_pointer();
-		out.shading_normals = shading_normals.get_device_pointer();
-		out.view_directions = view_directions.get_device_pointer();
-		out.first_hits = first_hits.get_device_pointer();
-		out.first_hit_prim_index = first_hit_prim_index.get_device_pointer();
-		out.camera_ray_hit = cameray_ray_hit.get_device_pointer();
-		out.ray_volume_states = ray_volume_states.get_device_pointer();
-
-		return out;
 	}
 
 	OrochiBuffer<SimplifiedRendererMaterial> materials;
@@ -63,7 +45,6 @@ struct GPURendererGBuffer
 	OrochiBuffer<float3> geometric_normals;
 	OrochiBuffer<float3> view_directions;
 	OrochiBuffer<float3> first_hits;
-	OrochiBuffer<int> first_hit_prim_index;
 
 	OrochiBuffer<unsigned char> cameray_ray_hit;
 

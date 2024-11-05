@@ -42,7 +42,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_no_MIS(const HIPRTRe
     float dot_light_source = hippt::abs(hippt::dot(light_source_info.light_source_normal, -shadow_ray.direction));
     if (dot_light_source > 0.0f)
     {
-        bool in_shadow = evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, random_number_generator);
+        bool in_shadow = evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, random_number_generator);
 
         if (!in_shadow)
         {
@@ -98,7 +98,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_bsdf(const HIPRTRend
         }
 
         ShadowLightRayHitInfo shadow_light_ray_hit_info;
-        bool inter_found = evaluate_shadow_light_ray(render_data, new_ray, 1.0e35f, shadow_light_ray_hit_info, random_number_generator);
+        bool inter_found = evaluate_shadow_light_ray(render_data, new_ray, 1.0e35f, shadow_light_ray_hit_info, closest_hit_info.primitive_index, random_number_generator);
 
         // Checking that we did hit something and if we hit something,
         // it needs to be emissive
@@ -141,7 +141,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(const HIPRTRende
     float dot_light_source = hippt::abs(hippt::dot(light_source_info.light_source_normal, -shadow_ray.direction));
     if (dot_light_source > 0.0f)
     {
-        bool in_shadow = evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, random_number_generator);
+        bool in_shadow = evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, random_number_generator);
 
         if (!in_shadow)
         {
@@ -188,7 +188,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(const HIPRTRende
         new_ray.direction = sampled_bsdf_direction;
 
         ShadowLightRayHitInfo shadow_light_ray_hit_info;
-        bool inter_found = evaluate_shadow_light_ray(render_data, new_ray, 1.0e35f, shadow_light_ray_hit_info, random_number_generator);
+        bool inter_found = evaluate_shadow_light_ray(render_data, new_ray, 1.0e35f, shadow_light_ray_hit_info, closest_hit_info.primitive_index, random_number_generator);
 
         // Checking that we did hit something and if we hit something,
         // it needs to be emissive

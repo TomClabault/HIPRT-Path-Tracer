@@ -6,7 +6,7 @@
 #ifndef BVH_H
 #define BVH_H
 
-#include "Device/functions/AlphaTesting.h"
+#include "Device/functions/FilterFunction.h"
 
 #include "Renderer/BoundingVolume.h"
 #include "Renderer/BVHConstants.h"
@@ -168,7 +168,7 @@ public:
                         hit.uv = local_hit_info.uv;
 
 
-                        if (alpha_testing(ray, nullptr, filter_function_payload, hit))
+                        if (filter_function(ray, nullptr, filter_function_payload, hit))
                             // Hit is filtered
                             continue;
 

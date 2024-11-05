@@ -38,8 +38,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 585
-#define DEBUG_PIXEL_Y 24
+#define DEBUG_PIXEL_X 322
+#define DEBUG_PIXEL_Y 150
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -82,21 +82,8 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
     m_restir_di_state.presampled_lights_buffer.resize(width * height);
     m_restir_di_state.output_reservoirs = m_restir_di_state.spatial_output_reservoirs_1.data();
 
-    m_g_buffer.materials.resize(width * height);
-    m_g_buffer.geometric_normals.resize(width * height);
-    m_g_buffer.shading_normals.resize(width * height);
-    m_g_buffer.view_directions.resize(width * height);
-    m_g_buffer.first_hits.resize(width * height);
-    m_g_buffer.cameray_ray_hit.resize(width * height);
-    m_g_buffer.ray_volume_states.resize(width * height);
-
-    m_g_buffer_prev_frame.materials.resize(width * height);
-    m_g_buffer_prev_frame.geometric_normals.resize(width * height);
-    m_g_buffer_prev_frame.shading_normals.resize(width * height);
-    m_g_buffer_prev_frame.view_directions.resize(width * height);
-    m_g_buffer_prev_frame.first_hits.resize(width * height);
-    m_g_buffer_prev_frame.cameray_ray_hit.resize(width * height);
-    m_g_buffer_prev_frame.ray_volume_states.resize(width * height);
+    m_g_buffer.resize(width * height);
+    m_g_buffer_prev_frame.resize(width * height);
 
     setup_brdfs_data();
 

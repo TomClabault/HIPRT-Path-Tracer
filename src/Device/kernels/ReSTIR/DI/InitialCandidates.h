@@ -256,7 +256,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderDat
             shadow_ray.origin = evaluated_point;
             shadow_ray.direction = to_light_direction;
 
-            bool visible = !evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, random_number_generator);
+            bool visible = !evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, random_number_generator);
             if (!visible)
             {
                 // Sample occluded, it is not going to be resampled anyways because it is
@@ -313,7 +313,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData
             bsdf_ray.direction = sampled_direction;
 
             ShadowLightRayHitInfo shadow_light_ray_hit_info;
-            bool hit_found = evaluate_shadow_light_ray(render_data, bsdf_ray, 1.0e35f, shadow_light_ray_hit_info, random_number_generator);
+            bool hit_found = evaluate_shadow_light_ray(render_data, bsdf_ray, 1.0e35f, shadow_light_ray_hit_info, closest_hit_info.primitive_index, random_number_generator);
             if (hit_found && !shadow_light_ray_hit_info.hit_emission.is_black())
             {
                 // If we intersected an emissive material, compute the weight. 
@@ -502,6 +502,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_InitialCandidates(HIPRTRenderData
     hit_info.geometric_normal = render_data.g_buffer.geometric_normals[pixel_index];
     hit_info.shading_normal = render_data.g_buffer.shading_normals[pixel_index];
     hit_info.inter_point = render_data.g_buffer.first_hits[pixel_index];
+    hit_info.primitive_index = render_data.g_buffer.first_hit_prim_index[pixel_index];
 
     RayPayload ray_payload;
     ray_payload.material = material;
@@ -512,7 +513,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_InitialCandidates(HIPRTRenderData
     ReSTIRDIReservoir initial_candidates_reservoir = sample_initial_candidates(render_data, make_int2(x, y), ray_payload, hit_info, view_direction, random_number_generator);
 
 #if ReSTIR_DI_DoVisibilityReuse == KERNEL_OPTION_TRUE
-    ReSTIR_DI_visibility_reuse(render_data, initial_candidates_reservoir, hit_info.inter_point + hit_info.shading_normal * 1.0e-4f, random_number_generator);
+    ReSTIR_DI_visibility_reuse(render_data, initial_candidates_reservoir, hit_info.inter_point + hit_info.shading_normal * 1.0e-4f, hit_info.primitive_index, random_number_generator);
 #endif
 
     render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs[pixel_index] = initial_candidates_reservoir;

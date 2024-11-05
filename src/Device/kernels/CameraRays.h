@@ -81,6 +81,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
         render_data.g_buffer_prev_frame.shading_normals[pixel_index] = render_data.g_buffer.shading_normals[pixel_index];
         render_data.g_buffer_prev_frame.materials[pixel_index] = render_data.g_buffer.materials[pixel_index];
         render_data.g_buffer_prev_frame.first_hits[pixel_index] = render_data.g_buffer.first_hits[pixel_index];
+        render_data.g_buffer_prev_frame.first_hit_prim_index[pixel_index] = render_data.g_buffer.first_hit_prim_index[pixel_index];
         render_data.g_buffer_prev_frame.ray_volume_states[pixel_index] = render_data.g_buffer.ray_volume_states[pixel_index];
         render_data.g_buffer_prev_frame.view_directions[pixel_index] = render_data.g_buffer.view_directions[pixel_index];
         render_data.g_buffer_prev_frame.camera_ray_hit[pixel_index] = render_data.g_buffer.camera_ray_hit[pixel_index];
@@ -144,7 +145,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
     RayPayload ray_payload;
 
     HitInfo closest_hit_info;
-    bool intersection_found = trace_ray(render_data, ray, ray_payload, closest_hit_info, random_number_generator);
+    bool intersection_found = trace_ray(render_data, ray, ray_payload, closest_hit_info, /* camera ray = no previous primitive hit */ -1, random_number_generator);
 
     if (intersection_found)
     {
@@ -161,6 +162,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
         render_data.g_buffer.first_hits[pixel_index] = closest_hit_info.inter_point;
         render_data.g_buffer.ray_volume_states[pixel_index] = ray_payload.volume_state;
     }
+        
+    render_data.g_buffer.first_hit_prim_index[pixel_index] = intersection_found ? closest_hit_info.primitive_index : -1;
 
     render_data.g_buffer.view_directions[pixel_index] = -ray.direction;
     render_data.g_buffer.camera_ray_hit[pixel_index] = intersection_found;

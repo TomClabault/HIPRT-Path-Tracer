@@ -13,6 +13,8 @@ struct ReSTIRDISurface
 {
 	SimplifiedRendererMaterial material;
 	RayVolumeState ray_volume_state;
+	int last_hit_primitive_index;
+
 	float3 view_direction = { 0.0f, 0.0f, 0.0f};
 	float3 shading_normal = { 0.0f, 0.0f, 0.0f};
 	float3 shading_point = { 0.0f, 0.0f, 0.0f };
@@ -24,6 +26,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISurface get_pixel_surface(const HIPRTRend
 
 	surface.material = render_data.g_buffer.materials[pixel_index];
 	surface.ray_volume_state = render_data.g_buffer.ray_volume_states[pixel_index];
+	surface.last_hit_primitive_index = render_data.g_buffer.first_hit_prim_index[pixel_index];
+
 	surface.view_direction = render_data.g_buffer.view_directions[pixel_index];
 	surface.shading_normal = render_data.g_buffer.shading_normals[pixel_index];
 	surface.shading_point = render_data.g_buffer.first_hits[pixel_index] + surface.shading_normal * 1.0e-4f;
@@ -43,6 +47,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISurface get_pixel_surface_previous_frame(
 
 	surface.material = render_data.g_buffer_prev_frame.materials[pixel_index];
 	surface.ray_volume_state = render_data.g_buffer_prev_frame.ray_volume_states[pixel_index];
+	surface.last_hit_primitive_index = render_data.g_buffer_prev_frame.first_hit_prim_index[pixel_index];
+
 	surface.view_direction = render_data.g_buffer_prev_frame.view_directions[pixel_index];
 	surface.shading_normal = render_data.g_buffer_prev_frame.shading_normals[pixel_index];
 	surface.shading_point = render_data.g_buffer_prev_frame.first_hits[pixel_index] + surface.shading_normal * 1.0e-4f;

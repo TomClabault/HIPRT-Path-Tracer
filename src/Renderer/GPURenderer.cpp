@@ -52,7 +52,7 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
 	m_device_properties = m_hiprt_orochi_ctx->device_properties;
 
 	setup_brdfs_data();
-
+	setup_filter_functions();
 	setup_kernels();
 
 	m_render_pass_times[GPURenderer::FULL_FRAME_TIME_KEY] = 0.0f;
@@ -138,10 +138,10 @@ void GPURenderer::init_GGX_glass_Ess_texture(HIPfilter_mode filtering_mode)
 	m_render_data_buffers_invalidated = true;
 }
 
-void GPURenderer::setup_kernels()
+void GPURenderer::setup_filter_functions()
 {
 	// Function called on intersections for handling alpha testing
-	hiprtFuncNameSet alpha_testing_func_set = { nullptr, "alpha_testing" };
+	hiprtFuncNameSet alpha_testing_func_set = { nullptr, "filter_function" };
 	m_func_name_sets.push_back(alpha_testing_func_set);
 
 	hiprtFuncDataSet func_data_set;
@@ -150,7 +150,10 @@ void GPURenderer::setup_kernels()
 	HIPRT_CHECK_ERROR(hiprtSetFuncTable(m_hiprt_orochi_ctx->hiprt_ctx, func_table, 0, 0, func_data_set));
 
 	m_render_data.hiprt_function_table = func_table;
+}
 
+void GPURenderer::setup_kernels()
+{
 	m_global_compiler_options = std::make_shared<GPUKernelCompilerOptions>();
 	// Adding hardware acceleration by default if supported
 	m_global_compiler_options->set_macro_value("__USE_HWI__", device_supports_hardware_acceleration() == HardwareAccelerationSupport::SUPPORTED);
@@ -962,26 +965,11 @@ void GPURenderer::update_render_data()
 		m_render_data.buffers.texcoords = reinterpret_cast<float2*>(m_hiprt_scene.texcoords_buffer.get_device_pointer());
 		m_render_data.buffers.textures_dims = reinterpret_cast<int2*>(m_hiprt_scene.textures_dims.get_device_pointer());
 
-		m_render_data.g_buffer.materials = m_g_buffer.materials.get_device_pointer();
-		m_render_data.g_buffer.geometric_normals = m_g_buffer.geometric_normals.get_device_pointer();
-		m_render_data.g_buffer.shading_normals = m_g_buffer.shading_normals.get_device_pointer();
-		m_render_data.g_buffer.view_directions = m_g_buffer.view_directions.get_device_pointer();
-		m_render_data.g_buffer.first_hits = m_g_buffer.first_hits.get_device_pointer();
-		m_render_data.g_buffer.camera_ray_hit = m_g_buffer.cameray_ray_hit.get_device_pointer();
-		m_render_data.g_buffer.ray_volume_states = m_g_buffer.ray_volume_states.get_device_pointer();
+		m_render_data.g_buffer = m_g_buffer.get_device_g_buffer();
 
 		if (m_render_data.render_settings.use_prev_frame_g_buffer(this))
-		{
 			// Only setting the pointers of the buffers if we're actually using the g-buffer of the previous frame
-
-			m_render_data.g_buffer_prev_frame.materials = m_g_buffer_prev_frame.materials.get_device_pointer();
-			m_render_data.g_buffer_prev_frame.geometric_normals = m_g_buffer_prev_frame.geometric_normals.get_device_pointer();
-			m_render_data.g_buffer_prev_frame.shading_normals = m_g_buffer_prev_frame.shading_normals.get_device_pointer();
-			m_render_data.g_buffer_prev_frame.view_directions = m_g_buffer_prev_frame.view_directions.get_device_pointer();
-			m_render_data.g_buffer_prev_frame.first_hits = m_g_buffer_prev_frame.first_hits.get_device_pointer();
-			m_render_data.g_buffer_prev_frame.camera_ray_hit = m_g_buffer_prev_frame.cameray_ray_hit.get_device_pointer();
-			m_render_data.g_buffer_prev_frame.ray_volume_states = m_g_buffer_prev_frame.ray_volume_states.get_device_pointer();
-		}
+			m_render_data.g_buffer_prev_frame = m_g_buffer_prev_frame.get_device_g_buffer();
 		else
 		{
 			m_render_data.g_buffer_prev_frame.materials = nullptr;
