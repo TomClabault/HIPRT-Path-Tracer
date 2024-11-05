@@ -28,6 +28,8 @@ enum BRDF
 // This simplified material structure is used in the GBuffer for example
 struct SimplifiedRendererMaterial
 {
+    static constexpr float ROUGHNESS_CLAMP = 1.0e-4f;
+
     HIPRT_HOST_DEVICE bool is_emissive() const
     {
         return !hippt::is_zero(emission.r * emission_strength) 
@@ -42,10 +44,9 @@ struct SimplifiedRendererMaterial
      */
     HIPRT_HOST_DEVICE void make_safe()
     {
-        roughness = hippt::max(1.0e-4f, roughness);
-        coat_roughness = hippt::max(1.0e-4f, coat_roughness);
-
-        sheen_roughness = hippt::max(1.0e-4f, sheen_roughness);
+        roughness = hippt::max(ROUGHNESS_CLAMP, roughness);
+        coat_roughness = hippt::max(ROUGHNESS_CLAMP, coat_roughness);
+        sheen_roughness = hippt::max(ROUGHNESS_CLAMP, sheen_roughness);
 
         // Clamping to avoid negative emission
         emission = ColorRGB32F::max(ColorRGB32F(0.0f), emission);
@@ -79,8 +80,8 @@ struct SimplifiedRendererMaterial
     HIPRT_HOST_DEVICE static void get_alphas(float roughness, float anisotropy, float& out_alpha_x, float& out_alpha_y)
     {
         float aspect = sqrtf(1.0f - 0.9f * anisotropy);
-        out_alpha_x = roughness * roughness / aspect;
-        out_alpha_y = roughness * roughness * aspect;
+        out_alpha_x = hippt::max(ROUGHNESS_CLAMP, roughness * roughness / aspect);
+        out_alpha_y = hippt::max(ROUGHNESS_CLAMP, roughness * roughness * aspect);
     }
 
     HIPRT_HOST_DEVICE void set_emission(ColorRGB32F new_emission)
