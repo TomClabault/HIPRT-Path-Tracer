@@ -25,7 +25,7 @@ extern ImGuiLogger g_imgui_logger;
 // new oren nayar BRDF: EON
 
 // TODOs ongoing
-// - limit distance of BSDF ray for initial sampling (biased but reduces BVH traversal so performance++)
+// - limit distance of BSDF ray for initial ReSTIR sampling (biased but reduces BVH traversal so performance++)
 // - maybe not spatially resample as hard everywhere in the image? Dark regions for example? heuristic to reduce/increase the number of spatial samples per pixel?
 // - clamp spatial neighbors out of viewport instead of discarding them? option in Imgui
 // - limit UI speed because it actually uses some resources (maybe Vsync or something) or does it?
@@ -38,6 +38,8 @@ extern ImGuiLogger g_imgui_logger;
 // - energy conservation with glass weight < 1
 // - energy conservation with glass & sheen
 // - russian roulette firefly avoidance biased clamping
+// - temporal ReSTIR broken?
+// - one channel baked GGX energy conservation textures instead of useless 4 channels
 
 // TODO known bugs / incorectness:
 // - take transmission color into account when direct sampling a light source that is inside a volume
@@ -71,7 +73,7 @@ extern ImGuiLogger g_imgui_logger;
 // - implement ideas of https://blog.selfshadow.com/publications/s2017-shading-course/imageworks/s2017_pbs_imageworks_slides_v2.pdf
 // - Better artistic fresnel Adobe: https://renderwonk.com/publications/wp-generalization-adobe/gen-adobe.pdf
 // - use shared memory for nested dielectrics stack?
-// - opacity micromaps
+// - software opacity micromaps
 // - pack RGB8 colors into float length + uint packed: https://github.com/nvpro-samples/vk_raytrace/blob/master/shaders/compress.glsl @ compress_unit_vec
 // - cache opacity of materials textures? --> analyze the texture when loading it from the texture and if there isn't a single transparent pixel, then we know that we won't have to fetch the material / texture in the alpha test filter function because the alpha is going to be 1.0f anyways
 // - simpler BSDF for indirect bounces as a biased option for performance?
@@ -82,16 +84,17 @@ extern ImGuiLogger g_imgui_logger;
 // - reload shaders button
 // - do not evaluate perfectly smooth specular materials to save on computations? Because evaluating is going to yield 0.0f anyways --> dirac distribution. We should only sample those I guess
 // - use bare variables for principled_bsdf_sample CDF[] because local arrays are bad on AMD GPUs
-// - pack ray payload
+// - pack ray payload for register usage reduction
 // - pack HDR as color as 9/9/9/5 RGBE? https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/MiniEngine/Core/Shaders/PixelPacking_RGBE.hlsli
 // - next event estimation++?
+// - envmap visibility cache? 
 // - russian roulette on light sampling based on light contribution?
 // - Exploiting Visibility Correlation in Direct Illumination
 // - Progressive Visibility Caching for Fast Indirect Illumination
 // - performance/bias tradeoff by ignoring alpha tests (either for global rays or only shadow rays) after N bounce?
 // - performance/bias tradeoff by ignoring direct lighting occlusion after N bounce? --> strong bias but maybe something to do by reducing the length of shadow rays instead of just hard-disabling occlusion
 // - energy conserving Oren Nayar: https://mimosa-pudica.net/improved-oren-nayar.html#images
-// - MoN/GMoN estimator fireflies reduction
+// - GMoN estimator fireflies reduction
 // - experiment with a feature that ignores really dark pixel in the variance estimation of the adaptive 
 //		sampling because it seems that very dark areas in the image are always flagged as very 
 //		noisy / very high variance and they take a very long time to converge (always red on the heatmap) 
@@ -145,7 +148,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Exporter (just serialize the scene to binary file and have a look at how to do backward compatibility)
 // - Allow material parameters textures manipulation with ImGui
 // - Disable material parameters in ImGui that have a texture associated (since the ImGui slider in this case has no effect)
-// - Upload grayscale as one channel to the GPU instead of memory costly RGBA
+// - Upload grayscale texture (roughness, specular and other BSDF parameters basically) as one channel to the GPU instead of memory costly RGBA
 // - Emissive textures sampling: how to sample an object that has an emissive texture? How to know which triangles of the mesh are covered by the emissive parts of the texture?
 // - stream compaction / active thread compaction (ingo wald 2011)
 // - sample regeneration

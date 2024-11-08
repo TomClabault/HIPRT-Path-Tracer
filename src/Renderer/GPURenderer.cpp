@@ -733,8 +733,8 @@ void GPURenderer::release_kernel_compilation_priority()
 
 void GPURenderer::precompile_kernels()
 {
-	g_imgui_logger.add_line_with_name(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, ImGuiLogger::BACKGROUND_KERNEL_PARSING_LINE_NAME, "Parsing kernels in the background... [%d / %d]", 0, 1);
-	g_imgui_logger.add_line_with_name(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, ImGuiLogger::BACKGROUND_KERNEL_COMPILATION_LINE_NAME, "Pre-compiling kernels in the background... [%d / %d]", 0, 1);
+	g_imgui_logger.add_line_with_name(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, ImGuiLogger::BACKGROUND_KERNEL_PARSING_LINE_NAME, "Parsing kernels permutations in the background... [%d / %d]", 0, 1);
+	g_imgui_logger.add_line_with_name(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, ImGuiLogger::BACKGROUND_KERNEL_COMPILATION_LINE_NAME, "Compiling permutations kernels in the background... [%d / %d]", 0, 1);
 
 	// Launching all the threads actually takes some time
 	// so we're launching threads from a thread :D

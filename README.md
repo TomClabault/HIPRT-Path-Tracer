@@ -34,7 +34,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 		- Fused Spatiotemporal Reuse [\[Wyman, Panteleev, 2021\]](https://research.nvidia.com/publication/2021-07_rearchitecting-spatiotemporal-resampling-production)
 		- Light Presampling [\[Wyman, Panteleev, 2021\]](https://research.nvidia.com/publication/2021-07_rearchitecting-spatiotemporal-resampling-production)
 	- HDR Environment map + Multiple Importance Sampling using
-		- CDF-inversion binary search
+		- CDF-inversion & binary search
 		- Alias Table (Vose's O(N) construction [\[Vose, 1991\]](https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=f65bcde1fcf82e05388b31de80cba10bf65acc07))
 	
 - BSDF sampling:

@@ -82,8 +82,24 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 rotate_vector(const float3& vec, const flo
 	return vec * cos_angle + axis * hippt::dot(vec, axis) * (1.0f - cos_angle) + sin_angle * hippt::cross(axis, vec);
 }
 
+HIPRT_HOST_DEVICE float get_sheen_ltc_reflectance(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, const float3& local_view_direction)
+{
+	return read_LTC_parameters(render_data, material.sheen_roughness, local_view_direction.z).b;
+}
+
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sheen_ltc_eval(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, const float3& local_to_light_direction, const float3& local_view_direction, float& out_pdf, float& out_sheen_reflectance)
 {
+	if (local_view_direction.z <= 0.0f || local_to_light_direction.z <= 0.0f)
+	{
+		out_pdf = 0.0f;
+		if (local_view_direction.z > 0.0f)
+			out_sheen_reflectance = get_sheen_ltc_reflectance(render_data, material, local_view_direction);
+		else
+			out_sheen_reflectance = 0.0f;
+
+		return ColorRGB32F(0.0f);
+	}
+
 	// The LTC needs to be evaluated in a Z-up coordinate frame with view direction aligned
 	// with phi=0 (so no rotation on the X/Y plane).
 	// 

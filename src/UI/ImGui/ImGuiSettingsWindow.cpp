@@ -1557,7 +1557,6 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				ImGui::TreePop();
 			}
 
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::TreePop();
 		}
 
@@ -1816,7 +1815,7 @@ void ImGuiSettingsWindow::draw_objects_panel()
 		material_changed |= ImGui::SliderFloat("Sheen Roughness", &material.sheen_roughness, 0.0f, 1.0f);
 
 		ImGui::Separator();
-		material_changed |= ImGui::ColorEdit3("Coat Medium Absorption", (float*)&material.coat_color);
+		material_changed |= ImGui::ColorEdit3("Coat Medium Absorption", (float*)&material.coat_medium_absorption);
 		material_changed |= ImGui::SliderFloat("Coat Strength", &material.coat, 0.0f, 1.0f);
 		material_changed |= ImGui::SliderFloat("Coat Roughness", &material.coat_roughness, 0.0f, 1.0f);
 		material_changed |= ImGui::SliderFloat("Coat Anisotropy", &material.coat_anisotropy, 0.0f, 1.0f);

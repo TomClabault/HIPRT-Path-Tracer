@@ -133,7 +133,7 @@
  *	- PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR
  *		Use an Oren-Nayar BRDF for the diffuse lobe
  */
-#define PrincipledBSDFDiffuseLobe PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR
+#define PrincipledBSDFDiffuseLobe PRINCIPLED_DIFFUSE_LOBE_LAMBERTIAN
 
  /**
   * What sampling strategy to use for the GGX NDF
@@ -236,7 +236,7 @@
  *		Uses ReSTIR DI to sample direct lighting at the first bounce in the scene.
  *		Later bounces use the strategy given by ReSTIR_DI_LaterBouncesSamplingStrategy
  */
-#define DirectLightSamplingStrategy LSS_RESTIR_DI
+#define DirectLightSamplingStrategy LSS_RIS_BSDF_AND_LIGHT
 
 /**
  * What envmap sampling strategy to use

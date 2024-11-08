@@ -121,7 +121,7 @@ struct SimplifiedRendererMaterial
     float specular_tint = 1.0f;
     ColorRGB32F specular_color = ColorRGB32F(1.0f);
 
-    ColorRGB32F coat_color = ColorRGB32F{ 1.0f, 1.0f, 1.0f };
+    ColorRGB32F coat_medium_absorption = ColorRGB32F{ 1.0f, 1.0f, 1.0f };
     float coat = 0.0f;
     float coat_roughness = 0.0f;
     float coat_anisotropy = 0.0f;
