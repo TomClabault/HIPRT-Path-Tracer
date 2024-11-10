@@ -542,7 +542,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRende
     float metal_weight = material.metallic * outside_object;
     float specular_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission) * material.specular * outside_object;
     float diffuse_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission) * outside_object;
-    float glass_weight = (1.0f - material.metallic) * material.specular_transmission;
+    // If inside the object, the glass lobe is the only existing lobe so it has weight
+    // 1.0f
+    float glass_weight = !outside_object ? 1.0f :  (1.0f - material.metallic)* material.specular_transmission;
 #if DISABLE_DIFFUSE_LOBE == 1
     diffuse_weight = 0.0f;
 #endif

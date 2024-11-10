@@ -36,7 +36,6 @@ extern ImGuiLogger g_imgui_logger;
 // - GGX G term not using compiled kernel option, just do if()
 // - specular and clearcoat TIR check, should effectively be an energy loss because we're not simulating full multiple scattering
 // - energy conservation with glass weight < 1
-// - energy conservation with glass & sheen
 // - russian roulette firefly avoidance biased clamping
 // - temporal ReSTIR broken?
 // - one channel baked GGX energy conservation textures instead of useless 4 channels

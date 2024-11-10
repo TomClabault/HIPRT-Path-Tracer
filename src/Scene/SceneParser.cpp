@@ -399,25 +399,15 @@ void SceneParser::read_material_properties(aiMaterial* mesh_material, RendererMa
     renderer_material.specular = 0.0f;
     renderer_material.roughness = 1.0f;*/
 
-    //// Sheen-glass issue:
-    //renderer_material.coat = 0.0f;
-    //renderer_material.metallic = 0.0f;
-    //renderer_material.specular = 0.0f;
-    //renderer_material.ior = 1.0f;
-    //renderer_material.specular_transmission = 1.0f;
-    //renderer_material.sheen = 1.0f;
-    //renderer_material.sheen_roughness = 1.0f;
-    //renderer_material.roughness = 1.0f;
-
-    // Metallic black ring issue
+    // glass weight issue:
     renderer_material.coat = 0.0f;
-    renderer_material.metallic = 1.0f;
+    renderer_material.metallic = 0.0f;
     renderer_material.specular = 0.0f;
     renderer_material.ior = 1.0f;
-    renderer_material.specular_transmission = 1.0f;
     renderer_material.sheen = 0.0f;
     renderer_material.sheen_roughness = 1.0f;
-    renderer_material.roughness = 0.0f;
+    renderer_material.roughness = 1.0f;
+    renderer_material.specular_transmission = 0.5f;
 
     renderer_material.make_safe();
     renderer_material.precompute_properties();
