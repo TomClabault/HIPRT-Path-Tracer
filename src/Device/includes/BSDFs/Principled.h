@@ -328,16 +328,32 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_glass_sample(const RendererMate
 /**
  * 'internal' functions are just so that 'principled_bsdf_eval' looks nicer
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_coat_layer(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, const float3& local_view_direction, const float3 local_to_light_direction, const float3& local_half_vector, const float3& shading_normal, float incident_ior, float coat_weight, float coat_proba, ColorRGB32F& layers_throughput, float& out_cumulative_pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_coat_layer(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, const float3& local_view_direction, const float3 local_to_light_direction, const float3& local_half_vector, const float3& shading_normal, float incident_ior, float coat_weight, bool refracting, float coat_proba, ColorRGB32F& layers_throughput, float& out_cumulative_pdf)
 {
-    if (coat_weight > 0.0f)
+    // '|| refracting' here is needed because if we have our coat
+    // lobe on top of the glass lobe, we want to still compute the portion
+    // of light that is left for the glass lobe after going through the glass lobe
+    // so that's why we get into to if() block that does the computation but
+    // we're only going to compute the absorption of the coat layer
+    if (coat_weight > 0.0f || refracting)
     {
-        float coat_pdf;
-        ColorRGB32F contribution = principled_coat_eval(render_data, material, local_view_direction, local_to_light_direction, local_half_vector, incident_ior, coat_pdf);
-        contribution *= coat_weight;
-        contribution *= layers_throughput;
+        float coat_pdf = 0.0f;
+        ColorRGB32F contribution;
+        if (!refracting)
+        {
+            // The coat layer only contribtues for light direction in the same
+            // hemisphere as the view direction (so reflections only, not refractions)
+            contribution = principled_coat_eval(render_data, material, local_view_direction, local_to_light_direction, local_half_vector, incident_ior, coat_pdf);
+            contribution *= coat_weight;
+            contribution *= layers_throughput;
+        }
 
         out_cumulative_pdf += coat_pdf * coat_proba;
+
+        // We're using hippt::abs() in the fresnel computation that follow because
+        // we may compute these fresnels with incident light directions that are below
+        // the hemisphere (for refractions for example) so that's where we want
+        // the cosine angle not to be negative
 
         ColorRGB32F layer_below_attenuation = ColorRGB32F(1.0f);
         // Only the transmitted portion of the light goes to the layer below
@@ -360,7 +376,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_coat_layer(const HIPRTR
         // We can't do that integration online so we're instead using the shading normal to compute
         // the transmitted portion of light. That's actually either a good approximation or the
         // exact solution. That was shown in GDC 2017 [PBR Diffuse Lighting for GGX + Smith Microsurfaces]
-        layer_below_attenuation *= 1.0f - full_fresnel_dielectric(local_to_light_direction.z, incident_ior, material.coat_ior);
+        layer_below_attenuation *= 1.0f - full_fresnel_dielectric(hippt::abs(local_to_light_direction.z), incident_ior, material.coat_ior);
 
         // Also, when light reflects off of the layer below the coat layer, some of that reflected light
         // will hit total internal reflection against the coat/air interface. This means that only
@@ -370,7 +386,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_coat_layer(const HIPRTR
         // computing that fresnel with the direction reflected from the base layer or with the viewer direction
         // is the same, Fresnel is symmetrical. But because we don't have the exact direction reflected from the
         // base layer, we're using the view direction instead
-        layer_below_attenuation *= 1.0f - full_fresnel_dielectric(local_view_direction.z, incident_ior, material.coat_ior);
+        layer_below_attenuation *= 1.0f - full_fresnel_dielectric(hippt::abs(local_view_direction.z), incident_ior, material.coat_ior);
 
         // Taking the color of the absorbing coat medium into account when the light that got transmitted
         // travels through it
@@ -637,7 +653,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRende
     // (which is pretty much all of them except glass) do no get evaluated
     // (because their weight becomes 0)
     float incident_ior = ray_volume_state.incident_mat_index == /* air */ InteriorStackImpl<InteriorStackStrategy>::MAX_MATERIAL_INDEX ? 1.0f : render_data.buffers.materials_buffer[ray_volume_state.incident_mat_index].ior;
-    final_color += internal_eval_coat_layer(render_data, material, local_view_direction, local_to_light_direction, local_half_vector, shading_normal, incident_ior, coat_weight * !refracting, coat_proba_norm, layers_throughput, pdf);
+    final_color += internal_eval_coat_layer(render_data, material, local_view_direction, local_to_light_direction, local_half_vector, shading_normal, incident_ior, coat_weight, refracting, coat_proba_norm, layers_throughput, pdf);
     final_color += internal_eval_sheen_layer(render_data, material, local_view_direction, local_to_light_direction, to_light_direction, shading_normal, incident_ior, sheen_weight, sheen_proba_norm, layers_throughput, pdf);
     final_color += internal_eval_metal_layer(render_data, material, local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated, incident_ior, metal_weight * !refracting, metal_proba_norm, layers_throughput, pdf);
     // Careful here to evaluate the glass layer before the specular
