@@ -394,20 +394,11 @@ void SceneParser::read_material_properties(aiMaterial* mesh_material, RendererMa
     mesh_material->Get(AI_MATKEY_OPACITY, renderer_material.alpha_opacity);
 
     // Coat non preserving issue:
-    /*renderer_material.coat = 1.0f;
+    renderer_material.coat = 1.0f;
+    renderer_material.coat_ior = 1.4f;
     renderer_material.coat_roughness = 0.0f;
-    renderer_material.specular = 0.0f;
-    renderer_material.roughness = 1.0f;*/
-
-    // glass weight issue:
-    renderer_material.coat = 0.0f;
-    renderer_material.metallic = 0.0f;
-    renderer_material.specular = 0.0f;
-    renderer_material.ior = 1.0f;
-    renderer_material.sheen = 0.0f;
-    renderer_material.sheen_roughness = 1.0f;
-    renderer_material.roughness = 1.0f;
-    renderer_material.specular_transmission = 0.5f;
+    renderer_material.specular = 1.0f;
+    renderer_material.roughness = 0.0f;
 
     renderer_material.make_safe();
     renderer_material.precompute_properties();

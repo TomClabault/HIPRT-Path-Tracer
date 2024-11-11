@@ -37,11 +37,8 @@
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_coat_eval(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, float incident_ior, float& out_pdf)
 {
-    ColorRGB32F F0 = ColorRGB32F(F0_from_eta(material.coat_ior, incident_ior));
-    return torrance_sparrow_GTR2_eval(render_data, F0, material.coat_roughness, material.coat_anisotropy, material.coat_ior, incident_ior, local_view_direction, local_to_light_direction, local_halfway_vector, out_pdf);
-
-    //// The coat lobe is just a microfacet lobe
-    //return torrance_sparrow_GTR2_eval(render_data, material.base_color, material.coat_roughness, material.coat_anisotropy, material.coat_ior, incident_ior, local_view_direction, local_to_light_direction, local_halfway_vector, out_pdf);
+    // The coat lobe is just a microfacet lobe
+    return torrance_sparrow_GTR2_eval(render_data, material.base_color, material.coat_roughness, material.coat_anisotropy, material.coat_ior, incident_ior, local_view_direction, local_to_light_direction, local_halfway_vector, out_pdf);
 }
 
 /**
@@ -342,36 +339,50 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_coat_layer(const HIPRTR
 
         out_cumulative_pdf += coat_pdf * coat_proba;
 
-        //ColorRGB32F transmitted_light = ColorRGB32F(1.0f);
-        //// Energy loss
-        ///*transmitted_light *= 1.0f - full_fresnel_dielectric(hippt::dot(local_half_vector, local_to_light_direction), incident_ior, material.coat_ior);
-        //transmitted_light *= 1.0f - full_fresnel_dielectric(hippt::dot(local_half_vector, local_view_direction), material.coat_ior, incident_ior);*/
+        ColorRGB32F layer_below_attenuation = ColorRGB32F(1.0f);
+        // Only the transmitted portion of the light goes to the layer below
+        // We're using the shading normal here and not the microfacet normal because:
+        // We want the proportion of light that reaches the layer below.
+        // That's given by 1.0f - fresnelReflection.
+        // 
+        // But '1.0f - fresnelReflection' needs to be computed with the shading normal, 
+        // not the microfacet normal i.e. it needs to be 1.0f - Fresnel(dot(N, L)), 
+        // not 1.0f - Fresnel(dot(H, L))
+        // 
+        // By computing 1.0f - Fresnel(dot(H, L)), we're computing the light
+        // that goes through only that one microfacet with the microfacet normal. But light
+        // reaches the layer below through many other microfacets, not just the one with our current
+        // micronormal here (local_half_vector). To compute this correctly, we would actually need
+        // to integrate over the microfacet normals and compute the fresnel transmission portion
+        // (1.0f - Fresnel(dot(H, L))) for each of them and weight that contribution by the
+        // probability given by the normal distribution function for the microfacet normal.
+        // 
+        // We can't do that integration online so we're instead using the shading normal to compute
+        // the transmitted portion of light. That's actually either a good approximation or the
+        // exact solution. That was shown in GDC 2017 [PBR Diffuse Lighting for GGX + Smith Microsurfaces]
+        layer_below_attenuation *= 1.0f - full_fresnel_dielectric(local_to_light_direction.z, incident_ior, material.coat_ior);
 
-        //transmitted_light *= 1.0f - hippt::max(full_fresnel_dielectric(hippt::dot(local_half_vector, local_to_light_direction), incident_ior, material.coat_ior), full_fresnel_dielectric(hippt::dot(local_half_vector, local_view_direction), material.coat_ior, incident_ior));
+        // Also, when light reflects off of the layer below the coat layer, some of that reflected light
+        // will hit total internal reflection against the coat/air interface. This means that only
+        // the part of light that does not hit total internal reflection actually reaches the viewer.
+        // 
+        // That's why we're computing another fresnel term here to account for that. And additional note:
+        // computing that fresnel with the direction reflected from the base layer or with the viewer direction
+        // is the same, Fresnel is symmetrical. But because we don't have the exact direction reflected from the
+        // base layer, we're using the view direction instead
+        layer_below_attenuation *= 1.0f - full_fresnel_dielectric(local_view_direction.z, incident_ior, material.coat_ior);
 
-        //// Taking the color of the absorbing coat medium into account when the light that got transmitted
-        //// travels through it
-        //transmitted_light *= material.coat_medium_absorption;
-        //// When light hits the coat layer, only the refracted part gets transmitted to the layer below.
-        //// Because the coat layer is a dielectric layer, that refracted part is given by the Fresnel laws
-        //// 
-        //// Also, the coat layer color absorbs the light so we're taking that color into account as well
-        ////
-        //// Why we're using the shading normal here and not the microfacet normal is explained
-        //// in the internal_eval_specular_layer()
+        // Taking the color of the absorbing coat medium into account when the light that got transmitted
+        // travels through it
+        layer_below_attenuation *= material.coat_medium_absorption;
 
-        //// Blending the coat layer between completely transparent (no effect on the transmitted light
-        //// throughput when material.coat is 0.0f) and full absorption contribution.
-        //transmitted_light = (1.0f - coat_weight) * ColorRGB32F(1.0f) + coat_weight * transmitted_light;
+        // If the coat layer has 0 weight, we should not get any light absorption.
+        // But if the coat layer has 1 weight, we should get the full absorption that we
+        // computed in 'layer_below_attenuation' so we're lerping between no absorption
+        // and full absorption based on the material coat weight.
+        layer_below_attenuation = hippt::lerp(ColorRGB32F(1.0f), layer_below_attenuation, material.coat);
 
-        
-        float HoV = hippt::clamp(1.0e-8f, 1.0f, hippt::dot(local_half_vector, local_view_direction));
-        float HoL = hippt::clamp(1.0e-8f, 1.0f, hippt::dot(local_half_vector, local_to_light_direction));
-
-        float transmitted_light = 1.0f;
-        transmitted_light *= 1.0f - hippt::max(full_fresnel_dielectric(HoL, incident_ior, material.coat_ior), full_fresnel_dielectric(HoV, incident_ior, material.coat_ior));
-
-        layers_throughput *= transmitted_light;
+        layers_throughput *= layer_below_attenuation;
 
         return contribution;
     }
@@ -427,32 +438,83 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_specular_layer(const HI
 {
     if (specular_weight > 0.0f)
     {
+        // When computing the specular layer, the incident IOR actually isn't always
+        // that of the air because we may have the coat layer above us instead of the air
+        // so the "proper" IOR to use here is actually the lerp between the air and the coat
+        // IOR depending on the coat factor
+        constexpr float air_IOR = 1.0f;
+        float incident_layer_ior = hippt::lerp(air_IOR, material.coat_ior, material.coat);
+        if (incident_layer_ior / material.ior > 1.0f)
+            // If the coat IOR (which we're coming from) is greater than the IOR
+            // of the base layer (which is the specular layer with IOR material.ior)
+            // then we may hit total internal reflection when entering the specular layer from
+            // the coat layer above. This manifests as a weird ring near grazing angles.
+            //
+            // This weird ring should not happen in reality. It only happens because we're
+            // not bending the rays when refracting into the coat layer: we compute the
+            // fresnel at the specular/coat interface as if the light direction just went
+            // straight through the coat layer without refraction. There will always be
+            // some refraction at the air/coat interface if the coat layer IOR is > 1.0f.
+            //
+            // The proper solution would be to actually bend the ray after it hits the coat layer.
+            // We would then be evaluating the fresnel at the coat/specular interface with a
+            // incident light cosine angle that is different and we wouldn't get total internal reflection.
+            //
+            // This is explained in the [OpenPBR Spec 2024]
+            // https://academysoftwarefoundation.github.io/OpenPBR/#model/coat/totalinternalreflection
+            // 
+            // A more computationally efficient solution is to simply invert the IOR as done here.
+            // This is also explained in the OpenPBR spec as well as in 
+            // [Novel aspects of the Adobe Standard Material, Kutz, Hasan, Edmondson, 2023]
+            // https://helpx.adobe.com/content/dam/substance-3d/general-knowledge/asm/Adobe%20Standard%20Material%20-%20Technical%20Documentation%20-%20May2023.pdf
+            incident_layer_ior = 1.0f / incident_layer_ior;
+
         float specular_pdf;
-        ColorRGB32F contribution = principled_specular_eval(render_data, material, incident_ior, local_view_direction, local_to_light_direction, local_half_vector, specular_pdf);
-        contribution *= (1.0f - material.specular_tint) * ColorRGB32F(1.0f) + material.specular_tint * material.specular_color;
+        ColorRGB32F contribution = principled_specular_eval(render_data, material, incident_layer_ior, local_view_direction, local_to_light_direction, local_half_vector, specular_pdf);
+        contribution *= hippt::lerp(ColorRGB32F(1.0f), material.specular_tint * material.specular_color, material.specular);
         contribution *= specular_weight;
         contribution *= layers_throughput;
 
+        float layer_below_attenuation = 1.0f;
         // Only the transmitted portion of the light goes to the layer below
         // We're using the shading normal here and not the microfacet normal because:
-        // We want the proportion of light that reaches the layer below. That's given
-        // by 1.0f - fresnelReflection.
+        // We want the proportion of light that reaches the layer below.
+        // That's given by 1.0f - fresnelReflection.
         // 
-        // However, that's quite incorrect.
+        // But '1.0f - fresnelReflection' needs to be computed with the shading normal, 
+        // not the microfacet normal i.e. it needs to be 1.0f - Fresnel(dot(N, L)), 
+        // not 1.0f - Fresnel(dot(H, L))
         // 
-        // By computing 1.0f - fresnelReflectionMicrofacetNormal, we're computing the light
+        // By computing 1.0f - Fresnel(dot(H, L)), we're computing the light
         // that goes through only that one microfacet with the microfacet normal. But light
-        // reaches the layer below through all microfacets, not just the one with our current
-        // normal here (local_half_vector). To compute this correctly, we would actually need
-        // to integrate over the microfacet normals and compute the fresnel refraction
-        // (1.0f - fresnelReflection) for each of them and weight that contribution by the
+        // reaches the layer below through many other microfacets, not just the one with our current
+        // micronormal here (local_half_vector). To compute this correctly, we would actually need
+        // to integrate over the microfacet normals and compute the fresnel transmission portion
+        // (1.0f - Fresnel(dot(H, L))) for each of them and weight that contribution by the
         // probability given by the normal distribution function for the microfacet normal.
         // 
-        // We can't do that integration online so we're instead using the "average normal" of
-        // the microfacets to compute the fresnel.
-        // And the "average normal" is actually the surface normal, shading_normal, because that's
-        // how the NDF is defined
-        layers_throughput *= 1.0f - material.specular * hippt::max(full_fresnel_dielectric(local_to_light_direction.z, incident_ior, material.ior), full_fresnel_dielectric(local_view_direction.z, incident_ior, material.ior));
+        // We can't do that integration online so we're instead using the shading normal to compute
+        // the transmitted portion of light. That's actually either a good approximation or the
+        // exact solution. That was shown in GDC 2017 [PBR Diffuse Lighting for GGX + Smith Microsurfaces]
+        layer_below_attenuation *= 1.0f - full_fresnel_dielectric(local_to_light_direction.z, incident_layer_ior, material.ior);
+
+        // Also, when light reflects off of the layer below the specular layer, some of that reflected light
+        // will hit total internal reflection against the specular/[coat or air] interface. This means that only
+        // the part of light that does not hit total internal reflection actually reaches the viewer.
+        // 
+        // That's why we're computing another fresnel term here to account for that. And additional note:
+        // computing that fresnel with the direction reflected from the base layer or with the viewer direction
+        // is the same, Fresnel is symmetrical. But because we don't have the exact direction reflected from the
+        // base layer, we're using the view direction instead
+        layer_below_attenuation *= 1.0f - full_fresnel_dielectric(local_view_direction.z, incident_layer_ior, material.ior);
+
+        // If the specular layer has 0 weight, we should not get any light absorption.
+        // But if the specular layer has 1 weight, we should get the full absorption that we
+        // computed in 'layer_below_attenuation' so we're lerping between no absorption
+        // and full absorption based on the material specular weight.
+        layer_below_attenuation = hippt::lerp(1.0f, layer_below_attenuation, material.specular);
+
+        layers_throughput *= layer_below_attenuation;
 
         out_cumulative_pdf += specular_pdf * specular_proba;
 
