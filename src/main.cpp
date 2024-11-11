@@ -25,8 +25,20 @@ extern ImGuiLogger g_imgui_logger;
 
 #define GPU_RENDER 1
 
+#include "Device/kernels/Baking/GlossyDielectricDirectionalAlbedo.h"
+
 int main(int argc, char* argv[])
 {   
+    /*HIPRTRenderData render_data;
+    GlossyDielectricDirectionalAlbedoSettings bake_settings;
+    std::vector<float> out(bake_settings.texture_size_ior * bake_settings.texture_size_roughness * bake_settings.texture_size_cos_theta_o);
+
+    for (int z = 0; z < bake_settings.texture_size_ior; z++)
+        for (int y = 0; y < bake_settings.texture_size_roughness; y++)
+            for (int x = 0; x < bake_settings.texture_size_cos_theta_o; x++)
+                GlossyDielectricDirectionalAlbedoBake(render_data, bake_settings, out.data(), x, y, z);
+
+    return 0;*/
     CommandlineArguments cmd_arguments = CommandlineArguments::process_command_line_args(argc, argv);
 
     const int width = cmd_arguments.render_width;

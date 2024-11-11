@@ -76,10 +76,14 @@ struct BRDFsData
 	// See SheenLTCFittedParameters.h
 	void* sheen_ltc_parameters_texture = nullptr;
 
-	// 2D texture for the precomputed hemispherical directional albedo
+	// 2D texture for the precomputed directional albedo
 	// for the GGX BRDFs used in the principled BSDF for energy conservation
 	// of conductors
 	void* GGX_Ess = nullptr;
+
+	// 3D texture for the precomputed directional albedo of the base layer
+	// of the principled BSDF (specular GGX layer + diffuse below)
+	void* glossy_dielectric_Ess = nullptr;
 
 	// 3D texture (cos_theta_o, roughness, relative_eta) for the precomputed
 	// directional albedo used for energy conservation of glass objects when

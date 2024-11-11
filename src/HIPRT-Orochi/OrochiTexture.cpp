@@ -46,9 +46,10 @@ void OrochiTexture::operator=(OrochiTexture&& other) noexcept
 
 void OrochiTexture::init_from_image(const Image8Bit& image, HIPfilter_mode filtering_mode)
 {
-	if (image.channels == 1 || image.channels == 3)
+	int channels = image.channels;
+	if (channels == 3)
 	{
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "1-channel & 3-channels textures not supported on the GPU yet.");
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "3-channels textures not supported on the GPU yet.");
 
 		return;
 	}
@@ -57,9 +58,20 @@ void OrochiTexture::init_from_image(const Image8Bit& image, HIPfilter_mode filte
 	height = image.height;
 
 	// X, Y, Z and W in oroCreateChannelDesc are the number of *bits* of each component
-	oroChannelFormatDesc channel_descriptor = oroCreateChannelDesc(sizeof(unsigned char) * 8, sizeof(unsigned char) * 8, sizeof(unsigned char) * 8, sizeof(unsigned char) * 8, oroChannelFormatKindUnsigned);
+	// The shenanigans with max(channels - 0/1/2/3) is to automatically set 0 or sizeof(unsigned char) * 8
+	// bits in each channel depending on whether or not the input image indeed has that many
+	// channels
+	//
+	// So if the input image only has 2 channels for example, then then Z and W channel will
+	// be set to 0 bits by the 'channels - 2 > 0' and 'channels - 3 > 0' conditions respectively
+	// which will be false
+	oroChannelFormatDesc channel_descriptor = oroCreateChannelDesc(sizeof(unsigned char) * 8 * (channels - 0 > 0),
+																   sizeof(unsigned char) * 8 * (channels - 1 > 0),
+																   sizeof(unsigned char) * 8 * (channels - 2 > 0),
+																   sizeof(unsigned char) * 8 * (channels - 3 > 0),
+																   hipChannelFormatKindUnsigned);
 	OROCHI_CHECK_ERROR(oroMallocArray(&m_texture_array, &channel_descriptor, image.width, image.height, oroArrayDefault));
-	OROCHI_CHECK_ERROR(oroMemcpy2DToArray(m_texture_array, 0, 0, image.data().data(), image.width * image.channels * sizeof(unsigned char), image.width * sizeof(unsigned char) * image.channels, image.height, oroMemcpyHostToDevice));
+	OROCHI_CHECK_ERROR(oroMemcpy2DToArray(m_texture_array, 0, 0, image.data().data(), image.width * channels * sizeof(unsigned char), image.width * sizeof(unsigned char) * channels, image.height, oroMemcpyHostToDevice));
 	
 	// Resource descriptor
 	ORO_RESOURCE_DESC resource_descriptor;
@@ -79,9 +91,10 @@ void OrochiTexture::init_from_image(const Image8Bit& image, HIPfilter_mode filte
 
 void OrochiTexture::init_from_image(const Image32Bit& image, HIPfilter_mode filtering_mode)
 {
-	if (image.channels == 1 || image.channels == 3)
+	int channels = image.channels;
+	if (channels == 3)
 	{
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "1-channel & 3-channels textures not supported on the GPU yet.");
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "3-channels textures not supported on the GPU yet.");
 
 		return;
 	}
@@ -90,9 +103,21 @@ void OrochiTexture::init_from_image(const Image32Bit& image, HIPfilter_mode filt
 	height = image.height;
 
 	// X, Y, Z and W in oroCreateChannelDesc are the number of *bits* of each component
-	oroChannelFormatDesc channel_descriptor = oroCreateChannelDesc(sizeof(float) * 8, sizeof(float) * 8, sizeof(float) * 8, sizeof(float) * 8, oroChannelFormatKindFloat);
+	// X, Y, Z and W in oroCreateChannelDesc are the number of *bits* of each component
+	// The shenanigans with max(channels - 0/1/2/3) is to automatically set 0 or sizeof(float) * 8
+	// bits in each channel depending on whether or not the input image indeed has that many
+	// channels
+	//
+	// So if the input image only has 2 channels for example, then then Z and W channel will
+	// be set to 0 bits by the 'channels - 2 > 0' and 'channels - 3 > 0' conditions respectively
+	// which will be false
+	oroChannelFormatDesc channel_descriptor = oroCreateChannelDesc(sizeof(float) * 8 * (channels - 0 > 0),
+																   sizeof(float) * 8 * (channels - 1 > 0),
+																   sizeof(float) * 8 * (channels - 2 > 0),
+																   sizeof(float) * 8 * (channels - 3 > 0),
+																   hipChannelFormatKindUnsigned);
 	OROCHI_CHECK_ERROR(oroMallocArray(&m_texture_array, &channel_descriptor, image.width, image.height, oroArrayDefault));
-	OROCHI_CHECK_ERROR(oroMemcpy2DToArray(m_texture_array, 0, 0, image.data().data(), image.width * image.channels * sizeof(float), image.width * sizeof(float) * image.channels, image.height, oroMemcpyHostToDevice));
+	OROCHI_CHECK_ERROR(oroMemcpy2DToArray(m_texture_array, 0, 0, image.data().data(), image.width * channels * sizeof(float), image.width * sizeof(float) * channels, image.height, oroMemcpyHostToDevice));
 
 	// Resource descriptor
 	ORO_RESOURCE_DESC resource_descriptor;

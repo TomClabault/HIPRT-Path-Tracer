@@ -222,7 +222,7 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 		m_render_window->set_render_dirty(true);
 	if (ImGui::SliderInt("Russian Roulette Min Depth", &render_settings.russian_roulette_min_depth, 0, render_settings.nb_bounces + 1))
 		m_render_window->set_render_dirty(true);
-	ImGuiRenderer::show_help_marker("After how many bounces can russian roulette kick in?"
+	ImGuiRenderer::show_help_marker("After how many bounces can russian roulette kick in? "
 									"For example, 0 means that the camera ray hits, and then the next bounce "
 									"is already susceptible to russian roulette kill. 1 would mean that the first "
 									"bounce is never going to be cutoff by the russian roulette.");

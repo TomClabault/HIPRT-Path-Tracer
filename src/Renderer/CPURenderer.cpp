@@ -60,7 +60,7 @@
 // If you were only rendering the precise pixel at the given debug coordinates, you
 // wouldn't be able to debug correctly since all the neighborhood wouldn't have been
 // rendered which means no reservoir which means improper rendering
-#define DEBUG_RENDER_NEIGHBORHOOD 0
+#define DEBUG_RENDER_NEIGHBORHOOD 1
 // How many pixels to render around the debugged pixel given by the DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y coordinates
 #define DEBUG_NEIGHBORHOOD_SIZE 25
@@ -93,13 +93,23 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
 void CPURenderer::setup_brdfs_data()
 {
     m_sheen_ltc_params = Image32Bit(reinterpret_cast<float*>(ltc_parameters_table_approximation.data()), 32, 32, 3);
-    m_GGX_Ess = Image32Bit::read_image_hdr("../data/BRDFsData/GGX/" + GPUBakerConstants::GGX_ESS_FILE_NAME, 4, true);
+    m_GGX_Ess = Image32Bit::read_image_hdr("../data/BRDFsData/GGX/" + GPUBakerConstants::get_GGX_Ess_filename(), 4, true);
+
+    std::vector<Image32Bit> glossy_dielectrics_Ess_images(GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR);
+
+    for (int i = 0; i < GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR; i++)
+    {
+        std::string filename = std::to_string(i) + GPUBakerConstants::get_glossy_dielectric_Ess_filename();
+        std::string filepath = "../data/BRDFsData/GlossyDielectrics/" + filename;
+        glossy_dielectrics_Ess_images[i] = Image32Bit::read_image_hdr(filepath, 4, true);
+    }
+    m_glossy_dielectrics_Ess = Image32Bit3D(glossy_dielectrics_Ess_images);
 
     std::vector<Image32Bit> GGX_Ess_glass_images(GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_IOR);
 
     for (int i = 0; i < GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_IOR; i++)
     {
-        std::string filename = std::to_string(i) + GPUBakerConstants::GGX_GLASS_ESS_FILE_NAME;
+        std::string filename = std::to_string(i) + GPUBakerConstants::get_GGX_glass_Ess_filename();
         std::string filepath = "../data/BRDFsData/GGX/Glass/" + filename;
         GGX_Ess_glass_images[i] = Image32Bit::read_image_hdr(filepath, 4, true);
     }
@@ -107,7 +117,7 @@ void CPURenderer::setup_brdfs_data()
 
     for (int i = 0; i < GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_IOR; i++)
     {
-        std::string filename = std::to_string(i) + GPUBakerConstants::GGX_GLASS_INVERSE_ESS_FILE_NAME;
+        std::string filename = std::to_string(i) + GPUBakerConstants::get_GGX_glass_inv_Ess_filename();
         std::string filepath = "../data/BRDFsData/GGX/Glass/" + filename;
         GGX_Ess_glass_images[i] = Image32Bit::read_image_hdr(filepath, 4, true);
     }
@@ -129,6 +139,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 
     m_render_data.brdfs_data.sheen_ltc_parameters_texture = &m_sheen_ltc_params;
     m_render_data.brdfs_data.GGX_Ess = &m_GGX_Ess;
+    m_render_data.brdfs_data.glossy_dielectric_Ess = &m_glossy_dielectrics_Ess;
     m_render_data.brdfs_data.GGX_Ess_glass = &m_GGX_Ess_glass;
     m_render_data.brdfs_data.GGX_Ess_glass_inverse = &m_GGX_Ess_glass_inverse;
 

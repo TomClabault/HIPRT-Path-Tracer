@@ -94,9 +94,9 @@ void OrochiTexture3D::init_from_images(const std::vector<Image8Bit>& images, HIP
 void OrochiTexture3D::init_from_images(const std::vector<Image32Bit>& images, HIPfilter_mode filtering_mode)
 {
 	int channels = images[0].channels;
-	if (channels == 1 || channels == 3)
+	if (channels == 3)
 	{
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "1-channel & 3-channels textures not supported on the GPU yet.");
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "3-channels textures not supported on the GPU yet.");
 
 		return;
 	}
@@ -106,17 +106,28 @@ void OrochiTexture3D::init_from_images(const std::vector<Image32Bit>& images, HI
 	depth = images.size();
 
 	// X, Y, Z and W in oroCreateChannelDesc are the number of *bits* of each component
-	oroChannelFormatDesc channel_descriptor = oroCreateChannelDesc(sizeof(float) * 8, sizeof(float) * 8, sizeof(float) * 8, sizeof(float) * 8, oroChannelFormatKindUnsigned);
+	// The shenanigans with max(channels - 0/1/2/3) is to automatically set 0 or sizeof(float) * 8
+	// bits in each channel depending on whether or not the input image indeed has that many
+	// channels
+	//
+	// So if the input image only has 2 channels for example, then then Z and W channel will
+	// be set to 0 bits by the 'channels - 2 > 0' and 'channels - 3 > 0' conditions respectively
+	// which will be false
+	oroChannelFormatDesc channel_descriptor = oroCreateChannelDesc(sizeof(float) * 8 * (channels - 0 > 0),
+																   sizeof(float) * 8 * (channels - 1 > 0),
+																   sizeof(float) * 8 * (channels - 2 > 0),
+																   sizeof(float) * 8 * (channels - 3 > 0),
+																   hipChannelFormatKindFloat);
 	OROCHI_CHECK_ERROR(oroMalloc3DArray(&m_texture_array, &channel_descriptor, oroExtent{ width, height, depth }, oroArrayDefault));
 
 	// Because we'r ecopying to a CUDA/HIP array, we need the input data
 	// to be in a single linear block of data
 	std::vector<float> linear_image_data(width * height * depth * channels);
 	for (int i = 0; i < images.size(); i++)
-		std::copy(images[i].data().begin(), images[i].data().end(), linear_image_data.begin() + width * height * i * 4);
+		std::copy(images[i].data().begin(), images[i].data().end(), linear_image_data.begin() + width * height * i * channels);
 
 	oroMemcpy3DParms copyParams = { 0 };
-	copyParams.srcPtr = oroPitchedPtr{ linear_image_data.data(), width * 4 * sizeof(float), width * 4, height};
+	copyParams.srcPtr = oroPitchedPtr{ linear_image_data.data(), width * channels * sizeof(float), width * channels, height};
 	copyParams.dstArray = m_texture_array;
 	copyParams.extent = { width, height, depth };
 	copyParams.kind = oroMemcpyHostToDevice;

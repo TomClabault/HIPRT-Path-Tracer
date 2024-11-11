@@ -83,6 +83,12 @@ public:
 	void init_GGX_Ess_texture(HIPfilter_mode filtering_mode = ORO_TR_FILTER_MODE_LINEAR);
 
 	/**
+	 * Initializes the precomputed texture used for glossy dielectrics 
+	 * energy conservation
+	 */
+	void init_glossy_dielectric_Ess_texture(HIPfilter_mode filtering_mode = ORO_TR_FILTER_MODE_LINEAR);
+
+	/**
 	 * Initializes the precomputed textures used for GGX glass BSDF energy conservation
 	 */
 	void init_GGX_glass_Ess_texture(HIPfilter_mode filtering_mode = ORO_TR_FILTER_MODE_POINT);
@@ -481,6 +487,7 @@ private:
 	// Precomputed tables for GGX energy conservation
 	// [Practical multiple scattering compensation for microfacet models, Turquin, 2019]
 	OrochiTexture m_GGX_Ess;
+	OrochiTexture3D m_glossy_dielectric_Ess;
 	OrochiTexture3D m_GGX_Ess_glass;
 	OrochiTexture3D m_GGX_Ess_glass_inverse;
 };

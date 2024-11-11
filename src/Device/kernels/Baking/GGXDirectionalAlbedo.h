@@ -3,7 +3,7 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#include "Renderer/Baker/GGXHemisphericalAlbedoSettings.h"
+#include "Renderer/Baker/GGXDirectionalAlbedoSettings.h"
 
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Hash.h"
@@ -29,9 +29,9 @@
  */
 
 #ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void) inline GGXHemisphericalAlbedoBake(HIPRTRenderData render_data, GGXHemisphericalAlbedoSettings bake_settings, float* out_buffer)
+GLOBAL_KERNEL_SIGNATURE(void) inline GGXDirectionalAlbedoBake(HIPRTRenderData render_data, GGXDirectionalAlbedoSettings bake_settings, float* out_buffer)
 #else
-GLOBAL_KERNEL_SIGNATURE(void) inline GGXHemisphericalAlbedoBake(HIPRTRenderData render_data, GGXHemisphericalAlbedoSettings bake_settings, float* out_buffer, int x, int y)
+GLOBAL_KERNEL_SIGNATURE(void) inline GGXDirectionalAlbedoBake(HIPRTRenderData render_data, GGXDirectionalAlbedoSettings bake_settings, float* out_buffer, int x, int y)
 #endif
 {
 #ifdef __KERNELCC__

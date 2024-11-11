@@ -130,7 +130,7 @@ extern ImGuiLogger g_imgui_logger;
 // - better post processing: contrast, low, medium, high exposure curve
 // - bloom post processing
 // - BRDF swapper ImGui : Disney, Lambertian, Oren Nayar, Cook Torrance, Perfect fresnel dielectric reflect/transmit
-// - Hemispherical albedo sampling weights for the principled BSDF importance sampling. Also, can we do "perfect importance" sampling where we sample each relevant lobe, evaluate them (because we have to evaluate them anyways in eval()) and choose which one is sampled proportionally to its contribution or is it exactly the idea of sampling based on hemispherical albedo?
+// - Directional albedo sampling weights for the principled BSDF importance sampling. Also, can we do "perfect importance" sampling where we sample each relevant lobe, evaluate them (because we have to evaluate them anyways in eval()) and choose which one is sampled proportionally to its contribution or is it exactly the idea of sampling based on directional albedo?
 // - choose principled BSDF diffuse model (disney, lambertian, oren nayar)
 // - portal envmap sampling --> choose portals with ImGui
 // - find a way to not fill the texcoords buffer for meshes that don't have textures

@@ -68,6 +68,9 @@ struct HIPRTRenderSettings
 	// that have been rendered.
 	int sample_number = 0;
 
+	// How many samples to compute per pixel per frame
+	// Higher values reduce CPU overhead since the GPU spends
+	// more time computing per frame but reduces interactivity
 	int samples_per_frame = 1;
 	// Maximum number of bounces of rays in the scene. 
 	// 1 is direct light only.

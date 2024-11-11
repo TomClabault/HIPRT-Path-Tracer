@@ -10,7 +10,7 @@
 
 #include "HostDeviceCommon/RenderData.h"
 
-#include "Renderer/Baker/GGXGlassHemisphericalAlbedoSettings.h"
+#include "Renderer/Baker/GGXGlassDirectionalAlbedoSettings.h"
 
 /* References:
 * [1][Practical multiple scattering compensation for microfacet models, Turquin, 2019]
@@ -157,9 +157,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGX_glass_E_sample(float relative_ior, flo
 }
 
 #ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void) inline GGXGlassHemisphericalAlbedoBake(HIPRTRenderData render_data, GGXGlassHemisphericalAlbedoSettings bake_settings, float* out_buffer, float* out_buffer_inverse)
+GLOBAL_KERNEL_SIGNATURE(void) inline GGXGlassDirectionalAlbedoBake(HIPRTRenderData render_data, GGXGlassDirectionalAlbedoSettings bake_settings, float* out_buffer, float* out_buffer_inverse)
 #else
-GLOBAL_KERNEL_SIGNATURE(void) inline GGXGlassHemisphericalAlbedoBake(HIPRTRenderData render_data, GGXGlassHemisphericalAlbedoSettings bake_settings, float* out_buffer, float* out_buffer_inverse, int x, int y, int z)
+GLOBAL_KERNEL_SIGNATURE(void) inline GGXGlassDirectionalAlbedoBake(HIPRTRenderData render_data, GGXGlassDirectionalAlbedoSettings bake_settings, float* out_buffer, float* out_buffer_inverse, int x, int y, int z)
 #endif
 {
 #ifdef __KERNELCC__
@@ -181,7 +181,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GGXGlassHemisphericalAlbedoBake(HIPRTRender
     float cos_theta_o = 1.0f / (bake_settings.texture_size_cos_theta_o - 1) * x;
     cos_theta_o = hippt::max(GTR2_DOT_PRODUCTS_CLAMP, cos_theta_o);
     cos_theta_o = powf(cos_theta_o, 2.5f);
-    //cos_theta_o *= cos_theta_o;
     float sin_theta_o = sin(acos(cos_theta_o));
 
     float roughness = 1.0f / (bake_settings.texture_size_roughness - 1) * y;
