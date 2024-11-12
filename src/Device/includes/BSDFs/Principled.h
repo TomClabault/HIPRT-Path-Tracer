@@ -613,6 +613,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_glossy_base(const HIPRT
 #if PrincipledBSDFGGXUseMultipleScattering == KERNEL_OPTION_TRUE
     int3 texture_dims = make_int3(GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_COS_THETA_O, GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_ROUGHNESS, GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR);
 
+    if (hippt::abs(material.ior / incident_ior - 1.0f) < 1.0e-3f)
+        // If the relative ior is very close to 1.0f,
+        // adding some offset to avoid singularities which cause
+        // fireflies
+        incident_ior += 1.0e-3f;
+
     // We're storing cos_theta_o^2.5 in the LUT so we're retrieving with
     // root 2.5
     float view_dir_remapped = pow(local_view_direction.z, 1.0f / 2.5f);

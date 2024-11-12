@@ -48,9 +48,6 @@ struct SimplifiedRendererMaterial
         coat_roughness = hippt::max(ROUGHNESS_CLAMP, coat_roughness);
         sheen_roughness = hippt::max(ROUGHNESS_CLAMP, sheen_roughness);
 
-        // Clamping to avoid some issues because of the singularity that IOR = 1.0f can be
-        ior = hippt::max(1.0005f, ior);
-
         // Clamping to avoid negative emission
         emission = ColorRGB32F::max(ColorRGB32F(0.0f), emission);
         emission_strength = hippt::max(0.0f, emission_strength);
