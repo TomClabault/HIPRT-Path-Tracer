@@ -17,7 +17,7 @@ HIPRTCamera Camera::to_hiprt()
     hiprt_cam.inverse_view = *reinterpret_cast<float4x4*>(&view_matrix_inv);
     hiprt_cam.inverse_projection = *reinterpret_cast<float4x4*>(&projection_matrix_inv);
 
-    glm::mat4x4 view_projection = projection_matrix * view_matrix;
+    glm::mat4x4 view_projection = view_matrix * projection_matrix;
     hiprt_cam.view_projection = *reinterpret_cast<float4x4*>(&view_projection);
 
     hiprt_cam.do_jittering = do_jittering;

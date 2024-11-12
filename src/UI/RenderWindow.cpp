@@ -34,7 +34,6 @@ extern ImGuiLogger g_imgui_logger;
 // - for LTC sheen lobe, have the option to use either SGGX volumetric sheen or approximation precomputed LTC data
 // - rework bounces in UI so that 0 bounce still gives an image. The number of bounce is currently offset by 1 basically.
 // - russian roulette firefly avoidance biased clamping
-// - temporal ReSTIR broken?
 
 // TODO known bugs / incorectness:
 // - take transmission color into account when direct sampling a light source that is inside a volume
