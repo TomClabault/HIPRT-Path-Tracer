@@ -137,11 +137,11 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.buffers.vertex_normals = parsed_scene.vertex_normals.data();
     m_render_data.buffers.texcoords = parsed_scene.texcoords.data();
 
-    m_render_data.brdfs_data.sheen_ltc_parameters_texture = &m_sheen_ltc_params;
-    m_render_data.brdfs_data.GGX_Ess = &m_GGX_Ess;
-    m_render_data.brdfs_data.glossy_dielectric_Ess = &m_glossy_dielectrics_Ess;
-    m_render_data.brdfs_data.GGX_Ess_glass = &m_GGX_Ess_glass;
-    m_render_data.brdfs_data.GGX_Ess_glass_inverse = &m_GGX_Ess_glass_inverse;
+    m_render_data.bsdfs_data.sheen_ltc_parameters_texture = &m_sheen_ltc_params;
+    m_render_data.bsdfs_data.GGX_Ess = &m_GGX_Ess;
+    m_render_data.bsdfs_data.glossy_dielectric_Ess = &m_glossy_dielectrics_Ess;
+    m_render_data.bsdfs_data.GGX_Ess_glass = &m_GGX_Ess_glass;
+    m_render_data.bsdfs_data.GGX_Ess_glass_inverse = &m_GGX_Ess_glass_inverse;
 
     ThreadManager::join_threads(ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY);
     m_render_data.buffers.material_textures = parsed_scene.textures.data();

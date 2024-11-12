@@ -1536,23 +1536,30 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 													" for GGX energy conservation. The multiple scattering fresnel term takes into account the Fresnel"
 													"reflection/transmission effect when the rays bounce multiple times on the microsurface.");
 
-					if (ImGui::Checkbox("Use Hardware Texture Interpolation", &m_renderer->get_render_data().brdfs_data.use_hardware_tex_interpolation))
+					if (ImGui::Checkbox("Use Hardware Texture Interpolation", &m_renderer->get_render_data().bsdfs_data.use_hardware_tex_interpolation))
 					{
-						m_renderer->init_GGX_glass_Ess_texture(m_renderer->get_render_data().brdfs_data.use_hardware_tex_interpolation ? ORO_TR_FILTER_MODE_LINEAR : ORO_TR_FILTER_MODE_POINT);
+						m_renderer->init_GGX_glass_Ess_texture(m_renderer->get_render_data().bsdfs_data.use_hardware_tex_interpolation ? ORO_TR_FILTER_MODE_LINEAR : ORO_TR_FILTER_MODE_POINT);
 						m_render_window->set_render_dirty(true);
 					}
 					ImGuiRenderer::show_help_marker("Using the hardware for texture interpolation is faster but less precise than doing manual interpolation in the shader.");
 					ImGui::TreePop();
 				}
 
-				std::vector<const char*> masking_shadowing_items = { "- Smith height-uncorrelated", "- Smith height-correlated" };
-				if (ImGui::Combo("GGX Masking-Shadowing Term", m_renderer->get_global_compiler_options()->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::GGX_MASKING_SHADOWING_TERM), masking_shadowing_items.data(), masking_shadowing_items.size()))
-				{
-					m_renderer->recompile_kernels();
-
+				std::vector<const char*> masking_shadowing_items = { "- Smith height-correlated", "- Smith height-uncorrelated" };
+				if (ImGui::Combo("GGX Masking-Shadowing Term", (int*)&m_renderer->get_render_data().bsdfs_data.GGX_masking_shadowing, masking_shadowing_items.data(), masking_shadowing_items.size()))
 					m_render_window->set_render_dirty(true);
-				}
 				ImGuiRenderer::show_help_marker("Which masking-shadowing term to use with the GGX NDF.");
+
+				if (m_renderer->get_render_data().bsdfs_data.GGX_masking_shadowing == GGXMaskingShadowingFlavor::HeightUncorrelated && global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_GGX_MULTIPLE_SCATTERING) == KERNEL_OPTION_TRUE)
+				{
+					ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Warning: ");
+					ImGui::SameLine();
+					ImGui::Text("Multiple-scattering energy compensation look-up tables \n"
+								"were not precomputed for smith height-uncorrelated \n"
+								"masking-shadowing term.\n"
+								"\n"
+								"Energy conservation is not guaranteed.");
+				}
 
 				ImGui::TreePop();
 			}
@@ -1800,6 +1807,9 @@ void ImGuiSettingsWindow::draw_objects_panel()
 		material_changed |= ImGui::ColorEdit3("F82 Reflectivity", (float*)&material.metallic_F82);
 		material_changed |= ImGui::ColorEdit3("F90 Reflectivity", (float*)&material.metallic_F90);
 		material_changed |= ImGui::SliderFloat("F90 Falloff exponent", &material.metallic_F90_falloff_exponent, 0.5f, 5.0f);
+		ImGuiRenderer::show_help_marker("The \"falloff\" controls how wide the influence of F90 is.\n"
+										"\n"
+										"The lower the value, the wider F90's effect will be.");
 		
 		material_changed |= ImGui::SliderFloat("Anisotropy", &material.anisotropy, 0.0f, 1.0f);
 		material_changed |= ImGui::SliderFloat("Anisotropy Rotation", &material.anisotropy_rotation, 0.0f, 1.0f);

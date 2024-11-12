@@ -47,9 +47,6 @@
 #define GGX_VNDF_SPHERICAL_CAPS 1
 #define GGX_VNDF_BOUNDED 2
 
-#define GGX_MASKING_SHADOWING_SMITH_HEIGHT_UNCORRELATED 0
-#define GGX_MASKING_SHADOWING_SMITH_HEIGHT_CORRELATED 1
-
 #define ISS_AUTOMATIC 0
 #define ISS_WITH_PRIORITIES 1
 
@@ -156,17 +153,6 @@
   *
   */
 #define PrincipledBSDFAnisotropicGGXSampleFunction GGX_VNDF_SAMPLING
-
-/**
- * What masking-shadowing term to use with the GGX NDF.
- * 
- * GGX_MASKING_SHADOWING_SMITH_HEIGHT_CORRELATED is a little be more precise and
- * corect than GGX_MASKING_SHADOWING_SMITH_HEIGHT_UNCORRELATED so it should basically
- * always be preferred. 
- *
- * This kernel option is basically only for experimentation purposes
- */
-#define PrincipledBSDFGGXMaskingShadowingTerm GGX_MASKING_SHADOWING_SMITH_HEIGHT_CORRELATED
 
 /**
  * Whether or not to use multiple scattering to conserve energy when evaluating

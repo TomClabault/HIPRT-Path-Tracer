@@ -433,9 +433,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F get_GGX_energy_compensation_conductor
 {
     const void* GGX_Ess_texture_pointer = nullptr;
 #ifdef __KERNELCC__
-    GGX_Ess_texture_pointer = &render_data.brdfs_data.GGX_Ess;
+    GGX_Ess_texture_pointer = &render_data.bsdfs_data.GGX_Ess;
 #else
-    GGX_Ess_texture_pointer = render_data.brdfs_data.GGX_Ess;
+    GGX_Ess_texture_pointer = render_data.bsdfs_data.GGX_Ess;
 #endif
 
     // Reading the precomputed directional albedo from the texture
@@ -586,16 +586,19 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GTR2_eval<0>(const H
     {
         float lambda_L = G1_Smith_lambda(alpha_x, alpha_y, local_to_light_direction);
 
-#if PrincipledBSDFGGXMaskingShadowingTerm == GGX_MASKING_SHADOWING_SMITH_HEIGHT_CORRELATED
-        float G2HeightCorrelated = 1.0f / (1.0f + lambda_V + lambda_L);
+        if (render_data.bsdfs_data.GGX_masking_shadowing == GGXMaskingShadowingFlavor::HeightUncorrelated)
+        {
+            float G1L = 1.0f / (1.0f + lambda_L);
+            float G2 = G1V * G1L;
 
-        return F * D * G2HeightCorrelated / (4.0f * NoL * NoV);
-#elif PrincipledBSDFGGXMaskingShadowingTerm == GGX_MASKING_SHADOWING_SMITH_HEIGHT_UNCORRELATED
-        float G1L = 1.0f / (1.0f + lambda_L);
-        float G2 = G1V * G1L;
+            return F * D * G2 / (4.0f * NoL * NoV);
+        }
+        else // Default to GGXMaskingShadowingFlavor::HeightCorrelated
+        {
+            float G2HeightCorrelated = 1.0f / (1.0f + lambda_V + lambda_L);
 
-        return F * D * G2 / (4.0f * NoL * NoV);
-#endif
+            return F * D * G2HeightCorrelated / (4.0f * NoL * NoV);
+        }
     }
 }
 

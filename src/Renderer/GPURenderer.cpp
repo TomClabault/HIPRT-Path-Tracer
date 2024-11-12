@@ -973,11 +973,11 @@ void GPURenderer::update_render_data()
 		m_render_data.buffers.emissive_triangles_count = m_hiprt_scene.emissive_triangles_count;
 		m_render_data.buffers.emissive_triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.emissive_triangles_indices.get_device_pointer());
 
-		m_render_data.brdfs_data.sheen_ltc_parameters_texture = m_sheen_ltc_params.get_device_texture();
-		m_render_data.brdfs_data.GGX_Ess = m_GGX_Ess.get_device_texture();
-		m_render_data.brdfs_data.glossy_dielectric_Ess = m_glossy_dielectric_Ess.get_device_texture();
-		m_render_data.brdfs_data.GGX_Ess_glass = m_GGX_Ess_glass.get_device_texture();
-		m_render_data.brdfs_data.GGX_Ess_glass_inverse = m_GGX_Ess_glass_inverse.get_device_texture();
+		m_render_data.bsdfs_data.sheen_ltc_parameters_texture = m_sheen_ltc_params.get_device_texture();
+		m_render_data.bsdfs_data.GGX_Ess = m_GGX_Ess.get_device_texture();
+		m_render_data.bsdfs_data.glossy_dielectric_Ess = m_glossy_dielectric_Ess.get_device_texture();
+		m_render_data.bsdfs_data.GGX_Ess_glass = m_GGX_Ess_glass.get_device_texture();
+		m_render_data.bsdfs_data.GGX_Ess_glass_inverse = m_GGX_Ess_glass_inverse.get_device_texture();
 
 		m_render_data.buffers.material_textures = reinterpret_cast<oroTextureObject_t*>(m_hiprt_scene.gpu_materials_textures.get_device_pointer());
 		m_render_data.buffers.texcoords = reinterpret_cast<float2*>(m_hiprt_scene.texcoords_buffer.get_device_pointer());

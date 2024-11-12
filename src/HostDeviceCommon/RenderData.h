@@ -9,6 +9,7 @@
 #include "Device/includes/ReSTIR/DI/Reservoir.h"
 #include "Device/includes/GBuffer.h"
 
+#include "HostDeviceCommon/BSDFsData.h"
 #include "HostDeviceCommon/HIPRTCamera.h"
 #include "HostDeviceCommon/Material.h"
 #include "HostDeviceCommon/Math.h"
@@ -67,34 +68,6 @@ struct RenderBuffers
 	// in the shader (required because Orochi doesn't support normalized texture coordinates).
 	int2* textures_dims = nullptr;
 
-};
-
-struct BRDFsData
-{
-	// 32x32 texture containing the precomputed parameters of the LTC
-	// fitted to approximate the SSGX sheen volumetric layer.
-	// See SheenLTCFittedParameters.h
-	void* sheen_ltc_parameters_texture = nullptr;
-
-	// 2D texture for the precomputed directional albedo
-	// for the GGX BRDFs used in the principled BSDF for energy conservation
-	// of conductors
-	void* GGX_Ess = nullptr;
-
-	// 3D texture for the precomputed directional albedo of the base layer
-	// of the principled BSDF (specular GGX layer + diffuse below)
-	void* glossy_dielectric_Ess = nullptr;
-
-	// 3D texture (cos_theta_o, roughness, relative_eta) for the precomputed
-	// directional albedo used for energy conservation of glass objects when
-	// entering a medium
-	void* GGX_Ess_glass = nullptr;
-	// Table when leaving a medium
-	void* GGX_Ess_glass_inverse = nullptr;
-
-	// Whether or not to use the texture unit's hardware texel interpolation
-	// when fetching the LUTs. It's faster but less precise.
-	bool use_hardware_tex_interpolation = false;
 };
 
 struct AuxiliaryBuffers
@@ -182,7 +155,7 @@ struct HIPRTRenderData
 	hiprtGlobalStackBuffer global_traversal_stack_buffer = { 0, 0, nullptr };
 
 	RenderBuffers buffers;
-	BRDFsData brdfs_data;
+	BRDFsData bsdfs_data;
 	AuxiliaryBuffers aux_buffers;
 	GBuffer g_buffer;
 	GBuffer g_buffer_prev_frame;

@@ -50,9 +50,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F read_LTC_parameters(const HIPRTRender
 {
 	const void* ltc_parameters_texture_pointer;
 #ifdef __KERNELCC__
-	ltc_parameters_texture_pointer = &render_data.brdfs_data.sheen_ltc_parameters_texture;
+	ltc_parameters_texture_pointer = &render_data.bsdfs_data.sheen_ltc_parameters_texture;
 #else
-	ltc_parameters_texture_pointer = render_data.brdfs_data.sheen_ltc_parameters_texture;
+	ltc_parameters_texture_pointer = render_data.bsdfs_data.sheen_ltc_parameters_texture;
 #endif
 
 	float2 parameters_uv = make_float2(cos_theta, 1.0f - roughness);

@@ -202,9 +202,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
 
     float3 uvw = make_float3(view_direction_tex_fetch, material.roughness, F0_remapped);
 
-    void* texture = inside_object ? render_data.brdfs_data.GGX_Ess_glass_inverse : render_data.brdfs_data.GGX_Ess_glass;
+    void* texture = inside_object ? render_data.bsdfs_data.GGX_Ess_glass_inverse : render_data.bsdfs_data.GGX_Ess_glass;
     int3 dims = make_int3(GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_COS_THETA_O, GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_ROUGHNESS, GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_IOR);
-    float compensation_term = sample_texture_3D_rgb_32bits(texture, dims, uvw, render_data.brdfs_data.use_hardware_tex_interpolation).r;
+    float compensation_term = sample_texture_3D_rgb_32bits(texture, dims, uvw, render_data.bsdfs_data.use_hardware_tex_interpolation).r;
 #endif
 
     ColorRGB32F color;
@@ -620,7 +620,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_glossy_base(const HIPRT
     float F0_remapped = sqrt(sqrt(F0_from_eta(material.ior, incident_ior)));
 
     float3 uvw = make_float3(view_dir_remapped, material.roughness, F0_remapped);
-    multiple_scattering_compensation = sample_texture_3D_rgb_32bits(render_data.brdfs_data.glossy_dielectric_Ess, texture_dims, uvw, render_data.brdfs_data.use_hardware_tex_interpolation).r;
+    multiple_scattering_compensation = sample_texture_3D_rgb_32bits(render_data.bsdfs_data.glossy_dielectric_Ess, texture_dims, uvw, render_data.bsdfs_data.use_hardware_tex_interpolation).r;
 
     // Applying the compensation term for energy preservation
     // If material.specular == 1, then we want the full energy compensation

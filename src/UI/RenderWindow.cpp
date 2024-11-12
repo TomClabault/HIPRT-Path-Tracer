@@ -33,12 +33,8 @@ extern ImGuiLogger g_imgui_logger;
 // - use self bit packing (no bitfields) for nested dielectrics because bitfields are implementation dependent in size, that's bad --> We don't get our nice packing with every compiler
 // - for LTC sheen lobe, have the option to use either SGGX volumetric sheen or approximation precomputed LTC data
 // - rework bounces in UI so that 0 bounce still gives an image. The number of bounce is currently offset by 1 basically.
-// - GGX G term not using compiled kernel option, just do if()
-// - specular and clearcoat TIR check, should effectively be an energy loss because we're not simulating full multiple scattering
-// - energy conservation with glass weight < 1
 // - russian roulette firefly avoidance biased clamping
 // - temporal ReSTIR broken?
-// - one channel baked GGX energy conservation textures instead of useless 4 channels
 
 // TODO known bugs / incorectness:
 // - take transmission color into account when direct sampling a light source that is inside a volume
