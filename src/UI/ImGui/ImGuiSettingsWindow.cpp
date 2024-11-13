@@ -210,6 +210,7 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 
 		ImGui::TreePop();
 	}
+
 	if (ImGui::InputInt("Max bounces", &render_settings.nb_bounces))
 	{
 		// Clamping to 0 in case the user input a negative number of bounces	

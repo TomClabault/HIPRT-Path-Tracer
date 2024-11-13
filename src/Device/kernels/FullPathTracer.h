@@ -147,7 +147,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
     ray_payload.material = render_data.g_buffer.materials[pixel_index];
     ray_payload.volume_state = render_data.g_buffer.ray_volume_states[pixel_index];
 
-    for (int bounce = 0; bounce < render_data.render_settings.nb_bounces; bounce++)
+    // + 1 to nb_bounces here because we want "0" bounces to still act as one
+    // hit and to return some color
+    for (int bounce = 0; bounce < render_data.render_settings.nb_bounces + 1; bounce++)
     {
         if (ray_payload.next_ray_state == RayState::BOUNCE)
         {
@@ -214,36 +216,25 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
                 // ---------- Indirect lighting ---------- //
                 // --------------------------------------- //
 
-                if (bounce + 1 < render_data.render_settings.nb_bounces)
-                {
-                    // These two lines are for debugging only to be able to reproduce the random
-                    // behavior when sampling the BSDF below. In a line by line debugger, we can
-                    // just move the debugger to the line that sets the seed so that the BSDF
-                    // sampling then reproduces the sampled direction that cause an issue
-                    unsigned int seed_before = random_number_generator.m_state.seed;
-                    random_number_generator.m_state.seed = seed_before;
+                float bsdf_pdf;
+                float3 bounce_direction;
 
-                    // Only sampling the next bounce if we actually need it
-                    float bsdf_pdf;
-                    float3 bounce_direction;
+                ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bounce_direction, bsdf_pdf, random_number_generator);
 
-                    ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bounce_direction, bsdf_pdf, random_number_generator);
+                ray_payload.next_ray_state = RayState::BOUNCE;
+                ray_payload.throughput *= bsdf_color * hippt::abs(hippt::dot(bounce_direction, closest_hit_info.shading_normal)) / bsdf_pdf;
 
-                    ray_payload.next_ray_state = RayState::BOUNCE;
-                    ray_payload.throughput *= bsdf_color * hippt::abs(hippt::dot(bounce_direction, closest_hit_info.shading_normal)) / bsdf_pdf;
+                // Russian roulette
+                if (!do_russian_roulette(render_data.render_settings, bounce, ray_payload.throughput, random_number_generator))
+                    break;
 
-                    // Russian roulette
-                    if (!do_russian_roulette(render_data.render_settings, bounce, ray_payload.throughput, random_number_generator))
-                        break;
+                // Terminate ray if bad sampling
+                if (bsdf_pdf <= 0.0f)
+                    break;
 
-                    // Terminate ray if bad sampling
-                    if (bsdf_pdf <= 0.0f)
-                        break;
-
-                    int outside_surface = hippt::dot(bounce_direction, closest_hit_info.shading_normal) < 0 ? -1.0f : 1.0f;
-                    ray.origin = closest_hit_info.inter_point;// +closest_hit_info.shading_normal * 3.0e-3f * outside_surface;
-                    ray.direction = bounce_direction;
-                }
+                int outside_surface = hippt::dot(bounce_direction, closest_hit_info.shading_normal) < 0 ? -1.0f : 1.0f;
+                ray.origin = closest_hit_info.inter_point;// +closest_hit_info.shading_normal * 3.0e-3f * outside_surface;
+                ray.direction = bounce_direction;
             }
             else
             {
