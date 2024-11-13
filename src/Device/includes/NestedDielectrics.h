@@ -238,7 +238,7 @@ struct InteriorStackImpl<ISS_WITH_PRIORITIES>
 		}
 	}
 
-	HIPRT_HOST_DEVICE void pop(bool inside_material)
+	HIPRT_HOST_DEVICE void pop(const bool inside_material)
 	{
 		int stack_top_mat_index = stack[stack_position].material_index;
 		if (stack_position > 0)

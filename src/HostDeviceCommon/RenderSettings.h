@@ -6,6 +6,7 @@
 #ifndef HOST_DEVICE_COMMON_RENDER_SETTINGS_H
 #define HOST_DEVICE_COMMON_RENDER_SETTINGS_H
 
+#include "HostDeviceCommon/PathRussianRoulette.h"
 #include "HostDeviceCommon/KernelOptions.h"
 #include "HostDeviceCommon/ReSTIRDISettings.h"
 
@@ -81,6 +82,19 @@ struct HIPRTRenderSettings
 	// 0 means that the camera ray hits, and then the next bounce
 	// is already susceptible to russian roulette termination
 	int russian_roulette_min_depth = 2;
+	// After applying russian roulette(dividing by the continuation probability)
+	// the energy added to the ray throughput is clamped to this maximum value.
+	// 
+	// This is biased and darkens the image the lower the threshold but it helps
+	// reduce variance and fireflies introduced by the russian roulette --> faster
+	// convergence.
+	//
+	// 0 for no clamping.
+	float russian_roulette_throughput_clamp = 10.0f;
+
+	// What Russian roulette method to use to determine the path termination
+	// probability
+	PathRussianRoulette path_russian_roulette_method = PathRussianRoulette::MAX_THROUGHPUT;
 
 	// Whether or not to "freeze" random number generation so that each frame uses
 	// exactly the same random number. This allows every ray to follow the exact

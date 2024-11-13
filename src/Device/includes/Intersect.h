@@ -189,7 +189,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
         if (skipping_volume_boundary)
         {
             // If we're skipping, the boundary, the ray just keeps going on its way
-            ray.origin = out_hit_info.inter_point + ray.direction * 3.0e-3f;
+            ray.origin = out_hit_info.inter_point;
 
             // Don't forget to increment the distance traveled
             // TODO: Are we not double counting the distance here and a few lines above (where we set the .t, .uv, .geometric_normal, ...)
@@ -256,8 +256,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& r
         else
             alpha = 1.0f;
 
-        float3 inter_point = ray.origin + ray.direction * hit.t;
-        ray.origin = inter_point + ray.direction * 3.0e-3f;
+        // Next ray origin
+        ray.origin = ray.origin + ray.direction * hit.t;
         cumulative_t += hit.t;
 
         // We keep going as long as the alpha is < 1.0f meaning that we hit texture transparency
@@ -350,8 +350,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderD
         else
             alpha = 1.0f;
 
-        float3 inter_point = ray.origin + ray.direction * shadow_ray_hit.t;
-        ray.origin = inter_point + ray.direction * 3.0e-3f;
+        // Next ray origin
+        ray.origin = ray.origin + ray.direction * shadow_ray_hit.t;
         cumulative_t += shadow_ray_hit.t;
 
         // We keep going as long as the alpha is < 1.0f meaning that we hit texture transparency

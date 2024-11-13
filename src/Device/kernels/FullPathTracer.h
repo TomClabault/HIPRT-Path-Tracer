@@ -151,7 +151,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
     // hit and to return some color
     for (int bounce = 0; bounce < render_data.render_settings.nb_bounces + 1; bounce++)
     {
-        if (ray_payload.next_ray_state == RayState::BOUNCE)
+        if (ray_payload.next_ray_state != RayState::MISSED)
         {
             if (bounce > 0)
             {
@@ -220,20 +220,21 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
                 float3 bounce_direction;
 
                 ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bounce_direction, bsdf_pdf, random_number_generator);
-
-                ray_payload.next_ray_state = RayState::BOUNCE;
-                ray_payload.throughput *= bsdf_color * hippt::abs(hippt::dot(bounce_direction, closest_hit_info.shading_normal)) / bsdf_pdf;
-
-                // Russian roulette
-                if (!do_russian_roulette(render_data.render_settings, bounce, ray_payload.throughput, random_number_generator))
-                    break;
+                ColorRGB32F throughput_attenuation = bsdf_color * hippt::abs(hippt::dot(bounce_direction, closest_hit_info.shading_normal)) / bsdf_pdf;
 
                 // Terminate ray if bad sampling
                 if (bsdf_pdf <= 0.0f)
                     break;
 
+                // Russian roulette
+                if (!do_russian_roulette(render_data.render_settings, bounce, ray_payload.volume_state, ray_payload.throughput, throughput_attenuation, random_number_generator))
+                    break;
+
+                ray_payload.throughput *= throughput_attenuation;
+                ray_payload.next_ray_state = RayState::BOUNCE;
+
                 int outside_surface = hippt::dot(bounce_direction, closest_hit_info.shading_normal) < 0 ? -1.0f : 1.0f;
-                ray.origin = closest_hit_info.inter_point;// +closest_hit_info.shading_normal * 3.0e-3f * outside_surface;
+                ray.origin = closest_hit_info.inter_point;
                 ray.direction = bounce_direction;
             }
             else

@@ -219,14 +219,7 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 	}
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
-	if (ImGui::Checkbox("Do Russian Roulette", &render_settings.use_russian_roulette))
-		m_render_window->set_render_dirty(true);
-	if (ImGui::SliderInt("Russian Roulette Min Depth", &render_settings.russian_roulette_min_depth, 0, render_settings.nb_bounces + 1))
-		m_render_window->set_render_dirty(true);
-	ImGuiRenderer::show_help_marker("After how many bounces can russian roulette kick in? "
-									"For example, 0 means that the camera ray hits, and then the next bounce "
-									"is already susceptible to russian roulette kill. 1 would mean that the first "
-									"bounce is never going to be cutoff by the russian roulette.");
+	draw_russian_roulette_options();
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	if (ImGui::CollapsingHeader("Render stopping condition"))
@@ -391,6 +384,41 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 
 	ImGui::TreePop();
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+}
+
+void ImGuiSettingsWindow::draw_russian_roulette_options()
+{
+	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
+
+	if (ImGui::Checkbox("Do Russian Roulette", &render_settings.use_russian_roulette))
+		m_render_window->set_render_dirty(true);
+
+	const char* items[] = { "- Max throughput", "- Arnold, Langlands, 2014" };
+	if (ImGui::Combo("Termination probability method", (int*)&render_settings.path_russian_roulette_method, items, IM_ARRAYSIZE(items)))
+		m_render_window->set_render_dirty(true);
+
+	static bool min_depth_modified = false;
+	if (!min_depth_modified)
+		render_settings.russian_roulette_min_depth = std::min(5, render_settings.nb_bounces / 2);
+	if (ImGui::SliderInt("Russian Roulette Min Depth", &render_settings.russian_roulette_min_depth, 0, render_settings.nb_bounces + 1))
+	{
+		m_render_window->set_render_dirty(true);
+		min_depth_modified = true;
+	}
+	ImGuiRenderer::show_help_marker("After how many bounces can russian roulette kick in? "
+									"For example, 0 means that the camera ray hits, and then the next bounce "
+									"is already susceptible to russian roulette kill. 1 would mean that the first "
+									"bounce is never going to be cutoff by the russian roulette.");
+	if (ImGui::SliderFloat("Russian Roulette Throughput Clamp", &render_settings.russian_roulette_throughput_clamp, 1.0f, 20.0f))
+		m_render_window->set_render_dirty(true);
+	ImGuiRenderer::show_help_marker("After applying russian roulette (dividing by the continuation probability) "
+									"the energy added to the ray throughput is clamped to this maximum value.\n"
+									"\n"
+									"This is biased and darkens the image the lower the threshold but it helps "
+									"reduce variance and fireflies introduced by the russian roulette --> faster "
+									"convergence.\n"
+									"\n"
+									"0 for no clamping.");
 }
 
 void ImGuiSettingsWindow::display_view_selector()
@@ -2085,6 +2113,9 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 		ImGuiRenderer::show_help_marker("How much percent of the time the GPU will be forced to be idle (not rendering anything)."
 										" This feature is basically only meant for GPUs that get too hot to avoid burning your GPUs during long renders if you have"
 										" time to spare.");
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		draw_russian_roulette_options();
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();

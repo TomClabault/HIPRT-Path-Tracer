@@ -267,11 +267,15 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
             // it was in before refracting here, so it's the incident mat index
 
             const SimplifiedRendererMaterial& incident_material = render_data.buffers.materials_buffer[ray_volume_state.incident_mat_index];
-            // Remapping the absorption coefficient so that it is more intuitive to manipulate
-            // according to Burley, 2015 [5].
-            // This effectively gives us a "at distance" absorption coefficient.
-            ColorRGB32F absorption_coefficient = log(incident_material.absorption_color) / incident_material.absorption_at_distance;
-            color = color * exp(absorption_coefficient * ray_volume_state.distance_in_volume);
+            if (!incident_material.absorption_color.is_white())
+            {
+                // Remapping the absorption coefficient so that it is more intuitive to manipulate
+                // according to Burley, 2015 [5].
+                // This effectively gives us a "at distance" absorption coefficient.
+                ColorRGB32F absorption_coefficient = log(incident_material.absorption_color) / incident_material.absorption_at_distance;
+                color = color * exp(absorption_coefficient * ray_volume_state.distance_in_volume);
+
+            }
 
             // We changed volume so we're resetting the distance
             ray_volume_state.distance_in_volume = 0.0f;

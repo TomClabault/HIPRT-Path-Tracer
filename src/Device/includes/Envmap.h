@@ -163,7 +163,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_with_mis(const
     if (envmap_pdf > 0.0f && cosine_term > 0.0f)
     {
         hiprtRay shadow_ray;
-        shadow_ray.origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f;
+        shadow_ray.origin = closest_hit_info.inter_point;
         shadow_ray.direction = sampled_direction;
 
         bool in_shadow = evaluate_shadow_ray(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, random_number_generator);
@@ -198,7 +198,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_with_mis(const
     if (bsdf_sample_pdf > 0.0f && cosine_term > 0.0f)
     {
         hiprtRay shadow_ray;
-        shadow_ray.origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f;
+        shadow_ray.origin = closest_hit_info.inter_point;
         shadow_ray.direction = bsdf_sampled_dir;
 
         bool in_shadow = evaluate_shadow_ray(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, random_number_generator);

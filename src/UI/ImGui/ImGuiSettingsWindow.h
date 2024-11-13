@@ -29,6 +29,7 @@ public:
 private:
 	void draw_header();
 	void draw_render_settings_panel();
+	void draw_russian_roulette_options();
 	void display_view_selector();
 	void apply_performance_preset(ImGuiRendererPerformancePreset performance_preset);
 	void draw_camera_panel();
