@@ -32,10 +32,9 @@ extern ImGuiLogger g_imgui_logger;
 // - smarter shader cache (hints to avoid using all kernel options when compiling a kernel? We know that Camera ray doesn't care about direct lighting strategy for example)
 // - use self bit packing (no bitfields) for nested dielectrics because bitfields are implementation dependent in size, that's bad --> We don't get our nice packing with every compiler
 // - for LTC sheen lobe, have the option to use either SGGX volumetric sheen or approximation precomputed LTC data
-// - russian roulette firefly avoidance biased clamping
 
 // TODO known bugs / incorectness:
-// - take transmission color into account when direct sampling a light source that is inside a volume
+// - take transmission color into account when direct sampling a light source that is inside a volume: leave that for when implement volumes?
 // - denoiser AOVs not accounting for transmission correctly since Disney  BSDF
 //	  - same with perfect reflection
 // - fix sampling lights inside dielectrics with ReSTIR DI (using minT for rays)

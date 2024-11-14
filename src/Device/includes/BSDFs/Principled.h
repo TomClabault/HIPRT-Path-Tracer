@@ -60,21 +60,21 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_sheen_sample(const HIPRTRenderD
     return sheen_ltc_sample(render_data, material, local_view_direction, shading_normal, random_number_generator);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_metallic_eval(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, float incident_ior, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_half_vector, float& pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_metallic_eval(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, float roughness, float anisotropy, float incident_ior, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_half_vector, float& pdf)
 {
     float HoL = hippt::clamp(1.0e-8f, 1.0f, hippt::dot(local_half_vector, local_to_light_direction));
 
     ColorRGB32F F = adobe_f82_tint_fresnel(material.base_color, material.metallic_F82, material.metallic_F90, material.metallic_F90_falloff_exponent, HoL);
 
-    return torrance_sparrow_GTR2_eval<PrincipledBSDFGGXUseMultipleScattering>(render_data, material.base_color, material.roughness, material.anisotropy, F, local_view_direction, local_to_light_direction, local_half_vector, pdf);
+    return torrance_sparrow_GTR2_eval<PrincipledBSDFGGXUseMultipleScattering>(render_data, material.base_color, roughness, anisotropy, F, local_view_direction, local_to_light_direction, local_half_vector, pdf);
 }
 
 /**
  * The sampled direction is returned in the local shading frame of the basis used for 'local_view_direction'
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_metallic_sample(const SimplifiedRendererMaterial& material, const float3& local_view_direction, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_metallic_sample(float roughness, float anisotropy, const float3& local_view_direction, Xorshift32Generator& random_number_generator)
 {
-    return microfacet_GTR2_sample_reflection(material.roughness, material.anisotropy, local_view_direction, random_number_generator);
+    return microfacet_GTR2_sample_reflection(roughness, anisotropy, local_view_direction, random_number_generator);
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_diffuse_eval(const SimplifiedRendererMaterial& material, const float3& local_view_direction, const float3& local_to_light_direction, float& pdf)
@@ -443,12 +443,16 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_sheen_layer(const HIPRT
     return ColorRGB32F(0.0f);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_metal_layer(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, const float3& local_view_direction, const float3 local_to_light_direction, const float3& local_half_vector, float incident_ior, float metal_weight, float metal_proba, ColorRGB32F& layers_throughput, float& out_cumulative_pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_metal_layer(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, 
+                                                                     const float3& local_view_direction, const float3 local_to_light_direction, const float3& local_half_vector, 
+                                                                     float roughness, float anisotropy, float incident_ior, 
+                                                                     float metal_weight, float metal_proba, 
+                                                                     ColorRGB32F& layers_throughput, float& out_cumulative_pdf)
 {
     if (metal_weight > 0.0f)
     {
         float metal_pdf;
-        ColorRGB32F contribution = principled_metallic_eval(render_data, material, incident_ior, local_view_direction, local_to_light_direction, local_half_vector, metal_pdf);
+        ColorRGB32F contribution = principled_metallic_eval(render_data, material, roughness, anisotropy, incident_ior, local_view_direction, local_to_light_direction, local_half_vector, metal_pdf);
         contribution *= metal_weight;
         contribution *= layers_throughput;
 
@@ -642,6 +646,119 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_glossy_base(const HIPRT
     return glossy_base_contribution;
 }
 
+/**
+ * Computes the lobes weights for the principled BSDF
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE void principled_bsdf_get_lobes_weights(const SimplifiedRendererMaterial& material,
+                                                                      bool outside_object,
+                                                                      float& out_coat_weight, float& out_sheen_weight,
+                                                                      float& out_metal_1_weight, float& out_metal_2_weight,
+                                                                      float& out_specular_weight,
+                                                                      float& out_diffuse_weight, float& out_glass_weight)
+{
+    // Linear blending weights for the lobes
+    // 
+    // Everytime we multiply by "outside_object" is because we want to disable
+    // the lobe if we're inside the object
+    //
+    // The layering follows the one of the principled BSDF of blender:
+    // [10] https://docs.blender.org/manual/fr/dev/render/shader_nodes/shader/principled.html
+
+    out_coat_weight = material.coat * outside_object;
+    out_sheen_weight = material.sheen * outside_object;
+    // Metal 1 and metal 2 are the two metallic lobes for the two roughnesses.
+    // Having 2 roughnesses (linearly blended together) can enable interesting effects
+    // that cannot be achieved with a single GGX metal lobe.
+    // 
+    // See [Revisiting Physically Based Shading at Imageworks, Kulla & Conty, SIGGRAPH 2017],
+    // "Double Specular" for more details
+    out_metal_1_weight = material.metallic * outside_object;
+    out_metal_2_weight = material.metallic * outside_object;
+    out_metal_1_weight = hippt::lerp(out_metal_1_weight, 0.0f, material.second_roughness_weight);
+    out_metal_2_weight = hippt::lerp(0.0f, out_metal_2_weight, material.second_roughness_weight);
+    out_specular_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission) * material.specular * outside_object;
+    out_diffuse_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission) * outside_object;
+    // If inside the object, the glass lobe is the only existing lobe so it has weight
+    // 1.0f
+    out_glass_weight = !outside_object ? 1.0f : (1.0f - material.metallic) * material.specular_transmission;
+}
+
+/**
+ * Computes the lobes weights for the principled BSDF and also reflects
+ * the shading normal about the geometric normal if the view direction
+ * is below the shading normal (probably due to normal mapping / smooth
+ * vertex normals)
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE void principled_bsdf_get_lobes_weights_fringe_fix(const SimplifiedRendererMaterial& material, 
+                                                                      const float3& view_direction, const float3& shading_normal, const float3& geometric_normal,
+                                                                      float3& in_out_normal,
+                                                                      bool& out_outside_object, 
+                                                                      float& out_coat_weight, float& out_sheen_weight,
+                                                                      float& out_metal_1_weight, float& out_metal_2_weight,
+                                                                      float& out_specular_weight,
+                                                                      float& out_diffuse_weight, float& out_glass_weight)
+{
+    out_outside_object = hippt::dot(view_direction, in_out_normal) > 0;
+    out_glass_weight = (1.0f - material.metallic) * material.specular_transmission;
+    if (hippt::is_zero(out_glass_weight) && !out_outside_object)
+    {
+        // We're not sampling the glass lobe so we're checking
+        // whether the view direction is below the upper hemisphere around the shading
+        // normal or not. This may be the case mainly due to normal mapping / smooth vertex normals. 
+        // 
+        // See Microfacet-based Normal Mapping for Robust Monte Carlo Path Tracing, Eric Heitz, 2017
+        // for some illustrations of the problem and a solution (not implemented here because
+        // it requires quite a bit of code and overhead). 
+        // 
+        // We're flipping the normal instead which is a quick dirty fix solution mentioned
+        // in the above mentioned paper.
+        // 
+        // The Position-free Multiple-bounce Computations for Smith Microfacet BSDFs by 
+        // Wang et al. 2022 proposes an alternative position-free solution that even solves
+        // the multi-scattering issue of microfacet BRDFs on top of the dark fringes issue we're
+        // having here
+        in_out_normal = reflect_ray(shading_normal, geometric_normal);
+
+        // We we're "inside" of the object because of normal mapping / smooth vertex normals
+        // getting the view direction below the surface but now that we've flipped the normal,
+        // we're outside the object
+        out_outside_object = true;
+    }
+
+    principled_bsdf_get_lobes_weights(material, out_outside_object, 
+                                      out_coat_weight, out_sheen_weight, 
+                                      out_metal_1_weight, out_metal_2_weight, 
+                                      out_specular_weight, out_diffuse_weight, 
+                                      out_glass_weight);
+
+    //// Linear blending weights for the lobes
+    //// 
+    //// Everytime we multiply by "outside_object" is because we want to disable
+    //// the lobe if we're inside the object
+    ////
+    //// The layering follows the one of the principled BSDF of blender:
+    //// [10] https://docs.blender.org/manual/fr/dev/render/shader_nodes/shader/principled.html
+    //out_coat_weight = material.coat * out_outside_object;
+    //out_sheen_weight = material.sheen * out_outside_object;
+    //// Metal 1 and metal 2 are the two metallic lobes for the two roughnesses.
+    //// Having 2 roughnesses (linearly blended together) can enable interesting effects
+    //// that cannot be achieved with a single GGX metal lobe.
+    //// 
+    //// See [Revisiting Physically Based Shading at Imageworks, Kulla & Conty, SIGGRAPH 2017],
+    //// "Double Specular" for more details
+    //out_metal_1_weight = material.metallic * out_outside_object;
+    //out_metal_2_weight = material.metallic * out_outside_object;
+    //out_metal_1_weight = hippt::lerp(out_metal_1_weight, 0.0f, material.second_roughness_weight);
+    //out_metal_2_weight = hippt::lerp(0.0f, out_metal_2_weight, material.second_roughness_weight);
+    //out_specular_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission) * material.specular * out_outside_object;
+    //out_diffuse_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission) * out_outside_object;
+
+    if (!out_outside_object)
+        // If inside the object, the glass lobe is the only existing lobe so it has weight
+        // 1.0f
+        out_glass_weight = 1.0f;
+}
+
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, RayVolumeState& ray_volume_state, const float3& view_direction, float3 shading_normal, const float3& to_light_direction, float& pdf)
 {
     pdf = 0.0f;
@@ -670,38 +787,30 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRende
     float3 local_to_light_direction_rotated = world_to_local_frame(TR, BR, shading_normal, to_light_direction);
     float3 local_half_vector_rotated = hippt::normalize(local_view_direction_rotated + local_to_light_direction_rotated);
 
-    // Linear blending weights for the lobes
-    // 
-    // Everytime we multiply by "outside_object" is because we want to disable
-    // the lobe if we're inside the object
-    //
-    // The layering follows the one of the principled BSDF of blender:
-    // [10] https://docs.blender.org/manual/fr/dev/render/shader_nodes/shader/principled.html
-    float coat_weight = material.coat * outside_object;
-    float sheen_weight = material.sheen * outside_object;
-    float metal_weight = material.metallic * outside_object;
-    float specular_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission) * material.specular * outside_object;
-    float diffuse_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission) * outside_object;
-    // If inside the object, the glass lobe is the only existing lobe so it has weight
-    // 1.0f
-    float glass_weight = !outside_object ? 1.0f :  (1.0f - material.metallic)* material.specular_transmission;
+    float coat_weight;
+    float sheen_weight;
+    float metal_1_weight;
+    float metal_2_weight;
+    float specular_weight;
+    float diffuse_weight;
+    float glass_weight;
+    principled_bsdf_get_lobes_weights(material, outside_object,
+                                      coat_weight, sheen_weight, metal_1_weight, metal_2_weight,
+                                      specular_weight, diffuse_weight, glass_weight);
 
-    float coat_sample_proba = coat_weight;
-    float sheen_sample_proba = sheen_weight;
-    float metal_sample_proba = metal_weight;
-    float specular_sample_proba = specular_weight;
-    float diffuse_sample_proba = diffuse_weight;
-    float glass_sample_proba = glass_weight;
-    float probability_normalize_factor = coat_sample_proba + sheen_sample_proba + metal_sample_proba + specular_sample_proba + diffuse_sample_proba + glass_sample_proba;
+    float probability_normalize_factor = 1.0f / (coat_weight + sheen_weight 
+                                                 + metal_1_weight + metal_2_weight 
+                                                 + specular_weight + diffuse_weight + glass_weight);
 
     // For the given to_light_direction, normal, view_direction etc..., what's the probability
     // that the 'principled_bsdf_sample()' function would have sampled the lobe?
-    float coat_proba_norm = coat_sample_proba / probability_normalize_factor;
-    float sheen_proba_norm = sheen_sample_proba / probability_normalize_factor;
-    float metal_proba_norm = metal_sample_proba / probability_normalize_factor;
-    float specular_proba_norm = specular_sample_proba / probability_normalize_factor;
-    float diffuse_proba_norm = diffuse_sample_proba / probability_normalize_factor;
-    float glass_proba_norm = glass_sample_proba / probability_normalize_factor;
+    float coat_proba = coat_weight * probability_normalize_factor;
+    float sheen_proba = sheen_weight * probability_normalize_factor;
+    float metal_1_proba = metal_1_weight * probability_normalize_factor;
+    float metal_2_proba = metal_2_weight * probability_normalize_factor;
+    float specular_proba = specular_weight * probability_normalize_factor;
+    float diffuse_proba = diffuse_weight * probability_normalize_factor;
+    float glass_proba = glass_weight * probability_normalize_factor;
 
     // Keeps track of the remaining light's energy as we traverse layers
     ColorRGB32F layers_throughput = ColorRGB32F(1.0f);
@@ -712,9 +821,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRende
     // (which is pretty much all of them except glass) do no get evaluated
     // (because their weight becomes 0)
     float incident_ior = ray_volume_state.incident_mat_index == /* air */ InteriorStackImpl<InteriorStackStrategy>::MAX_MATERIAL_INDEX ? 1.0f : render_data.buffers.materials_buffer[ray_volume_state.incident_mat_index].ior;
-    final_color += internal_eval_coat_layer(render_data, material, local_view_direction, local_to_light_direction, local_half_vector, shading_normal, incident_ior, coat_weight, refracting, coat_proba_norm, layers_throughput, pdf);
-    final_color += internal_eval_sheen_layer(render_data, material, local_view_direction, local_to_light_direction, to_light_direction, shading_normal, incident_ior, sheen_weight, sheen_proba_norm, layers_throughput, pdf);
-    final_color += internal_eval_metal_layer(render_data, material, local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated, incident_ior, metal_weight * !refracting, metal_proba_norm, layers_throughput, pdf);
+    final_color += internal_eval_coat_layer(render_data, material, local_view_direction, local_to_light_direction, local_half_vector, shading_normal, incident_ior, coat_weight, refracting, coat_proba, layers_throughput, pdf);
+    final_color += internal_eval_sheen_layer(render_data, material, local_view_direction, local_to_light_direction, to_light_direction, shading_normal, incident_ior, sheen_weight, sheen_proba, layers_throughput, pdf);
+    final_color += internal_eval_metal_layer(render_data, material, local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated, material.roughness, material.anisotropy, incident_ior, metal_1_weight * !refracting, metal_1_proba, layers_throughput, pdf);
+    final_color += internal_eval_metal_layer(render_data, material, local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated, material.second_roughness, material.anisotropy, incident_ior, metal_2_weight * !refracting, metal_2_proba, layers_throughput, pdf);
     // Careful here to evaluate the glass layer before the glossy
     // base otherwise, layers_throughput is going to be modified
     // by the specular layer evaluation (in the glossy base) to 
@@ -723,12 +833,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRende
     // The glass layer isn't below the specular layer , it's "next to"
     // the specular layer so we don't want the specular-layer-fresnel-attenuation
     // there
-    final_color += internal_eval_glass_layer(render_data, material, ray_volume_state, local_view_direction_rotated, local_to_light_direction_rotated, glass_weight, glass_proba_norm, layers_throughput, pdf);
+    final_color += internal_eval_glass_layer(render_data, material, ray_volume_state, local_view_direction_rotated, local_to_light_direction_rotated, glass_weight, glass_proba, layers_throughput, pdf);
     final_color += internal_eval_glossy_base(render_data, material, 
                                              local_view_direction, local_to_light_direction, local_half_vector, 
                                              local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated, 
                                              shading_normal, 
-                                             incident_ior, diffuse_weight * !refracting, specular_weight * !refracting, diffuse_proba_norm, specular_proba_norm, 
+                                             incident_ior, diffuse_weight * !refracting, specular_weight * !refracting, diffuse_proba, specular_proba, 
                                              layers_throughput, pdf);
 
     return final_color;
@@ -740,57 +850,45 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRen
 
     float3 normal = shading_normal;
 
-    float glass_sampling_weight = (1.0f - material.metallic) * material.specular_transmission;
-    bool outside_object = hippt::dot(view_direction, normal) > 0;
-    if (hippt::is_zero(glass_sampling_weight) && !outside_object)
-    {
-        // If we're not sampling the glass lobe so we're checking
-        // whether the view direction is below the upper hemisphere around the shading
-        // normal or not. This may be the case mainly due to normal mapping / smooth vertex normals. 
-        // 
-        // See Microfacet-based Normal Mapping for Robust Monte Carlo Path Tracing, Eric Heitz, 2017
-        // for some illustrations of the problem and a solution (not implemented here because
-        // it requires quite a bit of code and overhead). 
-        // 
-        // We're flipping the normal instead which is a quick dirty fix solution mentioned
-        // in the above mentioned paper.
-        // 
-        // The Position-free Multiple-bounce Computations for Smith Microfacet BSDFs by 
-        // Wang et al. 2022 proposes an alternative position-free solution that even solves
-        // the multi-scattering issue of microfacet BRDFs on top of the dark fringes issue we're
-        // having here
-
-        normal = reflect_ray(shading_normal, geometric_normal);
-        outside_object = true;
-    }
-
     // Computing the weights for sampling the lobes
-    float coat_sampling_weight = material.coat * outside_object;
-    float sheen_sampling_weight = material.sheen * outside_object;
-    float metal_sampling_weight = material.metallic * outside_object;
-    float specular_sampling_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission) * material.specular * outside_object;
-    // The diffuse lobe is below the specular lobe so it 
-    // has the same probability of being sampled
-    float diffuse_sampling_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission) * outside_object;
+    bool outside_object;
+    float coat_sampling_weight;
+    float sheen_sampling_weight;
+    float metal_1_sampling_weight;
+    float metal_2_sampling_weight;
+    float specular_sampling_weight;
+    float diffuse_sampling_weight;
+    float glass_sampling_weight;
+    principled_bsdf_get_lobes_weights_fringe_fix(material, view_direction,
+                                      shading_normal, geometric_normal, normal,
+                                      outside_object,
+                                      coat_sampling_weight, sheen_sampling_weight, 
+                                      metal_1_sampling_weight, metal_2_sampling_weight,
+                                      specular_sampling_weight, diffuse_sampling_weight, glass_sampling_weight);
 
-    float normalize_factor = 1.0f / (coat_sampling_weight + sheen_sampling_weight + metal_sampling_weight + specular_sampling_weight + diffuse_sampling_weight + glass_sampling_weight);
+    float normalize_factor = 1.0f / (coat_sampling_weight + sheen_sampling_weight 
+                                     + metal_1_sampling_weight + metal_2_sampling_weight 
+                                     + specular_sampling_weight + diffuse_sampling_weight 
+                                     + glass_sampling_weight);
     coat_sampling_weight *= normalize_factor;
     sheen_sampling_weight *= normalize_factor;
-    metal_sampling_weight *= normalize_factor;
+    metal_1_sampling_weight *= normalize_factor;
+    metal_2_sampling_weight *= normalize_factor;
     specular_sampling_weight *= normalize_factor;
     diffuse_sampling_weight *= normalize_factor;
     glass_sampling_weight *= normalize_factor;
 
-    float cdf[5];
+    float cdf[6];
     cdf[0] = coat_sampling_weight;
     cdf[1] = cdf[0] + sheen_sampling_weight;
-    cdf[2] = cdf[1] + metal_sampling_weight;
-    cdf[3] = cdf[2] + specular_sampling_weight;
-    cdf[4] = cdf[3] + diffuse_sampling_weight;
+    cdf[2] = cdf[1] + metal_1_sampling_weight;
+    cdf[3] = cdf[2] + metal_2_sampling_weight;
+    cdf[4] = cdf[3] + specular_sampling_weight;
+    cdf[5] = cdf[4] + diffuse_sampling_weight;
     // The last cdf[] is implicitely 1.0f so don't need to include it
 
     float rand_1 = random_number_generator();
-    bool sampling_glass_lobe = rand_1 > cdf[4];
+    bool sampling_glass_lobe = rand_1 > cdf[5];
     if (sampling_glass_lobe)
     {
         // We're going to sample the glass lobe
@@ -848,10 +946,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRen
         output_direction = local_to_world_frame(T, B, normal, principled_sheen_sample(render_data, material, local_view_direction, normal, random_number_generator));
     }
     else if (rand_1 < cdf[2])
-        output_direction = local_to_world_frame(TR, BR, normal, principled_metallic_sample(material, local_view_direction_rotated, random_number_generator));
+        // First metallic lobe sample
+        output_direction = local_to_world_frame(TR, BR, normal, principled_metallic_sample(material.roughness, material.anisotropy, local_view_direction_rotated, random_number_generator));
     else if (rand_1 < cdf[3])
-        output_direction = local_to_world_frame(TR, BR, normal, principled_specular_sample(material, local_view_direction_rotated, random_number_generator));
+        // Second metallic lobe sample
+        output_direction = local_to_world_frame(TR, BR, normal, principled_metallic_sample(material.second_roughness, material.anisotropy, local_view_direction_rotated, random_number_generator));
     else if (rand_1 < cdf[4])
+        output_direction = local_to_world_frame(TR, BR, normal, principled_specular_sample(material, local_view_direction_rotated, random_number_generator));
+    else if (rand_1 < cdf[5])
         // No call to local_to_world_frame() since the sample diffuse functions
         // already returns in world space around the given normal
         output_direction = principled_diffuse_sample(normal, random_number_generator);

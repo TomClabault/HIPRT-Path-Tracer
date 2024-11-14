@@ -104,8 +104,6 @@ struct SimplifiedRendererMaterial
     float roughness = 0.3f;
     float oren_nayar_sigma = 0.34906585039886591538f; // 20 degrees standard deviation in radian
 
-    float anisotropy = 0.0f;
-    float anisotropy_rotation = 0.0f;
 
     // Parameters for Adobe 2023 F82-tint model
     float metallic = 0.0f;
@@ -113,6 +111,10 @@ struct SimplifiedRendererMaterial
     // F0 is not here as it uses the 'base_color' of the material
     ColorRGB32F metallic_F82 = ColorRGB32F(1.0f);
     ColorRGB32F metallic_F90 = ColorRGB32F(1.0f);
+    float anisotropy = 0.0f;
+    float anisotropy_rotation = 0.0f;
+    float second_roughness_weight = 0.0f;
+    float second_roughness = 0.5f;
 
     // Specular intensity
     float specular = 1.0f;

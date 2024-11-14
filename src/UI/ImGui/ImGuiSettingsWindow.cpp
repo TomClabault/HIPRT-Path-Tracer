@@ -1825,71 +1825,153 @@ void ImGuiSettingsWindow::draw_objects_panel()
 
 		ImGui::PushItemWidth(28 * ImGui::GetFontSize());
 
+		ImGui::Text("- "); ImGui::SameLine();
+		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 0.9f, 0.0f, 1.0f));
+		ImGui::Text("Selected object"); ImGui::SameLine();
+		ImGui::PopStyleColor();
+		ImGui::Text(": "); ImGui::SameLine();
 		ImGui::Text("%s", material_names[currently_selected_material].c_str());
+
+		ImGui::SeparatorText("Base Layer");
 		material_changed |= ImGui::ColorEdit3("Base color", (float*)&material.base_color);
 		material_changed |= ImGui::SliderFloat("Roughness", &material.roughness, 0.0f, 1.0f);
-
-		ImGui::Separator();
-		static bool metallic_use_base_color = false;
-		material_changed |= ImGui::SliderFloat("Metallic", &material.metallic, 0.0f, 1.0f);
-		material_changed |= ImGui::ColorEdit3("F0 Reflectivity", (float*)&material.base_color);
-		material_changed |= ImGui::ColorEdit3("F82 Reflectivity", (float*)&material.metallic_F82);
-		material_changed |= ImGui::ColorEdit3("F90 Reflectivity", (float*)&material.metallic_F90);
-		material_changed |= ImGui::SliderFloat("F90 Falloff exponent", &material.metallic_F90_falloff_exponent, 0.5f, 5.0f);
-		ImGuiRenderer::show_help_marker("The \"falloff\" controls how wide the influence of F90 is.\n"
-										"\n"
-										"The lower the value, the wider F90's effect will be.");
-		
 		material_changed |= ImGui::SliderFloat("Anisotropy", &material.anisotropy, 0.0f, 1.0f);
-		material_changed |= ImGui::SliderFloat("Anisotropy Rotation", &material.anisotropy_rotation, 0.0f, 1.0f);
+		material_changed |= ImGui::SliderFloat("Anisotropy rotation", &material.anisotropy_rotation, 0.0f, 1.0f);
 
-		ImGui::Separator();
-		material_changed |= ImGui::ColorEdit3("Specular color", (float*)&material.specular_color);
-		material_changed |= ImGui::SliderFloat("Specular", &material.specular, 0.0f, 1.0f);
-		material_changed |= ImGui::SliderFloat("Specular tint strength", &material.specular_tint, 0.0f, 1.0f);
-
-		ImGui::Separator();
-		material_changed |= ImGui::ColorEdit3("Sheen color", (float*)&material.sheen_color);
-		material_changed |= ImGui::SliderFloat("Sheen", &material.sheen, 0.0f, 1.0f);
-		material_changed |= ImGui::SliderFloat("Sheen Roughness", &material.sheen_roughness, 0.0f, 1.0f);
-
-		ImGui::Separator();
-		material_changed |= ImGui::ColorEdit3("Coat Medium Absorption", (float*)&material.coat_medium_absorption);
-		material_changed |= ImGui::SliderFloat("Coat Strength", &material.coat, 0.0f, 1.0f);
-		material_changed |= ImGui::SliderFloat("Coat Roughness", &material.coat_roughness, 0.0f, 1.0f);
-		material_changed |= ImGui::SliderFloat("Coat Anisotropy", &material.coat_anisotropy, 0.0f, 1.0f);
-		material_changed |= ImGui::SliderFloat("Coat Anisotropy Rotation", &material.coat_anisotropy_rotation, 0.0f, 1.0f);
-		material_changed |= ImGui::SliderFloat("Coat IOR", &material.coat_ior, 1.0f, 3.0f);
-
-		ImGui::Separator();
-		material_changed |= ImGui::SliderFloat("Transmission", &material.specular_transmission, 0.0f, 1.0f);
-		material_changed |= ImGui::SliderFloat("IOR", &material.ior, 1.0f, 3.0f);
-		material_changed |= ImGui::SliderFloat("Absorption distance", &material.absorption_at_distance, 0.0f, 20.0f);
-		material_changed |= ImGui::ColorEdit3("Absorption color", (float*)&material.absorption_color);
-		ImGui::BeginDisabled(kernel_options->get_macro_value(GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY) != ISS_WITH_PRIORITIES);
-		material_changed |= ImGui::SliderInt("Dielectric priority", &material.dielectric_priority, 1, StackPriorityEntry::PRIORITY_MAXIMUM);
-		if (kernel_options->get_macro_value(GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY) != ISS_WITH_PRIORITIES)
-			ImGuiRenderer::show_help_marker("Disabled because not using nested dielectrics with priorities.");
-		ImGui::EndDisabled();
-
-		ImGui::Separator();
-		ImGui::BeginDisabled(material.emission_texture_index > 0);
-		// Displaying original emission in ImGui
-		ColorRGB32F material_emission = material.get_emission() / material.emission_strength;
-		if (ImGui::ColorEdit3("Emission", (float*)&material_emission, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float))
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		if (ImGui::CollapsingHeader("Specular layer"))
 		{
-			material.set_emission(material_emission / material.emission_strength);
+			ImGui::TreePush("Specular layer material tree");
 
-			material_changed = true;
+			material_changed |= ImGui::ColorEdit3("Specular color", (float*)&material.specular_color);
+			material_changed |= ImGui::SliderFloat("Specular", &material.specular, 0.0f, 1.0f);
+			material_changed |= ImGui::SliderFloat("Specular tint strength", &material.specular_tint, 0.0f, 1.0f);
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			ImGui::TreePop();
 		}
-		ImGui::EndDisabled();
-		if (material.emission_texture_index > 0)
-			ImGuiRenderer::show_help_marker("Disabled because the emission of this material is controlled by a texture");
 
-		material_changed |= ImGui::SliderFloat("Emission Strength", &material.emission_strength, 0.0f, 10.0f);
-		material_changed |= ImGui::SliderFloat("Opacity", &material.alpha_opacity, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+		if (ImGui::CollapsingHeader("Metallic Layer"))
+		{
+			ImGui::TreePush("Metallic layer material tree");
+
+			static bool metallic_use_base_color = false;
+			material_changed |= ImGui::SliderFloat("Metallic", &material.metallic, 0.0f, 1.0f);
+			material_changed |= ImGui::ColorEdit3("F0 Reflectivity", (float*)&material.base_color);
+			ImGuiRenderer::show_help_marker("Reflectivity color at 0 degree angles: microfacet-normal "
+											"and view direction perfectly aligned: looking straigth into "
+											"the object.");
+			material_changed |= ImGui::ColorEdit3("F82 Reflectivity", (float*)&material.metallic_F82);
+			ImGuiRenderer::show_help_marker("Reflectivity color at 82 degree angles: microfacet-normal "
+											"and view direction almost orthogonal.");
+			material_changed |= ImGui::ColorEdit3("F90 Reflectivity", (float*)&material.metallic_F90);
+			ImGuiRenderer::show_help_marker("Reflectivity color at 90 degree angles: microfacet-normal "
+											"and view direction perfectly orthogonal.");
+			material_changed |= ImGui::SliderFloat("F90 Falloff exponent", &material.metallic_F90_falloff_exponent, 0.5f, 5.0f);
+			ImGuiRenderer::show_help_marker("The \"falloff\" controls how wide the influence of F90 is.\n"
+											"\n"
+											"The lower the value, the wider F90's effect will be.");
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			material_changed |= ImGui::SliderFloat("Second roughness weight", &material.second_roughness_weight, 0.0f, 1.0f);
+			ImGuiRenderer::show_help_marker("The principled BSDF can have two metal lobes. They are exactly the "
+											"same (F0/F82/F90, Anisotropy, ...) except that they can each have "
+											"their own roughness.\n"
+											"The first metal lobe's roughness is controlled by the general "
+											"roughness of the material and the second metal lobe's roughness "
+											"is controlled by 'Second roughness'.\n"
+											"The two lobes are then linearly blended together using "
+											"'Second roughness weight'. 'Second roughness weight' = 1 means "
+											"that the primary roughness of the material is ignored and there "
+											"is effectively only the second metallic lobe left.");
+
+			ImGui::BeginDisabled(material.second_roughness_weight == 0.0f);
+			material_changed |= ImGui::SliderFloat("Second roughness", &material.second_roughness, 0.0f, 1.0f);
+			ImGui::EndDisabled();
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			ImGui::TreePop();
+		}
+
+		if (ImGui::CollapsingHeader("Sheen Layer"))
+		{
+			ImGui::TreePush("Sheen layer material tree");
+
+			material_changed |= ImGui::ColorEdit3("Sheen color", (float*)&material.sheen_color);
+			material_changed |= ImGui::SliderFloat("Sheen strength", &material.sheen, 0.0f, 1.0f);
+			material_changed |= ImGui::SliderFloat("Sheen roughness", &material.sheen_roughness, 0.0f, 1.0f);
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			ImGui::TreePop();
+		}
+
+		if (ImGui::CollapsingHeader("Coat Layer"))
+		{
+			ImGui::TreePush("Coat layer material tree");
+
+			material_changed |= ImGui::ColorEdit3("Coat medium absorption", (float*)&material.coat_medium_absorption);
+			material_changed |= ImGui::SliderFloat("Coat strength", &material.coat, 0.0f, 1.0f);
+			material_changed |= ImGui::SliderFloat("Coat roughness", &material.coat_roughness, 0.0f, 1.0f);
+			material_changed |= ImGui::SliderFloat("Coat anisotropy", &material.coat_anisotropy, 0.0f, 1.0f);
+			material_changed |= ImGui::SliderFloat("Coat anisotropy Rotation", &material.coat_anisotropy_rotation, 0.0f, 1.0f);
+			material_changed |= ImGui::SliderFloat("Coat IOR", &material.coat_ior, 1.0f, 3.0f);
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			ImGui::TreePop();
+		}
+
+		if (ImGui::CollapsingHeader("Transmission Layer"))
+		{
+			ImGui::TreePush("Transmission layer material tree");
+
+			material_changed |= ImGui::SliderFloat("Transmission", &material.specular_transmission, 0.0f, 1.0f);
+			material_changed |= ImGui::SliderFloat("IOR", &material.ior, 1.0f, 3.0f);
+			material_changed |= ImGui::SliderFloat("Absorption distance", &material.absorption_at_distance, 0.0f, 20.0f);
+			material_changed |= ImGui::ColorEdit3("Absorption color", (float*)&material.absorption_color);
+			ImGui::BeginDisabled(kernel_options->get_macro_value(GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY) != ISS_WITH_PRIORITIES);
+			material_changed |= ImGui::SliderInt("Dielectric priority", &material.dielectric_priority, 1, StackPriorityEntry::PRIORITY_MAXIMUM);
+			if (kernel_options->get_macro_value(GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY) != ISS_WITH_PRIORITIES)
+				ImGuiRenderer::show_help_marker("Disabled because not using nested dielectrics with priorities.");
+			ImGui::EndDisabled();
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			ImGui::TreePop();
+		}
+
+		if (ImGui::CollapsingHeader("Emission Properties"))
+		{
+			ImGui::TreePush("Emission material tree");
+
+			ImGui::BeginDisabled(material.emission_texture_index > 0);
+			// Displaying original emission in ImGui
+			ColorRGB32F material_emission = material.get_emission() / material.emission_strength;
+			if (ImGui::ColorEdit3("Emission", (float*)&material_emission, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float))
+			{
+				material.set_emission(material_emission / material.emission_strength);
+
+				material_changed = true;
+			}
+			ImGui::EndDisabled();
+			if (material.emission_texture_index > 0)
+				ImGuiRenderer::show_help_marker("Disabled because the emission of this material is controlled by a texture");
+
+			material_changed |= ImGui::SliderFloat("Emission Strength", &material.emission_strength, 0.0f, 10.0f);
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			ImGui::TreePop();
+		}
+
+		if (ImGui::CollapsingHeader("Other properties"))
+		{
+			ImGui::TreePush("Other properties material tree");
+
+			material_changed |= ImGui::SliderFloat("Opacity", &material.alpha_opacity, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+
+			ImGui::TreePop();
+		}
 
 		ImGui::PopItemWidth();
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::Separator();
 
 		material_changed |= draw_material_presets(material);
