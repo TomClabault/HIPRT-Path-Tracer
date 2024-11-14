@@ -23,7 +23,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 - Oren-Nayar Diffuse BRDF Lobe
 - Metallic Microfacet GGX Layer + Anisotropy & Anisotropy Rotation + Double Roughness [\[Kulla & Conty, 2017\]](https://blog.selfshadow.com/publications/s2017-shading-course/imageworks/s2017_pbs_imageworks_slides_v2.pdf)
 - Specular transmission BTDF + Beer Lambert Volumetric Absorption: [\[Burley, 2015\]](https://blog.selfshadow.com/publications/s2015-shading-course/#course_content)
-- Multiple-scattering energy compensation for conductors, dielectrics and glossy-diffuse materials [\[Turquin, 2019\]](https://blog.selfshadow.com/publications/turquin/ms_comp_final.pdf)
+- Multiple-scattering energy compensation for conductors (double metal layer), dielectrics (tranmission layer) and glossy-diffuse (specular + diffuse layer) materials [\[Turquin, 2019\]](https://blog.selfshadow.com/publications/turquin/ms_comp_final.pdf)
 
 ![LayeredBSDF](README_data/img/LayeredBSDF.png)
 ### Sampling
