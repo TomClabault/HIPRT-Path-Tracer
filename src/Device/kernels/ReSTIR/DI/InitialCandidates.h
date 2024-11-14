@@ -280,10 +280,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderDat
 
 HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData& render_data, ReSTIRDIReservoir& reservoir, int nb_light_candidates, int nb_bsdf_candidates, float envmap_candidate_probability, const float3& view_direction, const HitInfo& closest_hit_info, const RayPayload& ray_payload, Xorshift32Generator& random_number_generator)
 {
-    bool inside_surface = false;// hippt::dot(view_direction, closest_hit_info.geometric_normal) < 0;
-    float inside_surface_multiplier = inside_surface ? -1.0f : 1.0f;
-    float3 evaluated_point = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f * inside_surface_multiplier;
-
     // Sampling the BSDF candidates
     for (int i = 0; i < nb_bsdf_candidates; i++)
     {
@@ -293,23 +289,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData
         RayVolumeState trash_ray_volume_state = ray_payload.volume_state;
         ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, trash_ray_volume_state, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_direction, bsdf_sample_pdf, random_number_generator);
 
-        float3 shadow_ray_origin = evaluated_point;
-        bool refraction_sampled = hippt::dot(sampled_direction, closest_hit_info.shading_normal * inside_surface_multiplier) < 0;
-        if (refraction_sampled)
-        {
-            // If we sampled a refraction, we're pushing the origin of the shadow ray "through"
-            // the surface so that our ray can refract inside the surface
-            //
-            // If we don't do that and we just use the 'evaluated_point' computed at the very
-            // beginning of the function, we're going to intersect ourselves
-
-            shadow_ray_origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f * inside_surface_multiplier * -1.0f;
-        }
-
-        hiprtRay bsdf_ray;
+        bool refraction_sampled = hippt::dot(sampled_direction, view_direction) < 0.0f;
         if (bsdf_sample_pdf > 0.0f)
         {
-            bsdf_ray.origin = shadow_ray_origin;
+            hiprtRay bsdf_ray;
+            bsdf_ray.origin = closest_hit_info.inter_point;
             bsdf_ray.direction = sampled_direction;
 
             ShadowLightRayHitInfo shadow_light_ray_hit_info;
@@ -325,7 +309,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData
                 // That would be correct but bsdf_dispatcher_sample return a PDF == 0.0f if a bad
                 // direction was sampled and if the PDF is 0.0f, we never get to this line of code
                 // you're reading. If we are here, this is because we sampled a direction that is
-                // correct for the BSDF. Even if the direction is correct, the dot product may be
+                // correct for the BSDF. Even if the direction is correct, the dot product with the normal may be
                 // negative in the case of refractions / total internal reflections and so in this case,
                 // we'll need to negative the dot product for it to be positive
                 float cosine_at_evaluated_point = hippt::abs(hippt::dot(closest_hit_info.shading_normal, sampled_direction));
@@ -371,6 +355,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData
                 bsdf_RIS_sample.point_on_light_source = bsdf_ray.origin + bsdf_ray.direction * shadow_light_ray_hit_info.hit_distance;
                 bsdf_RIS_sample.target_function = target_function;
                 bsdf_RIS_sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
+                if (refraction_sampled)
+                    bsdf_RIS_sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_BSDF_REFRACTION;
 
                 reservoir.add_one_candidate(bsdf_RIS_sample, candidate_weight, random_number_generator);
                 reservoir.sanity_check(make_int2(-1, -1));

@@ -26,7 +26,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_ReSTIR_DI_reservoir(const HI
     ReSTIRDISample sample = reservoir.sample;
 
     float distance_to_light;
-    float3 evaluated_point = closest_hit_info.inter_point + closest_hit_info .shading_normal * 1.0e-4f;
 
     float3 shadow_ray_direction;
     if (sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE)
@@ -36,19 +35,21 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_ReSTIR_DI_reservoir(const HI
     }
     else
     {
-        shadow_ray_direction = sample.point_on_light_source - evaluated_point;
+        shadow_ray_direction = sample.point_on_light_source - closest_hit_info.inter_point;
         shadow_ray_direction = shadow_ray_direction / (distance_to_light = hippt::length(shadow_ray_direction));
     }
-     
-    hiprtRay shadow_ray;
-    shadow_ray.origin = evaluated_point;
-    shadow_ray.direction = shadow_ray_direction;
 
     bool in_shadow = false;
     if (sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED)
         in_shadow = false;
     else if (render_data.render_settings.restir_di_settings.do_final_shading_visibility)
+    {
+        hiprtRay shadow_ray;
+        shadow_ray.origin = closest_hit_info.inter_point;
+        shadow_ray.direction = shadow_ray_direction;
+
         in_shadow = evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, random_number_generator);
+    }
 
     if (!in_shadow)
     {
@@ -59,7 +60,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_ReSTIR_DI_reservoir(const HI
 
         bsdf_color = bsdf_dispatcher_eval(render_data, ray_payload.material, trash_volume_state, view_direction, closest_hit_info.shading_normal, shadow_ray_direction, bsdf_pdf);
 
-        cosine_at_evaluated_point = hippt::max(0.0f, hippt::dot(closest_hit_info.shading_normal , shadow_ray_direction));
+        cosine_at_evaluated_point = hippt::dot(closest_hit_info.shading_normal, shadow_ray_direction);
+        if (sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_BSDF_REFRACTION)
+            // We're not allowing samples that are below the surface
+            // UNLESS it's a BSDF refraction sample in which case it's valid
+            // so we're restoring the cosine term to be > 0.0f so that it passes
+            // the if() condition below
+            cosine_at_evaluated_point = hippt::abs(cosine_at_evaluated_point);
 
         if (cosine_at_evaluated_point > 0.0f)
         {
