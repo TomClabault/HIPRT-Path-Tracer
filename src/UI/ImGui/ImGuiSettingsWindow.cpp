@@ -1911,6 +1911,7 @@ void ImGuiSettingsWindow::draw_objects_panel()
 
 			material_changed |= ImGui::ColorEdit3("Coat medium absorption", (float*)&material.coat_medium_absorption);
 			material_changed |= ImGui::SliderFloat("Coat strength", &material.coat, 0.0f, 1.0f);
+			material_changed |= ImGui::SliderFloat("Coat thickness", &material.coat_thickness, 0.0f, 5.0f);
 			material_changed |= ImGui::SliderFloat("Coat roughness", &material.coat_roughness, 0.0f, 1.0f);
 			material_changed |= ImGui::SliderFloat("Coat anisotropy", &material.coat_anisotropy, 0.0f, 1.0f);
 			material_changed |= ImGui::SliderFloat("Coat anisotropy Rotation", &material.coat_anisotropy_rotation, 0.0f, 1.0f);

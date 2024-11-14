@@ -31,6 +31,7 @@
   * [10] [Blender Principled BSDF] https://docs.blender.org/manual/fr/dev/render/shader_nodes/shader/principled.html
   * [11] [Open PBR Specification] https://academysoftwarefoundation.github.io/OpenPBR/#formalism/layering
   * [12] [Enterprise PBR Specification] https://dassaultsystemes-technology.github.io/EnterprisePBRShadingModel/spec-2025x.md.html
+  * [13] [Arbitrarily Layered Micro-Facet Surfaces, Weidlich, Wilkie] https://www.cg.tuwien.ac.at/research/publications/2007/weidlich_2007_almfs/weidlich_2007_almfs-paper.pdf
   * 
   * Important note: none of the lobes of this implementation includes the cosine term.
   * The cosine term NoL needs to be taken into account outside of the BSDF
@@ -403,7 +404,19 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_coat_layer(const HIPRTR
 
         // Taking the color of the absorbing coat medium into account when the light that got transmitted
         // travels through it
-        layer_below_attenuation *= material.coat_medium_absorption;
+        //
+        // The distance traveled into the coat depends on the angle at which we're looking
+        // at it and the angle in which light goes: the grazier the angles, the more the
+        // absorption since we're traveling further in the coat before leaving
+        //
+        // Reference: [11], [13]
+        float incident_refracted_angle = sqrt(1.0f - (1.0f - local_to_light_direction.z * local_to_light_direction.z) / (material.coat_ior * material.coat_ior));
+        float outgoing_refracted_angle = sqrt(1.0f - (1.0f - local_view_direction.z * local_view_direction.z) / (material.coat_ior * material.coat_ior));
+
+        // Reference: [11], [13]
+        float traveled_distance_angle = 1.0f / incident_refracted_angle + 1.0f / outgoing_refracted_angle;
+        ColorRGB32F coat_absorption = exp(-(ColorRGB32F(1.0f) - pow(sqrt(material.coat_medium_absorption), traveled_distance_angle)) * material.coat_thickness);
+        layer_below_attenuation *= coat_absorption;
 
         // If the coat layer has 0 weight, we should not get any light attenuation.
         // But if the coat layer has 1 weight, we should get the full attenuation that we
