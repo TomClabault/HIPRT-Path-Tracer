@@ -37,7 +37,6 @@ extern ImGuiLogger g_imgui_logger;
 // - take transmission color into account when direct sampling a light source that is inside a volume: leave that for when implement volumes?
 // - denoiser AOVs not accounting for transmission correctly since Disney  BSDF
 //	  - same with perfect reflection
-// - fix sampling lights inside dielectrics with ReSTIR DI (using minT for rays)
 // - when using a BSDF override, transmissive materials keep their dielectric priorities and this can mess up shadow rays and intersections in general if the BSDF used for the override doesn't support transmissive materials
 // - threadmanager: what if we start a thread with a dependency A on a thread that itself has a dependency B? we're going to try join dependency A even if thread with dependency on B hasn't even started yet --> joining nothing --> immediate return --> should have waited for the dependency but hasn't
 // - When checking "Enable denoiser", it always denoises once immediately even if "denoise only when render done" is checked
