@@ -22,13 +22,13 @@ extern ImGuiLogger g_imgui_logger;
 void SceneParser::parse_scene_file(const std::string& scene_filepath, Assimp::Importer& assimp_importer, Scene& parsed_scene, SceneParserOptions& options)
 {
     const aiScene* scene;
-    scene = assimp_importer.ReadFile(scene_filepath, aiPostProcessSteps::aiProcess_PreTransformVertices | aiPostProcessSteps::aiProcess_Triangulate | aiPostProcessSteps::aiProcess_RemoveRedundantMaterials | aiPostProcessSteps::aiProcess_GenBoundingBoxes);
+    scene = assimp_importer.ReadFile(scene_filepath, aiPostProcessSteps::aiProcess_PreTransformVertices | aiPostProcessSteps::aiProcess_Triangulate | aiPostProcessSteps::aiProcess_GenBoundingBoxes);
     if (scene == nullptr)
     {
         std::cerr << assimp_importer.GetErrorString() << std::endl;
         g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_WARNING, "Falling back to default scene...");
 
-        scene = assimp_importer.ReadFile(CommandlineArguments::DEFAULT_SCENE, aiPostProcessSteps::aiProcess_PreTransformVertices | aiPostProcessSteps::aiProcess_Triangulate | aiPostProcessSteps::aiProcess_RemoveRedundantMaterials);
+        scene = assimp_importer.ReadFile(CommandlineArguments::DEFAULT_SCENE, aiPostProcessSteps::aiProcess_PreTransformVertices | aiPostProcessSteps::aiProcess_Triangulate);
         if (scene == nullptr)
         {
             // Couldn't even load the default scene either
@@ -65,9 +65,14 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Assimp::Im
     std::vector<int> texture_indices_offsets;
     int texture_count;
 
+    // We expect one material per mesh. It can happen that mNumMaterials is > mNumMeshes
+    // which means that there is a material that is not used in the scene then we don't
+    // want to process that material so we're then only interested in the mNumMeshes meshes
+    // that do have a material
+    int num_materials = std::min(scene->mNumMeshes, scene->mNumMaterials);
     prepare_textures(scene, texture_paths, material_texture_indices, material_indices, texture_per_mesh, texture_indices_offsets, texture_count);
-    parsed_scene.materials.resize(scene->mNumMaterials);
-    parsed_scene.metadata.material_names.resize(scene->mNumMaterials);
+    parsed_scene.materials.resize(num_materials);
+    parsed_scene.metadata.material_names.resize(num_materials);
     parsed_scene.metadata.mesh_names.resize(scene->mNumMeshes);
     parsed_scene.metadata.mesh_material_indices.resize(scene->mNumMeshes);
     parsed_scene.textures.resize(texture_count);
@@ -275,7 +280,11 @@ void SceneParser::prepare_textures(const aiScene* scene, std::vector<std::pair<a
     std::vector<std::pair<aiTextureType, std::string>> mesh_texture_paths;
     int global_texture_index_offset = 0;
 
-    for (int material_index = 0; material_index < scene->mNumMaterials; material_index++)
+    // We expect one material per mesh. It can happen that mNumMaterials is > mNumMeshes
+    // which means that there is a material that is not used in the scene then we don't
+    // want to process that material so we're then only interested in the mNumMeshes meshes
+    // that do have a material
+    for (int material_index = 0; material_index < std::min(scene->mNumMeshes, scene->mNumMaterials); material_index++)
     {
         aiMaterial* mesh_material = scene->mMaterials[material_index];
         ParsedMaterialTextureIndices tex_indices;
