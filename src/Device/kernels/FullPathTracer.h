@@ -192,10 +192,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
                 light_direct_contribution = clamp_light_contribution(light_direct_contribution, render_data.render_settings.direct_contribution_clamp, bounce == 0);
                 envmap_direct_contribution = clamp_light_contribution(envmap_direct_contribution, render_data.render_settings.envmap_contribution_clamp, bounce == 0);
 
-                // Clamping indirect lighting 
-                light_direct_contribution = clamp_light_contribution(light_direct_contribution, render_data.render_settings.indirect_contribution_clamp, bounce > 0);
-                envmap_direct_contribution = clamp_light_contribution(envmap_direct_contribution, render_data.render_settings.indirect_contribution_clamp, bounce > 0);
-
 #if DirectLightSamplingStrategy == LSS_NO_DIRECT_LIGHT_SAMPLING // No direct light sampling
                 ColorRGB32F hit_emission = ray_payload.material.get_emission();
                 hit_emission = clamp_light_contribution(hit_emission, render_data.render_settings.indirect_contribution_clamp, bounce > 0);
@@ -209,7 +205,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
                     // geometry + direct light sampling). Otherwise, we don't check for bounce == 0
                     ray_payload.ray_color += ray_payload.material.get_emission() * ray_payload.throughput;
 
-                ray_payload.ray_color += (light_direct_contribution + envmap_direct_contribution) * ray_payload.throughput;
+                // Clamped indirect lighting 
+                ColorRGB32F indirect_lighting_contribution = (light_direct_contribution + envmap_direct_contribution) * ray_payload.throughput;
+                ColorRGB32F clamped_indirect_lighting_contribution = clamp_light_contribution(indirect_lighting_contribution, render_data.render_settings.indirect_contribution_clamp, bounce > 0);
+                ray_payload.ray_color += clamped_indirect_lighting_contribution;
 #endif
 
                 // --------------------------------------- //
@@ -271,7 +270,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
 
                 skysphere_color = clamp_light_contribution(skysphere_color, render_data.render_settings.envmap_contribution_clamp, /* clamp condition */ true);
 
-                ray_payload.ray_color += skysphere_color * ray_payload.throughput;
+                ColorRGB32F indirect_lighting_contribution = skysphere_color * ray_payload.throughput;
+                // Only clamping with the indirect lighting clamp value if
+                // this is bounce > 0 (thanks to /* clamp condition */ bounce > 0)
+                ColorRGB32F clamped_indirect_lighting_contribution = clamp_light_contribution(
+                    indirect_lighting_contribution, render_data.render_settings.indirect_contribution_clamp, 
+                    /* clamp condition */ bounce > 0);
+
+                ray_payload.ray_color += clamped_indirect_lighting_contribution;
                 ray_payload.next_ray_state = RayState::MISSED;
             }
         }

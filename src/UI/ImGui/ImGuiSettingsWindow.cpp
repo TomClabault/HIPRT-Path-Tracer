@@ -176,6 +176,8 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 			m_application_settings->target_height = m_renderer->m_render_resolution.y;
 		}
 	}
+	ImGuiRenderer::show_help_marker("Keeps approximately the same render resolution when "
+									"resizing the application's window.");
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	ImGui::SeparatorText("General Settings");

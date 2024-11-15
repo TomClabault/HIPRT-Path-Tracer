@@ -155,7 +155,7 @@ struct HIPRTRenderSettings
 	// Clamp envmap contribution to reduce fireflies
 	float envmap_contribution_clamp = 0.0f;
 	// Clamp indirect lighting contribution to reduce fireflies
-	float indirect_contribution_clamp = 0.0f;
+	float indirect_contribution_clamp = 15.0f;
 
 	// If a selected light (for direct lighting estimation) contributes at a given
 	// point less than this 'minimum_light_contribution' value then the light sample is discarded
