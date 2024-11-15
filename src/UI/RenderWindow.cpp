@@ -33,7 +33,7 @@ extern ImGuiLogger g_imgui_logger;
 // - use self bit packing (no bitfields) for nested dielectrics because bitfields are implementation dependent in size, that's bad --> We don't get our nice packing with every compiler
 // - for LTC sheen lobe, have the option to use either SGGX volumetric sheen or approximation precomputed LTC data
 
-// TODO known bugs / incorectness:
+// TODO known bugs / incorrectness:
 // - take transmission color into account when direct sampling a light source that is inside a volume: leave that for when implement volumes?
 // - denoiser AOVs not accounting for transmission correctly since Disney  BSDF
 //	  - same with perfect reflection
@@ -44,12 +44,10 @@ extern ImGuiLogger g_imgui_logger;
 // TODO Code Organization:
 // - init opengl context and all that expensive stuff (compile kernels too) while the scene is being parsed
 // - do not pass so many arguments to kernels everytime: make a "KernelArguments" folder in the source files with one file that contains the arguments needed for a kernel: ReSTIR_DI_InitialCandidatesArguments, ReSTIR_DI_SpatialReuseArguments, ...
-// - what if everywhere in the code we use a minT for the rays instead of pushing the points in the right direction (annoying to determine the right direction everytime depending on inside/outside surface)
 // - cleanup RIS reservoir with all the BSDF stuff
 // - only recompile relevant kernels in GPURenderer::recompile_kernels (i.e. not restir if not using restir for example)
 // - denoiser albedo and normals still useful now that we have the GBuffer?
 // - make a function get_camera_ray that handles pixel jittering
-// - use simplified material everywhere in the BSDF etc... because we don't need the texture indices of the full material at this point
 // - we don't need the full HitInfo 'closest_hit_info' structure everywhere, only the inter point and the two normals for the most part so maybe have a simplified structure 
 // - only the material index can be stored in the pixel states of the wavefront path tracer, don't need to store the whole material (is that correct though? Because then we need to re-evaluate the textures at the hit point)
 // - use 3x3 matrix for envmap matrices
@@ -60,9 +58,7 @@ extern ImGuiLogger g_imgui_logger;
 
 
 // TODO Features:
-// - try dynamic stack for better memory usage than full brute force global stack buffer and see performance impact
 // - implement ideas of https://blog.selfshadow.com/publications/s2017-shading-course/imageworks/s2017_pbs_imageworks_slides_v2.pdf
-// - Better artistic fresnel Adobe: https://renderwonk.com/publications/wp-generalization-adobe/gen-adobe.pdf
 // - use shared memory for nested dielectrics stack?
 // - software opacity micromaps
 // - pack RGB8 colors into float length + uint packed: https://github.com/nvpro-samples/vk_raytrace/blob/master/shaders/compress.glsl @ compress_unit_vec

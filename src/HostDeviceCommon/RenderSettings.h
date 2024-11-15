@@ -123,21 +123,21 @@ struct HIPRTRenderSettings
 	// (when interacting with the camera)
 	int render_low_resolution_scaling = 2;
 
-	bool enable_adaptive_sampling = false;
+	bool enable_adaptive_sampling = true;
 	// How many samples before the adaptive sampling actually kicks in.
 	// This is useful mainly for the per-pixel adaptive sampling method
 	// where you want to be sure that each pixel in the image has had enough
 	// chance find a path to a potentially 
-	int adaptive_sampling_min_samples = 96;
+	int adaptive_sampling_min_samples = 64;
 	// Adaptive sampling noise threshold
-	float adaptive_sampling_noise_threshold = 0.4f;
+	float adaptive_sampling_noise_threshold = 0.3f;
 
 	// If true, the rendering will stop after a certain proportion (defined by 'stop_pixel_percentage_converged')
 	// of pixels of the image have converged. "converged" here is defined according to the adaptive sampling if
 	// enabled or according to 'stop_pixel_noise_threshold' if adaptive sampling is not enabled.
 	//
 	// If false, the render will not stop until all pixels have converged
-	bool enable_pixel_stop_noise_threshold = false;
+	bool enable_pixel_stop_noise_threshold = true;
 	// A percentage in [0, 100] that dictates the proportion of pixels that must
 	// have reached the given noise threshold (stop_pixel_noise_threshold
 	// variable) before we stop rendering.

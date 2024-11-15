@@ -1911,7 +1911,7 @@ void ImGuiSettingsWindow::draw_objects_panel()
 
 			material_changed |= ImGui::SliderFloat("Coat strength", &material.coat, 0.0f, 1.0f);
 			material_changed |= ImGui::ColorEdit3("Coat medium absorption", (float*)&material.coat_medium_absorption);
-			material_changed |= ImGui::SliderFloat("Coat medium thickness", &material.coat_medium_thickness, 0.0f, 5.0f);
+			material_changed |= ImGui::SliderFloat("Coat medium thickness", &material.coat_medium_thickness, 0.0f, 15.0f);
 			material_changed |= ImGui::SliderFloat("Coat roughness", &material.coat_roughness, 0.0f, 1.0f);
 			material_changed |= ImGui::SliderFloat("Coat roughening", &material.coat_roughening, 0.0f, 1.0f);
 			ImGuiRenderer::show_help_marker("Physical accuracy requires that a rough clearcoat also roughens what's underneath it "
@@ -1950,7 +1950,9 @@ void ImGuiSettingsWindow::draw_objects_panel()
 
 			ImGui::BeginDisabled(material.emission_texture_index > 0);
 			// Displaying original emission in ImGui
-			ColorRGB32F material_emission = material.get_emission() / material.emission_strength;
+			ColorRGB32F material_emission = ColorRGB32F(0.0f);
+			if (material.emission_strength > 0.0f)
+				material_emission = material.get_emission() / material.emission_strength;
 			if (ImGui::ColorEdit3("Emission", (float*)&material_emission, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float))
 			{
 				material.set_emission(material_emission / material.emission_strength);

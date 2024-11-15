@@ -97,6 +97,43 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_diffuse_sample(const float3& su
     return cosine_weighted_sample_around_normal(surface_normal, random_number_generator);
 }
 
+HIPRT_HOST_DEVICE HIPRT_INLINE float principled_specular_relative_ior(const SimplifiedRendererMaterial& material, float incident_medium_ior)
+{
+    // When computing the specular layer, the incident IOR actually isn't always
+    // that of the air because we may have the coat layer above us instead of the air
+    // so the "proper" IOR to use here is actually the lerp between the air and the coat
+    // IOR depending on the coat factor
+    constexpr float air_IOR = 1.0f;
+    float incident_layer_ior = hippt::lerp(air_IOR, material.coat_ior, material.coat);
+    float relative_ior = material.ior / incident_layer_ior;
+    if (relative_ior < 1.0f)
+        // If the coat IOR (which we're coming from) is greater than the IOR
+        // of the base layer (which is the specular layer with IOR material.ior)
+        // then we may hit total internal reflection when entering the specular layer from
+        // the coat layer above. This manifests as a weird ring near grazing angles.
+        //
+        // This weird ring should not happen in reality. It only happens because we're
+        // not bending the rays when refracting into the coat layer: we compute the
+        // fresnel at the specular/coat interface as if the light direction just went
+        // straight through the coat layer without refraction. There will always be
+        // some refraction at the air/coat interface if the coat layer IOR is > 1.0f.
+        //
+        // The proper solution would be to actually bend the ray after it hits the coat layer.
+        // We would then be evaluating the fresnel at the coat/specular interface with a
+        // incident light cosine angle that is different and we wouldn't get total internal reflection.
+        //
+        // This is explained in the [OpenPBR Spec 2024]
+        // https://academysoftwarefoundation.github.io/OpenPBR/#model/coat/totalinternalreflection
+        // 
+        // A more computationally efficient solution is to simply invert the IOR as done here.
+        // This is also explained in the OpenPBR spec as well as in 
+        // [Novel aspects of the Adobe Standard Material, Kutz, Hasan, Edmondson, 2023]
+        // https://helpx.adobe.com/content/dam/substance-3d/general-knowledge/asm/Adobe%20Standard%20Material%20-%20Technical%20Documentation%20-%20May2023.pdf
+        relative_ior = 1.0f / relative_ior;
+
+    return relative_ior;
+}
+
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_specular_eval(
     const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, float relative_ior, 
     const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_half_vector, 
@@ -513,42 +550,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_glass_layer(const HIPRT
     return ColorRGB32F(0.0f);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_specular_layer(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, const float3& local_view_direction, const float3 local_to_light_direction, const float3& local_half_vector, const float3& shading_normal, float incident_ior, float specular_weight, float specular_proba, ColorRGB32F& layers_throughput, float& out_cumulative_pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_specular_layer(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, const float3& local_view_direction, const float3 local_to_light_direction, const float3& local_half_vector, const float3& shading_normal, float incident_medium_ior, float specular_weight, float specular_proba, ColorRGB32F& layers_throughput, float& out_cumulative_pdf)
 {
     if (specular_weight > 0.0f)
     {
-        // When computing the specular layer, the incident IOR actually isn't always
-        // that of the air because we may have the coat layer above us instead of the air
-        // so the "proper" IOR to use here is actually the lerp between the air and the coat
-        // IOR depending on the coat factor
-        constexpr float air_IOR = 1.0f;
-        float incident_layer_ior = hippt::lerp(air_IOR, material.coat_ior, material.coat);
-        float relative_ior = material.ior / incident_layer_ior;
-        if (relative_ior < 1.0f)
-            // If the coat IOR (which we're coming from) is greater than the IOR
-            // of the base layer (which is the specular layer with IOR material.ior)
-            // then we may hit total internal reflection when entering the specular layer from
-            // the coat layer above. This manifests as a weird ring near grazing angles.
-            //
-            // This weird ring should not happen in reality. It only happens because we're
-            // not bending the rays when refracting into the coat layer: we compute the
-            // fresnel at the specular/coat interface as if the light direction just went
-            // straight through the coat layer without refraction. There will always be
-            // some refraction at the air/coat interface if the coat layer IOR is > 1.0f.
-            //
-            // The proper solution would be to actually bend the ray after it hits the coat layer.
-            // We would then be evaluating the fresnel at the coat/specular interface with a
-            // incident light cosine angle that is different and we wouldn't get total internal reflection.
-            //
-            // This is explained in the [OpenPBR Spec 2024]
-            // https://academysoftwarefoundation.github.io/OpenPBR/#model/coat/totalinternalreflection
-            // 
-            // A more computationally efficient solution is to simply invert the IOR as done here.
-            // This is also explained in the OpenPBR spec as well as in 
-            // [Novel aspects of the Adobe Standard Material, Kutz, Hasan, Edmondson, 2023]
-            // https://helpx.adobe.com/content/dam/substance-3d/general-knowledge/asm/Adobe%20Standard%20Material%20-%20Technical%20Documentation%20-%20May2023.pdf
-            relative_ior = 1.0f / relative_ior;
-        // relative_ior = hippt::max(1.0001f, relative_ior);
+        float relative_ior = principled_specular_relative_ior(material, incident_medium_ior);
 
         float specular_pdf;
         ColorRGB32F contribution = principled_specular_eval(render_data, material, relative_ior, local_view_direction, local_to_light_direction, local_half_vector, specular_pdf);
@@ -634,31 +640,31 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_glossy_base(const HIPRT
                                                                      const float3& local_view_direction, const float3 local_to_light_direction, const float3& local_half_vector, 
                                                                      const float3& local_view_direction_rotated, const float3 local_to_light_direction_rotated, const float3& local_half_vector_rotated,
                                                                      const float3& shading_normal, 
-                                                                     float incident_ior, float diffuse_weight, float specular_weight, float diffuse_proba_norm, float specular_proba_norm, 
+                                                                     float incident_medium_ior, float diffuse_weight, float specular_weight, float diffuse_proba_norm, float specular_proba_norm, 
                                                                      ColorRGB32F& layers_throughput, float& out_cumulative_pdf)
 {
     ColorRGB32F glossy_base_contribution = ColorRGB32F(0.0f);
 
     // Evaluating the two components of the glossy base
-    glossy_base_contribution += internal_eval_specular_layer(render_data, material, local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated, shading_normal, incident_ior, specular_weight, specular_proba_norm, layers_throughput, out_cumulative_pdf);
-    glossy_base_contribution += internal_eval_diffuse_layer(render_data, incident_ior, material, local_view_direction, local_to_light_direction, diffuse_weight, diffuse_proba_norm, layers_throughput, out_cumulative_pdf);
+    glossy_base_contribution += internal_eval_specular_layer(render_data, material, local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated, shading_normal, incident_medium_ior, specular_weight, specular_proba_norm, layers_throughput, out_cumulative_pdf);
+    glossy_base_contribution += internal_eval_diffuse_layer(render_data, incident_medium_ior, material, local_view_direction, local_to_light_direction, diffuse_weight, diffuse_proba_norm, layers_throughput, out_cumulative_pdf);
 
     float multiple_scattering_compensation = 1.0f;
 
 #if PrincipledBSDFGGXUseMultipleScattering == KERNEL_OPTION_TRUE
     int3 texture_dims = make_int3(GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_COS_THETA_O, GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_ROUGHNESS, GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR);
 
-    if (hippt::abs(material.ior / incident_ior - 1.0f) < 1.0e-3f)
+    if (hippt::abs(material.ior / incident_medium_ior - 1.0f) < 1.0e-3f)
         // If the relative ior is very close to 1.0f,
         // adding some offset to avoid singularities which cause
         // fireflies
-        incident_ior += 1.0e-3f;
+        incident_medium_ior += 1.0e-3f;
 
     // We're storing cos_theta_o^2.5 in the LUT so we're retrieving with
     // root 2.5
     float view_dir_remapped = pow(local_view_direction.z, 1.0f / 2.5f);
     // sqrt(sqrt(F0)) here because we're storing F0^4 in the LUT
-    float F0_remapped = sqrt(sqrt(F0_from_eta(material.ior, incident_ior)));
+    float F0_remapped = sqrt(sqrt(F0_from_eta(material.ior, incident_medium_ior)));
 
     float3 uvw = make_float3(view_dir_remapped, material.roughness, F0_remapped);
     multiple_scattering_compensation = sample_texture_3D_rgb_32bits(render_data.bsdfs_data.glossy_dielectric_Ess, texture_dims, uvw, render_data.bsdfs_data.use_hardware_tex_interpolation).r;
@@ -767,8 +773,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void principled_bsdf_get_lobes_weights_fringe_fix
 HIPRT_HOST_DEVICE HIPRT_INLINE void principled_bsdf_get_lobes_sampling_proba(
     float coat_weight, float sheen_weight, float metal_1_weight, float metal_2_weight,
     float specular_weight, float diffuse_weight, float glass_weight,
-    
-    float& out_coat_sampling_proba, float& out_sheen_sampling_proba, 
+
+    float& out_coat_sampling_proba, float& out_sheen_sampling_proba,
     float& out_metal_1_sampling_proba, float& out_metal_2_sampling_proba,
     float& out_specular_sampling_proba, float& out_diffuse_sampling_proba,
     float& out_glass_sampling_proba)
@@ -777,6 +783,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void principled_bsdf_get_lobes_sampling_proba(
                                      + metal_1_weight + metal_2_weight
                                      + specular_weight + diffuse_weight
                                      + glass_weight);
+
     out_coat_sampling_proba = coat_weight * normalize_factor;
     out_sheen_sampling_proba = sheen_weight * normalize_factor;
     out_metal_1_sampling_proba = metal_1_weight * normalize_factor;
@@ -825,19 +832,16 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRende
                                       coat_weight, sheen_weight, metal_1_weight, metal_2_weight,
                                       specular_weight, diffuse_weight, glass_weight);
 
-    float probability_normalize_factor = 1.0f / (coat_weight + sheen_weight 
-                                                 + metal_1_weight + metal_2_weight 
-                                                 + specular_weight + diffuse_weight + glass_weight);
-
+    float incident_medium_ior = ray_volume_state.incident_mat_index == /* air */ InteriorStackImpl<InteriorStackStrategy>::MAX_MATERIAL_INDEX ? 1.0f : render_data.buffers.materials_buffer[ray_volume_state.incident_mat_index].ior;
     // For the given to_light_direction, normal, view_direction etc..., what's the probability
     // that the 'principled_bsdf_sample()' function would have sampled the lobe?
-    float coat_proba = coat_weight * probability_normalize_factor;
-    float sheen_proba = sheen_weight * probability_normalize_factor;
-    float metal_1_proba = metal_1_weight * probability_normalize_factor;
-    float metal_2_proba = metal_2_weight * probability_normalize_factor;
-    float specular_proba = specular_weight * probability_normalize_factor;
-    float diffuse_proba = diffuse_weight * probability_normalize_factor;
-    float glass_proba = glass_weight * probability_normalize_factor;
+    float coat_proba, sheen_proba, metal_1_proba, metal_2_proba;
+    float specular_proba, diffuse_proba, glass_proba;
+    principled_bsdf_get_lobes_sampling_proba(coat_weight, sheen_weight, metal_1_weight, metal_2_weight,
+                                             specular_weight, diffuse_weight, glass_weight,
+
+                                             coat_proba, sheen_proba, metal_1_proba, metal_2_proba,
+                                             specular_proba, diffuse_proba, glass_proba);
 
     // Keeps track of the remaining light's energy as we traverse layers
     ColorRGB32F layers_throughput = ColorRGB32F(1.0f);
@@ -847,11 +851,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRende
     // 'weight * !refracting' so that lobes that do not allow refractions
     // (which is pretty much all of them except glass) do no get evaluated
     // (because their weight becomes 0)
-    float incident_ior = ray_volume_state.incident_mat_index == /* air */ InteriorStackImpl<InteriorStackStrategy>::MAX_MATERIAL_INDEX ? 1.0f : render_data.buffers.materials_buffer[ray_volume_state.incident_mat_index].ior;
-    final_color += internal_eval_coat_layer(render_data, material, local_view_direction, local_to_light_direction, local_half_vector, shading_normal, incident_ior, coat_weight, refracting, coat_proba, layers_throughput, pdf);
-    final_color += internal_eval_sheen_layer(render_data, material, local_view_direction, local_to_light_direction, to_light_direction, shading_normal, incident_ior, sheen_weight, sheen_proba, layers_throughput, pdf);
-    final_color += internal_eval_metal_layer(render_data, material, local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated, material.roughness, material.anisotropy, incident_ior, metal_1_weight * !refracting, metal_1_proba, layers_throughput, pdf);
-    final_color += internal_eval_metal_layer(render_data, material, local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated, material.second_roughness, material.anisotropy, incident_ior, metal_2_weight * !refracting, metal_2_proba, layers_throughput, pdf);
+    final_color += internal_eval_coat_layer(render_data, material, local_view_direction, local_to_light_direction, local_half_vector, shading_normal, incident_medium_ior, coat_weight, refracting, coat_proba, layers_throughput, pdf);
+    final_color += internal_eval_sheen_layer(render_data, material, local_view_direction, local_to_light_direction, to_light_direction, shading_normal, incident_medium_ior, sheen_weight, sheen_proba, layers_throughput, pdf);
+    final_color += internal_eval_metal_layer(render_data, material, local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated, material.roughness, material.anisotropy, incident_medium_ior, metal_1_weight * !refracting, metal_1_proba, layers_throughput, pdf);
+    final_color += internal_eval_metal_layer(render_data, material, local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated, material.second_roughness, material.anisotropy, incident_medium_ior, metal_2_weight * !refracting, metal_2_proba, layers_throughput, pdf);
     // Careful here to evaluate the glass layer before the glossy
     // base otherwise, layers_throughput is going to be modified
     // by the specular layer evaluation (in the glossy base) to 
@@ -865,7 +868,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRende
                                              local_view_direction, local_to_light_direction, local_half_vector, 
                                              local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated, 
                                              shading_normal, 
-                                             incident_ior, diffuse_weight * !refracting, specular_weight * !refracting, diffuse_proba, specular_proba, 
+                                             incident_medium_ior, diffuse_weight * !refracting, specular_weight * !refracting, diffuse_proba, specular_proba, 
                                              layers_throughput, pdf);
 
     return final_color;
@@ -893,17 +896,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRen
                                       metal_1_sampling_weight, metal_2_sampling_weight,
                                       specular_sampling_weight, diffuse_sampling_weight, glass_sampling_weight);
 
-    float coat_sampling_proba;
-    float sheen_sampling_proba;
-    float metal_1_sampling_proba;
-    float metal_2_sampling_proba;
-    float specular_sampling_proba;
-    float diffuse_sampling_proba;
+    float coat_sampling_proba, sheen_sampling_proba, metal_1_sampling_proba;
+    float metal_2_sampling_proba, specular_sampling_proba, diffuse_sampling_proba;
     float glass_sampling_proba;
     principled_bsdf_get_lobes_sampling_proba(
         coat_sampling_weight, sheen_sampling_weight, metal_1_sampling_weight, metal_2_sampling_weight,
         specular_sampling_weight, diffuse_sampling_weight, glass_sampling_weight,
-        
+
         coat_sampling_proba, sheen_sampling_proba, metal_1_sampling_proba, metal_2_sampling_proba,
         specular_sampling_proba, diffuse_sampling_proba, glass_sampling_proba);
 
@@ -952,7 +951,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRen
         // We want the normal in the same hemisphere as the view direction
         // for the rest of the calculations
         normal = -normal;
-        
+
     // Rotated ONB for the anisotropic GTR2 evaluation
     float3 TR, BR;
     build_rotated_ONB(normal, TR, BR, material.anisotropy_rotation * M_PI);
