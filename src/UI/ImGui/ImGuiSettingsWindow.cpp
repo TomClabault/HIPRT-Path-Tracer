@@ -1843,8 +1843,8 @@ void ImGuiSettingsWindow::draw_objects_panel()
 		{
 			ImGui::TreePush("Specular layer material tree");
 
-			material_changed |= ImGui::ColorEdit3("Specular color", (float*)&material.specular_color);
 			material_changed |= ImGui::SliderFloat("Specular", &material.specular, 0.0f, 1.0f);
+			material_changed |= ImGui::ColorEdit3("Specular color", (float*)&material.specular_color);
 			material_changed |= ImGui::SliderFloat("Specular tint strength", &material.specular_tint, 0.0f, 1.0f);
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -1897,8 +1897,8 @@ void ImGuiSettingsWindow::draw_objects_panel()
 		{
 			ImGui::TreePush("Sheen layer material tree");
 
-			material_changed |= ImGui::ColorEdit3("Sheen color", (float*)&material.sheen_color);
 			material_changed |= ImGui::SliderFloat("Sheen strength", &material.sheen, 0.0f, 1.0f);
+			material_changed |= ImGui::ColorEdit3("Sheen color", (float*)&material.sheen_color);
 			material_changed |= ImGui::SliderFloat("Sheen roughness", &material.sheen_roughness, 0.0f, 1.0f);
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -1909,14 +1909,15 @@ void ImGuiSettingsWindow::draw_objects_panel()
 		{
 			ImGui::TreePush("Coat layer material tree");
 
-			material_changed |= ImGui::ColorEdit3("Coat medium absorption", (float*)&material.coat_medium_absorption);
 			material_changed |= ImGui::SliderFloat("Coat strength", &material.coat, 0.0f, 1.0f);
-			material_changed |= ImGui::SliderFloat("Coat thickness", &material.coat_thickness, 0.0f, 5.0f);
+			material_changed |= ImGui::ColorEdit3("Coat medium absorption", (float*)&material.coat_medium_absorption);
+			material_changed |= ImGui::SliderFloat("Coat medium thickness", &material.coat_medium_thickness, 0.0f, 5.0f);
 			material_changed |= ImGui::SliderFloat("Coat roughness", &material.coat_roughness, 0.0f, 1.0f);
 			material_changed |= ImGui::SliderFloat("Coat roughening", &material.coat_roughening, 0.0f, 1.0f);
 			ImGuiRenderer::show_help_marker("Physical accuracy requires that a rough clearcoat also roughens what's underneath it "
-											"i.e. the specular/metallic/transmission layers. The option is however given here "
-											"to disable that behavior by using coat roughening = 0.0f.");
+											"i.e. the specular/metallic/transmission layers.\n"
+											"The option is however given here to artistically disable "
+											"that behavior by using coat roughening = 0.0f.");
 			material_changed |= ImGui::SliderFloat("Coat anisotropy", &material.coat_anisotropy, 0.0f, 1.0f);
 			material_changed |= ImGui::SliderFloat("Coat anisotropy Rotation", &material.coat_anisotropy_rotation, 0.0f, 1.0f);
 			material_changed |= ImGui::SliderFloat("Coat IOR", &material.coat_ior, 1.0f, 3.0f);

@@ -97,7 +97,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_diffuse_sample(const float3& su
     return cosine_weighted_sample_around_normal(surface_normal, random_number_generator);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_specular_eval(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, float incident_ior, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_half_vector, float& pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_specular_eval(
+    const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, float relative_ior, 
+    const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_half_vector, 
+    float& pdf)
 {
     // The specular lobe is just another GGX (GTR2) lobe
 
@@ -105,7 +108,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_specular_eval(const HIPRTR
     // (hence the torrance_sparrow_GTR2_eval<0>) because energy conservation
     // for the specular layer is handled for the glossy based (specular + diffuse lobe)
     // as a whole, not just in the specular layer 
-    ColorRGB32F F = ColorRGB32F(full_fresnel_dielectric(hippt::dot(local_half_vector, local_to_light_direction), incident_ior, material.ior));
+    ColorRGB32F F = ColorRGB32F(full_fresnel_dielectric(hippt::dot(local_half_vector, local_to_light_direction), relative_ior));
     ColorRGB32F specular = torrance_sparrow_GTR2_eval<0>(render_data, material.base_color, material.roughness, material.anisotropy, F, local_view_direction, local_to_light_direction, local_half_vector, pdf);
 
     return specular;
@@ -415,7 +418,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_coat_layer(const HIPRTR
 
         // Reference: [11], [13]
         float traveled_distance_angle = 1.0f / incident_refracted_angle + 1.0f / outgoing_refracted_angle;
-        ColorRGB32F coat_absorption = exp(-(ColorRGB32F(1.0f) - pow(sqrt(material.coat_medium_absorption), traveled_distance_angle)) * material.coat_thickness);
+        ColorRGB32F coat_absorption = exp(-(ColorRGB32F(1.0f) - pow(sqrt(material.coat_medium_absorption), traveled_distance_angle)) * material.coat_medium_thickness);
         layer_below_attenuation *= coat_absorption;
 
         // If the coat layer has 0 weight, we should not get any light attenuation.
@@ -511,7 +514,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_specular_layer(const HI
         // IOR depending on the coat factor
         constexpr float air_IOR = 1.0f;
         float incident_layer_ior = hippt::lerp(air_IOR, material.coat_ior, material.coat);
-        if (incident_layer_ior / material.ior > 1.0f)
+        float relative_ior = material.ior / incident_layer_ior;
+        if (relative_ior < 1.0f)
             // If the coat IOR (which we're coming from) is greater than the IOR
             // of the base layer (which is the specular layer with IOR material.ior)
             // then we may hit total internal reflection when entering the specular layer from
@@ -534,10 +538,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_specular_layer(const HI
             // This is also explained in the OpenPBR spec as well as in 
             // [Novel aspects of the Adobe Standard Material, Kutz, Hasan, Edmondson, 2023]
             // https://helpx.adobe.com/content/dam/substance-3d/general-knowledge/asm/Adobe%20Standard%20Material%20-%20Technical%20Documentation%20-%20May2023.pdf
-            incident_layer_ior = 1.0f / incident_layer_ior;
+            relative_ior = 1.0f / relative_ior;
+        // relative_ior = hippt::max(1.0001f, relative_ior);
 
         float specular_pdf;
-        ColorRGB32F contribution = principled_specular_eval(render_data, material, incident_layer_ior, local_view_direction, local_to_light_direction, local_half_vector, specular_pdf);
+        ColorRGB32F contribution = principled_specular_eval(render_data, material, relative_ior, local_view_direction, local_to_light_direction, local_half_vector, specular_pdf);
         // Tinting the specular reflection color
         contribution *= hippt::lerp(ColorRGB32F(1.0f), material.specular_tint * material.specular_color, material.specular);
         contribution *= specular_weight;
@@ -564,7 +569,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_specular_layer(const HI
         // We can't do that integration online so we're instead using the shading normal to compute
         // the transmitted portion of light. That's actually either a good approximation or the
         // exact solution. That was shown in GDC 2017 [PBR Diffuse Lighting for GGX + Smith Microsurfaces]
-        layer_below_attenuation *= 1.0f - full_fresnel_dielectric(local_to_light_direction.z, incident_layer_ior, material.ior);
+        layer_below_attenuation *= 1.0f - full_fresnel_dielectric(local_to_light_direction.z, relative_ior);
 
         // Also, when light reflects off of the layer below the specular layer, some of that reflected light
         // will hit total internal reflection against the specular/[coat or air] interface. This means that only
@@ -574,7 +579,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_specular_layer(const HI
         // computing that fresnel with the direction reflected from the base layer or with the viewer direction
         // is the same, Fresnel is symmetrical. But because we don't have the exact direction reflected from the
         // base layer, we're using the view direction instead
-        layer_below_attenuation *= 1.0f - full_fresnel_dielectric(local_view_direction.z, incident_layer_ior, material.ior);
+        layer_below_attenuation *= 1.0f - full_fresnel_dielectric(local_view_direction.z, relative_ior);
 
         // If the specular layer has 0 weight, we should not get any light absorption.
         // But if the specular layer has 1 weight, we should get the full absorption that we
@@ -744,28 +749,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void principled_bsdf_get_lobes_weights_fringe_fix
                                       out_specular_weight, out_diffuse_weight, 
                                       out_glass_weight);
 
-    //// Linear blending weights for the lobes
-    //// 
-    //// Everytime we multiply by "outside_object" is because we want to disable
-    //// the lobe if we're inside the object
-    ////
-    //// The layering follows the one of the principled BSDF of blender:
-    //// [10] https://docs.blender.org/manual/fr/dev/render/shader_nodes/shader/principled.html
-    //out_coat_weight = material.coat * out_outside_object;
-    //out_sheen_weight = material.sheen * out_outside_object;
-    //// Metal 1 and metal 2 are the two metallic lobes for the two roughnesses.
-    //// Having 2 roughnesses (linearly blended together) can enable interesting effects
-    //// that cannot be achieved with a single GGX metal lobe.
-    //// 
-    //// See [Revisiting Physically Based Shading at Imageworks, Kulla & Conty, SIGGRAPH 2017],
-    //// "Double Specular" for more details
-    //out_metal_1_weight = material.metallic * out_outside_object;
-    //out_metal_2_weight = material.metallic * out_outside_object;
-    //out_metal_1_weight = hippt::lerp(out_metal_1_weight, 0.0f, material.second_roughness_weight);
-    //out_metal_2_weight = hippt::lerp(0.0f, out_metal_2_weight, material.second_roughness_weight);
-    //out_specular_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission) * material.specular * out_outside_object;
-    //out_diffuse_weight = (1.0f - material.metallic) * (1.0f - material.specular_transmission) * out_outside_object;
-
     if (!out_outside_object)
         // If inside the object, the glass lobe is the only existing lobe so it has weight
         // 1.0f
@@ -835,6 +818,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRende
     // (because their weight becomes 0)
     float incident_ior = ray_volume_state.incident_mat_index == /* air */ InteriorStackImpl<InteriorStackStrategy>::MAX_MATERIAL_INDEX ? 1.0f : render_data.buffers.materials_buffer[ray_volume_state.incident_mat_index].ior;
     final_color += internal_eval_coat_layer(render_data, material, local_view_direction, local_to_light_direction, local_half_vector, shading_normal, incident_ior, coat_weight, refracting, coat_proba, layers_throughput, pdf);
+    /*if (layers_throughput.has_NaN())
+        printf("layers_throughput coat NaNs\n");*/
     final_color += internal_eval_sheen_layer(render_data, material, local_view_direction, local_to_light_direction, to_light_direction, shading_normal, incident_ior, sheen_weight, sheen_proba, layers_throughput, pdf);
     final_color += internal_eval_metal_layer(render_data, material, local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated, material.roughness, material.anisotropy, incident_ior, metal_1_weight * !refracting, metal_1_proba, layers_throughput, pdf);
     final_color += internal_eval_metal_layer(render_data, material, local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated, material.second_roughness, material.anisotropy, incident_ior, metal_2_weight * !refracting, metal_2_proba, layers_throughput, pdf);

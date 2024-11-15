@@ -125,7 +125,7 @@ struct SimplifiedRendererMaterial
 
     ColorRGB32F coat_medium_absorption = ColorRGB32F{ 1.0f, 1.0f, 1.0f };
     float coat = 0.0f;
-    float coat_thickness = 5.0f;
+    float coat_medium_thickness = 5.0f;
     float coat_roughness = 0.0f;
     float coat_roughening = 1.0f;
     float coat_anisotropy = 0.0f;
