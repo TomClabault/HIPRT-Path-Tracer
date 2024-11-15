@@ -79,6 +79,9 @@ namespace hippt
 	__device__ float max(float a, float b) { return a > b ? a : b; }
 	__device__ float min(float a, float b) { return a < b ? a : b; }
 	__device__ float clamp(float min_val, float max_val, float val) { return hiprt::clamp(val, min_val, max_val); }
+
+	__device__ float pow_1_4(float x) { return sqrt(sqrt(x)); }
+	__device__ constexpr float pow_4(float x) { float x2 = x * x; return x2 * x2; }
 	__device__ constexpr float pow_5(float x) { float x2 = x * x; float x4 = x2 * x2; return x4 * x; }
 	__device__ constexpr float pow_6(float x) { float x2 = x * x; float x4 = x2 * x2; return x4 * x2; }
 
@@ -126,6 +129,8 @@ namespace hippt
 	template <typename T>
 	inline T clamp(T min_val, T max_val, T val) { return hiprt::min(max_val, hiprt::max(min_val, val)); }
 
+	inline float pow_1_4(float x) { return sqrt(sqrt(x)); }
+	inline constexpr float pow_4(float x) { float x2 = x * x; return x2 * x2; }
 	inline constexpr float pow_5(float x) { float x2 = x * x; float x4 = x2 * x2; return x4 * x; }
 	inline constexpr float pow_6(float x) { float x2 = x * x; float x4 = x2 * x2; return x4 * x2; }
 

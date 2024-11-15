@@ -77,6 +77,17 @@ HIPRT_HOST_DEVICE HIPRT_INLINE SimplifiedRendererMaterial get_intersection_mater
 
     SimplifiedRendererMaterial simplified_material(material);
     simplified_material.emissive_texture_used = material.emission_texture_index > 0;
+    // Roughening of the base roughness and second metallic roughness based
+    // on the coat roughness. This should be precomputed instead of being done here
+    //
+    // Reference: [OpenPBR Surface 2024 Specification] https://academysoftwarefoundation.github.io/OpenPBR/#model/coat/roughening
+    float target_base_roughness = hippt::pow_1_4(hippt::min(1.0f, hippt::pow_4(simplified_material.roughness) + 2.0f * hippt::pow_4(simplified_material.coat_roughness)));
+    float roughened_base_roughness = hippt::lerp(simplified_material.roughness, target_base_roughness, material.coat);
+    simplified_material.roughness = hippt::lerp(simplified_material.roughness, roughened_base_roughness, simplified_material.coat_roughening);
+
+    float target_second_metal_roughness = hippt::pow_1_4(hippt::min(1.0f, hippt::pow_4(simplified_material.second_roughness) + 2.0f * hippt::pow_4(simplified_material.coat_roughness)));
+    float roughened_second_metal_roughness = hippt::lerp(simplified_material.second_roughness, target_second_metal_roughness, material.coat);
+    simplified_material.second_roughness = hippt::lerp(simplified_material.second_roughness, roughened_second_metal_roughness, simplified_material.coat_roughening);
 
     return simplified_material;
 }

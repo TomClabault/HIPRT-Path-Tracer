@@ -127,6 +127,7 @@ struct SimplifiedRendererMaterial
     float coat = 0.0f;
     float coat_thickness = 5.0f;
     float coat_roughness = 0.0f;
+    float coat_roughening = 1.0f;
     float coat_anisotropy = 0.0f;
     float coat_anisotropy_rotation = 0.0f;
     float coat_ior = 1.5f;

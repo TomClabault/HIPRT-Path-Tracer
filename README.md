@@ -17,7 +17,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 # Features:
 
 ### Layered Principled BSDF:
-- Coat Microfacet GGX Layer + Anisotropy, Anisotropy Rotation, Medium Absorption
+- Coat Microfacet GGX Layer + Anisotropy, Anisotropy Rotation, Medium Absorption & Thickness
 - SGGX Volumetric Sheen Lobe LTC Fit [\[Zeltner, Burley, Chiang, 2022\]](https://tizianzeltner.com/projects/Zeltner2022Practical/)
 - Specular Microfacet GGX Layer
 - Oren-Nayar Diffuse BRDF Lobe
