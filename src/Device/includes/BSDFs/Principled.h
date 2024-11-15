@@ -764,6 +764,28 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void principled_bsdf_get_lobes_weights_fringe_fix
         out_glass_weight = 1.0f;
 }
 
+HIPRT_HOST_DEVICE HIPRT_INLINE void principled_bsdf_get_lobes_sampling_proba(
+    float coat_weight, float sheen_weight, float metal_1_weight, float metal_2_weight,
+    float specular_weight, float diffuse_weight, float glass_weight,
+    
+    float& out_coat_sampling_proba, float& out_sheen_sampling_proba, 
+    float& out_metal_1_sampling_proba, float& out_metal_2_sampling_proba,
+    float& out_specular_sampling_proba, float& out_diffuse_sampling_proba,
+    float& out_glass_sampling_proba)
+{
+    float normalize_factor = 1.0f / (coat_weight + sheen_weight
+                                     + metal_1_weight + metal_2_weight
+                                     + specular_weight + diffuse_weight
+                                     + glass_weight);
+    out_coat_sampling_proba = coat_weight * normalize_factor;
+    out_sheen_sampling_proba = sheen_weight * normalize_factor;
+    out_metal_1_sampling_proba = metal_1_weight * normalize_factor;
+    out_metal_2_sampling_proba = metal_2_weight * normalize_factor;
+    out_specular_sampling_proba = specular_weight * normalize_factor;
+    out_diffuse_sampling_proba = diffuse_weight * normalize_factor;
+    out_glass_sampling_proba = glass_weight * normalize_factor;
+}
+
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, RayVolumeState& ray_volume_state, const float3& view_direction, float3 shading_normal, const float3& to_light_direction, float& pdf)
 {
     pdf = 0.0f;
@@ -871,25 +893,27 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRen
                                       metal_1_sampling_weight, metal_2_sampling_weight,
                                       specular_sampling_weight, diffuse_sampling_weight, glass_sampling_weight);
 
-    float normalize_factor = 1.0f / (coat_sampling_weight + sheen_sampling_weight 
-                                     + metal_1_sampling_weight + metal_2_sampling_weight 
-                                     + specular_sampling_weight + diffuse_sampling_weight 
-                                     + glass_sampling_weight);
-    coat_sampling_weight *= normalize_factor;
-    sheen_sampling_weight *= normalize_factor;
-    metal_1_sampling_weight *= normalize_factor;
-    metal_2_sampling_weight *= normalize_factor;
-    specular_sampling_weight *= normalize_factor;
-    diffuse_sampling_weight *= normalize_factor;
-    glass_sampling_weight *= normalize_factor;
+    float coat_sampling_proba;
+    float sheen_sampling_proba;
+    float metal_1_sampling_proba;
+    float metal_2_sampling_proba;
+    float specular_sampling_proba;
+    float diffuse_sampling_proba;
+    float glass_sampling_proba;
+    principled_bsdf_get_lobes_sampling_proba(
+        coat_sampling_weight, sheen_sampling_weight, metal_1_sampling_weight, metal_2_sampling_weight,
+        specular_sampling_weight, diffuse_sampling_weight, glass_sampling_weight,
+        
+        coat_sampling_proba, sheen_sampling_proba, metal_1_sampling_proba, metal_2_sampling_proba,
+        specular_sampling_proba, diffuse_sampling_proba, glass_sampling_proba);
 
     float cdf[6];
-    cdf[0] = coat_sampling_weight;
-    cdf[1] = cdf[0] + sheen_sampling_weight;
-    cdf[2] = cdf[1] + metal_1_sampling_weight;
-    cdf[3] = cdf[2] + metal_2_sampling_weight;
-    cdf[4] = cdf[3] + specular_sampling_weight;
-    cdf[5] = cdf[4] + diffuse_sampling_weight;
+    cdf[0] = coat_sampling_proba;
+    cdf[1] = cdf[0] + sheen_sampling_proba;
+    cdf[2] = cdf[1] + metal_1_sampling_proba;
+    cdf[3] = cdf[2] + metal_2_sampling_proba;
+    cdf[4] = cdf[3] + specular_sampling_proba;
+    cdf[5] = cdf[4] + diffuse_sampling_proba;
     // The last cdf[] is implicitely 1.0f so don't need to include it
 
     float rand_1 = random_number_generator();
