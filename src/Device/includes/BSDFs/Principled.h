@@ -405,21 +405,30 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_coat_layer(const HIPRTR
         // base layer, we're using the view direction instead
         layer_below_attenuation *= 1.0f - full_fresnel_dielectric(hippt::abs(local_view_direction.z), incident_ior, material.coat_ior);
 
-        // Taking the color of the absorbing coat medium into account when the light that got transmitted
-        // travels through it
-        //
-        // The distance traveled into the coat depends on the angle at which we're looking
-        // at it and the angle in which light goes: the grazier the angles, the more the
-        // absorption since we're traveling further in the coat before leaving
-        //
-        // Reference: [11], [13]
-        float incident_refracted_angle = sqrt(1.0f - (1.0f - local_to_light_direction.z * local_to_light_direction.z) / (material.coat_ior * material.coat_ior));
-        float outgoing_refracted_angle = sqrt(1.0f - (1.0f - local_view_direction.z * local_view_direction.z) / (material.coat_ior * material.coat_ior));
+        if (!material.coat_medium_absorption.is_white())
+        {
+            // Only computing the medium absorption if there is actually
+            // some absorption
 
-        // Reference: [11], [13]
-        float traveled_distance_angle = 1.0f / incident_refracted_angle + 1.0f / outgoing_refracted_angle;
-        ColorRGB32F coat_absorption = exp(-(ColorRGB32F(1.0f) - pow(sqrt(material.coat_medium_absorption), traveled_distance_angle)) * material.coat_medium_thickness);
-        layer_below_attenuation *= coat_absorption;
+            // Taking the color of the absorbing coat medium into account when the light that got transmitted
+            // travels through it
+            //
+            // The distance traveled into the coat depends on the angle at which we're looking
+            // at it and the angle in which light goes: the grazier the angles, the more the
+            // absorption since we're traveling further in the coat before leaving
+            //
+            // Reference: [11], [13]
+            // 
+            // It can happen that 'incident_refracted_angle' or 'outgoing_refracted_angle'
+            // are 0.0f 
+            float incident_refracted_angle = hippt::max(1.0e-6f, sqrt(1.0f - (1.0f - local_to_light_direction.z * local_to_light_direction.z) / (material.coat_ior * material.coat_ior)));
+            float outgoing_refracted_angle = hippt::max(1.0e-6f, sqrt(1.0f - (1.0f - local_view_direction.z * local_view_direction.z) / (material.coat_ior * material.coat_ior)));
+
+            // Reference: [11], [13]
+            float traveled_distance_angle = 1.0f / incident_refracted_angle + 1.0f / outgoing_refracted_angle;
+            ColorRGB32F coat_absorption = exp(-(ColorRGB32F(1.0f) - pow(sqrt(material.coat_medium_absorption), traveled_distance_angle)) * material.coat_medium_thickness);
+            layer_below_attenuation *= coat_absorption;
+        }
 
         // If the coat layer has 0 weight, we should not get any light attenuation.
         // But if the coat layer has 1 weight, we should get the full attenuation that we
@@ -818,8 +827,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRende
     // (because their weight becomes 0)
     float incident_ior = ray_volume_state.incident_mat_index == /* air */ InteriorStackImpl<InteriorStackStrategy>::MAX_MATERIAL_INDEX ? 1.0f : render_data.buffers.materials_buffer[ray_volume_state.incident_mat_index].ior;
     final_color += internal_eval_coat_layer(render_data, material, local_view_direction, local_to_light_direction, local_half_vector, shading_normal, incident_ior, coat_weight, refracting, coat_proba, layers_throughput, pdf);
-    /*if (layers_throughput.has_NaN())
-        printf("layers_throughput coat NaNs\n");*/
     final_color += internal_eval_sheen_layer(render_data, material, local_view_direction, local_to_light_direction, to_light_direction, shading_normal, incident_ior, sheen_weight, sheen_proba, layers_throughput, pdf);
     final_color += internal_eval_metal_layer(render_data, material, local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated, material.roughness, material.anisotropy, incident_ior, metal_1_weight * !refracting, metal_1_proba, layers_throughput, pdf);
     final_color += internal_eval_metal_layer(render_data, material, local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated, material.second_roughness, material.anisotropy, incident_ior, metal_2_weight * !refracting, metal_2_proba, layers_throughput, pdf);
