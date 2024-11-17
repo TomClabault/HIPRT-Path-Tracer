@@ -130,7 +130,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA32F internal_bilinear_sample_on_3D_textu
  * This parameter should be an oroTextureObject_t on the GPU, not a
  * pointer 'oroTextureObject_t*' as is the case for 'sample_texture_rgb_32bits'
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_texture_3D_rgb_32bits(const void* texture, int3 texture_dims, float3 uvw, bool hardware_interpolation = false)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_texture_3D_rgb_32bits(void* texture, int3 texture_dims, float3 uvw, bool hardware_interpolation = false)
 {
 #ifdef __KERNELCC__
     // Sampling in repeat mode so we're just keeping the fractional part
