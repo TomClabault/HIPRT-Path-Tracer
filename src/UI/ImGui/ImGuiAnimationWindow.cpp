@@ -56,10 +56,10 @@ void ImGuiAnimationWindow::draw_header()
 	if (m_renderer->get_render_settings().accumulate && !animation_state.is_rendering_frame_sequence)
 	{
 		ImGui::TreePush("Animations info tree");
-		ImGui::Text("Info: ");
+		ImGui::Text("Warning: ");
 		ImGuiRenderer::show_help_marker("Animations are not playing right now because\n"
 					"accumulation is on. Nothing can move while accumulation\n"
-					"is on (unless you're rendering a frame sequence, in\n"
+					"is on unless you're rendering a frame sequence, in\n"
 					"which case animations will step forward after a frame\n"
 					"is rendered (converged according to the renderer settings).");
 		ImGui::TreePop();
@@ -207,10 +207,11 @@ void ImGuiAnimationWindow::draw_camera_panel()
 											"for frame sequence rendering.");
 			ImGui::EndDisabled();
 
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::TreePop();
 		}
-		if (ImGui::CollapsingHeader("Camera Settings"))
-			ImGuiSettingsWindow::draw_camera_panel_static(m_render_window, m_renderer);
+
+		ImGuiSettingsWindow::draw_camera_panel_static("Camera Settings", m_render_window, m_renderer);
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();

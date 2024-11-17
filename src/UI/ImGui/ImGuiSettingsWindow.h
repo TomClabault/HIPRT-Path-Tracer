@@ -24,7 +24,7 @@ public:
 	void set_render_window(RenderWindow* render_window);
 
 	void draw();
-	static void draw_camera_panel_static(RenderWindow* render_window, std::shared_ptr<GPURenderer> renderer);
+	static void draw_camera_panel_static(const std::string& panel_title, RenderWindow* render_window, std::shared_ptr<GPURenderer> renderer);
 
 private:
 	void draw_header();
@@ -40,8 +40,6 @@ private:
 	void draw_sampling_panel();
 	void display_ReSTIR_DI_bias_status(std::shared_ptr<GPUKernelCompilerOptions> kernel_options);
 
-	void draw_objects_panel();
-	bool draw_material_presets(RendererMaterial& material);
 	void draw_denoiser_panel();
 	void draw_post_process_panel();
 

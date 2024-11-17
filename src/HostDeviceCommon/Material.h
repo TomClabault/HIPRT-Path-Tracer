@@ -104,7 +104,6 @@ struct SimplifiedRendererMaterial
     float roughness = 0.3f;
     float oren_nayar_sigma = 0.34906585039886591538f; // 20 degrees standard deviation in radian
 
-
     // Parameters for Adobe 2023 F82-tint model
     float metallic = 0.0f;
     float metallic_F90_falloff_exponent = 5.0f;

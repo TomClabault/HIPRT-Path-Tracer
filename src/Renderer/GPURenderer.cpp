@@ -1105,6 +1105,7 @@ void GPURenderer::set_scene(const Scene& scene)
 {
 	set_hiprt_scene_from_scene(scene);
 
+	m_original_materials = scene.materials;
 	m_materials = scene.materials;
 	m_parsed_scene_metadata = scene.metadata;
 }
@@ -1150,6 +1151,11 @@ void GPURenderer::set_envmap(const Image32Bit& envmap_image, const std::string& 
 bool GPURenderer::has_envmap()
 {
 	return m_render_data.world_settings.envmap_height != 0 && m_render_data.world_settings.envmap_width != 0;
+}
+
+const std::vector<RendererMaterial>& GPURenderer::get_original_materials()
+{
+	return m_original_materials;
 }
 
 const std::vector<RendererMaterial>& GPURenderer::get_materials()

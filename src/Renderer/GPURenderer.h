@@ -213,6 +213,7 @@ public:
 	void set_envmap(const Image32Bit& envmap, const std::string& envmap_filepath);
 	bool has_envmap();
 
+	const std::vector<RendererMaterial>& get_original_materials();
 	const std::vector<RendererMaterial>& get_materials();
 	const std::vector<std::string>& get_material_names();
 	void update_materials(std::vector<RendererMaterial>& materials);
@@ -412,6 +413,9 @@ private:
 	ReSTIRDIRenderPass m_restir_di_render_pass;
 
 	SceneMetadata m_parsed_scene_metadata;
+	// The original materials of the scene in case the user wants
+	// to revert every changes that have been done
+	std::vector<RendererMaterial> m_original_materials;
 	// The materials are also kept on the CPU side because we want to be able
 	// to modify them interactively with ImGui
 	std::vector<RendererMaterial> m_materials;

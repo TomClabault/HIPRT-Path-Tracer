@@ -63,6 +63,7 @@ void ImGuiRenderer::set_render_window(RenderWindow* render_window)
 	m_imgui_settings_window.set_render_window(render_window);
 	m_imgui_animation_window.set_render_window(render_window);
 	m_imgui_baking_window.set_render_window(render_window);
+	m_imgui_objects_window.set_render_window(render_window);
 	m_imgui_render_window.set_render_window(render_window);
 	m_imgui_log_window.set_render_window(render_window);
 }
@@ -78,8 +79,11 @@ void ImGuiRenderer::draw_interface()
 	draw_settings_window();
 	draw_animation_window();
 	draw_baking_window();
+	draw_objects_window();
 	draw_log_window();
 	draw_render_window();
+
+	ImGui::ShowDemoWindow();
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	ImGui::Render();
@@ -167,6 +171,15 @@ void ImGuiRenderer::draw_baking_window()
 	ImGui::SetNextWindowDockID(m_dock_id_left, ImGuiCond_Always);
 
 	m_imgui_baking_window.draw();
+}
+
+void ImGuiRenderer::draw_objects_window()
+{
+	// "Tabbing" / "docking" / "putting" the window into the left part of the dock
+	// (basically, this window will act as a tab of the "Settings" window
+	ImGui::SetNextWindowDockID(m_dock_id_left, ImGuiCond_Always);
+
+	m_imgui_objects_window.draw();
 }
 
 void ImGuiRenderer::draw_render_window()
