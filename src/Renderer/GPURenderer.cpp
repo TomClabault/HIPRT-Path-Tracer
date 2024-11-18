@@ -1134,6 +1134,8 @@ void GPURenderer::set_envmap(const Image32Bit& envmap_image, const std::string& 
 		m_render_data.world_settings.envmap = m_envmap.get_orochi_envmap().get_device_texture();
 		m_render_data.world_settings.envmap_width = m_envmap.get_orochi_envmap().width;
 		m_render_data.world_settings.envmap_height = m_envmap.get_orochi_envmap().height;
+		// We found an envmap so we're using it
+		m_render_data.world_settings.ambient_light_type = AmbientLightType::ENVMAP;
 
 #if EnvmapSamplingStrategy == ESS_BINARY_SEARCH
 		m_render_data.world_settings.envmap_cdf = m_envmap.get_orochi_envmap().get_cdf_device_pointer();
