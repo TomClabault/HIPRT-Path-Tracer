@@ -23,7 +23,8 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 - Oren-Nayar Diffuse BRDF Lobe
 - Metallic Microfacet GGX Layer + Anisotropy & Anisotropy Rotation + Double Roughness [\[Kulla & Conty, 2017\]](https://blog.selfshadow.com/publications/s2017-shading-course/imageworks/s2017_pbs_imageworks_slides_v2.pdf)
 - Specular transmission BTDF + Beer Lambert Volumetric Absorption: [\[Burley, 2015\]](https://blog.selfshadow.com/publications/s2015-shading-course/#course_content)
-- Multiple-scattering energy compensation for conductors (double metal layer), dielectrics (tranmission layer) and glossy-diffuse (specular + diffuse layer) materials [\[Turquin, 2019\]](https://blog.selfshadow.com/publications/turquin/ms_comp_final.pdf)
+- Multiple-scattering energy compensation for conductors (double metal layer), dielectrics (transmission layer) and glossy-diffuse (specular + diffuse layer) materials [\[Turquin, 2019\]](https://blog.selfshadow.com/publications/turquin/ms_comp_final.pdf)
+- Thin-film interference over dielectrics and conductors [\[Belcour, Barla, 2017\]](https://belcour.github.io/blog/research/publication/2017/05/01/brdf-thin-film.html)
 
 ![LayeredBSDF](README_data/img/LayeredBSDF.png)
 ### Sampling
@@ -172,6 +173,8 @@ Sources of the scenes can be found [here](https://github.com/TomClabault/HIPRT-P
 [![OIDN AOVs Comparison](./README_data/img/OIDN_AOVs_thumbnail.jpg)](https://www.youtube.com/watch?v=GnCi7K2w9go "OIDN AOVs Comparison")
 ### ReSTIR DI vs. RIS vs. MIS Showcase
 [![ReSTIR DI Showcase](./README_data/img/ReSTIR_DI_Showcase_thumbnail.jpg)](https://www.youtube.com/watch?v=R6nkhSDoJ4U "ReSTIR DI vs. RIS vs. MIS Showcase")
+### Thin-film iridescence render
+[![OIDN AOVs Comparison](./README_data/img/thin-film-iri-thumbnail.jpg)](https://www.youtube.com/watch?v=rGwkacGbd3g "Thin-film iridescence render")
 # License
 
 GNU General Public License v3.0 or later

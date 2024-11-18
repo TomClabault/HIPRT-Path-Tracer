@@ -61,7 +61,6 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, const GPUKern
 	std::string kernel_function_name = kernel.get_kernel_function_name();
 	const std::vector<std::string>& additional_include_dirs = GPUKernel::COMMON_ADDITIONAL_KERNEL_INCLUDE_DIRS;
 	std::vector<std::string> compiler_options = kernel_compiler_options.get_relevant_macros_as_std_vector_string(&kernel);
-	compiler_options.push_back("-lineinfo");
 
 	//enable_compilation_warnings(hiprt_orochi_ctx, compiler_options);
 
@@ -98,7 +97,7 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel, const GPUKern
 		// Updating the logs
 		m_precompiled_kernels_compilation_ended++;
 
-		g_imgui_logger.update_line(ImGuiLogger::BACKGROUND_KERNEL_COMPILATION_LINE_NAME, "Compiling kernels permutations in the background... [%d / %d]", m_precompiled_kernels_compilation_ended.load(), m_precompiled_kernels_parsing_started.load());
+		g_imgui_logger.update_line(ImGuiLogger::BACKGROUND_KERNEL_COMPILATION_LINE_NAME, "Compiling kernel permutations in the background... [%d / %d]", m_precompiled_kernels_compilation_ended.load(), m_precompiled_kernels_parsing_started.load());
 	}
 
 	auto stop = std::chrono::high_resolution_clock::now();
@@ -367,7 +366,7 @@ std::unordered_set<std::string> GPUKernelCompiler::get_option_macros_used_by_ker
 		m_precompiled_kernels_parsing_ended++;
 
 		// And update the log line
-		g_imgui_logger.update_line(ImGuiLogger::BACKGROUND_KERNEL_PARSING_LINE_NAME, "Parsing kernels permutations in the background... [%d / %d]", m_precompiled_kernels_parsing_ended.load(), m_precompiled_kernels_parsing_started.load());
+		g_imgui_logger.update_line(ImGuiLogger::BACKGROUND_KERNEL_PARSING_LINE_NAME, "Parsing kernel permutations in the background... [%d / %d]", m_precompiled_kernels_parsing_ended.load(), m_precompiled_kernels_parsing_started.load());
 	}
 
 

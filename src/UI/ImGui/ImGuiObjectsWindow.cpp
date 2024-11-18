@@ -47,6 +47,14 @@ struct MaterialOverrideState
 	bool override_absorption_color = false;
 	bool override_dielectric_priority = false;
 
+	bool override_thin_film = false;
+	bool override_thin_film_thickness = false;
+	bool override_thin_film_ior = false;
+	bool override_thin_film_do_ior_override = false;
+	bool override_thin_film_base_ior_override = false;
+	bool override_thin_film_kappa_3 = false;
+	bool override_thin_film_hue_shift = false;
+
 	bool override_emission = false;
 	bool override_emission_strength = false;
 
@@ -94,12 +102,12 @@ bool draw_material_override_line_common(bool& override_state_bool)
 	return changed;
 }
 
-bool draw_material_override_line(const std::string& text, bool& override_state_bool, float& material_override_property, float v_min, float v_max)
+bool draw_material_override_line(const std::string& text, bool& override_state_bool, float& material_override_property, float v_min, float v_max, const char* format = "%.3f")
 {
 	bool changed = draw_material_override_line_common(override_state_bool);
 
 	ImGui::TableSetColumnIndex(1);
-	changed |= ImGui::SliderFloat(text.c_str(), &material_override_property, v_min, v_max);
+	changed |= ImGui::SliderFloat(text.c_str(), &material_override_property, v_min, v_max, format);
 
 	return changed;
 }
@@ -120,6 +128,16 @@ bool draw_material_override_line(const std::string& text, bool& override_state_b
 
 	ImGui::TableSetColumnIndex(1);
 	changed |= ImGui::ColorEdit3(text.c_str(), (float*)&material_override_property);
+
+	return changed;
+}
+
+bool draw_material_override_line(const std::string& text, bool& override_state_bool, bool& material_override_property)
+{
+	bool changed = draw_material_override_line_common(override_state_bool);
+
+	ImGui::TableSetColumnIndex(1);
+	changed |= ImGui::Checkbox(text.c_str(), &material_override_property);
 
 	return changed;
 }
@@ -473,6 +491,71 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 		ImGui::TreePop();
 	}
 
+	if (ImGui::CollapsingHeader("Thin-Film Layer"))
+	{
+		ImGui::TreePush("Thin-film layer material tree");
+
+		if (ImGui::BeginTable("Table thin-film layer", 2, ImGuiTableFlags_SizingFixedFit))
+		{
+			for (int row = 0; row < 8; row++)
+			{
+				ImGui::TableNextRow();
+
+				switch (row)
+				{
+				case 0:
+					ImGui::TableSetColumnIndex(0);
+					ImGui::Text("Override");
+					break;
+
+				case 1:
+					material_override_changed |= draw_material_override_line("Thin film", override_state.override_thin_film, material_override.thin_film, 0.0f, 1.0f);
+					break;
+
+				case 2:
+					material_override_changed |= draw_material_override_line("Thin film thickness", override_state.override_thin_film_thickness, material_override.thin_film_thickness, 1.0f, 3.0f, "%.3f nm");
+					break;
+
+				case 3:
+					material_override_changed |= draw_material_override_line("Thin film IOR", override_state.override_thin_film_ior, material_override.thin_film_ior, 1.0f, 3.0f);
+					break;
+
+				case 4:
+					material_override_changed |= draw_material_override_line("Thin film hue shift", override_state.override_thin_film_hue_shift, material_override.thin_film_hue_shift_degrees, 0.0f, 360.0f);
+					break;
+
+				case 5:
+					ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+					material_override_changed |= draw_material_override_line("Override material IOR", override_state.override_thin_film_do_ior_override, material_override.thin_film_do_ior_override);
+
+					// BeginDisabled for the cases that follow
+					ImGui::BeginDisabled(!material_override.thin_film_do_ior_override);
+					break;
+
+				case 6:
+					material_override_changed |= draw_material_override_line("Eta IOR override", override_state.override_thin_film_base_ior_override, material_override.thin_film_base_ior_override, 1.0f, 3.0f);
+					ImGuiRenderer::show_help_marker("Overrides the eta parameter of the IOR of the base material. This is not physically based but allows for better artistic control.");
+					break;
+
+				case 7:
+					material_override_changed |= draw_material_override_line("Kappa IOR override", override_state.override_thin_film_kappa_3, material_override.thin_film_kappa_3, 0.0f, 5.0f);
+					ImGuiRenderer::show_help_marker("Overrides the kappa parameter (extinction coefficient) of the base material. This is not physically based but allows for better artistic control.");
+
+					// BeginDisabled in "case 4:" and we're guaranteed to go through all cases one by one
+					ImGui::EndDisabled();
+
+					break;
+				}
+			}
+
+			ImGui::EndTable();
+		}
+		
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::TreePop();
+	}
+
 	if (ImGui::CollapsingHeader("Emission Properties"))
 	{
 		ImGui::TreePush("Emission material tree");
@@ -588,6 +671,10 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 		apply_material_override(override_state.override_absorption_distance, &RendererMaterial::absorption_at_distance, material_override.absorption_at_distance, overriden_materials);
 		apply_material_override(override_state.override_absorption_color, &RendererMaterial::absorption_color, material_override.absorption_color, overriden_materials);
 		apply_material_override(override_state.override_dielectric_priority, &RendererMaterial::dielectric_priority, material_override.dielectric_priority, overriden_materials);
+
+		apply_material_override(override_state.override_thin_film, &RendererMaterial::thin_film, material_override.thin_film, overriden_materials);
+		apply_material_override(override_state.override_thin_film_thickness, &RendererMaterial::thin_film_thickness, material_override.thin_film_thickness, overriden_materials);
+		apply_material_override(override_state.override_thin_film_ior, &RendererMaterial::thin_film_ior, material_override.thin_film_ior, overriden_materials);
 
 		// Special case for the emission since it's a private member
 		if (override_state.override_emission)
@@ -717,6 +804,7 @@ void ImGuiObjectsWindow::draw_objects_panel()
 			material_changed |= ImGui::SliderFloat("Roughness", &material.roughness, 0.0f, 1.0f);
 			material_changed |= ImGui::SliderFloat("Anisotropy", &material.anisotropy, 0.0f, 1.0f);
 			material_changed |= ImGui::SliderFloat("Anisotropy rotation", &material.anisotropy_rotation, 0.0f, 1.0f);
+			material_changed |= ImGui::SliderFloat("IOR", &material.ior, 1.0f, 3.0f);
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::TreePop();
@@ -820,6 +908,28 @@ void ImGuiObjectsWindow::draw_objects_panel()
 			material_changed |= ImGui::SliderInt("Dielectric priority", &material.dielectric_priority, 1, StackPriorityEntry::PRIORITY_MAXIMUM);
 			if (kernel_options->get_macro_value(GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY) != ISS_WITH_PRIORITIES)
 				ImGuiRenderer::show_help_marker("Disabled because not using nested dielectrics with priorities.");
+			ImGui::EndDisabled();
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			ImGui::TreePop();
+		}
+
+		if (ImGui::CollapsingHeader("Thin-Film Layer"))
+		{
+			ImGui::TreePush("Thin film layer material tree");
+
+			material_changed |= ImGui::SliderFloat("Thin film", &material.thin_film, 0.0f, 1.0f);
+			material_changed |= ImGui::SliderFloat("Thin film thickness", &material.thin_film_thickness, 0.0f, 2000.0f, "%.3f nm");
+			material_changed |= ImGui::SliderFloat("Thin film IOR", &material.thin_film_ior, 1.0f, 3.0f);
+			material_changed |= ImGui::SliderFloat("Thin film hue shift", &material.thin_film_hue_shift_degrees, 0.0f, 360.0f);
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			material_changed |= ImGui::Checkbox("Override material IOR", &material.thin_film_do_ior_override);
+			ImGui::BeginDisabled(!material.thin_film_do_ior_override);
+			material_changed |= ImGui::SliderFloat("Eta IOR override", &material.thin_film_base_ior_override, 1.0f, 3.0f);
+			ImGuiRenderer::show_help_marker("Overrides the eta parameter of the IOR of the base material. This is not physically based but allows for better artistic control.");
+			material_changed |= ImGui::SliderFloat("Kappa IOR override", &material.thin_film_kappa_3, 0.0f, 5.0f);
+			ImGuiRenderer::show_help_marker("Overrides the kappa parameter (extinction coefficient) of the base material. This is not physically based but allows for better artistic control.");
 			ImGui::EndDisabled();
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));

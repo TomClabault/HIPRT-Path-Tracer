@@ -103,7 +103,7 @@ struct HIPRTRenderSettings
 
 	// If true, NaNs encountered during rendering will be rendered as very bright pink. 
 	// Useful for debugging only.
-	bool display_NaNs = true;
+	bool display_NaNs = false;
 
 	// If true, then rendering at low resolution will be performed if 'wants_render_low_resolution'
 	// is also true.
@@ -112,7 +112,7 @@ struct HIPRTRenderSettings
 	//	 but if rendering at low resolution is not allowed (this boolean), then we will still
 	//	 not render at low resolution
 	// This boolean is controlled by the user in Imgui
-	bool allow_render_low_resolution = false;
+	bool allow_render_low_resolution = true;
 	// If true, this means that the user is moving the camera and we want to
 	// render the image at a much lower resolution to allow for smoother
 	// interaction. Having this flag at true isn't sufficient for rendering at low

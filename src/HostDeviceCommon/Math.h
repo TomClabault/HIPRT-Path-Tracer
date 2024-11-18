@@ -76,11 +76,41 @@ namespace hippt
 
 	__device__ float3 abs(float3 u) { return make_float3(fabsf(u.x), fabsf(u.y), fabsf(u.z)); }
 	__device__ float abs(float a) { return fabsf(a); }
+
+	template <typename T>
+	__device__ T max(T a, T b) { return a > b ? a : b; }
+
+	template <>
+	__device__ float3 max(float3 a, float3 b) { return make_float3(hippt::max(a.x, b.x), hippt::max(a.y, b.y), hippt::max(a.z, b.z)); }
+
+	template <typename T>
+	__device__ T min(T a, T b) { return a < b ? a : b; }
+
+	template <typename T>
+	__device__ T clamp(T min_val, T max_val, T val) { return hiprt::min(max_val, hiprt::max(min_val, val)); }
+
 	__device__ float max(float a, float b) { return a > b ? a : b; }
 	__device__ float min(float a, float b) { return a < b ? a : b; }
 	__device__ float clamp(float min_val, float max_val, float val) { return hiprt::clamp(val, min_val, max_val); }
 
-	__device__ float pow_1_4(float x) { return sqrt(sqrt(x)); }
+	__device__ float3 cos(float3 x) { return make_float3(cosf(x.x), cosf(x.y), cosf(x.z)); }
+	__device__ float2 cos(float2 x) { return make_float2(cosf(x.x), cosf(x.y)); }
+
+	__device__ float3 sin(float3 x) { return make_float3(sinf(x.x), sinf(x.y), sinf(x.z)); }
+	__device__ float2 sin(float2 x) { return make_float2(sinf(x.x), sinf(x.y)); }
+
+	__device__ float3 atan2(float3 y, float3 x) { return make_float3(atan2f(y.x, x.x), atan2f(y.y, x.y), atan2f(y.z, x.z)); }
+
+	__device__ float2 exp(float2 x) { return make_float2(expf(x.x), expf(x.y)); }
+	__device__ float3 exp(float3 x) { return make_float3(expf(x.x), expf(x.y), expf(x.z)); }
+
+	template <typename T>
+	__device__ T square(T x) { return x * x; }
+
+	__device__ float2 sqrt(float2 uv) { return make_float2(sqrtf(uv.x), sqrtf(uv.y)); }
+	__device__ float3 sqrt(float3 uvw) { return make_float3(sqrtf(uvw.x), sqrtf(uvw.y), sqrtf(uvw.z)); }
+
+	__device__ float pow_1_4(float x) { return sqrtf(sqrtf(x)); }
 	__device__ constexpr float pow_4(float x) { float x2 = x * x; return x2 * x2; }
 	__device__ constexpr float pow_5(float x) { float x2 = x * x; float x4 = x2 * x2; return x4 * x; }
 	__device__ constexpr float pow_6(float x) { float x2 = x * x; float x4 = x2 * x2; return x4 * x2; }
@@ -98,7 +128,22 @@ namespace hippt
 	 * For t=0, returns a
 	 */
 	template <typename T>
-	__device__ inline T lerp(T a, T b, float t) { return (1.0f - t) * a + t * b; }
+	__device__ T lerp(T a, T b, float t) { return (1.0f - t) * a + t * b; }
+
+	/**
+	 * Reference: https://registry.khronos.org/OpenGL-Refpages/gl4/html/smoothstep.xhtml
+	 *
+	 * For t == min, returns 0.0f
+	 * For t == max, returns 1.0f
+	 * Smoothstep interpolation in between
+	 */
+	template <typename T>
+	__device__ T smoothstep(T min, T max, float x)
+	{
+		float t = hippt::clamp(0.0f, 1.0f, (x - min) / (max - min));
+
+		return t * t * (3.0f - 2.0f * t);
+	}
 
 	__device__ float fract(float a) { return a - floorf(a); }
 
@@ -123,13 +168,32 @@ namespace hippt
 	template <typename T>
 	inline T max(T a, T b) { return hiprt::max(a, b); }
 
+	template <>
+	inline float3 max(float3 a, float3 b) { return make_float3(hippt::max(a.x, b.x), hippt::max(a.y, b.y), hippt::max(a.z, b.z)); }
+
 	template <typename T>
 	inline T min(T a, T b) { return hiprt::min(a, b); }
 
 	template <typename T>
 	inline T clamp(T min_val, T max_val, T val) { return hiprt::min(max_val, hiprt::max(min_val, val)); }
 
-	inline float pow_1_4(float x) { return sqrt(sqrt(x)); }
+	inline float2 cos(float2 x) { return make_float2(std::cos(x.x), std::cos(x.y)); }
+	inline float3 cos(float3 x) { return make_float3(std::cos(x.x), std::cos(x.y), std::cos(x.z)); }
+
+	inline float2 sin(float2 x) { return make_float2(std::sin(x.x), std::sin(x.y)); }
+	inline float3 sin(float3 x) { return make_float3(std::sin(x.x), std::sin(x.y), std::sin(x.z)); }
+
+	inline float3 atan2(float3 y, float3 x) { return make_float3(atan2f(y.x, x.x), atan2f(y.y, x.y), atan2f(y.z, x.z)); }
+
+	inline float2 exp(float2 x) { return make_float2(expf(x.x), expf(x.y)); }
+	inline float3 exp(float3 x) { return make_float3(expf(x.x), expf(x.y), expf(x.z)); }
+
+	template <typename T>
+	inline T square(T x) { return x * x; }
+
+	inline float2 sqrt(float2 uv) { return make_float2(sqrtf(uv.x), sqrtf(uv.y)); }
+	inline float3 sqrt(float3 uvw) { return make_float3(sqrtf(uvw.x), sqrtf(uvw.y), sqrtf(uvw.z)); }
+	inline float pow_1_4(float x) { return sqrtf(sqrtf(x)); }
 	inline constexpr float pow_4(float x) { float x2 = x * x; return x2 * x2; }
 	inline constexpr float pow_5(float x) { float x2 = x * x; float x4 = x2 * x2; return x4 * x; }
 	inline constexpr float pow_6(float x) { float x2 = x * x; float x4 = x2 * x2; return x4 * x2; }
@@ -148,6 +212,21 @@ namespace hippt
 	 */
 	template <typename T>
 	inline T lerp(T a, T b, float t) { return (1.0f - t) * a + t * b; }
+	
+	/**
+	 * Reference: https://registry.khronos.org/OpenGL-Refpages/gl4/html/smoothstep.xhtml
+	 * 
+	 * For t == min, returns 0.0f
+	 * For t == max, returns 1.0f
+	 * Smoothstep interpolation in between
+	 */
+	template <typename T>
+	inline T smoothstep(T min, T max, float x) 
+	{ 
+		float t = hippt::clamp(0.0f, 1.0f, (x - min) / (max - min));
+
+		return t * t * (3.0f - 2.0f * t);
+	}
 
 	inline float fract(float a) { return a - floorf(a); }
 #endif

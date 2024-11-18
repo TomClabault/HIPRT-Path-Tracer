@@ -13,7 +13,7 @@ struct ColorRGBA32F
     HIPRT_HOST_DEVICE ColorRGBA32F() { r = 0.0f; g = 0.0f; b = 0.0f; a = 1.0f; }
     HIPRT_HOST_DEVICE explicit ColorRGBA32F(float value) { r = value; g = value; b = value; a = 1.0f; }
     HIPRT_HOST_DEVICE ColorRGBA32F(float _r, float _g, float _b, float _a) { r = _r; g = _g; b = _b; a = _a; }
-    HIPRT_HOST_DEVICE ColorRGBA32F(float4 vec) { r = vec.x; g = vec.y; b = vec.z; a = vec.w; }
+    HIPRT_HOST_DEVICE explicit ColorRGBA32F(float4 vec) { r = vec.x; g = vec.y; b = vec.z; a = vec.w; }
 
     HIPRT_HOST_DEVICE void operator+=(const ColorRGBA32F& other) { r += other.r; g += other.g; b += other.b; a += other.a; }
     HIPRT_HOST_DEVICE void operator-=(const ColorRGBA32F& other) { r -= other.r; g -= other.g; b -= other.b; a -= other.a; }
@@ -61,7 +61,7 @@ struct ColorRGB32F
     HIPRT_HOST_DEVICE ColorRGB32F() { r = 0.0f; g = 0.0f; b = 0.0f; }
     HIPRT_HOST_DEVICE explicit ColorRGB32F(float value) { r = value; g = value; b = value; }
     HIPRT_HOST_DEVICE ColorRGB32F(float _r, float _g, float _b) { r = _r; g = _g; b = _b; }
-    HIPRT_HOST_DEVICE ColorRGB32F(float3 vec) { r = vec.x; g = vec.y; b = vec.z; }
+    HIPRT_HOST_DEVICE explicit ColorRGB32F(float3 vec) { r = vec.x; g = vec.y; b = vec.z; }
     // This constructor drops the alpha channel
     HIPRT_HOST_DEVICE explicit ColorRGB32F(const ColorRGBA32F& rgba) { r = rgba.r; g = rgba.g; b = rgba.b; }
 

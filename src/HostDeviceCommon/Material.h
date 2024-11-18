@@ -55,6 +55,8 @@ struct SimplifiedRendererMaterial
         // Avoiding zero
         absorption_at_distance = hippt::max(absorption_at_distance, 1.0e-4f);
         absorption_color = ColorRGB32F::max(absorption_color, ColorRGB32F(1.0f / 512.0f));
+
+        thin_film_ior = hippt::max(1.0005f, thin_film_ior);
     }
 
     /*
@@ -141,6 +143,14 @@ struct SimplifiedRendererMaterial
     float absorption_at_distance = 1.0f;
     // Color of the light absorption when traveling through the medium
     ColorRGB32F absorption_color = ColorRGB32F(1.0f);
+
+    float thin_film = 0.0f;
+    float thin_film_ior = 1.3f;
+    float thin_film_thickness = 500.0f;
+    float thin_film_kappa_3 = 0.0f;
+    float thin_film_hue_shift_degrees = 0.0f;
+    float thin_film_base_ior_override = 1.0f;
+    bool thin_film_do_ior_override = false;
 
     // 1.0f makes the material completely opaque
     // 0.0f completely transparent (becomes invisible)

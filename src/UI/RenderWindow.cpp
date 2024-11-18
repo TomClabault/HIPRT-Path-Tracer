@@ -32,6 +32,10 @@ extern ImGuiLogger g_imgui_logger;
 // - smarter shader cache (hints to avoid using all kernel options when compiling a kernel? We know that Camera ray doesn't care about direct lighting strategy for example)
 // - use self bit packing (no bitfields) for nested dielectrics because bitfields are implementation dependent in size, that's bad --> We don't get our nice packing with every compiler
 // - for LTC sheen lobe, have the option to use either SGGX volumetric sheen or approximation precomputed LTC data
+// - --help on the commandline
+// - Search for textures next to the GLTF file location
+// - Normal mapping seems broken again, light rays going under the surface... p1 env light
+// - energy preservation illustration in Readme
 
 // TODO known bugs / incorrectness:
 // - take transmission color into account when direct sampling a light source that is inside a volume: leave that for when implement volumes?
@@ -52,6 +56,7 @@ extern ImGuiLogger g_imgui_logger;
 // - only the material index can be stored in the pixel states of the wavefront path tracer, don't need to store the whole material (is that correct though? Because then we need to re-evaluate the textures at the hit point)
 // - use 3x3 matrix for envmap matrices
 // - free denoiser buffers if not using denoising
+// - use a proper GLTF loader because ASSIMP isn't good, poor support of the GLTF spec
 // - refactor ImGuiRenderer in several sub classes that each draw a panel
 // - refactor closestHitTypes with something like 'hiprtGeomTraversalClosestHitType<UseSharedStackBVHTraversal>' to avoid the big #if #elif blocks
 
@@ -69,11 +74,13 @@ extern ImGuiLogger g_imgui_logger;
 //		- for maximum ray length, limit that length even more for indirect bounces and even more so if the ray is far away from the camera (beware of mirrors in the scene which the camera can look into and see a far away part of the scene where light could be very biased)
 // - only update the display every so often if accumulating because displaying is expensive (especially at high resolution) on AMD drivers at least
 // - reload shaders button
+// - how to help with shaders combination compilation times? upload bitcodes that ** I ** compile locally to Github? Change some #if to if() where this does not increase register pressure also.
 // - do not evaluate perfectly smooth specular materials to save on computations? Because evaluating is going to yield 0.0f anyways --> dirac distribution. We should only sample those I guess
 // - use bare variables for principled_bsdf_sample CDF[] because local arrays are bad on AMD GPUs
 // - pack ray payload for register usage reduction
 // - pack HDR as color as 9/9/9/5 RGBE? https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/MiniEngine/Core/Shaders/PixelPacking_RGBE.hlsli
-// - next event estimation++?
+// - next event estimation++? --> 2023 paper improvement
+// - ideas of https://pbr-book.org/4ed/Light_Sources/Further_Reading for performance
 // - envmap visibility cache? 
 // - russian roulette on light sampling based on light contribution?
 // - Exploiting Visibility Correlation in Direct Illumination

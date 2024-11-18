@@ -10,6 +10,7 @@
 #include "Device/includes/ONB.h"
 #include "Device/includes/BSDFs/Lambertian.h"
 #include "Device/includes/BSDFs/OrenNayar.h"
+#include "Device/includes/BSDFs/ThinFilm.h"
 #include "Device/includes/RayPayload.h"
 #include "Device/includes/Sampling.h"
 #include "Device/includes/BSDFs/SheenLTC.h"
@@ -32,15 +33,18 @@
   * [11] [Open PBR Specification] https://academysoftwarefoundation.github.io/OpenPBR/#formalism/layering
   * [12] [Enterprise PBR Specification] https://dassaultsystemes-technology.github.io/EnterprisePBRShadingModel/spec-2025x.md.html
   * [13] [Arbitrarily Layered Micro-Facet Surfaces, Weidlich, Wilkie] https://www.cg.tuwien.ac.at/research/publications/2007/weidlich_2007_almfs/weidlich_2007_almfs-paper.pdf
+  * [14] [A Practical Extension to Microfacet Theory for the Modeling of Varying Iridescence, Belcour, Barla, 2017] https://belcour.github.io/blog/research/publication/2017/05/01/brdf-thin-film.html
+  * [15] [MaterialX Implementation Code] https://github.com/AcademySoftwareFoundation/MaterialX
+  * [16] [Khronos GLTF 2.0 KHR_materials_iridescence Implementation Notes] https://github.com/KhronosGroup/glTF/blob/main/extensions/2.0/Khronos/KHR_materials_iridescence/README.md
   * 
   * Important note: none of the lobes of this implementation includes the cosine term.
   * The cosine term NoL needs to be taken into account outside of the BSDF
   */
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_coat_eval(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, float incident_ior, float& out_pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_coat_eval(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, float incident_medium_ior, float& out_pdf)
 {
     // The coat lobe is just a microfacet lobe
-    return torrance_sparrow_GTR2_eval(render_data, material.base_color, material.coat_roughness, material.coat_anisotropy, material.coat_ior, incident_ior, local_view_direction, local_to_light_direction, local_halfway_vector, out_pdf);
+    return torrance_sparrow_GTR2_eval(render_data, material.base_color, material.coat_roughness, material.coat_anisotropy, material.coat_ior, incident_medium_ior, local_view_direction, local_to_light_direction, local_halfway_vector, out_pdf);
 }
 
 /**
@@ -65,7 +69,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_metallic_eval(const HIPRTR
 {
     float HoL = hippt::clamp(1.0e-8f, 1.0f, hippt::dot(local_half_vector, local_to_light_direction));
 
-    ColorRGB32F F = adobe_f82_tint_fresnel(material.base_color, material.metallic_F82, material.metallic_F90, material.metallic_F90_falloff_exponent, HoL);
+    ColorRGB32F F_metal = adobe_f82_tint_fresnel(material.base_color, material.metallic_F82, material.metallic_F90, material.metallic_F90_falloff_exponent, HoL);
+    ColorRGB32F F_thin_film = thin_film_fresnel(material, incident_ior, HoL);
+    ColorRGB32F F = hippt::lerp(F_metal, F_thin_film, material.thin_film);
 
     return torrance_sparrow_GTR2_eval<PrincipledBSDFGGXUseMultipleScattering>(render_data, material.base_color, roughness, anisotropy, F, local_view_direction, local_to_light_direction, local_half_vector, pdf);
 }
@@ -95,6 +101,20 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_diffuse_sample(const float3& su
 {
     // Our Oren-Nayar diffuse lobe is sampled by a cosine weighted distribution
     return cosine_weighted_sample_around_normal(surface_normal, random_number_generator);
+}
+
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_specular_fresnel(const SimplifiedRendererMaterial& material, float incident_medium_ior, float relative_specular_ior, float cos_theta_i)
+{
+    // Computing the fresnel term
+    // It's either the thin film fresnel for thin film interference or the usual
+    // non colored dielectric/dielectric fresnel.
+    //
+    // We're lerping between the two based on material.thin_film
+    ColorRGB32F F_specular = ColorRGB32F(full_fresnel_dielectric(cos_theta_i, relative_specular_ior));
+    ColorRGB32F F_thin_film = thin_film_fresnel(material, incident_medium_ior, cos_theta_i);
+    ColorRGB32F F = hippt::lerp(F_specular, F_thin_film, material.thin_film);
+
+    return F;
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float principled_specular_relative_ior(const SimplifiedRendererMaterial& material, float incident_medium_ior)
@@ -134,18 +154,24 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float principled_specular_relative_ior(const Simp
     return relative_ior;
 }
 
+/**
+ * 'relative_ior' is eta_t / eta_i with 'eta_t' the IOR of the glossy layer and
+ * 'eta_i' the IOR of 
+ */
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_specular_eval(
-    const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, float relative_ior, 
+    const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, 
+    float incident_medium_ior, float relative_ior, 
     const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_half_vector, 
     float& pdf)
 {
-    // The specular lobe is just another GGX (GTR2) lobe
+    ColorRGB32F F = principled_specular_fresnel(material, incident_medium_ior, relative_ior, hippt::dot(local_to_light_direction, local_half_vector));
 
+    // The specular lobe is just another GGX (GTR2) lobe
+    // 
     // We actually don't want energy conservation here for the specular layer
     // (hence the torrance_sparrow_GTR2_eval<0>) because energy conservation
     // for the specular layer is handled for the glossy based (specular + diffuse lobe)
     // as a whole, not just in the specular layer 
-    ColorRGB32F F = ColorRGB32F(full_fresnel_dielectric(hippt::dot(local_half_vector, local_to_light_direction), relative_ior));
     ColorRGB32F specular = torrance_sparrow_GTR2_eval<0>(render_data, material.base_color, material.roughness, material.anisotropy, F, local_view_direction, local_to_light_direction, local_half_vector, pdf);
 
     return specular;
@@ -217,7 +243,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
     float HoL = hippt::dot(local_to_light_direction, local_half_vector);
     float HoV = hippt::dot(local_view_direction, local_half_vector);
 
-    float F = full_fresnel_dielectric(HoV, relative_eta);
     if (HoL * NoL < 0.0f || HoV * NoV < 0.0f)
         // Backfacing microfacets when the microfacet normal isn't in the same
         // hemisphere as the view dir or light dir
@@ -225,33 +250,67 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
 
 
 #if PrincipledBSDFGGXUseMultipleScattering == KERNEL_OPTION_TRUE
-    bool inside_object = ray_volume_state.inside_material;
-    float relative_eta_for_correction = inside_object ? 1.0f / relative_eta : relative_eta;
-    float exponent_correction = GGX_glass_energy_conservation_get_correction_exponent(material.roughness, relative_eta_for_correction);
+    float compensation_term = 1.0f;
 
-    // We're storing cos_theta_o^2.5 in the LUT so we're retrieving it with pow(1.0f / 2.5f) i.e.
-    // sqrt 2.5
-    //
-    // We're using a "correction exponent" to forcefully get rid of energy gains at grazing angles due
-    // to float precision issues: storing in the LUT with cos_theta^2.5 but fetching with pow(1.0f / 2.6f)
-    // for example darkens to overall appearance and helps remove energy gains
-    float view_direction_tex_fetch = powf(hippt::max(0.0f, local_view_direction.z), 1.0f / exponent_correction);
+    // Not doing energy compensation if the thin-film is fully present
+    // See the // TODO FIX THIS HORROR below
+    if (material.thin_film < 1.0f)
+    {
+        bool inside_object = ray_volume_state.inside_material;
+        float relative_eta_for_correction = inside_object ? 1.0f / relative_eta : relative_eta;
+        float exponent_correction = GGX_glass_energy_conservation_get_correction_exponent(material.roughness, relative_eta_for_correction);
 
-    float F0 = F0_from_eta(eta_t, eta_i);
-    // sqrt(sqrt()) of F0 here because we're storing F0^4 in the LUT
-    float F0_remapped = sqrt(sqrt(F0));
+        // We're storing cos_theta_o^2.5 in the LUT so we're retrieving it with pow(1.0f / 2.5f) i.e.
+        // sqrt 2.5
+        //
+        // We're using a "correction exponent" to forcefully get rid of energy gains at grazing angles due
+        // to float precision issues: storing in the LUT with cos_theta^2.5 but fetching with pow(1.0f / 2.6f)
+        // for example darkens to overall appearance and helps remove energy gains
+        float view_direction_tex_fetch = powf(hippt::max(0.0f, local_view_direction.z), 1.0f / exponent_correction);
 
-    float3 uvw = make_float3(view_direction_tex_fetch, material.roughness, F0_remapped);
+        float F0 = F0_from_eta(eta_t, eta_i);
+        // sqrt(sqrt()) of F0 here because we're storing F0^4 in the LUT
+        float F0_remapped = sqrt(sqrt(F0));
 
-    void* texture = inside_object ? render_data.bsdfs_data.GGX_Ess_glass_inverse : render_data.bsdfs_data.GGX_Ess_glass;
-    int3 dims = make_int3(GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_COS_THETA_O, GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_ROUGHNESS, GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_IOR);
-    float compensation_term = sample_texture_3D_rgb_32bits(texture, dims, uvw, render_data.bsdfs_data.use_hardware_tex_interpolation).r;
+        float3 uvw = make_float3(view_direction_tex_fetch, material.roughness, F0_remapped);
+
+        void* texture = inside_object ? render_data.bsdfs_data.GGX_Ess_glass_inverse : render_data.bsdfs_data.GGX_Ess_glass;
+        int3 dims = make_int3(GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_COS_THETA_O, GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_ROUGHNESS, GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_IOR);
+        compensation_term = sample_texture_3D_rgb_32bits(texture, dims, uvw, render_data.bsdfs_data.use_hardware_tex_interpolation).r;
+
+        // TODO FIX THIS HORROR
+        // This is here because directional albedo for the glass BSDF is tabulated with the standard non-colored Fresnel
+        // This means that the precomputed table is incompatible with the thin-film interference fresnel
+        // 
+        // And as a matter of fact, using the energy compensation term (precomputed for the traditional fresnel)
+        // with thin-film interference Fresnel results in noticeable energy gains at grazing angles at high roughnesses
+        //
+        // Blender Cycles doesn't have that issue but I don't understand yet how they avoid it.
+        //
+        // The quick and disgusting solution here is just to disable energy compensation as the thin-film
+        // weight gets stronger. Energy compensation is fully disabled when the thin-film weight is 1.0f
+        //
+        // Because the error is stronger at high roughnesses than at low roughnesses, we can include the roughness
+        // in the lerp such that we use less and less the energy compensation term as the roughness increases
+        compensation_term = hippt::lerp(compensation_term, 1.0f, material.thin_film * material.roughness);
+    }
 #endif
+
+    ColorRGB32F F_thin_film;
+    if (material.thin_film > 0.0f)
+        F_thin_film = thin_film_fresnel(material, eta_i, HoV);
+
+    ColorRGB32F F_no_thin_film;
+    if (material.thin_film < 1.0f)
+        F_no_thin_film = ColorRGB32F(full_fresnel_dielectric(HoV, relative_eta));
+
+    ColorRGB32F F = hippt::lerp(F_no_thin_film, F_thin_film, material.thin_film);
+    float f_proba = F.luminance();
 
     ColorRGB32F color;
     if (reflecting)
     {
-        color = torrance_sparrow_GTR2_eval<0>(render_data, material.base_color, material.roughness, material.anisotropy, ColorRGB32F(F), local_view_direction, local_to_light_direction, local_half_vector, pdf);
+        color = torrance_sparrow_GTR2_eval<0>(render_data, material.base_color, material.roughness, material.anisotropy, F, local_view_direction, local_to_light_direction, local_half_vector, pdf);
 
 #if PrincipledBSDFGGXUseMultipleScattering == KERNEL_OPTION_TRUE
         // [Turquin, 2019] Eq. 18
@@ -259,7 +318,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
 #endif
 
         // Scaling the PDF by the probability of being here (reflection of the ray and not transmission)
-        pdf *= F;
+        pdf *= f_proba;
 
         // Popping the ray volume stack is done in the glass_sample function for
         // reflections so we're not doing it here
@@ -283,14 +342,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
         float D_pdf = G1_V / hippt::abs(NoV) * D * hippt::abs(HoV);
         pdf = dwm_dwi * D_pdf;
         // Taking refraction probability into account
-        pdf *= (1.0f - F);
+        pdf *= 1.0f - f_proba;
 
         // We added a check a few lines above to "avoid dividing by 0 later on". This is where.
         // When NoL is 0, denom is 0 too and we're dividing by 0. 
         // The PDF of this case is as low as 1.0e-9 (light direction sampled perpendicularly to the normal)
         // so this is an extremely rare case.
         // The PDF being non-zero, we could actualy compute it, it's valid but not with floats :D
-        color = sqrt(material.base_color) * D * (1 - F) * G2 * hippt::abs(HoL * HoV / denom);
+        color = sqrt(material.base_color) * D * (ColorRGB32F(1.0f) - F) * G2 * hippt::abs(HoL * HoV / denom);
 
 #if PrincipledBSDFGGXUseMultipleScattering == KERNEL_OPTION_TRUE
         // [Turquin, 2019] Eq. 18
@@ -348,11 +407,23 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_glass_sample(const RendererMate
 
     float3 microfacet_normal = GTR2_anisotropic_sample_microfacet(local_view_direction, alpha_x, alpha_y, random_number_generator);
 
-    float F = full_fresnel_dielectric(hippt::dot(local_view_direction, microfacet_normal), relative_eta);
+    float HoV = hippt::dot(local_view_direction, microfacet_normal);
+
+    ColorRGB32F F_thin_film;
+    if (material.thin_film > 0.0f)
+        F_thin_film = thin_film_fresnel(material, eta_i, HoV);
+
+    ColorRGB32F F_no_thin_film;
+    if (material.thin_film < 1.0f)
+        F_no_thin_film = ColorRGB32F(full_fresnel_dielectric(HoV, relative_eta));
+
+    ColorRGB32F F = hippt::lerp(F_no_thin_film, F_thin_film, material.thin_film);
+    float f_proba = F.luminance();
+
     float rand_1 = random_number_generator();
 
     float3 sampled_direction;
-    if (rand_1 < F)
+    if (rand_1 < f_proba)
     {
         // Reflection
         sampled_direction = reflect_ray(local_view_direction, microfacet_normal);
@@ -557,13 +628,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_specular_layer(const HI
         float relative_ior = principled_specular_relative_ior(material, incident_medium_ior);
 
         float specular_pdf;
-        ColorRGB32F contribution = principled_specular_eval(render_data, material, relative_ior, local_view_direction, local_to_light_direction, local_half_vector, specular_pdf);
+        ColorRGB32F contribution = principled_specular_eval(render_data, material, incident_medium_ior, relative_ior, local_view_direction, local_to_light_direction, local_half_vector, specular_pdf);
         // Tinting the specular reflection color
         contribution *= hippt::lerp(ColorRGB32F(1.0f), material.specular_tint * material.specular_color, material.specular);
         contribution *= specular_weight;
         contribution *= layers_throughput;
 
-        float layer_below_attenuation = 1.0f;
+        ColorRGB32F layer_below_attenuation(1.0f);
         // Only the transmitted portion of the light goes to the layer below
         // We're using the shading normal here and not the microfacet normal because:
         // We want the proportion of light that reaches the layer below.
@@ -584,7 +655,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_specular_layer(const HI
         // We can't do that integration online so we're instead using the shading normal to compute
         // the transmitted portion of light. That's actually either a good approximation or the
         // exact solution. That was shown in GDC 2017 [PBR Diffuse Lighting for GGX + Smith Microsurfaces]
-        layer_below_attenuation *= 1.0f - full_fresnel_dielectric(local_to_light_direction.z, relative_ior);
+        layer_below_attenuation *= ColorRGB32F(1.0f) - principled_specular_fresnel(material, incident_medium_ior, relative_ior, local_to_light_direction.z);
 
         // Also, when light reflects off of the layer below the specular layer, some of that reflected light
         // will hit total internal reflection against the specular/[coat or air] interface. This means that only
@@ -594,13 +665,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_specular_layer(const HI
         // computing that fresnel with the direction reflected from the base layer or with the viewer direction
         // is the same, Fresnel is symmetrical. But because we don't have the exact direction reflected from the
         // base layer, we're using the view direction instead
-        layer_below_attenuation *= 1.0f - full_fresnel_dielectric(local_view_direction.z, relative_ior);
+        layer_below_attenuation *= ColorRGB32F(1.0f) - principled_specular_fresnel(material, incident_medium_ior, relative_ior, local_view_direction.z);
 
         // If the specular layer has 0 weight, we should not get any light absorption.
         // But if the specular layer has 1 weight, we should get the full absorption that we
         // computed in 'layer_below_attenuation' so we're lerping between no absorption
         // and full absorption based on the material specular weight.
-        layer_below_attenuation = hippt::lerp(1.0f, layer_below_attenuation, material.specular);
+        layer_below_attenuation = hippt::lerp(ColorRGB32F(1.0f), layer_below_attenuation, material.specular);
 
         layers_throughput *= layer_below_attenuation;
 
@@ -673,7 +744,16 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_glossy_base(const HIPRT
     // If material.specular == 1, then we want the full energy compensation
     // If material.specular == 0, then we only have the diffuse lobe and so we
     // need no energy compensation at all and so we just divide by 1 to basically do nothing
-    glossy_base_contribution /= hippt::lerp(1.0f, multiple_scattering_compensation, material.specular);
+    float ms_compensation = hippt::lerp(1.0f, multiple_scattering_compensation, material.specular);
+    // Multi scatter compensation is not tabulated to take thin film interference into account.
+    // That's because thin film interference completely modifies the fresnel term and the
+    // tabulated multi scatter compensation only accounts for the usual dielectric fresnel
+    // 
+    // So we're progressively disabling ms compensation on the glossy base as the thin-film 
+    // is more and more pronounced
+    ms_compensation = hippt::lerp(ms_compensation, 1.0f, material.thin_film);
+
+    glossy_base_contribution /= ms_compensation;
 #endif
 
     return glossy_base_contribution;
