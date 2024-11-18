@@ -153,6 +153,7 @@ The following arguments are available:
 
 # Gallery
 
+![Bistro](README_data/img/Bistro.jpg)
 ![P1 street](README_data/img/P1_environment.jpg)
 ![Contemporary bedroom](README_data/img/contemporary-bedroom.jpg)![Blender 4.1 splash](README_data/img/blender-4.1-splash.jpg)
 ![Dragon glass](README_data/img/dragon-glass.jpg)
