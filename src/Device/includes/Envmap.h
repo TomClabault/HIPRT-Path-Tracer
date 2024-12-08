@@ -155,9 +155,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_with_mis(const
     ColorRGB32F envmap_color = envmap_sample(render_data.world_settings, sampled_direction, envmap_pdf, random_number_generator);
     ColorRGB32F envmap_mis_contribution;
 
-    float eval_pdf;
-    envmap_eval(render_data, sampled_direction, eval_pdf);
-
     // Sampling the envmap with MIS
     float cosine_term = hippt::dot(closest_hit_info.shading_normal, sampled_direction);
     if (envmap_pdf > 0.0f && cosine_term > 0.0f)
@@ -171,7 +168,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_with_mis(const
         {
             float bsdf_pdf;
             RayVolumeState trash_state = volume_state;
-            ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, material, trash_state, view_direction, closest_hit_info.shading_normal, sampled_direction, bsdf_pdf);
+            ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, material, trash_state, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_direction, bsdf_pdf, random_number_generator);
 
 #if EnvmapSamplingDoBSDFMIS
             float mis_weight = balance_heuristic(envmap_pdf, bsdf_pdf);

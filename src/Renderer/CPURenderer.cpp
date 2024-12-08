@@ -38,8 +38,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 652
-#define DEBUG_PIXEL_Y 338
+#define DEBUG_PIXEL_X 668
+#define DEBUG_PIXEL_Y 332
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -219,7 +219,7 @@ void CPURenderer::set_envmap(Image32Bit& envmap_image)
     m_render_data.world_settings.envmap = &envmap_image;
     m_render_data.world_settings.envmap_width = envmap_image.width;
     m_render_data.world_settings.envmap_height = envmap_image.height;
-    m_render_data.world_settings.ambient_light_type = AmbientLightType::ENVMAP;
+    m_render_data.world_settings.ambient_light_type = AmbientLightType::UNIFORM;
 
     if (EnvmapSamplingStrategy == ESS_BINARY_SEARCH)
         m_render_data.world_settings.envmap_cdf = m_envmap_cdf.data();

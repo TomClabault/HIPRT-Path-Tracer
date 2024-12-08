@@ -48,7 +48,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_no_MIS(const HIPRTRe
         {
             float brdf_pdf;
             RayVolumeState trash_volume_state = ray_payload.volume_state;
-            ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, ray_payload.material, trash_volume_state, view_direction, closest_hit_info.shading_normal, shadow_ray.direction, brdf_pdf);
+            ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, ray_payload.material, trash_volume_state, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction, brdf_pdf, random_number_generator);
             if (brdf_pdf != 0.0f)
             {
                 // Conversion to solid angle from surface area measure
@@ -147,7 +147,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(const HIPRTRende
         {
             float bsdf_pdf;
             RayVolumeState trash_volume_state = ray_payload.volume_state;
-            ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, ray_payload.material, trash_volume_state, view_direction, closest_hit_info.shading_normal, shadow_ray.direction, bsdf_pdf);
+            ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, ray_payload.material, trash_volume_state, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction, bsdf_pdf, random_number_generator);
             if (bsdf_pdf != 0.0f)
             {
                 // Conversion to solid angle from surface area measure

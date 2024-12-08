@@ -103,28 +103,47 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_diffuse_sample(const float3& su
     return cosine_weighted_sample_around_normal(surface_normal, random_number_generator);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_specular_fresnel(const SimplifiedRendererMaterial& material, float incident_medium_ior, float relative_specular_ior, float cos_theta_i)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_specular_fresnel(const SimplifiedRendererMaterial& material, float relative_specular_ior, float cos_theta_i)
 {
+    // We want the IOR of the layer we're coming from for the thin-film fresnel
+    // 
+    // 'relative_specular_IOR' is "A / B"
+    // with A the IOR of the specular layer
+    // and B the IOR of the layer (or medium) above the specular layer
+    //
+    // so the IOR of the layer above is 1.0f / (relative_IOR / specular_ior) = specular_IOR / relative_IOR
+    float layer_above_IOR = material.ior / relative_specular_ior;
+
     // Computing the fresnel term
     // It's either the thin film fresnel for thin film interference or the usual
     // non colored dielectric/dielectric fresnel.
     //
     // We're lerping between the two based on material.thin_film
-    ColorRGB32F F_specular = ColorRGB32F(full_fresnel_dielectric(cos_theta_i, relative_specular_ior));
-    ColorRGB32F F_thin_film = thin_film_fresnel(material, incident_medium_ior, cos_theta_i);
+    ColorRGB32F F_specular;
+    if (material.thin_film < 1.0f)
+        F_specular = ColorRGB32F(full_fresnel_dielectric(cos_theta_i, relative_specular_ior));
+
+    ColorRGB32F F_thin_film;
+    if (material.thin_film > 0.0f) 
+        F_thin_film = thin_film_fresnel(material, layer_above_IOR, cos_theta_i);
+
     ColorRGB32F F = hippt::lerp(F_specular, F_thin_film, material.thin_film);
 
     return F;
 }
 
+/**
+ * Returns the relative IOR as "A /B"
+ * with A the IOR of the specular layer
+ * and B the IOR of the layer (or medium) above the specular layer
+ */
 HIPRT_HOST_DEVICE HIPRT_INLINE float principled_specular_relative_ior(const SimplifiedRendererMaterial& material, float incident_medium_ior)
 {
     // When computing the specular layer, the incident IOR actually isn't always
-    // that of the air because we may have the coat layer above us instead of the air
-    // so the "proper" IOR to use here is actually the lerp between the air and the coat
+    // that of the incident medium because we may have the coat layer above us instead of the medium
+    // so the "proper" IOR to use here is actually the lerp between the medium and the coat
     // IOR depending on the coat factor
-    constexpr float air_IOR = 1.0f;
-    float incident_layer_ior = hippt::lerp(air_IOR, material.coat_ior, material.coat);
+    float incident_layer_ior = hippt::lerp(incident_medium_ior, material.coat_ior, material.coat);
     float relative_ior = material.ior / incident_layer_ior;
     if (relative_ior < 1.0f)
         // If the coat IOR (which we're coming from) is greater than the IOR
@@ -160,11 +179,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float principled_specular_relative_ior(const Simp
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_specular_eval(
     const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, 
-    float incident_medium_ior, float relative_ior, 
+    float relative_ior, 
     const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_half_vector, 
     float& pdf)
 {
-    ColorRGB32F F = principled_specular_fresnel(material, incident_medium_ior, relative_ior, hippt::dot(local_to_light_direction, local_half_vector));
+    ColorRGB32F F = principled_specular_fresnel(material, relative_ior, hippt::dot(local_to_light_direction, local_half_vector));
 
     // The specular lobe is just another GGX (GTR2) lobe
     // 
@@ -628,7 +647,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_specular_layer(const HI
         float relative_ior = principled_specular_relative_ior(material, incident_medium_ior);
 
         float specular_pdf;
-        ColorRGB32F contribution = principled_specular_eval(render_data, material, incident_medium_ior, relative_ior, local_view_direction, local_to_light_direction, local_half_vector, specular_pdf);
+        ColorRGB32F contribution = principled_specular_eval(render_data, material, relative_ior, local_view_direction, local_to_light_direction, local_half_vector, specular_pdf);
         // Tinting the specular reflection color
         contribution *= hippt::lerp(ColorRGB32F(1.0f), material.specular_tint * material.specular_color, material.specular);
         contribution *= specular_weight;
@@ -655,7 +674,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_specular_layer(const HI
         // We can't do that integration online so we're instead using the shading normal to compute
         // the transmitted portion of light. That's actually either a good approximation or the
         // exact solution. That was shown in GDC 2017 [PBR Diffuse Lighting for GGX + Smith Microsurfaces]
-        layer_below_attenuation *= ColorRGB32F(1.0f) - principled_specular_fresnel(material, incident_medium_ior, relative_ior, local_to_light_direction.z);
+        layer_below_attenuation *= ColorRGB32F(1.0f) - principled_specular_fresnel(material, relative_ior, local_to_light_direction.z);
 
         // Also, when light reflects off of the layer below the specular layer, some of that reflected light
         // will hit total internal reflection against the specular/[coat or air] interface. This means that only
@@ -665,7 +684,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_specular_layer(const HI
         // computing that fresnel with the direction reflected from the base layer or with the viewer direction
         // is the same, Fresnel is symmetrical. But because we don't have the exact direction reflected from the
         // base layer, we're using the view direction instead
-        layer_below_attenuation *= ColorRGB32F(1.0f) - principled_specular_fresnel(material, incident_medium_ior, relative_ior, local_view_direction.z);
+        layer_below_attenuation *= ColorRGB32F(1.0f) - principled_specular_fresnel(material, relative_ior, local_view_direction.z);
 
         // If the specular layer has 0 weight, we should not get any light absorption.
         // But if the specular layer has 1 weight, we should get the full absorption that we
@@ -720,8 +739,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_glossy_base(const HIPRT
     glossy_base_contribution += internal_eval_specular_layer(render_data, material, local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated, shading_normal, incident_medium_ior, specular_weight, specular_proba_norm, layers_throughput, out_cumulative_pdf);
     glossy_base_contribution += internal_eval_diffuse_layer(render_data, incident_medium_ior, material, local_view_direction, local_to_light_direction, diffuse_weight, diffuse_proba_norm, layers_throughput, out_cumulative_pdf);
 
-    float multiple_scattering_compensation = 1.0f;
-
 #if PrincipledBSDFGGXUseMultipleScattering == KERNEL_OPTION_TRUE
     int3 texture_dims = make_int3(GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_COS_THETA_O, GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_ROUGHNESS, GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR);
 
@@ -738,7 +755,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_glossy_base(const HIPRT
     float F0_remapped = sqrt(sqrt(F0_from_eta(material.ior, incident_medium_ior)));
 
     float3 uvw = make_float3(view_dir_remapped, material.roughness, F0_remapped);
-    multiple_scattering_compensation = sample_texture_3D_rgb_32bits(render_data.bsdfs_data.glossy_dielectric_Ess, texture_dims, uvw, render_data.bsdfs_data.use_hardware_tex_interpolation).r;
+    float multiple_scattering_compensation = sample_texture_3D_rgb_32bits(render_data.bsdfs_data.glossy_dielectric_Ess, texture_dims, uvw, render_data.bsdfs_data.use_hardware_tex_interpolation).r;
 
     // Applying the compensation term for energy preservation
     // If material.specular == 1, then we want the full energy compensation
@@ -970,11 +987,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRen
     float diffuse_sampling_weight;
     float glass_sampling_weight;
     principled_bsdf_get_lobes_weights_fringe_fix(material, view_direction,
-                                      shading_normal, geometric_normal, normal,
-                                      outside_object,
-                                      coat_sampling_weight, sheen_sampling_weight, 
-                                      metal_1_sampling_weight, metal_2_sampling_weight,
-                                      specular_sampling_weight, diffuse_sampling_weight, glass_sampling_weight);
+        shading_normal, geometric_normal, normal,
+        outside_object,
+        coat_sampling_weight, sheen_sampling_weight,
+        metal_1_sampling_weight, metal_2_sampling_weight,
+        specular_sampling_weight, diffuse_sampling_weight, glass_sampling_weight);
 
     float coat_sampling_proba, sheen_sampling_proba, metal_1_sampling_proba;
     float metal_2_sampling_proba, specular_sampling_proba, diffuse_sampling_proba;
@@ -1082,6 +1099,90 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRen
     // (a few lines above in the code) so that it is in the same hemisphere as the view direction and
     // eval() will then think that we're always outside the surface even though that's not the case
     return principled_bsdf_eval(render_data, material, ray_volume_state, view_direction, shading_normal, output_direction, pdf);
+}
+
+/**
+ * On-the-fly integration of the directional albedo of the clearcoat layer
+ * (which is basically the whole BSDF since the clearcoat lobe is the topmost lobe of the BSDF)
+ * 
+ * The directional albedo for the given view direction is returned
+ * 
+ * This returned directional albedo can then be used to ensure energy conservation & preservation
+ * of the BSDF
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE float monte_carlo_clearcoat_directional_albedo(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, RayVolumeState& ray_volume_state, const float3& view_direction, float3 shading_normal, float3 geometric_normal, Xorshift32Generator& random_number_generator)
+{
+    float directional_albedo = 0.0f;
+
+    // TODO some kind of big switch to forcefully get rid of the energy at low integartion samples
+
+    SimplifiedRendererMaterial white_material = material;
+    white_material.base_color = ColorRGB32F(1.0f);
+    white_material.absorption_color = ColorRGB32F(1.0f);
+    white_material.coat_medium_absorption = ColorRGB32F(1.0f);
+    white_material.metallic_F82 = ColorRGB32F(1.0f);
+    white_material.metallic_F90 = ColorRGB32F(1.0f);
+    white_material.sheen_color = ColorRGB32F(1.0f);
+    white_material.specular_color = ColorRGB32F(1.0f);
+    // Disabling the thin film otherwise we would compensate for the thin-film
+    // coloration and we would basically get no thin-film effects
+    white_material.thin_film = 0.0f;
+
+    for (int i = 0; i < render_data.bsdfs_data.clearcoat_energy_compensation_samples; i++)
+    {
+        float pdf;
+        float3 sampled_direction;
+        RayVolumeState ray_volume_state_copy = ray_volume_state;
+        ColorRGB32F bsdf_directional_albedo_sample = principled_bsdf_sample(render_data, white_material, ray_volume_state_copy, view_direction, shading_normal, geometric_normal, sampled_direction, pdf, random_number_generator);
+        if (pdf == 0.0f)
+            // Incorrect sampled direction, setting the pdf to 1.0f such that the division by the PDF has no effect
+            pdf = 1.0f;
+
+        // abs() of the cosine term here because we may be sampling refractions
+        directional_albedo += bsdf_directional_albedo_sample.r / pdf * hippt::abs(hippt::dot(sampled_direction, shading_normal));
+    }
+
+    directional_albedo /= render_data.bsdfs_data.clearcoat_energy_compensation_samples;
+    if (directional_albedo == 0.0f)
+        // No valid samples were found, no compensation could be computed,
+        // returning 1.0f such that dividing by that compensation term does nothing
+        directional_albedo = 1.0f;
+        
+    return directional_albedo;
+}
+
+/**
+ * Evaluates the BSDF with energy conservation & perservation (for the clearcoat lobe)
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval_energy_compensated(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, RayVolumeState& ray_volume_state, const float3& view_direction, float3 shading_normal, float3 geometric_normal, const float3& to_light_direction, float& pdf, Xorshift32Generator& random_number_generator)
+{
+    ColorRGB32F final_color = principled_bsdf_eval(render_data, material, ray_volume_state, view_direction, shading_normal, to_light_direction, pdf);
+
+    float clearcoat_directional_albedo = 1.0f;
+    if (material.coat > 0.0f)
+        // Only computing the compensation if there is actually clearcoat on the material
+        // otherwise, energy compensation is already accounted for by the [Turquin, 2019]
+        // implementation in this principled BSDF implementation
+        clearcoat_directional_albedo = monte_carlo_clearcoat_directional_albedo(render_data, material, ray_volume_state, view_direction, shading_normal, geometric_normal, random_number_generator);
+
+    return final_color / clearcoat_directional_albedo;
+}
+
+/**
+ * Samples the BSDF with energy conservation & perservation (for the clearcoat lobe)
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample_energy_compensated(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, RayVolumeState& ray_volume_state, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal, float3& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
+{
+    ColorRGB32F color = principled_bsdf_sample(render_data, material, ray_volume_state, view_direction, shading_normal, geometric_normal, output_direction, pdf, random_number_generator);
+
+    float clearcoat_directional_albedo = 1.0f;
+    if (material.coat > 0.0f)
+        // Only computing the compensation if there is actually clearcoat on the material
+        // otherwise, energy compensation is already accounted for by the [Turquin, 2019]
+        // implementation in this principled BSDF implementation
+        clearcoat_directional_albedo = monte_carlo_clearcoat_directional_albedo(render_data, material, ray_volume_state, view_direction, shading_normal, geometric_normal, random_number_generator);
+
+    return color / clearcoat_directional_albedo;
 }
 
 #endif

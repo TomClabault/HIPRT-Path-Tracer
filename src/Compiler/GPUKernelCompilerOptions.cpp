@@ -21,6 +21,7 @@ const std::string GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_BLOCK_SIZ
 
 const std::string GPUKernelCompilerOptions::BSDF_OVERRIDE = "BSDFOverride";
 const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_DIFFUSE_LOBE = "PrincipledBSDFDiffuseLobe";
+const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_CLEARCOAT_ENERGY_COMPENSATION = "PrincipledBSDFClearcoatEnergyCompensation";
 const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_GGX_MULTIPLE_SCATTERING = "PrincipledBSDFGGXUseMultipleScattering";
 const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_GGX_MULTIPLE_SCATTERING_DO_FRESNEL = "PrincipledBSDFGGXUseMultipleScatteringDoFresnel";
 const std::string GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION = "PrincipledBSDFAnisotropicGGXSampleFunction";
@@ -47,6 +48,7 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 
 	GPUKernelCompilerOptions::BSDF_OVERRIDE,
 	GPUKernelCompilerOptions::PRINCIPLED_BSDF_DIFFUSE_LOBE,
+	GPUKernelCompilerOptions::PRINCIPLED_BSDF_CLEARCOAT_ENERGY_COMPENSATION,
 	GPUKernelCompilerOptions::PRINCIPLED_BSDF_GGX_MULTIPLE_SCATTERING,
 	GPUKernelCompilerOptions::PRINCIPLED_BSDF_GGX_MULTIPLE_SCATTERING_DO_FRESNEL,
 	GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION,
@@ -77,6 +79,7 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 
 	m_options_macro_map[GPUKernelCompilerOptions::BSDF_OVERRIDE] = std::make_shared<int>(BSDFOverride);
 	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_DIFFUSE_LOBE] = std::make_shared<int>(PrincipledBSDFDiffuseLobe);
+	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_CLEARCOAT_ENERGY_COMPENSATION] = std::make_shared<int>(PrincipledBSDFClearcoatEnergyCompensation);
 	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_GGX_MULTIPLE_SCATTERING] = std::make_shared<int>(PrincipledBSDFGGXUseMultipleScattering);
 	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_GGX_MULTIPLE_SCATTERING_DO_FRESNEL] = std::make_shared<int>(PrincipledBSDFGGXUseMultipleScatteringDoFresnel);
 	m_options_macro_map[GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION] = std::make_shared<int>(PrincipledBSDFAnisotropicGGXSampleFunction);
