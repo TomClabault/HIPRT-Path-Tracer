@@ -49,7 +49,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F bsdf_dispatcher_sample(const HIPRTRen
 #elif BSDFOverride == BSDF_PRINCIPLED
     return principled_bsdf_sample(render_data, material, ray_volume_state, view_direction, surface_normal, geometric_normal, sampled_direction, pdf, random_number_generator);
 #endif
-
 }
 
 #endif

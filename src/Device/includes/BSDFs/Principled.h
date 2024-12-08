@@ -970,11 +970,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRen
     float diffuse_sampling_weight;
     float glass_sampling_weight;
     principled_bsdf_get_lobes_weights_fringe_fix(material, view_direction,
-                                      shading_normal, geometric_normal, normal,
-                                      outside_object,
-                                      coat_sampling_weight, sheen_sampling_weight, 
-                                      metal_1_sampling_weight, metal_2_sampling_weight,
-                                      specular_sampling_weight, diffuse_sampling_weight, glass_sampling_weight);
+        shading_normal, geometric_normal, normal,
+        outside_object,
+        coat_sampling_weight, sheen_sampling_weight,
+        metal_1_sampling_weight, metal_2_sampling_weight,
+        specular_sampling_weight, diffuse_sampling_weight, glass_sampling_weight);
 
     float coat_sampling_proba, sheen_sampling_proba, metal_1_sampling_proba;
     float metal_2_sampling_proba, specular_sampling_proba, diffuse_sampling_proba;
@@ -1082,6 +1082,59 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRen
     // (a few lines above in the code) so that it is in the same hemisphere as the view direction and
     // eval() will then think that we're always outside the surface even though that's not the case
     return principled_bsdf_eval(render_data, material, ray_volume_state, view_direction, shading_normal, output_direction, pdf);
+}
+
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F monte_carlo_clearcoat_directional_albedo(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, RayVolumeState& ray_volume_state, const float3& view_direction, float3 shading_normal, float3 geometric_normal, Xorshift32Generator& random_number_generator)
+{
+    // This term is a color and not just a float because we may be integrating
+    // thin-film interferences which are colored, even with a white base color BSDF
+    ColorRGB32F directional_albedo = ColorRGB32F(0.0f);
+
+    SimplifiedRendererMaterial white_material = material;
+    white_material.base_color = ColorRGB32F(1.0f);
+    white_material.absorption_color = ColorRGB32F(1.0f);
+    white_material.coat_medium_absorption = ColorRGB32F(1.0f);
+    white_material.metallic_F82 = ColorRGB32F(1.0f);
+    white_material.metallic_F90 = ColorRGB32F(1.0f);
+    white_material.sheen_color = ColorRGB32F(1.0f);
+    white_material.specular_color = ColorRGB32F(1.0f);
+
+    for (int i = 0; i < render_data.bsdfs_data.clearcoat_energy_compensation_samples; i++)
+    {
+        float pdf;
+        float3 sampled_direction;
+        RayVolumeState ray_volume_state_copy = ray_volume_state;
+        ColorRGB32F bsdf_directional_albedo_sample = principled_bsdf_sample(render_data, white_material, ray_volume_state_copy, view_direction, shading_normal, geometric_normal, sampled_direction, pdf, random_number_generator);
+        if (pdf == 0.0f)
+            // Incorrect sampled direction, setting the pdf to 1.0f such that the division by the PDF has no effect
+            pdf = 1.0f;
+
+        directional_albedo += bsdf_directional_albedo_sample / pdf * hippt::dot(sampled_direction, shading_normal);
+    }
+
+    directional_albedo /= render_data.bsdfs_data.clearcoat_energy_compensation_samples;
+    if (directional_albedo.is_black())
+        // No valid samples were found, no compensation could be computed,
+        // returning 1.0f such that dividing by that compensation term does nothing
+        return ColorRGB32F(1.0f);
+    else
+        return directional_albedo;
+}
+
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval_energy_compensated(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, RayVolumeState& ray_volume_state, const float3& view_direction, float3 shading_normal, float3 geometric_normal, const float3& to_light_direction, float& pdf, Xorshift32Generator& random_number_generator)
+{
+    ColorRGB32F final_color = principled_bsdf_eval(render_data, material, ray_volume_state, view_direction, shading_normal, to_light_direction, pdf);
+    ColorRGB32F clearcoat_directional_albedo = monte_carlo_clearcoat_directional_albedo(render_data, material, ray_volume_state, view_direction, shading_normal, geometric_normal, random_number_generator);
+
+    return final_color / clearcoat_directional_albedo;
+}
+
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample_energy_compensated(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, RayVolumeState& ray_volume_state, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal, float3& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
+{
+    ColorRGB32F color = principled_bsdf_sample(render_data, material, ray_volume_state, view_direction, shading_normal, geometric_normal, output_direction, pdf, random_number_generator);
+    ColorRGB32F clearcoat_directional_albedo = monte_carlo_clearcoat_directional_albedo(render_data, material, ray_volume_state, view_direction, shading_normal, geometric_normal, random_number_generator);
+
+    return color / clearcoat_directional_albedo;
 }
 
 #endif
