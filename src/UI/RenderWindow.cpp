@@ -138,6 +138,7 @@ extern ImGuiLogger g_imgui_logger;
 // - use only one channel for material property texture to save VRAM
 // - Remove vertex normals for meshes that have normal maps and save VRAM
 // - texture compression
+// - WUFFS for image loading?
 // - float compression for render buffers?
 // - Exporter (just serialize the scene to binary file and have a look at how to do backward compatibility)
 // - Allow material parameters textures manipulation with ImGui

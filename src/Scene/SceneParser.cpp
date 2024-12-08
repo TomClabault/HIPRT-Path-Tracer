@@ -277,7 +277,6 @@ void SceneParser::parse_camera(const aiScene* scene, Scene& parsed_scene, float 
 
 void SceneParser::prepare_textures(const aiScene* scene, std::vector<std::pair<aiTextureType, std::string>>& texture_paths, std::vector<ParsedMaterialTextureIndices>& material_texture_indices, std::vector<int>& material_indices, std::vector<int>& texture_per_mesh, std::vector<int>& texture_indices_offsets, int& texture_count)
 {
-    std::vector<std::pair<aiTextureType, std::string>> mesh_texture_paths;
     int global_texture_index_offset = 0;
 
     // We expect one material per mesh. It can happen that mNumMaterials is > mNumMeshes
@@ -290,6 +289,7 @@ void SceneParser::prepare_textures(const aiScene* scene, std::vector<std::pair<a
         ParsedMaterialTextureIndices tex_indices;
 
         // Reading the paths of the textures of the mesh
+        std::vector<std::pair<aiTextureType, std::string>> mesh_texture_paths;
         mesh_texture_paths = get_textures_paths_and_indices(mesh_material, tex_indices);
         mesh_texture_paths = normalize_texture_paths(mesh_texture_paths);
 
