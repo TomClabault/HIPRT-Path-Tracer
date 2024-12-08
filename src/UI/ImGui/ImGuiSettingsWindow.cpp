@@ -1527,8 +1527,16 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				m_render_window->set_render_dirty(true);
 			}
 
+			static bool do_clearcoat_compensation = PrincipledBSDFClearcoatEnergyCompensation;
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::SeparatorText("Clearcoat Lobe");
+			if (ImGui::Checkbox("Do Clearcoat Energy Compensation", &do_clearcoat_compensation))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_CLEARCOAT_ENERGY_COMPENSATION, do_clearcoat_compensation ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
 			if (ImGui::SliderInt("Monte-Carlo Directional Albedo Samples", &render_data.bsdfs_data.clearcoat_energy_compensation_samples, 1, 32))
 				m_render_window->set_render_dirty(true);
 

@@ -1084,6 +1084,15 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRen
     return principled_bsdf_eval(render_data, material, ray_volume_state, view_direction, shading_normal, output_direction, pdf);
 }
 
+/**
+ * On-the-fly integration of the directional albedo of the clearcoat layer
+ * (which is basically the whole BSDF since the clearcoat lobe is the topmost lobe of the BSDF)
+ * 
+ * The directional albedo for the given view direction is returned
+ * 
+ * This returned directional albedo can then be used to ensure energy conservation & preservation
+ * of the BSDF
+ */
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F monte_carlo_clearcoat_directional_albedo(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, RayVolumeState& ray_volume_state, const float3& view_direction, float3 shading_normal, float3 geometric_normal, Xorshift32Generator& random_number_generator)
 {
     // This term is a color and not just a float because we may be integrating
@@ -1121,18 +1130,36 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F monte_carlo_clearcoat_directional_alb
         return directional_albedo;
 }
 
+/**
+ * Evaluates the BSDF with energy conservation & perservation (for the clearcoat lobe)
+ */
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval_energy_compensated(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, RayVolumeState& ray_volume_state, const float3& view_direction, float3 shading_normal, float3 geometric_normal, const float3& to_light_direction, float& pdf, Xorshift32Generator& random_number_generator)
 {
     ColorRGB32F final_color = principled_bsdf_eval(render_data, material, ray_volume_state, view_direction, shading_normal, to_light_direction, pdf);
-    ColorRGB32F clearcoat_directional_albedo = monte_carlo_clearcoat_directional_albedo(render_data, material, ray_volume_state, view_direction, shading_normal, geometric_normal, random_number_generator);
+
+    ColorRGB32F clearcoat_directional_albedo = ColorRGB32F(1.0f);
+    if (material.coat > 0.0f)
+        // Only computing the compensation if there is actually clearcoat on the material
+        // otherwise, energy compensation is already accounted for by the [Turquin, 2019]
+        // implementation in this principled BSDF implementation
+        clearcoat_directional_albedo = monte_carlo_clearcoat_directional_albedo(render_data, material, ray_volume_state, view_direction, shading_normal, geometric_normal, random_number_generator);
 
     return final_color / clearcoat_directional_albedo;
 }
 
+/**
+ * Samples the BSDF with energy conservation & perservation (for the clearcoat lobe)
+ */
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample_energy_compensated(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, RayVolumeState& ray_volume_state, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal, float3& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
 {
     ColorRGB32F color = principled_bsdf_sample(render_data, material, ray_volume_state, view_direction, shading_normal, geometric_normal, output_direction, pdf, random_number_generator);
-    ColorRGB32F clearcoat_directional_albedo = monte_carlo_clearcoat_directional_albedo(render_data, material, ray_volume_state, view_direction, shading_normal, geometric_normal, random_number_generator);
+
+    ColorRGB32F clearcoat_directional_albedo = ColorRGB32F(1.0f);
+    if (material.coat > 0.0f)
+        // Only computing the compensation if there is actually clearcoat on the material
+        // otherwise, energy compensation is already accounted for by the [Turquin, 2019]
+        // implementation in this principled BSDF implementation
+        clearcoat_directional_albedo = monte_carlo_clearcoat_directional_albedo(render_data, material, ray_volume_state, view_direction, shading_normal, geometric_normal, random_number_generator);
 
     return color / clearcoat_directional_albedo;
 }
