@@ -1112,6 +1112,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRen
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE float monte_carlo_clearcoat_directional_albedo(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, RayVolumeState& ray_volume_state, const float3& view_direction, float3 shading_normal, float3 geometric_normal, Xorshift32Generator& random_number_generator)
 {
+    if (hippt::dot(geometric_normal, view_direction) < 0.0f)
+        // Inside the object. No clearcoat inside the object (because only the glass lobe
+        // is active while inside the object), not compensating
+        return 1.0f;
+
     float directional_albedo = 0.0f;
 
     SimplifiedRendererMaterial white_material = material;
