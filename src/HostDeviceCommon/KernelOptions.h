@@ -132,13 +132,6 @@
  */
 #define PrincipledBSDFDiffuseLobe PRINCIPLED_DIFFUSE_LOBE_LAMBERTIAN
 
-/**
- * If KERNEL_OPTION_TRUE, on-the-fly monte carlo integration of the clearcoat lobe 
- * directional albedo will be performed to ensure energy conservation & preservation
- * of a material with a clearcoat lobe
- */
-#define PrincipledBSDFClearcoatEnergyCompensation KERNEL_OPTION_TRUE
-
  /**
   * What sampling strategy to use for the GGX NDF
   *
@@ -184,6 +177,13 @@
   * Possible options are KERNEL_OPTION_TRUE and KERNEL_OPTION_FALSE. Self explanatory.
   */
 #define PrincipledBSDFGGXUseMultipleScatteringDoFresnel KERNEL_OPTION_TRUE
+
+/**
+ * If KERNEL_OPTION_TRUE, on-the-fly monte carlo integration of the clearcoat lobe
+ * directional albedo will be performed to ensure energy conservation & preservation
+ * of a material with a clearcoat lobe
+ */
+#define PrincipledBSDFClearcoatEnergyCompensation KERNEL_OPTION_TRUE
 
 /**
  * What nested dielectrics strategy to use.

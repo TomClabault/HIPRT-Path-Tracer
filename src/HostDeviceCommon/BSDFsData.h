@@ -56,7 +56,7 @@ struct BRDFsData
 	// How many samples to evaluate the integral with. This is done for each pixel for each material
 	// that has clearcoat energy compensation so this may be very expensive.
 	//
-	// More samples = less noise
+	// More samples = better energy compensation. Too few samples leads to energy-gains/losses
 	int clearcoat_energy_compensation_samples = 12;
 };
 
