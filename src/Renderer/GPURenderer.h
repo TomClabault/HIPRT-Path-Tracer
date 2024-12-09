@@ -43,6 +43,10 @@ public:
 	static const std::string PATH_TRACING_KERNEL_ID;
 	static const std::string RAY_VOLUME_STATE_SIZE_KERNEL_ID;
 
+	// List of compiler options that will be specific to each kernel. We don't want these options
+	// to be synchronized between kernels
+	static const std::unordered_set<std::string> KERNEL_OPTIONS_NOT_SYNCHRONIZED;
+
 	/**
 	 * This map contains constants that are the name of the main function of the kernels, their entry points.
 	 * They are used when compiling the kernels.

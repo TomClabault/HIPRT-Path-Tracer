@@ -21,6 +21,14 @@ const std::string GPURenderer::CAMERA_RAYS_KERNEL_ID = "Camera Rays";
 const std::string GPURenderer::PATH_TRACING_KERNEL_ID = "Path Tracing";
 const std::string GPURenderer::RAY_VOLUME_STATE_SIZE_KERNEL_ID = "Ray Volume State Size";
 
+// List of partials_options that will be specific to each kernel. We don't want these partials_options
+	// to be synchronized between kernels
+const std::unordered_set<std::string> GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED =
+{
+	GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL,
+	GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE,
+};
+
 const std::unordered_map<std::string, std::string> GPURenderer::KERNEL_FUNCTION_NAMES = 
 {
 	{ CAMERA_RAYS_KERNEL_ID, "CameraRays" },
@@ -175,14 +183,6 @@ void GPURenderer::setup_kernels()
 	// Adding hardware acceleration by default if supported
 	m_global_compiler_options->set_macro_value("__USE_HWI__", device_supports_hardware_acceleration() == HardwareAccelerationSupport::SUPPORTED);
 
-	// List of partials_options that will be specific to each kernel. We don't want these partials_options
-	// to be synchronized between kernels
-	std::unordered_set<std::string> options_excluded_from_synchro =
-	{
-		GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL,
-		GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE,
-	};
-
 	// Some default values are set for USE_SHARED_STACK_BVH_TRAVERSAL and SHARED_STACK_BVH_TRAVERSAL_SIZE
 	// which I found work approximately well in terms of performance on various scenes (not perfect though and, on top of not 
 	// being perfect, this was measured on a 7900XTX with hardware accelerated ray tracing so... your mileage in terms of what 
@@ -191,18 +191,20 @@ void GPURenderer::setup_kernels()
 	// Configuring the kernels
 	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].set_kernel_file_path(GPURenderer::KERNEL_FILES.at(GPURenderer::CAMERA_RAYS_KERNEL_ID));
 	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].set_kernel_function_name(GPURenderer::KERNEL_FUNCTION_NAMES.at(GPURenderer::CAMERA_RAYS_KERNEL_ID));
-	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].synchronize_options_with(*m_global_compiler_options, options_excluded_from_synchro);
+	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].synchronize_options_with(*m_global_compiler_options, GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
 	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
 	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 48);
 
 	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].set_kernel_file_path(GPURenderer::KERNEL_FILES.at(GPURenderer::PATH_TRACING_KERNEL_ID));
 	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].set_kernel_function_name(GPURenderer::KERNEL_FUNCTION_NAMES.at(GPURenderer::PATH_TRACING_KERNEL_ID));
-	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].synchronize_options_with(*m_global_compiler_options, options_excluded_from_synchro);
+	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].synchronize_options_with(*m_global_compiler_options, GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
 	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
 	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 48);
 
 	m_restir_di_render_pass = ReSTIRDIRenderPass(this);
-	m_restir_di_render_pass.compile(m_hiprt_orochi_ctx, options_excluded_from_synchro, m_func_name_sets);
+	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI)
+		// We only need to compile the ReSTIR DI render pass if ReSTIR DI is actually being used
+		m_restir_di_render_pass.compile(m_hiprt_orochi_ctx, m_func_name_sets);
 
 	// Configuring the kernel that will be used to retrieve the size of the RayVolumeState structure.
 	// This size will be needed to resize the 'ray_volume_states' buffer in the GBuffer if the nested dielectrics
@@ -212,7 +214,7 @@ void GPURenderer::setup_kernels()
 	// GPURenderer is constructed
 	m_ray_volume_state_byte_size_kernel.set_kernel_file_path(GPURenderer::KERNEL_FILES.at(GPURenderer::RAY_VOLUME_STATE_SIZE_KERNEL_ID));
 	m_ray_volume_state_byte_size_kernel.set_kernel_function_name(GPURenderer::KERNEL_FUNCTION_NAMES.at(GPURenderer::RAY_VOLUME_STATE_SIZE_KERNEL_ID));
-	m_ray_volume_state_byte_size_kernel.synchronize_options_with(*m_global_compiler_options, options_excluded_from_synchro);
+	m_ray_volume_state_byte_size_kernel.synchronize_options_with(*m_global_compiler_options, GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
 	ThreadManager::start_thread(ThreadManager::COMPILE_RAY_VOLUME_STATE_SIZE_KERNEL_KEY, ThreadFunctions::compile_kernel_silent, std::ref(m_ray_volume_state_byte_size_kernel), m_hiprt_orochi_ctx, std::ref(m_func_name_sets));
 
 	// Compiling kernels
@@ -718,7 +720,11 @@ void GPURenderer::recompile_kernels(bool use_cache)
 
 	for (auto& name_to_kenel : m_kernels)
 		name_to_kenel.second.compile_silent(m_hiprt_orochi_ctx, m_func_name_sets, use_cache);
-	m_restir_di_render_pass.recompile(m_hiprt_orochi_ctx, m_func_name_sets, true, use_cache);
+
+	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI)
+		// We only need to compile the ReSTIR DI render pass if ReSTIR DI is actually being used
+		m_restir_di_render_pass.recompile(m_hiprt_orochi_ctx, m_func_name_sets, true, use_cache);
+
 	m_ray_volume_state_byte_size_kernel.compile_silent(m_hiprt_orochi_ctx, m_func_name_sets, use_cache);
 
 	// The main thread is done with the compilation, we can release the other threads
