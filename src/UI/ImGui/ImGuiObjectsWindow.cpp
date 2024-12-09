@@ -40,6 +40,7 @@ struct MaterialOverrideState
 	bool override_coat_anisotropy = false;
 	bool override_coat_anisotropy_rotation = false;
 	bool override_coat_IOR = false;
+	bool override_coat_multiple_scattering = false;
 
 	bool override_transmission = false;
 	bool override_IOR = false;
@@ -383,7 +384,7 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 
 		if (ImGui::BeginTable("Table coat layer", 2, ImGuiTableFlags_SizingFixedFit))
 		{
-			for (int row = 0; row < 9; row++)
+			for (int row = 0; row < 10; row++)
 			{
 				ImGui::TableNextRow();
 
@@ -429,6 +430,14 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 
 				case 8:
 					material_override_changed |= draw_material_override_line("Coat IOR", override_state.override_coat_IOR, material_override.coat_ior, 0.0f, 1.0f);
+					break;
+
+				case 9:
+					material_override_changed |= draw_material_override_line("Coat interlayer multiple-scattering", override_state.override_coat_multiple_scattering, material_override.coat_multiple_scattering);
+					ImGuiRenderer::show_help_marker("If checked, the energy loss due to missing multiple scattering * inside * the coat layer will be  "
+						"compensated by on-the-fly monte carlo integration of the missing energy.\n"
+						"This is costly so this option is there to enable the energy compensation on a per-object basis.\n\n"
+						"Note that for this option to have any effect, \"Do Clearcoat Energy Compensation\" must be enabled in the \"Sampling\" --> \"Materials\" panel.");
 					break;
 				}
 			}
@@ -891,6 +900,11 @@ void ImGuiObjectsWindow::draw_objects_panel()
 			material_changed |= ImGui::SliderFloat("Coat anisotropy", &material.coat_anisotropy, 0.0f, 1.0f);
 			material_changed |= ImGui::SliderFloat("Coat anisotropy Rotation", &material.coat_anisotropy_rotation, 0.0f, 1.0f);
 			material_changed |= ImGui::SliderFloat("Coat IOR", &material.coat_ior, 1.0f, 3.0f);
+			material_changed |= ImGui::Checkbox("Coat interlayer multiple-scattering", &material.coat_multiple_scattering);
+			ImGuiRenderer::show_help_marker("If checked, the energy loss due to missing multiple scattering * inside * the coat layer will be  "
+				"compensated by on-the-fly monte carlo integration of the missing energy.\n"
+				"This is costly so this option is there to enable the energy compensation on a per-object basis.\n\n"
+				"Note that for this option to have any effect, \"Do Clearcoat Energy Compensation\" must be enabled in the \"Sampling\" --> \"Materials\" panel.");
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::TreePop();

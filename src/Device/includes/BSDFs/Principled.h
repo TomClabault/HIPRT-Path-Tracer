@@ -267,13 +267,22 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
         // hemisphere as the view dir or light dir
         return ColorRGB32F(0.0f);
 
-
 #if PrincipledBSDFGGXUseMultipleScattering == KERNEL_OPTION_TRUE
     float compensation_term = 1.0f;
 
     // Not doing energy compensation if the thin-film is fully present
     // See the // TODO FIX THIS HORROR below
-    if (material.thin_film < 1.0f)
+    //
+    // Also not doing compensation if we have the clearcoat interlayer multiple scattering
+    // energy compensation ON because that clearcoat compensation is going to account
+    // for the energy compensation of the full BSDF itself.
+    // 
+    // That's because the clearcoat layer is the very top layer of the BSDF. So by ensuring
+    // energy conservation and preservation of the multiple scattering between the clearcoat and 
+    // the BSDF below, we also ensure that the full BSDF is energy conserving and so the energy
+    // conservation of the glass lobe here is redundant
+    bool clearcoat_already_compensating = material.coat_multiple_scattering && material.coat > 0.0f && PrincipledBSDFClearcoatEnergyCompensation == KERNEL_OPTION_TRUE;
+    if (material.thin_film < 1.0f && !clearcoat_already_compensating)
     {
         bool inside_object = ray_volume_state.inside_material;
         float relative_eta_for_correction = inside_object ? 1.0f / relative_eta : relative_eta;
@@ -1159,7 +1168,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval_energy_compensat
     ColorRGB32F final_color = principled_bsdf_eval(render_data, material, ray_volume_state, view_direction, shading_normal, to_light_direction, pdf);
 
     float clearcoat_directional_albedo = 1.0f;
-    if (material.coat > 0.0f)
+    if (material.coat > 0.0f && material.coat_multiple_scattering)
         // Only computing the compensation if there is actually clearcoat on the material
         // otherwise, energy compensation is already accounted for by the [Turquin, 2019]
         // implementation in this principled BSDF implementation
@@ -1176,7 +1185,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample_energy_compens
     ColorRGB32F color = principled_bsdf_sample(render_data, material, ray_volume_state, view_direction, shading_normal, geometric_normal, output_direction, pdf, random_number_generator);
 
     float clearcoat_directional_albedo = 1.0f;
-    if (material.coat > 0.0f)
+    if (material.coat > 0.0f && material.coat_multiple_scattering)
         // Only computing the compensation if there is actually clearcoat on the material
         // otherwise, energy compensation is already accounted for by the [Turquin, 2019]
         // implementation in this principled BSDF implementation
