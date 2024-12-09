@@ -101,7 +101,7 @@ struct SimplifiedRendererMaterial
 
     bool emissive_texture_used = false;
     float emission_strength = 1.0f;
-    ColorRGB32F base_color = ColorRGB32F{ 0.9868f, 0.9830f, 0.9667f };
+    ColorRGB32F base_color = ColorRGB32F(1.0f);
 
     float roughness = 0.3f;
     float oren_nayar_sigma = 0.34906585039886591538f; // 20 degrees standard deviation in radian
@@ -132,7 +132,6 @@ struct SimplifiedRendererMaterial
     float coat_anisotropy = 0.0f;
     float coat_anisotropy_rotation = 0.0f;
     float coat_ior = 1.5f;
-    bool coat_multiple_scattering = true;
 
     float sheen = 0.0f; // Sheen strength
     float sheen_roughness = 0.5f;
@@ -159,6 +158,22 @@ struct SimplifiedRendererMaterial
 
     // Nested dielectric parameter
     int dielectric_priority = 0;
+
+    int energy_preservation_monte_carlo_samples = 12;
+    // If true, 'energy_preservation_monte_carlo_samples' will be used
+    // to compute the directional albedo of this material.
+    // This computed directional albedo is then used to ensure perfect energy conservation
+    // and preservation. 
+    // 
+    // This is however very expensive.
+    // This is usually only needed on clearcoated materials (but even then, the energy loss due to the absence of multiple scattering between
+    // the clearcoat layer and the BSDF below may be acceptable).
+    // 
+    // Non-clearcoated materials can already ensure perfect (modulo implementation quality) energy 
+    // conservation/preservation with the precomputed LUTs [Turquin, 2019]. 
+    // 
+    // See PrincipledBSDFGGXUseMultipleScattering in this codebase.
+    bool enforce_strong_energy_conservation = true;
 
 private:
     ColorRGB32F emission = ColorRGB32F{ 0.0f, 0.0f, 0.0f };

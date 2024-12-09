@@ -27,7 +27,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F bsdf_dispatcher_eval(const HIPRTRende
 	default:
 		break;
 	}*/
-#if PrincipledBSDFClearcoatEnergyCompensation == KERNEL_OPTION_TRUE
+#if PrincipledBSDFEnforceStrongEnergyConservation == KERNEL_OPTION_TRUE
     return principled_bsdf_eval_energy_compensated(render_data, material, ray_volume_state, view_direction, shading_normal, geometric_normal, to_light_direction, pdf, random_number_generator);
 #else
     return principled_bsdf_eval(render_data, material, ray_volume_state, view_direction, shading_normal, to_light_direction, pdf);
@@ -52,7 +52,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F bsdf_dispatcher_sample(const HIPRTRen
 	default:
 		break;
 	}*/
-#if PrincipledBSDFClearcoatEnergyCompensation == KERNEL_OPTION_TRUE
+#if PrincipledBSDFEnforceStrongEnergyConservation == KERNEL_OPTION_TRUE
     return principled_bsdf_sample_energy_compensated(render_data, material, ray_volume_state, view_direction, surface_normal, geometric_normal, sampled_direction, pdf, random_number_generator);
 #else
     return principled_bsdf_sample(render_data, material, ray_volume_state, view_direction, surface_normal, geometric_normal, sampled_direction, pdf, random_number_generator);

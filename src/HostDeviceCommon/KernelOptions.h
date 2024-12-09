@@ -183,7 +183,7 @@
  * directional albedo will be performed to ensure energy conservation & preservation
  * of a material with a clearcoat lobe
  */
-#define PrincipledBSDFClearcoatEnergyCompensation KERNEL_OPTION_TRUE
+#define PrincipledBSDFEnforceStrongEnergyConservation KERNEL_OPTION_TRUE
 
 /**
  * What nested dielectrics strategy to use.

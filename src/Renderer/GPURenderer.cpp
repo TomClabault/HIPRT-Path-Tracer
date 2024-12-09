@@ -1112,7 +1112,7 @@ void GPURenderer::set_scene(const Scene& scene)
 	set_hiprt_scene_from_scene(scene);
 
 	m_original_materials = scene.materials;
-	m_materials = scene.materials;
+	m_current_materials = scene.materials;
 	m_parsed_scene_metadata = scene.metadata;
 }
 
@@ -1166,9 +1166,9 @@ const std::vector<RendererMaterial>& GPURenderer::get_original_materials()
 	return m_original_materials;
 }
 
-const std::vector<RendererMaterial>& GPURenderer::get_materials()
+const std::vector<RendererMaterial>& GPURenderer::get_current_materials()
 {
-	return m_materials;
+	return m_current_materials;
 }
 
 const std::vector<std::string>& GPURenderer::get_material_names()
@@ -1178,7 +1178,7 @@ const std::vector<std::string>& GPURenderer::get_material_names()
 
 void GPURenderer::update_materials(std::vector<RendererMaterial>& materials)
 {
-	m_materials = materials;
+	m_current_materials = materials;
 	m_hiprt_scene.materials_buffer.upload_data(materials.data());
 }
 

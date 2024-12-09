@@ -44,7 +44,7 @@
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_coat_eval(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, float incident_medium_ior, float& out_pdf)
 {
     // The coat lobe is just a microfacet lobe
-    return torrance_sparrow_GTR2_eval(render_data, material.base_color, material.coat_roughness, material.coat_anisotropy, material.coat_ior, incident_medium_ior, local_view_direction, local_to_light_direction, local_halfway_vector, out_pdf);
+    return torrance_sparrow_GTR2_eval(render_data, material.coat_roughness, material.coat_anisotropy, material.coat_ior, incident_medium_ior, local_view_direction, local_to_light_direction, local_halfway_vector, out_pdf);
 }
 
 /**
@@ -73,7 +73,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_metallic_eval(const HIPRTR
     ColorRGB32F F_thin_film = thin_film_fresnel(material, incident_ior, HoL);
     ColorRGB32F F = hippt::lerp(F_metal, F_thin_film, material.thin_film);
 
-    return torrance_sparrow_GTR2_eval<PrincipledBSDFGGXUseMultipleScattering>(render_data, material.base_color, roughness, anisotropy, F, local_view_direction, local_to_light_direction, local_half_vector, pdf);
+    return torrance_sparrow_GTR2_eval<PrincipledBSDFGGXUseMultipleScattering>(render_data, roughness, anisotropy, F, local_view_direction, local_to_light_direction, local_half_vector, pdf);
 }
 
 /**
@@ -191,7 +191,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_specular_eval(
     // (hence the torrance_sparrow_GTR2_eval<0>) because energy conservation
     // for the specular layer is handled for the glossy based (specular + diffuse lobe)
     // as a whole, not just in the specular layer 
-    ColorRGB32F specular = torrance_sparrow_GTR2_eval<0>(render_data, material.base_color, material.roughness, material.anisotropy, F, local_view_direction, local_to_light_direction, local_half_vector, pdf);
+    ColorRGB32F specular = torrance_sparrow_GTR2_eval<0>(render_data, material.roughness, material.anisotropy, F, local_view_direction, local_to_light_direction, local_half_vector, pdf);
 
     return specular;
 }
@@ -273,16 +273,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
     // Not doing energy compensation if the thin-film is fully present
     // See the // TODO FIX THIS HORROR below
     //
-    // Also not doing compensation if we have the clearcoat interlayer multiple scattering
-    // energy compensation ON because that clearcoat compensation is going to account
-    // for the energy compensation of the full BSDF itself.
-    // 
-    // That's because the clearcoat layer is the very top layer of the BSDF. So by ensuring
-    // energy conservation and preservation of the multiple scattering between the clearcoat and 
-    // the BSDF below, we also ensure that the full BSDF is energy conserving and so the energy
-    // conservation of the glass lobe here is redundant
-    bool clearcoat_already_compensating = material.coat_multiple_scattering && material.coat > 0.0f && PrincipledBSDFClearcoatEnergyCompensation == KERNEL_OPTION_TRUE;
-    if (material.thin_film < 1.0f && !clearcoat_already_compensating)
+    // Also not doing compensation if we already have full compensation on the material
+    // because the energy conservation of the glass lobe here is then redundant
+    bool bsdf_already_compensated = material.enforce_strong_energy_conservation && PrincipledBSDFEnforceStrongEnergyConservation == KERNEL_OPTION_TRUE;
+    if (material.thin_film < 1.0f && !bsdf_already_compensated)
     {
         bool inside_object = ray_volume_state.inside_material;
         float relative_eta_for_correction = inside_object ? 1.0f / relative_eta : relative_eta;
@@ -338,7 +332,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
     ColorRGB32F color;
     if (reflecting)
     {
-        color = torrance_sparrow_GTR2_eval<0>(render_data, material.base_color, material.roughness, material.anisotropy, F, local_view_direction, local_to_light_direction, local_half_vector, pdf);
+        color = torrance_sparrow_GTR2_eval<0>(render_data, material.roughness, material.anisotropy, F, local_view_direction, local_to_light_direction, local_half_vector, pdf);
 
 #if PrincipledBSDFGGXUseMultipleScattering == KERNEL_OPTION_TRUE
         // [Turquin, 2019] Eq. 18
@@ -1123,8 +1117,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float monte_carlo_clearcoat_directional_albedo(co
 {
     float directional_albedo = 0.0f;
 
-    // TODO some kind of big switch to forcefully get rid of the energy at low integartion samples
-
     SimplifiedRendererMaterial white_material = material;
     white_material.base_color = ColorRGB32F(1.0f);
     white_material.absorption_color = ColorRGB32F(1.0f);
@@ -1137,7 +1129,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float monte_carlo_clearcoat_directional_albedo(co
     // coloration and we would basically get no thin-film effects
     white_material.thin_film = 0.0f;
 
-    for (int i = 0; i < render_data.bsdfs_data.clearcoat_energy_compensation_samples; i++)
+    for (int i = 0; i < material.energy_preservation_monte_carlo_samples; i++)
     {
         float pdf;
         float3 sampled_direction;
@@ -1151,7 +1143,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float monte_carlo_clearcoat_directional_albedo(co
         directional_albedo += bsdf_directional_albedo_sample.r / pdf * hippt::abs(hippt::dot(sampled_direction, shading_normal));
     }
 
-    directional_albedo /= render_data.bsdfs_data.clearcoat_energy_compensation_samples;
+    directional_albedo /= material.energy_preservation_monte_carlo_samples;
     if (directional_albedo == 0.0f)
         // No valid samples were found, no compensation could be computed,
         // returning 1.0f such that dividing by that compensation term does nothing
@@ -1161,34 +1153,30 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float monte_carlo_clearcoat_directional_albedo(co
 }
 
 /**
- * Evaluates the BSDF with energy conservation & perservation (for the clearcoat lobe)
+ * Evaluates the BSDF with strong energy conservation & preservation
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval_energy_compensated(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, RayVolumeState& ray_volume_state, const float3& view_direction, float3 shading_normal, float3 geometric_normal, const float3& to_light_direction, float& pdf, Xorshift32Generator& random_number_generator)
 {
     ColorRGB32F final_color = principled_bsdf_eval(render_data, material, ray_volume_state, view_direction, shading_normal, to_light_direction, pdf);
 
     float clearcoat_directional_albedo = 1.0f;
-    if (material.coat > 0.0f && material.coat_multiple_scattering)
-        // Only computing the compensation if there is actually clearcoat on the material
-        // otherwise, energy compensation is already accounted for by the [Turquin, 2019]
-        // implementation in this principled BSDF implementation
+    if (material.enforce_strong_energy_conservation)
+        // Only computing the compensation if we actually want it for this material
         clearcoat_directional_albedo = monte_carlo_clearcoat_directional_albedo(render_data, material, ray_volume_state, view_direction, shading_normal, geometric_normal, random_number_generator);
 
     return final_color / clearcoat_directional_albedo;
 }
 
 /**
- * Samples the BSDF with energy conservation & perservation (for the clearcoat lobe)
+ * Samples the BSDF with energy conservation & preservation
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample_energy_compensated(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, RayVolumeState& ray_volume_state, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal, float3& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
 {
     ColorRGB32F color = principled_bsdf_sample(render_data, material, ray_volume_state, view_direction, shading_normal, geometric_normal, output_direction, pdf, random_number_generator);
 
     float clearcoat_directional_albedo = 1.0f;
-    if (material.coat > 0.0f && material.coat_multiple_scattering)
-        // Only computing the compensation if there is actually clearcoat on the material
-        // otherwise, energy compensation is already accounted for by the [Turquin, 2019]
-        // implementation in this principled BSDF implementation
+    if (material.enforce_strong_energy_conservation)
+        // Only computing the compensation if we actually want it for this material
         clearcoat_directional_albedo = monte_carlo_clearcoat_directional_albedo(render_data, material, ray_volume_state, view_direction, shading_normal, geometric_normal, random_number_generator);
 
     return color / clearcoat_directional_albedo;

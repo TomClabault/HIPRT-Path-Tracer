@@ -1519,26 +1519,36 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 		{
 			ImGui::TreePush("Sampling Materials Tree");
 
-			ImGui::SeparatorText("Diffuse Lobe");
-			const char* items[] = { "- Lambertian", "- Oren-Nayar" };
-			if (ImGui::Combo("Principled BSDF Diffuse Lobe", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DIFFUSE_LOBE), items, IM_ARRAYSIZE(items)))
+			static bool do_bsdf_energy_conservation = PrincipledBSDFEnforceStrongEnergyConservation;
+			ImGui::SeparatorText("Full BSDF Settings");
+			if (ImGui::Checkbox("Enforce BSDF Strong Energy Conservation", &do_bsdf_energy_conservation))
 			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENFORCE_ENERGY_CONSERVATION	, do_bsdf_energy_conservation ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
 			}
+			ImGuiRenderer::show_help_marker("If checked, this will enable the strong energy conservation & preservation "
+				"of the BSDF such that materials using this option neither lose or gain any amount of energy.\n\n"
 
-			static bool do_clearcoat_compensation = PrincipledBSDFClearcoatEnergyCompensation;
+				"This is however very computationally expensive and must also be enabled on a per material basis.\n"
+				"The per-material option can be found in the \"Other properties\" tab of the material editor.\n"
+				"This is usually only needed on clearcoated materials (but even then, the energy loss\n"
+				"due to the absence of multiple scattering between the clearcoat layer and the BSDF below "
+				"may be acceptable).\n\n"
+
+				"Non-clearcoated materials can already ensure perfect (modulo implementation quality) energy "
+				"conservation/preservation with the precomputed LUTs [Turquin, 2019] "
+				"\"Use GGX Multiple Scattering\" option in \"Sampling\" --> \"Materials\".\n\n");
+
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			ImGui::SeparatorText("Clearcoat Lobe");
-			if (ImGui::Checkbox("Do Clearcoat Energy Compensation", &do_clearcoat_compensation))
+			ImGui::SeparatorText("Principled BSDF Diffuse Lobe");
+			const char* items[] = { "- Lambertian", "- Oren-Nayar" };
+			if (ImGui::Combo("Diffuse Lobe", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DIFFUSE_LOBE), items, IM_ARRAYSIZE(items)))
 			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_CLEARCOAT_ENERGY_COMPENSATION, do_clearcoat_compensation ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
 			}
-			if (ImGui::SliderInt("Monte-Carlo Directional Albedo Samples", &render_data.bsdfs_data.clearcoat_energy_compensation_samples, 1, 32))
-				m_render_window->set_render_dirty(true);
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::SeparatorText("GGX");
@@ -1573,8 +1583,9 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					m_render_window->set_render_dirty(true);
 				}
 				ImGuiRenderer::show_help_marker("Implementation of [Practical multiple scattering compensation for microfacet models, Turquin, 2019]"
-												" for GGX energy conservation. The multiple scattering fresnel term takes into account the Fresnel"
-												"reflection/transmission effect when the rays bounce multiple times on the microsurface.");
+												" for GGX energy conservation. The multiple scattering fresnel term takes into account the Fresnel "
+												"reflection/transmission effect when the rays bounce multiple times on the microsurface. This is responsible "
+												"for the increase in saturation of the color of conductors due to multiple scattering in-between the microfacets.");
 
 				if (ImGui::Checkbox("Use Hardware Texture Interpolation", &render_data.bsdfs_data.use_hardware_tex_interpolation))
 				{

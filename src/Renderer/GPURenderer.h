@@ -218,7 +218,7 @@ public:
 	bool has_envmap();
 
 	const std::vector<RendererMaterial>& get_original_materials();
-	const std::vector<RendererMaterial>& get_materials();
+	const std::vector<RendererMaterial>& get_current_materials();
 	const std::vector<std::string>& get_material_names();
 	void update_materials(std::vector<RendererMaterial>& materials);
 
@@ -416,13 +416,14 @@ private:
 
 	ReSTIRDIRenderPass m_restir_di_render_pass;
 
+	// Some additional info about the parsed scene such as materials names, mesh names, ...
 	SceneMetadata m_parsed_scene_metadata;
-	// The original materials of the scene in case the user wants
-	// to revert every changes that have been done
+	// The original materials of the scene. Those are the materials that have directly been read from the hard drive scene file.
+	// Used in case the user wants to revert every changes that have been done
 	std::vector<RendererMaterial> m_original_materials;
-	// The materials are also kept on the CPU side because we want to be able
-	// to modify them interactively with ImGui
-	std::vector<RendererMaterial> m_materials;
+	// Materials currently being used by the GPU. Those are the materials *currently* being
+	// used for rendering
+	std::vector<RendererMaterial> m_current_materials;
 	// The material names are used for displaying in the ImGui editor
 	// AABB of the meshes of the scene
 	std::vector<BoundingBox> m_mesh_bounding_boxes;

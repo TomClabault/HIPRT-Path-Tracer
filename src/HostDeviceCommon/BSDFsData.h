@@ -49,15 +49,6 @@ struct BRDFsData
 	bool use_hardware_tex_interpolation = false;
 
 	GGXMaskingShadowingFlavor GGX_masking_shadowing = GGXMaskingShadowingFlavor::HeightCorrelated;
-
-	// For on-the-fly monte carlo integration of the directional albedo of the clearcoat layer 
-	// (so basically the whole BSDF because the clearcoat is the very top layer)
-	// 
-	// How many samples to evaluate the integral with. This is done for each pixel for each material
-	// that has clearcoat energy compensation so this may be very expensive.
-	//
-	// More samples = better energy compensation. Too few samples leads to energy-gains/losses
-	int clearcoat_energy_compensation_samples = 12;
 };
 
 #endif

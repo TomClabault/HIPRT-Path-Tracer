@@ -40,7 +40,6 @@ struct MaterialOverrideState
 	bool override_coat_anisotropy = false;
 	bool override_coat_anisotropy_rotation = false;
 	bool override_coat_IOR = false;
-	bool override_coat_multiple_scattering = false;
 
 	bool override_transmission = false;
 	bool override_IOR = false;
@@ -60,6 +59,8 @@ struct MaterialOverrideState
 	bool override_emission_strength = false;
 
 	bool override_opacity = false;
+	bool override_strong_energy_conservation = false;
+	bool override_energy_conservation_samples = false;
 };
 
 void ImGuiObjectsWindow::set_render_window(RenderWindow* render_window)
@@ -384,7 +385,7 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 
 		if (ImGui::BeginTable("Table coat layer", 2, ImGuiTableFlags_SizingFixedFit))
 		{
-			for (int row = 0; row < 10; row++)
+			for (int row = 0; row < 9; row++)
 			{
 				ImGui::TableNextRow();
 
@@ -430,14 +431,6 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 
 				case 8:
 					material_override_changed |= draw_material_override_line("Coat IOR", override_state.override_coat_IOR, material_override.coat_ior, 0.0f, 1.0f);
-					break;
-
-				case 9:
-					material_override_changed |= draw_material_override_line("Coat interlayer multiple-scattering", override_state.override_coat_multiple_scattering, material_override.coat_multiple_scattering);
-					ImGuiRenderer::show_help_marker("If checked, the energy loss due to missing multiple scattering * inside * the coat layer will be  "
-						"compensated by on-the-fly monte carlo integration of the missing energy.\n"
-						"This is costly so this option is there to enable the energy compensation on a per-object basis.\n\n"
-						"Note that for this option to have any effect, \"Do Clearcoat Energy Compensation\" must be enabled in the \"Sampling\" --> \"Materials\" panel.");
 					break;
 				}
 			}
@@ -614,7 +607,7 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 
 		if (ImGui::BeginTable("Table base layer", 2, ImGuiTableFlags_SizingFixedFit))
 		{
-			for (int row = 0; row < 2; row++)
+			for (int row = 0; row < 3; row++)
 			{
 				ImGui::TableNextRow();
 
@@ -626,10 +619,36 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 					break;
 
 				case 1:
-				{
 					material_override_changed |= draw_material_override_line("Opacity", override_state.override_opacity, material_override.alpha_opacity, 0.0f, 1.0f);
 					break;
-				}
+
+				case 2:
+					material_override_changed |= draw_material_override_line("Strong energy conservation", override_state.override_strong_energy_conservation, material_override.enforce_strong_energy_conservation);
+					ImGuiRenderer::show_help_marker("If checked, \"Energy conservation samples\" will be used "
+						"to compute the directional albedo of this material, on-the-fly.\n"
+						"This computed directional albedo is then used to ensure perfect energy conservation "
+						"and preservation of the material.\n\n"
+
+						"This is however very expensive.\n"
+						"This is usually only needed on clearcoated materials (but even then, the energy loss\n"
+						"due to the absence of multiple scattering between the clearcoat layer and the BSDF below "
+						"may be acceptable).\n\n"
+
+						"Non-clearcoated materials can already ensure perfect (modulo implementation quality) energy "
+						"conservation/preservation with the precomputed LUTs [Turquin, 2019] "
+						"\"Use GGX Multiple Scattering\" option in \"Sampling\" --> \"Materials\".\n\n"
+
+						"Note that for this option to have any effect, \"Enforce BSDF Strong Energy Conservation\" must "
+						"be enabled in the \"Sampling\" --> \"Materials\" panel.");
+					break;
+
+				case 3:
+					material_override_changed |= draw_material_override_line("Energy conservation samples", override_state.override_energy_conservation_samples, material_override.energy_preservation_monte_carlo_samples, 1, 32);
+					ImGuiRenderer::show_help_marker("How many samples to use for the on-the-fly directional albedo "
+						"integration of the material. The less samples the faster but too few samples (below 10 usually) "
+						"can result in energy gains.");
+
+					break;
 				}
 			}
 
@@ -684,6 +703,10 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 		apply_material_override(override_state.override_thin_film, &RendererMaterial::thin_film, material_override.thin_film, overriden_materials);
 		apply_material_override(override_state.override_thin_film_thickness, &RendererMaterial::thin_film_thickness, material_override.thin_film_thickness, overriden_materials);
 		apply_material_override(override_state.override_thin_film_ior, &RendererMaterial::thin_film_ior, material_override.thin_film_ior, overriden_materials);
+		apply_material_override(override_state.override_thin_film_do_ior_override, &RendererMaterial::thin_film_do_ior_override, material_override.thin_film_do_ior_override, overriden_materials);
+		apply_material_override(override_state.override_thin_film_base_ior_override, &RendererMaterial::thin_film_base_ior_override, material_override.thin_film_base_ior_override, overriden_materials);
+		apply_material_override(override_state.override_thin_film_kappa_3, &RendererMaterial::thin_film_kappa_3, material_override.thin_film_kappa_3, overriden_materials);
+		apply_material_override(override_state.override_thin_film_hue_shift, &RendererMaterial::thin_film_hue_shift_degrees, material_override.thin_film_hue_shift_degrees, overriden_materials);
 
 		// Special case for the emission since it's a private member
 		if (override_state.override_emission)
@@ -692,6 +715,8 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 		apply_material_override(override_state.override_emission_strength, &RendererMaterial::emission_strength, material_override.emission_strength, overriden_materials);
 
 		apply_material_override(override_state.override_opacity, &RendererMaterial::alpha_opacity, material_override.alpha_opacity, overriden_materials);
+		apply_material_override(override_state.override_strong_energy_conservation, &RendererMaterial::enforce_strong_energy_conservation, material_override.enforce_strong_energy_conservation, overriden_materials);
+		apply_material_override(override_state.override_energy_conservation_samples, &RendererMaterial::energy_preservation_monte_carlo_samples, material_override.energy_preservation_monte_carlo_samples, overriden_materials);
 
 		m_renderer->update_materials(overriden_materials);
 		m_render_window->set_render_dirty(true);
@@ -712,9 +737,9 @@ void ImGuiObjectsWindow::draw_objects_panel()
 	// of objects in the scene because we want the global factor to affect the original
 	// emission of the materials_to_override, not the emission that has already been multiplied by
 	// a previous factor: this would lead to a buggy exponential growth of the emission
-	static std::vector<RendererMaterial> original_materials = m_renderer->get_materials();
+	static std::vector<RendererMaterial> original_materials = m_renderer->get_current_materials();
 
-	std::vector<RendererMaterial> materials = m_renderer->get_materials();
+	std::vector<RendererMaterial> materials = m_renderer->get_current_materials();
 	const std::vector<std::string>& material_names = m_renderer->get_material_names();
 	const std::vector<std::string>& mesh_names = m_renderer->get_mesh_names();
 
@@ -900,11 +925,6 @@ void ImGuiObjectsWindow::draw_objects_panel()
 			material_changed |= ImGui::SliderFloat("Coat anisotropy", &material.coat_anisotropy, 0.0f, 1.0f);
 			material_changed |= ImGui::SliderFloat("Coat anisotropy Rotation", &material.coat_anisotropy_rotation, 0.0f, 1.0f);
 			material_changed |= ImGui::SliderFloat("Coat IOR", &material.coat_ior, 1.0f, 3.0f);
-			material_changed |= ImGui::Checkbox("Coat interlayer multiple-scattering", &material.coat_multiple_scattering);
-			ImGuiRenderer::show_help_marker("If checked, the energy loss due to missing multiple scattering * inside * the coat layer will be  "
-				"compensated by on-the-fly monte carlo integration of the missing energy.\n"
-				"This is costly so this option is there to enable the energy compensation on a per-object basis.\n\n"
-				"Note that for this option to have any effect, \"Do Clearcoat Energy Compensation\" must be enabled in the \"Sampling\" --> \"Materials\" panel.");
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::TreePop();
@@ -980,6 +1000,28 @@ void ImGuiObjectsWindow::draw_objects_panel()
 			ImGui::TreePush("Other properties material tree");
 
 			material_changed |= ImGui::SliderFloat("Opacity", &material.alpha_opacity, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+			material_changed |= ImGui::Checkbox("Strong energy conservation", &material	.enforce_strong_energy_conservation);
+			ImGuiRenderer::show_help_marker("If checked, \"Energy conservation samples\" will be used "
+				"to compute the directional albedo of this material, on-the-fly.\n"
+				"This computed directional albedo is then used to ensure perfect energy conservation "
+				"and preservation of the material.\n\n"
+
+				"This is however very expensive.\n"
+				"This is usually only needed on clearcoated materials (but even then, the energy loss\n"
+				"due to the absence of multiple scattering between the clearcoat layer and the BSDF below "
+				"may be acceptable).\n\n"
+
+				"Non-clearcoated materials can already ensure perfect (modulo implementation quality) energy "
+				"conservation/preservation with the precomputed LUTs [Turquin, 2019] "
+				"\"Use GGX Multiple Scattering\" option in \"Sampling\" --> \"Materials\".\n\n"
+				
+				"Note that for this option to have any effect, \"Enforce BSDF Strong Energy Conservation\" must "
+				"be enabled in the \"Sampling\" --> \"Materials\" panel.");
+
+			material_changed |= ImGui::SliderInt("Energy conservation samples", &material.energy_preservation_monte_carlo_samples, 1, 32);
+			ImGuiRenderer::show_help_marker("How many samples to use for the on-the-fly directional albedo "
+				"integration of the material. The less samples the faster but too few samples (below 10 usually) "
+				"can result in energy gains.");
 
 			ImGui::TreePop();
 		}

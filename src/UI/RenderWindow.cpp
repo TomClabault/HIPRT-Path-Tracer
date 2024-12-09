@@ -35,7 +35,7 @@ extern ImGuiLogger g_imgui_logger;
 // - --help on the commandline
 // - Search for textures next to the GLTF file location
 // - Normal mapping seems broken again, light rays going under the surface... p1 env light
-// - energy preservation illustration in Readme
+// - energy preservation illustration in Readme (with many shader balls)
 
 // TODO known bugs / incorrectness:
 // - take transmission color into account when direct sampling a light source that is inside a volume: leave that for when implement volumes?
@@ -44,6 +44,8 @@ extern ImGuiLogger g_imgui_logger;
 // - when using a BSDF override, transmissive materials keep their dielectric priorities and this can mess up shadow rays and intersections in general if the BSDF used for the override doesn't support transmissive materials
 // - threadmanager: what if we start a thread with a dependency A on a thread that itself has a dependency B? we're going to try join dependency A even if thread with dependency on B hasn't even started yet --> joining nothing --> immediate return --> should have waited for the dependency but hasn't
 // - When checking "Enable denoiser", it always denoises once immediately even if "denoise only when render done" is checked
+// - Thin-film interference energy conservation/preservation is broken with "strong BSDF energy conservation"
+// - When overriding the base color for example in the global material overrider, if we then uncheck the base color override to stop overriding the base color, it returns the material to its very default base color  (the one  read from the scene file) instead of  returning it to what the user may have modified up to that point
 
 // TODO Code Organization:
 // - init opengl context and all that expensive stuff (compile kernels too) while the scene is being parsed

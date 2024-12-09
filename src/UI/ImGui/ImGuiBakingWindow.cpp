@@ -63,7 +63,7 @@ void ImGuiBakingWindow::draw_ggx_energy_conservation_panel()
 				next_step_ready = false;
 				step++;
 
-				std::vector<RendererMaterial> materials = m_renderer->get_materials();
+				std::vector<RendererMaterial> materials = m_renderer->get_current_materials();
 				materials[0].ior = iors[step % iors.size()];
 				materials[0].roughness = roughnesses[step / iors.size()];
 				materials[0].make_safe();
