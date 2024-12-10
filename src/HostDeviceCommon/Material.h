@@ -173,7 +173,7 @@ struct SimplifiedRendererMaterial
     // conservation/preservation with the precomputed LUTs [Turquin, 2019]. 
     // 
     // See PrincipledBSDFGGXUseMultipleScattering in this codebase.
-    bool enforce_strong_energy_conservation = true;
+    bool enforce_strong_energy_conservation = false;
 
 private:
     ColorRGB32F emission = ColorRGB32F{ 0.0f, 0.0f, 0.0f };

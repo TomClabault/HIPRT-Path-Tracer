@@ -607,7 +607,7 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 
 		if (ImGui::BeginTable("Table base layer", 2, ImGuiTableFlags_SizingFixedFit))
 		{
-			for (int row = 0; row < 3; row++)
+			for (int row = 0; row < 4; row++)
 			{
 				ImGui::TableNextRow();
 
@@ -623,6 +623,15 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 					break;
 
 				case 2:
+				{
+					// Thin-film + strong energy conservation isn't supported yet
+					bool thin_film_present = material_override.thin_film > 0.0f && override_state.override_thin_film;
+					std::string thin_film_warning = "";
+
+					if (thin_film_present)
+						thin_film_warning = "\n\nDisabled because not supported when a thin-film is present.";
+					ImGui::BeginDisabled(thin_film_present);
+
 					material_override_changed |= draw_material_override_line("Strong energy conservation", override_state.override_strong_energy_conservation, material_override.enforce_strong_energy_conservation);
 					ImGuiRenderer::show_help_marker("If checked, \"Energy conservation samples\" will be used "
 						"to compute the directional albedo of this material, on-the-fly.\n"
@@ -641,14 +650,25 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 						"Note that for this option to have any effect, \"Enforce BSDF Strong Energy Conservation\" must "
 						"be enabled in the \"Sampling\" --> \"Materials\" panel.");
 					break;
+				}
 
 				case 3:
+				{
+					bool thin_film_present = material_override.thin_film > 0.0f && override_state.override_thin_film;
+					std::string thin_film_warning = "";
+
+					if (thin_film_present)
+						thin_film_warning = "\n\nDisabled because not supported when a thin-film is present.";
+
 					material_override_changed |= draw_material_override_line("Energy conservation samples", override_state.override_energy_conservation_samples, material_override.energy_preservation_monte_carlo_samples, 1, 32);
 					ImGuiRenderer::show_help_marker("How many samples to use for the on-the-fly directional albedo "
 						"integration of the material. The less samples the faster but too few samples (below 10 usually) "
-						"can result in energy gains.");
+						"can result in energy gains." + thin_film_warning);
+
+					ImGui::EndDisabled();
 
 					break;
+				}
 				}
 			}
 
@@ -1000,7 +1020,24 @@ void ImGuiObjectsWindow::draw_objects_panel()
 			ImGui::TreePush("Other properties material tree");
 
 			material_changed |= ImGui::SliderFloat("Opacity", &material.alpha_opacity, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-			material_changed |= ImGui::Checkbox("Strong energy conservation", &material	.enforce_strong_energy_conservation);
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+			// Thin-film + strong energy conservation isn't supported yet
+			std::string thin_film_warning = "";
+			bool thin_film_present = material.thin_film > 0.0f;
+			if (thin_film_present)
+				thin_film_warning = "\n\nDisabled because not supported when a thin-film is present.";
+			ImGui::BeginDisabled(thin_film_present);
+			if (material.enforce_strong_energy_conservation && kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENFORCE_ENERGY_CONSERVATION) == KERNEL_OPTION_FALSE)
+			{
+				ImGui::Text("Warning: ");
+				ImGuiRenderer::show_help_marker("Energy conservation is enabled on this material but the strong energy conservation feature is disabled.\n\n"
+
+					"It can be enabled in the \"Sampling\" --> \"Materials\" panel.");
+			}
+
+			material_changed |= ImGui::Checkbox("Strong energy conservation", &material.enforce_strong_energy_conservation);
 			ImGuiRenderer::show_help_marker("If checked, \"Energy conservation samples\" will be used "
 				"to compute the directional albedo of this material, on-the-fly.\n"
 				"This computed directional albedo is then used to ensure perfect energy conservation "
@@ -1016,12 +1053,13 @@ void ImGuiObjectsWindow::draw_objects_panel()
 				"\"Use GGX Multiple Scattering\" option in \"Sampling\" --> \"Materials\".\n\n"
 				
 				"Note that for this option to have any effect, \"Enforce BSDF Strong Energy Conservation\" must "
-				"be enabled in the \"Sampling\" --> \"Materials\" panel.");
+				"be enabled in the \"Sampling\" --> \"Materials\" panel." + thin_film_warning);
 
 			material_changed |= ImGui::SliderInt("Energy conservation samples", &material.energy_preservation_monte_carlo_samples, 1, 32);
 			ImGuiRenderer::show_help_marker("How many samples to use for the on-the-fly directional albedo "
 				"integration of the material. The less samples the faster but too few samples (below 10 usually) "
-				"can result in energy gains.");
+				"can result in energy gains." + thin_film_warning);
+			ImGui::EndDisabled();
 
 			ImGui::TreePop();
 		}

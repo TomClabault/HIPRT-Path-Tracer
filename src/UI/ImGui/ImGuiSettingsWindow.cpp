@@ -1539,7 +1539,11 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 				"Non-clearcoated materials can already ensure perfect (modulo implementation quality) energy "
 				"conservation/preservation with the precomputed LUTs [Turquin, 2019] "
-				"\"Use GGX Multiple Scattering\" option in \"Sampling\" --> \"Materials\".\n\n");
+				"\"Use GGX Multiple Scattering\" option in \"Sampling\" --> \"Materials\".\n\n"
+				
+				"Note that even if no materials use the option in your scene, disabling this option may"
+				" still be benefitial for performance as it adds quite a bit of register pressure. Disabling "
+				" the option has the effect of literally removing all the code of this option from the shaders.");
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::SeparatorText("Principled BSDF Diffuse Lobe");
