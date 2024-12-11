@@ -1519,6 +1519,18 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 		{
 			ImGui::TreePush("Sampling Materials Tree");
 
+			bool changed = false;
+			changed |= ImGui::InputFloat("1.01",  &render_data.bsdfs_data.correction_1_01, 0.0f, 0.0f, "%.6f");
+			changed |= ImGui::InputFloat("1.03",  &render_data.bsdfs_data.correction_1_03, 0.0f, 0.0f, "%.6f");
+			changed |= ImGui::InputFloat("1.1",  &render_data.bsdfs_data.correction_1_1, 0.0f, 0.0f, "%.6f");
+			changed |= ImGui::InputFloat("1.3",  &render_data.bsdfs_data.correction_1_3, 0.0f, 0.0f, "%.6f");
+			changed |= ImGui::InputFloat("1.5",  &render_data.bsdfs_data.correction_1_5, 0.0f, 0.0f, "%.6f");
+			changed |= ImGui::InputFloat("2_0",  &render_data.bsdfs_data.correction_2_0, 0.0f, 0.0f, "%.6f");
+			changed |= ImGui::InputFloat("other",  &render_data.bsdfs_data.correction_other, 0.0f, 0.0f, "%.6f");
+
+			if (changed)
+				m_render_window->set_render_dirty(true);
+
 			static bool do_bsdf_energy_conservation = PrincipledBSDFEnforceStrongEnergyConservation;
 			ImGui::SeparatorText("Full BSDF Settings");
 			if (ImGui::Checkbox("Enforce BSDF Strong Energy Conservation", &do_bsdf_energy_conservation))
@@ -1564,7 +1576,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 				m_render_window->set_render_dirty(true);
 			}
-			ImGuiRenderer::show_help_marker("How to sample the GGX (or GTR2) NDF");
+			ImGuiRenderer::show_help_marker("How to sample the GGX NDF");
 
 			static bool use_multiple_scattering = PrincipledBSDFGGXUseMultipleScattering;
 			if (ImGui::Checkbox("Use GGX Multiple Scattering", &use_multiple_scattering))

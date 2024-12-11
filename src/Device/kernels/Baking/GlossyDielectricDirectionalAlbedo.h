@@ -48,7 +48,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GlossyDielectricDirectionalAlbedoBake(HIPRT
     out_buffer[pixel_index] = 0.0f;
 
     float cos_theta_o = 1.0f / (bake_settings.texture_size_cos_theta_o - 1) * x;
-    cos_theta_o = hippt::max(GTR2_DOT_PRODUCTS_CLAMP, cos_theta_o);
+    cos_theta_o = hippt::max(GGX_DOT_PRODUCTS_CLAMP, cos_theta_o);
     cos_theta_o = powf(cos_theta_o, 2.5f);
     float sin_theta_o = sin(acos(cos_theta_o));
 
@@ -74,7 +74,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GlossyDielectricDirectionalAlbedoBake(HIPRT
         if (rand_lobe < 0.5f)
         {
             // Sampling the specular lobe
-            sampled_local_to_light_direction = microfacet_GTR2_sample_reflection(roughness, /* anisotropy */ 0.0f, local_view_direction, random_number_generator);
+            sampled_local_to_light_direction = microfacet_GGX_sample_reflection(roughness, /* anisotropy */ 0.0f, local_view_direction, random_number_generator);
 
             if (sampled_local_to_light_direction.z < 0)
                 // Sampled direction below surface, this can happen with microfacet
@@ -90,7 +90,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GlossyDielectricDirectionalAlbedoBake(HIPRT
 
         float F = full_fresnel_dielectric(hippt::dot(microfacet_normal, sampled_local_to_light_direction), relative_ior);
         float eval_pdf_specular;
-        float directional_albedo_specular = torrance_sparrow_GTR2_eval<0>(HIPRTRenderData(), ColorRGB32F(F0), roughness, /* aniso */ 0.0f, ColorRGB32F(F),
+        float directional_albedo_specular = torrance_sparrow_GGX_eval<0>(HIPRTRenderData(), ColorRGB32F(F0), roughness, /* aniso */ 0.0f, ColorRGB32F(F),
                                                                           local_view_direction, sampled_local_to_light_direction, microfacet_normal, eval_pdf_specular).r;
         // Multiplying the PDF by 0.5f because we have a 50% chance to sample the specular lobe
         total_pdf += eval_pdf_specular * 0.5f;

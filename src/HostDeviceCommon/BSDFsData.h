@@ -48,6 +48,14 @@ struct BRDFsData
 	// when fetching the LUTs. It's faster but less precise.
 	bool use_hardware_tex_interpolation = false;
 
+	float correction_1_01 = 2.61f;
+	float correction_1_03 = 2.655f;
+	float correction_1_1 = 2.5225f;
+	float correction_1_3 = 2.545f;
+	float correction_1_5 = 2.59f;
+	float correction_2_0 = 2.8f;
+	float correction_other = 3.0f;
+
 	GGXMaskingShadowingFlavor GGX_masking_shadowing = GGXMaskingShadowingFlavor::HeightCorrelated;
 };
 

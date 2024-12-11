@@ -9,7 +9,9 @@
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/ONB.h"
 #include "Device/includes/BSDFs/Lambertian.h"
+#include "Device/includes/BSDFs/Microfacet.h"
 #include "Device/includes/BSDFs/OrenNayar.h"
+#include "Device/includes/BSDFs/PrincipledEnergyCompensation.h"
 #include "Device/includes/BSDFs/ThinFilm.h"
 #include "Device/includes/RayPayload.h"
 #include "Device/includes/Sampling.h"
@@ -44,7 +46,7 @@
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_coat_eval(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, float incident_medium_ior, float& out_pdf)
 {
     // The coat lobe is just a microfacet lobe
-    return torrance_sparrow_GTR2_eval(render_data, material.coat_roughness, material.coat_anisotropy, material.coat_ior, incident_medium_ior, local_view_direction, local_to_light_direction, local_halfway_vector, out_pdf);
+    return torrance_sparrow_GGX_eval(render_data, material.coat_roughness, material.coat_anisotropy, material.coat_ior, incident_medium_ior, local_view_direction, local_to_light_direction, local_halfway_vector, out_pdf);
 }
 
 /**
@@ -52,7 +54,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_coat_eval(const HIPRTRende
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_coat_sample(const SimplifiedRendererMaterial& material, const float3& local_view_direction, Xorshift32Generator& random_number_generator)
 {
-    return microfacet_GTR2_sample_reflection(material.coat_roughness, material.coat_anisotropy, local_view_direction, random_number_generator);
+    return microfacet_GGX_sample_reflection(material.coat_roughness, material.coat_anisotropy, local_view_direction, random_number_generator);
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_sheen_eval(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, const float3& local_view_direction, const float3& local_to_light_direction, float& pdf, float& out_sheen_reflectance)
@@ -73,7 +75,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_metallic_eval(const HIPRTR
     ColorRGB32F F_thin_film = thin_film_fresnel(material, incident_ior, HoL);
     ColorRGB32F F = hippt::lerp(F_metal, F_thin_film, material.thin_film);
 
-    return torrance_sparrow_GTR2_eval<PrincipledBSDFGGXUseMultipleScattering>(render_data, roughness, anisotropy, F, local_view_direction, local_to_light_direction, local_half_vector, pdf);
+    return torrance_sparrow_GGX_eval<PrincipledBSDFGGXUseMultipleScattering>(render_data, roughness, anisotropy, F, local_view_direction, local_to_light_direction, local_half_vector, pdf);
 }
 
 /**
@@ -81,7 +83,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_metallic_eval(const HIPRTR
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_metallic_sample(float roughness, float anisotropy, const float3& local_view_direction, Xorshift32Generator& random_number_generator)
 {
-    return microfacet_GTR2_sample_reflection(roughness, anisotropy, local_view_direction, random_number_generator);
+    return microfacet_GGX_sample_reflection(roughness, anisotropy, local_view_direction, random_number_generator);
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_diffuse_eval(const SimplifiedRendererMaterial& material, const float3& local_view_direction, const float3& local_to_light_direction, float& pdf)
@@ -185,20 +187,20 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_specular_eval(
 {
     ColorRGB32F F = principled_specular_fresnel(material, relative_ior, hippt::dot(local_to_light_direction, local_half_vector));
 
-    // The specular lobe is just another GGX (GTR2) lobe
+    // The specular lobe is just another GGX lobe
     // 
     // We actually don't want energy conservation here for the specular layer
-    // (hence the torrance_sparrow_GTR2_eval<0>) because energy conservation
+    // (hence the torrance_sparrow_GGX_eval<0>) because energy conservation
     // for the specular layer is handled for the glossy based (specular + diffuse lobe)
     // as a whole, not just in the specular layer 
-    ColorRGB32F specular = torrance_sparrow_GTR2_eval<0>(render_data, material.roughness, material.anisotropy, F, local_view_direction, local_to_light_direction, local_half_vector, pdf);
+    ColorRGB32F specular = torrance_sparrow_GGX_eval<0>(render_data, material.roughness, material.anisotropy, F, local_view_direction, local_to_light_direction, local_half_vector, pdf);
 
     return specular;
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_specular_sample(const SimplifiedRendererMaterial& material, const float3& local_view_direction, Xorshift32Generator& random_number_generator)
 {
-    return microfacet_GTR2_sample_reflection(material.roughness, material.anisotropy, local_view_direction, random_number_generator);
+    return microfacet_GGX_sample_reflection(material.roughness, material.anisotropy, local_view_direction, random_number_generator);
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, RayVolumeState& ray_volume_state, const float3& local_view_direction, const float3& local_to_light_direction, float& pdf)
@@ -267,56 +269,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
         // hemisphere as the view dir or light dir
         return ColorRGB32F(0.0f);
 
-#if PrincipledBSDFGGXUseMultipleScattering == KERNEL_OPTION_TRUE
-    float compensation_term = 1.0f;
-
-    // Not doing energy compensation if the thin-film is fully present
-    // See the // TODO FIX THIS HORROR below
-    //
-    // Also not doing compensation if we already have full compensation on the material
-    // because the energy conservation of the glass lobe here is then redundant
-    bool bsdf_already_compensated = material.enforce_strong_energy_conservation && PrincipledBSDFEnforceStrongEnergyConservation == KERNEL_OPTION_TRUE;
-    if (material.thin_film < 1.0f && !bsdf_already_compensated)
-    {
-        bool inside_object = ray_volume_state.inside_material;
-        float relative_eta_for_correction = inside_object ? 1.0f / relative_eta : relative_eta;
-        float exponent_correction = GGX_glass_energy_conservation_get_correction_exponent(material.roughness, relative_eta_for_correction);
-
-        // We're storing cos_theta_o^2.5 in the LUT so we're retrieving it with pow(1.0f / 2.5f) i.e.
-        // sqrt 2.5
-        //
-        // We're using a "correction exponent" to forcefully get rid of energy gains at grazing angles due
-        // to float precision issues: storing in the LUT with cos_theta^2.5 but fetching with pow(1.0f / 2.6f)
-        // for example darkens to overall appearance and helps remove energy gains
-        float view_direction_tex_fetch = powf(hippt::max(0.0f, local_view_direction.z), 1.0f / exponent_correction);
-
-        float F0 = F0_from_eta(eta_t, eta_i);
-        // sqrt(sqrt()) of F0 here because we're storing F0^4 in the LUT
-        float F0_remapped = sqrt(sqrt(F0));
-
-        float3 uvw = make_float3(view_direction_tex_fetch, material.roughness, F0_remapped);
-
-        void* texture = inside_object ? render_data.bsdfs_data.GGX_Ess_glass_inverse : render_data.bsdfs_data.GGX_Ess_glass;
-        int3 dims = make_int3(GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_COS_THETA_O, GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_ROUGHNESS, GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_IOR);
-        compensation_term = sample_texture_3D_rgb_32bits(texture, dims, uvw, render_data.bsdfs_data.use_hardware_tex_interpolation).r;
-
-        // TODO FIX THIS HORROR
-        // This is here because directional albedo for the glass BSDF is tabulated with the standard non-colored Fresnel
-        // This means that the precomputed table is incompatible with the thin-film interference fresnel
-        // 
-        // And as a matter of fact, using the energy compensation term (precomputed for the traditional fresnel)
-        // with thin-film interference Fresnel results in noticeable energy gains at grazing angles at high roughnesses
-        //
-        // Blender Cycles doesn't have that issue but I don't understand yet how they avoid it.
-        //
-        // The quick and disgusting solution here is just to disable energy compensation as the thin-film
-        // weight gets stronger. Energy compensation is fully disabled when the thin-film weight is 1.0f
-        //
-        // Because the error is stronger at high roughnesses than at low roughnesses, we can include the roughness
-        // in the lerp such that we use less and less the energy compensation term as the roughness increases
-        compensation_term = hippt::lerp(compensation_term, 1.0f, material.thin_film * material.roughness);
-    }
-#endif
+    float compensation_term = get_GGX_energy_compensation_dielectrics(render_data, material, ray_volume_state, eta_t, eta_i, relative_eta, local_view_direction.z);
 
     ColorRGB32F F_thin_film;
     if (material.thin_film > 0.0f)
@@ -332,12 +285,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
     ColorRGB32F color;
     if (reflecting)
     {
-        color = torrance_sparrow_GTR2_eval<0>(render_data, material.roughness, material.anisotropy, F, local_view_direction, local_to_light_direction, local_half_vector, pdf);
-
-#if PrincipledBSDFGGXUseMultipleScattering == KERNEL_OPTION_TRUE
-        // [Turquin, 2019] Eq. 18
+        color = torrance_sparrow_GGX_eval<0>(render_data, material.roughness, material.anisotropy, F, local_view_direction, local_to_light_direction, local_half_vector, pdf);
+        // [Turquin, 2019] Eq. 18 for dielectric microfacet energy compensation
         color /= compensation_term;
-#endif
 
         // Scaling the PDF by the probability of being here (reflection of the ray and not transmission)
         pdf *= f_proba;
@@ -355,7 +305,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
         float alpha_y;
         SimplifiedRendererMaterial::get_alphas(material.roughness, material.anisotropy, alpha_x, alpha_y);
 
-        float D = GTR2_anisotropic(alpha_x, alpha_y, local_half_vector);
+        float D = GGX_anisotropic(alpha_x, alpha_y, local_half_vector);
         float G1_V = G1_Smith(alpha_x, alpha_y, local_view_direction);
         float G1_L = G1_Smith(alpha_x, alpha_y, local_to_light_direction);
         float G2 = G1_V * G1_L;
@@ -372,11 +322,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
         // so this is an extremely rare case.
         // The PDF being non-zero, we could actualy compute it, it's valid but not with floats :D
         color = sqrt(material.base_color) * D * (ColorRGB32F(1.0f) - F) * G2 * hippt::abs(HoL * HoV / denom);
-
-#if PrincipledBSDFGGXUseMultipleScattering == KERNEL_OPTION_TRUE
-        // [Turquin, 2019] Eq. 18
+        // [Turquin, 2019] Eq. 18 for dielectric microfacet energy compensation
         color /= compensation_term;
-#endif
 
         if (ray_volume_state.incident_mat_index != InteriorStackImpl<InteriorStackStrategy>::MAX_MATERIAL_INDEX)
         {
@@ -427,7 +374,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_glass_sample(const RendererMate
     float alpha_y;
     SimplifiedRendererMaterial::get_alphas(material.roughness, material.anisotropy, alpha_x, alpha_y);
 
-    float3 microfacet_normal = GTR2_anisotropic_sample_microfacet(local_view_direction, alpha_x, alpha_y, random_number_generator);
+    float3 microfacet_normal = GGX_anisotropic_sample_microfacet(local_view_direction, alpha_x, alpha_y, random_number_generator);
 
     float HoV = hippt::dot(local_view_direction, microfacet_normal);
 
@@ -751,42 +698,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_glossy_base(const HIPRT
     glossy_base_contribution += internal_eval_specular_layer(render_data, material, local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated, shading_normal, incident_medium_ior, specular_weight, specular_proba_norm, layers_throughput, out_cumulative_pdf);
     glossy_base_contribution += internal_eval_diffuse_layer(render_data, incident_medium_ior, material, local_view_direction, local_to_light_direction, diffuse_weight, diffuse_proba_norm, layers_throughput, out_cumulative_pdf);
 
-#if PrincipledBSDFGGXUseMultipleScattering == KERNEL_OPTION_TRUE
-    int3 texture_dims = make_int3(GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_COS_THETA_O, GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_ROUGHNESS, GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR);
-
-    float relative_ior = principled_specular_relative_ior(material, incident_medium_ior);
-    if (hippt::abs(relative_ior - 1.0f) < 1.0e-3f)
-        // If the relative ior is very close to 1.0f,
-        // adding some offset to avoid singularities at 1.0f which cause
-        // fireflies
-        relative_ior += 1.0e-3f;
-
-    // We're storing cos_theta_o^2.5 in the LUT so we're retrieving with
-    // root 2.5
-    float view_dir_remapped = pow(local_view_direction.z, 1.0f / 2.5f);
-    // sqrt(sqrt(F0)) here because we're storing F0^4 in the LUT
-    float F0_remapped = sqrt(sqrt(F0_from_eta_t_and_relative(material.ior, relative_ior)));
-
-    float3 uvw = make_float3(view_dir_remapped, material.roughness, F0_remapped);
-    float multiple_scattering_compensation = sample_texture_3D_rgb_32bits(render_data.bsdfs_data.glossy_dielectric_Ess, texture_dims, uvw, render_data.bsdfs_data.use_hardware_tex_interpolation).r;
-
-    // Applying the compensation term for energy preservation
-    // If material.specular == 1, then we want the full energy compensation
-    // If material.specular == 0, then we only have the diffuse lobe and so we
-    // need no energy compensation at all and so we just divide by 1 to basically do nothing
-    float ms_compensation = hippt::lerp(1.0f, multiple_scattering_compensation, material.specular);
-    // Multi scatter compensation is not tabulated to take thin film interference into account.
-    // That's because thin film interference completely modifies the fresnel term and the
-    // tabulated multi scatter compensation only accounts for the usual dielectric fresnel
-    // 
-    // So we're progressively disabling ms compensation on the glossy base as the thin-film 
-    // is more and more pronounced
-    ms_compensation = hippt::lerp(ms_compensation, 1.0f, material.thin_film);
-
-    glossy_base_contribution /= ms_compensation;
-#endif
-
-    return glossy_base_contribution;
+    float glossy_base_energy_compensation = get_principled_energy_compensation_glossy_base(render_data, material, incident_medium_ior, local_view_direction.z);
+    return glossy_base_contribution / glossy_base_energy_compensation;
 }
 
 /**
@@ -924,7 +837,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRende
     float3 local_to_light_direction = world_to_local_frame(T, B, shading_normal, to_light_direction);
     float3 local_half_vector = hippt::normalize(local_view_direction + local_to_light_direction);
 
-    // Rotated ONB for the anisotropic GTR2 evaluation (metallic/glass lobes for example)
+    // Rotated ONB for the anisotropic GGX evaluation (metallic/glass lobes for example)
     float3 TR, BR;
     build_rotated_ONB(shading_normal, TR, BR, material.anisotropy_rotation * M_PI);
     float3 local_view_direction_rotated = world_to_local_frame(TR, BR, shading_normal, view_direction);
@@ -1099,7 +1012,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRen
         // for the rest of the calculations
         normal = -normal;
 
-    // Rotated ONB for the anisotropic GTR2 evaluation
+    // Rotated ONB for the anisotropic GGX evaluation
     float3 TR, BR;
     build_rotated_ONB(normal, TR, BR, material.anisotropy_rotation * M_PI);
     float3 local_view_direction_rotated = world_to_local_frame(TR, BR, normal, view_direction);
@@ -1149,87 +1062,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRen
     // (a few lines above in the code) so that it is in the same hemisphere as the view direction and
     // eval() will then think that we're always outside the surface even though that's not the case
     return principled_bsdf_eval(render_data, material, ray_volume_state, view_direction, shading_normal, output_direction, pdf);
-}
-
-/**
- * On-the-fly integration of the directional albedo of the clearcoat layer
- * (which is basically the whole BSDF since the clearcoat lobe is the topmost lobe of the BSDF)
- * 
- * The directional albedo for the given view direction is returned
- * 
- * This returned directional albedo can then be used to ensure energy conservation & preservation
- * of the BSDF
- */
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_monte_carlo_directional_albedo(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, RayVolumeState& ray_volume_state, const float3& view_direction, float3 shading_normal, float3 geometric_normal, Xorshift32Generator& random_number_generator)
-{
-    ColorRGB32F directional_albedo = ColorRGB32F(0.0f);
-
-    // TODO use fresnel simplifications in there to accelerate integration?
-    // TODO disable some lobes in the integration for faster integration at the cost of error?
-    // TODO only integrate on one color channel instead of 3 since directional albedo is just a float
-
-    SimplifiedRendererMaterial white_material = material;
-    white_material.base_color = ColorRGB32F(1.0f);
-    white_material.absorption_color = ColorRGB32F(1.0f);
-    white_material.coat_medium_absorption = ColorRGB32F(1.0f);
-    white_material.metallic_F82 = ColorRGB32F(1.0f);
-    white_material.metallic_F90 = ColorRGB32F(1.0f);
-    white_material.sheen_color = ColorRGB32F(1.0f);
-    white_material.specular_color = ColorRGB32F(1.0f);
-
-    for (int i = 0; i < material.energy_preservation_monte_carlo_samples; i++)
-    {
-        float pdf;
-        float3 sampled_direction;
-        RayVolumeState ray_volume_state_copy = ray_volume_state;
-        ColorRGB32F bsdf_directional_albedo_sample = principled_bsdf_sample(render_data, white_material, ray_volume_state_copy, view_direction, shading_normal, geometric_normal, sampled_direction, pdf, random_number_generator);
-        if (pdf != 0.0f)
-            // Correct sampled direction
-            // 
-            // Incorrect sampled direction can happen when the GGX sampled direction is below the surface
-            // (can happen because GGX sampling is not 100% perfect) 
-                
-            // abs() of the cosine term here because we may be sampling refractions
-            directional_albedo += bsdf_directional_albedo_sample / pdf * hippt::abs(hippt::dot(sampled_direction, shading_normal));
-    }
-
-    directional_albedo /= material.energy_preservation_monte_carlo_samples;
-    if (directional_albedo.is_black())
-        // No valid samples were found, no compensation could be computed,
-        // returning 1.0f such that dividing by that compensation term does nothing
-        directional_albedo = ColorRGB32F(1.0f);
-        
-    return directional_albedo;
-}
-
-/**
- * Evaluates the BSDF with strong energy conservation & preservation
- */
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval_energy_compensated(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, RayVolumeState& ray_volume_state, const float3& view_direction, float3 shading_normal, float3 geometric_normal, const float3& to_light_direction, float& pdf, Xorshift32Generator& random_number_generator)
-{
-    ColorRGB32F final_color = principled_bsdf_eval(render_data, material, ray_volume_state, view_direction, shading_normal, to_light_direction, pdf);
-
-    ColorRGB32F principled_directional_albedo(1.0f);
-    if (material.enforce_strong_energy_conservation && material.thin_film == 0.0f)
-        // Only computing the compensation if we actually want it for this material
-        principled_directional_albedo = principled_monte_carlo_directional_albedo(render_data, material, ray_volume_state, view_direction, shading_normal, geometric_normal, random_number_generator);
-
-    return final_color / principled_directional_albedo;
-}
-
-/**
- * Samples the BSDF with energy conservation & preservation
- */
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample_energy_compensated(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, RayVolumeState& ray_volume_state, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal, float3& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
-{
-    ColorRGB32F color = principled_bsdf_sample(render_data, material, ray_volume_state, view_direction, shading_normal, geometric_normal, output_direction, pdf, random_number_generator);
-
-    ColorRGB32F clearcoat_directional_albedo(1.0f);
-    if (material.enforce_strong_energy_conservation && material.thin_film == 0.0f)
-        // Only computing the compensation if we actually want it for this material
-        clearcoat_directional_albedo = principled_monte_carlo_directional_albedo(render_data, material, ray_volume_state, view_direction, shading_normal, geometric_normal, random_number_generator);
-
-    return color / clearcoat_directional_albedo;
 }
 
 #endif

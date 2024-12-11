@@ -80,7 +80,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_glass_E_eval(float relative_ior, float 
     if (reflecting)
     {
         HIPRTRenderData render_data;
-        albedo = torrance_sparrow_GTR2_eval<0>(render_data, /* F0 doesn't matter */ ColorRGB32F(42.0f), roughness, 0.0f, ColorRGB32F(F),
+        albedo = torrance_sparrow_GGX_eval<0>(render_data, /* F0 doesn't matter */ ColorRGB32F(42.0f), roughness, 0.0f, ColorRGB32F(F),
                                                local_view_direction, local_to_light_direction, local_half_vector, pdf).r;
 
         // Scaling the PDF by the probability of being here (reflection of the ray and not transmission)
@@ -96,7 +96,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_glass_E_eval(float relative_ior, float 
         float alpha_y;
         SimplifiedRendererMaterial::get_alphas(roughness, 0.0f, alpha_x, alpha_y);
 
-        float D = GTR2_anisotropic(alpha_x, alpha_y, local_half_vector);
+        float D = GGX_anisotropic(alpha_x, alpha_y, local_half_vector);
         float G1_V = G1_Smith(alpha_x, alpha_y, local_view_direction);
         float G1_L = G1_Smith(alpha_x, alpha_y, local_to_light_direction);
         float G2 = G1_V * G1_L;
@@ -129,7 +129,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGX_glass_E_sample(float relative_ior, flo
     float alpha_x;
     float alpha_y;
     SimplifiedRendererMaterial::get_alphas(roughness, /* ignoring anisotropy */ 0.0f, alpha_x, alpha_y);
-    float3 microfacet_normal = GTR2_anisotropic_sample_microfacet(local_view_direction, alpha_x, alpha_y, random_number_generator);
+    float3 microfacet_normal = GGX_anisotropic_sample_microfacet(local_view_direction, alpha_x, alpha_y, random_number_generator);
 
     float F = full_fresnel_dielectric(hippt::dot(local_view_direction, microfacet_normal), relative_ior);
     float rand_1 = random_number_generator();
@@ -179,7 +179,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GGXGlassDirectionalAlbedoBake(HIPRTRenderDa
     out_buffer_inverse[pixel_index] = 0.0f;
 
     float cos_theta_o = 1.0f / (bake_settings.texture_size_cos_theta_o - 1) * x;
-    cos_theta_o = hippt::max(GTR2_DOT_PRODUCTS_CLAMP, cos_theta_o);
+    cos_theta_o = hippt::max(GGX_DOT_PRODUCTS_CLAMP, cos_theta_o);
     cos_theta_o = powf(cos_theta_o, 2.5f);
     float sin_theta_o = sin(acos(cos_theta_o));
 

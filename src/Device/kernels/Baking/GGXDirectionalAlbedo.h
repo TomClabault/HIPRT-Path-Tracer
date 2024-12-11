@@ -52,20 +52,20 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GGXDirectionalAlbedoBake(HIPRTRenderData re
     roughness = hippt::max(roughness, 1.0e-4f);
 
     float cos_theta_o = 1.0f / (bake_settings.texture_size_cos_theta - 1) * x;
-    cos_theta_o = hippt::max(GTR2_DOT_PRODUCTS_CLAMP, cos_theta_o);
+    cos_theta_o = hippt::max(GGX_DOT_PRODUCTS_CLAMP, cos_theta_o);
     float sin_theta_o = sin(acos(cos_theta_o));
 
     float3 local_view_direction = hippt::normalize(make_float3(cos(0.0f) * sin_theta_o, sin(0.0f) * sin_theta_o, cos_theta_o));
 
     for (int sample = 0; sample < bake_settings.integration_sample_count; sample++)
     {
-        float3 sampled_local_to_light_direction = microfacet_GTR2_sample_reflection(roughness, 0.0f, local_view_direction, random_number_generator);
+        float3 sampled_local_to_light_direction = microfacet_GGX_sample_reflection(roughness, 0.0f, local_view_direction, random_number_generator);
         if (sampled_local_to_light_direction.z < 0)
             // Sampled direction below surface
             continue;
 
         float eval_pdf;
-        float directional_albedo = torrance_sparrow_GTR2_eval<0>(HIPRTRenderData(), /* F0 doesn't matter */ ColorRGB32F(0.0f), roughness, 0.0f, /* fresnel */ ColorRGB32F(1.0f), 
+        float directional_albedo = torrance_sparrow_GGX_eval<0>(HIPRTRenderData(), /* F0 doesn't matter */ ColorRGB32F(0.0f), roughness, 0.0f, /* fresnel */ ColorRGB32F(1.0f), 
                                                                  local_view_direction, sampled_local_to_light_direction, hippt::normalize(local_view_direction + sampled_local_to_light_direction), eval_pdf).r;
         directional_albedo /= eval_pdf;
         directional_albedo *= sampled_local_to_light_direction.z;
