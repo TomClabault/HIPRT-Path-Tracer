@@ -867,25 +867,6 @@ void ImGuiObjectsWindow::draw_objects_panel()
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
-			bool changed = false;
-			changed |= ImGui::InputFloat("1.01", &m_renderer->get_render_data().bsdfs_data.correction_1_01, 0.0f, 0.0f, "%.6f");
-			changed |= ImGui::InputFloat("1.02", &m_renderer->get_render_data().bsdfs_data.correction_1_02, 0.0f, 0.0f, "%.6f");
-			changed |= ImGui::InputFloat("1.03", &m_renderer->get_render_data().bsdfs_data.correction_1_03, 0.0f, 0.0f, "%.6f");
-			changed |= ImGui::InputFloat("1.1", &m_renderer->get_render_data().bsdfs_data.correction_1_1, 0.0f, 0.0f, "%.6f");
-			changed |= ImGui::InputFloat("1.2", &m_renderer->get_render_data().bsdfs_data.correction_1_2, 0.0f, 0.0f, "%.6f");
-			changed |= ImGui::InputFloat("1.4", &m_renderer->get_render_data().bsdfs_data.correction_1_4, 0.0f, 0.0f, "%.6f");
-			changed |= ImGui::InputFloat("1.5", &m_renderer->get_render_data().bsdfs_data.correction_1_5, 0.0f, 0.0f, "%.6f");
-			changed |= ImGui::InputFloat("2_0", &m_renderer->get_render_data().bsdfs_data.correction_2_0, 0.0f, 0.0f, "%.6f");
-			changed |= ImGui::InputFloat("2_4", &m_renderer->get_render_data().bsdfs_data.correction_2_4, 0.0f, 0.0f, "%.6f");
-			changed |= ImGui::InputFloat("3_0", &m_renderer->get_render_data().bsdfs_data.correction_3_0, 0.0f, 0.0f, "%.6f");
-
-			if (changed)
-			{
-				m_render_window->set_render_dirty(true);
-
-				std::cout << "[" << m_renderer->get_render_data().bsdfs_data.correction_1_01 << ", " << m_renderer->get_render_data().bsdfs_data.correction_1_02 << ", " << m_renderer->get_render_data().bsdfs_data.correction_1_03 << ", " << m_renderer->get_render_data().bsdfs_data.correction_1_1 << ", " << m_renderer->get_render_data().bsdfs_data.correction_1_2 << ", " << m_renderer->get_render_data().bsdfs_data.correction_1_4 << ", " << m_renderer->get_render_data().bsdfs_data.correction_1_5 << ", " << m_renderer->get_render_data().bsdfs_data.correction_2_0 << ", " << m_renderer->get_render_data().bsdfs_data.correction_2_4 << ", " << m_renderer->get_render_data().bsdfs_data.correction_3_0 << "]" << std::endl;
-			}
-
 			ImGui::TreePop();
 		}
 
