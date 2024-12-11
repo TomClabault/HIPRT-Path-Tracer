@@ -651,51 +651,60 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_specular_layer(const HI
 
         float specular_pdf;
         ColorRGB32F contribution = principled_specular_eval(render_data, material, relative_ior, local_view_direction, local_to_light_direction, local_half_vector, specular_pdf);
-        // Tinting the specular reflection color
-        contribution *= hippt::lerp(ColorRGB32F(1.0f), material.specular_tint * material.specular_color, material.specular);
-        contribution *= specular_weight;
-        contribution *= layers_throughput;
 
-        ColorRGB32F layer_below_attenuation(1.0f);
-        // Only the transmitted portion of the light goes to the layer below
-        // We're using the shading normal here and not the microfacet normal because:
-        // We want the proportion of light that reaches the layer below.
-        // That's given by 1.0f - fresnelReflection.
-        // 
-        // But '1.0f - fresnelReflection' needs to be computed with the shading normal, 
-        // not the microfacet normal i.e. it needs to be 1.0f - Fresnel(dot(N, L)), 
-        // not 1.0f - Fresnel(dot(H, L))
-        // 
-        // By computing 1.0f - Fresnel(dot(H, L)), we're computing the light
-        // that goes through only that one microfacet with the microfacet normal. But light
-        // reaches the layer below through many other microfacets, not just the one with our current
-        // micronormal here (local_half_vector). To compute this correctly, we would actually need
-        // to integrate over the microfacet normals and compute the fresnel transmission portion
-        // (1.0f - Fresnel(dot(H, L))) for each of them and weight that contribution by the
-        // probability given by the normal distribution function for the microfacet normal.
-        // 
-        // We can't do that integration online so we're instead using the shading normal to compute
-        // the transmitted portion of light. That's actually either a good approximation or the
-        // exact solution. That was shown in GDC 2017 [PBR Diffuse Lighting for GGX + Smith Microsurfaces]
-        layer_below_attenuation *= ColorRGB32F(1.0f) - principled_specular_fresnel(material, relative_ior, local_to_light_direction.z);
+        if (hippt::abs(relative_ior - 1.0f) > 1.0e-3f)
+        {
+            // If the relative ior is not 1.0f (in which case the specular layer is just a pass through
+            // and there is no need to compute anything because the contribution is 0.0f and the layer
+            // attenuation is going to be 1.0f i.e. no attenuation, because again, at IOR 1.0f, it's just a
+            // passthrough)
+        
+            // Tinting the specular reflection color
+            contribution *= hippt::lerp(ColorRGB32F(1.0f), material.specular_tint * material.specular_color, material.specular);
+            contribution *= specular_weight;
+            contribution *= layers_throughput;
 
-        // Also, when light reflects off of the layer below the specular layer, some of that reflected light
-        // will hit total internal reflection against the specular/[coat or air] interface. This means that only
-        // the part of light that does not hit total internal reflection actually reaches the viewer.
-        // 
-        // That's why we're computing another fresnel term here to account for that. And additional note:
-        // computing that fresnel with the direction reflected from the base layer or with the viewer direction
-        // is the same, Fresnel is symmetrical. But because we don't have the exact direction reflected from the
-        // base layer, we're using the view direction instead
-        layer_below_attenuation *= ColorRGB32F(1.0f) - principled_specular_fresnel(material, relative_ior, local_view_direction.z);
+            ColorRGB32F layer_below_attenuation(1.0f);
+            // Only the transmitted portion of the light goes to the layer below
+            // We're using the shading normal here and not the microfacet normal because:
+            // We want the proportion of light that reaches the layer below.
+            // That's given by 1.0f - fresnelReflection.
+            // 
+            // But '1.0f - fresnelReflection' needs to be computed with the shading normal, 
+            // not the microfacet normal i.e. it needs to be 1.0f - Fresnel(dot(N, L)), 
+            // not 1.0f - Fresnel(dot(H, L))
+            // 
+            // By computing 1.0f - Fresnel(dot(H, L)), we're computing the light
+            // that goes through only that one microfacet with the microfacet normal. But light
+            // reaches the layer below through many other microfacets, not just the one with our current
+            // micronormal here (local_half_vector). To compute this correctly, we would actually need
+            // to integrate over the microfacet normals and compute the fresnel transmission portion
+            // (1.0f - Fresnel(dot(H, L))) for each of them and weight that contribution by the
+            // probability given by the normal distribution function for the microfacet normal.
+            // 
+            // We can't do that integration online so we're instead using the shading normal to compute
+            // the transmitted portion of light. That's actually either a good approximation or the
+            // exact solution. That was shown in GDC 2017 [PBR Diffuse Lighting for GGX + Smith Microsurfaces]
+            layer_below_attenuation *= ColorRGB32F(1.0f) - principled_specular_fresnel(material, relative_ior, local_to_light_direction.z);
 
-        // If the specular layer has 0 weight, we should not get any light absorption.
-        // But if the specular layer has 1 weight, we should get the full absorption that we
-        // computed in 'layer_below_attenuation' so we're lerping between no absorption
-        // and full absorption based on the material specular weight.
-        layer_below_attenuation = hippt::lerp(ColorRGB32F(1.0f), layer_below_attenuation, material.specular);
+            // Also, when light reflects off of the layer below the specular layer, some of that reflected light
+            // will hit total internal reflection against the specular/[coat or air] interface. This means that only
+            // the part of light that does not hit total internal reflection actually reaches the viewer.
+            // 
+            // That's why we're computing another fresnel term here to account for that. And additional note:
+            // computing that fresnel with the direction reflected from the base layer or with the viewer direction
+            // is the same, Fresnel is symmetrical. But because we don't have the exact direction reflected from the
+            // base layer, we're using the view direction instead
+            layer_below_attenuation *= ColorRGB32F(1.0f) - principled_specular_fresnel(material, relative_ior, local_view_direction.z);
 
-        layers_throughput *= layer_below_attenuation;
+            // If the specular layer has 0 weight, we should not get any light absorption.
+            // But if the specular layer has 1 weight, we should get the full absorption that we
+            // computed in 'layer_below_attenuation' so we're lerping between no absorption
+            // and full absorption based on the material specular weight.
+            layer_below_attenuation = hippt::lerp(ColorRGB32F(1.0f), layer_below_attenuation, material.specular);
+
+            layers_throughput *= layer_below_attenuation;
+        }
 
         out_cumulative_pdf += specular_pdf * specular_proba;
 
@@ -745,17 +754,18 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_glossy_base(const HIPRT
 #if PrincipledBSDFGGXUseMultipleScattering == KERNEL_OPTION_TRUE
     int3 texture_dims = make_int3(GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_COS_THETA_O, GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_ROUGHNESS, GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR);
 
-    if (hippt::abs(material.ior / incident_medium_ior - 1.0f) < 1.0e-3f)
+    float relative_ior = principled_specular_relative_ior(material, incident_medium_ior);
+    if (hippt::abs(relative_ior - 1.0f) < 1.0e-3f)
         // If the relative ior is very close to 1.0f,
-        // adding some offset to avoid singularities which cause
+        // adding some offset to avoid singularities at 1.0f which cause
         // fireflies
-        incident_medium_ior += 1.0e-3f;
+        relative_ior += 1.0e-3f;
 
     // We're storing cos_theta_o^2.5 in the LUT so we're retrieving with
     // root 2.5
     float view_dir_remapped = pow(local_view_direction.z, 1.0f / 2.5f);
     // sqrt(sqrt(F0)) here because we're storing F0^4 in the LUT
-    float F0_remapped = sqrt(sqrt(F0_from_eta(material.ior, incident_medium_ior)));
+    float F0_remapped = sqrt(sqrt(F0_from_eta_t_and_relative(material.ior, relative_ior)));
 
     float3 uvw = make_float3(view_dir_remapped, material.roughness, F0_remapped);
     float multiple_scattering_compensation = sample_texture_3D_rgb_32bits(render_data.bsdfs_data.glossy_dielectric_Ess, texture_dims, uvw, render_data.bsdfs_data.use_hardware_tex_interpolation).r;
@@ -971,9 +981,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRende
                                              incident_medium_ior, diffuse_weight * !refracting, specular_weight * !refracting, diffuse_proba, specular_proba, 
                                              layers_throughput, pdf);
 
-    /*if (render_data.bsdfs_data.clearcoat_compensation_approximation)
-        final_color /= clearcoat_compensation_approximation();*/
-
+//    if (render_data.bsdfs_data.clearcoat_compensation_approximation)
+//        final_color /= clearcoat_compensation_approximation();
+//
 //#if PrincipledBSDFGGXUseMultipleScattering == KERNEL_OPTION_TRUE
 //    int3 texture_dims = make_int3(GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_COS_THETA_O, GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_ROUGHNESS, GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR);
 //

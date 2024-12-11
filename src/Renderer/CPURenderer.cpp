@@ -219,7 +219,7 @@ void CPURenderer::set_envmap(Image32Bit& envmap_image)
     m_render_data.world_settings.envmap = &envmap_image;
     m_render_data.world_settings.envmap_width = envmap_image.width;
     m_render_data.world_settings.envmap_height = envmap_image.height;
-    m_render_data.world_settings.ambient_light_type = AmbientLightType::ENVMAP;
+    m_render_data.world_settings.ambient_light_type = AmbientLightType::UNIFORM;
 
     if (EnvmapSamplingStrategy == ESS_BINARY_SEARCH)
         m_render_data.world_settings.envmap_cdf = m_envmap_cdf.data();
