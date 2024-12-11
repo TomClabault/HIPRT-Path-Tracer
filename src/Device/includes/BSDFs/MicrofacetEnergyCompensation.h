@@ -84,90 +84,578 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F get_GGX_energy_compensation_conductor
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_glass_energy_conservation_get_correction_exponent(const HIPRTRenderData& render_data, float roughness, float relative_eta)
 {
-    float exponent_correction = 2.5f;
     if (hippt::is_zero(roughness) || hippt::abs(1.0f - relative_eta) < 1.0e-3f)
-        // No correction for these
-        return exponent_correction;
+        // No correction for these, returning the original 2.5f that is used in the LUT
+        return 2.5f;
 
-    /*if (relative_eta <= 1.01f)
-        exponent_correction = 2.509375f;
-    else if (relative_eta <= 1.02f)
-        exponent_correction = 2.53f;
-    else if (relative_eta <= 1.03f)
-        exponent_correction = 2.575f;
-    else if (relative_eta <= 1.1f)
-        exponent_correction = 2.68f;
-    else if (relative_eta <= 1.2f)
-        exponent_correction = 2.68f;
-    else if (relative_eta <= 1.4f)
-        exponent_correction = 2.68f;
-    else if (relative_eta <= 1.5f)
-        exponent_correction = 2.68f;
-    else if (relative_eta <= 2.0f)
-        exponent_correction = 2.68f;
-    else if (relative_eta <= 2.4f)
-        exponent_correction = 2.68f;
-    else if (relative_eta <= 3.0f)
-        exponent_correction = 2.68f;
-    else
-        exponent_correction = 2.8f;
+	/*if (hippt::abs(relative_eta - 1.01f) < 1.0e-3f)
+	    return render_data.bsdfs_data.correction_1_01;
+	else if (hippt::abs(relative_eta - 1.02f) < 1.0e-3f)
+	    return render_data.bsdfs_data.correction_1_02;
+	else if (hippt::abs(relative_eta - 1.03f) < 1.0e-3f)
+	    return render_data.bsdfs_data.correction_1_03;
+	else if (hippt::abs(relative_eta - 1.1f) < 1.0e-3f)
+	    return render_data.bsdfs_data.correction_1_1;
+	else if (hippt::abs(relative_eta - 1.2f) < 1.0e-3f)
+	    return render_data.bsdfs_data.correction_1_2;
+	else if (hippt::abs(relative_eta - 1.4f) < 1.0e-3f)
+	    return render_data.bsdfs_data.correction_1_4;
+	else if (hippt::abs(relative_eta - 1.5f) < 1.0e-3f)
+	    return render_data.bsdfs_data.correction_1_5;
+	else if (hippt::abs(relative_eta - 2.0f) < 1.0e-3f)
+	    return render_data.bsdfs_data.correction_2_0;
+	else if (hippt::abs(relative_eta - 2.4f) < 1.0e-3f)
+	    return render_data.bsdfs_data.correction_2_4;
+	else
+	    return render_data.bsdfs_data.correction_3_0;*/
 
-    return exponent_correction;*/
+	float lower_relative_eta_bound;
+	float lower_correction;
+	if (relative_eta > 1.01f && relative_eta <= 1.02f)
+	{
+		lower_relative_eta_bound = 1.01f;
 
-    if (roughness > 0.0f && roughness <= 0.5f)
-    {
-        if (relative_eta <= 1.01f)
-            exponent_correction = 2.509375f;
-        else if (relative_eta <= 1.03f)
-            exponent_correction = 2.53f;
-        else if (relative_eta <= 1.1f)
-            exponent_correction = 2.575f;
-        else if (relative_eta <= 1.3f)
-            exponent_correction = 2.68f;
-        else if (relative_eta <= 1.5f)
-            exponent_correction = 2.75f;
-        else
-            exponent_correction = 2.8f;
-    }
-    else if (roughness >= 0.5f)
-    {
-        float correction_rough_0_5;
-        float correction_rough_1_0;
+		if (roughness <= 0.0f)
+			lower_correction = 2.5f;
+		else if (roughness <= 0.1f)
+			lower_correction = 2.5f;
+		else if (roughness <= 0.2f)
+			lower_correction = hippt::lerp(2.5f, 2.3f, (roughness - 0.1f) / 0.1f);
+		else if (roughness <= 0.3f)
+			lower_correction = hippt::lerp(2.3f, 2.4f, (roughness - 0.2f) / 0.1f);
+		else if (roughness <= 0.4f)
+			lower_correction = hippt::lerp(2.4f, 2.45f, (roughness - 0.3f) / 0.1f);
+		else if (roughness <= 0.5f)
+			lower_correction = hippt::lerp(2.45f, 2.4665f, (roughness - 0.4f) / 0.1f);
+		else if (roughness <= 0.6f)
+			lower_correction = hippt::lerp(2.4665f, 2.52f, (roughness - 0.5f) / 0.1f);
+		else if (roughness <= 0.7f)
+			lower_correction = hippt::lerp(2.52f, 2.55f, (roughness - 0.6f) / 0.1f);
+		else if (roughness <= 0.8f)
+			lower_correction = 2.55f;
+		else if (roughness <= 0.9f)
+			lower_correction = hippt::lerp(2.55f, 2.585f, (roughness - 0.8f) / 0.1f);
+		else if (roughness <= 1.0f)
+			lower_correction = hippt::lerp(2.585f, 2.5f, (roughness - 0.9f) / 0.1f);
+	}
+	else if (relative_eta > 1.02f && relative_eta <= 1.03f)
+	{
+		lower_relative_eta_bound = 1.02f;
 
-        if (relative_eta <= 1.01f)
-            correction_rough_0_5 = render_data.bsdfs_data.correction_1_01;
-        else if (relative_eta <= 1.03f)
-            correction_rough_0_5 = render_data.bsdfs_data.correction_1_03;
-        else if (relative_eta <= 1.1f)
-            correction_rough_0_5 = render_data.bsdfs_data.correction_1_1;
-        else if (relative_eta <= 1.3f)
-            correction_rough_0_5 = render_data.bsdfs_data.correction_1_3;
-        else if (relative_eta <= 1.5f)
-            correction_rough_0_5 = render_data.bsdfs_data.correction_1_5;
-        else if (relative_eta <= 2.0f)
-            correction_rough_0_5 = render_data.bsdfs_data.correction_2_0;
-        else
-            correction_rough_0_5 = render_data.bsdfs_data.correction_other;
+		if (roughness <= 0.0f)
+			lower_correction = 2.5f;
+		else if (roughness <= 0.1f)
+			lower_correction = 2.5f;
+		else if (roughness <= 0.2f)
+			lower_correction = hippt::lerp(2.5f, 2.3f, (roughness - 0.1f) / 0.1f);
+		else if (roughness <= 0.3f)
+			lower_correction = hippt::lerp(2.3f, 2.4f, (roughness - 0.2f) / 0.1f);
+		else if (roughness <= 0.4f)
+			lower_correction = hippt::lerp(2.4f, 2.475f, (roughness - 0.3f) / 0.1f);
+		else if (roughness <= 0.5f)
+			lower_correction = hippt::lerp(2.475f, 2.51f, (roughness - 0.4f) / 0.1f);
+		else if (roughness <= 0.6f)
+			lower_correction = hippt::lerp(2.51f, 2.54f, (roughness - 0.5f) / 0.1f);
+		else if (roughness <= 0.7f)
+			lower_correction = hippt::lerp(2.54f, 2.565f, (roughness - 0.6f) / 0.1f);
+		else if (roughness <= 0.8f)
+			lower_correction = hippt::lerp(2.565f, 2.57f, (roughness - 0.7f) / 0.1f);
+		else if (roughness <= 0.9f)
+			lower_correction = hippt::lerp(2.57f, 2.59f, (roughness - 0.8f) / 0.1f);
+		else if (roughness <= 1.0f)
+			lower_correction = hippt::lerp(2.59f, 2.5f, (roughness - 0.9f) / 0.1f);
+	}
+	else if (relative_eta > 1.03f && relative_eta <= 1.1f)
+	{
+		lower_relative_eta_bound = 1.03f;
 
-        if (relative_eta <= 1.01f)
-            correction_rough_1_0 = 2.509375f;
-        else if (relative_eta <= 1.03f)
-            correction_rough_1_0 = 2.5f;
-        else if (relative_eta <= 1.1f)
-            correction_rough_1_0 = 2.5225f;
-        else if (relative_eta <= 1.3f)
-            correction_rough_1_0 = 2.545f;
-        else if (relative_eta <= 1.5f)
-            correction_rough_1_0 = 2.59f;
-        else if (relative_eta <= 2.0f)
-            correction_rough_1_0 = 2.8f;
-        else
-            correction_rough_1_0 = 3.0f;
+		if (roughness <= 0.0f)
+			lower_correction = 2.5f;
+		else if (roughness <= 0.1f)
+			lower_correction = 2.5f;
+		else if (roughness <= 0.2f)
+			lower_correction = hippt::lerp(2.5f, 2.3f, (roughness - 0.1f) / 0.1f);
+		else if (roughness <= 0.3f)
+			lower_correction = hippt::lerp(2.3f, 2.4f, (roughness - 0.2f) / 0.1f);
+		else if (roughness <= 0.4f)
+			lower_correction = hippt::lerp(2.4f, 2.475f, (roughness - 0.3f) / 0.1f);
+		else if (roughness <= 0.5f)
+			lower_correction = hippt::lerp(2.475f, 2.51f, (roughness - 0.4f) / 0.1f);
+		else if (roughness <= 0.6f)
+			lower_correction = hippt::lerp(2.51f, 2.544f, (roughness - 0.5f) / 0.1f);
+		else if (roughness <= 0.7f)
+			lower_correction = hippt::lerp(2.544f, 2.565f, (roughness - 0.6f) / 0.1f);
+		else if (roughness <= 0.8f)
+			lower_correction = hippt::lerp(2.565f, 2.58f, (roughness - 0.7f) / 0.1f);
+		else if (roughness <= 0.9f)
+			lower_correction = hippt::lerp(2.58f, 2.6f, (roughness - 0.8f) / 0.1f);
+		else if (roughness <= 1.0f)
+			lower_correction = hippt::lerp(2.6f, 2.5f, (roughness - 0.9f) / 0.1f);
+	}
+	else if (relative_eta > 1.1f && relative_eta <= 1.2f)
+	{
+		lower_relative_eta_bound = 1.1f;
 
-        exponent_correction = hippt::lerp(correction_rough_0_5, correction_rough_1_0, (roughness - 0.5f) * 2.0f * (roughness - 0.5f) * 2.0f);
-    }
+		if (roughness <= 0.0f)
+			lower_correction = 2.5f;
+		else if (roughness <= 0.1f)
+			lower_correction = 2.5f;
+		else if (roughness <= 0.2f)
+			lower_correction = hippt::lerp(2.5f, 2.3f, (roughness - 0.1f) / 0.1f);
+		else if (roughness <= 0.3f)
+			lower_correction = hippt::lerp(2.3f, 2.38f, (roughness - 0.2f) / 0.1f);
+		else if (roughness <= 0.4f)
+			lower_correction = hippt::lerp(2.38f, 2.475f, (roughness - 0.3f) / 0.1f);
+		else if (roughness <= 0.5f)
+			lower_correction = hippt::lerp(2.475f, 2.54f, (roughness - 0.4f) / 0.1f);
+		else if (roughness <= 0.6f)
+			lower_correction = hippt::lerp(2.54f, 2.575f, (roughness - 0.5f) / 0.1f);
+		else if (roughness <= 0.7f)
+			lower_correction = hippt::lerp(2.575f, 2.61f, (roughness - 0.6f) / 0.1f);
+		else if (roughness <= 0.8f)
+			lower_correction = hippt::lerp(2.61f, 2.63f, (roughness - 0.7f) / 0.1f);
+		else if (roughness <= 0.9f)
+			lower_correction = hippt::lerp(2.63f, 2.6f, (roughness - 0.8f) / 0.1f);
+		else if (roughness <= 1.0f)
+			lower_correction = hippt::lerp(2.6f, 2.5f, (roughness - 0.9f) / 0.1f);
+	}
+	else if (relative_eta > 1.2f && relative_eta <= 1.4f)
+	{
+		lower_relative_eta_bound = 1.2f;
 
-    return exponent_correction;
+		if (roughness <= 0.0f)
+			lower_correction = 2.5f;
+		else if (roughness <= 0.1f)
+			lower_correction = hippt::lerp(2.5f, 1.8f, (roughness - 0.0f) / 0.1f);
+		else if (roughness <= 0.2f)
+			lower_correction = hippt::lerp(1.8f, 2.3f, (roughness - 0.1f) / 0.1f);
+		else if (roughness <= 0.3f)
+			lower_correction = hippt::lerp(2.3f, 2.38f, (roughness - 0.2f) / 0.1f);
+		else if (roughness <= 0.4f)
+			lower_correction = hippt::lerp(2.38f, 2.475f, (roughness - 0.3f) / 0.1f);
+		else if (roughness <= 0.5f)
+			lower_correction = hippt::lerp(2.475f, 2.55f, (roughness - 0.4f) / 0.1f);
+		else if (roughness <= 0.6f)
+			lower_correction = hippt::lerp(2.55f, 2.65f, (roughness - 0.5f) / 0.1f);
+		else if (roughness <= 0.7f)
+			lower_correction = hippt::lerp(2.65f, 2.675f, (roughness - 0.6f) / 0.1f);
+		else if (roughness <= 0.8f)
+			lower_correction = hippt::lerp(2.675f, 2.7f, (roughness - 0.7f) / 0.1f);
+		else if (roughness <= 0.9f)
+			lower_correction = hippt::lerp(2.7f, 2.675f, (roughness - 0.8f) / 0.1f);
+		else if (roughness <= 1.0f)
+			lower_correction = hippt::lerp(2.675f, 2.5f, (roughness - 0.9f) / 0.1f);
+	}
+	else if (relative_eta > 1.4f && relative_eta <= 1.5f)
+	{
+		lower_relative_eta_bound = 1.4f;
+
+		if (roughness <= 0.0f)
+			lower_correction = 2.5f;
+		else if (roughness <= 0.1f)
+			lower_correction = hippt::lerp(2.5f, 1.8f, (roughness - 0.0f) / 0.1f);
+		else if (roughness <= 0.2f)
+			lower_correction = hippt::lerp(1.8f, 2.3f, (roughness - 0.1f) / 0.1f);
+		else if (roughness <= 0.3f)
+			lower_correction = hippt::lerp(2.3f, 2.38f, (roughness - 0.2f) / 0.1f);
+		else if (roughness <= 0.4f)
+			lower_correction = hippt::lerp(2.38f, 2.475f, (roughness - 0.3f) / 0.1f);
+		else if (roughness <= 0.5f)
+			lower_correction = hippt::lerp(2.475f, 2.7f, (roughness - 0.4f) / 0.1f);
+		else if (roughness <= 0.6f)
+			lower_correction = hippt::lerp(2.7f, 2.875f, (roughness - 0.5f) / 0.1f);
+		else if (roughness <= 0.7f)
+			lower_correction = hippt::lerp(2.875f, 2.925f, (roughness - 0.6f) / 0.1f);
+		else if (roughness <= 0.8f)
+			lower_correction = hippt::lerp(2.925f, 2.95f, (roughness - 0.7f) / 0.1f);
+		else if (roughness <= 0.9f)
+			lower_correction = hippt::lerp(2.95f, 2.8f, (roughness - 0.8f) / 0.1f);
+		else if (roughness <= 1.0f)
+			lower_correction = hippt::lerp(2.8f, 2.55f, (roughness - 0.9f) / 0.1f);
+	}
+	else if (relative_eta > 1.5f && relative_eta <= 2.0f)
+	{
+		lower_relative_eta_bound = 1.5f;
+
+		if (roughness <= 0.0f)
+			lower_correction = 2.5f;
+		else if (roughness <= 0.1f)
+			lower_correction = hippt::lerp(2.5f, 1.6f, (roughness - 0.0f) / 0.1f);
+		else if (roughness <= 0.2f)
+			lower_correction = hippt::lerp(1.6f, 2.3f, (roughness - 0.1f) / 0.1f);
+		else if (roughness <= 0.3f)
+			lower_correction = hippt::lerp(2.3f, 2.38f, (roughness - 0.2f) / 0.1f);
+		else if (roughness <= 0.4f)
+			lower_correction = hippt::lerp(2.38f, 2.475f, (roughness - 0.3f) / 0.1f);
+		else if (roughness <= 0.5f)
+			lower_correction = hippt::lerp(2.475f, 2.7f, (roughness - 0.4f) / 0.1f);
+		else if (roughness <= 0.6f)
+			lower_correction = hippt::lerp(2.7f, 2.95f, (roughness - 0.5f) / 0.1f);
+		else if (roughness <= 0.7f)
+			lower_correction = hippt::lerp(2.95f, 3.1f, (roughness - 0.6f) / 0.1f);
+		else if (roughness <= 0.8f)
+			lower_correction = 3.1f;
+		else if (roughness <= 0.9f)
+			lower_correction = hippt::lerp(3.1f, 3.05f, (roughness - 0.8f) / 0.1f);
+		else if (roughness <= 1.0f)
+			lower_correction = hippt::lerp(3.05f, 2.57f, (roughness - 0.9f) / 0.1f);
+	}
+	else if (relative_eta > 2.0f && relative_eta <= 2.4f)
+	{
+		lower_relative_eta_bound = 2.0f;
+
+		if (roughness <= 0.0f)
+			lower_correction = 2.5f;
+		else if (roughness <= 0.1f)
+			lower_correction = hippt::lerp(2.5f, 1.5f, (roughness - 0.0f) / 0.1f);
+		else if (roughness <= 0.2f)
+			lower_correction = hippt::lerp(1.5f, 2.2f, (roughness - 0.1f) / 0.1f);
+		else if (roughness <= 0.3f)
+			lower_correction = hippt::lerp(2.2f, 2.38f, (roughness - 0.2f) / 0.1f);
+		else if (roughness <= 0.4f)
+			lower_correction = hippt::lerp(2.38f, 2.475f, (roughness - 0.3f) / 0.1f);
+		else if (roughness <= 0.5f)
+			lower_correction = hippt::lerp(2.475f, 2.75f, (roughness - 0.4f) / 0.1f);
+		else if (roughness <= 0.6f)
+			lower_correction = hippt::lerp(2.75f, 3.5f, (roughness - 0.5f) / 0.1f);
+		else if (roughness <= 0.7f)
+			lower_correction = hippt::lerp(3.5f, 4.85f, (roughness - 0.6f) / 0.1f);
+		else if (roughness <= 0.8f)
+			lower_correction = hippt::lerp(4.85f, 6.0f, (roughness - 0.7f) / 0.1f);
+		else if (roughness <= 0.9f)
+			lower_correction = hippt::lerp(6.0f, 7.0f, (roughness - 0.8f) / 0.1f);
+		else if (roughness <= 1.0f)
+			lower_correction = hippt::lerp(7.0f, 2.57f, (roughness - 0.9f) / 0.1f);
+	}
+	else if (relative_eta > 2.4f && relative_eta <= 3.0f)
+	{
+		lower_relative_eta_bound = 2.4f;
+
+		if (roughness <= 0.0f)
+			lower_correction = 2.5f;
+		else if (roughness <= 0.1f)
+			lower_correction = hippt::lerp(2.5f, 1.5f, (roughness - 0.0f) / 0.1f);
+		else if (roughness <= 0.2f)
+			lower_correction = hippt::lerp(1.5f, 2.0f, (roughness - 0.1f) / 0.1f);
+		else if (roughness <= 0.3f)
+			lower_correction = hippt::lerp(2.0f, 2.44f, (roughness - 0.2f) / 0.1f);
+		else if (roughness <= 0.4f)
+			lower_correction = hippt::lerp(2.44f, 2.475f, (roughness - 0.3f) / 0.1f);
+		else if (roughness <= 0.5f)
+			lower_correction = hippt::lerp(2.475f, 3.0f, (roughness - 0.4f) / 0.1f);
+		else if (roughness <= 0.6f)
+			lower_correction = hippt::lerp(3.0f, 3.8f, (roughness - 0.5f) / 0.1f);
+		else if (roughness <= 0.7f)
+			lower_correction = hippt::lerp(3.8f, 7.0f, (roughness - 0.6f) / 0.1f);
+		else if (roughness <= 0.8f)
+			lower_correction = hippt::lerp(7.0f, 10.0f, (roughness - 0.7f) / 0.1f);
+		else if (roughness <= 0.9f)
+			lower_correction = hippt::lerp(10.0f, 12.0f, (roughness - 0.8f) / 0.1f);
+		else if (roughness <= 1.0f)
+			lower_correction = hippt::lerp(12.0f, 3.9f, (roughness - 0.9f) / 0.1f);
+	}
+	else if (relative_eta > 3.0f)
+	{
+		lower_relative_eta_bound = 3.0f;
+
+		if (roughness <= 0.0f)
+			lower_correction = 2.5f;
+		else if (roughness <= 0.1f)
+			lower_correction = hippt::lerp(2.5f, 1.5f, (roughness - 0.0f) / 0.1f);
+		else if (roughness <= 0.2f)
+			lower_correction = hippt::lerp(1.5f, 1.7f, (roughness - 0.1f) / 0.1f);
+		else if (roughness <= 0.3f)
+			lower_correction = hippt::lerp(1.7f, 2.38f, (roughness - 0.2f) / 0.1f);
+		else if (roughness <= 0.4f)
+			lower_correction = hippt::lerp(2.38f, 2.475f, (roughness - 0.3f) / 0.1f);
+		else if (roughness <= 0.5f)
+			lower_correction = hippt::lerp(2.475f, 2.9f, (roughness - 0.4f) / 0.1f);
+		else if (roughness <= 0.6f)
+			lower_correction = hippt::lerp(2.9f, 3.8f, (roughness - 0.5f) / 0.1f);
+		else if (roughness <= 0.7f)
+			lower_correction = hippt::lerp(3.8f, 7.5f, (roughness - 0.6f) / 0.1f);
+		else if (roughness <= 0.8f)
+			lower_correction = hippt::lerp(7.5f, 12.0f, (roughness - 0.7f) / 0.1f);
+		else if (roughness <= 0.9f)
+			lower_correction = hippt::lerp(12.0f, 13.75f, (roughness - 0.8f) / 0.1f);
+		else if (roughness <= 1.0f)
+			lower_correction = hippt::lerp(13.75f, 2.5f, (roughness - 0.9f) / 0.1f);
+	}
+
+	float higher_relative_eta_bound;
+	float higher_correction;
+	if (relative_eta <= 1.01f)
+	{
+		higher_relative_eta_bound = 1.01f;
+
+		if (roughness <= 0.0f)
+			higher_correction = 2.5f;
+		else if (roughness <= 0.1f)
+			higher_correction = 2.5f;
+		else if (roughness <= 0.2f)
+			higher_correction = hippt::lerp(2.5f, 2.3f, (roughness - 0.1f) / 0.1f);
+		else if (roughness <= 0.3f)
+			higher_correction = hippt::lerp(2.3f, 2.4f, (roughness - 0.2f) / 0.1f);
+		else if (roughness <= 0.4f)
+			higher_correction = hippt::lerp(2.4f, 2.45f, (roughness - 0.3f) / 0.1f);
+		else if (roughness <= 0.5f)
+			higher_correction = hippt::lerp(2.45f, 2.4665f, (roughness - 0.4f) / 0.1f);
+		else if (roughness <= 0.6f)
+			higher_correction = hippt::lerp(2.4665f, 2.52f, (roughness - 0.5f) / 0.1f);
+		else if (roughness <= 0.7f)
+			higher_correction = hippt::lerp(2.52f, 2.55f, (roughness - 0.6f) / 0.1f);
+		else if (roughness <= 0.8f)
+			higher_correction = 2.55f;
+		else if (roughness <= 0.9f)
+			higher_correction = hippt::lerp(2.55f, 2.585f, (roughness - 0.8f) / 0.1f);
+		else if (roughness <= 1.0f)
+			higher_correction = hippt::lerp(2.585f, 2.5f, (roughness - 0.9f) / 0.1f);
+	}
+	else if (relative_eta <= 1.02f)
+	{
+		higher_relative_eta_bound = 1.02f;
+
+		if (roughness <= 0.0f)
+			higher_correction = 2.5f;
+		else if (roughness <= 0.1f)
+			higher_correction = 2.5f;
+		else if (roughness <= 0.2f)
+			higher_correction = hippt::lerp(2.5f, 2.3f, (roughness - 0.1f) / 0.1f);
+		else if (roughness <= 0.3f)
+			higher_correction = hippt::lerp(2.3f, 2.4f, (roughness - 0.2f) / 0.1f);
+		else if (roughness <= 0.4f)
+			higher_correction = hippt::lerp(2.4f, 2.475f, (roughness - 0.3f) / 0.1f);
+		else if (roughness <= 0.5f)
+			higher_correction = hippt::lerp(2.475f, 2.51f, (roughness - 0.4f) / 0.1f);
+		else if (roughness <= 0.6f)
+			higher_correction = hippt::lerp(2.51f, 2.54f, (roughness - 0.5f) / 0.1f);
+		else if (roughness <= 0.7f)
+			higher_correction = hippt::lerp(2.54f, 2.565f, (roughness - 0.6f) / 0.1f);
+		else if (roughness <= 0.8f)
+			higher_correction = hippt::lerp(2.565f, 2.57f, (roughness - 0.7f) / 0.1f);
+		else if (roughness <= 0.9f)
+			higher_correction = hippt::lerp(2.57f, 2.59f, (roughness - 0.8f) / 0.1f);
+		else if (roughness <= 1.0f)
+			higher_correction = hippt::lerp(2.59f, 2.5f, (roughness - 0.9f) / 0.1f);
+	}
+	else if (relative_eta <= 1.03f)
+	{
+		higher_relative_eta_bound = 1.03f;
+
+		if (roughness <= 0.0f)
+			higher_correction = 2.5f;
+		else if (roughness <= 0.1f)
+			higher_correction = 2.5f;
+		else if (roughness <= 0.2f)
+			higher_correction = hippt::lerp(2.5f, 2.3f, (roughness - 0.1f) / 0.1f);
+		else if (roughness <= 0.3f)
+			higher_correction = hippt::lerp(2.3f, 2.4f, (roughness - 0.2f) / 0.1f);
+		else if (roughness <= 0.4f)
+			higher_correction = hippt::lerp(2.4f, 2.475f, (roughness - 0.3f) / 0.1f);
+		else if (roughness <= 0.5f)
+			higher_correction = hippt::lerp(2.475f, 2.51f, (roughness - 0.4f) / 0.1f);
+		else if (roughness <= 0.6f)
+			higher_correction = hippt::lerp(2.51f, 2.544f, (roughness - 0.5f) / 0.1f);
+		else if (roughness <= 0.7f)
+			higher_correction = hippt::lerp(2.544f, 2.565f, (roughness - 0.6f) / 0.1f);
+		else if (roughness <= 0.8f)
+			higher_correction = hippt::lerp(2.565f, 2.58f, (roughness - 0.7f) / 0.1f);
+		else if (roughness <= 0.9f)
+			higher_correction = hippt::lerp(2.58f, 2.6f, (roughness - 0.8f) / 0.1f);
+		else if (roughness <= 1.0f)
+			higher_correction = hippt::lerp(2.6f, 2.5f, (roughness - 0.9f) / 0.1f);
+	}
+	else if (relative_eta <= 1.1f)
+	{
+		higher_relative_eta_bound = 1.1f;
+
+		if (roughness <= 0.0f)
+			higher_correction = 2.5f;
+		else if (roughness <= 0.1f)
+			higher_correction = 2.5f;
+		else if (roughness <= 0.2f)
+			higher_correction = hippt::lerp(2.5f, 2.3f, (roughness - 0.1f) / 0.1f);
+		else if (roughness <= 0.3f)
+			higher_correction = hippt::lerp(2.3f, 2.38f, (roughness - 0.2f) / 0.1f);
+		else if (roughness <= 0.4f)
+			higher_correction = hippt::lerp(2.38f, 2.475f, (roughness - 0.3f) / 0.1f);
+		else if (roughness <= 0.5f)
+			higher_correction = hippt::lerp(2.475f, 2.54f, (roughness - 0.4f) / 0.1f);
+		else if (roughness <= 0.6f)
+			higher_correction = hippt::lerp(2.54f, 2.575f, (roughness - 0.5f) / 0.1f);
+		else if (roughness <= 0.7f)
+			higher_correction = hippt::lerp(2.575f, 2.61f, (roughness - 0.6f) / 0.1f);
+		else if (roughness <= 0.8f)
+			higher_correction = hippt::lerp(2.61f, 2.63f, (roughness - 0.7f) / 0.1f);
+		else if (roughness <= 0.9f)
+			higher_correction = hippt::lerp(2.63f, 2.6f, (roughness - 0.8f) / 0.1f);
+		else if (roughness <= 1.0f)
+			higher_correction = hippt::lerp(2.6f, 2.5f, (roughness - 0.9f) / 0.1f);
+	}
+	else if (relative_eta <= 1.2f)
+	{
+		higher_relative_eta_bound = 1.2f;
+
+		if (roughness <= 0.0f)
+			higher_correction = 2.5f;
+		else if (roughness <= 0.1f)
+			higher_correction = hippt::lerp(2.5f, 1.8f, (roughness - 0.0f) / 0.1f);
+		else if (roughness <= 0.2f)
+			higher_correction = hippt::lerp(1.8f, 2.3f, (roughness - 0.1f) / 0.1f);
+		else if (roughness <= 0.3f)
+			higher_correction = hippt::lerp(2.3f, 2.38f, (roughness - 0.2f) / 0.1f);
+		else if (roughness <= 0.4f)
+			higher_correction = hippt::lerp(2.38f, 2.475f, (roughness - 0.3f) / 0.1f);
+		else if (roughness <= 0.5f)
+			higher_correction = hippt::lerp(2.475f, 2.55f, (roughness - 0.4f) / 0.1f);
+		else if (roughness <= 0.6f)
+			higher_correction = hippt::lerp(2.55f, 2.65f, (roughness - 0.5f) / 0.1f);
+		else if (roughness <= 0.7f)
+			higher_correction = hippt::lerp(2.65f, 2.675f, (roughness - 0.6f) / 0.1f);
+		else if (roughness <= 0.8f)
+			higher_correction = hippt::lerp(2.675f, 2.7f, (roughness - 0.7f) / 0.1f);
+		else if (roughness <= 0.9f)
+			higher_correction = hippt::lerp(2.7f, 2.675f, (roughness - 0.8f) / 0.1f);
+		else if (roughness <= 1.0f)
+			higher_correction = hippt::lerp(2.675f, 2.5f, (roughness - 0.9f) / 0.1f);
+	}
+	else if (relative_eta <= 1.4f)
+	{
+		higher_relative_eta_bound = 1.4f;
+
+		if (roughness <= 0.0f)
+			higher_correction = 2.5f;
+		else if (roughness <= 0.1f)
+			higher_correction = hippt::lerp(2.5f, 1.8f, (roughness - 0.0f) / 0.1f);
+		else if (roughness <= 0.2f)
+			higher_correction = hippt::lerp(1.8f, 2.3f, (roughness - 0.1f) / 0.1f);
+		else if (roughness <= 0.3f)
+			higher_correction = hippt::lerp(2.3f, 2.38f, (roughness - 0.2f) / 0.1f);
+		else if (roughness <= 0.4f)
+			higher_correction = hippt::lerp(2.38f, 2.475f, (roughness - 0.3f) / 0.1f);
+		else if (roughness <= 0.5f)
+			higher_correction = hippt::lerp(2.475f, 2.7f, (roughness - 0.4f) / 0.1f);
+		else if (roughness <= 0.6f)
+			higher_correction = hippt::lerp(2.7f, 2.875f, (roughness - 0.5f) / 0.1f);
+		else if (roughness <= 0.7f)
+			higher_correction = hippt::lerp(2.875f, 2.925f, (roughness - 0.6f) / 0.1f);
+		else if (roughness <= 0.8f)
+			higher_correction = hippt::lerp(2.925f, 2.95f, (roughness - 0.7f) / 0.1f);
+		else if (roughness <= 0.9f)
+			higher_correction = hippt::lerp(2.95f, 2.8f, (roughness - 0.8f) / 0.1f);
+		else if (roughness <= 1.0f)
+			higher_correction = hippt::lerp(2.8f, 2.55f, (roughness - 0.9f) / 0.1f);
+	}
+	else if (relative_eta <= 1.5f)
+	{
+		higher_relative_eta_bound = 1.5f;
+
+		if (roughness <= 0.0f)
+			higher_correction = 2.5f;
+		else if (roughness <= 0.1f)
+			higher_correction = hippt::lerp(2.5f, 1.6f, (roughness - 0.0f) / 0.1f);
+		else if (roughness <= 0.2f)
+			higher_correction = hippt::lerp(1.6f, 2.3f, (roughness - 0.1f) / 0.1f);
+		else if (roughness <= 0.3f)
+			higher_correction = hippt::lerp(2.3f, 2.38f, (roughness - 0.2f) / 0.1f);
+		else if (roughness <= 0.4f)
+			higher_correction = hippt::lerp(2.38f, 2.475f, (roughness - 0.3f) / 0.1f);
+		else if (roughness <= 0.5f)
+			higher_correction = hippt::lerp(2.475f, 2.7f, (roughness - 0.4f) / 0.1f);
+		else if (roughness <= 0.6f)
+			higher_correction = hippt::lerp(2.7f, 2.95f, (roughness - 0.5f) / 0.1f);
+		else if (roughness <= 0.7f)
+			higher_correction = hippt::lerp(2.95f, 3.1f, (roughness - 0.6f) / 0.1f);
+		else if (roughness <= 0.8f)
+			higher_correction = 3.1f;
+		else if (roughness <= 0.9f)
+			higher_correction = hippt::lerp(3.1f, 3.05f, (roughness - 0.8f) / 0.1f);
+		else if (roughness <= 1.0f)
+			higher_correction = hippt::lerp(3.05f, 2.57f, (roughness - 0.9f) / 0.1f);
+	}
+	else if (relative_eta <= 2.0f)
+	{
+		higher_relative_eta_bound = 2.0f;
+
+		if (roughness <= 0.0f)
+			higher_correction = 2.5f;
+		else if (roughness <= 0.1f)
+			higher_correction = hippt::lerp(2.5f, 1.5f, (roughness - 0.0f) / 0.1f);
+		else if (roughness <= 0.2f)
+			higher_correction = hippt::lerp(1.5f, 2.2f, (roughness - 0.1f) / 0.1f);
+		else if (roughness <= 0.3f)
+			higher_correction = hippt::lerp(2.2f, 2.38f, (roughness - 0.2f) / 0.1f);
+		else if (roughness <= 0.4f)
+			higher_correction = hippt::lerp(2.38f, 2.475f, (roughness - 0.3f) / 0.1f);
+		else if (roughness <= 0.5f)
+			higher_correction = hippt::lerp(2.475f, 2.75f, (roughness - 0.4f) / 0.1f);
+		else if (roughness <= 0.6f)
+			higher_correction = hippt::lerp(2.75f, 3.5f, (roughness - 0.5f) / 0.1f);
+		else if (roughness <= 0.7f)
+			higher_correction = hippt::lerp(3.5f, 4.85f, (roughness - 0.6f) / 0.1f);
+		else if (roughness <= 0.8f)
+			higher_correction = hippt::lerp(4.85f, 6.0f, (roughness - 0.7f) / 0.1f);
+		else if (roughness <= 0.9f)
+			higher_correction = hippt::lerp(6.0f, 7.0f, (roughness - 0.8f) / 0.1f);
+		else if (roughness <= 1.0f)
+			higher_correction = hippt::lerp(7.0f, 2.57f, (roughness - 0.9f) / 0.1f);
+	}
+	else if (relative_eta <= 2.4f)
+	{
+		higher_relative_eta_bound = 2.4f;
+
+		if (roughness <= 0.0f)
+			higher_correction = 2.5f;
+		else if (roughness <= 0.1f)
+			higher_correction = hippt::lerp(2.5f, 1.5f, (roughness - 0.0f) / 0.1f);
+		else if (roughness <= 0.2f)
+			higher_correction = hippt::lerp(1.5f, 2.0f, (roughness - 0.1f) / 0.1f);
+		else if (roughness <= 0.3f)
+			higher_correction = hippt::lerp(2.0f, 2.44f, (roughness - 0.2f) / 0.1f);
+		else if (roughness <= 0.4f)
+			higher_correction = hippt::lerp(2.44f, 2.475f, (roughness - 0.3f) / 0.1f);
+		else if (roughness <= 0.5f)
+			higher_correction = hippt::lerp(2.475f, 3.0f, (roughness - 0.4f) / 0.1f);
+		else if (roughness <= 0.6f)
+			higher_correction = hippt::lerp(3.0f, 3.8f, (roughness - 0.5f) / 0.1f);
+		else if (roughness <= 0.7f)
+			higher_correction = hippt::lerp(3.8f, 7.0f, (roughness - 0.6f) / 0.1f);
+		else if (roughness <= 0.8f)
+			higher_correction = hippt::lerp(7.0f, 10.0f, (roughness - 0.7f) / 0.1f);
+		else if (roughness <= 0.9f)
+			higher_correction = hippt::lerp(10.0f, 12.0f, (roughness - 0.8f) / 0.1f);
+		else if (roughness <= 1.0f)
+			higher_correction = hippt::lerp(12.0f, 3.9f, (roughness - 0.9f) / 0.1f);
+	}
+	else if (relative_eta <= 3.0f)
+	{
+		higher_relative_eta_bound = 3.0f;
+
+		if (roughness <= 0.0f)
+			higher_correction = 2.5f;
+		else if (roughness <= 0.1f)
+			higher_correction = hippt::lerp(2.5f, 1.5f, (roughness - 0.0f) / 0.1f);
+		else if (roughness <= 0.2f)
+			higher_correction = hippt::lerp(1.5f, 1.7f, (roughness - 0.1f) / 0.1f);
+		else if (roughness <= 0.3f)
+			higher_correction = hippt::lerp(1.7f, 2.38f, (roughness - 0.2f) / 0.1f);
+		else if (roughness <= 0.4f)
+			higher_correction = hippt::lerp(2.38f, 2.475f, (roughness - 0.3f) / 0.1f);
+		else if (roughness <= 0.5f)
+			higher_correction = hippt::lerp(2.475f, 2.9f, (roughness - 0.4f) / 0.1f);
+		else if (roughness <= 0.6f)
+			higher_correction = hippt::lerp(2.9f, 3.8f, (roughness - 0.5f) / 0.1f);
+		else if (roughness <= 0.7f)
+			higher_correction = hippt::lerp(3.8f, 7.5f, (roughness - 0.6f) / 0.1f);
+		else if (roughness <= 0.8f)
+			higher_correction = hippt::lerp(7.5f, 12.0f, (roughness - 0.7f) / 0.1f);
+		else if (roughness <= 0.9f)
+			higher_correction = hippt::lerp(12.0f, 13.75f, (roughness - 0.8f) / 0.1f);
+		else if (roughness <= 1.0f)
+			higher_correction = hippt::lerp(13.75f, 2.5f, (roughness - 0.9f) / 0.1f);
+	}
+
+	return hippt::lerp(lower_correction, higher_correction, (relative_eta - lower_relative_eta_bound) / (higher_relative_eta_bound - lower_relative_eta_bound));
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float get_GGX_energy_compensation_dielectrics(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, const RayVolumeState& ray_volume_state, float eta_t, float eta_i, float relative_eta, float NoV)

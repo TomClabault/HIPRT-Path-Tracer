@@ -50,10 +50,18 @@ void ImGuiRenderer::wrapping_tooltip(const std::string& text)
 	ImGui::EndTooltip();
 }
 
-void ImGuiRenderer::show_help_marker(const std::string& text)
+void ImGuiRenderer::show_help_marker(const std::string& text, ImVec4 color)
 {
 	ImGui::SameLine();
-	ImGui::TextDisabled("(?)");
+	if (color.x == -1.0f && color.y == -1.0f && color.z == -1.0 && color.w == -1.0f)
+		// Default "disabled" color
+		ImGui::TextDisabled("(?)");
+	else
+	{
+		ImGui::PushStyleColor(ImGuiCol_Text, color);
+		ImGui::Text("(?)");
+		ImGui::PopStyleColor();
+	}
 	add_tooltip(text);
 }
 

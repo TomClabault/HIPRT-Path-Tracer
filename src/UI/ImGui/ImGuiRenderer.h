@@ -36,8 +36,8 @@ public:
   	 * Adds a tooltip to the last widget that auto wraps after 80 characters
 	 */
 	static void wrapping_tooltip(const std::string& text);
+	static void show_help_marker(const std::string& text, ImVec4 color = ImVec4(-1.0f, -1.0f, -1.0f, -1.0f));
 	static void add_tooltip(const std::string& tooltip_text, ImGuiHoveredFlags flags = ImGuiHoveredFlags_AllowWhenDisabled);
-	static void show_help_marker(const std::string& text);
 
 	void set_render_window(RenderWindow* renderer);
 
