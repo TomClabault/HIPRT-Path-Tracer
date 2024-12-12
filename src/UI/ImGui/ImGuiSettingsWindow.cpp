@@ -2241,5 +2241,14 @@ void ImGuiSettingsWindow::draw_debug_panel()
 		m_render_window->set_render_dirty(true);
 	ImGuiRenderer::show_help_marker("If true, NaNs that occur during the rendering will show up as pink pixels.");
 
+	if (ImGui::Checkbox("White furnace mode", &m_renderer->get_render_data().bsdfs_data.white_furnace_mode))
+		m_render_window->set_render_dirty(true);
+	if (m_renderer->get_render_data().bsdfs_data.white_furnace_mode)
+	{
+		ImGui::TreePush("White furnace tree");
+		ImGui::Checkbox("Turn off emissives", &m_renderer->get_render_data().bsdfs_data.white_furnace_mode_turn_off_emissives);
+		ImGui::TreePop();
+	}
+
 	ImGui::TreePop();
 }

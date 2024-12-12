@@ -203,7 +203,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
                     // it into account on the first bounce, otherwise we would be
                     // accounting for direct light sampling twice (bounce on emissive
                     // geometry + direct light sampling). Otherwise, we don't check for bounce == 0
-                    ray_payload.ray_color += ray_payload.material.get_emission() * ray_payload.throughput;
+                    ray_payload.ray_color += ray_payload.material.get_emission();
 
                 // Clamped indirect lighting 
                 ColorRGB32F indirect_lighting_contribution = (light_direct_contribution + envmap_direct_contribution) * ray_payload.throughput;
@@ -241,7 +241,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
             {
                 ColorRGB32F skysphere_color;
 
-                if (render_data.world_settings.ambient_light_type == AmbientLightType::UNIFORM)
+                if (render_data.world_settings.ambient_light_type == AmbientLightType::UNIFORM || render_data.bsdfs_data.white_furnace_mode)
                     skysphere_color = render_data.world_settings.uniform_light_color;
                 else if (render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP)
                 {

@@ -283,6 +283,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light(const HIPRTRenderDat
         // that we're not sampling anything so return black
         return ColorRGB32F(0.0f);
 
+    if (render_data.bsdfs_data.white_furnace_mode && render_data.bsdfs_data.white_furnace_mode_turn_off_emissives)
+        return ColorRGB32F(0.0f);
+
     if (ray_payload.material.is_emissive())
     {
         if (ray_payload.material.emissive_texture_used && bounce > 0)

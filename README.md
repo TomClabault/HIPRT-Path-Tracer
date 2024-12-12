@@ -1,6 +1,6 @@
 # HIPRT-Path-Tracer
 
-![HIPRT path tracer cover](README_data/img/P1_environment.jpg)
+![HIPRT path tracer cover](README_data/img/Bistro.jpg)
 
 Physically based unidirectional (backwards) monte carlo path tracer written with the [HIPRT](https://gpuopen.com/hiprt/) and [Orochi](https://gpuopen.com/orochi/) libraries.
 

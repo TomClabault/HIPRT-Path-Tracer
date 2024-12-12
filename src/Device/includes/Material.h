@@ -53,7 +53,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE SimplifiedRendererMaterial get_intersection_mater
     material.set_emission(emission);
 
     float trash_alpha;
-    get_base_color(render_data, material.base_color, trash_alpha, texcoords, material.base_color_texture_index);
+    if (render_data.bsdfs_data.white_furnace_mode)
+        material.base_color = ColorRGB32F(1.0f);
+    else
+        get_base_color(render_data, material.base_color, trash_alpha, texcoords, material.base_color_texture_index);
 
     get_metallic_roughness(render_data, material.metallic, material.roughness, texcoords, material.metallic_texture_index, material.roughness_texture_index, material.roughness_metallic_texture_index);
     get_material_property(render_data, material.oren_nayar_sigma, false, texcoords, material.oren_sigma_texture_index);

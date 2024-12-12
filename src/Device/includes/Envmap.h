@@ -221,7 +221,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map(const HIPRTRen
 {
     const WorldSettings& world_settings = render_data.world_settings;
 
-    if (world_settings.ambient_light_type != AmbientLightType::ENVMAP)
+    if (world_settings.ambient_light_type != AmbientLightType::ENVMAP || render_data.bsdfs_data.white_furnace_mode)
         // Not using the envmap
         return ColorRGB32F(0.0f);
 
