@@ -7,7 +7,7 @@
 #include "Device/includes/BSDFs/Lambertian.h"
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Hash.h"
-#include "Device/includes/Sampling.h"
+#include "Device/includes/BSDFs/Microfacet.h"
 
 #include "HostDeviceCommon/RenderData.h"
 
@@ -90,7 +90,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GlossyDielectricDirectionalAlbedoBake(HIPRT
 
         float F = full_fresnel_dielectric(hippt::dot(microfacet_normal, sampled_local_to_light_direction), relative_ior);
         float eval_pdf_specular;
-        float directional_albedo_specular = torrance_sparrow_GGX_eval<0>(HIPRTRenderData(), ColorRGB32F(F0), roughness, /* aniso */ 0.0f, ColorRGB32F(F),
+        float directional_albedo_specular = torrance_sparrow_GGX_eval<0>(HIPRTRenderData(), roughness, /* aniso */ 0.0f, ColorRGB32F(F),
                                                                           local_view_direction, sampled_local_to_light_direction, microfacet_normal, eval_pdf_specular).r;
         // Multiplying the PDF by 0.5f because we have a 50% chance to sample the specular lobe
         total_pdf += eval_pdf_specular * 0.5f;

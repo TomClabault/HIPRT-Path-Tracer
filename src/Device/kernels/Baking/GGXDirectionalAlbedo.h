@@ -7,7 +7,7 @@
 
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Hash.h"
-#include "Device/includes/Sampling.h"
+#include "Device/includes/BSDFs/Microfacet.h"
 
 #include "HostDeviceCommon/RenderData.h"
 
@@ -65,7 +65,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GGXDirectionalAlbedoBake(HIPRTRenderData re
             continue;
 
         float eval_pdf;
-        float directional_albedo = torrance_sparrow_GGX_eval<0>(HIPRTRenderData(), /* F0 doesn't matter */ ColorRGB32F(0.0f), roughness, 0.0f, /* fresnel */ ColorRGB32F(1.0f), 
+        float directional_albedo = torrance_sparrow_GGX_eval<0>(HIPRTRenderData(), roughness, 0.0f, /* fresnel */ ColorRGB32F(1.0f), 
                                                                  local_view_direction, sampled_local_to_light_direction, hippt::normalize(local_view_direction + sampled_local_to_light_direction), eval_pdf).r;
         directional_albedo /= eval_pdf;
         directional_albedo *= sampled_local_to_light_direction.z;
