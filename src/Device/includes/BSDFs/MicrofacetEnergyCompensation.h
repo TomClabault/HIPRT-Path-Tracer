@@ -354,33 +354,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_glass_energy_conservation_get_correctio
 		else if (roughness <= 1.0f)
 			lower_correction = hippt::lerp(12.0f, 3.9f, (roughness - 0.9f) / 0.1f);
 	}
-	else if (relative_eta > 3.0f)
-	{
-		lower_relative_eta_bound = 3.0f;
-
-		if (roughness <= 0.0f)
-			lower_correction = 2.5f;
-		else if (roughness <= 0.1f)
-			lower_correction = hippt::lerp(2.5f, 1.5f, (roughness - 0.0f) / 0.1f);
-		else if (roughness <= 0.2f)
-			lower_correction = hippt::lerp(1.5f, 1.7f, (roughness - 0.1f) / 0.1f);
-		else if (roughness <= 0.3f)
-			lower_correction = hippt::lerp(1.7f, 2.38f, (roughness - 0.2f) / 0.1f);
-		else if (roughness <= 0.4f)
-			lower_correction = hippt::lerp(2.38f, 2.475f, (roughness - 0.3f) / 0.1f);
-		else if (roughness <= 0.5f)
-			lower_correction = hippt::lerp(2.475f, 2.9f, (roughness - 0.4f) / 0.1f);
-		else if (roughness <= 0.6f)
-			lower_correction = hippt::lerp(2.9f, 3.8f, (roughness - 0.5f) / 0.1f);
-		else if (roughness <= 0.7f)
-			lower_correction = hippt::lerp(3.8f, 7.5f, (roughness - 0.6f) / 0.1f);
-		else if (roughness <= 0.8f)
-			lower_correction = hippt::lerp(7.5f, 12.0f, (roughness - 0.7f) / 0.1f);
-		else if (roughness <= 0.9f)
-			lower_correction = hippt::lerp(12.0f, 13.75f, (roughness - 0.8f) / 0.1f);
-		else if (roughness <= 1.0f)
-			lower_correction = hippt::lerp(13.75f, 2.5f, (roughness - 0.9f) / 0.1f);
-	}
 
 	float higher_relative_eta_bound;
 	float higher_correction;
@@ -627,7 +600,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_glass_energy_conservation_get_correctio
 		else if (roughness <= 1.0f)
 			higher_correction = hippt::lerp(12.0f, 3.9f, (roughness - 0.9f) / 0.1f);
 	}
-	else if (relative_eta <= 3.0f)
+	else
 	{
 		higher_relative_eta_bound = 3.0f;
 

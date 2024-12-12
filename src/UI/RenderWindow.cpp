@@ -35,7 +35,6 @@ extern ImGuiLogger g_imgui_logger;
 // - --help on the commandline
 // - Search for textures next to the GLTF file location
 // - Normal mapping seems broken again, light rays going under the surface... p1 env light
-// - energy preservation illustration in Readme (with many shader balls)
 
 // TODO known bugs / incorrectness:
 // - take transmission color into account when direct sampling a light source that is inside a volume: leave that for when implement volumes?
@@ -46,7 +45,6 @@ extern ImGuiLogger g_imgui_logger;
 // - When checking "Enable denoiser", it always denoises once immediately even if "denoise only when render done" is checked
 // - Thin-film interference energy conservation/preservation is broken with "strong BSDF energy conservation" --> too bright (with transmission at 1.0f), even with film thickness == 0.0f
 // - When overriding the base color for example in the global material overrider, if we then uncheck the base color override to stop overriding the base color, it returns the material to its very default base color  (the one  read from the scene file) instead of  returning it to what the user may have modified up to that point
-// - Something is broken with the exponent_correction function for 0.9f and 0.1f roughnes
 
 // TODO Code Organization:
 // - init opengl context and all that expensive stuff (compile kernels too) while the scene is being parsed
