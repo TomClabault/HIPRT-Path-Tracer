@@ -28,6 +28,10 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 - Thin-film interference over dielectrics and conductors [\[Belcour, Barla, 2017\]](https://belcour.github.io/blog/research/publication/2017/05/01/brdf-thin-film.html)
 
 ![LayeredBSDF](README_data/img/LayeredBSDF.png)
+
+![LayeredBSDF](README_data/img/metallic-energy.png)
+![LayeredBSDF](README_data/img/glass-energy.png)
+![LayeredBSDF](README_data/img/specular-diffuse-energy.png)
 ### Sampling
 - Light sampling:
 	- Uniform light sampling for direct lighting estimation + MIS
