@@ -119,7 +119,7 @@ void GPURenderer::init_sheen_ltc_texture()
 
 void GPURenderer::init_GGX_Ess_texture(HIPfilter_mode filtering_mode)
 {
-	Image32Bit GGXEss_image = Image32Bit::read_image_hdr("../data/BRDFsData/GGX/" + GPUBakerConstants::get_GGX_Ess_filename(), 1, true);
+	Image32Bit GGXEss_image = Image32Bit::read_image_hdr(BRDFS_DATA_DIRECTORY "/GGX/" + GPUBakerConstants::get_GGX_Ess_filename(), 1, true);
 	m_GGX_Ess = OrochiTexture(GGXEss_image, filtering_mode);
 }
 
@@ -131,7 +131,7 @@ void GPURenderer::init_glossy_dielectric_Ess_texture(HIPfilter_mode filtering_mo
 	for (int i = 0; i < GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR; i++)
 	{
 		std::string filename = std::to_string(i) + GPUBakerConstants::get_glossy_dielectric_Ess_filename();
-		std::string filepath = "../data/BRDFsData/GlossyDielectrics/" + filename;
+		std::string filepath = BRDFS_DATA_DIRECTORY "/GlossyDielectrics/" + filename;
 		images[i] = Image32Bit::read_image_hdr(filepath, 1, true);
 	}
 	m_glossy_dielectric_Ess = OrochiTexture3D(images, filtering_mode);
@@ -147,7 +147,7 @@ void GPURenderer::init_GGX_glass_Ess_texture(HIPfilter_mode filtering_mode)
 	for (int i = 0; i < GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_IOR; i++)
 	{
 		std::string filename = std::to_string(i) + GPUBakerConstants::get_GGX_glass_Ess_filename();
-		std::string filepath = "../data/BRDFsData/GGX/Glass/" + filename;
+		std::string filepath = BRDFS_DATA_DIRECTORY "/GGX/Glass/" + filename;
 		images[i] = Image32Bit::read_image_hdr(filepath, 1, true);
 	}
 	m_GGX_Ess_glass = OrochiTexture3D(images, filtering_mode);
@@ -155,7 +155,7 @@ void GPURenderer::init_GGX_glass_Ess_texture(HIPfilter_mode filtering_mode)
 	for (int i = 0; i < GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_IOR; i++)
 	{
 		std::string filename = std::to_string(i) + GPUBakerConstants::get_GGX_glass_inv_Ess_filename();
-		std::string filepath = "../data/BRDFsData/GGX/Glass/" + filename;
+		std::string filepath = BRDFS_DATA_DIRECTORY "/GGX/Glass/" + filename;
 		images[i] = Image32Bit::read_image_hdr(filepath, 1, true);
 	}
 	m_GGX_Ess_glass_inverse = OrochiTexture3D(images, filtering_mode);

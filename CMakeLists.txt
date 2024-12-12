@@ -40,6 +40,8 @@ add_compile_definitions(DEVICE_KERNELS_DIRECTORY="../src/Device/kernels")
 add_compile_definitions(DEVICE_INCLUDES_DIRECTORY="../src/") # This gives access to Device/ and HostDeviceCommon/
 add_compile_definitions(OROCHI_INCLUDES_DIRECTORY="${OROCHI_SOURCES_DIR}/..") # This gives access to <Orochi/Orochi.h> in the kernels
 add_compile_definitions(GLSL_SHADERS_DIRECTORY="../src/Shaders")
+add_compile_definitions(DATA_DIRECTORY="${CMAKE_SOURCE_DIR}/data")
+add_compile_definitions(BRDFS_DATA_DIRECTORY="${CMAKE_SOURCE_DIR}/data/BRDFsData")
 
 link_directories(${CMAKE_SOURCE_DIR}/${GLFW_LIB_DIR})
 link_directories(${CMAKE_SOURCE_DIR}/${GLEW_LIB_DIR})

@@ -5,8 +5,8 @@
 
 #include "Utils/CommandlineArguments.h"
 
-const std::string CommandlineArguments::DEFAULT_SCENE = "../data/GLTFs/the-white-room-low.gltf";
-const std::string CommandlineArguments::DEFAULT_SKYSPHERE = "../data/Skyspheres/evening_road_01_puresky_2k.hdr";
+const std::string CommandlineArguments::DEFAULT_SCENE = DATA_DIRECTORY "/GLTFs/the-white-room-low.gltf";
+const std::string CommandlineArguments::DEFAULT_SKYSPHERE = DATA_DIRECTORY "/Skyspheres/evening_road_01_puresky_2k.hdr";
 
 CommandlineArguments CommandlineArguments::process_command_line_args(int argc, char** argv)
 {

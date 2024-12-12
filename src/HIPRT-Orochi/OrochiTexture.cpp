@@ -102,6 +102,12 @@ void OrochiTexture::init_from_image(const Image32Bit& image, HIPfilter_mode filt
 	width = image.width;
 	height = image.height;
 
+	if (width == 0 || height == 0)
+	{
+		std::cerr << "Image given to OrochiTexture is 0 in width or height" << std::endl;
+		Utils::debugbreak();
+	}
+
 	// X, Y, Z and W in oroCreateChannelDesc are the number of *bits* of each component
 	// X, Y, Z and W in oroCreateChannelDesc are the number of *bits* of each component
 	// The shenanigans with max(channels - 0/1/2/3) is to automatically set 0 or sizeof(float) * 8
