@@ -1555,6 +1555,18 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			}
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			ImGui::SeparatorText("Principled BSDF Clearcoat Lobe");
+			if (ImGui::Checkbox("Use energy compensation approximation", &render_data.bsdfs_data.clearcoat_compensation_approximation))
+				m_render_window->set_render_dirty(true);
+			ImGuiRenderer::show_help_marker("Enables the approximation for compensating the loss of energy of the clearcoat layer. "
+				"This approximation tends to perform a bit worse when clearcoating smooth materials. But who clearcoats a mirror anyways?"
+				" Other than in this case, this approximation performs fairly well and is absolutely cheaper than enforcing the full BSDF energy "
+				"compensation.\n\n"
+				""
+				"There is virtually no reason to disable this. Worst case scenario is probably clearcoating smooth glass where a little bit of energy "
+				"is gained, but it's not actually render-breaking at all. And again, who clearcoats clear glass?");
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::SeparatorText("GGX");
 
 			std::vector<const char*> ggx_sampling_items = { "- VNDF", "- VNDF Spherical Caps" };

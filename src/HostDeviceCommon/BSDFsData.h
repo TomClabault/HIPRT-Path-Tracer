@@ -51,6 +51,9 @@ struct BRDFsData
 	// when fetching the LUTs. It's faster but less precise.
 	bool use_hardware_tex_interpolation = false;
 
+	// Whether or not to approximate energy compensation for the clearcoat layer
+	bool clearcoat_compensation_approximation = true;
+
 	GGXMaskingShadowingFlavor GGX_masking_shadowing = GGXMaskingShadowingFlavor::HeightCorrelated;
 };
 

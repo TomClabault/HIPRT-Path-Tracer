@@ -894,42 +894,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRende
                                              incident_medium_ior, diffuse_weight * !refracting, specular_weight * !refracting, diffuse_proba, specular_proba, 
                                              layers_throughput, pdf);
 
-//    if (render_data.bsdfs_data.clearcoat_compensation_approximation)
-//        final_color /= clearcoat_compensation_approximation();
-//
-//#if PrincipledBSDFGGXUseMultipleScattering == KERNEL_OPTION_TRUE
-//    int3 texture_dims = make_int3(GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_COS_THETA_O, GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_ROUGHNESS, GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR);
-//
-//    if (hippt::abs(material.ior / incident_medium_ior - 1.0f) < 1.0e-3f)
-//        // If the relative ior is very close to 1.0f,
-//        // adding some offset to avoid singularities which cause
-//        // fireflies
-//        incident_medium_ior += 1.0e-3f;
-//
-//    // We're storing cos_theta_o^2.5 in the LUT so we're retrieving with
-//    // root 2.5
-//    float view_dir_remapped = pow(local_view_direction.z, 1.0f / 2.5f);
-//    // sqrt(sqrt(F0)) here because we're storing F0^4 in the LUT
-//    float F0_remapped = sqrt(sqrt(F0_from_eta(material.ior, incident_medium_ior)));
-//
-//    float3 uvw = make_float3(view_dir_remapped, material.coat_roughness, F0_remapped);
-//    float multiple_scattering_compensation = sample_texture_3D_rgb_32bits(render_data.bsdfs_data.glossy_dielectric_Ess, texture_dims, uvw, render_data.bsdfs_data.use_hardware_tex_interpolation).r;
-//
-//    // Applying the compensation term for energy preservation
-//    // If material.specular == 1, then we want the full energy compensation
-//    // If material.specular == 0, then we only have the diffuse lobe and so we
-//    // need no energy compensation at all and so we just divide by 1 to basically do nothing
-//    float ms_compensation = hippt::lerp(1.0f, multiple_scattering_compensation, material.coat);
-//    // Multi scatter compensation is not tabulated to take thin film interference into account.
-//    // That's because thin film interference completely modifies the fresnel term and the
-//    // tabulated multi scatter compensation only accounts for the usual dielectric fresnel
-//    // 
-//    // So we're progressively disabling ms compensation on the glossy base as the thin-film 
-//    // is more and more pronounced
-//    ms_compensation = hippt::lerp(ms_compensation, 1.0f, material.thin_film);
-//
-//    final_color /= ms_compensation;
-//#endif
+    if (render_data.bsdfs_data.clearcoat_compensation_approximation)
+        final_color /= get_principled_energy_compensation_clearcoat_lobe(render_data, material, incident_medium_ior, local_view_direction.z);
 
     return final_color;
 }
