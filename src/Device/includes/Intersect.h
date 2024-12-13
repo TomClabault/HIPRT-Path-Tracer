@@ -163,7 +163,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
         int material_index = render_data.buffers.material_indices[hit.primID];
         in_out_ray_payload.material = get_intersection_material(render_data, material_index, out_hit_info.texcoords);
 
-        if (!in_out_ray_payload.is_inside_volume() || in_out_ray_payload.material.specular_transmission == 0.0f)
+        if ((!in_out_ray_payload.is_inside_volume() || in_out_ray_payload.material.specular_transmission == 0.0f) && !in_out_ray_payload.material.thin_walled)
         {
             // If we're not in a volume, there's no reason for the normals not to be facing us so we're flipping
             // if they were wrongly oriented
@@ -171,6 +171,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
             // Same thing with objects that do not let the rays pass through (non transmissive):
             // because we can never be inside of these objects, we're always outside.
             // If we're always outside, there's no reason to have the normals of these objects inverted.
+            //
+            // Thin objects though can let the rays go inside them. But because they are thin, we won't know that
+            // we're inside "a volume". So the above condition will trigger while we're hitting a thin material
+            // from the inside which will flip the normal the wrong direction. So we're adding an exception for
+            // thin materials here
+
             out_hit_info.geometric_normal *= hippt::dot(out_hit_info.geometric_normal, -ray.direction) < 0 ? -1 : 1;
 
             // If that's not enough and the shading normal is below the geometric surface, this will lead to light leaking

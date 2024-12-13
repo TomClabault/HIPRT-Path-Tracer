@@ -84,6 +84,24 @@ struct SimplifiedRendererMaterial
         out_alpha_y = hippt::max(ROUGHNESS_CLAMP, roughness * roughness * aspect);
     }
 
+    HIPRT_HOST_DEVICE static float get_thin_walled_roughness(bool thin_walled, float base_roughness, float relative_eta)
+    {
+        if (!thin_walled)
+            return base_roughness;
+
+        /*
+         * Roughness remapping so that a thin walled interface matches better a
+         * properly modeled double interface model. Said otherwise: roughness remapping
+         * so that the thin walled approximation matches the non thin walled physically correct equivalent
+         * 
+         * Reference:
+         * [Revisiting Physically Based Shading at Imageworks, Christopher Kulla & Alejandro Conty, 2017]
+         * 
+         * https://blog.selfshadow.com/publications/s2017-shading-course/imageworks/s2017_pbs_imageworks_slides_v2.pdf
+         */
+        return base_roughness * sqrt(3.7f * (relative_eta - 1.0f) * hippt::square(relative_eta - 0.5f)) / hippt::pow_3(relative_eta);
+    }
+
     HIPRT_HOST_DEVICE void set_emission(ColorRGB32F new_emission)
     {
         emission = new_emission;
@@ -143,6 +161,7 @@ struct SimplifiedRendererMaterial
     float absorption_at_distance = 1.0f;
     // Color of the light absorption when traveling through the medium
     ColorRGB32F absorption_color = ColorRGB32F(1.0f);
+    bool thin_walled = false;
 
     float thin_film = 0.0f;
     float thin_film_ior = 1.3f;

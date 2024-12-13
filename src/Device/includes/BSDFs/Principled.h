@@ -218,8 +218,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
     bool reflecting = NoL * NoV > 0;
 
     // Relative eta = eta_t / eta_i
-    float eta_t = ray_volume_state.outgoing_mat_index == InteriorStackImpl<InteriorStackStrategy>::MAX_MATERIAL_INDEX ? 1.0 : render_data.buffers.materials_buffer[ray_volume_state.outgoing_mat_index].ior;
     float eta_i = ray_volume_state.incident_mat_index == InteriorStackImpl<InteriorStackStrategy>::MAX_MATERIAL_INDEX ? 1.0 : render_data.buffers.materials_buffer[ray_volume_state.incident_mat_index].ior;
+    float eta_t = ray_volume_state.outgoing_mat_index == InteriorStackImpl<InteriorStackStrategy>::MAX_MATERIAL_INDEX ? 1.0 : render_data.buffers.materials_buffer[ray_volume_state.outgoing_mat_index].ior;
     float relative_eta = eta_t / eta_i;
 
     // relative_eta can be 1 when refracting from a volume into another volume of the same IOR.
@@ -250,9 +250,17 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
     if (reflecting)
         local_half_vector = local_to_light_direction + local_view_direction;
     else
-        // We need to take the relative_eta into account when refracting to compute
-        // the half vector (this is the "generalized" part of the half vector computation)
-        local_half_vector = local_to_light_direction * relative_eta + local_view_direction;
+    {
+        if (material.thin_walled)
+            // Thin walled material refract without light bending (because both refractions interfaces are simulated in one layer of material)
+            // just refract straight through i.e. light_direction = -view_direction
+            // It can be as si
+            local_half_vector = local_to_light_direction * make_float3(1.0f, 1.0f, -1.0f) + local_view_direction;
+        else
+            // We need to take the relative_eta into account when refracting to compute
+            // the half vector (this is the "generalized" part of the half vector computation)
+            local_half_vector = local_to_light_direction * relative_eta + local_view_direction;
+    }
 
     local_half_vector = hippt::normalize(local_half_vector);
     if (local_half_vector.z < 0.0f)
@@ -280,17 +288,29 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
         F_no_thin_film = ColorRGB32F(full_fresnel_dielectric(HoV, relative_eta));
 
     ColorRGB32F F = hippt::lerp(F_no_thin_film, F_thin_film, material.thin_film);
-    float f_proba = F.luminance();
+    float f_reflect_proba = F.luminance();
+    if (f_reflect_proba < 1.0f && material.thin_film == 0.0f && material.thin_walled)
+        // If this is not total reflection, adjusting the fresnel term to account for inter-reflections within the thin interface
+        // Not doing this if thin-film is present because that would not be accurate at all. Thin-film
+        // effect require phase shift computations and that's expensive so we're just not doing it here
+        // instead
+        //
+        // Reference: Dielectric BSDF, PBR Book 4ed: https://pbr-book.org/4ed/Reflection_Models/Dielectric_BSDF
+        //
+        // If there is no thin-film, the fresnel reflectance is non-colored and is the same
+        // value for all RGB wavelengths. This means that f_reflect_proba is actually just the fresnel reflection factor
+        f_reflect_proba += hippt::square(1.0f - f_reflect_proba) * f_reflect_proba / (1.0f - hippt::square(f_reflect_proba));
 
     ColorRGB32F color;
     if (reflecting)
     {
-        color = torrance_sparrow_GGX_eval<0>(render_data, material.roughness, material.anisotropy, F, local_view_direction, local_to_light_direction, local_half_vector, pdf);
+        float roughness = material.get_thin_walled_roughness(material.thin_walled, material.roughness, relative_eta);
+        color = torrance_sparrow_GGX_eval<0>(render_data, roughness, material.anisotropy, F, local_view_direction, local_to_light_direction, local_half_vector, pdf);
         // [Turquin, 2019] Eq. 18 for dielectric microfacet energy compensation
         color /= compensation_term;
 
         // Scaling the PDF by the probability of being here (reflection of the ray and not transmission)
-        pdf *= f_proba;
+        pdf *= f_reflect_proba;
 
         // Popping the ray volume stack is done in the glass_sample function for
         // reflections so we're not doing it here
@@ -301,9 +321,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
         float dot_prod2 = dot_prod * dot_prod;
         float denom = dot_prod2 * NoL * NoV;
 
+        float roughness = material.get_thin_walled_roughness(material.thin_walled, material.roughness, relative_eta);
         float alpha_x;
         float alpha_y;
-        SimplifiedRendererMaterial::get_alphas(material.roughness, material.anisotropy, alpha_x, alpha_y);
+        SimplifiedRendererMaterial::get_alphas(roughness, material.anisotropy, alpha_x, alpha_y);
 
         float D = GGX_anisotropic(alpha_x, alpha_y, local_half_vector);
         float G1_V = G1_Smith(alpha_x, alpha_y, local_view_direction);
@@ -314,18 +335,25 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
         float D_pdf = G1_V / hippt::abs(NoV) * D * hippt::abs(HoV);
         pdf = dwm_dwi * D_pdf;
         // Taking refraction probability into account
-        pdf *= 1.0f - f_proba;
+        pdf *= 1.0f - f_reflect_proba;
 
         // We added a check a few lines above to "avoid dividing by 0 later on". This is where.
         // When NoL is 0, denom is 0 too and we're dividing by 0. 
         // The PDF of this case is as low as 1.0e-9 (light direction sampled perpendicularly to the normal)
         // so this is an extremely rare case.
         // The PDF being non-zero, we could actualy compute it, it's valid but not with floats :D
-        color = sqrt(material.base_color) * D * (ColorRGB32F(1.0f) - F) * G2 * hippt::abs(HoL * HoV / denom);
+        color = material.base_color * D * (ColorRGB32F(1.0f) - F) * G2 * hippt::abs(HoL * HoV / denom);
+        if (material.thin_walled)
+            // Thin materials use the color squared to represent both the entry and the exit
+            // simutaneously
+            color *= material.base_color;
         // [Turquin, 2019] Eq. 18 for dielectric microfacet energy compensation
         color /= compensation_term;
 
-        if (ray_volume_state.incident_mat_index != InteriorStackImpl<InteriorStackStrategy>::MAX_MATERIAL_INDEX)
+        if (material.thin_walled)
+            // For thin materials, refracting in equals refracting out so we're poping the stack
+            ray_volume_state.interior_stack.pop(ray_volume_state.inside_material);
+        else if (ray_volume_state.incident_mat_index != InteriorStackImpl<InteriorStackStrategy>::MAX_MATERIAL_INDEX)
         {
             // If we're not coming from the air, this means that we were in a volume and we're currently
             // refracting out of the volume or into another volume.
@@ -362,17 +390,18 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_glass_sample(const RendererMaterial* materials_buffer, const SimplifiedRendererMaterial& material, RayVolumeState& ray_volume_state, const float3& local_view_direction, Xorshift32Generator& random_number_generator)
 {
-    float eta_t = ray_volume_state.outgoing_mat_index == InteriorStackImpl<InteriorStackStrategy>::MAX_MATERIAL_INDEX ? 1.0f : materials_buffer[ray_volume_state.outgoing_mat_index].ior;
     float eta_i = ray_volume_state.incident_mat_index == InteriorStackImpl<InteriorStackStrategy>::MAX_MATERIAL_INDEX ? 1.0f : materials_buffer[ray_volume_state.incident_mat_index].ior;
+    float eta_t = ray_volume_state.outgoing_mat_index == InteriorStackImpl<InteriorStackStrategy>::MAX_MATERIAL_INDEX ? 1.0f : materials_buffer[ray_volume_state.outgoing_mat_index].ior;
     float relative_eta = eta_t / eta_i;
-    // To avoid sampling directions that would lead to a null half_vector. 
+    // To avoid sampling directions that would lead to a null half_vector.
     // Explained in more details in principled_glass_eval.
     if (hippt::abs(relative_eta - 1.0f) < 1.0e-5f)
         relative_eta = 1.0f + 1.0e-5f;
 
+    float roughness = material.get_thin_walled_roughness(material.thin_walled, material.roughness, relative_eta);
     float alpha_x;
     float alpha_y;
-    SimplifiedRendererMaterial::get_alphas(material.roughness, material.anisotropy, alpha_x, alpha_y);
+    SimplifiedRendererMaterial::get_alphas(roughness, material.anisotropy, alpha_x, alpha_y);
 
     float3 microfacet_normal = GGX_anisotropic_sample_microfacet(local_view_direction, alpha_x, alpha_y, random_number_generator);
 
@@ -387,12 +416,23 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_glass_sample(const RendererMate
         F_no_thin_film = ColorRGB32F(full_fresnel_dielectric(HoV, relative_eta));
 
     ColorRGB32F F = hippt::lerp(F_no_thin_film, F_thin_film, material.thin_film);
-    float f_proba = F.luminance();
+    float f_reflect_proba = F.luminance();
+    if (f_reflect_proba < 1.0f && material.thin_film == 0.0f && material.thin_walled)
+        // If this is not total reflection, adjusting the fresnel term to account for inter-reflections within the thin interface
+        // Not doing this if thin-film is present because that would not be accurate at all. Thin-film
+        // effect require phase shift computations and that's very expensive so we're just not doing it here
+        // instead
+        //
+        // Reference: Dielectric BSDF, PBR Book 4ed: https://pbr-book.org/4ed/Reflection_Models/Dielectric_BSDF
+        //
+        // If there is no thin-film, the fresnel reflectance is non-colored and is the same
+        // value for all RGB wavelengths. This means that f_reflect_proba is actually just the fresnel reflection factor
+        f_reflect_proba += hippt::square(1.0f - f_reflect_proba) * f_reflect_proba / (1.0f - hippt::square(f_reflect_proba));
 
     float rand_1 = random_number_generator();
 
     float3 sampled_direction;
-    if (rand_1 < f_proba)
+    if (rand_1 < f_reflect_proba)
     {
         // Reflection
         sampled_direction = reflect_ray(local_view_direction, microfacet_normal);
@@ -411,9 +451,20 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_glass_sample(const RendererMate
             // the view direction
             microfacet_normal = -microfacet_normal;
 
-        // refract_ray() takes relative_eta = eta_i / eta_t so that's why we're inverting eta
-        // here
-        refract_ray(local_view_direction, microfacet_normal, sampled_direction, relative_eta);
+        if (material.thin_walled)
+        {
+            // Because the interface is thin (and so we refract twice, "cancelling" the bending the light),
+            // the refraction direction is just the incoming (view direction) reflected
+            // and flipped about the normal plane
+
+            float3 reflected = reflect_ray(local_view_direction, microfacet_normal);
+            // Now flipping
+            reflected.z *= -1.0f;
+
+            return reflected;
+        }
+        else
+            refract_ray(local_view_direction, microfacet_normal, sampled_direction, relative_eta);
     }
 
     return sampled_direction;
@@ -754,7 +805,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void principled_bsdf_get_lobes_weights_fringe_fix
                                                                       float& out_specular_weight,
                                                                       float& out_diffuse_weight, float& out_glass_weight)
 {
-    out_outside_object = hippt::dot(view_direction, in_out_normal) > 0;
+    out_outside_object = hippt::dot(view_direction, in_out_normal) > 0 || material.thin_walled;
     out_glass_weight = (1.0f - material.metallic) * material.specular_transmission;
     if (hippt::is_zero(out_glass_weight) && !out_outside_object)
     {
@@ -824,9 +875,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRende
     // the BSDF from inside the object so we're going to use that
     // 'outside_object' flag to nullify the other lobes if we're
     // inside the object
-    bool outside_object = hippt::dot(view_direction, shading_normal) > 0;
+    //
+    // Note that we're always outside of thin materials
+    bool outside_object = hippt::dot(view_direction, shading_normal) > 0 || material.thin_walled;
     bool refracting = hippt::dot(shading_normal, to_light_direction) < 0.0f || hippt::dot(shading_normal, view_direction) < 0.0f;
-    if (!outside_object)
+    if (hippt::dot(view_direction, shading_normal) < 0.0f)
         // For the rest of the computations to be correct, we want the normal
         // in the same hemisphere as the view direction
         shading_normal = -shading_normal;

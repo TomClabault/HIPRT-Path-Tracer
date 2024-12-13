@@ -66,6 +66,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_principled_energy_compensation_glossy_b
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE float get_principled_energy_compensation_clearcoat_lobe(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, float incident_medium_ior, float NoV)
 {
+    if (material.coat == 0.0f)
+        // No coat, nothing to compensate
+        return 1.0f;
+
     float ms_compensation = 1.0f;
 
 #if PrincipledBSDFGGXUseMultipleScattering == KERNEL_OPTION_TRUE

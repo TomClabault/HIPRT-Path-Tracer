@@ -233,7 +233,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
                 ray_payload.throughput *= throughput_attenuation;
                 ray_payload.next_ray_state = RayState::BOUNCE;
 
-                int outside_surface = hippt::dot(bounce_direction, closest_hit_info.shading_normal) < 0 ? -1.0f : 1.0f;
                 ray.origin = closest_hit_info.inter_point;
                 ray.direction = bounce_direction;
             }

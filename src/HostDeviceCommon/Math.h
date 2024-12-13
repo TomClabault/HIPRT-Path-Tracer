@@ -111,6 +111,7 @@ namespace hippt
 	__device__ float3 sqrt(float3 uvw) { return make_float3(sqrtf(uvw.x), sqrtf(uvw.y), sqrtf(uvw.z)); }
 
 	__device__ float pow_1_4(float x) { return sqrtf(sqrtf(x)); }
+	__device__ constexpr float pow_3(float x) { return x * x * x; }
 	__device__ constexpr float pow_4(float x) { float x2 = x * x; return x2 * x2; }
 	__device__ constexpr float pow_5(float x) { float x2 = x * x; float x4 = x2 * x2; return x4 * x; }
 	__device__ constexpr float pow_6(float x) { float x2 = x * x; float x4 = x2 * x2; return x4 * x2; }
@@ -194,6 +195,7 @@ namespace hippt
 	inline float2 sqrt(float2 uv) { return make_float2(sqrtf(uv.x), sqrtf(uv.y)); }
 	inline float3 sqrt(float3 uvw) { return make_float3(sqrtf(uvw.x), sqrtf(uvw.y), sqrtf(uvw.z)); }
 	inline float pow_1_4(float x) { return sqrtf(sqrtf(x)); }
+	inline constexpr float pow_3(float x) { return x * x * x; }
 	inline constexpr float pow_4(float x) { float x2 = x * x; return x2 * x2; }
 	inline constexpr float pow_5(float x) { float x2 = x * x; float x4 = x2 * x2; return x4 * x; }
 	inline constexpr float pow_6(float x) { float x2 = x * x; float x4 = x2 * x2; return x4 * x2; }
@@ -283,5 +285,16 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 matrix_X_vec(const float4x4& m, const floa
 
 	return make_float3(xt * inv_w, yt * inv_w, zt * inv_w);
 }
+
+#ifndef __KERNELCC__
+
+#include <iostream>
+static std::ostream& operator<<(std::ostream& os, float3 uvw)
+{
+	os << uvw.x << ", " << uvw.y << ", " << uvw.z << std::endl;
+	return os;
+}
+
+#endif
 
 #endif

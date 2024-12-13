@@ -46,6 +46,7 @@ struct MaterialOverrideState
 	bool override_absorption_distance = false;
 	bool override_absorption_color = false;
 	bool override_dielectric_priority = false;
+	bool override_thin_material = false;
 
 	bool override_thin_film = false;
 	bool override_thin_film_thickness = false;
@@ -458,7 +459,7 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 
 		if (ImGui::BeginTable("Table transmission layer", 2, ImGuiTableFlags_SizingFixedFit))
 		{
-			for (int row = 0; row < 6; row++)
+			for (int row = 0; row < 7; row++)
 			{
 				ImGui::TableNextRow();
 
@@ -498,6 +499,10 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 						ImGuiRenderer::show_help_marker("Disabled because not using nested dielectrics with priorities.");
 					ImGui::EndDisabled();
 
+					break;
+
+				case 6:
+					material_override_changed |= draw_material_override_line("Thin walled", override_state.override_thin_material, material_override.thin_walled);
 					break;
 				}
 			}
@@ -623,7 +628,7 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 
 		if (ImGui::BeginTable("Table base layer", 2, ImGuiTableFlags_SizingFixedFit))
 		{
-			for (int row = 0; row < 4; row++)
+			for (int row = 0; row < 5; row++)
 			{
 				ImGui::TableNextRow();
 
@@ -639,6 +644,10 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 					break;
 
 				case 2:
+					material_override_changed |= draw_material_override_line("Thin walled", override_state.override_thin_material, material_override.thin_walled);
+					break;
+
+				case 3:
 				{
 					// Thin-film + strong energy conservation isn't supported yet
 					bool thin_film_present = material_override.thin_film > 0.0f && override_state.override_thin_film;
@@ -668,7 +677,7 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 					break;
 				}
 
-				case 3:
+				case 4:
 				{
 					bool thin_film_present = material_override.thin_film > 0.0f && override_state.override_thin_film;
 					std::string thin_film_warning = "";
@@ -735,6 +744,7 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 		apply_material_override(override_state.override_absorption_distance, &RendererMaterial::absorption_at_distance, material_override.absorption_at_distance, overriden_materials);
 		apply_material_override(override_state.override_absorption_color, &RendererMaterial::absorption_color, material_override.absorption_color, overriden_materials);
 		apply_material_override(override_state.override_dielectric_priority, &RendererMaterial::dielectric_priority, material_override.dielectric_priority, overriden_materials);
+		apply_material_override(override_state.override_thin_material, &RendererMaterial::thin_walled, material_override.thin_walled, overriden_materials);
 
 		apply_material_override(override_state.override_thin_film, &RendererMaterial::thin_film, material_override.thin_film, overriden_materials);
 		apply_material_override(override_state.override_thin_film_thickness, &RendererMaterial::thin_film_thickness, material_override.thin_film_thickness, overriden_materials);
@@ -990,6 +1000,7 @@ void ImGuiObjectsWindow::draw_objects_panel()
 			if (kernel_options->get_macro_value(GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY) != ISS_WITH_PRIORITIES)
 				ImGuiRenderer::show_help_marker("Disabled because not using nested dielectrics with priorities.");
 			ImGui::EndDisabled();
+			material_changed |= ImGui::Checkbox("Thin walled", &material.thin_walled);
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::TreePop();
@@ -1047,6 +1058,7 @@ void ImGuiObjectsWindow::draw_objects_panel()
 			ImGui::TreePush("Other properties material tree");
 
 			material_changed |= ImGui::SliderFloat("Opacity", &material.alpha_opacity, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+			material_changed |= ImGui::Checkbox("Thin walled", &material.thin_walled);
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
