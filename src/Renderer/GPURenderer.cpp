@@ -160,6 +160,15 @@ void GPURenderer::init_GGX_glass_Ess_texture(HIPfilter_mode filtering_mode)
 	}
 	m_GGX_Ess_glass_inverse = OrochiTexture3D(images, filtering_mode);
 
+	images.resize(GPUBakerConstants::GGX_THIN_GLASS_ESS_TEXTURE_SIZE_IOR);
+	for (int i = 0; i < GPUBakerConstants::GGX_THIN_GLASS_ESS_TEXTURE_SIZE_IOR; i++)
+	{
+		std::string filename = std::to_string(i) + GPUBakerConstants::get_GGX_thin_glass_Ess_filename();
+		std::string filepath = BRDFS_DATA_DIRECTORY "/GGX/Glass/" + filename;
+		images[i] = Image32Bit::read_image_hdr(filepath, 1, true);
+	}
+	m_GGX_Ess_thin_glass = OrochiTexture3D(images, filtering_mode);
+
 	m_render_data_buffers_invalidated = true;
 }
 
@@ -227,7 +236,7 @@ void GPURenderer::update()
 	// Launching the background kernels precompilation if not already launched
 	if (!m_kernel_precompilation_launched)
 	{
-		precompile_kernels();
+		//precompile_kernels();
 
 		m_kernel_precompilation_launched = true;
 	}
@@ -984,6 +993,7 @@ void GPURenderer::update_render_data()
 		m_render_data.bsdfs_data.glossy_dielectric_Ess = m_glossy_dielectric_Ess.get_device_texture();
 		m_render_data.bsdfs_data.GGX_Ess_glass = m_GGX_Ess_glass.get_device_texture();
 		m_render_data.bsdfs_data.GGX_Ess_glass_inverse = m_GGX_Ess_glass_inverse.get_device_texture();
+		m_render_data.bsdfs_data.GGX_Ess_thin_glass = m_GGX_Ess_thin_glass.get_device_texture();
 
 		m_render_data.buffers.material_textures = reinterpret_cast<oroTextureObject_t*>(m_hiprt_scene.gpu_materials_textures.get_device_pointer());
 		m_render_data.buffers.texcoords = reinterpret_cast<float2*>(m_hiprt_scene.texcoords_buffer.get_device_pointer());

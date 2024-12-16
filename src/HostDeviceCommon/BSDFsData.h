@@ -47,6 +47,11 @@ struct BRDFsData
 	// Table when leaving a medium
 	void* GGX_Ess_glass_inverse = nullptr;
 
+	// Table for energy compesantion of thin walled glass
+	// Fetching into this table should use the base roughness
+	// of the material i.e. **not** the remapped thin-walled roughness
+	void* GGX_Ess_thin_glass = nullptr;
+
 	// Whether or not to use the texture unit's hardware texel interpolation
 	// when fetching the LUTs. It's faster but less precise.
 	bool use_hardware_tex_interpolation = false;

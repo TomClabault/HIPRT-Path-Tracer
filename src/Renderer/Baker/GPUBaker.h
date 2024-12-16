@@ -12,6 +12,8 @@
 #include "Renderer/Baker/GlossyDielectricDirectionalAlbedoSettings.h"
 #include "Renderer/Baker/GGXDirectionalAlbedoSettings.h"
 #include "Renderer/Baker/GGXGlassDirectionalAlbedoSettings.h"
+#include "Renderer/Baker/GGXThinGlassDirectionalAlbedoSettings.h"
+#include "Renderer/Baker/GPUBakerKernel.h"
 #include "Renderer/GPURenderer.h"
 
 #include <mutex>
@@ -21,7 +23,7 @@ class GPUBaker
 public:
 	GPUBaker(std::shared_ptr<GPURenderer> renderer);
 
-	void bake_ggx_directional_albedo(const GGXDirectionalAlbedoSettings& bake_settings, const std::string& output_filename);
+	void bake_ggx_conductor_directional_albedo(const GGXDirectionalAlbedoSettings& bake_settings, const std::string& output_filename);
 	bool is_ggx_directional_albedo_bake_complete() const;
 
 	void bake_glossy_dielectric_directional_albedo(const GlossyDielectricDirectionalAlbedoSettings& bake_settings, const std::string& output_filename);
@@ -29,32 +31,24 @@ public:
 
 	void bake_ggx_glass_directional_albedo(const GGXGlassDirectionalAlbedoSettings& bake_settings, const std::string& output_filename);
 	bool is_ggx_glass_directional_albedo_bake_complete() const;
+	
+	void bake_ggx_thin_glass_directional_albedo(const GGXThinGlassDirectionalAlbedoSettings& bake_settings, const std::string& output_filename);
+	bool is_ggx_thin_glass_directional_albedo_bake_complete() const;
 
 private:
 	std::shared_ptr<GPURenderer> m_renderer = nullptr;
 
 	oroStream_t m_bake_stream;
 	// Mutex so that if we're baking multiple textures at the same time,
-	// we don't into issue with the compilers wanting to take the priority
+	// we don't run into issue with the compilers wanting to take the priority
 	// (over background compiling kerneks) at the same time
-	std::mutex m_compiler_priority_mutex;
+	std::shared_ptr<std::mutex> m_compiler_priority_mutex;
 
-	// State for baking GGX conductors directional albedo
-	GPUKernel m_ggx_directional_albedo_bake_kernel;
-	OrochiBuffer<float> m_ggx_directional_albedo_bake_buffer;
-	bool m_ggx_directional_albedo_bake_complete = true;
-
-	// State for baking GGX specular + diffuse (i.e. glossy material)
-	// directional albedo
-	GPUKernel m_glossy_dielectric_directional_albedo_bake_kernel;
-	OrochiBuffer<float> m_glossy_dielectric_directional_albedo_bake_buffer;
-	bool m_glossy_dielectric_directional_albedo_bake_complete = true;
-
-	// State for baking directional albedo for glass materials
-	GPUKernel m_ggx_glass_directional_albedo_bake_kernel;
-	OrochiBuffer<float> m_ggx_glass_directional_albedo_bake_buffer;
-	OrochiBuffer<float> m_ggx_glass_directional_albedo_bake_buffer_inverse;
-	bool m_ggx_glass_directional_albedo_bake_complete = true;
+	GPUBakerKernel m_ggx_conductor_directional_albedo_bake_kernel;
+	GPUBakerKernel m_glossy_dielectric_directional_albedo_bake_kernel;
+	GPUBakerKernel m_ggx_glass_entering_directional_albedo_bake_kernel;
+	GPUBakerKernel m_ggx_glass_exiting_directional_albedo_bake_kernel;
+	GPUBakerKernel m_ggx_thin_glass_directional_albedo_bake_kernel;
 };
 
 #endif

@@ -177,12 +177,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
             // from the inside which will flip the normal the wrong direction. So we're adding an exception for
             // thin materials here
 
-            out_hit_info.geometric_normal *= hippt::dot(out_hit_info.geometric_normal, -ray.direction) < 0 ? -1 : 1;
+            out_hit_info.geometric_normal *= hippt::dot(out_hit_info.geometric_normal, -ray.direction) < 0.0f ? -1.0f : 1.0f;
 
             // If that's not enough and the shading normal is below the geometric surface, this will lead to light leaking
             // because BSDF samples may now be able to sample below the surface so we're flipping the normal to be in the same
             // hemisphere as the geometric normal
-            out_hit_info.shading_normal *= hippt::dot(out_hit_info.shading_normal, out_hit_info.geometric_normal) < 0 ? -1 : 1;
+            out_hit_info.shading_normal *= hippt::dot(out_hit_info.shading_normal, out_hit_info.geometric_normal) < 0.0f ? -1.0f : 1.0f;
 
             // Reflecting the shading normal about the view direction so that the shading 
             // normal is in the same hemisphere as the view direction

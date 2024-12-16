@@ -99,7 +99,16 @@ struct SimplifiedRendererMaterial
          * 
          * https://blog.selfshadow.com/publications/s2017-shading-course/imageworks/s2017_pbs_imageworks_slides_v2.pdf
          */
-        return base_roughness * sqrt(3.7f * (relative_eta - 1.0f) * hippt::square(relative_eta - 0.5f)) / hippt::pow_3(relative_eta);
+        float remapped = base_roughness * sqrt(3.7f * (relative_eta - 1.0f) * hippt::square(relative_eta - 0.5f) / hippt::pow_3(relative_eta));
+
+        // Remapped roughness starts going above 1.0f starting at relative eta around 1.9f
+        // and ends up at 1.39f at relative eta 3.5f
+        //
+        // Because we don't expect the user to input higher IOR values than that,
+        // we remap that remapped roughness from [0.0f, 1.39f] to [0.0f, 1.0f]
+        // and if the user inputs higher IOR values than 3.5f, we clamp to 1.0f roughness
+        // anyways
+        return hippt::clamp(0.0f, 1.0f, remapped / 1.39f);
     }
 
     HIPRT_HOST_DEVICE void set_emission(ColorRGB32F new_emission)

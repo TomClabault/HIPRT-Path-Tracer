@@ -104,6 +104,7 @@ private:
     Image32Bit3D m_glossy_dielectrics_Ess;
     Image32Bit3D m_GGX_Ess_glass;
     Image32Bit3D m_GGX_Ess_glass_inverse;
+    Image32Bit3D m_GGX_Ess_thin_glass;
 
     std::vector<Triangle> m_triangle_buffer;
     std::shared_ptr<BVH> m_bvh;

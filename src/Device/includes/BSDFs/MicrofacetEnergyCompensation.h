@@ -6,6 +6,9 @@
 #ifndef DEVICE_BSDF_MICROFACET_ENERGY_COMPENSATION_H
 #define DEVICE_BSDF_MICROFACET_ENERGY_COMPENSATION_H
 
+#include "Device/includes/Fresnel.h"
+#include "Device/includes/Texture.h"
+
 #include "HostDeviceCommon/RenderData.h"
  // To be able to access GPUBakerConstants::GGX_ESS_TEXTURE_SIZE && GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE
 #include "Renderer/Baker/GPUBakerConstants.h"
@@ -645,25 +648,38 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_GGX_energy_compensation_dielectrics(con
     {
         bool inside_object = ray_volume_state.inside_material;
         float relative_eta_for_correction = inside_object ? 1.0f / relative_eta : relative_eta;
-        float exponent_correction = GGX_glass_energy_conservation_get_correction_exponent(render_data, material.roughness, relative_eta_for_correction);
+		float exponent_correction = 2.5f;
+		if (!material.thin_walled)
+			exponent_correction = GGX_glass_energy_conservation_get_correction_exponent(render_data, material.roughness, relative_eta_for_correction);
 
         // We're storing cos_theta_o^2.5 in the LUT so we're retrieving it with pow(1.0f / 2.5f) i.e.
         // sqrt 2.5
         //
         // We're using a "correction exponent" to forcefully get rid of energy gains at grazing angles due
         // to float precision issues: storing in the LUT with cos_theta^2.5 but fetching with pow(1.0f / 2.6f)
-        // for example darkens to overall appearance and helps remove energy gains
-        float view_direction_tex_fetch = powf(hippt::max(0.0f, NoV), 1.0f / exponent_correction);
+        // for example (instead of fetching with pow(1.0f / 2.5f)) darkens the overall appearance and helps remove
+		// energy gains
+        float view_direction_tex_fetch = powf(hippt::max(1.0e-3f, NoV), 1.0f / exponent_correction);
 
         float F0 = F0_from_eta(eta_t, eta_i);
         // sqrt(sqrt()) of F0 here because we're storing F0^4 in the LUT
         float F0_remapped = sqrt(sqrt(F0));
 
         float3 uvw = make_float3(view_direction_tex_fetch, material.roughness, F0_remapped);
+		if (!material.thin_walled)
+		{
+			void* texture = inside_object ? render_data.bsdfs_data.GGX_Ess_glass_inverse : render_data.bsdfs_data.GGX_Ess_glass;
+			int3 dims = make_int3(GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_COS_THETA_O, GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_ROUGHNESS, GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_IOR);
 
-        void* texture = inside_object ? render_data.bsdfs_data.GGX_Ess_glass_inverse : render_data.bsdfs_data.GGX_Ess_glass;
-        int3 dims = make_int3(GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_COS_THETA_O, GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_ROUGHNESS, GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_IOR);
-        compensation_term = sample_texture_3D_rgb_32bits(texture, dims, uvw, render_data.bsdfs_data.use_hardware_tex_interpolation).r;
+			compensation_term = sample_texture_3D_rgb_32bits(texture, dims, uvw, render_data.bsdfs_data.use_hardware_tex_interpolation).r;
+		}
+		else
+		{
+			void* texture = render_data.bsdfs_data.GGX_Ess_thin_glass;
+			int3 dims = make_int3(GPUBakerConstants::GGX_THIN_GLASS_ESS_TEXTURE_SIZE_COS_THETA_O, GPUBakerConstants::GGX_THIN_GLASS_ESS_TEXTURE_SIZE_ROUGHNESS, GPUBakerConstants::GGX_THIN_GLASS_ESS_TEXTURE_SIZE_IOR);
+
+			compensation_term = sample_texture_3D_rgb_32bits(texture, dims, uvw, render_data.bsdfs_data.use_hardware_tex_interpolation).r;
+		}
 
         // TODO FIX THIS HORROR
         // This is here because directional albedo for the glass BSDF is tabulated with the standard non-colored Fresnel

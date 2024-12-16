@@ -5,6 +5,7 @@
 
 #include "Renderer/Baker/GGXDirectionalAlbedoSettings.h"
 #include "Renderer/Baker/GGXGlassDirectionalAlbedoSettings.h"
+#include "Renderer/Baker/GGXThinGlassDirectionalAlbedoSettings.h"
 #include "UI/ImGui/ImGuiBakingWindow.h"
 #include "UI/RenderWindow.h"
 
@@ -39,9 +40,10 @@ void ImGuiBakingWindow::draw_ggx_energy_conservation_panel()
 	{
 		ImGui::TreePush("Baking GGX Energy Conservation tree");
 
-		draw_GGX_E();
-		draw_GGX_glass_E();
-		draw_glossy_dielectric_E();
+		draw_GGX_conductors();
+		draw_GGX_glass();
+		draw_GGX_thin_glass();
+		draw_glossy_dielectric();
 
 		static std::vector<float> roughnesses = { 0.0f, 0.25f, 0.5f, 1.0f };
 		static std::vector<float> iors = { 1.0f, 1.1f, 1.3f, 1.5f, 2.0f };
@@ -50,7 +52,7 @@ void ImGuiBakingWindow::draw_ggx_energy_conservation_panel()
 		static int step = -1;
 		int nb_steps = roughnesses.size() * iors.size();
 
-		if (ImGui::Button("Start screenhsotting"))
+		if (ImGui::Button("Start screenshotting"))
 		{
 			step = -1;
 			cooking = true;
@@ -75,7 +77,7 @@ void ImGuiBakingWindow::draw_ggx_energy_conservation_panel()
 			{
 				if (m_render_window->is_rendering_done() && m_renderer->get_render_settings().sample_number > m_renderer->get_render_settings().adaptive_sampling_min_samples)
 				{
-					std::string filename = "Screenshot" + std::to_string(roughnesses[step / iors.size()]) + "x" + std::to_string(iors[step % iors.size()]) + " - " +std::to_string(GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_COS_THETA_O) + "x" + std::to_string(GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_ROUGHNESS) + "x" + std::to_string(GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR) + "x" + ".png";
+					std::string filename = "Screenshot" + std::to_string(roughnesses[step / iors.size()]) + "x" + std::to_string(iors[step % iors.size()]) + " - " +std::to_string(GPUBakerConstants::GGX_THIN_GLASS_ESS_TEXTURE_SIZE_COS_THETA_O) + "x" + std::to_string(GPUBakerConstants::GGX_THIN_GLASS_ESS_TEXTURE_SIZE_ROUGHNESS) + "x" + std::to_string(GPUBakerConstants::GGX_THIN_GLASS_ESS_TEXTURE_SIZE_IOR) + "x" + ".png";
 					m_render_window->get_screenshoter()->write_to_png(filename);
 
 					next_step_ready = true;
@@ -92,9 +94,9 @@ void ImGuiBakingWindow::draw_ggx_energy_conservation_panel()
 /**
  * Panel for the GGX directional albedo
  */
-void ImGuiBakingWindow::draw_GGX_E()
+void ImGuiBakingWindow::draw_GGX_conductors()
 {
-	if (ImGui::CollapsingHeader("Directional Albedo E(wo)"))
+	if (ImGui::CollapsingHeader("Conductors Directional Albedo"))
 	{
 		ImGui::TreePush("GGX_E tree");
 
@@ -124,7 +126,7 @@ void ImGuiBakingWindow::draw_GGX_E()
 			bake_started_at_least_once = true;
 			// This starts the baking job asynchronously and the texture is
 			// automatically written to disk when the baking is done
-			baker->bake_ggx_directional_albedo(ggx_dir_albedo_settings, output_filename);
+			baker->bake_ggx_conductor_directional_albedo(ggx_dir_albedo_settings, output_filename);
 		}
 		ImGui::EndDisabled();
 
@@ -146,9 +148,9 @@ void ImGuiBakingWindow::draw_GGX_E()
  * Panel for the GGX directional albedo over the sphere for
  * glass material energy conservation
  */
-void ImGuiBakingWindow::draw_GGX_glass_E()
+void ImGuiBakingWindow::draw_GGX_glass()
 {
-	if (ImGui::CollapsingHeader("Glass Directional Albedo E_glass(wo)"))
+	if (ImGui::CollapsingHeader("Glass Directional Albedo"))
 	{
 		ImGui::TreePush("GGX_E_glass tree");
 
@@ -168,9 +170,9 @@ void ImGuiBakingWindow::draw_GGX_glass_E()
 		if (!filename_modified)
 			// As long as the user hasn't touched the output filename,
 			// we modify it automatically so that's its more convenient
-			output_filename = GPUBakerConstants::get_GGX_glass_Ess_filename(ggx_glass_dir_albedo_settings.texture_size_cos_theta_o, 
-																			ggx_glass_dir_albedo_settings.texture_size_roughness, 
-																			ggx_glass_dir_albedo_settings.texture_size_ior);
+			output_filename = GPUBakerConstants::get_GGX_glass_Ess_filename(ggx_glass_dir_albedo_settings.texture_size_cos_theta_o,
+				ggx_glass_dir_albedo_settings.texture_size_roughness,
+				ggx_glass_dir_albedo_settings.texture_size_ior);
 
 		std::shared_ptr<GPUBaker> baker = m_render_window->get_baker();
 
@@ -199,12 +201,65 @@ void ImGuiBakingWindow::draw_GGX_glass_E()
 	}
 }
 
+void ImGuiBakingWindow::draw_GGX_thin_glass()
+{
+	if (ImGui::CollapsingHeader("Thin Glass Directional Albedo"))
+	{
+		ImGui::TreePush("GGX_thin_glass tree");
+
+		static GGXThinGlassDirectionalAlbedoSettings ggx_thin_glass_dir_albedo_settings;
+
+		static bool filename_modified = false;
+		static std::string output_filename;
+
+		ImGui::InputInt("Texture Size - Cos Theta", &ggx_thin_glass_dir_albedo_settings.texture_size_cos_theta_o);
+		ImGui::InputInt("Texture Size - Roughness", &ggx_thin_glass_dir_albedo_settings.texture_size_roughness);
+		ImGui::InputInt("Texture Size - IOR", &ggx_thin_glass_dir_albedo_settings.texture_size_ior);
+		ImGui::InputInt("Integration Sample Count", &ggx_thin_glass_dir_albedo_settings.integration_sample_count);
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		if (ImGui::InputText("Output Texture Filename", &output_filename))
+			filename_modified = true;
+
+		if (!filename_modified)
+			// As long as the user hasn't touched the output filename,
+			// we modify it automatically so that's its more convenient
+			output_filename = GPUBakerConstants::get_GGX_thin_glass_Ess_filename(ggx_thin_glass_dir_albedo_settings.texture_size_cos_theta_o,
+				ggx_thin_glass_dir_albedo_settings.texture_size_roughness,
+				ggx_thin_glass_dir_albedo_settings.texture_size_ior);
+
+		std::shared_ptr<GPUBaker> baker = m_render_window->get_baker();
+
+		static bool bake_started_at_least_once = false;
+		ImGui::BeginDisabled(!baker->is_ggx_glass_directional_albedo_bake_complete() && bake_started_at_least_once);
+		if (ImGui::Button("Bake!"))
+		{
+			bake_started_at_least_once = true;
+			// This starts the baking job asynchronously and the texture is
+			// automatically written to disk when the baking is done
+			baker->bake_ggx_thin_glass_directional_albedo(ggx_thin_glass_dir_albedo_settings, output_filename);
+		}
+		ImGui::EndDisabled();
+
+		static std::string baking_text = "";
+		if (!baker->is_ggx_thin_glass_directional_albedo_bake_complete() && bake_started_at_least_once)
+			baking_text = " Baking...";
+		else if (baker->is_ggx_thin_glass_directional_albedo_bake_complete() && bake_started_at_least_once)
+			baking_text = " Baking complete!";
+
+		ImGui::SameLine();
+		ImGui::Text(baking_text.c_str());
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::TreePop();
+	}
+}
+
 /**
  * Panel for the glossy dielectric directional albedo
  */
-void ImGuiBakingWindow::draw_glossy_dielectric_E()
+void ImGuiBakingWindow::draw_glossy_dielectric()
 {
-	if (ImGui::CollapsingHeader("Glossy Dielectric Directional Albedo E(wo)"))
+	if (ImGui::CollapsingHeader("Glossy Dielectric Directional Albedo"))
 	{
 		ImGui::TreePush("Glossy Dielectric tree");
 

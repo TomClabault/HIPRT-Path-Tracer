@@ -191,8 +191,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_with_mis(const
     ColorRGB32F bsdf_mis_contribution;
 
     // Sampling the BSDF with MIS
-    cosine_term = hippt::clamp(0.0f, 1.0f, hippt::dot(closest_hit_info.shading_normal, bsdf_sampled_dir));
-    if (bsdf_sample_pdf > 0.0f && cosine_term > 0.0f)
+    cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, bsdf_sampled_dir));
+    if (bsdf_sample_pdf > 0.0f)
     {
         hiprtRay shadow_ray;
         shadow_ray.origin = closest_hit_info.inter_point;

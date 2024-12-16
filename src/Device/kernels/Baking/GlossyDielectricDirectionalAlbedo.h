@@ -27,9 +27,9 @@
  */
 
 #ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void) inline GlossyDielectricDirectionalAlbedoBake(HIPRTRenderData render_data, GlossyDielectricDirectionalAlbedoSettings bake_settings, float* out_buffer)
+GLOBAL_KERNEL_SIGNATURE(void) inline GlossyDielectricDirectionalAlbedoBake(int kernel_iterations, int current_iteration, GlossyDielectricDirectionalAlbedoSettings bake_settings, float* out_buffer)
 #else
-GLOBAL_KERNEL_SIGNATURE(void) inline GlossyDielectricDirectionalAlbedoBake(HIPRTRenderData render_data, GlossyDielectricDirectionalAlbedoSettings bake_settings, float* out_buffer, int x, int y, int z)
+GLOBAL_KERNEL_SIGNATURE(void) inline GlossyDielectricDirectionalAlbedoBake(int kernel_iterations, int current_iteration, GlossyDielectricDirectionalAlbedoSettings bake_settings, float* out_buffer, int x, int y, int z)
 #endif
 {
 #ifdef __KERNELCC__
@@ -43,9 +43,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GlossyDielectricDirectionalAlbedoBake(HIPRT
     if (x >= bake_settings.texture_size_cos_theta_o || y >= bake_settings.texture_size_roughness || z >= bake_settings.texture_size_ior)
         return;
 
-    Xorshift32Generator random_number_generator(wang_hash(pixel_index + 1));
-
-    out_buffer[pixel_index] = 0.0f;
+    Xorshift32Generator random_number_generator(wang_hash(pixel_index + 1)* current_iteration);
 
     float cos_theta_o = 1.0f / (bake_settings.texture_size_cos_theta_o - 1) * x;
     cos_theta_o = hippt::max(GGX_DOT_PRODUCTS_CLAMP, cos_theta_o);
@@ -66,7 +64,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GlossyDielectricDirectionalAlbedoBake(HIPRT
 
     float3 local_view_direction = hippt::normalize(make_float3(cos(0.0f) * sin_theta_o, sin(0.0f) * sin_theta_o, cos_theta_o));
 
-    for (int sample = 0; sample < bake_settings.integration_sample_count; sample++)
+    int iterations_per_kernel = floor(hippt::max(1.0f, (float)GPUBakerConstants::COMPUTE_ELEMENT_PER_BAKE_KERNEL_LAUNCH / (bake_settings.texture_size_cos_theta_o * bake_settings.texture_size_roughness * bake_settings.texture_size_ior)));
+    int nb_kernel_launch = ceil(bake_settings.integration_sample_count / (float)iterations_per_kernel);
+    int nb_samples = nb_kernel_launch * iterations_per_kernel;
+
+    for (int sample = 0; sample < kernel_iterations; sample++)
     {
         // Sampling the specular GGX lobe or diffuse lobe
         float rand_lobe = random_number_generator();
@@ -115,7 +117,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GlossyDielectricDirectionalAlbedoBake(HIPRT
         final_albedo *= sampled_local_to_light_direction.z;
         final_albedo /= total_pdf;
 
-        out_buffer[pixel_index] += final_albedo / bake_settings.integration_sample_count;
+        out_buffer[pixel_index] += final_albedo / nb_samples;
     }
 
 #ifndef __KERNELCC__

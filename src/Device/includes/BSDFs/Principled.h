@@ -289,7 +289,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
 
     ColorRGB32F F = hippt::lerp(F_no_thin_film, F_thin_film, material.thin_film);
     float f_reflect_proba = F.luminance();
-    if (f_reflect_proba < 1.0f && material.thin_film == 0.0f && material.thin_walled)
+    float roughness = material.get_thin_walled_roughness(material.thin_walled, material.roughness, relative_eta);
+    if (f_reflect_proba < 1.0f && material.thin_film == 0.0f && material.thin_walled && roughness < 0.1f)
         // If this is not total reflection, adjusting the fresnel term to account for inter-reflections within the thin interface
         // Not doing this if thin-film is present because that would not be accurate at all. Thin-film
         // effect require phase shift computations and that's expensive so we're just not doing it here
@@ -299,21 +300,19 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
         //
         // If there is no thin-film, the fresnel reflectance is non-colored and is the same
         // value for all RGB wavelengths. This means that f_reflect_proba is actually just the fresnel reflection factor
+        //
+        // This fresnel scaling only works at roughness 0 but still using below 0.1f for a close enough approximation
         f_reflect_proba += hippt::square(1.0f - f_reflect_proba) * f_reflect_proba / (1.0f - hippt::square(f_reflect_proba));
 
     ColorRGB32F color;
     if (reflecting)
     {
-        float roughness = material.get_thin_walled_roughness(material.thin_walled, material.roughness, relative_eta);
         color = torrance_sparrow_GGX_eval<0>(render_data, roughness, material.anisotropy, F, local_view_direction, local_to_light_direction, local_half_vector, pdf);
         // [Turquin, 2019] Eq. 18 for dielectric microfacet energy compensation
         color /= compensation_term;
 
         // Scaling the PDF by the probability of being here (reflection of the ray and not transmission)
         pdf *= f_reflect_proba;
-
-        // Popping the ray volume stack is done in the glass_sample function for
-        // reflections so we're not doing it here
     }
     else
     {
@@ -321,7 +320,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
         float dot_prod2 = dot_prod * dot_prod;
         float denom = dot_prod2 * NoL * NoV;
 
-        float roughness = material.get_thin_walled_roughness(material.thin_walled, material.roughness, relative_eta);
         float alpha_x;
         float alpha_y;
         SimplifiedRendererMaterial::get_alphas(roughness, material.anisotropy, alpha_x, alpha_y);
@@ -371,7 +369,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
                 // This effectively gives us a "at distance" absorption coefficient.
                 ColorRGB32F absorption_coefficient = log(incident_material.absorption_color) / incident_material.absorption_at_distance;
                 color = color * exp(absorption_coefficient * ray_volume_state.distance_in_volume);
-
             }
 
             // We changed volume so we're resetting the distance
@@ -417,7 +414,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_glass_sample(const RendererMate
 
     ColorRGB32F F = hippt::lerp(F_no_thin_film, F_thin_film, material.thin_film);
     float f_reflect_proba = F.luminance();
-    if (f_reflect_proba < 1.0f && material.thin_film == 0.0f && material.thin_walled)
+    if (f_reflect_proba < 1.0f && material.thin_film == 0.0f && material.thin_walled && roughness < 0.1f)
         // If this is not total reflection, adjusting the fresnel term to account for inter-reflections within the thin interface
         // Not doing this if thin-film is present because that would not be accurate at all. Thin-film
         // effect require phase shift computations and that's very expensive so we're just not doing it here
@@ -427,6 +424,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_glass_sample(const RendererMate
         //
         // If there is no thin-film, the fresnel reflectance is non-colored and is the same
         // value for all RGB wavelengths. This means that f_reflect_proba is actually just the fresnel reflection factor
+        //
+        // This fresnel scaling only works at roughness 0 but still using below 0.1f for a close enough approximation
         f_reflect_proba += hippt::square(1.0f - f_reflect_proba) * f_reflect_proba / (1.0f - hippt::square(f_reflect_proba));
 
     float rand_1 = random_number_generator();

@@ -499,6 +499,7 @@ private:
 	OrochiTexture3D m_glossy_dielectric_Ess;
 	OrochiTexture3D m_GGX_Ess_glass;
 	OrochiTexture3D m_GGX_Ess_glass_inverse;
+	OrochiTexture3D m_GGX_Ess_thin_glass;
 };
 
 #endif

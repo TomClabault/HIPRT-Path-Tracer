@@ -38,8 +38,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 930
-#define DEBUG_PIXEL_Y 242
+#define DEBUG_PIXEL_X 173
+#define DEBUG_PIXEL_Y 209
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -60,7 +60,7 @@
 // If you were only rendering the precise pixel at the given debug coordinates, you
 // wouldn't be able to debug correctly since all the neighborhood wouldn't have been
 // rendered which means no reservoir which means improper rendering
-#define DEBUG_RENDER_NEIGHBORHOOD 1
+#define DEBUG_RENDER_NEIGHBORHOOD 0
 // How many pixels to render around the debugged pixel given by the DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y coordinates
 #define DEBUG_NEIGHBORHOOD_SIZE 30
@@ -93,35 +93,43 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
 void CPURenderer::setup_brdfs_data()
 {
     m_sheen_ltc_params = Image32Bit(reinterpret_cast<float*>(ltc_parameters_table_approximation.data()), 32, 32, 3);
-    m_GGX_Ess = Image32Bit::read_image_hdr("../data/BRDFsData/GGX/" + GPUBakerConstants::get_GGX_Ess_filename(), 4, true);
+    m_GGX_Ess = Image32Bit::read_image_hdr("../data/BRDFsData/GGX/" + GPUBakerConstants::get_GGX_Ess_filename(), 1, true);
 
-    std::vector<Image32Bit> glossy_dielectrics_Ess_images(GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR);
+    std::vector<Image32Bit> images(GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR);
 
     for (int i = 0; i < GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR; i++)
     {
         std::string filename = std::to_string(i) + GPUBakerConstants::get_glossy_dielectric_Ess_filename();
         std::string filepath = "../data/BRDFsData/GlossyDielectrics/" + filename;
-        glossy_dielectrics_Ess_images[i] = Image32Bit::read_image_hdr(filepath, 4, true);
+        images[i] = Image32Bit::read_image_hdr(filepath, 1, true);
     }
-    m_glossy_dielectrics_Ess = Image32Bit3D(glossy_dielectrics_Ess_images);
+    m_glossy_dielectrics_Ess = Image32Bit3D(images);
 
-    std::vector<Image32Bit> GGX_Ess_glass_images(GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_IOR);
-
+    images.resize(GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_IOR);
     for (int i = 0; i < GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_IOR; i++)
     {
         std::string filename = std::to_string(i) + GPUBakerConstants::get_GGX_glass_Ess_filename();
         std::string filepath = "../data/BRDFsData/GGX/Glass/" + filename;
-        GGX_Ess_glass_images[i] = Image32Bit::read_image_hdr(filepath, 4, true);
+        images[i] = Image32Bit::read_image_hdr(filepath, 1, true);
     }
-    m_GGX_Ess_glass = Image32Bit3D(GGX_Ess_glass_images);
+    m_GGX_Ess_glass = Image32Bit3D(images);
 
     for (int i = 0; i < GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_IOR; i++)
     {
         std::string filename = std::to_string(i) + GPUBakerConstants::get_GGX_glass_inv_Ess_filename();
         std::string filepath = "../data/BRDFsData/GGX/Glass/" + filename;
-        GGX_Ess_glass_images[i] = Image32Bit::read_image_hdr(filepath, 4, true);
+        images[i] = Image32Bit::read_image_hdr(filepath, 1, true);
     }
-    m_GGX_Ess_glass_inverse = Image32Bit3D(GGX_Ess_glass_images);
+    m_GGX_Ess_glass_inverse = Image32Bit3D(images);
+
+    images.resize(GPUBakerConstants::GGX_THIN_GLASS_ESS_TEXTURE_SIZE_IOR);
+    for (int i = 0; i < GPUBakerConstants::GGX_THIN_GLASS_ESS_TEXTURE_SIZE_IOR; i++)
+    {
+        std::string filename = std::to_string(i) + GPUBakerConstants::get_GGX_thin_glass_Ess_filename();
+        std::string filepath = "../data/BRDFsData/GGX/Glass/" + filename;
+        images[i] = Image32Bit::read_image_hdr(filepath, 1, true);
+    }
+    m_GGX_Ess_thin_glass = Image32Bit3D(images);
 }
 
 void CPURenderer::set_scene(Scene& parsed_scene)
@@ -142,6 +150,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.bsdfs_data.glossy_dielectric_Ess = &m_glossy_dielectrics_Ess;
     m_render_data.bsdfs_data.GGX_Ess_glass = &m_GGX_Ess_glass;
     m_render_data.bsdfs_data.GGX_Ess_glass_inverse = &m_GGX_Ess_glass_inverse;
+    m_render_data.bsdfs_data.GGX_Ess_thin_glass = &m_GGX_Ess_thin_glass;
 
     ThreadManager::join_threads(ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY);
     m_render_data.buffers.material_textures = parsed_scene.textures.data();
@@ -198,7 +207,7 @@ void CPURenderer::set_envmap(Image32Bit& envmap_image)
     if (envmap_image.width == 0 || envmap_image.height == 0)
     {
         m_render_data.world_settings.ambient_light_type = AmbientLightType::UNIFORM;
-        m_render_data.world_settings.uniform_light_color = ColorRGB32F(1.0f, 1.0f, 1.0f);
+        m_render_data.world_settings.uniform_light_color = ColorRGB32F(0.5f, 0.5f, 0.5f);
 
         return;
     }

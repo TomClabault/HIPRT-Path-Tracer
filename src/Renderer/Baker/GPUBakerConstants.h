@@ -19,9 +19,17 @@ struct GPUBakerConstants
 	static const int GGX_GLASS_ESS_TEXTURE_SIZE_ROUGHNESS = 16;
 	static const int GGX_GLASS_ESS_TEXTURE_SIZE_IOR = 128;
 
+	static const int GGX_THIN_GLASS_ESS_TEXTURE_SIZE_COS_THETA_O = 32;
+	static const int GGX_THIN_GLASS_ESS_TEXTURE_SIZE_ROUGHNESS = 32;
+	static const int GGX_THIN_GLASS_ESS_TEXTURE_SIZE_IOR = 96;
+
 	static const int GLOSSY_DIELECTRIC_TEXTURE_SIZE_COS_THETA_O = 128;
 	static const int GLOSSY_DIELECTRIC_TEXTURE_SIZE_ROUGHNESS = 64;
 	static const int GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR = 128;
+
+	// Arbitrary number to limit how much computation we do per bake kernel launch.
+	// This is to avoid driver timeouts
+	static const int COMPUTE_ELEMENT_PER_BAKE_KERNEL_LAUNCH = 100000000;
 
 #ifndef __KERNELCC__
 	// Not using these on the GPU since they are std::string types: unavailable on the GPU
@@ -39,11 +47,18 @@ struct GPUBakerConstants
 		return "Glossy_Ess_" + std::to_string(texture_size_cos_theta) + "x" + std::to_string(texture_size_roughness) + "x" + std::to_string(texture_size_ior) + ".hdr";
 	}
 
-	static constexpr std::string get_GGX_glass_Ess_filename(int texture_size_cos_theta = GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_COS_THETA_O, 
-															int texture_size_roughness = GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_ROUGHNESS, 
-															int texture_size_ior = GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_IOR)
+	static constexpr std::string get_GGX_glass_Ess_filename(int texture_size_cos_theta = GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_COS_THETA_O,
+		int texture_size_roughness = GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_ROUGHNESS,
+		int texture_size_ior = GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_IOR)
 	{
 		return "GGX_Glass_Ess_" + std::to_string(texture_size_cos_theta) + "x" + std::to_string(texture_size_roughness) + "x" + std::to_string(texture_size_ior) + ".hdr";
+	}
+
+	static constexpr std::string get_GGX_thin_glass_Ess_filename(int texture_size_cos_theta = GPUBakerConstants::GGX_THIN_GLASS_ESS_TEXTURE_SIZE_COS_THETA_O,
+		int texture_size_roughness = GPUBakerConstants::GGX_THIN_GLASS_ESS_TEXTURE_SIZE_ROUGHNESS,
+		int texture_size_ior = GPUBakerConstants::GGX_THIN_GLASS_ESS_TEXTURE_SIZE_IOR)
+	{
+		return "GGX_Thin_Glass_Ess_" + std::to_string(texture_size_cos_theta) + "x" + std::to_string(texture_size_roughness) + "x" + std::to_string(texture_size_ior) + ".hdr";
 	}
 
 	static constexpr std::string get_GGX_glass_inv_Ess_filename(int texture_size_cos_theta = GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_COS_THETA_O, 

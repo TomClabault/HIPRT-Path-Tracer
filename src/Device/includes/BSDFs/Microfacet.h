@@ -6,6 +6,7 @@
 #ifndef DEVICE_BSDF_MICROFACET_H
 #define DEVICE_BSDF_MICROFACET_H
 
+#include "Device/includes/Sampling.h"
 #include "Device/includes/BSDFs/MicrofacetEnergyCompensation.h"
 
  // Clamping value for dot products when evaluating the GGX distribution

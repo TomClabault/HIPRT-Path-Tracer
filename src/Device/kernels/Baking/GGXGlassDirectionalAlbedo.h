@@ -20,8 +20,8 @@
 * [5][MaterialX codebase on Github]
 * [6][Blender's Cycles codebase on Github]
 * 
-* This kernel computes the hemispherical albedo of a glass BSDF for use
-* in energy conservation code (Sampling.h) as proposed in
+* This kernel computes the directional albedo of a glass BSDF for use
+* in energy conservation code (MicrofacetEnergyCompensation.h) as proposed in
 * [Practical multiple scattering compensation for microfacet models, Turquin, 2019]
 * 
 * The kernel outputs its results in two buffers (which are then written to disk as textures).
@@ -29,7 +29,7 @@
 * the BSDF and the reflectance at normal incidence F0 which relates to the relative IOR at
 * the interface of the BSDF
 * 
-* The first texture is the hemispherical albedo precomputation when hitting the object
+* The first texture is the directional albedo precomputation when hitting the object
 * from the outside
 * The second texture is used when inside the object: its IOR is simply inversed
 */
@@ -156,27 +156,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGX_glass_E_sample(float relative_ior, flo
     return sampled_direction;
 }
 
-#ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void) inline GGXGlassDirectionalAlbedoBake(HIPRTRenderData render_data, GGXGlassDirectionalAlbedoSettings bake_settings, float* out_buffer, float* out_buffer_inverse)
-#else
-GLOBAL_KERNEL_SIGNATURE(void) inline GGXGlassDirectionalAlbedoBake(HIPRTRenderData render_data, GGXGlassDirectionalAlbedoSettings bake_settings, float* out_buffer, float* out_buffer_inverse, int x, int y, int z)
-#endif
+HIPRT_HOST_DEVICE HIPRT_INLINE void glass_directional_albedo_integration(int kernel_iterations, int current_iteration, uint32_t x, uint32_t y, uint32_t z, uint32_t pixel_index, GGXGlassDirectionalAlbedoSettings bake_settings, float* out_buffer, bool exiting_surface)
 {
-#ifdef __KERNELCC__
-    const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
-    const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
-    const uint32_t z = blockIdx.z * blockDim.z + threadIdx.z;
-#endif
-
-    const uint32_t pixel_index = (x + y * bake_settings.texture_size_cos_theta_o + z * bake_settings.texture_size_cos_theta_o * bake_settings.texture_size_roughness);
-
-    if (x >= bake_settings.texture_size_cos_theta_o || y >= bake_settings.texture_size_roughness || z >= bake_settings.texture_size_ior)
-        return;
-
-    Xorshift32Generator random_number_generator(wang_hash(pixel_index + 1));
-
-    out_buffer[pixel_index] = 0.0f;
-    out_buffer_inverse[pixel_index] = 0.0f;
+    Xorshift32Generator random_number_generator(wang_hash(pixel_index + 1) * current_iteration);
 
     float cos_theta_o = 1.0f / (bake_settings.texture_size_cos_theta_o - 1) * x;
     cos_theta_o = hippt::max(GGX_DOT_PRODUCTS_CLAMP, cos_theta_o);
@@ -197,8 +179,15 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GGXGlassDirectionalAlbedoBake(HIPRTRenderDa
 
     float3 local_view_direction = hippt::normalize(make_float3(cos(0.0f) * sin_theta_o, sin(0.0f) * sin_theta_o, cos_theta_o));
 
-    // Entering surface
-    for (int sample = 0; sample < bake_settings.integration_sample_count; sample++)
+    if (exiting_surface)
+        // Inverting the relative IOR in case we're inside the surface
+        relative_ior = 1.0f / relative_ior;
+
+    int iterations_per_kernel = floor(hippt::max(1.0f, (float)GPUBakerConstants::COMPUTE_ELEMENT_PER_BAKE_KERNEL_LAUNCH / (bake_settings.texture_size_cos_theta_o * bake_settings.texture_size_roughness * bake_settings.texture_size_ior)));
+    int nb_kernel_launch = ceil(bake_settings.integration_sample_count / (float)iterations_per_kernel);
+    int nb_samples = nb_kernel_launch * iterations_per_kernel;
+
+    for (int sample = 0; sample < kernel_iterations; sample++)
     {
         float3 sampled_local_to_light_direction = GGX_glass_E_sample(relative_ior, roughness, local_view_direction, random_number_generator);
 
@@ -210,23 +199,46 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GGXGlassDirectionalAlbedoBake(HIPRTRenderDa
         directional_albedo /= eval_pdf;
         directional_albedo *= hippt::abs(sampled_local_to_light_direction.z);
 
-        out_buffer[pixel_index] += directional_albedo / bake_settings.integration_sample_count;
+        out_buffer[pixel_index] += directional_albedo / nb_samples;
     }
+}
 
-    // Exiting surface
-    relative_ior = 1.0f / relative_ior;
-    for (int sample = 0; sample < bake_settings.integration_sample_count; sample++)
-    {
-        float3 sampled_local_to_light_direction = GGX_glass_E_sample(relative_ior, roughness, local_view_direction, random_number_generator);
+#ifdef __KERNELCC__
+GLOBAL_KERNEL_SIGNATURE(void) inline GGXGlassDirectionalAlbedoBakeEntering(int kernel_iterations, int current_iteration, GGXGlassDirectionalAlbedoSettings bake_settings, float* out_buffer)
+#else
+GLOBAL_KERNEL_SIGNATURE(void) inline GGXGlassDirectionalAlbedoBakeEntering(int kernel_iterations, int current_iteration, GGXGlassDirectionalAlbedoSettings bake_settings, float* out_buffer, int x, int y, int z)
+#endif
+{
+#ifdef __KERNELCC__
+    const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
+    const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
+    const uint32_t z = blockIdx.z * blockDim.z + threadIdx.z;
+#endif
 
-        float eval_pdf;
-        float directional_albedo = GGX_glass_E_eval(relative_ior, roughness, local_view_direction, sampled_local_to_light_direction, eval_pdf);
-        if (eval_pdf == 0.0f)
-            continue;
+    const uint32_t pixel_index = (x + y * bake_settings.texture_size_cos_theta_o + z * bake_settings.texture_size_cos_theta_o * bake_settings.texture_size_roughness);
 
-        directional_albedo /= eval_pdf;
-        directional_albedo *= hippt::abs(sampled_local_to_light_direction.z);
+    if (x >= bake_settings.texture_size_cos_theta_o || y >= bake_settings.texture_size_roughness || z >= bake_settings.texture_size_ior)
+        return;
 
-        out_buffer_inverse[pixel_index] += directional_albedo / bake_settings.integration_sample_count;
-    }
+    glass_directional_albedo_integration(kernel_iterations, current_iteration, x, y, z, pixel_index, bake_settings, out_buffer, false);
+}
+
+#ifdef __KERNELCC__
+GLOBAL_KERNEL_SIGNATURE(void) inline GGXGlassDirectionalAlbedoBakeExiting(int kernel_iterations, int current_iteration, GGXGlassDirectionalAlbedoSettings bake_settings, float* out_buffer)
+#else
+GLOBAL_KERNEL_SIGNATURE(void) inline GGXGlassDirectionalAlbedoBakeExiting(int kernel_iterations, int current_iteration, GGXGlassDirectionalAlbedoSettings bake_settings, float* out_buffer, int x, int y, int z)
+#endif
+{
+#ifdef __KERNELCC__
+    const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
+    const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
+    const uint32_t z = blockIdx.z * blockDim.z + threadIdx.z;
+#endif
+
+    const uint32_t pixel_index = (x + y * bake_settings.texture_size_cos_theta_o + z * bake_settings.texture_size_cos_theta_o * bake_settings.texture_size_roughness);
+
+    if (x >= bake_settings.texture_size_cos_theta_o || y >= bake_settings.texture_size_roughness || z >= bake_settings.texture_size_ior)
+        return;
+
+    glass_directional_albedo_integration(kernel_iterations, current_iteration, x, y, z, pixel_index, bake_settings, out_buffer, true);
 }
