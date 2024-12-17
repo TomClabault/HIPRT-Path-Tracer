@@ -460,6 +460,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_glass_sample(const RendererMate
             // Now flipping
             reflected.z *= -1.0f;
 
+            // Refraction through the thin walled material. 
+            // We're poping the stack because we're not inside the material even
+            // though this is a refraction. A thin material has no inside
+            ray_volume_state.interior_stack.pop(false);
+
             return reflected;
         }
         else
