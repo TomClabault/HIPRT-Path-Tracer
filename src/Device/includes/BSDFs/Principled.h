@@ -689,6 +689,46 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_glass_layer(const HIPRT
     return ColorRGB32F(0.0f);
 }
 
+/**
+ * Reference:
+ *
+ * [1] [Open PBR Specification - Coat Darkening] https://academysoftwarefoundation.github.io/OpenPBR/#model/coat/darkening
+ *
+ * 'relative_eta' must be coat_ior / incident_medium_ior
+ *
+ * This function computes the darkening/increase in saturation that happens
+ * as light is trapped in the specular layer and bounces on the diffuse base.
+ * 
+ * This is essentially the same function as 'principled_coat_compute_darkening'
+ * but simplified since we know that only a diffuse base can be below the specular layer
+ * 
+ * 'relative_eta' should be specular_ior / coat_ior (or divided by the incident
+ * medium ior if there is no coating)
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_specular_compute_darkening(const SimplifiedRendererMaterial& material, float relative_eta, float view_dir_fresnel)
+{
+    if (material.specular_darkening == 0.0f)
+        return ColorRGB32F(1.0f);
+
+    // Fraction of light that exhibits total internal reflection inside the clearcoat layer,
+    // assuming a perfectly diffuse base
+    float Kr = 1.0f - (1.0f - fresnel_hemispherical_albedo(relative_eta)) / (relative_eta * relative_eta); // Eq. 66
+
+    // For the specular layer total internal reflection, we know that the base below is diffuse
+    // so K is just Kr
+    float K = Kr;
+
+    // The base albedo is the albedo of the BSDF below the specular layer.
+    // That's just the diffuse lobe so the base albedo is simple here.
+    ColorRGB32F base_albedo = material.base_color;
+    // This approximation of the amount of total internal reflection can then be used to
+    // compute the darkening of the base caused by the clearcoating
+    ColorRGB32F darkening = (1.0f - K) / (ColorRGB32F(1.0f) - base_albedo * K);
+    darkening = hippt::lerp(ColorRGB32F(1.0f), darkening, material.specular * material.specular_darkening);
+
+    return darkening;
+}
+
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_specular_layer(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, const float3& local_view_direction, const float3 local_to_light_direction, const float3& local_half_vector, const float3& shading_normal, float incident_medium_ior, float specular_weight, float specular_proba, ColorRGB32F& layers_throughput, float& out_cumulative_pdf)
 {
     if (specular_weight > 0.0f)
@@ -741,7 +781,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_specular_layer(const HI
             // computing that fresnel with the direction reflected from the base layer or with the viewer direction
             // is the same, Fresnel is symmetrical. But because we don't have the exact direction reflected from the
             // base layer, we're using the view direction instead
-            layer_below_attenuation *= ColorRGB32F(1.0f) - principled_specular_fresnel(material, relative_ior, local_view_direction.z);
+            ColorRGB32F view_dir_fresnel = principled_specular_fresnel(material, relative_ior, local_view_direction.z);
+            layer_below_attenuation *= ColorRGB32F(1.0f) - view_dir_fresnel;
+
+            // Taking into account the total internal reflection inside the specular layer 
+            // (bouncing on the base diffuse layer). We're using the luminance of the fresnel here because
+            // the specular layer may have thin film interference which colors the fresnel but
+            // we're going to assume that the fresnel is non-colored and thus we just take the luminance
+            layer_below_attenuation *= principled_specular_compute_darkening(material, relative_ior, view_dir_fresnel.luminance());
 
             // If the specular layer has 0 weight, we should not get any light absorption.
             // But if the specular layer has 1 weight, we should get the full absorption that we

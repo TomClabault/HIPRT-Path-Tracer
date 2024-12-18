@@ -150,12 +150,27 @@ struct SimplifiedRendererMaterial
     // Specular will be white if 0.0f and will be 'specular_color' if 1.0f
     float specular_tint = 1.0f;
     ColorRGB32F specular_color = ColorRGB32F(1.0f);
+    // Same as coat darkening but for total internal reflection inside the specular layer
+    // that sits on top of the diffuse base
+    //
+    // Disabled by default for artistic "expectations"
+    float specular_darkening = 0.0f;
 
     float coat = 0.0f;
     ColorRGB32F coat_medium_absorption = ColorRGB32F{ 1.0f, 1.0f, 1.0f };
+    // The coat thickness influences the amount of absorption (given by 'coat_medium_absorption')
+    // that will happen inside the coat
     float coat_medium_thickness = 5.0f;
     float coat_roughness = 0.0f;
+    // Physical accuracy requires that a rough clearcoat also roughens what's underneath it
+    // i.e. the specular/metallic/transmission layers.
+    // 
+    // The option is however given here to artistically disable
+    // that behavior by using coat roughening = 0.0f.
     float coat_roughening = 1.0f;
+    // Because of the total internal reflection that can happen inside the coat layer (i.e.
+    // light bouncing between the coat/BSDF and air/coat interfaces), the BSDF below the
+    // clearcoat will appear will increased saturation.
     float coat_darkening = 1.0f;
     float coat_anisotropy = 0.0f;
     float coat_anisotropy_rotation = 0.0f;

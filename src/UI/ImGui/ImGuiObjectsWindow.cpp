@@ -20,6 +20,7 @@ struct MaterialOverrideState
 	bool override_specular = false;
 	bool override_specular_color = false;
 	bool override_specular_tint_strength = false;
+	bool override_specular_darkening = false;
 	
 	bool override_metallic = false;
 	bool override_F82_reflectivity = false;
@@ -258,6 +259,10 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 
 				case 3:
 					material_override_changed |= draw_material_override_line("Specular tint strength", override_state.override_specular_tint_strength, material_override.specular_tint, 0.0f, 1.0f);
+					break;
+
+				case 4:
+					material_override_changed |= draw_material_override_line("Specular darkening", override_state.override_specular_darkening, material_override.specular_darkening, 0.0f, 1.0f);
 					break;
 				}
 			}
@@ -729,6 +734,7 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 		apply_material_override(override_state.override_specular, &RendererMaterial::specular, material_override.specular, overriden_materials);
 		apply_material_override(override_state.override_specular_color, &RendererMaterial::specular_color, material_override.specular_color, overriden_materials);
 		apply_material_override(override_state.override_specular_tint_strength, &RendererMaterial::specular_tint, material_override.specular_tint, overriden_materials);
+		apply_material_override(override_state.override_specular_darkening, &RendererMaterial::specular_darkening, material_override.specular_darkening, overriden_materials);
 
 		apply_material_override(override_state.override_metallic, &RendererMaterial::metallic, material_override.metallic, overriden_materials);
 		apply_material_override(override_state.override_F82_reflectivity, &RendererMaterial::metallic_F82, material_override.metallic_F82, overriden_materials);
@@ -915,6 +921,9 @@ void ImGuiObjectsWindow::draw_objects_panel()
 			material_changed |= ImGui::SliderFloat("Specular", &material.specular, 0.0f, 1.0f);
 			material_changed |= ImGui::ColorEdit3("Specular color", (float*)&material.specular_color);
 			material_changed |= ImGui::SliderFloat("Specular tint strength", &material.specular_tint, 0.0f, 1.0f);
+			material_changed |= ImGui::SliderFloat("Specular darkening", &material.specular_darkening, 0.0f, 1.0f);
+			ImGuiRenderer::show_help_marker("Same as coat darkening but for total internal reflection inside the specular layer "
+				"that sits on top of the diffuse base.");
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::TreePop();
