@@ -81,7 +81,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F clamp_light_contribution(ColorRGB32F 
     if (!light_contribution.has_NaN() && clamp_max_value > 0.0f && clamp_condition)
         // We don't want to clamp NaNs because that's UB (kind of) and the NaNs get
         // immediately clamped to 'clamp_max_value' in my experience
-        light_contribution.clamp(0.0f, clamp_max_value);
+        //
+        // Not clamping the negatives to 0 because
+        // spectral rendering (for dispersion for example) may produce negative values
+        // and we don't want to clamp those to 0
+        light_contribution.clamp(-clamp_max_value, clamp_max_value);
 
     return light_contribution;
 }

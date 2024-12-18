@@ -74,7 +74,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool check_for_nan(ColorRGB32F ray_color, int x, 
 HIPRT_HOST_DEVICE HIPRT_INLINE bool sanity_check(const HIPRTRenderData& render_data, RayPayload& ray_payload, int x, int y, int2& res)
 {
     bool invalid = false;
-    invalid |= check_for_negative_color(ray_payload.ray_color, x, y, render_data.render_settings.sample_number);
+    if (ray_payload.volume_state.sampled_wavelength == 0.0f)
+        // Only checking for negative colors if we didn't sample a spectral
+        // object because spectral can yield negative values but those are legit
+        // and we want to accumulate them
+        invalid |= check_for_negative_color(ray_payload.ray_color, x, y, render_data.render_settings.sample_number);
     invalid |= check_for_nan(ray_payload.ray_color, x, y, render_data.render_settings.sample_number);
 
     if (invalid)
@@ -125,7 +129,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
     Xorshift32Generator random_number_generator(seed);
 
     float squared_luminance_of_samples = 0.0f;
-    ColorRGB32F final_color = ColorRGB32F(0.0f, 0.0f, 0.0f);
     ColorRGB32F denoiser_albedo = ColorRGB32F(0.0f, 0.0f, 0.0f);
     float3 denoiser_normal = make_float3(0.0f, 0.0f, 0.0f);
 
@@ -229,6 +232,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
                 if (!do_russian_roulette(render_data.render_settings, bounce, ray_payload.volume_state, ray_payload.throughput, throughput_attenuation, random_number_generator))
                     break;
 
+                // Dispersion ray throughput filter
+                ray_payload.throughput *= get_dispersion_ray_color(ray_payload.volume_state.sampled_wavelength, ray_payload.material.dispersion_scale);
                 ray_payload.throughput *= throughput_attenuation;
                 ray_payload.next_ray_state = RayState::BOUNCE;
 
@@ -289,7 +294,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
         return;
 
     squared_luminance_of_samples += ray_payload.ray_color.luminance() * ray_payload.ray_color.luminance();
-    final_color += ray_payload.ray_color;
 
     // If we got here, this means that we still have at least one ray active
     render_data.aux_buffers.still_one_ray_active[0] = 1;
@@ -300,10 +304,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
         render_data.aux_buffers.pixel_squared_luminance[pixel_index] += squared_luminance_of_samples;
 
     if (render_data.render_settings.sample_number == 0)
-        render_data.buffers.pixels[pixel_index] = final_color;
+        render_data.buffers.pixels[pixel_index] = ray_payload.ray_color;
     else
         // If we are at a sample that is not 0, this means that we are accumulating
-        render_data.buffers.pixels[pixel_index] += final_color;
+        render_data.buffers.pixels[pixel_index] += ray_payload.ray_color;
 
     if (render_data.render_settings.sample_number == 0)
         render_data.aux_buffers.denoiser_albedo[pixel_index] = denoiser_albedo;

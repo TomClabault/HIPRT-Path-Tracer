@@ -40,6 +40,7 @@ void main()
 	vec4 final_color = hdr_color;
 	// Scaling by sample count
 	final_color = final_color / float(u_sample_number);
+	final_color = clamp(final_color, 0.0f, 1.0e35f);
 		
 	if (u_do_tonemapping == 1)
 	{

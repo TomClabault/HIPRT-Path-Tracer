@@ -6,6 +6,7 @@
 #ifndef DEVICE_INTERSECT_H
 #define DEVICE_INTERSECT_H
 
+#include "Device/includes/Dispersion.h"
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Material.h"
 #include "Device/includes/ONB.h"
@@ -203,6 +204,16 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
         }
 
     } while ((skipping_volume_boundary && hit.hasHit()));
+
+    if (in_out_ray_payload.material.dispersion_scale > 0.0f && in_out_ray_payload.material.specular_transmission > 0.0f && in_out_ray_payload.volume_state.sampled_wavelength == 0.0f)
+        // If we hit a dispersive material, we sample the wavelength that will be used
+        // for computing the wavelength dependent IORs used for dispersion
+        //
+        // We're also not re-doing the sampling if a wavelength has already been sampled for that path
+        //
+        // Negating the wavelength to indicate that the throughput filter of the wavelength
+        // hasn't been applied yet (applied in principled_glass_eval())
+        in_out_ray_payload.volume_state.sampled_wavelength = -sample_wavelength_uniformly(random_number_generator);
 
     return hit.hasHit();
 }

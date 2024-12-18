@@ -99,6 +99,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_texture_rgb_32bits(const void*
     return ColorRGB32F(rgba.r, rgba.g, rgba.b);
 }
 
+#ifdef __KERNELCC__
 /**
  * Bilinearly samples around x & y on the layer z of a 3D texture configured for
  * nearest neighbor sampling
@@ -107,7 +108,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_texture_rgb_32bits(const void*
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA32F internal_bilinear_sample_on_3D_texture(const oroTextureObject_t texture, int3 ires, float2 uv, int z)
 {
-#ifdef __KERNELCC__
     // Reference: https://iquilezles.org/articles/hwinterpolation/
 
     float2 res_f = make_float2(ires.x, ires.y);
@@ -122,8 +122,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA32F internal_bilinear_sample_on_3D_textu
     ColorRGBA32F d = ColorRGBA32F(tex3D<float4>(texture, i.x + 1, i.y + 1, z));
 
     return hippt::lerp(hippt::lerp(a, b, w.x), hippt::lerp(c, d, w.x), w.y);
-#endif
 }
+#endif
 
 /**
  * This function samples a 3D texture given in the 'texture' parameter

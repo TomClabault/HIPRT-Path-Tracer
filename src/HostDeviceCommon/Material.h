@@ -186,6 +186,8 @@ struct SimplifiedRendererMaterial
     float absorption_at_distance = 1.0f;
     // Color of the light absorption when traveling through the medium
     ColorRGB32F absorption_color = ColorRGB32F(1.0f);
+    float dispersion_scale = 0.0f;
+    float dispersion_abbe_number = 20.0f;
     bool thin_walled = false;
 
     float thin_film = 0.0f;
@@ -195,6 +197,7 @@ struct SimplifiedRendererMaterial
     float thin_film_hue_shift_degrees = 0.0f;
     float thin_film_base_ior_override = 1.0f;
     bool thin_film_do_ior_override = false;
+    bool srgb = true;
 
     // 1.0f makes the material completely opaque
     // 0.0f completely transparent (becomes invisible)

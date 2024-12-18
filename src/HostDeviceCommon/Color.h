@@ -33,11 +33,13 @@ struct ColorRGBA32F
 
 
     HIPRT_HOST_DEVICE float max_component() const { return hippt::max(r, hippt::max(g, hippt::max(b, a))); }
+    HIPRT_HOST_DEVICE ColorRGBA32F normalized() const { float length = sqrtf(r * r + g * g + b * b); return ColorRGBA32F(r / length, g / length, b / length, /* not normalizing alpha */ a); }
 
     HIPRT_HOST_DEVICE static ColorRGBA32F max(const ColorRGBA32F& a, const ColorRGBA32F& b) { return ColorRGBA32F(hippt::max(a.r, b.r), hippt::max(a.g, b.g), hippt::max(a.b, b.b), hippt::max(a.a, b.a)); }
     HIPRT_HOST_DEVICE static ColorRGBA32F min(const ColorRGBA32F& a, const ColorRGBA32F& b) { return ColorRGBA32F(hippt::min(a.r, b.r), hippt::min(a.g, b.g), hippt::min(a.b, b.b), hippt::min(a.a, b.a)); }
 
     HIPRT_HOST_DEVICE float& operator[](int index) { return *(&r + index); }
+    HIPRT_HOST_DEVICE float operator[](int index) const { return *(&r + index); }
 
     float r, g, b, a;
 };
@@ -82,11 +84,13 @@ struct ColorRGB32F
     HIPRT_HOST_DEVICE bool is_white() const { return r == 1.0f && g == 1.0f && b == 1.0f; }
 
     HIPRT_HOST_DEVICE float max_component() const { return hippt::max(r, hippt::max(g, b)); }
+    HIPRT_HOST_DEVICE ColorRGB32F normalized() const { float length = sqrtf(r * r + g * g + b * b); return ColorRGB32F(r / length, g / length, b / length); }
 
     HIPRT_HOST_DEVICE static ColorRGB32F max(const ColorRGB32F& a, const ColorRGB32F& b) { return ColorRGB32F(hippt::max(a.r, b.r), hippt::max(a.g, b.g), hippt::max(a.b, b.b)); }
     HIPRT_HOST_DEVICE static ColorRGB32F min(const ColorRGB32F& a, const ColorRGB32F& b) { return ColorRGB32F(hippt::min(a.r, b.r), hippt::min(a.g, b.g), hippt::min(a.b, b.b)); }
 
     HIPRT_HOST_DEVICE float& operator[](int index) { return *(&r + index); }
+    HIPRT_HOST_DEVICE float operator[](int index) const { return *(&r + index); }
 
     float r, g, b;
 };
@@ -108,14 +112,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F pow(const ColorRGB32F& col, float k) 
 #ifndef __KERNELCC__
 inline std::ostream& operator <<(std::ostream& os, const ColorRGB32F& color)
 {
-    os << color.r << ", " << color.g << ", " << color.b << std::endl;
+    os << color.r << ", " << color.g << ", " << color.b;
 
     return os;
 }
 
 inline std::ostream& operator <<(std::ostream& os, const ColorRGBA32F& color)
 {
-    os << color.r << ", " << color.g << ", " << color.b << ", " << color.a << std::endl;
+    os << color.r << ", " << color.g << ", " << color.b << ", " << color.a;
 
     return os;
 }

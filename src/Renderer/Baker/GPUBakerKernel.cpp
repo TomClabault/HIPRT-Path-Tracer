@@ -48,7 +48,7 @@ void GPUBakerKernel::bake_internal(int3 bake_resolution, const void* bake_settin
 
 		if (!m_bake_kernel.has_been_compiled())
 		{
-			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, ("Compiling " + m_kernel_title + " kernel...").c_str());
+			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "%s", ("Compiling " + m_kernel_title + " kernel...").c_str());
 
 			// Taking the priority for the compilation as otherwise, the kernels
 			// precompiling in the background are going to have the hand and we'll
@@ -69,7 +69,7 @@ void GPUBakerKernel::bake_internal(int3 bake_resolution, const void* bake_settin
 
 		m_bake_buffer.resize(bake_resolution.x * bake_resolution.y * bake_resolution.z);
 
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, ("Launching " + m_kernel_title + " baking...").c_str());
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "%s", ("Launching " + m_kernel_title + " baking...").c_str());
 
 		int3 tile_size;
 		if (bake_resolution.z > 1)
@@ -120,7 +120,7 @@ void GPUBakerKernel::bake_internal(int3 bake_resolution, const void* bake_settin
 
 		std::string unit_suffix = kernel_duration < 1000.0f ? "ms!" : "s!";
 		kernel_duration = kernel_duration > 1000.0f ? kernel_duration / 1000.0f : kernel_duration;
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, (m_kernel_title + " completed in " + std::to_string(kernel_duration) + unit_suffix).c_str());
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "%s", (m_kernel_title + " completed in " + std::to_string(kernel_duration) + unit_suffix).c_str());
 
 		if (bake_resolution.z > 1)
 		{

@@ -138,7 +138,7 @@ void ImGuiBakingWindow::draw_GGX_conductors()
 			baking_text = " Baking complete!";
 
 		ImGui::SameLine();
-		ImGui::Text(baking_text.c_str());
+		ImGui::Text("%s", baking_text.c_str());
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();
@@ -192,7 +192,7 @@ void ImGuiBakingWindow::draw_GGX_fresnel()
 			baking_text = " Baking complete!";
 
 		ImGui::SameLine();
-		ImGui::Text(baking_text.c_str());
+		ImGui::Text("%s", baking_text.c_str());
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();
@@ -249,7 +249,7 @@ void ImGuiBakingWindow::draw_GGX_glass()
 			baking_text = " Baking complete!";
 
 		ImGui::SameLine();
-		ImGui::Text(baking_text.c_str());
+		ImGui::Text("%s", baking_text.c_str());
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();
@@ -302,7 +302,7 @@ void ImGuiBakingWindow::draw_GGX_thin_glass()
 			baking_text = " Baking complete!";
 
 		ImGui::SameLine();
-		ImGui::Text(baking_text.c_str());
+		ImGui::Text("%s", baking_text.c_str());
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();
@@ -358,7 +358,7 @@ void ImGuiBakingWindow::draw_glossy_dielectric()
 			baking_text = " Baking complete!";
 
 		ImGui::SameLine();
-		ImGui::Text(baking_text.c_str());
+		ImGui::Text("%s", baking_text.c_str());
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();
