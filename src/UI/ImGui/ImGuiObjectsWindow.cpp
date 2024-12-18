@@ -37,6 +37,7 @@ struct MaterialOverrideState
 	bool override_coat_medium_thickness = false;
 	bool override_coat_roughness = false;
 	bool override_coat_roughening = false;
+	bool override_coat_darkening = false;
 	bool override_coat_anisotropy = false;
 	bool override_coat_anisotropy_rotation = false;
 	bool override_coat_IOR = false;
@@ -396,7 +397,7 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 
 		if (ImGui::BeginTable("Table coat layer", 2, ImGuiTableFlags_SizingFixedFit))
 		{
-			for (int row = 0; row < 9; row++)
+			for (int row = 0; row < 10; row++)
 			{
 				ImGui::TableNextRow();
 
@@ -433,14 +434,24 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 					break;
 
 				case 6:
-					material_override_changed |= draw_material_override_line("Coat anisotropy", override_state.override_coat_anisotropy, material_override.coat_anisotropy, 0.0f, 1.0f);
+					material_override_changed |= draw_material_override_line("Coat darkening", override_state.override_coat_darkening, material_override.coat_darkening, 0.0f, 1.0f);
+					ImGuiRenderer::show_help_marker("Because of the total internal reflection that can happen inside the coat layer (i.e. "
+						"light bouncing between the coat/BSDF and air/coat interfaces), the BSDF below the clearcoat will appear will increased "
+						"saturation.\n\n"
+						""
+						"This parameter controls the strength of that darkening/increase in saturation.\n"
+						"0.0f disables the effect which is non-physically accurate but may be artistically desirable.");
 					break;
 
 				case 7:
-					material_override_changed |= draw_material_override_line("Coat anisotropy rotation", override_state.override_anisotropy_rotation, material_override.anisotropy_rotation, 0.0f, 1.0f);
+					material_override_changed |= draw_material_override_line("Coat anisotropy", override_state.override_coat_anisotropy, material_override.coat_anisotropy, 0.0f, 1.0f);
 					break;
 
 				case 8:
+					material_override_changed |= draw_material_override_line("Coat anisotropy rotation", override_state.override_anisotropy_rotation, material_override.anisotropy_rotation, 0.0f, 1.0f);
+					break;
+
+				case 9:
 					material_override_changed |= draw_material_override_line("Coat IOR", override_state.override_coat_IOR, material_override.coat_ior, 0.0f, 1.0f);
 					break;
 				}
@@ -735,6 +746,7 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 		apply_material_override(override_state.override_coat_medium_thickness, &RendererMaterial::coat_medium_thickness, material_override.coat_medium_thickness, overriden_materials);
 		apply_material_override(override_state.override_coat_roughness, &RendererMaterial::coat_roughness, material_override.coat_roughness, overriden_materials);
 		apply_material_override(override_state.override_coat_roughening, &RendererMaterial::coat_roughening, material_override.coat_roughening, overriden_materials);
+		apply_material_override(override_state.override_coat_darkening, &RendererMaterial::coat_darkening, material_override.coat_darkening, overriden_materials);
 		apply_material_override(override_state.override_coat_anisotropy, &RendererMaterial::coat_anisotropy, material_override.coat_anisotropy, overriden_materials);
 		apply_material_override(override_state.override_coat_anisotropy_rotation, &RendererMaterial::coat_anisotropy_rotation, material_override.coat_anisotropy_rotation, overriden_materials);
 		apply_material_override(override_state.override_coat_IOR, &RendererMaterial::coat_ior, material_override.coat_ior, overriden_materials);
@@ -974,6 +986,13 @@ void ImGuiObjectsWindow::draw_objects_panel()
 				"i.e. the specular/metallic/transmission layers.\n"
 				"The option is however given here to artistically disable "
 				"that behavior by using coat roughening = 0.0f.");
+			material_changed |= ImGui::SliderFloat("Coat darkening", &material.coat_darkening, 0.0f, 1.0f);
+			ImGuiRenderer::show_help_marker("Because of the total internal reflection that can happen inside the coat layer (i.e. "
+				"light bouncing between the coat/BSDF and air/coat interfaces), the BSDF below the clearcoat will appear will increased "
+				"saturation.\n\n"
+				""
+				"This parameter controls the strength of that darkening/increase in saturation.\n"
+				"0.0f disables the effect which is non-physically accurate but may be artistically desirable.");
 			material_changed |= ImGui::SliderFloat("Coat anisotropy", &material.coat_anisotropy, 0.0f, 1.0f);
 			material_changed |= ImGui::SliderFloat("Coat anisotropy Rotation", &material.coat_anisotropy_rotation, 0.0f, 1.0f);
 			material_changed |= ImGui::SliderFloat("Coat IOR", &material.coat_ior, 1.0f, 3.0f);

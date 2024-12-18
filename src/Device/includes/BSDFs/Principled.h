@@ -32,7 +32,7 @@
   * [8] [Blender's Cycles Source Code] https://github.com/blender/cycles
   * [9] [Autodesk Standard Surface] https://autodesk.github.io/standard-surface/
   * [10] [Blender Principled BSDF] https://docs.blender.org/manual/fr/dev/render/shader_nodes/shader/principled.html
-  * [11] [Open PBR Specification] https://academysoftwarefoundation.github.io/OpenPBR/#formalism/layering
+  * [11] [Open PBR Specification] https://academysoftwarefoundation.github.io/OpenPBR/
   * [12] [Enterprise PBR Specification] https://dassaultsystemes-technology.github.io/EnterprisePBRShadingModel/spec-2025x.md.html
   * [13] [Arbitrarily Layered Micro-Facet Surfaces, Weidlich, Wilkie] https://www.cg.tuwien.ac.at/research/publications/2007/weidlich_2007_almfs/weidlich_2007_almfs-paper.pdf
   * [14] [A Practical Extension to Microfacet Theory for the Modeling of Varying Iridescence, Belcour, Barla, 2017] https://belcour.github.io/blog/research/publication/2017/05/01/brdf-thin-film.html
@@ -475,6 +475,47 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_glass_sample(const RendererMate
 }
 
 /**
+ * Reference:
+ * 
+ * [1] [Open PBR Specification - Coat Darkening] https://academysoftwarefoundation.github.io/OpenPBR/#model/coat/darkening
+ * 
+ * 'relative_eta' must be coat_ior / incident_medium_ior
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_coat_compute_darkening(const SimplifiedRendererMaterial& material, float relative_eta, float view_dir_fresnel)
+{
+    if (material.coat_darkening == 0.0f)
+        return ColorRGB32F(1.0f);
+    
+    // Fraction of light that exhibits total internal reflection inside the clearcoat layer,
+    // assuming a perfectly diffuse base
+    float Kr = 1.0f - (1.0f - fresnel_hemispherical_albedo(relative_eta)) / (relative_eta * relative_eta); // Eq. 66
+
+    // Fraction of light that exhibits total internal reflection inside the clearcoat layer,
+    // assuming a perfectly smooth base
+    float Ks = view_dir_fresnel; // Eq. 67
+
+    // Now because our base, in the general case, isn't perfectly diffuse or perfectly smooth
+    // we're lerping between the two values based on our roughness and this gives us a good
+    // approximation of how much total internal reflection we have inside the coat layer
+    float K = hippt::lerp(Ks, Kr, material.roughness); // Eq. 68
+
+    // The base albedo is the albedo of the BSDF below the clearcoat.
+    // Because the BSDF below the clearcoat may be composed of many layers,
+    // we're approximating the overall as the blending of the albedos of the individual
+    // lobes.
+    //
+    // Only the base substrate of the BSDF and the sheen layer have albedos so we only
+    // have to mix those two
+    ColorRGB32F base_albedo = (material.base_color + material.sheen_color * material.sheen) / (1.0f + material.sheen);
+    // This approximation of the amount of total internal reflection can then be used to
+    // compute the darkening of the base caused by the clearcoating
+    ColorRGB32F darkening = (1.0f - K) / (ColorRGB32F(1.0f) - base_albedo * K);
+    darkening = hippt::lerp(ColorRGB32F(1.0f), darkening, material.coat * material.coat_darkening);
+
+    return darkening;
+}
+
+/**
  * 'internal' functions are just so that 'principled_bsdf_eval' looks nicer
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_coat_layer(const HIPRTRenderData& render_data, const SimplifiedRendererMaterial& material, const float3& local_view_direction, const float3 local_to_light_direction, const float3& local_half_vector, const float3& shading_normal, float incident_ior, float coat_weight, bool refracting, float coat_proba, ColorRGB32F& layers_throughput, float& out_cumulative_pdf)
@@ -535,7 +576,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_coat_layer(const HIPRTR
         // computing that fresnel with the direction reflected from the base layer or with the viewer direction
         // is the same, Fresnel is symmetrical. But because we don't have the exact direction reflected from the
         // base layer, we're using the view direction instead
-        layer_below_attenuation *= 1.0f - full_fresnel_dielectric(hippt::abs(local_view_direction.z), incident_ior, material.coat_ior);
+        float view_dir_fresnel = full_fresnel_dielectric(hippt::abs(local_view_direction.z), incident_ior, material.coat_ior);
+        layer_below_attenuation *= 1.0f - view_dir_fresnel;
 
         if (!material.coat_medium_absorption.is_white())
         {
@@ -561,6 +603,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_coat_layer(const HIPRTR
             ColorRGB32F coat_absorption = exp(-(ColorRGB32F(1.0f) - pow(sqrt(material.coat_medium_absorption), traveled_distance_angle)) * material.coat_medium_thickness);
             layer_below_attenuation *= coat_absorption;
         }
+
+        layer_below_attenuation *= principled_coat_compute_darkening(material, material.coat_ior / incident_ior, view_dir_fresnel);
 
         // If the coat layer has 0 weight, we should not get any light attenuation.
         // But if the coat layer has 1 weight, we should get the full attenuation that we

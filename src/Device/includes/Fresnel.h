@@ -149,4 +149,17 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F adobe_f82_tint_fresnel(const ColorRGB
     return F;
 }
 
+/**
+ * Reference:
+ * [1] [A Hitchhiker’s Guide to Multiple Scattering, Eugene d'Eon] https://eugenedeon.com/hitchhikers
+ * Eq. 11.15
+ * 
+ * Hemispherical albedo (integral of directional albedos over view directions) 
+ * of a perfectly smooth dielectric layer. This is an approximated fit.
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE float fresnel_hemispherical_albedo(float relative_eta)
+{
+    return logf((10893.0f * relative_eta - 1438.2f) / (-774.4f * hippt::square(relative_eta) + 10212.0f * relative_eta + 1.0f));
+}
+
 #endif
