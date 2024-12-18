@@ -23,6 +23,8 @@ extern ImGuiLogger g_imgui_logger;
 
 // TODO demos:
 // new oren nayar BRDF: EON
+// clearcoat capabitilies
+// dispersion
 
 // TODOs ongoing
 // - limit UI speed because it actually uses some resources (maybe Vsync or something) or does it?
@@ -42,6 +44,7 @@ extern ImGuiLogger g_imgui_logger;
 // - When checking "Enable denoiser", it always denoises once immediately even if "denoise only when render done" is checked
 // - Thin-film interference energy conservation/preservation is broken with "strong BSDF energy conservation" --> too bright (with transmission at 1.0f), even with film thickness == 0.0f
 // - When overriding the base color for example in the global material overrider, if we then uncheck the base color override to stop overriding the base color, it returns the material to its very default base color  (the one  read from the scene file) instead of  returning it to what the user may have modified up to that point
+// - Some weird interaction between the specular layer and the coat layer when both darkening are enabled. Coat 0.5f strength is brighter than coat 0.0f
 
 // TODO Code Organization:
 // - init opengl context and all that expensive stuff (compile kernels too) while the scene is being parsed

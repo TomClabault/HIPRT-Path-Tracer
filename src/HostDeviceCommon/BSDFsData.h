@@ -59,6 +59,9 @@ struct BRDFsData
 	// Whether or not to approximate energy compensation for the clearcoat layer
 	bool clearcoat_compensation_approximation = true;
 
+	float min_wavelength = 390;
+	float max_wavelength = 830;
+
 	GGXMaskingShadowingFlavor GGX_masking_shadowing = GGXMaskingShadowingFlavor::HeightCorrelated;
 };
 

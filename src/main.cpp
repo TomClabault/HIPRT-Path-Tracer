@@ -21,12 +21,52 @@
 #include <cmath>
 #include <iostream>
 
+#include  "Device/includes/Dispersion.h"
+
 extern ImGuiLogger g_imgui_logger;
 
 #define GPU_RENDER 1
 
 int main(int argc, char* argv[])
 {   
+    const int test_width = 1280;
+    const int test_height = 720;
+    bool printed_low = false, printed_high = false;
+    Image32Bit rainbow(test_width, test_height, 3);
+    ColorRGB32F average = ColorRGB32F(0.0f);
+    HIPRTRenderData render_data;
+    for (int x = 0; x < test_width; x++)
+    {
+        float t = x / (float)(test_width - 1);
+        float wavelength = t * (render_data.bsdfs_data.max_wavelength - render_data.bsdfs_data.min_wavelength) + render_data.bsdfs_data.min_wavelength;
+
+        ColorRGB32F RGB = wavelength_to_RGB(wavelength);
+        //if (RGB.b > 0.999f && !printed_low)
+        //{
+        //    std::cout << wavelength << std::endl;
+        //    printed_low = true;
+        //}
+
+        //if (RGB.r > 0.99f && !printed_high && x > (float)test_width / 2.0f)
+        //{
+        //    std::cout << wavelength << std::endl;
+        //    //printed_high = true;
+        //}
+
+        average += RGB;
+
+        for (int y = 0; y < test_height; y++)
+        {
+            rainbow[(y * test_width + x) * 3 + 0] = RGB.r;
+            rainbow[(y * test_width + x) * 3 + 1] = RGB.g;
+            rainbow[(y * test_width + x) * 3 + 2] = RGB.b;
+        }
+    }
+
+    std::cout << "Average: " << average *255.0f / (float)test_width << std::endl;
+
+    rainbow.write_image_png("rainbow.png");
+
     CommandlineArguments cmd_arguments = CommandlineArguments::process_command_line_args(argc, argv);
 
     const int width = cmd_arguments.render_width;

@@ -18,6 +18,17 @@ struct RayVolumeState
 	int incident_mat_index = -1, outgoing_mat_index = -1;
 	// Whether or not we're exiting a material
 	bool inside_material = false;
+
+	// For spectral dispersion. A random wavelength is sampled and replaces this value
+	// when a glass object is hit. This wavelength can then be used to determine the IOR
+	// that should be used for refractions/reflections on the dielectric object. 
+	// 
+	// The wavelength is also used to apply a throughput filter on the ray such that only the
+	// sampled wavelength's color travels around the scene.
+	//
+	// If this value is negative, this is because the ray throughput filter hasn't been applied
+	// yet. If the value is positive, the filter has been applied
+	float sampled_wavelength = 0.0f;
 };
 
 #endif

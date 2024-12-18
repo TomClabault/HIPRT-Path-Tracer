@@ -6,6 +6,7 @@
 #ifndef DEVICE_PRINCIPLED_H
 #define DEVICE_PRINCIPLED_H
 
+#include "Device/includes/Dispersion.h"
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/ONB.h"
 #include "Device/includes/BSDFs/Lambertian.h"
@@ -220,6 +221,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
     // Relative eta = eta_t / eta_i
     float eta_i = ray_volume_state.incident_mat_index == InteriorStackImpl<InteriorStackStrategy>::MAX_MATERIAL_INDEX ? 1.0 : render_data.buffers.materials_buffer[ray_volume_state.incident_mat_index].ior;
     float eta_t = ray_volume_state.outgoing_mat_index == InteriorStackImpl<InteriorStackStrategy>::MAX_MATERIAL_INDEX ? 1.0 : render_data.buffers.materials_buffer[ray_volume_state.outgoing_mat_index].ior;
+
+    eta_i = compute_dispersion_ior(material.dispersion_abbe_number, material.dispersion_scale, eta_i, hippt::abs(ray_volume_state.sampled_wavelength));
+    eta_t = compute_dispersion_ior(material.dispersion_abbe_number, material.dispersion_scale, eta_t, hippt::abs(ray_volume_state.sampled_wavelength));
+
     float relative_eta = eta_t / eta_i;
 
     // relative_eta can be 1 when refracting from a volume into another volume of the same IOR.
@@ -379,6 +384,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
         }
     }
 
+    // Dispersion ray throughput filter
+    color *= get_dispersion_ray_color(ray_volume_state.sampled_wavelength, material.dispersion_scale);
     return color;
 }
 
@@ -389,6 +396,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_glass_sample(const RendererMate
 {
     float eta_i = ray_volume_state.incident_mat_index == InteriorStackImpl<InteriorStackStrategy>::MAX_MATERIAL_INDEX ? 1.0f : materials_buffer[ray_volume_state.incident_mat_index].ior;
     float eta_t = ray_volume_state.outgoing_mat_index == InteriorStackImpl<InteriorStackStrategy>::MAX_MATERIAL_INDEX ? 1.0f : materials_buffer[ray_volume_state.outgoing_mat_index].ior;
+
+    eta_i = compute_dispersion_ior(material.dispersion_abbe_number, material.dispersion_scale, eta_i, hippt::abs(ray_volume_state.sampled_wavelength));
+    eta_t = compute_dispersion_ior(material.dispersion_abbe_number, material.dispersion_scale, eta_t, hippt::abs(ray_volume_state.sampled_wavelength));
+
     float relative_eta = eta_t / eta_i;
     // To avoid sampling directions that would lead to a null half_vector.
     // Explained in more details in principled_glass_eval.

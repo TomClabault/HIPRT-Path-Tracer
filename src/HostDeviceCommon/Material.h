@@ -186,6 +186,8 @@ struct SimplifiedRendererMaterial
     float absorption_at_distance = 1.0f;
     // Color of the light absorption when traveling through the medium
     ColorRGB32F absorption_color = ColorRGB32F(1.0f);
+    float dispersion_scale = 0.0f;
+    float dispersion_abbe_number = 20.0f;
     bool thin_walled = false;
 
     float thin_film = 0.0f;

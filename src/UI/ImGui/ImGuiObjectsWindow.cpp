@@ -47,6 +47,8 @@ struct MaterialOverrideState
 	bool override_IOR = false;
 	bool override_absorption_distance = false;
 	bool override_absorption_color = false;
+	bool override_dispersion_abbe = false;
+	bool override_dispersion_scale = false;
 	bool override_dielectric_priority = false;
 	bool override_thin_material = false;
 
@@ -475,7 +477,7 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 
 		if (ImGui::BeginTable("Table transmission layer", 2, ImGuiTableFlags_SizingFixedFit))
 		{
-			for (int row = 0; row < 7; row++)
+			for (int row = 0; row < 9; row++)
 			{
 				ImGui::TableNextRow();
 
@@ -509,6 +511,15 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 					break;
 
 				case 5:
+					material_override_changed |= draw_material_override_line("Dispersion Abbe number", override_state.override_dispersion_abbe, material_override.dispersion_abbe_number, 9.0f, 91.0f);
+					ImGuiRenderer::show_help_marker("Abbe number for the dispersion of the glass. The lower the number, the stronger the dispersion.");
+					break;
+
+				case 6:
+					material_override_changed |= draw_material_override_line("Dispersion scale", override_state.override_dispersion_scale, material_override.dispersion_scale, 0.0f, 1.0f);
+					break;
+
+				case 7:
 					ImGui::BeginDisabled(kernel_options->get_macro_value(GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY) != ISS_WITH_PRIORITIES);
 					material_override_changed |= draw_material_override_line("Dielectric priority", override_state.override_dielectric_priority, material_override.dielectric_priority, 1, StackPriorityEntry::PRIORITY_MAXIMUM);
 					if (kernel_options->get_macro_value(GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY) != ISS_WITH_PRIORITIES)
@@ -517,7 +528,7 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 
 					break;
 
-				case 6:
+				case 8:
 					material_override_changed |= draw_material_override_line("Thin walled", override_state.override_thin_material, material_override.thin_walled);
 					break;
 				}
@@ -761,6 +772,8 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 		apply_material_override(override_state.override_IOR, &RendererMaterial::ior, material_override.ior, overriden_materials);
 		apply_material_override(override_state.override_absorption_distance, &RendererMaterial::absorption_at_distance, material_override.absorption_at_distance, overriden_materials);
 		apply_material_override(override_state.override_absorption_color, &RendererMaterial::absorption_color, material_override.absorption_color, overriden_materials);
+		apply_material_override(override_state.override_dispersion_abbe, &RendererMaterial::dispersion_abbe_number, material_override.dispersion_abbe_number, overriden_materials);
+		apply_material_override(override_state.override_dispersion_scale, &RendererMaterial::dispersion_scale, material_override.dispersion_scale, overriden_materials);
 		apply_material_override(override_state.override_dielectric_priority, &RendererMaterial::dielectric_priority, material_override.dielectric_priority, overriden_materials);
 		apply_material_override(override_state.override_thin_material, &RendererMaterial::thin_walled, material_override.thin_walled, overriden_materials);
 
@@ -1023,6 +1036,11 @@ void ImGuiObjectsWindow::draw_objects_panel()
 			}
 			material_changed |= ImGui::SliderFloat("Absorption distance", &material.absorption_at_distance, 0.0f, 20.0f);
 			material_changed |= ImGui::ColorEdit3("Absorption color", (float*)&material.absorption_color);
+			material_changed |= ImGui::SliderFloat("Dispersion Abbe number", &material.dispersion_abbe_number, 9.0f, 91.0f);
+			material_changed |= ImGui::SliderFloat("Min wavelength", &m_renderer->get_render_data().bsdfs_data.min_wavelength, 300, 450);
+			material_changed |= ImGui::SliderFloat("Max wavelength", &m_renderer->get_render_data().bsdfs_data.max_wavelength, 650, 800);
+			ImGuiRenderer::show_help_marker("Abbe number for the dispersion of the glass. The lower the number, the stronger the dispersion.");
+			material_changed |= ImGui::SliderFloat("Dispersion scale", &material.dispersion_scale, 0.0f, 1.0f);
 			ImGui::BeginDisabled(kernel_options->get_macro_value(GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY) != ISS_WITH_PRIORITIES);
 			material_changed |= ImGui::SliderInt("Dielectric priority", &material.dielectric_priority, 1, StackPriorityEntry::PRIORITY_MAXIMUM);
 			if (kernel_options->get_macro_value(GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY) != ISS_WITH_PRIORITIES)
