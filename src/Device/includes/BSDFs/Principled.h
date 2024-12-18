@@ -1043,6 +1043,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRende
                                              layers_throughput, pdf);
 
     if (render_data.bsdfs_data.clearcoat_compensation_approximation)
+        // The clearcoat compensation is done here and not in the clearcoat function
+        // because the clearcoat sits on top of everything else. This means that the clearcoat
+        // closure contains the full BSDF below. So the full BSDF below + the clearcoat (= the whole BSDF actually)
+        // should be compensated, not just the clearcoat lobe. So that's why we're doing
+        // it here,  after the full BSDF evaluation so that everything gets compensated
         final_color /= get_principled_energy_compensation_clearcoat_lobe(render_data, material, incident_medium_ior, local_view_direction.z);
 
     return final_color;
