@@ -971,9 +971,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRende
     // 'outside_object' flag to nullify the other lobes if we're
     // inside the object
     //
-    // Note that we're always outside of thin materials
+    // Note that we're always outside of thin materials, they have no volume interior
     bool outside_object = hippt::dot(view_direction, shading_normal) > 0 || material.thin_walled;
-    bool refracting = hippt::dot(shading_normal, to_light_direction) < 0.0f || hippt::dot(shading_normal, view_direction) < 0.0f;
+    bool refracting = hippt::dot(shading_normal, to_light_direction) < 0.0f && outside_object;
     if (hippt::dot(view_direction, shading_normal) < 0.0f)
         // For the rest of the computations to be correct, we want the normal
         // in the same hemisphere as the view direction
