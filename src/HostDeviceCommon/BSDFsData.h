@@ -34,7 +34,7 @@ struct BRDFsData
 	// 2D texture for the precomputed directional albedo
 	// for the GGX BRDFs used in the principled BSDF for energy conservation
 	// of conductors
-	void* GGX_Ess = nullptr;
+	void* GGX_conductor_Ess = nullptr;
 
 	// 3D texture for the precomputed directional albedo of the base layer
 	// of the principled BSDF (specular GGX layer + diffuse below)

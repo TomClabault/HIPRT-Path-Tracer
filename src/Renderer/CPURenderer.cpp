@@ -32,14 +32,14 @@
 // the interesting pixel. If that image viewer has its (0, 0) in the top
 // left corner, you'll need to set that DEBUG_FLIP_Y to 0. Set 1 to if
 // you're measuring the coordinates of the pixel with (0, 0) in the bottom left corner
-#define DEBUG_FLIP_Y 1
+#define DEBUG_FLIP_Y 0
 
 // Coordinates of the pixel whose neighborhood needs to rendered (useful for algorithms
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 135
-#define DEBUG_PIXEL_Y 278
+#define DEBUG_PIXEL_X 900
+#define DEBUG_PIXEL_Y 349
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -60,7 +60,7 @@
 // If you were only rendering the precise pixel at the given debug coordinates, you
 // wouldn't be able to debug correctly since all the neighborhood wouldn't have been
 // rendered which means no reservoir which means improper rendering
-#define DEBUG_RENDER_NEIGHBORHOOD 0
+#define DEBUG_RENDER_NEIGHBORHOOD 1
 // How many pixels to render around the debugged pixel given by the DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y coordinates
 #define DEBUG_NEIGHBORHOOD_SIZE 30
@@ -93,10 +93,9 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
 void CPURenderer::setup_brdfs_data()
 {
     m_sheen_ltc_params = Image32Bit(reinterpret_cast<float*>(ltc_parameters_table_approximation.data()), 32, 32, 3);
-    m_GGX_Ess = Image32Bit::read_image_hdr("../data/BRDFsData/GGX/" + GPUBakerConstants::get_GGX_Ess_filename(), 1, true);
+    m_GGX_conductor_Ess = Image32Bit::read_image_hdr("../data/BRDFsData/GGX/" + GPUBakerConstants::get_GGX_conductor_Ess_filename(), 1, true);
 
     std::vector<Image32Bit> images(GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR);
-
     for (int i = 0; i < GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR; i++)
     {
         std::string filename = std::to_string(i) + GPUBakerConstants::get_glossy_dielectric_Ess_filename();
@@ -146,7 +145,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.buffers.texcoords = parsed_scene.texcoords.data();
 
     m_render_data.bsdfs_data.sheen_ltc_parameters_texture = &m_sheen_ltc_params;
-    m_render_data.bsdfs_data.GGX_Ess = &m_GGX_Ess;
+    m_render_data.bsdfs_data.GGX_conductor_Ess = &m_GGX_conductor_Ess;
     m_render_data.bsdfs_data.glossy_dielectric_Ess = &m_glossy_dielectrics_Ess;
     m_render_data.bsdfs_data.GGX_Ess_glass = &m_GGX_Ess_glass;
     m_render_data.bsdfs_data.GGX_Ess_glass_inverse = &m_GGX_Ess_glass_inverse;

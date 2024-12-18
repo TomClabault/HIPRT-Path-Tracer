@@ -119,8 +119,10 @@ void GPURenderer::init_sheen_ltc_texture()
 
 void GPURenderer::init_GGX_Ess_texture(HIPfilter_mode filtering_mode)
 {
-	Image32Bit GGXEss_image = Image32Bit::read_image_hdr(BRDFS_DATA_DIRECTORY "/GGX/" + GPUBakerConstants::get_GGX_Ess_filename(), 1, true);
-	m_GGX_Ess = OrochiTexture(GGXEss_image, filtering_mode);
+	Image32Bit GGXEss_image = Image32Bit::read_image_hdr(BRDFS_DATA_DIRECTORY "/GGX/" + GPUBakerConstants::get_GGX_conductor_Ess_filename(), 1, true);
+	m_GGX_conductor_Ess = OrochiTexture(GGXEss_image, filtering_mode);
+
+	m_render_data_buffers_invalidated = true;
 }
 
 void GPURenderer::init_glossy_dielectric_Ess_texture(HIPfilter_mode filtering_mode)
@@ -989,7 +991,7 @@ void GPURenderer::update_render_data()
 		m_render_data.buffers.emissive_triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.emissive_triangles_indices.get_device_pointer());
 
 		m_render_data.bsdfs_data.sheen_ltc_parameters_texture = m_sheen_ltc_params.get_device_texture();
-		m_render_data.bsdfs_data.GGX_Ess = m_GGX_Ess.get_device_texture();
+		m_render_data.bsdfs_data.GGX_conductor_Ess = m_GGX_conductor_Ess.get_device_texture();
 		m_render_data.bsdfs_data.glossy_dielectric_Ess = m_glossy_dielectric_Ess.get_device_texture();
 		m_render_data.bsdfs_data.GGX_Ess_glass = m_GGX_Ess_glass.get_device_texture();
 		m_render_data.bsdfs_data.GGX_Ess_glass_inverse = m_GGX_Ess_glass_inverse.get_device_texture();

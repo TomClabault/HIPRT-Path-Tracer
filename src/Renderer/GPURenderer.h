@@ -495,7 +495,7 @@ private:
 
 	// Precomputed tables for GGX energy conservation
 	// [Practical multiple scattering compensation for microfacet models, Turquin, 2019]
-	OrochiTexture m_GGX_Ess;
+	OrochiTexture m_GGX_conductor_Ess;
 	OrochiTexture3D m_glossy_dielectric_Ess;
 	OrochiTexture3D m_GGX_Ess_glass;
 	OrochiTexture3D m_GGX_Ess_glass_inverse;

@@ -10,7 +10,8 @@
 #include "HIPRT-Orochi/OrochiBuffer.h"
 #include "Image/Image.h"
 #include "Renderer/Baker/GlossyDielectricDirectionalAlbedoSettings.h"
-#include "Renderer/Baker/GGXDirectionalAlbedoSettings.h"
+#include "Renderer/Baker/GGXConductorDirectionalAlbedoSettings.h"
+#include "Renderer/Baker/GGXFresnelDirectionalAlbedoSettings.h"
 #include "Renderer/Baker/GGXGlassDirectionalAlbedoSettings.h"
 #include "Renderer/Baker/GGXThinGlassDirectionalAlbedoSettings.h"
 #include "Renderer/Baker/GPUBakerKernel.h"
@@ -23,8 +24,11 @@ class GPUBaker
 public:
 	GPUBaker(std::shared_ptr<GPURenderer> renderer);
 
-	void bake_ggx_conductor_directional_albedo(const GGXDirectionalAlbedoSettings& bake_settings, const std::string& output_filename);
-	bool is_ggx_directional_albedo_bake_complete() const;
+	void bake_ggx_conductor_directional_albedo(const GGXConductorDirectionalAlbedoSettings& bake_settings, const std::string& output_filename);
+	bool is_ggx_conductor_directional_albedo_bake_complete() const;
+
+	void bake_ggx_fresnel_directional_albedo(const GGXFresnelDirectionalAlbedoSettings& bake_settings, const std::string& output_filename);
+	bool is_ggx_fresnel_directional_albedo_bake_complete() const;
 
 	void bake_glossy_dielectric_directional_albedo(const GlossyDielectricDirectionalAlbedoSettings& bake_settings, const std::string& output_filename);
 	bool is_glossy_dielectric_directional_albedo_bake_complete() const;
@@ -45,6 +49,7 @@ private:
 	std::shared_ptr<std::mutex> m_compiler_priority_mutex;
 
 	GPUBakerKernel m_ggx_conductor_directional_albedo_bake_kernel;
+	GPUBakerKernel m_ggx_fresnel_directional_albedo_bake_kernel;
 	GPUBakerKernel m_glossy_dielectric_directional_albedo_bake_kernel;
 	GPUBakerKernel m_ggx_glass_entering_directional_albedo_bake_kernel;
 	GPUBakerKernel m_ggx_glass_exiting_directional_albedo_bake_kernel;

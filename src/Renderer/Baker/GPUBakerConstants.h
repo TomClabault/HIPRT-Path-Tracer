@@ -12,8 +12,12 @@
 
 struct GPUBakerConstants
 {
-	static const int GGX_ESS_TEXTURE_SIZE_COS_THETA_O = 96;
-	static const int GGX_ESS_TEXTURE_SIZE_ROUGHNESS = 96;
+	static const int GGX_CONDUCTOR_ESS_TEXTURE_SIZE_COS_THETA_O = 128;
+	static const int GGX_CONDUCTOR_ESS_TEXTURE_SIZE_ROUGHNESS = 128;
+
+	static const int GGX_FRESNEL_ESS_TEXTURE_SIZE_COS_THETA_O = 256;
+	static const int GGX_FRESNEL_ESS_TEXTURE_SIZE_ROUGHNESS = 256;
+	static const int GGX_FRESNEL_ESS_TEXTURE_SIZE_IOR = 256;
 
 	static const int GGX_GLASS_ESS_TEXTURE_SIZE_COS_THETA_O = 256;
 	static const int GGX_GLASS_ESS_TEXTURE_SIZE_ROUGHNESS = 16;
@@ -34,15 +38,22 @@ struct GPUBakerConstants
 #ifndef __KERNELCC__
 	// Not using these on the GPU since they are std::string types: unavailable on the GPU
 	// and besides, we don't these paths on the GPU, only the texture sizes
-	static constexpr std::string get_GGX_Ess_filename(int texture_size_cos_theta = GPUBakerConstants::GGX_ESS_TEXTURE_SIZE_COS_THETA_O, 
-													  int texture_size_roughness = GPUBakerConstants::GGX_ESS_TEXTURE_SIZE_ROUGHNESS)
+	static constexpr std::string get_GGX_conductor_Ess_filename(int texture_size_cos_theta = GPUBakerConstants::GGX_CONDUCTOR_ESS_TEXTURE_SIZE_COS_THETA_O, 
+													  int texture_size_roughness = GPUBakerConstants::GGX_CONDUCTOR_ESS_TEXTURE_SIZE_ROUGHNESS)
 	{
-		return "GGX_Ess_" + std::to_string(texture_size_cos_theta) + "x" + std::to_string(texture_size_roughness) + ".hdr";
+		return "GGX_Conductor_" + std::to_string(texture_size_cos_theta) + "x" + std::to_string(texture_size_roughness) + ".hdr";
+	}
+
+	static constexpr std::string get_GGX_fresnel_Ess_filename(int texture_size_cos_theta = GPUBakerConstants::GGX_FRESNEL_ESS_TEXTURE_SIZE_COS_THETA_O,
+																int texture_size_roughness = GPUBakerConstants::GGX_FRESNEL_ESS_TEXTURE_SIZE_ROUGHNESS,
+																int texture_size_ior = GPUBakerConstants::GGX_FRESNEL_ESS_TEXTURE_SIZE_IOR)
+	{
+		return "GGX_Fresnel_" + std::to_string(texture_size_cos_theta) + "x" + std::to_string(texture_size_roughness) + "x" + std::to_string(texture_size_ior) + ".hdr";
 	}
 
 	static constexpr std::string get_glossy_dielectric_Ess_filename(int texture_size_cos_theta = GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_COS_THETA_O,
-																	int texture_size_roughness = GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_ROUGHNESS,
-																	int texture_size_ior = GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR)
+		int texture_size_roughness = GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_ROUGHNESS,
+		int texture_size_ior = GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR)
 	{
 		return "Glossy_Ess_" + std::to_string(texture_size_cos_theta) + "x" + std::to_string(texture_size_roughness) + "x" + std::to_string(texture_size_ior) + ".hdr";
 	}

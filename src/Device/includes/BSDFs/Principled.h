@@ -495,7 +495,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_coat_layer(const HIPRTR
             contribution = principled_coat_eval(render_data, material, local_view_direction, local_to_light_direction, local_half_vector, incident_ior, coat_pdf);
             contribution *= coat_weight;
             contribution *= layers_throughput;
-        }
+        }        
 
         out_cumulative_pdf += coat_pdf * coat_proba;
 

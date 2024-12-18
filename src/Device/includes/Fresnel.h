@@ -20,9 +20,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float F0_from_eta(float eta_t, float eta_i)
 /**
  * relative_eta here is eta_t / eta_i
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float F0_from_eta_t_and_relative(float eta_t, float relative_eta)
+HIPRT_HOST_DEVICE HIPRT_INLINE float F0_from_eta_t_and_relative_ior(float eta_t, float relative_eta)
 {
-    return F0_from_eta(eta_t, eta_t / relative_eta);
+    return F0_from_eta(eta_t, /* eta_i */ eta_t / relative_eta);
 }
 
 /**

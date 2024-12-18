@@ -100,7 +100,7 @@ private:
     } m_restir_di_state;
 
     Image32Bit m_sheen_ltc_params;
-    Image32Bit m_GGX_Ess;
+    Image32Bit m_GGX_conductor_Ess;
     Image32Bit3D m_glossy_dielectrics_Ess;
     Image32Bit3D m_GGX_Ess_glass;
     Image32Bit3D m_GGX_Ess_glass_inverse;

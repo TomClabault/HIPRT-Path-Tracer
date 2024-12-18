@@ -3,7 +3,7 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#include "Renderer/Baker/GGXDirectionalAlbedoSettings.h"
+#include "Renderer/Baker/GGXConductorDirectionalAlbedoSettings.h"
 #include "Renderer/Baker/GGXGlassDirectionalAlbedoSettings.h"
 #include "Renderer/Baker/GGXThinGlassDirectionalAlbedoSettings.h"
 #include "UI/ImGui/ImGuiBakingWindow.h"
@@ -41,6 +41,7 @@ void ImGuiBakingWindow::draw_ggx_energy_conservation_panel()
 		ImGui::TreePush("Baking GGX Energy Conservation tree");
 
 		draw_GGX_conductors();
+		draw_GGX_fresnel();
 		draw_GGX_glass();
 		draw_GGX_thin_glass();
 		draw_glossy_dielectric();
@@ -92,15 +93,15 @@ void ImGuiBakingWindow::draw_ggx_energy_conservation_panel()
 }
 
 /**
- * Panel for the GGX directional albedo
+ * Panel for the GGX conductors directional albedo
  */
 void ImGuiBakingWindow::draw_GGX_conductors()
 {
-	if (ImGui::CollapsingHeader("Conductors Directional Albedo"))
+	if (ImGui::CollapsingHeader("GGX Conductors Directional Albedo"))
 	{
 		ImGui::TreePush("GGX_E tree");
 
-		static GGXDirectionalAlbedoSettings ggx_dir_albedo_settings;
+		static GGXConductorDirectionalAlbedoSettings ggx_dir_albedo_settings;
 
 		static bool filename_modified = false;
 		static std::string output_filename;
@@ -115,12 +116,12 @@ void ImGuiBakingWindow::draw_GGX_conductors()
 		if (!filename_modified)
 			// As long as the user hasn't touched the output filename,
 			// we modify it automatically so that's its more convenient
-			output_filename = GPUBakerConstants::get_GGX_Ess_filename(ggx_dir_albedo_settings.texture_size_cos_theta, ggx_dir_albedo_settings.texture_size_roughness);
+			output_filename = GPUBakerConstants::get_GGX_conductor_Ess_filename(ggx_dir_albedo_settings.texture_size_cos_theta, ggx_dir_albedo_settings.texture_size_roughness);
 
 		std::shared_ptr<GPUBaker> baker = m_render_window->get_baker();
 
 		static bool bake_started_at_least_once = false;
-		ImGui::BeginDisabled(!baker->is_ggx_directional_albedo_bake_complete() && bake_started_at_least_once);
+		ImGui::BeginDisabled(!baker->is_ggx_conductor_directional_albedo_bake_complete() && bake_started_at_least_once);
 		if (ImGui::Button("Bake!"))
 		{
 			bake_started_at_least_once = true;
@@ -131,9 +132,63 @@ void ImGuiBakingWindow::draw_GGX_conductors()
 		ImGui::EndDisabled();
 
 		static std::string baking_text = "";
-		if (!baker->is_ggx_directional_albedo_bake_complete() && bake_started_at_least_once)
+		if (!baker->is_ggx_conductor_directional_albedo_bake_complete() && bake_started_at_least_once)
 			baking_text = " Baking...";
-		else if (baker->is_ggx_directional_albedo_bake_complete() && bake_started_at_least_once)
+		else if (baker->is_ggx_conductor_directional_albedo_bake_complete() && bake_started_at_least_once)
+			baking_text = " Baking complete!";
+
+		ImGui::SameLine();
+		ImGui::Text(baking_text.c_str());
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::TreePop();
+	}
+}
+
+/**
+ * Panel for the GGX fresnel directional albedo
+ */
+void ImGuiBakingWindow::draw_GGX_fresnel()
+{
+	if (ImGui::CollapsingHeader("GGX + Fresnel Directional Albedo"))
+	{
+		ImGui::TreePush("GGX_fresnel tree");
+
+		static GGXFresnelDirectionalAlbedoSettings ggx_fresnel_dir_albedo_settings;
+
+		static bool filename_modified = false;
+		static std::string output_filename;
+
+		ImGui::InputInt("Texture Size - Cos Theta", &ggx_fresnel_dir_albedo_settings.texture_size_cos_theta);
+		ImGui::InputInt("Texture Size - Roughness", &ggx_fresnel_dir_albedo_settings.texture_size_roughness);
+		ImGui::InputInt("Texture Size - IOR", &ggx_fresnel_dir_albedo_settings.texture_size_ior);
+		ImGui::InputInt("Integration Sample Count", &ggx_fresnel_dir_albedo_settings.integration_sample_count);
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		if (ImGui::InputText("Output Texture Filename", &output_filename))
+			filename_modified = true;
+
+		if (!filename_modified)
+			// As long as the user hasn't touched the output filename,
+			// we modify it automatically so that's its more convenient
+			output_filename = GPUBakerConstants::get_GGX_fresnel_Ess_filename(ggx_fresnel_dir_albedo_settings.texture_size_cos_theta, ggx_fresnel_dir_albedo_settings.texture_size_roughness, ggx_fresnel_dir_albedo_settings.texture_size_ior);
+
+		std::shared_ptr<GPUBaker> baker = m_render_window->get_baker();
+
+		static bool bake_started_at_least_once = false;
+		ImGui::BeginDisabled(!baker->is_ggx_fresnel_directional_albedo_bake_complete() && bake_started_at_least_once);
+		if (ImGui::Button("Bake!"))
+		{
+			bake_started_at_least_once = true;
+			// This starts the baking job asynchronously and the texture is
+			// automatically written to disk when the baking is done
+			baker->bake_ggx_fresnel_directional_albedo(ggx_fresnel_dir_albedo_settings, output_filename);
+		}
+		ImGui::EndDisabled();
+
+		static std::string baking_text = "";
+		if (!baker->is_ggx_fresnel_directional_albedo_bake_complete() && bake_started_at_least_once)
+			baking_text = " Baking...";
+		else if (baker->is_ggx_fresnel_directional_albedo_bake_complete() && bake_started_at_least_once)
 			baking_text = " Baking complete!";
 
 		ImGui::SameLine();

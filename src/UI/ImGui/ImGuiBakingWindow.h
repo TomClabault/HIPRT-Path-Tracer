@@ -20,6 +20,7 @@ public:
 	void draw();
 	void draw_ggx_energy_conservation_panel();
 	void draw_GGX_conductors();
+	void draw_GGX_fresnel();
 	void draw_GGX_glass();
 	void draw_GGX_thin_glass();
 	void draw_glossy_dielectric();

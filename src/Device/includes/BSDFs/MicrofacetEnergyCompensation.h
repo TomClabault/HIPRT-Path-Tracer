@@ -26,13 +26,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F get_GGX_energy_compensation_conductor
 {
     const void* GGX_Ess_texture_pointer = nullptr;
 #ifdef __KERNELCC__
-    GGX_Ess_texture_pointer = &render_data.bsdfs_data.GGX_Ess;
+    GGX_Ess_texture_pointer = &render_data.bsdfs_data.GGX_conductor_Ess;
 #else
-    GGX_Ess_texture_pointer = render_data.bsdfs_data.GGX_Ess;
+    GGX_Ess_texture_pointer = render_data.bsdfs_data.GGX_conductor_Ess;
 #endif
 
     // Reading the precomputed directional albedo from the texture
-    int2 dims = make_int2(GPUBakerConstants::GGX_ESS_TEXTURE_SIZE_COS_THETA_O, GPUBakerConstants::GGX_ESS_TEXTURE_SIZE_ROUGHNESS);
+    int2 dims = make_int2(GPUBakerConstants::GGX_CONDUCTOR_ESS_TEXTURE_SIZE_COS_THETA_O, GPUBakerConstants::GGX_CONDUCTOR_ESS_TEXTURE_SIZE_ROUGHNESS);
     float Ess = sample_texture_rgb_32bits(GGX_Ess_texture_pointer, 0, dims, false, make_float2(hippt::max(0.0f, local_view_direction.z), material_roughness)).r;
 
     // Computing kms, [Practical multiple scattering compensation for microfacet models, Turquin, 2019], Eq. 10
