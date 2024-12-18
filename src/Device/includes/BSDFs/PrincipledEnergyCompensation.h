@@ -91,10 +91,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_principled_energy_compensation_clearcoa
     float multiple_scattering_compensation = sample_texture_3D_rgb_32bits(render_data.bsdfs_data.glossy_dielectric_Ess, texture_dims, uvw, render_data.bsdfs_data.use_hardware_tex_interpolation).r;
 
     // Applying the compensation term for energy preservation
-    // If material.specular == 1, then we want the full energy compensation
-    // If material.specular == 0, then we only have the diffuse lobe and so we
+    // If material.coat == 1, then we want the full energy compensation
+    // If material.coat == 0, then we only have the diffuse lobe and so we
     // need no energy compensation at all and so we just divide by 1 to basically do nothing
-    ms_compensation = hippt::lerp(1.0f, multiple_scattering_compensation, material.coat);
+    //
+    // We're also disabling the compensation when the clearcoat is on top of a glass
+    // transmission lobe because the approximation here falls apart and can gain quite a bit
+    // of energy.
+    ms_compensation = hippt::lerp(1.0f, multiple_scattering_compensation, material.coat * (1.0f - material.specular_transmission));
     // Multi scatter compensation is not tabulated to take thin film interference into account.
     // That's because thin film interference completely modifies the fresnel term and the
     // tabulated multi scatter compensation only accounts for the usual dielectric fresnel
