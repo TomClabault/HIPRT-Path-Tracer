@@ -27,13 +27,14 @@ extern ImGuiLogger g_imgui_logger;
 
 #define GPU_RENDER 1
 
-int main(int argc, char* argv[])
-{   
+void wavelength_to_RGB_test()
+{
     const int test_width = 1280;
     const int test_height = 720;
     bool printed_low = false, printed_high = false;
     Image32Bit rainbow(test_width, test_height, 3);
-    ColorRGB32F average = ColorRGB32F(0.0f);
+    ColorRGB32F averageRGB = ColorRGB32F(0.0f);
+    ColorRGB32F averageXYZ = ColorRGB32F(0.0f);
     HIPRTRenderData render_data;
     for (int x = 0; x < test_width; x++)
     {
@@ -41,19 +42,10 @@ int main(int argc, char* argv[])
         float wavelength = t * (render_data.bsdfs_data.max_wavelength - render_data.bsdfs_data.min_wavelength) + render_data.bsdfs_data.min_wavelength;
 
         ColorRGB32F RGB = wavelength_to_RGB(wavelength);
-        //if (RGB.b > 0.999f && !printed_low)
-        //{
-        //    std::cout << wavelength << std::endl;
-        //    printed_low = true;
-        //}
+        averageRGB += RGB / (float)test_width;
 
-        //if (RGB.r > 0.99f && !printed_high && x > (float)test_width / 2.0f)
-        //{
-        //    std::cout << wavelength << std::endl;
-        //    //printed_high = true;
-        //}
-
-        average += RGB;
+        ColorRGB32F XYZ = wavelength_to_XYZ(wavelength);
+        averageXYZ += XYZ / (float)test_width;
 
         for (int y = 0; y < test_height; y++)
         {
@@ -63,9 +55,50 @@ int main(int argc, char* argv[])
         }
     }
 
-    std::cout << "Average: " << average *255.0f / (float)test_width << std::endl;
+    std::cout << "[1, 1, 1] XYZ to RGB: (" << XYZ_to_RGB(ColorRGB32F(1.0f, 1.0f, 1.0f)) << ") = [" << XYZ_to_RGB(ColorRGB32F(1.0f, 1.0f, 1.0f)) * 255.0f << "]" << std::endl << std::endl;
+    std::cout << "Integration XYZ: " << averageXYZ << std::endl;
+
+    ColorRGB32F xyz_to_rgb = XYZ_to_RGB(averageXYZ);
+    std::cout << "Integrated XYZ to RGB: " << xyz_to_rgb << std::endl;
+    std::cout << "Normalized: " << xyz_to_rgb / xyz_to_rgb.max_component() << std::endl << std::endl;
+    std::cout << "Average of all wavelength_to_RGB(): " << averageRGB * 255.0f << std::endl;
 
     rainbow.write_image_png("rainbow.png");
+}
+
+void sample_D65_test()
+{
+    srand(time(NULL));
+    Xorshift32Generator random_number_generator(rand());
+
+    const int nb_samples = 1000000;
+    ColorRGB32F RGB_average;
+    for (int i = 0; i < nb_samples; i++)
+    {
+        float pdf;
+        float wavelength = sample_wavelength_D65(random_number_generator(), pdf);
+
+        RGB_average += wavelength_to_RGB(wavelength) / pdf / (float)nb_samples;
+    }
+
+    std::cout << "RGB Average: " << RGB_average << std::endl;
+}
+
+int main(int argc, char* argv[])
+{   
+    /*float total = 0.0f;
+    for (int i = 0; i < 531; i++)
+        total += D65_SPD[i];
+
+    float running = 0.0f;
+        for (int i = 0; i < 531; i++)
+        {
+            std::cout << D65_SPD[i] / total + running << ", ";
+            running += D65_SPD[i] / total;
+        }
+        std::cout << "total: " << total << std::endl;*/
+
+    wavelength_to_RGB_test();
 
     CommandlineArguments cmd_arguments = CommandlineArguments::process_command_line_args(argc, argv);
 

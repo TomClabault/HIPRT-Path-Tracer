@@ -59,8 +59,15 @@ struct BRDFsData
 	// Whether or not to approximate energy compensation for the clearcoat layer
 	bool clearcoat_compensation_approximation = true;
 
-	float min_wavelength = 390;
-	float max_wavelength = 830;
+	// vk_gltf
+//#define MIN_SAMPLE_WAVELENGTH 399.43862850585765F
+//#define MAX_SAMPLE_WAVELENGTH 668.6617899434457F
+
+#define MIN_SAMPLE_WAVELENGTH 360
+#define MAX_SAMPLE_WAVELENGTH 830
+
+	float min_wavelength = MIN_SAMPLE_WAVELENGTH;
+	float max_wavelength = MAX_SAMPLE_WAVELENGTH;
 
 	GGXMaskingShadowingFlavor GGX_masking_shadowing = GGXMaskingShadowingFlavor::HeightCorrelated;
 };
