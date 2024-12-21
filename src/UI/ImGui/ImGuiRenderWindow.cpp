@@ -26,10 +26,10 @@ void ImGuiRenderWindow::draw()
 	ImVec2 content_max = ImGui::GetWindowContentRegionMax();
 	ImVec2 current_size = ImVec2(content_max.x - content_min.x, content_max.y - content_min.y);
 
-	ImGui::Image((void*)(intptr_t)m_render_window->get_display_view_system()->m_fbo_texture, current_size, ImVec2(0, 1), ImVec2(1, 0));
-
 	if (current_size.x != m_current_size.x || current_size.y != m_current_size.y)
 		m_render_window->resize(current_size.x, current_size.y);
+
+	ImGui::Image((void*)(intptr_t)m_render_window->get_display_view_system()->m_fbo_texture, current_size, ImVec2(0, 1), ImVec2(1, 0));
 
 	m_current_size = current_size;
 	m_is_hovered = ImGui::IsWindowHovered();
