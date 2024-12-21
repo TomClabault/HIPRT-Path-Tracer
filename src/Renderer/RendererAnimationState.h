@@ -6,6 +6,8 @@
 #ifndef RENDERER_ANIMATION_STATE_H
 #define RENDERER_ANIMATION_STATE_H
 
+#include <filesystem>
+
 struct RendererAnimationState
 {
 	// If true, objects will be animated in the scene at each frame
@@ -25,9 +27,30 @@ struct RendererAnimationState
 	// How many frames to render for the frame sequence
 	int number_of_animation_frames = 100;
 
+	std::string frames_output_folder = "FrameSequence";
+
+	std::string get_frame_filepath()
+	{
+		return frames_output_folder + "/" + std::to_string(frames_rendered_so_far) + ".png";
+	}
+
+	void ensure_output_folder_exists()
+	{
+		if (!std::filesystem::exists(frames_output_folder)) 
+			// Creates the folder and any necessary parent directories if it doesn't exist yet
+        	std::filesystem::create_directories(frames_output_folder); 
+	}
+
 	void reset()
 	{
 		frames_rendered_so_far = 0;
+
+		std::stringstream ss;
+
+		ss << "FrameSeq - ";
+		Utils::get_current_date_string(ss);
+
+		frames_output_folder = ss.str();
 	}
 };
 

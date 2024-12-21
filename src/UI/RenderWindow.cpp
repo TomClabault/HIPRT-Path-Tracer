@@ -841,13 +841,22 @@ void RenderWindow::render()
 			if (renderer_animation_state.is_rendering_frame_sequence && renderer_animation_state.frames_rendered_so_far < renderer_animation_state.number_of_animation_frames)
 			{
 				// If we're rendering an animation and the frame just converged
-				m_screenshoter->write_to_png();
+				renderer_animation_state.ensure_output_folder_exists();
+				m_screenshoter->write_to_png(renderer_animation_state.get_frame_filepath());
 				// Indicating that the animations can step forward since we're done
 				// with this frame
-				renderer_animation_state.can_step_animation = true;
 				renderer_animation_state.frames_rendered_so_far++;
+				if (renderer_animation_state.frames_rendered_so_far == renderer_animation_state.number_of_animation_frames)
+					// We just rendered the last frame, deactivating rendering frame sequence state
+					renderer_animation_state.is_rendering_frame_sequence = false;
+				else
+				{
+					// Not the last frame
+					renderer_animation_state.can_step_animation = true;
 
-				set_render_dirty(true);
+					set_render_dirty(true);
+				}
+
 			}
 
 			// Sleeping so that we don't burn the CPU and GPU

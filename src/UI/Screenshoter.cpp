@@ -84,10 +84,9 @@ void Screenshoter::select_compute_program(DisplayViewType display_view)
 void Screenshoter::write_to_png()
 {
 	std::stringstream filename;
-	std::time_t t = std::time(0);
-	std::tm* now = std::localtime(&t);
 
-	filename << std::put_time(now, "%m.%d.%Y.%H.%M.%S - ") << m_renderer->get_render_settings().sample_number << "sp @ " << m_renderer->m_render_resolution.x << "x" << m_renderer->m_render_resolution.y << " - " << m_render_window->get_current_render_time() / 1000.0f << "s" << ".png";
+	Utils::get_current_date_string(filename);
+	filename << " - " << m_renderer->get_render_settings().sample_number << "sp @ " << m_renderer->m_render_resolution.x << "x" << m_renderer->m_render_resolution.y << " - " << m_render_window->get_current_render_time() / 1000.0f << "s" << ".png";
 
 	write_to_png(filename.str().c_str());
 }

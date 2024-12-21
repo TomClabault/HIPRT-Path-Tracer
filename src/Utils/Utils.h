@@ -9,6 +9,7 @@
 #include "HostDeviceCommon/Color.h"
 #include "Image/Image.h"
 
+#include <sstream>
 #include <string>
 
 class Utils
@@ -21,6 +22,7 @@ public:
     static std::vector<unsigned char> tonemap_hdr_image(const float* hdr_image, size_t size, int sample_number, float gamma, float exposure);
 
     static std::string file_to_string(const char* filepath);
+    static void get_current_date_string(std::stringstream& ss);
 
     /*
      * A blend factor of 1 gives only the noisy image. 0 only the denoised image

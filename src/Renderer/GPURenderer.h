@@ -123,6 +123,11 @@ public:
 	void update();
 
 	/**
+	 * Steps all the animations of the renderer one step forward
+	 */
+	void step_animations();
+
+	/**
 	 * Returns true if one of the kernels requires the global stack buffer for BVH traversal
 	 */
 	bool needs_global_bvh_stack_buffer();

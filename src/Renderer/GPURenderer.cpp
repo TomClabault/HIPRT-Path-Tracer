@@ -243,8 +243,7 @@ void GPURenderer::update()
 		m_kernel_precompilation_launched = true;
 	}
 
-	m_envmap.update(this);
-	m_camera_animation.animation_step(this);
+	step_animations();
 	m_restir_di_render_pass.update();
 
 	internal_update_clear_device_status_buffers();
@@ -259,6 +258,12 @@ void GPURenderer::update()
 
 	if (!m_render_data.render_settings.accumulate)
 		m_render_data.render_settings.sample_number = 0;
+}
+
+void GPURenderer::step_animations()
+{
+	m_envmap.update(this);
+	m_camera_animation.animation_step(this);
 }
 
 void GPURenderer::copy_status_buffers()

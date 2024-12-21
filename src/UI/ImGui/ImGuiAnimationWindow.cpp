@@ -72,14 +72,39 @@ void ImGuiAnimationWindow::draw_frame_sequence_rendering_panel()
 {
 	if (ImGui::CollapsingHeader("Frame Sequence Rendering"))
 	{
+		RendererAnimationState& animation_state = m_renderer->get_animation_state();
+
 		ImGui::TreePush("Frame Sequence Rendering Tree");
 
-		RendererAnimationState& animation_state = m_renderer->get_animation_state();
-		if (ImGui::InputInt("Number frames to render", &animation_state.number_of_animation_frames))
-			animation_state.reset();
+		ImGui::Text("Currently at frame %d / %d", animation_state.frames_rendered_so_far, animation_state.number_of_animation_frames);
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		
+
+		static int move_n_frames_forward = 0;
+		ImGui::InputInt("Move N frames forward", &move_n_frames_forward); 
+		ImGuiRenderer::show_help_marker("Advances all the animations N frames forward.");
+		ImGui::SameLine();
+		ImGui::BeginDisabled(animation_state.do_animations == false);
+		if (ImGui::Button("Go!"))
+		{
+			bool can_step_backup = animation_state.can_step_animation;
+
+			animation_state.can_step_animation = true;
+			for (int i = 0; i < move_n_frames_forward; i++)
+				m_renderer->step_animations();
+
+			animation_state.can_step_animation = can_step_backup;
+			animation_state.frames_rendered_so_far += move_n_frames_forward;
+			move_n_frames_forward = 0;
+
+			m_render_window->set_render_dirty(true);
+		}
+		ImGui::EndDisabled();
+		if (animation_state.do_animations == false)
+			ImGuiRenderer::show_help_marker("Disabled because animations are not enabled right now.");
+
+		if (ImGui::InputInt("Number of frames to render", &animation_state.number_of_animation_frames))
+			animation_state.reset();
 
 		ImGui::BeginDisabled(!m_renderer->get_render_settings().accumulate);
 		std::string start_rendering_animation_text = animation_state.is_rendering_frame_sequence ? "Stop rendering frame sequence" : "Start rendering frame sequence";
@@ -99,11 +124,6 @@ void ImGuiAnimationWindow::draw_frame_sequence_rendering_panel()
 											"the disk, the animations are step and the next frame starts "
 											"rendering.");
 		ImGui::EndDisabled();
-		if (animation_state.is_rendering_frame_sequence)
-		{
-			ImGui::SameLine();
-			ImGui::Text("Rendering... %d / %d frames", animation_state.frames_rendered_so_far, animation_state.number_of_animation_frames);
-		}
 
 		if (!m_renderer->get_render_settings().accumulate)
 		{

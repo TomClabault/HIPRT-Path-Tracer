@@ -10,6 +10,7 @@
 #include "Utils/Utils.h"
 
 #include <iostream>
+#include <iomanip> // get_current_date_string()
 #include <OpenImageDenoise/oidn.hpp>
 #include <string>
 #include <sstream>
@@ -64,6 +65,14 @@ std::string Utils::file_to_string(const char* filepath)
     buffer << file.rdbuf();
 
     return buffer.str();
+}
+
+void Utils::get_current_date_string(std::stringstream& ss)
+{
+	std::time_t t = std::time(0);
+	std::tm* now = std::localtime(&t);
+
+	ss << std::put_time(now, "%m.%d.%Y.%H.%M.%S");
 }
 
 Image32Bit Utils::OIDN_denoise(const Image32Bit& image, int width, int height, float blend_factor)
