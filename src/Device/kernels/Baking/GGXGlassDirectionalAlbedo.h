@@ -94,7 +94,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_glass_E_eval(float relative_ior, float 
 
         float alpha_x;
         float alpha_y;
-        SimplifiedRendererMaterial::get_alphas(roughness, 0.0f, alpha_x, alpha_y);
+        MaterialUtils::get_alphas(roughness, 0.0f, alpha_x, alpha_y);
 
         float D = GGX_anisotropic(alpha_x, alpha_y, local_half_vector);
         float G1_V = G1_Smith(alpha_x, alpha_y, local_view_direction);
@@ -128,7 +128,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 GGX_glass_E_sample(float relative_ior, flo
 
     float alpha_x;
     float alpha_y;
-    SimplifiedRendererMaterial::get_alphas(roughness, /* ignoring anisotropy */ 0.0f, alpha_x, alpha_y);
+    MaterialUtils::get_alphas(roughness, /* ignoring anisotropy */ 0.0f, alpha_x, alpha_y);
     float3 microfacet_normal = GGX_anisotropic_sample_microfacet(local_view_direction, alpha_x, alpha_y, random_number_generator);
 
     float F = full_fresnel_dielectric(hippt::dot(local_view_direction, microfacet_normal), relative_ior);

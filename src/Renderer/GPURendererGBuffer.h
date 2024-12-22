@@ -57,7 +57,7 @@ struct GPURendererGBuffer
 		return out;
 	}
 
-	OrochiBuffer<SimplifiedRendererMaterial> materials;
+	OrochiBuffer<DeviceEffectiveMaterial> materials;
 
 	OrochiBuffer<float3> shading_normals;
 	OrochiBuffer<float3> geometric_normals;

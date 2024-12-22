@@ -57,7 +57,7 @@ void ThreadFunctions::load_scene_texture(Scene& parsed_scene, std::string scene_
             break;
 
         case aiTextureType_DIFFUSE_ROUGHNESS:
-            if (parsed_scene.materials[material_indices[thread_index]].roughness_metallic_texture_index != CPUTexturedRendererMaterial::NO_TEXTURE)
+            if (parsed_scene.materials[material_indices[thread_index]].roughness_metallic_texture_index != MaterialUtils::NO_TEXTURE)
             {
                 // This means we have a packed metallic/roughness texture
                 nb_channels = 4;
@@ -90,10 +90,10 @@ void ThreadFunctions::load_scene_texture(Scene& parsed_scene, std::string scene_
             {
                 // The emissive texture is constant color, we can then just not use that texture and use 
                 // the emission filed of the material to store the emission of the texture
-                parsed_scene.materials[material_indices[thread_index]].emission_texture_index = CPUTexturedRendererMaterial::CONSTANT_EMISSIVE_TEXTURE;
+                parsed_scene.materials[material_indices[thread_index]].emission_texture_index = MaterialUtils::CONSTANT_EMISSIVE_TEXTURE;
 
                 ColorRGBA32F emission_rgba = texture.sample_rgba32f(make_float2(0, 0));
-                parsed_scene.materials[material_indices[thread_index]].set_emission(ColorRGB32F(emission_rgba.r, emission_rgba.g, emission_rgba.b));
+                parsed_scene.materials[material_indices[thread_index]].emission = ColorRGB32F(emission_rgba.r, emission_rgba.g, emission_rgba.b);
             }
             else
             {
@@ -122,7 +122,7 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
         aiMesh* mesh = scene->mMeshes[mesh_index];
         int material_index = mesh->mMaterialIndex;
 
-        CPUTexturedRendererMaterial& renderer_material = parsed_scene.materials[material_index];
+        CPUMaterial& renderer_material = parsed_scene.materials[material_index];
 
         // If the mesh is emissive, we're going to add the indices of its faces to the emissive triangles
         // of the scene such that the triangles can be importance sampled (direct lighting estimation / next-event estimation)

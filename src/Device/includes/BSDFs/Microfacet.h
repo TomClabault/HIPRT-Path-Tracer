@@ -90,7 +90,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval<0>(const HI
 
     float alpha_x;
     float alpha_y;
-    SimplifiedRendererMaterial::get_alphas(material_roughness, material_anisotropy, alpha_x, alpha_y);
+    MaterialUtils::get_alphas(material_roughness, material_anisotropy, alpha_x, alpha_y);
 
     // GGX normal distribution
     float D = GGX_anisotropic(alpha_x, alpha_y, local_halfway_vector);
@@ -244,7 +244,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 microfacet_GGX_sample_reflection(float rou
     // because of normal mapping / smooth normals
     int below_normal = (local_view_direction.z < 0) ? -1 : 1;
     float alpha_x, alpha_y;
-    SimplifiedRendererMaterial::get_alphas(roughness, anisotropy, alpha_x, alpha_y);
+    MaterialUtils::get_alphas(roughness, anisotropy, alpha_x, alpha_y);
 
     float3 microfacet_normal = GGX_anisotropic_sample_microfacet(local_view_direction * below_normal, alpha_x, alpha_y, random_number_generator);
     float3 sampled_direction = reflect_ray(local_view_direction, microfacet_normal * below_normal);

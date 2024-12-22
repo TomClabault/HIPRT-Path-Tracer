@@ -28,7 +28,7 @@ struct RayPayload
 	RayState next_ray_state = RayState::BOUNCE;
 
 	// Material of the last hit
-	SimplifiedRendererMaterial material;
+	DeviceEffectiveMaterial material;
 
 	RayVolumeState volume_state;
 

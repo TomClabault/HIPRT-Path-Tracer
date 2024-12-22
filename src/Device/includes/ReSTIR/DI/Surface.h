@@ -11,7 +11,7 @@
 
 struct ReSTIRDISurface
 {
-	SimplifiedRendererMaterial material;
+	DeviceEffectiveMaterial material;
 	RayVolumeState ray_volume_state;
 	int last_hit_primitive_index;
 

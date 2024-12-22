@@ -16,7 +16,7 @@
 // get it at materials[50].roughness
 struct GBuffer
 {
-	SimplifiedRendererMaterial* materials = nullptr;
+	DeviceEffectiveMaterial* materials = nullptr;
 
 	int* first_hit_prim_index = nullptr;
 

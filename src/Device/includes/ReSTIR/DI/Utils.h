@@ -254,17 +254,17 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool check_neighbor_similarity_heuristics(const H
 
 		if (render_data.render_settings.restir_di_settings.use_roughness_similarity_heuristic)
 			// Only getting the roughness for the roughness heuristic otherwise it's not going to be used
-			neighbor_roughness = render_data.g_buffer_prev_frame.materials[neighbor_pixel_index].roughness;
+			neighbor_roughness = render_data.g_buffer_prev_frame.materials[neighbor_pixel_index].get_roughness();
 	}
 	else
 	{
 		neighbor_world_space_point = render_data.g_buffer.first_hits[neighbor_pixel_index];
-		neighbor_roughness = render_data.g_buffer.materials[neighbor_pixel_index].roughness;
+		neighbor_roughness = render_data.g_buffer.materials[neighbor_pixel_index].get_roughness();
 	}
 
 	if (render_data.render_settings.restir_di_settings.use_roughness_similarity_heuristic)
 		// Getting the roughness at the current point
-		current_material_roughness = render_data.g_buffer.materials[center_pixel_index].roughness;
+		current_material_roughness = render_data.g_buffer.materials[center_pixel_index].get_roughness();
 
 	bool plane_distance_passed = plane_distance_heuristic(render_data.render_settings.restir_di_settings, neighbor_world_space_point, current_shading_point, current_normal, render_data.render_settings.restir_di_settings.plane_distance_threshold);
 	bool normal_similarity_passed = normal_similarity_heuristic(render_data.render_settings.restir_di_settings, current_normal, render_data.g_buffer.shading_normals[neighbor_pixel_index], render_data.render_settings.restir_di_settings.normal_similarity_angle_precomp);

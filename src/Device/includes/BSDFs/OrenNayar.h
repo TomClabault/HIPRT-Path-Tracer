@@ -12,40 +12,10 @@
 #include "HostDeviceCommon/Math.h"
 #include "HostDeviceCommon/Material.h"
 
-// // BSDF Inline Functions
-//inline float CosTheta(const float3& w) { return w.z; }
-//inline float Cos2Theta(const float3& w) { return w.z * w.z; }
-//inline float AbsCosTheta(const float3& w) { return std::abs(w.z); }
-//inline float Sin2Theta(const float3& w) {
-//    return std::max((float)0, (float)1 - Cos2Theta(w));
-//}
-//
-//inline float SinTheta(const float3& w) { return std::sqrt(Sin2Theta(w)); }
-//
-//inline float TanTheta(const float3& w) { return SinTheta(w) / CosTheta(w); }
-//
-//inline float Tan2Theta(const float3& w) {
-//    return Sin2Theta(w) / Cos2Theta(w);
-//}
-//
-//inline float CosPhi(const float3& w) {
-//    float sinTheta = SinTheta(w);
-//    return (sinTheta == 0) ? 1 : hippt::clamp(-1.0f, 1.0f, w.x / sinTheta);
-//}
-//
-//inline float SinPhi(const float3& w) {
-//    float sinTheta = SinTheta(w);
-//    return (sinTheta == 0) ? 0 : hippt::clamp(-1.0f, 1.0f, w.y / sinTheta);
-//}
-//
-//inline float Cos2Phi(const float3& w) { return CosPhi(w) * CosPhi(w); }
-//
-//inline float Sin2Phi(const float3& w) { return SinPhi(w) * SinPhi(w); }
-
 /* References:
  * [1] [Physically Based Rendering 3rd Edition] https://www.pbr-book.org/3ed-2018/Reflection_Models/Microfacet_Models
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F oren_nayar_brdf_eval(const SimplifiedRendererMaterial& material, const float3& local_view_direction, const float3& local_to_light_direction, float& pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F oren_nayar_brdf_eval(const DeviceEffectiveMaterial& material, const float3& local_view_direction, const float3& local_to_light_direction, float& pdf)
 {
     // sin(theta)^2 = 1.0 - cos(theta)^2
 	float sin_theta_i = sqrt(1.0f - local_to_light_direction.z * local_to_light_direction.z);
@@ -82,16 +52,16 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F oren_nayar_brdf_eval(const Simplified
 
     float oren_nayar_A;
     float oren_nayar_B;
-    SimplifiedRendererMaterial::get_oren_nayar_AB(material.oren_nayar_sigma, oren_nayar_A, oren_nayar_B);
+    MaterialUtils::get_oren_nayar_AB(material.get_oren_nayar_sigma(), oren_nayar_A, oren_nayar_B);
 
     pdf = local_to_light_direction.z * M_INV_PI;
-    return material.base_color * M_INV_PI * (oren_nayar_A + oren_nayar_B * max_cos * sin_alpha * tan_beta);
+    return material.get_base_color() * M_INV_PI * (oren_nayar_A + oren_nayar_B * max_cos * sin_alpha * tan_beta);
 }
 
 /**
  * Override of the eval function for world space directions
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F oren_nayar_brdf_eval(const SimplifiedRendererMaterial& material, const float3& world_space_view_direction, const float3& surface_normal, const float3& world_space_to_light_direction, float& pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F oren_nayar_brdf_eval(const DeviceEffectiveMaterial& material, const float3& world_space_view_direction, const float3& surface_normal, const float3& world_space_to_light_direction, float& pdf)
 {
     float3 T, B;
     build_ONB(surface_normal, T, B);
@@ -103,7 +73,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F oren_nayar_brdf_eval(const Simplified
     return oren_nayar_brdf_eval(material, local_view_direction, local_to_light_direction, pdf);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F oren_nayar_brdf_sample(const SimplifiedRendererMaterial& material, const float3& world_space_view_direction, const float3& shading_normal, float3& out_sampled_direction, float& pdf, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F oren_nayar_brdf_sample(const DeviceEffectiveMaterial& material, const float3& world_space_view_direction, const float3& shading_normal, float3& out_sampled_direction, float& pdf, Xorshift32Generator& random_number_generator)
 {
     out_sampled_direction = cosine_weighted_sample_around_normal(shading_normal, random_number_generator);
 

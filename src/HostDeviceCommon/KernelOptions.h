@@ -35,6 +35,9 @@
 #define KERNEL_OPTION_FALSE 0
 #define KERNEL_OPTION_TRUE 1
 
+#define MATERIAL_PACK_STRATEGY_USE_PACKED 0
+#define MATERIAL_PACK_STRATEGY_USE_UNPACKED 1
+
 #define BSDF_NONE 0
 #define BSDF_LAMBERTIAN 1
 #define BSDF_OREN_NAYAR 2
@@ -101,6 +104,21 @@
   * (rays that search for the closest hit with no maximum distance)
   */
 #define SharedStackBVHTraversalSize 16
+
+/**
+ * How to use materials in the shaders after they've been read from the GBuffer?
+ * 
+ *	- MATERIAL_PACK_STRATEGY_USE_PACKED
+ *		Packed materials read from the GBuffer will be kept in their packed form.
+ *		This potentially translates into a lesser register usage but unpacking using
+ *		bitshifts is necessary everytime we want to read a property from the material
+ * 
+ *	- MATERIAL_PACK_STRATEGY_USE_UNPACKED
+ *		Packed materials read from the GBuffer are unpacked and used unpacked in the shaders.
+ *		This potentially translates into a greater register pressure but no bitshifts operations
+ *		are necessary when we want to read a property from the material
+ */
+#define MaterialPackingStrategy MATERIAL_PACK_STRATEGY_USE_UNPACKED
 
 /**
  * Allows the overriding of the BRDF/BSDF used by the path tracer. When an override is used,

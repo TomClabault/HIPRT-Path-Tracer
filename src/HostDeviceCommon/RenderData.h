@@ -55,7 +55,7 @@ struct RenderBuffers
 	int* material_indices = nullptr;
 	// Materials array to be indexed by an index retrieved from the 
 	// material_indices array
-	CPUTexturedRendererMaterial* materials_buffer = nullptr;
+	DevicePackedTexturedMaterial* materials_buffer = nullptr;
 
 	int emissive_triangles_count = 0;
 	int* emissive_triangles_indices = nullptr;

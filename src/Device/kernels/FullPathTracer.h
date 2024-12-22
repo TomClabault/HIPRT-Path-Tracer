@@ -168,7 +168,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
                 if (bounce == 0)
                 {
                     denoiser_normal += closest_hit_info.shading_normal;
-                    denoiser_albedo += ray_payload.material.base_color;
+                    denoiser_albedo += ray_payload.material.get_base_color();
                 }
 
                 // For the BRDF calculations, bounces, ... to be correct, we need the normal to be in the same hemisphere as
@@ -233,7 +233,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
                     break;
 
                 // Dispersion ray throughput filter
-                ray_payload.throughput *= get_dispersion_ray_color(ray_payload.volume_state.sampled_wavelength, ray_payload.material.dispersion_scale);
+                ray_payload.throughput *= get_dispersion_ray_color(ray_payload.volume_state.sampled_wavelength, ray_payload.material.get_dispersion_scale());
                 ray_payload.throughput *= throughput_attenuation;
                 ray_payload.next_ray_state = RayState::BOUNCE;
 

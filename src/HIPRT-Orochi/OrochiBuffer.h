@@ -42,7 +42,7 @@ public:
 	 * to sizeof(T) * get_element_count() bytes of data
 	 */
 	void upload_data(const std::vector<T>& data);
-	void upload_data(const void* data);
+	void upload_data(const T* data);
 
 	/**
 	 * Frees the buffer. No effect if already freed / not allocated yet
@@ -154,7 +154,7 @@ void OrochiBuffer<T>::upload_data(const std::vector<T>& data)
 }
 
 template <typename T>
-void OrochiBuffer<T>::upload_data(const void* data)
+void OrochiBuffer<T>::upload_data(const T* data)
 {
 	if (m_data_pointer)
 		OROCHI_CHECK_ERROR(oroMemcpy(reinterpret_cast<oroDeviceptr>(m_data_pointer), data, sizeof(T) * m_element_count, oroMemcpyHostToDevice));

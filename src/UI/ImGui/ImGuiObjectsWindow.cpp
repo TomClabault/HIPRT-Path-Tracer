@@ -86,10 +86,10 @@ void ImGuiObjectsWindow::draw()
 }
 
 template <typename T>
-void apply_material_override(bool override_flag, T SimplifiedRendererMaterial::* property, const T& override_value, std::vector<CPUTexturedRendererMaterial>& materials_to_override) 
+void apply_material_override(bool override_flag, T CPUMaterial::* property, const T& override_value, std::vector<CPUMaterial>& materials_to_override)
 {
 	if (override_flag)
-		for (CPUTexturedRendererMaterial& renderer_mat : materials_to_override)
+		for (CPUMaterial& renderer_mat : materials_to_override)
 			renderer_mat.*property = override_value;
 }
 
@@ -167,8 +167,7 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 	std::shared_ptr<GPUKernelCompilerOptions> kernel_options = m_renderer->get_global_compiler_options();
-	static SimplifiedRendererMaterial material_override;
-	static ColorRGB32F material_emission = ColorRGB32F(0.0f);
+	static CPUMaterial material_override;
 	static MaterialOverrideState override_state;
 
 	ImGui::PushItemWidth(16 * ImGui::GetFontSize());
@@ -624,17 +623,8 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 					break;
 
 				case 1:
-				{
-					if (material_override.emission_strength > 0.0f)
-						material_emission = material_override.get_emission() / material_override.emission_strength;
-
-					if (draw_material_override_line("Emission", override_state.override_emission, material_emission))
-					{
-						material_override.set_emission(material_emission / material_override.emission_strength);
-						material_override_changed = true;
-					}
+					material_override_changed |= draw_material_override_line("Emission", override_state.override_emission, material_override.emission);
 					break;
-				}
 
 				case 2:
 					material_override_changed |= draw_material_override_line("Emission strength", override_state.override_emission_strength, material_override.emission_strength, 0.0f, 10.0f);
@@ -735,65 +725,63 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 
 	if (material_override_changed)
 	{
-		std::vector<CPUTexturedRendererMaterial> overriden_materials = m_renderer->get_original_materials();
+		std::vector<CPUMaterial> overriden_materials = m_renderer->get_original_materials();
 
-		apply_material_override(override_state.override_base_color, &SimplifiedRendererMaterial::base_color, material_override.base_color, overriden_materials);
-		apply_material_override(override_state.override_roughness, &SimplifiedRendererMaterial::roughness, material_override.roughness, overriden_materials);
-		apply_material_override(override_state.override_anisotropy, &SimplifiedRendererMaterial::anisotropy, material_override.anisotropy, overriden_materials);
-		apply_material_override(override_state.override_anisotropy_rotation, &SimplifiedRendererMaterial::anisotropy_rotation, material_override.anisotropy_rotation, overriden_materials);
+		apply_material_override(override_state.override_base_color, &CPUMaterial::base_color, material_override.base_color, overriden_materials);
+		apply_material_override(override_state.override_roughness, &CPUMaterial::roughness, material_override.roughness, overriden_materials);
+		apply_material_override(override_state.override_anisotropy, &CPUMaterial::anisotropy, material_override.anisotropy, overriden_materials);
+		apply_material_override(override_state.override_anisotropy_rotation, &CPUMaterial::anisotropy_rotation, material_override.anisotropy_rotation, overriden_materials);
 
-		apply_material_override(override_state.override_specular, &SimplifiedRendererMaterial::specular, material_override.specular, overriden_materials);
-		apply_material_override(override_state.override_specular_color, &SimplifiedRendererMaterial::specular_color, material_override.specular_color, overriden_materials);
-		apply_material_override(override_state.override_specular_tint_strength, &SimplifiedRendererMaterial::specular_tint, material_override.specular_tint, overriden_materials);
-		apply_material_override(override_state.override_specular_darkening, &SimplifiedRendererMaterial::specular_darkening, material_override.specular_darkening, overriden_materials);
+		apply_material_override(override_state.override_specular, &CPUMaterial::specular, material_override.specular, overriden_materials);
+		apply_material_override(override_state.override_specular_color, &CPUMaterial::specular_color, material_override.specular_color, overriden_materials);
+		apply_material_override(override_state.override_specular_tint_strength, &CPUMaterial::specular_tint, material_override.specular_tint, overriden_materials);
+		apply_material_override(override_state.override_specular_darkening, &CPUMaterial::specular_darkening, material_override.specular_darkening, overriden_materials);
 
-		apply_material_override(override_state.override_metallic, &SimplifiedRendererMaterial::metallic, material_override.metallic, overriden_materials);
-		apply_material_override(override_state.override_F82_reflectivity, &SimplifiedRendererMaterial::metallic_F82, material_override.metallic_F82, overriden_materials);
-		apply_material_override(override_state.override_F90_reflectivity, &SimplifiedRendererMaterial::metallic_F90, material_override.metallic_F90, overriden_materials);
-		apply_material_override(override_state.override_F90_falloff_exponent, &SimplifiedRendererMaterial::metallic_F90_falloff_exponent, material_override.metallic_F90_falloff_exponent, overriden_materials);
-		apply_material_override(override_state.override_second_roughness_weight, &SimplifiedRendererMaterial::second_roughness_weight, material_override.second_roughness_weight, overriden_materials);
-		apply_material_override(override_state.override_second_roughness, &SimplifiedRendererMaterial::second_roughness, material_override.second_roughness, overriden_materials);
+		apply_material_override(override_state.override_metallic, &CPUMaterial::metallic, material_override.metallic, overriden_materials);
+		apply_material_override(override_state.override_F82_reflectivity, &CPUMaterial::metallic_F82, material_override.metallic_F82, overriden_materials);
+		apply_material_override(override_state.override_F90_reflectivity, &CPUMaterial::metallic_F90, material_override.metallic_F90, overriden_materials);
+		apply_material_override(override_state.override_F90_falloff_exponent, &CPUMaterial::metallic_F90_falloff_exponent, material_override.metallic_F90_falloff_exponent, overriden_materials);
+		apply_material_override(override_state.override_second_roughness_weight, &CPUMaterial::second_roughness_weight, material_override.second_roughness_weight, overriden_materials);
+		apply_material_override(override_state.override_second_roughness, &CPUMaterial::second_roughness, material_override.second_roughness, overriden_materials);
 
-		apply_material_override(override_state.override_sheen_strength, &SimplifiedRendererMaterial::sheen, material_override.sheen, overriden_materials);
-		apply_material_override(override_state.override_sheen_color, &SimplifiedRendererMaterial::sheen_color, material_override.sheen_color, overriden_materials);
-		apply_material_override(override_state.override_sheen_roughness, &SimplifiedRendererMaterial::sheen_roughness, material_override.sheen_roughness, overriden_materials);
+		apply_material_override(override_state.override_sheen_strength, &CPUMaterial::sheen, material_override.sheen, overriden_materials);
+		apply_material_override(override_state.override_sheen_color, &CPUMaterial::sheen_color, material_override.sheen_color, overriden_materials);
+		apply_material_override(override_state.override_sheen_roughness, &CPUMaterial::sheen_roughness, material_override.sheen_roughness, overriden_materials);
 
-		apply_material_override(override_state.override_coat_strength, &SimplifiedRendererMaterial::coat, material_override.coat, overriden_materials);
-		apply_material_override(override_state.override_coat_medium_absorption, &SimplifiedRendererMaterial::coat_medium_absorption, material_override.coat_medium_absorption, overriden_materials);
-		apply_material_override(override_state.override_coat_medium_thickness, &SimplifiedRendererMaterial::coat_medium_thickness, material_override.coat_medium_thickness, overriden_materials);
-		apply_material_override(override_state.override_coat_roughness, &SimplifiedRendererMaterial::coat_roughness, material_override.coat_roughness, overriden_materials);
-		apply_material_override(override_state.override_coat_roughening, &SimplifiedRendererMaterial::coat_roughening, material_override.coat_roughening, overriden_materials);
-		apply_material_override(override_state.override_coat_darkening, &SimplifiedRendererMaterial::coat_darkening, material_override.coat_darkening, overriden_materials);
-		apply_material_override(override_state.override_coat_anisotropy, &SimplifiedRendererMaterial::coat_anisotropy, material_override.coat_anisotropy, overriden_materials);
-		apply_material_override(override_state.override_coat_anisotropy_rotation, &SimplifiedRendererMaterial::coat_anisotropy_rotation, material_override.coat_anisotropy_rotation, overriden_materials);
-		apply_material_override(override_state.override_coat_IOR, &SimplifiedRendererMaterial::coat_ior, material_override.coat_ior, overriden_materials);
+		apply_material_override(override_state.override_coat_strength, &CPUMaterial::coat, material_override.coat, overriden_materials);
+		apply_material_override(override_state.override_coat_medium_absorption, &CPUMaterial::coat_medium_absorption, material_override.coat_medium_absorption, overriden_materials);
+		apply_material_override(override_state.override_coat_medium_thickness, &CPUMaterial::coat_medium_thickness, material_override.coat_medium_thickness, overriden_materials);
+		apply_material_override(override_state.override_coat_roughness, &CPUMaterial::coat_roughness, material_override.coat_roughness, overriden_materials);
+		apply_material_override(override_state.override_coat_roughening, &CPUMaterial::coat_roughening, material_override.coat_roughening, overriden_materials);
+		apply_material_override(override_state.override_coat_darkening, &CPUMaterial::coat_darkening, material_override.coat_darkening, overriden_materials);
+		apply_material_override(override_state.override_coat_anisotropy, &CPUMaterial::coat_anisotropy, material_override.coat_anisotropy, overriden_materials);
+		apply_material_override(override_state.override_coat_anisotropy_rotation, &CPUMaterial::coat_anisotropy_rotation, material_override.coat_anisotropy_rotation, overriden_materials);
+		apply_material_override(override_state.override_coat_IOR, &CPUMaterial::coat_ior, material_override.coat_ior, overriden_materials);
 
-		apply_material_override(override_state.override_transmission, &SimplifiedRendererMaterial::specular_transmission, material_override.specular_transmission, overriden_materials);
-		apply_material_override(override_state.override_IOR, &SimplifiedRendererMaterial::ior, material_override.ior, overriden_materials);
-		apply_material_override(override_state.override_absorption_distance, &SimplifiedRendererMaterial::absorption_at_distance, material_override.absorption_at_distance, overriden_materials);
-		apply_material_override(override_state.override_absorption_color, &SimplifiedRendererMaterial::absorption_color, material_override.absorption_color, overriden_materials);
-		apply_material_override(override_state.override_dispersion_abbe, &SimplifiedRendererMaterial::dispersion_abbe_number, material_override.dispersion_abbe_number, overriden_materials);
-		apply_material_override(override_state.override_dispersion_scale, &SimplifiedRendererMaterial::dispersion_scale, material_override.dispersion_scale, overriden_materials);
-		apply_material_override(override_state.override_dielectric_priority, &SimplifiedRendererMaterial::dielectric_priority, material_override.dielectric_priority, overriden_materials);
-		apply_material_override(override_state.override_thin_material, &SimplifiedRendererMaterial::thin_walled, material_override.thin_walled, overriden_materials);
+		apply_material_override(override_state.override_transmission, &CPUMaterial::specular_transmission, material_override.specular_transmission, overriden_materials);
+		apply_material_override(override_state.override_IOR, &CPUMaterial::ior, material_override.ior, overriden_materials);
+		apply_material_override(override_state.override_absorption_distance, &CPUMaterial::absorption_at_distance, material_override.absorption_at_distance, overriden_materials);
+		apply_material_override(override_state.override_absorption_color, &CPUMaterial::absorption_color, material_override.absorption_color, overriden_materials);
+		apply_material_override(override_state.override_dispersion_abbe, &CPUMaterial::dispersion_abbe_number, material_override.dispersion_abbe_number, overriden_materials);
+		apply_material_override(override_state.override_dispersion_scale, &CPUMaterial::dispersion_scale, material_override.dispersion_scale, overriden_materials);
+		apply_material_override(override_state.override_dielectric_priority, &CPUMaterial::dielectric_priority, material_override.dielectric_priority, overriden_materials);
+		apply_material_override(override_state.override_thin_material, &CPUMaterial::thin_walled, material_override.thin_walled, overriden_materials);
 
-		apply_material_override(override_state.override_thin_film, &SimplifiedRendererMaterial::thin_film, material_override.thin_film, overriden_materials);
-		apply_material_override(override_state.override_thin_film_thickness, &SimplifiedRendererMaterial::thin_film_thickness, material_override.thin_film_thickness, overriden_materials);
-		apply_material_override(override_state.override_thin_film_ior, &SimplifiedRendererMaterial::thin_film_ior, material_override.thin_film_ior, overriden_materials);
-		apply_material_override(override_state.override_thin_film_do_ior_override, &SimplifiedRendererMaterial::thin_film_do_ior_override, material_override.thin_film_do_ior_override, overriden_materials);
-		apply_material_override(override_state.override_thin_film_base_ior_override, &SimplifiedRendererMaterial::thin_film_base_ior_override, material_override.thin_film_base_ior_override, overriden_materials);
-		apply_material_override(override_state.override_thin_film_kappa_3, &SimplifiedRendererMaterial::thin_film_kappa_3, material_override.thin_film_kappa_3, overriden_materials);
-		apply_material_override(override_state.override_thin_film_hue_shift, &SimplifiedRendererMaterial::thin_film_hue_shift_degrees, material_override.thin_film_hue_shift_degrees, overriden_materials);
+		apply_material_override(override_state.override_thin_film, &CPUMaterial::thin_film, material_override.thin_film, overriden_materials);
+		apply_material_override(override_state.override_thin_film_thickness, &CPUMaterial::thin_film_thickness, material_override.thin_film_thickness, overriden_materials);
+		apply_material_override(override_state.override_thin_film_ior, &CPUMaterial::thin_film_ior, material_override.thin_film_ior, overriden_materials);
+		apply_material_override(override_state.override_thin_film_do_ior_override, &CPUMaterial::thin_film_do_ior_override, material_override.thin_film_do_ior_override, overriden_materials);
+		apply_material_override(override_state.override_thin_film_base_ior_override, &CPUMaterial::thin_film_base_ior_override, material_override.thin_film_base_ior_override, overriden_materials);
+		apply_material_override(override_state.override_thin_film_kappa_3, &CPUMaterial::thin_film_kappa_3, material_override.thin_film_kappa_3, overriden_materials);
+		apply_material_override(override_state.override_thin_film_hue_shift, &CPUMaterial::thin_film_hue_shift_degrees, material_override.thin_film_hue_shift_degrees, overriden_materials);
 
 		// Special case for the emission since it's a private member
-		if (override_state.override_emission)
-			for (CPUTexturedRendererMaterial& renderer_mat : overriden_materials)
-				renderer_mat.set_emission(material_emission);
-		apply_material_override(override_state.override_emission_strength, &SimplifiedRendererMaterial::emission_strength, material_override.emission_strength, overriden_materials);
+		apply_material_override(override_state.override_emission, &CPUMaterial::emission, material_override.emission, overriden_materials);
+		apply_material_override(override_state.override_emission_strength, &CPUMaterial::emission_strength, material_override.emission_strength, overriden_materials);
 
-		apply_material_override(override_state.override_opacity, &SimplifiedRendererMaterial::alpha_opacity, material_override.alpha_opacity, overriden_materials);
-		apply_material_override(override_state.override_strong_energy_conservation, &SimplifiedRendererMaterial::enforce_strong_energy_conservation, material_override.enforce_strong_energy_conservation, overriden_materials);
-		apply_material_override(override_state.override_energy_conservation_samples, &SimplifiedRendererMaterial::energy_preservation_monte_carlo_samples, material_override.energy_preservation_monte_carlo_samples, overriden_materials);
+		apply_material_override(override_state.override_opacity, &CPUMaterial::alpha_opacity, material_override.alpha_opacity, overriden_materials);
+		apply_material_override(override_state.override_strong_energy_conservation, &CPUMaterial::enforce_strong_energy_conservation, material_override.enforce_strong_energy_conservation, overriden_materials);
+		apply_material_override(override_state.override_energy_conservation_samples, &CPUMaterial::energy_preservation_monte_carlo_samples, material_override.energy_preservation_monte_carlo_samples, overriden_materials);
 
 		m_renderer->update_materials(overriden_materials);
 		m_render_window->set_render_dirty(true);
@@ -810,13 +798,7 @@ void ImGuiObjectsWindow::draw_objects_panel()
 
 	ImGui::TreePush("Objects tree");
 
-	// Keeping a backup of the materials_to_override. Useful when modifying the global emissive factor
-	// of objects in the scene because we want the global factor to affect the original
-	// emission of the materials_to_override, not the emission that has already been multiplied by
-	// a previous factor: this would lead to a buggy exponential growth of the emission
-	static std::vector<CPUTexturedRendererMaterial> original_materials = m_renderer->get_current_materials();
-
-	std::vector<CPUTexturedRendererMaterial> materials = m_renderer->get_current_materials();
+	std::vector<CPUMaterial> materials = m_renderer->get_current_materials();
 	const std::vector<std::string>& material_names = m_renderer->get_material_names();
 	const std::vector<std::string>& mesh_names = m_renderer->get_mesh_names();
 
@@ -854,15 +836,12 @@ void ImGuiObjectsWindow::draw_objects_panel()
 		static float global_emissive_objects_factor = 1.0f;
 		if (ImGui::SliderFloat("Global Emissive Objects Factor", &global_emissive_objects_factor, 0.0f, 10.0f))
 		{
-			for (int n = 0; n < original_materials.size(); n++)
+			for (CPUMaterial& material : materials)
 			{
-				if (original_materials[n].is_emissive())
-				{
-					materials[n].set_emission(original_materials[n].get_original_emission() * global_emissive_objects_factor);
+					material.global_emissive_factor = global_emissive_objects_factor;
 
-					materials[n].make_safe();
-					materials[n].precompute_properties();
-				}
+					material.make_safe();
+					material.precompute_properties();
 			}
 
 			// TODO we would need to recompute the alias table for the emissive lights here
@@ -896,7 +875,7 @@ void ImGuiObjectsWindow::draw_objects_panel()
 	if (materials.size() > 0)
 	{
 		std::shared_ptr<GPUKernelCompilerOptions> kernel_options = m_renderer->get_global_compiler_options();
-		CPUTexturedRendererMaterial& material = materials[currently_selected_material];
+		CPUMaterial& material = materials[currently_selected_material];
 
 		ImGui::PushItemWidth(16 * ImGui::GetFontSize());
 
@@ -1058,7 +1037,6 @@ void ImGuiObjectsWindow::draw_objects_panel()
 			material_changed |= ImGui::SliderFloat("Thin film thickness", &material.thin_film_thickness, 0.0f, 2000.0f, "%.3f nm");
 			material_changed |= ImGui::SliderFloat("Thin film IOR", &material.thin_film_ior, 1.0f, 3.0f);
 			material_changed |= ImGui::SliderFloat("Thin film hue shift", &material.thin_film_hue_shift_degrees, 0.0f, 360.0f);
-			material_changed |= ImGui::Checkbox("SRGB", &material.srgb);
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			material_changed |= ImGui::Checkbox("Override material IOR", &material.thin_film_do_ior_override);
@@ -1079,15 +1057,7 @@ void ImGuiObjectsWindow::draw_objects_panel()
 
 			ImGui::BeginDisabled(material.emission_texture_index > 0);
 			// Displaying original emission in ImGui
-			ColorRGB32F material_emission = ColorRGB32F(0.0f);
-			if (material.emission_strength > 0.0f)
-				material_emission = material.get_emission() / material.emission_strength;
-			if (ImGui::ColorEdit3("Emission", (float*)&material_emission, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float))
-			{
-				material.set_emission(material_emission / material.emission_strength);
-
-				material_changed = true;
-			}
+			material_changed |= ImGui::ColorEdit3("Emission", (float*)&material.emission, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
 			ImGui::EndDisabled();
 			if (material.emission_texture_index > 0)
 				ImGuiRenderer::show_help_marker("Disabled because the emission of this material is controlled by a texture");
@@ -1168,7 +1138,7 @@ void ImGuiObjectsWindow::draw_objects_panel()
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 }
 
-bool ImGuiObjectsWindow::draw_material_presets(CPUTexturedRendererMaterial& material)
+bool ImGuiObjectsWindow::draw_material_presets(CPUMaterial& material)
 {
 	bool material_changed = false;
 
@@ -1212,7 +1182,7 @@ bool ImGuiObjectsWindow::draw_material_presets(CPUTexturedRendererMaterial& mate
 			float original_roughness = material.roughness;
 
 			// Resetting the material
-			material = CPUTexturedRendererMaterial();
+			material = CPUMaterial();
 
 			// Applying preset
 			material.roughness = original_roughness;

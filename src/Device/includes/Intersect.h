@@ -48,23 +48,31 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 normal_mapping(const HIPRTRenderData& rend
     float3 edge_P0P1 = P1 - P0;
     float3 edge_P0P2 = P2 - P0;
 
-    float det_inverse = 1.0f / (delta_P1P0_texcoords.x * delta_P2P0_texcoords.y - delta_P1P0_texcoords.y * delta_P2P0_texcoords.x);
-    float3 T = (edge_P0P1 * delta_P2P0_texcoords.y - edge_P0P2 * delta_P1P0_texcoords.y) * det_inverse;
-    float3 B = (edge_P0P2 * delta_P1P0_texcoords.x - edge_P0P1 * delta_P2P0_texcoords.x) * det_inverse;
+    float det = delta_P1P0_texcoords.x * delta_P2P0_texcoords.y - delta_P1P0_texcoords.y * delta_P2P0_texcoords.x;
+    // Check if the det isn't too low to avoid degenerate geometries that can then cause NaNs
+    if (det > 1.0e-6f)
+    {
+        float det_inverse = 1.0f / det;
+        float3 T = (edge_P0P1 * delta_P2P0_texcoords.y - edge_P0P2 * delta_P1P0_texcoords.y) * det_inverse;
+        float3 B = (edge_P0P2 * delta_P1P0_texcoords.x - edge_P0P1 * delta_P2P0_texcoords.x) * det_inverse;
 
-    ColorRGB32F normal = sample_texture_rgb_8bits(render_data.buffers.material_textures, normal_map_texture_index, render_data.buffers.textures_dims[normal_map_texture_index], /* is_srgb */ false, interpolated_texcoords);
-    // Bringing the normal in [-x, x]. x doesn't really matter since we normalize the result anyway
-    normal -= ColorRGB32F(0.5f);
+        ColorRGB32F normal = sample_texture_rgb_8bits(render_data.buffers.material_textures, normal_map_texture_index, render_data.buffers.textures_dims[normal_map_texture_index], /* is_srgb */ false, interpolated_texcoords);
+        // Bringing the normal in [-x, x]. x doesn't really matter since we normalize the result anyway
+        normal -= ColorRGB32F(0.5f);
 
-    float3 normal_tangent_space = hippt::normalize(make_float3(normal.r, normal.g, normal.b));
+        float3 normal_tangent_space = hippt::normalize(make_float3(normal.r, normal.g, normal.b));
 
-    return local_to_world_frame(hippt::normalize(T), hippt::normalize(B), surface_normal, normal_tangent_space);
+        return local_to_world_frame(hippt::normalize(T), hippt::normalize(B), surface_normal, normal_tangent_space);
+    }
+    else
+        // No surface derivatives basically, can't compute the normal mapping
+        return surface_normal;
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 get_shading_normal(const HIPRTRenderData& render_data, const float3& geometric_normal, int primitive_index, const float2& uv, const float2& interpolated_texcoords)
 {
     int mat_index = render_data.buffers.material_indices[primitive_index];
-    CPUTexturedRendererMaterial& material = render_data.buffers.materials_buffer[mat_index];
+    DevicePackedTexturedMaterial& material = render_data.buffers.materials_buffer[mat_index];
 
     // Do smooth shading first if we have vertex normals
     float3 surface_normal;
@@ -76,8 +84,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 get_shading_normal(const HIPRTRenderData& 
         surface_normal = geometric_normal;
 
     // Do normal mapping if we have a normal map
-    if (material.normal_map_texture_index != CPUTexturedRendererMaterial::NO_TEXTURE)
-        surface_normal = normal_mapping(render_data, material.normal_map_texture_index, primitive_index, interpolated_texcoords, surface_normal);
+    if (material.get_normal_map_texture_index() != MaterialUtils::NO_TEXTURE)
+        surface_normal = normal_mapping(render_data, material.get_normal_map_texture_index(), primitive_index, interpolated_texcoords, surface_normal);
 
     return surface_normal;
 }
@@ -164,7 +172,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
         int material_index = render_data.buffers.material_indices[hit.primID];
         in_out_ray_payload.material = get_intersection_material(render_data, material_index, out_hit_info.texcoords);
 
-        if ((!in_out_ray_payload.is_inside_volume() || in_out_ray_payload.material.specular_transmission == 0.0f) && !in_out_ray_payload.material.thin_walled)
+        if ((!in_out_ray_payload.is_inside_volume() || in_out_ray_payload.material.get_specular_transmission() == 0.0f) && !in_out_ray_payload.material.get_thin_walled())
         {
             // If we're not in a volume, there's no reason for the normals not to be facing us so we're flipping
             // if they were wrongly oriented
@@ -191,7 +199,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
             out_hit_info.shading_normal += (2.0f * hippt::clamp(0.0f, 1.0f, -NdotV)) * -ray.direction;
         }
 
-        skipping_volume_boundary = in_out_ray_payload.volume_state.interior_stack.push(in_out_ray_payload.volume_state.incident_mat_index, in_out_ray_payload.volume_state.outgoing_mat_index, in_out_ray_payload.volume_state.inside_material, material_index, in_out_ray_payload.material.dielectric_priority);
+        skipping_volume_boundary = in_out_ray_payload.volume_state.interior_stack.push(
+            in_out_ray_payload.volume_state.incident_mat_index, in_out_ray_payload.volume_state.outgoing_mat_index, in_out_ray_payload.volume_state.inside_material, material_index, in_out_ray_payload.material.get_dielectric_priority());
 
         if (skipping_volume_boundary)
         {
@@ -205,7 +214,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
 
     } while ((skipping_volume_boundary && hit.hasHit()));
 
-    if (in_out_ray_payload.material.dispersion_scale > 0.0f && in_out_ray_payload.material.specular_transmission > 0.0f && in_out_ray_payload.volume_state.sampled_wavelength == 0.0f)
+    if (in_out_ray_payload.material.get_dispersion_scale() > 0.0f && in_out_ray_payload.material.get_specular_transmission() > 0.0f && in_out_ray_payload.volume_state.sampled_wavelength == 0.0f)
         // If we hit a dispersive material, we sample the wavelength that will be used
         // for computing the wavelength dependent IORs used for dispersion
         //
@@ -325,12 +334,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderD
 
     // Reading the emission of the material
     int material_index = render_data.buffers.material_indices[shadow_ray_hit.primID];
-    int emission_texture_index = render_data.buffers.materials_buffer[material_index].emission_texture_index;
+    int emission_texture_index = render_data.buffers.materials_buffer[material_index].get_emission_texture_index();
 
-    if (emission_texture_index != CPUTexturedRendererMaterial::NO_TEXTURE)
+    if (emission_texture_index != MaterialUtils::NO_TEXTURE)
     {
         float2 texcoords = uv_interpolate(render_data.buffers.triangles_indices, shadow_ray_hit.primID, render_data.buffers.texcoords, shadow_ray_hit.uv);
-        get_material_property(render_data, out_light_hit_info.hit_emission, false, texcoords, emission_texture_index);
+        out_light_hit_info.hit_emission = get_material_property<ColorRGB32F>(render_data, false, texcoords, emission_texture_index);
 
         // Using the already computed texcoords to get the shading normal
         out_light_hit_info.hit_shading_normal = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), shadow_ray_hit.primID, shadow_ray_hit.uv, texcoords);
@@ -381,12 +390,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderD
         // If we found a hit and that it is close enough (hit_found conditions)
 
         int material_index = render_data.buffers.material_indices[shadow_ray_hit.primID];
-        int emission_texture_index = render_data.buffers.materials_buffer[material_index].emission_texture_index;
+        int emission_texture_index = render_data.buffers.materials_buffer[material_index].get_emission_texture_index();
 
-        if (emission_texture_index != CPUTexturedRendererMaterial::NO_TEXTURE)
+        if (emission_texture_index != MaterialUtils::NO_TEXTURE)
         {
             float2 texcoords = uv_interpolate(render_data.buffers.triangles_indices, shadow_ray_hit.primID, render_data.buffers.texcoords, shadow_ray_hit.uv);
-            get_material_property(render_data, out_light_hit_info.hit_emission, false, texcoords, emission_texture_index);
+            out_light_hit_info.hit_emission = get_material_property<ColorRGB32F>(render_data, false, texcoords, emission_texture_index);
 
             // Using the already computed texcoords to get the shading normal
             out_light_hit_info.hit_shading_normal = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), shadow_ray_hit.primID, shadow_ray_hit.uv, texcoords);

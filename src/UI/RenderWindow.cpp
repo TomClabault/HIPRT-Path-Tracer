@@ -21,10 +21,27 @@
 extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
+// TODOs  performance improvements branch:
+// - reuse MIS bounce
+// - texture compression
+// - wavefront path tracing
+// - investigate where the big register usage comes from --> split shaders there?
+// - split shaders for material specifics?
+// - use wavefront path tracing to evaluate direct  lighting, envmap and BSDF sample in parallel?
+// - use the fact that some values are already computed in bsdf_sample to pass them to bsdf_eval in a big BSDFStateStructure or something to avoid recomputing
+// - pack ray payload and other things?
+// - pack GBuffer
+// - bsdf sampling proba do  =not use array[] for CDF
+// - improve alpha testing
+// - upload partial materials when a material is modified instead  of reuploading everything
+// - NEE++
+// - schlick fresnel in many places?
+// - compaction
+// - Do we need  to keep the whole code  bloat for the packed material usage since it doesn't seem to be changing anything
+
 // TODO demos:
 // new oren nayar BRDF: EON
 // clearcoat capabitilies
-// dispersion
 
 // TODOs ongoing
 // - limit UI speed because it actually uses some resources (maybe Vsync or something) or does it?
@@ -130,7 +147,7 @@ extern ImGuiLogger g_imgui_logger;
 // - choose principled BSDF diffuse model (disney, lambertian, oren nayar)
 // - portal envmap sampling --> choose portals with ImGui
 // - find a way to not fill the texcoords buffer for meshes that don't have textures
-// - pack CPUTexturedRendererMaterial informations such as texture indices (we can probably use 16 bit for a texture index --> 2 texture indices in one 32 bit register)
+// - pack CPUMaterial informations such as texture indices (we can probably use 16 bit for a texture index --> 2 texture indices in one 32 bit register)
 // - use 8 bit textures for material properties instead of float
 // - use fixed point 8 bit for materials parameters in [0, 1], should be good enough
 // - log size of buffers used: vertices, indices, normals, ...

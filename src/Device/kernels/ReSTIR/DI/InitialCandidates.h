@@ -463,7 +463,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_InitialCandidates(HIPRTRenderData
         return;
 
     uint32_t pixel_index = (x + y * res.x);
-    SimplifiedRendererMaterial material = render_data.g_buffer.materials[pixel_index];
+    DeviceEffectiveMaterial material = render_data.g_buffer.materials[pixel_index];
 
     if (material.is_emissive())
         // If this pixel is on an emissive material, indicating that the reservoir is emissive

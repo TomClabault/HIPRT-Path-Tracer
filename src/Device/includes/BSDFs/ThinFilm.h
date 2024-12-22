@@ -109,15 +109,15 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F RGB_hue_shift(const ColorRGB32F& colo
  *
  * [1] [A Practical Extension to Microfacet Theory for the Modeling of Varying Iridescence, Belcour, Barla, 2017] https://belcour.github.io/blog/research/publication/2017/05/01/brdf-thin-film.html
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F thin_film_fresnel(const SimplifiedRendererMaterial& material,
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F thin_film_fresnel(const DeviceEffectiveMaterial& material,
     float ambient_IOR, float HoL)
 {
     float eta1 = ambient_IOR;
-    float eta2 = material.thin_film_ior;
-    float eta3 = material.thin_film_do_ior_override ? material.thin_film_base_ior_override : material.ior;
+    float eta2 = material.get_thin_film_ior();
+    float eta3 = material.get_thin_film_do_ior_override() ? material.get_thin_film_base_ior_override() : material.get_ior();
     // If override is not used, just default to 0.0f because the principled BSDF doesn't have 
     // complex IORs support anyways
-    float kappa3 = material.thin_film_do_ior_override ? material.thin_film_kappa_3 : 0.0f;
+    float kappa3 = material.get_thin_film_do_ior_override() ? material.get_thin_film_kappa_3() : 0.0f;
 
     /* Compute the Spectral versions of the Fresnel reflectance and
      * transmitance for each interface. */
@@ -155,7 +155,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F thin_film_fresnel(const SimplifiedRen
 
     /* Optical Path Difference */
     // float D = 2.0f * eta2 * film_thickness / 1000.0f * cos_theta_2;
-    float D = material.thin_film_thickness / 1000.0f * cos_theta_2;
+    float D = material.get_thin_film_thickness() / 1000.0f * cos_theta_2;
 
     /* Variables */
     float phi21p;
@@ -215,7 +215,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F thin_film_fresnel(const SimplifiedRen
     I = ColorRGB32F(r, g, b);
     I.clamp(0.0f, 1.0f);
 
-    return RGB_hue_shift(I, material.thin_film_hue_shift_degrees);
+    return RGB_hue_shift(I, material.get_thin_film_hue_shift_degrees() * 360.0f);
 }
 
 #endif

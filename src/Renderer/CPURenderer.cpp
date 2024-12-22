@@ -24,7 +24,7 @@
  // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
  // allowing for fast step into that pixel with the debugger to see what's happening.
  // Otherwise if 0, all pixels of the image are rendered
-#define DEBUG_PIXEL 1
+#define DEBUG_PIXEL 0
 
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner.
 // If 1, it's bottom left corner.
@@ -38,8 +38,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 560
-#define DEBUG_PIXEL_Y 142
+#define DEBUG_PIXEL_X 845
+#define DEBUG_PIXEL_Y 54
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -135,7 +135,11 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 {
     m_render_data.geom = nullptr;
 
-    m_render_data.buffers.materials_buffer = parsed_scene.materials.data();
+    m_gpu_packed_materials.resize(parsed_scene.materials.size());
+    for (int i = 0; i < parsed_scene.materials.size(); i++)
+        m_gpu_packed_materials[i] = parsed_scene.materials[i].pack_to_GPU();
+
+    m_render_data.buffers.materials_buffer = m_gpu_packed_materials.data();
     m_render_data.buffers.material_indices = parsed_scene.material_indices.data();
     m_render_data.buffers.has_vertex_normals = parsed_scene.has_vertex_normals.data();
     m_render_data.buffers.pixels = m_framebuffer.get_data_as_ColorRGB32F();

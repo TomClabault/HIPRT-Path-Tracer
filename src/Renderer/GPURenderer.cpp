@@ -991,7 +991,7 @@ void GPURenderer::update_render_data()
 		m_render_data.buffers.has_vertex_normals = reinterpret_cast<unsigned char*>(m_hiprt_scene.has_vertex_normals.get_device_pointer());
 		m_render_data.buffers.vertex_normals = reinterpret_cast<float3*>(m_hiprt_scene.vertex_normals.get_device_pointer());
 		m_render_data.buffers.material_indices = reinterpret_cast<int*>(m_hiprt_scene.material_indices.get_device_pointer());
-		m_render_data.buffers.materials_buffer = reinterpret_cast<CPUTexturedRendererMaterial*>(m_hiprt_scene.materials_buffer.get_device_pointer());
+		m_render_data.buffers.materials_buffer = m_hiprt_scene.materials_buffer.get_device_pointer();
 		m_render_data.buffers.emissive_triangles_count = m_hiprt_scene.emissive_triangles_count;
 		m_render_data.buffers.emissive_triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.emissive_triangles_indices.get_device_pointer());
 
@@ -1066,8 +1066,12 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 	ThreadManager::start_thread(ThreadManager::RENDERER_UPLOAD_MATERIALS, [this, &scene]() {
 		OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
 
+		std::vector<DevicePackedTexturedMaterial> packed_gpu_materials(scene.materials.size());
+		for (int i = 0; i < scene.materials.size(); i++)
+			packed_gpu_materials[i] = scene.materials[i].pack_to_GPU();
+
 		m_hiprt_scene.materials_buffer.resize(scene.materials.size());
-		m_hiprt_scene.materials_buffer.upload_data(scene.materials.data());
+		m_hiprt_scene.materials_buffer.upload_data(packed_gpu_materials.data());
 
 		m_hiprt_scene.texcoords_buffer.resize(scene.texcoords.size());
 		m_hiprt_scene.texcoords_buffer.upload_data(scene.texcoords.data());
@@ -1178,12 +1182,12 @@ bool GPURenderer::has_envmap()
 	return m_render_data.world_settings.envmap_height != 0 && m_render_data.world_settings.envmap_width != 0;
 }
 
-const std::vector<CPUTexturedRendererMaterial>& GPURenderer::get_original_materials()
+const std::vector<CPUMaterial>& GPURenderer::get_original_materials()
 {
 	return m_original_materials;
 }
 
-const std::vector<CPUTexturedRendererMaterial>& GPURenderer::get_current_materials()
+const std::vector<CPUMaterial>& GPURenderer::get_current_materials()
 {
 	return m_current_materials;
 }
@@ -1193,10 +1197,14 @@ const std::vector<std::string>& GPURenderer::get_material_names()
 	return m_parsed_scene_metadata.material_names;
 }
 
-void GPURenderer::update_materials(std::vector<CPUTexturedRendererMaterial>& materials)
+void GPURenderer::update_materials(std::vector<CPUMaterial>& materials)
 {
 	m_current_materials = materials;
-	m_hiprt_scene.materials_buffer.upload_data(materials.data());
+
+	std::vector<DevicePackedTexturedMaterial> packed_gpu_materials(materials.size());
+	for (int i = 0; i < materials.size(); i++)
+		packed_gpu_materials[i] = materials[i].pack_to_GPU();
+	m_hiprt_scene.materials_buffer.upload_data(packed_gpu_materials.data());
 }
 
 const std::vector<BoundingBox>& GPURenderer::get_mesh_bounding_boxes()

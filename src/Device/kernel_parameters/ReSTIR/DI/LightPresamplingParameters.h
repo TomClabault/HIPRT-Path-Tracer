@@ -9,9 +9,8 @@
 #include "Device/includes/ReSTIR/DI/PresampledLight.h"
 #include "Device/includes/ReSTIR/DI/Reservoir.h"
 
+#include "HostDeviceCommon/Material.h"
 #include "HostDeviceCommon/WorldSettings.h"
-
-struct CPUTexturedRendererMaterial;
 
 struct LightPresamplingParameters
 {
@@ -34,7 +33,7 @@ struct LightPresamplingParameters
 	int* triangles_indices = nullptr;
 	float3* vertices_positions = nullptr;
 	int* material_indices = nullptr;
-	CPUTexturedRendererMaterial* materials = nullptr;
+	DevicePackedTexturedMaterial* materials = nullptr;
 
 	// World settings for sampling the envmap
 	WorldSettings world_settings;

@@ -105,10 +105,10 @@ struct HIPRTScene
 
 	HIPRTGeometry geometry;
 
-	OrochiBuffer<bool> has_vertex_normals;
+	OrochiBuffer<unsigned char> has_vertex_normals;
 	OrochiBuffer<float3> vertex_normals;
 	OrochiBuffer<int> material_indices;
-	OrochiBuffer<CPUTexturedRendererMaterial> materials_buffer;
+	OrochiBuffer<DevicePackedTexturedMaterial> materials_buffer;
 
 	int emissive_triangles_count = 0;
 	OrochiBuffer<int> emissive_triangles_indices;

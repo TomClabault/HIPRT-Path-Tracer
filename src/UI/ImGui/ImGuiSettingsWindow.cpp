@@ -2005,7 +2005,7 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		if (ImGui::InputInt("Global stack per-thread size", &m_renderer->get_render_data().global_traversal_stack_buffer_size))
 		{
-			m_renderer->get_render_data().global_traversal_stack_buffer_size = std::max(0, m_renderer->get_render_data().global_traversal_stack_buffer_size);
+			m_renderer->get_render_data().global_traversal_stack_buffer_size = hippt::clamp(0, 128, m_renderer->get_render_data().global_traversal_stack_buffer_size);
 			m_render_window->set_render_dirty(true);
 		}
 
@@ -2070,6 +2070,7 @@ void ImGuiSettingsWindow::draw_performance_metrics_panel()
 	}
 	if (ImGui::Checkbox("Freeze random", (bool*)&render_settings.freeze_random))
 		m_render_window->set_render_dirty(true);
+	ImGui::Checkbox("Auto samples per frame", (bool*)&m_render_window->get_application_settings()->auto_sample_per_frame);
 
 	bool rolling_window_size_changed = false;
 	int rolling_window_size = m_render_window_perf_metrics->get_window_size();

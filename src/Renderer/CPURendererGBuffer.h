@@ -27,7 +27,7 @@ struct CPURendererGBuffer
 		ray_volume_states.resize(new_element_count);
 	}
 
-	std::vector<SimplifiedRendererMaterial> materials;
+	std::vector<DeviceEffectiveMaterial> materials;
 	std::vector<float3> geometric_normals;
 	std::vector<float3> shading_normals;
 	std::vector<float3> view_directions;

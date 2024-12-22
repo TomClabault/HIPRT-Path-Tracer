@@ -38,7 +38,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 thin_glass_sample(float relative_eta, floa
 
     float alpha_x;
     float alpha_y;
-    SimplifiedRendererMaterial::get_alphas(roughness, /* anisotropy */ 0.0f, alpha_x, alpha_y);
+    MaterialUtils::get_alphas(roughness, /* anisotropy */ 0.0f, alpha_x, alpha_y);
 
     float3 microfacet_normal = GGX_anisotropic_sample_microfacet(local_view_direction, alpha_x, alpha_y, random_number_generator);
 
@@ -174,7 +174,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float thin_glass_eval(float relative_eta, float r
 
         float alpha_x;
         float alpha_y;
-        SimplifiedRendererMaterial::get_alphas(roughness, /* anisotropy */ 0.0f, alpha_x, alpha_y);
+        MaterialUtils::get_alphas(roughness, /* anisotropy */ 0.0f, alpha_x, alpha_y);
 
         float D = GGX_anisotropic(alpha_x, alpha_y, local_half_vector);
         float G1_V = G1_Smith(alpha_x, alpha_y, local_view_direction);
@@ -240,7 +240,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GGXThinGlassDirectionalAlbedoBake(int kerne
     // Entering surface
     for (int sample = 0; sample < kernel_iterations; sample++)
     {
-        float thin_walled_roughness = SimplifiedRendererMaterial::get_thin_walled_roughness(true, roughness, relative_ior);
+        float thin_walled_roughness = MaterialUtils::get_thin_walled_roughness(true, roughness, relative_ior);
         float3 sampled_local_to_light_direction = thin_glass_sample(relative_ior, thin_walled_roughness, local_view_direction, random_number_generator);
 
         float eval_pdf = 0.0f;

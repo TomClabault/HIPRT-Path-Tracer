@@ -10,7 +10,7 @@
 #include "HostDeviceCommon/Material.h"
 #include "Device/includes/Sampling.h"
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F smooth_glass_bsdf(const SimplifiedRendererMaterial& material, float3& out_bounce_direction, const float3& ray_direction, float3& surface_normal, float eta_i, float eta_t, float& pdf, Xorshift32Generator& random_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F smooth_glass_bsdf(const DeviceEffectiveMaterial& material, float3& out_bounce_direction, const float3& ray_direction, float3& surface_normal, float eta_i, float eta_t, float& pdf, Xorshift32Generator& random_generator)
 {
     // Clamping here because the dot product can eventually returns values less
     // than -1 or greater than 1 because of precision errors in the vectors
@@ -59,7 +59,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F smooth_glass_bsdf(const SimplifiedRen
         surface_normal = -surface_normal;
         pdf = 1.0f - fresnel_reflect;
 
-        return ColorRGB32F(1.0f - fresnel_reflect) * material.base_color / hippt::dot(out_bounce_direction, surface_normal);
+        return ColorRGB32F(1.0f - fresnel_reflect) * material.get_base_color() / hippt::dot(out_bounce_direction, surface_normal);
     }
 }
 

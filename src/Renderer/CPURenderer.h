@@ -80,6 +80,7 @@ private:
     std::vector<float> m_alias_table_probas;
     std::vector<int> m_alias_table_alias;
 
+    std::vector<DevicePackedTexturedMaterial> m_gpu_packed_materials;
     CPURendererGBuffer m_g_buffer;
     CPURendererGBuffer m_g_buffer_prev_frame;
 
