@@ -70,7 +70,7 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 ### Other features
 - Use of the [\[ASSIMP\]](https://github.com/assimp/assimp) library to support [many](https://github.com/assimp/assimp/blob/master/doc/Fileformats.md) scene file formats.
 - Multithreaded scene parsing/texture loading/shader compiling/BVH building/envmap processing/... for faster application startup times
-- Background-asynchronous path tracing kernel pre-compilations
+- Background-asynchronous path tracing kernels pre-compilation
 - Shader cache to avoid recompiling kernels unnecessarily
 ### Some of the features are (or will be) presented in more details in my [blog posts](https://tomclabault.github.io/blog/)!
 

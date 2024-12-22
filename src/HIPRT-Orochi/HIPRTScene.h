@@ -108,7 +108,7 @@ struct HIPRTScene
 	OrochiBuffer<bool> has_vertex_normals;
 	OrochiBuffer<float3> vertex_normals;
 	OrochiBuffer<int> material_indices;
-	OrochiBuffer<RendererMaterial> materials_buffer;
+	OrochiBuffer<CPUTexturedRendererMaterial> materials_buffer;
 
 	int emissive_triangles_count = 0;
 	OrochiBuffer<int> emissive_triangles_indices;

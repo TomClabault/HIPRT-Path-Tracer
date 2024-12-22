@@ -81,7 +81,7 @@ struct Scene
 {
     SceneMetadata metadata;
 
-    std::vector<RendererMaterial> materials;
+    std::vector<CPUTexturedRendererMaterial> materials;
     // Material textures. Needs to be index by a material index. 
     std::vector<Image8Bit> textures;
 
@@ -103,7 +103,7 @@ struct Scene
     bool has_camera = false;
     Camera camera;
 
-    Sphere add_sphere(const float3& center, float radius, const RendererMaterial& material, int primitive_index)
+    Sphere add_sphere(const float3& center, float radius, const CPUTexturedRendererMaterial& material, int primitive_index)
     {
         int material_index = materials.size();
 
@@ -157,7 +157,7 @@ private:
      * @ material_texture_indices is a list that is as long as there are unique materials
      *      in the scene. Each field of the stucture contains the index of the texture used
      *      by that material. -1 if the material doesn't have that type of texture
-     *      (if structure.base_color_texture_index == RendererMaterial::NO_TEXTURE for example, that means
+     *      (if structure.base_color_texture_index == CPUTexturedRendererMaterial::NO_TEXTURE for example, that means
      *      that the material doesn't have a base color texture)
      * @ material_indices is a vector which is 'number of textures' long and contains the
      *      index of the material that the texture belongs to.
@@ -174,10 +174,10 @@ private:
      * @ texture_count How many texture are in the scene
      */
     static void prepare_textures(const aiScene* scene, std::vector<std::pair<aiTextureType, std::string>>& texture_paths, std::vector<ParsedMaterialTextureIndices>& material_texture_indices, std::vector<int>& material_indices, std::vector<int>& texture_per_mesh, std::vector<int>& texture_indices_offsets, int& texture_count);
-    static void assign_material_texture_indices(std::vector<RendererMaterial>& materials, const std::vector<ParsedMaterialTextureIndices>& material_tex_indices, const std::vector<int>& material_textures_offsets);
+    static void assign_material_texture_indices(std::vector<CPUTexturedRendererMaterial>& materials, const std::vector<ParsedMaterialTextureIndices>& material_tex_indices, const std::vector<int>& material_textures_offsets);
     static void dispatch_texture_loading(Scene& parsed_scene, const std::string& scene_path, int nb_threads, const std::vector<std::pair<aiTextureType, std::string>>& texture_paths, const std::vector<int>& material_indices);
 
-    static void read_material_properties(aiMaterial* mesh_material, RendererMaterial& renderer_material);
+    static void read_material_properties(aiMaterial* mesh_material, CPUTexturedRendererMaterial& renderer_material);
     /**
      * Check if the mesh material has a texture of the given type. If so, returns the index of the
      * texture within texturePathList and appends the path of the texture to the list. If the material
@@ -186,7 +186,7 @@ private:
     static int get_first_texture_of_type(aiMaterial* mesh_material, aiTextureType type, std::vector<std::pair<aiTextureType, std::string>>& texture_path_list);
     static std::vector<std::pair<aiTextureType, std::string>> get_textures_paths_and_indices(aiMaterial* mesh_material, ParsedMaterialTextureIndices& texture_indices);
     static std::vector<std::pair<aiTextureType, std::string>> normalize_texture_paths(std::vector<std::pair<aiTextureType, std::string>>& paths);
-    static RendererMaterial offset_textures_indices(const RendererMaterial& renderer_material, int offset);
+    static CPUTexturedRendererMaterial offset_textures_indices(const CPUTexturedRendererMaterial& renderer_material, int offset);
 };
 
 #endif

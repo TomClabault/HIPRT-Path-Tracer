@@ -113,7 +113,7 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Assimp::Im
         parsed_scene.metadata.mesh_names[mesh_index] = mesh_name;
         parsed_scene.metadata.mesh_material_indices[mesh_index] = material_index;
 
-        RendererMaterial& renderer_material = parsed_scene.materials[material_index];
+        CPUTexturedRendererMaterial& renderer_material = parsed_scene.materials[material_index];
         if (material_indices_already_seen.find(mesh->mMaterialIndex) == material_indices_already_seen.end())
         {
             // If we haven't seen that material before
@@ -307,12 +307,12 @@ void SceneParser::prepare_textures(const aiScene* scene, std::vector<std::pair<a
     texture_count = texture_paths.size();
 }
 
-void SceneParser::assign_material_texture_indices(std::vector<RendererMaterial>& materials, const std::vector<ParsedMaterialTextureIndices>& material_tex_indices, const std::vector<int>& material_textures_offsets)
+void SceneParser::assign_material_texture_indices(std::vector<CPUTexturedRendererMaterial>& materials, const std::vector<ParsedMaterialTextureIndices>& material_tex_indices, const std::vector<int>& material_textures_offsets)
 {
     for (int material_index = 0; material_index < material_tex_indices.size(); material_index++)
     {
         ParsedMaterialTextureIndices mat_tex_indices = material_tex_indices[material_index];
-        RendererMaterial& renderer_material = materials[material_index];
+        CPUTexturedRendererMaterial& renderer_material = materials[material_index];
         int tex_index_offset = material_textures_offsets[material_index];
 
         // Assigning
@@ -328,16 +328,16 @@ void SceneParser::assign_material_texture_indices(std::vector<RendererMaterial>&
         renderer_material.normal_map_texture_index = mat_tex_indices.normal_map_texture_index;
 
         // Offsetting
-        renderer_material.base_color_texture_index += renderer_material.base_color_texture_index == RendererMaterial::NO_TEXTURE ? 0 : tex_index_offset;
-        renderer_material.emission_texture_index += renderer_material.emission_texture_index == RendererMaterial::NO_TEXTURE ? 0 : tex_index_offset;
-        renderer_material.roughness_texture_index += renderer_material.roughness_texture_index == RendererMaterial::NO_TEXTURE ? 0 : tex_index_offset;
-        renderer_material.metallic_texture_index += renderer_material.metallic_texture_index == RendererMaterial::NO_TEXTURE ? 0 : tex_index_offset;
-        renderer_material.roughness_metallic_texture_index += renderer_material.roughness_metallic_texture_index == RendererMaterial::NO_TEXTURE ? 0 : tex_index_offset;
-        renderer_material.specular_texture_index += renderer_material.specular_texture_index == RendererMaterial::NO_TEXTURE ? 0 : tex_index_offset;
-        renderer_material.coat_texture_index += renderer_material.coat_texture_index == RendererMaterial::NO_TEXTURE ? 0 : tex_index_offset;
-        renderer_material.sheen_texture_index += renderer_material.sheen_texture_index == RendererMaterial::NO_TEXTURE ? 0 : tex_index_offset;
-        renderer_material.specular_transmission_texture_index += renderer_material.specular_transmission_texture_index == RendererMaterial::NO_TEXTURE ? 0 : tex_index_offset;
-        renderer_material.normal_map_texture_index += renderer_material.normal_map_texture_index == RendererMaterial::NO_TEXTURE ? 0 : tex_index_offset;
+        renderer_material.base_color_texture_index += renderer_material.base_color_texture_index == CPUTexturedRendererMaterial::NO_TEXTURE ? 0 : tex_index_offset;
+        renderer_material.emission_texture_index += renderer_material.emission_texture_index == CPUTexturedRendererMaterial::NO_TEXTURE ? 0 : tex_index_offset;
+        renderer_material.roughness_texture_index += renderer_material.roughness_texture_index == CPUTexturedRendererMaterial::NO_TEXTURE ? 0 : tex_index_offset;
+        renderer_material.metallic_texture_index += renderer_material.metallic_texture_index == CPUTexturedRendererMaterial::NO_TEXTURE ? 0 : tex_index_offset;
+        renderer_material.roughness_metallic_texture_index += renderer_material.roughness_metallic_texture_index == CPUTexturedRendererMaterial::NO_TEXTURE ? 0 : tex_index_offset;
+        renderer_material.specular_texture_index += renderer_material.specular_texture_index == CPUTexturedRendererMaterial::NO_TEXTURE ? 0 : tex_index_offset;
+        renderer_material.coat_texture_index += renderer_material.coat_texture_index == CPUTexturedRendererMaterial::NO_TEXTURE ? 0 : tex_index_offset;
+        renderer_material.sheen_texture_index += renderer_material.sheen_texture_index == CPUTexturedRendererMaterial::NO_TEXTURE ? 0 : tex_index_offset;
+        renderer_material.specular_transmission_texture_index += renderer_material.specular_transmission_texture_index == CPUTexturedRendererMaterial::NO_TEXTURE ? 0 : tex_index_offset;
+        renderer_material.normal_map_texture_index += renderer_material.normal_map_texture_index == CPUTexturedRendererMaterial::NO_TEXTURE ? 0 : tex_index_offset;
     }
 }
 
@@ -359,14 +359,14 @@ void SceneParser::dispatch_texture_loading(Scene& parsed_scene, const std::strin
         ThreadManager::start_thread(ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY, ThreadFunctions::load_scene_texture, std::ref(parsed_scene), texture_threads_state->scene_filepath, std::ref(texture_threads_state->texture_paths), std::ref(texture_threads_state->material_indices), i, nb_threads);
 }
 
-void SceneParser::read_material_properties(aiMaterial* mesh_material, RendererMaterial& renderer_material)
+void SceneParser::read_material_properties(aiMaterial* mesh_material, CPUTexturedRendererMaterial& renderer_material)
 {
     //Getting the properties that are going to be used by the materials
     //of the application
 
     aiReturn error_code_emissive;
     mesh_material->Get(AI_MATKEY_COLOR_DIFFUSE, *((aiColor3D*)&renderer_material.base_color));
-    if (renderer_material.emission_texture_index == RendererMaterial::NO_TEXTURE)
+    if (renderer_material.emission_texture_index == CPUTexturedRendererMaterial::NO_TEXTURE)
     {
         ColorRGB32F emission;
         mesh_material->Get(AI_MATKEY_COLOR_EMISSIVE, *((aiColor3D*)&emission));
@@ -411,7 +411,7 @@ std::vector<std::pair<aiTextureType, std::string>> SceneParser::get_textures_pat
     std::vector<std::pair<aiTextureType, std::string>> texture_paths;
 
     texture_indices.base_color_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_BASE_COLOR, texture_paths);
-    if (texture_indices.base_color_texture_index == RendererMaterial::NO_TEXTURE)
+    if (texture_indices.base_color_texture_index == CPUTexturedRendererMaterial::NO_TEXTURE)
         // Trying diffuse for some file formats
         // The OBJ format uses DIFFUSE instead of BASE_COLOR
         texture_indices.base_color_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_DIFFUSE, texture_paths);
@@ -419,7 +419,7 @@ std::vector<std::pair<aiTextureType, std::string>> SceneParser::get_textures_pat
 
     int roughness_index = get_first_texture_of_type(mesh_material, aiTextureType_DIFFUSE_ROUGHNESS, texture_paths);
     int metallic_index = get_first_texture_of_type(mesh_material, aiTextureType_METALNESS, texture_paths);
-    if (roughness_index != RendererMaterial::NO_TEXTURE && metallic_index != RendererMaterial::NO_TEXTURE && texture_paths[roughness_index].second == texture_paths[metallic_index].second)
+    if (roughness_index != CPUTexturedRendererMaterial::NO_TEXTURE && metallic_index != CPUTexturedRendererMaterial::NO_TEXTURE && texture_paths[roughness_index].second == texture_paths[metallic_index].second)
     {
         // The roughness and metallic textures are the same
 
@@ -441,7 +441,7 @@ std::vector<std::pair<aiTextureType, std::string>> SceneParser::get_textures_pat
     texture_indices.specular_transmission_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_TRANSMISSION, texture_paths);
 
     texture_indices.normal_map_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_NORMALS, texture_paths);
-    if (texture_indices.normal_map_texture_index == RendererMaterial::NO_TEXTURE)
+    if (texture_indices.normal_map_texture_index == CPUTexturedRendererMaterial::NO_TEXTURE)
         // Trying HEIGHT for some file formats
         texture_indices.normal_map_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_HEIGHT, texture_paths);
 
@@ -488,33 +488,33 @@ std::vector<std::pair<aiTextureType, std::string>> SceneParser::normalize_textur
     return normalized_paths;
 }
 
-RendererMaterial SceneParser::offset_textures_indices(const RendererMaterial& renderer_material, int offset)
+CPUTexturedRendererMaterial SceneParser::offset_textures_indices(const CPUTexturedRendererMaterial& renderer_material, int offset)
 {
-    RendererMaterial out_mat = renderer_material;
+    CPUTexturedRendererMaterial out_mat = renderer_material;
 
-   out_mat.emission_texture_index += (renderer_material.emission_texture_index == RendererMaterial::NO_TEXTURE) ? 0 : offset;
-   out_mat.base_color_texture_index += (renderer_material.base_color_texture_index == RendererMaterial::NO_TEXTURE) ? 0 : offset;
+   out_mat.emission_texture_index += (renderer_material.emission_texture_index == CPUTexturedRendererMaterial::NO_TEXTURE) ? 0 : offset;
+   out_mat.base_color_texture_index += (renderer_material.base_color_texture_index == CPUTexturedRendererMaterial::NO_TEXTURE) ? 0 : offset;
 
-   out_mat.roughness_texture_index += (renderer_material.roughness_texture_index == RendererMaterial::NO_TEXTURE) ? 0 : offset;
-   out_mat.oren_sigma_texture_index += (renderer_material.oren_sigma_texture_index == RendererMaterial::NO_TEXTURE) ? 0 : offset;
+   out_mat.roughness_texture_index += (renderer_material.roughness_texture_index == CPUTexturedRendererMaterial::NO_TEXTURE) ? 0 : offset;
+   out_mat.oren_sigma_texture_index += (renderer_material.oren_sigma_texture_index == CPUTexturedRendererMaterial::NO_TEXTURE) ? 0 : offset;
 
-   out_mat.metallic_texture_index += (renderer_material.metallic_texture_index == RendererMaterial::NO_TEXTURE) ? 0 : offset;
-   out_mat.specular_texture_index += (renderer_material.specular_texture_index == RendererMaterial::NO_TEXTURE) ? 0 : offset;
-   out_mat.specular_tint_texture_index += (renderer_material.specular_tint_texture_index == RendererMaterial::NO_TEXTURE) ? 0 : offset;
-   out_mat.specular_color_texture_index += (renderer_material.specular_color_texture_index == RendererMaterial::NO_TEXTURE) ? 0 : offset;
+   out_mat.metallic_texture_index += (renderer_material.metallic_texture_index == CPUTexturedRendererMaterial::NO_TEXTURE) ? 0 : offset;
+   out_mat.specular_texture_index += (renderer_material.specular_texture_index == CPUTexturedRendererMaterial::NO_TEXTURE) ? 0 : offset;
+   out_mat.specular_tint_texture_index += (renderer_material.specular_tint_texture_index == CPUTexturedRendererMaterial::NO_TEXTURE) ? 0 : offset;
+   out_mat.specular_color_texture_index += (renderer_material.specular_color_texture_index == CPUTexturedRendererMaterial::NO_TEXTURE) ? 0 : offset;
 
-   out_mat.anisotropic_texture_index += (renderer_material.anisotropic_texture_index == RendererMaterial::NO_TEXTURE) ? 0 : offset;
-   out_mat.anisotropic_rotation_texture_index += (renderer_material.anisotropic_rotation_texture_index == RendererMaterial::NO_TEXTURE) ? 0 : offset;
+   out_mat.anisotropic_texture_index += (renderer_material.anisotropic_texture_index == CPUTexturedRendererMaterial::NO_TEXTURE) ? 0 : offset;
+   out_mat.anisotropic_rotation_texture_index += (renderer_material.anisotropic_rotation_texture_index == CPUTexturedRendererMaterial::NO_TEXTURE) ? 0 : offset;
 
-   out_mat.coat_texture_index += (renderer_material.coat_texture_index == RendererMaterial::NO_TEXTURE) ? 0 : offset;
-   out_mat.coat_roughness_texture_index += (renderer_material.coat_roughness_texture_index == RendererMaterial::NO_TEXTURE) ? 0 : offset;
-   out_mat.coat_ior_texture_index += (renderer_material.coat_ior_texture_index == RendererMaterial::NO_TEXTURE) ? 0 : offset;
+   out_mat.coat_texture_index += (renderer_material.coat_texture_index == CPUTexturedRendererMaterial::NO_TEXTURE) ? 0 : offset;
+   out_mat.coat_roughness_texture_index += (renderer_material.coat_roughness_texture_index == CPUTexturedRendererMaterial::NO_TEXTURE) ? 0 : offset;
+   out_mat.coat_ior_texture_index += (renderer_material.coat_ior_texture_index == CPUTexturedRendererMaterial::NO_TEXTURE) ? 0 : offset;
 
-   out_mat.sheen_texture_index += (renderer_material.sheen_texture_index == RendererMaterial::NO_TEXTURE) ? 0 : offset;
-   out_mat.sheen_roughness_texture_index += (renderer_material.sheen_roughness_texture_index == RendererMaterial::NO_TEXTURE) ? 0 : offset;
-   out_mat.sheen_color_texture_index += (renderer_material.sheen_color_texture_index == RendererMaterial::NO_TEXTURE) ? 0 : offset;
+   out_mat.sheen_texture_index += (renderer_material.sheen_texture_index == CPUTexturedRendererMaterial::NO_TEXTURE) ? 0 : offset;
+   out_mat.sheen_roughness_texture_index += (renderer_material.sheen_roughness_texture_index == CPUTexturedRendererMaterial::NO_TEXTURE) ? 0 : offset;
+   out_mat.sheen_color_texture_index += (renderer_material.sheen_color_texture_index == CPUTexturedRendererMaterial::NO_TEXTURE) ? 0 : offset;
     
-   out_mat.specular_transmission_texture_index += (renderer_material.specular_transmission_texture_index == RendererMaterial::NO_TEXTURE) ? 0 : offset;
+   out_mat.specular_transmission_texture_index += (renderer_material.specular_transmission_texture_index == CPUTexturedRendererMaterial::NO_TEXTURE) ? 0 : offset;
 
    return out_mat;
 }

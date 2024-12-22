@@ -226,7 +226,7 @@ private:
     ColorRGB32F emission = ColorRGB32F{ 0.0f, 0.0f, 0.0f };
 };
 
-struct RendererMaterial : public SimplifiedRendererMaterial
+struct CPUTexturedRendererMaterial : public SimplifiedRendererMaterial
 {
     static constexpr int NO_TEXTURE = -1;
     // When an emissive texture is read and is determine to be

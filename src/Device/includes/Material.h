@@ -20,7 +20,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void get_material_property(const HIPRTRenderData&
 HIPRT_HOST_DEVICE HIPRT_INLINE void get_metallic_roughness(const HIPRTRenderData& render_data, float& metallic, float& roughness, const float2& texcoords, int metallic_texture_index, int roughness_texture_index, int metallic_roughness_texture_index);
 HIPRT_HOST_DEVICE HIPRT_INLINE void get_base_color(const HIPRTRenderData& render_data, ColorRGB32F& base_color, float& out_alpha, const float2& texcoords, int base_color_texture_index);
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float get_hit_base_color_alpha(const HIPRTRenderData& render_data, const RendererMaterial& material, hiprtHit hit)
+HIPRT_HOST_DEVICE HIPRT_INLINE float get_hit_base_color_alpha(const HIPRTRenderData& render_data, const CPUTexturedRendererMaterial& material, hiprtHit hit)
 {
     if (material.base_color_texture_index == -1)
         // Quick exit if no texture
@@ -39,14 +39,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_hit_base_color_alpha(const HIPRTRenderD
 HIPRT_HOST_DEVICE HIPRT_INLINE float get_hit_base_color_alpha(const HIPRTRenderData& render_data, hiprtHit hit)
 {
     int material_index = render_data.buffers.material_indices[hit.primID];
-    RendererMaterial material = render_data.buffers.materials_buffer[material_index];
+    CPUTexturedRendererMaterial material = render_data.buffers.materials_buffer[material_index];
 
     return get_hit_base_color_alpha(render_data, material, hit);
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE SimplifiedRendererMaterial get_intersection_material(const HIPRTRenderData& render_data, int material_index, float2 texcoords)
 {
-	RendererMaterial material = render_data.buffers.materials_buffer[material_index];
+	CPUTexturedRendererMaterial material = render_data.buffers.materials_buffer[material_index];
 
     ColorRGB32F emission = material.get_emission() / material.emission_strength;
     get_material_property(render_data, emission, false, texcoords, material.emission_texture_index);
@@ -97,7 +97,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE SimplifiedRendererMaterial get_intersection_mater
 
 HIPRT_HOST_DEVICE HIPRT_INLINE void get_metallic_roughness(const HIPRTRenderData& render_data, float& metallic, float& roughness, const float2& texcoords, int metallic_texture_index, int roughness_texture_index, int metallic_roughness_texture_index)
 {
-    if (metallic_roughness_texture_index != RendererMaterial::NO_TEXTURE)
+    if (metallic_roughness_texture_index != CPUTexturedRendererMaterial::NO_TEXTURE)
     {
         ColorRGB32F rgb = sample_texture_rgb_8bits(render_data.buffers.material_textures, metallic_roughness_texture_index, render_data.buffers.textures_dims[metallic_roughness_texture_index], false, texcoords);
 
@@ -118,7 +118,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void get_base_color(const HIPRTRenderData& render
 
     out_alpha = 1.0;
     get_material_property(render_data, rgba, true, texcoords, base_color_texture_index);
-    if (base_color_texture_index != RendererMaterial::NO_TEXTURE)
+    if (base_color_texture_index != CPUTexturedRendererMaterial::NO_TEXTURE)
     {
         base_color = ColorRGB32F(rgba.r, rgba.g, rgba.b);
         out_alpha = rgba.a;
@@ -151,7 +151,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void read_data(const ColorRGBA32F& rgba, float& d
 template <typename T>
 HIPRT_HOST_DEVICE HIPRT_INLINE void get_material_property(const HIPRTRenderData& render_data, T& output_data, bool is_srgb, const float2& texcoords, int texture_index)
 {
-    if (texture_index == RendererMaterial::NO_TEXTURE || texture_index == RendererMaterial::CONSTANT_EMISSIVE_TEXTURE)
+    if (texture_index == CPUTexturedRendererMaterial::NO_TEXTURE || texture_index == CPUTexturedRendererMaterial::CONSTANT_EMISSIVE_TEXTURE)
         return;
 
     ColorRGBA32F rgba = sample_texture_rgba(render_data.buffers.material_textures, texture_index, render_data.buffers.textures_dims[texture_index], is_srgb, texcoords);

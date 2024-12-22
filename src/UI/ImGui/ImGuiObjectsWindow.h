@@ -20,7 +20,7 @@ public:
 	void draw();
 	void draw_global_objects_panel();
 	void draw_objects_panel();
-	bool draw_material_presets(RendererMaterial& material);
+	bool draw_material_presets(CPUTexturedRendererMaterial& material);
 
 private:
 	RenderWindow* m_render_window = nullptr;

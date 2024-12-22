@@ -33,7 +33,7 @@ HIPRT_DEVICE HIPRT_INLINE bool filter_function(const hiprtRay&, const void*, voi
 		return false;
 
 	int material_index = payload->render_data->buffers.material_indices[hit.primID];
-	RendererMaterial material = payload->render_data->buffers.materials_buffer[material_index];
+	CPUTexturedRendererMaterial material = payload->render_data->buffers.materials_buffer[material_index];
 
 	// Composition both the alpha of the base color texture and the material
 	float base_color_alpha = get_hit_base_color_alpha(*payload->render_data, material, hit);

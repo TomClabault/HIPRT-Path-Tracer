@@ -11,7 +11,7 @@
 
 #include "HostDeviceCommon/WorldSettings.h"
 
-struct RendererMaterial;
+struct CPUTexturedRendererMaterial;
 
 struct LightPresamplingParameters
 {
@@ -34,7 +34,7 @@ struct LightPresamplingParameters
 	int* triangles_indices = nullptr;
 	float3* vertices_positions = nullptr;
 	int* material_indices = nullptr;
-	RendererMaterial* materials = nullptr;
+	CPUTexturedRendererMaterial* materials = nullptr;
 
 	// World settings for sampling the envmap
 	WorldSettings world_settings;

@@ -64,7 +64,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 normal_mapping(const HIPRTRenderData& rend
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 get_shading_normal(const HIPRTRenderData& render_data, const float3& geometric_normal, int primitive_index, const float2& uv, const float2& interpolated_texcoords)
 {
     int mat_index = render_data.buffers.material_indices[primitive_index];
-    RendererMaterial& material = render_data.buffers.materials_buffer[mat_index];
+    CPUTexturedRendererMaterial& material = render_data.buffers.materials_buffer[mat_index];
 
     // Do smooth shading first if we have vertex normals
     float3 surface_normal;
@@ -76,7 +76,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 get_shading_normal(const HIPRTRenderData& 
         surface_normal = geometric_normal;
 
     // Do normal mapping if we have a normal map
-    if (material.normal_map_texture_index != RendererMaterial::NO_TEXTURE)
+    if (material.normal_map_texture_index != CPUTexturedRendererMaterial::NO_TEXTURE)
         surface_normal = normal_mapping(render_data, material.normal_map_texture_index, primitive_index, interpolated_texcoords, surface_normal);
 
     return surface_normal;
@@ -327,7 +327,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderD
     int material_index = render_data.buffers.material_indices[shadow_ray_hit.primID];
     int emission_texture_index = render_data.buffers.materials_buffer[material_index].emission_texture_index;
 
-    if (emission_texture_index != RendererMaterial::NO_TEXTURE)
+    if (emission_texture_index != CPUTexturedRendererMaterial::NO_TEXTURE)
     {
         float2 texcoords = uv_interpolate(render_data.buffers.triangles_indices, shadow_ray_hit.primID, render_data.buffers.texcoords, shadow_ray_hit.uv);
         get_material_property(render_data, out_light_hit_info.hit_emission, false, texcoords, emission_texture_index);
@@ -383,7 +383,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderD
         int material_index = render_data.buffers.material_indices[shadow_ray_hit.primID];
         int emission_texture_index = render_data.buffers.materials_buffer[material_index].emission_texture_index;
 
-        if (emission_texture_index != RendererMaterial::NO_TEXTURE)
+        if (emission_texture_index != CPUTexturedRendererMaterial::NO_TEXTURE)
         {
             float2 texcoords = uv_interpolate(render_data.buffers.triangles_indices, shadow_ray_hit.primID, render_data.buffers.texcoords, shadow_ray_hit.uv);
             get_material_property(render_data, out_light_hit_info.hit_emission, false, texcoords, emission_texture_index);

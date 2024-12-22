@@ -991,7 +991,7 @@ void GPURenderer::update_render_data()
 		m_render_data.buffers.has_vertex_normals = reinterpret_cast<unsigned char*>(m_hiprt_scene.has_vertex_normals.get_device_pointer());
 		m_render_data.buffers.vertex_normals = reinterpret_cast<float3*>(m_hiprt_scene.vertex_normals.get_device_pointer());
 		m_render_data.buffers.material_indices = reinterpret_cast<int*>(m_hiprt_scene.material_indices.get_device_pointer());
-		m_render_data.buffers.materials_buffer = reinterpret_cast<RendererMaterial*>(m_hiprt_scene.materials_buffer.get_device_pointer());
+		m_render_data.buffers.materials_buffer = reinterpret_cast<CPUTexturedRendererMaterial*>(m_hiprt_scene.materials_buffer.get_device_pointer());
 		m_render_data.buffers.emissive_triangles_count = m_hiprt_scene.emissive_triangles_count;
 		m_render_data.buffers.emissive_triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.emissive_triangles_indices.get_device_pointer());
 
@@ -1178,12 +1178,12 @@ bool GPURenderer::has_envmap()
 	return m_render_data.world_settings.envmap_height != 0 && m_render_data.world_settings.envmap_width != 0;
 }
 
-const std::vector<RendererMaterial>& GPURenderer::get_original_materials()
+const std::vector<CPUTexturedRendererMaterial>& GPURenderer::get_original_materials()
 {
 	return m_original_materials;
 }
 
-const std::vector<RendererMaterial>& GPURenderer::get_current_materials()
+const std::vector<CPUTexturedRendererMaterial>& GPURenderer::get_current_materials()
 {
 	return m_current_materials;
 }
@@ -1193,7 +1193,7 @@ const std::vector<std::string>& GPURenderer::get_material_names()
 	return m_parsed_scene_metadata.material_names;
 }
 
-void GPURenderer::update_materials(std::vector<RendererMaterial>& materials)
+void GPURenderer::update_materials(std::vector<CPUTexturedRendererMaterial>& materials)
 {
 	m_current_materials = materials;
 	m_hiprt_scene.materials_buffer.upload_data(materials.data());

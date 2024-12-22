@@ -415,7 +415,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline TestFunction(HIPRTRenderData render_data, i
 
     float pdf;
     int mat_index = (int)(threadId * randomGenerator() * 50);
-    RendererMaterial mat = render_data.buffers.materials_buffer[(int)(threadId * randomGenerator() * 50) % 10];
+    CPUTexturedRendererMaterial mat = render_data.buffers.materials_buffer[(int)(threadId * randomGenerator() * 50) % 10];
     ColorRGB32F eval_out = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, mat, render_data.g_buffer.ray_volume_states[threadId], make_float3(0.5, 1.0, 2), make_float3(0.5, 1.0, 2), make_float3(0.5, 1.0, 2), pdf);
 
     int incident, outgoing;

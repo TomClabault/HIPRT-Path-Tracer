@@ -86,10 +86,10 @@ void ImGuiObjectsWindow::draw()
 }
 
 template <typename T>
-void apply_material_override(bool override_flag, T SimplifiedRendererMaterial::* property, const T& override_value, std::vector<RendererMaterial>& materials_to_override) 
+void apply_material_override(bool override_flag, T SimplifiedRendererMaterial::* property, const T& override_value, std::vector<CPUTexturedRendererMaterial>& materials_to_override) 
 {
 	if (override_flag)
-		for (RendererMaterial& renderer_mat : materials_to_override)
+		for (CPUTexturedRendererMaterial& renderer_mat : materials_to_override)
 			renderer_mat.*property = override_value;
 }
 
@@ -735,7 +735,7 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 
 	if (material_override_changed)
 	{
-		std::vector<RendererMaterial> overriden_materials = m_renderer->get_original_materials();
+		std::vector<CPUTexturedRendererMaterial> overriden_materials = m_renderer->get_original_materials();
 
 		apply_material_override(override_state.override_base_color, &SimplifiedRendererMaterial::base_color, material_override.base_color, overriden_materials);
 		apply_material_override(override_state.override_roughness, &SimplifiedRendererMaterial::roughness, material_override.roughness, overriden_materials);
@@ -787,7 +787,7 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 
 		// Special case for the emission since it's a private member
 		if (override_state.override_emission)
-			for (RendererMaterial& renderer_mat : overriden_materials)
+			for (CPUTexturedRendererMaterial& renderer_mat : overriden_materials)
 				renderer_mat.set_emission(material_emission);
 		apply_material_override(override_state.override_emission_strength, &SimplifiedRendererMaterial::emission_strength, material_override.emission_strength, overriden_materials);
 
@@ -814,9 +814,9 @@ void ImGuiObjectsWindow::draw_objects_panel()
 	// of objects in the scene because we want the global factor to affect the original
 	// emission of the materials_to_override, not the emission that has already been multiplied by
 	// a previous factor: this would lead to a buggy exponential growth of the emission
-	static std::vector<RendererMaterial> original_materials = m_renderer->get_current_materials();
+	static std::vector<CPUTexturedRendererMaterial> original_materials = m_renderer->get_current_materials();
 
-	std::vector<RendererMaterial> materials = m_renderer->get_current_materials();
+	std::vector<CPUTexturedRendererMaterial> materials = m_renderer->get_current_materials();
 	const std::vector<std::string>& material_names = m_renderer->get_material_names();
 	const std::vector<std::string>& mesh_names = m_renderer->get_mesh_names();
 
@@ -896,7 +896,7 @@ void ImGuiObjectsWindow::draw_objects_panel()
 	if (materials.size() > 0)
 	{
 		std::shared_ptr<GPUKernelCompilerOptions> kernel_options = m_renderer->get_global_compiler_options();
-		RendererMaterial& material = materials[currently_selected_material];
+		CPUTexturedRendererMaterial& material = materials[currently_selected_material];
 
 		ImGui::PushItemWidth(16 * ImGui::GetFontSize());
 
@@ -1168,7 +1168,7 @@ void ImGuiObjectsWindow::draw_objects_panel()
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 }
 
-bool ImGuiObjectsWindow::draw_material_presets(RendererMaterial& material)
+bool ImGuiObjectsWindow::draw_material_presets(CPUTexturedRendererMaterial& material)
 {
 	bool material_changed = false;
 
@@ -1212,7 +1212,7 @@ bool ImGuiObjectsWindow::draw_material_presets(RendererMaterial& material)
 			float original_roughness = material.roughness;
 
 			// Resetting the material
-			material = RendererMaterial();
+			material = CPUTexturedRendererMaterial();
 
 			// Applying preset
 			material.roughness = original_roughness;

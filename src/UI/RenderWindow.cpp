@@ -130,7 +130,7 @@ extern ImGuiLogger g_imgui_logger;
 // - choose principled BSDF diffuse model (disney, lambertian, oren nayar)
 // - portal envmap sampling --> choose portals with ImGui
 // - find a way to not fill the texcoords buffer for meshes that don't have textures
-// - pack RendererMaterial informations such as texture indices (we can probably use 16 bit for a texture index --> 2 texture indices in one 32 bit register)
+// - pack CPUTexturedRendererMaterial informations such as texture indices (we can probably use 16 bit for a texture index --> 2 texture indices in one 32 bit register)
 // - use 8 bit textures for material properties instead of float
 // - use fixed point 8 bit for materials parameters in [0, 1], should be good enough
 // - log size of buffers used: vertices, indices, normals, ...

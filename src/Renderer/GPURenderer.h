@@ -222,10 +222,10 @@ public:
 	void set_envmap(const Image32Bit& envmap, const std::string& envmap_filepath);
 	bool has_envmap();
 
-	const std::vector<RendererMaterial>& get_original_materials();
-	const std::vector<RendererMaterial>& get_current_materials();
+	const std::vector<CPUTexturedRendererMaterial>& get_original_materials();
+	const std::vector<CPUTexturedRendererMaterial>& get_current_materials();
 	const std::vector<std::string>& get_material_names();
-	void update_materials(std::vector<RendererMaterial>& materials);
+	void update_materials(std::vector<CPUTexturedRendererMaterial>& materials);
 
 	const std::vector<BoundingBox>& get_mesh_bounding_boxes();
 	const std::vector<std::string>& get_mesh_names();
@@ -425,10 +425,10 @@ private:
 	SceneMetadata m_parsed_scene_metadata;
 	// The original materials of the scene. Those are the materials that have directly been read from the hard drive scene file.
 	// Used in case the user wants to revert every changes that have been done
-	std::vector<RendererMaterial> m_original_materials;
+	std::vector<CPUTexturedRendererMaterial> m_original_materials;
 	// Materials currently being used by the GPU. Those are the materials *currently* being
 	// used for rendering
-	std::vector<RendererMaterial> m_current_materials;
+	std::vector<CPUTexturedRendererMaterial> m_current_materials;
 	// The material names are used for displaying in the ImGui editor
 	// AABB of the meshes of the scene
 	std::vector<BoundingBox> m_mesh_bounding_boxes;
