@@ -60,7 +60,7 @@ void ThreadFunctions::load_scene_texture(Scene& parsed_scene, std::string scene_
             if (parsed_scene.materials[material_indices[thread_index]].roughness_metallic_texture_index != CPUTexturedRendererMaterial::NO_TEXTURE)
             {
                 // This means we have a packed metallic/roughness texture
-                nb_channels = 3;
+                nb_channels = 4;
 
                 break;
             }
