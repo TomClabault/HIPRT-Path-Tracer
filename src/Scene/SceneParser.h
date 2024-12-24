@@ -10,7 +10,7 @@
 #include "assimp/scene.h"
 #include "assimp/postprocess.h"
 
-#include "HostDeviceCommon/Material.h"
+#include "HostDeviceCommon/Material/Material.h"
 #include "Image/Image.h"
 #include "Scene/BoundingBox.h"
 #include "Scene/Camera.h"
@@ -26,18 +26,18 @@
 struct ParsedMaterialTextureIndices
 {
     int base_color_texture_index = MaterialUtils::NO_TEXTURE;
-    int emission_texture_index = MaterialUtils::NO_TEXTURE;;
+    int emission_texture_index = MaterialUtils::NO_TEXTURE;
 
-    int roughness_texture_index = MaterialUtils::NO_TEXTURE;;
-    int metallic_texture_index = MaterialUtils::NO_TEXTURE;;
-    int roughness_metallic_texture_index = MaterialUtils::NO_TEXTURE;;
+    int roughness_texture_index = MaterialUtils::NO_TEXTURE;
+    int metallic_texture_index = MaterialUtils::NO_TEXTURE;
+    int roughness_metallic_texture_index = MaterialUtils::NO_TEXTURE;
 
-    int specular_texture_index = MaterialUtils::NO_TEXTURE;;
-    int coat_texture_index = MaterialUtils::NO_TEXTURE;;
-    int sheen_texture_index = MaterialUtils::NO_TEXTURE;;
-    int specular_transmission_texture_index = MaterialUtils::NO_TEXTURE;;
+    int specular_texture_index = MaterialUtils::NO_TEXTURE;
+    int coat_texture_index = MaterialUtils::NO_TEXTURE;
+    int sheen_texture_index = MaterialUtils::NO_TEXTURE;
+    int specular_transmission_texture_index = MaterialUtils::NO_TEXTURE;
 
-    int normal_map_texture_index = MaterialUtils::NO_TEXTURE;;
+    int normal_map_texture_index = MaterialUtils::NO_TEXTURE;
 };
 
 struct SceneParserOptions

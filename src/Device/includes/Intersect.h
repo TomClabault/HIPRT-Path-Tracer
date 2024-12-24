@@ -172,7 +172,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
         int material_index = render_data.buffers.material_indices[hit.primID];
         in_out_ray_payload.material = get_intersection_material(render_data, material_index, out_hit_info.texcoords);
 
-        if ((!in_out_ray_payload.is_inside_volume() || in_out_ray_payload.material.get_specular_transmission() == 0.0f) && !in_out_ray_payload.material.get_thin_walled())
+        if ((!in_out_ray_payload.is_inside_volume() || in_out_ray_payload.material.specular_transmission == 0.0f) && !in_out_ray_payload.material.thin_walled)
         {
             // If we're not in a volume, there's no reason for the normals not to be facing us so we're flipping
             // if they were wrongly oriented
@@ -200,7 +200,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
         }
 
         skipping_volume_boundary = in_out_ray_payload.volume_state.interior_stack.push(
-            in_out_ray_payload.volume_state.incident_mat_index, in_out_ray_payload.volume_state.outgoing_mat_index, in_out_ray_payload.volume_state.inside_material, material_index, in_out_ray_payload.material.get_dielectric_priority());
+            in_out_ray_payload.volume_state.incident_mat_index, in_out_ray_payload.volume_state.outgoing_mat_index, in_out_ray_payload.volume_state.inside_material, material_index, in_out_ray_payload.material.dielectric_priority);
 
         if (skipping_volume_boundary)
         {
@@ -214,7 +214,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
 
     } while ((skipping_volume_boundary && hit.hasHit()));
 
-    if (in_out_ray_payload.material.get_dispersion_scale() > 0.0f && in_out_ray_payload.material.get_specular_transmission() > 0.0f && in_out_ray_payload.volume_state.sampled_wavelength == 0.0f)
+    if (in_out_ray_payload.material.dispersion_scale > 0.0f && in_out_ray_payload.material.specular_transmission > 0.0f && in_out_ray_payload.volume_state.sampled_wavelength == 0.0f)
         // If we hit a dispersive material, we sample the wavelength that will be used
         // for computing the wavelength dependent IORs used for dispersion
         //

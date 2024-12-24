@@ -1016,7 +1016,6 @@ void GPURenderer::update_render_data()
 			m_render_data.g_buffer_prev_frame.materials = nullptr;
 			m_render_data.g_buffer_prev_frame.geometric_normals = nullptr;
 			m_render_data.g_buffer_prev_frame.shading_normals = nullptr;
-			m_render_data.g_buffer_prev_frame.view_directions = nullptr;
 			m_render_data.g_buffer_prev_frame.first_hits = nullptr;
 			m_render_data.g_buffer_prev_frame.camera_ray_hit = nullptr;
 			m_render_data.g_buffer_prev_frame.ray_volume_states = nullptr;

@@ -3,23 +3,23 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef GPU_RENDERER_G_BUFFER_H
-#define GPU_RENDERER_G_BUFFER_H
+#ifndef G_BUFFER_GPU_RENDERER_H
+#define G_BUFFER_GPU_RENDERER_H
 
 #include "Device/includes/RayVolumeState.h"
 
 #include "HIPRT-Orochi/OrochiBuffer.h"
-#include "HostDeviceCommon/Material.h"
+#include "HostDeviceCommon/Material/Material.h"
+#include "HostDeviceCommon/GBufferDevice.h"
 
 // GBuffer that stores information about the current frame first hit data
-struct GPURendererGBuffer
+struct GBufferGPURenderer
 {
 	void resize(unsigned int new_element_count, size_t ray_volume_state_byte_size)
 	{
 		materials.resize(new_element_count);
 		geometric_normals.resize(new_element_count);
 		shading_normals.resize(new_element_count);
-		view_directions.resize(new_element_count);
 		first_hits.resize(new_element_count);
 		first_hit_prim_index.resize(new_element_count);
 		cameray_ray_hit.resize(new_element_count);
@@ -34,21 +34,19 @@ struct GPURendererGBuffer
 		materials.free();
 		geometric_normals.free();
 		shading_normals.free();
-		view_directions.free();
 		first_hits.free();
 		first_hit_prim_index.free();
 		cameray_ray_hit.free();
 		ray_volume_states.free();
 	}
 
-	GBuffer get_device_g_buffer()
+	GBufferDevice get_device_g_buffer()
 	{
-		GBuffer out;
+		GBufferDevice out;
 
 		out.materials = materials.get_device_pointer();
 		out.geometric_normals = geometric_normals.get_device_pointer();
 		out.shading_normals = shading_normals.get_device_pointer();
-		out.view_directions = view_directions.get_device_pointer();
 		out.first_hits = first_hits.get_device_pointer();
 		out.first_hit_prim_index = first_hit_prim_index.get_device_pointer();
 		out.camera_ray_hit = cameray_ray_hit.get_device_pointer();
@@ -57,11 +55,10 @@ struct GPURendererGBuffer
 		return out;
 	}
 
-	OrochiBuffer<DeviceEffectiveMaterial> materials;
+	OrochiBuffer<DevicePackedEffectiveMaterial> materials;
 
 	OrochiBuffer<float3> shading_normals;
 	OrochiBuffer<float3> geometric_normals;
-	OrochiBuffer<float3> view_directions;
 	OrochiBuffer<float3> first_hits;
 	OrochiBuffer<int> first_hit_prim_index;
 

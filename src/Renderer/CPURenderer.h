@@ -10,7 +10,7 @@
 #include "HostDeviceCommon/RenderData.h"
 #include "Image/Image.h"
 #include "Renderer/BVH.h"
-#include "Renderer/CPURendererGBuffer.h"
+#include "Renderer/GBufferCPURenderer.h"
 #include "Scene/SceneParser.h"
 #include "Utils/CommandlineArguments.h"
 
@@ -81,8 +81,8 @@ private:
     std::vector<int> m_alias_table_alias;
 
     std::vector<DevicePackedTexturedMaterial> m_gpu_packed_materials;
-    CPURendererGBuffer m_g_buffer;
-    CPURendererGBuffer m_g_buffer_prev_frame;
+    GBufferCPURenderer m_g_buffer;
+    GBufferCPURenderer m_g_buffer_prev_frame;
 
     // Random number generator for given a random seed to the threads at each sample
     Xorshift32Generator m_rng;

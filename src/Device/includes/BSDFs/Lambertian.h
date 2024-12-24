@@ -9,9 +9,9 @@
 #include "Device/includes/ONB.h"
 #include "Device/includes/Sampling.h"
 #include "HostDeviceCommon/Color.h"
-#include "HostDeviceCommon/Material.h"
+#include "HostDeviceCommon/Material/Material.h"
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F lambertian_brdf_eval(const DeviceEffectiveMaterial& material, float NoL, float& pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F lambertian_brdf_eval(const DeviceUnpackedEffectiveMaterial& material, float NoL, float& pdf)
 {
     pdf = 0.0f;
 
@@ -19,10 +19,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F lambertian_brdf_eval(const DeviceEffe
         return ColorRGB32F(0.0f);
 
     pdf = NoL * M_INV_PI;
-    return material.get_base_color() * M_INV_PI;
+    return material.base_color * M_INV_PI;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F lambertian_brdf_sample(const DeviceEffectiveMaterial& material, const float3& view_direction, const float3& shading_normal, float3& sampled_direction, float& pdf, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F lambertian_brdf_sample(const DeviceUnpackedEffectiveMaterial& material, const float3& view_direction, const float3& shading_normal, float3& sampled_direction, float& pdf, Xorshift32Generator& random_number_generator)
 {
     sampled_direction = cosine_weighted_sample_around_normal(shading_normal, random_number_generator);
 

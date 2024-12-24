@@ -83,7 +83,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
         render_data.g_buffer_prev_frame.first_hits[pixel_index] = render_data.g_buffer.first_hits[pixel_index];
         render_data.g_buffer_prev_frame.first_hit_prim_index[pixel_index] = render_data.g_buffer.first_hit_prim_index[pixel_index];
         render_data.g_buffer_prev_frame.ray_volume_states[pixel_index] = render_data.g_buffer.ray_volume_states[pixel_index];
-        render_data.g_buffer_prev_frame.view_directions[pixel_index] = render_data.g_buffer.view_directions[pixel_index];
         render_data.g_buffer_prev_frame.camera_ray_hit[pixel_index] = render_data.g_buffer.camera_ray_hit[pixel_index];
     }
 
@@ -158,14 +157,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
 
         render_data.g_buffer.geometric_normals[pixel_index] = closest_hit_info.geometric_normal;
         render_data.g_buffer.shading_normals[pixel_index] = closest_hit_info.shading_normal;
-        render_data.g_buffer.materials[pixel_index] = ray_payload.material;
+
+        render_data.g_buffer.materials[pixel_index] = DevicePackedEffectiveMaterial::pack(ray_payload.material);
         render_data.g_buffer.first_hits[pixel_index] = closest_hit_info.inter_point;
         render_data.g_buffer.ray_volume_states[pixel_index] = ray_payload.volume_state;
     }
         
     render_data.g_buffer.first_hit_prim_index[pixel_index] = intersection_found ? closest_hit_info.primitive_index : -1;
 
-    render_data.g_buffer.view_directions[pixel_index] = -ray.direction;
     render_data.g_buffer.camera_ray_hit[pixel_index] = intersection_found;
     render_data.aux_buffers.pixel_active[pixel_index] = true;
 

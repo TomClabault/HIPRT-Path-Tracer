@@ -634,7 +634,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_glass_energy_conservation_get_correctio
 	return hippt::lerp(lower_correction, higher_correction, (relative_eta - lower_relative_eta_bound) / (higher_relative_eta_bound - lower_relative_eta_bound));
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float get_GGX_energy_compensation_dielectrics(const HIPRTRenderData& render_data, const DeviceEffectiveMaterial& material, const RayVolumeState& ray_volume_state, float eta_t, float eta_i, float relative_eta, float NoV)
+HIPRT_HOST_DEVICE HIPRT_INLINE float get_GGX_energy_compensation_dielectrics(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, const RayVolumeState& ray_volume_state, float eta_t, float eta_i, float relative_eta, float NoV)
 {
     float compensation_term = 1.0f;
 #if PrincipledBSDFGGXUseMultipleScattering == KERNEL_OPTION_TRUE
@@ -643,14 +643,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_GGX_energy_compensation_dielectrics(con
     //
     // Also not doing compensation if we already have full compensation on the material
     // because the energy conservation of the glass lobe here is then redundant
-    bool bsdf_already_compensated = material.get_enforce_strong_energy_conservation() && PrincipledBSDFEnforceStrongEnergyConservation == KERNEL_OPTION_TRUE;
-    if (material.get_thin_film() < 1.0f && !bsdf_already_compensated)
+    bool bsdf_already_compensated = material.enforce_strong_energy_conservation && PrincipledBSDFEnforceStrongEnergyConservation == KERNEL_OPTION_TRUE;
+    if (material.thin_film < 1.0f && !bsdf_already_compensated)
     {
         bool inside_object = ray_volume_state.inside_material;
         float relative_eta_for_correction = inside_object ? 1.0f / relative_eta : relative_eta;
 		float exponent_correction = 2.5f;
-		if (!material.get_thin_walled())
-			exponent_correction = GGX_glass_energy_conservation_get_correction_exponent(render_data, material.get_roughness(), relative_eta_for_correction);
+		if (!material.thin_walled)
+			exponent_correction = GGX_glass_energy_conservation_get_correction_exponent(render_data, material.roughness, relative_eta_for_correction);
 
         // We're storing cos_theta_o^2.5 in the LUT so we're retrieving it with pow(1.0f / 2.5f) i.e.
         // sqrt 2.5
@@ -665,8 +665,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_GGX_energy_compensation_dielectrics(con
         // sqrt(sqrt()) of F0 here because we're storing F0^4 in the LUT
         float F0_remapped = sqrt(sqrt(F0));
 
-        float3 uvw = make_float3(view_direction_tex_fetch, material.get_roughness(), F0_remapped);
-		if (!material.get_thin_walled())
+        float3 uvw = make_float3(view_direction_tex_fetch, material.roughness, F0_remapped);
+		if (!material.thin_walled)
 		{
 			void* texture = inside_object ? render_data.bsdfs_data.GGX_Ess_glass_inverse : render_data.bsdfs_data.GGX_Ess_glass;
 			int3 dims = make_int3(GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_COS_THETA_O, GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_ROUGHNESS, GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_IOR);
@@ -695,7 +695,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_GGX_energy_compensation_dielectrics(con
         //
         // Because the error is stronger at high roughnesses than at low roughnesses, we can include the roughness
         // in the lerp such that we use less and less the energy compensation term as the roughness increases
-        compensation_term = hippt::lerp(compensation_term, 1.0f, material.get_thin_film() * material.get_roughness());
+        compensation_term = hippt::lerp(compensation_term, 1.0f, material.thin_film * material.roughness);
     }
 #endif
 

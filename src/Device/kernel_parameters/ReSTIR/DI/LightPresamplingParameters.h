@@ -9,7 +9,7 @@
 #include "Device/includes/ReSTIR/DI/PresampledLight.h"
 #include "Device/includes/ReSTIR/DI/Reservoir.h"
 
-#include "HostDeviceCommon/Material.h"
+#include "HostDeviceCommon/Material/Material.h"
 #include "HostDeviceCommon/WorldSettings.h"
 
 struct LightPresamplingParameters

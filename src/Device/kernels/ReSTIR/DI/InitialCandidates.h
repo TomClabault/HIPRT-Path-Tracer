@@ -463,7 +463,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_InitialCandidates(HIPRTRenderData
         return;
 
     uint32_t pixel_index = (x + y * res.x);
-    DeviceEffectiveMaterial material = render_data.g_buffer.materials[pixel_index];
+    DevicePackedEffectiveMaterial material = render_data.g_buffer.materials[pixel_index];
 
     if (material.is_emissive())
         // If this pixel is on an emissive material, indicating that the reservoir is emissive
@@ -491,10 +491,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_InitialCandidates(HIPRTRenderData
     hit_info.primitive_index = render_data.g_buffer.first_hit_prim_index[pixel_index];
 
     RayPayload ray_payload;
-    ray_payload.material = material;
+    ray_payload.material = material.unpack();
     ray_payload.volume_state = render_data.g_buffer.ray_volume_states[pixel_index];
 
-    float3 view_direction = render_data.g_buffer.view_directions[pixel_index];
+    float3 view_direction = render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index);
     // Producing and storing the reservoir
     ReSTIRDIReservoir initial_candidates_reservoir = sample_initial_candidates(render_data, make_int2(x, y), ray_payload, hit_info, view_direction, random_number_generator);
 

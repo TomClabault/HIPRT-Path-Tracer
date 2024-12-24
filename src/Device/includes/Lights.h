@@ -288,12 +288,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light(const HIPRTRenderDat
 
     if (ray_payload.material.is_emissive())
     {
-        if (ray_payload.material.get_emissive_texture_used())
+        if (ray_payload.material.emissive_texture_used)
             // If the material is using an emissive texture, we can return its emission when hitting
             // it because we're not importance sampling emissive textures so we're doing it the brute force
             // way for now (there are some things about light warping I think to properly sample emissive
             // textures)
-            return ray_payload.material.get_emission();
+            return ray_payload.material.emission;
         else
             // We're not sampling direct lighting if we're already on an
             // emissive surface

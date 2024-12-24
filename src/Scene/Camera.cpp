@@ -20,6 +20,9 @@ HIPRTCamera Camera::to_hiprt()
     glm::mat4x4 view_projection = view_matrix * projection_matrix;
     hiprt_cam.view_projection = *reinterpret_cast<float4x4*>(&view_projection);
 
+    glm::vec4 position_glm = glm::vec4(0, 0, 0, 1) * view_matrix_inv;
+    hiprt_cam.position = make_float3(position_glm.x, position_glm.y, position_glm.z);
+
     hiprt_cam.do_jittering = do_jittering;
 
     return hiprt_cam;

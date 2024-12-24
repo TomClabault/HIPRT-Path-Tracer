@@ -22,6 +22,7 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // TODOs  performance improvements branch:
+// - pack GBuffer
 // - reuse MIS bounce
 // - texture compression
 // - wavefront path tracing
@@ -30,7 +31,6 @@ extern ImGuiLogger g_imgui_logger;
 // - use wavefront path tracing to evaluate direct  lighting, envmap and BSDF sample in parallel?
 // - use the fact that some values are already computed in bsdf_sample to pass them to bsdf_eval in a big BSDFStateStructure or something to avoid recomputing
 // - pack ray payload and other things?
-// - pack GBuffer
 // - bsdf sampling proba do  =not use array[] for CDF
 // - improve alpha testing
 // - upload partial materials when a material is modified instead  of reuploading everything
@@ -38,6 +38,7 @@ extern ImGuiLogger g_imgui_logger;
 // - schlick fresnel in many places?
 // - compaction
 // - Do we need  to keep the whole code  bloat for the packed material usage since it doesn't seem to be changing anything
+// - SoA instead of AoS
 
 // TODO demos:
 // new oren nayar BRDF: EON

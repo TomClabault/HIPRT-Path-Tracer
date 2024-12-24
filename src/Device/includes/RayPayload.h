@@ -10,7 +10,7 @@
 
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/KernelOptions.h"
-#include "HostDeviceCommon/Material.h"
+#include "HostDeviceCommon/Material/Material.h"
 
 enum RayState
 {
@@ -28,7 +28,7 @@ struct RayPayload
 	RayState next_ray_state = RayState::BOUNCE;
 
 	// Material of the last hit
-	DeviceEffectiveMaterial material;
+	DeviceUnpackedEffectiveMaterial material;
 
 	RayVolumeState volume_state;
 

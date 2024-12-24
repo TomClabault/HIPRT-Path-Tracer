@@ -12,7 +12,7 @@
 
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/KernelOptions.h"
-#include "HostDeviceCommon/Material.h"
+#include "HostDeviceCommon/Material/Material.h"
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/Xorshift.h"
 

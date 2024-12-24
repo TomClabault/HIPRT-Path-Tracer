@@ -7,11 +7,11 @@
 #define HOST_DEVICE_COMMON_RENDER_DATA_H
 
 #include "Device/includes/ReSTIR/DI/Reservoir.h"
-#include "Device/includes/GBuffer.h"
 
 #include "HostDeviceCommon/BSDFsData.h"
+#include "HostDeviceCommon/GBufferDevice.h"
 #include "HostDeviceCommon/HIPRTCamera.h"
-#include "HostDeviceCommon/Material.h"
+#include "HostDeviceCommon/Material/Material.h"
 #include "HostDeviceCommon/Math.h"
 #include "HostDeviceCommon/RenderSettings.h"
 #include "HostDeviceCommon/WorldSettings.h"
@@ -157,8 +157,8 @@ struct HIPRTRenderData
 	RenderBuffers buffers;
 	BRDFsData bsdfs_data;
 	AuxiliaryBuffers aux_buffers;
-	GBuffer g_buffer;
-	GBuffer g_buffer_prev_frame;
+	GBufferDevice g_buffer;
+	GBufferDevice g_buffer_prev_frame;
 
 	HIPRTRenderSettings render_settings;
 	WorldSettings world_settings;

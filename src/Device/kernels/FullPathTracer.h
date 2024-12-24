@@ -141,13 +141,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
 
     // Initializing the ray with the information from the camera ray pass
     hiprtRay ray;
-    ray.direction = hippt::normalize(-render_data.g_buffer.view_directions[pixel_index]);
+    ray.direction = hippt::normalize(-render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index));
 
     bool intersection_found = render_data.g_buffer.camera_ray_hit[pixel_index] == 1;
 
     RayPayload ray_payload;
     ray_payload.next_ray_state = RayState::BOUNCE;
-    ray_payload.material = render_data.g_buffer.materials[pixel_index];
+    ray_payload.material = render_data.g_buffer.materials[pixel_index].unpack();
     ray_payload.volume_state = render_data.g_buffer.ray_volume_states[pixel_index];
 
     // + 1 to nb_bounces here because we want "0" bounces to still act as one
@@ -168,7 +168,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
                 if (bounce == 0)
                 {
                     denoiser_normal += closest_hit_info.shading_normal;
-                    denoiser_albedo += ray_payload.material.get_base_color();
+                    denoiser_albedo += ray_payload.material.base_color;
                 }
 
                 // For the BRDF calculations, bounces, ... to be correct, we need the normal to be in the same hemisphere as
@@ -196,7 +196,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
                 envmap_direct_contribution = clamp_light_contribution(envmap_direct_contribution, render_data.render_settings.envmap_contribution_clamp, bounce == 0);
 
 #if DirectLightSamplingStrategy == LSS_NO_DIRECT_LIGHT_SAMPLING // No direct light sampling
-                ColorRGB32F hit_emission = ray_payload.material.get_emission();
+                ColorRGB32F hit_emission = ray_payload.material.emission;
                 hit_emission = clamp_light_contribution(hit_emission, render_data.render_settings.indirect_contribution_clamp, bounce > 0);
 
                 ray_payload.ray_color += hit_emission * ray_payload.throughput;
@@ -206,7 +206,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
                     // it into account on the first bounce, otherwise we would be
                     // accounting for direct light sampling twice (bounce on emissive
                     // geometry + direct light sampling). Otherwise, we don't check for bounce == 0
-                    ray_payload.ray_color += ray_payload.material.get_emission();
+                    ray_payload.ray_color += ray_payload.material.emission;
 
                 // Clamped indirect lighting 
                 ColorRGB32F indirect_lighting_contribution = (light_direct_contribution + envmap_direct_contribution) * ray_payload.throughput;
@@ -233,7 +233,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
                     break;
 
                 // Dispersion ray throughput filter
-                ray_payload.throughput *= get_dispersion_ray_color(ray_payload.volume_state.sampled_wavelength, ray_payload.material.get_dispersion_scale());
+                ray_payload.throughput *= get_dispersion_ray_color(ray_payload.volume_state.sampled_wavelength, ray_payload.material.dispersion_scale);
                 ray_payload.throughput *= throughput_attenuation;
                 ray_payload.next_ray_state = RayState::BOUNCE;
 

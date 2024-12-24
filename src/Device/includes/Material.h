@@ -43,98 +43,93 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_hit_base_color_alpha(const HIPRTRenderD
     return get_hit_base_color_alpha(render_data, material, hit);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE DeviceEffectiveMaterial get_intersection_material(const HIPRTRenderData& render_data, int material_index, float2 texcoords)
+HIPRT_HOST_DEVICE HIPRT_INLINE DeviceUnpackedEffectiveMaterial get_intersection_material(const HIPRTRenderData& render_data, int material_index, float2 texcoords)
 {
     // TODO here, we only need texture indices to read the texture data. We do not need  to read
     //  the full material values  just to  override them by reading the  textures...
     //
     // This should  be  easily fixable by using SoAs
 
-    DeviceTexturedMaterial material;
-#if MaterialPackingStrategy == MATERIAL_PACK_STRATEGY_USE_PACKED
-    material = render_data.buffers.materials_buffer[material_index];
-#else
-    material = render_data.buffers.materials_buffer[material_index].unpack();
-#endif
+    DeviceUnpackedTexturedMaterial material = render_data.buffers.materials_buffer[material_index].unpack();
 
     float trash_alpha;
     if (render_data.bsdfs_data.white_furnace_mode)
-        material.set_base_color(ColorRGB32F(1.0f));
+        material.base_color = ColorRGB32F(1.0f);
     else
     {
-        if (material.get_base_color_texture_index() != MaterialUtils::NO_TEXTURE)
-            material.set_base_color(get_base_color(render_data, trash_alpha, texcoords, material.get_base_color_texture_index()));
+        if (material.base_color_texture_index != MaterialUtils::NO_TEXTURE)
+            material.base_color = get_base_color(render_data, trash_alpha, texcoords, material.base_color_texture_index);
     }
 
     // Reading some parameters from the textures
-    float2 roughness_metallic = get_metallic_roughness(render_data, texcoords, material.get_metallic_texture_index(), material.get_roughness_texture_index(), material.get_roughness_metallic_texture_index());
-    if (material.get_roughness_metallic_texture_index() != MaterialUtils::NO_TEXTURE)
+    float2 roughness_metallic = get_metallic_roughness(render_data, texcoords, material.metallic_texture_index, material.roughness_texture_index, material.roughness_metallic_texture_index);
+    if (material.roughness_metallic_texture_index != MaterialUtils::NO_TEXTURE)
     {
-        material.set_roughness(roughness_metallic.x);
-        material.set_metallic(roughness_metallic.y);
+        material.roughness = roughness_metallic.x;
+        material.metallic = roughness_metallic.y;
     }
     else
     {
-        if (material.get_roughness_texture_index() != MaterialUtils::NO_TEXTURE)
-            material.set_roughness(roughness_metallic.x);
+        if (material.roughness_texture_index != MaterialUtils::NO_TEXTURE)
+            material.roughness = roughness_metallic.x;
 
-        if (material.get_metallic_texture_index() != MaterialUtils::NO_TEXTURE)
-            material.set_metallic(roughness_metallic.y);
+        if (material.metallic_texture_index != MaterialUtils::NO_TEXTURE)
+            material.metallic = roughness_metallic.y;
 
         // If not reading from a texture, setting the roughness into the roughness_metallic
         // variable because the roughness is going to be used later
-        roughness_metallic.x = material.get_roughness();
+        roughness_metallic.x = material.roughness;
     }
 
-    float anisotropy = get_material_property<float>(render_data, false, texcoords, material.get_anisotropic_texture_index());
-    if (material.get_anisotropic_texture_index() != MaterialUtils::NO_TEXTURE)
-        material.set_anisotropy(anisotropy);
+    float anisotropy = get_material_property<float>(render_data, false, texcoords, material.anisotropic_texture_index);
+    if (material.anisotropic_texture_index != MaterialUtils::NO_TEXTURE)
+        material.anisotropy = anisotropy;
     
-    float specular = get_material_property<float>(render_data, false, texcoords, material.get_specular_texture_index());
-    if (material.get_specular_texture_index() != MaterialUtils::NO_TEXTURE)
-        material.set_specular(specular);
+    float specular = get_material_property<float>(render_data, false, texcoords, material.specular_texture_index);
+    if (material.specular_texture_index != MaterialUtils::NO_TEXTURE)
+        material.specular = specular;
 
-    float coat = get_material_property<float>(render_data, false, texcoords, material.get_coat_texture_index());
-    if (material.get_coat_texture_index() != MaterialUtils::NO_TEXTURE)
-        material.set_coat(coat);
+    float coat = get_material_property<float>(render_data, false, texcoords, material.coat_texture_index);
+    if (material.coat_texture_index != MaterialUtils::NO_TEXTURE)
+        material.coat = coat;
     else
-        coat = material.get_coat();
+        coat = material.coat;
 
-    float sheen = get_material_property<float>(render_data, false, texcoords, material.get_sheen_texture_index());
-    if (material.get_sheen_texture_index() != MaterialUtils::NO_TEXTURE)
-        material.set_sheen(sheen);
+    float sheen = get_material_property<float>(render_data, false, texcoords, material.sheen_texture_index);
+    if (material.sheen_texture_index != MaterialUtils::NO_TEXTURE)
+        material.sheen = sheen;
 
-    float specular_transmission = get_material_property<float>(render_data, false, texcoords, material.get_specular_transmission_texture_index());
-    if (material.get_specular_transmission_texture_index() != MaterialUtils::NO_TEXTURE)
-        material.set_specular_transmission(specular_transmission);
+    float specular_transmission = get_material_property<float>(render_data, false, texcoords, material.specular_transmission_texture_index);
+    if (material.specular_transmission_texture_index != MaterialUtils::NO_TEXTURE)
+        material.specular_transmission = specular_transmission;
 
-    ColorRGB32F emission = get_material_property<ColorRGB32F>(render_data, false, texcoords, material.get_emission_texture_index());
-    DeviceEffectiveMaterial packed_material(material);
-    packed_material.set_emissive_texture_used(material.get_emission_texture_index() != MaterialUtils::NO_TEXTURE);
-    packed_material.set_emission(emission);
+    ColorRGB32F emission = get_material_property<ColorRGB32F>(render_data, false, texcoords, material.emission_texture_index);
+    DeviceUnpackedEffectiveMaterial packed_material(material);
+    packed_material.emissive_texture_used = material.emission_texture_index != MaterialUtils::NO_TEXTURE;
+    packed_material.emission = emission;
     // Roughening of the base roughness and second metallic roughness based
     // on the coat roughness. This should be precomputed instead of being done here
     //
     // Reference: [OpenPBR Surface 2024 Specification] https://academysoftwarefoundation.github.io/OpenPBR/#model/coat/roughening
-    float coat_roughening = packed_material.get_coat_roughening();
+    float coat_roughening = packed_material.coat_roughening;
     if ((coat > 0.0f && coat_roughening > 0.0f))
     {
         float base_roughness = roughness_metallic.x;
-        float coat_roughness = packed_material.get_coat_roughness();
+        float coat_roughness = packed_material.coat_roughness;
 
         // Roughening of the base roughness of the material based on the coat roughness
         float target_base_roughness = hippt::pow_1_4(hippt::min(1.0f, hippt::pow_4(base_roughness) + 2.0f * hippt::pow_4(coat_roughness)));
         float roughened_base_roughness = hippt::lerp(base_roughness, target_base_roughness, coat);
-        packed_material.set_roughness(hippt::lerp(base_roughness, roughened_base_roughness, coat_roughening));
+        packed_material.roughness = hippt::lerp(base_roughness, roughened_base_roughness, coat_roughening);
 
-        if (packed_material.get_second_roughness_weight() > 0.0f)
+        if (packed_material.second_roughness_weight > 0.0f)
         {
             // Roughening of the second metallic roughness based on the coat roughness
 
-            float second_roughness = packed_material.get_second_roughness();
+            float second_roughness = packed_material.second_roughness;
             float target_second_metal_roughness = hippt::pow_1_4(hippt::min(1.0f, hippt::pow_4(second_roughness) + 2.0f * hippt::pow_4(coat_roughness)));
             float roughened_second_metal_roughness = hippt::lerp(second_roughness, target_second_metal_roughness, coat);
-            packed_material.set_second_roughness(hippt::lerp(second_roughness, roughened_second_metal_roughness, coat_roughening));
+            packed_material.second_roughness = hippt::lerp(second_roughness, roughened_second_metal_roughness, coat_roughening);
         }
     }
 

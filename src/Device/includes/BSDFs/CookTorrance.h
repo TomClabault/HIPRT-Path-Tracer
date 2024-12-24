@@ -7,7 +7,7 @@
 #define DEVICE_COOK_TORRANCE_H
 
 #include "HostDeviceCommon/Math.h"
-#include "HostDeviceCommon/Material.h"
+#include "HostDeviceCommon/Material/Material.h"
 #include "Device/includes/Sampling.h"
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_normal_distribution(float alpha, float NoH)
@@ -34,11 +34,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_smith_masking_shadowing(float roughness
     return G1_schlick_ggx(k, NoL) * G1_schlick_ggx(k, NoV);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float cook_torrance_brdf_pdf(const DeviceEffectiveMaterial& material, const float3& view_direction, const float3& to_light_direction, const float3& surface_normal)
+HIPRT_HOST_DEVICE HIPRT_INLINE float cook_torrance_brdf_pdf(const DeviceUnpackedEffectiveMaterial& material, const float3& view_direction, const float3& to_light_direction, const float3& surface_normal)
 {
     float3 microfacet_normal = hippt::normalize(view_direction + to_light_direction);
 
-    float alpha = material.get_roughness() * material.get_roughness();
+    float alpha = material.roughness * material.roughness;
 
     float VoH = hippt::max(0.0f, hippt::dot(view_direction, microfacet_normal));
     float NoH = hippt::max(0.0f, hippt::dot(surface_normal, microfacet_normal));
@@ -47,10 +47,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float cook_torrance_brdf_pdf(const DeviceEffectiv
     return D * NoH / (4.0f * VoH);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F cook_torrance_brdf(const DeviceEffectiveMaterial& material, const float3& to_light_direction, const float3& view_direction, const float3& surface_normal)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F cook_torrance_brdf(const DeviceUnpackedEffectiveMaterial& material, const float3& to_light_direction, const float3& view_direction, const float3& surface_normal)
 {
     ColorRGB32F brdf_color = ColorRGB32F(0.0f, 0.0f, 0.0f);
-    ColorRGB32F base_color = material.get_base_color();
+    ColorRGB32F base_color = material.base_color;
 
     float3 halfway_vector = hippt::normalize(view_direction + to_light_direction);
 
@@ -61,8 +61,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F cook_torrance_brdf(const DeviceEffect
 
     if (NoV > 0.0f && NoL > 0.0f && NoH > 0.0f)
     {
-        float metallic = material.get_metallic();
-        float roughness = material.get_roughness();
+        float metallic = material.metallic;
+        float roughness = material.roughness;
 
         float alpha = roughness * roughness;
 
@@ -90,12 +90,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F cook_torrance_brdf(const DeviceEffect
     return brdf_color;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F cook_torrance_brdf_importance_sample(const DeviceEffectiveMaterial& material, const float3& view_direction, const float3& surface_normal, float3& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F cook_torrance_brdf_importance_sample(const DeviceUnpackedEffectiveMaterial& material, const float3& view_direction, const float3& surface_normal, float3& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
 {
     pdf = 0.0f;
 
-    float metallic = material.get_metallic();
-    float roughness = material.get_roughness();
+    float metallic = material.metallic;
+    float roughness = material.roughness;
     float alpha = roughness * roughness;
 
     float rand1 = random_number_generator();
@@ -117,7 +117,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F cook_torrance_brdf_importance_sample(
     output_direction = to_light_direction;
 
     ColorRGB32F brdf_color = ColorRGB32F(0.0f, 0.0f, 0.0f);
-    ColorRGB32F base_color = material.get_base_color();
+    ColorRGB32F base_color = material.base_color;
 
     float NoV = hippt::max(0.0f, hippt::dot(surface_normal, view_direction));
     float NoL = hippt::max(0.0f, hippt::dot(surface_normal, to_light_direction));

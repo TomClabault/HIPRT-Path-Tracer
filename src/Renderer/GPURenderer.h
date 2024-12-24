@@ -15,7 +15,7 @@
 #include "HostDeviceCommon/RenderData.h"
 #include "Renderer/RendererAnimationState.h"
 #include "Renderer/RendererEnvmap.h"
-#include "Renderer/GPURendererGBuffer.h"
+#include "Renderer/GBufferGPURenderer.h"
 #include "Renderer/HardwareAccelerationSupport.h"
 #include "Renderer/OpenImageDenoiser.h"
 #include "Renderer/StatusBuffersValues.h"
@@ -392,8 +392,8 @@ private:
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>>m_albedo_AOV_buffer;
 
 	// G-buffers of the current frame (camera rays hits) and previous frame
-	GPURendererGBuffer m_g_buffer;
-	GPURendererGBuffer m_g_buffer_prev_frame;
+	GBufferGPURenderer m_g_buffer;
+	GBufferGPURenderer m_g_buffer_prev_frame;
 
 	// Used to calculate the variance of each pixel for adaptive sampling
 	OrochiBuffer<float> m_pixels_squared_luminance_buffer;

@@ -8,7 +8,7 @@
 
 #include "HIPRT-Orochi/HIPRTOrochiUtils.h"
 #include "HIPRT-Orochi/OrochiTexture.h"
-#include "HostDeviceCommon/Material.h"
+#include "HostDeviceCommon/Material/Material.h"
 #include "UI/ImGui/ImGuiLogger.h"
 
 #include "hiprt/hiprt.h"

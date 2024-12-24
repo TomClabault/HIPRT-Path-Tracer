@@ -7,11 +7,11 @@
 #define DEVICE_RESTIR_DI_SURFACE_H
 
 #include "HostDeviceCommon/RenderData.h"
-#include "HostDeviceCommon/Material.h"
+#include "HostDeviceCommon/Material/Material.h"
 
 struct ReSTIRDISurface
 {
-	DeviceEffectiveMaterial material;
+	DeviceUnpackedEffectiveMaterial material;
 	RayVolumeState ray_volume_state;
 	int last_hit_primitive_index;
 
@@ -25,11 +25,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISurface get_pixel_surface(const HIPRTRend
 {
 	ReSTIRDISurface surface;
 
-	surface.material = render_data.g_buffer.materials[pixel_index];
+	surface.material = render_data.g_buffer.materials[pixel_index].unpack();
 	surface.ray_volume_state = render_data.g_buffer.ray_volume_states[pixel_index];
 	surface.last_hit_primitive_index = render_data.g_buffer.first_hit_prim_index[pixel_index];
 
-	surface.view_direction = render_data.g_buffer.view_directions[pixel_index];
+	surface.view_direction = render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index);
 	surface.shading_normal = render_data.g_buffer.shading_normals[pixel_index];
 	surface.geometric_normal = render_data.g_buffer.geometric_normals[pixel_index];
 	surface.shading_point = render_data.g_buffer.first_hits[pixel_index] + surface.shading_normal * 1.0e-4f;
@@ -47,11 +47,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISurface get_pixel_surface_previous_frame(
 {
 	ReSTIRDISurface surface;
 
-	surface.material = render_data.g_buffer_prev_frame.materials[pixel_index];
+	surface.material = render_data.g_buffer_prev_frame.materials[pixel_index].unpack();
 	surface.ray_volume_state = render_data.g_buffer_prev_frame.ray_volume_states[pixel_index];
 	surface.last_hit_primitive_index = render_data.g_buffer_prev_frame.first_hit_prim_index[pixel_index];
 
-	surface.view_direction = render_data.g_buffer_prev_frame.view_directions[pixel_index];
+	surface.view_direction = render_data.g_buffer.get_view_direction(render_data.prev_camera.position, pixel_index);
 	surface.shading_normal = render_data.g_buffer_prev_frame.shading_normals[pixel_index];
 	surface.geometric_normal = render_data.g_buffer_prev_frame.geometric_normals[pixel_index];
 	surface.shading_point = render_data.g_buffer_prev_frame.first_hits[pixel_index] + surface.shading_normal * 1.0e-4f;

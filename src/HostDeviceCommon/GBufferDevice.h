@@ -3,20 +3,25 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_GBUFFER_H
-#define DEVICE_GBUFFER_H
+#ifndef GBUFFER_DEVICE_H
+#define GBUFFER_DEVICE_H
 
 #include "Device/includes/RayVolumeState.h"
 
-#include "HostDeviceCommon/Material.h"
+#include "HostDeviceCommon/Material/Material.h"
 
 // Structure of arrays for the data contained in the pixels of the GBuffer
 // 
 // If you want the roughness of the pixel (X, Y) = [50, 0] for example,
 // get it at materials[50].roughness
-struct GBuffer
+struct GBufferDevice
 {
-	DeviceEffectiveMaterial* materials = nullptr;
+	HIPRT_HOST_DEVICE float3 get_view_direction(float3 camera_position, int pixel_index) const
+	{
+		return hippt::normalize(camera_position - first_hits[pixel_index]);
+	}
+
+	DevicePackedEffectiveMaterial* materials = nullptr;
 
 	int* first_hit_prim_index = nullptr;
 
@@ -25,7 +30,6 @@ struct GBuffer
 	float3* shading_normals = nullptr;
 	float3* geometric_normals = nullptr;
 
-	float3* view_directions = nullptr;
 	float3* first_hits = nullptr;
 
 	unsigned char* camera_ray_hit = nullptr;
