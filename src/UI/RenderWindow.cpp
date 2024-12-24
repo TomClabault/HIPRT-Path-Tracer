@@ -28,7 +28,8 @@ extern ImGuiLogger g_imgui_logger;
 // - wavefront path tracing
 // - investigate where the big register usage comes from --> split shaders there?
 // - split shaders for material specifics?
-// - use wavefront path tracing to evaluate direct  lighting, envmap and BSDF sample in parallel?
+// - use wavefront path tracing to evaluate direct  lighting, envmap and BSDF sample in parallel
+// - start shooting camera rays for frame N+1 during frame N?
 // - use the fact that some values are already computed in bsdf_sample to pass them to bsdf_eval in a big BSDFStateStructure or something to avoid recomputing
 // - pack ray payload and other things?
 // - bsdf sampling proba do  =not use array[] for CDF
@@ -39,6 +40,9 @@ extern ImGuiLogger g_imgui_logger;
 // - compaction
 // - Do we need  to keep the whole code  bloat for the packed material usage since it doesn't seem to be changing anything
 // - SoA instead of AoS
+// - superfluous sample() call on the last bounce
+// - perfect reflection and refractions fast path
+// - double buffering of frames in general to better the GPU occupied?
 
 // TODO demos:
 // new oren nayar BRDF: EON

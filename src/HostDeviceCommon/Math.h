@@ -291,7 +291,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 matrix_X_vec(const float4x4& m, const floa
 #include <iostream>
 static std::ostream& operator<<(std::ostream& os, float3 uvw)
 {
-	os << uvw.x << ", " << uvw.y << ", " << uvw.z << std::endl;
+	os << uvw.x << ", " << uvw.y << ", " << uvw.z;
 	return os;
 }
 

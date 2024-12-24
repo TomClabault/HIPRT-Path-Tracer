@@ -134,9 +134,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
 
     // Initializing the closest hit info the information from the camera ray pass
     HitInfo closest_hit_info;
-    closest_hit_info.inter_point = render_data.g_buffer.first_hits[pixel_index];
-    closest_hit_info.geometric_normal = hippt::normalize(render_data.g_buffer.geometric_normals[pixel_index]);
-    closest_hit_info.shading_normal = hippt::normalize(render_data.g_buffer.shading_normals[pixel_index]);
+    closest_hit_info.inter_point = render_data.g_buffer.primary_hits[pixel_index];
+    closest_hit_info.geometric_normal = hippt::normalize(render_data.g_buffer.geometric_normals[pixel_index].unpack());
+    closest_hit_info.shading_normal = hippt::normalize(render_data.g_buffer.shading_normals[pixel_index].unpack());
     closest_hit_info.primitive_index = render_data.g_buffer.first_hit_prim_index[pixel_index];
 
     // Initializing the ray with the information from the camera ray pass

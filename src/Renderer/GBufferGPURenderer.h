@@ -20,7 +20,7 @@ struct GBufferGPURenderer
 		materials.resize(new_element_count);
 		geometric_normals.resize(new_element_count);
 		shading_normals.resize(new_element_count);
-		first_hits.resize(new_element_count);
+		primary_hits.resize(new_element_count);
 		first_hit_prim_index.resize(new_element_count);
 		cameray_ray_hit.resize(new_element_count);
 
@@ -34,7 +34,7 @@ struct GBufferGPURenderer
 		materials.free();
 		geometric_normals.free();
 		shading_normals.free();
-		first_hits.free();
+		primary_hits.free();
 		first_hit_prim_index.free();
 		cameray_ray_hit.free();
 		ray_volume_states.free();
@@ -47,7 +47,7 @@ struct GBufferGPURenderer
 		out.materials = materials.get_device_pointer();
 		out.geometric_normals = geometric_normals.get_device_pointer();
 		out.shading_normals = shading_normals.get_device_pointer();
-		out.first_hits = first_hits.get_device_pointer();
+		out.primary_hits = primary_hits.get_device_pointer();
 		out.first_hit_prim_index = first_hit_prim_index.get_device_pointer();
 		out.camera_ray_hit = cameray_ray_hit.get_device_pointer();
 		out.ray_volume_states = ray_volume_states.get_device_pointer();
@@ -57,9 +57,9 @@ struct GBufferGPURenderer
 
 	OrochiBuffer<DevicePackedEffectiveMaterial> materials;
 
-	OrochiBuffer<float3> shading_normals;
-	OrochiBuffer<float3> geometric_normals;
-	OrochiBuffer<float3> first_hits;
+	OrochiBuffer<Octahedral24BitNormal> shading_normals;
+	OrochiBuffer<Octahedral24BitNormal> geometric_normals;
+	OrochiBuffer<float3> primary_hits;
 	OrochiBuffer<int> first_hit_prim_index;
 
 	OrochiBuffer<unsigned char> cameray_ray_hit;

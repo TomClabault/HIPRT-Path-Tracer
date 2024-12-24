@@ -72,8 +72,10 @@ struct RenderBuffers
 
 struct AuxiliaryBuffers
 {
-	// Whether or not the pixel at a given index in the buffer is active or not. A pixel can be
-	// inactive when we're rendering at low resolution for example or when adaptive sampling has
+	// Whether or not the pixel at a given index in the buffer is active or not. 
+	// 
+	// A pixel can be inactive when we're rendering at low resolution for example
+	// (and so some pixels are not rendered) or when adaptive sampling has
 	// judged that the pixel was converged enough and doesn't need more samples
 	unsigned char* pixel_active = nullptr;
 

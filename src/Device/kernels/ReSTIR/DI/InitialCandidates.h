@@ -485,9 +485,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_InitialCandidates(HIPRTRenderData
         return;
 
     HitInfo hit_info;
-    hit_info.geometric_normal = render_data.g_buffer.geometric_normals[pixel_index];
-    hit_info.shading_normal = render_data.g_buffer.shading_normals[pixel_index];
-    hit_info.inter_point = render_data.g_buffer.first_hits[pixel_index];
+    hit_info.geometric_normal = render_data.g_buffer.geometric_normals[pixel_index].unpack();
+    hit_info.shading_normal = render_data.g_buffer.shading_normals[pixel_index].unpack();
+    hit_info.inter_point = render_data.g_buffer.primary_hits[pixel_index];
     hit_info.primitive_index = render_data.g_buffer.first_hit_prim_index[pixel_index];
 
     RayPayload ray_payload;

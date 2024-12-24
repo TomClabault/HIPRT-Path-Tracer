@@ -81,7 +81,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 		// Not doing ReSTIR on directly visible emissive materials
 		return;
 
-	int temporal_neighbor_pixel_index = find_temporal_neighbor_index(render_data, render_data.g_buffer.first_hits[center_pixel_index], center_pixel_surface.shading_normal, res, center_pixel_index, random_number_generator).x;
+	int temporal_neighbor_pixel_index = find_temporal_neighbor_index(render_data, render_data.g_buffer.primary_hits[center_pixel_index], center_pixel_surface.shading_normal, res, center_pixel_index, random_number_generator).x;
 	if (temporal_neighbor_pixel_index == -1 || render_data.render_settings.freeze_random)
 	{
 		// Temporal occlusion / disoccusion, temporal neighbor is invalid,

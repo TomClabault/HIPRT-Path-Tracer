@@ -95,7 +95,7 @@ private:
 };
 
 /**
- * 4 floats in [0, 1] all packed into a 32 bit uint.
+ * 4 floats in [0, 1] all packed into a 32 bit unsigned int.
  * 
  * This gives 8 bits for each float in [0, 1] --> precision of 0.004
  */
@@ -134,7 +134,7 @@ private:
 };
 
 /**
- * 2 floats in [0, 1] and 2 unsigned chars all packed into a 32 bit uint.
+ * 2 floats in [0, 1] and 2 unsigned chars all packed into a 32 bit unsigned int.
  *
  * This gives 8 bits for each float in [0, 1] --> precision of 0.004
  */
@@ -225,6 +225,110 @@ struct Uint2xPacked
 
 private:
 	unsigned int packed = 0;
+};
+
+/**
+ * Reference:
+ * 
+ * [1] [Survey of Efficient Representations for Independent Unit Vectors, Cigolle et al., 2014]
+ */
+struct Octahedral24BitNormal
+{
+public:
+	HIPRT_HOST_DEVICE void pack(float3 normal)
+	{
+		float2_to_Snorm12_2x_as_3UChar(octahedral_encode(normal), packed_x, packed_y, packed_z);
+	}
+
+	HIPRT_HOST_DEVICE float3 unpack()
+	{
+		float2 v = Snorm12_2x_as_UChar_to_float2(packed_x, packed_y, packed_z);
+		return final_decode(v.x, v.y);
+	}
+
+private:
+	HIPRT_HOST_DEVICE float pack_Snorm12_float(float f)
+	{
+		return roundf(hippt::clamp(0.0f, 2.0f, f + 1.0f) * 2047.0f);
+	}
+
+	HIPRT_HOST_DEVICE void Snorm12_2x_as_3Uchar(float2 s, unsigned char& out_x, unsigned char& out_y, unsigned char& out_z)
+	{
+		float3 u;
+		u.x = s.x / 16.0f;
+		float t = floorf(s.y / 256.0f);
+		u.y = ((u.x - floorf(u.x)) * 256.0f) + t;
+		u.z = s.y - (t * 256.0f);
+
+		out_x = u.x;
+		out_y = u.y;
+		out_z = u.z;
+	}
+
+	HIPRT_HOST_DEVICE void float2_to_Snorm12_2x_as_3UChar(float2 v, unsigned char& out_x, unsigned char& out_y, unsigned char& out_z)
+	{
+		float2 s = make_float2(pack_Snorm12_float(v.x), pack_Snorm12_float(v.y));
+
+		Snorm12_2x_as_3Uchar(s, out_x, out_y, out_z);
+	}
+
+	HIPRT_HOST_DEVICE float2 octahedral_encode(float3 v)
+	{
+		float l1norm_inv = 1.0f / (abs(v.x) + abs(v.y) + abs(v.z));
+		float2 result = make_float2(v.x * l1norm_inv, v.y * l1norm_inv);
+		if (v.z < 0.0f)
+			result = (make_float2(1.0f) - make_float2(hippt::abs(result.y), hippt::abs(result.x))) * sign_not_zero(make_float2(result.x, result.y));
+
+		return result;
+	}
+
+	HIPRT_HOST_DEVICE float sign_not_zero(float k)
+	{
+		return k >= 0.0 ? 1.0 : -1.0;
+	}
+
+	HIPRT_HOST_DEVICE float2 sign_not_zero(float2 v)
+	{
+		return make_float2(sign_not_zero(v.x), sign_not_zero(v.y));
+	}
+
+	HIPRT_HOST_DEVICE float3 final_decode(float x, float y) 
+	{
+		float3 v = float3(x, y, 1.0 - abs(x) - abs(y));
+		if (v.z < 0.0f) 
+		{
+			float2 temp = make_float2(v.x, v.y);
+			v.x = (1.0f - hippt::abs(temp.y)) * sign_not_zero(temp.x);
+			v.y = (1.0f - hippt::abs(temp.x)) * sign_not_zero(temp.y);
+		}
+		return hippt::normalize(v);
+	}
+
+	HIPRT_HOST_DEVICE float2 Snorm12_2x_as_Uchar_to_packed_float2(unsigned char x, unsigned char y, unsigned char z)
+	{
+		float2 s;
+
+		float temp = y / 16.0f;
+		s.x = x * 16.0f + floorf(temp);
+		s.y = (temp - floorf(temp)) * 256.0f * 16.0f + z;
+
+		return s;
+	}
+
+	HIPRT_HOST_DEVICE float unpack_Snorm12(float f)
+	{
+		return hippt::clamp(-1.0f, 1.0f, (f / 2047.0f) - 1.0f);
+	}
+
+	HIPRT_HOST_DEVICE float2 Snorm12_2x_as_UChar_to_float2(unsigned char x, unsigned char y, unsigned char z)
+	{
+		float2 s = Snorm12_2x_as_Uchar_to_packed_float2(x, y, z);
+		return make_float2(unpack_Snorm12(s.x), unpack_Snorm12(s.y));
+	}
+
+	unsigned char packed_x;
+	unsigned char packed_y;
+	unsigned char packed_z;
 };
 
 #endif

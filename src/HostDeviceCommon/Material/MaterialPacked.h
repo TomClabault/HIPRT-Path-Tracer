@@ -236,11 +236,6 @@ struct DevicePackedEffectiveMaterial
         return unpacked;
     }
 
-    HIPRT_HOST_DEVICE DevicePackedEffectiveMaterial to_packed_effective() const
-    {
-        return *this;
-    }
-
     HIPRT_HOST_DEVICE ColorRGB32F get_emission() const { return this->emission; }
     HIPRT_HOST_DEVICE bool get_emissive_texture_used() const { return flags.get_bool<PackedFlagsIndices::PACKED_EMISSIVE_TEXTURE_USED>(); }
 

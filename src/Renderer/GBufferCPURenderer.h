@@ -20,16 +20,16 @@ struct GBufferCPURenderer
 		materials.resize(new_element_count);
 		geometric_normals.resize(new_element_count);
 		shading_normals.resize(new_element_count);
-		first_hits.resize(new_element_count);
+		primary_hits.resize(new_element_count);
 		first_hit_prim_index.resize(new_element_count);
 		cameray_ray_hit.resize(new_element_count);
 		ray_volume_states.resize(new_element_count);
 	}
 
 	std::vector<DevicePackedEffectiveMaterial> materials;
-	std::vector<float3> geometric_normals;
-	std::vector<float3> shading_normals;
-	std::vector<float3> first_hits;
+	std::vector<Octahedral24BitNormal> geometric_normals;
+	std::vector<Octahedral24BitNormal> shading_normals;
+	std::vector<float3> primary_hits;
 	std::vector<int> first_hit_prim_index;
 
 	std::vector<unsigned char> cameray_ray_hit;
