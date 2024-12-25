@@ -32,7 +32,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISurface get_pixel_surface(const HIPRTRend
 	surface.view_direction = render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index);
 	surface.shading_normal = render_data.g_buffer.shading_normals[pixel_index].unpack();
 	surface.geometric_normal = render_data.g_buffer.geometric_normals[pixel_index].unpack();
-	surface.shading_point = render_data.g_buffer.primary_hits[pixel_index] + surface.shading_normal * 1.0e-4f;
+	surface.shading_point = render_data.g_buffer.primary_hit_position[pixel_index] + surface.shading_normal * 1.0e-4f;
 
 	return surface;
 }
@@ -54,7 +54,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISurface get_pixel_surface_previous_frame(
 	surface.view_direction = render_data.g_buffer.get_view_direction(render_data.prev_camera.position, pixel_index);
 	surface.shading_normal = render_data.g_buffer_prev_frame.shading_normals[pixel_index].unpack();
 	surface.geometric_normal = render_data.g_buffer_prev_frame.geometric_normals[pixel_index].unpack();
-	surface.shading_point = render_data.g_buffer_prev_frame.primary_hits[pixel_index] + surface.shading_normal * 1.0e-4f;
+	surface.shading_point = render_data.g_buffer_prev_frame.primary_hit_position[pixel_index] + surface.shading_normal * 1.0e-4f;
 
 	return surface;
 }

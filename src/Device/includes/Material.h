@@ -112,7 +112,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE DeviceUnpackedEffectiveMaterial get_intersection_
     //
     // Reference: [OpenPBR Surface 2024 Specification] https://academysoftwarefoundation.github.io/OpenPBR/#model/coat/roughening
     float coat_roughening = packed_material.coat_roughening;
-    if ((coat > 0.0f && coat_roughening > 0.0f))
+    if (coat > 0.0f && coat_roughening > 0.0f)
     {
         float base_roughness = roughness_metallic.x;
         float coat_roughness = packed_material.coat_roughness;

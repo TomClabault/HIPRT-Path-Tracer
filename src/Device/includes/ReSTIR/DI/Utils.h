@@ -198,7 +198,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_jacobian_determinant_reconnection_shift
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float get_jacobian_determinant_reconnection_shift(const HIPRTRenderData& render_data, const ReSTIRDIReservoir& neighbor_reservoir, const float3& center_pixel_shading_point, int neighbor_pixel_index)
 {
-	return get_jacobian_determinant_reconnection_shift(render_data, neighbor_reservoir, center_pixel_shading_point, render_data.g_buffer.primary_hits[neighbor_pixel_index]);
+	return get_jacobian_determinant_reconnection_shift(render_data, neighbor_reservoir, center_pixel_shading_point, render_data.g_buffer.primary_hit_position[neighbor_pixel_index]);
 }
 
 /**
@@ -250,7 +250,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool check_neighbor_similarity_heuristics(const H
 	{
 		if (render_data.render_settings.restir_di_settings.use_plane_distance_heuristic)
 			// Only getting the point plane distance heuristic, otherwise it's never used
-			neighbor_world_space_point = render_data.g_buffer_prev_frame.primary_hits[neighbor_pixel_index];
+			neighbor_world_space_point = render_data.g_buffer_prev_frame.primary_hit_position[neighbor_pixel_index];
 
 		if (render_data.render_settings.restir_di_settings.use_roughness_similarity_heuristic)
 			// Only getting the roughness for the roughness heuristic otherwise it's not going to be used
@@ -258,7 +258,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool check_neighbor_similarity_heuristics(const H
 	}
 	else
 	{
-		neighbor_world_space_point = render_data.g_buffer.primary_hits[neighbor_pixel_index];
+		neighbor_world_space_point = render_data.g_buffer.primary_hit_position[neighbor_pixel_index];
 		neighbor_roughness = render_data.g_buffer.materials[neighbor_pixel_index].get_roughness();
 	}
 

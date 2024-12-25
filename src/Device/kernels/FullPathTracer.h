@@ -134,7 +134,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
 
     // Initializing the closest hit info the information from the camera ray pass
     HitInfo closest_hit_info;
-    closest_hit_info.inter_point = render_data.g_buffer.primary_hits[pixel_index];
+    closest_hit_info.inter_point = render_data.g_buffer.primary_hit_position[pixel_index];
     closest_hit_info.geometric_normal = hippt::normalize(render_data.g_buffer.geometric_normals[pixel_index].unpack());
     closest_hit_info.shading_normal = hippt::normalize(render_data.g_buffer.shading_normals[pixel_index].unpack());
     closest_hit_info.primitive_index = render_data.g_buffer.first_hit_prim_index[pixel_index];
@@ -143,8 +143,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
     hiprtRay ray;
     ray.direction = hippt::normalize(-render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index));
 
-    bool intersection_found = render_data.g_buffer.camera_ray_hit[pixel_index] == 1;
-
     RayPayload ray_payload;
     ray_payload.next_ray_state = RayState::BOUNCE;
     ray_payload.material = render_data.g_buffer.materials[pixel_index].unpack();
@@ -152,6 +150,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
 
     // + 1 to nb_bounces here because we want "0" bounces to still act as one
     // hit and to return some color
+    bool intersection_found = closest_hit_info.primitive_index != -1;
     for (int bounce = 0; bounce < render_data.render_settings.nb_bounces + 1; bounce++)
     {
         if (ray_payload.next_ray_state != RayState::MISSED)

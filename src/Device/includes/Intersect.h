@@ -159,7 +159,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
         out_hit_info.primitive_index = hit.primID;
         out_hit_info.texcoords = uv_interpolate(render_data.buffers.triangles_indices, out_hit_info.primitive_index, render_data.buffers.texcoords, hit.uv);
         // TODO hit.normal is in object space, this simple approach will not work if using
-        // multiple-levels BVH (TLAS/BLAS)
+        // multiple-levels BVH (TLAS/BLAS). We'll have to  transform by the BLAS transform
         out_hit_info.geometric_normal = hippt::normalize(hit.normal);
         out_hit_info.shading_normal = get_shading_normal(render_data, out_hit_info.geometric_normal, out_hit_info.primitive_index, hit.uv, out_hit_info.texcoords);
 

@@ -75,8 +75,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 
 	uint32_t center_pixel_index = (x + y * res.x);
 
-	if (!render_data.aux_buffers.pixel_active[center_pixel_index] || !render_data.g_buffer.camera_ray_hit[center_pixel_index])
+	if (!render_data.aux_buffers.pixel_active[center_pixel_index] || render_data.g_buffer.first_hit_prim_index[center_pixel_index] == -1)
 		// Pixel inactive because of adaptive sampling, returning
+		// Or also we don't have a primary hit
 		return;
 
 	// Initializing the random generator

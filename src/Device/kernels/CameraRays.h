@@ -80,10 +80,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
         render_data.g_buffer_prev_frame.geometric_normals[pixel_index] = render_data.g_buffer.geometric_normals[pixel_index];
         render_data.g_buffer_prev_frame.shading_normals[pixel_index] = render_data.g_buffer.shading_normals[pixel_index];
         render_data.g_buffer_prev_frame.materials[pixel_index] = render_data.g_buffer.materials[pixel_index];
-        render_data.g_buffer_prev_frame.primary_hits[pixel_index] = render_data.g_buffer.primary_hits[pixel_index];
+        render_data.g_buffer_prev_frame.primary_hit_position[pixel_index] = render_data.g_buffer.primary_hit_position[pixel_index];
         render_data.g_buffer_prev_frame.first_hit_prim_index[pixel_index] = render_data.g_buffer.first_hit_prim_index[pixel_index];
         render_data.g_buffer_prev_frame.ray_volume_states[pixel_index] = render_data.g_buffer.ray_volume_states[pixel_index];
-        render_data.g_buffer_prev_frame.camera_ray_hit[pixel_index] = render_data.g_buffer.camera_ray_hit[pixel_index];
     }
 
     if (render_data.render_settings.sample_number == 0 || render_data.render_settings.need_to_reset)
@@ -159,7 +158,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
         render_data.g_buffer.shading_normals[pixel_index].pack(closest_hit_info.shading_normal);
 
         render_data.g_buffer.materials[pixel_index] = DevicePackedEffectiveMaterial::pack(ray_payload.material);
-        render_data.g_buffer.primary_hits[pixel_index] = closest_hit_info.inter_point;
+        render_data.g_buffer.primary_hit_position[pixel_index] = closest_hit_info.inter_point;
         render_data.g_buffer.ray_volume_states[pixel_index] = ray_payload.volume_state;
     }
     else
@@ -173,13 +172,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
         //
         // If you're wondering: "yeah but then the rest of the ray tracing passes are going to use a wrong primary hit position?"
         //      --> No because the 'camera_ray_hit' indicates whether we have a primary hit or not.
-        //          If we don't have a primary hit, we're never going to use the float3 in the 'primary_hits'
+        //          If we don't have a primary hit, we're never going to use the float3 in the 'primary_hit_position'
         //          buffer as an actual position, 
-        render_data.g_buffer.primary_hits[pixel_index] = ray.origin + ray.direction;
+        render_data.g_buffer.primary_hit_position[pixel_index] = ray.origin + ray.direction;
         
     render_data.g_buffer.first_hit_prim_index[pixel_index] = intersection_found ? closest_hit_info.primitive_index : -1;
 
-    render_data.g_buffer.camera_ray_hit[pixel_index] = intersection_found;
     render_data.aux_buffers.pixel_active[pixel_index] = true;
 
     // If we got here, this means that we still have at least one ray active

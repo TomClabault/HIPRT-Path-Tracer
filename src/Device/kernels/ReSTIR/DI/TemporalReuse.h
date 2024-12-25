@@ -59,8 +59,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 
 	uint32_t center_pixel_index = (x + y * res.x);
 
-	if (!render_data.aux_buffers.pixel_active[center_pixel_index] || !render_data.g_buffer.camera_ray_hit[center_pixel_index])
+	if (!render_data.aux_buffers.pixel_active[center_pixel_index] || render_data.g_buffer.first_hit_prim_index[center_pixel_index] == -1)
 		// Pixel inactive because of adaptive sampling, returning
+		// Or also we don't have a primary hit
 		return;
 
 	// Initializing the random generator
@@ -81,7 +82,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 		// Not doing ReSTIR on directly visible emissive materials
 		return;
 
-	int temporal_neighbor_pixel_index = find_temporal_neighbor_index(render_data, render_data.g_buffer.primary_hits[center_pixel_index], center_pixel_surface.shading_normal, res, center_pixel_index, random_number_generator).x;
+	int temporal_neighbor_pixel_index = find_temporal_neighbor_index(render_data, render_data.g_buffer.primary_hit_position[center_pixel_index], center_pixel_surface.shading_normal, res, center_pixel_index, random_number_generator).x;
 	if (temporal_neighbor_pixel_index == -1 || render_data.render_settings.freeze_random)
 	{
 		// Temporal occlusion / disoccusion, temporal neighbor is invalid,

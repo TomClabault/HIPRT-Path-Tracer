@@ -171,9 +171,8 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.g_buffer.materials = m_g_buffer.materials.data();
     m_render_data.g_buffer.geometric_normals = m_g_buffer.geometric_normals.data();
     m_render_data.g_buffer.shading_normals = m_g_buffer.shading_normals.data();
-    m_render_data.g_buffer.primary_hits = m_g_buffer.primary_hits.data();
+    m_render_data.g_buffer.primary_hit_position = m_g_buffer.primary_hit_position.data();
     m_render_data.g_buffer.first_hit_prim_index = m_g_buffer.first_hit_prim_index.data();
-    m_render_data.g_buffer.camera_ray_hit = m_g_buffer.cameray_ray_hit.data();
     m_render_data.g_buffer.ray_volume_states = m_g_buffer.ray_volume_states.data();
 
 
@@ -183,9 +182,8 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.g_buffer_prev_frame.materials = m_g_buffer_prev_frame.materials.data();
     m_render_data.g_buffer_prev_frame.geometric_normals = m_g_buffer_prev_frame.geometric_normals.data();
     m_render_data.g_buffer_prev_frame.shading_normals = m_g_buffer_prev_frame.shading_normals.data();
-    m_render_data.g_buffer_prev_frame.primary_hits = m_g_buffer_prev_frame.primary_hits.data();
+    m_render_data.g_buffer_prev_frame.primary_hit_position = m_g_buffer_prev_frame.primary_hit_position.data();
     m_render_data.g_buffer_prev_frame.first_hit_prim_index = m_g_buffer_prev_frame.first_hit_prim_index.data();
-    m_render_data.g_buffer_prev_frame.camera_ray_hit = m_g_buffer_prev_frame.cameray_ray_hit.data();
     m_render_data.g_buffer_prev_frame.ray_volume_states = m_g_buffer_prev_frame.ray_volume_states.data();
 
     m_render_data.render_settings.restir_di_settings.light_presampling.light_samples = m_restir_di_state.presampled_lights_buffer.data();

@@ -67,7 +67,6 @@ struct RenderBuffers
 	// Widths of the textures. Necessary for using texel coordinates in [0, width - 1]
 	// in the shader (required because Orochi doesn't support normalized texture coordinates).
 	int2* textures_dims = nullptr;
-
 };
 
 struct AuxiliaryBuffers
@@ -99,7 +98,7 @@ struct AuxiliaryBuffers
 	// that were necessary for the convergence. 
 	// 
 	// If the pixel hasn't converged yet, the buffer contains the -1 value
-	int * pixel_converged_sample_count = nullptr;
+	int* pixel_converged_sample_count = nullptr;
 
 	// A single boolean (contained in a buffer, hence the pointer) 
 	// to indicate whether at least one single ray is still active in the kernel.

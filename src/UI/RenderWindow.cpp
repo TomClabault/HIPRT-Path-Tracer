@@ -22,7 +22,8 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // TODOs  performance improvements branch:
-// - pack GBuffer
+// - nested dielectrics in shared mem or global memory, it's pretty slow  in intersect.h
+// - pack mesh data? (basically have a look at all buffers used)
 // - reuse MIS bounce
 // - texture compression
 // - wavefront path tracing
@@ -38,6 +39,8 @@ extern ImGuiLogger g_imgui_logger;
 // - NEE++
 // - schlick fresnel in many places?
 // - compaction
+// - launch bounds?
+// - thread group size optimization?
 // - Do we need  to keep the whole code  bloat for the packed material usage since it doesn't seem to be changing anything
 // - SoA instead of AoS
 // - superfluous sample() call on the last bounce

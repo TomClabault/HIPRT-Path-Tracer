@@ -20,9 +20,8 @@ struct GBufferGPURenderer
 		materials.resize(new_element_count);
 		geometric_normals.resize(new_element_count);
 		shading_normals.resize(new_element_count);
-		primary_hits.resize(new_element_count);
+		primary_hit_position.resize(new_element_count);
 		first_hit_prim_index.resize(new_element_count);
-		cameray_ray_hit.resize(new_element_count);
 
 		// We need to be careful here because the ray volume states contain the nested dielectric stack and the stack size can be changed at runtime through ImGui. However, on the CPU, the stack size is determined at compile time. Changing the stack size through ImGui only resizes the GPU shaders which then adapts to the new stack size thanks to the recompilation. However, on the CPU, we're not recompiling anything. This means that the stack size on the CPU doesn't match the stack size on the GPU anymore and the buffer will not be properly resized --> this is huge undefined behavior.
 		// To avoid that, we're manually giving the size here for resizing
@@ -34,9 +33,8 @@ struct GBufferGPURenderer
 		materials.free();
 		geometric_normals.free();
 		shading_normals.free();
-		primary_hits.free();
+		primary_hit_position.free();
 		first_hit_prim_index.free();
-		cameray_ray_hit.free();
 		ray_volume_states.free();
 	}
 
@@ -47,9 +45,8 @@ struct GBufferGPURenderer
 		out.materials = materials.get_device_pointer();
 		out.geometric_normals = geometric_normals.get_device_pointer();
 		out.shading_normals = shading_normals.get_device_pointer();
-		out.primary_hits = primary_hits.get_device_pointer();
+		out.primary_hit_position = primary_hit_position.get_device_pointer();
 		out.first_hit_prim_index = first_hit_prim_index.get_device_pointer();
-		out.camera_ray_hit = cameray_ray_hit.get_device_pointer();
 		out.ray_volume_states = ray_volume_states.get_device_pointer();
 
 		return out;
@@ -59,10 +56,8 @@ struct GBufferGPURenderer
 
 	OrochiBuffer<Octahedral24BitNormal> shading_normals;
 	OrochiBuffer<Octahedral24BitNormal> geometric_normals;
-	OrochiBuffer<float3> primary_hits;
+	OrochiBuffer<float3> primary_hit_position;
 	OrochiBuffer<int> first_hit_prim_index;
-
-	OrochiBuffer<unsigned char> cameray_ray_hit;
 
 	OrochiBuffer<RayVolumeState> ray_volume_states;
 };

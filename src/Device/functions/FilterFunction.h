@@ -15,6 +15,9 @@
 
 /**
  * This filter function handles self intersection avoidance and alpha testing
+ * 
+ * return false if the intersection is accepted
+ * return true if the intersection is rejected
  */
 HIPRT_DEVICE HIPRT_INLINE bool filter_function(const hiprtRay&, const void*, void* payld, const hiprtHit& hit)
 {

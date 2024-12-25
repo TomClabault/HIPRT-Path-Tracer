@@ -18,21 +18,18 @@ struct GBufferDevice
 {
 	HIPRT_HOST_DEVICE float3 get_view_direction(float3 camera_position, int pixel_index) const
 	{
-		return hippt::normalize(camera_position - primary_hits[pixel_index]);
+		return hippt::normalize(camera_position - primary_hit_position[pixel_index]);
 	}
 
 	DevicePackedEffectiveMaterial* materials = nullptr;
 
 	int* first_hit_prim_index = nullptr;
+	float3* primary_hit_position = nullptr;
 
 	// We need both normals to correct the black fringes from the microfacet
 	// model when used with smooth normals / normal mapping
 	Octahedral24BitNormal* shading_normals = nullptr;
 	Octahedral24BitNormal* geometric_normals = nullptr;
-
-	float3* primary_hits = nullptr;
-
-	unsigned char* camera_ray_hit = nullptr;
 
 	RayVolumeState* ray_volume_states = nullptr;
 };

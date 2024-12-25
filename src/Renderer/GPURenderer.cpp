@@ -294,7 +294,7 @@ void GPURenderer::internal_update_prev_frame_g_buffer()
 	{
 		// If at least one buffer has a size of 0, we assume that this means that the whole G-buffer is deallocated
 		// and so we're going to have to reallocate it
-		bool prev_frame_g_buffer_needs_resize = m_g_buffer_prev_frame.cameray_ray_hit.get_element_count() == 0;
+		bool prev_frame_g_buffer_needs_resize = m_g_buffer_prev_frame.first_hit_prim_index.get_element_count() == 0;
 
 		if (prev_frame_g_buffer_needs_resize)
 		{
@@ -307,7 +307,7 @@ void GPURenderer::internal_update_prev_frame_g_buffer()
 		// If we're not using the G-buffer, indicating that in use_last_frame_g_buffer so that the shader doesn't
 		// try to use it
 
-		if (m_g_buffer_prev_frame.cameray_ray_hit.get_element_count() > 0)
+		if (m_g_buffer_prev_frame.first_hit_prim_index.get_element_count() > 0)
 		{
 			// If the buffers aren't freed already
 			m_g_buffer_prev_frame.free();
@@ -474,6 +474,7 @@ void GPURenderer::launch_camera_rays()
 void GPURenderer::launch_ReSTIR_DI()
 {
 	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI)
+		// Only launching if ReSTIR DI is enabled
 		m_restir_di_render_pass.launch();
 }
 
@@ -1016,8 +1017,7 @@ void GPURenderer::update_render_data()
 			m_render_data.g_buffer_prev_frame.materials = nullptr;
 			m_render_data.g_buffer_prev_frame.geometric_normals = nullptr;
 			m_render_data.g_buffer_prev_frame.shading_normals = nullptr;
-			m_render_data.g_buffer_prev_frame.primary_hits = nullptr;
-			m_render_data.g_buffer_prev_frame.camera_ray_hit = nullptr;
+			m_render_data.g_buffer_prev_frame.primary_hit_position = nullptr;
 			m_render_data.g_buffer_prev_frame.ray_volume_states = nullptr;
 		}
 
