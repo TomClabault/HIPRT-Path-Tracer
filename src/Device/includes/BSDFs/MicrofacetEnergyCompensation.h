@@ -22,6 +22,7 @@
   * [5] [MaterialX codebase on Github]
   * [6] [Blender's Cycles codebase on Github]
   */
+
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F get_GGX_energy_compensation_conductors(const HIPRTRenderData& render_data, const ColorRGB32F& F0, float material_roughness, const float3& local_view_direction)
 {
     const void* GGX_Ess_texture_pointer = nullptr;
@@ -32,8 +33,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F get_GGX_energy_compensation_conductor
 #endif
 
     // Reading the precomputed directional albedo from the texture
-    int2 dims = make_int2(GPUBakerConstants::GGX_CONDUCTOR_ESS_TEXTURE_SIZE_COS_THETA_O, GPUBakerConstants::GGX_CONDUCTOR_ESS_TEXTURE_SIZE_ROUGHNESS);
-    float Ess = sample_texture_rgb_32bits(GGX_Ess_texture_pointer, 0, dims, false, make_float2(hippt::max(0.0f, local_view_direction.z), material_roughness)).r;
+	float2 uv = make_float2(hippt::max(0.0f, local_view_direction.z), material_roughness);
+
+	// Flipping the Y manually (and that's why we pass 'false' in the sample call that follow)
+	// because that GGX energy compensation texture is created with a clamp address mode, not wrap
+	// and we have to do the Y-flipping manually when not sampling in wrap mode
+	uv.y = 1.0f - uv.y;
+	float Ess = sample_texture_rgb_32bits(GGX_Ess_texture_pointer, 0, /* is_srgb */ false, uv, /* flip UV-Y */ false).r;
 
     // Computing kms, [Practical multiple scattering compensation for microfacet models, Turquin, 2019], Eq. 10
     float kms = (1.0f - Ess) / Ess;
@@ -90,27 +96,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_glass_energy_conservation_get_correctio
     if (hippt::is_zero(roughness) || hippt::abs(1.0f - relative_eta) < 1.0e-3f)
         // No correction for these, returning the original 2.5f that is used in the LUT
         return 2.5f;
-
-	/*if (hippt::abs(relative_eta - 1.01f) < 1.0e-3f)
-	    return render_data.bsdfs_data.correction_1_01;
-	else if (hippt::abs(relative_eta - 1.02f) < 1.0e-3f)
-	    return render_data.bsdfs_data.correction_1_02;
-	else if (hippt::abs(relative_eta - 1.03f) < 1.0e-3f)
-	    return render_data.bsdfs_data.correction_1_03;
-	else if (hippt::abs(relative_eta - 1.1f) < 1.0e-3f)
-	    return render_data.bsdfs_data.correction_1_1;
-	else if (hippt::abs(relative_eta - 1.2f) < 1.0e-3f)
-	    return render_data.bsdfs_data.correction_1_2;
-	else if (hippt::abs(relative_eta - 1.4f) < 1.0e-3f)
-	    return render_data.bsdfs_data.correction_1_4;
-	else if (hippt::abs(relative_eta - 1.5f) < 1.0e-3f)
-	    return render_data.bsdfs_data.correction_1_5;
-	else if (hippt::abs(relative_eta - 2.0f) < 1.0e-3f)
-	    return render_data.bsdfs_data.correction_2_0;
-	else if (hippt::abs(relative_eta - 2.4f) < 1.0e-3f)
-	    return render_data.bsdfs_data.correction_2_4;
-	else
-	    return render_data.bsdfs_data.correction_3_0;*/
 
 	float lower_relative_eta_bound = 1.01f;
 	float lower_correction = 2.5f;
@@ -666,17 +651,17 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_GGX_energy_compensation_dielectrics(con
         float F0_remapped = sqrt(sqrt(F0));
 
         float3 uvw = make_float3(view_direction_tex_fetch, material.roughness, F0_remapped);
-		if (!material.thin_walled)
+		if (material.thin_walled)
 		{
-			void* texture = inside_object ? render_data.bsdfs_data.GGX_Ess_glass_inverse : render_data.bsdfs_data.GGX_Ess_glass;
-			int3 dims = make_int3(GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_COS_THETA_O, GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_ROUGHNESS, GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_IOR);
+			void* texture = render_data.bsdfs_data.GGX_Ess_thin_glass;
+			int3 dims = make_int3(GPUBakerConstants::GGX_THIN_GLASS_ESS_TEXTURE_SIZE_COS_THETA_O, GPUBakerConstants::GGX_THIN_GLASS_ESS_TEXTURE_SIZE_ROUGHNESS, GPUBakerConstants::GGX_THIN_GLASS_ESS_TEXTURE_SIZE_IOR);
 
 			compensation_term = sample_texture_3D_rgb_32bits(texture, dims, uvw, render_data.bsdfs_data.use_hardware_tex_interpolation).r;
 		}
 		else
 		{
-			void* texture = render_data.bsdfs_data.GGX_Ess_thin_glass;
-			int3 dims = make_int3(GPUBakerConstants::GGX_THIN_GLASS_ESS_TEXTURE_SIZE_COS_THETA_O, GPUBakerConstants::GGX_THIN_GLASS_ESS_TEXTURE_SIZE_ROUGHNESS, GPUBakerConstants::GGX_THIN_GLASS_ESS_TEXTURE_SIZE_IOR);
+			void* texture = inside_object ? render_data.bsdfs_data.GGX_Ess_glass_inverse : render_data.bsdfs_data.GGX_Ess_glass;
+			int3 dims = make_int3(GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_COS_THETA_O, GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_ROUGHNESS, GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_IOR);
 
 			compensation_term = sample_texture_3D_rgb_32bits(texture, dims, uvw, render_data.bsdfs_data.use_hardware_tex_interpolation).r;
 		}

@@ -1605,7 +1605,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 				if (ImGui::Checkbox("Use Hardware Texture Interpolation", &render_data.bsdfs_data.use_hardware_tex_interpolation))
 				{
-					m_renderer->init_GGX_glass_Ess_texture(render_data.bsdfs_data.use_hardware_tex_interpolation ? ORO_TR_FILTER_MODE_LINEAR : ORO_TR_FILTER_MODE_POINT);
+					m_renderer->init_GGX_glass_Ess_texture(render_data.bsdfs_data.use_hardware_tex_interpolation ? hipFilterModeLinear : hipFilterModePoint);
 					m_render_window->set_render_dirty(true);
 				}
 				ImGuiRenderer::show_help_marker("Using the hardware for texture interpolation is faster but less precise than doing manual interpolation in the shader.");
@@ -2074,6 +2074,7 @@ void ImGuiSettingsWindow::draw_performance_metrics_panel()
 
 	bool rolling_window_size_changed = false;
 	int rolling_window_size = m_render_window_perf_metrics->get_window_size();
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	ImGui::Text("Measures Window Size"); ImGui::SameLine();
 	rolling_window_size_changed |= ImGui::RadioButton("25", &rolling_window_size, 25); ImGui::SameLine();
 	rolling_window_size_changed |= ImGui::RadioButton("100", &rolling_window_size, 100); ImGui::SameLine();

@@ -7,14 +7,14 @@
 
 #include <Orochi/Orochi.h>
 
-OrochiTexture::OrochiTexture(const Image8Bit& image, HIPfilter_mode filtering_mode)
+OrochiTexture::OrochiTexture(const Image8Bit& image, hipTextureFilterMode filtering_mode, hipTextureAddressMode address_mode)
 {
-	init_from_image(image, filtering_mode);
+	init_from_image(image, filtering_mode, address_mode);
 }
 
-OrochiTexture::OrochiTexture(const Image32Bit& image, HIPfilter_mode filtering_mode)
+OrochiTexture::OrochiTexture(const Image32Bit& image, hipTextureFilterMode filtering_mode, hipTextureAddressMode address_mode)
 {
-	init_from_image(image, filtering_mode);
+	init_from_image(image, filtering_mode, address_mode);
 }
 
 OrochiTexture::OrochiTexture(OrochiTexture&& other) noexcept
@@ -44,10 +44,39 @@ void OrochiTexture::operator=(OrochiTexture&& other) noexcept
 	other.m_texture_array = nullptr;
 }
 
-void OrochiTexture::init_from_image(const Image8Bit& image, HIPfilter_mode filtering_mode)
+void create_texture_from_array_cuda(void* m_texture_array, void* m_texture, void* filtering_mode, void* address_mode, bool read_mode_float_normalized);
+
+void OrochiTexture::create_texture_from_array(hipTextureFilterMode filtering_mode, hipTextureAddressMode address_mode, bool read_mode_float_normalized)
+{
+#ifndef OROCHI_ENABLE_CUEW
+	// Using native HIP here to access 'normalizedCoords' which isn't  exposed by Orochi
+
+	hipResourceDesc resource_descriptor = {};
+	resource_descriptor.resType = hipResourceTypeArray;
+	resource_descriptor.res.array.array = m_texture_array;
+
+	hipTextureDesc texture_descriptor = {};
+	texture_descriptor.addressMode[0] = address_mode;
+	texture_descriptor.addressMode[1] = address_mode;
+	texture_descriptor.addressMode[2] = address_mode;
+	texture_descriptor.filterMode = filtering_mode;
+	texture_descriptor.normalizedCoords = true;
+	texture_descriptor.readMode = read_mode_float_normalized ? hipTextureReadMode::hipReadModeNormalizedFloat : hipTextureReadMode::hipReadModeElementType;
+	texture_descriptor.sRGB = false;
+
+	OROCHI_CHECK_ERROR(hipCreateTextureObject(&m_texture, &resource_descriptor, &texture_descriptor, nullptr));
+#else
+	// Using native CUDA here to access 'normalizedCoords' which isn't  exposed by Orochi
+	// Note that this function is defined in another compile unit because we need to include CUDA headers
+	// and they conflict with HIP headers (structures redefinition, float2, float4, ...) it seems so we need to separate them
+	create_texture_from_array_cuda(m_texture_array, &m_texture, &filtering_mode, &address_mode, read_mode_float_normalized);
+#endif
+}
+
+void OrochiTexture::init_from_image(const Image8Bit& image, hipTextureFilterMode filtering_mode, hipTextureAddressMode address_mode)
 {
 	int channels = image.channels;
-	if (channels == 3)
+	if (channels == 3 || channels > 4)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "3-channels textures not supported on the GPU yet.");
 
@@ -57,45 +86,28 @@ void OrochiTexture::init_from_image(const Image8Bit& image, HIPfilter_mode filte
 	width = image.width;
 	height = image.height;
 
-	// X, Y, Z and W in oroCreateChannelDesc are the number of *bits* of each component
-	// The shenanigans with max(channels - 0/1/2/3) is to automatically set 0 or sizeof(unsigned char) * 8
-	// bits in each channel depending on whether or not the input image indeed has that many
-	// channels
-	//
-	// So if the input image only has 2 channels for example, then then Z and W channel will
-	// be set to 0 bits by the 'channels - 2 > 0' and 'channels - 3 > 0' conditions respectively
-	// which will be false
-	oroChannelFormatDesc channel_descriptor = oroCreateChannelDesc(sizeof(unsigned char) * 8 * (channels - 0 > 0),
-																   sizeof(unsigned char) * 8 * (channels - 1 > 0),
-																   sizeof(unsigned char) * 8 * (channels - 2 > 0),
-																   sizeof(unsigned char) * 8 * (channels - 3 > 0),
-																   hipChannelFormatKindUnsigned);
+	int bits_channel_x = (channels >= 1) ? 8 : 0; // First channel (e.g., Red)
+	int bits_channel_y = (channels >= 2) ? 8 : 0; // Second channel (e.g., Green)
+	int bits_channel_z = (channels >= 3) ? 8 : 0; // Third channel (e.g., Blue)
+	int bits_channel_w = (channels == 4) ? 8 : 0; // Fourth channel (e.g., Alpha)
+	oroChannelFormatDesc channel_descriptor = oroCreateChannelDesc(bits_channel_x, bits_channel_y, bits_channel_z, bits_channel_w,
+		oroChannelFormatKindUnsigned);
 	OROCHI_CHECK_ERROR(oroMallocArray(&m_texture_array, &channel_descriptor, image.width, image.height, oroArrayDefault));
-	OROCHI_CHECK_ERROR(oroMemcpy2DToArray(m_texture_array, 0, 0, image.data().data(), image.width * channels * sizeof(unsigned char), image.width * sizeof(unsigned char) * channels, image.height, oroMemcpyHostToDevice));
+	OROCHI_CHECK_ERROR(oroMemcpy2DToArray(m_texture_array, 0, 0, image.data().data(), 
+		image.width * channels * sizeof(unsigned char), 
+		image.width * sizeof(unsigned char) * channels, 
+		image.height, oroMemcpyHostToDevice));
 	
-	// Resource descriptor
-	ORO_RESOURCE_DESC resource_descriptor;
-	std::memset(&resource_descriptor, 0, sizeof(resource_descriptor));
-	resource_descriptor.resType = ORO_RESOURCE_TYPE_ARRAY;
-	resource_descriptor.res.array.hArray = m_texture_array;
-
-	ORO_TEXTURE_DESC texture_descriptor;
-	std::memset(&texture_descriptor, 0, sizeof(texture_descriptor));
-	texture_descriptor.addressMode[0] = ORO_TR_ADDRESS_MODE_WRAP;
-	texture_descriptor.addressMode[1] = ORO_TR_ADDRESS_MODE_WRAP;
-	texture_descriptor.addressMode[2] = ORO_TR_ADDRESS_MODE_WRAP;
-	texture_descriptor.filterMode = filtering_mode;
-
-	OROCHI_CHECK_ERROR(oroTexObjectCreate(&m_texture, &resource_descriptor, &texture_descriptor, nullptr));
+	create_texture_from_array(filtering_mode, address_mode, true);
 }
 
-void OrochiTexture::init_from_image(const Image32Bit& image, HIPfilter_mode filtering_mode)
+void OrochiTexture::init_from_image(const Image32Bit& image, hipTextureFilterMode filtering_mode, hipTextureAddressMode address_mode)
 {
 	int channels = image.channels;
-	if (channels == 3)
+	if (channels == 3 || channels > 4)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "3-channels textures not supported on the GPU yet.");
-
+		
 		return;
 	}
 
@@ -108,37 +120,20 @@ void OrochiTexture::init_from_image(const Image32Bit& image, HIPfilter_mode filt
 		Utils::debugbreak();
 	}
 
-	// X, Y, Z and W in oroCreateChannelDesc are the number of *bits* of each component
-	// X, Y, Z and W in oroCreateChannelDesc are the number of *bits* of each component
-	// The shenanigans with max(channels - 0/1/2/3) is to automatically set 0 or sizeof(float) * 8
-	// bits in each channel depending on whether or not the input image indeed has that many
-	// channels
-	//
-	// So if the input image only has 2 channels for example, then then Z and W channel will
-	// be set to 0 bits by the 'channels - 2 > 0' and 'channels - 3 > 0' conditions respectively
-	// which will be false
-	oroChannelFormatDesc channel_descriptor = oroCreateChannelDesc(sizeof(float) * 8 * (channels - 0 > 0),
-																   sizeof(float) * 8 * (channels - 1 > 0),
-																   sizeof(float) * 8 * (channels - 2 > 0),
-																   sizeof(float) * 8 * (channels - 3 > 0),
-																   hipChannelFormatKindUnsigned);
+	int bits_channel_x = (channels >= 1) ? 32 : 0; // First channel (e.g., Red)
+	int bits_channel_y = (channels >= 2) ? 32 : 0; // Second channel (e.g., Green)
+	int bits_channel_z = (channels >= 3) ? 32 : 0; // Third channel (e.g., Blue)
+	int bits_channel_w = (channels == 4) ? 32 : 0; // Fourth channel (e.g., Alpha)
+	oroChannelFormatDesc channel_descriptor = oroCreateChannelDesc(bits_channel_x, bits_channel_y, bits_channel_z, bits_channel_w,
+																   oroChannelFormatKindFloat);
+
 	OROCHI_CHECK_ERROR(oroMallocArray(&m_texture_array, &channel_descriptor, image.width, image.height, oroArrayDefault));
-	OROCHI_CHECK_ERROR(oroMemcpy2DToArray(m_texture_array, 0, 0, image.data().data(), image.width * channels * sizeof(float), image.width * sizeof(float) * channels, image.height, oroMemcpyHostToDevice));
+	OROCHI_CHECK_ERROR(oroMemcpy2DToArray(m_texture_array, 0, 0, image.data().data(), 
+		image.width * channels * sizeof(float), 
+		image.width * sizeof(float) * channels, 
+		image.height, oroMemcpyHostToDevice));
 
-	// Resource descriptor
-	ORO_RESOURCE_DESC resource_descriptor;
-	std::memset(&resource_descriptor, 0, sizeof(resource_descriptor));
-	resource_descriptor.resType = ORO_RESOURCE_TYPE_ARRAY;
-	resource_descriptor.res.array.hArray = m_texture_array;
-
-	ORO_TEXTURE_DESC texture_descriptor;
-	std::memset(&texture_descriptor, 0, sizeof(texture_descriptor));
-	texture_descriptor.addressMode[0] = ORO_TR_ADDRESS_MODE_WRAP;
-	texture_descriptor.addressMode[1] = ORO_TR_ADDRESS_MODE_WRAP;
-	texture_descriptor.addressMode[2] = ORO_TR_ADDRESS_MODE_WRAP;
-	texture_descriptor.filterMode = filtering_mode;
-
-	OROCHI_CHECK_ERROR(oroTexObjectCreate(&m_texture, &resource_descriptor, &texture_descriptor, nullptr));
+	create_texture_from_array(filtering_mode, address_mode, false);
 }
 
 oroTextureObject_t OrochiTexture::get_device_texture()

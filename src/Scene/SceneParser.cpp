@@ -76,7 +76,6 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Assimp::Im
     parsed_scene.metadata.mesh_names.resize(scene->mNumMeshes);
     parsed_scene.metadata.mesh_material_indices.resize(scene->mNumMeshes);
     parsed_scene.textures.resize(texture_count);
-    parsed_scene.textures_dims.resize(texture_count);
     assign_material_texture_indices(parsed_scene.materials, material_texture_indices, texture_indices_offsets);
     dispatch_texture_loading(parsed_scene, scene_filepath, options.nb_texture_threads, texture_paths, material_indices);
 
@@ -134,8 +133,12 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Assimp::Im
         // Inserting texcoords if present, looking at set 0 because that's where "classical" texcoords are.
         // Other sets are assumed not interesting here.
         if (mesh->HasTextureCoords(0) && texture_per_mesh[material_index] > 0)
+        {
             for (int i = 0; i < mesh->mNumVertices; i++)
+            {
                 parsed_scene.texcoords.push_back(make_float2(mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y));
+            }
+        }
         else
             parsed_scene.texcoords.insert(parsed_scene.texcoords.end(), mesh->mNumVertices, float2{0.0f, 0.0f});
 

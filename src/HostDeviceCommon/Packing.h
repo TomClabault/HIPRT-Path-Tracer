@@ -294,7 +294,7 @@ private:
 
 	HIPRT_HOST_DEVICE float3 final_decode(float x, float y) 
 	{
-		float3 v = float3(x, y, 1.0 - abs(x) - abs(y));
+		float3 v = make_float3(x, y, 1.0 - abs(x) - abs(y));
 		if (v.z < 0.0f) 
 		{
 			float2 temp = make_float2(v.x, v.y);

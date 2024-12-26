@@ -96,18 +96,12 @@ void ThreadFunctions::load_scene_texture(Scene& parsed_scene, std::string scene_
                 parsed_scene.materials[material_indices[thread_index]].emission = ColorRGB32F(emission_rgba.r, emission_rgba.g, emission_rgba.b);
             }
             else
-            {
                 // If not emissive texture special case, we can actually read the texture
-                parsed_scene.textures_dims[thread_index] = make_int2(texture.width, texture.height);
                 parsed_scene.textures[thread_index] = texture;
-            }
         }
         else
-        {
             // If not emissive texture special case, we can actually read the texture
-            parsed_scene.textures_dims[thread_index] = make_int2(texture.width, texture.height);
             parsed_scene.textures[thread_index] = texture;
-        }
 
         thread_index += nb_threads;
     }

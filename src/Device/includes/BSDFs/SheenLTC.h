@@ -55,8 +55,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F read_LTC_parameters(const HIPRTRender
 	ltc_parameters_texture_pointer = render_data.bsdfs_data.sheen_ltc_parameters_texture;
 #endif
 
-	float2 parameters_uv = make_float2(cos_theta, hippt::clamp(0.0f, 1.0f, 1.0f - roughness));
-	return sample_texture_rgb_32bits(ltc_parameters_texture_pointer, 0, make_int2(32, 32), false, parameters_uv);
+	float2 parameters_uv = make_float2(cos_theta, hippt::clamp(0.0f, 1.0f, roughness));
+	return sample_texture_rgb_32bits(ltc_parameters_texture_pointer, 0, false, parameters_uv, false);
 }
 
 /**

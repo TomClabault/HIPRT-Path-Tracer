@@ -114,18 +114,18 @@ void GPURenderer::init_sheen_ltc_texture()
 	}
 
 	Image32Bit sheen_ltc_params_image(padded_ltc.data(), 32, 32, 4);
-	m_sheen_ltc_params = OrochiTexture(sheen_ltc_params_image);
+	m_sheen_ltc_params = OrochiTexture(sheen_ltc_params_image, hipFilterModeLinear, hipAddressModeClamp);
 }
 
-void GPURenderer::init_GGX_Ess_texture(HIPfilter_mode filtering_mode)
+void GPURenderer::init_GGX_Ess_texture(hipTextureFilterMode filtering_mode)
 {
 	Image32Bit GGXEss_image = Image32Bit::read_image_hdr(BRDFS_DATA_DIRECTORY "/GGX/" + GPUBakerConstants::get_GGX_conductor_Ess_filename(), 1, true);
-	m_GGX_conductor_Ess = OrochiTexture(GGXEss_image, filtering_mode);
+	m_GGX_conductor_Ess = OrochiTexture(GGXEss_image, filtering_mode, hipAddressModeClamp);
 
 	m_render_data_buffers_invalidated = true;
 }
 
-void GPURenderer::init_glossy_dielectric_Ess_texture(HIPfilter_mode filtering_mode)
+void GPURenderer::init_glossy_dielectric_Ess_texture(hipTextureFilterMode filtering_mode)
 {
 	synchronize_kernel();
 
@@ -136,12 +136,12 @@ void GPURenderer::init_glossy_dielectric_Ess_texture(HIPfilter_mode filtering_mo
 		std::string filepath = BRDFS_DATA_DIRECTORY "/GlossyDielectrics/" + filename;
 		images[i] = Image32Bit::read_image_hdr(filepath, 1, true);
 	}
-	m_glossy_dielectric_Ess = OrochiTexture3D(images, filtering_mode);
+	m_glossy_dielectric_Ess = OrochiTexture3D(images, filtering_mode == hipFilterModeLinear ? ORO_TR_FILTER_MODE_LINEAR : ORO_TR_FILTER_MODE_POINT, ORO_TR_ADDRESS_MODE_CLAMP);
 
 	m_render_data_buffers_invalidated = true;
 }
 
-void GPURenderer::init_GGX_glass_Ess_texture(HIPfilter_mode filtering_mode)
+void GPURenderer::init_GGX_glass_Ess_texture(hipTextureFilterMode filtering_mode)
 {
 	synchronize_kernel();
 
@@ -152,7 +152,7 @@ void GPURenderer::init_GGX_glass_Ess_texture(HIPfilter_mode filtering_mode)
 		std::string filepath = BRDFS_DATA_DIRECTORY "/GGX/Glass/" + filename;
 		images[i] = Image32Bit::read_image_hdr(filepath, 1, true);
 	}
-	m_GGX_Ess_glass = OrochiTexture3D(images, filtering_mode);
+	m_GGX_Ess_glass = OrochiTexture3D(images, filtering_mode == hipFilterModeLinear ? ORO_TR_FILTER_MODE_LINEAR : ORO_TR_FILTER_MODE_POINT, ORO_TR_ADDRESS_MODE_CLAMP);
 
 	for (int i = 0; i < GPUBakerConstants::GGX_GLASS_ESS_TEXTURE_SIZE_IOR; i++)
 	{
@@ -160,7 +160,7 @@ void GPURenderer::init_GGX_glass_Ess_texture(HIPfilter_mode filtering_mode)
 		std::string filepath = BRDFS_DATA_DIRECTORY "/GGX/Glass/" + filename;
 		images[i] = Image32Bit::read_image_hdr(filepath, 1, true);
 	}
-	m_GGX_Ess_glass_inverse = OrochiTexture3D(images, filtering_mode);
+	m_GGX_Ess_glass_inverse = OrochiTexture3D(images, filtering_mode == hipFilterModeLinear ? ORO_TR_FILTER_MODE_LINEAR : ORO_TR_FILTER_MODE_POINT, ORO_TR_ADDRESS_MODE_CLAMP);
 
 	images.resize(GPUBakerConstants::GGX_THIN_GLASS_ESS_TEXTURE_SIZE_IOR);
 	for (int i = 0; i < GPUBakerConstants::GGX_THIN_GLASS_ESS_TEXTURE_SIZE_IOR; i++)
@@ -169,7 +169,7 @@ void GPURenderer::init_GGX_glass_Ess_texture(HIPfilter_mode filtering_mode)
 		std::string filepath = BRDFS_DATA_DIRECTORY "/GGX/Glass/" + filename;
 		images[i] = Image32Bit::read_image_hdr(filepath, 1, true);
 	}
-	m_GGX_Ess_thin_glass = OrochiTexture3D(images, filtering_mode);
+	m_GGX_Ess_thin_glass = OrochiTexture3D(images, filtering_mode == hipFilterModeLinear ? ORO_TR_FILTER_MODE_LINEAR : ORO_TR_FILTER_MODE_POINT, ORO_TR_ADDRESS_MODE_CLAMP);
 
 	m_render_data_buffers_invalidated = true;
 }
@@ -1005,7 +1005,6 @@ void GPURenderer::update_render_data()
 
 		m_render_data.buffers.material_textures = reinterpret_cast<oroTextureObject_t*>(m_hiprt_scene.gpu_materials_textures.get_device_pointer());
 		m_render_data.buffers.texcoords = reinterpret_cast<float2*>(m_hiprt_scene.texcoords_buffer.get_device_pointer());
-		m_render_data.buffers.textures_dims = reinterpret_cast<int2*>(m_hiprt_scene.textures_dims.get_device_pointer());
 
 		m_render_data.g_buffer = m_g_buffer.get_device_g_buffer();
 
@@ -1108,9 +1107,6 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 
 			m_hiprt_scene.gpu_materials_textures.resize(oro_textures.size());
 			m_hiprt_scene.gpu_materials_textures.upload_data(oro_textures.data());
-
-			m_hiprt_scene.textures_dims.resize(scene.textures_dims.size());
-			m_hiprt_scene.textures_dims.upload_data(scene.textures_dims.data());
 		}
 	});
 

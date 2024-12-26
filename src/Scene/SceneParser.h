@@ -85,13 +85,6 @@ struct Scene
     // Material textures. Needs to be index by a material index. 
     std::vector<Image8Bit> textures;
 
-    // The widths and heights of the material textures
-    // Necessary since Orochi doesn't support normalized texture coordinates
-    // for texture object creation yet. This mean that we have to use texel coordinates
-    // in [0, width - 1] and [0, height - 1] in the shader which means that we need the widths
-    // and heights to convert UV coordinates [0, 1] to the right range
-    std::vector<int2> textures_dims;
-
     std::vector<int> triangle_indices;
     std::vector<float3> vertices_positions;
     std::vector<unsigned char> has_vertex_normals;

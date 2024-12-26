@@ -84,18 +84,18 @@ public:
 	/**
  	 * Initializes the precomputed texture used for GGX energy conservation
 	 */
-	void init_GGX_Ess_texture(HIPfilter_mode filtering_mode = ORO_TR_FILTER_MODE_LINEAR);
+	void init_GGX_Ess_texture(hipTextureFilterMode filtering_mode = hipFilterModeLinear);
 
 	/**
 	 * Initializes the precomputed texture used for glossy dielectrics 
 	 * energy conservation
 	 */
-	void init_glossy_dielectric_Ess_texture(HIPfilter_mode filtering_mode = ORO_TR_FILTER_MODE_LINEAR);
+	void init_glossy_dielectric_Ess_texture(hipTextureFilterMode filtering_mode = hipFilterModePoint);
 
 	/**
 	 * Initializes the precomputed textures used for GGX glass BSDF energy conservation
 	 */
-	void init_GGX_glass_Ess_texture(HIPfilter_mode filtering_mode = ORO_TR_FILTER_MODE_POINT);
+	void init_GGX_glass_Ess_texture(hipTextureFilterMode filtering_mode = hipFilterModePoint);
 
 	/**
 	 * Initializes the filter function used by the kernels

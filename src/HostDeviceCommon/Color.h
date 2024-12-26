@@ -64,6 +64,8 @@ struct ColorRGB32F
     HIPRT_HOST_DEVICE explicit ColorRGB32F(float value) { r = value; g = value; b = value; }
     HIPRT_HOST_DEVICE ColorRGB32F(float _r, float _g, float _b) { r = _r; g = _g; b = _b; }
     HIPRT_HOST_DEVICE explicit ColorRGB32F(float3 vec) { r = vec.x; g = vec.y; b = vec.z; }
+    // W component of float4 is dropped
+    HIPRT_HOST_DEVICE explicit ColorRGB32F(float4 vec) { r = vec.x; g = vec.y; b = vec.z; }
     // This constructor drops the alpha channel
     HIPRT_HOST_DEVICE explicit ColorRGB32F(const ColorRGBA32F& rgba) { r = rgba.r; g = rgba.g; b = rgba.b; }
 

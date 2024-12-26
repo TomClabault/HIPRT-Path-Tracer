@@ -22,8 +22,10 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // TODOs  performance improvements branch:
+// - texcoords packing --> bring everyone in [0, 1] on the CPU and then encode as uchar?
 // - nested dielectrics in shared mem or global memory, it's pretty slow  in intersect.h
-// - pack mesh data? (basically have a look at all buffers used)
+// - pack envmap?
+// - check that sheen still works with  new texture handling
 // - reuse MIS bounce
 // - texture compression
 // - wavefront path tracing
@@ -38,14 +40,20 @@ extern ImGuiLogger g_imgui_logger;
 // - upload partial materials when a material is modified instead  of reuploading everything
 // - NEE++
 // - schlick fresnel in many places?
-// - compaction
+// - compaction -  https://github.com/microsoft/directxshadercompiler/wiki/wave-intrinsics#example
+// - flags to enable energy preservation per material
+// - disable energy conservation on smooth glass / smooth metal
+// - per material light sampling/BSDF sampling: smooth glass / metal don't need light sampling
 // - launch bounds?
 // - thread group size optimization?
 // - Do we need  to keep the whole code  bloat for the packed material usage since it doesn't seem to be changing anything
 // - SoA instead of AoS
-// - superfluous sample() call on the last bounce
+// - superfluous sample() call on the last bounce?
 // - perfect reflection and refractions fast path
-// - double buffering of frames in general to better the GPU occupied?
+// - double buffering of frames in general to better keep the GPU occupied?
+// - pack envmap (maybe not do it if the max radiance  of the envmap is too high to avoid losing precision)
+// - remove unused denoiser buffers if not using the denoiser
+// - 
 
 // TODO demos:
 // new oren nayar BRDF: EON

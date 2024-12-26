@@ -104,6 +104,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE DeviceUnpackedEffectiveMaterial get_intersection_
         material.specular_transmission = specular_transmission;
 
     ColorRGB32F emission = get_material_property<ColorRGB32F>(render_data, false, texcoords, material.emission_texture_index);
+    if (material.emission_texture_index == MaterialUtils::NO_TEXTURE)
+        emission = material.emission;
+
     DeviceUnpackedEffectiveMaterial packed_material(material);
     packed_material.emissive_texture_used = material.emission_texture_index != MaterialUtils::NO_TEXTURE;
     packed_material.emission = emission;
@@ -145,7 +148,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float2 get_metallic_roughness(const HIPRTRenderDa
 
     if (metallic_roughness_texture_index != MaterialUtils::NO_TEXTURE)
     {
-        ColorRGB32F rgb = sample_texture_rgb_8bits(render_data.buffers.material_textures, metallic_roughness_texture_index, render_data.buffers.textures_dims[metallic_roughness_texture_index], false, texcoords);
+        ColorRGB32F rgb = sample_texture_rgb_8bits(render_data.buffers.material_textures, metallic_roughness_texture_index, false, texcoords);
 
         // Not converting to linear here because material properties (roughness and metallic) here are assumed to be linear already
         out.x = rgb.g;
@@ -202,7 +205,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE T get_material_property(const HIPRTRenderData& re
     if (texture_index == MaterialUtils::NO_TEXTURE || texture_index == MaterialUtils::CONSTANT_EMISSIVE_TEXTURE)
         return T();
 
-    ColorRGBA32F rgba = sample_texture_rgba(render_data.buffers.material_textures, texture_index, render_data.buffers.textures_dims[texture_index], is_srgb, texcoords);
+    ColorRGBA32F rgba = sample_texture_rgba(render_data.buffers.material_textures, texture_index, is_srgb, texcoords);
     return read_data<T>(rgba);
 }
 

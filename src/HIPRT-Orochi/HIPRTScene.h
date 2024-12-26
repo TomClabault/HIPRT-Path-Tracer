@@ -117,7 +117,6 @@ struct HIPRTScene
 	// be destroyed which means that the underlying textures would be destroyed
 	std::vector<OrochiTexture> orochi_materials_textures;
 	OrochiBuffer<oroTextureObject_t> gpu_materials_textures;
-	OrochiBuffer<int2> textures_dims;
 	OrochiBuffer<float2> texcoords_buffer;
 };
 

@@ -23,12 +23,19 @@ using Image8Bit = int;
 using Image32Bit = int;
 #endif
 
-// Templated here so that the CPU can cast the texture_buffer into Image8Bit or Image32Bit
-// for proper sampling in unsigned char or float respectively.
-// This template argument isn't used on the GPU and that's why Image8Bit and Image32Bit
-// are being defined as 'ints'
+/**
+ * Templated here so that the CPU can cast the texture_buffer into Image8Bit or Image32Bit
+ * for proper sampling in unsigned char or float respectively.
+ * This template argument isn't used on the GPU and that's why Image8Bit and Image32Bit
+ * are being defined as 'ints'
+ * 
+ * If 'flip_uv_y' is true, then UV (0, 0) is the bottom left corner of the texture
+ * and the texture must use a wrapping address mode for the V coordinate.
+ * 
+ * If 'flip_uv_y' is true, then the UV coordinates are just used as is
+ */ 
 template <typename ImageType = Image8Bit>
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA32F sample_texture_rgba(const void* texture_buffer, int texture_index, int2 texture_dims, bool is_srgb, float2 uv)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA32F sample_texture_rgba(const void* texture_buffer, int texture_index, bool is_srgb, float2 uv, bool flip_uv_y = true)
 {
     ColorRGBA32F rgba;
 
@@ -36,30 +43,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA32F sample_texture_rgba(const void* text
     // We're doing the UV addressing ourselves since it seems to be broken in Orochi...
     float u = uv.x;
     float v = uv.y;
+    if (flip_uv_y)
+        v = -v;
 
-    // Sampling in repeat mode so we're just keeping the fractional part
-    if (u != 1.0f)
-        // Only doing that if u != 1.0f because if we actually have
-        // uv.x == 1.0f, then subtracting static_cast<int>(uv.x) will
-        // give us 0.0f even though we actually want 1.0f (which is correct).
-        // 
-        // Basically, 1.0f gets transformed into 0.0f even though 1.0f is a correct
-        // U coordinate which needs not to be wrapped
-        u -= static_cast<int>(uv.x);
-
-    if (v != 1.0f)
-        // Same for v
-        v -= static_cast<int>(uv.y);
-
-    // For negative UVs, we also want to repeat and we want, for example, 
-    // -0.1f to behave as 0.9f
-    u = u < 0 ? 1.0f + u : u;
-    v = v < 0 ? 1.0f + v : v;
-
-    // Sampling with [0, 0] bottom-left convention
-    v = 1.0f - v;
-
-    rgba = ColorRGBA32F(tex2D<float4>(reinterpret_cast<const oroTextureObject_t*>(texture_buffer)[texture_index], u * (texture_dims.x - 1), v * (texture_dims.y - 1)));
+    rgba = ColorRGBA32F(tex2D<float4>(reinterpret_cast<const oroTextureObject_t*>(texture_buffer)[texture_index], u, v));
 #else
     const ImageType& texture = reinterpret_cast<const ImageType*>(texture_buffer)[texture_index];
 
@@ -75,9 +62,19 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGBA32F sample_texture_rgba(const void* text
         return rgba;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_texture_rgb_8bits(const void* texture_buffer, int texture_index, int2 texture_dims, bool is_srgb, float2 uv)
+/**
+ * If 'flip_uv_y' is true, then UV(0, 0) is the bottom left corner of the texture
+ * and the texture must use a wrapping address mode for the V coordinate.
+ *
+ * If 'flip_uv_y' is true, then the UV coordinates are just used as is
+ * 
+ * 'flip_uv_y' should basically be set to true in most cases and.
+ * It should be set to false if your texture addressing mode isn't 'warping'
+ * or when you know what you're doing and why you need to have it to false
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_texture_rgb_8bits(const void* texture_buffer, int texture_index, bool is_srgb, float2 uv, bool flip_uv_y = true)
 {
-    ColorRGBA32F rgba = sample_texture_rgba<Image8Bit>(texture_buffer, texture_index, texture_dims, is_srgb, uv);
+    ColorRGBA32F rgba = sample_texture_rgba<Image8Bit>(texture_buffer, texture_index, is_srgb, uv, flip_uv_y);
 
     return ColorRGB32F(rgba.r, rgba.g, rgba.b);
 }
@@ -91,10 +88,19 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_texture_rgb_8bits(const void* 
  * Not that on the GPU, 'texture_buffer' must be of type oroTextureObject_t*, i.e. it's a pointer on oroTextureObject_t
  * this means that if the pointer is set in RenderData with OrochiTexture::get_device_texture() on the CPU, then
  * &get_device_texture() must be passed to this function for 'texture_buffer'
+ * 
+ * If 'flip_uv_y' is true, then UV(0, 0) is the bottom left corner of the texture
+ * and the texture must use a wrapping address mode for the V coordinate.
+ *
+ * If 'flip_uv_y' is true, then the UV coordinates are just used as is
+ * 
+ * 'flip_uv_y' should basically be set to true in most cases and.
+ * It should be set to false if your texture addressing mode isn't 'warping'
+ * or when you know what you're doing and why you need to have it to false
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_texture_rgb_32bits(const void* texture_buffer, int texture_index, int2 texture_dims, bool is_srgb, float2 uv)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_texture_rgb_32bits(const void* texture_buffer, int texture_index, bool is_srgb, float2 uv, bool flip_uv_y = true)
 {
-    ColorRGBA32F rgba = sample_texture_rgba<Image32Bit>(texture_buffer, texture_index, texture_dims, is_srgb, uv);
+    ColorRGBA32F rgba = sample_texture_rgba<Image32Bit>(texture_buffer, texture_index, is_srgb, uv, flip_uv_y);
 
     return ColorRGB32F(rgba.r, rgba.g, rgba.b);
 }
@@ -142,17 +148,17 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_texture_3D_rgb_32bits(void* te
         // 
         // Basically, 1.0f gets transformed into 0.0f even though 1.0f is a correct
         // U coordinate which needs not to be wrapped
-        u -= static_cast<int>(uvw.x);
+        u = hippt::fract(uvw.x);
 
     float v = uvw.y;
     if (v != 1.0f)
         // Same for v
-        v -= static_cast<int>(uvw.y);
+        v = hippt::fract(uvw.y);
 
     float w = uvw.z;
     if (w != 1.0f)
         // Same for w
-        w -= static_cast<int>(uvw.z);
+        w = hippt::fract(uvw.z);
 
     // For negative UVs, we also want to repeat and we want, for example, 
     // -0.1f to behave as 0.9f
@@ -202,7 +208,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_texture(const 
     envmap_pointer = world_settings.envmap;
 #endif
 
-    return sample_texture_rgb_32bits(envmap_pointer, 0, make_int2(world_settings.envmap_width, world_settings.envmap_height), /* is_srgb */ false, uv) * world_settings.envmap_intensity;
+    return sample_texture_rgb_32bits(envmap_pointer, 0, /* is_srgb */ false, uv) * world_settings.envmap_intensity;
 }
 
 template <typename T>

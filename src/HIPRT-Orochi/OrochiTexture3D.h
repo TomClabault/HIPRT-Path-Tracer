@@ -15,8 +15,8 @@ class OrochiTexture3D
 {
 public:
 	OrochiTexture3D() {}
-	OrochiTexture3D(const std::vector<Image8Bit>& image, HIPfilter_mode filtering_mode = ORO_TR_FILTER_MODE_POINT);
-	OrochiTexture3D(const std::vector<Image32Bit>& image, HIPfilter_mode filtering_mode = ORO_TR_FILTER_MODE_POINT);
+	OrochiTexture3D(const std::vector<Image8Bit>& image, HIPfilter_mode filtering_mode = ORO_TR_FILTER_MODE_POINT, HIPaddress_mode address_mode = ORO_TR_ADDRESS_MODE_WRAP);
+	OrochiTexture3D(const std::vector<Image32Bit>& image, HIPfilter_mode filtering_mode = ORO_TR_FILTER_MODE_POINT, HIPaddress_mode address_mode = ORO_TR_ADDRESS_MODE_WRAP);
 	OrochiTexture3D(const OrochiTexture3D& other) = delete;
 	OrochiTexture3D(OrochiTexture3D&& other) noexcept;
 	~OrochiTexture3D();
@@ -24,8 +24,8 @@ public:
 	void operator=(const OrochiTexture3D& other) = delete;
 	void operator=(OrochiTexture3D&& other) noexcept;
 
-	void init_from_images(const std::vector<Image8Bit>& images, HIPfilter_mode filtering_mode = ORO_TR_FILTER_MODE_POINT);
-	void init_from_images(const std::vector<Image32Bit>& images, HIPfilter_mode filtering_mode = ORO_TR_FILTER_MODE_POINT);
+	void init_from_images(const std::vector<Image8Bit>& images, HIPfilter_mode filtering_mode = ORO_TR_FILTER_MODE_POINT, HIPaddress_mode address_mode = ORO_TR_ADDRESS_MODE_WRAP);
+	void init_from_images(const std::vector<Image32Bit>& images, HIPfilter_mode filtering_mode = ORO_TR_FILTER_MODE_POINT, HIPaddress_mode address_mode = ORO_TR_ADDRESS_MODE_WRAP);
 
 	oroTextureObject_t get_device_texture();
 
