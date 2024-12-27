@@ -61,6 +61,14 @@ public:
      */ 
      bool is_constant_color(int threshold = 0) const;
 
+     /**
+      * Returns true if all pixels of the image have 1.0f alpha channel.
+      * Returns true if the texture has less than 4 channels
+      * 
+      * Returns false otherwise
+      */
+     bool is_fully_opaque() const;
+
     /**
      * Frees the data of this image and sets its width, height and channels back to 0
      */

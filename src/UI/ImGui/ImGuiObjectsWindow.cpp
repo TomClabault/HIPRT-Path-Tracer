@@ -783,7 +783,7 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 		apply_material_override(override_state.override_strong_energy_conservation, &CPUMaterial::enforce_strong_energy_conservation, material_override.enforce_strong_energy_conservation, overriden_materials);
 		apply_material_override(override_state.override_energy_conservation_samples, &CPUMaterial::energy_preservation_monte_carlo_samples, material_override.energy_preservation_monte_carlo_samples, overriden_materials);
 
-		m_renderer->update_materials(overriden_materials);
+		m_renderer->update_all_materials(overriden_materials);
 		m_render_window->set_render_dirty(true);
 	}
 
@@ -845,7 +845,7 @@ void ImGuiObjectsWindow::draw_objects_panel()
 			}
 
 			// TODO we would need to recompute the alias table for the emissive lights here
-			m_renderer->update_materials(materials);
+			m_renderer->update_all_materials(materials);
 			m_render_window->set_render_dirty(true);
 		}
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -1129,7 +1129,7 @@ void ImGuiObjectsWindow::draw_objects_panel()
 			material.make_safe();
 			material.precompute_properties();
 
-			m_renderer->update_materials(materials);
+			m_renderer->update_all_materials(materials);
 			m_render_window->set_render_dirty(true);
 		}
 	}

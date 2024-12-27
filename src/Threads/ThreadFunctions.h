@@ -21,6 +21,7 @@ public:
 	 * Frees the memory allocated by the aiScene needed when parsing the scene
 	 */
 	static void load_scene_parse_emissive_triangles(const aiScene* scene, Scene& parsed_scene);
+	static void load_scene_parse_full_opaque_materials(const aiScene* scene, Scene& parsed_scene);
 
 	/**
 	 * Reads 'wanted_channel_count' channels of a 32 bit HDR image from 'filepath' and stores it in 'hdr_image_out'.

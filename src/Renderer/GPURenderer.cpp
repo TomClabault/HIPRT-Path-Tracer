@@ -993,6 +993,7 @@ void GPURenderer::update_render_data()
 		m_render_data.buffers.vertex_normals = reinterpret_cast<float3*>(m_hiprt_scene.vertex_normals.get_device_pointer());
 		m_render_data.buffers.material_indices = reinterpret_cast<int*>(m_hiprt_scene.material_indices.get_device_pointer());
 		m_render_data.buffers.materials_buffer = m_hiprt_scene.materials_buffer.get_device_pointer();
+		m_render_data.buffers.material_opaque = m_hiprt_scene.material_opaque.get_device_pointer();
 		m_render_data.buffers.emissive_triangles_count = m_hiprt_scene.emissive_triangles_count;
 		m_render_data.buffers.emissive_triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.emissive_triangles_indices.get_device_pointer());
 
@@ -1056,12 +1057,14 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 	m_hiprt_scene.material_indices.resize(scene.material_indices.size());
 	m_hiprt_scene.material_indices.upload_data(scene.material_indices.data());
 
+
 	// Uploading the materials after the textures have been parsed because texture
 	// parsing can modify the materials (emission of constant textures are stored in the
 	// material directly for example) so we need to wait for the end of texture parsing
 	// to upload the materials
 	ThreadManager::add_dependency(ThreadManager::RENDERER_UPLOAD_MATERIALS, ThreadManager::SCENE_TEXTURES_LOADING_THREAD_KEY);
-	ThreadManager::start_thread(ThreadManager::RENDERER_UPLOAD_MATERIALS, [this, &scene]() {
+	ThreadManager::start_thread(ThreadManager::RENDERER_UPLOAD_MATERIALS, [this, &scene]() 
+	{
 		OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
 
 		std::vector<DevicePackedTexturedMaterial> packed_gpu_materials(scene.materials.size());
@@ -1070,6 +1073,14 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 
 		m_hiprt_scene.materials_buffer.resize(scene.materials.size());
 		m_hiprt_scene.materials_buffer.upload_data(packed_gpu_materials.data());
+
+		// Computing the opaqueness of materials i.e. whether or not they are FULLY opaque
+		std::vector<unsigned char> material_opaque(scene.materials.size());
+		for (int i = 0; i < scene.materials.size(); i++)
+			material_opaque[i] = scene.material_has_opaque_base_color_texture[i] && scene.materials[i].alpha_opacity == 1.0f;
+		m_hiprt_scene.material_opaque.resize(material_opaque.size());
+		m_hiprt_scene.material_opaque.upload_data(material_opaque);
+		m_hiprt_scene.material_has_opaque_base_color_texture = scene.material_has_opaque_base_color_texture;
 
 		m_hiprt_scene.texcoords_buffer.resize(scene.texcoords.size());
 		m_hiprt_scene.texcoords_buffer.upload_data(scene.texcoords.data());
@@ -1192,14 +1203,25 @@ const std::vector<std::string>& GPURenderer::get_material_names()
 	return m_parsed_scene_metadata.material_names;
 }
 
-void GPURenderer::update_materials(std::vector<CPUMaterial>& materials)
+void GPURenderer::update_all_materials(std::vector<CPUMaterial>& materials)
 {
 	m_current_materials = materials;
 
+	std::vector<unsigned char> original_opacity = m_hiprt_scene.material_opaque.download_data();
+	std::vector<unsigned char> material_opaque(materials.size());
 	std::vector<DevicePackedTexturedMaterial> packed_gpu_materials(materials.size());
 	for (int i = 0; i < materials.size(); i++)
+	{
 		packed_gpu_materials[i] = materials[i].pack_to_GPU();
-	m_hiprt_scene.materials_buffer.upload_data(packed_gpu_materials.data());
+
+		// The material is fully opaque if its base color texture is fully opaque
+		// and if the alpha opacity is fully opaque too (1.0f)
+		material_opaque[i] = materials[i].alpha_opacity == 1.0f && m_hiprt_scene.material_has_opaque_base_color_texture[i];
+	}
+
+	// Because the materials have changed, reuploading the "precomputed oapcity" of the materials
+	m_hiprt_scene.material_opaque.upload_data(material_opaque);
+	m_hiprt_scene.materials_buffer.upload_data(packed_gpu_materials);
 }
 
 const std::vector<BoundingBox>& GPURenderer::get_mesh_bounding_boxes()

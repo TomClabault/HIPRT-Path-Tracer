@@ -27,7 +27,7 @@ HIPRT_DEVICE HIPRT_INLINE bool filter_function(const hiprtRay&, const void*, voi
 		//
 		// Triangles are planar so one given triangle can
 		// never be intersect twice in a row (unless we're absolutely
-		// perfectly parallel to the triangle...)
+		// perfectly parallel to the triangle but let's ignore that...)
 		//
 		// This self-intersection avoidance only works for planar primitives
 		return true;
@@ -36,6 +36,10 @@ HIPRT_DEVICE HIPRT_INLINE bool filter_function(const hiprtRay&, const void*, voi
 		return false;
 
 	int material_index = payload->render_data->buffers.material_indices[hit.primID];
+	if (payload->render_data->buffers.material_opaque[material_index])
+		// The material is fully opaque, no need to test further, accept the intersection
+		return false;
+
 	DevicePackedTexturedMaterial material = payload->render_data->buffers.materials_buffer[material_index];
 
 	// Composition both the alpha of the base color texture and the material

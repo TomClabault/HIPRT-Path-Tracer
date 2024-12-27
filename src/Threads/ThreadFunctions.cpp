@@ -84,24 +84,34 @@ void ThreadFunctions::load_scene_texture(Scene& parsed_scene, std::string scene_
 
         Image8Bit texture = Image8Bit::read_image(full_path, nb_channels, false);
 
+        int material_index = material_indices[thread_index];
         if (type == aiTextureType_EMISSIVE)
         {
             if (texture.is_constant_color(/* threshold */ 5))
             {
                 // The emissive texture is constant color, we can then just not use that texture and use 
                 // the emission filed of the material to store the emission of the texture
-                parsed_scene.materials[material_indices[thread_index]].emission_texture_index = MaterialUtils::CONSTANT_EMISSIVE_TEXTURE;
+                parsed_scene.materials[material_index].emission_texture_index = MaterialUtils::CONSTANT_EMISSIVE_TEXTURE;
 
                 ColorRGBA32F emission_rgba = texture.sample_rgba32f(make_float2(0, 0));
-                parsed_scene.materials[material_indices[thread_index]].emission = ColorRGB32F(emission_rgba.r, emission_rgba.g, emission_rgba.b);
+                parsed_scene.materials[material_index].emission = ColorRGB32F(emission_rgba.r, emission_rgba.g, emission_rgba.b);
             }
             else
                 // If not emissive texture special case, we can actually read the texture
                 parsed_scene.textures[thread_index] = texture;
         }
         else
+        {
             // If not emissive texture special case, we can actually read the texture
+
+            if (type == aiTextureType_DIFFUSE || type == aiTextureType_BASE_COLOR)
+            {
+                // For base color textures, we're going to search for alpha transparency in the texture
+                unsigned char texture_fully_opaque = texture.is_fully_opaque() ? 1 : 0;
+                parsed_scene.material_has_opaque_base_color_texture[material_index] = texture_fully_opaque;
+            }
             parsed_scene.textures[thread_index] = texture;
+        }
 
         thread_index += nb_threads;
     }
@@ -135,6 +145,25 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
             current_triangle_index += mesh->mNumFaces;
     }
 }
+
+//void ThreadFunctions::load_scene_parse_full_opaque_materials(const aiScene* scene, Scene& parsed_scene)
+//{
+//    // Looping over all the materials and setting the opaque flags for the materials 
+//    // that don't have a base color texture and that are fully opaque (opacity == 1.0f)
+//    //
+//    // We're only interested in the materials that don't have a base color texture here because
+//    // materials that  do have a base color texture have already their opaque flag set when the base
+//    // color texture was read from disk (function 'load_scene_texture')
+//    for (int i = 0; i < parsed_scene.materials.size(); i++)
+//    {
+//        CPUMaterial& material = parsed_scene.materials[i];
+//
+//        parsed_scene.material_has_opaque_base_color_texture[i] = true;
+//        if (material.base_color_texture_index != MaterialUtils::NO_TEXTURE)
+//            // The material has a texture so checking if it is fully opaque or not
+//            parsed_scene.material_has_opaque_base_color_texture[i] = parsed_scene.textures[material.base_color_texture_index].is_fully_opaque();
+//    }
+//}
 
 void ThreadFunctions::read_envmap(Image32Bit& hdr_image_out, const std::string& filepath, int wanted_channel_count, bool flip_Y)
 {

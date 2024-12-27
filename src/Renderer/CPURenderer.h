@@ -83,6 +83,9 @@ private:
     std::vector<int> m_alias_table_alias;
 
     std::vector<DevicePackedTexturedMaterial> m_gpu_packed_materials;
+    // Keeps track of which material is fully opaque or not
+    std::vector<unsigned char> m_material_opaque;
+
     GBufferCPURenderer m_g_buffer;
     GBufferCPURenderer m_g_buffer_prev_frame;
 

@@ -92,6 +92,7 @@ struct Scene
     std::vector<float2> texcoords;
     std::vector<int> emissive_triangle_indices;
     std::vector<int> material_indices;
+    std::vector<bool> material_has_opaque_base_color_texture;
 
     bool has_camera = false;
     Camera camera;

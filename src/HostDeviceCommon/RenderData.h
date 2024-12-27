@@ -56,6 +56,14 @@ struct RenderBuffers
 	// Materials array to be indexed by an index retrieved from the 
 	// material_indices array
 	DevicePackedTexturedMaterial* materials_buffer = nullptr;
+	// A buffer that can be indexed by a material_id.
+	// 
+	// If indexing this buffer returns true, then the material is fully opaque
+	// and there is no need to test alpha testing for it
+	//
+	// This is actually a buffer of bools but manipulating bools is annoying so this
+	// is unsigned char. But the value of the unsigned char is either 0 or 1
+	unsigned char* material_opaque = nullptr;
 
 	int emissive_triangles_count = 0;
 	int* emissive_triangles_indices = nullptr;

@@ -257,8 +257,6 @@ bool Image8Bit::is_constant_color(int threshold) const
     for (int i = 0; i < channels; i++)
         first_pixel_color[i] = m_pixel_data[i];
 
-    std::atomic<bool> different_pixel_found = false;
-
     // Comparing the first pixel to all pixels of the texture and returning as soon as we find one
     // that is not within the threshold
     for (int y = 0; y < height; y++)
@@ -266,6 +264,33 @@ bool Image8Bit::is_constant_color(int threshold) const
             for (int i = 0; i < channels; i++)
                 if (std::abs(first_pixel_color[i] - m_pixel_data[(y * width + x) * channels + i]) > threshold)
                     return false;
+
+    return true;
+}
+
+bool Image8Bit::is_fully_opaque() const
+{
+    if (width == 0 || height == 0)
+        // Incorrect image
+        return false;
+
+    if (channels < 4)
+        // No alpha channel so this is fully opaque
+        return true;
+
+    // Comparing the first pixel to all pixels of the texture and returning as soon as we find one
+    // that is not within the threshold
+    for (int y = 0; y < height; y++)
+    {
+        for (int x = 0; x < width; x++)
+        {
+            // Checking the alpha channel
+            // Assuming 4 channels if we're here
+            unsigned char alpha_channel = m_pixel_data[(y * width + x) * 4 + 3];
+            if (alpha_channel != 255)
+                return false;
+        }
+    }
 
     return true;
 }

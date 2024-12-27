@@ -72,6 +72,8 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Assimp::Im
     int num_materials = std::min(scene->mNumMeshes, scene->mNumMaterials);
     prepare_textures(scene, texture_paths, material_texture_indices, material_indices, texture_per_mesh, texture_indices_offsets, texture_count);
     parsed_scene.materials.resize(num_materials);
+    // Default value of 1 so that materials that don't have a base color texture have their "texture" considered has opaque
+    parsed_scene.material_has_opaque_base_color_texture.resize(num_materials, 1);
     parsed_scene.metadata.material_names.resize(num_materials);
     parsed_scene.metadata.mesh_names.resize(scene->mNumMeshes);
     parsed_scene.metadata.mesh_material_indices.resize(scene->mNumMeshes);
@@ -385,8 +387,8 @@ void SceneParser::dispatch_texture_loading(Scene& parsed_scene, const std::strin
 
 void SceneParser::read_material_properties(aiMaterial* mesh_material, CPUMaterial& renderer_material)
 {
-    //Getting the properties that are going to be used by the materials
-    //of the application
+    // Getting the properties that are going to be used by the materials
+    // of the application
 
     aiReturn error_code_emissive;
     mesh_material->Get(AI_MATKEY_COLOR_DIFFUSE, *((aiColor3D*)&renderer_material.base_color));

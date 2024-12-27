@@ -225,7 +225,7 @@ public:
 	const std::vector<CPUMaterial>& get_original_materials();
 	const std::vector<CPUMaterial>& get_current_materials();
 	const std::vector<std::string>& get_material_names();
-	void update_materials(std::vector<CPUMaterial>& materials);
+	void update_all_materials(std::vector<CPUMaterial>& materials);
 
 	const std::vector<BoundingBox>& get_mesh_bounding_boxes();
 	const std::vector<std::string>& get_mesh_names();

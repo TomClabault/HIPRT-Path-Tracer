@@ -110,6 +110,14 @@ struct HIPRTScene
 	OrochiBuffer<int> material_indices;
 	OrochiBuffer<DevicePackedTexturedMaterial> materials_buffer;
 
+	// This vector contains true for a material that has a fully opaque base color texture.
+	// Otherwise, the texture has some alpha transparency in it
+	//
+	// This vector isn't used on the GPU, it's only used by the CPU to basically remember which 
+	// materials had textures with some alpha in it
+	std::vector<bool> material_has_opaque_base_color_texture;
+	OrochiBuffer<unsigned char> material_opaque;
+
 	int emissive_triangles_count = 0;
 	OrochiBuffer<int> emissive_triangles_indices;
 

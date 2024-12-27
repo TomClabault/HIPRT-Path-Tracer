@@ -71,7 +71,7 @@ void ImGuiBakingWindow::draw_ggx_energy_conservation_panel()
 				materials[0].roughness = roughnesses[step / iors.size()];
 				materials[0].make_safe();
 
-				m_renderer->update_materials(materials);
+				m_renderer->update_all_materials(materials);
 				m_render_window->set_render_dirty(true);
 			}
 			else

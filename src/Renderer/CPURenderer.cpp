@@ -141,6 +141,13 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 
     m_render_data.buffers.materials_buffer = m_gpu_packed_materials.data();
     m_render_data.buffers.material_indices = parsed_scene.material_indices.data();
+
+    // Computing the opaqueness of materials i.e. whether or not they are FULLY opaque
+    m_material_opaque.resize(parsed_scene.materials.size());
+    for (int i = 0; i < parsed_scene.materials.size(); i++)
+        m_material_opaque[i] = parsed_scene.material_has_opaque_base_color_texture[i] && parsed_scene.materials[i].alpha_opacity == 1.0f;
+
+    m_render_data.buffers.material_opaque = m_material_opaque.data();
     m_render_data.buffers.has_vertex_normals = parsed_scene.has_vertex_normals.data();
     m_render_data.buffers.pixels = m_framebuffer.get_data_as_ColorRGB32F();
     m_render_data.buffers.triangles_indices = parsed_scene.triangle_indices.data();
