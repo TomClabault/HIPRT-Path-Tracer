@@ -25,12 +25,10 @@ extern ImGuiLogger g_imgui_logger;
 // - texcoords packing --> bring everyone in [0, 1] on the CPU and then encode as uchar?
 // - nested dielectrics in shared mem or global memory, it's pretty slow  in intersect.h
 // - pack ray payload for register usage reduction
-// - pack envmap?
-// - check that sheen still works with  new texture handling
 // - reuse MIS bounce
 // - texture compression
 // - wavefront path tracing
-// - investigate where the big register usage comes from --> split shaders there?
+// - investigate where the big register usage comes from (by commenting lines) --> split shaders there?
 // - split shaders for material specifics?
 // - use wavefront path tracing to evaluate direct  lighting, envmap and BSDF sample in parallel
 // - start shooting camera rays for frame N+1 during frame N?
@@ -793,7 +791,7 @@ void RenderWindow::render()
 		}
 		else if (!is_rendering_done() || m_application_state->render_dirty)
 		{
-			//// We can unmap the renderer's buffers so that OpenGL can use them for displaying
+			// We can unmap the renderer's buffers so that OpenGL can use them for displaying
 			m_renderer->unmap_buffers();
 
 			// Update the display view system so that the display view is changed to the
@@ -803,7 +801,7 @@ void RenderWindow::render()
 			// Denoising to fill the buffers with denoised data (if denoising is enabled)
 			denoise();
 
-			//// We upload the data to the OpenGL textures for displaying
+			// We upload the data to the OpenGL textures for displaying
 			m_display_view_system->upload_relevant_buffers_to_texture();
 
 			// We want the next frame to be displayed with the same 'wants_render_low_resolution' setting
