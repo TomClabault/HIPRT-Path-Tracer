@@ -1145,7 +1145,7 @@ void GPURenderer::set_envmap(const Image32Bit& envmap_image, const std::string& 
 				// uniform lighting instead
 				m_render_data.world_settings.ambient_light_type = AmbientLightType::UNIFORM;
 
-			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_WARNING, "Empty envmap set on the GPURenderer... Defaulting to uniform ambient light type");
+			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_WARNING, "Empty envmap set on the GPURenderer... Defaulting to uniform ambient light instead.");
 
 			return;
 		}
@@ -1153,21 +1153,21 @@ void GPURenderer::set_envmap(const Image32Bit& envmap_image, const std::string& 
 		m_envmap.init_from_image(envmap_image, envmap_filepath);
 		m_envmap.recompute_sampling_data_structure(this, &envmap_image);
 
-		m_render_data.world_settings.envmap = m_envmap.get_orochi_envmap().get_device_texture();
-		m_render_data.world_settings.envmap_width = m_envmap.get_orochi_envmap().width;
-		m_render_data.world_settings.envmap_height = m_envmap.get_orochi_envmap().height;
+		m_render_data.world_settings.envmap = m_envmap.get_packed_data_pointer();
+		m_render_data.world_settings.envmap_width = m_envmap.get_width();
+		m_render_data.world_settings.envmap_height = m_envmap.get_height();
 		// We found an envmap so let's use it
 		m_render_data.world_settings.ambient_light_type = AmbientLightType::ENVMAP;
 
 #if EnvmapSamplingStrategy == ESS_BINARY_SEARCH
-		m_render_data.world_settings.envmap_cdf = m_envmap.get_orochi_envmap().get_cdf_device_pointer();
+		m_render_data.world_settings.envmap_cdf = m_envmap.get_cdf_device_pointer();
 
 		m_render_data.world_settings.alias_table_probas = nullptr;
 		m_render_data.world_settings.alias_table_alias = nullptr;
 #elif EnvmapSamplingStrategy == ESS_ALIAS_TABLE
 		m_render_data.world_settings.envmap_cdf = nullptr;
 
-		m_envmap.get_orochi_envmap().get_alias_table_device_pointers(m_render_data.world_settings.alias_table_probas, m_render_data.world_settings.alias_table_alias);
+		m_envmap.get_alias_table_device_pointers(m_render_data.world_settings.alias_table_probas, m_render_data.world_settings.alias_table_alias);
 #endif
 	});
 }

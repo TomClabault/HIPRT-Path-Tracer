@@ -45,7 +45,7 @@ private:
 	 */
 	void recompute_data(int new_size);
 
-	int m_window_size = 100;
+	int m_window_size = 250;
 
 	// Whether or not we have already initialized all the unordered maps for a given key
 	std::unordered_map<std::string, bool> m_key_init;

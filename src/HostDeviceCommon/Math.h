@@ -33,8 +33,10 @@
 #if !defined(__KERNELCC__) || defined(HIPRT_BITCODE_LINKING)
 #include <hiprt/impl/Math.h>
 
-// For std::atomic in hippt::
+ // For std::atomic in hippt::
 #include <atomic>
+// For std::bit_cast in hippt::
+#include <bit>
 #endif
 
 struct float4x4
@@ -103,6 +105,7 @@ namespace hippt
 
 	__device__ float2 exp(float2 x) { return make_float2(expf(x.x), expf(x.y)); }
 	__device__ float3 exp(float3 x) { return make_float3(expf(x.x), expf(x.y), expf(x.z)); }
+	__device__ float3 ldexp(float3 x, int exp) { return make_float3(ldexpf(x.x, exp), ldexpf(x.y, exp), ldexpf(x.z, exp)); }
 
 	template <typename T>
 	__device__ T square(T x) { return x * x; }
@@ -147,6 +150,8 @@ namespace hippt
 	}
 
 	__device__ float fract(float a) { return a - floorf(a); }
+	__device__ float asfloat(unsigned int x) { return __uint_as_float(x); }
+	__device__ unsigned int asuint(float x) { return __float_as_uint(x); }
 
 #else
 #undef M_PI
@@ -188,6 +193,7 @@ namespace hippt
 
 	inline float2 exp(float2 x) { return make_float2(expf(x.x), expf(x.y)); }
 	inline float3 exp(float3 x) { return make_float3(expf(x.x), expf(x.y), expf(x.z)); }
+	inline float3 ldexp(float3 x, int exp) { return make_float3(std::ldexp(x.x, exp), std::ldexp(x.y, exp), std::ldexp(x.z, exp)); }
 
 	template <typename T>
 	inline T square(T x) { return x * x; }
@@ -231,6 +237,8 @@ namespace hippt
 	}
 
 	inline float fract(float a) { return a - floorf(a); }
+	inline float asfloat(unsigned int x) { return std::bit_cast<float, unsigned int>(x); }
+	inline unsigned int asuint(float x) { return std::bit_cast<unsigned int, float>(x); }
 #endif
 }
 

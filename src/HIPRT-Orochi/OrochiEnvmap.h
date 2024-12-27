@@ -11,7 +11,7 @@
 class OrochiEnvmap : public OrochiTexture
 {
 public:
-	OrochiEnvmap () : OrochiTexture() {}
+	OrochiEnvmap() : OrochiTexture() {}
 	OrochiEnvmap(Image32Bit& image);
 	OrochiEnvmap(const OrochiEnvmap& other) = delete;
 	OrochiEnvmap(OrochiEnvmap&& other) noexcept;

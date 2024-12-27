@@ -34,7 +34,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F eval_envmap_no_pdf(const WorldSetting
     float u = 0.5f + atan2(rotated_direction.z, rotated_direction.x) * M_INV_2_PI;
     float v = 0.5f + asin(rotated_direction.y) * M_INV_PI;
 
-    return sample_environment_map_texture(world_settings, make_float2(u, 1.0f - v));
+    return sample_environment_map_texture(world_settings, make_float2(u, v));
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE void envmap_cdf_search(const WorldSettings& world_settings, float value, int& x, int& y)
@@ -113,7 +113,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F envmap_sample(const WorldSettings& wo
     // Taking envmap rotation into account to bring the direction in world space
     sampled_direction = matrix_X_vec(world_settings.envmap_to_world_matrix, sampled_direction);
 
-    ColorRGB32F env_map_radiance = sample_environment_map_texture(world_settings, make_float2(u, 1.0f - v));
+    ColorRGB32F env_map_radiance = sample_environment_map_texture(world_settings, make_float2(u, v));
     // Computing envmap PDF
     envmap_pdf = env_map_radiance.luminance() / (env_map_total_sum * world_settings.envmap_intensity);
     envmap_pdf *= world_settings.envmap_width * world_settings.envmap_height;

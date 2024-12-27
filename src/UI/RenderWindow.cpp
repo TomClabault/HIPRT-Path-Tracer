@@ -24,6 +24,7 @@ extern ImGuiLogger g_imgui_logger;
 // TODOs  performance improvements branch:
 // - texcoords packing --> bring everyone in [0, 1] on the CPU and then encode as uchar?
 // - nested dielectrics in shared mem or global memory, it's pretty slow  in intersect.h
+// - pack ray payload for register usage reduction
 // - pack envmap?
 // - check that sheen still works with  new texture handling
 // - reuse MIS bounce
@@ -98,20 +99,15 @@ extern ImGuiLogger g_imgui_logger;
 
 // TODO Features:
 // - implement ideas of https://blog.selfshadow.com/publications/s2017-shading-course/imageworks/s2017_pbs_imageworks_slides_v2.pdf
-// - use shared memory for nested dielectrics stack?
 // - software opacity micromaps
-// - pack RGB8 colors into float length + uint packed: https://github.com/nvpro-samples/vk_raytrace/blob/master/shaders/compress.glsl @ compress_unit_vec
 // - cache opacity of materials textures? --> analyze the texture when loading it from the texture and if there isn't a single transparent pixel, then we know that we won't have to fetch the material / texture in the alpha test filter function because the alpha is going to be 1.0f anyways
 // - simpler BSDF for indirect bounces as a biased option for performance?
-// - limit first bounce distance: objects far away won't contribute much to what the camera sees
+// - limit secondary bounces ray distance: objects far away won't contribute much to what the camera sees so shortening the rays should be okay?
 // - limit direct lighting occlusion distance: maybe stochastically so that we get a falloff instead of a hard cut where an important may not contribute anymore
 //		- for maximum ray length, limit that length even more for indirect bounces and even more so if the ray is far away from the camera (beware of mirrors in the scene which the camera can look into and see a far away part of the scene where light could be very biased)
 // - only update the display every so often if accumulating because displaying is expensive (especially at high resolution) on AMD drivers at least
-// - reload shaders button
 // - how to help with shaders combination compilation times? upload bitcodes that ** I ** compile locally to Github? Change some #if to if() where this does not increase register pressure also.
-// - do not evaluate perfectly smooth specular materials to save on computations? Because evaluating is going to yield 0.0f anyways --> dirac distribution. We should only sample those I guess
 // - use bare variables for principled_bsdf_sample CDF[] because local arrays are bad on AMD GPUs
-// - pack ray payload for register usage reduction
 // - pack HDR as color as 9/9/9/5 RGBE? https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/MiniEngine/Core/Shaders/PixelPacking_RGBE.hlsli
 // - next event estimation++? --> 2023 paper improvement
 // - ideas of https://pbr-book.org/4ed/Light_Sources/Further_Reading for performance

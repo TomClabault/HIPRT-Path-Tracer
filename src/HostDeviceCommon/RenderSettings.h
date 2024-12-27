@@ -12,6 +12,8 @@
 
 #include <hiprt/hiprt_common.h>
 
+#define local_min_macro(a, b) ((a) < (b) ? (a) : (b))
+
 class GPURenderer;
 
 struct RISSettings
@@ -81,7 +83,7 @@ struct HIPRTRenderSettings
 	// After how many bounces can russian roulette kick in?
 	// 0 means that the camera ray hits, and then the next bounce
 	// is already susceptible to russian roulette termination
-	int russian_roulette_min_depth = 2;
+	int russian_roulette_min_depth = local_min_macro(5, nb_bounces / 2);
 	// After applying russian roulette(dividing by the continuation probability)
 	// the energy added to the ray throughput is clamped to this maximum value.
 	// 

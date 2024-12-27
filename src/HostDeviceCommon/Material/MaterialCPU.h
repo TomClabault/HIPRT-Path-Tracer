@@ -163,18 +163,55 @@ struct CPUMaterial
      */
     HIPRT_HOST_DEVICE void make_safe()
     {
-        roughness = hippt::max(MaterialUtils::ROUGHNESS_CLAMP, roughness);
-        coat_roughness = hippt::max(MaterialUtils::ROUGHNESS_CLAMP, coat_roughness);
-        sheen_roughness = hippt::max(MaterialUtils::ROUGHNESS_CLAMP, sheen_roughness);
+        // The values are going to be packed before being sent to the GPU
+        // Packing limits the range of values (most of them in [0, 1] because
+        // they are not expected to go higher) so we're clamping the values
+        // to avoid out-of-range-packing 
+        base_color.clamp(0.0f, 1.0f);
 
-        // Clamping to avoid negative emission
-        emission = ColorRGB32F::max(ColorRGB32F(0.0f), emission);
+        metallic = hippt::clamp(0.0f, 1.0f, metallic);
+        metallic_F82.clamp(0.0f, 1.0f);
+        metallic_F90.clamp(0.0f, 1.0f);
+        anisotropy = hippt::clamp(0.0f, 1.0f, anisotropy);
+        anisotropy_rotation = hippt::clamp(0.0f, 1.0f, anisotropy_rotation);
+        second_roughness_weight  = hippt::clamp(0.0f, 1.0f, second_roughness_weight);
+        second_roughness = hippt::clamp(0.0f, 1.0f, second_roughness);
 
+        specular = hippt::clamp(0.0f, 1.0f, specular);
+        specular_tint = hippt::clamp(0.0f, 1.0f, specular_tint);
+        specular_color.clamp(0.0f, 1.0f);
+        specular_darkening = hippt::clamp(0.0f, 1.0f, specular_darkening);
+
+        coat = hippt::clamp(0.0f, 1.0f, coat);
+        coat_medium_absorption.clamp(0.0f, 1.0f);
+        coat_roughness = hippt::clamp(MaterialUtils::ROUGHNESS_CLAMP, 1.0f, coat_roughness);
+        coat_roughening = hippt::clamp(0.0f, 1.0f, coat_roughening);
+        coat_darkening = hippt::clamp(0.0f, 1.0f, coat_darkening);
+        coat_anisotropy = hippt::clamp(0.0f, 1.0f, coat_anisotropy);
+        coat_anisotropy_rotation = hippt::clamp(0.0f, 1.0f, coat_anisotropy_rotation);
+        
+        sheen = hippt::clamp(0.0f, 1.0f, sheen);
+        sheen_roughness = hippt::clamp(MaterialUtils::ROUGHNESS_CLAMP, 1.0f, sheen_roughness);
+        sheen_color.clamp(0.0f, 1.0f);
+
+        specular_transmission = hippt::clamp(0.0f, 1.0f, specular_transmission);
         // Avoiding zero
         absorption_at_distance = hippt::max(absorption_at_distance, 1.0e-4f);
         absorption_color = ColorRGB32F::max(absorption_color, ColorRGB32F(1.0f / 512.0f));
+        absorption_color.clamp(0.0f, 1.0f);
 
+        dispersion_scale = hippt::clamp(0.0f, 1.0f, dispersion_scale);
+
+        thin_film = hippt::clamp(0.0f, 1.0f, thin_film);
+        thin_film_hue_shift_degrees = hippt::clamp(0.0f, 360.0f, thin_film_hue_shift_degrees);
         thin_film_ior = hippt::max(1.0005f, thin_film_ior);
+
+        alpha_opacity = hippt::clamp(0.0f, 1.0f, alpha_opacity);
+
+        dielectric_priority = hippt::clamp(0, 32767, dielectric_priority);
+
+        // Clamping to avoid negative emission
+        emission = ColorRGB32F::max(ColorRGB32F(0.0f), emission);
     }
 
     /*

@@ -2070,7 +2070,11 @@ void ImGuiSettingsWindow::draw_performance_metrics_panel()
 	}
 	if (ImGui::Checkbox("Freeze random", (bool*)&render_settings.freeze_random))
 		m_render_window->set_render_dirty(true);
-	ImGui::Checkbox("Auto samples per frame", (bool*)&m_render_window->get_application_settings()->auto_sample_per_frame);
+	if (ImGui::InputInt("Samples per frame", &render_settings.samples_per_frame))
+		// Clamping to 1
+		render_settings.samples_per_frame = std::max(1, render_settings.samples_per_frame);
+	ImGui::SameLine();
+	ImGui::Checkbox("Auto", &m_application_settings->auto_sample_per_frame);
 
 	bool rolling_window_size_changed = false;
 	int rolling_window_size = m_render_window_perf_metrics->get_window_size();

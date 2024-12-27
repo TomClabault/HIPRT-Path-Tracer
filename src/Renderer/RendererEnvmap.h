@@ -6,7 +6,7 @@
 #ifndef RENDERER_ENVMAP_H
 #define RENDERER_ENVMAP_H
 
-#include "HIPRT-Orochi/OrochiEnvmap.h"
+#include "Image/EnvmapRGBE9995.h"
 
 class GPURenderer;
 
@@ -49,14 +49,21 @@ public:
 	 */
 	void recompute_sampling_data_structure(GPURenderer* renderer, const Image32Bit* = nullptr);
 
-	OrochiEnvmap& get_orochi_envmap();
+	RGBE9995Packed* get_packed_data_pointer();
+	void get_alias_table_device_pointers(float*& out_probas_pointer, int*& out_alias_pointer);
+	float* get_cdf_device_pointer();
+
+	unsigned int get_width();
+	unsigned int get_height();
 
 private:
+	void recompute_CDF(const Image32Bit* image);
+	void recompute_alias_table(const Image32Bit* image);
 
 	/**
-		* Recomputes the envmap matrices if necessary based on
-		* the current values of rotation_X, rotation_Y and rotation_Z
-		*/
+	 * Recomputes the envmap matrices if necessary based on
+	 * the current values of rotation_X, rotation_Y and rotation_Z
+	 */
 	void do_animation(GPURenderer* renderer);
 
 	/**
@@ -70,10 +77,23 @@ private:
 	float prev_rotation_Y = -1.0f;
 	float prev_rotation_Z = -1.0f;
 
+	// The envmap path is saved if we need to load the envmap data again
+	// 
+	// This requires reading from the disk again but this saves memory because
+	// we don't have to store the envmap, we can just read it from the disk again.
+	// And envmaps are heavy so we're actually saving a lot of memory there
 	std::string m_envmap_filepath;
 
 	// This object contains the memory data of the envmap
-	OrochiEnvmap m_orochi_envmap;
+	RGBE9995Envmap<true> m_envmap_data;
+	unsigned int m_width;
+	unsigned int m_height;
+
+	// CDF / Alias table for sampling the envmap
+	OrochiBuffer<float> m_cdf;
+	OrochiBuffer<float> m_alias_table_probas;
+	OrochiBuffer<int> m_alias_table_alias;
+	float m_luminance_total_sum = 0.0f;
 };
 
 #endif

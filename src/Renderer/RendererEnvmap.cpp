@@ -12,8 +12,11 @@
 
 void RendererEnvmap::init_from_image(const Image32Bit& image, const std::string& envmap_filepath)
 {
-	m_orochi_envmap.init_from_image(image);
+	m_envmap_data.pack_from(image);
 	m_envmap_filepath = envmap_filepath;
+
+	m_width = image.width;
+	m_height = image.height;
 }
 
 void RendererEnvmap::update(GPURenderer* renderer)
@@ -28,28 +31,81 @@ void RendererEnvmap::recompute_sampling_data_structure(GPURenderer* renderer, co
 {
 	if (renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY) == ESS_NO_SAMPLING)
 	{
-		m_orochi_envmap.free_cdf();
-		m_orochi_envmap.free_alias_table();
+		m_cdf.free();
+		m_alias_table_alias.free();
+		m_alias_table_probas.free();
 	}
 	else if (renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY) == ESS_BINARY_SEARCH)
 	{
-		if (image != nullptr)
-			m_orochi_envmap.compute_cdf(*image);
-		else
-			m_orochi_envmap.compute_cdf(Image32Bit::read_image_hdr(m_envmap_filepath, 4, true));
+		m_alias_table_alias.free();
+		m_alias_table_probas.free();
 
-		m_orochi_envmap.free_alias_table();
+		recompute_CDF(image);
 	}
 	else if (renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY) == ESS_ALIAS_TABLE)
 	{
-		if (image != nullptr)
-			m_orochi_envmap.compute_alias_table(*image);
-		else
-			m_orochi_envmap.compute_alias_table(Image32Bit::read_image_hdr(m_envmap_filepath, 4, true));
+		m_cdf.free();
 
-		m_orochi_envmap.free_cdf();
+		recompute_alias_table(image);
 	}
 }
+
+void RendererEnvmap::recompute_CDF(const Image32Bit* image)
+{
+	std::vector<float> cdf_data;
+	if (image != nullptr)
+		cdf_data = image->compute_cdf();
+	else
+	{
+		if (m_envmap_filepath.ends_with(".exr"))
+			cdf_data = Image32Bit::read_image_exr(m_envmap_filepath, true).compute_cdf();
+		else
+			cdf_data = Image32Bit::read_image_hdr(m_envmap_filepath, 4, true).compute_cdf();
+	}
+
+	m_cdf.resize(cdf_data.size());
+	m_cdf.upload_data(cdf_data);
+	m_luminance_total_sum = cdf_data.back();
+}
+
+void RendererEnvmap::recompute_alias_table(const Image32Bit* image)
+{
+	std::vector<float> probas;
+	std::vector<int> alias;
+	if (image != nullptr)
+		image->compute_alias_table(probas, alias, &m_luminance_total_sum);
+	else
+	{
+		if (m_envmap_filepath.ends_with(".exr"))
+			Image32Bit::read_image_exr(m_envmap_filepath, true).compute_alias_table(probas, alias, &m_luminance_total_sum);
+		else
+			Image32Bit::read_image_hdr(m_envmap_filepath, 4, true).compute_alias_table(probas, alias, &m_luminance_total_sum);
+	}
+
+	m_alias_table_probas.resize(probas.size());
+	m_alias_table_probas.upload_data(probas);
+	m_alias_table_alias.resize(alias.size());
+	m_alias_table_alias.upload_data(alias);
+}
+
+RGBE9995Packed* RendererEnvmap::get_packed_data_pointer()
+{
+	return m_envmap_data.get_data_pointer();
+}
+
+void RendererEnvmap::get_alias_table_device_pointers(float*& out_probas_pointer, int*& out_alias_pointer)
+{
+	out_probas_pointer = m_alias_table_probas.get_device_pointer();
+	out_alias_pointer = m_alias_table_alias.get_device_pointer();
+}
+
+float* RendererEnvmap::get_cdf_device_pointer()
+{
+	return m_cdf.get_device_pointer();
+}
+
+unsigned int RendererEnvmap::get_width() { return m_width; }
+unsigned int RendererEnvmap::get_height() { return m_height; }
 
 void RendererEnvmap::do_animation(GPURenderer* renderer)
 {
@@ -118,8 +174,8 @@ void RendererEnvmap::update_renderer(GPURenderer* renderer)
 	}
 	else if (renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY) == ESS_BINARY_SEARCH)
 	{
-		world_settings.envmap_cdf = m_orochi_envmap.get_cdf_device_pointer();
-		world_settings.envmap_total_sum = m_orochi_envmap.get_luminance_total_sum();
+		world_settings.envmap_cdf = m_cdf.get_device_pointer();
+		world_settings.envmap_total_sum = m_luminance_total_sum;
 
 		world_settings.alias_table_probas = nullptr;
 		world_settings.alias_table_alias = nullptr;
@@ -127,13 +183,9 @@ void RendererEnvmap::update_renderer(GPURenderer* renderer)
 	else if (renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY) == ESS_ALIAS_TABLE)
 	{
 		world_settings.envmap_cdf = nullptr;
-		world_settings.envmap_total_sum = m_orochi_envmap.get_luminance_total_sum();
+		world_settings.envmap_total_sum = m_luminance_total_sum;
 
-		m_orochi_envmap.get_alias_table_device_pointers(world_settings.alias_table_probas, world_settings.alias_table_alias);
+		world_settings.alias_table_probas = m_alias_table_probas.get_device_pointer();
+		world_settings.alias_table_alias = m_alias_table_alias.get_device_pointer();
 	}
-}
-
-OrochiEnvmap& RendererEnvmap::get_orochi_envmap()
-{
-	return m_orochi_envmap;
 }

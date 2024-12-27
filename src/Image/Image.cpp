@@ -693,7 +693,7 @@ ColorRGB32F* Image32Bit::get_data_as_ColorRGB32F()
 
 ColorRGB32F Image32Bit::get_pixel_ColorRGB32F(int pixel_index) const
 {
-    return ColorRGB32F(m_pixel_data[pixel_index * 3 + 0], m_pixel_data[pixel_index * 3 + 1], m_pixel_data[pixel_index * 3 + 2]);
+    return ColorRGB32F(m_pixel_data[pixel_index * channels + 0], m_pixel_data[pixel_index * channels + 1], m_pixel_data[pixel_index * channels + 2]);
 }
 
 ColorRGBA32F* Image32Bit::get_data_as_ColorRGBA32F()
@@ -703,7 +703,7 @@ ColorRGBA32F* Image32Bit::get_data_as_ColorRGBA32F()
 
 ColorRGBA32F Image32Bit::get_pixel_ColorRGBA32F(int pixel_index) const
 {
-    return ColorRGBA32F(m_pixel_data[pixel_index * 4 + 0], m_pixel_data[pixel_index * 4 + 1], m_pixel_data[pixel_index * 4 + 2], m_pixel_data[pixel_index * 4 + 3]);
+    return ColorRGBA32F(m_pixel_data[pixel_index * channels + 0], m_pixel_data[pixel_index * channels + 1], m_pixel_data[pixel_index * channels + 2], m_pixel_data[pixel_index * channels + 3]);
 }
 
 void Image32Bit::free()

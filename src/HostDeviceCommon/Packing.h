@@ -21,7 +21,7 @@ struct UChar8BoolsPacked
 	template <unsigned char index>
 	HIPRT_HOST_DEVICE bool get_bool() const
 	{
-		return packed & (1 << index);
+		return m_packed & (1 << index);
 	}
 
 	/**
@@ -33,14 +33,14 @@ struct UChar8BoolsPacked
 	HIPRT_HOST_DEVICE void set_bool(bool value)
 	{
 		// Clear the bit
-		packed &= ~(1 << index);
+		m_packed &= ~(1 << index);
 
 		// Sets
-		packed |= (value ? 1 : 0) << index;
+		m_packed |= (value ? 1 : 0) << index;
 	}
 
 private:
-	unsigned char packed = 0;
+	unsigned char m_packed = 0;
 };
 
 /**
@@ -58,40 +58,40 @@ struct ColorRGB24bFloat0_1Packed
 
 	HIPRT_HOST_DEVICE ColorRGB32F get_color() const
 	{
-		float r = static_cast<float>(packed & 0x000000FF) * inv_255;
-		float g = static_cast<float>(packed & 0x0000FF00) * inv_255_shl_8;
-		float b = static_cast<float>((packed & 0x00FF0000) >> 16) * inv_255;
+		float r = static_cast<float>(m_packed & 0x000000FF) * inv_255;
+		float g = static_cast<float>(m_packed & 0x0000FF00) * inv_255_shl_8;
+		float b = static_cast<float>((m_packed & 0x00FF0000) >> 16) * inv_255;
 
 		return ColorRGB32F(r, g, b);
 	}
 
 	HIPRT_HOST_DEVICE float get_float() const
 	{
-		return static_cast<float>((packed & 0xFF000000) >> 24) * inv_255;
+		return static_cast<float>((m_packed & 0xFF000000) >> 24) * inv_255;
 	}
 
 	HIPRT_HOST_DEVICE void set_color(const ColorRGB32F& color)
 	{
 		// Clear 24 lower bits
-		packed &= 0xFF000000;
+		m_packed &= 0xFF000000;
 
 		// Set
-		packed |= static_cast<unsigned char>(color.r * 255.0f);
-		packed |= static_cast<unsigned char>(color.g * 255.0f) << 8;
-		packed |= static_cast<unsigned char>(color.b * 255.0f) << 16;
+		m_packed |= static_cast<unsigned char>(color.r * 255.0f);
+		m_packed |= static_cast<unsigned char>(color.g * 255.0f) << 8;
+		m_packed |= static_cast<unsigned char>(color.b * 255.0f) << 16;
 	}
 
 	HIPRT_HOST_DEVICE void set_float(float float_in_0_1)
 	{
 		// Clear
-		packed &= 0x00FFFFFF;
+		m_packed &= 0x00FFFFFF;
 
 		// Set
-		packed |= static_cast<unsigned char>(float_in_0_1 * 255.0f) << 24;
+		m_packed |= static_cast<unsigned char>(float_in_0_1 * 255.0f) << 24;
 	}
 
 private:
-	unsigned int packed = 0;
+	unsigned int m_packed = 0;
 };
 
 /**
@@ -111,7 +111,7 @@ struct Float4xPacked
 	template <unsigned char index>
 	HIPRT_HOST_DEVICE float get_float() const
 	{ 
-		return static_cast<float>((packed & (0xFF << (index * 8))) >> (index * 8)) * inv_255;
+		return static_cast<float>((m_packed & (0xFF << (index * 8))) >> (index * 8)) * inv_255;
 	}
 
 	/**
@@ -123,14 +123,14 @@ struct Float4xPacked
 	HIPRT_HOST_DEVICE void set_float(float value)
 	{
 		// Clear
-		packed &= ~(0xFF << (index * 8));
+		m_packed &= ~(0xFF << (index * 8));
 
 		// Set
-		packed |= static_cast<unsigned char>(value * 255.0f) << (index * 8);
+		m_packed |= static_cast<unsigned char>(value * 255.0f) << (index * 8);
 	}
 
 private:
-	unsigned int packed = 0;
+	unsigned int m_packed = 0;
 };
 
 /**
@@ -150,7 +150,7 @@ struct Float2xUChar2xPacked
 	template <unsigned char index>
 	HIPRT_HOST_DEVICE float get_float() const
 	{
-		return ((packed & (0xFF << (index * 8))) >> (index * 8)) * inv_255;
+		return ((m_packed & (0xFF << (index * 8))) >> (index * 8)) * inv_255;
 	}
 
 	/**
@@ -161,7 +161,7 @@ struct Float2xUChar2xPacked
 	template <unsigned char index>
 	HIPRT_HOST_DEVICE unsigned char get_uchar() const
 	{
-		return (packed & (0x00FF0000 << (index * 8))) >> (index * 8 + 16);
+		return (m_packed & (0x00FF0000 << (index * 8))) >> (index * 8 + 16);
 	}
 	
 	/**
@@ -171,10 +171,10 @@ struct Float2xUChar2xPacked
 	HIPRT_HOST_DEVICE void set_float(float value)
 	{
 		// Clear
-		packed &= ~(0xFF << (index * 8));
+		m_packed &= ~(0xFF << (index * 8));
 
 		// Set
-		packed |= static_cast<unsigned char>(value * 255.0f) << (index * 8);
+		m_packed |= static_cast<unsigned char>(value * 255.0f) << (index * 8);
 	}
 
 	/**
@@ -184,16 +184,16 @@ struct Float2xUChar2xPacked
 	HIPRT_HOST_DEVICE void set_uchar(unsigned char value)
 	{
 		// Clear
-		packed &= ~(0x00FF0000 << (index * 8));
+		m_packed &= ~(0x00FF0000 << (index * 8));
 
 		// Set
-		packed |= value << (index * 8 + 16);
+		m_packed |= value << (index * 8 + 16);
 	}
 
 private:
 	// Floats are in the 16 LSB
 	// Uchars are in the 16 MSB
-	unsigned int packed = 0;
+	unsigned int m_packed = 0;
 };
 
 /**
@@ -207,7 +207,7 @@ struct Uint2xPacked
 	template <unsigned char index>
 	HIPRT_HOST_DEVICE unsigned short get_value() const
 	{
-		return (packed & (0xFFFF << (index * 16))) >> (index * 16);
+		return (m_packed & (0xFFFF << (index * 16))) >> (index * 16);
 	}
 
 	/**
@@ -217,14 +217,14 @@ struct Uint2xPacked
 	HIPRT_HOST_DEVICE void set_value(unsigned short value)
 	{
 		// Clear
-		packed &= ~(0xFFFF << (index * 16));
+		m_packed &= ~(0xFFFF << (index * 16));
 
 		// Set
-		packed |= value << (index * 16);
+		m_packed |= value << (index * 16);
 	}
 
 private:
-	unsigned int packed = 0;
+	unsigned int m_packed = 0;
 };
 
 /**
@@ -329,6 +329,55 @@ private:
 	unsigned char packed_x;
 	unsigned char packed_y;
 	unsigned char packed_z;
+};
+
+/**
+ * Reference: https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/MiniEngine/Core/Shaders/PixelPacking_RGBE.hlsli
+ */
+struct RGBE9995Packed
+{
+	// RGBE, aka R9G9B9E5_SHAREDEXP, is an unsigned float HDR pixel format where red, green,
+	// and blue all share the same exponent.  The color channels store a 9-bit value ranging
+	// from [0/512, 511/512] which multiplies by 2^Exp and Exp ranges from [-15, 16].
+	// Floating point specials are not encoded.
+	HIPRT_HOST_DEVICE void pack(ColorRGB32F rgb)
+	{
+		// To determine the shared exponent, we must clamp the channels to an expressible range
+		const float kMaxVal = hippt::asfloat(0x477F8000); // 1.FF x 2^+15
+		const float kMinVal = hippt::asfloat(0x37800000); // 1.00 x 2^-16
+
+		// Non-negative and <= kMaxVal
+		rgb.clamp(0.0f, kMaxVal);
+
+		// From the maximum channel we will determine the exponent.  We clamp to a min value
+		// so that the exponent is within the valid 5-bit range.
+		float MaxChannel = hippt::max(hippt::max(kMinVal, rgb.r), hippt::max(rgb.g, rgb.b));
+
+		// 'Bias' has to have the biggest exponent plus 15 (and nothing in the mantissa).  When
+		// added to the three channels, it shifts the explicit '1' and the 8 most significant
+		// mantissa bits into the low 9 bits.  IEEE rules of float addition will round rather
+		// than truncate the discarded bits.  Channels with smaller natural exponents will be
+		// shifted further to the right (discarding more bits).
+		float Bias = hippt::asfloat((hippt::asuint(MaxChannel) + 0x07804000) & 0x7F800000);
+
+		// Shift bits into the right places
+		unsigned int R, G, B;
+		R = hippt::asuint(rgb.r + Bias);
+		G = hippt::asuint(rgb.g + Bias);
+		B = hippt::asuint(rgb.b + Bias);
+
+		unsigned int E = (hippt::asuint(Bias) << 4) + 0x10000000;
+		m_packed = E | B << 18 | G << 9 | (R & 0x1FF);
+	}
+
+	HIPRT_HOST_DEVICE ColorRGB32F unpack() const
+	{
+		float3 rgb = make_float3(m_packed & 0x1FF, (m_packed >> 9) & 0x1FF, (m_packed >> 18) & 0x1FF);
+		return ColorRGB32F(hippt::ldexp(rgb, (int)(m_packed >> 27) - 24));
+	}
+
+private:
+	unsigned int m_packed;
 };
 
 #endif

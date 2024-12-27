@@ -254,7 +254,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
                     {
                         // We're only getting the skysphere radiance for the first rays because the
                         // syksphere is importance sampled.
-
                         skysphere_color = eval_envmap_no_pdf(render_data.world_settings, ray.direction);
 
 #if EnvmapSamplingStrategy == ESS_NO_SAMPLING

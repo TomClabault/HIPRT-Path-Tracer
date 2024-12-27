@@ -7,6 +7,7 @@
 #define HOST_DEVICE_COMMON_WORLD_SETTINGS_H
 
 #include "HostDeviceCommon/Color.h"
+#include "HostDeviceCommon/Packing.h"
 
 enum AmbientLightType
 {
@@ -30,10 +31,9 @@ struct WorldSettings
 	// This can be visually unpleasing because the background will most likely
 	// become completely white and blown out.
 	int envmap_scale_background_intensity = false;
-	// This void pointer is a either a float* for the CPU
-	// or a oroTextureObject_t for the GPU.
-	// Proper reinterpreting of the pointer is done in the kernel.
-	void* envmap = nullptr;
+
+	// Packed RGBE 9/9/9/5 envmap data
+	RGBE9995Packed* envmap;
 
 	// Luminance sum of all the texels of the envmap
 	float envmap_total_sum = 0.0f;

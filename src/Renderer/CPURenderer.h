@@ -9,6 +9,7 @@
 #include "Device/kernel_parameters/ReSTIR/DI/LightPresamplingParameters.h"
 #include "HostDeviceCommon/RenderData.h"
 #include "Image/Image.h"
+#include "Image/EnvmapRGBE9995.h"
 #include "Renderer/BVH.h"
 #include "Renderer/GBufferCPURenderer.h"
 #include "Scene/SceneParser.h"
@@ -76,6 +77,7 @@ private:
     unsigned char m_still_one_ray_active = true;
     AtomicType<unsigned int> m_stop_noise_threshold_count;
 
+    RGBE9995Envmap<false> m_packed_envmap;
     std::vector<float> m_envmap_cdf;
     std::vector<float> m_alias_table_probas;
     std::vector<int> m_alias_table_alias;

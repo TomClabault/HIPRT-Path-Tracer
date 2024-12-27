@@ -201,14 +201,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_texture_3D_rgb_32bits(void* te
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_texture(const WorldSettings& world_settings, float2 uv)
 {
-    const void* envmap_pointer;
-#ifdef __KERNELCC__
-    envmap_pointer = &world_settings.envmap;
-#else
-    envmap_pointer = world_settings.envmap;
-#endif
+    int x = uv.x * (world_settings.envmap_width - 1);
+    int y = uv.y * (world_settings.envmap_height - 1);
+    int index = x + y * world_settings.envmap_width;
 
-    return sample_texture_rgb_32bits(envmap_pointer, 0, /* is_srgb */ false, uv) * world_settings.envmap_intensity;
+    return world_settings.envmap[index].unpack() * world_settings.envmap_intensity;
 }
 
 template <typename T>
