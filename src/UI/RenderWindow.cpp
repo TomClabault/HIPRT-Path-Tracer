@@ -22,7 +22,7 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // TODOs  performance improvements branch:
-// - texcoords packing --> bring everyone in [0, 1] on the CPU and then encode as uchar?
+// - refactor normal mapping to avoid re-reading vertices and stuff that  we may already have read
 // - write a simple normal visualization kernel to basically test pure ray tracing performance with any  scuff
 // - nested dielectrics in shared mem or global memory, it's pretty slow  in intersect.h
 // - pack ray payload for register usage reduction?

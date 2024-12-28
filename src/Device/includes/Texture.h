@@ -7,6 +7,7 @@
 #define DEVICE_TEXTURE_H
 
 #include "Device/includes/FixIntellisense.h"
+#include "Device/includes/TriangleStructures.h"
 
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/RenderData.h"
@@ -208,12 +209,38 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_texture(const 
     return world_settings.envmap[index].unpack() * world_settings.envmap_intensity;
 }
 
+/**
+ * Given the indices of the vertices of a triangle, interpolates the vertices data found
+ * in the 'data' buffer passed as argument as the given UV coordinates
+ */
 template <typename T>
 HIPRT_HOST_DEVICE HIPRT_INLINE T uv_interpolate(int vertex_A_index, int vertex_B_index, int vertex_C_index, T* data, float2 uv)
 {
     return data[vertex_B_index] * uv.x + data[vertex_C_index] * uv.y + data[vertex_A_index] * (1.0f - uv.x - uv.y);
 }
 
+/**
+ * Given the indices of the vertices of a triangle, interpolates the vertices data found
+ * in the 'data' buffer passed as argument as the given UV coordinates
+ */
+template <typename T>
+HIPRT_HOST_DEVICE HIPRT_INLINE T uv_interpolate(TriangleIndices triangle_vertex_indices, T* data, float2 uv)
+{
+    return uv_interpolate(triangle_vertex_indices.x, triangle_vertex_indices.y, triangle_vertex_indices.z, data, uv);
+}
+
+/**
+ * Just a simple "specialization" for when we're interpolating texcoords
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE float2 uv_interpolate(TriangleTexcoords texcoords, float2 uv)
+{
+    return texcoords.y * uv.x + texcoords.z * uv.y + texcoords.x * (1.0f - uv.x - uv.y);
+}
+
+/**
+ * Same as the overloads above but you can call this one when you don't already have the vertex indices
+ * from the place you're calling this function from. This function will then fetch the vertex indices again
+ */
 template <typename T>
 HIPRT_HOST_DEVICE HIPRT_INLINE T uv_interpolate(int* vertex_indices, int primitive_index, T* data, float2 uv)
 {

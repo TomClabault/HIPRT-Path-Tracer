@@ -12,6 +12,7 @@
 #include "Device/includes/ONB.h"
 #include "Device/includes/RayPayload.h"
 #include "Device/includes/Texture.h"
+#include "Device/includes/TriangleStructures.h"
 #include "Device/functions/FilterFunction.h"
 
 #include "HostDeviceCommon/RenderData.h"
@@ -27,65 +28,59 @@ __shared__ static int shared_stack_cache[SharedStackBVHTraversalSize * SharedSta
  * 
  * [1] [Foundations of Game Engine Development: Rendering - Tangent/Bitangent calculation] http://foundationsofgameenginedev.com/#fged2
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 normal_mapping(const HIPRTRenderData& render_data, int normal_map_texture_index, int primitive_index, const float2& interpolated_texcoords, const float3& surface_normal)
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 normal_mapping(const HIPRTRenderData& render_data, int normal_map_texture_index, TriangleIndices triangle_vertex_indices, TriangleTexcoords& texcoords, const float2& interpolated_texcoords, const float3& surface_normal)
 {
-    int vertex_A_index = render_data.buffers.triangles_indices[primitive_index * 3 + 0];
-    int vertex_B_index = render_data.buffers.triangles_indices[primitive_index * 3 + 1];
-    int vertex_C_index = render_data.buffers.triangles_indices[primitive_index * 3 + 2];
-
     // Calculating tangents and bitangents aligned with texture U and V coordinates
-    float2 P0_texcoords = render_data.buffers.texcoords[vertex_A_index];
-    float2 P1_texcoords = render_data.buffers.texcoords[vertex_B_index];
-    float2 P2_texcoords = render_data.buffers.texcoords[vertex_C_index];
+    float2 P0_texcoords = texcoords.x;
+    float2 P1_texcoords = texcoords.y;
+    float2 P2_texcoords = texcoords.z;
 
     float2 delta_P1P0_texcoords = P1_texcoords - P0_texcoords;
     float2 delta_P2P0_texcoords = P2_texcoords - P0_texcoords;
 
-    float3 P0 = render_data.buffers.vertices_positions[vertex_A_index];
-    float3 P1 = render_data.buffers.vertices_positions[vertex_B_index];
-    float3 P2 = render_data.buffers.vertices_positions[vertex_C_index];
+    float3 P0 = render_data.buffers.vertices_positions[triangle_vertex_indices.x];
+    float3 P1 = render_data.buffers.vertices_positions[triangle_vertex_indices.y];
+    float3 P2 = render_data.buffers.vertices_positions[triangle_vertex_indices.z];
 
     float3 edge_P0P1 = P1 - P0;
     float3 edge_P0P2 = P2 - P0;
 
-    float det = delta_P1P0_texcoords.x * delta_P2P0_texcoords.y - delta_P1P0_texcoords.y * delta_P2P0_texcoords.x;
+    // To counter degenerate UVs
+    constexpr float det_bias = 1.0e-6f;
+    float det = delta_P1P0_texcoords.x * delta_P2P0_texcoords.y - delta_P1P0_texcoords.y * delta_P2P0_texcoords.x + det_bias;
     // Check if the det isn't too low to avoid degenerate geometries that can then cause NaNs
-    if (det > 1.0e-6f)
-    {
-        float det_inverse = 1.0f / det;
-        float3 T = (edge_P0P1 * delta_P2P0_texcoords.y - edge_P0P2 * delta_P1P0_texcoords.y) * det_inverse;
-        float3 B = (edge_P0P2 * delta_P1P0_texcoords.x - edge_P0P1 * delta_P2P0_texcoords.x) * det_inverse;
-
-        ColorRGB32F normal = sample_texture_rgb_8bits(render_data.buffers.material_textures, normal_map_texture_index, /* is_srgb */ false, interpolated_texcoords);
-        // Bringing the normal in [-x, x]. x doesn't really matter since we normalize the result anyway
-        normal -= ColorRGB32F(0.5f);
-
-        float3 normal_tangent_space = hippt::normalize(make_float3(normal.r, normal.g, normal.b));
-
-        return local_to_world_frame(hippt::normalize(T), hippt::normalize(B), surface_normal, normal_tangent_space);
-    }
-    else
-        // No surface derivatives basically, can't compute the normal mapping
+    float det_inverse = 1.0f / det;
+    float3 T = (edge_P0P1 * delta_P2P0_texcoords.y - edge_P0P2 * delta_P1P0_texcoords.y) * det_inverse;
+    float3 B = (edge_P0P2 * delta_P1P0_texcoords.x - edge_P0P1 * delta_P2P0_texcoords.x) * det_inverse;
+    if (hippt::length2(T) < 1.0e-6f || hippt::length2(B) < 1.0e-6f)
+        // The tangent or the bitangent is degenerate
         return surface_normal;
+
+    ColorRGB32F normal = sample_texture_rgb_8bits(render_data.buffers.material_textures, normal_map_texture_index, /* is_srgb */ false, interpolated_texcoords);
+    // Bringing the normal in [-x, x]. x doesn't really matter since we normalize the result anyway
+    normal -= ColorRGB32F(0.5f);
+
+    float3 normal_tangent_space = hippt::normalize(make_float3(normal.r, normal.g, normal.b));
+
+    return local_to_world_frame(hippt::normalize(T), hippt::normalize(B), surface_normal, normal_tangent_space);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 get_shading_normal(const HIPRTRenderData& render_data, const float3& geometric_normal, int primitive_index, const float2& uv, const float2& interpolated_texcoords)
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 get_shading_normal(const HIPRTRenderData& render_data, const float3& geometric_normal, TriangleIndices triangle_vertex_indices, TriangleTexcoords triangle_texcoords, int primitive_index, const float2& uv, const float2& interpolated_texcoords)
 {
     int mat_index = render_data.buffers.material_indices[primitive_index];
     DevicePackedTexturedMaterial& material = render_data.buffers.materials_buffer[mat_index];
 
     // Do smooth shading first if we have vertex normals
     float3 surface_normal;
-    int vertex_A_index = render_data.buffers.triangles_indices[primitive_index * 3 + 0];
-    if (render_data.buffers.has_vertex_normals[vertex_A_index])
+    if (render_data.buffers.has_vertex_normals[triangle_vertex_indices.x])
         // Smooth normal available for the triangle
-        surface_normal = hippt::normalize(uv_interpolate(render_data.buffers.triangles_indices, primitive_index, render_data.buffers.vertex_normals, uv));
+        surface_normal = hippt::normalize(uv_interpolate(triangle_vertex_indices, render_data.buffers.vertex_normals, uv));
     else
         surface_normal = geometric_normal;
 
     // Do normal mapping if we have a normal map
     if (material.get_normal_map_texture_index() != MaterialUtils::NO_TEXTURE)
-        surface_normal = normal_mapping(render_data, material.get_normal_map_texture_index(), primitive_index, interpolated_texcoords, surface_normal);
+        surface_normal = normal_mapping(render_data, material.get_normal_map_texture_index(), triangle_vertex_indices, triangle_texcoords, interpolated_texcoords, surface_normal);
 
     return surface_normal;
 }
@@ -155,13 +150,16 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
         if (!hit.hasHit())
             return false;
 
+        TriangleIndices triangle_vertex_indices = load_triangle_vertex_indices(render_data.buffers.triangles_indices, hit.primID);
+        TriangleTexcoords triangle_texcoords = load_triangle_texcoords(render_data.buffers.texcoords, triangle_vertex_indices);
+
         out_hit_info.inter_point = ray.origin + hit.t * ray.direction;
         out_hit_info.primitive_index = hit.primID;
-        out_hit_info.texcoords = uv_interpolate(render_data.buffers.triangles_indices, out_hit_info.primitive_index, render_data.buffers.texcoords, hit.uv);
+        out_hit_info.texcoords = uv_interpolate(triangle_texcoords, hit.uv);
         // TODO hit.normal is in object space, this simple approach will not work if using
         // multiple-levels BVH (TLAS/BLAS). We'll have to  transform by the BLAS transform
         out_hit_info.geometric_normal = hippt::normalize(hit.normal);
-        out_hit_info.shading_normal = get_shading_normal(render_data, out_hit_info.geometric_normal, out_hit_info.primitive_index, hit.uv, out_hit_info.texcoords);
+        out_hit_info.shading_normal = get_shading_normal(render_data, out_hit_info.geometric_normal, triangle_vertex_indices, triangle_texcoords, hit.primID, hit.uv, out_hit_info.texcoords);
 
         out_hit_info.t = hit.t;
         out_hit_info.uv = hit.uv;
@@ -252,7 +250,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& r
     hiprtGlobalStack global_stack(render_data.global_traversal_stack_buffer, shared_stack_buffer);
 
     hiprtGeomTraversalAnyHitCustomStack<hiprtGlobalStack> traversal(render_data.geom, ray, global_stack, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0);
-    //hiprtGeomTraversalAnyHitCustomStack<hiprtGlobalStack> traversal()
 #else
     hiprtGeomTraversalClosest traversal(render_data.geom, ray, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0);
 #endif
@@ -336,20 +333,23 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderD
     int material_index = render_data.buffers.material_indices[shadow_ray_hit.primID];
     int emission_texture_index = render_data.buffers.materials_buffer[material_index].get_emission_texture_index();
 
+    TriangleIndices triangle_vertex_indices = load_triangle_vertex_indices(render_data.buffers.triangles_indices, shadow_ray_hit.primID);
+    TriangleTexcoords triangle_texcoords = load_triangle_texcoords(render_data.buffers.texcoords, triangle_vertex_indices);
+
     if (emission_texture_index != MaterialUtils::NO_TEXTURE)
     {
-        float2 texcoords = uv_interpolate(render_data.buffers.triangles_indices, shadow_ray_hit.primID, render_data.buffers.texcoords, shadow_ray_hit.uv);
-        out_light_hit_info.hit_emission = get_material_property<ColorRGB32F>(render_data, false, texcoords, emission_texture_index);
+        float2 texcoords = uv_interpolate(triangle_texcoords, shadow_ray_hit.uv);
 
-        // Using the already computed texcoords to get the shading normal
-        out_light_hit_info.hit_shading_normal = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), shadow_ray_hit.primID, shadow_ray_hit.uv, texcoords);
+        out_light_hit_info.hit_emission = get_material_property<ColorRGB32F>(render_data, false, texcoords, emission_texture_index);
+        // Getting the shading normal
+        out_light_hit_info.hit_shading_normal = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), triangle_vertex_indices, triangle_texcoords, shadow_ray_hit.primID, shadow_ray_hit.uv, texcoords);
     }
     else
     {
-        out_light_hit_info.hit_emission = render_data.buffers.materials_buffer[material_index].get_emission();
+        float2 texcoords = uv_interpolate(triangle_texcoords, shadow_ray_hit.uv);
 
-        float2 texcoords = uv_interpolate(render_data.buffers.triangles_indices, shadow_ray_hit.primID, render_data.buffers.texcoords, shadow_ray_hit.uv);
-        out_light_hit_info.hit_shading_normal = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), shadow_ray_hit.primID, shadow_ray_hit.uv, texcoords);
+        out_light_hit_info.hit_emission = render_data.buffers.materials_buffer[material_index].get_emission();
+        out_light_hit_info.hit_shading_normal = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), triangle_vertex_indices, triangle_texcoords, shadow_ray_hit.primID, shadow_ray_hit.uv, texcoords);
     }
     
     out_light_hit_info.hit_distance = shadow_ray_hit.t;
@@ -392,20 +392,23 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderD
         int material_index = render_data.buffers.material_indices[shadow_ray_hit.primID];
         int emission_texture_index = render_data.buffers.materials_buffer[material_index].get_emission_texture_index();
 
+        TriangleIndices triangle_vertex_indices = load_triangle_vertex_indices(render_data.buffers.triangles_indices, shadow_ray_hit.primID);
+        TriangleTexcoords triangle_texcoords = load_triangle_texcoords(render_data.buffers.texcoords, triangle_vertex_indices);
+
         if (emission_texture_index != MaterialUtils::NO_TEXTURE)
         {
-            float2 texcoords = uv_interpolate(render_data.buffers.triangles_indices, shadow_ray_hit.primID, render_data.buffers.texcoords, shadow_ray_hit.uv);
-            out_light_hit_info.hit_emission = get_material_property<ColorRGB32F>(render_data, false, texcoords, emission_texture_index);
+            float2 texcoords = uv_interpolate(triangle_texcoords, shadow_ray_hit.uv);
 
-            // Using the already computed texcoords to get the shading normal
-            out_light_hit_info.hit_shading_normal = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), shadow_ray_hit.primID, shadow_ray_hit.uv, texcoords);
+            out_light_hit_info.hit_emission = get_material_property<ColorRGB32F>(render_data, false, texcoords, emission_texture_index);
+            // Getting the shading normal
+            out_light_hit_info.hit_shading_normal = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), triangle_vertex_indices, triangle_texcoords, shadow_ray_hit.primID, shadow_ray_hit.uv, texcoords);
         }
         else
         {
-            out_light_hit_info.hit_emission = render_data.buffers.materials_buffer[material_index].get_emission();
+            float2 texcoords = uv_interpolate(triangle_texcoords, shadow_ray_hit.uv);
 
-            float2 texcoords = uv_interpolate(render_data.buffers.triangles_indices, shadow_ray_hit.primID, render_data.buffers.texcoords, shadow_ray_hit.uv);
-            out_light_hit_info.hit_shading_normal = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), shadow_ray_hit.primID, shadow_ray_hit.uv, texcoords);
+            out_light_hit_info.hit_emission = render_data.buffers.materials_buffer[material_index].get_emission();
+            out_light_hit_info.hit_shading_normal = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), triangle_vertex_indices, triangle_texcoords, shadow_ray_hit.primID, shadow_ray_hit.uv, texcoords);
         }
 
         out_light_hit_info.hit_prim_index = shadow_ray_hit.primID;

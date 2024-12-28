@@ -279,8 +279,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
             }
         }
 
-        // TODO optimize here and if we keep the sample of the BSDF, we don't have to re-test for visibility at the end of the function
-        // because a BSDF sample can only be chosen if it's unoccluded
         reservoir.add_one_candidate(bsdf_RIS_sample, candidate_weight, random_number_generator);
         reservoir.sanity_check();
     }
