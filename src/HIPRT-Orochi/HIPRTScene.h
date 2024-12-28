@@ -57,16 +57,23 @@ struct HIPRTGeometry
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Compiling BVH building kernels & building scene BVH...");
 	}
 
-	void build_bvh()
+	void build_bvh(hiprtBuildFlags build_flags, bool do_compaction)
 	{
 		auto start = std::chrono::high_resolution_clock::now();
+
+		if (m_geometry != nullptr)
+		{
+			HIPRT_CHECK_ERROR(hiprtDestroyGeometry(m_hiprt_ctx, m_geometry));
+
+			m_geometry = nullptr;
+		}
 
 		hiprtBuildOptions build_options;
 		hiprtGeometryBuildInput geometry_build_input;
 		size_t geometry_temp_size;
 		hiprtDevicePtr geometry_temp;
 
-		build_options.buildFlags = hiprtBuildFlagBitPreferHighQualityBuild;
+		build_options.buildFlags = build_flags;
 		geometry_build_input.type = hiprtPrimitiveTypeTriangleMesh;
 		geometry_build_input.primitive.triangleMesh = m_mesh;
 		// Geom type 0 here 
@@ -79,9 +86,10 @@ struct HIPRTGeometry
 
 		HIPRT_CHECK_ERROR(hiprtCreateGeometry(m_hiprt_ctx, geometry_build_input, build_options, m_geometry));
 		HIPRT_CHECK_ERROR(hiprtBuildGeometry(m_hiprt_ctx, hiprtBuildOperationBuild, geometry_build_input, build_options, geometry_temp, /* stream */ 0, m_geometry));
-		HIPRT_CHECK_ERROR(hiprtCompactGeometry(m_hiprt_ctx, 0, m_geometry, m_geometry));
-
 		OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(geometry_temp)));
+
+		if (do_compaction)
+			HIPRT_CHECK_ERROR(hiprtCompactGeometry(m_hiprt_ctx, 0, m_geometry, m_geometry));
 
 		auto stop = std::chrono::high_resolution_clock::now();
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "BVH built in %ldms", std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count());

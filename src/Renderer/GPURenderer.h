@@ -218,6 +218,7 @@ public:
 	RendererEnvmap& get_envmap();
 
 	void set_scene(const Scene& scene);
+	void rebuild_renderer_bvh(hiprtBuildFlags build_flags, bool do_compaction);
 	void set_camera(const Camera& camera);
 	void set_envmap(const Image32Bit& envmap, const std::string& envmap_filepath);
 	bool has_envmap();

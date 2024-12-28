@@ -1856,9 +1856,9 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 	std::shared_ptr<GPUKernelCompilerOptions> kernel_options = m_renderer->get_global_compiler_options();
 	HardwareAccelerationSupport hwi_supported = m_renderer->device_supports_hardware_acceleration();
 
-	if (ImGui::CollapsingHeader("General Settings"))
+	if (ImGui::CollapsingHeader("Ray-tracing settings"))
 	{
-		ImGui::TreePush("Perf settings general settings tree");
+		ImGui::TreePush("Ray-tracing settings tree");
 
 		static bool use_hardware_acceleration = kernel_options->has_macro("__USE_HWI__");
 		ImGui::BeginDisabled(hwi_supported != HardwareAccelerationSupport::SUPPORTED);
@@ -1874,18 +1874,70 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 		// and, if not supported, why we don't support it 
 		switch (hwi_supported)
 		{
-			case SUPPORTED:
-				ImGuiRenderer::show_help_marker("Whether or not to enable hardware accelerated ray tracing (bbox & triangle intersections)");
-				break;
+		case SUPPORTED:
+			ImGuiRenderer::show_help_marker("Whether or not to enable hardware accelerated ray tracing (bbox & triangle intersections)");
+			break;
 
-			case AMD_UNSUPPORTED:
-				ImGuiRenderer::show_help_marker("Hardware accelerated ray tracing is only supported on RDNA2+ AMD GPUs.");
-				break;
+		case AMD_UNSUPPORTED:
+			ImGuiRenderer::show_help_marker("Hardware accelerated ray tracing is only supported on RDNA2+ AMD GPUs.");
+			break;
 
-			case NVIDIA_UNSUPPORTED:
-				ImGuiRenderer::show_help_marker("HIPRT cannot access NVIDIA's proprietary hardware accelerated ray-tracing. Hardware ray-tracing unavailable.");
-				break;
+		case NVIDIA_UNSUPPORTED:
+			ImGuiRenderer::show_help_marker("HIPRT cannot access NVIDIA's proprietary hardware accelerated ray-tracing. Hardware ray-tracing unavailable.");
+			break;
 		}
+
+		bool bvh_needs_rebuild = false;
+		static int build_type_chosen = 0;
+		std::vector<const char*> bvh_items = { "- SBVH", "- HPLOC", "- LBVH"};
+		bvh_needs_rebuild |= ImGui::Combo("BVH Build", &build_type_chosen, bvh_items.data(), bvh_items.size());
+
+		static bool do_triangle_splits = true;
+		bvh_needs_rebuild |= ImGui::Checkbox("Do triangle splits", &do_triangle_splits);
+
+		/*static bool do_triangle_pairing = true;
+		bvh_needs_rebuild |= ImGui::Checkbox("Do triangle pairing", &do_triangle_pairing);*/
+
+		static bool do_bvh_compaction = true;
+		bvh_needs_rebuild |= ImGui::Checkbox("Do BVH compaction", &do_bvh_compaction);
+
+		if (bvh_needs_rebuild)
+		{
+			hiprtBuildFlags build_flags = 0;
+			switch (build_type_chosen)
+			{
+			case 0:
+				// SBVH
+				build_flags |= hiprtBuildFlagBitPreferHighQualityBuild;
+				break;
+
+			case 1:
+				// HPLOC
+				build_flags |= hiprtBuildFlagBitPreferBalancedBuild;
+				break;
+
+			case 2:
+				// LBVH
+				build_flags |= hiprtBuildFlagBitPreferFastBuild;
+				break;
+			}
+
+			/*if (!do_triangle_pairing)
+				build_flags |= hiprtBuildFlagBitDisableTrianglePairing;*/
+
+			if (!do_triangle_splits)
+				build_flags |= hiprtBuildFlagBitDisableSpatialSplits;
+
+			m_renderer->rebuild_renderer_bvh(build_flags, do_bvh_compaction);
+		}
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::TreePop();
+	}
+
+	if (ImGui::CollapsingHeader("General Settings"))
+	{
+		ImGui::TreePush("Perf settings general settings tree");
 
 		if (ImGui::InputFloat("GPU Stall Percentage", &m_application_settings->GPU_stall_percentage))
 			m_application_settings->GPU_stall_percentage = std::max(0.0f, std::min(m_application_settings->GPU_stall_percentage, 99.9f));

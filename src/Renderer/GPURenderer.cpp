@@ -1039,14 +1039,10 @@ void GPURenderer::update_render_data()
 
 void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 {
-	ThreadManager::start_thread(ThreadManager::RENDERER_BUILD_BVH, [this, &scene]() {
-		OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
-
-		m_hiprt_scene.geometry.m_hiprt_ctx = m_hiprt_orochi_ctx->hiprt_ctx;
-		m_hiprt_scene.geometry.upload_indices(scene.triangle_indices);
-		m_hiprt_scene.geometry.upload_vertices(scene.vertices_positions);
-		m_hiprt_scene.geometry.build_bvh();
-	});
+	m_hiprt_scene.geometry.upload_indices(scene.triangle_indices);
+	m_hiprt_scene.geometry.upload_vertices(scene.vertices_positions);
+	m_hiprt_scene.geometry.m_hiprt_ctx = m_hiprt_orochi_ctx->hiprt_ctx;
+	rebuild_renderer_bvh(hiprtBuildFlagBitPreferHighQualityBuild, true);
 
 	m_hiprt_scene.has_vertex_normals.resize(scene.has_vertex_normals.size());
 	m_hiprt_scene.has_vertex_normals.upload_data(scene.has_vertex_normals.data());
@@ -1132,6 +1128,11 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 			m_hiprt_scene.emissive_triangles_indices.upload_data(scene.emissive_triangle_indices.data());
 		}
 	});
+}
+
+void GPURenderer::rebuild_renderer_bvh(hiprtBuildFlags build_flags, bool do_compaction)
+{
+	m_hiprt_scene.geometry.build_bvh(build_flags, do_compaction);
 }
 
 void GPURenderer::set_scene(const Scene& scene)
