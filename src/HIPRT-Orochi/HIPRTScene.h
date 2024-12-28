@@ -79,6 +79,7 @@ struct HIPRTGeometry
 
 		HIPRT_CHECK_ERROR(hiprtCreateGeometry(m_hiprt_ctx, geometry_build_input, build_options, m_geometry));
 		HIPRT_CHECK_ERROR(hiprtBuildGeometry(m_hiprt_ctx, hiprtBuildOperationBuild, geometry_build_input, build_options, geometry_temp, /* stream */ 0, m_geometry));
+		HIPRT_CHECK_ERROR(hiprtCompactGeometry(m_hiprt_ctx, 0, m_geometry, m_geometry));
 
 		OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(geometry_temp)));
 
