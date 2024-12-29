@@ -20,11 +20,13 @@ struct TriangleIndices
 
 HIPRT_HOST_DEVICE HIPRT_INLINE TriangleIndices load_triangle_vertex_indices(int* triangle_indices_buffer, int primitive_index)
 {
+    int primitive_index_3 = primitive_index * 3;
+
     return TriangleIndices
     {
-        triangle_indices_buffer[primitive_index * 3 + 0],
-        triangle_indices_buffer[primitive_index * 3 + 1],
-        triangle_indices_buffer[primitive_index * 3 + 2]
+        triangle_indices_buffer[primitive_index_3 + 0],
+        triangle_indices_buffer[primitive_index_3 + 1],
+        triangle_indices_buffer[primitive_index_3 + 2]
     };
 }
 

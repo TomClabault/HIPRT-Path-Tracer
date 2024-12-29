@@ -1856,6 +1856,56 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 	std::shared_ptr<GPUKernelCompilerOptions> kernel_options = m_renderer->get_global_compiler_options();
 	HardwareAccelerationSupport hwi_supported = m_renderer->device_supports_hardware_acceleration();
 
+	if (ImGui::CollapsingHeader("General Settings"))
+	{
+		ImGui::TreePush("Perf settings general settings tree");
+
+		if (ImGui::InputFloat("GPU Stall Percentage", &m_application_settings->GPU_stall_percentage))
+			m_application_settings->GPU_stall_percentage = std::max(0.0f, std::min(m_application_settings->GPU_stall_percentage, 99.9f));
+		ImGuiRenderer::show_help_marker("How much percent of the time the GPU will be forced to be idle (not rendering anything)."
+										" This feature is basically only meant for GPUs that get too hot to avoid burning your GPUs during long renders if you have"
+										" time to spare.");
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		draw_russian_roulette_options();
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		static bool reuse_bsdf_mis_ray = ReuseBSDFMISRay;
+		if (ImGui::Checkbox("Reuse MIS BSDF ray", &reuse_bsdf_mis_ray))
+		{
+			kernel_options->set_macro_value(GPUKernelCompilerOptions::REUSE_BSDF_MIS_RAY, reuse_bsdf_mis_ray ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+			m_renderer->recompile_kernels();
+			m_render_window->set_render_dirty(true);
+		}
+		ImGuiRenderer::show_help_marker("If checked, the BSDF ray shot for BSDF MIS during the evaluation of NEE will be reused "
+			"for the next bounce.\n\n"
+			""
+			"There is virtually no point in disabling that option. This options i there only for "
+			"performance comparisons with and without reuse");
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::TreePop();
+	}
+
+	if (ImGui::CollapsingHeader("Lighting Settings"))
+	{
+		ImGui::TreePush("Lighting Settings Performance Tree");
+
+		if (ImGui::SliderFloat("Minimum Light Contribution", &render_settings.minimum_light_contribution, 0.0f, 10.0f))
+		{
+			render_settings.minimum_light_contribution = std::max(0.0f, render_settings.minimum_light_contribution);
+			m_render_window->set_render_dirty(true);
+		}
+		ImGuiRenderer::show_help_marker("If a selected light (for direct lighting estimation) contributes at a given "
+										" point less than this 'minimum_light_contribution' value then the light sample is discarded. "
+										"This can improve performance at the cost of some bias depending on the scene.\n"
+										"0.0f to disable");
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::TreePop();
+	}
+
 	if (ImGui::CollapsingHeader("Ray-tracing settings"))
 	{
 		ImGui::TreePush("Ray-tracing settings tree");
@@ -1930,23 +1980,6 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 
 			m_renderer->rebuild_renderer_bvh(build_flags, do_bvh_compaction);
 		}
-
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		ImGui::TreePop();
-	}
-
-	if (ImGui::CollapsingHeader("General Settings"))
-	{
-		ImGui::TreePush("Perf settings general settings tree");
-
-		if (ImGui::InputFloat("GPU Stall Percentage", &m_application_settings->GPU_stall_percentage))
-			m_application_settings->GPU_stall_percentage = std::max(0.0f, std::min(m_application_settings->GPU_stall_percentage, 99.9f));
-		ImGuiRenderer::show_help_marker("How much percent of the time the GPU will be forced to be idle (not rendering anything)."
-										" This feature is basically only meant for GPUs that get too hot to avoid burning your GPUs during long renders if you have"
-										" time to spare.");
-
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		draw_russian_roulette_options();
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();
@@ -2078,23 +2111,6 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 		ImGui::TreePop();
 	}
 
-	if (ImGui::CollapsingHeader("Lighting Settings"))
-	{
-		ImGui::TreePush("Lighting Settings Performance Tree");
-
-		if (ImGui::SliderFloat("Minimum Light Contribution", &render_settings.minimum_light_contribution, 0.0f, 10.0f))
-		{
-			render_settings.minimum_light_contribution = std::max(0.0f, render_settings.minimum_light_contribution);
-			m_render_window->set_render_dirty(true);
-		}
-		ImGuiRenderer::show_help_marker("If a selected light (for direct lighting estimation) contributes at a given "
-										" point less than this 'minimum_light_contribution' value then the light sample is discarded. "
-										"This can improve performance at the cost of some bias depending on the scene.\n"
-										"0.0f to disable");
-
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		ImGui::TreePop();
-	}
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	ImGui::TreePop();

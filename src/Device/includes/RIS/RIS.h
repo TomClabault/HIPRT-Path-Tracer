@@ -79,7 +79,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_reservoir_sample(const HIPRT
     return final_color;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir(const HIPRTRenderData& render_data, const RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir(const HIPRTRenderData& render_data, const RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, MISBSDFRayReuse& mis_ray_reuse)
 {
     // Pushing the intersection point outside the surface (if we're already outside)
     // or inside the surface (if we're inside the surface)
@@ -195,36 +195,25 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
         float bsdf_sample_pdf = 0.0f;
         float target_function = 0.0f;
         float candidate_weight = 0.0f;
-        float3 sampled_direction;
+        float3 sampled_bsdf_direction;
         float3 shadow_ray_origin = evaluated_point;
-        RayVolumeState trash_ray_volume_state = ray_payload.volume_state;
+        RayVolumeState volume_state_after_bsdf_sample = ray_payload.volume_state;
         ColorRGB32F bsdf_color;
 
-        bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, trash_ray_volume_state, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_direction, bsdf_sample_pdf, random_number_generator);
+        bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, volume_state_after_bsdf_sample, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_bsdf_direction, bsdf_sample_pdf, random_number_generator);
 
-        bool refraction_sampled = hippt::dot(sampled_direction, closest_hit_info.shading_normal * inside_surface_multiplier) < 0;
-        if (refraction_sampled)
-        {
-            // If we sampled a refraction, we're pushing the origin of the shadow ray "through"
-            // the surface so that our ray can refract inside the surface
-            //
-            // If we don't do that and we just use the 'evaluated_point' computed at the very
-            // beginning of the function, we're going to intersect ourselves
-
-            shadow_ray_origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f * inside_surface_multiplier * -1.0f;
-        }
-
+        bool refraction_sampled = hippt::dot(sampled_bsdf_direction, closest_hit_info.shading_normal * inside_surface_multiplier) < 0;
         float cosine_at_evaluated_point = 0.0f;
         RISSample bsdf_RIS_sample;
         hiprtRay bsdf_ray;
         if (bsdf_sample_pdf > 0.0f)
         {
             bsdf_ray.origin = shadow_ray_origin;
-            bsdf_ray.direction = sampled_direction;
+            bsdf_ray.direction = sampled_bsdf_direction;
 
             ShadowLightRayHitInfo shadow_light_ray_hit_info;
             bool hit_found = evaluate_shadow_light_ray(render_data, bsdf_ray, 1.0e35f, shadow_light_ray_hit_info, closest_hit_info.primitive_index, random_number_generator);
-            if (hit_found && !shadow_light_ray_hit_info.hit_emission.is_black())
+            if (hit_found)
             {
                 // If we intersected an emissive material, compute the weight. 
                 // Otherwise, the weight is 0 because of the emision being 0 so we just don't compute it
@@ -237,8 +226,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
                 // you're reading. If we are here, this is because we sampled a direction that is
                 // correct for the BSDF. Even if the direction is correct, the dot product may be
                 // negative in the case of refractions / total internal reflections and so in this case,
-                // we'll need to negative the dot product for it to be positive
-                cosine_at_evaluated_point = hippt::abs(hippt::dot(closest_hit_info.shading_normal, sampled_direction));
+                // we'll need to abs() the dot product for it to be positive
+                cosine_at_evaluated_point = hippt::abs(hippt::dot(closest_hit_info.shading_normal, sampled_bsdf_direction));
 
                 // Our target function does not include the geometry term because we're integrating
                 // in solid angle. The geometry term in the target function ( / in the integrand) is only
@@ -246,7 +235,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
                 ColorRGB32F light_contribution = bsdf_color * shadow_light_ray_hit_info.hit_emission * cosine_at_evaluated_point;
                 target_function = light_contribution.luminance();
 
-                float light_pdf = pdf_of_emissive_triangle_hit(render_data, shadow_light_ray_hit_info, sampled_direction);
+                float light_pdf = pdf_of_emissive_triangle_hit(render_data, shadow_light_ray_hit_info, sampled_bsdf_direction);
                 // If we refracting, drop the light PDF to 0
                 // 
                 // Why?
@@ -277,7 +266,25 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
                 bsdf_RIS_sample.bsdf_sample_cosine_term = cosine_at_evaluated_point;
                 bsdf_RIS_sample.target_function = target_function;
             }
+
+            // Fill the MIS BSDF ray reuse structure
+            float3 bsdf_ray_inter_point = closest_hit_info.inter_point + shadow_light_ray_hit_info.hit_distance * sampled_bsdf_direction;
+
+            mis_ray_reuse.fill(shadow_light_ray_hit_info, bsdf_ray_inter_point, sampled_bsdf_direction, bsdf_color, bsdf_sample_pdf,
+                volume_state_after_bsdf_sample,
+                hit_found ? RayState::BOUNCE : RayState::MISSED);
         }
+
+        if (!mis_ray_reuse.has_ray())
+            // If we haven't already filled the structure
+            if (bsdf_sample_pdf == 0.0f)
+                // If the BSDF sample was incorrec, then the structure wasn't filled.
+                // 
+                // But an incorrect BSDF sample should also be considered otherwise this is biased.
+                // This is biased because if we do not indicate that the MIS BSDF sample was
+                // so we're indicating
+                // here that the PDF is 0.0f for that sample
+                mis_ray_reuse.set_bsdf_pdf(0.0f);
 
         reservoir.add_one_candidate(bsdf_RIS_sample, candidate_weight, random_number_generator);
         reservoir.sanity_check();
@@ -287,12 +294,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
     return reservoir;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_lights_RIS(const HIPRTRenderData& render_data, const RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_lights_RIS(const HIPRTRenderData& render_data, const RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, MISBSDFRayReuse& mis_ray_reuse)
 {
     if (render_data.buffers.emissive_triangles_count == 0)
         return ColorRGB32F(0.0f);
 
-    RISReservoir reservoir = sample_bsdf_and_lights_RIS_reservoir(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+    RISReservoir reservoir = sample_bsdf_and_lights_RIS_reservoir(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, mis_ray_reuse);
 
     return evaluate_reservoir_sample(render_data, ray_payload, 
         closest_hit_info, view_direction, 

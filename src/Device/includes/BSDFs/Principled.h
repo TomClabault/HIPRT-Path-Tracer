@@ -789,8 +789,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_specular_layer(const HI
         {
             // If the relative ior is not 1.0f (in which case the specular layer is just a pass through
             // and there is no need to compute anything because the contribution is 0.0f and the layer
-            // attenuation is going to be 1.0f i.e. no attenuation, because again, at IOR 1.0f, it's just a
-            // passthrough)
+            // attenuation is going to be 1.0f i.e. no attenuation
         
             // Tinting the specular reflection color
             contribution *= hippt::lerp(ColorRGB32F(1.0f), material.specular_tint * material.specular_color, material.specular);

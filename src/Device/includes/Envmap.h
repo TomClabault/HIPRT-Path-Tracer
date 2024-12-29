@@ -148,7 +148,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F envmap_eval(const HIPRTRenderData& re
     return envmap_radiance;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_with_mis(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, const RayVolumeState& volume_state, HitInfo& closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_with_mis(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, const RayVolumeState& volume_state, HitInfo& closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, MISBSDFRayReuse& mis_ray_reuse)
 {
     float envmap_pdf;
     float3 sampled_direction;
@@ -217,7 +217,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_with_mis(const
 #endif
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map(const HIPRTRenderData& render_data, const RayPayload& ray_payload, HitInfo& closest_hit_info, const float3& view_direction, int bounce, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map(const HIPRTRenderData& render_data, const RayPayload& ray_payload, HitInfo& closest_hit_info, const float3& view_direction, int bounce, Xorshift32Generator& random_number_generator, MISBSDFRayReuse& mis_ray_reuse)
 {
     const WorldSettings& world_settings = render_data.world_settings;
 
@@ -241,7 +241,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map(const HIPRTRen
 #if EnvmapSamplingStrategy == ESS_NO_SAMPLING
     return ColorRGB32F(0.0f);
 #else
-    return sample_environment_map_with_mis(render_data, ray_payload.material, ray_payload.volume_state, closest_hit_info, view_direction, random_number_generator);
+    return sample_environment_map_with_mis(render_data, ray_payload.material, ray_payload.volume_state, closest_hit_info, view_direction, random_number_generator, mis_ray_reuse);
 #endif
 }
 

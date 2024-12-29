@@ -362,23 +362,9 @@ void GPURenderer::internal_update_global_stack_buffer()
 		buffer_needs_update |= m_render_data.global_traversal_stack_buffer.stackData == nullptr;
 		// Buffer is allocated but the stack size has been changed (through ImGui probably)
 		buffer_needs_update |= m_render_data.global_traversal_stack_buffer_size != m_render_data.global_traversal_stack_buffer.stackSize;
+
 		if (buffer_needs_update)
-		{
-			// Creating the global stack buffer for BVH traversal if it doesn't exist already
-			hiprtGlobalStackBufferInput stackBufferInput
-			{
-				hiprtStackTypeGlobal,
-				hiprtStackEntryTypeInteger,
-				static_cast<uint32_t>(m_render_data.global_traversal_stack_buffer_size),
-				static_cast<uint32_t>(std::ceil(m_render_resolution.x / 8.0f) * 8 * 8 * std::ceil(m_render_resolution.y / 8.0f))
-			};
-
-			if (m_render_data.global_traversal_stack_buffer.stackData != nullptr)
-				// Freeing if the buffer is already created
-				HIPRT_CHECK_ERROR(hiprtDestroyGlobalStackBuffer(m_hiprt_orochi_ctx->hiprt_ctx, m_render_data.global_traversal_stack_buffer));
-
-			HIPRT_CHECK_ERROR(hiprtCreateGlobalStackBuffer(m_hiprt_orochi_ctx->hiprt_ctx, stackBufferInput, m_render_data.global_traversal_stack_buffer));
-		}
+			recreate_global_bvh_stack_buffer();
 	}
 	else
 	{
@@ -405,17 +391,31 @@ bool GPURenderer::needs_global_bvh_stack_buffer()
 	return false;
 }
 
+void GPURenderer::recreate_global_bvh_stack_buffer()
+{
+	int nbBlocksX = std::ceil(m_render_resolution.x / (float)KernelBlockWidthHeight) * KernelBlockWidthHeight;
+	int nbBlocksY = std::ceil(m_render_resolution.y / (float)KernelBlockWidthHeight) * KernelBlockWidthHeight;
+
+	// Resizing the global stack buffer for BVH traversal
+	hiprtGlobalStackBufferInput stackBufferInput
+	{
+		hiprtStackTypeGlobal,
+		hiprtStackEntryTypeInteger,
+		static_cast<uint32_t>(m_render_data.global_traversal_stack_buffer_size),
+		static_cast<uint32_t>(nbBlocksX * nbBlocksY)
+	};
+
+	if (m_render_data.global_traversal_stack_buffer.stackData != nullptr)
+		// Freeing if the buffer already exists
+		HIPRT_CHECK_ERROR(hiprtDestroyGlobalStackBuffer(m_hiprt_orochi_ctx->hiprt_ctx, m_render_data.global_traversal_stack_buffer));
+
+	HIPRT_CHECK_ERROR(hiprtCreateGlobalStackBuffer(m_hiprt_orochi_ctx->hiprt_ctx, stackBufferInput, m_render_data.global_traversal_stack_buffer));
+}
+
 void GPURenderer::render()
 {
 	// Making sure kernels are compiled
 	ThreadManager::join_threads(ThreadManager::COMPILE_KERNELS_THREAD_KEY);
-
-	int tile_size_x = 8;
-	int tile_size_y = 8;
-
-	int2 nb_groups;
-	nb_groups.x = std::ceil(m_render_resolution.x / (float)tile_size_x);
-	nb_groups.y = std::ceil(m_render_resolution.y / (float)tile_size_y);
 
 	map_buffers_for_render();
 	
@@ -468,7 +468,7 @@ void GPURenderer::launch_camera_rays()
 	void* launch_args[] = { &m_render_data, &m_render_resolution };
 
 	m_render_data.random_seed = m_rng.xorshift32();
-	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].launch_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
+	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
 }
 
 void GPURenderer::launch_ReSTIR_DI()
@@ -483,7 +483,7 @@ void GPURenderer::launch_path_tracing()
 	void* launch_args[] = { &m_render_data, &m_render_resolution };
 
 	m_render_data.random_seed = m_rng.xorshift32();
-	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].launch_asynchronous(8, 8, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
+	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
 }
 
 void GPURenderer::synchronize_kernel()
@@ -550,22 +550,7 @@ void GPURenderer::resize(int new_width, int new_height, bool also_resize_interop
 	m_camera.set_aspect(new_aspect);
 
 	if (needs_global_bvh_stack_buffer())
-	{
-		// Resizing the global stack buffer for BVH traversal
-		hiprtGlobalStackBufferInput stackBufferInput
-		{
-			hiprtStackTypeGlobal,
-			hiprtStackEntryTypeInteger,
-			static_cast<uint32_t>(m_render_data.global_traversal_stack_buffer_size),
-			static_cast<uint32_t>(std::ceil(m_render_resolution.x / 8.0f) * 8 * 8 * std::ceil(m_render_resolution.y / 8.0f))
-		};
-
-		if (m_render_data.global_traversal_stack_buffer.stackData != nullptr)
-			// Freeing if the buffer already exists
-			HIPRT_CHECK_ERROR(hiprtDestroyGlobalStackBuffer(m_hiprt_orochi_ctx->hiprt_ctx, m_render_data.global_traversal_stack_buffer));
-
-		HIPRT_CHECK_ERROR(hiprtCreateGlobalStackBuffer(m_hiprt_orochi_ctx->hiprt_ctx, stackBufferInput, m_render_data.global_traversal_stack_buffer));
-	}
+		recreate_global_bvh_stack_buffer();
 
 	m_render_data_buffers_invalidated = true;
 }

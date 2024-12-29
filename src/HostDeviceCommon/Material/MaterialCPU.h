@@ -200,6 +200,7 @@ struct CPUMaterial
         absorption_color = ColorRGB32F::max(absorption_color, ColorRGB32F(1.0f / 512.0f));
         absorption_color.clamp(0.0f, 1.0f);
 
+        dispersion_abbe_number = hippt::max(1.0e-5f, dispersion_abbe_number);
         dispersion_scale = hippt::clamp(0.0f, 1.0f, dispersion_scale);
 
         thin_film = hippt::clamp(0.0f, 1.0f, thin_film);

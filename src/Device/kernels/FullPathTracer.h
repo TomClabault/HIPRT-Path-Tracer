@@ -148,6 +148,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
     ray_payload.material = render_data.g_buffer.materials[pixel_index].unpack();
     ray_payload.volume_state = render_data.g_buffer.ray_volume_states[pixel_index];
 
+    // This structure is going to contain the information for reusing the
+    // BSDF ray when doing NEE with MIS: as a matter of fact, when doing
+    // NEE with MIS, we're shooting a BSDF ray. If that ray doesn't hit
+    // an emissive triangle, we can just reuse that ray for our indirect
+    // bounce ray. That structure contains all that is necessary to reuse
+    // the ray. This structure is filled by the emissive light sampling
+    // or the envmap sampling function
+    MISBSDFRayReuse mis_reuse;
     // + 1 to nb_bounces here because we want "0" bounces to still act as one
     // hit and to return some color
     bool intersection_found = closest_hit_info.primitive_index != -1;
@@ -157,9 +165,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
         {
             if (bounce > 0)
             {
-                // Not tracing for the primary ray because this has already been done in the camera ray pass
-
-                intersection_found = trace_ray(render_data, ray, ray_payload, closest_hit_info, closest_hit_info.primitive_index, random_number_generator);
+                if (ReuseBSDFMISRay && mis_reuse.has_ray())
+                    // Reusing a BSDF MIS ray if there is one available
+                    intersection_found = reuse_mis_ray(render_data, closest_hit_info, ray_payload, -ray.direction, mis_reuse);
+                else
+                    // Not tracing for the primary ray because this has already been done in the camera ray pass
+                    intersection_found = trace_ray(render_data, ray, ray_payload, closest_hit_info, closest_hit_info.primitive_index, random_number_generator);
             }
 
             if (intersection_found)
@@ -187,8 +198,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
                 // ----------------- Direct lighting ----------------- //
                 // --------------------------------------------------- //
 
-                ColorRGB32F light_direct_contribution = sample_one_light(render_data, ray_payload, closest_hit_info, -ray.direction, random_number_generator, make_int2(x, y), res, bounce);
-                ColorRGB32F envmap_direct_contribution = sample_environment_map(render_data, ray_payload, closest_hit_info, -ray.direction, bounce, random_number_generator);
+                ColorRGB32F light_direct_contribution = sample_one_light(render_data, ray_payload, closest_hit_info, -ray.direction, random_number_generator, make_int2(x, y), res, bounce, mis_reuse);
+                ColorRGB32F envmap_direct_contribution = sample_environment_map(render_data, ray_payload, closest_hit_info, -ray.direction, bounce, random_number_generator, mis_reuse);
 
                 // Clamping direct lighting
                 light_direct_contribution = clamp_light_contribution(light_direct_contribution, render_data.render_settings.direct_contribution_clamp, bounce == 0);
@@ -219,16 +230,20 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
 
                 float bsdf_pdf;
                 float3 bounce_direction;
+                ColorRGB32F bsdf_color;
 
-                ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bounce_direction, bsdf_pdf, random_number_generator);
-                ColorRGB32F throughput_attenuation = bsdf_color * hippt::abs(hippt::dot(bounce_direction, closest_hit_info.shading_normal)) / bsdf_pdf;
+                if (ReuseBSDFMISRay && mis_reuse.has_ray())
+                    bsdf_color = reuse_mis_bsdf_sample(bounce_direction, bsdf_pdf, ray_payload, mis_reuse);
+                else
+                    bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bounce_direction, bsdf_pdf, random_number_generator);
 
                 // Terminate ray if bad sampling
                 if (bsdf_pdf <= 0.0f)
                     break;
 
+                ColorRGB32F throughput_attenuation = bsdf_color * hippt::abs(hippt::dot(bounce_direction, closest_hit_info.shading_normal)) / bsdf_pdf;
                 // Russian roulette
-                if (!do_russian_roulette(render_data.render_settings, bounce, ray_payload.volume_state, ray_payload.throughput, throughput_attenuation, random_number_generator))
+                if (!do_russian_roulette(render_data.render_settings, bounce, ray_payload.throughput, throughput_attenuation, random_number_generator))
                     break;
 
                 // Dispersion ray throughput filter

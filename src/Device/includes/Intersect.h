@@ -85,6 +85,43 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 get_shading_normal(const HIPRTRenderData& 
     return surface_normal;
 }
 
+/**
+ * Flips the surface normals if necessary such that they are facing us. 
+ * 
+ * The normals are only flipped if some conditions are met, read the 
+ * comment in the function for more details
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE void fix_backfacing_normals(const RayPayload& ray_payload, HitInfo& hit_info, const float3& view_direction)
+{
+    if ((!ray_payload.is_inside_volume() || ray_payload.material.specular_transmission == 0.0f) && !ray_payload.material.thin_walled)
+    {
+        // If we're not in a volume, there's no reason for the surface normal
+        // not to be facing us so we're flipping it if it as was wrongly oriented
+        // 
+        // Same thing with objects that do not let the rays pass through (non transmissive):
+        // because we can never be inside of these objects, we're always outside.
+        // If we're always outside, there's no reason to have the normals of these objects inverted
+        // and pointing towards the inside of the object.
+        //
+        // Thin objects though can let the rays go inside them. But because they are thin, we won't know that
+        // we're inside "a volume". So the above condition will trigger while we're hitting a thin material
+        // from the inside which will flip the normal the wrong direction. So we're adding an exception for
+        // thin materials here so that we don't flip the normals for thin walled materials
+
+        hit_info.geometric_normal *= hippt::dot(hit_info.geometric_normal, view_direction) < 0.0f ? -1.0f : 1.0f;
+
+        // If that's not enough and the shading normal is below the geometric surface, this will lead to light leaking
+        // because BSDF samples may now be able to sample below the surface so we're flipping the normal to be in the same
+        // hemisphere as the geometric normal
+        hit_info.shading_normal *= hippt::dot(hit_info.shading_normal, hit_info.geometric_normal) < 0.0f ? -1.0f : 1.0f;
+
+        // Reflecting the shading normal about the view direction so that the shading 
+        // normal is in the same hemisphere as the view direction
+        float NdotV = hippt::dot(hit_info.shading_normal, view_direction);
+        hit_info.shading_normal += (2.0f * hippt::clamp(0.0f, 1.0f, -NdotV)) * view_direction;
+    }
+}
+
 #ifndef __KERNELCC__
 #include "Renderer/BVH.h"
 HIPRT_HOST_DEVICE HIPRT_INLINE hiprtHit intersect_scene_cpu(const HIPRTRenderData& render_data, const hiprtRay& ray, int last_hit_primitive_index, Xorshift32Generator& random_number_generator)
@@ -170,32 +207,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
         int material_index = render_data.buffers.material_indices[hit.primID];
         in_out_ray_payload.material = get_intersection_material(render_data, material_index, out_hit_info.texcoords);
 
-        if ((!in_out_ray_payload.is_inside_volume() || in_out_ray_payload.material.specular_transmission == 0.0f) && !in_out_ray_payload.material.thin_walled)
-        {
-            // If we're not in a volume, there's no reason for the normals not to be facing us so we're flipping
-            // if they were wrongly oriented
-            // 
-            // Same thing with objects that do not let the rays pass through (non transmissive):
-            // because we can never be inside of these objects, we're always outside.
-            // If we're always outside, there's no reason to have the normals of these objects inverted.
-            //
-            // Thin objects though can let the rays go inside them. But because they are thin, we won't know that
-            // we're inside "a volume". So the above condition will trigger while we're hitting a thin material
-            // from the inside which will flip the normal the wrong direction. So we're adding an exception for
-            // thin materials here
-
-            out_hit_info.geometric_normal *= hippt::dot(out_hit_info.geometric_normal, -ray.direction) < 0.0f ? -1.0f : 1.0f;
-
-            // If that's not enough and the shading normal is below the geometric surface, this will lead to light leaking
-            // because BSDF samples may now be able to sample below the surface so we're flipping the normal to be in the same
-            // hemisphere as the geometric normal
-            out_hit_info.shading_normal *= hippt::dot(out_hit_info.shading_normal, out_hit_info.geometric_normal) < 0.0f ? -1.0f : 1.0f;
-
-            // Reflecting the shading normal about the view direction so that the shading 
-            // normal is in the same hemisphere as the view direction
-            float NdotV = hippt::dot(out_hit_info.shading_normal, -ray.direction);
-            out_hit_info.shading_normal += (2.0f * hippt::clamp(0.0f, 1.0f, -NdotV)) * -ray.direction;
-        }
+        fix_backfacing_normals(in_out_ray_payload, out_hit_info, -ray.direction);
 
         skipping_volume_boundary = in_out_ray_payload.volume_state.interior_stack.push(
             in_out_ray_payload.volume_state.incident_mat_index, in_out_ray_payload.volume_state.outgoing_mat_index, in_out_ray_payload.volume_state.inside_material, material_index, in_out_ray_payload.material.dielectric_priority);
@@ -335,25 +347,25 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderD
 
     TriangleIndices triangle_vertex_indices = load_triangle_vertex_indices(render_data.buffers.triangles_indices, shadow_ray_hit.primID);
     TriangleTexcoords triangle_texcoords = load_triangle_texcoords(render_data.buffers.texcoords, triangle_vertex_indices);
+    float2 interpolated_texcoords = uv_interpolate(triangle_texcoords, shadow_ray_hit.uv);
 
     if (emission_texture_index != MaterialUtils::NO_TEXTURE)
     {
-        float2 texcoords = uv_interpolate(triangle_texcoords, shadow_ray_hit.uv);
-
-        out_light_hit_info.hit_emission = get_material_property<ColorRGB32F>(render_data, false, texcoords, emission_texture_index);
+        out_light_hit_info.hit_emission = get_material_property<ColorRGB32F>(render_data, false, interpolated_texcoords, emission_texture_index);
         // Getting the shading normal
-        out_light_hit_info.hit_shading_normal = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), triangle_vertex_indices, triangle_texcoords, shadow_ray_hit.primID, shadow_ray_hit.uv, texcoords);
+        out_light_hit_info.hit_shading_normal = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), triangle_vertex_indices, triangle_texcoords, shadow_ray_hit.primID, shadow_ray_hit.uv, interpolated_texcoords);
     }
     else
     {
-        float2 texcoords = uv_interpolate(triangle_texcoords, shadow_ray_hit.uv);
-
         out_light_hit_info.hit_emission = render_data.buffers.materials_buffer[material_index].get_emission();
-        out_light_hit_info.hit_shading_normal = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), triangle_vertex_indices, triangle_texcoords, shadow_ray_hit.primID, shadow_ray_hit.uv, texcoords);
+        out_light_hit_info.hit_shading_normal = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), triangle_vertex_indices, triangle_texcoords, shadow_ray_hit.primID, shadow_ray_hit.uv, interpolated_texcoords);
     }
     
-    out_light_hit_info.hit_distance = shadow_ray_hit.t;
+    out_light_hit_info.hit_interpolated_texcoords = interpolated_texcoords;
+    out_light_hit_info.hit_geometric_normal = shadow_ray_hit.normal;
     out_light_hit_info.hit_prim_index = shadow_ray_hit.primID;
+    out_light_hit_info.hit_material_index = material_index;
+    out_light_hit_info.hit_distance = shadow_ray_hit.t;
 
     return true;
 #else
@@ -366,7 +378,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderD
     hiprtHit shadow_ray_hit;
     do
     {
-        // We should use ray tracing fitler functions here instead of re-tracing new rays
+        // We should use ray tracing filter functions here instead of re-tracing new rays
         shadow_ray_hit = intersect_scene_cpu(render_data, ray, last_hit_primitive_index, random_number_generator);
         if (!shadow_ray_hit.hasHit())
             return false;
@@ -394,24 +406,24 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderD
 
         TriangleIndices triangle_vertex_indices = load_triangle_vertex_indices(render_data.buffers.triangles_indices, shadow_ray_hit.primID);
         TriangleTexcoords triangle_texcoords = load_triangle_texcoords(render_data.buffers.texcoords, triangle_vertex_indices);
+        float2 interpolated_texcoords = uv_interpolate(triangle_texcoords, shadow_ray_hit.uv);
 
         if (emission_texture_index != MaterialUtils::NO_TEXTURE)
         {
-            float2 texcoords = uv_interpolate(triangle_texcoords, shadow_ray_hit.uv);
-
-            out_light_hit_info.hit_emission = get_material_property<ColorRGB32F>(render_data, false, texcoords, emission_texture_index);
+            out_light_hit_info.hit_emission = get_material_property<ColorRGB32F>(render_data, false, interpolated_texcoords, emission_texture_index);
             // Getting the shading normal
-            out_light_hit_info.hit_shading_normal = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), triangle_vertex_indices, triangle_texcoords, shadow_ray_hit.primID, shadow_ray_hit.uv, texcoords);
+            out_light_hit_info.hit_shading_normal = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), triangle_vertex_indices, triangle_texcoords, shadow_ray_hit.primID, shadow_ray_hit.uv, interpolated_texcoords);
         }
         else
         {
-            float2 texcoords = uv_interpolate(triangle_texcoords, shadow_ray_hit.uv);
-
             out_light_hit_info.hit_emission = render_data.buffers.materials_buffer[material_index].get_emission();
-            out_light_hit_info.hit_shading_normal = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), triangle_vertex_indices, triangle_texcoords, shadow_ray_hit.primID, shadow_ray_hit.uv, texcoords);
+            out_light_hit_info.hit_shading_normal = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), triangle_vertex_indices, triangle_texcoords, shadow_ray_hit.primID, shadow_ray_hit.uv, interpolated_texcoords);
         }
 
+        out_light_hit_info.hit_interpolated_texcoords = interpolated_texcoords;
+        out_light_hit_info.hit_geometric_normal = shadow_ray_hit.normal;
         out_light_hit_info.hit_prim_index = shadow_ray_hit.primID;
+        out_light_hit_info.hit_material_index = material_index;
         out_light_hit_info.hit_distance = cumulative_t;
 
         return true;

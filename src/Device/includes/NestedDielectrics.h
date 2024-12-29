@@ -34,7 +34,7 @@ struct InteriorStackImpl<ISS_AUTOMATIC>
 {
 	// TODO leaving material never used ? Or used only where we already know its value so not needed
 	// Unused parameter at the end here to have the same signature as InteriorStackPriority
-	HIPRT_HOST_DEVICE bool push(int& incident_material_index, int& outgoing_material_index, bool& inside_material, int material_index, int)
+	HIPRT_HOST_DEVICE bool push(int& out_incident_material_index, int& out_outgoing_material_index, bool& out_inside_material, int material_index, int)
 	{
 		// Parity of the material we're inserting in the stack
 		bool odd_parity = true;
@@ -74,26 +74,26 @@ struct InteriorStackImpl<ISS_AUTOMATIC>
 		if (odd_parity)
 		{
 			// We are entering the material
-			incident_material_index = stack[last_entered_mat_index].material_index;
-			outgoing_material_index = material_index;
+			out_incident_material_index = stack[last_entered_mat_index].material_index;
+			out_outgoing_material_index = material_index;
 		}
 		else
 		{
 			// Exiting material
-			outgoing_material_index = stack[last_entered_mat_index].material_index;
+			out_outgoing_material_index = stack[last_entered_mat_index].material_index;
 
 			if (last_entered_mat_index < previous_same_mat_index)
-				incident_material_index = material_index;
+				out_incident_material_index = material_index;
 			else
 			{
-				incident_material_index = outgoing_material_index;
+				out_incident_material_index = out_outgoing_material_index;
 
 				// Return true because we are skipping the boundary we just hit
 				return true;
 			}
 		}
 
-		inside_material = !odd_parity;
+		out_inside_material = !odd_parity;
 
 		return false;
 	}
@@ -168,7 +168,7 @@ struct StackPriorityEntry
 template <>
 struct InteriorStackImpl<ISS_WITH_PRIORITIES>
 {
-	HIPRT_HOST_DEVICE bool push(int& incident_material_index, int& outgoing_material_index, bool& inside_material, int material_index, int material_priority)
+	HIPRT_HOST_DEVICE bool push(int& out_incident_material_index, int& out_outgoing_material_index, bool& out_inside_material, int material_index, int material_priority)
 	{
 		// Index of the material we last entered before intersecting the
 		// material we're currently inserting in the stack
@@ -202,7 +202,7 @@ struct InteriorStackImpl<ISS_WITH_PRIORITIES>
 			}
 		}
 		
-		inside_material = !odd_parity;
+		out_inside_material = !odd_parity;
 
 		// Inserting the material in the stack
 		if (stack_position < NestedDielectricsStackSize - 1)
@@ -223,14 +223,14 @@ struct InteriorStackImpl<ISS_WITH_PRIORITIES>
 			if (odd_parity)
 			{
 				// We are entering the material
-				incident_material_index = stack[last_entered_mat_index].material_index;
-				outgoing_material_index = material_index;
+				out_incident_material_index = stack[last_entered_mat_index].material_index;
+				out_outgoing_material_index = material_index;
 			}
 			else
 			{
 				// Exiting material
-				incident_material_index = material_index;
-				outgoing_material_index = stack[last_entered_mat_index].material_index;
+				out_incident_material_index = material_index;
+				out_outgoing_material_index = stack[last_entered_mat_index].material_index;
 			}
 
 			// Not skipping the boundary

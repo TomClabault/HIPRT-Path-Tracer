@@ -86,6 +86,7 @@
  * - The CPU still needs the options to be able to compile the code so here they are, in a CPU-only block
  */
 #ifndef __KERNELCC__
+
 /**
  * Whether or not to use shared memory and a global buffer for BVH traversal of global rays (no maximum distance).
  * 
@@ -94,10 +95,15 @@
 #define UseSharedStackBVHTraversal KERNEL_OPTION_TRUE
 
 /**
+ * Size of the thread blocks for all kernels dispatched by this renderer
+ */
+#define KernelBlockWidthHeight 8
+
+/**
  * Size of the thread blocks used when dispatching the kernels. 
  * This value is used for allocating the shared memory stack for traversal
  */
-#define SharedStackBVHTraversalBlockSize 64
+#define SharedStackBVHTraversalBlockSize (KernelBlockWidthHeight * KernelBlockWidthHeight)
 
  /**
   * Size of the shared memory stack for BVH traversal of "global" rays 
@@ -106,19 +112,13 @@
 #define SharedStackBVHTraversalSize 16
 
 /**
- * How to use materials in the shaders after they've been read from the GBuffer?
+ * If true, the BSDF ray shot for BSDF MIS during the evaluation of NEE will be reused
+ * for the next bounce. 
  * 
- *	- MATERIAL_PACK_STRATEGY_USE_PACKED
- *		Packed materials read from the GBuffer will be kept in their packed form.
- *		This potentially translates into a lesser register usage but unpacking using
- *		bitshifts is necessary everytime we want to read a property from the material
- * 
- *	- MATERIAL_PACK_STRATEGY_USE_UNPACKED
- *		Packed materials read from the GBuffer are unpacked and used unpacked in the shaders.
- *		This potentially translates into a greater register pressure but no bitshifts operations
- *		are necessary when we want to read a property from the material
+ * There is virtually no point in disabling that option. This options i there only for
+ * performance comparisons with and without reuse
  */
-#define MaterialPackingStrategy MATERIAL_PACK_STRATEGY_USE_UNPACKED
+#define ReuseBSDFMISRay KERNEL_OPTION_TRUE
 
 /**
  * Allows the overriding of the BRDF/BSDF used by the path tracer. When an override is used,

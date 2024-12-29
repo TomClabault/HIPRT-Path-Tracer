@@ -12,6 +12,7 @@
 
 #include <hiprt/hiprt_common.h>
 
+// Just used for initializing some structure members below
 #define local_min_macro(a, b) ((a) < (b) ? (a) : (b))
 
 class GPURenderer;

@@ -132,6 +132,8 @@ public:
 	 */
 	bool needs_global_bvh_stack_buffer();
 
+	void recreate_global_bvh_stack_buffer();
+
 	/**
 	 * Renders a frame asynchronously. 
 	 * Querry frame_render_done() to know whether or not the frame has completed or not.

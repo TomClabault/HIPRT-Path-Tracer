@@ -32,15 +32,22 @@ struct HitInfo
 };
 
 /**
- * Information returned by a shadow ray used to test visibility with a light.
- * 
- * Returned by the evaluated_shadow_light_ray() function
+ * Information returned by a shadow ray cast from a BSDF sample. 
+ *
+ * This structure is filled by the 'evaluate_shadow_light_ray()' 
+ * function that is usually called for testing if a BSDF ray 
+ * (used by MIS) sees some emissive geometry or not.
  */
 struct ShadowLightRayHitInfo
 {
     int hit_prim_index;
+    int hit_material_index;
     float hit_distance;
+
+    float2 hit_interpolated_texcoords;
     float3 hit_shading_normal;
+
+    float3 hit_geometric_normal;
     ColorRGB32F hit_emission;
 };
 

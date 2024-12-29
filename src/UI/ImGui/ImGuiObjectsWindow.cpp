@@ -722,10 +722,10 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 
 	ImGui::PopItemWidth();
 
-
 	if (material_override_changed)
 	{
 		std::vector<CPUMaterial> overriden_materials = m_renderer->get_original_materials();
+		material_override.make_safe();
 
 		apply_material_override(override_state.override_base_color, &CPUMaterial::base_color, material_override.base_color, overriden_materials);
 		apply_material_override(override_state.override_roughness, &CPUMaterial::roughness, material_override.roughness, overriden_materials);
@@ -1055,11 +1055,12 @@ void ImGuiObjectsWindow::draw_objects_panel()
 		{
 			ImGui::TreePush("Emission material tree");
 
-			ImGui::BeginDisabled(material.emission_texture_index > 0);
+			bool emission_controlled_by_texture = material.emission_texture_index != MaterialUtils::NO_TEXTURE;
+			ImGui::BeginDisabled(emission_controlled_by_texture);
 			// Displaying original emission in ImGui
 			material_changed |= ImGui::ColorEdit3("Emission", (float*)&material.emission, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
 			ImGui::EndDisabled();
-			if (material.emission_texture_index > 0)
+			if (emission_controlled_by_texture)
 				ImGuiRenderer::show_help_marker("Disabled because the emission of this material is controlled by a texture");
 
 			material_changed |= ImGui::SliderFloat("Emission Strength", &material.emission_strength, 0.0f, 10.0f);

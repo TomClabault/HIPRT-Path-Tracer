@@ -10,6 +10,7 @@
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Intersect.h"
 #include "Device/includes/LightUtils.h"
+#include "Device/includes/MISBSDFRayReuse.h"
 #include "Device/includes/ReSTIR/DI/Reservoir.h"
 #include "Device/includes/ReSTIR/DI/FinalShading.h"
 #include "Device/includes/RIS/RIS.h"
@@ -64,7 +65,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_no_MIS(const HIPRTRe
     return light_source_radiance;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_bsdf(const HIPRTRenderData& render_data, const RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_bsdf(const HIPRTRenderData& render_data, const RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, MISBSDFRayReuse& mis_ray_reuse)
 {
     // Pushing the intersection point outside the surface (if we're already outside)
     // or inside the surface (if we're inside the surface)
@@ -74,17 +75,17 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_bsdf(const HIPRTRend
 
     ColorRGB32F bsdf_radiance = ColorRGB32F(0.0f);
 
-    float direction_pdf;
-    float3 sampled_brdf_direction;
-    RayVolumeState trash_volume_state = ray_payload.volume_state;
-    ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, trash_volume_state, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_brdf_direction, direction_pdf, random_number_generator);
+    float bsdf_sample_pdf;
+    float3 sampled_bsdf_direction;
+    RayVolumeState volume_state_after_bsdf_sample = ray_payload.volume_state;
+    ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, volume_state_after_bsdf_sample, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_bsdf_direction, bsdf_sample_pdf, random_number_generator);
 
-    bool refraction_sampled = hippt::dot(sampled_brdf_direction, closest_hit_info.shading_normal * inside_surface_multiplier) < 0;
-    if (direction_pdf > 0.0f)
+    bool refraction_sampled = hippt::dot(sampled_bsdf_direction, closest_hit_info.shading_normal * inside_surface_multiplier) < 0;
+    if (bsdf_sample_pdf > 0.0f)
     {
         hiprtRay new_ray;
         new_ray.origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f;
-        new_ray.direction = sampled_brdf_direction;
+        new_ray.direction = sampled_bsdf_direction;
 
         if (refraction_sampled)
         {
@@ -102,17 +103,35 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_bsdf(const HIPRTRend
 
         // Checking that we did hit something and if we hit something,
         // it needs to be emissive
-        if (inter_found && !shadow_light_ray_hit_info.hit_emission.is_black())
+        if (inter_found)
         {
-            float cosine_term = hippt::max(0.0f, hippt::dot(closest_hit_info.shading_normal, sampled_brdf_direction));
-            bsdf_radiance = bsdf_color * cosine_term * shadow_light_ray_hit_info.hit_emission / direction_pdf;
+            if (!mis_ray_reuse.has_ray())
+            {
+                // Fill the MIS BSDF ray reuse structure
+                float3 bsdf_ray_inter_point = closest_hit_info.inter_point + shadow_light_ray_hit_info.hit_distance * sampled_bsdf_direction;
+
+                mis_ray_reuse.fill(shadow_light_ray_hit_info, bsdf_ray_inter_point, sampled_bsdf_direction, bsdf_color, bsdf_sample_pdf, 
+                    volume_state_after_bsdf_sample,
+                    /* We did hit some geometry so this is a bounce */ RayState::BOUNCE);
+            }
+
+            float cosine_term = hippt::max(0.0f, hippt::dot(closest_hit_info.shading_normal, sampled_bsdf_direction));
+            bsdf_radiance = bsdf_color * cosine_term * shadow_light_ray_hit_info.hit_emission / bsdf_sample_pdf;
+        }
+        else
+        {
+            // No hit found, we can still reuse that ray as the next bounce, 
+            // it's just that this bounce is going to miss
+            mis_ray_reuse.fill(shadow_light_ray_hit_info, /* the ray missed so we don't care about the next intersection point*/ make_float3(0, 0, 0),
+                sampled_bsdf_direction, bsdf_color, bsdf_sample_pdf,
+                volume_state_after_bsdf_sample, RayState::MISSED);
         }
     }
 
     return bsdf_radiance;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(const HIPRTRenderData& render_data, const RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(const HIPRTRenderData& render_data, const RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, MISBSDFRayReuse& mis_ray_reuse)
 {
     // Pushing the intersection point outside the surface (if we're already outside)
     // or inside the surface (if we're inside the surface)
@@ -164,11 +183,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(const HIPRTRende
 
     ColorRGB32F bsdf_radiance_mis;
 
-    float direction_pdf;
+    float bsdf_sample_pdf;
     float3 sampled_bsdf_direction;
     float3 bsdf_shadow_ray_origin = evaluated_point;
-    RayVolumeState trash_volume_state = ray_payload.volume_state;
-    ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, trash_volume_state, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_bsdf_direction, direction_pdf, random_number_generator);
+    RayVolumeState volume_state_after_bsdf_sample = ray_payload.volume_state;
+    ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, volume_state_after_bsdf_sample, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_bsdf_direction, bsdf_sample_pdf, random_number_generator);
     bool refraction_sampled = hippt::dot(sampled_bsdf_direction, closest_hit_info.shading_normal * inside_surface_multiplier) < 0;
     if (refraction_sampled)
     {
@@ -181,7 +200,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(const HIPRTRende
         bsdf_shadow_ray_origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f * inside_surface_multiplier * -1.0f;
     }
 
-    if (direction_pdf > 0)
+    if (bsdf_sample_pdf > 0)
     {
         hiprtRay new_ray;
         new_ray.origin = bsdf_shadow_ray_origin;
@@ -192,10 +211,20 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(const HIPRTRende
 
         // Checking that we did hit something and if we hit something,
         // it needs to be emissive
-        if (inter_found && !shadow_light_ray_hit_info.hit_emission.is_black())
+        if (inter_found)
         {
+            if (!mis_ray_reuse.has_ray())
+            {
+                // Fill the MIS BSDF ray reuse structure
+                float3 bsdf_ray_inter_point = closest_hit_info.inter_point + shadow_light_ray_hit_info.hit_distance * sampled_bsdf_direction;
+
+                mis_ray_reuse.fill(shadow_light_ray_hit_info, bsdf_ray_inter_point, sampled_bsdf_direction, bsdf_color, bsdf_sample_pdf, 
+                    volume_state_after_bsdf_sample, 
+                    /* We did hit some geometry so this is a bounce */ RayState::BOUNCE);
+            }
+
             float light_pdf = pdf_of_emissive_triangle_hit(render_data, shadow_light_ray_hit_info, sampled_bsdf_direction);
-            float mis_weight = balance_heuristic(direction_pdf, light_pdf);
+            float mis_weight = balance_heuristic(bsdf_sample_pdf, light_pdf);
 
             // Using abs here because we want the dot product to be positive.
             // You may be thinking that if we're doing this, then we're not going to discard BSDF
@@ -207,8 +236,15 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(const HIPRTRende
             // negative in the case of refractions / total internal reflections and so in this case,
             // we'll need to negative the dot product for it to be positive
             float cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, sampled_bsdf_direction));
-            //float cosine_term = hippt::max(0.0f, hippt::dot(closest_hit_info.shading_normal, sampled_brdf_direction));
-            bsdf_radiance_mis = bsdf_color * cosine_term * shadow_light_ray_hit_info.hit_emission * mis_weight / direction_pdf;
+            bsdf_radiance_mis = bsdf_color * cosine_term * shadow_light_ray_hit_info.hit_emission * mis_weight / bsdf_sample_pdf;
+        }
+        else
+        {
+            // No hit found, we can still reuse that ray as the next bounce, 
+            // it's just that this bounce is going to miss
+            mis_ray_reuse.fill(shadow_light_ray_hit_info, /* the ray missed so we don't care about the next intersection point*/ make_float3(0, 0, 0), 
+                sampled_bsdf_direction, bsdf_color, bsdf_sample_pdf,
+                volume_state_after_bsdf_sample, RayState::MISSED);
         }
     }
 
@@ -219,7 +255,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(const HIPRTRende
     return light_source_radiance_mis + bsdf_radiance_mis;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_many_lights(const HIPRTRenderData& render_data, const RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, int2 pixel_coords, int2 resolution, int bounce)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_many_lights(const HIPRTRenderData& render_data, const RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, int2 pixel_coords, int2 resolution, int bounce, MISBSDFRayReuse& mis_ray_reuse)
 {
     ColorRGB32F direct_light_contribution;
 
@@ -230,18 +266,18 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_many_lights(const HIPRTRenderD
 #if DirectLightSamplingStrategy == LSS_UNIFORM_ONE_LIGHT
         direct_light_contribution += sample_one_light_no_MIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 #elif DirectLightSamplingStrategy == LSS_BSDF
-        direct_light_contribution += sample_one_light_bsdf(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+        direct_light_contribution += sample_one_light_bsdf(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, mis_ray_reuse);
 #elif DirectLightSamplingStrategy == LSS_MIS_LIGHT_BSDF
-        direct_light_contribution += sample_one_light_MIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+        direct_light_contribution += sample_one_light_MIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, mis_ray_reuse);
 #elif DirectLightSamplingStrategy == LSS_RIS_BSDF_AND_LIGHT
-        direct_light_contribution += sample_lights_RIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+        direct_light_contribution += sample_lights_RIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, mis_ray_reuse);
 #endif
     }
 
     return direct_light_contribution / render_data.render_settings.number_of_light_samples;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_ReSTIR_DI(const HIPRTRenderData& render_data, const RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, int2 pixel_coords, int2 resolution, int bounce)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_ReSTIR_DI(const HIPRTRenderData& render_data, const RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, int2 pixel_coords, int2 resolution, int bounce, MISBSDFRayReuse& mis_ray_reuse)
 {
     // ReSTIR DI doesn't support explicitely looping to sample
     // multiple lights per shading point so that's why we don't
@@ -260,11 +296,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_ReSTIR_DI(const HIPR
 #if ReSTIR_DI_LaterBouncesSamplingStrategy == RESTIR_DI_LATER_BOUNCES_UNIFORM_ONE_LIGHT
             direct_light_contribution += sample_one_light_no_MIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
 #elif ReSTIR_DI_LaterBouncesSamplingStrategy == RESTIR_DI_LATER_BOUNCES_BSDF
-            direct_light_contribution += sample_one_light_bsdf(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+            direct_light_contribution += sample_one_light_bsdf(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, mis_ray_reuse);
 #elif ReSTIR_DI_LaterBouncesSamplingStrategy == RESTIR_DI_LATER_BOUNCES_MIS_LIGHT_BSDF
-            direct_light_contribution += sample_one_light_MIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+            direct_light_contribution += sample_one_light_MIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, mis_ray_reuse);
 #elif ReSTIR_DI_LaterBouncesSamplingStrategy == RESTIR_DI_LATER_BOUNCES_RIS_BSDF_AND_LIGHT
-            direct_light_contribution += sample_lights_RIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator);
+            direct_light_contribution += sample_lights_RIS(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, mis_ray_reuse);
 #endif
         }
 
@@ -274,7 +310,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_ReSTIR_DI(const HIPR
     return direct_light_contribution;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light(const HIPRTRenderData& render_data, const RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, int2 pixel_coords, int2 resolution, int bounce)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light(const HIPRTRenderData& render_data, const RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, int2 pixel_coords, int2 resolution, int bounce, MISBSDFRayReuse& mis_ray_reuse)
 {
     if (render_data.buffers.emissive_triangles_count == 0 
         && !(render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP && DirectLightSamplingStrategy == LSS_RESTIR_DI))
@@ -292,7 +328,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light(const HIPRTRenderDat
             // If the material is using an emissive texture, we can return its emission when hitting
             // it because we're not importance sampling emissive textures so we're doing it the brute force
             // way for now (there are some things about light warping I think to properly sample emissive
-            // textures)
+            // textures but haven't read too much of that)
             return ray_payload.material.emission;
         else
             // We're not sampling direct lighting if we're already on an
@@ -309,7 +345,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light(const HIPRTRenderDat
     // A light sampling strategy that is not ReSTIR DI
     // meaning that we can sample more than 1 light per
     // path vertex
-    direct_light_contribution = sample_many_lights(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, pixel_coords, resolution, bounce);
+    direct_light_contribution = sample_many_lights(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, pixel_coords, resolution, bounce, mis_ray_reuse);
 
 #elif DirectLightSamplingStrategy == LSS_RESTIR_DI
     direct_light_contribution = sample_one_light_ReSTIR_DI(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, pixel_coords, resolution, bounce);

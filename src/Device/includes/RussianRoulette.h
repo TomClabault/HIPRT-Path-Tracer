@@ -11,7 +11,7 @@
 /**
  * Returns false if the ray should be killed.
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE bool do_russian_roulette(const HIPRTRenderSettings& render_settings, int bounce, const RayVolumeState& volume_state, ColorRGB32F& ray_throughput, const ColorRGB32F& current_weight, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE bool do_russian_roulette(const HIPRTRenderSettings& render_settings, int bounce, ColorRGB32F& ray_throughput, const ColorRGB32F& current_weight, Xorshift32Generator& random_number_generator)
 {
     if (bounce >= render_settings.russian_roulette_min_depth && render_settings.use_russian_roulette)
     {
