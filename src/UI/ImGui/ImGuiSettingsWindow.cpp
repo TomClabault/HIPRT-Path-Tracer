@@ -2131,8 +2131,6 @@ void ImGuiSettingsWindow::draw_performance_metrics_panel()
 	{
 		render_settings.freeze_random = true;
 		render_settings.enable_adaptive_sampling = false;
-		m_application_settings->auto_sample_per_frame = false;
-		render_settings.samples_per_frame = 1;
 
 		m_render_window->set_render_dirty(true);
 	}

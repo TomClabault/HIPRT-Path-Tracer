@@ -104,7 +104,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE DeviceUnpackedEffectiveMaterial get_intersection_
         material.specular_transmission = specular_transmission;
 
     ColorRGB32F emission = get_material_property<ColorRGB32F>(render_data, false, texcoords, material.emission_texture_index);
-    if (material.emission_texture_index == MaterialUtils::NO_TEXTURE)
+    if (material.emission_texture_index == MaterialUtils::NO_TEXTURE || material.emission_texture_index == MaterialUtils::CONSTANT_EMISSIVE_TEXTURE)
         emission = material.emission;
 
     DeviceUnpackedEffectiveMaterial packed_material(material);
