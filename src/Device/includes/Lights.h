@@ -310,6 +310,23 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_ReSTIR_DI(const HIPR
     return direct_light_contribution;
 }
 
+/**
+ * Importance sample lights in the scene with NEE
+ * 
+ * Just a random note for myself and maybe future readers
+ * that are wondering the same:
+ * 
+ * In the case where we shot a ray (camera ray or indirect bounce ray, doesn't matter)
+ * and we hit an emissive material, we should still estimate NEE at that point. i.e. we
+ * should also do NEE when standing on emissive materials because emissive materials can
+ * reflect light just fine (unless they are blackbodies). 
+ * 
+ * Consider a glowing light bulb for example: this is just metal so hot that it glows
+ * but because this is metal, it also reflects light.
+ * 
+ * I think the better morale to remember is that the material being emissive doesn't matter at
+ * all. As long as the material itself reflects light, then we should do NEE.
+ */
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light(const HIPRTRenderData& render_data, const RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, int2 pixel_coords, int2 resolution, int bounce, MISBSDFRayReuse& mis_ray_reuse)
 {
     if (render_data.buffers.emissive_triangles_count == 0 
@@ -322,19 +339,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light(const HIPRTRenderDat
     if (render_data.bsdfs_data.white_furnace_mode && render_data.bsdfs_data.white_furnace_mode_turn_off_emissives)
         return ColorRGB32F(0.0f);
 
-    if (ray_payload.material.is_emissive())
-    {
-        if (ray_payload.material.emissive_texture_used)
-            // If the material is using an emissive texture, we can return its emission when hitting
-            // it because we're not importance sampling emissive textures so we're doing it the brute force
-            // way for now (there are some things about light warping I think to properly sample emissive
-            // textures but haven't read too much of that)
-            return ray_payload.material.emission;
-        else
-            // We're not sampling direct lighting if we're already on an
-            // emissive surface
-            return ColorRGB32F(0.0f);
-    }
+    ColorRGB32F material_self_textured_emission;
+    if (ray_payload.material.emissive_texture_used)
+        // If the material is using an emissive texture, we will add its emission to the NEE estimation
+        // because we're not importance sampling emissive textures so we're doing it the brute force
+        // way for now (there are some things about light warping I think to properly sample emissive
+        // textures but haven't read too much of that)
+        material_self_textured_emission = ray_payload.material.emission;
 
     ColorRGB32F direct_light_contribution;
 #if DirectLightSamplingStrategy == LSS_NO_DIRECT_LIGHT_SAMPLING
@@ -352,7 +363,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light(const HIPRTRenderDat
 #endif
 #endif
 
-    return direct_light_contribution;
+    return direct_light_contribution + material_self_textured_emission;
 }
 
 #endif

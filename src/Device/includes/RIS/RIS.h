@@ -278,12 +278,26 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
         if (!mis_ray_reuse.has_ray())
             // If we haven't already filled the structure
             if (bsdf_sample_pdf == 0.0f)
-                // If the BSDF sample was incorrec, then the structure wasn't filled.
+                // If the BSDF sample was incorrect, then the structure wasn't filled.
                 // 
-                // But an incorrect BSDF sample should also be considered otherwise this is biased.
-                // This is biased because if we do not indicate that the MIS BSDF sample was
-                // so we're indicating
-                // here that the PDF is 0.0f for that sample
+                // But an incorrect BSDF (sampled a reflection that goes below the surface for example)
+                // sample should also be considered otherwise this is biased.
+                // 
+                // This is biased because if we do not indicate anything about the MIS BSDF sample, then
+                // the main path tracing loop is going to assume that there is no BSDF MIS ray to
+                // reuse and so it's going to sample the BSDF for a bounce direction. But that's where the bias is.
+                // By doing this (re-sampling the BSDF again because the first sample we got from MIS was incorrect),
+                // we're eseentially doing rejection sampling on the BSDF. If the BSDF has a GGX lobe 
+                // (which it very much likely has) then we're doing rejection sampling on the GGX distribution. 
+                // We're rejecting samples from the GGX that are below the surface. That's biased. 
+                // Rejection sampling on the GGX distribution cannot be naively done:
+                // 
+                // See this a derivation on why this is biased (leads to energy gains): 
+                // https://computergraphics.stackexchange.com/questions/14123/lots-of-bad-samples-below-the-hemisphere-when-sampling-the-ggx-vndf
+                //
+                // So here we set the PDF to 0.0f to indicate that there was indeed a BSDF sample
+                // sampled by MIS but unfortunately it's invalid and so the ray should be terminated instead of
+                // resampling again from the BSDF (which is biased)
                 mis_ray_reuse.set_bsdf_pdf(0.0f);
 
         reservoir.add_one_candidate(bsdf_RIS_sample, candidate_weight, random_number_generator);
