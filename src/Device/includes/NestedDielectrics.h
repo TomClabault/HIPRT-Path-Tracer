@@ -6,7 +6,7 @@
 #ifndef DEVICE_NESTED_DIELECTRICS_H
 #define DEVICE_NESTED_DIELECTRICS_H
 
-#include "HostDeviceCommon/KernelOptions.h"
+#include "HostDeviceCommon/KernelOptions/KernelOptions.h"
 
 #include <hiprt/hiprt_common.h>
 

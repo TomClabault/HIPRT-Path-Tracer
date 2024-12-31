@@ -153,7 +153,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval(const HIPRT
 
     ColorRGB32F F = ColorRGB32F(full_fresnel_dielectric(HoL, incident_ior, material_ior));
 
-    return torrance_sparrow_GGX_eval<PrincipledBSDFGGXUseMultipleScattering>(render_data, material_roughness, material_anisotropy, F, local_view_direction, local_to_light_direction, local_halfway_vector, out_pdf);
+    return torrance_sparrow_GGX_eval<PrincipledBSDFDoEnergyCompensation>(render_data, material_roughness, material_anisotropy, F, local_view_direction, local_to_light_direction, local_halfway_vector, out_pdf);
 }
 
 /**

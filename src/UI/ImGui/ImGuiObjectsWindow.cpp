@@ -216,10 +216,10 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 
 				case 5:
 					material_override_changed |= draw_material_override_line("IOR", override_state.override_IOR, material_override.ior, 1.0f, 3.0f);
-					if (material_override.ior < 1.0f || material_override.ior > 3.0f)
+					if (material_override.ior < 1.0f || material_override.ior > 3.0f && (material_override.do_glass_energy_compensation || material_override.do_specular_energy_compensation))
 					{
 						ImGui::SameLine();
-						ImGuiRenderer::show_help_marker("Energy conservation behavior is undefined for IORs < 1.0f or IORs > 3.0f", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+						ImGuiRenderer::show_help_marker("Energy compensation behavior is undefined for IORs < 1.0f or IORs > 3.0f", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
 					}
 
 					break;
@@ -493,10 +493,10 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 
 				case 2:
 					material_override_changed |= draw_material_override_line("IOR", override_state.override_IOR, material_override.ior, 1.0f, 3.0f);
-					if (material_override.ior < 1.0f || material_override.ior > 3.0f)
+					if (material_override.ior < 1.0f || material_override.ior > 3.0f && (material_override.do_glass_energy_compensation || material_override.do_specular_energy_compensation))
 					{
 						ImGui::SameLine();
-						ImGuiRenderer::show_help_marker("Energy conservation behavior is undefined for IORs < 1.0f or IORs > 3.0f", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+						ImGuiRenderer::show_help_marker("Energy compensation behavior is undefined for IORs < 1.0f or IORs > 3.0f", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
 					}
 
 					break;
@@ -898,7 +898,7 @@ void ImGuiObjectsWindow::draw_objects_panel()
 			if (material.ior < 1.0f || material.ior > 3.0f)
 			{
 				ImGui::SameLine();
-				ImGuiRenderer::show_help_marker("Energy conservation behavior is undefined for IORs < 1.0f or IORs > 3.0f", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+				ImGuiRenderer::show_help_marker("Energy compensation behavior is undefined for IORs < 1.0f or IORs > 3.0f", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
 			}
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -1008,10 +1008,10 @@ void ImGuiObjectsWindow::draw_objects_panel()
 
 			material_changed |= ImGui::SliderFloat("Transmission", &material.specular_transmission, 0.0f, 1.0f);
 			material_changed |= ImGui::SliderFloat("IOR", &material.ior, 1.0f, 3.0f);
-			if (material.ior < 1.0f || material.ior > 3.0f)
+			if (material.ior < 1.0f || material.ior > 3.0f && (material.do_glass_energy_compensation || material.do_specular_energy_compensation))
 			{
 				ImGui::SameLine();
-				ImGuiRenderer::show_help_marker("Energy conservation behavior is undefined for IORs < 1.0f or IORs > 3.0f", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+				ImGuiRenderer::show_help_marker("Energy compensation behavior is undefined for IORs < 1.0f or IORs > 3.0f", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
 			}
 			material_changed |= ImGui::SliderFloat("Absorption distance", &material.absorption_at_distance, 0.0f, 20.0f);
 			material_changed |= ImGui::ColorEdit3("Absorption color", (float*)&material.absorption_color);

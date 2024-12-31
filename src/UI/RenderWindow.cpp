@@ -27,6 +27,7 @@ extern ImGuiLogger g_imgui_logger;
 // - remove closest hit info .uv ?
 // - load_triangle indices factor * 3
 // - envmap use 3x3 matrices
+// - clearcoat layer is using torrance_sparrow_GGX_eval non-templated?
 // - remove unused dielectrics automatic handling
 // - russian roulette on energy conservation depending on how much energy we're going to compensate?
 // - no energy compensation needed for relative IOR 1 on specular and clearcoat layer?
@@ -49,13 +50,13 @@ extern ImGuiLogger g_imgui_logger;
 // - use the fact that some values are already computed in bsdf_sample to pass them to bsdf_eval in a big BSDFStateStructure or something to avoid recomputing
 // - pack ray payload and other things?
 // - bsdf sampling proba do  =not use array[] for CDF
-// - energy conservation dielectric do not do it ifspecular weight == 0.0f
+// - energy compensation dielectric do not do it ifspecular weight == 0.0f
 // - upload partial materials when a material is modified instead  of reuploading everything
 // - NEE++
 // - schlick fresnel in many places?
 // - compaction - https://github.com/microsoft/directxshadercompiler/wiki/wave-intrinsics#example
 // - flags to enable energy preservation per material
-// - disable energy conservation on smooth glass / smooth metal
+// - disable energy compensation on smooth glass / smooth metal
 // - per material light sampling/BSDF sampling: smooth glass / metal don't need light sampling
 // - launch bounds?
 // - thread group size optimization?

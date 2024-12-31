@@ -24,8 +24,12 @@ public:
 
 	static const std::string BSDF_OVERRIDE;
 	static const std::string PRINCIPLED_BSDF_DIFFUSE_LOBE;
+	static const std::string PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION;
 	static const std::string PRINCIPLED_BSDF_ENFORCE_ENERGY_CONSERVATION;
-	static const std::string PRINCIPLED_BSDF_GGX_MULTIPLE_SCATTERING;
+	static const std::string PRINCIPLED_BSDF_DO_GLASS_ENERGY_COMPENSATION;
+	static const std::string PRINCIPLED_BSDF_DO_CLEARCOAT_ENERGY_COMPENSATION;
+	static const std::string PRINCIPLED_BSDF_DO_METALLIC_ENERGY_COMPENSATION;
+	static const std::string PRINCIPLED_BSDF_DO_SPECULAR_ENERGY_COMPENSATION;
 	static const std::string PRINCIPLED_BSDF_GGX_MULTIPLE_SCATTERING_DO_FRESNEL;
 	static const std::string GGX_SAMPLE_FUNCTION;
 	static const std::string INTERIOR_STACK_STRATEGY;

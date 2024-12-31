@@ -32,7 +32,7 @@ struct BRDFsData
 	void* sheen_ltc_parameters_texture = nullptr;
 
 	// 2D texture for the precomputed directional albedo
-	// for the GGX BRDFs used in the principled BSDF for energy conservation
+	// for the GGX BRDFs used in the principled BSDF for energy compensation
 	// of conductors
 	void* GGX_conductor_Ess = nullptr;
 
@@ -41,7 +41,7 @@ struct BRDFsData
 	void* glossy_dielectric_Ess = nullptr;
 
 	// 3D texture (cos_theta_o, roughness, relative_eta) for the precomputed
-	// directional albedo used for energy conservation of glass objects when
+	// directional albedo used for energy compensation of glass objects when
 	// entering a medium
 	void* GGX_Ess_glass = nullptr;
 	// Table when leaving a medium
@@ -56,8 +56,13 @@ struct BRDFsData
 	// when fetching the LUTs. It's faster but less precise.
 	bool use_hardware_tex_interpolation = false;
 
-	// Whether or not to approximate energy compensation for the clearcoat layer
+	// Whether or not to approximate energy compensation for the clearcoat layer.
+	//
+	// This a "global toggle" and needs to be enabled for the
+	// per-material 'coat_energy_compensation' toggle to have any effect.
 	bool clearcoat_compensation_approximation = true;
+	// Same for the glossy base (specular + diffuse layers of the BSDF)
+	bool glossy_base_energy_compensation = true;
 
 	GGXMaskingShadowingFlavor GGX_masking_shadowing = GGXMaskingShadowingFlavor::HeightCorrelated;
 };

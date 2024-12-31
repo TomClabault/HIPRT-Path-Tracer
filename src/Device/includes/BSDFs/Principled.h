@@ -82,7 +82,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_metallic_eval(const HIPRTR
     ColorRGB32F F_thin_film = thin_film_fresnel(material, incident_ior, HoL);
     ColorRGB32F F = hippt::lerp(F_metal, F_thin_film, material.thin_film);
 
-    return torrance_sparrow_GGX_eval<PrincipledBSDFGGXUseMultipleScattering>(render_data, material.roughness, material.anisotropy, F, local_view_direction, local_to_light_direction, local_half_vector, pdf);
+    return torrance_sparrow_GGX_eval<PrincipledBSDFDoEnergyCompensation && PrincipledBSDFDoMetallicEnergyCompensation>(render_data, material.roughness, material.anisotropy, F, local_view_direction, local_to_light_direction, local_half_vector, pdf);
 }
 
 /**
@@ -201,8 +201,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_specular_eval(
 
     // The specular lobe is just another GGX lobe
     // 
-    // We actually don't want energy conservation here for the specular layer
-    // (hence the torrance_sparrow_GGX_eval<0>) because energy conservation
+    // We actually don't want energy compensation here for the specular layer
+    // (hence the torrance_sparrow_GGX_eval<0>) because energy compensation
     // for the specular layer is handled for the glossy based (specular + diffuse lobe)
     // as a whole, not just in the specular layer 
     ColorRGB32F specular = torrance_sparrow_GGX_eval<0>(render_data, material.roughness, material.anisotropy, F, local_view_direction, local_to_light_direction, local_half_vector, pdf);
@@ -755,7 +755,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_specular_compute_darkening
 
     // Fraction of light that exhibits total internal reflection inside the clearcoat layer,
     // assuming a perfectly diffuse base
-    float Kr = 1.0f - (1.0f - fresnel_hemispherical_albedo_fit(relative_eta)) / (relative_eta * relative_eta); // Eq. 66
+    float Kr = 1.0f - (1.0f - fresnel_hemispherical_albedo_fit(relative_eta)) / (relative_eta * relative_eta); // Eq. 66 of OpenPBR
 
     // For the specular layer total internal reflection, we know that the base below is diffuse
     // so K is just Kr

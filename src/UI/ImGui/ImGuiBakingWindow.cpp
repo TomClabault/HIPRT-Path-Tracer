@@ -27,18 +27,18 @@ void ImGuiBakingWindow::draw()
 
 	ImGui::PushItemWidth(16 * ImGui::GetFontSize());
 
-	draw_ggx_energy_conservation_panel();
+	draw_ggx_energy_compensation_panel();
 
 	ImGui::PopItemWidth();
 
 	ImGui::End();
 }
 
-void ImGuiBakingWindow::draw_ggx_energy_conservation_panel()
+void ImGuiBakingWindow::draw_ggx_energy_compensation_panel()
 {
-	if (ImGui::CollapsingHeader("GGX Energy Conservation"))
+	if (ImGui::CollapsingHeader("GGX Energy compensation"))
 	{
-		ImGui::TreePush("Baking GGX Energy Conservation tree");
+		ImGui::TreePush("Baking GGX Energy compensation tree");
 
 		draw_GGX_conductors();
 		draw_GGX_fresnel();
@@ -201,7 +201,7 @@ void ImGuiBakingWindow::draw_GGX_fresnel()
 
 /**
  * Panel for the GGX directional albedo over the sphere for
- * glass material energy conservation
+ * glass material energy compensation
  */
 void ImGuiBakingWindow::draw_GGX_glass()
 {

@@ -6,6 +6,8 @@
 #ifndef HOST_DEVICE_COMMON_KERNEL_OPTIONS_H
 #define HOST_DEVICE_COMMON_KERNEL_OPTIONS_H
 
+#include "HostDeviceCommon/KernelOptions/PrincipledBSDFKernelOptions.h"
+
 /**
  * This file references the path tracer options that can be passed to HIPCC using the -D <macro>=<value> option.
  * These path tracer options allow "compile-time" branching to enable/disable a variety
@@ -32,9 +34,6 @@
  * Those are simple defines to give names to the option values.
  * This allows the use of LSS_ONE_RANDOM_LIGHT_MIS (for example) instead of a hardcoded '2'
  */
-#define KERNEL_OPTION_FALSE 0
-#define KERNEL_OPTION_TRUE 1
-
 #define MATERIAL_PACK_STRATEGY_USE_PACKED 0
 #define MATERIAL_PACK_STRATEGY_USE_UNPACKED 1
 
@@ -42,13 +41,6 @@
 #define BSDF_LAMBERTIAN 1
 #define BSDF_OREN_NAYAR 2
 #define BSDF_PRINCIPLED 3
-
-#define PRINCIPLED_DIFFUSE_LOBE_LAMBERTIAN 0
-#define PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR 1
-
-#define GGX_VNDF_SAMPLING 0
-#define GGX_VNDF_SPHERICAL_CAPS 1
-#define GGX_VNDF_BOUNDED 2
 
 #define ISS_AUTOMATIC 0
 #define ISS_WITH_PRIORITIES 1
@@ -138,70 +130,6 @@
  *		All materials will use the Principled BSDF
  */
 #define BSDFOverride BSDF_NONE
-
-/**
- * What diffuse lobe to use in the principled BSDF.
- * 
- *	- PRINCIPLED_DIFFUSE_LOBE_LAMBERTIAN
- *		Use a lambertian BRDF for the diffuse lobe
- * 
- *	- PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR
- *		Use an Oren-Nayar BRDF for the diffuse lobe
- */
-#define PrincipledBSDFDiffuseLobe PRINCIPLED_DIFFUSE_LOBE_LAMBERTIAN
-
- /**
-  * What sampling strategy to use for the GGX NDF
-  *
-  *  - GGX_NO_VNDF [Not Yet Implemented]
-  *		Not sampling the visible distribution of normals.
-  *		Just classic GGX sampling
-  *
-  *  - GGX_VNDF_SAMPLING
-  *		Sample the distribution of visible normals as proposed
-  *		in [Sampling the GGX Distribution of Visible Normals, Heitz, 2018]
-  *
-  *  - GGX_VNDF_SPHERICAL_CAPS
-  *		Sample the distribution of visible normals using spherical
-  *		caps as proposed in [Sampling Visible GGX Normals with Spherical Caps, Dupuy & Benyoub, 2023]
-  *
-  *  - GGX_VNDF_BOUNDED [Not Yet Implemented]
-  *		Sample the distribution of visible normals with a bounded VNDF
-  *		sampling range as proposed in [Bounded VNDF Sampling for Smith-GGX Reflections, Eto & Tokuyoshi, 2023]
-  *
-  */
-#define PrincipledBSDFAnisotropicGGXSampleFunction GGX_VNDF_SAMPLING
-
-/**
- * Whether or not to use multiple scattering to conserve energy when evaluating
- * GGX BRDF lobes in the Principled BSDF
- * 
- * This is implemented by following 
- * [Practical multiple scattering compensation for microfacet models, Turquin, 2019]
- * 
- * Possible options are KERNEL_OPTION_TRUE and KERNEL_OPTION_FALSE. Self explanatory.
- */
-#define PrincipledBSDFGGXUseMultipleScattering KERNEL_OPTION_TRUE
-
- /**
-  * Whether or not to use multiple scattering to conserve energy and use a
-  * Fresnel compensation term i.e. account for Fresnel when light scatters multiple
-  * times on the microsurface. This increases saturation and has a noticeable impact.
-  * Only applies to conductors. This term always is implicitely used for dielectrics
-  *
-  * This is implemented by following
-  * [Practical multiple scattering compensation for microfacet models, Turquin, 2019]
-  *
-  * Possible options are KERNEL_OPTION_TRUE and KERNEL_OPTION_FALSE. Self explanatory.
-  */
-#define PrincipledBSDFGGXUseMultipleScatteringDoFresnel KERNEL_OPTION_TRUE
-
-/**
- * If KERNEL_OPTION_TRUE, on-the-fly monte carlo integration of the clearcoat lobe
- * directional albedo will be performed to ensure energy conservation & preservation
- * of a material with a clearcoat lobe
- */
-#define PrincipledBSDFEnforceStrongEnergyConservation KERNEL_OPTION_FALSE
 
 /**
  * What nested dielectrics strategy to use.

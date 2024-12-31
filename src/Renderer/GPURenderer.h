@@ -501,7 +501,7 @@ private:
 	// See SheenLTCFittedParameters.h
 	OrochiTexture m_sheen_ltc_params;
 
-	// Precomputed tables for GGX energy conservation
+	// Precomputed tables for GGX energy compensation
 	// [Practical multiple scattering compensation for microfacet models, Turquin, 2019]
 	OrochiTexture m_GGX_conductor_Ess;
 	OrochiTexture3D m_glossy_dielectric_Ess;

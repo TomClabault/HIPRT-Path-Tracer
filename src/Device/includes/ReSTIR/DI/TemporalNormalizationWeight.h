@@ -8,7 +8,7 @@
 
 #include "Device/includes/ReSTIR/DI/Utils.h"
 
-#include "HostDeviceCommon/KernelOptions.h"
+#include "HostDeviceCommon/KernelOptions/KernelOptions.h"
 
  // By convention, the temporal neighbor is the first one to be resampled in for loops 
  // (for looping over the neighbors when resampling / computing MIS weights)

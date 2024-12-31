@@ -16,7 +16,7 @@
 #include "Device/includes/RIS/RIS.h"
 #include "Device/includes/Sampling.h"
 #include "HostDeviceCommon/HitInfo.h"
-#include "HostDeviceCommon/KernelOptions.h"
+#include "HostDeviceCommon/KernelOptions/KernelOptions.h"
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/Xorshift.h"
 

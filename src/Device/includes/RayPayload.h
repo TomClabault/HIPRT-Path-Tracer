@@ -9,7 +9,7 @@
 #include "Device/includes/RayVolumeState.h"
 
 #include "HostDeviceCommon/Color.h"
-#include "HostDeviceCommon/KernelOptions.h"
+#include "HostDeviceCommon/KernelOptions/KernelOptions.h"
 #include "HostDeviceCommon/Material/Material.h"
 
 enum RayState

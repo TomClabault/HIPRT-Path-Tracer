@@ -143,7 +143,7 @@ struct CPUMaterial
         // Non-clearcoated materials can already ensure perfect (modulo implementation quality) energy 
         // conservation/preservation with the precomputed LUTs [Turquin, 2019]. 
         // 
-        // See PrincipledBSDFGGXUseMultipleScattering in this codebase.
+        // See PrincipledBSDFDoEnergyCompensation in this codebase.
         mat.set_enforce_strong_energy_conservation(enforce_strong_energy_conservation);
 
         return mat;
@@ -250,6 +250,9 @@ struct CPUMaterial
     float anisotropy_rotation = 0.0f;
     float second_roughness_weight = 0.0f;
     float second_roughness = 0.5f;
+    // Whether or not to do energy compensation of the metallic layer
+    // for that material
+    bool do_metallic_energy_compensation = true;
 
     // Specular intensity
     float specular = 1.0f;
@@ -262,6 +265,9 @@ struct CPUMaterial
     //
     // Disabled by default for artistic "expectations"
     float specular_darkening = 0.0f;
+    // Whether or not to do energy compensation of the specular/diffuse layer
+    // for that material
+    bool do_specular_energy_compensation = true;
 
     float coat = 0.0f;
     ColorRGB32F coat_medium_absorption = ColorRGB32F{ 1.0f, 1.0f, 1.0f };
@@ -282,6 +288,9 @@ struct CPUMaterial
     float coat_anisotropy = 0.0f;
     float coat_anisotropy_rotation = 0.0f;
     float coat_ior = 1.5f;
+    // Whether or not to do energy compensation of the clearcoat layer
+    // for that material
+    bool do_coat_energy_compensation = true;
 
     float sheen = 0.0f; // Sheen strength
     float sheen_roughness = 0.5f;
@@ -296,6 +305,9 @@ struct CPUMaterial
     float dispersion_scale = 0.0f;
     float dispersion_abbe_number = 20.0f;
     bool thin_walled = false;
+    // Whether or not to do energy compensation of the glass layer
+    // for that material
+    bool do_glass_energy_compensation = true;
 
     float thin_film = 0.0f;
     float thin_film_ior = 1.3f;
@@ -325,7 +337,7 @@ struct CPUMaterial
     // Non-clearcoated materials can already ensure perfect (modulo implementation quality) energy 
     // conservation/preservation with the precomputed LUTs [Turquin, 2019]. 
     // 
-    // See PrincipledBSDFGGXUseMultipleScattering in this codebase.
+    // See PrincipledBSDFDoEnergyCompensation in this codebase.
     bool enforce_strong_energy_conservation = false;
 
 

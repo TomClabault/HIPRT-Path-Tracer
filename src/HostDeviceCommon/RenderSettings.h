@@ -7,7 +7,7 @@
 #define HOST_DEVICE_COMMON_RENDER_SETTINGS_H
 
 #include "HostDeviceCommon/PathRussianRoulette.h"
-#include "HostDeviceCommon/KernelOptions.h"
+#include "HostDeviceCommon/KernelOptions/KernelOptions.h"
 #include "HostDeviceCommon/ReSTIRDISettings.h"
 
 #include <hiprt/hiprt_common.h>

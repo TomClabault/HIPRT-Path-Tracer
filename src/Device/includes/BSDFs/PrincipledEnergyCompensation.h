@@ -18,7 +18,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_principled_energy_compensation_glossy_b
 {
     float ms_compensation = 1.0f;
 
-#if PrincipledBSDFGGXUseMultipleScattering == KERNEL_OPTION_TRUE
+#if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoSpecularEnergyCompensation == KERNEL_OPTION_TRUE
     int3 texture_dims = make_int3(GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_COS_THETA_O, GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_ROUGHNESS, GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR);
 
     float ior = material.ior;
@@ -77,7 +77,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_principled_energy_compensation_clearcoa
 
     float ms_compensation = 1.0f;
 
-#if PrincipledBSDFGGXUseMultipleScattering == KERNEL_OPTION_TRUE
+#if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoClearcoatEnergyCompensation == KERNEL_OPTION_TRUE
     int3 texture_dims = make_int3(GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_COS_THETA_O, GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_ROUGHNESS, GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR);
 
     if (hippt::abs(material.coat_ior / incident_medium_ior - 1.0f) < 1.0e-3f)

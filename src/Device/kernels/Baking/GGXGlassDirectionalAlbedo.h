@@ -21,7 +21,7 @@
 * [6][Blender's Cycles codebase on Github]
 * 
 * This kernel computes the directional albedo of a glass BSDF for use
-* in energy conservation code (MicrofacetEnergyCompensation.h) as proposed in
+* in energy compensation code (MicrofacetEnergyCompensation.h) as proposed in
 * [Practical multiple scattering compensation for microfacet models, Turquin, 2019]
 * 
 * The kernel outputs its results in two buffers (which are then written to disk as textures).

@@ -381,7 +381,7 @@ private:
     //      Non-clearcoated materials can already ensure perfect (modulo implementation quality) energy 
     //      conservation/preservation with the precomputed LUTs [Turquin, 2019]. 
     // 
-    //      See PrincipledBSDFGGXUseMultipleScattering in this codebase.
+    //      See PrincipledBSDFDoEnergyCompensation in this codebase.
     //
     //      Values from the 'PackedFlagsIndices' enum should be used
     //      to retrieve/set from the packed flags
@@ -673,7 +673,7 @@ struct DevicePackedTexturedMaterial : public DevicePackedEffectiveMaterial
         // Non-clearcoated materials can already ensure perfect (modulo implementation quality) energy 
         // conservation/preservation with the precomputed LUTs [Turquin, 2019]. 
         // 
-        // See PrincipledBSDFGGXUseMultipleScattering in this codebase.
+        // See PrincipledBSDFDoEnergyCompensation in this codebase.
         out.enforce_strong_energy_conservation = this->get_enforce_strong_energy_conservation();
 
         return out;
