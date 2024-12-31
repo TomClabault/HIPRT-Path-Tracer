@@ -23,8 +23,6 @@ struct DeviceUnpackedEffectiveMaterial
     }
 
     ColorRGB32F emission = ColorRGB32F{ 0.0f, 0.0f, 0.0f };
-    bool emissive_texture_used = false;
-
     ColorRGB32F base_color = ColorRGB32F(1.0f);
 
     float roughness = 0.3f;
@@ -40,9 +38,6 @@ struct DeviceUnpackedEffectiveMaterial
     float anisotropy_rotation = 0.0f;
     float second_roughness_weight = 0.0f;
     float second_roughness = 0.5f;
-    // Whether or not to do energy compensation of the metallic layer
-    // for that material
-    bool do_metallic_energy_compensation = true;
 
     // Specular intensity
     float specular = 1.0f;
@@ -55,9 +50,6 @@ struct DeviceUnpackedEffectiveMaterial
     //
     // Disabled by default for artistic "expectations"
     float specular_darkening = 0.0f;
-    // Whether or not to do energy compensation of the specular/diffuse layer
-    // for that material
-    bool do_specular_energy_compensation = true;
 
     float coat = 0.0f;
     ColorRGB32F coat_medium_absorption = ColorRGB32F{ 1.0f, 1.0f, 1.0f };
@@ -78,9 +70,6 @@ struct DeviceUnpackedEffectiveMaterial
     float coat_anisotropy = 0.0f;
     float coat_anisotropy_rotation = 0.0f;
     float coat_ior = 1.5f;
-    // Whether or not to do energy compensation of the clearcoat layer
-    // for that material
-    bool do_coat_energy_compensation = true;
 
     float sheen = 0.0f; // Sheen strength
     float sheen_roughness = 0.5f;
@@ -94,10 +83,6 @@ struct DeviceUnpackedEffectiveMaterial
     ColorRGB32F absorption_color = ColorRGB32F(1.0f);
     float dispersion_scale = 0.0f;
     float dispersion_abbe_number = 20.0f;
-    bool thin_walled = false;
-    // Whether or not to do energy compensation of the glass layer
-    // for that material
-    bool do_glass_energy_compensation = true;
 
     float thin_film = 0.0f;
     float thin_film_ior = 1.3f;
@@ -105,16 +90,35 @@ struct DeviceUnpackedEffectiveMaterial
     float thin_film_kappa_3 = 0.0f;
     float thin_film_hue_shift_degrees = 0.0f;
     float thin_film_base_ior_override = 1.0f;
-    bool thin_film_do_ior_override = false;
 
     // 1.0f makes the material completely opaque
     // 0.0f completely transparent (becomes invisible)
     float alpha_opacity = 1.0f;
 
+    int energy_preservation_monte_carlo_samples = 12;
+
     // Nested dielectric parameter
     unsigned char dielectric_priority = 0;
+    
+    /**
+     * The booleans are moved to the end of the structure to avoid too much structure packing
+     */
 
-    int energy_preservation_monte_carlo_samples = 12;
+    // Whether or not to do energy compensation of the metallic layer
+    // for that material
+    bool do_metallic_energy_compensation = true;
+    // Whether or not to do energy compensation of the specular/diffuse layer
+    // for that material
+    bool do_specular_energy_compensation = true;
+    // Whether or not to do energy compensation of the clearcoat layer
+    // for that material
+    bool do_coat_energy_compensation = true;
+    bool thin_walled = false;
+    // Whether or not to do energy compensation of the glass layer
+    // for that material
+    bool do_glass_energy_compensation = true;
+    bool thin_film_do_ior_override = false;
+
     // If true, 'energy_preservation_monte_carlo_samples' will be used
     // to compute the directional albedo of this material.
     // This computed directional albedo is then used to ensure perfect energy conservation
@@ -129,6 +133,7 @@ struct DeviceUnpackedEffectiveMaterial
     // 
     // See PrincipledBSDFDoEnergyCompensation in this codebase.
     bool enforce_strong_energy_conservation = false;
+    bool emissive_texture_used = false;
 };
 
 struct DeviceUnpackedTexturedMaterial : public DeviceUnpackedEffectiveMaterial
