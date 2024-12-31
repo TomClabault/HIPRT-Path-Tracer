@@ -1530,18 +1530,6 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			}
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			ImGui::SeparatorText("Principled BSDF Clearcoat Lobe");
-			if (ImGui::Checkbox("Use energy compensation approximation", &render_data.bsdfs_data.clearcoat_compensation_approximation))
-				m_render_window->set_render_dirty(true);
-			ImGuiRenderer::show_help_marker("Enables the approximation for compensating the loss of energy of the clearcoat layer. "
-				"This approximation tends to perform a bit worse when clearcoating smooth materials. But who clearcoats a mirror anyways?"
-				" Other than in this case, this approximation performs fairly well and is absolutely cheaper than enforcing the full BSDF energy "
-				"compensation.\n\n"
-				""
-				"There is virtually no reason to disable this. Worst case scenario is probably clearcoating smooth glass where a little bit of energy "
-				"is gained, but it's not actually render-breaking at all. And again, who clearcoats clear glass?");
-
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::SeparatorText("GGX");
 
 			std::vector<const char*> ggx_sampling_items = { "- VNDF", "- VNDF Spherical Caps" };
@@ -1594,57 +1582,122 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 	}
 	ImGuiRenderer::show_help_marker("Global toggle to completely enable/disable any forms "
 		"of energy compensation in all the materials using the Principled BSDF");
-	/*ImGuiRenderer::show_help_marker("Implementation of [Practical multiple scattering compensation for microfacet models, Turquin, 2019]"
-		" for GGX energy conservation.");*/
 
 	if (do_energy_conservation)
 	{
-		ImGui::TreePush("GGX Multiple Scattering tree");
-		static bool use_multiple_scattering_fresnel = PrincipledBSDFGGXUseMultipleScatteringDoFresnel;
-		if (ImGui::Checkbox("Use GGX Multiple Scattering Fresnel", &use_multiple_scattering_fresnel))
+		ImGui::TreePush("Energy conservation options tree");
+
+		static bool do_bsdf_energy_conservation = PrincipledBSDFEnforceStrongEnergyConservation;
+		if (ImGui::Checkbox("Enforce BSDF strong energy conservation", &do_bsdf_energy_conservation))
 		{
-			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_GGX_MULTIPLE_SCATTERING_DO_FRESNEL, use_multiple_scattering_fresnel ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+			global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENFORCE_ENERGY_CONSERVATION, do_bsdf_energy_conservation ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
 			m_renderer->recompile_kernels();
 			m_render_window->set_render_dirty(true);
 		}
-		ImGuiRenderer::show_help_marker("Implementation of [Practical multiple scattering compensation for microfacet models, Turquin, 2019]"
-			" for GGX energy compensation. The multiple scattering fresnel term takes into account the Fresnel "
-			"reflection/transmission effect when the rays bounce multiple times on the microsurface. This is responsible "
-			"for the increase in saturation of the color of conductors due to multiple scattering in-between the microfacets.");
+		ImGuiRenderer::show_help_marker("If checked, this will enable the strong energy conservation & preservation "
+			"of the BSDF such that materials using this option neither lose or gain any amount of energy.\n\n"
 
-		if (ImGui::Checkbox("Use Hardware Texture Interpolation", &render_data.bsdfs_data.use_hardware_tex_interpolation))
+			"This is however very computationally expensive and must also be enabled on a per material basis.\n"
+			"The per-material option can be found in the \"Other properties\" tab of the material editor.\n"
+			"This is usually only needed on clearcoated materials (but even then, the energy loss\n"
+			"due to the absence of multiple scattering between the clearcoat layer and the BSDF below "
+			"may be acceptable).\n\n"
+
+			"Non-clearcoated materials can already ensure perfect (modulo implementation quality) energy "
+			"conservation/preservation with the precomputed LUTs [Turquin, 2019] "
+			"\"Use GGX Multiple Scattering\" option in \"Sampling\" --> \"Materials\".\n\n"
+
+			"Note that even if no materials use the option in your scene, disabling this option may"
+			" still be benefitial for performance as it adds quite a bit of register pressure. Disabling "
+			" the option has the effect of literally removing all the code of this option from the shaders.");
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+		{
+			static bool do_glass_energy_compensation = PrincipledBSDFDoGlassEnergyCompensation;
+			if (ImGui::Checkbox("Do glass lobe energy compensation", &do_glass_energy_compensation))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_GLASS_ENERGY_COMPENSATION, do_glass_energy_compensation ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("Global toggle on whether or not objects in the scene that use "
+				"the Principled BSDF should do energy compensation for the glass layer."
+				""
+				"Implementation of [Practical multiple scattering compensation for microfacet models, Turquin, 2019].");
+		}
+
+		{
+			static bool do_clearcoat_energy_compensation = PrincipledBSDFDoClearcoatEnergyCompensation;
+			if (ImGui::Checkbox("Do clearcoat lobe energy compensation", &do_clearcoat_energy_compensation))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_CLEARCOAT_ENERGY_COMPENSATION, do_clearcoat_energy_compensation ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("Global toggle on whether or not objects in the scene that use "
+				"the Principled BSDF should do energy compensation for the clearcoat layer.\n\n"
+				""
+				"Energy compensation on the clearcoat layer is an approximation but works very well in common cases.");
+		}
+
+		{
+			static bool do_specular_energy_compensation = PrincipledBSDFDoSpecularEnergyCompensation;
+			if (ImGui::Checkbox("Do specular/diffuse lobe energy compensation", &do_specular_energy_compensation))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_SPECULAR_ENERGY_COMPENSATION, do_specular_energy_compensation ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("Global toggle on whether or not objects in the scene that use "
+				"the Principled BSDF should do energy compensation for the glossy (specular/diffuse) layer."
+				""
+				"Implementation of [Practical multiple scattering compensation for microfacet models, Turquin, 2019].");
+		}
+
+		{
+			static bool do_metallic_energy_compensation = PrincipledBSDFDoMetallicEnergyCompensation;
+			if (ImGui::Checkbox("Do metallic lobe energy compensation", &do_metallic_energy_compensation))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_METALLIC_ENERGY_COMPENSATION, do_metallic_energy_compensation ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("Global toggle on whether or not objects in the scene that use "
+				"the Principled BSDF should do energy compensation for the metallic layer."
+				""
+				"Implementation of [Practical multiple scattering compensation for microfacet models, Turquin, 2019].");
+
+			if (do_metallic_energy_compensation)
+			{
+				ImGui::TreePush("Fresnel multiscatter tree");
+
+				static bool use_multiple_scattering_fresnel = PrincipledBSDFDoMetallicFresnelEnergyCompensation;
+				if (ImGui::Checkbox("Do GGX Multiple scattering fresnel", &use_multiple_scattering_fresnel))
+				{
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_METALLIC_FRESNEL_ENERGY_COMPENSATION, use_multiple_scattering_fresnel ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+					m_renderer->recompile_kernels();
+					m_render_window->set_render_dirty(true);
+				}
+				ImGuiRenderer::show_help_marker("Implementation of [Practical multiple scattering compensation for microfacet models, Turquin, 2019]"
+					" for GGX energy compensation. The multiple scattering fresnel term takes into account the Fresnel "
+					"reflection/transmission effect when the rays bounce multiple times on the microsurface. This is responsible "
+					"for the increase in saturation of the color of conductors due to multiple scattering in-between the microfacets.");
+
+				ImGui::TreePop();
+			}
+		}
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		if (ImGui::Checkbox("Use hardware texture interpolation", &render_data.bsdfs_data.use_hardware_tex_interpolation))
 		{
 			m_renderer->init_GGX_glass_Ess_texture(render_data.bsdfs_data.use_hardware_tex_interpolation ? hipFilterModeLinear : hipFilterModePoint);
 			m_render_window->set_render_dirty(true);
 		}
 		ImGuiRenderer::show_help_marker("Using the hardware for texture interpolation is faster but less precise than doing manual interpolation in the shader.");
+
 		ImGui::TreePop();
 	}
-
-	static bool do_bsdf_energy_conservation = PrincipledBSDFEnforceStrongEnergyConservation;
-	if (ImGui::Checkbox("Enforce BSDF Strong Energy Conservation", &do_bsdf_energy_conservation))
-	{
-		global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENFORCE_ENERGY_CONSERVATION, do_bsdf_energy_conservation ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-		m_renderer->recompile_kernels();
-		m_render_window->set_render_dirty(true);
-	}
-	ImGuiRenderer::show_help_marker("If checked, this will enable the strong energy conservation & preservation "
-		"of the BSDF such that materials using this option neither lose or gain any amount of energy.\n\n"
-
-		"This is however very computationally expensive and must also be enabled on a per material basis.\n"
-		"The per-material option can be found in the \"Other properties\" tab of the material editor.\n"
-		"This is usually only needed on clearcoated materials (but even then, the energy loss\n"
-		"due to the absence of multiple scattering between the clearcoat layer and the BSDF below "
-		"may be acceptable).\n\n"
-
-		"Non-clearcoated materials can already ensure perfect (modulo implementation quality) energy "
-		"conservation/preservation with the precomputed LUTs [Turquin, 2019] "
-		"\"Use GGX Multiple Scattering\" option in \"Sampling\" --> \"Materials\".\n\n"
-
-		"Note that even if no materials use the option in your scene, disabling this option may"
-		" still be benefitial for performance as it adds quite a bit of register pressure. Disabling "
-		" the option has the effect of literally removing all the code of this option from the shaders.");
 }
 
 void ImGuiSettingsWindow::display_ReSTIR_DI_bias_status(std::shared_ptr<GPUKernelCompilerOptions> kernel_options)

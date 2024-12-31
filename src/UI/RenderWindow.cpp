@@ -22,7 +22,7 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // TODOs  performance improvements branch:
-// - reuse MIS bounce
+// - reorder material properties in unpacked and packed material structures
 // - can remove the if bounce == 0 --> denoiser stuff to save some registers
 // - remove closest hit info .uv ?
 // - load_triangle indices factor * 3

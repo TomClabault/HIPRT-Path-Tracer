@@ -66,6 +66,7 @@ struct CPUMaterial
         mat.set_anisotropy_rotation(anisotropy_rotation);
         mat.set_second_roughness_weight(second_roughness_weight);
         mat.set_second_roughness(second_roughness);
+        mat.set_metallic_energy_compensation(do_metallic_energy_compensation);
 
         // Specular intensity
         mat.set_specular(specular);
@@ -78,6 +79,7 @@ struct CPUMaterial
         //
         // Disabled by default for artistic "expectations"
         mat.set_specular_darkening(specular_darkening);
+        mat.set_specular_energy_compensation(do_specular_energy_compensation);
 
         mat.set_coat(coat);
         mat.set_coat_medium_absorption(coat_medium_absorption);
@@ -98,6 +100,7 @@ struct CPUMaterial
         mat.set_coat_anisotropy(coat_anisotropy);
         mat.set_coat_anisotropy_rotation(coat_anisotropy_rotation);
         mat.set_coat_ior(coat_ior);
+        mat.set_coat_energy_compensation(do_coat_energy_compensation);
 
         mat.set_sheen(sheen); // Sheen strength
         mat.set_sheen_roughness(sheen_roughness);
@@ -113,6 +116,7 @@ struct CPUMaterial
         mat.set_dispersion_scale(dispersion_scale);
         mat.set_dispersion_abbe_number(dispersion_abbe_number);
         mat.set_thin_walled(thin_walled);
+        mat.set_glass_energy_compensation(do_glass_energy_compensation);
 
         mat.set_thin_film(thin_film);
         mat.set_thin_film_ior(thin_film_ior);

@@ -16,6 +16,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float principled_specular_relative_ior(const Devi
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float get_principled_energy_compensation_glossy_base(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, float incident_medium_ior, float NoV)
 {
+    if (!material.do_specular_energy_compensation)
+        return 1.0f;
+
     float ms_compensation = 1.0f;
 
 #if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoSpecularEnergyCompensation == KERNEL_OPTION_TRUE
@@ -71,7 +74,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_principled_energy_compensation_glossy_b
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE float get_principled_energy_compensation_clearcoat_lobe(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, float incident_medium_ior, float NoV)
 {
-    if (material.coat == 0.0f)
+    if (material.coat == 0.0f || !material.do_coat_energy_compensation)
         // No coat, nothing to compensate
         return 1.0f;
 

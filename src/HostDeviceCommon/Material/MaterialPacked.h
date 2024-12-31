@@ -19,7 +19,11 @@ struct DevicePackedEffectiveMaterial
         PACKED_THIN_WALLED = 0,
         PACKED_EMISSIVE_TEXTURE_USED = 1,
         PACKED_THIN_FILM_DO_IOR_OVERRIDE = 2,
-        PACKED_ENFORCE_STRONG_ENERGY_CONSERVATION = 3,
+        GLASS_ENERGY_COMPENSATION = 3,
+        CLEARCOAT_ENERGY_COMPENSATION = 4,
+        METALLIC_ENERGY_COMPENSATION = 5,
+        SPECULAR_ENERGY_COMPENSATION = 6,
+        PACKED_ENFORCE_STRONG_ENERGY_CONSERVATION = 7,
     };
 
     enum PackedAnisotropyGroupIndices : unsigned char
@@ -126,11 +130,13 @@ struct DevicePackedEffectiveMaterial
         packed.set_anisotropy_rotation(unpacked.anisotropy_rotation);
         packed.set_second_roughness_weight(unpacked.second_roughness_weight);
         packed.set_second_roughness(unpacked.second_roughness);
+        packed.set_metallic_energy_compensation(unpacked.do_metallic_energy_compensation);
 
         packed.set_specular(unpacked.specular);
         packed.set_specular_tint(unpacked.specular_tint);
         packed.set_specular_color(unpacked.specular_color);
         packed.set_specular_darkening(unpacked.specular_darkening);
+        packed.set_specular_energy_compensation(unpacked.do_specular_energy_compensation);
 
         packed.set_coat(unpacked.coat);
         packed.set_coat_medium_absorption(unpacked.coat_medium_absorption);
@@ -141,6 +147,7 @@ struct DevicePackedEffectiveMaterial
         packed.set_coat_anisotropy(unpacked.coat_anisotropy);
         packed.set_coat_anisotropy_rotation(unpacked.coat_anisotropy_rotation);
         packed.set_coat_ior(unpacked.coat_ior);
+        packed.set_coat_energy_compensation(unpacked.do_coat_energy_compensation);
 
         packed.set_sheen(unpacked.sheen);
         packed.set_sheen_roughness(unpacked.sheen_roughness);
@@ -154,6 +161,7 @@ struct DevicePackedEffectiveMaterial
         packed.set_dispersion_scale(unpacked.dispersion_scale);
         packed.set_dispersion_abbe_number(unpacked.dispersion_abbe_number);
         packed.set_thin_walled(unpacked.thin_walled);
+        packed.set_glass_energy_compensation(unpacked.do_glass_energy_compensation);
 
         packed.set_thin_film(unpacked.thin_film);
         packed.set_thin_film_ior(unpacked.thin_film_ior);
@@ -191,11 +199,13 @@ struct DevicePackedEffectiveMaterial
         unpacked.anisotropy_rotation = this->get_anisotropy_rotation();
         unpacked.second_roughness_weight = this->get_second_roughness_weight();
         unpacked.second_roughness = this->get_second_roughness();
+        unpacked.do_metallic_energy_compensation = this->get_metallic_energy_compensation();
 
         unpacked.specular = this->get_specular();
         unpacked.specular_tint = this->get_specular_tint();
         unpacked.specular_color = this->get_specular_color();
         unpacked.specular_darkening = this->get_specular_darkening();
+        unpacked.do_specular_energy_compensation = this->get_specular_energy_compensation();
 
         unpacked.coat = this->get_coat();
         unpacked.coat_medium_absorption = this->get_coat_medium_absorption();
@@ -206,6 +216,7 @@ struct DevicePackedEffectiveMaterial
         unpacked.coat_anisotropy = this->get_coat_anisotropy();
         unpacked.coat_anisotropy_rotation = this->get_coat_anisotropy_rotation();
         unpacked.coat_ior = this->get_coat_ior();
+        unpacked.do_coat_energy_compensation = this->get_coat_energy_compensation();
 
         unpacked.sheen = this->get_sheen();
         unpacked.sheen_roughness = this->get_sheen_roughness();
@@ -219,6 +230,7 @@ struct DevicePackedEffectiveMaterial
         unpacked.dispersion_scale = this->get_dispersion_scale();
         unpacked.dispersion_abbe_number = this->get_dispersion_abbe_number();
         unpacked.thin_walled = this->get_thin_walled();
+        unpacked.do_glass_energy_compensation = this->get_glass_energy_compensation();
 
         unpacked.thin_film = this->get_thin_film();
         unpacked.thin_film_ior = this->get_thin_film_ior();
@@ -252,11 +264,13 @@ struct DevicePackedEffectiveMaterial
     HIPRT_HOST_DEVICE float get_anisotropy_rotation() const { return anisotropy_and_rotation_and_second_roughness.get_float<PackedAnisotropyGroupIndices::PACKED_ANISOTROPY_ROTATION>(); }
     HIPRT_HOST_DEVICE float get_second_roughness_weight() const { return anisotropy_and_rotation_and_second_roughness.get_float<PackedAnisotropyGroupIndices::PACKED_SECOND_ROUGHNESS_WEIGHT>(); }
     HIPRT_HOST_DEVICE float get_second_roughness() const { return anisotropy_and_rotation_and_second_roughness.get_float<PackedAnisotropyGroupIndices::PACKED_SECOND_ROUGHNESS>(); }
+    HIPRT_HOST_DEVICE bool get_metallic_energy_compensation() const { return flags.get_bool<PackedFlagsIndices::METALLIC_ENERGY_COMPENSATION>(); }
 
     HIPRT_HOST_DEVICE float get_specular() const { return specular_and_darkening_and_coat_roughness.get_float<PackedSpecularGroupIndices::PACKED_SPECULAR>(); }
     HIPRT_HOST_DEVICE float get_specular_tint() const { return specular_color_and_tint_factor.get_float(); }
     HIPRT_HOST_DEVICE ColorRGB32F get_specular_color() const { return specular_color_and_tint_factor.get_color(); }
     HIPRT_HOST_DEVICE float get_specular_darkening() const { return specular_and_darkening_and_coat_roughness.get_float<PackedSpecularGroupIndices::PACKED_SPECULAR_DARKENING>(); }
+    HIPRT_HOST_DEVICE bool get_specular_energy_compensation() const { return flags.get_bool<PackedFlagsIndices::SPECULAR_ENERGY_COMPENSATION>(); }
 
     HIPRT_HOST_DEVICE float get_coat() const { return coat_and_medium_absorption.get_float(); }
     HIPRT_HOST_DEVICE ColorRGB32F get_coat_medium_absorption() const { return coat_and_medium_absorption.get_color(); }
@@ -267,6 +281,7 @@ struct DevicePackedEffectiveMaterial
     HIPRT_HOST_DEVICE float get_coat_anisotropy() const { return coat_roughening_darkening_anisotropy_and_rotation.get_float<PackedCoatGroupIndices::PACKED_COAT_ANISOTROPY>(); }
     HIPRT_HOST_DEVICE float get_coat_anisotropy_rotation() const { return coat_roughening_darkening_anisotropy_and_rotation.get_float<PackedCoatGroupIndices::PACKED_COAT_ANISOTROPY_ROTATION>(); }
     HIPRT_HOST_DEVICE float get_coat_ior() const { return this->coat_ior; }
+    HIPRT_HOST_DEVICE bool get_coat_energy_compensation() const { return flags.get_bool<PackedFlagsIndices::CLEARCOAT_ENERGY_COMPENSATION>(); }
 
     HIPRT_HOST_DEVICE float get_sheen() const { return sheen_and_color.get_float(); }
     HIPRT_HOST_DEVICE float get_sheen_roughness() const { return sheen_roughness_transmission_dispersion_thin_film.get_float<PackedSheenRoughnessGroupIndices::PACKED_SHEEN_ROUGHNESS>(); }
@@ -279,6 +294,7 @@ struct DevicePackedEffectiveMaterial
     HIPRT_HOST_DEVICE float get_dispersion_scale() const { return sheen_roughness_transmission_dispersion_thin_film.get_float<PackedSheenRoughnessGroupIndices::PACKED_DISPERSION_SCALE>(); }
     HIPRT_HOST_DEVICE float get_dispersion_abbe_number() const { return this->dispersion_abbe_number; }
     HIPRT_HOST_DEVICE bool get_thin_walled() const { return flags.get_bool<PackedFlagsIndices::PACKED_THIN_WALLED >(); }
+    HIPRT_HOST_DEVICE bool get_glass_energy_compensation() const { return flags.get_bool<PackedFlagsIndices::GLASS_ENERGY_COMPENSATION>(); }
 
     HIPRT_HOST_DEVICE float get_thin_film() const { return sheen_roughness_transmission_dispersion_thin_film.get_float<PackedSheenRoughnessGroupIndices::PACKED_THIN_FILM>(); }
     HIPRT_HOST_DEVICE float get_thin_film_ior() const { return this->thin_film_ior; }
@@ -313,11 +329,13 @@ struct DevicePackedEffectiveMaterial
     HIPRT_HOST_DEVICE void set_anisotropy_rotation(float anisotropy_rotation) { anisotropy_and_rotation_and_second_roughness.set_float<PackedAnisotropyGroupIndices::PACKED_ANISOTROPY_ROTATION>(anisotropy_rotation); }
     HIPRT_HOST_DEVICE void set_second_roughness_weight(float second_roughness_weight) { anisotropy_and_rotation_and_second_roughness.set_float<PackedAnisotropyGroupIndices::PACKED_SECOND_ROUGHNESS_WEIGHT>(second_roughness_weight); }
     HIPRT_HOST_DEVICE void set_second_roughness(float second_roughness) { anisotropy_and_rotation_and_second_roughness.set_float<PackedAnisotropyGroupIndices::PACKED_SECOND_ROUGHNESS>(second_roughness); }
+    HIPRT_HOST_DEVICE void set_metallic_energy_compensation(bool do_metallic_energy_compensation) { flags.set_bool<PackedFlagsIndices::METALLIC_ENERGY_COMPENSATION>(do_metallic_energy_compensation); }
 
     HIPRT_HOST_DEVICE void set_specular(float specular) { specular_and_darkening_and_coat_roughness.set_float<PackedSpecularGroupIndices::PACKED_SPECULAR>(specular); }
     HIPRT_HOST_DEVICE void set_specular_tint(float specular_tint) { specular_color_and_tint_factor.set_float(specular_tint); }
     HIPRT_HOST_DEVICE void set_specular_color(ColorRGB32F specular_color) { specular_color_and_tint_factor.set_color(specular_color); }
     HIPRT_HOST_DEVICE void set_specular_darkening(float specular_darkening) { specular_and_darkening_and_coat_roughness.set_float<PackedSpecularGroupIndices::PACKED_SPECULAR_DARKENING>(specular_darkening); }
+    HIPRT_HOST_DEVICE void set_specular_energy_compensation(bool do_specular_energy_compensation) { flags.set_bool<PackedFlagsIndices::SPECULAR_ENERGY_COMPENSATION>(do_specular_energy_compensation); }
 
     HIPRT_HOST_DEVICE void set_coat(float coat) { coat_and_medium_absorption.set_float(coat); }
     HIPRT_HOST_DEVICE void set_coat_medium_absorption(ColorRGB32F coat_medium_absorption) { coat_and_medium_absorption.set_color(coat_medium_absorption); }
@@ -328,6 +346,7 @@ struct DevicePackedEffectiveMaterial
     HIPRT_HOST_DEVICE void set_coat_anisotropy(float coat_anisotropy) { coat_roughening_darkening_anisotropy_and_rotation.set_float<PackedCoatGroupIndices::PACKED_COAT_ANISOTROPY>(coat_anisotropy); }
     HIPRT_HOST_DEVICE void set_coat_anisotropy_rotation(float coat_anisotropy_rotation) { coat_roughening_darkening_anisotropy_and_rotation.set_float<PackedCoatGroupIndices::PACKED_COAT_ANISOTROPY_ROTATION>(coat_anisotropy_rotation); }
     HIPRT_HOST_DEVICE void set_coat_ior(float coat_ior) { this->coat_ior = coat_ior; }
+    HIPRT_HOST_DEVICE void set_coat_energy_compensation(bool do_coat_energy_compensation) { flags.set_bool<PackedFlagsIndices::CLEARCOAT_ENERGY_COMPENSATION>(do_coat_energy_compensation); }
 
     HIPRT_HOST_DEVICE void set_sheen(float sheen) { sheen_and_color.set_float(sheen); }
     HIPRT_HOST_DEVICE void set_sheen_roughness(float sheen_roughness) { sheen_roughness_transmission_dispersion_thin_film.set_float<PackedSheenRoughnessGroupIndices::PACKED_SHEEN_ROUGHNESS>(sheen_roughness); }
@@ -340,6 +359,7 @@ struct DevicePackedEffectiveMaterial
     HIPRT_HOST_DEVICE void set_dispersion_scale(float dispersion_scale) { sheen_roughness_transmission_dispersion_thin_film.set_float<PackedSheenRoughnessGroupIndices::PACKED_DISPERSION_SCALE>(dispersion_scale); }
     HIPRT_HOST_DEVICE void set_dispersion_abbe_number(float dispersion_abbe_number) { this->dispersion_abbe_number = dispersion_abbe_number; }
     HIPRT_HOST_DEVICE void set_thin_walled(bool thin_walled) { flags.set_bool<PackedFlagsIndices::PACKED_THIN_WALLED >(thin_walled); }
+    HIPRT_HOST_DEVICE void set_glass_energy_compensation(bool do_glass_energy_compensation) { flags.set_bool<PackedFlagsIndices::GLASS_ENERGY_COMPENSATION>(do_glass_energy_compensation); }
 
     HIPRT_HOST_DEVICE void set_thin_film(float thin_film) { sheen_roughness_transmission_dispersion_thin_film.set_float<PackedSheenRoughnessGroupIndices::PACKED_THIN_FILM>(thin_film); }
     HIPRT_HOST_DEVICE void set_thin_film_ior(float thin_film_ior) { this->thin_film_ior = thin_film_ior; }
@@ -596,6 +616,7 @@ struct DevicePackedTexturedMaterial : public DevicePackedEffectiveMaterial
         out.anisotropy_rotation = this->get_anisotropy_rotation();
         out.second_roughness_weight = this->get_second_roughness_weight();
         out.second_roughness = this->get_second_roughness();
+        out.do_metallic_energy_compensation = this->get_metallic_energy_compensation();
 
         // Specular intensity
         out.specular = this->get_specular();
@@ -608,6 +629,7 @@ struct DevicePackedTexturedMaterial : public DevicePackedEffectiveMaterial
         //
         // Disabled by default for artistic "expectations"
         out.specular_darkening = this->get_specular_darkening();
+        out.do_specular_energy_compensation = this->get_specular_energy_compensation();
 
         out.coat = this->get_coat();
         out.coat_medium_absorption = this->get_coat_medium_absorption();
@@ -628,6 +650,7 @@ struct DevicePackedTexturedMaterial : public DevicePackedEffectiveMaterial
         out.coat_anisotropy = this->get_coat_anisotropy();
         out.coat_anisotropy_rotation = this->get_coat_anisotropy_rotation();
         out.coat_ior = this->get_coat_ior();
+        out.do_coat_energy_compensation = this->get_coat_energy_compensation();
 
         out.sheen = this->get_sheen(); // Sheen strength
         out.sheen_roughness = this->get_sheen_roughness();
@@ -643,6 +666,7 @@ struct DevicePackedTexturedMaterial : public DevicePackedEffectiveMaterial
         out.dispersion_scale = this->get_dispersion_scale();
         out.dispersion_abbe_number = this->get_dispersion_abbe_number();
         out.thin_walled = this->get_thin_walled();
+        out.do_glass_energy_compensation = this->get_glass_energy_compensation();
 
         out.thin_film = this->get_thin_film();
         out.thin_film_ior = this->get_thin_film_ior();

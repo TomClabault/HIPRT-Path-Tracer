@@ -118,11 +118,6 @@
 #define PrincipledBSDFDoMetallicEnergyCompensation KERNEL_OPTION_TRUE
 
 /**
- * Whether or not to perform energy compensation for the specular/diffuse layer of the Principled BSDF
- */
-#define PrincipledBSDFDoSpecularEnergyCompensation KERNEL_OPTION_TRUE
-
-/**
  * Whether or not to use multiple scattering to conserve energy and use a
  * Fresnel compensation term i.e. account for Fresnel when light scatters multiple
  * times on the microsurface. This increases saturation and has a noticeable impact.
@@ -133,7 +128,12 @@
  *
  * Possible options are KERNEL_OPTION_TRUE and KERNEL_OPTION_FALSE. Self explanatory.
  */
-#define PrincipledBSDFGGXUseMultipleScatteringDoFresnel KERNEL_OPTION_TRUE
+#define PrincipledBSDFDoMetallicFresnelEnergyCompensation KERNEL_OPTION_TRUE
+
+/**
+ * Whether or not to perform energy compensation for the specular/diffuse layer of the Principled BSDF
+ */
+#define PrincipledBSDFDoSpecularEnergyCompensation KERNEL_OPTION_TRUE
 
 #endif // #ifndef __KERNELCC__
 

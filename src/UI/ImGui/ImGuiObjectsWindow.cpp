@@ -916,6 +916,20 @@ void ImGuiObjectsWindow::draw_objects_panel()
 			material_changed |= ImGui::SliderFloat("Specular darkening", &material.specular_darkening, 0.0f, 1.0f);
 			ImGuiRenderer::show_help_marker("Same as coat darkening but for total internal reflection inside the specular layer "
 				"that sits on top of the diffuse base.");
+			if (material.do_specular_energy_compensation && kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION) == KERNEL_OPTION_FALSE)
+			{
+				ImGui::Text("Warning: ");
+				ImGuiRenderer::show_help_marker("Energy compensation is globally disabled. This material option will have no effect.\n"
+					"Energy compensation can be globally enabled in \"Settings\" --> \"Sampling\" --> \"Materials\"", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+			}
+			else if (material.do_specular_energy_compensation && kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_SPECULAR_ENERGY_COMPENSATION) == KERNEL_OPTION_FALSE)
+			{
+				ImGui::Text("Warning: ");
+				ImGuiRenderer::show_help_marker("Energy compensation is globally disabled for the glossy layer (specular/diffuse). This material option will have no effect.\n"
+					"Energy compensation can be enabled in \"Settings\" --> \"Sampling\" --> \"Materials\"", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+			}
+			material_changed |= ImGui::Checkbox("Glossy layer energy compensation", &material.do_specular_energy_compensation);
+			ImGuiRenderer::show_help_marker("Whether or not to do energy compensation for the glossy layer (specular/diffuse) lobe of this material.");
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::TreePop();
@@ -958,6 +972,21 @@ void ImGuiObjectsWindow::draw_objects_panel()
 			material_changed |= ImGui::SliderFloat("Second roughness", &material.second_roughness, 0.0f, 1.0f);
 			ImGui::EndDisabled();
 
+			if (material.do_metallic_energy_compensation && kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION) == KERNEL_OPTION_FALSE)
+			{
+				ImGui::Text("Warning: ");
+				ImGuiRenderer::show_help_marker("Energy compensation is globally disabled. This material option will have no effect.\n"
+					"Energy compensation can be globally enabled in \"Settings\" --> \"Sampling\" --> \"Materials\"", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+			}
+			else if (material.do_metallic_energy_compensation && kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_METALLIC_ENERGY_COMPENSATION) == KERNEL_OPTION_FALSE)
+			{
+				ImGui::Text("Warning: ");
+				ImGuiRenderer::show_help_marker("Energy compensation is globally disabled for the metallic layer. This material option will have no effect.\n"
+					"Energy compensation can be enabled in \"Settings\" --> \"Sampling\" --> \"Materials\"", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+			}
+			material_changed |= ImGui::Checkbox("Metallic layer energy compensation", &material.do_metallic_energy_compensation);
+			ImGuiRenderer::show_help_marker("Whether or not to do energy compensation for the metallic layer of this material.");
+
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::TreePop();
 		}
@@ -997,6 +1026,20 @@ void ImGuiObjectsWindow::draw_objects_panel()
 			material_changed |= ImGui::SliderFloat("Coat anisotropy", &material.coat_anisotropy, 0.0f, 1.0f);
 			material_changed |= ImGui::SliderFloat("Coat anisotropy Rotation", &material.coat_anisotropy_rotation, 0.0f, 1.0f);
 			material_changed |= ImGui::SliderFloat("Coat IOR", &material.coat_ior, 1.0f, 3.0f);
+			if (material.do_coat_energy_compensation && kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION) == KERNEL_OPTION_FALSE)
+			{
+				ImGui::Text("Warning: ");
+				ImGuiRenderer::show_help_marker("Energy compensation is globally disabled. This material option will have no effect.\n"
+					"Energy compensation can be globally enabled in \"Settings\" --> \"Sampling\" --> \"Materials\"", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+			}
+			else if (material.do_coat_energy_compensation && kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_CLEARCOAT_ENERGY_COMPENSATION) == KERNEL_OPTION_FALSE)
+			{
+				ImGui::Text("Warning: ");
+				ImGuiRenderer::show_help_marker("Energy compensation is globally disabled for the clearcoat layer. This material option will have no effect.\n"
+					"Energy compensation can be enabled in \"Settings\" --> \"Sampling\" --> \"Materials\"", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+			}
+			material_changed |= ImGui::Checkbox("Clearcoat layer energy compensation", &material.do_coat_energy_compensation);
+			ImGuiRenderer::show_help_marker("Whether or not to do energy compensation for the clearcoat layer of this material.");
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::TreePop();
@@ -1024,6 +1067,20 @@ void ImGuiObjectsWindow::draw_objects_panel()
 				ImGuiRenderer::show_help_marker("Disabled because not using nested dielectrics with priorities.");
 			ImGui::EndDisabled();
 			material_changed |= ImGui::Checkbox("Thin walled", &material.thin_walled);
+			if (material.do_glass_energy_compensation && kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION) == KERNEL_OPTION_FALSE)
+			{
+				ImGui::Text("Warning: ");
+				ImGuiRenderer::show_help_marker("Energy compensation is globally disabled. This material option will have no effect.\n"
+					"Energy compensation can be globally enabled in \"Settings\" --> \"Sampling\" --> \"Materials\"", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+			}
+			else if (material.do_glass_energy_compensation && kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_GLASS_ENERGY_COMPENSATION) == KERNEL_OPTION_FALSE)
+			{
+				ImGui::Text("Warning: ");
+				ImGuiRenderer::show_help_marker("Energy compensation is globally disabled for the glass layer. This material option will have no effect.\n"
+					"Energy compensation can be enabled in \"Settings\" --> \"Sampling\" --> \"Materials\"", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+			}
+			material_changed |= ImGui::Checkbox("Glass layer energy compensation", &material.do_glass_energy_compensation);
+			ImGuiRenderer::show_help_marker("Whether or not to do energy compensation for the glass layer of this material.");
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::TreePop();
@@ -1089,7 +1146,7 @@ void ImGuiObjectsWindow::draw_objects_panel()
 				ImGui::Text("Warning: ");
 				ImGuiRenderer::show_help_marker("Energy conservation is enabled on this material but the strong energy conservation feature is disabled.\n\n"
 
-					"It can be enabled in the \"Sampling\" --> \"Materials\" panel.");
+					"It can be enabled in the \"Settings\" --> \"Sampling\" --> \"Materials\" panel.", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
 			}
 
 			material_changed |= ImGui::Checkbox("Strong energy conservation", &material.enforce_strong_energy_conservation);

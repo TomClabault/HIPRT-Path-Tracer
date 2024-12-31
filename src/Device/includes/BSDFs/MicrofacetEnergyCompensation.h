@@ -44,7 +44,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F get_GGX_energy_compensation_conductor
     // Computing kms, [Practical multiple scattering compensation for microfacet models, Turquin, 2019], Eq. 10
     float kms = (1.0f - Ess) / Ess;
 
-#if PrincipledBSDFGGXUseMultipleScatteringDoFresnel == KERNEL_OPTION_TRUE
+#if PrincipledBSDFDoMetallicFresnelEnergyCompensation == KERNEL_OPTION_TRUE
     // [Practical multiple scattering compensation for microfacet models, Turquin, 2019], Eq. 15
     ColorRGB32F fresnel_compensation_term = F0;
 #else
@@ -621,6 +621,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_glass_energy_compensation_get_correctio
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float get_GGX_energy_compensation_dielectrics(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, const RayVolumeState& ray_volume_state, float eta_t, float eta_i, float relative_eta, float NoV)
 {
+	if (!material.do_glass_energy_compensation)
+		return 1.0f;
+
     float compensation_term = 1.0f;
 
 #if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoGlassEnergyCompensation == KERNEL_OPTION_TRUE

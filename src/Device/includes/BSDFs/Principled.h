@@ -82,7 +82,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_metallic_eval(const HIPRTR
     ColorRGB32F F_thin_film = thin_film_fresnel(material, incident_ior, HoL);
     ColorRGB32F F = hippt::lerp(F_metal, F_thin_film, material.thin_film);
 
-    return torrance_sparrow_GGX_eval<PrincipledBSDFDoEnergyCompensation && PrincipledBSDFDoMetallicEnergyCompensation>(render_data, material.roughness, material.anisotropy, F, local_view_direction, local_to_light_direction, local_half_vector, pdf);
+#if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoMetallicEnergyCompensation == KERNEL_OPTION_TRUE
+    if (material.do_metallic_energy_compensation)
+        return torrance_sparrow_GGX_eval<1>(render_data, material.roughness, material.anisotropy, F, local_view_direction, local_to_light_direction, local_half_vector, pdf);
+    else
+        return torrance_sparrow_GGX_eval<0>(render_data, material.roughness, material.anisotropy, F, local_view_direction, local_to_light_direction, local_half_vector, pdf);
+#else
+     return torrance_sparrow_GGX_eval<0>(render_data, material.roughness, material.anisotropy, F, local_view_direction, local_to_light_direction, local_half_vector, pdf);
+#endif
 }
 
 /**

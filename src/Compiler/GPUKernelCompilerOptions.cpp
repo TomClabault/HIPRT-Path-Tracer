@@ -27,8 +27,8 @@ const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_ENFORCE_ENERGY_CONSE
 const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_GLASS_ENERGY_COMPENSATION = "PrincipledBSDFDoGlassEnergyCompensation";
 const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_CLEARCOAT_ENERGY_COMPENSATION = "PrincipledBSDFDoClearcoatEnergyCompensation";
 const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_METALLIC_ENERGY_COMPENSATION = "PrincipledBSDFDoMetallicEnergyCompensation";
+const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_METALLIC_FRESNEL_ENERGY_COMPENSATION = "PrincipledBSDFDoMetallicFresnelEnergyCompensation";
 const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_SPECULAR_ENERGY_COMPENSATION = "PrincipledBSDFDoSpecularEnergyCompensation";
-const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_GGX_MULTIPLE_SCATTERING_DO_FRESNEL = "PrincipledBSDFGGXUseMultipleScatteringDoFresnel";
 const std::string GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION = "PrincipledBSDFAnisotropicGGXSampleFunction";
 const std::string GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY = "InteriorStackStrategy";
 const std::string GPUKernelCompilerOptions::NESTED_DIELETRCICS_STACK_SIZE_OPTION = "NestedDielectricsStackSize";
@@ -59,8 +59,8 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_GLASS_ENERGY_COMPENSATION,
 	GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_CLEARCOAT_ENERGY_COMPENSATION,
 	GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_METALLIC_ENERGY_COMPENSATION,
+	GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_METALLIC_FRESNEL_ENERGY_COMPENSATION,
 	GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_SPECULAR_ENERGY_COMPENSATION,
-	GPUKernelCompilerOptions::PRINCIPLED_BSDF_GGX_MULTIPLE_SCATTERING_DO_FRESNEL,
 	GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION,
 	GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY,
 	GPUKernelCompilerOptions::NESTED_DIELETRCICS_STACK_SIZE_OPTION,
@@ -95,8 +95,8 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_GLASS_ENERGY_COMPENSATION] = std::make_shared<int>(PrincipledBSDFDoGlassEnergyCompensation);
 	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_CLEARCOAT_ENERGY_COMPENSATION] = std::make_shared<int>(PrincipledBSDFDoClearcoatEnergyCompensation);
 	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_METALLIC_ENERGY_COMPENSATION] = std::make_shared<int>(PrincipledBSDFDoMetallicEnergyCompensation);
+	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_METALLIC_FRESNEL_ENERGY_COMPENSATION] = std::make_shared<int>(PrincipledBSDFDoMetallicFresnelEnergyCompensation);
 	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_SPECULAR_ENERGY_COMPENSATION] = std::make_shared<int>(PrincipledBSDFDoSpecularEnergyCompensation);
-	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_GGX_MULTIPLE_SCATTERING_DO_FRESNEL] = std::make_shared<int>(PrincipledBSDFGGXUseMultipleScatteringDoFresnel);
 	m_options_macro_map[GPUKernelCompilerOptions::GGX_SAMPLE_FUNCTION] = std::make_shared<int>(PrincipledBSDFAnisotropicGGXSampleFunction);
 	m_options_macro_map[GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY] = std::make_shared<int>(InteriorStackStrategy);
 	m_options_macro_map[GPUKernelCompilerOptions::NESTED_DIELETRCICS_STACK_SIZE_OPTION] = std::make_shared<int>(NestedDielectricsStackSize);
