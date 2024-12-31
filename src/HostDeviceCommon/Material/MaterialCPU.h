@@ -213,7 +213,7 @@ struct CPUMaterial
 
         alpha_opacity = hippt::clamp(0.0f, 1.0f, alpha_opacity);
 
-        dielectric_priority = hippt::clamp(0, 32767, dielectric_priority);
+        dielectric_priority = hippt::clamp(0, (int)StackPriorityEntry::PRIORITY_BIT_MASK >> StackPriorityEntry::PRIORITY_BIT_SHIFT, dielectric_priority);
 
         // Clamping to avoid negative emission
         emission = ColorRGB32F::max(ColorRGB32F(0.0f), emission);
