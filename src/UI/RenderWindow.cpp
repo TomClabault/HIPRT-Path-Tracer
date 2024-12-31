@@ -22,6 +22,7 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // TODOs  performance improvements branch:
+// - in RIS, if reuse bsdf ray, just pass the ray volume state to BSDF sample? instead of copying it to the mis reuse structre
 // - can remove the if bounce == 0 --> denoiser stuff to save some registers
 // - remove closest hit info .uv ?
 // - envmap use 3x3 matrices

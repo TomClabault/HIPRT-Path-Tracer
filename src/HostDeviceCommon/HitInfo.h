@@ -46,8 +46,8 @@ struct ShadowLightRayHitInfo
 
     float2 hit_interpolated_texcoords;
     float3 hit_shading_normal;
-
     float3 hit_geometric_normal;
+
     ColorRGB32F hit_emission;
 };
 

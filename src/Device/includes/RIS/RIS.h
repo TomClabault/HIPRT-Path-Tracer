@@ -86,7 +86,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
     // We'll use that intersection point as the origin of our shadow rays
     bool inside_surface = hippt::dot(view_direction, closest_hit_info.geometric_normal) < 0;
     float inside_surface_multiplier = inside_surface ? -1.0f : 1.0f;
-    float3 evaluated_point = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f * inside_surface_multiplier;
 
     // If we're rendering at low resolution, only doing 1 candidate of each
     // for better interactive framerates
@@ -115,7 +114,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
             // product of their edges gives a quasi-null vector --> length of 0.0f --> area of 0)
 
             float3 to_light_direction;
-            to_light_direction = random_light_point - evaluated_point;
+            to_light_direction = random_light_point - closest_hit_info.inter_point;
             distance_to_light = hippt::length(to_light_direction);
             to_light_direction = to_light_direction / distance_to_light; // Normalization
             cosine_at_light_source = hippt::abs(hippt::dot(light_source_info.light_source_normal, -to_light_direction));
@@ -196,7 +195,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
         float target_function = 0.0f;
         float candidate_weight = 0.0f;
         float3 sampled_bsdf_direction;
-        float3 shadow_ray_origin = evaluated_point;
         RayVolumeState volume_state_after_bsdf_sample = ray_payload.volume_state;
         ColorRGB32F bsdf_color;
 
@@ -208,12 +206,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
         hiprtRay bsdf_ray;
         if (bsdf_sample_pdf > 0.0f)
         {
-            bsdf_ray.origin = shadow_ray_origin;
+            bsdf_ray.origin = closest_hit_info.inter_point;
             bsdf_ray.direction = sampled_bsdf_direction;
 
             ShadowLightRayHitInfo shadow_light_ray_hit_info;
             bool hit_found = evaluate_shadow_light_ray(render_data, bsdf_ray, 1.0e35f, shadow_light_ray_hit_info, closest_hit_info.primitive_index, random_number_generator);
-            if (hit_found)
+            if (hit_found && !shadow_light_ray_hit_info.hit_emission.is_black())
             {
                 // If we intersected an emissive material, compute the weight. 
                 // Otherwise, the weight is 0 because of the emision being 0 so we just don't compute it
