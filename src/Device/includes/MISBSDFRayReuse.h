@@ -22,6 +22,7 @@ struct MISBSDFRayReuse
 			
 		this->interpolated_texcoords = shadow_light_ray.hit_interpolated_texcoords;
 
+		this->hit_distance = shadow_light_ray.hit_distance;
 		this->inter_point = inter_point;
 		this->geometric_normal = shadow_light_ray.hit_geometric_normal;
 		this->shading_normal = shadow_light_ray.hit_shading_normal;
@@ -75,6 +76,7 @@ struct MISBSDFRayReuse
 
 	float2 interpolated_texcoords;
 
+	float hit_distance = 0.0f;
 	float3 inter_point = make_float3(1.0e35f, 1.0e35f, 1.0e35f);
 	float3 geometric_normal = make_float3(-2.0f, -2.0, -2.0f);
 	float3 shading_normal = make_float3(-2.0f, -2.0, -2.0f);
@@ -111,6 +113,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool reuse_mis_ray(const HIPRTRenderData& render_
 		ray_payload.material = mis_reuse.read_material(render_data);
 		fix_backfacing_normals(ray_payload, closest_hit_info, view_direction);
 
+		ray_payload.volume_state.distance_in_volume += mis_reuse.hit_distance;
 		ray_payload.volume_state.interior_stack.push(
 			ray_payload.volume_state.incident_mat_index, ray_payload.volume_state.outgoing_mat_index, ray_payload.volume_state.inside_material,
 			mis_reuse.material_index, ray_payload.material.dielectric_priority);

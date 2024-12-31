@@ -24,7 +24,6 @@ extern ImGuiLogger g_imgui_logger;
 // TODOs  performance improvements branch:
 // - can remove the if bounce == 0 --> denoiser stuff to save some registers
 // - remove closest hit info .uv ?
-// - load_triangle indices factor * 3
 // - envmap use 3x3 matrices
 // - clearcoat layer is using torrance_sparrow_GGX_eval non-templated?
 // - russian roulette on energy conservation depending on how much energy we're going to compensate?
@@ -53,7 +52,6 @@ extern ImGuiLogger g_imgui_logger;
 // - NEE++
 // - schlick fresnel in many places?
 // - compaction - https://github.com/microsoft/directxshadercompiler/wiki/wave-intrinsics#example
-// - flags to enable energy preservation per material
 // - disable energy compensation on smooth glass / smooth metal
 // - per material light sampling/BSDF sampling: smooth glass / metal don't need light sampling
 // - launch bounds?
@@ -68,7 +66,6 @@ extern ImGuiLogger g_imgui_logger;
 
 // TODO demos:
 // new oren nayar BRDF: EON
-// clearcoat capabitilies
 
 // TODOs ongoing
 // - limit UI speed because it actually uses some resources (maybe Vsync or something) or does it?

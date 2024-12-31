@@ -739,8 +739,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_glass_layer(const HIPRT
     if (glass_weight > 0.0f)
     {
         float glass_pdf;
-        ColorRGB32F contribution = principled_glass_eval(render_data, material,
-            ray_volume_state, local_view_direction, local_to_light_direction, glass_pdf);
+        ColorRGB32F contribution = principled_glass_eval(render_data, material, ray_volume_state, local_view_direction, local_to_light_direction, glass_pdf);
         contribution *= glass_weight;
         contribution *= layers_throughput;
 

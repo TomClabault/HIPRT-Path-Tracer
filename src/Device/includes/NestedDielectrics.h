@@ -51,6 +51,14 @@ struct StackPriorityEntry
 
 struct InteriorStack
 {
+	/**
+	 * Pushes a new material index onto the stack
+	 * 
+	 * Returns true if that intersection should be skipped (because we are currently in a material with 
+	 * higher priority than the material we just intersected)
+	 * 
+	 * Returns false if that intersection should not be skipped
+	 */
 	HIPRT_HOST_DEVICE bool push(int& out_incident_material_index, int& out_outgoing_material_index, bool& out_inside_material, int material_index, int material_priority)
 	{
 		// Index of the material we last entered before intersecting the
