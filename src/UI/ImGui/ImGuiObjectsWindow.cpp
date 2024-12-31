@@ -1024,7 +1024,7 @@ void ImGuiObjectsWindow::draw_objects_panel()
 				"This parameter controls the strength of that darkening/increase in saturation.\n"
 				"0.0f disables the effect which is non-physically accurate but may be artistically desirable.");
 			material_changed |= ImGui::SliderFloat("Coat anisotropy", &material.coat_anisotropy, 0.0f, 1.0f);
-			material_changed |= ImGui::SliderFloat("Coat anisotropy Rotation", &material.coat_anisotropy_rotation, 0.0f, 1.0f);
+			material_changed |= ImGui::SliderFloat("Coat anisotropy rotation", &material.coat_anisotropy_rotation, 0.0f, 1.0f);
 			material_changed |= ImGui::SliderFloat("Coat IOR", &material.coat_ior, 1.0f, 3.0f);
 			if (material.do_coat_energy_compensation && kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION) == KERNEL_OPTION_FALSE)
 			{

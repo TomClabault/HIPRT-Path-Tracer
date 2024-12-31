@@ -532,12 +532,28 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_coat_compute_darkening(con
     // assuming a perfectly smooth base
     float Ks = view_dir_fresnel; // Eq. 67
 
-    // Now because our base, in the general case, isn't perfectly diffuse or perfectly smooth
-    // we're lerping between the two values based on our roughness and this gives us a good
-    // approximation of how much total internal reflection we have inside the coat layer
+    // The roughness of the base layer isn't just material.roughness: 
     // 
-    // TODO we should assume roughness = 1.0f even if the roughness parameter is 0 is we have no specular   or metallic layer below
-    float K = hippt::lerp(Ks, Kr, material.roughness); // Eq. 68
+    // What if material.roughness is 0.0f but there is no specular, or metallic or glass layer.
+    // This means that there is just the diffuse lobe below the clearcoat layer. So even if
+    // material.roughness is 0.0f, because the coat layer is directly on top of the diffuse layer,
+    // the roughness of the base layer is 1.0f
+    //
+    // Now what if we have 0 specular but 1 metallic? Then we must use the roughness of the metallic layer
+    // (which is actually just material.roughness).
+    //
+    // Same for the glass lobe (and specular lobe actually)
+    //
+    // So that's why we have these max() calls below
+    //
+    // The TL;DR is that we must use material.roughness is one of the base layer lobes (metallic/specular/glass) is 1.0f
+    // Otherwise, is all the base layer lobes are 0.0f, then the roughness is 1.0f because this is just the diffuse lobe
+    // And we lerp for the intermediate cases
+    float base_roughness = hippt::lerp(1.0f, material.roughness, hippt::max(material.specular_transmission, hippt::max(material.metallic, material.specular)));
+    // Now because our base, in the general case, isn't perfectly diffuse or perfectly smooth
+    // we're lerping between the two values based on the roughness of the based layer and this gives us a good
+    // approximation of how much total internal reflection we have inside the coat layer
+    float K = hippt::lerp(Ks, Kr, base_roughness); // Eq. 68
 
     // The base albedo is the albedo of the BSDF below the clearcoat.
     // Because the BSDF below the clearcoat may be composed of many layers,

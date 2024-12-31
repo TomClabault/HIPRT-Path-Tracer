@@ -1880,7 +1880,7 @@ void ImGuiSettingsWindow::draw_denoiser_panel()
 	}
 	DisplaySettings& display_settings = m_render_window->get_display_view_system()->get_display_settings();
 	ImGui::Checkbox("Only denoise when rendering is done", &m_application_settings->denoise_when_rendering_done);
-	ImGui::SliderInt("Denoise Sample Skip", &m_application_settings->denoiser_sample_skip, 1, 128);
+	ImGui::SliderInt("Denoiser sample skip", &m_application_settings->denoiser_sample_skip, 1, 128);
 	ImGui::SliderFloat("Denoiser blend", &display_settings.denoiser_blend, 0.0f, 1.0f);
 	ImGui::EndDisabled();
 
