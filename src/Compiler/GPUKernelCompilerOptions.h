@@ -32,7 +32,6 @@ public:
 	static const std::string PRINCIPLED_BSDF_DO_METALLIC_FRESNEL_ENERGY_COMPENSATION;
 	static const std::string PRINCIPLED_BSDF_DO_SPECULAR_ENERGY_COMPENSATION;
 	static const std::string GGX_SAMPLE_FUNCTION;
-	static const std::string INTERIOR_STACK_STRATEGY;
 	static const std::string NESTED_DIELETRCICS_STACK_SIZE_OPTION;
 
 	static const std::string DIRECT_LIGHT_SAMPLING_STRATEGY;

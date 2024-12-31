@@ -242,7 +242,7 @@ public:
 	 * of the struct on the CPU to upload the correct data size.
 	 * 
 	 * There's no easy way to find the new size of the struct on the CPU because
-	 * the RayVolumeState struct includes a InteriorStackImpl struct whose size
+	 * the RayVolumeState struct includes a InteriorStack struct whose size
 	 * is defined at compilation time. If the nested dielectrics stack size changes
 	 * at runtime (possible through ImGui), then we need to recompute the size of
 	 * the RayVolumeState structure on the CPU to be able to properly resize the

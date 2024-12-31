@@ -343,12 +343,6 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 		ImGui::TreePush("Nested dielectrics tree");
 
 		std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
-		const char* items[] = { "- Automatic", "- With priorities" };
-		if (ImGui::Combo("Nested dielectrics strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY), items, IM_ARRAYSIZE(items)))
-		{
-			m_renderer->recompile_kernels();
-			m_render_window->set_render_dirty(true);
-		}
 
 		static int nested_dielectrics_stack_size = NestedDielectricsStackSize;
 		if (ImGui::SliderInt("Stack Size", &nested_dielectrics_stack_size, 3, 8))

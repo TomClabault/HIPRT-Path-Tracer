@@ -13,7 +13,7 @@ struct RayVolumeState
 	// How far has the ray traveled in the current volume.
 	float distance_in_volume = 0.0f;
 	// The stack of materials being traversed. Used for nested dielectrics handling
-	InteriorStackImpl<InteriorStackStrategy> interior_stack;
+	InteriorStack interior_stack;
 	// Indices of the material we were in before hitting the current dielectric surface
 	int incident_mat_index = -1, outgoing_mat_index = -1;
 	// Whether or not we're exiting a material

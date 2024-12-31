@@ -238,8 +238,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
     bool reflecting = NoL * NoV > 0;
 
     // Relative eta = eta_t / eta_i
-    float eta_i = ray_volume_state.incident_mat_index == InteriorStackImpl<InteriorStackStrategy>::MAX_MATERIAL_INDEX ? 1.0 : render_data.buffers.materials_buffer[ray_volume_state.incident_mat_index].get_ior();
-    float eta_t = ray_volume_state.outgoing_mat_index == InteriorStackImpl<InteriorStackStrategy>::MAX_MATERIAL_INDEX ? 1.0 : render_data.buffers.materials_buffer[ray_volume_state.outgoing_mat_index].get_ior();
+    float eta_i = ray_volume_state.incident_mat_index == InteriorStack::MAX_MATERIAL_INDEX ? 1.0 : render_data.buffers.materials_buffer[ray_volume_state.incident_mat_index].get_ior();
+    float eta_t = ray_volume_state.outgoing_mat_index == InteriorStack::MAX_MATERIAL_INDEX ? 1.0 : render_data.buffers.materials_buffer[ray_volume_state.outgoing_mat_index].get_ior();
 
     float dispersion_abbe_number = material.dispersion_abbe_number;
     float dispersion_scale = material.dispersion_scale;
@@ -379,7 +379,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
         if (thin_walled)
             // For thin materials, refracting in equals refracting out so we're poping the stack
             ray_volume_state.interior_stack.pop(ray_volume_state.inside_material);
-        else if (ray_volume_state.incident_mat_index != InteriorStackImpl<InteriorStackStrategy>::MAX_MATERIAL_INDEX)
+        else if (ray_volume_state.incident_mat_index != InteriorStack::MAX_MATERIAL_INDEX)
         {
             // If we're not coming from the air, this means that we were in a volume and we're currently
             // refracting out of the volume or into another volume.
@@ -417,8 +417,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_glass_sample(const DevicePackedTexturedMaterial* materials_buffer, const DeviceUnpackedEffectiveMaterial& material, RayVolumeState& ray_volume_state, 
     const float3& local_view_direction, Xorshift32Generator& random_number_generator)
 {
-    float eta_i = ray_volume_state.incident_mat_index == InteriorStackImpl<InteriorStackStrategy>::MAX_MATERIAL_INDEX ? 1.0f : materials_buffer[ray_volume_state.incident_mat_index].get_ior();
-    float eta_t = ray_volume_state.outgoing_mat_index == InteriorStackImpl<InteriorStackStrategy>::MAX_MATERIAL_INDEX ? 1.0f : materials_buffer[ray_volume_state.outgoing_mat_index].get_ior();
+    float eta_i = ray_volume_state.incident_mat_index == InteriorStack::MAX_MATERIAL_INDEX ? 1.0f : materials_buffer[ray_volume_state.incident_mat_index].get_ior();
+    float eta_t = ray_volume_state.outgoing_mat_index == InteriorStack::MAX_MATERIAL_INDEX ? 1.0f : materials_buffer[ray_volume_state.outgoing_mat_index].get_ior();
 
     float dispersion_abbe_number = material.dispersion_abbe_number;
     float dispersion_scale = material.dispersion_scale;
@@ -1081,7 +1081,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRende
                                       coat_weight, sheen_weight, metal_1_weight, metal_2_weight,
                                       specular_weight, diffuse_weight, glass_weight);
 
-    float incident_medium_ior = ray_volume_state.incident_mat_index == /* air */ InteriorStackImpl<InteriorStackStrategy>::MAX_MATERIAL_INDEX ? 1.0f : render_data.buffers.materials_buffer[ray_volume_state.incident_mat_index].get_ior();
+    float incident_medium_ior = ray_volume_state.incident_mat_index == /* air */ InteriorStack::MAX_MATERIAL_INDEX ? 1.0f : render_data.buffers.materials_buffer[ray_volume_state.incident_mat_index].get_ior();
     // For the given to_light_direction, normal, view_direction etc..., what's the probability
     // that the 'principled_bsdf_sample()' function would have sampled the lobe?
     float coat_proba, sheen_proba, metal_1_proba, metal_2_proba;

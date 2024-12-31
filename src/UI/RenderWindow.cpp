@@ -22,13 +22,11 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // TODOs  performance improvements branch:
-// - reorder material properties in unpacked and packed material structures
 // - can remove the if bounce == 0 --> denoiser stuff to save some registers
 // - remove closest hit info .uv ?
 // - load_triangle indices factor * 3
 // - envmap use 3x3 matrices
 // - clearcoat layer is using torrance_sparrow_GGX_eval non-templated?
-// - remove unused dielectrics automatic handling
 // - russian roulette on energy conservation depending on how much energy we're going to compensate?
 // - no energy compensation needed for relative IOR 1 on specular and clearcoat layer?
 // - envmap sampling separate: just pick it among the lights instead of sampling it in its own domain

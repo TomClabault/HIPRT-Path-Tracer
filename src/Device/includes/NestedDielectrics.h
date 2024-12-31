@@ -13,124 +13,8 @@
  /**
   * Reference:
   *
-  * [1] [Ray Tracing Gems 1 - Automatic Handling of Materials in Nested Volumes] https://www.realtimerendering.com/raytracinggems/rtg/index.html
-  * [2] [Simple Nested Dielectrics in Ray Traced Images, Schmidt, 2002]
+  * [1] [Simple Nested Dielectrics in Ray Traced Images, Schmidt, 2002]
   */
-
-template <int Strategy>
-struct InteriorStackImpl {};
-
-struct StackEntry
-{
-	// TODO do packing in there
-	bool topmost = true;
-	bool odd_parity = true;
-
-	int material_index = -1;
-};
-
-template <>
-struct InteriorStackImpl<ISS_AUTOMATIC>
-{
-	// TODO leaving material never used ? Or used only where we already know its value so not needed
-	// Unused parameter at the end here to have the same signature as InteriorStackPriority
-	HIPRT_HOST_DEVICE bool push(int& out_incident_material_index, int& out_outgoing_material_index, bool& out_inside_material, int material_index, int)
-	{
-		// Parity of the material we're inserting in the stack
-		bool odd_parity = true;
-		// Index in the stack of the previous material that is the same as
-		// the one we're trying to insert in the stack.
-		int previous_same_mat_index;
-
-		for (previous_same_mat_index = stack_position; previous_same_mat_index >= 0; previous_same_mat_index--)
-		{
-			if (stack[previous_same_mat_index].material_index == material_index)
-			{
-				// The previous material is not the topmost anymore
-				stack[previous_same_mat_index].topmost = false;
-				// The current parity is the inverse of the previous one
-				odd_parity = !stack[previous_same_mat_index].odd_parity;
-
-				break;
-			}
-		}
-
-		// Index of the material we last entered before intersecting the
-		// material we're currently inserting in the stack. This for loop cannot
-		// give us last_entered_mat_index = -1 because we will on the air in the
-		// worst case scenario (the air is the stack[0] entry)
-		int last_entered_mat_index = 0;
-		for (last_entered_mat_index = stack_position; last_entered_mat_index >= 0; last_entered_mat_index--)
-			if (stack[last_entered_mat_index].material_index != material_index && stack[last_entered_mat_index].topmost && stack[last_entered_mat_index].odd_parity)
-				break;
-
-		// Inserting the material in the stack
-		if (stack_position < NestedDielectricsStackSize - 1)
-			stack_position++;
-		stack[stack_position].material_index = material_index;
-		stack[stack_position].odd_parity = odd_parity;
-		stack[stack_position].topmost = true;
-
-		if (odd_parity)
-		{
-			// We are entering the material
-			out_incident_material_index = stack[last_entered_mat_index].material_index;
-			out_outgoing_material_index = material_index;
-		}
-		else
-		{
-			// Exiting material
-			out_outgoing_material_index = stack[last_entered_mat_index].material_index;
-
-			if (last_entered_mat_index < previous_same_mat_index)
-				out_incident_material_index = material_index;
-			else
-			{
-				out_incident_material_index = out_outgoing_material_index;
-
-				// Return true because we are skipping the boundary we just hit
-				return true;
-			}
-		}
-
-		out_inside_material = !odd_parity;
-
-		return false;
-	}
-
-	HIPRT_HOST_DEVICE void pop(bool inside_material)
-	{
-		int stack_top_mat_index = stack[stack_position].material_index;
-		stack_position--;
-
-		if (inside_material)
-		{
-			int previous_same_mat_index;
-			for (previous_same_mat_index = stack_position; previous_same_mat_index >= 0; previous_same_mat_index--)
-				if (stack[previous_same_mat_index].material_index == stack_top_mat_index)
-					break;
-
-			if (previous_same_mat_index >= 0)
-				for (int i = previous_same_mat_index + 1; i <= stack_position; i++)
-					stack[i - 1] = stack[i];
-
-			stack_position--;
-		}
-
-		for (int i = stack_position; i >= 0; i--)
-		{
-			if (stack[i].material_index == stack_top_mat_index)
-			{
-				stack[i].topmost = true;
-				break;
-			}
-		}
-	}
-
-	StackEntry stack[NestedDielectricsStackSize];
-
-	int stack_position = 0;
-};
 
 struct StackPriorityEntry
 {
@@ -165,8 +49,7 @@ struct StackPriorityEntry
 	unsigned int material_index : MATERIAL_INDEX_BITS;
 };
 
-template <>
-struct InteriorStackImpl<ISS_WITH_PRIORITIES>
+struct InteriorStack
 {
 	HIPRT_HOST_DEVICE bool push(int& out_incident_material_index, int& out_outgoing_material_index, bool& out_inside_material, int material_index, int material_priority)
 	{

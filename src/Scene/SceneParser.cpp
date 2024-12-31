@@ -40,9 +40,9 @@ void SceneParser::parse_scene_file(const std::string& scene_filepath, Assimp::Im
         }
     }
 
-    if (scene->mNumMaterials > InteriorStackImpl<InteriorStackStrategy>::MAX_MATERIAL_INDEX)
+    if (scene->mNumMaterials > InteriorStack::MAX_MATERIAL_INDEX)
     {
-        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "This scene contains too many materials for the renderer. Maximum number of material is: %d", InteriorStackImpl<InteriorStackStrategy>::MAX_MATERIAL_INDEX);
+        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "This scene contains too many materials for the renderer. Maximum number of material is: %d", InteriorStack::MAX_MATERIAL_INDEX);
 
         int charac = std::getchar();
 

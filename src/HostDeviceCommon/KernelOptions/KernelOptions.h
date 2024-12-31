@@ -13,11 +13,11 @@
  * These path tracer options allow "compile-time" branching to enable/disable a variety
  * of functionalities in the path tracer.
  * 
- * For example, you can decide, at kernel compile-time, what nested dielectrics strategy to use 
- *	- "automatic" as presented in* Ray Tracing Gems 1, 2019 or 
- *	- "with priorities" as presented in Simple Nested Dielectrics in Ray Traced Images, Schmidt, 2002
- * by passing the "-D InteriorStackStrategy=0" or "-D InteriorStackStrategy=1" option string during
- * the compilation of the kernel (for "automatic" and "with priorities" respectively).
+ * For example, you can decide, at kernel compile-time, what envmap sampling strategy to use 
+ *	- "CDF + Binary search"
+ *	- "Alias table"
+ * by passing the "-D EnvmapSamplingStrategy=1" or "-D EnvmapSamplingStrategy=2" option string during
+ * the compilation of the kernel (for "CDF" and "alias table" respectively).
  * 
  * If you wish to change one of the option used by the path tracer at runtime (by interacting with
  * ImGui for example), you will have to recompile the kernel with the correct set of options
@@ -41,9 +41,6 @@
 #define BSDF_LAMBERTIAN 1
 #define BSDF_OREN_NAYAR 2
 #define BSDF_PRINCIPLED 3
-
-#define ISS_AUTOMATIC 0
-#define ISS_WITH_PRIORITIES 1
 
 #define NESTED_DIELECTRICS_STACK_SIZE 3
 
@@ -130,19 +127,6 @@
  *		All materials will use the Principled BSDF
  */
 #define BSDFOverride BSDF_NONE
-
-/**
- * What nested dielectrics strategy to use.
- * 
- * Possible values (the prefix ISS stands for "Interior Stack Strategy"):
- * 
- *	- ISS_AUTOMATIC
- *		"automatic" strategy as presented in Ray Tracing Gems 1, 2019
- * 
- *	- ISS_WITH_PRIORITIES
- *		"with priorities" as presented in Simple Nested Dielectrics in Ray Traced Images, Schmidt, 2002
- */
-#define InteriorStackStrategy ISS_WITH_PRIORITIES
 
 /**
  * The stack size for handling nested dielectrics

@@ -519,12 +519,7 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 					break;
 
 				case 7:
-					ImGui::BeginDisabled(kernel_options->get_macro_value(GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY) != ISS_WITH_PRIORITIES);
 					material_override_changed |= draw_material_override_line("Dielectric priority", override_state.override_dielectric_priority, material_override.dielectric_priority, 1, StackPriorityEntry::PRIORITY_MAXIMUM);
-					if (kernel_options->get_macro_value(GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY) != ISS_WITH_PRIORITIES)
-						ImGuiRenderer::show_help_marker("Disabled because not using nested dielectrics with priorities.");
-					ImGui::EndDisabled();
-
 					break;
 
 				case 8:
@@ -1061,11 +1056,7 @@ void ImGuiObjectsWindow::draw_objects_panel()
 			material_changed |= ImGui::SliderFloat("Dispersion Abbe number", &material.dispersion_abbe_number, 9.0f, 91.0f);
 			ImGuiRenderer::show_help_marker("Abbe number for the dispersion of the glass. The lower the number, the stronger the dispersion.");
 			material_changed |= ImGui::SliderFloat("Dispersion scale", &material.dispersion_scale, 0.0f, 1.0f);
-			ImGui::BeginDisabled(kernel_options->get_macro_value(GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY) != ISS_WITH_PRIORITIES);
 			material_changed |= ImGui::SliderInt("Dielectric priority", &material.dielectric_priority, 1, StackPriorityEntry::PRIORITY_MAXIMUM);
-			if (kernel_options->get_macro_value(GPUKernelCompilerOptions::INTERIOR_STACK_STRATEGY) != ISS_WITH_PRIORITIES)
-				ImGuiRenderer::show_help_marker("Disabled because not using nested dielectrics with priorities.");
-			ImGui::EndDisabled();
 			material_changed |= ImGui::Checkbox("Thin walled", &material.thin_walled);
 			if (material.do_glass_energy_compensation && kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION) == KERNEL_OPTION_FALSE)
 			{
