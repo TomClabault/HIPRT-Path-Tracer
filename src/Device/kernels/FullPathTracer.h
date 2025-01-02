@@ -115,11 +115,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
         return;
 
     if (render_data.render_settings.do_render_low_resolution())
-    {
         // Reducing the number of bounces to 3 if rendering at low resolution
         // for better interactivity
         render_data.render_settings.nb_bounces = hippt::min(3, render_data.render_settings.nb_bounces);
-    }
 
     unsigned int seed;
     if (render_data.render_settings.freeze_random)
@@ -148,17 +146,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
     ray_payload.next_ray_state = RayState::BOUNCE;
     ray_payload.material = render_data.g_buffer.materials[pixel_index].unpack();
 
-//#ifdef __KERNELCC__
-//    if (x == 634 && y == (res.y - 1 - 441))
-//    {
-//        for (int y_i = 0; y_i < 8; y_i++)
-//            for (int x_i = 0; x_i < 8; x_i++)
-//                printf("%d | %d | %d\n", NESTED_DIELECTRICS_STACK_INDEX_SHIFT_DEBUG(x_i, y_i, 0), NESTED_DIELECTRICS_STACK_INDEX_SHIFT_DEBUG(x_i, y_i, 1), NESTED_DIELECTRICS_STACK_INDEX_SHIFT_DEBUG(x_i, y_i, 2));
-//    }
-//#endif
-//
-//    return;
-
     // Because this is the camera hit (and assuming the camera isn't inside volumes for now),
     // the ray volume state after the camera hit is just an empty interior stack but with
     // the material index that we hit pushed onto the stack. That's it. Because it is that
@@ -166,7 +153,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
     // reconstruct the ray volume state on the fly
     ray_payload.volume_state.reconstruct_first_hit(
         ray_payload.material,
-        /* mat index */ render_data.buffers.material_indices[closest_hit_info.primitive_index],
+        render_data.buffers.material_indices,
+        closest_hit_info.primitive_index,
         random_number_generator);
 
     // This structure is going to contain the information for reusing the
@@ -330,13 +318,15 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
     squared_luminance_of_samples += ray_payload.ray_color.luminance() * ray_payload.ray_color.luminance();
 
     // If we got here, this means that we still have at least one ray active
+    // This is a concurrent write by the way but we don't really care, everyone is writing
+    // the same value
     render_data.aux_buffers.still_one_ray_active[0] = 1;
 
     if (render_data.render_settings.has_access_to_adaptive_sampling_buffers())
         // We can only use these buffers if the adaptive sampling or the stop noise threshold is enabled.
         // Otherwise, the buffers are destroyed to save some VRAM so they are not accessible
         render_data.aux_buffers.pixel_squared_luminance[pixel_index] += squared_luminance_of_samples;
-
+    
     if (render_data.render_settings.sample_number == 0)
         render_data.buffers.pixels[pixel_index] = ray_payload.ray_color;
     else

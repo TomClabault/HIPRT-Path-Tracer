@@ -68,6 +68,10 @@ struct HIPRTGeometry
 			m_geometry = nullptr;
 		}
 
+		if (m_mesh.vertexCount == 0 || m_mesh.triangleCount == 0)
+			// No BVH to build
+			return;
+
 		hiprtBuildOptions build_options;
 		hiprtGeometryBuildInput geometry_build_input;
 		size_t geometry_temp_size;
@@ -97,6 +101,7 @@ struct HIPRTGeometry
 
 	hiprtContext m_hiprt_ctx = nullptr;
 	hiprtTriangleMeshPrimitive m_mesh = { nullptr };
+	// One geometry for the whole scene for now
 	hiprtGeometry m_geometry = nullptr;
 };
 

@@ -133,7 +133,7 @@ void CPURenderer::setup_brdfs_data()
 
 void CPURenderer::set_scene(Scene& parsed_scene)
 {
-    m_render_data.geom = nullptr;
+    m_render_data.GPU_BVH = nullptr;
 
     m_gpu_packed_materials.resize(parsed_scene.materials.size());
     for (int i = 0; i < parsed_scene.materials.size(); i++)

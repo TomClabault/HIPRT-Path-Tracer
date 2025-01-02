@@ -151,8 +151,8 @@ struct HIPRTRenderData
 	// random seed on the GPU for the random number generator to get started
 	unsigned int random_seed = 42;
 
-	// GPU BVH
-	hiprtGeometry geom = nullptr;
+	// HIPRT BVH
+	hiprtGeometry GPU_BVH = nullptr;
 	// GPU Intersection functions (for alpha testing for example)
 	hiprtFuncTable hiprt_function_table = nullptr;
 

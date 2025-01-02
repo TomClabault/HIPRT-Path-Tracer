@@ -30,7 +30,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISurface get_pixel_surface(const HIPRTRend
 	surface.ray_volume_state.initialize();
 	surface.ray_volume_state.reconstruct_first_hit(
 		surface.material,
-		/* mat index */ render_data.buffers.material_indices[render_data.g_buffer.first_hit_prim_index[pixel_index]],
+		render_data.buffers.material_indices,
+		render_data.g_buffer.first_hit_prim_index[pixel_index],
 		random_number_generator);
 
 	surface.view_direction = render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index);
@@ -56,7 +57,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISurface get_pixel_surface_previous_frame(
 	surface.ray_volume_state.initialize();
 	surface.ray_volume_state.reconstruct_first_hit(
 		surface.material,
-		/* mat index */ render_data.buffers.material_indices[render_data.g_buffer_prev_frame.first_hit_prim_index[pixel_index]],
+		render_data.buffers.material_indices,
+		render_data.g_buffer_prev_frame.first_hit_prim_index[pixel_index],
 		random_number_generator);
 
 	surface.view_direction = render_data.g_buffer.get_view_direction(render_data.prev_camera.position, pixel_index);

@@ -970,7 +970,7 @@ void GPURenderer::update_render_data()
 
 	if (m_render_data_buffers_invalidated)
 	{
-		m_render_data.geom = m_hiprt_scene.geometry.m_geometry;
+		m_render_data.GPU_BVH = m_hiprt_scene.geometry.m_geometry;
 
 		m_render_data.buffers.triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.geometry.m_mesh.triangleIndices);
 		m_render_data.buffers.vertices_positions = reinterpret_cast<float3*>(m_hiprt_scene.geometry.m_mesh.vertices);
@@ -1023,6 +1023,10 @@ void GPURenderer::update_render_data()
 
 void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 {
+	if (scene.triangle_indices.size() == 0)
+		// Empty scene, nothing todo
+		return;
+
 	m_hiprt_scene.geometry.upload_indices(scene.triangle_indices);
 	m_hiprt_scene.geometry.upload_vertices(scene.vertices_positions);
 	m_hiprt_scene.geometry.m_hiprt_ctx = m_hiprt_orochi_ctx->hiprt_ctx;
@@ -1036,7 +1040,6 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 
 	m_hiprt_scene.material_indices.resize(scene.material_indices.size());
 	m_hiprt_scene.material_indices.upload_data(scene.material_indices.data());
-
 
 	// Uploading the materials after the textures have been parsed because texture
 	// parsing can modify the materials (emission of constant textures are stored in the

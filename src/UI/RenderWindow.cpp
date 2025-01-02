@@ -22,9 +22,10 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // TODOs  performance improvements branch:
+// - analyze why my path tracer, will looking at nothing still takes 3ms for the path tracing kernel even though there is nothing to render
+// 
 // - if we don't have the ray volume state in the GBuffer anymore, we can remove the stack handlign in the trace ray function of the camera rays
 // - If hitting the same material as before, not load the material from VRAM as it's exactly the same? (only works for non-textured materials)
-// - analyze why my path tracer, will looking at nothing still takes 3ms for the path tracing kernel even though there is nothing to render
 // - in RIS, if reuse bsdf ray, just pass the ray volume state to BSDF sample? instead of copying it to the mis reuse structre
 // - can remove the if bounce == 0 --> denoiser stuff to save some registers
 // - merge camera rays and path tracer?
@@ -362,7 +363,7 @@ RenderWindow::RenderWindow(int renderer_width, int renderer_height, std::shared_
 		m_imgui_renderer->set_render_window(this);
 
 		// Making the render dirty to force a cleanup at startup
-		m_application_state->render_dirty = true;
+		set_render_dirty(true);
 	});
 
 
@@ -520,7 +521,7 @@ void RenderWindow::resize(int pixels_width, int pixels_height)
 
 	m_display_view_system->resize(new_render_width, new_render_height);
 
-	m_application_state->render_dirty = true;
+	set_render_dirty(true);
 }
 
 void RenderWindow::change_resolution_scaling(float new_scaling)
@@ -584,7 +585,7 @@ void RenderWindow::update_renderer_view_translation(float translation_x, float t
 	if (translation_x == 0.0f && translation_y == 0.0f)
 		return;
 
-	m_application_state->render_dirty = true;
+	set_render_dirty(true);
 
 	glm::vec3 translation = glm::vec3(translation_x, translation_y, 0.0f);
 	m_renderer->translate_camera_view(translation);
@@ -592,7 +593,7 @@ void RenderWindow::update_renderer_view_translation(float translation_x, float t
 
 void RenderWindow::update_renderer_view_rotation(float offset_x, float offset_y)
 {
-	m_application_state->render_dirty = true;
+	set_render_dirty(true);
 
 	float rotation_x, rotation_y;
 
@@ -613,7 +614,7 @@ void RenderWindow::update_renderer_view_zoom(float offset, bool scale_delta_time
 	if (offset == 0.0f)
 		return;
 
-	m_application_state->render_dirty = true;
+	set_render_dirty(true);
 
 	m_renderer->zoom_camera_view(offset);
 }

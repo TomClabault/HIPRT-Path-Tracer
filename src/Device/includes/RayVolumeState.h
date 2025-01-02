@@ -41,13 +41,19 @@ struct RayVolumeState
 		}
 	}
 
-	HIPRT_HOST_DEVICE void reconstruct_first_hit(const DeviceUnpackedEffectiveMaterial& material, int first_hit_mat_index, Xorshift32Generator& random_number_generator)
+	HIPRT_HOST_DEVICE void reconstruct_first_hit(const DeviceUnpackedEffectiveMaterial& material, int* material_indices_buffer, int primitive_index, Xorshift32Generator& random_number_generator)
 	{
+		if (primitive_index == -1)
+			// No primary hit i.e. straight into the envmap
+			return;
+
+		int mat_index = material_indices_buffer[primitive_index];
+
 		interior_stack.push(
 			incident_mat_index,
 			outgoing_mat_index,
 			inside_material,
-			first_hit_mat_index,
+			mat_index,
 			material.dielectric_priority);
 
 		if (material.dispersion_scale > 0.0f && material.specular_transmission > 0.0f && sampled_wavelength == 0.0f)

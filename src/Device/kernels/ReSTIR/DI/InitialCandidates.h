@@ -498,7 +498,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_InitialCandidates(HIPRTRenderData
     // reconstruct the ray volume state on the fly
     ray_payload.volume_state.reconstruct_first_hit(
         ray_payload.material,
-        /* mat index */ render_data.buffers.material_indices[render_data.g_buffer_prev_frame.first_hit_prim_index[pixel_index]],
+        render_data.buffers.material_indices,
+        render_data.g_buffer_prev_frame.first_hit_prim_index[pixel_index],
         random_number_generator);
 
     float3 view_direction = render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index);

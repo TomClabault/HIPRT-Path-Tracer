@@ -86,6 +86,10 @@ void RenderWindowKeyboardInteractor::poll_keyboard_inputs()
 	if (m_lshift_pressed)
 		translation.second -= 1.0f;
 
+	if (!(m_z_pressed || m_q_pressed || m_s_pressed || m_d_pressed || m_space_pressed || m_lshift_pressed))
+		// Nothing to do
+		return;
+
 	m_render_window->update_renderer_view_translation(-translation.first, translation.second, true);
 	m_render_window->update_renderer_view_zoom(-zoom, true);
 }

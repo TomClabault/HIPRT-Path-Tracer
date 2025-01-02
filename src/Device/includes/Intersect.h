@@ -153,6 +153,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE hiprtHit intersect_scene_cpu(const HIPRTRenderDat
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data, hiprtRay ray, RayPayload& in_out_ray_payload, HitInfo& out_hit_info, int last_hit_primitive_index, Xorshift32Generator& random_number_generator)
 {
+#ifdef __KERNELCC__
+    if (render_data.GPU_BVH == nullptr)
+        // Empty scene --> no intersection
+        return false;
+#endif
+
     hiprtHit hit;
     bool skipping_volume_boundary = false;
     do
@@ -174,9 +180,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
 #endif
         hiprtGlobalStack global_stack(render_data.global_traversal_stack_buffer, shared_stack_buffer);
 
-        hiprtGeomTraversalClosestCustomStack<hiprtGlobalStack> traversal(render_data.geom, ray, global_stack, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0);
+        hiprtGeomTraversalClosestCustomStack<hiprtGlobalStack> traversal(render_data.GPU_BVH, ray, global_stack, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0);
 #else
-        hiprtGeomTraversalClosest traversal(render_data.geom, ray, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0);
+        hiprtGeomTraversalClosest traversal(render_data.GPU_BVH, ray, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0);
 #endif
 
         hit = traversal.getNextHit();
@@ -243,6 +249,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
 HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& render_data, hiprtRay ray, float t_max, int last_hit_primitive_index, Xorshift32Generator& random_number_generator)
 {
 #ifdef __KERNELCC__
+    if (render_data.GPU_BVH == nullptr)
+        // Empty scene --> no intersection
+        return false;
+#endif
+
+#ifdef __KERNELCC__
     ray.maxT = t_max - 1.0e-4f;
 
     // Payload for the alpha testing filter function
@@ -261,9 +273,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& r
 #endif
     hiprtGlobalStack global_stack(render_data.global_traversal_stack_buffer, shared_stack_buffer);
 
-    hiprtGeomTraversalAnyHitCustomStack<hiprtGlobalStack> traversal(render_data.geom, ray, global_stack, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0);
+    hiprtGeomTraversalAnyHitCustomStack<hiprtGlobalStack> traversal(render_data.GPU_BVH, ray, global_stack, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0);
 #else
-    hiprtGeomTraversalClosest traversal(render_data.geom, ray, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0);
+    hiprtGeomTraversalClosest traversal(render_data.GPU_BVH, ray, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0);
 #endif
 
     hiprtHit shadow_ray_hit = traversal.getNextHit();
@@ -311,6 +323,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& r
 HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderData& render_data, hiprtRay ray, float t_max, ShadowLightRayHitInfo& out_light_hit_info, int last_hit_primitive_index, Xorshift32Generator& random_number_generator)
 {
 #ifdef __KERNELCC__
+    if (render_data.GPU_BVH == nullptr)
+        // Empty scene --> no intersection
+        return false;
+#endif
+
+#ifdef __KERNELCC__
     ray.maxT = t_max - 1.0e-4f;
 
     // Payload for the alpha testing filter function
@@ -329,9 +347,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderD
 #endif
     hiprtGlobalStack global_stack(render_data.global_traversal_stack_buffer, shared_stack_buffer);
 
-    hiprtGeomTraversalClosestCustomStack<hiprtGlobalStack> traversal(render_data.geom, ray, global_stack, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0);
+    hiprtGeomTraversalClosestCustomStack<hiprtGlobalStack> traversal(render_data.GPU_BVH, ray, global_stack, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0);
 #else
-    hiprtGeomTraversalClosest traversal(render_data.geom, ray, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0);
+    hiprtGeomTraversalClosest traversal(render_data.GPU_BVH, ray, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0);
 #endif
 
     hiprtHit shadow_ray_hit = traversal.getNextHit();
