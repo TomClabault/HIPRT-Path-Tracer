@@ -238,7 +238,7 @@ void GPURenderer::update()
 	// Launching the background kernels precompilation if not already launched
 	if (!m_kernel_precompilation_launched)
 	{
-		// precompile_kernels(); //
+		precompile_kernels();
 
 		m_kernel_precompilation_launched = true;
 	}

@@ -9,6 +9,7 @@
 #include "Device/includes/Dispatcher.h"
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Intersect.h"
+#include "Device/includes/MISBSDFRayReuse.h"
 #include "Device/includes/Sampling.h"
 #include "Device/includes/Texture.h"
 #include "HostDeviceCommon/Color.h"
