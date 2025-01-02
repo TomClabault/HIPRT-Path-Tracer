@@ -148,6 +148,17 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
     ray_payload.next_ray_state = RayState::BOUNCE;
     ray_payload.material = render_data.g_buffer.materials[pixel_index].unpack();
 
+//#ifdef __KERNELCC__
+//    if (x == 634 && y == (res.y - 1 - 441))
+//    {
+//        for (int y_i = 0; y_i < 8; y_i++)
+//            for (int x_i = 0; x_i < 8; x_i++)
+//                printf("%d | %d | %d\n", NESTED_DIELECTRICS_STACK_INDEX_SHIFT_DEBUG(x_i, y_i, 0), NESTED_DIELECTRICS_STACK_INDEX_SHIFT_DEBUG(x_i, y_i, 1), NESTED_DIELECTRICS_STACK_INDEX_SHIFT_DEBUG(x_i, y_i, 2));
+//    }
+//#endif
+//
+//    return;
+
     // Because this is the camera hit (and assuming the camera isn't inside volumes for now),
     // the ray volume state after the camera hit is just an empty interior stack but with
     // the material index that we hit pushed onto the stack. That's it. Because it is that

@@ -11,9 +11,21 @@
 #include <hiprt/hiprt_common.h>
 
 #ifdef __KERNELCC__
-// On the GPU, shared memory explanation   here
-#define NESTED_DIELECTRICS_STACK_INDEX_SHIFT(index) ((blockDim.x * threadIdx.y + threadIdx.x) * NestedDielectricsStackSize + (index))
-#define NESTED_DIELECTRICS_STACK_INDEX_SHIFT_DEBUG(x_i, y_i, index) ((blockDim.x * y_i + x_i) * NestedDielectricsStackSize + (index))
+// On the GPU, the nested dielectrics stack is allocated in shared memory.
+// This means that all the entries of the nested dielectrics stacks are in shared memory.
+//
+// For example, for thread blocks of 64 and a NestedDielectricStackSize of 3, this gives us
+// a shared memory array of 3*64 = 192 entries.
+// 
+// We then need a mapping that "redirects" each thread to its proper entry in that 192-long array.
+// 
+// That's what this macro does, it takes an index in the stack as parameter (so 0, 1 or 2 for a NestedDielectricStackSize of 3)
+// and maps it to the index to use in the shared memory array by using the threadIdx.
+// 
+// Note that the mapping is written to minimize shared memory bank conflicts
+//#define NESTED_DIELECTRICS_STACK_INDEX_SHIFT(index) ((blockDim.x * threadIdx.y + threadIdx.x) * NestedDielectricsStackSize + (index))
+#define NESTED_DIELECTRICS_STACK_INDEX_SHIFT(index) (index * KernelWorkgroupThreadCount + (blockDim.x * threadIdx.y + threadIdx.x))
+#define NESTED_DIELECTRICS_STACK_INDEX_SHIFT_DEBUG(x_i, y_i, index) (index * KernelWorkgroupThreadCount + (blockDim.x * y_i + x_i))
 #else
 // This macro is used to offset the index used to index the priority stack.
 // On the CPU, there is nothing to do, just use the given index, there is really nothing
