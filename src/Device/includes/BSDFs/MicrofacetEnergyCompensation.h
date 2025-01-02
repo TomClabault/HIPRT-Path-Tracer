@@ -25,6 +25,9 @@
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F get_GGX_energy_compensation_conductors(const HIPRTRenderData& render_data, const ColorRGB32F& F0, float material_roughness, const float3& local_view_direction)
 {
+	if (material_roughness < render_data.bsdfs_data.energy_compensation_roughness_threshold)
+		return ColorRGB32F(1.0f);
+
     const void* GGX_Ess_texture_pointer = nullptr;
 #ifdef __KERNELCC__
     GGX_Ess_texture_pointer = &render_data.bsdfs_data.GGX_conductor_Ess;
@@ -621,7 +624,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_glass_energy_compensation_get_correctio
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float get_GGX_energy_compensation_dielectrics(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, bool inside_object, float eta_t, float eta_i, float relative_eta, float NoV)
 {
-	if (!material.do_glass_energy_compensation)
+	if (!material.do_glass_energy_compensation || material.roughness < render_data.bsdfs_data.energy_compensation_roughness_threshold)
 		return 1.0f;
 
     float compensation_term = 1.0f;

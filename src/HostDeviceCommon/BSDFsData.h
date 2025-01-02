@@ -65,6 +65,8 @@ struct BRDFsData
 	bool glossy_base_energy_compensation = true;
 
 	GGXMaskingShadowingFlavor GGX_masking_shadowing = GGXMaskingShadowingFlavor::HeightCorrelated;
+
+	float energy_compensation_roughness_threshold = 0.15f;
 };
 
 #endif

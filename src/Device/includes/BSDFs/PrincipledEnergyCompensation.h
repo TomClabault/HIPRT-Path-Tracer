@@ -22,7 +22,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float principled_specular_relative_ior(const Devi
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float get_principled_energy_compensation_glossy_base(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, float incident_medium_ior, float NoV)
 {
-    if (!material.do_specular_energy_compensation)
+    if (!material.do_specular_energy_compensation || material.roughness < render_data.bsdfs_data.energy_compensation_roughness_threshold)
         return 1.0f;
 
     float ms_compensation = 1.0f;
@@ -80,7 +80,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_principled_energy_compensation_glossy_b
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE float get_principled_energy_compensation_clearcoat_lobe(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, float incident_medium_ior, float NoV)
 {
-    if (material.coat == 0.0f || !material.do_coat_energy_compensation)
+    if (material.coat == 0.0f || !material.do_coat_energy_compensation || material.coat_roughness < render_data.bsdfs_data.energy_compensation_roughness_threshold)
         // No coat, nothing to compensate
         return 1.0f;
 

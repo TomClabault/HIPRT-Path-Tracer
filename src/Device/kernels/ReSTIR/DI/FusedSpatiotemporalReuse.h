@@ -501,7 +501,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 #if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_M
 	normalization_function.get_normalization(render_data, spatiotemporal_output_reservoir, initial_candidates_reservoir, center_pixel_surface, 
 		temporal_neighbor_reservoir.M, center_pixel_index, make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z),
-		res, cos_sin_theta_rotation, normalization_numerator, normalization_denominator);
+		res, cos_sin_theta_rotation, normalization_numerator, normalization_denominator, random_number_generator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
 	normalization_function.get_normalization(render_data, 
 		spatiotemporal_output_reservoir, center_pixel_surface, temporal_neighbor_surface,

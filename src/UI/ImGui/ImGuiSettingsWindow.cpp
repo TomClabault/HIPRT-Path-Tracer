@@ -1683,6 +1683,15 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 		}
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		if (ImGui::SliderFloat("Energy compensation roughness threshold", &render_data.bsdfs_data.energy_compensation_roughness_threshold, 0.0f, 1.0f))
+			m_render_window->set_render_dirty(true);
+		ImGuiRenderer::show_help_marker("Below this roughness, energy compensation will not be applied.\n\n"
+			""
+			"Generally speaking, the darkening of the material due to missing energy compensation is barely visible below 0.15f roughness.\n\n"
+			""
+			"0.0f disables the threshold and energy compensation will always be applied.");
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		if (ImGui::Checkbox("Use hardware texture interpolation", &render_data.bsdfs_data.use_hardware_tex_interpolation))
 		{
 			m_renderer->init_GGX_glass_Ess_texture(render_data.bsdfs_data.use_hardware_tex_interpolation ? hipFilterModeLinear : hipFilterModePoint);
