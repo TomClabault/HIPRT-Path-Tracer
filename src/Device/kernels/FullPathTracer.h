@@ -147,13 +147,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
     ray_payload.volume_state.initialize();
     ray_payload.next_ray_state = RayState::BOUNCE;
     ray_payload.material = render_data.g_buffer.materials[pixel_index].unpack();
-    /*if (x == 634 && y == (res.y - 1 - 441))
-    {
-        printf("--- Init:\n");
-        printf("Mat index: %d\n", render_data.buffers.material_indices[closest_hit_info.primitive_index]);
-        printf("Priority: %d\n", ray_payload.material.dielectric_priority);
-        printf("\n");
-    }*/
 
     // Because this is the camera hit (and assuming the camera isn't inside volumes for now),
     // the ray volume state after the camera hit is just an empty interior stack but with
@@ -164,34 +157,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
         ray_payload.material,
         /* mat index */ render_data.buffers.material_indices[closest_hit_info.primitive_index],
         random_number_generator);
-
-    /*if (x == 634 && y == (res.y - 1 - 441))
-        printf("--- After reconstruction:\n");
-#ifdef __KERNELCC__
-    if (x == 634 && y == (res.y - 1 - 441))
-    {
-        for (int i = 0; i < NestedDielectricsStackSize; i++)
-        {
-            printf("%d\n", stack_entries[NESTED_DIELECTRICS_STACK_INDEX_SHIFT(i)].get_material_index());
-            if (i == NestedDielectricsStackSize - 1)
-                printf("\n");
-        }
-    }
-#endif
-
-    if (x == 634 && y == (res.y - 1 - 441))
-        printf("--- After reconstruction:\n");
-#ifdef __KERNELCC__
-    if (x == 634 && y == (res.y - 1 - 441))
-    {
-        for (int i = 0; i < NestedDielectricsStackSize; i++)
-        {
-            printf("%d\n", stack_entries[NESTED_DIELECTRICS_STACK_INDEX_SHIFT(i)].get_material_index());
-            if (i == NestedDielectricsStackSize - 1)
-                printf("\n");
-        }
-    }
-#endif*/
 
     // This structure is going to contain the information for reusing the
     // BSDF ray when doing NEE with MIS: as a matter of fact, when doing
@@ -208,20 +173,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
     {
         if (ray_payload.next_ray_state != RayState::MISSED)
         {
-            /*if (x == 634 && y == (res.y - 1 - 441))
-                printf("--- Bounce: %d\n", bounce);
-#ifdef __KERNELCC__
-            if (x == 634 && y == (res.y - 1 - 441))
-            {
-                for (int i = 0; i < NestedDielectricsStackSize; i++)
-                {
-                    printf("%d\n", stack_entries[NESTED_DIELECTRICS_STACK_INDEX_SHIFT(i)].get_material_index());
-                    if (i == NestedDielectricsStackSize - 1)
-                        printf("\n");
-                }
-            }
-#endif*/
-
             if (bounce > 0)
             {
                 if (ReuseBSDFMISRay && mis_reuse.has_ray())
@@ -231,8 +182,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
                     // Not tracing for the primary ray because this has already been done in the camera ray pass
                     intersection_found = trace_ray(render_data, ray, ray_payload, closest_hit_info, closest_hit_info.primitive_index, random_number_generator);
             }
-
-            //return;
 
             if (intersection_found)
             {

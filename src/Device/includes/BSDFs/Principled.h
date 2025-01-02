@@ -394,6 +394,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
             ColorRGB32F absorption_color = incident_material.get_absorption_color();
             if (!absorption_color.is_white())
             {
+                // Capping the distance to avoid numerical issues at 0 distance
+                // (can happen depending on the geometry of the scene if a ray exits a volume very quickly after entering it)
+                ray_volume_state.distance_in_volume = hippt::max(ray_volume_state.distance_in_volume, 1.0e-6f);
+
                 // Remapping the absorption coefficient so that it is more intuitive to manipulate
                 // according to Burley, 2015 [5].
                 // This effectively gives us a "at distance" absorption coefficient.

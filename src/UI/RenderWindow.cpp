@@ -22,6 +22,7 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // TODOs  performance improvements branch:
+// - shared memory bank conflicts nested dielectrics stack
 // - if we don't have the ray volume state in the GBuffer anymore, we can remove the stack handlign in the trace ray function of the camera rays
 // - If hitting the same material as before, not load the material from VRAM as it's exactly the same? (only works for non-textured materials)
 // - analyze why my path tracer, will looking at nothing still takes 3ms for the path tracing kernel even though there is nothing to render
@@ -58,7 +59,7 @@ extern ImGuiLogger g_imgui_logger;
 // - energy compensation dielectric do not do it ifspecular weight == 0.0f
 // - upload partial materials when a material is modified instead  of reuploading everything
 // - NEE++
-// - schlick fresnel in many places?
+// - schlick fresnel in many places? instead of correct fresnel. switch in "performance settings"
 // - compaction - https://github.com/microsoft/directxshadercompiler/wiki/wave-intrinsics#example
 // - disable energy compensation on smooth glass / smooth metal
 // - per material light sampling/BSDF sampling: smooth glass / metal don't need light sampling
