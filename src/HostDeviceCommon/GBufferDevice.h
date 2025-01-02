@@ -30,8 +30,6 @@ struct GBufferDevice
 	// model when used with smooth normals / normal mapping
 	Octahedral24BitNormal* shading_normals = nullptr;
 	Octahedral24BitNormal* geometric_normals = nullptr;
-
-	RayVolumeState* ray_volume_states = nullptr;
 };
 
 #endif

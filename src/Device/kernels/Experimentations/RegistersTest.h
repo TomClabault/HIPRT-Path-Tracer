@@ -394,36 +394,36 @@ HIPRT_HOST_DEVICE HIPRT_INLINE unsigned int wang_hash(unsigned int seed)
 //    render_data.buffers.pixels[threadId] = ColorRGB32F(result);
 //}
 
-#include "Device/includes/Dispatcher.h"
-
-#ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void) TestFunction(HIPRTRenderData render_data, int2 res, HIPRTCamera camera)
-#else
-GLOBAL_KERNEL_SIGNATURE(void) inline TestFunction(HIPRTRenderData render_data, int2 res, HIPRTCamera camera, int x, int y)
-#endif
-{
-#ifdef __KERNELCC__
-    const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
-    const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
-#endif
-    const uint32_t threadId = (x + y * res.x);
-
-    if (threadId >= res.x * res.y)
-        return;
-
-    Xorshift32Generator randomGenerator(wang_hash(threadId + 1));
-
-    float pdf;
-    int mat_index = (int)(threadId * randomGenerator() * 50);
-    DeviceTexturedMaterial mat = render_data.buffers.materials_buffer[(int)(threadId * randomGenerator() * 50) % 10];
-    ColorRGB32F eval_out = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, mat, render_data.g_buffer.ray_volume_states[threadId], make_float3(0.5, 1.0, 2), make_float3(0.5, 1.0, 2), make_float3(0.5, 1.0, 2), pdf);
-
-    int incident, outgoing;
-    bool leaving;
-    render_data.g_buffer.ray_volume_states[threadId].interior_stack.push(incident, outgoing, leaving, mat_index, render_data.buffers.materials_buffer[mat_index].dielectric_priority);
-    render_data.g_buffer.ray_volume_states[threadId].interior_stack.push(incident, outgoing, leaving, mat_index + 5, render_data.buffers.materials_buffer[mat_index + 5].dielectric_priority);
-    render_data.g_buffer.ray_volume_states[threadId].interior_stack.push(incident, outgoing, leaving, mat_index * 5, render_data.buffers.materials_buffer[mat_index * 5].dielectric_priority);
-    render_data.g_buffer.ray_volume_states[threadId].interior_stack.push(incident, outgoing, leaving, mat_index * 25, render_data.buffers.materials_buffer[mat_index * 25].dielectric_priority);
-
-    render_data.buffers.pixels[threadId] = ColorRGB32F(render_data.g_buffer.ray_volume_states[threadId].interior_stack.stack[1].odd_parity) * eval_out;
-}
+//#include "Device/includes/Dispatcher.h"
+//
+//#ifdef __KERNELCC__
+//GLOBAL_KERNEL_SIGNATURE(void) TestFunction(HIPRTRenderData render_data, int2 res, HIPRTCamera camera)
+//#else
+//GLOBAL_KERNEL_SIGNATURE(void) inline TestFunction(HIPRTRenderData render_data, int2 res, HIPRTCamera camera, int x, int y)
+//#endif
+//{
+//#ifdef __KERNELCC__
+//    const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
+//    const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
+//#endif
+//    const uint32_t threadId = (x + y * res.x);
+//
+//    if (threadId >= res.x * res.y)
+//        return;
+//
+//    Xorshift32Generator randomGenerator(wang_hash(threadId + 1));
+//
+//    float pdf;
+//    int mat_index = (int)(threadId * randomGenerator() * 50);
+//    DeviceTexturedMaterial mat = render_data.buffers.materials_buffer[(int)(threadId * randomGenerator() * 50) % 10];
+//    ColorRGB32F eval_out = bsdf_dispatcher_eval(render_data.buffers.materials_buffer, mat, render_data.g_buffer.ray_volume_states[threadId], make_float3(0.5, 1.0, 2), make_float3(0.5, 1.0, 2), make_float3(0.5, 1.0, 2), pdf);
+//
+//    int incident, outgoing;
+//    bool leaving;
+//    render_data.g_buffer.ray_volume_states[threadId].interior_stack.push(incident, outgoing, leaving, mat_index, render_data.buffers.materials_buffer[mat_index].dielectric_priority);
+//    render_data.g_buffer.ray_volume_states[threadId].interior_stack.push(incident, outgoing, leaving, mat_index + 5, render_data.buffers.materials_buffer[mat_index + 5].dielectric_priority);
+//    render_data.g_buffer.ray_volume_states[threadId].interior_stack.push(incident, outgoing, leaving, mat_index * 5, render_data.buffers.materials_buffer[mat_index * 5].dielectric_priority);
+//    render_data.g_buffer.ray_volume_states[threadId].interior_stack.push(incident, outgoing, leaving, mat_index * 25, render_data.buffers.materials_buffer[mat_index * 25].dielectric_priority);
+//
+//    render_data.buffers.pixels[threadId] = ColorRGB32F(render_data.g_buffer.ray_volume_states[threadId].interior_stack.stack_entries[1].odd_parity) * eval_out;
+//}

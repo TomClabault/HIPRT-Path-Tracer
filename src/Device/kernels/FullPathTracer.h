@@ -144,9 +144,54 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
     ray.direction = hippt::normalize(-render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index));
 
     RayPayload ray_payload;
+    ray_payload.volume_state.initialize();
     ray_payload.next_ray_state = RayState::BOUNCE;
     ray_payload.material = render_data.g_buffer.materials[pixel_index].unpack();
-    ray_payload.volume_state = render_data.g_buffer.ray_volume_states[pixel_index];
+    /*if (x == 634 && y == (res.y - 1 - 441))
+    {
+        printf("--- Init:\n");
+        printf("Mat index: %d\n", render_data.buffers.material_indices[closest_hit_info.primitive_index]);
+        printf("Priority: %d\n", ray_payload.material.dielectric_priority);
+        printf("\n");
+    }*/
+
+    // Because this is the camera hit (and assuming the camera isn't inside volumes for now),
+    // the ray volume state after the camera hit is just an empty interior stack but with
+    // the material index that we hit pushed onto the stack. That's it. Because it is that
+    // simple, we don't have the ray volume state in the GBuffer but rather we can
+    // reconstruct the ray volume state on the fly
+    ray_payload.volume_state.reconstruct_first_hit(
+        ray_payload.material,
+        /* mat index */ render_data.buffers.material_indices[closest_hit_info.primitive_index],
+        random_number_generator);
+
+    /*if (x == 634 && y == (res.y - 1 - 441))
+        printf("--- After reconstruction:\n");
+#ifdef __KERNELCC__
+    if (x == 634 && y == (res.y - 1 - 441))
+    {
+        for (int i = 0; i < NestedDielectricsStackSize; i++)
+        {
+            printf("%d\n", stack_entries[NESTED_DIELECTRICS_STACK_INDEX_SHIFT(i)].get_material_index());
+            if (i == NestedDielectricsStackSize - 1)
+                printf("\n");
+        }
+    }
+#endif
+
+    if (x == 634 && y == (res.y - 1 - 441))
+        printf("--- After reconstruction:\n");
+#ifdef __KERNELCC__
+    if (x == 634 && y == (res.y - 1 - 441))
+    {
+        for (int i = 0; i < NestedDielectricsStackSize; i++)
+        {
+            printf("%d\n", stack_entries[NESTED_DIELECTRICS_STACK_INDEX_SHIFT(i)].get_material_index());
+            if (i == NestedDielectricsStackSize - 1)
+                printf("\n");
+        }
+    }
+#endif*/
 
     // This structure is going to contain the information for reusing the
     // BSDF ray when doing NEE with MIS: as a matter of fact, when doing
@@ -163,6 +208,20 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
     {
         if (ray_payload.next_ray_state != RayState::MISSED)
         {
+            /*if (x == 634 && y == (res.y - 1 - 441))
+                printf("--- Bounce: %d\n", bounce);
+#ifdef __KERNELCC__
+            if (x == 634 && y == (res.y - 1 - 441))
+            {
+                for (int i = 0; i < NestedDielectricsStackSize; i++)
+                {
+                    printf("%d\n", stack_entries[NESTED_DIELECTRICS_STACK_INDEX_SHIFT(i)].get_material_index());
+                    if (i == NestedDielectricsStackSize - 1)
+                        printf("\n");
+                }
+            }
+#endif*/
+
             if (bounce > 0)
             {
                 if (ReuseBSDFMISRay && mis_reuse.has_ray())
@@ -172,6 +231,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
                     // Not tracing for the primary ray because this has already been done in the camera ray pass
                     intersection_found = trace_ray(render_data, ray, ray_payload, closest_hit_info, closest_hit_info.primitive_index, random_number_generator);
             }
+
+            //return;
 
             if (intersection_found)
             {
@@ -235,7 +296,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
                 if (ReuseBSDFMISRay && mis_reuse.has_ray())
                     bsdf_color = reuse_mis_bsdf_sample(bounce_direction, bsdf_pdf, ray_payload, mis_reuse);
                 else
-                    bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bounce_direction, bsdf_pdf, random_number_generator);
+                    bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, true, -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bounce_direction, bsdf_pdf, random_number_generator);
 
                 // Terminate ray if bad sampling
                 if (bsdf_pdf <= 0.0f)

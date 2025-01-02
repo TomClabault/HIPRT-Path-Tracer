@@ -77,7 +77,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 		render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs[center_pixel_index] = ReSTIRDIReservoir();
 
 	// Surface data of the center pixel
-	ReSTIRDISurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index);
+	ReSTIRDISurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index, random_number_generator);
 	if (center_pixel_surface.material.is_emissive())
 		// Not doing ReSTIR on directly visible emissive materials
 		return;
@@ -110,7 +110,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 
 	// Resampling the initial candidates
 	ReSTIRDIReservoir temporal_reuse_output_reservoir;
-	ReSTIRDISurface temporal_neighbor_surface = get_pixel_surface(render_data, temporal_neighbor_pixel_index, render_data.render_settings.use_prev_frame_g_buffer());
+	ReSTIRDISurface temporal_neighbor_surface = get_pixel_surface(render_data, temporal_neighbor_pixel_index, render_data.render_settings.use_prev_frame_g_buffer(), random_number_generator);
 
 	if (temporal_neighbor_surface.material.is_emissive())
 	{

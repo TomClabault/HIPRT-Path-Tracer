@@ -92,7 +92,7 @@
  * Size of the thread blocks used when dispatching the kernels. 
  * This value is used for allocating the shared memory stack for traversal
  */
-#define SharedStackBVHTraversalBlockSize (KernelBlockWidthHeight * KernelBlockWidthHeight)
+#define KernelWorkgroupThreadCount (KernelBlockWidthHeight * KernelBlockWidthHeight)
 
  /**
   * Size of the shared memory stack for BVH traversal of "global" rays 

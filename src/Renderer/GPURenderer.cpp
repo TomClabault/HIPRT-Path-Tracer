@@ -1003,7 +1003,6 @@ void GPURenderer::update_render_data()
 			m_render_data.g_buffer_prev_frame.geometric_normals = nullptr;
 			m_render_data.g_buffer_prev_frame.shading_normals = nullptr;
 			m_render_data.g_buffer_prev_frame.primary_hit_position = nullptr;
-			m_render_data.g_buffer_prev_frame.ray_volume_states = nullptr;
 		}
 
 		if (m_render_data.render_settings.has_access_to_adaptive_sampling_buffers())

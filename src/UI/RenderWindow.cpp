@@ -22,9 +22,16 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // TODOs  performance improvements branch:
+// - if we don't have the ray volume state in the GBuffer anymore, we can remove the stack handlign in the trace ray function of the camera rays
+// - If hitting the same material as before, not load the material from VRAM as it's exactly the same? (only works for non-textured materials)
+// - analyze why my path tracer, will looking at nothing still takes 3ms for the path tracing kernel even though there is nothing to render
 // - in RIS, if reuse bsdf ray, just pass the ray volume state to BSDF sample? instead of copying it to the mis reuse structre
 // - can remove the if bounce == 0 --> denoiser stuff to save some registers
+// - merge camera rays and path tracer?
+// - store Material in GBuffer only if using ReSTIR, otherwise, just reconstruct it in the path tracign kernel
+// - maybe the bottleneck is in accessing the OpenGL Interop Buffers?
 // - remove closest hit info .uv ?
+// - we don't need ray volume states in the GBuffer, just the material index and we push that index on the ray volume stack in the path tracing kernel because that's the only thing that the camera ray kernel does anyway
 // - envmap use 3x3 matrices
 // - clearcoat layer is using torrance_sparrow_GGX_eval non-templated?
 // - russian roulette on energy conservation depending on how much energy we're going to compensate?
@@ -41,7 +48,7 @@ extern ImGuiLogger g_imgui_logger;
 // - wavefront path tracing
 // - dispatch mega kernel when only a few rays are left alive after compaction?
 // - investigate where the big register usage comes from (by commenting lines) --> split shaders there?
-// - split shaders for material specifics?
+// - split shaders for material specifics and dispatch in parallel?
 // - limit  number of bounces based on material type
 // - use wavefront path tracing to evaluate direct  lighting, envmap and BSDF sample in parallel
 // - start shooting camera rays for frame N+1 during frame N?
@@ -55,13 +62,11 @@ extern ImGuiLogger g_imgui_logger;
 // - compaction - https://github.com/microsoft/directxshadercompiler/wiki/wave-intrinsics#example
 // - disable energy compensation on smooth glass / smooth metal
 // - per material light sampling/BSDF sampling: smooth glass / metal don't need light sampling
-// - launch bounds?
+// - launch bounds optimization?
 // - thread group size optimization?
-// - Do we need  to keep the whole code  bloat for the packed material usage since it doesn't seem to be changing anything
 // - SoA instead of AoS
 // - superfluous sample() call on the last bounce?
 // - perfect reflection and refractions fast path
-// - fix specular layer darkening: roughness of the layer below is incorrectly determined: mostly when no specular layer below the coat but roughness = 0.0f --> going to assume that what is below is specular but it's not because there is no specular layer so it's just the diffuse lobe = 100% rough
 // - double buffering of frames in general to better keep the GPU occupied?
 // - remove unused denoiser buffers if not using the denoiser
 
@@ -92,12 +97,9 @@ extern ImGuiLogger g_imgui_logger;
 // - init opengl context and all that expensive stuff (compile kernels too) while the scene is being parsed
 // - do not pass so many arguments to kernels everytime: make a "KernelArguments" folder in the source files with one file that contains the arguments needed for a kernel: ReSTIR_DI_InitialCandidatesArguments, ReSTIR_DI_SpatialReuseArguments, ...
 // - cleanup RIS reservoir with all the BSDF stuff
-// - only recompile relevant kernels in GPURenderer::recompile_kernels (i.e. not restir if not using restir for example)
 // - denoiser albedo and normals still useful now that we have the GBuffer?
 // - make a function get_camera_ray that handles pixel jittering
 // - we don't need the full HitInfo 'closest_hit_info' structure everywhere, only the inter point and the two normals for the most part so maybe have a simplified structure 
-// - only the material index can be stored in the pixel states of the wavefront path tracer, don't need to store the whole material (is that correct though? Because then we need to re-evaluate the textures at the hit point)
-// - use 3x3 matrix for envmap matrices
 // - free denoiser buffers if not using denoising
 // - use a proper GLTF loader because ASSIMP isn't good, poor support of the GLTF spec
 // - refactor ImGuiRenderer in several sub classes that each draw a panel
@@ -109,7 +111,6 @@ extern ImGuiLogger g_imgui_logger;
 // - implement ideas of https://blog.selfshadow.com/publications/s2017-shading-course/imageworks/s2017_pbs_imageworks_slides_v2.pdf
 // - software opacity micromaps
 // - cache opacity of materials textures? --> analyze the texture when loading it from the texture and if there isn't a single transparent pixel, then we know that we won't have to fetch the material / texture in the alpha test filter function because the alpha is going to be 1.0f anyways
-// - simpler BSDF for indirect bounces as a biased option for performance?
 // - limit secondary bounces ray distance: objects far away won't contribute much to what the camera sees so shortening the rays should be okay?
 // - limit direct lighting occlusion distance: maybe stochastically so that we get a falloff instead of a hard cut where an important may not contribute anymore
 //		- for maximum ray length, limit that length even more for indirect bounces and even more so if the ray is far away from the camera (beware of mirrors in the scene which the camera can look into and see a far away part of the scene where light could be very biased)

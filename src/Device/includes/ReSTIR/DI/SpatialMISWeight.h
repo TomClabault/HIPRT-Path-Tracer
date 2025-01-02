@@ -69,7 +69,7 @@ struct ReSTIRDISpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH>
 				// Neighbor too dissimilar according to heuristics, skipping
 				continue;
 
-			ReSTIRDISurface neighbor_surface = get_pixel_surface(render_data, neighbor_index_j);
+			ReSTIRDISurface neighbor_surface = get_pixel_surface(render_data, neighbor_index_j, random_number_generator);
 
 			float target_function_at_j = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, reservoir_being_resampled.sample, neighbor_surface, random_number_generator);
 
@@ -127,7 +127,7 @@ struct ReSTIRDISpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
 
 			if (update_mc)
 			{
-				ReSTIRDISurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index);
+				ReSTIRDISurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
 				float target_function_center_reservoir_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, center_pixel_reservoir.sample, neighbor_pixel_surface, random_number_generator);
 				float target_function_center_reservoir_at_center = center_pixel_reservoir.sample.target_function;
 
@@ -213,7 +213,7 @@ struct ReSTIRDISpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
 				//
 				// So we can avoid computing all that stuff
 
-				ReSTIRDISurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index);
+				ReSTIRDISurface neighbor_pixel_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
 				float target_function_center_reservoir_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, center_pixel_reservoir.sample, neighbor_pixel_surface, random_number_generator);
 				float target_function_center_reservoir_at_center = center_pixel_reservoir.sample.target_function;
 

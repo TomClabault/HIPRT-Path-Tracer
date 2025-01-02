@@ -14,7 +14,7 @@ struct MISBSDFRayReuse
 {
 	HIPRT_HOST_DEVICE void fill(ShadowLightRayHitInfo& shadow_light_ray,
 		float3 inter_point, float3 bsdf_sampled_direction, ColorRGB32F& bsdf_color, float bsdf_pdf,
-		RayVolumeState ray_volume_state, RayState next_ray_state)
+		RayState next_ray_state)
 	{
 #if ReuseBSDFMISRay
 		this->prim_index = shadow_light_ray.hit_prim_index;
@@ -31,7 +31,6 @@ struct MISBSDFRayReuse
 		this->bsdf_color = bsdf_color;
 		this->bsdf_pdf = bsdf_pdf;
 
-		this->ray_volume_state = ray_volume_state;
 		this->next_ray_state = next_ray_state;
 #endif
 	}
@@ -85,7 +84,6 @@ struct MISBSDFRayReuse
 	ColorRGB32F bsdf_color;
 	float bsdf_pdf = -1.0f;
 
-	RayVolumeState ray_volume_state;
 	RayState next_ray_state;
 #endif
 };
@@ -135,11 +133,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F reuse_mis_bsdf_sample(float3& out_bsd
 	// If we do have a MIS BSDF ray to reuse
 	out_bsdf_pdf = mis_reuse.bsdf_pdf;
 	out_bsdf_sampled_direction = mis_reuse.bsdf_sampled_direction;
-
-	// Using the ray volume state from the MIS reuse to take into account
-	// the modifications done by bsdf_sample() (done in the light sampling 
-	// function which we're are reusing the MIS sample from) to the ray volume state
-	ray_payload.volume_state = mis_reuse.ray_volume_state;
 
 	return mis_reuse.bsdf_color;
 #else

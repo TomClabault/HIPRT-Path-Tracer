@@ -21,13 +21,16 @@ struct ReSTIRDISurface
 	float3 shading_point = { 0.0f, 0.0f, 0.0f };
 };
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISurface get_pixel_surface(const HIPRTRenderData& render_data, int pixel_index)
+HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISurface get_pixel_surface(const HIPRTRenderData& render_data, int pixel_index, Xorshift32Generator& random_number_generator)
 {
 	ReSTIRDISurface surface;
 
 	surface.material = render_data.g_buffer.materials[pixel_index].unpack();
-	surface.ray_volume_state = render_data.g_buffer.ray_volume_states[pixel_index];
 	surface.last_hit_primitive_index = render_data.g_buffer.first_hit_prim_index[pixel_index];
+	surface.ray_volume_state.reconstruct_first_hit(
+		surface.material,
+		/* mat index */ render_data.buffers.material_indices[render_data.g_buffer.first_hit_prim_index[pixel_index]],
+		random_number_generator);
 
 	surface.view_direction = render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index);
 	surface.shading_normal = render_data.g_buffer.shading_normals[pixel_index].unpack();
@@ -43,13 +46,16 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISurface get_pixel_surface(const HIPRTRend
  * that could have produced the sample that we picked, we need to consider the neighbors at their previous positions,
  * not the current so we need to read in the last frame's g-buffer.
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISurface get_pixel_surface_previous_frame(const HIPRTRenderData& render_data, int pixel_index)
+HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISurface get_pixel_surface_previous_frame(const HIPRTRenderData& render_data, int pixel_index, Xorshift32Generator& random_number_generator)
 {
 	ReSTIRDISurface surface;
 
 	surface.material = render_data.g_buffer_prev_frame.materials[pixel_index].unpack();
-	surface.ray_volume_state = render_data.g_buffer_prev_frame.ray_volume_states[pixel_index];
 	surface.last_hit_primitive_index = render_data.g_buffer_prev_frame.first_hit_prim_index[pixel_index];
+	surface.ray_volume_state.reconstruct_first_hit(
+		surface.material,
+		/* mat index */ render_data.buffers.material_indices[render_data.g_buffer_prev_frame.first_hit_prim_index[pixel_index]],
+		random_number_generator);
 
 	surface.view_direction = render_data.g_buffer.get_view_direction(render_data.prev_camera.position, pixel_index);
 	surface.shading_normal = render_data.g_buffer_prev_frame.shading_normals[pixel_index].unpack();
@@ -62,12 +68,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISurface get_pixel_surface_previous_frame(
 /**
  * Simple overload of the function to base the 'previous_frame' decision on a boolean instead of on the name of the function
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISurface get_pixel_surface(const HIPRTRenderData& render_data, int pixel_index, bool previous_frame)
+HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISurface get_pixel_surface(const HIPRTRenderData& render_data, int pixel_index, bool previous_frame, Xorshift32Generator& random_number_generator)
 {
 	if (previous_frame)
-		return get_pixel_surface_previous_frame(render_data, pixel_index);
+		return get_pixel_surface_previous_frame(render_data, pixel_index, random_number_generator);
 	else
-		return get_pixel_surface(render_data, pixel_index);
+		return get_pixel_surface(render_data, pixel_index, random_number_generator);
 }
 
 #endif

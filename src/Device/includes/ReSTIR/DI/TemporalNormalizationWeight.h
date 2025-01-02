@@ -67,7 +67,7 @@ struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z>
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
 		const ReSTIRDIReservoir& final_reservoir, 
 		int initial_candidates_M, int temporal_neighbor_M,
-		const ReSTIRDISurface& center_pixel_surface, const ReSTIRDISurface& temporal_neighbor_surface,
+		ReSTIRDISurface& center_pixel_surface, ReSTIRDISurface& temporal_neighbor_surface,
 		float& out_normalization_nume, float& out_normalization_denom,
 		Xorshift32Generator& random_number_generator)
 	{
@@ -114,7 +114,7 @@ struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE>
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
 		const ReSTIRDIReservoir& final_reservoir,
 		int initial_candidates_M, int temporal_neighbor_M,
-		const ReSTIRDISurface& center_pixel_surface, const ReSTIRDISurface& temporal_neighbor_surface,
+		ReSTIRDISurface& center_pixel_surface, ReSTIRDISurface& temporal_neighbor_surface,
 		int selected_neighbor,
 		float& out_normalization_nume, float& out_normalization_denom,
 		Xorshift32Generator& random_number_generator)

@@ -87,7 +87,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int3 load_temporal_neighbor_data(const HIPRTRende
 
 	// Reading from the previous g-buffer or not depending on whether or not the prev g-buffer is available
 	// (it may not be if we're accumulating because then, it's useless since there is no motion)
-	out_temporal_neighbor_surface = get_pixel_surface(render_data, temporal_neighbor_pixel_index_and_pos.x, render_data.render_settings.use_prev_frame_g_buffer());
+	out_temporal_neighbor_surface = get_pixel_surface(render_data, temporal_neighbor_pixel_index_and_pos.x, render_data.render_settings.use_prev_frame_g_buffer(), random_number_generator);
 
 	if (out_temporal_neighbor_surface.material.is_emissive())
 		// Can't resample the temporal neighbor if it's emissive
@@ -162,7 +162,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 	int2 center_pixel_coords = make_int2(x, y);
 
 	// Surface data of the center pixel
-	ReSTIRDISurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index);
+	ReSTIRDISurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index, random_number_generator);
 	if (center_pixel_surface.material.is_emissive())
 		// Not doing ReSTIR on directly visible emissive materials
 		return;
@@ -415,7 +415,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 			// "solid angle PDF at the neighbor" to the solid angle at the center pixel and we do
 			// that by multiplying by the jacobian determinant of the reconnection shift in solid
 			// angle, Eq. 52 of 2022, "Generalized Resampled Importance Sampling".
-			ReSTIRDISurface neighbor_surface = get_pixel_surface(render_data, neighbor_pixel_index, render_data.render_settings.use_prev_frame_g_buffer());
+			ReSTIRDISurface neighbor_surface = get_pixel_surface(render_data, neighbor_pixel_index, render_data.render_settings.use_prev_frame_g_buffer(), random_number_generator);
 
 			jacobian_determinant = get_jacobian_determinant_reconnection_shift(render_data, neighbor_reservoir, center_pixel_surface.shading_point, neighbor_surface.shading_point);
 

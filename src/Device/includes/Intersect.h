@@ -21,7 +21,7 @@
 #if SharedStackBVHTraversalSize > 0
 // This if is necessary to avoid declaring 0 size arrays if the
 // shared stack traversal sizes are 0
-__shared__ static int shared_stack_cache[SharedStackBVHTraversalSize * SharedStackBVHTraversalBlockSize];
+__shared__ static int shared_stack_cache[SharedStackBVHTraversalSize * KernelWorkgroupThreadCount];
 #endif
 
 /* References:

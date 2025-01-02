@@ -92,7 +92,7 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
 		const ReSTIRDIReservoir& reservoir_being_resampled, const ReSTIRDIReservoir& initial_candidates_reservoir,
-		const ReSTIRDISurface& temporal_neighbor_surface, const ReSTIRDISurface& center_pixel_surface,
+		ReSTIRDISurface& temporal_neighbor_surface, ReSTIRDISurface& center_pixel_surface,
 		int temporal_neighbor_reservoir_M,
 		int current_neighbor_index,
 		Xorshift32Generator& random_number_generator)
@@ -145,7 +145,7 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MI
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
 		const ReSTIRDIReservoir& temporal_neighbor_reservoir, const ReSTIRDIReservoir& initial_candidates_reservoir,
-		const ReSTIRDISurface& temporal_neighbor_surface,
+		ReSTIRDISurface& temporal_neighbor_surface,
 		float neighbor_sample_target_function_at_center, int current_neighbor_index,
 		Xorshift32Generator& random_number_generator)
 	{
@@ -205,7 +205,7 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MI
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
 		const ReSTIRDIReservoir& temporal_neighbor_reservoir, const ReSTIRDIReservoir& initial_candidates_reservoir,
-		const ReSTIRDISurface& temporal_neighbor_surface,
+		ReSTIRDISurface& temporal_neighbor_surface,
 		float neighbor_sample_target_function_at_center, int current_neighbor_index,
 		Xorshift32Generator& random_number_generator)
 	{

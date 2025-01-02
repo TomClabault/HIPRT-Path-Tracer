@@ -15,7 +15,7 @@
 #include "HostDeviceCommon/RenderData.h"
 
 template <bool withVisiblity>
-HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function(const HIPRTRenderData& render_data, const ReSTIRDISample& sample, const ReSTIRDISurface& surface, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function(const HIPRTRenderData& render_data, const ReSTIRDISample& sample, ReSTIRDISurface& surface, Xorshift32Generator& random_number_generator)
 {
 #ifndef __KERNELCC__
 	std::cerr << "ReSTIR_DI_evaluate_target_function() wrong specialization called: " << withVisiblity << std::endl;
@@ -26,7 +26,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function(const HI
 }
 
 template <>
-HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_OPTION_FALSE>(const HIPRTRenderData& render_data, const ReSTIRDISample& sample, const ReSTIRDISurface& surface, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_OPTION_FALSE>(const HIPRTRenderData& render_data, const ReSTIRDISample& sample, ReSTIRDISurface& surface, Xorshift32Generator& random_number_generator)
 {
 	(void)random_number_generator; //Unused
 
@@ -48,8 +48,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_O
 		// and everything is going to be 0.0f anyway so we can return already
 		return 0.0f;
 
-	RayVolumeState trash_volume_state = surface.ray_volume_state;
-	ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, surface.material, trash_volume_state, surface.view_direction, surface.shading_normal, surface.geometric_normal, sample_direction, bsdf_pdf, random_number_generator);
+	ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, surface.material, surface.ray_volume_state, false, surface.view_direction, surface.shading_normal, surface.geometric_normal, sample_direction, bsdf_pdf, random_number_generator);
 
 	ColorRGB32F sample_emission;
 	if (sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE)
@@ -73,7 +72,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_O
 }
 
 template <>
-HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_OPTION_TRUE>(const HIPRTRenderData& render_data, const ReSTIRDISample& sample, const ReSTIRDISurface& surface, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_OPTION_TRUE>(const HIPRTRenderData& render_data, const ReSTIRDISample& sample, ReSTIRDISurface& surface, Xorshift32Generator& random_number_generator)
 {
 	if (sample.emissive_triangle_index == -1 && !(sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE))
 		// No sample
@@ -99,8 +98,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_O
 		// and everything is going to be 0.0f anyway so we can return already
 		return 0.0f;
 
-	RayVolumeState trash_volume_state = surface.ray_volume_state;
-	ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, surface.material, trash_volume_state, surface.view_direction, surface.shading_normal, surface.geometric_normal, sample_direction, bsdf_pdf, random_number_generator);
+	ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, surface.material, surface.ray_volume_state, false, surface.view_direction, surface.shading_normal, surface.geometric_normal, sample_direction, bsdf_pdf, random_number_generator);
 
 	ColorRGB32F sample_emission;
 	if (sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE)

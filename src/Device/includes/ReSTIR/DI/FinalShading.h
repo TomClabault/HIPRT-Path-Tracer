@@ -13,7 +13,7 @@
 #include "HostDeviceCommon/RenderData.h"
 
  // TODO make some simplification assuming that ReSTIR DI is never inside a surface (the camera being inside a surface may be an annoying case to handle)
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_ReSTIR_DI_reservoir(const HIPRTRenderData& render_data, const RayPayload& ray_payload, 
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_ReSTIR_DI_reservoir(const HIPRTRenderData& render_data, RayPayload& ray_payload, 
     const HitInfo& closest_hit_info, const float3& view_direction,
     const ReSTIRDIReservoir& reservoir, Xorshift32Generator& random_number_generator)
 {
@@ -56,9 +56,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_ReSTIR_DI_reservoir(const HI
         float bsdf_pdf;
         float cosine_at_evaluated_point;
         ColorRGB32F bsdf_color;
-        RayVolumeState trash_volume_state = ray_payload.volume_state;
 
-        bsdf_color = bsdf_dispatcher_eval(render_data, ray_payload.material, trash_volume_state, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray_direction, bsdf_pdf, random_number_generator);
+        bsdf_color = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray_direction, bsdf_pdf, random_number_generator);
 
         cosine_at_evaluated_point = hippt::dot(closest_hit_info.shading_normal, shadow_ray_direction);
         if (sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_BSDF_REFRACTION)
@@ -97,7 +96,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void validate_reservoir(const HIPRTRenderData& re
         reservoir.UCW = 0.0f;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_light_ReSTIR_DI(const HIPRTRenderData& render_data, const RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, int2 pixel_coords, int2 resolution)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_light_ReSTIR_DI(const HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, int2 pixel_coords, int2 resolution)
 {
 	int pixel_index = pixel_coords.x + pixel_coords.y * resolution.x;
 

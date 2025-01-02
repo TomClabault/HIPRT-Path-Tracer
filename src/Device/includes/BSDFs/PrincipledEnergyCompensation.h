@@ -6,12 +6,18 @@
 #ifndef DEVICE_PRINCIPLED_ENERGY_COMPENSATION_H
 #define DEVICE_PRINCIPLED_ENERGY_COMPENSATION_H
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, RayVolumeState& ray_volume_state, 
+#include "HostDeviceCommon/Color.h"
+
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, 
+    RayVolumeState& ray_volume_state, bool update_ray_volume_state,
     const float3& view_direction, float3 shading_normal, const float3& to_light_direction, 
     float& pdf);
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, RayVolumeState& ray_volume_state, 
+
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, 
+    RayVolumeState& ray_volume_state, bool update_ray_volume_state,
     const float3& view_direction, const float3& shading_normal, const float3& geometric_normal, float3& output_direction, 
     float& pdf, Xorshift32Generator& random_number_generator);
+
 HIPRT_HOST_DEVICE HIPRT_INLINE float principled_specular_relative_ior(const DeviceUnpackedEffectiveMaterial& material, float incident_medium_ior);
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float get_principled_energy_compensation_glossy_base(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, float incident_medium_ior, float NoV)
@@ -150,8 +156,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_monte_carlo_directional_al
     {
         float pdf;
         float3 sampled_direction;
-        RayVolumeState ray_volume_state_copy = ray_volume_state;
-        ColorRGB32F bsdf_directional_albedo_sample = principled_bsdf_sample(render_data, white_material, ray_volume_state_copy, view_direction, shading_normal, geometric_normal, sampled_direction, pdf, random_number_generator);
+        ColorRGB32F bsdf_directional_albedo_sample = principled_bsdf_sample(render_data, white_material, 
+            ray_volume_state, false, view_direction, shading_normal, geometric_normal, sampled_direction, pdf, random_number_generator);
         if (pdf != 0.0f)
             // Correct sampled direction
             // 
@@ -174,9 +180,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_monte_carlo_directional_al
 /**
  * Evaluates the BSDF with strong energy conservation & preservation
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval_energy_compensated(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, RayVolumeState& ray_volume_state, const float3& view_direction, float3 shading_normal, float3 geometric_normal, const float3& to_light_direction, float& pdf, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval_energy_compensated(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, 
+    RayVolumeState& ray_volume_state, bool update_ray_volume_state, 
+    const float3& view_direction, float3 shading_normal, float3 geometric_normal, const float3& to_light_direction, 
+    float& pdf, Xorshift32Generator& random_number_generator)
 {
-    ColorRGB32F final_color = principled_bsdf_eval(render_data, material, ray_volume_state, view_direction, shading_normal, to_light_direction, pdf);
+    ColorRGB32F final_color = principled_bsdf_eval(render_data, material, ray_volume_state, update_ray_volume_state, view_direction, shading_normal, to_light_direction, pdf);
 
     ColorRGB32F principled_directional_albedo(1.0f);
     if (material.enforce_strong_energy_conservation && material.thin_film == 0.0f)
@@ -189,9 +198,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval_energy_compensat
 /**
  * Samples the BSDF with energy conservation & preservation
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample_energy_compensated(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, RayVolumeState& ray_volume_state, const float3& view_direction, const float3& shading_normal, const float3& geometric_normal, float3& output_direction, float& pdf, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample_energy_compensated(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, 
+    RayVolumeState& ray_volume_state, bool update_ray_volume_state, 
+    const float3& view_direction, const float3& shading_normal, const float3& geometric_normal, float3& output_direction, 
+    float& pdf, Xorshift32Generator& random_number_generator)
 {
-    ColorRGB32F color = principled_bsdf_sample(render_data, material, ray_volume_state, view_direction, shading_normal, geometric_normal, output_direction, pdf, random_number_generator);
+    ColorRGB32F color = principled_bsdf_sample(render_data, material, ray_volume_state, update_ray_volume_state, view_direction, shading_normal, geometric_normal, output_direction, pdf, random_number_generator);
 
     ColorRGB32F clearcoat_directional_albedo(1.0f);
     if (material.enforce_strong_energy_conservation && material.thin_film == 0.0f)

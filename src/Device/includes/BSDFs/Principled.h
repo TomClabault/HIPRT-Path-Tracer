@@ -222,7 +222,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_specular_sample(float roughness
     return microfacet_GGX_sample_reflection(roughness, anisotropy, local_view_direction, random_number_generator);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, RayVolumeState& ray_volume_state, 
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, 
+    RayVolumeState& ray_volume_state, bool update_ray_volume_state,
     const float3& local_view_direction, const float3& local_to_light_direction, float& pdf)
 {
     pdf = 0.0f;
@@ -238,8 +239,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
     bool reflecting = NoL * NoV > 0;
 
     // Relative eta = eta_t / eta_i
-    float eta_i = ray_volume_state.incident_mat_index == InteriorStack::MAX_MATERIAL_INDEX ? 1.0 : render_data.buffers.materials_buffer[ray_volume_state.incident_mat_index].get_ior();
-    float eta_t = ray_volume_state.outgoing_mat_index == InteriorStack::MAX_MATERIAL_INDEX ? 1.0 : render_data.buffers.materials_buffer[ray_volume_state.outgoing_mat_index].get_ior();
+    float eta_i = ray_volume_state.incident_mat_index == NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX ? 1.0 : render_data.buffers.materials_buffer[ray_volume_state.incident_mat_index].get_ior();
+    float eta_t = ray_volume_state.outgoing_mat_index == NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX ? 1.0 : render_data.buffers.materials_buffer[ray_volume_state.outgoing_mat_index].get_ior();
 
     float dispersion_abbe_number = material.dispersion_abbe_number;
     float dispersion_scale = material.dispersion_scale;
@@ -304,7 +305,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
         // hemisphere as the view dir or light dir
         return ColorRGB32F(0.0f);
 
-    float compensation_term = get_GGX_energy_compensation_dielectrics(render_data, material, ray_volume_state, eta_t, eta_i, relative_eta, local_view_direction.z);
+    float compensation_term = get_GGX_energy_compensation_dielectrics(render_data, material, ray_volume_state.inside_material, eta_t, eta_i, relative_eta, local_view_direction.z);
 
     float thin_film = material.thin_film;
     ColorRGB32F F_thin_film;
@@ -376,10 +377,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
         // [Turquin, 2019] Eq. 18 for dielectric microfacet energy compensation
         color /= compensation_term;
 
-        if (thin_walled)
+        if (thin_walled && update_ray_volume_state)
             // For thin materials, refracting in equals refracting out so we're poping the stack
             ray_volume_state.interior_stack.pop(ray_volume_state.inside_material);
-        else if (ray_volume_state.incident_mat_index != InteriorStack::MAX_MATERIAL_INDEX)
+        else if (ray_volume_state.incident_mat_index != NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX)
         {
             // If we're not coming from the air, this means that we were in a volume and we're currently
             // refracting out of the volume or into another volume.
@@ -400,11 +401,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
                 color = color * exp(absorption_coefficient * ray_volume_state.distance_in_volume);
             }
 
-            // We changed volume so we're resetting the distance
-            ray_volume_state.distance_in_volume = 0.0f;
-            if (ray_volume_state.inside_material)
-                // We refracting out of a volume so we're poping the stack
-                ray_volume_state.interior_stack.pop(ray_volume_state.inside_material);
+            if (update_ray_volume_state)
+            {
+                // We changed volume so we're resetting the distance
+                ray_volume_state.distance_in_volume = 0.0f;
+                if (ray_volume_state.inside_material)
+                    // We refracting out of a volume so we're poping the stack
+                    ray_volume_state.interior_stack.pop(ray_volume_state.inside_material);
+            }
         }
     }
 
@@ -414,11 +418,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
 /**
  * The sampled direction is returned in the local shading frame of the basis used for 'local_view_direction'
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_glass_sample(const DevicePackedTexturedMaterial* materials_buffer, const DeviceUnpackedEffectiveMaterial& material, RayVolumeState& ray_volume_state, 
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_glass_sample(const DevicePackedTexturedMaterial* materials_buffer, const DeviceUnpackedEffectiveMaterial& material, 
+    RayVolumeState& ray_volume_state, bool update_ray_volume_state,
     const float3& local_view_direction, Xorshift32Generator& random_number_generator)
 {
-    float eta_i = ray_volume_state.incident_mat_index == InteriorStack::MAX_MATERIAL_INDEX ? 1.0f : materials_buffer[ray_volume_state.incident_mat_index].get_ior();
-    float eta_t = ray_volume_state.outgoing_mat_index == InteriorStack::MAX_MATERIAL_INDEX ? 1.0f : materials_buffer[ray_volume_state.outgoing_mat_index].get_ior();
+    float eta_i = ray_volume_state.incident_mat_index == NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX ? 1.0f : materials_buffer[ray_volume_state.incident_mat_index].get_ior();
+    float eta_t = ray_volume_state.outgoing_mat_index == NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX ? 1.0f : materials_buffer[ray_volume_state.outgoing_mat_index].get_ior();
 
     float dispersion_abbe_number = material.dispersion_abbe_number;
     float dispersion_scale = material.dispersion_scale;
@@ -475,7 +480,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_glass_sample(const DevicePacked
         sampled_direction = reflect_ray(local_view_direction, microfacet_normal);
 
         // This is a reflection, we're poping the stack
-        ray_volume_state.interior_stack.pop(false);
+        if (update_ray_volume_state)
+            ray_volume_state.interior_stack.pop(false);
     }
     else
     {
@@ -501,7 +507,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_glass_sample(const DevicePacked
             // Refraction through the thin walled material. 
             // We're poping the stack because we're not inside the material even
             // though this is a refraction. A thin material has no inside
-            ray_volume_state.interior_stack.pop(false);
+            if (update_ray_volume_state)
+                ray_volume_state.interior_stack.pop(false);
 
             return reflected;
         }
@@ -733,13 +740,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_metal_layer(const HIPRT
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_glass_layer(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, 
-    RayVolumeState& ray_volume_state, const float3& local_view_direction, const float3 local_to_light_direction, 
+    RayVolumeState& ray_volume_state, bool update_ray_volume_state, 
+    const float3& local_view_direction, const float3 local_to_light_direction,
     float glass_weight, float glass_proba, ColorRGB32F& layers_throughput, float& out_cumulative_pdf)
 {
     if (glass_weight > 0.0f)
     {
         float glass_pdf;
-        ColorRGB32F contribution = principled_glass_eval(render_data, material, ray_volume_state, local_view_direction, local_to_light_direction, glass_pdf);
+        ColorRGB32F contribution = principled_glass_eval(render_data, material, ray_volume_state, update_ray_volume_state, local_view_direction, local_to_light_direction, glass_pdf);
         contribution *= glass_weight;
         contribution *= layers_throughput;
 
@@ -1038,7 +1046,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void principled_bsdf_get_lobes_sampling_proba(
     out_glass_sampling_proba = glass_weight * normalize_factor;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, RayVolumeState& ray_volume_state, 
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, 
+    RayVolumeState& ray_volume_state, bool update_ray_volume_state,
     const float3& view_direction, float3 shading_normal, const float3& to_light_direction, float& pdf)
 {
     pdf = 0.0f;
@@ -1080,7 +1089,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRende
                                       coat_weight, sheen_weight, metal_1_weight, metal_2_weight,
                                       specular_weight, diffuse_weight, glass_weight);
 
-    float incident_medium_ior = ray_volume_state.incident_mat_index == /* air */ InteriorStack::MAX_MATERIAL_INDEX ? 1.0f : render_data.buffers.materials_buffer[ray_volume_state.incident_mat_index].get_ior();
+    float incident_medium_ior = ray_volume_state.incident_mat_index == /* air */ NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX ? 1.0f : render_data.buffers.materials_buffer[ray_volume_state.incident_mat_index].get_ior();
     // For the given to_light_direction, normal, view_direction etc..., what's the probability
     // that the 'principled_bsdf_sample()' function would have sampled the lobe?
     float coat_proba, sheen_proba, metal_1_proba, metal_2_proba;
@@ -1114,7 +1123,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRende
     // the specular layer so we don't want the specular-layer-fresnel-attenuation
     // there
     final_color += internal_eval_glass_layer(render_data, material,
-        ray_volume_state, local_view_direction_rotated, local_to_light_direction_rotated, 
+        ray_volume_state, update_ray_volume_state, local_view_direction_rotated, local_to_light_direction_rotated,
         glass_weight, glass_proba, layers_throughput, pdf);
     final_color += internal_eval_glossy_base(render_data, material,
                                              local_view_direction, local_to_light_direction, local_half_vector, 
@@ -1133,7 +1142,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRende
     return final_color;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, RayVolumeState& ray_volume_state, 
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, 
+    RayVolumeState& ray_volume_state, bool update_ray_volume_state,
     const float3& view_direction, const float3& shading_normal, const float3& geometric_normal, float3& output_direction, 
     float& pdf, Xorshift32Generator& random_number_generator)
 {
@@ -1204,9 +1214,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRen
         }
     }
 
-    if (!sampling_glass_lobe)
-        // We're going to sample a reflective lobe so we're poping the stack
-        ray_volume_state.interior_stack.pop(false);
+    if (update_ray_volume_state)
+        if (!sampling_glass_lobe)
+            // We're going to sample a reflective lobe so we're poping the stack
+            ray_volume_state.interior_stack.pop(false);
 
     if (hippt::dot(view_direction, normal) < 0)
         // We want the normal in the same hemisphere as the view direction
@@ -1250,7 +1261,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRen
         // When sampling the glass lobe, if we're reflecting off the glass, we're going to have to pop the stack.
         // This is handled inside glass_sample because we cannot know from here if we refracted or reflected
         output_direction = local_to_world_frame(TR, BR, normal, principled_glass_sample(render_data.buffers.materials_buffer, material,
-            ray_volume_state, local_view_direction_rotated, random_number_generator));
+            ray_volume_state, update_ray_volume_state, local_view_direction_rotated, random_number_generator));
 
     if (hippt::dot(output_direction, shading_normal) < 0 && !sampling_glass_lobe)
         // It can happen that the light direction sampled is below the surface. 
@@ -1263,7 +1274,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRen
     // If we were using 'normal', we would always be outside the surface because 'normal' is flipped
     // (a few lines above in the code) so that it is in the same hemisphere as the view direction and
     // eval() will then think that we're always outside the surface even though that's not the case
-    return principled_bsdf_eval(render_data, material, ray_volume_state, view_direction, shading_normal, output_direction, pdf);
+    return principled_bsdf_eval(render_data, material, ray_volume_state, update_ray_volume_state, view_direction, shading_normal, output_direction, pdf);
 }
 
 #endif

@@ -47,7 +47,6 @@ struct GBufferGPURenderer
 		out.shading_normals = shading_normals.get_device_pointer();
 		out.primary_hit_position = primary_hit_position.get_device_pointer();
 		out.first_hit_prim_index = first_hit_prim_index.get_device_pointer();
-		out.ray_volume_states = ray_volume_states.get_device_pointer();
 
 		return out;
 	}

@@ -182,7 +182,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISample sample_fresh_light_candidate(const
 }
 
 // Try passing only volume state in here, not ray payload
-HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderData& render_data, const int2& pixel_coords, ReSTIRDIReservoir& reservoir, int nb_light_candidates, int nb_bsdf_candidates, float envmap_candidate_probability, const float3& view_direction, const HitInfo& closest_hit_info, const RayPayload& ray_payload, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderData& render_data, const int2& pixel_coords, ReSTIRDIReservoir& reservoir, int nb_light_candidates, int nb_bsdf_candidates, float envmap_candidate_probability, const float3& view_direction, const HitInfo& closest_hit_info, RayPayload& ray_payload, Xorshift32Generator& random_number_generator)
 {
     bool inside_surface = false;// hippt::dot(view_direction, closest_hit_info.geometric_normal) < 0;
     float inside_surface_multiplier = inside_surface ? -1.0f : 1.0f;
@@ -228,8 +228,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderDat
         if (sample_cosine_term > 0.0f && sample_pdf > 0.0f)
         {
             float bsdf_pdf;
-            RayVolumeState volume_state = ray_payload.volume_state;
-            ColorRGB32F bsdf_contribution = bsdf_dispatcher_eval(render_data, ray_payload.material, volume_state, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, to_light_direction, bsdf_pdf, random_number_generator);
+            ColorRGB32F bsdf_contribution = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, to_light_direction, bsdf_pdf, random_number_generator);
 
             ColorRGB32F light_contribution = bsdf_contribution * sample_radiance * sample_cosine_term;
             float target_function = light_contribution.luminance();
@@ -278,7 +277,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderDat
     }
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData& render_data, ReSTIRDIReservoir& reservoir, int nb_light_candidates, int nb_bsdf_candidates, float envmap_candidate_probability, const float3& view_direction, const HitInfo& closest_hit_info, const RayPayload& ray_payload, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData& render_data, ReSTIRDIReservoir& reservoir, int nb_light_candidates, int nb_bsdf_candidates, float envmap_candidate_probability, const float3& view_direction, const HitInfo& closest_hit_info, RayPayload& ray_payload, Xorshift32Generator& random_number_generator)
 {
     // Sampling the BSDF candidates
     for (int i = 0; i < nb_bsdf_candidates; i++)
@@ -286,8 +285,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData
         float bsdf_sample_pdf = 0.0f;
         float3 sampled_direction;
 
-        RayVolumeState trash_ray_volume_state = ray_payload.volume_state;
-        ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, trash_ray_volume_state, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_direction, bsdf_sample_pdf, random_number_generator);
+        ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, false, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_direction, bsdf_sample_pdf, random_number_generator);
 
         bool refraction_sampled = hippt::dot(sampled_direction, view_direction) < 0.0f;
         if (bsdf_sample_pdf > 0.0f)
@@ -410,7 +408,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData
     }
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const HIPRTRenderData& render_data, const int2& pixel_coords, const RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const HIPRTRenderData& render_data, const int2& pixel_coords, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
 {
     // If we're rendering at low resolution, only doing 1 candidate of each
     // for better interactive framerates
@@ -493,7 +491,15 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_InitialCandidates(HIPRTRenderData
 
     RayPayload ray_payload;
     ray_payload.material = material.unpack();
-    ray_payload.volume_state = render_data.g_buffer.ray_volume_states[pixel_index];
+    // Because this is the camera hit (and assuming the camera isn't inside volumes for now),
+    // the ray volume state after the camera hit is just an empty interior stack but with
+    // the material index that we hit pushed onto the stack. That's it. Because it is that
+    // simple, we don't have the ray volume state in the GBuffer but rather we can
+    // reconstruct the ray volume state on the fly
+    ray_payload.volume_state.reconstruct_first_hit(
+        ray_payload.material,
+        /* mat index */ render_data.buffers.material_indices[render_data.g_buffer_prev_frame.first_hit_prim_index[pixel_index]],
+        random_number_generator);
 
     float3 view_direction = render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index);
     // Producing and storing the reservoir

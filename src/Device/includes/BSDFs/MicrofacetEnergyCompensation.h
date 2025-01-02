@@ -619,7 +619,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_glass_energy_compensation_get_correctio
 	return hippt::lerp(lower_correction, higher_correction, (relative_eta - lower_relative_eta_bound) / (higher_relative_eta_bound - lower_relative_eta_bound));
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float get_GGX_energy_compensation_dielectrics(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, const RayVolumeState& ray_volume_state, float eta_t, float eta_i, float relative_eta, float NoV)
+HIPRT_HOST_DEVICE HIPRT_INLINE float get_GGX_energy_compensation_dielectrics(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, bool inside_object, float eta_t, float eta_i, float relative_eta, float NoV)
 {
 	if (!material.do_glass_energy_compensation)
 		return 1.0f;
@@ -635,7 +635,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_GGX_energy_compensation_dielectrics(con
     bool bsdf_already_compensated = material.enforce_strong_energy_conservation && PrincipledBSDFEnforceStrongEnergyConservation == KERNEL_OPTION_TRUE;
     if (material.thin_film < 1.0f && !bsdf_already_compensated)
     {
-        bool inside_object = ray_volume_state.inside_material;
         float relative_eta_for_correction = inside_object ? 1.0f / relative_eta : relative_eta;
 		float exponent_correction = 2.5f;
 		if (!material.thin_walled)

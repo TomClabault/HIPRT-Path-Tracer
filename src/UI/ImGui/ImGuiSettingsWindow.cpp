@@ -350,7 +350,7 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 
 		if (nested_dielectrics_stack_size != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::NESTED_DIELETRCICS_STACK_SIZE_OPTION))
 		{
-			ImGui::TreePush("Apply button nested dielectric stack size");
+			ImGui::TreePush("Apply button nested dielectric stack_entries size");
 			if (ImGui::Button("Apply"))
 			{
 				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::NESTED_DIELETRCICS_STACK_SIZE_OPTION, nested_dielectrics_stack_size);
@@ -2045,7 +2045,7 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 
 	if (ImGui::CollapsingHeader("Kernel Settings"))
 	{
-		ImGui::TreePush("Shared/global stack Traversal Options Tree");
+		ImGui::TreePush("Shared/global stack_entries Traversal Options Tree");
 
 		// List of exceptions because these kernels do not trace any rays
 		static std::unordered_set<std::string> exceptions = { ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID };
@@ -2083,7 +2083,7 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 
 
 
-		ImGui::TreePush("Kernel selection for stack size");
+		ImGui::TreePush("Kernel selection for stack_entries size");
 
 		{
 			static std::unordered_map<std::string, bool> use_shared_stack_traversal;
@@ -2091,7 +2091,7 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 				use_shared_stack_traversal[selected_kernel_name] = selected_kernel_options->get_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL);
 			bool& use_shared_stack_traversal_bool = use_shared_stack_traversal[selected_kernel_name];
 
-			if (ImGui::Checkbox("Use shared/global stack BVH traversal", &use_shared_stack_traversal_bool))
+			if (ImGui::Checkbox("Use shared/global stack_entries BVH traversal", &use_shared_stack_traversal_bool))
 			{
 				selected_kernel_options->set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, use_shared_stack_traversal_bool ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 				m_renderer->recompile_kernels();
@@ -2112,16 +2112,16 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 					pending_stack_size_changes[selected_kernel_name] = selected_kernel_options->get_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE);
 				int& pending_stack_size = pending_stack_size_changes[selected_kernel_name];
 
-				if (ImGui::InputInt("Shared stack size", &pending_stack_size))
+				if (ImGui::InputInt("Shared stack_entries size", &pending_stack_size))
 					pending_stack_size = std::max(0, pending_stack_size);
 
-				ImGuiRenderer::show_help_marker("Fast shared memory stack used for the BVH traversal of \"global\" rays (rays that search for a closest hit with no maximum distance)\n\n"
+				ImGuiRenderer::show_help_marker("Fast shared memory stack_entries used for the BVH traversal of \"global\" rays (rays that search for a closest hit with no maximum distance)\n\n"
 												"Allocating more of this speeds up the BVH traversal but reduces the amount of L1 cache available to "
 												"the rest of the shader which thus reduces its performance. A tradeoff must be made.\n\n"
-												"If this shared memory stack isn't large enough for traversing the BVH, then "
-												"it is complemented by using the global stack buffer. If both combined aren't enough "
+												"If this shared memory stack_entries isn't large enough for traversing the BVH, then "
+												"it is complemented by using the global stack_entries buffer. If both combined aren't enough "
 												"for the traversal, then artifacts start showing up in renders.\n\n"
-												"Note that setting this value to 0 disables the shared stack usage but still uses the global buffer "
+												"Note that setting this value to 0 disables the shared stack_entries usage but still uses the global buffer "
 												"for traversal. This approach is still better that not using any of these two memories at all (this "
 												"becomes the case when the checkboxes above are not checked.)");
 
@@ -2130,7 +2130,7 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 					// If the user has modified the size of the shared stack, showing a button to apply the changes 
 					// (not applying the changes everytime because this requires a recompilation of basically all shaders and that's heavy)
 
-					ImGui::TreePush("Apply button shared stack size");
+					ImGui::TreePush("Apply button shared stack_entries size");
 					if (ImGui::Button("Apply"))
 					{
 						selected_kernel_options->set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, pending_stack_size);
@@ -2146,16 +2146,16 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		if (ImGui::InputInt("Global stack per-thread size", &m_renderer->get_render_data().global_traversal_stack_buffer_size))
+		if (ImGui::InputInt("Global stack_entries per-thread size", &m_renderer->get_render_data().global_traversal_stack_buffer_size))
 		{
 			m_renderer->get_render_data().global_traversal_stack_buffer_size = hippt::clamp(0, 128, m_renderer->get_render_data().global_traversal_stack_buffer_size);
 			m_render_window->set_render_dirty(true);
 		}
 
-		ImGuiRenderer::show_help_marker("Size of the global stack buffer for each thread. Used for complementing the shared memory stack allocated in the kernels."
+		ImGuiRenderer::show_help_marker("Size of the global stack_entries buffer for each thread. Used for complementing the shared memory stack_entries allocated in the kernels."
 										"A good value for this parameter is scene-complexity dependent.\n\n"
 										"A lower value will use less VRAM but will start introducing artifacts if the value is too low due "
-										"to insufficient stack size for the BVH traversal.\n\n"
+										"to insufficient stack_entries size for the BVH traversal.\n\n"
 										"16 seems to be a good value to start with. If lowering this value improves performance, then that "
 										"means that the BVH traversal is starting to suffer (the traversal is incomplete --> improved performance) "
 										"and rendering artifacts will start to show up.");

@@ -179,7 +179,6 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.g_buffer.shading_normals = m_g_buffer.shading_normals.data();
     m_render_data.g_buffer.primary_hit_position = m_g_buffer.primary_hit_position.data();
     m_render_data.g_buffer.first_hit_prim_index = m_g_buffer.first_hit_prim_index.data();
-    m_render_data.g_buffer.ray_volume_states = m_g_buffer.ray_volume_states.data();
 
 
 
@@ -190,7 +189,6 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.g_buffer_prev_frame.shading_normals = m_g_buffer_prev_frame.shading_normals.data();
     m_render_data.g_buffer_prev_frame.primary_hit_position = m_g_buffer_prev_frame.primary_hit_position.data();
     m_render_data.g_buffer_prev_frame.first_hit_prim_index = m_g_buffer_prev_frame.first_hit_prim_index.data();
-    m_render_data.g_buffer_prev_frame.ray_volume_states = m_g_buffer_prev_frame.ray_volume_states.data();
 
     m_render_data.render_settings.restir_di_settings.light_presampling.light_samples = m_restir_di_state.presampled_lights_buffer.data();
     m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs = m_restir_di_state.initial_candidates_reservoirs.data();

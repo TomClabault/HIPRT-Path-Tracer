@@ -17,7 +17,7 @@
  */
 const std::string GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL = "UseSharedStackBVHTraversal";
 const std::string GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE = "SharedStackBVHTraversalSize";
-const std::string GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_BLOCK_SIZE = "SharedStackBVHTraversalBlockSize";
+const std::string GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_BLOCK_SIZE = "KernelWorkgroupThreadCount";
 const std::string GPUKernelCompilerOptions::REUSE_BSDF_MIS_RAY = "ReuseBSDFMISRay";
 
 const std::string GPUKernelCompilerOptions::BSDF_OVERRIDE = "BSDFOverride";
@@ -83,7 +83,7 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	// adding them here with their default values
 	m_options_macro_map[GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL] = std::make_shared<int>(UseSharedStackBVHTraversal);
 	m_options_macro_map[GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE] = std::make_shared<int>(SharedStackBVHTraversalSize);
-	m_options_macro_map[GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_BLOCK_SIZE] = std::make_shared<int>(SharedStackBVHTraversalBlockSize);
+	m_options_macro_map[GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_BLOCK_SIZE] = std::make_shared<int>(KernelWorkgroupThreadCount);
 	m_options_macro_map[GPUKernelCompilerOptions::REUSE_BSDF_MIS_RAY] = std::make_shared<int>(ReuseBSDFMISRay);
 
 	m_options_macro_map[GPUKernelCompilerOptions::BSDF_OVERRIDE] = std::make_shared<int>(BSDFOverride);

@@ -15,7 +15,7 @@
 #include "HostDeviceCommon/HitInfo.h"
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_reservoir_sample(const HIPRTRenderData& render_data, const RayPayload& ray_payload, 
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_reservoir_sample(const HIPRTRenderData& render_data, RayPayload& ray_payload, 
     const HitInfo& closest_hit_info, const float3& view_direction,
     const RISReservoir& reservoir, Xorshift32Generator& random_number_generator)
 {
@@ -50,7 +50,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_reservoir_sample(const HIPRT
         float bsdf_pdf;
         float cosine_at_evaluated_point;
         ColorRGB32F bsdf_color;
-        RayVolumeState trash_volume_state = ray_payload.volume_state;
 
         if (sample.is_bsdf_sample)
         {
@@ -62,7 +61,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_reservoir_sample(const HIPRT
         }
         else
         {
-            bsdf_color = bsdf_dispatcher_eval(render_data, ray_payload.material, trash_volume_state, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray_direction_normalized, bsdf_pdf, random_number_generator);
+            bsdf_color = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray_direction_normalized, bsdf_pdf, random_number_generator);
 
             cosine_at_evaluated_point = hippt::max(0.0f, hippt::dot(closest_hit_info.shading_normal, shadow_ray_direction_normalized));
         }
@@ -79,7 +78,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_reservoir_sample(const HIPRT
     return final_color;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir(const HIPRTRenderData& render_data, const RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, MISBSDFRayReuse& mis_ray_reuse)
+HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir(const HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, MISBSDFRayReuse& mis_ray_reuse)
 {
     // Pushing the intersection point outside the surface (if we're already outside)
     // or inside the surface (if we're inside the surface)
@@ -140,8 +139,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
                 {
                     // Only going to evaluate the target function if we passed the preliminary minimum light contribution test
 
-                    RayVolumeState trash_ray_volume_state = ray_payload.volume_state;
-                    bsdf_color = bsdf_dispatcher_eval(render_data, ray_payload.material, trash_ray_volume_state, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, to_light_direction, bsdf_pdf, random_number_generator);
+                    bsdf_color = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, to_light_direction, bsdf_pdf, random_number_generator);
 
                     ColorRGB32F light_contribution = bsdf_color * light_source_info.emission * cosine_at_evaluated_point;
                     // Checking the light contribution and taking the BSDF and light PDFs into account
@@ -195,10 +193,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
         float target_function = 0.0f;
         float candidate_weight = 0.0f;
         float3 sampled_bsdf_direction;
-        RayVolumeState volume_state_after_bsdf_sample = ray_payload.volume_state;
         ColorRGB32F bsdf_color;
 
-        bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, volume_state_after_bsdf_sample, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_bsdf_direction, bsdf_sample_pdf, random_number_generator);
+        bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, true, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_bsdf_direction, bsdf_sample_pdf, random_number_generator);
 
         bool refraction_sampled = hippt::dot(sampled_bsdf_direction, closest_hit_info.shading_normal * inside_surface_multiplier) < 0;
         float cosine_at_evaluated_point = 0.0f;
@@ -269,7 +266,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
             float3 bsdf_ray_inter_point = closest_hit_info.inter_point + shadow_light_ray_hit_info.hit_distance * sampled_bsdf_direction;
 
             mis_ray_reuse.fill(shadow_light_ray_hit_info, bsdf_ray_inter_point, sampled_bsdf_direction, bsdf_color, bsdf_sample_pdf,
-                volume_state_after_bsdf_sample,
                 hit_found ? RayState::BOUNCE : RayState::MISSED);
         }
 
@@ -306,7 +302,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
     return reservoir;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_lights_RIS(const HIPRTRenderData& render_data, const RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, MISBSDFRayReuse& mis_ray_reuse)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_lights_RIS(const HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, MISBSDFRayReuse& mis_ray_reuse)
 {
     if (render_data.buffers.emissive_triangles_count == 0)
         return ColorRGB32F(0.0f);

@@ -82,7 +82,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
         render_data.g_buffer_prev_frame.materials[pixel_index] = render_data.g_buffer.materials[pixel_index];
         render_data.g_buffer_prev_frame.primary_hit_position[pixel_index] = render_data.g_buffer.primary_hit_position[pixel_index];
         render_data.g_buffer_prev_frame.first_hit_prim_index[pixel_index] = render_data.g_buffer.first_hit_prim_index[pixel_index];
-        render_data.g_buffer_prev_frame.ray_volume_states[pixel_index] = render_data.g_buffer.ray_volume_states[pixel_index];
     }
 
     if (render_data.render_settings.sample_number == 0 || render_data.render_settings.need_to_reset)
@@ -141,6 +140,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
 
     hiprtRay ray = render_data.current_camera.get_camera_ray(x_ray_point_direction, y_ray_point_direction, res);
     RayPayload ray_payload;
+    ray_payload.volume_state.initialize();
 
     HitInfo closest_hit_info;
     bool intersection_found = trace_ray(render_data, ray, ray_payload, closest_hit_info, /* camera ray = no previous primitive hit */ -1, random_number_generator);
@@ -159,7 +159,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
 
         render_data.g_buffer.materials[pixel_index] = DevicePackedEffectiveMaterial::pack(ray_payload.material);
         render_data.g_buffer.primary_hit_position[pixel_index] = closest_hit_info.inter_point;
-        render_data.g_buffer.ray_volume_states[pixel_index] = ray_payload.volume_state;
     }
     else
         // Special case when not hitting anything

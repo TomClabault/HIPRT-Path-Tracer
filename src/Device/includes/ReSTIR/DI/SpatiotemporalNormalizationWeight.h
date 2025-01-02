@@ -19,7 +19,8 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVE
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
 		const ReSTIRDIReservoir& final_reservoir, const ReSTIRDIReservoir& initial_candidates_reservoir, const ReSTIRDISurface& center_pixel_surface,
 		int temporal_neighbor_M, int center_pixel_index, int2 temporal_neighbor_coords, 
-		int2 res, float2 cos_sin_theta_rotation, float& out_normalization_nume, float& out_normalization_denom)
+		int2 res, float2 cos_sin_theta_rotation, float& out_normalization_nume, float& out_normalization_denom,
+		Xorshift32Generator& random_number_generator)
 	{
 		if (final_reservoir.weight_sum <= 0)
 		{
@@ -68,7 +69,7 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVE
 			if (neighbor == reused_neighbors_count)
 				neighbor_surface = center_pixel_surface;
 			else
-				neighbor_surface = get_pixel_surface(render_data, neighbor_pixel_index, render_data.render_settings.use_prev_frame_g_buffer());
+				neighbor_surface = get_pixel_surface(render_data, neighbor_pixel_index, render_data.render_settings.use_prev_frame_g_buffer(), random_number_generator);
 
 			if (neighbor == reused_neighbors_count)
 				out_normalization_denom += initial_candidates_reservoir.M;
@@ -85,7 +86,7 @@ template <>
 struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z>
 {
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
-		const ReSTIRDIReservoir& final_reservoir, const ReSTIRDISurface& center_pixel_surface, const ReSTIRDISurface& temporal_neighbor_surface,
+		const ReSTIRDIReservoir& final_reservoir, ReSTIRDISurface& center_pixel_surface, ReSTIRDISurface& temporal_neighbor_surface,
 		int center_pixel_M, int temporal_neighbor_M, int center_pixel_index, int2 temporal_neighbor_position, int2 res,
 		float2 cos_sin_theta_rotation, float& out_normalization_nume, float& out_normalization_denom,
 		Xorshift32Generator& random_number_generator)
@@ -135,7 +136,7 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVE
 			if (neighbor == reused_neighbors_count)
 				neighbor_surface = center_pixel_surface;
 			else
-				neighbor_surface = get_pixel_surface(render_data, neighbor_pixel_index, render_data.render_settings.use_prev_frame_g_buffer());
+				neighbor_surface = get_pixel_surface(render_data, neighbor_pixel_index, render_data.render_settings.use_prev_frame_g_buffer(), random_number_generator);
 
 			float target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, final_reservoir.sample, neighbor_surface, random_number_generator);
 
@@ -160,7 +161,7 @@ template <>
 struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE>
 {
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
-		const ReSTIRDIReservoir& final_reservoir, const ReSTIRDISurface& center_pixel_surface, const ReSTIRDISurface& temporal_neighbor_surface,
+		const ReSTIRDIReservoir& final_reservoir, ReSTIRDISurface& center_pixel_surface, ReSTIRDISurface& temporal_neighbor_surface,
 		int selected_neighbor,
 		int center_pixel_M, int temporal_neighbor_M, int center_pixel_index, int2 temporal_neighbor_coords, int2 res,
 		float2 cos_sin_theta_rotation,
@@ -208,7 +209,7 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_L
 			if (neighbor == reused_neighbors_count)
 				neighbor_surface = center_pixel_surface;
 			else
-				neighbor_surface = get_pixel_surface(render_data, neighbor_pixel_index);
+				neighbor_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
 
 			float target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, final_reservoir.sample, neighbor_surface, random_number_generator);
 
