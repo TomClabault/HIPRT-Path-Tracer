@@ -66,6 +66,21 @@ public:
 		}
 	}
 
+	size_t sizeof_type()
+	{
+		switch (m_value)
+		{
+		case DisplayTextureType::FLOAT3:
+			return sizeof(float) * 3;
+
+		case DisplayTextureType::INT:
+			return sizeof(int);
+
+		default:
+			throw std::runtime_error("Invalid value of DisplayTextureType");
+		}
+	}
+
 	bool operator ==(const DisplayTextureType& other) { return m_value == other.m_value; }
 	bool operator !=(const DisplayTextureType& other) { return m_value != other.m_value; }
 

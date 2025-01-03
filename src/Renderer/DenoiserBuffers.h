@@ -9,6 +9,7 @@
 #include "HIPRT-Orochi/OrochiBuffer.h"
 #include "HostDeviceCommon/Color.h"
 #include "OpenGL/OpenGLInteropBuffer.h"
+#include "UI/ApplicationSettings.h"
 
 class GPURenderer;
 
@@ -34,7 +35,7 @@ struct GPURendererDenoiserBuffers
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>>m_albedo_AOV_interop_buffer;
 	std::shared_ptr<OrochiBuffer<ColorRGB32F>>m_albedo_AOV_no_interop_buffer;
 
-	bool use_interop_AOVs = true;
+	bool use_interop_AOVs = ApplicationSettings::DENOISER_USE_INTEROP_BUFFERS_DEFAULT;
 };
 
 #endif

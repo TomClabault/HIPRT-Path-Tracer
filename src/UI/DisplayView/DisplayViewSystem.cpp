@@ -46,9 +46,9 @@ DisplayViewSystem::DisplayViewSystem(std::shared_ptr<GPURenderer> renderer, Rend
 	// Creating all the display views
 	DisplayView default_display_view = DisplayView(DisplayViewType::DEFAULT, default_display_program);
 	DisplayView denoise_blend_display_view = DisplayView(DisplayViewType::DENOISED_BLEND, denoise_blend_display_program);
-	DisplayView normals_display_view = DisplayView(DisplayViewType::DISPLAY_NORMALS, normal_display_program);
+	DisplayView normals_display_view = DisplayView(DisplayViewType::DISPLAY_DENOISER_NORMALS, normal_display_program);
 	DisplayView normals_denoised_display_view = DisplayView(DisplayViewType::DISPLAY_DENOISED_NORMALS, normal_display_program);
-	DisplayView albedo_display_view = DisplayView(DisplayViewType::DISPLAY_ALBEDO, albedo_display_program);
+	DisplayView albedo_display_view = DisplayView(DisplayViewType::DISPLAY_DENOISER_ALBEDO, albedo_display_program);
 	DisplayView albedo_denoised_display_view = DisplayView(DisplayViewType::DISPLAY_DENOISED_ALBEDO, albedo_display_program);
 	DisplayView pixel_convergence_heatmap_display_view = DisplayView(DisplayViewType::PIXEL_CONVERGENCE_HEATMAP, pixel_convergence_heatmap_display_program);
 	DisplayView pixel_converged_display_view = DisplayView(DisplayViewType::PIXEL_CONVERGED_MAP, pixel_converged_display_program);
@@ -57,9 +57,9 @@ DisplayViewSystem::DisplayViewSystem(std::shared_ptr<GPURenderer> renderer, Rend
 	// Adding the display views to the map
 	m_display_views[DisplayViewType::DEFAULT] = default_display_view;
 	m_display_views[DisplayViewType::DENOISED_BLEND] = denoise_blend_display_view;
-	m_display_views[DisplayViewType::DISPLAY_NORMALS] = normals_display_view;
+	m_display_views[DisplayViewType::DISPLAY_DENOISER_NORMALS] = normals_display_view;
 	m_display_views[DisplayViewType::DISPLAY_DENOISED_NORMALS] = normals_denoised_display_view;
-	m_display_views[DisplayViewType::DISPLAY_ALBEDO] = albedo_display_view;
+	m_display_views[DisplayViewType::DISPLAY_DENOISER_ALBEDO] = albedo_display_view;
 	m_display_views[DisplayViewType::DISPLAY_DENOISED_ALBEDO] = albedo_denoised_display_view;
 	m_display_views[DisplayViewType::PIXEL_CONVERGENCE_HEATMAP] = pixel_convergence_heatmap_display_view;
 	m_display_views[DisplayViewType::PIXEL_CONVERGED_MAP] = pixel_converged_display_view;
@@ -272,14 +272,14 @@ void DisplayViewSystem::update_display_program_uniforms(const DisplayViewSystem*
 		break;
 	}
 
-	case DisplayViewType::DISPLAY_ALBEDO:
+	case DisplayViewType::DISPLAY_DENOISER_ALBEDO:
 	case DisplayViewType::DISPLAY_DENOISED_ALBEDO:
 		program->set_uniform("u_texture", DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
 		program->set_uniform("u_resolution_scaling", render_low_resolution_scaling);
 
 		break;
 
-	case DisplayViewType::DISPLAY_NORMALS:
+	case DisplayViewType::DISPLAY_DENOISER_NORMALS:
 	case DisplayViewType::DISPLAY_DENOISED_NORMALS:
 		program->set_uniform("u_texture", DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
 		program->set_uniform("u_resolution_scaling", render_low_resolution_scaling);
@@ -344,12 +344,20 @@ void DisplayViewSystem::upload_relevant_buffers_to_texture()
 		internal_upload_buffer_to_texture(m_renderer->get_denoised_interop_framebuffer(), m_display_texture_2, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_2);
 		break;
 
-	case DisplayViewType::DISPLAY_ALBEDO:
-		internal_upload_buffer_to_texture(m_renderer->get_denoiser_albedo_AOV_interop_buffer(), m_display_texture_1, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
+	case DisplayViewType::DISPLAY_DENOISER_ALBEDO:
+		if (m_render_window->get_application_settings()->denoiser_use_interop_buffers)
+			internal_upload_buffer_to_texture(m_renderer->get_denoiser_albedo_AOV_interop_buffer(), m_display_texture_1, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
+		else
+			internal_upload_buffer_to_texture(m_renderer->get_denoiser_albedo_AOV_no_interop_buffer(), m_display_texture_1, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
+
 		break;
 
-	case DisplayViewType::DISPLAY_NORMALS:
-		internal_upload_buffer_to_texture(m_renderer->get_denoiser_normals_AOV_interop_buffer(), m_display_texture_1, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
+	case DisplayViewType::DISPLAY_DENOISER_NORMALS:
+		if (m_render_window->get_application_settings()->denoiser_use_interop_buffers)
+			internal_upload_buffer_to_texture(m_renderer->get_denoiser_normals_AOV_interop_buffer(), m_display_texture_1, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
+		else
+			internal_upload_buffer_to_texture(m_renderer->get_denoiser_normals_AOV_no_interop_buffer(), m_display_texture_1, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
+
 		break;
 
 	case DisplayViewType::PIXEL_CONVERGED_MAP:
@@ -395,9 +403,9 @@ void DisplayViewSystem::internal_recreate_display_textures_from_display_view(Dis
 	switch (display_view)
 	{
 	case DisplayViewType::DEFAULT:
-	case DisplayViewType::DISPLAY_NORMALS:
+	case DisplayViewType::DISPLAY_DENOISER_NORMALS:
 	case DisplayViewType::DISPLAY_DENOISED_NORMALS:
-	case DisplayViewType::DISPLAY_ALBEDO:
+	case DisplayViewType::DISPLAY_DENOISER_ALBEDO:
 	case DisplayViewType::DISPLAY_DENOISED_ALBEDO:
 	case DisplayViewType::WHITE_FURNACE_THRESHOLD:
 		texture_1_type_needed = DisplayTextureType::FLOAT3;
@@ -456,6 +464,7 @@ void DisplayViewSystem::internal_recreate_display_texture(std::pair<GLuint, Disp
 
 	// Making sure the buffer isn't bound
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+
 	glActiveTexture(GL_TEXTURE0 + display_texture_unit);
 	glBindTexture(GL_TEXTURE_2D, display_texture.first);
 	glTexImage2D(GL_TEXTURE_2D, 0, internal_format, width, height, 0, format, type, nullptr);

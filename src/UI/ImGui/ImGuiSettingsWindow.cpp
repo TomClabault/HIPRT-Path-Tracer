@@ -424,9 +424,9 @@ void ImGuiSettingsWindow::display_view_selector()
 	static std::unordered_map<std::string, DisplayViewType> display_string_to_type = {
 		{ "- Default", DisplayViewType::DEFAULT },
 		{ "- Denoiser blend", DisplayViewType::DENOISED_BLEND },
-		{ "- Denoiser - Normals", DisplayViewType::DISPLAY_NORMALS },
+		{ "- Denoiser - Normals", DisplayViewType::DISPLAY_DENOISER_NORMALS },
 		{ "- Denoiser - Denoised normals", DisplayViewType::DISPLAY_DENOISED_NORMALS},
-		{ "- Denoiser - Albedo", DisplayViewType::DISPLAY_ALBEDO },
+		{ "- Denoiser - Albedo", DisplayViewType::DISPLAY_DENOISER_ALBEDO },
 		{ "- Denoiser - Denoised albedo", DisplayViewType::DISPLAY_DENOISED_ALBEDO },
 		{ "- Pixel convergence heatmap", DisplayViewType::PIXEL_CONVERGENCE_HEATMAP },
 		{ "- Converged pixels map", DisplayViewType::PIXEL_CONVERGED_MAP },

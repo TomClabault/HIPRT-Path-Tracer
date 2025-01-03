@@ -83,6 +83,9 @@ private:
 	template <typename T>
 	void internal_upload_buffer_to_texture(std::shared_ptr<OpenGLInteropBuffer<T>> buffer, const std::pair<GLuint, DisplayTextureType>& display_texture, int texture_unit);
 
+	template<typename T>
+	void internal_upload_buffer_to_texture(std::shared_ptr<OrochiBuffer<T>> buffer, const std::pair<GLuint, DisplayTextureType>& display_texture, int texture_unit);
+
 	/*
 	 * This function ensures that the display texture is of the proper format
 	 * for the display view selected.
@@ -171,7 +174,16 @@ void DisplayViewSystem::internal_upload_buffer_to_texture(std::shared_ptr<OpenGL
 		return;
 
 	buffer->unmap();
-	buffer->unpack_to_texture(display_texture.first, GL_TEXTURE0 + texture_unit, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, display_texture.second);
+	buffer->unpack_to_GL_texture(display_texture.first, GL_TEXTURE0 + texture_unit, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, display_texture.second);
+}
+
+template<typename T>
+void DisplayViewSystem::internal_upload_buffer_to_texture(std::shared_ptr<OrochiBuffer<T>> buffer, const std::pair<GLuint, DisplayTextureType>& display_texture, int texture_unit)
+{
+	if (buffer == nullptr)
+		return;
+
+	buffer->unpack_to_GL_texture(display_texture.first, GL_TEXTURE0 + texture_unit, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, display_texture.second);
 }
 
 #endif

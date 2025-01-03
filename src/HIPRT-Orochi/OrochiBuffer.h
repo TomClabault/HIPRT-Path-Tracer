@@ -9,8 +9,10 @@
 #include "hiprt/hiprt.h"
 #include "HIPRT-Orochi/HIPRTOrochiUtils.h"
 #include "Orochi/Orochi.h"
+#include "UI/DisplayView/DisplayTextureType.h"
 #include "UI/ImGui/ImGuiLogger.h"
 #include "Utils/Utils.h"
+#include "gl/glew.h"
 
 extern ImGuiLogger g_imgui_logger;
 
@@ -43,6 +45,8 @@ public:
 	 */
 	void upload_data(const std::vector<T>& data);
 	void upload_data(const T* data);
+
+	void unpack_to_GL_texture(GLuint texture, GLint texture_unit, int width, int height, DisplayTextureType texture_type);
 
 	/**
 	 * Frees the buffer. No effect if already freed / not allocated yet
@@ -160,6 +164,51 @@ void OrochiBuffer<T>::upload_data(const T* data)
 		OROCHI_CHECK_ERROR(oroMemcpy(reinterpret_cast<oroDeviceptr>(m_data_pointer), data, sizeof(T) * m_element_count, oroMemcpyHostToDevice));
 	else
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Trying to upload data to an OrochiBuffer that hasn't been allocated yet!");
+}
+
+template <typename T>
+void OrochiBuffer<T>::unpack_to_GL_texture(GLuint texture, GLint texture_unit, int width, int height, DisplayTextureType texture_type)
+{
+	glActiveTexture(texture_unit);
+	glBindTexture(GL_TEXTURE_2D, texture);
+
+	// Downloading the Orochi buffer and then uploading it back to the GPU.
+	// Isn't that great code?
+	//
+	// The proper solution would be to use OpenGL Interop to copy the Orochi buffer
+	// to the underlying array of the OpenGL texture. But it seems like OpenGL interop can only
+	// do that for RGBA textures. But we're not stricly using RGBA textures here. The template type
+	// could be anything really and it at least doesn't work with float3 types because float3 are RGB,
+	// not RGBA and again, OpenGL Interop throws an error at 'oroGraphicsGLRegisterImage' for RGB
+	// textures.
+	//
+	// So to fix this, we could use an RGBA OpenGL texture in place of RGB. But then, in the case of 
+	// world-space normals buffer for example, we have to convert our float3 normals to float4 to upload
+	// to the RGBA texture. And that conversion would be expensive (and require memory)
+	//
+	// We could also just use float4 data all the way for the normals. We wouldn't have any conversion to do.
+	// But we would have a conversion to perform before denoising and so the issues would be the same
+	//
+	// So maybe there is another solution besides the RGBA OpenGL Interop but too lazy, this is an unlikely
+	// code path in the application anyways
+	std::vector<T> data = download_data();
+	glTexImage2D(GL_TEXTURE_2D, 0, texture_type.get_gl_internal_format(), width, height, 0, texture_type.get_gl_format(), texture_type.get_gl_type(), data.data());
+
+	//oroGraphicsResource_t graphics_resource = nullptr;
+	//OROCHI_CHECK_ERROR(oroGraphicsGLRegisterImage(&graphics_resource, texture, GL_TEXTURE_2D, oroGraphicsRegisterFlagsWriteDiscard));
+
+	//// Map the OpenGL texture for CUDA/HIP access
+	//OROCHI_CHECK_ERROR(oroGraphicsMapResources(1, &graphics_resource, 0));
+
+	//// Access the CUDA/HIP array used by the OpenGL texture under the hood
+	//oroArray_t array = nullptr;
+	//	OROCHI_CHECK_ERROR(oroGraphicsSubResourceGetMappedArray(&array, graphics_resource, 0, 0));
+
+	//// Copy data from the CUDA buffer to the CUDA array
+	//	OROCHI_CHECK_ERROR(oroMemcpy2DToArray(array, 0, 0, m_data_pointer, width * texture_type.sizeof_type(), width * texture_type.sizeof_type(), height, oroMemcpyDeviceToDevice));
+
+	//// Unmap the OpenGL texture
+	//OROCHI_CHECK_ERROR(oroGraphicsUnmapResources(1, &graphics_resource, 0));
 }
 
 template <typename T>

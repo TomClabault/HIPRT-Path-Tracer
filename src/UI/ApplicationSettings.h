@@ -14,8 +14,10 @@
 
 struct ApplicationSettings
 {
+	static constexpr bool DENOISER_USE_INTEROP_BUFFERS_DEFAULT = false;
+
 	bool enable_denoising = false;
-	bool denoiser_use_interop_buffers = true;
+	bool denoiser_use_interop_buffers = DENOISER_USE_INTEROP_BUFFERS_DEFAULT;
 	bool denoiser_use_albedo = true;
 	bool denoiser_denoise_albedo = true;
 	bool denoiser_use_normals = true;
@@ -77,7 +79,7 @@ struct ApplicationSettings
 
 	// We stop rendering when this number of sample is reached.
 	// 0 is no limit
-	int max_sample_count = 1;
+	int max_sample_count = 0;
 	// We stop rendering when the render has been running for that long.
 	// In seconds. 0 is no limit
 	float max_render_time = 0.0f;

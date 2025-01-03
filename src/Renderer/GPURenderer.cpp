@@ -240,7 +240,7 @@ void GPURenderer::update()
 	// Launching the background kernels precompilation if not already launched
 	if (!m_kernel_precompilation_launched)
 	{
-		precompile_kernels();
+		// precompile_kernels();
 
 		m_kernel_precompilation_launched = true;
 	}
@@ -590,8 +590,24 @@ void GPURenderer::set_use_denoiser_AOVs_interop_buffers(bool use_interop) { m_de
 
 std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_color_interop_framebuffer() { return m_framebuffer; }
 std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_denoised_interop_framebuffer() { return m_denoiser_buffers.m_denoised_framebuffer;}
-std::shared_ptr<OpenGLInteropBuffer<float3>> GPURenderer::get_denoiser_normals_AOV_interop_buffer() { return m_denoiser_buffers.m_normals_AOV_interop_buffer; }
-std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_denoiser_albedo_AOV_interop_buffer() { return m_denoiser_buffers.m_albedo_AOV_interop_buffer; }
+std::shared_ptr<OpenGLInteropBuffer<float3>> GPURenderer::get_denoiser_normals_AOV_interop_buffer() 
+{
+	if (!m_denoiser_buffers.use_interop_AOVs)
+		// No using the interop buffers so let's not return a buffer that cannot be used
+		return nullptr;
+
+	return m_denoiser_buffers.m_normals_AOV_interop_buffer; 
+}
+
+std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_denoiser_albedo_AOV_interop_buffer() 
+{ 
+	if (!m_denoiser_buffers.use_interop_AOVs)
+		// No using the interop buffers so let's not return a buffer that cannot be used
+		return nullptr;
+
+	return m_denoiser_buffers.m_albedo_AOV_interop_buffer; 
+}
+
 std::shared_ptr<OrochiBuffer<float3>> GPURenderer::get_denoiser_normals_AOV_no_interop_buffer() { return m_denoiser_buffers.m_normals_AOV_no_interop_buffer; }
 std::shared_ptr<OrochiBuffer<ColorRGB32F>> GPURenderer::get_denoiser_albedo_AOV_no_interop_buffer() { return m_denoiser_buffers.m_albedo_AOV_no_interop_buffer; }
 

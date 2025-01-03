@@ -57,7 +57,7 @@ public:
 	/**
 	 * Copies the buffer data to an OpenGL texture
 	 */
-	void unpack_to_texture(GLuint texture, GLint texture_unit, int width, int height, DisplayTextureType texture_type);
+	void unpack_to_GL_texture(GLuint texture, GLint texture_unit, int width, int height, DisplayTextureType texture_type);
 
 	void free();
 
@@ -80,7 +80,7 @@ OpenGLInteropBuffer<T>::OpenGLInteropBuffer(int element_count)
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, m_buffer_name);
 	glBufferData(GL_PIXEL_UNPACK_BUFFER, element_count * sizeof(T), nullptr, GL_DYNAMIC_DRAW);
 
-	oroGraphicsGLRegisterBuffer(&m_buffer_resource, m_buffer_name, oroGraphicsRegisterFlagsNone);
+	OROCHI_CHECK_ERROR(oroGraphicsGLRegisterBuffer(&m_buffer_resource, m_buffer_name, oroGraphicsRegisterFlagsNone));
 
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 
@@ -218,7 +218,7 @@ void OpenGLInteropBuffer<T>::unmap()
 }
 
 template<typename T>
-void OpenGLInteropBuffer<T>::unpack_to_texture(GLuint texture, GLint texture_unit, int width, int height, DisplayTextureType texture_type)
+void OpenGLInteropBuffer<T>::unpack_to_GL_texture(GLuint texture, GLint texture_unit, int width, int height, DisplayTextureType texture_type)
 {
 	GLenum format = texture_type.get_gl_format();
 	GLenum type = texture_type.get_gl_type();

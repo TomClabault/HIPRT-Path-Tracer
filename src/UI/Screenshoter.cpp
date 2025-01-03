@@ -55,9 +55,9 @@ Screenshoter::Screenshoter()
 
 	m_compute_programs[DisplayViewType::DEFAULT] = default_display_program;
 	m_compute_programs[DisplayViewType::DENOISED_BLEND] = blend_2_display_program;
-	m_compute_programs[DisplayViewType::DISPLAY_ALBEDO] = albedo_display_program;
+	m_compute_programs[DisplayViewType::DISPLAY_DENOISER_ALBEDO] = albedo_display_program;
 	m_compute_programs[DisplayViewType::DISPLAY_DENOISED_ALBEDO] = albedo_display_program;
-	m_compute_programs[DisplayViewType::DISPLAY_NORMALS] = normal_display_program;
+	m_compute_programs[DisplayViewType::DISPLAY_DENOISER_NORMALS] = normal_display_program;
 	m_compute_programs[DisplayViewType::DISPLAY_DENOISED_NORMALS] = normal_display_program;
 	m_compute_programs[DisplayViewType::PIXEL_CONVERGENCE_HEATMAP] = pixel_convergence_heatmap_display_program;
 	m_compute_programs[DisplayViewType::PIXEL_CONVERGED_MAP] = pixel_converged_map_display_program;
