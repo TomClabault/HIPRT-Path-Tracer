@@ -109,7 +109,6 @@ public:
 	 * wants to display the denoised data. This condition corresponds exactly to the returned value)
 	 */
 	bool denoise();
-	void quit();
 
 	// TODO: why is this not in linux mouse interactor only and why is it in renderwindow ?
 	std::pair<float, float> get_cursor_position()
@@ -125,6 +124,33 @@ public:
 private:
 	int m_viewport_width, m_viewport_height;
 
+	/**
+	 * Denoises the renderer framebuffer using the OpenGL interop buffers.
+	 *
+	 * Using the OpenGL interop buffers greatly improves the performance of the
+	 * denoiser but they seem to be a bit slower to manipulate from the path
+	 * tracing shaders --> a bit slower path tracing performance.
+	 * 
+	 * This may only be true on AMD GPUs though where the OpenGL interop driver implementation
+	 * seems to be pretty bad
+	 * 
+	 * This function should not be called directly. ::denoise() should be called
+	 * and it will take care of calling the right function depending on the value 
+	 * of ApplicationSettings::denoiser_use_interop_buffers
+	 */
+	float denoise_interop_buffers();
+
+	/**
+	 * Denoises the renderer framebuffer not using the OpenGL interop buffers.
+	 * 
+	 * This makes the denoising more expensive but increases path tracing performance
+	 * a bit (on AMD GPUs at least)
+	 * 
+	 * This function should not be called directly. ::denoise() should be called
+	 * and it will take care of calling the right function depending on the value 
+	 * of ApplicationSettings::denoiser_use_interop_buffers
+	 */
+	float denoise_no_interop_buffers();
 
 	// All the settings of the application (that can, for the most part, be controlled
 	// through ImGui)

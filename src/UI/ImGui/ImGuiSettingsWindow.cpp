@@ -1826,6 +1826,7 @@ void ImGuiSettingsWindow::draw_denoiser_panel()
 {
 	if (!ImGui::CollapsingHeader("Denoiser"))
 		return;
+
 	ImGui::TreePush("Denoiser tree");
 
 	if (ImGui::Checkbox("Enable denoiser", &m_application_settings->enable_denoising))
@@ -1833,6 +1834,15 @@ void ImGuiSettingsWindow::draw_denoiser_panel()
 		m_render_window->get_display_view_system()->queue_display_view_change(m_application_settings->enable_denoising ? DisplayViewType::DENOISED_BLEND : DisplayViewType::DEFAULT);
 		m_application_settings->denoiser_settings_changed = true;
 	}
+	if (ImGui::Checkbox("Use OpenGL Interop AOV Buffers", &m_application_settings->denoiser_use_interop_buffers))
+	{
+		m_renderer->set_use_denoiser_AOVs_interop_buffers(m_application_settings->denoiser_use_interop_buffers);
+		m_render_window->set_render_dirty(true);
+	}
+	ImGuiRenderer::show_help_marker("If checked, TODO continue help");
+
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
 	ImGui::BeginDisabled(!m_application_settings->enable_denoising);
 	if (ImGui::CollapsingHeader("AOVs"))
 	{
@@ -1881,12 +1891,15 @@ void ImGuiSettingsWindow::draw_denoiser_panel()
 		ImGui::EndDisabled();
 		ImGui::TreePop();
 	}
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
 	DisplaySettings& display_settings = m_render_window->get_display_view_system()->get_display_settings();
 	ImGui::Checkbox("Only denoise when rendering is done", &m_application_settings->denoise_when_rendering_done);
 	ImGui::SliderInt("Denoiser sample skip", &m_application_settings->denoiser_sample_skip, 1, 128);
 	ImGui::SliderFloat("Denoiser blend", &display_settings.denoiser_blend, 0.0f, 1.0f);
 	ImGui::EndDisabled();
 
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	ImGui::Text("Denoising time: %.3fms", m_application_settings->last_denoised_duration / 1000.0f);
 
 	ImGui::TreePop();

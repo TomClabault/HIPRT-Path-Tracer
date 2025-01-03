@@ -51,9 +51,11 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
 
 	// Creating buffers
 	m_framebuffer = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
-	m_denoised_framebuffer = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
-	m_normals_AOV_buffer = std::make_shared<OpenGLInteropBuffer<float3>>();
-	m_albedo_AOV_buffer = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
+	m_denoiser_buffers.m_denoised_framebuffer = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
+	m_denoiser_buffers.m_normals_AOV_interop_buffer = std::make_shared<OpenGLInteropBuffer<float3>>();
+	m_denoiser_buffers.m_normals_AOV_no_interop_buffer = std::make_shared<OrochiBuffer<float3>>();
+	m_denoiser_buffers.m_albedo_AOV_interop_buffer = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
+	m_denoiser_buffers.m_albedo_AOV_no_interop_buffer = std::make_shared<OrochiBuffer<ColorRGB32F>>();
 	m_pixels_converged_sample_count_buffer = std::make_shared<OpenGLInteropBuffer<int>>();
 	
 	m_hiprt_orochi_ctx = hiprt_oro_ctx;	
@@ -558,9 +560,9 @@ void GPURenderer::resize(int new_width, int new_height, bool also_resize_interop
 void GPURenderer::resize_interop_buffers(int new_width, int new_height)
 {
 	m_framebuffer->resize(new_width * new_height);
-	m_denoised_framebuffer->resize(new_width * new_height);
-	m_normals_AOV_buffer->resize(new_width * new_height);
-	m_albedo_AOV_buffer->resize(new_width * new_height);
+	m_denoiser_buffers.m_denoised_framebuffer->resize(new_width * new_height);
+	m_denoiser_buffers.resize_normals_buffer(new_width * new_height);
+	m_denoiser_buffers.resize_albedo_buffer(new_width * new_height);
 
 	if (m_render_data.render_settings.has_access_to_adaptive_sampling_buffers())
 		m_pixels_converged_sample_count_buffer->resize(new_width * new_height);
@@ -569,8 +571,8 @@ void GPURenderer::resize_interop_buffers(int new_width, int new_height)
 void GPURenderer::map_buffers_for_render()
 {
 	m_render_data.buffers.pixels = m_framebuffer->map_no_error();
-	m_render_data.aux_buffers.denoiser_normals = m_normals_AOV_buffer->map_no_error();
-	m_render_data.aux_buffers.denoiser_albedo = m_albedo_AOV_buffer->map_no_error();
+	m_render_data.aux_buffers.denoiser_normals = m_denoiser_buffers.map_normals_buffer();
+	m_render_data.aux_buffers.denoiser_albedo = m_denoiser_buffers.map_albedo_buffer();
 	if (m_render_data.render_settings.has_access_to_adaptive_sampling_buffers())
 		m_render_data.aux_buffers.pixel_converged_sample_count = m_pixels_converged_sample_count_buffer->map_no_error();
 }
@@ -578,76 +580,32 @@ void GPURenderer::map_buffers_for_render()
 void GPURenderer::unmap_buffers()
 {
 	m_framebuffer->unmap();
-	m_normals_AOV_buffer->unmap();
-	m_albedo_AOV_buffer->unmap();
+	m_denoiser_buffers.unmap_normals_buffer();
+	m_denoiser_buffers.unmap_albedo_buffer();
 	m_pixels_converged_sample_count_buffer->unmap();
 }
 
 
-std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_color_framebuffer()
-{
-	return m_framebuffer;
-}
+void GPURenderer::set_use_denoiser_AOVs_interop_buffers(bool use_interop) { m_denoiser_buffers.set_use_interop_AOV_buffers(this, use_interop); }
 
-std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_denoised_framebuffer()
-{
-	return m_denoised_framebuffer;
-}
+std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_color_interop_framebuffer() { return m_framebuffer; }
+std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_denoised_interop_framebuffer() { return m_denoiser_buffers.m_denoised_framebuffer;}
+std::shared_ptr<OpenGLInteropBuffer<float3>> GPURenderer::get_denoiser_normals_AOV_interop_buffer() { return m_denoiser_buffers.m_normals_AOV_interop_buffer; }
+std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_denoiser_albedo_AOV_interop_buffer() { return m_denoiser_buffers.m_albedo_AOV_interop_buffer; }
+std::shared_ptr<OrochiBuffer<float3>> GPURenderer::get_denoiser_normals_AOV_no_interop_buffer() { return m_denoiser_buffers.m_normals_AOV_no_interop_buffer; }
+std::shared_ptr<OrochiBuffer<ColorRGB32F>> GPURenderer::get_denoiser_albedo_AOV_no_interop_buffer() { return m_denoiser_buffers.m_albedo_AOV_no_interop_buffer; }
 
-std::shared_ptr<OpenGLInteropBuffer<float3>> GPURenderer::get_denoiser_normals_AOV_buffer()
-{
-	return m_normals_AOV_buffer;
-}
+std::shared_ptr<OpenGLInteropBuffer<int>>& GPURenderer::get_pixels_converged_sample_count_buffer() { return m_pixels_converged_sample_count_buffer; }
+const StatusBuffersValues& GPURenderer::get_status_buffer_values() const { return m_status_buffers_values; }
 
-std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_denoiser_albedo_AOV_buffer()
-{
-	return m_albedo_AOV_buffer;
-}
+HIPRTRenderSettings& GPURenderer::get_render_settings() { return m_render_data.render_settings; }
+WorldSettings& GPURenderer::get_world_settings() { return m_render_data.world_settings; }
+HIPRTRenderData& GPURenderer::get_render_data() { return m_render_data; }
+HIPRTScene& GPURenderer::get_hiprt_scene() { return m_hiprt_scene; }
+std::shared_ptr<HIPRTOrochiCtx> GPURenderer::get_hiprt_orochi_ctx() { return m_hiprt_orochi_ctx; }
 
-std::shared_ptr<OpenGLInteropBuffer<int>>& GPURenderer::get_pixels_converged_sample_count_buffer()
-{
-	return m_pixels_converged_sample_count_buffer;
-}
-
-const StatusBuffersValues& GPURenderer::get_status_buffer_values() const
-{
-	return m_status_buffers_values;
-}
-
-HIPRTRenderSettings& GPURenderer::get_render_settings()
-{
-	return m_render_data.render_settings;
-}
-
-WorldSettings& GPURenderer::get_world_settings()
-{
-	return m_render_data.world_settings;
-}
-
-HIPRTRenderData& GPURenderer::get_render_data()
-{
-	return m_render_data;
-}
-
-HIPRTScene& GPURenderer::get_hiprt_scene()
-{
-	return m_hiprt_scene;
-}
-
-std::shared_ptr<HIPRTOrochiCtx> GPURenderer::get_hiprt_orochi_ctx()
-{
-	return m_hiprt_orochi_ctx;
-}
-
-void GPURenderer::invalidate_render_data_buffers()
-{
-	m_render_data_buffers_invalidated = true;
-}
-
-oroDeviceProp GPURenderer::get_device_properties()
-{
-	return m_device_properties;
-}
+void GPURenderer::invalidate_render_data_buffers() { m_render_data_buffers_invalidated = true; }
+oroDeviceProp GPURenderer::get_device_properties() { return m_device_properties;}
 
 std::string getDeviceName(oroCtx m_ctxt, oroDevice m_device)
 {

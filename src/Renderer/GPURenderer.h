@@ -18,6 +18,7 @@
 #include "Renderer/GBufferGPURenderer.h"
 #include "Renderer/HardwareAccelerationSupport.h"
 #include "Renderer/OpenImageDenoiser.h"
+#include "Renderer/DenoiserBuffers.h"
 #include "Renderer/StatusBuffersValues.h"
 #include "Renderer/RenderPasses/ReSTIRDIRenderPass.h"
 #include "Scene/Camera.h"
@@ -192,10 +193,20 @@ public:
 	 */
 	void unmap_buffers();
 
-	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> get_color_framebuffer();
-	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> get_denoised_framebuffer();
-	std::shared_ptr<OpenGLInteropBuffer<float3>> get_denoiser_normals_AOV_buffer();
-	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> get_denoiser_albedo_AOV_buffer();
+	/**
+	 * Switches to using OpenGL interop buffers or classical non-interop CUDA/HIP buffers for the denoiser AOVs.
+	 * 
+	 * OpenGL Interop buffers seems to be slower and slow down the path tracing kernel on AMD for some reasons.
+	 * Using non-interop buffers thus increases rendering performance but tanks denoising performance
+	 */
+	void set_use_denoiser_AOVs_interop_buffers(bool use_interop);
+
+	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> get_color_interop_framebuffer();
+	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> get_denoised_interop_framebuffer();
+	std::shared_ptr<OpenGLInteropBuffer<float3>> get_denoiser_normals_AOV_interop_buffer();
+	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> get_denoiser_albedo_AOV_interop_buffer();
+	std::shared_ptr<OrochiBuffer<float3>> get_denoiser_normals_AOV_no_interop_buffer();
+	std::shared_ptr<OrochiBuffer<ColorRGB32F>> get_denoiser_albedo_AOV_no_interop_buffer();
 	std::shared_ptr<OpenGLInteropBuffer<int>>& get_pixels_converged_sample_count_buffer();
 	/**
 	 * Returns a structure that contains the values of
@@ -386,13 +397,10 @@ private:
 	// This is an accumulation buffer. This needs to be divided by the
 	// number of samples for displaying
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> m_framebuffer;
-	// Buffer for holding the denoised frame (the denoiser data will be copied
-	// to this buffer and then displayed to the viewport)
-	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> m_denoised_framebuffer;
-	// Normals G-buffer
-	std::shared_ptr<OpenGLInteropBuffer<float3>> m_normals_AOV_buffer;
-	// Albedo G-buffer
-	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>>m_albedo_AOV_buffer;
+	// AOVs and buffers needed by the denoiser that are filled/manipulated by the renderer.
+	// This is just a structure to aggregate them all instead of having multiple
+	// variables in the renderer class
+	GPURendererDenoiserBuffers m_denoiser_buffers;
 
 	// G-buffers of the current frame (camera rays hits) and previous frame
 	GBufferGPURenderer m_g_buffer;

@@ -22,9 +22,10 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // TODOs  performance improvements branch:
-// - analyze why my path tracer, will looking at nothing still takes 3ms for the path tracing kernel even though there is nothing to render
-// 
 // - if we don't have the ray volume state in the GBuffer anymore, we can remove the stack handlign in the trace ray function of the camera rays
+// - implement some kind of thing to avoid displaying every sample when the camera yhasn't been moving for a while (i.e. we're rendering offline) --> more like after a certain rendering time in seconds. this is to save displaying resources
+// - switch the denoiser AOVs to non interop buffers at the cost of less interactivty in the denoiser (becase uwe're going to havbe to copy from the non interop buffers to OIDN). Maybe have a switch in ImGui to force-use interop buffers to increase the performance of the denoiser at the cost of some ray tracing performance
+// - aux_buffers.pixel_converged_sample_count[pixel_index] should be a non interop buffer as long as we don't need it for displaying. Copy it to interop if we need it for displaying
 // - If hitting the same material as before, not load the material from VRAM as it's exactly the same? (only works for non-textured materials)
 // - in RIS, if reuse bsdf ray, just pass the ray volume state to BSDF sample? instead of copying it to the mis reuse structre
 // - can remove the if bounce == 0 --> denoiser stuff to save some registers
@@ -67,6 +68,7 @@ extern ImGuiLogger g_imgui_logger;
 // - launch bounds optimization?
 // - thread group size optimization?
 // - SoA instead of AoS
+// - With SoAs, it should be possible to have one shader per material type (test the performance of that though) without having to read the full material structure from memory so this reduces the cost of the "memory roundtrips" and maybe this can be worth it
 // - superfluous sample() call on the last bounce?
 // - perfect reflection and refractions fast path
 // - double buffering of frames in general to better keep the GPU occupied?
@@ -983,22 +985,13 @@ bool RenderWindow::denoise()
 
 		if (need_denoising)
 		{
-			std::shared_ptr<OpenGLInteropBuffer<float3>> normals_buffer = nullptr;
-			std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> albedo_buffer = nullptr;
+			float denoise_duration = 0.0f;
+			if (m_application_settings->denoiser_use_interop_buffers)
+				denoise_duration = denoise_interop_buffers();
+			else
+				denoise_duration = denoise_no_interop_buffers();
 
-			if (m_application_settings->denoiser_use_normals)
-				normals_buffer = m_renderer->get_denoiser_normals_AOV_buffer();
-
-			if (m_application_settings->denoiser_use_albedo)
-				albedo_buffer = m_renderer->get_denoiser_albedo_AOV_buffer();
-
-			auto start = std::chrono::high_resolution_clock::now();
-			m_denoiser->denoise(m_renderer->get_color_framebuffer(), normals_buffer, albedo_buffer);
-			auto stop = std::chrono::high_resolution_clock::now();
-
-			m_denoiser->copy_denoised_data_to_buffer(m_renderer->get_denoised_framebuffer());
-
-			m_application_settings->last_denoised_duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count();
+			m_application_settings->last_denoised_duration = denoise_duration;
 			m_application_settings->last_denoised_sample_count = render_settings.sample_number;
 		}
 
@@ -1013,4 +1006,44 @@ bool RenderWindow::denoise()
 	}
 
 	return false;
+}
+
+float RenderWindow::denoise_interop_buffers()
+{
+	std::shared_ptr<OpenGLInteropBuffer<float3>> normals_buffer = nullptr;
+	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> albedo_buffer = nullptr;
+
+	if (m_application_settings->denoiser_use_normals)
+		normals_buffer = m_renderer->get_denoiser_normals_AOV_interop_buffer();
+
+	if (m_application_settings->denoiser_use_albedo)
+		albedo_buffer = m_renderer->get_denoiser_albedo_AOV_interop_buffer();
+
+	auto start = std::chrono::high_resolution_clock::now();
+	m_denoiser->denoise(m_renderer->get_color_interop_framebuffer(), normals_buffer, albedo_buffer);
+	auto stop = std::chrono::high_resolution_clock::now();
+
+	m_denoiser->copy_denoised_data_to_buffer(m_renderer->get_denoised_interop_framebuffer());
+
+	return std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count();
+}
+
+float RenderWindow::denoise_no_interop_buffers()
+{
+	std::shared_ptr<OrochiBuffer<float3>> normals_buffer = nullptr;
+	std::shared_ptr<OrochiBuffer<ColorRGB32F>> albedo_buffer = nullptr;
+
+	if (m_application_settings->denoiser_use_normals)
+		normals_buffer = m_renderer->get_denoiser_normals_AOV_no_interop_buffer();
+
+	if (m_application_settings->denoiser_use_albedo)
+		albedo_buffer = m_renderer->get_denoiser_albedo_AOV_no_interop_buffer();
+
+	auto start = std::chrono::high_resolution_clock::now();
+	m_denoiser->denoise(m_renderer->get_color_interop_framebuffer(), normals_buffer, albedo_buffer);
+	auto stop = std::chrono::high_resolution_clock::now();
+
+	m_denoiser->copy_denoised_data_to_buffer(m_renderer->get_denoised_interop_framebuffer());
+
+	return std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count();
 }

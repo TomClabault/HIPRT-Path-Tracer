@@ -6,6 +6,7 @@
 #ifndef OPEN_IMAGE_DENOISER
 #define OPEN_IMAGE_DENOISER
 
+#include "HIPRT-Orochi/OrochiBuffer.h"
 #include "HostDeviceCommon/Color.h"
 #include "OpenGL/OpenGLInteropBuffer.h"
 
@@ -36,13 +37,29 @@ public:
 	*/
 	void finalize();
 
+	/**
+	 * Denoises 'data_to_denoise' and uses the AOVs to improve denoising quality if provided
+	 * and if normals/albedo denoising is enabled on the denoiser.
+	 * 
+	 * See set_use_albedo(bool use_albedo), set_denoise_albedo(bool denoise_normals_or_not), set_use_normals(bool use_normal), ...
+	 */
 	void denoise(std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> data_to_denoise, 
 				 std::shared_ptr<OpenGLInteropBuffer<float3>> normals_aov = nullptr, 
 				 std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> albedo_aov = nullptr);
 	/**
+	 * Overload to denoise from non OpenGL Interop AOV buffers
+	 */
+	void denoise(std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> data_to_denoise,
+				 std::shared_ptr<OrochiBuffer<float3>> normals_aov,
+				 std::shared_ptr<OrochiBuffer<ColorRGB32F>> albedo_aov);
+	/**
 	 * Function used to copy the denoiser result after a call to denoise() to a given buffer
 	 */
 	void copy_denoised_data_to_buffer(std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> out_buffer);
+	/**
+	 * Overload for non-interop buffers
+	 */
+	void copy_denoised_data_to_buffer(std::shared_ptr<OrochiBuffer<ColorRGB32F>> out_buffer);
 
 
 private:
@@ -51,6 +68,9 @@ private:
 	bool check_valid_state();
 	bool check_device();
 	bool check_buffer_sizes();
+
+	// Internal denoise function that takes raw pointers
+	void denoise(ColorRGB32F* data_to_denoise, float3* normals_aov, ColorRGB32F*);
 
 	bool m_use_albedo = false;
 	bool m_denoise_albedo = true;

@@ -340,30 +340,17 @@ void DisplayViewSystem::upload_relevant_buffers_to_texture()
 	switch (current_display_view_type)
 	{
 	case DisplayViewType::DENOISED_BLEND:
-		internal_upload_buffer_to_texture(m_renderer->get_color_framebuffer(), m_display_texture_1, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
-		internal_upload_buffer_to_texture(m_renderer->get_denoised_framebuffer(), m_display_texture_2, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_2);
+		internal_upload_buffer_to_texture(m_renderer->get_color_interop_framebuffer(), m_display_texture_1, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
+		internal_upload_buffer_to_texture(m_renderer->get_denoised_interop_framebuffer(), m_display_texture_2, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_2);
 		break;
 
 	case DisplayViewType::DISPLAY_ALBEDO:
-		internal_upload_buffer_to_texture(m_renderer->get_denoiser_albedo_AOV_buffer(), m_display_texture_1, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
+		internal_upload_buffer_to_texture(m_renderer->get_denoiser_albedo_AOV_interop_buffer(), m_display_texture_1, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
 		break;
 
 	case DisplayViewType::DISPLAY_NORMALS:
-		internal_upload_buffer_to_texture(m_renderer->get_denoiser_normals_AOV_buffer(), m_display_texture_1, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
+		internal_upload_buffer_to_texture(m_renderer->get_denoiser_normals_AOV_interop_buffer(), m_display_texture_1, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
 		break;
-
-		// TODO fix
-		/*case DisplayViewType::DISPLAY_DENOISED_NORMALS:
-			m_render_window_denoiser->denoise_normals();
-			display(m_render_window_denoiser->get_denoised_normals_pointer());
-			break;*/
-
-
-			// TODO fix
-			/*case DisplayViewType::DISPLAY_DENOISED_ALBEDO:
-				m_render_window_denoiser->denoise_albedo();
-				display(m_render_window_denoiser->get_denoised_albedo_pointer());
-				break;*/
 
 	case DisplayViewType::PIXEL_CONVERGED_MAP:
 	case DisplayViewType::PIXEL_CONVERGENCE_HEATMAP:
@@ -373,7 +360,7 @@ void DisplayViewSystem::upload_relevant_buffers_to_texture()
 	case DisplayViewType::DEFAULT:
 	case DisplayViewType::WHITE_FURNACE_THRESHOLD:
 	default:
-		internal_upload_buffer_to_texture(m_renderer->get_color_framebuffer(), m_display_texture_1, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
+		internal_upload_buffer_to_texture(m_renderer->get_color_interop_framebuffer(), m_display_texture_1, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
 		break;
 	}
 }

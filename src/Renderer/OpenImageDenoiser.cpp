@@ -201,6 +201,36 @@ bool OpenImageDenoiser::check_buffer_sizes()
     return true;
 }
 
+void OpenImageDenoiser::denoise(ColorRGB32F* data_to_denoise_device_pointer, float3* normals_aov_device_pointer, ColorRGB32F* albedo_aov_device_pointer)
+{
+    if (!check_valid_state())
+        return;
+
+    if (!check_buffer_sizes())
+        return;
+
+    oroMemcpyKind memcpyKind = m_cpu_device ? oroMemcpyDeviceToHost : oroMemcpyDeviceToDevice;
+
+    if (normals_aov_device_pointer != nullptr)
+    {
+        OROCHI_CHECK_ERROR(oroMemcpy(m_normals_buffer_denoised_oidn.getData(), normals_aov_device_pointer, sizeof(float3) * m_width * m_height, memcpyKind));
+
+        if (m_denoise_normals)
+            m_normals_filter.execute();
+    }
+
+    if (albedo_aov_device_pointer != nullptr)
+    {
+        OROCHI_CHECK_ERROR(oroMemcpy(m_albedo_buffer_denoised_oidn.getData(), albedo_aov_device_pointer, sizeof(ColorRGB32F) * m_width * m_height, memcpyKind));
+
+        if (m_denoise_albedo)
+            m_albedo_filter.execute();
+    }
+
+    OROCHI_CHECK_ERROR(oroMemcpy(m_input_color_buffer_oidn.getData(), data_to_denoise_device_pointer, sizeof(ColorRGB32F) * m_width * m_height, memcpyKind));
+    m_beauty_filter.execute();
+}
+
 void OpenImageDenoiser::denoise(std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> data_to_denoise, std::shared_ptr<OpenGLInteropBuffer<float3>> normals_aov, std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> albedo_aov)
 {
     if (!check_valid_state())
@@ -211,29 +241,44 @@ void OpenImageDenoiser::denoise(std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>
 
     oroMemcpyKind memcpyKind = m_cpu_device ? oroMemcpyDeviceToHost : oroMemcpyDeviceToDevice;
 
+    float3* normals_pointer = nullptr;
     if (normals_aov != nullptr)
-    {
-        float3* normals_pointer = normals_aov->map_no_error();
-        OROCHI_CHECK_ERROR(oroMemcpy(m_normals_buffer_denoised_oidn.getData(), normals_pointer, sizeof(float3) * m_width * m_height, memcpyKind));
-        normals_aov->unmap();
+        normals_pointer = normals_aov->map_no_error();
 
-        if (m_denoise_normals)
-            m_normals_filter.execute();
-    }
-
+    ColorRGB32F* albedo_pointer = nullptr;
     if (albedo_aov != nullptr)
-    {
-        ColorRGB32F* albedo_pointer = albedo_aov->map_no_error();
-        OROCHI_CHECK_ERROR(oroMemcpy(m_albedo_buffer_denoised_oidn.getData(), albedo_pointer, sizeof(ColorRGB32F) * m_width * m_height, memcpyKind));
-        albedo_aov->unmap();
+        albedo_pointer = albedo_aov->map_no_error();
 
-        if (m_denoise_albedo)
-            m_albedo_filter.execute();
-    }
-    
     ColorRGB32F* data_to_denoise_pointer = data_to_denoise->map_no_error();
-    OROCHI_CHECK_ERROR(oroMemcpy(m_input_color_buffer_oidn.getData(), data_to_denoise_pointer, sizeof(ColorRGB32F) * m_width * m_height, memcpyKind));
-    m_beauty_filter.execute();
+
+    denoise(data_to_denoise_pointer, normals_pointer, albedo_pointer);
+    normals_aov->unmap();
+    albedo_aov->unmap();
+    data_to_denoise->unmap();
+}
+
+void OpenImageDenoiser::denoise(std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> data_to_denoise, std::shared_ptr<OrochiBuffer<float3>> normals_aov, std::shared_ptr<OrochiBuffer<ColorRGB32F>> albedo_aov)
+{
+    if (!check_valid_state())
+        return;
+
+    if (!check_buffer_sizes())
+        return;
+
+    oroMemcpyKind memcpyKind = m_cpu_device ? oroMemcpyDeviceToHost : oroMemcpyDeviceToDevice;
+
+    float3* normals_pointer = nullptr;
+    if (normals_aov != nullptr)
+        normals_pointer = normals_aov->get_device_pointer();
+
+    ColorRGB32F* albedo_pointer = nullptr;
+    if (albedo_aov != nullptr)
+        albedo_pointer = albedo_aov->get_device_pointer();
+
+    ColorRGB32F* data_to_denoise_pointer = data_to_denoise->map_no_error();
+
+    denoise(data_to_denoise_pointer, normals_pointer, albedo_pointer);
+
     data_to_denoise->unmap();
 }
 
@@ -241,9 +286,17 @@ void OpenImageDenoiser::copy_denoised_data_to_buffer(std::shared_ptr<OpenGLInter
 {
     oroMemcpyKind memcpyKind;
     ColorRGB32F* buffer_pointer;
-    
+
     memcpyKind = m_cpu_device ? oroMemcpyHostToDevice : oroMemcpyDeviceToDevice;
-    buffer_pointer= out_buffer->map();
+    buffer_pointer = out_buffer->map();
     OROCHI_CHECK_ERROR(oroMemcpy(buffer_pointer, m_denoised_buffer.getData(), sizeof(ColorRGB32F) * m_width * m_height, memcpyKind));
     out_buffer->unmap();
+}
+
+void OpenImageDenoiser::copy_denoised_data_to_buffer(std::shared_ptr<OrochiBuffer<ColorRGB32F>> out_buffer)
+{
+    oroMemcpyKind memcpyKind = m_cpu_device ? oroMemcpyHostToDevice : oroMemcpyDeviceToDevice;
+    ColorRGB32F* buffer_pointer = out_buffer->get_device_pointer();
+
+    OROCHI_CHECK_ERROR(oroMemcpy(buffer_pointer, m_denoised_buffer.getData(), sizeof(ColorRGB32F) * m_width * m_height, memcpyKind));
 }
