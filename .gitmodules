@@ -10,3 +10,6 @@
 [submodule "thirdparties/imgui"]
 	path = thirdparties/imgui
 	url = https://github.com/ocornut/imgui.git
+[submodule "thirdparties/tracy"]
+	path = thirdparties/tracy
+	url = https://github.com/wolfpld/tracy.git

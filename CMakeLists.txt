@@ -29,9 +29,13 @@ include(cmake/SetupHIPRT.cmake)
 # Preparing Orochi
 include(cmake/SetupOrochi.cmake)
 
+# Include Tracy for OpenGL profiling
+include(cmake/SetupTracy.cmake)
+
 set(GLFW_LIB_DIR "thirdparties/opengl/lib/GLFW")
 set(GLEW_LIB_DIR "thirdparties/opengl/lib/GLEW")
 set(GLEW_BIN_DIR "thirdparties/opengl/bin/GLEW")
+set(TRACY_PUBLIC_DIR "thirdparties/tracy/public")
 
 # Using CMake here to define C++ macros that will be used to find the directory of the kernels, etc...
 # in the C++ code. This basically avoids hardcoding the path to the kernels in C++ and instead
@@ -42,6 +46,7 @@ add_compile_definitions(OROCHI_INCLUDES_DIRECTORY="${OROCHI_SOURCES_DIR}/..") # 
 add_compile_definitions(GLSL_SHADERS_DIRECTORY="../src/Shaders")
 add_compile_definitions(DATA_DIRECTORY="${CMAKE_SOURCE_DIR}/data")
 add_compile_definitions(BRDFS_DATA_DIRECTORY="${CMAKE_SOURCE_DIR}/data/BRDFsData")
+#add_compile_definitions(TRACY_ENABLE="1")
 
 link_directories(${CMAKE_SOURCE_DIR}/${GLFW_LIB_DIR})
 link_directories(${CMAKE_SOURCE_DIR}/${GLEW_LIB_DIR})
@@ -91,10 +96,10 @@ find_package(OpenImageDenoise REQUIRED HINTS ${oidnbinaries_SOURCE_DIR}) # HINTS
 
 if (WIN32)
 	# "version" is a library from the Windows SDK
-	target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX assimp OpenImageDenoise ${OPENGL_LIBRARY} glfw3 glew32 hiprt02004 version)
+	target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX assimp OpenImageDenoise ${OPENGL_LIBRARY} glfw3 glew32 hiprt02004 TracyClient version)
 elseif(UNIX)
 	find_package(GLEW REQUIRED)
-	target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX assimp OpenImageDenoise ${OPENGL_LIBRARY} glfw GLEW::GLEW hiprt02004)
+	target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX assimp OpenImageDenoise ${OPENGL_LIBRARY} glfw GLEW::GLEW hiprt02004 TracyClient)
 endif()
 
 target_include_directories(HIPRTPathTracer PRIVATE "src/")
@@ -108,6 +113,7 @@ target_include_directories(HIPRTPathTracer PRIVATE ${HIPRT_HEADERS_DIR}/..)
 target_include_directories(HIPRTPathTracer PRIVATE ${OROCHI_SOURCES_DIR}/..)
 target_include_directories(HIPRTPathTracer PRIVATE "${EXTERNAL_ASSIMP_INSTALL_LOCATION}/include/")
 target_include_directories(HIPRTPathTracer PRIVATE ".")
+target_include_directories(HIPRTPathTracer PRIVATE ${TRACY_PUBLIC_DIR})
 
 # Auto setup of Orochi for NVIDIA by including their cmake file
 include(${HIPRT_SUBMODULE_DIR}/contrib/Orochi/Orochi/enable_cuew.cmake)

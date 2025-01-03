@@ -13,6 +13,7 @@
 #include "UI/ImGui/ImGuiLogger.h"
 #include "Utils/Utils.h"
 #include "gl/glew.h"
+#include "tracy/TracyOpenGL.hpp"
 
 extern ImGuiLogger g_imgui_logger;
 
@@ -147,7 +148,6 @@ void OrochiBuffer<T>::download_data_async(void* out, oroStream_t stream) const
 	}
 
 	oroMemcpyAsync(out, m_data_pointer, m_element_count * sizeof(T), oroMemcpyDeviceToHost, stream);
-	//oroMemcpyDtoHAsync(out, m_data_pointer, m_element_count * sizeof(T), stream);
 }
 
 template <typename T>

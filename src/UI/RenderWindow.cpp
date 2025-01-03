@@ -7,6 +7,7 @@
 #include "Scene/SceneParser.h"
 #include "Threads/ThreadFunctions.h"
 #include "Threads/ThreadManager.h"
+#include "tracy/TracyOpenGL.hpp"
 #include "UI/RenderWindow.h"
 #include "UI/Interaction/LinuxRenderWindowMouseInteractor.h"
 #include "UI/Interaction/WindowsRenderWindowMouseInteractor.h"
@@ -461,8 +462,10 @@ void RenderWindow::init_glfw(int window_width, int window_height)
 	glfwSetWindowSizeCallback(m_glfw_window, glfw_window_resized_callback);
 	m_mouse_interactor->set_callbacks(m_glfw_window);
 	m_keyboard_interactor.set_callbacks(m_glfw_window);
-
+	
 	glewInit();
+
+	TracyGpuContext;
 }
 
 void RenderWindow::init_gl(int width, int height)
@@ -769,6 +772,7 @@ void RenderWindow::run()
 		m_imgui_renderer->draw_interface();
 
 		glfwSwapBuffers(m_glfw_window);
+		TracyGpuCollect;
 
 		float delta_time_ms = (glfwGetTimerValue() - frame_start_time) / static_cast<float>(time_frequency) * 1000.0f;
 		m_application_state->last_delta_time_ms = delta_time_ms;

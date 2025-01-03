@@ -164,6 +164,8 @@ bool DisplayViewSystem::current_display_view_needs_adaptive_sampling_buffers()
 
 void DisplayViewSystem::display()
 {
+	TracyGpuZone("Display");
+
 	glBindFramebuffer(GL_FRAMEBUFFER, m_framebuffer);
 
 	// Binding an empty VAO here (empty because we're hardcoding our full-screen quad vertices

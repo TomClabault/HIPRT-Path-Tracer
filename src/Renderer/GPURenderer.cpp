@@ -580,8 +580,8 @@ void GPURenderer::map_buffers_for_render()
 void GPURenderer::unmap_buffers()
 {
 	m_framebuffer->unmap();
-	m_denoiser_buffers.unmap_normals_buffer();
-	m_denoiser_buffers.unmap_albedo_buffer();
+	/*m_denoiser_buffers.unmap_normals_buffer();
+	m_denoiser_buffers.unmap_albedo_buffer();*/
 	m_pixels_converged_sample_count_buffer->unmap();
 }
 

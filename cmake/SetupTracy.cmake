@@ -1,0 +1,9 @@
+add_subdirectory(thirdparties/tracy)
+
+set(DISABLE_TRACY_PROFILING ON)
+
+if (DISABLE_TRACY_PROFILING)
+	get_target_property(TRACY_INTERFACE TracyClient INTERFACE_COMPILE_DEFINITIONS)
+	list(REMOVE_ITEM TRACY_INTERFACE "TRACY_ENABLE")
+	set_target_properties(TracyClient PROPERTIES INTERFACE_COMPILE_DEFINITIONS "${TRACY_INTERFACE}")
+endif()
