@@ -44,6 +44,7 @@ const std::unordered_map<std::string, std::string> GPURenderer::KERNEL_FILES =
 };
 
 const std::string GPURenderer::FULL_FRAME_TIME_KEY = "FullFrameTime";
+const std::string GPURenderer::FULL_FRAME_TIME_KEY_WITH_CPU = "FullFrameTimeWithCPU";
 
 GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
 {
@@ -580,8 +581,8 @@ void GPURenderer::map_buffers_for_render()
 void GPURenderer::unmap_buffers()
 {
 	m_framebuffer->unmap();
-	/*m_denoiser_buffers.unmap_normals_buffer();
-	m_denoiser_buffers.unmap_albedo_buffer();*/
+	m_denoiser_buffers.unmap_normals_buffer();
+	m_denoiser_buffers.unmap_albedo_buffer();
 	m_pixels_converged_sample_count_buffer->unmap();
 }
 

@@ -68,6 +68,7 @@ public:
 	// Key for indexing m_render_pass_times that contains the times per passes
 	// This key is for the time of the whole frame
 	static const std::string FULL_FRAME_TIME_KEY;
+	static const std::string FULL_FRAME_TIME_KEY_WITH_CPU;
 
 	/**
 	 * Constructs a renderer that will be using the given HIPRT/Orochi

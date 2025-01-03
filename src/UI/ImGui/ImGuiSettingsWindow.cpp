@@ -1839,7 +1839,10 @@ void ImGuiSettingsWindow::draw_denoiser_panel()
 		m_renderer->set_use_denoiser_AOVs_interop_buffers(m_application_settings->denoiser_use_interop_buffers);
 		m_render_window->set_render_dirty(true);
 	}
-	ImGuiRenderer::show_help_marker("If checked, TODO continue help");
+	ImGuiRenderer::show_help_marker("If checked, a little bit of path tracing performance will be gained (on AMD GPUs at least) at the expense of "
+		"a good bit of performance if displaying \"- Denoiser - Normals\" or \" - Denoiser - Albedo\" in the viewport.\n\n"
+		""
+		"You want this option checked only if you're visualizing the denoiser normals or denoiser albedo basically.");
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
@@ -2235,7 +2238,7 @@ void ImGuiSettingsWindow::draw_performance_metrics_panel()
 	if (rolling_window_size_changed)
 		m_render_window_perf_metrics->resize_window(rolling_window_size);
 
-	draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::CAMERA_RAYS_KERNEL_ID, "Camera rays pass");
+	draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::CAMERA_RAYS_KERNEL_ID, "Camera rays");
 	if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI)
 	{
 		if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING) == KERNEL_OPTION_TRUE)
@@ -2263,9 +2266,11 @@ void ImGuiSettingsWindow::draw_performance_metrics_panel()
 				}
 		}
 	}
-	draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::PATH_TRACING_KERNEL_ID, "Path Tracing Pass");
+	draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::PATH_TRACING_KERNEL_ID, "Path tracing (1SPP)");
+	draw_perf_metric_specific_panel(m_render_window_perf_metrics, RenderWindow::PERF_METRICS_CPU_DISPLAY_TIME_KEY, "CPU Overhead");
 	ImGui::Separator();
-	draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::FULL_FRAME_TIME_KEY, "Total Sample Time");
+	draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::FULL_FRAME_TIME_KEY, "Total sample time (GPU)");
+	draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::FULL_FRAME_TIME_KEY_WITH_CPU, "Total sample time (+CPU)");
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 

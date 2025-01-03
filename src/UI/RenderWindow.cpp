@@ -25,7 +25,6 @@ extern ImGuiLogger g_imgui_logger;
 // TODOs  performance improvements branch:
 // - if we don't have the ray volume state in the GBuffer anymore, we can remove the stack handlign in the trace ray function of the camera rays
 // - implement some kind of thing to avoid displaying every sample when the camera yhasn't been moving for a while (i.e. we're rendering offline) --> more like after a certain rendering time in seconds. this is to save displaying resources
-// - switch the denoiser AOVs to non interop buffers at the cost of less interactivty in the denoiser (becase uwe're going to havbe to copy from the non interop buffers to OIDN). Maybe have a switch in ImGui to force-use interop buffers to increase the performance of the denoiser at the cost of some ray tracing performance
 // - aux_buffers.pixel_converged_sample_count[pixel_index] should be a non interop buffer as long as we don't need it for displaying. Copy it to interop if we need it for displaying
 // - If hitting the same material as before, not load the material from VRAM as it's exactly the same? (only works for non-textured materials)
 // - in RIS, if reuse bsdf ray, just pass the ray volume state to BSDF sample? instead of copying it to the mis reuse structre
@@ -323,6 +322,8 @@ void APIENTRY RenderWindow::gl_debug_output_callback(GLenum source,
 	// call errored
 	Utils::debugbreak();
 }
+
+const std::string RenderWindow::PERF_METRICS_CPU_DISPLAY_TIME_KEY = "CPUDisplayTime";
 
 RenderWindow::RenderWindow(int renderer_width, int renderer_height, std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx) : m_viewport_width(renderer_width), m_viewport_height(renderer_height)
 {
@@ -791,8 +792,13 @@ void RenderWindow::render()
 	// the frame result to OpenGL for displaying
 	static bool buffer_upload_necessary = true;
 
+	uint64_t start_display_time = 0;
 	if (m_renderer->frame_render_done())
 	{
+		// We're going to measure how long it takes to display the frame and
+		// do all the OpenGL stuff
+		start_display_time = glfwGetTimerValue();
+
 		// ------
 		// Everything that is in there is synchronous with the renderer
 		// ------
@@ -911,6 +917,16 @@ void RenderWindow::render()
 			// Sleeping so that we don't burn the CPU and GPU
 			std::this_thread::sleep_for(std::chrono::milliseconds(3));
 		}
+	}
+
+	if (start_display_time != 0)
+	{
+		uint64_t end_display_time = glfwGetTimerValue();
+
+		float display_ms = (end_display_time - start_display_time) / static_cast<float>(glfwGetTimerFrequency()) * 1000.0f;
+
+		m_perf_metrics->add_value(RenderWindow::PERF_METRICS_CPU_DISPLAY_TIME_KEY, display_ms);
+		m_perf_metrics->add_value(GPURenderer::FULL_FRAME_TIME_KEY_WITH_CPU, display_ms + m_perf_metrics->get_current_value(GPURenderer::FULL_FRAME_TIME_KEY));
 	}
 }
 
