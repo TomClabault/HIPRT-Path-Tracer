@@ -126,7 +126,7 @@
  *	- BSDF_PRINCIPLED
  *		All materials will use the Principled BSDF
  */
-#define BSDFOverride BSDF_NONE
+#define BSDFOverride BSDF_LAMBERTIAN
 
 /**
  * The stack size for handling nested dielectrics
@@ -159,7 +159,7 @@
  *		Uses ReSTIR DI to sample direct lighting at the first bounce in the scene.
  *		Later bounces use the strategy given by ReSTIR_DI_LaterBouncesSamplingStrategy
  */
-#define DirectLightSamplingStrategy LSS_RIS_BSDF_AND_LIGHT
+#define DirectLightSamplingStrategy LSS_NO_DIRECT_LIGHT_SAMPLING
 
 /**
  * What envmap sampling strategy to use
@@ -173,7 +173,7 @@
  *		Importance samples the environment map using a binary search on the CDF
  *		distributions of the envmap
  */
-#define EnvmapSamplingStrategy ESS_ALIAS_TABLE
+#define EnvmapSamplingStrategy ESS_NO_SAMPLING
 
 /**
  * Whether or not to do Muliple Importance Sampling between the envmap sample and a BSDF

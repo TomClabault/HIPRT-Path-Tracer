@@ -2271,6 +2271,11 @@ void ImGuiSettingsWindow::draw_performance_metrics_panel()
 	ImGui::Separator();
 	draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::FULL_FRAME_TIME_KEY, "Total sample time (GPU)");
 	draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::FULL_FRAME_TIME_KEY_WITH_CPU, "Total sample time (+CPU)");
+	if (m_debug_trace_kernel_selected != 0)
+	{
+		ImGui::Separator();
+		draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::DEBUG_KERNEL_TIME_KEY, "Debug trace kernel");
+	}
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
@@ -2418,6 +2423,41 @@ void ImGuiSettingsWindow::draw_debug_panel()
 		ImGui::Checkbox("Turn off emissives", &m_renderer->get_render_data().bsdfs_data.white_furnace_mode_turn_off_emissives);
 		ImGui::TreePop();
 	}
+
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+	std::vector<const char*> trace_kernel_items = { "None", "TraceTest" };
+	if (ImGui::Combo("Override trace kernel", &m_debug_trace_kernel_selected, trace_kernel_items.data(), trace_kernel_items.size()))
+	{
+		if (m_debug_trace_kernel_selected != 0)
+		{
+			m_debug_trace_kernel_options = *m_renderer->get_global_compiler_options().get();
+			m_debug_trace_kernel_options.set_macro_value("__USE_HWI__", 1);
+
+			m_renderer->set_debug_trace_kernel(trace_kernel_items[m_debug_trace_kernel_selected], m_debug_trace_kernel_options);
+			m_render_window->set_render_dirty(true);
+		}
+		else
+		{
+			// Disabling the debug trace kernel
+			m_renderer->set_debug_trace_kernel("");
+			m_render_window->set_render_dirty(true);
+		}
+	}
+
+	ImGui::TreePush("DebugTraceKernelOptions");
+	switch (m_debug_trace_kernel_selected)
+	{
+	case 1:
+		ImGui::InputInt("BVH Traversal Shared Mem", m_debug_trace_kernel_options.get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE));
+		if (ImGui::Button("Apply"))
+			m_renderer->set_debug_trace_kernel(trace_kernel_items[m_debug_trace_kernel_selected], m_debug_trace_kernel_options);
+
+		break;
+
+	default:
+		break;
+	}
+	ImGui::TreePop();
 
 	ImGui::TreePop();
 }

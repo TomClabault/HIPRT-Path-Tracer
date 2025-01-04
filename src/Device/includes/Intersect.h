@@ -186,9 +186,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
 #endif
 
         hit = traversal.getNextHit();
-    #else
+#else
         hit = intersect_scene_cpu(render_data, ray, last_hit_primitive_index, random_number_generator);
-    #endif
+#endif
 
         if (!hit.hasHit())
             return false;

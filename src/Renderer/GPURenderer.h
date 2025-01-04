@@ -69,6 +69,7 @@ public:
 	// This key is for the time of the whole frame
 	static const std::string FULL_FRAME_TIME_KEY;
 	static const std::string FULL_FRAME_TIME_KEY_WITH_CPU;
+	static const std::string DEBUG_KERNEL_TIME_KEY;
 
 	/**
 	 * Constructs a renderer that will be using the given HIPRT/Orochi
@@ -141,10 +142,6 @@ public:
 	 * Querry frame_render_done() to know whether or not the frame has completed or not.
 	 */
 	void render();
-
-	void launch_camera_rays();
-	void launch_ReSTIR_DI();
-	void launch_path_tracing();
 
 	/**
 	 * Blocking that waits for all the operations queued on
@@ -299,6 +296,16 @@ public:
 	void resume_background_shader_compilation();
 
 	std::map<std::string, GPUKernel*> get_kernels();
+	/**
+	 * Sets the debug kernel to be used.
+	 * 
+	 * The kernel is expected to be in a file called {kernel_name}.h and the entry point
+	 * function is expected to be {kernel_name}
+	 * 
+	 * Calling this function with an empty string as parameter clears the debug kernel
+	 */
+	void set_debug_trace_kernel(const std::string& kernel_name, GPUKernelCompilerOptions options = GPUKernelCompilerOptions());
+	bool is_using_debug_kernel();
 	oroStream_t get_main_stream();
 
 	void compute_render_pass_times();
@@ -324,6 +331,24 @@ public:
 private:
 	void set_hiprt_scene_from_scene(const Scene& scene);
 	void update_render_data();
+
+	/**
+	 * This just renders a frame by calling all the path tracing kernels.
+	 * Nothing special.
+	 *
+	 * This function is basically the "opposite" of 'render_debug_kernel'
+	 */
+	void render_path_tracing();
+	/**
+	 * This function launches the 'm_debug_trace_kernel' and saves its execution time
+	 * in 'm_render_pass_times[GPURenderer::DEBUG_KERNEL_TIME_KEY]'
+	 */
+	void render_debug_kernel();
+
+	void launch_camera_rays();
+	void launch_ReSTIR_DI();
+	void launch_path_tracing();
+	void launch_debug_kernel();
 
 	/**
 	 * Precompiles direct lighting strategy kernels
@@ -465,6 +490,13 @@ private:
 
 	// Kernel used for retrieving the size of the RayVolumeState structure on the GPU
 	GPUKernel m_ray_volume_state_byte_size_kernel;
+	// If this kernel isn't empty, then it will be used instead of all the regular path tracing
+	// kernels.
+	// 
+	// This can be useful for debugging performance for example: write a very simple trace kernel
+	// that just trace camera rays and set this kernel as the debug kernel and you'll be able to
+	// see the raw ray tracing performance without any scuff
+	GPUKernel m_debug_trace_kernel;
 
 	// Additional functions called on hits when tracing rays (alpha testing for example)
 	std::vector<hiprtFuncNameSet> m_func_name_sets;
@@ -473,7 +505,8 @@ private:
 	std::shared_ptr<HIPRTOrochiCtx> m_hiprt_orochi_ctx = nullptr;
 
 	// Custom stream onto which kernels are dispatched asynchronously
-	oroStream_t m_main_stream= nullptr;
+	oroStream_t m_main_stream = nullptr;
+	bool m_frame_rendered = true;
 
 	// Render data passed to the GPU for rendering. Most importantly it contains
 	// 

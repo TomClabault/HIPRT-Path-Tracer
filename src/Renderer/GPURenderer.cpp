@@ -45,6 +45,7 @@ const std::unordered_map<std::string, std::string> GPURenderer::KERNEL_FILES =
 
 const std::string GPURenderer::FULL_FRAME_TIME_KEY = "FullFrameTime";
 const std::string GPURenderer::FULL_FRAME_TIME_KEY_WITH_CPU = "FullFrameTimeWithCPU";
+const std::string GPURenderer::DEBUG_KERNEL_TIME_KEY = "DebugKernelTime";
 
 GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
 {
@@ -422,12 +423,41 @@ void GPURenderer::render()
 
 	map_buffers_for_render();
 	
-	oroEventRecord(m_frame_start_event, m_main_stream);
+	if (m_debug_trace_kernel.has_been_compiled())
+		render_debug_kernel();
+	else
+		render_path_tracing();
+}
+
+void GPURenderer::render_debug_kernel()
+{
+	m_frame_rendered = false;
+
+	OROCHI_CHECK_ERROR(oroEventRecord(m_frame_start_event, m_main_stream));
+
+	// Updating the previous and current camera
+	m_render_data.current_camera = m_camera.to_hiprt();
+	m_render_data.prev_camera = m_previous_frame_camera.to_hiprt();
+
+	launch_debug_kernel();
+
+	// Recording GPU frame time stop timestamp and computing the frame time
+	OROCHI_CHECK_ERROR(oroEventRecord(m_frame_stop_event, m_main_stream));
+	OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_main_stream, [](void* payload) {
+		*reinterpret_cast<bool*>(payload) = true;
+	}, &m_frame_rendered));
+}
+
+void GPURenderer::render_path_tracing()
+{
+	m_frame_rendered = false;
+
+	OROCHI_CHECK_ERROR(oroEventRecord(m_frame_start_event, m_main_stream));
 
 	for (int i = 1; i <= m_render_data.render_settings.samples_per_frame; i++)
 	{
 		// Updating the previous and current camera
-     	m_render_data.current_camera = m_camera.to_hiprt();
+		m_render_data.current_camera = m_camera.to_hiprt();
 		m_render_data.prev_camera = m_previous_frame_camera.to_hiprt();
 
 		if (i == m_render_data.render_settings.samples_per_frame)
@@ -456,7 +486,10 @@ void GPURenderer::render()
 	}
 
 	// Recording GPU frame time stop timestamp and computing the frame time
-	oroEventRecord(m_frame_stop_event, m_main_stream);
+	OROCHI_CHECK_ERROR(oroEventRecord(m_frame_stop_event, m_main_stream));
+	OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_main_stream, [](void* payload){
+		*reinterpret_cast<bool*>(payload) = true;
+	}, &m_frame_rendered));
 
 	m_was_last_frame_low_resolution = m_render_data.render_settings.do_render_low_resolution();
 	// We just rendered a new frame so we're setting this flag to true
@@ -489,6 +522,14 @@ void GPURenderer::launch_path_tracing()
 	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
 }
 
+void GPURenderer::launch_debug_kernel()
+{
+	void* launch_args[] = { &m_render_data, &m_render_resolution };
+
+	m_render_data.random_seed = m_rng.xorshift32();
+	m_debug_trace_kernel.launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
+}
+
 void GPURenderer::synchronize_kernel()
 {
 	if (m_main_stream == nullptr)
@@ -500,17 +541,20 @@ void GPURenderer::synchronize_kernel()
 
 bool GPURenderer::frame_render_done()
 {
-	oroError_t error = oroStreamQuery(m_main_stream);
-	if (error == oroSuccess)
-		return true;
-	else if (error == oroErrorNotReady)
-		return false;
-	else
-	{
-		OROCHI_CHECK_ERROR(error);
+	return m_frame_rendered;
 
-		return false;
-	}
+	//oroError_t error = oroEventQuery(m_frame_stop_event);
+	////oroError_t error = oroStreamQuery(m_main_stream);
+	//if (error == oroSuccess)
+	//	return true;
+	//else if (error == oroErrorNotReady)
+	//	return false;
+	//else
+	//{
+	//	OROCHI_CHECK_ERROR(error);
+
+	//	return false;
+	//}
 }
 
 bool GPURenderer::was_last_frame_low_resolution()
@@ -870,6 +914,26 @@ std::map<std::string, GPUKernel*> GPURenderer::get_kernels()
 	return kernels;
 }
 
+void GPURenderer::set_debug_trace_kernel(const std::string& kernel_name, GPUKernelCompilerOptions options)
+{
+	if (kernel_name == "")
+		// Clearing the debug kernel
+		m_debug_trace_kernel = GPUKernel();
+	else
+	{
+		m_debug_trace_kernel = GPUKernel(DEVICE_KERNELS_DIRECTORY "/" + kernel_name + ".h", kernel_name);
+
+		// Setting all the custom options
+		m_debug_trace_kernel.get_kernel_options() = options;
+		m_debug_trace_kernel.compile(m_hiprt_orochi_ctx);
+	}
+}
+
+bool GPURenderer::is_using_debug_kernel()
+{
+	return m_debug_trace_kernel.has_been_compiled();
+}
+
 oroStream_t GPURenderer::get_main_stream()
 {
 	return m_main_stream;
@@ -880,6 +944,12 @@ void GPURenderer::compute_render_pass_times()
 	m_render_pass_times[GPURenderer::CAMERA_RAYS_KERNEL_ID] = m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].get_last_execution_time();
 	m_restir_di_render_pass.compute_render_times(m_render_pass_times);
 	m_render_pass_times[GPURenderer::PATH_TRACING_KERNEL_ID] = m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].get_last_execution_time();
+	if (m_debug_trace_kernel.has_been_compiled())
+		// If the debug kernel is being used... read its execution time
+		// Note that we check for 'has_been_compiled()' because if the debug kernel isn't in use,
+		// then the kernel (m_debug_trace_kernel) is empty, and if it's empty, then it hasn't
+		// been compiled yet
+		m_render_pass_times[GPURenderer::DEBUG_KERNEL_TIME_KEY] = m_debug_trace_kernel.get_last_execution_time();
 
 	// The total frame time is the sum of every passes
 	float sum = 0.0f;
@@ -1210,7 +1280,7 @@ size_t GPURenderer::get_ray_volume_state_byte_size()
 	ThreadManager::join_threads(ThreadManager::COMPILE_RAY_VOLUME_STATE_SIZE_KERNEL_KEY);
 
 	void* launch_args[] = { &out_size_buffer_pointer };
-	m_ray_volume_state_byte_size_kernel.launch(1, 1, 1, 1, launch_args, 0);
+	m_ray_volume_state_byte_size_kernel.launch_synchronous(1, 1, 1, 1, launch_args, 0);
 	OROCHI_CHECK_ERROR(oroStreamSynchronize(0));
 
 	return out_size_buffer.download_data()[0];

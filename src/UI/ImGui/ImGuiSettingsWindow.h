@@ -53,6 +53,10 @@ private:
 	void draw_shader_kernels_panel();
 	void draw_debug_panel();
 
+	// What debug trace kernel is selected in the "Debug" panel
+	int m_debug_trace_kernel_selected = 0;
+	GPUKernelCompilerOptions m_debug_trace_kernel_options;
+
 	RenderWindow* m_render_window = nullptr;
 
 	std::shared_ptr<ApplicationSettings> m_application_settings = nullptr;

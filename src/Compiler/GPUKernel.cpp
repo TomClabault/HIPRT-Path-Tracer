@@ -185,7 +185,8 @@ void GPUKernel::launch_synchronous(int tile_size_x, int tile_size_y, int res_x, 
 
 	OROCHI_CHECK_ERROR(oroEventRecord(m_execution_stop_event, 0));
 	OROCHI_CHECK_ERROR(oroEventSynchronize(m_execution_stop_event));
-	OROCHI_CHECK_ERROR(oroEventElapsedTime(execution_time_out, m_execution_start_event, m_execution_stop_event));
+	if (execution_time_out != nullptr)
+		OROCHI_CHECK_ERROR(oroEventElapsedTime(execution_time_out, m_execution_start_event, m_execution_stop_event));
 }
 
 void GPUKernel::parse_option_macros_used()

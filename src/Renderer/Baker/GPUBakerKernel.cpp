@@ -88,7 +88,7 @@ void GPUBakerKernel::bake_internal(int3 bake_resolution, const void* bake_settin
 		// Zeroing the buffer that we're going to accumulate the bake data into
 		float* device_buffer = m_bake_buffer.get_device_pointer();
 		void* zeroing_kernel_launch_args[] = { &device_buffer, &bake_resolution };
-		m_zeroing_kernel.launch_3D(
+		m_zeroing_kernel.launch_asynchronous_3D(
 			tile_size.x, tile_size.y, tile_size.z,
 			bake_resolution.x, bake_resolution.y, bake_resolution.z,
 			zeroing_kernel_launch_args, m_bake_stream);
@@ -106,7 +106,7 @@ void GPUBakerKernel::bake_internal(int3 bake_resolution, const void* bake_settin
 			// so that we get different random numbers per each kernel launch
 			int current_iteration = i + 1;
 			void* bake_kernel_launch_args[] = { &iterations_per_kernel, &current_iteration, non_const_setting, &device_buffer };
-			m_bake_kernel.launch_3D(
+			m_bake_kernel.launch_asynchronous_3D(
 				tile_size.x, tile_size.y, tile_size.z,
 				bake_resolution.x, bake_resolution.y, bake_resolution.z,
 				bake_kernel_launch_args, m_bake_stream);

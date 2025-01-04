@@ -23,6 +23,7 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // TODOs  performance improvements branch:
+// - switch out openlg interop buffer for adaptive sampling
 // - if we don't have the ray volume state in the GBuffer anymore, we can remove the stack handlign in the trace ray function of the camera rays
 // - implement some kind of thing to avoid displaying every sample when the camera yhasn't been moving for a while (i.e. we're rendering offline) --> more like after a certain rendering time in seconds. this is to save displaying resources
 // - aux_buffers.pixel_converged_sample_count[pixel_index] should be a non interop buffer as long as we don't need it for displaying. Copy it to interop if we need it for displaying
@@ -760,7 +761,6 @@ void RenderWindow::run()
 	while (!glfwWindowShouldClose(m_glfw_window))
 	{
 		frame_start_time = glfwGetTimerValue();
-
 		glfwPollEvents();
 		glClear(GL_COLOR_BUFFER_BIT);
 
@@ -769,7 +769,6 @@ void RenderWindow::run()
 
 		render();
 		m_display_view_system->display();
-		
 		m_imgui_renderer->draw_interface();
 
 		glfwSwapBuffers(m_glfw_window);
@@ -822,7 +821,7 @@ void RenderWindow::render()
 			// Update the display view system so that the display view is changed to the
 			// one that we want to use (in the DisplayViewSystem's queue)
 			m_display_view_system->update_selected_display_view();
-			
+
 			// Denoising to fill the buffers with denoised data (if denoising is enabled)
 			denoise();
 
@@ -847,7 +846,11 @@ void RenderWindow::render()
 				update_perf_metrics();
 
 			render_settings.wants_render_low_resolution = is_interacting();
-			if (m_application_settings->auto_sample_per_frame && (render_settings.do_render_low_resolution() || m_renderer->was_last_frame_low_resolution()) && render_settings.accumulate)
+			bool samples_per_frame_auto_mode = m_application_settings->auto_sample_per_frame;
+			bool current_or_last_frame_low_res = render_settings.do_render_low_resolution() || m_renderer->was_last_frame_low_resolution();
+			bool using_debug_kernel = m_renderer->is_using_debug_kernel();
+			if ((samples_per_frame_auto_mode && current_or_last_frame_low_res && render_settings.accumulate)
+				|| using_debug_kernel)
 				// Only one sample when low resolution rendering.
 				// Also, we only want to apply this if we're accumulating. If we're not accumulating, 
 				// (so we the renderer in "interactive mode" we may want more than 1 sample per frame
@@ -860,7 +863,7 @@ void RenderWindow::render()
 			m_application_state->GPU_stall_duration_left = compute_GPU_stall_duration();
 			if (m_application_state->render_dirty)
 				reset_render();
-			
+
 			// Otherwise, if we're not stalling, queuing a new frame for the GPU to render
 			m_application_state->last_GPU_submit_time = glfwGetTimerValue();
 			m_renderer->update();
@@ -927,6 +930,7 @@ void RenderWindow::render()
 
 		m_perf_metrics->add_value(RenderWindow::PERF_METRICS_CPU_DISPLAY_TIME_KEY, display_ms);
 		m_perf_metrics->add_value(GPURenderer::FULL_FRAME_TIME_KEY_WITH_CPU, display_ms + m_perf_metrics->get_current_value(GPURenderer::FULL_FRAME_TIME_KEY));
+		m_perf_metrics->add_value(GPURenderer::DEBUG_KERNEL_TIME_KEY, m_renderer->get_render_pass_times()[GPURenderer::DEBUG_KERNEL_TIME_KEY]);
 	}
 }
 
