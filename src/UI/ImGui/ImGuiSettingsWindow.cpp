@@ -64,7 +64,7 @@ void ImGuiSettingsWindow::draw_header()
 	if (render_settings.accumulate)
 		ImGui::Text("Render time: %.3fs", m_render_window->get_current_render_time() / 1000.0f);
 	else
-		ImGui::Text("Frame time: %.3fms", m_render_window_perf_metrics->get_current_value(GPURenderer::FULL_FRAME_TIME_KEY));
+		ImGui::Text("Frame time (GPU): %.3fms", m_render_window_perf_metrics->get_current_value(GPURenderer::ALL_RENDER_PASSES_TIME_KEY));
 	ImGui::Text("%d samples | %.2f samples/s @ %dx%d", render_settings.sample_number, m_render_window->get_samples_per_second(), m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y);
 
 	if (render_settings.has_access_to_adaptive_sampling_buffers())
@@ -2269,8 +2269,8 @@ void ImGuiSettingsWindow::draw_performance_metrics_panel()
 	draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::PATH_TRACING_KERNEL_ID, "Path tracing (1SPP)");
 	draw_perf_metric_specific_panel(m_render_window_perf_metrics, RenderWindow::PERF_METRICS_CPU_DISPLAY_TIME_KEY, "CPU Overhead");
 	ImGui::Separator();
-	draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::FULL_FRAME_TIME_KEY, "Total sample time (GPU)");
-	draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::FULL_FRAME_TIME_KEY_WITH_CPU, "Total sample time (+CPU)");
+	draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::ALL_RENDER_PASSES_TIME_KEY, "Total sample time (GPU)");
+	draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::FULL_FRAME_TIME_WITH_CPU_KEY, "Total sample time (+CPU)");
 	if (m_debug_trace_kernel_selected != 0)
 	{
 		ImGui::Separator();

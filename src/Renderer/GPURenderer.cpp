@@ -43,8 +43,8 @@ const std::unordered_map<std::string, std::string> GPURenderer::KERNEL_FILES =
 	{ RAY_VOLUME_STATE_SIZE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/Utils/RayVolumeStateSize.h" },
 };
 
-const std::string GPURenderer::FULL_FRAME_TIME_KEY = "FullFrameTime";
-const std::string GPURenderer::FULL_FRAME_TIME_KEY_WITH_CPU = "FullFrameTimeWithCPU";
+const std::string GPURenderer::ALL_RENDER_PASSES_TIME_KEY = "FullFrameTime";
+const std::string GPURenderer::FULL_FRAME_TIME_WITH_CPU_KEY = "FullFrameTimeWithCPU";
 const std::string GPURenderer::DEBUG_KERNEL_TIME_KEY = "DebugKernelTime";
 
 GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
@@ -67,8 +67,8 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
 	setup_filter_functions();
 	setup_kernels();
 
-	m_render_pass_times[GPURenderer::FULL_FRAME_TIME_KEY] = 0.0f;
-	for (auto id_to_pass : KERNEL_FUNCTION_NAMES)
+	m_render_pass_times[GPURenderer::ALL_RENDER_PASSES_TIME_KEY] = 0.0f;
+	for (auto& id_to_pass : GPURenderer::KERNEL_FUNCTION_NAMES)
 		m_render_pass_times[id_to_pass.first] = 0.0f;
 
 	// Creating the main stream on a thread with dependency on kernels compilation
@@ -955,12 +955,13 @@ void GPURenderer::compute_render_pass_times()
 	float sum = 0.0f;
 	for (auto pair : m_render_pass_times)
 	{
-		if (pair.first == GPURenderer::FULL_FRAME_TIME_KEY)
+		if (pair.first == GPURenderer::ALL_RENDER_PASSES_TIME_KEY)
 			continue;
 
 		sum += pair.second;
 	}
-	m_render_pass_times[GPURenderer::FULL_FRAME_TIME_KEY] = sum;
+
+	m_render_pass_times[GPURenderer::ALL_RENDER_PASSES_TIME_KEY] = sum;
 }
 
 std::unordered_map<std::string, float>& GPURenderer::get_render_pass_times()
@@ -970,15 +971,18 @@ std::unordered_map<std::string, float>& GPURenderer::get_render_pass_times()
 
 float GPURenderer::get_last_frame_time()
 {
-	return m_render_pass_times[GPURenderer::FULL_FRAME_TIME_KEY];
+	return m_render_pass_times[GPURenderer::ALL_RENDER_PASSES_TIME_KEY];
 }
 
 void GPURenderer::update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer> perf_metrics)
 {
+	compute_render_pass_times();
+
 	// Also adding the times of the various passes
 	perf_metrics->add_value(GPURenderer::CAMERA_RAYS_KERNEL_ID, m_render_pass_times[GPURenderer::CAMERA_RAYS_KERNEL_ID]);
 	m_restir_di_render_pass.update_perf_metrics(perf_metrics);
 	perf_metrics->add_value(GPURenderer::PATH_TRACING_KERNEL_ID, m_render_pass_times[GPURenderer::PATH_TRACING_KERNEL_ID]);
+	perf_metrics->add_value(GPURenderer::ALL_RENDER_PASSES_TIME_KEY, m_render_pass_times[GPURenderer::ALL_RENDER_PASSES_TIME_KEY]);
 }
 
 void GPURenderer::reset(std::shared_ptr<ApplicationSettings> application_settings)

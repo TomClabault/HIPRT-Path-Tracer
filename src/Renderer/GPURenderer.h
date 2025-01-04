@@ -67,8 +67,8 @@ public:
 
 	// Key for indexing m_render_pass_times that contains the times per passes
 	// This key is for the time of the whole frame
-	static const std::string FULL_FRAME_TIME_KEY;
-	static const std::string FULL_FRAME_TIME_KEY_WITH_CPU;
+	static const std::string ALL_RENDER_PASSES_TIME_KEY;
+	static const std::string FULL_FRAME_TIME_WITH_CPU_KEY;
 	static const std::string DEBUG_KERNEL_TIME_KEY;
 
 	/**
@@ -308,7 +308,6 @@ public:
 	bool is_using_debug_kernel();
 	oroStream_t get_main_stream();
 
-	void compute_render_pass_times();
 	std::unordered_map<std::string, float>& get_render_pass_times();
 	/**
 	 * Returns the time taken to compute the last frame in milliseconds
@@ -331,6 +330,11 @@ public:
 private:
 	void set_hiprt_scene_from_scene(const Scene& scene);
 	void update_render_data();
+
+	/**
+	 * Reads the execution time of the kernels and stores those execution times in 'm_render_pass_times'
+	 */
+	void compute_render_pass_times();
 
 	/**
 	 * This just renders a frame by calling all the path tracing kernels.
@@ -414,9 +418,9 @@ private:
 	// Freeing / allocating ReSTIR DI/adaptive sampling buffers (or any buffers that can be allocated / dealloacted) too
 	bool m_render_data_buffers_invalidated = true;
 
-	// Time taken per each pass of the renderer. 
-	// An additional key GPURenderer::FULL_FRAME_TIME_KEY can be used to index in this map
-	// and retrieve the time for the whole frame
+	// Time taken per each pass of the renderer for the last frame.
+	// 
+	// Some more keys are defined as static const std::string members of this class
 	std::unordered_map<std::string, float> m_render_pass_times;
 
 	// This buffer holds the * sum * of the samples computed

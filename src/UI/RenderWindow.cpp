@@ -460,7 +460,7 @@ void RenderWindow::init_glfw(int window_width, int window_height)
 	// we can retrieve a pointer to this instance of RenderWindow in the callback functions
 	// such as the window_resized_callback function for example
 	glfwSetWindowUserPointer(m_glfw_window, this);
-	glfwSwapInterval(0);
+	glfwSwapInterval(1);
 	glfwSetWindowSizeCallback(m_glfw_window, glfw_window_resized_callback);
 	m_mouse_interactor->set_callbacks(m_glfw_window);
 	m_keyboard_interactor.set_callbacks(m_glfw_window);
@@ -843,7 +843,7 @@ void RenderWindow::render()
 
 			// Adding the time for *one* sample to the performance metrics counter
 			if (!m_renderer->was_last_frame_low_resolution() && m_application_state->samples_per_second > 0.0f)
-				update_perf_metrics();
+				m_renderer->update_perf_metrics(m_perf_metrics);
 
 			render_settings.wants_render_low_resolution = is_interacting();
 			bool samples_per_frame_auto_mode = m_application_settings->auto_sample_per_frame;
@@ -929,19 +929,9 @@ void RenderWindow::render()
 		float display_ms = (end_display_time - start_display_time) / static_cast<float>(glfwGetTimerFrequency()) * 1000.0f;
 
 		m_perf_metrics->add_value(RenderWindow::PERF_METRICS_CPU_DISPLAY_TIME_KEY, display_ms);
-		m_perf_metrics->add_value(GPURenderer::FULL_FRAME_TIME_KEY_WITH_CPU, display_ms + m_perf_metrics->get_current_value(GPURenderer::FULL_FRAME_TIME_KEY));
+		m_perf_metrics->add_value(GPURenderer::FULL_FRAME_TIME_WITH_CPU_KEY, display_ms + m_perf_metrics->get_current_value(GPURenderer::ALL_RENDER_PASSES_TIME_KEY));
 		m_perf_metrics->add_value(GPURenderer::DEBUG_KERNEL_TIME_KEY, m_renderer->get_render_pass_times()[GPURenderer::DEBUG_KERNEL_TIME_KEY]);
 	}
-}
-
-void RenderWindow::update_perf_metrics()
-{
-	m_renderer->compute_render_pass_times();
-
-	// Not adding the frame time if we're rendering at low resolution, not relevant
-	m_perf_metrics->add_value(GPURenderer::FULL_FRAME_TIME_KEY, 1000.0f / m_application_state->samples_per_second);
-
-	m_renderer->update_perf_metrics(m_perf_metrics);
 }
 
 bool RenderWindow::denoise()

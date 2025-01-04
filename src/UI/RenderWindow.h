@@ -98,7 +98,6 @@ public:
 
 	void run();
 	void render();
-	void update_perf_metrics();
 	/**
 	 * Denoises the color framebuffer if necessary (according to ImGui
 	 * parameters such as denoiser sample skip, only denoise when rendering done, ...)
