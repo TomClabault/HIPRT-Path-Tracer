@@ -76,8 +76,32 @@ public:
 	 * the user has been reached, etc...
 	 */
 	bool is_rendering_done();
+	bool needs_viewport_refresh();
+	/**
+	 * Computes how long to wait between each viewport
+	 * refresh given the current render time
+	 * 
+	 * For a total current render time less than 1s, this returns 0.0f for example, 
+	 * meaning that the viewport should always immediately be refreshed.
+	 * 
+	 * ...
+	 * 
+	 * See the function for the rest of the delays
+	 */
+	float get_viewport_refresh_delay_ms();
+	/**
+	 * Returns the time in milliseconds before the next viewport refresh when rendering offline.
+	 * 
+	 * Returns 0.0f if not rendering offline (i.e. rendering realtime)
+	 */
+	float get_time_ms_before_viewport_refresh();
 	void reset_render();
 	void set_render_dirty(bool render_dirty);
+	/**
+	 * When offline rendering, the viewport isn't always refreshed at each frame because 
+	 * refreshing consumes resources 
+	 */
+	void set_force_viewport_refresh(bool force_viewport_refresh);
 
 	float get_current_render_time();
 	float get_samples_per_second();

@@ -663,12 +663,45 @@ bool RenderWindow::is_rendering_done()
 	return rendering_done;
 }
 
+bool RenderWindow::needs_viewport_refresh()
+{
+	// Update every X seconds
+	bool enough_time_has_passed = get_time_ms_before_viewport_refresh() <= 0.0f;
+	// The render was reset and one frame has been rendered
+	bool render_was_reset = m_application_state->frame_number == 1;
+	// We always need to update the viewport if real-time rendering
+	bool realtime_rendering = !m_renderer->get_render_settings().accumulate;
+	bool force_refresh = m_application_state->force_viewport_refresh;
+
+	return enough_time_has_passed || realtime_rendering || render_was_reset || force_refresh;
+}
+
+float RenderWindow::get_viewport_refresh_delay_ms()
+{
+	if (m_application_state->current_render_time_ms < 1000.0f)
+		// Always update if less than a second of render time
+		return 0.0f;
+	else if (m_application_state->current_render_time_ms > 1000.0f && m_application_state->current_render_time_ms < 5000.0f)
+		// 1s update in between 1s and 5s of total render time
+		return 1000.0f;
+	else
+		// Update every 5s otherwise
+		return 5000.0f;
+}
+
+float RenderWindow::get_time_ms_before_viewport_refresh()
+{
+	float time_since_last_refresh = (glfwGetTimerValue() - m_application_state->last_viewport_refresh_timestamp) / static_cast<float>(glfwGetTimerFrequency()) * 1000.0f;
+	return get_viewport_refresh_delay_ms() - time_since_last_refresh;
+}
+
 void RenderWindow::reset_render()
 {
 	m_application_settings->last_denoised_sample_count = -1;
 
 	m_application_state->current_render_time_ms = 0.0f;
 	m_application_state->render_dirty = false;
+	m_application_state->frame_number = 0;
 
 	m_renderer->reset(m_application_settings);
 }
@@ -676,6 +709,11 @@ void RenderWindow::reset_render()
 void RenderWindow::set_render_dirty(bool render_dirty)
 {
 	m_application_state->render_dirty = render_dirty;
+}
+
+void RenderWindow::set_force_viewport_refresh(bool force_viewport_refresh)
+{
+	m_application_state->force_viewport_refresh = force_viewport_refresh;
 }
 
 float RenderWindow::get_current_render_time()
@@ -785,22 +823,29 @@ void RenderWindow::run()
 		m_display_view_system->display();
 		m_imgui_renderer->draw_interface();
 
+		// Measuring the CPU overhead before 'glfwSwapBuffers' because we do not want
+		// to count the VSync as CPU overhead
+		uint64_t cpu_overhead_stop_time = glfwGetTimerValue();
+
+		glfwSwapBuffers(m_glfw_window);
+		TracyGpuCollect;
+
 		float delta_time_ms = (glfwGetTimerValue() - frame_start_time) / static_cast<float>(timer_frequency) * 1000.0f;
 		m_application_state->last_delta_time_ms = delta_time_ms;
+		m_application_state->last_viewport_refresh_timestamp += m_application_state->last_delta_time_ms;
 
 		if (!is_rendering_done())
 			m_application_state->current_render_time_ms += delta_time_ms;
 
 		if (frame_render_done)
 		{
-			m_perf_metrics->add_value(RenderWindow::PERF_METRICS_CPU_DISPLAY_TIME_KEY, delta_time_ms);
-			m_perf_metrics->add_value(GPURenderer::FULL_FRAME_TIME_KEY_WITH_CPU, delta_time_ms + m_perf_metrics->get_current_value(GPURenderer::FULL_FRAME_TIME_KEY));
+			float cpu_overhead_time = (cpu_overhead_stop_time - frame_start_time) / static_cast<float>(timer_frequency) * 1000.0f;
+			m_perf_metrics->add_value(RenderWindow::PERF_METRICS_CPU_DISPLAY_TIME_KEY, cpu_overhead_time);
+			m_perf_metrics->add_value(GPURenderer::FULL_FRAME_TIME_KEY_WITH_CPU, cpu_overhead_time + m_perf_metrics->get_current_value(GPURenderer::FULL_FRAME_TIME_KEY));
 		}
 
 		m_keyboard_interactor.poll_keyboard_inputs();
 
-		glfwSwapBuffers(m_glfw_window);
-		TracyGpuCollect;
 	}
 }
 
@@ -817,7 +862,7 @@ void RenderWindow::render()
 		// ------
 		// Everything that is in there is synchronous with the renderer
 		// ------
-		m_renderer->copy_status_buffers();
+		m_renderer->download_status_buffers();
 
 		if (m_application_state->GPU_stall_duration_left > 0 && !is_rendering_done())
 		{
@@ -831,28 +876,42 @@ void RenderWindow::render()
 		}
 		else if (!is_rendering_done() || m_application_state->render_dirty)
 		{
-			// We can unmap the renderer's buffers so that OpenGL can use them for displaying
-			m_renderer->unmap_buffers();
+			// To save resources, we're only going to update the viewport only so often because
+			// it can be a bit expensive and for offline rendering, we don't need an update every
+			// frame, we can afford to update only every few samples (or every few seconds) to save
+			// resources
+			bool needs_viewport_refresh = needs_viewport_refresh();
+			if (needs_viewport_refresh)
+			{
+				// We can unmap the renderer's buffers so that OpenGL can use them for displaying
+				m_renderer->unmap_buffers();
 
-			// Update the display view system so that the display view is changed to the
-			// one that we want to use (in the DisplayViewSystem's queue)
-			m_display_view_system->update_selected_display_view();
+				// Update the display view system so that the display view is changed to the
+				// one that we want to use (in the DisplayViewSystem's queue)
+				m_display_view_system->update_selected_display_view();
+				
+				// Denoising to fill the buffers with denoised data (if denoising is enabled)
+				denoise();
 
-			// Denoising to fill the buffers with denoised data (if denoising is enabled)
-			denoise();
+				// We upload the data to the OpenGL textures for displaying
+				m_display_view_system->upload_relevant_buffers_to_texture();
 
-			// We upload the data to the OpenGL textures for displaying
-			m_display_view_system->upload_relevant_buffers_to_texture();
+				// We want the next frame to be displayed with the same 'wants_render_low_resolution' setting
+				// as it was queued with. This is only useful for first frames when getting in low resolution
+				// (when we start moving the camera for example) or first frames when getting out of low resolution
+				// (when we stop moving the camera). In such situations, the last kernel launch in the GPU queue is
+				// a "first frame" that was queued with the corresponding wants_render_low_resolution (getting in or out of low resolution).
+				// and so we want to display it the same way.
+				m_display_view_system->set_render_low_resolution(m_renderer->was_last_frame_low_resolution());
+				// Updating the uniforms so that next time we display, we display correctly
+				m_display_view_system->update_current_display_program_uniforms();
 
-			// We want the next frame to be displayed with the same 'wants_render_low_resolution' setting
-			// as it was queued with. This is only useful for first frames when getting in low resolution
-			// (when we start moving the camera for example) or first frames when getting out of low resolution
-			// (when we stop moving the camera). In such situations, the last kernel launch in the GPU queue is
-			// a "first frame" that was queued with the corresponding wants_render_low_resolution (getting in or out of low resolution).
-			// and so we want to display it the same way.
-			m_display_view_system->set_render_low_resolution(m_renderer->was_last_frame_low_resolution());
-			// Updating the uniforms so that next time we display, we display correctly
-			m_display_view_system->update_current_display_program_uniforms();
+				// We just displayed so let's reset the timer
+				m_application_state->last_viewport_refresh_timestamp = glfwGetTimerValue();
+
+				// We just refreshed so we're clearing the flag
+				m_application_state->force_viewport_refresh = false;
+			}
 
 			// We got a frame rendered --> We can compute the samples per second
 			m_application_state->samples_per_second = compute_samples_per_second();
@@ -868,11 +927,17 @@ void RenderWindow::render()
 			if ((samples_per_frame_auto_mode && current_or_last_frame_low_res && render_settings.accumulate)
 				|| using_debug_kernel)
 				// Only one sample when low resolution rendering.
+				// 
 				// Also, we only want to apply this if we're accumulating. If we're not accumulating, 
-				// (so we the renderer in "interactive mode" we may want more than 1 sample per frame
+				// (so we have the renderer in "interactive mode") we may want more than 1 sample per frame
 				// to experiment
 				render_settings.samples_per_frame = 1;
 			else if (m_application_settings->auto_sample_per_frame)
+				// Otherwise and if the user is using auto samples per frame, we're going to compute
+				// the appropriate number of samples per frame to use such that the GPU renders a frame
+				// "exactly" as fast as the 'm_application_settings->target_GPU_framerate'
+				//
+				// This is to keep the GPU busy and improve rendering performance
 				render_settings.samples_per_frame = std::min(std::max(1, static_cast<int>(m_application_state->samples_per_second / m_application_settings->target_GPU_framerate)), 65536);
 
 			m_application_state->interacting_last_frame = is_interacting();
@@ -882,15 +947,14 @@ void RenderWindow::render()
 
 			// Otherwise, if we're not stalling, queuing a new frame for the GPU to render
 			m_application_state->last_GPU_submit_time = glfwGetTimerValue();
+			m_application_state->frame_number++;
 			m_renderer->update();
 			m_renderer->render();
 
 			buffer_upload_necessary = true;
 		}
-		else
+		else // The rendering is done
 		{
-			// The rendering is done
-
 			buffer_upload_necessary |= m_display_view_system->update_selected_display_view();
 
 			if (m_application_settings->enable_denoising)

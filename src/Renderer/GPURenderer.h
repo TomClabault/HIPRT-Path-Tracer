@@ -215,7 +215,7 @@ public:
 	/**
 	 * Memcpy the values of the status buffers to m_status_buffer_values
 	 */
-	void copy_status_buffers();
+	void download_status_buffers();
 
 	HIPRTRenderSettings& get_render_settings();
 	WorldSettings& get_world_settings();

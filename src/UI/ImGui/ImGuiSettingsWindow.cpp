@@ -66,7 +66,13 @@ void ImGuiSettingsWindow::draw_header()
 	else
 		ImGui::Text("Frame time (GPU): %.3fms", m_render_window_perf_metrics->get_current_value(GPURenderer::ALL_RENDER_PASSES_TIME_KEY));
 	ImGui::Text("%d samples | %.2f samples/s @ %dx%d", render_settings.sample_number, m_render_window->get_samples_per_second(), m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y);
+	float time_before_viewport_refresh_ms = m_render_window->get_time_ms_before_viewport_refresh();
+	if (m_render_window->get_viewport_refresh_delay_ms() > 0.0f && !m_render_window->is_rendering_done())
+		// Only displaying the refresh timer if we actually need to wait before refreshin'
+		// And also, not displaying that if the rendering is done
+		ImGui::Text("Viewport refresh in: %.3fs", std::max(0.0f, time_before_viewport_refresh_ms / 1000.0f));
 
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	if (render_settings.has_access_to_adaptive_sampling_buffers())
 	{
 		unsigned int converged_count = m_renderer->get_status_buffer_values().pixel_converged_count;
@@ -1916,9 +1922,12 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 	ImGui::TreePush("Post-processing tree");
 
 	DisplaySettings& display_settings = m_render_window->get_display_view_system()->get_display_settings();
-	ImGui::Checkbox("Do tonemapping", &display_settings.do_tonemapping);
-	ImGui::InputFloat("Gamma", &display_settings.tone_mapping_gamma);
-	ImGui::InputFloat("Exposure", &display_settings.tone_mapping_exposure);
+	bool changed = false;
+	changed |= ImGui::Checkbox("Do tonemapping", &display_settings.do_tonemapping);
+	changed |= ImGui::InputFloat("Gamma", &display_settings.tone_mapping_gamma);
+	changed |= ImGui::InputFloat("Exposure", &display_settings.tone_mapping_exposure);
+	if (changed)
+		m_render_window->set_force_viewport_refresh(true);
 
 	ImGui::TreePop();
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));

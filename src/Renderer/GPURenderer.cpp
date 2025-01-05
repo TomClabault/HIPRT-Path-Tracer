@@ -272,7 +272,7 @@ void GPURenderer::step_animations()
 	m_camera_animation.animation_step(this);
 }
 
-void GPURenderer::copy_status_buffers()
+void GPURenderer::download_status_buffers()
 {
 	OROCHI_CHECK_ERROR(oroMemcpy(&m_status_buffers_values.one_ray_active, m_still_one_ray_active_buffer.get_device_pointer(), sizeof(unsigned char), oroMemcpyDeviceToHost));
 	OROCHI_CHECK_ERROR(oroMemcpy(&m_status_buffers_values.pixel_converged_count, m_pixels_converged_count_buffer.get_device_pointer(), sizeof(unsigned int), oroMemcpyDeviceToHost));

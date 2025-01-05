@@ -23,7 +23,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F bsdf_dispatcher_eval(const HIPRTRende
 	const float3& view_direction, const float3& shading_normal, const float3& geometric_normal, const float3& to_light_direction, 
 	float& pdf, Xorshift32Generator& random_number_generator)
 {
-#if BSDFOverride == BSDF_NONE
+#if BSDFOverride == BSDF_NONE || BSDFOverride == BSDF_PRINCIPLED
 	/*switch (brdf_type)
 	{
 	...
@@ -41,8 +41,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F bsdf_dispatcher_eval(const HIPRTRende
 	return lambertian_brdf_eval(material, hippt::dot(to_light_direction, shading_normal), pdf);
 #elif BSDFOverride == BSDF_OREN_NAYAR
 	return oren_nayar_brdf_eval<0>(material, view_direction, shading_normal, to_light_direction, pdf);
-#elif BSDFOverride == BSDF_PRINCIPLED
-    return principled_bsdf_eval(render_data, material, ray_volume_state, view_direction, shading_normal, to_light_direction, pdf);
 #endif
 }
 

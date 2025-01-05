@@ -25,6 +25,21 @@ struct ApplicationState
 
 	// How long in milliseconds do we still have to stall the GPU for
 	float GPU_stall_duration_left = 0;
+
+	// How many times renderer->render() was called since the last dirty frame.
+	int frame_number = 0;
+
+	// If true, the viewport is going to be refreshed next frame no matter what
+	bool force_viewport_refresh = false;
+	// How long has passed since the last time we "uploaded" the renderer
+	// frame buffer to OpenGL for display.
+	// 
+	// This variable is used to minimize how often we upload to OpenGL because
+	// all of that is expensive.
+	//
+	// This is only used for offline rendering and this will have the effect
+	// of updating the viewport only once every few seconds to save resources
+	uint64_t last_viewport_refresh_timestamp = 0;
 };
 
 #endif
