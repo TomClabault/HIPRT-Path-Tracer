@@ -12,7 +12,7 @@
 #include "UI/DisplayView/DisplayTextureType.h"
 #include "UI/ImGui/ImGuiLogger.h"
 #include "Utils/Utils.h"
-#include "gl/glew.h"
+#include "GL/glew.h"
 #include "tracy/TracyOpenGL.hpp"
 
 extern ImGuiLogger g_imgui_logger;

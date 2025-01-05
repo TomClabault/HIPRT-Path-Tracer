@@ -216,7 +216,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
         fix_backfacing_normals(in_out_ray_payload, out_hit_info, -ray.direction);
 
         skipping_volume_boundary = in_out_ray_payload.volume_state.interior_stack.push(
-            in_out_ray_payload.volume_state.incident_mat_index, in_out_ray_payload.volume_state.outgoing_mat_index, in_out_ray_payload.volume_state.inside_material, material_index, in_out_ray_payload.material.dielectric_priority);
+            in_out_ray_payload.volume_state.incident_mat_index, in_out_ray_payload.volume_state.outgoing_mat_index, in_out_ray_payload.volume_state.inside_material, material_index, in_out_ray_payload.material.get_dielectric_priority());
 
         if (skipping_volume_boundary)
         {

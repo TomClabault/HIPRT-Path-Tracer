@@ -96,9 +96,6 @@ struct DeviceUnpackedEffectiveMaterial
     float alpha_opacity = 1.0f;
 
     int energy_preservation_monte_carlo_samples = 12;
-
-    // Nested dielectric parameter
-    unsigned char dielectric_priority = 0;
     
     /**
      * The booleans are moved to the end of the structure to avoid too much structure packing
@@ -134,6 +131,25 @@ struct DeviceUnpackedEffectiveMaterial
     // See PrincipledBSDFDoEnergyCompensation in this codebase.
     bool enforce_strong_energy_conservation = false;
     bool emissive_texture_used = false;
+
+    HIPRT_HOST_DEVICE void set_dielectric_priority(unsigned char priority) { dielectric_priority = priority; }
+
+    HIPRT_HOST_DEVICE unsigned char get_dielectric_priority() const
+    {
+#if BSDFOverride == BSDF_LAMBERTIAN || BSDFOverride == BSDF_OREN_NAYAR
+        // These BSDFs do not support tranmission so every material
+        // should have the same priority
+        return 0;
+#else
+        return dielectric_priority;
+#endif
+    }
+
+private:
+        // Nested dielectric parameter
+        // Private because this may be different depending on the BRDF override
+        // being used so we want to control this with getters/setters
+        unsigned char dielectric_priority = 0;
 };
 
 struct DeviceUnpackedTexturedMaterial : public DeviceUnpackedEffectiveMaterial

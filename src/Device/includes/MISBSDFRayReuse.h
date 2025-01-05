@@ -115,7 +115,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool reuse_mis_ray(const HIPRTRenderData& render_
 			ray_payload.volume_state.distance_in_volume += mis_reuse.hit_distance;
 		ray_payload.volume_state.interior_stack.push(
 			ray_payload.volume_state.incident_mat_index, ray_payload.volume_state.outgoing_mat_index, ray_payload.volume_state.inside_material,
-			mis_reuse.material_index, ray_payload.material.dielectric_priority);
+			mis_reuse.material_index, ray_payload.material.get_dielectric_priority());
 
 		// Clearing the MIS ray reuse
 		mis_reuse.clear();

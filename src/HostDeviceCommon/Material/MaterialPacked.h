@@ -172,7 +172,7 @@ struct DevicePackedEffectiveMaterial
         packed.set_thin_film_do_ior_override(unpacked.thin_film_do_ior_override);
 
         packed.set_alpha_opacity(unpacked.alpha_opacity);
-        packed.set_dielectric_priority(unpacked.dielectric_priority);
+        packed.set_dielectric_priority(unpacked.get_dielectric_priority());
         packed.set_energy_preservation_monte_carlo_samples(unpacked.energy_preservation_monte_carlo_samples);
         packed.set_enforce_strong_energy_conservation(unpacked.enforce_strong_energy_conservation);
 
@@ -241,7 +241,7 @@ struct DevicePackedEffectiveMaterial
         unpacked.thin_film_do_ior_override = this->get_thin_film_do_ior_override();
 
         unpacked.alpha_opacity = this->get_alpha_opacity();
-        unpacked.dielectric_priority = this->get_dielectric_priority();
+        unpacked.set_dielectric_priority(this->get_dielectric_priority());
         unpacked.energy_preservation_monte_carlo_samples = this->get_energy_preservation_monte_carlo_samples();
         unpacked.enforce_strong_energy_conservation = this->get_enforce_strong_energy_conservation();
 
@@ -682,7 +682,7 @@ struct DevicePackedTexturedMaterial : public DevicePackedEffectiveMaterial
         out.alpha_opacity = this->get_alpha_opacity();
 
         // Nested dielectric parameter
-        out.dielectric_priority = this->get_dielectric_priority();
+        out.set_dielectric_priority(this->get_dielectric_priority());
 
         out.energy_preservation_monte_carlo_samples = this->get_energy_preservation_monte_carlo_samples();
         // If true, 'energy_preservation_monte_carlo_samples' will be used

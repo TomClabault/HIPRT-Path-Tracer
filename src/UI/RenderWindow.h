@@ -28,7 +28,7 @@
 class RenderWindow
 {
 public:
-	static const std::string PERF_METRICS_CPU_DISPLAY_TIME_KEY;
+	static const std::string PERF_METRICS_CPU_OVERHEAD_TIME_KEY;
 
 	RenderWindow(int width, int height, std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx);
 	~RenderWindow();
