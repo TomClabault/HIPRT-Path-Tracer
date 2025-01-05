@@ -262,6 +262,8 @@ void GPURenderer::update()
 
 	if (!m_render_data.render_settings.accumulate)
 		m_render_data.render_settings.sample_number = 0;
+
+	m_updated = true;
 }
 
 void GPURenderer::step_animations()
@@ -418,6 +420,17 @@ void GPURenderer::recreate_global_bvh_stack_buffer()
 
 void GPURenderer::render()
 {
+	if (!m_updated)
+	{
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "render() was called on the GPURenderer without update() being called.");
+		Utils::debugbreak();
+
+		return;
+	}
+
+	// Resetting the update state since we're now rendering a new frame
+	m_updated = false;
+
 	// Making sure kernels are compiled
 	ThreadManager::join_threads(ThreadManager::COMPILE_KERNELS_THREAD_KEY);
 
@@ -983,6 +996,10 @@ void GPURenderer::update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer
 	m_restir_di_render_pass.update_perf_metrics(perf_metrics);
 	perf_metrics->add_value(GPURenderer::PATH_TRACING_KERNEL_ID, m_render_pass_times[GPURenderer::PATH_TRACING_KERNEL_ID]);
 	perf_metrics->add_value(GPURenderer::ALL_RENDER_PASSES_TIME_KEY, m_render_pass_times[GPURenderer::ALL_RENDER_PASSES_TIME_KEY]);
+
+	if (m_debug_trace_kernel.has_been_compiled())
+		// Adding the time for the debug kernel if it is in use
+		perf_metrics->add_value(GPURenderer::DEBUG_KERNEL_TIME_KEY, m_render_pass_times[GPURenderer::DEBUG_KERNEL_TIME_KEY]);
 }
 
 void GPURenderer::reset(std::shared_ptr<ApplicationSettings> application_settings)

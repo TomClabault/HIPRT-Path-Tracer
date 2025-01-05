@@ -24,6 +24,7 @@ extern ImGuiLogger g_imgui_logger;
 
 // TODOs  performance improvements branch:
 // - switch out openlg interop buffer for adaptive sampling
+// - profile why the CPU takes 3ms on Sponza
 // - if we don't have the ray volume state in the GBuffer anymore, we can remove the stack handlign in the trace ray function of the camera rays
 // - implement some kind of thing to avoid displaying every sample when the camera yhasn't been moving for a while (i.e. we're rendering offline) --> more like after a certain rendering time in seconds. this is to save displaying resources
 // - aux_buffers.pixel_converged_sample_count[pixel_index] should be a non interop buffer as long as we don't need it for displaying. Copy it to interop if we need it for displaying
@@ -756,11 +757,24 @@ void RenderWindow::run()
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 
-	uint64_t time_frequency = glfwGetTimerFrequency();
-	uint64_t frame_start_time = 0;
+	uint64_t timer_frequency = glfwGetTimerFrequency();
 	while (!glfwWindowShouldClose(m_glfw_window))
 	{
-		frame_start_time = glfwGetTimerValue();
+		uint64_t frame_start_time = glfwGetTimerValue();
+		// Saving whether the renderer as finished its frame
+		// at the beginning of this CPU frame. 
+		// 
+		// If yes, we will use this variable later to record the
+		// whole CPU overhead of launching a new frame + updating the UI
+		// (swapBuffers etc...)
+		//
+		// This is simply done by computing the delta time between
+		// 'frame_start_time' and 'frame_stop_time'. And because the renderer
+		// is done with its frame, a new GPU frame is going to be queued in between
+		// this two timer points so our CPU overhead counter will also take into account
+		// the time taken for launching a new frame so that's perfect
+		bool frame_render_done = m_renderer->frame_render_done();
+
 		glfwPollEvents();
 		glClear(GL_COLOR_BUFFER_BIT);
 
@@ -771,15 +785,22 @@ void RenderWindow::run()
 		m_display_view_system->display();
 		m_imgui_renderer->draw_interface();
 
-		glfwSwapBuffers(m_glfw_window);
-		TracyGpuCollect;
-
-		float delta_time_ms = (glfwGetTimerValue() - frame_start_time) / static_cast<float>(time_frequency) * 1000.0f;
+		float delta_time_ms = (glfwGetTimerValue() - frame_start_time) / static_cast<float>(timer_frequency) * 1000.0f;
 		m_application_state->last_delta_time_ms = delta_time_ms;
 
 		if (!is_rendering_done())
 			m_application_state->current_render_time_ms += delta_time_ms;
+
+		if (frame_render_done)
+		{
+			m_perf_metrics->add_value(RenderWindow::PERF_METRICS_CPU_DISPLAY_TIME_KEY, delta_time_ms);
+			m_perf_metrics->add_value(GPURenderer::FULL_FRAME_TIME_KEY_WITH_CPU, delta_time_ms + m_perf_metrics->get_current_value(GPURenderer::FULL_FRAME_TIME_KEY));
+		}
+
 		m_keyboard_interactor.poll_keyboard_inputs();
+
+		glfwSwapBuffers(m_glfw_window);
+		TracyGpuCollect;
 	}
 }
 
@@ -791,13 +812,8 @@ void RenderWindow::render()
 	// the frame result to OpenGL for displaying
 	static bool buffer_upload_necessary = true;
 
-	uint64_t start_display_time = 0;
 	if (m_renderer->frame_render_done())
 	{
-		// We're going to measure how long it takes to display the frame and
-		// do all the OpenGL stuff
-		start_display_time = glfwGetTimerValue();
-
 		// ------
 		// Everything that is in there is synchronous with the renderer
 		// ------
@@ -920,17 +936,6 @@ void RenderWindow::render()
 			// Sleeping so that we don't burn the CPU and GPU
 			std::this_thread::sleep_for(std::chrono::milliseconds(3));
 		}
-	}
-
-	if (start_display_time != 0)
-	{
-		uint64_t end_display_time = glfwGetTimerValue();
-
-		float display_ms = (end_display_time - start_display_time) / static_cast<float>(glfwGetTimerFrequency()) * 1000.0f;
-
-		m_perf_metrics->add_value(RenderWindow::PERF_METRICS_CPU_DISPLAY_TIME_KEY, display_ms);
-		m_perf_metrics->add_value(GPURenderer::FULL_FRAME_TIME_WITH_CPU_KEY, display_ms + m_perf_metrics->get_current_value(GPURenderer::ALL_RENDER_PASSES_TIME_KEY));
-		m_perf_metrics->add_value(GPURenderer::DEBUG_KERNEL_TIME_KEY, m_renderer->get_render_pass_times()[GPURenderer::DEBUG_KERNEL_TIME_KEY]);
 	}
 }
 

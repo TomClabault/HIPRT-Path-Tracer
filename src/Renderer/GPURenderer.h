@@ -417,6 +417,10 @@ private:
 	// Modifying the scene also invalidates the m_render_data buffers. 
 	// Freeing / allocating ReSTIR DI/adaptive sampling buffers (or any buffers that can be allocated / dealloacted) too
 	bool m_render_data_buffers_invalidated = true;
+	// Whether or not the renderer was updated (with update()) since the last render() call.
+	// This is only used as a security to avoid misusing the renderer class and calling render()
+	// without having called update() before
+	bool m_updated = false;
 
 	// Time taken per each pass of the renderer for the last frame.
 	// 
@@ -510,6 +514,8 @@ private:
 
 	// Custom stream onto which kernels are dispatched asynchronously
 	oroStream_t m_main_stream = nullptr;
+	// Whether or not the frame queued on the GPU by the last call to render() 
+	// is done rendering or not
 	bool m_frame_rendered = true;
 
 	// Render data passed to the GPU for rendering. Most importantly it contains
