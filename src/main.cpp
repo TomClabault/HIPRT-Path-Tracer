@@ -65,8 +65,8 @@ int main(int argc, char* argv[])
     // Launching the background kernel precompilation
     renderer->precompile_kernels();
 
-    // Joining everyone before starting the render
-    ThreadManager::join_all_threads({ ThreadManager::GPU_RENDERER_PRECOMPILE_KERNELS_THREAD_KEY });
+    // Joining everyone before starting the render except the precompilation threads
+    ThreadManager::join_all_threads({ ThreadManager::GPU_RENDERER_PRECOMPILE_KERNELS_THREAD_KEY, ThreadManager::RENDERER_PRECOMPILE_KERNELS, ThreadManager::RESTIR_DI_PRECOMPILE_KERNELS });
 
     stop_full = std::chrono::high_resolution_clock::now();
     g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Full scene parsed & built in %ldms", std::chrono::duration_cast<std::chrono::milliseconds>(stop_full - start_full).count());

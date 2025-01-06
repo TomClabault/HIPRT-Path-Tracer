@@ -40,6 +40,9 @@ class ThreadManager
 public:
 	static std::string COMPILE_RAY_VOLUME_STATE_SIZE_KERNEL_KEY;
 	static std::string COMPILE_KERNELS_THREAD_KEY;
+	// Key for the thread that will ** launch ** the threads that will precompile kernels
+	// in the background (needed because ** launching ** the precompilation itself takes quite a
+	// bit of time so we're doing that on a thread with this key
 	static std::string GPU_RENDERER_PRECOMPILE_KERNELS_THREAD_KEY;
 
 	static std::string RENDER_WINDOW_CONSTRUCTOR;

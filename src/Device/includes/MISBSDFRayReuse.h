@@ -63,7 +63,7 @@ struct MISBSDFRayReuse
 	HIPRT_HOST_DEVICE bool has_ray() const
 	{
 #if ReuseBSDFMISRay
-		return bsdf_pdf >= 0.0f && ReuseBSDFMISRay == KERNEL_OPTION_TRUE;
+		return bsdf_pdf > -1.0f && ReuseBSDFMISRay == KERNEL_OPTION_TRUE;
 #else
 		return false;
 #endif

@@ -360,4 +360,36 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light(const HIPRTRenderDat
     return direct_light_contribution + material_self_textured_emission;
 }
 
+HIPRT_HOST_DEVICE void estimate_direct_lighting(HIPRTRenderData& render_data, RayPayload& ray_payload, HitInfo& closest_hit_info, 
+    float3 view_direction,
+    int x, int y, int2 res, int bounce,
+    MISBSDFRayReuse& mis_reuse, Xorshift32Generator& random_number_generator)
+{
+    ColorRGB32F light_direct_contribution = sample_one_light(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, make_int2(x, y), res, bounce, mis_reuse);
+    ColorRGB32F envmap_direct_contribution = sample_environment_map(render_data, ray_payload, closest_hit_info, view_direction, bounce, random_number_generator, mis_reuse);
+
+    // Clamping direct lighting
+    light_direct_contribution = clamp_light_contribution(light_direct_contribution, render_data.render_settings.direct_contribution_clamp, bounce == 0);
+    envmap_direct_contribution = clamp_light_contribution(envmap_direct_contribution, render_data.render_settings.envmap_contribution_clamp, bounce == 0);
+
+#if DirectLightSamplingStrategy == LSS_NO_DIRECT_LIGHT_SAMPLING // No direct light sampling
+    ColorRGB32F hit_emission = ray_payload.material.emission;
+    hit_emission = clamp_light_contribution(hit_emission, render_data.render_settings.indirect_contribution_clamp, bounce > 0);
+
+    ray_payload.ray_color += hit_emission * ray_payload.throughput;
+#else
+    if (bounce == 0)
+        // If we do have emissive geometry sampling, we only want to take
+        // it into account on the first bounce, otherwise we would be
+        // accounting for direct light sampling twice (bounce on emissive
+        // geometry + direct light sampling). Otherwise, we don't check for bounce == 0
+        ray_payload.ray_color += ray_payload.material.emission;
+
+    // Clamped indirect lighting 
+    ColorRGB32F direct_lighting_contribution = (light_direct_contribution + envmap_direct_contribution) * ray_payload.throughput;
+    ColorRGB32F clamped_direct_lighting_contribution = clamp_light_contribution(direct_lighting_contribution, render_data.render_settings.indirect_contribution_clamp, bounce > 0);
+    ray_payload.ray_color += clamped_direct_lighting_contribution;
+#endif
+}
+
 #endif
