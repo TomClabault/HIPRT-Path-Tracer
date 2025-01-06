@@ -233,14 +233,6 @@ void GPURenderer::setup_kernels()
 
 void GPURenderer::update()
 {
-	// Launching the background kernels precompilation if not already launched
-	if (!m_kernel_precompilation_launched)
-	{
-		// precompile_kernels();
-
-		m_kernel_precompilation_launched = true;
-	}
-
 	step_animations();
 	m_restir_di_render_pass.update();
 
@@ -792,14 +784,14 @@ void GPURenderer::precompile_kernels()
 	// We're not going to join the thread started right below
 	// so we can use a const char* for the key, we don't a constant
 	// defined in ThreadManager. Quick and dirty.
-	ThreadManager::start_thread("GPURendererPrecompileKernelsKey", [this]() {
+	ThreadManager::start_thread(ThreadManager::GPU_RENDERER_PRECOMPILE_KERNELS_THREAD_KEY, [this]() {
 		OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
 
 		precompile_direct_light_sampling_kernels();
 		precompile_ReSTIR_DI_kernels();
 	});
 
-	ThreadManager::detach_threads("GPURendererPrecompileKernelsKey");
+	ThreadManager::detach_threads(ThreadManager::GPU_RENDERER_PRECOMPILE_KERNELS_THREAD_KEY);
 }
 
 extern bool g_background_shader_compilation_enabled;

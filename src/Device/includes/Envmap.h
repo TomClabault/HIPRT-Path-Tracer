@@ -186,8 +186,30 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_with_mis(const
 #if EnvmapSamplingDoBSDFMIS
     float bsdf_sample_pdf;
     float3 bsdf_sampled_dir;
-    ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, material, volume_state, false, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bsdf_sampled_dir, bsdf_sample_pdf, random_number_generator);
+    ColorRGB32F bsdf_color;
     ColorRGB32F bsdf_mis_contribution;
+
+    if (mis_ray_reuse.has_ray())
+    {
+        // If we already have a BSDF ray to reuse from next-event estimation on the emissive lights,
+        // let's reuse it.
+
+        if (mis_ray_reuse.next_ray_state == RayState::MISSED)
+        {
+            // We only want to reuse rays that missed all geometry otherwise we can't see the envmap...
+            bsdf_sample_pdf = mis_ray_reuse.bsdf_pdf;
+            bsdf_sampled_dir = mis_ray_reuse.bsdf_sampled_direction;
+            bsdf_color = mis_ray_reuse.bsdf_color;
+        }
+        else
+            // If the ray that we're reusing doesn't see the envmap, let's just return
+            // the envmap sample contribution (because the BSDF sample contribution is going
+            // to be 0 anyways since this BSDF sample is occluded and can't see the envmap)
+            return envmap_mis_contribution;
+    }
+    else
+        // No BSDF MIS ray to reuse, let's sample the BSDF
+        bsdf_color = bsdf_dispatcher_sample(render_data, material, volume_state, false, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bsdf_sampled_dir, bsdf_sample_pdf, random_number_generator);
 
     // Sampling the BSDF with MIS
     cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, bsdf_sampled_dir));
@@ -197,7 +219,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_with_mis(const
         shadow_ray.origin = closest_hit_info.inter_point;
         shadow_ray.direction = bsdf_sampled_dir;
 
-        bool in_shadow = evaluate_shadow_ray(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, random_number_generator);
+        bool in_shadow;
+        if (mis_ray_reuse.has_ray() && mis_ray_reuse.next_ray_state == RayState::MISSED)
+            // If we've reused a ray, we already know that it is not occluded
+            in_shadow = false;
+        else
+            // No ray was reused, we have to check for visibility
+            in_shadow = evaluate_shadow_ray(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, random_number_generator);
         if (!in_shadow)
         {
             float envmap_eval_pdf;

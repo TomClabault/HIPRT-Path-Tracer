@@ -62,9 +62,11 @@ int main(int argc, char* argv[])
     renderer->set_envmap(envmap_image, cmd_arguments.skysphere_file_path);
     renderer->set_camera(parsed_scene.camera);
     renderer->set_scene(parsed_scene);
+    // Launching the background kernel precompilation
+    renderer->precompile_kernels();
 
     // Joining everyone before starting the render
-    ThreadManager::join_all_threads();
+    ThreadManager::join_all_threads({ ThreadManager::GPU_RENDERER_PRECOMPILE_KERNELS_THREAD_KEY });
 
     stop_full = std::chrono::high_resolution_clock::now();
     g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Full scene parsed & built in %ldms", std::chrono::duration_cast<std::chrono::milliseconds>(stop_full - start_full).count());

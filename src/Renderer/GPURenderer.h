@@ -493,8 +493,6 @@ private:
 	// They are all organized in a map so that we can iterate over them. The key
 	// of this map is a "name"
 	std::map<std::string, GPUKernel> m_kernels;
-	// Whether or not kernel precompilation has been launched yet
-	bool m_kernel_precompilation_launched = false;
 
 	// Kernel used for retrieving the size of the RayVolumeState structure on the GPU
 	GPUKernel m_ray_volume_state_byte_size_kernel;

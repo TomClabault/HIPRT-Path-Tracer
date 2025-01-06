@@ -174,9 +174,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
         {
             if (bounce > 0)
             {
-                if (ReuseBSDFMISRay && mis_reuse.has_ray())
+                if (mis_reuse.has_ray())
+                {
                     // Reusing a BSDF MIS ray if there is one available
                     intersection_found = reuse_mis_ray(render_data, closest_hit_info, ray_payload, -ray.direction, mis_reuse);
+                }
                 else
                     // Not tracing for the primary ray because this has already been done in the camera ray pass
                     intersection_found = trace_ray(render_data, ray, ray_payload, closest_hit_info, closest_hit_info.primitive_index, random_number_generator);
@@ -228,9 +230,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
                     ray_payload.ray_color += ray_payload.material.emission;
 
                 // Clamped indirect lighting 
-                ColorRGB32F indirect_lighting_contribution = (light_direct_contribution + envmap_direct_contribution) * ray_payload.throughput;
-                ColorRGB32F clamped_indirect_lighting_contribution = clamp_light_contribution(indirect_lighting_contribution, render_data.render_settings.indirect_contribution_clamp, bounce > 0);
-                ray_payload.ray_color += clamped_indirect_lighting_contribution;
+                ColorRGB32F direct_lighting_contribution = (light_direct_contribution + envmap_direct_contribution) * ray_payload.throughput;
+                ColorRGB32F clamped_direct_lighting_contribution = clamp_light_contribution(direct_lighting_contribution, render_data.render_settings.indirect_contribution_clamp, bounce > 0);
+                ray_payload.ray_color += clamped_direct_lighting_contribution;
 #endif
 
                 // --------------------------------------- //
@@ -241,7 +243,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
                 float3 bounce_direction;
                 ColorRGB32F bsdf_color;
 
-                if (ReuseBSDFMISRay && mis_reuse.has_ray())
+                if (mis_reuse.has_ray())
                     bsdf_color = reuse_mis_bsdf_sample(bounce_direction, bsdf_pdf, ray_payload, mis_reuse);
                 else
                     bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, true, -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bounce_direction, bsdf_pdf, random_number_generator);

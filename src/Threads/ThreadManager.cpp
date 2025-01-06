@@ -14,6 +14,7 @@
 
 std::string ThreadManager::COMPILE_RAY_VOLUME_STATE_SIZE_KERNEL_KEY = "CompileRayVolumeStateSizeKernelKey";
 std::string ThreadManager::COMPILE_KERNELS_THREAD_KEY = "CompileKernelPassesKey";
+std::string ThreadManager::GPU_RENDERER_PRECOMPILE_KERNELS_THREAD_KEY = "GPURendererPrecompileKernelsKey";
 
 std::string ThreadManager::RENDER_WINDOW_CONSTRUCTOR = "RenderWindowConstructor";
 std::string ThreadManager::RENDER_WINDOW_RENDERER_INITIAL_RESIZE = "RenderWindowRendererInitialResize";

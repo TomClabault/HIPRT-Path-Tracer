@@ -40,6 +40,7 @@ class ThreadManager
 public:
 	static std::string COMPILE_RAY_VOLUME_STATE_SIZE_KERNEL_KEY;
 	static std::string COMPILE_KERNELS_THREAD_KEY;
+	static std::string GPU_RENDERER_PRECOMPILE_KERNELS_THREAD_KEY;
 
 	static std::string RENDER_WINDOW_CONSTRUCTOR;
 	static std::string RENDER_WINDOW_RENDERER_INITIAL_RESIZE;
@@ -52,7 +53,7 @@ public:
 
 	static std::string RENDERER_PRECOMPILE_KERNELS;
 	static std::string RESTIR_DI_PRECOMPILE_KERNELS;
-		
+
 	static std::string SCENE_TEXTURES_LOADING_THREAD_KEY;
 	static std::string SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES;
 	static std::string ENVMAP_LOAD_FROM_DISK_THREAD;
@@ -133,7 +134,11 @@ public:
 		m_threads_map[key].clear();
 	}
 
-	static void join_all_threads()
+	/**
+	 * Joins all the threads that have been started so far except the threads
+	 * launch with a key in the 'execeptions' vector passed as parameter
+	 */
+	static void join_all_threads(const std::unordered_set<std::string>& exceptions = {})
 	{
 		// Joining all the threads and their dependencies
 		for (const auto& key_to_threads : m_threads_map)
@@ -142,6 +147,10 @@ public:
 			std::deque<std::string> dependencies_to_analyze;
 
 			const std::string& thread_key = key_to_threads.first;
+			if (exceptions.find(thread_key) != exceptions.end())
+				// This thread is in the exception list. Not joining these threads
+				continue;
+
 			if (!m_dependencies[thread_key].empty())
 				for (const std::string& dependency : m_dependencies[thread_key])
 					dependencies_to_analyze.push_back(dependency);

@@ -1689,7 +1689,8 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 		}
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		if (ImGui::SliderFloat("Energy compensation roughness threshold", &render_data.bsdfs_data.energy_compensation_roughness_threshold, 0.0f, 1.0f))
+		ImGui::Text("Energy compensation roughness threshold");
+		if (ImGui::SliderFloat("", &render_data.bsdfs_data.energy_compensation_roughness_threshold, 0.0f, 1.0f))
 			m_render_window->set_render_dirty(true);
 		ImGuiRenderer::show_help_marker("Below this roughness, energy compensation will not be applied.\n\n"
 			""
@@ -2429,7 +2430,8 @@ void ImGuiSettingsWindow::draw_debug_panel()
 	if (m_renderer->get_render_data().bsdfs_data.white_furnace_mode)
 	{
 		ImGui::TreePush("White furnace tree");
-		ImGui::Checkbox("Turn off emissives", &m_renderer->get_render_data().bsdfs_data.white_furnace_mode_turn_off_emissives);
+		if (ImGui::Checkbox("Turn off emissives", &m_renderer->get_render_data().bsdfs_data.white_furnace_mode_turn_off_emissives))
+			m_render_window->set_render_dirty(true);
 		ImGui::TreePop();
 	}
 

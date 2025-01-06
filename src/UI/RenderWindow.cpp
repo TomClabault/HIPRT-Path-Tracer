@@ -23,8 +23,8 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // TODOs  performance improvements branch:
+// - add mis_reuse ray in envmap sampling
 // - if we don't have the ray volume state in the GBuffer anymore, we can remove the stack handlign in the trace ray function of the camera rays
-// - aux_buffers.pixel_converged_sample_count[pixel_index] should be a non interop buffer as long as we don't need it for displaying. Copy it to interop if we need it for displaying
 // - If hitting the same material as before, not load the material from VRAM as it's exactly the same? (only works for non-textured materials)
 // - in RIS, if reuse bsdf ray, just pass the ray volume state to BSDF sample? instead of copying it to the mis reuse structre
 // - can remove the if bounce == 0 --> denoiser stuff to save some registers
