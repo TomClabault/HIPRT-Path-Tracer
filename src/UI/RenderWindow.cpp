@@ -23,11 +23,7 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // TODOs  performance improvements branch:
-// - async BVH building should work in theory?
-// - slow down UI if renderer widnow not focused to reduce CPU overhead
-// - switch out openlg interop buffer for adaptive sampling
 // - if we don't have the ray volume state in the GBuffer anymore, we can remove the stack handlign in the trace ray function of the camera rays
-// - implement some kind of thing to avoid displaying every sample when the camera yhasn't been moving for a while (i.e. we're rendering offline) --> more like after a certain rendering time in seconds. this is to save displaying resources
 // - aux_buffers.pixel_converged_sample_count[pixel_index] should be a non interop buffer as long as we don't need it for displaying. Copy it to interop if we need it for displaying
 // - If hitting the same material as before, not load the material from VRAM as it's exactly the same? (only works for non-textured materials)
 // - in RIS, if reuse bsdf ray, just pass the ray volume state to BSDF sample? instead of copying it to the mis reuse structre

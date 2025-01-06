@@ -58,7 +58,7 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
 	m_denoiser_buffers.m_normals_AOV_no_interop_buffer = std::make_shared<OrochiBuffer<float3>>();
 	m_denoiser_buffers.m_albedo_AOV_interop_buffer = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
 	m_denoiser_buffers.m_albedo_AOV_no_interop_buffer = std::make_shared<OrochiBuffer<ColorRGB32F>>();
-	m_pixels_converged_sample_count_buffer = std::make_shared<OpenGLInteropBuffer<int>>();
+	m_pixels_converged_sample_count_buffer = std::make_shared<OrochiBuffer<int>>();
 	
 	m_hiprt_orochi_ctx = hiprt_oro_ctx;	
 	m_device_properties = m_hiprt_orochi_ctx->device_properties;
@@ -625,7 +625,7 @@ void GPURenderer::map_buffers_for_render()
 	m_render_data.aux_buffers.denoiser_normals = m_denoiser_buffers.map_normals_buffer();
 	m_render_data.aux_buffers.denoiser_albedo = m_denoiser_buffers.map_albedo_buffer();
 	if (m_render_data.render_settings.has_access_to_adaptive_sampling_buffers())
-		m_render_data.aux_buffers.pixel_converged_sample_count = m_pixels_converged_sample_count_buffer->map_no_error();
+		m_render_data.aux_buffers.pixel_converged_sample_count = m_pixels_converged_sample_count_buffer->get_device_pointer();
 }
 
 void GPURenderer::unmap_buffers()
@@ -633,7 +633,7 @@ void GPURenderer::unmap_buffers()
 	m_framebuffer->unmap();
 	m_denoiser_buffers.unmap_normals_buffer();
 	m_denoiser_buffers.unmap_albedo_buffer();
-	m_pixels_converged_sample_count_buffer->unmap();
+	//m_pixels_converged_sample_count_buffer->unmap();
 }
 
 
@@ -662,7 +662,7 @@ std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_denoiser_albe
 std::shared_ptr<OrochiBuffer<float3>> GPURenderer::get_denoiser_normals_AOV_no_interop_buffer() { return m_denoiser_buffers.m_normals_AOV_no_interop_buffer; }
 std::shared_ptr<OrochiBuffer<ColorRGB32F>> GPURenderer::get_denoiser_albedo_AOV_no_interop_buffer() { return m_denoiser_buffers.m_albedo_AOV_no_interop_buffer; }
 
-std::shared_ptr<OpenGLInteropBuffer<int>>& GPURenderer::get_pixels_converged_sample_count_buffer() { return m_pixels_converged_sample_count_buffer; }
+std::shared_ptr<OrochiBuffer<int>>& GPURenderer::get_pixels_converged_sample_count_buffer() { return m_pixels_converged_sample_count_buffer; }
 const StatusBuffersValues& GPURenderer::get_status_buffer_values() const { return m_status_buffers_values; }
 
 HIPRTRenderSettings& GPURenderer::get_render_settings() { return m_render_data.render_settings; }
