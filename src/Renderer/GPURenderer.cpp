@@ -71,13 +71,7 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
 	for (auto& id_to_pass : GPURenderer::KERNEL_FUNCTION_NAMES)
 		m_render_pass_times[id_to_pass.first] = 0.0f;
 
-	// Creating the main stream on a thread with dependency on kernels compilation
-	// because it seems to randomly hang otherwise, not sure why
-	ThreadManager::add_dependency(ThreadManager::RENDERER_STREAM_CREATE, ThreadManager::COMPILE_KERNELS_THREAD_KEY);
-	ThreadManager::start_thread(ThreadManager::RENDERER_STREAM_CREATE, [this]() {
-		OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
-		OROCHI_CHECK_ERROR(oroStreamCreate(&m_main_stream));
-	});
+	OROCHI_CHECK_ERROR(oroStreamCreate(&m_main_stream));
 
 	// Buffer that keeps track of whether at least one ray is still alive or not
 	unsigned char true_data = 1;
@@ -548,7 +542,6 @@ void GPURenderer::synchronize_kernel()
 	if (m_main_stream == nullptr)
 		return;
 
-	ThreadManager::join_threads(ThreadManager::RENDERER_STREAM_CREATE);
 	OROCHI_CHECK_ERROR(oroStreamSynchronize(m_main_stream));
 }
 
@@ -1185,7 +1178,7 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 
 void GPURenderer::rebuild_renderer_bvh(hiprtBuildFlags build_flags, bool do_compaction)
 {
-	m_hiprt_scene.geometry.build_bvh(build_flags, do_compaction);
+	m_hiprt_scene.geometry.build_bvh(build_flags, do_compaction, m_main_stream);
 }
 
 void GPURenderer::set_scene(const Scene& scene)

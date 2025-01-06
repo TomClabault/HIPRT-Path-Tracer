@@ -23,8 +23,6 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // TODOs  performance improvements branch:
-// - just for fun: test to launch 10 camera ray kernels on the Bistro at the same time on streams and get their result back (in 10 different buffers) and see if this is faster than 10x 1 kernel
-// - can we relaunch a GPU frame without waiting on VSync? We're losing time
 // - async BVH building should work in theory?
 // - slow down UI if renderer widnow not focused to reduce CPU overhead
 // - switch out openlg interop buffer for adaptive sampling
@@ -346,7 +344,6 @@ RenderWindow::RenderWindow(int renderer_width, int renderer_height, std::shared_
 	m_renderer = std::make_shared<GPURenderer>(hiprt_oro_ctx);
 	m_gpu_baker = std::make_shared<GPUBaker>(m_renderer);
 
-	ThreadManager::add_dependency(ThreadManager::RENDER_WINDOW_RENDERER_INITIAL_RESIZE, ThreadManager::RENDERER_STREAM_CREATE);
 	ThreadManager::start_thread(ThreadManager::RENDER_WINDOW_RENDERER_INITIAL_RESIZE, [this, renderer_width, renderer_height]() {
 		m_renderer->resize(renderer_width, renderer_height, /* resize interop buffers */ false);
 	});

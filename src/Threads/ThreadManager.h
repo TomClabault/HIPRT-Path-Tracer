@@ -44,7 +44,6 @@ public:
 	static std::string RENDER_WINDOW_CONSTRUCTOR;
 	static std::string RENDER_WINDOW_RENDERER_INITIAL_RESIZE;
 
-	static std::string RENDERER_STREAM_CREATE;
 	static std::string RENDERER_SET_ENVMAP;
 	static std::string RENDERER_BUILD_BVH;
 	static std::string RENDERER_UPLOAD_MATERIALS;

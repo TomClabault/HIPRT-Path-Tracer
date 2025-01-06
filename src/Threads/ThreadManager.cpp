@@ -18,7 +18,6 @@ std::string ThreadManager::COMPILE_KERNELS_THREAD_KEY = "CompileKernelPassesKey"
 std::string ThreadManager::RENDER_WINDOW_CONSTRUCTOR = "RenderWindowConstructor";
 std::string ThreadManager::RENDER_WINDOW_RENDERER_INITIAL_RESIZE = "RenderWindowRendererInitialResize";
 
-std::string ThreadManager::RENDERER_STREAM_CREATE = "RendererStreamCreate";
 std::string ThreadManager::RENDERER_SET_ENVMAP = "RendererSetEnvmapKey";
 std::string ThreadManager::RENDERER_BUILD_BVH = "RendererBuildBVH";
 std::string ThreadManager::RENDERER_UPLOAD_MATERIALS = "RendererUploadMaterials";

@@ -57,7 +57,7 @@ struct HIPRTGeometry
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Compiling BVH building kernels & building scene BVH...");
 	}
 
-	void build_bvh(hiprtBuildFlags build_flags, bool do_compaction)
+	void build_bvh(hiprtBuildFlags build_flags, bool do_compaction, oroStream_t build_stream)
 	{
 		auto start = std::chrono::high_resolution_clock::now();
 
@@ -89,7 +89,7 @@ struct HIPRTGeometry
 		OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&geometry_temp), geometry_temp_size));
 
 		HIPRT_CHECK_ERROR(hiprtCreateGeometry(m_hiprt_ctx, geometry_build_input, build_options, m_geometry));
-		HIPRT_CHECK_ERROR(hiprtBuildGeometry(m_hiprt_ctx, hiprtBuildOperationBuild, geometry_build_input, build_options, geometry_temp, /* stream */ 0, m_geometry));
+		HIPRT_CHECK_ERROR(hiprtBuildGeometry(m_hiprt_ctx, hiprtBuildOperationBuild, geometry_build_input, build_options, geometry_temp, build_stream, m_geometry));
 		OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(geometry_temp)));
 
 		if (do_compaction)
