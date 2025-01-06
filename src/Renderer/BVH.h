@@ -129,7 +129,7 @@ public:
             m_children[octant_index]->insert(triangles_geometry, triangle_id_to_insert, current_depth + 1, max_depth, leaf_max_obj_count);
         }
 
-        bool intersect(const std::vector<Triangle>& triangles_geometry, const hiprtRay& ray, HitInfo& hit_info, void* filter_function_payload) const
+        bool intersect(const std::vector<Triangle>& triangles_geometry, const hiprtRay& ray, hiprtHit& hit_info, void* filter_function_payload) const
         {
             float trash;
 
@@ -145,7 +145,7 @@ public:
             return intersect(triangles_geometry, ray, hit_info, trash, denoms, numers, filter_function_payload);
         }
 
-        bool intersect(const std::vector<Triangle>& triangles_geometry, const hiprtRay& ray, HitInfo& hit_info, float& t_near, float* denoms, float* numers, void* filter_function_payload) const
+        bool intersect(const std::vector<Triangle>& triangles_geometry, const hiprtRay& ray, hiprtHit& hit_info, float& t_near, float* denoms, float* numers, void* filter_function_payload) const
         {
             float t_far, trash;
 
@@ -158,25 +158,17 @@ public:
                 {
                     const Triangle& triangle = triangles_geometry[triangle_id];
 
-                    HitInfo local_hit_info;
-                    if (triangle.intersect(ray, local_hit_info))
+                    hiprtHit localHit;
+                    if (triangle.intersect(ray, localHit))
                     {
-                        hiprtHit hit;
-                        hit.normal = local_hit_info.geometric_normal;
-                        hit.primID = triangle_id;
-                        hit.t = local_hit_info.t;
-                        hit.uv = local_hit_info.uv;
+                        localHit.primID = triangle_id;
 
-
-                        if (filter_function(ray, nullptr, filter_function_payload, hit))
+                        if (filter_function(ray, nullptr, filter_function_payload, localHit))
                             // Hit is filtered
                             continue;
 
-                        if (local_hit_info.t < hit_info.t || hit_info.t == -1)
-                        {
-                            hit_info = local_hit_info;
-                            hit_info.primitive_index = triangle_id;
-                        }
+                        if (localHit.t < hit_info.t || hit_info.t == -1)
+                            hit_info = localHit;
                     }
                 }
 
@@ -254,7 +246,7 @@ public:
 
     void operator=(BVH&& bvh);
      
-    bool intersect(const hiprtRay& ray, HitInfo& hit_info, void* filter_function_payload) const;
+    bool intersect(const hiprtRay& ray, hiprtHit& hit_info, void* filter_function_payload) const;
 
 private:
     void build_bvh(int max_depth, int leaf_max_obj_count, float3 min, float3 max, const BoundingVolume& volume);

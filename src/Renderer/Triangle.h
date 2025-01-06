@@ -17,7 +17,7 @@ struct Triangle
 	float3 bbox_centroid() const;
 
 	//From https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
-	inline bool intersect(const hiprtRay& ray, HitInfo& hit_info) const
+	inline bool intersect(const hiprtRay& ray, hiprtHit& hit_info) const
 	{
 		const float EPSILON = 0.0000001f;
 		float3 edge1, edge2, h, s, q;
@@ -49,8 +49,8 @@ struct Triangle
 
 		if (t > EPSILON) // ray intersection
 		{
-			hit_info.inter_point = ray.origin + ray.direction * t;
-			hit_info.geometric_normal = hippt::normalize(hippt::cross(edge1, edge2));
+			hit_info.t = t;
+			hit_info.normal = hippt::normalize(hippt::cross(edge1, edge2));
 
 			hit_info.t = t;
 

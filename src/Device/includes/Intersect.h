@@ -126,23 +126,15 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void fix_backfacing_normals(const RayPayload& ray
 #include "Renderer/BVH.h"
 HIPRT_HOST_DEVICE HIPRT_INLINE hiprtHit intersect_scene_cpu(const HIPRTRenderData& render_data, const hiprtRay& ray, int last_hit_primitive_index, Xorshift32Generator& random_number_generator)
 {
-    hiprtHit hiprtHit;
-    HitInfo closest_hit_info;
-    closest_hit_info.t = -1.0f;
-
     FilterFunctionPayload filter_function_payload;
     filter_function_payload.render_data = &render_data;
     filter_function_payload.random_number_generator = &random_number_generator;
     // Filling the payload with the last hit primitive index to avoid self intersections
     // (avoid that the ray intersects the triangle it is currently sitting on)
     filter_function_payload.last_hit_primitive_index = last_hit_primitive_index;
-    if (render_data.cpu_only.bvh->intersect(ray, closest_hit_info, &filter_function_payload))
-    {
-        hiprtHit.primID = closest_hit_info.primitive_index;
-        hiprtHit.normal = closest_hit_info.geometric_normal;
-        hiprtHit.t = closest_hit_info.t;
-        hiprtHit.uv = closest_hit_info.uv;
-    }
+
+    hiprtHit hiprtHit;
+    render_data.cpu_only.bvh->intersect(ray, hiprtHit, &filter_function_payload);
 
     return hiprtHit;
 }
@@ -205,7 +197,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
         out_hit_info.shading_normal = get_shading_normal(render_data, out_hit_info.geometric_normal, triangle_vertex_indices, triangle_texcoords, hit.primID, hit.uv, out_hit_info.texcoords);
 
         out_hit_info.t = hit.t;
-        out_hit_info.uv = hit.uv;
 
         if (in_out_ray_payload.is_inside_volume())
             in_out_ray_payload.volume_state.distance_in_volume += hit.t;

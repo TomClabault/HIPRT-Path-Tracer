@@ -23,7 +23,6 @@ struct HitInfo
     float3 shading_normal = { 0, 0, 0 };
     float3 geometric_normal = { 0, 0, 0 };
     float2 texcoords = { 0, 0 };
-    float2 uv = { 0, 0 };
 
     // Distance along ray
     float t = -1.0f;
