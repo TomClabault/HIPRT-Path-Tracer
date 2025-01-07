@@ -26,7 +26,6 @@ extern ImGuiLogger g_imgui_logger;
 // - add mis_reuse ray in envmap sampling
 // - if we don't have the ray volume state in the GBuffer anymore, we can remove the stack handlign in the trace ray function of the camera rays
 // - If hitting the same material as before, not load the material from VRAM as it's exactly the same? (only works for non-textured materials)
-// - can remove the if bounce == 0 --> denoiser stuff to save some registers
 // - merge camera rays and path tracer?
 // - to accelerate compilation times: we can use if() everywhere in the code so that switching an option doesn't require a compilation but if we want, we can then apply the options currently selected and compiler everything for maximum performance
 // - store Material in GBuffer only if using ReSTIR, otherwise, just reconstruct it in the path tracign kernel

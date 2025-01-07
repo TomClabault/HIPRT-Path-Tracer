@@ -96,6 +96,25 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool sanity_check(const HIPRTRenderData& render_d
     return !invalid;
 }
 
+HIPRT_HOST_DEVICE void store_denoiser_AOVs(HIPRTRenderData& render_data, uint32_t pixel_index, float3 shading_normal, ColorRGB32F base_color)
+{
+    if (render_data.render_settings.sample_number == 0)
+        render_data.aux_buffers.denoiser_albedo[pixel_index] = base_color;
+    else
+        render_data.aux_buffers.denoiser_albedo[pixel_index] = (render_data.aux_buffers.denoiser_albedo[pixel_index] * render_data.render_settings.denoiser_AOV_accumulation_counter + base_color) / (render_data.render_settings.denoiser_AOV_accumulation_counter + 1.0f);
+
+    if (render_data.render_settings.sample_number == 0)
+        render_data.aux_buffers.denoiser_normals[pixel_index] = shading_normal;
+    else
+    {
+        float3 accumulated_normal = (render_data.aux_buffers.denoiser_normals[pixel_index] * render_data.render_settings.denoiser_AOV_accumulation_counter + shading_normal) / (render_data.render_settings.denoiser_AOV_accumulation_counter + 1.0f);
+        float normal_length = hippt::length(accumulated_normal);
+        if (!hippt::is_zero(normal_length))
+            // Checking that it is non-zero otherwise we would accumulate a persistent NaN in the buffer when normalizing by the 0-length
+            render_data.aux_buffers.denoiser_normals[pixel_index] = accumulated_normal / normal_length;
+    }
+}
+
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) FullPathTracer(HIPRTRenderData render_data, int2 res)
 #else
@@ -125,10 +144,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
     else
         seed = wang_hash((pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_seed);
     Xorshift32Generator random_number_generator(seed);
-
-    float squared_luminance_of_samples = 0.0f;
-    ColorRGB32F denoiser_albedo = ColorRGB32F(0.0f, 0.0f, 0.0f);
-    float3 denoiser_normal = make_float3(0.0f, 0.0f, 0.0f);
 
     // Initializing the closest hit info the information from the camera ray pass
     HitInfo closest_hit_info;
@@ -187,10 +202,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
             if (intersection_found)
             {
                 if (bounce == 0)
-                {
-                    denoiser_normal += closest_hit_info.shading_normal;
-                    denoiser_albedo += ray_payload.material.base_color;
-                }
+                    store_denoiser_AOVs(render_data, pixel_index, closest_hit_info.shading_normal, ray_payload.material.base_color);
 
                 // For the BRDF calculations, bounces, ... to be correct, we need the normal to be in the same hemisphere as
                 // the view direction. One thing that can go wrong is when we have an emissive triangle (typical area light)
@@ -284,6 +296,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
 
                 ray_payload.ray_color += clamped_indirect_lighting_contribution;
                 ray_payload.next_ray_state = RayState::MISSED;
+
+                if (bounce == 0)
+                    // The camera ray missed so we don't have the normals but we have the base color
+                    store_denoiser_AOVs(render_data, pixel_index, make_float3(0, 0, 0), skysphere_color);
             }
         }
         else if (ray_payload.next_ray_state == RayState::MISSED)
@@ -294,7 +310,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
     if (!sanity_check(render_data, ray_payload, x, y, res))
         return;
 
-    squared_luminance_of_samples += ray_payload.ray_color.luminance() * ray_payload.ray_color.luminance();
+    float squared_luminance_of_samples = ray_payload.ray_color.luminance() * ray_payload.ray_color.luminance();
 
     // If we got here, this means that we still have at least one ray active
     // This is a concurrent write by the way but we don't really care, everyone is writing
@@ -311,22 +327,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
     else
         // If we are at a sample that is not 0, this means that we are accumulating
         render_data.buffers.pixels[pixel_index] += ray_payload.ray_color;
-
-    if (render_data.render_settings.sample_number == 0)
-        render_data.aux_buffers.denoiser_albedo[pixel_index] = denoiser_albedo;
-    else
-        render_data.aux_buffers.denoiser_albedo[pixel_index] = (render_data.aux_buffers.denoiser_albedo[pixel_index] * render_data.render_settings.denoiser_AOV_accumulation_counter + denoiser_albedo) / (render_data.render_settings.denoiser_AOV_accumulation_counter + 1.0f);
-
-    if (render_data.render_settings.sample_number == 0)
-        render_data.aux_buffers.denoiser_normals[pixel_index] = denoiser_normal;
-    else
-    {
-        float3 accumulated_normal = (render_data.aux_buffers.denoiser_normals[pixel_index] * render_data.render_settings.denoiser_AOV_accumulation_counter + denoiser_normal) / (render_data.render_settings.denoiser_AOV_accumulation_counter + 1.0f);
-        float normal_length = hippt::length(accumulated_normal);
-        if (!hippt::is_zero(normal_length))
-            // Checking that it is non-zero otherwise we would accumulate a persistent NaN in the buffer when normalizing by the 0-length
-            render_data.aux_buffers.denoiser_normals[pixel_index] = accumulated_normal / normal_length;
-    }
 }
 
 #endif
