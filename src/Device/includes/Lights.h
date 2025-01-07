@@ -66,77 +66,43 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_no_MIS(const HIPRTRe
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_bsdf(const HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, MISBSDFRayReuse& mis_ray_reuse)
 {
-    // Pushing the intersection point outside the surface (if we're already outside)
-    // or inside the surface (if we're inside the surface)
-    // We'll use that intersection point as the origin of our shadow rays
-    bool inside_surface = hippt::dot(view_direction, closest_hit_info.geometric_normal) < 0;
-    float inside_surface_multiplier = inside_surface ? -1.0f : 1.0f;
-
     ColorRGB32F bsdf_radiance = ColorRGB32F(0.0f);
 
     float bsdf_sample_pdf;
     float3 sampled_bsdf_direction;
     ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, true, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_bsdf_direction, bsdf_sample_pdf, random_number_generator);
 
-    bool refraction_sampled = hippt::dot(sampled_bsdf_direction, closest_hit_info.shading_normal * inside_surface_multiplier) < 0;
+    bool intersection_found = false;
+    ShadowLightRayHitInfo shadow_light_ray_hit_info;
     if (bsdf_sample_pdf > 0.0f)
     {
         hiprtRay new_ray;
-        new_ray.origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f;
+        new_ray.origin = closest_hit_info.inter_point;
         new_ray.direction = sampled_bsdf_direction;
 
-        if (refraction_sampled)
-        {
-            // If we sampled a refraction, we're pushing the origin of the shadow ray "through"
-            // the surface so that our ray can refract inside the surface
-            //
-            // If we don't do that and we just use the 'evaluated_point' computed at the very
-            // beginning of the function, we're going to intersect ourselves
-
-            new_ray.origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f * inside_surface_multiplier * -1.0f;
-        }
-
-        ShadowLightRayHitInfo shadow_light_ray_hit_info;
-        bool inter_found = evaluate_shadow_light_ray(render_data, new_ray, 1.0e35f, shadow_light_ray_hit_info, closest_hit_info.primitive_index, random_number_generator);
+        intersection_found = evaluate_shadow_light_ray(render_data, new_ray, 1.0e35f, shadow_light_ray_hit_info, closest_hit_info.primitive_index, random_number_generator);
 
         // Checking that we did hit something and if we hit something,
         // it needs to be emissive
-        if (inter_found)
+        if (intersection_found)
         {
-            if (!mis_ray_reuse.has_ray())
-            {
-                // Fill the MIS BSDF ray reuse structure
-                float3 bsdf_ray_inter_point = closest_hit_info.inter_point + shadow_light_ray_hit_info.hit_distance * sampled_bsdf_direction;
-
-                mis_ray_reuse.fill(shadow_light_ray_hit_info, bsdf_ray_inter_point, sampled_bsdf_direction, bsdf_color, bsdf_sample_pdf, 
-                    /* We did hit some geometry so this is a bounce */ RayState::BOUNCE);
-            }
-
             float cosine_term = hippt::max(0.0f, hippt::dot(closest_hit_info.shading_normal, sampled_bsdf_direction));
             bsdf_radiance = bsdf_color * cosine_term * shadow_light_ray_hit_info.hit_emission / bsdf_sample_pdf;
         }
-        else
-        {
-            // No hit found, we can still reuse that ray as the next bounce, 
-            // it's just that this bounce is going to miss
-            mis_ray_reuse.fill(shadow_light_ray_hit_info, /* the ray missed so we don't care about the next intersection point*/ make_float3(0, 0, 0),
-                sampled_bsdf_direction, bsdf_color, bsdf_sample_pdf,
-                RayState::MISSED);
-        }
     }
+
+    // Note that if no intersection was found, the point computed here will
+    // be garbage but we don't really care because if no intersection was found,
+    // we're never going to read the intersection point anyway.
+    // So it doesn't matter if it's garbage
+    float3 bsdf_ray_inter_point = closest_hit_info.inter_point + shadow_light_ray_hit_info.hit_distance * sampled_bsdf_direction;
+    mis_ray_reuse.fill(shadow_light_ray_hit_info, bsdf_ray_inter_point, sampled_bsdf_direction, bsdf_color, bsdf_sample_pdf, intersection_found ? RayState::BOUNCE : RayState::MISSED);
 
     return bsdf_radiance;
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(const HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, MISBSDFRayReuse& mis_ray_reuse)
 {
-    // Pushing the intersection point outside the surface (if we're already outside)
-    // or inside the surface (if we're inside the surface)
-    // We'll use that intersection point as the origin of our shadow rays
-    bool inside_surface = hippt::dot(view_direction, closest_hit_info.geometric_normal) < 0;
-    float inside_surface_multiplier = inside_surface ? -1.0f : 1.0f;
-    float3 evaluated_point = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f * inside_surface_multiplier;
-
     float light_sample_pdf;
     ColorRGB32F light_source_radiance_mis;
     LightSourceInformation light_source_info;
@@ -145,12 +111,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(const HIPRTRende
         // Can happen for very small triangles
         return ColorRGB32F(0.0f);
 
-    float3 shadow_ray_direction = random_light_point - evaluated_point;
+    float3 shadow_ray_direction = random_light_point - closest_hit_info.inter_point;
     float distance_to_light = hippt::length(shadow_ray_direction);
     float3 shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
 
     hiprtRay shadow_ray;
-    shadow_ray.origin = evaluated_point;
+    shadow_ray.origin = closest_hit_info.inter_point;
     shadow_ray.direction = shadow_ray_direction_normalized;
 
     // abs() here to allow backfacing light sources
@@ -181,42 +147,23 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(const HIPRTRende
 
     float bsdf_sample_pdf;
     float3 sampled_bsdf_direction;
-    float3 bsdf_shadow_ray_origin = evaluated_point;
+    float3 bsdf_shadow_ray_origin = closest_hit_info.inter_point;
     ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, ReuseBSDFMISRay == KERNEL_OPTION_TRUE, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_bsdf_direction, bsdf_sample_pdf, random_number_generator);
-    bool refraction_sampled = hippt::dot(sampled_bsdf_direction, closest_hit_info.shading_normal * inside_surface_multiplier) < 0;
-    if (refraction_sampled)
-    {
-        // If we sampled a refraction, we're pushing the origin of the shadow ray "through"
-        // the surface so that our ray can refract inside the surface
-        //
-        // If we don't do that and we just use the 'evaluated_point' computed at the very
-        // beginning of the function, we're going to intersect ourselves
 
-        bsdf_shadow_ray_origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f * inside_surface_multiplier * -1.0f;
-    }
-
+    bool intersection_found = false;
+    ShadowLightRayHitInfo shadow_light_ray_hit_info;
     if (bsdf_sample_pdf > 0)
     {
         hiprtRay new_ray;
         new_ray.origin = bsdf_shadow_ray_origin;
         new_ray.direction = sampled_bsdf_direction;
 
-        ShadowLightRayHitInfo shadow_light_ray_hit_info;
-        bool inter_found = evaluate_shadow_light_ray(render_data, new_ray, 1.0e35f, shadow_light_ray_hit_info, closest_hit_info.primitive_index, random_number_generator);
+        intersection_found = evaluate_shadow_light_ray(render_data, new_ray, 1.0e35f, shadow_light_ray_hit_info, closest_hit_info.primitive_index, random_number_generator);
 
         // Checking that we did hit something and if we hit something,
         // it needs to be emissive
-        if (inter_found)
+        if (intersection_found)
         {
-            if (!mis_ray_reuse.has_ray())
-            {
-                // Fill the MIS BSDF ray reuse structure
-                float3 bsdf_ray_inter_point = closest_hit_info.inter_point + shadow_light_ray_hit_info.hit_distance * sampled_bsdf_direction;
-
-                mis_ray_reuse.fill(shadow_light_ray_hit_info, bsdf_ray_inter_point, sampled_bsdf_direction, bsdf_color, bsdf_sample_pdf, 
-                    /* We did hit some geometry so this is a bounce */ RayState::BOUNCE);
-            }
-
             float light_pdf = pdf_of_emissive_triangle_hit(render_data, shadow_light_ray_hit_info, sampled_bsdf_direction);
             float mis_weight = balance_heuristic(bsdf_sample_pdf, light_pdf);
 
@@ -232,15 +179,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(const HIPRTRende
             float cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, sampled_bsdf_direction));
             bsdf_radiance_mis = bsdf_color * cosine_term * shadow_light_ray_hit_info.hit_emission * mis_weight / bsdf_sample_pdf;
         }
-        else
-        {
-            // No hit found, we can still reuse that ray as the next bounce, 
-            // it's just that this bounce is going to miss
-            mis_ray_reuse.fill(shadow_light_ray_hit_info, /* the ray missed so we don't care about the next intersection point*/ make_float3(0, 0, 0), 
-                sampled_bsdf_direction, bsdf_color, bsdf_sample_pdf,
-                RayState::MISSED);
-        }
     }
+
+    // Note that if no intersection was found, the point computed here will
+    // be garbage but we don't really care because if no intersection was found,
+    // we're never going to read the intersection point anyway.
+    // So it doesn't matter if it's garbage
+    float3 bsdf_ray_inter_point = closest_hit_info.inter_point + shadow_light_ray_hit_info.hit_distance * sampled_bsdf_direction;
+    mis_ray_reuse.fill(shadow_light_ray_hit_info, bsdf_ray_inter_point, sampled_bsdf_direction, bsdf_color, bsdf_sample_pdf, intersection_found ? RayState::BOUNCE : RayState::MISSED);
 
     // Because we're sampling only 1 light out of all the lights of the
     // scene, the probability of having chosen that light is: 1 / numberOfLights

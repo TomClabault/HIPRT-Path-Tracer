@@ -197,17 +197,17 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
 
         bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, true, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_bsdf_direction, bsdf_sample_pdf, random_number_generator);
 
-        bool refraction_sampled = hippt::dot(sampled_bsdf_direction, closest_hit_info.shading_normal * inside_surface_multiplier) < 0;
+        bool hit_found = false;
         float cosine_at_evaluated_point = 0.0f;
         RISSample bsdf_RIS_sample;
-        hiprtRay bsdf_ray;
+        ShadowLightRayHitInfo shadow_light_ray_hit_info;
         if (bsdf_sample_pdf > 0.0f)
         {
+            hiprtRay bsdf_ray;
             bsdf_ray.origin = closest_hit_info.inter_point;
             bsdf_ray.direction = sampled_bsdf_direction;
 
-            ShadowLightRayHitInfo shadow_light_ray_hit_info;
-            bool hit_found = evaluate_shadow_light_ray(render_data, bsdf_ray, 1.0e35f, shadow_light_ray_hit_info, closest_hit_info.primitive_index, random_number_generator);
+            hit_found = evaluate_shadow_light_ray(render_data, bsdf_ray, 1.0e35f, shadow_light_ray_hit_info, closest_hit_info.primitive_index, random_number_generator);
             if (hit_found && !shadow_light_ray_hit_info.hit_emission.is_black())
             {
                 // If we intersected an emissive material, compute the weight. 
@@ -245,6 +245,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
                 // (because the BSDF sample, that should have weight 1 [or to be precise: 1 / nb_bsdf_samples]
                 // will have weight 1 / (1 + nb_light_samples) [or to be precise: 1 / (nb_bsdf_samples + nb_light_samples)]
                 // and this is going to cause darkening as the number of light samples grows)
+                bool refraction_sampled = hippt::dot(sampled_bsdf_direction, closest_hit_info.shading_normal * inside_surface_multiplier) < 0;
                 light_pdf *= !refraction_sampled;
 
                 bool contributes_enough = check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, light_contribution / light_pdf / bsdf_sample_pdf);
@@ -261,38 +262,31 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
                 bsdf_RIS_sample.bsdf_sample_cosine_term = cosine_at_evaluated_point;
                 bsdf_RIS_sample.target_function = target_function;
             }
-
-            // Fill the MIS BSDF ray reuse structure
-            float3 bsdf_ray_inter_point = closest_hit_info.inter_point + shadow_light_ray_hit_info.hit_distance * sampled_bsdf_direction;
-
-            mis_ray_reuse.fill(shadow_light_ray_hit_info, bsdf_ray_inter_point, sampled_bsdf_direction, bsdf_color, bsdf_sample_pdf,
-                hit_found ? RayState::BOUNCE : RayState::MISSED);
         }
 
-        if (!mis_ray_reuse.has_ray())
-            // If we haven't already filled the structure
-            if (bsdf_sample_pdf == 0.0f)
-                // If the BSDF sample was incorrect, then the structure wasn't filled.
-                // 
-                // But an incorrect BSDF (sampled a reflection that goes below the surface for example)
-                // sample should also be considered otherwise this is biased.
-                // 
-                // This is biased because if we do not indicate anything about the MIS BSDF sample, then
-                // the main path tracing loop is going to assume that there is no BSDF MIS ray to
-                // reuse and so it's going to sample the BSDF for a bounce direction. But that's where the bias is.
-                // By doing this (re-sampling the BSDF again because the first sample we got from MIS was incorrect),
-                // we're eseentially doing rejection sampling on the BSDF. If the BSDF has a GGX lobe 
-                // (which it very much likely has) then we're doing rejection sampling on the GGX distribution. 
-                // We're rejecting samples from the GGX that are below the surface. That's biased. 
-                // Rejection sampling on the GGX distribution cannot be naively done:
-                // 
-                // See this a derivation on why this is biased (leads to energy gains): 
-                // https://computergraphics.stackexchange.com/questions/14123/lots-of-bad-samples-below-the-hemisphere-when-sampling-the-ggx-vndf
-                //
-                // So here we set the PDF to 0.0f to indicate that there was indeed a BSDF sample
-                // sampled by MIS but unfortunately it's invalid and so the ray should be terminated instead of
-                // resampling again from the BSDF (which is biased)
-                mis_ray_reuse.set_bsdf_pdf(0.0f);
+        // Fill the MIS BSDF ray reuse structure
+        // 
+        // Note that the structure is also filled even if the BSDF sample is incorrect i.e. the BSDF sampled 
+        // a * reflection * below the surface
+        // 
+        // But an incorrect BSDF (sampled a reflection that goes below the surface for example)
+        // sample should also be considered otherwise this is biased.
+        // 
+        // This is biased because if we do not indicate anything about the MIS BSDF sample, then
+        // the main path tracing loop is going to assume that there is no BSDF MIS ray to
+        // reuse and so it's going to sample the BSDF for a bounce direction. But that's where the bias is.
+        // By doing this (re-sampling the BSDF again because the first sample we got from MIS was incorrect),
+        // we're eseentially doing rejection sampling on the BSDF. If the BSDF has a GGX lobe 
+        // (which it very much likely has) then we're doing rejection sampling on the GGX distribution. 
+        // We're rejecting samples from the GGX that are below the surface. That's biased. 
+        // Rejection sampling on the GGX distribution cannot be naively done:
+        // 
+        // See this a derivation on why this is biased (leads to energy gains): 
+        // https://computergraphics.stackexchange.com/questions/14123/lots-of-bad-samples-below-the-hemisphere-when-sampling-the-ggx-vndf
+        float3 bsdf_ray_inter_point = closest_hit_info.inter_point + shadow_light_ray_hit_info.hit_distance * sampled_bsdf_direction;
+        mis_ray_reuse.fill(shadow_light_ray_hit_info, bsdf_ray_inter_point, sampled_bsdf_direction, bsdf_color, bsdf_sample_pdf,
+            hit_found ? RayState::BOUNCE : RayState::MISSED);
+
 
         reservoir.add_one_candidate(bsdf_RIS_sample, candidate_weight, random_number_generator);
         reservoir.sanity_check();

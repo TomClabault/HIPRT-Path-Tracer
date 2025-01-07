@@ -189,6 +189,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_with_mis(const
     ColorRGB32F bsdf_color;
     ColorRGB32F bsdf_mis_contribution;
 
+#if ReuseBSDFMISRay == KERNEL_OPTION_TRUE
     if (mis_ray_reuse.has_ray())
     {
         // If we already have a BSDF ray to reuse from next-event estimation on the emissive lights,
@@ -210,6 +211,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_with_mis(const
     else
         // No BSDF MIS ray to reuse, let's sample the BSDF
         bsdf_color = bsdf_dispatcher_sample(render_data, material, volume_state, false, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bsdf_sampled_dir, bsdf_sample_pdf, random_number_generator);
+#else
+        // No BSDF MIS ray to reuse, let's sample the BSDF
+        bsdf_color = bsdf_dispatcher_sample(render_data, material, volume_state, false, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bsdf_sampled_dir, bsdf_sample_pdf, random_number_generator);
+#endif
 
     // Sampling the BSDF with MIS
     cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, bsdf_sampled_dir));
@@ -219,6 +224,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_with_mis(const
         shadow_ray.origin = closest_hit_info.inter_point;
         shadow_ray.direction = bsdf_sampled_dir;
 
+#if ReuseBSDFMISRay == KERNEL_OPTION_TRUE
         bool in_shadow;
         if (mis_ray_reuse.has_ray() && mis_ray_reuse.next_ray_state == RayState::MISSED)
             // If we've reused a ray, we already know that it is not occluded
@@ -226,6 +232,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_with_mis(const
         else
             // No ray was reused, we have to check for visibility
             in_shadow = evaluate_shadow_ray(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, random_number_generator);
+#else
+        bool in_shadow = evaluate_shadow_ray(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, random_number_generator);
+#endif
+
         if (!in_shadow)
         {
             float envmap_eval_pdf;

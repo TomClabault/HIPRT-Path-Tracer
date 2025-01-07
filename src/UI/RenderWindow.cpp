@@ -69,6 +69,8 @@ extern ImGuiLogger g_imgui_logger;
 // TODO demos:
 // new oren nayar BRDF: EON
 
+// Screenshotting during the viewpiort refresh timer screenshots something too dark
+
 // TODOs ongoing
 // - smarter shader cache (hints to avoid using all kernel options when compiling a kernel? We know that Camera ray doesn't care about direct lighting strategy for example)
 // - for LTC sheen lobe, have the option to use either SGGX volumetric sheen or approximation precomputed LTC data
@@ -81,15 +83,12 @@ extern ImGuiLogger g_imgui_logger;
 // - denoiser AOVs not accounting for transmission correctly since Disney  BSDF
 //	  - same with perfect reflection
 // - threadmanager: what if we start a thread with a dependency A on a thread that itself has a dependency B? we're going to try join dependency A even if thread with dependency on B hasn't even started yet --> joining nothing --> immediate return --> should have waited for the dependency but hasn't
-// - When checking "Enable denoiser", it always denoises once immediately even if "denoise only when render done" is checked
 // - Thin-film interference energy conservation/preservation is broken with "strong BSDF energy conservation" --> too bright (with transmission at 1.0f), even with film thickness == 0.0f
 // - When overriding the base color for example in the global material overrider, if we then uncheck the base color override to stop overriding the base color, it returns the material to its very default base color  (the one  read from the scene file) instead of  returning it to what the user may have modified up to that point
-// - Some weird interaction between the specular layer and the coat layer when both darkening are enabled. Coat 0.5f strength is brighter than coat 0.0f
 
 // TODO Code Organization:
 // - init opengl context and all that expensive stuff (compile kernels too) while the scene is being parsed
 // - do not pass so many arguments to kernels everytime: make a "KernelArguments" folder in the source files with one file that contains the arguments needed for a kernel: ReSTIR_DI_InitialCandidatesArguments, ReSTIR_DI_SpatialReuseArguments, ...
-// - cleanup RIS reservoir with all the BSDF stuff
 // - denoiser albedo and normals still useful now that we have the GBuffer?
 // - make a function get_camera_ray that handles pixel jittering
 // - we don't need the full HitInfo 'closest_hit_info' structure everywhere, only the inter point and the two normals for the most part so maybe have a simplified structure 
