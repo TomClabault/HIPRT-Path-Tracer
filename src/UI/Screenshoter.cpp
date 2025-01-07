@@ -142,6 +142,8 @@ void Screenshoter::write_to_png(const char* filepath)
 
 	m_renderer->synchronize_kernel();
 	m_renderer->unmap_buffers();
+	// We upload the data to the OpenGL textures for displaying
+	m_render_window->get_display_view_system()->upload_relevant_buffers_to_texture();
 
 	resize_output_image(width, height);
 	select_compute_program(m_render_window->get_display_view_system()->get_current_display_view_type());
