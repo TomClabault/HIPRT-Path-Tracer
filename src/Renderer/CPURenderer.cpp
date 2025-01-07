@@ -5,6 +5,7 @@
 
 #include "Device/kernels/CameraRays.h"
 #include "Device/kernels/FullPathTracer.h"
+#include "Device/kernels/NEE++/NEEPlusPlusCachingPrepass.h"
 #include "Device/kernels/ReSTIR/DI/LightsPresampling.h"
 #include "Device/kernels/ReSTIR/DI/InitialCandidates.h"
 #include "Device/kernels/ReSTIR/DI/TemporalReuse.h"
@@ -86,6 +87,7 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
     m_g_buffer_prev_frame.resize(width * height);
 
     setup_brdfs_data();
+    setup_nee_plus_plus();
 
     m_rng = Xorshift32Generator(42);
 }
@@ -129,6 +131,20 @@ void CPURenderer::setup_brdfs_data()
         images[i] = Image32Bit::read_image_hdr(filepath, 1, true);
     }
     m_GGX_Ess_thin_glass = Image32Bit3D(images);
+}
+
+void CPURenderer::setup_nee_plus_plus()
+{
+    int3 map_dimensions = m_nee_plus_plus.map_dimensions;
+
+    // Dividing by 2 because the visibility map is symettrical so we only need half of the matrix
+    m_nee_plus_plus.visibility_map = std::vector<AtomicType<int>>(map_dimensions.x * map_dimensions.y * map_dimensions.z / 2);
+    m_nee_plus_plus.visibility_map_count = std::vector<AtomicType<int>>(map_dimensions.x * map_dimensions.y * map_dimensions.z / 2);
+
+    m_render_data.nee_plus_plus.visibility_map = m_nee_plus_plus.visibility_map.data();
+    m_render_data.nee_plus_plus.visibility_map_count = m_nee_plus_plus.visibility_map_count.data();
+    m_render_data.nee_plus_plus.grid_dimensions = map_dimensions;
+    m_render_data.nee_plus_plus.map_size = map_dimensions.x * map_dimensions.y * map_dimensions.z / 2;
 }
 
 void CPURenderer::set_scene(Scene& parsed_scene)
@@ -196,7 +212,10 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.aux_buffers.restir_reservoir_buffer_1 = m_restir_di_state.initial_candidates_reservoirs.data();
     m_render_data.aux_buffers.restir_reservoir_buffer_2 = m_restir_di_state.spatial_output_reservoirs_1.data();
     m_render_data.aux_buffers.restir_reservoir_buffer_3 = m_restir_di_state.spatial_output_reservoirs_2.data();
-    
+
+    m_render_data.nee_plus_plus.grid_origin = parsed_scene.metadata.scene_bounding_box.mini;
+    m_render_data.nee_plus_plus.grid_max_point = parsed_scene.metadata.scene_bounding_box.maxi;
+
     ThreadManager::join_threads(ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES);
     m_render_data.buffers.emissive_triangles_count = parsed_scene.emissive_triangle_indices.size();
     m_render_data.buffers.emissive_triangles_indices = parsed_scene.emissive_triangle_indices.data();
@@ -275,6 +294,8 @@ void CPURenderer::render()
     std::cout << "CPU rendering..." << std::endl;
 
     auto start = std::chrono::high_resolution_clock::now();
+
+    nee_plus_plus_cache_visibility_pass();
 
     // Using 'samples_per_frame' as the number of samples to render on the CPU
     for (int frame_number = 1; frame_number <= m_render_data.render_settings.samples_per_frame; frame_number++)
@@ -398,6 +419,13 @@ void CPURenderer::debug_render_pass(std::function<void(int, int)> render_pass_fu
 }
 
 #endif // DEBUG_PIXEL
+}
+
+void CPURenderer::nee_plus_plus_cache_visibility_pass()
+{
+    debug_render_pass([this](int x, int y) {
+        NEEPlusPlusCachingPrepass(m_render_data, /* caching sample count */ 64, m_resolution, x, y);
+    });
 }
 
 void CPURenderer::camera_rays_pass()

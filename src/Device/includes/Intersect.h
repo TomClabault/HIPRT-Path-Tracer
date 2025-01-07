@@ -284,7 +284,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& r
     hiprtHit hit;
     do
     {
-        // We should use ray tracing fitler functions here instead of re-tracing new rays
+        // We should use ray tracing filter functions here instead of re-tracing new rays
         hit = intersect_scene_cpu(render_data, ray, last_hit_primitive_index, random_number_generator);
         if (!hit.hasHit())
             return false;

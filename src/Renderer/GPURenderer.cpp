@@ -64,6 +64,7 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
 	m_device_properties = m_hiprt_orochi_ctx->device_properties;
 
 	setup_brdfs_data();
+	setup_nee_plus_plus();
 	setup_filter_functions();
 	setup_kernels();
 
@@ -170,6 +171,20 @@ void GPURenderer::init_GGX_glass_Ess_texture(hipTextureFilterMode filtering_mode
 	m_GGX_Ess_thin_glass = OrochiTexture3D(images, filtering_mode == hipFilterModeLinear ? ORO_TR_FILTER_MODE_LINEAR : ORO_TR_FILTER_MODE_POINT, ORO_TR_ADDRESS_MODE_CLAMP);
 
 	m_render_data_buffers_invalidated = true;
+}
+
+void GPURenderer::setup_nee_plus_plus()
+{
+	int3 map_dimensions = m_nee_plus_plus.map_dimensions;
+
+	// Dividing by 2 because the visibility map is symettrical so we only need half of the matrix
+	m_nee_plus_plus.visibility_map.resize(map_dimensions.x * map_dimensions.y * map_dimensions.z / 2);
+	m_nee_plus_plus.visibility_map_count.resize(map_dimensions.x * map_dimensions.y * map_dimensions.z / 2);
+
+	m_render_data.nee_plus_plus.visibility_map = reinterpret_cast<AtomicType<int>*>(m_nee_plus_plus.visibility_map.get_device_pointer());
+	m_render_data.nee_plus_plus.visibility_map_count = reinterpret_cast<AtomicType<int>*>(m_nee_plus_plus.visibility_map_count.get_device_pointer());
+	m_render_data.nee_plus_plus.grid_dimensions = map_dimensions;
+	m_render_data.nee_plus_plus.map_size = map_dimensions.x * map_dimensions.y * map_dimensions.z / 2;
 }
 
 void GPURenderer::setup_filter_functions()

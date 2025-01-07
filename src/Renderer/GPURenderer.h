@@ -13,6 +13,7 @@
 #include "HIPRT-Orochi/HIPRTScene.h"
 #include "HIPRT-Orochi/HIPRTOrochiCtx.h"
 #include "HostDeviceCommon/RenderData.h"
+#include "Renderer/GPUDataStructures/NEEPlusPlusGPUData.h"
 #include "Renderer/RendererAnimationState.h"
 #include "Renderer/RendererEnvmap.h"
 #include "Renderer/GBufferGPURenderer.h"
@@ -99,6 +100,11 @@ public:
 	 * Initializes the precomputed textures used for GGX glass BSDF energy conservation
 	 */
 	void init_GGX_glass_Ess_texture(hipTextureFilterMode filtering_mode = hipFilterModePoint);
+
+	/**
+	 * Allocates the GPU memory for NEE++
+	 */
+	void setup_nee_plus_plus();
 
 	/**
 	 * Initializes the filter function used by the kernels
@@ -524,6 +530,7 @@ private:
 	// is done rendering or not
 	bool m_frame_rendered = true;
 
+	NEEPlusPlusGPUData m_nee_plus_plus;
 	// Render data passed to the GPU for rendering. Most importantly it contains
 	// 
 	// The WorldSettings: Settings relative to the scene such as the intensity of the uniform light, the

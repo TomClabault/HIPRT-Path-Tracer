@@ -23,6 +23,8 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // TODOs  performance improvements branch:
+// - NEE++
+// - free the parsed scene from the CPU the free RAM
 // - add mis_reuse ray in envmap sampling
 // - if we don't have the ray volume state in the GBuffer anymore, we can remove the stack handlign in the trace ray function of the camera rays
 // - If hitting the same material as before, not load the material from VRAM as it's exactly the same? (only works for non-textured materials)
@@ -32,17 +34,10 @@ extern ImGuiLogger g_imgui_logger;
 // - we don't need ray volume states in the GBuffer, just the material index and we push that index on the ray volume stack in the path tracing kernel because that's the only thing that the camera ray kernel does anyway
 // - maybe have shaders without energy compensation? because this do be eating quite a lot of registers
 // - clearcoat layer is using torrance_sparrow_GGX_eval non-templated?
-// - russian roulette on energy conservation depending on how much energy we're going to compensate?
-// - no energy compensation needed for relative IOR 1 on specular and clearcoat layer?
-// - envmap sampling separate: just pick it among the lights instead of sampling it in its own domain
-// - write a simple normal visualization kernel to basically test pure ray tracing performance with any  scuff
-// - nested dielectrics in shared mem or global memory, it's pretty slow  in intersect.h
-// - pack ray payload for register usage reduction?
 // - MIS disabled after some number of bounces? not on glass though?
 // - let's do some ray reordering because in complex scenes and complex materials and without hardware RT; this may actually  be quite worth it
 //		- https://pdf.sciencedirectassets.com/280203/1-s2.0-S1877050923X00027/1-s2.0-S1877050923001461/main.pdf?X-Amz-Security-Token=IQoJb3JpZ2luX2VjEID%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCXVzLWVhc3QtMSJIMEYCIQCea63Slzkz01dECmkkPUcHdbOukYg0KdnbYgtCyJF2kwIhALmC4Jh0ngFQMHwFbGaEAJvBraIMYC%2BGLd%2FIHoBf7D8zKrMFCFgQBRoMMDU5MDAzNTQ2ODY1IgzGjZjuko2mqdtKby4qkAWIR%2FNf8UykyM9ZKNRXnZsubWVJ8UKDDisZHpjhkB62FQnhSvktLzOSKqPd9xOfcG5gFkxcGSI%2FY8f0Cp5jWYCmTjYVVKKtJFWVLYcuHJUMSwcfupSubTQdAaK4Lagx7w%2BszHZqJ1qU2rG6uAsjuO0kNbfaY8Us5tYsqQxFir8zg%2FJDfXbjWv9TSyVzv1IXVc1OZrWPuEuWvEtl0c0mpMjLK9Kfz0mmusKT6mqMwk7nZueZ%2FMHsmcDY%2Fn5bGBv9louD%2BtOhEeKVICMUfrLiS8ZejDbwmOCXyi%2FeC8BPfiAbwgIqMXXMKzp0jecWeHxqal3ahqnx%2FMb84x8sl4Gx4pn%2FO47FlYM73he95j6O6D3epyRSiYWLplGM9RyEeu6SbakLdnyi9Z5DO1r%2FrMJD3HmhhmygH4h58PnfwJKmO1eLUt5rN1ELNA2%2BLQfVjXnlYgYoc4KArBFNGFI1u%2F%2BkIVHepw89y740Nsiqe321N9UX8XGwU8kc6Kt%2F6gqXKUbBTARaYxTwbK%2BxejbO%2FUyZTeW4Ol9wjYfBhd9m1BIjoSdY2%2FpLfxlPLaiD%2BxyYiaYjmXsELnBp1IbnaGytuxTQ7ocg%2F6aRa9CkFoJG12iIrkGlAWs%2B2o0gOZ6MsbD%2Ff41hdJNaeFEUj6Zc%2BXB3RejOrbUnGk6whBzy%2FdaHQ2fXoIMXTq3QM9IJvslkR7Q5dhnV5%2F4eCi4uf98YSzAGuaA8hBiwYPGRQQLFpvVhSNGmpEBph0XxDmmz8XjIMyDx94%2B1CvIPH4QYPExlM6OQKgMl8Asp7ZTU0cw4geRo6oD9NcgVeuyx1es46mCel9999ZEj%2FHHvpWpjoUcr0AajF4DMNBnpO0O07zPsWUPw2BqXrAqlPzDayL67BjqwAaLP%2BzR9q02xsDVhGrAtctdReEO3SUPDRLiVTSUOC6dAHFEPk6xGnkbJnqkwIrYjR%2F9zrS2Y7suxfHCX8UNsslx%2F%2BIW%2B9jWVdyqb%2BLcFklp6lAWTfWABAkR8CAW6T5zFecRJS67zchixwF7FRbXNBjSVW%2FXn%2FPIxvm0mOnfo%2FTqL9ikfieeTnZUBrMtfmeX56hhHlW9zOuwbNBnUvYsOg2%2BbIjG%2BmbxTBEEnjqejrjBH&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20241228T073857Z&X-Amz-SignedHeaders=host&X-Amz-Expires=300&X-Amz-Credential=ASIAQ3PHCVTY6SK5SEZR%2F20241228%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Signature=32d929b47fb8023dadfe1b68b9355d6a74cb12351ee57ecf31dd3cc3555af16b&hash=4d537300954afb4ee93c48c6847eb362428f7f55a3cab2c003b35a41cb79f2bd&host=68042c943591013ac2b2430a89b270f6af2c76d8dfd086a07176afe7c76c2c61&pii=S1877050923001461&tid=spdf-be1a5827-9768-4994-a706-710ab5f42ff1&sid=ccc6a4ae181e204e24483cf05854d658d7acgxrqb&type=client&tsoh=d3d3LnNjaWVuY2VkaXJlY3QuY29t&ua=051d59005d0707570d&rr=8f8fe4cb7c71e242&cc=fr
 // - texture compression
-// - GBuffer use textures
 // - wavefront path tracing
 // - dispatch mega kernel when only a few rays are left alive after compaction?
 // - investigate where the big register usage comes from (by commenting lines) --> split shaders there?
@@ -52,7 +47,6 @@ extern ImGuiLogger g_imgui_logger;
 // - start shooting camera rays for frame N+1 during frame N?
 // - use the fact that some values are already computed in bsdf_sample to pass them to bsdf_eval in a big BSDFStateStructure or something to avoid recomputing
 // - bsdf sampling proba do  =not use array[] for CDF
-// - NEE++
 // - schlick fresnel in many places? instead of correct fresnel. switch in "performance settings"
 // - compaction - https://github.com/microsoft/directxshadercompiler/wiki/wave-intrinsics#example
 // - disable energy compensation on smooth glass / smooth metal
@@ -64,12 +58,9 @@ extern ImGuiLogger g_imgui_logger;
 // - superfluous sample() call on the last bounce?
 // - perfect reflection and refractions fast path
 // - double buffering of frames in general to better keep the GPU occupied?
-// - remove unused denoiser buffers if not using the denoiser
 
 // TODO demos:
 // new oren nayar BRDF: EON
-
-// Screenshotting during the viewpiort refresh timer screenshots something too dark
 
 // TODOs ongoing
 // - smarter shader cache (hints to avoid using all kernel options when compiling a kernel? We know that Camera ray doesn't care about direct lighting strategy for example)

@@ -40,6 +40,15 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void reset_render(const HIPRTRenderData& render_d
         render_data.aux_buffers.pixel_squared_luminance[pixel_index] = 0;
         render_data.aux_buffers.pixel_converged_sample_count[pixel_index] = -1;
     }
+
+    if (render_data.nee_plus_plus.visibility_map != nullptr)
+    {
+        if (pixel_index < render_data.nee_plus_plus.map_size)
+        {
+            render_data.nee_plus_plus.visibility_map[pixel_index] = 0;
+            render_data.nee_plus_plus.visibility_map_count[pixel_index] = 0;
+        }
+    }
 }
 
 #ifdef __KERNELCC__
