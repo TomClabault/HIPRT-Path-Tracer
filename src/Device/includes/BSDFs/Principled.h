@@ -73,7 +73,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_sheen_sample(const HIPRTRenderD
     return sheen_ltc_sample(render_data, material, local_view_direction, shading_normal, random_number_generator);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_metallic_eval(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, float incident_ior, 
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_metallic_eval(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, 
+    float roughness, float anisotropy, float incident_ior, 
     const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_half_vector, float& pdf)
 {
     float HoL = hippt::clamp(1.0e-8f, 1.0f, hippt::dot(local_half_vector, local_to_light_direction));
@@ -84,11 +85,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_metallic_eval(const HIPRTR
 
 #if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoMetallicEnergyCompensation == KERNEL_OPTION_TRUE
     if (material.do_metallic_energy_compensation)
-        return torrance_sparrow_GGX_eval<1>(render_data, material.roughness, material.anisotropy, F, local_view_direction, local_to_light_direction, local_half_vector, pdf);
+        return torrance_sparrow_GGX_eval<1>(render_data, roughness, anisotropy, F, local_view_direction, local_to_light_direction, local_half_vector, pdf);
     else
-        return torrance_sparrow_GGX_eval<0>(render_data, material.roughness, material.anisotropy, F, local_view_direction, local_to_light_direction, local_half_vector, pdf);
+        return torrance_sparrow_GGX_eval<0>(render_data, roughness, anisotropy, F, local_view_direction, local_to_light_direction, local_half_vector, pdf);
 #else
-     return torrance_sparrow_GGX_eval<0>(render_data, material.roughness, material.anisotropy, F, local_view_direction, local_to_light_direction, local_half_vector, pdf);
+     return torrance_sparrow_GGX_eval<0>(render_data, roughness, anisotropy, F, local_view_direction, local_to_light_direction, local_half_vector, pdf);
 #endif
 }
 
@@ -727,7 +728,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_metal_layer(const HIPRT
     if (metal_weight > 0.0f)
     {
         float metal_pdf;
-        ColorRGB32F contribution = principled_metallic_eval(render_data, material, incident_ior, local_view_direction, local_to_light_direction, local_half_vector, metal_pdf);
+        ColorRGB32F contribution = principled_metallic_eval(render_data, material, 
+            roughness, anisotropy, incident_ior, 
+            local_view_direction, local_to_light_direction, local_half_vector, metal_pdf);
         contribution *= metal_weight;
         contribution *= layers_throughput;
 

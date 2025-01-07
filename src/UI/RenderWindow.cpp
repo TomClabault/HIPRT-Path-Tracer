@@ -23,7 +23,6 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // TODOs  performance improvements branch:
-// - do we need both metal weights?
 // - add mis_reuse ray in envmap sampling
 // - if we don't have the ray volume state in the GBuffer anymore, we can remove the stack handlign in the trace ray function of the camera rays
 // - If hitting the same material as before, not load the material from VRAM as it's exactly the same? (only works for non-textured materials)
