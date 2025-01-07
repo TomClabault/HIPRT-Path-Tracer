@@ -70,9 +70,7 @@ extern ImGuiLogger g_imgui_logger;
 // new oren nayar BRDF: EON
 
 // TODOs ongoing
-// - limit UI speed because it actually uses some resources (maybe Vsync or something) or does it?
 // - smarter shader cache (hints to avoid using all kernel options when compiling a kernel? We know that Camera ray doesn't care about direct lighting strategy for example)
-// - use self bit packing (no bitfields) for nested dielectrics because bitfields are implementation dependent in size, that's bad --> We don't get our nice packing with every compiler
 // - for LTC sheen lobe, have the option to use either SGGX volumetric sheen or approximation precomputed LTC data
 // - --help on the commandline
 // - Search for textures next to the GLTF file location

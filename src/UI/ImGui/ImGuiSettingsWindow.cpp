@@ -1839,7 +1839,8 @@ void ImGuiSettingsWindow::draw_denoiser_panel()
 	if (ImGui::Checkbox("Enable denoiser", &m_application_settings->enable_denoising))
 	{
 		m_render_window->get_display_view_system()->queue_display_view_change(m_application_settings->enable_denoising ? DisplayViewType::DENOISED_BLEND : DisplayViewType::DEFAULT);
-		m_application_settings->denoiser_settings_changed = true;
+
+		//m_application_settings->denoiser_settings_changed = true;
 	}
 	if (ImGui::Checkbox("Use OpenGL Interop AOV Buffers", &m_application_settings->denoiser_use_interop_buffers))
 	{
