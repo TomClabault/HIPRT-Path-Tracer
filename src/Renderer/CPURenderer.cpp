@@ -25,7 +25,7 @@
  // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
  // allowing for fast step into that pixel with the debugger to see what's happening.
  // Otherwise if 0, all pixels of the image are rendered
-#define DEBUG_PIXEL 0
+#define DEBUG_PIXEL 1
 
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner.
 // If 1, it's bottom left corner.
@@ -39,8 +39,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 1154
-#define DEBUG_PIXEL_Y 350
+#define DEBUG_PIXEL_X 459
+#define DEBUG_PIXEL_Y 655
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -64,7 +64,7 @@
 #define DEBUG_RENDER_NEIGHBORHOOD 1
 // How many pixels to render around the debugged pixel given by the DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y coordinates
-#define DEBUG_NEIGHBORHOOD_SIZE 50
+#define DEBUG_NEIGHBORHOOD_SIZE 10
 
 CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, height))
 {
@@ -137,14 +137,15 @@ void CPURenderer::setup_nee_plus_plus()
 {
     int3 map_dimensions = m_nee_plus_plus.map_dimensions;
 
-    // Dividing by 2 because the visibility map is symettrical so we only need half of the matrix
-    m_nee_plus_plus.visibility_map = std::vector<AtomicType<int>>(map_dimensions.x * map_dimensions.y * map_dimensions.z / 2);
-    m_nee_plus_plus.visibility_map_count = std::vector<AtomicType<int>>(map_dimensions.x * map_dimensions.y * map_dimensions.z / 2);
+    // Dividing by 2 because the visibility map is symmetrical so we only need half of the matrix
+    int half_matrix_size = (map_dimensions.x * map_dimensions.y * map_dimensions.z) * (map_dimensions.x * map_dimensions.y * map_dimensions.z + 1) / 2;
+    m_nee_plus_plus.visibility_map = std::vector<AtomicType<int>>(half_matrix_size);
+    m_nee_plus_plus.visibility_map_count = std::vector<AtomicType<int>>(half_matrix_size);
 
     m_render_data.nee_plus_plus.visibility_map = m_nee_plus_plus.visibility_map.data();
     m_render_data.nee_plus_plus.visibility_map_count = m_nee_plus_plus.visibility_map_count.data();
     m_render_data.nee_plus_plus.grid_dimensions = map_dimensions;
-    m_render_data.nee_plus_plus.map_size = map_dimensions.x * map_dimensions.y * map_dimensions.z / 2;
+    m_render_data.nee_plus_plus.visibility_matrix_size = half_matrix_size;
 }
 
 void CPURenderer::set_scene(Scene& parsed_scene)

@@ -56,7 +56,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NEEPlusPlusCachingPrepass(HIPRTRenderData r
     uint32_t pixel_index = x + y * res.x;
 
     // Clearing the visibility map
-    if (pixel_index < render_data.nee_plus_plus.map_size)
+    if (pixel_index < render_data.nee_plus_plus.visibility_matrix_size)
     {
         render_data.nee_plus_plus.visibility_map[pixel_index] = 0;
         render_data.nee_plus_plus.visibility_map_count[pixel_index] = 0;
@@ -88,6 +88,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NEEPlusPlusCachingPrepass(HIPRTRenderData r
 
     render_data.nee_plus_plus.accumulate_visibility(render_data.current_camera.position, intersection_position, true);
 
+    // Now sampling random lights from the camera ray first hit and caching the visibility
     for (int i = 0; i < caching_sample_count; i++)
     {
         float trash_pdf;

@@ -43,7 +43,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void reset_render(const HIPRTRenderData& render_d
 
     if (render_data.nee_plus_plus.visibility_map != nullptr)
     {
-        if (pixel_index < render_data.nee_plus_plus.map_size)
+        if (pixel_index < render_data.nee_plus_plus.visibility_matrix_size)
         {
             render_data.nee_plus_plus.visibility_map[pixel_index] = 0;
             render_data.nee_plus_plus.visibility_map_count[pixel_index] = 0;

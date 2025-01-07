@@ -184,7 +184,7 @@ void GPURenderer::setup_nee_plus_plus()
 	m_render_data.nee_plus_plus.visibility_map = reinterpret_cast<AtomicType<int>*>(m_nee_plus_plus.visibility_map.get_device_pointer());
 	m_render_data.nee_plus_plus.visibility_map_count = reinterpret_cast<AtomicType<int>*>(m_nee_plus_plus.visibility_map_count.get_device_pointer());
 	m_render_data.nee_plus_plus.grid_dimensions = map_dimensions;
-	m_render_data.nee_plus_plus.map_size = map_dimensions.x * map_dimensions.y * map_dimensions.z / 2;
+	m_render_data.nee_plus_plus.visibility_matrix_size = (map_dimensions.x * map_dimensions.y * map_dimensions.z) * (map_dimensions.x * map_dimensions.y * map_dimensions.z + 1) / 2;
 }
 
 void GPURenderer::setup_filter_functions()
