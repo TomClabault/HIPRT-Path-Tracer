@@ -29,10 +29,7 @@ extern ImGuiLogger g_imgui_logger;
 // - merge camera rays and path tracer?
 // - to accelerate compilation times: we can use if() everywhere in the code so that switching an option doesn't require a compilation but if we want, we can then apply the options currently selected and compiler everything for maximum performance
 // - store Material in GBuffer only if using ReSTIR, otherwise, just reconstruct it in the path tracign kernel
-// - remove closest hit info .uv ?
-// - frustum culled BVH for camera rays only
 // - we don't need ray volume states in the GBuffer, just the material index and we push that index on the ray volume stack in the path tracing kernel because that's the only thing that the camera ray kernel does anyway
-// - envmap use 3x3 matrices
 // - maybe have shaders without energy compensation? because this do be eating quite a lot of registers
 // - clearcoat layer is using torrance_sparrow_GGX_eval non-templated?
 // - russian roulette on energy conservation depending on how much energy we're going to compensate?

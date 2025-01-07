@@ -130,7 +130,7 @@ void RendererEnvmap::do_animation(GPURenderer* renderer)
 
 	if (rotation_X != prev_rotation_X || rotation_Y != prev_rotation_Y || rotation_Z != prev_rotation_Z)
 	{
-		glm::mat4x4 rotation_matrix, rotation_matrix_inv;
+		glm::mat3x3 rotation_matrix, rotation_matrix_inv;
 
 		// glm::orientate3 interprets the X, Y and Z angles we give it as a yaw/pitch/roll semantic.
 		// 
@@ -149,8 +149,8 @@ void RendererEnvmap::do_animation(GPURenderer* renderer)
 		rotation_matrix = glm::orientate3(glm::vec3(rotation_X * M_TWO_PI, rotation_Z * M_TWO_PI, rotation_Y * M_TWO_PI));
 		rotation_matrix_inv = glm::inverse(rotation_matrix);
 
-		envmap_to_world_matrix = *reinterpret_cast<float4x4*>(&rotation_matrix);
-		world_to_envmap_matrix = *reinterpret_cast<float4x4*>(&rotation_matrix_inv);
+		envmap_to_world_matrix = *reinterpret_cast<float3x3*>(&rotation_matrix);
+		world_to_envmap_matrix = *reinterpret_cast<float3x3*>(&rotation_matrix_inv);
 
 		prev_rotation_X = rotation_X;
 		prev_rotation_Y = rotation_Y;

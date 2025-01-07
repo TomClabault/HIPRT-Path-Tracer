@@ -47,8 +47,8 @@ struct WorldSettings
 	float* alias_table_probas = nullptr;
 
 	// Rotation matrix for rotating the envmap around in the current frame
-	float4x4 envmap_to_world_matrix = float4x4{ { {1.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f } } };
-	float4x4 world_to_envmap_matrix = float4x4{ { {1.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f } } };
+	float3x3 envmap_to_world_matrix = float3x3{ { {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f} } };
+	float3x3 world_to_envmap_matrix = float3x3{ { {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f} } };
 };
 
 #endif

@@ -190,10 +190,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
             if (bounce > 0)
             {
                 if (mis_reuse.has_ray())
-                {
                     // Reusing a BSDF MIS ray if there is one available
                     intersection_found = reuse_mis_ray(render_data, closest_hit_info, ray_payload, -ray.direction, mis_reuse);
-                }
                 else
                     // Not tracing for the primary ray because this has already been done in the camera ray pass
                     intersection_found = trace_ray(render_data, ray, ray_payload, closest_hit_info, closest_hit_info.primitive_index, random_number_generator);

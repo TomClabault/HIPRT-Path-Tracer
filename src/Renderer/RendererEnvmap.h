@@ -23,8 +23,8 @@ public:
 	float animation_speed_Y = 8.0f;
 	float animation_speed_Z = 0.0f;
 
-	float4x4 envmap_to_world_matrix;
-	float4x4 world_to_envmap_matrix;
+	float3x3 envmap_to_world_matrix;
+	float3x3 world_to_envmap_matrix;
 
 	/**
 	 * Uploads the data from 'image' to a texture on the GPU and remembers the path
