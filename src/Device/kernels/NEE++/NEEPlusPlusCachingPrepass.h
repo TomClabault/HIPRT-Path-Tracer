@@ -8,7 +8,7 @@
 
 #include "Device/kernel_parameters/NEE++/NEEPlusPlusCachingPrepassParameters.h"
 
-HIPRT_HOST_DEVICE hiprtHit simple_closest_hit(const HIPRTRenderData& render_data, hiprtRay ray, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE hiprtHit simple_closest_hit(const HIPRTRenderData& render_data, hiprtRay ray, int last_primitive_index, Xorshift32Generator& random_number_generator)
 {
     hiprtHit hit;
 
@@ -17,7 +17,7 @@ HIPRT_HOST_DEVICE hiprtHit simple_closest_hit(const HIPRTRenderData& render_data
     FilterFunctionPayload payload;
     payload.render_data = &render_data;
     payload.random_number_generator = &random_number_generator;
-    payload.last_hit_primitive_index = -1;
+    payload.last_hit_primitive_index = last_primitive_index;
 
 #if UseSharedStackBVHTraversal == KERNEL_OPTION_TRUE
 #if SharedStackBVHTraversalSize > 0
@@ -34,7 +34,7 @@ HIPRT_HOST_DEVICE hiprtHit simple_closest_hit(const HIPRTRenderData& render_data
 
     hit = traversal.getNextHit();
 #else
-hit = intersect_scene_cpu(render_data, ray, -1, random_number_generator);
+hit = intersect_scene_cpu(render_data, ray, last_primitive_index, random_number_generator);
 #endif
 
     return hit;
@@ -77,13 +77,15 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NEEPlusPlusCachingPrepass(HIPRTRenderData r
 
     // First finding where the camera ray intersects
     hiprtRay ray = render_data.current_camera.get_camera_ray(x_ray_point_direction, y_ray_point_direction, res);
-    hiprtHit hit = simple_closest_hit(render_data, ray, random_number_generator);
+    hiprtHit hit = simple_closest_hit(render_data, ray, -1, random_number_generator);
 
     if (!hit.hasHit())
         return;
 
     // We have the intersection of the camera rays, we can already update the visibility map with those rays
     float3 intersection_position = ray.origin + ray.direction * hit.t;
+    int camera_hit_primitive_index = hit.primID;
+
     render_data.nee_plus_plus.accumulate_visibility(render_data.current_camera.position, intersection_position, true);
 
     for (int i = 0; i < caching_sample_count; i++)
@@ -100,13 +102,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NEEPlusPlusCachingPrepass(HIPRTRenderData r
         shadow_ray.origin = intersection_position;
         shadow_ray.direction = direction;
 
-        hiprtHit shadow_ray_hit = simple_closest_hit(render_data, shadow_ray, random_number_generator);
+        hiprtHit shadow_ray_hit = simple_closest_hit(render_data, shadow_ray, camera_hit_primitive_index, random_number_generator);
         if (!shadow_ray_hit.hasHit())
             // Should never happen because we should at least hit the emissive triangle sampled
             continue;
 
         // Is the point on the light visible?
-        if (hit.hasHit() && hit.primID == trash_light_info.emissive_triangle_index)
+        if (shadow_ray_hit.hasHit() && shadow_ray_hit.primID == trash_light_info.emissive_triangle_index)
             // The point on the light is visible
             render_data.nee_plus_plus.accumulate_visibility(intersection_position, target_point, true);
         else
