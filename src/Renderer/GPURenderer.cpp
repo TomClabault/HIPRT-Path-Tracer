@@ -1248,8 +1248,7 @@ void GPURenderer::update_all_materials(std::vector<CPUMaterial>& materials)
 {
 	m_current_materials = materials;
 
-	std::vector<unsigned char> original_opacity = m_hiprt_scene.material_opaque.download_data();
-	std::vector<unsigned char> material_opaque(materials.size());
+	std::vector<unsigned char> new_opacity(materials.size());
 	std::vector<DevicePackedTexturedMaterial> packed_gpu_materials(materials.size());
 	for (int i = 0; i < materials.size(); i++)
 	{
@@ -1257,12 +1256,26 @@ void GPURenderer::update_all_materials(std::vector<CPUMaterial>& materials)
 
 		// The material is fully opaque if its base color texture is fully opaque
 		// and if the alpha opacity is fully opaque too (1.0f)
-		material_opaque[i] = materials[i].alpha_opacity == 1.0f && m_hiprt_scene.material_has_opaque_base_color_texture[i];
+		new_opacity[i] = materials[i].alpha_opacity == 1.0f && m_hiprt_scene.material_has_opaque_base_color_texture[i];
 	}
 
 	// Because the materials have changed, reuploading the "precomputed oapcity" of the materials
-	m_hiprt_scene.material_opaque.upload_data(material_opaque);
+	m_hiprt_scene.material_opaque.upload_data(new_opacity);
 	m_hiprt_scene.materials_buffer.upload_data(packed_gpu_materials);
+}
+
+void GPURenderer::update_one_material(CPUMaterial& material, int material_index)
+{
+	m_current_materials[material_index] = material;
+
+	DevicePackedTexturedMaterial packed_gpu_material = material.pack_to_GPU();
+	// The material is fully opaque if its base color texture is fully opaque
+	// and if the alpha opacity is fully opaque too (1.0f)
+	unsigned char new_opacity = material.alpha_opacity == 1.0f && m_hiprt_scene.material_has_opaque_base_color_texture[material_index];
+
+	// Because the materials have changed, reuploading the "precomputed oapcity" of the materials
+	m_hiprt_scene.material_opaque.upload_data_partial(material_index, &new_opacity, 1);
+	m_hiprt_scene.materials_buffer.upload_data_partial(material_index, &packed_gpu_material, 1);
 }
 
 const std::vector<BoundingBox>& GPURenderer::get_mesh_bounding_boxes()

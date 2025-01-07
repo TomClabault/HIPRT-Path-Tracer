@@ -1,4 +1,4 @@
-/*
+/* 
  * Copyright 2024 Tom Clabault. GNU GPL3 license.
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
@@ -35,6 +35,10 @@ public:
 	T** get_pointer_address();
 
 	std::vector<T> download_data() const;
+	/**
+	 * Downloads elements ['start_element_index', 'stop_element_index_excluded'[ from the buffer
+	 */
+	std::vector<T> download_data_partial(int start_element_index, int stop_element_index_excluded) const;
 	void download_data_async(void* out, oroStream_t stream) const;
 	/**
 	 * Uploads as many elements as returned by get_element_count from the data std::vector into the buffer.
@@ -46,6 +50,10 @@ public:
 	 */
 	void upload_data(const std::vector<T>& data);
 	void upload_data(const T* data);
+	/**
+	 * Uploads 'element_count' elmements from 'data' starting (it will be overriden) at element number 'start_index' in the buffer
+	 */
+	void upload_data_partial(int start_index, const T* data, size_t element_count);
 
 	void unpack_to_GL_texture(GLuint texture, GLint texture_unit, int width, int height, DisplayTextureType texture_type);
 
@@ -135,6 +143,23 @@ std::vector<T> OrochiBuffer<T>::download_data() const
 	return data;
 }
 
+template<typename T>
+inline std::vector<T> OrochiBuffer<T>::download_data_partial(int start_element_index, int stop_element_index_excluded) const
+{
+	if (!m_data_pointer)
+		return std::vector<T>();
+
+	if (start_element_index == stop_element_index_excluded || stop_element_index_excluded < start_element_index)
+		return std::vector<T>();
+
+	size_t element_count = stop_element_index_excluded - start_element_index;
+	std::vector<T> data(element_count);
+
+	OROCHI_CHECK_ERROR(oroMemcpyDtoH(data.data() + start_element_index, reinterpret_cast<oroDeviceptr>(m_data_pointer), sizeof(T) * element_count));
+
+	return data;
+}
+
 template <typename T>
 void OrochiBuffer<T>::download_data_async(void* out, oroStream_t stream) const 
 {
@@ -162,6 +187,22 @@ void OrochiBuffer<T>::upload_data(const T* data)
 {
 	if (m_data_pointer)
 		OROCHI_CHECK_ERROR(oroMemcpy(reinterpret_cast<oroDeviceptr>(m_data_pointer), data, sizeof(T) * m_element_count, oroMemcpyHostToDevice));
+	else
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Trying to upload data to an OrochiBuffer that hasn't been allocated yet!");
+}
+
+template<typename T>
+inline void OrochiBuffer<T>::upload_data_partial(int start_index, const T* data, size_t element_count)
+{
+	if (start_index > m_element_count)
+	{
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Trying to upload partial data to an OrochiBuffer starting at in an index that is larger than the buffer's size!");
+
+		return;
+	}
+
+	if (m_data_pointer)
+		OROCHI_CHECK_ERROR(oroMemcpy(reinterpret_cast<oroDeviceptr>(m_data_pointer + start_index), data, sizeof(T) * element_count, oroMemcpyHostToDevice));
 	else
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Trying to upload data to an OrochiBuffer that hasn't been allocated yet!");
 }

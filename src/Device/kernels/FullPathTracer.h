@@ -219,7 +219,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
                 // ----------------- Direct lighting ----------------- //
                 // --------------------------------------------------- //
 
-                // Estimates direct lighting with next-even estimation and directly modifies the ray_payload
+                // Estimates direct lighting with next-even estimation and directly modifies ray_payload.ray_color
                 estimate_direct_lighting(render_data, ray_payload, closest_hit_info, -ray.direction, x, y, res, bounce, mis_reuse, random_number_generator);
 
                 // --------------------------------------- //

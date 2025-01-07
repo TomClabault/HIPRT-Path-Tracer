@@ -237,7 +237,15 @@ public:
 	const std::vector<CPUMaterial>& get_original_materials();
 	const std::vector<CPUMaterial>& get_current_materials();
 	const std::vector<std::string>& get_material_names();
+
+	/**
+	 * Updates all the materials of the renderer and reuploads them all to the GPU
+	 */
 	void update_all_materials(std::vector<CPUMaterial>& materials);
+	/**
+	 * Updates only the material with index 'material_index' and uploads it to the GPU 
+	 */
+	void update_one_material(CPUMaterial& material, int material_index);
 
 	const std::vector<BoundingBox>& get_mesh_bounding_boxes();
 	const std::vector<std::string>& get_mesh_names();

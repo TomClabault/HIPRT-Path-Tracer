@@ -798,7 +798,7 @@ void ImGuiObjectsWindow::draw_objects_panel()
 	const std::vector<std::string>& mesh_names = m_renderer->get_mesh_names();
 
 	bool material_changed = false;
-	static int currently_selected_material = 0;
+	static int currently_selected_material_index = 0;
 
 	if (ImGui::CollapsingHeader("All objects"))
 	{
@@ -808,10 +808,10 @@ void ImGuiObjectsWindow::draw_objects_panel()
 		{
 			for (int n = 0; n < materials.size(); n++)
 			{
-				const bool is_selected = (currently_selected_material == n);
+				const bool is_selected = (currently_selected_material_index == n);
 				std::string text = mesh_names[n] + " (" + material_names[n] + ")";
 				if (ImGui::Selectable(text.c_str(), is_selected))
-					currently_selected_material = n;
+					currently_selected_material_index = n;
 
 				// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
 				if (is_selected)
@@ -839,7 +839,6 @@ void ImGuiObjectsWindow::draw_objects_panel()
 					material.precompute_properties();
 			}
 
-			// TODO we would need to recompute the alias table for the emissive lights here
 			m_renderer->update_all_materials(materials);
 			m_render_window->set_render_dirty(true);
 		}
@@ -852,9 +851,9 @@ void ImGuiObjectsWindow::draw_objects_panel()
 				if (!materials[n].is_emissive())
 					continue;
 
-				const bool is_selected = (currently_selected_material == n);
+				const bool is_selected = (currently_selected_material_index == n);
 				if (ImGui::Selectable(material_names[n].c_str(), is_selected))
-					currently_selected_material = n;
+					currently_selected_material_index = n;
 
 				// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
 				if (is_selected)
@@ -870,7 +869,7 @@ void ImGuiObjectsWindow::draw_objects_panel()
 	if (materials.size() > 0)
 	{
 		std::shared_ptr<GPUKernelCompilerOptions> kernel_options = m_renderer->get_global_compiler_options();
-		CPUMaterial& material = materials[currently_selected_material];
+		CPUMaterial& material = materials[currently_selected_material_index];
 
 		ImGui::PushItemWidth(16 * ImGui::GetFontSize());
 
@@ -879,7 +878,7 @@ void ImGuiObjectsWindow::draw_objects_panel()
 		ImGui::Text("Selected object"); ImGui::SameLine();
 		ImGui::PopStyleColor();
 		ImGui::Text(": "); ImGui::SameLine();
-		ImGui::Text("%s", material_names[currently_selected_material].c_str());
+		ImGui::Text("%s", material_names[currently_selected_material_index].c_str());
 
 		if (ImGui::CollapsingHeader("Base Layer"))
 		{
@@ -1105,12 +1104,14 @@ void ImGuiObjectsWindow::draw_objects_panel()
 
 			bool emission_controlled_by_texture = material.emission_texture_index != MaterialUtils::NO_TEXTURE;
 			ImGui::BeginDisabled(emission_controlled_by_texture);
-			// Displaying original emission in ImGui
+			
+			// TODO we would need to recompute the alias table for the emissive lights here
 			material_changed |= ImGui::ColorEdit3("Emission", (float*)&material.emission, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
 			ImGui::EndDisabled();
 			if (emission_controlled_by_texture)
 				ImGuiRenderer::show_help_marker("Disabled because the emission of this material is controlled by a texture");
 
+			// TODO we would need to recompute the alias table for the emissive lights here
 			material_changed |= ImGui::SliderFloat("Emission Strength", &material.emission_strength, 0.0f, 10.0f);
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -1178,7 +1179,7 @@ void ImGuiObjectsWindow::draw_objects_panel()
 			material.make_safe();
 			material.precompute_properties();
 
-			m_renderer->update_all_materials(materials);
+			m_renderer->update_one_material(material, currently_selected_material_index);
 			m_render_window->set_render_dirty(true);
 		}
 	}
