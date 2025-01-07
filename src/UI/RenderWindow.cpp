@@ -24,6 +24,7 @@ extern ImGuiLogger g_imgui_logger;
 
 // TODOs  performance improvements branch:
 // - NEE++
+// - align buffers and benchmark with a copy kernel
 // - free the parsed scene from the CPU the free RAM
 // - add mis_reuse ray in envmap sampling
 // - if we don't have the ray volume state in the GBuffer anymore, we can remove the stack handlign in the trace ray function of the camera rays
