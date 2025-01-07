@@ -53,7 +53,6 @@ extern ImGuiLogger g_imgui_logger;
 // - use the fact that some values are already computed in bsdf_sample to pass them to bsdf_eval in a big BSDFStateStructure or something to avoid recomputing
 // - pack ray payload and other things?
 // - bsdf sampling proba do  =not use array[] for CDF
-// - energy compensation dielectric do not do it ifspecular weight == 0.0f
 // - upload partial materials when a material is modified instead  of reuploading everything
 // - NEE++
 // - schlick fresnel in many places? instead of correct fresnel. switch in "performance settings"

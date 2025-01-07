@@ -22,7 +22,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float principled_specular_relative_ior(const Devi
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float get_principled_energy_compensation_glossy_base(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, float incident_medium_ior, float NoV)
 {
-    if (!material.do_specular_energy_compensation || material.roughness < render_data.bsdfs_data.energy_compensation_roughness_threshold)
+    bool energy_compensation_disabled = !material.do_specular_energy_compensation;
+    bool roughness_low_enough = material.roughness < render_data.bsdfs_data.energy_compensation_roughness_threshold;
+    // If all we have for the glossy base is the diffuse layer (i.e. no specular
+    // layer because the specular weight is low, then we don't need energy compensation)
+    bool no_specular_layer = material.specular < 1.0e-3f;
+    if (energy_compensation_disabled || roughness_low_enough || no_specular_layer)
         return 1.0f;
 
     float ms_compensation = 1.0f;
@@ -80,8 +85,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_principled_energy_compensation_glossy_b
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE float get_principled_energy_compensation_clearcoat_lobe(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, float incident_medium_ior, float NoV)
 {
-    if (material.coat == 0.0f || !material.do_coat_energy_compensation || material.coat_roughness < render_data.bsdfs_data.energy_compensation_roughness_threshold)
-        // No coat, nothing to compensate
+    bool energy_compensation_disabled = !material.do_specular_energy_compensation;
+    bool roughness_low_enough = material.coat_roughness < render_data.bsdfs_data.energy_compensation_roughness_threshold;
+    // If we don't have a clearcoat, let's not compensate energy
+    bool no_coat_layer = material.coat < 1.0e-3f;
+    if (energy_compensation_disabled || roughness_low_enough || no_coat_layer)
         return 1.0f;
 
     float ms_compensation = 1.0f;
