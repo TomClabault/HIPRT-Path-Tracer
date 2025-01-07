@@ -91,7 +91,7 @@ void ImGuiAnimationWindow::draw_frame_sequence_rendering_panel()
 
 			animation_state.can_step_animation = true;
 			for (int i = 0; i < move_n_frames_forward; i++)
-				m_renderer->step_animations();
+				m_renderer->step_animations(16.67f);
 
 			animation_state.can_step_animation = can_step_backup;
 			animation_state.frames_rendered_so_far += move_n_frames_forward;

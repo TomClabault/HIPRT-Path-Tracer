@@ -20,7 +20,7 @@ class GPURenderer;
 struct RISSettings
 {
 	// How many candidate lights to sample for RIS (Resampled Importance Sampling)
-	int number_of_light_candidates = 4;
+	int number_of_light_candidates = 1;
 	// How many candidates samples from the BSDF to use in combination
 	// with the light candidates for RIS
 	int number_of_bsdf_candidates = 1;
@@ -78,7 +78,7 @@ struct HIPRTRenderSettings
 	int samples_per_frame = 1;
 	// Maximum number of bounces of rays in the scene. 
 	// 1 is direct light only.
-	int nb_bounces = 3;
+	int nb_bounces = 0;
 
 	bool use_russian_roulette = true;
 	// After how many bounces can russian roulette kick in?

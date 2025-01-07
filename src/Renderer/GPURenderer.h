@@ -13,6 +13,7 @@
 #include "HIPRT-Orochi/HIPRTScene.h"
 #include "HIPRT-Orochi/HIPRTOrochiCtx.h"
 #include "HostDeviceCommon/RenderData.h"
+#include "Renderer/GPUDataStructures/NEEPlusPlusGPUData.h"
 #include "Renderer/RendererAnimationState.h"
 #include "Renderer/RendererEnvmap.h"
 #include "Renderer/GBufferGPURenderer.h"
@@ -40,6 +41,7 @@ public:
 	 * These constants here are used to reference kernel objects in the 'm_kernels' map
 	 * or in the 'm_render_pass_times' map
 	 */
+	static const std::string NEE_PLUS_PLUS_CACHING_PREPASS_ID;
 	static const std::string CAMERA_RAYS_KERNEL_ID;
 	static const std::string PATH_TRACING_KERNEL_ID;
 	static const std::string RAY_VOLUME_STATE_SIZE_KERNEL_ID;
@@ -101,6 +103,18 @@ public:
 	void init_GGX_glass_Ess_texture(hipTextureFilterMode filtering_mode = hipFilterModePoint);
 
 	/**
+	 * Sets up the bounds of the scene for the grid of NEE++
+	 */
+	void setup_nee_plus_plus_from_scene(const Scene& scene);
+
+	/**
+	 * Clears the visibility map of NEE++ so that it is recomputed next frame
+	 */
+	void reset_nee_plus_plus();
+
+	NEEPlusPlusGPUData& get_nee_plus_plus_data();
+
+	/**
 	 * Initializes the filter function used by the kernels
 	 */
 	void setup_filter_functions();
@@ -122,20 +136,19 @@ public:
 	 * correct state. Said othrewise, this function can be seen as a centralized place for updating
 	 * various stuff of the renderer instead of having to scatter these update calls everywhere
 	 * in the code.
+	 * 
+	 * The 'delta_time' parameter should be how much time passed, in milliseconds, since the last
+	 * call to update()
 	 */
-	void update();
+	void update(float delta_time);
 
 	/**
 	 * Steps all the animations of the renderer one step forward
+	 * 
+	 * The 'delta_time' parameter should be how much time passed, in milliseconds, since the last
+	 * call to step_animations()
 	 */
-	void step_animations();
-
-	/**
-	 * Returns true if one of the kernels requires the global stack buffer for BVH traversal
-	 */
-	bool needs_global_bvh_stack_buffer();
-
-	void recreate_global_bvh_stack_buffer();
+	void step_animations(float delta_time);
 
 	/**
 	 * Renders a frame asynchronously. 
@@ -304,6 +317,7 @@ public:
 	void resume_background_shader_compilation();
 
 	std::map<std::string, GPUKernel*> get_kernels();
+	std::vector<std::string> get_all_kernel_ids();
 	/**
 	 * Sets the debug kernel to be used.
 	 * 
@@ -340,6 +354,16 @@ private:
 	void update_render_data();
 
 	/**
+	 * Returns true if one of the kernels requires the global stack buffer for BVH traversal
+	 */
+	bool needs_global_bvh_stack_buffer();
+	/**
+	 * Frees and recreates the global stack buffer for the BVH traversal based on the
+	 * current resolution of the renderer
+	 */
+	void recreate_global_bvh_stack_buffer();
+
+	/**
 	 * Reads the execution time of the kernels and stores those execution times in 'm_render_pass_times'
 	 */
 	void compute_render_pass_times();
@@ -357,6 +381,7 @@ private:
 	 */
 	void render_debug_kernel();
 
+	void launch_nee_plus_plus_caching_prepass();
 	void launch_camera_rays();
 	void launch_ReSTIR_DI();
 	void launch_path_tracing();
@@ -398,6 +423,15 @@ private:
 	 * If they are not needed, they will be freed to save some VRAM.
 	 */
 	void internal_update_adaptive_sampling_buffers();
+
+	/**
+	 * Allocates/deallocates the data structure for NEE++ depending on whether or not
+	 * NEE++ is being used
+	 * 
+	 * The 'delta_time' parameter should be how much time passed, in milliseconds, since the last
+	 * call to internal_update_nee_plus_plus_buffers()
+	 */
+	void internal_update_nee_plus_plus_buffers(float delta_time);
 
 	/**
 	 * Allocates/frees the global buffer for BVH traversal when UseSharedStackBVHTraversal is TRUE
@@ -524,6 +558,8 @@ private:
 	// is done rendering or not
 	bool m_frame_rendered = true;
 
+	// Buffers and settings for NEE++
+	NEEPlusPlusGPUData m_nee_plus_plus;
 	// Render data passed to the GPU for rendering. Most importantly it contains
 	// 
 	// The WorldSettings: Settings relative to the scene such as the intensity of the uniform light, the

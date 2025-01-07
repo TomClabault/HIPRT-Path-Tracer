@@ -37,12 +37,18 @@ void ImGuiSettingsWindow::draw()
 	ImGui::Begin(ImGuiSettingsWindow::TITLE, nullptr, ImGuiWindowFlags_NoDecoration);
 
 	draw_header();
+
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+	ImGui::SeparatorText("General render settings");
 	draw_render_settings_panel();
 	draw_camera_panel();
 	draw_environment_panel();
 	draw_sampling_panel();
 	draw_denoiser_panel();
 	draw_post_process_panel();
+
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+	ImGui::SeparatorText("Other settings");
 	draw_performance_settings_panel();
 	draw_performance_metrics_panel();
 	draw_shader_kernels_panel();
@@ -71,6 +77,8 @@ void ImGuiSettingsWindow::draw_header()
 		// Only displaying the refresh timer if we actually need to wait before refreshin'
 		// And also, not displaying that if the rendering is done
 		ImGui::Text("Viewport refresh in: %.3fs", std::max(0.0f, time_before_viewport_refresh_ms / 1000.0f));
+	else
+		ImGui::Text("Viewport refresh in: 0.000s");
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	if (render_settings.has_access_to_adaptive_sampling_buffers())
@@ -305,42 +313,6 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 
 		}
 		// Stopping condition tree
-		ImGui::TreePop();
-	}
-
-	if (ImGui::CollapsingHeader("Light clamping"))
-	{
-		ImGui::TreePush("Light clamping tree");
-
-		if (ImGui::SliderFloat("Direct ligthing contribution clamp", &render_settings.direct_contribution_clamp, 0.0f, 10.0f))
-		{
-			render_settings.direct_contribution_clamp = std::max(0.0f, render_settings.direct_contribution_clamp);
-			m_render_window->set_render_dirty(true);
-		}
-		if (ImGui::SliderFloat("Envmap ligthing contribution clamp", &render_settings.envmap_contribution_clamp, 0.0f, 10.0f))
-		{
-			render_settings.envmap_contribution_clamp = std::max(0.0f, render_settings.envmap_contribution_clamp);
-			m_render_window->set_render_dirty(true);
-		}
-		if (ImGui::SliderFloat("Indirect ligthing contribution clamp", &render_settings.indirect_contribution_clamp, 0.0f, 10.0f))
-		{
-			render_settings.indirect_contribution_clamp = std::max(0.0f, render_settings.indirect_contribution_clamp);
-			m_render_window->set_render_dirty(true);
-		}
-
-		if (ImGui::SliderFloat("Minimum Light Contribution", &render_settings.minimum_light_contribution, 0.0f, 10.0f))
-		{
-			render_settings.minimum_light_contribution = std::max(0.0f, render_settings.minimum_light_contribution);
-			m_render_window->set_render_dirty(true);
-		}
-		ImGuiRenderer::show_help_marker("If a selected light (for direct lighting estimation) contributes at a given "
-			" point less than this 'minimum_light_contribution' value then the light sample is discarded. "
-			"This can improve performance at the cost of some bias depending on the scene.\n"
-			"0.0f to disable");
-
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
-		// Light clamping tree
 		ImGui::TreePop();
 	}
 
@@ -811,12 +783,15 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			switch (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY))
 			{
 			case LSS_NO_DIRECT_LIGHT_SAMPLING:
+				ImGui::Dummy(ImVec2(0.0f, -20.0f));
 				break;
 
 			case LSS_UNIFORM_ONE_LIGHT:
+				ImGui::Dummy(ImVec2(0.0f, -20.0f));
 				break;
 
 			case LSS_MIS_LIGHT_BSDF:
+				ImGui::Dummy(ImVec2(0.0f, -20.0f));
 				break;
 
 			case LSS_RIS_BSDF_AND_LIGHT:
@@ -1477,6 +1452,13 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				break;
 			}
 
+			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) != LSS_BSDF)
+			{
+				ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+				draw_next_event_estimation_plus_plus_panel();
+			}
+
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::TreePop();
 		}
@@ -1561,6 +1543,152 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 		}
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::TreePop();
+	}
+}
+
+void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
+{
+	HIPRTRenderData& render_data = m_renderer->get_render_data();
+
+	std::shared_ptr<GPUKernelCompilerOptions> kernel_options = m_renderer->get_global_compiler_options();
+
+	if (ImGui::CollapsingHeader("Next Event Estimation++"))
+	{
+		ImGui::TreePush("Use NEE++ Tree");
+
+		static bool use_nee_plus_plus = DirectLightUseNEEPlusPlus;
+		if (ImGui::Checkbox("Use NEE++", &use_nee_plus_plus))
+		{
+			kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS, use_nee_plus_plus ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+			m_renderer->recompile_kernels();
+			m_render_window->set_render_dirty(true);
+		}
+		ImGuiRenderer::show_help_marker("Whether or not to use NEE++ [Guo et al., 2020] features at all.");
+
+		if (use_nee_plus_plus)
+		{
+			ImGui::TreePush("NEE++ Settings Tree");
+
+			static unsigned int max_cell_records = 0;
+
+			{
+				ImGui::Text("Max visibility map records: %u", max_cell_records);
+				ImGuiRenderer::show_help_marker("The maximum number of records that a cell of the visibility map has seen.");
+				ImGui::SameLine();
+				if (ImGui::Button("Refresh"))
+				{
+					max_cell_records = 0;
+
+					std::vector<unsigned int> records = m_renderer->get_nee_plus_plus_data().visibility_map_count.download_data();
+					for (unsigned int c : records)
+						max_cell_records = hippt::max(c, max_cell_records);
+				}
+				ImGui::Text("Visiblity map update in: %.3fs", m_renderer->get_nee_plus_plus_data().milliseconds_before_finalizing_accumulation / 1000.0f);
+				ImGui::SameLine();
+				if (ImGui::Button("Refresh##vis_map"))
+					m_renderer->get_nee_plus_plus_data().milliseconds_before_finalizing_accumulation = 0.0f;
+
+				ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			}
+
+
+			{
+				if (ImGui::Checkbox("Update visibility map", &render_data.nee_plus_plus.update_visibility_map))
+					m_render_window->set_render_dirty(true);
+				ImGuiRenderer::show_help_marker("If checked, the visibility map will continue accumulating visibility "
+					"information as the rendering progresses");
+
+				static bool use_nee_plus_plus_rr = DirectLightUseNEEPlusPlusRR;
+				if (ImGui::Checkbox("Use NEE++ Russian Roulette", &use_nee_plus_plus_rr))
+				{
+					kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS_RUSSIAN_ROULETTE, use_nee_plus_plus_rr ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+					m_renderer->recompile_kernels();
+					m_render_window->set_render_dirty(true);
+				}
+				ImGuiRenderer::show_help_marker("Implementation of NEE++, [Guo et al., 2020].\n"
+					"If checked, the voxel-to-voxel visibility estimate of NEE++ will be used to "
+					"stochastically determine whether or not attempt at all to trace a shadow at "
+					"a light during next-event-estimation.");
+
+				if (use_nee_plus_plus_rr)
+				{
+					ImGui::TreePush("NEE++ RR options tree");
+
+					if (ImGui::Checkbox("Use NEE++ RR for emissives", &render_data.nee_plus_plus.enable_nee_plus_plus_RR_for_emissives))
+						m_render_window->set_render_dirty(true);
+
+					if (ImGui::Checkbox("Use NEE++ RR for envmap", &render_data.nee_plus_plus.enable_nee_plus_plus_RR_for_envmap))
+						m_render_window->set_render_dirty(true);
+
+					ImGui::TreePop();
+				}
+
+				ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			}
+
+			{
+				static bool use_cube_grid = true;
+				ImGui::Checkbox("Use cubic grid", &use_cube_grid);
+				bool size_changed = false;
+				if (use_cube_grid)
+				{
+					static int grid_size = m_renderer->get_nee_plus_plus_data().grid_dimensions_no_envmap.x;
+					if (ImGui::SliderInt("Grid size (X, Y & Z)", &grid_size, 2, 30))
+					{
+						m_renderer->get_nee_plus_plus_data().grid_dimensions_no_envmap.x = grid_size;
+						m_renderer->get_nee_plus_plus_data().grid_dimensions_no_envmap.y = grid_size;
+						m_renderer->get_nee_plus_plus_data().grid_dimensions_no_envmap.z = grid_size;
+
+						size_changed = true;
+					}
+				}
+				else
+				{
+					ImGui::PushItemWidth(4 * ImGui::GetFontSize());
+					size_changed |= ImGui::SliderInt("##Grid_sizeX", &m_renderer->get_nee_plus_plus_data().grid_dimensions_no_envmap.x, 2, 30);
+					ImGui::SameLine();
+					size_changed |= ImGui::SliderInt("##Grid_sizeY", &m_renderer->get_nee_plus_plus_data().grid_dimensions_no_envmap.y, 2, 30);
+					ImGui::SameLine();
+					size_changed |= ImGui::SliderInt("Grid size (X/Y/Z)", &m_renderer->get_nee_plus_plus_data().grid_dimensions_no_envmap.z, 2, 30);
+
+					// Back to default size
+					ImGui::PushItemWidth(16 * ImGui::GetFontSize());
+				}
+
+				if (size_changed)
+				{
+					// Clamping
+					m_renderer->get_nee_plus_plus_data().grid_dimensions_no_envmap = hippt::clamp(make_int3(2, 2, 2), make_int3(30, 30, 30), m_renderer->get_nee_plus_plus_data().grid_dimensions_no_envmap);
+
+					m_renderer->reset_nee_plus_plus();
+					m_render_window->set_render_dirty(true);
+				}
+
+				if (ImGui::SliderFloat("Confidence threshold", &render_data.nee_plus_plus.confidence_threshold, 0.0f, 1.0f))
+					m_render_window->set_render_dirty(true);
+				ImGuiRenderer::show_help_marker("If a voxel-to-voxel unocclusion probability is less than that, "
+					"the voxel will be considered unoccluded and so a shadow ray will be traced. This is to "
+					"avoid trusting voxel that have a low probability of being unoccluded\n\n"
+					""
+					"0.0f basically disables NEE++ as any entry of the visibility map will require a shadow ray.");
+
+				ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			}
+
+			{
+				if (ImGui::Button("Clear visibility map"))
+				{
+					m_renderer->reset_nee_plus_plus();
+					m_render_window->set_render_dirty(true);
+				}
+			}
+
+			ImGui::TreePop();
+		}
+
 		ImGui::TreePop();
 	}
 }
@@ -1986,15 +2114,34 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 	{
 		ImGui::TreePush("Lighting Settings Performance Tree");
 
+		if (ImGui::SliderFloat("Direct ligthing contribution clamp", &render_settings.direct_contribution_clamp, 0.0f, 10.0f))
+		{
+			render_settings.direct_contribution_clamp = std::max(0.0f, render_settings.direct_contribution_clamp);
+			m_render_window->set_render_dirty(true);
+		}
+		if (ImGui::SliderFloat("Envmap ligthing contribution clamp", &render_settings.envmap_contribution_clamp, 0.0f, 10.0f))
+		{
+			render_settings.envmap_contribution_clamp = std::max(0.0f, render_settings.envmap_contribution_clamp);
+			m_render_window->set_render_dirty(true);
+		}
+		if (ImGui::SliderFloat("Indirect ligthing contribution clamp", &render_settings.indirect_contribution_clamp, 0.0f, 10.0f))
+		{
+			render_settings.indirect_contribution_clamp = std::max(0.0f, render_settings.indirect_contribution_clamp);
+			m_render_window->set_render_dirty(true);
+		}
+
 		if (ImGui::SliderFloat("Minimum Light Contribution", &render_settings.minimum_light_contribution, 0.0f, 10.0f))
 		{
 			render_settings.minimum_light_contribution = std::max(0.0f, render_settings.minimum_light_contribution);
 			m_render_window->set_render_dirty(true);
 		}
 		ImGuiRenderer::show_help_marker("If a selected light (for direct lighting estimation) contributes at a given "
-										" point less than this 'minimum_light_contribution' value then the light sample is discarded. "
-										"This can improve performance at the cost of some bias depending on the scene.\n"
-										"0.0f to disable");
+			" point less than this 'minimum_light_contribution' value then the light sample is discarded. "
+			"This can improve performance at the cost of some bias depending on the scene.\n"
+			"0.0f to disable");
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		draw_next_event_estimation_plus_plus_panel();
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();

@@ -8,7 +8,7 @@
 
 struct ApplicationState
 {
-	float last_delta_time_ms = 0.0f;
+	float last_CPU_frame_delta_time_ms = 0.0f;
 	// GLFW timestamp of when was the last time that we submitted a frame to render to the GPU.
 	uint64_t last_GPU_submit_time = 0;
 	// How long the current render has been running for in milliseconds

@@ -26,11 +26,14 @@ public:
 	OrochiBuffer(OrochiBuffer<T>&& other);
 	~OrochiBuffer();
 
-	void operator=(OrochiBuffer<T>&& other);
+	void operator=(OrochiBuffer<T>&& other) noexcept;
+
+	void memset(T value, size_t element_count = -1);
 
 	void resize(int new_element_count, size_t type_size_override = 0);
 	size_t get_element_count() const;
 
+	const T* get_device_pointer() const;
 	T* get_device_pointer();
 	T** get_pointer_address();
 
@@ -56,6 +59,14 @@ public:
 	void upload_data_partial(int start_index, const T* data, size_t element_count);
 
 	void unpack_to_GL_texture(GLuint texture, GLint texture_unit, int width, int height, DisplayTextureType texture_type);
+
+	/**
+	 * Copies the data in 'other' to this buffer.
+	 * 
+	 * This copies the maximum amount of data from 'other' that can fit in this buffer
+	 */
+	void memcpy_from(const OrochiBuffer<T>& other);
+	void memcpy_from(T* data_source, size_t element_count_to_copy);
 
 	/**
 	 * Frees the buffer. No effect if already freed / not allocated yet
@@ -91,13 +102,28 @@ OrochiBuffer<T>::~OrochiBuffer()
 }
 
 template <typename T>
-void OrochiBuffer<T>::operator=(OrochiBuffer&& other)
+void OrochiBuffer<T>::operator=(OrochiBuffer&& other) noexcept
 {
 	m_data_pointer = other.m_data_pointer;
 	m_element_count = other.m_element_count;
 
 	other.m_data_pointer = nullptr;
 	other.m_element_count = 0;
+}
+
+template<typename T>
+inline void OrochiBuffer<T>::memset(T value, size_t element_count)
+{
+	if (m_data_pointer == nullptr)
+	{
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Trying to memset on an OrochiBuffer that hasn't been allocated yet!");
+		return;
+	}
+
+	if (element_count == static_cast<size_t>(-1))
+		OROCHI_CHECK_ERROR(oroMemset(m_data_pointer, value, m_element_count * sizeof(T)));
+	else
+		OROCHI_CHECK_ERROR(oroMemset(m_data_pointer, value, element_count * sizeof(T)));
 }
 
 template <typename T>
@@ -116,6 +142,12 @@ template <typename T>
 size_t OrochiBuffer<T>::get_element_count() const
 {
 	return m_element_count;
+}
+
+template <typename T>
+const T* OrochiBuffer<T>::get_device_pointer() const
+{
+	return m_data_pointer;
 }
 
 template <typename T>
@@ -250,6 +282,33 @@ void OrochiBuffer<T>::unpack_to_GL_texture(GLuint texture, GLint texture_unit, i
 
 	//// Unmap the OpenGL texture
 	//OROCHI_CHECK_ERROR(oroGraphicsUnmapResources(1, &graphics_resource, 0));
+}
+
+template<typename T>
+inline void OrochiBuffer<T>::memcpy_from(const OrochiBuffer<T>& other)
+{
+	if (m_data_pointer == nullptr)
+	{
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Trying to memcpy_from() into an OrochiBuffer that hasn't been allocated yet!");
+
+		return;
+	}
+
+	size_t size_to_copy = std::min(other.m_element_count, m_element_count);
+	oroMemcpy(m_data_pointer, other.get_device_pointer(), size_to_copy * sizeof(T), oroMemcpyDeviceToDevice);
+}
+
+template<typename T>
+inline void OrochiBuffer<T>::memcpy_from(T* data_source, size_t element_count_to_copy)
+{
+	if (m_data_pointer == nullptr)
+	{
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Trying to memcpy_from() into an OrochiBuffer that hasn't been allocated yet!");
+
+		return;
+	}
+
+	oroMemcpy(m_data_pointer, data_source, element_count_to_copy * sizeof(T), oroMemcpyDeviceToDevice);
 }
 
 template <typename T>

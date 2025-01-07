@@ -5,6 +5,7 @@
 
 #include "Device/kernels/CameraRays.h"
 #include "Device/kernels/FullPathTracer.h"
+#include "Device/kernels/NEE++/NEEPlusPlusCachingPrepass.h"
 #include "Device/kernels/ReSTIR/DI/LightsPresampling.h"
 #include "Device/kernels/ReSTIR/DI/InitialCandidates.h"
 #include "Device/kernels/ReSTIR/DI/TemporalReuse.h"
@@ -24,7 +25,7 @@
  // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
  // allowing for fast step into that pixel with the debugger to see what's happening.
  // Otherwise if 0, all pixels of the image are rendered
-#define DEBUG_PIXEL 0
+#define DEBUG_PIXEL 1
 
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner.
 // If 1, it's bottom left corner.
@@ -38,8 +39,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 1154
-#define DEBUG_PIXEL_Y 350
+#define DEBUG_PIXEL_X 749
+#define DEBUG_PIXEL_Y 328
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -63,7 +64,7 @@
 #define DEBUG_RENDER_NEIGHBORHOOD 1
 // How many pixels to render around the debugged pixel given by the DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y coordinates
-#define DEBUG_NEIGHBORHOOD_SIZE 50
+#define DEBUG_NEIGHBORHOOD_SIZE 40
 
 CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, height))
 {
@@ -86,6 +87,7 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
     m_g_buffer_prev_frame.resize(width * height);
 
     setup_brdfs_data();
+    setup_nee_plus_plus();
 
     m_rng = Xorshift32Generator(42);
 }
@@ -129,6 +131,43 @@ void CPURenderer::setup_brdfs_data()
         images[i] = Image32Bit::read_image_hdr(filepath, 1, true);
     }
     m_GGX_Ess_thin_glass = Image32Bit3D(images);
+}
+
+void CPURenderer::setup_nee_plus_plus()
+{
+#if DirectLightUseNEEPlusPlus == KERNEL_OPTION_TRUE
+    // Only doing if using NEE++ 
+    
+    // + (2, 2, 2) for envmap NEE++
+    m_render_data.nee_plus_plus.grid_dimensions = m_nee_plus_plus.grid_dimensions_no_envmap + make_int3(2, 2, 2);
+
+    // Dividing by 2 because the visibility map is symmetrical so we only need half of the matrix
+    int half_matrix_size = m_nee_plus_plus.get_visibility_matrix_element_count(m_render_data.nee_plus_plus.grid_dimensions);
+    m_nee_plus_plus.visibility_map = std::vector<unsigned int>(half_matrix_size);
+    m_nee_plus_plus.visibility_map_count = std::vector<unsigned int>(half_matrix_size);
+    m_nee_plus_plus.accumulation_buffer = std::vector<AtomicType<unsigned int>>(half_matrix_size);
+    m_nee_plus_plus.accumulation_buffer_count = std::vector<AtomicType<unsigned int>>(half_matrix_size);
+
+    m_render_data.nee_plus_plus.visibility_map = m_nee_plus_plus.visibility_map.data();
+    m_render_data.nee_plus_plus.visibility_map_count = m_nee_plus_plus.visibility_map_count.data();
+    m_render_data.nee_plus_plus.accumulation_buffer = m_nee_plus_plus.accumulation_buffer.data();
+    m_render_data.nee_plus_plus.accumulation_buffer_count = m_nee_plus_plus.accumulation_buffer_count.data();
+#endif
+}
+
+void CPURenderer::nee_plus_plus_memcpy_accumulation()
+{
+#if DirectLightUseNEEPlusPlus == KERNEL_OPTION_TRUE
+    // Only doing if using NEE++
+#pragma omp parallel for
+    for (int i = 0; i < m_nee_plus_plus.get_visibility_matrix_element_count(m_render_data.nee_plus_plus.grid_dimensions); i++)
+    {
+        m_nee_plus_plus.visibility_map[i] = m_nee_plus_plus.accumulation_buffer[i].load();
+        m_nee_plus_plus.visibility_map_count[i] = m_nee_plus_plus.accumulation_buffer_count[i].load();
+    }
+#else
+    // Otherwise, it's a no-op
+#endif
 }
 
 void CPURenderer::set_scene(Scene& parsed_scene)
@@ -196,7 +235,14 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.aux_buffers.restir_reservoir_buffer_1 = m_restir_di_state.initial_candidates_reservoirs.data();
     m_render_data.aux_buffers.restir_reservoir_buffer_2 = m_restir_di_state.spatial_output_reservoirs_1.data();
     m_render_data.aux_buffers.restir_reservoir_buffer_3 = m_restir_di_state.spatial_output_reservoirs_2.data();
-    
+
+    float3 grid_min_point_with_envmap, grid_max_point_with_envmap;
+    m_nee_plus_plus.base_grid_min_point = parsed_scene.metadata.scene_bounding_box.mini;
+    m_nee_plus_plus.base_grid_max_point = parsed_scene.metadata.scene_bounding_box.maxi;
+    m_nee_plus_plus.get_grid_extents(m_nee_plus_plus.grid_dimensions_no_envmap, grid_min_point_with_envmap, grid_max_point_with_envmap);
+    m_render_data.nee_plus_plus.grid_min_point = grid_min_point_with_envmap;
+    m_render_data.nee_plus_plus.grid_max_point = grid_max_point_with_envmap;
+
     ThreadManager::join_threads(ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES);
     m_render_data.buffers.emissive_triangles_count = parsed_scene.emissive_triangle_indices.size();
     m_render_data.buffers.emissive_triangles_indices = parsed_scene.emissive_triangle_indices.data();
@@ -286,7 +332,8 @@ void CPURenderer::render()
 
         camera_rays_pass();
 #if DirectLightSamplingStrategy == LSS_RESTIR_DI
-        ReSTIR_DI();
+        // Only doing ReSTIR DI is ReSTIR DI is enabled 
+        ReSTIR_DI_pass();
 #endif
         tracing_pass();
 
@@ -296,6 +343,9 @@ void CPURenderer::render()
         m_render_data.render_settings.need_to_reset = false;
         // We want the G Buffer of the frame that we just rendered to go in the "g_buffer_prev_frame"
         // and then we can re-use the old buffers of to be filled by the current frame render
+
+        if (frame_number % m_nee_plus_plus.frame_timer_before_visibility_map_update == 0)
+            nee_plus_plus_memcpy_accumulation();
 
         std::cout << "Frame " << frame_number << ": " << frame_number/ static_cast<float>(m_render_data.render_settings.samples_per_frame) * 100.0f << "%" << std::endl;
     }
@@ -311,16 +361,18 @@ void CPURenderer::update(int frame_number)
     *m_render_data.aux_buffers.still_one_ray_active = false;
     // Resetting the counter of pixels converged to 0
     m_render_data.aux_buffers.stop_noise_threshold_converged_count->store(0);
-
-    // Update the camera
-    /*if (frame_number == 2)
-        m_camera.translate(glm::vec3(0.05, 0.0, 0.0));*/
 }
 
 void CPURenderer::update_render_data(int sample)
 {
     m_render_data.prev_camera = m_render_data.current_camera;
     m_render_data.current_camera = m_camera.to_hiprt();
+}
+
+void CPURenderer::reset()
+{
+    m_render_data.render_settings.need_to_reset = true;
+    m_render_data.render_settings.sample_number = 0;
 }
 
 void CPURenderer::debug_render_pass(std::function<void(int, int)> render_pass_function)
@@ -400,6 +452,15 @@ void CPURenderer::debug_render_pass(std::function<void(int, int)> render_pass_fu
 #endif // DEBUG_PIXEL
 }
 
+void CPURenderer::nee_plus_plus_cache_visibility_pass()
+{
+    debug_render_pass([this](int x, int y) {
+        NEEPlusPlusCachingPrepass(m_render_data, /* caching sample count */ 8, m_resolution, x, y);
+    });
+
+    nee_plus_plus_memcpy_accumulation();
+}
+
 void CPURenderer::camera_rays_pass()
 {
     debug_render_pass([this](int x, int y) {
@@ -407,7 +468,7 @@ void CPURenderer::camera_rays_pass()
     });
 }
 
-void CPURenderer::ReSTIR_DI()
+void CPURenderer::ReSTIR_DI_pass()
 {
     launch_ReSTIR_DI_presampling_lights_pass();
     launch_ReSTIR_DI_initial_candidates_pass();

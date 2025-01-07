@@ -7,6 +7,7 @@
 #define HOST_DEVICE_COMMON_RENDER_DATA_H
 
 #include "Device/includes/ReSTIR/DI/Reservoir.h"
+#include "Device/includes/NEE++/NEE++.h"
 
 #include "HostDeviceCommon/BSDFsData.h"
 #include "HostDeviceCommon/GBufferDevice.h"
@@ -18,16 +19,6 @@
 
 #include <hiprt/hiprt_device.h>
 #include <Orochi/Orochi.h>
-
-#ifdef __KERNELCC__
-template <typename T>
-using AtomicType = T;
-#else
-#include <atomic>
-
-template <typename T>
-using AtomicType = std::atomic<T>;
-#endif
 
 struct RenderBuffers
 {
@@ -168,6 +159,9 @@ struct HIPRTRenderData
 
 	HIPRTRenderSettings render_settings;
 	WorldSettings world_settings;
+
+	// Data for NEE++
+	NEEPlusPlus nee_plus_plus;
 
 	// Camera for the current frame
 	HIPRTCamera current_camera;

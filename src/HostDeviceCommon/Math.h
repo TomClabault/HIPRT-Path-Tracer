@@ -39,6 +39,16 @@
 #include <bit>
 #endif
 
+#ifdef __KERNELCC__
+template <typename T>
+using AtomicType = T;
+#else
+#include <atomic>
+
+template <typename T>
+using AtomicType = std::atomic<T>;
+#endif
+
 struct float4x4
 {
 	float m[4][4] = { {0.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f} };
@@ -88,6 +98,23 @@ namespace hippt
 	template <typename T>
 	__device__ T min(T a, T b) { return a < b ? a : b; }
 
+	/**
+	 * Component-wise min of float3
+	 */
+	template <>
+	__device__ float3 min(float3 a, float3 b) { return make_float3(hiprt::min(a.x, b.x), hiprt::min(a.y, b.y), hiprt::min(a.z, b.z)); }
+	/**
+	 * Minimum of each component of the float3 against x
+	 */
+	__device__ float3 min(float3 a, float x) { return make_float3(hiprt::min(a.x, x), hiprt::min(a.y, x), hiprt::min(a.z, x)); }
+	__device__ float3 min(float x, float3 a) { return hippt::min(a, x); }
+
+	/**
+	 * Component-wise min of int3
+	 */
+	template <>
+	__device__ int3 min(int3 a, int3 b) { return make_int3(hiprt::min(a.x, b.x), hiprt::min(a.y, b.y), hiprt::min(a.z, b.z)); }
+
 	template <typename T>
 	__device__ T clamp(T min_val, T max_val, T val) { return hiprt::min(max_val, hiprt::max(min_val, val)); }
 
@@ -126,7 +153,10 @@ namespace hippt
 	__device__ bool is_zero(float x) { return x < NEAR_ZERO && x > -NEAR_ZERO; }
 
 	template <typename T>
-	__device__ T atomic_add(T* address, T increment) { return atomicAdd(address, increment); }
+	__device__ T atomic_fetch_add(T* address, T increment) { return atomicAdd(address, increment); }
+
+	template <typename T>
+	__device__ T atomic_compare_exchange(T* address, T expected, T new_value) { return atomicCAS(address, expected, new_value); }
 
 	/**
 	 * For t=0, returns a
@@ -180,6 +210,23 @@ namespace hippt
 	template <typename T>
 	inline T min(T a, T b) { return hiprt::min(a, b); }
 
+	/**
+	 * Component-wise min of float3
+	 */
+	template <>
+	inline float3 min(float3 a, float3 b) { return make_float3(hiprt::min(a.x, b.x), hiprt::min(a.y, b.y), hiprt::min(a.z, b.z)); }
+	/**
+	 * Minimum of each component of the float3 against x
+	 */
+	inline float3 min(float3 a, float x) { return make_float3(hiprt::min(a.x, x), hiprt::min(a.y, x), hiprt::min(a.z, x)); }
+	inline float3 min(float x, float3 a) { return hippt::min(a, x); }
+
+	/**
+	 * Component-wise min of int3
+	 */
+	template <>
+	inline int3 min(int3 a, int3 b) { return make_int3(hiprt::min(a.x, b.x), hiprt::min(a.y, b.y), hiprt::min(a.z, b.z)); }
+
 	template <typename T>
 	inline T clamp(T min_val, T max_val, T val) { return hiprt::min(max_val, hiprt::max(min_val, val)); }
 
@@ -213,7 +260,10 @@ namespace hippt
 	inline bool is_zero(float x) { return x < NEAR_ZERO && x > -NEAR_ZERO; }
 
 	template <typename T>
-	T atomic_add(std::atomic<T>* atomic_address, T increment) { return atomic_address->fetch_add(increment); }
+	T atomic_fetch_add(std::atomic<T>* atomic_address, T increment) { return atomic_address->fetch_add(increment); }
+
+	template <typename T>
+	T atomic_compare_exchange(std::atomic<T>* atomic_address, T expected, T new_value) { return atomic_address->compare_exchange_strong(expected, new_value); }
 
 	/**
 	 * For t=0, returns a

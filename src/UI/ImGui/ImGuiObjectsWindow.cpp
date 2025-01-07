@@ -1105,14 +1105,19 @@ void ImGuiObjectsWindow::draw_objects_panel()
 			bool emission_controlled_by_texture = material.emission_texture_index != MaterialUtils::NO_TEXTURE;
 			ImGui::BeginDisabled(emission_controlled_by_texture);
 			
+			bool emission_changed = false;
 			// TODO we would need to recompute the alias table for the emissive lights here
-			material_changed |= ImGui::ColorEdit3("Emission", (float*)&material.emission, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
+			emission_changed |= ImGui::ColorEdit3("Emission", (float*)&material.emission, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
 			ImGui::EndDisabled();
 			if (emission_controlled_by_texture)
 				ImGuiRenderer::show_help_marker("Disabled because the emission of this material is controlled by a texture");
 
 			// TODO we would need to recompute the alias table for the emissive lights here
-			material_changed |= ImGui::SliderFloat("Emission Strength", &material.emission_strength, 0.0f, 10.0f);
+			emission_changed |= ImGui::SliderFloat("Emission Strength", &material.emission_strength, 0.0f, 10.0f);
+
+			material_changed |= emission_changed;
+			if (emission_changed)
+				m_renderer->reset_nee_plus_plus();
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::TreePop();

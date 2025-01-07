@@ -39,7 +39,7 @@ public:
 	 * - Recomputes the sampling data structure (CDF for binary search sampling, 
 	 *		alias table for alias table sampling) if necessary
 	 */
-	void update(GPURenderer* renderer);
+	void update(GPURenderer* renderer, float delta_time);
 
 	/**
 	 * Computes the CDF or alias table of the envmap based of the envmap sampling strategy used
@@ -63,8 +63,11 @@ private:
 	/**
 	 * Recomputes the envmap matrices if necessary based on
 	 * the current values of rotation_X, rotation_Y and rotation_Z
+	 * 
+     * The 'delta_time' parameter should be how much time passed, in milliseconds, since the last
+     * call to do_animation()
 	 */
-	void do_animation(GPURenderer* renderer);
+	void do_animation(GPURenderer* renderer, float delta_time);
 
 	/**
 	 * Updates the world settings, envmap itself, etc... of the renderer

@@ -15,7 +15,7 @@
 #include "HostDeviceCommon/HitInfo.h"
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_reservoir_sample(const HIPRTRenderData& render_data, RayPayload& ray_payload, 
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_reservoir_sample(HIPRTRenderData& render_data, RayPayload& ray_payload, 
     const HitInfo& closest_hit_info, const float3& view_direction,
     const RISReservoir& reservoir, Xorshift32Generator& random_number_generator)
 {
@@ -32,6 +32,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_reservoir_sample(const HIPRT
     float3 evaluated_point = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f;
     float3 shadow_ray_direction = sample.point_on_light_source - evaluated_point;
     float3 shadow_ray_direction_normalized = shadow_ray_direction / (distance_to_light = hippt::length(shadow_ray_direction));
+
+    NEEPlusPlusContext nee_plus_plus_context;
     if (sample.is_bsdf_sample)
         // A BSDF sample that has been picked by RIS cannot be occluded otherwise
         // it would have a weight of 0 and would never be picked by RIS
@@ -42,7 +44,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_reservoir_sample(const HIPRT
         shadow_ray.origin = evaluated_point;
         shadow_ray.direction = shadow_ray_direction_normalized;
 
-        in_shadow = evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, random_number_generator);
+        nee_plus_plus_context.point_on_light = sample.point_on_light_source;
+        nee_plus_plus_context.shaded_point = shadow_ray.origin;
+        in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, nee_plus_plus_context, random_number_generator);
     }
 
     if (!in_shadow)
@@ -72,6 +76,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_reservoir_sample(const HIPRT
             ColorRGB32F sample_emission = render_data.buffers.materials_buffer[material_index].get_emission();
 
             final_color = bsdf_color * reservoir.UCW * sample_emission * cosine_at_evaluated_point;
+            if (!sample.is_bsdf_sample)
+                final_color /= nee_plus_plus_context.unoccluded_probability;
         }
     }
 
@@ -105,6 +111,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
         float target_function = 0.0f;
         float candidate_weight = 0.0f;
         float3 random_light_point = uniform_sample_one_emissive_triangle(render_data, random_number_generator, light_sample_pdf, light_source_info);
+
         if (light_sample_pdf > 0.0f)
         {
             // It can happen that the light PDF returned by the emissive triangle
@@ -296,7 +303,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
     return reservoir;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_lights_RIS(const HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, MISBSDFRayReuse& mis_ray_reuse)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_lights_RIS(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, MISBSDFRayReuse& mis_ray_reuse)
 {
     if (render_data.buffers.emissive_triangles_count == 0)
         return ColorRGB32F(0.0f);

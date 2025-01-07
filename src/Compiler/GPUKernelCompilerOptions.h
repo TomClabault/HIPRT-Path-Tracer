@@ -35,6 +35,8 @@ public:
 	static const std::string NESTED_DIELETRCICS_STACK_SIZE_OPTION;
 
 	static const std::string DIRECT_LIGHT_SAMPLING_STRATEGY;
+	static const std::string DIRECT_LIGHT_USE_NEE_PLUS_PLUS;
+	static const std::string DIRECT_LIGHT_USE_NEE_PLUS_PLUS_RUSSIAN_ROULETTE;
 	static const std::string RIS_USE_VISIBILITY_TARGET_FUNCTION;
 	static const std::string ENVMAP_SAMPLING_STRATEGY;
 	static const std::string ENVMAP_SAMPLING_DO_BSDF_MIS;

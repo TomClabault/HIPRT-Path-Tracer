@@ -11,6 +11,7 @@
 #include "Image/Image.h"
 #include "Image/EnvmapRGBE9995.h"
 #include "Renderer/BVH.h"
+#include "Renderer/CPUDataStructures/NEEPlusPlusCPUData.h.h"
 #include "Renderer/GBufferCPURenderer.h"
 #include "Scene/SceneParser.h"
 #include "Utils/CommandlineArguments.h"
@@ -23,7 +24,10 @@ class CPURenderer
 {
 public:
     CPURenderer(int width, int height);
+
     void setup_brdfs_data();
+    void setup_nee_plus_plus();
+    void nee_plus_plus_memcpy_accumulation();
 
     void set_scene(Scene& parsed_scene);
     void set_envmap(Image32Bit& envmap_image);
@@ -37,10 +41,14 @@ public:
     void update(int frame_number);
     void update_render_data(int sample);
 
+    void reset();
+
     void debug_render_pass(std::function<void(int, int)> render_pass_function);
+
+    void nee_plus_plus_cache_visibility_pass();
     void camera_rays_pass();
 
-    void ReSTIR_DI();
+    void ReSTIR_DI_pass();
 
     LightPresamplingParameters configure_ReSTIR_DI_light_presampling_pass();
     void configure_ReSTIR_DI_initial_pass();
@@ -81,6 +89,8 @@ private:
     std::vector<float> m_envmap_cdf;
     std::vector<float> m_alias_table_probas;
     std::vector<int> m_alias_table_alias;
+
+    NEEPlusPlusCPUData m_nee_plus_plus;
 
     std::vector<DevicePackedTexturedMaterial> m_gpu_packed_materials;
     // Keeps track of which material is fully opaque or not

@@ -235,7 +235,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
 }
 
 /**
- * Returns true if in shadow, false otherwise
+ * Returns true if in shadow (a hit was found before 't_max' distance
+ * Returns false if unoccluded
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& render_data, hiprtRay ray, float t_max, int last_hit_primitive_index, Xorshift32Generator& random_number_generator)
 {
@@ -284,7 +285,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& r
     hiprtHit hit;
     do
     {
-        // We should use ray tracing fitler functions here instead of re-tracing new rays
+        // We should use ray tracing filter functions here instead of re-tracing new rays
         hit = intersect_scene_cpu(render_data, ray, last_hit_primitive_index, random_number_generator);
         if (!hit.hasHit())
             return false;
@@ -304,6 +305,56 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& r
     // If we found a hit and that it is close enough
     return hit.hasHit() && cumulative_t < t_max - 1.0e-4f;
 #endif // __KERNELCC__
+}
+
+/**
+ * Returns true if in shadow (a hit was found before 't_max' distance
+ * Returns false if unoccluded
+ * 
+ * This function also uses NEE++ if enabled in the kernel options and this
+ * function can update the visibility map of NEE++ if enabled in 'render_data.nee_plus_plus'
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRenderData& render_data, hiprtRay ray, float t_max, int last_hit_primitive_index, NEEPlusPlusContext& nee_plus_plus_context, Xorshift32Generator& random_number_generator)
+{
+#if DirectLightUseNEEPlusPlusRR == KERNEL_OPTION_TRUE && DirectLightUseNEEPlusPlus == KERNEL_OPTION_TRUE
+    bool nee_plus_plus_envmap_rr_disabled = nee_plus_plus_context.envmap && !render_data.nee_plus_plus.enable_nee_plus_plus_RR_for_envmap;
+    bool nee_plus_plus_emissives_rr_disabled = !nee_plus_plus_context.envmap && !render_data.nee_plus_plus.enable_nee_plus_plus_RR_for_emissives;
+    if (nee_plus_plus_envmap_rr_disabled || nee_plus_plus_emissives_rr_disabled)
+    {
+        // This is NEE++ RR for envmap sampling but envmap NEE++ RR is disabled
+        nee_plus_plus_context.unoccluded_probability = 1.0f;
+
+        return evaluate_shadow_ray(render_data, ray, t_max, last_hit_primitive_index, random_number_generator);
+    }
+
+    // Getting the matrix index from 'estimate_visibility_probability' in case we need to accumulate
+    // visibility in the visibility map with 'accumulate_visibility'. If we do need to do that,
+    // then that matrix index can be reused instead of being recomputed automatically by 'accumulate_visibility'
+    // to save a little bit of computations
+    int nee_plus_plus_voxel_matrix_index;
+    nee_plus_plus_context.unoccluded_probability = render_data.nee_plus_plus.estimate_visibility_probability(nee_plus_plus_context, nee_plus_plus_voxel_matrix_index);
+    if (random_number_generator() < nee_plus_plus_context.unoccluded_probability)
+    {
+        bool in_shadow = evaluate_shadow_ray(render_data, ray, t_max, last_hit_primitive_index, random_number_generator);
+
+        if (render_data.nee_plus_plus.update_visibility_map)
+            render_data.nee_plus_plus.accumulate_visibility(!in_shadow, nee_plus_plus_voxel_matrix_index);
+
+        return in_shadow;
+    }
+    else
+    {
+        // NEE++ tells us that these two points are going to be occluded so we're not testing
+        // the shadow ray and assuming occluded instead
+        return true;
+    }
+#else
+    // Setting this to 1.0f if not using NEE++ so that is has no effect when the caller
+    // divides by it
+    nee_plus_plus_context.unoccluded_probability = 1.0f;
+
+    return evaluate_shadow_ray(render_data, ray, t_max, last_hit_primitive_index, random_number_generator);
+#endif
 }
 
 /**

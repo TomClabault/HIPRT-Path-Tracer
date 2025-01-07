@@ -12,7 +12,7 @@ void CameraAnimation::set_camera(Camera* camera)
     m_camera = camera;
 }
 
-void CameraAnimation::animation_step(GPURenderer* renderer)
+void CameraAnimation::animation_step(GPURenderer* renderer, float delta_time)
 {
     // We can step the animation either if we're not accumulating or
     // if we're accumulating and we're allowed to step the animations
@@ -22,11 +22,11 @@ void CameraAnimation::animation_step(GPURenderer* renderer)
 
     if (animate && renderer->get_animation_state().do_animations && can_step_animation)
     {
-        do_rotation_animation(renderer);
+        do_rotation_animation(delta_time);
     }
 }
 
-void CameraAnimation::do_rotation_animation(GPURenderer* renderer)
+void CameraAnimation::do_rotation_animation(float delta_time)
 {
     if (m_do_rotation_animation)
     {
@@ -39,7 +39,7 @@ void CameraAnimation::do_rotation_animation(GPURenderer* renderer)
                 // Converting 'm_rotation_value' so that the camera
                 // rotates at such a speed that it will rotate 360.0f
                 // degrees in 'm_rotation_value' seconds
-                rotation_angle_y_deg = 360.0f / m_rotation_value * (renderer->get_last_frame_time() / 1000.0f);
+                rotation_angle_y_deg = 360.0f / m_rotation_value * (delta_time / 1000.0f);
                 break;
 
             case DEGREES_PER_FRAME:
