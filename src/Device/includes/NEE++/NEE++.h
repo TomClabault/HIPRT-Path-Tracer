@@ -23,12 +23,12 @@ struct NEEPlusPlusContext
  */
 struct NEEPlusPlus
 {
-	static constexpr int NEE_PLUS_PLUS_DEFAULT_GRID_SIZE = 24;
+	static constexpr int NEE_PLUS_PLUS_DEFAULT_GRID_SIZE = 2;
 
 	// If true, the next camera rays kernel call will reset the visibility map
 	bool reset_visibility_map = false;
 	// If true, the grid visibility will be updated this frame (new visibility values will be accumulated)
-	bool update_visibility_map = false;
+	bool update_visibility_map = true;
 
 	int3 grid_dimensions = make_int3(NEE_PLUS_PLUS_DEFAULT_GRID_SIZE, NEE_PLUS_PLUS_DEFAULT_GRID_SIZE, NEE_PLUS_PLUS_DEFAULT_GRID_SIZE);
 
@@ -56,12 +56,8 @@ struct NEEPlusPlus
 	// For the indexing logic, (0, 0) is in the top left corner of the matrix
 	AtomicType<unsigned int>* visibility_map_count;
 
-	// How many elements are in 'visibility_map' and 'visibility_map_count'
-	unsigned int visibility_matrix_size = 0;
-
-	HIPRT_HOST_DEVICE void accumulate_visibility(float3 first_world_position, float3 second_world_position, bool visible)
+	HIPRT_HOST_DEVICE void accumulate_visibility(float3 first_world_position, float3 second_world_position, bool visible, int matrix_index)
 	{
-		int matrix_index = get_visibility_map_index(first_world_position, second_world_position);
 		if (matrix_index == -1)
 			// One of the two points was outside the scene, cannot cache this
 			return;
@@ -72,20 +68,34 @@ struct NEEPlusPlus
 	}
 
 	/**
+	 * Updates the visibility map with one additional entry: whether or not the two given world points are visible
+	 */
+	HIPRT_HOST_DEVICE void accumulate_visibility(float3 first_world_position, float3 second_world_position, bool visible)
+	{
+		return accumulate_visibility(first_world_position, second_world_position, visible, get_visibility_map_index(first_world_position, second_world_position));
+	}
+
+	/**
 	 * Returns the estimated probability that a ray between the two given world points 
 	 * is going to be unoccluded (i.e. the two points are mutually visible)
+	 * 
+	 * Returns the index in the visibility matrix of the voxel-to-voxel correspondance of the
+	 * two given points. This value can then be passed as argument to 'accumulate_visibility'
+	 * to save a little bit of computations (otherwise, 'accumulate_visibility' would have recomputed
+	 * that value on its own even though the world points given may be the same and thus, the matrix
+	 * index is the same)
 	 */
-	HIPRT_HOST_DEVICE float estimate_unoccluded_probability(float3 first_world_position, float3 second_world_position) const
+	HIPRT_HOST_DEVICE float estimate_unoccluded_probability(float3 first_world_position, float3 second_world_position, int& out_matrix_index) const
 	{
-		int matrix_index = get_visibility_map_index(first_world_position, second_world_position);
-		if (matrix_index == -1)
+		out_matrix_index = get_visibility_map_index(first_world_position, second_world_position);
+		if (out_matrix_index == -1)
 			// One of the two points was outside the scene, cannot read the cache for this
 			// 
 			// Returning 1.0f indicating that the two points are not occluded such that the caller
 			// tests for a shadow ray
 			return 1.0f;
 
-		unsigned int map_count = visibility_map_count[matrix_index];
+		unsigned int map_count = visibility_map_count[out_matrix_index];
 		if (map_count == 0)
 			// No information for these two points
 			// 
@@ -93,7 +103,25 @@ struct NEEPlusPlus
 			// tests for a shadow ray
 			return 1.0f;
 		else
-			return visibility_map[matrix_index] / (float)map_count;
+			return visibility_map[out_matrix_index] / (float)map_count;
+	}
+
+	/**
+	 * Returns the estimated probability that a ray between the two given world points
+	 * is going to be unoccluded (i.e. the two points are mutually visible)
+	 */
+	HIPRT_HOST_DEVICE float estimate_unoccluded_probability(float3 first_world_position, float3 second_world_position) const
+	{
+		int trash_matrix_index;
+		return estimate_unoccluded_probability(first_world_position, second_world_position, trash_matrix_index);
+	}
+
+	HIPRT_HOST_DEVICE unsigned int get_visibility_matrix_element_count() const
+	{
+		unsigned int grid_elements_count = grid_dimensions.x * grid_dimensions.y * grid_dimensions.z;
+		unsigned half_matrix_size = grid_elements_count * (grid_elements_count + 1) / 2;
+
+		return half_matrix_size;
 	}
 
 private:

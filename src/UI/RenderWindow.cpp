@@ -25,6 +25,7 @@ extern ImGuiLogger g_imgui_logger;
 // TODOs  performance improvements branch:
 // - NEE++
 // - NEE++ envmap
+// - tracyclient in external targets project folder
 // - cleanup declaration of HIPRT traversal in a macro or something
 // - adaptive sudivision NEE++
 // - counter for the total amount of nested dielectrics supported

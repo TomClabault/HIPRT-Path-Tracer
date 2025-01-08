@@ -32,7 +32,6 @@ const std::unordered_set<std::string> GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZ
 
 const std::unordered_map<std::string, std::string> GPURenderer::KERNEL_FUNCTION_NAMES = 
 {
-	{ NEE_PLUS_PLUS_CACHING_PREPASS_ID, "NEEPlusPlusCachingPrepass" },
 	{ CAMERA_RAYS_KERNEL_ID, "CameraRays" },
 	{ PATH_TRACING_KERNEL_ID, "FullPathTracer" },
 	{ RAY_VOLUME_STATE_SIZE_KERNEL_ID, "RayVolumeStateSize" },
@@ -40,7 +39,6 @@ const std::unordered_map<std::string, std::string> GPURenderer::KERNEL_FUNCTION_
 
 const std::unordered_map<std::string, std::string> GPURenderer::KERNEL_FILES =
 {
-	{ NEE_PLUS_PLUS_CACHING_PREPASS_ID, DEVICE_KERNELS_DIRECTORY "/NEE++/NEEPlusPlusCachingPrepass.h" },
 	{ CAMERA_RAYS_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/CameraRays.h" },
 	{ PATH_TRACING_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/FullPathTracer.h" },
 	{ RAY_VOLUME_STATE_SIZE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/Utils/RayVolumeStateSize.h" },
@@ -179,16 +177,9 @@ void GPURenderer::init_GGX_glass_Ess_texture(hipTextureFilterMode filtering_mode
 void GPURenderer::setup_nee_plus_plus()
 {
 	int3 grid_dimensions = m_nee_plus_plus.map_dimensions;
-	int half_matrix_size = (grid_dimensions.x * grid_dimensions.y * grid_dimensions.z) * (grid_dimensions.x * grid_dimensions.y * grid_dimensions.z + 1) / 2;
+	int half_matrix_size = m_nee_plus_plus.get_visibility_matrix_element_count();
 
-	// Dividing by 2 because the visibility map is symettrical so we only need half of the matrix
-	m_nee_plus_plus.visibility_map.resize(half_matrix_size);
-	m_nee_plus_plus.visibility_map_count.resize(half_matrix_size);
-
-	m_render_data.nee_plus_plus.visibility_map = reinterpret_cast<AtomicType<unsigned int>*>(m_nee_plus_plus.visibility_map.get_device_pointer());
-	m_render_data.nee_plus_plus.visibility_map_count = reinterpret_cast<AtomicType<unsigned int>*>(m_nee_plus_plus.visibility_map_count.get_device_pointer());
 	m_render_data.nee_plus_plus.grid_dimensions = grid_dimensions;
-	m_render_data.nee_plus_plus.visibility_matrix_size = half_matrix_size;
 }
 
 void GPURenderer::setup_nee_plus_plus_from_scene(const Scene& scene)
@@ -199,7 +190,6 @@ void GPURenderer::setup_nee_plus_plus_from_scene(const Scene& scene)
 
 void GPURenderer::reset_nee_plus_plus()
 {
-	m_need_plus_plus_caching_prepass_done = false;
 	m_render_data.nee_plus_plus.reset_visibility_map = true;
 }
 
@@ -234,12 +224,6 @@ void GPURenderer::setup_kernels()
 	// numbers are the best may vary.)
 	
 	// Configuring the kernels
-	m_kernels[GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID].set_kernel_file_path(GPURenderer::KERNEL_FILES.at(GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID));
-	m_kernels[GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID].set_kernel_function_name(GPURenderer::KERNEL_FUNCTION_NAMES.at(GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID));
-	m_kernels[GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID].synchronize_options_with(*m_global_compiler_options, GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
-	m_kernels[GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
-	m_kernels[GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 8);
-
 	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].set_kernel_file_path(GPURenderer::KERNEL_FILES.at(GPURenderer::CAMERA_RAYS_KERNEL_ID));
 	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].set_kernel_function_name(GPURenderer::KERNEL_FUNCTION_NAMES.at(GPURenderer::CAMERA_RAYS_KERNEL_ID));
 	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].synchronize_options_with(*m_global_compiler_options, GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
@@ -269,7 +253,6 @@ void GPURenderer::setup_kernels()
 	ThreadManager::start_thread(ThreadManager::COMPILE_RAY_VOLUME_STATE_SIZE_KERNEL_KEY, ThreadFunctions::compile_kernel_silent, std::ref(m_ray_volume_state_byte_size_kernel), m_hiprt_orochi_ctx, std::ref(m_func_name_sets));
 
 	// Compiling kernels
-	ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID]), m_hiprt_orochi_ctx, std::ref(m_func_name_sets));
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID]), m_hiprt_orochi_ctx, std::ref(m_func_name_sets));
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID]), m_hiprt_orochi_ctx, std::ref(m_func_name_sets));
 }
@@ -282,6 +265,7 @@ void GPURenderer::update()
 	internal_update_clear_device_status_buffers();
 	internal_update_prev_frame_g_buffer();
 	internal_update_adaptive_sampling_buffers();
+	internal_update_nee_plus_plus_buffers();
 	internal_update_global_stack_buffer();
 
 	update_render_data();
@@ -385,6 +369,48 @@ void GPURenderer::internal_update_adaptive_sampling_buffers()
 		m_pixels_squared_luminance_buffer.free();
 		m_pixels_sample_count_buffer.free();
 		m_pixels_converged_sample_count_buffer->free();
+	}
+}
+
+void GPURenderer::internal_update_nee_plus_plus_buffers()
+{
+	// Allocating / deallocating buffers
+	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_TRUE)
+	{
+		unsigned int matrix_element_count = m_nee_plus_plus.get_visibility_matrix_element_count();
+		if (m_nee_plus_plus.visibility_map.get_element_count() != matrix_element_count)
+		{
+			// If one buffer isn't properly sized, let's resize them both (becaues one goes with the other)
+			m_nee_plus_plus.visibility_map.resize(matrix_element_count);
+			m_nee_plus_plus.visibility_map_count.resize(matrix_element_count);
+
+			m_render_data_buffers_invalidated = true;
+		}
+	}
+	else
+	{
+		// NEE++ not in use, let's deallocate the buffers
+		if (m_nee_plus_plus.visibility_map.get_element_count() != 0)
+		{
+			m_nee_plus_plus.visibility_map.free();
+			m_nee_plus_plus.visibility_map_count.free();
+
+			m_render_data_buffers_invalidated = true;
+		}
+	}
+
+	// Clearing the visibility map if this has been asked by the user
+	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_TRUE)
+	{
+		if (m_render_data.nee_plus_plus.reset_visibility_map)
+		{
+			auto start = std::chrono::high_resolution_clock::now();
+			m_nee_plus_plus.visibility_map.memset(0);
+			m_nee_plus_plus.visibility_map_count.memset(0);
+			auto stop = std::chrono::high_resolution_clock::now();
+
+			std::cout << "Memset time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
+		}
 	}
 }
 
@@ -508,7 +534,6 @@ void GPURenderer::render_path_tracing()
 			// active, ...)
 			m_render_data.render_settings.do_update_status_buffers = true;
 		
-		launch_nee_plus_plus_caching_prepass();
 		launch_camera_rays();
 		launch_ReSTIR_DI();
 		launch_path_tracing();
@@ -520,6 +545,7 @@ void GPURenderer::render_path_tracing()
 		// so we're setting the flag to false (it will be set to true again if we need to reset the render
 		// again)
 		m_render_data.render_settings.need_to_reset = false;
+		m_render_data.nee_plus_plus.reset_visibility_map = false;
 		// If we had requested a temporal buffers clear, this has be done by this frame so we can
 		// now reset the flag
 		m_render_data.render_settings.restir_di_settings.temporal_pass.temporal_buffer_clear_requested = false;
@@ -544,16 +570,11 @@ void GPURenderer::render_path_tracing()
 
 void GPURenderer::launch_nee_plus_plus_caching_prepass()
 {
-	if (m_need_plus_plus_caching_prepass_done)
-		return;
-
 	unsigned int caching_sample_count = 1024;
 	void* launch_args[] = { &m_render_data, &caching_sample_count, &m_render_resolution };
 
 	m_render_data.random_seed = m_rng.xorshift32();
 	m_kernels[GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID].launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
-
-	m_need_plus_plus_caching_prepass_done = true;
 }
 
 void GPURenderer::launch_camera_rays()
@@ -1070,6 +1091,7 @@ void GPURenderer::reset(std::shared_ptr<ApplicationSettings> application_setting
 	m_render_data.render_settings.denoiser_AOV_accumulation_counter = 0;
 	m_render_data.render_settings.sample_number = 0;
 	m_render_data.render_settings.need_to_reset = true;
+	m_render_data.nee_plus_plus.reset_visibility_map = true;
 
 	internal_clear_m_status_buffers();
 }
@@ -1132,6 +1154,9 @@ void GPURenderer::update_render_data()
 		m_render_data.aux_buffers.stop_noise_threshold_converged_count = reinterpret_cast<AtomicType<unsigned int>*>(m_pixels_converged_count_buffer.get_device_pointer());
 
 		m_restir_di_render_pass.update_render_data();
+
+		m_render_data.nee_plus_plus.visibility_map = reinterpret_cast<AtomicType<unsigned int>*>(m_nee_plus_plus.visibility_map.get_device_pointer());
+		m_render_data.nee_plus_plus.visibility_map_count = reinterpret_cast<AtomicType<unsigned int>*>(m_nee_plus_plus.visibility_map_count.get_device_pointer());
 
 		m_render_data_buffers_invalidated = false;
 	}

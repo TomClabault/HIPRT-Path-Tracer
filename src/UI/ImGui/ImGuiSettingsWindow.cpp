@@ -77,6 +77,8 @@ void ImGuiSettingsWindow::draw_header()
 		// Only displaying the refresh timer if we actually need to wait before refreshin'
 		// And also, not displaying that if the rendering is done
 		ImGui::Text("Viewport refresh in: %.3fs", std::max(0.0f, time_before_viewport_refresh_ms / 1000.0f));
+	else
+		ImGui::Text("Viewport refresh in: 0.000s");
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	if (render_settings.has_access_to_adaptive_sampling_buffers())
@@ -781,12 +783,15 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			switch (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY))
 			{
 			case LSS_NO_DIRECT_LIGHT_SAMPLING:
+				ImGui::Dummy(ImVec2(0.0f, -20.0f));
 				break;
 
 			case LSS_UNIFORM_ONE_LIGHT:
+				ImGui::Dummy(ImVec2(0.0f, -20.0f));
 				break;
 
 			case LSS_MIS_LIGHT_BSDF:
+				ImGui::Dummy(ImVec2(0.0f, -20.0f));
 				break;
 
 			case LSS_RIS_BSDF_AND_LIGHT:
@@ -1447,6 +1452,9 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				break;
 			}
 
+			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) != LSS_BSDF)
+				draw_next_event_estimation_plus_plus_panel();
+
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::TreePop();
 		}
@@ -1531,6 +1539,72 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 		}
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::TreePop();
+	}
+}
+
+void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
+{
+	std::shared_ptr<GPUKernelCompilerOptions> kernel_options = m_renderer->get_global_compiler_options();
+
+	if (ImGui::CollapsingHeader("Next Event Estimation++"))
+	{
+		ImGui::TreePush("Use NEE++ Tree");
+
+		static bool use_nee_plus_plus = DirectLightUseNEEPlusPlus;
+		if (ImGui::Checkbox("Use NEE++", &use_nee_plus_plus))
+		{
+			kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS, use_nee_plus_plus ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+			m_renderer->recompile_kernels();
+			m_render_window->set_render_dirty(true);
+		}
+		ImGuiRenderer::show_help_marker("Whether or not to use NEE++ [Guo et al., 2020] features at all.");
+
+		ImGui::BeginDisabled(!use_nee_plus_plus);
+		{
+			ImGui::TreePush("NEE++ Settings Tree");
+
+			static unsigned int max_cell_records = 0;
+
+			ImGui::Text("Max visibility map records: %u", max_cell_records);
+			ImGuiRenderer::show_help_marker("The maximum number of records that a cell of the visibility map has seen.");
+			ImGui::SameLine();
+			if (ImGui::Button("Refresh"))
+			{
+				max_cell_records = 0;
+
+				int index = 0;
+				std::vector<unsigned int> records = m_renderer->get_nee_plus_plus_data().visibility_map_count.download_data();
+				for (unsigned int c : records)
+				{
+					max_cell_records = hippt::max(c, max_cell_records);
+					if (max_cell_records == c)
+						std::cout << index << std::endl;
+					index++;
+				}
+			}
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+			if (ImGui::Checkbox("Update visibility map", &m_renderer->get_render_data().nee_plus_plus.update_visibility_map))
+				m_render_window->set_render_dirty(true);
+			static bool use_nee_plus_plus_rr = DirectLightUseNEEPlusPlusRR;
+			if (ImGui::Checkbox("Use NEE++ Russian Roulette", &use_nee_plus_plus_rr))
+			{
+				kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS_RUSSIAN_ROULETTE, use_nee_plus_plus_rr ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("Implementation of NEE++, [Guo et al., 2020].\n"
+				"If checked, the voxel-to-voxel visibility estimate of NEE++ will be used to "
+				"stochastically determine whether or not attempt at all to trace a shadow at "
+				"a light during next-event-estimation.");
+
+			ImGui::TreePop();
+		}
+		ImGui::EndDisabled();
+
 		ImGui::TreePop();
 	}
 }
@@ -1983,47 +2057,7 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 			"0.0f to disable");
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
-		static bool use_nee_plus_plus = DirectLightUseNEEPlusPlus;
-		if (ImGui::Checkbox("Use NEE++", &use_nee_plus_plus))
-		{
-			kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS, use_nee_plus_plus ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-			m_renderer->recompile_kernels();
-			m_render_window->set_render_dirty(true);
-		}
-		ImGuiRenderer::show_help_marker("Whether or not to use NEE++ [Guo et al., 2020] features at all.");
-
-		ImGui::BeginDisabled(!use_nee_plus_plus);
-		{
-			ImGui::TreePush("NEE++ Settings Tree");
-
-			unsigned int average_records = 0;
-			std::vector<unsigned int> count = m_renderer->get_nee_plus_plus_data().visibility_map_count.download_data();
-			for (unsigned int c : count)
-				average_records = hippt::max(c, average_records);
-
-			ImGui::Text("Max records: %d", average_records);
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
-			if (ImGui::Checkbox("Update visibility map", &m_renderer->get_render_data().nee_plus_plus.update_visibility_map))
-				m_render_window->set_render_dirty(true);
-			static bool use_nee_plus_plus_rr = DirectLightUseNEEPlusPlusRR;
-			if (ImGui::Checkbox("Use NEE++ Russian Roulette", &use_nee_plus_plus_rr))
-			{
-				kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS_RUSSIAN_ROULETTE, use_nee_plus_plus_rr ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
-			ImGuiRenderer::show_help_marker("Implementation of NEE++, [Guo et al., 2020].\n"
-				"If checked, the voxel-to-voxel visibility estimate of NEE++ will be used to "
-				"stochastically determine whether or not attempt at all to trace a shadow at "
-				"a light during next-event-estimation.");
-
-			ImGui::TreePop();
-		}
-		ImGui::EndDisabled();
+		draw_next_event_estimation_plus_plus_panel();
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();

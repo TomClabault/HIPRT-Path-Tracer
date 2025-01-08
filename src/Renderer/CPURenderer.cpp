@@ -25,7 +25,7 @@
  // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
  // allowing for fast step into that pixel with the debugger to see what's happening.
  // Otherwise if 0, all pixels of the image are rendered
-#define DEBUG_PIXEL 0
+#define DEBUG_PIXEL 1
 
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner.
 // If 1, it's bottom left corner.
@@ -39,8 +39,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 924
-#define DEBUG_PIXEL_Y 465
+#define DEBUG_PIXEL_X 460
+#define DEBUG_PIXEL_Y 377
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -64,7 +64,7 @@
 #define DEBUG_RENDER_NEIGHBORHOOD 1
 // How many pixels to render around the debugged pixel given by the DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y coordinates
-#define DEBUG_NEIGHBORHOOD_SIZE 10
+#define DEBUG_NEIGHBORHOOD_SIZE 50
 
 CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, height))
 {
@@ -145,7 +145,6 @@ void CPURenderer::setup_nee_plus_plus()
     m_render_data.nee_plus_plus.visibility_map = m_nee_plus_plus.visibility_map.data();
     m_render_data.nee_plus_plus.visibility_map_count = m_nee_plus_plus.visibility_map_count.data();
     m_render_data.nee_plus_plus.grid_dimensions = map_dimensions;
-    m_render_data.nee_plus_plus.visibility_matrix_size = half_matrix_size;
 }
 
 void CPURenderer::set_scene(Scene& parsed_scene)
@@ -308,7 +307,8 @@ void CPURenderer::render()
 
         camera_rays_pass();
 #if DirectLightSamplingStrategy == LSS_RESTIR_DI
-        ReSTIR_DI();
+        // Only doing ReSTIR DI is ReSTIR DI is enabled 
+        ReSTIR_DI_pass();
 #endif
         tracing_pass();
 
@@ -424,9 +424,13 @@ void CPURenderer::debug_render_pass(std::function<void(int, int)> render_pass_fu
 
 void CPURenderer::nee_plus_plus_cache_visibility_pass()
 {
-    debug_render_pass([this](int x, int y) {
-        NEEPlusPlusCachingPrepass(m_render_data, /* caching sample count */ 8, m_resolution, x, y);
-    });
+    //debug_render_pass([this](int x, int y) {
+    //    NEEPlusPlusCachingPrepass(m_render_data, /* caching sample count */ 8, m_resolution, x, y);
+    //});
+
+    //for (int y = 0; y < m_resolution.y; y++)
+    //    for (int x = 0; x < m_resolution.x; x++)
+    //        NEEPlusPlusCachingPrepass(m_render_data, /* caching sample count */ 8, m_resolution, x, y);
 }
 
 void CPURenderer::camera_rays_pass()
@@ -436,7 +440,7 @@ void CPURenderer::camera_rays_pass()
     });
 }
 
-void CPURenderer::ReSTIR_DI()
+void CPURenderer::ReSTIR_DI_pass()
 {
     launch_ReSTIR_DI_presampling_lights_pass();
     launch_ReSTIR_DI_initial_candidates_pass();

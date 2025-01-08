@@ -38,6 +38,7 @@ private:
 	void draw_environment_panel();
 
 	void draw_sampling_panel();
+	void draw_next_event_estimation_plus_plus_panel();
 	void draw_principled_bsdf_energy_conservation();
 	void display_ReSTIR_DI_bias_status(std::shared_ptr<GPUKernelCompilerOptions> kernel_options);
 

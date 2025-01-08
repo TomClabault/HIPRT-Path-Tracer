@@ -45,7 +45,7 @@ public:
     void nee_plus_plus_cache_visibility_pass();
     void camera_rays_pass();
 
-    void ReSTIR_DI();
+    void ReSTIR_DI_pass();
 
     LightPresamplingParameters configure_ReSTIR_DI_light_presampling_pass();
     void configure_ReSTIR_DI_initial_pass();

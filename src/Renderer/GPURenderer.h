@@ -422,6 +422,12 @@ private:
 	void internal_update_adaptive_sampling_buffers();
 
 	/**
+	 * Allocates/deallocates the data structure for NEE++ depending on whether or not
+	 * NEE++ is being used
+	 */
+	void internal_update_nee_plus_plus_buffers();
+
+	/**
 	 * Allocates/frees the global buffer for BVH traversal when UseSharedStackBVHTraversal is TRUE
 	 */
 	void internal_update_global_stack_buffer();
@@ -548,9 +554,6 @@ private:
 
 	// Buffers and settings for NEE++
 	NEEPlusPlusGPUData m_nee_plus_plus;
-	// Whether or not the foxel-to-voxel visibility of the scene has been cached to the visibility
-	// map already or not
-	bool m_need_plus_plus_caching_prepass_done = false;
 	// Render data passed to the GPU for rendering. Most importantly it contains
 	// 
 	// The WorldSettings: Settings relative to the scene such as the intensity of the uniform light, the
