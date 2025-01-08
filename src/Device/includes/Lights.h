@@ -30,7 +30,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_no_MIS(const HIPRTRe
         // Can happen for very small triangles
         return ColorRGB32F(0.0f);
 
-    float3 shadow_ray_origin = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f;
+    float3 shadow_ray_origin = closest_hit_info.inter_point;
     float3 shadow_ray_direction = random_light_point - shadow_ray_origin;
     float distance_to_light = hippt::length(shadow_ray_direction);
     float3 shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
@@ -43,7 +43,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_no_MIS(const HIPRTRe
     float dot_light_source = hippt::abs(hippt::dot(light_source_info.light_source_normal, -shadow_ray.direction));
     if (dot_light_source > 0.0f)
     {
-        bool in_shadow = evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, random_number_generator);
+        NEEPlusPlusContext nee_plus_plus_context;
+        nee_plus_plus_context.point_on_light = random_light_point;
+        nee_plus_plus_context.shaded_point = shadow_ray_origin;
+        bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, nee_plus_plus_context, random_number_generator);
 
         if (!in_shadow)
         {
@@ -56,7 +59,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_no_MIS(const HIPRTRe
                 light_sample_pdf /= dot_light_source;
 
                 float cosine_term = hippt::max(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction), 0.0f);
-                light_source_radiance = light_source_info.emission * cosine_term * bsdf_color / light_sample_pdf;
+                light_source_radiance = light_source_info.emission * cosine_term * bsdf_color / light_sample_pdf / nee_plus_plus_context.unoccluded_probability;
+
+                if (light_source_radiance.has_NaN())
+                    Utils::debugbreak();
             }
         }
     }

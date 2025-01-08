@@ -175,16 +175,17 @@ void GPURenderer::init_GGX_glass_Ess_texture(hipTextureFilterMode filtering_mode
 
 void GPURenderer::setup_nee_plus_plus()
 {
-	int3 map_dimensions = m_nee_plus_plus.map_dimensions;
+	int3 grid_dimensions = m_nee_plus_plus.map_dimensions;
+	int half_matrix_size = (grid_dimensions.x * grid_dimensions.y * grid_dimensions.z) * (grid_dimensions.x * grid_dimensions.y * grid_dimensions.z + 1) / 2;
 
 	// Dividing by 2 because the visibility map is symettrical so we only need half of the matrix
-	m_nee_plus_plus.visibility_map.resize(map_dimensions.x * map_dimensions.y * map_dimensions.z / 2);
-	m_nee_plus_plus.visibility_map_count.resize(map_dimensions.x * map_dimensions.y * map_dimensions.z / 2);
+	m_nee_plus_plus.visibility_map.resize(half_matrix_size);
+	m_nee_plus_plus.visibility_map_count.resize(half_matrix_size);
 
 	m_render_data.nee_plus_plus.visibility_map = reinterpret_cast<AtomicType<int>*>(m_nee_plus_plus.visibility_map.get_device_pointer());
 	m_render_data.nee_plus_plus.visibility_map_count = reinterpret_cast<AtomicType<int>*>(m_nee_plus_plus.visibility_map_count.get_device_pointer());
-	m_render_data.nee_plus_plus.grid_dimensions = map_dimensions;
-	m_render_data.nee_plus_plus.visibility_matrix_size = (map_dimensions.x * map_dimensions.y * map_dimensions.z) * (map_dimensions.x * map_dimensions.y * map_dimensions.z + 1) / 2;
+	m_render_data.nee_plus_plus.grid_dimensions = grid_dimensions;
+	m_render_data.nee_plus_plus.visibility_matrix_size = half_matrix_size;
 }
 
 void GPURenderer::setup_filter_functions()

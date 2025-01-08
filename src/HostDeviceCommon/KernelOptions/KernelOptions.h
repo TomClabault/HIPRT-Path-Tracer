@@ -159,7 +159,13 @@
  *		Uses ReSTIR DI to sample direct lighting at the first bounce in the scene.
  *		Later bounces use the strategy given by ReSTIR_DI_LaterBouncesSamplingStrategy
  */
-#define DirectLightSamplingStrategy LSS_RIS_BSDF_AND_LIGHT
+#define DirectLightSamplingStrategy LSS_UNIFORM_ONE_LIGHT
+
+/**
+ * Whether or not to use russian roulette to avoid tracing shadow rays based on the visibility
+ * information of NEE++
+ */
+#define DirectLightUseNEEPlusPlusRR KERNEL_OPTION_TRUE
 
 /**
  * What envmap sampling strategy to use

@@ -307,6 +307,28 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& r
 }
 
 /**
+ * Returns true if in shadow, false otherwise
+ */
+HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray_nee_plus_plus(const HIPRTRenderData& render_data, hiprtRay ray, float t_max, int last_hit_primitive_index, NEEPlusPlusContext& nee_plus_plus_context, Xorshift32Generator& random_number_generator)
+{
+#if DirectLightUseNEEPlusPlusRR == KERNEL_OPTION_TRUE
+    nee_plus_plus_context.unoccluded_probability = render_data.nee_plus_plus.estimate_unoccluded_probability(nee_plus_plus_context.shaded_point, nee_plus_plus_context.point_on_light);
+    if (random_number_generator() < nee_plus_plus_context.unoccluded_probability)
+        return evaluate_shadow_ray(render_data, ray, t_max, last_hit_primitive_index, random_number_generator);
+    else
+        // NEE++ tells us that these two points are going to be occluded so we're not testing
+        // the shadow ray and assuming occluded instead
+        return true;
+#else
+    // Setting this to 1 if not using NEE++ so that is has no effect when the caller
+    // divides by it
+    nee_plus_plus_context.unoccluded_probability = 1.0f;
+
+    return evaluate_shadow_ray(render_data, ray, t_max, last_hit_primitive_index, random_number_generator);
+#endif
+}
+
+/**
  * Returns true if in shadow, false otherwise.
  * 
  * Also, if a hit was found, outputs the emission of the material at the hit point in 'out_hit_emission'

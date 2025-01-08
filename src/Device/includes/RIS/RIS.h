@@ -32,6 +32,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_reservoir_sample(const HIPRT
     float3 evaluated_point = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f;
     float3 shadow_ray_direction = sample.point_on_light_source - evaluated_point;
     float3 shadow_ray_direction_normalized = shadow_ray_direction / (distance_to_light = hippt::length(shadow_ray_direction));
+
     if (sample.is_bsdf_sample)
         // A BSDF sample that has been picked by RIS cannot be occluded otherwise
         // it would have a weight of 0 and would never be picked by RIS

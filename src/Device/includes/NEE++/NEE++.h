@@ -6,6 +6,13 @@
 #ifndef DEVICE_INCLUDES_NEE_PLUS_PLUS
 #define DEVICE_INCLUDES_NEE_PLUS_PLUS
 
+struct NEEPlusPlusContext
+{
+	float3 shaded_point;
+	float3 point_on_light;
+	float unoccluded_probability;
+};
+
 /**
  * Structure that contains the data for the implementation of NEE++.
  * 
@@ -14,7 +21,10 @@
  */
 struct NEEPlusPlus
 {
-	static constexpr int NEE_PLUS_PLUS_DEFAULT_GRID_SIZE = 2;
+	static constexpr int NEE_PLUS_PLUS_DEFAULT_GRID_SIZE = 16;
+
+	// If true, the next camera rays kernel call will reset the visibility map
+	bool reset_visibility_map = false;
 
 	int3 grid_dimensions = make_int3(NEE_PLUS_PLUS_DEFAULT_GRID_SIZE, NEE_PLUS_PLUS_DEFAULT_GRID_SIZE, NEE_PLUS_PLUS_DEFAULT_GRID_SIZE);
 
@@ -58,19 +68,19 @@ struct NEEPlusPlus
 
 	/**
 	 * Returns the estimated probability that a ray between the two given world points 
-	 * is going to be occluded (i.e. the two points are not mutually visible)
+	 * is going to be unoccluded (i.e. the two points are mutually visible)
 	 */
-	HIPRT_HOST_DEVICE float estimate_occluded_probability(float3 first_world_position, float3 second_world_position) const
+	HIPRT_HOST_DEVICE float estimate_unoccluded_probability(float3 first_world_position, float3 second_world_position) const
 	{
 		int matrix_index = get_visibility_map_index(first_world_position, second_world_position);
 		if (matrix_index == -1)
 			// One of the two points was outside the scene, cannot read the cache for this
-			return 0.0f;
+			return 1.0f;
 
 		int map_count = visibility_map_count[matrix_index];
 		if (map_count == 0)
 			// No information for these two points
-			return 0.0f;
+			return 1.0f;
 		else
 			return visibility_map[matrix_index] / (float)map_count;
 	}
