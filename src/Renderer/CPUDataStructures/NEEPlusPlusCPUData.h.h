@@ -16,8 +16,8 @@ struct NEEPlusPlusCPUData
 	// Dimensions of the visibility map
 	int3 map_dimensions = make_int3(NEEPlusPlus::NEE_PLUS_PLUS_DEFAULT_GRID_SIZE, NEEPlusPlus::NEE_PLUS_PLUS_DEFAULT_GRID_SIZE, NEEPlusPlus::NEE_PLUS_PLUS_DEFAULT_GRID_SIZE);
 
-	std::vector<AtomicType<int>> visibility_map;
-	std::vector<AtomicType<int>> visibility_map_count;
+	std::vector<AtomicType<unsigned >> visibility_map;
+	std::vector<AtomicType<unsigned >> visibility_map_count;
 };
 
 #endif

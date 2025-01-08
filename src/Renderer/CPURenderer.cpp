@@ -139,8 +139,8 @@ void CPURenderer::setup_nee_plus_plus()
 
     // Dividing by 2 because the visibility map is symmetrical so we only need half of the matrix
     int half_matrix_size = (map_dimensions.x * map_dimensions.y * map_dimensions.z) * (map_dimensions.x * map_dimensions.y * map_dimensions.z + 1) / 2;
-    m_nee_plus_plus.visibility_map = std::vector<AtomicType<int>>(half_matrix_size);
-    m_nee_plus_plus.visibility_map_count = std::vector<AtomicType<int>>(half_matrix_size);
+    m_nee_plus_plus.visibility_map = std::vector<AtomicType<unsigned int>>(half_matrix_size);
+    m_nee_plus_plus.visibility_map_count = std::vector<AtomicType<unsigned int>>(half_matrix_size);
 
     m_render_data.nee_plus_plus.visibility_map = m_nee_plus_plus.visibility_map.data();
     m_render_data.nee_plus_plus.visibility_map_count = m_nee_plus_plus.visibility_map_count.data();
@@ -214,7 +214,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.aux_buffers.restir_reservoir_buffer_2 = m_restir_di_state.spatial_output_reservoirs_1.data();
     m_render_data.aux_buffers.restir_reservoir_buffer_3 = m_restir_di_state.spatial_output_reservoirs_2.data();
 
-    m_render_data.nee_plus_plus.grid_origin = parsed_scene.metadata.scene_bounding_box.mini;
+    m_render_data.nee_plus_plus.grid_min_point = parsed_scene.metadata.scene_bounding_box.mini;
     m_render_data.nee_plus_plus.grid_max_point = parsed_scene.metadata.scene_bounding_box.maxi;
 
     ThreadManager::join_threads(ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES);

@@ -162,6 +162,11 @@
 #define DirectLightSamplingStrategy LSS_UNIFORM_ONE_LIGHT
 
 /**
+ * Whether or not to use NEE++ features at all
+ */
+#define DirectLightUseNEEPlusPlus KERNEL_OPTION_TRUE
+
+/**
  * Whether or not to use russian roulette to avoid tracing shadow rays based on the visibility
  * information of NEE++
  */

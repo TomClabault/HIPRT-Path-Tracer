@@ -235,7 +235,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
 }
 
 /**
- * Returns true if in shadow, false otherwise
+ * Returns true if in shadow (a hit was found before 't_max' distance
+ * Returns false if unoccluded
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& render_data, hiprtRay ray, float t_max, int last_hit_primitive_index, Xorshift32Generator& random_number_generator)
 {
@@ -307,20 +308,34 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& r
 }
 
 /**
- * Returns true if in shadow, false otherwise
+ * Returns true if in shadow (a hit was found before 't_max' distance
+ * Returns false if unoccluded
+ * 
+ * This function also uses NEE++ if enabled in the kernel options and this
+ * function can update the visibility map of NEE++ if enabled in 'render_data.nee_plus_plus'
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray_nee_plus_plus(const HIPRTRenderData& render_data, hiprtRay ray, float t_max, int last_hit_primitive_index, NEEPlusPlusContext& nee_plus_plus_context, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRenderData& render_data, hiprtRay ray, float t_max, int last_hit_primitive_index, NEEPlusPlusContext& nee_plus_plus_context, Xorshift32Generator& random_number_generator)
 {
-#if DirectLightUseNEEPlusPlusRR == KERNEL_OPTION_TRUE
+#if DirectLightUseNEEPlusPlusRR == KERNEL_OPTION_TRUE && DirectLightUseNEEPlusPlus == KERNEL_OPTION_TRUE
     nee_plus_plus_context.unoccluded_probability = render_data.nee_plus_plus.estimate_unoccluded_probability(nee_plus_plus_context.shaded_point, nee_plus_plus_context.point_on_light);
     if (random_number_generator() < nee_plus_plus_context.unoccluded_probability)
-        return evaluate_shadow_ray(render_data, ray, t_max, last_hit_primitive_index, random_number_generator);
+    {
+        static int counter = 0;
+        if (counter++ == 0)
+            printf("%d\n", render_data.nee_plus_plus.update_visibility_map);
+        bool in_shadow = evaluate_shadow_ray(render_data, ray, t_max, last_hit_primitive_index, random_number_generator);
+
+        if (render_data.nee_plus_plus.update_visibility_map)
+            render_data.nee_plus_plus.accumulate_visibility(nee_plus_plus_context.shaded_point, nee_plus_plus_context.point_on_light, !in_shadow);
+
+        return in_shadow;
+    }
     else
         // NEE++ tells us that these two points are going to be occluded so we're not testing
         // the shadow ray and assuming occluded instead
         return true;
 #else
-    // Setting this to 1 if not using NEE++ so that is has no effect when the caller
+    // Setting this to 1.0f if not using NEE++ so that is has no effect when the caller
     // divides by it
     nee_plus_plus_context.unoccluded_probability = 1.0f;
 

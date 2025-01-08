@@ -23,15 +23,18 @@ struct NEEPlusPlusContext
  */
 struct NEEPlusPlus
 {
-	static constexpr int NEE_PLUS_PLUS_DEFAULT_GRID_SIZE = 16;
+	static constexpr int NEE_PLUS_PLUS_DEFAULT_GRID_SIZE = 24;
 
 	// If true, the next camera rays kernel call will reset the visibility map
 	bool reset_visibility_map = false;
+	// If true, the grid visibility will be updated this frame (new visibility values will be accumulated)
+	bool update_visibility_map = false;
 
 	int3 grid_dimensions = make_int3(NEE_PLUS_PLUS_DEFAULT_GRID_SIZE, NEE_PLUS_PLUS_DEFAULT_GRID_SIZE, NEE_PLUS_PLUS_DEFAULT_GRID_SIZE);
 
-	// Bottom left corner and top right corner of the 3D grid in world space
-	float3 grid_origin = make_float3(0.0f, 0.0f, 0.0f);
+	// Bottom left corner of the 3D grid in world space
+	float3 grid_min_point = make_float3(0.0f, 0.0f, 0.0f);
+	//  corner of the 3D grid in world space
 	float3 grid_max_point = make_float3(0.0f, 0.0f, 0.0f);
 
 	// Linear buffer that stores the number of rays that were
@@ -45,13 +48,13 @@ struct NEEPlusPlus
 	// only half of the visibility matrix
 	//
 	// For the indexing logic, (0, 0) is in the top left corner of the matrix
-	AtomicType<int>* visibility_map;
+	AtomicType<unsigned int>* visibility_map;
 
 	// Same as 'visibility_map' but stores how many rays were traced in total from one
 	// voxel to another. In the example from above, this would contain the value 16.
 	//
 	// For the indexing logic, (0, 0) is in the top left corner of the matrix
-	AtomicType<int>* visibility_map_count;
+	AtomicType<unsigned int>* visibility_map_count;
 
 	// How many elements are in 'visibility_map' and 'visibility_map_count'
 	unsigned int visibility_matrix_size = 0;
@@ -64,8 +67,8 @@ struct NEEPlusPlus
 			return;
 
 		if (visible)
-			hippt::atomic_add(&visibility_map[matrix_index], 1);
-		hippt::atomic_add(&visibility_map_count[matrix_index], 1);
+			hippt::atomic_add(&visibility_map[matrix_index], 1u);
+		hippt::atomic_add(&visibility_map_count[matrix_index], 1u);
 	}
 
 	/**
@@ -77,13 +80,17 @@ struct NEEPlusPlus
 		int matrix_index = get_visibility_map_index(first_world_position, second_world_position);
 		if (matrix_index == -1)
 			// One of the two points was outside the scene, cannot read the cache for this
+			// 
+			// Returning 1.0f indicating that the two points are not occluded such that the caller
+			// tests for a shadow ray
 			return 1.0f;
 
-		int map_count = visibility_map_count[matrix_index];
-		if (map_count < 100)
-			printf("0\n");
+		unsigned int map_count = visibility_map_count[matrix_index];
 		if (map_count == 0)
 			// No information for these two points
+			// 
+			// Returning 1.0f indicating that the two points are not occluded such that the caller
+			// tests for a shadow ray
 			return 1.0f;
 		else
 			return visibility_map[matrix_index] / (float)map_count;
@@ -95,8 +102,8 @@ private:
 	 */
 	HIPRT_HOST_DEVICE int3 get_voxel_3D_index(float3 position) const
 	{
-		float3 position_grid_space = position - grid_origin;
-		float3 voxel_index_float = position_grid_space / (grid_max_point - grid_origin);
+		float3 position_grid_space = position - grid_min_point;
+		float3 voxel_index_float = position_grid_space / (grid_max_point - grid_min_point);
 		if (voxel_index_float.x > 1.0f || voxel_index_float.y > 1.0f || voxel_index_float.z > 1.0f)
 			// The point is outside the scene
 			return make_int3(-1, -1, -1);

@@ -13,8 +13,8 @@ struct NEEPlusPlusGPUData
 	// Dimensions of the visibility map
 	int3 map_dimensions = make_int3(NEEPlusPlus::NEE_PLUS_PLUS_DEFAULT_GRID_SIZE, NEEPlusPlus::NEE_PLUS_PLUS_DEFAULT_GRID_SIZE, NEEPlusPlus::NEE_PLUS_PLUS_DEFAULT_GRID_SIZE);
 
-	OrochiBuffer<int> visibility_map;
-	OrochiBuffer<int> visibility_map_count;
+	OrochiBuffer<unsigned int> visibility_map;
+	OrochiBuffer<unsigned int> visibility_map_count;
 };
 
 #endif

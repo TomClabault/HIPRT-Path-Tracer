@@ -185,10 +185,27 @@ void GPURenderer::setup_nee_plus_plus()
 	m_nee_plus_plus.visibility_map.resize(half_matrix_size);
 	m_nee_plus_plus.visibility_map_count.resize(half_matrix_size);
 
-	m_render_data.nee_plus_plus.visibility_map = reinterpret_cast<AtomicType<int>*>(m_nee_plus_plus.visibility_map.get_device_pointer());
-	m_render_data.nee_plus_plus.visibility_map_count = reinterpret_cast<AtomicType<int>*>(m_nee_plus_plus.visibility_map_count.get_device_pointer());
+	m_render_data.nee_plus_plus.visibility_map = reinterpret_cast<AtomicType<unsigned int>*>(m_nee_plus_plus.visibility_map.get_device_pointer());
+	m_render_data.nee_plus_plus.visibility_map_count = reinterpret_cast<AtomicType<unsigned int>*>(m_nee_plus_plus.visibility_map_count.get_device_pointer());
 	m_render_data.nee_plus_plus.grid_dimensions = grid_dimensions;
 	m_render_data.nee_plus_plus.visibility_matrix_size = half_matrix_size;
+}
+
+void GPURenderer::setup_nee_plus_plus_from_scene(const Scene& scene)
+{
+	m_render_data.nee_plus_plus.grid_min_point = scene.metadata.scene_bounding_box.mini;
+	m_render_data.nee_plus_plus.grid_max_point = scene.metadata.scene_bounding_box.maxi;
+}
+
+void GPURenderer::reset_nee_plus_plus()
+{
+	m_need_plus_plus_caching_prepass_done = false;
+	m_render_data.nee_plus_plus.reset_visibility_map = true;
+}
+
+NEEPlusPlusGPUData& GPURenderer::get_nee_plus_plus_data()
+{
+	return m_nee_plus_plus;
 }
 
 void GPURenderer::setup_filter_functions()
@@ -530,7 +547,7 @@ void GPURenderer::launch_nee_plus_plus_caching_prepass()
 	if (m_need_plus_plus_caching_prepass_done)
 		return;
 
-	unsigned int caching_sample_count = 64;
+	unsigned int caching_sample_count = 1024;
 	void* launch_args[] = { &m_render_data, &caching_sample_count, &m_render_resolution };
 
 	m_render_data.random_seed = m_rng.xorshift32();
@@ -1224,6 +1241,7 @@ void GPURenderer::rebuild_renderer_bvh(hiprtBuildFlags build_flags, bool do_comp
 void GPURenderer::set_scene(const Scene& scene)
 {
 	set_hiprt_scene_from_scene(scene);
+	setup_nee_plus_plus_from_scene(scene);
 
 	m_original_materials = scene.materials;
 	m_current_materials = scene.materials;

@@ -103,9 +103,20 @@ public:
 	void init_GGX_glass_Ess_texture(hipTextureFilterMode filtering_mode = hipFilterModePoint);
 
 	/**
-	 * Allocates the GPU memory for NEE++
+	 * Allocates the GPU memory and initializes the data for NEE++
 	 */
 	void setup_nee_plus_plus();
+	/**
+	 * Sets up the bounds of the scene for the grid of NEE++
+	 */
+	void setup_nee_plus_plus_from_scene(const Scene& scene);
+
+	/**
+	 * Clears the visibility map of NEE++ so that it is recomputed next frame
+	 */
+	void reset_nee_plus_plus();
+
+	NEEPlusPlusGPUData& get_nee_plus_plus_data();
 
 	/**
 	 * Initializes the filter function used by the kernels
@@ -136,13 +147,6 @@ public:
 	 * Steps all the animations of the renderer one step forward
 	 */
 	void step_animations();
-
-	/**
-	 * Returns true if one of the kernels requires the global stack buffer for BVH traversal
-	 */
-	bool needs_global_bvh_stack_buffer();
-
-	void recreate_global_bvh_stack_buffer();
 
 	/**
 	 * Renders a frame asynchronously. 
@@ -347,6 +351,16 @@ private:
 	void update_render_data();
 
 	/**
+	 * Returns true if one of the kernels requires the global stack buffer for BVH traversal
+	 */
+	bool needs_global_bvh_stack_buffer();
+	/**
+	 * Frees and recreates the global stack buffer for the BVH traversal based on the
+	 * current resolution of the renderer
+	 */
+	void recreate_global_bvh_stack_buffer();
+
+	/**
 	 * Reads the execution time of the kernels and stores those execution times in 'm_render_pass_times'
 	 */
 	void compute_render_pass_times();
@@ -509,7 +523,6 @@ private:
 	// They are all organized in a map so that we can iterate over them. The key
 	// of this map is a "name"
 	std::map<std::string, GPUKernel> m_kernels;
-	bool m_need_plus_plus_caching_prepass_done = false;
 
 	// Kernel used for retrieving the size of the RayVolumeState structure on the GPU
 	GPUKernel m_ray_volume_state_byte_size_kernel;
@@ -533,7 +546,11 @@ private:
 	// is done rendering or not
 	bool m_frame_rendered = true;
 
+	// Buffers and settings for NEE++
 	NEEPlusPlusGPUData m_nee_plus_plus;
+	// Whether or not the foxel-to-voxel visibility of the scene has been cached to the visibility
+	// map already or not
+	bool m_need_plus_plus_caching_prepass_done = false;
 	// Render data passed to the GPU for rendering. Most importantly it contains
 	// 
 	// The WorldSettings: Settings relative to the scene such as the intensity of the uniform light, the
