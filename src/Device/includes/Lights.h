@@ -60,9 +60,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_no_MIS(const HIPRTRe
 
                 float cosine_term = hippt::max(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction), 0.0f);
                 light_source_radiance = light_source_info.emission * cosine_term * bsdf_color / light_sample_pdf / nee_plus_plus_context.unoccluded_probability;
-
-                if (light_source_radiance.has_NaN())
-                    Utils::debugbreak();
             }
         }
     }

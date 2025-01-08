@@ -17,6 +17,7 @@
 
 #include <condition_variable>
 
+const std::string GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID = "NEE++ Caching Prepass";
 const std::string GPURenderer::CAMERA_RAYS_KERNEL_ID = "Camera Rays";
 const std::string GPURenderer::PATH_TRACING_KERNEL_ID = "Path Tracing";
 const std::string GPURenderer::RAY_VOLUME_STATE_SIZE_KERNEL_ID = "Ray Volume State Size";
@@ -31,6 +32,7 @@ const std::unordered_set<std::string> GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZ
 
 const std::unordered_map<std::string, std::string> GPURenderer::KERNEL_FUNCTION_NAMES = 
 {
+	{ NEE_PLUS_PLUS_CACHING_PREPASS_ID, "NEEPlusPlusCachingPrepass" },
 	{ CAMERA_RAYS_KERNEL_ID, "CameraRays" },
 	{ PATH_TRACING_KERNEL_ID, "FullPathTracer" },
 	{ RAY_VOLUME_STATE_SIZE_KERNEL_ID, "RayVolumeStateSize" },
@@ -38,6 +40,7 @@ const std::unordered_map<std::string, std::string> GPURenderer::KERNEL_FUNCTION_
 
 const std::unordered_map<std::string, std::string> GPURenderer::KERNEL_FILES =
 {
+	{ NEE_PLUS_PLUS_CACHING_PREPASS_ID, DEVICE_KERNELS_DIRECTORY "/NEE++/NEEPlusPlusCachingPrepass.h" },
 	{ CAMERA_RAYS_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/CameraRays.h" },
 	{ PATH_TRACING_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/FullPathTracer.h" },
 	{ RAY_VOLUME_STATE_SIZE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/Utils/RayVolumeStateSize.h" },
@@ -214,6 +217,12 @@ void GPURenderer::setup_kernels()
 	// numbers are the best may vary.)
 	
 	// Configuring the kernels
+	m_kernels[GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID].set_kernel_file_path(GPURenderer::KERNEL_FILES.at(GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID));
+	m_kernels[GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID].set_kernel_function_name(GPURenderer::KERNEL_FUNCTION_NAMES.at(GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID));
+	m_kernels[GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID].synchronize_options_with(*m_global_compiler_options, GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
+	m_kernels[GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
+	m_kernels[GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 8);
+
 	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].set_kernel_file_path(GPURenderer::KERNEL_FILES.at(GPURenderer::CAMERA_RAYS_KERNEL_ID));
 	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].set_kernel_function_name(GPURenderer::KERNEL_FUNCTION_NAMES.at(GPURenderer::CAMERA_RAYS_KERNEL_ID));
 	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].synchronize_options_with(*m_global_compiler_options, GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
@@ -243,6 +252,7 @@ void GPURenderer::setup_kernels()
 	ThreadManager::start_thread(ThreadManager::COMPILE_RAY_VOLUME_STATE_SIZE_KERNEL_KEY, ThreadFunctions::compile_kernel_silent, std::ref(m_ray_volume_state_byte_size_kernel), m_hiprt_orochi_ctx, std::ref(m_func_name_sets));
 
 	// Compiling kernels
+	ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID]), m_hiprt_orochi_ctx, std::ref(m_func_name_sets));
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID]), m_hiprt_orochi_ctx, std::ref(m_func_name_sets));
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID]), m_hiprt_orochi_ctx, std::ref(m_func_name_sets));
 }
@@ -480,7 +490,8 @@ void GPURenderer::render_path_tracing()
 			// of the status buffers (number of pixels converged, how many rays still
 			// active, ...)
 			m_render_data.render_settings.do_update_status_buffers = true;
-
+		
+		launch_nee_plus_plus_caching_prepass();
 		launch_camera_rays();
 		launch_ReSTIR_DI();
 		launch_path_tracing();
@@ -512,6 +523,20 @@ void GPURenderer::render_path_tracing()
 	// their animations until the render window signals the renderer the the
 	// frame has been fully rendered and thus that the animations can step forward
 	m_animation_state.can_step_animation = false;
+}
+
+void GPURenderer::launch_nee_plus_plus_caching_prepass()
+{
+	if (m_need_plus_plus_caching_prepass_done)
+		return;
+
+	unsigned int caching_sample_count = 64;
+	void* launch_args[] = { &m_render_data, &caching_sample_count, &m_render_resolution };
+
+	m_render_data.random_seed = m_rng.xorshift32();
+	m_kernels[GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID].launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
+
+	m_need_plus_plus_caching_prepass_done = true;
 }
 
 void GPURenderer::launch_camera_rays()
@@ -845,6 +870,7 @@ void GPURenderer::precompile_direct_light_sampling_kernels()
 					partials_options.set_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY, envmap_sampling_strategy);
 					partials_options.set_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BSDF_MIS, use_envmap_mis);
 
+					precompile_kernel(GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID, partials_options);
 					precompile_kernel(GPURenderer::CAMERA_RAYS_KERNEL_ID, partials_options);
 					precompile_kernel(GPURenderer::PATH_TRACING_KERNEL_ID, partials_options);
 					m_restir_di_render_pass.precompile_kernels(partials_options, m_hiprt_orochi_ctx, m_func_name_sets);
@@ -855,6 +881,7 @@ void GPURenderer::precompile_direct_light_sampling_kernels()
 						// for the value we haven't compiled yet
 						partials_options.set_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, 1 - m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION));
 
+						precompile_kernel(GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID, partials_options);
 						precompile_kernel(GPURenderer::CAMERA_RAYS_KERNEL_ID, partials_options);
 						precompile_kernel(GPURenderer::PATH_TRACING_KERNEL_ID, partials_options);
 						m_restir_di_render_pass.precompile_kernels(partials_options, m_hiprt_orochi_ctx, m_func_name_sets);
@@ -893,6 +920,7 @@ void GPURenderer::precompile_ReSTIR_DI_kernels()
 							partials_options.set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING, do_light_presampling);
 							partials_options.set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_RESTIR_DI);
 
+							precompile_kernel(GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID, partials_options);
 							precompile_kernel(GPURenderer::CAMERA_RAYS_KERNEL_ID, partials_options);
 							precompile_kernel(GPURenderer::PATH_TRACING_KERNEL_ID, partials_options);
 							m_restir_di_render_pass.precompile_kernels(partials_options, m_hiprt_orochi_ctx, m_func_name_sets);
@@ -957,9 +985,10 @@ oroStream_t GPURenderer::get_main_stream()
 
 void GPURenderer::compute_render_pass_times()
 {
+	m_render_pass_times[GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID] = m_kernels[GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID].get_last_execution_time();
 	m_render_pass_times[GPURenderer::CAMERA_RAYS_KERNEL_ID] = m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].get_last_execution_time();
-	m_restir_di_render_pass.compute_render_times(m_render_pass_times);
 	m_render_pass_times[GPURenderer::PATH_TRACING_KERNEL_ID] = m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].get_last_execution_time();
+	m_restir_di_render_pass.compute_render_times(m_render_pass_times);
 	if (m_debug_trace_kernel.has_been_compiled())
 		// If the debug kernel is being used... read its execution time
 		// Note that we check for 'has_been_compiled()' because if the debug kernel isn't in use,
@@ -995,6 +1024,7 @@ void GPURenderer::update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer
 	compute_render_pass_times();
 
 	// Also adding the times of the various passes
+	perf_metrics->add_value(GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID, m_render_pass_times[GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID]);
 	perf_metrics->add_value(GPURenderer::CAMERA_RAYS_KERNEL_ID, m_render_pass_times[GPURenderer::CAMERA_RAYS_KERNEL_ID]);
 	m_restir_di_render_pass.update_perf_metrics(perf_metrics);
 	perf_metrics->add_value(GPURenderer::PATH_TRACING_KERNEL_ID, m_render_pass_times[GPURenderer::PATH_TRACING_KERNEL_ID]);

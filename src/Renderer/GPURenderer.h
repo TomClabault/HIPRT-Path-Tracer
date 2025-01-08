@@ -41,6 +41,7 @@ public:
 	 * These constants here are used to reference kernel objects in the 'm_kernels' map
 	 * or in the 'm_render_pass_times' map
 	 */
+	static const std::string NEE_PLUS_PLUS_CACHING_PREPASS_ID;
 	static const std::string CAMERA_RAYS_KERNEL_ID;
 	static const std::string PATH_TRACING_KERNEL_ID;
 	static const std::string RAY_VOLUME_STATE_SIZE_KERNEL_ID;
@@ -363,6 +364,7 @@ private:
 	 */
 	void render_debug_kernel();
 
+	void launch_nee_plus_plus_caching_prepass();
 	void launch_camera_rays();
 	void launch_ReSTIR_DI();
 	void launch_path_tracing();
@@ -507,6 +509,7 @@ private:
 	// They are all organized in a map so that we can iterate over them. The key
 	// of this map is a "name"
 	std::map<std::string, GPUKernel> m_kernels;
+	bool m_need_plus_plus_caching_prepass_done = false;
 
 	// Kernel used for retrieving the size of the RayVolumeState structure on the GPU
 	GPUKernel m_ray_volume_state_byte_size_kernel;

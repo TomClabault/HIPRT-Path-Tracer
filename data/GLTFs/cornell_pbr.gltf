@@ -1,11 +1,13 @@
 {
 	"asset":{
-		"generator":"Khronos glTF Blender I/O v4.1.62",
+		"generator":"Khronos glTF Blender I/O v4.2.70",
 		"version":"2.0"
 	},
 	"extensionsUsed":[
-		"KHR_materials_emissive_strength",
+		"KHR_materials_clearcoat",
 		"KHR_materials_transmission",
+		"KHR_materials_emissive_strength",
+		"KHR_materials_specular",
 		"KHR_materials_ior"
 	],
 	"scene":0,
@@ -69,19 +71,38 @@
 	"materials":[
 		{
 			"doubleSided":true,
+			"extensions":{
+				"KHR_materials_clearcoat":{
+					"clearcoatRoughnessFactor":0
+				},
+				"KHR_materials_specular":{
+					"specularFactor":0
+				}
+			},
 			"name":"shortBox.001",
 			"pbrMetallicRoughness":{
+				"baseColorFactor":[
+					0.09947466850280762,
+					0.09947466850280762,
+					0.09947466850280762,
+					1
+				],
 				"roughnessFactor":0
 			}
 		},
 		{
 			"doubleSided":true,
+			"extensions":{
+				"KHR_materials_clearcoat":{
+					"clearcoatRoughnessFactor":0
+				}
+			},
 			"name":"leftWall.001",
 			"pbrMetallicRoughness":{
 				"baseColorFactor":[
-					0.6299999952316284,
-					0.06499999761581421,
-					0.05000000074505806,
+					1,
+					0,
+					0,
 					1
 				],
 				"metallicFactor":0,
@@ -96,6 +117,9 @@
 				1
 			],
 			"extensions":{
+				"KHR_materials_clearcoat":{
+					"clearcoatRoughnessFactor":0
+				},
 				"KHR_materials_emissive_strength":{
 					"emissiveStrength":100
 				}
@@ -103,9 +127,9 @@
 			"name":"light.001",
 			"pbrMetallicRoughness":{
 				"baseColorFactor":[
-					0.7799999713897705,
-					0.7799999713897705,
-					0.7799999713897705,
+					1,
+					0,
+					1,
 					1
 				],
 				"metallicFactor":0,
@@ -114,39 +138,49 @@
 		},
 		{
 			"doubleSided":true,
+			"extensions":{
+				"KHR_materials_clearcoat":{
+					"clearcoatRoughnessFactor":0
+				}
+			},
 			"name":"tallBox.001",
 			"pbrMetallicRoughness":{
 				"baseColorFactor":[
-					0.7273006439208984,
-					0.31970441341400146,
-					0.5703586935997009,
+					1,
+					1,
+					0,
 					1
 				],
-				"metallicFactor":0
+				"metallicFactor":0,
+				"roughnessFactor":0.6837720274925232
 			}
 		},
 		{
 			"doubleSided":true,
+			"extensions":{
+				"KHR_materials_clearcoat":{
+					"clearcoatRoughnessFactor":0
+				}
+			},
 			"name":"floor.001",
 			"pbrMetallicRoughness":{
-				"baseColorFactor":[
-					0.7250000238418579,
-					0.7099999785423279,
-					0.6800000071525574,
-					1
-				],
 				"metallicFactor":0,
 				"roughnessFactor":0.8418859839439392
 			}
 		},
 		{
 			"doubleSided":true,
+			"extensions":{
+				"KHR_materials_clearcoat":{
+					"clearcoatRoughnessFactor":0
+				}
+			},
 			"name":"backWall.001",
 			"pbrMetallicRoughness":{
 				"baseColorFactor":[
-					0.08999279141426086,
-					0.0907508134841919,
-					0.7251853346824646,
+					0,
+					0,
+					1,
 					1
 				],
 				"metallicFactor":0,
@@ -155,12 +189,17 @@
 		},
 		{
 			"doubleSided":true,
+			"extensions":{
+				"KHR_materials_clearcoat":{
+					"clearcoatRoughnessFactor":0
+				}
+			},
 			"name":"ceiling.001",
 			"pbrMetallicRoughness":{
 				"baseColorFactor":[
-					0.7250000238418579,
-					0.7099999785423279,
-					0.6800000071525574,
+					0,
+					1,
+					1,
 					1
 				],
 				"metallicFactor":0,
@@ -169,12 +208,17 @@
 		},
 		{
 			"doubleSided":true,
+			"extensions":{
+				"KHR_materials_clearcoat":{
+					"clearcoatRoughnessFactor":0
+				}
+			},
 			"name":"rightWall.001",
 			"pbrMetallicRoughness":{
 				"baseColorFactor":[
-					0.14000000059604645,
-					0.44999998807907104,
-					0.09099999815225601,
+					0,
+					1,
+					0,
 					1
 				],
 				"metallicFactor":0,
@@ -184,6 +228,9 @@
 		{
 			"doubleSided":true,
 			"extensions":{
+				"KHR_materials_clearcoat":{
+					"clearcoatRoughnessFactor":0
+				},
 				"KHR_materials_transmission":{
 					"transmissionFactor":1
 				},

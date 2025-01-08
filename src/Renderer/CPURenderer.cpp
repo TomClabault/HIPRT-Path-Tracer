@@ -39,8 +39,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 694
-#define DEBUG_PIXEL_Y 221
+#define DEBUG_PIXEL_X 924
+#define DEBUG_PIXEL_Y 465
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -424,14 +424,9 @@ void CPURenderer::debug_render_pass(std::function<void(int, int)> render_pass_fu
 
 void CPURenderer::nee_plus_plus_cache_visibility_pass()
 {
-    //debug_render_pass([this](int x, int y) {
-    //    NEEPlusPlusCachingPrepass(m_render_data, /* caching sample count */ 8, m_resolution, x, y);
-    //});
-
-#pragma omp parallel for schedule(dynamic)
-    for (int y = 0; y < m_resolution.y; y++)
-        for (int x = 0; x < m_resolution.x; x++)
-            NEEPlusPlusCachingPrepass(m_render_data, /* caching sample count */ 8, m_resolution, x, y);
+    debug_render_pass([this](int x, int y) {
+        NEEPlusPlusCachingPrepass(m_render_data, /* caching sample count */ 8, m_resolution, x, y);
+    });
 }
 
 void CPURenderer::camera_rays_pass()

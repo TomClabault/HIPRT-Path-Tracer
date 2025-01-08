@@ -6,6 +6,8 @@
 #ifndef DEVICE_INCLUDES_NEE_PLUS_PLUS
 #define DEVICE_INCLUDES_NEE_PLUS_PLUS
 
+#include "HostDeviceCommon/Math.h"
+
 struct NEEPlusPlusContext
 {
 	float3 shaded_point;
@@ -78,6 +80,8 @@ struct NEEPlusPlus
 			return 1.0f;
 
 		int map_count = visibility_map_count[matrix_index];
+		if (map_count < 100)
+			printf("0\n");
 		if (map_count == 0)
 			// No information for these two points
 			return 1.0f;
@@ -121,6 +125,14 @@ private:
 		// Just renaming
 		int column = first_voxel_index;
 		int row = second_voxel_index;
+
+		if (column > row)
+		{
+			// We're past the diagonal, flipping to bring it back in the lower left triangle of the matrix
+			int temp = column;
+			column = row;
+			row = temp;
+		}
 
 		// Because the visibility matrix is symmetrical, we're only using half of it to save half the VRAM
 		// Thus we need to find the index in the lower half of the visiblity matrix
