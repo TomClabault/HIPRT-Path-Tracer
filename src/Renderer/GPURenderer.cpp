@@ -404,12 +404,10 @@ void GPURenderer::internal_update_nee_plus_plus_buffers()
 	{
 		if (m_render_data.nee_plus_plus.reset_visibility_map)
 		{
-			auto start = std::chrono::high_resolution_clock::now();
+			// Clearing the visibility map by memseting everything to 0
+
 			m_nee_plus_plus.visibility_map.memset(0);
 			m_nee_plus_plus.visibility_map_count.memset(0);
-			auto stop = std::chrono::high_resolution_clock::now();
-
-			std::cout << "Memset time: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
 		}
 	}
 }
@@ -908,9 +906,9 @@ void GPURenderer::precompile_direct_light_sampling_kernels()
 					partials_options.set_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY, envmap_sampling_strategy);
 					partials_options.set_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BSDF_MIS, use_envmap_mis);
 
-					precompile_kernel(GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID, partials_options);
-					precompile_kernel(GPURenderer::CAMERA_RAYS_KERNEL_ID, partials_options);
-					precompile_kernel(GPURenderer::PATH_TRACING_KERNEL_ID, partials_options);
+					// Recompiling all the kernels with the new options
+					for (const std::string& kernel_id : get_all_kernel_ids())
+						precompile_kernel(kernel_id, partials_options);
 					m_restir_di_render_pass.precompile_kernels(partials_options, m_hiprt_orochi_ctx, m_func_name_sets);
 
 					if (direct_light_sampling_strategy == LSS_RIS_BSDF_AND_LIGHT)
@@ -919,9 +917,9 @@ void GPURenderer::precompile_direct_light_sampling_kernels()
 						// for the value we haven't compiled yet
 						partials_options.set_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, 1 - m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION));
 
-						precompile_kernel(GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID, partials_options);
-						precompile_kernel(GPURenderer::CAMERA_RAYS_KERNEL_ID, partials_options);
-						precompile_kernel(GPURenderer::PATH_TRACING_KERNEL_ID, partials_options);
+						// Recompiling all the kernels with the new options
+						for (const std::string& kernel_id : get_all_kernel_ids())
+							precompile_kernel(kernel_id, partials_options);
 						m_restir_di_render_pass.precompile_kernels(partials_options, m_hiprt_orochi_ctx, m_func_name_sets);
 					}
 				}
@@ -958,9 +956,10 @@ void GPURenderer::precompile_ReSTIR_DI_kernels()
 							partials_options.set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING, do_light_presampling);
 							partials_options.set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_RESTIR_DI);
 
-							precompile_kernel(GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID, partials_options);
-							precompile_kernel(GPURenderer::CAMERA_RAYS_KERNEL_ID, partials_options);
-							precompile_kernel(GPURenderer::PATH_TRACING_KERNEL_ID, partials_options);
+							// Recompiling all the kernels with the new options
+							for (const std::string& kernel_id : get_all_kernel_ids())
+								precompile_kernel(GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID, partials_options);
+							// Recompiling the ReSTIR DI render pass
 							m_restir_di_render_pass.precompile_kernels(partials_options, m_hiprt_orochi_ctx, m_func_name_sets);
 						}
 					}
@@ -996,6 +995,26 @@ std::map<std::string, GPUKernel*> GPURenderer::get_kernels()
 	return kernels;
 }
 
+std::vector<std::string> GPURenderer::get_all_kernel_ids()
+{
+	std::vector<std::string> all_ids;
+	// Size - 1 because we're going to excluded the ray volume state kernel
+	all_ids.reserve(GPURenderer::KERNEL_FUNCTION_NAMES.size() - 1);
+
+	for (const auto& kernel_function_name : GPURenderer::KERNEL_FUNCTION_NAMES)
+	{
+		const std::string& kernel_id = kernel_function_name.first;
+		if (kernel_id == GPURenderer::RAY_VOLUME_STATE_SIZE_KERNEL_ID)
+			// Ignoring this guy because he is special and we don't want it
+			// in the render pass times
+			continue;
+
+		all_ids.push_back(kernel_id);
+	}
+
+	return all_ids;
+}
+
 void GPURenderer::set_debug_trace_kernel(const std::string& kernel_name, GPUKernelCompilerOptions options)
 {
 	if (kernel_name == "")
@@ -1023,9 +1042,10 @@ oroStream_t GPURenderer::get_main_stream()
 
 void GPURenderer::compute_render_pass_times()
 {
-	m_render_pass_times[GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID] = m_kernels[GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID].get_last_execution_time();
-	m_render_pass_times[GPURenderer::CAMERA_RAYS_KERNEL_ID] = m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].get_last_execution_time();
-	m_render_pass_times[GPURenderer::PATH_TRACING_KERNEL_ID] = m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].get_last_execution_time();
+	// Registering the render times of all the kernels by iterating over all the kernels
+	for (const std::string& kernel_id : get_all_kernel_ids())
+		m_render_pass_times[kernel_id] = m_kernels[kernel_id].get_last_execution_time();
+
 	m_restir_di_render_pass.compute_render_times(m_render_pass_times);
 	if (m_debug_trace_kernel.has_been_compiled())
 		// If the debug kernel is being used... read its execution time
@@ -1062,10 +1082,9 @@ void GPURenderer::update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer
 	compute_render_pass_times();
 
 	// Also adding the times of the various passes
-	perf_metrics->add_value(GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID, m_render_pass_times[GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID]);
-	perf_metrics->add_value(GPURenderer::CAMERA_RAYS_KERNEL_ID, m_render_pass_times[GPURenderer::CAMERA_RAYS_KERNEL_ID]);
+	for (const std::string& kernel_id : get_all_kernel_ids())
+		perf_metrics->add_value(kernel_id, m_render_pass_times[kernel_id]);
 	m_restir_di_render_pass.update_perf_metrics(perf_metrics);
-	perf_metrics->add_value(GPURenderer::PATH_TRACING_KERNEL_ID, m_render_pass_times[GPURenderer::PATH_TRACING_KERNEL_ID]);
 	perf_metrics->add_value(GPURenderer::ALL_RENDER_PASSES_TIME_KEY, m_render_pass_times[GPURenderer::ALL_RENDER_PASSES_TIME_KEY]);
 
 	if (m_debug_trace_kernel.has_been_compiled())
@@ -1091,7 +1110,6 @@ void GPURenderer::reset(std::shared_ptr<ApplicationSettings> application_setting
 	m_render_data.render_settings.denoiser_AOV_accumulation_counter = 0;
 	m_render_data.render_settings.sample_number = 0;
 	m_render_data.render_settings.need_to_reset = true;
-	m_render_data.nee_plus_plus.reset_visibility_map = true;
 
 	internal_clear_m_status_buffers();
 }

@@ -1574,15 +1574,9 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 			{
 				max_cell_records = 0;
 
-				int index = 0;
 				std::vector<unsigned int> records = m_renderer->get_nee_plus_plus_data().visibility_map_count.download_data();
 				for (unsigned int c : records)
-				{
 					max_cell_records = hippt::max(c, max_cell_records);
-					if (max_cell_records == c)
-						std::cout << index << std::endl;
-					index++;
-				}
 			}
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
@@ -1600,6 +1594,13 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 				"If checked, the voxel-to-voxel visibility estimate of NEE++ will be used to "
 				"stochastically determine whether or not attempt at all to trace a shadow at "
 				"a light during next-event-estimation.");
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			if (ImGui::Button("Clear visibility cache"))
+			{
+				m_renderer->reset_nee_plus_plus();
+				m_render_window->set_render_dirty(true);
+			}
 
 			ImGui::TreePop();
 		}

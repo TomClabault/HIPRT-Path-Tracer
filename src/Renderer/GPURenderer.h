@@ -315,6 +315,7 @@ public:
 	void resume_background_shader_compilation();
 
 	std::map<std::string, GPUKernel*> get_kernels();
+	std::vector<std::string> get_all_kernel_ids();
 	/**
 	 * Sets the debug kernel to be used.
 	 * 
