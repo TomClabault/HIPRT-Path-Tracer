@@ -320,9 +320,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRende
     nee_plus_plus_context.unoccluded_probability = render_data.nee_plus_plus.estimate_unoccluded_probability(nee_plus_plus_context.shaded_point, nee_plus_plus_context.point_on_light);
     if (random_number_generator() < nee_plus_plus_context.unoccluded_probability)
     {
-        static int counter = 0;
-        if (counter++ == 0)
-            printf("%d\n", render_data.nee_plus_plus.update_visibility_map);
         bool in_shadow = evaluate_shadow_ray(render_data, ray, t_max, last_hit_primitive_index, random_number_generator);
 
         if (render_data.nee_plus_plus.update_visibility_map)
