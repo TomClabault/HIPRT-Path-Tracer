@@ -191,6 +191,7 @@ void GPURenderer::setup_nee_plus_plus_from_scene(const Scene& scene)
 void GPURenderer::reset_nee_plus_plus()
 {
 	m_render_data.nee_plus_plus.reset_visibility_map = true;
+	m_nee_plus_plus.milliseconds_before_finalizing_accumulation = NEEPlusPlusGPUData::FINALIZE_ACCUMULATION_TIMER;
 }
 
 NEEPlusPlusGPUData& GPURenderer::get_nee_plus_plus_data()
@@ -257,15 +258,15 @@ void GPURenderer::setup_kernels()
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID]), m_hiprt_orochi_ctx, std::ref(m_func_name_sets));
 }
 
-void GPURenderer::update()
+void GPURenderer::update(float delta_time)
 {
-	step_animations();
+	step_animations(delta_time);
 	m_restir_di_render_pass.update();
 
 	internal_update_clear_device_status_buffers();
 	internal_update_prev_frame_g_buffer();
 	internal_update_adaptive_sampling_buffers();
-	internal_update_nee_plus_plus_buffers();
+	internal_update_nee_plus_plus_buffers(delta_time);
 	internal_update_global_stack_buffer();
 
 	update_render_data();
@@ -279,10 +280,10 @@ void GPURenderer::update()
 	m_updated = true;
 }
 
-void GPURenderer::step_animations()
+void GPURenderer::step_animations(float delta_time)
 {
-	m_envmap.update(this);
-	m_camera_animation.animation_step(this);
+	m_envmap.update(this, delta_time);
+	m_camera_animation.animation_step(this, delta_time);
 }
 
 void GPURenderer::download_status_buffers()
@@ -372,43 +373,54 @@ void GPURenderer::internal_update_adaptive_sampling_buffers()
 	}
 }
 
-void GPURenderer::internal_update_nee_plus_plus_buffers()
+void GPURenderer::internal_update_nee_plus_plus_buffers(float delta_time)
 {
-	// Allocating / deallocating buffers
-	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_TRUE)
+	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_FALSE)
 	{
-		unsigned int matrix_element_count = m_nee_plus_plus.get_visibility_matrix_element_count();
-		if (m_nee_plus_plus.visibility_map.get_element_count() != matrix_element_count)
-		{
-			// If one buffer isn't properly sized, let's resize them both (becaues one goes with the other)
-			m_nee_plus_plus.visibility_map.resize(matrix_element_count);
-			m_nee_plus_plus.visibility_map_count.resize(matrix_element_count);
+		// Not using NEE++, we just need to free the buffers if they weren't already
 
-			m_render_data_buffers_invalidated = true;
-		}
-	}
-	else
-	{
-		// NEE++ not in use, let's deallocate the buffers
 		if (m_nee_plus_plus.visibility_map.get_element_count() != 0)
 		{
 			m_nee_plus_plus.visibility_map.free();
 			m_nee_plus_plus.visibility_map_count.free();
+			m_nee_plus_plus.accumulation_buffer.free();
+			m_nee_plus_plus.accumulation_buffer_count.free();
 
 			m_render_data_buffers_invalidated = true;
 		}
+
+		return;
+	}
+
+	// Allocating / deallocating buffers
+	unsigned int matrix_element_count = m_nee_plus_plus.get_visibility_matrix_element_count();
+	if (m_nee_plus_plus.visibility_map.get_element_count() != matrix_element_count)
+	{
+		// If one buffer isn't properly sized, let's resize them both (becaues one goes with the other)
+		m_nee_plus_plus.visibility_map.resize(matrix_element_count);
+		m_nee_plus_plus.visibility_map_count.resize(matrix_element_count);
+		m_nee_plus_plus.accumulation_buffer.resize(matrix_element_count);
+		m_nee_plus_plus.accumulation_buffer_count.resize(matrix_element_count);
+
+		m_render_data_buffers_invalidated = true;
 	}
 
 	// Clearing the visibility map if this has been asked by the user
-	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_TRUE)
+	if (m_render_data.nee_plus_plus.reset_visibility_map)
 	{
-		if (m_render_data.nee_plus_plus.reset_visibility_map)
-		{
-			// Clearing the visibility map by memseting everything to 0
+		// Clearing the visibility map by memseting everything to 0
 
-			m_nee_plus_plus.visibility_map.memset(0);
-			m_nee_plus_plus.visibility_map_count.memset(0);
-		}
+		m_nee_plus_plus.visibility_map.memset(0);
+		m_nee_plus_plus.visibility_map_count.memset(0);
+	}
+
+	m_nee_plus_plus.milliseconds_before_finalizing_accumulation -= delta_time;
+	if (m_nee_plus_plus.milliseconds_before_finalizing_accumulation < 0.0f)
+	{
+		m_nee_plus_plus.milliseconds_before_finalizing_accumulation = NEEPlusPlusGPUData::FINALIZE_ACCUMULATION_TIMER;
+
+		m_nee_plus_plus.visibility_map.memcpy_from(m_nee_plus_plus.accumulation_buffer);
+		m_nee_plus_plus.visibility_map_count.memcpy_from(m_nee_plus_plus.accumulation_buffer_count);
 	}
 }
 
@@ -1111,6 +1123,8 @@ void GPURenderer::reset(std::shared_ptr<ApplicationSettings> application_setting
 	m_render_data.render_settings.sample_number = 0;
 	m_render_data.render_settings.need_to_reset = true;
 
+	reset_nee_plus_plus();
+
 	internal_clear_m_status_buffers();
 }
 
@@ -1173,8 +1187,10 @@ void GPURenderer::update_render_data()
 
 		m_restir_di_render_pass.update_render_data();
 
-		m_render_data.nee_plus_plus.visibility_map = reinterpret_cast<AtomicType<unsigned int>*>(m_nee_plus_plus.visibility_map.get_device_pointer());
-		m_render_data.nee_plus_plus.visibility_map_count = reinterpret_cast<AtomicType<unsigned int>*>(m_nee_plus_plus.visibility_map_count.get_device_pointer());
+		m_render_data.nee_plus_plus.visibility_map = m_nee_plus_plus.visibility_map.get_device_pointer();
+		m_render_data.nee_plus_plus.visibility_map_count = m_nee_plus_plus.visibility_map_count.get_device_pointer();
+		m_render_data.nee_plus_plus.accumulation_buffer = reinterpret_cast<AtomicType<unsigned int>*>(m_nee_plus_plus.accumulation_buffer.get_device_pointer());
+		m_render_data.nee_plus_plus.accumulation_buffer_count = reinterpret_cast<AtomicType<unsigned int>*>(m_nee_plus_plus.accumulation_buffer_count.get_device_pointer());
 
 		m_render_data_buffers_invalidated = false;
 	}

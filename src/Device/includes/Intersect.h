@@ -328,7 +328,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRende
         bool in_shadow = evaluate_shadow_ray(render_data, ray, t_max, last_hit_primitive_index, random_number_generator);
 
         if (render_data.nee_plus_plus.update_visibility_map)
-            render_data.nee_plus_plus.accumulate_visibility(nee_plus_plus_context.shaded_point, nee_plus_plus_context.point_on_light, !in_shadow, nee_plus_plus_voxel_matrix_index);
+            render_data.nee_plus_plus.accumulate_visibility(!in_shadow, nee_plus_plus_voxel_matrix_index);
 
         return in_shadow;
     }

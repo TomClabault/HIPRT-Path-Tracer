@@ -39,8 +39,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 460
-#define DEBUG_PIXEL_Y 377
+#define DEBUG_PIXEL_X 454
+#define DEBUG_PIXEL_Y 482
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -64,7 +64,7 @@
 #define DEBUG_RENDER_NEIGHBORHOOD 1
 // How many pixels to render around the debugged pixel given by the DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y coordinates
-#define DEBUG_NEIGHBORHOOD_SIZE 50
+#define DEBUG_NEIGHBORHOOD_SIZE 40
 
 CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, height))
 {
@@ -135,16 +135,37 @@ void CPURenderer::setup_brdfs_data()
 
 void CPURenderer::setup_nee_plus_plus()
 {
-    int3 map_dimensions = m_nee_plus_plus.map_dimensions;
-
+#if DirectLightUseNEEPlusPlus == KERNEL_OPTION_TRUE
+    // Only doing if using NEE++ 
+    
     // Dividing by 2 because the visibility map is symmetrical so we only need half of the matrix
-    int half_matrix_size = (map_dimensions.x * map_dimensions.y * map_dimensions.z) * (map_dimensions.x * map_dimensions.y * map_dimensions.z + 1) / 2;
-    m_nee_plus_plus.visibility_map = std::vector<AtomicType<unsigned int>>(half_matrix_size);
-    m_nee_plus_plus.visibility_map_count = std::vector<AtomicType<unsigned int>>(half_matrix_size);
+    int half_matrix_size = m_nee_plus_plus.get_visibility_matrix_element_count();
+    m_nee_plus_plus.visibility_map = std::vector<unsigned int>(half_matrix_size);
+    m_nee_plus_plus.visibility_map_count = std::vector<unsigned int>(half_matrix_size);
+    m_nee_plus_plus.accumulation_buffer = std::vector<AtomicType<unsigned int>>(half_matrix_size);
+    m_nee_plus_plus.accumulation_buffer_count = std::vector<AtomicType<unsigned int>>(half_matrix_size);
 
     m_render_data.nee_plus_plus.visibility_map = m_nee_plus_plus.visibility_map.data();
     m_render_data.nee_plus_plus.visibility_map_count = m_nee_plus_plus.visibility_map_count.data();
-    m_render_data.nee_plus_plus.grid_dimensions = map_dimensions;
+    m_render_data.nee_plus_plus.accumulation_buffer = m_nee_plus_plus.accumulation_buffer.data();
+    m_render_data.nee_plus_plus.accumulation_buffer_count = m_nee_plus_plus.accumulation_buffer_count.data();
+    m_render_data.nee_plus_plus.grid_dimensions = m_nee_plus_plus.map_dimensions;
+#endif
+}
+
+void CPURenderer::nee_plus_plus_memcpy_accumulation()
+{
+#if DirectLightUseNEEPlusPlus == KERNEL_OPTION_TRUE
+    // Only doing if using NEE++
+#pragma omp parallel for
+    for (int i = 0; i < m_nee_plus_plus.get_visibility_matrix_element_count(); i++)
+    {
+        m_nee_plus_plus.visibility_map[i] = m_nee_plus_plus.accumulation_buffer[i].load();
+        m_nee_plus_plus.visibility_map_count[i] = m_nee_plus_plus.accumulation_buffer_count[i].load();
+    }
+#else
+    // Otherwise, it's a no-op
+#endif
 }
 
 void CPURenderer::set_scene(Scene& parsed_scene)
@@ -295,8 +316,6 @@ void CPURenderer::render()
 
     auto start = std::chrono::high_resolution_clock::now();
 
-    nee_plus_plus_cache_visibility_pass();
-
     // Using 'samples_per_frame' as the number of samples to render on the CPU
     for (int frame_number = 1; frame_number <= m_render_data.render_settings.samples_per_frame; frame_number++)
     {
@@ -319,6 +338,9 @@ void CPURenderer::render()
         // We want the G Buffer of the frame that we just rendered to go in the "g_buffer_prev_frame"
         // and then we can re-use the old buffers of to be filled by the current frame render
 
+        if (frame_number % m_nee_plus_plus.frame_timer_before_visibility_map_update == 0)
+            nee_plus_plus_memcpy_accumulation();
+
         std::cout << "Frame " << frame_number << ": " << frame_number/ static_cast<float>(m_render_data.render_settings.samples_per_frame) * 100.0f << "%" << std::endl;
     }
 
@@ -335,14 +357,24 @@ void CPURenderer::update(int frame_number)
     m_render_data.aux_buffers.stop_noise_threshold_converged_count->store(0);
 
     // Update the camera
-    /*if (frame_number == 2)
-        m_camera.translate(glm::vec3(0.05, 0.0, 0.0));*/
+    if (frame_number == 10)
+    {
+        reset();
+
+        m_render_data.nee_plus_plus.update_visibility_map = false;
+    }
 }
 
 void CPURenderer::update_render_data(int sample)
 {
     m_render_data.prev_camera = m_render_data.current_camera;
     m_render_data.current_camera = m_camera.to_hiprt();
+}
+
+void CPURenderer::reset()
+{
+    m_render_data.render_settings.need_to_reset = true;
+    m_render_data.render_settings.sample_number = 0;
 }
 
 void CPURenderer::debug_render_pass(std::function<void(int, int)> render_pass_function)
@@ -424,13 +456,11 @@ void CPURenderer::debug_render_pass(std::function<void(int, int)> render_pass_fu
 
 void CPURenderer::nee_plus_plus_cache_visibility_pass()
 {
-    //debug_render_pass([this](int x, int y) {
-    //    NEEPlusPlusCachingPrepass(m_render_data, /* caching sample count */ 8, m_resolution, x, y);
-    //});
+    debug_render_pass([this](int x, int y) {
+        NEEPlusPlusCachingPrepass(m_render_data, /* caching sample count */ 8, m_resolution, x, y);
+    });
 
-    //for (int y = 0; y < m_resolution.y; y++)
-    //    for (int x = 0; x < m_resolution.x; x++)
-    //        NEEPlusPlusCachingPrepass(m_render_data, /* caching sample count */ 8, m_resolution, x, y);
+    nee_plus_plus_memcpy_accumulation();
 }
 
 void CPURenderer::camera_rays_pass()

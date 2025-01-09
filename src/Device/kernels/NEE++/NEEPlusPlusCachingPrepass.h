@@ -107,13 +107,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NEEPlusPlusCachingPrepass(HIPRTRenderData r
         shadow_ray.origin = intersection_position;
         shadow_ray.direction = direction;
 
-        DeviceUnpackedEffectiveMaterial material = render_data.buffers.materials_buffer[render_data.buffers.material_indices[camera_hit_primitive_index]].unpack();
         hiprtHit shadow_ray_hit = simple_closest_hit(render_data, shadow_ray, camera_hit_primitive_index, random_number_generator);
         if (!shadow_ray_hit.hasHit())
             // Should never happen because we should at least hit the emissive triangle sampled
             continue;
-
-        DeviceUnpackedEffectiveMaterial material_shadow = render_data.buffers.materials_buffer[render_data.buffers.material_indices[shadow_ray_hit.primID]].unpack();
 
         // Is the point on the light visible?
         if (shadow_ray_hit.hasHit() && shadow_ray_hit.primID == trash_light_info.emissive_triangle_index)

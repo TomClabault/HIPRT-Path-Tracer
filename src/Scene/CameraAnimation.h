@@ -18,8 +18,16 @@ class CameraAnimation
 public:
     void set_camera(Camera* camera);
 
-    void animation_step(GPURenderer* renderer);
-    void do_rotation_animation(GPURenderer* renderer);
+    /**
+    * The 'delta_time' parameter should be how much time passed, in milliseconds, since the last
+	* call to animation_step()
+    */
+    void animation_step(GPURenderer* renderer, float delta_time);
+    /**
+    * The 'delta_time' parameter should be how much time passed, in milliseconds, since the last
+    * call to do_rotation_animation()
+    */
+    void do_rotation_animation(float delta_time);
 
     // Public attributes here because we want them to be
     // easily accessible and having to use getter/setters

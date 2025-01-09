@@ -23,9 +23,9 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // TODOs  performance improvements branch:
+// - if it is the only update that is biased, why can we not stop the render, keep the visibility info and restart another render and this should be unbiased?
 // - NEE++
 // - NEE++ envmap
-// - if it is the only update that is biased, why can we not stop the render, keep the visibility info and restart another render and this should be unbiased?
 // - tracyclient in external targets project folder
 // - cleanup declaration of HIPRT traversal in a macro or something
 // - adaptive sudivision NEE++
@@ -566,8 +566,8 @@ void RenderWindow::update_renderer_view_translation(float translation_x, float t
 {
 	if (scale_translation)
 	{
-		translation_x *= m_application_state->last_delta_time_ms / 1000.0f;
-		translation_y *= m_application_state->last_delta_time_ms / 1000.0f;
+		translation_x *= m_application_state->last_CPU_frame_delta_time_ms / 1000.0f;
+		translation_y *= m_application_state->last_CPU_frame_delta_time_ms / 1000.0f;
 
 		translation_x *= m_renderer->get_camera().camera_movement_speed * m_renderer->get_camera().user_movement_speed_multiplier;
 		translation_y *= m_renderer->get_camera().camera_movement_speed * m_renderer->get_camera().user_movement_speed_multiplier;
@@ -599,7 +599,7 @@ void RenderWindow::update_renderer_view_rotation(float offset_x, float offset_y)
 void RenderWindow::update_renderer_view_zoom(float offset, bool scale_delta_time)
 {
 	if (scale_delta_time)
-		offset *= m_application_state->last_delta_time_ms / 1000.0f;
+		offset *= m_application_state->last_CPU_frame_delta_time_ms / 1000.0f;
 	offset *= m_renderer->get_camera().camera_movement_speed * m_renderer->get_camera().user_movement_speed_multiplier;
 
 	if (offset == 0.0f)
@@ -741,7 +741,7 @@ float RenderWindow::compute_GPU_stall_duration()
 
 float RenderWindow::get_UI_delta_time()
 {
-	return m_application_state->last_delta_time_ms;
+	return m_application_state->last_CPU_frame_delta_time_ms;
 }
 
 std::shared_ptr<OpenImageDenoiser> RenderWindow::get_denoiser()
@@ -814,8 +814,8 @@ void RenderWindow::run()
 		TracyGpuCollect;
 
 		float delta_time_ms = (glfwGetTimerValue() - frame_start_time) / static_cast<float>(timer_frequency) * 1000.0f;
-		m_application_state->last_delta_time_ms = delta_time_ms;
-		m_application_state->last_viewport_refresh_timestamp += m_application_state->last_delta_time_ms;
+		m_application_state->last_CPU_frame_delta_time_ms = delta_time_ms;
+		m_application_state->last_viewport_refresh_timestamp += m_application_state->last_CPU_frame_delta_time_ms;
 
 		if (!is_rendering_done())
 			m_application_state->current_render_time_ms += delta_time_ms;
@@ -855,7 +855,7 @@ void RenderWindow::render()
 
 			if (m_application_state->GPU_stall_duration_left > 0.0f)
 				// Updating the duration left to stall the GPU.
-				m_application_state->GPU_stall_duration_left -= m_application_state->last_delta_time_ms;
+				m_application_state->GPU_stall_duration_left -= m_application_state->last_CPU_frame_delta_time_ms;
 		}
 		else if (!is_rendering_done() || m_application_state->render_dirty)
 		{
@@ -928,10 +928,13 @@ void RenderWindow::render()
 			if (m_application_state->render_dirty)
 				reset_render();
 
-			// Otherwise, if we're not stalling, queuing a new frame for the GPU to render
-			m_application_state->last_GPU_submit_time = glfwGetTimerValue();
+			// Queuing a new frame for the GPU to render
+			uint64_t current_timestamp = glfwGetTimerValue();
+			float delta_time_gpu = (current_timestamp - m_application_state->last_GPU_submit_time) / static_cast<float>(glfwGetTimerFrequency()) * 1000.0f;
+
 			m_application_state->frame_number++;
-			m_renderer->update();
+			m_application_state->last_GPU_submit_time = current_timestamp;
+			m_renderer->update(delta_time_gpu);
 			m_renderer->render();
 
 			buffer_upload_necessary = true;

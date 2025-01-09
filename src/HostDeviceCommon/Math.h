@@ -153,7 +153,7 @@ namespace hippt
 	__device__ bool is_zero(float x) { return x < NEAR_ZERO && x > -NEAR_ZERO; }
 
 	template <typename T>
-	__device__ T atomic_add(T* address, T increment) { return atomicAdd(address, increment); }
+	__device__ T atomic_fetch_add(T* address, T increment) { return atomicAdd(address, increment); }
 
 	/**
 	 * For t=0, returns a
@@ -257,7 +257,7 @@ namespace hippt
 	inline bool is_zero(float x) { return x < NEAR_ZERO && x > -NEAR_ZERO; }
 
 	template <typename T>
-	T atomic_add(std::atomic<T>* atomic_address, T increment) { return atomic_address->fetch_add(increment); }
+	T atomic_fetch_add(std::atomic<T>* atomic_address, T increment) { return atomic_address->fetch_add(increment); }
 
 	/**
 	 * For t=0, returns a

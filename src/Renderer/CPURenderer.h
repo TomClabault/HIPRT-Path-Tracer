@@ -27,6 +27,7 @@ public:
 
     void setup_brdfs_data();
     void setup_nee_plus_plus();
+    void nee_plus_plus_memcpy_accumulation();
 
     void set_scene(Scene& parsed_scene);
     void set_envmap(Image32Bit& envmap_image);
@@ -39,6 +40,8 @@ public:
     void render();
     void update(int frame_number);
     void update_render_data(int sample);
+
+    void reset();
 
     void debug_render_pass(std::function<void(int, int)> render_pass_function);
 

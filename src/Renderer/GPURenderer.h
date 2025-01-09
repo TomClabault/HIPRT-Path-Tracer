@@ -140,13 +140,19 @@ public:
 	 * correct state. Said othrewise, this function can be seen as a centralized place for updating
 	 * various stuff of the renderer instead of having to scatter these update calls everywhere
 	 * in the code.
+	 * 
+	 * The 'delta_time' parameter should be how much time passed, in milliseconds, since the last
+	 * call to update()
 	 */
-	void update();
+	void update(float delta_time);
 
 	/**
 	 * Steps all the animations of the renderer one step forward
+	 * 
+	 * The 'delta_time' parameter should be how much time passed, in milliseconds, since the last
+	 * call to step_animations()
 	 */
-	void step_animations();
+	void step_animations(float delta_time);
 
 	/**
 	 * Renders a frame asynchronously. 
@@ -425,8 +431,11 @@ private:
 	/**
 	 * Allocates/deallocates the data structure for NEE++ depending on whether or not
 	 * NEE++ is being used
+	 * 
+	 * The 'delta_time' parameter should be how much time passed, in milliseconds, since the last
+	 * call to internal_update_nee_plus_plus_buffers()
 	 */
-	void internal_update_nee_plus_plus_buffers();
+	void internal_update_nee_plus_plus_buffers(float delta_time);
 
 	/**
 	 * Allocates/frees the global buffer for BVH traversal when UseSharedStackBVHTraversal is TRUE

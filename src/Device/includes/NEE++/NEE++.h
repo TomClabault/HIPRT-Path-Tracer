@@ -48,23 +48,43 @@ struct NEEPlusPlus
 	// only half of the visibility matrix
 	//
 	// For the indexing logic, (0, 0) is in the top left corner of the matrix
-	AtomicType<unsigned int>* visibility_map;
+	unsigned int* visibility_map = nullptr;
 
 	// Same as 'visibility_map' but stores how many rays were traced in total from one
 	// voxel to another. In the example from above, this would contain the value 16.
 	//
 	// For the indexing logic, (0, 0) is in the top left corner of the matrix
-	AtomicType<unsigned int>* visibility_map_count;
+	unsigned int* visibility_map_count = nullptr;
 
-	HIPRT_HOST_DEVICE void accumulate_visibility(float3 first_world_position, float3 second_world_position, bool visible, int matrix_index)
+	// These two buffers are used for accumulation of the visibility information during the rendering
+	// For example, if we trace a shadow ray between voxel A and voxel B and that this shadow ray is
+	// occluded, we're going to have to update the visibility map with information.
+	// 
+	// However, we cannot just simply update the visibility map during the rendering because this would
+	// lead to concurrency issues where the map is being updated while also being read by other threads.
+	// 
+	// The race condition is fine, what's not fine is that this will vary the estimate of the occlusion probability
+	// from voxel A to voxel B and I found that this resulted in bias / non-determinism because the order in which
+	// the threads update the map now influences how the other threads are going to read the map
+	//
+	// So instead we have some additional buffers here to accumulate separately and then this buffers are copied
+	// every N frames (or N seconds) to the 'true' visibility map used during rendering
+	AtomicType<unsigned int>* accumulation_buffer = nullptr;
+	AtomicType<unsigned int>* accumulation_buffer_count = nullptr;
+
+	HIPRT_HOST_DEVICE void accumulate_visibility(bool visible, int matrix_index)
 	{
 		if (matrix_index == -1)
 			// One of the two points was outside the scene, cannot cache this
 			return;
 
 		if (visible)
-			hippt::atomic_add(&visibility_map[matrix_index], 1u);
-		hippt::atomic_add(&visibility_map_count[matrix_index], 1u);
+			hippt::atomic_fetch_add(&accumulation_buffer[matrix_index], 1u);
+		hippt::atomic_fetch_add(&accumulation_buffer_count[matrix_index], 1u);
+
+		/*if (visible)
+			accumulation_buffer[matrix_index]++;
+		accumulation_buffer_count[matrix_index]++;*/
 	}
 
 	/**
@@ -72,7 +92,7 @@ struct NEEPlusPlus
 	 */
 	HIPRT_HOST_DEVICE void accumulate_visibility(float3 first_world_position, float3 second_world_position, bool visible)
 	{
-		return accumulate_visibility(first_world_position, second_world_position, visible, get_visibility_map_index(first_world_position, second_world_position));
+		return accumulate_visibility(visible, get_visibility_map_index(first_world_position, second_world_position));
 	}
 
 	/**
@@ -124,6 +144,9 @@ struct NEEPlusPlus
 		return half_matrix_size;
 	}
 
+	// TODO compare with the alpha learning rate and the ground truth to see the behavior of a single float buffer
+	// TODO see if capping at 255 / 65535 is enough
+	// TODO randolm jitter to avoid block artifacts?
 private:
 	/**
 	 * Returns the index of the voxel of the given position in [grid_dimensions.x - 1, grid_dimensions.y - 1, grid_dimensions.z - 1]

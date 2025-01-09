@@ -19,9 +19,9 @@ void RendererEnvmap::init_from_image(const Image32Bit& image, const std::string&
 	m_height = image.height;
 }
 
-void RendererEnvmap::update(GPURenderer* renderer)
+void RendererEnvmap::update(GPURenderer* renderer, float delta_time)
 {
-	do_animation(renderer);
+	do_animation(renderer, delta_time);
 
 	// Updates the data/pointers in WorldSettings that the shaders will use
 	update_renderer(renderer);
@@ -107,7 +107,7 @@ float* RendererEnvmap::get_cdf_device_pointer()
 unsigned int RendererEnvmap::get_width() { return m_width; }
 unsigned int RendererEnvmap::get_height() { return m_height; }
 
-void RendererEnvmap::do_animation(GPURenderer* renderer)
+void RendererEnvmap::do_animation(GPURenderer* renderer, float delta_time)
 {
 	// We can step the animation either if we're not accumulating or
 	// if we're accumulating and we're allowed to step the animations
@@ -117,11 +117,9 @@ void RendererEnvmap::do_animation(GPURenderer* renderer)
 
 	if (animate && renderer->get_animation_state().do_animations && can_step_animation)
 	{
-		float renderer_delta_time = renderer->get_last_frame_time();
-
-		rotation_X += animation_speed_X / 360.0f / (1000.0f / renderer_delta_time);
-		rotation_Y += animation_speed_Y / 360.0f / (1000.0f / renderer_delta_time);
-		rotation_Z += animation_speed_Z / 360.0f / (1000.0f / renderer_delta_time);
+		rotation_X += animation_speed_X / 360.0f / (1000.0f / delta_time);
+		rotation_Y += animation_speed_Y / 360.0f / (1000.0f / delta_time);
+		rotation_Z += animation_speed_Z / 360.0f / (1000.0f / delta_time);
 
 		rotation_X = rotation_X - static_cast<int>(rotation_X);
 		rotation_Y = rotation_Y - static_cast<int>(rotation_Y);
