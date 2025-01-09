@@ -191,6 +191,7 @@ void GPURenderer::setup_nee_plus_plus_from_scene(const Scene& scene)
 void GPURenderer::reset_nee_plus_plus()
 {
 	m_render_data.nee_plus_plus.reset_visibility_map = true;
+
 	m_nee_plus_plus.milliseconds_before_finalizing_accumulation = NEEPlusPlusGPUData::FINALIZE_ACCUMULATION_TIMER;
 }
 
@@ -412,6 +413,8 @@ void GPURenderer::internal_update_nee_plus_plus_buffers(float delta_time)
 
 		m_nee_plus_plus.visibility_map.memset(0);
 		m_nee_plus_plus.visibility_map_count.memset(0);
+		m_nee_plus_plus.accumulation_buffer.memset(0);
+		m_nee_plus_plus.accumulation_buffer_count.memset(0);
 	}
 
 	m_nee_plus_plus.milliseconds_before_finalizing_accumulation -= delta_time;

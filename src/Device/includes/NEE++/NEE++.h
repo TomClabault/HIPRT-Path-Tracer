@@ -195,8 +195,6 @@ private:
 		// Because the visibility matrix is symmetrical, we're only using half of it to save half the VRAM
 		// Thus we need to find the index in the lower half of the visiblity matrix
 		//
-		// TODO this only works for cube grids
-		// 
 		// We know that our matrix is N*N
 		// Because we only consider the lower half (lower triangle) of the matrix:
 		// 

@@ -1545,6 +1545,8 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 {
+	HIPRTRenderData& render_data = m_renderer->get_render_data();
+
 	std::shared_ptr<GPUKernelCompilerOptions> kernel_options = m_renderer->get_global_compiler_options();
 
 	if (ImGui::CollapsingHeader("Next Event Estimation++"))
@@ -1578,9 +1580,13 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 				for (unsigned int c : records)
 					max_cell_records = hippt::max(c, max_cell_records);
 			}
+			ImGui::Text("Visiblity map update in: %.3fs", m_renderer->get_nee_plus_plus_data().milliseconds_before_finalizing_accumulation / 1000.0f);
+			if (ImGui::Button("Refresh##vis_map"))
+				m_renderer->get_nee_plus_plus_data().milliseconds_before_finalizing_accumulation = 0.0f;
+
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
-			if (ImGui::Checkbox("Update visibility map", &m_renderer->get_render_data().nee_plus_plus.update_visibility_map))
+			if (ImGui::Checkbox("Update visibility map", &render_data.nee_plus_plus.update_visibility_map))
 				m_render_window->set_render_dirty(true);
 			static bool use_nee_plus_plus_rr = DirectLightUseNEEPlusPlusRR;
 			if (ImGui::Checkbox("Use NEE++ Russian Roulette", &use_nee_plus_plus_rr))
@@ -1594,6 +1600,45 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 				"If checked, the voxel-to-voxel visibility estimate of NEE++ will be used to "
 				"stochastically determine whether or not attempt at all to trace a shadow at "
 				"a light during next-event-estimation.");
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			static bool use_cube_grid = true;
+			ImGui::Checkbox("Use cubic grid", &use_cube_grid);
+			bool size_changed = false;
+			if (use_cube_grid)
+			{
+				static int grid_size = m_renderer->get_nee_plus_plus_data().map_dimensions.x;
+				if (ImGui::SliderInt("Grid size (X, Y & Z)", &grid_size, 2, 32))
+				{
+					m_renderer->get_nee_plus_plus_data().map_dimensions.x = grid_size;
+					m_renderer->get_nee_plus_plus_data().map_dimensions.y = grid_size;
+					m_renderer->get_nee_plus_plus_data().map_dimensions.z = grid_size;
+
+					size_changed = true;
+				}
+			}
+			else
+			{
+				ImGui::PushItemWidth(4 * ImGui::GetFontSize());
+				size_changed |= ImGui::SliderInt("##Grid_sizeX", &m_renderer->get_nee_plus_plus_data().map_dimensions.x, 2, 32);
+				ImGui::SameLine();
+				size_changed |= ImGui::SliderInt("##Grid_sizeY", &m_renderer->get_nee_plus_plus_data().map_dimensions.y, 2, 32);
+				ImGui::SameLine();
+				size_changed |= ImGui::SliderInt("Grid size (X/Y/Z)", &m_renderer->get_nee_plus_plus_data().map_dimensions.z, 2, 32);
+
+				// Back to default size
+				ImGui::PushItemWidth(16 * ImGui::GetFontSize());
+			}
+
+			if (size_changed)
+			{
+				// Clamping
+				m_renderer->get_nee_plus_plus_data().map_dimensions = hippt::clamp(make_int3(2, 2, 2), make_int3(32, 32, 32), m_renderer->get_nee_plus_plus_data().map_dimensions);
+
+				m_renderer->setup_nee_plus_plus();
+				m_renderer->reset_nee_plus_plus();
+				m_render_window->set_render_dirty(true);
+			}
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			if (ImGui::Button("Clear visibility cache"))
