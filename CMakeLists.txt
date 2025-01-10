@@ -198,5 +198,6 @@ if(MSVC_IDE)
 	set_target_properties(
 		assimp uninstall zlibstatic UpdateAssimpLibsDebugSymbolsAndDLLs # ASSIMP Targets
 		hiprt02004 hiprtCopyDLL # HIPRT Targets
+		TracyClient # Tracy
 		PROPERTIES FOLDER ExternalTargets)
 endif()

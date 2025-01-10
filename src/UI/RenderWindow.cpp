@@ -23,10 +23,6 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // TODOs  performance improvements branch:
-// - if it is the only update that is biased, why can we not stop the render, keep the visibility info and restart another render and this should be unbiased?
-// - NEE++
-// - NEE++ envmap
-// - tracyclient in external targets project folder
 // - cleanup declaration of HIPRT traversal in a macro or something
 // - adaptive sudivision NEE++
 // - counter for the total amount of nested dielectrics supported
