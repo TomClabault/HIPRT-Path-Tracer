@@ -38,12 +38,16 @@ struct NEEPlusPlusContext
  */
 struct NEEPlusPlus
 {
-	static constexpr int NEE_PLUS_PLUS_DEFAULT_GRID_SIZE = 2;
+	static constexpr int NEE_PLUS_PLUS_DEFAULT_GRID_SIZE = 24;
 
 	// If true, the next camera rays kernel call will reset the visibility map
 	bool reset_visibility_map = false;
 	// If true, the grid visibility will be updated this frame (new visibility values will be accumulated)
 	bool update_visibility_map = true;
+	// Whether or not to do russian roulette with NEE++ on emissive lights
+	bool enable_nee_plus_plus_RR_for_emissives = true;
+	// Whether or not to do russian roulette with NEE++ on envmap samples
+	bool enable_nee_plus_plus_RR_for_envmap = true;
 
 	int3 grid_dimensions = make_int3(NEE_PLUS_PLUS_DEFAULT_GRID_SIZE, NEE_PLUS_PLUS_DEFAULT_GRID_SIZE, NEE_PLUS_PLUS_DEFAULT_GRID_SIZE);
 

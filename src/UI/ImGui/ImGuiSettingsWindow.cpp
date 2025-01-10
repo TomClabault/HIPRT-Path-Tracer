@@ -1564,7 +1564,7 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 		}
 		ImGuiRenderer::show_help_marker("Whether or not to use NEE++ [Guo et al., 2020] features at all.");
 
-		ImGui::BeginDisabled(!use_nee_plus_plus);
+		if (use_nee_plus_plus)
 		{
 			ImGui::TreePush("NEE++ Settings Tree");
 
@@ -1594,6 +1594,9 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 			{
 				if (ImGui::Checkbox("Update visibility map", &render_data.nee_plus_plus.update_visibility_map))
 					m_render_window->set_render_dirty(true);
+				ImGuiRenderer::show_help_marker("If checked, the visibility map will continue accumulating visibility "
+					"information as the rendering progresses");
+
 				static bool use_nee_plus_plus_rr = DirectLightUseNEEPlusPlusRR;
 				if (ImGui::Checkbox("Use NEE++ Russian Roulette", &use_nee_plus_plus_rr))
 				{
@@ -1606,6 +1609,19 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 					"If checked, the voxel-to-voxel visibility estimate of NEE++ will be used to "
 					"stochastically determine whether or not attempt at all to trace a shadow at "
 					"a light during next-event-estimation.");
+
+				if (use_nee_plus_plus_rr)
+				{
+					ImGui::TreePush("NEE++ RR options tree");
+
+					if (ImGui::Checkbox("Use NEE++ RR for emissives", &render_data.nee_plus_plus.enable_nee_plus_plus_RR_for_emissives))
+						m_render_window->set_render_dirty(true);
+
+					if (ImGui::Checkbox("Use NEE++ RR for envmap", &render_data.nee_plus_plus.enable_nee_plus_plus_RR_for_envmap))
+						m_render_window->set_render_dirty(true);
+
+					ImGui::TreePop();
+				}
 
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			}
@@ -1669,7 +1685,6 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 
 			ImGui::TreePop();
 		}
-		ImGui::EndDisabled();
 
 		ImGui::TreePop();
 	}
