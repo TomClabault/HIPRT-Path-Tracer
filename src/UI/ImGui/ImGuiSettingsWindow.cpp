@@ -783,12 +783,15 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			switch (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY))
 			{
 			case LSS_NO_DIRECT_LIGHT_SAMPLING:
+				ImGui::Dummy(ImVec2(0.0f, -20.0f));
 				break;
 
 			case LSS_UNIFORM_ONE_LIGHT:
+				ImGui::Dummy(ImVec2(0.0f, -20.0f));
 				break;
 
 			case LSS_MIS_LIGHT_BSDF:
+				ImGui::Dummy(ImVec2(0.0f, -20.0f));
 				break;
 
 			case LSS_RIS_BSDF_AND_LIGHT:
@@ -1676,7 +1679,7 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 			}
 
 			{
-				if (ImGui::Button("Clear visibility cache"))
+				if (ImGui::Button("Clear visibility map"))
 				{
 					m_renderer->reset_nee_plus_plus();
 					m_render_window->set_render_dirty(true);

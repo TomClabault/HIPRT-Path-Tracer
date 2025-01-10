@@ -155,6 +155,9 @@ namespace hippt
 	template <typename T>
 	__device__ T atomic_fetch_add(T* address, T increment) { return atomicAdd(address, increment); }
 
+	template <typename T>
+	__device__ T atomic_compare_exchange(T* address, T expected, T new_value) { return atomicCAS(address, expected, new_value); }
+
 	/**
 	 * For t=0, returns a
 	 */
@@ -258,6 +261,9 @@ namespace hippt
 
 	template <typename T>
 	T atomic_fetch_add(std::atomic<T>* atomic_address, T increment) { return atomic_address->fetch_add(increment); }
+
+	template <typename T>
+	T atomic_compare_exchange(std::atomic<T>* atomic_address, T expected, T new_value) { return atomic_address->compare_exchange_strong(expected, new_value); }
 
 	/**
 	 * For t=0, returns a
