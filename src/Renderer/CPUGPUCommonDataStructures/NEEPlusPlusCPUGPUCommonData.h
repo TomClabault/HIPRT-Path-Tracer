@@ -10,6 +10,12 @@
 
 struct NEEPlusPlusCPUGPUCommonData
 {
+	unsigned int get_vram_usage_bytes() const
+	{
+		// Number of elements per matrix * 4 matrices * sizeof(unsigned int) bytes
+		return get_visibility_matrix_element_count(grid_dimensions_no_envmap + make_int3(2, 2, 2)) * 4 * sizeof(unsigned int);
+	}
+
 	unsigned int get_visibility_matrix_element_count(int3 dimensions) const
 	{
 		unsigned int grid_elements_count = dimensions.x * dimensions.y * dimensions.z;

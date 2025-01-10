@@ -24,7 +24,6 @@ extern ImGuiLogger g_imgui_logger;
 
 // TODOs  performance improvements branch:
 // - cleanup declaration of HIPRT traversal in a macro or something
-// - counter for the total amount of nested dielectrics supported
 // - align buffers and benchmark with a copy kernel
 // - free the parsed scene from the CPU the free RAM
 // - add mis_reuse ray in envmap sampling

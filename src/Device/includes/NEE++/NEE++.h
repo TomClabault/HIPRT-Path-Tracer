@@ -38,7 +38,7 @@ struct NEEPlusPlusContext
  */
 struct NEEPlusPlus
 {
-	static constexpr int NEE_PLUS_PLUS_DEFAULT_GRID_SIZE = 24;
+	static constexpr int NEE_PLUS_PLUS_DEFAULT_GRID_SIZE = 16;
 
 	// If true, the next camera rays kernel call will reset the visibility map
 	bool reset_visibility_map = false;

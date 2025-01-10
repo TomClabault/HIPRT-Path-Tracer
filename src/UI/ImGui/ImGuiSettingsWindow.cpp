@@ -1677,6 +1677,7 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 					"avoid trusting voxel that have a low probability of being unoccluded\n\n"
 					""
 					"0.0f basically disables NEE++ as any entry of the visibility map will require a shadow ray.");
+				ImGui::Text("VRAM Usage: %.3fMB", m_renderer->get_nee_plus_plus_data().get_vram_usage_bytes() / 1000000.0f);
 
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			}
