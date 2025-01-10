@@ -443,6 +443,7 @@ void ImGuiSettingsWindow::display_view_selector()
 				display_view_selected_index = i;
 
 				display_view_system->queue_display_view_change(display_view_type_selected);
+				m_render_window->set_force_viewport_refresh(true);
 			}
 
 			if (is_selected)
