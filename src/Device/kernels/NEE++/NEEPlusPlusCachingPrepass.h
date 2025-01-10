@@ -90,7 +90,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NEEPlusPlusCachingPrepass(HIPRTRenderData r
     float3 intersection_position = ray.origin + ray.direction * hit.t;
     int camera_hit_primitive_index = hit.primID;
 
-    render_data.nee_plus_plus.accumulate_visibility(render_data.current_camera.position, intersection_position, true);
+    render_data.nee_plus_plus.accumulate_visibility(NEEPlusPlusContext{ render_data.current_camera.position, intersection_position }, true);
 
     // Now sampling random lights from the camera ray first hit and caching the visibility
     for (int i = 0; i < caching_sample_count; i++)
@@ -112,13 +112,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NEEPlusPlusCachingPrepass(HIPRTRenderData r
             // Should never happen because we should at least hit the emissive triangle sampled
             continue;
 
+        NEEPlusPlusContext context;
+        context.shaded_point = intersection_position;
+        context.point_on_light = target_point;
+
         // Is the point on the light visible?
-        if (shadow_ray_hit.hasHit() && shadow_ray_hit.primID == trash_light_info.emissive_triangle_index)
-            // The point on the light is visible
-            render_data.nee_plus_plus.accumulate_visibility(intersection_position, target_point, true);
-        else
-            // The point on the light isn't visible
-            render_data.nee_plus_plus.accumulate_visibility(intersection_position, target_point, false);
+        bool visible = shadow_ray_hit.hasHit() && shadow_ray_hit.primID == trash_light_info.emissive_triangle_index;
+        render_data.nee_plus_plus.accumulate_visibility(context, visible);
     }
 }
 

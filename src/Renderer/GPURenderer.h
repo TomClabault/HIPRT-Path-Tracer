@@ -103,10 +103,6 @@ public:
 	void init_GGX_glass_Ess_texture(hipTextureFilterMode filtering_mode = hipFilterModePoint);
 
 	/**
-	 * Allocates the GPU memory and initializes the data for NEE++
-	 */
-	void setup_nee_plus_plus();
-	/**
 	 * Sets up the bounds of the scene for the grid of NEE++
 	 */
 	void setup_nee_plus_plus_from_scene(const Scene& scene);

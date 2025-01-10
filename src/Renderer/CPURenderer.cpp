@@ -39,8 +39,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 454
-#define DEBUG_PIXEL_Y 482
+#define DEBUG_PIXEL_X 546
+#define DEBUG_PIXEL_Y 398
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -138,8 +138,11 @@ void CPURenderer::setup_nee_plus_plus()
 #if DirectLightUseNEEPlusPlus == KERNEL_OPTION_TRUE
     // Only doing if using NEE++ 
     
+    // + (2, 2, 2) for envmap NEE++
+    m_render_data.nee_plus_plus.grid_dimensions = m_nee_plus_plus.grid_dimensions_no_envmap + make_int3(2, 2, 2);
+
     // Dividing by 2 because the visibility map is symmetrical so we only need half of the matrix
-    int half_matrix_size = m_nee_plus_plus.get_visibility_matrix_element_count();
+    int half_matrix_size = m_nee_plus_plus.get_visibility_matrix_element_count(m_render_data.nee_plus_plus.grid_dimensions);
     m_nee_plus_plus.visibility_map = std::vector<unsigned int>(half_matrix_size);
     m_nee_plus_plus.visibility_map_count = std::vector<unsigned int>(half_matrix_size);
     m_nee_plus_plus.accumulation_buffer = std::vector<AtomicType<unsigned int>>(half_matrix_size);
@@ -149,7 +152,6 @@ void CPURenderer::setup_nee_plus_plus()
     m_render_data.nee_plus_plus.visibility_map_count = m_nee_plus_plus.visibility_map_count.data();
     m_render_data.nee_plus_plus.accumulation_buffer = m_nee_plus_plus.accumulation_buffer.data();
     m_render_data.nee_plus_plus.accumulation_buffer_count = m_nee_plus_plus.accumulation_buffer_count.data();
-    m_render_data.nee_plus_plus.grid_dimensions = m_nee_plus_plus.map_dimensions;
 #endif
 }
 
@@ -158,7 +160,7 @@ void CPURenderer::nee_plus_plus_memcpy_accumulation()
 #if DirectLightUseNEEPlusPlus == KERNEL_OPTION_TRUE
     // Only doing if using NEE++
 #pragma omp parallel for
-    for (int i = 0; i < m_nee_plus_plus.get_visibility_matrix_element_count(); i++)
+    for (int i = 0; i < m_nee_plus_plus.get_visibility_matrix_element_count(m_render_data.nee_plus_plus.grid_dimensions); i++)
     {
         m_nee_plus_plus.visibility_map[i] = m_nee_plus_plus.accumulation_buffer[i].load();
         m_nee_plus_plus.visibility_map_count[i] = m_nee_plus_plus.accumulation_buffer_count[i].load();
@@ -234,8 +236,12 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.aux_buffers.restir_reservoir_buffer_2 = m_restir_di_state.spatial_output_reservoirs_1.data();
     m_render_data.aux_buffers.restir_reservoir_buffer_3 = m_restir_di_state.spatial_output_reservoirs_2.data();
 
-    m_render_data.nee_plus_plus.grid_min_point = parsed_scene.metadata.scene_bounding_box.mini;
-    m_render_data.nee_plus_plus.grid_max_point = parsed_scene.metadata.scene_bounding_box.maxi;
+    float3 grid_min_point_with_envmap, grid_max_point_with_envmap;
+    m_nee_plus_plus.base_grid_min_point = parsed_scene.metadata.scene_bounding_box.mini;
+    m_nee_plus_plus.base_grid_max_point = parsed_scene.metadata.scene_bounding_box.maxi;
+    m_nee_plus_plus.get_grid_extents(m_nee_plus_plus.grid_dimensions_no_envmap, grid_min_point_with_envmap, grid_max_point_with_envmap);
+    m_render_data.nee_plus_plus.grid_min_point = grid_min_point_with_envmap;
+    m_render_data.nee_plus_plus.grid_max_point = grid_max_point_with_envmap;
 
     ThreadManager::join_threads(ThreadManager::SCENE_LOADING_PARSE_EMISSIVE_TRIANGLES);
     m_render_data.buffers.emissive_triangles_count = parsed_scene.emissive_triangle_indices.size();

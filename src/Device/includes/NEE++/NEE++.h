@@ -12,7 +12,22 @@ struct NEEPlusPlusContext
 {
 	float3 shaded_point;
 	float3 point_on_light;
-	float unoccluded_probability;
+	// After passing this context to a call to 'evaluate_shadow_ray_nee_plus_plus',
+	// this member will be filled with the probability that the points 'shaded_point'
+	// and 'point_on_light' are mutually visible.
+	//
+	// If the call to 'evaluate_shadow_ray_nee_plus_plus' returns 'false' i.e. that the
+	// points are mutually visibile, you will need to account this
+	// 'unoccluded_probability' in the PDF of the light you sampled i.e. multiply
+	// your PDF by this 'unoccluded_probability' to guarantee unbiasedness
+	float unoccluded_probability = 1.0f;
+	// Set this flag to true if this context should be used
+	// for testing visibility probability between 'shaded_point' and the
+	// envmap.
+	//
+	// ----- WARNING:
+	// 'point_on_light' should be the normalized direction towards the envmap if this is set to true
+	bool envmap = false;
 };
 
 /**
@@ -23,7 +38,7 @@ struct NEEPlusPlusContext
  */
 struct NEEPlusPlus
 {
-	static constexpr int NEE_PLUS_PLUS_DEFAULT_GRID_SIZE = 24;
+	static constexpr int NEE_PLUS_PLUS_DEFAULT_GRID_SIZE = 2;
 
 	// If true, the next camera rays kernel call will reset the visibility map
 	bool reset_visibility_map = false;
@@ -93,9 +108,9 @@ struct NEEPlusPlus
 	/**
 	 * Updates the visibility map with one additional entry: whether or not the two given world points are visible
 	 */
-	HIPRT_HOST_DEVICE void accumulate_visibility(float3 first_world_position, float3 second_world_position, bool visible)
+	HIPRT_HOST_DEVICE void accumulate_visibility(const NEEPlusPlusContext& context, bool visible)
 	{
-		return accumulate_visibility(visible, get_visibility_map_index(first_world_position, second_world_position));
+		return accumulate_visibility(visible, get_visibility_map_index(context));
 	}
 
 	/**
@@ -108,9 +123,9 @@ struct NEEPlusPlus
 	 * that value on its own even though the world points given may be the same and thus, the matrix
 	 * index is the same)
 	 */
-	HIPRT_HOST_DEVICE float estimate_visibility_probability(float3 first_world_position, float3 second_world_position, int& out_matrix_index) const
+	HIPRT_HOST_DEVICE float estimate_visibility_probability(const NEEPlusPlusContext& context, int& out_matrix_index) const
 	{
-		out_matrix_index = get_visibility_map_index(first_world_position, second_world_position);
+		out_matrix_index = get_visibility_map_index(context);
 		if (out_matrix_index == -1)
 			// One of the two points was outside the scene, cannot read the cache for this
 			// 
@@ -139,10 +154,10 @@ struct NEEPlusPlus
 	 * Returns the estimated probability that a ray between the two given world points
 	 * is going to be unoccluded (i.e. the two points are mutually visible)
 	 */
-	HIPRT_HOST_DEVICE float estimate_visibility_probability(float3 first_world_position, float3 second_world_position) const
+	HIPRT_HOST_DEVICE float estimate_visibility_probability(const NEEPlusPlusContext& context, float3 second_world_position) const
 	{
 		int trash_matrix_index;
-		return estimate_visibility_probability(first_world_position, second_world_position, trash_matrix_index);
+		return estimate_visibility_probability(context, trash_matrix_index);
 	}
 
 	HIPRT_HOST_DEVICE unsigned int get_visibility_matrix_element_count() const
@@ -155,7 +170,6 @@ struct NEEPlusPlus
 
 	// TODO compare with the alpha learning rate and the ground truth to see the behavior of a single float buffer
 	// TODO see if capping at 255 / 65535 is enough
-	// TODO randolm jitter to avoid block artifacts?
 private:
 	/**
 	 * Returns the index of the voxel of the given position in [grid_dimensions.x - 1, grid_dimensions.y - 1, grid_dimensions.z - 1]
@@ -164,29 +178,83 @@ private:
 	{
 		float3 position_grid_space = position - grid_min_point;
 		float3 voxel_index_float = position_grid_space / (grid_max_point - grid_min_point);
+
+		float grid_limit = 1.0f;
 		if (voxel_index_float.x > 1.0f || voxel_index_float.y > 1.0f || voxel_index_float.z > 1.0f)
-			// The point is outside the scene
+			// The point is outside the grid
 			return make_int3(-1, -1, -1);
 
 		voxel_index_float = hippt::min(0.99999f, voxel_index_float);
 
 		int3 voxel_index_int = make_int3(static_cast<int>(voxel_index_float.x * grid_dimensions.x),
-										 static_cast<int>(voxel_index_float.y * grid_dimensions.y),
-										 static_cast<int>(voxel_index_float.z * grid_dimensions.z));
+			static_cast<int>(voxel_index_float.y * grid_dimensions.y),
+			static_cast<int>(voxel_index_float.z * grid_dimensions.z));
 
 		return voxel_index_int;
 	}
 
-	HIPRT_HOST_DEVICE int get_visibility_map_index(float3 first_world_position, float3 second_world_position) const
+	/**
+	 * This function returns the point at the very boundary of the voxel grid (i.e. a point in the envmap layer)
+	 * given a point and a direction.
+	 * 
+	 * This is basically an intersection test between a ray(shaded_point, direction) and the envmap boundary planes
+	 */
+	HIPRT_HOST_DEVICE float3 compute_voxel_grid_exit_point_from_direction(float3 shaded_point, float3 direction) const
 	{
-		int3 first_pos_voxel_3D_index = get_voxel_3D_index(first_world_position);
-		int3 second_pos_voxel_3D_index = get_voxel_3D_index(second_world_position);
+		// Finding the times in X/Y/Z for the ray to escape the voxel grid (the voxel grid accounting
+		// for the envmap layer, hence why we add 'one_voxel_size' because that extra voxel layer is out
+		// of all the geometry of the scene so it doesn't contain the envmap layer)
+		float tx = 1.0e35f, ty = 1.0e35f, tz = 1.0e35f;
+		if (hippt::abs(direction.x) > 1.0e-5f)
+			tx = (direction.x < 0.0f ? (grid_min_point.x - shaded_point.x) : (grid_max_point.x - shaded_point.x)) / direction.x;
+		if (hippt::abs(direction.y) > 1.0e-5f)
+			ty = (direction.y < 0.0f ? (grid_min_point.y - shaded_point.y) : (grid_max_point.y - shaded_point.y)) / direction.y;
+		if (hippt::abs(direction.z) > 1.0e-5f)
+			tz = (direction.z < 0.0f ? (grid_min_point.z - shaded_point.z) : (grid_max_point.z - shaded_point.z)) / direction.z;
 
-		if (first_pos_voxel_3D_index.x == -1 || second_pos_voxel_3D_index.x == -1)
+		float min_t = hippt::min(tx, hippt::min(ty, tz));
+		
+		// Subtracting 1.0e-3f to be sure to avoid precision issues 
+		float3 exit_point = shaded_point + direction * (min_t - 1.0e-3f);
+
+		return exit_point;
+	}
+
+	HIPRT_HOST_DEVICE int3 get_voxel_3D_index_envmap(float3 shaded_point, float3 direction) const
+	{
+		// The visibility for the envmap is cached in the very outer layer of the voxel grid
+		// 
+		// This is a layer that is outside of any geometry of the scene (there is no geometry in
+		// this "layer" of the voxel grid)
+		//
+		// The goal here is to find which voxel of that outer layer the direction is pointing to
+		// and this will give us the envmap voxel for that direction.
+		//
+		// This is the same as looking for the voxel at the boundaries of the grid when a ray
+		// with direction 'direction' tries to escape the grid
+		
+		float3 exit_point = compute_voxel_grid_exit_point_from_direction(shaded_point, direction);
+
+		// Once that we have the point in the envmap layer of the voxel grid corresponding to
+		// the direction, we just need its index
+		return get_voxel_3D_index(exit_point);
+	}
+
+	HIPRT_HOST_DEVICE int get_visibility_map_index(const NEEPlusPlusContext& context) const
+	{
+		int3 shaded_point_voxel_3D_index = get_voxel_3D_index(context.shaded_point);
+		int3 second_pos_voxel_3D_index;
+
+		if (context.envmap)
+			second_pos_voxel_3D_index = get_voxel_3D_index_envmap(context.shaded_point, context.point_on_light);
+		else
+			second_pos_voxel_3D_index = get_voxel_3D_index(context.point_on_light);
+
+		if (shaded_point_voxel_3D_index.x == -1 || second_pos_voxel_3D_index.x == -1)
 			// One of the two points is outside the scene, cannot cache this
 			return -1;
 
-		int first_voxel_index = first_pos_voxel_3D_index.x + first_pos_voxel_3D_index.y * grid_dimensions.x + first_pos_voxel_3D_index.z * grid_dimensions.y * grid_dimensions.x;
+		int first_voxel_index = shaded_point_voxel_3D_index.x + shaded_point_voxel_3D_index.y * grid_dimensions.x + shaded_point_voxel_3D_index.z * grid_dimensions.y * grid_dimensions.x;
 		int second_voxel_index = second_pos_voxel_3D_index.x + second_pos_voxel_3D_index.y * grid_dimensions.x + second_pos_voxel_3D_index.z * grid_dimensions.y * grid_dimensions.x;
 
 		// Just renaming

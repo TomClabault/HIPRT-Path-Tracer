@@ -8,24 +8,12 @@
 
 // For int3 and AtomicType
 #include "HostDeviceCommon/Math.h"
+#include "Renderer/CPUGPUCommonDataStructures/NEEPlusPlusCPUGPUCommonData.h"
 
 #include <vector>
 
-struct NEEPlusPlusCPUData
+struct NEEPlusPlusCPUData : public NEEPlusPlusCPUGPUCommonData
 {
-	unsigned int get_visibility_matrix_element_count() const
-	{
-		unsigned int grid_elements_count = map_dimensions.x * map_dimensions.y * map_dimensions.z;
-
-		// Dividing by 2 because the visibility map is symmetrical so we only need half of the matrix
-		unsigned half_matrix_size = grid_elements_count * (grid_elements_count + 1) / 2;
-
-		return half_matrix_size;
-	}
-
-	// Dimensions of the visibility map
-	int3 map_dimensions = make_int3(NEEPlusPlus::NEE_PLUS_PLUS_DEFAULT_GRID_SIZE, NEEPlusPlus::NEE_PLUS_PLUS_DEFAULT_GRID_SIZE, NEEPlusPlus::NEE_PLUS_PLUS_DEFAULT_GRID_SIZE);
-
 	int frame_timer_before_visibility_map_update = 8;
 
 	std::vector<unsigned int> visibility_map;

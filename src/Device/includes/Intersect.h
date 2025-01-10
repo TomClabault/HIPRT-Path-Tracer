@@ -322,7 +322,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRende
     // then that matrix index can be reused instead of being recomputed automatically by 'accumulate_visibility'
     // to save a little bit of computations
     int nee_plus_plus_voxel_matrix_index;
-    nee_plus_plus_context.unoccluded_probability = render_data.nee_plus_plus.estimate_visibility_probability(nee_plus_plus_context.shaded_point, nee_plus_plus_context.point_on_light, nee_plus_plus_voxel_matrix_index);
+    nee_plus_plus_context.unoccluded_probability = render_data.nee_plus_plus.estimate_visibility_probability(nee_plus_plus_context, nee_plus_plus_voxel_matrix_index);
     if (random_number_generator() < nee_plus_plus_context.unoccluded_probability)
     {
         bool in_shadow = evaluate_shadow_ray(render_data, ray, t_max, last_hit_primitive_index, random_number_generator);

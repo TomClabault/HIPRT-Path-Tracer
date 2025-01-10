@@ -149,7 +149,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F envmap_eval(const HIPRTRenderData& re
     return envmap_radiance;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_with_mis(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, RayVolumeState& volume_state, HitInfo& closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, MISBSDFRayReuse& mis_ray_reuse)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_with_mis(HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, RayVolumeState& volume_state, HitInfo& closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, MISBSDFRayReuse& mis_ray_reuse)
 {
     float envmap_pdf;
     float3 sampled_direction;
@@ -164,7 +164,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_with_mis(const
         shadow_ray.origin = closest_hit_info.inter_point;
         shadow_ray.direction = sampled_direction;
 
-        bool in_shadow = evaluate_shadow_ray(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, random_number_generator);
+        NEEPlusPlusContext nee_plus_plus_context;
+        nee_plus_plus_context.shaded_point = closest_hit_info.inter_point;
+        nee_plus_plus_context.point_on_light = sampled_direction;
+        nee_plus_plus_context.envmap = true;
+        bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, nee_plus_plus_context, random_number_generator);
         if (!in_shadow)
         {
             float bsdf_pdf;
@@ -176,7 +180,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_with_mis(const
             float mis_weight = 1.0f;
 #endif
 
-            envmap_mis_contribution = bsdf_color * cosine_term * mis_weight * envmap_color / envmap_pdf;
+            envmap_mis_contribution = bsdf_color * cosine_term * mis_weight * envmap_color / envmap_pdf / nee_plus_plus_context.unoccluded_probability;
         }
     }
 
@@ -254,7 +258,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_with_mis(const
 #endif
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map(const HIPRTRenderData& render_data, RayPayload& ray_payload, HitInfo& closest_hit_info, const float3& view_direction, int bounce, Xorshift32Generator& random_number_generator, MISBSDFRayReuse& mis_ray_reuse)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map(HIPRTRenderData& render_data, RayPayload& ray_payload, HitInfo& closest_hit_info, const float3& view_direction, int bounce, Xorshift32Generator& random_number_generator, MISBSDFRayReuse& mis_ray_reuse)
 {
     const WorldSettings& world_settings = render_data.world_settings;
 

@@ -65,7 +65,6 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
 	m_device_properties = m_hiprt_orochi_ctx->device_properties;
 
 	setup_brdfs_data();
-	setup_nee_plus_plus();
 	setup_filter_functions();
 	setup_kernels();
 
@@ -174,18 +173,10 @@ void GPURenderer::init_GGX_glass_Ess_texture(hipTextureFilterMode filtering_mode
 	m_render_data_buffers_invalidated = true;
 }
 
-void GPURenderer::setup_nee_plus_plus()
-{
-	int3 grid_dimensions = m_nee_plus_plus.map_dimensions;
-	int half_matrix_size = m_nee_plus_plus.get_visibility_matrix_element_count();
-
-	m_render_data.nee_plus_plus.grid_dimensions = grid_dimensions;
-}
-
 void GPURenderer::setup_nee_plus_plus_from_scene(const Scene& scene)
 {
-	m_render_data.nee_plus_plus.grid_min_point = scene.metadata.scene_bounding_box.mini;
-	m_render_data.nee_plus_plus.grid_max_point = scene.metadata.scene_bounding_box.maxi;
+	m_nee_plus_plus.base_grid_min_point = scene.metadata.scene_bounding_box.mini;
+	m_nee_plus_plus.base_grid_max_point = scene.metadata.scene_bounding_box.maxi;
 }
 
 void GPURenderer::reset_nee_plus_plus()
@@ -393,8 +384,16 @@ void GPURenderer::internal_update_nee_plus_plus_buffers(float delta_time)
 		return;
 	}
 
+	float3 min_grid_extent_with_envmap, max_grid_extent_with_envmap;
+	m_nee_plus_plus.get_grid_extents(m_nee_plus_plus.grid_dimensions_no_envmap, min_grid_extent_with_envmap, max_grid_extent_with_envmap);
+
+	// Adding (2, 2, 2) for envmap NEE++
+	m_render_data.nee_plus_plus.grid_dimensions = m_nee_plus_plus.grid_dimensions_no_envmap + make_int3(2, 2, 2);
+	m_render_data.nee_plus_plus.grid_min_point = min_grid_extent_with_envmap;
+	m_render_data.nee_plus_plus.grid_max_point = max_grid_extent_with_envmap;
+
 	// Allocating / deallocating buffers
-	unsigned int matrix_element_count = m_nee_plus_plus.get_visibility_matrix_element_count();
+	unsigned int matrix_element_count = m_nee_plus_plus.get_visibility_matrix_element_count(m_render_data.nee_plus_plus.grid_dimensions);
 	if (m_nee_plus_plus.visibility_map.get_element_count() != matrix_element_count)
 	{
 		// If one buffer isn't properly sized, let's resize them both (becaues one goes with the other)

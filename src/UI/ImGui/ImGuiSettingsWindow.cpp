@@ -1615,12 +1615,12 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 				bool size_changed = false;
 				if (use_cube_grid)
 				{
-					static int grid_size = m_renderer->get_nee_plus_plus_data().map_dimensions.x;
-					if (ImGui::SliderInt("Grid size (X, Y & Z)", &grid_size, 2, 32))
+					static int grid_size = m_renderer->get_nee_plus_plus_data().grid_dimensions_no_envmap.x;
+					if (ImGui::SliderInt("Grid size (X, Y & Z)", &grid_size, 2, 30))
 					{
-						m_renderer->get_nee_plus_plus_data().map_dimensions.x = grid_size;
-						m_renderer->get_nee_plus_plus_data().map_dimensions.y = grid_size;
-						m_renderer->get_nee_plus_plus_data().map_dimensions.z = grid_size;
+						m_renderer->get_nee_plus_plus_data().grid_dimensions_no_envmap.x = grid_size;
+						m_renderer->get_nee_plus_plus_data().grid_dimensions_no_envmap.y = grid_size;
+						m_renderer->get_nee_plus_plus_data().grid_dimensions_no_envmap.z = grid_size;
 
 						size_changed = true;
 					}
@@ -1628,11 +1628,11 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 				else
 				{
 					ImGui::PushItemWidth(4 * ImGui::GetFontSize());
-					size_changed |= ImGui::SliderInt("##Grid_sizeX", &m_renderer->get_nee_plus_plus_data().map_dimensions.x, 2, 32);
+					size_changed |= ImGui::SliderInt("##Grid_sizeX", &m_renderer->get_nee_plus_plus_data().grid_dimensions_no_envmap.x, 2, 30);
 					ImGui::SameLine();
-					size_changed |= ImGui::SliderInt("##Grid_sizeY", &m_renderer->get_nee_plus_plus_data().map_dimensions.y, 2, 32);
+					size_changed |= ImGui::SliderInt("##Grid_sizeY", &m_renderer->get_nee_plus_plus_data().grid_dimensions_no_envmap.y, 2, 30);
 					ImGui::SameLine();
-					size_changed |= ImGui::SliderInt("Grid size (X/Y/Z)", &m_renderer->get_nee_plus_plus_data().map_dimensions.z, 2, 32);
+					size_changed |= ImGui::SliderInt("Grid size (X/Y/Z)", &m_renderer->get_nee_plus_plus_data().grid_dimensions_no_envmap.z, 2, 30);
 
 					// Back to default size
 					ImGui::PushItemWidth(16 * ImGui::GetFontSize());
@@ -1641,9 +1641,8 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 				if (size_changed)
 				{
 					// Clamping
-					m_renderer->get_nee_plus_plus_data().map_dimensions = hippt::clamp(make_int3(2, 2, 2), make_int3(32, 32, 32), m_renderer->get_nee_plus_plus_data().map_dimensions);
+					m_renderer->get_nee_plus_plus_data().grid_dimensions_no_envmap = hippt::clamp(make_int3(2, 2, 2), make_int3(30, 30, 30), m_renderer->get_nee_plus_plus_data().grid_dimensions_no_envmap);
 
-					m_renderer->setup_nee_plus_plus();
 					m_renderer->reset_nee_plus_plus();
 					m_render_window->set_render_dirty(true);
 				}
