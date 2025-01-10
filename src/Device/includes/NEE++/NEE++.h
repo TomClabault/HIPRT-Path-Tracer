@@ -72,6 +72,13 @@ struct NEEPlusPlus
 	AtomicType<unsigned int>* accumulation_buffer = nullptr;
 	AtomicType<unsigned int>* accumulation_buffer_count = nullptr;
 
+	// If a voxel-to-voxel unocclusion probability is higher than that, the voxel will be considered unoccluded
+	// and so a shadow ray will be traced. This is to avoid trusting voxel that have a low probability of
+	// being unoccluded
+	//
+	// 0.0f basically disables NEE++ as any entry of the visibility map will require a shadow ray
+	float confidence_threshold = 0.3f;
+
 	HIPRT_HOST_DEVICE void accumulate_visibility(bool visible, int matrix_index)
 	{
 		if (matrix_index == -1)
@@ -81,10 +88,6 @@ struct NEEPlusPlus
 		if (visible)
 			hippt::atomic_fetch_add(&accumulation_buffer[matrix_index], 1u);
 		hippt::atomic_fetch_add(&accumulation_buffer_count[matrix_index], 1u);
-
-		/*if (visible)
-			accumulation_buffer[matrix_index]++;
-		accumulation_buffer_count[matrix_index]++;*/
 	}
 
 	/**
@@ -105,7 +108,7 @@ struct NEEPlusPlus
 	 * that value on its own even though the world points given may be the same and thus, the matrix
 	 * index is the same)
 	 */
-	HIPRT_HOST_DEVICE float estimate_unoccluded_probability(float3 first_world_position, float3 second_world_position, int& out_matrix_index) const
+	HIPRT_HOST_DEVICE float estimate_visibility_probability(float3 first_world_position, float3 second_world_position, int& out_matrix_index) const
 	{
 		out_matrix_index = get_visibility_map_index(first_world_position, second_world_position);
 		if (out_matrix_index == -1)
@@ -123,17 +126,23 @@ struct NEEPlusPlus
 			// tests for a shadow ray
 			return 1.0f;
 		else
-			return visibility_map[out_matrix_index] / (float)map_count;
+		{
+			float unoccluded_proba = visibility_map[out_matrix_index] / (float)map_count;
+			if (unoccluded_proba >= confidence_threshold)
+				return 1.0f;
+			else
+				return unoccluded_proba;
+		}
 	}
 
 	/**
 	 * Returns the estimated probability that a ray between the two given world points
 	 * is going to be unoccluded (i.e. the two points are mutually visible)
 	 */
-	HIPRT_HOST_DEVICE float estimate_unoccluded_probability(float3 first_world_position, float3 second_world_position) const
+	HIPRT_HOST_DEVICE float estimate_visibility_probability(float3 first_world_position, float3 second_world_position) const
 	{
 		int trash_matrix_index;
-		return estimate_unoccluded_probability(first_world_position, second_world_position, trash_matrix_index);
+		return estimate_visibility_probability(first_world_position, second_world_position, trash_matrix_index);
 	}
 
 	HIPRT_HOST_DEVICE unsigned int get_visibility_matrix_element_count() const

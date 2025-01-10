@@ -1648,6 +1648,14 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 					m_render_window->set_render_dirty(true);
 				}
 
+				if (ImGui::SliderFloat("Confidence threshold", &render_data.nee_plus_plus.confidence_threshold, 0.0f, 1.0f))
+					m_render_window->set_render_dirty(true);
+				ImGuiRenderer::show_help_marker("If a voxel-to-voxel unocclusion probability is less than that, "
+					"the voxel will be considered unoccluded and so a shadow ray will be traced. This is to "
+					"avoid trusting voxel that have a low probability of being unoccluded\n\n"
+					""
+					"0.0f basically disables NEE++ as any entry of the visibility map will require a shadow ray.");
+
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			}
 

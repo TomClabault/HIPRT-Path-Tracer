@@ -317,12 +317,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& r
 HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRenderData& render_data, hiprtRay ray, float t_max, int last_hit_primitive_index, NEEPlusPlusContext& nee_plus_plus_context, Xorshift32Generator& random_number_generator)
 {
 #if DirectLightUseNEEPlusPlusRR == KERNEL_OPTION_TRUE && DirectLightUseNEEPlusPlus == KERNEL_OPTION_TRUE
-    // Getting the matrix index from 'estimate_unoccluded_probability' in case we need to accumulate
+    // Getting the matrix index from 'estimate_visibility_probability' in case we need to accumulate
     // visibility in the visibility map with 'accumulate_visibility'. If we do need to do that,
     // then that matrix index can be reused instead of being recomputed automatically by 'accumulate_visibility'
     // to save a little bit of computations
     int nee_plus_plus_voxel_matrix_index;
-    nee_plus_plus_context.unoccluded_probability = render_data.nee_plus_plus.estimate_unoccluded_probability(nee_plus_plus_context.shaded_point, nee_plus_plus_context.point_on_light, nee_plus_plus_voxel_matrix_index);
+    nee_plus_plus_context.unoccluded_probability = render_data.nee_plus_plus.estimate_visibility_probability(nee_plus_plus_context.shaded_point, nee_plus_plus_context.point_on_light, nee_plus_plus_voxel_matrix_index);
     if (random_number_generator() < nee_plus_plus_context.unoccluded_probability)
     {
         bool in_shadow = evaluate_shadow_ray(render_data, ray, t_max, last_hit_primitive_index, random_number_generator);
