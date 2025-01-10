@@ -333,9 +333,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRende
         return in_shadow;
     }
     else
+    {
         // NEE++ tells us that these two points are going to be occluded so we're not testing
         // the shadow ray and assuming occluded instead
         return true;
+    }
 #else
     // Setting this to 1.0f if not using NEE++ so that is has no effect when the caller
     // divides by it

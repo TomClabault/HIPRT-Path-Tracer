@@ -14,7 +14,7 @@
 
 struct NEEPlusPlusCPUData : public NEEPlusPlusCPUGPUCommonData
 {
-	int frame_timer_before_visibility_map_update = 8;
+	int frame_timer_before_visibility_map_update = 1;
 
 	std::vector<unsigned int> visibility_map;
 	std::vector<unsigned int> visibility_map_count;

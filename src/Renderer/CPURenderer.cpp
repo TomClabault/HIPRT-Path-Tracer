@@ -361,14 +361,6 @@ void CPURenderer::update(int frame_number)
     *m_render_data.aux_buffers.still_one_ray_active = false;
     // Resetting the counter of pixels converged to 0
     m_render_data.aux_buffers.stop_noise_threshold_converged_count->store(0);
-
-    // Update the camera
-    if (frame_number == 10)
-    {
-        reset();
-
-        m_render_data.nee_plus_plus.update_visibility_map = false;
-    }
 }
 
 void CPURenderer::update_render_data(int sample)
