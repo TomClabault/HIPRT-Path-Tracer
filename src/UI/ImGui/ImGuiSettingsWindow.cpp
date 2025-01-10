@@ -325,6 +325,9 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 		static int nested_dielectrics_stack_size = NestedDielectricsStackSize;
 		if (ImGui::SliderInt("Stack Size", &nested_dielectrics_stack_size, 3, 8))
 			nested_dielectrics_stack_size = std::max(1, nested_dielectrics_stack_size);
+		ImGui::Text("Max nested dielectrics: %d", nested_dielectrics_stack_size - 3);
+		ImGuiRenderer::show_help_marker("How many nested dielectrics objects can be present in the scene with the "
+			"current nested dielectrics stack size");
 
 		if (nested_dielectrics_stack_size != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::NESTED_DIELETRCICS_STACK_SIZE_OPTION))
 		{
