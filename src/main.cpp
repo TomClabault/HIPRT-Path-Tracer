@@ -72,8 +72,10 @@ int main(int argc, char* argv[])
     g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Full scene parsed & built in %ldms", std::chrono::duration_cast<std::chrono::milliseconds>(stop_full - start_full).count());
     renderer->get_hiprt_scene().print_statistics(std::cout);
 
-    // We don't need the scene anymore, we can free it now
+    // We don't need the scene anymore, we can free it now (freeing the ASSIMP scene data)
     assimp_importer.FreeScene();
+    // Freeing the renderer's scene data (i.e. the data converted from ASSIMP)
+    parsed_scene = Scene();
     envmap_image.free();
     render_window.run();
 #else
