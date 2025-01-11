@@ -201,7 +201,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData&
     return light_source_radiance_mis + bsdf_radiance_mis;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_many_lights(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, int2 pixel_coords, int2 resolution, int bounce, MISBSDFRayReuse& mis_ray_reuse)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_many_lights(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, MISBSDFRayReuse& mis_ray_reuse)
 {
     ColorRGB32F direct_light_contribution;
 
@@ -232,7 +232,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_ReSTIR_DI(HIPRTRende
     ColorRGB32F direct_light_contribution;
     if (bounce == 0)
         // Can only do ReSTIR DI on the first bounce
-        direct_light_contribution = sample_light_ReSTIR_DI(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, pixel_coords, resolution);
+        direct_light_contribution = sample_light_ReSTIR_DI(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, pixel_coords);
     else
     {
         // ReSTIR DI isn't used for the secondary/tertiary/... bounces
@@ -273,7 +273,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_ReSTIR_DI(HIPRTRende
  * I think the better morale to remember is that the material being emissive doesn't matter at
  * all. As long as the material itself reflects light, then we should do NEE.
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, int2 pixel_coords, int2 resolution, int bounce, MISBSDFRayReuse& mis_ray_reuse)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, int2 pixel_coords, int bounce, MISBSDFRayReuse& mis_ray_reuse)
 {
     if (render_data.buffers.emissive_triangles_count == 0 
         && !(render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP && DirectLightSamplingStrategy == LSS_RESTIR_DI))
@@ -302,7 +302,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light(HIPRTRenderData& ren
     // A light sampling strategy that is not ReSTIR DI
     // meaning that we can sample more than 1 light per
     // path vertex
-    direct_light_contribution = sample_many_lights(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, pixel_coords, resolution, bounce, mis_ray_reuse);
+    direct_light_contribution = sample_many_lights(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, mis_ray_reuse);
 
 #elif DirectLightSamplingStrategy == LSS_RESTIR_DI
     direct_light_contribution = sample_one_light_ReSTIR_DI(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, pixel_coords, resolution, bounce, mis_ray_reuse);
@@ -314,10 +314,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light(HIPRTRenderData& ren
 
 HIPRT_HOST_DEVICE void estimate_direct_lighting(HIPRTRenderData& render_data, RayPayload& ray_payload, HitInfo& closest_hit_info, 
     float3 view_direction,
-    int x, int y, int2 res, int bounce,
+    int x, int y, int bounce,
     MISBSDFRayReuse& mis_reuse, Xorshift32Generator& random_number_generator)
 {
-    ColorRGB32F light_direct_contribution = sample_one_light(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, make_int2(x, y), res, bounce, mis_reuse);
+    ColorRGB32F light_direct_contribution = sample_one_light(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, make_int2(x, y), bounce, mis_reuse);
     ColorRGB32F envmap_direct_contribution = sample_environment_map(render_data, ray_payload, closest_hit_info, view_direction, bounce, random_number_generator, mis_reuse);
 
     // Clamping direct lighting

@@ -96,9 +96,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void validate_reservoir(const HIPRTRenderData& re
         reservoir.UCW = 0.0f;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_light_ReSTIR_DI(const HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, int2 pixel_coords, int2 resolution)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_light_ReSTIR_DI(const HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, int2 pixel_coords)
 {
-	int pixel_index = pixel_coords.x + pixel_coords.y * resolution.x;
+	int pixel_index = pixel_coords.x + pixel_coords.y * render_data.render_settings.render_resolution.x;
 
 	// Because the spatial reuse pass runs last, the output buffer of the spatial
 	// pass contains the reservoir whose sample we're going to shade

@@ -71,6 +71,8 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
 {
     m_framebuffer = Image32Bit(width, height, 3);
 
+    m_render_data.render_settings.render_resolution = m_resolution;
+
     // Resizing buffers + initial value
     m_pixel_active_buffer.resize(width * height, 0);
     m_denoiser_albedo.resize(width * height, ColorRGB32F(0.0f));
@@ -726,7 +728,7 @@ void CPURenderer::ReSTIR_DI_spatiotemporal_reuse_pass()
 void CPURenderer::tracing_pass()
 {
     debug_render_pass([this](int x, int y) {
-        FullPathTracer(m_render_data, m_resolution, x, y);
+        FullPathTracer(m_render_data, x, y);
     });
 }
 

@@ -630,7 +630,7 @@ void GPURenderer::launch_ReSTIR_DI()
 
 void GPURenderer::launch_path_tracing()
 {
-	void* launch_args[] = { &m_render_data, &m_render_resolution };
+	void* launch_args[] = { &m_render_data };
 
 	m_render_data.random_seed = m_rng.xorshift32();
 	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
@@ -699,6 +699,7 @@ void GPURenderer::resize(int new_width, int new_height, bool also_resize_interop
 	if (needs_global_bvh_stack_buffer())
 		recreate_global_bvh_stack_buffer();
 
+	m_render_data.render_settings.render_resolution = m_render_resolution;
 	m_render_data_buffers_invalidated = true;
 }
 
