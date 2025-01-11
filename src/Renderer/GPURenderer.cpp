@@ -75,10 +75,9 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
 	OROCHI_CHECK_ERROR(oroStreamCreate(&m_main_stream));
 
 	// Buffer that keeps track of whether at least one ray is still alive or not
-	unsigned char true_data = 1;
-	m_still_one_ray_active_buffer.resize(1);
-	m_still_one_ray_active_buffer.upload_data(&true_data);
-	m_pixels_converged_count_buffer.resize(1);
+	m_status_buffers.still_one_ray_active_buffer.resize(1);
+	m_status_buffers.still_one_ray_active_buffer.memset(1);
+	m_status_buffers.pixels_converged_count_buffer.resize(1);
 
 	OROCHI_CHECK_ERROR(oroEventCreate(&m_frame_start_event));
 	OROCHI_CHECK_ERROR(oroEventCreate(&m_frame_stop_event));
@@ -284,8 +283,8 @@ void GPURenderer::step_animations(float delta_time)
 
 void GPURenderer::download_status_buffers()
 {
-	OROCHI_CHECK_ERROR(oroMemcpy(&m_status_buffers_values.one_ray_active, m_still_one_ray_active_buffer.get_device_pointer(), sizeof(unsigned char), oroMemcpyDeviceToHost));
-	OROCHI_CHECK_ERROR(oroMemcpy(&m_status_buffers_values.pixel_converged_count, m_pixels_converged_count_buffer.get_device_pointer(), sizeof(unsigned int), oroMemcpyDeviceToHost));
+	OROCHI_CHECK_ERROR(oroMemcpy(&m_status_buffers_values.one_ray_active, m_status_buffers.still_one_ray_active_buffer.get_device_pointer(), sizeof(unsigned char), oroMemcpyDeviceToHost));
+	OROCHI_CHECK_ERROR(oroMemcpy(&m_status_buffers_values.pixel_converged_count, m_status_buffers.pixels_converged_count_buffer.get_device_pointer(), sizeof(unsigned int), oroMemcpyDeviceToHost));
 }
 
 void GPURenderer::internal_update_clear_device_status_buffers()
@@ -293,9 +292,9 @@ void GPURenderer::internal_update_clear_device_status_buffers()
 	unsigned char false_data = false;
 	unsigned int zero_data = 0;
 	// Uploading false to reset the flag
-	m_still_one_ray_active_buffer.upload_data(&false_data);
+	m_status_buffers.still_one_ray_active_buffer.upload_data(&false_data);
 	// Resetting the counter of pixels converged to 0
-	m_pixels_converged_count_buffer.upload_data(&zero_data);
+	m_status_buffers.pixels_converged_count_buffer.upload_data(&zero_data);
 }
 
 void GPURenderer::internal_clear_m_status_buffers()
@@ -1168,8 +1167,8 @@ void GPURenderer::update_render_data()
 		}
 
 		m_render_data.aux_buffers.pixel_active = m_pixel_active.get_device_pointer();
-		m_render_data.aux_buffers.still_one_ray_active = m_still_one_ray_active_buffer.get_device_pointer();
-		m_render_data.aux_buffers.stop_noise_threshold_converged_count = reinterpret_cast<AtomicType<unsigned int>*>(m_pixels_converged_count_buffer.get_device_pointer());
+		m_render_data.aux_buffers.still_one_ray_active = m_status_buffers.still_one_ray_active_buffer.get_device_pointer();
+		m_render_data.aux_buffers.stop_noise_threshold_converged_count = reinterpret_cast<AtomicType<unsigned int>*>(m_status_buffers.pixels_converged_count_buffer.get_device_pointer());
 
 		m_restir_di_render_pass.update_render_data();
 

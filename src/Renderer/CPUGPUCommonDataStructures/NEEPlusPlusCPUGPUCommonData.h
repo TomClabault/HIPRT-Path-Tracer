@@ -6,7 +6,7 @@
 #ifndef RENDERER_NEE_PLUS_PLUS_CPU_GPU_COMMON_DATA_H
 #define RENDERER_NEE_PLUS_PLUS_CPU_GPU_COMMON_DATA_H
 
-#include "Device/includes/NEE++/NEE++.h" // For NEEPlusPlus::NEE_PLUS_PLUS_DEFAULT_GRID_SIZE
+#include "Device/includes/NEE++/NEE++.h" // For NEEPlusPlusDevice::NEE_PLUS_PLUS_DEFAULT_GRID_SIZE
 #include "Scene/BoundingBox.h"
 
 struct NEEPlusPlusCPUGPUCommonData
@@ -44,7 +44,7 @@ struct NEEPlusPlusCPUGPUCommonData
 	}
 
 	// Dimensions of the visibility map **without the envmap layer**
-	int3 grid_dimensions_no_envmap = make_int3(NEEPlusPlus::NEE_PLUS_PLUS_DEFAULT_GRID_SIZE, NEEPlusPlus::NEE_PLUS_PLUS_DEFAULT_GRID_SIZE, NEEPlusPlus::NEE_PLUS_PLUS_DEFAULT_GRID_SIZE);
+	int3 grid_dimensions_no_envmap = make_int3(NEEPlusPlusDevice::NEE_PLUS_PLUS_DEFAULT_GRID_SIZE, NEEPlusPlusDevice::NEE_PLUS_PLUS_DEFAULT_GRID_SIZE, NEEPlusPlusDevice::NEE_PLUS_PLUS_DEFAULT_GRID_SIZE);
 
 	float3 base_grid_min_point, base_grid_max_point;
 

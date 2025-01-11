@@ -10,9 +10,9 @@
 #include "Device/includes/NEE++/NEE++.h"
 
 #ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void) NEEPlusPlusFinalizeAccumulation(NEEPlusPlus nee_plus_plus_data)
+GLOBAL_KERNEL_SIGNATURE(void) NEEPlusPlusFinalizeAccumulation(NEEPlusPlusDevice nee_plus_plus_data)
 #else
-GLOBAL_KERNEL_SIGNATURE(void) inline NEEPlusPlusFinalizeAccumulation(NEEPlusPlus nee_plus_plus_data, int x)
+GLOBAL_KERNEL_SIGNATURE(void) inline NEEPlusPlusFinalizeAccumulation(NEEPlusPlusDevice nee_plus_plus_data, int x)
 #endif
 {
 #ifdef __KERNELCC__

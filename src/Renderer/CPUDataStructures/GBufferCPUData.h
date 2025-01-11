@@ -13,7 +13,7 @@
 #include <vector>
 
  // GBuffer that stores information about the current frame first hit data
-struct GBufferCPURenderer
+struct GBufferCPUData
 {
 	void resize(unsigned int new_element_count)
 	{

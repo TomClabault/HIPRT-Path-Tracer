@@ -10,7 +10,7 @@
 
 struct NEEPlusPlusCachingPrepassParameters
 {
-	NEEPlusPlus nee_plus_plus;
+	NEEPlusPlusDevice nee_plus_plus;
 
 	HIPRTCamera current_camera;
 

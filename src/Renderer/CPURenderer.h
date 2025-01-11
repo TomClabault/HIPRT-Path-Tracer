@@ -12,7 +12,7 @@
 #include "Image/EnvmapRGBE9995.h"
 #include "Renderer/BVH.h"
 #include "Renderer/CPUDataStructures/NEEPlusPlusCPUData.h.h"
-#include "Renderer/GBufferCPURenderer.h"
+#include "Renderer/CPUDataStructures/GBufferCPUData.h"
 #include "Scene/SceneParser.h"
 #include "Utils/CommandlineArguments.h"
 
@@ -96,8 +96,8 @@ private:
     // Keeps track of which material is fully opaque or not
     std::vector<unsigned char> m_material_opaque;
 
-    GBufferCPURenderer m_g_buffer;
-    GBufferCPURenderer m_g_buffer_prev_frame;
+    GBufferCPUData m_g_buffer;
+    GBufferCPUData m_g_buffer_prev_frame;
 
     // Random number generator for given a random seed to the threads at each sample
     Xorshift32Generator m_rng;

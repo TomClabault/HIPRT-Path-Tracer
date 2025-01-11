@@ -530,6 +530,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F get_dispersion_ray_color(float& wavel
  */
 #ifndef __KERNELCC__
 
+#include "Image/Image.h"
+
 /**
  * Write CSV files for the R, G and B values at each wavelength.
  * Used for fitting curves

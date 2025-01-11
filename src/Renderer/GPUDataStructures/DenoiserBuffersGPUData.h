@@ -13,7 +13,7 @@
 
 class GPURenderer;
 
-struct GPURendererDenoiserBuffers
+struct DenoiserBuffersGPUData
 {
 	float3* map_normals_buffer();
 	void resize_normals_buffer(size_t new_element_count);

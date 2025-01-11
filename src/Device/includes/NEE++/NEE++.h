@@ -36,7 +36,7 @@ struct NEEPlusPlusContext
  * Reference:
  * [1] [Next Event Estimation++: Visibility Mapping for Efficient Light Transport Simulation]
  */
-struct NEEPlusPlus
+struct NEEPlusPlusDevice
 {
 	static constexpr int NEE_PLUS_PLUS_DEFAULT_GRID_SIZE = 16;
 

@@ -16,10 +16,11 @@
 #include "Renderer/GPUDataStructures/NEEPlusPlusGPUData.h"
 #include "Renderer/RendererAnimationState.h"
 #include "Renderer/RendererEnvmap.h"
-#include "Renderer/GBufferGPURenderer.h"
+#include "Renderer/GPUDataStructures/DenoiserBuffersGPUData.h"
+#include "Renderer/GPUDataStructures/GBufferGPUData.h"
+#include "Renderer/GPUDataStructures/StatusBuffersGPUData.h"
 #include "Renderer/HardwareAccelerationSupport.h"
 #include "Renderer/OpenImageDenoiser.h"
-#include "Renderer/DenoiserBuffers.h"
 #include "Renderer/StatusBuffersValues.h"
 #include "Renderer/RenderPasses/ReSTIRDIRenderPass.h"
 #include "Scene/Camera.h"
@@ -477,7 +478,7 @@ private:
 	// AOVs and buffers needed by the denoiser that are filled/manipulated by the renderer.
 	// This is just a structure to aggregate them all instead of having multiple
 	// variables in the renderer class
-	GPURendererDenoiserBuffers m_denoiser_buffers;
+	DenoiserBuffersGPUData m_denoiser_buffers;
 
 	// G-buffers of the current frame (camera rays hits) and previous frame
 	GBufferGPURenderer m_g_buffer;
@@ -491,14 +492,7 @@ private:
 	// This buffer is necessary because with adaptive sampling, each pixel
 	// can have accumulated a different number of sample
 	OrochiBuffer<int> m_pixels_sample_count_buffer;
-	// A single boolean to indicate whether there is still a ray active in
-	// the kernel or not. Mostly useful when adaptive sampling is on and we
-	// want to know if all pixels have converged or not yet
-	OrochiBuffer<unsigned char> m_still_one_ray_active_buffer;
-	// How many pixels have reached the render_settings.stop_pixel_noise_threshold.
-	// Warning: This buffer does not count how many pixels have converged according to
-	// the adaptive sampling noise threshold. This is only for the stop_pixel_noise_threshold
-	OrochiBuffer<unsigned int> m_pixels_converged_count_buffer;
+	StatusBuffersGPUData m_status_buffers;
 	// Whether or not the pixel at the given index is active and needs more samples
 	OrochiBuffer<unsigned char> m_pixel_active;
 

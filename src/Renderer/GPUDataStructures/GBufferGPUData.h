@@ -6,11 +6,11 @@
 #ifndef G_BUFFER_GPU_RENDERER_H
 #define G_BUFFER_GPU_RENDERER_H
 
+#include "Device/includes/GBufferDevice.h"
 #include "Device/includes/RayVolumeState.h"
 
 #include "HIPRT-Orochi/OrochiBuffer.h"
 #include "HostDeviceCommon/Material/Material.h"
-#include "HostDeviceCommon/GBufferDevice.h"
 
 // GBuffer that stores information about the current frame first hit data
 struct GBufferGPURenderer

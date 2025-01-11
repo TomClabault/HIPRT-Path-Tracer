@@ -6,11 +6,11 @@
 #ifndef HOST_DEVICE_COMMON_RENDER_DATA_H
 #define HOST_DEVICE_COMMON_RENDER_DATA_H
 
+#include "Device/includes/GBufferDevice.h"
 #include "Device/includes/ReSTIR/DI/Reservoir.h"
 #include "Device/includes/NEE++/NEE++.h"
 
 #include "HostDeviceCommon/BSDFsData.h"
-#include "HostDeviceCommon/GBufferDevice.h"
 #include "HostDeviceCommon/HIPRTCamera.h"
 #include "HostDeviceCommon/Material/Material.h"
 #include "HostDeviceCommon/Math.h"
@@ -161,7 +161,7 @@ struct HIPRTRenderData
 	WorldSettings world_settings;
 
 	// Data for NEE++
-	NEEPlusPlus nee_plus_plus;
+	NEEPlusPlusDevice nee_plus_plus;
 
 	// Camera for the current frame
 	HIPRTCamera current_camera;

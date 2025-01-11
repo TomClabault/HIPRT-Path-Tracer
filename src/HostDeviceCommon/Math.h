@@ -183,6 +183,10 @@ namespace hippt
 	__device__ float asfloat(unsigned int x) { return __uint_as_float(x); }
 	__device__ unsigned int asuint(float x) { return __float_as_uint(x); }
 
+	// TODO these functions require __sync on modern NVIDIA GPUs. We should pass a -D definition to the compiler if on an NVIDIA GPU and then use and #if here to use the proper instructions
+	__device__ bool warp_any(unsigned int thread_mask, bool predicate) { return __any(predicate); }
+	__device__ unsigned long long int warp_ballot(unsigned int thread_mask, bool predicate) { return __ballot(predicate); }
+
 #else
 #undef M_PI
 #define M_PI		3.14159265358979323846f
@@ -289,6 +293,9 @@ namespace hippt
 	inline float fract(float a) { return a - floorf(a); }
 	inline float asfloat(unsigned int x) { return std::bit_cast<float, unsigned int>(x); }
 	inline unsigned int asuint(float x) { return std::bit_cast<unsigned int, float>(x); }
+
+	inline bool warp_any(unsigned int thread_mask, bool predicate) { return predicate; }
+	inline unsigned long long int warp_ballot(unsigned int thread_mask, bool predicate) { return predicate ? 1 : 0; }
 #endif
 }
 
