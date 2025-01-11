@@ -33,7 +33,7 @@ struct dummyVec3
     int x, y, z;
 };
 
-static dummyVec3 blockDim, blockIdx, threadIdx;
+static dummyVec3 blockDim, blockIdx, threadIdx, gridDim;
 
 #define GLOBAL_KERNEL_SIGNATURE(returnType) returnType
 #define DEVICE_KERNEL_SIGNATURE(returnType) returnType

@@ -149,7 +149,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F envmap_eval(const HIPRTRenderData& re
     return envmap_radiance;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_with_mis(HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, RayVolumeState& volume_state, HitInfo& closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, MISBSDFRayReuse& mis_ray_reuse)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_with_mis(HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, RayVolumeState& volume_state, HitInfo& closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, MISBSDFRayReuse& mis_ray_reuse, int bounce)
 {
     float envmap_pdf;
     float3 sampled_direction;
@@ -168,7 +168,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_with_mis(HIPRT
         nee_plus_plus_context.shaded_point = closest_hit_info.inter_point;
         nee_plus_plus_context.point_on_light = sampled_direction;
         nee_plus_plus_context.envmap = true;
-        bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, nee_plus_plus_context, random_number_generator);
+        bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, nee_plus_plus_context, random_number_generator, bounce);
         if (!in_shadow)
         {
             float bsdf_pdf;
@@ -282,7 +282,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map(HIPRTRenderDat
 #if EnvmapSamplingStrategy == ESS_NO_SAMPLING
     return ColorRGB32F(0.0f);
 #else
-    return sample_environment_map_with_mis(render_data, ray_payload.material, ray_payload.volume_state, closest_hit_info, view_direction, random_number_generator, mis_ray_reuse);
+    return sample_environment_map_with_mis(render_data, ray_payload.material, ray_payload.volume_state, closest_hit_info, view_direction, random_number_generator, mis_ray_reuse, bounce);
 #endif
 }
 

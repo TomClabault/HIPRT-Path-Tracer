@@ -31,6 +31,8 @@ struct NEEPlusPlusContext
 	// ----- WARNING:
 	// 'point_on_light' should be the normalized direction towards the envmap if this is set to true
 	bool envmap = false;
+
+
 };
 
 /**

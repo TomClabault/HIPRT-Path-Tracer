@@ -9,8 +9,7 @@
 #include "HostDeviceCommon/PathRussianRoulette.h"
 #include "HostDeviceCommon/KernelOptions/KernelOptions.h"
 #include "HostDeviceCommon/ReSTIRDISettings.h"
-
-#include <hiprt/hiprt_common.h>
+#include "HostDeviceCommon/Math.h"
 
 // Just used for initializing some structure members below
 #define local_min_macro(a, b) ((a) < (b) ? (a) : (b))
@@ -28,6 +27,8 @@ struct RISSettings
 
 struct HIPRTRenderSettings
 {
+	int2 render_resolution = make_int2(1280, 720);
+
 	// If true, the camera ray kernel will reset all buffers to their default values.
 	// This is mainly useful for the first frame of the render
 	bool need_to_reset = true;

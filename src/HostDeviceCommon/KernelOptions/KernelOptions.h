@@ -173,6 +173,20 @@
 #define DirectLightUseNEEPlusPlusRR KERNEL_OPTION_TRUE
 
 /**
+ * This a debug option to visualize shadow rays discarded by the NEE++ russian roulette
+ */
+#define DirectLightNEEPlusPlusDisplayShadowRaysDiscarded KERNEL_OPTION_FALSE
+
+/**
+ * When using the 'DirectLightNEEPlusPlusDisplayShadowRaysDiscarded' kernel options
+ * for displaying in the viewport where shadow rays were discarded, this parameter is used
+ * to determine at what bounce in the scene we should display the shadow ray discarded or not
+ * 
+ * 0 is the first hit
+ */ 
+#define DirectLightNEEPlusPlusDisplayShadowRaysDiscardedBounce 0
+
+/**
  * What envmap sampling strategy to use
  * 
  * Possible values (the prefix ESS stands for "Envmap Sampling Strategy"):
@@ -305,6 +319,12 @@
  * light sampling becomes with that many lights
  */
 #define ReSTIR_DI_DoLightsPresampling KERNEL_OPTION_TRUE
+
+/**
+ * This is a handy macro that tells us whether or not we have any other kernel option 
+ * that overrides the color of the framebuffer
+ */
+#define ViewportColorOverriden (DirectLightNEEPlusPlusDisplayShadowRaysDiscarded)
 
 #endif // #ifndef __KERNELCC__
 

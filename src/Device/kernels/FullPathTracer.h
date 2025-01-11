@@ -71,7 +71,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool check_for_nan(ColorRGB32F ray_color, int x, 
     return false;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE bool sanity_check(const HIPRTRenderData& render_data, RayPayload& ray_payload, int x, int y, int2& res)
+HIPRT_HOST_DEVICE HIPRT_INLINE bool sanity_check(const HIPRTRenderData& render_data, RayPayload& ray_payload, int x, int y)
 {
     bool invalid = false;
     if (ray_payload.volume_state.sampled_wavelength == 0.0f)
@@ -88,7 +88,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool sanity_check(const HIPRTRenderData& render_d
 #endif
 
         if (render_data.render_settings.display_NaNs)
-            debug_set_final_color(render_data, x, y, res.x, ColorRGB32F(1.0e30f, 0.0f, 1.0e30f));
+            debug_set_final_color(render_data, x, y, render_data.render_settings.render_resolution.x, ColorRGB32F(1.0e30f, 0.0f, 1.0e30f));
         else
             ray_payload.ray_color = ColorRGB32F(0.0f);
     }
@@ -116,19 +116,19 @@ HIPRT_HOST_DEVICE void store_denoiser_AOVs(HIPRTRenderData& render_data, uint32_
 }
 
 #ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) FullPathTracer(HIPRTRenderData render_data, int2 res)
+GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) FullPathTracer(HIPRTRenderData render_data)
 #else
-GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data, int2 res, int x, int y)
+GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data, int x, int y)
 #endif
 {
 #ifdef __KERNELCC__
     const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
     const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
 #endif
-    if (x >= res.x || y >= res.y)
+    if (x >= render_data.render_settings.render_resolution.x || y >= render_data.render_settings.render_resolution.y)
         return;
 
-    uint32_t pixel_index = x + y * res.x;
+    uint32_t pixel_index = x + y * render_data.render_settings.render_resolution.x;
 
     if (!render_data.aux_buffers.pixel_active[pixel_index])
         return;
@@ -137,6 +137,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
         // Reducing the number of bounces to 3 if rendering at low resolution
         // for better interactivity
         render_data.render_settings.nb_bounces = hippt::min(3, render_data.render_settings.nb_bounces);
+
+#if ViewportColorOverriden == 1
+    // If some kernel option is going to debug some color in the viewport,
+    // then we're clearing the viewport buffer here
+    render_data.buffers.pixels[pixel_index] = ColorRGB32F();
+#endif
 
     unsigned int seed;
     if (render_data.render_settings.freeze_random)
@@ -220,7 +226,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
                 // --------------------------------------------------- //
 
                 // Estimates direct lighting with next-even estimation and directly modifies ray_payload.ray_color
-                estimate_direct_lighting(render_data, ray_payload, closest_hit_info, -ray.direction, x, y, res, bounce, mis_reuse, random_number_generator);
+                estimate_direct_lighting(render_data, ray_payload, closest_hit_info, -ray.direction, x, y, bounce, mis_reuse, random_number_generator);
 
                 // --------------------------------------- //
                 // ---------- Indirect lighting ---------- //
@@ -305,7 +311,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
     }
 
     // Checking for NaNs / negative value samples. Output 
-    if (!sanity_check(render_data, ray_payload, x, y, res))
+    if (!sanity_check(render_data, ray_payload, x, y))
         return;
 
     float squared_luminance_of_samples = ray_payload.ray_color.luminance() * ray_payload.ray_color.luminance();
@@ -315,6 +321,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
     // the same value
     render_data.aux_buffers.still_one_ray_active[0] = 1;
 
+#if ViewportColorOverriden == 0
+    // Only outputting the ray color if no kernel option is going to output its own color
+    // (mainly for debugging purposes) such as 'DirectLightNEEPlusPlusDisplayShadowRaysDiscarded'
+    // for example
     if (render_data.render_settings.has_access_to_adaptive_sampling_buffers())
         // We can only use these buffers if the adaptive sampling or the stop noise threshold is enabled.
         // Otherwise, the buffers are destroyed to save some VRAM so they are not accessible
@@ -325,6 +335,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
     else
         // If we are at a sample that is not 0, this means that we are accumulating
         render_data.buffers.pixels[pixel_index] += ray_payload.ray_color;
+#endif
 }
 
 #endif

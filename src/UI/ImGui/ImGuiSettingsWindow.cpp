@@ -1691,6 +1691,31 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 			}
 
 			{
+				static bool display_shadow_rays = DirectLightNEEPlusPlusDisplayShadowRaysDiscarded;
+				if (ImGui::Checkbox("Display shadow rays discarded", &display_shadow_rays))
+				{
+					m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_PLUS_PLUS_DISPLAY_SHADOW_RAYS_DISCARDED, display_shadow_rays ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+					m_renderer->recompile_kernels();
+
+					m_render_window->set_render_dirty(true);
+				}
+				ImGuiRenderer::show_help_marker("With this debug view enabled, every black pixel is a pixel which discarded its "
+					"shadow ray thanks to NEE++ russian roulette.\n"
+					"A colored pixel didn't discard its shadow ray.");
+				if (display_shadow_rays)
+				{
+					ImGui::TreePush("Display shadow rays tree");
+
+					static int shadow_ray_bounce_to_display = DirectLightNEEPlusPlusDisplayShadowRaysDiscardedBounce;
+					if (ImGui::SliderInt("Bounce to display", &shadow_ray_bounce_to_display, 0, m_renderer->get_render_settings().nb_bounces))
+					{
+						m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_PLUS_PLUS_DISPLAY_SHADOW_RAYS_DISCARDED_BOUNCE, shadow_ray_bounce_to_display);
+						m_renderer->recompile_kernels();
+					}
+
+					ImGui::TreePop();
+				}
+
 				if (ImGui::Button("Clear visibility map"))
 				{
 					m_renderer->reset_nee_plus_plus();
