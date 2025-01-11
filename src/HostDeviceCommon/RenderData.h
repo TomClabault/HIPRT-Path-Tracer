@@ -23,7 +23,8 @@
 struct RenderBuffers
 {
 	// Sum of samples color per pixel. Should not be
-	// pre-divided by the number of samples
+	// pre-divided by the number of samples i.e. this buffer
+	// contains pure accumulation of pixel colors
 	ColorRGB32F* pixels = nullptr;
 
 	// A device pointer to the buffer of triangles vertex indices

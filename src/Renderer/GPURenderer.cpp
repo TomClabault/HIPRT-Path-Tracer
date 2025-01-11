@@ -183,6 +183,15 @@ void GPURenderer::reset_nee_plus_plus()
 	m_render_data.nee_plus_plus.reset_visibility_map = true;
 	m_render_data.nee_plus_plus.update_visibility_map = true;
 
+	// Resetting the counters
+	if (m_nee_plus_plus.total_shadow_ray_queries.get_device_pointer() != nullptr)
+	{
+		m_nee_plus_plus.total_shadow_ray_queries.memset(1);
+		m_nee_plus_plus.shadow_rays_actually_traced.memset(1);
+	}
+	m_nee_plus_plus.total_shadow_ray_queries_cpu = 1;
+	m_nee_plus_plus.shadow_rays_actually_traced_cpu = 1;
+
 	m_nee_plus_plus.milliseconds_before_finalizing_accumulation = NEEPlusPlusGPUData::FINALIZE_ACCUMULATION_START_TIMER;
 }
 
@@ -377,6 +386,8 @@ void GPURenderer::internal_update_nee_plus_plus(float delta_time)
 		if (m_nee_plus_plus.packed_buffer.get_element_count() != 0)
 		{
 			m_nee_plus_plus.packed_buffer.free();
+			m_nee_plus_plus.total_shadow_ray_queries.free();
+			m_nee_plus_plus.shadow_rays_actually_traced.free();
 
 			m_render_data_buffers_invalidated = true;
 		}
@@ -397,14 +408,20 @@ void GPURenderer::internal_update_nee_plus_plus(float delta_time)
 	if (m_nee_plus_plus.packed_buffer.get_element_count() != matrix_element_count)
 	{
 		m_nee_plus_plus.packed_buffer.resize(matrix_element_count);
+		m_nee_plus_plus.shadow_rays_actually_traced.resize(1);
+		m_nee_plus_plus.total_shadow_ray_queries.resize(1);
 
 		m_render_data_buffers_invalidated = true;
 	}
 
 	// Clearing the visibility map if this has been asked by the user
 	if (m_render_data.nee_plus_plus.reset_visibility_map)
+	{
 		// Clearing the visibility map by memseting everything to 0
 		m_nee_plus_plus.packed_buffer.memset(0);
+		m_nee_plus_plus.total_shadow_ray_queries.memset(1);
+		m_nee_plus_plus.shadow_rays_actually_traced.memset(1);
+	}
 
 	if (m_render_data.render_settings.sample_number > m_nee_plus_plus.stop_update_samples)
 		// Past a certain number of samples, there isn't really a point to keep updating, the visibility map
@@ -412,13 +429,24 @@ void GPURenderer::internal_update_nee_plus_plus(float delta_time)
 		m_render_data.nee_plus_plus.update_visibility_map = false;
 
 	m_nee_plus_plus.milliseconds_before_finalizing_accumulation -= delta_time;
-	m_nee_plus_plus.milliseconds_before_finalizing_accumulation = hippt::max(0.0f, m_nee_plus_plus.milliseconds_before_finalizing_accumulation);
+	m_nee_plus_plus.milliseconds_before_finalizing_accumulation = hippt::max(0.0f, m_nee_plus_plus.milliseconds_before_finalizing_accumulation); // Clamping for nice display in ImGui (0.0f instead of negative values)
 	if (m_nee_plus_plus.milliseconds_before_finalizing_accumulation <= 0.0f && m_render_data.nee_plus_plus.packed_buffers != nullptr)
 	{
 		m_nee_plus_plus.milliseconds_before_finalizing_accumulation = NEEPlusPlusGPUData::FINALIZE_ACCUMULATION_TIMER;
 
+		// Because the visibility map data is packed, we can't just use a memcpy() to copy from the accumulation
+		// buffers to the visibilit map, we have to use a kernel that the does unpacking-copy
 		void* launch_args[] = { &m_render_data.nee_plus_plus };
 		m_nee_plus_plus.finalize_accumulation_kernel.launch_asynchronous(256, 1, matrix_element_count, 1, launch_args, m_main_stream);
+	}
+	
+	m_nee_plus_plus.statistics_refresh_timer -= delta_time;
+	if (m_nee_plus_plus.statistics_refresh_timer <= 0.0f && m_render_data.nee_plus_plus.do_update_shadow_rays_traced_statistics)
+	{
+		m_nee_plus_plus.statistics_refresh_timer = NEEPlusPlusGPUData::STATISTICS_REFRESH_TIMER;
+
+		OROCHI_CHECK_ERROR(oroMemcpy(&m_nee_plus_plus.total_shadow_ray_queries_cpu, m_nee_plus_plus.total_shadow_ray_queries.get_device_pointer(), sizeof(unsigned long long int), oroMemcpyDeviceToHost));
+		OROCHI_CHECK_ERROR(oroMemcpy(&m_nee_plus_plus.shadow_rays_actually_traced_cpu, m_nee_plus_plus.shadow_rays_actually_traced.get_device_pointer(), sizeof(unsigned long long int), oroMemcpyDeviceToHost));
 	}
 }
 
@@ -1173,10 +1201,8 @@ void GPURenderer::update_render_data()
 		m_restir_di_render_pass.update_render_data();
 
 		m_render_data.nee_plus_plus.packed_buffers = reinterpret_cast<AtomicType<unsigned int>*>(m_nee_plus_plus.packed_buffer.get_device_pointer());
-		/*m_render_data.nee_plus_plus.packed_buffer = m_nee_plus_plus.packed_buffer.get_device_pointer();
-		m_render_data.nee_plus_plus.visibility_map_count = m_nee_plus_plus.visibility_map_count.get_device_pointer();
-		m_render_data.nee_plus_plus.accumulation_buffer = reinterpret_cast<AtomicType<unsigned int>*>(m_nee_plus_plus.accumulation_buffer.get_device_pointer());
-		m_render_data.nee_plus_plus.accumulation_buffer_count = reinterpret_cast<AtomicType<unsigned int>*>(m_nee_plus_plus.accumulation_buffer_count.get_device_pointer());*/
+		m_render_data.nee_plus_plus.shadow_rays_actually_traced = reinterpret_cast<AtomicType<unsigned int>*>(m_nee_plus_plus.shadow_rays_actually_traced.get_device_pointer());
+		m_render_data.nee_plus_plus.total_shadow_ray_queries = reinterpret_cast<AtomicType<unsigned int>*>(m_nee_plus_plus.total_shadow_ray_queries.get_device_pointer());
 
 		m_render_data_buffers_invalidated = false;
 	}

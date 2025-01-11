@@ -317,12 +317,20 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& r
 HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRenderData& render_data, hiprtRay ray, float t_max, int last_hit_primitive_index, NEEPlusPlusContext& nee_plus_plus_context, Xorshift32Generator& random_number_generator)
 {
 #if DirectLightUseNEEPlusPlusRR == KERNEL_OPTION_TRUE && DirectLightUseNEEPlusPlus == KERNEL_OPTION_TRUE
+    if (render_data.nee_plus_plus.do_update_shadow_rays_traced_statistics)
+        // Updating the statistics
+        hippt::atomic_fetch_add(render_data.nee_plus_plus.total_shadow_ray_queries, 1u);
+
     bool nee_plus_plus_envmap_rr_disabled = nee_plus_plus_context.envmap && !render_data.nee_plus_plus.enable_nee_plus_plus_RR_for_envmap;
     bool nee_plus_plus_emissives_rr_disabled = !nee_plus_plus_context.envmap && !render_data.nee_plus_plus.enable_nee_plus_plus_RR_for_emissives;
     if (nee_plus_plus_envmap_rr_disabled || nee_plus_plus_emissives_rr_disabled)
     {
         // This is NEE++ RR for envmap sampling but envmap NEE++ RR is disabled
         nee_plus_plus_context.unoccluded_probability = 1.0f;
+
+        if (render_data.nee_plus_plus.do_update_shadow_rays_traced_statistics)
+            // Updating the statistics
+            hippt::atomic_fetch_add(render_data.nee_plus_plus.shadow_rays_actually_traced, 1u);
 
         return evaluate_shadow_ray(render_data, ray, t_max, last_hit_primitive_index, random_number_generator);
     }
@@ -337,6 +345,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRende
 
     if (likely_visible)
     {
+        if (render_data.nee_plus_plus.do_update_shadow_rays_traced_statistics)
+            // Updating the statistics
+            hippt::atomic_fetch_add(render_data.nee_plus_plus.shadow_rays_actually_traced, 1u);
+
         // The shadow ray is likely visible, testing with a shadow ray
         bool in_shadow = evaluate_shadow_ray(render_data, ray, t_max, last_hit_primitive_index, random_number_generator);
 
