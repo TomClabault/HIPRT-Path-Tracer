@@ -183,7 +183,7 @@ void GPURenderer::reset_nee_plus_plus()
 {
 	m_render_data.nee_plus_plus.reset_visibility_map = true;
 
-	m_nee_plus_plus.milliseconds_before_finalizing_accumulation = NEEPlusPlusGPUData::FINALIZE_ACCUMULATION_TIMER;
+	m_nee_plus_plus.milliseconds_before_finalizing_accumulation = NEEPlusPlusGPUData::FINALIZE_ACCUMULATION_START_TIMER;
 }
 
 NEEPlusPlusGPUData& GPURenderer::get_nee_plus_plus_data()
@@ -417,7 +417,8 @@ void GPURenderer::internal_update_nee_plus_plus_buffers(float delta_time)
 	}
 
 	m_nee_plus_plus.milliseconds_before_finalizing_accumulation -= delta_time;
-	if (m_nee_plus_plus.milliseconds_before_finalizing_accumulation < 0.0f)
+	m_nee_plus_plus.milliseconds_before_finalizing_accumulation = hippt::max(0.0f, m_nee_plus_plus.milliseconds_before_finalizing_accumulation);
+	if (m_nee_plus_plus.milliseconds_before_finalizing_accumulation <= 0.0f)
 	{
 		m_nee_plus_plus.milliseconds_before_finalizing_accumulation = NEEPlusPlusGPUData::FINALIZE_ACCUMULATION_TIMER;
 

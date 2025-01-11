@@ -11,7 +11,9 @@
 
 struct NEEPlusPlusGPUData : public NEEPlusPlusCPUGPUCommonData
 {
+	// This is the timer value 
 	static constexpr float FINALIZE_ACCUMULATION_TIMER = 2000.0f;
+	static constexpr float FINALIZE_ACCUMULATION_START_TIMER = 500.0f;
 
 	// How many seconds to render before copying the
 	// visibility accumulation buffers to the visibility map
@@ -22,7 +24,7 @@ struct NEEPlusPlusGPUData : public NEEPlusPlusCPUGPUCommonData
 	// Note that this parameter is dynamically updated by the application so even though
 	// it is initialized at 2000.0f, it will actually decrease until it reaches 0ms. At 0ms, the buffers
 	// are copied and this variable (which is essentially a timer) is reset back to its default counter value
-	float milliseconds_before_finalizing_accumulation = NEEPlusPlusGPUData::FINALIZE_ACCUMULATION_TIMER;
+	float milliseconds_before_finalizing_accumulation = FINALIZE_ACCUMULATION_START_TIMER;
 
 	OrochiBuffer<unsigned int> visibility_map;
 	OrochiBuffer<unsigned int> visibility_map_count;

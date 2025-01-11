@@ -96,7 +96,7 @@ struct NEEPlusPlus
 	// being unoccluded
 	//
 	// 0.0f basically disables NEE++ as any entry of the visibility map will require a shadow ray
-	float confidence_threshold = 0.3f;
+	float confidence_threshold = 0.025f;
 
 	HIPRT_HOST_DEVICE void accumulate_visibility(bool visible, int matrix_index)
 	{

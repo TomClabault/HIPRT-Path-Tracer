@@ -1673,11 +1673,15 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 
 				if (ImGui::SliderFloat("Confidence threshold", &render_data.nee_plus_plus.confidence_threshold, 0.0f, 1.0f))
 					m_render_window->set_render_dirty(true);
-				ImGuiRenderer::show_help_marker("If a voxel-to-voxel unocclusion probability is less than that, "
+				ImGuiRenderer::show_help_marker("If a voxel-to-voxel unocclusion probability is higher than that, "
 					"the voxel will be considered unoccluded and so a shadow ray will be traced. This is to "
 					"avoid trusting voxel that have a low probability of being unoccluded\n\n"
 					""
-					"0.0f basically disables NEE++ as any entry of the visibility map will require a shadow ray.");
+					"0.0f basically disables NEE++ as any entry of the visibility map will require a shadow ray.\n\n"
+					""
+					"Higher values yield higher performance but also higher variance (and the tradeoff doesn't seem "
+					"worth it, hence the very low default value which means that we only allow ourselves "
+					"to save shadow rays when we have a very high probability that the two voxels are occluded.");
 				ImGui::Text("VRAM Usage: %.3fMB", m_renderer->get_nee_plus_plus_data().get_vram_usage_bytes() / 1000000.0f);
 
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
