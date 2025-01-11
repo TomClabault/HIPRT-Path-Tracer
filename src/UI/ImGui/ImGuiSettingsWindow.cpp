@@ -1603,6 +1603,8 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 					m_render_window->set_render_dirty(true);
 				ImGuiRenderer::show_help_marker("If checked, the visibility map will continue accumulating visibility "
 					"information as the rendering progresses");
+				ImGui::SliderInt("Update map max samples", &m_renderer->get_nee_plus_plus_data().stop_update_samples, 1, 96);
+				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 				static bool use_nee_plus_plus_rr = DirectLightUseNEEPlusPlusRR;
 				if (ImGui::Checkbox("Use NEE++ Russian Roulette", &use_nee_plus_plus_rr))

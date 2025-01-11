@@ -41,6 +41,10 @@ struct NEEPlusPlusCPUGPUCommonData
 	int3 grid_dimensions_no_envmap = make_int3(NEEPlusPlus::NEE_PLUS_PLUS_DEFAULT_GRID_SIZE, NEEPlusPlus::NEE_PLUS_PLUS_DEFAULT_GRID_SIZE, NEEPlusPlus::NEE_PLUS_PLUS_DEFAULT_GRID_SIZE);
 
 	float3 base_grid_min_point, base_grid_max_point;
+
+	// After how many samples to stop updating the visibility map
+	// (because it's probably converged enough)
+	int stop_update_samples = 64;
 };
 
 #endif

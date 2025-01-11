@@ -104,6 +104,9 @@ struct NEEPlusPlus
 			// One of the two points was outside the scene, cannot cache this
 			return;
 
+		/*if (accumulation_buffer_count[matrix_index] > 220)
+			return;*/
+
 		if (visible)
 			hippt::atomic_fetch_add(&accumulation_buffer[matrix_index], 1u);
 		hippt::atomic_fetch_add(&accumulation_buffer_count[matrix_index], 1u);

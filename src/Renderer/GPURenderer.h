@@ -429,9 +429,9 @@ private:
 	 * NEE++ is being used
 	 * 
 	 * The 'delta_time' parameter should be how much time passed, in milliseconds, since the last
-	 * call to internal_update_nee_plus_plus_buffers()
+	 * call to internal_update_nee_plus_plus()
 	 */
-	void internal_update_nee_plus_plus_buffers(float delta_time);
+	void internal_update_nee_plus_plus(float delta_time);
 
 	/**
 	 * Allocates/frees the global buffer for BVH traversal when UseSharedStackBVHTraversal is TRUE

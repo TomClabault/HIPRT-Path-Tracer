@@ -182,6 +182,7 @@ void GPURenderer::setup_nee_plus_plus_from_scene(const Scene& scene)
 void GPURenderer::reset_nee_plus_plus()
 {
 	m_render_data.nee_plus_plus.reset_visibility_map = true;
+	m_render_data.nee_plus_plus.update_visibility_map = true;
 
 	m_nee_plus_plus.milliseconds_before_finalizing_accumulation = NEEPlusPlusGPUData::FINALIZE_ACCUMULATION_START_TIMER;
 }
@@ -258,7 +259,7 @@ void GPURenderer::update(float delta_time)
 	internal_update_clear_device_status_buffers();
 	internal_update_prev_frame_g_buffer();
 	internal_update_adaptive_sampling_buffers();
-	internal_update_nee_plus_plus_buffers(delta_time);
+	internal_update_nee_plus_plus(delta_time);
 	internal_update_global_stack_buffer();
 
 	update_render_data();
@@ -365,7 +366,7 @@ void GPURenderer::internal_update_adaptive_sampling_buffers()
 	}
 }
 
-void GPURenderer::internal_update_nee_plus_plus_buffers(float delta_time)
+void GPURenderer::internal_update_nee_plus_plus(float delta_time)
 {
 	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_FALSE)
 	{
@@ -415,6 +416,11 @@ void GPURenderer::internal_update_nee_plus_plus_buffers(float delta_time)
 		m_nee_plus_plus.accumulation_buffer.memset(0);
 		m_nee_plus_plus.accumulation_buffer_count.memset(0);
 	}
+
+	if (m_render_data.render_settings.sample_number > m_nee_plus_plus.stop_update_samples)
+		// Past a certain number of samples, there isn't really a point to keep updating, the visibility map
+		// is probably converged enough that it doesn't make a difference anymore
+		m_render_data.nee_plus_plus.update_visibility_map = false;
 
 	m_nee_plus_plus.milliseconds_before_finalizing_accumulation -= delta_time;
 	m_nee_plus_plus.milliseconds_before_finalizing_accumulation = hippt::max(0.0f, m_nee_plus_plus.milliseconds_before_finalizing_accumulation);
