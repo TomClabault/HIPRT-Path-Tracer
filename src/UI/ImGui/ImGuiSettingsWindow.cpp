@@ -1583,11 +1583,21 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 				if (ImGui::Button("Refresh##vis_map"))
 					m_renderer->get_nee_plus_plus_data().milliseconds_before_finalizing_accumulation = 0.0f;
 
+				unsigned int traced = 0;
+				unsigned int total = 0;
+
+				ImGui::Text("Shadow rays traced: %.3f%%", m_renderer->get_nee_plus_plus_data().shadow_rays_actually_traced_cpu/ (float)m_renderer->get_nee_plus_plus_data().total_shadow_ray_queries_cpu * 100.0f);
+				ImGui::SameLine();
+				std::string button_text = render_data.nee_plus_plus.do_update_shadow_rays_traced_statistics ? "Stop" : "Resume";
+				if (ImGui::Button(button_text.c_str()))
+					render_data.nee_plus_plus.do_update_shadow_rays_traced_statistics = !render_data.nee_plus_plus.do_update_shadow_rays_traced_statistics;
+
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			}
 
 
 			{
+
 				if (ImGui::Checkbox("Update visibility map", &render_data.nee_plus_plus.update_visibility_map))
 					m_render_window->set_render_dirty(true);
 				ImGuiRenderer::show_help_marker("If checked, the visibility map will continue accumulating visibility "

@@ -19,6 +19,8 @@ struct NEEPlusPlusGPUData : public NEEPlusPlusCPUGPUCommonData
 	static constexpr float FINALIZE_ACCUMULATION_TIMER = 2000.0f;
 	static constexpr float FINALIZE_ACCUMULATION_START_TIMER = 500.0f;
 
+	static constexpr float STATISTICS_REFRESH_TIMER = 1000.0f;
+
 	// How many seconds to render before copying the
 	// visibility accumulation buffers to the visibility map
 	//
@@ -31,6 +33,15 @@ struct NEEPlusPlusGPUData : public NEEPlusPlusCPUGPUCommonData
 	float milliseconds_before_finalizing_accumulation = FINALIZE_ACCUMULATION_START_TIMER;
 
 	OrochiBuffer<unsigned int> packed_buffer;
+	
+	// Counters on the GPU for tracking 
+	OrochiBuffer<unsigned long long int> total_shadow_ray_queries;
+	OrochiBuffer<unsigned long long int> shadow_rays_actually_traced;
+	// Same counters but on the CPU for displaying the stats in ImGui.
+	// These counters are updated 
+	unsigned long long int total_shadow_ray_queries_cpu = 1;
+	unsigned long long int shadow_rays_actually_traced_cpu = 1;
+	float statistics_refresh_timer = STATISTICS_REFRESH_TIMER;
 
 	GPUKernel finalize_accumulation_kernel;
 };

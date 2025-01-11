@@ -8,6 +8,9 @@
 
 #include "HostDeviceCommon/Math.h"
 
+/**
+ * Context passed when tracing shadow rays 
+ */
 struct NEEPlusPlusContext
 {
 	float3 shaded_point;
@@ -115,6 +118,13 @@ struct NEEPlusPlusDevice
 	//
 	// 0.0f basically disables NEE++ as any entry of the visibility map will require a shadow ray
 	float confidence_threshold = 0.025f;
+
+	// Whether or not to count the number of shadow rays actually traced vs. the number of shadow
+	// queries made. This is used in 'evaluate_shadow_ray_nee_plus_plus()'
+	bool do_update_shadow_rays_traced_statistics = true;
+
+	AtomicType<unsigned int>* total_shadow_ray_queries = nullptr;
+	AtomicType<unsigned int>* shadow_rays_actually_traced = nullptr;
 
 	HIPRT_HOST_DEVICE void accumulate_visibility(bool visible, int matrix_index)
 	{
