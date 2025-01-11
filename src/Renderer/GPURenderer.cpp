@@ -246,6 +246,9 @@ void GPURenderer::setup_kernels()
 	m_ray_volume_state_byte_size_kernel.synchronize_options_with(*m_global_compiler_options, GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
 	ThreadManager::start_thread(ThreadManager::COMPILE_RAY_VOLUME_STATE_SIZE_KERNEL_KEY, ThreadFunctions::compile_kernel_silent, std::ref(m_ray_volume_state_byte_size_kernel), m_hiprt_orochi_ctx, std::ref(m_func_name_sets));
 
+	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_TRUE)
+		m_nee_plus_plus.compile_finalize_accumulation_kernel(m_hiprt_orochi_ctx);
+
 	// Compiling kernels
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID]), m_hiprt_orochi_ctx, std::ref(m_func_name_sets));
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID]), m_hiprt_orochi_ctx, std::ref(m_func_name_sets));
@@ -372,12 +375,9 @@ void GPURenderer::internal_update_nee_plus_plus(float delta_time)
 	{
 		// Not using NEE++, we just need to free the buffers if they weren't already
 
-		if (m_nee_plus_plus.visibility_map.get_element_count() != 0)
+		if (m_nee_plus_plus.packed_buffer.get_element_count() != 0)
 		{
-			m_nee_plus_plus.visibility_map.free();
-			m_nee_plus_plus.visibility_map_count.free();
-			m_nee_plus_plus.accumulation_buffer.free();
-			m_nee_plus_plus.accumulation_buffer_count.free();
+			m_nee_plus_plus.packed_buffer.free();
 
 			m_render_data_buffers_invalidated = true;
 		}
@@ -395,27 +395,17 @@ void GPURenderer::internal_update_nee_plus_plus(float delta_time)
 
 	// Allocating / deallocating buffers
 	unsigned int matrix_element_count = m_nee_plus_plus.get_visibility_matrix_element_count(m_render_data.nee_plus_plus.grid_dimensions);
-	if (m_nee_plus_plus.visibility_map.get_element_count() != matrix_element_count)
+	if (m_nee_plus_plus.packed_buffer.get_element_count() != matrix_element_count)
 	{
-		// If one buffer isn't properly sized, let's resize them both (becaues one goes with the other)
-		m_nee_plus_plus.visibility_map.resize(matrix_element_count);
-		m_nee_plus_plus.visibility_map_count.resize(matrix_element_count);
-		m_nee_plus_plus.accumulation_buffer.resize(matrix_element_count);
-		m_nee_plus_plus.accumulation_buffer_count.resize(matrix_element_count);
+		m_nee_plus_plus.packed_buffer.resize(matrix_element_count);
 
 		m_render_data_buffers_invalidated = true;
 	}
 
 	// Clearing the visibility map if this has been asked by the user
 	if (m_render_data.nee_plus_plus.reset_visibility_map)
-	{
 		// Clearing the visibility map by memseting everything to 0
-
-		m_nee_plus_plus.visibility_map.memset(0);
-		m_nee_plus_plus.visibility_map_count.memset(0);
-		m_nee_plus_plus.accumulation_buffer.memset(0);
-		m_nee_plus_plus.accumulation_buffer_count.memset(0);
-	}
+		m_nee_plus_plus.packed_buffer.memset(0);
 
 	if (m_render_data.render_settings.sample_number > m_nee_plus_plus.stop_update_samples)
 		// Past a certain number of samples, there isn't really a point to keep updating, the visibility map
@@ -424,12 +414,12 @@ void GPURenderer::internal_update_nee_plus_plus(float delta_time)
 
 	m_nee_plus_plus.milliseconds_before_finalizing_accumulation -= delta_time;
 	m_nee_plus_plus.milliseconds_before_finalizing_accumulation = hippt::max(0.0f, m_nee_plus_plus.milliseconds_before_finalizing_accumulation);
-	if (m_nee_plus_plus.milliseconds_before_finalizing_accumulation <= 0.0f)
+	if (m_nee_plus_plus.milliseconds_before_finalizing_accumulation <= 0.0f && m_render_data.nee_plus_plus.packed_buffers != nullptr)
 	{
 		m_nee_plus_plus.milliseconds_before_finalizing_accumulation = NEEPlusPlusGPUData::FINALIZE_ACCUMULATION_TIMER;
 
-		m_nee_plus_plus.visibility_map.memcpy_from(m_nee_plus_plus.accumulation_buffer);
-		m_nee_plus_plus.visibility_map_count.memcpy_from(m_nee_plus_plus.accumulation_buffer_count);
+		void* launch_args[] = { &m_render_data.nee_plus_plus };
+		m_nee_plus_plus.finalize_accumulation_kernel.launch_asynchronous(256, 1, matrix_element_count, 1, launch_args, m_main_stream);
 	}
 }
 
@@ -638,19 +628,6 @@ void GPURenderer::synchronize_kernel()
 bool GPURenderer::frame_render_done()
 {
 	return m_frame_rendered;
-
-	//oroError_t error = oroEventQuery(m_frame_stop_event);
-	////oroError_t error = oroStreamQuery(m_main_stream);
-	//if (error == oroSuccess)
-	//	return true;
-	//else if (error == oroErrorNotReady)
-	//	return false;
-	//else
-	//{
-	//	OROCHI_CHECK_ERROR(error);
-
-	//	return false;
-	//}
 }
 
 bool GPURenderer::was_last_frame_low_resolution()
@@ -1196,10 +1173,11 @@ void GPURenderer::update_render_data()
 
 		m_restir_di_render_pass.update_render_data();
 
-		m_render_data.nee_plus_plus.visibility_map = m_nee_plus_plus.visibility_map.get_device_pointer();
+		m_render_data.nee_plus_plus.packed_buffers = reinterpret_cast<AtomicType<unsigned int>*>(m_nee_plus_plus.packed_buffer.get_device_pointer());
+		/*m_render_data.nee_plus_plus.packed_buffer = m_nee_plus_plus.packed_buffer.get_device_pointer();
 		m_render_data.nee_plus_plus.visibility_map_count = m_nee_plus_plus.visibility_map_count.get_device_pointer();
 		m_render_data.nee_plus_plus.accumulation_buffer = reinterpret_cast<AtomicType<unsigned int>*>(m_nee_plus_plus.accumulation_buffer.get_device_pointer());
-		m_render_data.nee_plus_plus.accumulation_buffer_count = reinterpret_cast<AtomicType<unsigned int>*>(m_nee_plus_plus.accumulation_buffer_count.get_device_pointer());
+		m_render_data.nee_plus_plus.accumulation_buffer_count = reinterpret_cast<AtomicType<unsigned int>*>(m_nee_plus_plus.accumulation_buffer_count.get_device_pointer());*/
 
 		m_render_data_buffers_invalidated = false;
 	}

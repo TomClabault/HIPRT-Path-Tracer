@@ -27,7 +27,7 @@ public:
 
     void setup_brdfs_data();
     void setup_nee_plus_plus();
-    void nee_plus_plus_memcpy_accumulation();
+    void nee_plus_plus_memcpy_accumulation(int frame_number);
 
     void set_scene(Scene& parsed_scene);
     void set_envmap(Image32Bit& envmap_image);

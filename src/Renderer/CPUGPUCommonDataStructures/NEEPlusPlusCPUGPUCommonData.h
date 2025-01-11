@@ -6,14 +6,15 @@
 #ifndef RENDERER_NEE_PLUS_PLUS_CPU_GPU_COMMON_DATA_H
 #define RENDERER_NEE_PLUS_PLUS_CPU_GPU_COMMON_DATA_H
 
+#include "Device/includes/NEE++/NEE++.h" // For NEEPlusPlus::NEE_PLUS_PLUS_DEFAULT_GRID_SIZE
 #include "Scene/BoundingBox.h"
 
 struct NEEPlusPlusCPUGPUCommonData
 {
 	unsigned int get_vram_usage_bytes() const
 	{
-		// Number of elements per matrix * 4 matrices * sizeof(unsigned int) bytes
-		return get_visibility_matrix_element_count(grid_dimensions_no_envmap + make_int3(2, 2, 2)) * 4 * sizeof(unsigned int);
+		// Number of elements per matrix * sizeof(unsigned int) bytes
+		return get_visibility_matrix_element_count(grid_dimensions_no_envmap + make_int3(2, 2, 2)) * sizeof(unsigned int);
 	}
 
 	unsigned int get_visibility_matrix_element_count(int3 dimensions) const
@@ -35,6 +36,11 @@ struct NEEPlusPlusCPUGPUCommonData
 		float3 one_voxel_size = (base_grid_max_point - base_grid_min_point) / make_float3(base_grid_dimensions.x, base_grid_dimensions.y, base_grid_dimensions.z);
 		out_min_grid_point -= one_voxel_size;
 		out_max_grid_point += one_voxel_size;
+	}
+
+	int3 get_grid_dimensions_with_envmap() const
+	{
+		return grid_dimensions_no_envmap + make_int3(2, 2, 2);
 	}
 
 	// Dimensions of the visibility map **without the envmap layer**

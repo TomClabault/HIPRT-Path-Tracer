@@ -59,13 +59,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NEEPlusPlusCachingPrepass(HIPRTRenderData r
 
     uint32_t pixel_index = x + y * res.x;
 
-    // Clearing the visibility map
-    if (pixel_index < render_data.nee_plus_plus.get_visibility_matrix_element_count())
-    {
-        render_data.nee_plus_plus.visibility_map[pixel_index] = 0;
-        render_data.nee_plus_plus.visibility_map_count[pixel_index] = 0;
-    }
-
     unsigned int seed = wang_hash((pixel_index + 1) * render_data.random_seed);
     Xorshift32Generator random_number_generator(seed);
 

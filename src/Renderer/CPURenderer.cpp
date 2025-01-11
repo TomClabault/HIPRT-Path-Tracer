@@ -6,6 +6,7 @@
 #include "Device/kernels/CameraRays.h"
 #include "Device/kernels/FullPathTracer.h"
 #include "Device/kernels/NEE++/NEEPlusPlusCachingPrepass.h"
+#include "Device/kernels/NEE++/NEEPlusPlusFinalizeAccumulation.h"
 #include "Device/kernels/ReSTIR/DI/LightsPresampling.h"
 #include "Device/kernels/ReSTIR/DI/InitialCandidates.h"
 #include "Device/kernels/ReSTIR/DI/TemporalReuse.h"
@@ -39,8 +40,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 749
-#define DEBUG_PIXEL_Y 328
+#define DEBUG_PIXEL_X 454
+#define DEBUG_PIXEL_Y 457
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -143,28 +144,25 @@ void CPURenderer::setup_nee_plus_plus()
 
     // Dividing by 2 because the visibility map is symmetrical so we only need half of the matrix
     int half_matrix_size = m_nee_plus_plus.get_visibility_matrix_element_count(m_render_data.nee_plus_plus.grid_dimensions);
-    m_nee_plus_plus.visibility_map = std::vector<unsigned int>(half_matrix_size);
-    m_nee_plus_plus.visibility_map_count = std::vector<unsigned int>(half_matrix_size);
-    m_nee_plus_plus.accumulation_buffer = std::vector<AtomicType<unsigned int>>(half_matrix_size);
-    m_nee_plus_plus.accumulation_buffer_count = std::vector<AtomicType<unsigned int>>(half_matrix_size);
+    m_nee_plus_plus.packed_buffer = std::vector<AtomicType<unsigned int>>(half_matrix_size);
 
-    m_render_data.nee_plus_plus.visibility_map = m_nee_plus_plus.visibility_map.data();
-    m_render_data.nee_plus_plus.visibility_map_count = m_nee_plus_plus.visibility_map_count.data();
-    m_render_data.nee_plus_plus.accumulation_buffer = m_nee_plus_plus.accumulation_buffer.data();
-    m_render_data.nee_plus_plus.accumulation_buffer_count = m_nee_plus_plus.accumulation_buffer_count.data();
+    m_render_data.nee_plus_plus.packed_buffers = m_nee_plus_plus.packed_buffer.data();
 #endif
 }
 
-void CPURenderer::nee_plus_plus_memcpy_accumulation()
+void CPURenderer::nee_plus_plus_memcpy_accumulation(int frame_number)
 {
 #if DirectLightUseNEEPlusPlus == KERNEL_OPTION_TRUE
+    bool enough_frames_passed = frame_number % m_nee_plus_plus.frame_timer_before_visibility_map_update == 0;
+    bool not_updating_vis_map_anymore = !m_render_data.nee_plus_plus.update_visibility_map;
+    if (!enough_frames_passed || not_updating_vis_map_anymore)
+        return;
+
     // Only doing if using NEE++
-#pragma omp parallel for
-    for (int i = 0; i < m_nee_plus_plus.get_visibility_matrix_element_count(m_render_data.nee_plus_plus.grid_dimensions); i++)
-    {
-        m_nee_plus_plus.visibility_map[i] = m_nee_plus_plus.accumulation_buffer[i].load();
-        m_nee_plus_plus.visibility_map_count[i] = m_nee_plus_plus.accumulation_buffer_count[i].load();
-    }
+    unsigned int matrix_element_count = m_nee_plus_plus.get_visibility_matrix_element_count(m_nee_plus_plus.get_grid_dimensions_with_envmap());
+
+    for (int x = 0; x < matrix_element_count; x++)
+        NEEPlusPlusFinalizeAccumulation(m_render_data.nee_plus_plus, x);
 #else
     // Otherwise, it's a no-op
 #endif
@@ -344,8 +342,7 @@ void CPURenderer::render()
         // We want the G Buffer of the frame that we just rendered to go in the "g_buffer_prev_frame"
         // and then we can re-use the old buffers of to be filled by the current frame render
 
-        if (frame_number % m_nee_plus_plus.frame_timer_before_visibility_map_update == 0)
-            nee_plus_plus_memcpy_accumulation();
+        nee_plus_plus_memcpy_accumulation(frame_number);
 
         std::cout << "Frame " << frame_number << ": " << frame_number/ static_cast<float>(m_render_data.render_settings.samples_per_frame) * 100.0f << "%" << std::endl;
     }
@@ -361,6 +358,9 @@ void CPURenderer::update(int frame_number)
     *m_render_data.aux_buffers.still_one_ray_active = false;
     // Resetting the counter of pixels converged to 0
     m_render_data.aux_buffers.stop_noise_threshold_converged_count->store(0);
+
+    if (frame_number > m_nee_plus_plus.stop_update_samples)
+        m_render_data.nee_plus_plus.update_visibility_map = false;
 }
 
 void CPURenderer::update_render_data(int sample)
@@ -458,7 +458,7 @@ void CPURenderer::nee_plus_plus_cache_visibility_pass()
         NEEPlusPlusCachingPrepass(m_render_data, /* caching sample count */ 8, m_resolution, x, y);
     });
 
-    nee_plus_plus_memcpy_accumulation();
+    nee_plus_plus_memcpy_accumulation(/* frame_number */ 0);
 }
 
 void CPURenderer::camera_rays_pass()

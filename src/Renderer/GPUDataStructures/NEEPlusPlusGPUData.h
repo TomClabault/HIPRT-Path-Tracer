@@ -6,11 +6,15 @@
 #ifndef RENDERER_NEE_PLUS_PLUS_GPU_DATA_H
 #define RENDERER_NEE_PLUS_PLUS_GPU_DATA_H
 
+#include "Compiler/GPUKernel.h"
 #include "HIPRT-Orochi/OrochiBuffer.h"
+#include "HIPRT-Orochi/HIPRTOrochiCtx.h"
 #include "Renderer/CPUGPUCommonDataStructures/NEEPlusPlusCPUGPUCommonData.h"
 
 struct NEEPlusPlusGPUData : public NEEPlusPlusCPUGPUCommonData
 {
+	void compile_finalize_accumulation_kernel(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx);
+
 	// This is the timer value 
 	static constexpr float FINALIZE_ACCUMULATION_TIMER = 2000.0f;
 	static constexpr float FINALIZE_ACCUMULATION_START_TIMER = 500.0f;
@@ -26,10 +30,9 @@ struct NEEPlusPlusGPUData : public NEEPlusPlusCPUGPUCommonData
 	// are copied and this variable (which is essentially a timer) is reset back to its default counter value
 	float milliseconds_before_finalizing_accumulation = FINALIZE_ACCUMULATION_START_TIMER;
 
-	OrochiBuffer<unsigned int> visibility_map;
-	OrochiBuffer<unsigned int> visibility_map_count;
-	OrochiBuffer<unsigned int> accumulation_buffer;
-	OrochiBuffer<unsigned int> accumulation_buffer_count;
+	OrochiBuffer<unsigned int> packed_buffer;
+
+	GPUKernel finalize_accumulation_kernel;
 };
 
 #endif

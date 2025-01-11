@@ -13,6 +13,7 @@
 #include <vector>
 
 std::string ThreadManager::COMPILE_RAY_VOLUME_STATE_SIZE_KERNEL_KEY = "CompileRayVolumeStateSizeKernelKey";
+std::string ThreadManager::COMPILE_NEE_PLUS_PLUS_FINALIZE_ACCUMULATION_KERNEL_KEY = "CompileNeePlusPlusFinalizeAccumulationKernelKey";
 std::string ThreadManager::COMPILE_KERNELS_THREAD_KEY = "CompileKernelPassesKey";
 std::string ThreadManager::GPU_RENDERER_PRECOMPILE_KERNELS_THREAD_KEY = "GPURendererPrecompileKernelsKey";
 

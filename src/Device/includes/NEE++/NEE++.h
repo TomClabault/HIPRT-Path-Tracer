@@ -56,40 +56,58 @@ struct NEEPlusPlus
 	//  corner of the 3D grid in world space
 	float3 grid_max_point = make_float3(0.0f, 0.0f, 0.0f);
 
-	// Linear buffer that stores the number of rays that were
-	// computed as non-occluded from voxel to voxel in the scene.
-	//
-	// For example, if 16 rays were shot from one voxel to another
-	// and 7 of these rays were found to be unoccluded, then the corresponding
-	// entry in the map will contain the value 7
-	//
-	// Because the visibility map is symmetrical, this is a linear buffer that contains
-	// only half of the visibility matrix
-	//
-	// For the indexing logic, (0, 0) is in the top left corner of the matrix
-	unsigned int* visibility_map = nullptr;
+	enum BufferNames : unsigned int
+	{
+		VISIBILITY_MAP = 0,
+		VISIBILITY_MAP_COUNT = 1,
+		ACCUMULATION_BUFFER = 2,
+		ACCUMULATION_BUFFER_COUNT = 3,
+	};
 
-	// Same as 'visibility_map' but stores how many rays were traced in total from one
-	// voxel to another. In the example from above, this would contain the value 16.
+	// Linear buffer that is a packing of 4 buffers:
+	// 
+	// - 1 buffer that stores the number of rays that were
+	//		computed as non-occluded from voxel to voxel in the scene.
 	//
-	// For the indexing logic, (0, 0) is in the top left corner of the matrix
-	unsigned int* visibility_map_count = nullptr;
+	//		For example, if 16 rays were shot from one voxel to another
+	//		and 7 of these rays were found to be unoccluded, then the corresponding
+	//		entry in the map will contain the value 7
+	//
+	//		Because the visibility map is symmetrical, this is a linear buffer that contains
+	//		only half of the visibility matrix
+	//
+	//		For the indexing logic, (0, 0) is in the top left corner of the matrix
+	//
+	// - 1 buffer that is the same the same as the previous one but stores how many rays
+	//		in total were traced in total from one voxel to another, not just the unoccluded ones. 
+	//		In the example from above, this would contain the value 16.
+	//
+	//		For the indexing logic, (0, 0) is in the top left corner of the matrix
+	//
+	// - 2 buffers used for accumulation during the rendering process
+	//		These two buffers are used for accumulation of the visibility information during the rendering
+	//		For example, if we trace a shadow ray between voxel A and voxel B and that this shadow ray is
+	//		occluded, we're going to have to update the visibility map with information.
+	// 
+	//		However, we cannot just simply update the visibility map (i.e. the 2 first buffers)
+	//		during the rendering because this would	lead to concurrency issues where the map is 
+	//		being updated while also being read by other threads.
+	// 
+	//		The race condition is fine, what's not fine is that this will vary the estimate of the occlusion probability
+	//		from voxel A to voxel B and I found that this resulted in bias / non-determinism because the order in which
+	//		the threads update the map now influences how the other threads are going to read the map
+	//
+	//		So instead we have some additional buffers here to accumulate separately and then this buffers are copied
+	//		every N frames (or N seconds) to the 'true' visibility map used during rendering
+	//
+	// Each one these 4 buffers are of type unsigned chars, packed into 1 unsigned ints.
+	// 
+	// The data is stored such that the first unsigned int contains the 4 buffers at index 0 of the matrix
+	// The second unsigned int contains the 4 buffers at index 1
+	// ...
+	AtomicType<unsigned int>* packed_buffers = nullptr;
 
-	// These two buffers are used for accumulation of the visibility information during the rendering
-	// For example, if we trace a shadow ray between voxel A and voxel B and that this shadow ray is
-	// occluded, we're going to have to update the visibility map with information.
-	// 
-	// However, we cannot just simply update the visibility map during the rendering because this would
-	// lead to concurrency issues where the map is being updated while also being read by other threads.
-	// 
-	// The race condition is fine, what's not fine is that this will vary the estimate of the occlusion probability
-	// from voxel A to voxel B and I found that this resulted in bias / non-determinism because the order in which
-	// the threads update the map now influences how the other threads are going to read the map
-	//
-	// So instead we have some additional buffers here to accumulate separately and then this buffers are copied
-	// every N frames (or N seconds) to the 'true' visibility map used during rendering
-	AtomicType<unsigned int>* accumulation_buffer = nullptr;
-	AtomicType<unsigned int>* accumulation_buffer_count = nullptr;
+	// TODO deallocate accumulation buffers if not updating the vis map anymore
 
 	// If a voxel-to-voxel unocclusion probability is higher than that, the voxel will be considered unoccluded
 	// and so a shadow ray will be traced. This is to avoid trusting voxel that have a low probability of
@@ -104,12 +122,13 @@ struct NEEPlusPlus
 			// One of the two points was outside the scene, cannot cache this
 			return;
 
-		/*if (accumulation_buffer_count[matrix_index] > 220)
-			return;*/
+		if (read_buffer<BufferNames::ACCUMULATION_BUFFER_COUNT>(matrix_index) > 220)
+			// We're at the limit of unsigned chars, cannot accumulate anymore
+			return;
 
 		if (visible)
-			hippt::atomic_fetch_add(&accumulation_buffer[matrix_index], 1u);
-		hippt::atomic_fetch_add(&accumulation_buffer_count[matrix_index], 1u);
+			increment_buffer<BufferNames::ACCUMULATION_BUFFER>(matrix_index, 1);
+		increment_buffer<BufferNames::ACCUMULATION_BUFFER_COUNT>(matrix_index, 1);
 	}
 
 	/**
@@ -136,11 +155,11 @@ struct NEEPlusPlus
 		if (out_matrix_index == -1)
 			// One of the two points was outside the scene, cannot read the cache for this
 			// 
-			// Returning 1.0f indicating that the two points are not occluded such that the caller
+	 		// Returning 1.0f indicating that the two points are not occluded such that the caller
 			// tests for a shadow ray
 			return 1.0f;
 
-		unsigned int map_count = visibility_map_count[out_matrix_index];
+		unsigned char map_count = read_buffer<BufferNames::VISIBILITY_MAP_COUNT>(out_matrix_index);
 		if (map_count == 0)
 			// No information for these two points
 			// 
@@ -149,7 +168,7 @@ struct NEEPlusPlus
 			return 1.0f;
 		else
 		{
-			float unoccluded_proba = visibility_map[out_matrix_index] / (float)map_count;
+			float unoccluded_proba = read_buffer<BufferNames::VISIBILITY_MAP>(out_matrix_index) / (float)map_count;
 			if (unoccluded_proba >= confidence_threshold)
 				return 1.0f;
 			else
@@ -175,9 +194,58 @@ struct NEEPlusPlus
 		return half_matrix_size;
 	}
 
+	/**
+	 * Copies the accumulation buffers to the visibility map (all in the packed buffers)
+	 */
+	HIPRT_HOST_DEVICE void copy_accumulation_buffers(unsigned int matrix_index)
+	{
+		unsigned char accumulation_buffer = read_buffer<BufferNames::ACCUMULATION_BUFFER>(matrix_index);
+		unsigned char accumulation_buffer_count = read_buffer<BufferNames::ACCUMULATION_BUFFER_COUNT>(matrix_index);
+
+		set_buffer<BufferNames::VISIBILITY_MAP>(matrix_index, accumulation_buffer);
+		set_buffer<BufferNames::VISIBILITY_MAP_COUNT>(matrix_index, accumulation_buffer_count);
+		return;
+	}
+
 	// TODO compare with the alpha learning rate and the ground truth to see the behavior of a single float buffer
 	// TODO see if capping at 255 / 65535 is enough
 private:
+	/**
+	 * Returns the value packed in the buffer at the given visibility matrix index and with the given
+	 * buffer name from the BufferNames enum
+	 */
+	template <unsigned int bufferName>
+	HIPRT_HOST_DEVICE unsigned char read_buffer(int matrix_index) const
+	{
+		return (packed_buffers[matrix_index] >> (bufferName * 8)) & 0xFF;
+	}
+
+	/**
+	 * Increments the packed value in the packed buffer 'bufferName' at the given matrix index
+	 * There is no protection against overflows in this function
+	 */
+	template <unsigned int bufferName>
+	HIPRT_HOST_DEVICE void increment_buffer(int matrix_index, unsigned char value)
+	{
+		hippt::atomic_fetch_add(&packed_buffers[matrix_index], static_cast<unsigned int>(value) << (8 * bufferName));
+	}
+
+	/**
+	 * Sets the value in one of the packed buffer
+	 * 
+	 * WARNING:
+	 * This function is non-atomic
+	 */
+	template <unsigned int bufferName>
+	HIPRT_HOST_DEVICE void set_buffer(int matrix_index, unsigned char value)
+	{
+		// Clearing
+		packed_buffers[matrix_index] &= ~(0x000000FF << (bufferName * 8));
+
+		// Setting
+		packed_buffers[matrix_index] |= value << (bufferName * 8);
+	}
+
 	/**
 	 * Returns the index of the voxel of the given position in [grid_dimensions.x - 1, grid_dimensions.y - 1, grid_dimensions.z - 1]
 	 */

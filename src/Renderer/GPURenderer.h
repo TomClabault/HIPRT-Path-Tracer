@@ -42,6 +42,7 @@ public:
 	 * or in the 'm_render_pass_times' map
 	 */
 	static const std::string NEE_PLUS_PLUS_CACHING_PREPASS_ID;
+	static const std::string NEE_PLUS_PLUS_FINALIZE_ACCUMULATION_ID;
 	static const std::string CAMERA_RAYS_KERNEL_ID;
 	static const std::string PATH_TRACING_KERNEL_ID;
 	static const std::string RAY_VOLUME_STATE_SIZE_KERNEL_ID;

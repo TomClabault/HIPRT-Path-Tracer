@@ -39,6 +39,7 @@ class ThreadManager
 {
 public:
 	static std::string COMPILE_RAY_VOLUME_STATE_SIZE_KERNEL_KEY;
+	static std::string COMPILE_NEE_PLUS_PLUS_FINALIZE_ACCUMULATION_KERNEL_KEY;
 	static std::string COMPILE_KERNELS_THREAD_KEY;
 	// Key for the thread that will ** launch ** the threads that will precompile kernels
 	// in the background (needed because ** launching ** the precompilation itself takes quite a

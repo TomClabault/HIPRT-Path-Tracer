@@ -1578,17 +1578,6 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 			static unsigned int max_cell_records = 0;
 
 			{
-				ImGui::Text("Max visibility map records: %u", max_cell_records);
-				ImGuiRenderer::show_help_marker("The maximum number of records that a cell of the visibility map has seen.");
-				ImGui::SameLine();
-				if (ImGui::Button("Refresh"))
-				{
-					max_cell_records = 0;
-
-					std::vector<unsigned int> records = m_renderer->get_nee_plus_plus_data().visibility_map_count.download_data();
-					for (unsigned int c : records)
-						max_cell_records = hippt::max(c, max_cell_records);
-				}
 				ImGui::Text("Visiblity map update in: %.3fs", m_renderer->get_nee_plus_plus_data().milliseconds_before_finalizing_accumulation / 1000.0f);
 				ImGui::SameLine();
 				if (ImGui::Button("Refresh##vis_map"))
@@ -1603,7 +1592,9 @@ void ImGuiSettingsWindow::draw_next_event_estimation_plus_plus_panel()
 					m_render_window->set_render_dirty(true);
 				ImGuiRenderer::show_help_marker("If checked, the visibility map will continue accumulating visibility "
 					"information as the rendering progresses");
-				ImGui::SliderInt("Update map max samples", &m_renderer->get_nee_plus_plus_data().stop_update_samples, 1, 96);
+				ImGui::SliderInt("Update max samples", &m_renderer->get_nee_plus_plus_data().stop_update_samples, 1, 96);
+				ImGuiRenderer::show_help_marker("After this many samples, the update of the visibility will automatically "
+					"stop to save some performance because accumulating forever isn't necessary.");
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 				static bool use_nee_plus_plus_rr = DirectLightUseNEEPlusPlusRR;
