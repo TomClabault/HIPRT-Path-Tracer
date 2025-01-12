@@ -5,6 +5,7 @@
 
 #include "Device/kernels/CameraRays.h"
 #include "Device/kernels/FullPathTracer.h"
+#include "Device/kernels/GMoN/GMoNComputeMedianOfMeans.h"
 #include "Device/kernels/NEE++/NEEPlusPlusCachingPrepass.h"
 #include "Device/kernels/NEE++/NEEPlusPlusFinalizeAccumulation.h"
 #include "Device/kernels/ReSTIR/DI/LightsPresampling.h"
@@ -40,8 +41,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 454
-#define DEBUG_PIXEL_Y 457
+#define DEBUG_PIXEL_X 451
+#define DEBUG_PIXEL_Y 439
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -91,6 +92,7 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
 
     setup_brdfs_data();
     setup_nee_plus_plus();
+    setup_gmon();
 
     m_rng = Xorshift32Generator(42);
 }
@@ -149,7 +151,19 @@ void CPURenderer::setup_nee_plus_plus()
     m_nee_plus_plus.packed_buffer = std::vector<AtomicType<unsigned int>>(half_matrix_size);
 
     m_render_data.nee_plus_plus.packed_buffers = m_nee_plus_plus.packed_buffer.data();
+    m_render_data.nee_plus_plus.total_shadow_ray_queries = &m_nee_plus_plus.total_shadow_ray_queries;
+    m_render_data.nee_plus_plus.shadow_rays_actually_traced = &m_nee_plus_plus.shadow_rays_actually_traced;
 #endif
+}
+
+void CPURenderer::setup_gmon()
+{
+    if (m_gmon.use_gmon)
+    {
+        m_gmon.resize(m_resolution.x, m_resolution.y);
+        m_render_data.buffers.gmon_estimator.sets = m_gmon.sets.data();
+        m_render_data.buffers.gmon_estimator.result_framebuffer = m_gmon.result_framebuffer.get_data_as_ColorRGB32F();
+    }
 }
 
 void CPURenderer::nee_plus_plus_memcpy_accumulation(int frame_number)
@@ -170,6 +184,22 @@ void CPURenderer::nee_plus_plus_memcpy_accumulation(int frame_number)
 #endif
 }
 
+void CPURenderer::gmon_check_for_sets_accumulation()
+{
+    if (m_gmon.use_gmon)
+    {
+        m_render_data.buffers.gmon_estimator.next_set_to_accumulate++;
+
+        if (m_render_data.buffers.gmon_estimator.next_set_to_accumulate % GMON_M_SETS_COUNT == 0)
+        {
+            // We've added 1 sample to each sets of GMoN so we can compute the median of means
+            gmon_compute_median_of_means();
+
+            m_render_data.buffers.gmon_estimator.next_set_to_accumulate = 0;
+        }
+    }
+}
+
 void CPURenderer::set_scene(Scene& parsed_scene)
 {
     m_render_data.GPU_BVH = nullptr;
@@ -188,7 +218,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 
     m_render_data.buffers.material_opaque = m_material_opaque.data();
     m_render_data.buffers.has_vertex_normals = parsed_scene.has_vertex_normals.data();
-    m_render_data.buffers.pixels = m_framebuffer.get_data_as_ColorRGB32F();
+    m_render_data.buffers.accumulated_ray_colors = m_framebuffer.get_data_as_ColorRGB32F();
     m_render_data.buffers.triangles_indices = parsed_scene.triangle_indices.data();
     m_render_data.buffers.vertices_positions = parsed_scene.vertices_positions.data();
     m_render_data.buffers.vertex_normals = parsed_scene.vertex_normals.data();
@@ -313,7 +343,10 @@ HIPRTRenderSettings& CPURenderer::get_render_settings()
 
 Image32Bit& CPURenderer::get_framebuffer()
 {
-    return m_framebuffer;
+    if (m_gmon.use_gmon)
+        return m_gmon.result_framebuffer;
+    else
+        return m_framebuffer;
 }
 
 void CPURenderer::render()  
@@ -345,6 +378,7 @@ void CPURenderer::render()
         // and then we can re-use the old buffers of to be filled by the current frame render
 
         nee_plus_plus_memcpy_accumulation(frame_number);
+        gmon_check_for_sets_accumulation();
 
         std::cout << "Frame " << frame_number << ": " << frame_number/ static_cast<float>(m_render_data.render_settings.samples_per_frame) * 100.0f << "%" << std::endl;
     }
@@ -732,18 +766,27 @@ void CPURenderer::tracing_pass()
     });
 }
 
+void CPURenderer::gmon_compute_median_of_means()
+{
+    debug_render_pass([this](int x, int y) {
+        GMoNComputeMedianOfMeans(m_render_data, x, y);
+    });
+}
+
 void CPURenderer::tonemap(float gamma, float exposure)
 {
 #if DEBUG_PIXEL == 0
 #pragma omp parallel for schedule(dynamic)
 #endif
+
+    ColorRGB32F* framebuffer_data = m_framebuffer.get_data_as_ColorRGB32F();
     for (int y = 0; y < m_resolution.y; y++)
     {
         for (int x = 0; x < m_resolution.x; x++)
         {
             int index = x + y * m_resolution.x;
 
-            ColorRGB32F hdr_color = m_render_data.buffers.pixels[index];
+            ColorRGB32F hdr_color = framebuffer_data[index];
 
             if (m_render_data.render_settings.accumulate)
                 // Scaling by sample count
@@ -752,7 +795,7 @@ void CPURenderer::tonemap(float gamma, float exposure)
             ColorRGB32F tone_mapped = ColorRGB32F(1.0f) - exp(-hdr_color * exposure);
             tone_mapped = pow(tone_mapped, 1.0f / gamma);
 
-            m_render_data.buffers.pixels[index] = tone_mapped;
+            framebuffer_data[index] = tone_mapped;
         }
     }
 }

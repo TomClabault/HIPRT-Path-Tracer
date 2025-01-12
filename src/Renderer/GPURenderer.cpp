@@ -195,6 +195,11 @@ void GPURenderer::reset_nee_plus_plus()
 	m_nee_plus_plus.milliseconds_before_finalizing_accumulation = NEEPlusPlusGPUData::FINALIZE_ACCUMULATION_START_TIMER;
 }
 
+void GPURenderer::reset_gmon()
+{
+	m_render_data.buffers.gmon_estimator.next_set_to_accumulate = 0;
+}
+
 NEEPlusPlusGPUData& GPURenderer::get_nee_plus_plus_data()
 {
 	return m_nee_plus_plus;
@@ -271,6 +276,7 @@ void GPURenderer::update(float delta_time)
 	internal_update_prev_frame_g_buffer();
 	internal_update_adaptive_sampling_buffers();
 	internal_update_nee_plus_plus(delta_time);
+	internal_update_gmon();
 	internal_update_global_stack_buffer();
 
 	update_render_data();
@@ -447,6 +453,32 @@ void GPURenderer::internal_update_nee_plus_plus(float delta_time)
 
 		OROCHI_CHECK_ERROR(oroMemcpy(&m_nee_plus_plus.total_shadow_ray_queries_cpu, m_nee_plus_plus.total_shadow_ray_queries.get_device_pointer(), sizeof(unsigned long long int), oroMemcpyDeviceToHost));
 		OROCHI_CHECK_ERROR(oroMemcpy(&m_nee_plus_plus.shadow_rays_actually_traced_cpu, m_nee_plus_plus.shadow_rays_actually_traced.get_device_pointer(), sizeof(unsigned long long int), oroMemcpyDeviceToHost));
+	}
+}
+
+void GPURenderer::internal_update_gmon()
+{
+	if (m_gmon.use_gmon)
+	{
+		if (m_gmon.current_resolution.x != m_render_resolution.x || m_gmon.current_resolution.y != m_render_resolution.y)
+		{
+			m_gmon.resize(m_render_resolution.x, m_render_resolution.y);
+			m_render_data.buffers.gmon_estimator.next_set_to_accumulate = 0;
+
+			m_render_data_buffers_invalidated = true;
+		}
+		else
+		{
+			m_render_data.buffers.gmon_estimator.next_set_to_accumulate++;
+			if (m_render_data.buffers.gmon_estimator.next_set_to_accumulate == m_gmon.number_of_sets)
+				m_render_data.buffers.gmon_estimator.next_set_to_accumulate = 0;
+		}
+	}
+	else
+	{
+		m_gmon.free();
+
+		m_render_data_buffers_invalidated = true;
 	}
 }
 
@@ -676,6 +708,8 @@ void GPURenderer::resize(int new_width, int new_height, bool also_resize_interop
 		resize_interop_buffers(new_width, new_height);
 
 	m_g_buffer.resize(new_width * new_height, get_ray_volume_state_byte_size());
+	if (m_gmon.use_gmon)
+		m_gmon.resize(new_width, new_height);
 
 	if (m_render_data.render_settings.use_prev_frame_g_buffer(this))
 		m_g_buffer_prev_frame.resize(new_width * new_height, get_ray_volume_state_byte_size());
@@ -716,7 +750,9 @@ void GPURenderer::resize_interop_buffers(int new_width, int new_height)
 
 void GPURenderer::map_buffers_for_render()
 {
-	m_render_data.buffers.pixels = m_framebuffer->map_no_error();
+	m_render_data.buffers.accumulated_ray_colors = m_framebuffer->map_no_error();
+	m_render_data.buffers.gmon_estimator.result_framebuffer = m_gmon.map_result_framebuffer();
+
 	m_render_data.aux_buffers.denoiser_normals = m_denoiser_buffers.map_normals_buffer();
 	m_render_data.aux_buffers.denoiser_albedo = m_denoiser_buffers.map_albedo_buffer();
 	if (m_render_data.render_settings.has_access_to_adaptive_sampling_buffers())
@@ -725,16 +761,22 @@ void GPURenderer::map_buffers_for_render()
 
 void GPURenderer::unmap_buffers()
 {
-	m_framebuffer->unmap();
+	get_color_interop_framebuffer()->unmap();
 	m_denoiser_buffers.unmap_normals_buffer();
 	m_denoiser_buffers.unmap_albedo_buffer();
-	//m_pixels_converged_sample_count_buffer->unmap();
 }
 
 
 void GPURenderer::set_use_denoiser_AOVs_interop_buffers(bool use_interop) { m_denoiser_buffers.set_use_interop_AOV_buffers(this, use_interop); }
 
-std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_color_interop_framebuffer() { return m_framebuffer; }
+std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_color_interop_framebuffer() 
+{ 
+	if (m_gmon.use_gmon)
+		return m_gmon.result_framebuffer;
+	else
+		return m_framebuffer; 
+}
+
 std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_denoised_interop_framebuffer() { return m_denoiser_buffers.m_denoised_framebuffer;}
 std::shared_ptr<OpenGLInteropBuffer<float3>> GPURenderer::get_denoiser_normals_AOV_interop_buffer() 
 {
@@ -1138,6 +1180,7 @@ void GPURenderer::reset(std::shared_ptr<ApplicationSettings> application_setting
 	m_render_data.render_settings.need_to_reset = true;
 
 	reset_nee_plus_plus();
+	reset_gmon();
 
 	internal_clear_m_status_buffers();
 }
@@ -1204,6 +1247,8 @@ void GPURenderer::update_render_data()
 		m_render_data.nee_plus_plus.packed_buffers = reinterpret_cast<AtomicType<unsigned int>*>(m_nee_plus_plus.packed_buffer.get_device_pointer());
 		m_render_data.nee_plus_plus.shadow_rays_actually_traced = reinterpret_cast<AtomicType<unsigned int>*>(m_nee_plus_plus.shadow_rays_actually_traced.get_device_pointer());
 		m_render_data.nee_plus_plus.total_shadow_ray_queries = reinterpret_cast<AtomicType<unsigned int>*>(m_nee_plus_plus.total_shadow_ray_queries.get_device_pointer());
+
+		m_render_data.buffers.gmon_estimator.sets = m_gmon.sets.get_device_pointer();
 
 		m_render_data_buffers_invalidated = false;
 	}

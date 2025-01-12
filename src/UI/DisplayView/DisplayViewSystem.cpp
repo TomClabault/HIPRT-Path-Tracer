@@ -203,7 +203,7 @@ void DisplayViewSystem::update_display_program_uniforms(const DisplayViewSystem*
 	const DisplaySettings& display_settings = display_view_system->m_display_settings;
 	
 	HIPRTRenderSettings render_settings = renderer->get_render_settings();
-	render_settings.sample_number = std::max(1, render_settings.sample_number); 
+	render_settings.sample_number = std::max(1u, render_settings.sample_number); 
 
 	bool display_low_resolution = display_view_system->get_render_low_resolution();
 	int render_low_resolution_scaling = display_low_resolution ? render_settings.render_low_resolution_scaling : 1;

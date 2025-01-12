@@ -112,7 +112,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
             // appear too dark.
             // We're rescaling the color of the pixels that stopped sampling here for correct display
 
-            render_data.buffers.pixels[pixel_index] = render_data.buffers.pixels[pixel_index] / render_data.render_settings.sample_number * (render_data.render_settings.sample_number + 1);
+            render_data.buffers.accumulated_ray_colors[pixel_index] = render_data.buffers.accumulated_ray_colors[pixel_index] / render_data.render_settings.sample_number * (render_data.render_settings.sample_number + 1);
             render_data.aux_buffers.pixel_active[pixel_index] = false;
 
             return;

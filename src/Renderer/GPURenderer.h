@@ -13,14 +13,15 @@
 #include "HIPRT-Orochi/HIPRTScene.h"
 #include "HIPRT-Orochi/HIPRTOrochiCtx.h"
 #include "HostDeviceCommon/RenderData.h"
-#include "Renderer/GPUDataStructures/NEEPlusPlusGPUData.h"
-#include "Renderer/RendererAnimationState.h"
-#include "Renderer/RendererEnvmap.h"
 #include "Renderer/GPUDataStructures/DenoiserBuffersGPUData.h"
 #include "Renderer/GPUDataStructures/GBufferGPUData.h"
+#include "Renderer/GPUDataStructures/GMoNGPUData.h"
+#include "Renderer/GPUDataStructures/NEEPlusPlusGPUData.h"
 #include "Renderer/GPUDataStructures/StatusBuffersGPUData.h"
 #include "Renderer/HardwareAccelerationSupport.h"
 #include "Renderer/OpenImageDenoiser.h"
+#include "Renderer/RendererAnimationState.h"
+#include "Renderer/RendererEnvmap.h"
 #include "Renderer/StatusBuffersValues.h"
 #include "Renderer/RenderPasses/ReSTIRDIRenderPass.h"
 #include "Scene/Camera.h"
@@ -113,6 +114,11 @@ public:
 	 * Clears the visibility map of NEE++ so that it is recomputed next frame
 	 */
 	void reset_nee_plus_plus();
+
+	/**
+	 * Resets the state of GMoN
+	 */
+	void reset_gmon();
 
 	NEEPlusPlusGPUData& get_nee_plus_plus_data();
 
@@ -436,6 +442,11 @@ private:
 	void internal_update_nee_plus_plus(float delta_time);
 
 	/**
+	 * Frees / allocates the GMoN buffer depending on whether or not GMoN is being used
+	 */
+	void internal_update_gmon();
+
+	/**
 	 * Allocates/frees the global buffer for BVH traversal when UseSharedStackBVHTraversal is TRUE
 	 */
 	void internal_update_global_stack_buffer();
@@ -584,6 +595,9 @@ private:
 
 	// Envmap of the renderer
 	RendererEnvmap m_envmap;
+
+	// Data for the GMoN estimator
+	GMoNGPUData m_gmon;
 
 	// 32x32 texture containing the precomputed parameters of the LTC
 	// fitted to approximate the SSGX sheen volumetric layer.
