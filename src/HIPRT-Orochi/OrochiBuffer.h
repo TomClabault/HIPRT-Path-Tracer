@@ -28,7 +28,7 @@ public:
 
 	void operator=(OrochiBuffer<T>&& other) noexcept;
 
-	void memset(T value, size_t element_count = -1);
+	void memset_whole_buffer(int value);
 
 	void resize(int new_element_count, size_t type_size_override = 0);
 	size_t get_element_count() const;
@@ -112,7 +112,7 @@ void OrochiBuffer<T>::operator=(OrochiBuffer&& other) noexcept
 }
 
 template<typename T>
-inline void OrochiBuffer<T>::memset(T value, size_t element_count)
+inline void OrochiBuffer<T>::memset_whole_buffer(int value)
 {
 	if (m_data_pointer == nullptr)
 	{
@@ -120,10 +120,7 @@ inline void OrochiBuffer<T>::memset(T value, size_t element_count)
 		return;
 	}
 
-	if (element_count == static_cast<size_t>(-1))
-		OROCHI_CHECK_ERROR(oroMemset(m_data_pointer, value, m_element_count * sizeof(T)));
-	else
-		OROCHI_CHECK_ERROR(oroMemset(m_data_pointer, value, element_count * sizeof(T)));
+	OROCHI_CHECK_ERROR(oroMemset(m_data_pointer, value, m_element_count * sizeof(T)));
 }
 
 template <typename T>

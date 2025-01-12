@@ -50,13 +50,15 @@ public:
 	static const std::string RESTIR_DI_BIAS_CORRECTION_WEIGHTS;
 	static const std::string RESTIR_DI_LATER_BOUNCES_SAMPLING_STRATEGY;
 	static const std::string RESTIR_DI_DO_LIGHTS_PRESAMPLING;
+	
+	static const std::string GMON_M_SETS_COUNT;
 
 	static const std::unordered_set<std::string> ALL_MACROS_NAMES;
 
 	GPUKernelCompilerOptions();
 	GPUKernelCompilerOptions(const GPUKernelCompilerOptions& other);
 
-	GPUKernelCompilerOptions operator=(const GPUKernelCompilerOptions& other);
+	GPUKernelCompilerOptions& operator=(const GPUKernelCompilerOptions& other);
 
 	/**
 	 * Gets a list of all the compiler options of the form { "-D InteriorStackStrategy=1", ... }

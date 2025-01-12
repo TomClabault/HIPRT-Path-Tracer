@@ -243,13 +243,13 @@ void OpenImageDenoiser::denoise(std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>
 
     float3* normals_pointer = nullptr;
     if (normals_aov != nullptr)
-        normals_pointer = normals_aov->map_no_error();
+        normals_pointer = normals_aov->map();
 
     ColorRGB32F* albedo_pointer = nullptr;
     if (albedo_aov != nullptr)
-        albedo_pointer = albedo_aov->map_no_error();
+        albedo_pointer = albedo_aov->map();
 
-    ColorRGB32F* data_to_denoise_pointer = data_to_denoise->map_no_error();
+    ColorRGB32F* data_to_denoise_pointer = data_to_denoise->map();
 
     denoise(data_to_denoise_pointer, normals_pointer, albedo_pointer);
     normals_aov->unmap();
@@ -275,7 +275,7 @@ void OpenImageDenoiser::denoise(std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>
     if (albedo_aov != nullptr)
         albedo_pointer = albedo_aov->get_device_pointer();
 
-    ColorRGB32F* data_to_denoise_pointer = data_to_denoise->map_no_error();
+    ColorRGB32F* data_to_denoise_pointer = data_to_denoise->map();
 
     denoise(data_to_denoise_pointer, normals_pointer, albedo_pointer);
 

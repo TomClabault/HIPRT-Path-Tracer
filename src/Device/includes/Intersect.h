@@ -374,8 +374,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRende
     // divides by it
     nee_plus_plus_context.unoccluded_probability = 1.0f;
 
-    shadow_ray_occluded = evaluate_shadow_ray(render_data, ray, t_max, last_hit_primitive_index, random_number_generator);
-    shadow_ray_discarded = false;
+    bool shadow_ray_occluded = evaluate_shadow_ray(render_data, ray, t_max, last_hit_primitive_index, random_number_generator);
 #endif
 
 #if DirectLightNEEPlusPlusDisplayShadowRaysDiscarded == KERNEL_OPTION_TRUE
@@ -392,9 +391,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRende
     if (bounce == DirectLightNEEPlusPlusDisplayShadowRaysDiscardedBounce)
     {
         if (shadow_ray_discarded)
-            render_data.buffers.pixels[pixel_index] = ColorRGB32F();
+            render_data.buffers.accumulated_ray_colors[pixel_index] = ColorRGB32F();
         else
-            render_data.buffers.pixels[pixel_index] = block_color;
+            render_data.buffers.accumulated_ray_colors[pixel_index] = block_color;
     }
 #endif
 
