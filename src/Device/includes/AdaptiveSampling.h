@@ -10,7 +10,7 @@
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float get_pixel_confidence_interval(const HIPRTRenderData& render_data, int pixel_index, int pixel_sample_count, float& average_luminance)
 {
-    float luminance = render_data.buffers.pixels[pixel_index].luminance();
+    float luminance = render_data.buffers.accumulated_ray_colors[pixel_index].luminance();
     average_luminance = luminance / (pixel_sample_count + 1);
 
     float squared_luminance = render_data.aux_buffers.pixel_squared_luminance[pixel_index];

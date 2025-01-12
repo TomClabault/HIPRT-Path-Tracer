@@ -132,7 +132,7 @@ void ReSTIRDIRenderPass::precompile_kernels(GPUKernelCompilerOptions partial_opt
 	ThreadManager::detach_threads(ThreadManager::RESTIR_DI_PRECOMPILE_KERNELS);
 }
 
-void ReSTIRDIRenderPass::update()
+void ReSTIRDIRenderPass::pre_render_update()
 {
 	int2 render_resolution = m_renderer->m_render_resolution;
 
@@ -554,6 +554,11 @@ void ReSTIRDIRenderPass::update_perf_metrics(std::shared_ptr<PerformanceMetricsC
 			perf_metrics->add_value(ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID, render_pass_times[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID]);
 		}
 	}
+}
+
+std::map<std::string, GPUKernel>& ReSTIRDIRenderPass::get_kernels()
+{
+	return m_kernels;
 }
 
 void ReSTIRDIRenderPass::configure_output_buffer()

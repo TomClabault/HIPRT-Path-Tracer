@@ -11,8 +11,9 @@
 #include "Image/Image.h"
 #include "Image/EnvmapRGBE9995.h"
 #include "Renderer/BVH.h"
-#include "Renderer/CPUDataStructures/NEEPlusPlusCPUData.h.h"
 #include "Renderer/CPUDataStructures/GBufferCPUData.h"
+#include "Renderer/CPUDataStructures/GMoNCPUData.h"
+#include "Renderer/CPUDataStructures/NEEPlusPlusCPUData.h.h"
 #include "Scene/SceneParser.h"
 #include "Utils/CommandlineArguments.h"
 
@@ -27,7 +28,9 @@ public:
 
     void setup_brdfs_data();
     void setup_nee_plus_plus();
+    void setup_gmon();
     void nee_plus_plus_memcpy_accumulation(int frame_number);
+    void gmon_check_for_sets_accumulation();
 
     void set_scene(Scene& parsed_scene);
     void set_envmap(Image32Bit& envmap_image);
@@ -38,7 +41,7 @@ public:
     Image32Bit& get_framebuffer();
 
     void render();
-    void update(int frame_number);
+    void pre_render_update(int frame_number);
     void update_render_data(int sample);
 
     void reset();
@@ -69,6 +72,8 @@ public:
 
     void tracing_pass();
 
+    void gmon_compute_median_of_means();
+
     void tonemap(float gamma, float exposure);
 
 private:
@@ -91,6 +96,8 @@ private:
     std::vector<int> m_alias_table_alias;
 
     NEEPlusPlusCPUData m_nee_plus_plus;
+
+    GMoNCPUData m_gmon;
 
     std::vector<DevicePackedTexturedMaterial> m_gpu_packed_materials;
     // Keeps track of which material is fully opaque or not

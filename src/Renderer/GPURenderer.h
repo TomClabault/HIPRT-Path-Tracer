@@ -13,15 +13,17 @@
 #include "HIPRT-Orochi/HIPRTScene.h"
 #include "HIPRT-Orochi/HIPRTOrochiCtx.h"
 #include "HostDeviceCommon/RenderData.h"
-#include "Renderer/GPUDataStructures/NEEPlusPlusGPUData.h"
-#include "Renderer/RendererAnimationState.h"
-#include "Renderer/RendererEnvmap.h"
 #include "Renderer/GPUDataStructures/DenoiserBuffersGPUData.h"
 #include "Renderer/GPUDataStructures/GBufferGPUData.h"
+#include "Renderer/GPUDataStructures/GMoNGPUData.h"
+#include "Renderer/GPUDataStructures/NEEPlusPlusGPUData.h"
 #include "Renderer/GPUDataStructures/StatusBuffersGPUData.h"
 #include "Renderer/HardwareAccelerationSupport.h"
 #include "Renderer/OpenImageDenoiser.h"
+#include "Renderer/RendererAnimationState.h"
+#include "Renderer/RendererEnvmap.h"
 #include "Renderer/StatusBuffersValues.h"
+#include "Renderer/RenderPasses/GMoNRenderPass.h"
 #include "Renderer/RenderPasses/ReSTIRDIRenderPass.h"
 #include "Scene/Camera.h"
 #include "Scene/CameraAnimation.h"
@@ -79,7 +81,7 @@ public:
 	 * Constructs a renderer that will be using the given HIPRT/Orochi
 	 * context for handling GPU acceleration structures, buffers, textures, etc...
 	 */
-	GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx);
+	GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx, std::shared_ptr<ApplicationSettings> application_settings);
 	void setup_brdfs_data();
 
 	/**
@@ -114,6 +116,23 @@ public:
 	 */
 	void reset_nee_plus_plus();
 
+	/**
+	 * Resets the state of GMoN
+	 */
+	void reset_gmon();
+	/**
+	 * Whether or not the renderer is currently using GMoN
+	 */
+	bool is_using_gmon();
+	/**
+	 * Returns the kernel options used by the kernel that periodically computes the
+	 * G-Median of Means.
+	 * 
+	 * These options can be modified (the number of sets used by GMoN most probably)
+	 * and then the GMoN render pass recompiled 
+	 */
+	GMoNRenderPass& get_gmon_render_pass();
+
 	NEEPlusPlusGPUData& get_nee_plus_plus_data();
 
 	/**
@@ -140,9 +159,9 @@ public:
 	 * in the code.
 	 * 
 	 * The 'delta_time' parameter should be how much time passed, in milliseconds, since the last
-	 * call to update()
+	 * call to pre_render_update()
 	 */
-	void update(float delta_time);
+	void pre_render_update(float delta_time);
 
 	/**
 	 * Steps all the animations of the renderer one step forward
@@ -214,6 +233,13 @@ public:
 	 */
 	void set_use_denoiser_AOVs_interop_buffers(bool use_interop);
 
+	/**
+	 * Returns the framebuffer that should be used for displaying to the viewport
+	 * 
+	 * At the time of writing this comment, this is either the default framebuffer where the
+	 * ray colors are accumulated or the GMoN result framebuffer where the median of means are
+	 * computed for fireflies reduction
+	 */
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> get_color_interop_framebuffer();
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> get_denoised_interop_framebuffer();
 	std::shared_ptr<OpenGLInteropBuffer<float3>> get_denoiser_normals_AOV_interop_buffer();
@@ -340,7 +366,7 @@ public:
 
 	void update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer> perf_metrics);
 
-	void reset(std::shared_ptr<ApplicationSettings> application_settings);
+	void reset();
 
 	Xorshift32Generator& rng();
 
@@ -354,6 +380,16 @@ public:
 private:
 	void set_hiprt_scene_from_scene(const Scene& scene);
 	void update_render_data();
+
+	/**
+	 * This function increments some counters (such as the number of samples rendered so far) after a
+	 * sample has been rendered
+	 * 
+	 * This function is private because it is used internally by the render() function
+	 */
+	void post_render_update();
+
+	void internal_post_render_update_path_tracer();
 
 	/**
 	 * Returns true if one of the kernels requires the global stack buffer for BVH traversal
@@ -387,6 +423,7 @@ private:
 	void launch_camera_rays();
 	void launch_ReSTIR_DI();
 	void launch_path_tracing();
+	void launch_GMoN_kernel();
 	void launch_debug_kernel();
 
 	/**
@@ -403,19 +440,19 @@ private:
 	 */
 	void precompile_kernel(const std::string& id, GPUKernelCompilerOptions partial_options);
 
-	// ---- Functions called by the update() method ----
+	// ---- Functions called by the pre_render_update() method ----
 	//
 
 	/**
 	 * Resets the value of the status buffers on the device
 	 */
-	void internal_update_clear_device_status_buffers();
+	void internal_pre_render_update_clear_device_status_buffers();
 
 	/**
 	 * Allocates/deallocates the G-buffer of the previous frame depending
 	 * on whether or not it is needed
 	 */
-	void internal_update_prev_frame_g_buffer();
+	void internal_pre_render_update_prev_frame_g_buffer();
 
 	/**
 	 * This function evaluates whether the renderer needs the adaptive
@@ -424,26 +461,34 @@ private:
 	 * then the buffer will be allocated so that they can be used by the shader.
 	 * If they are not needed, they will be freed to save some VRAM.
 	 */
-	void internal_update_adaptive_sampling_buffers();
+	void internal_pre_render_update_adaptive_sampling_buffers();
 
 	/**
 	 * Allocates/deallocates the data structure for NEE++ depending on whether or not
 	 * NEE++ is being used
 	 * 
 	 * The 'delta_time' parameter should be how much time passed, in milliseconds, since the last
-	 * call to internal_update_nee_plus_plus()
+	 * call to internal_pre_render_update_nee_plus_plus()
 	 */
-	void internal_update_nee_plus_plus(float delta_time);
+	void internal_pre_render_update_nee_plus_plus(float delta_time);
+
+	/**
+	 * Frees / allocates the GMoN buffer depending on whether or not GMoN is being used
+	 */
+	void internal_pre_render_update_gmon();
+	void internal_post_render_update_gmon();
 
 	/**
 	 * Allocates/frees the global buffer for BVH traversal when UseSharedStackBVHTraversal is TRUE
 	 */
-	void internal_update_global_stack_buffer();
+	void internal_pre_render_update_global_stack_buffer();
 
 	//
-	// -------- Functions called by the update() method ---------
+	// -------- Functions called by the pre_render_update() method ---------
 
 	void internal_clear_m_status_buffers();
+
+	std::shared_ptr<ApplicationSettings> m_application_settings;
 
 	// Properties of the device
 	oroDeviceProp m_device_properties = { .gcnArchName = "" };
@@ -454,16 +499,16 @@ private:
 	// If true, the last call to render() rendered a frame where render_settings.render_low_resoltion was true.
 	// False otherwise
 	bool m_was_last_frame_low_resolution = false;
-	// If true, the buffer pointers of m_render_data will be updated when update() is called.
+	// If true, the buffer pointers of m_render_data will be updated when pre_render_update() is called.
 	// This boolean is mainly set to true when resizing the renderer since resizing re-creates the 
 	// buffers -> invalidates the pointer -> we need to set them back on render_data
 	//
 	// Modifying the scene also invalidates the m_render_data buffers. 
 	// Freeing / allocating ReSTIR DI/adaptive sampling buffers (or any buffers that can be allocated / dealloacted) too
 	bool m_render_data_buffers_invalidated = true;
-	// Whether or not the renderer was updated (with update()) since the last render() call.
+	// Whether or not the renderer was updated (with pre_render_update()) since the last render() call.
 	// This is only used as a security to avoid misusing the renderer class and calling render()
-	// without having called update() before
+	// without having called pre_render_update() before
 	bool m_updated = false;
 
 	// Time taken per each pass of the renderer for the last frame.
@@ -498,10 +543,11 @@ private:
 
 	// Structure that holds the values of the one-variable buffers of the renderer.
 	// These values are 'one_ray_active' or 'pixel_converged_count' for example.
-	// These values are updated when the update() is called
+	// These values are updated when the pre_render_update() is called
 	StatusBuffersValues m_status_buffers_values;
 
 	ReSTIRDIRenderPass m_restir_di_render_pass;
+	GMoNRenderPass m_gmon_render_pass;
 
 	// Some additional info about the parsed scene such as materials names, mesh names, ...
 	SceneMetadata m_parsed_scene_metadata;

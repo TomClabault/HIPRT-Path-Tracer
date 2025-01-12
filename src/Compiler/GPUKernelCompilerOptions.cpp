@@ -50,6 +50,8 @@ const std::string GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS = 
 const std::string GPUKernelCompilerOptions::RESTIR_DI_LATER_BOUNCES_SAMPLING_STRATEGY = "ReSTIR_DI_LaterBouncesSamplingStrategy";
 const std::string GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING = "ReSTIR_DI_DoLightsPresampling";
 
+const std::string GPUKernelCompilerOptions::GMON_M_SETS_COUNT = "GMoNMSetsCount";
+
 const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES = {
 	GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL,
 	GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE,
@@ -84,6 +86,8 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS,
 	GPUKernelCompilerOptions::RESTIR_DI_LATER_BOUNCES_SAMPLING_STRATEGY,
 	GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING,
+
+	GPUKernelCompilerOptions::GMON_M_SETS_COUNT,
 };
 
 GPUKernelCompilerOptions::GPUKernelCompilerOptions()
@@ -123,6 +127,8 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS] = std::make_shared<int>(ReSTIR_DI_BiasCorrectionWeights);
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_LATER_BOUNCES_SAMPLING_STRATEGY] = std::make_shared<int>(ReSTIR_DI_LaterBouncesSamplingStrategy);
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING] = std::make_shared<int>(ReSTIR_DI_DoLightsPresampling);
+
+	m_options_macro_map[GPUKernelCompilerOptions::GMON_M_SETS_COUNT] = std::make_shared<int>(GMoNMSetsCount);
 	
 	// Making sure we didn't forget to fill the ALL_MACROS_NAMES vector with all the options that exist
 	if (GPUKernelCompilerOptions::ALL_MACROS_NAMES.size() != m_options_macro_map.size())
@@ -134,25 +140,24 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions(const GPUKernelCompilerOption
 	*this = other;
 }
 
-GPUKernelCompilerOptions GPUKernelCompilerOptions::operator=(const GPUKernelCompilerOptions& other)
+GPUKernelCompilerOptions& GPUKernelCompilerOptions::operator=(const GPUKernelCompilerOptions& other)
 {
-	GPUKernelCompilerOptions copy;
-	copy.clear();
+	this->clear();
 
-	copy.m_additional_include_directories = other.m_additional_include_directories;
+	m_additional_include_directories = other.m_additional_include_directories;
 	for (auto& pair : other.m_options_macro_map)
 		// Creating new shared ptr for the copy
-		copy.m_options_macro_map[pair.first] = std::make_shared<int>(*pair.second);
+		m_options_macro_map[pair.first] = pair.second;
 
 	for (auto& pair : other.m_custom_macro_map)
 		// Creating new shared ptr for the copy
-		copy.m_custom_macro_map[pair.first] = std::make_shared<int>(*pair.second);
+		m_custom_macro_map[pair.first] = pair.second;
 
-	m_additional_include_directories = copy.m_additional_include_directories;
-	m_options_macro_map = copy.m_options_macro_map;
-	m_custom_macro_map = copy.m_custom_macro_map;
+	m_additional_include_directories = m_additional_include_directories;
+	m_options_macro_map = m_options_macro_map;
+	m_custom_macro_map = m_custom_macro_map;
 
-	return copy;
+	return *this;
 }
 
 std::vector<std::string> GPUKernelCompilerOptions::get_all_macros_as_std_vector_string()

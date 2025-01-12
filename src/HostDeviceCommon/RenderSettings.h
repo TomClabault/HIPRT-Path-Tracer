@@ -71,7 +71,7 @@ struct HIPRTRenderSettings
 	// Number of samples rendered so far before the kernel call
 	// This is the sum of samples_per_frame for all frames
 	// that have been rendered.
-	int sample_number = 0;
+	unsigned int sample_number = 0;
 
 	// How many samples to compute per pixel per frame
 	// Higher values reduce CPU overhead since the GPU spends
@@ -79,7 +79,7 @@ struct HIPRTRenderSettings
 	int samples_per_frame = 1;
 	// Maximum number of bounces of rays in the scene. 
 	// 1 is direct light only.
-	int nb_bounces = 0;
+	int nb_bounces = 3;
 
 	bool use_russian_roulette = true;
 	// After how many bounces can russian roulette kick in?

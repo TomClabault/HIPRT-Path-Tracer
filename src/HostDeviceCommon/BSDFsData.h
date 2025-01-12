@@ -66,7 +66,7 @@ struct BRDFsData
 
 	GGXMaskingShadowingFlavor GGX_masking_shadowing = GGXMaskingShadowingFlavor::HeightCorrelated;
 
-	float energy_compensation_roughness_threshold = 0.0f;
+	float energy_compensation_roughness_threshold = 0.01f;
 };
 
 #endif

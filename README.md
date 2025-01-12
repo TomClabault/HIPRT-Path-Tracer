@@ -53,7 +53,8 @@ The Orochi library allows the loading of HIP and CUDA libraries at runtime meani
 	- Smith GGX Sampling:
 		- Visible Normal Distribution Function (VNDF) [\[Heitz, 2018\]](https://jcgt.org/published/0007/04/01/)
 		- Spherical caps VNDF Sampling [\[Dupuy, Benyoub, 2023\]](https://arxiv.org/abs/2306.05044)
-### Other rendering features:
+### Other rendering features
+- G-MoN - Adaptive median of means for unbiased firefly removal [\[Buisine et al., 2021\]](https://hal.science/hal-03201630v2)
 - Texture support for all the parameters of the BSDF
 - Texture alpha transparency support
 - Stochastic material opacity support

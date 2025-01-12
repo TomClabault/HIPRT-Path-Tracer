@@ -223,7 +223,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_many_lights(HIPRTRenderData& r
     return direct_light_contribution / render_data.render_settings.number_of_light_samples;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_ReSTIR_DI(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, int2 pixel_coords, int2 resolution, int bounce, MISBSDFRayReuse& mis_ray_reuse)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_ReSTIR_DI(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, int2 pixel_coords, int bounce, MISBSDFRayReuse& mis_ray_reuse)
 {
     // ReSTIR DI doesn't support explicitely looping to sample
     // multiple lights per shading point so that's why we don't
@@ -305,7 +305,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light(HIPRTRenderData& ren
     direct_light_contribution = sample_many_lights(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, mis_ray_reuse);
 
 #elif DirectLightSamplingStrategy == LSS_RESTIR_DI
-    direct_light_contribution = sample_one_light_ReSTIR_DI(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, pixel_coords, resolution, bounce, mis_ray_reuse);
+    direct_light_contribution = sample_one_light_ReSTIR_DI(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, pixel_coords, bounce, mis_ray_reuse);
 #endif
 #endif
 

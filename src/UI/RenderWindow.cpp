@@ -24,6 +24,7 @@ extern ImGuiLogger g_imgui_logger;
 
 // TODOs  performance improvements branch:
 // - cleanup declaration of HIPRT traversal in a macro or something
+// - hunt for integer divisions
 // - align buffers and benchmark with a copy kernel
 // - free the parsed scene from the CPU the free RAM
 // - add mis_reuse ray in envmap sampling
@@ -35,6 +36,7 @@ extern ImGuiLogger g_imgui_logger;
 // - we don't need ray volume states in the GBuffer, just the material index and we push that index on the ray volume stack in the path tracing kernel because that's the only thing that the camera ray kernel does anyway
 // - maybe have shaders without energy compensation? because this do be eating quite a lot of registers
 // - clearcoat layer is using torrance_sparrow_GGX_eval non-templated?
+// - when inside a dielectric volume, possible to check that a light is outside of the volume before shadow raying it? Using the bbox of the object
 // - MIS disabled after some number of bounces? not on glass though?
 // - let's do some ray reordering because in complex scenes and complex materials and without hardware RT; this may actually  be quite worth it
 //		- https://pdf.sciencedirectassets.com/280203/1-s2.0-S1877050923X00027/1-s2.0-S1877050923001461/main.pdf?X-Amz-Security-Token=IQoJb3JpZ2luX2VjEID%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCXVzLWVhc3QtMSJIMEYCIQCea63Slzkz01dECmkkPUcHdbOukYg0KdnbYgtCyJF2kwIhALmC4Jh0ngFQMHwFbGaEAJvBraIMYC%2BGLd%2FIHoBf7D8zKrMFCFgQBRoMMDU5MDAzNTQ2ODY1IgzGjZjuko2mqdtKby4qkAWIR%2FNf8UykyM9ZKNRXnZsubWVJ8UKDDisZHpjhkB62FQnhSvktLzOSKqPd9xOfcG5gFkxcGSI%2FY8f0Cp5jWYCmTjYVVKKtJFWVLYcuHJUMSwcfupSubTQdAaK4Lagx7w%2BszHZqJ1qU2rG6uAsjuO0kNbfaY8Us5tYsqQxFir8zg%2FJDfXbjWv9TSyVzv1IXVc1OZrWPuEuWvEtl0c0mpMjLK9Kfz0mmusKT6mqMwk7nZueZ%2FMHsmcDY%2Fn5bGBv9louD%2BtOhEeKVICMUfrLiS8ZejDbwmOCXyi%2FeC8BPfiAbwgIqMXXMKzp0jecWeHxqal3ahqnx%2FMb84x8sl4Gx4pn%2FO47FlYM73he95j6O6D3epyRSiYWLplGM9RyEeu6SbakLdnyi9Z5DO1r%2FrMJD3HmhhmygH4h58PnfwJKmO1eLUt5rN1ELNA2%2BLQfVjXnlYgYoc4KArBFNGFI1u%2F%2BkIVHepw89y740Nsiqe321N9UX8XGwU8kc6Kt%2F6gqXKUbBTARaYxTwbK%2BxejbO%2FUyZTeW4Ol9wjYfBhd9m1BIjoSdY2%2FpLfxlPLaiD%2BxyYiaYjmXsELnBp1IbnaGytuxTQ7ocg%2F6aRa9CkFoJG12iIrkGlAWs%2B2o0gOZ6MsbD%2Ff41hdJNaeFEUj6Zc%2BXB3RejOrbUnGk6whBzy%2FdaHQ2fXoIMXTq3QM9IJvslkR7Q5dhnV5%2F4eCi4uf98YSzAGuaA8hBiwYPGRQQLFpvVhSNGmpEBph0XxDmmz8XjIMyDx94%2B1CvIPH4QYPExlM6OQKgMl8Asp7ZTU0cw4geRo6oD9NcgVeuyx1es46mCel9999ZEj%2FHHvpWpjoUcr0AajF4DMNBnpO0O07zPsWUPw2BqXrAqlPzDayL67BjqwAaLP%2BzR9q02xsDVhGrAtctdReEO3SUPDRLiVTSUOC6dAHFEPk6xGnkbJnqkwIrYjR%2F9zrS2Y7suxfHCX8UNsslx%2F%2BIW%2B9jWVdyqb%2BLcFklp6lAWTfWABAkR8CAW6T5zFecRJS67zchixwF7FRbXNBjSVW%2FXn%2FPIxvm0mOnfo%2FTqL9ikfieeTnZUBrMtfmeX56hhHlW9zOuwbNBnUvYsOg2%2BbIjG%2BmbxTBEEnjqejrjBH&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20241228T073857Z&X-Amz-SignedHeaders=host&X-Amz-Expires=300&X-Amz-Credential=ASIAQ3PHCVTY6SK5SEZR%2F20241228%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Signature=32d929b47fb8023dadfe1b68b9355d6a74cb12351ee57ecf31dd3cc3555af16b&hash=4d537300954afb4ee93c48c6847eb362428f7f55a3cab2c003b35a41cb79f2bd&host=68042c943591013ac2b2430a89b270f6af2c76d8dfd086a07176afe7c76c2c61&pii=S1877050923001461&tid=spdf-be1a5827-9768-4994-a706-710ab5f42ff1&sid=ccc6a4ae181e204e24483cf05854d658d7acgxrqb&type=client&tsoh=d3d3LnNjaWVuY2VkaXJlY3QuY29t&ua=051d59005d0707570d&rr=8f8fe4cb7c71e242&cc=fr
@@ -317,8 +319,13 @@ RenderWindow::RenderWindow(int renderer_width, int renderer_height, std::shared_
 	init_gl(renderer_width, renderer_height);
 	ImGuiRenderer::init_imgui(m_glfw_window);
 
-	m_renderer = std::make_shared<GPURenderer>(hiprt_oro_ctx);
+	m_application_state = std::make_shared<ApplicationState>();
+	m_application_settings = std::make_shared<ApplicationSettings>();
+	m_renderer = std::make_shared<GPURenderer>(hiprt_oro_ctx, m_application_settings);
 	m_gpu_baker = std::make_shared<GPUBaker>(m_renderer);
+
+	// Disabling auto samples per frame is accumulation is OFF
+	m_application_settings->auto_sample_per_frame = m_renderer->get_render_settings().accumulate ? m_application_settings->auto_sample_per_frame : false;
 
 	ThreadManager::start_thread(ThreadManager::RENDER_WINDOW_RENDERER_INITIAL_RESIZE, [this, renderer_width, renderer_height]() {
 		m_renderer->resize(renderer_width, renderer_height, /* resize interop buffers */ false);
@@ -326,11 +333,6 @@ RenderWindow::RenderWindow(int renderer_width, int renderer_height, std::shared_
 	// We need to resize OpenGL interop buffers on the main thread becaues they
 	// need the OpenGL context which is only available to the main thread
 	m_renderer->resize_interop_buffers(renderer_width, renderer_height);
-
-	m_application_settings = std::make_shared<ApplicationSettings>();
-	// Disabling auto samples per frame is accumulation is OFF
-	m_application_settings->auto_sample_per_frame = m_renderer->get_render_settings().accumulate ? m_application_settings->auto_sample_per_frame : false;
-	m_application_state = std::make_shared<ApplicationState>();
 
 	ThreadManager::start_thread(ThreadManager::RENDER_WINDOW_CONSTRUCTOR, [this, renderer_width, renderer_height]() {
 		m_denoiser = std::make_shared<OpenImageDenoiser>();
@@ -650,7 +652,33 @@ bool RenderWindow::needs_viewport_refresh()
 	bool realtime_rendering = !m_renderer->get_render_settings().accumulate;
 	bool force_refresh = m_application_state->force_viewport_refresh;
 
-	return enough_time_has_passed || realtime_rendering || render_was_reset || force_refresh;
+	bool needs_refresh = enough_time_has_passed || realtime_rendering || render_was_reset || force_refresh;
+	if (!needs_refresh)
+		return false;
+
+	if (m_renderer->is_using_gmon())
+	{
+		// With GMoN however, we want to recompute the GMoN framebuffer with the new samples accumulated so far
+		// before refreshing the viewport
+
+		if (!needs_refresh)
+			// No need of 
+			return false;
+
+		if (m_renderer->get_gmon_render_pass().recomputation_completed())
+			// We requested a GMoN recomputation before and it is actually complete, we're ready to display
+			return true;
+		else
+		{
+			// So if we need a refresh, we're going to request a GMoN computation first
+			m_renderer->get_gmon_render_pass().request_recomputation();
+
+			return false;
+		}
+	}
+	else
+		// Not using GMoN
+		return needs_refresh;
 }
 
 float RenderWindow::get_viewport_refresh_delay_ms()
@@ -680,7 +708,7 @@ void RenderWindow::reset_render()
 	m_application_state->render_dirty = false;
 	m_application_state->frame_number = 0;
 
-	m_renderer->reset(m_application_settings);
+	m_renderer->reset();
 }
 
 void RenderWindow::set_render_dirty(bool render_dirty)
@@ -928,7 +956,7 @@ void RenderWindow::render()
 
 			m_application_state->frame_number++;
 			m_application_state->last_GPU_submit_time = current_timestamp;
-			m_renderer->update(delta_time_gpu);
+			m_renderer->pre_render_update(delta_time_gpu);
 			m_renderer->render();
 
 			buffer_upload_necessary = true;

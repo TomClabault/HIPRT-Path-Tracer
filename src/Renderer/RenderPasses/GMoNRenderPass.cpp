@@ -1,0 +1,231 @@
+/*
+ * Copyright 2024 Tom Clabault. GNU GPL3 license.
+ * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
+ */
+
+#include "GMoNRenderPass.h"
+#include "Threads/ThreadFunctions.h"
+#include "Threads/ThreadManager.h"
+
+GMoNRenderPass::GMoNRenderPass()
+{
+	m_compute_gmon_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/GMoN/GMoNComputeMedianOfMeans.h");
+	m_compute_gmon_kernel.set_kernel_function_name("GMoNComputeMedianOfMeans");
+}
+
+GMoNRenderPass::GMoNRenderPass(GPURenderer* renderer) : GMoNRenderPass() 
+{
+	m_renderer = renderer;
+
+	m_compute_gmon_kernel.synchronize_options_with(*renderer->get_global_compiler_options(), {});
+}
+
+void GMoNRenderPass::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx)
+{
+	if (!use_gmon())
+		return;
+
+	ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel_no_func_sets, std::ref(m_compute_gmon_kernel), hiprt_orochi_ctx);
+}
+
+void GMoNRenderPass::recompile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, bool silent, bool use_cache)
+{
+	if (!use_gmon())
+		return;
+
+	if (silent)
+		m_compute_gmon_kernel.compile_silent(hiprt_orochi_ctx, {}, use_cache);
+	else
+		m_compute_gmon_kernel.compile(hiprt_orochi_ctx, {}, use_cache);
+}
+
+void GMoNRenderPass::launch(std::shared_ptr<ApplicationSettings> application_settings)
+{
+	if (!use_gmon())
+		return;
+
+	unsigned int number_of_sets = m_compute_gmon_kernel.get_kernel_options().get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT);
+
+	// Adding +1 to sample_number here because this launch() function is called after the renderer has accumulated
+	// one more sample but before render_settings.sample_number is incremented
+	//
+	// We also want to update the viewport at sample 0 just so that we don't get a black viewport
+	// (that update at sample 0 isn't going to be a full GMoN computation, it's just going to be
+	// a copy of the current pixel color (which is only 1 sample accumuluated) to the framebuffer)
+	bool enough_samples_accumulated = (m_renderer->get_render_settings().sample_number + 1) % number_of_sets == 0;
+	bool sample_0 = m_renderer->get_render_settings().sample_number == 0;
+	bool last_sample_of_render = m_renderer->get_render_settings().sample_number == (application_settings->max_sample_count - 1);
+	bool recomputation_necessary = m_gmon.m_gmon_recomputation_requested || last_sample_of_render;
+	if ((enough_samples_accumulated || sample_0) && recomputation_necessary)
+	{
+		// If we have rendered enough samples that one more sample has been accumulated in each of the
+		// GMoN sets
+		int2 render_resolution = m_renderer->m_render_resolution;
+		void* launch_args[] = { &m_renderer->get_render_data() };
+
+		m_compute_gmon_kernel.launch_asynchronous(
+			GMoNComputeMeansKernelThreadBlockSize, GMoNComputeMeansKernelThreadBlockSize, render_resolution.x, render_resolution.y,
+			launch_args,
+			m_renderer->get_main_stream());
+
+		m_gmon.m_gmon_recomputed = true;
+		m_gmon.m_gmon_recomputation_requested = false;
+		m_gmon.last_recomputed_sample_count = m_renderer->get_render_settings().sample_number + 1;
+	}
+}
+
+void GMoNRenderPass::request_recomputation()
+{
+	m_gmon.m_gmon_recomputation_requested = true;
+}
+
+bool GMoNRenderPass::recomputation_completed()
+{
+	return m_gmon.m_gmon_recomputed;
+}
+
+bool GMoNRenderPass::recomputation_requested()
+{
+	return m_gmon.m_gmon_recomputation_requested;
+}
+
+unsigned int GMoNRenderPass::get_last_recomputed_sample_count()
+{
+	return m_gmon.last_recomputed_sample_count;
+}
+
+bool GMoNRenderPass::pre_render_update()
+{
+	int2 render_resolution = m_renderer->get_render_data().render_settings.render_resolution;
+
+	if (use_gmon())
+	{
+		unsigned int number_of_sets = m_compute_gmon_kernel.get_kernel_options().get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT);
+		if (m_gmon.current_resolution.x != render_resolution.x || m_gmon.current_resolution.y != render_resolution.y)
+		{
+			// Resizing the buffers because the resolution has changed
+			m_gmon.resize_sets(render_resolution.x, render_resolution.y, get_number_of_sets_used());
+			m_gmon.resize_interop(render_resolution.x, render_resolution.y);
+
+			m_renderer->get_render_data().buffers.gmon_estimator.next_set_to_accumulate = 0;
+
+			// Returning true to indicate that the render data buffers have been invalidated
+			return true;
+		}
+		else if (number_of_sets != m_gmon.current_number_of_sets)
+		{
+			// If the number of sets changed...
+
+			m_gmon.resize_sets(render_resolution.x, render_resolution.y, get_number_of_sets_used());
+			m_renderer->get_render_data().buffers.gmon_estimator.next_set_to_accumulate = 0;
+
+			return true;
+		}
+
+		// Resetting the flag because we're now rendering a new frame
+		m_gmon.m_gmon_recomputed = false;
+	}
+	else
+	{
+		m_gmon.free();
+
+		// Returning true to indicate that the render data buffers have been invalidated
+		return true;
+	}
+
+	return false;
+}
+
+void GMoNRenderPass::post_render_update()
+{
+	if (use_gmon())
+	{
+		HIPRTRenderData& render_data = m_renderer->get_render_data();
+
+		// Else, if we didn't resize the buffers meaning that GMoN isn't in a fresh state, we're going to increment the
+		// counter that indicates in which sets of GMoN to accumulate
+		render_data.buffers.gmon_estimator.next_set_to_accumulate++;
+		if (render_data.buffers.gmon_estimator.next_set_to_accumulate == m_compute_gmon_kernel.get_kernel_options().get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT))
+			render_data.buffers.gmon_estimator.next_set_to_accumulate = 0;
+	}
+}
+
+void GMoNRenderPass::reset()
+{
+	if (use_gmon())
+	{
+		m_renderer->get_render_data().buffers.gmon_estimator.next_set_to_accumulate = 0;
+
+		if (buffers_allocated())
+			m_gmon.sets.memset_whole_buffer(0);
+
+		// Requesting a computation on reset just so that we copy the very
+		// first sample to the framebuffer to avoid having a black viewport
+		// until the next GMoN recomputation
+		m_gmon.m_gmon_recomputation_requested = true;
+	}
+}
+
+std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GMoNRenderPass::get_result_framebuffer()
+{
+	return m_gmon.result_framebuffer;
+}
+
+ColorRGB32F* GMoNRenderPass::get_sets_buffers_device_pointer()
+{
+	return m_gmon.sets.get_device_pointer();
+}
+
+unsigned int GMoNRenderPass::get_number_of_sets_used()
+{
+	return m_compute_gmon_kernel.get_kernel_options().get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT);
+}
+
+void GMoNRenderPass::resize_interop_buffers(unsigned int new_width, unsigned int new_height)
+{
+	if (use_gmon())
+		m_gmon.result_framebuffer->resize(new_width * new_height);
+}
+
+void GMoNRenderPass::resize_non_interop_buffers(unsigned int new_width, unsigned int new_height)
+{
+	if (use_gmon())
+		m_gmon.resize_sets(new_width, new_height, get_number_of_sets_used());
+}
+
+ColorRGB32F* GMoNRenderPass::map_result_framebuffer()
+{
+	return m_gmon.map_result_framebuffer();
+}
+
+void GMoNRenderPass::unmap_result_framebuffer()
+{
+	if (use_gmon())
+		m_gmon.result_framebuffer->unmap();
+}
+
+bool GMoNRenderPass::buffers_allocated()
+{
+	return m_gmon.sets.get_device_pointer() != nullptr;
+}
+
+bool GMoNRenderPass::use_gmon() const
+{
+	bool gmon_enabled = m_gmon.use_gmon;
+	bool accumulation_enabled = m_renderer->get_render_settings().accumulate;
+
+	return gmon_enabled && accumulation_enabled;
+}
+
+GMoNGPUData& GMoNRenderPass::get_gmon_data()
+{
+	return m_gmon;
+}
+
+unsigned int GMoNRenderPass::get_VRAM_usage_bytes() const
+{
+	if (!use_gmon())
+		return 0;
+
+	return m_gmon.get_VRAM_usage_bytes();
+}

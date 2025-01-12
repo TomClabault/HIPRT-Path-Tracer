@@ -25,12 +25,10 @@
 // Note that the mapping is written to minimize shared memory bank conflicts
 //#define NESTED_DIELECTRICS_STACK_INDEX_SHIFT(index) ((blockDim.x * threadIdx.y + threadIdx.x) * NestedDielectricsStackSize + (index))
 #define NESTED_DIELECTRICS_STACK_INDEX_SHIFT(index) (index * KernelWorkgroupThreadCount + (blockDim.x * threadIdx.y + threadIdx.x))
-#define NESTED_DIELECTRICS_STACK_INDEX_SHIFT_DEBUG(x_i, y_i, index) (index * KernelWorkgroupThreadCount + (blockDim.x * y_i + x_i))
 #else
 // This macro is used to offset the index used to index the priority stack.
 // On the CPU, there is nothing to do, just use the given index, there is really nothing
 // specila. The special case is for the GPU, explained above the GPU macro definition
-#define NESTED_DIELECTRICS_STACK_INDEX_SHIFT_DEBUG(x_i, y_i, index) (index)
 #define NESTED_DIELECTRICS_STACK_INDEX_SHIFT(x) (x)
 #endif
 

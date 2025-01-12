@@ -48,7 +48,7 @@ const std::string GPURenderer::ALL_RENDER_PASSES_TIME_KEY = "FullFrameTime";
 const std::string GPURenderer::FULL_FRAME_TIME_WITH_CPU_KEY = "FullFrameTimeWithCPU";
 const std::string GPURenderer::DEBUG_KERNEL_TIME_KEY = "DebugKernelTime";
 
-GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
+GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx, std::shared_ptr<ApplicationSettings> application_settings)
 {
 	m_rng.m_state.seed = 42;
 
@@ -60,9 +60,11 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
 	m_denoiser_buffers.m_albedo_AOV_interop_buffer = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
 	m_denoiser_buffers.m_albedo_AOV_no_interop_buffer = std::make_shared<OrochiBuffer<ColorRGB32F>>();
 	m_pixels_converged_sample_count_buffer = std::make_shared<OrochiBuffer<int>>();
+	//m_gmon.result_framebuffer = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
 	
 	m_hiprt_orochi_ctx = hiprt_oro_ctx;	
 	m_device_properties = m_hiprt_orochi_ctx->device_properties;
+	m_application_settings = application_settings;
 
 	setup_brdfs_data();
 	setup_filter_functions();
@@ -76,7 +78,7 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
 
 	// Buffer that keeps track of whether at least one ray is still alive or not
 	m_status_buffers.still_one_ray_active_buffer.resize(1);
-	m_status_buffers.still_one_ray_active_buffer.memset(1);
+	m_status_buffers.still_one_ray_active_buffer.memset_whole_buffer(1);
 	m_status_buffers.pixels_converged_count_buffer.resize(1);
 
 	OROCHI_CHECK_ERROR(oroEventCreate(&m_frame_start_event));
@@ -186,13 +188,28 @@ void GPURenderer::reset_nee_plus_plus()
 	// Resetting the counters
 	if (m_nee_plus_plus.total_shadow_ray_queries.get_device_pointer() != nullptr)
 	{
-		m_nee_plus_plus.total_shadow_ray_queries.memset(1);
-		m_nee_plus_plus.shadow_rays_actually_traced.memset(1);
+		m_nee_plus_plus.total_shadow_ray_queries.memset_whole_buffer(1);
+		m_nee_plus_plus.shadow_rays_actually_traced.memset_whole_buffer(1);
 	}
 	m_nee_plus_plus.total_shadow_ray_queries_cpu = 1;
 	m_nee_plus_plus.shadow_rays_actually_traced_cpu = 1;
 
 	m_nee_plus_plus.milliseconds_before_finalizing_accumulation = NEEPlusPlusGPUData::FINALIZE_ACCUMULATION_START_TIMER;
+}
+
+void GPURenderer::reset_gmon()
+{
+	m_gmon_render_pass.reset();
+}
+
+bool GPURenderer::is_using_gmon()
+{
+	return m_gmon_render_pass.use_gmon() && m_render_data.render_settings.accumulate;
+}
+
+GMoNRenderPass& GPURenderer::get_gmon_render_pass()
+{
+	return m_gmon_render_pass;
 }
 
 NEEPlusPlusGPUData& GPURenderer::get_nee_plus_plus_data()
@@ -243,6 +260,10 @@ void GPURenderer::setup_kernels()
 		// We only need to compile the ReSTIR DI render pass if ReSTIR DI is actually being used
 		m_restir_di_render_pass.compile(m_hiprt_orochi_ctx, m_func_name_sets);
 
+	m_gmon_render_pass = GMoNRenderPass(this);
+	if (is_using_gmon())
+		m_gmon_render_pass.compile(m_hiprt_orochi_ctx);
+
 	// Configuring the kernel that will be used to retrieve the size of the RayVolumeState structure.
 	// This size will be needed to resize the 'ray_volume_states' buffer in the GBuffer if the nested dielectrics
 	// stack size changes
@@ -262,16 +283,17 @@ void GPURenderer::setup_kernels()
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID]), m_hiprt_orochi_ctx, std::ref(m_func_name_sets));
 }
 
-void GPURenderer::update(float delta_time)
+void GPURenderer::pre_render_update(float delta_time)
 {
 	step_animations(delta_time);
-	m_restir_di_render_pass.update();
+	m_restir_di_render_pass.pre_render_update();
 
-	internal_update_clear_device_status_buffers();
-	internal_update_prev_frame_g_buffer();
-	internal_update_adaptive_sampling_buffers();
-	internal_update_nee_plus_plus(delta_time);
-	internal_update_global_stack_buffer();
+	internal_pre_render_update_clear_device_status_buffers();
+	internal_pre_render_update_global_stack_buffer();
+	internal_pre_render_update_prev_frame_g_buffer();
+	internal_pre_render_update_adaptive_sampling_buffers();
+	internal_pre_render_update_nee_plus_plus(delta_time);
+	internal_pre_render_update_gmon();
 
 	update_render_data();
 
@@ -282,6 +304,30 @@ void GPURenderer::update(float delta_time)
 		m_render_data.render_settings.sample_number = 0;
 
 	m_updated = true;
+}
+
+void GPURenderer::post_render_update()
+{
+	internal_post_render_update_path_tracer();
+	internal_post_render_update_gmon();
+}
+
+void GPURenderer::internal_post_render_update_path_tracer()
+{
+	m_render_data.render_settings.sample_number++;
+	m_render_data.render_settings.denoiser_AOV_accumulation_counter++;
+
+	// We only reset once so after rendering a frame, we're sure that we don't need to reset anymore 
+	// so we're setting the flag to false (it will be set to true again if we need to reset the render
+	// again)
+	m_render_data.render_settings.need_to_reset = false;
+	m_render_data.nee_plus_plus.reset_visibility_map = false;
+	// If we had requested a temporal buffers clear, this has be done by this frame so we can
+	// now reset the flag
+	m_render_data.render_settings.restir_di_settings.temporal_pass.temporal_buffer_clear_requested = false;
+
+	// Saving the current frame camera to be the previous camera of the next frame
+	m_previous_frame_camera = m_camera;
 }
 
 void GPURenderer::step_animations(float delta_time)
@@ -296,7 +342,7 @@ void GPURenderer::download_status_buffers()
 	OROCHI_CHECK_ERROR(oroMemcpy(&m_status_buffers_values.pixel_converged_count, m_status_buffers.pixels_converged_count_buffer.get_device_pointer(), sizeof(unsigned int), oroMemcpyDeviceToHost));
 }
 
-void GPURenderer::internal_update_clear_device_status_buffers()
+void GPURenderer::internal_pre_render_update_clear_device_status_buffers()
 {
 	unsigned char false_data = false;
 	unsigned int zero_data = 0;
@@ -312,7 +358,7 @@ void GPURenderer::internal_clear_m_status_buffers()
 	m_status_buffers_values.pixel_converged_count = 0;
 }
 
-void GPURenderer::internal_update_prev_frame_g_buffer()
+void GPURenderer::internal_pre_render_update_prev_frame_g_buffer()
 {
 	if (m_render_data.render_settings.use_prev_frame_g_buffer(this))
 	{
@@ -340,7 +386,7 @@ void GPURenderer::internal_update_prev_frame_g_buffer()
 	}
 }
 
-void GPURenderer::internal_update_adaptive_sampling_buffers()
+void GPURenderer::internal_pre_render_update_adaptive_sampling_buffers()
 {
 	bool buffers_needed = m_render_data.render_settings.has_access_to_adaptive_sampling_buffers();
 
@@ -377,7 +423,7 @@ void GPURenderer::internal_update_adaptive_sampling_buffers()
 	}
 }
 
-void GPURenderer::internal_update_nee_plus_plus(float delta_time)
+void GPURenderer::internal_pre_render_update_nee_plus_plus(float delta_time)
 {
 	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_FALSE)
 	{
@@ -418,9 +464,9 @@ void GPURenderer::internal_update_nee_plus_plus(float delta_time)
 	if (m_render_data.nee_plus_plus.reset_visibility_map)
 	{
 		// Clearing the visibility map by memseting everything to 0
-		m_nee_plus_plus.packed_buffer.memset(0);
-		m_nee_plus_plus.total_shadow_ray_queries.memset(1);
-		m_nee_plus_plus.shadow_rays_actually_traced.memset(1);
+		m_nee_plus_plus.packed_buffer.memset_whole_buffer(0);
+		m_nee_plus_plus.total_shadow_ray_queries.memset_whole_buffer(1);
+		m_nee_plus_plus.shadow_rays_actually_traced.memset_whole_buffer(1);
 	}
 
 	if (m_render_data.render_settings.sample_number > m_nee_plus_plus.stop_update_samples)
@@ -450,7 +496,17 @@ void GPURenderer::internal_update_nee_plus_plus(float delta_time)
 	}
 }
 
-void GPURenderer::internal_update_global_stack_buffer()
+void GPURenderer::internal_pre_render_update_gmon()
+{
+	m_render_data_buffers_invalidated |= m_gmon_render_pass.pre_render_update();
+}
+
+void GPURenderer::internal_post_render_update_gmon()
+{
+	m_gmon_render_pass.post_render_update();
+}
+
+void GPURenderer::internal_pre_render_update_global_stack_buffer()
 {
 	if (needs_global_bvh_stack_buffer())
 	{
@@ -550,6 +606,8 @@ void GPURenderer::render_debug_kernel()
 	OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_main_stream, [](void* payload) {
 		*reinterpret_cast<bool*>(payload) = true;
 	}, &m_frame_rendered));
+
+	post_render_update();
 }
 
 void GPURenderer::render_path_tracing()
@@ -573,21 +631,9 @@ void GPURenderer::render_path_tracing()
 		launch_camera_rays();
 		launch_ReSTIR_DI();
 		launch_path_tracing();
+		launch_GMoN_kernel();
 
-		m_render_data.render_settings.sample_number++;
-		m_render_data.render_settings.denoiser_AOV_accumulation_counter++;
-
-		// We only reset once so after rendering a frame, we're sure that we don't need to reset anymore 
-		// so we're setting the flag to false (it will be set to true again if we need to reset the render
-		// again)
-		m_render_data.render_settings.need_to_reset = false;
-		m_render_data.nee_plus_plus.reset_visibility_map = false;
-		// If we had requested a temporal buffers clear, this has be done by this frame so we can
-		// now reset the flag
-		m_render_data.render_settings.restir_di_settings.temporal_pass.temporal_buffer_clear_requested = false;
-
-		// Saving the current frame camera to be the previous camera of the next frame
-		m_previous_frame_camera = m_camera;
+		post_render_update();
 	}
 
 	// Recording GPU frame time stop timestamp and computing the frame time
@@ -636,6 +682,11 @@ void GPURenderer::launch_path_tracing()
 	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
 }
 
+void GPURenderer::launch_GMoN_kernel()
+{
+	m_gmon_render_pass.launch(m_application_settings);
+}
+
 void GPURenderer::launch_debug_kernel()
 {
 	void* launch_args[] = { &m_render_data, &m_render_resolution };
@@ -676,6 +727,7 @@ void GPURenderer::resize(int new_width, int new_height, bool also_resize_interop
 		resize_interop_buffers(new_width, new_height);
 
 	m_g_buffer.resize(new_width * new_height, get_ray_volume_state_byte_size());
+	m_gmon_render_pass.resize_non_interop_buffers(new_width, new_height);
 
 	if (m_render_data.render_settings.use_prev_frame_g_buffer(this))
 		m_g_buffer_prev_frame.resize(new_width * new_height, get_ray_volume_state_byte_size());
@@ -712,11 +764,15 @@ void GPURenderer::resize_interop_buffers(int new_width, int new_height)
 
 	if (m_render_data.render_settings.has_access_to_adaptive_sampling_buffers())
 		m_pixels_converged_sample_count_buffer->resize(new_width * new_height);
+
+	m_gmon_render_pass.resize_interop_buffers(new_width, new_height);
 }
 
 void GPURenderer::map_buffers_for_render()
 {
-	m_render_data.buffers.pixels = m_framebuffer->map_no_error();
+	m_render_data.buffers.accumulated_ray_colors = m_framebuffer->map();
+	m_render_data.buffers.gmon_estimator.result_framebuffer = m_gmon_render_pass.map_result_framebuffer();
+
 	m_render_data.aux_buffers.denoiser_normals = m_denoiser_buffers.map_normals_buffer();
 	m_render_data.aux_buffers.denoiser_albedo = m_denoiser_buffers.map_albedo_buffer();
 	if (m_render_data.render_settings.has_access_to_adaptive_sampling_buffers())
@@ -726,15 +782,21 @@ void GPURenderer::map_buffers_for_render()
 void GPURenderer::unmap_buffers()
 {
 	m_framebuffer->unmap();
+	m_gmon_render_pass.unmap_result_framebuffer();
 	m_denoiser_buffers.unmap_normals_buffer();
 	m_denoiser_buffers.unmap_albedo_buffer();
-	//m_pixels_converged_sample_count_buffer->unmap();
 }
-
 
 void GPURenderer::set_use_denoiser_AOVs_interop_buffers(bool use_interop) { m_denoiser_buffers.set_use_interop_AOV_buffers(this, use_interop); }
 
-std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_color_interop_framebuffer() { return m_framebuffer; }
+std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_color_interop_framebuffer() 
+{ 
+	if (is_using_gmon() && m_gmon_render_pass.buffers_allocated())
+		return m_gmon_render_pass.get_result_framebuffer();
+	else
+		return m_framebuffer; 
+}
+
 std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_denoised_interop_framebuffer() { return m_denoiser_buffers.m_denoised_framebuffer;}
 std::shared_ptr<OpenGLInteropBuffer<float3>> GPURenderer::get_denoiser_normals_AOV_interop_buffer() 
 {
@@ -846,6 +908,7 @@ void GPURenderer::recompile_kernels(bool use_cache)
 	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI)
 		// We only need to compile the ReSTIR DI render pass if ReSTIR DI is actually being used
 		m_restir_di_render_pass.recompile(m_hiprt_orochi_ctx, m_func_name_sets, true, use_cache);
+	m_gmon_render_pass.recompile(m_hiprt_orochi_ctx, false, use_cache);
 
 	m_ray_volume_state_byte_size_kernel.compile_silent(m_hiprt_orochi_ctx, m_func_name_sets, use_cache);
 
@@ -1015,7 +1078,7 @@ std::map<std::string, GPUKernel*> GPURenderer::get_kernels()
 	for (auto& pair : m_kernels)
 		kernels[pair.first] = &pair.second;
 
-	for (auto& pair : m_restir_di_render_pass.m_kernels)
+	for (auto& pair : m_restir_di_render_pass.get_kernels())
 		kernels[pair.first] = &pair.second;
 
 	return kernels;
@@ -1118,7 +1181,7 @@ void GPURenderer::update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer
 		perf_metrics->add_value(GPURenderer::DEBUG_KERNEL_TIME_KEY, m_render_pass_times[GPURenderer::DEBUG_KERNEL_TIME_KEY]);
 }
 
-void GPURenderer::reset(std::shared_ptr<ApplicationSettings> application_settings)
+void GPURenderer::reset()
 {
 	if (m_render_data.render_settings.accumulate)
 	{
@@ -1129,7 +1192,7 @@ void GPURenderer::reset(std::shared_ptr<ApplicationSettings> application_setting
 
 		m_restir_di_render_pass.reset();
 	
-		if (application_settings->auto_sample_per_frame)
+		if (m_application_settings->auto_sample_per_frame)
 			m_render_data.render_settings.samples_per_frame = 1;
 	}
 
@@ -1138,6 +1201,7 @@ void GPURenderer::reset(std::shared_ptr<ApplicationSettings> application_setting
 	m_render_data.render_settings.need_to_reset = true;
 
 	reset_nee_plus_plus();
+	reset_gmon();
 
 	internal_clear_m_status_buffers();
 }
@@ -1204,6 +1268,8 @@ void GPURenderer::update_render_data()
 		m_render_data.nee_plus_plus.packed_buffers = reinterpret_cast<AtomicType<unsigned int>*>(m_nee_plus_plus.packed_buffer.get_device_pointer());
 		m_render_data.nee_plus_plus.shadow_rays_actually_traced = reinterpret_cast<AtomicType<unsigned int>*>(m_nee_plus_plus.shadow_rays_actually_traced.get_device_pointer());
 		m_render_data.nee_plus_plus.total_shadow_ray_queries = reinterpret_cast<AtomicType<unsigned int>*>(m_nee_plus_plus.total_shadow_ray_queries.get_device_pointer());
+
+		m_render_data.buffers.gmon_estimator.sets = m_gmon_render_pass.get_sets_buffers_device_pointer();
 
 		m_render_data_buffers_invalidated = false;
 	}

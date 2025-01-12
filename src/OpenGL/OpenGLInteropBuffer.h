@@ -32,22 +32,10 @@ public:
 	size_t get_byte_size() const;
 
 	/**
-	 * Makes the buffer accessible to HIP/CUDA
-	 * 
-	 * This functions prints an error in the terminal
-	 * if the buffer is already mapped because mapping
-	 * a buffer that is already mapped may be a sign
-	 * of something being wrong in the workflow of the
-	 * application
+	 * Makes the buffer accesible to HIP/CUDA and returns the HIP/CUDA pointer
+	 * to that buffer
 	 */
 	T* map();
-	/**
-	 * Makes the buffer accesible to HIP/CUDA and doesn't print an error
-	 * in the terminal if the buffer is already mapped. Can be used if you
-	 * know that the buffer can be mapped already when you call this function
-	 * but you just want to do nothing in that case and reuse the previously mapped pointer
-	 */
-	T* map_no_error();
 
 	/**
 	 * Makes the buffer accessible by OpenGL
@@ -154,34 +142,6 @@ size_t OpenGLInteropBuffer<T>::get_byte_size() const
 
 template <typename T>
 T* OpenGLInteropBuffer<T>::map()
-{
-	if (!m_initialized)
-	{
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Mapping a buffer that hasn't been initialized!");
-
-		Utils::debugbreak();
-
-		return nullptr;
-	}
-
-	if (m_mapped)
-	{
-		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Mapping a buffer that is already mapped. Did you forget to call unmap()?");
-
-		// Already mapped
-		return m_mapped_pointer;
-	}
-	
-	size_t byte_size;
-	OROCHI_CHECK_ERROR(oroGraphicsMapResources(1, reinterpret_cast<oroGraphicsResource_t*>(&m_buffer_resource), 0));
-	OROCHI_CHECK_ERROR(oroGraphicsResourceGetMappedPointer((void**)(&m_mapped_pointer), &byte_size, reinterpret_cast<oroGraphicsResource_t>(m_buffer_resource)));
-
-	m_mapped = true;
-	return m_mapped_pointer;
-}
-
-template <typename T>
-T* OpenGLInteropBuffer<T>::map_no_error()
 {
 	if (!m_initialized)
 	{

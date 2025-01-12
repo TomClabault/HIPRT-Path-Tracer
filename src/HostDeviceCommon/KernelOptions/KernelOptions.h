@@ -6,6 +6,7 @@
 #ifndef HOST_DEVICE_COMMON_KERNEL_OPTIONS_H
 #define HOST_DEVICE_COMMON_KERNEL_OPTIONS_H
 
+#include "HostDeviceCommon/KernelOptions/GMoNOptions.h"
 #include "HostDeviceCommon/KernelOptions/PrincipledBSDFKernelOptions.h"
 
 /**

@@ -73,11 +73,27 @@ void ImGuiSettingsWindow::draw_header()
 		ImGui::Text("Frame time (GPU): %.3fms", m_render_window_perf_metrics->get_current_value(GPURenderer::ALL_RENDER_PASSES_TIME_KEY));
 	ImGui::Text("%d samples | %.2f samples/s @ %dx%d", render_settings.sample_number, m_render_window->get_samples_per_second(), m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y);
 	float time_before_viewport_refresh_ms = m_render_window->get_time_ms_before_viewport_refresh();
-	if (m_render_window->get_viewport_refresh_delay_ms() > 0.0f && !m_render_window->is_rendering_done())
+	if (!m_render_window->is_rendering_done())
+	{
 		// Only displaying the refresh timer if we actually need to wait before refreshin'
 		// And also, not displaying that if the rendering is done
-		ImGui::Text("Viewport refresh in: %.3fs", std::max(0.0f, time_before_viewport_refresh_ms / 1000.0f));
+
+		float time_before_refresh_seconds = time_before_viewport_refresh_ms / 1000.0f;
+		if (time_before_refresh_seconds > 0.0f)
+			ImGui::Text("Viewport refresh in: %.3fs", time_before_refresh_seconds);
+		else
+		{
+			// Time is < 0.0f i.e. the timer has expired and we're waiting for a refresh
+			if (m_renderer->is_using_gmon() && m_renderer->get_gmon_render_pass().recomputation_requested())
+				// If we're waiting for GMoN, indicating it
+				ImGui::Text("Viewport refresh in: 0.000s --- Waiting for GMoN");
+			else
+				// If we're not waiting for GMoN, just clampign so that we don't display negative values
+				ImGui::Text("Viewport refresh in: %.3fs", std::max(0.0f, time_before_refresh_seconds));
+		}
+	}
 	else
+		// If the rendering is done, displaying 0.000s
 		ImGui::Text("Viewport refresh in: 0.000s");
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -243,6 +259,35 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 		{
 			if (ImGui::InputInt("Max Sample Count", &m_application_settings->max_sample_count))
 				m_application_settings->max_sample_count = std::max(m_application_settings->max_sample_count, 0);
+			if (m_renderer->is_using_gmon())
+			{
+				// Using GMoN
+
+				unsigned int number_of_sets = m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT);
+				if (m_application_settings->max_sample_count % number_of_sets != 0)
+				{
+					ImGui::TreePush("Number of samples not divisible GMoN tree");
+
+					// But the maximum number of samples isn't divisible by the number of sets
+					ImGui::Text("Warning: ");
+					std::string warning_text = "Currently using GMoN (\"Post-processing\" panel) but the number of "
+						"maximum samples entered here isn't divisible by the number of GMoN sets. This means that "
+						"what's displayed in the viewport will only be " 
+						+ std::to_string(std::max(1u, m_application_settings->max_sample_count / number_of_sets)) + " samples instead of "
+						+ std::to_string(m_application_settings->max_sample_count) + ".\n\n"
+						""
+						"You click the button to the right to round up the maximum number of samples to one that is "
+						"divisible by the number of GMoN sets (" 
+						+ std::to_string(m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT)) + ")";
+					ImGuiRenderer::show_help_marker(warning_text, ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+
+					ImGui::SameLine();
+					if (ImGui::Button("Round up"))
+						m_application_settings->max_sample_count = std::ceil(m_application_settings->max_sample_count / static_cast<float>(number_of_sets)) * number_of_sets;
+
+					ImGui::TreePop();
+				}
+			}
 
 			if (ImGui::InputFloat("Max Render Time (s)", &m_application_settings->max_render_time))
 				m_application_settings->max_render_time = std::max(m_application_settings->max_render_time, 0.0f);
@@ -376,7 +421,7 @@ void ImGuiSettingsWindow::draw_russian_roulette_options()
 	static bool min_depth_modified = false;
 	if (!min_depth_modified)
 		render_settings.russian_roulette_min_depth = std::min(5, render_settings.nb_bounces / 2);
-	if (ImGui::SliderInt("Russian Roulette Min Depth", &render_settings.russian_roulette_min_depth, 0, render_settings.nb_bounces + 1))
+	if (ImGui::SliderInt("RR Min Depth", &render_settings.russian_roulette_min_depth, 0, render_settings.nb_bounces + 1))
 	{
 		m_render_window->set_render_dirty(true);
 		min_depth_modified = true;
@@ -385,7 +430,7 @@ void ImGuiSettingsWindow::draw_russian_roulette_options()
 									"For example, 0 means that the camera ray hits, and then the next bounce "
 									"is already susceptible to russian roulette kill. 1 would mean that the first "
 									"bounce is never going to be cutoff by the russian roulette.");
-	if (ImGui::SliderFloat("Russian Roulette Throughput Clamp", &render_settings.russian_roulette_throughput_clamp, 1.0f, 20.0f))
+	if (ImGui::SliderFloat("RR Throughput Clamp", &render_settings.russian_roulette_throughput_clamp, 1.0f, 20.0f))
 		m_render_window->set_render_dirty(true);
 	ImGuiRenderer::show_help_marker("After applying russian roulette (dividing by the continuation probability) "
 									"the energy added to the ray throughput is clamped to this maximum value.\n"
@@ -1456,7 +1501,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				break;
 			}
 
-			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) != LSS_BSDF)
+			if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) != LSS_BSDF && global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) != LSS_NO_DIRECT_LIGHT_SAMPLING)
 			{
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
@@ -2088,16 +2133,92 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 		return;
 	ImGui::TreePush("Post-processing tree");
 
-	DisplaySettings& display_settings = m_render_window->get_display_view_system()->get_display_settings();
-	bool changed = false;
-	changed |= ImGui::Checkbox("Do tonemapping", &display_settings.do_tonemapping);
-	changed |= ImGui::InputFloat("Gamma", &display_settings.tone_mapping_gamma);
-	changed |= ImGui::InputFloat("Exposure", &display_settings.tone_mapping_exposure);
-	if (changed)
-		m_render_window->set_force_viewport_refresh(true);
+	HIPRTRenderData& render_data = m_renderer->get_render_data();
+
+	if (ImGui::CollapsingHeader("Tone-mapping"))
+	{
+		ImGui::TreePush("Tonemapping post processing tree");
+
+		DisplaySettings& display_settings = m_render_window->get_display_view_system()->get_display_settings();
+
+		bool changed = false;
+		changed |= ImGui::Checkbox("Do tonemapping", &display_settings.do_tonemapping);
+		changed |= ImGui::InputFloat("Gamma", &display_settings.tone_mapping_gamma);
+		changed |= ImGui::InputFloat("Exposure", &display_settings.tone_mapping_exposure);
+		if (changed)
+			m_render_window->set_force_viewport_refresh(true);
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::TreePop();
+	}
+
+	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
+	if (ImGui::CollapsingHeader("GMoN"))
+	{
+		ImGui::TreePush("GMoN tree post processing");
+
+		if (ImGui::Checkbox("Use GMoN", &m_renderer->get_gmon_render_pass().get_gmon_data().use_gmon))
+			m_render_window->set_render_dirty(true);
+		ImGuiRenderer::show_help_marker("Use GMoN for fireflies elimination.\n"
+			"The algorithm computes the median of means of the pixels as an estimator "
+			"that is more robust than the simple mean usually used to average samples.\n"
+			"The algorithm is unbiased as long as enough samples are accumulated. If not "
+			"enough samples are accumulated, the firefly elimination tends to be a bit too "
+			"strong and the image will probably end up darker than expected, especially on high-variance scenes.\n\n"
+			""
+			"Implementation following [Firefly removal in Monte Carlo rendering with adaptive Median of meaNs, Buisine et al., 2021]");
+
+		if (m_renderer->get_gmon_render_pass().get_gmon_data().use_gmon)
+		{
+			ImGui::Text("VRAM Usage: %.3fMB", m_renderer->get_gmon_render_pass().get_VRAM_usage_bytes() / 1000000.0f);
+
+			bool gmon_mode_changed = false;
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			ImGui::Text("GMoN Mode");
+			gmon_mode_changed |= ImGui::RadioButton("Median of Means", ((int*)&render_data.buffers.gmon_estimator.gmon_mode), 0); ImGui::SameLine();
+			gmon_mode_changed |= ImGui::RadioButton("Binary G-MoN", ((int*)&render_data.buffers.gmon_estimator.gmon_mode), 1); ImGui::SameLine();
+			gmon_mode_changed |= ImGui::RadioButton("Adaptive G-MoN", ((int*)&render_data.buffers.gmon_estimator.gmon_mode), 2);
+			if (gmon_mode_changed)
+				m_render_window->set_render_dirty(true);
+
+			static int number_of_sets = GMoNMSetsCount;
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			if (ImGui::SliderInt("Number of sets M", &number_of_sets, 3, 31))
+			{
+				number_of_sets = hippt::clamp(3, 31, number_of_sets);
+
+				if (!(number_of_sets & 1))
+					// number_of_sets is even but we only want odd
+					number_of_sets--;
+			}
+			ImGuiRenderer::show_help_marker("How many sets (M variable in the GMoN paper, [Buisine et al., 2021]).\n\n"
+				""
+				"As a general rule: more sets eliminate fireflies the best but more sets require more samples per "
+				"pixel to avoid too much darkening, especially on high-variance scene. If your scene is very "
+				"easy to render, you probably don't need many sets (less than 15). If your scene has high "
+				"variance caustics, you're probably going to need a lot of samples per pixel and so a large "
+				"number of sets will be fine anyways.\n"
+				"Said otherwise: if you're noticing too much darkening, try reducing the number of sets or "
+				"try accumulating more samples per pixel.");
+
+			// If the user modified the number of sets, displaying an "Apply" button
+			if (number_of_sets != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT))
+			{
+				ImGui::SameLine();
+				if (ImGui::Button("Apply"))
+				{
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT, number_of_sets);
+
+					m_renderer->recompile_kernels();
+					m_render_window->set_render_dirty(true);
+				}
+			}
+		}
+
+		ImGui::TreePop();
+	}
 
 	ImGui::TreePop();
-	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 }
 
 void ImGuiSettingsWindow::draw_performance_settings_panel()
