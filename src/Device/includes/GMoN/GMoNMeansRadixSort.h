@@ -59,6 +59,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void gmon_means_radix_sort(ColorRGB32F* gmon_sets
 
 #else
 
+#include <iomanip>
+
 HIPRT_HOST_DEVICE HIPRT_INLINE std::vector<unsigned int> gmon_means_radix_sort(ColorRGB32F* gmon_sets, uint32_t pixel_index, unsigned int sample_number, int2 render_resolution)
 {
 	std::vector<unsigned int> keys_vector(GMON_M_SETS_COUNT);
@@ -70,10 +72,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE std::vector<unsigned int> gmon_means_radix_sort(C
 	// Loading in the keys vectors
 	for (int i = 0; i < GMON_M_SETS_COUNT; i++)
 	{
+		//std::cout << std::fixed << std::setprecision(10) << "[" << gmon_sets[i * render_resolution.x * render_resolution.y + pixel_index] << "], ";
 		float mean = gmon_sets[i * render_resolution.x * render_resolution.y + pixel_index].luminance() / (sample_number / GMON_M_SETS_COUNT);
+		//std::cout << std::fixed << std::setprecision(10) <<  mean << std::endl;
 
 		keys[i] = *reinterpret_cast<unsigned int*>(&mean);
 	}
+	//std::cout << std::endl;
 
 	for (int digit = 0; digit < GMON_NB_KEYS_DIGITS; digit++)
 	{

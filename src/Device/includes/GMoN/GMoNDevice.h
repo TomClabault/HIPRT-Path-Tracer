@@ -59,12 +59,13 @@ private:
 
         // The median is in the middle of the vector
         float median_float = *reinterpret_cast<float*>(&median);
+        unsigned int sample_scaling = sample_number / (GMON_M_SETS_COUNT);
 
         // Now finding what color had that median
         for (int i = 0; i < GMON_M_SETS_COUNT; i++)
         {
             ColorRGB32F color = gmon_sets[render_resolution.x * render_resolution.y * i + pixel_index];
-            if (color.luminance() == median_float)
+            if (color.luminance() / sample_scaling == median_float)
                 return color;
         }
 
