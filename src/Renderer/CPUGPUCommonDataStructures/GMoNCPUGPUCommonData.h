@@ -15,7 +15,7 @@ struct GMoNCPUGPUCommonData
 
 	int2 current_resolution = make_int2(1280, 720);
 
-	unsigned int number_of_sets = GMON_M_SETS_COUNT;
+	unsigned int number_of_sets = GMoNMSetsCount;
 };
 
 #endif

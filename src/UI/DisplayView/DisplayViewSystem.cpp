@@ -216,7 +216,29 @@ void DisplayViewSystem::update_display_program_uniforms(const DisplayViewSystem*
 	{
 		int sample_number;
 		if (application_settings->enable_denoising && application_settings->last_denoised_sample_count != -1)
+			// If we have denoising enabled, the viewport may not be updated at each frame.
+			// This means that we may be displaying the same denoised buffer for multiple frame
+			// and that same denoised buffer is only going to have a given amount of samples accumulated
+			// in it so we must you that number of samples for displaying otherwise things are going
+			// to be too dark because we're going to be dividing the data of the denoised buffer by a
+			// sample count that doesn't match
 			sample_number = application_settings->last_denoised_sample_count;
+		else if (renderer->is_using_gmon())
+		{
+			unsigned int number_of_sets = renderer->get_gmon_kernel_options().get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT);
+
+			// When using GMoN, the viewport is only refreshed once every set has accumulated another sample
+			// This means that the viewport is only refreshed every GMON_M_SETS_COUNT samples
+			//
+			// In between, the viewport is still going to display the old GMoN buffer so we're going to
+			// have to use the old number of samples
+			//
+			// For example, if GMON_M_SETS_COUNT = 5 and the renderer is at sample 7, then GMoN hasn't
+			// recomputed the median of means yet (it will be recomputed at sample 10) and so we're are still
+			// displaying the framebuffer that contains 5 samples so that's the amount of samples that we're going to
+			// need for displaying correctly
+			sample_number = render_settings.sample_number / number_of_sets;
+		}
 		else
 			sample_number = render_settings.sample_number;
 

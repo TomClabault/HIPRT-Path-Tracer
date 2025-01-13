@@ -6,8 +6,26 @@
 #ifndef HOST_DEVICE_COMMON_KERNEL_OPTIONS_GMON_OPTIONS_H
 #define HOST_DEVICE_COMMON_KERNEL_OPTIONS_GMON_OPTIONS_H
 
-#define GMON_MEANS_RADIX_SORT_KERNEL_BLOCK_SIZE 8
-#define GMON_M_SETS_COUNT 5
-#define GMON_NB_KEYS_DIGITS 32
+/**
+ * Kernel options for the implementation of GMoN
+ * 
+ * Reference:
+ * [1] [Firefly removal in Monte Carlo rendering with adaptive Median of meaNs, Buisine et al., 2021]
+ */
+
+/**
+ * Thread block size dispatched when computing the G-Median of Means per each pixel
+ */
+#define GMoNComputeMeansKernelThreadBlockSize 8
+
+/**
+ * How many sets to use for GMoN. M variable in the paper
+ */
+#define GMoNMSetsCount 5
+
+/**
+ * How many bits to use to sort the means with a radix sort
+ */
+#define GMoNKeysNbDigitsForRadixSort 32
 
 #endif

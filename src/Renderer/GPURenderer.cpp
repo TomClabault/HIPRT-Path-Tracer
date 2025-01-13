@@ -201,6 +201,16 @@ void GPURenderer::reset_gmon()
 	m_render_data.buffers.gmon_estimator.next_set_to_accumulate = 0;
 }
 
+bool GPURenderer::is_using_gmon()
+{
+	return m_gmon_render_pass.use_gmon();
+}
+
+GPUKernelCompilerOptions& GPURenderer::get_gmon_kernel_options()
+{
+	return m_gmon_render_pass.get_gmon_kernel_options();
+}
+
 NEEPlusPlusGPUData& GPURenderer::get_nee_plus_plus_data()
 {
 	return m_nee_plus_plus;
@@ -248,6 +258,10 @@ void GPURenderer::setup_kernels()
 	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI)
 		// We only need to compile the ReSTIR DI render pass if ReSTIR DI is actually being used
 		m_restir_di_render_pass.compile(m_hiprt_orochi_ctx, m_func_name_sets);
+
+	m_gmon_render_pass = GMoNRenderPass(this);
+	if (m_gmon_render_pass.use_gmon())
+		m_gmon_render_pass.compile(m_hiprt_orochi_ctx);
 
 	// Configuring the kernel that will be used to retrieve the size of the RayVolumeState structure.
 	// This size will be needed to resize the 'ray_volume_states' buffer in the GBuffer if the nested dielectrics
@@ -585,6 +599,7 @@ void GPURenderer::render_path_tracing()
 		launch_camera_rays();
 		launch_ReSTIR_DI();
 		launch_path_tracing();
+		launch_GMoN_kernel();
 
 		m_render_data.render_settings.sample_number++;
 		m_render_data.render_settings.denoiser_AOV_accumulation_counter++;
@@ -646,6 +661,11 @@ void GPURenderer::launch_path_tracing()
 
 	m_render_data.random_seed = m_rng.xorshift32();
 	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
+}
+
+void GPURenderer::launch_GMoN_kernel()
+{
+	m_gmon_render_pass.launch();
 }
 
 void GPURenderer::launch_debug_kernel()
@@ -871,6 +891,7 @@ void GPURenderer::recompile_kernels(bool use_cache)
 	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI)
 		// We only need to compile the ReSTIR DI render pass if ReSTIR DI is actually being used
 		m_restir_di_render_pass.recompile(m_hiprt_orochi_ctx, m_func_name_sets, true, use_cache);
+	m_gmon_render_pass.recompile(m_hiprt_orochi_ctx, true, use_cache);
 
 	m_ray_volume_state_byte_size_kernel.compile_silent(m_hiprt_orochi_ctx, m_func_name_sets, use_cache);
 

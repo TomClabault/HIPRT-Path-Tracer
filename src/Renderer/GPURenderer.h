@@ -120,6 +120,18 @@ public:
 	 * Resets the state of GMoN
 	 */
 	void reset_gmon();
+	/**
+	 * Whether or not the renderer is currently using GMoN
+	 */
+	bool is_using_gmon();
+	/**
+	 * Returns the kernel options used by the kernel that periodically computes the
+	 * G-Median of Means.
+	 * 
+	 * These options can be modified (the number of sets used by GMoN most probably)
+	 * and then the GMoN render pass recompiled 
+	 */
+	GPUKernelCompilerOptions& get_gmon_kernel_options();
 
 	NEEPlusPlusGPUData& get_nee_plus_plus_data();
 
@@ -394,6 +406,7 @@ private:
 	void launch_camera_rays();
 	void launch_ReSTIR_DI();
 	void launch_path_tracing();
+	void launch_GMoN_kernel();
 	void launch_debug_kernel();
 
 	/**

@@ -190,7 +190,7 @@ void CPURenderer::gmon_check_for_sets_accumulation()
     {
         m_render_data.buffers.gmon_estimator.next_set_to_accumulate++;
 
-        if (m_render_data.buffers.gmon_estimator.next_set_to_accumulate % GMON_M_SETS_COUNT == 0)
+        if (m_render_data.buffers.gmon_estimator.next_set_to_accumulate % GMoNMSetsCount == 0)
         {
             // We've added 1 sample to each sets of GMoN so we can compute the median of means
             gmon_compute_median_of_means();

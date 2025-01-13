@@ -6,13 +6,22 @@
 #ifndef RENDERER_GMON_RENDER_PASS_H
 #define RENDERER_GMON_RENDER_PASS_H
 
+#include "Compiler/GPUKernel.h"
+#include "HIPRT-Orochi/HIPRTOrochiCtx.h"
 #include "HostDeviceCommon/RenderData.h"
 #include "Renderer/GPUDataStructures/GMoNGPUData.h"
 
 class GMoNRenderPass
 {
 public:
-	bool use_gmon();
+	GMoNRenderPass();
+	GMoNRenderPass(GPURenderer* renderer);
+
+	void compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx);
+	void recompile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, bool silent, bool use_cache);
+	GPUKernelCompilerOptions& get_gmon_kernel_options();
+
+	void launch();
 
 	bool update(HIPRTRenderData& render_data);
 
@@ -25,9 +34,15 @@ public:
 	ColorRGB32F* map_result_framebuffer();
 	void unmap_result_framebuffer();
 
+	bool use_gmon();
+
 private:
+	GPURenderer* m_renderer;
+
 	// Data for the GMoN estimator
 	GMoNGPUData m_gmon;
+
+	GPUKernel m_compute_gmon_kernel;
 };
 
 #endif

@@ -28,22 +28,22 @@ struct GMoNDevice
     HIPRT_HOST_DEVICE ColorRGB32F gmon_compute_median_of_means(ColorRGB32F* gmon_sets, uint32_t pixel_index, unsigned int sample_number, int2 render_resolution) const
     {
 #ifdef __KERNELCC__
-        unsigned int median = scratch_memory[SCRATCH_MEMORY_INDEX(0, GMON_M_SETS_COUNT / 2)];
+        unsigned int median = scratch_memory[SCRATCH_MEMORY_INDEX(0, GMoNMSetsCount / 2)];
 #else
         std::vector<unsigned int> sorted_means = gmon_means_radix_sort(gmon_sets, pixel_index, sample_number, render_resolution);
-        unsigned int median = sorted_means[GMON_M_SETS_COUNT / 2];
+        unsigned int median = sorted_means[GMoNMSetsCount / 2];
 #endif
 
         // The median is in the middle of the vector
         float median_float = *reinterpret_cast<float*>(&median);
-        unsigned int sample_scaling = sample_number / (GMON_M_SETS_COUNT);
+        unsigned int sample_scaling = sample_number / (GMoNMSetsCount);
 
         // Now finding what color had that median
-        for (int i = 0; i < GMON_M_SETS_COUNT; i++)
+        for (int i = 0; i < GMoNMSetsCount; i++)
         {
             ColorRGB32F color = gmon_sets[render_resolution.x * render_resolution.y * i + pixel_index];
             if (color.luminance() / sample_scaling == median_float)
-                return color * GMON_M_SETS_COUNT;
+                return color * GMoNMSetsCount;
         }
 
         // We should never be here, this would mean that the median found in the means sets wasnt in the sets in the first place
