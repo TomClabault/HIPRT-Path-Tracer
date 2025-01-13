@@ -69,11 +69,17 @@ HIPRT_HOST_DEVICE HIPRT_INLINE std::vector<unsigned int> gmon_means_radix_sort(C
 	unsigned int* keys = keys_vector.data();
 	unsigned int* scratch_memory = scratch_memory_vector.data();
 
-	// Loading in the keys vectors
+	// samples_per_set is an integer because we're only getting in this part of the codebase when GMoN has
+	// accumulated one more sample per set i.e. when the number of samples rendered by the renderer so far
+	// is a multiple of GMON_M_SETS_COUNT
+	unsigned int samples_per_set = sample_number / GMON_M_SETS_COUNT;
+
+	// Loading the means in the keys vectors
 	for (int i = 0; i < GMON_M_SETS_COUNT; i++)
 	{
 		//std::cout << std::fixed << std::setprecision(10) << "[" << gmon_sets[i * render_resolution.x * render_resolution.y + pixel_index] << "], ";
-		float mean = gmon_sets[i * render_resolution.x * render_resolution.y + pixel_index].luminance() / (sample_number / GMON_M_SETS_COUNT);
+		
+		float mean = gmon_sets[i * render_resolution.x * render_resolution.y + pixel_index].luminance() / samples_per_set;
 		//std::cout << std::fixed << std::setprecision(10) <<  mean << std::endl;
 
 		keys[i] = *reinterpret_cast<unsigned int*>(&mean);

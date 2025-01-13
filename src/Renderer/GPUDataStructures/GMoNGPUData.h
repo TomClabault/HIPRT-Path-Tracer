@@ -20,14 +20,21 @@
  */
 struct GMoNGPUData : public GMoNCPUGPUCommonData
 {
-	void resize(unsigned int render_width, unsigned int render_height)
+	GMoNGPUData()
+	{
+		result_framebuffer = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
+	}
+
+	void resize_sets(unsigned int render_width, unsigned int render_height)
 	{
 		sets.resize(render_width * render_height * number_of_sets);
 
-		result_framebuffer = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
-		result_framebuffer->resize(render_width * render_height);
-
 		current_resolution = make_int2(render_width, render_height);
+	}
+
+	void resize_interop(unsigned int new_width, unsigned int new_height)
+	{
+		result_framebuffer->resize(new_width * new_height);
 	}
 
 	void free()

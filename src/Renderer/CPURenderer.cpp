@@ -41,8 +41,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 456
-#define DEBUG_PIXEL_Y 428
+#define DEBUG_PIXEL_X 457
+#define DEBUG_PIXEL_Y 525
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -775,7 +775,7 @@ void CPURenderer::gmon_compute_median_of_means()
 
 void CPURenderer::tonemap(float gamma, float exposure)
 {
-    ColorRGB32F* framebuffer_data = m_framebuffer.get_data_as_ColorRGB32F();
+    ColorRGB32F* framebuffer_data = get_framebuffer().get_data_as_ColorRGB32F();
 
 #if DEBUG_PIXEL == 0
 #pragma omp parallel for schedule(dynamic)
@@ -787,6 +787,8 @@ void CPURenderer::tonemap(float gamma, float exposure)
             int index = x + y * m_resolution.x;
 
             ColorRGB32F hdr_color = framebuffer_data[index];
+            /*if (!hdr_color.is_black())
+                std::cout << "here";*/
 
             if (m_render_data.render_settings.accumulate)
                 // Scaling by sample count

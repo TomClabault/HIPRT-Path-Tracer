@@ -18,36 +18,13 @@
 struct GMoNDevice
 {
     /**
-     * Computes the median of means over the sets and stores the 
-     * result in the 'result_framebuffer' buffer. The result will 
-     * be stored scaled by the number of samples rendered by the 
-     * path tracer so far such that dividing the 'result_framebuffer' 
-     * buffer by the number of samples yields the correct color for 
+     * Computes the median of means over the sets and stores the
+     * result in the 'result_framebuffer' buffer. The result will
+     * be stored scaled by the number of samples rendered by the
+     * path tracer so far such that dividing the 'result_framebuffer'
+     * buffer by the number of samples yields the correct color for
      * displaying in the viewport
      */
-    HIPRT_HOST_DEVICE void compute_gmon(ColorRGB32F* gmon_sets, ColorRGB32F* out_gmon_framebuffer, uint32_t pixel_index, unsigned int sample_number, int2 render_resolution) const
-    {
-        ColorRGB32F gmon_median_of_means = gmon_compute_median_of_means(gmon_sets, pixel_index, sample_number, render_resolution);
-
-        out_gmon_framebuffer[pixel_index] = gmon_median_of_means;
-    }
-
-    // This is one very big buffer that contains all the sets we accumulate into for GMoN
-    //
-    // For example, for GMoNCPUGPUCommonData::number_of_sets == 5 and a render resoltuion of 1280x720,
-    // this is going to be a buffer that is 1280*720*5 elements long
-    ColorRGB32F* sets = nullptr;
-
-    // This is the buffer that contains the G-median of means result of each pixel and this is going
-    // to be displayed in the viewport instead of the regular framebuffer if GMoN is being used
-    ColorRGB32F* result_framebuffer = nullptr;
-
-    // Which is the next set that is going to receive the sample
-    unsigned int next_set_to_accumulate = 0;
-
-    unsigned int number_of_sets = 5;
-
-private:
     HIPRT_HOST_DEVICE ColorRGB32F gmon_compute_median_of_means(ColorRGB32F* gmon_sets, uint32_t pixel_index, unsigned int sample_number, int2 render_resolution) const
     {
 #ifdef __KERNELCC__
@@ -66,12 +43,27 @@ private:
         {
             ColorRGB32F color = gmon_sets[render_resolution.x * render_resolution.y * i + pixel_index];
             if (color.luminance() / sample_scaling == median_float)
-                return color;
+                return color * GMON_M_SETS_COUNT;
         }
 
         // We should never be here, this would mean that the median found in the means sets wasnt in the sets in the first place
         return ColorRGB32F(0.0f);
     }
+
+    // This is one very big buffer that contains all the sets we accumulate into for GMoN
+    //
+    // For example, for GMoNCPUGPUCommonData::number_of_sets == 5 and a render resoltuion of 1280x720,
+    // this is going to be a buffer that is 1280*720*5 elements long
+    ColorRGB32F* sets = nullptr;
+
+    // This is the buffer that contains the G-median of means result of each pixel and this is going
+    // to be displayed in the viewport instead of the regular framebuffer if GMoN is being used
+    ColorRGB32F* result_framebuffer = nullptr;
+
+    // Which is the next set that is going to receive the sample
+    unsigned int next_set_to_accumulate = 0;
+
+    unsigned int number_of_sets = 5;
 };
 
 #endif

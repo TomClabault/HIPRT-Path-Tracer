@@ -60,6 +60,7 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
 	m_denoiser_buffers.m_albedo_AOV_interop_buffer = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
 	m_denoiser_buffers.m_albedo_AOV_no_interop_buffer = std::make_shared<OrochiBuffer<ColorRGB32F>>();
 	m_pixels_converged_sample_count_buffer = std::make_shared<OrochiBuffer<int>>();
+	//m_gmon.result_framebuffer = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
 	
 	m_hiprt_orochi_ctx = hiprt_oro_ctx;	
 	m_device_properties = m_hiprt_orochi_ctx->device_properties;
@@ -462,7 +463,8 @@ void GPURenderer::internal_update_gmon()
 	{
 		if (m_gmon.current_resolution.x != m_render_resolution.x || m_gmon.current_resolution.y != m_render_resolution.y)
 		{
-			m_gmon.resize(m_render_resolution.x, m_render_resolution.y);
+			m_gmon.resize_sets(m_render_resolution.x, m_render_resolution.y);
+			m_gmon.resize_interop(m_render_resolution.x, m_render_resolution.y);
 			m_render_data.buffers.gmon_estimator.next_set_to_accumulate = 0;
 
 			m_render_data_buffers_invalidated = true;
@@ -709,7 +711,7 @@ void GPURenderer::resize(int new_width, int new_height, bool also_resize_interop
 
 	m_g_buffer.resize(new_width * new_height, get_ray_volume_state_byte_size());
 	if (m_gmon.use_gmon)
-		m_gmon.resize(new_width, new_height);
+		m_gmon.resize_sets(new_width, new_height);
 
 	if (m_render_data.render_settings.use_prev_frame_g_buffer(this))
 		m_g_buffer_prev_frame.resize(new_width * new_height, get_ray_volume_state_byte_size());
@@ -746,6 +748,9 @@ void GPURenderer::resize_interop_buffers(int new_width, int new_height)
 
 	if (m_render_data.render_settings.has_access_to_adaptive_sampling_buffers())
 		m_pixels_converged_sample_count_buffer->resize(new_width * new_height);
+
+	if (m_gmon.use_gmon)
+		m_gmon.resize_interop(new_width, new_height);
 }
 
 void GPURenderer::map_buffers_for_render()
@@ -762,6 +767,7 @@ void GPURenderer::map_buffers_for_render()
 void GPURenderer::unmap_buffers()
 {
 	get_color_interop_framebuffer()->unmap();
+	m_denoiser_buffers.m_denoised_framebuffer->unmap();
 	m_denoiser_buffers.unmap_normals_buffer();
 	m_denoiser_buffers.unmap_albedo_buffer();
 }

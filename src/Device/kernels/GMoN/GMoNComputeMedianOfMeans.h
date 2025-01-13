@@ -24,7 +24,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GMoNComputeMedianOfMeans(HIPRTRenderData re
 
     uint32_t pixel_index = x + y * render_data.render_settings.render_resolution.x;
 
-    render_data.buffers.gmon_estimator.compute_gmon(render_data.buffers.gmon_estimator.sets, render_data.buffers.gmon_estimator.result_framebuffer, pixel_index, render_data.render_settings.sample_number, render_data.render_settings.render_resolution);
+    ColorRGB32F GMoN_color = render_data.buffers.gmon_estimator.gmon_compute_median_of_means(render_data.buffers.gmon_estimator.sets, pixel_index, render_data.render_settings.sample_number, render_data.render_settings.render_resolution);
+    render_data.buffers.gmon_estimator.result_framebuffer[pixel_index] = GMoN_color;
 }
 
 #endif
