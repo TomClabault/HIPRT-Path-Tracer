@@ -23,6 +23,7 @@
 #include "Renderer/RendererAnimationState.h"
 #include "Renderer/RendererEnvmap.h"
 #include "Renderer/StatusBuffersValues.h"
+#include "Renderer/RenderPasses/GMoNRenderPass.h"
 #include "Renderer/RenderPasses/ReSTIRDIRenderPass.h"
 #include "Scene/Camera.h"
 #include "Scene/CameraAnimation.h"
@@ -513,6 +514,7 @@ private:
 	StatusBuffersValues m_status_buffers_values;
 
 	ReSTIRDIRenderPass m_restir_di_render_pass;
+	GMoNRenderPass m_gmon_render_pass;
 
 	// Some additional info about the parsed scene such as materials names, mesh names, ...
 	SceneMetadata m_parsed_scene_metadata;
@@ -595,9 +597,6 @@ private:
 
 	// Envmap of the renderer
 	RendererEnvmap m_envmap;
-
-	// Data for the GMoN estimator
-	GMoNGPUData m_gmon;
 
 	// 32x32 texture containing the precomputed parameters of the LTC
 	// fitted to approximate the SSGX sheen volumetric layer.

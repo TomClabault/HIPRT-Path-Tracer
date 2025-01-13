@@ -8,8 +8,10 @@
 
 #include "HIPRT-Orochi/OrochiBuffer.h"
 #include "HostDeviceCommon/Color.h"
+#include "OpenGL/OpenGLInteropBuffer.h"
 #include "Renderer/CPUGPUCommonDataStructures/GMoNCPUGPUCommonData.h"
 
+#include <memory>
 #include <vector>
 
 /**
