@@ -225,7 +225,7 @@ void DisplayViewSystem::update_display_program_uniforms(const DisplayViewSystem*
 			sample_number = application_settings->last_denoised_sample_count;
 		else if (renderer->is_using_gmon())
 		{
-			unsigned int number_of_sets = renderer->get_gmon_kernel_options().get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT);
+			unsigned int number_of_sets = renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT);
 
 			// When using GMoN, the viewport is only refreshed once every set has accumulated another sample
 			// This means that the viewport is only refreshed every GMON_M_SETS_COUNT samples

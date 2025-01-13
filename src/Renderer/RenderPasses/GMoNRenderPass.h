@@ -19,7 +19,6 @@ public:
 
 	void compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx);
 	void recompile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, bool silent, bool use_cache);
-	GPUKernelCompilerOptions& get_gmon_kernel_options();
 
 	void launch();
 
@@ -41,6 +40,8 @@ public:
 	void unmap_result_framebuffer();
 
 	bool use_gmon();
+
+	GMoNGPUData& get_gmon_data();
 
 private:
 	GPURenderer* m_renderer = nullptr;

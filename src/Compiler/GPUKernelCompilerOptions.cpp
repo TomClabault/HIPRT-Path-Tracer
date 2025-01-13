@@ -140,25 +140,24 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions(const GPUKernelCompilerOption
 	*this = other;
 }
 
-GPUKernelCompilerOptions GPUKernelCompilerOptions::operator=(const GPUKernelCompilerOptions& other)
+GPUKernelCompilerOptions& GPUKernelCompilerOptions::operator=(const GPUKernelCompilerOptions& other)
 {
-	GPUKernelCompilerOptions copy;
-	copy.clear();
+	this->clear();
 
-	copy.m_additional_include_directories = other.m_additional_include_directories;
+	m_additional_include_directories = other.m_additional_include_directories;
 	for (auto& pair : other.m_options_macro_map)
 		// Creating new shared ptr for the copy
-		copy.m_options_macro_map[pair.first] = std::make_shared<int>(*pair.second);
+		m_options_macro_map[pair.first] = pair.second;
 
 	for (auto& pair : other.m_custom_macro_map)
 		// Creating new shared ptr for the copy
-		copy.m_custom_macro_map[pair.first] = std::make_shared<int>(*pair.second);
+		m_custom_macro_map[pair.first] = pair.second;
 
-	m_additional_include_directories = copy.m_additional_include_directories;
-	m_options_macro_map = copy.m_options_macro_map;
-	m_custom_macro_map = copy.m_custom_macro_map;
+	m_additional_include_directories = m_additional_include_directories;
+	m_options_macro_map = m_options_macro_map;
+	m_custom_macro_map = m_custom_macro_map;
 
-	return copy;
+	return *this;
 }
 
 std::vector<std::string> GPUKernelCompilerOptions::get_all_macros_as_std_vector_string()

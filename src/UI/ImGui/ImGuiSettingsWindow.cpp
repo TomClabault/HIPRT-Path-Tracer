@@ -2088,13 +2088,54 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 		return;
 	ImGui::TreePush("Post-processing tree");
 
-	DisplaySettings& display_settings = m_render_window->get_display_view_system()->get_display_settings();
-	bool changed = false;
-	changed |= ImGui::Checkbox("Do tonemapping", &display_settings.do_tonemapping);
-	changed |= ImGui::InputFloat("Gamma", &display_settings.tone_mapping_gamma);
-	changed |= ImGui::InputFloat("Exposure", &display_settings.tone_mapping_exposure);
-	if (changed)
-		m_render_window->set_force_viewport_refresh(true);
+	if (ImGui::CollapsingHeader("Tone-mapping"))
+	{
+		ImGui::TreePush("Tonemapping post processing tree");
+
+		DisplaySettings& display_settings = m_render_window->get_display_view_system()->get_display_settings();
+
+		bool changed = false;
+		changed |= ImGui::Checkbox("Do tonemapping", &display_settings.do_tonemapping);
+		changed |= ImGui::InputFloat("Gamma", &display_settings.tone_mapping_gamma);
+		changed |= ImGui::InputFloat("Exposure", &display_settings.tone_mapping_exposure);
+		if (changed)
+			m_render_window->set_force_viewport_refresh(true);
+
+		ImGui::TreePop();
+	}
+
+	if (ImGui::CollapsingHeader("GMoN"))
+	{
+		ImGui::TreePush("GMoN tree post processing");
+
+		if (ImGui::Checkbox("Use GMoN", &m_renderer->get_gmon_render_pass().get_gmon_data().use_gmon))
+			m_render_window->set_render_dirty(true);
+
+		static int number_of_sets = GMoNMSetsCount;
+		if (ImGui::SliderInt("Number of sets M", &number_of_sets, 3, 31))
+		{
+			number_of_sets = hippt::clamp(3, 31, number_of_sets);
+
+			if (!(number_of_sets & 1))
+				// number_of_sets is even but we only want odd
+				number_of_sets--;
+		}
+
+		// If the user modified the number of sets, displaying an "Apply" button
+		if (number_of_sets != m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT))
+		{
+			ImGui::SameLine();
+			if (ImGui::Button("Apply"))
+			{
+				m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT, number_of_sets);
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+		}
+
+		ImGui::TreePop();
+	}
 
 	ImGui::TreePop();
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));

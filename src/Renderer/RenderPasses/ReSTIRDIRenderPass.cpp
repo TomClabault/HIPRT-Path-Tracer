@@ -556,6 +556,11 @@ void ReSTIRDIRenderPass::update_perf_metrics(std::shared_ptr<PerformanceMetricsC
 	}
 }
 
+std::map<std::string, GPUKernel>& ReSTIRDIRenderPass::get_kernels()
+{
+	return m_kernels;
+}
+
 void ReSTIRDIRenderPass::configure_output_buffer()
 {
 	ReSTIRDISettings& restir_di_settings = render_data->render_settings.restir_di_settings;

@@ -131,7 +131,7 @@ public:
 	 * These options can be modified (the number of sets used by GMoN most probably)
 	 * and then the GMoN render pass recompiled 
 	 */
-	GPUKernelCompilerOptions& get_gmon_kernel_options();
+	GMoNRenderPass& get_gmon_render_pass();
 
 	NEEPlusPlusGPUData& get_nee_plus_plus_data();
 

@@ -16,6 +16,8 @@ GMoNRenderPass::GMoNRenderPass()
 GMoNRenderPass::GMoNRenderPass(GPURenderer* renderer) : GMoNRenderPass() 
 {
 	m_renderer = renderer;
+
+	m_compute_gmon_kernel.synchronize_options_with(*renderer->get_global_compiler_options(), {});
 }
 
 void GMoNRenderPass::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx)
@@ -35,11 +37,6 @@ void GMoNRenderPass::recompile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx,
 		m_compute_gmon_kernel.compile_silent(hiprt_orochi_ctx, {}, use_cache);
 	else
 		m_compute_gmon_kernel.compile(hiprt_orochi_ctx, {}, use_cache);
-}
-
-GPUKernelCompilerOptions& GMoNRenderPass::get_gmon_kernel_options()
-{
-	return m_compute_gmon_kernel.get_kernel_options();
 }
 
 void GMoNRenderPass::launch()
@@ -64,10 +61,11 @@ void GMoNRenderPass::launch()
 		int2 render_resolution = m_renderer->m_render_resolution;
 		void* launch_args[] = { &m_renderer->get_render_data() };
 
-		m_compute_gmon_kernel.launch_asynchronous(
+		m_compute_gmon_kernel.launch_synchronous(
 			GMoNComputeMeansKernelThreadBlockSize, GMoNComputeMeansKernelThreadBlockSize, render_resolution.x, render_resolution.y,
-			launch_args, 
-			m_renderer->get_main_stream());
+			launch_args);/* ,
+			m_renderer->get_main_stream());*/
+		std::cout << m_compute_gmon_kernel.get_last_execution_time() << "ms" << std::endl;
 	}
 }
 
@@ -82,6 +80,7 @@ bool GMoNRenderPass::pre_render_update(HIPRTRenderData& render_data)
 			// Resizing the buffers because the resolution has changed
 			m_gmon.resize_sets(render_resolution.x, render_resolution.y);
 			m_gmon.resize_interop(render_resolution.x, render_resolution.y);
+
 			render_data.buffers.gmon_estimator.next_set_to_accumulate = 0;
 
 			// Returning true to indicate that the render data buffers have been invalidated
@@ -147,4 +146,9 @@ void GMoNRenderPass::unmap_result_framebuffer()
 bool GMoNRenderPass::use_gmon()
 {
 	return m_gmon.use_gmon && m_renderer->get_render_settings().accumulate;
+}
+
+GMoNGPUData& GMoNRenderPass::get_gmon_data()
+{
+	return m_gmon;
 }

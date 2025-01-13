@@ -206,9 +206,9 @@ bool GPURenderer::is_using_gmon()
 	return m_gmon_render_pass.use_gmon() && m_render_data.render_settings.accumulate;
 }
 
-GPUKernelCompilerOptions& GPURenderer::get_gmon_kernel_options()
+GMoNRenderPass& GPURenderer::get_gmon_render_pass()
 {
-	return m_gmon_render_pass.get_gmon_kernel_options();
+	return m_gmon_render_pass;
 }
 
 NEEPlusPlusGPUData& GPURenderer::get_nee_plus_plus_data()
@@ -908,7 +908,7 @@ void GPURenderer::recompile_kernels(bool use_cache)
 	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI)
 		// We only need to compile the ReSTIR DI render pass if ReSTIR DI is actually being used
 		m_restir_di_render_pass.recompile(m_hiprt_orochi_ctx, m_func_name_sets, true, use_cache);
-	m_gmon_render_pass.recompile(m_hiprt_orochi_ctx, true, use_cache);
+	m_gmon_render_pass.recompile(m_hiprt_orochi_ctx, false, use_cache);
 
 	m_ray_volume_state_byte_size_kernel.compile_silent(m_hiprt_orochi_ctx, m_func_name_sets, use_cache);
 
@@ -1078,7 +1078,7 @@ std::map<std::string, GPUKernel*> GPURenderer::get_kernels()
 	for (auto& pair : m_kernels)
 		kernels[pair.first] = &pair.second;
 
-	for (auto& pair : m_restir_di_render_pass.m_kernels)
+	for (auto& pair : m_restir_di_render_pass.get_kernels())
 		kernels[pair.first] = &pair.second;
 
 	return kernels;

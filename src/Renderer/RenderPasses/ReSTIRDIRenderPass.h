@@ -88,9 +88,11 @@ public:
 	void compute_render_times(std::unordered_map<std::string, float>& times);
 	void update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer> perf_metrics);
 
-	std::map<std::string, GPUKernel> m_kernels;
+	std::map<std::string, GPUKernel>& get_kernels();
 
 private:
+	std::map<std::string, GPUKernel> m_kernels;
+
 	// ReSTIR reservoirs for the initial candidates
 	OrochiBuffer<ReSTIRDIReservoir> initial_candidates_reservoirs;
 	// ReSTIR reservoirs for the output of the spatial reuse pass

@@ -58,7 +58,7 @@ public:
 	GPUKernelCompilerOptions();
 	GPUKernelCompilerOptions(const GPUKernelCompilerOptions& other);
 
-	GPUKernelCompilerOptions operator=(const GPUKernelCompilerOptions& other);
+	GPUKernelCompilerOptions& operator=(const GPUKernelCompilerOptions& other);
 
 	/**
 	 * Gets a list of all the compiler options of the form { "-D InteriorStackStrategy=1", ... }
