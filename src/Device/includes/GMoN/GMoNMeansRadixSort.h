@@ -7,7 +7,8 @@
 #define DEVICE_GMON_RADIX_SORT_H
 
 #include "Device/includes/FixIntellisense.h"
-#include "HostDeviceCommon/KernelOptions/KernelOptions.h"
+#include "HostDeviceCommon/Color.h"
+#include "HostDeviceCommon/KernelOptions/GMoNOptions.h"
 #include "HostDeviceCommon/Math.h"
 
 #ifdef __KERNELCC__
@@ -19,28 +20,31 @@
 // and another *1 for the sorted keys
 __shared__ unsigned int scratch_memory[GMoNThreadsPerBlock * GMoNMSetsCount * 2];
 
-#define ThreadIndex2DTo1D (threadIdx.x + threadIdx.y * blockDim.x)
-#define SCRATCH_MEMORY_INDEX(input_buffer_index, key_index) (ThreadIndex2DTo1D + key_index * GMoNThreadsPerBlock + input_buffer_index * GMoNThreadsPerBlock * GMoNMSetsCount)
+#define ThreadIndex1D (threadIdx.x + threadIdx.y * blockDim.x)
+// The indexing used here tries to avoid bank conflicts
+#define SCRATCH_MEMORY_INDEX(input_buffer_index, key_index) (ThreadIndex1D + key_index * GMoNThreadsPerBlock + input_buffer_index * GMoNThreadsPerBlock * GMoNMSetsCount)
 
-template <unsigned int nbDigits>
 HIPRT_HOST_DEVICE HIPRT_INLINE void gmon_means_radix_sort(ColorRGB32F* gmon_sets, uint32_t pixel_index, unsigned int sample_number, int2 render_resolution)
 {
-	bool input_buffer_index = false;
-
+	unsigned int input_buffer_index = 0;
+	unsigned int output_buffer_index = 1;
+	
+	unsigned int number_of_samples_accumulated_per_set = sample_number / GMoNMSetsCount;
 	// Loading in shared memory
-	for (int i = 0; i < GMoNMSetsCount; i++)
+	for (int set_index = 0; set_index < GMoNMSetsCount; set_index++)
 	{
-		float mean = gmon_sets[i * render_resolution.x * render_resolution.y + pixel_index].luminance() / (sample_number / GMoNMSetsCount);
+		float mean = gmon_sets[set_index * render_resolution.x * render_resolution.y + pixel_index].luminance() / number_of_samples_accumulated_per_set;
 
-		scratch_memory[SCRATCH_MEMORY_INDEX(0, i)] = *reinterpret_cast<unsigned int*>(&mean);
+		// Setting the means in the "input buffer" in shared memory
+		scratch_memory[SCRATCH_MEMORY_INDEX(0, set_index)] = *reinterpret_cast<unsigned int*>(&mean);
 	}
 
-	for (int digit = 0; digit < nbDigits; digit++)
+	for (int digit = 0; digit < GMoNKeysNbDigitsForRadixSort; digit++)
 	{
 		unsigned int nb_zeroes = 0;
 		unsigned int nb_ones = 0;
 
-		for (int key = 0; key < number_keys; key++)
+		for (int key = 0; key < GMoNMSetsCount; key++)
 		{
 			if (scratch_memory[SCRATCH_MEMORY_INDEX(input_buffer_index, key)] & (1 << digit))
 				nb_ones++;
@@ -51,16 +55,18 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void gmon_means_radix_sort(ColorRGB32F* gmon_sets
 		unsigned int prefix_sum_0 = nb_zeroes;
 		unsigned int prefix_sum_1 = nb_zeroes + nb_ones;
 
-		for (int key = number_keys - 1; key >= 0; key--)
+		for (int key_index = GMoNMSetsCount - 1; key_index >= 0; key_index--)
 		{
-			if (keys[key] & (1 << digit))
+			unsigned int key = scratch_memory[SCRATCH_MEMORY_INDEX(input_buffer_index, key_index)];
+			if (key & (1 << digit))
 				// The key has a 1 for digit
-				scratch_memory[SCRATCH_MEMORY_INDEX(input_buffer_index, --prefix_sum_1)] = keys[key];
+				scratch_memory[SCRATCH_MEMORY_INDEX(output_buffer_index, --prefix_sum_1)] = key;
 			else
-				scratch_memory[SCRATCH_MEMORY_INDEX(input_buffer_index, --prefix_sum_0)] = keys[key];
+				scratch_memory[SCRATCH_MEMORY_INDEX(output_buffer_index, --prefix_sum_0)] = key;
 		}
 
-		input_buffer_index = !input_buffer_index;
+		input_buffer_index = input_buffer_index == 0 ? 1 : 0;
+		output_buffer_index = output_buffer_index == 0 ? 1 : 0;
 	}
 }
 

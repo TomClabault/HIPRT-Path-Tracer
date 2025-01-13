@@ -203,7 +203,7 @@ void GPURenderer::reset_gmon()
 
 bool GPURenderer::is_using_gmon()
 {
-	return m_gmon_render_pass.use_gmon();
+	return m_gmon_render_pass.use_gmon() && m_render_data.render_settings.accumulate;
 }
 
 GPUKernelCompilerOptions& GPURenderer::get_gmon_kernel_options()
@@ -260,7 +260,7 @@ void GPURenderer::setup_kernels()
 		m_restir_di_render_pass.compile(m_hiprt_orochi_ctx, m_func_name_sets);
 
 	m_gmon_render_pass = GMoNRenderPass(this);
-	if (m_gmon_render_pass.use_gmon())
+	if (is_using_gmon())
 		m_gmon_render_pass.compile(m_hiprt_orochi_ctx);
 
 	// Configuring the kernel that will be used to retrieve the size of the RayVolumeState structure.
@@ -791,7 +791,7 @@ void GPURenderer::set_use_denoiser_AOVs_interop_buffers(bool use_interop) { m_de
 
 std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_color_interop_framebuffer() 
 { 
-	if (m_gmon_render_pass.use_gmon())
+	if (is_using_gmon())
 		return m_gmon_render_pass.get_result_framebuffer();
 	else
 		return m_framebuffer; 

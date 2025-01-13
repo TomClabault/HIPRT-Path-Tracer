@@ -20,7 +20,7 @@ GMoNRenderPass::GMoNRenderPass(GPURenderer* renderer) : GMoNRenderPass()
 
 void GMoNRenderPass::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx)
 {
-	if (!m_gmon.use_gmon)
+	if (!use_gmon())
 		return;
 
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel_no_func_sets, std::ref(m_compute_gmon_kernel), hiprt_orochi_ctx);
@@ -28,7 +28,7 @@ void GMoNRenderPass::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx)
 
 void GMoNRenderPass::recompile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, bool silent, bool use_cache)
 {
-	if (!m_gmon.use_gmon)
+	if (!use_gmon())
 		return;
 
 	if (silent)
@@ -44,7 +44,7 @@ GPUKernelCompilerOptions& GMoNRenderPass::get_gmon_kernel_options()
 
 void GMoNRenderPass::launch()
 {
-	if (!m_gmon.use_gmon)
+	if (!use_gmon())
 		return;
 
 	unsigned int number_of_sets = m_compute_gmon_kernel.get_kernel_options().get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT);
@@ -55,7 +55,7 @@ void GMoNRenderPass::launch()
 	// We also want to update the viewport at sample 0 just so that we don't get a black viewport
 	// (that update at sample 0 isn't going to be a full GMoN computation, it's just going to be
 	// a copy of the current pixel color (which is only 1 sample accumuluated) to the framebuffer)
-	bool enough_samples_accumulated = false;// (m_renderer->get_render_settings().sample_number + 1) % number_of_sets == 0;
+	bool enough_samples_accumulated = (m_renderer->get_render_settings().sample_number + 1) % number_of_sets == 0;
 	bool sample_0 = m_renderer->get_render_settings().sample_number == 0;
 	if (enough_samples_accumulated || sample_0)
 	{
@@ -65,7 +65,7 @@ void GMoNRenderPass::launch()
 		void* launch_args[] = { &m_renderer->get_render_data() };
 
 		m_compute_gmon_kernel.launch_asynchronous(
-			GMoNComputeMeansKernelThreadBlockSize, GMoNComputeMeansKernelThreadBlockSize, render_resolution.x, render_resolution.y, 
+			GMoNComputeMeansKernelThreadBlockSize, GMoNComputeMeansKernelThreadBlockSize, render_resolution.x, render_resolution.y,
 			launch_args, 
 			m_renderer->get_main_stream());
 	}
@@ -75,7 +75,7 @@ bool GMoNRenderPass::pre_render_update(HIPRTRenderData& render_data)
 {
 	int2 render_resolution = render_data.render_settings.render_resolution;
 
-	if (m_gmon.use_gmon)
+	if (use_gmon())
 	{
 		if (m_gmon.current_resolution.x != render_resolution.x || m_gmon.current_resolution.y != render_resolution.y)
 		{
@@ -101,12 +101,12 @@ bool GMoNRenderPass::pre_render_update(HIPRTRenderData& render_data)
 
 void GMoNRenderPass::post_render_update(HIPRTRenderData& render_data)
 {
-	if (m_gmon.use_gmon)
+	if (use_gmon())
 	{
 		// Else, if we didn't resize the buffers meaning that GMoN isn't in a fresh state, we're going to increment the
 		// counter that indicates in which sets of GMoN to accumulate
 		render_data.buffers.gmon_estimator.next_set_to_accumulate++;
-		if (render_data.buffers.gmon_estimator.next_set_to_accumulate == m_gmon.number_of_sets)
+		if (render_data.buffers.gmon_estimator.next_set_to_accumulate == m_compute_gmon_kernel.get_kernel_options().get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT))
 			render_data.buffers.gmon_estimator.next_set_to_accumulate = 0;
 	}
 }
@@ -123,13 +123,13 @@ ColorRGB32F* GMoNRenderPass::get_sets_buffers_device_pointer()
 
 void GMoNRenderPass::resize_interop_buffers(unsigned int new_width, unsigned int new_height)
 {
-	if (m_gmon.use_gmon)
+	if (use_gmon())
 		m_gmon.result_framebuffer->resize(new_width * new_height);
 }
 
 void GMoNRenderPass::resize_non_interop_buffers(unsigned int new_width, unsigned int new_height)
 {
-	if (m_gmon.use_gmon)
+	if (use_gmon())
 		m_gmon.resize_sets(new_width, new_height);
 }
 
@@ -140,11 +140,11 @@ ColorRGB32F* GMoNRenderPass::map_result_framebuffer()
 
 void GMoNRenderPass::unmap_result_framebuffer()
 {
-	if (m_gmon.use_gmon)
+	if (use_gmon())
 		m_gmon.result_framebuffer->unmap();
 }
 
 bool GMoNRenderPass::use_gmon()
 {
-	return m_gmon.use_gmon;
+	return m_gmon.use_gmon && m_renderer->get_render_settings().accumulate;
 }

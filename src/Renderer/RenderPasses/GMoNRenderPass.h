@@ -43,7 +43,7 @@ public:
 	bool use_gmon();
 
 private:
-	GPURenderer* m_renderer;
+	GPURenderer* m_renderer = nullptr;
 
 	// Data for the GMoN estimator
 	GMoNGPUData m_gmon;
