@@ -35,6 +35,10 @@ HIPRT_HOST_DEVICE ColorRGB32F gmon_compute_median_of_means(ColorRGB32F* gmon_set
     // Now finding what color had that median
     for (int i = 0; i < GMoNMSetsCount; i++)
     {
+        // Just brute-forcing to find back the ColorRGB32F that has the median value
+        // A less-brute-force way to find back that Color would be to sort indices as well as
+        // the means but because of the additional scratch memory (i.e. shared memory or global but global is slow)
+        // that this would necessitate, this less-brute-force approach may actually be slower... maybe
         ColorRGB32F color = gmon_sets[render_resolution.x * render_resolution.y * i + pixel_index];
         if (color.luminance() / sample_scaling == median_float)
             return color * GMoNMSetsCount;

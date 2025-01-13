@@ -32,6 +32,7 @@ public:
 
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> get_result_framebuffer();
 	ColorRGB32F* get_sets_buffers_device_pointer();
+	unsigned int get_number_of_sets_used();
 
 	void resize_interop_buffers(unsigned int new_width, unsigned int new_height);
 	void resize_non_interop_buffers(unsigned int new_width, unsigned int new_height);

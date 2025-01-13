@@ -27,7 +27,7 @@ struct GMoNGPUData : public GMoNCPUGPUCommonData
 		result_framebuffer = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
 	}
 
-	void resize_sets(unsigned int render_width, unsigned int render_height)
+	void resize_sets(unsigned int render_width, unsigned int render_height, unsigned int number_of_sets)
 	{
 		sets.resize(render_width * render_height * number_of_sets);
 

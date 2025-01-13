@@ -140,7 +140,11 @@ HIPRT_HOST_DEVICE void accumulate_color(const HIPRTRenderData& render_data, cons
         // GMoN is in use, accumulating in the GMoN sets
 
         unsigned int offset = render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y * render_data.buffers.gmon_estimator.next_set_to_accumulate + pixel_index;
-        render_data.buffers.gmon_estimator.sets[offset] += ray_color;
+
+        if (render_data.render_settings.sample_number == 0)
+            render_data.buffers.gmon_estimator.sets[offset] = ray_color;
+        else
+            render_data.buffers.gmon_estimator.sets[offset] += ray_color;
     }
 #endif
 }

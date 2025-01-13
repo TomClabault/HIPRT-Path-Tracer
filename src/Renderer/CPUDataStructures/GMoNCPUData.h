@@ -32,6 +32,8 @@ struct GMoNCPUData : public GMoNCPUGPUCommonData
 	// This is the buffer that contains the G-median of means result of each pixel and this is going
 	// to be displayed in the viewport instead of the regular framebuffer if GMoN is being used
 	Image32Bit result_framebuffer;
+
+	unsigned int number_of_sets = GMoNMSetsCount;
 };
 
 #endif

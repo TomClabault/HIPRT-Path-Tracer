@@ -78,7 +78,7 @@ bool GMoNRenderPass::pre_render_update(HIPRTRenderData& render_data)
 		if (m_gmon.current_resolution.x != render_resolution.x || m_gmon.current_resolution.y != render_resolution.y)
 		{
 			// Resizing the buffers because the resolution has changed
-			m_gmon.resize_sets(render_resolution.x, render_resolution.y);
+			m_gmon.resize_sets(render_resolution.x, render_resolution.y, get_number_of_sets_used());
 			m_gmon.resize_interop(render_resolution.x, render_resolution.y);
 
 			render_data.buffers.gmon_estimator.next_set_to_accumulate = 0;
@@ -120,6 +120,11 @@ ColorRGB32F* GMoNRenderPass::get_sets_buffers_device_pointer()
 	return m_gmon.sets.get_device_pointer();
 }
 
+unsigned int GMoNRenderPass::get_number_of_sets_used()
+{
+	return m_compute_gmon_kernel.get_kernel_options().get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT);
+}
+
 void GMoNRenderPass::resize_interop_buffers(unsigned int new_width, unsigned int new_height)
 {
 	if (use_gmon())
@@ -129,7 +134,7 @@ void GMoNRenderPass::resize_interop_buffers(unsigned int new_width, unsigned int
 void GMoNRenderPass::resize_non_interop_buffers(unsigned int new_width, unsigned int new_height)
 {
 	if (use_gmon())
-		m_gmon.resize_sets(new_width, new_height);
+		m_gmon.resize_sets(new_width, new_height, get_number_of_sets_used());
 }
 
 ColorRGB32F* GMoNRenderPass::map_result_framebuffer()

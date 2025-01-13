@@ -40,16 +40,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void reset_render(const HIPRTRenderData& render_d
         render_data.aux_buffers.pixel_squared_luminance[pixel_index] = 0;
         render_data.aux_buffers.pixel_converged_sample_count[pixel_index] = -1;
     }
-
-    if (render_data.buffers.gmon_estimator.result_framebuffer != nullptr)
-    {
-        // GMoN is active
-        for (int i = 0; i < GMoNMSetsCount; i++)
-        {
-            unsigned int offset = render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y * i;
-            render_data.buffers.gmon_estimator.sets[pixel_index + offset] = ColorRGB32F();
-        }
-    }
 }
 
 #ifdef __KERNELCC__
