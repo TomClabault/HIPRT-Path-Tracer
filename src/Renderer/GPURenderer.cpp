@@ -282,17 +282,17 @@ void GPURenderer::setup_kernels()
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID]), m_hiprt_orochi_ctx, std::ref(m_func_name_sets));
 }
 
-void GPURenderer::update(float delta_time)
+void GPURenderer::pre_render_update(float delta_time)
 {
 	step_animations(delta_time);
-	m_restir_di_render_pass.update();
+	m_restir_di_render_pass.pre_render_update();
 
-	internal_update_clear_device_status_buffers();
-	internal_update_prev_frame_g_buffer();
-	internal_update_adaptive_sampling_buffers();
-	internal_update_nee_plus_plus(delta_time);
-	internal_update_gmon();
-	internal_update_global_stack_buffer();
+	internal_pre_render_update_clear_device_status_buffers();
+	internal_pre_render_update_global_stack_buffer();
+	internal_pre_render_update_prev_frame_g_buffer();
+	internal_pre_render_update_adaptive_sampling_buffers();
+	internal_pre_render_update_nee_plus_plus(delta_time);
+	internal_pre_render_update_gmon();
 
 	update_render_data();
 
@@ -303,6 +303,30 @@ void GPURenderer::update(float delta_time)
 		m_render_data.render_settings.sample_number = 0;
 
 	m_updated = true;
+}
+
+void GPURenderer::post_render_update()
+{
+	internal_post_render_update_path_tracer();
+	internal_post_render_update_gmon();
+}
+
+void GPURenderer::internal_post_render_update_path_tracer()
+{
+	m_render_data.render_settings.sample_number++;
+	m_render_data.render_settings.denoiser_AOV_accumulation_counter++;
+
+	// We only reset once so after rendering a frame, we're sure that we don't need to reset anymore 
+	// so we're setting the flag to false (it will be set to true again if we need to reset the render
+	// again)
+	m_render_data.render_settings.need_to_reset = false;
+	m_render_data.nee_plus_plus.reset_visibility_map = false;
+	// If we had requested a temporal buffers clear, this has be done by this frame so we can
+	// now reset the flag
+	m_render_data.render_settings.restir_di_settings.temporal_pass.temporal_buffer_clear_requested = false;
+
+	// Saving the current frame camera to be the previous camera of the next frame
+	m_previous_frame_camera = m_camera;
 }
 
 void GPURenderer::step_animations(float delta_time)
@@ -317,7 +341,7 @@ void GPURenderer::download_status_buffers()
 	OROCHI_CHECK_ERROR(oroMemcpy(&m_status_buffers_values.pixel_converged_count, m_status_buffers.pixels_converged_count_buffer.get_device_pointer(), sizeof(unsigned int), oroMemcpyDeviceToHost));
 }
 
-void GPURenderer::internal_update_clear_device_status_buffers()
+void GPURenderer::internal_pre_render_update_clear_device_status_buffers()
 {
 	unsigned char false_data = false;
 	unsigned int zero_data = 0;
@@ -333,7 +357,7 @@ void GPURenderer::internal_clear_m_status_buffers()
 	m_status_buffers_values.pixel_converged_count = 0;
 }
 
-void GPURenderer::internal_update_prev_frame_g_buffer()
+void GPURenderer::internal_pre_render_update_prev_frame_g_buffer()
 {
 	if (m_render_data.render_settings.use_prev_frame_g_buffer(this))
 	{
@@ -361,7 +385,7 @@ void GPURenderer::internal_update_prev_frame_g_buffer()
 	}
 }
 
-void GPURenderer::internal_update_adaptive_sampling_buffers()
+void GPURenderer::internal_pre_render_update_adaptive_sampling_buffers()
 {
 	bool buffers_needed = m_render_data.render_settings.has_access_to_adaptive_sampling_buffers();
 
@@ -398,7 +422,7 @@ void GPURenderer::internal_update_adaptive_sampling_buffers()
 	}
 }
 
-void GPURenderer::internal_update_nee_plus_plus(float delta_time)
+void GPURenderer::internal_pre_render_update_nee_plus_plus(float delta_time)
 {
 	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_FALSE)
 	{
@@ -471,12 +495,17 @@ void GPURenderer::internal_update_nee_plus_plus(float delta_time)
 	}
 }
 
-void GPURenderer::internal_update_gmon()
+void GPURenderer::internal_pre_render_update_gmon()
 {
-	m_render_data_buffers_invalidated |= m_gmon_render_pass.update(m_render_data);
+	m_render_data_buffers_invalidated |= m_gmon_render_pass.pre_render_update(m_render_data);
 }
 
-void GPURenderer::internal_update_global_stack_buffer()
+void GPURenderer::internal_post_render_update_gmon()
+{
+	m_gmon_render_pass.post_render_update(m_render_data);
+}
+
+void GPURenderer::internal_pre_render_update_global_stack_buffer()
 {
 	if (needs_global_bvh_stack_buffer())
 	{
@@ -576,6 +605,8 @@ void GPURenderer::render_debug_kernel()
 	OROCHI_CHECK_ERROR(oroLaunchHostFunc(m_main_stream, [](void* payload) {
 		*reinterpret_cast<bool*>(payload) = true;
 	}, &m_frame_rendered));
+
+	post_render_update();
 }
 
 void GPURenderer::render_path_tracing()
@@ -601,20 +632,7 @@ void GPURenderer::render_path_tracing()
 		launch_path_tracing();
 		launch_GMoN_kernel();
 
-		m_render_data.render_settings.sample_number++;
-		m_render_data.render_settings.denoiser_AOV_accumulation_counter++;
-
-		// We only reset once so after rendering a frame, we're sure that we don't need to reset anymore 
-		// so we're setting the flag to false (it will be set to true again if we need to reset the render
-		// again)
-		m_render_data.render_settings.need_to_reset = false;
-		m_render_data.nee_plus_plus.reset_visibility_map = false;
-		// If we had requested a temporal buffers clear, this has be done by this frame so we can
-		// now reset the flag
-		m_render_data.render_settings.restir_di_settings.temporal_pass.temporal_buffer_clear_requested = false;
-
-		// Saving the current frame camera to be the previous camera of the next frame
-		m_previous_frame_camera = m_camera;
+		post_render_update();
 	}
 
 	// Recording GPU frame time stop timestamp and computing the frame time
@@ -763,10 +781,9 @@ void GPURenderer::map_buffers_for_render()
 void GPURenderer::unmap_buffers()
 {
 	m_framebuffer->unmap();
+	m_gmon_render_pass.unmap_result_framebuffer();
 	m_denoiser_buffers.unmap_normals_buffer();
 	m_denoiser_buffers.unmap_albedo_buffer();
-
-	m_gmon_render_pass.unmap_result_framebuffer();
 }
 
 

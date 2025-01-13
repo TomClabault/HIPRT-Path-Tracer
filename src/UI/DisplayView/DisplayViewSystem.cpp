@@ -237,10 +237,12 @@ void DisplayViewSystem::update_display_program_uniforms(const DisplayViewSystem*
 			// recomputed the median of means yet (it will be recomputed at sample 10) and so we're are still
 			// displaying the framebuffer that contains 5 samples so that's the amount of samples that we're going to
 			// need for displaying correctly
-			sample_number = render_settings.sample_number / number_of_sets;
+			sample_number = hippt::max(1u, render_settings.sample_number / number_of_sets);
 		}
 		else
 			sample_number = render_settings.sample_number;
+
+		std::cout << sample_number << std::endl;
 
 		program->set_uniform("u_texture", DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
 		program->set_uniform("u_sample_number", sample_number);

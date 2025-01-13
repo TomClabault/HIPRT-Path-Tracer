@@ -44,12 +44,14 @@ struct GMoNGPUData : public GMoNCPUGPUCommonData
 		sets.free();
 
 		result_framebuffer->free();
-		result_framebuffer = nullptr;
 	}
 
 	ColorRGB32F* map_result_framebuffer()
 	{
-		return result_framebuffer->map_no_error();
+		if (use_gmon)
+			return result_framebuffer->map_no_error();
+		else
+			return nullptr;
 	}
 
 	// This is one very big buffer that contains all the sets we accumulate into for GMoN

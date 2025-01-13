@@ -44,6 +44,9 @@ GPUKernelCompilerOptions& GMoNRenderPass::get_gmon_kernel_options()
 
 void GMoNRenderPass::launch()
 {
+	if (!m_gmon.use_gmon)
+		return;
+
 	unsigned int number_of_sets = m_compute_gmon_kernel.get_kernel_options().get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT);
 
 	// Adding +1 to sample_number here because this launch() function is called after the renderer has accumulated
@@ -52,7 +55,7 @@ void GMoNRenderPass::launch()
 	// We also want to update the viewport at sample 0 just so that we don't get a black viewport
 	// (that update at sample 0 isn't going to be a full GMoN computation, it's just going to be
 	// a copy of the current pixel color (which is only 1 sample accumuluated) to the framebuffer)
-	bool enough_samples_accumulated = (m_renderer->get_render_settings().sample_number + 1) % number_of_sets == 0;
+	bool enough_samples_accumulated = false;// (m_renderer->get_render_settings().sample_number + 1) % number_of_sets == 0;
 	bool sample_0 = m_renderer->get_render_settings().sample_number == 0;
 	if (enough_samples_accumulated || sample_0)
 	{
@@ -68,7 +71,7 @@ void GMoNRenderPass::launch()
 	}
 }
 
-bool GMoNRenderPass::update(HIPRTRenderData& render_data)
+bool GMoNRenderPass::pre_render_update(HIPRTRenderData& render_data)
 {
 	int2 render_resolution = render_data.render_settings.render_resolution;
 
@@ -81,25 +84,31 @@ bool GMoNRenderPass::update(HIPRTRenderData& render_data)
 			m_gmon.resize_interop(render_resolution.x, render_resolution.y);
 			render_data.buffers.gmon_estimator.next_set_to_accumulate = 0;
 
+			// Returning true to indicate that the render data buffers have been invalidated
 			return true;
-		}
-		else
-		{
-			// Else, if we didn't resize the buffers meaning that GMoN isn't in a fresh state, we're going to increment the
-			// counter that indicates in which sets of GMoN to accumulate
-			render_data.buffers.gmon_estimator.next_set_to_accumulate++;
-			if (render_data.buffers.gmon_estimator.next_set_to_accumulate == m_gmon.number_of_sets)
-				render_data.buffers.gmon_estimator.next_set_to_accumulate = 0;
 		}
 	}
 	else
 	{
 		m_gmon.free();
 
+		// Returning true to indicate that the render data buffers have been invalidated
 		return true;
 	}
 
 	return false;
+}
+
+void GMoNRenderPass::post_render_update(HIPRTRenderData& render_data)
+{
+	if (m_gmon.use_gmon)
+	{
+		// Else, if we didn't resize the buffers meaning that GMoN isn't in a fresh state, we're going to increment the
+		// counter that indicates in which sets of GMoN to accumulate
+		render_data.buffers.gmon_estimator.next_set_to_accumulate++;
+		if (render_data.buffers.gmon_estimator.next_set_to_accumulate == m_gmon.number_of_sets)
+			render_data.buffers.gmon_estimator.next_set_to_accumulate = 0;
+	}
 }
 
 std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GMoNRenderPass::get_result_framebuffer()

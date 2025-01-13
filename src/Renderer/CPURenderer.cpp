@@ -360,7 +360,7 @@ void CPURenderer::render()
     {
         m_render_data.render_settings.do_update_status_buffers = true;
 
-        update(frame_number);
+        pre_render_update(frame_number);
         update_render_data(frame_number);
 
         camera_rays_pass();
@@ -387,7 +387,7 @@ void CPURenderer::render()
     std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms" << std::endl;
 }
 
-void CPURenderer::update(int frame_number)
+void CPURenderer::pre_render_update(int frame_number)
 {
     // Resetting the status buffers
     // Uploading false to reset the flag

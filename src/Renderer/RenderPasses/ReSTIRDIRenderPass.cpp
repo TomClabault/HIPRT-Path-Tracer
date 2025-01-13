@@ -132,7 +132,7 @@ void ReSTIRDIRenderPass::precompile_kernels(GPUKernelCompilerOptions partial_opt
 	ThreadManager::detach_threads(ThreadManager::RESTIR_DI_PRECOMPILE_KERNELS);
 }
 
-void ReSTIRDIRenderPass::update()
+void ReSTIRDIRenderPass::pre_render_update()
 {
 	int2 render_resolution = m_renderer->m_render_resolution;
 

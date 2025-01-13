@@ -159,9 +159,9 @@ public:
 	 * in the code.
 	 * 
 	 * The 'delta_time' parameter should be how much time passed, in milliseconds, since the last
-	 * call to update()
+	 * call to pre_render_update()
 	 */
-	void update(float delta_time);
+	void pre_render_update(float delta_time);
 
 	/**
 	 * Steps all the animations of the renderer one step forward
@@ -375,6 +375,16 @@ private:
 	void update_render_data();
 
 	/**
+	 * This function increments some counters (such as the number of samples rendered so far) after a
+	 * sample has been rendered
+	 * 
+	 * This function is private because it is used internally by the render() function
+	 */
+	void post_render_update();
+
+	void internal_post_render_update_path_tracer();
+
+	/**
 	 * Returns true if one of the kernels requires the global stack buffer for BVH traversal
 	 */
 	bool needs_global_bvh_stack_buffer();
@@ -423,19 +433,19 @@ private:
 	 */
 	void precompile_kernel(const std::string& id, GPUKernelCompilerOptions partial_options);
 
-	// ---- Functions called by the update() method ----
+	// ---- Functions called by the pre_render_update() method ----
 	//
 
 	/**
 	 * Resets the value of the status buffers on the device
 	 */
-	void internal_update_clear_device_status_buffers();
+	void internal_pre_render_update_clear_device_status_buffers();
 
 	/**
 	 * Allocates/deallocates the G-buffer of the previous frame depending
 	 * on whether or not it is needed
 	 */
-	void internal_update_prev_frame_g_buffer();
+	void internal_pre_render_update_prev_frame_g_buffer();
 
 	/**
 	 * This function evaluates whether the renderer needs the adaptive
@@ -444,29 +454,30 @@ private:
 	 * then the buffer will be allocated so that they can be used by the shader.
 	 * If they are not needed, they will be freed to save some VRAM.
 	 */
-	void internal_update_adaptive_sampling_buffers();
+	void internal_pre_render_update_adaptive_sampling_buffers();
 
 	/**
 	 * Allocates/deallocates the data structure for NEE++ depending on whether or not
 	 * NEE++ is being used
 	 * 
 	 * The 'delta_time' parameter should be how much time passed, in milliseconds, since the last
-	 * call to internal_update_nee_plus_plus()
+	 * call to internal_pre_render_update_nee_plus_plus()
 	 */
-	void internal_update_nee_plus_plus(float delta_time);
+	void internal_pre_render_update_nee_plus_plus(float delta_time);
 
 	/**
 	 * Frees / allocates the GMoN buffer depending on whether or not GMoN is being used
 	 */
-	void internal_update_gmon();
+	void internal_pre_render_update_gmon();
+	void internal_post_render_update_gmon();
 
 	/**
 	 * Allocates/frees the global buffer for BVH traversal when UseSharedStackBVHTraversal is TRUE
 	 */
-	void internal_update_global_stack_buffer();
+	void internal_pre_render_update_global_stack_buffer();
 
 	//
-	// -------- Functions called by the update() method ---------
+	// -------- Functions called by the pre_render_update() method ---------
 
 	void internal_clear_m_status_buffers();
 
@@ -479,16 +490,16 @@ private:
 	// If true, the last call to render() rendered a frame where render_settings.render_low_resoltion was true.
 	// False otherwise
 	bool m_was_last_frame_low_resolution = false;
-	// If true, the buffer pointers of m_render_data will be updated when update() is called.
+	// If true, the buffer pointers of m_render_data will be updated when pre_render_update() is called.
 	// This boolean is mainly set to true when resizing the renderer since resizing re-creates the 
 	// buffers -> invalidates the pointer -> we need to set them back on render_data
 	//
 	// Modifying the scene also invalidates the m_render_data buffers. 
 	// Freeing / allocating ReSTIR DI/adaptive sampling buffers (or any buffers that can be allocated / dealloacted) too
 	bool m_render_data_buffers_invalidated = true;
-	// Whether or not the renderer was updated (with update()) since the last render() call.
+	// Whether or not the renderer was updated (with pre_render_update()) since the last render() call.
 	// This is only used as a security to avoid misusing the renderer class and calling render()
-	// without having called update() before
+	// without having called pre_render_update() before
 	bool m_updated = false;
 
 	// Time taken per each pass of the renderer for the last frame.
@@ -523,7 +534,7 @@ private:
 
 	// Structure that holds the values of the one-variable buffers of the renderer.
 	// These values are 'one_ray_active' or 'pixel_converged_count' for example.
-	// These values are updated when the update() is called
+	// These values are updated when the pre_render_update() is called
 	StatusBuffersValues m_status_buffers_values;
 
 	ReSTIRDIRenderPass m_restir_di_render_pass;

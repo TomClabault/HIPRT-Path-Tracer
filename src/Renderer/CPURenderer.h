@@ -41,7 +41,7 @@ public:
     Image32Bit& get_framebuffer();
 
     void render();
-    void update(int frame_number);
+    void pre_render_update(int frame_number);
     void update_render_data(int sample);
 
     void reset();

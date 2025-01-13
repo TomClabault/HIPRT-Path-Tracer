@@ -23,7 +23,13 @@ public:
 
 	void launch();
 
-	bool update(HIPRTRenderData& render_data);
+	/**
+	 * Allocates/deallocates the buffers used by GMoN.
+	 * 
+	 * Returns true or false depending on whether or not the render buffer data have been invalidated
+	 */
+	bool pre_render_update(HIPRTRenderData& render_data);
+	void post_render_update(HIPRTRenderData& render_data);
 
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> get_result_framebuffer();
 	ColorRGB32F* get_sets_buffers_device_pointer();

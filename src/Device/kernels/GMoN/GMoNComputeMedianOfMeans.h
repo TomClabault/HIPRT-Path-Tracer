@@ -37,12 +37,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GMoNComputeMedianOfMeans(HIPRTRenderData re
         // viewport while the full GMoN median of means computation
         // hasn't been launched
 
-        if (pixel_index == 0)
-            printf("yes");
-
         render_data.buffers.gmon_estimator.result_framebuffer[pixel_index] = render_data.buffers.accumulated_ray_colors[pixel_index];
         return;
     }
+    return;
 
     if (pixel_index != 0)
         return;

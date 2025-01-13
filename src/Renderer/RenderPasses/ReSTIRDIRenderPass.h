@@ -61,7 +61,7 @@ public:
 	 * Allocates/frees the ReSTIR DI buffers depending on whether or not the renderer
 	 * needs them (whether or not ReSTIR DI is being used basically) respectively.
 	 */
-	void update();
+	void pre_render_update();
 	void update_render_data();
 
 	void resize(int new_width, int new_height);
