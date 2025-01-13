@@ -239,7 +239,8 @@ void DisplayViewSystem::update_display_program_uniforms(const DisplayViewSystem*
 			// need for displaying correctly
 			//
 			// The integer division rounds render_settings.sample_number just the way we want it to
-			sample_number = hippt::max(1u, render_settings.sample_number / number_of_sets * number_of_sets);
+			sample_number = render_settings.sample_number / number_of_sets * number_of_sets;
+			sample_number = hippt::max(1, sample_number);
 		}
 		else
 			sample_number = render_settings.sample_number;

@@ -65,7 +65,10 @@ void GMoNRenderPass::launch()
 			GMoNComputeMeansKernelThreadBlockSize, GMoNComputeMeansKernelThreadBlockSize, render_resolution.x, render_resolution.y,
 			launch_args);/* ,
 			m_renderer->get_main_stream());*/
-		std::cout << m_compute_gmon_kernel.get_last_execution_time() << "ms" << std::endl;
+
+		static int counter = 0;
+		if (counter++ % 20 == 0)
+			std::cout << m_compute_gmon_kernel.get_last_execution_time() << "ms" << std::endl;
 	}
 }
 
@@ -107,6 +110,15 @@ void GMoNRenderPass::post_render_update(HIPRTRenderData& render_data)
 		render_data.buffers.gmon_estimator.next_set_to_accumulate++;
 		if (render_data.buffers.gmon_estimator.next_set_to_accumulate == m_compute_gmon_kernel.get_kernel_options().get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT))
 			render_data.buffers.gmon_estimator.next_set_to_accumulate = 0;
+	}
+}
+
+void GMoNRenderPass::reset()
+{
+	if (use_gmon())
+	{
+		m_renderer->get_render_data().buffers.gmon_estimator.next_set_to_accumulate = 0;
+		m_gmon.sets.memset_whole_buffer(0);
 	}
 }
 

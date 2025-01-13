@@ -26,7 +26,7 @@
 /**
  * How many sets to use for GMoN. M variable in the paper
  */
-#define GMoNMSetsCount 17
+#define GMoNMSetsCount 3
 
 #endif // #ifndef __KERNELCC__
 

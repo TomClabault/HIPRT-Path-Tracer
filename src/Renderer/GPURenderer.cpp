@@ -77,7 +77,7 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
 
 	// Buffer that keeps track of whether at least one ray is still alive or not
 	m_status_buffers.still_one_ray_active_buffer.resize(1);
-	m_status_buffers.still_one_ray_active_buffer.memset(1);
+	m_status_buffers.still_one_ray_active_buffer.memset_whole_buffer(1);
 	m_status_buffers.pixels_converged_count_buffer.resize(1);
 
 	OROCHI_CHECK_ERROR(oroEventCreate(&m_frame_start_event));
@@ -187,8 +187,8 @@ void GPURenderer::reset_nee_plus_plus()
 	// Resetting the counters
 	if (m_nee_plus_plus.total_shadow_ray_queries.get_device_pointer() != nullptr)
 	{
-		m_nee_plus_plus.total_shadow_ray_queries.memset(1);
-		m_nee_plus_plus.shadow_rays_actually_traced.memset(1);
+		m_nee_plus_plus.total_shadow_ray_queries.memset_whole_buffer(1);
+		m_nee_plus_plus.shadow_rays_actually_traced.memset_whole_buffer(1);
 	}
 	m_nee_plus_plus.total_shadow_ray_queries_cpu = 1;
 	m_nee_plus_plus.shadow_rays_actually_traced_cpu = 1;
@@ -198,7 +198,7 @@ void GPURenderer::reset_nee_plus_plus()
 
 void GPURenderer::reset_gmon()
 {
-	m_render_data.buffers.gmon_estimator.next_set_to_accumulate = 0;
+	m_gmon_render_pass.reset();
 }
 
 bool GPURenderer::is_using_gmon()
@@ -463,9 +463,9 @@ void GPURenderer::internal_pre_render_update_nee_plus_plus(float delta_time)
 	if (m_render_data.nee_plus_plus.reset_visibility_map)
 	{
 		// Clearing the visibility map by memseting everything to 0
-		m_nee_plus_plus.packed_buffer.memset(0);
-		m_nee_plus_plus.total_shadow_ray_queries.memset(1);
-		m_nee_plus_plus.shadow_rays_actually_traced.memset(1);
+		m_nee_plus_plus.packed_buffer.memset_whole_buffer(0);
+		m_nee_plus_plus.total_shadow_ray_queries.memset_whole_buffer(1);
+		m_nee_plus_plus.shadow_rays_actually_traced.memset_whole_buffer(1);
 	}
 
 	if (m_render_data.render_settings.sample_number > m_nee_plus_plus.stop_update_samples)

@@ -56,7 +56,7 @@ struct GMoNGPUData : public GMoNCPUGPUCommonData
 
 	// This is one very big buffer that contains all the sets we accumulate into for GMoN
 	//
-	// For example, for GMoNCPUGPUCommonData::number_of_sets == 5 and a render resoltuion of 1280x720,
+	// For example, if GMoNMSets == 5 and a render resolution of 1280x720,
 	// this is going to be a buffer that is 1280*720*5 elements long
 	OrochiBuffer<ColorRGB32F> sets;
 
