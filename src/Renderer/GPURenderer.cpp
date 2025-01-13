@@ -497,12 +497,12 @@ void GPURenderer::internal_pre_render_update_nee_plus_plus(float delta_time)
 
 void GPURenderer::internal_pre_render_update_gmon()
 {
-	m_render_data_buffers_invalidated |= m_gmon_render_pass.pre_render_update(m_render_data);
+	m_render_data_buffers_invalidated |= m_gmon_render_pass.pre_render_update();
 }
 
 void GPURenderer::internal_post_render_update_gmon()
 {
-	m_gmon_render_pass.post_render_update(m_render_data);
+	m_gmon_render_pass.post_render_update();
 }
 
 void GPURenderer::internal_pre_render_update_global_stack_buffer()
@@ -769,7 +769,7 @@ void GPURenderer::resize_interop_buffers(int new_width, int new_height)
 
 void GPURenderer::map_buffers_for_render()
 {
-	m_render_data.buffers.accumulated_ray_colors = m_framebuffer->map_no_error();
+	m_render_data.buffers.accumulated_ray_colors = m_framebuffer->map();
 	m_render_data.buffers.gmon_estimator.result_framebuffer = m_gmon_render_pass.map_result_framebuffer();
 
 	m_render_data.aux_buffers.denoiser_normals = m_denoiser_buffers.map_normals_buffer();
@@ -786,12 +786,11 @@ void GPURenderer::unmap_buffers()
 	m_denoiser_buffers.unmap_albedo_buffer();
 }
 
-
 void GPURenderer::set_use_denoiser_AOVs_interop_buffers(bool use_interop) { m_denoiser_buffers.set_use_interop_AOV_buffers(this, use_interop); }
 
 std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_color_interop_framebuffer() 
 { 
-	if (is_using_gmon())
+	if (is_using_gmon() && m_gmon_render_pass.buffers_allocated())
 		return m_gmon_render_pass.get_result_framebuffer();
 	else
 		return m_framebuffer; 

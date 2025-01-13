@@ -72,9 +72,9 @@ void GMoNRenderPass::launch()
 	}
 }
 
-bool GMoNRenderPass::pre_render_update(HIPRTRenderData& render_data)
+bool GMoNRenderPass::pre_render_update()
 {
-	int2 render_resolution = render_data.render_settings.render_resolution;
+	int2 render_resolution = m_renderer->get_render_data().render_settings.render_resolution;
 
 	if (use_gmon())
 	{
@@ -84,7 +84,7 @@ bool GMoNRenderPass::pre_render_update(HIPRTRenderData& render_data)
 			m_gmon.resize_sets(render_resolution.x, render_resolution.y, get_number_of_sets_used());
 			m_gmon.resize_interop(render_resolution.x, render_resolution.y);
 
-			render_data.buffers.gmon_estimator.next_set_to_accumulate = 0;
+			m_renderer->get_render_data().buffers.gmon_estimator.next_set_to_accumulate = 0;
 
 			// Returning true to indicate that the render data buffers have been invalidated
 			return true;
@@ -101,10 +101,12 @@ bool GMoNRenderPass::pre_render_update(HIPRTRenderData& render_data)
 	return false;
 }
 
-void GMoNRenderPass::post_render_update(HIPRTRenderData& render_data)
+void GMoNRenderPass::post_render_update()
 {
 	if (use_gmon())
 	{
+		HIPRTRenderData& render_data = m_renderer->get_render_data();
+
 		// Else, if we didn't resize the buffers meaning that GMoN isn't in a fresh state, we're going to increment the
 		// counter that indicates in which sets of GMoN to accumulate
 		render_data.buffers.gmon_estimator.next_set_to_accumulate++;
@@ -118,7 +120,9 @@ void GMoNRenderPass::reset()
 	if (use_gmon())
 	{
 		m_renderer->get_render_data().buffers.gmon_estimator.next_set_to_accumulate = 0;
-		m_gmon.sets.memset_whole_buffer(0);
+
+		if (buffers_allocated())
+			m_gmon.sets.memset_whole_buffer(0);
 	}
 }
 
@@ -160,9 +164,17 @@ void GMoNRenderPass::unmap_result_framebuffer()
 		m_gmon.result_framebuffer->unmap();
 }
 
+bool GMoNRenderPass::buffers_allocated()
+{
+	return m_gmon.sets.get_device_pointer() != nullptr;
+}
+
 bool GMoNRenderPass::use_gmon()
 {
-	return m_gmon.use_gmon && m_renderer->get_render_settings().accumulate;
+	bool gmon_enabled = m_gmon.use_gmon;
+	bool accumulation_enabled = m_renderer->get_render_settings().accumulate;
+
+	return gmon_enabled && accumulation_enabled;
 }
 
 GMoNGPUData& GMoNRenderPass::get_gmon_data()

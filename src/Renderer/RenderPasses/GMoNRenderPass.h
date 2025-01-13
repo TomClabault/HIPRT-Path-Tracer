@@ -27,8 +27,14 @@ public:
 	 * 
 	 * Returns true or false depending on whether or not the render buffer data have been invalidated
 	 */
-	bool pre_render_update(HIPRTRenderData& render_data);
-	void post_render_update(HIPRTRenderData& render_data);
+	bool pre_render_update();
+	/**
+	 * Does the actual allocation/deallocation of the GMoN buffers.
+	 * 
+	 * Returns true a buffer was allocated or deallocated
+	 * Returns false if buffer were left untouched
+	 */
+	void post_render_update();
 
 	void reset();
 
@@ -41,6 +47,10 @@ public:
 
 	ColorRGB32F* map_result_framebuffer();
 	void unmap_result_framebuffer();
+	/**
+	 * Returns true or false depending on whether or not the GMoN buffers are allocated
+	 */
+	bool buffers_allocated();
 
 	bool use_gmon();
 

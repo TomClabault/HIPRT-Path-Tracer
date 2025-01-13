@@ -233,6 +233,13 @@ public:
 	 */
 	void set_use_denoiser_AOVs_interop_buffers(bool use_interop);
 
+	/**
+	 * Returns the framebuffer that should be used for displaying to the viewport
+	 * 
+	 * At the time of writing this comment, this is either the default framebuffer where the
+	 * ray colors are accumulated or the GMoN result framebuffer where the median of means are
+	 * computed for fireflies reduction
+	 */
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> get_color_interop_framebuffer();
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> get_denoised_interop_framebuffer();
 	std::shared_ptr<OpenGLInteropBuffer<float3>> get_denoiser_normals_AOV_interop_buffer();

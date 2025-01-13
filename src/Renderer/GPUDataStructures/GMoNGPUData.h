@@ -30,6 +30,7 @@ struct GMoNGPUData : public GMoNCPUGPUCommonData
 	void resize_sets(unsigned int render_width, unsigned int render_height, unsigned int number_of_sets)
 	{
 		sets.resize(render_width * render_height * number_of_sets);
+		sets.memset_whole_buffer(0);
 
 		current_resolution = make_int2(render_width, render_height);
 	}
@@ -42,14 +43,15 @@ struct GMoNGPUData : public GMoNCPUGPUCommonData
 	void free()
 	{
 		sets.free();
-
 		result_framebuffer->free();
+
+		current_resolution = make_int2(0, 0);
 	}
 
 	ColorRGB32F* map_result_framebuffer()
 	{
 		if (use_gmon)
-			return result_framebuffer->map_no_error();
+			return result_framebuffer->map();
 		else
 			return nullptr;
 	}
