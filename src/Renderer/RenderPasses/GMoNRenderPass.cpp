@@ -78,6 +78,7 @@ bool GMoNRenderPass::pre_render_update()
 
 	if (use_gmon())
 	{
+		unsigned int number_of_sets = m_compute_gmon_kernel.get_kernel_options().get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT);
 		if (m_gmon.current_resolution.x != render_resolution.x || m_gmon.current_resolution.y != render_resolution.y)
 		{
 			// Resizing the buffers because the resolution has changed
@@ -87,6 +88,15 @@ bool GMoNRenderPass::pre_render_update()
 			m_renderer->get_render_data().buffers.gmon_estimator.next_set_to_accumulate = 0;
 
 			// Returning true to indicate that the render data buffers have been invalidated
+			return true;
+		}
+		else if (number_of_sets != m_gmon.current_number_of_sets)
+		{
+			// If the number of sets changed...
+
+			m_gmon.resize_sets(render_resolution.x, render_resolution.y, get_number_of_sets_used());
+			m_renderer->get_render_data().buffers.gmon_estimator.next_set_to_accumulate = 0;
+
 			return true;
 		}
 	}

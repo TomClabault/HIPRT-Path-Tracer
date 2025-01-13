@@ -33,6 +33,7 @@ struct GMoNGPUData : public GMoNCPUGPUCommonData
 		sets.memset_whole_buffer(0);
 
 		current_resolution = make_int2(render_width, render_height);
+		current_number_of_sets = number_of_sets;
 	}
 
 	void resize_interop(unsigned int new_width, unsigned int new_height)
