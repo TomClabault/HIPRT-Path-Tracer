@@ -246,7 +246,9 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 			if (m_renderer->is_using_gmon())
 			{
 				// Using GMoN
-				if (m_application_settings->max_sample_count % m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT) != 0)
+
+				unsigned int number_of_sets = m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT);
+				if (m_application_settings->max_sample_count % number_of_sets != 0)
 				{
 					ImGui::TreePush("Number of samples not divisible GMoN tree");
 
@@ -255,7 +257,7 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 					std::string warning_text = "Currently using GMoN (\"Post-processing\" panel) but the number of "
 						"maximum samples entered here isn't divisible by the number of GMoN sets. This means that "
 						"what's displayed in the viewport will only be " 
-						+ std::to_string(std::max(1, m_application_settings->max_sample_count / GMoNMSetsCount)) + " samples instead of " 
+						+ std::to_string(std::max(1u, m_application_settings->max_sample_count / number_of_sets)) + " samples instead of "
 						+ std::to_string(m_application_settings->max_sample_count) + ".\n\n"
 						""
 						"You click the button to the right to round up the maximum number of samples to one that is "
@@ -265,7 +267,7 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 
 					ImGui::SameLine();
 					if (ImGui::Button("Round up"))
-						m_application_settings->max_sample_count = std::ceil(m_application_settings->max_sample_count / static_cast<float>(GMoNMSetsCount)) * GMoNMSetsCount;
+						m_application_settings->max_sample_count = std::ceil(m_application_settings->max_sample_count / static_cast<float>(number_of_sets)) * number_of_sets;
 
 					ImGui::TreePop();
 				}
@@ -403,7 +405,7 @@ void ImGuiSettingsWindow::draw_russian_roulette_options()
 	static bool min_depth_modified = false;
 	if (!min_depth_modified)
 		render_settings.russian_roulette_min_depth = std::min(5, render_settings.nb_bounces / 2);
-	if (ImGui::SliderInt("Russian Roulette Min Depth", &render_settings.russian_roulette_min_depth, 0, render_settings.nb_bounces + 1))
+	if (ImGui::SliderInt("RR Min Depth", &render_settings.russian_roulette_min_depth, 0, render_settings.nb_bounces + 1))
 	{
 		m_render_window->set_render_dirty(true);
 		min_depth_modified = true;
@@ -412,7 +414,7 @@ void ImGuiSettingsWindow::draw_russian_roulette_options()
 									"For example, 0 means that the camera ray hits, and then the next bounce "
 									"is already susceptible to russian roulette kill. 1 would mean that the first "
 									"bounce is never going to be cutoff by the russian roulette.");
-	if (ImGui::SliderFloat("Russian Roulette Throughput Clamp", &render_settings.russian_roulette_throughput_clamp, 1.0f, 20.0f))
+	if (ImGui::SliderFloat("RR Throughput Clamp", &render_settings.russian_roulette_throughput_clamp, 1.0f, 20.0f))
 		m_render_window->set_render_dirty(true);
 	ImGuiRenderer::show_help_marker("After applying russian roulette (dividing by the continuation probability) "
 									"the energy added to the ray throughput is clamped to this maximum value.\n"
@@ -2130,6 +2132,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 		if (changed)
 			m_render_window->set_force_viewport_refresh(true);
 
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();
 	}
 
@@ -2139,36 +2142,40 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 
 		if (ImGui::Checkbox("Use GMoN", &m_renderer->get_gmon_render_pass().get_gmon_data().use_gmon))
 			m_render_window->set_render_dirty(true);
-		ImGui::Text("VRAM Usage: %.3fMB", m_renderer->get_gmon_render_pass().get_VRAM_usage_bytes() / 1000000.0f);
 
-		bool gmon_mode_changed = false;
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		ImGui::Text("GMoN Mode");
-		gmon_mode_changed |= ImGui::RadioButton("Median of Means", ((int*)&render_data.buffers.gmon_estimator.gmon_mode), 0); ImGui::SameLine();
-		gmon_mode_changed |= ImGui::RadioButton("Binary MoN", ((int*)&render_data.buffers.gmon_estimator.gmon_mode), 1); ImGui::SameLine();
-		gmon_mode_changed |= ImGui::RadioButton("Adaptive MoN", ((int*)&render_data.buffers.gmon_estimator.gmon_mode), 2);
-
-		static int number_of_sets = GMoNMSetsCount;
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		if (ImGui::SliderInt("Number of sets M", &number_of_sets, 3, 31))
+		if (m_renderer->get_gmon_render_pass().get_gmon_data().use_gmon)
 		{
-			number_of_sets = hippt::clamp(3, 31, number_of_sets);
+			ImGui::Text("VRAM Usage: %.3fMB", m_renderer->get_gmon_render_pass().get_VRAM_usage_bytes() / 1000000.0f);
 
-			if (!(number_of_sets & 1))
-				// number_of_sets is even but we only want odd
-				number_of_sets--;
-		}
+			bool gmon_mode_changed = false;
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			ImGui::Text("GMoN Mode");
+			gmon_mode_changed |= ImGui::RadioButton("Median of Means", ((int*)&render_data.buffers.gmon_estimator.gmon_mode), 0); ImGui::SameLine();
+			gmon_mode_changed |= ImGui::RadioButton("Binary MoN", ((int*)&render_data.buffers.gmon_estimator.gmon_mode), 1); ImGui::SameLine();
+			gmon_mode_changed |= ImGui::RadioButton("Adaptive MoN", ((int*)&render_data.buffers.gmon_estimator.gmon_mode), 2);
 
-		// If the user modified the number of sets, displaying an "Apply" button
-		if (number_of_sets != m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT))
-		{
-			ImGui::SameLine();
-			if (ImGui::Button("Apply"))
+			static int number_of_sets = GMoNMSetsCount;
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			if (ImGui::SliderInt("Number of sets M", &number_of_sets, 3, 31))
 			{
-				m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT, number_of_sets);
+				number_of_sets = hippt::clamp(3, 31, number_of_sets);
 
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
+				if (!(number_of_sets & 1))
+					// number_of_sets is even but we only want odd
+					number_of_sets--;
+			}
+
+			// If the user modified the number of sets, displaying an "Apply" button
+			if (number_of_sets != m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT))
+			{
+				ImGui::SameLine();
+				if (ImGui::Button("Apply"))
+				{
+					m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT, number_of_sets);
+
+					m_renderer->recompile_kernels();
+					m_render_window->set_render_dirty(true);
+				}
 			}
 		}
 

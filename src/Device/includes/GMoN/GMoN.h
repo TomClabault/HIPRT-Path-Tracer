@@ -67,14 +67,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F find_colorRGB32F_from_median_float(Co
 
         // Dividing by sample_scaling here because we want to find the median that was 
         if (color.luminance() == median_float)
-            // Multiplying by the number of sets here because (with an example):
-            //  - If we have 5 sets
-            //  - We rendered 35 samples so far
-            //  - Each set has 7 samples
-            //  - But the display shader in the viewport expects 35 samples worth of intensity in the framebuffer
-            //  - So we need to return the color (which is 7 sample-accumulated) multiplied by the number of sets
-            //      to get back our 35
-            return color * GMoNMSetsCount;
+            return color;
     }
 
     // We should never be here, this would mean that the median found in the means sets wasnt in the sets in the first place
@@ -103,7 +96,15 @@ HIPRT_HOST_DEVICE ColorRGB32F gmon_compute_median_of_means(GMoNDevice gmon_devic
     {
     case GMoNDevice::GMoNMode::MEDIAN_OF_MEANS:
         // Now finding what color had that median
-        return find_colorRGB32F_from_median_float(gmon_device.sets, pixel_index, render_resolution, median_float);
+        //
+        // Multiplying by the number of sets here because (with an example):
+        //  - If we have 5 sets
+        //  - We rendered 35 samples so far
+        //  - Each set has 7 samples
+        //  - But the display shader in the viewport expects 35 samples worth of intensity in the framebuffer
+        //  - So we need to return the color (which is 7 sample-accumulated) multiplied by the number of sets
+        //      to get back our 35
+        return find_colorRGB32F_from_median_float(gmon_device.sets, pixel_index, render_resolution, median_float) * GMoNMSetsCount;
 
         break;
 
@@ -125,8 +126,18 @@ HIPRT_HOST_DEVICE ColorRGB32F gmon_compute_median_of_means(GMoNDevice gmon_devic
             return sum;
         }
         else
+        {
             // Return the median of means
-            return find_colorRGB32F_from_median_float(gmon_device.sets, pixel_index, render_resolution, median_float);
+             
+            // Multiplying by the number of sets here because (with an example):
+            //  - If we have 5 sets
+            //  - We rendered 35 samples so far
+            //  - Each set has 7 samples
+            //  - But the display shader in the viewport expects 35 samples worth of intensity in the framebuffer
+            //  - So we need to return the color (which is 7 sample-accumulated) multiplied by the number of sets
+            //      to get back our 35
+            return find_colorRGB32F_from_median_float(gmon_device.sets, pixel_index, render_resolution, median_float) * GMoNMSetsCount;
+        }
     }
 
     case GMoNDevice::GMoNMode::ADAPTIVE_GMON:
@@ -139,14 +150,18 @@ HIPRT_HOST_DEVICE ColorRGB32F gmon_compute_median_of_means(GMoNDevice gmon_devic
         // Eq. 6
         ColorRGB32F sum;
         for (int i = c; i < GMoNMSetsCount - c; i++)
-            sum += gmon_device.sets[render_resolution.x * render_resolution.y * i + pixel_index];
+        {
+            unsigned int sorted_mean_uint = SORTED_MEANS_FETCH(i);
+            float sorted_mean_float = *reinterpret_cast<float*>(&sorted_mean_uint);
 
-        // Note that we don't have the denominator of Eq. 6 here.
-        // 
-        // That's because the denominator is only here to compute the average
-        // but in our case, the average (i.e. the division of the color by the number of samples)
-        // is computed by the shader that does the displaying in the viewport so we don't average here
-        return sum;
+            sum += find_colorRGB32F_from_median_float(gmon_device.sets, pixel_index, render_resolution, sorted_mean_float);
+            //sum += gmon_device.sets[render_resolution.x * render_resolution.y * i + pixel_index];
+        }
+
+        // We want this function to return un-averaged colors such that it is
+        // the shader that displays in the viewport that does the averaging.
+        // That's why we have the multiplication by GMoNMSetsCount at the end (which isn't in the paper)
+        return sum / (GMoNMSetsCount - 2 * c) * GMoNMSetsCount;
     }
 
     default:
