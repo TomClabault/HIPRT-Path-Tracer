@@ -243,6 +243,16 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 		{
 			if (ImGui::InputInt("Max Sample Count", &m_application_settings->max_sample_count))
 				m_application_settings->max_sample_count = std::max(m_application_settings->max_sample_count, 0);
+			//if (m_renderer->is_using_gmon())
+			//{
+			//	// Using GMoN
+			//	if (m_application_settings->max_sample_count % m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT) != 0)
+			//	{
+			//		// But the maximum number of samples isn't divisible by the number of sets
+			//		ImGui::Text("Warning: ");
+			//		ImGuiRenderer::show_help_marker("Currently using GMoN (\"Post-processing\" panel) but the number of ", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+			//	}
+			//}
 
 			if (ImGui::InputFloat("Max Render Time (s)", &m_application_settings->max_render_time))
 				m_application_settings->max_render_time = std::max(m_application_settings->max_render_time, 0.0f);
@@ -2112,6 +2122,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 
 		if (ImGui::Checkbox("Use GMoN", &m_renderer->get_gmon_render_pass().get_gmon_data().use_gmon))
 			m_render_window->set_render_dirty(true);
+		ImGui::Text("VRAM Usage: %.3fMB", m_renderer->get_gmon_render_pass().get_VRAM_usage_bytes() / 1000000.0f);
 
 		bool gmon_mode_changed = false;
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));

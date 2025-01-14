@@ -52,9 +52,10 @@ public:
 	 */
 	bool buffers_allocated();
 
-	bool use_gmon();
+	bool use_gmon() const;
 
 	GMoNGPUData& get_gmon_data();
+	unsigned int get_VRAM_usage_bytes() const;
 
 private:
 	GPURenderer* m_renderer = nullptr;

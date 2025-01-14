@@ -177,7 +177,7 @@ bool GMoNRenderPass::buffers_allocated()
 	return m_gmon.sets.get_device_pointer() != nullptr;
 }
 
-bool GMoNRenderPass::use_gmon()
+bool GMoNRenderPass::use_gmon() const
 {
 	bool gmon_enabled = m_gmon.use_gmon;
 	bool accumulation_enabled = m_renderer->get_render_settings().accumulate;
@@ -188,4 +188,12 @@ bool GMoNRenderPass::use_gmon()
 GMoNGPUData& GMoNRenderPass::get_gmon_data()
 {
 	return m_gmon;
+}
+
+unsigned int GMoNRenderPass::get_VRAM_usage_bytes() const
+{
+	if (!use_gmon())
+		return 0;
+
+	return m_gmon.get_VRAM_usage_bytes();
 }

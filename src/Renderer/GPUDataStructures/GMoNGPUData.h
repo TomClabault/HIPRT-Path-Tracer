@@ -57,6 +57,16 @@ struct GMoNGPUData : public GMoNCPUGPUCommonData
 			return nullptr;
 	}
 
+	unsigned int get_VRAM_usage_bytes() const
+	{
+		unsigned int nb_pixels = current_resolution.x * current_resolution.y;
+
+		unsigned int bytes_result_framebuffer = nb_pixels * sizeof(ColorRGB32F);
+		unsigned int bytes_sets = nb_pixels * sizeof(ColorRGB32F) * current_number_of_sets;
+
+		return bytes_result_framebuffer + bytes_sets;
+	}
+
 	// This is one very big buffer that contains all the sets we accumulate into for GMoN
 	//
 	// For example, if GMoNMSets == 5 and a render resolution of 1280x720,
