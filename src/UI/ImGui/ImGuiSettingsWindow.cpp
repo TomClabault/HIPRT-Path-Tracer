@@ -2088,6 +2088,8 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 		return;
 	ImGui::TreePush("Post-processing tree");
 
+	HIPRTRenderData& render_data = m_renderer->get_render_data();
+
 	if (ImGui::CollapsingHeader("Tone-mapping"))
 	{
 		ImGui::TreePush("Tonemapping post processing tree");
@@ -2111,7 +2113,15 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 		if (ImGui::Checkbox("Use GMoN", &m_renderer->get_gmon_render_pass().get_gmon_data().use_gmon))
 			m_render_window->set_render_dirty(true);
 
+		bool gmon_mode_changed = false;
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::Text("GMoN Mode");
+		gmon_mode_changed |= ImGui::RadioButton("Median of Means", ((int*)&render_data.buffers.gmon_estimator.gmon_mode), 0); ImGui::SameLine();
+		gmon_mode_changed |= ImGui::RadioButton("Binary MoN", ((int*)&render_data.buffers.gmon_estimator.gmon_mode), 1); ImGui::SameLine();
+		gmon_mode_changed |= ImGui::RadioButton("Adaptive MoN", ((int*)&render_data.buffers.gmon_estimator.gmon_mode), 2);
+
 		static int number_of_sets = GMoNMSetsCount;
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		if (ImGui::SliderInt("Number of sets M", &number_of_sets, 3, 31))
 		{
 			number_of_sets = hippt::clamp(3, 31, number_of_sets);

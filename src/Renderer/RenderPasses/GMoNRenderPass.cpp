@@ -66,9 +66,7 @@ void GMoNRenderPass::launch()
 			launch_args);/* ,
 			m_renderer->get_main_stream());*/
 
-		static int counter = 0;
-		if (counter++ % 20 == 0)
-			std::cout << m_compute_gmon_kernel.get_last_execution_time() << "ms" << std::endl;
+		std::cout << m_compute_gmon_kernel.get_last_execution_time() << "ms" << std::endl;
 	}
 }
 

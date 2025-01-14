@@ -37,7 +37,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GMoNComputeMedianOfMeans(HIPRTRenderData re
         return;
     }
 
-    ColorRGB32F GMoN_color = gmon_compute_median_of_means(render_data.buffers.gmon_estimator.sets, pixel_index, render_data.render_settings.sample_number, render_data.render_settings.render_resolution);
+    ColorRGB32F GMoN_color = gmon_compute_median_of_means(render_data.buffers.gmon_estimator, pixel_index, render_data.render_settings.sample_number, render_data.render_settings.render_resolution);
+
+    // TODO Interop Framebuffer write is slow here
+    // TODO do sorting in registers? faster than shared mem?
+    // TODO sort more than 1 bit at a time 
     render_data.buffers.gmon_estimator.result_framebuffer[pixel_index] = GMoN_color;
 }
 

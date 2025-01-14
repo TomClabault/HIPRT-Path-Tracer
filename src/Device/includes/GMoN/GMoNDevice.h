@@ -16,6 +16,14 @@
  */
 struct GMoNDevice
 {
+    enum GMoNMode
+    {
+        MEDIAN_OF_MEANS = 0,
+        BINARY_GMON = 1,
+        ADAPTIVE_GMON = 2,
+    };
+    GMoNMode gmon_mode = GMoNMode::ADAPTIVE_GMON;
+
     // This is one very big buffer that contains all the sets we accumulate into for GMoN
     //
     // For example, for GMoNMSets == 5 and a render resolution of 1280x720,

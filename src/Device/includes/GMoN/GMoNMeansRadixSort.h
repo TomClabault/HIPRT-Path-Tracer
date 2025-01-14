@@ -29,15 +29,19 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void gmon_means_radix_sort(ColorRGB32F* gmon_sets
 	unsigned int input_buffer_index = 0;
 	unsigned int output_buffer_index = 1;
 	
-	unsigned int number_of_samples_accumulated_per_set = sample_number / GMoNMSetsCount;
 	// Loading in shared memory
 	for (int set_index = 0; set_index < GMoNMSetsCount; set_index++)
 	{
-		float mean = gmon_sets[set_index * render_resolution.x * render_resolution.y + pixel_index].luminance() / number_of_samples_accumulated_per_set;
+		// Note that this isn't actually the mean, this is just the value of the accumulated samples
+		// If we wanted the mean, we would have to divide everyone by the number of samples
+		// But dividing everyone by the same value isn't going to change the ordering so we don't have to do
+		// that division
+		float mean = gmon_sets[set_index * render_resolution.x * render_resolution.y + pixel_index].luminance();
 
 		// Setting the means in the "input buffer" in shared memory
 		scratch_memory[SCRATCH_MEMORY_INDEX(0, set_index)] = *reinterpret_cast<unsigned int*>(&mean);
 	}
+
 
 	for (int digit = 0; digit < GMoNKeysNbDigitsForRadixSort; digit++)
 	{
@@ -80,15 +84,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE std::vector<unsigned int> gmon_means_radix_sort(C
 	unsigned int* keys = keys_vector.data();
 	unsigned int* scratch_memory = scratch_memory_vector.data();
 
-	// samples_per_set is an integer because we're only getting in this part of the codebase when GMoN has
-	// accumulated one more sample per set i.e. when the number of samples rendered by the renderer so far
-	// is a multiple of GMoNMSetsCount
-	unsigned int samples_per_set = sample_number / GMoNMSetsCount;
-
 	// Loading the means in the keys vectors
 	for (int i = 0; i < GMoNMSetsCount; i++)
 	{
-		float mean = gmon_sets[i * render_resolution.x * render_resolution.y + pixel_index].luminance() / samples_per_set;
+		// Note that this isn't actually the mean, this is just the value of the accumulated samples
+		// If we wanted the mean, we would have to divide everyone by the number of samples
+		// But dividing everyone by the same value isn't going to change the ordering so we don't have to do
+		// that division	
+		float mean = gmon_sets[i * render_resolution.x * render_resolution.y + pixel_index].luminance();
 
 		keys[i] = *reinterpret_cast<unsigned int*>(&mean);
 	}
