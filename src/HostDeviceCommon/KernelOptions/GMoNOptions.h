@@ -28,6 +28,11 @@
  */
 #define GMoNMSetsCount 31
 
+/**
+ * What radix is used for the radix sort of the means
+ */
+#define GMoNSortRadixSize 4
+
 #endif // #ifndef __KERNELCC__
 
 // The options below are not in the "#ifndef __KERNELCC__" guard because they cannot change at runtime

@@ -86,8 +86,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F find_colorRGB32F_from_median_float(Co
  */
 HIPRT_HOST_DEVICE ColorRGB32F gmon_compute_median_of_means(GMoNDevice gmon_device, uint32_t pixel_index, unsigned int sample_number, int2 render_resolution)
 {
+    // The sorted indices will contain the indices of the keys that were sorted
+    // So if after sorting, the mean[0] (i.e. the samples from set 0) end up in position
+    // 8, then sorted_indices[0] = 8
+    unsigned short int out_sorted_indices[GMoNMSetsCount];
+
     SORTED_MEANS_DECLARATION;
-    SORTED_MEANS_ASSIGNATION(gmon_means_radix_sort(gmon_device.sets, pixel_index, sample_number, render_resolution));
+    SORTED_MEANS_ASSIGNATION(gmon_means_radix_sort(gmon_device.sets, pixel_index, sample_number, render_resolution, out_sorted_indices));
 
     unsigned int median = SORTED_MEANS_FETCH(GMoNMSetsCount / 2);
 
@@ -156,7 +161,9 @@ HIPRT_HOST_DEVICE ColorRGB32F gmon_compute_median_of_means(GMoNDevice gmon_devic
             unsigned int sorted_mean_uint = SORTED_MEANS_FETCH(i);
             float sorted_mean_float = *reinterpret_cast<float*>(&sorted_mean_uint);
 
-            sum += find_colorRGB32F_from_median_float(gmon_device.sets, pixel_index, render_resolution, sorted_mean_float);
+            unsigned char set_index = out_sorted_indices[GMoNMSetsCount / 2] & 0xFF;
+            sum += gmon_device.sets[set_index * render_resolution.x * render_resolution.y + pixel_index];
+            //sum += find_colorRGB32F_from_median_float(gmon_device.sets, pixel_index, render_resolution, sorted_mean_float);
         }
 
         // We want this function to return un-averaged colors such that it is

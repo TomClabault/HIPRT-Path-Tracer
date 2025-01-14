@@ -2136,6 +2136,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 		ImGui::TreePop();
 	}
 
+	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	if (ImGui::CollapsingHeader("GMoN"))
 	{
 		ImGui::TreePush("GMoN tree post processing");
@@ -2156,6 +2157,20 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 			if (gmon_mode_changed)
 				m_render_window->set_render_dirty(true);
 
+			bool gmon_sort_radix_changed = false;
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			ImGui::Text("GMoN means sorting radix size");
+			gmon_sort_radix_changed |= ImGui::RadioButton("1", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::GMON_SORT_RADIX_SIZE), 1); ImGui::SameLine();
+			gmon_sort_radix_changed |= ImGui::RadioButton("2", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::GMON_SORT_RADIX_SIZE), 2); ImGui::SameLine();
+			gmon_sort_radix_changed |= ImGui::RadioButton("4", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::GMON_SORT_RADIX_SIZE), 4);
+			ImGuiRenderer::show_help_marker("How many bits to sort at the same time when sorting the means for finding the median. "
+				"This is basically only for experimentation purposes as '4' is always the fastest option pretty much.");
+			if (gmon_sort_radix_changed)
+			{
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+
 			static int number_of_sets = GMoNMSetsCount;
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			if (ImGui::SliderInt("Number of sets M", &number_of_sets, 3, 31))
@@ -2168,12 +2183,12 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 			}
 
 			// If the user modified the number of sets, displaying an "Apply" button
-			if (number_of_sets != m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT))
+			if (number_of_sets != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT))
 			{
 				ImGui::SameLine();
 				if (ImGui::Button("Apply"))
 				{
-					m_renderer->get_global_compiler_options()->set_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT, number_of_sets);
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT, number_of_sets);
 
 					m_renderer->recompile_kernels();
 					m_render_window->set_render_dirty(true);
