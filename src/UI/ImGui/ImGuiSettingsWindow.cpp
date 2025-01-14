@@ -243,16 +243,33 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 		{
 			if (ImGui::InputInt("Max Sample Count", &m_application_settings->max_sample_count))
 				m_application_settings->max_sample_count = std::max(m_application_settings->max_sample_count, 0);
-			//if (m_renderer->is_using_gmon())
-			//{
-			//	// Using GMoN
-			//	if (m_application_settings->max_sample_count % m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT) != 0)
-			//	{
-			//		// But the maximum number of samples isn't divisible by the number of sets
-			//		ImGui::Text("Warning: ");
-			//		ImGuiRenderer::show_help_marker("Currently using GMoN (\"Post-processing\" panel) but the number of ", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
-			//	}
-			//}
+			if (m_renderer->is_using_gmon())
+			{
+				// Using GMoN
+				if (m_application_settings->max_sample_count % m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT) != 0)
+				{
+					ImGui::TreePush("Number of samples not divisible GMoN tree");
+
+					// But the maximum number of samples isn't divisible by the number of sets
+					ImGui::Text("Warning: ");
+					std::string warning_text = "Currently using GMoN (\"Post-processing\" panel) but the number of "
+						"maximum samples entered here isn't divisible by the number of GMoN sets. This means that "
+						"what's displayed in the viewport will only be " 
+						+ std::to_string(std::max(1, m_application_settings->max_sample_count / GMoNMSetsCount)) + " samples instead of " 
+						+ std::to_string(m_application_settings->max_sample_count) + ".\n\n"
+						""
+						"You click the button to the right to round up the maximum number of samples to one that is "
+						"divisible by the number of GMoN sets (" 
+						+ std::to_string(m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT)) + ")";
+					ImGuiRenderer::show_help_marker(warning_text, ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+
+					ImGui::SameLine();
+					if (ImGui::Button("Round up"))
+						m_application_settings->max_sample_count = std::ceil(m_application_settings->max_sample_count / static_cast<float>(GMoNMSetsCount)) * GMoNMSetsCount;
+
+					ImGui::TreePop();
+				}
+			}
 
 			if (ImGui::InputFloat("Max Render Time (s)", &m_application_settings->max_render_time))
 				m_application_settings->max_render_time = std::max(m_application_settings->max_render_time, 0.0f);
