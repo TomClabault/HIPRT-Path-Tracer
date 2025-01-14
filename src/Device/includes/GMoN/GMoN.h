@@ -11,6 +11,8 @@
 #include "Device/includes/GMoN/GMoNDevice.h"
 #include "HostDeviceCommon/Color.h"
 
+// TODO 4k, 31 sets, adaptive gMon --> 42ms
+
 // A bunch of macros here to streamline the code between the CPU and GPU
 #ifdef __KERNELCC__
 
@@ -155,7 +157,6 @@ HIPRT_HOST_DEVICE ColorRGB32F gmon_compute_median_of_means(GMoNDevice gmon_devic
             float sorted_mean_float = *reinterpret_cast<float*>(&sorted_mean_uint);
 
             sum += find_colorRGB32F_from_median_float(gmon_device.sets, pixel_index, render_resolution, sorted_mean_float);
-            //sum += gmon_device.sets[render_resolution.x * render_resolution.y * i + pixel_index];
         }
 
         // We want this function to return un-averaged colors such that it is
