@@ -7,6 +7,8 @@
 #define DEVICE_GMON_RADIX_SORT_H
 
 #include "Device/includes/FixIntellisense.h"
+#include "Device/includes/GMoN/GMoNMeansRadixSortHistogramDeclaration.h"
+
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/KernelOptions/GMoNOptions.h"
 #include "HostDeviceCommon/Math.h"
@@ -90,7 +92,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RETURN_TYPE gmon_means_radix_sort(ColorRGB32F* gm
 	for (int digit = 0; digit < GMoNKeysNbDigitsForRadixSort; digit += GMoNSortRadixSize)
 	{
 		unsigned int radix_extraction_mask = ((1 << GMoNSortRadixSize) - 1) << digit;
-		unsigned int histogram[1 << GMoNSortRadixSize] = { 0 };
+		GMoNRadixSortHistogram histogram;
+		//unsigned int histogram_reference[1 << GMoNSortRadixSize] = { 0 };
 
 		// Computing the histogram for the counting sort
 		for (int key_index = 0; key_index < number_of_keys; key_index++)
@@ -98,12 +101,26 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RETURN_TYPE gmon_means_radix_sort(ColorRGB32F* gm
 			unsigned int radix = READ_KEY(key_index) & radix_extraction_mask;
 			radix >>= digit;
 
-			histogram[radix]++;
+			//histogram_reference[radix]++;
+			histogram.increment(radix, 1);
+
+			/*for (int i = 0; i < 1 << GMoNSortRadixSize; i++)
+				if (histogram_reference[i] != histogram.fetch_value(i) && pixel_index == 0)
+					printf("Incorrect.\n");*/
 		}
 
 		// Computing the prefix sum for stable counting sort
 		for (int i = 1; i < 1 << GMoNSortRadixSize; i++)
-			histogram[i] += histogram[i - 1];
+		{
+			//histogram_reference[i] += histogram_reference[i - 1];
+
+			unsigned int histogram_i_minus_1_value = histogram.fetch_value(i - 1);
+			histogram.increment(i, histogram_i_minus_1_value);
+
+			/*for (int i = 0; i < 1 << GMoNSortRadixSize; i++)
+				if (histogram_reference[i] != histogram.fetch_value(i) && pixel_index == 0)
+					printf("Incorrect.\n");*/
+		}
 
 		// Reordering
 		for (int key_index = number_of_keys - 1; key_index >= 0; key_index--)
@@ -112,15 +129,25 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RETURN_TYPE gmon_means_radix_sort(ColorRGB32F* gm
 			unsigned int radix = key & radix_extraction_mask;
 			radix >>= digit;
 
-			STORE_KEY(--histogram[radix], key);
+			histogram.decrement(radix, 1);
+			unsigned int histogram_value = histogram.fetch_value(radix);
+			STORE_KEY(histogram_value, key);
+
+			//STORE_KEY(--histogram_reference[radix], key);
 
 			// Also sorting a list of indices so that, when returning from this function,
 			// we can find from the caller's code which ColorRGB corresponds to the median
 			//
 			// Clearing the low 8 bits
-			sorted_keys[SORTED_KEYS_INDEX(histogram[radix])] &= ~0xFF;
+			//sorted_keys[SORTED_KEYS_INDEX(histogram_reference[radix])] &= ~0xFF;
+			sorted_keys[SORTED_KEYS_INDEX(histogram_value)] &= ~0xFF;
 			// Setting the sorted index in the low 8 bits
-			sorted_keys[SORTED_KEYS_INDEX(histogram[radix])] |= (sorted_keys[SORTED_KEYS_INDEX(key_index)] >> 8);
+			//sorted_keys[SORTED_KEYS_INDEX(histogram_reference[radix])] |= (sorted_keys[SORTED_KEYS_INDEX(key_index)] >> 8);
+			sorted_keys[SORTED_KEYS_INDEX(histogram_value)] |= (sorted_keys[SORTED_KEYS_INDEX(key_index)] >> 8);
+
+			/*for (int i = 0; i < 1 << GMoNSortRadixSize; i++)
+				if (histogram_reference[i] != histogram.fetch_value(i) && pixel_index == 0)
+					printf("Incorrect.\n");*/
 		}
 
 		// Bookkeeping to prepare the next sorting pass: copying the sorted indices
@@ -150,107 +177,5 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RETURN_TYPE gmon_means_radix_sort(ColorRGB32F* gm
 	return std::make_pair<>(keys_vector, sorted_keys);
 #endif
 }
-
-//HIPRT_HOST_DEVICE HIPRT_INLINE RETURN_TYPE gmon_means_radix_sort(ColorRGB32F* gmon_sets, uint32_t pixel_index, unsigned int sample_number, int2 render_resolution, unsigned short int out_sorted_indices[GMoNMSetsCount])
-//{
-//#ifndef __KERNELCC__
-//	std::vector<unsigned int> keys_vector(GMoNMSetsCount);
-//	std::vector<unsigned int> scratch_memory_vector(GMoNMSetsCount);
-//
-//	unsigned int* keys = keys_vector.data();
-//	unsigned int* scratch_memory = scratch_memory_vector.data();
-//#else
-//	unsigned int input_buffer_index = 0;
-//	unsigned int output_buffer_index = 1;
-//#endif
-//
-//	constexpr unsigned int number_of_keys = GMoNMSetsCount;
-//
-//	// Loading in the input scratch memory
-//	for (int key_index = 0; key_index < number_of_keys; key_index++)
-//	{
-//		// Note that this isn't actually the mean, this is just the value of the accumulated samples
-//		// If we wanted the mean, we would have to divide everyone by the number of samples
-//		// But dividing everyone by the same value isn't going to change the ordering so we don't have to do
-//		// that division
-//		float mean = gmon_sets[key_index * render_resolution.x * render_resolution.y + pixel_index].luminance();
-//
-//		// Setting the means in the "input buffer"
-//		INITIAL_STORE_KEY_IN_INPUT_BUFFER(key_index, *reinterpret_cast<unsigned int*>(&mean));
-//	}
-//
-//	// Initializing the sorted indices
-//	// 
-//	// The sorted indices are 16 bits.
-//	// The low 8 bits are the actual sorted indices
-//	// The high 16 bits are used for internal machinery
-//	//
-//	// We only need to initialize the high bits here, the low bits
-//	// will be overwritten with the sorted indices
-//	for (int i = 0; i < GMoNMSetsCount; i++)
-//		out_sorted_indices[i] = i << 8;
-//
-//	for (int digit = 0; digit < GMoNKeysNbDigitsForRadixSort; digit += GMoNSortRadixSize)
-//	{
-//		unsigned int radix_extraction_mask = ((1 << GMoNSortRadixSize) - 1) << digit;
-//		unsigned int histogram[1 << GMoNSortRadixSize] = { 0 };
-//
-//		// Computing the histogram for the counting sort
-//		for (int key_index = 0; key_index < number_of_keys; key_index++)
-//		{
-//			unsigned int radix = READ_KEY(key_index) & radix_extraction_mask;
-//			radix >>= digit;
-//
-//			histogram[radix]++;
-//		}
-//
-//		// Computing the prefix sum for stable counting sort
-//		for (int i = 1; i < 1 << GMoNSortRadixSize; i++)
-//			histogram[i] += histogram[i - 1];
-//
-//		for (int key_index = number_of_keys - 1; key_index >= 0; key_index--)
-//		{
-//			unsigned int key = READ_KEY(key_index);
-//			unsigned int radix = key & radix_extraction_mask;
-//			radix >>= digit;
-//
-//			STORE_KEY(--histogram[radix], key);
-//
-//			// Also sorting a list of indices so that, when returning from this function,
-//			// we can find from the caller's code which ColorRGB corresponds to the median
-//			//
-//			// Clearing the low 8 bits
-//			out_sorted_indices[histogram[radix]] &= ~0xFF;
-//			// Setting the sorted index in the low 8 bits
-//			out_sorted_indices[histogram[radix]] |= (out_sorted_indices[key_index] >> 8);
-//		}
-//
-//		// Bookkeeping to prepare the next sorting pass: copying the sorted indices
-//		// (in the low 8 bits) to the high 8 bits
-//		for (int i = 0; i < GMoNMSetsCount; i++)
-//		{
-//			// Clearing the high 8 bits
-//			out_sorted_indices[i] &= ~(0xFF << 8);
-//			// Copying the low 8 bits to the high 8 bits
-//			out_sorted_indices[i] |= (out_sorted_indices[i] & 0xFF) << 8;
-//		}
-//
-//#ifdef __KERNELCC__
-//		// Swapping the buffer indices on the GPU
-//		input_buffer_index = input_buffer_index == 0 ? 1 : 0;
-//		output_buffer_index = output_buffer_index == 0 ? 1 : 0;
-//#else
-//		// On the CPU, input/output ping-ponging is just a swap of pointer
-//		unsigned int* temp = keys;
-//		keys = scratch_memory;
-//		scratch_memory = temp;
-//#endif
-//	}
-//
-//#ifndef __KERNELCC__
-//	// The result is in keys for 32 digit keys
-//	return keys_vector;
-//#endif
-//}
 
 #endif

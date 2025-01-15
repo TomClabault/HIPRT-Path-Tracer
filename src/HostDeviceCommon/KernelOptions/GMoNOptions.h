@@ -31,7 +31,7 @@
 /**
  * What radix is used for the radix sort of the means
  */
-#define GMoNSortRadixSize 2
+#define GMoNSortRadixSize 4
 
 #endif // #ifndef __KERNELCC__
 
