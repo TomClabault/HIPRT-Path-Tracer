@@ -2176,8 +2176,8 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::Text("GMoN Mode");
 			gmon_mode_changed |= ImGui::RadioButton("Median of Means", ((int*)&render_data.buffers.gmon_estimator.gmon_mode), 0); ImGui::SameLine();
-			gmon_mode_changed |= ImGui::RadioButton("Binary MoN", ((int*)&render_data.buffers.gmon_estimator.gmon_mode), 1); ImGui::SameLine();
-			gmon_mode_changed |= ImGui::RadioButton("Adaptive MoN", ((int*)&render_data.buffers.gmon_estimator.gmon_mode), 2);
+			gmon_mode_changed |= ImGui::RadioButton("Binary G-MoN", ((int*)&render_data.buffers.gmon_estimator.gmon_mode), 1); ImGui::SameLine();
+			gmon_mode_changed |= ImGui::RadioButton("Adaptive G-MoN", ((int*)&render_data.buffers.gmon_estimator.gmon_mode), 2);
 			if (gmon_mode_changed)
 				m_render_window->set_render_dirty(true);
 
