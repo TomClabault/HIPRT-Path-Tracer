@@ -26,7 +26,7 @@
 #define SORTED_MEANS_ASSIGNATION(x) x
 // Getting the sorted mean of index 'mean_index' (in shared memory on the GPU)
 #define SORTED_MEANS_FETCH(mean_index) scratch_memory[SCRATCH_MEMORY_INDEX(0, (mean_index))]
-#define SORTED_INDEX_FROM_UNSORTED_INDEX_FETCH(set_index) (sorted_keys[SORTED_KEYS_INDEX(set_index)] & 0xFF)
+#define SORTED_INDEX_FETCH(set_index) (sorted_keys[SORTED_KEYS_INDEX(set_index)] & 0xFF)
 
 #else
 
@@ -40,7 +40,7 @@
 #define SORTED_MEANS_ASSIGNATION(x) SORTED_MEANS_VARIABLE = (x)
 // Getting the sorted mean of index 'mean_index' (in the 'sorted_means' std::vector on the CPU)
 #define SORTED_MEANS_FETCH(mean_index) SORTED_MEANS_VARIABLE.first[(mean_index)]
-#define SORTED_INDEX_FROM_UNSORTED_INDEX_FETCH(set_index) (SORTED_MEANS_VARIABLE.second[set_index] & 0xFF)
+#define SORTED_INDEX_FETCH(set_index) (SORTED_MEANS_VARIABLE.second[set_index] & 0xFF)
 
 #endif
 
@@ -71,7 +71,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float compute_gini_coefficient(SORTED_MEANS_DECLA
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F get_median_of_means(GMoNDevice gmon_device, unsigned int pixel_index, int2 render_resolution SORTED_MEANS_DECLARATION_WITH_COMMA)
 {
     // Getting the index of the set for the sorted median
-    unsigned short int median_set_index = SORTED_INDEX_FROM_UNSORTED_INDEX_FETCH(GMoNMSetsCount / 2);
+    unsigned short int median_set_index = SORTED_INDEX_FETCH(GMoNMSetsCount / 2);
 
     return gmon_device.sets[median_set_index * render_resolution.x * render_resolution.y + pixel_index];
 }
@@ -89,31 +89,6 @@ HIPRT_HOST_DEVICE ColorRGB32F gmon_compute_median_of_means(GMoNDevice gmon_devic
     SORTED_MEANS_DECLARATION;
     SORTED_MEANS_ASSIGNATION(gmon_means_radix_sort(gmon_device.sets, pixel_index, sample_number, render_resolution));
 
-    //unsigned char median_index = SORTED_INDEX_FROM_UNSORTED_INDEX_FETCH(GMoNMSetsCount / 2);
-
-
-    //unsigned int median = SORTED_MEANS_FETCH(GMoNMSetsCount / 2);
-    //// The median is in the middle of the vector
-    //float median_float = *reinterpret_cast<float*>(&median);
-    //if (median_float != find_median(gmon_device.sets, render_resolution, pixel_index, median_float) && pixel_index == 0)
-    //{
-    //    printf("Colors:\n");
-    //    for (int i = 0; i < GMoNMSetsCount; i++)
-    //    {
-    //        ColorRGB32F color = gmon_device.sets[i * render_resolution.x * render_resolution.y + pixel_index];
-    //        printf("\t[%f, %f, %f]\n", color.r, color.g, color.b);
-    //    }
-
-    //    ColorRGB32F median_found = find_colorRGB32F_from_median_float(gmon_device.sets, pixel_index, render_resolution, median_float);
-    //    printf("\nMedian found: [%f, %f, %f]\n", median_found.r, median_found.g, median_found.b);
-    //    printf("Median float: %f", median_float);
-    //    printf("Find median(): %f\n", find_median(gmon_device.sets, render_resolution, pixel_index, median_float));
-
-    //    printf("\n");
-
-    //    return ColorRGB32F();
-    //}
-
     switch (gmon_device.gmon_mode)
     {
     case GMoNDevice::GMoNMode::MEDIAN_OF_MEANS:
@@ -125,8 +100,6 @@ HIPRT_HOST_DEVICE ColorRGB32F gmon_compute_median_of_means(GMoNDevice gmon_devic
         //  - So we need to return the color (which is 7 sample-accumulated) multiplied by the number of sets
         //      to get back our 35
         return get_median_of_means(gmon_device, pixel_index, render_resolution SORTED_MEANS_VARIABLE_WITH_COMMA) * GMoNMSetsCount;
-
-        break;
 
     case GMoNDevice::GMoNMode::BINARY_GMON:
     {
@@ -146,7 +119,6 @@ HIPRT_HOST_DEVICE ColorRGB32F gmon_compute_median_of_means(GMoNDevice gmon_devic
             return sum;
         }
         else
-        {
             // Return the median of means
              
             // Multiplying by the number of sets here because (with an example):
@@ -157,8 +129,6 @@ HIPRT_HOST_DEVICE ColorRGB32F gmon_compute_median_of_means(GMoNDevice gmon_devic
             //  - So we need to return the color (which is 7 sample-accumulated) multiplied by the number of sets
             //      to get back our 35
             return get_median_of_means(gmon_device, pixel_index, render_resolution SORTED_MEANS_VARIABLE_WITH_COMMA) * GMoNMSetsCount;
-            //return find_colorRGB32F_from_median_float(gmon_device.sets, pixel_index, render_resolution, median_float) * GMoNMSetsCount;
-        }
     }
 
     case GMoNDevice::GMoNMode::ADAPTIVE_GMON:
@@ -173,7 +143,7 @@ HIPRT_HOST_DEVICE ColorRGB32F gmon_compute_median_of_means(GMoNDevice gmon_devic
         // Eq. 6
         ColorRGB32F sum;
         for (int i = c; i < GMoNMSetsCount - c; i++)
-            sum += gmon_device.sets[SORTED_INDEX_FROM_UNSORTED_INDEX_FETCH(i) * render_resolution.x * render_resolution.y + pixel_index];
+            sum += gmon_device.sets[SORTED_INDEX_FETCH(i) * render_resolution.x * render_resolution.y + pixel_index];
 
         // We want this function to return un-averaged colors such that it is
         // the shader that displays in the viewport that does the averaging.

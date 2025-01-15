@@ -33,7 +33,7 @@ __shared__ unsigned short int sorted_keys[GMoNThreadsPerBlock * GMoNMSetsCount];
 #define INITIAL_STORE_KEY_IN_INPUT_BUFFER(key_index, value) scratch_memory[SCRATCH_MEMORY_INDEX(0, key_index)] = value
 
 #define READ_KEY(key_index) scratch_memory[SCRATCH_MEMORY_INDEX(input_buffer_index, key_index)]
-#define STORE_KEY(key_index, value) scratch_memory[SCRATCH_MEMORY_INDEX(output_buffer_index, key_index)] = value
+#define STORE_KEY(key_index, value) scratch_memory[SCRATCH_MEMORY_INDEX(!input_buffer_index, key_index)] = value
 
 #else // #ifdef __KERNELCC__
 
@@ -59,8 +59,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RETURN_TYPE gmon_means_radix_sort(ColorRGB32F* gm
 	unsigned int* keys = keys_vector.data();
 	unsigned int* scratch_memory = scratch_memory_vector.data();
 #else
-	unsigned int input_buffer_index = 0;
-	unsigned int output_buffer_index = 1;
+	bool input_buffer_index = false;
 #endif
 
 	constexpr unsigned int number_of_keys = GMoNMSetsCount;
@@ -93,7 +92,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RETURN_TYPE gmon_means_radix_sort(ColorRGB32F* gm
 	{
 		unsigned int radix_extraction_mask = ((1 << GMoNSortRadixSize) - 1) << digit;
 		GMoNRadixSortHistogram histogram;
-		//unsigned int histogram_reference[1 << GMoNSortRadixSize] = { 0 };
 
 		// Computing the histogram for the counting sort
 		for (int key_index = 0; key_index < number_of_keys; key_index++)
@@ -101,25 +99,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RETURN_TYPE gmon_means_radix_sort(ColorRGB32F* gm
 			unsigned int radix = READ_KEY(key_index) & radix_extraction_mask;
 			radix >>= digit;
 
-			//histogram_reference[radix]++;
 			histogram.increment(radix, 1);
-
-			/*for (int i = 0; i < 1 << GMoNSortRadixSize; i++)
-				if (histogram_reference[i] != histogram.fetch_value(i) && pixel_index == 0)
-					printf("Incorrect.\n");*/
 		}
 
 		// Computing the prefix sum for stable counting sort
 		for (int i = 1; i < 1 << GMoNSortRadixSize; i++)
 		{
-			//histogram_reference[i] += histogram_reference[i - 1];
-
 			unsigned int histogram_i_minus_1_value = histogram.fetch_value(i - 1);
 			histogram.increment(i, histogram_i_minus_1_value);
-
-			/*for (int i = 0; i < 1 << GMoNSortRadixSize; i++)
-				if (histogram_reference[i] != histogram.fetch_value(i) && pixel_index == 0)
-					printf("Incorrect.\n");*/
 		}
 
 		// Reordering
@@ -133,21 +120,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RETURN_TYPE gmon_means_radix_sort(ColorRGB32F* gm
 			unsigned int histogram_value = histogram.fetch_value(radix);
 			STORE_KEY(histogram_value, key);
 
-			//STORE_KEY(--histogram_reference[radix], key);
-
 			// Also sorting a list of indices so that, when returning from this function,
 			// we can find from the caller's code which ColorRGB corresponds to the median
 			//
 			// Clearing the low 8 bits
-			//sorted_keys[SORTED_KEYS_INDEX(histogram_reference[radix])] &= ~0xFF;
 			sorted_keys[SORTED_KEYS_INDEX(histogram_value)] &= ~0xFF;
 			// Setting the sorted index in the low 8 bits
-			//sorted_keys[SORTED_KEYS_INDEX(histogram_reference[radix])] |= (sorted_keys[SORTED_KEYS_INDEX(key_index)] >> 8);
 			sorted_keys[SORTED_KEYS_INDEX(histogram_value)] |= (sorted_keys[SORTED_KEYS_INDEX(key_index)] >> 8);
-
-			/*for (int i = 0; i < 1 << GMoNSortRadixSize; i++)
-				if (histogram_reference[i] != histogram.fetch_value(i) && pixel_index == 0)
-					printf("Incorrect.\n");*/
 		}
 
 		// Bookkeeping to prepare the next sorting pass: copying the sorted indices
@@ -162,8 +141,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RETURN_TYPE gmon_means_radix_sort(ColorRGB32F* gm
 
 #ifdef __KERNELCC__
 		// Swapping the buffer indices on the GPU
-		input_buffer_index = input_buffer_index == 0 ? 1 : 0;
-		output_buffer_index = output_buffer_index == 0 ? 1 : 0;
+		input_buffer_index = !input_buffer_index;
 #else
 		// On the CPU, input/output ping-ponging is just a swap of pointer
 		unsigned int* temp = keys;
