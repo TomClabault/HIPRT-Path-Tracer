@@ -10,6 +10,13 @@
 #include "Device/includes/GMoN/GMoN.h"
 #include "HostDeviceCommon/RenderData.h"
 
+/**
+ * Kernel for the implementation of GMoN
+ *
+ * Reference:
+ * [1] [Firefly removal in Monte Carlo rendering with adaptive Median of meaNs, Buisine et al., 2021]
+ */
+
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) GMoNComputeMedianOfMeans(HIPRTRenderData render_data)
 #else

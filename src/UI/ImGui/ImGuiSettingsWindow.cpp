@@ -2159,6 +2159,14 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 
 		if (ImGui::Checkbox("Use GMoN", &m_renderer->get_gmon_render_pass().get_gmon_data().use_gmon))
 			m_render_window->set_render_dirty(true);
+		ImGuiRenderer::show_help_marker("Use GMoN for fireflies elimination.\n"
+			"The algorithm computes the median of means of the pixels as an estimator "
+			"that is more robust than the simple mean usually used to average samples.\n"
+			"The algorithm is unbiased as long as enough samples are accumulated. If not "
+			"enough samples are accumulated, the firefly elimination tends to be a bit too "
+			"strong and the image will probably end up darker than expected, especially on high-variance scenes.\n\n"
+			""
+			"Implementation following [Firefly removal in Monte Carlo rendering with adaptive Median of meaNs, Buisine et al., 2021]");
 
 		if (m_renderer->get_gmon_render_pass().get_gmon_data().use_gmon)
 		{

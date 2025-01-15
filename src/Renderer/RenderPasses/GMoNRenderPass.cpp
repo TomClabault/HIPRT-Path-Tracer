@@ -63,12 +63,12 @@ void GMoNRenderPass::launch(std::shared_ptr<ApplicationSettings> application_set
 		int2 render_resolution = m_renderer->m_render_resolution;
 		void* launch_args[] = { &m_renderer->get_render_data() };
 
-		m_compute_gmon_kernel.launch_synchronous(
+		m_compute_gmon_kernel.launch_asynchronous(
 			GMoNComputeMeansKernelThreadBlockSize, GMoNComputeMeansKernelThreadBlockSize, render_resolution.x, render_resolution.y,
-			launch_args);/* ,
-			m_renderer->get_main_stream());*/
+			launch_args,
+			m_renderer->get_main_stream());
 
-		std::cout << "Recomputation at: " << m_renderer->get_render_settings().sample_number + 1 << " | " << m_compute_gmon_kernel.get_last_execution_time() << "ms" << std::endl;
+		std::cout << "Recomputation at: " << m_renderer->get_render_settings().sample_number + 1 << std::endl;
 
 		m_gmon.m_gmon_recomputed = true;
 		m_gmon.m_gmon_recomputation_requested = false;

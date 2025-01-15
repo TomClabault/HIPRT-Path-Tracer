@@ -13,7 +13,6 @@
  * [1] [Firefly removal in Monte Carlo rendering with adaptive Median of meaNs, Buisine et al., 2021]
  */
 
-
  /**
   * Options are defined in a #ifndef __KERNELCC__ block because:
   *	- If they were not, the would be defined on the GPU side. However, the -D <macro>=<value> compiler option
@@ -26,7 +25,7 @@
 /**
  * How many sets to use for GMoN. M variable in the paper
  */
-#define GMoNMSetsCount 31
+#define GMoNMSetsCount 15
 
 #endif // #ifndef __KERNELCC__
 
