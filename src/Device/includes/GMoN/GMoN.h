@@ -24,7 +24,7 @@
 #define SORTED_MEANS_ASSIGNATION(x) x
 // Getting the sorted mean of index 'mean_index' (in shared memory on the GPU)
 #define SORTED_MEANS_FETCH(mean_index) scratch_memory[SCRATCH_MEMORY_INDEX(0, (mean_index))]
-#define MEDIAN_INDEX_FETCH() (sorted_keys[SORTED_KEYS_INDEX(GMoNMSetsCount / 2)] & 0xFF)
+#define SORTED_MEAN_COLOR_FROM_INDEX_FETCH(set_index) (sorted_keys[SORTED_KEYS_INDEX(set_index)] & 0xFF)
 
 #else
 
@@ -36,7 +36,7 @@
 #define SORTED_MEANS_ASSIGNATION(x) SORTED_MEANS_VARIABLE = (x)
 // Getting the sorted mean of index 'mean_index' (in the 'sorted_means' std::vector on the CPU)
 #define SORTED_MEANS_FETCH(mean_index) SORTED_MEANS_VARIABLE.first[(mean_index)]
-#define MEDIAN_INDEX_FETCH() (SORTED_MEANS_VARIABLE.second[GMoNMSetsCount / 2] & 0xFF)
+#define SORTED_MEAN_COLOR_FROM_INDEX_FETCH(set_index) (SORTED_MEANS_VARIABLE.second[set_index] & 0xFF)
 
 #endif
 
@@ -153,7 +153,7 @@ HIPRT_HOST_DEVICE ColorRGB32F gmon_compute_median_of_means(GMoNDevice gmon_devic
     SORTED_MEANS_DECLARATION;
     SORTED_MEANS_ASSIGNATION(gmon_means_radix_sort(gmon_device.sets, pixel_index, sample_number, render_resolution));
 
-    unsigned char median_index = MEDIAN_INDEX_FETCH();
+    unsigned char median_index = SORTED_MEAN_COLOR_FROM_INDEX_FETCH(GMoNMSetsCount / 2);
 
 
     unsigned int median = SORTED_MEANS_FETCH(GMoNMSetsCount / 2);
@@ -239,10 +239,10 @@ HIPRT_HOST_DEVICE ColorRGB32F gmon_compute_median_of_means(GMoNDevice gmon_devic
         ColorRGB32F sum;
         for (int i = c; i < GMoNMSetsCount - c; i++)
         {
-            unsigned int sorted_mean_uint = SORTED_MEANS_FETCH(i);
-            float sorted_mean_float = *reinterpret_cast<float*>(&sorted_mean_uint);
+            /*unsigned int sorted_mean_uint = SORTED_MEANS_FETCH(i);
+            float sorted_mean_float = *reinterpret_cast<float*>(&sorted_mean_uint);*/
 
-            unsigned char set_index = MEDIAN_INDEX_FETCH();
+            unsigned char set_index = SORTED_MEAN_COLOR_FROM_INDEX_FETCH(i);
             sum += gmon_device.sets[set_index * render_resolution.x * render_resolution.y + pixel_index];
             //sum += find_colorRGB32F_from_median_float(gmon_device.sets, pixel_index, render_resolution, sorted_mean_float);
         }
