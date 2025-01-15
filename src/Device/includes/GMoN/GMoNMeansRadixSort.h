@@ -46,8 +46,6 @@ __shared__ unsigned short int sorted_keys[GMoNThreadsPerBlock * GMoNMSetsCount];
 #define STORE_KEY(key_index, value) scratch_memory[SCRATCH_MEMORY_INDEX(42, key_index)] = value
 #endif
 
-// std::vector<unsigned int> global_keys;
-
 HIPRT_HOST_DEVICE HIPRT_INLINE RETURN_TYPE gmon_means_radix_sort(ColorRGB32F* gmon_sets, uint32_t pixel_index, unsigned int sample_number, int2 render_resolution)
 {
 #ifndef __KERNELCC__
@@ -73,7 +71,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RETURN_TYPE gmon_means_radix_sort(ColorRGB32F* gm
 		// But dividing everyone by the same value isn't going to change the ordering so we don't have to do
 		// that division
 		float mean = gmon_sets[key_index * render_resolution.x * render_resolution.y + pixel_index].luminance();
-		//unsigned int mean = global_keys[key_index];
 
 		// Setting the means in the "input buffer"
 		INITIAL_STORE_KEY_IN_INPUT_BUFFER(key_index, *reinterpret_cast<unsigned int*>(&mean));
