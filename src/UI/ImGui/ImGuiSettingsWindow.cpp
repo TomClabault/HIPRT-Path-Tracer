@@ -2183,6 +2183,15 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 					// number_of_sets is even but we only want odd
 					number_of_sets--;
 			}
+			ImGuiRenderer::show_help_marker("How many sets (M variable in the GMoN paper, [Buisine et al., 2021]).\n\n"
+				""
+				"As a general rule: more sets eliminate fireflies the best but more sets require more samples per "
+				"pixel to avoid too much darkening, especially on high-variance scene. If your scene is very "
+				"easy to render, you probably don't need many sets (less than 15). If your scene has high "
+				"variance caustics, you're probably going to need a lot of samples per pixel and so a large "
+				"number of sets will be fine anyways.\n"
+				"Said otherwise: if you're noticing too much darkening, try reducing the number of sets or "
+				"try accumulating more samples per pixel.");
 
 			// If the user modified the number of sets, displaying an "Apply" button
 			if (number_of_sets != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT))
