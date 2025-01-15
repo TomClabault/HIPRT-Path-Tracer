@@ -319,8 +319,13 @@ RenderWindow::RenderWindow(int renderer_width, int renderer_height, std::shared_
 	init_gl(renderer_width, renderer_height);
 	ImGuiRenderer::init_imgui(m_glfw_window);
 
-	m_renderer = std::make_shared<GPURenderer>(hiprt_oro_ctx);
+	m_application_state = std::make_shared<ApplicationState>();
+	m_application_settings = std::make_shared<ApplicationSettings>();
+	m_renderer = std::make_shared<GPURenderer>(hiprt_oro_ctx, m_application_settings);
 	m_gpu_baker = std::make_shared<GPUBaker>(m_renderer);
+
+	// Disabling auto samples per frame is accumulation is OFF
+	m_application_settings->auto_sample_per_frame = m_renderer->get_render_settings().accumulate ? m_application_settings->auto_sample_per_frame : false;
 
 	ThreadManager::start_thread(ThreadManager::RENDER_WINDOW_RENDERER_INITIAL_RESIZE, [this, renderer_width, renderer_height]() {
 		m_renderer->resize(renderer_width, renderer_height, /* resize interop buffers */ false);
@@ -328,11 +333,6 @@ RenderWindow::RenderWindow(int renderer_width, int renderer_height, std::shared_
 	// We need to resize OpenGL interop buffers on the main thread becaues they
 	// need the OpenGL context which is only available to the main thread
 	m_renderer->resize_interop_buffers(renderer_width, renderer_height);
-
-	m_application_settings = std::make_shared<ApplicationSettings>();
-	// Disabling auto samples per frame is accumulation is OFF
-	m_application_settings->auto_sample_per_frame = m_renderer->get_render_settings().accumulate ? m_application_settings->auto_sample_per_frame : false;
-	m_application_state = std::make_shared<ApplicationState>();
 
 	ThreadManager::start_thread(ThreadManager::RENDER_WINDOW_CONSTRUCTOR, [this, renderer_width, renderer_height]() {
 		m_denoiser = std::make_shared<OpenImageDenoiser>();
@@ -652,7 +652,33 @@ bool RenderWindow::needs_viewport_refresh()
 	bool realtime_rendering = !m_renderer->get_render_settings().accumulate;
 	bool force_refresh = m_application_state->force_viewport_refresh;
 
-	return enough_time_has_passed || realtime_rendering || render_was_reset || force_refresh;
+	bool needs_refresh = enough_time_has_passed || realtime_rendering || render_was_reset || force_refresh;
+	if (!needs_refresh)
+		return false;
+
+	if (m_renderer->is_using_gmon())
+	{
+		// With GMoN however, we want to recompute the GMoN framebuffer with the new samples accumulated so far
+		// before refreshing the viewport
+
+		if (!needs_refresh)
+			// No need of 
+			return false;
+
+		if (m_renderer->get_gmon_render_pass().recomputation_completed())
+			// We requested a GMoN recomputation before and it is actually complete, we're ready to display
+			return true;
+		else
+		{
+			// So if we need a refresh, we're going to request a GMoN computation first
+			m_renderer->get_gmon_render_pass().request_recomputation();
+
+			return false;
+		}
+	}
+	else
+		// Not using GMoN
+		return needs_refresh;
 }
 
 float RenderWindow::get_viewport_refresh_delay_ms()
@@ -682,7 +708,7 @@ void RenderWindow::reset_render()
 	m_application_state->render_dirty = false;
 	m_application_state->frame_number = 0;
 
-	m_renderer->reset(m_application_settings);
+	m_renderer->reset();
 }
 
 void RenderWindow::set_render_dirty(bool render_dirty)

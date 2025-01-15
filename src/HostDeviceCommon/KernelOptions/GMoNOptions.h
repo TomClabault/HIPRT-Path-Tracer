@@ -28,11 +28,6 @@
  */
 #define GMoNMSetsCount 31
 
-/**
- * What radix is used for the radix sort of the means
- */
-#define GMoNSortRadixSize 2
-
 #endif // #ifndef __KERNELCC__
 
 // The options below are not in the "#ifndef __KERNELCC__" guard because they cannot change at runtime
@@ -47,5 +42,10 @@
   * How many bits to use to sort the means with a radix sort
   */
 #define GMoNKeysNbDigitsForRadixSort 32
+
+/**
+ * What radix is used for the radix sort of the means
+ */
+#define GMoNSortRadixSize 2
 
 #endif // #ifndef HOST_DEVICE_COMMON_KERNEL_OPTIONS_GMON_OPTIONS_H

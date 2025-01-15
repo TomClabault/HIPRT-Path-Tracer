@@ -81,7 +81,7 @@ public:
 	 * Constructs a renderer that will be using the given HIPRT/Orochi
 	 * context for handling GPU acceleration structures, buffers, textures, etc...
 	 */
-	GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx);
+	GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx, std::shared_ptr<ApplicationSettings> application_settings);
 	void setup_brdfs_data();
 
 	/**
@@ -366,7 +366,7 @@ public:
 
 	void update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer> perf_metrics);
 
-	void reset(std::shared_ptr<ApplicationSettings> application_settings);
+	void reset();
 
 	Xorshift32Generator& rng();
 
@@ -487,6 +487,8 @@ private:
 	// -------- Functions called by the pre_render_update() method ---------
 
 	void internal_clear_m_status_buffers();
+
+	std::shared_ptr<ApplicationSettings> m_application_settings;
 
 	// Properties of the device
 	oroDeviceProp m_device_properties = { .gcnArchName = "" };

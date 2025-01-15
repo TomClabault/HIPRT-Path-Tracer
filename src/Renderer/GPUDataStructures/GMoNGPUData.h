@@ -76,6 +76,25 @@ struct GMoNGPUData : public GMoNCPUGPUCommonData
 	// This is the buffer that contains the G-median of means result of each pixel and this is going
 	// to be displayed in the viewport instead of the regular framebuffer if GMoN is being used
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> result_framebuffer = nullptr;
+
+	// These two variables are used for lazy GMoN recomputation:
+	// 
+	// GMoN isn't recomputed at each sample because we need at least one new sample
+	// in each set of GMoN to be able to recompute the median of means.
+	// So we should recompute GMoN only every M samples (for M GMoN sets).
+	//
+	// Even then, that's not exactly what we're doing because recomputing GMoN
+	// is a little bit expensive but the viewport of the render window is only
+	// refreshed every 5s (the timer varies) so this means that we only need to
+	// recompute GMoN every 5s, not every M samples
+	//
+	// GMoNRenderPass:request_refresh() sets 'm_gmon_recomputation_requested' to true.
+	// If 
+	bool m_gmon_recomputed = false;
+	bool m_gmon_recomputation_requested = false;
+
+	// How many samples were we at when last launched the GMoN kernel
+	unsigned int last_recomputed_sample_count = 0;
 };
 
 #endif

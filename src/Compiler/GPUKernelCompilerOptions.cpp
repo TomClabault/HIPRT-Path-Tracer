@@ -51,7 +51,6 @@ const std::string GPUKernelCompilerOptions::RESTIR_DI_LATER_BOUNCES_SAMPLING_STR
 const std::string GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING = "ReSTIR_DI_DoLightsPresampling";
 
 const std::string GPUKernelCompilerOptions::GMON_M_SETS_COUNT = "GMoNMSetsCount";
-const std::string GPUKernelCompilerOptions::GMON_SORT_RADIX_SIZE = "GMoNSortRadixSize";
 
 const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES = {
 	GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL,
@@ -89,7 +88,6 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING,
 
 	GPUKernelCompilerOptions::GMON_M_SETS_COUNT,
-	GPUKernelCompilerOptions::GMON_SORT_RADIX_SIZE,
 };
 
 GPUKernelCompilerOptions::GPUKernelCompilerOptions()
@@ -131,7 +129,6 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING] = std::make_shared<int>(ReSTIR_DI_DoLightsPresampling);
 
 	m_options_macro_map[GPUKernelCompilerOptions::GMON_M_SETS_COUNT] = std::make_shared<int>(GMoNMSetsCount);
-	m_options_macro_map[GPUKernelCompilerOptions::GMON_SORT_RADIX_SIZE] = std::make_shared<int>(GMoNSortRadixSize);
 	
 	// Making sure we didn't forget to fill the ALL_MACROS_NAMES vector with all the options that exist
 	if (GPUKernelCompilerOptions::ALL_MACROS_NAMES.size() != m_options_macro_map.size())

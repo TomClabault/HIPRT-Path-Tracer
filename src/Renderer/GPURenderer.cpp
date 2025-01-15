@@ -48,7 +48,7 @@ const std::string GPURenderer::ALL_RENDER_PASSES_TIME_KEY = "FullFrameTime";
 const std::string GPURenderer::FULL_FRAME_TIME_WITH_CPU_KEY = "FullFrameTimeWithCPU";
 const std::string GPURenderer::DEBUG_KERNEL_TIME_KEY = "DebugKernelTime";
 
-GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
+GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx, std::shared_ptr<ApplicationSettings> application_settings)
 {
 	m_rng.m_state.seed = 42;
 
@@ -64,6 +64,7 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx)
 	
 	m_hiprt_orochi_ctx = hiprt_oro_ctx;	
 	m_device_properties = m_hiprt_orochi_ctx->device_properties;
+	m_application_settings = application_settings;
 
 	setup_brdfs_data();
 	setup_filter_functions();
@@ -683,7 +684,7 @@ void GPURenderer::launch_path_tracing()
 
 void GPURenderer::launch_GMoN_kernel()
 {
-	m_gmon_render_pass.launch();
+	m_gmon_render_pass.launch(m_application_settings);
 }
 
 void GPURenderer::launch_debug_kernel()
@@ -1180,7 +1181,7 @@ void GPURenderer::update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer
 		perf_metrics->add_value(GPURenderer::DEBUG_KERNEL_TIME_KEY, m_render_pass_times[GPURenderer::DEBUG_KERNEL_TIME_KEY]);
 }
 
-void GPURenderer::reset(std::shared_ptr<ApplicationSettings> application_settings)
+void GPURenderer::reset()
 {
 	if (m_render_data.render_settings.accumulate)
 	{
@@ -1191,7 +1192,7 @@ void GPURenderer::reset(std::shared_ptr<ApplicationSettings> application_setting
 
 		m_restir_di_render_pass.reset();
 	
-		if (application_settings->auto_sample_per_frame)
+		if (m_application_settings->auto_sample_per_frame)
 			m_render_data.render_settings.samples_per_frame = 1;
 	}
 

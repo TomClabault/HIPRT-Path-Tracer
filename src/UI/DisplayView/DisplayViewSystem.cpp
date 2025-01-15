@@ -224,24 +224,25 @@ void DisplayViewSystem::update_display_program_uniforms(const DisplayViewSystem*
 			// sample count that doesn't match
 			sample_number = application_settings->last_denoised_sample_count;
 		else if (renderer->is_using_gmon())
-		{
-			unsigned int number_of_sets = renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT);
+			sample_number = renderer->get_gmon_render_pass().get_last_recomputed_sample_count();
+		//{
+		//	unsigned int number_of_sets = renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT);
 
-			// When using GMoN, the viewport is only refreshed once every set has accumulated another sample
-			// This means that the viewport is only refreshed every GMON_M_SETS_COUNT samples
-			//
-			// In between, the viewport is still going to display the old GMoN buffer so we're going to
-			// have to use the old number of samples
-			//
-			// For example, if GMON_M_SETS_COUNT = 5 and the renderer is at sample 7, then GMoN hasn't
-			// recomputed the median of means yet (it will be recomputed at sample 10) and so we're are still
-			// displaying the framebuffer that contains 5 samples so that's the amount of samples that we're going to
-			// need for displaying correctly
-			//
-			// The integer division rounds render_settings.sample_number just the way we want it to
-			sample_number = render_settings.sample_number / number_of_sets * number_of_sets;
-			sample_number = hippt::max(1, sample_number);
-		}
+		//	// When using GMoN, the viewport is only refreshed once every set has accumulated another sample
+		//	// This means that the viewport is only refreshed every GMON_M_SETS_COUNT samples
+		//	//
+		//	// In between, the viewport is still going to display the old GMoN buffer so we're going to
+		//	// have to use the old number of samples
+		//	//
+		//	// For example, if GMON_M_SETS_COUNT = 5 and the renderer is at sample 7, then GMoN hasn't
+		//	// recomputed the median of means yet (it will be recomputed at sample 10) and so we're are still
+		//	// displaying the framebuffer that contains 5 samples so that's the amount of samples that we're going to
+		//	// need for displaying correctly
+		//	//
+		//	// The integer division rounds render_settings.sample_number just the way we want it to
+		//	sample_number = render_settings.sample_number / number_of_sets * number_of_sets;
+		//	sample_number = hippt::max(1, sample_number);
+		//}
 		else
 			sample_number = render_settings.sample_number;
 

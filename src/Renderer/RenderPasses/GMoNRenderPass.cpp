@@ -39,7 +39,7 @@ void GMoNRenderPass::recompile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx,
 		m_compute_gmon_kernel.compile(hiprt_orochi_ctx, {}, use_cache);
 }
 
-void GMoNRenderPass::launch()
+void GMoNRenderPass::launch(std::shared_ptr<ApplicationSettings> application_settings)
 {
 	if (!use_gmon())
 		return;
@@ -54,7 +54,9 @@ void GMoNRenderPass::launch()
 	// a copy of the current pixel color (which is only 1 sample accumuluated) to the framebuffer)
 	bool enough_samples_accumulated = (m_renderer->get_render_settings().sample_number + 1) % number_of_sets == 0;
 	bool sample_0 = m_renderer->get_render_settings().sample_number == 0;
-	if (enough_samples_accumulated || sample_0)
+	bool last_sample_of_render = m_renderer->get_render_settings().sample_number == (application_settings->max_sample_count - 1);
+	bool recomputation_necessary = m_gmon.m_gmon_recomputation_requested || last_sample_of_render;
+	if ((enough_samples_accumulated || sample_0) && recomputation_necessary)
 	{
 		// If we have rendered enough samples that one more sample has been accumulated in each of the
 		// GMoN sets
@@ -66,8 +68,32 @@ void GMoNRenderPass::launch()
 			launch_args);/* ,
 			m_renderer->get_main_stream());*/
 
-		std::cout << m_compute_gmon_kernel.get_last_execution_time() << "ms" << std::endl;
+		std::cout << "Recomputation at: " << m_renderer->get_render_settings().sample_number + 1 << " | " << m_compute_gmon_kernel.get_last_execution_time() << "ms" << std::endl;
+
+		m_gmon.m_gmon_recomputed = true;
+		m_gmon.m_gmon_recomputation_requested = false;
+		m_gmon.last_recomputed_sample_count = m_renderer->get_render_settings().sample_number + 1;
 	}
+}
+
+void GMoNRenderPass::request_recomputation()
+{
+	m_gmon.m_gmon_recomputation_requested = true;
+}
+
+bool GMoNRenderPass::recomputation_completed()
+{
+	return m_gmon.m_gmon_recomputed;
+}
+
+bool GMoNRenderPass::recomputation_requested()
+{
+	return m_gmon.m_gmon_recomputation_requested;
+}
+
+unsigned int GMoNRenderPass::get_last_recomputed_sample_count()
+{
+	return m_gmon.last_recomputed_sample_count;
 }
 
 bool GMoNRenderPass::pre_render_update()
@@ -97,6 +123,9 @@ bool GMoNRenderPass::pre_render_update()
 
 			return true;
 		}
+
+		// Resetting the flag because we're now rendering a new frame
+		m_gmon.m_gmon_recomputed = false;
 	}
 	else
 	{
@@ -131,6 +160,11 @@ void GMoNRenderPass::reset()
 
 		if (buffers_allocated())
 			m_gmon.sets.memset_whole_buffer(0);
+
+		// Requesting a computation on reset just so that we copy the very
+		// first sample to the framebuffer to avoid having a black viewport
+		// until the next GMoN recomputation
+		m_gmon.m_gmon_recomputation_requested = true;
 	}
 }
 

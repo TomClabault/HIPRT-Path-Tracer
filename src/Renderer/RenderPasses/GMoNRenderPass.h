@@ -10,6 +10,7 @@
 #include "HIPRT-Orochi/HIPRTOrochiCtx.h"
 #include "HostDeviceCommon/RenderData.h"
 #include "Renderer/GPUDataStructures/GMoNGPUData.h"
+#include "UI/ApplicationSettings.h"
 
 class GMoNRenderPass
 {
@@ -20,7 +21,12 @@ public:
 	void compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx);
 	void recompile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, bool silent, bool use_cache);
 
-	void launch();
+	void launch(std::shared_ptr<ApplicationSettings> application_settings);
+	void request_recomputation();
+	bool recomputation_completed();
+	bool recomputation_requested();
+
+	unsigned int get_last_recomputed_sample_count();
 
 	/**
 	 * Allocates/deallocates the buffers used by GMoN.

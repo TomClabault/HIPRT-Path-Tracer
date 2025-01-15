@@ -52,7 +52,6 @@ public:
 	static const std::string RESTIR_DI_DO_LIGHTS_PRESAMPLING;
 	
 	static const std::string GMON_M_SETS_COUNT;
-	static const std::string GMON_SORT_RADIX_SIZE;
 
 	static const std::unordered_set<std::string> ALL_MACROS_NAMES;
 

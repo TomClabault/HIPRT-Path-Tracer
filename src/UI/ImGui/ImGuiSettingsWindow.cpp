@@ -73,11 +73,27 @@ void ImGuiSettingsWindow::draw_header()
 		ImGui::Text("Frame time (GPU): %.3fms", m_render_window_perf_metrics->get_current_value(GPURenderer::ALL_RENDER_PASSES_TIME_KEY));
 	ImGui::Text("%d samples | %.2f samples/s @ %dx%d", render_settings.sample_number, m_render_window->get_samples_per_second(), m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y);
 	float time_before_viewport_refresh_ms = m_render_window->get_time_ms_before_viewport_refresh();
-	if (m_render_window->get_viewport_refresh_delay_ms() > 0.0f && !m_render_window->is_rendering_done())
+	if (!m_render_window->is_rendering_done())
+	{
 		// Only displaying the refresh timer if we actually need to wait before refreshin'
 		// And also, not displaying that if the rendering is done
-		ImGui::Text("Viewport refresh in: %.3fs", std::max(0.0f, time_before_viewport_refresh_ms / 1000.0f));
+
+		float time_before_refresh_seconds = time_before_viewport_refresh_ms / 1000.0f;
+		if (time_before_refresh_seconds > 0.0f)
+			ImGui::Text("Viewport refresh in: %.3fs", time_before_refresh_seconds);
+		else
+		{
+			// Time is < 0.0f i.e. the timer has expired and we're waiting for a refresh
+			if (m_renderer->is_using_gmon() && m_renderer->get_gmon_render_pass().recomputation_requested())
+				// If we're waiting for GMoN, indicating it
+				ImGui::Text("Viewport refresh in: 0.000s --- Waiting for GMoN");
+			else
+				// If we're not waiting for GMoN, just clampign so that we don't display negative values
+				ImGui::Text("Viewport refresh in: %.3fs", std::max(0.0f, time_before_refresh_seconds));
+		}
+	}
 	else
+		// If the rendering is done, displaying 0.000s
 		ImGui::Text("Viewport refresh in: 0.000s");
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -2156,20 +2172,6 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 			gmon_mode_changed |= ImGui::RadioButton("Adaptive MoN", ((int*)&render_data.buffers.gmon_estimator.gmon_mode), 2);
 			if (gmon_mode_changed)
 				m_render_window->set_render_dirty(true);
-
-			bool gmon_sort_radix_changed = false;
-			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			ImGui::Text("GMoN means sorting radix size");
-			gmon_sort_radix_changed |= ImGui::RadioButton("1", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::GMON_SORT_RADIX_SIZE), 1); ImGui::SameLine();
-			gmon_sort_radix_changed |= ImGui::RadioButton("2", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::GMON_SORT_RADIX_SIZE), 2); ImGui::SameLine();
-			gmon_sort_radix_changed |= ImGui::RadioButton("4", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::GMON_SORT_RADIX_SIZE), 4);
-			ImGuiRenderer::show_help_marker("How many bits to sort at the same time when sorting the means for finding the median. "
-				"This is basically only for experimentation purposes as '4' is always the fastest option pretty much.");
-			if (gmon_sort_radix_changed)
-			{
-				m_renderer->recompile_kernels();
-				m_render_window->set_render_dirty(true);
-			}
 
 			static int number_of_sets = GMoNMSetsCount;
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
