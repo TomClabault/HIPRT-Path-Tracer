@@ -20,6 +20,7 @@ const std::string GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL = "Us
 const std::string GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE = "SharedStackBVHTraversalSize";
 const std::string GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_BLOCK_SIZE = "KernelWorkgroupThreadCount";
 const std::string GPUKernelCompilerOptions::REUSE_BSDF_MIS_RAY = "ReuseBSDFMISRay";
+const std::string GPUKernelCompilerOptions::DO_FIRST_BOUNCE_WARP_DIRECTION_REUSE = "DoFirstBounceWarpDirectionReuse";
 
 const std::string GPUKernelCompilerOptions::BSDF_OVERRIDE = "BSDFOverride";
 const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_DIFFUSE_LOBE = "PrincipledBSDFDiffuseLobe";
@@ -57,6 +58,7 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE,
 	GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_BLOCK_SIZE,
 	GPUKernelCompilerOptions::REUSE_BSDF_MIS_RAY,
+	GPUKernelCompilerOptions::DO_FIRST_BOUNCE_WARP_DIRECTION_REUSE,
 
 	GPUKernelCompilerOptions::BSDF_OVERRIDE,
 	GPUKernelCompilerOptions::PRINCIPLED_BSDF_DIFFUSE_LOBE,
@@ -98,6 +100,7 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE] = std::make_shared<int>(SharedStackBVHTraversalSize);
 	m_options_macro_map[GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_BLOCK_SIZE] = std::make_shared<int>(KernelWorkgroupThreadCount);
 	m_options_macro_map[GPUKernelCompilerOptions::REUSE_BSDF_MIS_RAY] = std::make_shared<int>(ReuseBSDFMISRay);
+	m_options_macro_map[GPUKernelCompilerOptions::DO_FIRST_BOUNCE_WARP_DIRECTION_REUSE] = std::make_shared<int>(DoFirstBounceWarpDirectionReuse);
 
 	m_options_macro_map[GPUKernelCompilerOptions::BSDF_OVERRIDE] = std::make_shared<int>(BSDFOverride);
 	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_DIFFUSE_LOBE] = std::make_shared<int>(PrincipledBSDFDiffuseLobe);

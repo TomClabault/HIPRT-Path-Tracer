@@ -21,6 +21,7 @@ public:
 	static const std::string SHARED_STACK_BVH_TRAVERSAL_BLOCK_SIZE;
 	static const std::string SHARED_STACK_BVH_TRAVERSAL_SIZE;
 	static const std::string REUSE_BSDF_MIS_RAY;
+	static const std::string DO_FIRST_BOUNCE_WARP_DIRECTION_REUSE;
 
 	static const std::string BSDF_OVERRIDE;
 	static const std::string PRINCIPLED_BSDF_DIFFUSE_LOBE;

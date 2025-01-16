@@ -2263,6 +2263,14 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 			""
 			"There is virtually no point in disabling that option. This options i there only for "
 			"performance comparisons with and without reuse");
+		static bool do_direction_reuse = DoFirstBounceWarpDirectionReuse;
+		if (ImGui::Checkbox("Warp BSDF sampled directions reuse", &do_direction_reuse))
+		{
+			kernel_options->set_macro_value(GPUKernelCompilerOptions::DO_FIRST_BOUNCE_WARP_DIRECTION_REUSE, do_direction_reuse ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+			m_renderer->recompile_kernels();
+
+			m_render_window->set_render_dirty(true);
+		}
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();

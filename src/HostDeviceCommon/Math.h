@@ -182,10 +182,46 @@ namespace hippt
 	__device__ float fract(float a) { return a - floorf(a); }
 	__device__ float asfloat(unsigned int x) { return __uint_as_float(x); }
 	__device__ unsigned int asuint(float x) { return __float_as_uint(x); }
+	__device__ unsigned int popc(unsigned int bitmask) { return __popc(bitmask); }
+	/**
+	 * Finds the position of least signigicant bit set to 1 in a 32 bit unsigned integer.
+	 * Returs a value between 0 and 32 inclusive.
+	 *
+	 * Returns 0 if all bits are zero
+	 */
+	__device__ unsigned int ffs(unsigned int bitmask) { return __ffs(bitmask); }
 
-	// TODO these functions require __sync on modern NVIDIA GPUs. We should pass a -D definition to the compiler if on an NVIDIA GPU and then use and #if here to use the proper instructions
+	// TODO these functions require __sync on modern NVIDIA GPUs. We should check that with __CUDACC__
 	__device__ bool warp_any(unsigned int thread_mask, bool predicate) { return __any(predicate); }
 	__device__ unsigned long long int warp_ballot(unsigned int thread_mask, bool predicate) { return __ballot(predicate); }
+	__device__ unsigned int warp_activemask() { return hippt::warp_ballot(0xFFFFFFFF, true); }
+
+	/**
+	 * T can be a 32-bit integer type, 64-bit integer type or a single precision or double precision floating point type.
+	 * 
+	 * The warp shuffle functions exchange values between threads within a warp.
+	 * 
+	 * The optional width argument specifies subgroups, in which the warp can be 
+	 * divided to share the variables. It has to be a power of two smaller than 
+	 * or equal to warpSize. If it is smaller than warpSize, the warp is grouped 
+	 * into separate groups, that are each indexed from 0 to width as if it was 
+	 * its own entity, and only the lanes within that subgroup participate in the shuffle. 
+	 * The lane indices in the subgroup are given by laneIdx % width.
+	 * 
+	 * 'warp_shfl': The thread reads the value from the lane specified in srcLane
+	 */
+	template <typename T>
+	__device__ T warp_shfl(T var, int src_lane, int width = warpSize) { return __shfl(var, src_lane, width); }
+
+	/**
+	 * Returns the index within its warp (not group) of the calling thread
+	 */
+	__device__ unsigned int warp_2D_thread_index()
+	{
+		// warpSize assuming to be a power of 2 so the '&' operation
+		// here is a modulo
+		return (threadIdx.x + threadIdx.y * blockDim.x) & warpSize;
+	}
 
 #else
 #undef M_PI
@@ -293,9 +329,52 @@ namespace hippt
 	inline float fract(float a) { return a - floorf(a); }
 	inline float asfloat(unsigned int x) { return std::bit_cast<float, unsigned int>(x); }
 	inline unsigned int asuint(float x) { return std::bit_cast<unsigned int, float>(x); }
+	inline unsigned int popc(unsigned int bitmask) { return std::popcount(bitmask); }
+	/**
+	 * Finds the position of least signigicant bit set to 1 in a 32 bit unsigned integer.
+	 * Returs a value between 0 and 32 inclusive.
+	 *
+	 * Returns 0 if all bits are zero
+	 */
+	inline unsigned int ffs(unsigned int bitmask)
+	{
+		for (int i = 0; i < sizeof(unsigned int) * 8; i++)
+			if (bitmask & (1 << i))
+				return i;
+
+		return 0;
+	}
 
 	inline bool warp_any(unsigned int thread_mask, bool predicate) { return predicate; }
 	inline unsigned long long int warp_ballot(unsigned int thread_mask, bool predicate) { return predicate ? 1 : 0; }
+	inline unsigned int warp_activemask() { return 1; }
+
+	/**
+	 * T can be a 32-bit integer type, 64-bit integer type or a single precision or double precision floating point type.
+	 *
+	 * The warp shuffle functions exchange values between threads within a warp.
+	 *
+	 * The optional width argument specifies subgroups, in which the warp can be
+	 * divided to share the variables. It has to be a power of two smaller than
+	 * or equal to warpSize. If it is smaller than warpSize, the warp is grouped
+	 * into separate groups, that are each indexed from 0 to width as if it was
+	 * its own entity, and only the lanes within that subgroup participate in the shuffle.
+	 * The lane indices in the subgroup are given by laneIdx % width.
+	 *
+	 * 'warp_shfl': The thread reads the value from the lane specified in srcLane
+	 */
+	template <typename T>
+	inline T warp_shfl(T var, int srcLane, int width = 1) { return var; }
+
+	/**
+	 * Returns the index within its warp (not group) of the calling thread
+	 * 
+	 * Warp sizes of 1 on the CPU
+	 */
+	HIPRT_HOST_DEVICE HIPRT_INLINE unsigned int warp_2D_thread_index()
+	{
+		return 1;
+	}
 #endif
 }
 

@@ -15,6 +15,8 @@
 #include "Device/includes/RayPayload.h"
 #include "Device/includes/RussianRoulette.h"
 #include "Device/includes/Sampling.h"
+#include "Device/includes/WarpDirectionReuse.h"
+
 #include "HostDeviceCommon/Xorshift.h"
 
 #ifndef __KERNELCC__
@@ -149,6 +151,8 @@ HIPRT_HOST_DEVICE void accumulate_color(const HIPRTRenderData& render_data, cons
 #endif
 }
 
+__shared__ float3 shared_directions[1];
+
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) FullPathTracer(HIPRTRenderData render_data)
 #else
@@ -177,6 +181,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
     // then we're clearing the viewport buffer here
     render_data.buffers.accumulated_ray_colors[pixel_index] = ColorRGB32F();
 #endif
+
 
     unsigned int seed;
     if (render_data.render_settings.freeze_random)
@@ -274,6 +279,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
                     bsdf_color = reuse_mis_bsdf_sample(bounce_direction, bsdf_pdf, ray_payload, mis_reuse);
                 else
                     bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, true, -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bounce_direction, bsdf_pdf, random_number_generator);
+#if DoFirstBounceWarpDirectionReuse
+                warp_direction_reuse(render_data, closest_hit_info, ray_payload, -ray.direction, bounce_direction, bsdf_color, bsdf_pdf, bounce, random_number_generator);
+#endif
 
                 // Terminate ray if bad sampling
                 if (bsdf_pdf <= 0.0f)

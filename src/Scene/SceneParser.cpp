@@ -428,13 +428,12 @@ void SceneParser::read_material_properties(aiMaterial* mesh_material, CPUMateria
     mesh_material->Get(AI_MATKEY_VOLUME_ATTENUATION_DISTANCE, renderer_material.absorption_at_distance);
     mesh_material->Get(AI_MATKEY_OPACITY, renderer_material.alpha_opacity);
 
-    /*renderer_material.metallic = 0.95f;
-    renderer_material.roughness = 0.0f;
-    renderer_material.ior = 1.0f;
-    renderer_material.base_color = ColorRGB32F();
-    renderer_material.thin_film = 1.0f;
-    renderer_material.thin_film_ior = 2.0f;
-    renderer_material.thin_film_thickness = 1000.0f;*/
+    /*renderer_material.roughness = 1.0f;
+    renderer_material.specular = 0.0f;
+    renderer_material.metallic = 0.0f;
+    renderer_material.coat = 0.0f;
+    renderer_material.specular_transmission = 0.0f;
+    renderer_material.base_color = ColorRGB32F(0.8f);*/
 
     renderer_material.make_safe();
     renderer_material.precompute_properties();

@@ -108,7 +108,13 @@
  * There is virtually no point in disabling that option. This options i there only for
  * performance comparisons with and without reuse
  */
-#define ReuseBSDFMISRay KERNEL_OPTION_TRUE
+#define ReuseBSDFMISRay KERNEL_OPTION_FALSE
+
+/**
+ * Partial and experimental implementation of [Generate Coherent Rays Directly, Liu et al., 2024]
+ * for reuse sampled directions on the first hit accross the threads of warps
+ */
+#define DoFirstBounceWarpDirectionReuse KERNEL_OPTION_FALSE
 
 /**
  * Allows the overriding of the BRDF/BSDF used by the path tracer. When an override is used,
