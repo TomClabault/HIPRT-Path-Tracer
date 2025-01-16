@@ -1086,6 +1086,9 @@ std::map<std::string, GPUKernel*> GPURenderer::get_kernels()
 	for (auto& pair : m_restir_di_render_pass.get_kernels())
 		kernels[pair.first] = &pair.second;
 
+	for (auto& pair : m_gmon_render_pass.get_kernels())
+		kernels[pair.first] = &pair.second;
+
 	return kernels;
 }
 

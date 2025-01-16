@@ -74,7 +74,7 @@ public:
 	 * This function may also return 0 if the device doesn't support querrying
 	 * the number of registers
 	 */
-	int get_kernel_attribute(oroFunction_attribute attribute);
+	int get_kernel_attribute(oroFunction_attribute attribute) const;
 	static int get_kernel_attribute(oroFunction compiled_kernel, oroFunction_attribute attribute);
 
 	/**

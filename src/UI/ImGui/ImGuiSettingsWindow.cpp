@@ -2317,7 +2317,8 @@ void ImGuiSettingsWindow::toggle_gmon()
 		// We just enabled GMoN, automatically switching to the GMoN view for convenience
 		m_render_window->get_display_view_system()->queue_display_view_change(DisplayViewType::GMON_BLEND);
 
-	if (gmon_now_enabled)
+	if (gmon_now_enabled && !m_renderer->get_gmon_render_pass().get_kernels()[GMoNRenderPass::COMPUTE_GMON_KERNEL].has_been_compiled())
+		// The GMoN kernel hasn't been compiled yet, compiling it
 		m_renderer->recompile_kernels();
 
 	m_render_window->set_render_dirty(true);
@@ -2824,6 +2825,40 @@ void ImGuiSettingsWindow::draw_shader_kernels_panel()
 		std::vector<const char*> shader_cache_override_values = { "No override", "Do not use shader cache", "Always use shader cache" };
 		if (ImGui::Combo("Shader cache use override", (int*)&shader_cache_use_override, shader_cache_override_values.data(), shader_cache_override_values.size()))
 			g_gpu_kernel_compiler.set_shader_cache_usage_override(shader_cache_use_override);
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		if (ImGui::CollapsingHeader("Kernels compilation statistics"))
+		{
+			ImGui::Text("Kernel [Registers, Shared Memory, Local Memory]");
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+			// Computing the longest kernel name for aligning everything
+			size_t longest_kernel_name = 0;
+			for (auto kernel_name_to_kernel : m_renderer->get_kernels())
+				longest_kernel_name = hippt::max(longest_kernel_name, kernel_name_to_kernel.first.length());
+			std::string padding_formatter = "%-" + std::to_string(longest_kernel_name) + "s";
+
+			for (auto kernel_name_to_kernel : m_renderer->get_kernels())
+			{
+				const std::string& kernel_name = kernel_name_to_kernel.first;
+				const GPUKernel* kernel = kernel_name_to_kernel.second;
+
+				if (kernel->has_been_compiled())
+				{
+					int nb_reg = kernel->get_kernel_attribute(ORO_FUNC_ATTRIBUTE_NUM_REGS);
+					int nb_shared = kernel->get_kernel_attribute(ORO_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES);
+					int nb_local = kernel->get_kernel_attribute(ORO_FUNC_ATTRIBUTE_LOCAL_SIZE_BYTES);
+
+					std::string text = padding_formatter + " [%d, %d, %d]";
+					ImGui::Text(text.c_str(), kernel_name.c_str(), nb_reg, nb_shared, nb_local);
+				}
+				else
+				{
+					std::string text = padding_formatter + " [Not compiled]";
+					ImGui::Text(text.c_str(), kernel_name.c_str());
+				}
+			}
+		}
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();

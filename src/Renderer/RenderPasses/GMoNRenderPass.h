@@ -15,6 +15,8 @@
 class GMoNRenderPass
 {
 public:
+	static const std::string COMPUTE_GMON_KERNEL;
+
 	GMoNRenderPass();
 	GMoNRenderPass(GPURenderer* renderer);
 
@@ -63,13 +65,15 @@ public:
 	GMoNGPUData& get_gmon_data();
 	unsigned int get_VRAM_usage_bytes() const;
 
+	std::map<std::string, GPUKernel>& get_kernels();
+
 private:
 	GPURenderer* m_renderer = nullptr;
 
 	// Data for the GMoN estimator
 	GMoNGPUData m_gmon;
 
-	GPUKernel m_compute_gmon_kernel;
+	std::map<std::string, GPUKernel> m_kernels;
 };
 
 #endif

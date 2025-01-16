@@ -7,17 +7,19 @@
 #include "Threads/ThreadFunctions.h"
 #include "Threads/ThreadManager.h"
 
+const std::string GMoNRenderPass::COMPUTE_GMON_KERNEL = "GMoN Compute Kernel";
+
 GMoNRenderPass::GMoNRenderPass()
 {
-	m_compute_gmon_kernel.set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/GMoN/GMoNComputeMedianOfMeans.h");
-	m_compute_gmon_kernel.set_kernel_function_name("GMoNComputeMedianOfMeans");
+	m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL].set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/GMoN/GMoNComputeMedianOfMeans.h");
+	m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL].set_kernel_function_name("GMoNComputeMedianOfMeans");
 }
 
 GMoNRenderPass::GMoNRenderPass(GPURenderer* renderer) : GMoNRenderPass() 
 {
 	m_renderer = renderer;
 
-	m_compute_gmon_kernel.synchronize_options_with(*renderer->get_global_compiler_options(), {});
+	m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL].synchronize_options_with(*renderer->get_global_compiler_options(), {});
 }
 
 void GMoNRenderPass::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx)
@@ -25,7 +27,7 @@ void GMoNRenderPass::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx)
 	if (!use_gmon())
 		return;
 
-	ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel_no_func_sets, std::ref(m_compute_gmon_kernel), hiprt_orochi_ctx);
+	ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel_no_func_sets, std::ref(m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL]), hiprt_orochi_ctx);
 }
 
 void GMoNRenderPass::recompile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, bool silent, bool use_cache)
@@ -34,9 +36,9 @@ void GMoNRenderPass::recompile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx,
 		return;
 
 	if (silent)
-		m_compute_gmon_kernel.compile_silent(hiprt_orochi_ctx, {}, use_cache);
+		m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL].compile_silent(hiprt_orochi_ctx, {}, use_cache);
 	else
-		m_compute_gmon_kernel.compile(hiprt_orochi_ctx, {}, use_cache);
+		m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL].compile(hiprt_orochi_ctx, {}, use_cache);
 }
 
 void GMoNRenderPass::launch(std::shared_ptr<ApplicationSettings> application_settings)
@@ -44,7 +46,7 @@ void GMoNRenderPass::launch(std::shared_ptr<ApplicationSettings> application_set
 	if (!use_gmon())
 		return;
 
-	unsigned int number_of_sets = m_compute_gmon_kernel.get_kernel_options().get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT);
+	unsigned int number_of_sets = m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL].get_kernel_options().get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT);
 
 	// Adding +1 to sample_number here because this launch() function is called after the renderer has accumulated
 	// one more sample but before render_settings.sample_number is incremented
@@ -63,7 +65,7 @@ void GMoNRenderPass::launch(std::shared_ptr<ApplicationSettings> application_set
 		int2 render_resolution = m_renderer->m_render_resolution;
 		void* launch_args[] = { &m_renderer->get_render_data() };
 
-		m_compute_gmon_kernel.launch_asynchronous(
+		m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL].launch_asynchronous(
 			GMoNComputeMeansKernelThreadBlockSize, GMoNComputeMeansKernelThreadBlockSize, render_resolution.x, render_resolution.y,
 			launch_args,
 			m_renderer->get_main_stream());
@@ -101,7 +103,7 @@ bool GMoNRenderPass::pre_render_update()
 	if (use_gmon())
 	{
 		HIPRTRenderData& render_data = m_renderer->get_render_data();
-		unsigned int number_of_sets = m_compute_gmon_kernel.get_kernel_options().get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT);
+		unsigned int number_of_sets = m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL].get_kernel_options().get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT);
 		if (m_gmon.current_resolution.x != render_resolution.x || m_gmon.current_resolution.y != render_resolution.y)
 		{
 			// Resizing the buffers because the resolution has changed
@@ -157,7 +159,7 @@ void GMoNRenderPass::post_render_update()
 		// Else, if we didn't resize the buffers meaning that GMoN isn't in a fresh state, we're going to increment the
 		// counter that indicates in which sets of GMoN to accumulate
 		render_data.buffers.gmon_estimator.next_set_to_accumulate++;
-		if (render_data.buffers.gmon_estimator.next_set_to_accumulate == m_compute_gmon_kernel.get_kernel_options().get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT))
+		if (render_data.buffers.gmon_estimator.next_set_to_accumulate == m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL].get_kernel_options().get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT))
 			render_data.buffers.gmon_estimator.next_set_to_accumulate = 0;
 	}
 }
@@ -190,7 +192,7 @@ ColorRGB32F* GMoNRenderPass::get_sets_buffers_device_pointer()
 
 unsigned int GMoNRenderPass::get_number_of_sets_used()
 {
-	return m_compute_gmon_kernel.get_kernel_options().get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT);
+	return m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL].get_kernel_options().get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT);
 }
 
 void GMoNRenderPass::resize_interop_buffers(unsigned int new_width, unsigned int new_height)
@@ -240,4 +242,9 @@ unsigned int GMoNRenderPass::get_VRAM_usage_bytes() const
 		return 0;
 
 	return m_gmon.get_VRAM_usage_bytes();
+}
+
+std::map<std::string, GPUKernel>& GMoNRenderPass::get_kernels()
+{
+	return m_kernels;
 }
