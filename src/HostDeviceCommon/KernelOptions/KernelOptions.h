@@ -108,7 +108,7 @@
  * There is virtually no point in disabling that option. This options i there only for
  * performance comparisons with and without reuse
  */
-#define ReuseBSDFMISRay KERNEL_OPTION_FALSE
+#define ReuseBSDFMISRay KERNEL_OPTION_TRUE
 
 /**
  * Partial and experimental implementation of [Generate Coherent Rays Directly, Liu et al., 2024]

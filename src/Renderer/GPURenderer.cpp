@@ -797,6 +797,11 @@ std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_color_interop
 		return m_framebuffer; 
 }
 
+std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_default_interop_framebuffer()
+{
+	return m_framebuffer;
+}
+
 std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_denoised_interop_framebuffer() { return m_denoiser_buffers.m_denoised_framebuffer;}
 std::shared_ptr<OpenGLInteropBuffer<float3>> GPURenderer::get_denoiser_normals_AOV_interop_buffer() 
 {
@@ -908,7 +913,7 @@ void GPURenderer::recompile_kernels(bool use_cache)
 	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI)
 		// We only need to compile the ReSTIR DI render pass if ReSTIR DI is actually being used
 		m_restir_di_render_pass.recompile(m_hiprt_orochi_ctx, m_func_name_sets, true, use_cache);
-	m_gmon_render_pass.recompile(m_hiprt_orochi_ctx, false, use_cache);
+	m_gmon_render_pass.recompile(m_hiprt_orochi_ctx, true, use_cache);
 
 	m_ray_volume_state_byte_size_kernel.compile_silent(m_hiprt_orochi_ctx, m_func_name_sets, use_cache);
 

@@ -241,6 +241,7 @@ public:
 	 * computed for fireflies reduction
 	 */
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> get_color_interop_framebuffer();
+	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> get_default_interop_framebuffer();
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> get_denoised_interop_framebuffer();
 	std::shared_ptr<OpenGLInteropBuffer<float3>> get_denoiser_normals_AOV_interop_buffer();
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> get_denoiser_albedo_AOV_interop_buffer();

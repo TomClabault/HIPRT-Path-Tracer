@@ -36,6 +36,12 @@ struct GMoNDevice
 
     // Which is the next set that is going to receive the sample
     unsigned int next_set_to_accumulate = 0;
+
+    // How many samples to accumulate before computing the first GMoN pass
+    // This is useful because GMoN tends to be super aggressive on the first samples
+    // leading to an overall darkened image.
+    //int minimum_number_of_samples = 4 * GMoNMSetsCount;
+    float gmon_blend = 0.0f;
 };
 
 #endif

@@ -31,6 +31,9 @@ private:
 	void draw_render_settings_panel();
 	void draw_russian_roulette_options();
 	void display_view_selector();
+	bool display_view_disabled(DisplayViewType display_view_type);
+	void display_view_tooltip(DisplayViewType display_view_type);
+	void display_view_disabled_action(DisplayViewType display_view_type);
 	void apply_performance_preset(ImGuiRendererPerformancePreset performance_preset);
 	void draw_camera_panel();
 	// Static because we call this method from other ImGui classes to be able
@@ -44,6 +47,8 @@ private:
 
 	void draw_denoiser_panel();
 	void draw_post_process_panel();
+
+	void toggle_gmon();
 
 	void draw_performance_settings_panel();
 	void draw_perf_metric_specific_panel(std::shared_ptr<PerformanceMetricsComputer> perf_metrics, const std::string& perf_metrics_key, const std::string& label);

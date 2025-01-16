@@ -447,48 +447,47 @@ void ImGuiSettingsWindow::display_view_selector()
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 	std::shared_ptr<DisplayViewSystem> display_view_system = m_render_window->get_display_view_system();
 
-	static std::unordered_map<std::string, DisplayViewType> display_string_to_type = {
+	static std::vector<std::pair<const char*, DisplayViewType>> display_string_to_type = {
 		{ "- Default", DisplayViewType::DEFAULT },
+		{ "- GMoN blend", DisplayViewType::GMON_BLEND },
 		{ "- Denoiser blend", DisplayViewType::DENOISED_BLEND },
 		{ "- Denoiser - Normals", DisplayViewType::DISPLAY_DENOISER_NORMALS },
-		{ "- Denoiser - Denoised normals", DisplayViewType::DISPLAY_DENOISED_NORMALS},
 		{ "- Denoiser - Albedo", DisplayViewType::DISPLAY_DENOISER_ALBEDO },
-		{ "- Denoiser - Denoised albedo", DisplayViewType::DISPLAY_DENOISED_ALBEDO },
 		{ "- Pixel convergence heatmap", DisplayViewType::PIXEL_CONVERGENCE_HEATMAP },
 		{ "- Converged pixels map", DisplayViewType::PIXEL_CONVERGED_MAP },
 		{ "- White Furnace Threshold", DisplayViewType::WHITE_FURNACE_THRESHOLD }
 	};
 
-	std::vector<const char*> items = { "- Default", "- Denoiser blend", "- Denoiser - Normals", "- Denoiser - Denoised normals", "- Denoiser - Albedo", "- Denoiser - Denoised albedo" };
-	if (render_settings.has_access_to_adaptive_sampling_buffers())
-	{
-		items.push_back("- Pixel convergence heatmap");
-		items.push_back("- Converged pixels map");
-	}
-	items.push_back("- White Furnace Threshold");
+	std::vector<const char*> items;
+	for (auto view_string_to_DisplayViewType : display_string_to_type)
+		items.push_back(view_string_to_DisplayViewType.first);
 
-	static DisplayViewType display_view_type_selected = display_view_system->get_current_display_view_type();
-	static int display_view_selected_index = display_view_system->get_current_display_view_type();;
-	if (display_view_selected_index > DisplayViewType::PIXEL_CONVERGED_MAP && !render_settings.has_access_to_adaptive_sampling_buffers())
-		// It may happen that we startup the application with the white
-		// furnace threshold view selected by default. This means that the
-		// selected index is 8 but if we don't have the adaptive sampling on,
-		// 8 is going to be out of bounds of the list so we need to substract
-		// 2 for the adaptive sampling views that are not present
-		display_view_selected_index -= 2;
+	int display_view_selected_index = display_view_system->get_current_display_view_type();
 
 	if (ImGui::BeginCombo("Display View", items[display_view_selected_index]))
 	{
 		for (int i = 0; i < items.size(); i++)
 		{
 			const bool is_selected = (display_view_selected_index == i);
+			bool display_view_is_disabled = display_view_disabled(display_string_to_type[i].second);
+
+			if (display_view_is_disabled)
+				ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
 			if (ImGui::Selectable(items[i], is_selected))
 			{
-				display_view_type_selected = display_string_to_type[std::string(items[i])];
 				display_view_selected_index = i;
 
-				display_view_system->queue_display_view_change(display_view_type_selected);
+				if (display_view_is_disabled)
+					// If we clicked on a display that was disabled, there is an
+					// action to do to enable all the necessary for the display view to work
+					display_view_disabled_action(display_string_to_type[i].second);
+				display_view_system->queue_display_view_change(static_cast<DisplayViewType>(display_view_selected_index));
 				m_render_window->set_force_viewport_refresh(true);
+			}
+			if (display_view_is_disabled)
+			{
+				ImGui::PopStyleColor();
+				display_view_tooltip(display_string_to_type[i].second);
 			}
 
 			if (is_selected)
@@ -498,7 +497,8 @@ void ImGuiSettingsWindow::display_view_selector()
 	}
 
 	DisplaySettings& display_settings = display_view_system->get_display_settings();
-	// Adding some more UI for certain display views
+	DisplayViewType display_view_type_selected = static_cast<DisplayViewType>(display_view_selected_index);
+	// Adding some more UI elements for certain display views
 	switch (display_view_type_selected)
 	{
 		case DisplayViewType::WHITE_FURNACE_THRESHOLD:
@@ -513,6 +513,81 @@ void ImGuiSettingsWindow::display_view_selector()
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			break;
+	}
+}
+
+bool ImGuiSettingsWindow::display_view_disabled(DisplayViewType display_view_type)
+{
+	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
+
+	switch (display_view_type)
+	{
+	case DisplayViewType::PIXEL_CONVERGED_MAP:
+	case DisplayViewType::PIXEL_CONVERGENCE_HEATMAP:
+		return !render_settings.has_access_to_adaptive_sampling_buffers();
+
+	case DisplayViewType::GMON_BLEND:
+		return !m_renderer->is_using_gmon();
+
+	case DisplayViewType::DENOISED_BLEND:
+		return !m_application_settings->enable_denoising;
+
+	default:
+		break;
+	}
+
+	return false;
+}
+
+void ImGuiSettingsWindow::display_view_tooltip(DisplayViewType display_view_type)
+{
+	switch (display_view_type)
+	{
+	case DisplayViewType::PIXEL_CONVERGED_MAP:
+	case DisplayViewType::PIXEL_CONVERGENCE_HEATMAP:
+		ImGuiRenderer::add_tooltip("This display view is unavailabe because adaptive sampling isn't in use. Click to enable adaptive sampling.");
+		return;
+
+	case DisplayViewType::GMON_BLEND:
+		ImGuiRenderer::add_tooltip("This display view is disabled because GMoN isn't in use. Click to enable GMoN.");
+		return;
+
+	case DisplayViewType::DENOISED_BLEND:
+		ImGuiRenderer::add_tooltip("This display view is disabled because the denoiser isn't enabled. Click to enable the denoiser.");
+		return;
+
+	default:
+		break;
+	}
+}
+
+void ImGuiSettingsWindow::display_view_disabled_action(DisplayViewType display_view_type)
+{
+	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
+
+	switch (display_view_type)
+	{
+	case DisplayViewType::PIXEL_CONVERGED_MAP:
+	case DisplayViewType::PIXEL_CONVERGENCE_HEATMAP:
+		render_settings.enable_adaptive_sampling = true;
+			
+		m_render_window->set_render_dirty(true);
+
+		return;
+
+	case DisplayViewType::GMON_BLEND:
+		// Enabling GMoN
+		m_renderer->get_gmon_render_pass().get_gmon_data().use_gmon = true;
+		toggle_gmon();
+
+		return;
+
+	case DisplayViewType::DENOISED_BLEND:
+		ImGuiRenderer::add_tooltip("This display view is disabled because the denoiser isn't enabled. Click to enable the denoiser.");
+		return;
+
+	default:
+		break;
 	}
 }
 
@@ -2047,11 +2122,7 @@ void ImGuiSettingsWindow::draw_denoiser_panel()
 	ImGui::TreePush("Denoiser tree");
 
 	if (ImGui::Checkbox("Enable denoiser", &m_application_settings->enable_denoising))
-	{
 		m_render_window->get_display_view_system()->queue_display_view_change(m_application_settings->enable_denoising ? DisplayViewType::DENOISED_BLEND : DisplayViewType::DEFAULT);
-
-		//m_application_settings->denoiser_settings_changed = true;
-	}
 	if (ImGui::Checkbox("Use OpenGL Interop AOV Buffers", &m_application_settings->denoiser_use_interop_buffers))
 	{
 		m_renderer->set_use_denoiser_AOVs_interop_buffers(m_application_settings->denoiser_use_interop_buffers);
@@ -2158,7 +2229,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 		ImGui::TreePush("GMoN tree post processing");
 
 		if (ImGui::Checkbox("Use GMoN", &m_renderer->get_gmon_render_pass().get_gmon_data().use_gmon))
-			m_render_window->set_render_dirty(true);
+			toggle_gmon();
 		ImGuiRenderer::show_help_marker("Use GMoN for fireflies elimination.\n"
 			"The algorithm computes the median of means of the pixels as an estimator "
 			"that is more robust than the simple mean usually used to average samples.\n"
@@ -2181,9 +2252,9 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 			if (gmon_mode_changed)
 				m_render_window->set_render_dirty(true);
 
-			static int number_of_sets = GMoNMSetsCount;
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
-			if (ImGui::SliderInt("Number of sets M", &number_of_sets, 3, 31))
+			static int number_of_sets = GMoNMSetsCount;
+			if (ImGui::SliderInt("Number of sets (M)", &number_of_sets, 3, 31))
 			{
 				number_of_sets = hippt::clamp(3, 31, number_of_sets);
 
@@ -2200,7 +2271,6 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 				"number of sets will be fine anyways.\n"
 				"Said otherwise: if you're noticing too much darkening, try reducing the number of sets or "
 				"try accumulating more samples per pixel.");
-
 			// If the user modified the number of sets, displaying an "Apply" button
 			if (number_of_sets != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT))
 			{
@@ -2213,12 +2283,42 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 					m_render_window->set_render_dirty(true);
 				}
 			}
+
+			static bool auto_gmon_blend = true;
+			if (ImGui::SliderFloat("GMoN blend factor", &render_data.buffers.gmon_estimator.gmon_blend, 0.0f, 1.0f))
+				auto_gmon_blend = false;
+			ImGui::SameLine();
+			ImGui::Checkbox("Auto", &auto_gmon_blend);
+			if (auto_gmon_blend)
+				// Choosing the blending factor based on how many samples we've accumulated so far
+				// This is just a linear ramp.
+				//
+				// 0 blend factor at sample number 0
+				// 1 blend factor at sample number (5.0f * number_of_sets)
+				render_data.buffers.gmon_estimator.gmon_blend = hippt::clamp(0.0f, 1.0f, render_data.render_settings.sample_number / (5.0f * number_of_sets));
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			if (m_render_window->get_display_view_system()->get_current_display_view_type() != DisplayViewType::GMON_BLEND)
+			{
+				ImGui::Text("Warning: ");
+				ImGuiRenderer::show_help_marker("The display view currently in used isn't \"GMoN blend\" so the output of GMoN cannot be visualized.", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+			}
 		}
 
 		ImGui::TreePop();
 	}
 
 	ImGui::TreePop();
+}
+
+void ImGuiSettingsWindow::toggle_gmon()
+{
+	bool gmon_now_enabled = m_renderer->get_gmon_render_pass().get_gmon_data().use_gmon;
+	if (m_render_window->get_display_view_system()->get_current_display_view_type() == DisplayViewType::GMON_BLEND && !gmon_now_enabled)
+		// We had the GMoN Blend view active but GMoN just got disabled so we're switching to the default view
+		m_render_window->get_display_view_system()->queue_display_view_change(DisplayViewType::DEFAULT);
+
+	m_render_window->set_render_dirty(true);
 }
 
 void ImGuiSettingsWindow::draw_performance_settings_panel()

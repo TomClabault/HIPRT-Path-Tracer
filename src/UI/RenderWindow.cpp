@@ -969,9 +969,11 @@ void RenderWindow::render()
 			buffer_upload_necessary |= m_display_view_system->update_selected_display_view();
 
 			if (m_application_settings->enable_denoising)
+			{
 				// We may still want to denoise on the final frame
 				if (denoise())
 					buffer_upload_necessary = true;
+			}
 
 			if (buffer_upload_necessary)
 			{

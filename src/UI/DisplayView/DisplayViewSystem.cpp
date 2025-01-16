@@ -36,7 +36,7 @@ DisplayViewSystem::DisplayViewSystem(std::shared_ptr<GPURenderer> renderer, Rend
 
 	// Making shared_ptr<OpenGLProgram>s here because multiple display views may share the same OpenGLProgram
 	std::shared_ptr<OpenGLProgram> default_display_program = std::make_shared<OpenGLProgram>(fullscreen_quad_vertex_shader, default_display_fragment_shader);
-	std::shared_ptr<OpenGLProgram> denoise_blend_display_program = std::make_shared<OpenGLProgram>(fullscreen_quad_vertex_shader, blend_2_display_fragment_shader);
+	std::shared_ptr<OpenGLProgram> blend_2_display_program = std::make_shared<OpenGLProgram>(fullscreen_quad_vertex_shader, blend_2_display_fragment_shader);
 	std::shared_ptr<OpenGLProgram> normal_display_program = std::make_shared<OpenGLProgram>(fullscreen_quad_vertex_shader, normal_display_fragment_shader);
 	std::shared_ptr<OpenGLProgram> albedo_display_program = std::make_shared<OpenGLProgram>(fullscreen_quad_vertex_shader, albedo_display_fragment_shader);
 	std::shared_ptr<OpenGLProgram> pixel_convergence_heatmap_display_program = std::make_shared<OpenGLProgram>(fullscreen_quad_vertex_shader, adaptive_display_fragment_shader);
@@ -45,29 +45,32 @@ DisplayViewSystem::DisplayViewSystem(std::shared_ptr<GPURenderer> renderer, Rend
 
 	// Creating all the display views
 	DisplayView default_display_view = DisplayView(DisplayViewType::DEFAULT, default_display_program);
-	DisplayView denoise_blend_display_view = DisplayView(DisplayViewType::DENOISED_BLEND, denoise_blend_display_program);
+	DisplayView blend_2_display_view = DisplayView(DisplayViewType::GMON_BLEND, blend_2_display_program);
+	DisplayView denoise_blend_display_view = DisplayView(DisplayViewType::DENOISED_BLEND, blend_2_display_program);
 	DisplayView normals_display_view = DisplayView(DisplayViewType::DISPLAY_DENOISER_NORMALS, normal_display_program);
-	DisplayView normals_denoised_display_view = DisplayView(DisplayViewType::DISPLAY_DENOISED_NORMALS, normal_display_program);
 	DisplayView albedo_display_view = DisplayView(DisplayViewType::DISPLAY_DENOISER_ALBEDO, albedo_display_program);
-	DisplayView albedo_denoised_display_view = DisplayView(DisplayViewType::DISPLAY_DENOISED_ALBEDO, albedo_display_program);
 	DisplayView pixel_convergence_heatmap_display_view = DisplayView(DisplayViewType::PIXEL_CONVERGENCE_HEATMAP, pixel_convergence_heatmap_display_program);
 	DisplayView pixel_converged_display_view = DisplayView(DisplayViewType::PIXEL_CONVERGED_MAP, pixel_converged_display_program);
 	DisplayView white_furnace_threshold_view = DisplayView(DisplayViewType::WHITE_FURNACE_THRESHOLD, white_furnace_threshold_program);
 
 	// Adding the display views to the map
 	m_display_views[DisplayViewType::DEFAULT] = default_display_view;
-	m_display_views[DisplayViewType::DENOISED_BLEND] = denoise_blend_display_view;
+	m_display_views[DisplayViewType::GMON_BLEND] = blend_2_display_view;
+	m_display_views[DisplayViewType::DENOISED_BLEND] = blend_2_display_view;
 	m_display_views[DisplayViewType::DISPLAY_DENOISER_NORMALS] = normals_display_view;
-	m_display_views[DisplayViewType::DISPLAY_DENOISED_NORMALS] = normals_denoised_display_view;
 	m_display_views[DisplayViewType::DISPLAY_DENOISER_ALBEDO] = albedo_display_view;
-	m_display_views[DisplayViewType::DISPLAY_DENOISED_ALBEDO] = albedo_denoised_display_view;
 	m_display_views[DisplayViewType::PIXEL_CONVERGENCE_HEATMAP] = pixel_convergence_heatmap_display_view;
 	m_display_views[DisplayViewType::PIXEL_CONVERGED_MAP] = pixel_converged_display_view;
 	m_display_views[DisplayViewType::WHITE_FURNACE_THRESHOLD] = white_furnace_threshold_view;
 
 	// Denoiser blend by default if denoising enabled. Default view otherwise
-	DisplayViewType default_display_view_type;
-	default_display_view_type = m_render_window->get_application_settings()->enable_denoising ? DisplayViewType::DENOISED_BLEND : DisplayViewType::DEFAULT;
+	DisplayViewType default_display_view_type = DisplayViewType::DEFAULT;
+	if (m_render_window->get_application_settings()->enable_denoising)
+		default_display_view_type = DisplayViewType::DENOISED_BLEND;
+	else if (m_renderer->is_using_gmon())
+		default_display_view_type = DisplayViewType::GMON_BLEND;
+	else 
+		default_display_view_type = DisplayViewType::DEFAULT;
 
 	queue_display_view_change(default_display_view_type);
 	configure_framebuffer();
@@ -142,7 +145,12 @@ bool DisplayViewSystem::update_selected_display_view()
 	if (m_queued_display_view_change != DisplayViewType::UNDEFINED)
 	{
 		// Adjusting the denoiser setting according to the selected view
-		m_render_window->get_application_settings()->enable_denoising = (m_queued_display_view_change == DisplayViewType::DENOISED_BLEND);
+		// so if the user just selected the denoiser blend display view,
+		// enabling the denoising
+		//
+		// If the user changed the view and this is not the denoiser blend view,
+		// this disables denoising
+		// m_render_window->get_application_settings()->enable_denoising = m_queued_display_view_change == DisplayViewType::DENOISED_BLEND;
 
 		m_current_display_view = &m_display_views[m_queued_display_view_change];
 
@@ -225,24 +233,6 @@ void DisplayViewSystem::update_display_program_uniforms(const DisplayViewSystem*
 			sample_number = application_settings->last_denoised_sample_count;
 		else if (renderer->is_using_gmon())
 			sample_number = renderer->get_gmon_render_pass().get_last_recomputed_sample_count();
-		//{
-		//	unsigned int number_of_sets = renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT);
-
-		//	// When using GMoN, the viewport is only refreshed once every set has accumulated another sample
-		//	// This means that the viewport is only refreshed every GMON_M_SETS_COUNT samples
-		//	//
-		//	// In between, the viewport is still going to display the old GMoN buffer so we're going to
-		//	// have to use the old number of samples
-		//	//
-		//	// For example, if GMON_M_SETS_COUNT = 5 and the renderer is at sample 7, then GMoN hasn't
-		//	// recomputed the median of means yet (it will be recomputed at sample 10) and so we're are still
-		//	// displaying the framebuffer that contains 5 samples so that's the amount of samples that we're going to
-		//	// need for displaying correctly
-		//	//
-		//	// The integer division rounds render_settings.sample_number just the way we want it to
-		//	sample_number = render_settings.sample_number / number_of_sets * number_of_sets;
-		//	sample_number = hippt::max(1, sample_number);
-		//}
 		else
 			sample_number = render_settings.sample_number;
 
@@ -276,6 +266,24 @@ void DisplayViewSystem::update_display_program_uniforms(const DisplayViewSystem*
 		break;
 	}
 
+	case DisplayViewType::GMON_BLEND:
+	{
+		int gmon_sample_number = renderer->get_gmon_render_pass().get_last_recomputed_sample_count();
+		int default_sample_number = render_settings.sample_number;
+
+		program->set_uniform("u_blend_factor", renderer->get_render_data().buffers.gmon_estimator.gmon_blend);
+		program->set_uniform("u_texture_1", DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
+		program->set_uniform("u_texture_2", DisplayViewSystem::DISPLAY_TEXTURE_UNIT_2);
+		program->set_uniform("u_sample_number_1", gmon_sample_number);
+		program->set_uniform("u_sample_number_2", default_sample_number);
+		program->set_uniform("u_do_tonemapping", display_settings.do_tonemapping);
+		program->set_uniform("u_resolution_scaling", render_low_resolution_scaling);
+		program->set_uniform("u_gamma", display_settings.tone_mapping_gamma);
+		program->set_uniform("u_exposure", display_settings.tone_mapping_exposure);
+
+		break;
+	}
+
 	case DisplayViewType::DENOISED_BLEND:
 	{
 		int noisy_sample_number;
@@ -301,14 +309,12 @@ void DisplayViewSystem::update_display_program_uniforms(const DisplayViewSystem*
 	}
 
 	case DisplayViewType::DISPLAY_DENOISER_ALBEDO:
-	case DisplayViewType::DISPLAY_DENOISED_ALBEDO:
 		program->set_uniform("u_texture", DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
 		program->set_uniform("u_resolution_scaling", render_low_resolution_scaling);
 
 		break;
 
 	case DisplayViewType::DISPLAY_DENOISER_NORMALS:
-	case DisplayViewType::DISPLAY_DENOISED_NORMALS:
 		program->set_uniform("u_texture", DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
 		program->set_uniform("u_resolution_scaling", render_low_resolution_scaling);
 		program->set_uniform("u_do_tonemapping", display_settings.do_tonemapping);
@@ -367,6 +373,11 @@ void DisplayViewSystem::upload_relevant_buffers_to_texture()
 
 	switch (current_display_view_type)
 	{
+	case DisplayViewType::GMON_BLEND:
+		internal_upload_buffer_to_texture(m_renderer->get_default_interop_framebuffer(), m_display_texture_1, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
+		internal_upload_buffer_to_texture(m_renderer->get_color_interop_framebuffer(), m_display_texture_2, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_2);
+		break;
+
 	case DisplayViewType::DENOISED_BLEND:
 		internal_upload_buffer_to_texture(m_renderer->get_color_interop_framebuffer(), m_display_texture_1, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
 		internal_upload_buffer_to_texture(m_renderer->get_denoised_interop_framebuffer(), m_display_texture_2, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_2);
@@ -396,7 +407,7 @@ void DisplayViewSystem::upload_relevant_buffers_to_texture()
 	case DisplayViewType::DEFAULT:
 	case DisplayViewType::WHITE_FURNACE_THRESHOLD:
 	default:
-		internal_upload_buffer_to_texture(m_renderer->get_color_interop_framebuffer(), m_display_texture_1, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
+		internal_upload_buffer_to_texture(m_renderer->get_default_interop_framebuffer(), m_display_texture_1, DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
 		break;
 	}
 }
@@ -432,9 +443,7 @@ void DisplayViewSystem::internal_recreate_display_textures_from_display_view(Dis
 	{
 	case DisplayViewType::DEFAULT:
 	case DisplayViewType::DISPLAY_DENOISER_NORMALS:
-	case DisplayViewType::DISPLAY_DENOISED_NORMALS:
 	case DisplayViewType::DISPLAY_DENOISER_ALBEDO:
-	case DisplayViewType::DISPLAY_DENOISED_ALBEDO:
 	case DisplayViewType::WHITE_FURNACE_THRESHOLD:
 		texture_1_type_needed = DisplayTextureType::FLOAT3;
 		break;
@@ -444,6 +453,7 @@ void DisplayViewSystem::internal_recreate_display_textures_from_display_view(Dis
 		texture_1_type_needed = DisplayTextureType::INT;
 		break;
 
+	case DisplayViewType::GMON_BLEND:
 	case DisplayViewType::DENOISED_BLEND:
 		texture_1_type_needed = DisplayTextureType::FLOAT3;
 		texture_2_type_needed = DisplayTextureType::FLOAT3;

@@ -32,6 +32,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GMoNComputeMedianOfMeans(HIPRTRenderData re
 
     uint32_t pixel_index = x + y * render_data.render_settings.render_resolution.x;
 
+    // - 1 here because 'minimum_number_of_samples' is controlled by the user and it starts at 1
+    // whereas 'render_data.render_settings.sample_number' starts at 0
+    //if (render_data.render_settings.sample_number <= render_data.buffers.gmon_estimator.minimum_number_of_samples - 1)
     if (render_data.render_settings.sample_number == 0)
     {
         // For sample 0, this is a special case where we're just going to
@@ -45,8 +48,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GMoNComputeMedianOfMeans(HIPRTRenderData re
     }
 
     ColorRGB32F GMoN_color = gmon_compute_median_of_means(render_data.buffers.gmon_estimator, pixel_index, render_data.render_settings.sample_number, render_data.render_settings.render_resolution);
+    ColorRGB32F non_GMoN_color = render_data.buffers.accumulated_ray_colors[pixel_index];
 
-    // TODO Interop Framebuffer write is slow here
+    ColorRGB32F blended_color = hippt::lerp(non_GMoN_color, GMoN_color, render_data.buffers.gmon_estimator.gmon_blend);
     render_data.buffers.gmon_estimator.result_framebuffer[pixel_index] = GMoN_color;
 }
 
