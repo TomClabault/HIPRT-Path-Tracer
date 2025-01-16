@@ -100,6 +100,7 @@ bool GMoNRenderPass::pre_render_update()
 
 	if (use_gmon())
 	{
+		HIPRTRenderData& render_data = m_renderer->get_render_data();
 		unsigned int number_of_sets = m_compute_gmon_kernel.get_kernel_options().get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT);
 		if (m_gmon.current_resolution.x != render_resolution.x || m_gmon.current_resolution.y != render_resolution.y)
 		{
@@ -107,7 +108,7 @@ bool GMoNRenderPass::pre_render_update()
 			m_gmon.resize_sets(render_resolution.x, render_resolution.y, get_number_of_sets_used());
 			m_gmon.resize_interop(render_resolution.x, render_resolution.y);
 
-			m_renderer->get_render_data().buffers.gmon_estimator.next_set_to_accumulate = 0;
+			render_data.buffers.gmon_estimator.next_set_to_accumulate = 0;
 
 			// Returning true to indicate that the render data buffers have been invalidated
 			return true;
@@ -117,10 +118,21 @@ bool GMoNRenderPass::pre_render_update()
 			// If the number of sets changed...
 
 			m_gmon.resize_sets(render_resolution.x, render_resolution.y, get_number_of_sets_used());
-			m_renderer->get_render_data().buffers.gmon_estimator.next_set_to_accumulate = 0;
+			render_data.buffers.gmon_estimator.next_set_to_accumulate = 0;
 
 			return true;
 		}
+
+		if (m_renderer->get_gmon_render_pass().get_gmon_data().gmon_auto_blend_factor)
+			// Auto adjusting the GMoN blend factor
+			// 
+			// Choosing the blending factor based on how many samples we've accumulated so far
+			// 
+			// This is just a linear ramp.
+			//
+			// 0 blend factor at sample number 0
+			// 1 blend factor at sample number (N * number_of_sets)
+			render_data.buffers.gmon_estimator.gmon_blend = hippt::clamp(0.0f, 1.0f, render_data.render_settings.sample_number / (15.0f * number_of_sets));
 
 		// Resetting the flag because we're now rendering a new frame
 		m_gmon.m_gmon_recomputed = false;

@@ -2230,6 +2230,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 
 		if (ImGui::Checkbox("Use GMoN", &m_renderer->get_gmon_render_pass().get_gmon_data().use_gmon))
 			toggle_gmon();
+
 		ImGuiRenderer::show_help_marker("Use GMoN for fireflies elimination.\n"
 			"The algorithm computes the median of means of the pixels as an estimator "
 			"that is more robust than the simple mean usually used to average samples.\n"
@@ -2284,18 +2285,13 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 				}
 			}
 
-			static bool auto_gmon_blend = true;
 			if (ImGui::SliderFloat("GMoN blend factor", &render_data.buffers.gmon_estimator.gmon_blend, 0.0f, 1.0f))
-				auto_gmon_blend = false;
+			{
+				m_renderer->get_gmon_render_pass().get_gmon_data().gmon_auto_blend_factor = false;
+				m_render_window->set_force_viewport_refresh(true);
+			}
 			ImGui::SameLine();
-			ImGui::Checkbox("Auto", &auto_gmon_blend);
-			if (auto_gmon_blend)
-				// Choosing the blending factor based on how many samples we've accumulated so far
-				// This is just a linear ramp.
-				//
-				// 0 blend factor at sample number 0
-				// 1 blend factor at sample number (5.0f * number_of_sets)
-				render_data.buffers.gmon_estimator.gmon_blend = hippt::clamp(0.0f, 1.0f, render_data.render_settings.sample_number / (5.0f * number_of_sets));
+			ImGui::Checkbox("Auto", &m_renderer->get_gmon_render_pass().get_gmon_data().gmon_auto_blend_factor);
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			if (m_render_window->get_display_view_system()->get_current_display_view_type() != DisplayViewType::GMON_BLEND)
@@ -2317,6 +2313,12 @@ void ImGuiSettingsWindow::toggle_gmon()
 	if (m_render_window->get_display_view_system()->get_current_display_view_type() == DisplayViewType::GMON_BLEND && !gmon_now_enabled)
 		// We had the GMoN Blend view active but GMoN just got disabled so we're switching to the default view
 		m_render_window->get_display_view_system()->queue_display_view_change(DisplayViewType::DEFAULT);
+	else if (m_render_window->get_display_view_system()->get_current_display_view_type() == DisplayViewType::DEFAULT && gmon_now_enabled)
+		// We just enabled GMoN, automatically switching to the GMoN view for convenience
+		m_render_window->get_display_view_system()->queue_display_view_change(DisplayViewType::GMON_BLEND);
+
+	if (gmon_now_enabled)
+		m_renderer->recompile_kernels();
 
 	m_render_window->set_render_dirty(true);
 }

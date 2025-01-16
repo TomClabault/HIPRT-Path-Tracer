@@ -11,7 +11,8 @@
 struct GMoNCPUGPUCommonData
 {
 	// Whether or not GMoN is actively being used
-	bool use_gmon = false;
+	bool use_gmon = true;
+	bool gmon_auto_blend_factor = true;
 
 	int2 current_resolution = make_int2(1280, 720);
 	unsigned int current_number_of_sets = GMoNMSetsCount;
