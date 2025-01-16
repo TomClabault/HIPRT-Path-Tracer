@@ -132,7 +132,7 @@ bool GMoNRenderPass::pre_render_update()
 			//
 			// 0 blend factor at sample number 0
 			// 1 blend factor at sample number (N * number_of_sets)
-			render_data.buffers.gmon_estimator.gmon_blend = hippt::clamp(0.0f, 1.0f, render_data.render_settings.sample_number / (15.0f * number_of_sets));
+			m_gmon.gmon_blend_factor = hippt::clamp(0.0f, 1.0f, render_data.render_settings.sample_number / (15.0f * number_of_sets));
 
 		// Resetting the flag because we're now rendering a new frame
 		m_gmon.m_gmon_recomputed = false;

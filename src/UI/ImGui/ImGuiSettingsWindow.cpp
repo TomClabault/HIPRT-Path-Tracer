@@ -2285,7 +2285,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 				}
 			}
 
-			if (ImGui::SliderFloat("GMoN blend factor", &render_data.buffers.gmon_estimator.gmon_blend, 0.0f, 1.0f))
+			if (ImGui::SliderFloat("GMoN blend factor", &m_renderer->get_gmon_render_pass().get_gmon_data().gmon_blend_factor, 0.0f, 1.0f))
 			{
 				m_renderer->get_gmon_render_pass().get_gmon_data().gmon_auto_blend_factor = false;
 				m_render_window->set_force_viewport_refresh(true);

@@ -271,11 +271,11 @@ void DisplayViewSystem::update_display_program_uniforms(const DisplayViewSystem*
 		int gmon_sample_number = renderer->get_gmon_render_pass().get_last_recomputed_sample_count();
 		int default_sample_number = render_settings.sample_number;
 
-		program->set_uniform("u_blend_factor", renderer->get_render_data().buffers.gmon_estimator.gmon_blend);
+		program->set_uniform("u_blend_factor", renderer->get_gmon_render_pass().get_gmon_data().gmon_blend_factor);
 		program->set_uniform("u_texture_1", DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
 		program->set_uniform("u_texture_2", DisplayViewSystem::DISPLAY_TEXTURE_UNIT_2);
-		program->set_uniform("u_sample_number_1", gmon_sample_number);
-		program->set_uniform("u_sample_number_2", default_sample_number);
+		program->set_uniform("u_sample_number_1", default_sample_number);
+		program->set_uniform("u_sample_number_2", gmon_sample_number);
 		program->set_uniform("u_do_tonemapping", display_settings.do_tonemapping);
 		program->set_uniform("u_resolution_scaling", render_low_resolution_scaling);
 		program->set_uniform("u_gamma", display_settings.tone_mapping_gamma);
