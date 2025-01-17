@@ -40,6 +40,7 @@ static dummyVec3 blockDim, blockIdx, threadIdx, gridDim;
 #define GLOBAL_KERNEL_SIGNATURE(returnType) returnType
 #define DEVICE_KERNEL_SIGNATURE(returnType) returnType
 #define __shared__
+#define __restrict__
 
 // TODO move all of this in Math.h
 inline void __syncthreads() {}
@@ -49,5 +50,15 @@ inline unsigned int __ballot() { return 1; }
 // For using printf in Kernels
 #include <stdio.h>
 #endif // #ifdef __KERNELCC__
+
+#if defined(__KERNELCC__) // GPU
+#define GPU_CPU_ALIGN(n) __align__(n)
+#elif defined(__GNUC__) // GCC
+#define GPU_CPU_ALIGN(n) __attribute__((aligned(n)))
+#elif defined(_MSC_VER) // MSVC
+#define GPU_CPU_ALIGN(n) __declspec(align(n))
+#else
+#error "Please provide a definition for MY_ALIGN macro for your host compiler!"
+#endif
 
 #endif // FIX_INTELISSENSE_H

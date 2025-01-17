@@ -27,6 +27,8 @@ struct RayPayload
 	// Camera ray is "Bounce" to give it a chance to hit the scene
 	RayState next_ray_state = RayState::BOUNCE;
 
+	// Material index of the last hit
+	unsigned int material_index;
 	// Material of the last hit
 	DeviceUnpackedEffectiveMaterial material;
 

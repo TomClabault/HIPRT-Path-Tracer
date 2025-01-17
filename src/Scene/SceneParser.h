@@ -58,7 +58,7 @@ struct SceneParserOptions
     //
     // 16 seemed to be a good arbitrary number to avoid trashing the disks on my setup 
     // (tested on the Amazon Lumberyard Bistro on both HDD and SSD)
-    int nb_texture_threads = 16;
+    int nb_texture_threads = 4;
 };
 
 struct SceneMetadata

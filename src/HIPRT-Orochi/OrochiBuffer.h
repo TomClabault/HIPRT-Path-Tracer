@@ -35,7 +35,7 @@ public:
 
 	const T* get_device_pointer() const;
 	T* get_device_pointer();
-	T** get_pointer_address();
+	T** get_device_pointer_address();
 
 	std::vector<T> download_data() const;
 	/**
@@ -154,7 +154,7 @@ T* OrochiBuffer<T>::get_device_pointer()
 }
 
 template <typename T>
-T** OrochiBuffer<T>::get_pointer_address()
+T** OrochiBuffer<T>::get_device_pointer_address()
 {
 	return &m_data_pointer;
 }

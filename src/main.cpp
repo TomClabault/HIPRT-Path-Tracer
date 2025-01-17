@@ -21,6 +21,8 @@
 #include <cmath>
 #include <iostream>
 
+#include "Experimentations/TestCopyKernelAlignment.h"
+
 extern ImGuiLogger g_imgui_logger;
 
 #define GPU_RENDER 1
@@ -39,7 +41,6 @@ int main(int argc, char* argv[])
     Scene parsed_scene;
     SceneParserOptions options;
 
-    options.nb_texture_threads = 10;
     options.override_aspect_ratio = (float)width / height;
     start_scene = std::chrono::high_resolution_clock::now();
     start_full = std::chrono::high_resolution_clock::now();
@@ -77,6 +78,7 @@ int main(int argc, char* argv[])
     // Freeing the renderer's scene data (i.e. the data converted from ASSIMP)
     parsed_scene = Scene();
     envmap_image.free();
+        
     render_window.run();
 #else
 

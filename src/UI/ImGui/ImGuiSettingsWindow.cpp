@@ -2269,9 +2269,11 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 				"pixel to avoid too much darkening, especially on high-variance scene. If your scene is very "
 				"easy to render, you probably don't need many sets (less than 15). If your scene has high "
 				"variance caustics, you're probably going to need a lot of samples per pixel and so a large "
-				"number of sets will be fine anyways.\n"
+				"number of sets will be fine anyways.\n\n"
 				"Said otherwise: if you're noticing too much darkening, try reducing the number of sets or "
-				"try accumulating more samples per pixel.");
+				"try accumulating more samples per pixel.\n\n"
+				""
+				"Yet another way top choose the number of sets: keep that number as low as possible as long as it removes the fireflies.");
 			// If the user modified the number of sets, displaying an "Apply" button
 			if (number_of_sets != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT))
 			{

@@ -22,15 +22,12 @@
 extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
+// - try simplifying the material to just a diffuse component to see if that helps memory accesses --> 8/10%
+// - try removing everything about nested dielectrics to see the register/spilling usage and performance --> ~1/2%
+
 // TODOs  performance improvements branch:
 // - cleanup declaration of HIPRT traversal in a macro or something
 // - hunt for integer divisions
-// - __restrict__ everywhere?
-// - try simplifying the material to just a diffuse component to see if that helps memory accesses
-// - try removing everything about nested dielectrics to see the register/spilling usage and performance
-// - align buffers and benchmark with a copy kernel
-// - free the parsed scene from the CPU the free RAM
-// - add mis_reuse ray in envmap sampling
 // - if we don't have the ray volume state in the GBuffer anymore, we can remove the stack handlign in the trace ray function of the camera rays
 // - If hitting the same material as before, not load the material from VRAM as it's exactly the same? (only works for non-textured materials)
 // - merge camera rays and path tracer?

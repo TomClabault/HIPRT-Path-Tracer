@@ -133,8 +133,8 @@ bool GMoNRenderPass::pre_render_update()
 			// This is just a linear ramp.
 			//
 			// 0 blend factor at sample number 0
-			// 1 blend factor at sample number (N * number_of_sets)
-			m_gmon.gmon_blend_factor = hippt::clamp(0.0f, 1.0f, render_data.render_settings.sample_number / (15.0f * number_of_sets));
+			// 1 blend factor at sample number (2 * number_of_sets^2)
+			m_gmon.gmon_blend_factor = hippt::clamp(0.0f, 1.0f, render_data.render_settings.sample_number / (2.0f * hippt::square(number_of_sets)));
 
 		// Resetting the flag because we're now rendering a new frame
 		m_gmon.m_gmon_recomputed = false;
