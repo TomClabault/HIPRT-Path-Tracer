@@ -68,7 +68,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 normal_mapping(const HIPRTRenderData& rend
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 get_shading_normal(const HIPRTRenderData& render_data, const float3& geometric_normal, TriangleIndices triangle_vertex_indices, TriangleTexcoords triangle_texcoords, int primitive_index, const float2& uv, const float2& interpolated_texcoords)
 {
     int mat_index = render_data.buffers.material_indices[primitive_index];
-    DevicePackedTexturedMaterial& material = render_data.buffers.materials_buffer[mat_index];
+    DevicePackedTexturedMaterial material = render_data.buffers.materials_buffer.read_full_textured_material(mat_index);
 
     // Do smooth shading first if we have vertex normals
     float3 surface_normal;
@@ -505,7 +505,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderD
         // If we found a hit and that it is close enough (hit_found conditions)
 
         int material_index = render_data.buffers.material_indices[shadow_ray_hit.primID];
-        int emission_texture_index = render_data.buffers.materials_buffer[material_index].get_emission_texture_index();
+        int emission_texture_index = render_data.buffers.materials_buffer.get_emission_texture_index(material_index);
 
         TriangleIndices triangle_vertex_indices = load_triangle_vertex_indices(render_data.buffers.triangles_indices, shadow_ray_hit.primID);
         TriangleTexcoords triangle_texcoords = load_triangle_texcoords(render_data.buffers.texcoords, triangle_vertex_indices);
@@ -519,7 +519,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderD
         }
         else
         {
-            out_light_hit_info.hit_emission = render_data.buffers.materials_buffer[material_index].get_emission();
+            out_light_hit_info.hit_emission = render_data.buffers.materials_buffer.get_emission(material_index);
             out_light_hit_info.hit_shading_normal = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), triangle_vertex_indices, triangle_texcoords, shadow_ray_hit.primID, shadow_ray_hit.uv, interpolated_texcoords);
         }
 

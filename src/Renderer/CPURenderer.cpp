@@ -41,8 +41,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 457
-#define DEBUG_PIXEL_Y 525
+#define DEBUG_PIXEL_X 665
+#define DEBUG_PIXEL_Y 206
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -204,11 +204,13 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 {
     m_render_data.GPU_BVH = nullptr;
 
-    m_gpu_packed_materials.resize(parsed_scene.materials.size());
+    std::vector<DevicePackedTexturedMaterial> gpu_packed_materials;
+    gpu_packed_materials.resize(parsed_scene.materials.size());
     for (int i = 0; i < parsed_scene.materials.size(); i++)
-        m_gpu_packed_materials[i] = parsed_scene.materials[i].pack_to_GPU();
+        gpu_packed_materials[i] = parsed_scene.materials[i].pack_to_GPU();
 
-    m_render_data.buffers.materials_buffer = m_gpu_packed_materials.data();
+    m_gpu_packed_materials.upload_data(gpu_packed_materials);
+    m_render_data.buffers.materials_buffer = m_gpu_packed_materials.get_device_SoA_struct();
     m_render_data.buffers.material_indices = parsed_scene.material_indices.data();
 
     // Computing the opaqueness of materials i.e. whether or not they are FULLY opaque

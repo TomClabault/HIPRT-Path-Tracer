@@ -7,6 +7,7 @@
 #define HOST_DEVICE_COMMON_RENDER_BUFFERS_H
 
 #include "Device/includes/GMoN/GMoNDevice.h"
+#include "HostDeviceCommon/Material/MaterialPackedSoA.h"
 
 struct RenderBuffers
 {
@@ -38,7 +39,7 @@ struct RenderBuffers
 	int* material_indices = nullptr;
 	// Materials array to be indexed by an index retrieved from the 
 	// material_indices array
-	DevicePackedTexturedMaterial* materials_buffer = nullptr;
+	DevicePackedTexturedMaterialSoA materials_buffer;
 	// A buffer that can be indexed by a material_id.
 	// 
 	// If indexing this buffer returns true, then the material is fully opaque

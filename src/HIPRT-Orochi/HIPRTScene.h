@@ -9,6 +9,7 @@
 #include "HIPRT-Orochi/HIPRTOrochiUtils.h"
 #include "HIPRT-Orochi/OrochiTexture.h"
 #include "HostDeviceCommon/Material/Material.h"
+#include "Renderer/GPUDataStructures/MaterialPackedSoAGPUData.h"
 #include "UI/ImGui/ImGuiLogger.h"
 
 #include "hiprt/hiprt.h"
@@ -113,7 +114,7 @@ struct HIPRTScene
 		stream << "\t" << geometry.m_mesh.vertexCount << " vertices" << std::endl;
 		stream << "\t" << geometry.m_mesh.triangleCount << " vertices" << std::endl;
 		stream << "\t" << emissive_triangles_indices.get_element_count() << " emissive triangles" << std::endl;
-		stream << "\t" << materials_buffer.get_element_count() << " materials" << std::endl;
+		stream << "\t" << materials_buffer.m_element_count << " materials" << std::endl;
 		stream << "\t" << orochi_materials_textures.size() << " textures" << std::endl;
 	}
 
@@ -122,7 +123,7 @@ struct HIPRTScene
 	OrochiBuffer<unsigned char> has_vertex_normals;
 	OrochiBuffer<float3> vertex_normals;
 	OrochiBuffer<int> material_indices;
-	OrochiBuffer<DevicePackedTexturedMaterial> materials_buffer;
+	DevicePackedTexturedMaterialSoAGPUData materials_buffer;
 
 	// This vector contains true for a material that has a fully opaque base color texture.
 	// Otherwise, the texture has some alpha transparency in it

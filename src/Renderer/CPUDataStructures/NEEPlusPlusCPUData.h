@@ -14,7 +14,7 @@
 
 struct NEEPlusPlusCPUData : public NEEPlusPlusCPUGPUCommonData
 {
-	int frame_timer_before_visibility_map_update = 1;
+	int frame_timer_before_visibility_map_update = 32;
 
 	std::vector<AtomicType<unsigned int>> packed_buffer;
 	AtomicType<unsigned int> total_shadow_ray_queries;

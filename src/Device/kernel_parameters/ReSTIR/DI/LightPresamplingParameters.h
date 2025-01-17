@@ -9,7 +9,7 @@
 #include "Device/includes/ReSTIR/DI/PresampledLight.h"
 #include "Device/includes/ReSTIR/DI/Reservoir.h"
 
-#include "HostDeviceCommon/Material/Material.h"
+#include "HostDeviceCommon/Material/MaterialPackedSoA.h"
 #include "HostDeviceCommon/WorldSettings.h"
 
 struct LightPresamplingParameters
@@ -33,7 +33,7 @@ struct LightPresamplingParameters
 	int* triangles_indices = nullptr;
 	float3* vertices_positions = nullptr;
 	int* material_indices = nullptr;
-	DevicePackedTexturedMaterial* materials = nullptr;
+	DevicePackedTexturedMaterialSoA materials;
 
 	// World settings for sampling the envmap
 	WorldSettings world_settings;

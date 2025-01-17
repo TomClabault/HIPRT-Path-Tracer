@@ -1233,7 +1233,7 @@ void GPURenderer::update_render_data()
 		m_render_data.buffers.has_vertex_normals = reinterpret_cast<unsigned char*>(m_hiprt_scene.has_vertex_normals.get_device_pointer());
 		m_render_data.buffers.vertex_normals = reinterpret_cast<float3*>(m_hiprt_scene.vertex_normals.get_device_pointer());
 		m_render_data.buffers.material_indices = reinterpret_cast<int*>(m_hiprt_scene.material_indices.get_device_pointer());
-		m_render_data.buffers.materials_buffer = m_hiprt_scene.materials_buffer.get_device_pointer();
+		m_render_data.buffers.materials_buffer = m_hiprt_scene.materials_buffer.get_device_SoA_struct();
 		m_render_data.buffers.material_opaque = m_hiprt_scene.material_opaque.get_device_pointer();
 		m_render_data.buffers.emissive_triangles_count = m_hiprt_scene.emissive_triangles_count;
 		m_render_data.buffers.emissive_triangles_indices = reinterpret_cast<int*>(m_hiprt_scene.emissive_triangles_indices.get_device_pointer());
@@ -1317,7 +1317,7 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 			packed_gpu_materials[i] = scene.materials[i].pack_to_GPU();
 
 		m_hiprt_scene.materials_buffer.resize(scene.materials.size());
-		m_hiprt_scene.materials_buffer.upload_data(packed_gpu_materials.data());
+		m_hiprt_scene.materials_buffer.upload_data(packed_gpu_materials);
 
 		// Computing the opaqueness of materials i.e. whether or not they are FULLY opaque
 		std::vector<unsigned char> material_opaque(scene.materials.size());
@@ -1487,6 +1487,7 @@ void GPURenderer::update_one_material(CPUMaterial& material, int material_index)
 	m_hiprt_scene.material_opaque.upload_data_partial(material_index, &new_opacity, 1);
 	m_hiprt_scene.materials_buffer.upload_data_partial(material_index, &packed_gpu_material, 1);
 }
+
 
 const std::vector<BoundingBox>& GPURenderer::get_mesh_bounding_boxes()
 {

@@ -13,7 +13,8 @@
 #include "Renderer/BVH.h"
 #include "Renderer/CPUDataStructures/GBufferCPUData.h"
 #include "Renderer/CPUDataStructures/GMoNCPUData.h"
-#include "Renderer/CPUDataStructures/NEEPlusPlusCPUData.h.h"
+#include "Renderer/CPUDataStructures/NEEPlusPlusCPUData.h"
+#include "Renderer/CPUDataStructures/MaterialPackedSoACPUData.h"
 #include "Scene/SceneParser.h"
 #include "Utils/CommandlineArguments.h"
 
@@ -99,7 +100,7 @@ private:
 
     GMoNCPUData m_gmon;
 
-    std::vector<DevicePackedTexturedMaterial> m_gpu_packed_materials;
+    DevicePackedTexturedMaterialSoACPUData m_gpu_packed_materials;
     // Keeps track of which material is fully opaque or not
     std::vector<unsigned char> m_material_opaque;
 

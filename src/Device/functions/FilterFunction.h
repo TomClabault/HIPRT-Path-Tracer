@@ -40,7 +40,7 @@ HIPRT_DEVICE HIPRT_INLINE bool filter_function(const hiprtRay&, const void*, voi
 		// The material is fully opaque, no need to test further, accept the intersection
 		return false;
 
-	DevicePackedTexturedMaterial material = payload->render_data->buffers.materials_buffer[material_index];
+	DevicePackedTexturedMaterial material = payload->render_data->buffers.materials_buffer.read_full_textured_material(material_index);
 
 	// Composition both the alpha of the base color texture and the material
 	float base_color_alpha = get_hit_base_color_alpha(*payload->render_data, material, hit);

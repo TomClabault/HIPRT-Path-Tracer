@@ -38,7 +38,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_hit_base_color_alpha(const HIPRTRenderD
 HIPRT_HOST_DEVICE HIPRT_INLINE float get_hit_base_color_alpha(const HIPRTRenderData& render_data, hiprtHit hit)
 {
     int material_index = render_data.buffers.material_indices[hit.primID];
-    DevicePackedTexturedMaterial material = render_data.buffers.materials_buffer[material_index];
+    DevicePackedTexturedMaterial material = render_data.buffers.materials_buffer.read_full_textured_material(material_index);
 
     return get_hit_base_color_alpha(render_data, material, hit);
 }
@@ -50,7 +50,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE DeviceUnpackedEffectiveMaterial get_intersection_
     //
     // This should  be  easily fixable by using SoAs
 
-    DeviceUnpackedTexturedMaterial material = render_data.buffers.materials_buffer[material_index].unpack();
+    DeviceUnpackedTexturedMaterial material = render_data.buffers.materials_buffer.read_full_textured_material(material_index).unpack();
 
     float trash_alpha;
     if (render_data.bsdfs_data.white_furnace_mode)

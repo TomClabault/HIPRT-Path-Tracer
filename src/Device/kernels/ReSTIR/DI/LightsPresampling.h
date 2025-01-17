@@ -70,7 +70,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIPresampledLight presample_emissive_triang
         presampled_light.pdf = 1.0f / triangle_area;
         presampled_light.pdf /= parameters.emissive_triangles_count;
         presampled_light.pdf *= light_sampling_probability;
-        presampled_light.radiance = parameters.materials[parameters.material_indices[triangle_index]].get_emission();
+        presampled_light.radiance = parameters.materials.get_emission(parameters.material_indices[triangle_index]);
     }
 
     return presampled_light;
