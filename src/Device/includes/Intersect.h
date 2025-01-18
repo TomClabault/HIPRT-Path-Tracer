@@ -67,9 +67,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 normal_mapping(const HIPRTRenderData& rend
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 get_shading_normal(const HIPRTRenderData& render_data, const float3& geometric_normal, TriangleIndices triangle_vertex_indices, TriangleTexcoords triangle_texcoords, int primitive_index, const float2& uv, const float2& interpolated_texcoords)
 {
-    int mat_index = render_data.buffers.material_indices[primitive_index];
-    DevicePackedTexturedMaterial material = render_data.buffers.materials_buffer.read_full_textured_material(mat_index);
-
     // Do smooth shading first if we have vertex normals
     float3 surface_normal;
     if (render_data.buffers.has_vertex_normals[triangle_vertex_indices.x])
@@ -79,8 +76,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 get_shading_normal(const HIPRTRenderData& 
         surface_normal = geometric_normal;
 
     // Do normal mapping if we have a normal map
-    if (material.get_normal_map_texture_index() != MaterialUtils::NO_TEXTURE)
-        surface_normal = normal_mapping(render_data, material.get_normal_map_texture_index(), triangle_vertex_indices, triangle_texcoords, interpolated_texcoords, surface_normal);
+    int material_index = render_data.buffers.material_indices[primitive_index];
+    unsigned short int normal_map_texture_index = render_data.buffers.materials_buffer.get_normal_map_texture_index(material_index);
+    if (normal_map_texture_index != MaterialUtils::NO_TEXTURE)
+        surface_normal = normal_mapping(render_data, normal_map_texture_index, triangle_vertex_indices, triangle_texcoords, interpolated_texcoords, surface_normal);
 
     return surface_normal;
 }
