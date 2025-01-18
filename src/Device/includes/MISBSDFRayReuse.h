@@ -77,10 +77,10 @@ struct MISBSDFRayReuse
 
 	float hit_distance = 0.0f;
 	float3 inter_point = make_float3(1.0e35f, 1.0e35f, 1.0e35f);
-	float3 geometric_normal = make_float3(-2.0f, -2.0, -2.0f);
-	float3 shading_normal = make_float3(-2.0f, -2.0, -2.0f);
+	float3 geometric_normal = make_float3(-2.0f, -2.0f, -2.0f);
+	float3 shading_normal = make_float3(-2.0f, -2.0f, -2.0f);
 
-	float3 bsdf_sampled_direction = make_float3(-2.0f, -2.0, -2.0f);
+	float3 bsdf_sampled_direction = make_float3(-2.0f, -2.0f, -2.0f);
 	ColorRGB32F bsdf_color;
 	float bsdf_pdf = -1.0f;
 

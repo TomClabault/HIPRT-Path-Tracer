@@ -165,7 +165,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float2 get_metallic_roughness(const HIPRTRenderDa
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F get_base_color(const HIPRTRenderData& render_data, float& out_alpha, const float2& texcoords, int base_color_texture_index)
 {
-    out_alpha = 1.0;
+    out_alpha = 1.0f;
     ColorRGBA32F rgba = get_material_property<ColorRGBA32F>(render_data, true, texcoords, base_color_texture_index);
     if (base_color_texture_index != MaterialUtils::NO_TEXTURE)
     {

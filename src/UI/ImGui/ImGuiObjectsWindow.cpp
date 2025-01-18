@@ -1207,19 +1207,19 @@ bool ImGuiObjectsWindow::draw_material_presets(CPUMaterial& material)
 
 	// Reference: [Adobe Standard Material, Technical Documentation, Kutz, Hasan, Edmondson]
 	const std::vector<std::pair<std::string, std::pair<ColorRGB32F, ColorRGB32F>>> names_to_f0_f82 = {
-		{ "Silver", { ColorRGB32F(0.9868, 0.9830, 0.9667), ColorRGB32F(0.9929, 0.9961, 1.0000) } },
-		{ "Aluminum", { ColorRGB32F(0.9157, 0.9226, 0.9236), ColorRGB32F(0.9090, 0.9365, 0.9596) } },
-		{ "Gold", { ColorRGB32F(1.0000, 0.7099, 0.3148), ColorRGB32F(0.9408, 0.9636, 0.9099) } },
-		{ "Chromium", { ColorRGB32F(0.5496, 0.5561, 0.5531), ColorRGB32F(0.7372, 0.7511, 0.8170) } },
-		{ "Copper", { ColorRGB32F(1.0000, 0.6504, 0.5274), ColorRGB32F(0.9755, 0.9349, 0.9301) } },
-		{ "Iron", { ColorRGB32F(0.8951, 0.8755, 0.8154), ColorRGB32F(0.8551, 0.8800, 0.8966) } },
-		{ "Mercury", { ColorRGB32F(0.7815, 0.7795, 0.7783), ColorRGB32F(0.8103, 0.8532, 0.9046) } },
-		{ "Magnesium", { ColorRGB32F(0.8918, 0.8821, 0.8948), ColorRGB32F(0.8949, 0.9147, 0.9504) } },
-		{ "Nickel", { ColorRGB32F(0.7014, 0.6382, 0.5593), ColorRGB32F(0.8134, 0.8352, 0.8725) } },
-		{ "Lead", { ColorRGB32F(0.7363, 0.7023, 0.6602), ColorRGB32F(0.8095, 0.8369, 0.8739) } },
-		{ "Platinum", { ColorRGB32F(0.9602, 0.9317, 0.8260), ColorRGB32F(0.9501, 0.9461, 0.9352) } },
-		{ "Titanium", { ColorRGB32F(0.4432, 0.3993, 0.3599), ColorRGB32F(0.8627, 0.9066, 0.9481) } },
-		{ "Zinc", { ColorRGB32F(0.8759, 0.8685, 0.8542), ColorRGB32F(0.8769, 0.9037, 0.9341) } },
+		{ "Silver", { ColorRGB32F(0.9868f, 0.9830f, 0.9667f), ColorRGB32F(0.9929f, 0.9961f, 1.0000f) } },
+		{ "Aluminum", { ColorRGB32F(0.9157f, 0.9226f, 0.9236f), ColorRGB32F(0.9090f, 0.9365f, 0.9596f) } },
+		{ "Gold", { ColorRGB32F(1.0000f, 0.7099f, 0.3148f), ColorRGB32F(0.9408f, 0.9636f, 0.9099f) } },
+		{ "Chromium", { ColorRGB32F(0.5496f, 0.5561f, 0.5531f), ColorRGB32F(0.7372f, 0.7511f, 0.8170f) } },
+		{ "Copper", { ColorRGB32F(1.0000f, 0.6504f, 0.5274f), ColorRGB32F(0.9755f, 0.9349f, 0.9301f) } },
+		{ "Iron", { ColorRGB32F(0.8951f, 0.8755f, 0.8154f), ColorRGB32F(0.8551f, 0.8800f, 0.8966f) } },
+		{ "Mercury", { ColorRGB32F(0.7815f, 0.7795f, 0.7783f), ColorRGB32F(0.8103f, 0.8532f, 0.9046f) } },
+		{ "Magnesium", { ColorRGB32F(0.8918f, 0.8821f, 0.8948f), ColorRGB32F(0.8949f, 0.9147f, 0.9504f) } },
+		{ "Nickel", { ColorRGB32F(0.7014f, 0.6382f, 0.5593f), ColorRGB32F(0.8134f, 0.8352f, 0.8725f) } },
+		{ "Lead", { ColorRGB32F(0.7363f, 0.7023f, 0.6602f), ColorRGB32F(0.8095f, 0.8369f, 0.8739f) } },
+		{ "Platinum", { ColorRGB32F(0.9602f, 0.9317f, 0.8260f), ColorRGB32F(0.9501f, 0.9461f, 0.9352f) } },
+		{ "Titanium", { ColorRGB32F(0.4432f, 0.3993f, 0.3599f), ColorRGB32F(0.8627f, 0.9066f, 0.9481f) } },
+		{ "Zinc", { ColorRGB32F(0.8759f, 0.8685f, 0.8542f), ColorRGB32F(0.8769f, 0.9037f, 0.9341f) } },
 	};
 
 	int line_count = 0;

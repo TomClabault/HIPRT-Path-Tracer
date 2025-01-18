@@ -88,7 +88,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F RGB_hue_shift(const ColorRGB32F& colo
     constexpr float sqrt_1_3 = 0.57735026918962576451f; // sqrtf(1.0f / 3.0f)
     constexpr float one_over_3 = 1.0f / 3.0f;
 
-    matrix.m[0][0] = cosA + (1.0f - cosA) / 3.0;
+    matrix.m[0][0] = cosA + (1.0f - cosA) / 3.0f;
     matrix.m[0][1] = one_over_3 * (1.0f - cosA) - sqrt_1_3 * sinA;
     matrix.m[0][2] = one_over_3 * (1.0f - cosA) + sqrt_1_3 * sinA;
     matrix.m[1][0] = one_over_3 * (1.0f - cosA) + sqrt_1_3 * sinA;

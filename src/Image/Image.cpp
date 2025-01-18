@@ -134,7 +134,7 @@ float Image8Bit::luminance_of_pixel(int x, int y) const
     // 
     // If the image has 4 components, we will still only take RGB into account for the
     // luminance computation but not alpha
-    float luminance = 0.0;
+    float luminance = 0.0f;
     float weights[3] = { 0.3086f, 0.6094f, 0.0820f };
     for (int i = 0; i < hippt::min(channels, 3); i++)
         luminance += m_pixel_data[start_pixel + i] * weights[i];
@@ -490,7 +490,7 @@ float Image32Bit::luminance_of_pixel(int x, int y) const
     // 
     // If the image has 4 components, we will still only take RGB into account for the
     // luminance computation but not alpha
-    float luminance = 0.0;
+    float luminance = 0.0f;
     float weights[3] = { 0.3086f, 0.6094f, 0.0820f };
     for (int i = 0; i < hippt::min(channels, 3); i++)
         luminance += m_pixel_data[start_pixel + i] * weights[i];
@@ -642,7 +642,7 @@ void Image32Bit::compute_alias_table(std::vector<float>& out_probas, std::vector
 
     for (int i = 0; i < normalized_luminance_of_pixels.size(); i++)
     {
-        if (normalized_luminance_of_pixels[i] < 1.0)
+        if (normalized_luminance_of_pixels[i] < 1.0f)
             small.push_back(i);
         else
             large.push_back(i);
@@ -659,8 +659,8 @@ void Image32Bit::compute_alias_table(std::vector<float>& out_probas, std::vector
         out_probas[small_index] = normalized_luminance_of_pixels[small_index];
         out_alias[small_index] = large_index;
 
-        normalized_luminance_of_pixels[large_index] = (normalized_luminance_of_pixels[large_index] + normalized_luminance_of_pixels[small_index]) - 1.0;
-        if (normalized_luminance_of_pixels[large_index] > 1.0)
+        normalized_luminance_of_pixels[large_index] = (normalized_luminance_of_pixels[large_index] + normalized_luminance_of_pixels[small_index]) - 1.0f;
+        if (normalized_luminance_of_pixels[large_index] > 1.0f)
             large.push_back(large_index);
         else
             small.push_back(large_index);
@@ -671,7 +671,7 @@ void Image32Bit::compute_alias_table(std::vector<float>& out_probas, std::vector
         int index = large.front();
         large.pop_front();
 
-        out_probas[index] = 1.0;
+        out_probas[index] = 1.0f;
     }
 
     while (!small.empty())
@@ -679,7 +679,7 @@ void Image32Bit::compute_alias_table(std::vector<float>& out_probas, std::vector
         int index = small.front();
         small.pop_front();
 
-        out_probas[index] = 1.0;
+        out_probas[index] = 1.0f;
     }
 }
 

@@ -81,7 +81,7 @@ struct BoundingVolume
         for (int i = 0; i < BVHConstants::PLANES_COUNT; i++)
         {
             float denom = denoms[i];
-            if (denom == 0.0)
+            if (denom == 0.0f)
                 continue;
 
             //inverse denom to avoid division

@@ -240,8 +240,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
     bool reflecting = NoL * NoV > 0;
 
     // Relative eta = eta_t / eta_i
-    float eta_i = ray_volume_state.incident_mat_index == NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX ? 1.0 : render_data.buffers.materials_buffer.get_ior(ray_volume_state.incident_mat_index);
-    float eta_t = ray_volume_state.outgoing_mat_index == NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX ? 1.0 : render_data.buffers.materials_buffer.get_ior(ray_volume_state.outgoing_mat_index);
+    float eta_i = ray_volume_state.incident_mat_index == NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX ? 1.0f : render_data.buffers.materials_buffer.get_ior(ray_volume_state.incident_mat_index);
+    float eta_t = ray_volume_state.outgoing_mat_index == NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX ? 1.0f : render_data.buffers.materials_buffer.get_ior(ray_volume_state.outgoing_mat_index);
 
     float dispersion_abbe_number = material.dispersion_abbe_number;
     float dispersion_scale = material.dispersion_scale;

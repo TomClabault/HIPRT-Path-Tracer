@@ -284,7 +284,7 @@ private:
 
 	HIPRT_HOST_DEVICE float sign_not_zero(float k)
 	{
-		return k >= 0.0 ? 1.0 : -1.0;
+		return k >= 0.0f ? 1.0f : -1.0f;
 	}
 
 	HIPRT_HOST_DEVICE float2 sign_not_zero(float2 v)
@@ -294,7 +294,7 @@ private:
 
 	HIPRT_HOST_DEVICE float3 final_decode(float x, float y) 
 	{
-		float3 v = make_float3(x, y, 1.0 - abs(x) - abs(y));
+		float3 v = make_float3(x, y, 1.0f - abs(x) - abs(y));
 		if (v.z < 0.0f) 
 		{
 			float2 temp = make_float2(v.x, v.y);
