@@ -39,7 +39,7 @@ int main(int argc, char* argv[])
     std::chrono::high_resolution_clock::time_point start_scene, start_full;
     std::chrono::high_resolution_clock::time_point stop_scene, stop_full;
     Scene parsed_scene;
-    SceneParserOptions options;
+    SceneParserOptions options(cmd_arguments.scene_file_path);
 
     options.override_aspect_ratio = (float)width / height;
     start_scene = std::chrono::high_resolution_clock::now();

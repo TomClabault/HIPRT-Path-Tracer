@@ -16,7 +16,9 @@
 #include "Scene/Camera.h"
 #include "Renderer/Sphere.h"
 #include "Renderer/Triangle.h"
+#include "Utils/Utils.h"
 
+#include <filesystem>
 #include <thread>
 #include <vector>
 
@@ -42,7 +44,33 @@ struct ParsedMaterialTextureIndices
 
 struct SceneParserOptions
 {
-    float override_aspect_ratio;
+    SceneParserOptions() {}
+
+    /**
+     * The scene filepath passed as argument is analyzed and it is 
+     * determined whether that scene is on an SSD or an HDD
+     * 
+     * If the file is on an SSD, the number of texture loading threads will be
+     * adjusted higher to keep the CPU busy (because on an SSD, we're probably CPU bound)
+     * 
+     * If we're on an HDD, the number of threads is adjusted lower not to overwhelm the HDD
+     * (because too many threads loading different textures in parallel on a HDD is likely to
+     * turn everything into random reads which destroys the read performance of an HDD. SSDs too but
+     * it's not as bad)
+     */
+    SceneParserOptions(const std::string& scene_filepath)
+    {
+        std::filesystem::path true_filepath = scene_filepath;
+        if (std::filesystem::is_symlink(scene_filepath))
+            true_filepath = std::filesystem::read_symlink(scene_filepath);
+
+        if (Utils::is_file_on_ssd(true_filepath.string().c_str())) 
+            nb_texture_threads = 16;
+        else
+            nb_texture_threads = 4;
+    }
+
+    float override_aspect_ratio = 16.0f / 9.0f;
 
     // How many CPU threads to use when loading the textures of the scene.
     // 

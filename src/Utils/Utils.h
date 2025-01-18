@@ -24,6 +24,9 @@ public:
     static std::string file_to_string(const char* filepath);
     static void get_current_date_string(std::stringstream& ss);
 
+    static void* get_volume_handle_for_file(const char* filePath);
+    static bool is_file_on_ssd(const char* file_path);
+
     /*
      * A blend factor of 1 gives only the noisy image. 0 only the denoised image
      */

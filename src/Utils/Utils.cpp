@@ -15,6 +15,10 @@
 #include <string>
 #include <sstream>
 
+#if defined(_WIN32) || defined(_WIN32_WCE) || defined(__WIN32__)
+#include <Windows.h> // for is_file_on_SSD()
+#endif
+
 extern ImGuiLogger g_imgui_logger;
 
 std::vector<unsigned char> Utils::tonemap_hdr_image(const Image32Bit& hdr_image, int sample_number, float gamma, float exposure)
@@ -73,6 +77,59 @@ void Utils::get_current_date_string(std::stringstream& ss)
 	std::tm* now = std::localtime(&t);
 
 	ss << std::put_time(now, "%m.%d.%Y.%H.%M.%S");
+}
+
+void* Utils::get_volume_handle_for_file(const char* filePath)
+{
+#if !defined(_WIN32) && !defined(_WIN32_WCE) && !defined(__WIN32__) // Only defining the code on Windows
+    return nullptr;
+#else
+    char volume_path[MAX_PATH];
+    if (!GetVolumePathName(filePath, volume_path, ARRAYSIZE(volume_path)))
+        return nullptr;
+
+    char volume_name[MAX_PATH];
+    if (!GetVolumeNameForVolumeMountPoint(volume_path,
+        volume_name, ARRAYSIZE(volume_name)))
+        return nullptr;
+
+    auto length = strlen(volume_name);
+    if (length && volume_name[length - 1] == L'\\')
+        volume_name[length - 1] = L'\0';
+
+    return CreateFile(volume_name, 0,
+        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+        nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
+#endif
+}
+
+bool Utils::is_file_on_ssd(const char* file_path)
+{
+#if !defined(_WIN32) && !defined(_WIN32_WCE) && !defined(__WIN32__)
+    // Not on Windows, haven't written the code to determine that on Linux yet
+    return false;
+#else
+    bool is_ssd{ false };
+    HANDLE volume = get_volume_handle_for_file(file_path);
+    if (volume == INVALID_HANDLE_VALUE)
+    {
+        return false; /*invalid path! throw?*/
+    }
+
+    STORAGE_PROPERTY_QUERY query{};
+    query.PropertyId = StorageDeviceSeekPenaltyProperty;
+    query.QueryType = PropertyStandardQuery;
+    DWORD count;
+    DEVICE_SEEK_PENALTY_DESCRIPTOR result{};
+    if (DeviceIoControl(volume, IOCTL_STORAGE_QUERY_PROPERTY,
+        &query, sizeof(query), &result, sizeof(result), &count, nullptr))
+    {
+        is_ssd = !result.IncursSeekPenalty;
+    }
+    else { /*fails for network path, etc*/ }
+    CloseHandle(volume);
+    return is_ssd;
+#endif
 }
 
 Image32Bit Utils::OIDN_denoise(const Image32Bit& image, int width, int height, float blend_factor)
