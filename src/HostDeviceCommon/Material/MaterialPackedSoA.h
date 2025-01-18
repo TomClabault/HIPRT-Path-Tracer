@@ -232,7 +232,152 @@ struct DevicePackedTexturedMaterialSoA : public DevicePackedEffectiveMaterialSoA
     HIPRT_HOST_DEVICE unsigned short int get_sheen_texture_index(int material_index) const { return coat_sheen_index[material_index].get_value<DevicePackedTexturedMaterial::CoatSheenIndices::SHEEN_INDEX>(); }
     HIPRT_HOST_DEVICE unsigned short int get_specular_transmission_texture_index(int material_index) const { return specular_transmission_index[material_index].get_value<DevicePackedTexturedMaterial::SpecularTransmissionIndex::SPECULAR_TRANSMISSION_INDEX>(); }
 
-    HIPRT_HOST_DEVICE DevicePackedTexturedMaterial read_full_textured_material(int material_index) const
+    /**
+     * The 'DevicePackedTexturedMaterial' returned contains all the data read 
+     * in all the arrays the SoA material struct for the given 'material_index'
+     * 
+     * Note that, for example, even if the material has its 'coat' parameter at 0.0f
+     * (i.e. it doesn't use coat at all), all the coat parameters (coat thickness, roughness, anisotropy, .....) 
+     * will be loaded from global memory and this will be useless global memory accesses
+     * 
+     * A more performant alternative of this function is 'read_partial_material(int material_index)'
+     * 
+     * This function is fully commented out because it's actually never used
+     */
+    //HIPRT_HOST_DEVICE DevicePackedTexturedMaterial read_full_textured_material(int material_index) const
+    //{
+    //    DevicePackedTexturedMaterial out;
+
+    //    out.set_normal_map_texture_index(this->get_normal_map_texture_index(material_index));
+    //    out.set_emission_texture_index(this->get_emission_texture_index(material_index));
+    //    out.set_base_color_texture_index(this->get_base_color_texture_index(material_index));
+
+    //    out.set_roughness_metallic_texture_index(this->get_roughness_metallic_texture_index(material_index));
+    //    out.set_roughness_texture_index(this->get_roughness_texture_index(material_index));
+    //    out.set_metallic_texture_index(this->get_metallic_texture_index(material_index));
+    //    out.set_anisotropic_texture_index(this->get_anisotropic_texture_index(material_index));
+
+    //    out.set_specular_texture_index(this->get_specular_texture_index(material_index));
+    //    out.set_coat_texture_index(this->get_coat_texture_index(material_index));
+    //    out.set_sheen_texture_index(this->get_sheen_texture_index(material_index));
+    //    out.set_specular_transmission_texture_index(this->get_specular_transmission_texture_index(material_index));
+
+
+
+
+
+
+    //    out.set_emission(this->get_emission(material_index));
+    //    out.set_emissive_texture_used(this->get_emissive_texture_used(material_index));
+
+    //    out.set_base_color(this->get_base_color(material_index));
+
+    //    out.set_roughness(this->get_roughness(material_index));
+    //    out.set_oren_nayar_sigma(this->get_oren_nayar_sigma(material_index));
+
+    //    // Parameters for Adobe 2023 F82-tint model
+    //    out.set_metallic(this->get_metallic(material_index));
+    //    out.set_metallic_F90_falloff_exponent(this->get_metallic_F90_falloff_exponent(material_index));
+    //    // F0 is not here as it uses the 'base_color' of the material
+    //    out.set_metallic_F82(this->get_metallic_F82(material_index));
+    //    out.set_metallic_F90(this->get_metallic_F90(material_index));
+    //    out.set_anisotropy(this->get_anisotropy(material_index));
+    //    out.set_anisotropy_rotation(this->get_anisotropy_rotation(material_index));
+    //    out.set_second_roughness_weight(this->get_second_roughness_weight(material_index));
+    //    out.set_second_roughness(this->get_second_roughness(material_index));
+    //    out.set_metallic_energy_compensation(this->get_do_metallic_energy_compensation(material_index));
+
+    //    // Specular intensity
+    //    out.set_specular(this->get_specular(material_index));
+    //    // Specular tint intensity. 
+    //    // Specular will be white if 0.0f and will be 'specular_color' if 1.0f
+    //    out.set_specular_tint(this->get_specular_tint(material_index));
+    //    out.set_specular_color(this->get_specular_color(material_index));
+    //    // Same as coat darkening but for total internal reflection inside the specular layer
+    //    // that sits on top of the diffuse base
+    //    //
+    //    // Disabled by default for artistic "expectations"
+    //    out.set_specular_darkening(this->get_specular_darkening(material_index));
+    //    out.set_specular_energy_compensation(this->get_do_specular_energy_compensation(material_index));
+
+    //    out.set_coat(this->get_coat(material_index));
+    //    out.set_coat_medium_absorption(this->get_coat_medium_absorption(material_index));
+    //    // The coat thickness influences the amount of absorption (given by 'coat_medium_absorption')
+    //    // that will happen inside the coat
+    //    out.set_coat_medium_thickness(this->get_coat_medium_thickness(material_index));
+    //    out.set_coat_roughness(this->get_coat_roughness(material_index));
+    //    // Physical accuracy requires that a rough clearcoat also roughens what's underneath it
+    //    // i.e. the specular/metallic/transmission layers.
+    //    // 
+    //    // The option is however given here to artistically disable
+    //    // that behavior by using coat roughening = 0.0f.
+    //    out.set_coat_roughening(this->get_coat_roughening(material_index));
+    //    // Because of the total internal reflection that can happen inside the coat layer (i.e.
+    //    // light bouncing between the coat/BSDF and air/coat interfaces), the BSDF below the
+    //    // clearcoat will appear will increased saturation.
+    //    out.set_coat_darkening(this->get_coat_darkening(material_index));
+    //    out.set_coat_anisotropy(this->get_coat_anisotropy(material_index));
+    //    out.set_coat_anisotropy_rotation(this->get_coat_anisotropy_rotation(material_index));
+    //    out.set_coat_ior(this->get_coat_ior(material_index));
+    //    out.set_coat_energy_compensation(this->get_do_coat_energy_compensation(material_index));
+
+    //    out.set_sheen(this->get_sheen(material_index)); // Sheen strength
+    //    out.set_sheen_roughness(this->get_sheen_roughness(material_index));
+    //    out.set_sheen_color(this->get_sheen_color(material_index));
+
+    //    out.set_ior(this->get_ior(material_index));
+    //    out.set_specular_transmission(this->get_specular_transmission(material_index));
+
+    //    // At what distance is the light absorbed to the given absorption_color
+    //    out.set_absorption_at_distance(this->get_absorption_at_distance(material_index));
+    //    // Color of the light absorption when traveling through the medium
+    //    out.set_absorption_color(this->get_absorption_color(material_index));
+    //    out.set_dispersion_scale(this->get_dispersion_scale(material_index));
+    //    out.set_dispersion_abbe_number(this->get_dispersion_abbe_number(material_index));
+    //    out.set_thin_walled(this->get_thin_walled(material_index));
+    //    out.set_glass_energy_compensation(this->get_do_glass_energy_compensation(material_index));
+
+    //    out.set_thin_film(this->get_thin_film(material_index));
+    //    out.set_thin_film_ior(this->get_thin_film_ior(material_index));
+    //    out.set_thin_film_thickness(this->get_thin_film_thickness(material_index));
+    //    out.set_thin_film_kappa_3(this->get_thin_film_kappa_3(material_index));
+    //    // Sending the hue film in [0, 1] to the GPU
+    //    out.set_thin_film_hue_shift_degrees(get_thin_film_hue_shift_degrees(material_index));
+    //    out.set_thin_film_base_ior_override(this->get_thin_film_base_ior_override(material_index));
+    //    out.set_thin_film_do_ior_override(this->get_thin_film_do_ior_override(material_index));
+
+    //    // 1.0f makes the material completely opaque
+    //    // 0.0f completely transparent (becomes invisible)
+    //    out.set_alpha_opacity(this->get_alpha_opacity(material_index));
+
+    //    // Nested dielectric parameter
+    //    out.set_dielectric_priority(this->get_dielectric_priority(material_index));
+
+    //    out.set_energy_preservation_monte_carlo_samples(this->get_energy_preservation_monte_carlo_samples(material_index));
+    //    // If true, 'energy_preservation_monte_carlo_samples' will be used
+    //    // to compute the directional albedo of this material.
+    //    // This computed directional albedo is then used to ensure perfect energy conservation
+    //    // and preservation. 
+    //    // 
+    //    // This is however very expensive.
+    //    // This is usually only needed on clearcoated materials (but even then, the energy loss due to the absence of multiple scattering between
+    //    // the clearcoat layer and the BSDF below may be acceptable).
+    //    // 
+    //    // Non-clearcoated materials can already ensure perfect (modulo implementation quality) energy 
+    //    // conservation/preservation with the precomputed LUTs [Turquin, 2019]. 
+    //    // 
+    //    // See PrincipledBSDFDoEnergyCompensation in this codebase.
+    //    out.set_enforce_strong_energy_conservation(this->get_enforce_strong_energy_conservation(material_index));
+
+    //    return out;
+    //}
+
+    /**
+     * Only reads the relevant parameters of the material based on what parameters this material is using.
+     * For example, if the 'coat' parameter of the material is 0.0f (i.e. the coat isn't used), none of the
+     * coat parameters will be read from global memory which saves on memory traffic
+     */
+    HIPRT_HOST_DEVICE DevicePackedTexturedMaterial read_partial_material(int material_index) const
     {
         DevicePackedTexturedMaterial out;
 
@@ -254,85 +399,152 @@ struct DevicePackedTexturedMaterialSoA : public DevicePackedEffectiveMaterialSoA
 
 
 
-
-        out.set_emission(this->get_emission(material_index));
         out.set_emissive_texture_used(this->get_emissive_texture_used(material_index));
+        if (!out.get_emissive_texture_used())
+            // Only loading the emission if no emissive texture is used
+            out.set_emission(this->get_emission(material_index));
 
-        out.set_base_color(this->get_base_color(material_index));
+        if (out.get_base_color_texture_index() == MaterialUtils::NO_TEXTURE)
+            // Only reading the base color if no base color texture is used
+            // (because if we have a base color texture, it's going to override
+            // the base color parameter anyway)
+            out.set_base_color(this->get_base_color(material_index));
 
-        out.set_roughness(this->get_roughness(material_index));
+        if (out.get_roughness_texture_index() == MaterialUtils::NO_TEXTURE && out.get_roughness_metallic_texture_index() == MaterialUtils::NO_TEXTURE)
+            // Same for the roughness
+            out.set_roughness(this->get_roughness(material_index));
+
         out.set_oren_nayar_sigma(this->get_oren_nayar_sigma(material_index));
 
         // Parameters for Adobe 2023 F82-tint model
-        out.set_metallic(this->get_metallic(material_index));
-        out.set_metallic_F90_falloff_exponent(this->get_metallic_F90_falloff_exponent(material_index));
-        // F0 is not here as it uses the 'base_color' of the material
-        out.set_metallic_F82(this->get_metallic_F82(material_index));
-        out.set_metallic_F90(this->get_metallic_F90(material_index));
-        out.set_anisotropy(this->get_anisotropy(material_index));
+        if (out.get_metallic_texture_index() == MaterialUtils::NO_TEXTURE && out.get_roughness_metallic_texture_index() == MaterialUtils::NO_TEXTURE)
+        {
+            // Only reading the metallic if no metallic texture is used
+            // (because if we have a metallic texture, it's going to override
+            // the metallic parameter anyway)
+            out.set_metallic(this->get_metallic(material_index));
+            if (out.get_metallic() != 0.0f)
+            {
+                // If the metallic parameter isn't 0.0f, i.e. the material does have a metallic lobe,
+                // then and only then do we need to load the metallic parameters
+
+                out.set_metallic_F90_falloff_exponent(this->get_metallic_F90_falloff_exponent(material_index));
+                // F0 is not here as it uses the 'base_color' of the material
+                out.set_metallic_F82(this->get_metallic_F82(material_index));
+                out.set_metallic_F90(this->get_metallic_F90(material_index));
+
+                out.set_second_roughness_weight(this->get_second_roughness_weight(material_index));
+                out.set_second_roughness(this->get_second_roughness(material_index));
+
+#if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoMetallicEnergyCompensation == KERNEL_OPTION_TRUE
+                out.set_metallic_energy_compensation(this->get_do_metallic_energy_compensation(material_index));
+#endif
+            }
+        }
+
+        if(out.get_anisotropic_texture_index() == MaterialUtils::NO_TEXTURE)
+            out.set_anisotropy(this->get_anisotropy(material_index));
         out.set_anisotropy_rotation(this->get_anisotropy_rotation(material_index));
-        out.set_second_roughness_weight(this->get_second_roughness_weight(material_index));
-        out.set_second_roughness(this->get_second_roughness(material_index));
-        out.set_metallic_energy_compensation(this->get_do_metallic_energy_compensation(material_index));
 
-        // Specular intensity
-        out.set_specular(this->get_specular(material_index));
-        // Specular tint intensity. 
-        // Specular will be white if 0.0f and will be 'specular_color' if 1.0f
-        out.set_specular_tint(this->get_specular_tint(material_index));
-        out.set_specular_color(this->get_specular_color(material_index));
-        // Same as coat darkening but for total internal reflection inside the specular layer
-        // that sits on top of the diffuse base
-        //
-        // Disabled by default for artistic "expectations"
-        out.set_specular_darkening(this->get_specular_darkening(material_index));
-        out.set_specular_energy_compensation(this->get_do_specular_energy_compensation(material_index));
+        if (out.get_specular_texture_index() == MaterialUtils::NO_TEXTURE)
+        {
+            // Specular intensity
+            out.set_specular(this->get_specular(material_index));
+            if (out.get_specular() != 0.0f)
+            {
+                // We only need to read the various specular parameters if the material actually has a specular lobe
 
-        out.set_coat(this->get_coat(material_index));
-        out.set_coat_medium_absorption(this->get_coat_medium_absorption(material_index));
-        // The coat thickness influences the amount of absorption (given by 'coat_medium_absorption')
-        // that will happen inside the coat
-        out.set_coat_medium_thickness(this->get_coat_medium_thickness(material_index));
-        out.set_coat_roughness(this->get_coat_roughness(material_index));
-        // Physical accuracy requires that a rough clearcoat also roughens what's underneath it
-        // i.e. the specular/metallic/transmission layers.
-        // 
-        // The option is however given here to artistically disable
-        // that behavior by using coat roughening = 0.0f.
-        out.set_coat_roughening(this->get_coat_roughening(material_index));
-        // Because of the total internal reflection that can happen inside the coat layer (i.e.
-        // light bouncing between the coat/BSDF and air/coat interfaces), the BSDF below the
-        // clearcoat will appear will increased saturation.
-        out.set_coat_darkening(this->get_coat_darkening(material_index));
-        out.set_coat_anisotropy(this->get_coat_anisotropy(material_index));
-        out.set_coat_anisotropy_rotation(this->get_coat_anisotropy_rotation(material_index));
-        out.set_coat_ior(this->get_coat_ior(material_index));
-        out.set_coat_energy_compensation(this->get_do_coat_energy_compensation(material_index));
+                // Specular tint intensity. 
+                out.set_specular_tint(this->get_specular_tint(material_index));
+                // Specular will be white if 0.0f and will be 'specular_color' if 1.0f
+                out.set_specular_color(this->get_specular_color(material_index));
+                // Same as coat darkening but for total internal reflection inside the specular layer
+                // that sits on top of the diffuse base
+                //
+                // Disabled by default for artistic "expectations"
+                out.set_specular_darkening(this->get_specular_darkening(material_index));
 
-        out.set_sheen(this->get_sheen(material_index)); // Sheen strength
-        out.set_sheen_roughness(this->get_sheen_roughness(material_index));
-        out.set_sheen_color(this->get_sheen_color(material_index));
+#if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoSpecularEnergyCompensation == KERNEL_OPTION_TRUE
+                out.set_specular_energy_compensation(this->get_do_specular_energy_compensation(material_index));
+#endif
+            }
+        }
+
+        if (out.get_coat_texture_index() == MaterialUtils::NO_TEXTURE)
+        {
+            out.set_coat(this->get_coat(material_index));
+            if (out.get_coat() != 0.0f)
+            {
+                // We only need to read the coat parameters if the material has a coat lobe
+                // (which is when out.get_coat() != 0.0f)
+
+                out.set_coat_medium_absorption(this->get_coat_medium_absorption(material_index));
+                // The coat thickness influences the amount of absorption (given by 'coat_medium_absorption')
+                // that will happen inside the coat
+                out.set_coat_medium_thickness(this->get_coat_medium_thickness(material_index));
+                out.set_coat_roughness(this->get_coat_roughness(material_index));
+                // Physical accuracy requires that a rough clearcoat also roughens what's underneath it
+                // i.e. the specular/metallic/transmission layers.
+                // 
+                // The option is however given here to artistically disable
+                // that behavior by using coat roughening = 0.0f.
+                out.set_coat_roughening(this->get_coat_roughening(material_index));
+                // Because of the total internal reflection that can happen inside the coat layer (i.e.
+                // light bouncing between the coat/BSDF and air/coat interfaces), the BSDF below the
+                // clearcoat will appear will increased saturation.
+                out.set_coat_darkening(this->get_coat_darkening(material_index));
+                out.set_coat_anisotropy(this->get_coat_anisotropy(material_index));
+                out.set_coat_anisotropy_rotation(this->get_coat_anisotropy_rotation(material_index));
+                out.set_coat_ior(this->get_coat_ior(material_index));
+
+#if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoClearcoatEnergyCompensation == KERNEL_OPTION_TRUE
+                out.set_coat_energy_compensation(this->get_do_coat_energy_compensation(material_index));
+#endif
+            }
+        }
+
+        if (out.get_sheen_texture_index() == MaterialUtils::NO_TEXTURE)
+        {
+            out.set_sheen(this->get_sheen(material_index)); // Sheen strength
+            if (out.get_sheen() != 0.0f)
+            {
+                out.set_sheen_roughness(this->get_sheen_roughness(material_index));
+                out.set_sheen_color(this->get_sheen_color(material_index));
+            }
+        }
 
         out.set_ior(this->get_ior(material_index));
-        out.set_specular_transmission(this->get_specular_transmission(material_index));
 
-        // At what distance is the light absorbed to the given absorption_color
-        out.set_absorption_at_distance(this->get_absorption_at_distance(material_index));
-        // Color of the light absorption when traveling through the medium
-        out.set_absorption_color(this->get_absorption_color(material_index));
-        out.set_dispersion_scale(this->get_dispersion_scale(material_index));
-        out.set_dispersion_abbe_number(this->get_dispersion_abbe_number(material_index));
-        out.set_thin_walled(this->get_thin_walled(material_index));
-        out.set_glass_energy_compensation(this->get_do_glass_energy_compensation(material_index));
+        if (out.get_specular_transmission_texture_index() == MaterialUtils::NO_TEXTURE)
+        {
+            out.set_specular_transmission(this->get_specular_transmission(material_index));
+            if (out.get_specular_transmission() != 0.0f)
+            {
+                // At what distance is the light absorbed to the given absorption_color
+                out.set_absorption_at_distance(this->get_absorption_at_distance(material_index));
+                // Color of the light absorption when traveling through the medium
+                out.set_absorption_color(this->get_absorption_color(material_index));
+                out.set_dispersion_scale(this->get_dispersion_scale(material_index));
+                out.set_dispersion_abbe_number(this->get_dispersion_abbe_number(material_index));
+                out.set_thin_walled(this->get_thin_walled(material_index));
+
+#if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoGlassEnergyCompensation == KERNEL_OPTION_TRUE
+                out.set_glass_energy_compensation(this->get_do_glass_energy_compensation(material_index));
+#endif
+            }
+        }
 
         out.set_thin_film(this->get_thin_film(material_index));
-        out.set_thin_film_ior(this->get_thin_film_ior(material_index));
-        out.set_thin_film_thickness(this->get_thin_film_thickness(material_index));
-        out.set_thin_film_kappa_3(this->get_thin_film_kappa_3(material_index));
-        // Sending the hue film in [0, 1] to the GPU
-        out.set_thin_film_hue_shift_degrees(get_thin_film_hue_shift_degrees(material_index));
-        out.set_thin_film_base_ior_override(this->get_thin_film_base_ior_override(material_index));
-        out.set_thin_film_do_ior_override(this->get_thin_film_do_ior_override(material_index));
+        if (out.get_thin_film() != 0.0f)
+        {
+            out.set_thin_film_ior(this->get_thin_film_ior(material_index));
+            out.set_thin_film_thickness(this->get_thin_film_thickness(material_index));
+            out.set_thin_film_kappa_3(this->get_thin_film_kappa_3(material_index));
+            // Sending the hue film in [0, 1] to the GPU
+            out.set_thin_film_hue_shift_degrees(get_thin_film_hue_shift_degrees(material_index));
+            out.set_thin_film_base_ior_override(this->get_thin_film_base_ior_override(material_index));
+            out.set_thin_film_do_ior_override(this->get_thin_film_do_ior_override(material_index));
+        }
 
         // 1.0f makes the material completely opaque
         // 0.0f completely transparent (becomes invisible)
@@ -341,7 +553,7 @@ struct DevicePackedTexturedMaterialSoA : public DevicePackedEffectiveMaterialSoA
         // Nested dielectric parameter
         out.set_dielectric_priority(this->get_dielectric_priority(material_index));
 
-        out.set_energy_preservation_monte_carlo_samples(this->get_energy_preservation_monte_carlo_samples(material_index));
+#if PrincipledBSDFEnforceStrongEnergyConservation == KERNEL_OPTION_TRUE
         // If true, 'energy_preservation_monte_carlo_samples' will be used
         // to compute the directional albedo of this material.
         // This computed directional albedo is then used to ensure perfect energy conservation
@@ -356,6 +568,9 @@ struct DevicePackedTexturedMaterialSoA : public DevicePackedEffectiveMaterialSoA
         // 
         // See PrincipledBSDFDoEnergyCompensation in this codebase.
         out.set_enforce_strong_energy_conservation(this->get_enforce_strong_energy_conservation(material_index));
+        if (out.get_enforce_strong_energy_conservation())
+            out.set_energy_preservation_monte_carlo_samples(this->get_energy_preservation_monte_carlo_samples(material_index));
+#endif
 
         return out;
     }

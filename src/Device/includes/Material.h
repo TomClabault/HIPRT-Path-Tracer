@@ -43,19 +43,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_hit_base_color_alpha(const HIPRTRenderD
 HIPRT_HOST_DEVICE HIPRT_INLINE float get_hit_base_color_alpha(const HIPRTRenderData& render_data, hiprtHit hit)
 {
     int material_index = render_data.buffers.material_indices[hit.primID];
-    DevicePackedTexturedMaterial material = render_data.buffers.materials_buffer.read_full_textured_material(material_index);
+    unsigned short int base_color_texture_index = render_data.buffers.materials_buffer.get_base_color_texture_index(material_index);
 
-    return get_hit_base_color_alpha(render_data, material, hit);
+    return get_hit_base_color_alpha(render_data, base_color_texture_index, hit);
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE DeviceUnpackedEffectiveMaterial get_intersection_material(const HIPRTRenderData& render_data, int material_index, float2 texcoords)
 {
-    // TODO here, we only need texture indices to read the texture data. We do not need  to read
-    //  the full material values  just to  override them by reading the  textures...
-    //
-    // This should  be  easily fixable by using SoAs
-
-    DeviceUnpackedTexturedMaterial material = render_data.buffers.materials_buffer.read_full_textured_material(material_index).unpack();
+    DeviceUnpackedTexturedMaterial material = render_data.buffers.materials_buffer.read_partial_material(material_index).unpack();
 
     float trash_alpha;
     if (render_data.bsdfs_data.white_furnace_mode)
