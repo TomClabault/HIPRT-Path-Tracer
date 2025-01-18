@@ -1176,17 +1176,18 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRen
         coat_sampling_proba, sheen_sampling_proba, metal_1_sampling_proba, metal_2_sampling_proba,
         specular_sampling_proba, diffuse_sampling_proba, glass_sampling_proba);
 
-    float cdf[6];
-    cdf[0] = coat_sampling_proba;
-    cdf[1] = cdf[0] + sheen_sampling_proba;
-    cdf[2] = cdf[1] + metal_1_sampling_proba;
-    cdf[3] = cdf[2] + metal_2_sampling_proba;
-    cdf[4] = cdf[3] + specular_sampling_proba;
-    cdf[5] = cdf[4] + diffuse_sampling_proba;
+    // Not using a float[] array here because array[] are super poorly handled 
+    // in general by the HIP compiler on AMD
+    float cdf0 = coat_sampling_proba;
+    float cdf1 = cdf0 + sheen_sampling_proba;
+    float cdf2 = cdf1 + metal_1_sampling_proba;
+    float cdf3 = cdf2 + metal_2_sampling_proba;
+    float cdf4 = cdf3 + specular_sampling_proba;
+    float cdf5 = cdf4 + diffuse_sampling_proba;
     // The last cdf[] is implicitely 1.0f so don't need to include it
 
     float rand_1 = random_number_generator();
-    bool sampling_glass_lobe = rand_1 > cdf[5];
+    bool sampling_glass_lobe = rand_1 > cdf5;
     if (sampling_glass_lobe)
     {
         // We're going to sample the glass lobe
@@ -1228,7 +1229,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRen
     build_rotated_ONB(normal, TR, BR, material.anisotropy_rotation * M_PI);
     float3 local_view_direction_rotated = world_to_local_frame(TR, BR, normal, view_direction);
 
-    if (rand_1 < cdf[0])
+    if (rand_1 < cdf0)
     {
         float3 TR_coat, BR_coat;
         build_rotated_ONB(normal, TR_coat, BR_coat, material.coat_anisotropy_rotation * M_PI);
@@ -1236,7 +1237,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRen
 
         output_direction = local_to_world_frame(TR_coat, BR_coat, normal, principled_coat_sample(material, local_view_direction_rotated_coat, random_number_generator));
     }
-    else if (rand_1 < cdf[1])
+    else if (rand_1 < cdf1)
     {
         float3 T, B;
         build_ONB(normal, T, B);
@@ -1244,15 +1245,15 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRen
 
         output_direction = local_to_world_frame(T, B, normal, principled_sheen_sample(render_data, material, local_view_direction, normal, random_number_generator));
     }
-    else if (rand_1 < cdf[2])
+    else if (rand_1 < cdf2)
         // First metallic lobe sample
         output_direction = local_to_world_frame(TR, BR, normal, principled_metallic_sample(material.roughness, material.anisotropy, local_view_direction_rotated, random_number_generator));
-    else if (rand_1 < cdf[3])
+    else if (rand_1 < cdf3)
         // Second metallic lobe sample
         output_direction = local_to_world_frame(TR, BR, normal, principled_metallic_sample(material.second_roughness, material.anisotropy, local_view_direction_rotated, random_number_generator));
-    else if (rand_1 < cdf[4])
+    else if (rand_1 < cdf4)
         output_direction = local_to_world_frame(TR, BR, normal, principled_specular_sample(material.roughness, material.anisotropy, local_view_direction_rotated, random_number_generator));
-    else if (rand_1 < cdf[5])
+    else if (rand_1 < cdf5)
         // No call to local_to_world_frame() since the sample diffuse functions
         // already returns in world space around the given normal
         output_direction = principled_diffuse_sample(normal, random_number_generator);

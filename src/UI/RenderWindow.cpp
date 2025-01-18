@@ -22,6 +22,9 @@
 extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
+// TODO demos:
+// new oren nayar BRDF: EON
+
 // - try simplifying the material to just a diffuse component to see if that helps memory accesses --> 8/10%
 // - try removing everything about nested dielectrics to see the register/spilling usage and performance --> ~1/2%
 
@@ -40,6 +43,7 @@ extern ImGuiLogger g_imgui_logger;
 // - MIS disabled after some number of bounces? not on glass though?
 // - let's do some ray reordering because in complex scenes and complex materials and without hardware RT; this may actually  be quite worth it
 // - texture compression
+// - store full pointers to textures in materails instead of indirect indices? probably cheaper to have ibigger materials than to havbe to do that indirect fetch?
 // - wavefront path tracing
 // - dispatch mega kernel when only a few rays are left alive after compaction?
 // - investigate where the big register usage comes from (by commenting lines) --> split shaders there?
@@ -48,7 +52,6 @@ extern ImGuiLogger g_imgui_logger;
 // - use wavefront path tracing to evaluate direct  lighting, envmap and BSDF sample in parallel
 // - start shooting camera rays for frame N+1 during frame N?
 // - use the fact that some values are already computed in bsdf_sample to pass them to bsdf_eval in a big BSDFStateStructure or something to avoid recomputing
-// - bsdf sampling proba do  =not use array[] for CDF
 // - schlick fresnel in many places? instead of correct fresnel. switch in "performance settings"
 // - compaction - https://github.com/microsoft/directxshadercompiler/wiki/wave-intrinsics#example
 // - disable energy compensation on smooth glass / smooth metal
@@ -61,15 +64,6 @@ extern ImGuiLogger g_imgui_logger;
 // - perfect reflection and refractions fast path
 // - double buffering of frames in general to better keep the GPU occupied?
 
-// TODO demos:
-// new oren nayar BRDF: EON
-
-// TODOs ongoing
-// - smarter shader cache (hints to avoid using all kernel options when compiling a kernel? We know that Camera ray doesn't care about direct lighting strategy for example)
-// - for LTC sheen lobe, have the option to use either SGGX volumetric sheen or approximation precomputed LTC data
-// - --help on the commandline
-// - Search for textures next to the GLTF file location
-// - Normal mapping seems broken again, light rays going under the surface... p1 env light
 
 // TODO known bugs / incorrectness:
 // - take transmission color into account when direct sampling a light source that is inside a volume: leave that for when implement volumes?
@@ -102,13 +96,17 @@ extern ImGuiLogger g_imgui_logger;
 // - only update the display every so often if accumulating because displaying is expensive (especially at high resolution) on AMD drivers at least
 // - how to help with shaders combination compilation times? upload bitcodes that ** I ** compile locally to Github? Change some #if to if() where this does not increase register pressure also.
 // - use bare variables for principled_bsdf_sample CDF[] because local arrays are bad on AMD GPUs
-// - pack HDR as color as 9/9/9/5 RGBE? https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/MiniEngine/Core/Shaders/PixelPacking_RGBE.hlsli
 // - next event estimation++? --> 2023 paper improvement
 // - ideas of https://pbr-book.org/4ed/Light_Sources/Further_Reading for performance
 // - envmap visibility cache? 
 // - russian roulette on light sampling based on light contribution?
 // - Exploiting Visibility Correlation in Direct Illumination
 // - Progressive Visibility Caching for Fast Indirect Illumination
+// - smarter shader cache (hints to avoid using all kernel options when compiling a kernel? We know that Camera ray doesn't care about direct lighting strategy for example)
+// - for LTC sheen lobe, have the option to use either SGGX volumetric sheen or approximation precomputed LTC data
+// - --help on the commandline
+// - Search for textures next to the GLTF file location
+// - Normal mapping seems broken again, light rays going under the surface... p1 env light
 // - performance/bias tradeoff by ignoring alpha tests (either for global rays or only shadow rays) after N bounce?
 // - performance/bias tradeoff by ignoring direct lighting occlusion after N bounce? --> strong bias but maybe something to do by reducing the length of shadow rays instead of just hard-disabling occlusion
 // - energy conserving Oren Nayar: https://mimosa-pudica.net/improved-oren-nayar.html#images
