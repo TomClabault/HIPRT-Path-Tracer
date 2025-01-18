@@ -42,6 +42,24 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void reset_render(const HIPRTRenderData& render_d
     }
 }
 
+HIPRT_HOST_DEVICE HIPRT_INLINE void rescale_samples(HIPRTRenderData& render_data, uint32_t pixel_index, int2 res)
+{
+    // Because when displaying the framebuffer, we're dividing by the number of samples to 
+    // rescale the color of a pixel, we're going to have a problem if some pixels stopped samping
+    // at 10 samples while the other pixels are still being sampled and have 100 samples for example. 
+    // The pixels that only received 10 samples are going to be divided by 100 at display time, making them
+    // appear too dark.
+    // We're rescaling the color of the pixels that stopped sampling here for correct display
+
+    render_data.buffers.accumulated_ray_colors[pixel_index] = render_data.buffers.accumulated_ray_colors[pixel_index] / render_data.render_settings.sample_number * (render_data.render_settings.sample_number + 1);
+    if (render_data.buffers.gmon_estimator.sets != nullptr)
+    {
+        // GMoN is enabled, we're also going to scale the GMoN samples for the same reason
+        for (int set_index = 0; set_index < GMoNMSetsCount; set_index++)
+            render_data.buffers.gmon_estimator.sets[set_index * res.x * res.y + pixel_index] = render_data.buffers.gmon_estimator.sets[set_index * res.x * res.y + pixel_index] / render_data.render_settings.sample_number * (render_data.render_settings.sample_number + 1);
+    }
+}
+
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) CameraRays(HIPRTRenderData render_data, int2 res)
 #else
@@ -105,14 +123,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
     {
         if (!sampling_needed)
         {
-            // Because when displaying the framebuffer, we're dividing by the number of samples to 
-            // rescale the color of a pixel, we're going to have a problem if some pixels stopped samping
-            // at 10 samples while the other pixels are still being sampled and have 100 samples for example. 
-            // The pixels that only received 10 samples are going to be divided by 100 at display time, making them
-            // appear too dark.
-            // We're rescaling the color of the pixels that stopped sampling here for correct display
+            rescale_samples(render_data, pixel_index, res);
 
-            render_data.buffers.accumulated_ray_colors[pixel_index] = render_data.buffers.accumulated_ray_colors[pixel_index] / render_data.render_settings.sample_number * (render_data.render_settings.sample_number + 1);
             render_data.aux_buffers.pixel_active[pixel_index] = false;
 
             return;
