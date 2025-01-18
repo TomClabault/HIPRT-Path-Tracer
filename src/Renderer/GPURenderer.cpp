@@ -1052,7 +1052,7 @@ void GPURenderer::precompile_ReSTIR_DI_kernels()
 
 							// Recompiling all the kernels with the new options
 							for (const std::string& kernel_id : get_all_kernel_ids())
-								precompile_kernel(GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID, partials_options);
+								precompile_kernel(kernel_id, partials_options);
 							// Recompiling the ReSTIR DI render pass
 							m_restir_di_render_pass.precompile_kernels(partials_options, m_hiprt_orochi_ctx, m_func_name_sets);
 						}
@@ -1065,7 +1065,7 @@ void GPURenderer::precompile_ReSTIR_DI_kernels()
 
 void GPURenderer::precompile_kernel(const std::string& id, GPUKernelCompilerOptions partial_options)
 {
-	GPUKernelCompilerOptions options = m_kernels[id].get_kernel_options();
+	GPUKernelCompilerOptions options = m_kernels[id].get_kernel_options().deep_copy();
 	partial_options.apply_onto(options);
 
 	ThreadManager::start_thread(ThreadManager::RENDERER_PRECOMPILE_KERNELS, ThreadFunctions::precompile_kernel,

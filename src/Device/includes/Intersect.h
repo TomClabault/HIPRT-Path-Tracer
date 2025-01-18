@@ -446,7 +446,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderD
 
     // Reading the emission of the material
     int material_index = render_data.buffers.material_indices[shadow_ray_hit.primID];
-    int emission_texture_index = render_data.buffers.materials_buffer[material_index].get_emission_texture_index();
+    int emission_texture_index = render_data.buffers.materials_buffer.get_emission_texture_index(material_index);
 
     TriangleIndices triangle_vertex_indices = load_triangle_vertex_indices(render_data.buffers.triangles_indices, shadow_ray_hit.primID);
     TriangleTexcoords triangle_texcoords = load_triangle_texcoords(render_data.buffers.texcoords, triangle_vertex_indices);
@@ -460,7 +460,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderD
     }
     else
     {
-        out_light_hit_info.hit_emission = render_data.buffers.materials_buffer[material_index].get_emission();
+        out_light_hit_info.hit_emission = render_data.buffers.materials_buffer.get_emission(material_index);
         out_light_hit_info.hit_shading_normal = get_shading_normal(render_data, hippt::normalize(shadow_ray_hit.normal), triangle_vertex_indices, triangle_texcoords, shadow_ray_hit.primID, shadow_ray_hit.uv, interpolated_texcoords);
     }
     

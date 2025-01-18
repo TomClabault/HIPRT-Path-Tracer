@@ -32,6 +32,7 @@ extern ImGuiLogger g_imgui_logger;
 // - If hitting the same material as before, not load the material from VRAM as it's exactly the same? (only works for non-textured materials)
 // - merge camera rays and path tracer?
 // - to accelerate compilation times: we can use if() everywhere in the code so that switching an option doesn't require a compilation but if we want, we can then apply the options currently selected and compiler everything for maximum performance
+// - store some material flags in the material structure to determine what parameters we need to read and read only those ones instead of the full material
 // - store Material in GBuffer only if using ReSTIR, otherwise, just reconstruct it in the path tracign kernel
 // - we don't need ray volume states in the GBuffer, just the material index and we push that index on the ray volume stack in the path tracing kernel because that's the only thing that the camera ray kernel does anyway
 // - maybe have shaders without energy compensation? because this do be eating quite a lot of registers

@@ -59,7 +59,22 @@ public:
 	GPUKernelCompilerOptions();
 	GPUKernelCompilerOptions(const GPUKernelCompilerOptions& other);
 
+	/**
+	 * Shallow copy of the options of 'other' into 'this'
+	 * 
+	 * The shared_ptr of the options of 'other' will be shared with 'this': 
+	 * this means that if changing the value of "OPTION_1" in 'other', 
+	 * the value of "OPTION_1" will also change in 'this'.
+	 * 
+	 * If this is exactly the behavior that you don't want, have a look at 'deep_copy'
+	 */
 	GPUKernelCompilerOptions& operator=(const GPUKernelCompilerOptions& other);
+	/**
+	 * Returns a new GPUKernelCompilerOptions object that has the same option values as 'this'
+	 * but with different shared_ptr. This means that if changing the value of "OPTION_1" in 'other', 
+	 * the value of "OPTION_1" will not change in the new object returned by this function.
+	 */
+	GPUKernelCompilerOptions deep_copy() const;
 
 	/**
 	 * Gets a list of all the compiler options of the form { "-D InteriorStackStrategy=1", ... }
