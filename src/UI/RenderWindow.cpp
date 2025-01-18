@@ -33,8 +33,8 @@ extern ImGuiLogger g_imgui_logger;
 // - if we don't have the ray volume state in the GBuffer anymore, we can remove the stack handlign in the trace ray function of the camera rays
 // - If hitting the same material as before, not load the material from VRAM as it's exactly the same? (only works for non-textured materials)
 // - merge camera rays and path tracer?
-// - to accelerate compilation times: we can use if() everywhere in the code so that switching an option doesn't require a compilation but if we want, we can then apply the options currently selected and compiler everything for maximum performance
-// - store some material flags in the material structure to determine what parameters we need to read and read only those ones instead of the full material
+// - to accelerate compilation times: we can use if() everywhere in the code so that switching an option doesn't require a compilation but if we want, we can then apply the options currently selected and compiler everything for maximum performance. This can probably be done with a massive shader that has all the options using if() instead of #if ? Maybe some better alternative though?
+// - store some material flags in the material structure to determine what parameters we need to read and read only those ones thanks to SoA instead of the full material
 // - store Material in GBuffer only if using ReSTIR, otherwise, just reconstruct it in the path tracign kernel
 // - we don't need ray volume states in the GBuffer, just the material index and we push that index on the ray volume stack in the path tracing kernel because that's the only thing that the camera ray kernel does anyway
 // - maybe have shaders without energy compensation? because this do be eating quite a lot of registers
@@ -58,7 +58,6 @@ extern ImGuiLogger g_imgui_logger;
 // - per material light sampling/BSDF sampling: smooth glass / metal don't need light sampling
 // - launch bounds optimization?
 // - thread group size optimization?
-// - SoA instead of AoS
 // - With SoAs, it should be possible to have one shader per material type (test the performance of that though) without having to read the full material structure from memory so this reduces the cost of the "memory roundtrips" and maybe this can be worth it
 // - superfluous sample() call on the last bounce?
 // - perfect reflection and refractions fast path
@@ -100,6 +99,7 @@ extern ImGuiLogger g_imgui_logger;
 // - ideas of https://pbr-book.org/4ed/Light_Sources/Further_Reading for performance
 // - envmap visibility cache? 
 // - russian roulette on light sampling based on light contribution?
+// - If GMoN is enabled, it would be cool to be able to denoise the GMoN blend between GMoN and the default framebuffer but currently the denoiser only denoises the full GMoN and nothing else
 // - Exploiting Visibility Correlation in Direct Illumination
 // - Progressive Visibility Caching for Fast Indirect Illumination
 // - smarter shader cache (hints to avoid using all kernel options when compiling a kernel? We know that Camera ray doesn't care about direct lighting strategy for example)

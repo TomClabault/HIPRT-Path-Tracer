@@ -20,9 +20,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE T get_material_property(const HIPRTRenderData& re
 HIPRT_HOST_DEVICE HIPRT_INLINE float2 get_metallic_roughness(const HIPRTRenderData& render_data, const float2& texcoords, int metallic_texture_index, int roughness_texture_index, int metallic_roughness_texture_index);
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F get_base_color(const HIPRTRenderData& render_data, float& out_alpha, const float2& texcoords, int base_color_texture_index);
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float get_hit_base_color_alpha(const HIPRTRenderData& render_data, const DevicePackedTexturedMaterial& material, hiprtHit hit)
+HIPRT_HOST_DEVICE HIPRT_INLINE float get_hit_base_color_alpha(const HIPRTRenderData& render_data, unsigned short int base_color_texture_index, hiprtHit hit)
 {
-    if (material.get_base_color_texture_index() == MaterialUtils::NO_TEXTURE)
+    if (base_color_texture_index == MaterialUtils::NO_TEXTURE)
         // Quick exit if no texture
         return 1.0f;
 
@@ -30,9 +30,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_hit_base_color_alpha(const HIPRTRenderD
 
     // Getting the alpha for transparency check to see if we need to pass the ray through or not
     float alpha;
-    ColorRGB32F base_color = get_base_color(render_data, alpha, texcoords, material.get_base_color_texture_index());
+    ColorRGB32F base_color = get_base_color(render_data, alpha, texcoords, base_color_texture_index);
 
     return alpha;
+}
+
+HIPRT_HOST_DEVICE HIPRT_INLINE float get_hit_base_color_alpha(const HIPRTRenderData& render_data, const DevicePackedTexturedMaterial& material, hiprtHit hit)
+{
+    return get_hit_base_color_alpha(render_data, material.get_base_color_texture_index(), hit);
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float get_hit_base_color_alpha(const HIPRTRenderData& render_data, hiprtHit hit)
