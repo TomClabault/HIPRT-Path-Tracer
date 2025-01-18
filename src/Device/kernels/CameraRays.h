@@ -57,6 +57,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void rescale_samples(HIPRTRenderData& render_data
     {
         // GMoN is enabled, we're also going to scale the GMoN samples for the same reason
         for (int set_index = 0; set_index < GMoNMSetsCount; set_index++)
+            // TODO this is slow
             render_data.buffers.gmon_estimator.sets[set_index * res.x * res.y + pixel_index] = render_data.buffers.gmon_estimator.sets[set_index * res.x * res.y + pixel_index] / float_sample_number * (render_data.render_settings.sample_number + 1);
     }
 }
