@@ -74,7 +74,7 @@ struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z>
 		if (final_reservoir.weight_sum <= 0)
 		{
 			// Invalid reservoir, returning directly
-			out_normalization_nume = 1.0;
+			out_normalization_nume = 1.0f;
 			out_normalization_denom = 1.0f;
 
 			return;
@@ -122,7 +122,7 @@ struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE>
 		if (final_reservoir.weight_sum <= 0)
 		{
 			// Invalid reservoir, returning directly
-			out_normalization_nume = 1.0;
+			out_normalization_nume = 1.0f;
 			out_normalization_denom = 1.0f;
 
 			return;

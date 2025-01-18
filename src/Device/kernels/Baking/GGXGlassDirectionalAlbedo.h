@@ -160,16 +160,16 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void glass_directional_albedo_integration(int ker
 {
     Xorshift32Generator random_number_generator(wang_hash(pixel_index + 1) * current_iteration);
 
-    float cos_theta_o = 1.0f / (bake_settings.texture_size_cos_theta_o - 1) * x;
+    float cos_theta_o = 1.0f / (bake_settings.texture_size_cos_theta_o - 1.0f) * x;
     cos_theta_o = hippt::max(GGX_DOT_PRODUCTS_CLAMP, cos_theta_o);
     cos_theta_o = powf(cos_theta_o, 2.5f);
     float sin_theta_o = sin(acos(cos_theta_o));
 
-    float roughness = 1.0f / (bake_settings.texture_size_roughness - 1) * y;
+    float roughness = 1.0f / (bake_settings.texture_size_roughness - 1.0f) * y;
     roughness = hippt::max(roughness, 1.0e-4f);
 
     // Integrates for interface reflectivities of IORs between 1.0f and 3.0f
-    float F0 = 1.0f / (bake_settings.texture_size_ior - 1) * z;
+    float F0 = 1.0f / (bake_settings.texture_size_ior - 1.0f) * z;
     // Relative eta (eta_t / eta_i) from F0
     // Using F0^4 to get more precision near 0
     F0 *= F0; // F0^2
@@ -183,7 +183,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void glass_directional_albedo_integration(int ker
         // Inverting the relative IOR in case we're inside the surface
         relative_ior = 1.0f / relative_ior;
 
-    int iterations_per_kernel = floor(hippt::max(1.0f, (float)GPUBakerConstants::COMPUTE_ELEMENT_PER_BAKE_KERNEL_LAUNCH / (bake_settings.texture_size_cos_theta_o * bake_settings.texture_size_roughness * bake_settings.texture_size_ior)));
+    int iterations_per_kernel = floor(hippt::max(1.0f, (float)GPUBakerConstants::COMPUTE_ELEMENT_PER_BAKE_KERNEL_LAUNCH / (float)(bake_settings.texture_size_cos_theta_o * bake_settings.texture_size_roughness * bake_settings.texture_size_ior)));
     int nb_kernel_launch = ceil(bake_settings.integration_sample_count / (float)iterations_per_kernel);
     int nb_samples = nb_kernel_launch * iterations_per_kernel;
 

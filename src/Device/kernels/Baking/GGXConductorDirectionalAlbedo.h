@@ -46,16 +46,16 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GGXConductorDirectionalAlbedoBake(int kerne
 
     Xorshift32Generator random_number_generator(wang_hash(pixel_index + 1) * current_iteration);
 
-    float roughness = 1.0f / (bake_settings.texture_size_roughness - 1) * y;
+    float roughness = 1.0f / (bake_settings.texture_size_roughness - 1.0f) * y;
     roughness = hippt::max(roughness, 1.0e-4f);
 
-    float cos_theta_o = 1.0f / (bake_settings.texture_size_cos_theta - 1) * x;
+    float cos_theta_o = 1.0f / (bake_settings.texture_size_cos_theta - 1.0f) * x;
     cos_theta_o = hippt::max(GGX_DOT_PRODUCTS_CLAMP, cos_theta_o);
     float sin_theta_o = sin(acos(cos_theta_o));
 
     float3 local_view_direction = hippt::normalize(make_float3(cos(0.0f) * sin_theta_o, sin(0.0f) * sin_theta_o, cos_theta_o));
 
-    int iterations_per_kernel = floor(hippt::max(1.0f, (float)GPUBakerConstants::COMPUTE_ELEMENT_PER_BAKE_KERNEL_LAUNCH / (bake_settings.texture_size_cos_theta * bake_settings.texture_size_roughness)));
+    int iterations_per_kernel = floor(hippt::max(1.0f, (float)GPUBakerConstants::COMPUTE_ELEMENT_PER_BAKE_KERNEL_LAUNCH / (float)(bake_settings.texture_size_cos_theta * bake_settings.texture_size_roughness)));
     int nb_kernel_launch = ceil(bake_settings.integration_sample_count / (float)iterations_per_kernel);
     int nb_samples = nb_kernel_launch * iterations_per_kernel;
 

@@ -37,14 +37,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void fresnel_phase(float cos_theta_i,
     float sinThetaSqr = 1.0f - hippt::square(cos_theta_i);
     float A = hippt::square(eta2) * (1.0f - hippt::square(kappa2)) - hippt::square(eta1) * sinThetaSqr;
     float B = sqrt(hippt::square(A) + hippt::square(2 * hippt::square(eta2) * kappa2));
-    float U = sqrt((A + B) / 2.0);
-    float V = sqrt((B - A) / 2.0);
+    float U = sqrt((A + B) / 2.0f);
+    float V = sqrt((B - A) / 2.0f);
 
     float phi_perp_y = 2.0f * eta1 * V * cos_theta_i;
     float phi_perp_x = hippt::square(U) + hippt::square(V) - hippt::square(eta1 * cos_theta_i);
     phi_perp = atan2(phi_perp_y, phi_perp_x);
 
-    float phi_par_y = 2.0f * eta1 * hippt::square(eta2) * cos_theta_i * (2 * kappa2 * U - (1.0f - hippt::square(kappa2)) * V);
+    float phi_par_y = 2.0f * eta1 * hippt::square(eta2) * cos_theta_i * (2.0f * kappa2 * U - (1.0f - hippt::square(kappa2)) * V);
     float phi_par_x = hippt::square(hippt::square(eta2) * (1.0f + hippt::square(kappa2)) * cos_theta_i) - hippt::square(eta1) * (hippt::square(U) + hippt::square(V));
     phi_par = atan2(phi_par_y, phi_par_x);
 }
@@ -85,15 +85,18 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F RGB_hue_shift(const ColorRGB32F& colo
     float sinA = sin(hue_shift_degrees / 180.0f * M_PI);
 
     float3x3 matrix;
-    matrix.m[0][0] = cosA + (1.0 - cosA) / 3.0;
-    matrix.m[0][1] = 1. / 3. * (1.0 - cosA) - sqrt(1. / 3.) * sinA;
-    matrix.m[0][2] = 1. / 3. * (1.0 - cosA) + sqrt(1. / 3.) * sinA;
-    matrix.m[1][0] = 1. / 3. * (1.0 - cosA) + sqrt(1. / 3.) * sinA;
-    matrix.m[1][1] = cosA + 1. / 3. * (1.0 - cosA);
-    matrix.m[1][2] = 1. / 3. * (1.0 - cosA) - sqrt(1. / 3.) * sinA;
-    matrix.m[2][0] = 1. / 3. * (1.0 - cosA) - sqrt(1. / 3.) * sinA;
-    matrix.m[2][1] = 1. / 3. * (1.0 - cosA) + sqrt(1. / 3.) * sinA;
-    matrix.m[2][2] = cosA + 1. / 3. * (1.0 - cosA);
+    constexpr float sqrt_1_3 = 0.57735026918962576451f; // sqrtf(1.0f / 3.0f)
+    constexpr float one_over_3 = 1.0f / 3.0f;
+
+    matrix.m[0][0] = cosA + (1.0f - cosA) / 3.0;
+    matrix.m[0][1] = one_over_3 * (1.0f - cosA) - sqrt_1_3 * sinA;
+    matrix.m[0][2] = one_over_3 * (1.0f - cosA) + sqrt_1_3 * sinA;
+    matrix.m[1][0] = one_over_3 * (1.0f - cosA) + sqrt_1_3 * sinA;
+    matrix.m[1][1] = cosA + one_over_3 * (1.0f - cosA);
+    matrix.m[1][2] = one_over_3 * (1.0f - cosA) - sqrt_1_3 * sinA;
+    matrix.m[2][0] = one_over_3 * (1.0f - cosA) - sqrt_1_3 * sinA;
+    matrix.m[2][1] = one_over_3 * (1.0f - cosA) + sqrt_1_3 * sinA;
+    matrix.m[2][2] = cosA + one_over_3 * (1.0f - cosA);
 
     ColorRGB32F hue_shifted;
     hue_shifted.r = color.r * matrix.m[0][0] + color.g * matrix.m[0][1] + color.b * matrix.m[0][2];
@@ -149,8 +152,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F thin_film_fresnel(const DeviceUnpacke
         fresnel_conductor(cos_theta_2, eta3 / eta2, kappa3, R23p, R23s);
 
         // Compute the transmission coefficients
-        T121p = 1.0 - R12p;
-        T121s = 1.0 - R12s;
+        T121p = 1.0f - R12p;
+        T121s = 1.0f - R12s;
     }
 
     /* Optical Path Difference */

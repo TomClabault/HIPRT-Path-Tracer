@@ -201,7 +201,7 @@ struct NEEPlusPlusDevice
 	HIPRT_HOST_DEVICE unsigned int get_visibility_matrix_element_count() const
 	{
 		unsigned int grid_elements_count = grid_dimensions.x * grid_dimensions.y * grid_dimensions.z;
-		unsigned half_matrix_size = grid_elements_count * (grid_elements_count + 1) / 2;
+		unsigned half_matrix_size = grid_elements_count * (grid_elements_count + 1) / 2.0f;
 
 		return half_matrix_size;
 	}
@@ -371,7 +371,7 @@ private:
 		//
 		// In general, this gives us starting_index = N * (N + 1) / 2
 	
-		int starting_index = row * (row + 1) / 2;
+		int starting_index = row * (row + 1) / 2.0f;
 		// We then just need to index our item inside that row
 		int final_index = starting_index + column;
 

@@ -47,7 +47,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void envmap_cdf_search(const WorldSettings& world
     int x_index = world_settings.envmap_width - 1;
     while (lower < upper)
     {
-        int y_index = (lower + upper) / 2;
+        int y_index = static_cast<int>(floorf((lower + upper) / 2.0f));
         int env_map_index = y_index * world_settings.envmap_width + x_index;
 
         if (value < world_settings.envmap_cdf[env_map_index])
@@ -64,7 +64,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void envmap_cdf_search(const WorldSettings& world
     int y_index = y;
     while (lower < upper)
     {
-        int x_idx = (lower + upper) / 2;
+        int x_idx = static_cast<int>(floorf((lower + upper) / 2.0f));
         int env_map_index = y_index * world_settings.envmap_width + x_idx;
 
         if (value < world_settings.envmap_cdf[env_map_index])
@@ -90,8 +90,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F envmap_sample(const WorldSettings& wo
         // Picking the alias
         random_index = world_settings.alias_table_alias[random_index];
 
-    y = static_cast<int>(random_index / world_settings.envmap_width);
-    x = static_cast<int>(random_index - y * world_settings.envmap_width);
+    y = static_cast<int>(floorf(random_index / (float)world_settings.envmap_width));
+    x = static_cast<int>(floorf(random_index - y * (float)world_settings.envmap_width));
 #endif
 
     // Converting to UV coordinates

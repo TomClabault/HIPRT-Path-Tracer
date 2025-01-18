@@ -267,7 +267,7 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MI
 				// In the defensive formulation, we want to divide by M, not M-1.
 				// (Eq. 7.6 of "A Gentle Introduction to ReSTIR")
 				if (render_data.render_settings.restir_di_settings.use_confidence_weights)
-					return mc + static_cast<float>(initial_candidates_reservoir.M) / (initial_candidates_reservoir.M + temporal_neighbor_reservoir.M);
+					return mc + static_cast<float>(initial_candidates_reservoir.M) / (float)(initial_candidates_reservoir.M + temporal_neighbor_reservoir.M);
 				else
 					return (1.0f + mc) * 0.5f;
 			}
