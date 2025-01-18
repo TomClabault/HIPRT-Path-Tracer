@@ -45,7 +45,7 @@ DisplayViewSystem::DisplayViewSystem(std::shared_ptr<GPURenderer> renderer, Rend
 
 	// Creating all the display views
 	DisplayView default_display_view = DisplayView(DisplayViewType::DEFAULT, default_display_program);
-	DisplayView blend_2_display_view = DisplayView(DisplayViewType::GMON_BLEND, blend_2_display_program);
+	DisplayView gmon_blend_display_view = DisplayView(DisplayViewType::GMON_BLEND, blend_2_display_program);
 	DisplayView denoise_blend_display_view = DisplayView(DisplayViewType::DENOISED_BLEND, blend_2_display_program);
 	DisplayView normals_display_view = DisplayView(DisplayViewType::DISPLAY_DENOISER_NORMALS, normal_display_program);
 	DisplayView albedo_display_view = DisplayView(DisplayViewType::DISPLAY_DENOISER_ALBEDO, albedo_display_program);
@@ -55,8 +55,8 @@ DisplayViewSystem::DisplayViewSystem(std::shared_ptr<GPURenderer> renderer, Rend
 
 	// Adding the display views to the map
 	m_display_views[DisplayViewType::DEFAULT] = default_display_view;
-	m_display_views[DisplayViewType::GMON_BLEND] = blend_2_display_view;
-	m_display_views[DisplayViewType::DENOISED_BLEND] = blend_2_display_view;
+	m_display_views[DisplayViewType::GMON_BLEND] = gmon_blend_display_view;
+	m_display_views[DisplayViewType::DENOISED_BLEND] = denoise_blend_display_view;
 	m_display_views[DisplayViewType::DISPLAY_DENOISER_NORMALS] = normals_display_view;
 	m_display_views[DisplayViewType::DISPLAY_DENOISER_ALBEDO] = albedo_display_view;
 	m_display_views[DisplayViewType::PIXEL_CONVERGENCE_HEATMAP] = pixel_convergence_heatmap_display_view;
