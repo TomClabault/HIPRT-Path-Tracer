@@ -630,7 +630,7 @@ struct DevicePackedTexturedMaterial : public DevicePackedEffectiveMaterial
 
         // Parameters for Adobe 2023 F82-tint model
         out.metallic = this->get_metallic();
-        if (out.metallic > 0.0f)
+        if (out.metallic > 0.0f || out.metallic_texture_index != MaterialUtils::NO_TEXTURE || out.roughness_metallic_texture_index != MaterialUtils::NO_TEXTURE)
         {
             // We only need to unpack all of this if we actually have a metallic lobe
 
@@ -652,7 +652,7 @@ struct DevicePackedTexturedMaterial : public DevicePackedEffectiveMaterial
 
         // Specular intensity
         out.specular = this->get_specular();
-        if (out.specular > 0.0f)
+        if (out.specular > 0.0f || out.specular_texture_index != MaterialUtils::NO_TEXTURE)
         {
             // Specular tint intensity. 
             // Specular will be white if 0.0f and will be 'specular_color' if 1.0f
@@ -670,7 +670,7 @@ struct DevicePackedTexturedMaterial : public DevicePackedEffectiveMaterial
         }
 
         out.coat = this->get_coat();
-        if (out.coat > 0.0f)
+        if (out.coat > 0.0f || out.coat_texture_index != MaterialUtils::NO_TEXTURE)
         {
             out.coat_medium_absorption = this->get_coat_medium_absorption();
             // The coat thickness influences the amount of absorption (given by 'coat_medium_absorption')
@@ -697,7 +697,7 @@ struct DevicePackedTexturedMaterial : public DevicePackedEffectiveMaterial
         }
 
         out.sheen = this->get_sheen(); // Sheen strength
-        if (out.sheen > 0.0f)
+        if (out.sheen > 0.0f || out.sheen_texture_index != MaterialUtils::NO_TEXTURE)
         {
             out.sheen_roughness = this->get_sheen_roughness();
             out.sheen_color = this->get_sheen_color();
@@ -706,7 +706,7 @@ struct DevicePackedTexturedMaterial : public DevicePackedEffectiveMaterial
         out.ior = this->get_ior();
         out.specular_transmission = this->get_specular_transmission();
 
-        if (out.specular_transmission > 0.0f)
+        if (out.specular_transmission > 0.0f || out.specular_transmission_texture_index != MaterialUtils::NO_TEXTURE)
         {
             // At what distance is the light absorbed to the given absorption_color
             out.absorption_at_distance = this->get_absorption_at_distance();
