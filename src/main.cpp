@@ -21,8 +21,6 @@
 #include <cmath>
 #include <iostream>
 
-#include "Experimentations/TestCopyKernelAlignment.h"
-
 extern ImGuiLogger g_imgui_logger;
 
 #define GPU_RENDER 1

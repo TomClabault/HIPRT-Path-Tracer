@@ -29,13 +29,8 @@ extern ImGuiLogger g_imgui_logger;
 // - try removing everything about nested dielectrics to see the register/spilling usage and performance --> ~1/2%
 
 // TODOs  performance improvements branch:
-// - cleanup declaration of HIPRT traversal in a macro or something
-// - if we don't have the ray volume state in the GBuffer anymore, we can remove the stack handlign in the trace ray function of the camera rays
 // - If hitting the same material as before, not load the material from VRAM as it's exactly the same? (only works for non-textured materials)
-// - merge camera rays and path tracer?
 // - to accelerate compilation times: we can use if() everywhere in the code so that switching an option doesn't require a compilation but if we want, we can then apply the options currently selected and compiler everything for maximum performance. This can probably be done with a massive shader that has all the options using if() instead of #if ? Maybe some better alternative though?
-// - store Material in GBuffer only if using ReSTIR, otherwise, just reconstruct it in the path tracign kernel
-// - we don't need ray volume states in the GBuffer, just the material index and we push that index on the ray volume stack in the path tracing kernel because that's the only thing that the camera ray kernel does anyway
 // - maybe have shaders without energy compensation? because this do be eating quite a lot of registers
 // - clearcoat layer is using torrance_sparrow_GGX_eval non-templated?
 // - when inside a dielectric volume, possible to check that a light is outside of the volume before shadow raying it? Using the bbox of the object
@@ -44,6 +39,7 @@ extern ImGuiLogger g_imgui_logger;
 // - texture compression
 // - store full pointers to textures in materails instead of indirect indices? probably cheaper to have ibigger materials than to havbe to do that indirect fetch?
 // - wavefront path tracing
+// - disable alpha testing after some bounces?
 // - dispatch mega kernel when only a few rays are left alive after compaction?
 // - investigate where the big register usage comes from (by commenting lines) --> split shaders there?
 // - split shaders for material specifics and dispatch in parallel?
@@ -57,10 +53,14 @@ extern ImGuiLogger g_imgui_logger;
 // - per material light sampling/BSDF sampling: smooth glass / metal don't need light sampling
 // - launch bounds optimization?
 // - thread group size optimization?
-// - With SoAs, it should be possible to have one shader per material type (test the performance of that though) without having to read the full material structure from memory so this reduces the cost of the "memory roundtrips" and maybe this can be worth it
 // - superfluous sample() call on the last bounce?
 // - perfect reflection and refractions fast path
 // - double buffering of frames in general to better keep the GPU occupied?
+// ------------------- STILL RELEAVNT WITH WAVEFRONT ? -------------------
+// - if we don't have the ray volume state in the GBuffer anymore, we can remove the stack handlign in the trace ray function of the camera rays
+// - merge camera rays and path tracer?
+// - store Material in GBuffer only if using ReSTIR, otherwise, just reconstruct it in the path tracign kernel
+// ------------------- STILL RELEAVNT WITH WAVEFRONT ? -------------------
 
 
 // TODO known bugs / incorrectness:

@@ -111,7 +111,7 @@ struct Float4xPacked
 	template <unsigned char index>
 	HIPRT_HOST_DEVICE float get_float() const
 	{ 
-		return static_cast<float>((m_packed & (0xFF << (index * 8))) >> (index * 8)) * inv_255;
+		return static_cast<float>((m_packed & (0xFFu << (index * 8))) >> (index * 8)) * inv_255;
 	}
 
 	/**
@@ -123,7 +123,7 @@ struct Float4xPacked
 	HIPRT_HOST_DEVICE void set_float(float value)
 	{
 		// Clear
-		m_packed &= ~(0xFF << (index * 8));
+		m_packed &= ~(0xFFu << (index * 8));
 
 		// Set
 		m_packed |= static_cast<unsigned char>(value * 255.0f) << (index * 8);
@@ -161,7 +161,7 @@ struct Float2xUChar2xPacked
 	template <unsigned char index>
 	HIPRT_HOST_DEVICE unsigned char get_uchar() const
 	{
-		return (m_packed & (0x00FF0000 << (index * 8))) >> (index * 8 + 16);
+		return (m_packed & (0x00FF0000u << (index * 8))) >> (index * 8 + 16);
 	}
 	
 	/**
@@ -171,7 +171,7 @@ struct Float2xUChar2xPacked
 	HIPRT_HOST_DEVICE void set_float(float value)
 	{
 		// Clear
-		m_packed &= ~(0xFF << (index * 8));
+		m_packed &= ~(0xFFu << (index * 8));
 
 		// Set
 		m_packed |= static_cast<unsigned char>(value * 255.0f) << (index * 8);
@@ -184,7 +184,7 @@ struct Float2xUChar2xPacked
 	HIPRT_HOST_DEVICE void set_uchar(unsigned char value)
 	{
 		// Clear
-		m_packed &= ~(0x00FF0000 << (index * 8));
+		m_packed &= ~(0x00FF0000u << (index * 8));
 
 		// Set
 		m_packed |= value << (index * 8 + 16);
@@ -207,7 +207,7 @@ struct Uint2xPacked
 	template <unsigned char index>
 	HIPRT_HOST_DEVICE unsigned short get_value() const
 	{
-		return (m_packed & (0xFFFF << (index * 16))) >> (index * 16);
+		return (m_packed & (0xFFFFu << (index * 16))) >> (index * 16);
 	}
 
 	/**
@@ -217,7 +217,7 @@ struct Uint2xPacked
 	HIPRT_HOST_DEVICE void set_value(unsigned short value)
 	{
 		// Clear
-		m_packed &= ~(0xFFFF << (index * 16));
+		m_packed &= ~(0xFFFFu << (index * 16));
 
 		// Set
 		m_packed |= value << (index * 16);
@@ -373,7 +373,7 @@ struct RGBE9995Packed
 	HIPRT_HOST_DEVICE ColorRGB32F unpack() const
 	{
 		float3 rgb = make_float3(m_packed & 0x1FF, (m_packed >> 9) & 0x1FF, (m_packed >> 18) & 0x1FF);
-		return ColorRGB32F(hippt::ldexp(rgb, (int)(m_packed >> 27) - 24));
+		return ColorRGB32F(hippt::ldexp(rgb, static_cast<int>(m_packed >> 27) - 24));
 	}
 
 private:

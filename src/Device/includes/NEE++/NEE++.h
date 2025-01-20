@@ -180,7 +180,7 @@ struct NEEPlusPlusDevice
 			return 1.0f;
 		else
 		{
-			float unoccluded_proba = read_buffer<BufferNames::VISIBILITY_MAP>(out_matrix_index) / (float)map_count;
+			float unoccluded_proba = read_buffer<BufferNames::VISIBILITY_MAP>(out_matrix_index) / static_cast<float>(map_count);
 			if (unoccluded_proba >= confidence_threshold)
 				return 1.0f;
 			else
@@ -192,7 +192,7 @@ struct NEEPlusPlusDevice
 	 * Returns the estimated probability that a ray between the two given world points
 	 * is going to be unoccluded (i.e. the two points are mutually visible)
 	 */
-	HIPRT_HOST_DEVICE float estimate_visibility_probability(const NEEPlusPlusContext& context, float3 second_world_position) const
+	HIPRT_HOST_DEVICE float estimate_visibility_probability(const NEEPlusPlusContext& context) const
 	{
 		int trash_matrix_index;
 		return estimate_visibility_probability(context, trash_matrix_index);
@@ -266,7 +266,6 @@ private:
 		float3 position_grid_space = position - grid_min_point;
 		float3 voxel_index_float = position_grid_space / (grid_max_point - grid_min_point);
 
-		float grid_limit = 1.0f;
 		if (voxel_index_float.x > 1.0f || voxel_index_float.y > 1.0f || voxel_index_float.z > 1.0f)
 			// The point is outside the grid
 			return make_int3(-1, -1, -1);

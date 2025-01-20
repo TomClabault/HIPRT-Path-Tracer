@@ -24,6 +24,46 @@
 __shared__ static int shared_stack_cache[SharedStackBVHTraversalSize * KernelWorkgroupThreadCount];
 #endif
 
+//#define __KERNELCC__
+
+#ifdef __KERNELCC__
+
+#if SharedStackBVHTraversalSize > 0
+#define DECLARE_SHARED_STACK_BUFFER shared_stack_buffer{ SharedStackBVHTraversalSize, shared_stack_cache }
+#else
+#define DECLARE_SHARED_STACK_BUFFER shared_stack_buffer{ 0, nullptr }
+#endif
+
+#if UseSharedStackBVHTraversal == KERNEL_OPTION_TRUE
+#define CONSTRUCT_HIPRT_CLOSEST_HIT_TRAVERSAL(traversal_variable_name) hiprtGeomTraversalClosestCustomStack<hiprtGlobalStack> traversal_variable_name(render_data.GPU_BVH, ray, global_stack, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0)
+#define CONSTRUCT_HIPRT_ANY_HIT_TRAVERSAL(traversal_variable_name) hiprtGeomTraversalAnyHitCustomStack<hiprtGlobalStack> traversal_variable_name(render_data.GPU_BVH, ray, global_stack, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0)
+#else
+#define CONSTRUCT_HIPRT_CLOSEST_HIT_TRAVERSAL(traversal_variable_name) hiprtGeomTraversalClosest traversal_variable_name(render_data.GPU_BVH, ray, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0);
+#define CONSTRUCT_HIPRT_ANY_HIT_TRAVERSAL(traversal_variable_name) hiprtGeomTraversalAnyHit traversal_variable_name(render_data.GPU_BVH, ray, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0);
+#endif
+
+#define DECLARE_HIPRT_CLOSEST_ANY_HIT_COMMON(render_data, ray, last_hit_primitive_index, random_number_generator) \
+  /* Payload for the alpha testing filter function */                                                             \
+  FilterFunctionPayload payload;                                                                                  \
+  payload.render_data = &render_data;                                                                             \
+  payload.random_number_generator = &random_number_generator;                                                     \
+  /* Filling the payload with the last hit primitive index to avoid self intersections */                         \
+  /* (avoid that the ray intersects the triangle it is currently sitting on) */                                   \
+  payload.last_hit_primitive_index = last_hit_primitive_index;                                                    \
+                                                                                                                  \
+  hiprtSharedStackBuffer DECLARE_SHARED_STACK_BUFFER;                                                             \
+  hiprtGlobalStack global_stack(render_data.global_traversal_stack_buffer, shared_stack_buffer);
+
+#define DECLARE_HIPRT_CLOSEST_HIT_TRAVERSAL(traversal_variable_name, render_data, ray, last_hit_primitive_index, random_number_generator) \
+  DECLARE_HIPRT_CLOSEST_ANY_HIT_COMMON(render_data, ray, last_hit_primitive_index, random_number_generator);                              \
+  CONSTRUCT_HIPRT_CLOSEST_HIT_TRAVERSAL(traversal_variable_name);
+
+#define DECLARE_HIPRT_ANY_HIT_TRAVERSAL(traversal_variable_name, render_data, ray, last_hit_primitive_index, random_number_generator) \
+  DECLARE_HIPRT_CLOSEST_ANY_HIT_COMMON(render_data, ray, last_hit_primitive_index, random_number_generator);                          \
+  CONSTRUCT_HIPRT_ANY_HIT_TRAVERSAL(traversal_variable_name);
+
+#endif
+
 /* References:
  * 
  * [1] [Foundations of Game Engine Development: Rendering - Tangent/Bitangent calculation] http://foundationsofgameenginedev.com/#fged2
@@ -155,27 +195,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
     do
     {
 #ifdef __KERNELCC__
-        // Payload for the alpha testing filter function
-        FilterFunctionPayload payload;
-        payload.render_data = &render_data;
-        payload.random_number_generator = &random_number_generator;
-        // Filling the payload with the last hit primitive index to avoid self intersections
-        // (avoid that the ray intersects the triangle it is currently sitting on)
-        payload.last_hit_primitive_index = last_hit_primitive_index;
-
-#if UseSharedStackBVHTraversal == KERNEL_OPTION_TRUE
-#if SharedStackBVHTraversalSize > 0
-        hiprtSharedStackBuffer shared_stack_buffer { SharedStackBVHTraversalSize, shared_stack_cache };
-#else
-        hiprtSharedStackBuffer shared_stack_buffer{ 0, nullptr };
-#endif
-        hiprtGlobalStack global_stack(render_data.global_traversal_stack_buffer, shared_stack_buffer);
-
-        hiprtGeomTraversalClosestCustomStack<hiprtGlobalStack> traversal(render_data.GPU_BVH, ray, global_stack, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0);
-#else
-        hiprtGeomTraversalClosest traversal(render_data.GPU_BVH, ray, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0);
-#endif
-
+        DECLARE_HIPRT_CLOSEST_HIT_TRAVERSAL(traversal, render_data, ray, last_hit_primitive_index, random_number_generator);
+        
         hit = traversal.getNextHit();
 #else
         hit = intersect_scene_cpu(render_data, ray, last_hit_primitive_index, random_number_generator);
@@ -248,26 +269,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& r
 #ifdef __KERNELCC__
     ray.maxT = t_max - 1.0e-4f;
 
-    // Payload for the alpha testing filter function
-    FilterFunctionPayload payload;
-    payload.render_data = &render_data;
-    payload.random_number_generator = &random_number_generator;
-    // Filling the payload with the last hit primitive index to avoid self intersections
-    // (avoid that the ray intersects the triangle it is currently sitting on)
-    payload.last_hit_primitive_index = last_hit_primitive_index;
-
-#if UseSharedStackBVHTraversal == KERNEL_OPTION_TRUE
-#if SharedStackBVHTraversalSize > 0
-    hiprtSharedStackBuffer shared_stack_buffer{ SharedStackBVHTraversalSize, shared_stack_cache };
-#else
-    hiprtSharedStackBuffer shared_stack_buffer{ 0, nullptr };
-#endif
-    hiprtGlobalStack global_stack(render_data.global_traversal_stack_buffer, shared_stack_buffer);
-
-    hiprtGeomTraversalAnyHitCustomStack<hiprtGlobalStack> traversal(render_data.GPU_BVH, ray, global_stack, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0);
-#else
-    hiprtGeomTraversalClosest traversal(render_data.GPU_BVH, ray, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0);
-#endif
+    DECLARE_HIPRT_ANY_HIT_TRAVERSAL(traversal, render_data, ray, last_hit_primitive_index, random_number_generator);
 
     hiprtHit shadow_ray_hit = traversal.getNextHit();
     if (!shadow_ray_hit.hasHit())
@@ -415,26 +417,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderD
 #ifdef __KERNELCC__
     ray.maxT = t_max - 1.0e-4f;
 
-    // Payload for the alpha testing filter function
-    FilterFunctionPayload payload;
-    payload.render_data = &render_data;
-    payload.random_number_generator = &random_number_generator;
-    // Filling the payload with the last hit primitive index to avoid self intersections
-    // (avoid that the ray intersects the triangle it is currently sitting on)
-    payload.last_hit_primitive_index = last_hit_primitive_index;
-
-#if UseSharedStackBVHTraversal == KERNEL_OPTION_TRUE
-#if SharedStackBVHTraversalSize > 0
-    hiprtSharedStackBuffer shared_stack_buffer{ SharedStackBVHTraversalSize, shared_stack_cache };
-#else
-    hiprtSharedStackBuffer shared_stack_buffer{ 0, nullptr };
-#endif
-    hiprtGlobalStack global_stack(render_data.global_traversal_stack_buffer, shared_stack_buffer);
-
-    hiprtGeomTraversalClosestCustomStack<hiprtGlobalStack> traversal(render_data.GPU_BVH, ray, global_stack, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0);
-#else
-    hiprtGeomTraversalClosest traversal(render_data.GPU_BVH, ray, hiprtTraversalHintDefault, &payload, render_data.hiprt_function_table, 0);
-#endif
+    DECLARE_HIPRT_CLOSEST_HIT_TRAVERSAL(traversal, render_data, ray, last_hit_primitive_index, random_number_generator);
 
     hiprtHit shadow_ray_hit = traversal.getNextHit();
     if (!shadow_ray_hit.hasHit())

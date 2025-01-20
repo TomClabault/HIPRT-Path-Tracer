@@ -313,16 +313,16 @@ struct DevicePackedEffectiveMaterial
 
 
 
-    HIPRT_HOST_DEVICE void set_emission(ColorRGB32F emission) { this->emission = emission; }
+    HIPRT_HOST_DEVICE void set_emission(ColorRGB32F emission_) { this->emission = emission_; }
     HIPRT_HOST_DEVICE void set_emissive_texture_used(bool emissive_texture_used) { flags.set_bool<PackedFlagsIndices::PACKED_EMISSIVE_TEXTURE_USED>(emissive_texture_used); }
 
     HIPRT_HOST_DEVICE void set_base_color(ColorRGB32F base_color) { base_color_roughness.set_color(base_color); }
 
     HIPRT_HOST_DEVICE void set_roughness(float roughness) { base_color_roughness.set_float(roughness); }
-    HIPRT_HOST_DEVICE void set_oren_nayar_sigma(float oren_nayar_sigma) { this->oren_nayar_sigma = oren_nayar_sigma; }
+    HIPRT_HOST_DEVICE void set_oren_nayar_sigma(float oren_nayar_sigma_) { this->oren_nayar_sigma = oren_nayar_sigma_; }
 
     HIPRT_HOST_DEVICE void set_metallic(float metallic) { metallic_F90_and_metallic.set_float(metallic); }
-    HIPRT_HOST_DEVICE void set_metallic_F90_falloff_exponent(float metallic_F90_falloff_exponent) { this->metallic_F90_falloff_exponent = metallic_F90_falloff_exponent; }
+    HIPRT_HOST_DEVICE void set_metallic_F90_falloff_exponent(float metallic_F90_falloff_exponent_) { this->metallic_F90_falloff_exponent = metallic_F90_falloff_exponent_; }
     HIPRT_HOST_DEVICE void set_metallic_F82(ColorRGB32F metallic_F82) { metallic_F82_packed.set_color(metallic_F82); }
     HIPRT_HOST_DEVICE void set_metallic_F90(ColorRGB32F metallic_F90) { metallic_F90_and_metallic.set_color(metallic_F90); }
     HIPRT_HOST_DEVICE void set_anisotropy(float anisotropy) { anisotropy_and_rotation_and_second_roughness.set_float<PackedAnisotropyGroupIndices::PACKED_ANISOTROPY>(anisotropy); }
@@ -339,34 +339,34 @@ struct DevicePackedEffectiveMaterial
 
     HIPRT_HOST_DEVICE void set_coat(float coat) { coat_and_medium_absorption.set_float(coat); }
     HIPRT_HOST_DEVICE void set_coat_medium_absorption(ColorRGB32F coat_medium_absorption) { coat_and_medium_absorption.set_color(coat_medium_absorption); }
-    HIPRT_HOST_DEVICE void set_coat_medium_thickness(float coat_medium_thickness) { this->coat_medium_thickness = coat_medium_thickness; }
+    HIPRT_HOST_DEVICE void set_coat_medium_thickness(float coat_medium_thickness_) { this->coat_medium_thickness = coat_medium_thickness_; }
     HIPRT_HOST_DEVICE void set_coat_roughness(float coat_roughness) { specular_and_darkening_and_coat_roughness.set_float<PackedSpecularGroupIndices::PACKED_COAT_ROUGHNESS>(coat_roughness); }
     HIPRT_HOST_DEVICE void set_coat_roughening(float coat_roughening) { coat_roughening_darkening_anisotropy_and_rotation.set_float<PackedCoatGroupIndices::PACKED_COAT_ROUGHENING>(coat_roughening); }
     HIPRT_HOST_DEVICE void set_coat_darkening(float coat_darkening) { coat_roughening_darkening_anisotropy_and_rotation.set_float<PackedCoatGroupIndices::PACKED_COAT_DARKENING>(coat_darkening); }
     HIPRT_HOST_DEVICE void set_coat_anisotropy(float coat_anisotropy) { coat_roughening_darkening_anisotropy_and_rotation.set_float<PackedCoatGroupIndices::PACKED_COAT_ANISOTROPY>(coat_anisotropy); }
     HIPRT_HOST_DEVICE void set_coat_anisotropy_rotation(float coat_anisotropy_rotation) { coat_roughening_darkening_anisotropy_and_rotation.set_float<PackedCoatGroupIndices::PACKED_COAT_ANISOTROPY_ROTATION>(coat_anisotropy_rotation); }
-    HIPRT_HOST_DEVICE void set_coat_ior(float coat_ior) { this->coat_ior = coat_ior; }
+    HIPRT_HOST_DEVICE void set_coat_ior(float coat_ior_) { this->coat_ior = coat_ior_; }
     HIPRT_HOST_DEVICE void set_coat_energy_compensation(bool do_coat_energy_compensation) { flags.set_bool<PackedFlagsIndices::CLEARCOAT_ENERGY_COMPENSATION>(do_coat_energy_compensation); }
 
     HIPRT_HOST_DEVICE void set_sheen(float sheen) { sheen_and_color.set_float(sheen); }
     HIPRT_HOST_DEVICE void set_sheen_roughness(float sheen_roughness) { sheen_roughness_transmission_dispersion_thin_film.set_float<PackedSheenRoughnessGroupIndices::PACKED_SHEEN_ROUGHNESS>(sheen_roughness); }
     HIPRT_HOST_DEVICE void set_sheen_color(ColorRGB32F sheen_color) { sheen_and_color.set_color(sheen_color); }
 
-    HIPRT_HOST_DEVICE void set_ior(float ior) { this->ior = ior; }
+    HIPRT_HOST_DEVICE void set_ior(float ior_) { this->ior = ior_; }
     HIPRT_HOST_DEVICE void set_specular_transmission(float specular_transmission) { sheen_roughness_transmission_dispersion_thin_film.set_float<PackedSheenRoughnessGroupIndices::PACKED_SPECULAR_TRANSMISSION>(specular_transmission); }
-    HIPRT_HOST_DEVICE void set_absorption_at_distance(float absorption_at_distance) { this->absorption_at_distance = absorption_at_distance; }
+    HIPRT_HOST_DEVICE void set_absorption_at_distance(float absorption_at_distance_) { this->absorption_at_distance = absorption_at_distance_; }
     HIPRT_HOST_DEVICE void set_absorption_color(ColorRGB32F absorption_color) { absorption_color_packed.set_color(absorption_color); }
     HIPRT_HOST_DEVICE void set_dispersion_scale(float dispersion_scale) { sheen_roughness_transmission_dispersion_thin_film.set_float<PackedSheenRoughnessGroupIndices::PACKED_DISPERSION_SCALE>(dispersion_scale); }
-    HIPRT_HOST_DEVICE void set_dispersion_abbe_number(float dispersion_abbe_number) { this->dispersion_abbe_number = dispersion_abbe_number; }
+    HIPRT_HOST_DEVICE void set_dispersion_abbe_number(float dispersion_abbe_number_) { this->dispersion_abbe_number = dispersion_abbe_number_; }
     HIPRT_HOST_DEVICE void set_thin_walled(bool thin_walled) { flags.set_bool<PackedFlagsIndices::PACKED_THIN_WALLED >(thin_walled); }
     HIPRT_HOST_DEVICE void set_glass_energy_compensation(bool do_glass_energy_compensation) { flags.set_bool<PackedFlagsIndices::GLASS_ENERGY_COMPENSATION>(do_glass_energy_compensation); }
 
     HIPRT_HOST_DEVICE void set_thin_film(float thin_film) { sheen_roughness_transmission_dispersion_thin_film.set_float<PackedSheenRoughnessGroupIndices::PACKED_THIN_FILM>(thin_film); }
-    HIPRT_HOST_DEVICE void set_thin_film_ior(float thin_film_ior) { this->thin_film_ior = thin_film_ior; }
-    HIPRT_HOST_DEVICE void set_thin_film_thickness(float thin_film_thickness) { this->thin_film_thickness = thin_film_thickness; }
-    HIPRT_HOST_DEVICE void set_thin_film_kappa_3(float thin_film_kappa_3) { this->thin_film_kappa_3 = thin_film_kappa_3; }
+    HIPRT_HOST_DEVICE void set_thin_film_ior(float thin_film_ior_) { this->thin_film_ior = thin_film_ior_; }
+    HIPRT_HOST_DEVICE void set_thin_film_thickness(float thin_film_thickness_) { this->thin_film_thickness = thin_film_thickness_; }
+    HIPRT_HOST_DEVICE void set_thin_film_kappa_3(float thin_film_kappa_3_) { this->thin_film_kappa_3 = thin_film_kappa_3_; }
     HIPRT_HOST_DEVICE void set_thin_film_hue_shift_degrees(float thin_film_hue_shift_degrees) { alpha_thin_film_hue_dielectric_priority.set_float<PackedAlphaOpacityGroupIndices::PACKED_THIN_FILM_HUE_SHIFT>(thin_film_hue_shift_degrees); }
-    HIPRT_HOST_DEVICE void set_thin_film_base_ior_override(bool thin_film_base_ior_override) { this->thin_film_base_ior_override = thin_film_base_ior_override; }
+    HIPRT_HOST_DEVICE void set_thin_film_base_ior_override(bool thin_film_base_ior_override_) { this->thin_film_base_ior_override = thin_film_base_ior_override_; }
     HIPRT_HOST_DEVICE void set_thin_film_do_ior_override(bool thin_film_do_ior_override) { flags.set_bool<PackedFlagsIndices::PACKED_THIN_FILM_DO_IOR_OVERRIDE>(thin_film_do_ior_override); }
 
     HIPRT_HOST_DEVICE void set_alpha_opacity(float alpha_opacity) { alpha_thin_film_hue_dielectric_priority.set_float<PackedAlphaOpacityGroupIndices::PACKED_ALPHA_OPACITY>(alpha_opacity); }

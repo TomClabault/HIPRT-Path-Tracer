@@ -95,7 +95,7 @@ struct DeviceUnpackedEffectiveMaterial
     // 0.0f completely transparent (becomes invisible)
     float alpha_opacity = 1.0f;
 
-    int energy_preservation_monte_carlo_samples = 12;
+    unsigned char energy_preservation_monte_carlo_samples = 12;
     
     /**
      * The booleans are moved to the end of the structure to avoid too much structure packing

@@ -90,8 +90,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F envmap_sample(const WorldSettings& wo
         // Picking the alias
         random_index = world_settings.alias_table_alias[random_index];
 
-    y = static_cast<int>(floorf(random_index / (float)world_settings.envmap_width));
-    x = static_cast<int>(floorf(random_index - y * (float)world_settings.envmap_width));
+    y = static_cast<int>(floorf(random_index / static_cast<float>(world_settings.envmap_width)));
+    x = static_cast<int>(floorf(random_index - y * static_cast<float>(world_settings.envmap_width)));
 #endif
 
     // Converting to UV coordinates

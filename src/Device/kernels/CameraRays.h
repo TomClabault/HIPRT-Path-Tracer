@@ -51,7 +51,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void rescale_samples(HIPRTRenderData& render_data
     // appear too dark.
     // We're rescaling the color of the pixels that stopped sampling here for correct display
 
-    float float_sample_number = (float)render_data.render_settings.sample_number;
+    float float_sample_number = static_cast<float>(render_data.render_settings.sample_number);
     render_data.buffers.accumulated_ray_colors[pixel_index] = render_data.buffers.accumulated_ray_colors[pixel_index] / float_sample_number * (render_data.render_settings.sample_number + 1);
     if (render_data.buffers.gmon_estimator.sets != nullptr)
     {

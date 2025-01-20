@@ -30,7 +30,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_hit_base_color_alpha(const HIPRTRenderD
 
     // Getting the alpha for transparency check to see if we need to pass the ray through or not
     float alpha;
-    ColorRGB32F base_color = get_base_color(render_data, alpha, texcoords, base_color_texture_index);
+    get_base_color(render_data, alpha, texcoords, base_color_texture_index);
 
     return alpha;
 }

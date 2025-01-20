@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "UI/ImGui/ImGuiLogger.h"
+#include "Utils/Utils.h"
 
 extern ImGuiLogger g_imgui_logger;
 
@@ -125,8 +126,17 @@ public:
 				return;
 
 			for (std::thread& thread : find->second)
+			{
+				// TODO: This is just for debugging. 
+				// There seems to be some very rare bug in the ThreadManager where sometimes, 
+				// we're trying to join (with thraed.join()) below a thread that has a NULL
+				// handle from the 'ParseEmissiveTrianglesKey' thread key
+				if (thread.native_handle() == nullptr)
+					Utils::debugbreak();
+
 				if (thread.joinable())
 					thread.join();
+			}
 		}
 		else
 		{
