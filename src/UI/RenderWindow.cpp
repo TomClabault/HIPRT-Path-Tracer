@@ -119,8 +119,7 @@ extern ImGuiLogger g_imgui_logger;
 //		the noise, why bother? Same with very bright regions
 // - pack material parameters that are between 0 and 1 into 8 bits, 1/256 is enough precision for parameters in 0-1
 // - Reuse miss BSDF ray on the last bounce to sample envmap with MIS
-// - Reuse MIS BSDF sample as path next bounce if the ray didn't hit anything
-// - Reuse second bounce BSDF sampled direction for light sampling in MIS if we bounced in a light ?
+// - We're using an approximation of the clearcoated BSDF directional albedo for energy compensation right now. The approximation breaks down when what's below the coat is 0.0f roughness. We could potentially bake the directional albedo for a mirror-coated BSDF and interpolate between that mirror-coated LUT and the typical rough-coated BSDF LUT based on the roughness of what's below the coat. This mirror-coated LUT doesn't work very well if there's a smooth-dielectric-coated lambert below the coat so maybe we would need a third LUT for that case
 // - RIS: do no use BSDF samples for rough surfaces (have a BSDF ray roughness treshold basically)
 //		We may have to do something with the lobes of the BSDF specifically for this one. A coated diffuse cannot always ignore light samples for example because the diffuse lobe benefits from light samples even if the surface is not smooth (coating) 
 // - have a light BVH for intersecting light triangles only: useful when we want to know whether or not a direction could have be sampled by the light sampler: we don't need to intersect the whole scene BVH, just the light geometry, less expensive

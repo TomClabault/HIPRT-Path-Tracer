@@ -6,12 +6,14 @@
 #ifndef DEVICE_PRINCIPLED_ENERGY_COMPENSATION_H
 #define DEVICE_PRINCIPLED_ENERGY_COMPENSATION_H
 
+#include "Device/includes/BSDFs/BSDFIncidentLightInfo.h"
+
 #include "HostDeviceCommon/Color.h"
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, 
-    RayVolumeState& ray_volume_state, bool update_ray_volume_state,
-    const float3& view_direction, float3 shading_normal, const float3& to_light_direction, 
-    float& pdf);
+                                                                RayVolumeState& ray_volume_state, bool update_ray_volume_state,
+                                                                const float3& view_direction, float3 shading_normal, const float3& to_light_direction, 
+                                                                float& pdf, BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO);
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, 
     RayVolumeState& ray_volume_state, bool update_ray_volume_state,
