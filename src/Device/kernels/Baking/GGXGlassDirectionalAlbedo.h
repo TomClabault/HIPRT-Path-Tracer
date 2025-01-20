@@ -183,8 +183,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void glass_directional_albedo_integration(int ker
         // Inverting the relative IOR in case we're inside the surface
         relative_ior = 1.0f / relative_ior;
 
-    int iterations_per_kernel = floor(hippt::max(1.0f, (float)GPUBakerConstants::COMPUTE_ELEMENT_PER_BAKE_KERNEL_LAUNCH / (float)(bake_settings.texture_size_cos_theta_o * bake_settings.texture_size_roughness * bake_settings.texture_size_ior)));
-    int nb_kernel_launch = ceil(bake_settings.integration_sample_count / (float)iterations_per_kernel);
+    int iterations_per_kernel = floor(hippt::max(1.0f, GPUBakerConstants::COMPUTE_ELEMENT_PER_BAKE_KERNEL_LAUNCH / static_cast<float>(bake_settings.texture_size_cos_theta_o * bake_settings.texture_size_roughness * bake_settings.texture_size_ior)));
+    int nb_kernel_launch = ceil(bake_settings.integration_sample_count / static_cast<float>(iterations_per_kernel));
     int nb_samples = nb_kernel_launch * iterations_per_kernel;
 
     for (int sample = 0; sample < kernel_iterations; sample++)

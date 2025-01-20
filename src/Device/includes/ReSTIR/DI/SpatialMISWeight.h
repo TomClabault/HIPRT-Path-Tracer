@@ -251,7 +251,7 @@ struct ReSTIRDISpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
 				// !!! This assumes that the center pixel is resampled last (which it is in this ReSTIR implementation) !!!
 
 				if (render_data.render_settings.restir_di_settings.use_confidence_weights)
-					return mc + static_cast<float>(center_pixel_reservoir.M) / (float)(center_pixel_reservoir.M + valid_neighbors_M_sum);
+					return mc + static_cast<float>(center_pixel_reservoir.M) / static_cast<float>(center_pixel_reservoir.M + valid_neighbors_M_sum);
 				else
 					// In the defensive formulation, we want to divide by M, not M-1.
 					// (Eq. 7.6 of "A Gentle Introduction to ReSTIR") so 'valid_neighbors_count + 1'

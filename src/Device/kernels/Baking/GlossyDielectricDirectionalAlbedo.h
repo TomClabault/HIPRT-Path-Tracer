@@ -64,8 +64,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GlossyDielectricDirectionalAlbedoBake(int k
 
     float3 local_view_direction = hippt::normalize(make_float3(cos(0.0f) * sin_theta_o, sin(0.0f) * sin_theta_o, cos_theta_o));
 
-    int iterations_per_kernel = floor(hippt::max(1.0f, (float)GPUBakerConstants::COMPUTE_ELEMENT_PER_BAKE_KERNEL_LAUNCH / (float)(bake_settings.texture_size_cos_theta_o * bake_settings.texture_size_roughness * bake_settings.texture_size_ior)));
-    int nb_kernel_launch = ceil(bake_settings.integration_sample_count / (float)iterations_per_kernel);
+    int iterations_per_kernel = floor(hippt::max(1.0f, GPUBakerConstants::COMPUTE_ELEMENT_PER_BAKE_KERNEL_LAUNCH / static_cast<float>(bake_settings.texture_size_cos_theta_o * bake_settings.texture_size_roughness * bake_settings.texture_size_ior)));
+    int nb_kernel_launch = ceil(bake_settings.integration_sample_count / static_cast<float>(iterations_per_kernel));
     int nb_samples = nb_kernel_launch * iterations_per_kernel;
 
     for (int sample = 0; sample < kernel_iterations; sample++)
@@ -102,8 +102,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GlossyDielectricDirectionalAlbedoBake(int k
 
         // A material with the base color defined is the only thing needed for
         // lambertian_brdf_eval()
-        DeviceEffectiveMaterial mat;
-        mat.set_base_color(ColorRGB32F(1.0f));
+        DeviceUnpackedEffectiveMaterial mat;
+        mat.base_color = ColorRGB32F(1.0f);
         float eval_pdf_diffuse;
         float directional_albedo_diffuse = lambertian_brdf_eval(mat, sampled_local_to_light_direction.z, eval_pdf_diffuse).r;
         // Multiplying the PDF by 0.5f because we have a 50% chance to sample the diffuse lobe

@@ -94,7 +94,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F get_GGX_energy_compensation_conductor
  * instead of fixing the root of the issue which probably isn't what you should do if you're
  * reading this
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_glass_energy_compensation_get_correction_exponent(const HIPRTRenderData& render_data, float roughness, float relative_eta)
+HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_glass_energy_compensation_get_correction_exponent(float roughness, float relative_eta)
 {
     if (hippt::is_zero(roughness) || hippt::abs(1.0f - relative_eta) < 1.0e-3f)
         // No correction for these, returning the original 2.5f that is used in the LUT
@@ -641,7 +641,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_GGX_energy_compensation_dielectrics(con
         float relative_eta_for_correction = inside_object ? 1.0f / relative_eta : relative_eta;
 		float exponent_correction = 2.5f;
 		if (!material.thin_walled)
-			exponent_correction = GGX_glass_energy_compensation_get_correction_exponent(render_data, material.roughness, relative_eta_for_correction);
+			exponent_correction = GGX_glass_energy_compensation_get_correction_exponent(material.roughness, relative_eta_for_correction);
 
         // We're storing cos_theta_o^2.5 in the LUT so we're retrieving it with pow(1.0f / 2.5f) i.e.
         // sqrt 2.5

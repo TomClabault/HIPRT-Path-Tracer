@@ -488,7 +488,7 @@ void RenderWindow::resize(int pixels_width, int pixels_height)
 	float& resolution_scale = m_application_settings->render_resolution_scale;
 	if (m_application_settings->keep_same_resolution)
 		// TODO what about the height changing ?
-		resolution_scale = m_application_settings->target_width / (float)pixels_width;
+		resolution_scale = m_application_settings->target_width / static_cast<float>(pixels_width);
 
 	int new_render_width = std::floor(pixels_width * resolution_scale);
 	int new_render_height = std::floor(pixels_height * resolution_scale);

@@ -128,7 +128,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F gulbrandsen_metallic_complex_fresnel(
 /**
  * Reference:
  *
- * [1] [Generalization of Adobe’s Fresnel Model, Hoffman, 2023]
+ * [1] [Generalization of Adobe's Fresnel Model, Hoffman, 2023]
  * [2] [Adobe Standard Material, Technical Documentation, Kutz, Hasan, Edmondson]
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F adobe_f82_tint_fresnel(const ColorRGB32F& F0, const ColorRGB32F& F82, const ColorRGB32F& F90, float F90_falloff_exponent, float cos_theta)
@@ -151,7 +151,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F adobe_f82_tint_fresnel(const ColorRGB
 
 /**
  * Reference:
- * [1] [A Hitchhiker’s Guide to Multiple Scattering, Eugene d'Eon] https://eugenedeon.com/hitchhikers
+ * [1] [A Hitchhiker's Guide to Multiple Scattering, Eugene d'Eon] https://eugenedeon.com/hitchhikers
  * Eq. 11.15
  * 
  * Hemispherical albedo (integral of directional albedos over view directions) 

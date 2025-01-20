@@ -546,7 +546,7 @@ static void write_wavelength_to_RGB_data_to_file()
     float Y_sum = 0.0f;
     for (int i = 0; i < nb_samples; i++)
     {
-        float wavelength = MIN_SAMPLE_WAVELENGTH + i * (MAX_SAMPLE_WAVELENGTH - MIN_SAMPLE_WAVELENGTH) / (float)nb_samples;
+        float wavelength = MIN_SAMPLE_WAVELENGTH + i * (MAX_SAMPLE_WAVELENGTH - MIN_SAMPLE_WAVELENGTH) / static_cast<float>(nb_samples);
 
         ColorRGB32F RGB = wavelength_to_RGB(wavelength);
 
@@ -567,7 +567,7 @@ static void average_RGB_for_render()
     const int  nb_samples = 1000000;
     for (int i = 0; i < nb_samples; i++)
     {
-        float wavelength = MIN_SAMPLE_WAVELENGTH + i * (MAX_SAMPLE_WAVELENGTH - MIN_SAMPLE_WAVELENGTH) / (float)nb_samples;
+        float wavelength = MIN_SAMPLE_WAVELENGTH + i * (MAX_SAMPLE_WAVELENGTH - MIN_SAMPLE_WAVELENGTH) / static_cast<float>(nb_samples);
 
         average_RGB += wavelength_to_RGB(wavelength) / nb_samples;
     }
@@ -587,7 +587,7 @@ static void write_rainbow_to_file()
 
     for (int x = 0; x < width; x++)
     {
-        float t = x / (float)(width - 1);
+        float t = x / static_cast<float>(width - 1);
         float wavelength = t * (MAX_SAMPLE_WAVELENGTH - MIN_SAMPLE_WAVELENGTH) + MIN_SAMPLE_WAVELENGTH;
 
         ColorRGB32F RGB = wavelength_to_RGB(wavelength);

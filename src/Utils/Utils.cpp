@@ -43,7 +43,7 @@ std::vector<unsigned char> Utils::tonemap_hdr_image(const float* hdr_image, size
 #pragma omp parallel for
     for (int i = 0; i < float_count; i += 3)
     {
-        ColorRGB32F pixel = ColorRGB32F(hdr_image[i + 0], hdr_image[i + 1], hdr_image[i + 2]) / (float)sample_number;
+        ColorRGB32F pixel = ColorRGB32F(hdr_image[i + 0], hdr_image[i + 1], hdr_image[i + 2]) / static_cast<float>(sample_number);
         ColorRGB32F tone_mapped = ColorRGB32F(1.0f, 1.0f, 1.0f) - exp(-pixel * exposure);
         ColorRGB32F gamma_corrected = pow(tone_mapped, 1.0f / gamma);
 

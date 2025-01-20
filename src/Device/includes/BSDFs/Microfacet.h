@@ -38,7 +38,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_anisotropic(float alpha_x, float alpha_
  * Reference: [Sampling the GGX Distribution of Visible Normals, Heitz, 2018]
  * Equation 3
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_anisotropic_vndf(float alpha_x, float alpha_y, float D, float G1V, const float3& local_view_direction, const float3& local_halfway_vector)
+HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_anisotropic_vndf(float D, float G1V, const float3& local_view_direction, const float3& local_halfway_vector)
 {
     float HoL = hippt::max(GGX_DOT_PRODUCTS_CLAMP, hippt::dot(local_view_direction, local_halfway_vector));
     return G1V * D * HoL / local_view_direction.z;
@@ -98,7 +98,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval<0>(const HI
     // GGX visible normal distribution for evaluating the PDF
     float lambda_V = G1_Smith_lambda(alpha_x, alpha_y, local_view_direction);
     float G1V = 1.0f / (1.0f + lambda_V);
-    float Dvisible = GGX_anisotropic_vndf(alpha_x, alpha_y, D, G1V, local_view_direction, local_halfway_vector);
+    float Dvisible = GGX_anisotropic_vndf(D, G1V, local_view_direction, local_halfway_vector);
 
     // Maxing 1.0e-8f here to avoid zeros and numerical imprecisions
     float NoV = hippt::max(GGX_DOT_PRODUCTS_CLAMP, hippt::abs(local_view_direction.z));
