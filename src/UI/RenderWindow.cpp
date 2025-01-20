@@ -31,8 +31,6 @@ extern ImGuiLogger g_imgui_logger;
 // TODOs  performance improvements branch:
 // - If hitting the same material as before, not load the material from VRAM as it's exactly the same? (only works for non-textured materials)
 // - to accelerate compilation times: we can use if() everywhere in the code so that switching an option doesn't require a compilation but if we want, we can then apply the options currently selected and compiler everything for maximum performance. This can probably be done with a massive shader that has all the options using if() instead of #if ? Maybe some better alternative though?
-// - maybe have shaders without energy compensation? because this do be eating quite a lot of registers
-// - clearcoat layer is using torrance_sparrow_GGX_eval non-templated?
 // - when inside a dielectric volume, possible to check that a light is outside of the volume before shadow raying it? Using the bbox of the object
 // - MIS disabled after some number of bounces? not on glass though?
 // - let's do some ray reordering because in complex scenes and complex materials and without hardware RT; this may actually  be quite worth it
@@ -56,11 +54,15 @@ extern ImGuiLogger g_imgui_logger;
 // - superfluous sample() call on the last bounce?
 // - perfect reflection and refractions fast path
 // - double buffering of frames in general to better keep the GPU occupied?
+// 
 // ------------------- STILL RELEAVNT WITH WAVEFRONT ? -------------------
 // - if we don't have the ray volume state in the GBuffer anymore, we can remove the stack handlign in the trace ray function of the camera rays
 // - merge camera rays and path tracer?
 // - store Material in GBuffer only if using ReSTIR, otherwise, just reconstruct it in the path tracign kernel
 // ------------------- STILL RELEAVNT WITH WAVEFRONT ? -------------------
+// ------------------- DO AFTER WAVEFRONT ? -------------------
+// - maybe have shaders without energy compensation? because this do be eating quite a lot of registers
+// ------------------- DO AFTER WAVEFRONT ? -------------------
 
 
 // TODO known bugs / incorrectness:

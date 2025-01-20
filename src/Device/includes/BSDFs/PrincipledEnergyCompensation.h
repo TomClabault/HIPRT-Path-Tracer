@@ -86,10 +86,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_principled_energy_compensation_glossy_b
 HIPRT_HOST_DEVICE HIPRT_INLINE float get_principled_energy_compensation_clearcoat_lobe(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, float incident_medium_ior, float NoV)
 {
     bool energy_compensation_disabled = !material.do_specular_energy_compensation;
-    bool roughness_low_enough = material.coat_roughness < render_data.bsdfs_data.energy_compensation_roughness_threshold;
     // If we don't have a clearcoat, let's not compensate energy
     bool no_coat_layer = material.coat < 1.0e-3f;
-    if (energy_compensation_disabled || roughness_low_enough || no_coat_layer)
+    if (energy_compensation_disabled || no_coat_layer)
         return 1.0f;
 
     float ms_compensation = 1.0f;

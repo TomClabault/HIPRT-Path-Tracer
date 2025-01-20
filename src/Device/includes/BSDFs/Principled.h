@@ -49,7 +49,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_coat_eval(const HIPRTRende
     float incident_medium_ior, float& out_pdf)
 {
     // The coat lobe is just a microfacet lobe
-    return torrance_sparrow_GGX_eval(render_data, material.coat_roughness, material.coat_anisotropy, material.coat_ior, incident_medium_ior, local_view_direction, local_to_light_direction, local_halfway_vector, out_pdf);
+    float HoL = hippt::clamp(1.0e-8f, 1.0f, hippt::dot(local_halfway_vector, local_to_light_direction));
+
+    ColorRGB32F F = ColorRGB32F(full_fresnel_dielectric(HoL, incident_medium_ior, material.coat_ior));
+    return torrance_sparrow_GGX_eval<0>(render_data, material.coat_roughness, material.coat_anisotropy, F, local_view_direction, local_to_light_direction, local_halfway_vector, out_pdf);
 }
 
 /**
