@@ -48,7 +48,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_ReSTIR_DI_reservoir(const HI
         shadow_ray.origin = closest_hit_info.inter_point;
         shadow_ray.direction = shadow_ray_direction;
 
-        in_shadow = evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, random_number_generator);
+        in_shadow = evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, /* bounce. Always 0 for ReSTIR DI */0, random_number_generator);
     }
 
     if (!in_shadow)

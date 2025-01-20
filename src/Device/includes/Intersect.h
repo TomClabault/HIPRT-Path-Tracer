@@ -50,9 +50,13 @@ __shared__ static int shared_stack_cache[SharedStackBVHTraversalSize * KernelWor
   /* Filling the payload with the last hit primitive index to avoid self intersections */                         \
   /* (avoid that the ray intersects the triangle it is currently sitting on) */                                   \
   payload.last_hit_primitive_index = last_hit_primitive_index;                                                    \
+  payload.bounce = bounce;                                                                            \
                                                                                                                   \
   hiprtSharedStackBuffer DECLARE_SHARED_STACK_BUFFER;                                                             \
   hiprtGlobalStack global_stack(render_data.global_traversal_stack_buffer, shared_stack_buffer);
+
+
+
 
 #define DECLARE_HIPRT_CLOSEST_HIT_TRAVERSAL(traversal_variable_name, render_data, ray, last_hit_primitive_index, random_number_generator) \
   DECLARE_HIPRT_CLOSEST_ANY_HIT_COMMON(render_data, ray, last_hit_primitive_index, random_number_generator);                              \
@@ -182,7 +186,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE hiprtHit intersect_scene_cpu(const HIPRTRenderDat
 /**
  * Returns true if a hit was found, false otherwise
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data, hiprtRay ray, RayPayload& in_out_ray_payload, HitInfo& out_hit_info, int last_hit_primitive_index, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data, hiprtRay ray, RayPayload& in_out_ray_payload, HitInfo& out_hit_info, int last_hit_primitive_index, int bounce, Xorshift32Generator& random_number_generator)
 {
 #ifdef __KERNELCC__
     if (render_data.GPU_BVH == nullptr)
@@ -258,7 +262,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
  * Returns true if in shadow (a hit was found before 't_max' distance
  * Returns false if unoccluded
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& render_data, hiprtRay ray, float t_max, int last_hit_primitive_index, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& render_data, hiprtRay ray, float t_max, int last_hit_primitive_index, int bounce, Xorshift32Generator& random_number_generator)
 {
 #ifdef __KERNELCC__
     if (render_data.GPU_BVH == nullptr)
@@ -316,7 +320,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& r
  * function can update the visibility map of NEE++ if enabled in 'render_data.nee_plus_plus'
  */
 #include "Device/includes/Hash.h"
-HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRenderData& render_data, hiprtRay ray, float t_max, int last_hit_primitive_index, NEEPlusPlusContext& nee_plus_plus_context, Xorshift32Generator& random_number_generator, int bounce = 0)
+HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRenderData& render_data, hiprtRay ray, float t_max, int last_hit_primitive_index, NEEPlusPlusContext& nee_plus_plus_context, Xorshift32Generator& random_number_generator, int bounce)
 {
 #if DirectLightUseNEEPlusPlusRR == KERNEL_OPTION_TRUE && DirectLightUseNEEPlusPlus == KERNEL_OPTION_TRUE
     bool shadow_ray_discarded = false;
@@ -337,7 +341,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRende
             // Updating the statistics
             hippt::atomic_fetch_add(render_data.nee_plus_plus.shadow_rays_actually_traced, 1u);
 
-        shadow_ray_occluded = evaluate_shadow_ray(render_data, ray, t_max, last_hit_primitive_index, random_number_generator);
+        shadow_ray_occluded = evaluate_shadow_ray(render_data, ray, t_max, last_hit_primitive_index, bounce, random_number_generator);
         shadow_ray_discarded = false;
     }
 
@@ -356,7 +360,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRende
             hippt::atomic_fetch_add(render_data.nee_plus_plus.shadow_rays_actually_traced, 1u);
 
         // The shadow ray is likely visible, testing with a shadow ray
-        shadow_ray_occluded = evaluate_shadow_ray(render_data, ray, t_max, last_hit_primitive_index, random_number_generator);
+        shadow_ray_occluded = evaluate_shadow_ray(render_data, ray, t_max, last_hit_primitive_index, bounce, random_number_generator);
         shadow_ray_discarded = false;
 
         if (render_data.nee_plus_plus.update_visibility_map)
@@ -406,7 +410,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRende
  * 
  * Also, if a hit was found, outputs the emission of the material at the hit point in 'out_hit_emission'
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderData& render_data, hiprtRay ray, float t_max, ShadowLightRayHitInfo& out_light_hit_info, int last_hit_primitive_index, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_light_ray(const HIPRTRenderData& render_data, hiprtRay ray, float t_max, ShadowLightRayHitInfo& out_light_hit_info, int last_hit_primitive_index, int bounce, Xorshift32Generator& random_number_generator)
 {
 #ifdef __KERNELCC__
     if (render_data.GPU_BVH == nullptr)

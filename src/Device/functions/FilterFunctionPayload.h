@@ -16,7 +16,8 @@ struct FilterFunctionPayload
 	Xorshift32Generator* random_number_generator;
 	// -- Alpha testing payload --
 
-
+	// What bounce the ray being launched currently is at
+	int bounce = 0;
 
 	// -- Self intersection avoidance payload --
 	int last_hit_primitive_index;

@@ -149,7 +149,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F envmap_eval(const HIPRTRenderData& re
     return envmap_radiance;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_with_mis(HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, RayVolumeState& volume_state, HitInfo& closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, MISBSDFRayReuse& mis_ray_reuse, int bounce)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_with_mis(HIPRTRenderData& render_data, RayPayload& ray_payload, HitInfo& closest_hit_info,
+    const float3& view_direction, 
+    Xorshift32Generator& random_number_generator, MISBSDFRayReuse& mis_ray_reuse)
 {
     float envmap_pdf;
     float3 sampled_direction;
@@ -168,11 +170,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_with_mis(HIPRT
         nee_plus_plus_context.shaded_point = closest_hit_info.inter_point;
         nee_plus_plus_context.point_on_light = sampled_direction;
         nee_plus_plus_context.envmap = true;
-        bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, nee_plus_plus_context, random_number_generator, bounce);
+        bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, nee_plus_plus_context, random_number_generator, ray_payload.bounce);
         if (!in_shadow)
         {
             float bsdf_pdf;
-            ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, material, volume_state, false, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_direction, bsdf_pdf, random_number_generator);
+            ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_direction, bsdf_pdf, random_number_generator);
 
 #if EnvmapSamplingDoBSDFMIS
             float mis_weight = balance_heuristic(envmap_pdf, bsdf_pdf);
@@ -214,10 +216,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_with_mis(HIPRT
     }
     else
         // No BSDF MIS ray to reuse, let's sample the BSDF
-        bsdf_color = bsdf_dispatcher_sample(render_data, material, volume_state, false, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bsdf_sampled_dir, bsdf_sample_pdf, random_number_generator);
+        bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, false, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bsdf_sampled_dir, bsdf_sample_pdf, random_number_generator);
 #else
         // No BSDF MIS ray to reuse, let's sample the BSDF
-        bsdf_color = bsdf_dispatcher_sample(render_data, material, volume_state, false, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bsdf_sampled_dir, bsdf_sample_pdf, random_number_generator);
+        bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, false, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bsdf_sampled_dir, bsdf_sample_pdf, random_number_generator);
 #endif
 
     // Sampling the BSDF with MIS
@@ -235,7 +237,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_with_mis(HIPRT
             in_shadow = false;
         else
             // No ray was reused, we have to check for visibility
-            in_shadow = evaluate_shadow_ray(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, random_number_generator);
+            in_shadow = evaluate_shadow_ray(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, ray_payload.bounce, random_number_generator);
 #else
         bool in_shadow = evaluate_shadow_ray(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, random_number_generator);
 #endif
@@ -258,7 +260,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_with_mis(HIPRT
 #endif
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map(HIPRTRenderData& render_data, RayPayload& ray_payload, HitInfo& closest_hit_info, const float3& view_direction, int bounce, Xorshift32Generator& random_number_generator, MISBSDFRayReuse& mis_ray_reuse)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map(HIPRTRenderData& render_data, RayPayload& ray_payload, HitInfo& closest_hit_info, 
+    const float3& view_direction, 
+    Xorshift32Generator& random_number_generator, MISBSDFRayReuse& mis_ray_reuse)
 {
     const WorldSettings& world_settings = render_data.world_settings;
 
@@ -275,14 +279,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map(HIPRTRenderDat
         // No need to sample the envmap if the user has set the intensity to 0
         return ColorRGB32F(0.0f);
 
-    if (bounce == 0 && DirectLightSamplingStrategy == LSS_RESTIR_DI)
+    if (ray_payload.bounce == 0 && DirectLightSamplingStrategy == LSS_RESTIR_DI)
         // The envmap lighting is handled by ReSTIR DI on the first bounce
         return ColorRGB32F(0.0f);
 
 #if EnvmapSamplingStrategy == ESS_NO_SAMPLING
     return ColorRGB32F(0.0f);
 #else
-    return sample_environment_map_with_mis(render_data, ray_payload.material, ray_payload.volume_state, closest_hit_info, view_direction, random_number_generator, mis_ray_reuse, bounce);
+    return sample_environment_map_with_mis(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, mis_ray_reuse);
 #endif
 }
 

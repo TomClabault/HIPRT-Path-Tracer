@@ -122,7 +122,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_DI_evaluate_target_function<KERNEL_O
 	shadow_ray.origin = surface.shading_point;
 	shadow_ray.direction = sample_direction;
 
-	bool visible = !evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, surface.last_hit_primitive_index, random_number_generator);
+	bool visible = !evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, surface.last_hit_primitive_index, /* bounce. Always 0 for ReSTIR DI*/ 0, random_number_generator);
 
 	target_function *= visible;
 
@@ -158,7 +158,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void ReSTIR_DI_visibility_reuse(const HIPRTRender
 	shadow_ray.origin = shading_point;
 	shadow_ray.direction = sample_direction;
 
-	bool visible = !evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, last_primitive_hit_index, random_number_generator);
+	bool visible = !evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, last_primitive_hit_index, /* bounce. Always 0 for ReSTIR DI*/ 0, random_number_generator);
 	if (!visible)
 		// Setting to -1 here so that we know when debugging that this is because of visibility reuse
 		reservoir.UCW = -1.0f;

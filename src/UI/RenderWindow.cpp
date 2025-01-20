@@ -30,38 +30,37 @@ extern ImGuiLogger g_imgui_logger;
 
 // TODOs  performance improvements branch:
 // - If hitting the same material as before, not load the material from VRAM as it's exactly the same? (only works for non-textured materials)
-// - to accelerate compilation times: we can use if() everywhere in the code so that switching an option doesn't require a compilation but if we want, we can then apply the options currently selected and compiler everything for maximum performance. This can probably be done with a massive shader that has all the options using if() instead of #if ? Maybe some better alternative though?
 // - when inside a dielectric volume, possible to check that a light is outside of the volume before shadow raying it? Using the bbox of the object
-// - MIS disabled after some number of bounces? not on glass though?
-// - let's do some ray reordering because in complex scenes and complex materials and without hardware RT; this may actually  be quite worth it
+// - MIS disabled after some number of bounces? not on glass though? MIS disabled after the ray throughput gets below some threshold?
 // - texture compression
 // - store full pointers to textures in materails instead of indirect indices? probably cheaper to have ibigger materials than to havbe to do that indirect fetch?
-// - wavefront path tracing
-// - disable alpha testing after some bounces?
-// - dispatch mega kernel when only a few rays are left alive after compaction?
-// - investigate where the big register usage comes from (by commenting lines) --> split shaders there?
-// - split shaders for material specifics and dispatch in parallel?
 // - limit  number of bounces based on material type
-// - use wavefront path tracing to evaluate direct  lighting, envmap and BSDF sample in parallel
-// - start shooting camera rays for frame N+1 during frame N?
 // - use the fact that some values are already computed in bsdf_sample to pass them to bsdf_eval in a big BSDFStateStructure or something to avoid recomputing
 // - schlick fresnel in many places? instead of correct fresnel. switch in "performance settings"
-// - compaction - https://github.com/microsoft/directxshadercompiler/wiki/wave-intrinsics#example
 // - disable energy compensation on smooth glass / smooth metal
+// - do we need MIS for perfectly diffuse surfaces? light sampling should suffice?
 // - per material light sampling/BSDF sampling: smooth glass / metal don't need light sampling
-// - launch bounds optimization?
-// - thread group size optimization?
 // - superfluous sample() call on the last bounce?
 // - perfect reflection and refractions fast path
-// - double buffering of frames in general to better keep the GPU occupied?
 // 
 // ------------------- STILL RELEAVNT WITH WAVEFRONT ? -------------------
 // - if we don't have the ray volume state in the GBuffer anymore, we can remove the stack handlign in the trace ray function of the camera rays
 // - merge camera rays and path tracer?
 // - store Material in GBuffer only if using ReSTIR, otherwise, just reconstruct it in the path tracign kernel
 // ------------------- STILL RELEAVNT WITH WAVEFRONT ? -------------------
+// 
 // ------------------- DO AFTER WAVEFRONT ? -------------------
 // - maybe have shaders without energy compensation? because this do be eating quite a lot of registers
+// - let's do some ray reordering because in complex scenes and complex materials and without hardware RT; this may actually  be quite worth it
+// - dispatch mega kernel when only a few rays are left alive after compaction?
+// - investigate where the big register usage comes from (by commenting lines) --> split shaders there?
+// - split shaders for material specifics and dispatch in parallel?
+// - use wavefront path tracing to evaluate direct  lighting, envmap and BSDF sample in parallel
+// - start shooting camera rays for frame N+1 during frame N?
+// - compaction - https://github.com/microsoft/directxshadercompiler/wiki/wave-intrinsics#example
+// - launch bounds optimization?
+// - thread group size optimization?
+// - double buffering of frames in general to better keep the GPU occupied?
 // ------------------- DO AFTER WAVEFRONT ? -------------------
 
 
@@ -104,6 +103,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Exploiting Visibility Correlation in Direct Illumination
 // - Progressive Visibility Caching for Fast Indirect Illumination
 // - smarter shader cache (hints to avoid using all kernel options when compiling a kernel? We know that Camera ray doesn't care about direct lighting strategy for example)
+// - to accelerate compilation times: we can use if() everywhere in the code so that switching an option doesn't require a compilation but if we want, we can then apply the options currently selected and compiler everything for maximum performance. This can probably be done with a massive shader that has all the options using if() instead of #if ? Maybe some better alternative though?
 // - for LTC sheen lobe, have the option to use either SGGX volumetric sheen or approximation precomputed LTC data
 // - --help on the commandline
 // - Search for textures next to the GLTF file location

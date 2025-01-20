@@ -228,7 +228,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
     // + 1 to nb_bounces here because we want "0" bounces to still act as one
     // hit and to return some color
     bool intersection_found = closest_hit_info.primitive_index != -1;
-    for (int bounce = 0; bounce < render_data.render_settings.nb_bounces + 1; bounce++)
+    for (int& bounce = ray_payload.bounce; bounce < render_data.render_settings.nb_bounces + 1; bounce++)
     {
         if (ray_payload.next_ray_state != RayState::MISSED)
         {
@@ -239,7 +239,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
                     intersection_found = reuse_mis_ray(render_data, closest_hit_info, ray_payload, -ray.direction, mis_reuse);
                 else
                     // Not tracing for the primary ray because this has already been done in the camera ray pass
-                    intersection_found = trace_ray(render_data, ray, ray_payload, closest_hit_info, closest_hit_info.primitive_index, random_number_generator);
+                    intersection_found = trace_ray(render_data, ray, ray_payload, closest_hit_info, closest_hit_info.primitive_index, bounce, random_number_generator);
             }
 
             if (intersection_found)
@@ -265,7 +265,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
                 // --------------------------------------------------- //
 
                 // Estimates direct lighting with next-even estimation and directly modifies ray_payload.ray_color
-                estimate_direct_lighting(render_data, ray_payload, closest_hit_info, -ray.direction, x, y, bounce, mis_reuse, random_number_generator);
+                estimate_direct_lighting(render_data, ray_payload, closest_hit_info, -ray.direction, x, y, mis_reuse, random_number_generator);
 
                 // --------------------------------------- //
                 // ---------- Indirect lighting ---------- //

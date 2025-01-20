@@ -183,6 +183,16 @@ struct HIPRTRenderSettings
 
 	// Whether or not to do alpha testing for geometry with transparent base color textures
 	bool do_alpha_testing = true;
+	// At what bounce to stop doing alpha testing
+	// 
+	// A value of 0 means that alpha testing isn't done at bounce 0 which means that even camera
+	// rays do not do not do alpha testing --> alpha testing is disable
+	// 
+	// A value of 1 means that camera rays do alpha testing but the next bounce rays do not do alpha
+	// testing
+	//
+	// Shadow rays for NEE are also affected by this setting
+	int alpha_testing_indirect_bounce = 1;
 
 	// Settings for RIS (direct light sampling)
 	RISSettings ris_settings;

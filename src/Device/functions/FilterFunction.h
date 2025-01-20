@@ -35,6 +35,10 @@ HIPRT_DEVICE HIPRT_INLINE bool filter_function(const hiprtRay&, const void*, voi
 	if (!payload->render_data->render_settings.do_alpha_testing)
 		return false;
 
+	if (payload->bounce >= payload->render_data->render_settings.alpha_testing_indirect_bounce)
+		// Alpha testing is disable at the current bounce
+		return false;
+
 	int material_index = payload->render_data->buffers.material_indices[hit.primID];
 	if (payload->render_data->buffers.material_opaque[material_index])
 		// The material is fully opaque, no need to test further, accept the intersection

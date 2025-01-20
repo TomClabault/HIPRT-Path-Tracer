@@ -46,7 +46,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderDa
         NEEPlusPlusContext nee_plus_plus_context;
         nee_plus_plus_context.point_on_light = random_light_point;
         nee_plus_plus_context.shaded_point = shadow_ray_origin;
-        bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, nee_plus_plus_context, random_number_generator);
+        bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, nee_plus_plus_context, random_number_generator, ray_payload.bounce);
 
         if (!in_shadow)
         {
@@ -83,7 +83,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_bsdf(const HIPRTRend
         new_ray.origin = closest_hit_info.inter_point;
         new_ray.direction = sampled_bsdf_direction;
 
-        intersection_found = evaluate_shadow_light_ray(render_data, new_ray, 1.0e35f, shadow_light_ray_hit_info, closest_hit_info.primitive_index, random_number_generator);
+        intersection_found = evaluate_shadow_light_ray(render_data, new_ray, 1.0e35f, shadow_light_ray_hit_info, closest_hit_info.primitive_index, ray_payload.bounce, random_number_generator);
 
         // Checking that we did hit something and if we hit something,
         // it needs to be emissive
@@ -129,7 +129,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData&
         NEEPlusPlusContext nee_plus_plus_context;
         nee_plus_plus_context.point_on_light = random_light_point;
         nee_plus_plus_context.shaded_point = shadow_ray.origin;
-        bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, nee_plus_plus_context, random_number_generator);
+        bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, nee_plus_plus_context, random_number_generator, ray_payload.bounce);
 
         if (!in_shadow)
         {
@@ -164,7 +164,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData&
         new_ray.origin = bsdf_shadow_ray_origin;
         new_ray.direction = sampled_bsdf_direction;
 
-        intersection_found = evaluate_shadow_light_ray(render_data, new_ray, 1.0e35f, shadow_light_ray_hit_info, closest_hit_info.primitive_index, random_number_generator);
+        intersection_found = evaluate_shadow_light_ray(render_data, new_ray, 1.0e35f, shadow_light_ray_hit_info, closest_hit_info.primitive_index, ray_payload.bounce, random_number_generator);
 
         // Checking that we did hit something and if we hit something,
         // it needs to be emissive
@@ -223,14 +223,16 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_many_lights(HIPRTRenderData& r
     return direct_light_contribution / render_data.render_settings.number_of_light_samples;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_ReSTIR_DI(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, int2 pixel_coords, int bounce, MISBSDFRayReuse& mis_ray_reuse)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_ReSTIR_DI(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, 
+    const float3& view_direction, 
+    Xorshift32Generator& random_number_generator, int2 pixel_coords, MISBSDFRayReuse& mis_ray_reuse)
 {
     // ReSTIR DI doesn't support explicitely looping to sample
     // multiple lights per shading point so that's why we don't
     // have a loop for it
 
     ColorRGB32F direct_light_contribution;
-    if (bounce == 0)
+    if (ray_payload.bounce == 0)
         // Can only do ReSTIR DI on the first bounce
         direct_light_contribution = sample_light_ReSTIR_DI(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, pixel_coords);
     else
@@ -273,7 +275,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_ReSTIR_DI(HIPRTRende
  * I think the better morale to remember is that the material being emissive doesn't matter at
  * all. As long as the material itself reflects light, then we should do NEE.
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, int2 pixel_coords, int bounce, MISBSDFRayReuse& mis_ray_reuse)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, 
+    const float3& view_direction, 
+    Xorshift32Generator& random_number_generator, int2 pixel_coords, MISBSDFRayReuse& mis_ray_reuse)
 {
     if (render_data.buffers.emissive_triangles_count == 0 
         && !(render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP && DirectLightSamplingStrategy == LSS_RESTIR_DI))
@@ -305,7 +309,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light(HIPRTRenderData& ren
     direct_light_contribution = sample_many_lights(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, mis_ray_reuse);
 
 #elif DirectLightSamplingStrategy == LSS_RESTIR_DI
-    direct_light_contribution = sample_one_light_ReSTIR_DI(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, pixel_coords, bounce, mis_ray_reuse);
+    direct_light_contribution = sample_one_light_ReSTIR_DI(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, pixel_coords, mis_ray_reuse);
 #endif
 #endif
 
@@ -314,23 +318,23 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light(HIPRTRenderData& ren
 
 HIPRT_HOST_DEVICE void estimate_direct_lighting(HIPRTRenderData& render_data, RayPayload& ray_payload, HitInfo& closest_hit_info, 
     float3 view_direction,
-    int x, int y, int bounce,
+    int x, int y,
     MISBSDFRayReuse& mis_reuse, Xorshift32Generator& random_number_generator)
 {
-    ColorRGB32F light_direct_contribution = sample_one_light(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, make_int2(x, y), bounce, mis_reuse);
-    ColorRGB32F envmap_direct_contribution = sample_environment_map(render_data, ray_payload, closest_hit_info, view_direction, bounce, random_number_generator, mis_reuse);
+    ColorRGB32F light_direct_contribution = sample_one_light(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, make_int2(x, y), mis_reuse);
+    ColorRGB32F envmap_direct_contribution = sample_environment_map(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, mis_reuse);
 
     // Clamping direct lighting
-    light_direct_contribution = clamp_light_contribution(light_direct_contribution, render_data.render_settings.direct_contribution_clamp, bounce == 0);
-    envmap_direct_contribution = clamp_light_contribution(envmap_direct_contribution, render_data.render_settings.envmap_contribution_clamp, bounce == 0);
+    light_direct_contribution = clamp_light_contribution(light_direct_contribution, render_data.render_settings.direct_contribution_clamp, ray_payload.bounce == 0);
+    envmap_direct_contribution = clamp_light_contribution(envmap_direct_contribution, render_data.render_settings.envmap_contribution_clamp, ray_payload.bounce == 0);
 
 #if DirectLightSamplingStrategy == LSS_NO_DIRECT_LIGHT_SAMPLING // No direct light sampling
     ColorRGB32F hit_emission = ray_payload.material.emission;
-    hit_emission = clamp_light_contribution(hit_emission, render_data.render_settings.indirect_contribution_clamp, bounce > 0);
+    hit_emission = clamp_light_contribution(hit_emission, render_data.render_settings.indirect_contribution_clamp, ray_payload.bounce > 0);
 
     ray_payload.ray_color += hit_emission * ray_payload.throughput;
 #else
-    if (bounce == 0)
+    if (ray_payload.bounce == 0)
         // If we do have emissive geometry sampling, we only want to take
         // it into account on the first bounce, otherwise we would be
         // accounting for direct light sampling twice (bounce on emissive
@@ -339,7 +343,7 @@ HIPRT_HOST_DEVICE void estimate_direct_lighting(HIPRTRenderData& render_data, Ra
 
     // Clamped indirect lighting 
     ColorRGB32F direct_lighting_contribution = (light_direct_contribution + envmap_direct_contribution) * ray_payload.throughput;
-    ColorRGB32F clamped_direct_lighting_contribution = clamp_light_contribution(direct_lighting_contribution, render_data.render_settings.indirect_contribution_clamp, bounce > 0);
+    ColorRGB32F clamped_direct_lighting_contribution = clamp_light_contribution(direct_lighting_contribution, render_data.render_settings.indirect_contribution_clamp, ray_payload.bounce > 0);
     ray_payload.ray_color += clamped_direct_lighting_contribution;
 #endif
 }

@@ -304,7 +304,7 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 			}
 			ImGui::BeginDisabled(!render_settings.accumulate); // Cannot use stopping condition if not accumulating
 			ImGui::SeparatorText("Pixel Stop Noise Threshold");
-			ImGui::Checkbox("Use pixel stop noise threshold stopping condition", &render_settings.enable_pixel_stop_noise_threshold);
+			ImGui::Checkbox("Use pixel noise threshold stopping condition", &render_settings.enable_pixel_stop_noise_threshold);
 			ImGuiRenderer::show_help_marker("If enabled, stops the renderer after a certain proportion "
 				"of pixels of the image have converged. \"converged\" is evaluated according to the "
 				"threshold of the adaptive sampling if it is enabled. If adaptive sampling is not "
@@ -376,7 +376,7 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 
 		if (nested_dielectrics_stack_size != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::NESTED_DIELETRCICS_STACK_SIZE_OPTION))
 		{
-			ImGui::TreePush("Apply button nested dielectric stack_entries size");
+			ImGui::TreePush("Apply button nested dielectric stack size");
 			if (ImGui::Button("Apply"))
 			{
 				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::NESTED_DIELETRCICS_STACK_SIZE_OPTION, nested_dielectrics_stack_size);
@@ -399,6 +399,19 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 
 		if (ImGui::Checkbox("Do alpha testing", &render_settings.do_alpha_testing))
 			m_render_window->set_render_dirty(true);
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+		if (ImGui::SliderInt("Max bounce", &render_settings.alpha_testing_indirect_bounce, 0, render_settings.nb_bounces))
+			m_render_window->set_render_dirty(true);
+		ImGuiRenderer::show_help_marker("At what bounce to stop doing alpha testing.\n\n"
+			""
+			"A value of 0 means that alpha testing isn't done at bounce 0 which means that even camera "
+			"rays do not do not do alpha testing --> alpha testing is disabled.\n\n"
+			""
+			"A value of 1 means that camera rays do alpha testing but the next bounce rays do not do alpha "
+			"testing.\n\n"
+			""
+			"Shadow rays for NEE are also affected by this setting.");
 
 		ImGui::TreePop();
 	}
@@ -415,7 +428,7 @@ void ImGuiSettingsWindow::draw_russian_roulette_options()
 		m_render_window->set_render_dirty(true);
 
 	const char* items[] = { "- Max throughput", "- Arnold, Langlands, 2014" };
-	if (ImGui::Combo("Termination probability method", (int*)&render_settings.path_russian_roulette_method, items, IM_ARRAYSIZE(items)))
+	if (ImGui::Combo("Termination method", (int*)&render_settings.path_russian_roulette_method, items, IM_ARRAYSIZE(items)))
 		m_render_window->set_render_dirty(true);
 
 	static bool min_depth_modified = false;
@@ -719,7 +732,7 @@ void ImGuiSettingsWindow::draw_camera_panel_static(const std::string& panel_titl
 		if (!render_settings.accumulate)
 			ImGuiRenderer::add_tooltip("Cannot render at low resolution when not accumulating. If you want to render at "
 				"a lower resolution, you can use the resolution scale in \"Render Settings\"for that.");
-		ImGui::SliderInt("Render low resolution downscale", &render_settings.render_low_resolution_scaling, 1, 8);
+		ImGui::SliderInt("Low resolution scale", &render_settings.render_low_resolution_scaling, 1, 8);
 		if (!render_settings.accumulate)
 			ImGuiRenderer::add_tooltip("Cannot render at low resolution when not accumulating. If you want to render at "
 				"a lower resolution, you can use the resolution scale in \"Render Settings\"for that.");
@@ -857,9 +870,9 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 			float adaptive_sampling_noise_threshold_before = render_settings.adaptive_sampling_noise_threshold;
 			ImGui::BeginDisabled(!render_settings.enable_adaptive_sampling);
-			if (ImGui::InputInt("Adaptive sampling minimum samples", &render_settings.adaptive_sampling_min_samples))
+			if (ImGui::InputInt("Minimum samples", &render_settings.adaptive_sampling_min_samples))
 				m_render_window->set_render_dirty(true);
-			if (ImGui::InputFloat("Adaptive sampling noise threshold", &render_settings.adaptive_sampling_noise_threshold))
+			if (ImGui::InputFloat("Noise threshold", &render_settings.adaptive_sampling_noise_threshold))
 			{
 				render_settings.adaptive_sampling_noise_threshold = std::max(0.0f, render_settings.adaptive_sampling_noise_threshold);
 
@@ -880,7 +893,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 		{
 			ImGui::TreePush("Direct lighting sampling tree");
 
-			if (ImGui::SliderInt("Light samples per path vertex", &render_settings.number_of_light_samples, 1, 8))
+			if (ImGui::SliderInt("NEE Samples", &render_settings.number_of_light_samples, 1, 8))
 				m_render_window->set_render_dirty(true);
 			ImGuiRenderer::show_help_marker("How many light samples to take and shade per each vertex of the "
 											"ray's path.\n"
@@ -895,7 +908,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			const char* items[] = { "- No direct light sampling", "- Uniform one light", "- BSDF Sampling", "- MIS (1 Light + 1 BSDF)", "- RIS BDSF + Light candidates", "- ReSTIR DI (Primary Hit Only)" };
-			if (ImGui::Combo("Direct light sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
+			if (ImGui::Combo("Sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
 			{
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
@@ -1592,7 +1605,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			ImGui::TreePush("Envmap sampling tree");
 
 			const char* items[] = { "- No envmap importance sampling", "- Importance Sampling - Binary Search", "- Importance Sampling - Alias Table " };
-			if (ImGui::Combo("Envmap sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
+			if (ImGui::Combo("Sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
 			{
 				ThreadManager::start_thread("RecomputeEnvmapSamplingStructure", [this]() {
 					m_renderer->get_envmap().recompute_sampling_data_structure(m_renderer.get());
@@ -1648,7 +1661,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			ImGuiRenderer::show_help_marker("How to sample the GGX NDF");
 
 			std::vector<const char*> masking_shadowing_items = { "- Smith height-correlated", "- Smith height-uncorrelated" };
-			if (ImGui::Combo("GGX Masking-Shadowing Term", (int*)&render_data.bsdfs_data.GGX_masking_shadowing, masking_shadowing_items.data(), masking_shadowing_items.size()))
+			if (ImGui::Combo("GGX Masking-Shadowing", (int*)&render_data.bsdfs_data.GGX_masking_shadowing, masking_shadowing_items.data(), masking_shadowing_items.size()))
 				m_render_window->set_render_dirty(true);
 			ImGuiRenderer::show_help_marker("Which masking-shadowing term to use with the GGX NDF.");
 
@@ -2406,22 +2419,24 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 	{
 		ImGui::TreePush("Lighting Settings Performance Tree");
 
-		if (ImGui::SliderFloat("Direct ligthing contribution clamp", &render_settings.direct_contribution_clamp, 0.0f, 10.0f))
+		ImGui::SeparatorText("Clamping");
+		if (ImGui::SliderFloat("Direct lighting", &render_settings.direct_contribution_clamp, 0.0f, 10.0f))
 		{
 			render_settings.direct_contribution_clamp = std::max(0.0f, render_settings.direct_contribution_clamp);
 			m_render_window->set_render_dirty(true);
 		}
-		if (ImGui::SliderFloat("Envmap ligthing contribution clamp", &render_settings.envmap_contribution_clamp, 0.0f, 10.0f))
+		if (ImGui::SliderFloat("Envmap ligthing", &render_settings.envmap_contribution_clamp, 0.0f, 10.0f))
 		{
 			render_settings.envmap_contribution_clamp = std::max(0.0f, render_settings.envmap_contribution_clamp);
 			m_render_window->set_render_dirty(true);
 		}
-		if (ImGui::SliderFloat("Indirect ligthing contribution clamp", &render_settings.indirect_contribution_clamp, 0.0f, 10.0f))
+		if (ImGui::SliderFloat("Indirect ligthing", &render_settings.indirect_contribution_clamp, 0.0f, 10.0f))
 		{
 			render_settings.indirect_contribution_clamp = std::max(0.0f, render_settings.indirect_contribution_clamp);
 			m_render_window->set_render_dirty(true);
 		}
 
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		if (ImGui::SliderFloat("Minimum Light Contribution", &render_settings.minimum_light_contribution, 0.0f, 10.0f))
 		{
 			render_settings.minimum_light_contribution = std::max(0.0f, render_settings.minimum_light_contribution);
@@ -2520,7 +2535,7 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 
 	if (ImGui::CollapsingHeader("Kernel Settings"))
 	{
-		ImGui::TreePush("Shared/global stack_entries Traversal Options Tree");
+		ImGui::TreePush("Shared/global stack Traversal Options Tree");
 
 		// List of exceptions because these kernels do not trace any rays
 		static std::unordered_set<std::string> exceptions = { ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID };
@@ -2558,7 +2573,7 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 
 
 
-		ImGui::TreePush("Kernel selection for stack_entries size");
+		ImGui::TreePush("Kernel selection for stack size");
 
 		{
 			static std::unordered_map<std::string, bool> use_shared_stack_traversal;
@@ -2566,7 +2581,7 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 				use_shared_stack_traversal[selected_kernel_name] = selected_kernel_options->get_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL);
 			bool& use_shared_stack_traversal_bool = use_shared_stack_traversal[selected_kernel_name];
 
-			if (ImGui::Checkbox("Use shared/global stack_entries BVH traversal", &use_shared_stack_traversal_bool))
+			if (ImGui::Checkbox("Use shared/global stack BVH traversal", &use_shared_stack_traversal_bool))
 			{
 				selected_kernel_options->set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, use_shared_stack_traversal_bool ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 				m_renderer->recompile_kernels();
@@ -2587,16 +2602,18 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 					pending_stack_size_changes[selected_kernel_name] = selected_kernel_options->get_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE);
 				int& pending_stack_size = pending_stack_size_changes[selected_kernel_name];
 
-				if (ImGui::InputInt("Shared stack_entries size", &pending_stack_size))
+				ImGui::PushItemWidth(4 * ImGui::GetFontSize());
+				if (ImGui::InputInt("Shared stack size", &pending_stack_size))
 					pending_stack_size = std::max(0, pending_stack_size);
+				ImGui::PopItemWidth();
 
-				ImGuiRenderer::show_help_marker("Fast shared memory stack_entries used for the BVH traversal of \"global\" rays (rays that search for a closest hit with no maximum distance)\n\n"
+				ImGuiRenderer::show_help_marker("Fast shared memory stack used for the BVH traversal of \"global\" rays (rays that search for a closest hit with no maximum distance)\n\n"
 												"Allocating more of this speeds up the BVH traversal but reduces the amount of L1 cache available to "
 												"the rest of the shader which thus reduces its performance. A tradeoff must be made.\n\n"
-												"If this shared memory stack_entries isn't large enough for traversing the BVH, then "
-												"it is complemented by using the global stack_entries buffer. If both combined aren't enough "
+												"If this shared memory stack isn't large enough for traversing the BVH, then "
+												"it is complemented by using the global stack buffer. If both combined aren't enough "
 												"for the traversal, then artifacts start showing up in renders.\n\n"
-												"Note that setting this value to 0 disables the shared stack_entries usage but still uses the global buffer "
+												"Note that setting this value to 0 disables the shared stack usage but still uses the global buffer "
 												"for traversal. This approach is still better that not using any of these two memories at all (this "
 												"becomes the case when the checkboxes above are not checked.)");
 
@@ -2605,7 +2622,7 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 					// If the user has modified the size of the shared stack, showing a button to apply the changes 
 					// (not applying the changes everytime because this requires a recompilation of basically all shaders and that's heavy)
 
-					ImGui::TreePush("Apply button shared stack_entries size");
+					ImGui::TreePush("Apply button shared stack size");
 					if (ImGui::Button("Apply"))
 					{
 						selected_kernel_options->set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, pending_stack_size);
@@ -2621,16 +2638,18 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		if (ImGui::InputInt("Global stack_entries per-thread size", &m_renderer->get_render_data().global_traversal_stack_buffer_size))
+		ImGui::PushItemWidth(4 * ImGui::GetFontSize());
+		if (ImGui::InputInt("Global stack per-thread size", &m_renderer->get_render_data().global_traversal_stack_buffer_size))
 		{
 			m_renderer->get_render_data().global_traversal_stack_buffer_size = hippt::clamp(0, 128, m_renderer->get_render_data().global_traversal_stack_buffer_size);
 			m_render_window->set_render_dirty(true);
 		}
+		ImGui::PopItemWidth();
 
-		ImGuiRenderer::show_help_marker("Size of the global stack_entries buffer for each thread. Used for complementing the shared memory stack_entries allocated in the kernels."
+		ImGuiRenderer::show_help_marker("Size of the global stack buffer for each thread. Used for complementing the shared memory stack allocated in the kernels."
 										"A good value for this parameter is scene-complexity dependent.\n\n"
 										"A lower value will use less VRAM but will start introducing artifacts if the value is too low due "
-										"to insufficient stack_entries size for the BVH traversal.\n\n"
+										"to insufficient stack size for the BVH traversal.\n\n"
 										"16 seems to be a good value to start with. If lowering this value improves performance, then that "
 										"means that the BVH traversal is starting to suffer (the traversal is incomplete --> improved performance) "
 										"and rendering artifacts will start to show up.");
