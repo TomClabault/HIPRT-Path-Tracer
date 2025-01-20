@@ -135,6 +135,15 @@
  */
 #define PrincipledBSDFDoSpecularEnergyCompensation KERNEL_OPTION_TRUE
 
+/**
+ * If this is true, then delta distribution lobes of the principled BSDF will not be evaluated
+ * if the incident light direction used for the evaluation doesn't come from sampling the 
+ * delta distribution lobe itself
+ * 
+ * Some more details in BSDFIncidentLightInfo.h
+ */
+#define PrincipledBSDFDeltaDistributionEvaluationOptimization KERNEL_OPTION_TRUE
+
 #endif // #ifndef __KERNELCC__
 
 #endif

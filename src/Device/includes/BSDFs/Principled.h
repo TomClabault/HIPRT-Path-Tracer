@@ -610,7 +610,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_coat_layer(const HIPRTR
             // hemisphere as the view direction (so reflections only, not refractions)
 
             bool coat_evaluation_useful = incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_COAT_LOBE || material.coat_roughness > 1.0e-4f;
-            if (coat_evaluation_useful)
+            if (coat_evaluation_useful || PrincipledBSDFDeltaDistributionEvaluationOptimization == KERNEL_OPTION_FALSE)
             {
                 // We're only evaluating the coat lobe if, either:
                 // - The incident light direction was sampled from the clearcoat lobe
@@ -618,6 +618,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_coat_layer(const HIPRTR
                 //
                 // Because if none of these two conditions are true, the evaluation of the coat will
                 // yield 0.0f anyways
+
                 contribution = principled_coat_eval(render_data, material, local_view_direction, local_to_light_direction, local_half_vector, incident_ior, coat_pdf);
                 contribution *= coat_weight;
                 contribution *= layers_throughput;
@@ -750,7 +751,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_metal_layer(const HIPRT
         bool eval_first_metal_lobe = (evaluating_first_metal_lobe && incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_FIRST_METAL_LOBE);
         bool eval_second_metal_lobe = (!evaluating_first_metal_lobe && incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_SECOND_METAL_LOBE);
         bool metal_evaluation_useful = eval_first_metal_lobe || eval_second_metal_lobe || roughness > 1.0e-4f;
-        if (metal_evaluation_useful)
+        if (metal_evaluation_useful || PrincipledBSDFDeltaDistributionEvaluationOptimization == KERNEL_OPTION_FALSE)
         {
             // Same thing as for the coat lobe.
             // See 'internal_eval_coat_layer' for an explanation
@@ -787,7 +788,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_glass_layer(const HIPRT
         ColorRGB32F contribution;
         
         bool glass_evaluation_useful = incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_GLASS_LOBE || material.roughness > 1.0e-4f;
-        if (glass_evaluation_useful)
+        if (glass_evaluation_useful || PrincipledBSDFDeltaDistributionEvaluationOptimization == KERNEL_OPTION_FALSE)
         {
             // Same thing as for the coat lobe.
             // See 'internal_eval_coat_layer' for an explanation
@@ -863,7 +864,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_specular_layer(const HI
         ColorRGB32F contribution;
         
         bool specular_evaluation_useful = incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_SPECULAR_LOBE || material.roughness > 1.0e-4f;
-        if (specular_evaluation_useful)
+        if (specular_evaluation_useful || PrincipledBSDFDeltaDistributionEvaluationOptimization == KERNEL_OPTION_FALSE)
         {
             // Same thing as for the coat lobe.
             // See 'internal_eval_coat_layer' for an explanation

@@ -2376,6 +2376,27 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 
 			m_render_window->set_render_dirty(true);
 		}
+		ImGuiRenderer::show_help_marker("Partial and experimental implementation of[Generate Coherent Rays Directly, Liu et al., 2024] "
+			"for reuse sampled directions on the first hit accross the threads of warps");
+
+		static bool delta_distrib_opti = PrincipledBSDFDeltaDistributionEvaluationOptimization;
+		if (ImGui::Checkbox("BSDF delta distribution eval optimization", &delta_distrib_opti))
+		{
+			kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DELTA_DISTRIBUTION_EVALUATION_OPTIMIZATION, delta_distrib_opti ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+			m_renderer->recompile_kernels();
+
+			m_render_window->set_render_dirty(true);
+		}
+		ImGuiRenderer::show_help_marker("If this is true, then delta distribution lobes of the principled BSDF will not be evaluated "
+			"if the incident light direction used for the evaluation doesn't come from sampling the "
+			" delta distribution lobe itself.\n\n"
+			""
+			"For example, consider a clearcoat diffuse lobe. If bsdf_eval() is called with an "
+			"incident light direction that was sampled from the diffuse lobe, the perfectly smooth clearcoat lobe "
+			"is going to have its contribution evaluate to 0 because there is no chance that the sampled "
+			"diffuse direction perfectly aligns with the delta of the smooth clearcoat lobe.\n\n"
+			""
+			"Same with all the other lobes that can be delta distributions.");
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();
