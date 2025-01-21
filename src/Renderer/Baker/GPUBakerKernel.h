@@ -45,7 +45,6 @@ private:
 	std::string m_kernel_title = "";
 	// State for baking GGX conductors directional albedo
 	GPUKernel m_bake_kernel;
-	GPUKernel m_zeroing_kernel;
 
 	// Buffer for holding the baked data
 	OrochiBuffer<float> m_bake_buffer;

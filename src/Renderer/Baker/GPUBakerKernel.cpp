@@ -61,9 +61,6 @@ void GPUBakerKernel::bake_internal(int3 bake_resolution, const void* bake_settin
 			m_bake_kernel = GPUKernel(m_kernel_filepath, m_kernel_function);
 			m_bake_kernel.compile(m_renderer->get_hiprt_orochi_ctx());
 
-			m_zeroing_kernel = GPUKernel(DEVICE_KERNELS_DIRECTORY "/Baking/ZeroingKernel.h", "ZeroingKernel");
-			m_zeroing_kernel.compile_silent(m_renderer->get_hiprt_orochi_ctx());
-
 			m_renderer->release_kernel_compilation_priority();
 		}
 
@@ -86,14 +83,7 @@ void GPUBakerKernel::bake_internal(int3 bake_resolution, const void* bake_settin
 		OROCHI_CHECK_ERROR(oroEventRecord(start, m_bake_stream));
 
 		// Zeroing the buffer that we're going to accumulate the bake data into
-		float* device_buffer = m_bake_buffer.get_device_pointer();
-		void* zeroing_kernel_launch_args[] = { &device_buffer, &bake_resolution };
-		m_zeroing_kernel.launch_asynchronous_3D(
-			tile_size.x, tile_size.y, tile_size.z,
-			bake_resolution.x, bake_resolution.y, bake_resolution.z,
-			zeroing_kernel_launch_args, m_bake_stream);
-
-		// -----
+		m_bake_buffer.memset_whole_buffer(0);
 
 		// Launching many "small" kernels to avoid driver timeouts
 		int iterations_per_kernel = floor(hippt::max(1.0f, (float)GPUBakerConstants::COMPUTE_ELEMENT_PER_BAKE_KERNEL_LAUNCH / (bake_resolution.x * bake_resolution.y * bake_resolution.z)));
@@ -105,6 +95,7 @@ void GPUBakerKernel::bake_internal(int3 bake_resolution, const void* bake_settin
 			// The current iteration variable is used in the kernel to shuffle the random
 			// so that we get different random numbers per each kernel launch
 			int current_iteration = i + 1;
+			float* device_buffer = m_bake_buffer.get_device_pointer();
 			void* bake_kernel_launch_args[] = { &iterations_per_kernel, &current_iteration, non_const_setting, &device_buffer };
 			m_bake_kernel.launch_asynchronous_3D(
 				tile_size.x, tile_size.y, tile_size.z,
