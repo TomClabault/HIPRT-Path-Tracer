@@ -121,48 +121,48 @@ struct DevicePackedTexturedMaterialSoAGPUData : public DevicePackedEffectiveMate
     void upload_data_partial(unsigned int start_index, const DevicePackedTexturedMaterial* data, size_t element_count)
     {
         // Textured part
-        normal_map_emission_index.upload_data_partial(start_index, expand_from_gpu_packed_materials<Uint2xPacked>(start_index, data, offsetof(DevicePackedTexturedMaterial, normal_map_emission_index), element_count).data(), element_count);
-        base_color_roughness_metallic_index.upload_data_partial(start_index, expand_from_gpu_packed_materials<Uint2xPacked>(start_index, data, offsetof(DevicePackedTexturedMaterial, base_color_roughness_metallic_index), element_count).data(), element_count);
-        roughness_and_metallic_index.upload_data_partial(start_index, expand_from_gpu_packed_materials<Uint2xPacked>(start_index, data, offsetof(DevicePackedTexturedMaterial, roughness_and_metallic_index), element_count).data(), element_count);
-        anisotropic_specular_index.upload_data_partial(start_index, expand_from_gpu_packed_materials<Uint2xPacked>(start_index, data, offsetof(DevicePackedTexturedMaterial, anisotropic_specular_index), element_count).data(), element_count);
-        coat_sheen_index.upload_data_partial(start_index, expand_from_gpu_packed_materials<Uint2xPacked>(start_index, data, offsetof(DevicePackedTexturedMaterial, coat_sheen_index), element_count).data(), element_count);
-        specular_transmission_index.upload_data_partial(start_index, expand_from_gpu_packed_materials<Uint2xPacked>(start_index, data, offsetof(DevicePackedTexturedMaterial, specular_transmission_index), element_count).data(), element_count);
+        normal_map_emission_index.upload_data_partial(start_index, expand_from_gpu_packed_materials<Uint2xPacked>(data, offsetof(DevicePackedTexturedMaterial, normal_map_emission_index), element_count).data(), element_count);
+        base_color_roughness_metallic_index.upload_data_partial(start_index, expand_from_gpu_packed_materials<Uint2xPacked>(data, offsetof(DevicePackedTexturedMaterial, base_color_roughness_metallic_index), element_count).data(), element_count);
+        roughness_and_metallic_index.upload_data_partial(start_index, expand_from_gpu_packed_materials<Uint2xPacked>(data, offsetof(DevicePackedTexturedMaterial, roughness_and_metallic_index), element_count).data(), element_count);
+        anisotropic_specular_index.upload_data_partial(start_index, expand_from_gpu_packed_materials<Uint2xPacked>(data, offsetof(DevicePackedTexturedMaterial, anisotropic_specular_index), element_count).data(), element_count);
+        coat_sheen_index.upload_data_partial(start_index, expand_from_gpu_packed_materials<Uint2xPacked>(data, offsetof(DevicePackedTexturedMaterial, coat_sheen_index), element_count).data(), element_count);
+        specular_transmission_index.upload_data_partial(start_index, expand_from_gpu_packed_materials<Uint2xPacked>(data, offsetof(DevicePackedTexturedMaterial, specular_transmission_index), element_count).data(), element_count);
 
         // Non textured parameters
-        flags.upload_data_partial(start_index, expand_from_gpu_packed_materials<UChar8BoolsPacked>(start_index, data, offsetof(DevicePackedTexturedMaterial, flags), element_count).data(), element_count);
+        flags.upload_data_partial(start_index, expand_from_gpu_packed_materials<UChar8BoolsPacked>(data, offsetof(DevicePackedTexturedMaterial, flags), element_count).data(), element_count);
 
-        emission.upload_data_partial(start_index, expand_from_gpu_packed_materials<ColorRGB32F>(start_index, data, offsetof(DevicePackedTexturedMaterial, emission), element_count).data(), element_count);
+        emission.upload_data_partial(start_index, expand_from_gpu_packed_materials<ColorRGB32F>(data, offsetof(DevicePackedTexturedMaterial, emission), element_count).data(), element_count);
 
-        base_color_roughness.upload_data_partial(start_index, expand_from_gpu_packed_materials<ColorRGB24bFloat0_1Packed>(start_index, data, offsetof(DevicePackedTexturedMaterial, base_color_roughness), element_count).data(), element_count);
+        base_color_roughness.upload_data_partial(start_index, expand_from_gpu_packed_materials<ColorRGB24bFloat0_1Packed>(data, offsetof(DevicePackedTexturedMaterial, base_color_roughness), element_count).data(), element_count);
 
-        oren_nayar_sigma.upload_data_partial(start_index, expand_from_gpu_packed_materials<float>(start_index, data, offsetof(DevicePackedTexturedMaterial, oren_nayar_sigma), element_count).data(), element_count);
+        oren_nayar_sigma.upload_data_partial(start_index, expand_from_gpu_packed_materials<float>(data, offsetof(DevicePackedTexturedMaterial, oren_nayar_sigma), element_count).data(), element_count);
 
-        metallic_F90_and_metallic.upload_data_partial(start_index, expand_from_gpu_packed_materials<ColorRGB24bFloat0_1Packed>(start_index, data, offsetof(DevicePackedTexturedMaterial, metallic_F90_and_metallic), element_count).data(), element_count);
-        metallic_F82_packed.upload_data_partial(start_index, expand_from_gpu_packed_materials<ColorRGB24bFloat0_1Packed>(start_index, data, offsetof(DevicePackedTexturedMaterial, metallic_F82_packed), element_count).data(), element_count);
-        metallic_F90_falloff_exponent.upload_data_partial(start_index, expand_from_gpu_packed_materials<float>(start_index, data, offsetof(DevicePackedTexturedMaterial, metallic_F90_falloff_exponent), element_count).data(), element_count);
-        anisotropy_and_rotation_and_second_roughness.upload_data_partial(start_index, expand_from_gpu_packed_materials<Float4xPacked>(start_index, data, offsetof(DevicePackedTexturedMaterial, anisotropy_and_rotation_and_second_roughness), element_count).data(), element_count);
+        metallic_F90_and_metallic.upload_data_partial(start_index, expand_from_gpu_packed_materials<ColorRGB24bFloat0_1Packed>(data, offsetof(DevicePackedTexturedMaterial, metallic_F90_and_metallic), element_count).data(), element_count);
+        metallic_F82_packed.upload_data_partial(start_index, expand_from_gpu_packed_materials<ColorRGB24bFloat0_1Packed>(data, offsetof(DevicePackedTexturedMaterial, metallic_F82_packed), element_count).data(), element_count);
+        metallic_F90_falloff_exponent.upload_data_partial(start_index, expand_from_gpu_packed_materials<float>(data, offsetof(DevicePackedTexturedMaterial, metallic_F90_falloff_exponent), element_count).data(), element_count);
+        anisotropy_and_rotation_and_second_roughness.upload_data_partial(start_index, expand_from_gpu_packed_materials<Float4xPacked>(data, offsetof(DevicePackedTexturedMaterial, anisotropy_and_rotation_and_second_roughness), element_count).data(), element_count);
 
-        specular_color_and_tint_factor.upload_data_partial(start_index, expand_from_gpu_packed_materials<ColorRGB24bFloat0_1Packed>(start_index, data, offsetof(DevicePackedTexturedMaterial, specular_color_and_tint_factor), element_count).data(), element_count);
-        specular_and_darkening_and_coat_roughness.upload_data_partial(start_index, expand_from_gpu_packed_materials<Float4xPacked>(start_index, data, offsetof(DevicePackedTexturedMaterial, specular_and_darkening_and_coat_roughness), element_count).data(), element_count);
-        coat_medium_thickness.upload_data_partial(start_index, expand_from_gpu_packed_materials<float>(start_index, data, offsetof(DevicePackedTexturedMaterial, coat_medium_thickness), element_count).data(), element_count);
-        coat_and_medium_absorption.upload_data_partial(start_index, expand_from_gpu_packed_materials<ColorRGB24bFloat0_1Packed>(start_index, data, offsetof(DevicePackedTexturedMaterial, coat_and_medium_absorption), element_count).data(), element_count);
-        coat_roughening_darkening_anisotropy_and_rotation.upload_data_partial(start_index, expand_from_gpu_packed_materials<Float4xPacked>(start_index, data, offsetof(DevicePackedTexturedMaterial, coat_roughening_darkening_anisotropy_and_rotation), element_count).data(), element_count);
-        coat_ior.upload_data_partial(start_index, expand_from_gpu_packed_materials<float>(start_index, data, offsetof(DevicePackedTexturedMaterial, coat_ior), element_count).data(), element_count);
+        specular_color_and_tint_factor.upload_data_partial(start_index, expand_from_gpu_packed_materials<ColorRGB24bFloat0_1Packed>(data, offsetof(DevicePackedTexturedMaterial, specular_color_and_tint_factor), element_count).data(), element_count);
+        specular_and_darkening_and_coat_roughness.upload_data_partial(start_index, expand_from_gpu_packed_materials<Float4xPacked>(data, offsetof(DevicePackedTexturedMaterial, specular_and_darkening_and_coat_roughness), element_count).data(), element_count);
+        coat_medium_thickness.upload_data_partial(start_index, expand_from_gpu_packed_materials<float>(data, offsetof(DevicePackedTexturedMaterial, coat_medium_thickness), element_count).data(), element_count);
+        coat_and_medium_absorption.upload_data_partial(start_index, expand_from_gpu_packed_materials<ColorRGB24bFloat0_1Packed>(data, offsetof(DevicePackedTexturedMaterial, coat_and_medium_absorption), element_count).data(), element_count);
+        coat_roughening_darkening_anisotropy_and_rotation.upload_data_partial(start_index, expand_from_gpu_packed_materials<Float4xPacked>(data, offsetof(DevicePackedTexturedMaterial, coat_roughening_darkening_anisotropy_and_rotation), element_count).data(), element_count);
+        coat_ior.upload_data_partial(start_index, expand_from_gpu_packed_materials<float>(data, offsetof(DevicePackedTexturedMaterial, coat_ior), element_count).data(), element_count);
 
-        sheen_and_color.upload_data_partial(start_index, expand_from_gpu_packed_materials<ColorRGB24bFloat0_1Packed>(start_index, data, offsetof(DevicePackedTexturedMaterial, sheen_and_color), element_count).data(), element_count);
+        sheen_and_color.upload_data_partial(start_index, expand_from_gpu_packed_materials<ColorRGB24bFloat0_1Packed>(data, offsetof(DevicePackedTexturedMaterial, sheen_and_color), element_count).data(), element_count);
 
-        ior.upload_data_partial(start_index, expand_from_gpu_packed_materials<float>(start_index, data, offsetof(DevicePackedTexturedMaterial, ior), element_count).data(), element_count);
-        absorption_color_packed.upload_data_partial(start_index, expand_from_gpu_packed_materials<ColorRGB24bFloat0_1Packed>(start_index, data, offsetof(DevicePackedTexturedMaterial, absorption_color_packed), element_count).data(), element_count);
-        absorption_at_distance.upload_data_partial(start_index, expand_from_gpu_packed_materials<float>(start_index, data, offsetof(DevicePackedTexturedMaterial, absorption_at_distance), element_count).data(), element_count);
+        ior.upload_data_partial(start_index, expand_from_gpu_packed_materials<float>(data, offsetof(DevicePackedTexturedMaterial, ior), element_count).data(), element_count);
+        absorption_color_packed.upload_data_partial(start_index, expand_from_gpu_packed_materials<ColorRGB24bFloat0_1Packed>(data, offsetof(DevicePackedTexturedMaterial, absorption_color_packed), element_count).data(), element_count);
+        absorption_at_distance.upload_data_partial(start_index, expand_from_gpu_packed_materials<float>(data, offsetof(DevicePackedTexturedMaterial, absorption_at_distance), element_count).data(), element_count);
 
-        sheen_roughness_transmission_dispersion_thin_film.upload_data_partial(start_index, expand_from_gpu_packed_materials<Float4xPacked>(start_index, data, offsetof(DevicePackedTexturedMaterial, sheen_roughness_transmission_dispersion_thin_film), element_count).data(), element_count);
+        sheen_roughness_transmission_dispersion_thin_film.upload_data_partial(start_index, expand_from_gpu_packed_materials<Float4xPacked>(data, offsetof(DevicePackedTexturedMaterial, sheen_roughness_transmission_dispersion_thin_film), element_count).data(), element_count);
 
-        dispersion_abbe_number.upload_data_partial(start_index, expand_from_gpu_packed_materials<float>(start_index, data, offsetof(DevicePackedTexturedMaterial, dispersion_abbe_number), element_count).data(), element_count);
-        thin_film_ior.upload_data_partial(start_index, expand_from_gpu_packed_materials<float>(start_index, data, offsetof(DevicePackedTexturedMaterial, thin_film_ior), element_count).data(), element_count);
-        thin_film_thickness.upload_data_partial(start_index, expand_from_gpu_packed_materials<float>(start_index, data, offsetof(DevicePackedTexturedMaterial, thin_film_thickness), element_count).data(), element_count);
-        thin_film_kappa_3.upload_data_partial(start_index, expand_from_gpu_packed_materials<float>(start_index, data, offsetof(DevicePackedTexturedMaterial, thin_film_kappa_3), element_count).data(), element_count);
-        thin_film_base_ior_override.upload_data_partial(start_index, expand_from_gpu_packed_materials<float>(start_index, data, offsetof(DevicePackedTexturedMaterial, thin_film_base_ior_override), element_count).data(), element_count);
-        alpha_thin_film_hue_dielectric_priority.upload_data_partial(start_index, expand_from_gpu_packed_materials<Float2xUChar2xPacked>(start_index, data, offsetof(DevicePackedTexturedMaterial, alpha_thin_film_hue_dielectric_priority), element_count).data(), element_count);
+        dispersion_abbe_number.upload_data_partial(start_index, expand_from_gpu_packed_materials<float>(data, offsetof(DevicePackedTexturedMaterial, dispersion_abbe_number), element_count).data(), element_count);
+        thin_film_ior.upload_data_partial(start_index, expand_from_gpu_packed_materials<float>(data, offsetof(DevicePackedTexturedMaterial, thin_film_ior), element_count).data(), element_count);
+        thin_film_thickness.upload_data_partial(start_index, expand_from_gpu_packed_materials<float>(data, offsetof(DevicePackedTexturedMaterial, thin_film_thickness), element_count).data(), element_count);
+        thin_film_kappa_3.upload_data_partial(start_index, expand_from_gpu_packed_materials<float>(data, offsetof(DevicePackedTexturedMaterial, thin_film_kappa_3), element_count).data(), element_count);
+        thin_film_base_ior_override.upload_data_partial(start_index, expand_from_gpu_packed_materials<float>(data, offsetof(DevicePackedTexturedMaterial, thin_film_base_ior_override), element_count).data(), element_count);
+        alpha_thin_film_hue_dielectric_priority.upload_data_partial(start_index, expand_from_gpu_packed_materials<Float2xUChar2xPacked>(data, offsetof(DevicePackedTexturedMaterial, alpha_thin_film_hue_dielectric_priority), element_count).data(), element_count);
     }
 
     DevicePackedTexturedMaterialSoA get_device_SoA_struct()
@@ -227,12 +227,12 @@ private:
      * return an std::vector that contains the 'normal_map_emission_index' of gpu_packed_materials[3] and gpu_packed_materials[4]
      */
     template <typename T>
-    std::vector<T> expand_from_gpu_packed_materials(unsigned int start_index, const DevicePackedTexturedMaterial* gpu_packed_materials, size_t offset_in_struct, size_t element_count)
+    std::vector<T> expand_from_gpu_packed_materials(const DevicePackedTexturedMaterial* gpu_packed_materials, size_t offset_in_struct, size_t element_count)
     {
         std::vector<T> out(element_count);
 
         for (int i = 0; i < element_count; i++)
-            out[i] = *reinterpret_cast<const T*>(reinterpret_cast<const char*>(&gpu_packed_materials[start_index + i]) + offset_in_struct);
+            out[i] = *reinterpret_cast<const T*>(reinterpret_cast<const char*>(&gpu_packed_materials[i]) + offset_in_struct);
 
         return out;
     }
