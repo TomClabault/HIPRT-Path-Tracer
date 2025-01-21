@@ -439,10 +439,10 @@ void SceneParser::read_material_properties(aiMaterial* mesh_material, CPUMateria
     renderer_material.specular_transmission = 0.0f;
     renderer_material.base_color = ColorRGB32F(0.8f);*/
 
-    renderer_material.diffuse_transmission = 1.0f;
+    /*renderer_material.diffuse_transmission = 1.0f;
     renderer_material.specular_transmission = 0.0f;
     renderer_material.specular = 1.0f;
-    renderer_material.roughness = 1.0f;
+    renderer_material.roughness = 1.0f;*/
 
     renderer_material.make_safe();
 }
