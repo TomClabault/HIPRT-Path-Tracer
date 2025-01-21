@@ -9,7 +9,7 @@
 #include "Device/includes/ONB.h"
 #include "Device/includes/Sampling.h"
 #include "HostDeviceCommon/Color.h"
-#include "HostDeviceCommon/Material/Material.h"
+#include "HostDeviceCommon/Material/MaterialUnpacked.h"
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F lambertian_brdf_eval(const DeviceUnpackedEffectiveMaterial& material, float NoL, float& pdf)
 {

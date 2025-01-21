@@ -24,7 +24,7 @@
                                                                         \
       oren_nayar_sigma,                                                 \
                                                                         \
-      metallic_F90_and_metallic, metallic_F82_packed,                   \
+      metallic_F90_and_metallic, metallic_F82_packed_and_diffuse_transmission,                   \
       metallic_F90_falloff_exponent,                                    \
       anisotropy_and_rotation_and_second_roughness,                     \
                                                                         \
@@ -63,7 +63,7 @@ struct DevicePackedEffectiveMaterialSoACPUData : public DevicePackedMaterialSoAC
     std::vector<float> oren_nayar_sigma;
  
     std::vector<ColorRGB24bFloat0_1Packed> metallic_F90_and_metallic;
-    std::vector<ColorRGB24bFloat0_1Packed> metallic_F82_packed;
+    std::vector<ColorRGB24bFloat0_1Packed> metallic_F82_packed_and_diffuse_transmission;
     std::vector<float> metallic_F90_falloff_exponent;
     std::vector<Float4xPacked> anisotropy_and_rotation_and_second_roughness;
 
@@ -137,7 +137,7 @@ struct DevicePackedTexturedMaterialSoACPUData : public DevicePackedEffectiveMate
         oren_nayar_sigma = expand_from_gpu_packed_materials<float>(0, data, offsetof(DevicePackedTexturedMaterial, oren_nayar_sigma), element_count);
 
         metallic_F90_and_metallic = expand_from_gpu_packed_materials<ColorRGB24bFloat0_1Packed>(0, data, offsetof(DevicePackedTexturedMaterial, metallic_F90_and_metallic), element_count);
-        metallic_F82_packed = expand_from_gpu_packed_materials<ColorRGB24bFloat0_1Packed>(0, data, offsetof(DevicePackedTexturedMaterial, metallic_F82_packed), element_count);
+        metallic_F82_packed_and_diffuse_transmission = expand_from_gpu_packed_materials<ColorRGB24bFloat0_1Packed>(0, data, offsetof(DevicePackedTexturedMaterial, metallic_F82_packed_and_diffuse_transmission), element_count);
         metallic_F90_falloff_exponent = expand_from_gpu_packed_materials<float>(0, data, offsetof(DevicePackedTexturedMaterial, metallic_F90_falloff_exponent), element_count);
         anisotropy_and_rotation_and_second_roughness = expand_from_gpu_packed_materials<Float4xPacked>(0, data, offsetof(DevicePackedTexturedMaterial, anisotropy_and_rotation_and_second_roughness), element_count);
 
@@ -189,7 +189,7 @@ struct DevicePackedTexturedMaterialSoACPUData : public DevicePackedEffectiveMate
         out.oren_nayar_sigma = oren_nayar_sigma.data();
 
         out.metallic_F90_and_metallic = metallic_F90_and_metallic.data();
-        out.metallic_F82_packed = metallic_F82_packed.data();
+        out.metallic_F82_packed_and_diffuse_transmission = metallic_F82_packed_and_diffuse_transmission.data();
         out.metallic_F90_falloff_exponent = metallic_F90_falloff_exponent.data();
         out.anisotropy_and_rotation_and_second_roughness = anisotropy_and_rotation_and_second_roughness.data();
 

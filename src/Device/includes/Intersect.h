@@ -136,7 +136,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 get_shading_normal(const HIPRTRenderData& 
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE void fix_backfacing_normals(const RayPayload& ray_payload, HitInfo& hit_info, const float3& view_direction)
 {
-    if ((!ray_payload.is_inside_volume() || ray_payload.material.specular_transmission == 0.0f) && !ray_payload.material.thin_walled)
+    bool object_is_opaque = ray_payload.material.specular_transmission == 0.0f && ray_payload.material.diffuse_transmission == 0.0f;
+    if ((!ray_payload.is_inside_volume() || object_is_opaque) && !ray_payload.material.thin_walled)
     {
         // If we're not in a volume, there's no reason for the surface normal
         // not to be facing us so we're flipping it if it as was wrongly oriented

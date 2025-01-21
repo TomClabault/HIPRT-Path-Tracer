@@ -21,7 +21,7 @@ struct DevicePackedEffectiveMaterialSoA
 
     HIPRT_HOST_DEVICE float get_metallic(int material_index) const { return metallic_F90_and_metallic[material_index].get_float(); }
     HIPRT_HOST_DEVICE float get_metallic_F90_falloff_exponent(int material_index) const { return this->metallic_F90_falloff_exponent[material_index]; }
-    HIPRT_HOST_DEVICE ColorRGB32F get_metallic_F82(int material_index) const { return metallic_F82_packed[material_index].get_color(); }
+    HIPRT_HOST_DEVICE ColorRGB32F get_metallic_F82(int material_index) const { return metallic_F82_packed_and_diffuse_transmission[material_index].get_color(); }
     HIPRT_HOST_DEVICE ColorRGB32F get_metallic_F90(int material_index) const { return metallic_F90_and_metallic[material_index].get_color(); }
     HIPRT_HOST_DEVICE float get_anisotropy(int material_index) const { return anisotropy_and_rotation_and_second_roughness[material_index].get_float<DevicePackedEffectiveMaterial::PackedAnisotropyGroupIndices::PACKED_ANISOTROPY>(); }
     HIPRT_HOST_DEVICE float get_anisotropy_rotation(int material_index) const { return anisotropy_and_rotation_and_second_roughness[material_index].get_float<DevicePackedEffectiveMaterial::PackedAnisotropyGroupIndices::PACKED_ANISOTROPY_ROTATION>(); }
@@ -52,6 +52,7 @@ struct DevicePackedEffectiveMaterialSoA
 
     HIPRT_HOST_DEVICE float get_ior(int material_index) const { return this->ior[material_index]; }
     HIPRT_HOST_DEVICE float get_specular_transmission(int material_index) const { return sheen_roughness_transmission_dispersion_thin_film[material_index].get_float<DevicePackedEffectiveMaterial::PackedSheenRoughnessGroupIndices::PACKED_SPECULAR_TRANSMISSION>(); }
+    HIPRT_HOST_DEVICE float get_diffuse_transmission(int material_index) const { return metallic_F82_packed_and_diffuse_transmission[material_index].get_float(); }
     HIPRT_HOST_DEVICE float get_absorption_at_distance(int material_index) const { return this->absorption_at_distance[material_index]; }
     HIPRT_HOST_DEVICE ColorRGB32F get_absorption_color(int material_index) const { return absorption_color_packed[material_index].get_color(); }
     HIPRT_HOST_DEVICE float get_dispersion_scale(int material_index) const { return sheen_roughness_transmission_dispersion_thin_film[material_index].get_float<DevicePackedEffectiveMaterial::PackedSheenRoughnessGroupIndices::PACKED_DISPERSION_SCALE>(); }
@@ -115,8 +116,7 @@ struct DevicePackedEffectiveMaterialSoA
     // Parameters for Adobe 2023 F82-tint model
     // Packs the SDR F90 color and the metalness parameter
     ColorRGB24bFloat0_1Packed* metallic_F90_and_metallic;
-    // TODO: PACKED FLOAT IS UNUSED IN HERE
-    ColorRGB24bFloat0_1Packed* metallic_F82_packed;
+    ColorRGB24bFloat0_1Packed* metallic_F82_packed_and_diffuse_transmission;
     float* metallic_F90_falloff_exponent = nullptr;
 
     Float4xPacked* anisotropy_and_rotation_and_second_roughness = nullptr;
@@ -503,13 +503,11 @@ struct DevicePackedTexturedMaterialSoA : public DevicePackedEffectiveMaterialSoA
 
         out.set_ior(this->get_ior(material_index));
 
+        out.set_diffuse_transmission(this->get_diffuse_transmission(material_index));
         out.set_specular_transmission(this->get_specular_transmission(material_index));
         if (out.get_specular_transmission() > 0.0f || out.get_specular_transmission_texture_index() != MaterialUtils::NO_TEXTURE)
         {
-            // At what distance is the light absorbed to the given absorption_color
-            out.set_absorption_at_distance(this->get_absorption_at_distance(material_index));
-            // Color of the light absorption when traveling through the medium
-            out.set_absorption_color(this->get_absorption_color(material_index));
+            // This is all specific to specular transmission
             out.set_dispersion_scale(this->get_dispersion_scale(material_index));
             out.set_dispersion_abbe_number(this->get_dispersion_abbe_number(material_index));
             out.set_thin_walled(this->get_thin_walled(material_index));
@@ -517,6 +515,16 @@ struct DevicePackedTexturedMaterialSoA : public DevicePackedEffectiveMaterialSoA
 #if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoGlassEnergyCompensation == KERNEL_OPTION_TRUE
             out.set_glass_energy_compensation(this->get_do_glass_energy_compensation(material_index));
 #endif
+        }
+
+        if (out.get_specular_transmission() > 0.0f || out.get_diffuse_transmission() > 0.0f || out.get_specular_transmission_texture_index() != MaterialUtils::NO_TEXTURE)
+        {
+            // This is also applicable to diffuse transmission
+            
+            // At what distance is the light absorbed to the given absorption_color
+            out.set_absorption_at_distance(this->get_absorption_at_distance(material_index));
+            // Color of the light absorption when traveling through the medium
+            out.set_absorption_color(this->get_absorption_color(material_index));
         }
 
         out.set_thin_film(this->get_thin_film(material_index));

@@ -10,7 +10,7 @@
 #include "Device/includes/RayVolumeState.h"
 
 #include "HIPRT-Orochi/OrochiBuffer.h"
-#include "HostDeviceCommon/Material/Material.h"
+#include "HostDeviceCommon/Material/MaterialPacked.h"
 
 // GBuffer that stores information about the current frame first hit data
 struct GBufferGPURenderer

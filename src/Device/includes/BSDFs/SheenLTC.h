@@ -10,7 +10,7 @@
 #include "Device/includes/Texture.h"
 
 #include "HostDeviceCommon/Color.h"
-#include "HostDeviceCommon/Material/Material.h"
+#include "HostDeviceCommon/Material/MaterialUnpacked.h"
 #include "HostDeviceCommon/RenderData.h"
 
 /**

@@ -8,7 +8,6 @@
 
 #include "HIPRT-Orochi/HIPRTOrochiUtils.h"
 #include "HIPRT-Orochi/OrochiTexture.h"
-#include "HostDeviceCommon/Material/Material.h"
 #include "Renderer/GPUDataStructures/MaterialPackedSoAGPUData.h"
 #include "UI/ImGui/ImGuiLogger.h"
 

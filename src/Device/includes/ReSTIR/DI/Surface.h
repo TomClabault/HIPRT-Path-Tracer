@@ -7,7 +7,7 @@
 #define DEVICE_RESTIR_DI_SURFACE_H
 
 #include "HostDeviceCommon/RenderData.h"
-#include "HostDeviceCommon/Material/Material.h"
+#include "HostDeviceCommon/Material/MaterialUnpacked.h"
 
 struct ReSTIRDISurface
 {

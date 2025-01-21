@@ -12,7 +12,6 @@
 
 #include "HostDeviceCommon/BSDFsData.h"
 #include "HostDeviceCommon/HIPRTCamera.h"
-#include "HostDeviceCommon/Material/Material.h"
 #include "HostDeviceCommon/Math.h"
 #include "HostDeviceCommon/RenderBuffers.h"
 #include "HostDeviceCommon/RenderSettings.h"

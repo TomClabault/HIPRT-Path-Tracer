@@ -406,7 +406,7 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 		ImGuiRenderer::show_help_marker("At what bounce to stop doing alpha testing.\n\n"
 			""
 			"A value of 0 means that alpha testing isn't done at bounce 0 which means that even camera "
-			"rays do not do not do alpha testing --> alpha testing is disabled.\n\n"
+			"rays do not do alpha testing --> alpha testing is disabled.\n\n"
 			""
 			"A value of 1 means that camera rays do alpha testing but the next bounce rays do not do alpha "
 			"testing.\n\n"
@@ -2227,8 +2227,8 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 
 		bool changed = false;
 		changed |= ImGui::Checkbox("Do tonemapping", &display_settings.do_tonemapping);
-		changed |= ImGui::InputFloat("Gamma", &display_settings.tone_mapping_gamma);
-		changed |= ImGui::InputFloat("Exposure", &display_settings.tone_mapping_exposure);
+		changed |= ImGui::SliderFloat("Gamma", &display_settings.tone_mapping_gamma, 1.0f, 2.4f);
+		changed |= ImGui::SliderFloat("Exposure", &display_settings.tone_mapping_exposure, 0.0f, 3.0f);
 		if (changed)
 			m_render_window->set_force_viewport_refresh(true);
 

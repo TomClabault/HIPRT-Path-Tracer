@@ -8,7 +8,7 @@
 
 #include "Device/includes/RayVolumeState.h"
 
-#include "HostDeviceCommon/Material/Material.h"
+#include "HostDeviceCommon/Material/MaterialPacked.h"
 
 #include <vector>
 

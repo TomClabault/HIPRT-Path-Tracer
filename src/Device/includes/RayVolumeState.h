@@ -9,7 +9,7 @@
 #include "Device/includes/NestedDielectrics.h"
 // Including dispersion for sampling a wavelength in the reconstruction of the first hit of RayVolumeState
 #include "Device/includes/Dispersion.h"
-#include "HostDeviceCommon/Material/Material.h"
+#include "HostDeviceCommon/Material/MaterialUnpacked.h"
 
 struct RayVolumeState
 {

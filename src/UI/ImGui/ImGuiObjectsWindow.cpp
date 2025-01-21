@@ -44,6 +44,7 @@ struct MaterialOverrideState
 	bool override_coat_IOR = false;
 
 	bool override_transmission = false;
+	bool override_diffuse_transmission = false;
 	bool override_IOR = false;
 	bool override_absorption_distance = false;
 	bool override_absorption_color = false;
@@ -476,7 +477,7 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 
 		if (ImGui::BeginTable("Table transmission layer", 2, ImGuiTableFlags_SizingFixedFit))
 		{
-			for (int row = 0; row < 9; row++)
+			for (int row = 0; row < 10; row++)
 			{
 				ImGui::TableNextRow();
 
@@ -488,10 +489,13 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 					break;
 
 				case 1:
-					material_override_changed |= draw_material_override_line("Transmission", override_state.override_transmission, material_override.specular_transmission, 0.0f, 1.0f);
-					break;
+					material_override_changed |= draw_material_override_line("Diffuse transmission", override_state.override_diffuse_transmission, material_override.diffuse_transmission, 0.0f, 1.0f);
 
 				case 2:
+					material_override_changed |= draw_material_override_line("Specular transmission", override_state.override_transmission, material_override.specular_transmission, 0.0f, 1.0f);
+					break;
+
+				case 3:
 					material_override_changed |= draw_material_override_line("IOR", override_state.override_IOR, material_override.ior, 1.0f, 3.0f);
 					if (material_override.ior < 1.0f || material_override.ior > 3.0f && (material_override.do_glass_energy_compensation || material_override.do_specular_energy_compensation))
 					{
@@ -501,28 +505,28 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 
 					break;
 
-				case 3:
+				case 4:
 					material_override_changed |= draw_material_override_line("Absorption distance", override_state.override_absorption_distance, material_override.absorption_at_distance, 0.0f, 20.0f);
 					break;
 
-				case 4:
+				case 5:
 					material_override_changed |= draw_material_override_line("Absorption color", override_state.override_absorption_color, material_override.absorption_color);
 					break;
 
-				case 5:
+				case 6:
 					material_override_changed |= draw_material_override_line("Dispersion Abbe number", override_state.override_dispersion_abbe, material_override.dispersion_abbe_number, 9.0f, 91.0f);
 					ImGuiRenderer::show_help_marker("Abbe number for the dispersion of the glass. The lower the number, the stronger the dispersion.");
 					break;
 
-				case 6:
+				case 7:
 					material_override_changed |= draw_material_override_line("Dispersion scale", override_state.override_dispersion_scale, material_override.dispersion_scale, 0.0f, 1.0f);
 					break;
 
-				case 7:
+				case 8:
 					material_override_changed |= draw_material_override_line("Dielectric priority", override_state.override_dielectric_priority, material_override.dielectric_priority, 1, StackPriorityEntry::PRIORITY_MAXIMUM);
 					break;
 
-				case 8:
+				case 9:
 					material_override_changed |= draw_material_override_line("Thin walled", override_state.override_thin_material, material_override.thin_walled);
 					break;
 				}
@@ -753,6 +757,7 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 		apply_material_override(override_state.override_coat_anisotropy_rotation, &CPUMaterial::coat_anisotropy_rotation, material_override.coat_anisotropy_rotation, overriden_materials);
 		apply_material_override(override_state.override_coat_IOR, &CPUMaterial::coat_ior, material_override.coat_ior, overriden_materials);
 
+		apply_material_override(override_state.override_transmission, &CPUMaterial::diffuse_transmission, material_override.diffuse_transmission, overriden_materials);
 		apply_material_override(override_state.override_transmission, &CPUMaterial::specular_transmission, material_override.specular_transmission, overriden_materials);
 		apply_material_override(override_state.override_IOR, &CPUMaterial::ior, material_override.ior, overriden_materials);
 		apply_material_override(override_state.override_absorption_distance, &CPUMaterial::absorption_at_distance, material_override.absorption_at_distance, overriden_materials);
@@ -836,7 +841,6 @@ void ImGuiObjectsWindow::draw_objects_panel()
 					material.global_emissive_factor = global_emissive_objects_factor;
 
 					material.make_safe();
-					material.precompute_properties();
 			}
 
 			m_renderer->update_all_materials(materials);
@@ -1043,7 +1047,8 @@ void ImGuiObjectsWindow::draw_objects_panel()
 		{
 			ImGui::TreePush("Transmission layer material tree");
 
-			material_changed |= ImGui::SliderFloat("Transmission", &material.specular_transmission, 0.0f, 1.0f);
+			material_changed |= ImGui::SliderFloat("Diffuse transmission", &material.diffuse_transmission, 0.0f, 1.0f);
+			material_changed |= ImGui::SliderFloat("Specular transmission", &material.specular_transmission, 0.0f, 1.0f);
 			material_changed |= ImGui::SliderFloat("IOR", &material.ior, 1.0f, 3.0f);
 			if (material.ior < 1.0f || material.ior > 3.0f && (material.do_glass_energy_compensation || material.do_specular_energy_compensation))
 			{
@@ -1182,7 +1187,6 @@ void ImGuiObjectsWindow::draw_objects_panel()
 		if (material_changed)
 		{
 			material.make_safe();
-			material.precompute_properties();
 
 			m_renderer->update_one_material(material, currently_selected_material_index);
 			m_render_window->set_render_dirty(true);

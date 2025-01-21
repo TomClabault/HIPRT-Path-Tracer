@@ -41,8 +41,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 817
-#define DEBUG_PIXEL_Y 590
+#define DEBUG_PIXEL_X 882
+#define DEBUG_PIXEL_Y 288
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -158,6 +158,9 @@ void CPURenderer::setup_nee_plus_plus()
 
 void CPURenderer::setup_gmon()
 {
+    if (m_render_data.render_settings.samples_per_frame < m_gmon.number_of_sets)
+        m_gmon.use_gmon = false;
+
     if (m_gmon.use_gmon)
     {
         m_gmon.resize(m_resolution.x, m_resolution.y);

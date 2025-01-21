@@ -6,11 +6,91 @@
 #ifndef HOST_DEVICE_COMMON_MATERIAL_UNPACKED_H
 #define HOST_DEVICE_COMMON_MATERIAL_UNPACKED_H
 
-#include "HostDeviceCommon/Material/MaterialPacked.h"
 #include "HostDeviceCommon/Material/MaterialUtils.h"
 
+/**
+ * How to add a material property:
+ * 
+ * 1)   MaterialUnpacked.h
+ *
+ *      Add the unpacked device material structure what the GPU is going to need in the shaders
+ *      For most parameters, this is just the parameters itself
+ * 
+ *      For some other parameters, some stuff can be precomputed on the CPU and the GPU
+ *      can then use only the precomputed stuff. In these cases, you need to add the precomputed
+ *      stuff in here. The data needed for the precomputation is only going to be stored
+ *      in the CPUMaterial, step 2).
+ *      
+ *      An example of a precomputed parameter is the emission. On the GPU, the emission is a simple
+ *      color but on the CPU the emission is a color + emission strength.
+ *      The emission strength is precomputed (multiplied/factored in) into the emission when
+ *      packed into the material that the GPU uses
+ *      
+ * 2)   CPUMaterial.h
+ *
+ *      Add the parameter to the CPUMaterial structure. Read step 1) for precomputed parameters.
+ * 
+ *      If the parameter needs clamping to avoid NaNs/singularities/numerical imprecisions, the clamping
+ *      must be done in CPUMaterial::make_safe()
+ * 
+ *      You also need to add a line in CPUMaterial::pack_to_gpu() to define how the GPUMaterial (whose data is packed).
+ *      This is most likely just a .set() call like all the other parameters. That setter will be defined in step 3).
+ *      If you have some precomputation to do (such as with the emission), it can be done in there (look at the .set_emission() call)
+ * 
+ * 3)   MaterialPacked.h
+ *
+ *      Add the parameter to the MaterialPacked structure in MaterialPacked.h (only the parameters that 
+ *      the GPU is going to use. So, if there is any precomputation to be done (most parameters do not have precomputation), add only what 
+ *      holds the precomputed result that the GPU is directly going to use, not the data needed 
+ *      for the precomputation (that's only in CPUMaterial).
+ * 
+ *      The parameter will need to be packed. It can be added to a member that doesn't have all its "fields" filled yet (look for // TODO)
+ *      or a new member needs to be created for the new parameter.
+ * 
+ *      The new parameter can also be full-range, i.e. not packed if precision is important or packing is impractical
+ * 
+ *      After the parameter has been added to a packed member, write the getter and setter in the same class (structure)
+ * 
+ *      The function DevicePackedEffectiveMaterial::pack() needs to be completed (follow what is done for the other parameters).
+ *      This is the function that will be called when packing the GPUMaterial into the GBuffer
+ *      This looks quite a bit like pack_to_gpu() from before but there is no precomputations to be done here because the precomputation
+ *      has already been done before in pack_to_gpu()
+ * 
+ *      The function DevicePackedEffectiveMaterial::unpack() needs to be completed (follow what is done for the other parameters).
+ *      This is the function that will be called when unpacking the material from the G-Buffer
+ * 
+ *      The function DevicePackedTexturedMaterial::unpack() needs to be completed (follow what is done for the other parameters).
+ *      This is the function that will be called when unpacking the material from the materials buffer (when reading the material of the geometry a ray just hit).
+ *      The unpacked textured material will then be used to read the textures of the material at the hit point and the whole
+ *      will result in a DevicePackedEffectiveMaterial that will be used in the rest of the shaders (or packed into the G-Buffer)
+ * 
+ * 4)   MaterialPackedSoA.h
+ * 
+ *      Add a getter for the parameter to DevicePackedEffectiveMaterialSoA.
+ *      This is to read the parameter from the structure of arrays (one buffer per each parameter packed) given a material index
+ * 
+ *      Add the parameter reading in DevicePackedEffectiveMaterialSoA::read_partial_material(). This function is just a handy function
+ *      to produce a DevicePackedTexturedMaterial by reading all the arrays of the structure of arrays
+ * 
+ *      Note that memory traffic can be saved in some case. Let's you're adding a bunch of parameters for a "super metallic" lobe:
+ *      - super metallic strength
+ *      - super roughness
+ *      - super anisotropy
+ *      - super flakes
+ *      - super fresnel F82 color
+ * 
+ *      The 'super metallic strength' parameter controls the overall strength of the super metallic lobe. 
+ *      If it is 0, then the super metallic lobe is disabled from the BSDF. This is a case where it is not 
+ *      needed to read any of the other parameters (super roughness, super anisotropy, ...) because they 
+ *      will not be used anyways since the super metallic lobe is disabled.
+ * 
+ *      This logic to save memory traffic has already been applied to most of the other lobes (coat, glass, ...)
+ * 
+ * 5)   Add controls to ImGuiObjectsWindow (and the global material overrider)
+ */
+
  /**
-  * Packed material for use in the shaders
+  * Unpacked material for use in the shaders
   */
 struct DeviceUnpackedEffectiveMaterial
 {
@@ -77,6 +157,7 @@ struct DeviceUnpackedEffectiveMaterial
 
     float ior = 1.40f;
     float specular_transmission = 0.0f;
+    float diffuse_transmission = 0.0f;
     // At what distance is the light absorbed to the given absorption_color
     float absorption_at_distance = 1.0f;
     // Color of the light absorption when traveling through the medium

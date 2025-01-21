@@ -10,7 +10,8 @@
 #include "assimp/scene.h"
 #include "assimp/postprocess.h"
 
-#include "HostDeviceCommon/Material/Material.h"
+#include "HostDeviceCommon/Material/MaterialCPU.h"
+#include "HostDeviceCommon/Material/MaterialUtils.h"
 #include "Image/Image.h"
 #include "Scene/BoundingBox.h"
 #include "Scene/Camera.h"

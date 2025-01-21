@@ -10,7 +10,7 @@
 
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/Math.h"
-#include "HostDeviceCommon/Material/Material.h"
+#include "HostDeviceCommon/Material/MaterialUnpacked.h"
 
 /* References:
  * [1] [Physically Based Rendering 3rd Edition] https://www.pbr-book.org/3ed-2018/Reflection_Models/Microfacet_Models

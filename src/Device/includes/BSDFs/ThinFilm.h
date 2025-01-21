@@ -6,7 +6,7 @@
 #ifndef DEVICE_THIN_FILM_H
 #define DEVICE_THIN_FILM_H
 
-#include "HostDeviceCommon/Material/Material.h"
+#include "HostDeviceCommon/Material/MaterialUnpacked.h"
 
 // Evaluation XYZ sensitivity curves in Fourier space
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F eval_sensitivity(float opd, float shift)

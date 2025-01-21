@@ -8,7 +8,7 @@
 
 #include "Device/includes/RayVolumeState.h"
 
-#include "HostDeviceCommon/Material/Material.h"
+#include "HostDeviceCommon/Material/MaterialPacked.h"
 
 // Structure of arrays for the data contained in the pixels of the GBuffer
 // 

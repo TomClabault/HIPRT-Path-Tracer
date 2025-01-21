@@ -132,7 +132,7 @@ struct HIPRTRenderSettings
 	// This is useful mainly for the per-pixel adaptive sampling method
 	// where you want to be sure that each pixel in the image has had enough
 	// chance find a path to a potentially 
-	int adaptive_sampling_min_samples = 64;
+	int adaptive_sampling_min_samples = 96;
 	// Adaptive sampling noise threshold
 	float adaptive_sampling_noise_threshold = 0.3f;
 
@@ -186,7 +186,7 @@ struct HIPRTRenderSettings
 	// At what bounce to stop doing alpha testing
 	// 
 	// A value of 0 means that alpha testing isn't done at bounce 0 which means that even camera
-	// rays do not do not do alpha testing --> alpha testing is disable
+	// rays do not do alpha testing --> alpha testing is disable
 	// 
 	// A value of 1 means that camera rays do alpha testing but the next bounce rays do not do alpha
 	// testing

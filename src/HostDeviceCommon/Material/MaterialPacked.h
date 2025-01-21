@@ -65,7 +65,7 @@ struct DevicePackedEffectiveMaterial
         PACKED_ENERGY_PRESERVATION_SAMPLES = 1,
     };
 
-    HIPRT_HOST_DEVICE DevicePackedEffectiveMaterial()
+    /*HIPRT_HOST_DEVICE DevicePackedEffectiveMaterial()
     {
         flags.set_bool<PackedFlagsIndices::PACKED_EMISSIVE_TEXTURE_USED>(false);
         flags.set_bool<PackedFlagsIndices::PACKED_ENFORCE_STRONG_ENERGY_CONSERVATION>(false);
@@ -77,7 +77,7 @@ struct DevicePackedEffectiveMaterial
 
         metallic_F90_and_metallic.set_float(0.0f);
         metallic_F90_and_metallic.set_color(ColorRGB32F(1.0f));
-        metallic_F82_packed.set_color(ColorRGB32F(1.0f));
+        metallic_F82_packed_and_diffuse_transmission.set_color(ColorRGB32F(1.0f));
 
         anisotropy_and_rotation_and_second_roughness.set_float<PackedAnisotropyGroupIndices::PACKED_SECOND_ROUGHNESS>(0.5f);
         anisotropy_and_rotation_and_second_roughness.set_float<PackedAnisotropyGroupIndices::PACKED_SECOND_ROUGHNESS_WEIGHT>(0.0f);
@@ -100,7 +100,7 @@ struct DevicePackedEffectiveMaterial
         alpha_thin_film_hue_dielectric_priority.set_float<PackedAlphaOpacityGroupIndices::PACKED_ALPHA_OPACITY>(1.0f);
         alpha_thin_film_hue_dielectric_priority.set_float<PackedAlphaOpacityGroupIndices::PACKED_THIN_FILM_HUE_SHIFT>(0.35f);
         alpha_thin_film_hue_dielectric_priority.set_uchar<PackedAlphaOpacityGroupIndices::PACKED_ENERGY_PRESERVATION_SAMPLES>(12);
-    }
+    }*/
 
     HIPRT_HOST_DEVICE bool is_emissive() const
     {
@@ -110,6 +110,16 @@ struct DevicePackedEffectiveMaterial
             || get_emissive_texture_used();
     }
 
+    /**
+     * This function packs an UnpackedEffectiveMaterial into its packed version.
+     * 
+     * This is used in the shaders when a material is read after hitting some geometry: 
+     * the texture of the material will be evaluated, transforming a 
+     * DeviceUnpackedTexturedMaterial into a DeviceUnpackedEffectiveMaterial.
+     * 
+     * That DeviceUnpackedEffectiveMaterial will then be packed (using the pack() function below)
+     * before being written to the G-buffer
+     */
     HIPRT_HOST_DEVICE static DevicePackedEffectiveMaterial pack(const DeviceUnpackedEffectiveMaterial& unpacked)
     {
         DevicePackedEffectiveMaterial packed;
@@ -155,6 +165,7 @@ struct DevicePackedEffectiveMaterial
 
         packed.set_ior(unpacked.ior);
         packed.set_specular_transmission(unpacked.specular_transmission);
+        packed.set_diffuse_transmission(unpacked.diffuse_transmission);
 
         packed.set_absorption_at_distance(unpacked.absorption_at_distance);
         packed.set_absorption_color(unpacked.absorption_color);
@@ -224,6 +235,7 @@ struct DevicePackedEffectiveMaterial
 
         unpacked.ior = this->get_ior();
         unpacked.specular_transmission = this->get_specular_transmission();
+        unpacked.diffuse_transmission = this->get_diffuse_transmission();
 
         unpacked.absorption_at_distance = this->get_absorption_at_distance();
         unpacked.absorption_color = this->get_absorption_color();
@@ -258,7 +270,7 @@ struct DevicePackedEffectiveMaterial
 
     HIPRT_HOST_DEVICE float get_metallic() const { return metallic_F90_and_metallic.get_float(); }
     HIPRT_HOST_DEVICE float get_metallic_F90_falloff_exponent() const { return this->metallic_F90_falloff_exponent; }
-    HIPRT_HOST_DEVICE ColorRGB32F get_metallic_F82() const { return metallic_F82_packed.get_color(); }
+    HIPRT_HOST_DEVICE ColorRGB32F get_metallic_F82() const { return metallic_F82_packed_and_diffuse_transmission.get_color(); }
     HIPRT_HOST_DEVICE ColorRGB32F get_metallic_F90() const { return metallic_F90_and_metallic.get_color(); }
     HIPRT_HOST_DEVICE float get_anisotropy() const { return anisotropy_and_rotation_and_second_roughness.get_float<PackedAnisotropyGroupIndices::PACKED_ANISOTROPY>(); }
     HIPRT_HOST_DEVICE float get_anisotropy_rotation() const { return anisotropy_and_rotation_and_second_roughness.get_float<PackedAnisotropyGroupIndices::PACKED_ANISOTROPY_ROTATION>(); }
@@ -289,6 +301,7 @@ struct DevicePackedEffectiveMaterial
 
     HIPRT_HOST_DEVICE float get_ior() const { return this->ior; }
     HIPRT_HOST_DEVICE float get_specular_transmission() const { return sheen_roughness_transmission_dispersion_thin_film.get_float<PackedSheenRoughnessGroupIndices::PACKED_SPECULAR_TRANSMISSION>(); }
+    HIPRT_HOST_DEVICE float get_diffuse_transmission() const { return metallic_F82_packed_and_diffuse_transmission.get_float(); }
     HIPRT_HOST_DEVICE float get_absorption_at_distance() const { return this->absorption_at_distance; }
     HIPRT_HOST_DEVICE ColorRGB32F get_absorption_color() const { return absorption_color_packed.get_color(); }
     HIPRT_HOST_DEVICE float get_dispersion_scale() const { return sheen_roughness_transmission_dispersion_thin_film.get_float<PackedSheenRoughnessGroupIndices::PACKED_DISPERSION_SCALE>(); }
@@ -323,7 +336,7 @@ struct DevicePackedEffectiveMaterial
 
     HIPRT_HOST_DEVICE void set_metallic(float metallic) { metallic_F90_and_metallic.set_float(metallic); }
     HIPRT_HOST_DEVICE void set_metallic_F90_falloff_exponent(float metallic_F90_falloff_exponent_) { this->metallic_F90_falloff_exponent = metallic_F90_falloff_exponent_; }
-    HIPRT_HOST_DEVICE void set_metallic_F82(ColorRGB32F metallic_F82) { metallic_F82_packed.set_color(metallic_F82); }
+    HIPRT_HOST_DEVICE void set_metallic_F82(ColorRGB32F metallic_F82) { metallic_F82_packed_and_diffuse_transmission.set_color(metallic_F82); }
     HIPRT_HOST_DEVICE void set_metallic_F90(ColorRGB32F metallic_F90) { metallic_F90_and_metallic.set_color(metallic_F90); }
     HIPRT_HOST_DEVICE void set_anisotropy(float anisotropy) { anisotropy_and_rotation_and_second_roughness.set_float<PackedAnisotropyGroupIndices::PACKED_ANISOTROPY>(anisotropy); }
     HIPRT_HOST_DEVICE void set_anisotropy_rotation(float anisotropy_rotation) { anisotropy_and_rotation_and_second_roughness.set_float<PackedAnisotropyGroupIndices::PACKED_ANISOTROPY_ROTATION>(anisotropy_rotation); }
@@ -354,6 +367,7 @@ struct DevicePackedEffectiveMaterial
 
     HIPRT_HOST_DEVICE void set_ior(float ior_) { this->ior = ior_; }
     HIPRT_HOST_DEVICE void set_specular_transmission(float specular_transmission) { sheen_roughness_transmission_dispersion_thin_film.set_float<PackedSheenRoughnessGroupIndices::PACKED_SPECULAR_TRANSMISSION>(specular_transmission); }
+    HIPRT_HOST_DEVICE void set_diffuse_transmission(float diffuse_transmission) { metallic_F82_packed_and_diffuse_transmission.set_float(diffuse_transmission); }
     HIPRT_HOST_DEVICE void set_absorption_at_distance(float absorption_at_distance_) { this->absorption_at_distance = absorption_at_distance_; }
     HIPRT_HOST_DEVICE void set_absorption_color(ColorRGB32F absorption_color) { absorption_color_packed.set_color(absorption_color); }
     HIPRT_HOST_DEVICE void set_dispersion_scale(float dispersion_scale) { sheen_roughness_transmission_dispersion_thin_film.set_float<PackedSheenRoughnessGroupIndices::PACKED_DISPERSION_SCALE>(dispersion_scale); }
@@ -421,8 +435,7 @@ private:
     // Parameters for Adobe 2023 F82-tint model
     // Packs the SDR F90 color and the metalness parameter
     ColorRGB24bFloat0_1Packed metallic_F90_and_metallic;
-    // TODO: PACKED FLOAT IS UNUSED IN HERE
-    ColorRGB24bFloat0_1Packed metallic_F82_packed;
+    ColorRGB24bFloat0_1Packed metallic_F82_packed_and_diffuse_transmission;
     float metallic_F90_falloff_exponent = 5.0f;
 
     Float4xPacked anisotropy_and_rotation_and_second_roughness;
@@ -561,39 +574,39 @@ struct DevicePackedTexturedMaterial : public DevicePackedEffectiveMaterial
         SPECULAR_TRANSMISSION_INDEX = 0,
     };
 
-    HIPRT_HOST_DEVICE DevicePackedTexturedMaterial()
-    {
-        // Some default values
+    //HIPRT_HOST_DEVICE DevicePackedTexturedMaterial()
+    //{
+    //    // Some default values
 
-        set_normal_map_texture_index(MaterialUtils::NO_TEXTURE);
-        set_emission_texture_index(MaterialUtils::NO_TEXTURE);
-        set_base_color_texture_index(MaterialUtils::NO_TEXTURE);
+    //    set_normal_map_texture_index(MaterialUtils::NO_TEXTURE);
+    //    set_emission_texture_index(MaterialUtils::NO_TEXTURE);
+    //    set_base_color_texture_index(MaterialUtils::NO_TEXTURE);
 
-        set_roughness_metallic_texture_index(MaterialUtils::NO_TEXTURE);
-        set_roughness_texture_index(MaterialUtils::NO_TEXTURE);
-        set_metallic_texture_index(MaterialUtils::NO_TEXTURE);
-        set_anisotropic_texture_index(MaterialUtils::NO_TEXTURE);
+    //    set_roughness_metallic_texture_index(MaterialUtils::NO_TEXTURE);
+    //    set_roughness_texture_index(MaterialUtils::NO_TEXTURE);
+    //    set_metallic_texture_index(MaterialUtils::NO_TEXTURE);
+    //    set_anisotropic_texture_index(MaterialUtils::NO_TEXTURE);
 
-        set_specular_texture_index(MaterialUtils::NO_TEXTURE);
-        set_coat_texture_index(MaterialUtils::NO_TEXTURE);
-        set_sheen_texture_index(MaterialUtils::NO_TEXTURE);
-        set_specular_transmission_texture_index(MaterialUtils::NO_TEXTURE);
+    //    set_specular_texture_index(MaterialUtils::NO_TEXTURE);
+    //    set_coat_texture_index(MaterialUtils::NO_TEXTURE);
+    //    set_sheen_texture_index(MaterialUtils::NO_TEXTURE);
+    //    set_specular_transmission_texture_index(MaterialUtils::NO_TEXTURE);
 
-        set_emission(ColorRGB32F(0.0f));
-        set_oren_nayar_sigma(0.34906585039886591538f); // 20 degrees standard deviation in radian
-        set_metallic_F90_falloff_exponent(5.0f);
-        set_coat_medium_thickness(5.0f);
-        set_coat_ior(1.5f);
+    //    set_emission(ColorRGB32F(0.0f));
+    //    set_oren_nayar_sigma(0.34906585039886591538f); // 20 degrees standard deviation in radian
+    //    set_metallic_F90_falloff_exponent(5.0f);
+    //    set_coat_medium_thickness(5.0f);
+    //    set_coat_ior(1.5f);
 
-        set_ior(1.4f);
-        set_absorption_at_distance(5.0f);
+    //    set_ior(1.4f);
+    //    set_absorption_at_distance(5.0f);
 
-        set_dispersion_abbe_number(20.0f);
-        set_thin_film_ior(1.3f);
-        set_thin_film_thickness(500.0f);
-        set_thin_film_kappa_3(0.0f);
-        set_thin_film_base_ior_override(1.0f);
-    }
+    //    set_dispersion_abbe_number(20.0f);
+    //    set_thin_film_ior(1.3f);
+    //    set_thin_film_thickness(500.0f);
+    //    set_thin_film_kappa_3(0.0f);
+    //    set_thin_film_base_ior_override(1.0f);
+    //}
 
     HIPRT_HOST_DEVICE DeviceUnpackedTexturedMaterial unpack()
     {
@@ -704,14 +717,12 @@ struct DevicePackedTexturedMaterial : public DevicePackedEffectiveMaterial
         }
 
         out.ior = this->get_ior();
+        out.diffuse_transmission = this->get_diffuse_transmission();
         out.specular_transmission = this->get_specular_transmission();
 
         if (out.specular_transmission > 0.0f || out.specular_transmission_texture_index != MaterialUtils::NO_TEXTURE)
         {
-            // At what distance is the light absorbed to the given absorption_color
-            out.absorption_at_distance = this->get_absorption_at_distance();
-            // Color of the light absorption when traveling through the medium
-            out.absorption_color = this->get_absorption_color();
+            // Specular transmission specific 
             out.dispersion_scale = this->get_dispersion_scale();
             out.dispersion_abbe_number = this->get_dispersion_abbe_number();
             out.thin_walled = this->get_thin_walled();
@@ -719,6 +730,15 @@ struct DevicePackedTexturedMaterial : public DevicePackedEffectiveMaterial
 #if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFDoGlassEnergyCompensation == KERNEL_OPTION_TRUE
             out.do_glass_energy_compensation = this->get_do_glass_energy_compensation();
 #endif
+        }
+        if (out.specular_transmission > 0.0f || out.diffuse_transmission > 0.0f || out.specular_transmission_texture_index != MaterialUtils::NO_TEXTURE)
+        {
+            // Also enabled by diffuse transmission as well as specular transmission
+            
+            // At what distance is the light absorbed to the given absorption_color
+            out.absorption_at_distance = this->get_absorption_at_distance();
+            // Color of the light absorption when traveling through the medium
+            out.absorption_color = this->get_absorption_color();
         }
 
         out.thin_film = this->get_thin_film();

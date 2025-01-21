@@ -43,11 +43,11 @@ extern ImGuiLogger g_imgui_logger;
 // - superfluous sample() call on the last bounce?
 // - perfect reflection and refractions fast path
 // 
-// ------------------- STILL RELEAVNT WITH WAVEFRONT ? -------------------
+// ------------------- STILL RELEVANT WITH WAVEFRONT ? -------------------
 // - if we don't have the ray volume state in the GBuffer anymore, we can remove the stack handlign in the trace ray function of the camera rays
 // - merge camera rays and path tracer?
 // - store Material in GBuffer only if using ReSTIR, otherwise, just reconstruct it in the path tracign kernel
-// ------------------- STILL RELEAVNT WITH WAVEFRONT ? -------------------
+// ------------------- STILL RELEVANT WITH WAVEFRONT ? -------------------
 // 
 // ------------------- DO AFTER WAVEFRONT ? -------------------
 // - maybe have shaders without energy compensation? because this do be eating quite a lot of registers

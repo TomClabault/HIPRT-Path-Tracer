@@ -25,6 +25,9 @@
 // to the precomputation so that's why we have separate structures
 struct CPUMaterial
 {
+    /**
+     * Function that transforms/packs this material to the version that the GPU is going to use
+     */
     DevicePackedTexturedMaterial pack_to_GPU() const
     {
         DevicePackedTexturedMaterial mat;
@@ -108,6 +111,7 @@ struct CPUMaterial
 
         mat.set_ior(ior);
         mat.set_specular_transmission(specular_transmission);
+        mat.set_diffuse_transmission(diffuse_transmission);
 
         // At what distance is the light absorbed to the given absorption_color
         mat.set_absorption_at_distance(absorption_at_distance);
@@ -217,22 +221,11 @@ struct CPUMaterial
 
         // Clamping to avoid negative emission
         emission = ColorRGB32F::max(ColorRGB32F(0.0f), emission);
-    }
 
-    /*
-     * Some properties of the material can be precomputed
-     * This function does it
-     */
-    HIPRT_HOST_DEVICE void precompute_properties()
-    {
-        if (specular_transmission == 0.0f)
+        if (specular_transmission == 0.0f && diffuse_transmission == 0.0f)
             // No transmission means that we should never skip this boundary --> max priority
             dielectric_priority = (1 << StackPriorityEntry::PRIORITY_MAXIMUM) - 1;
     }
-
-
-
-
 
     ColorRGB32F emission = ColorRGB32F{ 0.0f, 0.0f, 0.0f };
     float emission_strength = 1.0f; // This factor is baked into 'emission' before being sent to the GPU
@@ -302,6 +295,7 @@ struct CPUMaterial
 
     float ior = 1.40f;
     float specular_transmission = 0.0f;
+    float diffuse_transmission = 0.0f;
     // At what distance is the light absorbed to the given absorption_color
     float absorption_at_distance = 1.0f;
     // Color of the light absorption when traveling through the medium

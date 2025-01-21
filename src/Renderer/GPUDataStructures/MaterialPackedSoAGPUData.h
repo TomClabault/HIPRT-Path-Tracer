@@ -23,7 +23,7 @@
                                                                         \
       oren_nayar_sigma,                                                 \
                                                                         \
-      metallic_F90_and_metallic, metallic_F82_packed,                   \
+      metallic_F90_and_metallic, metallic_F82_packed_and_diffuse_transmission,\
       metallic_F90_falloff_exponent,                                    \
       anisotropy_and_rotation_and_second_roughness,                     \
                                                                         \
@@ -62,7 +62,7 @@ struct DevicePackedEffectiveMaterialSoAGPUData
     OrochiBuffer<float> oren_nayar_sigma;
  
     OrochiBuffer<ColorRGB24bFloat0_1Packed> metallic_F90_and_metallic;
-    OrochiBuffer<ColorRGB24bFloat0_1Packed> metallic_F82_packed;
+    OrochiBuffer<ColorRGB24bFloat0_1Packed> metallic_F82_packed_and_diffuse_transmission;
     OrochiBuffer<float> metallic_F90_falloff_exponent;
     OrochiBuffer<Float4xPacked> anisotropy_and_rotation_and_second_roughness;
 
@@ -138,7 +138,7 @@ struct DevicePackedTexturedMaterialSoAGPUData : public DevicePackedEffectiveMate
         oren_nayar_sigma.upload_data_partial(start_index, expand_from_gpu_packed_materials<float>(data, offsetof(DevicePackedTexturedMaterial, oren_nayar_sigma), element_count).data(), element_count);
 
         metallic_F90_and_metallic.upload_data_partial(start_index, expand_from_gpu_packed_materials<ColorRGB24bFloat0_1Packed>(data, offsetof(DevicePackedTexturedMaterial, metallic_F90_and_metallic), element_count).data(), element_count);
-        metallic_F82_packed.upload_data_partial(start_index, expand_from_gpu_packed_materials<ColorRGB24bFloat0_1Packed>(data, offsetof(DevicePackedTexturedMaterial, metallic_F82_packed), element_count).data(), element_count);
+        metallic_F82_packed_and_diffuse_transmission.upload_data_partial(start_index, expand_from_gpu_packed_materials<ColorRGB24bFloat0_1Packed>(data, offsetof(DevicePackedTexturedMaterial, metallic_F82_packed_and_diffuse_transmission), element_count).data(), element_count);
         metallic_F90_falloff_exponent.upload_data_partial(start_index, expand_from_gpu_packed_materials<float>(data, offsetof(DevicePackedTexturedMaterial, metallic_F90_falloff_exponent), element_count).data(), element_count);
         anisotropy_and_rotation_and_second_roughness.upload_data_partial(start_index, expand_from_gpu_packed_materials<Float4xPacked>(data, offsetof(DevicePackedTexturedMaterial, anisotropy_and_rotation_and_second_roughness), element_count).data(), element_count);
 
@@ -185,7 +185,7 @@ struct DevicePackedTexturedMaterialSoAGPUData : public DevicePackedEffectiveMate
         out.oren_nayar_sigma = oren_nayar_sigma.get_device_pointer();
 
         out.metallic_F90_and_metallic = metallic_F90_and_metallic.get_device_pointer();
-        out.metallic_F82_packed = metallic_F82_packed.get_device_pointer();
+        out.metallic_F82_packed_and_diffuse_transmission = metallic_F82_packed_and_diffuse_transmission.get_device_pointer();
         out.metallic_F90_falloff_exponent = metallic_F90_falloff_exponent.get_device_pointer();
         out.anisotropy_and_rotation_and_second_roughness = anisotropy_and_rotation_and_second_roughness.get_device_pointer();
 
