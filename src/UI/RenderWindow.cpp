@@ -27,6 +27,7 @@ extern ImGuiLogger g_imgui_logger;
 
 // - try simplifying the material to just a diffuse component to see if that helps memory accesses --> 8/10%
 // - try removing everything about nested dielectrics to see the register/spilling usage and performance --> ~1/2%
+// - TODO specular coat should be evaluated if specular glass/specular layer was sampled because this is going to be the same reflection direction
 
 // TODOs  performance improvements branch:
 // - also reuse BSDF mis ray of envmap MIS
