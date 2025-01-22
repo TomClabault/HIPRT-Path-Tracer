@@ -40,8 +40,8 @@ extern ImGuiLogger g_imgui_logger;
 // - disable energy compensation on smooth glass / smooth metal
 // - do we need MIS for perfectly diffuse surfaces? light sampling should suffice?
 // - per material light sampling/BSDF sampling: smooth glass / metal don't need light sampling
-// - superfluous sample() call on the last bounce?
 // - perfect reflection and refractions fast path
+//		- same for metals / psecular / coat
 // 
 // ------------------- STILL RELEVANT WITH WAVEFRONT ? -------------------
 // - if we don't have the ray volume state in the GBuffer anymore, we can remove the stack handlign in the trace ray function of the camera rays

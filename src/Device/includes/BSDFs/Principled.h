@@ -255,7 +255,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_beer_absorption(const HIPR
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, 
     RayVolumeState& ray_volume_state, bool update_ray_volume_state,
-    const float3& local_view_direction, const float3& local_to_light_direction, float& pdf)
+    const float3& local_view_direction, const float3& local_to_light_direction, float& pdf,
+    BSDFIncidentLightInfo incident_light_info)
 {
     pdf = 0.0f;
 
@@ -304,6 +305,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
         relative_eta = 1.0f + 1.0e-5f;
 
     bool thin_walled = material.thin_walled;
+    float scaled_roughness = MaterialUtils::get_thin_walled_roughness(thin_walled, material.roughness, relative_eta);
+    //if (scaled_roughness == 0.0f)
+    //    // Fast path for specular glass
+    //    return principled_glass_specular_eval();
+
     // Computing the generalized (that takes refraction into account) half vector
     float3 local_half_vector;
     if (reflecting)
@@ -349,7 +355,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
 
     ColorRGB32F F = hippt::lerp(F_no_thin_film, F_thin_film, thin_film);
     float f_reflect_proba = F.luminance();
-    float scaled_roughness = MaterialUtils::get_thin_walled_roughness(thin_walled, material.roughness, relative_eta);
     if (f_reflect_proba < 1.0f && thin_film == 0.0f && thin_walled && scaled_roughness < 0.1f)
         // If this is not total reflection, adjusting the fresnel term to account for inter-reflections within the thin interface
         // Not doing this if thin-film is present because that would not be accurate at all. Thin-film
@@ -453,15 +458,26 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_glass_sample(const DevicePacked
     if (hippt::abs(relative_eta - 1.0f) < 1.0e-5f)
         relative_eta = 1.0f + 1.0e-5f;
 
+    float3 microfacet_normal;
+    float HoV;
     bool thin_walled = material.thin_walled;
     float scaled_roughness = MaterialUtils::get_thin_walled_roughness(thin_walled, material.roughness, relative_eta);
-    float alpha_x;
-    float alpha_y;
-    MaterialUtils::get_alphas(scaled_roughness, material.anisotropy, alpha_x, alpha_y);
 
-    float3 microfacet_normal = GGX_anisotropic_sample_microfacet(local_view_direction, alpha_x, alpha_y, random_number_generator);
+    if (scaled_roughness == 0.0f)
+    {
+        // For smooth glass, the microfacet normal is just the surface normal
+        microfacet_normal = make_float3(0.0f, 0.0f, 1.0f);
+        // so HoV = dot(surface_normal, view) = view.z in local shading space
+        HoV = local_view_direction.z;
+    }
+    else
+    {
+        float alpha_x, alpha_y;
+        MaterialUtils::get_alphas(scaled_roughness, material.anisotropy, alpha_x, alpha_y);
 
-    float HoV = hippt::dot(local_view_direction, microfacet_normal);
+        microfacet_normal = GGX_anisotropic_sample_microfacet(local_view_direction, alpha_x, alpha_y, random_number_generator);
+        HoV = hippt::dot(local_view_direction, microfacet_normal);
+    }
 
     float thin_film = material.thin_film;
     ColorRGB32F F_thin_film;
@@ -841,7 +857,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_glass_layer(const HIPRT
                                                                      const float3& local_view_direction, const float3 local_to_light_direction,
                                                                      float glass_weight, float glass_proba, 
                                                                      const ColorRGB32F& layers_throughput, float& out_cumulative_pdf,
-    BSDFIncidentLightInfo incident_light_info)
+                                                                     BSDFIncidentLightInfo incident_light_info)
 {
     if (glass_weight > 0.0f)
     {
@@ -854,7 +870,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_glass_layer(const HIPRT
             // Same thing as for the coat lobe.
             // See 'internal_eval_coat_layer' for an explanation
 
-            contribution = principled_glass_eval(render_data, material, ray_volume_state, update_ray_volume_state, local_view_direction, local_to_light_direction, glass_pdf);
+            contribution = principled_glass_eval(render_data, material, ray_volume_state, update_ray_volume_state, local_view_direction, local_to_light_direction, glass_pdf, incident_light_info);
             contribution *= glass_weight;
             contribution *= layers_throughput;
         }
