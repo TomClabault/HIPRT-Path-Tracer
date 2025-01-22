@@ -68,7 +68,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F bsdf_dispatcher_sample(const HIPRTRen
 #endif
 
 #elif BSDFOverride == BSDF_LAMBERTIAN
-	return lambertian_brdf_sample(material, view_direction, surface_normal, sampled_direction, pdf, random_number_generator);
+	return lambertian_brdf_sample(material, surface_normal, sampled_direction, pdf, random_number_generator);
 #elif BSDFOverride == BSDF_OREN_NAYAR
 	return oren_nayar_brdf_sample(material, view_direction, surface_normal, sampled_direction, pdf, random_number_generator);
 #endif
