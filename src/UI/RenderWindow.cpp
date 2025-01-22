@@ -29,6 +29,7 @@ extern ImGuiLogger g_imgui_logger;
 // - try removing everything about nested dielectrics to see the register/spilling usage and performance --> ~1/2%
 
 // TODOs  performance improvements branch:
+// - also reuse BSDF mis ray of envmap MIS
 // - If hitting the same material as before, not load the material from VRAM as it's exactly the same? (only works for non-textured materials)
 // - when inside a dielectric volume, possible to check that a light is outside of the volume before shadow raying it? Using the bbox of the object
 // - MIS disabled after some number of bounces? not on glass though? MIS disabled after the ray throughput gets below some threshold?

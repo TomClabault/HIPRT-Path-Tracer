@@ -254,9 +254,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_beer_absorption(const HIPR
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, 
-    RayVolumeState& ray_volume_state, bool update_ray_volume_state,
-    const float3& local_view_direction, const float3& local_to_light_direction, float& pdf,
-    BSDFIncidentLightInfo incident_light_info)
+                                                                 RayVolumeState& ray_volume_state, bool update_ray_volume_state,
+                                                                 const float3& local_view_direction, const float3& local_to_light_direction, float& pdf,
+                                                                 BSDFIncidentLightInfo incident_light_info)
 {
     pdf = 0.0f;
 
@@ -306,28 +306,33 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
 
     bool thin_walled = material.thin_walled;
     float scaled_roughness = MaterialUtils::get_thin_walled_roughness(thin_walled, material.roughness, relative_eta);
-    //if (scaled_roughness == 0.0f)
-    //    // Fast path for specular glass
-    //    return principled_glass_specular_eval();
 
-    // Computing the generalized (that takes refraction into account) half vector
     float3 local_half_vector;
-    if (reflecting)
-        local_half_vector = local_to_light_direction + local_view_direction;
+    if (scaled_roughness <= MaterialUtils::ROUGHNESS_CLAMP)
+        // Fast path for specular glass
+        local_half_vector = make_float3(0.0f, 0.0f, 1.0f);
     else
     {
-        if (thin_walled)
-            // Thin walled material refract without light bending (because both refractions interfaces are simulated in one layer of material)
-            // just refract straight through i.e. light_direction = -view_direction
-            // It can be as si
-            local_half_vector = local_to_light_direction * make_float3(1.0f, 1.0f, -1.0f) + local_view_direction;
+        // Computing the generalized (that takes refraction into account) half vector
+        local_half_vector;
+        if (reflecting)
+            local_half_vector = local_to_light_direction + local_view_direction;
         else
-            // We need to take the relative_eta into account when refracting to compute
-            // the half vector (this is the "generalized" part of the half vector computation)
-            local_half_vector = local_to_light_direction * relative_eta + local_view_direction;
+        {
+            if (thin_walled)
+                // Thin walled material refract without light bending (because both refractions interfaces are simulated in one layer of material)
+                // just refract straight through i.e. light_direction = -view_direction
+                // It can be as si
+                local_half_vector = local_to_light_direction * make_float3(1.0f, 1.0f, -1.0f) + local_view_direction;
+            else
+                // We need to take the relative_eta into account when refracting to compute
+                // the half vector (this is the "generalized" half vector)
+                local_half_vector = local_to_light_direction * relative_eta + local_view_direction;
+        }
+
+        local_half_vector = hippt::normalize(local_half_vector);
     }
 
-    local_half_vector = hippt::normalize(local_half_vector);
     if (local_half_vector.z < 0.0f)
         // Because the rest of the function we're going to compute here assume
         // that the microfacet normal is in the same hemisphere as the surface
@@ -342,6 +347,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
         // hemisphere as the view dir or light dir
         return ColorRGB32F(0.0f);
 
+    // Note: for specular glass, the compensation term will never be evaluated as there is no energy loss.
+    // The function will return very quickly and will return 1.0f
     float compensation_term = get_GGX_energy_compensation_dielectrics(render_data, material, ray_volume_state.inside_material, eta_t, eta_i, relative_eta, local_view_direction.z);
 
     float thin_film = material.thin_film;
@@ -355,7 +362,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
 
     ColorRGB32F F = hippt::lerp(F_no_thin_film, F_thin_film, thin_film);
     float f_reflect_proba = F.luminance();
-    if (f_reflect_proba < 1.0f && thin_film == 0.0f && thin_walled && scaled_roughness < 0.1f)
+    if (thin_walled && f_reflect_proba < 1.0f && thin_film == 0.0f && scaled_roughness < 0.1f)
         // If this is not total reflection, adjusting the fresnel term to account for inter-reflections within the thin interface
         // Not doing this if thin-film is present because that would not be accurate at all. Thin-film
         // effect require phase shift computations and that's expensive so we're just not doing it here
@@ -369,49 +376,103 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
         // This fresnel scaling only works at roughness 0 but still using below 0.1f for a close enough approximation
         f_reflect_proba += hippt::square(1.0f - f_reflect_proba) * f_reflect_proba / (1.0f - hippt::square(f_reflect_proba));
 
+    constexpr float high_value_delta_distrib = 1.0e9f;
+
     ColorRGB32F color;
     if (reflecting)
     {
-        color = torrance_sparrow_GGX_eval<0>(render_data, scaled_roughness, material.anisotropy, F, local_view_direction, local_to_light_direction, local_half_vector, pdf);
-        // [Turquin, 2019] Eq. 18 for dielectric microfacet energy compensation
-        color /= compensation_term;
+        if (scaled_roughness <= MaterialUtils::ROUGHNESS_CLAMP)
+        {
+            if (incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_GLASS_LOBE)
+            {
+                // When the glass is perfectly smooth i.e. delta distribution, our only hope is to sample
+                // directly from the glass lobe. If we didn't sample from the glass lobe, this is going to be 0
+                // contribution
+                
+                // Fast path for specular glass
 
-        // Scaling the PDF by the probability of being here (reflection of the ray and not transmission)
-        pdf *= f_reflect_proba;
+                // Just some arbitrarily high value because this is a delta distribution
+                // And also, take fresnel into account
+                color = ColorRGB32F(high_value_delta_distrib, high_value_delta_distrib, high_value_delta_distrib) * F;
+                color /= hippt::abs(NoL);
+
+                pdf = high_value_delta_distrib * f_reflect_proba;
+            }
+            else
+            {
+                color = ColorRGB32F(0.0f);
+                pdf = 0.0f;
+            }
+        }
+        else
+        {
+            color = torrance_sparrow_GGX_eval<0>(render_data, scaled_roughness, material.anisotropy, F, local_view_direction, local_to_light_direction, local_half_vector, pdf);
+            // [Turquin, 2019] Eq. 18 for dielectric microfacet energy compensation
+            color /= compensation_term;
+
+            // Scaling the PDF by the probability of being here (reflection of the ray and not transmission)
+            pdf *= f_reflect_proba;
+        }
     }
     else
     {
-        float dot_prod = HoL + HoV / relative_eta;
-        float dot_prod2 = dot_prod * dot_prod;
-        float denom = dot_prod2 * NoL * NoV;
+        if (scaled_roughness <= MaterialUtils::ROUGHNESS_CLAMP)
+        {
+            // Fast path for specular glass
+            if (incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_GLASS_LOBE)
+            {
+                // When the glass is perfectly smooth i.e. delta distribution, our only hope is to sample
+                // directly from the glass lobe. If we didn't sample from the glass lobe, this is going to be 0
+                // contribution
 
-        float alpha_x;
-        float alpha_y;
-        MaterialUtils::get_alphas(scaled_roughness, material.anisotropy, alpha_x, alpha_y);
+                // Just some high value because this is a delta distribution
+                // And also, take fresnel into account
+                color = ColorRGB32F(high_value_delta_distrib, high_value_delta_distrib, high_value_delta_distrib) * (ColorRGB32F(1.0f) - F) * material.base_color;
+                color /= hippt::abs(NoL);
+                pdf = high_value_delta_distrib * (1.0f - f_reflect_proba);
+            }
+            else
+            {
+                color = ColorRGB32F(0.0f);
+                pdf = 0.0f;
+            }
+        }
+        else
+        {
+            float dot_prod = HoL + HoV / relative_eta;
+            float dot_prod2 = dot_prod * dot_prod;
+            float denom = dot_prod2 * NoL * NoV;
 
-        float D = GGX_anisotropic(alpha_x, alpha_y, local_half_vector);
-        float G1_V = G1_Smith(alpha_x, alpha_y, local_view_direction);
-        float G1_L = G1_Smith(alpha_x, alpha_y, local_to_light_direction);
-        float G2 = G1_V * G1_L;
+            float alpha_x;
+            float alpha_y;
+            MaterialUtils::get_alphas(scaled_roughness, material.anisotropy, alpha_x, alpha_y);
 
-        float dwm_dwi = hippt::abs(HoL) / dot_prod2;
-        float D_pdf = G1_V / hippt::abs(NoV) * D * hippt::abs(HoV);
-        pdf = dwm_dwi * D_pdf;
-        // Taking refraction probability into account
-        pdf *= 1.0f - f_reflect_proba;
+            float D = GGX_anisotropic(alpha_x, alpha_y, local_half_vector);
+            float G1_V = G1_Smith(alpha_x, alpha_y, local_view_direction);
+            float G1_L = G1_Smith(alpha_x, alpha_y, local_to_light_direction);
+            float G2 = G1_V * G1_L;
 
-        // We added a check a few lines above to "avoid dividing by 0 later on". This is where.
-        // When NoL is 0, denom is 0 too and we're dividing by 0. 
-        // The PDF of this case is as low as 1.0e-9 (light direction sampled perpendicularly to the normal)
-        // so this is an extremely rare case.
-        // The PDF being non-zero, we could actualy compute it, it's valid but not with floats :D
-        color = material.base_color * D * (ColorRGB32F(1.0f) - F) * G2 * hippt::abs(HoL * HoV / denom);
+            float dwm_dwi = hippt::abs(HoL) / dot_prod2;
+            float D_pdf = G1_V / hippt::abs(NoV) * D * hippt::abs(HoV);
+            pdf = dwm_dwi * D_pdf;
+            // Taking refraction probability into account
+            pdf *= 1.0f - f_reflect_proba;
+
+            // We added a check a few lines above to "avoid dividing by 0 later on". This is where.
+            // When NoL is 0, denom is 0 too and we're dividing by 0. 
+            // The PDF of this case is as low as 1.0e-9 (light direction sampled perpendicularly to the normal)
+            // so this is an extremely rare case.
+            // The PDF being non-zero, we could actualy compute it, it's valid but not with floats :D
+            color = material.base_color * D * (ColorRGB32F(1.0f) - F) * G2 * hippt::abs(HoL * HoV / denom);
+
+            // [Turquin, 2019] Eq. 18 for dielectric microfacet energy compensation
+            color /= compensation_term;
+        }
+
         if (thin_walled)
-            // Thin materials use the color squared to represent both the entry and the exit
-            // simutaneously
+            // Thin materials use the base color squared to represent both the entry and the exit
+            // simultaneously
             color *= material.base_color;
-        // [Turquin, 2019] Eq. 18 for dielectric microfacet energy compensation
-        color /= compensation_term;
 
         if (thin_walled && update_ray_volume_state)
             // For thin materials, refracting in equals refracting out so we're poping the stack
@@ -463,7 +524,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_glass_sample(const DevicePacked
     bool thin_walled = material.thin_walled;
     float scaled_roughness = MaterialUtils::get_thin_walled_roughness(thin_walled, material.roughness, relative_eta);
 
-    if (scaled_roughness == 0.0f)
+    if (scaled_roughness <= MaterialUtils::ROUGHNESS_CLAMP)
     {
         // For smooth glass, the microfacet normal is just the surface normal
         microfacet_normal = make_float3(0.0f, 0.0f, 1.0f);
