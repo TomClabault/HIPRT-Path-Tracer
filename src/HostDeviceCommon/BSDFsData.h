@@ -56,17 +56,18 @@ struct BRDFsData
 	// when fetching the LUTs. It's faster but less precise.
 	bool use_hardware_tex_interpolation = false;
 
-	// Whether or not to approximate energy compensation for the clearcoat layer.
-	//
-	// This a "global toggle" and needs to be enabled for the
-	// per-material 'coat_energy_compensation' toggle to have any effect.
-	bool clearcoat_compensation_approximation = true;
-	// Same for the glossy base (specular + diffuse layers of the BSDF)
-	bool glossy_base_energy_compensation = true;
-
 	GGXMaskingShadowingFlavor GGX_masking_shadowing = GGXMaskingShadowingFlavor::HeightCorrelated;
 
 	float energy_compensation_roughness_threshold = 0.01f;
+
+	// After hom many bounces to stop doing energy compensation to save performance?
+	// 
+	// For example, 0 means that energy compensation will only be done on the first hit and
+	// not later
+	int glass_energy_compensation_max_bounce = 4;
+	int metal_energy_compensation_max_bounce = 0;
+	int clearcoat_energy_compensation_max_bounce = 0;
+	int glossy_base_energy_compensation_max_bounce = 0;
 };
 
 #endif

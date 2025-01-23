@@ -228,7 +228,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderDat
         if (sample_cosine_term > 0.0f && sample_pdf > 0.0f)
         {
             float bsdf_pdf;
-            ColorRGB32F bsdf_contribution = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, to_light_direction, bsdf_pdf, random_number_generator);
+            ColorRGB32F bsdf_contribution = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false, 
+                                                                 view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, to_light_direction, 
+                                                                 bsdf_pdf, random_number_generator, ray_payload.bounce);
 
             ColorRGB32F light_contribution = bsdf_contribution * sample_radiance * sample_cosine_term;
             float target_function = light_contribution.luminance();
@@ -255,7 +257,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderDat
             shadow_ray.origin = evaluated_point;
             shadow_ray.direction = to_light_direction;
 
-            bool visible = !evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, random_number_generator);
+            bool visible = !evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, /* bounce. Always 0 for ReSTIR DI*/ 0, random_number_generator);
             if (!visible)
             {
                 // Sample occluded, it is not going to be resampled anyways because it is
@@ -285,7 +287,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData
         float bsdf_sample_pdf = 0.0f;
         float3 sampled_direction;
 
-        ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, false, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_direction, bsdf_sample_pdf, random_number_generator);
+        ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, false, 
+                                                        view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_direction, 
+                                                        bsdf_sample_pdf, random_number_generator, ray_payload.bounce);
 
         bool refraction_sampled = hippt::dot(sampled_direction, view_direction) < 0.0f;
         if (bsdf_sample_pdf > 0.0f)
@@ -295,7 +299,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData
             bsdf_ray.direction = sampled_direction;
 
             ShadowLightRayHitInfo shadow_light_ray_hit_info;
-            bool hit_found = evaluate_shadow_light_ray(render_data, bsdf_ray, 1.0e35f, shadow_light_ray_hit_info, closest_hit_info.primitive_index, /* bounce. Always 0 for ReSTIR DI*/ 0, random_number_generator);
+            bool hit_found = evaluate_shadow_light_ray(render_data, bsdf_ray, 1.0e35f, shadow_light_ray_hit_info, closest_hit_info.primitive_index, /* bounce. Always 0 for ReSTIR */ 0, random_number_generator);
             if (hit_found && !shadow_light_ray_hit_info.hit_emission.is_black())
             {
                 // If we intersected an emissive material, compute the weight. 

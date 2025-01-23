@@ -174,7 +174,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_with_mis(HIPRT
         if (!in_shadow)
         {
             float bsdf_pdf;
-            ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_direction, bsdf_pdf, random_number_generator);
+            ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false, 
+                                                          view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_direction, 
+                                                          bsdf_pdf, random_number_generator, ray_payload.bounce);
 
 #if EnvmapSamplingDoBSDFMIS
             float mis_weight = balance_heuristic(envmap_pdf, bsdf_pdf);
@@ -216,10 +218,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_with_mis(HIPRT
     }
     else
         // No BSDF MIS ray to reuse, let's sample the BSDF
-        bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, false, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bsdf_sampled_dir, bsdf_sample_pdf, random_number_generator);
+        bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, false, 
+                                            view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bsdf_sampled_dir, 
+                                            bsdf_sample_pdf, random_number_generator, ray_payload.bounce);
 #else
         // No BSDF MIS ray to reuse, let's sample the BSDF
-        bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, false, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bsdf_sampled_dir, bsdf_sample_pdf, random_number_generator);
+        bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, false, 
+                                            view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bsdf_sampled_dir, 
+                                            bsdf_sample_pdf, random_number_generator, ray_payload.bounce);
 #endif
 
     // Sampling the BSDF with MIS

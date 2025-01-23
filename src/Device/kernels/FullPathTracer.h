@@ -278,7 +278,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
                 if (mis_reuse.has_ray())
                     bsdf_color = reuse_mis_bsdf_sample(bounce_direction, bsdf_pdf, ray_payload, mis_reuse);
                 else
-                    bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, true, -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bounce_direction, bsdf_pdf, random_number_generator);
+                    bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, true, 
+                                                        -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bounce_direction, 
+                                                        bsdf_pdf, random_number_generator, bounce);
 #if DoFirstBounceWarpDirectionReuse
                 warp_direction_reuse(render_data, closest_hit_info, ray_payload, -ray.direction, bounce_direction, bsdf_color, bsdf_pdf, bounce, random_number_generator);
 #endif

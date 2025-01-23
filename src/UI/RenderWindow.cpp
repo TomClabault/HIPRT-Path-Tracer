@@ -42,8 +42,7 @@ extern ImGuiLogger g_imgui_logger;
 // - disable energy compensation on smooth glass / smooth metal
 // - do we need MIS for perfectly diffuse surfaces? light sampling should suffice?
 // - per material light sampling/BSDF sampling: smooth glass / metal don't need light sampling
-// - perfect reflection and refractions fast path
-//		- same for metals / psecular / coat
+// - when light sampling a clearcoated diffuse transmission material, envmap sampling is also useless
 // 
 // ------------------- STILL RELEVANT WITH WAVEFRONT ? -------------------
 // - if we don't have the ray volume state in the GBuffer anymore, we can remove the stack handlign in the trace ray function of the camera rays
@@ -73,6 +72,7 @@ extern ImGuiLogger g_imgui_logger;
 // - threadmanager: what if we start a thread with a dependency A on a thread that itself has a dependency B? we're going to try join dependency A even if thread with dependency on B hasn't even started yet --> joining nothing --> immediate return --> should have waited for the dependency but hasn't
 // - Thin-film interference energy conservation/preservation is broken with "strong BSDF energy conservation" --> too bright (with transmission at 1.0f), even with film thickness == 0.0f
 // - When overriding the base color for example in the global material overrider, if we then uncheck the base color override to stop overriding the base color, it returns the material to its very default base color  (the one  read from the scene file) instead of  returning it to what the user may have modified up to that point
+// - Probably some weirdness with how light sampling is handled while inside a dielectric: inside_surface_multiplier? cosine term < 0 check? there shouldn't be any of that basically, it should just be evaluating the BSDF
 
 // TODO Code Organization:
 // - init opengl context and all that expensive stuff (compile kernels too) while the scene is being parsed

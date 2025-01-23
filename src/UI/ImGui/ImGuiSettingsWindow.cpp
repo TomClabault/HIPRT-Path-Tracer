@@ -1986,6 +1986,30 @@ void ImGuiSettingsWindow::draw_principled_bsdf_energy_conservation()
 			}
 		}
 
+		bool setting_changed = false;
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::SeparatorText("Max bounces");
+		ImGui::Text("");
+		ImGuiRenderer::show_help_marker("After what bounce to stop doing energy conservation (depending on the type of material)\n\n"
+			""
+			"0 means that energy conservation will only be done on the first hit (of camera rays) for example.\n\n"
+			""
+			"For glass, a value of 4 is usually enough to avoid losing too much energy when looking straight at a rough glass object.\n\n"
+			""
+			"For metals, 0 (only on the first hit) is also probably good enough except in some specific cases where rays get trapped "
+			"(on a Mitsuba knob for example) where 4+ bounces may be required for decent results.\n\n"
+			""
+			"For clearcoated and specular materials, 0 is enough for smooth clearcoat/specular layers. "
+			"For high roughness clearcoats/specular layers, the situation is the same as for metals: "
+			"0 should be good enough as long as there are not too many concentrated inter-reflections "
+			"(in which case, a higher value, 4+, is going to be preferred).");
+		setting_changed |= ImGui::SliderInt("Glass energy conservation max bounce", &render_data.bsdfs_data.glass_energy_compensation_max_bounce, 0, render_settings.nb_bounces);
+		setting_changed |= ImGui::SliderInt("Clearcoat energy conservation max bounce", &render_data.bsdfs_data.clearcoat_energy_compensation_max_bounce, 0, render_settings.nb_bounces);
+		setting_changed |= ImGui::SliderInt("Specular/diffuse energy conservation max bounce", &render_data.bsdfs_data.glossy_base_energy_compensation_max_bounce, 0, render_settings.nb_bounces);
+		setting_changed |= ImGui::SliderInt("Metallic energy conservation max bounce", &render_data.bsdfs_data.metal_energy_compensation_max_bounce, 0, render_settings.nb_bounces);
+		if (setting_changed)
+			m_render_window->set_render_dirty(true);
+
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::Text("Energy compensation roughness threshold");
 		if (ImGui::SliderFloat("", &render_data.bsdfs_data.energy_compensation_roughness_threshold, 0.0f, 1.0f))
@@ -2393,7 +2417,7 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 			"for reuse sampled directions on the first hit accross the threads of warps");
 
 		static bool delta_distrib_opti = PrincipledBSDFDeltaDistributionEvaluationOptimization;
-		if (ImGui::Checkbox("BSDF delta distribution eval optimization", &delta_distrib_opti))
+		if (ImGui::Checkbox("BSDF delta distribution optimization", &delta_distrib_opti))
 		{
 			kernel_options->set_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DELTA_DISTRIBUTION_EVALUATION_OPTIMIZATION, delta_distrib_opti ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
 			m_renderer->recompile_kernels();
@@ -2409,7 +2433,9 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 			"is going to have its contribution evaluate to 0 because there is no chance that the sampled "
 			"diffuse direction perfectly aligns with the delta of the smooth clearcoat lobe.\n\n"
 			""
-			"Same with all the other lobes that can be delta distributions.");
+			"Same with all the other lobes that can be delta distributions.\n\n"
+			""
+			"There is basically no point in disabling that, this is just for performance comparisons.");
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();

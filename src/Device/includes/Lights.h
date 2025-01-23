@@ -50,9 +50,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderDa
 
         if (!in_shadow)
         {
-            float brdf_pdf;
-            ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction, brdf_pdf, random_number_generator);
-            if (brdf_pdf != 0.0f)
+            float bsdf_pdf;
+            ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false, 
+                                                          view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction, 
+                                                          bsdf_pdf, random_number_generator, ray_payload.bounce);
+            if (bsdf_pdf != 0.0f)
             {
                 // Conversion to solid angle from surface area measure
                 light_sample_pdf *= distance_to_light * distance_to_light;
@@ -73,7 +75,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_bsdf(const HIPRTRend
 
     float bsdf_sample_pdf;
     float3 sampled_bsdf_direction;
-    ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, true, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_bsdf_direction, bsdf_sample_pdf, random_number_generator);
+    ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, true, 
+                                                    view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_bsdf_direction, 
+                                                    bsdf_sample_pdf, random_number_generator, ray_payload.bounce);
 
     bool intersection_found = false;
     ShadowLightRayHitInfo shadow_light_ray_hit_info;
@@ -134,7 +138,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData&
         if (!in_shadow)
         {
             float bsdf_pdf;
-            ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction, bsdf_pdf, random_number_generator);
+            ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false, 
+                                                          view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction, 
+                                                          bsdf_pdf, random_number_generator, ray_payload.bounce);
             if (bsdf_pdf != 0.0f)
             {
                 // Conversion to solid angle from surface area measure
@@ -154,7 +160,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData&
     float bsdf_sample_pdf;
     float3 sampled_bsdf_direction;
     float3 bsdf_shadow_ray_origin = closest_hit_info.inter_point;
-    ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, ReuseBSDFMISRay == KERNEL_OPTION_TRUE, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_bsdf_direction, bsdf_sample_pdf, random_number_generator);
+    ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, ReuseBSDFMISRay == KERNEL_OPTION_TRUE, 
+                                                    view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_bsdf_direction, 
+                                                    bsdf_sample_pdf, random_number_generator, ray_payload.bounce);
 
     bool intersection_found = false;
     ShadowLightRayHitInfo shadow_light_ray_hit_info;

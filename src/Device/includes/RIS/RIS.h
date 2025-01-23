@@ -65,7 +65,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_reservoir_sample(HIPRTRender
         }
         else
         {
-            bsdf_color = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray_direction_normalized, bsdf_pdf, random_number_generator);
+            bsdf_color = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false, 
+                                              view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray_direction_normalized, 
+                                              bsdf_pdf, random_number_generator, ray_payload.bounce);
 
             cosine_at_evaluated_point = hippt::max(0.0f, hippt::dot(closest_hit_info.shading_normal, shadow_ray_direction_normalized));
         }
@@ -146,7 +148,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
                 {
                     // Only going to evaluate the target function if we passed the preliminary minimum light contribution test
 
-                    bsdf_color = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, to_light_direction, bsdf_pdf, random_number_generator);
+                    bsdf_color = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false, 
+                                                      view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, to_light_direction, 
+                                                      bsdf_pdf, random_number_generator, ray_payload.bounce);
 
                     ColorRGB32F light_contribution = bsdf_color * light_source_info.emission * cosine_at_evaluated_point;
                     // Checking the light contribution and taking the BSDF and light PDFs into account
@@ -172,7 +176,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
                     shadow_ray.origin = closest_hit_info.inter_point;
                     shadow_ray.direction = to_light_direction;
 
-                    bool visible = !evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, random_number_generator);
+                    bool visible = !evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, ray_payload.bounce, random_number_generator);
 
                     target_function *= visible;
                 }
@@ -202,7 +206,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
         float3 sampled_bsdf_direction;
         ColorRGB32F bsdf_color;
 
-        bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, true, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_bsdf_direction, bsdf_sample_pdf, random_number_generator);
+        bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, true, 
+                                            view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_bsdf_direction, 
+                                            bsdf_sample_pdf, random_number_generator, ray_payload.bounce);
 
         bool hit_found = false;
         float cosine_at_evaluated_point = 0.0f;

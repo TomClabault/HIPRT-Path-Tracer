@@ -48,7 +48,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_ReSTIR_DI_reservoir(const HI
         shadow_ray.origin = closest_hit_info.inter_point;
         shadow_ray.direction = shadow_ray_direction;
 
-        in_shadow = evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, /* bounce. Always 0 for ReSTIR DI */0, random_number_generator);
+        in_shadow = evaluate_shadow_ray(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, /* bounce. Always 0 for ReSTIR */0, random_number_generator);
     }
 
     if (!in_shadow)
@@ -57,7 +57,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_ReSTIR_DI_reservoir(const HI
         float cosine_at_evaluated_point;
         ColorRGB32F bsdf_color;
 
-        bsdf_color = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false, view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray_direction, bsdf_pdf, random_number_generator);
+        bsdf_color = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false, 
+                                          view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray_direction, 
+                                          bsdf_pdf, random_number_generator, /* bounce. Always 0 for ReSTIR */0);
 
         cosine_at_evaluated_point = hippt::dot(closest_hit_info.shading_normal, shadow_ray_direction);
         if (sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_BSDF_REFRACTION)

@@ -23,9 +23,11 @@
   * [6] [Blender's Cycles codebase on Github]
   */
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F get_GGX_energy_compensation_conductors(const HIPRTRenderData& render_data, const ColorRGB32F& F0, float material_roughness, bool material_do_energy_compensation, const float3& local_view_direction)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F get_GGX_energy_compensation_conductors(const HIPRTRenderData& render_data, const ColorRGB32F& F0, float material_roughness, bool material_do_energy_compensation, const float3& local_view_direction, int current_bounce)
 {
-	if (material_roughness <= render_data.bsdfs_data.energy_compensation_roughness_threshold || !material_do_energy_compensation)
+	bool max_bounce_reached = current_bounce > render_data.bsdfs_data.metal_energy_compensation_max_bounce;
+	bool smooth_enough = material_roughness <= render_data.bsdfs_data.energy_compensation_roughness_threshold;
+	if (!material_do_energy_compensation || smooth_enough || max_bounce_reached)
 		return ColorRGB32F(1.0f);
 
     const void* GGX_Ess_texture_pointer = nullptr;
@@ -622,9 +624,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_glass_energy_compensation_get_correctio
 	return hippt::lerp(lower_correction, higher_correction, (relative_eta - lower_relative_eta_bound) / (higher_relative_eta_bound - lower_relative_eta_bound));
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float get_GGX_energy_compensation_dielectrics(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, bool inside_object, float eta_t, float eta_i, float relative_eta, float NoV)
+HIPRT_HOST_DEVICE HIPRT_INLINE float get_GGX_energy_compensation_dielectrics(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, bool inside_object, float eta_t, float eta_i, float relative_eta, float NoV, int current_bounce)
 {
-	if (!material.do_glass_energy_compensation || material.roughness <= render_data.bsdfs_data.energy_compensation_roughness_threshold)
+	bool smooth_enough = material.roughness <= render_data.bsdfs_data.energy_compensation_roughness_threshold;
+	bool max_bounce_reached = current_bounce > render_data.bsdfs_data.glass_energy_compensation_max_bounce;
+	if (!material.do_glass_energy_compensation || smooth_enough || max_bounce_reached)
 		return 1.0f;
 
     float compensation_term = 1.0f;

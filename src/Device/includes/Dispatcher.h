@@ -21,7 +21,8 @@
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F bsdf_dispatcher_eval(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, 
 	RayVolumeState& ray_volume_state, bool update_ray_volume_state,
 	const float3& view_direction, const float3& shading_normal, const float3& geometric_normal, const float3& to_light_direction, 
-	float& pdf, Xorshift32Generator& random_number_generator)
+	float& pdf, Xorshift32Generator& random_number_generator,
+	int current_bounce)
 {
 #if BSDFOverride == BSDF_NONE || BSDFOverride == BSDF_PRINCIPLED
 	/*switch (brdf_type)
@@ -32,9 +33,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F bsdf_dispatcher_eval(const HIPRTRende
 		break;
 	}*/
 #if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFEnforceStrongEnergyConservation == KERNEL_OPTION_TRUE
-    return principled_bsdf_eval_energy_compensated(render_data, material, ray_volume_state, update_ray_volume_state, view_direction, shading_normal, geometric_normal, to_light_direction, pdf, random_number_generator);
+    return principled_bsdf_eval_energy_compensated(render_data, material, ray_volume_state, update_ray_volume_state, view_direction, shading_normal, geometric_normal, to_light_direction, pdf, random_number_generator, current_bounce);
 #else
-    return principled_bsdf_eval(render_data, material, ray_volume_state, update_ray_volume_state, view_direction, shading_normal, to_light_direction, pdf);
+    return principled_bsdf_eval(render_data, material, ray_volume_state, update_ray_volume_state, view_direction, shading_normal, to_light_direction, pdf, BSDFIncidentLightInfo::NO_INFO, current_bounce);
 #endif
 
 #elif BSDFOverride == BSDF_LAMBERTIAN
@@ -51,7 +52,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F bsdf_dispatcher_eval(const HIPRTRende
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F bsdf_dispatcher_sample(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, 
 	RayVolumeState& ray_volume_state, bool update_ray_volume_state,
 	const float3& view_direction, const float3& surface_normal, const float3& geometric_normal, float3& sampled_direction, 
-	float& pdf, Xorshift32Generator& random_number_generator)
+	float& pdf, Xorshift32Generator& random_number_generator,
+	int current_bounce)
 {
 #if BSDFOverride == BSDF_NONE || BSDFOverride == BSDF_PRINCIPLED
 	/*switch (brdf_type)
@@ -62,9 +64,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F bsdf_dispatcher_sample(const HIPRTRen
 		break;
 	}*/
 #if PrincipledBSDFDoEnergyCompensation == KERNEL_OPTION_TRUE && PrincipledBSDFEnforceStrongEnergyConservation == KERNEL_OPTION_TRUE
-    return principled_bsdf_sample_energy_compensated(render_data, material, ray_volume_state, update_ray_volume_state, view_direction, surface_normal, geometric_normal, sampled_direction, pdf, random_number_generator);
+    return principled_bsdf_sample_energy_compensated(render_data, material, ray_volume_state, update_ray_volume_state, view_direction, surface_normal, geometric_normal, sampled_direction, pdf, random_number_generator, current_bounce);
 #else
-    return principled_bsdf_sample(render_data, material, ray_volume_state, update_ray_volume_state, view_direction, surface_normal, geometric_normal, sampled_direction, pdf, random_number_generator);
+    return principled_bsdf_sample(render_data, material, ray_volume_state, update_ray_volume_state, view_direction, surface_normal, geometric_normal, sampled_direction, pdf, random_number_generator, current_bounce);
 #endif
 
 #elif BSDFOverride == BSDF_LAMBERTIAN
