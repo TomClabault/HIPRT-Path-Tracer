@@ -9,6 +9,7 @@
 #include "Device/includes/Texture.h"
 
 #include "HostDeviceCommon/HitInfo.h"
+#include "HostDeviceCommon/Material/MaterialUtils.h"
 #include "HostDeviceCommon/RenderData.h"
 
 #ifndef __KERNELCC__

@@ -6,6 +6,11 @@
 #ifndef HOST_DEVICE_COMMON_MATERIAL_UTILS_H
 #define HOST_DEVICE_COMMON_MATERIAL_UTILS_H
 
+#include "Device/includes/BSDFs/BSDFIncidentLightInfo.h"
+
+#include "HostDeviceCommon/Material/MaterialUnpacked.h"
+#include "HostDeviceCommon/KernelOptions/PrincipledBSDFKernelOptions.h"
+
 struct MaterialUtils
 {
     static constexpr int NO_TEXTURE = 65535;
@@ -19,6 +24,8 @@ struct MaterialUtils
     static constexpr int MAX_TEXTURE_COUNT = 65533;
 
     static constexpr float ROUGHNESS_CLAMP = 1.0e-4f;
+    static constexpr float PERFECTLY_SMOOTH_ROUGHNESS_THRESHOLD = 1.0e-2f;
+    static constexpr float DELTA_DISTRIBUTION_HIGH_VALUE = 1.0e9f;
 
     HIPRT_HOST_DEVICE static void get_oren_nayar_AB(float sigma, float& out_oren_A, float& out_oren_B)
     {
@@ -59,6 +66,71 @@ struct MaterialUtils
         // and if the user inputs higher IOR values than 3.5f, we clamp to 1.0f roughness
         // anyways
         return hippt::clamp(0.0f, 1.0f, remapped / 1.39f);
+    }
+
+    HIPRT_HOST_DEVICE static bool is_perfectly_smooth(float roughness)
+    {
+        return roughness <= MaterialUtils::PERFECTLY_SMOOTH_ROUGHNESS_THRESHOLD;
+    }
+
+    enum SpecularDeltaReflectionSampled : int
+    {
+        NOT_SPECULAR = -1,
+        SPECULAR_PEAK_NOT_SAMPLED = 0,
+        SPECULAR_PEAK_SAMPLED = 1,
+    };
+
+    /**
+     * Determines whether a perfectly smooth lobe has any chance of evaluating to non-0.
+     * 
+     * This is only relevant for perfectly smooth materials/lobe where we don't want to evaluate the specular BRDF
+     * with anything other than a direction that was sampled directly from that specular BRDF.
+     * 
+     * The 'delta_distribution_oughness' and 'delta_distribution_anisotropy' parameters here describe the BRDF lobe
+     * that is being evaluated.
+     * 
+     * 'incident_light_info' is some additional information about the incident light direction used for
+     * evaluating the current lobe
+     * 
+     * Returns 1 only if the specular distribution is worth evaluating, 0 if there's no point because it's going to
+     * evaluate to 0 anyways
+     * 
+     * Returns -1 if the distribution given isn't specular in the first place (delta_distribution_roughness isn't very close to 0)
+     */
+    HIPRT_HOST_DEVICE static SpecularDeltaReflectionSampled is_specular_delta_reflection_sampled(const DeviceUnpackedEffectiveMaterial& material, float delta_distribution_roughness, float delta_distribution_anisotropy, BSDFIncidentLightInfo incident_light_info)
+    {
+        if (!MaterialUtils::is_perfectly_smooth(delta_distribution_roughness))
+            return SpecularDeltaReflectionSampled::NOT_SPECULAR;
+
+        // For the glass lobe sampled direction to match, we only need it to be a reflection
+        // and we need the glass lobe to be perfectly smooth
+        bool matching_base_substrate_anisotropy = hippt::abs(delta_distribution_anisotropy - material.anisotropy) < 1.0e-3f;
+        bool sampled_from_glass = incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_GLASS_REFLECT_LOBE && MaterialUtils::is_perfectly_smooth(material.roughness) && matching_base_substrate_anisotropy;
+        if (sampled_from_glass)
+            // We can stop here
+            return SpecularDeltaReflectionSampled::SPECULAR_PEAK_SAMPLED;
+
+        // Same for the metal lobe (except that it's alawys a reflection, so it's easy there)
+        bool sampled_from_first_metal = incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_FIRST_METAL_LOBE && MaterialUtils::is_perfectly_smooth(material.roughness) && matching_base_substrate_anisotropy;
+        bool sampled_from_second_metal = incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_SECOND_METAL_LOBE && MaterialUtils::is_perfectly_smooth(material.second_roughness) && matching_base_substrate_anisotropy;
+        if (sampled_from_first_metal || sampled_from_second_metal)
+            // We can stop here
+            return SpecularDeltaReflectionSampled::SPECULAR_PEAK_SAMPLED;
+
+        // Same for the coat
+        bool matching_coat_anisotropy = hippt::abs(delta_distribution_anisotropy - material.coat_anisotropy) < 1.0e-3f;
+        bool sampled_from_coat = incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_COAT_LOBE && matching_coat_anisotropy && MaterialUtils::is_perfectly_smooth(material.coat_roughness);
+        if (sampled_from_coat)
+            // We can stop here
+            return SpecularDeltaReflectionSampled::SPECULAR_PEAK_SAMPLED;
+
+        // Same for the specular layer
+        bool sampled_from_specular = incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_SPECULAR_LOBE && MaterialUtils::is_perfectly_smooth(material.roughness) && matching_base_substrate_anisotropy;
+        if (sampled_from_specular)
+            // We can stop here
+            return SpecularDeltaReflectionSampled::SPECULAR_PEAK_SAMPLED;
+
+        return SpecularDeltaReflectionSampled::SPECULAR_PEAK_NOT_SAMPLED;
     }
 };
 

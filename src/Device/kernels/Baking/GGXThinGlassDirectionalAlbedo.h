@@ -159,7 +159,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float thin_glass_eval(float relative_eta, float r
     if (reflecting)
     {
         HIPRTRenderData fake_render_data;
-        float color = torrance_sparrow_GGX_eval<0>(fake_render_data, roughness, /* anisotropy */ 0.0f, ColorRGB32F(F), local_view_direction, local_to_light_direction, local_half_vector, pdf).r;
+        float color = torrance_sparrow_GGX_eval_reflect<0>(fake_render_data, roughness, /* anisotropy */ 0.0f, ColorRGB32F(F), local_view_direction, local_to_light_direction, local_half_vector, pdf).r;
 
         // Scaling the PDF by the probability of being here (reflection of the ray and not transmission)
         pdf *= F;

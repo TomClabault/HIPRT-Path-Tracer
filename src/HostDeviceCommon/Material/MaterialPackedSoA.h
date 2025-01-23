@@ -8,6 +8,7 @@
 
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/Material/MaterialPacked.h"
+#include "HostDeviceCommon/Material/MaterialUtils.h"
 
 struct DevicePackedEffectiveMaterialSoA
 {

@@ -80,7 +80,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float GGX_glass_E_eval(float relative_ior, float 
     if (reflecting)
     {
         HIPRTRenderData render_data;
-        albedo = torrance_sparrow_GGX_eval<0>(render_data, roughness, 0.0f, ColorRGB32F(F),
+        albedo = torrance_sparrow_GGX_eval_reflect<0>(render_data, roughness, 0.0f, ColorRGB32F(F),
                                                local_view_direction, local_to_light_direction, local_half_vector, pdf).r;
 
         // Scaling the PDF by the probability of being here (reflection of the ray and not transmission)

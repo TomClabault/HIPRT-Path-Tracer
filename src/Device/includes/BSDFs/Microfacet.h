@@ -68,8 +68,17 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float G1_Smith(float alpha_x, float alpha_y, cons
     return 1.0f / (1.0f + lambda);
 }
 
+/**
+ * 'incident_light_direction_is_from_GGX_sample' should be true if the 'local_to_light_direction' given comes from
+ * sampling the microfacet distribution that is being evaluated by this function call
+ * 
+ * false otherwise (if 'local_to_light_direction' comes from light sampling NEE, or sampling another lobe of the BSDF, ...).
+ * This parameter only matters if the BRDF is perfectly smooth: roughness < MaterialUtils::ROUGHNESS_CLAMP
+ */
 template <bool useMultipleScatteringEnergyCompensation>
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval(const HIPRTRenderData& render_data, float material_roughness, float material_anisotropy, const ColorRGB32F& F, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, float& out_pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval_reflect(const HIPRTRenderData& render_data, float material_roughness, float material_anisotropy, bool material_do_energy_compensation, const ColorRGB32F& F, 
+                                                                             const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, 
+                                                                             float& out_pdf, MaterialUtils::SpecularDeltaReflectionSampled incident_light_direction_is_from_GGX_sample)
 {
     out_pdf = -1.0f;
     return ColorRGB32F(-1.0f);
@@ -80,13 +89,34 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval(const HIPRT
  * GGX as the microfacet distribution
  * function with single scattering (no energy compensation)
  *
+ * 'incident_light_direction_is_from_GGX_sample' should be true if the 'local_to_light_direction' given comes from
+ * sampling the microfacet distribution that is being evaluated by this function call
+ * 
+ * false otherwise (if 'local_to_light_direction' comes from light sampling NEE, or sampling another lobe of the BSDF, ...).
+ * This parameter only matters if the BRDF is perfectly smooth: roughness < MaterialUtils::ROUGHNESS_CLAMP
+ * 
  * Reference: [Sampling the GGX Distribution of Visible Normals, Heitz, 2018]
  * Equation 15
  */
 template <>
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval<0>(const HIPRTRenderData& render_data, float material_roughness, float material_anisotropy, const ColorRGB32F& F, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, float& out_pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval_reflect<0>(const HIPRTRenderData& render_data, float material_roughness, float material_anisotropy, bool material_do_energy_compensation, const ColorRGB32F& F, 
+                                                                                const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, 
+                                                                                float& out_pdf, MaterialUtils::SpecularDeltaReflectionSampled incident_light_direction_is_from_GGX_sample)
 {
     out_pdf = 0.0f;
+    if (MaterialUtils::is_perfectly_smooth(material_roughness) && PrincipledBSDFDeltaDistributionEvaluationOptimization == KERNEL_OPTION_TRUE)
+    {
+        // Fast path for perfectly specular BRDF
+        if (incident_light_direction_is_from_GGX_sample == MaterialUtils::SpecularDeltaReflectionSampled::SPECULAR_PEAK_NOT_SAMPLED)
+            // For a perfectly smooth GGX distribution (a delta distribution), anything other than a
+            // perfectly sampled reflection direction is going to yield 0 contribution
+            return ColorRGB32F(0.0f);
+        else
+        {
+            out_pdf = MaterialUtils::DELTA_DISTRIBUTION_HIGH_VALUE;
+            return ColorRGB32F(MaterialUtils::DELTA_DISTRIBUTION_HIGH_VALUE) * F / hippt::abs(local_to_light_direction.z);
+        }
+    }
 
     float alpha_x;
     float alpha_y;
@@ -134,26 +164,85 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval<0>(const HI
     }
 }
 
+/**
+ * 'incident_light_direction_is_from_GGX_sample' should be true if the 'local_to_light_direction' given comes from
+ * sampling the microfacet distribution that is being evaluated by this function call
+ *
+ * false otherwise(if 'local_to_light_direction' comes from light sampling NEE, or sampling another lobe of the BSDF, ...).
+ * This parameter only matters if the BRDF is perfectly smooth: roughness < MaterialUtils::ROUGHNESS_CLAMP
+ */
 template <>
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval<1>(const HIPRTRenderData& render_data, float material_roughness, float material_anisotropy, const ColorRGB32F& F, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, float& out_pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval_reflect<1>(const HIPRTRenderData& render_data, float material_roughness, float material_anisotropy, bool material_do_energy_compensation, const ColorRGB32F& F, 
+                                                                                const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, 
+                                                                                float& out_pdf, MaterialUtils::SpecularDeltaReflectionSampled incident_light_direction_is_from_GGX_sample)
 {
-    ColorRGB32F ms_compensation_term = get_GGX_energy_compensation_conductors(render_data, F, material_roughness, local_view_direction);
-    ColorRGB32F single_scattering = torrance_sparrow_GGX_eval<0>(render_data, material_roughness, material_anisotropy, F, local_view_direction, local_to_light_direction, local_halfway_vector, out_pdf);
+    ColorRGB32F ms_compensation_term = get_GGX_energy_compensation_conductors(render_data, F, material_roughness, material_do_energy_compensation, local_view_direction);
+    ColorRGB32F single_scattering = torrance_sparrow_GGX_eval_reflect<0>(render_data, material_roughness, material_anisotropy, false, F, 
+        local_view_direction, local_to_light_direction, local_halfway_vector, 
+        out_pdf, incident_light_direction_is_from_GGX_sample);
 
     return single_scattering * ms_compensation_term;
 }
 
-/**
- * Evaluation of a torrance-sparrow model with the GGX normal distribution
- * and G1 masking-shadowing
- */
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval(const HIPRTRenderData& render_data, float material_roughness, float material_anisotropy, float material_ior, float incident_ior, const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, float& out_pdf)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval_refract(const DeviceUnpackedEffectiveMaterial& material, float roughness, float relative_eta, ColorRGB32F fresnel_reflectance,
+                                                                             const float3& local_view_direction, const float3& local_to_light_direction, const float3& local_halfway_vector, 
+                                                                             float& out_pdf, BSDFIncidentLightInfo incident_light_info)
 {
-    float HoL = hippt::clamp(1.0e-8f, 1.0f, hippt::dot(local_halfway_vector, local_to_light_direction));
+    float NoL = local_to_light_direction.z;
+    float NoV = local_view_direction.z;
+    float HoL = hippt::dot(local_to_light_direction, local_halfway_vector);
+    float HoV = hippt::dot(local_view_direction, local_halfway_vector);
 
-    ColorRGB32F F = ColorRGB32F(full_fresnel_dielectric(HoL, incident_ior, material_ior));
+    ColorRGB32F color;
+    if (MaterialUtils::is_perfectly_smooth(roughness) && PrincipledBSDFDeltaDistributionEvaluationOptimization == KERNEL_OPTION_TRUE)
+    {
+        // Fast path for specular glass
+        if (incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_GLASS_REFRACT_LOBE)
+        {
+            // When the glass is perfectly smooth i.e. delta distribution, our only hope is to sample
+            // directly from the glass lobe. If we didn't sample from the glass lobe, this is going to be 0
+            // contribution
 
-    return torrance_sparrow_GGX_eval<PrincipledBSDFDoEnergyCompensation>(render_data, material_roughness, material_anisotropy, F, local_view_direction, local_to_light_direction, local_halfway_vector, out_pdf);
+            // Just some high value because this is a delta distribution
+            // And also, take fresnel into account
+            color = ColorRGB32F(MaterialUtils::DELTA_DISTRIBUTION_HIGH_VALUE, MaterialUtils::DELTA_DISTRIBUTION_HIGH_VALUE, MaterialUtils::DELTA_DISTRIBUTION_HIGH_VALUE) * (ColorRGB32F(1.0f) - fresnel_reflectance) * material.base_color;
+            color /= hippt::abs(NoL);
+            out_pdf = MaterialUtils::DELTA_DISTRIBUTION_HIGH_VALUE;
+        }
+        else
+        {
+            color = ColorRGB32F(0.0f);
+            out_pdf = 0.0f;
+        }
+    }
+    else
+    {
+        float dot_prod = HoL + HoV / relative_eta;
+        float dot_prod2 = dot_prod * dot_prod;
+        float denom = dot_prod2 * NoL * NoV;
+
+        float alpha_x;
+        float alpha_y;
+        MaterialUtils::get_alphas(roughness, material.anisotropy, alpha_x, alpha_y);
+
+        float D = GGX_anisotropic(alpha_x, alpha_y, local_halfway_vector);
+        float G1_V = G1_Smith(alpha_x, alpha_y, local_view_direction);
+        float G1_L = G1_Smith(alpha_x, alpha_y, local_to_light_direction);
+        float G2 = G1_V * G1_L;
+
+        float dwm_dwi = hippt::abs(HoL) / dot_prod2;
+        float D_pdf = G1_V / hippt::abs(NoV) * D * hippt::abs(HoV);
+        out_pdf = dwm_dwi * D_pdf;
+
+        // We added a check a few lines above to "avoid dividing by 0 later on". This is where.
+        // When NoL is 0, denom is 0 too and we're dividing by 0. 
+        // The PDF of this case is as low as 1.0e-9 (light direction sampled perpendicularly to the normal)
+        // so this is an extremely rare case.
+        // The PDF being non-zero, we could actualy compute it, it's valid but not with floats :D
+        color = material.base_color * D * (ColorRGB32F(1.0f) - fresnel_reflectance) * G2 * hippt::abs(HoL * HoV / denom);
+    }
+
+    return color;
 }
 
 /**

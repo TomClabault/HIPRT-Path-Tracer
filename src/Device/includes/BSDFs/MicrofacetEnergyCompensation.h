@@ -23,9 +23,9 @@
   * [6] [Blender's Cycles codebase on Github]
   */
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F get_GGX_energy_compensation_conductors(const HIPRTRenderData& render_data, const ColorRGB32F& F0, float material_roughness, const float3& local_view_direction)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F get_GGX_energy_compensation_conductors(const HIPRTRenderData& render_data, const ColorRGB32F& F0, float material_roughness, bool material_do_energy_compensation, const float3& local_view_direction)
 {
-	if (material_roughness <= render_data.bsdfs_data.energy_compensation_roughness_threshold)
+	if (material_roughness <= render_data.bsdfs_data.energy_compensation_roughness_threshold || !material_do_energy_compensation)
 		return ColorRGB32F(1.0f);
 
     const void* GGX_Ess_texture_pointer = nullptr;

@@ -67,7 +67,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GGXConductorDirectionalAlbedoBake(int kerne
             continue;
 
         float eval_pdf;
-        float directional_albedo = torrance_sparrow_GGX_eval<0>(HIPRTRenderData(), roughness, 0.0f, /* fresnel */ ColorRGB32F(1.0f), 
+        float directional_albedo = torrance_sparrow_GGX_eval_reflect<0>(HIPRTRenderData(), roughness, 0.0f, /* fresnel */ ColorRGB32F(1.0f), 
                                                                  local_view_direction, sampled_local_to_light_direction, hippt::normalize(local_view_direction + sampled_local_to_light_direction), eval_pdf).r;
         directional_albedo /= eval_pdf;
         directional_albedo *= sampled_local_to_light_direction.z;

@@ -74,7 +74,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline GGXFresnelDirectionalAlbedoBake(int kernel_
 
         ColorRGB32F F = ColorRGB32F(full_fresnel_dielectric(sampled_local_to_light_direction.z, relative_ior));
         float eval_pdf;
-        float directional_albedo = torrance_sparrow_GGX_eval<0>(HIPRTRenderData(), roughness, /* anisotropy */ 0.0f, F, 
+        float directional_albedo = torrance_sparrow_GGX_eval_reflect<0>(HIPRTRenderData(), roughness, /* anisotropy */ 0.0f, F, 
                                                                  local_view_direction, sampled_local_to_light_direction, hippt::normalize(local_view_direction + sampled_local_to_light_direction), eval_pdf).r;
         directional_albedo /= eval_pdf;
         directional_albedo *= sampled_local_to_light_direction.z;

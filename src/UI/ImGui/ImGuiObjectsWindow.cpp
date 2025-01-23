@@ -490,6 +490,7 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 
 				case 1:
 					material_override_changed |= draw_material_override_line("Diffuse transmission", override_state.override_diffuse_transmission, material_override.diffuse_transmission, 0.0f, 1.0f);
+					break;
 
 				case 2:
 					material_override_changed |= draw_material_override_line("Specular transmission", override_state.override_transmission, material_override.specular_transmission, 0.0f, 1.0f);

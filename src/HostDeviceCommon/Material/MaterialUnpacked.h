@@ -6,7 +6,7 @@
 #ifndef HOST_DEVICE_COMMON_MATERIAL_UNPACKED_H
 #define HOST_DEVICE_COMMON_MATERIAL_UNPACKED_H
 
-#include "HostDeviceCommon/Material/MaterialUtils.h"
+//#include "HostDeviceCommon/Material/MaterialUtils.h"
 
 /**
  * How to add a material property:
@@ -235,22 +235,22 @@ private:
 
 struct DeviceUnpackedTexturedMaterial : public DeviceUnpackedEffectiveMaterial
 {
-    int normal_map_texture_index = MaterialUtils::NO_TEXTURE;
+    int normal_map_texture_index = 65535;
 
-    int emission_texture_index = MaterialUtils::NO_TEXTURE;
-    int base_color_texture_index = MaterialUtils::NO_TEXTURE;
+    int emission_texture_index = 65535;
+    int base_color_texture_index = 65535;
 
-    // If not MaterialUtils::NO_TEXTURE, there is only one texture for the metallic and the roughness parameters in which.
+    // If not 65535, there is only one texture for the metallic and the roughness parameters in which.
     // case the green channel is the roughness and the blue channel is the metalness
-    int roughness_metallic_texture_index = MaterialUtils::NO_TEXTURE;
-    int roughness_texture_index = MaterialUtils::NO_TEXTURE;
-    int metallic_texture_index = MaterialUtils::NO_TEXTURE;
-    int anisotropic_texture_index = MaterialUtils::NO_TEXTURE;
+    int roughness_metallic_texture_index = 65535;
+    int roughness_texture_index = 65535;
+    int metallic_texture_index = 65535;
+    int anisotropic_texture_index = 65535;
 
-    int specular_texture_index = MaterialUtils::NO_TEXTURE;
-    int coat_texture_index = MaterialUtils::NO_TEXTURE;
-    int sheen_texture_index = MaterialUtils::NO_TEXTURE;
-    int specular_transmission_texture_index = MaterialUtils::NO_TEXTURE;
+    int specular_texture_index = 65535;
+    int coat_texture_index = 65535;
+    int sheen_texture_index = 65535;
+    int specular_transmission_texture_index = 65535;
 };
 
 #endif

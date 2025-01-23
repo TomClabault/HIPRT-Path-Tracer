@@ -8,6 +8,7 @@
 
 #include "HostDeviceCommon/Packing.h"
 #include "HostDeviceCommon/Material/MaterialUnpacked.h"
+#include "HostDeviceCommon/Material/MaterialUtils.h"
 
  /**
   * Packed material for use in the shaders
