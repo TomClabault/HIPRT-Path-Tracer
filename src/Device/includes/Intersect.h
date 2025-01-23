@@ -380,7 +380,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray_nee_plus_plus(HIPRTRende
     // divides by it
     nee_plus_plus_context.unoccluded_probability = 1.0f;
 
-    bool shadow_ray_occluded = evaluate_shadow_ray(render_data, ray, t_max, last_hit_primitive_index, random_number_generator);
+    bool shadow_ray_occluded = evaluate_shadow_ray(render_data, ray, t_max, last_hit_primitive_index, bounce, random_number_generator);
 #endif
 
 #if DirectLightNEEPlusPlusDisplayShadowRaysDiscarded == KERNEL_OPTION_TRUE

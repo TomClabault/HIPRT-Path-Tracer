@@ -59,10 +59,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F evaluate_ReSTIR_DI_reservoir(const HI
 
         bsdf_color = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false, 
                                           view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray_direction, 
-                                          bsdf_pdf, random_number_generator, /* bounce. Always 0 for ReSTIR */0);
+                                          bsdf_pdf, random_number_generator, /* bounce. Always 0 for ReSTIR */0, sample.flags_to_BSDF_incident_light_info());
 
         cosine_at_evaluated_point = hippt::dot(closest_hit_info.shading_normal, shadow_ray_direction);
-        if (sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_BSDF_REFRACTION)
+        if (sample.flags & ReSTIRDISampleFlags::RESTIR_DI_FLAGS_SAMPLED_FROM_GLASS_REFRACT_LOBE)
             // We're not allowing samples that are below the surface
             // UNLESS it's a BSDF refraction sample in which case it's valid
             // so we're restoring the cosine term to be > 0.0f so that it passes

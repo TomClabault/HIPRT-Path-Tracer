@@ -32,6 +32,16 @@ struct ReSTIRDISample
 
     // Some flags about the sample
     unsigned char flags = RESTIR_DI_FLAGS_NONE;
+
+    HIPRT_HOST_DEVICE BSDFIncidentLightInfo flags_to_BSDF_incident_light_info() const
+    {
+        return static_cast<BSDFIncidentLightInfo>(flags & (0b111111 << (BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_COAT_LOBE - 1)));
+    }
+
+    HIPRT_HOST_DEVICE void clear_flags_incident_light_info()
+    {
+        flags &= ~(0b111111 << BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_COAT_LOBE - 1);
+    }
 };
 
 struct ReSTIRDIReservoir
@@ -164,6 +174,7 @@ struct ReSTIRDIReservoir
     int M = 0;
     // TODO weight sum is never used at the same time as UCW so only one variable can be used for both to save space
     float weight_sum = 0.0f;
+    // If the UCW is set to -1, this is because the reservoir was killed by visibility reuse
     float UCW = 0.0f;
 
     ReSTIRDISample sample;

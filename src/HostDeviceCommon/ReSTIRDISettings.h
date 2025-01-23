@@ -12,7 +12,7 @@ struct ReSTIRDIPresampledLight;
 struct InitialCandidatesSettings
 {
 	// How many light candidates to resamples during the initial candidates sampling pass
-	int number_of_initial_light_candidates = 4;
+	int number_of_initial_light_candidates = 1;
 	// How many BSDF candidates to resamples during the initial candidates sampling pass
 	int number_of_initial_bsdf_candidates = 1;
 	// For each 'number_of_initial_light_candidates', the probability that this light sample
@@ -60,15 +60,15 @@ struct SpatialPassSettings
 	// Takes values in [0, number_of_passes - 1]
 	int spatial_pass_index = 0;
 	// How many spatial reuse pass to perform
-	int number_of_passes = 2;
+	int number_of_passes = 1;
 	// The radius within which neighbor are going to be reused spatially
 	int reuse_radius = 16;
 	// How many neighbors to reuse during the spatial pass
-	int reuse_neighbor_count = 2;
+	int reuse_neighbor_count = 1;
 
 	// constexpr here just to be able to auto-initialize the 'neighbor_visibility_count'
 	// property at compile time
-	static constexpr bool DO_DISOCCLUSION_BOOST = true;
+	static constexpr bool DO_DISOCCLUSION_BOOST = false;
 	// Whether or not to increase the number of spatially resampled neighbor
 	// for disoccluded pixels (that have no temporal history)
 	bool do_disocclusion_reuse_boost = DO_DISOCCLUSION_BOOST;

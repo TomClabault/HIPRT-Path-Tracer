@@ -182,7 +182,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISample sample_fresh_light_candidate(const
 }
 
 // Try passing only volume state in here, not ray payload
-HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderData& render_data, const int2& pixel_coords, ReSTIRDIReservoir& reservoir, int nb_light_candidates, int nb_bsdf_candidates, float envmap_candidate_probability, const float3& view_direction, const HitInfo& closest_hit_info, RayPayload& ray_payload, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderData& render_data, const HitInfo& closest_hit_info, RayPayload& ray_payload, ReSTIRDIReservoir& reservoir, int nb_light_candidates, int nb_bsdf_candidates, float envmap_candidate_probability, const float3& view_direction, Xorshift32Generator& random_number_generator, const int2& pixel_coords)
 {
     bool inside_surface = false;// hippt::dot(view_direction, closest_hit_info.geometric_normal) < 0;
     float inside_surface_multiplier = inside_surface ? -1.0f : 1.0f;
@@ -279,7 +279,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderDat
     }
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData& render_data, ReSTIRDIReservoir& reservoir, int nb_light_candidates, int nb_bsdf_candidates, float envmap_candidate_probability, const float3& view_direction, const HitInfo& closest_hit_info, RayPayload& ray_payload, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData& render_data, const HitInfo& closest_hit_info, RayPayload& ray_payload, ReSTIRDIReservoir& reservoir, int nb_light_candidates, int nb_bsdf_candidates, float envmap_candidate_probability, const float3& view_direction, Xorshift32Generator& random_number_generator)
 {
     // Sampling the BSDF candidates
     for (int i = 0; i < nb_bsdf_candidates; i++)
@@ -287,11 +287,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData
         float bsdf_sample_pdf = 0.0f;
         float3 sampled_direction;
 
+        BSDFIncidentLightInfo sampled_lobe_info;
         ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, false, 
                                                         view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_direction, 
-                                                        bsdf_sample_pdf, random_number_generator, ray_payload.bounce);
+                                                        bsdf_sample_pdf, random_number_generator, ray_payload.bounce, &sampled_lobe_info);
 
-        bool refraction_sampled = hippt::dot(sampled_direction, view_direction) < 0.0f;
+        bool refraction_sampled = hippt::dot(sampled_direction, closest_hit_info.shading_normal) < 0.0f;
         if (bsdf_sample_pdf > 0.0f)
         {
             hiprtRay bsdf_ray;
@@ -357,8 +358,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData
                 bsdf_RIS_sample.point_on_light_source = bsdf_ray.origin + bsdf_ray.direction * shadow_light_ray_hit_info.hit_distance;
                 bsdf_RIS_sample.target_function = target_function;
                 bsdf_RIS_sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
-                if (refraction_sampled)
-                    bsdf_RIS_sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_BSDF_REFRACTION;
+                bsdf_RIS_sample.flags |= static_cast<int>(sampled_lobe_info);
 
                 reservoir.add_one_candidate(bsdf_RIS_sample, candidate_weight, random_number_generator);
                 reservoir.sanity_check(make_int2(-1, -1));
@@ -434,8 +434,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
     // Sampling candidates with weighted reservoir sampling
     ReSTIRDIReservoir reservoir;
 
-    sample_light_candidates(render_data, pixel_coords, reservoir, nb_light_candidates, nb_bsdf_candidates, envmap_candidate_probability, view_direction, closest_hit_info, ray_payload, random_number_generator);
-    sample_bsdf_candidates(render_data, reservoir, nb_light_candidates, nb_bsdf_candidates, envmap_candidate_probability, view_direction, closest_hit_info, ray_payload, random_number_generator);
+    sample_light_candidates(render_data, closest_hit_info, ray_payload, reservoir, nb_light_candidates, nb_bsdf_candidates, envmap_candidate_probability, view_direction, random_number_generator, pixel_coords);
+    sample_bsdf_candidates(render_data, closest_hit_info, ray_payload, reservoir, nb_light_candidates, nb_bsdf_candidates, envmap_candidate_probability, view_direction, random_number_generator);
 
     reservoir.end();
     reservoir.sanity_check(pixel_coords);

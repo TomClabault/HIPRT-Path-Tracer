@@ -1282,8 +1282,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void principled_bsdf_get_lobes_sampling_proba(
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material, 
                                                                 RayVolumeState& ray_volume_state, bool update_ray_volume_state,
                                                                 const float3& view_direction, float3 shading_normal, const float3& to_light_direction, 
-                                                                float& pdf, BSDFIncidentLightInfo incident_light_info,
-                                                                int current_bounce)
+                                                                float& pdf,
+                                                                int current_bounce, BSDFIncidentLightInfo incident_light_info)
 {
     pdf = 0.0f;
 
@@ -1385,7 +1385,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_eval(const HIPRTRende
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRenderData& render_data, const DeviceUnpackedEffectiveMaterial& material,
                                                                   RayVolumeState& ray_volume_state, bool update_ray_volume_state,
                                                                   const float3& view_direction, const float3& shading_normal, const float3& geometric_normal, float3& output_direction,
-                                                                  float& pdf, Xorshift32Generator& random_number_generator, int current_bounce)
+                                                                  float& pdf, Xorshift32Generator& random_number_generator, 
+                                                                  int current_bounce, BSDFIncidentLightInfo* light_sample_info_out)
 {
     pdf = 0.0f;
 
@@ -1534,12 +1535,16 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_bsdf_sample(const HIPRTRen
         // because no lobe other than the glass lobe allows refractions
         return ColorRGB32F(0.0f);
 
+    // Giving some information about what the BSDF sampled to the caller
+    if (light_sample_info_out != nullptr)
+        *light_sample_info_out = incident_light_info;
+
     // Not using 'normal' here because eval() needs to know whether or not we're inside the surface.
     // This is because is we're inside the surface, we're only going to evaluate the glass lobe.
     // If we were using 'normal', we would always be outside the surface because 'normal' is flipped
     // (a few lines above in the code) so that it is in the same hemisphere as the view direction and
     // eval() will then think that we're always outside the surface even though that's not the case
-    return principled_bsdf_eval(render_data, material, ray_volume_state, update_ray_volume_state, view_direction, shading_normal, output_direction, pdf, incident_light_info, current_bounce);
+    return principled_bsdf_eval(render_data, material, ray_volume_state, update_ray_volume_state, view_direction, shading_normal, output_direction, pdf, current_bounce, incident_light_info);
 }
 
 #endif

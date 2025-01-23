@@ -2628,7 +2628,7 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 					pending_stack_size_changes[selected_kernel_name] = selected_kernel_options->get_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE);
 				int& pending_stack_size = pending_stack_size_changes[selected_kernel_name];
 
-				ImGui::PushItemWidth(4 * ImGui::GetFontSize());
+				ImGui::PushItemWidth(8 * ImGui::GetFontSize());
 				if (ImGui::InputInt("Shared stack size", &pending_stack_size))
 					pending_stack_size = std::max(0, pending_stack_size);
 				ImGui::PopItemWidth();
@@ -2664,7 +2664,7 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-		ImGui::PushItemWidth(4 * ImGui::GetFontSize());
+		ImGui::PushItemWidth(8 * ImGui::GetFontSize());
 		if (ImGui::InputInt("Global stack per-thread size", &m_renderer->get_render_data().global_traversal_stack_buffer_size))
 		{
 			m_renderer->get_render_data().global_traversal_stack_buffer_size = hippt::clamp(0, 128, m_renderer->get_render_data().global_traversal_stack_buffer_size);
@@ -2744,7 +2744,7 @@ void ImGuiSettingsWindow::draw_performance_metrics_panel()
 		if (render_settings.restir_di_settings.do_fused_spatiotemporal)
 		{
 			draw_perf_metric_specific_panel(m_render_window_perf_metrics, ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID, "ReSTIR Spatio-Temporal Reuse");
-			if (render_settings.restir_di_settings.spatial_pass.number_of_passes > 1)
+			if (render_settings.restir_di_settings.spatial_pass.number_of_passes >= 1)
 			{
 				std::string spatial_reuse_text = "ReSTIR " + std::to_string(render_settings.restir_di_settings.spatial_pass.number_of_passes - 1) + " Spatial Reuse";
 				draw_perf_metric_specific_panel(m_render_window_perf_metrics, ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID, spatial_reuse_text);

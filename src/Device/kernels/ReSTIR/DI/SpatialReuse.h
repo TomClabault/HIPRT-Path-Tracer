@@ -173,6 +173,21 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 				target_function_at_center = neighbor_reservoir.sample.target_function;
 			else
 			{
+				// If this is a neighbor and not the canonical sample, we're clearing the BSDF info because we don't
+				// want the BSDF to just assume that the sample is valid:
+				// 
+				// - If the neighbor sampled a mirror BRDF direction
+				// - If we do not clear the flags
+				// - The BSDF at canonical is also a mirror BRDF
+				// - Evaluating the target function will just take a
+				//		shortcut during the evaluation of the BSDF and
+				//		assume that the (delta distribution) BRDF at canonical
+				//		was properly sampled by the mirror (delta distribution)
+				//		BRDF at the neighbor, which is incorrect.
+				// 
+				// So we need to clear the flags
+				neighbor_reservoir.sample.clear_flags_incident_light_info();
+
 				if (do_neighbor_target_function_visibility)
 					target_function_at_center = ReSTIR_DI_evaluate_target_function<KERNEL_OPTION_TRUE>(render_data, neighbor_reservoir.sample, center_pixel_surface, random_number_generator);
 				else

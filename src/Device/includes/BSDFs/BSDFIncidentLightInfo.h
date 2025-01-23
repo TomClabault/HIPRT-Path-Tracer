@@ -9,7 +9,7 @@
 enum BSDFIncidentLightInfo
 {
 	// Default value: nothing is assumed about the incident light direction
-	NO_INFO,
+	NO_INFO = 0,
 
 	// The additional information below can be used by the bsdf_eval() function to
 	// avoid evaluating delta lobes (such as a perfectly smooth clearcoat lobe,
@@ -25,16 +25,18 @@ enum BSDFIncidentLightInfo
 	// diffuse direction perfectly aligns with the delta of the smooth clearcoat lobe
 	//
 	// Same with all the other lobes that can be delta distributions
-	LIGHT_DIRECTION_SAMPLED_FROM_COAT_LOBE,
-	LIGHT_DIRECTION_SAMPLED_FROM_FIRST_METAL_LOBE,
-	LIGHT_DIRECTION_SAMPLED_FROM_SECOND_METAL_LOBE,
-	LIGHT_DIRECTION_SAMPLED_FROM_SPECULAR_LOBE,
-	LIGHT_DIRECTION_SAMPLED_FROM_GLASS_REFLECT_LOBE,
-	LIGHT_DIRECTION_SAMPLED_FROM_GLASS_REFRACT_LOBE,
+	//
+	// Using bit shifts for the values here so that it can be used easily by ReSTIR DI
+	LIGHT_DIRECTION_SAMPLED_FROM_COAT_LOBE = 1 << 1,
+	LIGHT_DIRECTION_SAMPLED_FROM_FIRST_METAL_LOBE = 1 << 2,
+	LIGHT_DIRECTION_SAMPLED_FROM_SECOND_METAL_LOBE = 1 << 3,
+	LIGHT_DIRECTION_SAMPLED_FROM_SPECULAR_LOBE = 1 << 4,
+	LIGHT_DIRECTION_SAMPLED_FROM_GLASS_REFLECT_LOBE = 1 << 5,
+	LIGHT_DIRECTION_SAMPLED_FROM_GLASS_REFRACT_LOBE = 1 << 6,
 
 	// This can be used if the incident light direction comes from sampling a light in the scene
 	// from example
-	LIGHT_DIRECTION_NOT_SAMPLED_FROM_BSDF,
+	LIGHT_DIRECTION_NOT_SAMPLED_FROM_BSDF
 };
 
 #endif
