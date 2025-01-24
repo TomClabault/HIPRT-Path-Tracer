@@ -158,36 +158,38 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_with_mis(HIPRT
     ColorRGB32F envmap_color = envmap_sample(render_data.world_settings, sampled_direction, envmap_pdf, random_number_generator);
     ColorRGB32F envmap_mis_contribution;
 
-    // Sampling the envmap with MIS
-    float cosine_term = hippt::dot(closest_hit_info.shading_normal, sampled_direction);
-    if (envmap_pdf > 0.0f && cosine_term > 0.0f)
+    if (MaterialUtils::can_do_light_sampling(ray_payload.material))
     {
-        hiprtRay shadow_ray;
-        shadow_ray.origin = closest_hit_info.inter_point;
-        shadow_ray.direction = sampled_direction;
-
-        NEEPlusPlusContext nee_plus_plus_context;
-        nee_plus_plus_context.shaded_point = closest_hit_info.inter_point;
-        nee_plus_plus_context.point_on_light = sampled_direction;
-        nee_plus_plus_context.envmap = true;
-        bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, nee_plus_plus_context, random_number_generator, ray_payload.bounce);
-        if (!in_shadow)
+        // Sampling the envmap with MIS
+        float cosine_term = hippt::dot(closest_hit_info.shading_normal, sampled_direction);
+        if (envmap_pdf > 0.0f && cosine_term > 0.0f)
         {
-            float bsdf_pdf;
-            ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false, 
-                                                          view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_direction, 
-                                                          bsdf_pdf, random_number_generator, ray_payload.bounce);
+            hiprtRay shadow_ray;
+            shadow_ray.origin = closest_hit_info.inter_point;
+            shadow_ray.direction = sampled_direction;
+
+            NEEPlusPlusContext nee_plus_plus_context;
+            nee_plus_plus_context.shaded_point = closest_hit_info.inter_point;
+            nee_plus_plus_context.point_on_light = sampled_direction;
+            nee_plus_plus_context.envmap = true;
+            bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, nee_plus_plus_context, random_number_generator, ray_payload.bounce);
+            if (!in_shadow)
+            {
+                float bsdf_pdf;
+                ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false,
+                    view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_direction,
+                    bsdf_pdf, random_number_generator, ray_payload.bounce);
 
 #if EnvmapSamplingDoBSDFMIS
-            float mis_weight = balance_heuristic(envmap_pdf, bsdf_pdf);
+                float mis_weight = balance_heuristic(envmap_pdf, bsdf_pdf);
 #else
-            float mis_weight = 1.0f;
+                float mis_weight = 1.0f;
 #endif
 
-            envmap_mis_contribution = bsdf_color * cosine_term * mis_weight * envmap_color / envmap_pdf / nee_plus_plus_context.unoccluded_probability;
+                envmap_mis_contribution = bsdf_color * cosine_term * mis_weight * envmap_color / envmap_pdf / nee_plus_plus_context.unoccluded_probability;
+            }
         }
     }
-
 
 
 
@@ -229,7 +231,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_with_mis(HIPRT
 #endif
 
     // Sampling the BSDF with MIS
-    cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, bsdf_sampled_dir));
+    float cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, bsdf_sampled_dir));
     if (bsdf_sample_pdf > 0.0f)
     {
         hiprtRay shadow_ray;

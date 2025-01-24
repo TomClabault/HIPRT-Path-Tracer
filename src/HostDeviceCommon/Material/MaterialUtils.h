@@ -73,6 +73,29 @@ struct MaterialUtils
         return roughness <= MaterialUtils::PERFECTLY_SMOOTH_ROUGHNESS_THRESHOLD;
     }
 
+    /**
+     * Whether or not it makes sense to even try light sampling with NEE on that material
+     * 
+     * Perfectly smooth materials for example cannot do light sampling because no given light
+     * direction is going to align with the delta distribution peak of the BRDF so we can save 
+     * some performance by not even attempting light sampling in the first place
+     */
+    HIPRT_HOST_DEVICE static bool can_do_light_sampling(const DeviceUnpackedEffectiveMaterial& material)
+    {
+#if DirectLightSamplingDeltaDistributionOptimization == KERNEL_OPTION_FALSE
+        return true;
+#endif
+
+        bool smooth_base_layer = MaterialUtils::is_perfectly_smooth(material.roughness) && (material.metallic == 1.0f || material.specular_transmission == 1.0f);
+        bool smooth_coat = material.coat == 0.0f || (material.coat > 0.0f && MaterialUtils::is_perfectly_smooth(material.coat_roughness));
+        bool second_roughness_smooth = MaterialUtils::is_perfectly_smooth(material.second_roughness) || material.second_roughness_weight == 0.0f;
+        if (smooth_base_layer && smooth_coat && second_roughness_smooth)
+            // Everything is smooth
+            return false;
+
+        return true;
+    }
+
     enum SpecularDeltaReflectionSampled : int
     {
         NOT_SPECULAR = -1,

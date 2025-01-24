@@ -166,7 +166,7 @@
  *		Uses ReSTIR DI to sample direct lighting at the first bounce in the scene.
  *		Later bounces use the strategy given by ReSTIR_DI_LaterBouncesSamplingStrategy
  */
-#define DirectLightSamplingStrategy LSS_RESTIR_DI
+#define DirectLightSamplingStrategy LSS_RIS_BSDF_AND_LIGHT
 
 /**
  * Whether or not to use NEE++ features at all
@@ -192,6 +192,18 @@
  * 0 is the first hit
  */ 
 #define DirectLightNEEPlusPlusDisplayShadowRaysDiscardedBounce 0
+
+/**
+ * If this is true, light sampling with NEE (emissive geometry & envmap) will not even 
+ * be attempted on perfectly smooth materials (smooth glass, smooth metals, ...)
+ * 
+ * This is because these materials are delta distributions and light sampling 
+ * has no chance to give any contribution.
+ * 
+ * There is no point in disabling that option, this is basically only for 
+ * performance comparisons
+ */
+#define DirectLightSamplingDeltaDistributionOptimization KERNEL_OPTION_TRUE
 
 /**
  * What envmap sampling strategy to use

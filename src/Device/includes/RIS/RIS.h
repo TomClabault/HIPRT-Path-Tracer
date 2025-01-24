@@ -99,6 +99,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
     int nb_light_candidates = render_data.render_settings.do_render_low_resolution() ? 1 : render_data.render_settings.ris_settings.number_of_light_candidates;
     int nb_bsdf_candidates = render_data.render_settings.do_render_low_resolution() ? 1 : render_data.render_settings.ris_settings.number_of_bsdf_candidates;
 
+    if (!MaterialUtils::can_do_light_sampling(ray_payload.material))
+        nb_light_candidates = 0;
+
     // Sampling candidates with weighted reservoir sampling
     RISReservoir reservoir;
     for (int i = 0; i < nb_light_candidates; i++)

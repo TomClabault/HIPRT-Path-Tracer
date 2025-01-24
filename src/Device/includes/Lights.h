@@ -22,6 +22,9 @@
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator)
 {
+    if (!MaterialUtils::can_do_light_sampling(ray_payload.material))
+        return ColorRGB32F(0.0f);
+
     float light_sample_pdf;
     LightSourceInformation light_source_info;
     ColorRGB32F light_source_radiance;
@@ -112,45 +115,49 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData&
 {
     float light_sample_pdf;
     ColorRGB32F light_source_radiance_mis;
-    LightSourceInformation light_source_info;
-    float3 random_light_point = uniform_sample_one_emissive_triangle(render_data, random_number_generator, light_sample_pdf, light_source_info);
-    if (light_sample_pdf <= 0.0f)
-        // Can happen for very small triangles
-        return ColorRGB32F(0.0f);
 
-    float3 shadow_ray_direction = random_light_point - closest_hit_info.inter_point;
-    float distance_to_light = hippt::length(shadow_ray_direction);
-    float3 shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
-
-    hiprtRay shadow_ray;
-    shadow_ray.origin = closest_hit_info.inter_point;
-    shadow_ray.direction = shadow_ray_direction_normalized;
-
-    // abs() here to allow backfacing light sources
-    float dot_light_source = hippt::abs(hippt::dot(light_source_info.light_source_normal, -shadow_ray.direction));
-    if (dot_light_source > 0.0f)
+    if (MaterialUtils::can_do_light_sampling(ray_payload.material))
     {
-        NEEPlusPlusContext nee_plus_plus_context;
-        nee_plus_plus_context.point_on_light = random_light_point;
-        nee_plus_plus_context.shaded_point = shadow_ray.origin;
-        bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, nee_plus_plus_context, random_number_generator, ray_payload.bounce);
+        LightSourceInformation light_source_info;
+        float3 random_light_point = uniform_sample_one_emissive_triangle(render_data, random_number_generator, light_sample_pdf, light_source_info);
+        if (light_sample_pdf <= 0.0f)
+            // Can happen for very small triangles
+            return ColorRGB32F(0.0f);
 
-        if (!in_shadow)
+        float3 shadow_ray_direction = random_light_point - closest_hit_info.inter_point;
+        float distance_to_light = hippt::length(shadow_ray_direction);
+        float3 shadow_ray_direction_normalized = shadow_ray_direction / distance_to_light;
+
+        hiprtRay shadow_ray;
+        shadow_ray.origin = closest_hit_info.inter_point;
+        shadow_ray.direction = shadow_ray_direction_normalized;
+
+        // abs() here to allow backfacing light sources
+        float dot_light_source = hippt::abs(hippt::dot(light_source_info.light_source_normal, -shadow_ray.direction));
+        if (dot_light_source > 0.0f)
         {
-            float bsdf_pdf;
-            ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false, 
-                                                          view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction, 
-                                                          bsdf_pdf, random_number_generator, ray_payload.bounce);
-            if (bsdf_pdf != 0.0f)
+            NEEPlusPlusContext nee_plus_plus_context;
+            nee_plus_plus_context.point_on_light = random_light_point;
+            nee_plus_plus_context.shaded_point = shadow_ray.origin;
+            bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index, nee_plus_plus_context, random_number_generator, ray_payload.bounce);
+
+            if (!in_shadow)
             {
-                // Conversion to solid angle from surface area measure
-                light_sample_pdf *= distance_to_light * distance_to_light;
-                light_sample_pdf /= dot_light_source;
+                float bsdf_pdf;
+                ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false,
+                    view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, shadow_ray.direction,
+                    bsdf_pdf, random_number_generator, ray_payload.bounce);
+                if (bsdf_pdf != 0.0f)
+                {
+                    // Conversion to solid angle from surface area measure
+                    light_sample_pdf *= distance_to_light * distance_to_light;
+                    light_sample_pdf /= dot_light_source;
 
-                float mis_weight = balance_heuristic(light_sample_pdf, bsdf_pdf);
+                    float mis_weight = balance_heuristic(light_sample_pdf, bsdf_pdf);
 
-                float cosine_term = hippt::max(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction), 0.0f);
-                light_source_radiance_mis = bsdf_color * cosine_term * light_source_info.emission * mis_weight / light_sample_pdf / nee_plus_plus_context.unoccluded_probability;
+                    float cosine_term = hippt::max(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction), 0.0f);
+                    light_source_radiance_mis = bsdf_color * cosine_term * light_source_info.emission * mis_weight / light_sample_pdf / nee_plus_plus_context.unoccluded_probability;
+                }
             }
         }
     }
