@@ -115,6 +115,24 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval_reflect<0>(
             return ColorRGB32F(0.0f);
         else
         {
+            if (hippt::dot(reflect_ray(local_view_direction, make_float3(0.0f, 0.0f, 1.0f)), local_to_light_direction) < MaterialUtils::DELTA_DISTRIBUTION_ALIGNEMENT_THRESHOLD)
+            {
+                // Just an additional check that we indeed have the incident light
+                // direction aligned with the perfect reflection direction
+                //
+                // This additional check is mainly useful for ReSTIR DI where we need
+                // to evaluate the BRDF with a sample that may have been sampled from
+                // a delta distribution (so it checks all the boxes for the shortcut
+                // and we could just quickly return MaterialUtils::DELTA_DISTRIBUTION_HIGH_VALUE
+                // but because that sample wasn't sampeld at the current pixel, there
+                // is a good chance that it doesn't actually align with the perfect
+                // reflection direction = it doesn't align with the specular peak = 0
+                // contribution
+
+                out_pdf = 0.0f;
+                return ColorRGB32F(0.0f);
+            }
+
             out_pdf = MaterialUtils::DELTA_DISTRIBUTION_HIGH_VALUE;
             return ColorRGB32F(MaterialUtils::DELTA_DISTRIBUTION_HIGH_VALUE) * F / hippt::abs(local_to_light_direction.z);
         }

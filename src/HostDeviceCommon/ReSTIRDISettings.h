@@ -26,7 +26,7 @@ struct InitialCandidatesSettings
 
 struct TemporalPassSettings
 {
-	bool do_temporal_reuse_pass = true;
+	bool do_temporal_reuse_pass = false;
 
 	// If true, the position of the canonical temporal neighbor will be shuffled to increase
 	// variation between frames and make the render more denoiser friendly
@@ -60,11 +60,11 @@ struct SpatialPassSettings
 	// Takes values in [0, number_of_passes - 1]
 	int spatial_pass_index = 0;
 	// How many spatial reuse pass to perform
-	int number_of_passes = 1;
+	int number_of_passes = 2;
 	// The radius within which neighbor are going to be reused spatially
 	int reuse_radius = 16;
 	// How many neighbors to reuse during the spatial pass
-	int reuse_neighbor_count = 1;
+	int reuse_neighbor_count = 3;
 
 	// constexpr here just to be able to auto-initialize the 'neighbor_visibility_count'
 	// property at compile time
@@ -136,7 +136,7 @@ struct ReSTIRDISettings
 	// Because the spatial must then resample without the output of the temporal pass, the spatial
 	// pass only resamples on the temporal reservoir buffer, not the temporal + initial candidates reservoir
 	// (which is the output of the temporal pass). This is usually imperceptible.
-	bool do_fused_spatiotemporal = true;
+	bool do_fused_spatiotemporal = false;
 
 	// When finalizing the reservoir in the spatial reuse pass, what value
 	// to cap the reservoirs's M value to.

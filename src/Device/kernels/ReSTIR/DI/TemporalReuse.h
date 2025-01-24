@@ -140,22 +140,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	{
 		float target_function_at_center = 0.0f;
 		if (temporal_neighbor_reservoir.UCW > 0.0f)
-		{
-			// We're clearing the BSDF info because we don't
-			// want the BSDF to just assume that the sample is valid:
-			// 
-			// - If the neighbor sampled a mirror BRDF direction
-			// - If we do not clear the flags
-			// - The BSDF at canonical is also a mirror BRDF
-			// - Evaluating the target function will just take a
-			//		shortcut during the evaluation of the BSDF and
-			//		assume that the (delta distribution) BRDF at canonical
-			//		was properly sampled by the mirror (delta distribution)
-			//		BRDF at the neighbor, which is incorrect.
-			// 
-			// So we need to clear the flags
-			temporal_neighbor_reservoir.sample.clear_flags_incident_light_info();
-
 			// Only resampling if the temporal neighbor isn't empty
 			//
 			// If the temporal neiughor's reservoir is empty, then we do not get
@@ -169,7 +153,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 			// technical sense since our temporal neighbor is supposed to be unoccluded 
 			// (unless geometry moves around in the scene but that's another problem)
 			target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, temporal_neighbor_reservoir.sample, center_pixel_surface, random_number_generator);
-		}
 
 		float jacobian_determinant = 1.0f;
 		// If the neighbor reservoir is invalid, do not compute the jacobian

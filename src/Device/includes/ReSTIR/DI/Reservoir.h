@@ -37,11 +37,6 @@ struct ReSTIRDISample
     {
         return static_cast<BSDFIncidentLightInfo>(flags & (0b111111 << (BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_COAT_LOBE - 1)));
     }
-
-    HIPRT_HOST_DEVICE void clear_flags_incident_light_info()
-    {
-        flags &= ~(0b111111 << BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_COAT_LOBE - 1);
-    }
 };
 
 struct ReSTIRDIReservoir

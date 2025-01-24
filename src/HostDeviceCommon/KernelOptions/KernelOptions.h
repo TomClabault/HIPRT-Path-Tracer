@@ -166,7 +166,7 @@
  *		Uses ReSTIR DI to sample direct lighting at the first bounce in the scene.
  *		Later bounces use the strategy given by ReSTIR_DI_LaterBouncesSamplingStrategy
  */
-#define DirectLightSamplingStrategy LSS_RIS_BSDF_AND_LIGHT
+#define DirectLightSamplingStrategy LSS_RESTIR_DI
 
 /**
  * Whether or not to use NEE++ features at all
@@ -306,7 +306,7 @@
  *		Similar variance reduction to the generalized balance heuristic and only O(N) computational cost.
  *		Section 7.1.3 of "A Gentle Introduction to ReSTIR", 2023
  */
-#define ReSTIR_DI_BiasCorrectionWeights RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
+#define ReSTIR_DI_BiasCorrectionWeights RESTIR_DI_BIAS_CORRECTION_MIS_GBH
 
 /**
  * What direct lighting sampling strategy to use for secondary bounces when ReSTIR DI is used for sampling the first bounce

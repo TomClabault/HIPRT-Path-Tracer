@@ -32,17 +32,12 @@ extern ImGuiLogger g_imgui_logger;
 // TODOs  performance improvements branch:
 // - also reuse BSDF mis ray of envmap MIS
 // - If hitting the same material as before, not load the material from VRAM as it's exactly the same? (only works for non-textured materials)
-// - when inside a dielectric volume, possible to check that a light is outside of the volume before shadow raying it? Using the bbox of the object
 // - MIS disabled after some number of bounces? not on glass though? MIS disabled after the ray throughput gets below some threshold?
 // - texture compression
 // - store full pointers to textures in materails instead of indirect indices? probably cheaper to have ibigger materials than to havbe to do that indirect fetch?
 // - limit  number of bounces based on material type
 // - use the fact that some values are already computed in bsdf_sample to pass them to bsdf_eval in a big BSDFStateStructure or something to avoid recomputing
 // - schlick fresnel in many places? instead of correct fresnel. switch in "performance settings"
-// - disable energy compensation on smooth glass / smooth metal
-// - do we need MIS for perfectly diffuse surfaces? light sampling should suffice?
-// - per material light sampling/BSDF sampling: smooth glass / metal don't need light sampling
-// - when light sampling a clearcoated diffuse transmission material, envmap sampling is also useless
 // 
 // ------------------- STILL RELEVANT WITH WAVEFRONT ? -------------------
 // - if we don't have the ray volume state in the GBuffer anymore, we can remove the stack handlign in the trace ray function of the camera rays

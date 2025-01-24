@@ -26,6 +26,7 @@ struct MaterialUtils
     static constexpr float ROUGHNESS_CLAMP = 1.0e-4f;
     static constexpr float PERFECTLY_SMOOTH_ROUGHNESS_THRESHOLD = 1.0e-2f;
     static constexpr float DELTA_DISTRIBUTION_HIGH_VALUE = 1.0e9f;
+    static constexpr float DELTA_DISTRIBUTION_ALIGNEMENT_THRESHOLD = 0.999999f;
 
     HIPRT_HOST_DEVICE static void get_oren_nayar_AB(float sigma, float& out_oren_A, float& out_oren_B)
     {

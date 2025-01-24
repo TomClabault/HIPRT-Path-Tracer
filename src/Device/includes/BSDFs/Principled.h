@@ -868,20 +868,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_metal_layer(const HIPRT
         float metal_pdf = 0.0f;
         ColorRGB32F contribution;
         
-        /*bool eval_first_metal_lobe = (evaluating_first_metal_lobe && incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_FIRST_METAL_LOBE);
-        bool eval_second_metal_lobe = (!evaluating_first_metal_lobe && incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_SECOND_METAL_LOBE);
-        bool metal_evaluation_useful = eval_first_metal_lobe || eval_second_metal_lobe || roughness > 1.0e-4f;
-        if (metal_evaluation_useful || PrincipledBSDFDeltaDistributionEvaluationOptimization == KERNEL_OPTION_FALSE)
-        {*/
-            // Same thing as for the coat lobe.
-            // See 'internal_eval_coat_layer' for an explanation
-
         contribution = principled_metallic_eval(render_data, material,
             roughness, anisotropy, incident_ior,
             local_view_direction, local_to_light_direction, local_half_vector, metal_pdf, incident_light_info, current_bounce);
         contribution *= metal_weight;
         contribution *= layers_throughput;
-        //}
 
         out_cumulative_pdf += metal_pdf * metal_proba;
 
@@ -908,19 +899,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_glass_layer(const HIPRT
         float glass_pdf = 0.0f;
         ColorRGB32F contribution;
         
-        /*bool glass_evaluation_useful = incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_GLASS_LOBE || material.roughness > 1.0e-4f;
-        if (glass_evaluation_useful || PrincipledBSDFDeltaDistributionEvaluationOptimization == KERNEL_OPTION_FALSE)
-        {*/
-            // Same thing as for the coat lobe.
-            // See 'internal_eval_coat_layer' for an explanation
-
         contribution = principled_glass_eval(render_data, material, ray_volume_state, update_ray_volume_state, 
                                              local_view_direction, local_to_light_direction, 
                                              glass_pdf, incident_light_info,
                                              current_bounce);
         contribution *= glass_weight;
         contribution *= layers_throughput;
-        //}
 
         // There is nothing below the glass layer so we don't have a layer_throughput absorption here
         // ...
@@ -1021,14 +1005,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_specular_layer(const HI
         float specular_pdf = 0.0f;
         ColorRGB32F contribution;
         
-        //bool specular_evaluation_useful = incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_SPECULAR_LOBE || material.roughness > 1.0e-4f;
-        //// The specular lobe doesn't have refraction so there is no need to evaluate it in such a case,
-        //// it's going to evaluate to 0 anyways
-        //if ((specular_evaluation_useful || PrincipledBSDFDeltaDistributionEvaluationOptimization == KERNEL_OPTION_FALSE) && !refracting)
-        //{
-            // Same thing as for the coat lobe.
-            // See 'internal_eval_coat_layer' for an explanation
-
         contribution = principled_specular_eval(render_data, material,
                                                 relative_ior, local_view_direction, local_to_light_direction, local_half_vector, 
                                                 specular_pdf, incident_light_info,
@@ -1038,7 +1014,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F internal_eval_specular_layer(const HI
         contribution *= hippt::lerp(ColorRGB32F(1.0f), material.specular_tint * material.specular_color, material.specular);
         contribution *= specular_weight;
         contribution *= layers_throughput;
-        //}
 
         ColorRGB32F layer_below_attenuation(1.0f);
         // Only the transmitted portion of the light goes to the layer below

@@ -207,7 +207,7 @@ struct ReSTIRDISpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
 			if (update_mc)
 			{
 				// There's one case where we do not need to update 'mc': when the center pixel (that we're currently resampling) is empty: M = 0 / UCW = 0
-				// That's because is such cases, the empty reservoir will not be resampled into the final reservoir anyways since it has no contribution
+				// That's because in such cases, the empty reservoir will not be resampled into the final reservoir anyways since it has no contribution
 				// Because 'mc' is only used as the MIS weight of the center reservoir, we don't care about 'mc' since the center reservoir is not going
 				// to be chosen anyways
 				//
