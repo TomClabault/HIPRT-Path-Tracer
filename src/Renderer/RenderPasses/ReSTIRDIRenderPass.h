@@ -97,7 +97,7 @@ private:
 	OrochiBuffer<ReSTIRDIReservoir> initial_candidates_reservoirs;
 	// ReSTIR reservoirs for the output of the spatial reuse pass
 	OrochiBuffer<ReSTIRDIReservoir> spatial_output_reservoirs_1;
-	// ReSTIR DI final reservoirs of the frame. 
+	// ReSTIR DI final reservoirs of the frame.
 	// This the output of the spatial reuse passes.
 	// Those are the reservoirs that are carried over between frames for
 	// the temporal reuse pass to feed upon

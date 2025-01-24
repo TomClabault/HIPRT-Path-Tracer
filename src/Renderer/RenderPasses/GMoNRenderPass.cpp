@@ -141,10 +141,13 @@ bool GMoNRenderPass::pre_render_update()
 	}
 	else
 	{
-		m_gmon.free();
+		if (!m_gmon.is_freed())
+		{
+			m_gmon.free();
 
-		// Returning true to indicate that the render data buffers have been invalidated
-		return true;
+			// Returning true to indicate that the render data buffers have been invalidated
+			return true;
+		}
 	}
 
 	return false;

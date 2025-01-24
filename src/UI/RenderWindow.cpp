@@ -844,7 +844,6 @@ void RenderWindow::run()
 		}
 
 		m_keyboard_interactor.poll_keyboard_inputs();
-
 	}
 }
 

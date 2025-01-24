@@ -37,6 +37,9 @@ public:
 	T* get_device_pointer();
 	T** get_device_pointer_address();
 
+	// Static function for downloading from a device buffer when we
+	// only have the address of the buffer (and not the OrochiBuffer object)
+	static std::vector<T> download_data(T* device_data_pointer, size_t element_count);
 	std::vector<T> download_data() const;
 	/**
 	 * Downloads elements ['start_element_index', 'stop_element_index_excluded'[ from the buffer
@@ -98,7 +101,8 @@ OrochiBuffer<T>::OrochiBuffer(OrochiBuffer<T>&& other)
 template <typename T>
 OrochiBuffer<T>::~OrochiBuffer()
 {
-	free();
+	if (m_data_pointer)
+		free();
 }
 
 template <typename T>
@@ -157,6 +161,19 @@ template <typename T>
 T** OrochiBuffer<T>::get_device_pointer_address()
 {
 	return &m_data_pointer;
+}
+
+template <typename T>
+std::vector<T> OrochiBuffer<T>::download_data(T* device_data_pointer, size_t element_count)
+{
+	if (!device_data_pointer)
+		return std::vector<T>();
+
+	std::vector<T> data(element_count);
+
+	OROCHI_CHECK_ERROR(oroMemcpyDtoH(data.data(), reinterpret_cast<oroDeviceptr>(device_data_pointer), sizeof(T) * element_count));
+
+	return data;
 }
 
 template <typename T>
@@ -313,6 +330,12 @@ void OrochiBuffer<T>::free()
 {
 	if (m_data_pointer)
 		OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(m_data_pointer)));
+	else
+	{
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Freeing an OpenGLInterop buffer that hasn't been initialized (or has been freed already)!");
+
+		return;
+	}
 
 	m_element_count = 0;
 	m_data_pointer = nullptr;

@@ -179,16 +179,14 @@ void ReSTIRDIRenderPass::pre_render_update()
 	else
 	{
 		// ReSTIR DI disabled, we're going to free the buffers if that's not already done
-		if (initial_candidates_reservoirs.get_element_count() > 0
-			|| spatial_output_reservoirs_1.get_element_count() > 0 ||
-			spatial_output_reservoirs_2.get_element_count() > 0)
+		if (initial_candidates_reservoirs.get_element_count() > 0 || spatial_output_reservoirs_1.get_element_count() > 0 || spatial_output_reservoirs_2.get_element_count() > 0)
 		{
+			initial_candidates_reservoirs.free();
+			spatial_output_reservoirs_1.free();
+			spatial_output_reservoirs_2.free();
+
 			m_renderer->invalidate_render_data_buffers();
 		}
-
-		initial_candidates_reservoirs.free();
-		spatial_output_reservoirs_1.free();
-		spatial_output_reservoirs_2.free();
 	}
 }
 

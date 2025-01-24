@@ -288,6 +288,7 @@ void GPURenderer::pre_render_update(float delta_time)
 	step_animations(delta_time);
 	m_restir_di_render_pass.pre_render_update();
 
+
 	internal_pre_render_update_clear_device_status_buffers();
 	internal_pre_render_update_global_stack_buffer();
 	internal_pre_render_update_prev_frame_g_buffer();
@@ -415,11 +416,13 @@ void GPURenderer::internal_pre_render_update_adaptive_sampling_buffers()
 	else
 	{
 		if (m_pixels_squared_luminance_buffer.get_element_count() > 0 || m_pixels_sample_count_buffer.get_element_count() > 0 || m_pixels_converged_sample_count_buffer->get_element_count() > 0)
-			m_render_data_buffers_invalidated = true;
+		{
+			m_pixels_squared_luminance_buffer.free();
+			m_pixels_sample_count_buffer.free();
+			m_pixels_converged_sample_count_buffer->free();
 
-		m_pixels_squared_luminance_buffer.free();
-		m_pixels_sample_count_buffer.free();
-		m_pixels_converged_sample_count_buffer->free();
+			m_render_data_buffers_invalidated = true;
+		}
 	}
 }
 
@@ -632,7 +635,6 @@ void GPURenderer::render_path_tracing()
 		launch_ReSTIR_DI();
 		launch_path_tracing();
 		launch_GMoN_kernel();
-
 		post_render_update();
 	}
 
@@ -833,7 +835,11 @@ HIPRTRenderData& GPURenderer::get_render_data() { return m_render_data; }
 HIPRTScene& GPURenderer::get_hiprt_scene() { return m_hiprt_scene; }
 std::shared_ptr<HIPRTOrochiCtx> GPURenderer::get_hiprt_orochi_ctx() { return m_hiprt_orochi_ctx; }
 
-void GPURenderer::invalidate_render_data_buffers() { m_render_data_buffers_invalidated = true; }
+void GPURenderer::invalidate_render_data_buffers() 
+{ 
+	m_render_data_buffers_invalidated = true; 
+}
+
 oroDeviceProp GPURenderer::get_device_properties() { return m_device_properties;}
 
 std::string getDeviceName(oroCtx m_ctxt, oroDevice m_device)

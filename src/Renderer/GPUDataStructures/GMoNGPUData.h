@@ -49,6 +49,11 @@ struct GMoNGPUData : public GMoNCPUGPUCommonData
 		current_resolution = make_int2(0, 0);
 	}
 
+	bool is_freed() const
+	{
+		return sets.get_element_count() == 0 && result_framebuffer->get_element_count() == 0;
+	}
+
 	ColorRGB32F* map_result_framebuffer()
 	{
 		if (use_gmon)

@@ -99,6 +99,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 		return;
 	}
 
+
 	ReSTIRDIReservoir temporal_neighbor_reservoir = render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs[temporal_neighbor_pixel_index];
 	if (temporal_neighbor_reservoir.M == 0)
 	{
@@ -108,7 +109,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 		return;
 	}
 
-	// Resampling the initial candidates
 	ReSTIRDIReservoir temporal_reuse_output_reservoir;
 	ReSTIRDISurface temporal_neighbor_surface = get_pixel_surface(render_data, temporal_neighbor_pixel_index, render_data.render_settings.use_prev_frame_g_buffer(), random_number_generator);
 
@@ -134,7 +134,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	// /* ------------------------------- */
 	// Resampling the temporal neighbor
 	// /* ------------------------------- */
-	
+
 	ReSTIRDIReservoir initial_candidates_reservoir = render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs[center_pixel_index];
 	if (temporal_neighbor_reservoir.M > 0)
 	{

@@ -80,7 +80,8 @@ OpenGLInteropBuffer<T>::OpenGLInteropBuffer(int element_count)
 template <typename T>
 OpenGLInteropBuffer<T>::~OpenGLInteropBuffer()
 {
-	free();
+	if (m_initialized)
+		free();
 }
 
 template <typename T>
@@ -201,6 +202,12 @@ void OpenGLInteropBuffer<T>::free()
 			unmap();
 
 		OROCHI_CHECK_ERROR(oroGraphicsUnregisterResource(reinterpret_cast<oroGraphicsResource_t>(m_buffer_resource)));
+	}
+	else
+	{
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Freeing an OpenGLInterop buffer that hasn't been initialized (or has been freed already)!");
+
+		return;
 	}
 	
 	m_element_count = 0;
