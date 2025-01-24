@@ -12,7 +12,7 @@ struct ReSTIRDIPresampledLight;
 struct InitialCandidatesSettings
 {
 	// How many light candidates to resamples during the initial candidates sampling pass
-	int number_of_initial_light_candidates = 1;
+	int number_of_initial_light_candidates = 4;
 	// How many BSDF candidates to resamples during the initial candidates sampling pass
 	int number_of_initial_bsdf_candidates = 1;
 	// For each 'number_of_initial_light_candidates', the probability that this light sample
@@ -60,11 +60,11 @@ struct SpatialPassSettings
 	// Takes values in [0, number_of_passes - 1]
 	int spatial_pass_index = 0;
 	// How many spatial reuse pass to perform
-	int number_of_passes = 1;
+	int number_of_passes = 2;
 	// The radius within which neighbor are going to be reused spatially
 	int reuse_radius = 16;
 	// How many neighbors to reuse during the spatial pass
-	int reuse_neighbor_count = 7;
+	int reuse_neighbor_count = 3;
 
 	// constexpr here just to be able to auto-initialize the 'neighbor_visibility_count'
 	// property at compile time
@@ -136,7 +136,7 @@ struct ReSTIRDISettings
 	// Because the spatial must then resample without the output of the temporal pass, the spatial
 	// pass only resamples on the temporal reservoir buffer, not the temporal + initial candidates reservoir
 	// (which is the output of the temporal pass). This is usually imperceptible.
-	bool do_fused_spatiotemporal = false;
+	bool do_fused_spatiotemporal = true;
 
 	// When finalizing the reservoir in the spatial reuse pass, what value
 	// to cap the reservoirs's M value to.
@@ -151,7 +151,7 @@ struct ReSTIRDISettings
 	// A M-cap value between 5 - 30 is usually good
 	//
 	// 0 for infinite M-cap (don't...)
-	int m_cap = 64;
+	int m_cap = 16;
 
 	// Whether or not to use confidence weights when resampling neighbors.
 	bool use_confidence_weights = true;

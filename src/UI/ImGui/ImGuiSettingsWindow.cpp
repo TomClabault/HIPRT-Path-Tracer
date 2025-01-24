@@ -2755,13 +2755,10 @@ void ImGuiSettingsWindow::draw_performance_metrics_panel()
 			if (render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
 				draw_perf_metric_specific_panel(m_render_window_perf_metrics, ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID, "ReSTIR Temporal Reuse"); 
 			
-			if (render_settings.restir_di_settings.spatial_pass.number_of_passes >= 1)
+			if (render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass && render_settings.restir_di_settings.spatial_pass.number_of_passes >= 1)
 			{
-				if (render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)
-				{
-					std::string spatial_reuse_text = "ReSTIR " + std::to_string(render_settings.restir_di_settings.spatial_pass.number_of_passes) + " Spatial Reuse";
-					draw_perf_metric_specific_panel(m_render_window_perf_metrics, ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID, spatial_reuse_text);
-				}
+				std::string spatial_reuse_text = "ReSTIR " + std::to_string(render_settings.restir_di_settings.spatial_pass.number_of_passes) + " Spatial Reuse";
+				draw_perf_metric_specific_panel(m_render_window_perf_metrics, ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID, spatial_reuse_text);
 			}
 		}
 	}

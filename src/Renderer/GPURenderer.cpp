@@ -264,6 +264,9 @@ void GPURenderer::setup_kernels()
 	if (is_using_gmon())
 		m_gmon_render_pass.compile(m_hiprt_orochi_ctx);
 
+	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_TRUE)
+		m_nee_plus_plus.compile_finalize_accumulation_kernel(m_hiprt_orochi_ctx);
+
 	// Configuring the kernel that will be used to retrieve the size of the RayVolumeState structure.
 	// This size will be needed to resize the 'ray_volume_states' buffer in the GBuffer if the nested dielectrics
 	// stack size changes
@@ -274,9 +277,6 @@ void GPURenderer::setup_kernels()
 	m_ray_volume_state_byte_size_kernel.set_kernel_function_name(GPURenderer::KERNEL_FUNCTION_NAMES.at(GPURenderer::RAY_VOLUME_STATE_SIZE_KERNEL_ID));
 	m_ray_volume_state_byte_size_kernel.synchronize_options_with(*m_global_compiler_options, GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
 	ThreadManager::start_thread(ThreadManager::COMPILE_RAY_VOLUME_STATE_SIZE_KERNEL_KEY, ThreadFunctions::compile_kernel_silent, std::ref(m_ray_volume_state_byte_size_kernel), m_hiprt_orochi_ctx, std::ref(m_func_name_sets));
-
-	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_TRUE)
-		m_nee_plus_plus.compile_finalize_accumulation_kernel(m_hiprt_orochi_ctx);
 
 	// Compiling kernels
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID]), m_hiprt_orochi_ctx, std::ref(m_func_name_sets));
@@ -920,6 +920,9 @@ void GPURenderer::recompile_kernels(bool use_cache)
 		// We only need to compile the ReSTIR DI render pass if ReSTIR DI is actually being used
 		m_restir_di_render_pass.recompile(m_hiprt_orochi_ctx, m_func_name_sets, true, use_cache);
 	m_gmon_render_pass.recompile(m_hiprt_orochi_ctx, true, use_cache);
+
+	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_TRUE)
+		m_nee_plus_plus.recompile(m_hiprt_orochi_ctx);
 
 	m_ray_volume_state_byte_size_kernel.compile_silent(m_hiprt_orochi_ctx, m_func_name_sets, use_cache);
 
