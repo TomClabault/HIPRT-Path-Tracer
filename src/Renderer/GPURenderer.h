@@ -15,15 +15,14 @@
 #include "HostDeviceCommon/RenderData.h"
 #include "Renderer/GPUDataStructures/DenoiserBuffersGPUData.h"
 #include "Renderer/GPUDataStructures/GBufferGPUData.h"
-#include "Renderer/GPUDataStructures/GMoNGPUData.h"
 #include "Renderer/GPUDataStructures/NEEPlusPlusGPUData.h"
 #include "Renderer/GPUDataStructures/StatusBuffersGPUData.h"
 #include "Renderer/HardwareAccelerationSupport.h"
 #include "Renderer/OpenImageDenoiser.h"
 #include "Renderer/RendererAnimationState.h"
 #include "Renderer/RendererEnvmap.h"
-#include "Renderer/StatusBuffersValues.h"
 #include "Renderer/RenderPasses/GMoNRenderPass.h"
+#include "Renderer/StatusBuffersValues.h"
 #include "Renderer/RenderPasses/ReSTIRDIRenderPass.h"
 #include "Scene/Camera.h"
 #include "Scene/CameraAnimation.h"
@@ -120,18 +119,9 @@ public:
 	 * Resets the state of GMoN
 	 */
 	void reset_gmon();
-	/**
-	 * Whether or not the renderer is currently using GMoN
-	 */
-	bool is_using_gmon();
-	/**
-	 * Returns the kernel options used by the kernel that periodically computes the
-	 * G-Median of Means.
-	 * 
-	 * These options can be modified (the number of sets used by GMoN most probably)
-	 * and then the GMoN render pass recompiled 
-	 */
-	GMoNRenderPass& get_gmon_render_pass();
+
+	std::shared_ptr<GMoNRenderPass> get_gmon_render_pass();
+	std::shared_ptr<ReSTIRDIRenderPass> get_ReSTIR_DI_render_pass();
 
 	NEEPlusPlusGPUData& get_nee_plus_plus_data();
 
@@ -197,21 +187,8 @@ public:
 
 	/**
 	 * Resizes all the buffers of the renderer to the given new width and height
-	 * 
-	 * If 'also_resize_interop' is true, OpenGL Interop buffers will also be resized
-	 * by this function call. Resizing OpenGL Interop buffers cannot be done on a
-	 * thread other than the main thread so if resizing the renderer asynchronously 
-	 * on multiple threads, 'also_resize_interop' needs to be passed as false and 
-	 * GPURenderer::resize_interop_buffers() must then be called on the main thread
 	 */
-	void resize(int new_width, int new_height, bool also_resize_interop = true);
-	/**
-	 * Resizes only OpenGL Interop Buffers. Useful to resize the renderer on
-	 * a separate thread because OpenGL interop buffers cannot be resized on a
-	 * separate thread so we need to resize them on the main thread,
-	 * using this function
-	 */
-	void resize_interop_buffers(int new_width, int new_height);
+	void resize(int new_width, int new_height);
 
 	/**
 	 * Maps the buffers shared with OpenGL that are needed for rendering the frame and sets
@@ -260,6 +237,7 @@ public:
 	void download_status_buffers();
 
 	HIPRTRenderSettings& get_render_settings();
+	std::shared_ptr<ApplicationSettings> get_application_settings();
 	WorldSettings& get_world_settings();
 	HIPRTRenderData& get_render_data();
 	HIPRTScene& get_hiprt_scene();
@@ -442,7 +420,6 @@ private:
 	void launch_camera_rays();
 	//void launch_ReSTIR_DI();
 	void launch_path_tracing();
-	void launch_GMoN_kernel();
 	void launch_debug_kernel();
 
 	/**
@@ -492,12 +469,6 @@ private:
 	void internal_pre_render_update_nee_plus_plus(float delta_time);
 
 	/**
-	 * Frees / allocates the GMoN buffer depending on whether or not GMoN is being used
-	 */
-	void internal_pre_render_update_gmon();
-	void internal_post_render_update_gmon();
-
-	/**
 	 * Allocates/frees the global buffer for BVH traversal when UseSharedStackBVHTraversal is TRUE
 	 */
 	void internal_pre_render_update_global_stack_buffer();
@@ -507,6 +478,7 @@ private:
 
 	void internal_clear_m_status_buffers();
 
+	// Some render passes want the application settings of the render window so it's there
 	std::shared_ptr<ApplicationSettings> m_application_settings;
 
 	// Properties of the device
@@ -566,8 +538,6 @@ private:
 	StatusBuffersValues m_status_buffers_values;
 
 	std::unordered_map<std::string, std::shared_ptr<RenderPass>> m_render_passes;
-	//ReSTIRDIRenderPass m_restir_di_render_pass;
-	GMoNRenderPass m_gmon_render_pass;
 
 	// Some additional info about the parsed scene such as materials names, mesh names, ...
 	SceneMetadata m_parsed_scene_metadata;

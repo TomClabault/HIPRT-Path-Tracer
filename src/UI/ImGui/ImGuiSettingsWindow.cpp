@@ -85,7 +85,7 @@ void ImGuiSettingsWindow::draw_header()
 		else
 		{
 			// Time is < 0.0f i.e. the timer has expired and we're waiting for a refresh
-			if (m_renderer->is_using_gmon() && m_renderer->get_gmon_render_pass().recomputation_requested())
+			if (m_renderer->get_gmon_render_pass()->using_gmon() && m_renderer->get_gmon_render_pass()->recomputation_requested())
 				// If we're waiting for GMoN, indicating it
 				ImGui::Text("Viewport refresh in: 0.000s --- Waiting for GMoN");
 			else
@@ -260,7 +260,7 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 		{
 			if (ImGui::InputInt("Max Sample Count", &m_application_settings->max_sample_count))
 				m_application_settings->max_sample_count = std::max(m_application_settings->max_sample_count, 0);
-			if (m_renderer->is_using_gmon())
+			if (m_renderer->get_gmon_render_pass()->using_gmon())
 			{
 				// Using GMoN
 
@@ -486,7 +486,7 @@ bool ImGuiSettingsWindow::display_view_disabled(DisplayViewType display_view_typ
 		return !render_settings.has_access_to_adaptive_sampling_buffers();
 
 	case DisplayViewType::GMON_BLEND:
-		return !m_renderer->is_using_gmon();
+		return !m_renderer->get_gmon_render_pass()->using_gmon();
 
 	case DisplayViewType::DENOISED_BLEND:
 		return !m_application_settings->enable_denoising;
@@ -536,7 +536,7 @@ void ImGuiSettingsWindow::display_view_disabled_action(DisplayViewType display_v
 
 	case DisplayViewType::GMON_BLEND:
 		// Enabling GMoN
-		m_renderer->get_gmon_render_pass().get_gmon_data().use_gmon = true;
+		m_renderer->get_gmon_render_pass()->get_gmon_data().using_gmon = true;
 		toggle_gmon();
 
 		return;
@@ -2207,11 +2207,14 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 	}
 
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
+	std::shared_ptr<GMoNRenderPass> gmon_render_pass = m_renderer->get_gmon_render_pass();
+	GMoNGPUData& gmon_data = gmon_render_pass->get_gmon_data();
+
 	if (ImGui::CollapsingHeader("GMoN"))
 	{
 		ImGui::TreePush("GMoN tree post processing");
 
-		if (ImGui::Checkbox("Use GMoN", &m_renderer->get_gmon_render_pass().get_gmon_data().use_gmon))
+		if (ImGui::Checkbox("Use GMoN", &gmon_data.using_gmon))
 			toggle_gmon();
 
 		ImGuiRenderer::show_help_marker("Use GMoN for fireflies elimination.\n"
@@ -2223,9 +2226,9 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 			""
 			"Implementation following [Firefly removal in Monte Carlo rendering with adaptive Median of meaNs, Buisine et al., 2021]");
 
-		if (m_renderer->get_gmon_render_pass().get_gmon_data().use_gmon)
+		if (gmon_data.using_gmon)
 		{
-			ImGui::Text("VRAM Usage: %.3fMB", m_renderer->get_gmon_render_pass().get_VRAM_usage_bytes() / 1000000.0f);
+			ImGui::Text("VRAM Usage: %.3fMB", gmon_render_pass->get_VRAM_usage_bytes() / 1000000.0f);
 
 			bool gmon_mode_changed = false;
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
@@ -2270,13 +2273,13 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 				}
 			}
 
-			if (ImGui::SliderFloat("GMoN blend factor", &m_renderer->get_gmon_render_pass().get_gmon_data().gmon_blend_factor, 0.0f, 1.0f))
+			if (ImGui::SliderFloat("GMoN blend factor", &gmon_data.gmon_blend_factor, 0.0f, 1.0f))
 			{
-				m_renderer->get_gmon_render_pass().get_gmon_data().gmon_auto_blend_factor = false;
+				gmon_data.gmon_auto_blend_factor = false;
 				m_render_window->set_force_viewport_refresh(true);
 			}
 			ImGui::SameLine();
-			ImGui::Checkbox("Auto", &m_renderer->get_gmon_render_pass().get_gmon_data().gmon_auto_blend_factor);
+			ImGui::Checkbox("Auto", &gmon_data.gmon_auto_blend_factor);
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			if (m_render_window->get_display_view_system()->get_current_display_view_type() != DisplayViewType::GMON_BLEND)
@@ -2295,7 +2298,8 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 
 void ImGuiSettingsWindow::toggle_gmon()
 {
-	bool gmon_now_enabled = m_renderer->get_gmon_render_pass().get_gmon_data().use_gmon;
+	std::shared_ptr<GMoNRenderPass> gmon_render_pass = m_renderer->get_gmon_render_pass();
+	bool gmon_now_enabled = gmon_render_pass->get_gmon_data().using_gmon;
 	if (m_render_window->get_display_view_system()->get_current_display_view_type() == DisplayViewType::GMON_BLEND && !gmon_now_enabled)
 		// We had the GMoN Blend view active but GMoN just got disabled so we're switching to the default view
 		m_render_window->get_display_view_system()->queue_display_view_change(DisplayViewType::DEFAULT);
@@ -2303,7 +2307,7 @@ void ImGuiSettingsWindow::toggle_gmon()
 		// We just enabled GMoN, automatically switching to the GMoN view for convenience
 		m_render_window->get_display_view_system()->queue_display_view_change(DisplayViewType::GMON_BLEND);
 
-	if (gmon_now_enabled && !m_renderer->get_gmon_render_pass().get_kernels()[GMoNRenderPass::COMPUTE_GMON_KERNEL]->has_been_compiled())
+	if (gmon_now_enabled && !gmon_render_pass->get_all_kernels()[GMoNRenderPass::COMPUTE_GMON_KERNEL]->has_been_compiled())
 		// The GMoN kernel hasn't been compiled yet, compiling it
 		m_renderer->recompile_kernels();
 
@@ -2756,7 +2760,7 @@ void ImGuiSettingsWindow::draw_performance_metrics_panel()
 		m_render_window_perf_metrics->resize_window(rolling_window_size);
 
 	draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::CAMERA_RAYS_KERNEL_ID, "Camera rays");
-	if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI)
+	if (m_renderer->get_ReSTIR_DI_render_pass()->using_ReSTIR_DI())
 	{
 		if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING) == KERNEL_OPTION_TRUE)
 			draw_perf_metric_specific_panel(m_render_window_perf_metrics, ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID, "ReSTIR Light Presampling");

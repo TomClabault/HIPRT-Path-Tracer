@@ -321,12 +321,7 @@ RenderWindow::RenderWindow(int renderer_width, int renderer_height, std::shared_
 	// Disabling auto samples per frame is accumulation is OFF
 	m_application_settings->auto_sample_per_frame = m_renderer->get_render_settings().accumulate ? m_application_settings->auto_sample_per_frame : false;
 
-	ThreadManager::start_thread(ThreadManager::RENDER_WINDOW_RENDERER_INITIAL_RESIZE, [this, renderer_width, renderer_height]() {
-		m_renderer->resize(renderer_width, renderer_height, /* resize interop buffers */ false);
-	});
-	// We need to resize OpenGL interop buffers on the main thread becaues they
-	// need the OpenGL context which is only available to the main thread
-	m_renderer->resize_interop_buffers(renderer_width, renderer_height);
+	m_renderer->resize(renderer_width, renderer_height);
 
 	ThreadManager::start_thread(ThreadManager::RENDER_WINDOW_CONSTRUCTOR, [this, renderer_width, renderer_height]() {
 		m_denoiser = std::make_shared<OpenImageDenoiser>();
@@ -494,9 +489,7 @@ void RenderWindow::resize(int pixels_width, int pixels_height)
 		// Integer maths will round it down to 0
 		return;
 	
-	m_renderer->synchronize_kernel();
 	m_renderer->resize(new_render_width, new_render_height);
-
 	m_denoiser->resize(new_render_width, new_render_height);
 	m_denoiser->finalize();
 
@@ -510,7 +503,6 @@ void RenderWindow::change_resolution_scaling(float new_scaling)
 	float new_render_width = std::floor(m_viewport_width * new_scaling);
 	float new_render_height = std::floor(m_viewport_height * new_scaling);
 
-	m_renderer->synchronize_kernel();
 	m_renderer->resize(new_render_width, new_render_height);
 	m_denoiser->resize(new_render_width, new_render_height);
 	m_denoiser->finalize();
@@ -650,7 +642,7 @@ bool RenderWindow::needs_viewport_refresh()
 	if (!needs_refresh)
 		return false;
 
-	if (m_renderer->is_using_gmon())
+	if (m_renderer->get_gmon_render_pass()->using_gmon())
 	{
 		// With GMoN however, we want to recompute the GMoN framebuffer with the new samples accumulated so far
 		// before refreshing the viewport
@@ -659,13 +651,13 @@ bool RenderWindow::needs_viewport_refresh()
 			// No need of 
 			return false;
 
-		if (m_renderer->get_gmon_render_pass().recomputation_completed())
+		if (m_renderer->get_gmon_render_pass()->recomputation_completed())
 			// We requested a GMoN recomputation before and it is actually complete, we're ready to display
 			return true;
 		else
 		{
 			// So if we need a refresh, we're going to request a GMoN computation first
-			m_renderer->get_gmon_render_pass().request_recomputation();
+			m_renderer->get_gmon_render_pass()->request_recomputation();
 
 			return false;
 		}
