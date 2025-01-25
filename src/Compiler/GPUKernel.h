@@ -31,8 +31,8 @@ public:
 	void set_kernel_file_path(const std::string& kernel_file_path);
 	void set_kernel_function_name(const std::string& kernel_function_name);
 
-	void compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, std::vector<hiprtFuncNameSet> func_name_sets = {}, bool use_cache = true);
-	void compile_silent(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, std::vector<hiprtFuncNameSet> func_name_sets = {}, bool use_cache = true);
+	void compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, std::vector<hiprtFuncNameSet> func_name_sets = {}, bool use_cache = true, bool silent = true);
+	//void compile_silent(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, std::vector<hiprtFuncNameSet> func_name_sets = {}, bool use_cache = true);
 	void launch_synchronous(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, float* execution_time_out = nullptr);
 	void launch_asynchronous(int tile_size_x, int tile_size_y, int res_x, int res_y, void** launch_args, oroStream_t stream);
 	void launch_asynchronous_3D(int tile_size_x, int tile_size_y, int tile_size_z, int res_x, int res_y, int res_z, void** launch_args, oroStream_t stream);
@@ -97,7 +97,7 @@ public:
 	 * You can thus synchronize all your kernel with that global set of macros and when it is modified, 
 	 * all the kernels will use the new values.
 	 */
-	void synchronize_options_with(const GPUKernelCompilerOptions& other_options, const std::unordered_set<std::string>& options_excluded = {});
+	void synchronize_options_with(std::shared_ptr<GPUKernelCompilerOptions> other_options, const std::unordered_set<std::string>& options_excluded = {});
 
 	/**
 	 * Returns the time taken for the last execution of this kernel in milliseconds

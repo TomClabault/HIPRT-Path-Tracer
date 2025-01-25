@@ -21,7 +21,7 @@ GMoNRenderPass::GMoNRenderPass(GPURenderer* renderer) : GMoNRenderPass()
 {
 	m_renderer = renderer;
 
-	m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL]->synchronize_options_with(*renderer->get_global_compiler_options(), {});
+	m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL]->synchronize_options_with(renderer->get_global_compiler_options(), {});
 }
 
 void GMoNRenderPass::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets)
@@ -37,10 +37,7 @@ void GMoNRenderPass::recompile(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx
 	if (!using_gmon())
 		return;
 
-	if (silent)
-		m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL]->compile_silent(hiprt_orochi_ctx, {}, use_cache);
-	else
-		m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL]->compile(hiprt_orochi_ctx, {}, use_cache);
+	m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL]->compile(hiprt_orochi_ctx, {}, use_cache, silent);
 }
 
 bool GMoNRenderPass::pre_render_update(float delta_time)

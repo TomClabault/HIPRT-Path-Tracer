@@ -54,6 +54,13 @@ bool RenderGraph::launch()
 
 void RenderGraph::launch_render_pass_with_dependencies(const std::string& render_pass_name, std::shared_ptr<RenderPass> render_pass)
 {
+	if (render_pass == nullptr)
+	{
+		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "The render pass \"%s\" wasn't added to the RenderGraph but appears as a dependency of another render pass!", render_pass_name.c_str());
+
+		return;
+	}
+
 	// Launching all the dependencies first
 	for (const std::string& dependency : render_pass->get_dependencies())
 		launch_render_pass_with_dependencies(dependency, m_render_passes[dependency]);
