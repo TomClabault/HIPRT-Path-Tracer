@@ -32,7 +32,7 @@ public:
 	 * Returns true or false depending on whether or not the render buffer data have been invalidated
 	 */
 	virtual bool pre_render_update(float delta_time) override;
-	virtual void launch() override;
+	virtual bool launch() override;
 	/**
 	 * Does the actual allocation/deallocation of the GMoN buffers.
 	 * 
@@ -72,16 +72,11 @@ public:
 	GMoNGPUData& get_gmon_data();
 	unsigned int get_VRAM_usage_bytes() const;
 
-
-	virtual bool has_been_launched() override;
-
 private:
 	// Data for the GMoN estimator
 	GMoNGPUData m_gmon;
 
 	std::map<std::string, std::shared_ptr<GPUKernel>> m_kernels;
-
-	bool m_launched = false;
 };
 
 #endif

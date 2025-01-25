@@ -248,19 +248,12 @@ void ReSTIRDIRenderPass::reset()
 	odd_frame = false;
 }
 
-bool ReSTIRDIRenderPass::has_been_launched()
-{
-	return m_launched;
-}
-
-void ReSTIRDIRenderPass::launch()
+bool ReSTIRDIRenderPass::launch()
 {
 	ReSTIRDISettings& restir_di_settings = m_renderer->get_render_data().render_settings.restir_di_settings;
 
 	if (using_ReSTIR_DI())
 	{
-		m_launched = true;
-
 		// If ReSTIR DI is enabled
 
 		if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING) == KERNEL_OPTION_TRUE)
@@ -286,6 +279,8 @@ void ReSTIRDIRenderPass::launch()
 
 		odd_frame = !odd_frame;
 	}
+
+	return using_ReSTIR_DI();
 }
 
 LightPresamplingParameters ReSTIRDIRenderPass::configure_light_presampling_pass()

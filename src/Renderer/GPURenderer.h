@@ -22,6 +22,7 @@
 #include "Renderer/RendererAnimationState.h"
 #include "Renderer/RendererEnvmap.h"
 #include "Renderer/RenderPasses/GMoNRenderPass.h"
+#include "Renderer/RenderPasses/RenderGraph.h"
 #include "Renderer/StatusBuffersValues.h"
 #include "Renderer/RenderPasses/ReSTIRDIRenderPass.h"
 #include "Scene/Camera.h"
@@ -537,7 +538,7 @@ private:
 	// These values are updated when the pre_render_update() is called
 	StatusBuffersValues m_status_buffers_values;
 
-	std::unordered_map<std::string, std::shared_ptr<RenderPass>> m_render_passes;
+	RenderGraph m_render_graph;
 
 	// Some additional info about the parsed scene such as materials names, mesh names, ...
 	SceneMetadata m_parsed_scene_metadata;

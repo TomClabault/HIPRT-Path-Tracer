@@ -100,10 +100,10 @@ bool GMoNRenderPass::pre_render_update(float delta_time)
 	return false;
 }
 
-void GMoNRenderPass::launch()
+bool GMoNRenderPass::launch()
 {
 	if (!using_gmon())
-		return;
+		return false;
 
 	std::shared_ptr<ApplicationSettings> application_settings = m_renderer->get_application_settings();
 
@@ -131,11 +131,14 @@ void GMoNRenderPass::launch()
 			launch_args,
 			m_renderer->get_main_stream());
 
-		m_launched = true;
 		m_gmon.m_gmon_recomputed = true;
 		m_gmon.m_gmon_recomputation_requested = false;
 		m_gmon.last_recomputed_sample_count = m_renderer->get_render_settings().sample_number + 1;
+
+		return true;
 	}
+
+	return false;
 }
 
 void GMoNRenderPass::post_render_update()
@@ -270,9 +273,4 @@ std::map<std::string, std::shared_ptr<GPUKernel>> GMoNRenderPass::get_all_kernel
 std::map<std::string, std::shared_ptr<GPUKernel>> GMoNRenderPass::get_tracing_kernels()
 {
 	return {};
-}
-
-bool GMoNRenderPass::has_been_launched()
-{
-	return m_launched;
 }
