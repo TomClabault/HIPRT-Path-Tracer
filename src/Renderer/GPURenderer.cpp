@@ -1,4 +1,4 @@
-	/*
+/*
  * Copyright 2024 Tom Clabault. GNU GPL3 license.
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
@@ -9,6 +9,7 @@
 #include "Renderer/Baker/GPUBaker.h"
 #include "Renderer/Baker/GPUBakerConstants.h"
 #include "Renderer/GPURenderer.h"
+#include "Renderer/RenderPasses/FillGBufferRenderPass.h"
 #include "Threads/ThreadFunctions.h"
 #include "Threads/ThreadManager.h"
 #include "Threads/ThreadFunctions.h"
@@ -18,9 +19,7 @@
 #include <condition_variable>
 
 const std::string GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID = "NEE++ Caching Prepass";
-const std::string GPURenderer::CAMERA_RAYS_KERNEL_ID = "Camera Rays";
 const std::string GPURenderer::PATH_TRACING_KERNEL_ID = "Path Tracing";
-const std::string GPURenderer::RAY_VOLUME_STATE_SIZE_KERNEL_ID = "Ray Volume State Size";
 
 // List of partials_options that will be specific to each kernel. We don't want these partials_options
 	// to be synchronized between kernels
@@ -32,16 +31,12 @@ const std::unordered_set<std::string> GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZ
 
 const std::unordered_map<std::string, std::string> GPURenderer::KERNEL_FUNCTION_NAMES = 
 {
-	{ CAMERA_RAYS_KERNEL_ID, "CameraRays" },
 	{ PATH_TRACING_KERNEL_ID, "FullPathTracer" },
-	{ RAY_VOLUME_STATE_SIZE_KERNEL_ID, "RayVolumeStateSize" },
 };
 
 const std::unordered_map<std::string, std::string> GPURenderer::KERNEL_FILES =
 {
-	{ CAMERA_RAYS_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/CameraRays.h" },
 	{ PATH_TRACING_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/FullPathTracer.h" },
-	{ RAY_VOLUME_STATE_SIZE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/Utils/RayVolumeStateSize.h" },
 };
 
 const std::string GPURenderer::ALL_RENDER_PASSES_TIME_KEY = "FullFrameTime";
@@ -68,7 +63,7 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx, std::sha
 
 	setup_brdfs_data();
 	setup_filter_functions();
-	setup_kernels();
+	setup_render_passes();
 
 	m_render_pass_times[GPURenderer::ALL_RENDER_PASSES_TIME_KEY] = 0.0f;
 	for (auto& id_to_pass : GPURenderer::KERNEL_FUNCTION_NAMES)
@@ -231,7 +226,7 @@ void GPURenderer::setup_filter_functions()
 	m_render_data.hiprt_function_table = func_table;
 }
 
-void GPURenderer::setup_kernels()
+void GPURenderer::setup_render_passes()
 {
 	m_global_compiler_options = std::make_shared<GPUKernelCompilerOptions>();
 	// Adding hardware acceleration by default if supported
@@ -242,24 +237,22 @@ void GPURenderer::setup_kernels()
 	// being perfect, this was measured on a 7900XTX with hardware accelerated ray tracing so... your mileage in terms of what 
 	// numbers are the best may vary.)
 	
-	// Configuring the kernels
-	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID] = std::make_shared<GPUKernel>();
-	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID]->set_kernel_file_path(GPURenderer::KERNEL_FILES.at(GPURenderer::CAMERA_RAYS_KERNEL_ID));
-	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID]->set_kernel_function_name(GPURenderer::KERNEL_FUNCTION_NAMES.at(GPURenderer::CAMERA_RAYS_KERNEL_ID));
-	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID]->synchronize_options_with(*m_global_compiler_options, GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
-	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
-	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 8);
-
+	// Configuring the render passes
 	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID] = std::make_shared<GPUKernel>();
 	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID]->set_kernel_file_path(GPURenderer::KERNEL_FILES.at(GPURenderer::PATH_TRACING_KERNEL_ID));
 	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID]->set_kernel_function_name(GPURenderer::KERNEL_FUNCTION_NAMES.at(GPURenderer::PATH_TRACING_KERNEL_ID));
-	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID]->synchronize_options_with(*m_global_compiler_options, GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
+	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID]->synchronize_options_with(m_global_compiler_options, GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
 	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
 	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 8);
 
+	std::shared_ptr<FillGBufferRenderPass> camera_rays_render_pass = std::make_shared<FillGBufferRenderPass>(this);
+
 	std::shared_ptr<ReSTIRDIRenderPass> restir_di_render_pass = std::make_shared<ReSTIRDIRenderPass>(this);
+	restir_di_render_pass->add_dependency(FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS);
+
 	std::shared_ptr<GMoNRenderPass> gmon_render_pass  = std::make_shared<GMoNRenderPass>(this);
 
+	m_render_graph.add_render_pass(FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS, camera_rays_render_pass);
 	m_render_graph.add_render_pass(ReSTIRDIRenderPass::RESTIR_DI_RENDER_PASS, restir_di_render_pass);
 	m_render_graph.add_render_pass(GMoNRenderPass::GMON_RENDER_PASS, gmon_render_pass);
 
@@ -268,19 +261,7 @@ void GPURenderer::setup_kernels()
 	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_TRUE)
 		m_nee_plus_plus.compile_finalize_accumulation_kernel(m_hiprt_orochi_ctx);
 
-	// Configuring the kernel that will be used to retrieve the size of the RayVolumeState structure.
-	// This size will be needed to resize the 'ray_volume_states' buffer in the GBuffer if the nested dielectrics
-	// stack size changes
-	//
-	// We're compiling it serially so that we're sure that we can retrieve the RayVolumeState size on the GPU after the
-	// GPURenderer is constructed
-	m_ray_volume_state_byte_size_kernel.set_kernel_file_path(GPURenderer::KERNEL_FILES.at(GPURenderer::RAY_VOLUME_STATE_SIZE_KERNEL_ID));
-	m_ray_volume_state_byte_size_kernel.set_kernel_function_name(GPURenderer::KERNEL_FUNCTION_NAMES.at(GPURenderer::RAY_VOLUME_STATE_SIZE_KERNEL_ID));
-	m_ray_volume_state_byte_size_kernel.synchronize_options_with(*m_global_compiler_options, GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
-	ThreadManager::start_thread(ThreadManager::COMPILE_RAY_VOLUME_STATE_SIZE_KERNEL_KEY, ThreadFunctions::compile_kernel_silent, std::ref(m_ray_volume_state_byte_size_kernel), m_hiprt_orochi_ctx, std::ref(m_func_name_sets));
-
 	// Compiling kernels
-	ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID]), m_hiprt_orochi_ctx, std::ref(m_func_name_sets));
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID]), m_hiprt_orochi_ctx, std::ref(m_func_name_sets));
 }
 
@@ -292,7 +273,6 @@ void GPURenderer::pre_render_update(float delta_time)
 
 	internal_pre_render_update_clear_device_status_buffers();
 	internal_pre_render_update_global_stack_buffer();
-	internal_pre_render_update_prev_frame_g_buffer();
 	internal_pre_render_update_adaptive_sampling_buffers();
 	internal_pre_render_update_nee_plus_plus(delta_time);
 
@@ -358,34 +338,6 @@ void GPURenderer::internal_clear_m_status_buffers()
 {
 	m_status_buffers_values.one_ray_active = true;
 	m_status_buffers_values.pixel_converged_count = 0;
-}
-
-void GPURenderer::internal_pre_render_update_prev_frame_g_buffer()
-{
-	if (m_render_data.render_settings.use_prev_frame_g_buffer(this))
-	{
-		// If at least one buffer has a size of 0, we assume that this means that the whole G-buffer is deallocated
-		// and so we're going to have to reallocate it
-		bool prev_frame_g_buffer_needs_resize = m_g_buffer_prev_frame.first_hit_prim_index.get_element_count() == 0;
-
-		if (prev_frame_g_buffer_needs_resize)
-		{
-			m_g_buffer_prev_frame.resize(m_render_resolution.x * m_render_resolution.y, get_ray_volume_state_byte_size());
-			m_render_data_buffers_invalidated = true;
-		}
-	}
-	else
-	{
-		// If we're not using the G-buffer, indicating that in use_last_frame_g_buffer so that the shader doesn't
-		// try to use it
-
-		if (m_g_buffer_prev_frame.first_hit_prim_index.get_element_count() > 0)
-		{
-			// If the buffers aren't freed already
-			m_g_buffer_prev_frame.free();
-			m_render_data_buffers_invalidated = true;
-		}
-	}
 }
 
 void GPURenderer::internal_pre_render_update_adaptive_sampling_buffers()
@@ -622,7 +574,6 @@ void GPURenderer::render_path_tracing()
 			// active, ...)
 			m_render_data.render_settings.do_update_status_buffers = true;
 		
-		launch_camera_rays();
 		m_render_graph.launch();
 		launch_path_tracing();
 
@@ -650,14 +601,6 @@ void GPURenderer::launch_nee_plus_plus_caching_prepass()
 
 	m_render_data.random_seed = m_rng.xorshift32();
 	m_kernels[GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
-}
-
-void GPURenderer::launch_camera_rays()
-{
-	void* launch_args[] = { &m_render_data, &m_render_resolution };
-
-	m_render_data.random_seed = m_rng.xorshift32();
-	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
 }
 
 void GPURenderer::launch_path_tracing()
@@ -711,11 +654,6 @@ void GPURenderer::resize(int new_width, int new_height)
 
 	if (m_render_data.render_settings.has_access_to_adaptive_sampling_buffers())
 		m_pixels_converged_sample_count_buffer->resize(new_width * new_height);
-
-	m_g_buffer.resize(new_width * new_height, get_ray_volume_state_byte_size());
-
-	if (m_render_data.render_settings.use_prev_frame_g_buffer(this))
-		m_g_buffer_prev_frame.resize(new_width * new_height, get_ray_volume_state_byte_size());
 
 	if (m_render_data.render_settings.has_access_to_adaptive_sampling_buffers())
 	{
@@ -887,14 +825,12 @@ void GPURenderer::recompile_kernels(bool use_cache)
 	take_kernel_compilation_priority();
 
 	for (auto& name_to_kenel : m_kernels)
-		name_to_kenel.second->compile_silent(m_hiprt_orochi_ctx, m_func_name_sets, use_cache);
+		name_to_kenel.second->compile(m_hiprt_orochi_ctx, m_func_name_sets, use_cache, true);
 
 	m_render_graph.recompile(m_hiprt_orochi_ctx, m_func_name_sets, true);
 
 	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_TRUE)
 		m_nee_plus_plus.recompile(m_hiprt_orochi_ctx);
-
-	m_ray_volume_state_byte_size_kernel.compile_silent(m_hiprt_orochi_ctx, m_func_name_sets, use_cache);
 
 	// The main thread is done with the compilation, we can release the other threads
 	// so that they can continue compiling (background compilation of shaders most likely)
@@ -980,8 +916,8 @@ void GPURenderer::precompile_direct_light_sampling_kernels()
 					partials_options.set_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BSDF_MIS, use_envmap_mis);
 
 					// Recompiling all the kernels with the new options
-					for (const std::string& kernel_id : get_all_kernel_ids())
-						precompile_kernel(kernel_id, partials_options);
+					/*for (const std::string& kernel_id : get_all_kernel_ids())
+						precompile_kernel(kernel_id, partials_options);*/
 
 					/*for (auto& render_pass : m_render_passes)
 						render_pass.second->precompile_kernels();
@@ -994,8 +930,8 @@ void GPURenderer::precompile_direct_light_sampling_kernels()
 						partials_options.set_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION, 1 - m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION));
 
 						// Recompiling all the kernels with the new options
-						for (const std::string& kernel_id : get_all_kernel_ids())
-							precompile_kernel(kernel_id, partials_options);
+						/*for (const std::string& kernel_id : get_all_kernel_ids())
+							precompile_kernel(kernel_id, partials_options);*/
 						/*for (auto& render_pass : m_render_passes)
 							render_pass.second->precompile_kernels();
 						m_restir_di_render_pass.precompile_kernels(partials_options, m_hiprt_orochi_ctx, m_func_name_sets);*/
@@ -1035,8 +971,8 @@ void GPURenderer::precompile_ReSTIR_DI_kernels()
 							partials_options.set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_RESTIR_DI);
 
 							// Recompiling all the kernels with the new options
-							for (const std::string& kernel_id : get_all_kernel_ids())
-								precompile_kernel(kernel_id, partials_options);
+							/*for (const std::string& kernel_id : get_all_kernel_ids())
+								precompile_kernel(kernel_id, partials_options);*/
 
 							/*for (auto& render_pass : m_render_passes)
 								render_pass.second->precompile_kernels();
@@ -1088,25 +1024,25 @@ std::map<std::string, std::shared_ptr<GPUKernel>> GPURenderer::get_tracing_kerne
 	return kernels;
 }
 
-std::vector<std::string> GPURenderer::get_all_kernel_ids()
-{
-	std::vector<std::string> all_ids;
-	// Size - 1 because we're going to excluded the ray volume state kernel
-	all_ids.reserve(GPURenderer::KERNEL_FUNCTION_NAMES.size() - 1);
-
-	for (const auto& kernel_function_name : GPURenderer::KERNEL_FUNCTION_NAMES)
-	{
-		const std::string& kernel_id = kernel_function_name.first;
-		if (kernel_id == GPURenderer::RAY_VOLUME_STATE_SIZE_KERNEL_ID)
-			// Ignoring this guy because he is special and we don't want it
-			// in the render pass times
-			continue;
-
-		all_ids.push_back(kernel_id);
-	}
-
-	return all_ids;
-}
+//std::vector<std::string> GPURenderer::get_all_kernel_ids()
+//{
+//	std::vector<std::string> all_ids;
+//	// Size - 1 because we're going to excluded the ray volume state kernel
+//	all_ids.reserve(GPURenderer::KERNEL_FUNCTION_NAMES.size() - 1);
+//
+//	for (const auto& kernel_function_name : GPURenderer::KERNEL_FUNCTION_NAMES)
+//	{
+//		const std::string& kernel_id = kernel_function_name.first;
+//		if (kernel_id == GPURenderer::RAY_VOLUME_STATE_SIZE_KERNEL_ID)
+//			// Ignoring this guy because he is special and we don't want it
+//			// in the render pass times
+//			continue;
+//
+//		all_ids.push_back(kernel_id);
+//	}
+//
+//	return all_ids;
+//}
 
 void GPURenderer::set_debug_trace_kernel(const std::string& kernel_name, GPUKernelCompilerOptions options)
 {
@@ -1136,8 +1072,8 @@ oroStream_t GPURenderer::get_main_stream()
 void GPURenderer::compute_render_pass_times()
 {
 	// Registering the render times of all the kernels by iterating over all the kernels
-	for (const std::string& kernel_id : get_all_kernel_ids())
-		m_render_pass_times[kernel_id] = m_kernels[kernel_id]->get_last_execution_time();
+	/*for (const std::string& kernel_id : get_all_kernel_ids())
+		m_render_pass_times[kernel_id] = m_kernels[kernel_id]->get_last_execution_time();*/
 
 	m_render_graph.compute_render_times();
 
@@ -1176,8 +1112,8 @@ void GPURenderer::update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer
 	compute_render_pass_times();
 
 	// Also adding the times of the various passes
-	for (const std::string& kernel_id : get_all_kernel_ids())
-		perf_metrics->add_value(kernel_id, m_render_pass_times[kernel_id]);
+	/*for (const std::string& kernel_id : get_all_kernel_ids())
+		perf_metrics->add_value(kernel_id, m_render_pass_times[kernel_id]);*/
 
 	m_render_graph.update_perf_metrics(perf_metrics);
 
@@ -1246,19 +1182,6 @@ void GPURenderer::update_render_data()
 
 		m_render_data.buffers.material_textures = reinterpret_cast<oroTextureObject_t*>(m_hiprt_scene.gpu_materials_textures.get_device_pointer());
 		m_render_data.buffers.texcoords = reinterpret_cast<float2*>(m_hiprt_scene.texcoords_buffer.get_device_pointer());
-
-		m_render_data.g_buffer = m_g_buffer.get_device_g_buffer();
-
-		if (m_render_data.render_settings.use_prev_frame_g_buffer(this))
-			// Only setting the pointers of the buffers if we're actually using the g-buffer of the previous frame
-			m_render_data.g_buffer_prev_frame = m_g_buffer_prev_frame.get_device_g_buffer();
-		else
-		{
-			m_render_data.g_buffer_prev_frame.materials = nullptr;
-			m_render_data.g_buffer_prev_frame.geometric_normals = nullptr;
-			m_render_data.g_buffer_prev_frame.shading_normals = nullptr;
-			m_render_data.g_buffer_prev_frame.primary_hit_position = nullptr;
-		}
 
 		if (m_render_data.render_settings.has_access_to_adaptive_sampling_buffers())
 		{
@@ -1501,31 +1424,6 @@ const std::vector<int>& GPURenderer::get_mesh_material_indices()
 	return m_parsed_scene_metadata.mesh_material_indices;
 }
 
-size_t GPURenderer::get_ray_volume_state_byte_size()
-{
-	OrochiBuffer<size_t> out_size_buffer(1);
-	size_t* out_size_buffer_pointer = out_size_buffer.get_device_pointer();
-
-	ThreadManager::join_threads(ThreadManager::COMPILE_RAY_VOLUME_STATE_SIZE_KERNEL_KEY);
-
-	void* launch_args[] = { &out_size_buffer_pointer };
-	m_ray_volume_state_byte_size_kernel.launch_synchronous(1, 1, 1, 1, launch_args, 0);
-	OROCHI_CHECK_ERROR(oroStreamSynchronize(0));
-
-	return out_size_buffer.download_data()[0];
-}
-
-void GPURenderer::resize_g_buffer_ray_volume_states()
-{
-	synchronize_kernel();
-
-	m_g_buffer.ray_volume_states.resize(m_render_resolution.x * m_render_resolution.y, get_ray_volume_state_byte_size());
-	if (m_render_data.render_settings.use_prev_frame_g_buffer())
-		m_g_buffer_prev_frame.ray_volume_states.resize(m_render_resolution.x * m_render_resolution.y, get_ray_volume_state_byte_size());
-
-	m_render_data_buffers_invalidated = true;
-}
-
 Camera& GPURenderer::get_camera()
 {
 	return m_camera;
@@ -1545,6 +1443,11 @@ void GPURenderer::set_camera(const Camera& camera)
 {
 	m_camera = camera;
 	m_camera_animation.set_camera(&m_camera);
+}
+
+void GPURenderer::resize_g_buffer_ray_volume_states()
+{
+	std::dynamic_pointer_cast<FillGBufferRenderPass>(m_render_graph.get_render_pass(FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS))->resize_g_buffer_ray_volume_states();
 }
 
 void GPURenderer::translate_camera_view(glm::vec3 translation)

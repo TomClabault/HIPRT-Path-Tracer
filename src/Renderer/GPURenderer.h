@@ -14,7 +14,6 @@
 #include "HIPRT-Orochi/HIPRTOrochiCtx.h"
 #include "HostDeviceCommon/RenderData.h"
 #include "Renderer/GPUDataStructures/DenoiserBuffersGPUData.h"
-#include "Renderer/GPUDataStructures/GBufferGPUData.h"
 #include "Renderer/GPUDataStructures/NEEPlusPlusGPUData.h"
 #include "Renderer/GPUDataStructures/StatusBuffersGPUData.h"
 #include "Renderer/HardwareAccelerationSupport.h"
@@ -46,9 +45,7 @@ public:
 	 */
 	static const std::string NEE_PLUS_PLUS_CACHING_PREPASS_ID;
 	static const std::string NEE_PLUS_PLUS_FINALIZE_ACCUMULATION_ID;
-	static const std::string CAMERA_RAYS_KERNEL_ID;
 	static const std::string PATH_TRACING_KERNEL_ID;
-	static const std::string RAY_VOLUME_STATE_SIZE_KERNEL_ID;
 
 	// List of compiler options that will be specific to each kernel. We don't want these options
 	// to be synchronized between kernels
@@ -134,7 +131,7 @@ public:
 	/**
 	 * Initializes and compiles the kernels
 	 */
-	void setup_kernels();
+	void setup_render_passes();
 
 	/**
 	 * This function is in charge of updating various "dynamic attributes/properties/buffers" of the renderer before rendering a frame.
@@ -343,7 +340,7 @@ public:
 	 */
 	std::map<std::string, std::shared_ptr<GPUKernel>> get_tracing_kernels();
 
-	std::vector<std::string> get_all_kernel_ids();
+	//std::vector<std::string> get_all_kernel_ids();
 	/**
 	 * Sets the debug kernel to be used.
 	 * 
@@ -418,8 +415,6 @@ private:
 	void render_debug_kernel();
 
 	void launch_nee_plus_plus_caching_prepass();
-	void launch_camera_rays();
-	//void launch_ReSTIR_DI();
 	void launch_path_tracing();
 	void launch_debug_kernel();
 
@@ -444,12 +439,6 @@ private:
 	 * Resets the value of the status buffers on the device
 	 */
 	void internal_pre_render_update_clear_device_status_buffers();
-
-	/**
-	 * Allocates/deallocates the G-buffer of the previous frame depending
-	 * on whether or not it is needed
-	 */
-	void internal_pre_render_update_prev_frame_g_buffer();
 
 	/**
 	 * This function evaluates whether the renderer needs the adaptive
@@ -517,10 +506,6 @@ private:
 	// variables in the renderer class
 	DenoiserBuffersGPUData m_denoiser_buffers;
 
-	// G-buffers of the current frame (camera rays hits) and previous frame
-	GBufferGPURenderer m_g_buffer;
-	GBufferGPURenderer m_g_buffer_prev_frame;
-
 	// Used to calculate the variance of each pixel for adaptive sampling
 	OrochiBuffer<float> m_pixels_squared_luminance_buffer;
 	// This buffer stores the number of samples accumulated *until* a pixel has converged
@@ -560,7 +545,7 @@ private:
 	// one kernel not to use it if all other kernels use it).
 	// The value 1 or 0 of this macro is stored in this 'm_global_compiler_options' member
 	// and is 'synchronized' through the use of pointers with the options of the other kernels.
-	// See 'setup_kernels' for more details on how that "synchronization" is setup
+	// See 'setup_render_passes' for more details on how that "synchronization" is setup
 	std::shared_ptr<GPUKernelCompilerOptions> m_global_compiler_options;
 
 	// Render passes/kernels used for the ray tracing
@@ -568,8 +553,6 @@ private:
 	// of this map is a "name"
 	std::map<std::string, std::shared_ptr<GPUKernel>> m_kernels;
 
-	// Kernel used for retrieving the size of the RayVolumeState structure on the GPU
-	GPUKernel m_ray_volume_state_byte_size_kernel;
 	// If this kernel isn't empty, then it will be used instead of all the regular path tracing
 	// kernels.
 	// 

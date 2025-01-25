@@ -6,6 +6,7 @@
 #include "Compiler/GPUKernelCompiler.h"
 #include "HostDeviceCommon/RenderSettings.h"
 #include "Renderer/GPURenderer.h"
+#include "Renderer/RenderPasses/FillGBufferRenderPass.h"
 #include "Scene/CameraAnimation.h"
 #include "Threads/ThreadManager.h"
 #include "UI/ImGui/ImGuiRenderer.h"
@@ -2600,7 +2601,7 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 			for (const auto& name_to_kernel : kernels)
 				kernel_names.push_back(name_to_kernel.first);
 
-		static std::string selected_kernel_name = GPURenderer::CAMERA_RAYS_KERNEL_ID;
+		static std::string selected_kernel_name = FillGBufferRenderPass::FILL_GBUFFER_KERNEL;
 		static std::shared_ptr<GPUKernel> selected_kernel = kernels[selected_kernel_name];
 		static GPUKernelCompilerOptions* selected_kernel_options = &selected_kernel->get_kernel_options();
 
@@ -2759,7 +2760,7 @@ void ImGuiSettingsWindow::draw_performance_metrics_panel()
 	if (rolling_window_size_changed)
 		m_render_window_perf_metrics->resize_window(rolling_window_size);
 
-	draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::CAMERA_RAYS_KERNEL_ID, "Camera rays");
+	draw_perf_metric_specific_panel(m_render_window_perf_metrics, FillGBufferRenderPass::FILL_GBUFFER_KERNEL , "Camera rays");
 	if (m_renderer->get_ReSTIR_DI_render_pass()->using_ReSTIR_DI())
 	{
 		if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING) == KERNEL_OPTION_TRUE)

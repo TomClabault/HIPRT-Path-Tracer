@@ -21,5 +21,5 @@ void NEEPlusPlusGPUData::compile_finalize_accumulation_kernel(std::shared_ptr<HI
 
 void NEEPlusPlusGPUData::recompile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx)
 {
-	finalize_accumulation_kernel->compile_silent(hiprt_orochi_ctx);
+	finalize_accumulation_kernel->compile(hiprt_orochi_ctx, {}, true, true);
 }

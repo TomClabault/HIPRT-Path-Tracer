@@ -69,7 +69,7 @@ std::vector<std::string> GPUKernel::get_additional_compiler_macros() const
 	return macros;
 }
 
-void GPUKernel::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, std::vector<hiprtFuncNameSet> func_name_sets, bool use_cache)
+void GPUKernel::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, std::vector<hiprtFuncNameSet> func_name_sets, bool use_cache, bool silent)
 {
 	if (m_option_macro_invalidated)
 		parse_option_macros_used();
@@ -79,21 +79,21 @@ void GPUKernel::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, std::vector<h
 															 func_name_sets.data(), 
 															 /* num geom */1,
 															 /* num ray */ func_name_sets.size() == 0 ? 0 : 1,
-															 use_cache, cache_key);
+															 use_cache, cache_key, silent);
 }
 
-void GPUKernel::compile_silent(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, std::vector<hiprtFuncNameSet> func_name_sets, bool use_cache)
-{
-	if (m_option_macro_invalidated)
-		parse_option_macros_used();
-
-	std::string cache_key = g_gpu_kernel_compiler.get_additional_cache_key(*this);
-	m_kernel_function = g_gpu_kernel_compiler.compile_kernel(*this, m_compiler_options, hiprt_ctx, 
-															 func_name_sets.data(),
-															 /* num geom */1,
-															 /* num rays */ func_name_sets.size() == 0 ? 0 : 1,
-															 use_cache, cache_key, /* silent */ true);
-}
+//void GPUKernel::compile_silent(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, std::vector<hiprtFuncNameSet> func_name_sets, bool use_cache)
+//{
+//	if (m_option_macro_invalidated)
+//		parse_option_macros_used();
+//
+//	std::string cache_key = g_gpu_kernel_compiler.get_additional_cache_key(*this);
+//	m_kernel_function = g_gpu_kernel_compiler.compile_kernel(*this, m_compiler_options, hiprt_ctx, 
+//															 func_name_sets.data(),
+//															 /* num geom */1,
+//															 /* num rays */ func_name_sets.size() == 0 ? 0 : 1,
+//															 use_cache, cache_key, /* silent */ true);
+//}
 
 int GPUKernel::get_kernel_attribute(oroFunction compiled_kernel, oroFunction_attribute attribute)
 {
@@ -137,27 +137,27 @@ const GPUKernelCompilerOptions& GPUKernel::get_kernel_options() const
 	return m_compiler_options;
 }
 
-void GPUKernel::synchronize_options_with(const GPUKernelCompilerOptions& other_options, const std::unordered_set<std::string>& options_excluded)
+void GPUKernel::synchronize_options_with(std::shared_ptr<GPUKernelCompilerOptions> other_options, const std::unordered_set<std::string>& options_excluded)
 {
-	for (auto macro_to_value : other_options.get_options_macro_map())
+	for (auto macro_to_value : other_options->get_options_macro_map())
 	{
 		const std::string& macro_name = macro_to_value.first;
 		int macro_value = *macro_to_value.second;
 
 		if (options_excluded.find(macro_name) == options_excluded.end())
 			// Option is not excluded
-			m_compiler_options.set_pointer_to_macro(macro_name, other_options.get_pointer_to_macro_value(macro_name));
+			m_compiler_options.set_pointer_to_macro(macro_name, other_options->get_pointer_to_macro_value(macro_name));
 	}
 
 	// Same thing with the custom macros
-	for (auto macro_to_value : other_options.get_custom_macro_map())
+	for (auto macro_to_value : other_options->get_custom_macro_map())
 	{
 		const std::string& macro_name = macro_to_value.first;
 		int macro_value = *macro_to_value.second;
 
 		if (options_excluded.find(macro_name) == options_excluded.end())
 			// Option is not excluded
-			m_compiler_options.set_pointer_to_macro(macro_name, other_options.get_pointer_to_macro_value(macro_name));
+			m_compiler_options.set_pointer_to_macro(macro_name, other_options->get_pointer_to_macro_value(macro_name));
 	}
 }
 
