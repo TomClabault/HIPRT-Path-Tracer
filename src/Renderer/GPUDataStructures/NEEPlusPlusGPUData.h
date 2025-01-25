@@ -46,7 +46,7 @@ struct NEEPlusPlusGPUData : public NEEPlusPlusCPUGPUCommonData
 	unsigned long long int shadow_rays_actually_traced_cpu = 1;
 	float statistics_refresh_timer = STATISTICS_REFRESH_TIMER;
 
-	GPUKernel finalize_accumulation_kernel;
+	std::shared_ptr<GPUKernel> finalize_accumulation_kernel;
 };
 
 #endif

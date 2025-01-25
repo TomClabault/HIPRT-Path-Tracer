@@ -14,6 +14,8 @@ const std::string ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID = "ReSTI
 const std::string ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID = "ReSTIR DI Spatiotemporal Reuse";
 const std::string ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID = "ReSTIR DI Lights Presampling";
 
+const std::string ReSTIRDIRenderPass::RESTIR_DI_RENDER_PASS = "ReSTIR DI Render Pass";
+
 const std::unordered_map<std::string, std::string> ReSTIRDIRenderPass::KERNEL_FUNCTION_NAMES =
 {
 	{ RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID, "ReSTIR_DI_InitialCandidates" },
@@ -32,51 +34,56 @@ const std::unordered_map<std::string, std::string> ReSTIRDIRenderPass::KERNEL_FI
 	{ RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/DI/LightsPresampling.h" },
 };
 
-ReSTIRDIRenderPass::ReSTIRDIRenderPass(GPURenderer* renderer) : m_renderer(renderer), render_data(&renderer->get_render_data())
+ReSTIRDIRenderPass::ReSTIRDIRenderPass(GPURenderer* renderer) : RenderPass(renderer), m_render_data(&renderer->get_render_data())
 {
 	OROCHI_CHECK_ERROR(oroEventCreate(&spatial_reuse_time_start));
 	OROCHI_CHECK_ERROR(oroEventCreate(&spatial_reuse_time_stop));
 
 	std::shared_ptr<GPUKernelCompilerOptions> global_compiler_options = m_renderer->get_global_compiler_options();
 
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].set_kernel_file_path(ReSTIRDIRenderPass::KERNEL_FILES.at(ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID));
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].set_kernel_function_name(ReSTIRDIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID));
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].synchronize_options_with(*global_compiler_options, GPURenderer::GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 16);
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID] = std::make_shared<GPUKernel>();
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID]->set_kernel_file_path(ReSTIRDIRenderPass::KERNEL_FILES.at(ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID));
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID]->set_kernel_function_name(ReSTIRDIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID));
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID]->synchronize_options_with(*global_compiler_options, GPURenderer::GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 16);
 
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID].set_kernel_file_path(ReSTIRDIRenderPass::KERNEL_FILES.at(ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID));
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID].set_kernel_function_name(ReSTIRDIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID));
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID].synchronize_options_with(*global_compiler_options, GPURenderer::GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 16);
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID] = std::make_shared<GPUKernel>();
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID]->set_kernel_file_path(ReSTIRDIRenderPass::KERNEL_FILES.at(ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID));
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID]->set_kernel_function_name(ReSTIRDIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID));
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID]->synchronize_options_with(*global_compiler_options, GPURenderer::GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 16);
 
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID].set_kernel_file_path(ReSTIRDIRenderPass::KERNEL_FILES.at(ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID));
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID].set_kernel_function_name(ReSTIRDIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID));
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID].synchronize_options_with(*global_compiler_options, GPURenderer::GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 8);
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID] = std::make_shared<GPUKernel>();
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID]->set_kernel_file_path(ReSTIRDIRenderPass::KERNEL_FILES.at(ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID));
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID]->set_kernel_function_name(ReSTIRDIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID));
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID]->synchronize_options_with(*global_compiler_options, GPURenderer::GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 8);
 
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID].set_kernel_file_path(ReSTIRDIRenderPass::KERNEL_FILES.at(ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID));
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID].set_kernel_function_name(ReSTIRDIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID));
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID].synchronize_options_with(*global_compiler_options, GPURenderer::GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 24);
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID] = std::make_shared<GPUKernel>();
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID]->set_kernel_file_path(ReSTIRDIRenderPass::KERNEL_FILES.at(ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID));
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID]->set_kernel_function_name(ReSTIRDIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID));
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID]->synchronize_options_with(*global_compiler_options, GPURenderer::GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 24);
 
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID].set_kernel_file_path(ReSTIRDIRenderPass::KERNEL_FILES.at(ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID));
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID].set_kernel_function_name(ReSTIRDIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID));
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID].synchronize_options_with(*global_compiler_options, GPURenderer::GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 0);
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID] = std::make_shared<GPUKernel>();
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID]->set_kernel_file_path(ReSTIRDIRenderPass::KERNEL_FILES.at(ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID));
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID]->set_kernel_function_name(ReSTIRDIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID));
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID]->synchronize_options_with(*global_compiler_options, GPURenderer::GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 0);
 }
 
-void ReSTIRDIRenderPass::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, std::vector<hiprtFuncNameSet>& func_name_sets)
+void ReSTIRDIRenderPass::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets)
 {
-	ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID]), hiprt_orochi_ctx, std::ref(func_name_sets));
-	ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID]), hiprt_orochi_ctx, std::ref(func_name_sets));
-	ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID]), hiprt_orochi_ctx, std::ref(func_name_sets));
-	ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID]), hiprt_orochi_ctx, std::ref(func_name_sets));
-	ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID]), hiprt_orochi_ctx, std::ref(func_name_sets));
+	ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, m_kernels[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID], hiprt_orochi_ctx, std::ref(func_name_sets));
+	ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, m_kernels[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID], hiprt_orochi_ctx, std::ref(func_name_sets));
+	ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID], hiprt_orochi_ctx, std::ref(func_name_sets));
+	ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID], hiprt_orochi_ctx, std::ref(func_name_sets));
+	ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID], hiprt_orochi_ctx, std::ref(func_name_sets));
 }
 
 void ReSTIRDIRenderPass::recompile(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets, bool silent, bool use_cache)
@@ -84,9 +91,9 @@ void ReSTIRDIRenderPass::recompile(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi
 	for (auto& name_to_kernel : m_kernels)
 	{
 		if (silent)
-			name_to_kernel.second.compile_silent(hiprt_orochi_ctx, func_name_sets, use_cache);
+			name_to_kernel.second->compile_silent(hiprt_orochi_ctx, func_name_sets, use_cache);
 		else
-			name_to_kernel.second.compile(hiprt_orochi_ctx, func_name_sets, use_cache);
+			name_to_kernel.second->compile(hiprt_orochi_ctx, func_name_sets, use_cache);
 	}
 }
 
@@ -94,35 +101,35 @@ void ReSTIRDIRenderPass::precompile_kernels(GPUKernelCompilerOptions partial_opt
 {
 	GPUKernelCompilerOptions options;
 
-	options = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID].get_kernel_options().deep_copy();
+	options = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID]->get_kernel_options().deep_copy();
 	partial_options.apply_onto(options);
 	ThreadManager::start_thread(ThreadManager::RESTIR_DI_PRECOMPILE_KERNELS, ThreadFunctions::precompile_kernel,
 		ReSTIRDIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID),
 		ReSTIRDIRenderPass::KERNEL_FILES.at(ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID),
 		options, hiprt_orochi_ctx, std::ref(func_name_sets));
 
-	options = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].get_kernel_options().deep_copy();
+	options = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID]->get_kernel_options().deep_copy();
 	partial_options.apply_onto(options);
 	ThreadManager::start_thread(ThreadManager::RESTIR_DI_PRECOMPILE_KERNELS, ThreadFunctions::precompile_kernel,
 		ReSTIRDIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID),
 		ReSTIRDIRenderPass::KERNEL_FILES.at(ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID),
 		options, hiprt_orochi_ctx, std::ref(func_name_sets));
 
-	options = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID].get_kernel_options().deep_copy();
+	options = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID]->get_kernel_options().deep_copy();
 	partial_options.apply_onto(options);
 	ThreadManager::start_thread(ThreadManager::RESTIR_DI_PRECOMPILE_KERNELS, ThreadFunctions::precompile_kernel,
 		ReSTIRDIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID),
 		ReSTIRDIRenderPass::KERNEL_FILES.at(ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID),
 		options, hiprt_orochi_ctx, std::ref(func_name_sets));
 
-	options = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID].get_kernel_options().deep_copy();
+	options = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID]->get_kernel_options().deep_copy();
 	partial_options.apply_onto(options);
 	ThreadManager::start_thread(ThreadManager::RESTIR_DI_PRECOMPILE_KERNELS, ThreadFunctions::precompile_kernel,
 		ReSTIRDIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID),
 		ReSTIRDIRenderPass::KERNEL_FILES.at(ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID),
 		options, hiprt_orochi_ctx, std::ref(func_name_sets));
 
-	options = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID].get_kernel_options().deep_copy();
+	options = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID]->get_kernel_options().deep_copy();
 	partial_options.apply_onto(options);
 	ThreadManager::start_thread(ThreadManager::RESTIR_DI_PRECOMPILE_KERNELS, ThreadFunctions::precompile_kernel,
 		ReSTIRDIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID),
@@ -132,7 +139,7 @@ void ReSTIRDIRenderPass::precompile_kernels(GPUKernelCompilerOptions partial_opt
 	ThreadManager::detach_threads(ThreadManager::RESTIR_DI_PRECOMPILE_KERNELS);
 }
 
-void ReSTIRDIRenderPass::pre_render_update()
+void ReSTIRDIRenderPass::pre_render_update(float delta_time)
 {
 	int2 render_resolution = m_renderer->m_render_resolution;
 
@@ -195,13 +202,13 @@ void ReSTIRDIRenderPass::update_render_data()
 	// Setting the pointers for use in reset_render() in the camera rays kernel
 	if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI)
 	{
-		render_data->aux_buffers.restir_reservoir_buffer_1 = initial_candidates_reservoirs.get_device_pointer();
-		render_data->aux_buffers.restir_reservoir_buffer_2 = spatial_output_reservoirs_1.get_device_pointer();
-		render_data->aux_buffers.restir_reservoir_buffer_3 = spatial_output_reservoirs_2.get_device_pointer();
+		m_render_data->aux_buffers.restir_reservoir_buffer_1 = initial_candidates_reservoirs.get_device_pointer();
+		m_render_data->aux_buffers.restir_reservoir_buffer_2 = spatial_output_reservoirs_1.get_device_pointer();
+		m_render_data->aux_buffers.restir_reservoir_buffer_3 = spatial_output_reservoirs_2.get_device_pointer();
 
 		// If we just got ReSTIR enabled back, setting this one arbitrarily and resetting its content
 		std::vector<ReSTIRDIReservoir> empty_reservoirs(m_renderer->m_render_resolution.x * m_renderer->m_render_resolution.y, ReSTIRDIReservoir());
-		render_data->render_settings.restir_di_settings.restir_output_reservoirs = spatial_output_reservoirs_1.get_device_pointer();
+		m_render_data->render_settings.restir_di_settings.restir_output_reservoirs = spatial_output_reservoirs_1.get_device_pointer();
 		spatial_output_reservoirs_1.upload_data(empty_reservoirs);
 	}
 	else
@@ -210,9 +217,9 @@ void ReSTIRDIRenderPass::update_render_data()
 		// for example can detect that the buffers are freed and doesn't try to reset them or do
 		// anything with them (which would lead to a crash since we would be accessing nullptr buffers)
 
-		render_data->aux_buffers.restir_reservoir_buffer_1 = nullptr;
-		render_data->aux_buffers.restir_reservoir_buffer_2 = nullptr;
-		render_data->aux_buffers.restir_reservoir_buffer_3 = nullptr;
+		m_render_data->aux_buffers.restir_reservoir_buffer_1 = nullptr;
+		m_render_data->aux_buffers.restir_reservoir_buffer_2 = nullptr;
+		m_render_data->aux_buffers.restir_reservoir_buffer_3 = nullptr;
 	}
 }
 
@@ -228,12 +235,19 @@ void ReSTIRDIRenderPass::reset()
 	odd_frame = false;
 }
 
+bool ReSTIRDIRenderPass::has_been_launched()
+{
+	return m_launched;
+}
+
 void ReSTIRDIRenderPass::launch()
 {
 	ReSTIRDISettings& restir_di_settings = m_renderer->get_render_data().render_settings.restir_di_settings;
 
 	if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI)
 	{
+		m_launched = true;
+
 		// If ReSTIR DI is enabled
 
 		if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING) == KERNEL_OPTION_TRUE)
@@ -241,7 +255,7 @@ void ReSTIRDIRenderPass::launch()
 
 		launch_initial_candidates_pass();
 
-		if (render_data->render_settings.restir_di_settings.do_fused_spatiotemporal)
+		if (m_render_data->render_settings.restir_di_settings.do_fused_spatiotemporal)
 			// Launching the fused spatiotemporal kernel
 			launch_spatiotemporal_pass();
 		else
@@ -269,9 +283,9 @@ LightPresamplingParameters ReSTIRDIRenderPass::configure_light_presampling_pass(
 	 */
 
 	 // From all the lights of the scene, how many subsets to presample
-	parameters.number_of_subsets = render_data->render_settings.restir_di_settings.light_presampling.number_of_subsets;
+	parameters.number_of_subsets = m_render_data->render_settings.restir_di_settings.light_presampling.number_of_subsets;
 	// How many lights to presample in each subset
-	parameters.subset_size = render_data->render_settings.restir_di_settings.light_presampling.subset_size;
+	parameters.subset_size = m_render_data->render_settings.restir_di_settings.light_presampling.subset_size;
 	// Buffer that holds the presampled lights
 	parameters.out_light_samples = presampled_lights_buffer.get_device_pointer();
 
@@ -281,22 +295,22 @@ LightPresamplingParameters ReSTIRDIRenderPass::configure_light_presampling_pass(
 	/**
 	 * Generic parameters needed by the kernel
 	 */
-	parameters.emissive_triangles_count = render_data->buffers.emissive_triangles_count;
-	parameters.emissive_triangles_indices = render_data->buffers.emissive_triangles_indices;
-	parameters.triangles_indices = render_data->buffers.triangles_indices;
-	parameters.vertices_positions = render_data->buffers.vertices_positions;
-	parameters.material_indices = render_data->buffers.material_indices;
-	parameters.materials = render_data->buffers.materials_buffer;
+	parameters.emissive_triangles_count = m_render_data->buffers.emissive_triangles_count;
+	parameters.emissive_triangles_indices = m_render_data->buffers.emissive_triangles_indices;
+	parameters.triangles_indices = m_render_data->buffers.triangles_indices;
+	parameters.vertices_positions = m_render_data->buffers.vertices_positions;
+	parameters.material_indices = m_render_data->buffers.material_indices;
+	parameters.materials = m_render_data->buffers.materials_buffer;
 
 	// World settings for sampling the envmap
-	parameters.world_settings = render_data->world_settings;
+	parameters.world_settings = m_render_data->world_settings;
 
-	parameters.freeze_random = render_data->render_settings.freeze_random;
-	parameters.sample_number = render_data->render_settings.sample_number;
+	parameters.freeze_random = m_render_data->render_settings.freeze_random;
+	parameters.sample_number = m_render_data->render_settings.sample_number;
 	parameters.random_seed = m_renderer->rng().xorshift32();
 
 	// For each presampled light, the probability that this is going to be an envmap sample
-	parameters.envmap_sampling_probability = render_data->render_settings.restir_di_settings.initial_candidates.envmap_candidate_probability;
+	parameters.envmap_sampling_probability = m_render_data->render_settings.restir_di_settings.initial_candidates.envmap_candidate_probability;
 
 	return parameters;
 }
@@ -306,16 +320,16 @@ void ReSTIRDIRenderPass::launch_presampling_lights_pass()
 	LightPresamplingParameters launch_parameters = configure_light_presampling_pass();
 
 	void* launch_args[] = { &launch_parameters };
-	int thread_count = render_data->render_settings.restir_di_settings.light_presampling.number_of_subsets * render_data->render_settings.restir_di_settings.light_presampling.subset_size;
+	int thread_count = m_render_data->render_settings.restir_di_settings.light_presampling.number_of_subsets * m_render_data->render_settings.restir_di_settings.light_presampling.subset_size;
 
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID].launch_asynchronous(32, 1, thread_count, 1, launch_args, m_renderer->get_main_stream());
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID]->launch_asynchronous(32, 1, thread_count, 1, launch_args, m_renderer->get_main_stream());
 }
 
 void ReSTIRDIRenderPass::configure_initial_pass()
 {
-	render_data->random_seed = m_renderer->rng().xorshift32();
-	render_data->render_settings.restir_di_settings.light_presampling.light_samples = presampled_lights_buffer.get_device_pointer();
-	render_data->render_settings.restir_di_settings.initial_candidates.output_reservoirs = initial_candidates_reservoirs.get_device_pointer();
+	m_render_data->random_seed = m_renderer->rng().xorshift32();
+	m_render_data->render_settings.restir_di_settings.light_presampling.light_samples = presampled_lights_buffer.get_device_pointer();
+	m_render_data->render_settings.restir_di_settings.initial_candidates.output_reservoirs = initial_candidates_reservoirs.get_device_pointer();
 }
 
 void ReSTIRDIRenderPass::launch_initial_candidates_pass()
@@ -324,20 +338,20 @@ void ReSTIRDIRenderPass::launch_initial_candidates_pass()
 	void* launch_args[] = { &m_renderer->get_render_data(), &m_renderer->m_render_resolution };
 
 	configure_initial_pass();
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, render_resolution.x, render_resolution.y, launch_args, m_renderer->get_main_stream());
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, render_resolution.x, render_resolution.y, launch_args, m_renderer->get_main_stream());
 }
 
 void ReSTIRDIRenderPass::configure_temporal_pass()
 {
-	render_data->random_seed = m_renderer->rng().xorshift32();
-	render_data->render_settings.restir_di_settings.temporal_pass.permutation_sampling_random_bits = m_renderer->rng().xorshift32();
+	m_render_data->random_seed = m_renderer->rng().xorshift32();
+	m_render_data->render_settings.restir_di_settings.temporal_pass.permutation_sampling_random_bits = m_renderer->rng().xorshift32();
 
 	// The input of the temporal pass is the output of last frame's
 	// ReSTIR (and also the initial candidates but this is implicit
 	// and hardcoded in the shader)
-	render_data->render_settings.restir_di_settings.temporal_pass.input_reservoirs = render_data->render_settings.restir_di_settings.restir_output_reservoirs;
+	m_render_data->render_settings.restir_di_settings.temporal_pass.input_reservoirs = m_render_data->render_settings.restir_di_settings.restir_output_reservoirs;
 
-	if (render_data->render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)
+	if (m_render_data->render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)
 		// If we're going to do spatial reuse, reuse the initial
 		// candidate reservoirs to store the output of the temporal pass.
 		// The spatial reuse pass will read form that buffer.
@@ -349,16 +363,16 @@ void ReSTIRDIRenderPass::configure_temporal_pass()
 		// We're not risking another pixel reading in someone else's
 		// pixel in the initial candidates buffer while we write into
 		// it (that would be a race condition)
-		render_data->render_settings.restir_di_settings.temporal_pass.output_reservoirs = initial_candidates_reservoirs.get_device_pointer();
+		m_render_data->render_settings.restir_di_settings.temporal_pass.output_reservoirs = initial_candidates_reservoirs.get_device_pointer();
 	else
 	{
 		// Else, no spatial reuse, the output of the temporal pass is going to be in its own buffer (because otherwise, 
 		// if we output in the initial candidates buffer, then it's going to be overriden by the initial candidates pass of the next frame).
 		// Alternatively using spatial_output_reservoirs_1 and spatial_output_reservoirs_2 to avoid race conditions
 		if (odd_frame)
-			render_data->render_settings.restir_di_settings.temporal_pass.output_reservoirs = spatial_output_reservoirs_1.get_device_pointer();
+			m_render_data->render_settings.restir_di_settings.temporal_pass.output_reservoirs = spatial_output_reservoirs_1.get_device_pointer();
 		else
-			render_data->render_settings.restir_di_settings.temporal_pass.output_reservoirs = spatial_output_reservoirs_2.get_device_pointer();
+			m_render_data->render_settings.restir_di_settings.temporal_pass.output_reservoirs = spatial_output_reservoirs_2.get_device_pointer();
 	}
 }
 
@@ -368,38 +382,38 @@ void ReSTIRDIRenderPass::launch_temporal_reuse_pass()
 	void* launch_args[] = { &m_renderer->get_render_data(), &render_resolution };
 
 	configure_temporal_pass();
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID].launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, render_resolution.x, render_resolution.y, launch_args, m_renderer->get_main_stream());
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, render_resolution.x, render_resolution.y, launch_args, m_renderer->get_main_stream());
 }
 
 void ReSTIRDIRenderPass::configure_temporal_pass_for_fused_spatiotemporal()
 {
-	render_data->random_seed = m_renderer->rng().xorshift32();
-	render_data->render_settings.restir_di_settings.temporal_pass.permutation_sampling_random_bits = m_renderer->rng().xorshift32();
+	m_render_data->random_seed = m_renderer->rng().xorshift32();
+	m_render_data->render_settings.restir_di_settings.temporal_pass.permutation_sampling_random_bits = m_renderer->rng().xorshift32();
 
 	// The input of the temporal pass is the output of last frame's
 	// ReSTIR (and also the initial candidates but this is implicit
 	// and hardcoded in the shader)
-	render_data->render_settings.restir_di_settings.temporal_pass.input_reservoirs = render_data->render_settings.restir_di_settings.restir_output_reservoirs;
+	m_render_data->render_settings.restir_di_settings.temporal_pass.input_reservoirs = m_render_data->render_settings.restir_di_settings.restir_output_reservoirs;
 
 	// Not needed. In the fused spatiotemporal pass, everything is output by the spatial pass
-	render_data->render_settings.restir_di_settings.temporal_pass.output_reservoirs = nullptr;
+	m_render_data->render_settings.restir_di_settings.temporal_pass.output_reservoirs = nullptr;
 }
 
 void ReSTIRDIRenderPass::configure_spatial_pass(int spatial_pass_index)
 {
-	render_data->random_seed = m_renderer->rng().xorshift32();
-	render_data->render_settings.restir_di_settings.spatial_pass.spatial_pass_index = spatial_pass_index;
+	m_render_data->random_seed = m_renderer->rng().xorshift32();
+	m_render_data->render_settings.restir_di_settings.spatial_pass.spatial_pass_index = spatial_pass_index;
 
 	if (spatial_pass_index == 0)
 	{
-		if (render_data->render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
+		if (m_render_data->render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
 			// For the first spatial reuse pass, we hardcode reading from the output of the temporal pass and storing into 'spatial_output_reservoirs_1'
-			render_data->render_settings.restir_di_settings.spatial_pass.input_reservoirs = render_data->render_settings.restir_di_settings.temporal_pass.output_reservoirs;
+			m_render_data->render_settings.restir_di_settings.spatial_pass.input_reservoirs = m_render_data->render_settings.restir_di_settings.temporal_pass.output_reservoirs;
 		else
 			// If there is no temporal reuse pass, using the initial candidates as the input to the spatial reuse pass
-			render_data->render_settings.restir_di_settings.spatial_pass.input_reservoirs = render_data->render_settings.restir_di_settings.initial_candidates.output_reservoirs;
+			m_render_data->render_settings.restir_di_settings.spatial_pass.input_reservoirs = m_render_data->render_settings.restir_di_settings.initial_candidates.output_reservoirs;
 
-		render_data->render_settings.restir_di_settings.spatial_pass.output_reservoirs = spatial_output_reservoirs_1.get_device_pointer();
+		m_render_data->render_settings.restir_di_settings.spatial_pass.output_reservoirs = spatial_output_reservoirs_1.get_device_pointer();
 	}
 	else
 	{
@@ -410,13 +424,13 @@ void ReSTIRDIRenderPass::configure_spatial_pass(int spatial_pass_index)
 
 		if ((spatial_pass_index & 1) == 0)
 		{
-			render_data->render_settings.restir_di_settings.spatial_pass.input_reservoirs = spatial_output_reservoirs_2.get_device_pointer();
-			render_data->render_settings.restir_di_settings.spatial_pass.output_reservoirs = spatial_output_reservoirs_1.get_device_pointer();
+			m_render_data->render_settings.restir_di_settings.spatial_pass.input_reservoirs = spatial_output_reservoirs_2.get_device_pointer();
+			m_render_data->render_settings.restir_di_settings.spatial_pass.output_reservoirs = spatial_output_reservoirs_1.get_device_pointer();
 		}
 		else
 		{
-			render_data->render_settings.restir_di_settings.spatial_pass.input_reservoirs = spatial_output_reservoirs_1.get_device_pointer();
-			render_data->render_settings.restir_di_settings.spatial_pass.output_reservoirs = spatial_output_reservoirs_2.get_device_pointer();
+			m_render_data->render_settings.restir_di_settings.spatial_pass.input_reservoirs = spatial_output_reservoirs_1.get_device_pointer();
+			m_render_data->render_settings.restir_di_settings.spatial_pass.output_reservoirs = spatial_output_reservoirs_2.get_device_pointer();
 
 		}
 	}
@@ -424,9 +438,9 @@ void ReSTIRDIRenderPass::configure_spatial_pass(int spatial_pass_index)
 
 void ReSTIRDIRenderPass::configure_spatial_pass_for_fused_spatiotemporal(int spatial_pass_index)
 {
-	ReSTIRDISettings& restir_settings = render_data->render_settings.restir_di_settings;
+	ReSTIRDISettings& restir_settings = m_render_data->render_settings.restir_di_settings;
 	restir_settings.spatial_pass.spatial_pass_index = spatial_pass_index;
-	render_data->random_seed = m_renderer->rng().xorshift32();
+	m_render_data->random_seed = m_renderer->rng().xorshift32();
 
 	if (spatial_pass_index == 0)
 	{
@@ -460,10 +474,10 @@ void ReSTIRDIRenderPass::launch_spatial_reuse_passes()
 	// Emitting an event for timing all the spatial reuse passes combined
 	OROCHI_CHECK_ERROR(oroEventRecord(spatial_reuse_time_start, m_renderer->get_main_stream()));
 
-	for (int spatial_reuse_pass = 0; spatial_reuse_pass < render_data->render_settings.restir_di_settings.spatial_pass.number_of_passes; spatial_reuse_pass++)
+	for (int spatial_reuse_pass = 0; spatial_reuse_pass < m_render_data->render_settings.restir_di_settings.spatial_pass.number_of_passes; spatial_reuse_pass++)
 	{
 		configure_spatial_pass(spatial_reuse_pass);
-		m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID].launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, render_resolution.x, render_resolution.y, launch_args, m_renderer->get_main_stream());
+		m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, render_resolution.x, render_resolution.y, launch_args, m_renderer->get_main_stream());
 	}
 
 	// Emitting the stop event
@@ -485,17 +499,17 @@ void ReSTIRDIRenderPass::launch_spatiotemporal_pass()
 	void* launch_args[] = { &m_renderer->get_render_data(), &m_renderer->m_render_resolution };
 
 	configure_spatiotemporal_pass();
-	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID].launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, render_resolution.x, render_resolution.y, launch_args, m_renderer->get_main_stream());
+	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, render_resolution.x, render_resolution.y, launch_args, m_renderer->get_main_stream());
 
-	if (render_data->render_settings.restir_di_settings.spatial_pass.number_of_passes > 1)
+	if (m_render_data->render_settings.restir_di_settings.spatial_pass.number_of_passes > 1)
 	{
 		// We have some more spatial reuse passes to do
 
 		OROCHI_CHECK_ERROR(oroEventRecord(spatial_reuse_time_start, m_renderer->get_main_stream()));
-		for (int spatial_pass_index = 1; spatial_pass_index < render_data->render_settings.restir_di_settings.spatial_pass.number_of_passes; spatial_pass_index++)
+		for (int spatial_pass_index = 1; spatial_pass_index < m_render_data->render_settings.restir_di_settings.spatial_pass.number_of_passes; spatial_pass_index++)
 		{
 			configure_spatial_pass_for_fused_spatiotemporal(spatial_pass_index);
-			m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID].launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, render_resolution.x, render_resolution.y, launch_args, m_renderer->get_main_stream());
+			m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, render_resolution.x, render_resolution.y, launch_args, m_renderer->get_main_stream());
 		}
 
 		// Emitting the stop event
@@ -503,29 +517,29 @@ void ReSTIRDIRenderPass::launch_spatiotemporal_pass()
 	}
 }
 
-void ReSTIRDIRenderPass::compute_render_times(std::unordered_map<std::string, float>& times)
+void ReSTIRDIRenderPass::compute_render_times()
 {
 	if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) != LSS_RESTIR_DI)
 		return;
 
 	std::unordered_map<std::string, float>& ms_time_per_pass = m_renderer->get_render_pass_times();
-	ReSTIRDISettings& restir_di_settings = render_data->render_settings.restir_di_settings;
+	ReSTIRDISettings& restir_di_settings = m_render_data->render_settings.restir_di_settings;
 
 	if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING) == KERNEL_OPTION_TRUE)
-		ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID] = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID].get_last_execution_time();
+		ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID] = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID]->get_last_execution_time();
 
-	ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID] = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID].get_last_execution_time();
+	ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID] = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID]->get_last_execution_time();
 
 	if (restir_di_settings.do_fused_spatiotemporal)
 	{
-		ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID] = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID].get_last_execution_time();
+		ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID] = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID]->get_last_execution_time();
 		if (restir_di_settings.spatial_pass.number_of_passes > 1)
-			oroEventElapsedTime(&ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID], spatial_reuse_time_start, spatial_reuse_time_stop);
+			OROCHI_CHECK_ERROR(oroEventElapsedTime(&ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID], spatial_reuse_time_start, spatial_reuse_time_stop));
 	}
 	else
 	{
-		/*ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID] = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID].get_last_execution_time();
-		oroEventElapsedTime(&ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID], spatial_reuse_time_start, spatial_reuse_time_stop);*/
+		ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID] = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID]->get_last_execution_time();
+		OROCHI_CHECK_ERROR(oroEventElapsedTime(&ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID], spatial_reuse_time_start, spatial_reuse_time_stop));
 	}
 }
 
@@ -555,14 +569,24 @@ void ReSTIRDIRenderPass::update_perf_metrics(std::shared_ptr<PerformanceMetricsC
 	}
 }
 
-std::map<std::string, GPUKernel>& ReSTIRDIRenderPass::get_kernels()
+std::map<std::string, std::shared_ptr<GPUKernel>> ReSTIRDIRenderPass::get_all_kernels()
 {
 	return m_kernels;
 }
 
+std::map<std::string, std::shared_ptr<GPUKernel>> ReSTIRDIRenderPass::get_tracing_kernels()
+{
+	std::map<std::string, std::shared_ptr<GPUKernel>> out = m_kernels;
+
+	// The presampling light kernel isn't a trace kernel
+	out.erase(ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID);
+
+	return out;
+}
+
 void ReSTIRDIRenderPass::configure_output_buffer()
 {
-	ReSTIRDISettings& restir_di_settings = render_data->render_settings.restir_di_settings;
+	ReSTIRDISettings& restir_di_settings = m_render_data->render_settings.restir_di_settings;
 
 	// Keeping in mind which was the buffer used last for the output of the spatial reuse pass as this is the buffer that
 	// we're going to use as the input to the temporal reuse pass of the next frame

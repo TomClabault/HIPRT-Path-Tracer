@@ -2303,7 +2303,7 @@ void ImGuiSettingsWindow::toggle_gmon()
 		// We just enabled GMoN, automatically switching to the GMoN view for convenience
 		m_render_window->get_display_view_system()->queue_display_view_change(DisplayViewType::GMON_BLEND);
 
-	if (gmon_now_enabled && !m_renderer->get_gmon_render_pass().get_kernels()[GMoNRenderPass::COMPUTE_GMON_KERNEL].has_been_compiled())
+	if (gmon_now_enabled && !m_renderer->get_gmon_render_pass().get_kernels()[GMoNRenderPass::COMPUTE_GMON_KERNEL]->has_been_compiled())
 		// The GMoN kernel hasn't been compiled yet, compiling it
 		m_renderer->recompile_kernels();
 
@@ -2589,18 +2589,15 @@ void ImGuiSettingsWindow::draw_performance_settings_panel()
 		ImGui::TreePush("Shared/global stack Traversal Options Tree");
 
 		// List of exceptions because these kernels do not trace any rays
-		static std::unordered_set<std::string> exceptions = { ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID };
 		static std::vector<std::string> kernel_names;
-		static std::map<std::string, GPUKernel*> kernels = m_renderer->get_kernels();
+		static std::map<std::string, std::shared_ptr<GPUKernel>> kernels = m_renderer->get_tracing_kernels();
 		if (kernel_names.empty())
-		{
+			// Filling the kernel names if not already done
 			for (const auto& name_to_kernel : kernels)
-				if (exceptions.find(name_to_kernel.first) == exceptions.end())
-					kernel_names.push_back(name_to_kernel.first);
-		}
+				kernel_names.push_back(name_to_kernel.first);
 
 		static std::string selected_kernel_name = GPURenderer::CAMERA_RAYS_KERNEL_ID;
-		static GPUKernel* selected_kernel = kernels[selected_kernel_name];
+		static std::shared_ptr<GPUKernel> selected_kernel = kernels[selected_kernel_name];
 		static GPUKernelCompilerOptions* selected_kernel_options = &selected_kernel->get_kernel_options();
 
 		if (ImGui::BeginCombo("Kernel", selected_kernel_name.c_str()))
@@ -2928,14 +2925,14 @@ void ImGuiSettingsWindow::draw_shader_kernels_panel()
 
 			// Computing the longest kernel name for aligning everything
 			size_t longest_kernel_name = 0;
-			for (auto kernel_name_to_kernel : m_renderer->get_kernels())
+			for (auto kernel_name_to_kernel : m_renderer->get_all_kernels())
 				longest_kernel_name = hippt::max(longest_kernel_name, kernel_name_to_kernel.first.length());
 			std::string padding_formatter = "%-" + std::to_string(longest_kernel_name) + "s";
 
-			for (auto kernel_name_to_kernel : m_renderer->get_kernels())
+			for (auto kernel_name_to_kernel : m_renderer->get_all_kernels())
 			{
 				const std::string& kernel_name = kernel_name_to_kernel.first;
-				const GPUKernel* kernel = kernel_name_to_kernel.second;
+				const std::shared_ptr<GPUKernel> kernel = kernel_name_to_kernel.second;
 
 				if (kernel->has_been_compiled())
 				{

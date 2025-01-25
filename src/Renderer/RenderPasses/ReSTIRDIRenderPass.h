@@ -10,11 +10,12 @@
 #include "Device/includes/ReSTIR/DI/PresampledLight.h"
 #include "HIPRT-Orochi/OrochiBuffer.h"
 #include "HostDeviceCommon/RenderData.h"
+#include "Renderer/RenderPasses/RenderPass.h"
 #include "UI/PerformanceMetricsComputer.h"
 
 class GPURenderer;
 
-class ReSTIRDIRenderPass
+class ReSTIRDIRenderPass : public RenderPass
 {
 public:
 	/**
@@ -26,6 +27,8 @@ public:
 	static const std::string RESTIR_DI_SPATIAL_REUSE_KERNEL_ID;
 	static const std::string RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID;
 	static const std::string RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID;
+
+	static const std::string RESTIR_DI_RENDER_PASS;
 
 	/**
 	 * This map contains constants that are the name of the main function of the kernels, their entry points.
@@ -47,8 +50,11 @@ public:
 	ReSTIRDIRenderPass() {}
 	ReSTIRDIRenderPass(GPURenderer* renderer);
 
-	void compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, std::vector<hiprtFuncNameSet>& func_name_sets);
-	void recompile(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets, bool silent = false, bool use_cache = true);
+	virtual void compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets = {}) override;
+	virtual void recompile(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets, bool silent = false, bool use_cache = true) override;
+
+	virtual void resize(int new_width, int new_height) override;
+
 	/**
 	 * Precompiles all kernels of this render pass to fill to shader cache in advance.
 	 * 
@@ -61,14 +67,23 @@ public:
 	 * Allocates/frees the ReSTIR DI buffers depending on whether or not the renderer
 	 * needs them (whether or not ReSTIR DI is being used basically) respectively.
 	 */
-	void pre_render_update();
-	void update_render_data();
+	virtual void pre_render_update(float delta_time) override;
+	virtual void launch() override;
+	virtual void post_render_update() override {};
+	virtual void update_render_data() override;
 
-	void resize(int new_width, int new_height);
+	virtual void reset() override;
 
-	void reset();
+	virtual bool has_been_launched() override;
 
-	void launch();
+	virtual void compute_render_times() override;
+	virtual void update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer> perf_metrics) override;
+
+	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_all_kernels() override;
+	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_tracing_kernels() override;
+
+private:
+	bool m_launched = false;
 
 	LightPresamplingParameters configure_light_presampling_pass();
 	void configure_initial_pass();
@@ -85,13 +100,7 @@ public:
 	void launch_spatial_reuse_passes();
 	void launch_spatiotemporal_pass();
 
-	void compute_render_times(std::unordered_map<std::string, float>& times);
-	void update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer> perf_metrics);
-
-	std::map<std::string, GPUKernel>& get_kernels();
-
-private:
-	std::map<std::string, GPUKernel> m_kernels;
+	std::map<std::string, std::shared_ptr<GPUKernel>> m_kernels;
 
 	// ReSTIR reservoirs for the initial candidates
 	OrochiBuffer<ReSTIRDIReservoir> initial_candidates_reservoirs;
@@ -119,9 +128,8 @@ private:
 	oroEvent_t spatial_reuse_time_start = nullptr;
 	oroEvent_t spatial_reuse_time_stop = nullptr;
 
-	GPURenderer* m_renderer = nullptr;
 	// Quick access to the renderer's render_data
-	HIPRTRenderData* render_data = nullptr;
+	HIPRTRenderData* m_render_data = nullptr;
 };
 
 #endif
