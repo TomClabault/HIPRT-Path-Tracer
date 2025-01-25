@@ -53,7 +53,7 @@ public:
 	virtual void compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets = {}) override;
 	virtual void recompile(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets, bool silent = false, bool use_cache = true) override;
 
-	virtual void resize(int new_width, int new_height) override;
+	virtual void resize(unsigned int new_width, unsigned int new_height) override;
 
 	/**
 	 * Precompiles all kernels of this render pass to fill to shader cache in advance.
@@ -67,7 +67,7 @@ public:
 	 * Allocates/frees the ReSTIR DI buffers depending on whether or not the renderer
 	 * needs them (whether or not ReSTIR DI is being used basically) respectively.
 	 */
-	virtual void pre_render_update(float delta_time) override;
+	virtual bool pre_render_update(float delta_time) override;
 	virtual void launch() override;
 	virtual void post_render_update() override {};
 	virtual void update_render_data() override;
@@ -81,6 +81,8 @@ public:
 
 	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_all_kernels() override;
 	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_tracing_kernels() override;
+	
+	bool using_ReSTIR_DI();
 
 private:
 	bool m_launched = false;

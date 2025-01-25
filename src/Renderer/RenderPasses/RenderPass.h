@@ -26,18 +26,18 @@ public:
 	RenderPass();
 	RenderPass(GPURenderer* renderer);
 
-	// TODO remove this
+	// TODO remove this and manage this in the render graph
 	virtual bool has_been_launched() = 0;
 
 	/**
 	 * This will be called once when the render pass is created.
-	 * 
+	 *
 	 * After this function is called, the render pass should be ready to be
 	 * launch()ed (pre_render_update() will be called before launch() though)
-	 * 
+	 *
 	 * This compile method will always be called on all render passes of a renderer.
 	 * It is the responsibility of the class overriding this method to compile the kernels if necessary or not.
-	 * 
+	 *
 	 * For example: if a ReSTIRDIRenderPass implements this interface but the renderer doesn't
 	 * actually use ReSTIR DI at the moment, then calling 'compile' should probably be a no-op (i.e. return directly),
 	 * otherwise, this would be compiling kernels unecessarily (since the render pass is not being used
@@ -47,11 +47,11 @@ public:
 	/**
 	 * When some compiler options of the renderer have been changed and the render pass
 	 * needs to be recompiled
-	 * 
-	 * Same remark here as for compile(): It is the responsibility of the class overriding this method 
+	 *
+	 * Same remark here as for compile(): It is the responsibility of the class overriding this method
 	 * to compile the kernels if necessary or not.
 	 */
-	virtual void recompile(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets, bool silent = false, bool use_cache = true) = 0;
+	virtual void recompile(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets = {}, bool silent = false, bool use_cache = true) = 0;
 
 	/**
 	 * That function is called when the host renderer is resized (i.e. when the user resizes the window)
@@ -59,7 +59,7 @@ public:
 	 * This function should be used to resize the buffers used by this 
 	 * render pass if those buffers depend on the render resolution
 	 */
-	virtual void resize(int new_width, int new_height) = 0;
+	virtual void resize(unsigned int new_width, unsigned int new_height) = 0;
 
 	/**
 	 * Called at each frame, before launch()
@@ -68,8 +68,15 @@ public:
 	 * is necessary to the renderer can be done here
 	 * 
 	 * 'delta_time' is the time in milliseconds that elapsed between two calls of this method
+	 * 
+	 * This function should return true if the HIPRTRenderData structure of the renderer will have to
+	 * be set up again. This is typically the case when some buffers of the render pass have been allocated/deallocated/resized
+	 * and so we need to set the new buffer pointers in the HIPRTRenderData structure such that the GPU
+	 * uses the proper buffer pointers.
+	 * 
+	 * Returns false otherwise
 	 */
-	virtual void pre_render_update(float delta_time) = 0;
+	virtual bool pre_render_update(float delta_time) = 0;
 
 	/**
 	 * This should launch the render pass kernels on the GPU

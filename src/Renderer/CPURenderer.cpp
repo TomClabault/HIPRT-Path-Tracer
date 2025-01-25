@@ -159,9 +159,9 @@ void CPURenderer::setup_nee_plus_plus()
 void CPURenderer::setup_gmon()
 {
     if (m_render_data.render_settings.samples_per_frame < m_gmon.number_of_sets)
-        m_gmon.use_gmon = false;
+        m_gmon.using_gmon = false;
 
-    if (m_gmon.use_gmon)
+    if (m_gmon.using_gmon)
     {
         m_gmon.resize(m_resolution.x, m_resolution.y);
         m_render_data.buffers.gmon_estimator.sets = m_gmon.sets.data();
@@ -189,7 +189,7 @@ void CPURenderer::nee_plus_plus_memcpy_accumulation(int frame_number)
 
 void CPURenderer::gmon_check_for_sets_accumulation()
 {
-    if (m_gmon.use_gmon)
+    if (m_gmon.using_gmon)
     {
         m_render_data.buffers.gmon_estimator.next_set_to_accumulate++;
 
@@ -348,7 +348,7 @@ HIPRTRenderSettings& CPURenderer::get_render_settings()
 
 Image32Bit& CPURenderer::get_framebuffer()
 {
-    if (m_gmon.use_gmon)
+    if (m_gmon.using_gmon)
         return m_gmon.result_framebuffer;
     else
         return m_framebuffer;

@@ -10,48 +10,55 @@
 #include "HIPRT-Orochi/HIPRTOrochiCtx.h"
 #include "HostDeviceCommon/RenderData.h"
 #include "Renderer/GPUDataStructures/GMoNGPUData.h"
+#include "Renderer/RenderPasses/RenderPass.h"
 #include "UI/ApplicationSettings.h"
 
-class GMoNRenderPass
+class GMoNRenderPass : public RenderPass
 {
 public:
+	static const std::string GMON_RENDER_PASS;
 	static const std::string COMPUTE_GMON_KERNEL;
 
 	GMoNRenderPass();
 	GMoNRenderPass(GPURenderer* renderer);
 
-	void compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx);
-	void recompile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, bool silent, bool use_cache);
-
-	void launch(std::shared_ptr<ApplicationSettings> application_settings);
-	void request_recomputation();
-	bool recomputation_completed();
-	bool recomputation_requested();
-
-	unsigned int get_last_recomputed_sample_count();
+	virtual void compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets = {}) override;
+	virtual void recompile(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets = {}, bool silent = false, bool use_cache = true) override;
+	virtual void resize(unsigned int new_width, unsigned int new_height) override;
 
 	/**
 	 * Allocates/deallocates the buffers used by GMoN.
 	 * 
 	 * Returns true or false depending on whether or not the render buffer data have been invalidated
 	 */
-	bool pre_render_update();
+	virtual bool pre_render_update(float delta_time) override;
+	virtual void launch() override;
 	/**
 	 * Does the actual allocation/deallocation of the GMoN buffers.
 	 * 
 	 * Returns true a buffer was allocated or deallocated
 	 * Returns false if buffer were left untouched
 	 */
-	void post_render_update();
+	virtual void post_render_update() override;
 
-	void reset();
+	virtual void update_render_data() override;
+	virtual void reset() override;
+	
+	virtual void compute_render_times() override;
+	virtual void update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer> perf_metrics) override;
+
+	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_all_kernels() override;
+	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_tracing_kernels() override;
+
+	void request_recomputation();
+	bool recomputation_completed();
+	bool recomputation_requested();
+
+	unsigned int get_last_recomputed_sample_count();
+
 
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> get_result_framebuffer();
-	ColorRGB32F* get_sets_buffers_device_pointer();
 	unsigned int get_number_of_sets_used();
-
-	void resize_interop_buffers(unsigned int new_width, unsigned int new_height);
-	void resize_non_interop_buffers(unsigned int new_width, unsigned int new_height);
 
 	ColorRGB32F* map_result_framebuffer();
 	void unmap_result_framebuffer();
@@ -60,20 +67,21 @@ public:
 	 */
 	bool buffers_allocated();
 
-	bool use_gmon() const;
+	bool using_gmon() const;
 
 	GMoNGPUData& get_gmon_data();
 	unsigned int get_VRAM_usage_bytes() const;
 
-	std::map<std::string, std::shared_ptr<GPUKernel>> get_kernels();
+
+	virtual bool has_been_launched() override;
 
 private:
-	GPURenderer* m_renderer = nullptr;
-
 	// Data for the GMoN estimator
 	GMoNGPUData m_gmon;
 
 	std::map<std::string, std::shared_ptr<GPUKernel>> m_kernels;
+
+	bool m_launched = false;
 };
 
 #endif

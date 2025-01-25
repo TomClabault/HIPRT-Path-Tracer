@@ -199,17 +199,17 @@ void GPURenderer::reset_nee_plus_plus()
 
 void GPURenderer::reset_gmon()
 {
-	m_gmon_render_pass.reset();
+	get_gmon_render_pass()->reset();
 }
 
-bool GPURenderer::is_using_gmon()
+std::shared_ptr<GMoNRenderPass> GPURenderer::get_gmon_render_pass()
 {
-	return m_gmon_render_pass.use_gmon() && m_render_data.render_settings.accumulate;
+	return std::dynamic_pointer_cast<GMoNRenderPass>(m_render_passes[GMoNRenderPass::GMON_RENDER_PASS]);
 }
 
-GMoNRenderPass& GPURenderer::get_gmon_render_pass()
+std::shared_ptr<ReSTIRDIRenderPass> GPURenderer::get_ReSTIR_DI_render_pass()
 {
-	return m_gmon_render_pass;
+	return std::dynamic_pointer_cast<ReSTIRDIRenderPass>(m_render_passes[ReSTIRDIRenderPass::RESTIR_DI_RENDER_PASS]);
 }
 
 NEEPlusPlusGPUData& GPURenderer::get_nee_plus_plus_data()
@@ -258,16 +258,10 @@ void GPURenderer::setup_kernels()
 	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 8);
 
 	m_render_passes[ReSTIRDIRenderPass::RESTIR_DI_RENDER_PASS] = std::make_shared<ReSTIRDIRenderPass>(this);
+	m_render_passes[GMoNRenderPass::GMON_RENDER_PASS] = std::make_shared<GMoNRenderPass>(this);
+
 	for (auto& render_pass : m_render_passes)
 		render_pass.second->compile(m_hiprt_orochi_ctx, m_func_name_sets);
-
-	//if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI)
-	//	// We only need to compile the ReSTIR DI render pass if ReSTIR DI is actually being used
-	//	m_restir_di_render_pass.compile(m_hiprt_orochi_ctx, m_func_name_sets);
-
-	m_gmon_render_pass = GMoNRenderPass(this);
-	if (is_using_gmon())
-		m_gmon_render_pass.compile(m_hiprt_orochi_ctx);
 
 	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_TRUE)
 		m_nee_plus_plus.compile_finalize_accumulation_kernel(m_hiprt_orochi_ctx);
@@ -293,14 +287,13 @@ void GPURenderer::pre_render_update(float delta_time)
 	step_animations(delta_time);
 
 	for (auto& render_pass : m_render_passes)
-		render_pass.second->pre_render_update(delta_time);
+		m_render_data_buffers_invalidated |= render_pass.second->pre_render_update(delta_time);
 
 	internal_pre_render_update_clear_device_status_buffers();
 	internal_pre_render_update_global_stack_buffer();
 	internal_pre_render_update_prev_frame_g_buffer();
 	internal_pre_render_update_adaptive_sampling_buffers();
 	internal_pre_render_update_nee_plus_plus(delta_time);
-	internal_pre_render_update_gmon();
 
 	update_render_data();
 
@@ -319,7 +312,6 @@ void GPURenderer::post_render_update()
 		render_pass.second->post_render_update();
 
 	internal_post_render_update_path_tracer();
-	internal_post_render_update_gmon();
 }
 
 void GPURenderer::internal_post_render_update_path_tracer()
@@ -508,16 +500,6 @@ void GPURenderer::internal_pre_render_update_nee_plus_plus(float delta_time)
 	}
 }
 
-void GPURenderer::internal_pre_render_update_gmon()
-{
-	m_render_data_buffers_invalidated |= m_gmon_render_pass.pre_render_update();
-}
-
-void GPURenderer::internal_post_render_update_gmon()
-{
-	m_gmon_render_pass.post_render_update();
-}
-
 void GPURenderer::internal_pre_render_update_global_stack_buffer()
 {
 	if (needs_global_bvh_stack_buffer())
@@ -644,7 +626,7 @@ void GPURenderer::render_path_tracing()
 		for (auto& render_pass : m_render_passes)
 			render_pass.second->launch();
 		launch_path_tracing();
-		launch_GMoN_kernel();
+		get_gmon_render_pass()->launch();
 
 		post_render_update();
 	}
@@ -680,24 +662,12 @@ void GPURenderer::launch_camera_rays()
 	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
 }
 
-//void GPURenderer::launch_ReSTIR_DI()
-//{
-//	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI)
-//		// Only launching if ReSTIR DI is enabled
-//		m_restir_di_render_pass.launch();
-//}
-
 void GPURenderer::launch_path_tracing()
 {
 	void* launch_args[] = { &m_render_data };
 
 	m_render_data.random_seed = m_rng.xorshift32();
 	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
-}
-
-void GPURenderer::launch_GMoN_kernel()
-{
-	m_gmon_render_pass.launch(m_application_settings);
 }
 
 void GPURenderer::launch_debug_kernel()
@@ -726,7 +696,7 @@ bool GPURenderer::was_last_frame_low_resolution()
 	return m_was_last_frame_low_resolution;
 }
 
-void GPURenderer::resize(int new_width, int new_height, bool also_resize_interop)
+void GPURenderer::resize(int new_width, int new_height)
 {
 	// Needed so that this function can eventually be called from another thread
 	OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
@@ -736,11 +706,15 @@ void GPURenderer::resize(int new_width, int new_height, bool also_resize_interop
 	synchronize_kernel();
 	unmap_buffers();
 
-	if (also_resize_interop)
-		resize_interop_buffers(new_width, new_height);
+	m_framebuffer->resize(new_width * new_height);
+	m_denoiser_buffers.m_denoised_framebuffer->resize(new_width * new_height);
+	m_denoiser_buffers.resize_normals_buffer(new_width * new_height);
+	m_denoiser_buffers.resize_albedo_buffer(new_width * new_height);
+
+	if (m_render_data.render_settings.has_access_to_adaptive_sampling_buffers())
+		m_pixels_converged_sample_count_buffer->resize(new_width * new_height);
 
 	m_g_buffer.resize(new_width * new_height, get_ray_volume_state_byte_size());
-	m_gmon_render_pass.resize_non_interop_buffers(new_width, new_height);
 
 	if (m_render_data.render_settings.use_prev_frame_g_buffer(this))
 		m_g_buffer_prev_frame.resize(new_width * new_height, get_ray_volume_state_byte_size());
@@ -768,23 +742,10 @@ void GPURenderer::resize(int new_width, int new_height, bool also_resize_interop
 	m_render_data_buffers_invalidated = true;
 }
 
-void GPURenderer::resize_interop_buffers(int new_width, int new_height)
-{
-	m_framebuffer->resize(new_width * new_height);
-	m_denoiser_buffers.m_denoised_framebuffer->resize(new_width * new_height);
-	m_denoiser_buffers.resize_normals_buffer(new_width * new_height);
-	m_denoiser_buffers.resize_albedo_buffer(new_width * new_height);
-
-	if (m_render_data.render_settings.has_access_to_adaptive_sampling_buffers())
-		m_pixels_converged_sample_count_buffer->resize(new_width * new_height);
-
-	m_gmon_render_pass.resize_interop_buffers(new_width, new_height);
-}
-
 void GPURenderer::map_buffers_for_render()
 {
 	m_render_data.buffers.accumulated_ray_colors = m_framebuffer->map();
-	m_render_data.buffers.gmon_estimator.result_framebuffer = m_gmon_render_pass.map_result_framebuffer();
+	m_render_data.buffers.gmon_estimator.result_framebuffer = get_gmon_render_pass()->map_result_framebuffer();
 
 	m_render_data.aux_buffers.denoiser_normals = m_denoiser_buffers.map_normals_buffer();
 	m_render_data.aux_buffers.denoiser_albedo = m_denoiser_buffers.map_albedo_buffer();
@@ -794,8 +755,10 @@ void GPURenderer::map_buffers_for_render()
 
 void GPURenderer::unmap_buffers()
 {
+	// TODO we should only unmap buffers that need unmapping here
+
 	m_framebuffer->unmap();
-	m_gmon_render_pass.unmap_result_framebuffer();
+	get_gmon_render_pass()->unmap_result_framebuffer();
 	m_denoiser_buffers.unmap_normals_buffer();
 	m_denoiser_buffers.unmap_albedo_buffer();
 }
@@ -804,8 +767,9 @@ void GPURenderer::set_use_denoiser_AOVs_interop_buffers(bool use_interop) { m_de
 
 std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_color_interop_framebuffer() 
 { 
-	if (is_using_gmon() && m_gmon_render_pass.buffers_allocated())
-		return m_gmon_render_pass.get_result_framebuffer();
+	// TODO use render graph here with render_graph.get_output_framebuffer()
+	if (get_gmon_render_pass()->using_gmon() && get_gmon_render_pass()->buffers_allocated())
+		return get_gmon_render_pass()->get_result_framebuffer();
 	else
 		return m_framebuffer; 
 }
@@ -841,6 +805,7 @@ std::shared_ptr<OrochiBuffer<int>>& GPURenderer::get_pixels_converged_sample_cou
 const StatusBuffersValues& GPURenderer::get_status_buffer_values() const { return m_status_buffers_values; }
 
 HIPRTRenderSettings& GPURenderer::get_render_settings() { return m_render_data.render_settings; }
+std::shared_ptr<ApplicationSettings> GPURenderer::get_application_settings() { return m_application_settings; }
 WorldSettings& GPURenderer::get_world_settings() { return m_render_data.world_settings; }
 HIPRTRenderData& GPURenderer::get_render_data() { return m_render_data; }
 HIPRTScene& GPURenderer::get_hiprt_scene() { return m_hiprt_scene; }
@@ -929,8 +894,6 @@ void GPURenderer::recompile_kernels(bool use_cache)
 
 	for (auto& render_pass : m_render_passes)
 		render_pass.second->recompile(m_hiprt_orochi_ctx, m_func_name_sets, true);
-
-	m_gmon_render_pass.recompile(m_hiprt_orochi_ctx, true, use_cache);
 
 	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_TRUE)
 		m_nee_plus_plus.recompile(m_hiprt_orochi_ctx, false, use_cache);
@@ -1118,9 +1081,6 @@ std::map<std::string, std::shared_ptr<GPUKernel>> GPURenderer::get_all_kernels()
 			kernels[pair.first] = pair.second;
 	}
 
-	for (auto& pair : m_gmon_render_pass.get_kernels())
-		kernels[pair.first] = pair.second;
-
 	return kernels;
 }
 
@@ -1138,9 +1098,6 @@ std::map<std::string, std::shared_ptr<GPUKernel>> GPURenderer::get_tracing_kerne
 		for (auto& pair : render_pass_kernels)
 			kernels[pair.first] = pair.second;
 	}
-
-	for (auto& pair : m_gmon_render_pass.get_kernels())
-		kernels[pair.first] = pair.second;
 
 	return kernels;
 }
@@ -1197,6 +1154,7 @@ void GPURenderer::compute_render_pass_times()
 		m_render_pass_times[kernel_id] = m_kernels[kernel_id]->get_last_execution_time();
 
 	for (auto& render_pass : m_render_passes)
+		// TODO the 'has_been_launched' should be handled in the render graph
 		if (render_pass.second->has_been_launched())
 			render_pass.second->compute_render_times();
 
@@ -1239,10 +1197,9 @@ void GPURenderer::update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer
 		perf_metrics->add_value(kernel_id, m_render_pass_times[kernel_id]);
 
 	for (auto& render_pass : m_render_passes)
-	{
+		// TODO the 'has_been_launched' should be handled in the render graph
 		if (render_pass.second->has_been_launched())
 			render_pass.second->update_perf_metrics(perf_metrics);
-	}
 
 	perf_metrics->add_value(GPURenderer::ALL_RENDER_PASSES_TIME_KEY, m_render_pass_times[GPURenderer::ALL_RENDER_PASSES_TIME_KEY]);
 
@@ -1337,8 +1294,6 @@ void GPURenderer::update_render_data()
 		m_render_data.nee_plus_plus.packed_buffers = reinterpret_cast<AtomicType<unsigned int>*>(m_nee_plus_plus.packed_buffer.get_device_pointer());
 		m_render_data.nee_plus_plus.shadow_rays_actually_traced = reinterpret_cast<AtomicType<unsigned int>*>(m_nee_plus_plus.shadow_rays_actually_traced.get_device_pointer());
 		m_render_data.nee_plus_plus.total_shadow_ray_queries = reinterpret_cast<AtomicType<unsigned int>*>(m_nee_plus_plus.total_shadow_ray_queries.get_device_pointer());
-
-		m_render_data.buffers.gmon_estimator.sets = m_gmon_render_pass.get_sets_buffers_device_pointer();
 
 		for (auto& render_pass : m_render_passes)
 			render_pass.second->update_render_data();

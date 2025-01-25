@@ -67,7 +67,7 @@ DisplayViewSystem::DisplayViewSystem(std::shared_ptr<GPURenderer> renderer, Rend
 	DisplayViewType default_display_view_type = DisplayViewType::DEFAULT;
 	if (m_render_window->get_application_settings()->enable_denoising)
 		default_display_view_type = DisplayViewType::DENOISED_BLEND;
-	else if (m_renderer->is_using_gmon())
+	else if (m_renderer->get_gmon_render_pass()->using_gmon())
 		default_display_view_type = DisplayViewType::GMON_BLEND;
 	else 
 		default_display_view_type = DisplayViewType::DEFAULT;
@@ -231,8 +231,8 @@ void DisplayViewSystem::update_display_program_uniforms(const DisplayViewSystem*
 			// to be too dark because we're going to be dividing the data of the denoised buffer by a
 			// sample count that doesn't match
 			sample_number = application_settings->last_denoised_sample_count;
-		else if (renderer->is_using_gmon())
-			sample_number = renderer->get_gmon_render_pass().get_last_recomputed_sample_count();
+		else if (renderer->get_gmon_render_pass()->using_gmon())
+			sample_number = renderer->get_gmon_render_pass()->get_last_recomputed_sample_count();
 		else
 			sample_number = render_settings.sample_number;
 
@@ -268,10 +268,10 @@ void DisplayViewSystem::update_display_program_uniforms(const DisplayViewSystem*
 
 	case DisplayViewType::GMON_BLEND:
 	{
-		int gmon_sample_number = renderer->get_gmon_render_pass().get_last_recomputed_sample_count();
+		int gmon_sample_number = renderer->get_gmon_render_pass()->get_last_recomputed_sample_count();
 		int default_sample_number = render_settings.sample_number;
 
-		program->set_uniform("u_blend_factor", renderer->get_gmon_render_pass().get_gmon_data().gmon_blend_factor);
+		program->set_uniform("u_blend_factor", renderer->get_gmon_render_pass()->get_gmon_data().gmon_blend_factor);
 		program->set_uniform("u_texture_1", DisplayViewSystem::DISPLAY_TEXTURE_UNIT_1);
 		program->set_uniform("u_texture_2", DisplayViewSystem::DISPLAY_TEXTURE_UNIT_2);
 		program->set_uniform("u_sample_number_1", default_sample_number);
