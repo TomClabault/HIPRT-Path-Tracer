@@ -11,8 +11,8 @@
 class ThreadFunctions
 {
 public:
-	static void compile_kernel(GPUKernel& kernel, std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets);
-	static void compile_kernel_no_func_sets(GPUKernel& kernel, std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx);
+	static void compile_kernel(std::shared_ptr<GPUKernel> kernel, std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets);
+	static void compile_kernel_no_func_sets(std::shared_ptr<GPUKernel> kernel, std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx);
 	static void compile_kernel_silent(GPUKernel& kernel, std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets);
 	static void precompile_kernel(const std::string& kernel_function_name, const std::string& kernel_filepath, GPUKernelCompilerOptions options, std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets);
 
@@ -22,7 +22,6 @@ public:
 	 * Frees the memory allocated by the aiScene needed when parsing the scene
 	 */
 	static void load_scene_parse_emissive_triangles(const aiScene* scene, Scene& parsed_scene);
-	static void load_scene_parse_full_opaque_materials(const aiScene* scene, Scene& parsed_scene);
 
 	/**
 	 * Reads 'wanted_channel_count' channels of a 32 bit HDR image from 'filepath' and stores it in 'hdr_image_out'.

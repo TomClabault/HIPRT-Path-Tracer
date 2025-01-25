@@ -7,14 +7,14 @@
 #include "Compiler/GPUKernel.h"
 #include "Threads/ThreadFunctions.h"
 
-void ThreadFunctions::compile_kernel(GPUKernel& kernel, std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets)
+void ThreadFunctions::compile_kernel(std::shared_ptr<GPUKernel> kernel, std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets)
 {
-    kernel.compile(hiprt_orochi_ctx, func_name_sets);
+    kernel->compile(hiprt_orochi_ctx, func_name_sets);
 }
 
-void ThreadFunctions::compile_kernel_no_func_sets(GPUKernel& kernel, std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx)
+void ThreadFunctions::compile_kernel_no_func_sets(std::shared_ptr<GPUKernel> kernel, std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx)
 {
-    kernel.compile(hiprt_orochi_ctx, {});
+    kernel->compile(hiprt_orochi_ctx, {});
 }
 
 void ThreadFunctions::compile_kernel_silent(GPUKernel& kernel, std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets)

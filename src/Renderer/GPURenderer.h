@@ -345,7 +345,25 @@ public:
 	void stop_background_shader_compilation();
 	void resume_background_shader_compilation();
 
-	std::map<std::string, GPUKernel*> get_kernels();
+	/**
+	 * Returns a map of all the kernels of the renderer
+	 * 
+	 * The map keys are the kernel name
+	 * The map values are the kernel themselves
+	 */
+	std::map<std::string, std::shared_ptr<GPUKernel>> get_all_kernels();
+	/**
+	 * Returns a map of all the kernels of the renderer that trace rays (shadow rays, bounce rays, ...)
+	 * 
+	 * This is used in ImGui in the performance settings panel where we can adjust the
+	 * amount of shared memory used for the BVH traversal. Because this is only useful for
+	 * kernels that trace rays, we want a function that returns only the kernels that trace rays
+	 *
+	 * The map keys are the kernel name
+	 * The map values are the kernel themselves
+	 */
+	std::map<std::string, std::shared_ptr<GPUKernel>> get_tracing_kernels();
+
 	std::vector<std::string> get_all_kernel_ids();
 	/**
 	 * Sets the debug kernel to be used.
@@ -422,7 +440,7 @@ private:
 
 	void launch_nee_plus_plus_caching_prepass();
 	void launch_camera_rays();
-	void launch_ReSTIR_DI();
+	//void launch_ReSTIR_DI();
 	void launch_path_tracing();
 	void launch_GMoN_kernel();
 	void launch_debug_kernel();
@@ -547,7 +565,8 @@ private:
 	// These values are updated when the pre_render_update() is called
 	StatusBuffersValues m_status_buffers_values;
 
-	ReSTIRDIRenderPass m_restir_di_render_pass;
+	std::unordered_map<std::string, std::shared_ptr<RenderPass>> m_render_passes;
+	//ReSTIRDIRenderPass m_restir_di_render_pass;
 	GMoNRenderPass m_gmon_render_pass;
 
 	// Some additional info about the parsed scene such as materials names, mesh names, ...
@@ -576,7 +595,7 @@ private:
 	// Render passes/kernels used for the ray tracing
 	// They are all organized in a map so that we can iterate over them. The key
 	// of this map is a "name"
-	std::map<std::string, GPUKernel> m_kernels;
+	std::map<std::string, std::shared_ptr<GPUKernel>> m_kernels;
 
 	// Kernel used for retrieving the size of the RayVolumeState structure on the GPU
 	GPUKernel m_ray_volume_state_byte_size_kernel;

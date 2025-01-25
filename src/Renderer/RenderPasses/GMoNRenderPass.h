@@ -65,7 +65,7 @@ public:
 	GMoNGPUData& get_gmon_data();
 	unsigned int get_VRAM_usage_bytes() const;
 
-	std::map<std::string, GPUKernel>& get_kernels();
+	std::map<std::string, std::shared_ptr<GPUKernel>> get_kernels();
 
 private:
 	GPURenderer* m_renderer = nullptr;
@@ -73,7 +73,7 @@ private:
 	// Data for the GMoN estimator
 	GMoNGPUData m_gmon;
 
-	std::map<std::string, GPUKernel> m_kernels;
+	std::map<std::string, std::shared_ptr<GPUKernel>> m_kernels;
 };
 
 #endif

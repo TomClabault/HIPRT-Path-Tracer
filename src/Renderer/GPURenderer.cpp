@@ -243,22 +243,27 @@ void GPURenderer::setup_kernels()
 	// numbers are the best may vary.)
 	
 	// Configuring the kernels
-	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].set_kernel_file_path(GPURenderer::KERNEL_FILES.at(GPURenderer::CAMERA_RAYS_KERNEL_ID));
-	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].set_kernel_function_name(GPURenderer::KERNEL_FUNCTION_NAMES.at(GPURenderer::CAMERA_RAYS_KERNEL_ID));
-	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].synchronize_options_with(*m_global_compiler_options, GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
-	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
-	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 8);
+	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID] = std::make_shared<GPUKernel>();
+	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID]->set_kernel_file_path(GPURenderer::KERNEL_FILES.at(GPURenderer::CAMERA_RAYS_KERNEL_ID));
+	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID]->set_kernel_function_name(GPURenderer::KERNEL_FUNCTION_NAMES.at(GPURenderer::CAMERA_RAYS_KERNEL_ID));
+	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID]->synchronize_options_with(*m_global_compiler_options, GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
+	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
+	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 8);
 
-	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].set_kernel_file_path(GPURenderer::KERNEL_FILES.at(GPURenderer::PATH_TRACING_KERNEL_ID));
-	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].set_kernel_function_name(GPURenderer::KERNEL_FUNCTION_NAMES.at(GPURenderer::PATH_TRACING_KERNEL_ID));
-	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].synchronize_options_with(*m_global_compiler_options, GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
-	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
-	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 8);
+	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID] = std::make_shared<GPUKernel>();
+	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID]->set_kernel_file_path(GPURenderer::KERNEL_FILES.at(GPURenderer::PATH_TRACING_KERNEL_ID));
+	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID]->set_kernel_function_name(GPURenderer::KERNEL_FUNCTION_NAMES.at(GPURenderer::PATH_TRACING_KERNEL_ID));
+	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID]->synchronize_options_with(*m_global_compiler_options, GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
+	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
+	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 8);
 
-	m_restir_di_render_pass = ReSTIRDIRenderPass(this);
-	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI)
-		// We only need to compile the ReSTIR DI render pass if ReSTIR DI is actually being used
-		m_restir_di_render_pass.compile(m_hiprt_orochi_ctx, m_func_name_sets);
+	m_render_passes[ReSTIRDIRenderPass::RESTIR_DI_RENDER_PASS] = std::make_shared<ReSTIRDIRenderPass>(this);
+	for (auto& render_pass : m_render_passes)
+		render_pass.second->compile(m_hiprt_orochi_ctx, m_func_name_sets);
+
+	//if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI)
+	//	// We only need to compile the ReSTIR DI render pass if ReSTIR DI is actually being used
+	//	m_restir_di_render_pass.compile(m_hiprt_orochi_ctx, m_func_name_sets);
 
 	m_gmon_render_pass = GMoNRenderPass(this);
 	if (is_using_gmon())
@@ -286,8 +291,9 @@ void GPURenderer::setup_kernels()
 void GPURenderer::pre_render_update(float delta_time)
 {
 	step_animations(delta_time);
-	m_restir_di_render_pass.pre_render_update();
 
+	for (auto& render_pass : m_render_passes)
+		render_pass.second->pre_render_update(delta_time);
 
 	internal_pre_render_update_clear_device_status_buffers();
 	internal_pre_render_update_global_stack_buffer();
@@ -309,6 +315,9 @@ void GPURenderer::pre_render_update(float delta_time)
 
 void GPURenderer::post_render_update()
 {
+	for (auto& render_pass : m_render_passes)
+		render_pass.second->post_render_update();
+
 	internal_post_render_update_path_tracer();
 	internal_post_render_update_gmon();
 }
@@ -486,7 +495,7 @@ void GPURenderer::internal_pre_render_update_nee_plus_plus(float delta_time)
 		// Because the visibility map data is packed, we can't just use a memcpy() to copy from the accumulation
 		// buffers to the visibilit map, we have to use a kernel that the does unpacking-copy
 		void* launch_args[] = { &m_render_data.nee_plus_plus };
-		m_nee_plus_plus.finalize_accumulation_kernel.launch_asynchronous(256, 1, matrix_element_count, 1, launch_args, m_main_stream);
+		m_nee_plus_plus.finalize_accumulation_kernel->launch_asynchronous(256, 1, matrix_element_count, 1, launch_args, m_main_stream);
 	}
 	
 	m_nee_plus_plus.statistics_refresh_timer -= delta_time;
@@ -538,7 +547,7 @@ bool GPURenderer::needs_global_bvh_stack_buffer()
 	for (const auto& name_to_kernel : m_kernels)
 	{
 		bool global_stack_buffer_needed = false;
-		global_stack_buffer_needed |= name_to_kernel.second.get_kernel_options().get_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL) == KERNEL_OPTION_TRUE;
+		global_stack_buffer_needed |= name_to_kernel.second->get_kernel_options().get_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL) == KERNEL_OPTION_TRUE;
 
 		if (global_stack_buffer_needed)
 			return true;
@@ -632,9 +641,11 @@ void GPURenderer::render_path_tracing()
 			m_render_data.render_settings.do_update_status_buffers = true;
 		
 		launch_camera_rays();
-		launch_ReSTIR_DI();
+		for (auto& render_pass : m_render_passes)
+			render_pass.second->launch();
 		launch_path_tracing();
 		launch_GMoN_kernel();
+
 		post_render_update();
 	}
 
@@ -658,7 +669,7 @@ void GPURenderer::launch_nee_plus_plus_caching_prepass()
 	void* launch_args[] = { &m_render_data, &caching_sample_count, &m_render_resolution };
 
 	m_render_data.random_seed = m_rng.xorshift32();
-	m_kernels[GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID].launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
+	m_kernels[GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
 }
 
 void GPURenderer::launch_camera_rays()
@@ -666,22 +677,22 @@ void GPURenderer::launch_camera_rays()
 	void* launch_args[] = { &m_render_data, &m_render_resolution };
 
 	m_render_data.random_seed = m_rng.xorshift32();
-	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID].launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
+	m_kernels[GPURenderer::CAMERA_RAYS_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
 }
 
-void GPURenderer::launch_ReSTIR_DI()
-{
-	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI)
-		// Only launching if ReSTIR DI is enabled
-		m_restir_di_render_pass.launch();
-}
+//void GPURenderer::launch_ReSTIR_DI()
+//{
+//	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI)
+//		// Only launching if ReSTIR DI is enabled
+//		m_restir_di_render_pass.launch();
+//}
 
 void GPURenderer::launch_path_tracing()
 {
 	void* launch_args[] = { &m_render_data };
 
 	m_render_data.random_seed = m_rng.xorshift32();
-	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID].launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
+	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
 }
 
 void GPURenderer::launch_GMoN_kernel()
@@ -740,8 +751,8 @@ void GPURenderer::resize(int new_width, int new_height, bool also_resize_interop
 		m_pixels_sample_count_buffer.resize(new_width * new_height);
 	}
 
-	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI)
-		m_restir_di_render_pass.resize(new_width, new_height);
+	for (auto& render_pass : m_render_passes)
+		render_pass.second->resize(new_width, new_height);
 
 	m_pixel_active.resize(new_width * new_height);
 
@@ -914,11 +925,11 @@ void GPURenderer::recompile_kernels(bool use_cache)
 	take_kernel_compilation_priority();
 
 	for (auto& name_to_kenel : m_kernels)
-		name_to_kenel.second.compile_silent(m_hiprt_orochi_ctx, m_func_name_sets, use_cache);
+		name_to_kenel.second->compile_silent(m_hiprt_orochi_ctx, m_func_name_sets, use_cache);
 
-	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI)
-		// We only need to compile the ReSTIR DI render pass if ReSTIR DI is actually being used
-		m_restir_di_render_pass.recompile(m_hiprt_orochi_ctx, m_func_name_sets, true, use_cache);
+	for (auto& render_pass : m_render_passes)
+		render_pass.second->recompile(m_hiprt_orochi_ctx, m_func_name_sets, true);
+
 	m_gmon_render_pass.recompile(m_hiprt_orochi_ctx, true, use_cache);
 
 	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_TRUE)
@@ -1012,7 +1023,10 @@ void GPURenderer::precompile_direct_light_sampling_kernels()
 					// Recompiling all the kernels with the new options
 					for (const std::string& kernel_id : get_all_kernel_ids())
 						precompile_kernel(kernel_id, partials_options);
-					m_restir_di_render_pass.precompile_kernels(partials_options, m_hiprt_orochi_ctx, m_func_name_sets);
+
+					/*for (auto& render_pass : m_render_passes)
+						render_pass.second->precompile_kernels();
+					m_restir_di_render_pass.precompile_kernels(partials_options, m_hiprt_orochi_ctx, m_func_name_sets);*/
 
 					if (direct_light_sampling_strategy == LSS_RIS_BSDF_AND_LIGHT)
 					{
@@ -1023,7 +1037,9 @@ void GPURenderer::precompile_direct_light_sampling_kernels()
 						// Recompiling all the kernels with the new options
 						for (const std::string& kernel_id : get_all_kernel_ids())
 							precompile_kernel(kernel_id, partials_options);
-						m_restir_di_render_pass.precompile_kernels(partials_options, m_hiprt_orochi_ctx, m_func_name_sets);
+						/*for (auto& render_pass : m_render_passes)
+							render_pass.second->precompile_kernels();
+						m_restir_di_render_pass.precompile_kernels(partials_options, m_hiprt_orochi_ctx, m_func_name_sets);*/
 					}
 				}
 			}
@@ -1062,8 +1078,10 @@ void GPURenderer::precompile_ReSTIR_DI_kernels()
 							// Recompiling all the kernels with the new options
 							for (const std::string& kernel_id : get_all_kernel_ids())
 								precompile_kernel(kernel_id, partials_options);
-							// Recompiling the ReSTIR DI render pass
-							m_restir_di_render_pass.precompile_kernels(partials_options, m_hiprt_orochi_ctx, m_func_name_sets);
+
+							/*for (auto& render_pass : m_render_passes)
+								render_pass.second->precompile_kernels();
+							m_restir_di_render_pass.precompile_kernels(partials_options, m_hiprt_orochi_ctx, m_func_name_sets);*/
 						}
 					}
 				}
@@ -1074,7 +1092,7 @@ void GPURenderer::precompile_ReSTIR_DI_kernels()
 
 void GPURenderer::precompile_kernel(const std::string& id, GPUKernelCompilerOptions partial_options)
 {
-	GPUKernelCompilerOptions options = m_kernels[id].get_kernel_options().deep_copy();
+	GPUKernelCompilerOptions options = m_kernels[id]->get_kernel_options().deep_copy();
 	partial_options.apply_onto(options);
 
 	ThreadManager::start_thread(ThreadManager::RENDERER_PRECOMPILE_KERNELS, ThreadFunctions::precompile_kernel,
@@ -1085,18 +1103,44 @@ void GPURenderer::precompile_kernel(const std::string& id, GPUKernelCompilerOpti
 	ThreadManager::detach_threads(ThreadManager::RENDERER_PRECOMPILE_KERNELS);
 }
 
-std::map<std::string, GPUKernel*> GPURenderer::get_kernels()
+std::map<std::string, std::shared_ptr<GPUKernel>> GPURenderer::get_all_kernels()
 {
-	std::map<std::string, GPUKernel*> kernels;
+	std::map<std::string, std::shared_ptr<GPUKernel>> kernels;
 
 	for (auto& pair : m_kernels)
-		kernels[pair.first] = &pair.second;
+		kernels[pair.first] = pair.second;
 
-	for (auto& pair : m_restir_di_render_pass.get_kernels())
-		kernels[pair.first] = &pair.second;
+	for (auto& render_pass : m_render_passes)
+	{
+		std::map<std::string, std::shared_ptr<GPUKernel>> render_pass_kernels = render_pass.second->get_all_kernels();
+
+		for (auto& pair : render_pass_kernels)
+			kernels[pair.first] = pair.second;
+	}
 
 	for (auto& pair : m_gmon_render_pass.get_kernels())
-		kernels[pair.first] = &pair.second;
+		kernels[pair.first] = pair.second;
+
+	return kernels;
+}
+
+std::map<std::string, std::shared_ptr<GPUKernel>> GPURenderer::get_tracing_kernels()
+{
+	std::map<std::string, std::shared_ptr<GPUKernel>> kernels;
+
+	for (auto& pair : m_kernels)
+		kernels[pair.first] = pair.second;
+
+	for (auto& render_pass : m_render_passes)
+	{
+		std::map<std::string, std::shared_ptr<GPUKernel>> render_pass_kernels = render_pass.second->get_tracing_kernels();
+
+		for (auto& pair : render_pass_kernels)
+			kernels[pair.first] = pair.second;
+	}
+
+	for (auto& pair : m_gmon_render_pass.get_kernels())
+		kernels[pair.first] = pair.second;
 
 	return kernels;
 }
@@ -1150,9 +1194,12 @@ void GPURenderer::compute_render_pass_times()
 {
 	// Registering the render times of all the kernels by iterating over all the kernels
 	for (const std::string& kernel_id : get_all_kernel_ids())
-		m_render_pass_times[kernel_id] = m_kernels[kernel_id].get_last_execution_time();
+		m_render_pass_times[kernel_id] = m_kernels[kernel_id]->get_last_execution_time();
 
-	m_restir_di_render_pass.compute_render_times(m_render_pass_times);
+	for (auto& render_pass : m_render_passes)
+		if (render_pass.second->has_been_launched())
+			render_pass.second->compute_render_times();
+
 	if (m_debug_trace_kernel.has_been_compiled())
 		// If the debug kernel is being used... read its execution time
 		// Note that we check for 'has_been_compiled()' because if the debug kernel isn't in use,
@@ -1190,7 +1237,13 @@ void GPURenderer::update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer
 	// Also adding the times of the various passes
 	for (const std::string& kernel_id : get_all_kernel_ids())
 		perf_metrics->add_value(kernel_id, m_render_pass_times[kernel_id]);
-	m_restir_di_render_pass.update_perf_metrics(perf_metrics);
+
+	for (auto& render_pass : m_render_passes)
+	{
+		if (render_pass.second->has_been_launched())
+			render_pass.second->update_perf_metrics(perf_metrics);
+	}
+
 	perf_metrics->add_value(GPURenderer::ALL_RENDER_PASSES_TIME_KEY, m_render_pass_times[GPURenderer::ALL_RENDER_PASSES_TIME_KEY]);
 
 	if (m_debug_trace_kernel.has_been_compiled())
@@ -1206,8 +1259,6 @@ void GPURenderer::reset()
 		// If we're not accumulating, we want each frame of the render to be different
 		// so we don't get into that if block and we don't reset the seed
 		m_rng.m_state.seed = 42;
-
-		m_restir_di_render_pass.reset();
 	
 		if (m_application_settings->auto_sample_per_frame)
 			m_render_data.render_settings.samples_per_frame = 1;
@@ -1216,6 +1267,9 @@ void GPURenderer::reset()
 	m_render_data.render_settings.denoiser_AOV_accumulation_counter = 0;
 	m_render_data.render_settings.sample_number = 0;
 	m_render_data.render_settings.need_to_reset = true;
+
+	for (auto& render_pass : m_render_passes)
+		render_pass.second->reset();
 
 	reset_nee_plus_plus();
 	reset_gmon();
@@ -1280,13 +1334,14 @@ void GPURenderer::update_render_data()
 		m_render_data.aux_buffers.still_one_ray_active = m_status_buffers.still_one_ray_active_buffer.get_device_pointer();
 		m_render_data.aux_buffers.stop_noise_threshold_converged_count = reinterpret_cast<AtomicType<unsigned int>*>(m_status_buffers.pixels_converged_count_buffer.get_device_pointer());
 
-		m_restir_di_render_pass.update_render_data();
-
 		m_render_data.nee_plus_plus.packed_buffers = reinterpret_cast<AtomicType<unsigned int>*>(m_nee_plus_plus.packed_buffer.get_device_pointer());
 		m_render_data.nee_plus_plus.shadow_rays_actually_traced = reinterpret_cast<AtomicType<unsigned int>*>(m_nee_plus_plus.shadow_rays_actually_traced.get_device_pointer());
 		m_render_data.nee_plus_plus.total_shadow_ray_queries = reinterpret_cast<AtomicType<unsigned int>*>(m_nee_plus_plus.total_shadow_ray_queries.get_device_pointer());
 
 		m_render_data.buffers.gmon_estimator.sets = m_gmon_render_pass.get_sets_buffers_device_pointer();
+
+		for (auto& render_pass : m_render_passes)
+			render_pass.second->update_render_data();
 
 		m_render_data_buffers_invalidated = false;
 	}
