@@ -68,13 +68,11 @@ public:
 	 * needs them (whether or not ReSTIR DI is being used basically) respectively.
 	 */
 	virtual bool pre_render_update(float delta_time) override;
-	virtual void launch() override;
+	virtual bool launch() override;
 	virtual void post_render_update() override {};
 	virtual void update_render_data() override;
 
 	virtual void reset() override;
-
-	virtual bool has_been_launched() override;
 
 	virtual void compute_render_times() override;
 	virtual void update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer> perf_metrics) override;
@@ -85,8 +83,6 @@ public:
 	bool using_ReSTIR_DI();
 
 private:
-	bool m_launched = false;
-
 	LightPresamplingParameters configure_light_presampling_pass();
 	void configure_initial_pass();
 	void configure_temporal_pass();

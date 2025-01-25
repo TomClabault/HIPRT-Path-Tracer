@@ -26,9 +26,6 @@ public:
 	RenderPass();
 	RenderPass(GPURenderer* renderer);
 
-	// TODO remove this and manage this in the render graph
-	virtual bool has_been_launched() = 0;
-
 	/**
 	 * This will be called once when the render pass is created.
 	 *
@@ -80,8 +77,11 @@ public:
 
 	/**
 	 * This should launch the render pass kernels on the GPU
+	 * 
+	 * Returns true if the render pass was indeed launched
+	 * Returns false otherwise (if the render pass isn't being used or if the render pass is only launched every frames or ...)
 	 */
-	virtual void launch() = 0;
+	virtual bool launch() = 0;
 
 	/**
 	 * Called at each frame, after launch()
@@ -144,9 +144,17 @@ public:
 	 * Adds another render pass as a dependency of this render pass. 
 	 * The dependency render pass will then always be executed before this render pass is executed
 	 */
-	void add_dependency(std::shared_ptr<RenderPass> dependency)
+	void add_dependency(std::string dependency)
 	{
 		m_dependencies.push_back(dependency);
+	}
+
+	/**
+	 * Returns a list of all the dependencies so far added to this render pass
+	 */
+	std::vector<std::string>& get_dependencies()
+	{
+		return m_dependencies;
 	}
 
 	/**
@@ -175,7 +183,7 @@ protected:
 
 	// Other render passes which this render pass depends on.
 	// They will be launched before this render pass
-	std::vector<std::shared_ptr<RenderPass>> m_dependencies;
+	std::vector<std::string> m_dependencies;
 };
 
 #endif
