@@ -575,6 +575,8 @@ float& Image32Bit::operator[](int index)
     return m_pixel_data[index];
 }
 
+#define PRINT_MAX_RADIANCE 0
+
 std::vector<float> Image32Bit::compute_cdf() const
 {
     std::vector<float> out_cdf;
@@ -582,6 +584,7 @@ std::vector<float> Image32Bit::compute_cdf() const
     out_cdf[0] = 0.0f;
 
     float max_radiance = 0.0f;
+
     for (int y = 0; y < height; y++)
     {
         for (int x = 0; x < width; x++)
@@ -594,6 +597,10 @@ std::vector<float> Image32Bit::compute_cdf() const
                 max_radiance = hippt::max(max_radiance, m_pixel_data[(x + y * width) * channels + i]);
         }
     }
+
+#if PRINT_MAX_RADIANCE == 1
+    std::cout << "Maximum luminance of envmap: " << max_luminance << std::endl;
+#endif
 
     return out_cdf;
 }
@@ -608,6 +615,7 @@ void Image32Bit::compute_alias_table(std::vector<float>& out_probas, std::vector
     // A vector of the luminance of all the pixels of the envmap
     // normalized such that the average of the elements of this vector is 'width*height'
     std::vector<double> normalized_luminance_of_pixels(width * height);
+    double max_luminance = 0.0f;
     double luminance_sum = 0.0f;
     for (int y = 0; y < height; y++)
     {
@@ -618,8 +626,13 @@ void Image32Bit::compute_alias_table(std::vector<float>& out_probas, std::vector
             double luminance = static_cast<double>(luminance_of_pixel(x, y));
             normalized_luminance_of_pixels[index] = luminance;
             luminance_sum += luminance;
+            max_luminance = std::max(max_luminance, luminance);
         }
     }
+
+#if PRINT_MAX_RADIANCE == 1
+    std::cout << "Maximum luminance of envmap: " << max_luminance << std::endl;
+#endif
 
     if (out_luminance_total_sum != nullptr)
         *out_luminance_total_sum = luminance_sum;

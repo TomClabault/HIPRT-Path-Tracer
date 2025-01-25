@@ -44,7 +44,8 @@ void RendererEnvmap::recompute_sampling_data_structure(GPURenderer* renderer, co
 	}
 	else if (renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY) == ESS_ALIAS_TABLE)
 	{
-		m_cdf.free();
+		if (m_cdf.get_element_count() > 0)
+			m_cdf.free();
 
 		recompute_alias_table(image);
 	}
