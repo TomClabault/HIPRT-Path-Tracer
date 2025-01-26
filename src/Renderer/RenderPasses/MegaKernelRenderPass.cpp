@@ -8,8 +8,8 @@
 #include "Threads/ThreadManager.h"
 #include "Threads/ThreadFunctions.h"
 
-const std::string MegaKernelRenderPass::MEGAKERNEL_RENDER_PASS_NAME = "Mega-Kernel Render Pass";
-const std::string MegaKernelRenderPass::MEGAKERNEL_KERNEL = "Mega-Kernel kernel";
+const std::string MegaKernelRenderPass::MEGAKERNEL_RENDER_PASS_NAME = "Megakernel Render Pass";
+const std::string MegaKernelRenderPass::MEGAKERNEL_KERNEL = "Megakernel (1 SPP)";
 
 MegaKernelRenderPass::MegaKernelRenderPass() : MegaKernelRenderPass(nullptr) {}
 MegaKernelRenderPass::MegaKernelRenderPass(GPURenderer* renderer) : RenderPass(renderer, MegaKernelRenderPass::MEGAKERNEL_RENDER_PASS_NAME) {}
@@ -99,12 +99,12 @@ void MegaKernelRenderPass::compute_render_times()
 {
 	std::unordered_map<std::string, float>& render_times = m_renderer->get_render_pass_times();
 
-	render_times[MegaKernelRenderPass::MEGAKERNEL_RENDER_PASS_NAME] = m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL]->get_last_execution_time();
+	render_times[MegaKernelRenderPass::MEGAKERNEL_KERNEL] = m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL]->get_last_execution_time();
 }
 
 void MegaKernelRenderPass::update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer> perf_metrics)
 {
-	perf_metrics->add_value(MegaKernelRenderPass::MEGAKERNEL_RENDER_PASS_NAME, m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL]->get_last_execution_time());
+	perf_metrics->add_value(MegaKernelRenderPass::MEGAKERNEL_KERNEL, m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL]->get_last_execution_time());
 }
 
 std::map<std::string, std::shared_ptr<GPUKernel>> MegaKernelRenderPass::get_all_kernels()

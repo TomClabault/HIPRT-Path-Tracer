@@ -33,21 +33,29 @@ bool RenderGraph::pre_render_update(float delta_time)
 	for (auto& name_to_render_pass : m_render_passes)
 		render_data_invalidated |= name_to_render_pass.second->pre_render_update(delta_time);
 
+	// pre_render_update means that this is a new frame
+	m_new_frame = true;
+
 	return render_data_invalidated;
 }
 
 bool RenderGraph::launch()
 {
-	// Resetting the state of whether or not the render passes have been launched this frame or not
+		// Resetting the state of whether or not the render passes have been launched this frame or not
 	for (auto& name_to_render_pass : m_render_passes)
 	{
-		m_render_pass_launched_this_frame_yet[name_to_render_pass.second] = false;
-		m_render_pass_effectively_launched_this_frame[name_to_render_pass.second] = false;
+		m_render_pass_launched_this_frame_yet[name_to_render_pass.second.get()] = false;
+
+		if (m_new_frame)
+			m_render_pass_effectively_launched_this_frame[name_to_render_pass.second.get()] = false;
 	}
 
 	// Launching all the render passes
 	for (auto& name_to_render_pass : m_render_passes)
 		launch_render_pass_with_dependencies(name_to_render_pass.second);
+
+	// This is not a fresh frame anymore
+	m_new_frame = false;
 
 	return true;
 }
@@ -61,17 +69,22 @@ void RenderGraph::launch_render_pass_with_dependencies(std::shared_ptr<RenderPas
 		return;
 	}
 
+	if (m_render_pass_launched_this_frame_yet[render_pass.get()] == true)
+		// This pas has already been launched
+		return;
+
 	// Launching all the dependencies first
 	for (std::shared_ptr<RenderPass> dependency : render_pass->get_dependencies())
 		launch_render_pass_with_dependencies(dependency);
 
 	// Now launching the render pass itself since all dependencies have been launched
-	if (m_render_pass_launched_this_frame_yet[render_pass] == false)
-	{
-		bool effectively_launched = m_render_pass_effectively_launched_this_frame[render_pass] = render_pass->launch();
-		m_render_pass_launched_this_frame_yet[render_pass] = true;
-		m_render_pass_effectively_launched_this_frame[render_pass] = effectively_launched;
-	}
+	bool effectively_launched = render_pass->launch();
+	m_render_pass_launched_this_frame_yet[render_pass.get()] = true;
+
+	if (effectively_launched)
+		// Only setting the effectively launched to true if the render pass was launched
+		// Otherwise, this leaves it at its current value
+		m_render_pass_effectively_launched_this_frame[render_pass.get()] = true;
 }
 
 void RenderGraph::post_render_update()
@@ -95,14 +108,14 @@ void RenderGraph::reset()
 void RenderGraph::compute_render_times()
 {
 	for (auto& render_pass : m_render_passes)
-		if (m_render_pass_effectively_launched_this_frame[render_pass.second])
+		if (m_render_pass_effectively_launched_this_frame[render_pass.second.get()])
 			render_pass.second->compute_render_times();
 }
 
 void RenderGraph::update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer> perf_metrics)
 {
 	for (auto& render_pass : m_render_passes)
-		if (m_render_pass_effectively_launched_this_frame[render_pass.second])
+		if (m_render_pass_effectively_launched_this_frame[render_pass.second.get()])
 			render_pass.second->update_perf_metrics(perf_metrics);
 }
 
@@ -147,4 +160,9 @@ void RenderGraph::add_render_pass(std::shared_ptr<RenderPass> render_pass)
 std::shared_ptr<RenderPass> RenderGraph::get_render_pass(const std::string& render_pass_name)
 {
 	return m_render_passes[render_pass_name];
+}
+
+std::unordered_map<std::string, std::shared_ptr<RenderPass>> RenderGraph::get_render_passes()
+{
+	return m_render_passes;
 }

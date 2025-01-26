@@ -11,8 +11,8 @@
 
 #include <memory>
 
-const std::string FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS_NAME = "Camera Rays Render Pass";
-const std::string FillGBufferRenderPass::FILL_GBUFFER_KERNEL = "Camera Rays Kernel";
+const std::string FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS_NAME = "Fill G-Buffer Render Pass";
+const std::string FillGBufferRenderPass::FILL_GBUFFER_KERNEL = "Fill G-Buffer";
 
 FillGBufferRenderPass::FillGBufferRenderPass() : FillGBufferRenderPass(nullptr) {}
 FillGBufferRenderPass::FillGBufferRenderPass(GPURenderer* renderer) : RenderPass(renderer, FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS_NAME)
@@ -122,14 +122,14 @@ void FillGBufferRenderPass::compute_render_times()
 {
 	std::unordered_map<std::string, float>& render_pass_times = m_renderer->get_render_pass_times();
 
-	render_pass_times[FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS_NAME] = m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL]->get_last_execution_time();
+	render_pass_times[FillGBufferRenderPass::FILL_GBUFFER_KERNEL] = m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL]->get_last_execution_time();
 }
 
 void FillGBufferRenderPass::update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer> perf_metrics)
 {
 	std::unordered_map<std::string, float>& render_pass_times = m_renderer->get_render_pass_times();
 
-	perf_metrics->add_value(FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS_NAME, render_pass_times[FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS_NAME]);
+	perf_metrics->add_value(FillGBufferRenderPass::FILL_GBUFFER_KERNEL, render_pass_times[FillGBufferRenderPass::FILL_GBUFFER_KERNEL]);
 }
 
 std::map<std::string, std::shared_ptr<GPUKernel>> FillGBufferRenderPass::get_all_kernels()

@@ -8,7 +8,7 @@
 #include "Threads/ThreadManager.h"
 
 const std::string GMoNRenderPass::GMON_RENDER_PASS_NAME = "GMoN Render Pass";
-const std::string GMoNRenderPass::COMPUTE_GMON_KERNEL = "GMoN Compute Kernel";
+const std::string GMoNRenderPass::COMPUTE_GMON_KERNEL = "Compute G-MoN";
 
 GMoNRenderPass::GMoNRenderPass() : GMoNRenderPass(nullptr) {}
 
@@ -260,6 +260,9 @@ unsigned int GMoNRenderPass::get_VRAM_usage_bytes() const
 
 std::map<std::string, std::shared_ptr<GPUKernel>> GMoNRenderPass::get_all_kernels()
 {
+	if (!using_gmon())
+		return {};
+
 	return m_kernels;
 }
 

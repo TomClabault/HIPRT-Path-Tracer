@@ -39,6 +39,7 @@ public:
 
 	void add_render_pass(std::shared_ptr<RenderPass> render_pass);
 	std::shared_ptr<RenderPass> get_render_pass(const std::string& render_pass_name);
+	std::unordered_map<std::string, std::shared_ptr<RenderPass>> get_render_passes();
 
 private:
 	// Launches all the dependencies (recursively) of the given render pass and
@@ -47,7 +48,7 @@ private:
 
 	// Whether or not launch() has been called on a given render pass this frame.
 	// This is used to know whether a render pass has already been launched this frame
-	std::unordered_map<std::shared_ptr<RenderPass>, bool> m_render_pass_launched_this_frame_yet;
+	std::unordered_map<RenderPass*, bool> m_render_pass_launched_this_frame_yet;
 	// Whether or not launch(), called on a given render pass, returned true this frame
 	// 
 	// Because calling launch() on a render pass may not *actually* launch the render pass on the GPU
@@ -55,11 +56,14 @@ private:
 	// one out of N calls to launch() will actually launch the render pass on the GPU), we
 	// will need to know when a render pass has effectively been launched because if it hasn't,
 	// we can't get the render pass times for this render pass for example
-	std::unordered_map<std::shared_ptr<RenderPass>, bool> m_render_pass_effectively_launched_this_frame;
+	std::unordered_map<RenderPass*, bool> m_render_pass_effectively_launched_this_frame;
 
 	// Name --> RenderPass
 	// The name is actually just render_pass.get_name()
 	std::unordered_map<std::string, std::shared_ptr<RenderPass>> m_render_passes;
+
+	// Whether or not launch has already been called for this *frame* (not sample)
+	bool m_new_frame = true;
 };
 
 #endif

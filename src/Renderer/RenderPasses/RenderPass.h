@@ -149,6 +149,21 @@ public:
 	 *
 	 * The map keys are the kernel name
 	 * The map values are the kernel themselves
+	 * 
+	 * If this render pass isn't being used by the renderer 
+	 * (for example a ReSTIR DI render pass whereas we're using RIS 
+	 * for direct lighting at the first bounce, i.e. the ReSTIR DI render 
+	 * pass is not in use), this function should return and empty map. 
+	 * 
+	 * This is such that ImGui doesn't display the GPU timings of this render pass.
+	 * 
+	 * This function also should not return inactive kernels of a render pass if
+	 * the render pass has more than 1 kernel. For example, the ReSTIR DI render 
+	 * pass has multiple kernels: spatio-temporal, spatial, temporal. 
+	 * If spatiotemporal is being used, the spatial and temporal are not being used and 
+	 * so they will not be in the map returned by this function. This is also to avoid 
+	 * ImGui from displaying the performance metrics about kernels that are not in use 
+	 * (and so we have no performance metrics on them)
 	 */
 	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_all_kernels() = 0;
 
@@ -161,6 +176,21 @@ public:
 	 *
 	 * The map keys are the kernel name
 	 * The map values are the kernel themselves
+	 * 
+	 * If this render pass isn't being used by the renderer 
+	 * (for example a ReSTIR DI render pass whereas we're using RIS 
+	 * for direct lighting at the first bounce, i.e. the ReSTIR DI render 
+	 * pass is not in use), this function should return and empty map. 
+	 * 
+	 * This is such that ImGui doesn't display the GPU timings of this render pass.
+	 * 
+	 * This function also should not return inactive kernels of a render pass if
+	 * the render pass has more than 1 kernel. For example, the ReSTIR DI render 
+	 * pass has multiple kernels: spatio-temporal, spatial, temporal. 
+	 * If spatiotemporal is being used, the spatial and temporal are not being used and 
+	 * so they will not be in the map returned by this function. This is also to avoid 
+	 * ImGui from displaying the performance metrics about kernels that are not in use 
+	 * (and so we have no performance metrics on them)
 	 */
 	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_tracing_kernels() = 0;
 
