@@ -171,7 +171,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool refract_ray(const float3& ray_direction, con
  * 
  * The sampled direction is returned in world space
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE float3 cosine_weighted_sample_around_normal(const float3& normal, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 cosine_weighted_sample_around_normal_world_space(const float3& normal, Xorshift32Generator& random_number_generator)
 {
     float rand_1 = random_number_generator();
     float rand_2 = 2.0f * random_number_generator() - 1.0f;

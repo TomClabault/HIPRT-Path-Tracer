@@ -17,18 +17,13 @@ MegaKernelRenderPass::MegaKernelRenderPass(GPURenderer* renderer) : RenderPass(r
 void MegaKernelRenderPass::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets)
 {
 	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL] = std::make_shared<GPUKernel>();
-	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/FullPathTracer.h");
-	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL]->set_kernel_function_name("FullPathTracer");
+	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Megakernel.h");
+	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL]->set_kernel_function_name("MegaKernel");
 	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL]->synchronize_options_with(m_renderer->get_global_compiler_options(), GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
 	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
 	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 8);
 
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL], hiprt_orochi_ctx, std::ref(func_name_sets));
-}
-
-void MegaKernelRenderPass::recompile(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets, bool silent, bool use_cache)
-{
-	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, true);
 }
 
 void MegaKernelRenderPass::resize(unsigned int new_width, unsigned int new_height)
@@ -93,26 +88,4 @@ void MegaKernelRenderPass::reset()
 	m_render_data->render_settings.denoiser_AOV_accumulation_counter = 0;
 	m_render_data->render_settings.sample_number = 0;
 	m_render_data->render_settings.need_to_reset = true;
-}
-
-void MegaKernelRenderPass::compute_render_times()
-{
-	std::unordered_map<std::string, float>& render_times = m_renderer->get_render_pass_times();
-
-	render_times[MegaKernelRenderPass::MEGAKERNEL_KERNEL] = m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL]->get_last_execution_time();
-}
-
-void MegaKernelRenderPass::update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer> perf_metrics)
-{
-	perf_metrics->add_value(MegaKernelRenderPass::MEGAKERNEL_KERNEL, m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL]->get_last_execution_time());
-}
-
-std::map<std::string, std::shared_ptr<GPUKernel>> MegaKernelRenderPass::get_all_kernels()
-{
-	return m_kernels;
-}
-
-std::map<std::string, std::shared_ptr<GPUKernel>> MegaKernelRenderPass::get_tracing_kernels()
-{
-	return m_kernels;
 }

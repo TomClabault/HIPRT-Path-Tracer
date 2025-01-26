@@ -23,7 +23,6 @@ public:
 	GMoNRenderPass(GPURenderer* renderer);
 
 	virtual void compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets = {}) override;
-	virtual void recompile(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets = {}, bool silent = false, bool use_cache = true) override;
 	virtual void resize(unsigned int new_width, unsigned int new_height) override;
 
 	/**
@@ -43,19 +42,16 @@ public:
 
 	virtual void update_render_data() override;
 	virtual void reset() override;
-	
-	virtual void compute_render_times() override;
-	virtual void update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer> perf_metrics) override;
 
-	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_all_kernels() override;
 	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_tracing_kernels() override;
+
+	virtual bool is_render_pass_used() const override;
 
 	void request_recomputation();
 	bool recomputation_completed();
 	bool recomputation_requested();
 
 	unsigned int get_last_recomputed_sample_count();
-
 
 	std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> get_result_framebuffer();
 	unsigned int get_number_of_sets_used();
@@ -66,8 +62,6 @@ public:
 	 * Returns true or false depending on whether or not the GMoN buffers are allocated
 	 */
 	bool buffers_allocated();
-
-	bool using_gmon() const;
 
 	GMoNGPUData& get_gmon_data();
 	unsigned int get_VRAM_usage_bytes() const;

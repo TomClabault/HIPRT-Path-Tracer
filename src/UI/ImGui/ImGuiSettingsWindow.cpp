@@ -87,7 +87,7 @@ void ImGuiSettingsWindow::draw_header()
 		else
 		{
 			// Time is < 0.0f i.e. the timer has expired and we're waiting for a refresh
-			if (m_renderer->get_gmon_render_pass()->using_gmon() && m_renderer->get_gmon_render_pass()->recomputation_requested())
+			if (m_renderer->get_gmon_render_pass()->is_render_pass_used() && m_renderer->get_gmon_render_pass()->recomputation_requested())
 				// If we're waiting for GMoN, indicating it
 				ImGui::Text("Viewport refresh in: 0.000s --- Waiting for GMoN");
 			else
@@ -262,7 +262,7 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 		{
 			if (ImGui::InputInt("Max Sample Count", &m_application_settings->max_sample_count))
 				m_application_settings->max_sample_count = std::max(m_application_settings->max_sample_count, 0);
-			if (m_renderer->get_gmon_render_pass()->using_gmon())
+			if (m_renderer->get_gmon_render_pass()->is_render_pass_used())
 			{
 				// Using GMoN
 
@@ -488,7 +488,7 @@ bool ImGuiSettingsWindow::display_view_disabled(DisplayViewType display_view_typ
 		return !render_settings.has_access_to_adaptive_sampling_buffers();
 
 	case DisplayViewType::GMON_BLEND:
-		return !m_renderer->get_gmon_render_pass()->using_gmon();
+		return !m_renderer->get_gmon_render_pass()->is_render_pass_used();
 
 	case DisplayViewType::DENOISED_BLEND:
 		return !m_application_settings->enable_denoising;
@@ -837,7 +837,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			ImGui::EndDisabled();
 		}
 
-		if (ImGui::CollapsingHeader("Direct lighting"))
+		if (ImGui::CollapsingHeader("Emissive geometry sampling"))
 		{
 			ImGui::TreePush("Direct lighting sampling tree");
 
@@ -1548,7 +1548,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			ImGui::TreePop();
 		}
 
-		if (ImGui::CollapsingHeader("Envmap lighting"))
+		if (ImGui::CollapsingHeader("Envmap sampling"))
 		{
 			ImGui::TreePush("Envmap sampling tree");
 
@@ -1579,6 +1579,20 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			}
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			ImGui::TreePop();
+		}
+
+		if (ImGui::CollapsingHeader("Path sampling"))
+		{
+			ImGui::TreePush("Path sampling tree");
+
+			const char* items[] = { "- BSDF sampling", "- ReSTIR GI" };
+			if (ImGui::Combo("Sampling strategy", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY), items, IM_ARRAYSIZE(items)))
+			{
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+
 			ImGui::TreePop();
 		}
 

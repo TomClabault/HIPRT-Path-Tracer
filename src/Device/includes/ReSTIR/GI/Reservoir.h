@@ -3,12 +3,9 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef DEVICE_RESTIR_DI_RESERVOIR_H
-#define DEVICE_RESTIR_DI_RESERVOIR_H
+#ifndef DEVICE_RESTIR_GI_RESERVOIR_H
+#define DEVICE_RESTIR_GI_RESERVOIR_H
 
-#include "Device/includes/ReSTIR/DI/SampleFlags.h"
-
-#include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/Xorshift.h"
 
 #ifndef __KERNELCC__
@@ -16,37 +13,26 @@
 
 // For multithreaded console error logging on the CPU if NaNs are detected
 #include <mutex>
-static std::mutex restir_di_log_mutex;
+static std::mutex restir_gi_log_mutex;
 #endif
 
-struct ReSTIRDISample
+struct ReSTIRGISample
 {
-    // Global primitive index corresponding to the emissive triangle sampled
-    int emissive_triangle_index = -1;
+    float3 first_hit_point;
+    float3 second_hit_point;
 
-    // For envmap samples, this 'point_on_light_source' is the envmap direction in *envmap space*
-    // A sample is an envmap sample if 'flags' contains 'RESTIR_DI_FLAGS_ENVMAP_SAMPLE'
-    float3 point_on_light_source = { 0, 0, 0 };
+    float3 first_hit_normal;
+    float3 second_hit_normal;
 
-    float target_function = 0.0f;
+    ColorRGB32F outgoing_radiance_to_first_hit;
 
-    // Some flags about the sample
-    unsigned char flags = RESTIR_DI_FLAGS_NONE;
-
-    HIPRT_HOST_DEVICE static int flags_from_BSDF_incident_light_info(BSDFIncidentLightInfo sampled_lobe_info)
-    {
-        return static_cast<int>(sampled_lobe_info);
-    }
-
-    HIPRT_HOST_DEVICE BSDFIncidentLightInfo flags_to_BSDF_incident_light_info() const
-    {
-        return static_cast<BSDFIncidentLightInfo>(flags & (0b111111 << (BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_COAT_LOBE - 1)));
-    }
+    // Seed used for generating the path
+    unsigned int seed;
 };
 
-struct ReSTIRDIReservoir
+struct ReSTIRGIReservoir
 {
-    HIPRT_HOST_DEVICE void add_one_candidate(ReSTIRDISample new_sample, float weight, Xorshift32Generator& random_number_generator)
+    HIPRT_HOST_DEVICE void add_one_candidate(ReSTIRGISample new_sample, float weight, Xorshift32Generator& random_number_generator)
     {
         M++;
         weight_sum += weight;
@@ -69,7 +55,7 @@ struct ReSTIRDIReservoir
      * 'random_number_generator' for generating the random number that will be used to stochastically
      *      select the sample from 'other_reservoir' or not
      */
-    HIPRT_HOST_DEVICE bool combine_with(ReSTIRDIReservoir other_reservoir, float mis_weight, float target_function, float jacobian_determinant, Xorshift32Generator& random_number_generator)
+    HIPRT_HOST_DEVICE bool combine_with(ReSTIRGIReservoir other_reservoir, float mis_weight, float target_function, float jacobian_determinant, Xorshift32Generator& random_number_generator)
     {
         if (other_reservoir.UCW <= 0.0f)
         {
@@ -120,49 +106,49 @@ struct ReSTIRDIReservoir
 #ifndef __KERNELCC__
         if (M < 0)
         {
-            std::lock_guard<std::mutex> lock(restir_di_log_mutex);
+            std::lock_guard<std::mutex> lock(restir_gi_log_mutex);
             std::cerr << "Negative reservoir M value at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << M << std::endl;
             Utils::debugbreak();
         }
         else if (std::isnan(weight_sum) || std::isinf(weight_sum))
         {
-            std::lock_guard<std::mutex> lock(restir_di_log_mutex);
+            std::lock_guard<std::mutex> lock(restir_gi_log_mutex);
             std::cerr << "NaN or inf reservoir weight_sum at pixel (" << pixel_coords.x << ", " << pixel_coords.y << ")" << std::endl;
             Utils::debugbreak();
         }
         else if (weight_sum < 0)
         {
-            std::lock_guard<std::mutex> lock(restir_di_log_mutex);
+            std::lock_guard<std::mutex> lock(restir_gi_log_mutex);
             std::cerr << "Negative reservoir weight_sum at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << weight_sum << std::endl;
             Utils::debugbreak();
         }
         else if (std::abs(weight_sum) < std::numeric_limits<float>::min() && weight_sum != 0.0f)
         {
-            std::lock_guard<std::mutex> lock(restir_di_log_mutex);
+            std::lock_guard<std::mutex> lock(restir_gi_log_mutex);
             std::cerr << "Denormalized weight_sum at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << weight_sum << std::endl;
             Utils::debugbreak();
         }
         else if (std::isnan(UCW) || std::isinf(UCW))
         {
-            std::lock_guard<std::mutex> lock(restir_di_log_mutex);
+            std::lock_guard<std::mutex> lock(restir_gi_log_mutex);
             std::cerr << "NaN or inf reservoir UCW at pixel (" << pixel_coords.x << ", " << pixel_coords.y << ")" << std::endl;
             Utils::debugbreak();
         }
         else if (UCW < 0)
         {
-            std::lock_guard<std::mutex> lock(restir_di_log_mutex);
+            std::lock_guard<std::mutex> lock(restir_gi_log_mutex);
             std::cerr << "Negative reservoir UCW at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << UCW << std::endl;
             Utils::debugbreak();
         }
         else if (std::isnan(sample.target_function) || std::isinf(sample.target_function))
         {
-            std::lock_guard<std::mutex> lock(restir_di_log_mutex);
+            std::lock_guard<std::mutex> lock(restir_gi_log_mutex);
             std::cerr << "NaN or inf reservoir sample.target_function at pixel (" << pixel_coords.x << ", " << pixel_coords.y << ")" << std::endl;
             Utils::debugbreak();
         }
         else if (sample.target_function < 0)
         {
-            std::lock_guard<std::mutex> lock(restir_di_log_mutex);
+            std::lock_guard<std::mutex> lock(restir_gi_log_mutex);
             std::cerr << "Negative reservoir sample.target_function at pixel (" << pixel_coords.x << ", " << pixel_coords.y << "): " << sample.target_function << std::endl;
             Utils::debugbreak();
         }
@@ -177,7 +163,7 @@ struct ReSTIRDIReservoir
     // If the UCW is set to -1, this is because the reservoir was killed by visibility reuse
     float UCW = 0.0f;
 
-    ReSTIRDISample sample;
+    ReSTIRGISample sample;
 };
 
 #endif

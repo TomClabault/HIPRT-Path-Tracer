@@ -67,7 +67,7 @@ DisplayViewSystem::DisplayViewSystem(std::shared_ptr<GPURenderer> renderer, Rend
 	DisplayViewType default_display_view_type = DisplayViewType::DEFAULT;
 	if (m_render_window->get_application_settings()->enable_denoising)
 		default_display_view_type = DisplayViewType::DENOISED_BLEND;
-	else if (m_renderer->get_gmon_render_pass()->using_gmon())
+	else if (m_renderer->get_gmon_render_pass()->is_render_pass_used())
 		default_display_view_type = DisplayViewType::GMON_BLEND;
 	else 
 		default_display_view_type = DisplayViewType::DEFAULT;
@@ -231,7 +231,7 @@ void DisplayViewSystem::update_display_program_uniforms(const DisplayViewSystem*
 			// to be too dark because we're going to be dividing the data of the denoised buffer by a
 			// sample count that doesn't match
 			sample_number = application_settings->last_denoised_sample_count;
-		else if (renderer->get_gmon_render_pass()->using_gmon())
+		else if (renderer->get_gmon_render_pass()->is_render_pass_used())
 			sample_number = renderer->get_gmon_render_pass()->get_last_recomputed_sample_count();
 		else
 			sample_number = render_settings.sample_number;

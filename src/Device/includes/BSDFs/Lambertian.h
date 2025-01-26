@@ -24,7 +24,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F lambertian_brdf_eval(const DeviceUnpa
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F lambertian_brdf_sample(const DeviceUnpackedEffectiveMaterial& material, const float3& shading_normal, float3& sampled_direction, float& pdf, Xorshift32Generator& random_number_generator)
 {
-    sampled_direction = cosine_weighted_sample_around_normal(shading_normal, random_number_generator);
+    sampled_direction = cosine_weighted_sample_around_normal_world_space(shading_normal, random_number_generator);
 
     return lambertian_brdf_eval(material, hippt::dot(shading_normal, sampled_direction), pdf);
 }

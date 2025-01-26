@@ -22,25 +22,17 @@ GMoNRenderPass::GMoNRenderPass(GPURenderer* renderer) : RenderPass(renderer, GMo
 
 void GMoNRenderPass::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets)
 {
-	if (!using_gmon())
+	if (!is_render_pass_used())
 		return;
 
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel_no_func_sets, m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL], hiprt_orochi_ctx);
-}
-
-void GMoNRenderPass::recompile(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets, bool silent, bool use_cache)
-{
-	if (!using_gmon())
-		return;
-
-	m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL]->compile(hiprt_orochi_ctx, {}, use_cache, silent);
 }
 
 bool GMoNRenderPass::pre_render_update(float delta_time)
 {
 	int2 render_resolution = m_renderer->get_render_data().render_settings.render_resolution;
 
-	if (using_gmon())
+	if (is_render_pass_used())
 	{
 		HIPRTRenderData& render_data = m_renderer->get_render_data();
 		unsigned int number_of_sets = m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL]->get_kernel_options().get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT);
@@ -95,7 +87,7 @@ bool GMoNRenderPass::pre_render_update(float delta_time)
 
 bool GMoNRenderPass::launch()
 {
-	if (!using_gmon())
+	if (!is_render_pass_used())
 		return false;
 
 	std::shared_ptr<ApplicationSettings> application_settings = m_renderer->get_application_settings();
@@ -136,7 +128,7 @@ bool GMoNRenderPass::launch()
 
 void GMoNRenderPass::post_render_update()
 {
-	if (using_gmon())
+	if (is_render_pass_used())
 	{
 		HIPRTRenderData& render_data = m_renderer->get_render_data();
 
@@ -170,7 +162,7 @@ unsigned int GMoNRenderPass::get_last_recomputed_sample_count()
 
 void GMoNRenderPass::reset()
 {
-	if (using_gmon())
+	if (is_render_pass_used())
 	{
 		m_renderer->get_render_data().buffers.gmon_estimator.next_set_to_accumulate = 0;
 
@@ -182,18 +174,6 @@ void GMoNRenderPass::reset()
 		// until the next GMoN recomputation
 		m_gmon.m_gmon_recomputation_requested = true;
 	}
-}
-
-void GMoNRenderPass::compute_render_times()
-{
-	std::unordered_map<std::string, float>& render_pass_times = m_renderer->get_render_pass_times();
-
-	render_pass_times[GMoNRenderPass::COMPUTE_GMON_KERNEL] = m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL]->get_last_execution_time();
-}
-
-void GMoNRenderPass::update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer> perf_metrics)
-{
-	perf_metrics->add_value(GMoNRenderPass::COMPUTE_GMON_KERNEL, m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL]->get_last_execution_time());
 }
 
 void GMoNRenderPass::update_render_data()
@@ -213,7 +193,7 @@ unsigned int GMoNRenderPass::get_number_of_sets_used()
 
 void GMoNRenderPass::resize(unsigned int new_width, unsigned int new_height)
 {
-	if (using_gmon())
+	if (is_render_pass_used())
 	{
 		m_gmon.resize_sets(new_width, new_height, get_number_of_sets_used());
 
@@ -223,7 +203,7 @@ void GMoNRenderPass::resize(unsigned int new_width, unsigned int new_height)
 
 ColorRGB32F* GMoNRenderPass::map_result_framebuffer()
 {
-	if (using_gmon())
+	if (is_render_pass_used())
 		return m_gmon.map_result_framebuffer();
 
 	return nullptr;
@@ -231,7 +211,7 @@ ColorRGB32F* GMoNRenderPass::map_result_framebuffer()
 
 void GMoNRenderPass::unmap_result_framebuffer()
 {
-	if (using_gmon())
+	if (is_render_pass_used())
 		m_gmon.result_framebuffer->unmap();
 }
 
@@ -240,7 +220,7 @@ bool GMoNRenderPass::buffers_allocated()
 	return m_gmon.sets.get_device_pointer() != nullptr;
 }
 
-bool GMoNRenderPass::using_gmon() const
+bool GMoNRenderPass::is_render_pass_used() const
 {
 	bool gmon_enabled = m_gmon.using_gmon;
 	bool accumulation_enabled = m_renderer->get_render_settings().accumulate;
@@ -255,18 +235,10 @@ GMoNGPUData& GMoNRenderPass::get_gmon_data()
 
 unsigned int GMoNRenderPass::get_VRAM_usage_bytes() const
 {
-	if (!using_gmon())
+	if (!is_render_pass_used())
 		return 0;
 
 	return m_gmon.get_VRAM_usage_bytes();
-}
-
-std::map<std::string, std::shared_ptr<GPUKernel>> GMoNRenderPass::get_all_kernels()
-{
-	if (!using_gmon())
-		return {};
-
-	return m_kernels;
 }
 
 std::map<std::string, std::shared_ptr<GPUKernel>> GMoNRenderPass::get_tracing_kernels()

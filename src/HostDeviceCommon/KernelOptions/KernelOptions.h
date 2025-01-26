@@ -56,6 +56,9 @@
 #define ESS_BINARY_SEARCH 1
 #define ESS_ALIAS_TABLE 2
 
+#define PSS_BSDF 0
+#define PSS_RESTIR_GI 1
+
 #define RESTIR_DI_BIAS_CORRECTION_1_OVER_M 0
 #define RESTIR_DI_BIAS_CORRECTION_1_OVER_Z 1
 #define RESTIR_DI_BIAS_CORRECTION_MIS_LIKE 2
@@ -224,6 +227,18 @@
  * sample when importance sampling direct lighting contribution from the envmap
  */
 #define EnvmapSamplingDoBSDFMIS KERNEL_OPTION_TRUE
+
+/**
+ * What sampling strategy to use for sampling the bounces during path tracing.
+ * 
+ *	- PSS_BSDF
+ *		The classical technique: importance samples the BSDF and bounces in that direction
+ * 
+ *	- PSS_RESTIR_GI
+ *		Uses ReSTIR GI for resampling a path.
+ *		Implementation of [ReSTIR GI: Path Resampling for Real-Time Path Tracing] https://research.nvidia.com/publication/2021-06_restir-gi-path-resampling-real-time-path-tracing
+ */
+#define PathSamplingStrategy PSS_BSDF
 
 /**
  * Whether or not to use a visiblity term in the target function whose PDF we're

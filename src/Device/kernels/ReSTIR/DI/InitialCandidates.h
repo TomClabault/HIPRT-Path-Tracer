@@ -33,7 +33,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISample use_presampled_light_candidate(con
     ColorRGB32F& out_sample_radiance, float& out_sample_cosine_term, float& out_sample_pdf, float& out_distance_to_light, float3& out_to_light_direction,
     Xorshift32Generator& random_number_generator)
 {
-    const LightPresamplingSettings& light_presampling_settings = render_data.render_settings.restir_di_settings.light_presampling;
+    const ReSTIRDILightPresamplingSettings& light_presampling_settings = render_data.render_settings.restir_di_settings.light_presampling;
 
     // We want all threads in a block of light_presampling_settings.tile_size * light_presampling_settings.tile_size
     // pixels to sample from the same random subset of lights.

@@ -8,7 +8,8 @@
 
 #include "HostDeviceCommon/PathRussianRoulette.h"
 #include "HostDeviceCommon/KernelOptions/KernelOptions.h"
-#include "HostDeviceCommon/ReSTIRDISettings.h"
+#include "HostDeviceCommon/ReSTIR/ReSTIRDISettings.h"
+#include "HostDeviceCommon/ReSTIR/ReSTIRGISettings.h"
 #include "HostDeviceCommon/Math.h"
 
 // Just used for initializing some structure members below
@@ -203,6 +204,9 @@ struct HIPRTRenderSettings
 
 	// Settings for ReSTIR DI
 	ReSTIRDISettings restir_di_settings;
+
+	// Settings for ReSTIR GI
+	ReSTIRGISettings restir_gi_settings;
 
 	/**
 	 * Returns true if the current frame should be renderer at low resolution, false otherwise.

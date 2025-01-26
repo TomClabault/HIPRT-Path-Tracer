@@ -46,11 +46,6 @@ void FillGBufferRenderPass::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL], hiprt_orochi_ctx, std::ref(func_name_sets));
 }
 
-void FillGBufferRenderPass::recompile(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets, bool silent, bool use_cache)
-{
-	m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
-}
-
 void FillGBufferRenderPass::resize(unsigned int new_width, unsigned int new_height)
 {
 	m_g_buffer.resize(new_width * new_height, get_ray_volume_state_byte_size());
@@ -116,30 +111,6 @@ void FillGBufferRenderPass::update_render_data()
 		m_render_data->g_buffer_prev_frame.shading_normals = nullptr;
 		m_render_data->g_buffer_prev_frame.primary_hit_position = nullptr;
 	}
-}
-
-void FillGBufferRenderPass::compute_render_times()
-{
-	std::unordered_map<std::string, float>& render_pass_times = m_renderer->get_render_pass_times();
-
-	render_pass_times[FillGBufferRenderPass::FILL_GBUFFER_KERNEL] = m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL]->get_last_execution_time();
-}
-
-void FillGBufferRenderPass::update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer> perf_metrics)
-{
-	std::unordered_map<std::string, float>& render_pass_times = m_renderer->get_render_pass_times();
-
-	perf_metrics->add_value(FillGBufferRenderPass::FILL_GBUFFER_KERNEL, render_pass_times[FillGBufferRenderPass::FILL_GBUFFER_KERNEL]);
-}
-
-std::map<std::string, std::shared_ptr<GPUKernel>> FillGBufferRenderPass::get_all_kernels()
-{
-	return m_kernels;
-}
-
-std::map<std::string, std::shared_ptr<GPUKernel>> FillGBufferRenderPass::get_tracing_kernels()
-{
-	return m_kernels;
 }
 
 size_t FillGBufferRenderPass::get_ray_volume_state_byte_size()
