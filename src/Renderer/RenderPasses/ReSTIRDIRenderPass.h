@@ -28,7 +28,7 @@ public:
 	static const std::string RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID;
 	static const std::string RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID;
 
-	static const std::string RESTIR_DI_RENDER_PASS;
+	static const std::string RESTIR_DI_RENDER_PASS_NAME;
 
 	/**
 	 * This map contains constants that are the name of the main function of the kernels, their entry points.
@@ -98,8 +98,6 @@ private:
 	void launch_spatial_reuse_passes();
 	void launch_spatiotemporal_pass();
 
-	std::map<std::string, std::shared_ptr<GPUKernel>> m_kernels;
-
 	// ReSTIR reservoirs for the initial candidates
 	OrochiBuffer<ReSTIRDIReservoir> initial_candidates_reservoirs;
 	// ReSTIR reservoirs for the output of the spatial reuse pass
@@ -125,9 +123,6 @@ private:
 	// Events for timing the cumulated render time of all the spatial reuses passes
 	oroEvent_t spatial_reuse_time_start = nullptr;
 	oroEvent_t spatial_reuse_time_stop = nullptr;
-
-	// Quick access to the renderer's render_data
-	HIPRTRenderData* m_render_data = nullptr;
 };
 
 #endif

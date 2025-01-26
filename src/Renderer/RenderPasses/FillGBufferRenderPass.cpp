@@ -11,11 +11,11 @@
 
 #include <memory>
 
-const std::string FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS = "Camera Rays Render Pass";
+const std::string FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS_NAME = "Camera Rays Render Pass";
 const std::string FillGBufferRenderPass::FILL_GBUFFER_KERNEL = "Camera Rays Kernel";
 
 FillGBufferRenderPass::FillGBufferRenderPass() : FillGBufferRenderPass(nullptr) {}
-FillGBufferRenderPass::FillGBufferRenderPass(GPURenderer* renderer) : RenderPass(renderer) 
+FillGBufferRenderPass::FillGBufferRenderPass(GPURenderer* renderer) : RenderPass(renderer, FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS_NAME)
 {
 	m_render_resolution = m_renderer->m_render_resolution;
 	m_render_data = &m_renderer->get_render_data();
@@ -63,8 +63,6 @@ void FillGBufferRenderPass::resize(unsigned int new_width, unsigned int new_heig
 
 bool FillGBufferRenderPass::pre_render_update(float delta_time)
 {
-	m_render_data->random_seed = m_renderer->rng()();
-
 	if (m_render_data->render_settings.use_prev_frame_g_buffer(m_renderer))
 	{
 		// If at least one buffer has a size of 0, we assume that this means that the whole G-buffer is deallocated
@@ -95,7 +93,10 @@ bool FillGBufferRenderPass::pre_render_update(float delta_time)
 
 bool FillGBufferRenderPass::launch()
 {
-	void* launch_args[] = { &m_renderer->get_render_data(), &m_render_resolution };
+	m_render_data->random_seed = m_renderer->rng().xorshift32();
+
+	void* launch_args[] = { m_render_data, &m_render_resolution };
+
 	m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y, launch_args, m_renderer->get_main_stream());
 
 	return true;
@@ -121,14 +122,14 @@ void FillGBufferRenderPass::compute_render_times()
 {
 	std::unordered_map<std::string, float>& render_pass_times = m_renderer->get_render_pass_times();
 
-	render_pass_times[FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS] = m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL]->get_last_execution_time();
+	render_pass_times[FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS_NAME] = m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL]->get_last_execution_time();
 }
 
 void FillGBufferRenderPass::update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer> perf_metrics)
 {
 	std::unordered_map<std::string, float>& render_pass_times = m_renderer->get_render_pass_times();
 
-	perf_metrics->add_value(FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS, render_pass_times[FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS]);
+	perf_metrics->add_value(FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS_NAME, render_pass_times[FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS_NAME]);
 }
 
 std::map<std::string, std::shared_ptr<GPUKernel>> FillGBufferRenderPass::get_all_kernels()

@@ -7,6 +7,7 @@
 #include "HostDeviceCommon/RenderSettings.h"
 #include "Renderer/GPURenderer.h"
 #include "Renderer/RenderPasses/FillGBufferRenderPass.h"
+#include "Renderer/RenderPasses/MegaKernelRenderPass.h"
 #include "Scene/CameraAnimation.h"
 #include "Threads/ThreadManager.h"
 #include "UI/ImGui/ImGuiRenderer.h"
@@ -2789,7 +2790,8 @@ void ImGuiSettingsWindow::draw_performance_metrics_panel()
 			}
 		}
 	}
-	draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::PATH_TRACING_KERNEL_ID, "Path tracing (1SPP)");
+
+	draw_perf_metric_specific_panel(m_render_window_perf_metrics, MegaKernelRenderPass::MEGAKERNEL_RENDER_PASS_NAME, "Path tracing (1SPP)");
 	draw_perf_metric_specific_panel(m_render_window_perf_metrics, RenderWindow::PERF_METRICS_CPU_OVERHEAD_TIME_KEY, "CPU Overhead");
 	ImGui::Separator();
 	draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::ALL_RENDER_PASSES_TIME_KEY, "Total sample time (GPU)");

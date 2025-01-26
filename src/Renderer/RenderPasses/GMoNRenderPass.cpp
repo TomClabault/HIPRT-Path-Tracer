@@ -7,20 +7,16 @@
 #include "Threads/ThreadFunctions.h"
 #include "Threads/ThreadManager.h"
 
-const std::string GMoNRenderPass::GMON_RENDER_PASS = "GMoN Render Pass";
+const std::string GMoNRenderPass::GMON_RENDER_PASS_NAME = "GMoN Render Pass";
 const std::string GMoNRenderPass::COMPUTE_GMON_KERNEL = "GMoN Compute Kernel";
 
-GMoNRenderPass::GMoNRenderPass()
+GMoNRenderPass::GMoNRenderPass() : GMoNRenderPass(nullptr) {}
+
+GMoNRenderPass::GMoNRenderPass(GPURenderer* renderer) : RenderPass(renderer, GMoNRenderPass::GMON_RENDER_PASS_NAME)
 {
 	m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL] = std::make_shared<GPUKernel>();
 	m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/GMoN/GMoNComputeMedianOfMeans.h");
 	m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL]->set_kernel_function_name("GMoNComputeMedianOfMeans");
-}
-
-GMoNRenderPass::GMoNRenderPass(GPURenderer* renderer) : GMoNRenderPass() 
-{
-	m_renderer = renderer;
-
 	m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL]->synchronize_options_with(renderer->get_global_compiler_options(), {});
 }
 
@@ -121,7 +117,7 @@ bool GMoNRenderPass::launch()
 		// If we have rendered enough samples that one more sample has been accumulated in each of the
 		// GMoN sets
 		int2 render_resolution = m_renderer->m_render_resolution;
-		void* launch_args[] = { &m_renderer->get_render_data() };
+		void* launch_args[] = { m_render_data };
 
 		m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL]->launch_asynchronous(
 			GMoNComputeMeansKernelThreadBlockSize, GMoNComputeMeansKernelThreadBlockSize, render_resolution.x, render_resolution.y,

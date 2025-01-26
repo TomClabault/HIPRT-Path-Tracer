@@ -14,7 +14,7 @@ const std::string ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID = "ReSTI
 const std::string ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID = "ReSTIR DI Spatiotemporal Reuse";
 const std::string ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID = "ReSTIR DI Lights Presampling";
 
-const std::string ReSTIRDIRenderPass::RESTIR_DI_RENDER_PASS = "ReSTIR DI Render Pass";
+const std::string ReSTIRDIRenderPass::RESTIR_DI_RENDER_PASS_NAME = "ReSTIR DI Render Pass";
 
 const std::unordered_map<std::string, std::string> ReSTIRDIRenderPass::KERNEL_FUNCTION_NAMES =
 {
@@ -34,7 +34,7 @@ const std::unordered_map<std::string, std::string> ReSTIRDIRenderPass::KERNEL_FI
 	{ RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/DI/LightsPresampling.h" },
 };
 
-ReSTIRDIRenderPass::ReSTIRDIRenderPass(GPURenderer* renderer) : RenderPass(renderer), m_render_data(&renderer->get_render_data())
+ReSTIRDIRenderPass::ReSTIRDIRenderPass(GPURenderer* renderer) : RenderPass(renderer, ReSTIRDIRenderPass::RESTIR_DI_RENDER_PASS_NAME)
 {
 	OROCHI_CHECK_ERROR(oroEventCreate(&spatial_reuse_time_start));
 	OROCHI_CHECK_ERROR(oroEventCreate(&spatial_reuse_time_stop));
@@ -338,7 +338,7 @@ void ReSTIRDIRenderPass::configure_initial_pass()
 void ReSTIRDIRenderPass::launch_initial_candidates_pass()
 {
 	int2 render_resolution = m_renderer->m_render_resolution;
-	void* launch_args[] = { &m_renderer->get_render_data(), &m_renderer->m_render_resolution };
+	void* launch_args[] = { m_render_data, &m_renderer->m_render_resolution };
 
 	configure_initial_pass();
 	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, render_resolution.x, render_resolution.y, launch_args, m_renderer->get_main_stream());
@@ -382,7 +382,7 @@ void ReSTIRDIRenderPass::configure_temporal_pass()
 void ReSTIRDIRenderPass::launch_temporal_reuse_pass()
 {
 	int2 render_resolution = m_renderer->m_render_resolution;
-	void* launch_args[] = { &m_renderer->get_render_data(), &render_resolution };
+	void* launch_args[] = { m_render_data, &render_resolution };
 
 	configure_temporal_pass();
 	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, render_resolution.x, render_resolution.y, launch_args, m_renderer->get_main_stream());
@@ -472,7 +472,7 @@ void ReSTIRDIRenderPass::configure_spatial_pass_for_fused_spatiotemporal(int spa
 void ReSTIRDIRenderPass::launch_spatial_reuse_passes()
 {
 	int2 render_resolution = m_renderer->m_render_resolution;
-	void* launch_args[] = { &m_renderer->get_render_data(), &render_resolution};
+	void* launch_args[] = { m_render_data, &render_resolution};
 
 	// Emitting an event for timing all the spatial reuse passes combined
 	OROCHI_CHECK_ERROR(oroEventRecord(spatial_reuse_time_start, m_renderer->get_main_stream()));
@@ -499,7 +499,7 @@ void ReSTIRDIRenderPass::configure_spatiotemporal_pass()
 void ReSTIRDIRenderPass::launch_spatiotemporal_pass()
 {
 	int2 render_resolution = m_renderer->m_render_resolution;
-	void* launch_args[] = { &m_renderer->get_render_data(), &m_renderer->m_render_resolution };
+	void* launch_args[] = { m_render_data, &m_renderer->m_render_resolution };
 
 	configure_spatiotemporal_pass();
 	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, render_resolution.x, render_resolution.y, launch_args, m_renderer->get_main_stream());
