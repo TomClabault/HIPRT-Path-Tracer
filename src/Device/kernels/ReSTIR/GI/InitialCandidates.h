@@ -6,44 +6,16 @@
 #ifndef KERNELS_RESTIR_GI_INITIAL_CANDIDATES_H
 #define KERNELS_RESTIR_GI_INITIAL_CANDIDATES_H
 
+#include "Device/includes/Envmap.h"
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Hash.h"
+#include "Device/includes/Lights.h"
 #include "Device/includes/LightUtils.h"
 #include "Device/includes/PathTracing.h"
 #include "Device/includes/ReSTIR/GI/Reservoir.h"
-#include "Device/includes/RussianRoulette.h"
 #include "Device/includes/SanityCheck.h"
-#include "Device/includes/WarpDirectionReuse.h"
 
 #include "HostDeviceCommon/Xorshift.h"
-
-#ifndef __KERNELCC__
-#include "Utils/Utils.h" // For debugbreak in sanity_check()
-
-// For logging stuff on the CPU and avoid everything being mixed
-// up in the terminal because of multithreading
-#include <mutex>
-std::mutex g_mutex;
-#endif
-
-HIPRT_HOST_DEVICE void store_denoiser_AOVs(HIPRTRenderData& render_data, uint32_t pixel_index, float3 shading_normal, ColorRGB32F base_color)
-{
-    if (render_data.render_settings.sample_number == 0)
-        render_data.aux_buffers.denoiser_albedo[pixel_index] = base_color;
-    else
-        render_data.aux_buffers.denoiser_albedo[pixel_index] = (render_data.aux_buffers.denoiser_albedo[pixel_index] * render_data.render_settings.denoiser_AOV_accumulation_counter + base_color) / (render_data.render_settings.denoiser_AOV_accumulation_counter + 1.0f);
-
-    if (render_data.render_settings.sample_number == 0)
-        render_data.aux_buffers.denoiser_normals[pixel_index] = shading_normal;
-    else
-    {
-        float3 accumulated_normal = (render_data.aux_buffers.denoiser_normals[pixel_index] * render_data.render_settings.denoiser_AOV_accumulation_counter + shading_normal) / (render_data.render_settings.denoiser_AOV_accumulation_counter + 1.0f);
-        float normal_length = hippt::length(accumulated_normal);
-        if (!hippt::is_zero(normal_length))
-            // Checking that it is non-zero otherwise we would accumulate a persistent NaN in the buffer when normalizing by the 0-length
-            render_data.aux_buffers.denoiser_normals[pixel_index] = accumulated_normal / normal_length;
-    }
-}
 
 HIPRT_HOST_DEVICE void output_ReSTIR_GI_initial_candidate(HIPRTRenderData& render_data, uint32_t pixel_index)
 {
@@ -132,7 +104,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
         if (ray_payload.next_ray_state != RayState::MISSED)
         {
             if (bounce > 0)
-                intersection_found = path_tracing_find_indirect_bounce_intersection(render_data, ray, ray_payload, closest_hit_info, bounce, mis_reuse, random_number_generator);
+                intersection_found = path_tracing_find_indirect_bounce_intersection(render_data, ray, ray_payload, closest_hit_info, mis_reuse, random_number_generator);
 
             if (intersection_found)
             {
@@ -146,53 +118,22 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
                 // Because we want to allow backfacing emissive geometry (making the emissive geometry double sided
                 // and emitting light in both directions of the surface), we're negating the normal to make
                 // it face the view direction (but only for emissive geometry)
-                if (ray_payload.material.is_emissive() && hippt::dot(-ray.direction, closest_hit_info.geometric_normal) < 0)
+
+                // TODO uncomment that if this causes issues
+                /*if (ray_payload.material.is_emissive() && hippt::dot(-ray.direction, closest_hit_info.geometric_normal) < 0)
                 {
                     closest_hit_info.geometric_normal = -closest_hit_info.geometric_normal;
                     closest_hit_info.shading_normal = -closest_hit_info.shading_normal;
-                }
+                }*/
 
-                // --------------------------------------------------- //
-                // ----------------- Direct lighting ----------------- //
-                // --------------------------------------------------- //
 
                 // Estimates direct lighting with next-event estimation and directly modifies ray_payload.ray_color
-                estimate_direct_lighting(render_data, ray_payload, closest_hit_info, -ray.direction, x, y, mis_reuse, random_number_generator);
+                ray_payload.ray_color += estimate_direct_lighting(render_data, ray_payload, closest_hit_info, -ray.direction, x, y, mis_reuse, random_number_generator);
 
-                // --------------------------------------- //
-                // ---------- Indirect lighting ---------- //
-                // --------------------------------------- //
-
-                float bsdf_pdf;
-                float3 bounce_direction;
-                ColorRGB32F bsdf_color;
-
-                if (mis_reuse.has_ray())
-                    bsdf_color = reuse_mis_bsdf_sample(bounce_direction, bsdf_pdf, ray_payload, mis_reuse);
-                else
-                    bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, true, 
-                                                        -ray.direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, bounce_direction, 
-                                                        bsdf_pdf, random_number_generator, bounce);
-#if DoFirstBounceWarpDirectionReuse
-                warp_direction_reuse(render_data, closest_hit_info, ray_payload, -ray.direction, bounce_direction, bsdf_color, bsdf_pdf, bounce, random_number_generator);
-#endif
-
-                // Terminate ray if bad sampling
-                if (bsdf_pdf <= 0.0f)
+                bool valid_indirect_bounce = path_tracing_compute_next_indirect_bounce(render_data, ray_payload, closest_hit_info, -ray.direction, ray, mis_reuse, random_number_generator);
+                if (!valid_indirect_bounce)
+                    // Bad BSDF sample (under the surafce), killed by russian roulette, ...
                     break;
-
-                ColorRGB32F throughput_attenuation = bsdf_color * hippt::abs(hippt::dot(bounce_direction, closest_hit_info.shading_normal)) / bsdf_pdf;
-                // Russian roulette
-                if (!do_russian_roulette(render_data.render_settings, bounce, ray_payload.throughput, throughput_attenuation, random_number_generator))
-                    break;
-
-                // Dispersion ray throughput filter
-                ray_payload.throughput *= get_dispersion_ray_color(ray_payload.volume_state.sampled_wavelength, ray_payload.material.dispersion_scale);
-                ray_payload.throughput *= throughput_attenuation;
-                ray_payload.next_ray_state = RayState::BOUNCE;
-
-                ray.origin = closest_hit_info.inter_point;
-                ray.direction = bounce_direction;
             }
             else
             {
