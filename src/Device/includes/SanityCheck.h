@@ -9,6 +9,15 @@
 #include "Device/includes/FixIntellisense.h"
 #include "HostDeviceCommon/RenderData.h"
 
+#ifndef __KERNELCC__
+#include "Utils/Utils.h" // For debugbreak in sanity_check()
+
+ // For logging stuff on the CPU and avoid everything being mixed
+ // up in the terminal because of multithreading
+#include <mutex>
+std::mutex g_mutex;
+#endif
+
 HIPRT_HOST_DEVICE HIPRT_INLINE void debug_set_final_color(const HIPRTRenderData& render_data, int x, int y, int res_x, ColorRGB32F final_color)
 {
     if (render_data.render_settings.sample_number == 0)

@@ -97,7 +97,7 @@ void ReSTIRGIRenderPass::post_render_update()
 
 void ReSTIRGIRenderPass::update_render_data()
 {
-	if (!is_render_pass_used)
+	if (!is_render_pass_used())
 		return;
 
 	HIPRTRenderData& render_data = m_renderer->get_render_data();

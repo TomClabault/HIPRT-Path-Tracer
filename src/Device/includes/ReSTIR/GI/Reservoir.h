@@ -28,6 +28,9 @@ struct ReSTIRGISample
 
     // Seed used for generating the path
     unsigned int seed;
+
+    // TODO Unused, just for compiling
+    float target_function = 0.0f;
 };
 
 struct ReSTIRGIReservoir
