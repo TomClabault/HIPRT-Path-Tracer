@@ -18,6 +18,8 @@
 #include "HostDeviceCommon/Math.h"
 #include "HostDeviceCommon/RenderData.h"
 
+#define LIGHT_DOESNT_CONTRIBUTE_ENOUGH -42.0f
+
 /**
  * Reference: https://en.wikipedia.org/wiki/Pairing_function
  */
@@ -79,9 +81,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISample use_presampled_light_candidate(con
         {
             // Early check that the light contributes enough to the point, and if it doesn't, skip that light sample
 
-            // Setting it to -42.0f so that we know that the sample is invalid when the caller of this
+            // Setting it to LIGHT_DOESNT_CONTRIBUTE_ENOUGH so that we know that the sample is invalid when the caller of this
             // function will look at the target function's value
-            light_sample.target_function = -42.0f;
+            light_sample.target_function = LIGHT_DOESNT_CONTRIBUTE_ENOUGH;
 
             return light_sample;
         }
@@ -133,9 +135,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISample sample_fresh_light_candidate(const
             {
                 // Early check that the light contributes enough to the point, and if it doesn't, skip that light sample
 
-                // Setting it to -42.0f so that we know that the sample is invalid when the caller of this
+                // Setting it to LIGHT_DOESNT_CONTRIBUTE_ENOUGH so that we know that the sample is invalid when the caller of this
                 // function will look at the target function's value
-                light_sample.target_function = -42.0f;
+                light_sample.target_function = LIGHT_DOESNT_CONTRIBUTE_ENOUGH;
 
                 return light_sample;
             }
@@ -160,9 +162,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISample sample_fresh_light_candidate(const
         {
             // Early check that the envmap sample contributes enough to the point, and if it doesn't, skip it
 
-            // Setting it to -42.0f so that we know that the sample is invalid when the caller of this
+            // Setting it to LIGHT_DOESNT_CONTRIBUTE_ENOUGH so that we know that the sample is invalid when the caller of this
             // function will look at the target function's value
-            light_sample.target_function = -42.0f;
+            light_sample.target_function = LIGHT_DOESNT_CONTRIBUTE_ENOUGH;
 
             return light_sample;
 
@@ -216,7 +218,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderDat
         }
 #endif
 
-        if (light_sample.target_function == -42.0f)
+        if (light_sample.target_function == LIGHT_DOESNT_CONTRIBUTE_ENOUGH)
         {
             // Special value to indicate that this sample should be skipped
 
@@ -235,7 +237,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderDat
             ColorRGB32F light_contribution = bsdf_contribution * sample_radiance * sample_cosine_term;
             float target_function = light_contribution.luminance();
 
-            if (!check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, light_contribution / sample_pdf / bsdf_pdf))
+            if (bsdf_pdf <= 0.0f || !check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, light_contribution / sample_pdf / bsdf_pdf))
                 target_function = 0.0f;
             else
             {
@@ -338,7 +340,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData
                     // and this is going to cause darkening as the number of light samples grows)
                     light_pdf = pdf_of_emissive_triangle_hit(render_data, shadow_light_ray_hit_info, sampled_direction);
 
-                if (!check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, light_contribution / light_pdf / bsdf_sample_pdf))
+                if (bsdf_sample_pdf <= 0.0f || !check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, light_contribution / light_pdf / bsdf_sample_pdf))
                 {
                     // Skipping if the light doesn't contribute enough
                     reservoir.M++;
@@ -358,7 +360,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData
                 bsdf_RIS_sample.point_on_light_source = bsdf_ray.origin + bsdf_ray.direction * shadow_light_ray_hit_info.hit_distance;
                 bsdf_RIS_sample.target_function = target_function;
                 bsdf_RIS_sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
-                bsdf_RIS_sample.flags |= static_cast<int>(sampled_lobe_info);
+                bsdf_RIS_sample.flags |= ReSTIRDISample::flags_from_BSDF_incident_light_info(sampled_lobe_info);
 
                 reservoir.add_one_candidate(bsdf_RIS_sample, candidate_weight, random_number_generator);
                 reservoir.sanity_check(make_int2(-1, -1));
@@ -379,7 +381,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData
                     // Not taking the light sampling PDF into account in the balance heuristic because a envmap hit
                     // (not a light surface hit) can never be sampled by a light-surface sampler and so the PDF
                     // of the current envmap sample is always 0 for a light sampler.
-                    if (!check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, envmap_contribution / envmap_pdf / bsdf_sample_pdf))
+                    if (bsdf_sample_pdf <= 0.0f || !check_minimum_light_contribution(render_data.render_settings.minimum_light_contribution, envmap_contribution / envmap_pdf / bsdf_sample_pdf))
                     {
                         // Skipping if the light doesn't contribute enough
                         reservoir.M++;
@@ -403,6 +405,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_bsdf_candidates(const HIPRTRenderData
                     bsdf_RIS_sample.target_function = target_function;
                     bsdf_RIS_sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_ENVMAP_SAMPLE;
                     bsdf_RIS_sample.flags |= ReSTIRDISampleFlags::RESTIR_DI_FLAGS_UNOCCLUDED;
+                    bsdf_RIS_sample.flags |= ReSTIRDISample::flags_from_BSDF_incident_light_info(sampled_lobe_info);
 
                     reservoir.add_one_candidate(bsdf_RIS_sample, candidate_weight, random_number_generator);
                     reservoir.sanity_check(make_int2(-1, -1));

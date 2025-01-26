@@ -216,7 +216,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData&
     return light_source_radiance_mis + bsdf_radiance_mis;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_many_lights(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, MISBSDFRayReuse& mis_ray_reuse)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_multiple_emissive_geometry(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, const float3& view_direction, Xorshift32Generator& random_number_generator, MISBSDFRayReuse& mis_ray_reuse)
 {
     ColorRGB32F direct_light_contribution;
 
@@ -290,7 +290,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_ReSTIR_DI(HIPRTRende
  * I think the better morale to remember is that the material being emissive doesn't matter at
  * all. As long as the material itself reflects light, then we should do NEE.
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, 
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_emissive_geometry(HIPRTRenderData& render_data, RayPayload& ray_payload, const HitInfo closest_hit_info, 
     const float3& view_direction, 
     Xorshift32Generator& random_number_generator, int2 pixel_coords, MISBSDFRayReuse& mis_ray_reuse)
 {
@@ -321,7 +321,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light(HIPRTRenderData& ren
     // A light sampling strategy that is not ReSTIR DI
     // meaning that we can sample more than 1 light per
     // path vertex
-    direct_light_contribution = sample_many_lights(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, mis_ray_reuse);
+    direct_light_contribution = sample_multiple_emissive_geometry(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, mis_ray_reuse);
 
 #elif DirectLightSamplingStrategy == LSS_RESTIR_DI
     direct_light_contribution = sample_one_light_ReSTIR_DI(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, pixel_coords, mis_ray_reuse);
@@ -336,11 +336,11 @@ HIPRT_HOST_DEVICE void estimate_direct_lighting(HIPRTRenderData& render_data, Ra
     int x, int y,
     MISBSDFRayReuse& mis_reuse, Xorshift32Generator& random_number_generator)
 {
-    ColorRGB32F light_direct_contribution = sample_one_light(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, make_int2(x, y), mis_reuse);
+    ColorRGB32F emissive_geometry_direct_contribution = sample_emissive_geometry(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, make_int2(x, y), mis_reuse);
     ColorRGB32F envmap_direct_contribution = sample_environment_map(render_data, ray_payload, closest_hit_info, view_direction, random_number_generator, mis_reuse);
 
     // Clamping direct lighting
-    light_direct_contribution = clamp_light_contribution(light_direct_contribution, render_data.render_settings.direct_contribution_clamp, ray_payload.bounce == 0);
+    emissive_geometry_direct_contribution = clamp_light_contribution(emissive_geometry_direct_contribution, render_data.render_settings.direct_contribution_clamp, ray_payload.bounce == 0);
     envmap_direct_contribution = clamp_light_contribution(envmap_direct_contribution, render_data.render_settings.envmap_contribution_clamp, ray_payload.bounce == 0);
 
 #if DirectLightSamplingStrategy == LSS_NO_DIRECT_LIGHT_SAMPLING // No direct light sampling
@@ -357,7 +357,7 @@ HIPRT_HOST_DEVICE void estimate_direct_lighting(HIPRTRenderData& render_data, Ra
         ray_payload.ray_color += ray_payload.material.emission;
 
     // Clamped indirect lighting 
-    ColorRGB32F direct_lighting_contribution = (light_direct_contribution + envmap_direct_contribution) * ray_payload.throughput;
+    ColorRGB32F direct_lighting_contribution = (emissive_geometry_direct_contribution + envmap_direct_contribution) * ray_payload.throughput;
     ColorRGB32F clamped_direct_lighting_contribution = clamp_light_contribution(direct_lighting_contribution, render_data.render_settings.indirect_contribution_clamp, ray_payload.bounce > 0);
     ray_payload.ray_color += clamped_direct_lighting_contribution;
 #endif
