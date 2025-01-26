@@ -3,18 +3,16 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
-#ifndef KERNELS_FULL_PATH_TRACER_H
-#define KERNELS_FULL_PATH_TRACER_H
+#ifndef KERNELS_RESTIR_GI_INITIAL_CANDIDATES_H
+#define KERNELS_RESTIR_GI_INITIAL_CANDIDATES_H
 
-#include "Device/includes/AdaptiveSampling.h"
 #include "Device/includes/FixIntellisense.h"
-#include "Device/includes/Lights.h"
-#include "Device/includes/Envmap.h"
 #include "Device/includes/Hash.h"
-#include "Device/includes/Material.h"
-#include "Device/includes/RayPayload.h"
+#include "Device/includes/LightUtils.h"
+#include "Device/includes/PathTracing.h"
+#include "Device/includes/ReSTIR/GI/Reservoir.h"
 #include "Device/includes/RussianRoulette.h"
-#include "Device/includes/Sampling.h"
+#include "Device/includes/SanityCheck.h"
 #include "Device/includes/WarpDirectionReuse.h"
 
 #include "HostDeviceCommon/Xorshift.h"
@@ -27,76 +25,6 @@
 #include <mutex>
 std::mutex g_mutex;
 #endif
-
-HIPRT_HOST_DEVICE HIPRT_INLINE void debug_set_final_color(const HIPRTRenderData& render_data, int x, int y, int res_x, ColorRGB32F final_color)
-{
-    if (render_data.render_settings.sample_number == 0)
-        render_data.buffers.accumulated_ray_colors[y * res_x + x] = final_color;
-    else
-        render_data.buffers.accumulated_ray_colors[y * res_x + x] = final_color * render_data.render_settings.sample_number;
-}
-
-HIPRT_HOST_DEVICE HIPRT_INLINE bool check_for_negative_color(ColorRGB32F ray_color, int x, int y, int sample)
-{
-    (void)x;
-    (void)y;
-    (void)sample;
-
-    if (ray_color.r < 0 || ray_color.g < 0 || ray_color.b < 0)
-    {
-#ifndef __KERNELCC__
-        std::cout << "Negative color at [" << x << ", " << y << "], sample " << sample << std::endl;
-#endif
-
-        return true;
-    }
-
-    return false;
-}
-
-HIPRT_HOST_DEVICE HIPRT_INLINE bool check_for_nan(ColorRGB32F ray_color, int x, int y, int sample)
-{
-    // To avoid unused variables on the GPU
-    (void)x;
-    (void)y;
-    (void)sample;
-
-    if (hippt::is_NaN(ray_color.r) || hippt::is_NaN(ray_color.g) || hippt::is_NaN(ray_color.b))
-    {
-#ifndef __KERNELCC__
-        std::lock_guard<std::mutex> logging_lock(g_mutex);
-        std::cout << "NaN at [" << x << ", " << y << "], sample" << sample << std::endl;
-#endif
-        return true;
-    }
-
-    return false;
-}
-
-HIPRT_HOST_DEVICE HIPRT_INLINE bool sanity_check(const HIPRTRenderData& render_data, RayPayload& ray_payload, int x, int y)
-{
-    bool invalid = false;
-    if (ray_payload.volume_state.sampled_wavelength == 0.0f)
-        // Only checking for negative colors if we didn't sample a spectral
-        // object because spectral can yield negative values but those are legit
-        // and we want to accumulate them
-        invalid |= check_for_negative_color(ray_payload.ray_color, x, y, render_data.render_settings.sample_number);
-    invalid |= check_for_nan(ray_payload.ray_color, x, y, render_data.render_settings.sample_number);
-
-    if (invalid)
-    {
-#ifndef __KERNELCC__
-        Utils::debugbreak();
-#endif
-
-        if (render_data.render_settings.display_NaNs)
-            debug_set_final_color(render_data, x, y, render_data.render_settings.render_resolution.x, ColorRGB32F(1.0e30f, 0.0f, 1.0e30f));
-        else
-            ray_payload.ray_color = ColorRGB32F(0.0f);
-    }
-
-    return !invalid;
-}
 
 HIPRT_HOST_DEVICE void store_denoiser_AOVs(HIPRTRenderData& render_data, uint32_t pixel_index, float3 shading_normal, ColorRGB32F base_color)
 {
@@ -117,46 +45,15 @@ HIPRT_HOST_DEVICE void store_denoiser_AOVs(HIPRTRenderData& render_data, uint32_
     }
 }
 
-HIPRT_HOST_DEVICE void accumulate_color(const HIPRTRenderData& render_data, const ColorRGB32F& ray_color, uint32_t pixel_index)
+HIPRT_HOST_DEVICE void output_ReSTIR_GI_initial_candidate(HIPRTRenderData& render_data, uint32_t pixel_index)
 {
-#if ViewportColorOverriden == 0
-    // Only outputting the ray color if no kernel option is going to output its own color
-    // (mainly for debugging purposes) such as 'DirectLightNEEPlusPlusDisplayShadowRaysDiscarded'
-    // for example
-    if (render_data.render_settings.has_access_to_adaptive_sampling_buffers())
-    {
-        float squared_luminance_of_samples = ray_color.luminance() * ray_color.luminance();
-        // We can only use these buffers if the adaptive sampling or the stop noise threshold is enabled.
-        // Otherwise, the buffers are destroyed to save some VRAM so they are not accessible
-        render_data.aux_buffers.pixel_squared_luminance[pixel_index] += squared_luminance_of_samples;
-    }
-
-    if (render_data.render_settings.sample_number == 0)
-        render_data.buffers.accumulated_ray_colors[pixel_index] = ray_color;
-    else
-        // If we are at a sample that is not 0, this means that we are accumulating
-        render_data.buffers.accumulated_ray_colors[pixel_index] += ray_color;
-
-    if (render_data.buffers.gmon_estimator.sets != nullptr)
-    {
-        // GMoN is in use, accumulating in the GMoN sets
-
-        unsigned int offset = render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y * render_data.buffers.gmon_estimator.next_set_to_accumulate + pixel_index;
-
-        if (render_data.render_settings.sample_number == 0)
-            render_data.buffers.gmon_estimator.sets[offset] = ray_color;
-        else
-            render_data.buffers.gmon_estimator.sets[offset] += ray_color;
-    }
-#endif
+    ReSTIRGIReservoir initial_candidate;
 }
 
-__shared__ float3 shared_directions[1];
-
 #ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) FullPathTracer(HIPRTRenderData render_data)
+GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_GI_InitialCandidates(HIPRTRenderData render_data)
 #else
-GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data, int x, int y)
+GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData render_data, int x, int y)
 #endif
 {
 #ifdef __KERNELCC__
@@ -224,22 +121,18 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
     // the ray. This structure is filled by the emissive light sampling
     // or the envmap sampling function
     MISBSDFRayReuse mis_reuse;
+    bool intersection_found = closest_hit_info.primitive_index != -1;
+
+    ReSTIRGISample restir_gi_initial_candidate;
+
     // + 1 to nb_bounces here because we want "0" bounces to still act as one
     // hit and to return some color
-    bool intersection_found = closest_hit_info.primitive_index != -1;
     for (int& bounce = ray_payload.bounce; bounce < render_data.render_settings.nb_bounces + 1; bounce++)
     {
         if (ray_payload.next_ray_state != RayState::MISSED)
         {
             if (bounce > 0)
-            {
-                if (mis_reuse.has_ray())
-                    // Reusing a BSDF MIS ray if there is one available
-                    intersection_found = reuse_mis_ray(render_data, closest_hit_info, ray_payload, -ray.direction, mis_reuse);
-                else
-                    // Not tracing for the primary ray because this has already been done in the camera ray pass
-                    intersection_found = trace_ray(render_data, ray, ray_payload, closest_hit_info, closest_hit_info.primitive_index, bounce, random_number_generator);
-            }
+                intersection_found = path_tracing_find_indirect_bounce_intersection(render_data, ray, ray_payload, closest_hit_info, bounce, mis_reuse, random_number_generator);
 
             if (intersection_found)
             {
@@ -263,7 +156,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
                 // ----------------- Direct lighting ----------------- //
                 // --------------------------------------------------- //
 
-                // Estimates direct lighting with next-even estimation and directly modifies ray_payload.ray_color
+                // Estimates direct lighting with next-event estimation and directly modifies ray_payload.ray_color
                 estimate_direct_lighting(render_data, ray_payload, closest_hit_info, -ray.direction, x, y, mis_reuse, random_number_generator);
 
                 // --------------------------------------- //
@@ -363,7 +256,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
     // the same value
     render_data.aux_buffers.still_one_ray_active[0] = 1;
 
-    accumulate_color(render_data, ray_payload.ray_color, pixel_index);
+    render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer[pixel_index] = restir_gi_initial_candidate;
 }
 
 #endif

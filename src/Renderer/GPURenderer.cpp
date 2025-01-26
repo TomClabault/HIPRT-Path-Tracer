@@ -11,6 +11,7 @@
 #include "Renderer/GPURenderer.h"
 #include "Renderer/RenderPasses/FillGBufferRenderPass.h"
 #include "Renderer/RenderPasses/MegaKernelRenderPass.h"
+#include "Renderer/RenderPasses/ReSTIRGIRenderPass.h"
 #include "Threads/ThreadFunctions.h"
 #include "Threads/ThreadManager.h"
 #include "Threads/ThreadFunctions.h"
@@ -237,12 +238,16 @@ void GPURenderer::setup_render_passes()
 	megakernel_render_pass->add_dependency(camera_rays_render_pass);
 	megakernel_render_pass->add_dependency(restir_di_render_pass);
 
+	std::shared_ptr<ReSTIRGIRenderPass> restir_gi_render_pass = std::make_shared<ReSTIRGIRenderPass>(this);
+	restir_gi_render_pass->add_dependency(megakernel_render_pass);
+
 	std::shared_ptr<GMoNRenderPass> gmon_render_pass  = std::make_shared<GMoNRenderPass>(this);
-	gmon_render_pass->add_dependency(megakernel_render_pass);
+	gmon_render_pass->add_dependency(restir_gi_render_pass);
 
 	m_render_graph.add_render_pass(camera_rays_render_pass);
 	m_render_graph.add_render_pass(restir_di_render_pass);
 	m_render_graph.add_render_pass(megakernel_render_pass);
+	m_render_graph.add_render_pass(restir_gi_render_pass);
 	m_render_graph.add_render_pass(gmon_render_pass);
 
 	m_render_graph.compile(m_hiprt_orochi_ctx, m_func_name_sets);
@@ -654,7 +659,7 @@ void GPURenderer::set_use_denoiser_AOVs_interop_buffers(bool use_interop) { m_de
 std::shared_ptr<OpenGLInteropBuffer<ColorRGB32F>> GPURenderer::get_color_interop_framebuffer() 
 { 
 	// TODO use render graph here with render_graph.get_output_framebuffer()
-	if (get_gmon_render_pass()->using_gmon() && get_gmon_render_pass()->buffers_allocated())
+	if (get_gmon_render_pass()->is_render_pass_used() && get_gmon_render_pass()->buffers_allocated())
 		return get_gmon_render_pass()->get_result_framebuffer();
 	else
 		return m_framebuffer; 

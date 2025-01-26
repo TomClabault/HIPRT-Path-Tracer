@@ -51,10 +51,6 @@ public:
 	ReSTIRDIRenderPass(GPURenderer* renderer);
 
 	virtual void compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets = {}) override;
-	virtual void recompile(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets, bool silent = false, bool use_cache = true) override;
-
-	virtual void resize(unsigned int new_width, unsigned int new_height) override;
-
 	/**
 	 * Precompiles all kernels of this render pass to fill to shader cache in advance.
 	 * 
@@ -62,6 +58,8 @@ public:
 	 * in 'partial_options' overriding the corresponding options of the kernels
 	 */
 	void precompile_kernels(GPUKernelCompilerOptions partial_options, std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets);
+
+	virtual void resize(unsigned int new_width, unsigned int new_height) override;
 
 	/**
 	 * Allocates/frees the ReSTIR DI buffers depending on whether or not the renderer
@@ -75,12 +73,11 @@ public:
 	virtual void reset() override;
 
 	virtual void compute_render_times() override;
-	virtual void update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer> perf_metrics) override;
 
 	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_all_kernels() override;
 	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_tracing_kernels() override;
 	
-	bool using_ReSTIR_DI();
+	virtual bool is_render_pass_used() const override;
 
 private:
 	LightPresamplingParameters configure_light_presampling_pass();

@@ -45,6 +45,8 @@ public:
 	static const std::string ENVMAP_SAMPLING_STRATEGY;
 	static const std::string ENVMAP_SAMPLING_DO_BSDF_MIS;
 
+	static const std::string PATH_SAMPLING_STRATEGY;
+
 	static const std::string RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY;
 	static const std::string RESTIR_DI_SPATIAL_TARGET_FUNCTION_VISIBILITY;
 	static const std::string RESTIR_DI_DO_VISIBILITY_REUSE;

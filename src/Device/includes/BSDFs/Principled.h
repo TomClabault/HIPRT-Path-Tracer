@@ -147,7 +147,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_diffuse_eval(const DeviceU
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_diffuse_sample(const float3& surface_normal, Xorshift32Generator& random_number_generator)
 {
     // Our Oren-Nayar diffuse lobe is sampled by a cosine weighted distribution
-    return cosine_weighted_sample_around_normal(surface_normal, random_number_generator);
+    return cosine_weighted_sample_around_normal_world_space(surface_normal, random_number_generator);
 }
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_specular_fresnel(const DeviceUnpackedEffectiveMaterial& material, float relative_specular_ior, float cos_theta_i)
@@ -643,7 +643,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_diffuse_transmission_sample(flo
     // Negating the normal here because by convention the surface normal given
     // to this function is in the same hemisphere as the view direction but we
     // want to sample a refraction, on the other side of the normal
-    return cosine_weighted_sample_around_normal(-surface_normal, random_number_generator);
+    return cosine_weighted_sample_around_normal_world_space(-surface_normal, random_number_generator);
 }
 
 /**

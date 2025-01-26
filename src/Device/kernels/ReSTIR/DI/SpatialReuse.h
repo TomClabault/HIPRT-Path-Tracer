@@ -36,7 +36,7 @@
 
 HIPRT_HOST_DEVICE HIPRT_INLINE bool do_include_visibility_term_or_not(const HIPRTRenderData& render_data, int current_neighbor_index)
 {
-	const SpatialPassSettings& spatial_settings = render_data.render_settings.restir_di_settings.spatial_pass;
+	const ReSTIRDISpatialPassSettings& spatial_settings = render_data.render_settings.restir_di_settings.spatial_pass;
 	bool visibility_only_on_last_pass = spatial_settings.do_visibility_only_last_pass;
 	bool is_last_pass = spatial_settings.spatial_pass_index == spatial_settings.number_of_passes - 1;
 

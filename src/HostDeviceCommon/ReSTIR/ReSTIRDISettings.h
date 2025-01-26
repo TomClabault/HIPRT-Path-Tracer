@@ -9,7 +9,7 @@
 struct ReSTIRDIReservoir;
 struct ReSTIRDIPresampledLight;
 
-struct InitialCandidatesSettings
+struct ReSTIRDIInitialCandidatesSettings
 {
 	// How many light candidates to resamples during the initial candidates sampling pass
 	int number_of_initial_light_candidates = 4;
@@ -24,7 +24,7 @@ struct InitialCandidatesSettings
 	ReSTIRDIReservoir* output_reservoirs = nullptr;
 };
 
-struct TemporalPassSettings
+struct ReSTIRDITemporalPassSettings
 {
 	bool do_temporal_reuse_pass = true;
 
@@ -52,7 +52,7 @@ struct TemporalPassSettings
 	ReSTIRDIReservoir* output_reservoirs = nullptr;
 };
 
-struct SpatialPassSettings
+struct ReSTIRDISpatialPassSettings
 {
 	bool do_spatial_reuse_pass = true;
 
@@ -106,7 +106,7 @@ struct SpatialPassSettings
 	ReSTIRDIReservoir* output_reservoirs = nullptr;
 };
 
-struct LightPresamplingSettings
+struct ReSTIRDILightPresamplingSettings
 {
 	// From all the lights of the scene, how many subsets to presample
 	int number_of_subsets = 128;
@@ -122,13 +122,13 @@ struct LightPresamplingSettings
 struct ReSTIRDISettings
 {
 	// Settings for the initial candidates generation pass
-	InitialCandidatesSettings initial_candidates;
+	ReSTIRDIInitialCandidatesSettings initial_candidates;
 	// Settings for the temporal reuse pass
-	TemporalPassSettings temporal_pass;
+	ReSTIRDITemporalPassSettings temporal_pass;
 	// Settings for the spatial reuse pass
-	SpatialPassSettings spatial_pass;
+	ReSTIRDISpatialPassSettings spatial_pass;
 	// Settings for the light presampling pass
-	LightPresamplingSettings light_presampling;
+	ReSTIRDILightPresamplingSettings light_presampling;
 
 	// If true, the spatial and temporal pass will be fused into a single kernel call.
 	// This avois a synchronization barrier between the temporal pass and the spatial pass

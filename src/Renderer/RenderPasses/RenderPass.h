@@ -42,6 +42,9 @@ public:
 	 * For example: if a ReSTIRDIRenderPass implements this interface but the renderer doesn't
 	 * actually use ReSTIR DI at the moment, then calling 'compile' should probably be a no-op (i.e. return directly),
 	 * otherwise, this would be compiling kernels unecessarily (since the render pass is not being used
+	 * 
+	 * The kernels in this function may be compiled asynchronously by using the ThreadManager and launching threads
+	 * with the 'COMPILE_KERNELS_THREAD_KEY' key. Look at the ReSTIR DI render pass for some examples
 	 */
 	virtual void compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets = {}) = 0;
 
@@ -51,8 +54,14 @@ public:
 	 *
 	 * Same remark here as for compile(): It is the responsibility of the class overriding this method
 	 * to compile the kernels if necessary or not.
+	 * 
+	 * Recompilation of the kernels may *not* be asynchronous without the addition of a synchronization 
+	 * elsewhere (to be sure that the kernels will be compiled before the next frame starts rendering).
+	 * This 'recompile' function is most likely to be called from the ImGui interface code and so 
+	 * it must be blocking (or add synchronization elsewhere in the codebase) to be sure that 
+	 * the kernels will be fully recompiled before the RenderWindow submits a new frame to the GPU
 	 */
-	virtual void recompile(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets = {}, bool silent = false, bool use_cache = true) = 0;
+	virtual void recompile(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets = {}, bool silent = false, bool use_cache = true);
 
 	/**
 	 * That function is called when the host renderer is resized (i.e. when the user resizes the window)
@@ -128,7 +137,7 @@ public:
 	 * 
 	 * In the example above, the key is 'ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID'
 	 */
-	virtual void compute_render_times() = 0;
+	virtual void compute_render_times();
 
 	/**
 	 * This function is called once per frame, after all render passes have executed.
@@ -141,8 +150,11 @@ public:
 	 * 
 	 * The performance metrics computer is what stores the timings of all the render passes to display
 	 * the "Performance metrics" panel in ImGui
+	 * 
+	 * It is unlikely that you need to override the default implementation if your 'get_all_kernels()' function
+	 * is properly written (i.e. only returns the kernels actually being used by the render pass)
 	 */
-	virtual void update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer> perf_metrics) = 0;
+	virtual void update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer> perf_metrics);
 
 	/**
 	 * Returns a map of all the kernels of this render pass
@@ -165,7 +177,7 @@ public:
 	 * ImGui from displaying the performance metrics about kernels that are not in use 
 	 * (and so we have no performance metrics on them)
 	 */
-	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_all_kernels() = 0;
+	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_all_kernels();
 
 	/**
 	 * Returns a map of all the kernels of the render pass that trace rays (shadow rays, bounce rays, ...)
@@ -192,27 +204,31 @@ public:
 	 * ImGui from displaying the performance metrics about kernels that are not in use 
 	 * (and so we have no performance metrics on them)
 	 */
-	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_tracing_kernels() = 0;
+	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_tracing_kernels();
+
+	/**
+	 * This function may be overriden by render passes that can be enabled/disabled at runtime.
+	 * 
+	 * This is the case of ReSTIR render passes for example: the ReSTIR render passes are not always used for rendering.
+	 * 
+	 * This function is then called in the default implementation of recompile() for example such that the kernels 
+	 * of the render pass will not be recompiled if the render pass is not being used
+	 */
+	virtual bool is_render_pass_used() const;
 
 	/**
 	 * Adds another render pass as a dependency of this render pass.
 	 * The dependency render pass will then always be executed before this render pass is executed
 	 */
-	void add_dependency(std::shared_ptr<RenderPass> dependency)
-	{
-		m_dependencies.push_back(dependency);
-	}
+	void add_dependency(std::shared_ptr<RenderPass> dependency);
 
 	/**
 	 * Returns a list of all the dependencies so far added to this render pass
 	 */
-	std::vector<std::shared_ptr<RenderPass>>& get_dependencies()
-	{
-		return m_dependencies;
-	}
+	std::vector<std::shared_ptr<RenderPass>>& get_dependencies();
 
-	const std::string& get_name() { return m_name; }
-	void set_name(const std::string& new_name) { m_name = new_name;	}
+	const std::string& get_name();
+	void set_name(const std::string& new_name);
 
 protected:
 	std::string m_name;

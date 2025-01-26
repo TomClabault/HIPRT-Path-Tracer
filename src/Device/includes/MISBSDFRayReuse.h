@@ -91,7 +91,7 @@ struct MISBSDFRayReuse
 /**
  * Updates the 'hit_info' and 'ray_payload' structures from a 'mis_reuse' structure
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE bool reuse_mis_ray(const HIPRTRenderData& render_data, HitInfo& closest_hit_info, RayPayload& ray_payload, float3 view_direction, MISBSDFRayReuse& mis_reuse)
+HIPRT_HOST_DEVICE HIPRT_INLINE bool reuse_mis_ray(const HIPRTRenderData& render_data, float3 view_direction, RayPayload& ray_payload, HitInfo& closest_hit_info, MISBSDFRayReuse& mis_reuse)
 {
 #if ReuseBSDFMISRay
 	bool intersection_found = false;

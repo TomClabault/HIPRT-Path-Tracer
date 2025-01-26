@@ -4,7 +4,7 @@
  */
 
 #include "Device/kernels/CameraRays.h"
-#include "Device/kernels/FullPathTracer.h"
+#include "Device/kernels/Megakernel.h"
 #include "Device/kernels/GMoN/GMoNComputeMedianOfMeans.h"
 #include "Device/kernels/NEE++/NEEPlusPlusCachingPrepass.h"
 #include "Device/kernels/NEE++/NEEPlusPlusFinalizeAccumulation.h"
@@ -767,7 +767,7 @@ void CPURenderer::ReSTIR_DI_spatiotemporal_reuse_pass()
 void CPURenderer::tracing_pass()
 {
     debug_render_pass([this](int x, int y) {
-        FullPathTracer(m_render_data, x, y);
+        MegaKernel(m_render_data, x, y);
     });
 }
 

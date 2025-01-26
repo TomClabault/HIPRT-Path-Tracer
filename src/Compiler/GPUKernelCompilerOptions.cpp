@@ -44,6 +44,8 @@ const std::string GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION =
 const std::string GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY = "EnvmapSamplingStrategy";
 const std::string GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BSDF_MIS = "EnvmapSamplingDoBSDFMIS";
 
+const std::string GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY = "PathSamplingStrategy";
+
 const std::string GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY = "ReSTIR_DI_InitialTargetFunctionVisibility";
 const std::string GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_TARGET_FUNCTION_VISIBILITY = "ReSTIR_DI_SpatialTargetFunctionVisibility";
 const std::string GPUKernelCompilerOptions::RESTIR_DI_DO_VISIBILITY_REUSE = "ReSTIR_DI_DoVisibilityReuse";
@@ -82,6 +84,8 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION,
 	GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY,
 	GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BSDF_MIS,
+
+	GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY,
 
 	GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY,
 	GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_TARGET_FUNCTION_VISIBILITY,
@@ -125,6 +129,8 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::RIS_USE_VISIBILITY_TARGET_FUNCTION] = std::make_shared<int>(RISUseVisiblityTargetFunction);
 	m_options_macro_map[GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY] = std::make_shared<int>(EnvmapSamplingStrategy);
 	m_options_macro_map[GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BSDF_MIS] = std::make_shared<int>(EnvmapSamplingDoBSDFMIS);
+
+	m_options_macro_map[GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY] = std::make_shared<int>(PathSamplingStrategy);
 
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_INITIAL_TARGET_FUNCTION_VISIBILITY] = std::make_shared<int>(ReSTIR_DI_InitialTargetFunctionVisibility);
 	m_options_macro_map[GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_TARGET_FUNCTION_VISIBILITY] = std::make_shared<int>(ReSTIR_DI_SpatialTargetFunctionVisibility);

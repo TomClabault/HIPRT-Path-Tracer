@@ -7,17 +7,45 @@
 #define RESTIR_GI_RENDER_PASS_H
 
 #include "Renderer/RenderPasses/RenderPass.h"
+#include "Device/includes/ReSTIR/GI/Reservoir.h"
 
 class GPURenderer;
 
 class ReSTIRGIRenderPass : public RenderPass
 {
 public:
-	ReSTIRGIRenderPass() {}
+	static const std::string RESTIR_GI_RENDER_PASS_NAME;
+	static const std::string RESTIR_GI_SPATIAL_REUSE_KERNEL_ID;
+
+	static const std::unordered_map<std::string, std::string> KERNEL_FUNCTION_NAMES;
+	static const std::unordered_map<std::string, std::string> KERNEL_FILES;
+
+	ReSTIRGIRenderPass();
 	ReSTIRGIRenderPass(GPURenderer* renderer);
 
+	virtual void compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets = {}) override;
+	
+	virtual void resize(unsigned int new_width, unsigned int new_height) override;
+	
+	virtual bool pre_render_update(float delta_time) override;
+	virtual bool launch() override;
+	virtual void post_render_update() override;
+
+	virtual void update_render_data() override;
+	virtual void reset() override;
+
+	virtual void compute_render_times() override;
+
+	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_tracing_kernels() override;
+
+	virtual bool is_render_pass_used() const override;
+
 private:
-	GPURenderer* m_renderer = nullptr;
+	// Events for timing the time taken by spatial reuse
+	oroEvent_t m_spatial_reuse_time_start;
+	oroEvent_t m_spatial_reuse_time_stop;
+
+	OrochiBuffer<ReSTIRGISample> m_initial_candidates_buffer;
 };
 
 #endif

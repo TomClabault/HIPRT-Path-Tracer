@@ -12,7 +12,7 @@ HIPRT_HOST bool HIPRTRenderSettings::use_prev_frame_g_buffer(GPURenderer* render
 {
 	// If ReSTIR DI isn't used, we don't need the last frame's g-buffer
 	// (as far as the codebase goes at the time of writing this function anyways)
-	bool need_g_buffer = renderer->get_ReSTIR_DI_render_pass()->using_ReSTIR_DI();
+	bool need_g_buffer = renderer->get_ReSTIR_DI_render_pass()->is_render_pass_used();
 	// If the temporal reuse isn't used, don't need the G-buffer
 	need_g_buffer &= restir_di_settings.temporal_pass.do_temporal_reuse_pass;
 

@@ -75,7 +75,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F oren_nayar_brdf_eval(const DeviceUnpa
 
 HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F oren_nayar_brdf_sample(const DeviceUnpackedEffectiveMaterial& material, const float3& world_space_view_direction, const float3& shading_normal, float3& out_sampled_direction, float& pdf, Xorshift32Generator& random_number_generator)
 {
-    out_sampled_direction = cosine_weighted_sample_around_normal(shading_normal, random_number_generator);
+    out_sampled_direction = cosine_weighted_sample_around_normal_world_space(shading_normal, random_number_generator);
 
     return oren_nayar_brdf_eval(material, world_space_view_direction, shading_normal, out_sampled_direction, pdf);
 }

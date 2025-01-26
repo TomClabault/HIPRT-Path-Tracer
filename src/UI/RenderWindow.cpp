@@ -642,7 +642,7 @@ bool RenderWindow::needs_viewport_refresh()
 	if (!needs_refresh)
 		return false;
 
-	if (m_renderer->get_gmon_render_pass()->using_gmon())
+	if (m_renderer->get_gmon_render_pass()->is_render_pass_used())
 	{
 		// With GMoN however, we want to recompute the GMoN framebuffer with the new samples accumulated so far
 		// before refreshing the viewport
