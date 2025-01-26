@@ -16,7 +16,7 @@
 class GMoNRenderPass : public RenderPass
 {
 public:
-	static const std::string GMON_RENDER_PASS;
+	static const std::string GMON_RENDER_PASS_NAME;
 	static const std::string COMPUTE_GMON_KERNEL;
 
 	GMoNRenderPass();
@@ -75,8 +75,6 @@ public:
 private:
 	// Data for the GMoN estimator
 	GMoNGPUData m_gmon;
-
-	std::map<std::string, std::shared_ptr<GPUKernel>> m_kernels;
 };
 
 #endif

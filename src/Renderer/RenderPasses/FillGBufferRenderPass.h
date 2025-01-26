@@ -10,10 +10,9 @@
 #include "Renderer/GPUDataStructures/GBufferGPUData.h"
 #include "Renderer/RenderPasses/RenderPass.h"
 
-class FillGBufferRenderPass : public RenderPass
-{
+class FillGBufferRenderPass : public RenderPass{
 public:
-	static const std::string FILL_GBUFFER_RENDER_PASS;
+	static const std::string FILL_GBUFFER_RENDER_PASS_NAME;
 	static const std::string FILL_GBUFFER_KERNEL;
 
 	FillGBufferRenderPass();
@@ -147,7 +146,6 @@ public:
 
 private:
 	int2 m_render_resolution = make_int2(0, 0);
-	HIPRTRenderData* m_render_data = nullptr;
 
 	// G-buffers of the current frame (camera rays hits) and previous frame
 	GBufferGPURenderer m_g_buffer;
@@ -155,8 +153,6 @@ private:
 
 	// Kernel used for retrieving the size of the RayVolumeState structure on the GPU
 	std::shared_ptr<GPUKernel> m_ray_volume_state_byte_size_kernel = nullptr;
-
-	std::map<std::string, std::shared_ptr<GPUKernel>> m_kernels;
 };
 
 #endif

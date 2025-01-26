@@ -45,28 +45,27 @@ public:
 	 */
 	static const std::string NEE_PLUS_PLUS_CACHING_PREPASS_ID;
 	static const std::string NEE_PLUS_PLUS_FINALIZE_ACCUMULATION_ID;
-	static const std::string PATH_TRACING_KERNEL_ID;
 
 	// List of compiler options that will be specific to each kernel. We don't want these options
 	// to be synchronized between kernels
 	static const std::unordered_set<std::string> KERNEL_OPTIONS_NOT_SYNCHRONIZED;
 
-	/**
-	 * This map contains constants that are the name of the main function of the kernels, their entry points.
-	 * They are used when compiling the kernels.
-	 * 
-	 * This means that if you define your camera ray kernel main function as:
-	 * 
-	 * GLOBAL_KERNEL_SIGNATURE(void) CameraRays(HIPRTRenderData render_data, int2 res)
-	 * 
-	 * Then KERNEL_FUNCTION_NAMES[CAMERA_RAYS_KERNEL_ID] = "CameraRays"
-	 */
-	static const std::unordered_map<std::string, std::string> KERNEL_FUNCTION_NAMES;
+	///**
+	// * This map contains constants that are the name of the main function of the kernels, their entry points.
+	// * They are used when compiling the kernels.
+	// * 
+	// * This means that if you define your camera ray kernel main function as:
+	// * 
+	// * GLOBAL_KERNEL_SIGNATURE(void) CameraRays(HIPRTRenderData render_data, int2 res)
+	// * 
+	// * Then KERNEL_FUNCTION_NAMES[CAMERA_RAYS_KERNEL_ID] = "CameraRays"
+	// */
+	//static const std::unordered_map<std::string, std::string> KERNEL_FUNCTION_NAMES;
 
-	/**
-	 * Same as 'KERNELfUNCTION_NAMES' but for kernel files
-	 */
-	static const std::unordered_map<std::string, std::string> KERNEL_FILES;
+	///**
+	// * Same as 'KERNELfUNCTION_NAMES' but for kernel files
+	// */
+	//static const std::unordered_map<std::string, std::string> KERNEL_FILES;
 
 	// Key for indexing m_render_pass_times that contains the times per passes
 	// This key is for the time of the whole frame
@@ -112,11 +111,6 @@ public:
 	 * Clears the visibility map of NEE++ so that it is recomputed next frame
 	 */
 	void reset_nee_plus_plus();
-
-	/**
-	 * Resets the state of GMoN
-	 */
-	void reset_gmon();
 
 	std::shared_ptr<GMoNRenderPass> get_gmon_render_pass();
 	std::shared_ptr<ReSTIRDIRenderPass> get_ReSTIR_DI_render_pass();
@@ -243,6 +237,7 @@ public:
 	void invalidate_render_data_buffers();
 
 	Camera& get_camera();
+	Camera& get_previous_frame_camera();
 	CameraAnimation& get_camera_animation();
 	RendererEnvmap& get_envmap();
 
@@ -384,8 +379,6 @@ private:
 	 */
 	void post_render_update();
 
-	void internal_post_render_update_path_tracer();
-
 	/**
 	 * Returns true if one of the kernels requires the global stack buffer for BVH traversal
 	 */
@@ -415,7 +408,6 @@ private:
 	void render_debug_kernel();
 
 	void launch_nee_plus_plus_caching_prepass();
-	void launch_path_tracing();
 	void launch_debug_kernel();
 
 	/**

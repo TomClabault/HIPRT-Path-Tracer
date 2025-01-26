@@ -10,6 +10,7 @@
 #include "Renderer/Baker/GPUBakerConstants.h"
 #include "Renderer/GPURenderer.h"
 #include "Renderer/RenderPasses/FillGBufferRenderPass.h"
+#include "Renderer/RenderPasses/MegaKernelRenderPass.h"
 #include "Threads/ThreadFunctions.h"
 #include "Threads/ThreadManager.h"
 #include "Threads/ThreadFunctions.h"
@@ -19,7 +20,6 @@
 #include <condition_variable>
 
 const std::string GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID = "NEE++ Caching Prepass";
-const std::string GPURenderer::PATH_TRACING_KERNEL_ID = "Path Tracing";
 
 // List of partials_options that will be specific to each kernel. We don't want these partials_options
 	// to be synchronized between kernels
@@ -27,16 +27,6 @@ const std::unordered_set<std::string> GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZ
 {
 	GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL,
 	GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE,
-};
-
-const std::unordered_map<std::string, std::string> GPURenderer::KERNEL_FUNCTION_NAMES = 
-{
-	{ PATH_TRACING_KERNEL_ID, "FullPathTracer" },
-};
-
-const std::unordered_map<std::string, std::string> GPURenderer::KERNEL_FILES =
-{
-	{ PATH_TRACING_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/FullPathTracer.h" },
 };
 
 const std::string GPURenderer::ALL_RENDER_PASSES_TIME_KEY = "FullFrameTime";
@@ -65,9 +55,9 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx, std::sha
 	setup_filter_functions();
 	setup_render_passes();
 
-	m_render_pass_times[GPURenderer::ALL_RENDER_PASSES_TIME_KEY] = 0.0f;
+	/*m_render_pass_times[GPURenderer::ALL_RENDER_PASSES_TIME_KEY] = 0.0f;
 	for (auto& id_to_pass : GPURenderer::KERNEL_FUNCTION_NAMES)
-		m_render_pass_times[id_to_pass.first] = 0.0f;
+		m_render_pass_times[id_to_pass.first] = 0.0f;*/
 
 	OROCHI_CHECK_ERROR(oroStreamCreate(&m_main_stream));
 
@@ -192,19 +182,14 @@ void GPURenderer::reset_nee_plus_plus()
 	m_nee_plus_plus.milliseconds_before_finalizing_accumulation = NEEPlusPlusGPUData::FINALIZE_ACCUMULATION_START_TIMER;
 }
 
-void GPURenderer::reset_gmon()
-{
-	get_gmon_render_pass()->reset();
-}
-
 std::shared_ptr<GMoNRenderPass> GPURenderer::get_gmon_render_pass()
 {
-	return std::dynamic_pointer_cast<GMoNRenderPass>(m_render_graph.get_render_pass(GMoNRenderPass::GMON_RENDER_PASS));
+	return std::dynamic_pointer_cast<GMoNRenderPass>(m_render_graph.get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
 }
 
 std::shared_ptr<ReSTIRDIRenderPass> GPURenderer::get_ReSTIR_DI_render_pass()
 {
-	return std::dynamic_pointer_cast<ReSTIRDIRenderPass>(m_render_graph.get_render_pass(ReSTIRDIRenderPass::RESTIR_DI_RENDER_PASS));
+	return std::dynamic_pointer_cast<ReSTIRDIRenderPass>(m_render_graph.get_render_pass(ReSTIRDIRenderPass::RESTIR_DI_RENDER_PASS_NAME));
 }
 
 NEEPlusPlusGPUData& GPURenderer::get_nee_plus_plus_data()
@@ -238,31 +223,26 @@ void GPURenderer::setup_render_passes()
 	// numbers are the best may vary.)
 	
 	// Configuring the render passes
-	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID] = std::make_shared<GPUKernel>();
-	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID]->set_kernel_file_path(GPURenderer::KERNEL_FILES.at(GPURenderer::PATH_TRACING_KERNEL_ID));
-	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID]->set_kernel_function_name(GPURenderer::KERNEL_FUNCTION_NAMES.at(GPURenderer::PATH_TRACING_KERNEL_ID));
-	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID]->synchronize_options_with(m_global_compiler_options, GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
-	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
-	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 8);
-
 	std::shared_ptr<FillGBufferRenderPass> camera_rays_render_pass = std::make_shared<FillGBufferRenderPass>(this);
 
 	std::shared_ptr<ReSTIRDIRenderPass> restir_di_render_pass = std::make_shared<ReSTIRDIRenderPass>(this);
-	restir_di_render_pass->add_dependency(FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS);
+	restir_di_render_pass->add_dependency(camera_rays_render_pass);
+
+	std::shared_ptr<MegaKernelRenderPass> megakernel_render_pass = std::make_shared<MegaKernelRenderPass>(this);
+	megakernel_render_pass->add_dependency(camera_rays_render_pass);
+	megakernel_render_pass->add_dependency(restir_di_render_pass);
 
 	std::shared_ptr<GMoNRenderPass> gmon_render_pass  = std::make_shared<GMoNRenderPass>(this);
 
-	m_render_graph.add_render_pass(FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS, camera_rays_render_pass);
-	m_render_graph.add_render_pass(ReSTIRDIRenderPass::RESTIR_DI_RENDER_PASS, restir_di_render_pass);
-	m_render_graph.add_render_pass(GMoNRenderPass::GMON_RENDER_PASS, gmon_render_pass);
+	m_render_graph.add_render_pass(camera_rays_render_pass);
+	m_render_graph.add_render_pass(restir_di_render_pass);
+	m_render_graph.add_render_pass(megakernel_render_pass);
+	m_render_graph.add_render_pass(gmon_render_pass);
 
 	m_render_graph.compile(m_hiprt_orochi_ctx, m_func_name_sets);
 
 	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_TRUE)
 		m_nee_plus_plus.compile_finalize_accumulation_kernel(m_hiprt_orochi_ctx);
-
-	// Compiling kernels
-	ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, std::ref(m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID]), m_hiprt_orochi_ctx, std::ref(m_func_name_sets));
 }
 
 void GPURenderer::pre_render_update(float delta_time)
@@ -278,38 +258,12 @@ void GPURenderer::pre_render_update(float delta_time)
 
 	update_render_data();
 
-	// Resetting this flag as this is a new frame
-	m_render_data.render_settings.do_update_status_buffers = false;
-
-	if (!m_render_data.render_settings.accumulate)
-		m_render_data.render_settings.sample_number = 0;
-
 	m_updated = true;
 }
 
 void GPURenderer::post_render_update()
 {
 	m_render_graph.post_render_update();
-
-	internal_post_render_update_path_tracer();
-}
-
-void GPURenderer::internal_post_render_update_path_tracer()
-{
-	m_render_data.render_settings.sample_number++;
-	m_render_data.render_settings.denoiser_AOV_accumulation_counter++;
-
-	// We only reset once so after rendering a frame, we're sure that we don't need to reset anymore 
-	// so we're setting the flag to false (it will be set to true again if we need to reset the render
-	// again)
-	m_render_data.render_settings.need_to_reset = false;
-	m_render_data.nee_plus_plus.reset_visibility_map = false;
-	// If we had requested a temporal buffers clear, this has be done by this frame so we can
-	// now reset the flag
-	m_render_data.render_settings.restir_di_settings.temporal_pass.temporal_buffer_clear_requested = false;
-
-	// Saving the current frame camera to be the previous camera of the next frame
-	m_previous_frame_camera = m_camera;
 }
 
 void GPURenderer::step_animations(float delta_time)
@@ -478,7 +432,7 @@ void GPURenderer::internal_pre_render_update_global_stack_buffer()
 
 bool GPURenderer::needs_global_bvh_stack_buffer()
 {
-	for (const auto& name_to_kernel : m_kernels)
+	for (const auto& name_to_kernel : m_render_graph.get_tracing_kernels())
 	{
 		bool global_stack_buffer_needed = false;
 		global_stack_buffer_needed |= name_to_kernel.second->get_kernel_options().get_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL) == KERNEL_OPTION_TRUE;
@@ -575,7 +529,6 @@ void GPURenderer::render_path_tracing()
 			m_render_data.render_settings.do_update_status_buffers = true;
 		
 		m_render_graph.launch();
-		launch_path_tracing();
 
 		post_render_update();
 	}
@@ -601,14 +554,6 @@ void GPURenderer::launch_nee_plus_plus_caching_prepass()
 
 	m_render_data.random_seed = m_rng.xorshift32();
 	m_kernels[GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
-}
-
-void GPURenderer::launch_path_tracing()
-{
-	void* launch_args[] = { &m_render_data };
-
-	m_render_data.random_seed = m_rng.xorshift32();
-	m_kernels[GPURenderer::PATH_TRACING_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
 }
 
 void GPURenderer::launch_debug_kernel()
@@ -991,8 +936,8 @@ void GPURenderer::precompile_kernel(const std::string& id, GPUKernelCompilerOpti
 	partial_options.apply_onto(options);
 
 	ThreadManager::start_thread(ThreadManager::RENDERER_PRECOMPILE_KERNELS, ThreadFunctions::precompile_kernel,
-		GPURenderer::KERNEL_FUNCTION_NAMES.at(id),
-		GPURenderer::KERNEL_FILES.at(id),
+		m_kernels[id]->get_kernel_function_name(),
+		m_kernels[id]->get_kernel_file_path(),
 		options, m_hiprt_orochi_ctx, std::ref(m_func_name_sets));
 
 	ThreadManager::detach_threads(ThreadManager::RENDERER_PRECOMPILE_KERNELS);
@@ -1126,25 +1071,9 @@ void GPURenderer::update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer
 
 void GPURenderer::reset()
 {
-	if (m_render_data.render_settings.accumulate)
-	{
-		// Only resetting the seed for deterministic rendering if we're accumulating.
-		// If we're not accumulating, we want each frame of the render to be different
-		// so we don't get into that if block and we don't reset the seed
-		m_rng.m_state.seed = 42;
-	
-		if (m_application_settings->auto_sample_per_frame)
-			m_render_data.render_settings.samples_per_frame = 1;
-	}
-
-	m_render_data.render_settings.denoiser_AOV_accumulation_counter = 0;
-	m_render_data.render_settings.sample_number = 0;
-	m_render_data.render_settings.need_to_reset = true;
-
 	m_render_graph.reset();
 
 	reset_nee_plus_plus();
-	reset_gmon();
 
 	internal_clear_m_status_buffers();
 }
@@ -1429,6 +1358,11 @@ Camera& GPURenderer::get_camera()
 	return m_camera;
 }
 
+Camera& GPURenderer::get_previous_frame_camera()
+{
+	return m_camera;
+}
+
 CameraAnimation& GPURenderer::get_camera_animation()
 {
 	return m_camera_animation;
@@ -1447,7 +1381,7 @@ void GPURenderer::set_camera(const Camera& camera)
 
 void GPURenderer::resize_g_buffer_ray_volume_states()
 {
-	std::dynamic_pointer_cast<FillGBufferRenderPass>(m_render_graph.get_render_pass(FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS))->resize_g_buffer_ray_volume_states();
+	std::dynamic_pointer_cast<FillGBufferRenderPass>(m_render_graph.get_render_pass(FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS_NAME))->resize_g_buffer_ray_volume_states();
 }
 
 void GPURenderer::translate_camera_view(glm::vec3 translation)
