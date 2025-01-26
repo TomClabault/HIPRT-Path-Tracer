@@ -2761,7 +2761,25 @@ void ImGuiSettingsWindow::draw_performance_metrics_panel()
 	if (rolling_window_size_changed)
 		m_render_window_perf_metrics->resize_window(rolling_window_size);
 
-	draw_perf_metric_specific_panel(m_render_window_perf_metrics, FillGBufferRenderPass::FILL_GBUFFER_KERNEL , "Camera rays");
+	RenderGraph& render_graph = m_renderer->get_render_graph();
+	for (auto& name_to_render_pass : render_graph.get_render_passes())
+	{
+		const std::map<std::string, std::shared_ptr<GPUKernel>>& render_pass_kernels = name_to_render_pass.second->get_all_kernels();
+		if (!render_pass_kernels.empty())
+		{
+			ImGui::SeparatorText(name_to_render_pass.first.c_str());
+
+			ImGui::TreePush(name_to_render_pass.first.c_str());
+			for (auto& name_to_kernel : render_pass_kernels)
+				draw_perf_metric_specific_panel(m_render_window_perf_metrics, name_to_kernel.first, name_to_kernel.first);
+			ImGui::TreePop();
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		}
+
+	}
+
+	/*draw_perf_metric_specific_panel(m_render_window_perf_metrics, FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS_NAME , "Camera rays");
 	if (m_renderer->get_ReSTIR_DI_render_pass()->using_ReSTIR_DI())
 	{
 		if (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING) == KERNEL_OPTION_TRUE)
@@ -2789,9 +2807,9 @@ void ImGuiSettingsWindow::draw_performance_metrics_panel()
 				draw_perf_metric_specific_panel(m_render_window_perf_metrics, ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID, spatial_reuse_text);
 			}
 		}
-	}
+	}*/
 
-	draw_perf_metric_specific_panel(m_render_window_perf_metrics, MegaKernelRenderPass::MEGAKERNEL_RENDER_PASS_NAME, "Path tracing (1SPP)");
+	//draw_perf_metric_specific_panel(m_render_window_perf_metrics, MegaKernelRenderPass::MEGAKERNEL_RENDER_PASS_NAME, "Path tracing (1SPP)");
 	draw_perf_metric_specific_panel(m_render_window_perf_metrics, RenderWindow::PERF_METRICS_CPU_OVERHEAD_TIME_KEY, "CPU Overhead");
 	ImGui::Separator();
 	draw_perf_metric_specific_panel(m_render_window_perf_metrics, GPURenderer::ALL_RENDER_PASSES_TIME_KEY, "Total sample time (GPU)");

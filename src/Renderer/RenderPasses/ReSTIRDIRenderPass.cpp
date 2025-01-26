@@ -533,14 +533,11 @@ void ReSTIRDIRenderPass::compute_render_times()
 
 	ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID] = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID]->get_last_execution_time();
 	if (restir_di_settings.do_fused_spatiotemporal)
-	{
 		ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID] = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID]->get_last_execution_time();
-		if (restir_di_settings.spatial_pass.number_of_passes > 1)
-			OROCHI_CHECK_ERROR(oroEventElapsedTime(&ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID], spatial_reuse_time_start, spatial_reuse_time_stop));
-	}
 	else
 	{
 		ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID] = m_kernels[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID]->get_last_execution_time();
+
 		OROCHI_CHECK_ERROR(oroEventElapsedTime(&ms_time_per_pass[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID], spatial_reuse_time_start, spatial_reuse_time_stop));
 	}
 }
@@ -558,11 +555,7 @@ void ReSTIRDIRenderPass::update_perf_metrics(std::shared_ptr<PerformanceMetricsC
 
 		ReSTIRDISettings& restir_di_settings = m_renderer->get_render_settings().restir_di_settings;
 		if (restir_di_settings.do_fused_spatiotemporal)
-		{
 			perf_metrics->add_value(ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID, render_pass_times[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID]);
-			if (restir_di_settings.spatial_pass.number_of_passes > 1)
-				perf_metrics->add_value(ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID, render_pass_times[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID]);
-		}
 		else
 		{
 			perf_metrics->add_value(ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID, render_pass_times[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID]);
@@ -573,7 +566,20 @@ void ReSTIRDIRenderPass::update_perf_metrics(std::shared_ptr<PerformanceMetricsC
 
 std::map<std::string, std::shared_ptr<GPUKernel>> ReSTIRDIRenderPass::get_all_kernels()
 {
-	return m_kernels;
+	if (!using_ReSTIR_DI())
+		return {};
+
+	std::map<std::string, std::shared_ptr<GPUKernel>> active_kernels = m_kernels;
+
+	ReSTIRDISettings& restir_di_settings = m_renderer->get_render_settings().restir_di_settings;
+	if (restir_di_settings.do_fused_spatiotemporal)
+	{
+		// If using spatiotemporal, these two kernels aren't active so we're not returning them
+		active_kernels.erase(ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID);
+		active_kernels.erase(ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID);
+	}
+
+	return active_kernels;
 }
 
 std::map<std::string, std::shared_ptr<GPUKernel>> ReSTIRDIRenderPass::get_tracing_kernels()

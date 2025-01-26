@@ -192,6 +192,11 @@ std::shared_ptr<ReSTIRDIRenderPass> GPURenderer::get_ReSTIR_DI_render_pass()
 	return std::dynamic_pointer_cast<ReSTIRDIRenderPass>(m_render_graph.get_render_pass(ReSTIRDIRenderPass::RESTIR_DI_RENDER_PASS_NAME));
 }
 
+RenderGraph& GPURenderer::get_render_graph()
+{
+	return m_render_graph;
+}
+
 NEEPlusPlusGPUData& GPURenderer::get_nee_plus_plus_data()
 {
 	return m_nee_plus_plus;
@@ -233,6 +238,7 @@ void GPURenderer::setup_render_passes()
 	megakernel_render_pass->add_dependency(restir_di_render_pass);
 
 	std::shared_ptr<GMoNRenderPass> gmon_render_pass  = std::make_shared<GMoNRenderPass>(this);
+	gmon_render_pass->add_dependency(megakernel_render_pass);
 
 	m_render_graph.add_render_pass(camera_rays_render_pass);
 	m_render_graph.add_render_pass(restir_di_render_pass);

@@ -10,7 +10,8 @@
 #include "Renderer/GPUDataStructures/GBufferGPUData.h"
 #include "Renderer/RenderPasses/RenderPass.h"
 
-class FillGBufferRenderPass : public RenderPass{
+class FillGBufferRenderPass : public RenderPass
+{
 public:
 	static const std::string FILL_GBUFFER_RENDER_PASS_NAME;
 	static const std::string FILL_GBUFFER_KERNEL;

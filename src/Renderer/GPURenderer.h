@@ -115,6 +115,8 @@ public:
 	std::shared_ptr<GMoNRenderPass> get_gmon_render_pass();
 	std::shared_ptr<ReSTIRDIRenderPass> get_ReSTIR_DI_render_pass();
 
+	RenderGraph& get_render_graph();
+
 	NEEPlusPlusGPUData& get_nee_plus_plus_data();
 
 	/**
