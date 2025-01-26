@@ -223,7 +223,10 @@ void GMoNRenderPass::resize(unsigned int new_width, unsigned int new_height)
 
 ColorRGB32F* GMoNRenderPass::map_result_framebuffer()
 {
-	return m_gmon.map_result_framebuffer();
+	if (using_gmon())
+		return m_gmon.map_result_framebuffer();
+
+	return nullptr;
 }
 
 void GMoNRenderPass::unmap_result_framebuffer()

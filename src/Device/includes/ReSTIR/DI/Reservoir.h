@@ -33,6 +33,11 @@ struct ReSTIRDISample
     // Some flags about the sample
     unsigned char flags = RESTIR_DI_FLAGS_NONE;
 
+    HIPRT_HOST_DEVICE static int flags_from_BSDF_incident_light_info(BSDFIncidentLightInfo sampled_lobe_info)
+    {
+        return static_cast<int>(sampled_lobe_info);
+    }
+
     HIPRT_HOST_DEVICE BSDFIncidentLightInfo flags_to_BSDF_incident_light_info() const
     {
         return static_cast<BSDFIncidentLightInfo>(flags & (0b111111 << (BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_COAT_LOBE - 1)));
