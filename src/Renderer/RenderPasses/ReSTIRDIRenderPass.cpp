@@ -184,7 +184,10 @@ bool ReSTIRDIRenderPass::pre_render_update(float delta_time)
 			}
 		}
 		else
-			presampled_lights_buffer.free();
+		{
+			if (presampled_lights_buffer.get_element_count() > 0)
+				presampled_lights_buffer.free();
+		}
 	}
 	else
 	{
@@ -338,7 +341,7 @@ void ReSTIRDIRenderPass::configure_initial_pass()
 void ReSTIRDIRenderPass::launch_initial_candidates_pass()
 {
 	int2 render_resolution = m_renderer->m_render_resolution;
-	void* launch_args[] = { m_render_data, &m_renderer->m_render_resolution };
+	void* launch_args[] = { m_render_data, &render_resolution };
 
 	configure_initial_pass();
 	m_kernels[ReSTIRDIRenderPass::RESTIR_DI_INITIAL_CANDIDATES_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, render_resolution.x, render_resolution.y, launch_args, m_renderer->get_main_stream());

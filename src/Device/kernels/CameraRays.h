@@ -154,7 +154,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
 
     hiprtRay ray = render_data.current_camera.get_camera_ray(x_ray_point_direction, y_ray_point_direction, res);
     RayPayload ray_payload;
-    ray_payload.volume_state.initialize();
 
     HitInfo closest_hit_info;
     bool intersection_found = trace_ray(render_data, ray, ray_payload, closest_hit_info, /* camera ray = no previous primitive hit */ -1, /* bounce. Always 0 for camera rays*/ 0, random_number_generator);

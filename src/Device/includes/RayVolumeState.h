@@ -20,7 +20,7 @@ struct RayVolumeState
 	 * If it were to be initialized in the RayVolumeState constructor, every declaration of a RayVolumeState variable
 	 * would call the constructor and reinitialize the whole nested dielectrics stack.
 	 */
-	HIPRT_HOST_DEVICE void initialize()
+	HIPRT_HOST_DEVICE RayVolumeState()
 	{
 #ifndef __KERNELCC__
 		// On the CPU, the priority stack is a member of the interior stack

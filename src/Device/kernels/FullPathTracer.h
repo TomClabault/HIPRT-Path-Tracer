@@ -202,7 +202,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline FullPathTracer(HIPRTRenderData render_data,
     ray.direction = hippt::normalize(-render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index));
 
     RayPayload ray_payload;
-    ray_payload.volume_state.initialize();
     ray_payload.next_ray_state = RayState::BOUNCE;
     ray_payload.material = render_data.g_buffer.materials[pixel_index].unpack();
 
