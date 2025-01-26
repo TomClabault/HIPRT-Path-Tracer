@@ -107,7 +107,7 @@ struct HIPRTRenderSettings
 
 	// If true, NaNs encountered during rendering will be rendered as very bright pink. 
 	// Useful for debugging only.
-	bool display_NaNs = false;
+	bool display_NaNs = true;
 
 	// If true, then rendering at low resolution will be performed if 'wants_render_low_resolution'
 	// is also true.

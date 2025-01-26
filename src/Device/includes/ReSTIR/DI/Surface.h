@@ -27,7 +27,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISurface get_pixel_surface(const HIPRTRend
 
 	surface.material = render_data.g_buffer.materials[pixel_index].unpack();
 	surface.last_hit_primitive_index = render_data.g_buffer.first_hit_prim_index[pixel_index];
-	surface.ray_volume_state.initialize();
 	surface.ray_volume_state.reconstruct_first_hit(
 		surface.material,
 		render_data.buffers.material_indices,
@@ -54,7 +53,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISurface get_pixel_surface_previous_frame(
 
 	surface.material = render_data.g_buffer_prev_frame.materials[pixel_index].unpack();
 	surface.last_hit_primitive_index = render_data.g_buffer_prev_frame.first_hit_prim_index[pixel_index];
-	surface.ray_volume_state.initialize();
 	surface.ray_volume_state.reconstruct_first_hit(
 		surface.material,
 		render_data.buffers.material_indices,
