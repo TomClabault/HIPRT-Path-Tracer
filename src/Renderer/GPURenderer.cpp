@@ -1366,7 +1366,7 @@ Camera& GPURenderer::get_camera()
 
 Camera& GPURenderer::get_previous_frame_camera()
 {
-	return m_camera;
+	return m_previous_frame_camera;
 }
 
 CameraAnimation& GPURenderer::get_camera_animation()
