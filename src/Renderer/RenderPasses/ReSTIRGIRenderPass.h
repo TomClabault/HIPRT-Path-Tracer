@@ -17,6 +17,7 @@ class ReSTIRGIRenderPass : public MegaKernelRenderPass
 public:
 	static const std::string RESTIR_GI_RENDER_PASS_NAME;
 	static const std::string RESTIR_GI_INITIAL_CANDIDATES_KERNEL_ID;
+	static const std::string RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID;
 	static const std::string RESTIR_GI_SPATIAL_REUSE_KERNEL_ID;
 	static const std::string RESTIR_GI_SHADING_KERNEL_ID;
 
@@ -44,7 +45,9 @@ private:
 	oroEvent_t m_spatial_reuse_time_start;
 	oroEvent_t m_spatial_reuse_time_stop;
 
-	OrochiBuffer<ReSTIRGISample> m_initial_candidates_buffer;
+	OrochiBuffer<ReSTIRGIReservoir> m_initial_candidates_buffer;
+	OrochiBuffer<ReSTIRGIReservoir> m_temporal_candidates_buffer;
+	OrochiBuffer<ReSTIRGIReservoir> m_spatial_candidates_buffer;
 };
 
 #endif

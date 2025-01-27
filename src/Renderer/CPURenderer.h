@@ -128,7 +128,7 @@ private:
 
     struct ReSTIRGIState
     {
-        std::vector<ReSTIRGISample> initial_candidates_reservoirs;
+        std::vector<ReSTIRGIReservoir> initial_candidates_reservoirs;
     } m_restir_gi_state;
 
     Image32Bit m_sheen_ltc_params;

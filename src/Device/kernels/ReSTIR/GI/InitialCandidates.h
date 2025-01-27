@@ -85,9 +85,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
     MISBSDFRayReuse mis_reuse;
     bool intersection_found = closest_hit_info.primitive_index != -1;
 
-    ReSTIRGISample restir_gi_initial_candidate;
-    restir_gi_initial_candidate.first_hit_normal = closest_hit_info.shading_normal;
-    restir_gi_initial_candidate.first_hit_point = closest_hit_info.inter_point;
+    ReSTIRGISample restir_gi_initial_sample;
+    restir_gi_initial_sample.first_hit_normal = closest_hit_info.shading_normal;
+    restir_gi_initial_sample.first_hit_point = closest_hit_info.inter_point;
 
     // + 1 to nb_bounces here because we want "0" bounces to still act as one
     // hit and to return some color
@@ -105,8 +105,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
 
                 if (bounce == 1)
                 {
-                    restir_gi_initial_candidate.second_hit_normal = closest_hit_info.shading_normal;
-                    restir_gi_initial_candidate.second_hit_point = closest_hit_info.inter_point;
+                    restir_gi_initial_sample.second_hit_normal = closest_hit_info.shading_normal;
+                    restir_gi_initial_sample.second_hit_point = closest_hit_info.inter_point;
                 }
 
                 // For the BRDF calculations, bounces, ... to be correct, we need the normal to be in the same hemisphere as
@@ -130,7 +130,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
                     ray_payload.ray_color += estimate_direct_lighting(render_data, ray_payload, closest_hit_info, -ray.direction, x, y, mis_reuse, random_number_generator);
 
                 if (bounce == 0)
-                    restir_gi_initial_candidate.seed = random_number_generator.m_state.seed;
+                    restir_gi_initial_sample.seed = random_number_generator.m_state.seed;
 
                 BSDFIncidentLightInfo incident_light_info;
                 bool valid_indirect_bounce = path_tracing_restir_gi_compute_next_indirect_bounce(render_data, ray_payload, closest_hit_info, -ray.direction, ray, mis_reuse, random_number_generator, &incident_light_info);
@@ -139,7 +139,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
                     break;
 
                 if (bounce == 0)
-                    restir_gi_initial_candidate.incident_light_info = incident_light_info;
+                    restir_gi_initial_sample.incident_light_info = incident_light_info;
             }
             else
                 ray_payload.next_ray_state = RayState::MISSED;
@@ -158,8 +158,15 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
     // the same value
     render_data.aux_buffers.still_one_ray_active[0] = 1;
 
-    restir_gi_initial_candidate.outgoing_radiance_to_first_hit = ray_payload.ray_color;
-    render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer[pixel_index] = restir_gi_initial_candidate;
+    restir_gi_initial_sample.outgoing_radiance_to_first_hit = ray_payload.ray_color;
+    restir_gi_initial_sample.target_function = restir_gi_initial_sample.outgoing_radiance_to_first_hit.luminance();
+
+    ReSTIRGIReservoir restir_gi_initial_reservoir;
+    restir_gi_initial_reservoir.add_one_candidate(restir_gi_initial_sample, restir_gi_initial_sample.outgoing_radiance_to_first_hit.luminance(), random_number_generator);
+    restir_gi_initial_reservoir.end();
+    restir_gi_initial_reservoir.sanity_check(make_int2(x, y));
+
+    render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer[pixel_index] = restir_gi_initial_reservoir;
 }
 
 #endif

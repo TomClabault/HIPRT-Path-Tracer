@@ -208,7 +208,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 
 	ReSTIRDIReservoir spatiotemporal_output_reservoir;
 	ReSTIRDIReservoir initial_candidates_reservoir = render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs[center_pixel_index];
-	ReSTIRDISpatiotemporalResamplingMISWeight<ReSTIR_DI_BiasCorrectionWeights> mis_weight_function;
+	ReSTIRDISpatiotemporalResamplingMISWeight<ReSTIR_DI_BiasCorrectionWeights, false, ReSTIRDISample> mis_weight_function;
 	if (temporal_neighbor_pixel_index_and_pos.x != -1)
 	{
 		// Resampling the temporal neighbor
@@ -274,14 +274,25 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
 			bool update_mc = initial_candidates_reservoir.M > 0 && initial_candidates_reservoir.UCW > 0.0f;
 
-			float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, temporal_neighbor_reservoir, initial_candidates_reservoir,
+			float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, 
+				
+				temporal_neighbor_reservoir.M, temporal_neighbor_reservoir.sample.target_function,
+				initial_candidates_reservoir.M, initial_candidates_reservoir.sample.target_function,
+				ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface, random_number_generator),
+
 				target_function_at_center, temporal_neighbor_pixel_index_and_pos.x, valid_neighbors_count, valid_neighbors_M_sum, 
 				update_mc, /* resample canonical */ false, random_number_generator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
 			bool update_mc = initial_candidates_reservoir.M > 0 && initial_candidates_reservoir.UCW > 0.0f;
 
-			float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, temporal_neighbor_reservoir,
-				initial_candidates_reservoir, target_function_at_center, temporal_neighbor_pixel_index_and_pos.x, valid_neighbors_count, valid_neighbors_M_sum, 
+			float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, 
+
+				temporal_neighbor_reservoir.M, temporal_neighbor_reservoir.sample.target_function,
+				initial_candidates_reservoir.M, initial_candidates_reservoir.sample.target_function,
+
+				initial_candidates_reservoir.sample,
+
+				target_function_at_center, temporal_neighbor_pixel_index_and_pos.x, valid_neighbors_count, valid_neighbors_M_sum, 
 				update_mc, /* resample canonical */ false, random_number_generator);
 #else
 #error "Unsupported bias correction mode"
@@ -395,6 +406,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 					target_function_at_center = ReSTIR_DI_evaluate_target_function<KERNEL_OPTION_FALSE>(render_data, neighbor_reservoir.sample, center_pixel_surface, random_number_generator);
 		}
 
+		ReSTIRDISurface neighbor_surface = get_pixel_surface(render_data, neighbor_pixel_index, render_data.render_settings.use_prev_frame_g_buffer(), random_number_generator);
+
 		float jacobian_determinant = 1.0f;
 		// If the neighbor reservoir is invalid, do not compute the jacobian
 		// Also, if this is the last neighbor resample (meaning that it is the sample pixel),
@@ -413,7 +426,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 			// "solid angle PDF at the neighbor" to the solid angle at the center pixel and we do
 			// that by multiplying by the jacobian determinant of the reconnection shift in solid
 			// angle, Eq. 52 of 2022, "Generalized Resampled Importance Sampling".
-			ReSTIRDISurface neighbor_surface = get_pixel_surface(render_data, neighbor_pixel_index, render_data.render_settings.use_prev_frame_g_buffer(), random_number_generator);
 
 			jacobian_determinant = get_jacobian_determinant_reconnection_shift(render_data, neighbor_reservoir, center_pixel_surface.shading_point, neighbor_surface.shading_point);
 
@@ -447,7 +459,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 		if (neighbor_reservoir.UCW == 0.0f && !update_mc)
 			mis_weight = 1.0f;
 		else
-			mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, neighbor_reservoir, initial_candidates_reservoir,
+			mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, 
+				
+				neighbor_reservoir.M, neighbor_reservoir.sample.target_function, 
+				initial_candidates_reservoir.M, initial_candidates_reservoir.sample.target_function,
+				ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, initial_candidates_reservoir.sample, neighbor_surface, random_number_generator),
+
 				target_function_at_center, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
 				update_mc, spatial_neighbor_index == reused_neighbors_count, random_number_generator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
@@ -457,7 +474,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 		if (neighbor_reservoir.UCW == 0.0f && !update_mc)
 			mis_weight = 1.0f;
 		else
-			mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, neighbor_reservoir, initial_candidates_reservoir, 
+			mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, 
+				
+				neighbor_reservoir.M, neighbor_reservoir.sample.target_function, 
+				initial_candidates_reservoir.M, initial_candidates_reservoir.sample.target_function, 
+				
+				initial_candidates_reservoir.sample,
+
 				target_function_at_center, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
 				update_mc, spatial_neighbor_index == reused_neighbors_count, random_number_generator);
 #else

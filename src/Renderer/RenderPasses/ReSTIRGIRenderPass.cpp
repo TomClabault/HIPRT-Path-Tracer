@@ -10,12 +10,14 @@
 
 const std::string ReSTIRGIRenderPass::RESTIR_GI_RENDER_PASS_NAME = "ReSTIR GI Render Pass";
 const std::string ReSTIRGIRenderPass::RESTIR_GI_INITIAL_CANDIDATES_KERNEL_ID = "ReSTIR GI Initial Candidates";
+const std::string ReSTIRGIRenderPass::RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID = "ReSTIR GI Temporal Reuse";
 const std::string ReSTIRGIRenderPass::RESTIR_GI_SPATIAL_REUSE_KERNEL_ID = "ReSTIR GI Spatial Reuse";
 const std::string ReSTIRGIRenderPass::RESTIR_GI_SHADING_KERNEL_ID = "ReSTIR GI Shading";
 
 const std::unordered_map<std::string, std::string> ReSTIRGIRenderPass::KERNEL_FUNCTION_NAMES =
 {
 	{ RESTIR_GI_INITIAL_CANDIDATES_KERNEL_ID, "ReSTIR_GI_InitialCandidates" },
+	{ RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID, "ReSTIR_GI_TemporalReuse" },
 	{ RESTIR_GI_SPATIAL_REUSE_KERNEL_ID, "ReSTIR_GI_SpatialReuse" },
 	{ RESTIR_GI_SHADING_KERNEL_ID, "ReSTIR_GI_Shading" },
 };
@@ -23,6 +25,7 @@ const std::unordered_map<std::string, std::string> ReSTIRGIRenderPass::KERNEL_FU
 const std::unordered_map<std::string, std::string> ReSTIRGIRenderPass::KERNEL_FILES =
 {
 	{ RESTIR_GI_INITIAL_CANDIDATES_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/GI/InitialCandidates.h"},
+	{ RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/GI/TemporalReuse.h" },
 	{ RESTIR_GI_SPATIAL_REUSE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/GI/SpatialReuse.h" },
 	{ RESTIR_GI_SHADING_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/GI/Shading.h" },
 };
@@ -41,6 +44,14 @@ ReSTIRGIRenderPass::ReSTIRGIRenderPass(GPURenderer* renderer) : MegaKernelRender
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_INITIAL_CANDIDATES_KERNEL_ID]->synchronize_options_with(global_compiler_options, GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_INITIAL_CANDIDATES_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_INITIAL_CANDIDATES_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 8);
+
+	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID] = std::make_shared<GPUKernel>();
+	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID]->set_kernel_file_path(ReSTIRGIRenderPass::KERNEL_FILES.at(ReSTIRGIRenderPass::RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID));
+	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID]->set_kernel_function_name(ReSTIRGIRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRGIRenderPass::RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID));
+	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID]->synchronize_options_with(global_compiler_options, GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
+	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
+	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 8);
+	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SHADING_KERNEL_ID] = std::make_shared<GPUKernel>();
 
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SPATIAL_REUSE_KERNEL_ID] = std::make_shared<GPUKernel>();
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SPATIAL_REUSE_KERNEL_ID]->set_kernel_file_path(ReSTIRGIRenderPass::KERNEL_FILES.at(ReSTIRGIRenderPass::RESTIR_GI_SPATIAL_REUSE_KERNEL_ID));
@@ -77,20 +88,42 @@ bool ReSTIRGIRenderPass::pre_render_update(float delta_time)
 	{
 		// ReSTIR GI enabled
 		bool initial_candidates_reservoir_needs_resize = m_initial_candidates_buffer.get_element_count() == 0;
+		bool temporal_candidates_reservoir_needs_resize = m_temporal_candidates_buffer.get_element_count() == 0;
+		bool spatial_candidates_reservoir_needs_resize = m_spatial_candidates_buffer.get_element_count() == 0;
 
-		if (initial_candidates_reservoir_needs_resize)
+		if (initial_candidates_reservoir_needs_resize || temporal_candidates_reservoir_needs_resize || spatial_candidates_reservoir_needs_resize)
 			// At least on buffer is going to be resized so buffers are invalidated
 			render_data_invalidated = true;
 
 		if (initial_candidates_reservoir_needs_resize)
 			m_initial_candidates_buffer.resize(render_resolution.x * render_resolution.y);
+
+		if (temporal_candidates_reservoir_needs_resize)
+			m_temporal_candidates_buffer.resize(render_resolution.x * render_resolution.y);
+
+		if (spatial_candidates_reservoir_needs_resize)
+			m_spatial_candidates_buffer.resize(render_resolution.x * render_resolution.y);
 	}
 	else
 	{
-		// ReSTIR DI disabled, we're going to free the buffers if that's not already done
+		// ReSTIR GI disabled, we're going to free the buffers if that's not already done
 		if (m_initial_candidates_buffer.get_element_count() > 0)
 		{
 			m_initial_candidates_buffer.free();
+
+			render_data_invalidated = true;
+		}
+
+		if (m_temporal_candidates_buffer.get_element_count() > 0)
+		{
+			m_temporal_candidates_buffer.free();
+
+			render_data_invalidated = true;
+		}
+
+		if (m_spatial_candidates_buffer.get_element_count() > 0)
+		{
+			m_spatial_candidates_buffer.free();
 
 			render_data_invalidated = true;
 		}
@@ -111,6 +144,7 @@ bool ReSTIRGIRenderPass::launch()
 		// We only need to trace paths for the initial candidates if we have
 		// more than 1 bounce
 		m_kernels[ReSTIRGIRenderPass::RESTIR_GI_INITIAL_CANDIDATES_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, render_resolution.x, render_resolution.y, launch_args, m_renderer->get_main_stream());
+	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, render_resolution.x, render_resolution.y, launch_args, m_renderer->get_main_stream());
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SHADING_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, render_resolution.x, render_resolution.y, launch_args, m_renderer->get_main_stream());
 
 	return true;
@@ -118,6 +152,10 @@ bool ReSTIRGIRenderPass::launch()
 
 void ReSTIRGIRenderPass::post_render_update()
 {
+	// If we had requested a temporal buffers clear, this has be done by this frame so we can
+	// now reset the flag
+	m_render_data->render_settings.restir_gi_settings.temporal_pass.temporal_buffer_clear_requested = false;
+
 	MegaKernelRenderPass::post_render_update();
 }
 
@@ -129,6 +167,16 @@ void ReSTIRGIRenderPass::update_render_data()
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
 	render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer = m_initial_candidates_buffer.get_device_pointer();
+
+	// The temporal reuse pass reads into the output of the spatial pass of the last frame + the initial candidates
+	// and outputs in the 'temporal buffer'
+	render_data.render_settings.restir_gi_settings.temporal_pass.input_reservoirs = m_spatial_candidates_buffer.get_device_pointer();
+	render_data.render_settings.restir_gi_settings.temporal_pass.output_reservoirs = m_temporal_candidates_buffer.get_device_pointer();
+
+	// The spatial reuse pass spatially reuse on the output of the temporal pass in the 'temporal buffer' and
+	// stores in the 'spatial buffer'
+	render_data.render_settings.restir_gi_settings.spatial_pass.input_reservoirs = m_temporal_candidates_buffer.get_device_pointer();
+	render_data.render_settings.restir_gi_settings.spatial_pass.output_reservoirs = m_spatial_candidates_buffer.get_device_pointer();
 }
 
 void ReSTIRGIRenderPass::reset()
