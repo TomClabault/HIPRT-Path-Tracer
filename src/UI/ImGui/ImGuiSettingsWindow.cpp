@@ -2317,10 +2317,7 @@ void ImGuiSettingsWindow::toggle_gmon()
 {
 	std::shared_ptr<GMoNRenderPass> gmon_render_pass = m_renderer->get_gmon_render_pass();
 	bool gmon_now_enabled = gmon_render_pass->get_gmon_data().using_gmon;
-	if (m_render_window->get_display_view_system()->get_current_display_view_type() == DisplayViewType::GMON_BLEND && !gmon_now_enabled)
-		// We had the GMoN Blend view active but GMoN just got disabled so we're switching to the default view
-		m_render_window->get_display_view_system()->queue_display_view_change(DisplayViewType::DEFAULT);
-	else if (m_render_window->get_display_view_system()->get_current_display_view_type() == DisplayViewType::DEFAULT && gmon_now_enabled)
+	if (m_render_window->get_display_view_system()->get_current_display_view_type() == DisplayViewType::DEFAULT && gmon_now_enabled)
 		// We just enabled GMoN, automatically switching to the GMoN view for convenience
 		m_render_window->get_display_view_system()->queue_display_view_change(DisplayViewType::GMON_BLEND);
 
