@@ -12,9 +12,8 @@ const std::string MegaKernelRenderPass::MEGAKERNEL_RENDER_PASS_NAME = "Megakerne
 const std::string MegaKernelRenderPass::MEGAKERNEL_KERNEL = "Megakernel (1 SPP)";
 
 MegaKernelRenderPass::MegaKernelRenderPass() : MegaKernelRenderPass(nullptr) {}
-MegaKernelRenderPass::MegaKernelRenderPass(GPURenderer* renderer) : RenderPass(renderer, MegaKernelRenderPass::MEGAKERNEL_RENDER_PASS_NAME) {}
-
-void MegaKernelRenderPass::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets)
+MegaKernelRenderPass::MegaKernelRenderPass(GPURenderer* renderer) : MegaKernelRenderPass(renderer, MegaKernelRenderPass::MEGAKERNEL_RENDER_PASS_NAME) {}
+MegaKernelRenderPass::MegaKernelRenderPass(GPURenderer* renderer, const std::string& name) : RenderPass(renderer, name) 
 {
 	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL] = std::make_shared<GPUKernel>();
 	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL]->set_kernel_file_path(DEVICE_KERNELS_DIRECTORY "/Megakernel.h");
@@ -22,6 +21,12 @@ void MegaKernelRenderPass::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_
 	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL]->synchronize_options_with(m_renderer->get_global_compiler_options(), GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
 	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
 	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 8);
+}
+
+void MegaKernelRenderPass::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets)
+{
+	if (!is_render_pass_used())
+		return;
 
 	ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL], hiprt_orochi_ctx, std::ref(func_name_sets));
 }
@@ -34,6 +39,9 @@ void MegaKernelRenderPass::resize(unsigned int new_width, unsigned int new_heigh
 
 bool MegaKernelRenderPass::pre_render_update(float delta_time)
 {
+	if (!is_render_pass_used())
+		return false;
+
 	// Resetting this flag as this is a new frame
 	m_render_data->render_settings.do_update_status_buffers = false;
 
@@ -45,6 +53,9 @@ bool MegaKernelRenderPass::pre_render_update(float delta_time)
 
 bool MegaKernelRenderPass::launch()
 {
+	if (!is_render_pass_used())
+		return false;
+
 	m_render_data->random_seed = m_renderer->rng().xorshift32();
 
 	void* launch_args[] = { m_render_data };
@@ -56,6 +67,9 @@ bool MegaKernelRenderPass::launch()
 
 void MegaKernelRenderPass::post_render_update()
 {
+	if (!is_render_pass_used())
+		return;
+
 	m_render_data->render_settings.sample_number++;
 	m_render_data->render_settings.denoiser_AOV_accumulation_counter++;
 
@@ -64,16 +78,16 @@ void MegaKernelRenderPass::post_render_update()
 	// again)
 	m_render_data->render_settings.need_to_reset = false;
 	m_render_data->nee_plus_plus.reset_visibility_map = false;
-	// If we had requested a temporal buffers clear, this has be done by this frame so we can
-	// now reset the flag
-	m_render_data->render_settings.restir_di_settings.temporal_pass.temporal_buffer_clear_requested = false;
 
 	// Saving the current frame camera to be the previous camera of the next frame
-	m_renderer->get_previous_frame_camera()  = m_renderer->get_camera();
+	m_renderer->get_previous_frame_camera() = m_renderer->get_camera();
 }
 
 void MegaKernelRenderPass::reset()
 {
+	if (!is_render_pass_used())
+		return;
+
 	if (m_render_data->render_settings.accumulate)
 	{
 		// Only resetting the seed for deterministic rendering if we're accumulating.
@@ -88,4 +102,11 @@ void MegaKernelRenderPass::reset()
 	m_render_data->render_settings.denoiser_AOV_accumulation_counter = 0;
 	m_render_data->render_settings.sample_number = 0;
 	m_render_data->render_settings.need_to_reset = true;
+}
+
+bool MegaKernelRenderPass::is_render_pass_used() const
+{
+	// Only active if we're not using ReSTIR GI because if we are using ReSTIR, the path tracing is done in
+	// the initial candidates kernel
+	return m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) != PSS_RESTIR_GI;
 }

@@ -6,8 +6,8 @@
 #ifndef HOST_DEVICE_RESTIR_GI_SETTINGS_H
 #define HOST_DEVICE_RESTIR_GI_SETTINGS_H
 
-struct ReSTIRGISample;
 struct ReSTIRGIReservoir;
+struct ReSTIRGISample;
 
 struct ReSTIRGIInitialCandidatesPassSettings
 {

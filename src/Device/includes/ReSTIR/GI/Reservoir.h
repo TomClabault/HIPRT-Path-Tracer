@@ -18,16 +18,18 @@ static std::mutex restir_gi_log_mutex;
 
 struct ReSTIRGISample
 {
-    float3 first_hit_point;
-    float3 second_hit_point;
+    float3 first_hit_point = make_float3(-1.0f, -1.0f, -1.0f);
+    float3 second_hit_point = make_float3(-1.0f, -1.0f, -1.0f);
 
-    float3 first_hit_normal;
-    float3 second_hit_normal;
+    float3 first_hit_normal = make_float3(-1.0f, -1.0f, -1.0f);
+    float3 second_hit_normal = make_float3(-1.0f, -1.0f, -1.0f);
 
     ColorRGB32F outgoing_radiance_to_first_hit;
 
     // Seed used for generating the path
     unsigned int seed;
+
+    BSDFIncidentLightInfo incident_light_info;
 
     // TODO Unused, just for compiling
     float target_function = 0.0f;

@@ -23,14 +23,14 @@ HIPRT_HOST_DEVICE bool path_tracing_find_indirect_bounce_intersection(HIPRTRende
 		return trace_ray(render_data, ray, out_ray_payload, out_closest_hit_info, out_closest_hit_info.primitive_index, out_ray_payload.bounce, random_number_generator);
 }
 
-HIPRT_HOST_DEVICE void path_tracing_sample_next_indirect_bounce(HIPRTRenderData& render_data, RayPayload& ray_payload, HitInfo& closest_hit_info, float3 view_direction, ColorRGB32F& out_bsdf_color, float3& out_bounce_direction, float& out_bsdf_pdf, MISBSDFRayReuse& mis_reuse, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE void path_tracing_sample_next_indirect_bounce(HIPRTRenderData& render_data, RayPayload& ray_payload, HitInfo& closest_hit_info, float3 view_direction, ColorRGB32F& out_bsdf_color, float3& out_bounce_direction, float& out_bsdf_pdf, MISBSDFRayReuse& mis_reuse, Xorshift32Generator& random_number_generator, BSDFIncidentLightInfo* out_sampled_light_info = nullptr)
 {
     if (mis_reuse.has_ray())
-        out_bsdf_color = reuse_mis_bsdf_sample(out_bounce_direction, out_bsdf_pdf, ray_payload, mis_reuse);
+        out_bsdf_color = reuse_mis_bsdf_sample(out_bounce_direction, out_bsdf_pdf, ray_payload, mis_reuse, out_sampled_light_info);
     else
         out_bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, true,
             view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, out_bounce_direction,
-            out_bsdf_pdf, random_number_generator, ray_payload.bounce);
+            out_bsdf_pdf, random_number_generator, ray_payload.bounce, out_sampled_light_info);
 #if DoFirstBounceWarpDirectionReuse
     warp_direction_reuse(render_data, closest_hit_info, ray_payload, -ray.direction, bounce_direction, bsdf_color, bsdf_pdf, bounce, random_number_generator);
 #endif
@@ -58,15 +58,15 @@ HIPRT_HOST_DEVICE ColorRGB32F path_tracing_update_ray_throughput(HIPRTRenderData
 }
 
 /**
- * Returns true if the bounce was sampled successfully, 
+ * Returns true if the bounce was sampled successfully,
  * false otherwise (is the BSDF sample failed, if russian roulette killed the sample, ...)
  */
-HIPRT_HOST_DEVICE bool path_tracing_compute_next_indirect_bounce(HIPRTRenderData& render_data, RayPayload& ray_payload, HitInfo& closest_hit_info, float3 view_direction, hiprtRay& out_ray, MISBSDFRayReuse& mis_reuse, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE bool path_tracing_compute_next_indirect_bounce(HIPRTRenderData& render_data, RayPayload& ray_payload, HitInfo& closest_hit_info, float3 view_direction, hiprtRay& out_ray, MISBSDFRayReuse& mis_reuse, Xorshift32Generator& random_number_generator, BSDFIncidentLightInfo* incident_light_info = nullptr)
 {
     ColorRGB32F bsdf_color;
     float3 bounce_direction;
     float bsdf_pdf;
-    path_tracing_sample_next_indirect_bounce(render_data, ray_payload, closest_hit_info, view_direction, bsdf_color, bounce_direction, bsdf_pdf, mis_reuse, random_number_generator);
+    path_tracing_sample_next_indirect_bounce(render_data, ray_payload, closest_hit_info, view_direction, bsdf_color, bounce_direction, bsdf_pdf, mis_reuse, random_number_generator, incident_light_info);
 
     // Terminate ray if bad sampling
     if (bsdf_pdf <= 0.0f)
@@ -76,6 +76,39 @@ HIPRT_HOST_DEVICE bool path_tracing_compute_next_indirect_bounce(HIPRTRenderData
     if (ray_payload.throughput.is_black())
         // Killed by russian roulette
         return false;
+
+    out_ray.origin = closest_hit_info.inter_point;
+    out_ray.direction = bounce_direction;
+
+    return true;
+}
+
+/**
+ * Returns true if the bounce was sampled successfully,
+ * false otherwise (is the BSDF sample failed, if russian roulette killed the sample, ...)
+ */
+HIPRT_HOST_DEVICE bool path_tracing_restir_gi_compute_next_indirect_bounce(HIPRTRenderData& render_data, RayPayload& ray_payload, HitInfo& closest_hit_info, float3 view_direction, hiprtRay& out_ray, MISBSDFRayReuse& mis_reuse, Xorshift32Generator& random_number_generator, BSDFIncidentLightInfo* incident_light_info = nullptr)
+{
+    ColorRGB32F bsdf_color;
+    float3 bounce_direction;
+    float bsdf_pdf;
+    path_tracing_sample_next_indirect_bounce(render_data, ray_payload, closest_hit_info, view_direction, bsdf_color, bounce_direction, bsdf_pdf, mis_reuse, random_number_generator, incident_light_info);
+
+    // Terminate ray if bad sampling
+    if (bsdf_pdf <= 0.0f)
+        return false;
+
+    if (ray_payload.bounce > 0)
+    {
+        // With ReSTIR GI, we want the outgoing radiance from the second hit to the camera hit
+        // This means that we're basically not taking the first hit into account and so we're not
+        // updating the throughput (or the ray_color either, see the main loop) on the bounce 0
+
+        ray_payload.throughput = path_tracing_update_ray_throughput(render_data, ray_payload, closest_hit_info, bsdf_color, bounce_direction, bsdf_pdf, random_number_generator);
+        if (ray_payload.throughput.is_black())
+            // Killed by russian roulette
+            return false;
+    }
 
     out_ray.origin = closest_hit_info.inter_point;
     out_ray.direction = bounce_direction;
@@ -102,7 +135,7 @@ HIPRT_HOST_DEVICE void store_denoiser_AOVs(HIPRTRenderData& render_data, uint32_
     }
 }
 
-HIPRT_HOST_DEVICE ColorRGB32F path_tracing_miss_gather_envmap(HIPRTRenderData& render_data, RayPayload& ray_payload, float3 ray_direction, uint32_t pixel_index)
+HIPRT_HOST_DEVICE ColorRGB32F path_tracing_miss_gather_envmap(HIPRTRenderData& render_data, int bounce, ColorRGB32F ray_throughput, float3 ray_direction, uint32_t pixel_index)
 {
     ColorRGB32F skysphere_color;
 
@@ -112,7 +145,7 @@ HIPRT_HOST_DEVICE ColorRGB32F path_tracing_miss_gather_envmap(HIPRTRenderData& r
     {
 #if EnvmapSamplingStrategy != ESS_NO_SAMPLING
         // If we have sampling, only taking envmap into account on camera ray miss
-        if (ray_payload.bounce == 0)
+        if (bounce == 0)
 #endif
         {
             // We're only getting the skysphere radiance for the first rays because the
@@ -135,18 +168,57 @@ HIPRT_HOST_DEVICE ColorRGB32F path_tracing_miss_gather_envmap(HIPRTRenderData& r
 
     skysphere_color = clamp_light_contribution(skysphere_color, render_data.render_settings.envmap_contribution_clamp, /* clamp condition */ true);
 
-    ColorRGB32F indirect_lighting_contribution = skysphere_color * ray_payload.throughput;
+    ColorRGB32F indirect_lighting_contribution = skysphere_color * ray_throughput;
     // Only clamping with the indirect lighting clamp value if
     // this is bounce > 0 (thanks to /* clamp condition */ bounce > 0)
     ColorRGB32F clamped_indirect_lighting_contribution = clamp_light_contribution(
         indirect_lighting_contribution, render_data.render_settings.indirect_contribution_clamp,
-        /* clamp condition */ ray_payload.bounce > 0);
+        /* clamp condition */ bounce > 0);
 
-    if (ray_payload.bounce == 0)
+    if (bounce == 0)
         // The camera ray missed so we don't have the normals but we have the base color
         store_denoiser_AOVs(render_data, pixel_index, make_float3(0, 0, 0), skysphere_color);
 
     return clamped_indirect_lighting_contribution;
+}
+
+HIPRT_HOST_DEVICE ColorRGB32F path_tracing_miss_gather_envmap(HIPRTRenderData& render_data, RayPayload& ray_payload, float3 ray_direction, uint32_t pixel_index)
+{
+    return path_tracing_miss_gather_envmap(render_data, ray_payload.bounce, ray_payload.throughput, ray_direction, pixel_index);
+}
+
+HIPRT_HOST_DEVICE void path_tracing_accumulate_color(const HIPRTRenderData& render_data, const ColorRGB32F& ray_color, uint32_t pixel_index)
+{
+#if ViewportColorOverriden == 0
+    // Only outputting the ray color if no kernel option is going to output its own color
+    // (mainly for debugging purposes) such as 'DirectLightNEEPlusPlusDisplayShadowRaysDiscarded'
+    // for example
+    if (render_data.render_settings.has_access_to_adaptive_sampling_buffers())
+    {
+        float squared_luminance_of_samples = ray_color.luminance() * ray_color.luminance();
+        // We can only use these buffers if the adaptive sampling or the stop noise threshold is enabled.
+        // Otherwise, the buffers are destroyed to save some VRAM so they are not accessible
+        render_data.aux_buffers.pixel_squared_luminance[pixel_index] += squared_luminance_of_samples;
+    }
+
+    if (render_data.render_settings.sample_number == 0)
+        render_data.buffers.accumulated_ray_colors[pixel_index] = ray_color;
+    else
+        // If we are at a sample that is not 0, this means that we are accumulating
+        render_data.buffers.accumulated_ray_colors[pixel_index] += ray_color;
+
+    if (render_data.buffers.gmon_estimator.sets != nullptr)
+    {
+        // GMoN is in use, accumulating in the GMoN sets
+
+        unsigned int offset = render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y * render_data.buffers.gmon_estimator.next_set_to_accumulate + pixel_index;
+
+        if (render_data.render_settings.sample_number == 0)
+            render_data.buffers.gmon_estimator.sets[offset] = ray_color;
+        else
+            render_data.buffers.gmon_estimator.sets[offset] += ray_color;
+    }
+#endif
 }
 
 #endif

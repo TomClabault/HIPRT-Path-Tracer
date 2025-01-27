@@ -6,6 +6,7 @@
 #ifndef CPU_RENDERER_H
 #define CPU_RENDERER_H
 
+#include "Device/includes/ReSTIR/GI/Reservoir.h"
 #include "Device/kernel_parameters/ReSTIR/DI/LightPresamplingParameters.h"
 #include "HostDeviceCommon/RenderData.h"
 #include "Image/Image.h"
@@ -73,6 +74,9 @@ public:
 
     void tracing_pass();
 
+    void restir_gi_initial_candidates_pass();
+    void restir_gi_shading_pass();
+
     void gmon_compute_median_of_means();
 
     void tonemap(float gamma, float exposure);
@@ -119,9 +123,13 @@ private:
 
         ReSTIRDIReservoir* output_reservoirs = nullptr;
 
-
         bool odd_frame = false;
     } m_restir_di_state;
+
+    struct ReSTIRGIState
+    {
+        std::vector<ReSTIRGISample> initial_candidates_reservoirs;
+    } m_restir_gi_state;
 
     Image32Bit m_sheen_ltc_params;
     Image32Bit m_GGX_conductor_Ess;

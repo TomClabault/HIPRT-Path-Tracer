@@ -37,6 +37,15 @@ public:
 	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_all_kernels() override;
 	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_tracing_kernels() override;
 
+	/**
+	 * 
+	 */
+	void update();
+
+	/**
+	 * Empties the render graph by deleting all the render passes
+	 */
+	void clear();
 	void add_render_pass(std::shared_ptr<RenderPass> render_pass);
 	std::shared_ptr<RenderPass> get_render_pass(const std::string& render_pass_name);
 	std::unordered_map<std::string, std::shared_ptr<RenderPass>> get_render_passes();

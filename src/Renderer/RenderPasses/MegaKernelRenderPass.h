@@ -16,6 +16,7 @@ public:
 
 	MegaKernelRenderPass();
 	MegaKernelRenderPass(GPURenderer* renderer);
+	MegaKernelRenderPass(GPURenderer* renderer, const std::string& name);
 
 	virtual void compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets = {});
 
@@ -27,6 +28,8 @@ public:
 
 	virtual void update_render_data() {};
 	virtual void reset();
+
+	virtual bool is_render_pass_used() const override;
 
 private:
 	int2 m_render_resolution = make_int2(0, 0);

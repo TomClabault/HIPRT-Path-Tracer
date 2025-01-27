@@ -272,6 +272,13 @@ bool ReSTIRDIRenderPass::launch()
 	return is_render_pass_used();
 }
 
+void ReSTIRDIRenderPass::post_render_update()
+{
+	// If we had requested a temporal buffers clear, this has be done by this frame so we can
+	// now reset the flag
+	m_render_data->render_settings.restir_di_settings.temporal_pass.temporal_buffer_clear_requested = false;
+}
+
 LightPresamplingParameters ReSTIRDIRenderPass::configure_light_presampling_pass()
 {
 	LightPresamplingParameters parameters;

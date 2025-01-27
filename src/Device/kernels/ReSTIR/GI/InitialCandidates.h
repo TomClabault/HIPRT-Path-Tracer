@@ -17,11 +17,6 @@
 
 #include "HostDeviceCommon/Xorshift.h"
 
-HIPRT_HOST_DEVICE void output_ReSTIR_GI_initial_candidate(HIPRTRenderData& render_data, uint32_t pixel_index)
-{
-    ReSTIRGIReservoir initial_candidate;
-}
-
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_GI_InitialCandidates(HIPRTRenderData render_data)
 #else
@@ -45,11 +40,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
         // for better interactivity
         render_data.render_settings.nb_bounces = hippt::min(3, render_data.render_settings.nb_bounces);
 
-#if ViewportColorOverriden == 1
-    // If some kernel option is going to debug some color in the viewport,
-    // then we're clearing the viewport buffer here
-    render_data.buffers.accumulated_ray_colors[pixel_index] = ColorRGB32F();
-#endif
 
 
     unsigned int seed;
@@ -62,13 +52,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
     // Initializing the closest hit info the information from the camera ray pass
     HitInfo closest_hit_info;
     closest_hit_info.inter_point = render_data.g_buffer.primary_hit_position[pixel_index];
-    closest_hit_info.geometric_normal = hippt::normalize(render_data.g_buffer.geometric_normals[pixel_index].unpack());
-    closest_hit_info.shading_normal = hippt::normalize(render_data.g_buffer.shading_normals[pixel_index].unpack());
+    closest_hit_info.geometric_normal = render_data.g_buffer.geometric_normals[pixel_index].unpack();
+    closest_hit_info.shading_normal = render_data.g_buffer.shading_normals[pixel_index].unpack();
     closest_hit_info.primitive_index = render_data.g_buffer.first_hit_prim_index[pixel_index];
 
     // Initializing the ray with the information from the camera ray pass
     hiprtRay ray;
-    ray.direction = hippt::normalize(-render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index));
+    ray.direction = -render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index);
 
     RayPayload ray_payload;
     ray_payload.next_ray_state = RayState::BOUNCE;
@@ -96,6 +86,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
     bool intersection_found = closest_hit_info.primitive_index != -1;
 
     ReSTIRGISample restir_gi_initial_candidate;
+    restir_gi_initial_candidate.first_hit_normal = closest_hit_info.shading_normal;
+    restir_gi_initial_candidate.first_hit_point = closest_hit_info.inter_point;
 
     // + 1 to nb_bounces here because we want "0" bounces to still act as one
     // hit and to return some color
@@ -110,6 +102,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
             {
                 if (bounce == 0)
                     store_denoiser_AOVs(render_data, pixel_index, closest_hit_info.shading_normal, ray_payload.material.base_color);
+
+                if (bounce == 1)
+                {
+                    restir_gi_initial_candidate.second_hit_normal = closest_hit_info.shading_normal;
+                    restir_gi_initial_candidate.second_hit_point = closest_hit_info.inter_point;
+                }
 
                 // For the BRDF calculations, bounces, ... to be correct, we need the normal to be in the same hemisphere as
                 // the view direction. One thing that can go wrong is when we have an emissive triangle (typical area light)
@@ -128,60 +126,23 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
 
 
                 // Estimates direct lighting with next-event estimation and directly modifies ray_payload.ray_color
-                ray_payload.ray_color += estimate_direct_lighting(render_data, ray_payload, closest_hit_info, -ray.direction, x, y, mis_reuse, random_number_generator);
-
-                bool valid_indirect_bounce = path_tracing_compute_next_indirect_bounce(render_data, ray_payload, closest_hit_info, -ray.direction, ray, mis_reuse, random_number_generator);
-                if (!valid_indirect_bounce)
-                    // Bad BSDF sample (under the surafce), killed by russian roulette, ...
-                    break;
-            }
-            else
-            {
-                ColorRGB32F skysphere_color;
-
-                if (render_data.world_settings.ambient_light_type == AmbientLightType::UNIFORM || render_data.bsdfs_data.white_furnace_mode)
-                    skysphere_color = render_data.world_settings.uniform_light_color;
-                else if (render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP)
-                {
-#if EnvmapSamplingStrategy != ESS_NO_SAMPLING
-                    // If we have sampling, only taking envmap into account on camera ray miss
-                    if (bounce == 0)
-#endif
-                    {
-                        // We're only getting the skysphere radiance for the first rays because the
-                        // syksphere is importance sampled.
-                        skysphere_color = eval_envmap_no_pdf(render_data.world_settings, ray.direction);
-
-#if EnvmapSamplingStrategy == ESS_NO_SAMPLING
-                        // If we don't have envmap sampling, we're only going to unscale on
-                        // bounce 0 (which is when a ray misses directly --> background color).
-                        // Otherwise, if not bounce 2, we do want to take the scaling into
-                        // account so this if will fail and the envmap color will never be unscaled
-                        if (!render_data.world_settings.envmap_scale_background_intensity && bounce == 0)
-#else
-                        if (!render_data.world_settings.envmap_scale_background_intensity)
-#endif
-                            // Un-scaling the envmap if the user doesn't want to scale the background
-                            skysphere_color /= render_data.world_settings.envmap_intensity;
-                    }
-                }
-
-                skysphere_color = clamp_light_contribution(skysphere_color, render_data.render_settings.envmap_contribution_clamp, /* clamp condition */ true);
-
-                ColorRGB32F indirect_lighting_contribution = skysphere_color * ray_payload.throughput;
-                // Only clamping with the indirect lighting clamp value if
-                // this is bounce > 0 (thanks to /* clamp condition */ bounce > 0)
-                ColorRGB32F clamped_indirect_lighting_contribution = clamp_light_contribution(
-                    indirect_lighting_contribution, render_data.render_settings.indirect_contribution_clamp, 
-                    /* clamp condition */ bounce > 0);
-
-                ray_payload.ray_color += clamped_indirect_lighting_contribution;
-                ray_payload.next_ray_state = RayState::MISSED;
+                if (bounce > 0)
+                    ray_payload.ray_color += estimate_direct_lighting(render_data, ray_payload, closest_hit_info, -ray.direction, x, y, mis_reuse, random_number_generator);
 
                 if (bounce == 0)
-                    // The camera ray missed so we don't have the normals but we have the base color
-                    store_denoiser_AOVs(render_data, pixel_index, make_float3(0, 0, 0), skysphere_color);
+                    restir_gi_initial_candidate.seed = random_number_generator.m_state.seed;
+
+                BSDFIncidentLightInfo incident_light_info;
+                bool valid_indirect_bounce = path_tracing_restir_gi_compute_next_indirect_bounce(render_data, ray_payload, closest_hit_info, -ray.direction, ray, mis_reuse, random_number_generator, &incident_light_info);
+                if (!valid_indirect_bounce)
+                    // Bad BSDF sample (under the surface), killed by russian roulette, ...
+                    break;
+
+                if (bounce == 0)
+                    restir_gi_initial_candidate.incident_light_info = incident_light_info;
             }
+            else
+                ray_payload.next_ray_state = RayState::MISSED;
         }
         else if (ray_payload.next_ray_state == RayState::MISSED)
             break;
@@ -197,6 +158,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
     // the same value
     render_data.aux_buffers.still_one_ray_active[0] = 1;
 
+    restir_gi_initial_candidate.outgoing_radiance_to_first_hit = ray_payload.ray_color;
     render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer[pixel_index] = restir_gi_initial_candidate;
 }
 

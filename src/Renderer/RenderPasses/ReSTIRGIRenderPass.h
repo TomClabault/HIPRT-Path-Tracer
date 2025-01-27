@@ -7,15 +7,18 @@
 #define RESTIR_GI_RENDER_PASS_H
 
 #include "Renderer/RenderPasses/RenderPass.h"
+#include "Renderer/RenderPasses/MegaKernelRenderPass.h"
 #include "Device/includes/ReSTIR/GI/Reservoir.h"
 
 class GPURenderer;
 
-class ReSTIRGIRenderPass : public RenderPass
+class ReSTIRGIRenderPass : public MegaKernelRenderPass
 {
 public:
 	static const std::string RESTIR_GI_RENDER_PASS_NAME;
+	static const std::string RESTIR_GI_INITIAL_CANDIDATES_KERNEL_ID;
 	static const std::string RESTIR_GI_SPATIAL_REUSE_KERNEL_ID;
+	static const std::string RESTIR_GI_SHADING_KERNEL_ID;
 
 	static const std::unordered_map<std::string, std::string> KERNEL_FUNCTION_NAMES;
 	static const std::unordered_map<std::string, std::string> KERNEL_FILES;
@@ -33,8 +36,6 @@ public:
 
 	virtual void update_render_data() override;
 	virtual void reset() override;
-
-	virtual void compute_render_times() override;
 
 	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_tracing_kernels() override;
 

@@ -145,6 +145,13 @@ std::map<std::string, std::shared_ptr<GPUKernel>> RenderGraph::get_tracing_kerne
 	return out;
 }
 
+void RenderGraph::clear()
+{
+	m_render_passes.clear();
+	m_render_pass_launched_this_frame_yet.clear();
+	m_render_pass_effectively_launched_this_frame.clear();
+}
+
 void RenderGraph::add_render_pass(std::shared_ptr<RenderPass> render_pass)
 {
 	if (m_render_passes.find(render_pass->get_name()) != m_render_passes.end())

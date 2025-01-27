@@ -410,42 +410,16 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
     ColorRGB32F color;
     if (reflecting)
     {
-        //if (scaled_roughness <= MaterialUtils::ROUGHNESS_CLAMP)
-        //{
-        //    if (incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_GLASS_LOBE)
-        //    {
-        //        // When the glass is perfectly smooth i.e. delta distribution, our only hope is to sample
-        //        // directly from the glass lobe. If we didn't sample from the glass lobe, this is going to be 0
-        //        // contribution
-        //        
-        //        // Fast path for specular glass
+        MaterialUtils::SpecularDeltaReflectionSampled delta_glass_direction_sampled = MaterialUtils::is_specular_delta_reflection_sampled(material, material.roughness, material.anisotropy, incident_light_info);
 
-        //        // Just some arbitrarily high value because this is a delta distribution
-        //        // And also, take fresnel into account
-        //        color = ColorRGB32F(high_value_delta_distrib, high_value_delta_distrib, high_value_delta_distrib) * F;
-        //        color /= hippt::abs(NoL);
+        color = torrance_sparrow_GGX_eval_reflect<0>(render_data, scaled_roughness, material.anisotropy, false, F, 
+                                                        local_view_direction, local_to_light_direction, local_half_vector,
+                                                        pdf, delta_glass_direction_sampled, current_bounce);
+        // [Turquin, 2019] Eq. 18 for dielectric microfacet energy compensation
+        color /= compensation_term;
 
-        //        pdf = high_value_delta_distrib * f_reflect_proba;
-        //    }
-        //    else
-        //    {
-        //        color = ColorRGB32F(0.0f);
-        //        pdf = 0.0f;
-        //    }
-        //}
-        //else
-        {
-            MaterialUtils::SpecularDeltaReflectionSampled delta_glass_direction_sampled = MaterialUtils::is_specular_delta_reflection_sampled(material, material.roughness, material.anisotropy, incident_light_info);
-
-            color = torrance_sparrow_GGX_eval_reflect<0>(render_data, scaled_roughness, material.anisotropy, false, F, 
-                                                         local_view_direction, local_to_light_direction, local_half_vector,
-                                                         pdf, delta_glass_direction_sampled, current_bounce);
-            // [Turquin, 2019] Eq. 18 for dielectric microfacet energy compensation
-            color /= compensation_term;
-
-            // Scaling the PDF by the probability of being here (reflection of the ray and not transmission)
-            pdf *= f_reflect_proba;
-        }
+        // Scaling the PDF by the probability of being here (reflection of the ray and not transmission)
+        pdf *= f_reflect_proba;
     }
     else
     {
