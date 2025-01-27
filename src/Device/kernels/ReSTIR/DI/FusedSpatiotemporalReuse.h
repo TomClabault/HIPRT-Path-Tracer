@@ -208,7 +208,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 
 	ReSTIRDIReservoir spatiotemporal_output_reservoir;
 	ReSTIRDIReservoir initial_candidates_reservoir = render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs[center_pixel_index];
-	ReSTIRDISpatiotemporalResamplingMISWeight<ReSTIR_DI_BiasCorrectionWeights, /* IsReSTIRGI */ false, /* SampleType */ ReSTIRDISample> mis_weight_function;
+	ReSTIRDISpatiotemporalResamplingMISWeight<ReSTIR_DI_BiasCorrectionWeights, /* IsReSTIRGI */ false> mis_weight_function;
 	if (temporal_neighbor_pixel_index_and_pos.x != -1)
 	{
 		// Resampling the temporal neighbor
