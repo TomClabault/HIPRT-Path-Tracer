@@ -7,12 +7,42 @@
 #define DEVICE_RESTIR_DI_SPATIOTEMPORAL_MIS_WEIGHT_H
 
 #include "Device/includes/ReSTIR/DI/Utils.h"
+#include "Device/includes/ReSTIR/GI/Reservoir.h"
 
 #define TEMPORAL_NEIGHBOR_ID 0
 
+/**
+ * The SampleTypeStruct is used to automatically determine what SampleType to use
+ * based on the 'IsReSTIRGI' template parameter
+ * 
+ * This allows us to use the ReSTIRDISample type of ReSTIRGISample type automatically
+ * based on whether or not we're instantiating the structures for ReSTIR DI or ReSTIR GI
+ * 
+ * This sample type is then used in some of the specialization to pass to the target functions
+ */
+template <bool IsReSTIRGI>
+struct SampleTypeStruct {};
 
+template <>
+struct SampleTypeStruct<false> 
+{
+	using Type = ReSTIRDISample;
+};
 
-template <int BiasCorrectionMode, bool IsReSTIRGI = false, typename SampleType = ReSTIRDISample>
+template <>
+struct SampleTypeStruct<true>
+{
+	using Type = ReSTIRGISample;
+};
+
+/**
+ * There are going to be many specialization of this structure, one for each bias correction mode
+ * (RESTIR_DI_BIAS_CORRECTION_1_OVER_M, RESTIR_DI_BIAS_CORRECTION_1_OVER_Z, ...)
+ *
+ * IsReSTIRGI is used to indicate whether the structure should be used to compute
+ * for ReSTIR GI or for ReSTIR DI
+ */
+template <int BiasCorrectionMode, bool IsReSTIRGI = false>
 struct ReSTIRDISpatiotemporalResamplingMISWeight {};
 
 template <>
@@ -42,12 +72,12 @@ struct ReSTIRDISpatiotemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_L
 	}
 }; 
 
-template <bool IsReSTIRGI, typename SampleType>
-struct ReSTIRDISpatiotemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH, IsReSTIRGI, SampleType>
+template <bool IsReSTIRGI>
+struct ReSTIRDISpatiotemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
 		float reservoir_being_resampled_UCW,
-		const SampleType& reservoir_being_resampled_sample,
+		const SampleTypeStruct<IsReSTIRGI>::Type& reservoir_being_resampled_sample,
 
 		ReSTIRDISurface& center_pixel_surface, ReSTIRDISurface& temporal_neighbor_surface,
 		int current_neighbor, int initial_candidates_M, int temporal_neighbor_M,
@@ -125,15 +155,15 @@ struct ReSTIRDISpatiotemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_G
 	}
 };
 
-template <bool IsReSTIRGI, typename SampleType>
-struct ReSTIRDISpatiotemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS, IsReSTIRGI, SampleType>
+template <bool IsReSTIRGI>
+struct ReSTIRDISpatiotemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
 
 		int reservoir_being_resampled_M, float reservoir_being_resampled_target_function,
 		int center_pixel_reservoir_M, float center_pixel_reservoir_target_function,
 
-		const SampleType& center_pixel_reservoir_sample,
+		const SampleTypeStruct<IsReSTIRGI>::Type& center_pixel_reservoir_sample,
 
 		float target_function_at_center, int neighbor_pixel_index, int valid_neighbors_count, int valid_neighbors_M_sum,
 		bool update_mc, bool resample_canonical,
@@ -211,15 +241,15 @@ struct ReSTIRDISpatiotemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRW
 	float mc = 0.0f;
 };
 
-template <bool IsReSTIRGI, typename SampleType>
-struct ReSTIRDISpatiotemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE, IsReSTIRGI, SampleType>
+template <bool IsReSTIRGI>
+struct ReSTIRDISpatiotemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
 
 		int resampled_reservoir_M, float resampled_reservoir_target_function,
 		int center_pixel_reservoir_M, float center_pixel_reservoir_target_function,
 
-		const SampleType& center_pixel_reservoir_sample,
+		const SampleTypeStruct<IsReSTIRGI>::Type& center_pixel_reservoir_sample,
 
 		float target_function_at_center, int neighbor_pixel_index, int valid_neighbors_count, int valid_neighbors_M_sum,
 		bool update_mc, bool resample_canonical, 

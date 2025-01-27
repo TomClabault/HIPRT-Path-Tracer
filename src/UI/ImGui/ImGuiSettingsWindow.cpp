@@ -841,18 +841,22 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 		{
 			ImGui::TreePush("Direct lighting sampling tree");
 
+			bool disabled = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI;
+			ImGui::BeginDisabled(disabled);
 			if (ImGui::SliderInt("NEE Samples", &render_settings.number_of_light_samples, 1, 8))
 				m_render_window->set_render_dirty(true);
-			ImGuiRenderer::show_help_marker("How many light samples to take and shade per each vertex of the "
-											"ray's path.\n"
-											"\n"
-											"Said otherwise, we're going to run next-event estimation that many "
-											"times per each intersection point along the ray.\n"
-											"\n"
-											"This is good because this amortizes camera rays and bounce rays i.e. "
-											"we get better shading quality for as many camera rays and bounce rays.\n"
-											"\n"
-											"With ReSTIR DI this only applies to the secondary bounces shading.");
+			ImGuiRenderer::show_help_marker(std::string("How many light samples to take and shade per each vertex of the "
+				"ray's path.\n"
+				"\n"
+				"Said otherwise, we're going to run next-event estimation that many "
+				"times per each intersection point along the ray.\n"
+				"\n"
+				"This is good because this amortizes camera rays and bounce rays i.e. "
+				"we get better shading quality for as many camera rays and bounce rays.\n"
+				"\n"
+				"With ReSTIR DI this only applies to the secondary bounces shading.") +
+				(disabled ? std::string("\n\nDisabled because not supported by ReSTIR DI") : ""));
+			ImGui::EndDisabled();
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			const char* items[] = { "- No direct light sampling", "- Uniform one light", "- BSDF Sampling", "- MIS (1 Light + 1 BSDF)", "- RIS BDSF + Light candidates", "- ReSTIR DI (Primary Hit Only)" };
