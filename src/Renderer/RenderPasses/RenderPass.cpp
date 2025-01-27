@@ -5,10 +5,21 @@
 
 #include "Renderer/GPURenderer.h"
 #include "Renderer/RenderPasses/RenderPass.h"
+#include "Threads/ThreadFunctions.h"
+#include "Threads/ThreadManager.h"
 
 RenderPass::RenderPass() {}
 RenderPass::RenderPass(GPURenderer* renderer) : RenderPass(renderer, "Unnamed render pass") {}
 RenderPass::RenderPass(GPURenderer* renderer, const std::string& name) : m_renderer(renderer), m_render_data(&m_renderer->get_render_data()), m_name(name) {}
+
+void RenderPass::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets)
+{
+	if (!is_render_pass_used())
+		return;
+
+	for (auto& name_to_kernel : get_all_kernels())
+		ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, m_kernels[name_to_kernel.first], hiprt_orochi_ctx, std::ref(func_name_sets));
+}
 
 void RenderPass::recompile(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets, bool silent, bool use_cache)
 {

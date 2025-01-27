@@ -265,7 +265,7 @@ void GPURenderer::setup_render_passes()
 	m_render_graph.compile(m_hiprt_orochi_ctx, m_func_name_sets);
 
 	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_TRUE)
-		m_nee_plus_plus.compile_finalize_accumulation_kernel(m_hiprt_orochi_ctx);
+		m_nee_plus_plus.compile_finalize_accumulation_kernel(m_hiprt_orochi_ctx, m_func_name_sets);
 }
 
 void GPURenderer::pre_render_update(float delta_time)

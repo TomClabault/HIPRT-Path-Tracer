@@ -23,14 +23,6 @@ MegaKernelRenderPass::MegaKernelRenderPass(GPURenderer* renderer, const std::str
 	m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 8);
 }
 
-void MegaKernelRenderPass::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets)
-{
-	if (!is_render_pass_used())
-		return;
-
-	ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel, m_kernels[MegaKernelRenderPass::MEGAKERNEL_KERNEL], hiprt_orochi_ctx, std::ref(func_name_sets));
-}
-
 void MegaKernelRenderPass::resize(unsigned int new_width, unsigned int new_height)
 {
 	m_render_resolution.x = new_width;

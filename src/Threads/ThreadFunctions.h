@@ -12,7 +12,6 @@ class ThreadFunctions
 {
 public:
 	static void compile_kernel(std::shared_ptr<GPUKernel> kernel, std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets);
-	static void compile_kernel_no_func_sets(std::shared_ptr<GPUKernel> kernel, std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx);
 	static void compile_kernel_silent(std::shared_ptr<GPUKernel>, std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets);
 	static void precompile_kernel(const std::string& kernel_function_name, const std::string& kernel_filepath, GPUKernelCompilerOptions options, std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets);
 

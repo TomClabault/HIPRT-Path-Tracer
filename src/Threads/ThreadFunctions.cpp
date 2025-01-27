@@ -15,11 +15,6 @@ void ThreadFunctions::compile_kernel(std::shared_ptr<GPUKernel> kernel, std::sha
     kernel->compile(hiprt_orochi_ctx, func_name_sets, true, false);
 }
 
-void ThreadFunctions::compile_kernel_no_func_sets(std::shared_ptr<GPUKernel> kernel, std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx)
-{
-    kernel->compile(hiprt_orochi_ctx, {});
-}
-
 void ThreadFunctions::compile_kernel_silent(std::shared_ptr<GPUKernel> kernel, std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets)
 {
     kernel->compile(hiprt_orochi_ctx, func_name_sets, true, true);
