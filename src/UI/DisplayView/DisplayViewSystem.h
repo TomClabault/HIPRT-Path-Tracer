@@ -103,7 +103,13 @@ private:
 	void internal_recreate_display_textures_from_display_view(DisplayViewType display_view);
 	void internal_recreate_display_texture(std::pair<GLuint, DisplayTextureType>& display_texture, GLenum display_texture_unit, DisplayTextureType new_texture_type, int width, int height);
 
-
+	/**
+	 * Automatically changes the display view used if some conditions are met (or not met).
+	 * 
+	 * For example, if the current display view is "GMoN Blend" but the user disables GMoN, we
+	 * don't want to keep using the GMoN blend view so this function will change it automatically
+	 */
+	void handle_automatic_display_view_changes();
 
 
 
