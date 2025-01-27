@@ -85,8 +85,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
     {
         // Only doing the ReSTIR GI stuff if we have more than 1 bounce
 
-        ReSTIRGIReservoir resampling_reservoir;
-        resampling_reservoir.sample = render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer[pixel_index];
+        ReSTIRGIReservoir resampling_reservoir = render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer[pixel_index];
         if (!resampling_reservoir.sample.outgoing_radiance_to_first_hit.is_black())
         {
             // Only doing the shading if we do actually have a sample

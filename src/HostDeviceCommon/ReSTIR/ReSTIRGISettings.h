@@ -7,13 +7,22 @@
 #define HOST_DEVICE_RESTIR_GI_SETTINGS_H
 
 struct ReSTIRGIReservoir;
-struct ReSTIRGISample;
 
 struct ReSTIRGIInitialCandidatesPassSettings
 {
 	// Buffer that contains the reservoirs that will hold the reservoir
 	// for the initial candidates generated
-	ReSTIRGISample* initial_candidates_buffer = nullptr;
+	ReSTIRGIReservoir* initial_candidates_buffer = nullptr;
+};
+
+struct ReSTIRGITemporalPassSettings
+{
+	bool temporal_buffer_clear_requested = true;
+
+	// Buffer that contains the input reservoirs for the temporal reuse pass
+	ReSTIRGIReservoir* input_reservoirs = nullptr;
+	// Buffer that contains the output reservoir of the temporal reuse pass
+	ReSTIRGIReservoir* output_reservoirs = nullptr;
 };
 
 struct ReSTIRGISpatialPassSettings
@@ -27,6 +36,7 @@ struct ReSTIRGISpatialPassSettings
 struct ReSTIRGISettings
 {
 	ReSTIRGIInitialCandidatesPassSettings initial_candidates;
+	ReSTIRGITemporalPassSettings temporal_pass;
 	ReSTIRGISpatialPassSettings spatial_pass;
 };
 

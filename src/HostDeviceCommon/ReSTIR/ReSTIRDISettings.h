@@ -151,7 +151,7 @@ struct ReSTIRDISettings
 	// A M-cap value between 5 - 30 is usually good
 	//
 	// 0 for infinite M-cap (don't...)
-	int m_cap = 16;
+	int m_cap = 8;
 
 	// Whether or not to use confidence weights when resampling neighbors.
 	bool use_confidence_weights = true;

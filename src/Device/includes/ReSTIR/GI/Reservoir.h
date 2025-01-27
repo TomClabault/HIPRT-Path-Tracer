@@ -31,7 +31,6 @@ struct ReSTIRGISample
 
     BSDFIncidentLightInfo incident_light_info;
 
-    // TODO Unused, just for compiling
     float target_function = 0.0f;
 };
 

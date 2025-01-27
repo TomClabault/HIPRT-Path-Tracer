@@ -71,6 +71,10 @@
 #define RESTIR_DI_LATER_BOUNCES_MIS_LIGHT_BSDF 2
 #define RESTIR_DI_LATER_BOUNCES_RIS_BSDF_AND_LIGHT 3
 
+#define RESTIR_GI_BIAS_CORRECTION_MIS_GBH 0
+#define RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS 1
+#define RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE 2
+
 /**
  * Options are defined in a #ifndef __KERNELCC__ block because:
  *	- If they were not, the would be defined on the GPU side. However, the -D <macro>=<value> compiler option
@@ -169,7 +173,7 @@
  *		Uses ReSTIR DI to sample direct lighting at the first bounce in the scene.
  *		Later bounces use the strategy given by ReSTIR_DI_LaterBouncesSamplingStrategy
  */
-#define DirectLightSamplingStrategy LSS_RIS_BSDF_AND_LIGHT
+#define DirectLightSamplingStrategy LSS_RESTIR_DI
 
 /**
  * Whether or not to use NEE++ features at all
@@ -238,7 +242,7 @@
  *		Uses ReSTIR GI for resampling a path.
  *		Implementation of [ReSTIR GI: Path Resampling for Real-Time Path Tracing] https://research.nvidia.com/publication/2021-06_restir-gi-path-resampling-real-time-path-tracing
  */
-#define PathSamplingStrategy PSS_RESTIR_GI
+#define PathSamplingStrategy PSS_BSDF
 
 /**
  * Whether or not to use a visiblity term in the target function whose PDF we're
@@ -317,7 +321,7 @@
 		N being the number of neighbors resampled.
  *		Eq. 36 of the 2022 Generalized Resampled Importance Sampling paper.
  * 
- *	- RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
+ *	- RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS (and the defensive version)
  *		Similar variance reduction to the generalized balance heuristic and only O(N) computational cost.
  *		Section 7.1.3 of "A Gentle Introduction to ReSTIR", 2023
  */
@@ -353,6 +357,20 @@
  * light sampling becomes with that many lights
  */
 #define ReSTIR_DI_DoLightsPresampling KERNEL_OPTION_TRUE
+
+/**
+ * What bias correction weights to use when resampling neighbors (temporal / spatial)
+ *
+ *  - RESTIR_GI_BIAS_CORRECTION_MIS_GBH
+ *		Unbiased MIS weights that use the generalized balance heuristic. Very good variance reduction but O(N^2) complexity,
+ *		N being the number of neighbors resampled.
+ *		Eq. 36 of the 2022 Generalized Resampled Importance Sampling paper.
+ *
+ *	- RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS (and the defensive version)
+ *		Similar variance reduction to the generalized balance heuristic and only O(N) computational cost.
+ *		Section 7.1.3 of "A Gentle Introduction to ReSTIR", 2023
+ */
+#define ReSTIR_GI_BiasCorrectionWeights RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS
 
 /**
  * This is a handy macro that tells us whether or not we have any other kernel option 
