@@ -2227,6 +2227,13 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 	std::shared_ptr<GMoNRenderPass> gmon_render_pass = m_renderer->get_gmon_render_pass();
 	GMoNGPUData& gmon_data = gmon_render_pass->get_gmon_data();
 
+	if (!render_data.render_settings.accumulate)
+	{
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::Text("Warning: ");
+		ImGuiRenderer::show_help_marker("GMoN cannot be used without enabling accumulation.", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+	}
+	ImGui::BeginDisabled(!render_data.render_settings.accumulate);
 	if (ImGui::CollapsingHeader("GMoN"))
 	{
 		ImGui::TreePush("GMoN tree post processing");
@@ -2308,6 +2315,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 
 		ImGui::TreePop();
 	}
+	ImGui::EndDisabled();
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	ImGui::TreePop();
