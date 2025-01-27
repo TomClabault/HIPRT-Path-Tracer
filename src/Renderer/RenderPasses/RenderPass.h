@@ -45,8 +45,13 @@ public:
 	 * 
 	 * The kernels in this function may be compiled asynchronously by using the ThreadManager and launching threads
 	 * with the 'COMPILE_KERNELS_THREAD_KEY' key. Look at the ReSTIR DI render pass for some examples
+	 * 
+	 * The default implementation does this and compiles all kernels found in the map returned by
+	 * 'get_all_kernels()'. This assumes that kernels are configured in the constructor 
+	 * (given their options, file path, kernel function name ,...). Have a look at the GMoNRenderPass or ReSTIRDIRenderPass
+	 * for examples
 	 */
-	virtual void compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets = {}) = 0;
+	virtual void compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets = {});
 
 	/**
 	 * When some compiler options of the renderer have been changed and the render pass

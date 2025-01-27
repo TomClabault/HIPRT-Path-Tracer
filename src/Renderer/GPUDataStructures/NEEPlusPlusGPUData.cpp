@@ -14,9 +14,9 @@ NEEPlusPlusGPUData::NEEPlusPlusGPUData()
 	finalize_accumulation_kernel->set_kernel_function_name("NEEPlusPlusFinalizeAccumulation");
 }
 
-void NEEPlusPlusGPUData::compile_finalize_accumulation_kernel(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx)
+void NEEPlusPlusGPUData::compile_finalize_accumulation_kernel(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets)
 {
-	ThreadManager::start_thread(ThreadManager::COMPILE_NEE_PLUS_PLUS_FINALIZE_ACCUMULATION_KERNEL_KEY, ThreadFunctions::compile_kernel_no_func_sets, finalize_accumulation_kernel, hiprt_orochi_ctx);
+	ThreadManager::start_thread(ThreadManager::COMPILE_NEE_PLUS_PLUS_FINALIZE_ACCUMULATION_KERNEL_KEY, ThreadFunctions::compile_kernel, finalize_accumulation_kernel, hiprt_orochi_ctx, std::ref(func_name_sets));
 }
 
 void NEEPlusPlusGPUData::recompile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx)

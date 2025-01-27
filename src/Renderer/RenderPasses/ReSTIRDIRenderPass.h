@@ -50,7 +50,6 @@ public:
 	ReSTIRDIRenderPass() {}
 	ReSTIRDIRenderPass(GPURenderer* renderer);
 
-	virtual void compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets = {}) override;
 	/**
 	 * Precompiles all kernels of this render pass to fill to shader cache in advance.
 	 * 

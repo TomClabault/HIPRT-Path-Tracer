@@ -20,14 +20,6 @@ GMoNRenderPass::GMoNRenderPass(GPURenderer* renderer) : RenderPass(renderer, GMo
 	m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL]->synchronize_options_with(renderer->get_global_compiler_options(), {});
 }
 
-void GMoNRenderPass::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets)
-{
-	if (!is_render_pass_used())
-		return;
-
-	ThreadManager::start_thread(ThreadManager::COMPILE_KERNELS_THREAD_KEY, ThreadFunctions::compile_kernel_no_func_sets, m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL], hiprt_orochi_ctx);
-}
-
 bool GMoNRenderPass::pre_render_update(float delta_time)
 {
 	int2 render_resolution = m_renderer->get_render_data().render_settings.render_resolution;

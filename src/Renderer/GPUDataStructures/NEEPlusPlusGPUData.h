@@ -15,7 +15,7 @@ struct NEEPlusPlusGPUData : public NEEPlusPlusCPUGPUCommonData
 {
 	NEEPlusPlusGPUData();
 
-	void compile_finalize_accumulation_kernel(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx);
+	void compile_finalize_accumulation_kernel(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets);
 	void recompile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx);
 
 	// This is the timer value 
