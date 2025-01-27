@@ -549,7 +549,11 @@ std::map<std::string, std::shared_ptr<GPUKernel>> ReSTIRDIRenderPass::get_all_ke
 	{
 		// If using spatiotemporal, these two kernels aren't active so we're not returning them
 		active_kernels.erase(ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID);
-		active_kernels.erase(ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID);
+
+		if (m_render_data->render_settings.restir_di_settings.spatial_pass.number_of_passes == 1)
+			// If we only have one spatial reuse pass, it's already handled by the fused spatiotemporal
+			// pass so we need the spatial kernels
+			active_kernels.erase(ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID);
 	}
 	else
 		// Not using fused spatiotemporal

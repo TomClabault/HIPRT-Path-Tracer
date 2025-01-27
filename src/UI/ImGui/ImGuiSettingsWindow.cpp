@@ -1120,6 +1120,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 							{
 								render_settings.restir_di_settings.temporal_pass.temporal_buffer_clear_requested = true;
 
+								m_renderer->recompile_kernels();
 								m_render_window->set_render_dirty(true);
 							}
 							ImGuiRenderer::show_help_marker("If checked, the spatial and temporal pass will be fused into a single kernel call. "
