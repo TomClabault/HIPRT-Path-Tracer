@@ -229,20 +229,32 @@ void GPURenderer::setup_render_passes()
 	// numbers are the best may vary.)
 	
 	// Configuring the render passes
+	m_render_graph.clear();
+
 	std::shared_ptr<FillGBufferRenderPass> camera_rays_render_pass = std::make_shared<FillGBufferRenderPass>(this);
 
 	std::shared_ptr<ReSTIRDIRenderPass> restir_di_render_pass = std::make_shared<ReSTIRDIRenderPass>(this);
 	restir_di_render_pass->add_dependency(camera_rays_render_pass);
 
+	// Note that the megakernel pass will only be used if ReSTIR GI is not used.
+	// But we're still adding the render pass to the render graph in case the user
+	// switches from ReSTIR GI to classical path tracing at runtime
 	std::shared_ptr<MegaKernelRenderPass> megakernel_render_pass = std::make_shared<MegaKernelRenderPass>(this);
 	megakernel_render_pass->add_dependency(camera_rays_render_pass);
 	megakernel_render_pass->add_dependency(restir_di_render_pass);
 
 	std::shared_ptr<ReSTIRGIRenderPass> restir_gi_render_pass = std::make_shared<ReSTIRGIRenderPass>(this);
-	restir_gi_render_pass->add_dependency(megakernel_render_pass);
+	restir_gi_render_pass->add_dependency(camera_rays_render_pass);
+	restir_gi_render_pass->add_dependency(restir_di_render_pass);
 
 	std::shared_ptr<GMoNRenderPass> gmon_render_pass  = std::make_shared<GMoNRenderPass>(this);
-	gmon_render_pass->add_dependency(restir_gi_render_pass);
+	if (m_global_compiler_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PSS_RESTIR_GI)
+	{
+		// GMoN depends on the main path tracing pass which is the megakernel pass here
+		gmon_render_pass->add_dependency(megakernel_render_pass);
+		// GMoN depends on the main path tracing pass which is ReSTIR GI here
+		gmon_render_pass->add_dependency(restir_gi_render_pass);
+	}
 
 	m_render_graph.add_render_pass(camera_rays_render_pass);
 	m_render_graph.add_render_pass(restir_di_render_pass);
@@ -260,6 +272,7 @@ void GPURenderer::pre_render_update(float delta_time)
 {
 	step_animations(delta_time);
 
+	//m_render_data_buffers_invalidated |= m_render_graph.update();
 	m_render_data_buffers_invalidated |= m_render_graph.pre_render_update(delta_time);
 
 	internal_pre_render_update_clear_device_status_buffers();

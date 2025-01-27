@@ -67,7 +67,7 @@ public:
 	 */
 	virtual bool pre_render_update(float delta_time) override;
 	virtual bool launch() override;
-	virtual void post_render_update() override {};
+	virtual void post_render_update() override;
 	virtual void update_render_data() override;
 
 	virtual void reset() override;

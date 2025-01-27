@@ -14,7 +14,7 @@ struct MISBSDFRayReuse
 {
 	HIPRT_HOST_DEVICE void fill(ShadowLightRayHitInfo& shadow_light_ray,
 		float3 inter_point, float3 bsdf_sampled_direction, ColorRGB32F& bsdf_color, float bsdf_pdf,
-		RayState next_ray_state)
+		RayState next_ray_state, BSDFIncidentLightInfo incident_light_info)
 	{
 #if ReuseBSDFMISRay
 		this->prim_index = shadow_light_ray.hit_prim_index;
@@ -30,6 +30,7 @@ struct MISBSDFRayReuse
 		this->bsdf_sampled_direction = bsdf_sampled_direction;
 		this->bsdf_color = bsdf_color;
 		this->bsdf_pdf = bsdf_pdf;
+		this->incident_light_info = incident_light_info;
 
 		this->next_ray_state = next_ray_state;
 #endif
@@ -83,6 +84,7 @@ struct MISBSDFRayReuse
 	float3 bsdf_sampled_direction = make_float3(-2.0f, -2.0f, -2.0f);
 	ColorRGB32F bsdf_color;
 	float bsdf_pdf = -1.0f;
+	BSDFIncidentLightInfo incident_light_info;
 
 	RayState next_ray_state;
 #endif
@@ -127,12 +129,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool reuse_mis_ray(const HIPRTRenderData& render_
 #endif
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F reuse_mis_bsdf_sample(float3& out_bsdf_sampled_direction, float& out_bsdf_pdf, RayPayload& ray_payload, MISBSDFRayReuse& mis_reuse)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F reuse_mis_bsdf_sample(float3& out_bsdf_sampled_direction, float& out_bsdf_pdf, RayPayload& ray_payload, MISBSDFRayReuse& mis_reuse, BSDFIncidentLightInfo* out_sampled_light_info)
 {
 #if ReuseBSDFMISRay
 	// If we do have a MIS BSDF ray to reuse
 	out_bsdf_pdf = mis_reuse.bsdf_pdf;
 	out_bsdf_sampled_direction = mis_reuse.bsdf_sampled_direction;
+	if (out_sampled_light_info != nullptr)
+		*out_sampled_light_info = mis_reuse.incident_light_info;
 
 	return mis_reuse.bsdf_color;
 #else

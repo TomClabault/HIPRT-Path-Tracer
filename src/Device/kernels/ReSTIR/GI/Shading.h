@@ -1,0 +1,117 @@
+/*
+ * Copyright 2024 Tom Clabault. GNU GPL3 license.
+ * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
+ */
+
+#ifndef KERNELS_RESTIR_GI_SHADING_H
+#define KERNELS_RESTIR_GI_SHADING_H
+
+#include "Device/includes/Envmap.h"
+#include "Device/includes/FixIntellisense.h"
+#include "Device/includes/Hash.h"
+#include "Device/includes/Lights.h"
+#include "Device/includes/LightUtils.h"
+#include "Device/includes/PathTracing.h"
+#include "Device/includes/ReSTIR/GI/Reservoir.h"
+#include "Device/includes/SanityCheck.h"
+
+#include "HostDeviceCommon/Xorshift.h"
+
+#ifdef __KERNELCC__
+GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_GI_Shading(HIPRTRenderData render_data)
+#else
+GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_data, int x, int y)
+#endif
+{
+#ifdef __KERNELCC__
+    const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
+    const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
+#endif
+    if (x >= render_data.render_settings.render_resolution.x || y >= render_data.render_settings.render_resolution.y)
+        return;
+
+    uint32_t pixel_index = x + y * render_data.render_settings.render_resolution.x;
+
+    if (!render_data.aux_buffers.pixel_active[pixel_index])
+        return;
+
+    unsigned int seed;
+    if (render_data.render_settings.freeze_random)
+        seed = wang_hash(pixel_index + 1);
+    else
+        seed = wang_hash((pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_seed);
+    Xorshift32Generator random_number_generator(seed);
+
+    hiprtRay ray;
+    ray.direction = -render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index);
+
+    HitInfo closest_hit_info;
+    closest_hit_info.primitive_index = render_data.g_buffer.first_hit_prim_index[pixel_index];
+    if (closest_hit_info.primitive_index == -1)
+    {
+        // Geometry miss, directly into the envmap
+        ColorRGB32F envmap_radiance = path_tracing_miss_gather_envmap(render_data, 0, ColorRGB32F(1.0f), ray.direction, pixel_index);
+        path_tracing_accumulate_color(render_data, envmap_radiance, pixel_index);
+
+        return;
+    }
+
+    closest_hit_info.inter_point = render_data.g_buffer.primary_hit_position[pixel_index];
+    closest_hit_info.geometric_normal = hippt::normalize(render_data.g_buffer.geometric_normals[pixel_index].unpack());
+    closest_hit_info.shading_normal = hippt::normalize(render_data.g_buffer.shading_normals[pixel_index].unpack());
+
+    // Initializing the ray with the information from the camera ray pass
+
+    RayPayload ray_payload;
+    ray_payload.next_ray_state = RayState::BOUNCE;
+    ray_payload.material = render_data.g_buffer.materials[pixel_index].unpack();
+
+    // Because this is the camera hit (and assuming the camera isn't inside volumes for now),
+    // the ray volume state after the camera hit is just an empty interior stack but with
+    // the material index that we hit pushed onto the stack. That's it. Because it is that
+    // simple, we don't have the ray volume state in the GBuffer but rather we can
+    // reconstruct the ray volume state on the fly
+    ray_payload.volume_state.reconstruct_first_hit(
+        ray_payload.material,
+        render_data.buffers.material_indices,
+        closest_hit_info.primitive_index,
+        random_number_generator);
+
+
+    float3 view_direction = render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index);
+    
+    ColorRGB32F camera_outgoing_radiance;
+    if (render_data.render_settings.nb_bounces > 0)
+    {
+        // Only doing the ReSTIR GI stuff if we have more than 1 bounce
+
+        ReSTIRGIReservoir resampling_reservoir;
+        resampling_reservoir.sample = render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer[pixel_index];
+        if (!resampling_reservoir.sample.outgoing_radiance_to_first_hit.is_black())
+        {
+            // Only doing the shading if we do actually have a sample
+
+            float3 shading_normal = render_data.g_buffer.shading_normals[pixel_index].unpack();
+            float3 to_light_direction = hippt::normalize(resampling_reservoir.sample.second_hit_point - resampling_reservoir.sample.first_hit_point);
+
+            float bsdf_pdf;
+            ColorRGB32F bsdf_color = principled_bsdf_eval(render_data, ray_payload.material, ray_payload.volume_state, false, view_direction, shading_normal, to_light_direction, bsdf_pdf, 0, resampling_reservoir.sample.incident_light_info);
+            if (bsdf_pdf > 0.0f)
+                // If we're here, it's supposedly because we do have a valid ReSTIR GI sample that is not null/black
+                // But because of float imprecisions, the BSDF may still end re-evaluating to 0.0f for that sample
+                // so we need that check here
+                camera_outgoing_radiance += bsdf_color * hippt::abs(hippt::dot(to_light_direction, shading_normal)) / bsdf_pdf * resampling_reservoir.sample.outgoing_radiance_to_first_hit;
+        }
+    }
+
+    MISBSDFRayReuse mis_reuse;
+    camera_outgoing_radiance += estimate_direct_lighting(render_data, ray_payload, closest_hit_info, view_direction, x, y, mis_reuse, random_number_generator);
+
+    ray_payload.ray_color = camera_outgoing_radiance;
+    if (!sanity_check(render_data, ray_payload, x, y))
+        return;
+
+    path_tracing_accumulate_color(render_data, camera_outgoing_radiance, pixel_index);
+}
+
+#endif

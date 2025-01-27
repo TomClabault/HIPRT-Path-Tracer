@@ -78,9 +78,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_bsdf(const HIPRTRend
 
     float bsdf_sample_pdf;
     float3 sampled_bsdf_direction;
-    ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, true, 
-                                                    view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_bsdf_direction, 
-                                                    bsdf_sample_pdf, random_number_generator, ray_payload.bounce);
+    BSDFIncidentLightInfo incident_ligth_info;
+    ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, true,
+                                                    view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_bsdf_direction,
+                                                    bsdf_sample_pdf, random_number_generator, ray_payload.bounce, &incident_ligth_info);
 
     bool intersection_found = false;
     ShadowLightRayHitInfo shadow_light_ray_hit_info;
@@ -106,7 +107,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_bsdf(const HIPRTRend
     // we're never going to read the intersection point anyway.
     // So it doesn't matter if it's garbage
     float3 bsdf_ray_inter_point = closest_hit_info.inter_point + shadow_light_ray_hit_info.hit_distance * sampled_bsdf_direction;
-    mis_ray_reuse.fill(shadow_light_ray_hit_info, bsdf_ray_inter_point, sampled_bsdf_direction, bsdf_color, bsdf_sample_pdf, intersection_found ? RayState::BOUNCE : RayState::MISSED);
+    mis_ray_reuse.fill(shadow_light_ray_hit_info, bsdf_ray_inter_point, sampled_bsdf_direction, bsdf_color, bsdf_sample_pdf, intersection_found ? RayState::BOUNCE : RayState::MISSED, incident_ligth_info);
 
     return bsdf_radiance;
 }
@@ -167,9 +168,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData&
     float bsdf_sample_pdf;
     float3 sampled_bsdf_direction;
     float3 bsdf_shadow_ray_origin = closest_hit_info.inter_point;
+    BSDFIncidentLightInfo incident_ligth_info;
     ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, ReuseBSDFMISRay == KERNEL_OPTION_TRUE, 
                                                     view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_bsdf_direction, 
-                                                    bsdf_sample_pdf, random_number_generator, ray_payload.bounce);
+                                                    bsdf_sample_pdf, random_number_generator, ray_payload.bounce, &incident_ligth_info);
 
     bool intersection_found = false;
     ShadowLightRayHitInfo shadow_light_ray_hit_info;
@@ -207,7 +209,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_one_light_MIS(HIPRTRenderData&
     // we're never going to read the intersection point anyway.
     // So it doesn't matter if it's garbage
     float3 bsdf_ray_inter_point = closest_hit_info.inter_point + shadow_light_ray_hit_info.hit_distance * sampled_bsdf_direction;
-    mis_ray_reuse.fill(shadow_light_ray_hit_info, bsdf_ray_inter_point, sampled_bsdf_direction, bsdf_color, bsdf_sample_pdf, intersection_found ? RayState::BOUNCE : RayState::MISSED);
+    mis_ray_reuse.fill(shadow_light_ray_hit_info, bsdf_ray_inter_point, sampled_bsdf_direction, bsdf_color, bsdf_sample_pdf, intersection_found ? RayState::BOUNCE : RayState::MISSED, incident_ligth_info);
 
     // Because we're sampling only 1 light out of all the lights of the
     // scene, the probability of having chosen that light is: 1 / numberOfLights

@@ -13,6 +13,8 @@
 #include "Device/kernels/ReSTIR/DI/TemporalReuse.h"
 #include "Device/kernels/ReSTIR/DI/SpatialReuse.h"
 #include "Device/kernels/ReSTIR/DI/FusedSpatiotemporalReuse.h"
+#include "Device/kernels/ReSTIR/GI/InitialCandidates.h"
+#include "Device/kernels/ReSTIR/GI/Shading.h"
 
 #include "Renderer/Baker/GPUBaker.h"
 #include "Renderer/Baker/GPUBakerConstants.h"
@@ -27,7 +29,7 @@
  // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
  // allowing for fast step into that pixel with the debugger to see what's happening.
  // Otherwise if 0, all pixels of the image are rendered
-#define DEBUG_PIXEL 1
+#define DEBUG_PIXEL 0
 
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner.
 // If 1, it's bottom left corner.
@@ -35,14 +37,14 @@
 // the interesting pixel. If that image viewer has its (0, 0) in the top
 // left corner, you'll need to set that DEBUG_FLIP_Y to 0. Set 1 to if
 // you're measuring the coordinates of the pixel with (0, 0) in the bottom left corner
-#define DEBUG_FLIP_Y 0
+#define DEBUG_FLIP_Y 1
 
 // Coordinates of the pixel whose neighborhood needs to rendered (useful for algorithms
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 452
-#define DEBUG_PIXEL_Y 490
+#define DEBUG_PIXEL_X 545
+#define DEBUG_PIXEL_Y 543
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -86,6 +88,8 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
     m_restir_di_state.spatial_output_reservoirs_2.resize(width * height);
     m_restir_di_state.presampled_lights_buffer.resize(width * height);
     m_restir_di_state.output_reservoirs = m_restir_di_state.spatial_output_reservoirs_1.data();
+
+    m_restir_gi_state.initial_candidates_reservoirs.resize(width * height);
 
     m_g_buffer.resize(width * height);
     m_g_buffer_prev_frame.resize(width * height);
@@ -271,6 +275,8 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.aux_buffers.restir_reservoir_buffer_2 = m_restir_di_state.spatial_output_reservoirs_1.data();
     m_render_data.aux_buffers.restir_reservoir_buffer_3 = m_restir_di_state.spatial_output_reservoirs_2.data();
 
+    m_render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer = m_restir_gi_state.initial_candidates_reservoirs.data();
+
     float3 grid_min_point_with_envmap, grid_max_point_with_envmap;
     m_nee_plus_plus.base_grid_min_point = parsed_scene.metadata.scene_bounding_box.mini;
     m_nee_plus_plus.base_grid_max_point = parsed_scene.metadata.scene_bounding_box.maxi;
@@ -373,7 +379,14 @@ void CPURenderer::render()
         // Only doing ReSTIR DI is ReSTIR DI is enabled 
         ReSTIR_DI_pass();
 #endif
+
+#if PathSamplingStrategy == PSS_BSDF
         tracing_pass();
+#elif PathSamplingStrategy == PSS_RESTIR_GI
+        restir_gi_initial_candidates_pass();
+        restir_gi_shading_pass();
+#endif
+
 
         if (m_render_data.render_settings.accumulate)
             m_render_data.render_settings.sample_number++;
@@ -768,6 +781,23 @@ void CPURenderer::tracing_pass()
 {
     debug_render_pass([this](int x, int y) {
         MegaKernel(m_render_data, x, y);
+    });
+}
+
+void CPURenderer::restir_gi_initial_candidates_pass()
+{
+    if (m_render_data.render_settings.nb_bounces == 0)
+        return;
+
+    debug_render_pass([this](int x, int y) {
+        ReSTIR_GI_InitialCandidates(m_render_data, x, y);
+    });
+}
+
+void CPURenderer::restir_gi_shading_pass()
+{
+    debug_render_pass([this](int x, int y) {
+        ReSTIR_GI_Shading(m_render_data, x, y);
     });
 }
 

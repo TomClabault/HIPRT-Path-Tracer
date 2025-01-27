@@ -19,40 +19,6 @@
 
 #include "HostDeviceCommon/Xorshift.h"
 
-HIPRT_HOST_DEVICE void accumulate_color(const HIPRTRenderData& render_data, const ColorRGB32F& ray_color, uint32_t pixel_index)
-{
-#if ViewportColorOverriden == 0
-    // Only outputting the ray color if no kernel option is going to output its own color
-    // (mainly for debugging purposes) such as 'DirectLightNEEPlusPlusDisplayShadowRaysDiscarded'
-    // for example
-    if (render_data.render_settings.has_access_to_adaptive_sampling_buffers())
-    {
-        float squared_luminance_of_samples = ray_color.luminance() * ray_color.luminance();
-        // We can only use these buffers if the adaptive sampling or the stop noise threshold is enabled.
-        // Otherwise, the buffers are destroyed to save some VRAM so they are not accessible
-        render_data.aux_buffers.pixel_squared_luminance[pixel_index] += squared_luminance_of_samples;
-    }
-
-    if (render_data.render_settings.sample_number == 0)
-        render_data.buffers.accumulated_ray_colors[pixel_index] = ray_color;
-    else
-        // If we are at a sample that is not 0, this means that we are accumulating
-        render_data.buffers.accumulated_ray_colors[pixel_index] += ray_color;
-
-    if (render_data.buffers.gmon_estimator.sets != nullptr)
-    {
-        // GMoN is in use, accumulating in the GMoN sets
-
-        unsigned int offset = render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y * render_data.buffers.gmon_estimator.next_set_to_accumulate + pixel_index;
-
-        if (render_data.render_settings.sample_number == 0)
-            render_data.buffers.gmon_estimator.sets[offset] = ray_color;
-        else
-            render_data.buffers.gmon_estimator.sets[offset] += ray_color;
-    }
-#endif
-}
-
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) MegaKernel(HIPRTRenderData render_data)
 #else
@@ -182,7 +148,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
     // the same value
     render_data.aux_buffers.still_one_ray_active[0] = 1;
 
-    accumulate_color(render_data, ray_payload.ray_color, pixel_index);
+    path_tracing_accumulate_color(render_data, ray_payload.ray_color, pixel_index);
 }
 
 #endif
