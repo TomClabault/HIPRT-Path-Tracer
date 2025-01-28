@@ -16,11 +16,11 @@ template <bool IsReSTIRGI>
 struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_M, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
-		const ReSTIRDIReservoir& final_reservoir, const ReSTIRDISurface& center_pixel_surface,
+		float final_reservoir_weight_sum, const ReSTIRDISurface& center_pixel_surface,
 		int2 center_pixel_coords, int2 res,
 		float2 cos_sin_theta_rotation, float& out_normalization_nume, float& out_normalization_denom)
 	{
-		if (final_reservoir.weight_sum <= 0)
+		if (final_reservoir_weight_sum <= 0.0f)
 		{
 			// Invalid reservoir, returning directly
 			out_normalization_nume = 1.0f;
@@ -59,7 +59,7 @@ template <bool IsReSTIRGI>
 struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
-		const ReSTIRSampleType<IsReSTIRGI> & final_reservoir_sample, float final_reservoir_weight_sum,
+		const ReSTIRSampleType<IsReSTIRGI>& final_reservoir_sample, float final_reservoir_weight_sum,
 		const ReSTIRDISurface& center_pixel_surface,
 		int2 center_pixel_coords, int2 res,
 		float2 cos_sin_theta_rotation, float& out_normalization_nume, float& out_normalization_denom,

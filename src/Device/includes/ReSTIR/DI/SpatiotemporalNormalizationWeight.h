@@ -18,12 +18,13 @@ template <bool IsReSTIRGI>
 struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_M, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
-		const ReSTIRDIReservoir& final_reservoir, const ReSTIRDIReservoir& initial_candidates_reservoir, const ReSTIRDISurface& center_pixel_surface,
+		float final_reservoir_weight_sum, int initial_candidates_reservoir_M,
+		const ReSTIRDISurface& center_pixel_surface,
 		int temporal_neighbor_M, int center_pixel_index, int2 temporal_neighbor_coords, 
 		int2 res, float2 cos_sin_theta_rotation, float& out_normalization_nume, float& out_normalization_denom,
 		Xorshift32Generator& random_number_generator)
 	{
-		if (final_reservoir.weight_sum <= 0)
+		if (final_reservoir_weight_sum <= 0.0f)
 		{
 			// Invalid reservoir, returning directly
 			out_normalization_nume = 1.0f;
@@ -73,7 +74,7 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVE
 				neighbor_surface = get_pixel_surface(render_data, neighbor_pixel_index, render_data.render_settings.use_prev_frame_g_buffer(), random_number_generator);
 
 			if (neighbor == reused_neighbors_count)
-				out_normalization_denom += initial_candidates_reservoir.M;
+				out_normalization_denom += initial_candidates_reservoir_M;
 			else
 				out_normalization_denom += render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs[neighbor_pixel_index].M;
 		}

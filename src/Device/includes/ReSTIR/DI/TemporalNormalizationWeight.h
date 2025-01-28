@@ -38,11 +38,11 @@ struct ReSTIRDITemporalNormalizationWeight {};
 template <bool IsReSTIRGI>
 struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_M, IsReSTIRGI>
 {
-	HIPRT_HOST_DEVICE void get_normalization(const ReSTIRDIReservoir& final_reservoir,
+	HIPRT_HOST_DEVICE void get_normalization(float final_reservoir_weight_sum,
 		int initial_candidates_M, int temporal_neighbor_M,
 		float& out_normalization_nume, float& out_normalization_denom)
 	{
-		if (final_reservoir.weight_sum <= 0)
+		if (final_reservoir_weight_sum <= 0)
 		{
 			// Invalid reservoir, returning directly
 			out_normalization_nume = 1.0f;
