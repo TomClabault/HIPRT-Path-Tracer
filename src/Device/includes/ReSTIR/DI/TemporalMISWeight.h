@@ -232,7 +232,8 @@ template <bool IsReSTIRGI>
 struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
-		const ReSTIRDIReservoir& temporal_neighbor_reservoir, const ReSTIRDIReservoir& initial_candidates_reservoir,
+		int temporal_neighbor_reservoir_M, float temporal_neighbor_reservoir_target_function, 
+		const ReSTIRSampleType<IsReSTIRGI>& initial_candidates_reservoir_sample, int initial_candidates_reservoir_M, float initial_candidates_reservoir_target_function,
 		ReSTIRDISurface& temporal_neighbor_surface,
 		float neighbor_sample_target_function_at_center, int current_neighbor_index,
 		Xorshift32Generator& random_number_generator)
@@ -241,12 +242,12 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MI
 		{
 			// Resampling the temporal neighbor
 
-			float target_function_at_neighbor = temporal_neighbor_reservoir.sample.target_function;
+			float target_function_at_neighbor = temporal_neighbor_reservoir_target_function;
 			float target_function_at_center = neighbor_sample_target_function_at_center;
 
-			float temporal_neighbor_M = render_data.render_settings.restir_di_settings.use_confidence_weights ? temporal_neighbor_reservoir.M : 1;
-			float center_reservoir_M = render_data.render_settings.restir_di_settings.use_confidence_weights ? initial_candidates_reservoir.M : 1;
-			float neighbors_confidence_sum = render_data.render_settings.restir_di_settings.use_confidence_weights ? temporal_neighbor_reservoir.M : 1;
+			float temporal_neighbor_M = render_data.render_settings.restir_di_settings.use_confidence_weights ? temporal_neighbor_reservoir_M : 1;
+			float center_reservoir_M = render_data.render_settings.restir_di_settings.use_confidence_weights ? initial_candidates_reservoir_M : 1;
+			float neighbors_confidence_sum = render_data.render_settings.restir_di_settings.use_confidence_weights ? temporal_neighbor_reservoir_M : 1;
 
 			float nume = target_function_at_neighbor * temporal_neighbor_M;
 			float denom = target_function_at_neighbor * neighbors_confidence_sum + target_function_at_center * center_reservoir_M;
@@ -255,8 +256,15 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MI
 				// Eq 7.8
 				mi *= neighbors_confidence_sum / (neighbors_confidence_sum + center_reservoir_M);
 
-			float target_function_center_reservoir_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, initial_candidates_reservoir.sample, temporal_neighbor_surface, random_number_generator);
-			float target_function_center_reservoir_at_center = initial_candidates_reservoir.sample.target_function;
+			float target_function_center_reservoir_at_neighbor;
+			if constexpr (IsReSTIRGI)
+				// ReSTIR GI target function
+				target_function_center_reservoir_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, initial_candidates_reservoir_sample, temporal_neighbor_surface, random_number_generator);
+			else
+				// ReSTIR DI target function
+				target_function_center_reservoir_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, initial_candidates_reservoir_sample, temporal_neighbor_surface, random_number_generator);
+
+			float target_function_center_reservoir_at_center = initial_candidates_reservoir_target_function;
 
 			float nume_mc = target_function_center_reservoir_at_center * center_reservoir_M;
 			float denom_mc = target_function_center_reservoir_at_neighbor * neighbors_confidence_sum + target_function_center_reservoir_at_center * center_reservoir_M;
@@ -295,7 +303,7 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MI
 				// In the defensive formulation, we want to divide by M, not M-1.
 				// (Eq. 7.6 of "A Gentle Introduction to ReSTIR")
 				if (render_data.render_settings.restir_di_settings.use_confidence_weights)
-					return mc + static_cast<float>(initial_candidates_reservoir.M) / static_cast<float>(initial_candidates_reservoir.M + temporal_neighbor_reservoir.M);
+					return mc + static_cast<float>(initial_candidates_reservoir_M) / static_cast<float>(initial_candidates_reservoir_M + temporal_neighbor_reservoir_M);
 				else
 					return (1.0f + mc) * 0.5f;
 			}
