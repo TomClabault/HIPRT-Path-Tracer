@@ -87,12 +87,13 @@ template <bool IsReSTIRGI>
 struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
-		const ReSTIRDIReservoir& final_reservoir, ReSTIRDISurface& center_pixel_surface, ReSTIRDISurface& temporal_neighbor_surface,
+		const ReSTIRSampleType<IsReSTIRGI>& final_reservoir_sample, float final_reservoir_weight_sum, 
+		ReSTIRDISurface& center_pixel_surface, ReSTIRDISurface& temporal_neighbor_surface,
 		int center_pixel_M, int temporal_neighbor_M, int center_pixel_index, int2 temporal_neighbor_position, int2 res,
 		float2 cos_sin_theta_rotation, float& out_normalization_nume, float& out_normalization_denom,
 		Xorshift32Generator& random_number_generator)
 	{
-		if (final_reservoir.weight_sum <= 0)
+		if (final_reservoir_weight_sum <= 0)
 		{
 			// Invalid reservoir, returning directly
 			out_normalization_nume = 1.0f;
@@ -139,7 +140,13 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVE
 			else
 				neighbor_surface = get_pixel_surface(render_data, neighbor_pixel_index, render_data.render_settings.use_prev_frame_g_buffer(), random_number_generator);
 
-			float target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, final_reservoir.sample, neighbor_surface, random_number_generator);
+			float target_function_at_neighbor;
+			if constexpr (IsReSTIRGI)
+				// ReSTIR GI target function
+				target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, neighbor_surface, random_number_generator);
+			else
+				// ReSTIR DI target function
+				target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, neighbor_surface, random_number_generator);
 
 			if (target_function_at_neighbor > 0.0f)
 			{
@@ -153,7 +160,15 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVE
 		}
 
 		// Also taking the temporal neighbor into account which
-		if (ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, final_reservoir.sample, temporal_neighbor_surface, random_number_generator) > 0.0f)
+		bool target_function_at_neighbor_gt_0;
+		if constexpr (IsReSTIRGI)
+			// ReSTIR GI target function
+			target_function_at_neighbor_gt_0 = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, temporal_neighbor_surface, random_number_generator) > 0.0f;
+		else
+			// ReSTIR DI target function
+			target_function_at_neighbor_gt_0 = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, temporal_neighbor_surface, random_number_generator) > 0.0f;
+
+		if (target_function_at_neighbor_gt_0)
 			out_normalization_denom += temporal_neighbor_M;
 	}
 };

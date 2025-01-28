@@ -281,7 +281,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 		center_pixel_surface, center_pixel_coords, res, cos_sin_theta_rotation, normalization_numerator, normalization_denominator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
 	normalization_function.get_normalization(render_data,
-		spatial_reuse_output_reservoir, center_pixel_surface,
+		spatial_reuse_output_reservoir.sample, spatial_reuse_output_reservoir.weight_sum,
+		center_pixel_surface,
 		center_pixel_coords, res, cos_sin_theta_rotation, normalization_numerator, normalization_denominator, random_number_generator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
 	normalization_function.get_normalization(render_data, 

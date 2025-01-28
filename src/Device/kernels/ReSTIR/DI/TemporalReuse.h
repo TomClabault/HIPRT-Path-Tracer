@@ -300,7 +300,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	normalization_function.get_normalization(temporal_reuse_output_reservoir, 
 		initial_candidates_reservoir.M, temporal_neighbor_reservoir.M, normalization_numerator, normalization_denominator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z
-	normalization_function.get_normalization(render_data, temporal_reuse_output_reservoir,
+	normalization_function.get_normalization(render_data, 
+		temporal_reuse_output_reservoir.sample, temporal_reuse_output_reservoir.weight_sum,
 		initial_candidates_reservoir.M, temporal_neighbor_reservoir.M, center_pixel_surface, temporal_neighbor_surface, 
 		normalization_numerator, normalization_denominator, random_number_generator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE

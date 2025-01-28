@@ -59,12 +59,13 @@ template <bool IsReSTIRGI>
 struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
-		const ReSTIRDIReservoir& final_reservoir, const ReSTIRDISurface& center_pixel_surface,
+		const ReSTIRSampleType<IsReSTIRGI> & final_reservoir_sample, float final_reservoir_weight_sum,
+		const ReSTIRDISurface& center_pixel_surface,
 		int2 center_pixel_coords, int2 res,
 		float2 cos_sin_theta_rotation, float& out_normalization_nume, float& out_normalization_denom,
 		Xorshift32Generator& random_number_generator)
 	{
-		if (final_reservoir.weight_sum <= 0)
+		if (final_reservoir_weight_sum <= 0)
 		{
 			// Invalid reservoir, returning directly
 			out_normalization_nume = 1.0f;
@@ -93,7 +94,13 @@ struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z, Is
 			// Getting the surface data at the neighbor
 			ReSTIRDISurface neighbor_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
 
-			float target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, final_reservoir.sample, neighbor_surface, random_number_generator);
+			float target_function_at_neighbor;
+			if constexpr (IsReSTIRGI)
+				// ReSTIR GI target function
+				target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, neighbor_surface, random_number_generator);
+			else
+				// ReSTIR DI target function
+				target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, neighbor_surface, random_number_generator);
 
 			if (target_function_at_neighbor > 0.0f)
 			{
