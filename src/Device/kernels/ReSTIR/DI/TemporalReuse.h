@@ -204,11 +204,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 
 			temporal_neighbor_surface, target_function_at_center, TEMPORAL_NEIGHBOR_ID, random_number_generator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
-		float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data,
-
-			temporal_neighbor_reservoir,//.M, temporal_neighbor_reservoir.sample.target_function,
-			initial_candidates_reservoir,//.sample, initial_candidates_reservoir.M, initial_candidates_reservoir.sample.target_function,
-
+		float temporal_neighbor_resampling_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, 
+			
+			temporal_neighbor_reservoir.M, temporal_neighbor_reservoir.sample.target_function,
+			initial_candidates_reservoir.sample, initial_candidates_reservoir.M, initial_candidates_reservoir.sample.target_function,
+			
 			temporal_neighbor_surface, target_function_at_center, TEMPORAL_NEIGHBOR_ID, random_number_generator);
 #else
 #error "Unsupported bias correction mode"
@@ -263,10 +263,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 
 		temporal_neighbor_surface, /* unused */ 0.0f, INITIAL_CANDIDATES_ID, random_number_generator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
-	float initial_candidates_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data,
-		temporal_neighbor_reservoir,//.M, temporal_neighbor_reservoir.sample.target_function,
-		initial_candidates_reservoir,//.sample, initial_candidates_reservoir.M, initial_candidates_reservoir.sample.target_function,
-		temporal_neighbor_surface, /* unused */ 0.0f, TEMPORAL_NEIGHBOR_ID, random_number_generator);
+	float initial_candidates_mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, 
+		
+		temporal_neighbor_reservoir.M, temporal_neighbor_reservoir.sample.target_function,
+		initial_candidates_reservoir.sample, initial_candidates_reservoir.M, initial_candidates_reservoir.sample.target_function,
+		
+		temporal_neighbor_surface, /* unused */ 0.0f, INITIAL_CANDIDATES_ID, random_number_generator);
 #else
 #error "Unsupported bias correction mode"
 #endif
