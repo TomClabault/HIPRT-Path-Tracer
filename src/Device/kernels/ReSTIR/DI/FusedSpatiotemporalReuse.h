@@ -525,7 +525,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 	float normalization_numerator = 1.0f;
 	float normalization_denominator = 1.0f;
 
-	ReSTIRDISpatiotemporalNormalizationWeight<ReSTIR_DI_BiasCorrectionWeights> normalization_function;
+	ReSTIRDISpatiotemporalNormalizationWeight<ReSTIR_DI_BiasCorrectionWeights, /* Is ReSTIR GI */ false> normalization_function;
 #if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_M
 	normalization_function.get_normalization(render_data, spatiotemporal_output_reservoir, initial_candidates_reservoir, center_pixel_surface, 
 		temporal_neighbor_reservoir.M, center_pixel_index, make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z),
@@ -537,7 +537,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 		make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z), res, cos_sin_theta_rotation, 
 		normalization_numerator, normalization_denominator, random_number_generator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
-	normalization_function.get_normalization(render_data, spatiotemporal_output_reservoir, center_pixel_surface, temporal_neighbor_surface, 
+	normalization_function.get_normalization(render_data, 
+		spatiotemporal_output_reservoir.sample, spatiotemporal_output_reservoir.weight_sum,
+		center_pixel_surface, temporal_neighbor_surface, 
 		selected_neighbor, initial_candidates_reservoir.M, temporal_neighbor_reservoir.M, center_pixel_index, make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z),
 		res, cos_sin_theta_rotation, normalization_numerator, normalization_denominator, 
 		random_number_generator);
