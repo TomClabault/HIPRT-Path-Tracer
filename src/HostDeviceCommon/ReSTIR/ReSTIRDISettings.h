@@ -135,8 +135,8 @@ struct ReSTIRDISettings
 	// and increases performance.
 	// Because the spatial must then resample without the output of the temporal pass, the spatial
 	// pass only resamples on the temporal reservoir buffer, not the temporal + initial candidates reservoir
-	// (which is the output of the temporal pass). This is usually imperceptible.
-	bool do_fused_spatiotemporal = true;
+	// (which is the output of the temporal pass).
+	bool do_fused_spatiotemporal = false;
 
 	// When finalizing the reservoir in the spatial reuse pass, what value
 	// to cap the reservoirs's M value to.
@@ -151,7 +151,7 @@ struct ReSTIRDISettings
 	// A M-cap value between 5 - 30 is usually good
 	//
 	// 0 for infinite M-cap (don't...)
-	int m_cap = 8;
+	int m_cap = 3;
 
 	// Whether or not to use confidence weights when resampling neighbors.
 	bool use_confidence_weights = true;
