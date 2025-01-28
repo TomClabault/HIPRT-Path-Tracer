@@ -1177,6 +1177,14 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 								m_render_window->set_render_dirty(true);
 							ImGuiRenderer::show_help_marker("If true, the back-projected position of the current pixel (temporal neighbor position) will be shuffled"
 								" to add temporal variations.");
+
+							ImGui::Dummy(ImVec2(0.0f, 20.0f));
+							if (ImGui::SliderInt("M-cap", &render_settings.restir_di_settings.m_cap, 0, 48))
+							{
+								render_settings.restir_di_settings.m_cap = std::max(0, render_settings.restir_di_settings.m_cap);
+								if (render_settings.accumulate)
+									m_render_window->set_render_dirty(true);
+							}
 						}
 
 						ImGui::TreePop();

@@ -124,7 +124,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	count_valid_spatial_neighbors(render_data, center_pixel_surface, center_pixel_coords, res, cos_sin_theta_rotation, valid_neighbors_count, valid_neighbors_M_sum, neighbor_heuristics_cache);
 
 
-	ReSTIRDISpatialResamplingMISWeight<ReSTIR_DI_BiasCorrectionWeights> mis_weight_function;
+	ReSTIRDISpatialResamplingMISWeight<ReSTIR_DI_BiasCorrectionWeights, /* IsReSTIRGI */ false> mis_weight_function;
 	// Resampling the neighbors. Using neighbors + 1 here so that
 	// we can use the last iteration of the loop to resample ourselves (the center pixel)
 	// 
@@ -216,12 +216,20 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, neighbor_reservoir.M);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_GBH
-		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, neighbor_reservoir,
+		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, 
+
+			neighbor_reservoir.UCW,
+			neighbor_reservoir.sample,
+
 			center_pixel_surface, neighbor_index, center_pixel_coords, res, cos_sin_theta_rotation, random_number_generator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
 		bool update_mc = center_pixel_reservoir.M > 0 && center_pixel_reservoir.UCW > 0.0f;
 
-		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, neighbor_reservoir, center_pixel_reservoir, 
+		float mis_weight = mis_weight_function.get_resampling_MIS_weight(render_data, 
+			
+			neighbor_reservoir.M, neighbor_reservoir.sample.target_function,
+			center_pixel_reservoir.sample, center_pixel_reservoir.M, center_pixel_reservoir.sample.target_function,
+
 			target_function_at_center, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
 			update_mc,/* resampling canonical */ neighbor_index == reused_neighbors_count, random_number_generator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
