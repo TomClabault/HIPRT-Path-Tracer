@@ -263,7 +263,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool trace_ray(const HIPRTRenderData& render_data
 }
 
 /**
- * Returns true if in shadow (a hit was found before 't_max' distance
+ * Returns true if in shadow (a hit was found before 't_max' distance)
  * Returns false if unoccluded
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE bool evaluate_shadow_ray(const HIPRTRenderData& render_data, hiprtRay ray, float t_max, int last_hit_primitive_index, int bounce, Xorshift32Generator& random_number_generator)

@@ -97,7 +97,7 @@ struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z, I
 		float center_pixel_target_function;
 		if constexpr (IsReSTIRGI)
 			// ReSTIR GI target function
-			center_pixel_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, center_pixel_surface, random_number_generator);
+			center_pixel_target_function = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, center_pixel_surface, random_number_generator);
 		else
 			// ReSTIR DI target function
 			center_pixel_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, center_pixel_surface, random_number_generator);
@@ -112,7 +112,7 @@ struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z, I
 			float temporal_neighbor_target_function;
 			if constexpr (IsReSTIRGI)
 				// ReSTIR GI target function
-				temporal_neighbor_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, temporal_neighbor_surface, random_number_generator);
+				temporal_neighbor_target_function = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, temporal_neighbor_surface, random_number_generator);
 			else
 				// ReSTIR DI target function
 				temporal_neighbor_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, temporal_neighbor_surface, random_number_generator);
@@ -144,7 +144,7 @@ struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE, I
 		float center_pixel_target_function;
 		if constexpr (IsReSTIRGI)
 			// ReSTIR GI target function
-			center_pixel_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, center_pixel_surface, random_number_generator);
+			center_pixel_target_function = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, center_pixel_surface, random_number_generator);
 		else
 			// ReSTIR DI target function
 			center_pixel_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, center_pixel_surface, random_number_generator);
@@ -158,7 +158,7 @@ struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE, I
 			// a sampling technique/strategy to take into account in the MIS weight
 			if constexpr (IsReSTIRGI)
 				// ReSTIR GI target function
-				temporal_neighbor_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, temporal_neighbor_surface, random_number_generator);
+				temporal_neighbor_target_function = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, temporal_neighbor_surface, random_number_generator);
 			else
 				// ReSTIR DI target function
 				temporal_neighbor_target_function = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, temporal_neighbor_surface, random_number_generator);

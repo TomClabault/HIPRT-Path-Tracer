@@ -14,6 +14,7 @@
 #include "Device/includes/ReSTIR/DI/TemporalMISWeight.h"
 #include "Device/includes/ReSTIR/DI/TemporalNormalizationWeight.h"
 #include "Device/includes/ReSTIR/DI/Surface.h"
+#include "Device/includes/ReSTIR/DI/TargetFunction.h"
 #include "Device/includes/ReSTIR/DI/Utils.h"
 #include "Device/includes/Sampling.h"
 
@@ -45,19 +46,19 @@
 #define INITIAL_CANDIDATES_ID 1
 
 #ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_DI_TemporalReuse(HIPRTRenderData render_data, int2 res)
+GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_DI_TemporalReuse(HIPRTRenderData render_data)
 #else
-GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData render_data, int2 res, int x, int y)
+GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData render_data, int x, int y)
 #endif
 {
 #ifdef __KERNELCC__
 	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
 	const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
 #endif
-	if (x >= res.x || y >= res.y)
+	if (x >= render_data.render_settings.render_resolution.x || y >= render_data.render_settings.render_resolution.y)
 		return;
 
-	uint32_t center_pixel_index = (x + y * res.x);
+	uint32_t center_pixel_index = (x + y * render_data.render_settings.render_resolution.x);
 
 	if (!render_data.aux_buffers.pixel_active[center_pixel_index] || render_data.g_buffer.first_hit_prim_index[center_pixel_index] == -1)
 		// Pixel inactive because of adaptive sampling, returning
@@ -72,7 +73,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 		seed = wang_hash((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_seed);
 	Xorshift32Generator random_number_generator(seed);
 
-	if (render_data.render_settings.restir_di_settings.temporal_pass.temporal_buffer_clear_requested)
+	if (render_data.render_settings.restir_di_settings.common_temporal_pass.temporal_buffer_clear_requested)
 		// We requested a temporal buffer clear for ReSTIR DI
 		render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs[center_pixel_index] = ReSTIRDIReservoir();
 
@@ -82,7 +83,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 		// Not doing ReSTIR on directly visible emissive materials
 		return;
 
-	int temporal_neighbor_pixel_index = find_temporal_neighbor_index(render_data, render_data.g_buffer.primary_hit_position[center_pixel_index], center_pixel_surface.shading_normal, res, center_pixel_index, random_number_generator).x;
+	int temporal_neighbor_pixel_index = find_temporal_neighbor_index(render_data,
+		render_data.render_settings.restir_di_settings.common_temporal_pass, render_data.render_settings.restir_di_settings.neighbor_similarity_settings,
+		render_data.g_buffer.primary_hit_position[center_pixel_index], center_pixel_surface.shading_normal, center_pixel_index, random_number_generator).x;
 	if (temporal_neighbor_pixel_index == -1 || render_data.render_settings.freeze_random)
 	{
 		// Temporal occlusion / disoccusion, temporal neighbor is invalid,

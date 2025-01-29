@@ -46,8 +46,8 @@ private:
 	oroEvent_t m_spatial_reuse_time_stop;
 
 	OrochiBuffer<ReSTIRGIReservoir> m_initial_candidates_buffer;
-	OrochiBuffer<ReSTIRGIReservoir> m_temporal_candidates_buffer;
-	OrochiBuffer<ReSTIRGIReservoir> m_spatial_candidates_buffer;
+	OrochiBuffer<ReSTIRGIReservoir> m_temporal_buffer;
+	OrochiBuffer<ReSTIRGIReservoir> m_spatial_buffer;
 };
 
 #endif

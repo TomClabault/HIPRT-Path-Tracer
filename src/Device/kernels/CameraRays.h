@@ -42,7 +42,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void reset_render(const HIPRTRenderData& render_d
     }
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE void rescale_samples(HIPRTRenderData& render_data, uint32_t pixel_index, int2 res)
+HIPRT_HOST_DEVICE HIPRT_INLINE void rescale_samples(HIPRTRenderData& render_data, uint32_t pixel_index)
 {
     // Because when displaying the framebuffer, we're dividing by the number of samples to 
     // rescale the color of a pixel, we're going to have a problem if some pixels stopped samping
@@ -55,6 +55,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void rescale_samples(HIPRTRenderData& render_data
     render_data.buffers.accumulated_ray_colors[pixel_index] = render_data.buffers.accumulated_ray_colors[pixel_index] / float_sample_number * (render_data.render_settings.sample_number + 1);
     if (render_data.buffers.gmon_estimator.sets != nullptr)
     {
+        int2 res = render_data.render_settings.render_resolution;
         // GMoN is enabled, we're also going to scale the GMoN samples for the same reason
         for (int set_index = 0; set_index < GMoNMSetsCount; set_index++)
             // TODO this is slow
@@ -63,19 +64,19 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void rescale_samples(HIPRTRenderData& render_data
 }
 
 #ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) CameraRays(HIPRTRenderData render_data, int2 res)
+GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) CameraRays(HIPRTRenderData render_data)
 #else
-GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int2 res, int x, int y)
+GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int x, int y)
 #endif
 {
 #ifdef __KERNELCC__
     const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
     const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
 #endif
-    if (x >= res.x || y >= res.y)
+    if (x >= render_data.render_settings.render_resolution.x || y >= render_data.render_settings.render_resolution.y)
         return;
 
-    uint32_t pixel_index = x + y * res.x;
+    uint32_t pixel_index = x + y * render_data.render_settings.render_resolution.x;
 
     // 'Render low resolution' means that the user is moving the camera for example
     // so we're going to reduce the quality of the render for increased framerates
@@ -125,7 +126,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
     {
         if (!sampling_needed)
         {
-            rescale_samples(render_data, pixel_index, res);
+            rescale_samples(render_data, pixel_index);
 
             render_data.aux_buffers.pixel_active[pixel_index] = false;
 
@@ -152,7 +153,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
         y_ray_point_direction += random_number_generator() - 0.5f;
     }
 
-    hiprtRay ray = render_data.current_camera.get_camera_ray(x_ray_point_direction, y_ray_point_direction, res);
+    hiprtRay ray = render_data.current_camera.get_camera_ray(x_ray_point_direction, y_ray_point_direction, render_data.render_settings.render_resolution);
     RayPayload ray_payload;
 
     HitInfo closest_hit_info;

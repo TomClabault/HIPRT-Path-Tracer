@@ -6,8 +6,12 @@
 #ifndef HOST_DEVICE_COMMON_RENDER_SETTINGS_H
 #define HOST_DEVICE_COMMON_RENDER_SETTINGS_H
 
+#include "Device/includes/ReSTIR/DI/Reservoir.h"
+#include "Device/includes/ReSTIR/GI/Reservoir.h"
 #include "HostDeviceCommon/PathRussianRoulette.h"
 #include "HostDeviceCommon/KernelOptions/KernelOptions.h"
+#include "HostDeviceCommon/RIS/RISSettings.h"
+#include "HostDeviceCommon/ReSTIR/ReSTIRCommonSettings.h"
 #include "HostDeviceCommon/ReSTIR/ReSTIRDISettings.h"
 #include "HostDeviceCommon/ReSTIR/ReSTIRGISettings.h"
 #include "HostDeviceCommon/Math.h"
@@ -16,15 +20,6 @@
 #define local_min_macro(a, b) ((a) < (b) ? (a) : (b))
 
 class GPURenderer;
-
-struct RISSettings
-{
-	// How many candidate lights to sample for RIS (Resampled Importance Sampling)
-	int number_of_light_candidates = 4;
-	// How many candidates samples from the BSDF to use in combination
-	// with the light candidates for RIS
-	int number_of_bsdf_candidates = 1;
-};
 
 struct HIPRTRenderSettings
 {
@@ -204,7 +199,6 @@ struct HIPRTRenderSettings
 
 	// Settings for ReSTIR DI
 	ReSTIRDISettings restir_di_settings;
-
 	// Settings for ReSTIR GI
 	ReSTIRGISettings restir_gi_settings;
 
@@ -244,8 +238,8 @@ struct HIPRTRenderSettings
 	 * The boolean parameter is some additional condition that must be satisfied
 	 * for the G-buffer to be needed
 	 * 
-	 * We need two overrides of this function: one for use in the shaders one 
-	 * for use in the CPP CPU side code.
+	 * We need two overrides of this function: one for use in the shaders and one 
+	 * for use in the C++ CPU side code.
 	 * 
 	 * This is because to determine whether or not we need the g-buffer of last
 	 * frame, we need to check if ReSTIR DI is being used or not. On the CPP side, this
@@ -260,9 +254,9 @@ struct HIPRTRenderSettings
 	{
 		// If ReSTIR DI isn't used, we don't need the last frame's g-buffer
 		// (as far as the codebase goes at the time of writing this function anyways)
-		bool need_g_buffer = DirectLightSamplingStrategy == LSS_RESTIR_DI;
-		// If the temporal reuse isn't used, don't need the G-buffer
-		need_g_buffer &= restir_di_settings.temporal_pass.do_temporal_reuse_pass;
+		bool need_g_buffer = false;
+		need_g_buffer |= DirectLightSamplingStrategy == LSS_RESTIR_DI && restir_di_settings.common_temporal_pass.do_temporal_reuse_pass;
+		need_g_buffer |= PathSamplingStrategy == PSS_RESTIR_GI && restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass;
 
 		return need_g_buffer;
 	}

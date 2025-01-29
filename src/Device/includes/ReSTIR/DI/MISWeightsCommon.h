@@ -37,6 +37,6 @@ struct SampleTypeStruct<true>
 };
 
 template <bool IsReSTIRGI>
-using ReSTIRSampleType = SampleTypeStruct<IsReSTIRGI>::Type;
+using ReSTIRSampleType = typename SampleTypeStruct<IsReSTIRGI>::Type;
 
 #endif

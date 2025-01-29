@@ -54,6 +54,7 @@ public:
     void camera_rays_pass();
 
     void ReSTIR_DI_pass();
+    void ReSTIR_GI_pass();
 
     LightPresamplingParameters configure_ReSTIR_DI_light_presampling_pass();
     void configure_ReSTIR_DI_initial_pass();
@@ -75,6 +76,7 @@ public:
     void tracing_pass();
 
     void restir_gi_initial_candidates_pass();
+    void restir_gi_spatial_reuse_pass();
     void restir_gi_shading_pass();
 
     void gmon_compute_median_of_means();
@@ -129,6 +131,8 @@ private:
     struct ReSTIRGIState
     {
         std::vector<ReSTIRGIReservoir> initial_candidates_reservoirs;
+        std::vector<ReSTIRGIReservoir> temporal_reservoirs;
+        std::vector<ReSTIRGIReservoir> spatial_reservoirs;
     } m_restir_gi_state;
 
     Image32Bit m_sheen_ltc_params;
