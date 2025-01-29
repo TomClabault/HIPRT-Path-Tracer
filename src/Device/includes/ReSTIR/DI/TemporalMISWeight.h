@@ -67,7 +67,7 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE, I
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data, const ReSTIRDIReservoir& reservoir_being_resampled)
 	{
-		if (render_data.render_settings.restir_di_settings.use_confidence_weights)
+		if (ReSTIRDISettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).use_confidence_weights)
 		{
 			// MIS-like MIS weights with confidence weights are basically a mix of 1/Z 
 			// and MIS like for the normalization so we're just returning the confidence here
@@ -113,7 +113,7 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH, Is
 
 			if constexpr (IsReSTIRGI)
 				// ReSTIR GI target function
-				target_function_at_temporal_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, reservoir_being_resampled_sample, temporal_neighbor_surface, random_number_generator);
+				target_function_at_temporal_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility>(render_data, reservoir_being_resampled_sample, temporal_neighbor_surface, random_number_generator);
 			else
 				// ReSTIR DI target function
 				target_function_at_temporal_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, reservoir_being_resampled_sample, temporal_neighbor_surface, random_number_generator);
@@ -131,14 +131,14 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH, Is
 		float target_function_at_center;
 		if constexpr (IsReSTIRGI)
 			// ReSTIR GI target function
-			target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, reservoir_being_resampled_sample, temporal_neighbor_surface, random_number_generator);
+			target_function_at_center = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility>(render_data, reservoir_being_resampled_sample, temporal_neighbor_surface, random_number_generator);
 		else
 			// ReSTIR DI target function
 			target_function_at_center = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, reservoir_being_resampled_sample, temporal_neighbor_surface, random_number_generator);
 
 		int temporal_M = temporal_neighbor_reservoir_M;
 		int center_reservoir_M = initial_candidates_reservoir_M;
-		if (!render_data.render_settings.restir_di_settings.use_confidence_weights)
+		if (!ReSTIRDISettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).use_confidence_weights)
 		{
 			temporal_M = 1;
 			center_reservoir_M = 1;
@@ -177,9 +177,10 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MI
 			float target_function_at_neighbor = temporal_neighbor_reservoir_target_function;
 			float target_function_at_center = neighbor_sample_target_function_at_center;
 
-			float temporal_neighbor_M = render_data.render_settings.restir_di_settings.use_confidence_weights ? temporal_neighbor_reservoir_M : 1;
-			float center_reservoir_M = render_data.render_settings.restir_di_settings.use_confidence_weights ? initial_candidates_reservoir_M : 1;
-			float neighbors_confidence_sum = render_data.render_settings.restir_di_settings.use_confidence_weights ? temporal_neighbor_reservoir_M : 1;
+			bool use_confidence_weights = ReSTIRDISettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).use_confidence_weights;
+			float temporal_neighbor_M = use_confidence_weights ? temporal_neighbor_reservoir_M : 1;
+			float center_reservoir_M = use_confidence_weights ? initial_candidates_reservoir_M : 1;
+			float neighbors_confidence_sum = use_confidence_weights ? temporal_neighbor_reservoir_M : 1;
 
 			float nume = target_function_at_neighbor * temporal_neighbor_M;
 			float denom = target_function_at_neighbor * neighbors_confidence_sum + target_function_at_center * center_reservoir_M;
@@ -188,7 +189,7 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MI
 			float target_function_center_reservoir_at_neighbor;
 			if constexpr (IsReSTIRGI)
 				// ReSTIR GI target function
-				target_function_center_reservoir_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, initial_candidates_reservoir_sample, temporal_neighbor_surface, random_number_generator);
+				target_function_center_reservoir_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility>(render_data, initial_candidates_reservoir_sample, temporal_neighbor_surface, random_number_generator);
 			else
 				// ReSTIR DI target function
 				target_function_center_reservoir_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, initial_candidates_reservoir_sample, temporal_neighbor_surface, random_number_generator);
@@ -199,7 +200,7 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MI
 			float denom_mc = target_function_center_reservoir_at_neighbor * neighbors_confidence_sum + target_function_center_reservoir_at_center * center_reservoir_M;
 
 			float confidence_multiplier = 1.0f;
-			if (render_data.render_settings.restir_di_settings.use_confidence_weights)
+			if (use_confidence_weights)
 				confidence_multiplier = temporal_neighbor_M / neighbors_confidence_sum;
 
 			if (denom_mc != 0.0f)
@@ -245,21 +246,22 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MI
 			float target_function_at_neighbor = temporal_neighbor_reservoir_target_function;
 			float target_function_at_center = neighbor_sample_target_function_at_center;
 
-			float temporal_neighbor_M = render_data.render_settings.restir_di_settings.use_confidence_weights ? temporal_neighbor_reservoir_M : 1;
-			float center_reservoir_M = render_data.render_settings.restir_di_settings.use_confidence_weights ? initial_candidates_reservoir_M : 1;
-			float neighbors_confidence_sum = render_data.render_settings.restir_di_settings.use_confidence_weights ? temporal_neighbor_reservoir_M : 1;
+			bool use_confidence_weights = ReSTIRDISettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).use_confidence_weights;
+			float temporal_neighbor_M = use_confidence_weights ? temporal_neighbor_reservoir_M : 1;
+			float center_reservoir_M = use_confidence_weights ? initial_candidates_reservoir_M : 1;
+			float neighbors_confidence_sum = use_confidence_weights ? temporal_neighbor_reservoir_M : 1;
 
 			float nume = target_function_at_neighbor * temporal_neighbor_M;
 			float denom = target_function_at_neighbor * neighbors_confidence_sum + target_function_at_center * center_reservoir_M;
 			float mi = denom == 0.0f ? 0.0f : (nume / denom);
-			if (render_data.render_settings.restir_di_settings.use_confidence_weights)
+			if (use_confidence_weights)
 				// Eq 7.8
 				mi *= neighbors_confidence_sum / (neighbors_confidence_sum + center_reservoir_M);
 
 			float target_function_center_reservoir_at_neighbor;
 			if constexpr (IsReSTIRGI)
 				// ReSTIR GI target function
-				target_function_center_reservoir_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, initial_candidates_reservoir_sample, temporal_neighbor_surface, random_number_generator);
+				target_function_center_reservoir_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility>(render_data, initial_candidates_reservoir_sample, temporal_neighbor_surface, random_number_generator);
 			else
 				// ReSTIR DI target function
 				target_function_center_reservoir_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, initial_candidates_reservoir_sample, temporal_neighbor_surface, random_number_generator);
@@ -269,13 +271,13 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MI
 			float nume_mc = target_function_center_reservoir_at_center * center_reservoir_M;
 			float denom_mc = target_function_center_reservoir_at_neighbor * neighbors_confidence_sum + target_function_center_reservoir_at_center * center_reservoir_M;
 			float confidence_multiplier = 1.0f;
-			if (render_data.render_settings.restir_di_settings.use_confidence_weights)
+			if (use_confidence_weights)
 				confidence_multiplier = neighbors_confidence_sum / (neighbors_confidence_sum + center_reservoir_M);
 
 			if (denom_mc != 0.0f)
 				mc += nume_mc / denom_mc * confidence_multiplier;
 
-			if (render_data.render_settings.restir_di_settings.use_confidence_weights)
+			if (use_confidence_weights)
 				return mi;
 			else
 				// In the defensive formulation, we want to divide by M, not M-1.
@@ -302,7 +304,7 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MI
 
 				// In the defensive formulation, we want to divide by M, not M-1.
 				// (Eq. 7.6 of "A Gentle Introduction to ReSTIR")
-				if (render_data.render_settings.restir_di_settings.use_confidence_weights)
+				if (ReSTIRDISettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).use_confidence_weights)
 					return mc + static_cast<float>(initial_candidates_reservoir_M) / static_cast<float>(initial_candidates_reservoir_M + temporal_neighbor_reservoir_M);
 				else
 					return (1.0f + mc) * 0.5f;

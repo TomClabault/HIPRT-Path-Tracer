@@ -451,9 +451,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDIReservoir sample_initial_candidates(const
 }
 
 #ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_DI_InitialCandidates(HIPRTRenderData render_data, int2 res)
+GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_DI_InitialCandidates(HIPRTRenderData render_data)
 #else
-GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_InitialCandidates(HIPRTRenderData render_data, int2 res, int x, int y)
+GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_InitialCandidates(HIPRTRenderData render_data, int x, int y)
 #endif
 {
     if (render_data.buffers.emissive_triangles_count == 0 && render_data.world_settings.ambient_light_type != AmbientLightType::ENVMAP)
@@ -464,10 +464,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_InitialCandidates(HIPRTRenderData
     const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
     const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
 #endif
-    if (x >= res.x || y >= res.y)
+    if (x >= render_data.render_settings.render_resolution.x || y >= render_data.render_settings.render_resolution.y)
         return;
 
-    uint32_t pixel_index = (x + y * res.x);
+    uint32_t pixel_index = (x + y * render_data.render_settings.render_resolution.x);
     DevicePackedEffectiveMaterial material = render_data.g_buffer.materials[pixel_index];
 
     if (material.is_emissive())

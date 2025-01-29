@@ -9,6 +9,8 @@
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Hash.h"
 #include "Device/includes/ReSTIR/DI/Surface.h"
+#include "Device/includes/ReSTIR/DI/TemporalMISWeight.h"
+#include "Device/includes/ReSTIR/DI/TemporalNormalizationWeight.h"
 #include "Device/includes/ReSTIR/DI/Utils.h"
 #include "Device/includes/ReSTIR/GI/Reservoir.h"
 
@@ -22,9 +24,9 @@
   */
 
 #ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_GI_TemporalReuse(HIPRTRenderData render_data, int2 res)
+GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_GI_TemporalReuse(HIPRTRenderData render_data)
 #else
-GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData render_data, int2 res, int x, int y)
+GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData render_data, int x, int y)
 #endif
 {
 //#ifdef __KERNELCC__
@@ -85,7 +87,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 //	ReSTIRGIReservoir temporal_reuse_output_reservoir;
 //	ReSTIRDISurface temporal_neighbor_surface = get_pixel_surface(render_data, temporal_neighbor_pixel_index, render_data.render_settings.use_prev_frame_g_buffer(), random_number_generator);
 //
-//	ReSTIRDITemporalResamplingMISWeight<ReSTIR_GI_BiasCorrectionWeights> mis_weight_function;
+//	ReSTIRDITemporalResamplingMISWeight<ReSTIR_GI_BiasCorrectionWeights, true> mis_weight_function;
 //
 //
 //	// /* ------------------------------- */

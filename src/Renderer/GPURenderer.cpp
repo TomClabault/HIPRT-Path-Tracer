@@ -193,6 +193,11 @@ std::shared_ptr<ReSTIRDIRenderPass> GPURenderer::get_ReSTIR_DI_render_pass()
 	return std::dynamic_pointer_cast<ReSTIRDIRenderPass>(m_render_graph.get_render_pass(ReSTIRDIRenderPass::RESTIR_DI_RENDER_PASS_NAME));
 }
 
+std::shared_ptr<ReSTIRGIRenderPass> GPURenderer::get_ReSTIR_GI_render_pass()
+{
+	return std::dynamic_pointer_cast<ReSTIRGIRenderPass>(m_render_graph.get_render_pass(ReSTIRGIRenderPass::RESTIR_GI_RENDER_PASS_NAME));
+}
+
 RenderGraph& GPURenderer::get_render_graph()
 {
 	return m_render_graph;
@@ -571,7 +576,7 @@ void GPURenderer::render_path_tracing()
 void GPURenderer::launch_nee_plus_plus_caching_prepass()
 {
 	unsigned int caching_sample_count = 1024;
-	void* launch_args[] = { &m_render_data, &caching_sample_count, &m_render_resolution };
+	void* launch_args[] = { &m_render_data, &caching_sample_count };
 
 	m_render_data.random_seed = m_rng.xorshift32();
 	m_kernels[GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);

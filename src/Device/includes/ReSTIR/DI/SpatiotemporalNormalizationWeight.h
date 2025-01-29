@@ -7,6 +7,7 @@
 #define DEVICE_RESTIR_DI_SPATIOTEMPORAL_NORMALIZATION_WEIGHT_H
 
 #include "Device/includes/ReSTIR/DI/MISWeightsCommon.h"
+#include "Device/includes/ReSTIR/DI/NeighborSimilarity.h"
 #include "Device/includes/ReSTIR/DI/Utils.h"
 
 #define TEMPORAL_NEIGHBOR_ID 0
@@ -21,7 +22,7 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVE
 		float final_reservoir_weight_sum, int initial_candidates_reservoir_M,
 		const ReSTIRDISurface& center_pixel_surface,
 		int temporal_neighbor_M, int center_pixel_index, int2 temporal_neighbor_coords, 
-		int2 res, float2 cos_sin_theta_rotation, float& out_normalization_nume, float& out_normalization_denom,
+		float2 cos_sin_theta_rotation, float& out_normalization_nume, float& out_normalization_denom,
 		Xorshift32Generator& random_number_generator)
 	{
 		if (final_reservoir_weight_sum <= 0.0f)
@@ -41,22 +42,26 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVE
 		// so we're only going to set the denominator to that and the numerator isn't going to change
 		out_normalization_denom = 0.0f;
 
-		int reused_neighbors_count = render_data.render_settings.restir_di_settings.spatial_pass.reuse_neighbor_count;
-		for (int neighbor = 0; neighbor < reused_neighbors_count + 1; neighbor++)
+		const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRDISettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
+		const ReSTIRCommonNeighborSimiliaritySettings& neighbor_similarity_settings = ReSTIRDISettingsHelper::get_restir_neighbor_similarity_settings<IsReSTIRGI>(render_data);
+		for (int neighbor = 0; neighbor < spatial_pass_settings.reuse_neighbor_count + 1; neighbor++)
 		{
 			// The last iteration of the loop is a special case that resamples the initial candidates reservoir
 			// and so neighbor_pixel_index is never going to be used so we don't need to set it
 			int neighbor_pixel_index;
-			if (neighbor != reused_neighbors_count)
+			if (neighbor != spatial_pass_settings.reuse_neighbor_count)
 			{
-				neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, neighbor, reused_neighbors_count, render_data.render_settings.restir_di_settings.spatial_pass.reuse_radius, temporal_neighbor_coords, 
-					res, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
+				neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, spatial_pass_settings, 
+					neighbor, temporal_neighbor_coords,
+					cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
 
 				if (neighbor_pixel_index == -1)
 					// Neighbor out of the viewport
 					continue;
 
-				if (!check_neighbor_similarity_heuristics(render_data, neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point, center_pixel_surface.shading_normal, render_data.render_settings.use_prev_frame_g_buffer()))
+				if (!check_neighbor_similarity_heuristics(render_data, neighbor_similarity_settings, 
+					neighbor_pixel_index, center_pixel_index, 
+					center_pixel_surface.shading_point, center_pixel_surface.shading_normal, render_data.render_settings.use_prev_frame_g_buffer()))
 					continue;
 			}
 
@@ -68,15 +73,15 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVE
 			// frame in the center pixel. We're not resampling the center
 			// pixel from the previous frame so we need the current surface 
 			ReSTIRDISurface neighbor_surface;
-			if (neighbor == reused_neighbors_count)
+			if (neighbor == spatial_pass_settings.reuse_neighbor_count)
 				neighbor_surface = center_pixel_surface;
 			else
 				neighbor_surface = get_pixel_surface(render_data, neighbor_pixel_index, render_data.render_settings.use_prev_frame_g_buffer(), random_number_generator);
 
-			if (neighbor == reused_neighbors_count)
+			if (neighbor == spatial_pass_settings.reuse_neighbor_count)
 				out_normalization_denom += initial_candidates_reservoir_M;
 			else
-				out_normalization_denom += render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs[neighbor_pixel_index].M;
+				out_normalization_denom += ReSTIRDISettingsHelper::get_restir_spatial_pass_input_reservoir_M<IsReSTIRGI>(neighbor_pixel_index);
 		}
 
 		// The fused spatiotemporal pass also resamples a temporal neighbor so we add the M of that neighbor too
@@ -90,7 +95,7 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVE
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
 		const ReSTIRSampleType<IsReSTIRGI>& final_reservoir_sample, float final_reservoir_weight_sum, 
 		ReSTIRDISurface& center_pixel_surface, ReSTIRDISurface& temporal_neighbor_surface,
-		int center_pixel_M, int temporal_neighbor_M, int center_pixel_index, int2 temporal_neighbor_position, int2 res,
+		int center_pixel_M, int temporal_neighbor_M, int center_pixel_index, int2 temporal_neighbor_position,
 		float2 cos_sin_theta_rotation, float& out_normalization_nume, float& out_normalization_denom,
 		Xorshift32Generator& random_number_generator)
 	{
@@ -108,22 +113,26 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVE
 		out_normalization_denom = 0.0f;
 		out_normalization_nume = 1.0f;
 
-		int reused_neighbors_count = render_data.render_settings.restir_di_settings.spatial_pass.reuse_neighbor_count;
-		for (int neighbor = 0; neighbor < reused_neighbors_count + 1; neighbor++)
+		const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRDISettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
+		const ReSTIRCommonNeighborSimiliaritySettings& neighbor_similarity_settings = ReSTIRDISettingsHelper::get_restir_neighbor_similarity_settings<IsReSTIRGI>(render_data);
+		for (int neighbor = 0; neighbor < spatial_pass_settings.reuse_neighbor_count + 1; neighbor++)
 		{
 			// The last iteration of the loop is a special case that resamples the initial candidates reservoir
 			// and so neighbor_pixel_index is never going to be used so we don't need to set it
 			int neighbor_pixel_index;
-			if (neighbor != reused_neighbors_count)
+			if (neighbor != spatial_pass_settings.reuse_neighbor_count)
 			{
-				neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, neighbor, reused_neighbors_count, render_data.render_settings.restir_di_settings.spatial_pass.reuse_radius, 
-					temporal_neighbor_position, res, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
+				neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, spatial_pass_settings,
+					neighbor, temporal_neighbor_position, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
 
 				if (neighbor_pixel_index == -1)
 					// Invalid neighbor
 					continue;
 
-				if (!check_neighbor_similarity_heuristics(render_data, neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point, center_pixel_surface.shading_normal, render_data.render_settings.use_prev_frame_g_buffer()))
+				if (!check_neighbor_similarity_heuristics(render_data, 
+					neighbor_similarity_settings, 
+					neighbor_pixel_index, center_pixel_index, 
+					center_pixel_surface.shading_point, center_pixel_surface.shading_normal, render_data.render_settings.use_prev_frame_g_buffer()))
 					continue;
 			}
 
@@ -136,7 +145,7 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVE
 			// frame in the center pixel. We're not resampling the center
 			// pixel from the previous frame so we need the current surface 
 			ReSTIRDISurface neighbor_surface;
-			if (neighbor == reused_neighbors_count)
+			if (neighbor == spatial_pass_settings.reuse_neighbor_count)
 				neighbor_surface = center_pixel_surface;
 			else
 				neighbor_surface = get_pixel_surface(render_data, neighbor_pixel_index, render_data.render_settings.use_prev_frame_g_buffer(), random_number_generator);
@@ -144,7 +153,7 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVE
 			float target_function_at_neighbor;
 			if constexpr (IsReSTIRGI)
 				// ReSTIR GI target function
-				target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, neighbor_surface, random_number_generator);
+				target_function_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, neighbor_surface, random_number_generator);
 			else
 				// ReSTIR DI target function
 				target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, neighbor_surface, random_number_generator);
@@ -153,10 +162,10 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVE
 			{
 				// If the neighbor could have produced this sample...
 
-				if (neighbor == reused_neighbors_count)
+				if (neighbor == spatial_pass_settings.reuse_neighbor_count)
 					out_normalization_denom += center_pixel_M;
 				else
-					out_normalization_denom += render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs[neighbor_pixel_index].M;
+					out_normalization_denom += ReSTIRDISettingsHelper::get_restir_spatial_pass_input_reservoir_M<IsReSTIRGI>(render_data, neighbor_pixel_index);
 			}
 		}
 
@@ -164,7 +173,7 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVE
 		bool target_function_at_neighbor_gt_0;
 		if constexpr (IsReSTIRGI)
 			// ReSTIR GI target function
-			target_function_at_neighbor_gt_0 = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, temporal_neighbor_surface, random_number_generator) > 0.0f;
+			target_function_at_neighbor_gt_0 = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, temporal_neighbor_surface, random_number_generator) > 0.0f;
 		else
 			// ReSTIR DI target function
 			target_function_at_neighbor_gt_0 = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, temporal_neighbor_surface, random_number_generator) > 0.0f;
@@ -181,7 +190,7 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_L
 		const ReSTIRSampleType<IsReSTIRGI>& final_reservoir_sample, float final_reservoir_weight_sum, 
 		ReSTIRDISurface& center_pixel_surface, ReSTIRDISurface& temporal_neighbor_surface,
 		int selected_neighbor,
-		int center_pixel_M, int temporal_neighbor_M, int center_pixel_index, int2 temporal_neighbor_coords, int2 res,
+		int center_pixel_M, int temporal_neighbor_M, int center_pixel_index, int2 temporal_neighbor_coords,
 		float2 cos_sin_theta_rotation,
 		float& out_normalization_nume, float& out_normalization_denom,
 		Xorshift32Generator& random_number_generator)
@@ -198,33 +207,37 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_L
 		out_normalization_denom = 0.0f;
 		out_normalization_nume = 0.0f;
 
-		int reused_neighbors_count = render_data.render_settings.restir_di_settings.spatial_pass.reuse_neighbor_count;
-		for (int neighbor = 0; neighbor < reused_neighbors_count + 1; neighbor++)
+		const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRDISettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
+		const ReSTIRCommonNeighborSimiliaritySettings& neighbor_similarity_settings = ReSTIRDISettingsHelper::get_restir_neighbor_similarity_settings<IsReSTIRGI>(render_data);
+		for (int neighbor = 0; neighbor < spatial_pass_settings.reuse_neighbor_count + 1; neighbor++)
 		{
 			// The last iteration of the loop is a special case that resamples the initial candidates reservoir
 			// and so neighbor_pixel_index is never going to be used so we don't need to set it
 			int neighbor_pixel_index;
-			if (neighbor != reused_neighbors_count)
+			if (neighbor != spatial_pass_settings.reuse_neighbor_count)
 			{
-				neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, neighbor, reused_neighbors_count, render_data.render_settings.restir_di_settings.spatial_pass.reuse_radius, temporal_neighbor_coords, res, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
+				neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, neighbor, spatial_pass_settings, temporal_neighbor_coords, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
 
 				if (neighbor_pixel_index == -1)
 					// Invalid neighbor
 					continue;
 
-				if (!check_neighbor_similarity_heuristics(render_data, neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point, center_pixel_surface.shading_normal, render_data.render_settings.use_prev_frame_g_buffer()))
+				if (!check_neighbor_similarity_heuristics(render_data, 
+					neighbor_similarity_settings, 
+					neighbor_pixel_index, center_pixel_index, 
+					center_pixel_surface.shading_point, center_pixel_surface.shading_normal, render_data.render_settings.use_prev_frame_g_buffer()))
 					continue;
 			}
 
 			// Getting the surface data at the neighbor
 			// 
-			// The surface at the center pixel passed in parameters is 
+			// The surface at the center pixel passed in parameters is
 			// the surface in the current frame, that's what we want
 			// since we're resampling initial candidates of the current
 			// frame in the center pixel. We're not resampling the center
-			// pixel from the previous frame so we need the current surface 
-			ReSTIRDISurface neighbor_surface; 
-			if (neighbor == reused_neighbors_count)
+			// pixel from the previous frame so we need the current surface
+			ReSTIRDISurface neighbor_surface;
+			if (neighbor == spatial_pass_settings.reuse_neighbor_count)
 				neighbor_surface = center_pixel_surface;
 			else
 				neighbor_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
@@ -232,7 +245,7 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_L
 			float target_function_at_neighbor;
 			if constexpr (IsReSTIRGI)
 				// ReSTIR GI target function
-				target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, neighbor_surface, random_number_generator);
+				target_function_at_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, neighbor_surface, random_number_generator);
 			else
 				// ReSTIR DI target function
 				target_function_at_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, neighbor_surface, random_number_generator);
@@ -242,12 +255,12 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_L
 				// If the neighbor could have produced this sample...
 
 				int M = 1;
-				if (render_data.render_settings.restir_di_settings.use_confidence_weights)
+				if (ReSTIRDISettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).use_confidence_weights)
 				{
-					if (neighbor == reused_neighbors_count)
+					if (neighbor == spatial_pass_settings.reuse_neighbor_count)
 						M = center_pixel_M;
 					else
-						M = render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs[neighbor_pixel_index].M;
+						M = ReSTIRDISettingsHelper::get_restir_spatial_pass_input_reservoir_M<IsReSTIRGI>(render_data, neighbor_pixel_index);
 				}
 
 				// neighbor + 1 here because 0 is the temporal neighbor, not the first spatial neighbor
@@ -263,7 +276,7 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_L
 		float target_function_at_temporal_neighbor;
 		if constexpr (IsReSTIRGI)
 			// ReSTIR GI target function
-			target_function_at_temporal_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, temporal_neighbor_surface, random_number_generator);
+			target_function_at_temporal_neighbor = ReSTIR_GI_evaluate_target_function<ReSTIR_GI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, temporal_neighbor_surface, random_number_generator);
 		else
 			// ReSTIR DI target function
 			target_function_at_temporal_neighbor = ReSTIR_DI_evaluate_target_function<ReSTIR_DI_BiasCorrectionUseVisibility>(render_data, final_reservoir_sample, temporal_neighbor_surface, random_number_generator);
@@ -271,7 +284,7 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_L
 		if (selected_neighbor == TEMPORAL_NEIGHBOR_ID)
 			out_normalization_nume += target_function_at_temporal_neighbor;
 
-		int temporal_M = render_data.render_settings.restir_di_settings.use_confidence_weights ? temporal_neighbor_M : 1;
+		int temporal_M = ReSTIRDISettingsHelper::get_restir_settings(render_data).use_confidence_weights ? temporal_neighbor_M : 1;
 		out_normalization_denom += target_function_at_temporal_neighbor * temporal_M;
 	}
 };

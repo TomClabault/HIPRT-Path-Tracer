@@ -83,23 +83,21 @@ extern ImGuiLogger g_imgui_logger;
 
 
 // TODO Features:
-// - implement ideas of https://blog.selfshadow.com/publications/s2017-shading-course/imageworks/s2017_pbs_imageworks_slides_v2.pdf
 // - software opacity micromaps
-// - cache opacity of materials textures? --> analyze the texture when loading it from the texture and if there isn't a single transparent pixel, then we know that we won't have to fetch the material / texture in the alpha test filter function because the alpha is going to be 1.0f anyways
+// - sample BSDF based on view fresnel
 // - limit secondary bounces ray distance: objects far away won't contribute much to what the camera sees so shortening the rays should be okay?
 // - limit direct lighting occlusion distance: maybe stochastically so that we get a falloff instead of a hard cut where an important may not contribute anymore
 //		- for maximum ray length, limit that length even more for indirect bounces and even more so if the ray is far away from the camera (beware of mirrors in the scene which the camera can look into and see a far away part of the scene where light could be very biased)
 // - only update the display every so often if accumulating because displaying is expensive (especially at high resolution) on AMD drivers at least
 // - how to help with shaders combination compilation times? upload bitcodes that ** I ** compile locally to Github? Change some #if to if() where this does not increase register pressure also.
-// - use bare variables for principled_bsdf_sample CDF[] because local arrays are bad on AMD GPUs
 // - next event estimation++? --> 2023 paper improvement
 // - ideas of https://pbr-book.org/4ed/Light_Sources/Further_Reading for performance
 // - envmap visibility cache? 
 // - russian roulette on light sampling based on light contribution?
 // - If GMoN is enabled, it would be cool to be able to denoise the GMoN blend between GMoN and the default framebuffer but currently the denoiser only denoises the full GMoN and nothing else
 // - Exploiting Visibility Correlation in Direct Illumination
-// - Progressive Visibility Caching for Fast Indirect Illumination
 // - smarter shader cache (hints to avoid using all kernel options when compiling a kernel? We know that Camera ray doesn't care about direct lighting strategy for example)
+// - ray splitting on specular/diffuse BSDFs? Trace a diffuse ray and also a specular ray to reduce the noise: only on the primary surface though otherwise this is an exponential increase in the number of rays
 // - to accelerate compilation times: we can use if() everywhere in the code so that switching an option doesn't require a compilation but if we want, we can then apply the options currently selected and compiler everything for maximum performance. This can probably be done with a massive shader that has all the options using if() instead of #if ? Maybe some better alternative though?
 // - for LTC sheen lobe, have the option to use either SGGX volumetric sheen or approximation precomputed LTC data
 // - --help on the commandline
@@ -108,7 +106,6 @@ extern ImGuiLogger g_imgui_logger;
 // - performance/bias tradeoff by ignoring alpha tests (either for global rays or only shadow rays) after N bounce?
 // - performance/bias tradeoff by ignoring direct lighting occlusion after N bounce? --> strong bias but maybe something to do by reducing the length of shadow rays instead of just hard-disabling occlusion
 // - energy conserving Oren Nayar: https://mimosa-pudica.net/improved-oren-nayar.html#images
-// - GMoN estimator fireflies reduction
 // - experiment with a feature that ignores really dark pixel in the variance estimation of the adaptive 
 //		sampling because it seems that very dark areas in the image are always flagged as very 
 //		noisy / very high variance and they take a very long time to converge (always red on the heatmap) 
@@ -179,18 +176,14 @@ extern ImGuiLogger g_imgui_logger;
 // - Have the UI run at its own framerate to avoid having the UI come to a crawl when the path tracing is expensive
 // - When modifying the emission of a material with the material editor, it should be reflected in the scene and allow the direct sampling of the geometry so the emissive triangles buffer should be updated
 // - Ray differentials for texture mipampping (better bandwidth utilization since sampling potentially smaller texture --> fit better in cache)
-// - Ray reordering for performance
-// - Starting rays further away from the camera for performance
 // - Visualizing ray depth (only 1 frame otherwise it would flicker a lot [or choose the option to have it flicker] )
 // - Visualizing pixel time with the clock() instruction. Pixel heatmap:
 //		- https://developer.nvidia.com/blog/profiling-dxr-shaders-with-timer-instrumentation/
 //		- https://github.com/libigl/libigl/issues/1388
 //		- https://github.com/libigl/libigl/issues/1534
 // - Visualizing russian roulette depth termination
-// - Add tooltips when hovering over a parameter in the UI
 // - Statistics on russian roulette efficiency
 // - feature to disable ReSTIR after a certain percentage of convergence --> we don't want to pay the full price of resampling and everything only for a few difficult isolated pixels (especially true with adaptive sampling where neighbors don't get sampled --> no new samples added to their reservoir --> no need to resample)
-// - Better ray origin offset to avoid self intersections --> Use ray TMin
 // - Realistic Camera Model
 // - Focus blur
 // - Flakes BRDF (maybe look at OSPRay implementation for a reference ?)
@@ -199,14 +192,11 @@ extern ImGuiLogger g_imgui_logger;
 // - choose denoiser quality in imgui
 // - try async buffer copy for the denoiser (maybe run a kernel to generate normals and another to generate albedo buffer before the path tracing kernel to be able to async copy while the path tracing kernel is running?)
 // - write scene details to imgui (nb vertices, triangles, ...)
-// - ImGui to choose the BVH flags at runtime and be able to compare the performance
-// - ImGui widgets for SBVH / LBVH
-// - BVH compaction + imgui checkbox
 // - choose env map at runtime imgui
 // - choose scene file at runtime imgui
 // - lock camera checkbox to avoid messing up when big render in progress
 // - PBRT v3 scene parser
-// - Wavefront path tracing
+// - implement ideas of https://blog.selfshadow.com/publications/s2017-shading-course/imageworks/s2017_pbs_imageworks_slides_v2.pdf
 // - Manifold Next Event Estimation (for refractive caustics) https://jo.dreggn.org/home/2015_mnee.pdf
 // - Efficiency Aware Russian roulette and splitting
 // - ReSTIR PT

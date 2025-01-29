@@ -90,7 +90,7 @@ bool FillGBufferRenderPass::launch()
 {
 	m_render_data->random_seed = m_renderer->rng().xorshift32();
 
-	void* launch_args[] = { m_render_data, &m_render_resolution };
+	void* launch_args[] = { m_render_data };
 
 	m_kernels[FillGBufferRenderPass::FILL_GBUFFER_KERNEL]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y, launch_args, m_renderer->get_main_stream());
 

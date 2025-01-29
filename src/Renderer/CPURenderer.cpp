@@ -14,6 +14,7 @@
 #include "Device/kernels/ReSTIR/DI/SpatialReuse.h"
 #include "Device/kernels/ReSTIR/DI/FusedSpatiotemporalReuse.h"
 #include "Device/kernels/ReSTIR/GI/InitialCandidates.h"
+#include "Device/kernels/ReSTIR/GI/SpatialReuse.h"
 #include "Device/kernels/ReSTIR/GI/Shading.h"
 
 #include "Renderer/Baker/GPUBaker.h"
@@ -37,14 +38,14 @@
 // the interesting pixel. If that image viewer has its (0, 0) in the top
 // left corner, you'll need to set that DEBUG_FLIP_Y to 0. Set 1 to if
 // you're measuring the coordinates of the pixel with (0, 0) in the bottom left corner
-#define DEBUG_FLIP_Y 1
+#define DEBUG_FLIP_Y 0
 
 // Coordinates of the pixel whose neighborhood needs to rendered (useful for algorithms
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 545
-#define DEBUG_PIXEL_Y 543
+#define DEBUG_PIXEL_X 506
+#define DEBUG_PIXEL_Y 344
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -90,6 +91,8 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
     m_restir_di_state.output_reservoirs = m_restir_di_state.spatial_output_reservoirs_1.data();
 
     m_restir_gi_state.initial_candidates_reservoirs.resize(width * height);
+    m_restir_gi_state.temporal_reservoirs.resize(width * height);
+    m_restir_gi_state.spatial_reservoirs.resize(width * height);
 
     m_g_buffer.resize(width * height);
     m_g_buffer_prev_frame.resize(width * height);
@@ -276,6 +279,10 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.aux_buffers.restir_reservoir_buffer_3 = m_restir_di_state.spatial_output_reservoirs_2.data();
 
     m_render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer = m_restir_gi_state.initial_candidates_reservoirs.data();
+    m_render_data.render_settings.restir_gi_settings.temporal_pass.input_reservoirs = m_restir_gi_state.initial_candidates_reservoirs.data();
+    m_render_data.render_settings.restir_gi_settings.temporal_pass.output_reservoirs = m_restir_gi_state.temporal_reservoirs.data();
+    m_render_data.render_settings.restir_gi_settings.spatial_pass.input_reservoirs = m_restir_gi_state.temporal_reservoirs.data();
+    m_render_data.render_settings.restir_gi_settings.spatial_pass.output_reservoirs = m_restir_gi_state.spatial_reservoirs.data();
 
     float3 grid_min_point_with_envmap, grid_max_point_with_envmap;
     m_nee_plus_plus.base_grid_min_point = parsed_scene.metadata.scene_bounding_box.mini;
@@ -383,8 +390,7 @@ void CPURenderer::render()
 #if PathSamplingStrategy == PSS_BSDF
         tracing_pass();
 #elif PathSamplingStrategy == PSS_RESTIR_GI
-        restir_gi_initial_candidates_pass();
-        restir_gi_shading_pass();
+        ReSTIR_GI_pass();
 #endif
 
 
@@ -509,7 +515,7 @@ void CPURenderer::debug_render_pass(std::function<void(int, int)> render_pass_fu
 void CPURenderer::nee_plus_plus_cache_visibility_pass()
 {
     debug_render_pass([this](int x, int y) {
-        NEEPlusPlusCachingPrepass(m_render_data, /* caching sample count */ 8, m_resolution, x, y);
+        NEEPlusPlusCachingPrepass(m_render_data, /* caching sample count */ 8, x, y);
     });
 
     nee_plus_plus_memcpy_accumulation(/* frame_number */ 0);
@@ -518,7 +524,7 @@ void CPURenderer::nee_plus_plus_cache_visibility_pass()
 void CPURenderer::camera_rays_pass()
 {
     debug_render_pass([this](int x, int y) {
-        CameraRays(m_render_data, m_resolution, x, y);
+        CameraRays(m_render_data, x, y);
     });
 }
 
@@ -536,16 +542,16 @@ void CPURenderer::ReSTIR_DI_pass()
     }
     else
     {
-        if (m_render_data.render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
+        if (m_render_data.render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
         {
             configure_ReSTIR_DI_temporal_pass();
             ReSTIR_DI_temporal_reuse_pass();
         }
 
 
-        if (m_render_data.render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)
+        if (m_render_data.render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass)
         {
-            for (int spatial_reuse_pass = 0; spatial_reuse_pass < m_render_data.render_settings.restir_di_settings.spatial_pass.number_of_passes; spatial_reuse_pass++)
+            for (int spatial_reuse_pass = 0; spatial_reuse_pass < m_render_data.render_settings.restir_di_settings.common_spatial_pass.number_of_passes; spatial_reuse_pass++)
             {
                 configure_ReSTIR_DI_spatial_pass(spatial_reuse_pass);
                 ReSTIR_DI_spatial_reuse_pass();
@@ -555,6 +561,13 @@ void CPURenderer::ReSTIR_DI_pass()
 
     configure_ReSTIR_DI_output_buffer();
     m_restir_di_state.odd_frame = !m_restir_di_state.odd_frame;
+}
+
+void CPURenderer::ReSTIR_GI_pass()
+{
+    restir_gi_initial_candidates_pass();
+    restir_gi_spatial_reuse_pass();
+    restir_gi_shading_pass();
 }
 
 LightPresamplingParameters CPURenderer::configure_ReSTIR_DI_light_presampling_pass()
@@ -620,21 +633,21 @@ void CPURenderer::launch_ReSTIR_DI_initial_candidates_pass()
     configure_ReSTIR_DI_initial_pass();
 
     debug_render_pass([this](int x, int y) {
-        ReSTIR_DI_InitialCandidates(m_render_data, m_resolution, x, y);
+        ReSTIR_DI_InitialCandidates(m_render_data, x, y);
     });
 }
 
 void CPURenderer::configure_ReSTIR_DI_temporal_pass()
 {
     m_render_data.random_seed = m_rng.xorshift32();
-    m_render_data.render_settings.restir_di_settings.temporal_pass.permutation_sampling_random_bits = m_rng.xorshift32();
+    m_render_data.render_settings.restir_di_settings.common_temporal_pass.permutation_sampling_random_bits = m_rng.xorshift32();
 
     // The input of the temporal pass is the output of last frame's
     // ReSTIR (and also the initial candidates but this is implicit
     // and "hardcoded in the shader"
     m_render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs = m_render_data.render_settings.restir_di_settings.restir_output_reservoirs;
 
-    if (m_render_data.render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)
+    if (m_render_data.render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass)
         // If we're going to do spatial reuse, reuse the initial
         // candidate reservoirs to store the output of the temporal pass.
         // The spatial reuse pass will read form that buffer.
@@ -661,7 +674,7 @@ void CPURenderer::configure_ReSTIR_DI_temporal_pass()
 void CPURenderer::configure_ReSTIR_DI_temporal_pass_for_fused_spatiotemporal()
 {
     m_render_data.random_seed = m_rng.xorshift32();
-    m_render_data.render_settings.restir_di_settings.temporal_pass.permutation_sampling_random_bits = m_rng.xorshift32();
+    m_render_data.render_settings.restir_di_settings.common_temporal_pass.permutation_sampling_random_bits = m_rng.xorshift32();
 
     // The input of the temporal pass is the output of last frame's
     // ReSTIR (and also the initial candidates but this is implicit
@@ -681,7 +694,7 @@ void CPURenderer::configure_ReSTIR_DI_spatial_pass(int spatial_pass_index)
 
     if (spatial_pass_index == 0)
     {
-        if (m_render_data.render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
+        if (m_render_data.render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
             // For the first spatial reuse pass, we hardcode reading from the output of the temporal pass and storing into 'spatial_output_reservoirs_1'
             m_render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs = m_render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs;
         else
@@ -744,11 +757,11 @@ void CPURenderer::configure_ReSTIR_DI_output_buffer()
 {
     // Keeping in mind which was the buffer used last for the output of the spatial reuse pass as this is the buffer that
         // we're going to use as the input to the temporal reuse pass of the next frame
-    if (m_render_data.render_settings.restir_di_settings.spatial_pass.do_spatial_reuse_pass)
+    if (m_render_data.render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass)
         // If there was spatial reuse, using the output of the spatial reuse pass as the input of the temporal
         // pass of next frame
         m_render_data.render_settings.restir_di_settings.restir_output_reservoirs = m_render_data.render_settings.restir_di_settings.spatial_pass.output_reservoirs;
-    else if (m_render_data.render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass)
+    else if (m_render_data.render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
         // If there was a temporal reuse pass, using that output as the input of the next temporal reuse pass
         m_render_data.render_settings.restir_di_settings.restir_output_reservoirs = m_render_data.render_settings.restir_di_settings.temporal_pass.output_reservoirs;
     else
@@ -759,21 +772,21 @@ void CPURenderer::configure_ReSTIR_DI_output_buffer()
 void CPURenderer::ReSTIR_DI_temporal_reuse_pass()
 {
     debug_render_pass([this](int x, int y) {
-        ReSTIR_DI_TemporalReuse(m_render_data, m_resolution, x, y);
+        ReSTIR_DI_TemporalReuse(m_render_data, x, y);
     });
 }
 
 void CPURenderer::ReSTIR_DI_spatial_reuse_pass()
 {
     debug_render_pass([this](int x, int y) {
-        ReSTIR_DI_SpatialReuse(m_render_data, m_resolution, x, y);
+        ReSTIR_DI_SpatialReuse(m_render_data, x, y);
     });
 }
 
 void CPURenderer::ReSTIR_DI_spatiotemporal_reuse_pass()
 {
     debug_render_pass([this](int x, int y) {
-        ReSTIR_DI_SpatiotemporalReuse(m_render_data, m_resolution, x, y);
+        ReSTIR_DI_SpatiotemporalReuse(m_render_data, x, y);
     });
 }
 
@@ -791,6 +804,16 @@ void CPURenderer::restir_gi_initial_candidates_pass()
 
     debug_render_pass([this](int x, int y) {
         ReSTIR_GI_InitialCandidates(m_render_data, x, y);
+    });
+}
+
+void CPURenderer::restir_gi_spatial_reuse_pass()
+{
+    if (m_render_data.render_settings.nb_bounces == 0)
+        return;
+
+    debug_render_pass([this](int x, int y) {
+        ReSTIR_GI_SpatialReuse(m_render_data, x, y);
     });
 }
 

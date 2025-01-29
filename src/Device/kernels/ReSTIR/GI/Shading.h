@@ -85,7 +85,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
     {
         // Only doing the ReSTIR GI stuff if we have more than 1 bounce
 
-        ReSTIRGIReservoir resampling_reservoir = render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer[pixel_index];
+        ReSTIRGIReservoir resampling_reservoir = render_data.render_settings.restir_gi_settings.spatial_pass.output_reservoirs[pixel_index];
         if (!resampling_reservoir.sample.outgoing_radiance_to_first_hit.is_black())
         {
             // Only doing the shading if we do actually have a sample
@@ -99,7 +99,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
                 // If we're here, it's supposedly because we do have a valid ReSTIR GI sample that is not null/black
                 // But because of float imprecisions, the BSDF may still end re-evaluating to 0.0f for that sample
                 // so we need that check here
-                camera_outgoing_radiance += bsdf_color * hippt::abs(hippt::dot(to_light_direction, shading_normal)) / bsdf_pdf * resampling_reservoir.sample.outgoing_radiance_to_first_hit;
+                camera_outgoing_radiance += bsdf_color * hippt::abs(hippt::dot(to_light_direction, shading_normal)) / bsdf_pdf * resampling_reservoir.sample.outgoing_radiance_to_first_hit * resampling_reservoir.UCW;
         }
     }
 

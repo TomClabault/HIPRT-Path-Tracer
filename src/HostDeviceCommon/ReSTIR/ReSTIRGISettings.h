@@ -6,6 +6,8 @@
 #ifndef HOST_DEVICE_RESTIR_GI_SETTINGS_H
 #define HOST_DEVICE_RESTIR_GI_SETTINGS_H
 
+#include "HostDeviceCommon/ReSTIR/ReSTIRGIDefaultSettings.h"
+
 struct ReSTIRGIReservoir;
 
 struct ReSTIRGIInitialCandidatesPassSettings
@@ -17,8 +19,6 @@ struct ReSTIRGIInitialCandidatesPassSettings
 
 struct ReSTIRGITemporalPassSettings
 {
-	bool temporal_buffer_clear_requested = true;
-
 	// Buffer that contains the input reservoirs for the temporal reuse pass
 	ReSTIRGIReservoir* input_reservoirs = nullptr;
 	// Buffer that contains the output reservoir of the temporal reuse pass
@@ -33,8 +33,10 @@ struct ReSTIRGISpatialPassSettings
 	ReSTIRGIReservoir* output_reservoirs = nullptr;
 };
 
-struct ReSTIRGISettings
+struct ReSTIRGISettings : public ReSTIRCommonSettings
 {
+	ReSTIRGISettings() : ReSTIRCommonSettings(RESTIR_GI_DEFAULT_COMMON_SETTINGS) {}
+
 	ReSTIRGIInitialCandidatesPassSettings initial_candidates;
 	ReSTIRGITemporalPassSettings temporal_pass;
 	ReSTIRGISpatialPassSettings spatial_pass;

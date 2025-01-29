@@ -14,6 +14,7 @@
 #include "Device/includes/ReSTIR/DI/SpatiotemporalMISWeight.h"
 #include "Device/includes/ReSTIR/DI/SpatiotemporalNormalizationWeight.h"
 #include "Device/includes/ReSTIR/DI/Surface.h"
+#include "Device/includes/ReSTIR/DI/TargetFunction.h"
 #include "Device/includes/ReSTIR/DI/Utils.h"
 #include "Device/includes/Sampling.h"
 
@@ -38,7 +39,7 @@
 
 HIPRT_HOST_DEVICE HIPRT_INLINE bool do_include_spatial_visibility_term_or_not(const HIPRTRenderData& render_data, int current_neighbor_index)
 {
-	const ReSTIRDISpatialPassSettings& spatial_settings = render_data.render_settings.restir_di_settings.spatial_pass;
+	const ReSTIRCommonSpatialPassSettings& spatial_settings = render_data.render_settings.restir_di_settings.common_spatial_pass;
 	bool visibility_only_on_last_pass = spatial_settings.do_visibility_only_last_pass;
 	bool is_last_pass = spatial_settings.spatial_pass_index == spatial_settings.number_of_passes - 1;
 
@@ -66,10 +67,15 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool do_include_spatial_visibility_term_or_not(co
  * Returns -1 if there is no valid temporal neighbor.
  * The linear buffer index of the temporal neighbor otherwise
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE int3 load_temporal_neighbor_data(const HIPRTRenderData& render_data, const ReSTIRDISurface& center_pixel_surface, int center_pixel_index, int2 res, 
-	ReSTIRDIReservoir& out_temporal_neighbor_reservoir, ReSTIRDISurface& out_temporal_neighbor_surface, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE int3 load_spatiotemporal_neighbor_data(const HIPRTRenderData& render_data, 
+																	  const ReSTIRDISurface& center_pixel_surface, int center_pixel_index, 
+																	  ReSTIRDIReservoir& out_temporal_neighbor_reservoir, ReSTIRDISurface& out_temporal_neighbor_surface, 
+																	  Xorshift32Generator& random_number_generator)
 {
-	int3 temporal_neighbor_pixel_index_and_pos = find_temporal_neighbor_index(render_data, render_data.g_buffer.primary_hit_position[center_pixel_index], center_pixel_surface.shading_normal, res, center_pixel_index, random_number_generator);
+	int3 temporal_neighbor_pixel_index_and_pos = find_temporal_neighbor_index(render_data, 
+		render_data.render_settings.restir_di_settings.common_temporal_pass,
+		render_data.render_settings.restir_di_settings.neighbor_similarity_settings,
+		render_data.g_buffer.primary_hit_position[center_pixel_index], center_pixel_surface.shading_normal, center_pixel_index, random_number_generator);
 	if (temporal_neighbor_pixel_index_and_pos.x == -1 || render_data.render_settings.freeze_random)
 		// Temporal occlusion / disoccusion --> temporal neighbor is invalid,
 		// we're only going to resample the initial candidates so let's set that as
@@ -110,19 +116,28 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int3 load_temporal_neighbor_data(const HIPRTRende
  * the corresponding neighbor was valid or not (can be reused later to avoid having to
  * re-evauate the heuristics). Neighbor 0 is LSB.
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE void count_valid_spatiotemporal_neighbors(const HIPRTRenderData& render_data, const ReSTIRDISurface& center_pixel_surface, int center_pixel_index, int2 temporal_neighbor_position, int2 res, float2 cos_sin_theta_rotation, int& out_valid_neighbor_count, int& out_valid_neighbor_M_sum, int& out_neighbor_heuristics_cache)
+HIPRT_HOST_DEVICE HIPRT_INLINE void count_valid_spatiotemporal_neighbors(const HIPRTRenderData& render_data, 
+																		 const ReSTIRCommonSpatialPassSettings& spatial_pass_settings, 
+																		 const ReSTIRCommonNeighborSimiliaritySettings& neighbor_similarity_settings,
+																		 const ReSTIRDISurface& center_pixel_surface, 
+																		 int center_pixel_index, int2 temporal_neighbor_position, float2 cos_sin_theta_rotation, 
+																		 int& out_valid_neighbor_count, int& out_valid_neighbor_M_sum, int& out_neighbor_heuristics_cache)
 {
-	int reused_neighbors_count = render_data.render_settings.restir_di_settings.spatial_pass.reuse_neighbor_count;
+	int reused_neighbors_count = spatial_pass_settings.reuse_neighbor_count;
 
 	out_valid_neighbor_count = 0;
 	for (int neighbor_index = 0; neighbor_index < reused_neighbors_count; neighbor_index++)
 	{
-		int neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, neighbor_index, reused_neighbors_count, render_data.render_settings.restir_di_settings.spatial_pass.reuse_radius, temporal_neighbor_position, res, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
+		int neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, spatial_pass_settings, neighbor_index, temporal_neighbor_position, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
 		if (neighbor_pixel_index == -1)
 			// Neighbor out of the viewport / invalid
 			continue;
 
-		if (!check_neighbor_similarity_heuristics(render_data, neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point, center_pixel_surface.shading_normal, render_data.render_settings.use_prev_frame_g_buffer()))
+		if (!check_neighbor_similarity_heuristics(render_data,
+			neighbor_similarity_settings,
+			neighbor_pixel_index, center_pixel_index, 
+			center_pixel_surface.shading_point, center_pixel_surface.shading_normal, 
+			render_data.render_settings.use_prev_frame_g_buffer()))
 			continue;
 
 		out_valid_neighbor_M_sum += render_data.render_settings.restir_di_settings.spatial_pass.input_reservoirs[neighbor_pixel_index].M;
@@ -132,19 +147,19 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void count_valid_spatiotemporal_neighbors(const H
 }
 
 #ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderData render_data, int2 res)
+GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderData render_data)
 #else
-GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderData render_data, int2 res, int x, int y)
+GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderData render_data, int x, int y)
 #endif
 {
 #ifdef __KERNELCC__
 	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
 	const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
 #endif
-	if (x >= res.x || y >= res.y)
+	if (x >= render_data.render_settings.render_resolution.x || y >= render_data.render_settings.render_resolution.y)
 		return;
 
-	uint32_t center_pixel_index = (x + y * res.x);
+	uint32_t center_pixel_index = (x + y * render_data.render_settings.render_resolution.x);
 
 	if (!render_data.aux_buffers.pixel_active[center_pixel_index] || render_data.g_buffer.first_hit_prim_index[center_pixel_index] == -1)
 		// Pixel inactive because of adaptive sampling, returning
@@ -167,21 +182,21 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 		// Not doing ReSTIR on directly visible emissive materials
 		return;
 
-	if (render_data.render_settings.restir_di_settings.temporal_pass.temporal_buffer_clear_requested)
+	if (render_data.render_settings.restir_di_settings.common_temporal_pass.temporal_buffer_clear_requested)
 		// We requested a temporal buffer clear for ReSTIR DI
 		render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs[center_pixel_index] = ReSTIRDIReservoir();
 
 	ReSTIRDIReservoir temporal_neighbor_reservoir;
 	ReSTIRDISurface temporal_neighbor_surface;
-	int3 temporal_neighbor_pixel_index_and_pos = load_temporal_neighbor_data(render_data, center_pixel_surface, center_pixel_index, res, temporal_neighbor_reservoir, temporal_neighbor_surface, random_number_generator);
-	if ((temporal_neighbor_pixel_index_and_pos.x == -1 || temporal_neighbor_reservoir.M <= 1) && render_data.render_settings.restir_di_settings.spatial_pass.do_disocclusion_reuse_boost)
+	int3 temporal_neighbor_pixel_index_and_pos = load_spatiotemporal_neighbor_data(render_data, center_pixel_surface, center_pixel_index, temporal_neighbor_reservoir, temporal_neighbor_surface, random_number_generator);
+	if ((temporal_neighbor_pixel_index_and_pos.x == -1 || temporal_neighbor_reservoir.M <= 1) && render_data.render_settings.restir_di_settings.common_spatial_pass.do_disocclusion_reuse_boost)
 		// Increasing the number of spatial samples for disoclussions
-		render_data.render_settings.restir_di_settings.spatial_pass.reuse_neighbor_count = render_data.render_settings.restir_di_settings.spatial_pass.disocclusion_reuse_count;
+		render_data.render_settings.restir_di_settings.common_spatial_pass.reuse_neighbor_count = render_data.render_settings.restir_di_settings.common_spatial_pass.disocclusion_reuse_count;
 
 	// Rotation that is going to be used to rotate the points generated by the Hammersley sampler
 	// for generating the spatial neighbors location to resample
 	float rotation_theta;
-	if (render_data.render_settings.restir_di_settings.spatial_pass.do_neighbor_rotation)
+	if (render_data.render_settings.restir_di_settings.common_spatial_pass.do_neighbor_rotation)
 		rotation_theta = M_TWO_PI * random_number_generator();
 	else
 		rotation_theta = 0.0f;
@@ -198,7 +213,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 	int neighbor_heuristics_cache = 0;
 	int valid_neighbors_count = 0;
 	int valid_neighbors_M_sum = 0;
-	count_valid_spatiotemporal_neighbors(render_data, center_pixel_surface, center_pixel_index, make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z), res, cos_sin_theta_rotation, valid_neighbors_count, valid_neighbors_M_sum, neighbor_heuristics_cache);
+	count_valid_spatiotemporal_neighbors(render_data, 
+		render_data.render_settings.restir_di_settings.common_spatial_pass, render_data.render_settings.restir_di_settings.neighbor_similarity_settings,
+		center_pixel_surface, center_pixel_index, make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z), cos_sin_theta_rotation, 
+		valid_neighbors_count, valid_neighbors_M_sum, neighbor_heuristics_cache);
 	if (temporal_neighbor_pixel_index_and_pos.x != -1 && temporal_neighbor_reservoir.M > 0)
 	{
 		// Adding the temporal neighbor to the count 
@@ -345,7 +363,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 
 	// Resampling the neighbors. Using neighbors + 1 here so that
 	// we can use the last iteration of the loop to resample the *initial candidates reservoir*
-	int reused_neighbors_count = render_data.render_settings.restir_di_settings.spatial_pass.reuse_neighbor_count;
+	int reused_neighbors_count = render_data.render_settings.restir_di_settings.common_spatial_pass.reuse_neighbor_count;
 	int start_index = 0;
 	if (valid_neighbors_M_sum == 0)
 		// No spatial resampling to do, only the initial candidate reservoir (potentially)
@@ -371,8 +389,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 			neighbor_pixel_index = center_pixel_index;
 		else
 			// Resampling around the temporal neighbor location
-			neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, spatial_neighbor_index, reused_neighbors_count, render_data.render_settings.restir_di_settings.spatial_pass.reuse_radius, 
-				make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z), res, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
+			neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, render_data.render_settings.restir_di_settings.common_spatial_pass, spatial_neighbor_index, 
+				make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z), cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
 
 		if (neighbor_pixel_index == -1)
 			// Neighbor out of the viewport
@@ -383,8 +401,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 			// 
 			// Only checking the heuristic if we have more than 32 neighbors (does not fit in the heuristic cache)
 			// If we have less than 32 neighbors, we've already checked the cache at the beginning of this for loop
-			if (!check_neighbor_similarity_heuristics(render_data, neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point, center_pixel_surface.shading_normal, render_data.render_settings.use_prev_frame_g_buffer()))
+			if (!check_neighbor_similarity_heuristics(render_data,
+				render_data.render_settings.restir_di_settings.neighbor_similarity_settings,
+				neighbor_pixel_index, center_pixel_index,
+				center_pixel_surface.shading_point, center_pixel_surface.shading_normal,
+				render_data.render_settings.use_prev_frame_g_buffer()))
+			{
 				continue;
+			}
 
 		// Neighbor surface needed for roughness m-capping and jacobian determinant
 		ReSTIRDIReservoir neighbor_reservoir;
@@ -537,7 +561,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 		spatiotemporal_output_reservoir.sample, spatiotemporal_output_reservoir.weight_sum, 
 		center_pixel_surface, temporal_neighbor_surface,
 		initial_candidates_reservoir.M, temporal_neighbor_reservoir.M, center_pixel_index, 
-		make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z), res, cos_sin_theta_rotation, 
+		make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z), cos_sin_theta_rotation, 
 		normalization_numerator, normalization_denominator, random_number_generator);
 #elif ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_MIS_LIKE
 	normalization_function.get_normalization(render_data, 
@@ -605,7 +629,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 	//
 	// We only need this if we're going to temporally reuse (because then the output of the spatial reuse must be correct
 	// for the temporal reuse pass) or if we have multiple spatial reuse passes and this is not the last spatial pass
-	if (render_data.render_settings.restir_di_settings.temporal_pass.do_temporal_reuse_pass || render_data.render_settings.restir_di_settings.spatial_pass.number_of_passes - 1 != render_data.render_settings.restir_di_settings.spatial_pass.spatial_pass_index)
+	if (render_data.render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass || render_data.render_settings.restir_di_settings.common_spatial_pass.number_of_passes - 1 != render_data.render_settings.restir_di_settings.common_spatial_pass.spatial_pass_index)
 		ReSTIR_DI_visibility_reuse(render_data, spatiotemporal_output_reservoir, center_pixel_surface.shading_point, center_pixel_surface.last_hit_primitive_index, random_number_generator);
 #endif
 

@@ -345,7 +345,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F principled_glass_eval(const HIPRTRend
     else
     {
         // Computing the generalized (that takes refraction into account) half vector
-        local_half_vector;
         if (reflecting)
             local_half_vector = local_to_light_direction + local_view_direction;
         else

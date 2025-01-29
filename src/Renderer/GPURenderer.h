@@ -24,6 +24,7 @@
 #include "Renderer/RenderPasses/RenderGraph.h"
 #include "Renderer/StatusBuffersValues.h"
 #include "Renderer/RenderPasses/ReSTIRDIRenderPass.h"
+#include "Renderer/RenderPasses/ReSTIRGIRenderPass.h"
 #include "Scene/Camera.h"
 #include "Scene/CameraAnimation.h"
 #include "Scene/SceneParser.h"
@@ -49,23 +50,6 @@ public:
 	// List of compiler options that will be specific to each kernel. We don't want these options
 	// to be synchronized between kernels
 	static const std::unordered_set<std::string> KERNEL_OPTIONS_NOT_SYNCHRONIZED;
-
-	///**
-	// * This map contains constants that are the name of the main function of the kernels, their entry points.
-	// * They are used when compiling the kernels.
-	// * 
-	// * This means that if you define your camera ray kernel main function as:
-	// * 
-	// * GLOBAL_KERNEL_SIGNATURE(void) CameraRays(HIPRTRenderData render_data, int2 res)
-	// * 
-	// * Then KERNEL_FUNCTION_NAMES[CAMERA_RAYS_KERNEL_ID] = "CameraRays"
-	// */
-	//static const std::unordered_map<std::string, std::string> KERNEL_FUNCTION_NAMES;
-
-	///**
-	// * Same as 'KERNELfUNCTION_NAMES' but for kernel files
-	// */
-	//static const std::unordered_map<std::string, std::string> KERNEL_FILES;
 
 	// Key for indexing m_render_pass_times that contains the times per passes
 	// This key is for the time of the whole frame
@@ -114,6 +98,7 @@ public:
 
 	std::shared_ptr<GMoNRenderPass> get_gmon_render_pass();
 	std::shared_ptr<ReSTIRDIRenderPass> get_ReSTIR_DI_render_pass();
+	std::shared_ptr<ReSTIRGIRenderPass> get_ReSTIR_GI_render_pass();
 
 	RenderGraph& get_render_graph();
 
