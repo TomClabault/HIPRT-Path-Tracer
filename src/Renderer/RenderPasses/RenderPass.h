@@ -77,6 +77,20 @@ public:
 	virtual void resize(unsigned int new_width, unsigned int new_height) = 0;
 
 	/**
+	 * Function before 'pre_render_update()' that should compile kernels that haven't
+	 * been compiled so far if necessary
+	 * 
+	 * For example, in a ReSTIR DI render pass, if the temporal reuse is disabled 
+	 * when the application starts, the temporal reuse kernel will not be compiled 
+	 * because it isn't needed. However, if the user then decides to enable temporal 
+	 * reuse at runtime, the temporal reuse will now have to be compiled and this 
+	 * function is in charge.
+	 * 
+	 * Should return true if at least one kernel was compiled/recompiled, false otherwise
+	 */
+	virtual bool pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets = {}, bool silent = false, bool use_cache = true) { return false; }
+
+	/**
 	 * Called at each frame, before launch()
 	 * 
 	 * Buffer allocations / deallocations depending on whether or not this render pass

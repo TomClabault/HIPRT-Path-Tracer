@@ -15,6 +15,7 @@
 #include "Threads/ThreadFunctions.h"
 #include "Threads/ThreadManager.h"
 #include "Threads/ThreadFunctions.h"
+#include "UI/RenderWindow.h"
 
 #include <Orochi/OrochiUtils.h>
 
@@ -234,7 +235,7 @@ void GPURenderer::setup_render_passes()
 	// numbers are the best may vary.)
 	
 	// Configuring the render passes
-	m_render_graph.clear();
+	m_render_graph = RenderGraph(this);
 
 	std::shared_ptr<FillGBufferRenderPass> camera_rays_render_pass = std::make_shared<FillGBufferRenderPass>(this);
 
@@ -270,11 +271,14 @@ void GPURenderer::setup_render_passes()
 		m_nee_plus_plus.compile_finalize_accumulation_kernel(m_hiprt_orochi_ctx, m_func_name_sets);
 }
 
-void GPURenderer::pre_render_update(float delta_time)
+void GPURenderer::pre_render_update(float delta_time, RenderWindow* render_window)
 {
 	step_animations(delta_time);
 
 	//m_render_data_buffers_invalidated |= m_render_graph.update();
+	if (m_render_graph.pre_render_compilation_check(m_hiprt_orochi_ctx, m_func_name_sets, true, true))
+		// Some kernels have been recompiled, renderer is now dirty
+		render_window->set_render_dirty(true);
 	m_render_data_buffers_invalidated |= m_render_graph.pre_render_update(delta_time);
 
 	internal_pre_render_update_clear_device_status_buffers();

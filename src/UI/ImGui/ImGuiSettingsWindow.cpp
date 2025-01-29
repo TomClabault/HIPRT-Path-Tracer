@@ -796,7 +796,6 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 		if (ImGui::CollapsingHeader("Adaptive sampling"))
 		{
-
 			ImGui::TreePush("Adaptive sampling tree");
 
 			if (!render_settings.accumulate)
@@ -932,10 +931,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 						ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 						if (ImGui::Checkbox("Use Final Visibility", &render_settings.restir_di_settings.do_final_shading_visibility))
-						{
-							m_renderer->recompile_kernels();
 							m_render_window->set_render_dirty(true);
-						}
 
 						ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
@@ -1124,7 +1120,6 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 							{
 								render_settings.restir_di_settings.common_temporal_pass.temporal_buffer_clear_requested = true;
 
-								m_renderer->recompile_kernels();
 								m_render_window->set_render_dirty(true);
 							}
 							ImGuiRenderer::show_help_marker("If checked, the spatial and temporal pass will be fused into a single kernel call. "

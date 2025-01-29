@@ -75,7 +75,7 @@ struct ReSTIRDISettings : public ReSTIRCommonSettings
 	// Because the spatial must then resample without the output of the temporal pass, the spatial
 	// pass only resamples on the temporal reservoir buffer, not the temporal + initial candidates reservoir
 	// (which is the output of the temporal pass).
-	bool do_fused_spatiotemporal = false;
+	bool do_fused_spatiotemporal = true;
 
 	// Whether or not to trace a visibility ray when evaluating the final light sample produced by ReSTIR.
 	// This is strongly biased but allows good performance.
