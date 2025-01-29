@@ -216,7 +216,7 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_L
 			int neighbor_pixel_index;
 			if (neighbor != spatial_pass_settings.reuse_neighbor_count)
 			{
-				neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, neighbor, spatial_pass_settings, temporal_neighbor_coords, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
+				neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, spatial_pass_settings, neighbor, temporal_neighbor_coords, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
 
 				if (neighbor_pixel_index == -1)
 					// Invalid neighbor
@@ -284,7 +284,7 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_L
 		if (selected_neighbor == TEMPORAL_NEIGHBOR_ID)
 			out_normalization_nume += target_function_at_temporal_neighbor;
 
-		int temporal_M = ReSTIRDISettingsHelper::get_restir_settings(render_data).use_confidence_weights ? temporal_neighbor_M : 1;
+		int temporal_M = ReSTIRDISettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).use_confidence_weights ? temporal_neighbor_M : 1;
 		out_normalization_denom += target_function_at_temporal_neighbor * temporal_M;
 	}
 };

@@ -76,6 +76,25 @@ void ReSTIRGIRenderPass::resize(unsigned int new_width, unsigned int new_height)
 	m_initial_candidates_buffer.resize(new_width * new_height);
 }
 
+bool ReSTIRGIRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets, bool silent, bool use_cache)
+{
+	bool recompiled = false;
+
+	bool need_temporal = m_renderer->get_render_settings().restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass && !m_kernels[ReSTIRGIRenderPass::RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID]->has_been_compiled();
+	recompiled |= need_temporal;
+	if (need_temporal)
+		// Temporal needed
+		m_kernels[ReSTIRGIRenderPass::RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
+
+	bool need_spatial = m_renderer->get_render_settings().restir_gi_settings.common_spatial_pass.do_spatial_reuse_pass && !m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SPATIAL_REUSE_KERNEL_ID]->has_been_compiled();
+	recompiled |= need_spatial;
+	if (need_spatial)
+		// Spatial needed
+		m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SPATIAL_REUSE_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
+
+	return recompiled;
+}
+
 bool ReSTIRGIRenderPass::pre_render_update(float delta_time)
 {
 	MegaKernelRenderPass::pre_render_update(delta_time);

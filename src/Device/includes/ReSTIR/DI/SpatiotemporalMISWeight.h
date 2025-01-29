@@ -8,7 +8,9 @@
 
 #include "Device/includes/ReSTIR/DI/Utils.h"
 #include "Device/includes/ReSTIR/DI/MISWeightsCommon.h"
+#include "Device/includes/ReSTIR/DI/TargetFunction.h"
 #include "Device/includes/ReSTIR/GI/Reservoir.h"
+#include "Device/includes/ReSTIR/GI/TargetFunction.h"
 
 #define TEMPORAL_NEIGHBOR_ID 0
 

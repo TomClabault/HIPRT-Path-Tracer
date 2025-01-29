@@ -24,6 +24,7 @@ public:
 
 	virtual void resize(unsigned int new_width, unsigned int new_height) override;
 
+	virtual bool pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets = {}, bool silent = false, bool use_cache = true) override;
 	virtual bool pre_render_update(float delta_time) override;
 	virtual bool launch() override;
 	virtual void post_render_update() override;
@@ -37,15 +38,6 @@ public:
 	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_all_kernels() override;
 	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_tracing_kernels() override;
 
-	/**
-	 * 
-	 */
-	void update();
-
-	/**
-	 * Empties the render graph by deleting all the render passes
-	 */
-	void clear();
 	void add_render_pass(std::shared_ptr<RenderPass> render_pass);
 	std::shared_ptr<RenderPass> get_render_pass(const std::string& render_pass_name);
 	std::unordered_map<std::string, std::shared_ptr<RenderPass>> get_render_passes();

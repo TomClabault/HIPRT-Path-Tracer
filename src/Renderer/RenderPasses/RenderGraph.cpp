@@ -3,6 +3,7 @@
  * GNU GPL3 license copy: https://www.gnu.org/licenses/gpl-3.0.txt
  */
 
+#include "Renderer/GPURenderer.h"
 #include "Renderer/RenderPasses/RenderGraph.h"
 
 RenderGraph::RenderGraph() : RenderGraph(nullptr) {}
@@ -25,6 +26,19 @@ void RenderGraph::resize(unsigned int new_width, unsigned int new_height)
 {
 	for (auto& name_to_render_pass : m_render_passes)
 		name_to_render_pass.second->resize(new_width, new_height);
+}
+
+bool RenderGraph::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets, bool silent, bool use_cache)
+{
+	m_renderer->synchronize_kernel();
+
+	bool recompiled = false;
+	m_renderer->take_kernel_compilation_priority();
+	for (auto& name_to_render_pass : m_render_passes)
+		recompiled |= name_to_render_pass.second->pre_render_compilation_check(hiprt_orochi_ctx, func_name_sets, silent, use_cache);
+	m_renderer->release_kernel_compilation_priority();
+
+	return recompiled;
 }
 
 bool RenderGraph::pre_render_update(float delta_time)
@@ -143,13 +157,6 @@ std::map<std::string, std::shared_ptr<GPUKernel>> RenderGraph::get_tracing_kerne
 			out[name_to_kernel.first] = name_to_kernel.second;
 
 	return out;
-}
-
-void RenderGraph::clear()
-{
-	m_render_passes.clear();
-	m_render_pass_launched_this_frame_yet.clear();
-	m_render_pass_effectively_launched_this_frame.clear();
 }
 
 void RenderGraph::add_render_pass(std::shared_ptr<RenderPass> render_pass)

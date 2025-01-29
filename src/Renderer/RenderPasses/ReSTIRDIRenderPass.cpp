@@ -220,6 +220,37 @@ void ReSTIRDIRenderPass::resize(unsigned int new_width, unsigned int new_height)
 	}
 }
 
+bool ReSTIRDIRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets, bool silent, bool use_cache)
+{
+	bool recompiled = false;
+
+	bool need_spatiotemporal = m_renderer->get_render_settings().restir_di_settings.do_fused_spatiotemporal && !m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID]->has_been_compiled();
+	recompiled |= need_spatiotemporal;
+	if (need_spatiotemporal)
+		// Spatiotemporal is needed but hasn't been compiled yet
+		m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
+
+	bool need_temporal = m_renderer->get_render_settings().restir_di_settings.common_temporal_pass.do_temporal_reuse_pass && !m_renderer->get_render_settings().restir_di_settings.do_fused_spatiotemporal && !m_kernels[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID]->has_been_compiled();
+	recompiled |= need_temporal;
+	if (need_temporal)
+		// Temporal needed
+		m_kernels[ReSTIRDIRenderPass::RESTIR_DI_TEMPORAL_REUSE_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
+
+	bool need_spatial = m_renderer->get_render_settings().restir_di_settings.common_spatial_pass.do_spatial_reuse_pass && !m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID]->has_been_compiled();
+	recompiled |= need_spatial;
+	if (need_spatial)
+		// Spatial needed
+		m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIAL_REUSE_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
+
+	bool need_presampling = m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_DO_LIGHTS_PRESAMPLING) == KERNEL_OPTION_TRUE && !m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID]->has_been_compiled();
+	recompiled |= need_presampling;
+	if (need_presampling)
+		// Light pre sampling needed
+		m_kernels[ReSTIRDIRenderPass::RESTIR_DI_LIGHTS_PRESAMPLING_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
+
+	return recompiled;
+}
+
 void ReSTIRDIRenderPass::reset()
 {
 	odd_frame = false;

@@ -22,6 +22,8 @@
 extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
+// TODO add a pre_render_compilation_check() function
+
 // TODO demos:
 // new oren nayar BRDF: EON
 
@@ -931,7 +933,7 @@ void RenderWindow::render()
 
 			m_application_state->frame_number++;
 			m_application_state->last_GPU_submit_time = current_timestamp;
-			m_renderer->pre_render_update(delta_time_gpu);
+			m_renderer->pre_render_update(delta_time_gpu, this);
 			m_renderer->render();
 
 			buffer_upload_necessary = true;
