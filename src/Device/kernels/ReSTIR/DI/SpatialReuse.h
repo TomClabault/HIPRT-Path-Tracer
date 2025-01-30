@@ -71,7 +71,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	int2 center_pixel_coords = make_int2(x, y);
 
 	// Surface data of the center pixel
-	ReSTIRDISurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index, random_number_generator);
+	ReSTIRSurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index, random_number_generator);
 	if (center_pixel_surface.material.is_emissive())
 		// Not doing ReSTIR on emissive materials
 		return;
@@ -102,7 +102,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 		center_pixel_surface, center_pixel_coords, cos_sin_theta_rotation, valid_neighbors_count, valid_neighbors_M_sum, neighbor_heuristics_cache);
 
 
-	ReSTIRDISpatialResamplingMISWeight<ReSTIR_DI_BiasCorrectionWeights, /* IsReSTIRGI */ false> mis_weight_function;
+	ReSTIRSpatialResamplingMISWeight<ReSTIR_DI_BiasCorrectionWeights, /* IsReSTIRGI */ false> mis_weight_function;
 	// Resampling the neighbors. Using neighbors + 1 here so that
 	// we can use the last iteration of the loop to resample ourselves (the center pixel)
 	// 
@@ -256,7 +256,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	float normalization_numerator = 1.0f;
 	float normalization_denominator = 1.0f;
 
-	ReSTIRDISpatialNormalizationWeight<ReSTIR_DI_BiasCorrectionWeights, /* Is ReSTIR GI */ false> normalization_function;
+	ReSTIRSpatialNormalizationWeight<ReSTIR_DI_BiasCorrectionWeights, /* Is ReSTIR GI */ false> normalization_function;
 #if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_M
 	normalization_function.get_normalization(render_data, 
 		spatial_reuse_output_reservoir.weight_sum,

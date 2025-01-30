@@ -58,7 +58,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 	render_data.render_settings.restir_gi_settings.temporal_pass.output_reservoirs[center_pixel_index] = render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer[center_pixel_index];
 
 //	// Surface data of the center pixel
-//	ReSTIRDISurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index, random_number_generator);
+//	ReSTIRSurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index, random_number_generator);
 //	int temporal_neighbor_pixel_index = find_temporal_neighbor_index(render_data, render_data.g_buffer.primary_hit_position[center_pixel_index], center_pixel_surface.shading_normal, res, center_pixel_index, random_number_generator).x;
 //	if (temporal_neighbor_pixel_index == -1 || render_data.render_settings.freeze_random)
 //	{
@@ -87,9 +87,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 //	}
 //
 //	ReSTIRGIReservoir temporal_reuse_output_reservoir;
-//	ReSTIRDISurface temporal_neighbor_surface = get_pixel_surface(render_data, temporal_neighbor_pixel_index, render_data.render_settings.use_prev_frame_g_buffer(), random_number_generator);
+//	ReSTIRSurface temporal_neighbor_surface = get_pixel_surface(render_data, temporal_neighbor_pixel_index, render_data.render_settings.use_prev_frame_g_buffer(), random_number_generator);
 //
-//	ReSTIRDITemporalResamplingMISWeight<ReSTIR_GI_BiasCorrectionWeights, true> mis_weight_function;
+//	ReSTIRTemporalResamplingMISWeight<ReSTIR_GI_BiasCorrectionWeights, true> mis_weight_function;
 //
 //
 //	// /* ------------------------------- */
@@ -222,7 +222,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 //	float normalization_numerator = 1.0f;
 //	float normalization_denominator = 1.0f;
 //
-//	ReSTIRDITemporalNormalizationWeight<ReSTIR_GI_BiasCorrectionWeights> normalization_function;
+//	ReSTIRTemporalNormalizationWeight<ReSTIR_GI_BiasCorrectionWeights> normalization_function;
 //#if ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_MIS_GBH
 //	normalization_function.get_normalization(normalization_numerator, normalization_denominator);
 //#elif ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS

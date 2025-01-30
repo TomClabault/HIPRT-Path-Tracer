@@ -55,6 +55,7 @@ public:
 
     void ReSTIR_DI_pass();
     void ReSTIR_GI_pass();
+    void configure_input_output_buffers();
 
     LightPresamplingParameters configure_ReSTIR_DI_light_presampling_pass();
     void configure_ReSTIR_DI_initial_pass();

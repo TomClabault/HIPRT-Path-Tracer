@@ -12,13 +12,13 @@
 #include "HostDeviceCommon/ReSTIRSettingsHelper.h"
 
 template <int BiasCorrectionMode, bool IsReSTIRGI>
-struct ReSTIRDISpatialNormalizationWeight {};
+struct ReSTIRSpatialNormalizationWeight {};
 
 template <bool IsReSTIRGI>
-struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_M, IsReSTIRGI>
+struct ReSTIRSpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_M, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
-		float final_reservoir_weight_sum, const ReSTIRDISurface& center_pixel_surface,
+		float final_reservoir_weight_sum, const ReSTIRSurface& center_pixel_surface,
 		int2 center_pixel_coords,
 		float2 cos_sin_theta_rotation, float& out_normalization_nume, float& out_normalization_denom)
 	{
@@ -39,7 +39,7 @@ struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_M, Is
 		// so we're only going to set the denominator to that and the numerator isn't going to change
 		out_normalization_denom = 0.0f;
 
-		const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRDISettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
+		const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
 		for (int neighbor = 0; neighbor < spatial_pass_settings.reuse_neighbor_count + 1; neighbor++)
 		{
 			int neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, spatial_pass_settings, neighbor, center_pixel_coords, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
@@ -52,17 +52,17 @@ struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_M, Is
 				neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point, center_pixel_surface.shading_normal))
 				continue;
 
-			out_normalization_denom += ReSTIRDISettingsHelper::get_restir_spatial_pass_input_reservoir_M<IsReSTIRGI>(render_data, neighbor_pixel_index);
+			out_normalization_denom += ReSTIRSettingsHelper::get_restir_spatial_pass_input_reservoir_M<IsReSTIRGI>(render_data, neighbor_pixel_index);
 		}
 	}
 };
 
 template <bool IsReSTIRGI>
-struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z, IsReSTIRGI>
+struct ReSTIRSpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
 		const ReSTIRSampleType<IsReSTIRGI>& final_reservoir_sample, float final_reservoir_weight_sum,
-		const ReSTIRDISurface& center_pixel_surface,
+		const ReSTIRSurface& center_pixel_surface,
 		int2 center_pixel_coords,
 		float2 cos_sin_theta_rotation, float& out_normalization_nume, float& out_normalization_denom,
 		Xorshift32Generator& random_number_generator)
@@ -81,7 +81,7 @@ struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z, Is
 		out_normalization_denom = 0.0f;
 		out_normalization_nume = 1.0f;
 
-		const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRDISettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
+		const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
 		for (int neighbor = 0; neighbor < spatial_pass_settings.reuse_neighbor_count + 1; neighbor++)
 		{
 			int neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, spatial_pass_settings, neighbor, center_pixel_coords, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
@@ -95,7 +95,7 @@ struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z, Is
 				continue;
 
 			// Getting the surface data at the neighbor
-			ReSTIRDISurface neighbor_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
+			ReSTIRSurface neighbor_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
 
 			float target_function_at_neighbor;
 			if constexpr (IsReSTIRGI)
@@ -107,17 +107,17 @@ struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z, Is
 
 			if (target_function_at_neighbor > 0.0f)
 				// If the neighbor could have produced this sample...
-				out_normalization_denom += ReSTIRDISettingsHelper::get_restir_spatial_pass_input_reservoir_M<IsReSTIRGI>(render_data, neighbor_pixel_index);
+				out_normalization_denom += ReSTIRSettingsHelper::get_restir_spatial_pass_input_reservoir_M<IsReSTIRGI>(render_data, neighbor_pixel_index);
 		}
 	}
 };
 
 template <bool IsReSTIRGI>
-struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE, IsReSTIRGI>
+struct ReSTIRSpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
 		const ReSTIRSampleType<IsReSTIRGI>& final_reservoir_sample, float final_reservoir_weight_sum, 
-		const ReSTIRDISurface& center_pixel_surface,
+		const ReSTIRSurface& center_pixel_surface,
 		int selected_neighbor,
 		int2 center_pixel_coords,
 		float2 cos_sin_theta_rotation,
@@ -136,7 +136,7 @@ struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE, Is
 		out_normalization_denom = 0.0f;
 		out_normalization_nume = 0.0f;
 
-		const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRDISettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
+		const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
 		for (int neighbor = 0; neighbor < spatial_pass_settings.reuse_neighbor_count + 1; neighbor++)
 		{
 			int neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, spatial_pass_settings, neighbor, center_pixel_coords, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
@@ -150,7 +150,7 @@ struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE, Is
 				continue;
 
 			// Getting the surface data at the neighbor
-			ReSTIRDISurface neighbor_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
+			ReSTIRSurface neighbor_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
 
 			float target_function_at_neighbor;
 			if constexpr (IsReSTIRGI)
@@ -163,8 +163,8 @@ struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE, Is
 			if (target_function_at_neighbor > 0.0f)
 			{
 				int M = 1;
-				if (ReSTIRDISettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).use_confidence_weights)
-					M = ReSTIRDISettingsHelper::get_restir_spatial_pass_input_reservoir_M<IsReSTIRGI>(render_data, neighbor_pixel_index);
+				if (ReSTIRSettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).use_confidence_weights)
+					M = ReSTIRSettingsHelper::get_restir_spatial_pass_input_reservoir_M<IsReSTIRGI>(render_data, neighbor_pixel_index);
 
 				if (neighbor == selected_neighbor)
 					// Not multiplying by M here, this was done already when resampling the sample if we
@@ -177,7 +177,7 @@ struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE, Is
 };
 
 template <bool IsReSTIRGI>
-struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH, IsReSTIRGI>
+struct ReSTIRSpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{
@@ -188,7 +188,7 @@ struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH, IsR
 };
 
 template <bool IsReSTIRGI>
-struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS, IsReSTIRGI>
+struct ReSTIRSpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{
@@ -199,7 +199,7 @@ struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS
 };
 
 template <bool IsReSTIRGI>
-struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE, IsReSTIRGI>
+struct ReSTIRSpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{

@@ -33,6 +33,12 @@ struct ReSTIRGISpatialPassSettings
 	ReSTIRGIReservoir* output_reservoirs = nullptr;
 };
 
+enum ReSTIRGIDebugView
+{
+	NO_DEBUG = 0,
+	FINAL_RESERVOIR_UCW = 1,
+};
+
 struct ReSTIRGISettings : public ReSTIRCommonSettings
 {
 	ReSTIRGISettings() : ReSTIRCommonSettings(RESTIR_GI_DEFAULT_COMMON_SETTINGS) 
@@ -45,6 +51,11 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 	ReSTIRGIInitialCandidatesPassSettings initial_candidates;
 	ReSTIRGITemporalPassSettings temporal_pass;
 	ReSTIRGISpatialPassSettings spatial_pass;
+	
+	ReSTIRGIReservoir* restir_output_reservoirs;
+
+	ReSTIRGIDebugView debug_view = ReSTIRGIDebugView::NO_DEBUG;
+	float debug_view_scale_factor = 0.04f;
 };
 
 #endif

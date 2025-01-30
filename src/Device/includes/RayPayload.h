@@ -31,7 +31,7 @@ struct RayPayload
 	int bounce = 0;
 
 	// Material index of the last hit
-	unsigned int material_index;
+	//unsigned int material_index;
 	// Material of the last hit
 	DeviceUnpackedEffectiveMaterial material;
 

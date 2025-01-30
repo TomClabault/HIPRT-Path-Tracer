@@ -41,6 +41,10 @@ private:
 	void draw_environment_panel();
 
 	void draw_sampling_panel();
+	template<typename CommonReSTIRSettings>
+	void draw_ReSTIR_temporal_reuse_panel(CommonReSTIRSettings& restir_settings, std::function<void(void)> draw_before_panel = {});
+	template<typename CommonReSTIRSettings>
+	void draw_ReSTIR_spatial_reuse_panel(CommonReSTIRSettings& restir_settings, std::function<void(void)> draw_before_panel = {});
 	void draw_next_event_estimation_plus_plus_panel();
 	void draw_principled_bsdf_energy_conservation();
 	void display_ReSTIR_DI_bias_status(std::shared_ptr<GPUKernelCompilerOptions> kernel_options);

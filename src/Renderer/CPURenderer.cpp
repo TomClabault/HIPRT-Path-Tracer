@@ -31,7 +31,7 @@
  // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
  // allowing for fast step into that pixel with the debugger to see what's happening.
  // Otherwise if 0, all pixels of the image are rendered
-#define DEBUG_PIXEL 1
+#define DEBUG_PIXEL 0
 
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner.
 // If 1, it's bottom left corner.
@@ -45,18 +45,18 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 815
-#define DEBUG_PIXEL_Y 388
+#define DEBUG_PIXEL_X 478
+#define DEBUG_PIXEL_Y 198
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
-#define DEBUG_OTHER_FLIP_Y 0
+#define DEBUG_OTHER_FLIP_Y 1
 
 // Allows to render the neighborhood around the DEBUG_PIXEL_X/Y but to debug at the location
 // of DEBUG_OTHER_PIXEL_X/Y given below.
 // 
 // -1 to disable. If disabled, the pixel at (DEBUG_PIXEL_X, DEBUG_PIXEL_Y) will be debugged
-#define DEBUG_OTHER_PIXEL_X -1//485
-#define DEBUG_OTHER_PIXEL_Y -1//419
+#define DEBUG_OTHER_PIXEL_X -1
+#define DEBUG_OTHER_PIXEL_Y -1
 
 // If 1, a square of DEBUG_NEIGHBORHOOD_SIZE x DEBUG_NEIGHBORHOOD_SIZE pixels
 // will be rendered around the pixel to debug (given by DEBUG_PIXEL_X and
@@ -308,7 +308,7 @@ void CPURenderer::set_envmap(Image32Bit& envmap_image)
 
     if (envmap_image.width == 0 || envmap_image.height == 0)
     {
-        m_render_data.world_settings.ambient_light_type = AmbientLightType::UNIFORM;
+        m_render_data.world_settings.ambient_light_type = AmbientLightType::NONE;
         m_render_data.world_settings.uniform_light_color = ColorRGB32F(0.5f, 0.5f, 0.5f);
 
         std::cout << "Empty envmap set on the CPURenderer... Defaulting to uniform ambient light type" << std::endl;
@@ -566,10 +566,37 @@ void CPURenderer::ReSTIR_DI_pass()
 
 void CPURenderer::ReSTIR_GI_pass()
 {
+    configure_input_output_buffers();
+
     restir_gi_initial_candidates_pass();
     restir_gi_temporal_reuse_pass();
     restir_gi_spatial_reuse_pass();
     restir_gi_shading_pass();
+}
+
+void CPURenderer::configure_input_output_buffers()
+{
+    m_render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer = m_restir_gi_state.initial_candidates_reservoirs.data();
+
+    // The temporal reuse pass reads into the output of the spatial pass of the last frame + the initial candidates
+    // and outputs in the 'temporal buffer'
+    m_render_data.render_settings.restir_gi_settings.temporal_pass.input_reservoirs = m_restir_gi_state.initial_candidates_reservoirs.data();
+    m_render_data.render_settings.restir_gi_settings.temporal_pass.output_reservoirs = m_restir_gi_state.temporal_reservoirs.data();
+
+    // The spatial reuse pass spatially reuse on the output of the temporal pass in the 'temporal buffer' and
+    // stores in the 'spatial buffer'
+    if (m_render_data.render_settings.restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass)
+        m_render_data.render_settings.restir_gi_settings.spatial_pass.input_reservoirs = m_restir_gi_state.temporal_reservoirs.data();
+    else
+        m_render_data.render_settings.restir_gi_settings.spatial_pass.input_reservoirs = m_restir_gi_state.initial_candidates_reservoirs.data();
+    m_render_data.render_settings.restir_gi_settings.spatial_pass.output_reservoirs = m_restir_gi_state.spatial_reservoirs.data();
+
+    if (m_render_data.render_settings.restir_gi_settings.common_spatial_pass.do_spatial_reuse_pass)
+        m_render_data.render_settings.restir_gi_settings.restir_output_reservoirs = m_render_data.render_settings.restir_gi_settings.spatial_pass.output_reservoirs;
+    else if (m_render_data.render_settings.restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass)
+        m_render_data.render_settings.restir_gi_settings.restir_output_reservoirs = m_render_data.render_settings.restir_gi_settings.temporal_pass.output_reservoirs;
+    else
+        m_render_data.render_settings.restir_gi_settings.restir_output_reservoirs = m_render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer;
 }
 
 LightPresamplingParameters CPURenderer::configure_ReSTIR_DI_light_presampling_pass()

@@ -90,7 +90,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
     float bsdf_sample_pdf = 0.0f;
     ReSTIRGISample restir_gi_initial_sample;
     restir_gi_initial_sample.first_hit_normal = closest_hit_info.shading_normal;
-    restir_gi_initial_sample.first_hit_point = closest_hit_info.inter_point;
+    restir_gi_initial_sample.visible_point = closest_hit_info.inter_point;
 
     // + 1 to nb_bounces here because we want "0" bounces to still act as one
     // hit and to return some color
@@ -109,7 +109,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
                 if (bounce == 1)
                 {
                     restir_gi_initial_sample.second_hit_normal = closest_hit_info.shading_normal;
-                    restir_gi_initial_sample.second_hit_point = closest_hit_info.inter_point;
+                    restir_gi_initial_sample.sample_point = closest_hit_info.inter_point;
                 }
 
                 // For the BRDF calculations, bounces, ... to be correct, we need the normal to be in the same hemisphere as
@@ -127,10 +127,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
                     closest_hit_info.shading_normal = -closest_hit_info.shading_normal;
                 }*/
 
-
-                // Estimates direct lighting with next-event estimation and directly modifies ray_payload.ray_color
                 if (bounce > 0)
                     ray_payload.ray_color += estimate_direct_lighting(render_data, ray_payload, closest_hit_info, -ray.direction, x, y, mis_reuse, random_number_generator);
+
+                if (x == 478 && y == 521 && ray_payload.ray_color.luminance() > 0.0f)
+                    ray_payload.ray_color += ColorRGB32F();
 
                 if (bounce == 0)
                     restir_gi_initial_sample.seed = random_number_generator.m_state.seed;
@@ -157,7 +158,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
                     // temporal and spatial reuse passes recognize that this is an envmap path
                     restir_gi_initial_sample.second_hit_normal.x = RESTIR_GI_RECONNECTION_SURFACE_NORMAL_ENVMAP_VALUE;
                     // For envmap path, the direction is stored in the hit point
-                    restir_gi_initial_sample.second_hit_point = ray.direction;
+                    restir_gi_initial_sample.sample_point = ray.direction;
                 }
 
                 ray_payload.ray_color += path_tracing_miss_gather_envmap(render_data, ray_payload, ray.direction, pixel_index);

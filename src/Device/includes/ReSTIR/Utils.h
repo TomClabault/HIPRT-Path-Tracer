@@ -59,20 +59,20 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_jacobian_determinant_reconnection_shift
 {
 	float distance_to_reconnection_point_from_center;
 	float distance_to_reconnection_point_from_neighbor;
-	float3 to_reconnection_point_direction_from_center = reconnection_point - center_pixel_shading_point;
-	float3 to_reconnection_point_direction_from_neighbor = reconnection_point - neighbor_shading_point;
-	to_reconnection_point_direction_from_center /= (distance_to_reconnection_point_from_center = hippt::length(to_reconnection_point_direction_from_center));
-	to_reconnection_point_direction_from_neighbor /= (distance_to_reconnection_point_from_neighbor = hippt::length(to_reconnection_point_direction_from_neighbor));
+	float3 direction_to_reconnection_point_from_center = reconnection_point - center_pixel_shading_point;
+	float3 direction_to_reconnection_point_from_neighbor = reconnection_point - neighbor_shading_point;
+	direction_to_reconnection_point_from_center /= (distance_to_reconnection_point_from_center = hippt::length(direction_to_reconnection_point_from_center));
+	direction_to_reconnection_point_from_neighbor /= (distance_to_reconnection_point_from_neighbor = hippt::length(direction_to_reconnection_point_from_neighbor));
 
-	float cosine_at_reconnection_point_from_center = hippt::abs(hippt::dot(-to_reconnection_point_direction_from_center, reconnection_point_surface_normal));
-	float cosine_at_reconnection_point_from_neighbor = hippt::abs(hippt::dot(-to_reconnection_point_direction_from_neighbor, reconnection_point_surface_normal));
+	float cosine_at_reconnection_point_from_center = hippt::abs(hippt::dot(-direction_to_reconnection_point_from_center, reconnection_point_surface_normal));
+	float cosine_at_reconnection_point_from_neighbor = hippt::abs(hippt::dot(-direction_to_reconnection_point_from_neighbor, reconnection_point_surface_normal));
 
 	float cosine_ratio = cosine_at_reconnection_point_from_center / cosine_at_reconnection_point_from_neighbor;
 	float distance_squared_ratio = (distance_to_reconnection_point_from_neighbor * distance_to_reconnection_point_from_neighbor) / (distance_to_reconnection_point_from_center * distance_to_reconnection_point_from_center);
 
 	float jacobian = cosine_ratio * distance_squared_ratio;
 
-	float jacobian_clamp = 20.0f;
+	constexpr float jacobian_clamp = 2000.0f;
 	if (jacobian > jacobian_clamp || jacobian < 1.0f / jacobian_clamp || hippt::is_NaN(jacobian))
 		// Samples are too dissimilar, returning -1 to indicate that we must reject the sample
 		return -1;

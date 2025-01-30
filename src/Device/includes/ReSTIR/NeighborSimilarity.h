@@ -53,7 +53,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool check_neighbor_similarity_heuristics(const H
 																		 int neighbor_pixel_index, int center_pixel_index, 
 																		 const float3& current_shading_point, const float3& current_normal, bool previous_frame = false)
 {
-	const ReSTIRCommonNeighborSimiliaritySettings& neighbor_similarity_settings = ReSTIRDISettingsHelper::get_restir_neighbor_similarity_settings<IsReSTIRGI>(render_data);
+	const ReSTIRCommonNeighborSimiliaritySettings& neighbor_similarity_settings = ReSTIRSettingsHelper::get_restir_neighbor_similarity_settings<IsReSTIRGI>(render_data);
 
 	float3 neighbor_world_space_point;
 	float neighbor_roughness = 0.0f;

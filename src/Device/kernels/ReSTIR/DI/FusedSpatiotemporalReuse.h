@@ -16,6 +16,8 @@
 #include "Device/includes/ReSTIR/Surface.h"
 #include "Device/includes/ReSTIR/DI/TargetFunction.h"
 #include "Device/includes/ReSTIR/Utils.h"
+#include "Device/includes/ReSTIR/UtilsSpatial.h"
+#include "Device/includes/ReSTIR/UtilsTemporal.h"
 #include "Device/includes/Sampling.h"
 
 #include "HostDeviceCommon/HIPRTCamera.h"
@@ -68,8 +70,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool do_include_spatial_visibility_term_or_not(co
  * The linear buffer index of the temporal neighbor otherwise
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE int3 load_spatiotemporal_neighbor_data(const HIPRTRenderData& render_data, 
-																	  const ReSTIRDISurface& center_pixel_surface, int center_pixel_index, 
-																	  ReSTIRDIReservoir& out_temporal_neighbor_reservoir, ReSTIRDISurface& out_temporal_neighbor_surface, 
+																	  const ReSTIRSurface& center_pixel_surface, int center_pixel_index, 
+																	  ReSTIRDIReservoir& out_temporal_neighbor_reservoir, ReSTIRSurface& out_temporal_neighbor_surface, 
 																	  Xorshift32Generator& random_number_generator)
 {
 	int3 temporal_neighbor_pixel_index_and_pos = find_temporal_neighbor_index<false>(render_data,
@@ -115,11 +117,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int3 load_spatiotemporal_neighbor_data(const HIPR
  * re-evauate the heuristics). Neighbor 0 is LSB.
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE void count_valid_spatiotemporal_neighbors(const HIPRTRenderData& render_data, 
-																		 const ReSTIRDISurface& center_pixel_surface, 
+																		 const ReSTIRSurface& center_pixel_surface, 
 																		 int center_pixel_index, int2 temporal_neighbor_position, float2 cos_sin_theta_rotation, 
 																		 int& out_valid_neighbor_count, int& out_valid_neighbor_M_sum, int& out_neighbor_heuristics_cache)
 {
-	const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRDISettingsHelper::get_restir_spatial_pass_settings<false>(render_data);
+	const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<false>(render_data);
 
 	int reused_neighbors_count = spatial_pass_settings.reuse_neighbor_count;
 
@@ -174,7 +176,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 	int2 center_pixel_coords = make_int2(x, y);
 
 	// Surface data of the center pixel
-	ReSTIRDISurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index, random_number_generator);
+	ReSTIRSurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index, random_number_generator);
 	if (center_pixel_surface.material.is_emissive())
 		// Not doing ReSTIR on directly visible emissive materials
 		return;
@@ -184,7 +186,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 		render_data.render_settings.restir_di_settings.temporal_pass.input_reservoirs[center_pixel_index] = ReSTIRDIReservoir();
 
 	ReSTIRDIReservoir temporal_neighbor_reservoir;
-	ReSTIRDISurface temporal_neighbor_surface;
+	ReSTIRSurface temporal_neighbor_surface;
 	int3 temporal_neighbor_pixel_index_and_pos = load_spatiotemporal_neighbor_data(render_data, center_pixel_surface, center_pixel_index, temporal_neighbor_reservoir, temporal_neighbor_surface, random_number_generator);
 	if ((temporal_neighbor_pixel_index_and_pos.x == -1 || temporal_neighbor_reservoir.M <= 1) && render_data.render_settings.restir_di_settings.common_spatial_pass.do_disocclusion_reuse_boost)
 		// Increasing the number of spatial samples for disoclussions
@@ -222,7 +224,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 
 	ReSTIRDIReservoir spatiotemporal_output_reservoir;
 	ReSTIRDIReservoir initial_candidates_reservoir = render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs[center_pixel_index];
-	ReSTIRDISpatiotemporalResamplingMISWeight<ReSTIR_DI_BiasCorrectionWeights, /* IsReSTIRGI */ false> mis_weight_function;
+	ReSTIRSpatiotemporalResamplingMISWeight<ReSTIR_DI_BiasCorrectionWeights, /* IsReSTIRGI */ false> mis_weight_function;
 	if (temporal_neighbor_pixel_index_and_pos.x != -1)
 	{
 		// Resampling the temporal neighbor
@@ -428,7 +430,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 					target_function_at_center = ReSTIR_DI_evaluate_target_function<KERNEL_OPTION_FALSE>(render_data, neighbor_reservoir.sample, center_pixel_surface, random_number_generator);
 		}
 
-		ReSTIRDISurface neighbor_surface = get_pixel_surface(render_data, neighbor_pixel_index, render_data.render_settings.use_prev_frame_g_buffer(), random_number_generator);
+		ReSTIRSurface neighbor_surface = get_pixel_surface(render_data, neighbor_pixel_index, render_data.render_settings.use_prev_frame_g_buffer(), random_number_generator);
 
 		float jacobian_determinant = 1.0f;
 		// If the neighbor reservoir is invalid, do not compute the jacobian
@@ -544,7 +546,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 	float normalization_numerator = 1.0f;
 	float normalization_denominator = 1.0f;
 
-	ReSTIRDISpatiotemporalNormalizationWeight<ReSTIR_DI_BiasCorrectionWeights, /* Is ReSTIR GI */ false> normalization_function;
+	ReSTIRSpatiotemporalNormalizationWeight<ReSTIR_DI_BiasCorrectionWeights, /* Is ReSTIR GI */ false> normalization_function;
 #if ReSTIR_DI_BiasCorrectionWeights == RESTIR_DI_BIAS_CORRECTION_1_OVER_M
 	normalization_function.get_normalization(render_data, 
 		spatiotemporal_output_reservoir.weight_sum, initial_candidates_reservoir.M, 

@@ -82,29 +82,34 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
     float3 view_direction = render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index);
     
     ColorRGB32F camera_outgoing_radiance;
+
+    ReSTIRGIReservoir resampling_reservoir = render_data.render_settings.restir_gi_settings.restir_output_reservoirs[pixel_index];
+
     if (render_data.render_settings.nb_bounces > 0)
     {
         // Only doing the ReSTIR GI stuff if we have more than 1 bounce
-
-        ReSTIRGIReservoir resampling_reservoir = render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer[pixel_index];
         if (!resampling_reservoir.sample.outgoing_radiance_to_first_hit.is_black())
         {
             // Only doing the shading if we do actually have a sample
 
             float3 shading_normal = render_data.g_buffer.shading_normals[pixel_index].unpack();
-            float3 bounce_direction;
+            float3 restir_resampled_indirect_direction;
             if (ReSTIR_GI_is_envmap_path(resampling_reservoir.sample.second_hit_normal))
-                bounce_direction = resampling_reservoir.sample.second_hit_point;
+                restir_resampled_indirect_direction = resampling_reservoir.sample.sample_point;
             else
-                bounce_direction = hippt::normalize(resampling_reservoir.sample.second_hit_point - resampling_reservoir.sample.first_hit_point);
+                restir_resampled_indirect_direction = hippt::normalize(resampling_reservoir.sample.sample_point - resampling_reservoir.sample.visible_point);
 
             float bsdf_pdf;
-            ColorRGB32F bsdf_color = principled_bsdf_eval(render_data, ray_payload.material, ray_payload.volume_state, false, view_direction, shading_normal, bounce_direction, bsdf_pdf, 0, resampling_reservoir.sample.incident_light_info);
+            ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, ray_payload.material, ray_payload.volume_state, false, view_direction, shading_normal, closest_hit_info.geometric_normal, restir_resampled_indirect_direction, bsdf_pdf, random_number_generator, 0, resampling_reservoir.sample.incident_light_info);
             if (bsdf_pdf > 0.0f)
+            {
                 // If we're here, it's supposedly because we do have a valid ReSTIR GI sample that is not null/black
                 // But because of float imprecisions, the BSDF may still end re-evaluating to 0.0f for that sample
                 // so we need that check here
-                camera_outgoing_radiance += bsdf_color * hippt::abs(hippt::dot(bounce_direction, shading_normal)) * resampling_reservoir.sample.outgoing_radiance_to_first_hit * resampling_reservoir.UCW;
+
+                ColorRGB32F first_hit_throughput = bsdf_color * hippt::abs(hippt::dot(restir_resampled_indirect_direction, shading_normal)) * resampling_reservoir.UCW;
+                camera_outgoing_radiance += first_hit_throughput * resampling_reservoir.sample.outgoing_radiance_to_first_hit;
+            }
         }
     }
 
@@ -115,7 +120,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
     if (!sanity_check(render_data, ray_payload, x, y))
         return;
 
-    path_tracing_accumulate_color(render_data, camera_outgoing_radiance, pixel_index);
+    if (ray_payload.ray_color.luminance() > 10)
+        ray_payload.ray_color += ColorRGB32F();
+
+    if (render_data.render_settings.restir_gi_settings.debug_view == ReSTIRGIDebugView::FINAL_RESERVOIR_UCW)
+        path_tracing_accumulate_color(render_data, ColorRGB32F(resampling_reservoir.UCW) * render_data.render_settings.restir_gi_settings.debug_view_scale_factor, pixel_index);
+    else
+        // Regular output
+        path_tracing_accumulate_color(render_data, camera_outgoing_radiance, pixel_index);
 }
 
 #endif

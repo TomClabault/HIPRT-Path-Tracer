@@ -208,11 +208,11 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
         float candidate_weight = 0.0f;
         float3 sampled_bsdf_direction;
         ColorRGB32F bsdf_color;
-        BSDFIncidentLightInfo incident_ligth_info;
+        BSDFIncidentLightInfo incident_light_info;
 
         bsdf_color = bsdf_dispatcher_sample(render_data, ray_payload.material, ray_payload.volume_state, true, 
                                             view_direction, closest_hit_info.shading_normal, closest_hit_info.geometric_normal, sampled_bsdf_direction, 
-                                            bsdf_sample_pdf, random_number_generator, ray_payload.bounce, &incident_ligth_info);
+                                            bsdf_sample_pdf, random_number_generator, ray_payload.bounce, &incident_light_info);
 
         bool hit_found = false;
         float cosine_at_evaluated_point = 0.0f;
@@ -302,7 +302,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE RISReservoir sample_bsdf_and_lights_RIS_reservoir
         // https://computergraphics.stackexchange.com/questions/14123/lots-of-bad-samples-below-the-hemisphere-when-sampling-the-ggx-vndf
         float3 bsdf_ray_inter_point = closest_hit_info.inter_point + shadow_light_ray_hit_info.hit_distance * sampled_bsdf_direction;
         mis_ray_reuse.fill(shadow_light_ray_hit_info, bsdf_ray_inter_point, sampled_bsdf_direction, bsdf_color, bsdf_sample_pdf,
-            hit_found ? RayState::BOUNCE : RayState::MISSED, incident_ligth_info);
+            hit_found ? RayState::BOUNCE : RayState::MISSED, incident_light_info);
 
 
         reservoir.add_one_candidate(bsdf_RIS_sample, candidate_weight, random_number_generator);

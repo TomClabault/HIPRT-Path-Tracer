@@ -34,7 +34,7 @@ template <bool IsReSTIRGI>
 HIPRT_HOST_DEVICE HIPRT_INLINE int3 find_temporal_neighbor_index(const HIPRTRenderData& render_data,
 	const float3& current_shading_point, const float3& current_normal, int center_pixel_index, Xorshift32Generator& random_number_generator)
 {
-	const ReSTIRCommonTemporalPassSettings& temporal_pass_settings = ReSTIRDISettingsHelper::get_restir_temporal_pass_settings<IsReSTIRGI>(render_data);
+	const ReSTIRCommonTemporalPassSettings& temporal_pass_settings = ReSTIRSettingsHelper::get_restir_temporal_pass_settings<IsReSTIRGI>(render_data);
 
 	float3 previous_screen_space_point_xyz = matrix_X_point(render_data.prev_camera.view_projection, current_shading_point);
 	float2 previous_screen_space_point = make_float2(previous_screen_space_point_xyz.x, previous_screen_space_point_xyz.y);

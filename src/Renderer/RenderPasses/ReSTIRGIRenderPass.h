@@ -32,6 +32,7 @@ public:
 	virtual bool pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets, bool silent, bool use_cache) override;
 	virtual bool pre_render_update(float delta_time) override;
 	virtual bool launch() override;
+	void configure_input_output_buffers();
 	virtual void post_render_update() override;
 
 	virtual void update_render_data() override;

@@ -8,7 +8,7 @@
 
 #include "HostDeviceCommon/RenderData.h"
 
-struct ReSTIRDISettingsHelper
+struct ReSTIRSettingsHelper
 {
 	template <bool IsReSTIRGI>
 	struct ReSTIRSettingsTypeTemplate {};
