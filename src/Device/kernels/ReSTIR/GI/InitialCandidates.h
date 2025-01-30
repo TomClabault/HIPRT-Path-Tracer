@@ -87,15 +87,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
     MISBSDFRayReuse mis_reuse;
     bool intersection_found = closest_hit_info.primitive_index != -1;
 
-    ReSTIRDISurface first_hit_surface;
-    first_hit_surface.geometric_normal = closest_hit_info.geometric_normal;
-    first_hit_surface.shading_normal = closest_hit_info.shading_normal;
-    first_hit_surface.shading_point = closest_hit_info.inter_point;
-    first_hit_surface.view_direction = -ray.direction;
-    first_hit_surface.last_hit_primitive_index = closest_hit_info.primitive_index;
-    first_hit_surface.material = ray_payload.material;
-    first_hit_surface.ray_volume_state = ray_payload.volume_state;
-
     float bsdf_sample_pdf = 0.0f;
     ReSTIRGISample restir_gi_initial_sample;
     restir_gi_initial_sample.first_hit_normal = closest_hit_info.shading_normal;
@@ -145,14 +136,17 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
                     restir_gi_initial_sample.seed = random_number_generator.m_state.seed;
 
                 BSDFIncidentLightInfo incident_light_info;
-                float* restir_gi_bsdf_pdf = bounce == 0 ? &bsdf_sample_pdf : nullptr;
-                bool valid_indirect_bounce = path_tracing_restir_gi_compute_next_indirect_bounce(render_data, ray_payload, closest_hit_info, -ray.direction, ray, mis_reuse, random_number_generator, &incident_light_info, restir_gi_bsdf_pdf);
+                float bsdf_pdf;
+                bool valid_indirect_bounce = path_tracing_restir_gi_compute_next_indirect_bounce(render_data, ray_payload, closest_hit_info, -ray.direction, ray, mis_reuse, random_number_generator, &incident_light_info, &bsdf_pdf);
                 if (!valid_indirect_bounce)
                     // Bad BSDF sample (under the surface), killed by russian roulette, ...
                     break;
 
                 if (bounce == 0)
+                {
                     restir_gi_initial_sample.incident_light_info = incident_light_info;
+                    bsdf_sample_pdf = bsdf_pdf;
+                }
             }
             else
             {
@@ -191,7 +185,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
     float target_function = restir_gi_initial_sample.target_function;
     float source_pdf = bsdf_sample_pdf;
     float resampling_weight = 0.0f;
-    if (source_pdf > 0.0f) 
+    if (source_pdf > 0.0f)
         resampling_weight = mis_weight * restir_gi_initial_sample.target_function / source_pdf;
     ReSTIRGIReservoir restir_gi_initial_reservoir;
     restir_gi_initial_reservoir.add_one_candidate(restir_gi_initial_sample, resampling_weight, random_number_generator);
