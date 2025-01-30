@@ -572,7 +572,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 principled_glass_sample(const DevicePacked
             return reflected;
         }
         else
-            refract_ray(local_view_direction, microfacet_normal, sampled_direction, relative_eta);
+            sampled_direction = refract_ray(local_view_direction, microfacet_normal, relative_eta);
     }
 
     return sampled_direction;

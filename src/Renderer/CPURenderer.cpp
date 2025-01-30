@@ -15,6 +15,7 @@
 #include "Device/kernels/ReSTIR/DI/FusedSpatiotemporalReuse.h"
 #include "Device/kernels/ReSTIR/GI/InitialCandidates.h"
 #include "Device/kernels/ReSTIR/GI/SpatialReuse.h"
+#include "Device/kernels/ReSTIR/GI/TemporalReuse.h"
 #include "Device/kernels/ReSTIR/GI/Shading.h"
 
 #include "Renderer/Baker/GPUBaker.h"
@@ -30,7 +31,7 @@
  // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
  // allowing for fast step into that pixel with the debugger to see what's happening.
  // Otherwise if 0, all pixels of the image are rendered
-#define DEBUG_PIXEL 0
+#define DEBUG_PIXEL 1
 
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner.
 // If 1, it's bottom left corner.
@@ -44,8 +45,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 506
-#define DEBUG_PIXEL_Y 344
+#define DEBUG_PIXEL_X 815
+#define DEBUG_PIXEL_Y 388
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -566,6 +567,7 @@ void CPURenderer::ReSTIR_DI_pass()
 void CPURenderer::ReSTIR_GI_pass()
 {
     restir_gi_initial_candidates_pass();
+    restir_gi_temporal_reuse_pass();
     restir_gi_spatial_reuse_pass();
     restir_gi_shading_pass();
 }
@@ -804,6 +806,16 @@ void CPURenderer::restir_gi_initial_candidates_pass()
 
     debug_render_pass([this](int x, int y) {
         ReSTIR_GI_InitialCandidates(m_render_data, x, y);
+    });
+}
+
+void CPURenderer::restir_gi_temporal_reuse_pass()
+{
+    if (m_render_data.render_settings.nb_bounces == 0)
+        return;
+
+    debug_render_pass([this](int x, int y) {
+        ReSTIR_GI_TemporalReuse(m_render_data, x, y);
     });
 }
 

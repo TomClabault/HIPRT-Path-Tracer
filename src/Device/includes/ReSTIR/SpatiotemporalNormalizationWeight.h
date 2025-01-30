@@ -6,9 +6,9 @@
 #ifndef DEVICE_RESTIR_DI_SPATIOTEMPORAL_NORMALIZATION_WEIGHT_H
 #define DEVICE_RESTIR_DI_SPATIOTEMPORAL_NORMALIZATION_WEIGHT_H
 
-#include "Device/includes/ReSTIR/DI/MISWeightsCommon.h"
-#include "Device/includes/ReSTIR/DI/NeighborSimilarity.h"
-#include "Device/includes/ReSTIR/DI/Utils.h"
+#include "Device/includes/ReSTIR/MISWeightsCommon.h"
+#include "Device/includes/ReSTIR/NeighborSimilarity.h"
+#include "Device/includes/ReSTIR/Utils.h"
 
 #define TEMPORAL_NEIGHBOR_ID 0
 
@@ -43,7 +43,6 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVE
 		out_normalization_denom = 0.0f;
 
 		const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRDISettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
-		const ReSTIRCommonNeighborSimiliaritySettings& neighbor_similarity_settings = ReSTIRDISettingsHelper::get_restir_neighbor_similarity_settings<IsReSTIRGI>(render_data);
 		for (int neighbor = 0; neighbor < spatial_pass_settings.reuse_neighbor_count + 1; neighbor++)
 		{
 			// The last iteration of the loop is a special case that resamples the initial candidates reservoir
@@ -59,7 +58,7 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVE
 					// Neighbor out of the viewport
 					continue;
 
-				if (!check_neighbor_similarity_heuristics(render_data, neighbor_similarity_settings, 
+				if (!check_neighbor_similarity_heuristics<IsReSTIRGI>(render_data,
 					neighbor_pixel_index, center_pixel_index, 
 					center_pixel_surface.shading_point, center_pixel_surface.shading_normal, render_data.render_settings.use_prev_frame_g_buffer()))
 					continue;
@@ -114,7 +113,6 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVE
 		out_normalization_nume = 1.0f;
 
 		const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRDISettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
-		const ReSTIRCommonNeighborSimiliaritySettings& neighbor_similarity_settings = ReSTIRDISettingsHelper::get_restir_neighbor_similarity_settings<IsReSTIRGI>(render_data);
 		for (int neighbor = 0; neighbor < spatial_pass_settings.reuse_neighbor_count + 1; neighbor++)
 		{
 			// The last iteration of the loop is a special case that resamples the initial candidates reservoir
@@ -129,8 +127,7 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVE
 					// Invalid neighbor
 					continue;
 
-				if (!check_neighbor_similarity_heuristics(render_data, 
-					neighbor_similarity_settings, 
+				if (!check_neighbor_similarity_heuristics<IsReSTIRGI>(render_data,
 					neighbor_pixel_index, center_pixel_index, 
 					center_pixel_surface.shading_point, center_pixel_surface.shading_normal, render_data.render_settings.use_prev_frame_g_buffer()))
 					continue;
@@ -208,7 +205,6 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_L
 		out_normalization_nume = 0.0f;
 
 		const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRDISettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
-		const ReSTIRCommonNeighborSimiliaritySettings& neighbor_similarity_settings = ReSTIRDISettingsHelper::get_restir_neighbor_similarity_settings<IsReSTIRGI>(render_data);
 		for (int neighbor = 0; neighbor < spatial_pass_settings.reuse_neighbor_count + 1; neighbor++)
 		{
 			// The last iteration of the loop is a special case that resamples the initial candidates reservoir
@@ -222,8 +218,7 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_L
 					// Invalid neighbor
 					continue;
 
-				if (!check_neighbor_similarity_heuristics(render_data, 
-					neighbor_similarity_settings, 
+				if (!check_neighbor_similarity_heuristics<IsReSTIRGI>(render_data,
 					neighbor_pixel_index, center_pixel_index, 
 					center_pixel_surface.shading_point, center_pixel_surface.shading_normal, render_data.render_settings.use_prev_frame_g_buffer()))
 					continue;

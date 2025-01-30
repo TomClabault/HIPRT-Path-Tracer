@@ -11,7 +11,7 @@
 #include "Device/includes/Hash.h"
 #include "Device/includes/Intersect.h"
 #include "Device/includes/LightUtils.h"
-#include "Device/includes/ReSTIR/DI/Utils.h"
+#include "Device/includes/ReSTIR/Utils.h"
 #include "Device/includes/ReSTIR/DI/PresampledLight.h"
 
 #include "HostDeviceCommon/HIPRTCamera.h"

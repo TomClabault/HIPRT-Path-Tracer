@@ -11,12 +11,13 @@
 #include "Device/includes/Hash.h"
 #include "Device/includes/Intersect.h"
 #include "Device/includes/LightUtils.h"
-#include "Device/includes/ReSTIR/DI/NeighborSimilarity.h"
-#include "Device/includes/ReSTIR/DI/SpatialMISWeight.h"
-#include "Device/includes/ReSTIR/DI/SpatialNormalizationWeight.h"
-#include "Device/includes/ReSTIR/DI/Surface.h"
+#include "Device/includes/ReSTIR/NeighborSimilarity.h"
+#include "Device/includes/ReSTIR/SpatialMISWeight.h"
+#include "Device/includes/ReSTIR/SpatialNormalizationWeight.h"
+#include "Device/includes/ReSTIR/Surface.h"
+#include "Device/includes/ReSTIR/Utils.h"
+#include "Device/includes/ReSTIR/UtilsSpatial.h"
 #include "Device/includes/ReSTIR/DI/TargetFunction.h"
-#include "Device/includes/ReSTIR/DI/Utils.h"
 #include "Device/includes/Sampling.h"
 
 #include "HostDeviceCommon/HIPRTCamera.h"
@@ -35,32 +36,6 @@
  * [7] [Reddit Post for the Jacobian term needed] https://www.reddit.com/r/GraphicsProgramming/comments/1eo5hqr/restir_di_light_sample_pdf_confusion/
  * [8] [Rearchitecting Spatiotemporal Resampling for Production] https://research.nvidia.com/publication/2021-07_rearchitecting-spatiotemporal-resampling-production
  */
-
-HIPRT_HOST_DEVICE HIPRT_INLINE bool do_include_visibility_term_or_not(const HIPRTRenderData& render_data, int current_neighbor_index)
-{
-	const ReSTIRCommonSpatialPassSettings& spatial_settings = render_data.render_settings.restir_di_settings.common_spatial_pass;
-	bool visibility_only_on_last_pass = spatial_settings.do_visibility_only_last_pass;
-	bool is_last_pass = spatial_settings.spatial_pass_index == spatial_settings.number_of_passes - 1;
-
-	// Only using the visibility term on the last pass if so desired
-	bool include_target_function_visibility = visibility_only_on_last_pass && is_last_pass;
-	// Also allowing visibility if we want it at every pass
-	include_target_function_visibility |= !spatial_settings.do_visibility_only_last_pass;
-
-	// Only doing visibility for a few neighbors depending on 'neighbor_visibility_count'
-	include_target_function_visibility &= current_neighbor_index < spatial_settings.neighbor_visibility_count;
-
-	// Only doing visibility if we want it at all
-	include_target_function_visibility &= ReSTIR_DI_SpatialTargetFunctionVisibility;
-
-	// We don't want visibility for the center pixel because we're going to reuse the
-	// target function stored in the reservoir anyways
-	// Note: the center pixel has index 'spatial_settings.reuse_neighbor_count'
-	// while actual *neighbors* have index between [0, spatial_settings.reuse_neighbor_count - 1]
-	include_target_function_visibility &= current_neighbor_index != spatial_settings.reuse_neighbor_count;
-
-	return include_target_function_visibility;
-}
 
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_DI_SpatialReuse(HIPRTRenderData render_data)
@@ -124,7 +99,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 	int valid_neighbors_count = 0;
 	int valid_neighbors_M_sum = 0;
 	count_valid_spatial_neighbors<false>(render_data,
-		render_data.render_settings.restir_di_settings.common_spatial_pass, render_data.render_settings.restir_di_settings.neighbor_similarity_settings,
 		center_pixel_surface, center_pixel_coords, cos_sin_theta_rotation, valid_neighbors_count, valid_neighbors_M_sum, neighbor_heuristics_cache);
 
 
@@ -164,15 +138,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 			// 
 			// Only checking the heuristic if we have more than 32 neighbors (does not fit in the heuristic cache)
 			// If we have less than 32 neighbors, we've already checked the cache at the beginning of this for loop
-			if (!check_neighbor_similarity_heuristics(render_data, 
-				render_data.render_settings.restir_di_settings.neighbor_similarity_settings,
+			if (!check_neighbor_similarity_heuristics<false>(render_data,
 				neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point, center_pixel_surface.shading_normal))
 			 	continue;
 
 		ReSTIRDIReservoir neighbor_reservoir = input_reservoir_buffer[neighbor_pixel_index];
 		float target_function_at_center = 0.0f;
 
-		bool do_neighbor_target_function_visibility = do_include_visibility_term_or_not(render_data, neighbor_index);
+		bool do_neighbor_target_function_visibility = do_include_visibility_term_or_not<false>(render_data, neighbor_index);
 		if (neighbor_reservoir.UCW > 0.0f)
 		{
 			if (neighbor_index == reused_neighbors_count)

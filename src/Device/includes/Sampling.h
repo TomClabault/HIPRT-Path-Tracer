@@ -148,20 +148,20 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 reflect_ray(const float3& ray_direction, c
  * ray_direction and surface_normal are in the same hemisphere
  * 
  * relative_eta here must be eta_t / eta_i
+ * 
+ * No total internal reflection is assumed
  */
-HIPRT_HOST_DEVICE HIPRT_INLINE bool refract_ray(const float3& ray_direction, const float3& surface_normal, float3& refract_direction, float relative_eta)
+HIPRT_HOST_DEVICE HIPRT_INLINE float3 refract_ray(const float3& ray_direction, const float3& surface_normal, float relative_eta)
 {
     float NoI = hippt::dot(ray_direction, surface_normal);
 
     float sin_theta_i_2 = 1.0f - NoI * NoI;
     float root_term = 1.0f - sin_theta_i_2 / (relative_eta * relative_eta);
-    if (root_term < 0.0f)
-        return false;
 
     float cos_theta_t = sqrt(root_term);
-    refract_direction = -ray_direction / relative_eta + (NoI / relative_eta - cos_theta_t) * surface_normal;
+    float3 refract_direction = -ray_direction / relative_eta + (NoI / relative_eta - cos_theta_t) * surface_normal;
 
-    return true;
+    return refract_direction;
 }
 
 /** 
