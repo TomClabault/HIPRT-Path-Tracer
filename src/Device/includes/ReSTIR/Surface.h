@@ -15,6 +15,7 @@ struct ReSTIRDISurface
 	RayVolumeState ray_volume_state;
 	int last_hit_primitive_index;
 
+	// Do we need the view direction here? We can probably reconstruct it
 	float3 view_direction = { 0.0f, 0.0f, 0.0f};
 	float3 shading_normal = { 0.0f, 0.0f, 0.0f};
 	float3 geometric_normal = { 0.0f, 0.0f, 0.0f};

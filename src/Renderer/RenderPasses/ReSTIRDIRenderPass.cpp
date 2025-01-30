@@ -222,6 +222,9 @@ void ReSTIRDIRenderPass::resize(unsigned int new_width, unsigned int new_height)
 
 bool ReSTIRDIRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets, bool silent, bool use_cache)
 {
+	if (!is_render_pass_used())
+		return false;
+
 	bool recompiled = false;
 
 	bool need_spatiotemporal = m_renderer->get_render_settings().restir_di_settings.do_fused_spatiotemporal && !m_kernels[ReSTIRDIRenderPass::RESTIR_DI_SPATIOTEMPORAL_REUSE_KERNEL_ID]->has_been_compiled();

@@ -13,6 +13,8 @@
 #include "Device/includes/LightUtils.h"
 #include "Device/includes/PathTracing.h"
 #include "Device/includes/ReSTIR/GI/Reservoir.h"
+#include "Device/includes/ReSTIR/GI/TargetFunction.h"
+#include "Device/includes/ReSTIR/GI/Utils.h"
 #include "Device/includes/SanityCheck.h"
 
 #include "HostDeviceCommon/Xorshift.h"
@@ -85,6 +87,16 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
     MISBSDFRayReuse mis_reuse;
     bool intersection_found = closest_hit_info.primitive_index != -1;
 
+    ReSTIRDISurface first_hit_surface;
+    first_hit_surface.geometric_normal = closest_hit_info.geometric_normal;
+    first_hit_surface.shading_normal = closest_hit_info.shading_normal;
+    first_hit_surface.shading_point = closest_hit_info.inter_point;
+    first_hit_surface.view_direction = -ray.direction;
+    first_hit_surface.last_hit_primitive_index = closest_hit_info.primitive_index;
+    first_hit_surface.material = ray_payload.material;
+    first_hit_surface.ray_volume_state = ray_payload.volume_state;
+
+    float bsdf_sample_pdf = 0.0f;
     ReSTIRGISample restir_gi_initial_sample;
     restir_gi_initial_sample.first_hit_normal = closest_hit_info.shading_normal;
     restir_gi_initial_sample.first_hit_point = closest_hit_info.inter_point;
@@ -133,7 +145,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
                     restir_gi_initial_sample.seed = random_number_generator.m_state.seed;
 
                 BSDFIncidentLightInfo incident_light_info;
-                bool valid_indirect_bounce = path_tracing_restir_gi_compute_next_indirect_bounce(render_data, ray_payload, closest_hit_info, -ray.direction, ray, mis_reuse, random_number_generator, &incident_light_info);
+                float* restir_gi_bsdf_pdf = bounce == 0 ? &bsdf_sample_pdf : nullptr;
+                bool valid_indirect_bounce = path_tracing_restir_gi_compute_next_indirect_bounce(render_data, ray_payload, closest_hit_info, -ray.direction, ray, mis_reuse, random_number_generator, &incident_light_info, restir_gi_bsdf_pdf);
                 if (!valid_indirect_bounce)
                     // Bad BSDF sample (under the surface), killed by russian roulette, ...
                     break;
@@ -142,7 +155,20 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
                     restir_gi_initial_sample.incident_light_info = incident_light_info;
             }
             else
+            {
+                if (bounce == 1)
+                {
+                    // This is an envmap sample so we're using a special value in the surface normal
+                    // (there is no surface normal since we missed the scene entirely) such that the
+                    // temporal and spatial reuse passes recognize that this is an envmap path
+                    restir_gi_initial_sample.second_hit_normal.x = RESTIR_GI_RECONNECTION_SURFACE_NORMAL_ENVMAP_VALUE;
+                    // For envmap path, the direction is stored in the hit point
+                    restir_gi_initial_sample.second_hit_point = ray.direction;
+                }
+
+                ray_payload.ray_color += path_tracing_miss_gather_envmap(render_data, ray_payload, ray.direction, pixel_index);
                 ray_payload.next_ray_state = RayState::MISSED;
+            }
         }
         else if (ray_payload.next_ray_state == RayState::MISSED)
             break;
@@ -161,8 +187,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
     restir_gi_initial_sample.outgoing_radiance_to_first_hit = ray_payload.ray_color;
     restir_gi_initial_sample.target_function = restir_gi_initial_sample.outgoing_radiance_to_first_hit.luminance();
 
+    float mis_weight = 1.0f;
+    float target_function = restir_gi_initial_sample.target_function;
+    float source_pdf = bsdf_sample_pdf;
+    float resampling_weight = 0.0f;
+    if (source_pdf > 0.0f) 
+        resampling_weight = mis_weight * restir_gi_initial_sample.target_function / source_pdf;
     ReSTIRGIReservoir restir_gi_initial_reservoir;
-    restir_gi_initial_reservoir.add_one_candidate(restir_gi_initial_sample, restir_gi_initial_sample.outgoing_radiance_to_first_hit.luminance(), random_number_generator);
+    restir_gi_initial_reservoir.add_one_candidate(restir_gi_initial_sample, resampling_weight, random_number_generator);
     restir_gi_initial_reservoir.end();
     restir_gi_initial_reservoir.sanity_check(make_int2(x, y));
 

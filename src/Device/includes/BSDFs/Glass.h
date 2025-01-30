@@ -50,10 +50,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F smooth_glass_bsdf(const DeviceUnpacke
         // Refract the ray
 
         float3 refract_direction;
-        bool can_refract = refract_ray(-ray_direction, surface_normal, refract_direction, eta_t / eta_i);
-        if (!can_refract)
-            // Shouldn't happen but can because of floating point imprecisions
-            return ColorRGB32F(0.0f);
+        refract_ray(-ray_direction, surface_normal, refract_direction, eta_t / eta_i);
 
         out_bounce_direction = refract_direction;
         surface_normal = -surface_normal;

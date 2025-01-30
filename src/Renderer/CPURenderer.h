@@ -76,6 +76,7 @@ public:
     void tracing_pass();
 
     void restir_gi_initial_candidates_pass();
+    void restir_gi_temporal_reuse_pass();
     void restir_gi_spatial_reuse_pass();
     void restir_gi_shading_pass();
 

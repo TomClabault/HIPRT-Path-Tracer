@@ -6,7 +6,7 @@
 #ifndef DEVICE_RESTIR_DI_NORMALIZATION_WEIGHT_H
 #define DEVICE_RESTIR_DI_NORMALIZATION_WEIGHT_H
 
-#include "Device/includes/ReSTIR/DI/Utils.h"
+#include "Device/includes/ReSTIR/Utils.h"
 
 #include "HostDeviceCommon/KernelOptions/KernelOptions.h"
 

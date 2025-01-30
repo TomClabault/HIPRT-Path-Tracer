@@ -87,12 +87,15 @@ HIPRT_HOST_DEVICE bool path_tracing_compute_next_indirect_bounce(HIPRTRenderData
  * Returns true if the bounce was sampled successfully,
  * false otherwise (is the BSDF sample failed, if russian roulette killed the sample, ...)
  */
-HIPRT_HOST_DEVICE bool path_tracing_restir_gi_compute_next_indirect_bounce(HIPRTRenderData& render_data, RayPayload& ray_payload, HitInfo& closest_hit_info, float3 view_direction, hiprtRay& out_ray, MISBSDFRayReuse& mis_reuse, Xorshift32Generator& random_number_generator, BSDFIncidentLightInfo* incident_light_info = nullptr)
+HIPRT_HOST_DEVICE bool path_tracing_restir_gi_compute_next_indirect_bounce(HIPRTRenderData& render_data, RayPayload& ray_payload, HitInfo& closest_hit_info, float3 view_direction, hiprtRay& out_ray, MISBSDFRayReuse& mis_reuse, Xorshift32Generator& random_number_generator, BSDFIncidentLightInfo* incident_light_info = nullptr, float* out_bsdf_pdf = nullptr)
 {
     ColorRGB32F bsdf_color;
     float3 bounce_direction;
     float bsdf_pdf;
     path_tracing_sample_next_indirect_bounce(render_data, ray_payload, closest_hit_info, view_direction, bsdf_color, bounce_direction, bsdf_pdf, mis_reuse, random_number_generator, incident_light_info);
+
+    if (out_bsdf_pdf != nullptr)
+        *out_bsdf_pdf = bsdf_pdf;
 
     // Terminate ray if bad sampling
     if (bsdf_pdf <= 0.0f)

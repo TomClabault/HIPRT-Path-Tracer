@@ -61,25 +61,6 @@
 #define PSS_BSDF 0
 #define PSS_RESTIR_GI 1
 
-#define RESTIR_DI_BIAS_CORRECTION_1_OVER_M 0
-#define RESTIR_DI_BIAS_CORRECTION_1_OVER_Z 1
-#define RESTIR_DI_BIAS_CORRECTION_MIS_LIKE 2
-#define RESTIR_DI_BIAS_CORRECTION_MIS_GBH 3
-#define RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS 4
-#define RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE 5
-
-#define RESTIR_DI_LATER_BOUNCES_UNIFORM_ONE_LIGHT 0
-#define RESTIR_DI_LATER_BOUNCES_BSDF 1
-#define RESTIR_DI_LATER_BOUNCES_MIS_LIGHT_BSDF 2
-#define RESTIR_DI_LATER_BOUNCES_RIS_BSDF_AND_LIGHT 3
-
-#define RESTIR_GI_BIAS_CORRECTION_1_OVER_M 0
-#define RESTIR_GI_BIAS_CORRECTION_1_OVER_Z 1
-#define RESTIR_GI_BIAS_CORRECTION_MIS_LIKE 2
-#define RESTIR_GI_BIAS_CORRECTION_MIS_GBH 3
-#define RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS 4
-#define RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE 5
-
 /**
  * Options are defined in a #ifndef __KERNELCC__ block because:
  *	- If they were not, the would be defined on the GPU side. However, the -D <macro>=<value> compiler option
@@ -178,7 +159,7 @@
  *		Uses ReSTIR DI to sample direct lighting at the first bounce in the scene.
  *		Later bounces use the strategy given by ReSTIR_DI_LaterBouncesSamplingStrategy
  */
-#define DirectLightSamplingStrategy LSS_RESTIR_DI
+#define DirectLightSamplingStrategy LSS_RIS_BSDF_AND_LIGHT
 
 /**
  * Whether or not to use NEE++ features at all
@@ -247,7 +228,8 @@
  *		Uses ReSTIR GI for resampling a path.
  *		Implementation of [ReSTIR GI: Path Resampling for Real-Time Path Tracing] https://research.nvidia.com/publication/2021-06_restir-gi-path-resampling-real-time-path-tracing
  */
-#define PathSamplingStrategy PSS_BSDF
+//#define PathSamplingStrategy PSS_BSDF
+#define PathSamplingStrategy PSS_RESTIR_GI
 
 /**
  * Whether or not to use a visiblity term in the target function whose PDF we're

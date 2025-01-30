@@ -11,11 +11,12 @@
 #include "Device/includes/Hash.h"
 #include "Device/includes/Intersect.h"
 #include "Device/includes/LightUtils.h"
-#include "Device/includes/ReSTIR/DI/TemporalMISWeight.h"
-#include "Device/includes/ReSTIR/DI/TemporalNormalizationWeight.h"
-#include "Device/includes/ReSTIR/DI/Surface.h"
+#include "Device/includes/ReSTIR/TemporalMISWeight.h"
+#include "Device/includes/ReSTIR/TemporalNormalizationWeight.h"
+#include "Device/includes/ReSTIR/Surface.h"
 #include "Device/includes/ReSTIR/DI/TargetFunction.h"
-#include "Device/includes/ReSTIR/DI/Utils.h"
+#include "Device/includes/ReSTIR/Utils.h"
+#include "Device/includes/ReSTIR/UtilsTemporal.h"
 #include "Device/includes/Sampling.h"
 
 #include "HostDeviceCommon/HIPRTCamera.h"
@@ -83,8 +84,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 		// Not doing ReSTIR on directly visible emissive materials
 		return;
 
-	int temporal_neighbor_pixel_index = find_temporal_neighbor_index(render_data,
-		render_data.render_settings.restir_di_settings.common_temporal_pass, render_data.render_settings.restir_di_settings.neighbor_similarity_settings,
+	int temporal_neighbor_pixel_index = find_temporal_neighbor_index<false>(render_data,
 		render_data.g_buffer.primary_hit_position[center_pixel_index], center_pixel_surface.shading_normal, center_pixel_index, random_number_generator).x;
 	if (temporal_neighbor_pixel_index == -1 || render_data.render_settings.freeze_random)
 	{

@@ -6,8 +6,8 @@
 #ifndef DEVICE_RESTIR_DI_MIS_WEIGHT_H
 #define DEVICE_RESTIR_DI_MIS_WEIGHT_H
 
-#include "Device/includes/ReSTIR/DI/MISWeightsCommon.h"
-#include "Device/includes/ReSTIR/DI/Utils.h"
+#include "Device/includes/ReSTIR/MISWeightsCommon.h"
+#include "Device/includes/ReSTIR/Utils.h"
 #include "HostDeviceCommon/KernelOptions/KernelOptions.h"
 
  // By convention, the temporal neighbor is the first one to be resampled in for loops 

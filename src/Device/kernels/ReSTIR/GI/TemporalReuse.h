@@ -8,10 +8,10 @@
 
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Hash.h"
-#include "Device/includes/ReSTIR/DI/Surface.h"
-#include "Device/includes/ReSTIR/DI/TemporalMISWeight.h"
-#include "Device/includes/ReSTIR/DI/TemporalNormalizationWeight.h"
-#include "Device/includes/ReSTIR/DI/Utils.h"
+#include "Device/includes/ReSTIR/Surface.h"
+#include "Device/includes/ReSTIR/TemporalMISWeight.h"
+#include "Device/includes/ReSTIR/TemporalNormalizationWeight.h"
+#include "Device/includes/ReSTIR/Utils.h"
 #include "Device/includes/ReSTIR/GI/Reservoir.h"
 
 #include "HostDeviceCommon/RenderData.h"
@@ -29,32 +29,34 @@ GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_GI_TemporalReuse(HIPR
 GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData render_data, int x, int y)
 #endif
 {
-//#ifdef __KERNELCC__
-//	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
-//	const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
-//#endif
-//	if (x >= res.x || y >= res.y)
-//		return;
-//
-//	uint32_t center_pixel_index = (x + y * res.x);
-//
-//	if (!render_data.aux_buffers.pixel_active[center_pixel_index] || render_data.g_buffer.first_hit_prim_index[center_pixel_index] == -1)
-//		// Pixel inactive because of adaptive sampling, returning
-//		// Or also we don't have a primary hit
-//		return;
-//
-//	// Initializing the random generator
-//	unsigned int seed;
-//	if (render_data.render_settings.freeze_random)
-//		seed = wang_hash(center_pixel_index + 1);
-//	else
-//		seed = wang_hash((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_seed);
-//	Xorshift32Generator random_number_generator(seed);
-//
-//	if (render_data.render_settings.restir_gi_settings.temporal_pass.temporal_buffer_clear_requested)
-//		// We requested a temporal buffer clear for ReSTIR GI
-//		render_data.render_settings.restir_gi_settings.temporal_pass.input_reservoirs[center_pixel_index] = ReSTIRGIReservoir();
-//
+#ifdef __KERNELCC__
+	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
+	const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
+#endif
+	if (x >= render_data.render_settings.render_resolution.x || y >= render_data.render_settings.render_resolution.y)
+		return;
+
+	uint32_t center_pixel_index = (x + y * render_data.render_settings.render_resolution.x);
+
+	if (!render_data.aux_buffers.pixel_active[center_pixel_index] || render_data.g_buffer.first_hit_prim_index[center_pixel_index] == -1)
+		// Pixel inactive because of adaptive sampling, returning
+		// Or also we don't have a primary hit
+		return;
+
+	// Initializing the random generator
+	unsigned int seed;
+	if (render_data.render_settings.freeze_random)
+		seed = wang_hash(center_pixel_index + 1);
+	else
+		seed = wang_hash((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_seed);
+	Xorshift32Generator random_number_generator(seed);
+
+	if (render_data.render_settings.restir_gi_settings.common_temporal_pass.temporal_buffer_clear_requested)
+		// We requested a temporal buffer clear for ReSTIR GI
+		render_data.render_settings.restir_gi_settings.temporal_pass.input_reservoirs[center_pixel_index] = ReSTIRGIReservoir();
+
+	render_data.render_settings.restir_gi_settings.temporal_pass.output_reservoirs[center_pixel_index] = render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer[center_pixel_index];
+
 //	// Surface data of the center pixel
 //	ReSTIRDISurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index, random_number_generator);
 //	int temporal_neighbor_pixel_index = find_temporal_neighbor_index(render_data, render_data.g_buffer.primary_hit_position[center_pixel_index], center_pixel_surface.shading_normal, res, center_pixel_index, random_number_generator).x;
@@ -129,7 +131,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 //			// "solid angle PDF at the neighbor" to the solid angle at the center pixel and we do
 //			// that by multiplying by the jacobian determinant of the reconnection shift in solid
 //			// angle, Eq. 52 of 2022, "Generalized Resampled Importance Sampling".
-//			jacobian_determinant = get_jacobian_determinant_reconnection_shift(render_data,
+//			jacobian_determinant = get_jacobian_determinant_reconnection_shift<true>(render_data,
 //				temporal_neighbor_reservoir,
 //				center_pixel_surface.shading_point,
 //				/* recomputing the point without the normal offset */ temporal_neighbor_surface.shading_point - temporal_neighbor_surface.shading_normal * 1.0e-4f);

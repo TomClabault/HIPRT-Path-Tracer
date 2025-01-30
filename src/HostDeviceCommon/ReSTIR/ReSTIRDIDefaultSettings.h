@@ -28,7 +28,7 @@ static ReSTIRCommonSpatialPassSettings RESTIR_DI_DEFAULT_COMMON_SPATIAl_PASS_SET
 	.reuse_radius = 16,
 	.reuse_neighbor_count = 3,
 
-	.do_disocclusion_reuse_boost = ReSTIRCommonSpatialPassSettings::DO_DISOCCLUSION_BOOST,
+	.do_disocclusion_reuse_boost = true,
 	.disocclusion_reuse_count = 5,
 
 	.debug_neighbor_location = false,

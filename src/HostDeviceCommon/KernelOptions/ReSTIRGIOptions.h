@@ -6,6 +6,13 @@
 #ifndef HOST_DEVICE_COMMON_RESTIR_GI_OPTIONS_H
 #define HOST_DEVICE_COMMON_RESTIR_GI_OPTIONS_H
 
+#define RESTIR_GI_BIAS_CORRECTION_1_OVER_M 0
+#define RESTIR_GI_BIAS_CORRECTION_1_OVER_Z 1
+#define RESTIR_GI_BIAS_CORRECTION_MIS_LIKE 2
+#define RESTIR_GI_BIAS_CORRECTION_MIS_GBH 3
+#define RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS 4
+#define RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE 5
+
  /**
  * Options are defined in a #ifndef __KERNELCC__ block because:
  *	- If they were not, the would be defined on the GPU side. However, the -D <macro>=<value> compiler option
@@ -42,7 +49,7 @@
 *		Similar variance reduction to the generalized balance heuristic and only O(N) computational cost.
 *		Section 7.1.3 of "A Gentle Introduction to ReSTIR", 2023
 */
-#define ReSTIR_GI_BiasCorrectionWeights RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS
+#define ReSTIR_GI_BiasCorrectionWeights RESTIR_GI_BIAS_CORRECTION_MIS_GBH
 
 #endif // #ifndef __KERNELCC__
 

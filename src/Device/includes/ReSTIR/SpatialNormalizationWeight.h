@@ -6,8 +6,8 @@
 #ifndef DEVICE_RESTIR_DI_SPATIAL_NORMALIZATION_WEIGHT_H
 #define DEVICE_RESTIR_DI_SPATIAL_NORMALIZATION_WEIGHT_H
 
-#include "Device/includes/ReSTIR/DI/MISWeightsCommon.h"
-#include "Device/includes/ReSTIR/DI/Utils.h"
+#include "Device/includes/ReSTIR/MISWeightsCommon.h"
+#include "Device/includes/ReSTIR/Utils.h"
 
 #include "HostDeviceCommon/ReSTIRSettingsHelper.h"
 
@@ -40,7 +40,6 @@ struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_M, Is
 		out_normalization_denom = 0.0f;
 
 		const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRDISettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
-		const ReSTIRCommonNeighborSimiliaritySettings& neighbor_similarity_settings = ReSTIRDISettingsHelper::get_restir_neighbor_similarity_settings<IsReSTIRGI>(render_data);
 		for (int neighbor = 0; neighbor < spatial_pass_settings.reuse_neighbor_count + 1; neighbor++)
 		{
 			int neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, spatial_pass_settings, neighbor, center_pixel_coords, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
@@ -49,8 +48,7 @@ struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_M, Is
 				continue;
 
 			int center_pixel_index = center_pixel_coords.x + center_pixel_coords.y * render_data.render_settings.render_resolution.x;
-			if (!check_neighbor_similarity_heuristics(render_data, 
-				neighbor_similarity_settings, 
+			if (!check_neighbor_similarity_heuristics<IsReSTIRGI>(render_data,
 				neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point, center_pixel_surface.shading_normal))
 				continue;
 
@@ -84,7 +82,6 @@ struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z, Is
 		out_normalization_nume = 1.0f;
 
 		const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRDISettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
-		const ReSTIRCommonNeighborSimiliaritySettings& neighbor_similarity_settings = ReSTIRDISettingsHelper::get_restir_neighbor_similarity_settings<IsReSTIRGI>(render_data);
 		for (int neighbor = 0; neighbor < spatial_pass_settings.reuse_neighbor_count + 1; neighbor++)
 		{
 			int neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, spatial_pass_settings, neighbor, center_pixel_coords, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
@@ -93,8 +90,7 @@ struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z, Is
 				continue;
 
 			int center_pixel_index = center_pixel_coords.x + center_pixel_coords.y * render_data.render_settings.render_resolution.x;
-			if (!check_neighbor_similarity_heuristics(render_data, 
-				neighbor_similarity_settings,
+			if (!check_neighbor_similarity_heuristics<IsReSTIRGI>(render_data,
 				neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point, center_pixel_surface.shading_normal))
 				continue;
 
@@ -141,7 +137,6 @@ struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE, Is
 		out_normalization_nume = 0.0f;
 
 		const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRDISettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
-		const ReSTIRCommonNeighborSimiliaritySettings& neighbor_similarity_settings = ReSTIRDISettingsHelper::get_restir_neighbor_similarity_settings<IsReSTIRGI>(render_data);
 		for (int neighbor = 0; neighbor < spatial_pass_settings.reuse_neighbor_count + 1; neighbor++)
 		{
 			int neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, spatial_pass_settings, neighbor, center_pixel_coords, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
@@ -150,8 +145,7 @@ struct ReSTIRDISpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE, Is
 				continue;
 
 			int center_pixel_index = center_pixel_coords.x + center_pixel_coords.y * render_data.render_settings.render_resolution.x;
-			if (!check_neighbor_similarity_heuristics(render_data, 
-				neighbor_similarity_settings,
+			if (!check_neighbor_similarity_heuristics<IsReSTIRGI>(render_data,
 				neighbor_pixel_index, center_pixel_index, center_pixel_surface.shading_point, center_pixel_surface.shading_normal))
 				continue;
 

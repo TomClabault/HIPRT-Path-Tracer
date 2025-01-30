@@ -6,7 +6,7 @@
 #ifndef DEVICE_RESTIR_DI_TARGET_FUNCTION_H
 #define DEVICE_RESTIR_DI_TARGET_FUNCTION_H
 
-#include "Device/includes/ReSTIR/DI/Utils.h"
+#include "Device/includes/ReSTIR/Utils.h"
 #include "HostDeviceCommon/RenderData.h"
 
 template <bool withVisiblity>

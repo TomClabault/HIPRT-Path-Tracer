@@ -11,11 +11,11 @@
 #include "Device/includes/Hash.h"
 #include "Device/includes/Intersect.h"
 #include "Device/includes/LightUtils.h"
-#include "Device/includes/ReSTIR/DI/SpatiotemporalMISWeight.h"
-#include "Device/includes/ReSTIR/DI/SpatiotemporalNormalizationWeight.h"
-#include "Device/includes/ReSTIR/DI/Surface.h"
+#include "Device/includes/ReSTIR/SpatiotemporalMISWeight.h"
+#include "Device/includes/ReSTIR/SpatiotemporalNormalizationWeight.h"
+#include "Device/includes/ReSTIR/Surface.h"
 #include "Device/includes/ReSTIR/DI/TargetFunction.h"
-#include "Device/includes/ReSTIR/DI/Utils.h"
+#include "Device/includes/ReSTIR/Utils.h"
 #include "Device/includes/Sampling.h"
 
 #include "HostDeviceCommon/HIPRTCamera.h"
@@ -72,9 +72,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int3 load_spatiotemporal_neighbor_data(const HIPR
 																	  ReSTIRDIReservoir& out_temporal_neighbor_reservoir, ReSTIRDISurface& out_temporal_neighbor_surface, 
 																	  Xorshift32Generator& random_number_generator)
 {
-	int3 temporal_neighbor_pixel_index_and_pos = find_temporal_neighbor_index(render_data, 
-		render_data.render_settings.restir_di_settings.common_temporal_pass,
-		render_data.render_settings.restir_di_settings.neighbor_similarity_settings,
+	int3 temporal_neighbor_pixel_index_and_pos = find_temporal_neighbor_index<false>(render_data,
 		render_data.g_buffer.primary_hit_position[center_pixel_index], center_pixel_surface.shading_normal, center_pixel_index, random_number_generator);
 	if (temporal_neighbor_pixel_index_and_pos.x == -1 || render_data.render_settings.freeze_random)
 		// Temporal occlusion / disoccusion --> temporal neighbor is invalid,
@@ -117,12 +115,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int3 load_spatiotemporal_neighbor_data(const HIPR
  * re-evauate the heuristics). Neighbor 0 is LSB.
  */
 HIPRT_HOST_DEVICE HIPRT_INLINE void count_valid_spatiotemporal_neighbors(const HIPRTRenderData& render_data, 
-																		 const ReSTIRCommonSpatialPassSettings& spatial_pass_settings, 
-																		 const ReSTIRCommonNeighborSimiliaritySettings& neighbor_similarity_settings,
 																		 const ReSTIRDISurface& center_pixel_surface, 
 																		 int center_pixel_index, int2 temporal_neighbor_position, float2 cos_sin_theta_rotation, 
 																		 int& out_valid_neighbor_count, int& out_valid_neighbor_M_sum, int& out_neighbor_heuristics_cache)
 {
+	const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRDISettingsHelper::get_restir_spatial_pass_settings<false>(render_data);
+
 	int reused_neighbors_count = spatial_pass_settings.reuse_neighbor_count;
 
 	out_valid_neighbor_count = 0;
@@ -133,8 +131,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void count_valid_spatiotemporal_neighbors(const H
 			// Neighbor out of the viewport / invalid
 			continue;
 
-		if (!check_neighbor_similarity_heuristics(render_data,
-			neighbor_similarity_settings,
+		if (!check_neighbor_similarity_heuristics<false>(render_data,
 			neighbor_pixel_index, center_pixel_index, 
 			center_pixel_surface.shading_point, center_pixel_surface.shading_normal, 
 			render_data.render_settings.use_prev_frame_g_buffer()))
@@ -213,8 +210,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 	int neighbor_heuristics_cache = 0;
 	int valid_neighbors_count = 0;
 	int valid_neighbors_M_sum = 0;
-	count_valid_spatiotemporal_neighbors(render_data, 
-		render_data.render_settings.restir_di_settings.common_spatial_pass, render_data.render_settings.restir_di_settings.neighbor_similarity_settings,
+	count_valid_spatiotemporal_neighbors(render_data,
 		center_pixel_surface, center_pixel_index, make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z), cos_sin_theta_rotation, 
 		valid_neighbors_count, valid_neighbors_M_sum, neighbor_heuristics_cache);
 	if (temporal_neighbor_pixel_index_and_pos.x != -1 && temporal_neighbor_reservoir.M > 0)
@@ -401,8 +397,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 			// 
 			// Only checking the heuristic if we have more than 32 neighbors (does not fit in the heuristic cache)
 			// If we have less than 32 neighbors, we've already checked the cache at the beginning of this for loop
-			if (!check_neighbor_similarity_heuristics(render_data,
-				render_data.render_settings.restir_di_settings.neighbor_similarity_settings,
+			if (!check_neighbor_similarity_heuristics<false>(render_data,
 				neighbor_pixel_index, center_pixel_index,
 				center_pixel_surface.shading_point, center_pixel_surface.shading_normal,
 				render_data.render_settings.use_prev_frame_g_buffer()))

@@ -47,6 +47,15 @@ struct ReSTIRDISettingsHelper
 	}
 
 	template <bool IsReSTIRGI>
+	HIPRT_HOST_DEVICE static ReSTIRCommonTemporalPassSettings get_restir_temporal_pass_settings(const HIPRTRenderData& render_data)
+	{
+		if constexpr (IsReSTIRGI)
+			return render_data.render_settings.restir_gi_settings.common_temporal_pass;
+		else
+			return render_data.render_settings.restir_di_settings.common_temporal_pass;
+	}
+
+	template <bool IsReSTIRGI>
 	HIPRT_HOST_DEVICE static ReSTIRCommonNeighborSimiliaritySettings get_restir_neighbor_similarity_settings(const HIPRTRenderData& render_data)
 	{
 		if constexpr (IsReSTIRGI)

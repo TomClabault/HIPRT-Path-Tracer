@@ -219,7 +219,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval_refract(con
     if (MaterialUtils::is_perfectly_smooth(roughness) && PrincipledBSDFDeltaDistributionEvaluationOptimization == KERNEL_OPTION_TRUE)
     {
         // Fast path for specular glass
-        if (incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_GLASS_REFRACT_LOBE)
+        bool incident_direction_is_perfect_refraction = hippt::dot(refract_ray(local_view_direction, make_float3(0.0f, 0.0f, 1.0f), relative_eta), local_to_light_direction) > MaterialUtils::DELTA_DISTRIBUTION_ALIGNEMENT_THRESHOLD;
+        if (incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_GLASS_REFRACT_LOBE && incident_direction_is_perfect_refraction)
         {
             // When the glass is perfectly smooth i.e. delta distribution, our only hope is to sample
             // directly from the glass lobe. If we didn't sample from the glass lobe, this is going to be 0
@@ -227,7 +228,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F torrance_sparrow_GGX_eval_refract(con
 
             // Just some high value because this is a delta distribution
             // And also, take fresnel into account
-            color = ColorRGB32F(MaterialUtils::DELTA_DISTRIBUTION_HIGH_VALUE, MaterialUtils::DELTA_DISTRIBUTION_HIGH_VALUE, MaterialUtils::DELTA_DISTRIBUTION_HIGH_VALUE) * (ColorRGB32F(1.0f) - fresnel_reflectance) * material.base_color;
+            color = ColorRGB32F(MaterialUtils::DELTA_DISTRIBUTION_HIGH_VALUE) * (ColorRGB32F(1.0f) - fresnel_reflectance) * material.base_color;
             color /= hippt::abs(NoL);
             out_pdf = MaterialUtils::DELTA_DISTRIBUTION_HIGH_VALUE;
         }

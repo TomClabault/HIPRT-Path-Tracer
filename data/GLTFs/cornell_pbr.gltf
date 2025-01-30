@@ -126,12 +126,6 @@
 			},
 			"name":"light.001",
 			"pbrMetallicRoughness":{
-				"baseColorFactor":[
-					1,
-					0,
-					1,
-					1
-				],
 				"metallicFactor":0,
 				"roughnessFactor":0.9009850025177002
 			}

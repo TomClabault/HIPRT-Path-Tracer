@@ -6,8 +6,8 @@
 #ifndef DEVICE_RESTIR_DI_SPATIOTEMPORAL_MIS_WEIGHT_H
 #define DEVICE_RESTIR_DI_SPATIOTEMPORAL_MIS_WEIGHT_H
 
-#include "Device/includes/ReSTIR/DI/Utils.h"
-#include "Device/includes/ReSTIR/DI/MISWeightsCommon.h"
+#include "Device/includes/ReSTIR/Utils.h"
+#include "Device/includes/ReSTIR/MISWeightsCommon.h"
 #include "Device/includes/ReSTIR/DI/TargetFunction.h"
 #include "Device/includes/ReSTIR/GI/Reservoir.h"
 #include "Device/includes/ReSTIR/GI/TargetFunction.h"
@@ -72,7 +72,6 @@ struct ReSTIRDISpatiotemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_G
 		float denom = 0.0f;
 
 		const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRDISettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
-		const ReSTIRCommonNeighborSimiliaritySettings& neighbor_similarity_settings = ReSTIRDISettingsHelper::get_restir_neighbor_similarity_settings<IsReSTIRGI>(render_data);
 		for (int j = 0; j < spatial_pass_settings.reuse_neighbor_count + 1; j++)
 		{
 			// The last iteration of the loop is a special case that resamples the initial candidates reservoir
@@ -85,7 +84,7 @@ struct ReSTIRDISpatiotemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_G
 					// Invalid neighbor, skipping
 					continue;
 
-				if (!check_neighbor_similarity_heuristics(render_data, neighbor_similarity_settings, 
+				if (!check_neighbor_similarity_heuristics<IsReSTIRGI>(render_data,
 					neighbor_index_j, center_pixel_index, 
 					center_pixel_surface.shading_point, center_pixel_surface.shading_normal, render_data.render_settings.use_prev_frame_g_buffer()))
 					// Neighbor too dissimilar according to heuristics, skipping

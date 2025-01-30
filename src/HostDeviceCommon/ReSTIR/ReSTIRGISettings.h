@@ -35,7 +35,12 @@ struct ReSTIRGISpatialPassSettings
 
 struct ReSTIRGISettings : public ReSTIRCommonSettings
 {
-	ReSTIRGISettings() : ReSTIRCommonSettings(RESTIR_GI_DEFAULT_COMMON_SETTINGS) {}
+	ReSTIRGISettings() : ReSTIRCommonSettings(RESTIR_GI_DEFAULT_COMMON_SETTINGS) 
+	{
+		// Doing this one manually because we can't have complex evaluation in the declaration of
+		// 'RESTIR_DI_DEFAULT_COMMON_SETTINGS'
+		common_spatial_pass.neighbor_visibility_count = common_spatial_pass.do_disocclusion_reuse_boost ? common_spatial_pass.disocclusion_reuse_count : common_spatial_pass.reuse_neighbor_count;
+	}
 
 	ReSTIRGIInitialCandidatesPassSettings initial_candidates;
 	ReSTIRGITemporalPassSettings temporal_pass;

@@ -275,7 +275,6 @@ void GPURenderer::pre_render_update(float delta_time, RenderWindow* render_windo
 {
 	step_animations(delta_time);
 
-	//m_render_data_buffers_invalidated |= m_render_graph.update();
 	if (m_render_graph.pre_render_compilation_check(m_hiprt_orochi_ctx, m_func_name_sets, true, true))
 		// Some kernels have been recompiled, renderer is now dirty
 		render_window->set_render_dirty(true);

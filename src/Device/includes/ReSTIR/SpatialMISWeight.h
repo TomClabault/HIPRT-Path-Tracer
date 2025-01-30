@@ -6,9 +6,9 @@
 #ifndef DEVICE_RESTIR_DI_SPATIAL_MIS_WEIGHT_H
 #define DEVICE_RESTIR_DI_SPATIAL_MIS_WEIGHT_H 
 
-#include "Device/includes/ReSTIR/DI/MISWeightsCommon.h"
+#include "Device/includes/ReSTIR/MISWeightsCommon.h"
 #include "Device/includes/ReSTIR/DI/TargetFunction.h"
-#include "Device/includes/ReSTIR/DI/Utils.h"
+#include "Device/includes/ReSTIR/Utils.h"
 #include "Device/includes/ReSTIR/GI/TargetFunction.h"
 #include "HostDeviceCommon/ReSTIRSettingsHelper.h"
 
@@ -64,7 +64,6 @@ struct ReSTIRDISpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH, IsR
 		float denom = 0.0f;
 
 		const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRDISettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
-		const ReSTIRCommonNeighborSimiliaritySettings& neighbor_similarity_settings = ReSTIRDISettingsHelper::get_restir_neighbor_similarity_settings<IsReSTIRGI>(render_data);
 		for (int j = 0; j < spatial_pass_settings.reuse_neighbor_count + 1; j++)
 		{
 			int neighbor_index_j = get_spatial_neighbor_pixel_index(render_data, spatial_pass_settings, j, center_pixel_coords, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
@@ -73,7 +72,7 @@ struct ReSTIRDISpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH, IsR
 				continue;
 
 			int center_pixel_index = center_pixel_coords.x + center_pixel_coords.y * render_data.render_settings.render_resolution.x;
-			if (!check_neighbor_similarity_heuristics(render_data, neighbor_similarity_settings, neighbor_index_j, center_pixel_index, center_pixel_surface.shading_point, center_pixel_surface.shading_normal))
+			if (!check_neighbor_similarity_heuristics<IsReSTIRGI>(render_data, neighbor_index_j, center_pixel_index, center_pixel_surface.shading_point, center_pixel_surface.shading_normal))
 				// Neighbor too dissimilar according to heuristics, skipping
 				continue;
 
