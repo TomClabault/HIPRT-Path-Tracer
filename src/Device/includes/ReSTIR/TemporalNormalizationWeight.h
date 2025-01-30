@@ -33,10 +33,10 @@
  * We now have one structure per bias correction method one #if / #elif
  */
 template <int BiasCorrectionMode, bool IsReSTIRGI>
-struct ReSTIRDITemporalNormalizationWeight {};
+struct ReSTIRTemporalNormalizationWeight {};
 
 template <bool IsReSTIRGI>
-struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_M, IsReSTIRGI>
+struct ReSTIRTemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_M, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE void get_normalization(float final_reservoir_weight_sum,
 		int initial_candidates_M, int temporal_neighbor_M,
@@ -62,12 +62,12 @@ struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_M, I
 };
 
 template <bool IsReSTIRGI>
-struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z, IsReSTIRGI>
+struct ReSTIRTemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
 		const ReSTIRSampleType<IsReSTIRGI>& final_reservoir_sample, float final_reservoir_weight_sum, 
 		int initial_candidates_M, int temporal_neighbor_M,
-		ReSTIRDISurface& center_pixel_surface, ReSTIRDISurface& temporal_neighbor_surface,
+		ReSTIRSurface& center_pixel_surface, ReSTIRSurface& temporal_neighbor_surface,
 		float& out_normalization_nume, float& out_normalization_denom,
 		Xorshift32Generator& random_number_generator)
 	{
@@ -122,12 +122,12 @@ struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z, I
 };
 
 template <bool IsReSTIRGI>
-struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE, IsReSTIRGI>
+struct ReSTIRTemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
 		const ReSTIRSampleType<IsReSTIRGI>& final_reservoir_sample, float final_reservoir_weight_sum,
 		int initial_candidates_M, int temporal_neighbor_M,
-		ReSTIRDISurface& center_pixel_surface, ReSTIRDISurface& temporal_neighbor_surface,
+		ReSTIRSurface& center_pixel_surface, ReSTIRSurface& temporal_neighbor_surface,
 		int selected_neighbor,
 		float& out_normalization_nume, float& out_normalization_denom,
 		Xorshift32Generator& random_number_generator)
@@ -189,7 +189,7 @@ struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE, I
 };
 
 template <bool IsReSTIRGI>
-struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH, IsReSTIRGI>
+struct ReSTIRTemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{
@@ -201,7 +201,7 @@ struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH, Is
 };
 
 template <bool IsReSTIRGI>
-struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS, IsReSTIRGI>
+struct ReSTIRTemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{
@@ -213,7 +213,7 @@ struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MI
 };
 
 template <bool IsReSTIRGI>
-struct ReSTIRDITemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE, IsReSTIRGI>
+struct ReSTIRTemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{

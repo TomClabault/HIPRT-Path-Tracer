@@ -74,7 +74,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 
 	// Surface data of the center pixel
 	int2 center_pixel_coords = make_int2(x, y);
-	ReSTIRDISurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index, random_number_generator);
+	ReSTIRSurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index, random_number_generator);
 #if ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_MIS_LIKE
 	// Only used with MIS-like weight
 	int selected_neighbor = 0;
@@ -87,11 +87,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 		valid_neighbors_count, valid_neighbors_M_sum, neighbor_heuristics_cache);
 
 
-	ReSTIRDISpatialResamplingMISWeight<ReSTIR_GI_BiasCorrectionWeights, /* IsReSTIRGI */ true> mis_weight_function;
+	ReSTIRSpatialResamplingMISWeight<ReSTIR_GI_BiasCorrectionWeights, /* IsReSTIRGI */ true> mis_weight_function;
 	// Resampling the neighbors. Using neighbors + 1 here so that
 	// we can use the last iteration of the loop to resample ourselves (the center pixel)
 	// 
-	// See the implementation of get_spatial_neighbor_pixel_index() in ReSTIR/DI/Utils.h
+	// See the implementation of get_spatial_neighbor_pixel_index() in ReSTIR/UtilsSpatial.h
 	int reused_neighbors_count = render_data.render_settings.restir_gi_settings.common_spatial_pass.reuse_neighbor_count;
 	int start_index = 0;
 	if (valid_neighbors_M_sum == 0)
@@ -152,10 +152,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 		if (target_function_at_center > 0.0f && neighbor_reservoir.UCW > 0.0f && neighbor_index != reused_neighbors_count && !ReSTIR_GI_is_envmap_path(neighbor_reservoir.sample.second_hit_normal))
 		{
 			// Eq. 11 of the ReSTIR GI paper
-			jacobian_determinant = get_jacobian_determinant_reconnection_shift(render_data, neighbor_reservoir.sample.second_hit_point, neighbor_reservoir.sample.second_hit_normal, center_pixel_surface.shading_point, neighbor_reservoir.sample.first_hit_point);
-			// The jacobian will be multiplied by the code in 'reservoir.combine_with' but with want a division
-			// so we're inverting it here
-			jacobian_determinant = 1.0f / jacobian_determinant;
+			jacobian_determinant = get_jacobian_determinant_reconnection_shift(render_data, neighbor_reservoir.sample.sample_point, neighbor_reservoir.sample.second_hit_normal, center_pixel_surface.shading_point, neighbor_reservoir.sample.visible_point);
 
 			if (jacobian_determinant == -1.0f)
 			{
@@ -164,6 +161,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 				// The sample was too dissimilar and so we're rejecting it
 				continue;
 			}
+
+			// The jacobian will be multiplied by the code in 'reservoir.combine_with' but with want a division
+			// so we're inverting it here
+			jacobian_determinant = 1.0f / jacobian_determinant;
 		}
 
 #if ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_1_OVER_M
@@ -233,7 +234,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	float normalization_numerator = 1.0f;
 	float normalization_denominator = 1.0f;
 
-	ReSTIRDISpatialNormalizationWeight<ReSTIR_GI_BiasCorrectionWeights, /* Is ReSTIR GI */ true> normalization_function;
+	ReSTIRSpatialNormalizationWeight<ReSTIR_GI_BiasCorrectionWeights, /* Is ReSTIR GI */ true> normalization_function;
 #if ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_1_OVER_M
 	normalization_function.get_normalization(render_data,
 		spatial_reuse_output_reservoir.weight_sum,

@@ -26,7 +26,7 @@ static ReSTIRCommonSpatialPassSettings RESTIR_GI_DEFAULT_COMMON_SPATIAl_PASS_SET
 	.spatial_pass_index = 0,
 	.number_of_passes = 1,
 	.reuse_radius = 16,
-	.reuse_neighbor_count = 0,
+	.reuse_neighbor_count = 1,
 
 	.do_disocclusion_reuse_boost = false,
 	.disocclusion_reuse_count = 5,

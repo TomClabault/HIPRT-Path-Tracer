@@ -143,7 +143,7 @@ struct HIPRTRenderSettings
 	// variable) before we stop rendering.
 	// For example, if this variable is 90, we will stop rendering when 90% of all
 	// pixels have reached the stop_pixel_noise_threshold
-	float stop_pixel_percentage_converged = 90.0f;
+	float stop_pixel_percentage_converged = 84.0f;
 	// Noise threshold for use with the stop_pixel_percentage_converged stopping
 	// condition
 	float stop_pixel_noise_threshold = 0.0f;
@@ -155,12 +155,12 @@ struct HIPRTRenderSettings
 	// Clamp envmap contribution to reduce fireflies
 	float envmap_contribution_clamp = 0.0f;
 	// Clamp indirect lighting contribution to reduce fireflies
-	float indirect_contribution_clamp = 15.0f;
+	float indirect_contribution_clamp = 0.0f;
 
 	// If a selected light (for direct lighting estimation) contributes at a given
 	// point less than this 'minimum_light_contribution' value then the light sample is discarded
 	// 0.0f to disable
-	float minimum_light_contribution = 0.08f;
+	float minimum_light_contribution = 0.0f;
 
 	// How many light samples to take and shade per each vertex of the
 	// ray's path.
@@ -175,7 +175,7 @@ struct HIPRTRenderSettings
 	// a new reservoir = full re-run of ReSTIR = too expensive.
 	// It does apply to the secondary bounces shading when using ReSTIR DI for the
 	// primary bounce though.
-	int number_of_light_samples = 1;
+	int number_of_nee_samples = 1;
 
 	// Whether or not to do alpha testing for geometry with transparent base color textures
 	bool do_alpha_testing = true;

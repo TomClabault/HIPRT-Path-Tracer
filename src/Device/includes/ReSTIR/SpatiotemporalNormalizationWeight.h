@@ -13,14 +13,14 @@
 #define TEMPORAL_NEIGHBOR_ID 0
 
 template <int BiasCorrectionMode, bool IsReSTIRGI>
-struct ReSTIRDISpatiotemporalNormalizationWeight {};
+struct ReSTIRSpatiotemporalNormalizationWeight {};
 
 template <bool IsReSTIRGI>
-struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_M, IsReSTIRGI>
+struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_M, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
 		float final_reservoir_weight_sum, int initial_candidates_reservoir_M,
-		const ReSTIRDISurface& center_pixel_surface,
+		const ReSTIRSurface& center_pixel_surface,
 		int temporal_neighbor_M, int center_pixel_index, int2 temporal_neighbor_coords, 
 		float2 cos_sin_theta_rotation, float& out_normalization_nume, float& out_normalization_denom,
 		Xorshift32Generator& random_number_generator)
@@ -42,7 +42,7 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVE
 		// so we're only going to set the denominator to that and the numerator isn't going to change
 		out_normalization_denom = 0.0f;
 
-		const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRDISettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
+		const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
 		for (int neighbor = 0; neighbor < spatial_pass_settings.reuse_neighbor_count + 1; neighbor++)
 		{
 			// The last iteration of the loop is a special case that resamples the initial candidates reservoir
@@ -71,7 +71,7 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVE
 			// since we're resampling initial candidates of the current
 			// frame in the center pixel. We're not resampling the center
 			// pixel from the previous frame so we need the current surface 
-			ReSTIRDISurface neighbor_surface;
+			ReSTIRSurface neighbor_surface;
 			if (neighbor == spatial_pass_settings.reuse_neighbor_count)
 				neighbor_surface = center_pixel_surface;
 			else
@@ -80,7 +80,7 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVE
 			if (neighbor == spatial_pass_settings.reuse_neighbor_count)
 				out_normalization_denom += initial_candidates_reservoir_M;
 			else
-				out_normalization_denom += ReSTIRDISettingsHelper::get_restir_spatial_pass_input_reservoir_M<IsReSTIRGI>(neighbor_pixel_index);
+				out_normalization_denom += ReSTIRSettingsHelper::get_restir_spatial_pass_input_reservoir_M<IsReSTIRGI>(neighbor_pixel_index);
 		}
 
 		// The fused spatiotemporal pass also resamples a temporal neighbor so we add the M of that neighbor too
@@ -89,11 +89,11 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVE
 };
 
 template <bool IsReSTIRGI>
-struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z, IsReSTIRGI>
+struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
 		const ReSTIRSampleType<IsReSTIRGI>& final_reservoir_sample, float final_reservoir_weight_sum, 
-		ReSTIRDISurface& center_pixel_surface, ReSTIRDISurface& temporal_neighbor_surface,
+		ReSTIRSurface& center_pixel_surface, ReSTIRSurface& temporal_neighbor_surface,
 		int center_pixel_M, int temporal_neighbor_M, int center_pixel_index, int2 temporal_neighbor_position,
 		float2 cos_sin_theta_rotation, float& out_normalization_nume, float& out_normalization_denom,
 		Xorshift32Generator& random_number_generator)
@@ -112,7 +112,7 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVE
 		out_normalization_denom = 0.0f;
 		out_normalization_nume = 1.0f;
 
-		const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRDISettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
+		const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
 		for (int neighbor = 0; neighbor < spatial_pass_settings.reuse_neighbor_count + 1; neighbor++)
 		{
 			// The last iteration of the loop is a special case that resamples the initial candidates reservoir
@@ -141,7 +141,7 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVE
 			// since we're resampling initial candidates of the current
 			// frame in the center pixel. We're not resampling the center
 			// pixel from the previous frame so we need the current surface 
-			ReSTIRDISurface neighbor_surface;
+			ReSTIRSurface neighbor_surface;
 			if (neighbor == spatial_pass_settings.reuse_neighbor_count)
 				neighbor_surface = center_pixel_surface;
 			else
@@ -162,7 +162,7 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVE
 				if (neighbor == spatial_pass_settings.reuse_neighbor_count)
 					out_normalization_denom += center_pixel_M;
 				else
-					out_normalization_denom += ReSTIRDISettingsHelper::get_restir_spatial_pass_input_reservoir_M<IsReSTIRGI>(render_data, neighbor_pixel_index);
+					out_normalization_denom += ReSTIRSettingsHelper::get_restir_spatial_pass_input_reservoir_M<IsReSTIRGI>(render_data, neighbor_pixel_index);
 			}
 		}
 
@@ -181,11 +181,11 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVE
 };
 
 template <bool IsReSTIRGI>
-struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE, IsReSTIRGI>
+struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE void get_normalization(const HIPRTRenderData& render_data,
 		const ReSTIRSampleType<IsReSTIRGI>& final_reservoir_sample, float final_reservoir_weight_sum, 
-		ReSTIRDISurface& center_pixel_surface, ReSTIRDISurface& temporal_neighbor_surface,
+		ReSTIRSurface& center_pixel_surface, ReSTIRSurface& temporal_neighbor_surface,
 		int selected_neighbor,
 		int center_pixel_M, int temporal_neighbor_M, int center_pixel_index, int2 temporal_neighbor_coords,
 		float2 cos_sin_theta_rotation,
@@ -204,7 +204,7 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_L
 		out_normalization_denom = 0.0f;
 		out_normalization_nume = 0.0f;
 
-		const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRDISettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
+		const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
 		for (int neighbor = 0; neighbor < spatial_pass_settings.reuse_neighbor_count + 1; neighbor++)
 		{
 			// The last iteration of the loop is a special case that resamples the initial candidates reservoir
@@ -231,7 +231,7 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_L
 			// since we're resampling initial candidates of the current
 			// frame in the center pixel. We're not resampling the center
 			// pixel from the previous frame so we need the current surface
-			ReSTIRDISurface neighbor_surface;
+			ReSTIRSurface neighbor_surface;
 			if (neighbor == spatial_pass_settings.reuse_neighbor_count)
 				neighbor_surface = center_pixel_surface;
 			else
@@ -250,12 +250,12 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_L
 				// If the neighbor could have produced this sample...
 
 				int M = 1;
-				if (ReSTIRDISettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).use_confidence_weights)
+				if (ReSTIRSettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).use_confidence_weights)
 				{
 					if (neighbor == spatial_pass_settings.reuse_neighbor_count)
 						M = center_pixel_M;
 					else
-						M = ReSTIRDISettingsHelper::get_restir_spatial_pass_input_reservoir_M<IsReSTIRGI>(render_data, neighbor_pixel_index);
+						M = ReSTIRSettingsHelper::get_restir_spatial_pass_input_reservoir_M<IsReSTIRGI>(render_data, neighbor_pixel_index);
 				}
 
 				// neighbor + 1 here because 0 is the temporal neighbor, not the first spatial neighbor
@@ -279,13 +279,13 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_L
 		if (selected_neighbor == TEMPORAL_NEIGHBOR_ID)
 			out_normalization_nume += target_function_at_temporal_neighbor;
 
-		int temporal_M = ReSTIRDISettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).use_confidence_weights ? temporal_neighbor_M : 1;
+		int temporal_M = ReSTIRSettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).use_confidence_weights ? temporal_neighbor_M : 1;
 		out_normalization_denom += target_function_at_temporal_neighbor * temporal_M;
 	}
 };
 
 template <bool IsReSTIRGI>
-struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH, IsReSTIRGI>
+struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{
@@ -296,7 +296,7 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_G
 };
 
 template <bool IsReSTIRGI>
-struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS, IsReSTIRGI>
+struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{
@@ -307,7 +307,7 @@ struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_PAIRW
 };
 
 template <bool IsReSTIRGI>
-struct ReSTIRDISpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE, IsReSTIRGI>
+struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE void get_normalization(float& out_normalization_nume, float& out_normalization_denom)
 	{

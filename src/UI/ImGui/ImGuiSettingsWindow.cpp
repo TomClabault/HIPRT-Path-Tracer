@@ -842,7 +842,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 			bool disabled = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY) == LSS_RESTIR_DI;
 			ImGui::BeginDisabled(disabled);
-			if (ImGui::SliderInt("NEE Samples", &render_settings.number_of_light_samples, 1, 8))
+			if (ImGui::SliderInt("NEE Samples", &render_settings.number_of_nee_samples, 1, 8))
 				m_render_window->set_render_dirty(true);
 			ImGuiRenderer::show_help_marker(std::string("How many light samples to take and shade per each vertex of the "
 				"ray's path.\n"
@@ -1110,311 +1110,57 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 
 
-				if (ImGui::CollapsingHeader("Temporal Reuse Pass"))
-				{
-					ImGui::TreePush("ReSTIR DI - Temporal Reuse Pass Tree");
+				draw_ReSTIR_temporal_reuse_panel(render_settings.restir_di_settings, [this, &render_settings]() {
+					if (render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass && render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
 					{
-						if (render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass && render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
+						if (ImGui::Checkbox("Do Fused Spatiotemporal", &render_settings.restir_di_settings.do_fused_spatiotemporal))
 						{
-							if (ImGui::Checkbox("Do Fused Spatiotemporal", &render_settings.restir_di_settings.do_fused_spatiotemporal))
-							{
-								render_settings.restir_di_settings.common_temporal_pass.temporal_buffer_clear_requested = true;
+							render_settings.restir_di_settings.common_temporal_pass.temporal_buffer_clear_requested = true;
 
-								m_render_window->set_render_dirty(true);
-							}
-							ImGuiRenderer::show_help_marker("If checked, the spatial and temporal pass will be fused into a single kernel call. "
-								"This avoids a synchronization barrier between the temporal pass and the spatial pass "
-								"and increases performance. Because the spatial must then resample without the output of the temporal pass, the spatial "
-								"pass only resamples on the temporal reservoir buffer, not the temporal + initial candidates reservoir "
-								"(which is the output of the temporal pass). This is usually imperceptible.");
-						}
-
-						if (ImGui::Checkbox("Do Temporal Reuse", &render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass))
-						{
 							m_render_window->set_render_dirty(true);
-
-							if (!render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
-								// Disabling fused spatiotemporal if we just disabled the temporal reuse
-								render_settings.restir_di_settings.do_fused_spatiotemporal = false;
 						}
-
-						if (render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
-						{
-							// Same line as "Do Temporal Reuse"
-							ImGui::SameLine();
-							if (ImGui::Button("Reset Temporal Reservoirs"))
-							{
-								render_settings.restir_di_settings.common_temporal_pass.temporal_buffer_clear_requested = true;
-								m_render_window->set_render_dirty(true);
-							}
-
-							bool last_frame_g_buffer_needed = true;
-							last_frame_g_buffer_needed &= !render_settings.accumulate;
-							last_frame_g_buffer_needed &= render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass;
-
-							if (ImGui::SliderInt("Max temporal neighbor search count", &render_settings.restir_di_settings.common_temporal_pass.max_neighbor_search_count, 0, 16))
-							{
-								// Clamping
-								render_settings.restir_di_settings.common_temporal_pass.max_neighbor_search_count = std::max(0, render_settings.restir_di_settings.common_temporal_pass.max_neighbor_search_count);
-
-								m_render_window->set_render_dirty(true);
-							}
-
-							if (ImGui::SliderInt("Temporal neighbor search radius", &render_settings.restir_di_settings.common_temporal_pass.neighbor_search_radius, 0, 16))
-							{
-								// Clamping
-								render_settings.restir_di_settings.common_temporal_pass.neighbor_search_radius = std::max(0, render_settings.restir_di_settings.common_temporal_pass.neighbor_search_radius);
-
-								m_render_window->set_render_dirty(true);
-							}
-
-							if (ImGui::Checkbox("Use Permutation Sampling", &render_settings.restir_di_settings.common_temporal_pass.use_permutation_sampling))
-								m_render_window->set_render_dirty(true);
-							ImGuiRenderer::show_help_marker("If true, the back-projected position of the current pixel (temporal neighbor position) will be shuffled"
-								" to add temporal variations.");
-
-							ImGui::Dummy(ImVec2(0.0f, 20.0f));
-							if (ImGui::SliderInt("M-cap", &render_settings.restir_di_settings.m_cap, 0, 48))
-							{
-								render_settings.restir_di_settings.m_cap = std::max(0, render_settings.restir_di_settings.m_cap);
-								if (render_settings.accumulate)
-									m_render_window->set_render_dirty(true);
-							}
-						}
-
-						ImGui::TreePop();
-						ImGui::Dummy(ImVec2(0.0f, 20.0f));
-					}
-				}
-
-
-
-
-
-				if (ImGui::CollapsingHeader("Spatial Reuse Pass"))
-				{
-					ImGui::TreePush("ReSTIR DI - Spatial Reuse Pass Tree");
-					{
-						if (render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass && render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
-						{
-							if (ImGui::Checkbox("Do Fused Spatiotemporal", &render_settings.restir_di_settings.do_fused_spatiotemporal))
-							{
-								render_settings.restir_di_settings.common_temporal_pass.temporal_buffer_clear_requested = true;
-
-								m_render_window->set_render_dirty(true);
-							}
-							ImGuiRenderer::show_help_marker("If checked, the spatial and temporal pass will be fused into a single kernel call. "
-								"This avois a synchronization barrier between the temporal pass and the spatial pass "
-								"and increases performance. Because the spatial must then resample without the output of the temporal pass, the spatial "
-								"pass only resamples on the temporal reservoir buffer, not the temporal + initial candidates reservoir "
-								"(which is the output of the temporal pass). This is usually imperceptible.");
-						}
-
-						if (ImGui::Checkbox("Do Spatial Reuse", &render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass))
-						{
-							m_render_window->set_render_dirty(true);
-
-							if (!render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass)
-								// Disabling fused spatiotemporal if we just disabled the spatial reuse
-								render_settings.restir_di_settings.do_fused_spatiotemporal = false;
-						}
-
-						if (render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass)
-						{
-							static bool use_spatial_target_function_visibility = ReSTIR_DI_SpatialTargetFunctionVisibility;
-							if (ImGui::Checkbox("Use visibility in target function", &use_spatial_target_function_visibility))
-							{
-								global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_TARGET_FUNCTION_VISIBILITY, use_spatial_target_function_visibility ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-								m_renderer->recompile_kernels();
-
-								m_render_window->set_render_dirty(true);
-							}
-							ImGuiRenderer::show_help_marker("Whether or not to use the visibility term in the target function used for "
-								"resampling spatial neighbors.");
-
-							int max_neighbor_count = render_settings.restir_di_settings.common_spatial_pass.reuse_neighbor_count;
-							if (render_settings.restir_di_settings.common_spatial_pass.do_disocclusion_reuse_boost)
-								max_neighbor_count = std::max(max_neighbor_count, render_settings.restir_di_settings.common_spatial_pass.disocclusion_reuse_count);
-							static int partial_visibility_neighbor_count = max_neighbor_count;
-							if (use_spatial_target_function_visibility)
-							{
-								ImGui::TreePush("VisibilitySpatialReuseLastPassOnly Tree");
-
-								{
-									if (ImGui::SliderInt("Partial Neighbor Visibility", &partial_visibility_neighbor_count, 0, max_neighbor_count, "%d", ImGuiSliderFlags_AlwaysClamp))
-									{
-										// Using -1 so that the user manipulates intuitive numbers between 0 and
-										// 'render_settings.restir_di_settings.common_spatial_pass.reuse_neighbor_count'
-										// but the shader actually wants value between -1 and
-										// 'render_settings.restir_di_settings.common_spatial_pass.reuse_neighbor_count' for it to be meaningful
-										render_settings.restir_di_settings.common_spatial_pass.neighbor_visibility_count = partial_visibility_neighbor_count;
-
-										m_render_window->set_render_dirty(true);
-									}
-									ImGuiRenderer::show_help_marker("How many neighbors will actually use a visibility term, can be useful to balance "
-										"performance/variance but lowering this value below the maximum amount of neighbors may actually reduce "
-										"performance because the final shading pass will have more visibility tests to do: if all neighbors use "
-										"visibility during spatial resampling, then the final shading pass can be certain that all neighbors "
-										"already take occlusion into account and so the final shading pass doesn't compute visibility. "
-										"However, if 1 or 2 neighbors do not include visibility for example, then the final shading pass will "
-										"have to trace rays for these neighbors and this will slow down the final shading pass quite a bit.");
-
-									if (ImGui::Checkbox("Only on the last pass", &render_settings.restir_di_settings.common_spatial_pass.do_visibility_only_last_pass))
-										m_render_window->set_render_dirty(true);
-									ImGuiRenderer::show_help_marker("If checked, the visibility in the resampling target function will only be used on the last spatial reuse pass");
-								}
-								ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
-								ImGui::TreePop();
-							}
-
-
-							if (ImGui::SliderInt("Spatial Reuse Pass Count", &render_settings.restir_di_settings.common_spatial_pass.number_of_passes, 1, 8))
-							{
-								// Clamping
-								render_settings.restir_di_settings.common_spatial_pass.number_of_passes = std::max(1, render_settings.restir_di_settings.common_spatial_pass.number_of_passes);
-
-								m_render_window->set_render_dirty(true);
-							}
-
-							if (ImGui::SliderInt("Spatial Reuse Radius (px)", &render_settings.restir_di_settings.common_spatial_pass.reuse_radius, 1, 64))
-							{
-								// Clamping
-								render_settings.restir_di_settings.common_spatial_pass.reuse_radius = std::max(1, render_settings.restir_di_settings.common_spatial_pass.reuse_radius);
-
-								m_render_window->set_render_dirty(true);
-							}
-
-							// Checking the value before the "Neighbor Reuse Count" slider is modified
-							// so that we know whether or not we'll have to keep the
-							// 'partial_visibility_neighbor_count' value updated for the "Partial Neighbor Visibility" slider
-							bool will_need_to_update_partial_visibility = partial_visibility_neighbor_count == max_neighbor_count;
-							if (ImGui::SliderInt("Neighbor Reuse Count", &render_settings.restir_di_settings.common_spatial_pass.reuse_neighbor_count, 1, 16))
-							{
-								// Clamping
-								render_settings.restir_di_settings.common_spatial_pass.reuse_neighbor_count = std::max(1, render_settings.restir_di_settings.common_spatial_pass.reuse_neighbor_count);
-
-								// Updating the maximum
-								max_neighbor_count = render_settings.restir_di_settings.common_spatial_pass.reuse_neighbor_count;
-								if (render_settings.restir_di_settings.common_spatial_pass.do_disocclusion_reuse_boost)
-									max_neighbor_count = std::max(max_neighbor_count, render_settings.restir_di_settings.common_spatial_pass.disocclusion_reuse_count);
-
-								bool reuse_count_is_the_max = max_neighbor_count == render_settings.restir_di_settings.common_spatial_pass.reuse_neighbor_count;
-								reuse_count_is_the_max |= !render_settings.restir_di_settings.common_spatial_pass.do_disocclusion_reuse_boost;
-								if (will_need_to_update_partial_visibility && reuse_count_is_the_max)
-								{
-									// Also updating the partial visibility neighbor index slider if it was set to the maximum
-									// amount of neighbors
-									partial_visibility_neighbor_count = render_settings.restir_di_settings.common_spatial_pass.reuse_neighbor_count;
-									render_settings.restir_di_settings.common_spatial_pass.neighbor_visibility_count = partial_visibility_neighbor_count;
-								}
-
-								if (render_settings.restir_di_settings.common_spatial_pass.disocclusion_reuse_count < render_settings.restir_di_settings.common_spatial_pass.reuse_neighbor_count)
-									// If disocclusion boost is now below the spatial neighbor count, bumping it up
-									// because it makes no sense to have the disocclusion boost below the base
-									// spatial neighbor count
-									render_settings.restir_di_settings.common_spatial_pass.disocclusion_reuse_count = render_settings.restir_di_settings.common_spatial_pass.reuse_neighbor_count;
-
-								m_render_window->set_render_dirty(true);
-							}
-
-							if (ImGui::Checkbox("Increase Disocclusion Reuse Count", &render_settings.restir_di_settings.common_spatial_pass.do_disocclusion_reuse_boost))
-							{
-								m_render_window->set_render_dirty(true);
-								if (render_settings.restir_di_settings.common_spatial_pass.do_disocclusion_reuse_boost)
-								{
-									// We just enabled disocclusion boost
-
-									// Recomputing the max neighbor with the disocclusion boost taken into account
-									max_neighbor_count = std::max(max_neighbor_count, render_settings.restir_di_settings.common_spatial_pass.disocclusion_reuse_count);
-
-									partial_visibility_neighbor_count = max_neighbor_count;
-								}
-								else
-									// Disabled disocclusion boost, bringing the value back to its maximum before
-									// disocclusion boost which is just the number of reused spatial neighbors
-									partial_visibility_neighbor_count = render_settings.restir_di_settings.common_spatial_pass.reuse_neighbor_count;
-										
-								render_settings.restir_di_settings.common_spatial_pass.neighbor_visibility_count = partial_visibility_neighbor_count;
-							}
-							ImGuiRenderer::show_help_marker("If checked, the given number of neighbors will be reused for pixels that just got "
-								"disoccluded due to camera movement (and thus that have no temporal history). This helps "
-								"reduce noise in disoccluded regions.");
-							if (render_settings.restir_di_settings.common_spatial_pass.do_disocclusion_reuse_boost)
-							{
-								{
-									ImGui::TreePush("Disocclusion boost tree");
-
-									if (ImGui::SliderInt("Disoccluded Neighbor Reuse Count", &render_settings.restir_di_settings.common_spatial_pass.disocclusion_reuse_count, render_settings.restir_di_settings.common_spatial_pass.reuse_neighbor_count, 16 + render_settings.restir_di_settings.common_spatial_pass.reuse_neighbor_count))
-									{
-										m_render_window->set_render_dirty(true);
-
-										// Updating the maximum
-										max_neighbor_count = render_settings.restir_di_settings.common_spatial_pass.reuse_neighbor_count;
-										if (render_settings.restir_di_settings.common_spatial_pass.do_disocclusion_reuse_boost)
-											max_neighbor_count = std::max(max_neighbor_count, render_settings.restir_di_settings.common_spatial_pass.disocclusion_reuse_count);
-
-										if (will_need_to_update_partial_visibility)
-										{
-											// If the number of neighbors using visibility is set at the maximum, then we should
-											// keep that value at the maximum as we modify the disoccluded neighbor reuse count
-											max_neighbor_count = render_settings.restir_di_settings.common_spatial_pass.disocclusion_reuse_count;
-											partial_visibility_neighbor_count = max_neighbor_count;
-											render_settings.restir_di_settings.common_spatial_pass.neighbor_visibility_count = max_neighbor_count;
-										}
-									}
-									ImGuiRenderer::show_help_marker("How many neighbors a pixel will reuse if that pixel just got disoccluded.");
-
-									if (render_settings.restir_di_settings.common_spatial_pass.neighbor_visibility_count == render_settings.restir_di_settings.common_spatial_pass.reuse_neighbor_count)
-										// If the user is using the visibility in the target function of all spatial neighbors,
-										// modifying that maximum number should still keep the visibility target function count
-										// to the maximum
-										render_settings.restir_di_settings.common_spatial_pass.neighbor_visibility_count = std::max(render_settings.restir_di_settings.common_spatial_pass.disocclusion_reuse_count, render_settings.restir_di_settings.common_spatial_pass.reuse_neighbor_count);
-
-									ImGui::TreePop();
-								}
-							}
-
-							if (ImGui::Checkbox("Neighbor Samples Random Rotation", &render_settings.restir_di_settings.common_spatial_pass.do_neighbor_rotation))
-								m_render_window->set_render_dirty(true);
-							ImGuiRenderer::show_help_marker("If checked, spatial neighbors sampled (using the Hammersley point set) "
-								"will be randomly rotated. Because neighbor locations are generated with a Hammersley point set "
-								"(deterministic), not rotating them results in every pixel of every rendered image reusing the "
-								"same neighbor locations which decreases reuse efficiency.");
-
-							ImGui::BeginDisabled(!render_settings.enable_adaptive_sampling);
-							if (ImGui::Checkbox("Allow Reuse of Converged Neighbors", &render_settings.restir_di_settings.common_spatial_pass.allow_converged_neighbors_reuse))
-								m_render_window->set_render_dirty(true);
-							std::string reuse_of_converged_neighbors_help = "If checked, then the spatial reuse passes are allowed "
-								"to reuse from neighboring pixels which have converged (and thus neighbors that "
-								"are not being sampled anymore = neighbors whose reservoirs do not evolve anymore). "
-								"This improves performance but at the cost of bias when non-converged "
-								"pixels try to reuse from converged pixels. The bias will thus typically manifest "
-								"on the parts of the image that are the hardest to render.";
-							if (!render_settings.enable_adaptive_sampling)
-								reuse_of_converged_neighbors_help += "\n\nDisabled because adaptive sampling isn't enabled.";
-							ImGuiRenderer::show_help_marker(reuse_of_converged_neighbors_help);
-							if (render_settings.restir_di_settings.common_spatial_pass.allow_converged_neighbors_reuse)
-							{
-								if (ImGui::SliderFloat("Converged Neighbor Reuse Probability", &render_settings.restir_di_settings.common_spatial_pass.converged_neighbor_reuse_probability, 0.0f, 1.0f))
-									m_render_window->set_render_dirty(true);
-								ImGuiRenderer::show_help_marker("Allows trading bias for rendering performance by "
-									"spatially reusing converged neighbors only with a certain probability instead of never / always."
-									"\n\n 0.0 nevers reuses converged neighbors. No bias but performance impact."
-									"\n\n 1.0 always reuses converged neighbors. Biased but no performance impact.");
-							}
-							ImGui::EndDisabled();
-
-							if (ImGui::Checkbox("Debug Neighbor Reuse Positions", &render_settings.restir_di_settings.common_spatial_pass.debug_neighbor_location))
-								m_render_window->set_render_dirty(true);
-							ImGuiRenderer::show_help_marker("If checked, neighbor in the spatial reuse pass will be hardcoded to always be "
-								"15 pixels to the right, not in a circle. This makes spotting bias easier when debugging.");
-						}
+						ImGuiRenderer::show_help_marker("If checked, the spatial and temporal pass will be fused into a single kernel call. "
+							"This avoids a synchronization barrier between the temporal pass and the spatial pass "
+							"and increases performance. Because the spatial must then resample without the output of the temporal pass, the spatial "
+							"pass only resamples on the temporal reservoir buffer, not the temporal + initial candidates reservoir "
+							"(which is the output of the temporal pass). This is usually imperceptible.");
 					}
 
-					ImGui::TreePop();
-					ImGui::Dummy(ImVec2(0.0f, 20.0f));
-				}
+					if (ImGui::Checkbox("Do Temporal Reuse", &render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass))
+					{
+						m_render_window->set_render_dirty(true);
+
+						if (!render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
+							// Disabling fused spatiotemporal if we just disabled the temporal reuse
+							render_settings.restir_di_settings.do_fused_spatiotemporal = false;
+					}
+				});
+
+				draw_ReSTIR_spatial_reuse_panel(render_settings.restir_di_settings, [&render_settings, this] () {
+					if (render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass && render_settings.restir_di_settings.common_temporal_pass.do_temporal_reuse_pass)
+					{
+						if (ImGui::Checkbox("Do Fused Spatiotemporal", &render_settings.restir_di_settings.do_fused_spatiotemporal))
+						{
+							render_settings.restir_di_settings.common_temporal_pass.temporal_buffer_clear_requested = true;
+
+							m_render_window->set_render_dirty(true);
+						}
+						ImGuiRenderer::show_help_marker("If checked, the spatial and temporal pass will be fused into a single kernel call. "
+							"This avois a synchronization barrier between the temporal pass and the spatial pass "
+							"and increases performance. Because the spatial must then resample without the output of the temporal pass, the spatial "
+							"pass only resamples on the temporal reservoir buffer, not the temporal + initial candidates reservoir "
+							"(which is the output of the temporal pass). This is usually imperceptible.");
+					}
+
+					if (ImGui::Checkbox("Do Spatial Reuse", &render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass))
+					{
+						m_render_window->set_render_dirty(true);
+
+						if (!render_settings.restir_di_settings.common_spatial_pass.do_spatial_reuse_pass)
+							// Disabling fused spatiotemporal if we just disabled the spatial reuse
+							render_settings.restir_di_settings.do_fused_spatiotemporal = false;
+					}
+				});
 
 
 
@@ -1602,10 +1348,44 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			}
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			switch (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY))
+			{
+			case PSS_RESTIR_GI:
+			{
+				ImGui::TreePush("ReSTIR GI options tree");
+
+				draw_ReSTIR_temporal_reuse_panel(render_settings.restir_gi_settings, [&render_settings, this]() {
+					if (ImGui::Checkbox("Do Temporal Reuse", &render_settings.restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass))
+						m_render_window->set_render_dirty(true);
+				});
+				draw_ReSTIR_spatial_reuse_panel(render_settings.restir_gi_settings, [&render_settings, this]() {
+					if (ImGui::Checkbox("Do Spatial Reuse", &render_settings.restir_gi_settings.common_spatial_pass.do_spatial_reuse_pass))
+						m_render_window->set_render_dirty(true);
+				});
+
+				if (ImGui::CollapsingHeader("Debug"))
+				{
+					ImGui::TreePush("ReSTIR GI options tree");
+
+					const char* debug_view_items[] = { "No debug view", "- Final reservoir UCW" };
+					if (ImGui::Combo("Debug view", (int*)&render_settings.restir_gi_settings.debug_view, debug_view_items, IM_ARRAYSIZE(debug_view_items)))
+						m_render_window->set_render_dirty(true);
+					if (ImGui::SliderFloat("Debug view scale factor", &render_settings.restir_gi_settings.debug_view_scale_factor, 0.0f, 3.0f))
+						m_render_window->set_render_dirty(true);
+
+					ImGui::TreePop();
+				}
+				ImGui::TreePop();
+			}
+			default:
+				break;
+			}
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::TreePop();
 		}
 
-		if (ImGui::CollapsingHeader("Materials"))
+		if (ImGui::CollapsingHeader("Material sampling"))
 		{
 			ImGui::TreePush("Sampling Materials Tree");
 			draw_principled_bsdf_energy_conservation();
@@ -1652,6 +1432,281 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::TreePop();
+	}
+}
+
+template <typename CommonReSTIRSettings>
+void ImGuiSettingsWindow::draw_ReSTIR_temporal_reuse_panel(CommonReSTIRSettings& restir_settings, std::function<void(void)> draw_before_panel)
+{
+	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
+
+	if (ImGui::CollapsingHeader("Temporal Reuse Pass"))
+	{
+		ImGui::PushID(&restir_settings);
+		ImGui::TreePush("ReSTIR - Temporal Reuse Pass Tree");
+		{
+			draw_before_panel();
+
+			if (restir_settings.common_temporal_pass.do_temporal_reuse_pass)
+			{
+				// Same line as "Do Temporal Reuse"
+				ImGui::SameLine();
+				if (ImGui::Button("Reset Temporal Reservoirs"))
+				{
+					restir_settings.common_temporal_pass.temporal_buffer_clear_requested = true;
+					m_render_window->set_render_dirty(true);
+				}
+
+				bool last_frame_g_buffer_needed = true;
+				last_frame_g_buffer_needed &= !render_settings.accumulate;
+				last_frame_g_buffer_needed &= restir_settings.common_temporal_pass.do_temporal_reuse_pass;
+
+				if (ImGui::SliderInt("Max temporal neighbor search count", &restir_settings.common_temporal_pass.max_neighbor_search_count, 0, 16))
+				{
+					// Clamping
+					restir_settings.common_temporal_pass.max_neighbor_search_count = std::max(0, restir_settings.common_temporal_pass.max_neighbor_search_count);
+
+					m_render_window->set_render_dirty(true);
+				}
+
+				if (ImGui::SliderInt("Temporal neighbor search radius", &restir_settings.common_temporal_pass.neighbor_search_radius, 0, 16))
+				{
+					// Clamping
+					restir_settings.common_temporal_pass.neighbor_search_radius = std::max(0, restir_settings.common_temporal_pass.neighbor_search_radius);
+
+					m_render_window->set_render_dirty(true);
+				}
+
+				if (ImGui::Checkbox("Use Permutation Sampling", &restir_settings.common_temporal_pass.use_permutation_sampling))
+					m_render_window->set_render_dirty(true);
+				ImGuiRenderer::show_help_marker("If true, the back-projected position of the current pixel (temporal neighbor position) will be shuffled"
+					" to add temporal variations.");
+
+				ImGui::Dummy(ImVec2(0.0f, 20.0f));
+				if (ImGui::SliderInt("M-cap", &restir_settings.m_cap, 0, 48))
+				{
+					restir_settings.m_cap = std::max(0, restir_settings.m_cap);
+					if (render_settings.accumulate)
+						m_render_window->set_render_dirty(true);
+				}
+			}
+
+			ImGui::TreePop();
+			ImGui::PopID();
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		}
+	}
+}
+
+template <typename CommonReSTIRSettings>
+void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(CommonReSTIRSettings& restir_settings, std::function<void(void)> draw_before_panel)
+{
+	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
+	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
+
+	if (ImGui::CollapsingHeader("Spatial Reuse Pass"))
+	{
+		ImGui::PushID(&restir_settings);
+		ImGui::TreePush("ReSTIR - Spatial Reuse Pass Tree");
+		{
+			draw_before_panel();
+
+			if (restir_settings.common_spatial_pass.do_spatial_reuse_pass)
+			{
+				static bool use_spatial_target_function_visibility = ReSTIR_DI_SpatialTargetFunctionVisibility;
+				if (ImGui::Checkbox("Use visibility in target function", &use_spatial_target_function_visibility))
+				{
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_SPATIAL_TARGET_FUNCTION_VISIBILITY, use_spatial_target_function_visibility ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
+					m_renderer->recompile_kernels();
+
+					m_render_window->set_render_dirty(true);
+				}
+				ImGuiRenderer::show_help_marker("Whether or not to use the visibility term in the target function used for "
+					"resampling spatial neighbors.");
+
+				int max_neighbor_count = restir_settings.common_spatial_pass.reuse_neighbor_count;
+				if (restir_settings.common_spatial_pass.do_disocclusion_reuse_boost)
+					max_neighbor_count = std::max(max_neighbor_count, restir_settings.common_spatial_pass.disocclusion_reuse_count);
+				static int partial_visibility_neighbor_count = max_neighbor_count;
+				if (use_spatial_target_function_visibility)
+				{
+					ImGui::TreePush("VisibilitySpatialReuseLastPassOnly Tree");
+
+					{
+						if (ImGui::SliderInt("Partial Neighbor Visibility", &partial_visibility_neighbor_count, 0, max_neighbor_count, "%d", ImGuiSliderFlags_AlwaysClamp))
+						{
+							// Using -1 so that the user manipulates intuitive numbers between 0 and
+							// 'restir_settings.common_spatial_pass.reuse_neighbor_count'
+							// but the shader actually wants value between -1 and
+							// 'restir_settings.common_spatial_pass.reuse_neighbor_count' for it to be meaningful
+							restir_settings.common_spatial_pass.neighbor_visibility_count = partial_visibility_neighbor_count;
+
+							m_render_window->set_render_dirty(true);
+						}
+						ImGuiRenderer::show_help_marker("How many neighbors will actually use a visibility term, can be useful to balance "
+							"performance/variance but lowering this value below the maximum amount of neighbors may actually reduce "
+							"performance because the final shading pass will have more visibility tests to do: if all neighbors use "
+							"visibility during spatial resampling, then the final shading pass can be certain that all neighbors "
+							"already take occlusion into account and so the final shading pass doesn't compute visibility. "
+							"However, if 1 or 2 neighbors do not include visibility for example, then the final shading pass will "
+							"have to trace rays for these neighbors and this will slow down the final shading pass quite a bit.");
+
+						if (ImGui::Checkbox("Only on the last pass", &restir_settings.common_spatial_pass.do_visibility_only_last_pass))
+							m_render_window->set_render_dirty(true);
+						ImGuiRenderer::show_help_marker("If checked, the visibility in the resampling target function will only be used on the last spatial reuse pass");
+					}
+					ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+					ImGui::TreePop();
+				}
+
+
+				if (ImGui::SliderInt("Spatial Reuse Pass Count", &restir_settings.common_spatial_pass.number_of_passes, 1, 8))
+				{
+					// Clamping
+					restir_settings.common_spatial_pass.number_of_passes = std::max(1, restir_settings.common_spatial_pass.number_of_passes);
+
+					m_render_window->set_render_dirty(true);
+				}
+
+				if (ImGui::SliderInt("Spatial Reuse Radius (px)", &restir_settings.common_spatial_pass.reuse_radius, 1, 64))
+				{
+					// Clamping
+					restir_settings.common_spatial_pass.reuse_radius = std::max(1, restir_settings.common_spatial_pass.reuse_radius);
+
+					m_render_window->set_render_dirty(true);
+				}
+
+				// Checking the value before the "Neighbor Reuse Count" slider is modified
+				// so that we know whether or not we'll have to keep the
+				// 'partial_visibility_neighbor_count' value updated for the "Partial Neighbor Visibility" slider
+				bool will_need_to_update_partial_visibility = partial_visibility_neighbor_count == max_neighbor_count;
+				if (ImGui::SliderInt("Neighbor Reuse Count", &restir_settings.common_spatial_pass.reuse_neighbor_count, 1, 16))
+				{
+					// Clamping
+					restir_settings.common_spatial_pass.reuse_neighbor_count = std::max(1, restir_settings.common_spatial_pass.reuse_neighbor_count);
+
+					// Updating the maximum
+					max_neighbor_count = restir_settings.common_spatial_pass.reuse_neighbor_count;
+					if (restir_settings.common_spatial_pass.do_disocclusion_reuse_boost)
+						max_neighbor_count = std::max(max_neighbor_count, restir_settings.common_spatial_pass.disocclusion_reuse_count);
+
+					bool reuse_count_is_the_max = max_neighbor_count == restir_settings.common_spatial_pass.reuse_neighbor_count;
+					reuse_count_is_the_max |= !restir_settings.common_spatial_pass.do_disocclusion_reuse_boost;
+					if (will_need_to_update_partial_visibility && reuse_count_is_the_max)
+					{
+						// Also updating the partial visibility neighbor index slider if it was set to the maximum
+						// amount of neighbors
+						partial_visibility_neighbor_count = restir_settings.common_spatial_pass.reuse_neighbor_count;
+						restir_settings.common_spatial_pass.neighbor_visibility_count = partial_visibility_neighbor_count;
+					}
+
+					if (restir_settings.common_spatial_pass.disocclusion_reuse_count < restir_settings.common_spatial_pass.reuse_neighbor_count)
+						// If disocclusion boost is now below the spatial neighbor count, bumping it up
+						// because it makes no sense to have the disocclusion boost below the base
+						// spatial neighbor count
+						restir_settings.common_spatial_pass.disocclusion_reuse_count = restir_settings.common_spatial_pass.reuse_neighbor_count;
+
+					m_render_window->set_render_dirty(true);
+				}
+
+				if (ImGui::Checkbox("Increase Disocclusion Reuse Count", &restir_settings.common_spatial_pass.do_disocclusion_reuse_boost))
+				{
+					m_render_window->set_render_dirty(true);
+					if (restir_settings.common_spatial_pass.do_disocclusion_reuse_boost)
+					{
+						// We just enabled disocclusion boost
+
+						// Recomputing the max neighbor with the disocclusion boost taken into account
+						max_neighbor_count = std::max(max_neighbor_count, restir_settings.common_spatial_pass.disocclusion_reuse_count);
+
+						partial_visibility_neighbor_count = max_neighbor_count;
+					}
+					else
+						// Disabled disocclusion boost, bringing the value back to its maximum before
+						// disocclusion boost which is just the number of reused spatial neighbors
+						partial_visibility_neighbor_count = restir_settings.common_spatial_pass.reuse_neighbor_count;
+
+					restir_settings.common_spatial_pass.neighbor_visibility_count = partial_visibility_neighbor_count;
+				}
+				ImGuiRenderer::show_help_marker("If checked, the given number of neighbors will be reused for pixels that just got "
+					"disoccluded due to camera movement (and thus that have no temporal history). This helps "
+					"reduce noise in disoccluded regions.");
+				if (restir_settings.common_spatial_pass.do_disocclusion_reuse_boost)
+				{
+					{
+						ImGui::TreePush("Disocclusion boost tree");
+
+						if (ImGui::SliderInt("Disoccluded Neighbor Reuse Count", &restir_settings.common_spatial_pass.disocclusion_reuse_count, restir_settings.common_spatial_pass.reuse_neighbor_count, 16 + restir_settings.common_spatial_pass.reuse_neighbor_count))
+						{
+							m_render_window->set_render_dirty(true);
+
+							// Updating the maximum
+							max_neighbor_count = restir_settings.common_spatial_pass.reuse_neighbor_count;
+							if (restir_settings.common_spatial_pass.do_disocclusion_reuse_boost)
+								max_neighbor_count = std::max(max_neighbor_count, restir_settings.common_spatial_pass.disocclusion_reuse_count);
+
+							if (will_need_to_update_partial_visibility)
+							{
+								// If the number of neighbors using visibility is set at the maximum, then we should
+								// keep that value at the maximum as we modify the disoccluded neighbor reuse count
+								max_neighbor_count = restir_settings.common_spatial_pass.disocclusion_reuse_count;
+								partial_visibility_neighbor_count = max_neighbor_count;
+								restir_settings.common_spatial_pass.neighbor_visibility_count = max_neighbor_count;
+							}
+						}
+						ImGuiRenderer::show_help_marker("How many neighbors a pixel will reuse if that pixel just got disoccluded.");
+
+						if (restir_settings.common_spatial_pass.neighbor_visibility_count == restir_settings.common_spatial_pass.reuse_neighbor_count)
+							// If the user is using the visibility in the target function of all spatial neighbors,
+							// modifying that maximum number should still keep the visibility target function count
+							// to the maximum
+							restir_settings.common_spatial_pass.neighbor_visibility_count = std::max(restir_settings.common_spatial_pass.disocclusion_reuse_count, restir_settings.common_spatial_pass.reuse_neighbor_count);
+
+						ImGui::TreePop();
+					}
+				}
+
+				if (ImGui::Checkbox("Neighbor Samples Random Rotation", &restir_settings.common_spatial_pass.do_neighbor_rotation))
+					m_render_window->set_render_dirty(true);
+				ImGuiRenderer::show_help_marker("If checked, spatial neighbors sampled (using the Hammersley point set) "
+					"will be randomly rotated. Because neighbor locations are generated with a Hammersley point set "
+					"(deterministic), not rotating them results in every pixel of every rendered image reusing the "
+					"same neighbor locations which decreases reuse efficiency.");
+
+				ImGui::BeginDisabled(!render_settings.enable_adaptive_sampling);
+				if (ImGui::Checkbox("Allow Reuse of Converged Neighbors", &restir_settings.common_spatial_pass.allow_converged_neighbors_reuse))
+					m_render_window->set_render_dirty(true);
+				std::string reuse_of_converged_neighbors_help = "If checked, then the spatial reuse passes are allowed "
+					"to reuse from neighboring pixels which have converged (and thus neighbors that "
+					"are not being sampled anymore = neighbors whose reservoirs do not evolve anymore). "
+					"This improves performance but at the cost of bias when non-converged "
+					"pixels try to reuse from converged pixels. The bias will thus typically manifest "
+					"on the parts of the image that are the hardest to render.";
+				if (!render_settings.enable_adaptive_sampling)
+					reuse_of_converged_neighbors_help += "\n\nDisabled because adaptive sampling isn't enabled.";
+				ImGuiRenderer::show_help_marker(reuse_of_converged_neighbors_help);
+				if (restir_settings.common_spatial_pass.allow_converged_neighbors_reuse)
+				{
+					if (ImGui::SliderFloat("Converged Neighbor Reuse Probability", &restir_settings.common_spatial_pass.converged_neighbor_reuse_probability, 0.0f, 1.0f))
+						m_render_window->set_render_dirty(true);
+					ImGuiRenderer::show_help_marker("Allows trading bias for rendering performance by "
+						"spatially reusing converged neighbors only with a certain probability instead of never / always."
+						"\n\n 0.0 nevers reuses converged neighbors. No bias but performance impact."
+						"\n\n 1.0 always reuses converged neighbors. Biased but no performance impact.");
+				}
+				ImGui::EndDisabled();
+
+				if (ImGui::Checkbox("Debug Neighbor Reuse Positions", &restir_settings.common_spatial_pass.debug_neighbor_location))
+					m_render_window->set_render_dirty(true);
+				ImGuiRenderer::show_help_marker("If checked, neighbor in the spatial reuse pass will be hardcoded to always be "
+					"15 pixels to the right, not in a circle. This makes spotting bias easier when debugging.");
+			}
+		}
+
+		ImGui::TreePop();
+		ImGui::PopID();
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	}
 }
 

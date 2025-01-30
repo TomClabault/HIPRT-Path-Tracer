@@ -35,10 +35,10 @@
  * We now have one structure per MIS weight computation mode instead of one #if / #elif
  */
 template <int BiasCorrectionMode, bool IsReSTIRGI>
-struct ReSTIRDITemporalResamplingMISWeight {};
+struct ReSTIRTemporalResamplingMISWeight {};
 
 template<bool IsReSTIRGI>
-struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_M, IsReSTIRGI>
+struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_M, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const ReSTIRDIReservoir& reservoir_being_resampled)
 	{
@@ -50,7 +50,7 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_M, I
 };
 
 template<bool IsReSTIRGI>
-struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z, IsReSTIRGI>
+struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const ReSTIRDIReservoir& reservoir_being_resampled)
 	{
@@ -63,11 +63,11 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z, I
 };
 
 template<bool IsReSTIRGI>
-struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE, IsReSTIRGI>
+struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data, const ReSTIRDIReservoir& reservoir_being_resampled)
 	{
-		if (ReSTIRDISettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).use_confidence_weights)
+		if (ReSTIRSettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).use_confidence_weights)
 		{
 			// MIS-like MIS weights with confidence weights are basically a mix of 1/Z 
 			// and MIS like for the normalization so we're just returning the confidence here
@@ -89,14 +89,14 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE, I
 };
 
 template<bool IsReSTIRGI>
-struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH, IsReSTIRGI>
+struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
 
 		const ReSTIRSampleType<IsReSTIRGI>& reservoir_being_resampled_sample,
 		float initial_candidates_reservoir_M,
 
-		ReSTIRDISurface& temporal_neighbor_surface, ReSTIRDISurface& center_pixel_surface,
+		ReSTIRSurface& temporal_neighbor_surface, ReSTIRSurface& center_pixel_surface,
 		int temporal_neighbor_reservoir_M,
 		int current_neighbor_index,
 		Xorshift32Generator& random_number_generator)
@@ -138,7 +138,7 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH, Is
 
 		int temporal_M = temporal_neighbor_reservoir_M;
 		int center_reservoir_M = initial_candidates_reservoir_M;
-		if (!ReSTIRDISettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).use_confidence_weights)
+		if (!ReSTIRSettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).use_confidence_weights)
 		{
 			temporal_M = 1;
 			center_reservoir_M = 1;
@@ -159,14 +159,14 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH, Is
 };
 
 template<bool IsReSTIRGI>
-struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS, IsReSTIRGI>
+struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
 
 		int temporal_neighbor_reservoir_M, float temporal_neighbor_reservoir_target_function,
 		const ReSTIRSampleType<IsReSTIRGI>& initial_candidates_reservoir_sample, int initial_candidates_reservoir_M, float initial_candidates_reservoir_target_function,
 
-		ReSTIRDISurface& temporal_neighbor_surface,
+		ReSTIRSurface& temporal_neighbor_surface,
 		float neighbor_sample_target_function_at_center, int current_neighbor_index,
 		Xorshift32Generator& random_number_generator)
 	{
@@ -177,7 +177,7 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MI
 			float target_function_at_neighbor = temporal_neighbor_reservoir_target_function;
 			float target_function_at_center = neighbor_sample_target_function_at_center;
 
-			bool use_confidence_weights = ReSTIRDISettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).use_confidence_weights;
+			bool use_confidence_weights = ReSTIRSettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).use_confidence_weights;
 			float temporal_neighbor_M = use_confidence_weights ? temporal_neighbor_reservoir_M : 1;
 			float center_reservoir_M = use_confidence_weights ? initial_candidates_reservoir_M : 1;
 			float neighbors_confidence_sum = use_confidence_weights ? temporal_neighbor_reservoir_M : 1;
@@ -230,12 +230,12 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MI
 };
 
 template <bool IsReSTIRGI>
-struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE, IsReSTIRGI>
+struct ReSTIRTemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE, IsReSTIRGI>
 {
 	HIPRT_HOST_DEVICE float get_resampling_MIS_weight(const HIPRTRenderData& render_data,
 		int temporal_neighbor_reservoir_M, float temporal_neighbor_reservoir_target_function, 
 		const ReSTIRSampleType<IsReSTIRGI>& initial_candidates_reservoir_sample, int initial_candidates_reservoir_M, float initial_candidates_reservoir_target_function,
-		ReSTIRDISurface& temporal_neighbor_surface,
+		ReSTIRSurface& temporal_neighbor_surface,
 		float neighbor_sample_target_function_at_center, int current_neighbor_index,
 		Xorshift32Generator& random_number_generator)
 	{
@@ -246,7 +246,7 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MI
 			float target_function_at_neighbor = temporal_neighbor_reservoir_target_function;
 			float target_function_at_center = neighbor_sample_target_function_at_center;
 
-			bool use_confidence_weights = ReSTIRDISettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).use_confidence_weights;
+			bool use_confidence_weights = ReSTIRSettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).use_confidence_weights;
 			float temporal_neighbor_M = use_confidence_weights ? temporal_neighbor_reservoir_M : 1;
 			float center_reservoir_M = use_confidence_weights ? initial_candidates_reservoir_M : 1;
 			float neighbors_confidence_sum = use_confidence_weights ? temporal_neighbor_reservoir_M : 1;
@@ -304,7 +304,7 @@ struct ReSTIRDITemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_PAIRWISE_MI
 
 				// In the defensive formulation, we want to divide by M, not M-1.
 				// (Eq. 7.6 of "A Gentle Introduction to ReSTIR")
-				if (ReSTIRDISettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).use_confidence_weights)
+				if (ReSTIRSettingsHelper::get_restir_settings<IsReSTIRGI>(render_data).use_confidence_weights)
 					return mc + static_cast<float>(initial_candidates_reservoir_M) / static_cast<float>(initial_candidates_reservoir_M + temporal_neighbor_reservoir_M);
 				else
 					return (1.0f + mc) * 0.5f;
