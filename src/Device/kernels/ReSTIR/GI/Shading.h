@@ -96,7 +96,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
             float3 geometric_normal = render_data.g_buffer.geometric_normals[pixel_index].unpack();
 
             float3 restir_resampled_indirect_direction;
-            if (ReSTIR_GI_is_envmap_path(resampling_reservoir.sample.second_hit_normal))
+            if (ReSTIR_GI_is_envmap_path(resampling_reservoir.sample.sample_point_normal))
                 restir_resampled_indirect_direction = resampling_reservoir.sample.sample_point;
             else
                 restir_resampled_indirect_direction = hippt::normalize(resampling_reservoir.sample.sample_point - closest_hit_info.inter_point);
