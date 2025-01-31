@@ -229,7 +229,7 @@ struct CPUMaterial
 
     ColorRGB32F emission = ColorRGB32F{ 0.0f, 0.0f, 0.0f };
     float emission_strength = 1.0f; // This factor is baked into 'emission' before being sent to the GPU
-    float global_emissive_factor = 1.0f; // This factor is baked into 'emission' before being sent to the GPU
+    float global_emissive_factor = 5.0f; // This factor is baked into 'emission' before being sent to the GPU
     bool emissive_texture_used = false;
 
     ColorRGB32F base_color = ColorRGB32F(1.0f);

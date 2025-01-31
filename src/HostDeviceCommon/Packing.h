@@ -240,6 +240,11 @@ public:
 		float2_to_Snorm12_2x_as_3UChar(octahedral_encode(normal), packed_x, packed_y, packed_z);
 	}
 
+	/**
+	 * Returns the normal that was packed in there
+	 * 
+	 * The returned normal is normalized
+	 */
 	HIPRT_HOST_DEVICE float3 unpack()
 	{
 		float2 v = Snorm12_2x_as_UChar_to_float2(packed_x, packed_y, packed_z);

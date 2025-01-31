@@ -23,9 +23,11 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // TODO restir gi render pass inheriting from megakernel render pass seems to colmpile mega kernel even though we don't need it
-// - maybe debug by only visualizing indirect without direct
+// - hardcode the reused neighbor to be us and see what that does?
 // - mismatch in the target function used during the resamplming and in shading.h ?
 // - replace performance presets by thigns like "brute force path tracer", "simple MIS path tracer", ...
+// - add tooltips to Imgui combo box items
+// - investigate why so much noise in the cornell box: probably because of the distance to the light? numerical issues?
 
 // TODO demos:
 // new oren nayar BRDF: EON

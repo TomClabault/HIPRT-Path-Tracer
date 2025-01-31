@@ -121,14 +121,12 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void count_valid_spatiotemporal_neighbors(const H
 																		 int center_pixel_index, int2 temporal_neighbor_position, float2 cos_sin_theta_rotation, 
 																		 int& out_valid_neighbor_count, int& out_valid_neighbor_M_sum, int& out_neighbor_heuristics_cache)
 {
-	const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<false>(render_data);
-
-	int reused_neighbors_count = spatial_pass_settings.reuse_neighbor_count;
+	int reused_neighbors_count = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<false>(render_data).reuse_neighbor_count;
 
 	out_valid_neighbor_count = 0;
 	for (int neighbor_index = 0; neighbor_index < reused_neighbors_count; neighbor_index++)
 	{
-		int neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, spatial_pass_settings, neighbor_index, temporal_neighbor_position, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
+		int neighbor_pixel_index = get_spatial_neighbor_pixel_index<false>(render_data, neighbor_index, temporal_neighbor_position, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
 		if (neighbor_pixel_index == -1)
 			// Neighbor out of the viewport / invalid
 			continue;
@@ -387,7 +385,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 			neighbor_pixel_index = center_pixel_index;
 		else
 			// Resampling around the temporal neighbor location
-			neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, render_data.render_settings.restir_di_settings.common_spatial_pass, spatial_neighbor_index, 
+			neighbor_pixel_index = get_spatial_neighbor_pixel_index<false>(render_data, 
+				spatial_neighbor_index, 
 				make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z), cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
 
 		if (neighbor_pixel_index == -1)

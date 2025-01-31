@@ -62,7 +62,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_GI_evaluate_target_function<KERNEL_O
 		// Not an envmap path, the direction is the difference between the current shading
 		// point and the reconnection point
 		incident_light_direction = sample.sample_point - surface.shading_point;
-		incident_light_direction /= (distance_to_sample_point = hippt::length(incident_light_direction));
+		distance_to_sample_point = hippt::length(incident_light_direction);
+		incident_light_direction /= distance_to_sample_point;
 	}
 
 	hiprtRay visibility_ray;
@@ -74,6 +75,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_GI_evaluate_target_function<KERNEL_O
 		return 0.0f;
 
 	return sample.outgoing_radiance_to_first_hit.luminance();
+
 	float bsdf_pdf;
 	ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, surface.material, surface.ray_volume_state, false, surface.view_direction, surface.shading_normal, surface.geometric_normal, incident_light_direction, bsdf_pdf, random_number_generator, 0, sample.incident_light_info);
 	if (bsdf_pdf > 0.0f)

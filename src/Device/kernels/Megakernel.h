@@ -120,7 +120,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
                     closest_hit_info.shading_normal = -closest_hit_info.shading_normal;
                 }*/
 
-                if (bounce > 0)
+                if (bounce > 0 || render_data.render_settings.enable_direct > 0)
                     ray_payload.ray_color += estimate_direct_lighting(render_data, ray_payload, closest_hit_info, -ray.direction, x, y, mis_reuse, random_number_generator);
 
                 bool valid_indirect_bounce = path_tracing_compute_next_indirect_bounce(render_data, ray_payload, closest_hit_info, -ray.direction, ray, mis_reuse, random_number_generator);

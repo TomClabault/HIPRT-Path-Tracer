@@ -25,7 +25,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool plane_distance_heuristic(const ReSTIRCommonN
 
 HIPRT_HOST_DEVICE HIPRT_INLINE bool normal_similarity_heuristic(const ReSTIRCommonNeighborSimiliaritySettings& neighbor_similarity_settings, const float3& current_normal, const float3& neighbor_normal, float threshold)
 {
-	if (neighbor_similarity_settings.use_normal_similarity_heuristic)
+	if (!neighbor_similarity_settings.use_normal_similarity_heuristic)
 		return true;
 
 	return hippt::dot(current_normal, neighbor_normal) > threshold;

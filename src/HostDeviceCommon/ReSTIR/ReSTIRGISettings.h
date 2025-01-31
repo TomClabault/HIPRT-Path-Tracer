@@ -52,7 +52,7 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 	ReSTIRGITemporalPassSettings temporal_pass;
 	ReSTIRGISpatialPassSettings spatial_pass;
 	
-	ReSTIRGIReservoir* restir_output_reservoirs;
+	ReSTIRGIReservoir* restir_output_reservoirs = nullptr;
 
 	ReSTIRGIDebugView debug_view = ReSTIRGIDebugView::NO_DEBUG;
 	float debug_view_scale_factor = 0.04f;
