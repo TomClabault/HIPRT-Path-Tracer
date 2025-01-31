@@ -111,8 +111,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 				// Neighbor not passing the heuristics tests, skipping it right away
 				continue;
 
-		int neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data,
-			render_data.render_settings.restir_gi_settings.common_spatial_pass,
+		int neighbor_pixel_index = get_spatial_neighbor_pixel_index<true>(render_data,
 			neighbor_index, center_pixel_coords, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
 		if (neighbor_pixel_index == -1)
 			// Neighbor out of the viewport
@@ -161,10 +160,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 				// The sample was too dissimilar and so we're rejecting it
 				continue;
 			}
-
-			// The jacobian will be multiplied by the code in 'reservoir.combine_with' but with want a division
-			// so we're inverting it here
-			jacobian_determinant = 1.0f / jacobian_determinant;
 		}
 
 #if ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_1_OVER_M

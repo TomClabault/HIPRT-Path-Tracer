@@ -44,10 +44,14 @@ static ReSTIRCommonSpatialPassSettings RESTIR_GI_DEFAULT_COMMON_SPATIAl_PASS_SET
 
 static ReSTIRCommonNeighborSimiliaritySettings RESTIR_GI_DEFAULT_COMMON_NEIGHBOR_SIMILARITY_SETTINGS = {
 	.use_normal_similarity_heuristic = true,
-	.normal_similarity_angle_degrees = 25.0f,
-	.normal_similarity_angle_precomp = 0.906307787f,
 
-	.use_plane_distance_heuristic = true,
+	.normal_similarity_angle_degrees = 0.0f,
+	.normal_similarity_angle_precomp = 0.9f,
+
+	/*.normal_similarity_angle_degrees = 25.0f,
+	.normal_similarity_angle_precomp = 0.906307787f,*/
+
+	.use_plane_distance_heuristic = false,
 	.plane_distance_threshold = 0.1f,
 
 	.use_roughness_similarity_heuristic = false,

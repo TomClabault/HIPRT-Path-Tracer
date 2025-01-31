@@ -136,10 +136,9 @@ struct ReSTIRSpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE, IsRe
 		out_normalization_denom = 0.0f;
 		out_normalization_nume = 0.0f;
 
-		const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
-		for (int neighbor = 0; neighbor < spatial_pass_settings.reuse_neighbor_count + 1; neighbor++)
+		for (int neighbor = 0; neighbor < ReSTIRSettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data).reuse_neighbor_count + 1; neighbor++)
 		{
-			int neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, spatial_pass_settings, neighbor, center_pixel_coords, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
+			int neighbor_pixel_index = get_spatial_neighbor_pixel_index<IsReSTIRGI>(render_data, neighbor, center_pixel_coords, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
 			if (neighbor_pixel_index == -1)
 				// Invalid neighbor
 				continue;
@@ -168,7 +167,7 @@ struct ReSTIRSpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIKE, IsRe
 
 				if (neighbor == selected_neighbor)
 					// Not multiplying by M here, this was done already when resampling the sample if we
-					// were using confidence weights
+					// we're using confidence weights
 					out_normalization_nume += target_function_at_neighbor;
 				out_normalization_denom += target_function_at_neighbor * M;
 			};

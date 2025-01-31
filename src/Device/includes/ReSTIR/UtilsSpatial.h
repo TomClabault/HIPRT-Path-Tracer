@@ -59,13 +59,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool do_include_visibility_term_or_not(const HIPR
  *		The same random number generator with the same seed must be given to *all* get_spatial_neighbor_pixel_index()
  *		calls of this thread invocation
  */
+template <bool IsReSTIRGI>
 HIPRT_HOST_DEVICE HIPRT_INLINE int get_spatial_neighbor_pixel_index(const HIPRTRenderData& render_data,
-	const ReSTIRCommonSpatialPassSettings& spatial_pass_settings,
 	int neighbor_index,
 	int2 center_pixel_coords, float2 cos_sin_theta_rotation, Xorshift32Generator rng_converged_neighbor_reuse)
 {
-	int neighbor_pixel_index;
+	const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
 
+	int neighbor_pixel_index;
 	if (neighbor_index == spatial_pass_settings.reuse_neighbor_count)
 	{
 		// If this is the last neighbor, we set it to ourselves
@@ -156,7 +157,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void count_valid_spatial_neighbors(const HIPRTRen
 	out_valid_neighbor_count = 0;
 	for (int neighbor_index = 0; neighbor_index < reused_neighbors_count; neighbor_index++)
 	{
-		int neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, spatial_pass_settings, neighbor_index, center_pixel_coords, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
+		int neighbor_pixel_index = get_spatial_neighbor_pixel_index<IsReSTIRGI>(render_data, neighbor_index, center_pixel_coords, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
 		if (neighbor_pixel_index == -1)
 			// Neighbor out of the viewport / invalid
 			continue;

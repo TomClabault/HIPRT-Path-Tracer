@@ -836,6 +836,9 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			ImGui::EndDisabled();
 		}
 
+		//ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		if (ImGui::SliderInt("Disabvle direct", &render_settings.enable_direct, 0, 1))
+			m_render_window->set_render_dirty(true);
 		if (ImGui::CollapsingHeader("Emissive geometry sampling"))
 		{
 			ImGui::TreePush("Direct lighting sampling tree");
@@ -921,6 +924,10 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					ImGui::TreePush("ReSTIR DI - General Settings Tree");
 
 					{
+						if (ImGui::Checkbox("Use Final Visibility", &render_settings.restir_di_settings.do_final_shading_visibility))
+							m_render_window->set_render_dirty(true);
+
+						ImGui::Dummy(ImVec2(0.0f, 20.0f));
 						if (ImGui::SliderInt("M-cap", &render_settings.restir_di_settings.m_cap, 0, 48))
 						{
 							render_settings.restir_di_settings.m_cap = std::max(0, render_settings.restir_di_settings.m_cap);
@@ -928,90 +935,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 								m_render_window->set_render_dirty(true);
 						}
 
-						ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
-						if (ImGui::Checkbox("Use Final Visibility", &render_settings.restir_di_settings.do_final_shading_visibility))
-							m_render_window->set_render_dirty(true);
-
-						ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
-						static bool use_heuristics_at_all = true;
-						static bool use_normal_heuristic_backup = render_settings.restir_di_settings.neighbor_similarity_settings.use_normal_similarity_heuristic;
-						static bool use_plane_distance_heuristic_backup = render_settings.restir_di_settings.neighbor_similarity_settings.use_plane_distance_heuristic;
-						static bool use_roughness_heuristic_backup = render_settings.restir_di_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic;
-						if (ImGui::Checkbox("Use Heuristics for neighbor rejection", &use_heuristics_at_all))
-						{
-							if (!use_heuristics_at_all)
-							{
-								// Saving the usage of the heuristics for later restoration
-								use_normal_heuristic_backup = render_settings.restir_di_settings.neighbor_similarity_settings.use_normal_similarity_heuristic;
-								use_plane_distance_heuristic_backup = render_settings.restir_di_settings.neighbor_similarity_settings.use_plane_distance_heuristic;
-								use_roughness_heuristic_backup = render_settings.restir_di_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic;
-
-								render_settings.restir_di_settings.neighbor_similarity_settings.use_normal_similarity_heuristic = false;
-								render_settings.restir_di_settings.neighbor_similarity_settings.use_plane_distance_heuristic = false;
-								render_settings.restir_di_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic = false;
-							}
-							else
-							{
-								// Restoring heuristics usage to their backup values
-								render_settings.restir_di_settings.neighbor_similarity_settings.use_normal_similarity_heuristic = use_normal_heuristic_backup;
-								render_settings.restir_di_settings.neighbor_similarity_settings.use_plane_distance_heuristic = use_plane_distance_heuristic_backup;
-								render_settings.restir_di_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic = use_roughness_heuristic_backup;
-							}
-
-							m_render_window->set_render_dirty(true);
-						}
-						ImGuiRenderer::show_help_marker("Using heuristics to reject neighbor that are too dissimilar (in "
-							"terms of normal orientation/roughnes/... to the pixel doing the resampling "
-							"can help reduce variance. It also reduces bias but never removes it "
-							"completely, it just makes it less obvious.");
-
-						if (use_heuristics_at_all)
-						{
-							ImGui::TreePush("ReSTIR DI Heursitics Tree");
-
-
-
-
-							if (ImGui::Checkbox("Use Normal Similarity Heuristic", &render_settings.restir_di_settings.neighbor_similarity_settings.use_normal_similarity_heuristic))
-								m_render_window->set_render_dirty(true);
-
-							if (render_settings.restir_di_settings.neighbor_similarity_settings.use_normal_similarity_heuristic)
-							{
-								if (ImGui::SliderFloat("Normal Similarity Threshold", &render_settings.restir_di_settings.neighbor_similarity_settings.normal_similarity_angle_degrees, 0.0f, 360.0f, "%.3f deg", ImGuiSliderFlags_AlwaysClamp))
-								{
-									render_settings.restir_di_settings.neighbor_similarity_settings.normal_similarity_angle_precomp = std::cos(render_settings.restir_di_settings.neighbor_similarity_settings.normal_similarity_angle_degrees * M_PI / 180.0f);
-
-									m_render_window->set_render_dirty(true);
-								}
-							}
-
-
-
-
-							if (ImGui::Checkbox("Use Plane Distance Heuristic", &render_settings.restir_di_settings.neighbor_similarity_settings.use_plane_distance_heuristic))
-								m_render_window->set_render_dirty(true);
-
-							if (render_settings.restir_di_settings.neighbor_similarity_settings.use_plane_distance_heuristic)
-								if (ImGui::SliderFloat("Plane Distance Threshold", &render_settings.restir_di_settings.neighbor_similarity_settings.plane_distance_threshold, 0.0f, 1.0f))
-									m_render_window->set_render_dirty(true);
-
-
-
-
-							if (ImGui::Checkbox("Use Roughness Heuristic", &render_settings.restir_di_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic))
-								m_render_window->set_render_dirty(true);
-
-							if (render_settings.restir_di_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic)
-								if (ImGui::SliderFloat("Roughness Threshold", &render_settings.restir_di_settings.neighbor_similarity_settings.roughness_similarity_threshold, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp))
-									m_render_window->set_render_dirty(true);
-
-
-
-							// ReSTIR DI Heursitics Tree
-							ImGui::TreePop();
-						}
+						draw_ReSTIR_neighbor_heuristics_panel(render_settings.restir_di_settings);
 					}
 
 					ImGui::TreePop();
@@ -1165,60 +1089,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 
 
-
-				if (ImGui::CollapsingHeader("Bias correction"))
-				{
-					ImGui::TreePush("Bias correction tree ReSTIR DI");
-
-					{
-						const char* bias_correction_mode_items[] = {
-							"- 1/M Weights (Biased)",
-							"- 1/Z Weights (Unbiased)",
-							"- MIS-like Weights (Unbiased)",
-							"- MIS Weights GBH (Unbiased)",
-							"- Pairwise MIS Weights (Unbiased)",
-							"- Pairwise MIS Weights Defensive (Unbiased)",
-						};
-						if (ImGui::Combo("Bias Correction Weights", global_kernel_options->get_raw_pointer_to_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS), bias_correction_mode_items, IM_ARRAYSIZE(bias_correction_mode_items)))
-						{
-							m_renderer->recompile_kernels();
-
-							m_render_window->set_render_dirty(true);
-						}
-						ImGuiRenderer::show_help_marker("What weights to use to resample reservoirs");
-
-						bool disable_confidence_weights = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_1_OVER_M
-							|| global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_1_OVER_Z;
-
-						ImGui::BeginDisabled(disable_confidence_weights);
-						if (ImGui::Checkbox("Use Confidence Weights", &render_settings.restir_di_settings.use_confidence_weights))
-							m_render_window->set_render_dirty(true);
-						std::string confidence_weight_help_string = "Whether or not to use confidence weights when resampling the samples. Confidence weights allow proper temporal reuse.";
-						if (disable_confidence_weights)
-							confidence_weight_help_string += "\n\nDisabled because 1/M or 1/Z weights use confidence weights by design.";
-						ImGuiRenderer::show_help_marker(confidence_weight_help_string);
-						ImGui::EndDisabled();
-
-						// No visibility bias correction for 1/M weights
-						bool bias_correction_visibility_disabled = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS) == RESTIR_DI_BIAS_CORRECTION_1_OVER_M;
-						static bool bias_correction_use_visibility = ReSTIR_DI_BiasCorrectionUseVisibility;
-						ImGui::BeginDisabled(bias_correction_visibility_disabled);
-						if (ImGui::Checkbox("Use visibility in bias correction", &bias_correction_use_visibility))
-						{
-							global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY, bias_correction_use_visibility ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-							m_renderer->recompile_kernels();
-
-							m_render_window->set_render_dirty(true);
-						}
-						if (bias_correction_visibility_disabled)
-							ImGuiRenderer::show_help_marker("Visibility bias correction cannot be used with 1/M weights.");
-						ImGui::EndDisabled();
-					}
-
-					ImGui::TreePop();
-					ImGui::Dummy(ImVec2(0.0f, 20.0f));
-				}
-
+				draw_ReSTIR_bias_correction_panel<false>();
 
 
 
@@ -1354,6 +1225,24 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 			{
 				ImGui::TreePush("ReSTIR GI options tree");
 
+				if (ImGui::CollapsingHeader("General Settings"))
+				{
+					ImGui::TreePush("ReSTIR GI - General Settings Tree");
+					{
+						ImGui::Dummy(ImVec2(0.0f, 20.0f));
+						if (ImGui::SliderInt("M-cap", &render_settings.restir_di_settings.m_cap, 0, 48))
+						{
+							render_settings.restir_di_settings.m_cap = std::max(0, render_settings.restir_di_settings.m_cap);
+							if (render_settings.accumulate)
+								m_render_window->set_render_dirty(true);
+						}
+
+						draw_ReSTIR_neighbor_heuristics_panel(render_settings.restir_gi_settings);
+					}
+					ImGui::TreePop();
+					ImGui::Dummy(ImVec2(0.0f, 20.0f));
+				}
+
 				draw_ReSTIR_temporal_reuse_panel(render_settings.restir_gi_settings, [&render_settings, this]() {
 					if (ImGui::Checkbox("Do Temporal Reuse", &render_settings.restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass))
 						m_render_window->set_render_dirty(true);
@@ -1362,6 +1251,8 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					if (ImGui::Checkbox("Do Spatial Reuse", &render_settings.restir_gi_settings.common_spatial_pass.do_spatial_reuse_pass))
 						m_render_window->set_render_dirty(true);
 				});
+
+				draw_ReSTIR_bias_correction_panel<true>();
 
 				if (ImGui::CollapsingHeader("Debug"))
 				{
@@ -1431,6 +1322,88 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 		}
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+		ImGui::TreePop();
+	}
+}
+
+void ImGuiSettingsWindow::draw_ReSTIR_neighbor_heuristics_panel(ReSTIRCommonSettings& common_settings)
+{
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+	static bool use_heuristics_at_all = true;
+	static bool use_normal_heuristic_backup = common_settings.neighbor_similarity_settings.use_normal_similarity_heuristic;
+	static bool use_plane_distance_heuristic_backup = common_settings.neighbor_similarity_settings.use_plane_distance_heuristic;
+	static bool use_roughness_heuristic_backup = common_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic;
+	if (ImGui::Checkbox("Use Heuristics for neighbor rejection", &use_heuristics_at_all))
+	{
+		if (!use_heuristics_at_all)
+		{
+			// Saving the usage of the heuristics for later restoration
+			use_normal_heuristic_backup = common_settings.neighbor_similarity_settings.use_normal_similarity_heuristic;
+			use_plane_distance_heuristic_backup = common_settings.neighbor_similarity_settings.use_plane_distance_heuristic;
+			use_roughness_heuristic_backup = common_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic;
+
+			common_settings.neighbor_similarity_settings.use_normal_similarity_heuristic = false;
+			common_settings.neighbor_similarity_settings.use_plane_distance_heuristic = false;
+			common_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic = false;
+		}
+		else
+		{
+			// Restoring heuristics usage to their backup values
+			common_settings.neighbor_similarity_settings.use_normal_similarity_heuristic = use_normal_heuristic_backup;
+			common_settings.neighbor_similarity_settings.use_plane_distance_heuristic = use_plane_distance_heuristic_backup;
+			common_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic = use_roughness_heuristic_backup;
+		}
+
+		m_render_window->set_render_dirty(true);
+	}
+	ImGuiRenderer::show_help_marker("Using heuristics to reject neighbor that are too dissimilar (in "
+		"terms of normal orientation/roughnes/... to the pixel doing the resampling "
+		"can help reduce variance. It also reduces bias but never removes it "
+		"completely, it just makes it less obvious.");
+
+	if (use_heuristics_at_all)
+	{
+		ImGui::TreePush("ReSTIR DI Heursitics Tree");
+
+
+
+
+		if (ImGui::Checkbox("Use Normal Similarity Heuristic", &common_settings.neighbor_similarity_settings.use_normal_similarity_heuristic))
+			m_render_window->set_render_dirty(true);
+
+		if (common_settings.neighbor_similarity_settings.use_normal_similarity_heuristic)
+		{
+			if (ImGui::SliderFloat("Normal Similarity Threshold", &common_settings.neighbor_similarity_settings.normal_similarity_angle_degrees, 0.1f, 90.0f, "%.3f deg", ImGuiSliderFlags_AlwaysClamp))
+			{
+				common_settings.neighbor_similarity_settings.normal_similarity_angle_precomp = std::cos(common_settings.neighbor_similarity_settings.normal_similarity_angle_degrees * M_PI / 180.0f);
+
+				m_render_window->set_render_dirty(true);
+			}
+		}
+
+
+
+
+		if (ImGui::Checkbox("Use Plane Distance Heuristic", &common_settings.neighbor_similarity_settings.use_plane_distance_heuristic))
+			m_render_window->set_render_dirty(true);
+
+		if (common_settings.neighbor_similarity_settings.use_plane_distance_heuristic)
+			if (ImGui::SliderFloat("Plane Distance Threshold", &common_settings.neighbor_similarity_settings.plane_distance_threshold, 0.0f, 1.0f))
+				m_render_window->set_render_dirty(true);
+
+
+
+
+		if (ImGui::Checkbox("Use Roughness Heuristic", &common_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic))
+			m_render_window->set_render_dirty(true);
+
+		if (common_settings.neighbor_similarity_settings.use_roughness_similarity_heuristic)
+			if (ImGui::SliderFloat("Roughness Threshold", &common_settings.neighbor_similarity_settings.roughness_similarity_threshold, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp))
+				m_render_window->set_render_dirty(true);
+
+
+
+		// ReSTIR DI Heursitics Tree
 		ImGui::TreePop();
 	}
 }
@@ -1702,6 +1675,75 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(CommonReSTIRSettings& 
 				ImGuiRenderer::show_help_marker("If checked, neighbor in the spatial reuse pass will be hardcoded to always be "
 					"15 pixels to the right, not in a circle. This makes spotting bias easier when debugging.");
 			}
+		}
+
+		ImGui::TreePop();
+		ImGui::PopID();
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+	}
+}
+
+template <bool IsReSTIRGI>
+void ImGuiSettingsWindow::draw_ReSTIR_bias_correction_panel()
+{
+	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
+	ReSTIRCommonSettings* restir_settings;
+	if constexpr (IsReSTIRGI)
+		restir_settings = &m_renderer->get_render_settings().restir_gi_settings;
+	else
+		restir_settings = &m_renderer->get_render_settings().restir_di_settings;
+
+	if (ImGui::CollapsingHeader("Bias correction"))
+	{
+		ImGui::PushID(restir_settings);
+		ImGui::TreePush("Bias correction tree ReSTIR");
+
+		{
+			const char* bias_correction_mode_items[] = {
+				"- 1/M Weights (Biased)",
+				"- 1/Z Weights (Unbiased)",
+				"- MIS-like Weights (Unbiased)",
+				"- MIS Weights GBH (Unbiased)",
+				"- Pairwise MIS Weights (Unbiased)",
+				"- Pairwise MIS Weights Defensive (Unbiased)",
+			};
+
+			int* bias_correction_weights_option_pointer = global_kernel_options->get_raw_pointer_to_macro_value(IsReSTIRGI ? GPUKernelCompilerOptions::RESTIR_GI_BIAS_CORRECTION_WEIGHTS : GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_WEIGHTS);
+			if (ImGui::Combo("Bias Correction Weights", bias_correction_weights_option_pointer, bias_correction_mode_items, IM_ARRAYSIZE(bias_correction_mode_items)))
+			{
+				m_renderer->recompile_kernels();
+
+				m_render_window->set_render_dirty(true);
+			}
+			ImGuiRenderer::show_help_marker("What weights to use to resample reservoirs");
+
+			bool disable_confidence_weights = *bias_correction_weights_option_pointer == (IsReSTIRGI ? RESTIR_GI_BIAS_CORRECTION_1_OVER_M : RESTIR_DI_BIAS_CORRECTION_1_OVER_M)
+										   || *bias_correction_weights_option_pointer == (IsReSTIRGI ? RESTIR_GI_BIAS_CORRECTION_1_OVER_Z : RESTIR_DI_BIAS_CORRECTION_1_OVER_Z);
+
+			ImGui::BeginDisabled(disable_confidence_weights);
+			if (ImGui::Checkbox("Use Confidence Weights", &restir_settings->use_confidence_weights))
+				m_render_window->set_render_dirty(true);
+			std::string confidence_weight_help_string = "Whether or not to use confidence weights when resampling the samples. Confidence weights allow proper temporal reuse.";
+			if (disable_confidence_weights)
+				confidence_weight_help_string += "\n\nDisabled because 1/M or 1/Z weights use confidence weights by design.";
+			ImGuiRenderer::show_help_marker(confidence_weight_help_string);
+			ImGui::EndDisabled();
+
+			// No visibility bias correction for 1/M weights
+			bool bias_correction_visibility_disabled = *bias_correction_weights_option_pointer == (IsReSTIRGI ? RESTIR_GI_BIAS_CORRECTION_1_OVER_M : RESTIR_DI_BIAS_CORRECTION_1_OVER_M);
+			static bool bias_correction_use_visibility = IsReSTIRGI ? ReSTIR_GI_BiasCorrectionUseVisibility : ReSTIR_DI_BiasCorrectionUseVisibility;
+			ImGui::BeginDisabled(bias_correction_visibility_disabled);
+			if (ImGui::Checkbox("Use visibility in bias correction", &bias_correction_use_visibility))
+			{
+				int* bias_correction_use_visibility_option_pointer = global_kernel_options->get_raw_pointer_to_macro_value(IsReSTIRGI ? GPUKernelCompilerOptions::RESTIR_GI_BIAS_CORRECTION_USE_VISIBILITY : GPUKernelCompilerOptions::RESTIR_DI_BIAS_CORRECTION_USE_VISIBILITY);
+				*bias_correction_use_visibility_option_pointer = bias_correction_use_visibility ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE;
+
+				m_renderer->recompile_kernels();
+				m_render_window->set_render_dirty(true);
+			}
+			if (bias_correction_visibility_disabled)
+				ImGuiRenderer::show_help_marker("Visibility bias correction cannot be used with 1/M weights.");
+			ImGui::EndDisabled();
 		}
 
 		ImGui::TreePop();

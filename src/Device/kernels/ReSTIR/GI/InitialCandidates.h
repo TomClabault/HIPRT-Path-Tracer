@@ -87,6 +87,15 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
     MISBSDFRayReuse mis_reuse;
     bool intersection_found = closest_hit_info.primitive_index != -1;
 
+    /*ReSTIRSurface initial_surface;
+    initial_surface.geometric_normal = closest_hit_info.geometric_normal;
+    initial_surface.shading_normal = closest_hit_info.shading_normal;
+    initial_surface.last_hit_primitive_index = closest_hit_info.primitive_index;
+    initial_surface.material = ray_payload.material;
+    initial_surface.ray_volume_state = ray_payload.volume_state;
+    initial_surface.shading_point = closest_hit_info.inter_point;
+    initial_surface.view_direction = -ray.direction;*/
+
     float bsdf_sample_pdf = 0.0f;
     ReSTIRGISample restir_gi_initial_sample;
     restir_gi_initial_sample.first_hit_normal = closest_hit_info.shading_normal;

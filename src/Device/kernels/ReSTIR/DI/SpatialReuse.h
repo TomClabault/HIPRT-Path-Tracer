@@ -126,8 +126,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatialReuse(HIPRTRenderData rend
 				// Neighbor not passing the heuristics tests, skipping it right away
 				continue;
 
-		int neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data,
-			render_data.render_settings.restir_di_settings.common_spatial_pass,
+		int neighbor_pixel_index = get_spatial_neighbor_pixel_index<false>(render_data,
 			neighbor_index, center_pixel_coords, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
 		if (neighbor_pixel_index == -1)
 			// Neighbor out of the viewport

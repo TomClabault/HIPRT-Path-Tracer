@@ -9,6 +9,7 @@
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/RayVolumeState.h"
 #include "HostDeviceCommon/Packing.h"
+#include "HostDeviceCommon/RenderSettings.h"
 
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) RayVolumeStateSize(size_t* out_buffer)

@@ -11,10 +11,6 @@
 #include "Device/includes/GMoN/GMoNDevice.h"
 #include "HostDeviceCommon/Color.h"
 
-//extern std::vector<unsigned int> global_keys;
-
-// TODO 4k, 31 sets, adaptive gMon --> 42ms
-
 // A bunch of macros here to streamline the code between the CPU and GPU
 #ifdef __KERNELCC__
 
