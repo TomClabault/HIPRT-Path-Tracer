@@ -55,7 +55,6 @@ public:
 
     void ReSTIR_DI_pass();
     void ReSTIR_GI_pass();
-    void configure_input_output_buffers();
 
     LightPresamplingParameters configure_ReSTIR_DI_light_presampling_pass();
     void configure_ReSTIR_DI_initial_pass();
@@ -70,16 +69,21 @@ public:
     void configure_ReSTIR_DI_spatiotemporal_pass();
 	void configure_ReSTIR_DI_output_buffer();
 
-    void ReSTIR_DI_temporal_reuse_pass();
-    void ReSTIR_DI_spatial_reuse_pass();
-    void ReSTIR_DI_spatiotemporal_reuse_pass();
+    void launch_ReSTIR_DI_temporal_reuse_pass();
+    void launch_ReSTIR_DI_spatial_reuse_pass(int spatial_reuse_pass_index);
+    void launch_ReSTIR_DI_spatiotemporal_reuse_pass();
 
     void tracing_pass();
 
-    void restir_gi_initial_candidates_pass();
-    void restir_gi_temporal_reuse_pass();
-    void restir_gi_spatial_reuse_pass();
-    void restir_gi_shading_pass();
+    void configure_ReSTIR_GI_initial_candidates_pass();
+    void configure_ReSTIR_GI_temporal_pass();
+    void configure_ReSTIR_GI_spatial_pass(int spatial_reuse_pass_index);
+    void configure_ReSTIR_GI_output_buffer();
+
+    void launch_ReSTIR_GI_initial_candidates_pass();
+    void launch_ReSTIR_GI_temporal_reuse_pass();
+    void launch_ReSTIR_GI_spatial_reuse_pass(int spatial_reuse_pass_index);
+    void launch_ReSTIR_GI_shading_pass();
 
     void gmon_compute_median_of_means();
 

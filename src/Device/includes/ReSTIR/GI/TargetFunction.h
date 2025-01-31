@@ -27,7 +27,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_GI_evaluate_target_function<KERNEL_O
 {
 	return sample.outgoing_radiance_to_first_hit.luminance();
 	float3 incident_light_direction;
-	if (ReSTIR_GI_is_envmap_path(sample.second_hit_normal))
+	if (ReSTIR_GI_is_envmap_path(sample.sample_point_normal))
 		// For envmap path, the direction is stored in the 'sample_point' value
 		incident_light_direction = sample.sample_point;
 	else
@@ -51,7 +51,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_GI_evaluate_target_function<KERNEL_O
 {
 	float distance_to_sample_point;
 	float3 incident_light_direction;
-	if (ReSTIR_GI_is_envmap_path(sample.second_hit_normal))
+	if (ReSTIR_GI_is_envmap_path(sample.sample_point_normal))
 	{
 		// For envmap path, the direction is stored in the 'sample_point' value
 		incident_light_direction = sample.sample_point;

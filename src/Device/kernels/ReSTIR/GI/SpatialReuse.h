@@ -8,6 +8,7 @@
 
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Hash.h"
+#include "Device/includes/ReSTIR/Jacobian.h"
 #include "Device/includes/ReSTIR/NeighborSimilarity.h"
 #include "Device/includes/ReSTIR/SpatialMISWeight.h"
 #include "Device/includes/ReSTIR/SpatialNormalizationWeight.h"
@@ -148,10 +149,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 		// If the neighbor reservoir is invalid, do not compute the jacobian
 		// Also, if this is the last neighbor resample (meaning that it is the sample pixel), 
 		// the jacobian is going to be 1.0f so no need to compute
-		if (target_function_at_center > 0.0f && neighbor_reservoir.UCW > 0.0f && neighbor_index != reused_neighbors_count && !ReSTIR_GI_is_envmap_path(neighbor_reservoir.sample.second_hit_normal))
+		if (target_function_at_center > 0.0f && neighbor_reservoir.UCW > 0.0f && neighbor_index != reused_neighbors_count && !ReSTIR_GI_is_envmap_path(neighbor_reservoir.sample.sample_point_normal))
 		{
 			// Eq. 11 of the ReSTIR GI paper
-			jacobian_determinant = get_jacobian_determinant_reconnection_shift(render_data, neighbor_reservoir.sample.sample_point, neighbor_reservoir.sample.second_hit_normal, center_pixel_surface.shading_point, neighbor_reservoir.sample.visible_point);
+			jacobian_determinant = get_jacobian_determinant_reconnection_shift(neighbor_reservoir.sample.sample_point, neighbor_reservoir.sample.sample_point_normal, center_pixel_surface.shading_point, neighbor_reservoir.sample.visible_point);
 
 			if (jacobian_determinant == -1.0f)
 			{

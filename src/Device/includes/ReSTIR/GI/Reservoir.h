@@ -22,7 +22,7 @@ struct ReSTIRGISample
     float3 sample_point = make_float3(-1.0f, -1.0f, -1.0f);
 
     float3 first_hit_normal = make_float3(-1.0f, -1.0f, -1.0f);
-    float3 second_hit_normal = make_float3(-1.0f, -1.0f, -1.0f);
+    float3 sample_point_normal = make_float3(-1.0f, -1.0f, -1.0f);
 
     ColorRGB32F outgoing_radiance_to_first_hit;
 
