@@ -145,7 +145,7 @@ struct HIPRTRenderSettings
 	// variable) before we stop rendering.
 	// For example, if this variable is 90, we will stop rendering when 90% of all
 	// pixels have reached the stop_pixel_noise_threshold
-	float stop_pixel_percentage_converged = 84.0f;
+	float stop_pixel_percentage_converged = 90.0f;
 	// Noise threshold for use with the stop_pixel_percentage_converged stopping
 	// condition
 	float stop_pixel_noise_threshold = 0.0f;
@@ -153,7 +153,7 @@ struct HIPRTRenderSettings
 
 
 	// Clamp direct lighting contribution to reduce fireflies
-	float direct_contribution_clamp = 0.0f;
+	float direct_contribution_clamp = 4.0f;
 	// Clamp envmap contribution to reduce fireflies
 	float envmap_contribution_clamp = 0.0f;
 	// Clamp indirect lighting contribution to reduce fireflies

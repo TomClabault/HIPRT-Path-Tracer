@@ -49,6 +49,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_GI_evaluate_target_function<KERNEL_O
 template <>
 HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_GI_evaluate_target_function<KERNEL_OPTION_TRUE>(const HIPRTRenderData& render_data, const ReSTIRGISample& sample, ReSTIRSurface& surface, Xorshift32Generator& random_number_generator)
 {
+
 	float distance_to_sample_point;
 	float3 incident_light_direction;
 	if (ReSTIR_GI_is_envmap_path(sample.sample_point_normal))

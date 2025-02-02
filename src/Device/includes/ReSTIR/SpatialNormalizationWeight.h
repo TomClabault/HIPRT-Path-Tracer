@@ -39,10 +39,9 @@ struct ReSTIRSpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_M, IsRe
 		// so we're only going to set the denominator to that and the numerator isn't going to change
 		out_normalization_denom = 0.0f;
 
-		const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
-		for (int neighbor = 0; neighbor < spatial_pass_settings.reuse_neighbor_count + 1; neighbor++)
+		for (int neighbor = 0; neighbor < ReSTIRSettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data).reuse_neighbor_count + 1; neighbor++)
 		{
-			int neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, spatial_pass_settings, neighbor, center_pixel_coords, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
+			int neighbor_pixel_index = get_spatial_neighbor_pixel_index<IsReSTIRGI>(render_data, neighbor, center_pixel_coords, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
 			if (neighbor_pixel_index == -1)
 				// Neighbor out of the viewport
 				continue;
@@ -82,9 +81,10 @@ struct ReSTIRSpatialNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_Z, IsRe
 		out_normalization_nume = 1.0f;
 
 		const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
+		// TODO add +1 back
 		for (int neighbor = 0; neighbor < spatial_pass_settings.reuse_neighbor_count + 1; neighbor++)
 		{
-			int neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, spatial_pass_settings, neighbor, center_pixel_coords, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
+			int neighbor_pixel_index = get_spatial_neighbor_pixel_index<IsReSTIRGI>(render_data, neighbor, center_pixel_coords, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
 			if (neighbor_pixel_index == -1)
 				// Invalid neighbor
 				continue;

@@ -18,7 +18,7 @@
 
 HIPRT_HOST_DEVICE HIPRT_INLINE void reset_render(const HIPRTRenderData& render_data, uint32_t pixel_index)
 {
-    if (render_data.render_settings.accumulate && render_data.aux_buffers.restir_reservoir_buffer_1 != nullptr)
+    if (render_data.render_settings.accumulate && render_data.aux_buffers.restir_di_reservoir_buffer_1 != nullptr)
     {
         // Only resetting if we're accumulating for offline rendering. Otherwise, we want the
         // temporal side of ReSTIR and so we're not resetting to at least keep the temporal
@@ -28,9 +28,17 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void reset_render(const HIPRTRenderData& render_d
         // if ReSTIR DI is currently disabled (using another direct lighting strategy).
         // We only need to check 1 buffer for that.
 
-        render_data.aux_buffers.restir_reservoir_buffer_1[pixel_index] = ReSTIRDIReservoir();
-        render_data.aux_buffers.restir_reservoir_buffer_2[pixel_index] = ReSTIRDIReservoir();
-        render_data.aux_buffers.restir_reservoir_buffer_3[pixel_index] = ReSTIRDIReservoir();
+        render_data.aux_buffers.restir_di_reservoir_buffer_1[pixel_index] = ReSTIRDIReservoir();
+        render_data.aux_buffers.restir_di_reservoir_buffer_2[pixel_index] = ReSTIRDIReservoir();
+        render_data.aux_buffers.restir_di_reservoir_buffer_3[pixel_index] = ReSTIRDIReservoir();
+    }
+
+    if (render_data.render_settings.accumulate && render_data.aux_buffers.restir_gi_reservoir_buffer_1 != nullptr)
+    {
+        // Same for ReSTIR GI
+        render_data.aux_buffers.restir_gi_reservoir_buffer_1[pixel_index] = ReSTIRGIReservoir();
+        render_data.aux_buffers.restir_gi_reservoir_buffer_2[pixel_index] = ReSTIRGIReservoir();
+        render_data.aux_buffers.restir_gi_reservoir_buffer_3[pixel_index] = ReSTIRGIReservoir();
     }
 
     if (render_data.render_settings.has_access_to_adaptive_sampling_buffers())

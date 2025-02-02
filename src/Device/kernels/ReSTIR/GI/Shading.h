@@ -111,6 +111,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
 
                 ColorRGB32F first_hit_throughput = bsdf_color * hippt::abs(hippt::dot(restir_resampled_indirect_direction, shading_normal)) * resampling_reservoir.UCW;
                 camera_outgoing_radiance += first_hit_throughput * resampling_reservoir.sample.outgoing_radiance_to_first_hit;
+                bsdf_pdf += 0.0f;
             }
         }
     }
@@ -122,9 +123,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
     ray_payload.ray_color = camera_outgoing_radiance;
     if (!sanity_check(render_data, ray_payload, x, y))
         return;
-
-    if (ray_payload.ray_color.luminance() > 10)
-        ray_payload.ray_color += ColorRGB32F();
 
     if (render_data.render_settings.restir_gi_settings.debug_view == ReSTIRGIDebugView::FINAL_RESERVOIR_UCW)
         path_tracing_accumulate_color(render_data, ColorRGB32F(resampling_reservoir.UCW) * render_data.render_settings.restir_gi_settings.debug_view_scale_factor, pixel_index);
