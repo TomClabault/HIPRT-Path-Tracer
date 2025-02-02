@@ -31,7 +31,7 @@
  // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
  // allowing for fast step into that pixel with the debugger to see what's happening.
  // Otherwise if 0, all pixels of the image are rendered
-#define DEBUG_PIXEL 1
+#define DEBUG_PIXEL 0
 
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner.
 // If 1, it's bottom left corner.
@@ -45,8 +45,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 962
-#define DEBUG_PIXEL_Y 303
+#define DEBUG_PIXEL_X 800
+#define DEBUG_PIXEL_Y 452
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 1
@@ -70,7 +70,7 @@
 #define DEBUG_RENDER_NEIGHBORHOOD 1
 // How many pixels to render around the debugged pixel given by the DEBUG_PIXEL_X and
 // DEBUG_PIXEL_Y coordinates
-#define DEBUG_NEIGHBORHOOD_SIZE 50
+#define DEBUG_NEIGHBORHOOD_SIZE 40
 
 CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, height))
 {
@@ -275,15 +275,18 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.render_settings.restir_di_settings.light_presampling.light_samples = m_restir_di_state.presampled_lights_buffer.data();
     m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs = m_restir_di_state.initial_candidates_reservoirs.data();
     m_render_data.render_settings.restir_di_settings.restir_output_reservoirs = m_restir_di_state.spatial_output_reservoirs_1.data();
-    m_render_data.aux_buffers.restir_reservoir_buffer_1 = m_restir_di_state.initial_candidates_reservoirs.data();
-    m_render_data.aux_buffers.restir_reservoir_buffer_2 = m_restir_di_state.spatial_output_reservoirs_1.data();
-    m_render_data.aux_buffers.restir_reservoir_buffer_3 = m_restir_di_state.spatial_output_reservoirs_2.data();
+    m_render_data.aux_buffers.restir_di_reservoir_buffer_1 = m_restir_di_state.initial_candidates_reservoirs.data();
+    m_render_data.aux_buffers.restir_di_reservoir_buffer_2 = m_restir_di_state.spatial_output_reservoirs_1.data();
+    m_render_data.aux_buffers.restir_di_reservoir_buffer_3 = m_restir_di_state.spatial_output_reservoirs_2.data();
 
     m_render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer = m_restir_gi_state.initial_candidates_reservoirs.data();
     m_render_data.render_settings.restir_gi_settings.temporal_pass.input_reservoirs = m_restir_gi_state.initial_candidates_reservoirs.data();
     m_render_data.render_settings.restir_gi_settings.temporal_pass.output_reservoirs = m_restir_gi_state.temporal_reservoirs.data();
     m_render_data.render_settings.restir_gi_settings.spatial_pass.input_reservoirs = m_restir_gi_state.temporal_reservoirs.data();
     m_render_data.render_settings.restir_gi_settings.spatial_pass.output_reservoirs = m_restir_gi_state.spatial_reservoirs.data();
+    m_render_data.aux_buffers.restir_gi_reservoir_buffer_1 = m_restir_gi_state.initial_candidates_reservoirs.data();
+    m_render_data.aux_buffers.restir_gi_reservoir_buffer_2 = m_restir_gi_state.spatial_reservoirs.data();
+    m_render_data.aux_buffers.restir_gi_reservoir_buffer_3 = m_restir_gi_state.temporal_reservoirs.data();
 
     float3 grid_min_point_with_envmap, grid_max_point_with_envmap;
     m_nee_plus_plus.base_grid_min_point = parsed_scene.metadata.scene_bounding_box.mini;

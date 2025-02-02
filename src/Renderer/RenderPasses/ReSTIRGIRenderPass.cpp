@@ -215,7 +215,28 @@ void ReSTIRGIRenderPass::post_render_update()
 
 void ReSTIRGIRenderPass::update_render_data()
 {
-	
+	// Setting the pointers for use in reset_render() in the camera rays kernel
+	if (is_render_pass_used())
+	{
+		m_render_data->aux_buffers.restir_gi_reservoir_buffer_1 = m_initial_candidates_buffer.get_device_pointer();
+		m_render_data->aux_buffers.restir_gi_reservoir_buffer_2 = m_spatial_buffer.get_device_pointer();
+		m_render_data->aux_buffers.restir_gi_reservoir_buffer_3 = m_temporal_buffer.get_device_pointer();
+
+		// If we just got ReSTIR enabled back, setting this one arbitrarily and resetting its content
+		/*std::vector<ReSTIRDIReservoir> empty_reservoirs(m_renderer->m_render_resolution.x * m_renderer->m_render_resolution.y, ReSTIRDIReservoir());
+		m_render_data->render_settings.restir_di_settings.restir_output_reservoirs = spatial_output_reservoirs_1.get_device_pointer();
+		spatial_output_reservoirs_1.upload_data(empty_reservoirs);*/
+	}
+	else
+	{
+		// If ReSTIR GI is disabled, setting the pointers to nullptr so that the camera rays kernel
+		// for example can detect that the buffers are freed and doesn't try to reset them or do
+		// anything with them (which would be invalid since we would be accessing nullptr buffers)
+
+		m_render_data->aux_buffers.restir_gi_reservoir_buffer_1 = nullptr;
+		m_render_data->aux_buffers.restir_gi_reservoir_buffer_2 = nullptr;
+		m_render_data->aux_buffers.restir_gi_reservoir_buffer_3 = nullptr;
+	}
 }
 
 void ReSTIRGIRenderPass::reset()

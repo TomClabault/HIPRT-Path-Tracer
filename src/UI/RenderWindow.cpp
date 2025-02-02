@@ -27,6 +27,7 @@ extern ImGuiLogger g_imgui_logger;
 // - mismatch in the target function used during the resamplming and in shading.h ?
 // - replace performance presets by thigns like "brute force path tracer", "simple MIS path tracer", ...
 // - add tooltips to Imgui combo box items
+// - add the jacobian rejection threshold in ImGui
 // - investigate why so much noise in the cornell box: probably because of the distance to the light? numerical issues?
 
 // TODO demos:
@@ -38,6 +39,7 @@ extern ImGuiLogger g_imgui_logger;
 
 // TODOs  performance improvements branch:
 // - also reuse BSDF mis ray of envmap MIS
+// - ReSTIR el cheapo
 // - If hitting the same material as before, not load the material from VRAM as it's exactly the same? (only works for non-textured materials)
 // - MIS disabled after some number of bounces? not on glass though? MIS disabled after the ray throughput gets below some threshold?
 // - texture compression

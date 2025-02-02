@@ -63,10 +63,9 @@ struct ReSTIRSpatialResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH, IsReS
 		float nume = 0.0f;
 		float denom = 0.0f;
 
-		const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
-		for (int j = 0; j < spatial_pass_settings.reuse_neighbor_count + 1; j++)
+		for (int j = 0; j < ReSTIRSettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data).reuse_neighbor_count + 1; j++)
 		{
-			int neighbor_index_j = get_spatial_neighbor_pixel_index(render_data, spatial_pass_settings, j, center_pixel_coords, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
+			int neighbor_index_j = get_spatial_neighbor_pixel_index<IsReSTIRGI>(render_data, j, center_pixel_coords, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
 			if (neighbor_index_j == -1)
 				// Invalid neighbor, skipping
 				continue;

@@ -25,7 +25,7 @@ static ReSTIRCommonSpatialPassSettings RESTIR_GI_DEFAULT_COMMON_SPATIAl_PASS_SET
 
 	.spatial_pass_index = 0,
 	.number_of_passes = 1,
-	.reuse_radius = 16,
+	.reuse_radius = 20,
 	.reuse_neighbor_count = 1,
 
 	.do_disocclusion_reuse_boost = false,
@@ -33,7 +33,7 @@ static ReSTIRCommonSpatialPassSettings RESTIR_GI_DEFAULT_COMMON_SPATIAl_PASS_SET
 
 	.debug_neighbor_location = true,
 
-	.do_neighbor_rotation = true,
+	.do_neighbor_rotation = false,
 
 	.allow_converged_neighbors_reuse = false,
 	.converged_neighbor_reuse_probability = 0.5f,

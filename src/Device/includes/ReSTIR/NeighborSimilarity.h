@@ -7,6 +7,7 @@
 #define DEVICE_RESTIR_NEIGHBOR_SIMILARITY_H
  
 #include "Device/includes/ReSTIR/Jacobian.h"
+#include "Device/includes/ReSTIR/GI/Utils.h"
 
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/ReSTIRSettingsHelper.h"
@@ -50,10 +51,15 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool roughness_similarity_heuristic(const ReSTIRC
 	return hippt::abs(neighbor_roughness - center_pixel_roughness) < threshold;
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE bool jacobian_similarity_heuristic(const HIPRTRenderData& render_data, int neighbor_pixel_index, int center_pixel_index, float3 current_shading_point)
+HIPRT_HOST_DEVICE HIPRT_INLINE bool jacobian_similarity_heuristic(const HIPRTRenderData& render_data, int neighbor_pixel_index, int center_pixel_index, float3 current_shading_point, float3 neighbor_shading_point)
 {
+	if (render_data.render_settings.restir_gi_settings.spatial_pass.input_reservoirs[neighbor_pixel_index].UCW == 0.0f)
+		return true;
+
 	float3 reconnection_normal = render_data.render_settings.restir_gi_settings.spatial_pass.input_reservoirs[neighbor_pixel_index].sample.sample_point_normal;
-	float3 neighbor_shading_point = render_data.render_settings.restir_gi_settings.spatial_pass.input_reservoirs[neighbor_pixel_index].sample.visible_point;
+	if (ReSTIR_GI_is_envmap_path(reconnection_normal))
+		return true;
+
 	float3 reconnection_point = render_data.render_settings.restir_gi_settings.spatial_pass.input_reservoirs[neighbor_pixel_index].sample.sample_point;
 	float jacobian = get_jacobian_determinant_reconnection_shift(reconnection_point, reconnection_normal, current_shading_point, neighbor_shading_point);
 	return jacobian != -1.0f;
@@ -64,6 +70,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool check_neighbor_similarity_heuristics(const H
 																		 int neighbor_pixel_index, int center_pixel_index, 
 																		 const float3& current_shading_point, const float3& current_normal, bool previous_frame = false)
 {
+	if (neighbor_pixel_index == center_pixel_index)
+		// A pixel always passes the similarity test with itself
+		return true;
+
 	const ReSTIRCommonNeighborSimiliaritySettings& neighbor_similarity_settings = ReSTIRSettingsHelper::get_restir_neighbor_similarity_settings<IsReSTIRGI>(render_data);
 
 	float3 neighbor_world_space_point;
@@ -93,7 +103,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool check_neighbor_similarity_heuristics(const H
 	bool plane_distance_passed = plane_distance_heuristic(neighbor_similarity_settings, neighbor_world_space_point, current_shading_point, current_normal, neighbor_similarity_settings.plane_distance_threshold);
 	bool normal_similarity_passed = normal_similarity_heuristic(neighbor_similarity_settings, current_normal, render_data.g_buffer.shading_normals[neighbor_pixel_index].unpack(), neighbor_similarity_settings.normal_similarity_angle_precomp);
 	bool roughness_similarity_passed = roughness_similarity_heuristic(neighbor_similarity_settings, neighbor_roughness, current_material_roughness, neighbor_similarity_settings.roughness_similarity_threshold);
-	bool jacobian_similarity_passed = jacobian_similarity_heuristic(render_data, neighbor_pixel_index, center_pixel_index, current_shading_point);
+	bool jacobian_similarity_passed = jacobian_similarity_heuristic(render_data, neighbor_pixel_index, center_pixel_index, current_shading_point, neighbor_world_space_point);
 	bool neighbor_is_emissive;
 	if constexpr (IsReSTIRGI)
 		// With ReSTIR GI, it's not a problem to resample from emissive neighbors so let's
@@ -102,6 +112,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool check_neighbor_similarity_heuristics(const H
 	else
 		neighbor_is_emissive = previous_frame ? render_data.g_buffer_prev_frame.materials[neighbor_pixel_index].is_emissive() : render_data.g_buffer.materials[neighbor_pixel_index].is_emissive();
 
+	return jacobian_similarity_passed;
 	return plane_distance_passed && normal_similarity_passed && roughness_similarity_passed && jacobian_similarity_passed && !neighbor_is_emissive;
 }
 

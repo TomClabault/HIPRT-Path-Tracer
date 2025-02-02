@@ -40,16 +40,33 @@
 /**
 * What bias correction weights to use when resampling neighbors (temporal / spatial)
 *
+*  - RESTIR_GI_BIAS_CORRECTION_1_OVER_M
+*		Very simple biased weights as described in the 2020 paper (Eq. 6).
+*		Those weights are biased because they do not account for cases where
+*		we resample a sample that couldn't have been produced by some neighbors.
+*		The bias shows up as darkening, mostly at object boundaries. In GRIS vocabulary,
+*		this type of weights can be seen as confidence weights alone c_i / sum(c_j)
+*
+*  - RESTIR_GI_BIAS_CORRECTION_1_OVER_Z
+*		Simple unbiased weights as described in the 2020 paper (Eq. 16 and Section 4.3)
+*		Those weights are unbiased but can have **extremely** bad variance when a neighbor being resampled
+*		has a very low target function (when the neighbor is a glossy surface for example).
+*		See Fig. 7 of the 2020 paper.
+*
+*  - RESTIR_GI_BIAS_CORRECTION_MIS_LIKE
+*		Unbiased weights as proposed by Eq. 22 of the paper. Way better than 1/Z in terms of variance
+*		and still unbiased.
+*
 *  - RESTIR_GI_BIAS_CORRECTION_MIS_GBH
 *		Unbiased MIS weights that use the generalized balance heuristic. Very good variance reduction but O(N^2) complexity,
-*		N being the number of neighbors resampled.
+	N being the number of neighbors resampled.
 *		Eq. 36 of the 2022 Generalized Resampled Importance Sampling paper.
 *
 *	- RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS (and the defensive version)
 *		Similar variance reduction to the generalized balance heuristic and only O(N) computational cost.
 *		Section 7.1.3 of "A Gentle Introduction to ReSTIR", 2023
 */
-#define ReSTIR_GI_BiasCorrectionWeights RESTIR_GI_BIAS_CORRECTION_MIS_LIKE
+#define ReSTIR_GI_BiasCorrectionWeights RESTIR_GI_BIAS_CORRECTION_1_OVER_Z
 
 #endif // #ifndef __KERNELCC__
 

@@ -19,18 +19,19 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_jacobian_determinant_reconnection_shift
 	direction_to_reconnection_point_from_center /= distance_to_reconnection_point_from_center;
 	direction_to_reconnection_point_from_neighbor /= distance_to_reconnection_point_from_neighbor;
 
-	float cosine_at_reconnection_point_from_center = hippt::abs(hippt::dot(-direction_to_reconnection_point_from_center, reconnection_point_surface_normal));
-	float cosine_at_reconnection_point_from_neighbor = hippt::abs(hippt::dot(-direction_to_reconnection_point_from_neighbor, reconnection_point_surface_normal));
+	float cosine_at_reconnection_point_from_center = hippt::max(0.0f, hippt::dot(-direction_to_reconnection_point_from_center, reconnection_point_surface_normal));
+	float cosine_at_reconnection_point_from_neighbor = hippt::max(0.0f, hippt::dot(-direction_to_reconnection_point_from_neighbor, reconnection_point_surface_normal));
 
 	float cosine_ratio = cosine_at_reconnection_point_from_center / cosine_at_reconnection_point_from_neighbor;
 	float distance_squared_ratio = (distance_to_reconnection_point_from_neighbor * distance_to_reconnection_point_from_neighbor) / (distance_to_reconnection_point_from_center * distance_to_reconnection_point_from_center);
 
 	float jacobian_determinant = cosine_ratio * distance_squared_ratio;
 
-	constexpr float jacobian_threshold = 20.0f;
+	constexpr float jacobian_threshold = 100000000000000.0f;
+	//constexpr float jacobian_threshold = 200.0f;
 	if (jacobian_determinant > jacobian_threshold || jacobian_determinant < 1.0f / jacobian_threshold || hippt::is_NaN(jacobian_determinant))
 		// Samples are too dissimilar, returning -1 to indicate that we must reject the sample
-		return -1;
+		return -1.0f;
 	else
 		return jacobian_determinant;
 }
@@ -46,6 +47,16 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_jacobian_determinant_reconnection_shift
 HIPRT_HOST_DEVICE HIPRT_INLINE float get_jacobian_determinant_reconnection_shift(const HIPRTRenderData& render_data, const ReSTIRDIReservoir& neighbor_reservoir, const float3& center_pixel_shading_point, int neighbor_pixel_index)
 {
 	return get_jacobian_determinant_reconnection_shift(render_data, neighbor_reservoir, center_pixel_shading_point, render_data.g_buffer.primary_hit_position[neighbor_pixel_index]);
+}
+
+HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRGIReservoir shift_sample_reconnection_shift(const ReSTIRGIReservoir& input_sample, float& out_shift_jacobian_determinant, float3 reconnected_point_from_target_domain)
+{
+	ReSTIRGIReservoir out_shifted_sample = input_sample;
+
+	// Eq. 11 of the ReSTIR GI paper
+	out_shift_jacobian_determinant = get_jacobian_determinant_reconnection_shift(input_sample.sample.sample_point, input_sample.sample.sample_point_normal, reconnected_point_from_target_domain, input_sample.sample.visible_point);
+
+	return input_sample;
 }
 
 #endif

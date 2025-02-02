@@ -247,7 +247,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F sample_environment_map_with_mis(HIPRT
             // No ray was reused, we have to check for visibility
             in_shadow = evaluate_shadow_ray(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, ray_payload.bounce, random_number_generator);
 #else
-        bool in_shadow = evaluate_shadow_ray(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, random_number_generator);
+        bool in_shadow = evaluate_shadow_ray(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, ray_payload.bounce, random_number_generator);
 #endif
 
         if (!in_shadow)

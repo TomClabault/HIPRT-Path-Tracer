@@ -48,6 +48,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
     if (render_data.render_settings.freeze_random)
         seed = wang_hash(pixel_index + 1);
     else
+        // TODO remove - 20 here
         seed = wang_hash((pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_seed);
     Xorshift32Generator random_number_generator(seed);
 
@@ -139,9 +140,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
                 if (bounce > 0)
                     ray_payload.ray_color += estimate_direct_lighting(render_data, ray_payload, closest_hit_info, -ray.direction, x, y, mis_reuse, random_number_generator);
 
-                if (x == 478 && y == 521 && ray_payload.ray_color.luminance() > 0.0f)
-                    ray_payload.ray_color += ColorRGB32F();
-
                 if (bounce == 0)
                     restir_gi_initial_sample.seed = random_number_generator.m_state.seed;
 
@@ -197,6 +195,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
     float resampling_weight = 0.0f;
     if (source_pdf > 0.0f)
         resampling_weight = mis_weight * restir_gi_initial_sample.target_function / source_pdf;
+
+    // TODO REMOVE THIS
+    if (ReSTIR_GI_is_envmap_path(restir_gi_initial_sample.sample_point_normal))
+        resampling_weight = 0.0f;
     ReSTIRGIReservoir restir_gi_initial_reservoir;
     restir_gi_initial_reservoir.add_one_candidate(restir_gi_initial_sample, resampling_weight, random_number_generator);
     restir_gi_initial_reservoir.end();
