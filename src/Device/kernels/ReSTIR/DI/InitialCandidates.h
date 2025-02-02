@@ -98,7 +98,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISample sample_fresh_light_candidate(const
 
     bool inside_surface = false;// hippt::dot(view_direction, closest_hit_info.geometric_normal) < 0;
     float inside_surface_multiplier = inside_surface ? -1.0f : 1.0f;
-    float3 evaluated_point = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f * inside_surface_multiplier;
+    float3 evaluated_point = closest_hit_info.inter_point;
 
     if (random_number_generator() > envmap_candidate_probability)
     {
@@ -188,7 +188,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void sample_light_candidates(const HIPRTRenderDat
 {
     bool inside_surface = false;// hippt::dot(view_direction, closest_hit_info.geometric_normal) < 0;
     float inside_surface_multiplier = inside_surface ? -1.0f : 1.0f;
-    float3 evaluated_point = closest_hit_info.inter_point + closest_hit_info.shading_normal * 1.0e-4f * inside_surface_multiplier;
+    float3 evaluated_point = closest_hit_info.inter_point;
 
     for (int i = 0; i < nb_light_candidates; i++)
     {
@@ -514,7 +514,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_InitialCandidates(HIPRTRenderData
     ReSTIRDIReservoir initial_candidates_reservoir = sample_initial_candidates(render_data, make_int2(x, y), ray_payload, hit_info, view_direction, random_number_generator);
 
 #if ReSTIR_DI_DoVisibilityReuse == KERNEL_OPTION_TRUE
-    ReSTIR_DI_visibility_reuse(render_data, initial_candidates_reservoir, hit_info.inter_point + hit_info.shading_normal * 1.0e-4f, hit_info.primitive_index, random_number_generator);
+    ReSTIR_DI_visibility_reuse(render_data, initial_candidates_reservoir, hit_info.inter_point, hit_info.primitive_index, random_number_generator);
 #endif
 
     render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs[pixel_index] = initial_candidates_reservoir;

@@ -39,6 +39,7 @@
   * [14] [A Practical Extension to Microfacet Theory for the Modeling of Varying Iridescence, Belcour, Barla, 2017] https://belcour.github.io/blog/research/publication/2017/05/01/brdf-thin-film.html
   * [15] [MaterialX Implementation Code] https://github.com/AcademySoftwareFoundation/MaterialX
   * [16] [Khronos GLTF 2.0 KHR_materials_iridescence Implementation Notes] https://github.com/KhronosGroup/glTF/blob/main/extensions/2.0/Khronos/KHR_materials_iridescence/README.md
+  * [17] [Khronos GLTF 2.0 KHR_materials_diffuse_transmission Implementation Notes] https://github.com/KhronosGroup/glTF/blob/main/extensions/2.0/Khronos/KHR_materials_diffuse_transmission/README.md
   * 
   * Important note: none of the lobes of this implementation includes the cosine term.
   * The cosine term NoL needs to be taken into account outside of the BSDF

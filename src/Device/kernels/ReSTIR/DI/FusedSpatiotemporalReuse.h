@@ -264,7 +264,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 				jacobian_determinant = get_jacobian_determinant_reconnection_shift(render_data,
 					temporal_neighbor_reservoir,
 					center_pixel_surface.shading_point,
-					/* recomputing the point without the normal offset */ temporal_neighbor_surface.shading_point - temporal_neighbor_surface.shading_normal * 1.0e-4f);
+					/* recomputing the point without the normal offset */ temporal_neighbor_surface.shading_point);
 
 				if (jacobian_determinant == -1.0f)
 					// Sample too dissimilar, not going to resample it so setting

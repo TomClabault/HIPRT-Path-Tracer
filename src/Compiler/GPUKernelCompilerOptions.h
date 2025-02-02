@@ -55,6 +55,7 @@ public:
 	static const std::string RESTIR_DI_LATER_BOUNCES_SAMPLING_STRATEGY;
 	static const std::string RESTIR_DI_DO_LIGHTS_PRESAMPLING;
 
+	static const std::string RESTIR_GI_SPATIAL_TARGET_FUNCTION_VISIBILITY;
 	static const std::string RESTIR_GI_BIAS_CORRECTION_USE_VISIBILITY;
 	static const std::string RESTIR_GI_BIAS_CORRECTION_WEIGHTS;
 	

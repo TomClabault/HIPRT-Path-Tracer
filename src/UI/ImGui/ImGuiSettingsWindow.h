@@ -44,8 +44,8 @@ private:
 	void draw_ReSTIR_neighbor_heuristics_panel(ReSTIRCommonSettings& common_settings);
 	template<typename CommonReSTIRSettings>
 	void draw_ReSTIR_temporal_reuse_panel(CommonReSTIRSettings& restir_settings, std::function<void(void)> draw_before_panel = {});
-	template<typename CommonReSTIRSettings>
-	void draw_ReSTIR_spatial_reuse_panel(CommonReSTIRSettings& restir_settings, std::function<void(void)> draw_before_panel = {});
+	template<bool IsReSTIRGI>
+	void draw_ReSTIR_spatial_reuse_panel(std::function<void(void)> draw_before_panel = {});
 	template <bool IsReSTIRGI>
 	void draw_ReSTIR_bias_correction_panel();
 	void draw_next_event_estimation_plus_plus_panel();

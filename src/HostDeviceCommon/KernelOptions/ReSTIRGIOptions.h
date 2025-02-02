@@ -22,6 +22,14 @@
  */
 #ifndef __KERNELCC__
 
+ /**
+ * Whether or not to use a visibility term in the target function when resampling
+ * samples in ReSTIR GI. This applies to the spatial reuse pass only.
+ *
+ *	- KERNEL_OPTION_TRUE or KERNEL_OPTION_FALSE values are accepted. Self-explanatory
+ */
+#define ReSTIR_GI_SpatialTargetFunctionVisibility KERNEL_OPTION_TRUE
+
 /**
 * Whether or not to use a visibility term in the MIS weights (MIS-like weights,
 * generalized balance heuristic, pairwise MIS, ...) used to remove bias when
