@@ -55,84 +55,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 		seed = wang_hash((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_seed);
 	Xorshift32Generator random_number_generator(seed);
 
-	//ReSTIRGIReservoir output_reservoir;
-	//{
-	//	ReSTIRSurface center_surface = get_pixel_surface(render_data, center_pixel_index, random_number_generator);
-
-	//	// Resampling neighbor pixel
-	//	ReSTIRGIReservoir neighbor_reservoir = render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer[center_pixel_index + 20];
-	//	float mis_weight = 1.0f; // Constant MIS weight
-	//	float jaco = get_jacobian_determinant_reconnection_shift(neighbor_reservoir.sample.sample_point, neighbor_reservoir.sample.sample_point_normal, center_surface.shading_point, neighbor_reservoir.sample.visible_point);
-	//	float phat_at_center = neighbor_reservoir.sample.outgoing_radiance_to_first_hit.luminance();
-	//	float pqprime = phat_at_center * jaco;
-
-	//	// visibility of neighbor sample from center pixel
-	//	float3 shadow_ray_direction = neighbor_reservoir.sample.sample_point - center_surface.shading_point;
-
-	//	hiprtRay shadow_ray;
-	//	shadow_ray.origin = center_surface.shading_point;
-	//	shadow_ray.direction = hippt::normalize(shadow_ray_direction);
-
-	//	float visibility = !evaluate_shadow_ray(render_data, shadow_ray, hippt::length(shadow_ray_direction), center_surface.last_hit_primitive_index, 0, random_number_generator);
-	//	float rM = 1.0f;
-	//	float neighbor_resampling_weight = pqprime * visibility * neighbor_reservoir.UCW * rM;
-
-	//	// Combining reservoirs
-	//	if (neighbor_reservoir.UCW > 0.0f)
-	//	{
-	//		output_reservoir.weight_sum += neighbor_resampling_weight;
-	//		output_reservoir.M++;
-
-	//		if (random_number_generator() < neighbor_resampling_weight / output_reservoir.weight_sum)
-	//		{
-	//			output_reservoir.sample = neighbor_reservoir.sample;
-	//			output_reservoir.sample.target_function = phat_at_center;
-	//			output_reservoir.sample.outgoing_radiance_to_first_hit = neighbor_reservoir.sample.outgoing_radiance_to_first_hit;
-	//		}
-	//	}
-
-
-
-	//	// Resampling center pixel
-	//	ReSTIRGIReservoir center_reservoir = render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer[center_pixel_index];
-
-	//	mis_weight = 1.0f; // Constant MIS weight
-	//	jaco = 1.0f;
-	//	pqprime = center_reservoir.sample.target_function * jaco;
-	//	visibility = 1.0f;
-	//	rM = 1.0f;
-
-	//	float center_resampling_weight = mis_weight * pqprime * visibility * center_reservoir.UCW * rM;
-
-	//	if (center_reservoir.UCW > 0.0f)
-	//	{
-	//		output_reservoir.weight_sum += center_resampling_weight;
-	//		output_reservoir.M++;
-
-	//		if (random_number_generator() < center_resampling_weight / output_reservoir.weight_sum)
-	//		{
-	//			output_reservoir.sample = center_reservoir.sample;
-	//			output_reservoir.sample.target_function = center_reservoir.sample.target_function;
-	//			output_reservoir.sample.outgoing_radiance_to_first_hit = center_reservoir.sample.outgoing_radiance_to_first_hit;
-	//		}
-	//	}
-
-	//	float Z = 0.0f;
-	//	if (ReSTIR_GI_evaluate_target_function<true>(render_data, output_reservoir.sample, center_surface, random_number_generator) > 0.0f)
-	//		Z += 1.0f;
-
-	//	ReSTIRSurface neighbor_surface = get_pixel_surface(render_data, center_pixel_index + 20, random_number_generator);
-	//	if (ReSTIR_GI_evaluate_target_function<true>(render_data, output_reservoir.sample, neighbor_surface, random_number_generator) > 0.0f)
-	//		Z += 1.0f;
-
-	//	output_reservoir.UCW = 0.0f;
-	//	if (output_reservoir.sample.target_function > 0.0f && Z > 0.0f)
-	//		output_reservoir.UCW = 1.0f / output_reservoir.sample.target_function * output_reservoir.weight_sum / Z;
-
-	//	random_number_generator.m_state.seed = seed;
-	//}
-
-
 	ReSTIRGIReservoir* input_reservoir_buffer = render_data.render_settings.restir_gi_settings.spatial_pass.input_reservoirs;
 	ReSTIRGIReservoir spatial_reuse_output_reservoir;
 
@@ -165,6 +87,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 		center_pixel_surface, center_pixel_coords, cos_sin_theta_rotation, 
 		valid_neighbors_count, valid_neighbors_M_sum, neighbor_heuristics_cache);
 
+	float neighbor_jacobian;
 
 	ReSTIRSpatialResamplingMISWeight<ReSTIR_GI_BiasCorrectionWeights, /* IsReSTIRGI */ true> mis_weight_function;
 	// Resampling the neighbors. Using neighbors + 1 here so that
@@ -277,7 +200,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 			// Only used with MIS-like weight
 			selected_neighbor = neighbor_index;
 #endif
-
 			//if (do_neighbor_target_function_visibility)
 			//	// If we resampled the neighbor with visibility, then we are sure that we can set the flag
 			//	spatial_reuse_output_reservoir.sample.flags |= ReSTIRDISampleFlags::ReSTIR_GI_FLAGS_UNOCCLUDED;
@@ -382,26 +304,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	if (render_data.render_settings.restir_gi_settings.m_cap > 0)
 		// M-capping the temporal neighbor if an M-cap has been given
 		spatial_reuse_output_reservoir.M = hippt::min(spatial_reuse_output_reservoir.M, render_data.render_settings.restir_gi_settings.m_cap);
-
-	/*if (spatial_reuse_output_reservoir.UCW != output_reservoir.UCW)
-	{
-		printf("\n");
-	}
-
-	if (spatial_reuse_output_reservoir.weight_sum != output_reservoir.weight_sum)
-	{
-		printf("\n");
-	}
-
-	if (spatial_reuse_output_reservoir.sample.target_function != output_reservoir.sample.target_function)
-	{
-		printf("\n");
-	}
-
-	if (spatial_reuse_output_reservoir.sample.outgoing_radiance_to_first_hit != output_reservoir.sample.outgoing_radiance_to_first_hit)
-	{
-		printf("\n");
-	}*/
 
 	render_data.render_settings.restir_gi_settings.spatial_pass.output_reservoirs[center_pixel_index] = spatial_reuse_output_reservoir;
 }
