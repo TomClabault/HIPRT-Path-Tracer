@@ -33,7 +33,7 @@ static ReSTIRCommonSpatialPassSettings RESTIR_GI_DEFAULT_COMMON_SPATIAl_PASS_SET
 
 	.debug_neighbor_location = true,
 
-	.do_neighbor_rotation = false,
+	.do_neighbor_rotation = true,
 
 	.allow_converged_neighbors_reuse = false,
 	.converged_neighbor_reuse_probability = 0.5f,
