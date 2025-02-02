@@ -29,13 +29,14 @@ extern ImGuiLogger g_imgui_logger;
 // - add tooltips to Imgui combo box items
 // - add the jacobian rejection threshold in ImGui
 // - investigate why so much noise in the cornell box: probably because of the distance to the light? numerical issues?
+// - ReSTIR redundant render_data.g_buffer.primary_hit_position[pixel_index] load for bothshading_point and view_direction
+// - ReSTIR only load the rest of the reservoir if its UCW isn't 0
 
 // TODO demos:
 // new oren nayar BRDF: EON
 
 // - try simplifying the material to just a diffuse component to see if that helps memory accesses --> 8/10%
 // - try removing everything about nested dielectrics to see the register/spilling usage and performance --> ~1/2%
-// - TODO specular coat should be evaluated if specular glass/specular layer was sampled because this is going to be the same reflection direction
 
 // TODOs  performance improvements branch:
 // - also reuse BSDF mis ray of envmap MIS
@@ -45,6 +46,7 @@ extern ImGuiLogger g_imgui_logger;
 // - texture compression
 // - store full pointers to textures in materails instead of indirect indices? probably cheaper to have ibigger materials than to havbe to do that indirect fetch?
 // - limit  number of bounces based on material type
+// - use material SoA in GBuffer and only load what's necessary (i.e. not the thin film and all of that if the material isn't using thin-film, ...)
 // - use the fact that some values are already computed in bsdf_sample to pass them to bsdf_eval in a big BSDFStateStructure or something to avoid recomputing
 // - schlick fresnel in many places? instead of correct fresnel. switch in "performance settings"
 // 
@@ -54,7 +56,7 @@ extern ImGuiLogger g_imgui_logger;
 // - store Material in GBuffer only if using ReSTIR, otherwise, just reconstruct it in the path tracign kernel
 // ------------------- STILL RELEVANT WITH WAVEFRONT ? -------------------
 // 
-// ------------------- DO AFTER WAVEFRONT ? -------------------
+// ------------------- DO AFTER WAVEFRONT -------------------
 // - maybe have shaders without energy compensation? because this do be eating quite a lot of registers
 // - let's do some ray reordering because in complex scenes and complex materials and without hardware RT; this may actually  be quite worth it
 // - dispatch mega kernel when only a few rays are left alive after compaction?
@@ -66,7 +68,7 @@ extern ImGuiLogger g_imgui_logger;
 // - launch bounds optimization?
 // - thread group size optimization?
 // - double buffering of frames in general to better keep the GPU occupied?
-// ------------------- DO AFTER WAVEFRONT ? -------------------
+// ------------------- DO AFTER WAVEFRONT -------------------
 
 
 // TODO known bugs / incorrectness:

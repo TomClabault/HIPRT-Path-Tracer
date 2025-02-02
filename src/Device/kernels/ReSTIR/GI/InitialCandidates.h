@@ -180,7 +180,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
     if (!sanity_check(render_data, ray_payload, x, y))
         return;
 
-
     // If we got here, this means that we still have at least one ray active
     // This is a concurrent write by the way but we don't really care, everyone is writing
     // the same value
@@ -197,12 +196,18 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
         resampling_weight = mis_weight * restir_gi_initial_sample.target_function / source_pdf;
 
     // TODO REMOVE THIS
-    if (ReSTIR_GI_is_envmap_path(restir_gi_initial_sample.sample_point_normal))
-        resampling_weight = 0.0f;
+    /*if (ReSTIR_GI_is_envmap_path(restir_gi_initial_sample.sample_point_normal))
+        resampling_weight = 0.0f;*/
     ReSTIRGIReservoir restir_gi_initial_reservoir;
     restir_gi_initial_reservoir.add_one_candidate(restir_gi_initial_sample, resampling_weight, random_number_generator);
     restir_gi_initial_reservoir.end();
     restir_gi_initial_reservoir.sanity_check(make_int2(x, y));
+
+    if (restir_gi_initial_reservoir.sample.outgoing_radiance_to_first_hit.max_component() > 65535.0f)
+    {
+        debug_set_final_color(render_data, x, y, render_data.render_settings.render_resolution.x, ColorRGB32F(0.0f, 1.0e10f, 0.0f));
+        restir_gi_initial_reservoir.sample.outgoing_radiance_to_first_hit = ColorRGB32F(0.0f, 1.0e10f, 0.0f);
+    }
 
     render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer[pixel_index] = restir_gi_initial_reservoir;
 }

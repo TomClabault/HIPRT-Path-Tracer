@@ -18,6 +18,11 @@ static std::mutex restir_gi_log_mutex;
 
 struct ReSTIRGISample
 {
+    // TODO visible point and visible normal useless: already in G-buffer
+    // seed: unused
+    // target_function: can be stored in outoging_radiance_to_first_hit?
+    // sample_po_ntonormal: can be packed
+    // outgoing_radiance: can be packed
     float3 visible_point = make_float3(-1.0f, -1.0f, -1.0f);
     float3 sample_point = make_float3(-1.0f, -1.0f, -1.0f);
 

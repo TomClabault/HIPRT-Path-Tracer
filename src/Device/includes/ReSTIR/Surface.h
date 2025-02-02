@@ -31,13 +31,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRSurface get_pixel_surface(const HIPRTRender
 	surface.ray_volume_state.reconstruct_first_hit(
 		surface.material,
 		render_data.buffers.material_indices,
-		render_data.g_buffer.first_hit_prim_index[pixel_index],
+		surface.last_hit_primitive_index,
 		random_number_generator);
 
 	surface.view_direction = render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index);
 	surface.shading_normal = render_data.g_buffer.shading_normals[pixel_index].unpack();
 	surface.geometric_normal = render_data.g_buffer.geometric_normals[pixel_index].unpack();
-	surface.shading_point = render_data.g_buffer.primary_hit_position[pixel_index] + surface.shading_normal * 1.0e-4f;
+	surface.shading_point = render_data.g_buffer.primary_hit_position[pixel_index];
 
 	return surface;
 }
@@ -57,13 +57,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRSurface get_pixel_surface_previous_frame(co
 	surface.ray_volume_state.reconstruct_first_hit(
 		surface.material,
 		render_data.buffers.material_indices,
-		render_data.g_buffer_prev_frame.first_hit_prim_index[pixel_index],
+		surface.last_hit_primitive_index,
 		random_number_generator);
 
 	surface.view_direction = render_data.g_buffer.get_view_direction(render_data.prev_camera.position, pixel_index);
 	surface.shading_normal = render_data.g_buffer_prev_frame.shading_normals[pixel_index].unpack();
 	surface.geometric_normal = render_data.g_buffer_prev_frame.geometric_normals[pixel_index].unpack();
-	surface.shading_point = render_data.g_buffer_prev_frame.primary_hit_position[pixel_index] + surface.shading_normal * 1.0e-4f;
+	surface.shading_point = render_data.g_buffer_prev_frame.primary_hit_position[pixel_index];
 
 	return surface;
 }
