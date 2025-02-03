@@ -74,6 +74,19 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool check_neighbor_similarity_heuristics(const H
 		// A pixel always passes the similarity test with itself
 		return true;
 
+	if (previous_frame)
+	{
+		if (render_data.g_buffer_prev_frame.first_hit_prim_index[neighbor_pixel_index] == -1)
+			// Cannot reuse from a neighbor that doesn't have a primary hit (direct miss into the envmap)
+			return false;
+	}
+	else
+	{
+		if (render_data.g_buffer.first_hit_prim_index[neighbor_pixel_index] == -1)
+			// Cannot reuse from a neighbor that doesn't have a primary hit (direct miss into the envmap)
+			return false;
+	}
+
 	const ReSTIRCommonNeighborSimiliaritySettings& neighbor_similarity_settings = ReSTIRSettingsHelper::get_restir_neighbor_similarity_settings<IsReSTIRGI>(render_data);
 
 	float3 neighbor_world_space_point;

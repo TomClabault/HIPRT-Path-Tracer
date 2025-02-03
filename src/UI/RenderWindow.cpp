@@ -23,6 +23,7 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // TODO restir gi render pass inheriting from megakernel render pass seems to colmpile mega kernel even though we don't need it
+// - we need a ReSTIR DI convergence check
 // - hardcode the reused neighbor to be us and see what that does?
 // - mismatch in the target function used during the resamplming and in shading.h ?
 // - replace performance presets by thigns like "brute force path tracer", "simple MIS path tracer", ...
@@ -79,6 +80,7 @@ extern ImGuiLogger g_imgui_logger;
 // - Thin-film interference energy conservation/preservation is broken with "strong BSDF energy conservation" --> too bright (with transmission at 1.0f), even with film thickness == 0.0f
 // - When overriding the base color for example in the global material overrider, if we then uncheck the base color override to stop overriding the base color, it returns the material to its very default base color  (the one  read from the scene file) instead of  returning it to what the user may have modified up to that point
 // - Probably some weirdness with how light sampling is handled while inside a dielectric: inside_surface_multiplier? cosine term < 0 check? there shouldn't be any of that basically, it should just be evaluating the BSDF
+// - Issue with Lambertian BRDF override and emissive material. Seems like backfacing emissive don't work?
 
 // TODO Code Organization:
 // - init opengl context and all that expensive stuff (compile kernels too) while the scene is being parsed

@@ -6,6 +6,8 @@
 #ifndef DEVICE_RESTIR_UTILS_SPATIAL_H
 #define DEVICE_RESTIR_UTILS_SPATIAL_H
 
+#include "HostDeviceCommon/KernelOptions/ReSTIRGIOptions.h"
+
 #include "HostDeviceCommon/RenderData.h"
 
 template <bool IsReSTIRGI>
@@ -91,7 +93,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int get_spatial_neighbor_pixel_index(const HIPRTR
 
 		int2 neighbor_pixel_coords;
 		if (spatial_pass_settings.debug_neighbor_location)
-			neighbor_pixel_coords = center_pixel_coords + make_int2(spatial_pass_settings.reuse_radius, 0);
+			neighbor_pixel_coords = center_pixel_coords + make_int2(0, spatial_pass_settings.reuse_radius);
 		else
 			neighbor_pixel_coords = center_pixel_coords + neighbor_offset_int;
 		if (neighbor_pixel_coords.x < 0 || neighbor_pixel_coords.x >= render_data.render_settings.render_resolution.x || neighbor_pixel_coords.y < 0 || neighbor_pixel_coords.y >= render_data.render_settings.render_resolution.y)

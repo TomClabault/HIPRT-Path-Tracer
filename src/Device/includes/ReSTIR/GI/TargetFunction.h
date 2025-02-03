@@ -78,7 +78,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_GI_evaluate_target_function<KERNEL_O
 	bool sample_point_occluded = evaluate_shadow_ray(render_data, visibility_ray, distance_to_sample_point, surface.last_hit_primitive_index, 0, random_number_generator);
 	if (sample_point_occluded)
 		return 0.0f;
-	else if (hippt::dot(incident_light_direction, surface.shading_normal) <= 0.01f)
+	else if (hippt::dot(incident_light_direction, surface.shading_normal) <= 0.001f)
 		return 0.0f;
 
 	return sample.outgoing_radiance_to_first_hit.luminance();

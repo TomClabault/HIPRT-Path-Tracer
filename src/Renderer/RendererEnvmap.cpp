@@ -31,14 +31,22 @@ void RendererEnvmap::recompute_sampling_data_structure(GPURenderer* renderer, co
 {
 	if (renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY) == ESS_NO_SAMPLING)
 	{
-		m_cdf.free();
-		m_alias_table_alias.free();
-		m_alias_table_probas.free();
+		if (m_cdf.get_element_count() > 0)
+			m_cdf.free();
+
+		if (m_alias_table_alias.get_element_count() > 0)
+			m_alias_table_alias.free();
+
+		if (m_alias_table_probas.get_element_count() > 0)
+			m_alias_table_probas.free();
 	}
 	else if (renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY) == ESS_BINARY_SEARCH)
 	{
-		m_alias_table_alias.free();
-		m_alias_table_probas.free();
+		if (m_alias_table_alias.get_element_count() > 0)
+			m_alias_table_alias.free();
+
+		if (m_alias_table_probas.get_element_count() > 0)
+			m_alias_table_probas.free();
 
 		recompute_CDF(image);
 	}

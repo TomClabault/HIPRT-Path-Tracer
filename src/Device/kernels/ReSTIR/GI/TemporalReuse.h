@@ -38,6 +38,17 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_TemporalReuse(HIPRTRenderData ren
 
 	uint32_t center_pixel_index = (x + y * render_data.render_settings.render_resolution.x);
 
+	/////////////// DEBUG PASSTHROUGH ///////////
+	if (render_data.render_settings.restir_gi_settings.common_temporal_pass.temporal_buffer_clear_requested)
+		// We requested a temporal buffer clear for ReSTIR GI
+		render_data.render_settings.restir_gi_settings.temporal_pass.input_reservoirs[center_pixel_index] = ReSTIRGIReservoir();
+
+	ReSTIRGIReservoir res = render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer[center_pixel_index];
+	render_data.render_settings.restir_gi_settings.temporal_pass.output_reservoirs[center_pixel_index] = res;
+
+	return;
+	/////////////// DEBUG PASSTHROUGH ///////////
+
 	if (!render_data.aux_buffers.pixel_active[center_pixel_index] || render_data.g_buffer.first_hit_prim_index[center_pixel_index] == -1)
 		// Pixel inactive because of adaptive sampling, returning
 		// Or also we don't have a primary hit
