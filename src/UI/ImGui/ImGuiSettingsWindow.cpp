@@ -1545,8 +1545,9 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 
 				if (ImGui::SliderInt("Spatial Reuse Radius (px)", &restir_settings.reuse_radius, 1, 64))
 				{
-					// Clamping
-					restir_settings.reuse_radius = std::max(1, restir_settings.reuse_radius);
+					if (!restir_settings.debug_neighbor_location)
+						// Clamping if not debugging (we do allow negative values when debugging)
+						restir_settings.reuse_radius = std::max(1, restir_settings.reuse_radius);
 
 					m_render_window->set_render_dirty(true);
 				}

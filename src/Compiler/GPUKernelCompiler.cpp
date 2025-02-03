@@ -332,11 +332,11 @@ std::unordered_set<std::string> GPUKernelCompiler::get_option_macros_used_by_ker
 		if (already_processed_includes.find(current_file) != already_processed_includes.end())
 			// We've already processed that file
 			continue;
-		else if (current_file.find("KernelOptions.h") != std::string::npos)
-			// Ignoring kernel options when looking for option macros
+		else if (current_file.find("HostDeviceCommon/KernelOptions") != std::string::npos)
+			// Ignoring kernel options files when looking for option macros
 			continue;
 		else if (current_file.find("Device/") == std::string::npos && current_file.find("HostDeviceCommon/") == std::string::npos)
-			// Excluding files that are not in the Device/ or HostDeviveCommon/ folder because we're only
+			// Excluding files that are not in the Device/ or HostDeviceCommon/ folder because we're only
 			// interested in kernel files, not CPU C++ files
 			continue;
 
