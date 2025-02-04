@@ -37,7 +37,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_GI_evaluate_target_function<KERNEL_O
 	if (hippt::dot(incident_light_direction, surface.shading_normal) <= 0.0f)
 		return 0.0f;
 
-	return sample.outgoing_radiance_to_first_hit.luminance();
+	//return sample.outgoing_radiance_to_first_hit.luminance();
 
 	float bsdf_pdf;
 	ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, surface.material, surface.ray_volume_state, false, surface.view_direction, surface.shading_normal, surface.geometric_normal, incident_light_direction, bsdf_pdf, random_number_generator, 0, sample.incident_light_info);
@@ -53,7 +53,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_GI_evaluate_target_function<KERNEL_O
 template <>
 HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_GI_evaluate_target_function<KERNEL_OPTION_TRUE>(const HIPRTRenderData& render_data, const ReSTIRGISample& sample, ReSTIRSurface& surface, Xorshift32Generator& random_number_generator)
 {
-
 	float distance_to_sample_point;
 	float3 incident_light_direction;
 	if (ReSTIR_GI_is_envmap_path(sample.sample_point_normal))
@@ -78,10 +77,10 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_GI_evaluate_target_function<KERNEL_O
 	bool sample_point_occluded = evaluate_shadow_ray(render_data, visibility_ray, distance_to_sample_point, surface.last_hit_primitive_index, 0, random_number_generator);
 	if (sample_point_occluded)
 		return 0.0f;
-	else if (hippt::dot(incident_light_direction, surface.shading_normal) <= 0.001f)
+	else if (hippt::dot(incident_light_direction, surface.shading_normal) <= 0.0f)
 		return 0.0f;
 
-	return sample.outgoing_radiance_to_first_hit.luminance();
+	//return sample.outgoing_radiance_to_first_hit.luminance();
 
 	float bsdf_pdf;
 	ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, surface.material, surface.ray_volume_state, false, surface.view_direction, surface.shading_normal, surface.geometric_normal, incident_light_direction, bsdf_pdf, random_number_generator, 0, sample.incident_light_info);

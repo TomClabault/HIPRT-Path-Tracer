@@ -130,6 +130,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 
 		float shift_mapping_jacobian = 1.0f;
 		ReSTIRGIReservoir neighbor_reservoir = input_reservoir_buffer[neighbor_pixel_index];
+		ReSTIRSurface neighbor_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
+		// TODO add back: neighbor_index != reused_neighbors_count
 		if (neighbor_reservoir.UCW > 0.0f && neighbor_index != reused_neighbors_count && !ReSTIR_GI_is_envmap_path(neighbor_reservoir.sample.sample_point_normal))
 			// Only attempting the shift if the neighbor reservoir is valid
 			// 
