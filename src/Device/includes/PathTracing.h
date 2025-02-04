@@ -101,6 +101,7 @@ HIPRT_HOST_DEVICE bool path_tracing_restir_gi_compute_next_indirect_bounce(HIPRT
     if (bsdf_pdf <= 0.0f)
         return false;
 
+    // TODO commented out so that our restir gi target function includes the bounce to the camera
     if (ray_payload.bounce > 0)
     {
         // With ReSTIR GI, we want the outgoing radiance from the second hit to the camera hit

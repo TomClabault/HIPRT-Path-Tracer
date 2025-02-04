@@ -87,6 +87,15 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
     MISBSDFRayReuse mis_reuse;
     bool intersection_found = closest_hit_info.primitive_index != -1;
 
+    ReSTIRSurface initial_surface;
+    initial_surface.geometric_normal = closest_hit_info.geometric_normal;
+    initial_surface.shading_normal = closest_hit_info.shading_normal;
+    initial_surface.last_hit_primitive_index = closest_hit_info.primitive_index;
+    initial_surface.material = ray_payload.material;
+    initial_surface.ray_volume_state = ray_payload.volume_state;
+    initial_surface.shading_point = closest_hit_info.inter_point;
+    initial_surface.view_direction = -ray.direction;
+
     float bsdf_sample_pdf = 0.0f;
     ReSTIRGISample restir_gi_initial_sample;
     restir_gi_initial_sample.first_hit_normal = closest_hit_info.shading_normal;
@@ -176,7 +185,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
     render_data.aux_buffers.still_one_ray_active[0] = 1;
 
     restir_gi_initial_sample.outgoing_radiance_to_first_hit = ray_payload.ray_color;
-    restir_gi_initial_sample.target_function = restir_gi_initial_sample.outgoing_radiance_to_first_hit.luminance();
+    //restir_gi_initial_sample.target_function = restir_gi_initial_sample.outgoing_radiance_to_first_hit.luminance();
+    restir_gi_initial_sample.target_function = ReSTIR_GI_evaluate_target_function<true>(render_data, restir_gi_initial_sample, initial_surface, random_number_generator);
 
     float mis_weight = 1.0f;
     float target_function = restir_gi_initial_sample.target_function;

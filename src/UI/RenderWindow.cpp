@@ -43,6 +43,7 @@ extern ImGuiLogger g_imgui_logger;
 // - also reuse BSDF mis ray of envmap MIS
 // - ReSTIR el cheapo
 // - If hitting the same material as before, not load the material from VRAM as it's exactly the same? (only works for non-textured materials)
+// - When doing MIS, if we sampled a BSDF sample on a delta distribution, we shouldn't bother sampling lights because we know that the BSDF sample is going to overweight everything else and the light sample is going to have a MIS weight of 0 anyways
 // - MIS disabled after some number of bounces? not on glass though? MIS disabled after the ray throughput gets below some threshold?
 // - texture compression
 // - store full pointers to textures in materails instead of indirect indices? probably cheaper to have ibigger materials than to havbe to do that indirect fetch?

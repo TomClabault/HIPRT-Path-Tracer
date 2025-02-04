@@ -73,9 +73,13 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F oren_nayar_brdf_eval(const DeviceUnpa
     return oren_nayar_brdf_eval(material, local_view_direction, local_to_light_direction, pdf);
 }
 
-HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F oren_nayar_brdf_sample(const DeviceUnpackedEffectiveMaterial& material, const float3& world_space_view_direction, const float3& shading_normal, float3& out_sampled_direction, float& pdf, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE ColorRGB32F oren_nayar_brdf_sample(const DeviceUnpackedEffectiveMaterial& material, 
+    const float3& world_space_view_direction, const float3& shading_normal, float3& out_sampled_direction, 
+    float& pdf, Xorshift32Generator& random_number_generator, BSDFIncidentLightInfo* out_sampled_light_info = nullptr)
 {
     out_sampled_direction = cosine_weighted_sample_around_normal_world_space(shading_normal, random_number_generator);
+    if (out_sampled_light_info != nullptr)
+        *out_sampled_light_info = BSDFIncidentLightInfo::NO_INFO;
 
     return oren_nayar_brdf_eval(material, world_space_view_direction, shading_normal, out_sampled_direction, pdf);
 }
