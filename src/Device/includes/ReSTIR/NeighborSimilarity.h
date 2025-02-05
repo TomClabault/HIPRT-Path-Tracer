@@ -56,7 +56,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool jacobian_similarity_heuristic(const HIPRTRen
 	if (render_data.render_settings.restir_gi_settings.spatial_pass.input_reservoirs[neighbor_pixel_index].UCW == 0.0f)
 		return true;
 
-	float3 reconnection_normal = render_data.render_settings.restir_gi_settings.spatial_pass.input_reservoirs[neighbor_pixel_index].sample.sample_point_normal;
+	float3 reconnection_normal = render_data.render_settings.restir_gi_settings.spatial_pass.input_reservoirs[neighbor_pixel_index].sample.sample_point_geometric_normal;
 	if (ReSTIR_GI_is_envmap_path(reconnection_normal))
 		return true;
 

@@ -118,6 +118,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
                 if (bounce == 1)
                 {
                     restir_gi_initial_sample.sample_point_normal = closest_hit_info.shading_normal;
+                    restir_gi_initial_sample.sample_point_geometric_normal = closest_hit_info.geometric_normal;
                     restir_gi_initial_sample.sample_point = closest_hit_info.inter_point;
                 }
 
@@ -163,6 +164,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
                     // (there is no surface normal since we missed the scene entirely) such that the
                     // temporal and spatial reuse passes recognize that this is an envmap path
                     restir_gi_initial_sample.sample_point_normal.x = RESTIR_GI_RECONNECTION_SURFACE_NORMAL_ENVMAP_VALUE;
+                    restir_gi_initial_sample.sample_point_geometric_normal.x = RESTIR_GI_RECONNECTION_SURFACE_NORMAL_ENVMAP_VALUE;
                     // For envmap path, the direction is stored in the hit point
                     restir_gi_initial_sample.sample_point = ray.direction;
                 }

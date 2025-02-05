@@ -50,6 +50,8 @@ struct ReSTIRGISettings : public ReSTIRCommonSettings
 		common_spatial_pass.neighbor_visibility_count = common_spatial_pass.do_disocclusion_reuse_boost ? common_spatial_pass.disocclusion_reuse_count : common_spatial_pass.reuse_neighbor_count;
 	}
 
+	int debug_seed = 32;
+
 	ReSTIRGIInitialCandidatesPassSettings initial_candidates;
 	ReSTIRGITemporalPassSettings temporal_pass;
 	ReSTIRGISpatialPassSettings spatial_pass;
