@@ -63,7 +63,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	float rotation_theta;
 	if (render_data.render_settings.restir_gi_settings.common_spatial_pass.do_neighbor_rotation)
 		// TODO use random_number_generator() back here
-		rotation_theta = M_TWO_PI * Xorshift32Generator(render_data.render_settings.restir_gi_settings.debug_seed)();
+		rotation_theta = M_TWO_PI * random_number_generator();// Xorshift32Generator(render_data.render_settings.restir_gi_settings.debug_seed)();
 	else
 		rotation_theta = 0.0f;
 
