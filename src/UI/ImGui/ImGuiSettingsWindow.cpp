@@ -159,6 +159,8 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
 
+	if (ImGui::InputInt("Debug seed", &render_settings.restir_gi_settings.debug_seed))
+		m_render_window->set_render_dirty(true);
 	if (!ImGui::CollapsingHeader("Render Settings"))
 		return;
 	ImGui::TreePush("Render settings tree");

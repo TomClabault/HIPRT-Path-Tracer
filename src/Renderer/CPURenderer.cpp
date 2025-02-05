@@ -31,7 +31,7 @@
  // If 1, only the pixel at DEBUG_PIXEL_X and DEBUG_PIXEL_Y will be rendered,
  // allowing for fast step into that pixel with the debugger to see what's happening.
  // Otherwise if 0, all pixels of the image are rendered
-#define DEBUG_PIXEL 0
+#define DEBUG_PIXEL 1
 
 // If 0, the pixel with coordinates (x, y) = (0, 0) is top left corner.
 // If 1, it's bottom left corner.
@@ -39,14 +39,14 @@
 // the interesting pixel. If that image viewer has its (0, 0) in the top
 // left corner, you'll need to set that DEBUG_FLIP_Y to 0. Set 1 to if
 // you're measuring the coordinates of the pixel with (0, 0) in the bottom left corner
-#define DEBUG_FLIP_Y 1
+#define DEBUG_FLIP_Y 0
 
 // Coordinates of the pixel whose neighborhood needs to rendered (useful for algorithms
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 354
-#define DEBUG_PIXEL_Y 570
+#define DEBUG_PIXEL_X 872
+#define DEBUG_PIXEL_Y 518
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -312,7 +312,7 @@ void CPURenderer::set_envmap(Image32Bit& envmap_image)
     if (envmap_image.width == 0 || envmap_image.height == 0)
     {
         m_render_data.world_settings.ambient_light_type = AmbientLightType::NONE;
-        m_render_data.world_settings.uniform_light_color = ColorRGB32F(0.5f, 0.5f, 0.5f);
+        m_render_data.world_settings.uniform_light_color = ColorRGB32F(0.1f, 0.1f, 0.1f);
 
         std::cout << "Empty envmap set on the CPURenderer... Defaulting to uniform ambient light type" << std::endl;
 

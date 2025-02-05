@@ -62,7 +62,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	// for generating the neighbors location to resample
 	float rotation_theta;
 	if (render_data.render_settings.restir_gi_settings.common_spatial_pass.do_neighbor_rotation)
-		rotation_theta = M_TWO_PI * random_number_generator();
+		// TODO use random_number_generator() back here
+		rotation_theta = M_TWO_PI * Xorshift32Generator(render_data.render_settings.restir_gi_settings.debug_seed)();
 	else
 		rotation_theta = 0.0f;
 
@@ -99,7 +100,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	if (valid_neighbors_M_sum == 0)
 		// No valid neighbor to resample from, skip to the initial candidate right away
 		start_index = reused_neighbors_count;
-	// TODO add +1 back
 	for (int neighbor_index = start_index; neighbor_index < reused_neighbors_count + 1; neighbor_index++)
 	{
 		// We can already check whether or not this neighbor is going to be
@@ -131,14 +131,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 		float shift_mapping_jacobian = 1.0f;
 		ReSTIRGIReservoir neighbor_reservoir = input_reservoir_buffer[neighbor_pixel_index];
 		ReSTIRSurface neighbor_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
-		// TODO add back: neighbor_index != reused_neighbors_count
-		if (neighbor_reservoir.UCW > 0.0f && neighbor_index != reused_neighbors_count && !ReSTIR_GI_is_envmap_path(neighbor_reservoir.sample.sample_point_normal))
+		if (neighbor_reservoir.UCW > 0.0f && neighbor_index != reused_neighbors_count && !ReSTIR_GI_is_envmap_path(neighbor_reservoir.sample.sample_point_geometric_normal))
 			// Only attempting the shift if the neighbor reservoir is valid
 			// 
 			// Also, if this is the last neighbor resample (meaning that it is the center pixel), 
 			// the shift mapping is going to be an identity shift with a jacobian of 1 so we don't need to do it
 			neighbor_reservoir = shift_sample_reconnection_shift(neighbor_reservoir, shift_mapping_jacobian, center_pixel_surface.shading_point);
 		if (shift_mapping_jacobian == -1.0f)
+			// Neighbor rejected because the jacobian are too dissimilar
 			continue;
 
 		float target_function_at_center = 0.0f;
@@ -195,7 +195,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 #error "Unsupported bias correction mode"
 #endif
 
-		// Combining as in Alg. 6 of the paper
+		// Combining as in Alg. 1 of the ReSTIR GI paper
 		if (spatial_reuse_output_reservoir.combine_with(neighbor_reservoir, mis_weight, target_function_at_center, shift_mapping_jacobian, random_number_generator))
 		{
 #if ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_MIS_LIKE
