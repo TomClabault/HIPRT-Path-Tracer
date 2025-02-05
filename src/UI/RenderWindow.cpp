@@ -22,6 +22,11 @@
 extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
+// TODO ReSTIR GI
+// - do adaptive radius spatial reuse --> also for ReSTIR DI?
+// - ReSTIR el cheapo
+// - some kind of reuse direction masks for spatial reuse offline rendering? the idea is to cache in a full screen framebuffer which directions we should reuse in to avoid neighbor rejection due to geometric dissimilarities
+
 // TODO restir gi render pass inheriting from megakernel render pass seems to colmpile mega kernel even though we don't need it
 // - we need a ReSTIR DI convergence check
 // - hardcode the reused neighbor to be us and see what that does?
@@ -32,9 +37,6 @@ extern ImGuiLogger g_imgui_logger;
 // - investigate why so much noise in the cornell box: probably because of the distance to the light? numerical issues?
 // - ReSTIR redundant render_data.g_buffer.primary_hit_position[pixel_index] load for bothshading_point and view_direction
 // - ReSTIR only load the rest of the reservoir if its UCW isn't 0
-
-// TODO demos:
-// new oren nayar BRDF: EON
 
 // - try simplifying the material to just a diffuse component to see if that helps memory accesses --> 8/10%
 // - try removing everything about nested dielectrics to see the register/spilling usage and performance --> ~1/2%

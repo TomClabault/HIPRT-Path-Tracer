@@ -140,6 +140,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 			neighbor_reservoir = shift_sample_reconnection_shift(neighbor_reservoir, shift_mapping_jacobian, center_pixel_surface.shading_point);
 		if (shift_mapping_jacobian == -1.0f)
 			continue;
+		shift_mapping_jacobian = 1.0f;
 
 		float target_function_at_center = 0.0f;
 		bool do_neighbor_target_function_visibility = true;// do_include_visibility_term_or_not<true>(render_data, neighbor_index);
