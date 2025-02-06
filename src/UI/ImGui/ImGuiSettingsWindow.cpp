@@ -1675,6 +1675,21 @@ void ImGuiSettingsWindow::draw_ReSTIR_spatial_reuse_panel(std::function<void(voi
 					m_render_window->set_render_dirty(true);
 				ImGuiRenderer::show_help_marker("If checked, neighbor in the spatial reuse pass will be hardcoded to always be "
 					"15 pixels to the right, not in a circle. This makes spotting bias easier when debugging.");
+				if (restir_settings.debug_neighbor_location)
+				{
+					ImGui::TreePush("Debug neighbor location vertical tree");
+
+					ImGui::Text("Debug reuse direction");
+					bool reuse_direction_changed = false;
+					reuse_direction_changed |= ImGui::RadioButton("Horizontally", ((int*)&restir_settings.debug_neighbor_location_direction), 0); ImGui::SameLine();
+					reuse_direction_changed |= ImGui::RadioButton("Vertically", ((int*)&restir_settings.debug_neighbor_location_direction), 1); ImGui::SameLine();
+					reuse_direction_changed |= ImGui::RadioButton("Diagonally", ((int*)&restir_settings.debug_neighbor_location_direction), 2);
+
+					if (reuse_direction_changed)
+						m_render_window->set_render_dirty(true);
+
+					ImGui::TreePop();
+				}
 			}
 		}
 

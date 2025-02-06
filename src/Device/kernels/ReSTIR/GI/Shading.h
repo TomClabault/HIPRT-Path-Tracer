@@ -13,7 +13,6 @@
 #include "Device/includes/LightUtils.h"
 #include "Device/includes/PathTracing.h"
 #include "Device/includes/ReSTIR/GI/Reservoir.h"
-#include "Device/includes/ReSTIR/GI/Utils.h"
 #include "Device/includes/SanityCheck.h"
 
 #include "HostDeviceCommon/Xorshift.h"
@@ -96,7 +95,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
             float3 geometric_normal = render_data.g_buffer.geometric_normals[pixel_index].unpack();
 
             float3 restir_resampled_indirect_direction;
-            if (ReSTIR_GI_is_envmap_path(resampling_reservoir.sample.sample_point_normal))
+            if (resampling_reservoir.sample.is_envmap_path())
                 restir_resampled_indirect_direction = resampling_reservoir.sample.sample_point;
             else
                 restir_resampled_indirect_direction = hippt::normalize(resampling_reservoir.sample.sample_point - closest_hit_info.inter_point);

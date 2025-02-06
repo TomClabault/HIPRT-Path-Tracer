@@ -54,9 +54,13 @@ struct ReSTIRCommonSpatialPassSettings
 	// This reduces the increased variance of disoccluded regions
 	int disocclusion_reuse_count;
 
-	// If true, reused neighbors will be hardcoded to always be 15 pixels to the right,
+	// If true, reused neighbors will be hardcoded to always be 'reuse_radius' pixels to the right,
 	// not in a circle around the center pixel.
 	bool debug_neighbor_location;
+	// If this is 0, the debug location will be horizontal
+	// If this is 1, the debug location will be vertical
+	// If this is 2, the debug location will be in diagonal
+	int debug_neighbor_location_direction;
 
 	// Whether or not to rotate the spatial neighbor locations generated.
 	// Pretty much mandatory when using Hammersley points otherwise the neighbors
