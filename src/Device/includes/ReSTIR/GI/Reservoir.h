@@ -38,7 +38,7 @@ struct ReSTIRGISample
 
     float target_function = 0.0f;
 
-    HIPRT_HOST_DEVICE static bool is_envmap_path(float3 reconnection_point_normal)
+    HIPRT_HOST_DEVICE static bool is_envmap_path(const float3& reconnection_point_normal)
     {
         return reconnection_point_normal.x == RESTIR_GI_RECONNECTION_SURFACE_NORMAL_ENVMAP_VALUE;
     }

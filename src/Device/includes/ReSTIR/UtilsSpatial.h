@@ -107,6 +107,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int get_spatial_neighbor_pixel_index(const HIPRTR
 		else
 			neighbor_pixel_coords = center_pixel_coords + neighbor_offset_int;
 
+		int2 DEBUG_DIRECTION = neighbor_pixel_coords - center_pixel_coords;
+
 		if (neighbor_pixel_coords.x < 0 || neighbor_pixel_coords.x >= render_data.render_settings.render_resolution.x || neighbor_pixel_coords.y < 0 || neighbor_pixel_coords.y >= render_data.render_settings.render_resolution.y)
 			// Rejecting the sample if it's outside of the viewport
 			return -1;
