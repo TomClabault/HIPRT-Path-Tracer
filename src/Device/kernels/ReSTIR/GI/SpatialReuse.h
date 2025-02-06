@@ -62,8 +62,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	// for generating the neighbors location to resample
 	float rotation_theta;
 	if (render_data.render_settings.restir_gi_settings.common_spatial_pass.do_neighbor_rotation)
-		// TODO use random_number_generator() back here
-		rotation_theta = M_TWO_PI * random_number_generator();// Xorshift32Generator(render_data.render_settings.restir_gi_settings.debug_seed)();
+		rotation_theta = M_TWO_PI * random_number_generator();
 	else
 		rotation_theta = 0.0f;
 
@@ -289,7 +288,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 
 	// M-capping so that we don't have to M-cap when reading reservoirs on the next frame
 	if (render_data.render_settings.restir_gi_settings.m_cap > 0)
-		// M-capping the temporal neighbor if an M-cap has been given
+		// M-capping the spatial neighbor if an M-cap has been given
 		spatial_reuse_output_reservoir.M = hippt::min(spatial_reuse_output_reservoir.M, render_data.render_settings.restir_gi_settings.m_cap);
 
 	render_data.render_settings.restir_gi_settings.spatial_pass.output_reservoirs[center_pixel_index] = spatial_reuse_output_reservoir;
