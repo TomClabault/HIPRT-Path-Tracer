@@ -109,7 +109,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int get_spatial_neighbor_pixel_index(const HIPRTR
 
 		int2 DEBUG_DIRECTION = neighbor_pixel_coords - center_pixel_coords;
 #ifndef __KERNELCC__
-		std::cout << "neighbor direction: " << DEBUG_DIRECTION.x << ", " << DEBUG_DIRECTION.y << std::endl;
+		//std::cout << "neighbor direction: " << DEBUG_DIRECTION.x << ", " << DEBUG_DIRECTION.y << std::endl;
 #endif
 
 		if (neighbor_pixel_coords.x < 0 || neighbor_pixel_coords.x >= render_data.render_settings.render_resolution.x || neighbor_pixel_coords.y < 0 || neighbor_pixel_coords.y >= render_data.render_settings.render_resolution.y)

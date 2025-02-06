@@ -29,6 +29,8 @@ struct HIPRTRenderSettings
 	// This is mainly useful for the first frame of the render
 	bool need_to_reset = true;
 
+	bool debug_lambertian = false;
+
 	// If true, then the kernels are allowed to modify the status buffers (how many pixels have converged so far, ...)
 	// 
 	// Why is this useful?
@@ -77,7 +79,7 @@ struct HIPRTRenderSettings
 	int samples_per_frame = 1;
 	// Maximum number of bounces of rays in the scene. 
 	// 1 is direct light only.
-	int nb_bounces = 1000;
+	int nb_bounces = 1;
 
 	bool use_russian_roulette = true;
 	// After how many bounces can russian roulette kick in?
@@ -153,7 +155,7 @@ struct HIPRTRenderSettings
 
 
 	// Clamp direct lighting contribution to reduce fireflies
-	float direct_contribution_clamp = 4.0f;
+	float direct_contribution_clamp = 0.0f;
 	// Clamp envmap contribution to reduce fireflies
 	float envmap_contribution_clamp = 0.0f;
 	// Clamp indirect lighting contribution to reduce fireflies
