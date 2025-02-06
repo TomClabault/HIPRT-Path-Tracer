@@ -28,10 +28,10 @@ static ReSTIRCommonSpatialPassSettings RESTIR_GI_DEFAULT_COMMON_SPATIAl_PASS_SET
 	.reuse_radius = 20,
 	.reuse_neighbor_count = 1,
 
-	.do_disocclusion_reuse_boost = false,
+	.do_disocclusion_reuse_boost = true,
 	.disocclusion_reuse_count = 5,
 
-	.debug_neighbor_location = true,
+	.debug_neighbor_location = false,
 	.debug_neighbor_location_direction = 1, // Debug vertically by default
 
 	.do_neighbor_rotation = true,

@@ -73,6 +73,8 @@ void ReSTIRGIRenderPass::resize(unsigned int new_width, unsigned int new_height)
 		return;
 
 	m_initial_candidates_buffer.resize(new_width * new_height);
+	m_temporal_buffer.resize(new_width * new_height);
+	m_spatial_buffer.resize(new_width * new_height);
 }
 
 bool ReSTIRGIRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets, bool silent, bool use_cache)
