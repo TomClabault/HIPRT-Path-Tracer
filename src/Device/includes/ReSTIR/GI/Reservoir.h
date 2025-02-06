@@ -18,6 +18,8 @@ static std::mutex restir_gi_log_mutex;
 
 struct ReSTIRGISample
 {
+    static constexpr float RESTIR_GI_RECONNECTION_SURFACE_NORMAL_ENVMAP_VALUE = -42.0f;
+
     // TODO visible point and visible normal useless: already in G-buffer
     // seed: unused
     // target_function: can be stored in outoging_radiance_to_first_hit?
@@ -32,12 +34,19 @@ struct ReSTIRGISample
 
     ColorRGB32F outgoing_radiance_to_first_hit;
 
-    // Seed used for generating the path
-    unsigned int seed;
-
     BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
 
     float target_function = 0.0f;
+
+    HIPRT_HOST_DEVICE static bool is_envmap_path(float3 reconnection_point_normal)
+    {
+        return reconnection_point_normal.x == RESTIR_GI_RECONNECTION_SURFACE_NORMAL_ENVMAP_VALUE;
+    }
+
+    HIPRT_HOST_DEVICE bool is_envmap_path() const
+    {
+        return ReSTIRGISample::is_envmap_path(sample_point_normal);
+    }
 };
 
 struct ReSTIRGIReservoir

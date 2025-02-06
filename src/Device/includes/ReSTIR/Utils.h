@@ -12,7 +12,6 @@
 #include "Device/includes/LightUtils.h"
 #include "Device/includes/ReSTIR/Surface.h"
 #include "Device/includes/ReSTIR/NeighborSimilarity.h"
-#include "Device/includes/ReSTIR/GI/Utils.h"
 
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/ReSTIRSettingsHelper.h"

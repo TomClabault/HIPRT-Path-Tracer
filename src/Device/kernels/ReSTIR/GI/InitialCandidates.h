@@ -14,7 +14,6 @@
 #include "Device/includes/PathTracing.h"
 #include "Device/includes/ReSTIR/GI/Reservoir.h"
 #include "Device/includes/ReSTIR/GI/TargetFunction.h"
-#include "Device/includes/ReSTIR/GI/Utils.h"
 #include "Device/includes/SanityCheck.h"
 
 #include "HostDeviceCommon/Xorshift.h"
@@ -140,9 +139,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
                 if (bounce > 0)
                     ray_payload.ray_color += estimate_direct_lighting(render_data, ray_payload, closest_hit_info, -ray.direction, x, y, mis_reuse, random_number_generator);
 
-                if (bounce == 0)
-                    restir_gi_initial_sample.seed = random_number_generator.m_state.seed;
-
                 BSDFIncidentLightInfo incident_light_info;
                 float bsdf_pdf;
                 bool valid_indirect_bounce = path_tracing_restir_gi_compute_next_indirect_bounce(render_data, ray_payload, closest_hit_info, -ray.direction, ray, mis_reuse, random_number_generator, &incident_light_info, &bsdf_pdf);
@@ -163,8 +159,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
                     // This is an envmap sample so we're using a special value in the surface normal
                     // (there is no surface normal since we missed the scene entirely) such that the
                     // temporal and spatial reuse passes recognize that this is an envmap path
-                    restir_gi_initial_sample.sample_point_normal.x = RESTIR_GI_RECONNECTION_SURFACE_NORMAL_ENVMAP_VALUE;
-                    restir_gi_initial_sample.sample_point_geometric_normal.x = RESTIR_GI_RECONNECTION_SURFACE_NORMAL_ENVMAP_VALUE;
+                    restir_gi_initial_sample.sample_point_normal.x = ReSTIRGISample::RESTIR_GI_RECONNECTION_SURFACE_NORMAL_ENVMAP_VALUE;
+                    restir_gi_initial_sample.sample_point_geometric_normal.x = ReSTIRGISample::RESTIR_GI_RECONNECTION_SURFACE_NORMAL_ENVMAP_VALUE;
                     // For envmap path, the direction is stored in the hit point
                     restir_gi_initial_sample.sample_point = ray.direction;
                 }

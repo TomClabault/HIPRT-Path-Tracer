@@ -8,7 +8,6 @@
 
 #include "Device/includes/ReSTIR/Surface.h"
 #include "Device/includes/ReSTIR/GI/Reservoir.h"
-#include "Device/includes/ReSTIR/GI/Utils.h"
 #include "HostDeviceCommon/RenderData.h"
 
 template <bool withVisiblity>
@@ -26,7 +25,7 @@ template <>
 HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_GI_evaluate_target_function<KERNEL_OPTION_FALSE>(const HIPRTRenderData& render_data, const ReSTIRGISample& sample, ReSTIRSurface& surface, Xorshift32Generator& random_number_generator)
 {
 	float3 incident_light_direction;
-	if (ReSTIR_GI_is_envmap_path(sample.sample_point_normal))
+	if (sample.is_envmap_path())
 		// For envmap path, the direction is stored in the 'sample_point' value
 		incident_light_direction = sample.sample_point;
 	else
@@ -43,7 +42,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_GI_evaluate_target_function<KERNEL_O
 	ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, surface.material, surface.ray_volume_state, false, surface.view_direction, surface.shading_normal, surface.geometric_normal, incident_light_direction, bsdf_pdf, random_number_generator, 0, sample.incident_light_info);
 	if (bsdf_pdf > 0.0f)
 	{
-		bsdf_color /= bsdf_pdf;
+		//bsdf_color /= bsdf_pdf;
 		bsdf_color *= hippt::abs(hippt::dot(surface.shading_normal, incident_light_direction));
 	}
 
@@ -55,7 +54,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_GI_evaluate_target_function<KERNEL_O
 {
 	float distance_to_sample_point;
 	float3 incident_light_direction;
-	if (ReSTIR_GI_is_envmap_path(sample.sample_point_normal))
+	if (sample.is_envmap_path())
 	{
 		// For envmap path, the direction is stored in the 'sample_point' value
 		incident_light_direction = sample.sample_point;
@@ -86,7 +85,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_GI_evaluate_target_function<KERNEL_O
 	ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, surface.material, surface.ray_volume_state, false, surface.view_direction, surface.shading_normal, surface.geometric_normal, incident_light_direction, bsdf_pdf, random_number_generator, 0, sample.incident_light_info);
 	if (bsdf_pdf > 0.0f)
 	{
-		bsdf_color /= bsdf_pdf;
+		//bsdf_color /= bsdf_pdf;
 		bsdf_color *= hippt::abs(hippt::dot(surface.shading_normal, incident_light_direction));
 	}
 

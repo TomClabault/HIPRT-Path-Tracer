@@ -7,7 +7,6 @@
 #define DEVICE_RESTIR_NEIGHBOR_SIMILARITY_H
  
 #include "Device/includes/ReSTIR/Jacobian.h"
-#include "Device/includes/ReSTIR/GI/Utils.h"
 
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/ReSTIRSettingsHelper.h"
@@ -57,7 +56,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool jacobian_similarity_heuristic(const HIPRTRen
 		return true;
 
 	float3 reconnection_normal = render_data.render_settings.restir_gi_settings.spatial_pass.input_reservoirs[neighbor_pixel_index].sample.sample_point_geometric_normal;
-	if (ReSTIR_GI_is_envmap_path(reconnection_normal))
+	if (ReSTIRGISample::is_envmap_path(reconnection_normal))
 		return true;
 
 	float3 reconnection_point = render_data.render_settings.restir_gi_settings.spatial_pass.input_reservoirs[neighbor_pixel_index].sample.sample_point;

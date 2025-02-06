@@ -88,8 +88,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 		center_pixel_surface, center_pixel_coords, cos_sin_theta_rotation, 
 		valid_neighbors_count, valid_neighbors_M_sum, neighbor_heuristics_cache);
 
-	float neighbor_jacobian;
-
 	ReSTIRSpatialResamplingMISWeight<ReSTIR_GI_BiasCorrectionWeights, /* IsReSTIRGI */ true> mis_weight_function;
 	// Resampling the neighbors. Using neighbors + 1 here so that
 	// we can use the last iteration of the loop to resample ourselves (the center pixel)
@@ -102,17 +100,18 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 		start_index = reused_neighbors_count;
 	for (int neighbor_index = start_index; neighbor_index < reused_neighbors_count + 1; neighbor_index++)
 	{
-		// We can already check whether or not this neighbor is going to be
-		// accepted at all by checking the heuristic cache
-		if (neighbor_index < reused_neighbors_count && reused_neighbors_count <= 32)
-			// If not the center pixel, we can check the heuristics, otherwise there's no need to,
-			// we know that the center pixel will be accepted
-			// 
-			// Our heuristics cache is a 32bit int so we can only cache 32 values are we're
-			// going to have issues if we try to read more than that.
-			if ((neighbor_heuristics_cache & (1 << neighbor_index)) == 0)
-				// Neighbor not passing the heuristics tests, skipping it right away
-				continue;
+		const bool is_center_pixel = neighbor_index == reused_neighbors_count;
+		//// We can already check whether or not this neighbor is going to be
+		//// accepted at all by checking the heuristic cache
+		//if (neighbor_index < reused_neighbors_count && reused_neighbors_count <= 32)
+		//	// If not the center pixel, we can check the heuristics, otherwise there's no need to,
+		//	// we know that the center pixel will be accepted
+		//	// 
+		//	// Our heuristics cache is a 32bit int so we can only cache 32 values are we're
+		//	// going to have issues if we try to read more than that.
+		//	if ((neighbor_heuristics_cache & (1 << neighbor_index)) == 0)
+		//		// Neighbor not passing the heuristics tests, skipping it right away
+		//		continue;
 
 		int neighbor_pixel_index = get_spatial_neighbor_pixel_index<true>(render_data,
 			neighbor_index, center_pixel_coords, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
@@ -120,7 +119,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 			// Neighbor out of the viewport
 			continue;
 
-		if (neighbor_index < reused_neighbors_count && reused_neighbors_count > 32)
+		if (!is_center_pixel && reused_neighbors_count > 32)
 			// If not the center pixel, we can check the heuristics
 			// 
 			// Only checking the heuristic if we have more than 32 neighbors (does not fit in the heuristic cache)
@@ -130,8 +129,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 
 		float shift_mapping_jacobian = 1.0f;
 		ReSTIRGIReservoir neighbor_reservoir = input_reservoir_buffer[neighbor_pixel_index];
-		ReSTIRSurface neighbor_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
-		if (neighbor_reservoir.UCW > 0.0f && neighbor_index != reused_neighbors_count && !ReSTIR_GI_is_envmap_path(neighbor_reservoir.sample.sample_point_geometric_normal))
+		if (neighbor_reservoir.UCW > 0.0f && !is_center_pixel && !neighbor_reservoir.sample.is_envmap_path())
 			// Only attempting the shift if the neighbor reservoir is valid
 			// 
 			// Also, if this is the last neighbor resample (meaning that it is the center pixel), 
@@ -142,21 +140,22 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 			continue;
 
 		float target_function_at_center = 0.0f;
-		bool do_neighbor_target_function_visibility = true;// do_include_visibility_term_or_not<true>(render_data, neighbor_index);
-		if (neighbor_reservoir.UCW > 0.0f)
-		{
-			if (neighbor_index == reused_neighbors_count)
-				// No need to evaluate the center sample at the center pixel, that's exactly
-				// the target function of the center reservoir
-				target_function_at_center = neighbor_reservoir.sample.target_function;
-			else
-			{
-				if (do_neighbor_target_function_visibility)
-					target_function_at_center = ReSTIR_GI_evaluate_target_function<KERNEL_OPTION_TRUE>(render_data, neighbor_reservoir.sample, center_pixel_surface, random_number_generator);
-				else
-					target_function_at_center = ReSTIR_GI_evaluate_target_function<KERNEL_OPTION_FALSE>(render_data, neighbor_reservoir.sample, center_pixel_surface, random_number_generator);
-			}
-		}
+		//bool do_neighbor_target_function_visibility = true;// do_include_visibility_term_or_not<true>(render_data, neighbor_index);
+		//if (neighbor_reservoir.UCW > 0.0f)
+		//{
+		//	if (is_center_pixel)
+		//		// No need to evaluate the center sample at the center pixel, that's exactly
+		//		// the target function of the center reservoir
+		//		target_function_at_center = neighbor_reservoir.sample.target_function;
+		//	else
+		//	{
+		//		if (do_neighbor_target_function_visibility)
+		//			target_function_at_center = ReSTIR_GI_evaluate_target_function<KERNEL_OPTION_TRUE>(render_data, neighbor_reservoir.sample, center_pixel_surface, random_number_generator);
+		//		else
+		//			target_function_at_center = ReSTIR_GI_evaluate_target_function<KERNEL_OPTION_FALSE>(render_data, neighbor_reservoir.sample, center_pixel_surface, random_number_generator);
+		//	}
+		//}
+		target_function_at_center = ReSTIR_GI_evaluate_target_function<KERNEL_OPTION_TRUE>(render_data, neighbor_reservoir.sample, center_pixel_surface, random_number_generator);
 
 #if ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_1_OVER_M
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight(neighbor_reservoir.M);
@@ -180,7 +179,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 			center_pixel_reservoir.sample, center_pixel_reservoir.M, center_pixel_reservoir.sample.target_function,
 
 			target_function_at_center, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
-			update_mc,/* resampling canonical */ neighbor_index == reused_neighbors_count, random_number_generator);
+			update_mc,/* resampling canonical */ is_center_pixel, random_number_generator);
 #elif ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_PAIRWISE_MIS_DEFENSIVE
 		bool update_mc = center_pixel_reservoir.M > 0 && center_pixel_reservoir.UCW > 0.0f;
 
@@ -190,7 +189,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 			center_pixel_reservoir.sample, center_pixel_reservoir.M, center_pixel_reservoir.sample.target_function,
 
 			target_function_at_center, neighbor_pixel_index, valid_neighbors_count, valid_neighbors_M_sum,
-			update_mc, /* resampling canonical */ neighbor_index == reused_neighbors_count, random_number_generator);
+			update_mc, /* resampling canonical */ is_center_pixel, random_number_generator);
 #else
 #error "Unsupported bias correction mode"
 #endif
@@ -202,20 +201,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 			// Only used with MIS-like weight
 			selected_neighbor = neighbor_index;
 #endif
-			//if (do_neighbor_target_function_visibility)
-			//	// If we resampled the neighbor with visibility, then we are sure that we can set the flag
-			//	spatial_reuse_output_reservoir.sample.flags |= ReSTIRDISampleFlags::ReSTIR_GI_FLAGS_UNOCCLUDED;
-			//else
-			//{
-			//	// If we didn't resample the neighbor with visibility
-			//	if (neighbor_index == reused_neighbors_count)
-			//		// If we just resampled the center pixel, then we can copy the visibility flag
-			//		spatial_reuse_output_reservoir.sample.flags |= neighbor_reservoir.sample.flags & ReSTIRDISampleFlags::ReSTIR_GI_FLAGS_UNOCCLUDED;
-			//	else
-			//		// This was not the center pixel, we cannot be certain what the visibility at the center
-			//		// pixel of the neighbor sample we just resample is so we're clearing the bit
-			//		spatial_reuse_output_reservoir.sample.flags &= ~ReSTIRDISampleFlags::ReSTIR_GI_FLAGS_UNOCCLUDED;
-			//}
 		}
 
 		spatial_reuse_output_reservoir.sanity_check(center_pixel_coords);
