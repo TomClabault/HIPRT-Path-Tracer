@@ -442,6 +442,11 @@ void SceneParser::read_material_properties(aiMaterial* mesh_material, CPUMateria
 
         renderer_material.base_color = ColorRGB32F(0.5f);
     }
+    else if (std::string(mesh_material->GetName().C_Str()).find("Material") != std::string::npos)
+    {
+
+        renderer_material.base_color = ColorRGB32F(1.0f, 0.0f, 0.0f);
+    }
 
     renderer_material.make_safe();
 }

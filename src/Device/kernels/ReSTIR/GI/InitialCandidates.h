@@ -182,8 +182,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
     // the same value
     render_data.aux_buffers.still_one_ray_active[0] = 1;
 
-    restir_gi_initial_sample.outgoing_radiance_to_first_hit = ray_payload.ray_color;
-    //restir_gi_initial_sample.target_function = restir_gi_initial_sample.outgoing_radiance_to_first_hit.luminance();
+    restir_gi_initial_sample.outgoing_radiance_to_visible_point = ray_payload.ray_color;
+    //restir_gi_initial_sample.target_function = restir_gi_initial_sample.outgoing_radiance_to_visible_point.luminance();
     restir_gi_initial_sample.target_function = ReSTIR_GI_evaluate_target_function<true>(render_data, restir_gi_initial_sample, initial_surface, random_number_generator);
 
     float mis_weight = 1.0f;
@@ -198,10 +198,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
     restir_gi_initial_reservoir.end();
     restir_gi_initial_reservoir.sanity_check(make_int2(x, y));
 
-    if (restir_gi_initial_reservoir.sample.outgoing_radiance_to_first_hit.max_component() > 65535.0f)
+    if (restir_gi_initial_reservoir.sample.outgoing_radiance_to_visible_point.max_component() > 65535.0f)
     {
         debug_set_final_color(render_data, x, y, render_data.render_settings.render_resolution.x, ColorRGB32F(0.0f, 1.0e10f, 0.0f));
-        restir_gi_initial_reservoir.sample.outgoing_radiance_to_first_hit = ColorRGB32F(0.0f, 1.0e10f, 0.0f);
+        restir_gi_initial_reservoir.sample.outgoing_radiance_to_visible_point = ColorRGB32F(0.0f, 1.0e10f, 0.0f);
     }
 
     render_data.render_settings.restir_gi_settings.initial_candidates.initial_candidates_buffer[pixel_index] = restir_gi_initial_reservoir;

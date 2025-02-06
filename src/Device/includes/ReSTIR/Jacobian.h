@@ -10,10 +10,10 @@
 
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_HOST_DEVICE HIPRT_INLINE float get_jacobian_determinant_reconnection_shift(const float3& reconnection_point, const float3& reconnection_point_surface_normal, const float3& center_pixel_shading_point, const float3& neighbor_shading_point)
+HIPRT_HOST_DEVICE HIPRT_INLINE float get_jacobian_determinant_reconnection_shift(const float3& reconnection_point, const float3& reconnection_point_surface_normal, const float3& center_pixel_visible_point, const float3& neighbor_visible_point)
 {
-	float3 direction_to_reconnection_point_from_center = reconnection_point - center_pixel_shading_point;
-	float3 direction_to_reconnection_point_from_neighbor = reconnection_point - neighbor_shading_point;
+	float3 direction_to_reconnection_point_from_center = reconnection_point - center_pixel_visible_point;
+	float3 direction_to_reconnection_point_from_neighbor = reconnection_point - neighbor_visible_point;
 	float distance_to_reconnection_point_from_center = hippt::length(direction_to_reconnection_point_from_center);
 	float distance_to_reconnection_point_from_neighbor = hippt::length(direction_to_reconnection_point_from_neighbor);
 	direction_to_reconnection_point_from_center /= distance_to_reconnection_point_from_center;
@@ -27,8 +27,8 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float get_jacobian_determinant_reconnection_shift
 
 	float jacobian_determinant = cosine_ratio * distance_squared_ratio;
 
-	constexpr float jacobian_threshold = 100000000000000.0f;
-	//constexpr float jacobian_threshold = 200.0f;
+	//constexpr float jacobian_threshold = 100000000000000.0f;
+	constexpr float jacobian_threshold = 10.0f;
 	if (jacobian_determinant > jacobian_threshold || jacobian_determinant < 1.0f / jacobian_threshold || hippt::is_NaN(jacobian_determinant))
 		// Samples are too dissimilar, returning -1 to indicate that we must reject the sample
 		return -1.0f;

@@ -161,6 +161,8 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 
 	if (ImGui::InputInt("Debug seed", &render_settings.restir_gi_settings.debug_seed))
 		m_render_window->set_render_dirty(true);
+	if (ImGui::Checkbox("Debug lambertian", &render_settings.debug_lambertian))
+		m_render_window->set_render_dirty(true);
 	if (!ImGui::CollapsingHeader("Render Settings"))
 		return;
 	ImGui::TreePush("Render settings tree");
@@ -1263,7 +1265,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					const char* debug_view_items[] = { "No debug view", "- Final reservoir UCW", "- Final reservoir target function", "- Final reservoir weight sum"};
 					if (ImGui::Combo("Debug view", (int*)&render_settings.restir_gi_settings.debug_view, debug_view_items, IM_ARRAYSIZE(debug_view_items)))
 						m_render_window->set_render_dirty(true);
-					if (ImGui::SliderFloat("Debug view scale factor", &render_settings.restir_gi_settings.debug_view_scale_factor, 0.0f, 3.0f))
+					if (ImGui::SliderFloat("Debug view scale factor", &render_settings.restir_gi_settings.debug_view_scale_factor, 0.0f, 1.0f))
 						m_render_window->set_render_dirty(true);
 
 					ImGui::TreePop();
