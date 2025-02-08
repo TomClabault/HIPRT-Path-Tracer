@@ -160,7 +160,6 @@ bool ReSTIRGIRenderPass::launch()
 	if (!is_render_pass_used())
 		return false;
 
-	//m_render_data->random_seed = 42;
 	int2 render_resolution = m_renderer->m_render_resolution;
 	void* launch_args[] = { m_render_data };
 

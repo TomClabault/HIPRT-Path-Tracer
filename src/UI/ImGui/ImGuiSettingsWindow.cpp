@@ -163,6 +163,12 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 		m_render_window->set_render_dirty(true);
 	if (ImGui::Checkbox("Debug lambertian", &render_settings.debug_lambertian))
 		m_render_window->set_render_dirty(true);
+	ImGui::PushItemWidth(24 * ImGui::GetFontSize());
+	if (ImGui::SliderInt("Debug X", &render_settings.debug_x, 0, m_renderer->m_render_resolution.x-1))
+		m_render_window->set_render_dirty(true);
+	if (ImGui::SliderInt("Debug Y", &render_settings.debug_y, 0, m_renderer->m_render_resolution.y - 1))
+		m_render_window->set_render_dirty(true);
+	ImGui::PopItemWidth();
 	if (!ImGui::CollapsingHeader("Render Settings"))
 		return;
 	ImGui::TreePush("Render settings tree");

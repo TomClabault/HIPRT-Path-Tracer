@@ -30,6 +30,7 @@ struct HIPRTRenderSettings
 	bool need_to_reset = true;
 
 	bool debug_lambertian = false;
+	int debug_x = 1270, debug_y = 360;
 
 	// If true, then the kernels are allowed to modify the status buffers (how many pixels have converged so far, ...)
 	// 
@@ -127,7 +128,7 @@ struct HIPRTRenderSettings
 	// (when interacting with the camera)
 	int render_low_resolution_scaling = 2;
 
-	bool enable_adaptive_sampling = true;
+	bool enable_adaptive_sampling = false;
 	// How many samples before the adaptive sampling actually kicks in.
 	// This is useful mainly for the per-pixel adaptive sampling method
 	// where you want to be sure that each pixel in the image has had enough

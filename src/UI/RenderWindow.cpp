@@ -26,6 +26,7 @@ extern ImGuiLogger g_imgui_logger;
 // - do adaptive radius spatial reuse --> also for ReSTIR DI?
 // - ReSTIR el cheapo
 // - BSDF MIS Reuse for ReSTIR DI
+// - Fix spatial reuse pattern because the concentric circles created by Hammersley don't cover the neighborhood of the center pixel well at all
 // - Force albedo to white for spatial reuse?
 // - some kind of reuse direction masks for spatial reuse offline rendering? the idea is to cache in a full screen framebuffer which directions we should reuse in to avoid neighbor rejection due to geometric dissimilarities
 
