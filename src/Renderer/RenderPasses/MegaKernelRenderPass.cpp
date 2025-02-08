@@ -48,7 +48,7 @@ bool MegaKernelRenderPass::launch()
 	if (!is_render_pass_used())
 		return false;
 
-	m_render_data->random_seed = m_renderer->rng().xorshift32();
+	m_render_data->random_number = m_renderer->get_rng_generator().xorshift32();
 
 	void* launch_args[] = { m_render_data };
 
@@ -61,18 +61,6 @@ void MegaKernelRenderPass::post_render_update()
 {
 	if (!is_render_pass_used())
 		return;
-
-	m_render_data->render_settings.sample_number++;
-	m_render_data->render_settings.denoiser_AOV_accumulation_counter++;
-
-	// We only reset once so after rendering a frame, we're sure that we don't need to reset anymore 
-	// so we're setting the flag to false (it will be set to true again if we need to reset the render
-	// again)
-	m_render_data->render_settings.need_to_reset = false;
-	m_render_data->nee_plus_plus.reset_visibility_map = false;
-
-	// Saving the current frame camera to be the previous camera of the next frame
-	m_renderer->get_previous_frame_camera() = m_renderer->get_camera();
 }
 
 void MegaKernelRenderPass::reset()
@@ -81,17 +69,11 @@ void MegaKernelRenderPass::reset()
 		return;
 
 	if (m_render_data->render_settings.accumulate)
-	{
-		// Only resetting the seed for deterministic rendering if we're accumulating.
-		// If we're not accumulating, we want each frame of the render to be different
-		// so we don't get into that if block and we don't reset the seed
-		m_renderer->rng().m_state.seed = 42;
-
 		if (m_renderer->get_application_settings()->auto_sample_per_frame)
 			m_render_data->render_settings.samples_per_frame = 1;
-	}
 
 	m_render_data->render_settings.denoiser_AOV_accumulation_counter = 0;
+
 	m_render_data->render_settings.sample_number = 0;
 	m_render_data->render_settings.need_to_reset = true;
 }

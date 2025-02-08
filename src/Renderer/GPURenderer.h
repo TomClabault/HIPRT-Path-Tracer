@@ -347,7 +347,7 @@ public:
 
 	void reset();
 
-	Xorshift32Generator& rng();
+	Xorshift32Generator& get_rng_generator();
 
 	int2 m_render_resolution = make_int2(0, 0);
 

@@ -71,7 +71,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_TemporalReuse(HIPRTRenderData ren
 	if (render_data.render_settings.freeze_random)
 		seed = wang_hash(center_pixel_index + 1);
 	else
-		seed = wang_hash((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_seed);
+		seed = wang_hash((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
 	Xorshift32Generator random_number_generator(seed);
 
 	if (render_data.render_settings.restir_di_settings.common_temporal_pass.temporal_buffer_clear_requested)

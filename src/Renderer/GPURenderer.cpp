@@ -37,8 +37,6 @@ const std::string GPURenderer::DEBUG_KERNEL_TIME_KEY = "DebugKernelTime";
 
 GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx, std::shared_ptr<ApplicationSettings> application_settings)
 {
-	m_rng.m_state.seed = 42;
-
 	// Creating buffers
 	m_framebuffer = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
 	m_denoiser_buffers.m_denoised_framebuffer = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
@@ -293,6 +291,18 @@ void GPURenderer::pre_render_update(float delta_time, RenderWindow* render_windo
 void GPURenderer::post_render_update()
 {
 	m_render_graph.post_render_update();
+
+	m_render_data.render_settings.sample_number++;
+	m_render_data.render_settings.denoiser_AOV_accumulation_counter++;
+
+	// We only reset once so after rendering a frame, we're sure that we don't need to reset anymore 
+	// so we're setting the flag to false (it will be set to true again if we need to reset the render
+	// again)
+	m_render_data.render_settings.need_to_reset = false;
+	m_render_data.nee_plus_plus.reset_visibility_map = false;
+
+	// Saving the current frame camera to be the previous camera of the next frame
+	m_previous_frame_camera = m_camera;
 }
 
 void GPURenderer::step_animations(float delta_time)
@@ -581,7 +591,7 @@ void GPURenderer::launch_nee_plus_plus_caching_prepass()
 	unsigned int caching_sample_count = 1024;
 	void* launch_args[] = { &m_render_data, &caching_sample_count };
 
-	m_render_data.random_seed = m_rng.xorshift32();
+	m_render_data.random_number = m_rng.xorshift32();
 	m_kernels[GPURenderer::NEE_PLUS_PLUS_CACHING_PREPASS_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
 }
 
@@ -589,7 +599,7 @@ void GPURenderer::launch_debug_kernel()
 {
 	void* launch_args[] = { &m_render_data, &m_render_resolution };
 
-	m_render_data.random_seed = m_rng.xorshift32();
+	m_render_data.random_number = m_rng.xorshift32();
 	m_debug_trace_kernel.launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_render_resolution.x, m_render_resolution.y, launch_args, m_main_stream);
 }
 
@@ -1102,21 +1112,27 @@ void GPURenderer::reset()
 {
 	m_render_graph.reset();
 
+	if (m_render_data.render_settings.accumulate)
+	{
+		// Only resetting the seed for deterministic rendering if we're accumulating.
+		// If we're not accumulating, we want each frame of the render to be different
+		// so we don't get into that if block and we don't reset the seed
+		m_rng.m_state.seed = 42;
+		m_render_data.random_number = 42;
+	}
+
 	reset_nee_plus_plus();
 
 	internal_clear_m_status_buffers();
 }
 
-Xorshift32Generator& GPURenderer::rng()
+Xorshift32Generator& GPURenderer::get_rng_generator()
 {
 	return m_rng;
 }
 
 void GPURenderer::update_render_data()
 {
-	// Always updating the random seed
-	m_render_data.random_seed = m_rng.xorshift32();
-
 	if (m_render_data_buffers_invalidated)
 	{
 		m_render_data.GPU_BVH = m_hiprt_scene.geometry.m_geometry;

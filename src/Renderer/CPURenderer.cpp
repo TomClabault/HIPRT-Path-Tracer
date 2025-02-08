@@ -101,8 +101,6 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
     setup_brdfs_data();
     setup_nee_plus_plus();
     setup_gmon();
-
-    m_rng = Xorshift32Generator(42);
 }
 
 void CPURenderer::setup_brdfs_data()
@@ -400,7 +398,7 @@ void CPURenderer::render()
 
         if (m_render_data.render_settings.accumulate)
             m_render_data.render_settings.sample_number++;
-        m_render_data.random_seed = m_rng.xorshift32();
+        m_render_data.random_number = m_rng.xorshift32();
         m_render_data.render_settings.need_to_reset = false;
         // We want the G Buffer of the frame that we just rendered to go in the "g_buffer_prev_frame"
         // and then we can re-use the old buffers of to be filled by the current frame render
@@ -604,7 +602,7 @@ LightPresamplingParameters CPURenderer::configure_ReSTIR_DI_light_presampling_pa
 
     parameters.freeze_random = m_render_data.render_settings.freeze_random;
     parameters.sample_number = m_render_data.render_settings.sample_number;
-    parameters.random_seed = m_rng.xorshift32();
+    parameters.random_number = m_rng.xorshift32();
 
     // For each presampled light, the probability that this is going to be an envmap sample
     parameters.envmap_sampling_probability = m_render_data.render_settings.restir_di_settings.initial_candidates.envmap_candidate_probability;
@@ -625,7 +623,7 @@ void CPURenderer::launch_ReSTIR_DI_presampling_lights_pass()
 
 void CPURenderer::configure_ReSTIR_DI_initial_pass()
 {
-    m_render_data.random_seed = m_rng.xorshift32();
+    m_render_data.random_number = m_rng.xorshift32();
     m_render_data.render_settings.restir_di_settings.light_presampling.light_samples = m_restir_di_state.presampled_lights_buffer.data();
     m_render_data.render_settings.restir_di_settings.initial_candidates.output_reservoirs = m_restir_di_state.initial_candidates_reservoirs.data();
 }
@@ -641,7 +639,7 @@ void CPURenderer::launch_ReSTIR_DI_initial_candidates_pass()
 
 void CPURenderer::configure_ReSTIR_DI_temporal_pass()
 {
-    m_render_data.random_seed = m_rng.xorshift32();
+    m_render_data.random_number = m_rng.xorshift32();
     m_render_data.render_settings.restir_di_settings.common_temporal_pass.permutation_sampling_random_bits = m_rng.xorshift32();
 
     // The input of the temporal pass is the output of last frame's
@@ -675,7 +673,7 @@ void CPURenderer::configure_ReSTIR_DI_temporal_pass()
 
 void CPURenderer::configure_ReSTIR_DI_temporal_pass_for_fused_spatiotemporal()
 {
-    m_render_data.random_seed = m_rng.xorshift32();
+    m_render_data.random_number = m_rng.xorshift32();
     m_render_data.render_settings.restir_di_settings.common_temporal_pass.permutation_sampling_random_bits = m_rng.xorshift32();
 
     // The input of the temporal pass is the output of last frame's
@@ -692,7 +690,7 @@ void CPURenderer::configure_ReSTIR_DI_temporal_pass_for_fused_spatiotemporal()
 
 void CPURenderer::configure_ReSTIR_DI_spatial_pass(int spatial_pass_index)
 {
-    m_render_data.random_seed = m_rng.xorshift32();
+    m_render_data.random_number = m_rng.xorshift32();
 
     if (spatial_pass_index == 0)
     {

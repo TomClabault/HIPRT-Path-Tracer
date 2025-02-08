@@ -333,7 +333,7 @@ LightPresamplingParameters ReSTIRDIRenderPass::configure_light_presampling_pass(
 
 	parameters.freeze_random = m_render_data->render_settings.freeze_random;
 	parameters.sample_number = m_render_data->render_settings.sample_number;
-	parameters.random_seed = m_renderer->rng().xorshift32();
+	parameters.random_number = m_renderer->get_rng_generator().xorshift32();
 
 	// For each presampled light, the probability that this is going to be an envmap sample
 	parameters.envmap_sampling_probability = m_render_data->render_settings.restir_di_settings.initial_candidates.envmap_candidate_probability;
@@ -353,7 +353,7 @@ void ReSTIRDIRenderPass::launch_presampling_lights_pass()
 
 void ReSTIRDIRenderPass::configure_initial_pass()
 {
-	m_render_data->random_seed = m_renderer->rng().xorshift32();
+	m_render_data->random_number = m_renderer->get_rng_generator().xorshift32();
 	m_render_data->render_settings.restir_di_settings.light_presampling.light_samples = presampled_lights_buffer.get_device_pointer();
 	m_render_data->render_settings.restir_di_settings.initial_candidates.output_reservoirs = initial_candidates_reservoirs.get_device_pointer();
 }
@@ -368,8 +368,8 @@ void ReSTIRDIRenderPass::launch_initial_candidates_pass()
 
 void ReSTIRDIRenderPass::configure_temporal_pass()
 {
-	m_render_data->random_seed = m_renderer->rng().xorshift32();
-	m_render_data->render_settings.restir_di_settings.common_temporal_pass.permutation_sampling_random_bits = m_renderer->rng().xorshift32();
+	m_render_data->random_number = m_renderer->get_rng_generator().xorshift32();
+	m_render_data->render_settings.restir_di_settings.common_temporal_pass.permutation_sampling_random_bits = m_renderer->get_rng_generator().xorshift32();
 
 	// The input of the temporal pass is the output of last frame's
 	// ReSTIR (and also the initial candidates but this is implicit
@@ -411,8 +411,8 @@ void ReSTIRDIRenderPass::launch_temporal_reuse_pass()
 
 void ReSTIRDIRenderPass::configure_temporal_pass_for_fused_spatiotemporal()
 {
-	m_render_data->random_seed = m_renderer->rng().xorshift32();
-	m_render_data->render_settings.restir_di_settings.common_temporal_pass.permutation_sampling_random_bits = m_renderer->rng().xorshift32();
+	m_render_data->random_number = m_renderer->get_rng_generator().xorshift32();
+	m_render_data->render_settings.restir_di_settings.common_temporal_pass.permutation_sampling_random_bits = m_renderer->get_rng_generator().xorshift32();
 
 	// The input of the temporal pass is the output of last frame's
 	// ReSTIR (and also the initial candidates but this is implicit
@@ -425,7 +425,7 @@ void ReSTIRDIRenderPass::configure_temporal_pass_for_fused_spatiotemporal()
 
 void ReSTIRDIRenderPass::configure_spatial_pass(int spatial_pass_index)
 {
-	m_render_data->random_seed = m_renderer->rng().xorshift32();
+	m_render_data->random_number = m_renderer->get_rng_generator().xorshift32();
 	m_render_data->render_settings.restir_di_settings.common_spatial_pass.spatial_pass_index = spatial_pass_index;
 
 	if (spatial_pass_index == 0)
@@ -464,7 +464,7 @@ void ReSTIRDIRenderPass::configure_spatial_pass_for_fused_spatiotemporal(int spa
 {
 	ReSTIRDISettings& restir_settings = m_render_data->render_settings.restir_di_settings;
 	restir_settings.common_spatial_pass.spatial_pass_index = spatial_pass_index;
-	m_render_data->random_seed = m_renderer->rng().xorshift32();
+	m_render_data->random_number = m_renderer->get_rng_generator().xorshift32();
 
 	if (spatial_pass_index == 0)
 	{
