@@ -82,8 +82,24 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int get_spatial_neighbor_pixel_index(const HIPRTR
 		// which means that we would be resampling ourselves (the center pixel) --> 
 		// pointless because we already resample ourselves "manually" (that's why there's that
 		// "if (neighbor_index == neighbor_reuse_count)" above, to resample the center pixel)
-		float2 uv = sample_hammersley_2D(spatial_pass_settings.reuse_neighbor_count + 1, neighbor_index + 1);
+		float2 uv;// = sample_hammersley_2D(spatial_pass_settings.reuse_neighbor_count + 1, neighbor_index + 1);
+		uv.x = 0.5f;
+		uv.y = 0.5f;
+		/*uv.x = rng_converged_neighbor_reuse();
+		uv.y = rng_converged_neighbor_reuse();*/
+
+
 		float2 neighbor_offset_in_disk = sample_in_disk_uv(spatial_pass_settings.reuse_radius, uv);
+		static int counter = 0;
+		if (center_pixel_coords.x + center_pixel_coords.y * render_data.render_settings.render_resolution.x == 720 / 2 + 1280 * 720 / 2)
+		{
+			if (counter++ % 100 == 0)
+			{
+				printf("UV      : %f, %f\n", uv.x, uv.y);
+				printf("offset  : %f, %f\n", neighbor_offset_in_disk.x, neighbor_offset_in_disk.y);
+				printf("\n");
+			}
+		}
 
 		// 2D rotation matrix: https://en.wikipedia.org/wiki/Rotation_matrix
 		float cos_theta = cos_sin_theta_rotation.x;
@@ -101,18 +117,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int get_spatial_neighbor_pixel_index(const HIPRTR
 				// Vertical
 				neighbor_pixel_coords = center_pixel_coords + make_int2(0, spatial_pass_settings.reuse_radius);
 			else
-				// Diagonal (and default case)
+				// Diagonal
 				neighbor_pixel_coords = center_pixel_coords + make_int2(spatial_pass_settings.reuse_radius, spatial_pass_settings.reuse_radius);
 		}
 		else
 			neighbor_pixel_coords = center_pixel_coords + neighbor_offset_int;
 
-		int2 DEBUG_DIRECTION = neighbor_pixel_coords - center_pixel_coords;
-#ifndef __KERNELCC__
-		//std::cout << "neighbor direction: " << DEBUG_DIRECTION.x << ", " << DEBUG_DIRECTION.y << std::endl;
-#endif
-
-		if (neighbor_pixel_coords.x < 0 || neighbor_pixel_coords.x >= render_data.render_settings.render_resolution.x || neighbor_pixel_coords.y < 0 || neighbor_pixel_coords.y >= render_data.render_settings.render_resolution.y)
+		if (neighbor_pixel_coords.x < 0 || neighbor_pixel_coords.x >= render_data.render_settings.render_resolution.x || 
+			neighbor_pixel_coords.y < 0 || neighbor_pixel_coords.y >= render_data.render_settings.render_resolution.y)
 			// Rejecting the sample if it's outside of the viewport
 			return -1;
 
@@ -177,7 +189,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void count_valid_spatial_neighbors(const HIPRTRen
 	{
 		int neighbor_pixel_index = get_spatial_neighbor_pixel_index<IsReSTIRGI>(render_data, neighbor_index, center_pixel_coords, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
 		if (neighbor_pixel_index == -1)
-			// Neighbor out of the viewport / invalid
+			// Neighbor out of the viewport
 			continue;
 
 		if (!check_neighbor_similarity_heuristics<IsReSTIRGI>(render_data, 

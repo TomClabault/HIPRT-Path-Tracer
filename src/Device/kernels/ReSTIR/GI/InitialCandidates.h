@@ -183,7 +183,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
     render_data.aux_buffers.still_one_ray_active[0] = 1;
 
     restir_gi_initial_sample.outgoing_radiance_to_visible_point = ray_payload.ray_color;
-    //restir_gi_initial_sample.target_function = restir_gi_initial_sample.outgoing_radiance_to_visible_point.luminance();
     restir_gi_initial_sample.target_function = ReSTIR_GI_evaluate_target_function<true>(render_data, restir_gi_initial_sample, initial_surface, random_number_generator);
 
     float mis_weight = 1.0f;

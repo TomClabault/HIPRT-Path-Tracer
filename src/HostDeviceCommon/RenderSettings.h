@@ -155,7 +155,7 @@ struct HIPRTRenderSettings
 
 
 	// Clamp direct lighting contribution to reduce fireflies
-	float direct_contribution_clamp = 0.0f;
+	float direct_contribution_clamp = 4.0f;
 	// Clamp envmap contribution to reduce fireflies
 	float envmap_contribution_clamp = 0.0f;
 	// Clamp indirect lighting contribution to reduce fireflies

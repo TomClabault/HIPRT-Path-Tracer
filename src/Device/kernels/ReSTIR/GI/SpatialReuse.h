@@ -80,27 +80,28 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	// Only used with MIS-like weight
 	int selected_neighbor = 0;
 #endif
-	int neighbor_heuristics_cache = 0;
+	/*int neighbor_heuristics_cache = 0;
 	int valid_neighbors_count = 0;
 	int valid_neighbors_M_sum = 0;
 	count_valid_spatial_neighbors<true>(render_data,
 		center_pixel_surface, center_pixel_coords, cos_sin_theta_rotation, 
-		valid_neighbors_count, valid_neighbors_M_sum, neighbor_heuristics_cache);
+		valid_neighbors_count, valid_neighbors_M_sum, neighbor_heuristics_cache);*/
 
 	ReSTIRSpatialResamplingMISWeight<ReSTIR_GI_BiasCorrectionWeights, /* IsReSTIRGI */ true> mis_weight_function;
-	// Resampling the neighbors. Using neighbors + 1 here so that
-	// we can use the last iteration of the loop to resample ourselves (the center pixel)
-	// 
-	// See the implementation of get_spatial_neighbor_pixel_index() in ReSTIR/UtilsSpatial.h
+
 	int reused_neighbors_count = render_data.render_settings.restir_gi_settings.common_spatial_pass.reuse_neighbor_count;
 	int start_index = 0;
-	if (valid_neighbors_M_sum == 0)
-		// No valid neighbor to resample from, skip to the initial candidate right away
-		start_index = reused_neighbors_count;
+	//if (valid_neighbors_M_sum == 0)
+	//	// No valid neighbor to resample from, skip to the initial candidate right away
+	//	start_index = reused_neighbors_count;
 
 	static float DEBUG_sum = 0.0f;
 	static int DEBUG_count = 0;
 
+	// Resampling the neighbors. Using neighbors + 1 here so that
+	// we can use the last iteration of the loop to resample ourselves (the center pixel)
+	// 
+	// See the implementation of get_spatial_neighbor_pixel_index() in ReSTIR/UtilsSpatial.h
 	for (int neighbor_index = start_index; neighbor_index < reused_neighbors_count + 1; neighbor_index++)
 	{
 		const bool is_center_pixel = neighbor_index == reused_neighbors_count;
@@ -239,13 +240,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 #error "Unsupported bias correction mode"
 #endif
 
-	if (center_pixel_index == 552951 - 20 && spatial_reuse_output_reservoir.weight_sum > 0.0f)
+	/*if (center_pixel_index == 552951 - 20 && spatial_reuse_output_reservoir.weight_sum > 0.0f)
 	{
 		DEBUG_sum += normalization_denominator;
 		DEBUG_count++;
 
 		std::cout << "average: " << DEBUG_sum / DEBUG_count << std::endl;
-	}
+	}*/
 
 	spatial_reuse_output_reservoir.end_with_normalization(normalization_numerator, normalization_denominator);
 	spatial_reuse_output_reservoir.sanity_check(center_pixel_coords);
