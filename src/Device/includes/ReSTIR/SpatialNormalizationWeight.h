@@ -8,6 +8,7 @@
 
 #include "Device/includes/ReSTIR/MISWeightsCommon.h"
 #include "Device/includes/ReSTIR/Utils.h"
+#include "Device/includes/ReSTIR/UtilsSpatial.h"
 
 #include "HostDeviceCommon/ReSTIRSettingsHelper.h"
 
