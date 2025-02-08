@@ -31,7 +31,7 @@ static ReSTIRCommonSpatialPassSettings RESTIR_GI_DEFAULT_COMMON_SPATIAl_PASS_SET
 	.do_disocclusion_reuse_boost = false,
 	.disocclusion_reuse_count = 5,
 
-	.debug_neighbor_location = false,
+	.debug_neighbor_location = true,
 	.debug_neighbor_location_direction = 0,
 
 	.do_neighbor_rotation = true,
