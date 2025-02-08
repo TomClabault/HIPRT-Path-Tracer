@@ -402,6 +402,7 @@ RenderWindow::~RenderWindow()
 
 void RenderWindow::init_glfw(int window_width, int window_height)
 {
+	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Initializing GLFW...");
 	if (!glfwInit())
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Could not initialize GLFW...");
