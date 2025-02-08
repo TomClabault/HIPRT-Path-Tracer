@@ -126,7 +126,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void count_valid_spatiotemporal_neighbors(const H
 	out_valid_neighbor_count = 0;
 	for (int neighbor_index = 0; neighbor_index < reused_neighbors_count; neighbor_index++)
 	{
-		int neighbor_pixel_index = get_spatial_neighbor_pixel_index<false>(render_data, neighbor_index, temporal_neighbor_position, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
+		int neighbor_pixel_index = get_spatial_neighbor_pixel_index<false>(render_data, neighbor_index, temporal_neighbor_position, cos_sin_theta_rotation);
 		if (neighbor_pixel_index == -1)
 			// Neighbor out of the viewport / invalid
 			continue;
@@ -387,7 +387,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_SpatiotemporalReuse(HIPRTRenderDa
 			// Resampling around the temporal neighbor location
 			neighbor_pixel_index = get_spatial_neighbor_pixel_index<false>(render_data, 
 				spatial_neighbor_index, 
-				make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z), cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
+				make_int2(temporal_neighbor_pixel_index_and_pos.y, temporal_neighbor_pixel_index_and_pos.z), cos_sin_theta_rotation);
 
 		if (neighbor_pixel_index == -1)
 			// Neighbor out of the viewport

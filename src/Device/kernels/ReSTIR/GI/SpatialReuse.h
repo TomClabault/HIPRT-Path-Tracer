@@ -62,10 +62,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	// for generating the neighbors location to resample
 	float rotation_theta;
 	if (render_data.render_settings.restir_gi_settings.common_spatial_pass.do_neighbor_rotation)
+		//rotation_theta = M_TWO_PI * Xorshift32Generator(render_data.random_seed)();// random_number_generator();
 		rotation_theta = M_TWO_PI * random_number_generator();
 	else
 		rotation_theta = 0.0f;
-
 	float2 cos_sin_theta_rotation = make_float2(cos(rotation_theta), sin(rotation_theta));
 
 	ReSTIRGIReservoir center_pixel_reservoir = input_reservoir_buffer[center_pixel_index];
@@ -118,7 +118,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 		//		continue;
 
 		int neighbor_pixel_index = get_spatial_neighbor_pixel_index<true>(render_data,
-			neighbor_index, center_pixel_coords, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
+			neighbor_index, center_pixel_coords, cos_sin_theta_rotation);
 		if (neighbor_pixel_index == -1)
 			// Neighbor out of the viewport
 			continue;

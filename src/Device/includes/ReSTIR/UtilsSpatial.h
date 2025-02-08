@@ -6,8 +6,8 @@
 #ifndef DEVICE_RESTIR_UTILS_SPATIAL_H
 #define DEVICE_RESTIR_UTILS_SPATIAL_H
 
+#include "Device/includes/PathTracing.h"
 #include "HostDeviceCommon/KernelOptions/ReSTIRGIOptions.h"
-
 #include "HostDeviceCommon/RenderData.h"
 
 template <bool IsReSTIRGI>
@@ -64,7 +64,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool do_include_visibility_term_or_not(const HIPR
 template <bool IsReSTIRGI>
 HIPRT_HOST_DEVICE HIPRT_INLINE int get_spatial_neighbor_pixel_index(const HIPRTRenderData& render_data,
 	int neighbor_index,
-	int2 center_pixel_coords, float2 cos_sin_theta_rotation, Xorshift32Generator rng_converged_neighbor_reuse)
+	int2 center_pixel_coords, float2 cos_sin_theta_rotation)
 {
 	const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
 
@@ -90,35 +90,60 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int get_spatial_neighbor_pixel_index(const HIPRTR
 
 
 		float2 neighbor_offset_in_disk = sample_in_disk_uv(spatial_pass_settings.reuse_radius, uv);
-		static int counter = 0;
-		if (center_pixel_coords.x + center_pixel_coords.y * render_data.render_settings.render_resolution.x == 720 / 2 + 1280 * 720 / 2)
-		{
-			if (counter++ % 100 == 0)
-			{
-				printf("UV      : %f, %f\n", uv.x, uv.y);
-				printf("offset  : %f, %f\n", neighbor_offset_in_disk.x, neighbor_offset_in_disk.y);
-				printf("\n");
-			}
-		}
 
 		// 2D rotation matrix: https://en.wikipedia.org/wiki/Rotation_matrix
 		float cos_theta = cos_sin_theta_rotation.x;
 		float sin_theta = cos_sin_theta_rotation.y;
 		float2 neighbor_offset_rotated = make_float2(neighbor_offset_in_disk.x * cos_theta - neighbor_offset_in_disk.y * sin_theta, neighbor_offset_in_disk.x * sin_theta + neighbor_offset_in_disk.y * cos_theta);
 		int2 neighbor_offset_int = make_int2(static_cast<int>(neighbor_offset_rotated.x), static_cast<int>(neighbor_offset_rotated.y));
+		static int counter = 0;
+		/*if (center_pixel_coords.x + center_pixel_coords.y * render_data.render_settings.render_resolution.x == 720 / 2 + 1280 * 720 / 2)
+		{
+			if (counter++ % 100 == 0)
+			{
+				printf("UV         : %f, %f\n", uv.x, uv.y);
+				printf("offset     : %f, %f\n", neighbor_offset_in_disk.x, neighbor_offset_in_disk.y);
+				printf("offset int : %d, %d\n", neighbor_offset_int.x, neighbor_offset_int.y);
+				printf("random seed: %d\n", render_data.random_seed);
+				printf("\n");
+			}
+		}*/
 
 		int2 neighbor_pixel_coords;
 		if (spatial_pass_settings.debug_neighbor_location)
 		{
+			int2 offset;
 			if (spatial_pass_settings.debug_neighbor_location_direction == 0)
 				// Horizontal
-				neighbor_pixel_coords = center_pixel_coords + make_int2(spatial_pass_settings.reuse_radius, 0);
+				offset = make_int2(spatial_pass_settings.reuse_radius, 0);
 			else if (spatial_pass_settings.debug_neighbor_location_direction == 1)
 				// Vertical
-				neighbor_pixel_coords = center_pixel_coords + make_int2(0, spatial_pass_settings.reuse_radius);
+				offset = make_int2(0, spatial_pass_settings.reuse_radius);
 			else
 				// Diagonal
-				neighbor_pixel_coords = center_pixel_coords + make_int2(spatial_pass_settings.reuse_radius, spatial_pass_settings.reuse_radius);
+				offset = make_int2(spatial_pass_settings.reuse_radius, spatial_pass_settings.reuse_radius);
+
+			neighbor_pixel_coords = center_pixel_coords + offset;
+
+			neighbor_offset_rotated = make_float2(offset.x * cos_theta - offset.y * sin_theta, offset.x * sin_theta + offset.y * cos_theta);
+			neighbor_offset_int = make_int2(static_cast<int>(neighbor_offset_rotated.x), static_cast<int>(neighbor_offset_rotated.y));
+			neighbor_pixel_coords = neighbor_offset_int + center_pixel_coords;
+
+			if (center_pixel_coords.x + center_pixel_coords.y * render_data.render_settings.render_resolution.x == 720 / 2 + 1280 * 720 / 2)
+			{
+				if (counter++ % 100 == 0)
+				{
+					/*printf("UV             : %f, %f\n", uv.x, uv.y);
+					printf("offset         : %d, %d\n", offset.x, offset.y);
+					printf("offset in disk : %f, %f\n", neighbor_offset_in_disk.x, neighbor_offset_in_disk.y);
+					printf("offset rotated : %f, %f\n", neighbor_offset_rotated.x, neighbor_offset_rotated.y);
+					printf("offset int     : %d, %d\n", neighbor_offset_int.x, neighbor_offset_int.y);*/
+					printf("coords final   : %d, %d\n", neighbor_pixel_coords.x, neighbor_pixel_coords.y);
+					printf("\n");
+
+					path_tracing_accumulate_color(render_data, ColorRGB32F(1.0e10f, 0.0f, 0.0f), neighbor_pixel_coords.x + neighbor_pixel_coords.y * render_data.render_settings.render_resolution.x);
+				}
+			}
 		}
 		else
 			neighbor_pixel_coords = center_pixel_coords + neighbor_offset_int;
@@ -139,6 +164,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int get_spatial_neighbor_pixel_index(const HIPRTR
 			{
 				// If we're allowing the reuse of converged neighbors, only doing so with a certain probability
 
+				Xorshift32Generator rng_converged_neighbor_reuse(render_data.random_seed);
 				if (rng_converged_neighbor_reuse() > spatial_pass_settings.converged_neighbor_reuse_probability)
 				{
 					// We didn't pass the probability check, we are not allowed to reuse the neighbor if it
@@ -187,7 +213,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE void count_valid_spatial_neighbors(const HIPRTRen
 	out_valid_neighbor_count = 0;
 	for (int neighbor_index = 0; neighbor_index < reused_neighbors_count; neighbor_index++)
 	{
-		int neighbor_pixel_index = get_spatial_neighbor_pixel_index<IsReSTIRGI>(render_data, neighbor_index, center_pixel_coords, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
+		int neighbor_pixel_index = get_spatial_neighbor_pixel_index<IsReSTIRGI>(render_data, neighbor_index, center_pixel_coords, cos_sin_theta_rotation);
 		if (neighbor_pixel_index == -1)
 			// Neighbor out of the viewport
 			continue;
