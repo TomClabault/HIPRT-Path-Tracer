@@ -80,6 +80,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
     float3 view_direction = render_data.g_buffer.get_view_direction(render_data.current_camera.position, pixel_index);
     
     ColorRGB32F camera_outgoing_radiance;
+    ColorRGB32F DEBUG_COLOR;
 
     ReSTIRGIReservoir resampling_reservoir = render_data.render_settings.restir_gi_settings.restir_output_reservoirs[pixel_index];
 
@@ -108,6 +109,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
                 // But because of float imprecisions, the BSDF may still end re-evaluating to 0.0f for that sample
                 // so we need that check here
 
+                DEBUG_COLOR = ColorRGB32F(restir_resampled_indirect_direction);
                 ColorRGB32F first_hit_throughput = bsdf_color * hippt::abs(hippt::dot(restir_resampled_indirect_direction, shading_normal)) * resampling_reservoir.UCW;
                 camera_outgoing_radiance += first_hit_throughput * resampling_reservoir.sample.outgoing_radiance_to_visible_point;
             }
@@ -117,6 +119,29 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
     MISBSDFRayReuse mis_reuse;
     if (render_data.render_settings.enable_direct > 0)
         camera_outgoing_radiance += estimate_direct_lighting(render_data, ray_payload, closest_hit_info, view_direction, x, y, mis_reuse, random_number_generator);
+
+    static float debug_color_sum_r = 0.0f;
+    static float debug_color_sum_g = 0.0f;
+    static float debug_color_sum_b = 0.0f;
+    static float DEBUG_sUM = 0.0f;
+    static float DEBUG_sUM_UCW = 0.0f;
+    static int DEBUG_scount = 0.0f;
+
+    if (x == render_data.render_settings.debug_x && y == render_data.render_settings.debug_y)
+    {
+        debug_color_sum_r += DEBUG_COLOR.r;
+        debug_color_sum_g += DEBUG_COLOR.g;
+        debug_color_sum_b += DEBUG_COLOR.b;
+        DEBUG_sUM += DEBUG_COLOR.r;
+        DEBUG_scount++;
+
+        if (render_data.render_settings.sample_number > 4090)
+        {
+            /*printf("DEBUG_COLOR average: [%f, %f, %f]\n", debug_color_sum_r / DEBUG_scount, debug_color_sum_g / DEBUG_scount, debug_color_sum_b / DEBUG_scount);
+            printf("DEBUG_color: [%f, %f, %f], Average target: %f\n\n", DEBUG_COLOR.r, DEBUG_COLOR.g, DEBUG_COLOR.b, DEBUG_sUM / DEBUG_scount);*/
+        }
+    }
+
 
     ray_payload.ray_color = camera_outgoing_radiance;
     if (!sanity_check(render_data, ray_payload, x, y))

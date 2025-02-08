@@ -82,12 +82,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int get_spatial_neighbor_pixel_index(const HIPRTR
 		// which means that we would be resampling ourselves (the center pixel) --> 
 		// pointless because we already resample ourselves "manually" (that's why there's that
 		// "if (neighbor_index == neighbor_reuse_count)" above, to resample the center pixel)
-		float2 uv;// = sample_hammersley_2D(spatial_pass_settings.reuse_neighbor_count + 1, neighbor_index + 1);
-		uv.x = 0.5f;
-		uv.y = 0.5f;
-		/*uv.x = rng_converged_neighbor_reuse();
-		uv.y = rng_converged_neighbor_reuse();*/
-
+		float2 uv = sample_hammersley_2D(spatial_pass_settings.reuse_neighbor_count + 1, neighbor_index + 1);
 
 		float2 neighbor_offset_in_disk = sample_in_disk_uv(spatial_pass_settings.reuse_radius, uv);
 
@@ -96,18 +91,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int get_spatial_neighbor_pixel_index(const HIPRTR
 		float sin_theta = cos_sin_theta_rotation.y;
 		float2 neighbor_offset_rotated = make_float2(neighbor_offset_in_disk.x * cos_theta - neighbor_offset_in_disk.y * sin_theta, neighbor_offset_in_disk.x * sin_theta + neighbor_offset_in_disk.y * cos_theta);
 		int2 neighbor_offset_int = make_int2(static_cast<int>(neighbor_offset_rotated.x), static_cast<int>(neighbor_offset_rotated.y));
-		static int counter = 0;
-		/*if (center_pixel_coords.x + center_pixel_coords.y * render_data.render_settings.render_resolution.x == 720 / 2 + 1280 * 720 / 2)
-		{
-			if (counter++ % 100 == 0)
-			{
-				printf("UV         : %f, %f\n", uv.x, uv.y);
-				printf("offset     : %f, %f\n", neighbor_offset_in_disk.x, neighbor_offset_in_disk.y);
-				printf("offset int : %d, %d\n", neighbor_offset_int.x, neighbor_offset_int.y);
-				printf("random seed: %d\n", render_data.random_seed);
-				printf("\n");
-			}
-		}*/
 
 		int2 neighbor_pixel_coords;
 		if (spatial_pass_settings.debug_neighbor_location)
@@ -128,22 +111,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int get_spatial_neighbor_pixel_index(const HIPRTR
 			neighbor_offset_rotated = make_float2(offset.x * cos_theta - offset.y * sin_theta, offset.x * sin_theta + offset.y * cos_theta);
 			neighbor_offset_int = make_int2(static_cast<int>(neighbor_offset_rotated.x), static_cast<int>(neighbor_offset_rotated.y));
 			neighbor_pixel_coords = neighbor_offset_int + center_pixel_coords;
-
-			if (center_pixel_coords.x + center_pixel_coords.y * render_data.render_settings.render_resolution.x == 720 / 2 + 1280 * 720 / 2)
-			{
-				if (counter++ % 100 == 0)
-				{
-					/*printf("UV             : %f, %f\n", uv.x, uv.y);
-					printf("offset         : %d, %d\n", offset.x, offset.y);
-					printf("offset in disk : %f, %f\n", neighbor_offset_in_disk.x, neighbor_offset_in_disk.y);
-					printf("offset rotated : %f, %f\n", neighbor_offset_rotated.x, neighbor_offset_rotated.y);
-					printf("offset int     : %d, %d\n", neighbor_offset_int.x, neighbor_offset_int.y);*/
-					printf("coords final   : %d, %d\n", neighbor_pixel_coords.x, neighbor_pixel_coords.y);
-					printf("\n");
-
-					path_tracing_accumulate_color(render_data, ColorRGB32F(1.0e10f, 0.0f, 0.0f), neighbor_pixel_coords.x + neighbor_pixel_coords.y * render_data.render_settings.render_resolution.x);
-				}
-			}
 		}
 		else
 			neighbor_pixel_coords = center_pixel_coords + neighbor_offset_int;

@@ -76,12 +76,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	// Surface data of the center pixel
 	int2 center_pixel_coords = make_int2(x, y);
 	ReSTIRSurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index, random_number_generator);
-
-	static int counterr = 0;
-	if (counterr++ % 100 == 0)
-		if (center_pixel_coords.x + center_pixel_coords.y * render_data.render_settings.render_resolution.x == 720 / 2 + 1280 * 720 / 2)
-			printf("seed: %u\n", seed);
-
 #if ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_MIS_LIKE
 	// Only used with MIS-like weight
 	int selected_neighbor = 0;
@@ -101,13 +95,15 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	//	// No valid neighbor to resample from, skip to the initial candidate right away
 	//	start_index = reused_neighbors_count;
 
-	static float DEBUG_sum = 0.0f;
-	static int DEBUG_count = 0;
+	static float DEBUG_sUM = 0.0f;
+	static int DEBUG_scount = 0.0f;
 
 	// Resampling the neighbors. Using neighbors + 1 here so that
 	// we can use the last iteration of the loop to resample ourselves (the center pixel)
 	// 
 	// See the implementation of get_spatial_neighbor_pixel_index() in ReSTIR/UtilsSpatial.h
+	if (x == render_data.render_settings.debug_x && y == render_data.render_settings.debug_y)
+		DEBUG_scount++;
 	for (int neighbor_index = start_index; neighbor_index < reused_neighbors_count + 1; neighbor_index++)
 	{
 		const bool is_center_pixel = neighbor_index == reused_neighbors_count;
@@ -128,6 +124,20 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 		if (neighbor_pixel_index == -1)
 			// Neighbor out of the viewport
 			continue;
+
+		if (x == render_data.render_settings.debug_x && y == render_data.render_settings.debug_y && !is_center_pixel)
+		{
+			DEBUG_sUM++;
+
+			if (render_data.render_settings.sample_number > 4090)
+			{
+				printf("Average target: %f\n", DEBUG_sUM / DEBUG_scount);
+				printf("\n");
+			}
+		}
+
+		if (x == render_data.render_settings.debug_x && y == render_data.render_settings.debug_y)
+			path_tracing_accumulate_color(render_data, ColorRGB32F(20.0f, 0.0f, 0.0f), neighbor_pixel_index);
 
 		if (!is_center_pixel && reused_neighbors_count > 32)
 			// If not the center pixel, we can check the heuristics
@@ -168,6 +178,18 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 			//		target_function_at_center = ReSTIR_GI_evaluate_target_function<KERNEL_OPTION_FALSE>(render_data, neighbor_reservoir.sample, center_pixel_surface, random_number_generator);
 			//}
 		}
+
+		/*if (x == render_data.render_settings.debug_x && y == render_data.render_settings.debug_y && target_function_at_center > 0.0f)
+		{
+			DEBUG_sUM += target_function_at_center;
+			DEBUG_scount++;
+
+			if (render_data.render_settings.sample_number > 4090)
+			{
+				printf("Average target: %f\n", DEBUG_sUM / DEBUG_scount);
+				printf("\n");
+			}
+		}*/
 
 #if ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_1_OVER_M
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight(neighbor_reservoir.M);
@@ -245,14 +267,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 #else
 #error "Unsupported bias correction mode"
 #endif
-
-	/*if (center_pixel_index == 552951 - 20 && spatial_reuse_output_reservoir.weight_sum > 0.0f)
-	{
-		DEBUG_sum += normalization_denominator;
-		DEBUG_count++;
-
-		std::cout << "average: " << DEBUG_sum / DEBUG_count << std::endl;
-	}*/
 
 	spatial_reuse_output_reservoir.end_with_normalization(normalization_numerator, normalization_denominator);
 	spatial_reuse_output_reservoir.sanity_check(center_pixel_coords);
