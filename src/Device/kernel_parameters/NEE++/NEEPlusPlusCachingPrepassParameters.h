@@ -14,7 +14,7 @@ struct NEEPlusPlusCachingPrepassParameters
 
 	HIPRTCamera current_camera;
 
-	unsigned int random_seed = 42;
+	unsigned int random_number = 42;
 };
 
 #endif

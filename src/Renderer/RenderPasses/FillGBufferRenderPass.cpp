@@ -88,7 +88,7 @@ bool FillGBufferRenderPass::pre_render_update(float delta_time)
 
 bool FillGBufferRenderPass::launch()
 {
-	m_render_data->random_seed = m_renderer->rng().xorshift32();
+	m_render_data->random_number = m_renderer->get_rng_generator().xorshift32();
 
 	void* launch_args[] = { m_render_data };
 

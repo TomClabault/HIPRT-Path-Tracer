@@ -53,7 +53,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
     if (render_data.render_settings.freeze_random)
         seed = wang_hash(pixel_index + 1);
     else
-        seed = wang_hash((pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_seed);
+        seed = wang_hash((pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
     Xorshift32Generator random_number_generator(seed);
 
     // Initializing the closest hit info the information from the camera ray pass

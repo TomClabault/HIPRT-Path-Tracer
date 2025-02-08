@@ -110,7 +110,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_LightsPresampling(LightPresamplin
     if (presampling_parameters.freeze_random)
         seed = wang_hash(thread_index + 1);
     else
-        seed = wang_hash((thread_index + 1) * (presampling_parameters.sample_number + 1) * presampling_parameters.random_seed);
+        seed = wang_hash((thread_index + 1) * (presampling_parameters.sample_number + 1) * presampling_parameters.random_number);
 
     Xorshift32Generator random_number_generator(seed);
 

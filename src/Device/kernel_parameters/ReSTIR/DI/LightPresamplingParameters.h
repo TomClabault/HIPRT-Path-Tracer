@@ -41,7 +41,7 @@ struct LightPresamplingParameters
 	bool freeze_random = false;
 	int sample_number = 0;
 	// Random seed for varying the randomness between frames
-	int random_seed = 42;
+	int random_number = 42;
 
 	// For each presampled light, the probability that this is going to be an envmap sample
 	float envmap_sampling_probability;

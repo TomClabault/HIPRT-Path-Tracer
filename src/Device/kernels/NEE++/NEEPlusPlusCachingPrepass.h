@@ -59,7 +59,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NEEPlusPlusCachingPrepass(HIPRTRenderData r
 
     uint32_t pixel_index = x + y * render_data.render_settings.render_resolution.x;
 
-    unsigned int seed = wang_hash((pixel_index + 1) * render_data.random_seed);
+    unsigned int seed = wang_hash((pixel_index + 1) * render_data.random_number);
     Xorshift32Generator random_number_generator(seed);
 
     // Direction to the center of the pixel

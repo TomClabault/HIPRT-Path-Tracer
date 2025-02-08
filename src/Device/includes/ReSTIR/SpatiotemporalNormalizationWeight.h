@@ -52,7 +52,7 @@ struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_
 			{
 				neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, spatial_pass_settings, 
 					neighbor, temporal_neighbor_coords,
-					cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
+					cos_sin_theta_rotation, Xorshift32Generator(render_data.random_number));
 
 				if (neighbor_pixel_index == -1)
 					// Neighbor out of the viewport
@@ -121,7 +121,7 @@ struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_1_OVER_
 			if (neighbor != spatial_pass_settings.reuse_neighbor_count)
 			{
 				neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, spatial_pass_settings,
-					neighbor, temporal_neighbor_position, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
+					neighbor, temporal_neighbor_position, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_number));
 
 				if (neighbor_pixel_index == -1)
 					// Invalid neighbor
@@ -212,7 +212,7 @@ struct ReSTIRSpatiotemporalNormalizationWeight<RESTIR_DI_BIAS_CORRECTION_MIS_LIK
 			int neighbor_pixel_index;
 			if (neighbor != spatial_pass_settings.reuse_neighbor_count)
 			{
-				neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, spatial_pass_settings, neighbor, temporal_neighbor_coords, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
+				neighbor_pixel_index = get_spatial_neighbor_pixel_index(render_data, spatial_pass_settings, neighbor, temporal_neighbor_coords, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_number));
 
 				if (neighbor_pixel_index == -1)
 					// Invalid neighbor

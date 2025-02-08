@@ -101,7 +101,7 @@ struct HIPRTRenderData
 {
 	// Random number that is updated by the CPU and that can help generate a
 	// random seed on the GPU for the random number generator to get started
-	unsigned int random_seed = 42;
+	unsigned int random_number = 42;
 
 	// HIPRT BVH
 	hiprtGeometry GPU_BVH = nullptr;

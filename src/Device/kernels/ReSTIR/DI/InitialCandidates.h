@@ -41,7 +41,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE ReSTIRDISample use_presampled_light_candidate(con
     // tile of pixels and use that unique number as seed for our random number generator
     int tile_index_seed = cantor_pairing_function(pixel_coords.x / light_presampling_settings.tile_size, pixel_coords.y / light_presampling_settings.tile_size);
 
-    Xorshift32Generator subset_rng(render_data.random_seed * (tile_index_seed + 1));
+    Xorshift32Generator subset_rng(render_data.random_number * (tile_index_seed + 1));
     int random_subset_index = subset_rng.random_index(light_presampling_settings.number_of_subsets);
     int random_light_index_in_subset = random_number_generator.random_index(light_presampling_settings.subset_size);
     int light_sample_index = random_subset_index * light_presampling_settings.subset_size + random_light_index_in_subset;
@@ -481,7 +481,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_DI_InitialCandidates(HIPRTRenderData
     if (render_data.render_settings.freeze_random)
         seed = wang_hash(pixel_index + 1);
     else
-        seed = wang_hash((pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_seed);
+        seed = wang_hash((pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
 
     Xorshift32Generator random_number_generator(seed);
 

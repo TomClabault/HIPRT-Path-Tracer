@@ -79,7 +79,7 @@ struct ReSTIRSpatiotemporalResamplingMISWeight<RESTIR_DI_BIAS_CORRECTION_MIS_GBH
 			int neighbor_index_j;
 			if (j != spatial_pass_settings.reuse_neighbor_count)
 			{
-				neighbor_index_j = get_spatial_neighbor_pixel_index(render_data, spatial_pass_settings, j, temporal_neighbor_coords, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_seed));
+				neighbor_index_j = get_spatial_neighbor_pixel_index(render_data, spatial_pass_settings, j, temporal_neighbor_coords, cos_sin_theta_rotation, Xorshift32Generator(render_data.random_number));
 				if (neighbor_index_j == -1)
 					// Invalid neighbor, skipping
 					continue;
