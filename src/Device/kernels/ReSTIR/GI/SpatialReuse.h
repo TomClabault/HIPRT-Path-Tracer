@@ -62,8 +62,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	// for generating the neighbors location to resample
 	float rotation_theta;
 	if (render_data.render_settings.restir_gi_settings.common_spatial_pass.do_neighbor_rotation)
-		//rotation_theta = M_TWO_PI * Xorshift32Generator(render_data.random_seed)();// random_number_generator();
-		rotation_theta = M_TWO_PI * random_number_generator();
+		rotation_theta = M_TWO_PI * Xorshift32Generator((wang_hash((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_seed) * 2) / 2)();// random_number_generator();
+		//rotation_theta = M_TWO_PI * random_number_generator();
 	else
 		rotation_theta = 0.0f;
 	float2 cos_sin_theta_rotation = make_float2(cos(rotation_theta), sin(rotation_theta));
@@ -76,6 +76,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	// Surface data of the center pixel
 	int2 center_pixel_coords = make_int2(x, y);
 	ReSTIRSurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index, random_number_generator);
+
+	static int counterr = 0;
+	if (counterr++ % 100 == 0)
+		if (center_pixel_coords.x + center_pixel_coords.y * render_data.render_settings.render_resolution.x == 720 / 2 + 1280 * 720 / 2)
+			printf("seed: %u\n", seed);
+
 #if ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_MIS_LIKE
 	// Only used with MIS-like weight
 	int selected_neighbor = 0;
