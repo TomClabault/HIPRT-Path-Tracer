@@ -101,7 +101,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	// 
 	// See the implementation of get_spatial_neighbor_pixel_index() in ReSTIR/UtilsSpatial.h
 	if (x == render_data.render_settings.debug_x && y == render_data.render_settings.debug_y)
-		hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, 81);
+		hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, 1);
 	for (int neighbor_index = start_index; neighbor_index < reused_neighbors_count + 1; neighbor_index++)
 	{
 		const bool is_center_pixel = neighbor_index == reused_neighbors_count;

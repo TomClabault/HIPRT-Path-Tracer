@@ -72,7 +72,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_GI_evaluate_target_function<KERNEL_O
 
 	if (debug)
 	{
-		if (hippt::abs(x - render_data.render_settings.debug_x) <= 4 && hippt::abs(y - render_data.render_settings.debug_y) <= 4)
+		if (hippt::abs(x - render_data.render_settings.debug_x) <= 0 && hippt::abs(y - render_data.render_settings.debug_y) <= 0)
 		{
 			hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM1, sample.sample_point.x);
 			hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM2, sample.sample_point.y);

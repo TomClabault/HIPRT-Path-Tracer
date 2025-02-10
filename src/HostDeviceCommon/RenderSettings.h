@@ -34,7 +34,7 @@ struct HIPRTRenderSettings
 	AtomicType<float>* DEBUG_SUM2 = nullptr;
 	AtomicType<float>* DEBUG_SUM3 = nullptr;
 	bool debug_lambertian = false;
-	int debug_x = 286, debug_y = 150;
+	int debug_x = 200, debug_y = 150;
 
 	// If true, then the kernels are allowed to modify the status buffers (how many pixels have converged so far, ...)
 	// 
