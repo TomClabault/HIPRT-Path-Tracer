@@ -62,8 +62,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	// for generating the neighbors location to resample
 	float rotation_theta;
 	if (render_data.render_settings.restir_gi_settings.common_spatial_pass.do_neighbor_rotation)
-		rotation_theta = M_TWO_PI * Xorshift32Generator((wang_hash((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number) * 2) / 2)();// random_number_generator();
-		//rotation_theta = M_TWO_PI * random_number_generator();
+		//rotation_theta = M_TWO_PI * Xorshift32Generator((wang_hash((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number) * 2) / 2)();// random_number_generator();
+		//rotation_theta = M_TWO_PI * Xorshift32Generator(wang_hash((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number))();// random_number_generator();
+		rotation_theta = M_TWO_PI * random_number_generator();
 	else
 		rotation_theta = 0.0f;
 	float2 cos_sin_theta_rotation = make_float2(cos(rotation_theta), sin(rotation_theta));
@@ -103,7 +104,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	// 
 	// See the implementation of get_spatial_neighbor_pixel_index() in ReSTIR/UtilsSpatial.h
 	if (x == render_data.render_settings.debug_x && y == render_data.render_settings.debug_y)
-		DEBUG_scount++;
+		DEBUG_scount+=2*25;
 	for (int neighbor_index = start_index; neighbor_index < reused_neighbors_count + 1; neighbor_index++)
 	{
 		const bool is_center_pixel = neighbor_index == reused_neighbors_count;
@@ -125,16 +126,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 			// Neighbor out of the viewport
 			continue;
 
-		if (x == render_data.render_settings.debug_x && y == render_data.render_settings.debug_y && !is_center_pixel)
-		{
-			DEBUG_sUM++;
-
-			if (render_data.render_settings.sample_number > 4090)
-			{
-				printf("Average target: %f\n", DEBUG_sUM / DEBUG_scount);
-				printf("\n");
-			}
-		}
 
 		if (x == render_data.render_settings.debug_x && y == render_data.render_settings.debug_y)
 			path_tracing_accumulate_color(render_data, ColorRGB32F(20.0f, 0.0f, 0.0f), neighbor_pixel_index);
@@ -228,6 +219,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 #error "Unsupported bias correction mode"
 #endif
 
+		if (hippt::abs(x - render_data.render_settings.debug_x) <= 2 && hippt::abs(y - render_data.render_settings.debug_y) <= 2)
+			DEBUG_sUM += mis_weight * target_function_at_center * neighbor_reservoir.UCW * shift_mapping_jacobian;
+
 		// Combining as in Alg. 1 of the ReSTIR GI paper
 		if (spatial_reuse_output_reservoir.combine_with(neighbor_reservoir, mis_weight, target_function_at_center, shift_mapping_jacobian, random_number_generator))
 		{
@@ -238,6 +232,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 		}
 
 		spatial_reuse_output_reservoir.sanity_check(center_pixel_coords);
+	}
+
+	if (x == render_data.render_settings.debug_x && y == render_data.render_settings.debug_y)
+	if (render_data.render_settings.sample_number > 8188)
+	{
+		printf("Average target: %f\n", DEBUG_sUM / DEBUG_scount);
+		printf("\n");
 	}
 
 	float normalization_numerator = 1.0f;
