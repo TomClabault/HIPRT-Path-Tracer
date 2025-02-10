@@ -62,9 +62,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	// for generating the neighbors location to resample
 	float rotation_theta;
 	if (render_data.render_settings.restir_gi_settings.common_spatial_pass.do_neighbor_rotation)
-		//rotation_theta = M_TWO_PI * Xorshift32Generator((wang_hash((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number) * 2) / 2)();// random_number_generator();
+		rotation_theta = M_TWO_PI * Xorshift32Generator((wang_hash((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number) * 2) / 2)();// random_number_generator();
 		//rotation_theta = M_TWO_PI * Xorshift32Generator(wang_hash((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number))();// random_number_generator();
-		rotation_theta = M_TWO_PI * random_number_generator();
+		//rotation_theta = M_TWO_PI * random_number_generator();
 	else
 		rotation_theta = 0.0f;
 	float2 cos_sin_theta_rotation = make_float2(cos(rotation_theta), sin(rotation_theta));
@@ -96,15 +96,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	//	// No valid neighbor to resample from, skip to the initial candidate right away
 	//	start_index = reused_neighbors_count;
 
-	static float DEBUG_sUM = 0.0f;
-	static int DEBUG_scount = 0.0f;
-
 	// Resampling the neighbors. Using neighbors + 1 here so that
 	// we can use the last iteration of the loop to resample ourselves (the center pixel)
 	// 
 	// See the implementation of get_spatial_neighbor_pixel_index() in ReSTIR/UtilsSpatial.h
 	if (x == render_data.render_settings.debug_x && y == render_data.render_settings.debug_y)
-		DEBUG_scount+=2*25;
+		hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, 2 * 9);
 	for (int neighbor_index = start_index; neighbor_index < reused_neighbors_count + 1; neighbor_index++)
 	{
 		const bool is_center_pixel = neighbor_index == reused_neighbors_count;
@@ -219,8 +216,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 #error "Unsupported bias correction mode"
 #endif
 
-		if (hippt::abs(x - render_data.render_settings.debug_x) <= 2 && hippt::abs(y - render_data.render_settings.debug_y) <= 2)
-			DEBUG_sUM += mis_weight * target_function_at_center * neighbor_reservoir.UCW * shift_mapping_jacobian;
+		if (hippt::abs(x - render_data.render_settings.debug_x) <= 1 && hippt::abs(y - render_data.render_settings.debug_y) <= 1)
+			hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM, mis_weight * target_function_at_center * neighbor_reservoir.UCW * shift_mapping_jacobian);
 
 		// Combining as in Alg. 1 of the ReSTIR GI paper
 		if (spatial_reuse_output_reservoir.combine_with(neighbor_reservoir, mis_weight, target_function_at_center, shift_mapping_jacobian, random_number_generator))
@@ -235,11 +232,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	}
 
 	if (x == render_data.render_settings.debug_x && y == render_data.render_settings.debug_y)
-	if (render_data.render_settings.sample_number > 8188)
-	{
-		printf("Average target: %f\n", DEBUG_sUM / DEBUG_scount);
-		printf("\n");
-	}
+		if (render_data.render_settings.sample_number > 65530)
+			printf("Average target: %f\n\n", hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM, 0.0f) / hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, 0));
 
 	float normalization_numerator = 1.0f;
 	float normalization_denominator = 1.0f;

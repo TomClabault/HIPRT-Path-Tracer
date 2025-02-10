@@ -29,8 +29,10 @@ struct HIPRTRenderSettings
 	// This is mainly useful for the first frame of the render
 	bool need_to_reset = true;
 
+	AtomicType<int>* DEBUG_SUM_COUNT = nullptr;
+	AtomicType<float>* DEBUG_SUM = nullptr;
 	bool debug_lambertian = false;
-	int debug_x = 620, debug_y = 320;
+	int debug_x = 150, debug_y = 150;
 
 	// If true, then the kernels are allowed to modify the status buffers (how many pixels have converged so far, ...)
 	// 
