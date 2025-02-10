@@ -30,7 +30,7 @@ struct HIPRTRenderSettings
 	bool need_to_reset = true;
 
 	bool debug_lambertian = false;
-	int debug_x = 1270, debug_y = 360;
+	int debug_x = 620, debug_y = 320;
 
 	// If true, then the kernels are allowed to modify the status buffers (how many pixels have converged so far, ...)
 	// 

@@ -79,7 +79,7 @@ struct ApplicationSettings
 
 	// We stop rendering when this number of sample is reached.
 	// 0 is no limit
-	int max_sample_count = 4096;
+	int max_sample_count = 8192;
 	// We stop rendering when the render has been running for that long.
 	// In seconds. 0 is no limit
 	float max_render_time = 0.0f;

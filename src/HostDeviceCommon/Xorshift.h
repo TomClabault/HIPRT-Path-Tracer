@@ -10,7 +10,8 @@
 
 #include "HostDeviceCommon/Math.h"
 
-struct Xorshift32State {
+struct Xorshift32State 
+{
     unsigned int seed = 42;
 };
 
