@@ -598,6 +598,9 @@ private:
 	OrochiTexture3D m_GGX_Ess_glass;
 	OrochiTexture3D m_GGX_Ess_glass_inverse;
 	OrochiTexture3D m_GGX_Ess_thin_glass;
+
+	OrochiBuffer<int> m_DEBUG_SUM_COUNT;
+	OrochiBuffer<float> m_DEBUG_SUM;
 };
 
 #endif
