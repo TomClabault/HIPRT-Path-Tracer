@@ -101,7 +101,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	// 
 	// See the implementation of get_spatial_neighbor_pixel_index() in ReSTIR/UtilsSpatial.h
 	if (x == render_data.render_settings.debug_x && y == render_data.render_settings.debug_y)
-		hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, 2 * 9);
+		hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, 81);
 	for (int neighbor_index = start_index; neighbor_index < reused_neighbors_count + 1; neighbor_index++)
 	{
 		const bool is_center_pixel = neighbor_index == reused_neighbors_count;
@@ -152,7 +152,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 		bool do_neighbor_target_function_visibility = true;// do_include_visibility_term_or_not<true>(render_data, neighbor_index);
 		if (neighbor_reservoir.UCW > 0.0f)
 		{
-			target_function_at_center = ReSTIR_GI_evaluate_target_function<KERNEL_OPTION_TRUE>(render_data, neighbor_reservoir.sample, center_pixel_surface, random_number_generator);
+			target_function_at_center = ReSTIR_GI_evaluate_target_function<KERNEL_OPTION_TRUE>(render_data, neighbor_reservoir.sample, center_pixel_surface, random_number_generator, true, x, y);
 			
 			//if (is_center_pixel)
 			//	// No need to evaluate the center sample at the center pixel, that's exactly
@@ -216,9 +216,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 #error "Unsupported bias correction mode"
 #endif
 
-		if (hippt::abs(x - render_data.render_settings.debug_x) <= 1 && hippt::abs(y - render_data.render_settings.debug_y) <= 1)
-			hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM, mis_weight * target_function_at_center * neighbor_reservoir.UCW * shift_mapping_jacobian);
-
 		// Combining as in Alg. 1 of the ReSTIR GI paper
 		if (spatial_reuse_output_reservoir.combine_with(neighbor_reservoir, mis_weight, target_function_at_center, shift_mapping_jacobian, random_number_generator))
 		{
@@ -230,10 +227,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 
 		spatial_reuse_output_reservoir.sanity_check(center_pixel_coords);
 	}
-
-	if (x == render_data.render_settings.debug_x && y == render_data.render_settings.debug_y)
-		if (render_data.render_settings.sample_number > 65530)
-			printf("Average target: %f\n\n", hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM, 0.0f) / hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, 0));
 
 	float normalization_numerator = 1.0f;
 	float normalization_denominator = 1.0f;
@@ -322,6 +315,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 		spatial_reuse_output_reservoir.M = hippt::min(spatial_reuse_output_reservoir.M, render_data.render_settings.restir_gi_settings.m_cap);
 
 	render_data.render_settings.restir_gi_settings.spatial_pass.output_reservoirs[center_pixel_index] = spatial_reuse_output_reservoir;
+
+	if (x == render_data.render_settings.debug_x && y == render_data.render_settings.debug_y)
+		if (render_data.render_settings.sample_number > 65530)
+			printf("Average 1: %f\nAverage 3: %f\nAverage 3: %f\n\n\n", hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM1, 0.0f) / hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, 0), hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM2, 0.0f) / hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, 0), hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM3, 0.0f) / hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, 0));
 }
 
 #endif

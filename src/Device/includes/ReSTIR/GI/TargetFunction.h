@@ -11,7 +11,7 @@
 #include "HostDeviceCommon/RenderData.h"
 
 template <bool withVisiblity>
-HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_GI_evaluate_target_function(const HIPRTRenderData& render_data, const ReSTIRGISample& sample, ReSTIRSurface& surface, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_GI_evaluate_target_function(const HIPRTRenderData& render_data, const ReSTIRGISample& sample, ReSTIRSurface& surface, Xorshift32Generator& random_number_generator, bool debug=false, int x=-1, int y=-1)
 {
 #ifndef __KERNELCC__
 	std::cerr << "ReSTIR_GI_evaluate_target_function() wrong specialization called: " << withVisiblity << std::endl;
@@ -22,8 +22,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_GI_evaluate_target_function(const HI
 }
 
 template <>
-HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_GI_evaluate_target_function<KERNEL_OPTION_FALSE>(const HIPRTRenderData& render_data, const ReSTIRGISample& sample, ReSTIRSurface& surface, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_GI_evaluate_target_function<KERNEL_OPTION_FALSE>(const HIPRTRenderData& render_data, const ReSTIRGISample& sample, ReSTIRSurface& surface, Xorshift32Generator& random_number_generator, bool debug, int x, int y)
 {
+
 	float3 incident_light_direction;
 	if (sample.is_envmap_path())
 		// For envmap path, the direction is stored in the 'sample_point' value
@@ -50,7 +51,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_GI_evaluate_target_function<KERNEL_O
 }
 
 template <>
-HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_GI_evaluate_target_function<KERNEL_OPTION_TRUE>(const HIPRTRenderData& render_data, const ReSTIRGISample& sample, ReSTIRSurface& surface, Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_GI_evaluate_target_function<KERNEL_OPTION_TRUE>(const HIPRTRenderData& render_data, const ReSTIRGISample& sample, ReSTIRSurface& surface, Xorshift32Generator& random_number_generator, bool debug, int x, int y)
 {
 	float distance_to_sample_point;
 	float3 incident_light_direction;
@@ -67,6 +68,16 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_GI_evaluate_target_function<KERNEL_O
 		incident_light_direction = sample.sample_point - surface.shading_point;
 		distance_to_sample_point = hippt::length(incident_light_direction);
 		incident_light_direction /= distance_to_sample_point;
+	}
+
+	if (debug)
+	{
+		if (hippt::abs(x - render_data.render_settings.debug_x) <= 4 && hippt::abs(y - render_data.render_settings.debug_y) <= 4)
+		{
+			hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM1, sample.sample_point.x);
+			hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM2, sample.sample_point.y);
+			hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM3, sample.sample_point.z);
+		}
 	}
 
 	hiprtRay visibility_ray;
