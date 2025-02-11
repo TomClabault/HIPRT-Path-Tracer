@@ -356,6 +356,8 @@ public:
 	// Animator of the camera of the current frame ('m_camera')
 	CameraAnimation m_camera_animation;
 
+	OrochiBuffer<int> m_DEBUG_NEIGHBOR_DISTRIBUTION;
+
 private:
 	void set_hiprt_scene_from_scene(const Scene& scene);
 	void update_render_data();

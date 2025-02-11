@@ -64,7 +64,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool do_include_visibility_term_or_not(const HIPR
 template <bool IsReSTIRGI>
 HIPRT_HOST_DEVICE HIPRT_INLINE int get_spatial_neighbor_pixel_index(const HIPRTRenderData& render_data,
 	int neighbor_index,
-	int2 center_pixel_coords, float2 cos_sin_theta_rotation)
+	int2 center_pixel_coords, float2 cos_sin_theta_rotation, bool debug = false)
 {
 	const ReSTIRCommonSpatialPassSettings& spatial_pass_settings = ReSTIRSettingsHelper::get_restir_spatial_pass_settings<IsReSTIRGI>(render_data);
 
@@ -114,6 +114,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int get_spatial_neighbor_pixel_index(const HIPRTR
 		}
 		else
 			neighbor_pixel_coords = center_pixel_coords + neighbor_offset_int;
+
+		if (debug && center_pixel_coords.x == render_data.render_settings.debug_x && center_pixel_coords.y == render_data.render_settings.debug_y)
+			render_data.render_settings.DEBUG_NEIGHBOR_DISTRIBUTION[neighbor_offset_int.x + neighbor_offset_int.y * spatial_pass_settings.reuse_radius]++;
 
 		if (neighbor_pixel_coords.x < 0 || neighbor_pixel_coords.x >= render_data.render_settings.render_resolution.x || 
 			neighbor_pixel_coords.y < 0 || neighbor_pixel_coords.y >= render_data.render_settings.render_resolution.y)

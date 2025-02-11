@@ -118,7 +118,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 		//		continue;
 
 		int neighbor_pixel_index = get_spatial_neighbor_pixel_index<true>(render_data,
-			neighbor_index, center_pixel_coords, cos_sin_theta_rotation);
+			neighbor_index, center_pixel_coords, cos_sin_theta_rotation, !is_center_pixel);
 		if (neighbor_pixel_index == -1)
 			// Neighbor out of the viewport
 			continue;
@@ -152,7 +152,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 		bool do_neighbor_target_function_visibility = true;// do_include_visibility_term_or_not<true>(render_data, neighbor_index);
 		if (neighbor_reservoir.UCW > 0.0f)
 		{
-			target_function_at_center = ReSTIR_GI_evaluate_target_function<KERNEL_OPTION_TRUE>(render_data, neighbor_reservoir.sample, center_pixel_surface, random_number_generator, true, x, y);
+			target_function_at_center = ReSTIR_GI_evaluate_target_function<KERNEL_OPTION_TRUE>(render_data, neighbor_reservoir.sample, center_pixel_surface, random_number_generator, !is_center_pixel, x, y);
 			
 			//if (is_center_pixel)
 			//	// No need to evaluate the center sample at the center pixel, that's exactly
