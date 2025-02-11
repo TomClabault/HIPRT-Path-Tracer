@@ -116,7 +116,21 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int get_spatial_neighbor_pixel_index(const HIPRTR
 			neighbor_pixel_coords = center_pixel_coords + neighbor_offset_int;
 
 		if (debug && center_pixel_coords.x == render_data.render_settings.debug_x && center_pixel_coords.y == render_data.render_settings.debug_y)
-			render_data.render_settings.DEBUG_NEIGHBOR_DISTRIBUTION[neighbor_offset_int.x + neighbor_offset_int.y * spatial_pass_settings.reuse_radius]++;
+		{
+			float length = sqrtf(neighbor_offset_int.x * neighbor_offset_int.x + neighbor_offset_int.y * neighbor_offset_int.y);
+			float cosine = acosf(neighbor_offset_int.x / length);
+			float sine = asinf(neighbor_offset_int.y / length);
+
+			float angle_radians = cosine;
+			if (sine < 0.0f)
+				angle_radians += M_PI;
+
+			float angle_radians_0_1 = angle_radians * M_INV_2_PI;
+			int discretized = angle_radians_0_1 * render_data.render_settings.precision;
+
+			render_data.render_settings.DEBUG_NEIGHBOR_DISTRIBUTION[discretized]++;
+			//render_data.render_settings.DEBUG_NEIGHBOR_DISTRIBUTION[neighbor_offset_int.x + spatial_pass_settings.reuse_radius - 1 + (neighbor_offset_int.y + spatial_pass_settings.reuse_radius - 1) * spatial_pass_settings.reuse_radius]++;
+		}
 
 		if (neighbor_pixel_coords.x < 0 || neighbor_pixel_coords.x >= render_data.render_settings.render_resolution.x || 
 			neighbor_pixel_coords.y < 0 || neighbor_pixel_coords.y >= render_data.render_settings.render_resolution.y)

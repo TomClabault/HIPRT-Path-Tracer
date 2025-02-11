@@ -35,7 +35,10 @@ struct HIPRTRenderSettings
 	AtomicType<float>* DEBUG_SUM3 = nullptr;
 	int* DEBUG_NEIGHBOR_DISTRIBUTION = nullptr;
 	bool debug_lambertian = false;
-	int debug_x = 200, debug_y = 150;
+	int debug_x = 201, debug_y = 150;
+	int debug_size = 4;
+	int debug_count_multiplier = 2;
+	int precision = 256;
 
 	// If true, then the kernels are allowed to modify the status buffers (how many pixels have converged so far, ...)
 	// 

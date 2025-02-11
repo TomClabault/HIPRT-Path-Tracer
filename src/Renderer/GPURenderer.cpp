@@ -50,8 +50,9 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx, std::sha
 	m_DEBUG_SUM1.resize(1);
 	m_DEBUG_SUM2.resize(1);
 	m_DEBUG_SUM3.resize(1);
-	m_DEBUG_NEIGHBOR_DISTRIBUTION.resize(hippt::square(m_render_data.render_settings.restir_gi_settings.common_spatial_pass.reuse_radius));
 	m_DEBUG_SUM_COUNT.resize(1);
+	//m_DEBUG_NEIGHBOR_DISTRIBUTION.resize(hippt::square(m_render_data.render_settings.restir_gi_settings.common_spatial_pass.reuse_radius));
+	m_DEBUG_NEIGHBOR_DISTRIBUTION.resize(m_render_data.render_settings.precision);
 
 	m_hiprt_orochi_ctx = hiprt_oro_ctx;	
 	m_device_properties = m_hiprt_orochi_ctx->device_properties;
