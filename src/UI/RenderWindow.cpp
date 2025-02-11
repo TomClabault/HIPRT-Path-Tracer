@@ -22,6 +22,9 @@
 extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
+// why does the random rotation gives 1 pixel offsets
+// analyze values of tharget function one by one and compare
+
 // TODO ReSTIR GI
 // - do adaptive radius spatial reuse --> also for ReSTIR DI?
 // - ReSTIR el cheapo

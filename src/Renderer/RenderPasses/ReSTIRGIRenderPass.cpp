@@ -164,6 +164,16 @@ bool ReSTIRGIRenderPass::launch()
 	int2 render_resolution = m_renderer->m_render_resolution;
 	void* launch_args[] = { m_render_data };
 
+	if (m_render_data->render_settings.sample_number == 65530)
+	{
+		std::ofstream ioutput_file("output.txt");
+		std::vector<int> data = m_renderer->m_DEBUG_NEIGHBOR_DISTRIBUTION.download_data();
+		for (int i = 0; i < m_render_data->render_settings.restir_gi_settings.common_spatial_pass.reuse_radius * m_render_data->render_settings.restir_gi_settings.common_spatial_pass.reuse_radius; i++)
+		{
+			ioutput_file << data[i] << std::endl;
+		}
+	}
+
 	configure_input_output_buffers();
 
 	if (m_render_data->render_settings.nb_bounces > 0)
