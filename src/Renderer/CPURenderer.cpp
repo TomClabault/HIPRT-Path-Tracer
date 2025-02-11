@@ -45,8 +45,8 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 630
-#define DEBUG_PIXEL_Y 298
+#define DEBUG_PIXEL_X 201
+#define DEBUG_PIXEL_Y 150
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
 #define DEBUG_OTHER_FLIP_Y 0
@@ -90,6 +90,9 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
     m_restir_di_state.spatial_output_reservoirs_2.resize(width * height);
     m_restir_di_state.presampled_lights_buffer.resize(width * height);
     m_restir_di_state.output_reservoirs = m_restir_di_state.spatial_output_reservoirs_1.data();
+
+    //m_debug_neighbor_distribution.resize(hippt::square(m_render_data.render_settings.restir_gi_settings.common_spatial_pass.reuse_radius));
+    m_debug_neighbor_distribution.resize(m_render_data.render_settings.precision);
 
     m_restir_gi_state.initial_candidates_reservoirs.resize(width * height);
     m_restir_gi_state.temporal_reservoirs.resize(width * height);
@@ -253,6 +256,12 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.aux_buffers.pixel_squared_luminance = m_pixel_squared_luminance.data();
     m_render_data.aux_buffers.still_one_ray_active = &m_still_one_ray_active;
     m_render_data.aux_buffers.stop_noise_threshold_converged_count = &m_stop_noise_threshold_count;
+
+    m_render_data.render_settings.DEBUG_SUM1 = &m_DEBUG_SUM1;
+    m_render_data.render_settings.DEBUG_SUM2 = &m_DEBUG_SUM2;
+    m_render_data.render_settings.DEBUG_SUM3 = &m_DEBUG_SUM3;
+    m_render_data.render_settings.DEBUG_SUM_COUNT = &m_DEBUG_SUM_COUNT;
+    m_render_data.render_settings.DEBUG_NEIGHBOR_DISTRIBUTION = m_debug_neighbor_distribution.data();
 
     m_render_data.g_buffer.materials = m_g_buffer.materials.data();
     m_render_data.g_buffer.geometric_normals = m_g_buffer.geometric_normals.data();

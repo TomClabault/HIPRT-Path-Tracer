@@ -168,7 +168,7 @@ bool ReSTIRGIRenderPass::launch()
 	{
 		std::ofstream ioutput_file("output.txt");
 		std::vector<int> data = m_renderer->m_DEBUG_NEIGHBOR_DISTRIBUTION.download_data();
-		for (int i = 0; i < m_render_data->render_settings.restir_gi_settings.common_spatial_pass.reuse_radius * m_render_data->render_settings.restir_gi_settings.common_spatial_pass.reuse_radius; i++)
+		for (int i = 0; i < data.size(); i++)
 		{
 			ioutput_file << data[i] << std::endl;
 		}
