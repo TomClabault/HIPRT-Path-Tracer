@@ -89,9 +89,7 @@ public:
 
     void tonemap(float gamma, float exposure);
 
-    AtomicType<float> m_DEBUG_SUM1;
-    AtomicType<float> m_DEBUG_SUM2;
-    AtomicType<float> m_DEBUG_SUM3;
+    std::vector<AtomicType<float>> m_DEBUG_SUMS;
     AtomicType<int> m_DEBUG_SUM_COUNT;
     std::vector<int> m_debug_neighbor_distribution;
 

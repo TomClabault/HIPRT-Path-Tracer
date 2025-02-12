@@ -45,7 +45,7 @@
 // where pixels are not completely independent from each other such as ReSTIR Spatial Reuse).
 // 
 // The neighborhood around pixel will be rendered if DEBUG_RENDER_NEIGHBORHOOD is 1.
-#define DEBUG_PIXEL_X 201
+#define DEBUG_PIXEL_X 288
 #define DEBUG_PIXEL_Y 150
 
 // Same as DEBUG_FLIP_Y but for the "other debug pixel"
@@ -77,6 +77,8 @@ CPURenderer::CPURenderer(int width, int height) : m_resolution(make_int2(width, 
     m_framebuffer = Image32Bit(width, height, 3);
 
     m_render_data.render_settings.render_resolution = m_resolution;
+
+    m_DEBUG_SUMS = std::vector<AtomicType<float>>(1024);
 
     // Resizing buffers + initial value
     m_pixel_active_buffer.resize(width * height, 0);
@@ -257,9 +259,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
     m_render_data.aux_buffers.still_one_ray_active = &m_still_one_ray_active;
     m_render_data.aux_buffers.stop_noise_threshold_converged_count = &m_stop_noise_threshold_count;
 
-    m_render_data.render_settings.DEBUG_SUM1 = &m_DEBUG_SUM1;
-    m_render_data.render_settings.DEBUG_SUM2 = &m_DEBUG_SUM2;
-    m_render_data.render_settings.DEBUG_SUM3 = &m_DEBUG_SUM3;
+    m_render_data.render_settings.DEBUG_SUMS = m_DEBUG_SUMS.data();
     m_render_data.render_settings.DEBUG_SUM_COUNT = &m_DEBUG_SUM_COUNT;
     m_render_data.render_settings.DEBUG_NEIGHBOR_DISTRIBUTION = m_debug_neighbor_distribution.data();
 
