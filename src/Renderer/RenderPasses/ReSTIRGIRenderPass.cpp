@@ -164,7 +164,7 @@ bool ReSTIRGIRenderPass::launch()
 	int2 render_resolution = m_renderer->m_render_resolution;
 	void* launch_args[] = { m_render_data };
 
-	if (m_render_data->render_settings.sample_number == 65530)
+	if (m_render_data->render_settings.sample_number == m_render_data->render_settings.stop_value)
 	{
 		std::ofstream ioutput_file("output.txt");
 		std::vector<int> data = m_renderer->m_DEBUG_NEIGHBOR_DISTRIBUTION.download_data();

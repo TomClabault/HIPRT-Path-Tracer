@@ -116,32 +116,24 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
         }
     }
 
+    ////if (debug)
+    //{
+    //    if (hippt::abs(x - render_data.render_settings.debug_x) <= render_data.render_settings.debug_size && hippt::abs(y - render_data.render_settings.debug_y) <= render_data.render_settings.debug_size)
+    //    {
+    //        hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM1, resampling_reservoir.sample.outgoing_radiance_to_visible_point.r);
+    //        hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM2, resampling_reservoir.sample.outgoing_radiance_to_visible_point.g);
+    //        hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM3, resampling_reservoir.sample.outgoing_radiance_to_visible_point.b);
+    //    }
+    //}
+
     MISBSDFRayReuse mis_reuse;
     if (render_data.render_settings.enable_direct > 0)
         camera_outgoing_radiance += estimate_direct_lighting(render_data, ray_payload, closest_hit_info, view_direction, x, y, mis_reuse, random_number_generator);
 
-    static float debug_color_sum_r = 0.0f;
-    static float debug_color_sum_g = 0.0f;
-    static float debug_color_sum_b = 0.0f;
-    static float DEBUG_sUM = 0.0f;
-    static float DEBUG_sUM_UCW = 0.0f;
-    static int DEBUG_scount = 0.0f;
 
     if (x == render_data.render_settings.debug_x && y == render_data.render_settings.debug_y)
-    {
-        debug_color_sum_r += DEBUG_COLOR.r;
-        debug_color_sum_g += DEBUG_COLOR.g;
-        debug_color_sum_b += DEBUG_COLOR.b;
-        DEBUG_sUM += DEBUG_COLOR.r;
-        DEBUG_scount++;
-
-        if (render_data.render_settings.sample_number > 4090)
-        {
-            /*printf("DEBUG_COLOR average: [%f, %f, %f]\n", debug_color_sum_r / DEBUG_scount, debug_color_sum_g / DEBUG_scount, debug_color_sum_b / DEBUG_scount);
-            printf("DEBUG_color: [%f, %f, %f], Average target: %f\n\n", DEBUG_COLOR.r, DEBUG_COLOR.g, DEBUG_COLOR.b, DEBUG_sUM / DEBUG_scount);*/
-        }
-    }
-
+        if (render_data.render_settings.sample_number > render_data.render_settings.stop_value)
+            printf("Average 1: %f\nAverage 3: %f\nAverage 3: %f\n\n\n", hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM1, 0.0f) / hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, 0), hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM2, 0.0f) / hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, 0), hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM3, 0.0f) / hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, 0));
 
     ray_payload.ray_color = camera_outgoing_radiance;
     if (!sanity_check(render_data, ray_payload, x, y))
