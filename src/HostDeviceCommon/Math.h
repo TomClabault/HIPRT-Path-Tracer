@@ -166,17 +166,21 @@ namespace hippt
 	 * Reads the 32-bit or 64-bit word 'old' located at 'address' in global or shared memory,
 	 * computes the maximum of 'old' and 'value', and stores the result back to memory at the
 	 * same address.
+	 * 
+	 * The function returns 'old'
 	 */
 	template <typename T>
-	__device__ void atomic_max(T* address, T value) { atomicMax(address, value); }
+	__device__ T atomic_max(T* address, T value) { return atomicMax(address, value); }
 
 	/**
 	 * Reads the 32-bit or 64-bit word 'old' located at 'address' in global or shared memory,
 	 * computes the minimum of 'old' and 'value', and stores the result back to memory at the
 	 * same address.
+	 * 
+	 * The function returns 'old'
 	 */
 	template <typename T> 
-	__device__ void atomic_min(T* address, T value) { atomicMin(address, value); }
+	__device__ T atomic_min(T* address, T value) { return atomicMin(address, value); }
 
 	template <typename T>
 	__device__ T atomic_fetch_add(T* address, T increment) { return atomicAdd(address, increment); }
@@ -355,24 +359,32 @@ namespace hippt
 	 * Reads the 32-bit or 64-bit word 'old' located at 'address' in global or shared memory, 
 	 * computes the maximum of 'old' and 'value', and stores the result back to memory at the 
 	 * same address. 
+	 * 
+	 * The function returns 'old'
 	 */
 	template <typename T>
-	void atomic_max(std::atomic<T>* address, T value)
+	T atomic_max(std::atomic<T>* address, T value)
 	{
 		T prev_value = *address;
 		while (prev_value < value && !address->compare_exchange_weak(prev_value, value)) {}
+
+		return prev_value;
 	}
 
 	/**
 	 * Reads the 32-bit or 64-bit word 'old' located at 'address' in global or shared memory,
 	 * computes the minimum of 'old' and 'value', and stores the result back to memory at the
 	 * same address.
+	 * 
+	 * The function returns 'old'
 	 */
 	template <typename T>
-	void atomic_min(std::atomic<T>* address, T value)
+	T atomic_min(std::atomic<T>* address, T value)
 	{
 		T prev_value = *address;
 		while (prev_value > value && !address->compare_exchange_weak(prev_value, value)) {}
+		
+		return prev_value;
 	}
 
 	template <typename T>
