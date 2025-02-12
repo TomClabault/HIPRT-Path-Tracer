@@ -314,17 +314,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 				//hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, 1);// hippt::square(render_data.render_settings.debug_size * 2 + 1)* render_data.render_settings.debug_count_multiplier);
 				hippt::atomic_exchange(render_data.render_settings.DEBUG_SUM_COUNT, 1);
 
-				/**
-				* normal denom: 1.761322
-				* M: 1.761320
-				  target funrttion: 0.020495
-				  weight sum: 0.116720
-				  UCW: 31.172533
-				*/
-
-				hippt::atomic_max(render_data.render_settings.DEBUG_SUM1, spatial_reuse_output_reservoir.UCW);
-				hippt::atomic_min(render_data.render_settings.DEBUG_SUM2, spatial_reuse_output_reservoir.sample.target_function);
-				hippt::atomic_max(render_data.render_settings.DEBUG_SUM3, spatial_reuse_output_reservoir.weight_sum);
+				float new_max = hippt::atomic_max(render_data.render_settings.DEBUG_SUM1, spatial_reuse_output_reservoir.UCW);
+				if (new_max == spatial_reuse_output_reservoir.UCW)
+				{
+					hippt::atomic_exchange(render_data.render_settings.DEBUG_SUM2, spatial_reuse_output_reservoir.sample.target_function);
+					hippt::atomic_exchange(render_data.render_settings.DEBUG_SUM3, spatial_reuse_output_reservoir.weight_sum);
+				}
 			}
 		}
 	}
