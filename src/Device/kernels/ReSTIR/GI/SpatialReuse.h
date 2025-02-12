@@ -68,7 +68,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 		//rotation_theta = M_TWO_PI * random_number_generator();
 	else
 		rotation_theta = 0.0f;
-	float2 cos_sin_theta_rotation = make_float2(cos(rotation_theta), sin(rotation_theta));
+	float2 cos_sin_theta_rotation = make_float2(cosf(rotation_theta), sinf(rotation_theta));
 
 	ReSTIRGIReservoir center_pixel_reservoir = input_reservoir_buffer[center_pixel_index];
 	if ((center_pixel_reservoir.M <= 1) && render_data.render_settings.restir_gi_settings.common_spatial_pass.do_disocclusion_reuse_boost)
@@ -101,8 +101,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	// we can use the last iteration of the loop to resample ourselves (the center pixel)
 	// 
 	// See the implementation of get_spatial_neighbor_pixel_index() in ReSTIR/UtilsSpatial.h
-	if (x == render_data.render_settings.debug_x && y == render_data.render_settings.debug_y)
-		hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, hippt::square(render_data.render_settings.debug_size * 2 + 1) * render_data.render_settings.debug_count_multiplier);
+	/*if (x == render_data.render_settings.debug_x && y == render_data.render_settings.debug_y)
+		hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, hippt::square(render_data.render_settings.debug_size * 2 + 1) * render_data.render_settings.debug_count_multiplier);*/
 	for (int neighbor_index = start_index; neighbor_index < reused_neighbors_count + 1; neighbor_index++)
 	{
 		const bool is_center_pixel = neighbor_index == reused_neighbors_count;
@@ -167,18 +167,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 			//		target_function_at_center = ReSTIR_GI_evaluate_target_function<KERNEL_OPTION_FALSE>(render_data, neighbor_reservoir.sample, center_pixel_surface, random_number_generator);
 			//}
 		}
-
-		/*if (x == render_data.render_settings.debug_x && y == render_data.render_settings.debug_y && target_function_at_center > 0.0f)
-		{
-			DEBUG_sUM += target_function_at_center;
-			DEBUG_scount++;
-
-			if (render_data.render_settings.sample_number > 4090)
-			{
-				printf("Average target: %f\n", DEBUG_sUM / DEBUG_scount);
-				printf("\n");
-			}
-		}*/
 
 #if ReSTIR_GI_BiasCorrectionWeights == RESTIR_GI_BIAS_CORRECTION_1_OVER_M
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight(neighbor_reservoir.M);
@@ -317,9 +305,29 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 
 	render_data.render_settings.restir_gi_settings.spatial_pass.output_reservoirs[center_pixel_index] = spatial_reuse_output_reservoir;
 
-	if (x == render_data.render_settings.debug_x && y == render_data.render_settings.debug_y)
-		if (render_data.render_settings.sample_number > 65530)
-			printf("Average 1: %f\nAverage 3: %f\nAverage 3: %f\n\n\n", hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM1, 0.0f) / hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, 0), hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM2, 0.0f) / hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, 0), hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM3, 0.0f) / hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, 0));
+	//if (debug)
+	{
+		if (hippt::abs(x - render_data.render_settings.debug_x) <= render_data.render_settings.debug_size && hippt::abs(y - render_data.render_settings.debug_y) <= render_data.render_settings.debug_size)
+		{
+			if (spatial_reuse_output_reservoir.UCW > 0.0f)
+			{
+				//hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, 1);// hippt::square(render_data.render_settings.debug_size * 2 + 1)* render_data.render_settings.debug_count_multiplier);
+				hippt::atomic_exchange(render_data.render_settings.DEBUG_SUM_COUNT, 1);
+
+				/**
+				* normal denom: 1.761322
+				* M: 1.761320
+				  target funrttion: 0.020495
+				  weight sum: 0.116720
+				  UCW: 31.172533
+				*/
+
+				hippt::atomic_max(render_data.render_settings.DEBUG_SUM1, spatial_reuse_output_reservoir.UCW);
+				hippt::atomic_min(render_data.render_settings.DEBUG_SUM2, spatial_reuse_output_reservoir.sample.target_function);
+				hippt::atomic_max(render_data.render_settings.DEBUG_SUM3, spatial_reuse_output_reservoir.weight_sum);
+			}
+		}
+	}
 }
 
 #endif

@@ -152,9 +152,49 @@ namespace hippt
 	__device__ bool is_NaN(const T& v) { return isnan(v); }
 	__device__ bool is_zero(float x) { return x < NEAR_ZERO && x > -NEAR_ZERO; }
 
+	/**
+	 * Reads the 32-bit or 64-bit word old located at the address 'address' 
+	 * in global or shared memory and stores 'value' to memory at the same address. 
+	 * 
+	 * These two operations are performed in one atomic transaction. 
+	 * The function returns old.
+	 */
+	template <typename T>
+	__device__ T atomic_exchange(T* address, T value) { return atomicExch(address, value); }
+
+	/**
+	 * Reads the 32-bit or 64-bit word 'old' located at 'address' in global or shared memory,
+	 * computes the maximum of 'old' and 'value', and stores the result back to memory at the
+	 * same address.
+	 */
+	template <typename T>
+	__device__ void atomic_max(std::atomic<T>* address, T value)
+	{
+		atomicMax(address, value);
+	}
+
+	/**
+	 * Reads the 32-bit or 64-bit word 'old' located at 'address' in global or shared memory,
+	 * computes the minimum of 'old' and 'value', and stores the result back to memory at the
+	 * same address.
+	 */
+	template <typename T>
+	__device__ void atomic_min(std::atomic<T>* address, T value)
+	{
+		atomicMin(address, value);
+	}
+
 	template <typename T>
 	__device__ T atomic_fetch_add(T* address, T increment) { return atomicAdd(address, increment); }
 
+	/**
+	 * Reads the 16/32/64 bit word at the 'address' in global or shared memory, 
+	 * computes(*address == expected ? new_value : *address), and stores the result
+	 * back to memory at the same address. 
+	 * 
+	 * These three operations are performed in one atomic transaction.
+	 * The function returns old (Compare And Swap).
+	 */
 	template <typename T>
 	__device__ T atomic_compare_exchange(T* address, T expected, T new_value) { return atomicCAS(address, expected, new_value); }
 
@@ -307,9 +347,52 @@ namespace hippt
 	inline bool is_NaN (const T& v) { return std::isnan(v); }
 	inline bool is_zero(float x) { return x < NEAR_ZERO && x > -NEAR_ZERO; }
 
+	/**
+	 * Reads the 32-bit or 64-bit word old located at the address 'address'
+	 * in global or shared memory and stores 'value' to memory at the same address.
+	 *
+	 * These two operations are performed in one atomic transaction.
+	 * 
+	 * The function returns old.
+	 */
+	template <typename T>
+	T atomic_exchange(std::atomic<T>* address, T value) { return address->exchange(value); }
+
+	/**
+	 * Reads the 32-bit or 64-bit word 'old' located at 'address' in global or shared memory, 
+	 * computes the maximum of 'old' and 'value', and stores the result back to memory at the 
+	 * same address. 
+	 */
+	template <typename T>
+	void atomic_max(std::atomic<T>* address, T value)
+	{
+		T prev_value = *address;
+		while (prev_value < value && !address->compare_exchange_weak(prev_value, value)) {}
+	}
+
+	/**
+	 * Reads the 32-bit or 64-bit word 'old' located at 'address' in global or shared memory,
+	 * computes the minimum of 'old' and 'value', and stores the result back to memory at the
+	 * same address.
+	 */
+	template <typename T>
+	void atomic_min(std::atomic<T>* address, T value)
+	{
+		T prev_value = *address;
+		while (prev_value > value && !address->compare_exchange_weak(prev_value, value)) {}
+	}
+
 	template <typename T>
 	T atomic_fetch_add(std::atomic<T>* atomic_address, T increment) { return atomic_address->fetch_add(increment); }
 
+	/**
+	 * Reads the 16/32/64 bit word at the 'address' in global or shared memory,
+	 * computes(*address == expected ? new_value : *address), and stores the result
+	 * back to memory at the same address.
+	 *
+	 * These three operations are performed in one atomic transaction.
+	 * The function returns old (Compare And Swap).
+	 */
 	template <typename T>
 	T atomic_compare_exchange(std::atomic<T>* atomic_address, T expected, T new_value) { return atomic_address->compare_exchange_strong(expected, new_value); }
 

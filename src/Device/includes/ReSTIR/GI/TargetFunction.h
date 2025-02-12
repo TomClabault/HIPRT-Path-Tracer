@@ -70,16 +70,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_GI_evaluate_target_function<KERNEL_O
 		incident_light_direction /= distance_to_sample_point;
 	}
 
-	if (debug)
-	{
-		if (hippt::abs(x - render_data.render_settings.debug_x) <= render_data.render_settings.debug_size && hippt::abs(y - render_data.render_settings.debug_y) <= render_data.render_settings.debug_size)
-		{
-			hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM1, sample.sample_point.x);
-			hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM2, sample.sample_point.y);
-			hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM3, sample.sample_point.z);
-		}
-	}
-
 	hiprtRay visibility_ray;
 	visibility_ray.origin = surface.shading_point;
 	visibility_ray.direction = incident_light_direction;
@@ -99,6 +89,16 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_GI_evaluate_target_function<KERNEL_O
 		//bsdf_color /= bsdf_pdf;
 		bsdf_color *= hippt::abs(hippt::dot(surface.shading_normal, incident_light_direction));
 	}
+
+	/*if (debug)
+	{
+		if (hippt::abs(x - render_data.render_settings.debug_x) <= render_data.render_settings.debug_size && hippt::abs(y - render_data.render_settings.debug_y) <= render_data.render_settings.debug_size)
+		{
+			hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM1, hippt::abs(hippt::dot(surface.shading_normal, incident_light_direction)));
+			hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM2, bsdf_pdf);
+			hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM3, (bsdf_color * sample.outgoing_radiance_to_visible_point).luminance());
+		}
+	}*/
 
 	return (bsdf_color * sample.outgoing_radiance_to_visible_point).luminance();
 }
