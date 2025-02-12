@@ -91,6 +91,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 
 	ReSTIRSpatialResamplingMISWeight<ReSTIR_GI_BiasCorrectionWeights, /* IsReSTIRGI */ true> mis_weight_function;
 
+	float DEBUG_SELECTGED_JACBOAIN = 0.0f;
+
 	int reused_neighbors_count = render_data.render_settings.restir_gi_settings.common_spatial_pass.reuse_neighbor_count;
 	int start_index = 0;
 	//if (valid_neighbors_M_sum == 0)
@@ -212,6 +214,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 			// Only used with MIS-like weight
 			selected_neighbor = neighbor_index;
 #endif
+
+			DEBUG_SELECTGED_JACBOAIN = shift_mapping_jacobian;
 		}
 
 		spatial_reuse_output_reservoir.sanity_check(center_pixel_coords);
@@ -314,11 +318,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 				//hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, 1);// hippt::square(render_data.render_settings.debug_size * 2 + 1)* render_data.render_settings.debug_count_multiplier);
 				hippt::atomic_exchange(render_data.render_settings.DEBUG_SUM_COUNT, 1);
 
-				float new_max = hippt::atomic_max(render_data.render_settings.DEBUG_SUM1, spatial_reuse_output_reservoir.UCW);
-				if (new_max == spatial_reuse_output_reservoir.UCW)
+				float new_max = hippt::atomic_max(&render_data.render_settings.DEBUG_SUMS[0], spatial_reuse_output_reservoir.UCW);
+				if (render_data.render_settings.DEBUG_SUMS[0] == spatial_reuse_output_reservoir.UCW)
 				{
-					hippt::atomic_exchange(render_data.render_settings.DEBUG_SUM2, spatial_reuse_output_reservoir.sample.target_function);
-					hippt::atomic_exchange(render_data.render_settings.DEBUG_SUM3, spatial_reuse_output_reservoir.weight_sum);
+					hippt::atomic_exchange(&render_data.render_settings.DEBUG_SUMS[1], spatial_reuse_output_reservoir.sample.target_function);
+					hippt::atomic_exchange(&render_data.render_settings.DEBUG_SUMS[2], spatial_reuse_output_reservoir.weight_sum);
+					hippt::atomic_exchange(&render_data.render_settings.DEBUG_SUMS[3], DEBUG_SELECTGED_JACBOAIN);
 				}
 			}
 		}

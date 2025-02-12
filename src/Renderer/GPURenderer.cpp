@@ -47,9 +47,7 @@ GPURenderer::GPURenderer(std::shared_ptr<HIPRTOrochiCtx> hiprt_oro_ctx, std::sha
 	m_pixels_converged_sample_count_buffer = std::make_shared<OrochiBuffer<int>>();
 	//m_gmon.result_framebuffer = std::make_shared<OpenGLInteropBuffer<ColorRGB32F>>();
 
-	m_DEBUG_SUM1.resize(1);
-	m_DEBUG_SUM2.resize(1);
-	m_DEBUG_SUM3.resize(1);
+	m_DEBUG_SUMS.resize(1024);
 	m_DEBUG_SUM_COUNT.resize(1);
 	//m_DEBUG_NEIGHBOR_DISTRIBUTION.resize(hippt::square(m_render_data.render_settings.restir_gi_settings.common_spatial_pass.reuse_radius));
 	m_DEBUG_NEIGHBOR_DISTRIBUTION.resize(m_render_data.render_settings.precision);
@@ -1117,11 +1115,8 @@ void GPURenderer::update_perf_metrics(std::shared_ptr<PerformanceMetricsComputer
 
 void GPURenderer::reset()
 {
-	float zero_data = 0.0f;
 	int zero_data_int = 0;
-	m_DEBUG_SUM1.upload_data(&zero_data);
-	m_DEBUG_SUM2.upload_data(&zero_data);
-	m_DEBUG_SUM3.upload_data(&zero_data);
+	m_DEBUG_SUMS.memset_whole_buffer(0);
 	m_DEBUG_NEIGHBOR_DISTRIBUTION.memset_whole_buffer(0);
 	m_DEBUG_SUM_COUNT.upload_data(&zero_data_int);
 
@@ -1152,9 +1147,7 @@ void GPURenderer::update_render_data()
 	{
 		m_render_data.GPU_BVH = m_hiprt_scene.geometry.m_geometry;
 
-		m_render_data.render_settings.DEBUG_SUM1 = reinterpret_cast<AtomicType<float>*>(m_DEBUG_SUM1.get_device_pointer());
-		m_render_data.render_settings.DEBUG_SUM2 = reinterpret_cast<AtomicType<float>*>(m_DEBUG_SUM2.get_device_pointer());
-		m_render_data.render_settings.DEBUG_SUM3 = reinterpret_cast<AtomicType<float>*>(m_DEBUG_SUM3.get_device_pointer());
+		m_render_data.render_settings.DEBUG_SUMS = reinterpret_cast<AtomicType<float>*>(m_DEBUG_SUMS.get_device_pointer());
 		m_render_data.render_settings.DEBUG_SUM_COUNT = reinterpret_cast<AtomicType<int>*>(m_DEBUG_SUM_COUNT.get_device_pointer());
 		m_render_data.render_settings.DEBUG_NEIGHBOR_DISTRIBUTION = m_DEBUG_NEIGHBOR_DISTRIBUTION.get_device_pointer();
 
