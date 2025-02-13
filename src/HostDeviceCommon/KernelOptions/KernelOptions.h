@@ -126,7 +126,7 @@
  *	- BSDF_PRINCIPLED
  *		All materials will use the Principled BSDF
  */
-#define BSDFOverride BSDF_LAMBERTIAN
+#define BSDFOverride BSDF_NONE
 
 /**
  * The stack size for handling nested dielectrics
@@ -159,7 +159,7 @@
  *		Uses ReSTIR DI to sample direct lighting at the first bounce in the scene.
  *		Later bounces use the strategy given by ReSTIR_DI_LaterBouncesSamplingStrategy
  */
-#define DirectLightSamplingStrategy LSS_UNIFORM_ONE_LIGHT
+#define DirectLightSamplingStrategy LSS_RIS_BSDF_AND_LIGHT
 
 /**
  * Whether or not to use NEE++ features at all
@@ -228,8 +228,8 @@
  *		Uses ReSTIR GI for resampling a path.
  *		Implementation of [ReSTIR GI: Path Resampling for Real-Time Path Tracing] https://research.nvidia.com/publication/2021-06_restir-gi-path-resampling-real-time-path-tracing
  */
-//#define PathSamplingStrategy PSS_BSDF
-#define PathSamplingStrategy PSS_RESTIR_GI
+#define PathSamplingStrategy PSS_BSDF
+//#define PathSamplingStrategy PSS_RESTIR_GI
 
 /**
  * Whether or not to use a visiblity term in the target function whose PDF we're

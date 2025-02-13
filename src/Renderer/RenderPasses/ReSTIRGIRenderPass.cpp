@@ -155,12 +155,21 @@ bool ReSTIRGIRenderPass::pre_render_update(float delta_time)
 	return render_data_invalidated;
 }
 
+static unsigned int wang_hash(unsigned int seed)
+{
+	seed = (seed ^ 61) ^ (seed >> 16);
+	seed *= 9;
+	seed = seed ^ (seed >> 4);
+	seed *= 0x27d4eb2d;
+	seed = seed ^ (seed >> 15);
+	return seed;
+}
+
 bool ReSTIRGIRenderPass::launch()
 {
 	if (!is_render_pass_used())
 		return false;
 
-	m_render_data->random_number = m_renderer->get_rng_generator().xorshift32();
 	int2 render_resolution = m_renderer->m_render_resolution;
 	void* launch_args[] = { m_render_data };
 
@@ -176,15 +185,21 @@ bool ReSTIRGIRenderPass::launch()
 
 	configure_input_output_buffers();
 
+	m_render_data->random_number = m_renderer->get_rng_generator().xorshift32();
 	if (m_render_data->render_settings.nb_bounces > 0)
 		// We only need to trace paths for the initial candidates if we have
 		// more than 1 bounce
 		m_kernels[ReSTIRGIRenderPass::RESTIR_GI_INITIAL_CANDIDATES_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, render_resolution.x, render_resolution.y, launch_args, m_renderer->get_main_stream());
 
+	//m_render_data->random_number = m_renderer->get_rng_generator().xorshift32();
 	if (m_renderer->get_render_settings().restir_gi_settings.common_temporal_pass.do_temporal_reuse_pass)
 		m_kernels[ReSTIRGIRenderPass::RESTIR_GI_TEMPORAL_REUSE_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, render_resolution.x, render_resolution.y, launch_args, m_renderer->get_main_stream());
+
+	//m_render_data->random_number = m_renderer->get_rng_generator().xorshift32();
 	if (m_renderer->get_render_settings().restir_gi_settings.common_spatial_pass.do_spatial_reuse_pass)
 		m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SPATIAL_REUSE_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, render_resolution.x, render_resolution.y, launch_args, m_renderer->get_main_stream());
+
+	//m_render_data->random_number = m_renderer->get_rng_generator().xorshift32();
 	m_kernels[ReSTIRGIRenderPass::RESTIR_GI_SHADING_KERNEL_ID]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, render_resolution.x, render_resolution.y, launch_args, m_renderer->get_main_stream());
 
 	return true;

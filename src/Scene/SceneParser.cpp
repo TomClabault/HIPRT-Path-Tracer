@@ -430,8 +430,8 @@ void SceneParser::read_material_properties(aiMaterial* mesh_material, CPUMateria
 
     /*renderer_material.roughness = 0.0f;
     renderer_material.metallic = 1.0f;*/
-    renderer_material.specular = 0.0f;
-    renderer_material.base_color = ColorRGB32F(0.1f);
+    /*renderer_material.specular = 0.0f;
+    renderer_material.base_color = ColorRGB32F(0.1f);*/
 
     if (std::string(mesh_material->GetName().C_Str()).find("left") != std::string::npos)
     {
