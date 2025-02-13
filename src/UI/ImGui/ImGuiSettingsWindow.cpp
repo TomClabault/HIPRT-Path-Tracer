@@ -2416,7 +2416,8 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 			// If the user modified the number of sets, displaying an "Apply" button
 			if (number_of_sets != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT))
 			{
-				ImGui::SameLine();
+				ImGui::TreePush("GMoN Apply number of sets tree");
+
 				if (ImGui::Button("Apply"))
 				{
 					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT, number_of_sets);
@@ -2424,6 +2425,8 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 					m_renderer->recompile_kernels();
 					m_render_window->set_render_dirty(true);
 				}
+
+				ImGui::TreePop();
 			}
 
 			if (ImGui::SliderFloat("GMoN blend factor", &gmon_data.gmon_blend_factor, 0.0f, 1.0f))

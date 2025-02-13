@@ -47,7 +47,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
     if (render_data.render_settings.freeze_random)
         seed = wang_hash(pixel_index + 1);
     else
-        seed = wang_hash((pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
+        //seed = wang_hash((pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
+        seed = wang_hash((pixel_index + 1) * (render_data.render_settings.sample_number + 1) ^ render_data.random_number);
+        //seed = wang_hash((pixel_index + 1));
     Xorshift32Generator random_number_generator(seed);
 
     // Initializing the closest hit info the information from the camera ray pass

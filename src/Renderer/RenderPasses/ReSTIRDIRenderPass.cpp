@@ -368,7 +368,7 @@ void ReSTIRDIRenderPass::launch_initial_candidates_pass()
 
 void ReSTIRDIRenderPass::configure_temporal_pass()
 {
-	m_render_data->random_number = m_renderer->get_rng_generator().xorshift32();
+	//m_render_data->random_number = m_renderer->get_rng_generator().xorshift32();
 	m_render_data->render_settings.restir_di_settings.common_temporal_pass.permutation_sampling_random_bits = m_renderer->get_rng_generator().xorshift32();
 
 	// The input of the temporal pass is the output of last frame's
@@ -411,7 +411,7 @@ void ReSTIRDIRenderPass::launch_temporal_reuse_pass()
 
 void ReSTIRDIRenderPass::configure_temporal_pass_for_fused_spatiotemporal()
 {
-	m_render_data->random_number = m_renderer->get_rng_generator().xorshift32();
+	//m_render_data->random_number = m_renderer->get_rng_generator().xorshift32();
 	m_render_data->render_settings.restir_di_settings.common_temporal_pass.permutation_sampling_random_bits = m_renderer->get_rng_generator().xorshift32();
 
 	// The input of the temporal pass is the output of last frame's
@@ -425,7 +425,7 @@ void ReSTIRDIRenderPass::configure_temporal_pass_for_fused_spatiotemporal()
 
 void ReSTIRDIRenderPass::configure_spatial_pass(int spatial_pass_index)
 {
-	m_render_data->random_number = m_renderer->get_rng_generator().xorshift32();
+	//m_render_data->random_number = m_renderer->get_rng_generator().xorshift32();
 	m_render_data->render_settings.restir_di_settings.common_spatial_pass.spatial_pass_index = spatial_pass_index;
 
 	if (spatial_pass_index == 0)
@@ -464,7 +464,7 @@ void ReSTIRDIRenderPass::configure_spatial_pass_for_fused_spatiotemporal(int spa
 {
 	ReSTIRDISettings& restir_settings = m_render_data->render_settings.restir_di_settings;
 	restir_settings.common_spatial_pass.spatial_pass_index = spatial_pass_index;
-	m_render_data->random_number = m_renderer->get_rng_generator().xorshift32();
+	//m_render_data->random_number = m_renderer->get_rng_generator().xorshift32();
 
 	if (spatial_pass_index == 0)
 	{
