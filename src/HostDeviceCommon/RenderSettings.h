@@ -38,7 +38,7 @@ struct HIPRTRenderSettings
 	int debug_count_multiplier = 2;
 	int precision = 256;
 	int stop_value = 65530 * 2;
-	int enable_direct = 1;
+	int enable_direct = 0;
 
 	// If true, then the kernels are allowed to modify the status buffers (how many pixels have converged so far, ...)
 	// 
@@ -86,7 +86,7 @@ struct HIPRTRenderSettings
 	int samples_per_frame = 1;
 	// Maximum number of bounces of rays in the scene. 
 	// 1 is direct light only.
-	int nb_bounces = 0;
+	int nb_bounces = 1;
 
 	bool use_russian_roulette = true;
 	// After how many bounces can russian roulette kick in?
