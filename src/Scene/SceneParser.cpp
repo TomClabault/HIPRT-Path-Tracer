@@ -28,7 +28,8 @@ void SceneParser::parse_scene_file(std::string scene_filepath, Assimp::Importer&
     if (scene == nullptr)
     {
         std::cerr << assimp_importer.GetErrorString() << std::endl;
-        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_WARNING, "Falling back to default scene...");
+        std::string message = "Falling back to default scene...: " + std::string(CommandlineArguments::DEFAULT_SCENE);
+        g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_WARNING, message.c_str());
 
         scene = assimp_importer.ReadFile(CommandlineArguments::DEFAULT_SCENE, aiPostProcessSteps::aiProcess_PreTransformVertices | aiPostProcessSteps::aiProcess_Triangulate);
         scene_filepath = CommandlineArguments::DEFAULT_SCENE;
