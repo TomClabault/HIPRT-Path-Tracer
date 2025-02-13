@@ -132,7 +132,20 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int get_spatial_neighbor_pixel_index(const HIPRTR
 			//render_data.render_settings.DEBUG_NEIGHBOR_DISTRIBUTION[neighbor_offset_int.x + spatial_pass_settings.reuse_radius - 1 + (neighbor_offset_int.y + spatial_pass_settings.reuse_radius - 1) * spatial_pass_settings.reuse_radius]++;
 		}
 
-		if (neighbor_pixel_coords.x < 0 || neighbor_pixel_coords.x >= render_data.render_settings.render_resolution.x || 
+		//if (neighbor_pixel_coords.x < 0 || neighbor_pixel_coords.y < 0)
+		//{
+		//	// Rejecting the sample if it's outside of the viewport
+		//	//return -1;
+		//	neighbor_pixel_coords.x = hippt::abs(neighbor_pixel_coords.x);
+		//	neighbor_pixel_coords.y = hippt::abs(neighbor_pixel_coords.y);
+		//}
+		//else if (neighbor_pixel_coords.x >= render_data.render_settings.render_resolution.x || neighbor_pixel_coords.y >= render_data.render_settings.render_resolution.y)
+		//{
+		//	neighbor_pixel_coords.x = render_data.render_settings.render_resolution.x - (render_data.render_settings.render_resolution.x - neighbor_pixel_coords.x);
+		//	neighbor_pixel_coords.y = render_data.render_settings.render_resolution.y - (render_data.render_settings.render_resolution.y - neighbor_pixel_coords.y);
+		//}
+
+		if (neighbor_pixel_coords.x < 0 || neighbor_pixel_coords.x >= render_data.render_settings.render_resolution.x ||
 			neighbor_pixel_coords.y < 0 || neighbor_pixel_coords.y >= render_data.render_settings.render_resolution.y)
 			// Rejecting the sample if it's outside of the viewport
 			return -1;
