@@ -136,12 +136,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
 #else
         if (render_data.render_settings.sample_number > render_data.render_settings.stop_value)
 #endif
-            printf("Average 1: %e\nAverage 2: %e\nAverage 3: %e\nAverage 4: %e\nAverage 5: %e\n\n",
+            printf("Average 1: %e\nAverage 2: %e\nAverage 3: %e\nAverage 4: %e\nAverage 5: %e\nUCW: %e\n\n",
                 hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[0], 0.0f) / hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, 0),
                 hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[1], 0.0f) / hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, 0),
                 hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[2], 0.0f) / hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, 0),
                 hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[3], 0.0f) / hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, 0),
-                hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[4], 0.0f) / hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, 0));
+                hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[4], 0.0f) / hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, 0),
+                resampling_reservoir.UCW);
 
     ray_payload.ray_color = camera_outgoing_radiance;
     if (!sanity_check(render_data, ray_payload, x, y))
