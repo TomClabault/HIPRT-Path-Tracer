@@ -33,7 +33,7 @@ struct HIPRTRenderSettings
 	AtomicType<float>* DEBUG_SUMS = nullptr;
 	int* DEBUG_NEIGHBOR_DISTRIBUTION = nullptr;
 	bool debug_lambertian = false;
-	int debug_x = 20, debug_y = 265;
+	int debug_x = 20, debug_y = 150;
 	int debug_size = 2;
 	int debug_count_multiplier = 2;
 	int precision = 256;

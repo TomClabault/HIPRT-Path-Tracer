@@ -12,7 +12,7 @@
 #include "Device/includes/RayPayload.h"
 
 /**
- * The random number generator passed here is used only in case 
+ * The 'random_number_generator' passed here is used only in case 
  * monte-carlo integration of the directional albedo is enabled
  * 
  * If 'update_ray_volume_state' is passed as true, the givenargument is passed as nullptr, the volume state of the ray won't
