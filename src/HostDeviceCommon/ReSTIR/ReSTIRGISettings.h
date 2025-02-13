@@ -39,6 +39,7 @@ enum ReSTIRGIDebugView
 	FINAL_RESERVOIR_UCW = 1,
 	TARGET_FUNCTION = 2,
 	WEIGHT_SUM = 3,
+	M_COUNT = 4,
 };
 
 struct ReSTIRGISettings : public ReSTIRCommonSettings

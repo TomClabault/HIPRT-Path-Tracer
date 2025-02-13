@@ -1268,7 +1268,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				{
 					ImGui::TreePush("ReSTIR GI options tree");
 
-					const char* debug_view_items[] = { "No debug view", "- Final reservoir UCW", "- Final reservoir target function", "- Final reservoir weight sum"};
+					const char* debug_view_items[] = { "No debug view", "- Final reservoir UCW", "- Final reservoir target function", "- Final reservoir weight sum" , "- Final reservoir M" };
 					if (ImGui::Combo("Debug view", (int*)&render_settings.restir_gi_settings.debug_view, debug_view_items, IM_ARRAYSIZE(debug_view_items)))
 						m_render_window->set_render_dirty(true);
 					if (ImGui::SliderFloat("Debug view scale factor", &render_settings.restir_gi_settings.debug_view_scale_factor, 0.0f, 1.0f))

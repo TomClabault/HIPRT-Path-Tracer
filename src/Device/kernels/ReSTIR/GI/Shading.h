@@ -154,6 +154,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
         path_tracing_accumulate_color(render_data, ColorRGB32F(resampling_reservoir.sample.target_function) * render_data.render_settings.restir_gi_settings.debug_view_scale_factor, pixel_index);
     else if (render_data.render_settings.restir_gi_settings.debug_view == ReSTIRGIDebugView::WEIGHT_SUM)
         path_tracing_accumulate_color(render_data, ColorRGB32F(resampling_reservoir.weight_sum) * render_data.render_settings.restir_gi_settings.debug_view_scale_factor, pixel_index);
+    else if (render_data.render_settings.restir_gi_settings.debug_view == ReSTIRGIDebugView::M_COUNT)
+        path_tracing_accumulate_color(render_data, ColorRGB32F(resampling_reservoir.M) * render_data.render_settings.restir_gi_settings.debug_view_scale_factor, pixel_index);
     else
         // Regular output
         path_tracing_accumulate_color(render_data, camera_outgoing_radiance, pixel_index);
