@@ -140,7 +140,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 
 		float shift_mapping_jacobian = 1.0f;
 		ReSTIRGIReservoir neighbor_reservoir = input_reservoir_buffer[neighbor_pixel_index];
-		ReSTIRSurface neighbor_surface = get_pixel_surface(render_data, neighbor_pixel_index, random_number_generator);
 		if (neighbor_reservoir.UCW > 0.0f && !is_center_pixel && !neighbor_reservoir.sample.is_envmap_path())
 			// Only attempting the shift if the neighbor reservoir is valid
 			// 
@@ -311,22 +310,18 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 
 	//if (debug)
 	{
-		if (hippt::abs(x - render_data.render_settings.debug_x) <= render_data.render_settings.debug_size && hippt::abs(y - render_data.render_settings.debug_y) <= render_data.render_settings.debug_size)
+		if (hippt::abs(x - render_data.render_settings.debug_x) <= render_data.render_settings.debug_size && 
+			hippt::abs(y - render_data.render_settings.debug_y) <= render_data.render_settings.debug_size)
 		{
-			//if (spatial_reuse_output_reservoir.UCW > 0.0f)
+			if (spatial_reuse_output_reservoir.M == 1)
 			{
-				// hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, 1);// hippt::square(render_data.render_settings.debug_size * 2 + 1)* render_data.render_settings.debug_count_multiplier);
 				hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, 1);
 
-				hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[0], spatial_reuse_output_reservoir.sample.target_function);
-				/*float new_max = hippt::atomic_max(&render_data.render_settings.DEBUG_SUMS[0], spatial_reuse_output_reservoir.UCW);
-				if (render_data.render_settings.DEBUG_SUMS[0] == spatial_reuse_output_reservoir.UCW)
-				{
-					hippt::atomic_exchange(&render_data.render_settings.DEBUG_SUMS[1], spatial_reuse_output_reservoir.sample.target_function);
-					hippt::atomic_exchange(&render_data.render_settings.DEBUG_SUMS[2], spatial_reuse_output_reservoir.weight_sum);
-					hippt::atomic_exchange(&render_data.render_settings.DEBUG_SUMS[3], DEBUG_SELECTGED_JACBOAIN);
-					hippt::atomic_exchange(&render_data.render_settings.DEBUG_SUMS[4], spatial_reuse_output_reservoir.sample.outgoing_radiance_to_visible_point.luminance());
-				}*/
+				hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[0], center_pixel_reservoir.UCW);
+				hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[1], center_pixel_reservoir.sample.target_function);
+				hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[2], center_pixel_reservoir.sample.outgoing_radiance_to_visible_point.g);
+				hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[3], spatial_reuse_output_reservoir.sample.outgoing_radiance_to_visible_point.g);
+				hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[4], spatial_reuse_output_reservoir.sample.DEBUG_VALUE);
 			}
 		}
 	}

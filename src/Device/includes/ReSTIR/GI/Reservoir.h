@@ -32,6 +32,8 @@ struct ReSTIRGISample
     float3 sample_point_normal = make_float3(-1.0f, -1.0f, -1.0f);
     float3 sample_point_geometric_normal = make_float3(-1.0f, -1.0f, -1.0f);
 
+    float DEBUG_VALUE = 0.0f;
+
     ColorRGB32F outgoing_radiance_to_visible_point;
 
     BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
@@ -95,6 +97,7 @@ struct ReSTIRGIReservoir
         {
             sample = other_reservoir.sample;
             sample.target_function = target_function;
+            sample.DEBUG_VALUE = other_reservoir.UCW;
 
             return true;
         }
