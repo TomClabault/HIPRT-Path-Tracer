@@ -82,12 +82,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	// Only used with MIS-like weight
 	int selected_neighbor = 0;
 #endif
-	/*int neighbor_heuristics_cache = 0;
+	int neighbor_heuristics_cache = 0;
 	int valid_neighbors_count = 0;
 	int valid_neighbors_M_sum = 0;
 	count_valid_spatial_neighbors<true>(render_data,
 		center_pixel_surface, center_pixel_coords, cos_sin_theta_rotation, 
-		valid_neighbors_count, valid_neighbors_M_sum, neighbor_heuristics_cache);*/
+		valid_neighbors_count, valid_neighbors_M_sum, neighbor_heuristics_cache);
 
 	ReSTIRSpatialResamplingMISWeight<ReSTIR_GI_BiasCorrectionWeights, /* IsReSTIRGI */ true> mis_weight_function;
 
@@ -313,15 +313,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 		if (hippt::abs(x - render_data.render_settings.debug_x) <= render_data.render_settings.debug_size && 
 			hippt::abs(y - render_data.render_settings.debug_y) <= render_data.render_settings.debug_size)
 		{
-			if (spatial_reuse_output_reservoir.M == 1)
+			if (valid_neighbors_count == 1)
 			{
 				hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, 1);
 
 				hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[0], center_pixel_reservoir.UCW);
 				hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[1], center_pixel_reservoir.sample.target_function);
 				hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[2], center_pixel_reservoir.sample.outgoing_radiance_to_visible_point.g);
-				hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[3], spatial_reuse_output_reservoir.sample.outgoing_radiance_to_visible_point.g);
-				hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[4], spatial_reuse_output_reservoir.sample.DEBUG_VALUE);
 			}
 		}
 	}
