@@ -80,8 +80,6 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float ReSTIR_GI_evaluate_target_function<KERNEL_O
 	else if (hippt::dot(incident_light_direction, surface.shading_normal) <= 0.001f)
 		return 0.0f;
 
-	//return sample.outgoing_radiance_to_visible_point.luminance();
-
 	float bsdf_pdf;
 	ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, surface.material, surface.ray_volume_state, false, surface.view_direction, surface.shading_normal, surface.geometric_normal, incident_light_direction, bsdf_pdf, random_number_generator, 0, sample.incident_light_info);
 	if (bsdf_pdf > 0.0f)

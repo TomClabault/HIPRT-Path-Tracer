@@ -12,6 +12,8 @@
 #include "UI/DisplayView/DisplaySettings.h"
 #include "UI/DisplayView/DisplayViewEnum.h"
 
+#define MULTIPLIER 2
+
 struct ApplicationSettings
 {
 	static constexpr bool DENOISER_USE_INTEROP_BUFFERS_DEFAULT = false;
@@ -79,7 +81,7 @@ struct ApplicationSettings
 
 	// We stop rendering when this number of sample is reached.
 	// 0 is no limit
-	int max_sample_count = 65535 * 2;
+	int max_sample_count = 65535 * MULTIPLIER;
 	// We stop rendering when the render has been running for that long.
 	// In seconds. 0 is no limit
 	float max_render_time = 0.0f;

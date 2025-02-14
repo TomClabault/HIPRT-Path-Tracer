@@ -445,6 +445,9 @@ void SceneParser::read_material_properties(aiMaterial* mesh_material, CPUMateria
         renderer_material.base_color = ColorRGB32F(1.0f, 0.0f, 0.0f);
     }
 
+    if (!renderer_material.emission.is_black())
+        renderer_material.emission *= 15.0f;
+
     renderer_material.make_safe();
 }
 
