@@ -111,6 +111,9 @@ HIPRT_HOST_DEVICE HIPRT_INLINE float3 normal_mapping(const HIPRTRenderData& rend
 
 HIPRT_HOST_DEVICE HIPRT_INLINE float3 get_shading_normal(const HIPRTRenderData& render_data, const float3& geometric_normal, TriangleIndices triangle_vertex_indices, TriangleTexcoords triangle_texcoords, int primitive_index, const float2& uv, const float2& interpolated_texcoords)
 {
+    if (!render_data.render_settings.do_normal_mapping)
+        return geometric_normal;
+
     // Do smooth shading first if we have vertex normals
     float3 surface_normal;
     if (render_data.buffers.has_vertex_normals[triangle_vertex_indices.x])

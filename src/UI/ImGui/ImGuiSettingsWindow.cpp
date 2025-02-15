@@ -46,6 +46,7 @@ void ImGuiSettingsWindow::draw()
 	draw_sampling_panel();
 	draw_denoiser_panel();
 	draw_post_process_panel();
+	draw_quality_panel();
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	ImGui::SeparatorText("Other settings");
@@ -358,61 +359,6 @@ void ImGuiSettingsWindow::draw_render_settings_panel()
 
 		}
 		// Stopping condition tree
-		ImGui::TreePop();
-	}
-
-	if (ImGui::CollapsingHeader("Nested dielectrics"))
-	{
-		ImGui::TreePush("Nested dielectrics tree");
-
-		std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
-
-		static int nested_dielectrics_stack_size = NestedDielectricsStackSize;
-		if (ImGui::SliderInt("Stack Size", &nested_dielectrics_stack_size, 3, 8))
-			nested_dielectrics_stack_size = std::max(1, nested_dielectrics_stack_size);
-		ImGui::Text("Max nested dielectrics: %d", nested_dielectrics_stack_size - 3);
-		ImGuiRenderer::show_help_marker("How many nested dielectrics objects can be present in the scene with the "
-			"current nested dielectrics stack size");
-
-		if (nested_dielectrics_stack_size != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::NESTED_DIELETRCICS_STACK_SIZE_OPTION))
-		{
-			ImGui::TreePush("Apply button nested dielectric stack size");
-			if (ImGui::Button("Apply"))
-			{
-				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::NESTED_DIELETRCICS_STACK_SIZE_OPTION, nested_dielectrics_stack_size);
-
-				m_renderer->recompile_kernels();
-				m_renderer->resize_g_buffer_ray_volume_states();
-				m_render_window->set_render_dirty(true);
-			}
-			ImGui::TreePop();
-		}
-
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
-		ImGui::TreePop();
-	}
-
-	if (ImGui::CollapsingHeader("Alpha Testing"))
-	{
-		ImGui::TreePush("Alpha testing tree");
-
-		if (ImGui::Checkbox("Do alpha testing", &render_settings.do_alpha_testing))
-			m_render_window->set_render_dirty(true);
-		ImGui::Dummy(ImVec2(0.0f, 20.0f));
-
-		if (ImGui::SliderInt("Max bounce", &render_settings.alpha_testing_indirect_bounce, 0, render_settings.nb_bounces))
-			m_render_window->set_render_dirty(true);
-		ImGuiRenderer::show_help_marker("At what bounce to stop doing alpha testing.\n\n"
-			""
-			"A value of 0 means that alpha testing isn't done at bounce 0 which means that even camera "
-			"rays do not do alpha testing --> alpha testing is disabled.\n\n"
-			""
-			"A value of 1 means that camera rays do alpha testing but the next bounce rays do not do alpha "
-			"testing.\n\n"
-			""
-			"Shadow rays for NEE are also affected by this setting.");
-
 		ImGui::TreePop();
 	}
 
@@ -2361,6 +2307,83 @@ void ImGuiSettingsWindow::toggle_gmon()
 		m_renderer->recompile_kernels();
 
 	m_render_window->set_render_dirty(true);
+}
+
+void ImGuiSettingsWindow::draw_quality_panel()
+{
+	if (!ImGui::CollapsingHeader("Quality settings"))
+		return;
+
+	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
+
+	ImGui::TreePush("Quality settings tree");
+
+	if (ImGui::CollapsingHeader("Nested dielectrics"))
+	{
+		ImGui::TreePush("Nested dielectrics tree");
+
+		std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
+
+		static int nested_dielectrics_stack_size = NestedDielectricsStackSize;
+		if (ImGui::SliderInt("Stack Size", &nested_dielectrics_stack_size, 3, 8))
+			nested_dielectrics_stack_size = std::max(1, nested_dielectrics_stack_size);
+		ImGui::Text("Max nested dielectrics: %d", nested_dielectrics_stack_size - 3);
+		ImGuiRenderer::show_help_marker("How many nested dielectrics objects can be present in the scene with the "
+			"current nested dielectrics stack size");
+
+		if (nested_dielectrics_stack_size != global_kernel_options->get_macro_value(GPUKernelCompilerOptions::NESTED_DIELETRCICS_STACK_SIZE_OPTION))
+		{
+			ImGui::TreePush("Apply button nested dielectric stack size");
+			if (ImGui::Button("Apply"))
+			{
+				global_kernel_options->set_macro_value(GPUKernelCompilerOptions::NESTED_DIELETRCICS_STACK_SIZE_OPTION, nested_dielectrics_stack_size);
+
+				m_renderer->recompile_kernels();
+				m_renderer->resize_g_buffer_ray_volume_states();
+				m_render_window->set_render_dirty(true);
+			}
+			ImGui::TreePop();
+		}
+
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+		ImGui::TreePop();
+	}
+
+	if (ImGui::CollapsingHeader("Alpha Testing"))
+	{
+		ImGui::TreePush("Alpha testing tree");
+
+		if (ImGui::Checkbox("Do alpha testing", &render_settings.do_alpha_testing))
+			m_render_window->set_render_dirty(true);
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+		if (ImGui::SliderInt("Max bounce", &render_settings.alpha_testing_indirect_bounce, 0, render_settings.nb_bounces))
+			m_render_window->set_render_dirty(true);
+		ImGuiRenderer::show_help_marker("At what bounce to stop doing alpha testing.\n\n"
+			""
+			"A value of 0 means that alpha testing isn't done at bounce 0 which means that even camera "
+			"rays do not do alpha testing --> alpha testing is disabled.\n\n"
+			""
+			"A value of 1 means that camera rays do alpha testing but the next bounce rays do not do alpha "
+			"testing.\n\n"
+			""
+			"Shadow rays for NEE are also affected by this setting.");
+
+		ImGui::TreePop();
+	}
+
+	if (ImGui::CollapsingHeader("Normal mapping"))
+	{
+		ImGui::TreePush("Normal mapping tree");
+
+		if (ImGui::Checkbox("Do normal mapping", &render_settings.do_normal_mapping))
+			m_render_window->set_render_dirty(true);
+
+		ImGui::TreePop();
+	}
+
+	ImGui::TreePop();
 }
 
 void ImGuiSettingsWindow::draw_performance_settings_panel()
