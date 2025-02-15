@@ -7,6 +7,7 @@
 #include "UI/RenderWindow.h"
 
 #include "imgui.h"
+#include "misc/cpp/imgui_stdlib.h"
 
 const char* ImGuiObjectsWindow::TITLE = "Objects";
 
@@ -808,16 +809,42 @@ void ImGuiObjectsWindow::draw_objects_panel()
 
 	if (ImGui::CollapsingHeader("All objects"))
 	{
+		static std::string filter_string = "";
+		// This set contains all the ids of materials that should be displayed in the
+		// list box. This list is refined based on the search that the user has typed
+		// in to filter the materials
+		static std::unordered_set<int> filtered_material_indices;
+
 		ImGui::TreePush("All objects tree");
 
-		if (ImGui::BeginListBox("##all_objects", ImVec2(-FLT_MIN, 7 * ImGui::GetTextLineHeightWithSpacing())))
+		// This boolean variable is to decide whether or not we need to populate the
+		// 'accepted_material_indices' set
+		bool first_time = filter_string == "" && filtered_material_indices.size() == 0 && materials.size() > 0;
+		if (ImGui::InputText("Search", &filter_string) || first_time)
+			filtered_material_indices = filter_displayed_materials(materials.size(), material_names, mesh_names, filter_string);
+		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+		if (ImGui::BeginListBox("##all_objects", ImVec2(-FLT_MIN, 15 * ImGui::GetTextLineHeightWithSpacing())))
 		{
-			for (int n = 0; n < materials.size(); n++)
+			for (int material_index = 0; material_index < materials.size(); material_index++)
 			{
-				const bool is_selected = (currently_selected_material_index == n);
-				std::string text = mesh_names[n] + " (" + material_names[n] + ")";
+				if (filter_string != "")
+				{
+					// The user has filtered the materials, checking if the current material
+					// has been filtered out or not.
+					//
+					// The material isn't filtered out (it is accepted) if its index can be found
+					// in the 'accepted_material_indices' set
+					//
+					// If not, the material has been filetered out
+					if (filtered_material_indices.find(material_index) == filtered_material_indices.end())
+						continue;
+				}
+
+				const bool is_selected = (currently_selected_material_index == material_index);
+				std::string text = mesh_names[material_index] + " (" + material_names[material_index] + ")";
 				if (ImGui::Selectable(text.c_str(), is_selected))
-					currently_selected_material_index = n;
+					currently_selected_material_index = material_index;
 
 				// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
 				if (is_selected)
@@ -832,6 +859,12 @@ void ImGuiObjectsWindow::draw_objects_panel()
 
 	if (ImGui::CollapsingHeader("Emissive objects"))
 	{
+		static std::string filter_string = "";
+		// This set contains all the ids of materials that should be displayed in the
+		// list box. This list is refined based on the search that the user has typed
+		// in to filter the materials
+		static std::unordered_set<int> filtered_material_indices;
+
 		ImGui::TreePush("Emissive objects tree");
 
 		static float global_emissive_objects_factor = 1.0f;
@@ -847,18 +880,38 @@ void ImGuiObjectsWindow::draw_objects_panel()
 			m_renderer->update_all_materials(materials);
 			m_render_window->set_render_dirty(true);
 		}
+
+		// This boolean variable is to decide whether or not we need to populate the
+		// 'accepted_material_indices' set
+		bool first_time = filter_string == "" && filtered_material_indices.size() == 0 && materials.size() > 0;
+		if (ImGui::InputText("Search", &filter_string) || first_time)
+			filtered_material_indices = filter_displayed_materials(materials.size(), material_names, mesh_names, filter_string);
+
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 		if (ImGui::BeginListBox("Emissive objects", ImVec2(-FLT_MIN, 7 * ImGui::GetTextLineHeightWithSpacing())))
 		{
-			for (int n = 0; n < materials.size(); n++)
+			for (int material_index = 0; material_index < materials.size(); material_index++)
 			{
-				if (!materials[n].is_emissive())
+				if (!materials[material_index].is_emissive())
 					continue;
 
-				const bool is_selected = (currently_selected_material_index == n);
-				if (ImGui::Selectable(material_names[n].c_str(), is_selected))
-					currently_selected_material_index = n;
+				if (filter_string != "")
+				{
+					// The user has filtered the materials, checking if the current material
+					// has been filtered out or not.
+					//
+					// The material isn't filtered out (it is accepted) if its index can be found
+					// in the 'accepted_material_indices' set
+					//
+					// If not, the material has been filetered out
+					if (filtered_material_indices.find(material_index) == filtered_material_indices.end())
+						continue;
+				}
+
+				const bool is_selected = (currently_selected_material_index == material_index);
+				if (ImGui::Selectable(material_names[material_index].c_str(), is_selected))
+					currently_selected_material_index = material_index;
 
 				// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
 				if (is_selected)
@@ -1196,6 +1249,27 @@ void ImGuiObjectsWindow::draw_objects_panel()
 
 	ImGui::TreePop();
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+}
+
+std::unordered_set<int> ImGuiObjectsWindow::filter_displayed_materials(int material_count, const std::vector<std::string>& material_names, const std::vector<std::string>& mesh_names, const std::string& filter_string) const
+{
+	std::unordered_set<int> accepted_material_indices;
+	if (filter_string == "")
+	{
+		// If no filter, all materials are accepted so we're adding them all to the set
+		for (int i = 0; i < material_count; i++)
+			accepted_material_indices.insert(i);
+
+		return accepted_material_indices;
+	}
+
+	// Just pure brute force search...
+	// Will improve if this ever becomes a serious bottleneck
+	for (int material_index = 0; material_index < material_count; material_index++)
+		if (material_names[material_index].find(filter_string) != std::string::npos || mesh_names[material_index].find(filter_string) != std::string::npos)
+			accepted_material_indices.insert(material_index);
+
+	return accepted_material_indices;
 }
 
 bool ImGuiObjectsWindow::draw_material_presets(CPUMaterial& material)

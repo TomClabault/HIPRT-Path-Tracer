@@ -20,6 +20,7 @@ public:
 	void draw();
 	void draw_global_objects_panel();
 	void draw_objects_panel();
+	std::unordered_set<int> filter_displayed_materials(int material_count, const std::vector<std::string>& material_names, const std::vector<std::string>& mesh_names, const std::string& filter_string) const;
 	bool draw_material_presets(CPUMaterial& material);
 
 private:
