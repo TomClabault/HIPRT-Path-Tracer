@@ -19,7 +19,7 @@
 
 #ifndef __KERNELCC__
 #include <unordered_map>
-extern std::unordered_map<std::pair<int, int>, int, pair_hash> neighbors_chosen;
+extern std::unordered_map<std::pair<int, int>, int, pair_hash> DEBUG8NEIGHNBOTS_VHOSEN;
 #endif
 
 #ifdef __KERNELCC__

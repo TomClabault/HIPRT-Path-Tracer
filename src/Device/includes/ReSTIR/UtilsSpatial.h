@@ -48,7 +48,7 @@ struct pair_hash {
 	}
 };
 
-std::unordered_map<std::pair<int, int>, int, pair_hash> neighbors_chosen;
+std::unordered_map<std::pair<int, int>, int, pair_hash> DEBUG8NEIGHNBOTS_VHOSEN;
 #endif
 
 /**
@@ -133,7 +133,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int get_spatial_neighbor_pixel_index(const HIPRTR
 		if (debug)
 		{
 			std::lock_guard<std::mutex> lock(map_mutex);
-			neighbors_chosen[std::make_pair<>(neighbor_pixel_coords.x, neighbor_pixel_coords.y)]++;
+			DEBUG8NEIGHNBOTS_VHOSEN[std::make_pair<>(neighbor_pixel_coords.x, neighbor_pixel_coords.y)]++;
 		}
 #endif
 

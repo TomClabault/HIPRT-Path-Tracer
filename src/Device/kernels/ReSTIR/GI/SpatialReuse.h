@@ -63,8 +63,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 	float rotation_theta;
 	if (render_data.render_settings.restir_gi_settings.common_spatial_pass.do_neighbor_rotation)
 		//rotation_theta = M_TWO_PI * Xorshift32Generator((wang_hash((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number) * 2) / 2)();
+		rotation_theta = M_TWO_PI * Xorshift32Generator((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number)();
 		//rotation_theta = M_TWO_PI * Xorshift32Generator(wang_hash((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number))();
-		rotation_theta = M_TWO_PI * Xorshift32Generator(wang_hash((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1) ^ render_data.random_number))();
+		//rotation_theta = M_TWO_PI * Xorshift32Generator(wang_hash((center_pixel_index + 1) * (render_data.render_settings.sample_number + 1) ^ render_data.random_number))();
 		//rotation_theta = M_TWO_PI * random_number_generator();
 	else
 		rotation_theta = 0.0f;
