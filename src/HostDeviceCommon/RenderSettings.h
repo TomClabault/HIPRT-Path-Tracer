@@ -127,7 +127,7 @@ struct HIPRTRenderSettings
 	// (when interacting with the camera)
 	int render_low_resolution_scaling = 2;
 
-	bool enable_adaptive_sampling = false;
+	bool enable_adaptive_sampling = true;
 	// How many samples before the adaptive sampling actually kicks in.
 	// This is useful mainly for the per-pixel adaptive sampling method
 	// where you want to be sure that each pixel in the image has had enough
@@ -192,7 +192,7 @@ struct HIPRTRenderSettings
 	// testing
 	//
 	// Shadow rays for NEE are also affected by this setting
-	int alpha_testing_indirect_bounce = 1;
+	int alpha_testing_indirect_bounce = 2;
 
 	// Whether or not to do normal mapping at all
 	// If false, geometric normals will always be used
