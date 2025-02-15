@@ -194,6 +194,10 @@ struct HIPRTRenderSettings
 	// Shadow rays for NEE are also affected by this setting
 	int alpha_testing_indirect_bounce = 1;
 
+	// Whether or not to do normal mapping at all
+	// If false, geometric normals will always be used
+	bool do_normal_mapping = true;
+
 	// Settings for RIS (direct light sampling)
 	RISSettings ris_settings;
 

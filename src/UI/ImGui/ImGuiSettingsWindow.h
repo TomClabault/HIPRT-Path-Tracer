@@ -47,6 +47,7 @@ private:
 
 	void draw_denoiser_panel();
 	void draw_post_process_panel();
+	void draw_quality_panel();
 
 	void toggle_gmon();
 
