@@ -1263,10 +1263,21 @@ std::unordered_set<int> ImGuiObjectsWindow::filter_displayed_materials(int mater
 		return accepted_material_indices;
 	}
 
+	auto case_insensitive_string_find = [](const std::string& haystack, const std::string& needle)
+	{
+		auto found = std::search(
+			haystack.begin(), haystack.end(), 
+			needle.begin(), needle.end(), 
+			[](unsigned char char1, unsigned char char2) { return std::toupper(char1) == std::toupper(char2); }
+		);
+
+		return found != haystack.end();
+	};
+
 	// Just pure brute force search...
 	// Will improve if this ever becomes a serious bottleneck
 	for (int material_index = 0; material_index < material_count; material_index++)
-		if (material_names[material_index].find(filter_string) != std::string::npos || mesh_names[material_index].find(filter_string) != std::string::npos)
+		if (case_insensitive_string_find(material_names[material_index], filter_string) || case_insensitive_string_find(mesh_names[material_index], filter_string))
 			accepted_material_indices.insert(material_index);
 
 	return accepted_material_indices;
