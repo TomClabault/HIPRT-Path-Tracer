@@ -58,8 +58,8 @@ extern std::unordered_map<std::pair<int, int>, int, pair_hash> DEBUG8NEIGHNBOTS_
 // of DEBUG_OTHER_PIXEL_X/Y given below.
 // 
 // -1 to disable. If disabled, the pixel at (DEBUG_PIXEL_X, DEBUG_PIXEL_Y) will be debugged
-#define DEBUG_OTHER_PIXEL_X -1//848
-#define DEBUG_OTHER_PIXEL_Y -1//631
+#define DEBUG_OTHER_PIXEL_X 92
+#define DEBUG_OTHER_PIXEL_Y 265
 
 // If 1, a square of DEBUG_NEIGHBORHOOD_SIZE x DEBUG_NEIGHBORHOOD_SIZE pixels
 // will be rendered around the pixel to debug (given by DEBUG_PIXEL_X and
@@ -904,8 +904,6 @@ void CPURenderer::tonemap(float gamma, float exposure)
             int index = x + y * m_resolution.x;
 
             ColorRGB32F hdr_color = framebuffer_data[index];
-            /*if (!hdr_color.is_black())
-                std::cout << "here";*/
 
             if (m_render_data.render_settings.accumulate)
                 // Scaling by sample count
