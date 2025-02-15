@@ -241,7 +241,7 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 
 		if (ImGui::BeginTable("Table specular layer", 2, ImGuiTableFlags_SizingFixedFit))
 		{
-			for (int row = 0; row < 4; row++)
+			for (int row = 0; row < 5; row++)
 			{
 				ImGui::TableNextRow();
 
