@@ -259,9 +259,7 @@ struct CPUMaterial
     ColorRGB32F specular_color = ColorRGB32F(1.0f);
     // Same as coat darkening but for total internal reflection inside the specular layer
     // that sits on top of the diffuse base
-    //
-    // Disabled by default for artistic "expectations"
-    float specular_darkening = 0.0f;
+    float specular_darkening = 1.0f;
     // Whether or not to do energy compensation of the specular/diffuse layer
     // for that material
     bool do_specular_energy_compensation = true;
