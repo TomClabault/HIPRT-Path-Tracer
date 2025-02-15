@@ -37,13 +37,27 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool do_include_visibility_term_or_not(const HIPR
 	return include_target_function_visibility;
 }
 
+#ifndef __KERNELCC__
+#include <mutex>
+std::mutex map_mutex;
+
+#include <unordered_map>
+struct pair_hash {
+	size_t operator() (const std::pair<int, int>& p) const {
+		return std::rotl(std::hash<int>{}(p.first), 1) ^ std::hash<int>{}(p.second);
+	}
+};
+
+std::unordered_map<std::pair<int, int>, int, pair_hash> neighbors_chosen;
+#endif
+
 /**
  * Returns the linear index that can be used directly to index a buffer
  * of render_data of the 'neighbor_number'th neighbor that we're going
  * to spatially reuse from
  *
  * 'neighbor_number' is in [0, neighbor_reuse_count]
- * 'neighbor_reuse_count' is in [1, ReSTIR_DI_Settings.reuse_neighbor_count]
+ * 'neighbor_reuse_count' is in [1, ReSTIRCommonSpatialPassSettings.reuse_neighbor_count]
  * 'neighbor_reuse_radius' is the radius of the disk within which the neighbors are sampled
  * 'center_pixel_coords' is the coordinates of the center pixel that is currently
  *		doing the resampling of its neighbors. Neighbors will be spatially sampled
@@ -56,7 +70,7 @@ HIPRT_HOST_DEVICE HIPRT_INLINE bool do_include_visibility_term_or_not(const HIPR
  *		that a given pixel P resamples different neighbors accros different frame, otherwise
  *		the Hammersley sampler would always generate the exact same points
  * 'rng_converged_neighbor_reuse' is a random generator used specifically for generating
- *		random numbers to test against the 'restir_di_settings.spatial_pass.converged_neighbor_reuse_probability'
+ *		random numbers to test against the 'spatial_pass_settings.converged_neighbor_reuse_probability'
  *		if the user has allowed reusing converged neighbors (when adaptive sampling is used).
  *		The same random number generator with the same seed must be given to *all* get_spatial_neighbor_pixel_index()
  *		calls of this thread invocation
@@ -114,6 +128,14 @@ HIPRT_HOST_DEVICE HIPRT_INLINE int get_spatial_neighbor_pixel_index(const HIPRTR
 		}
 		else
 			neighbor_pixel_coords = center_pixel_coords + neighbor_offset_int;
+
+#ifndef __KERNELCC__
+		if (debug)
+		{
+			std::lock_guard<std::mutex> lock(map_mutex);
+			neighbors_chosen[std::make_pair<>(neighbor_pixel_coords.x, neighbor_pixel_coords.y)]++;
+		}
+#endif
 
 		if (debug && center_pixel_coords.x == render_data.render_settings.debug_x && center_pixel_coords.y == render_data.render_settings.debug_y)
 		{

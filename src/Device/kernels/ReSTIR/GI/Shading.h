@@ -17,6 +17,11 @@
 
 #include "HostDeviceCommon/Xorshift.h"
 
+#ifndef __KERNELCC__
+#include <unordered_map>
+extern std::unordered_map<std::pair<int, int>, int, pair_hash> neighbors_chosen;
+#endif
+
 #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_GI_Shading(HIPRTRenderData render_data)
 #else
@@ -131,6 +136,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_Shading(HIPRTRenderData render_da
         if (render_data.render_settings.sample_number > render_data.render_settings.stop_value)
 #endif
         {
+            printf("Count: %d\n", hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, 0));
             for (int i = 0; i < 10; i++)
             {
                 float value = hippt::atomic_fetch_add(&render_data.render_settings.DEBUG_SUMS[i], 0.0f);

@@ -121,7 +121,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 		//		continue;
 
 		int neighbor_pixel_index = get_spatial_neighbor_pixel_index<true>(render_data,
-			neighbor_index, center_pixel_coords, cos_sin_theta_rotation, !is_center_pixel);
+			neighbor_index, center_pixel_coords, cos_sin_theta_rotation, x == render_data.render_settings.debug_x && y == render_data.render_settings.debug_y);
 		if (neighbor_pixel_index == -1)
 			// Neighbor out of the viewport
 			continue;
@@ -313,7 +313,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_SpatialReuse(HIPRTRenderData rend
 		if (hippt::abs(x - render_data.render_settings.debug_x) <= render_data.render_settings.debug_size && 
 			hippt::abs(y - render_data.render_settings.debug_y) <= render_data.render_settings.debug_size)
 		{
-			if (valid_neighbors_count == 1)
+			if (valid_neighbors_count == 0)
 			{
 				hippt::atomic_fetch_add(render_data.render_settings.DEBUG_SUM_COUNT, 1);
 

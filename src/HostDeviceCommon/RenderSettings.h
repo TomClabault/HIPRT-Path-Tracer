@@ -36,7 +36,7 @@ struct HIPRTRenderSettings
 	int* DEBUG_NEIGHBOR_DISTRIBUTION = nullptr;
 	bool debug_lambertian = false;
 	int debug_x = 150, debug_y = 15;
-	int debug_size = 1;
+	int debug_size = 0;
 	int debug_count_multiplier = 2;
 	int precision = 256;
 	int stop_value = 65530 * MULTIPLIER;
