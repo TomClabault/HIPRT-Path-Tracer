@@ -78,14 +78,14 @@ struct ReSTIRGIReservoir
      */
     HIPRT_HOST_DEVICE bool combine_with(const ReSTIRGIReservoir& other_reservoir, float mis_weight, float target_function, float jacobian_determinant, Xorshift32Generator& random_number_generator)
     {
-        // TODO is this valid? adding M even if UCW == 0.0f
-        if (other_reservoir.UCW <= 0.0f)
-        {
-            // Not going to be resampled anyways because of invalid UCW so quit exit
-            M += other_reservoir.M;
+        //// TODO is this valid? adding M even if UCW == 0.0f
+        //if (other_reservoir.UCW <= 0.0f)
+        //{
+        //    // Not going to be resampled anyways because of invalid UCW so quick exit
+        //    M += other_reservoir.M;
 
-            return false;
-        }
+        //    return false;
+        //}
 
         // Bullet point 4. of the intro of Section 5.2 of [A Gentle Introduction to ReSTIR: Path Reuse in Real-time] https://intro-to-restir.cwyman.org/
         float reservoir_sample_weight = mis_weight * target_function * other_reservoir.UCW * jacobian_determinant;

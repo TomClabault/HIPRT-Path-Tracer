@@ -48,8 +48,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_GI_InitialCandidates(HIPRTRenderData
         seed = wang_hash(pixel_index + 1);
     else
         //seed = wang_hash((pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number);
-        seed = (pixel_index + 1) * (render_data.render_settings.sample_number + 1) * render_data.random_number;
-        //seed = wang_hash((pixel_index + 1) * (render_data.render_settings.sample_number + 1) ^ render_data.random_number);
+        seed = wang_hash((pixel_index + 1) * (render_data.render_settings.sample_number + 1) ^ render_data.random_number);
         //seed = wang_hash((pixel_index + 1));
     Xorshift32Generator random_number_generator(seed);
 
