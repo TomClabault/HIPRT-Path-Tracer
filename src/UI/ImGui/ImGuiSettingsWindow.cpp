@@ -2289,6 +2289,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 		ImGui::TreePop();
 	}
 
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 	ImGui::TreePop();
 }
 
@@ -2370,7 +2371,8 @@ void ImGuiSettingsWindow::draw_quality_panel()
 			""
 			"Shadow rays for NEE are also affected by this setting.");
 
-		ImGui::TreePop();
+		ImGui::Dummy(ImVec2(0.0f, 20.0f)); 
+			ImGui::TreePop();
 	}
 
 	if (ImGui::CollapsingHeader("Normal mapping"))

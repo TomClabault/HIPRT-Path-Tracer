@@ -471,8 +471,22 @@ std::vector<std::pair<aiTextureType, std::string>> SceneParser::get_textures_pat
 
     texture_indices.normal_map_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_NORMALS, texture_paths);
     if (texture_indices.normal_map_texture_index == MaterialUtils::NO_TEXTURE)
-        // Trying HEIGHT for some file formats
+        // Trying HEIGHT for the normal map for some file formats
         texture_indices.normal_map_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_HEIGHT, texture_paths);
+
+    if (texture_indices.normal_map_texture_index != MaterialUtils::NO_TEXTURE && texture_indices.base_color_texture_index != MaterialUtils::NO_TEXTURE &&
+        texture_paths[texture_indices.base_color_texture_index].second == texture_paths[texture_indices.normal_map_texture_index].second)
+    {
+        // Some scenes exported from Blender (or any other 3D software really)
+        // can sometimes use their own base color texture as
+        // some kind of bump map.
+        //
+        // This is not supported by this renderer so we're just not going to use normal mapping for
+        // this object
+        texture_indices.normal_map_texture_index = MaterialUtils::NO_TEXTURE;
+        // Popping the texture so that we don't load it
+        texture_paths.pop_back();
+    }
 
     return texture_paths;
 }
